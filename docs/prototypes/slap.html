@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<!--
+  P10e chunk (e) reference prototype: THE SLAP (P16 §R.3, `practices.slap`). Draft for the author's rounds (not yet approved).
+  A mini-game that is really mini: it cuts into a text scene for a second or two, unannounced; most slaps are simply taken.
+  Space (or the left button) is the commander's body tensing: a short peak that fades by itself, one try a slap; the peak on the
+  impact is "braced" (rare). A sharp flick of the mouse to the side turns the face away: an act of defiance ("flinched").
+  Build a runnable page with
+    npm run proto -- slap [--sprite <png|webp|svg>]
+  which inlines the fonts, backdrops, the CC0 sounds and a sprite (the layout fixture by default; never commit the author's art).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alius · slap · prototype</title>
+<style>
+@font-face { font-family: "Caveat"; src: url("%%ASSET:fonts/hand-caveat-400.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 300; src: url("%%ASSET:fonts/inter-300.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 400; src: url("%%ASSET:fonts/inter-400.woff2%%") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; src: url("%%ASSET:fonts/ibm-plex-mono-400.woff2%%") format("woff2"); }
+
+:root { --her: #8cc8f0; --glass: rgba(14, 12, 20, 0.58); --line: rgba(255, 255, 255, 0.12); --ink: #ece8f2; --dim: rgba(236, 232, 242, 0.55); }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: var(--ink); font-family: Inter, system-ui, sans-serif; font-weight: 300; }
+.mono { font-family: "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: 0.06em; }
+
+#stage { position: fixed; inset: 0; overflow: hidden; }
+#world { position: absolute; inset: -14%; will-change: transform, filter; transform-origin: 50% 45%; }
+#backdrop { position: absolute; inset: 0; background-size: cover; background-position: center; will-change: filter; }
+#cam { position: absolute; inset: 0; overflow: hidden; }
+#her { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform, filter; user-select: none; -webkit-user-drag: none; }
+#faceArt { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; will-change: transform, opacity; user-select: none; }
+#side { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+#sweep { position: absolute; top: 8%; height: 84%; width: 46%; border-radius: 50%; background: radial-gradient(closest-side, rgba(8,5,8,.92), rgba(8,5,8,.55) 60%, rgba(8,5,8,0));
+  filter: blur(38px); opacity: 0; pointer-events: none; will-change: transform, opacity; }
+#tight { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse 62% 58% at 50% 44%, rgba(0,0,0,0) 55%, rgba(0,0,0,.85) 100%); }
+#cheek { position: absolute; inset: 0; pointer-events: none; opacity: 0; mix-blend-mode: normal; }
+#flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; mix-blend-mode: screen; }
+#dimmer { position: absolute; inset: 0; pointer-events: none; background: #000; opacity: 0; }
+
+/* her hand */
+#hand { position: absolute; inset: 0; pointer-events: none; }
+.her-line { position: absolute; font-family: Caveat, cursive; color: var(--her); white-space: nowrap; line-height: 1; font-size: 44px;
+  text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.85), 0 0 28px rgba(0,0,0,.6);
+  animation: write var(--write, 600ms) steps(var(--steps, 12), end) both; transition: opacity .5s, transform .5s; }
+.her-line.right { transform-origin: right center; }
+.her-line.gone { opacity: 0; }
+@keyframes write { from { clip-path: inset(-30% 100% -30% -8%); } to { clip-path: inset(-30% -8% -30% -8%); } }
+
+/* the scene UI as P10e draws it (a stand-in: the slap cuts into a text scene) */
+#ui { position: absolute; inset: 0; pointer-events: none; }
+#reply { position: absolute; left: 50%; bottom: 112px; transform: translateX(-50%); width: min(980px, 70vw); font-size: 21px; line-height: 1.5;
+  text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.7); transition: opacity .25s; }
+#reply .act { font-style: italic; color: var(--dim); }
+#reply .speech { color: var(--her); font-weight: 400; }
+#reply .you { color: #d8e4ff; }
+#inputWrap { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); width: 720px; height: 52px; pointer-events: auto;
+  background: var(--glass); border: 1px solid var(--line); border-radius: 26px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  transition: opacity .25s; overflow: hidden; }
+#cmd, #mirror { position: absolute; inset: 0; padding: 0 24px; font: 300 19px/52px Inter, sans-serif; letter-spacing: 0; }
+#cmd { width: 100%; border: 0; outline: 0; background: transparent; color: transparent; caret-color: var(--ink); }
+#cmd::placeholder { color: rgba(236,232,242,.35); }
+#mirror { pointer-events: none; white-space: pre; overflow: hidden; }
+#mirror > span { display: inline-block; white-space: pre; transition: transform .45s cubic-bezier(.2,.9,.3,1.2), opacity .45s; }
+
+/* prototype only */
+.card { position: absolute; left: 36px; top: 30%; width: 380px; padding: 20px 22px; border-radius: 18px; pointer-events: auto;
+  background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); display: none; }
+.card h3 { margin: 0 0 10px; font: 13px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .1em; color: var(--dim); }
+.card .facts { font: 13px "IBM Plex Mono", monospace; color: var(--dim); line-height: 1.7; }
+.btn { display: inline-block; margin-top: 12px; padding: 9px 18px; border-radius: 20px; border: 1px solid var(--line); background: rgba(255,255,255,.06);
+  color: var(--ink); font: 14px Inter, sans-serif; cursor: pointer; }
+.btn:hover { background: rgba(255,255,255,.14); }
+#panel { position: fixed; top: 14px; right: 14px; width: 310px; max-height: calc(100vh - 140px); overflow: auto; padding: 14px 16px; border-radius: 14px; z-index: 50;
+  background: rgba(10, 10, 14, .82); border: 1px solid var(--line); font: 12px "IBM Plex Mono", monospace; color: #cfcbe0; }
+#panel.hidden { display: none; }
+#panel h4 { margin: 12px 0 6px; font-weight: 400; color: #8d88a6; font-variant: small-caps; letter-spacing: .08em; }
+#panel h4:first-child { margin-top: 0; }
+#panel .row { display: flex; flex-wrap: wrap; gap: 4px; }
+#panel button.opt { padding: 4px 8px; border-radius: 10px; border: 1px solid #3a3650; background: #17151f; color: #cfcbe0; font: 12px "IBM Plex Mono", monospace; cursor: pointer; }
+#panel button.opt.on { background: #3b3360; border-color: #8a7fd0; color: #fff; }
+#panel button.big { padding: 7px 12px; font-size: 13px; }
+#panel label { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+#panel input[type=range] { flex: 1; }
+#panel select { background: #17151f; color: #cfcbe0; border: 1px solid #3a3650; font: 12px "IBM Plex Mono", monospace; }
+#panel .note { color: #77738c; line-height: 1.45; margin-top: 8px; }
+#debug { position: fixed; left: 14px; top: 12px; z-index: 40; display: none; pointer-events: none; }
+#debug canvas { display: block; background: rgba(8,8,12,.72); border: 1px solid var(--line); border-radius: 8px; }
+#debug pre { margin: 6px 0 0; font: 12px "IBM Plex Mono", monospace; color: #9ad; text-shadow: 0 0 4px #000; }
+#start { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 60; background: rgba(0,0,0,.35); }
+#start .box { width: 560px; padding: 26px 30px; border-radius: 18px; background: rgba(12, 11, 18, .86); border: 1px solid var(--line); line-height: 1.6; font-size: 15px; }
+#start .box h2 { margin: 0 0 8px; font: 15px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .12em; color: #a9a3c7; }
+#start kbd { font: 12px "IBM Plex Mono", monospace; padding: 1px 6px; border: 1px solid #555; border-radius: 4px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><filter id="hblur" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur id="hblurG" stdDeviation="0 0"/></filter></svg>
+<div id="stage">
+  <div id="world">
+    <div id="backdrop"></div>
+    <div id="cam"><img id="her" alt="" draggable="false"><img id="faceArt" alt="" draggable="false"></div>
+  </div>
+  <div id="side"></div>
+  <div id="sweep"></div>
+  <div id="dimmer"></div>
+  <div id="tight"></div>
+  <div id="cheek"></div>
+  <div id="flash"></div>
+  <div id="hand"></div>
+  <div id="ui">
+    <div id="reply"></div>
+    <div id="inputWrap"><div id="mirror"></div><input id="cmd" autocomplete="off" spellcheck="false" placeholder="say something… (Enter sends)"></div>
+    <div class="card" id="summary"><h3>prototype · slaps so far</h3><div class="facts" id="sumFacts"></div></div>
+  </div>
+</div>
+<div id="debug"><canvas id="tl" width="460" height="112"></canvas><pre id="dbgText"></pre></div>
+
+<div id="panel">
+  <h4>a slap</h4>
+  <div class="row"><button class="opt big" id="slapNow">slap now (N)</button></div>
+  <label><input type="checkbox" id="onSend" checked> she answers a sent line with a slap (half the time)</label>
+  <label><input type="checkbox" id="random"> at a random moment (every 8–25 s)</label>
+  <label><input type="checkbox" id="unann"> unannounced (after a slip: no raised hand, only the swing)</label>
+  <label>feints <select id="feints"><option value="style" selected>by her (sometimes)</option><option value="0">none</option><option value="1">one</option><option value="2">two</option></select></label>
+  <label>her hand <select id="sideSel"><option value="auto" selected>either (hashed)</option><option value="left">from the left</option><option value="right">from the right</option></select></label>
+  <h4>her style (the swing's length)</h4>
+  <div class="row" id="styles"></div>
+  <div class="note" id="styleNote"></div>
+  <h4>the commander's body (tension)</h4>
+  <label>rise ms <input type="range" id="tRise" min="40" max="250" step="10" value="100"><span id="tRiseV">100</span></label>
+  <label>peak ms <input type="range" id="tPeak" min="20" max="300" step="10" value="80"><span id="tPeakV">80</span></label>
+  <label>fall ms <input type="range" id="tFall" min="80" max="600" step="10" value="220"><span id="tFallV">220</span></label>
+  <label>braced at ≥ <input type="range" id="tThr" min="0.5" max="0.98" step="0.02" value="0.8"><span id="tThrV">0.80</span></label>
+  <div class="note" id="bandNote"></div>
+  <label>turn away: flick ≥ <input type="range" id="flick" min="1200" max="5000" step="100" value="2400"><span id="flickV">2400</span> px/s</label>
+  <h4>her signal</h4>
+  <label><input type="checkbox" id="sideDark" checked> the light dims on her hand's side as it rises</label>
+  <label><input type="checkbox" id="sweepOn" checked> a dark blur sweeps in from that edge in the last moment</label>
+  <h4>sound</h4>
+  <label><input type="checkbox" id="snd" checked> on</label>
+  <label>volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.8"></label>
+  <label>slap <select id="slapS"><option value="slap1">1 · thwack (bright)</option><option value="slap2">2 · thwack (full)</option><option value="slap3">3 · meat impact</option><option value="slap4" selected>4 · wet towel</option><option value="slap5">5 · hit (bright)</option><option value="slap6">6 · hit (short)</option></select> <button class="opt" id="hear">▶</button></label>
+  <label>swish <select id="swishS"><option value="swish1" selected>1 · light</option><option value="swish2">2 · light, short</option><option value="swish3">3 · heavier</option><option value="synth">synth</option></select></label>
+  <label><input type="checkbox" id="thumpOn" checked> a low body thump under the slap</label>
+  <label>ringing s <input type="range" id="ring" min="0" max="6" step="0.5" value="3"><span id="ringV">3</span></label>
+  <h4>her face</h4>
+  <label>sprite <input type="file" id="file" accept="image/*" style="width:170px"></label>
+  <label>face art <input type="file" id="faceFile" accept="image/*" style="width:160px"></label>
+  <div class="note">face art: the art slot <code>face_close</code> (her face close, filling the frame). Without it the camera closes in on the sprite's face.</div>
+  <label>face x <input type="range" id="fx" min="0.2" max="0.8" step="0.01" value="0.47"><span id="fxV">0.47</span></label>
+  <label>face y <input type="range" id="fy" min="0.05" max="0.45" step="0.01" value="0.17"><span id="fyV">0.17</span></label>
+  <label>zoom <input type="range" id="zoom" min="1.4" max="4" step="0.1" value="2.6"><span id="zoomV">2.6</span></label>
+  <label>accent <input type="color" id="accent" value="#8cc8f0"></label>
+  <label>backdrop <select id="bg"></select></label>
+  <h4>view</h4>
+  <label><input type="checkbox" id="dbg"> debug: the timeline and the tension</label>
+  <label><input type="checkbox" id="sum"> the tally</label>
+  <label><input type="checkbox" id="rm"> reduced motion (it lands, no timing)</label>
+  <div class="note">Type in the scene. A slap comes when it comes: <b>Space</b> or the left button tenses the body (one try a slap; the tension peaks and fades by itself); a sharp <b>flick of the mouse</b> sideways turns the face away. N: a slap now. H: hide this panel. Prototype only; nothing here is engine code.</div>
+</div>
+
+<div id="start"><div class="box">
+  <h2>the slap · prototype</h2>
+  A text scene with her. Type, send lines. At some point her hand comes up. Most of the time the commander simply takes it.<br>
+  <kbd>Space</kbd> (or the left button) — <b>brace</b>: the body tenses for a moment and lets go by itself; the peak on the impact is rare and hard. One try a slap.<br>
+  A sharp <b>flick of the mouse</b> sideways — <b>turn the face away</b>: defiance, and she sees it.<br>
+  <kbd>N</kbd> a slap now · <kbd>H</kbd> panel. Headphones help.
+  <div><span class="btn" id="go">begin</span></div>
+</div></div>
+
+<script>
+'use strict';
+const ASSETS = {
+  her: '%%SPRITE%%',
+  bgs: { quarters_1: '%%ASSET:content/core/art/backdrops/quarters_1.webp%%', quarters_dark: '%%ASSET:content/core/art/backdrops/quarters_dark.webp%%', loc_quarters_commander: '%%ASSET:content/core/art/backdrops/loc_quarters_commander.webp%%', loc_medbay: '%%ASSET:content/core/art/backdrops/loc_medbay.webp%%' },
+};
+const SAMPLE_URLS = {
+  slap1: '%%ASSET:docs/prototypes/assets/slap/slap1.ogg%%', slap2: '%%ASSET:docs/prototypes/assets/slap/slap2.ogg%%', slap3: '%%ASSET:docs/prototypes/assets/slap/slap3.ogg%%',
+  slap4: '%%ASSET:docs/prototypes/assets/slap/slap4.ogg%%', slap5: '%%ASSET:docs/prototypes/assets/slap/slap5.ogg%%', slap6: '%%ASSET:docs/prototypes/assets/slap/slap6.ogg%%',
+  swish1: '%%ASSET:docs/prototypes/assets/slap/swish1.ogg%%', swish2: '%%ASSET:docs/prototypes/assets/slap/swish2.ogg%%', swish3: '%%ASSET:docs/prototypes/assets/slap/swish3.ogg%%',
+  cloth1: '%%ASSET:docs/prototypes/assets/ha/cloth1.ogg%%', cloth2: '%%ASSET:docs/prototypes/assets/ha/cloth2.ogg%%', cloth3: '%%ASSET:docs/prototypes/assets/ha/cloth3.ogg%%', cloth4: '%%ASSET:docs/prototypes/assets/ha/cloth4.ogg%%',
+  breath: '%%ASSET:docs/prototypes/assets/breath-in-out.mp3%%',
+};
+const $ = (s) => document.querySelector(s);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+const easeIn = (t) => Math.pow(clamp(t, 0, 1), 2);
+const easeInOut = (t) => { t = clamp(t, 0, 1); return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const rand = (a, b) => a + Math.random() * (b - a);
+
+/* ---------- the engine's numbers (src/engine/tuning.ts, TUNING.practice.slap) ---------- */
+const LEAD = 900, FEINT = 450;                 // leadMs, feintMs: her raised hand before any feint or the swing; each feint
+const SWING = { affectionate: 700, regal: 650, ritual: 550, drill: 550, cold: 500, clinical: 500, possessive: 450, playful: 450, obsessive: 300, vindictive: 350, cruel: 300 }; // windowMs, read here as the swing's length
+const OBSESSIVE_SPREAD = 400;
+/* ---------- the instrument's own numbers ---------- */
+const SNAP = 170;          // the camera snaps to her face
+const SWEEP = 140;         // the dark blur from her edge in the last moment of the swing
+const RETURN = 650;        // the camera goes back to the scene
+const FEINT_SHARE = { cruel: 0.5, playful: 0.5, other: 0.25 }; // "by her": a prototype stand-in for her `swing` (engine: 10 % a level from 2)
+const STYLE_NOTE = {
+  affectionate: 'slow swing (700 ms); softer after a turned face',
+  regal: '650 ms; expects thanks', ritual: '550 ms; "still." before', drill: '550 ms; "chin up." before; names the fault',
+  cold: '500 ms; silent', clinical: '500 ms; notes the reaction', possessive: '450 ms', playful: '450 ms; feints, laughs',
+  obsessive: '300–700 ms, unpredictable', vindictive: '350 ms; a turned face is added to the sentence', cruel: '300 ms; feints; a second slap after a turned face',
+};
+/* her words by style and result (placeholders for the cue pool; no pronoun and no feeling for the commander) */
+const LINES = {
+  affectionate: { before: [], none: ['there. it’s done.', 'shh. done.'], braced: ['brave.', 'look at you.'], flinched: ['shh. come here.', 'I know. I know.'] },
+  regal:        { before: [], none: ['you may thank me.'], braced: ['well taken. now thank me.'], flinched: ['you turn from me?'] },
+  ritual:       { before: ['still.'], none: ['one.'], braced: ['still. as it should be.'], flinched: ['you moved.'] },
+  drill:        { before: ['chin up.'], none: ['eyes front.'], braced: ['that’s discipline.'], flinched: ['you turned your face. fault.'] },
+  cold:         { before: [], none: [], braced: [], flinched: [] },
+  clinical:     { before: [], none: ['noted.'], braced: ['no flinch. interesting.'], flinched: ['turned away. noted.'] },
+  possessive:   { before: [], none: ['mine to strike.'], braced: ['good. mine.'], flinched: ['don’t you turn from me.'] },
+  playful:      { before: [], none: ['didn’t see that coming?', 'ha.'], braced: ['ooh. ready for me?'], flinched: ['running away~?'], feint: ['flinchy~'] },
+  obsessive:    { before: [], none: ['you felt that. you felt me.'], braced: ['you were waiting for me.'], flinched: ['look at me. only me.'] },
+  vindictive:   { before: [], none: ['that was owed.'], braced: ['it changes nothing.'], flinched: ['that’s added to it.'] },
+  cruel:        { before: [], none: ['better.'], braced: ['look at that.'], flinched: ['face me.'], again: ['again.'] },
+};
+const NARR = { // the stand-in for the next reply's narration (the digest reaches the scene; this only shows that it does)
+  none: 'Her palm cracks across the commander’s face.',
+  braced: 'Her palm cracks across the commander’s face. It is taken without a flinch.',
+  flinched: 'The commander turns the face away; her palm only grazes it, and she sees the turn.',
+};
+
+/* ---------- settings ---------- */
+const S = { style: 'possessive', onSend: true, random: false, unann: false, feints: 'style', side: 'auto',
+  tension: { rise: 100, peak: 80, fall: 220, thr: 0.8 }, flick: 2400, sideDark: true, sweep: true,
+  sound: true, vol: 0.8, slapS: 'slap4', swishS: 'swish1', thump: true, ring: 3,
+  face: { x: 0.47, y: 0.17 }, zoom: 2.6, debug: false, sum: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
+
+/* ---------- audio ---------- */
+const A = { ctx: null, buf: {} };
+function audioInit() {
+  if (A.ctx) return;
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  A.ctx = ctx;
+  A.master = ctx.createGain(); A.master.gain.value = S.sound ? S.vol : 0; A.master.connect(ctx.destination);
+  A.worldLP = ctx.createBiquadFilter(); A.worldLP.type = 'lowpass'; A.worldLP.frequency.value = 16000; A.worldLP.Q.value = 0.4;
+  A.worldG = ctx.createGain(); A.worldG.gain.value = 1; A.worldLP.connect(A.worldG); A.worldG.connect(A.master); // the world: dulled by the ringing, ducked while braced
+  A.body = ctx.createGain(); A.body.gain.value = 1; A.body.connect(A.master); // the body: the slap, the ringing, the commander's breath
+  const mk = (sec, fill) => { const b = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate); fill(b.getChannelData(0)); return b; };
+  A.white = mk(2, (d) => { for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; });
+  A.brown = mk(4, (d) => { let l = 0; for (let i = 0; i < d.length; i++) { l = (l + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = l * 3.5; } });
+  const room = ctx.createBufferSource(); room.buffer = A.brown; room.loop = true;
+  const roomLP = ctx.createBiquadFilter(); roomLP.type = 'lowpass'; roomLP.frequency.value = 700;
+  const roomG = ctx.createGain(); roomG.gain.value = 0.05;
+  room.connect(roomLP); roomLP.connect(roomG); roomG.connect(A.worldLP); room.start();
+  const hum = ctx.createOscillator(); hum.frequency.value = 50; const humG = ctx.createGain(); humG.gain.value = 0.01; hum.connect(humG); humG.connect(roomLP); hum.start();
+}
+async function loadSamples() {
+  await Promise.all(Object.entries(SAMPLE_URLS).map(async ([k, u]) => {
+    try { const r = await fetch(u); A.buf[k] = await A.ctx.decodeAudioData(await r.arrayBuffer()); } catch (e) { /* a missing file falls back to synthesis */ }
+  }));
+}
+function chain(node, { pan = 0, lp = 0, hp = 0, dest = A.worldLP }) {
+  let n = node;
+  if (hp) { const f = A.ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp; n.connect(f); n = f; }
+  if (lp) { const f = A.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; n.connect(f); n = f; }
+  if (pan) { const p = A.ctx.createStereoPanner(); p.pan.value = clamp(pan, -1, 1); n.connect(p); n = p; }
+  n.connect(dest);
+}
+/* plays a recorded sound; `at` in seconds from now, `offset`/`dur` cut a part of it */
+function play(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at = 0, offset = 0, dur } = {}) {
+  if (!A.ctx || !A.buf[id]) return null;
+  const ctx = A.ctx, t = ctx.currentTime + Math.max(0, at);
+  const src = ctx.createBufferSource(); src.buffer = A.buf[id]; src.playbackRate.value = rate;
+  const gn = ctx.createGain(); gn.gain.value = g; src.connect(gn);
+  chain(gn, { pan, lp, hp, dest: dest ?? A.worldLP });
+  const len = dur ?? (A.buf[id].duration - offset);
+  if (dur) { gn.gain.setValueAtTime(g, t + dur / rate - 0.03); gn.gain.linearRampToValueAtTime(0.0001, t + dur / rate); }
+  src.start(t, offset, len + 0.05);
+  return src;
+}
+function noise({ at = 0, dur = 0.2, type = 'bandpass', f = 1000, f2, q = 1, gain = 0.1, attack = 0.01, dest = A.worldLP, pan = 0 }) {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const src = ctx.createBufferSource(); src.buffer = A.white; src.loop = true;
+  const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(f, t); fl.Q.value = q;
+  if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(fl); fl.connect(g); chain(g, { pan, dest }); src.start(t, Math.random()); src.stop(t + dur + 0.05);
+}
+function thump(at, gain, f0 = 55, dest = A.body) {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f0 * 0.6, t + 0.14);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+  o.connect(g); g.connect(dest); o.start(t); o.stop(t + 0.3);
+}
+const SFX = {
+  pen: () => { for (let i = 0; i < 3; i++) noise({ at: i * 0.05 + Math.random() * 0.02, dur: 0.035 + Math.random() * 0.03, f: 2600 + Math.random() * 1800, q: 3, gain: 0.04 }); },
+  /* her clothes: her hand going up, a feint's twitch (panned to her hand's side) */
+  cloth: (pan, g = 0.35, rate = 1) => { if (!play(pick(['cloth1', 'cloth2', 'cloth3', 'cloth4']), { g, pan, rate, lp: 6000 })) noise({ dur: 0.3, f: 1100, f2: 1700, q: 0.7, gain: g * 0.25, attack: 0.05, pan }); },
+  /* the swish of her hand: timed so that it ends on the impact */
+  swish: (atS, pan) => {
+    if (S.swishS !== 'synth' && A.buf[S.swishS]) {
+      const rate = 0.72, d = A.buf[S.swishS].duration / rate;
+      play(S.swishS, { g: 0.5, pan, rate, at: atS - d * 0.85, hp: 300 });
+    } else noise({ at: atS - 0.16, dur: 0.17, f: 900, f2: 3200, q: 0.8, gain: 0.16, attack: 0.12, pan });
+  },
+  /* the slap: the recording on the body bus, panned to the cheek; a glancing one is duller and quieter */
+  slap: (pan, glancing) => {
+    const g = glancing ? 0.5 : 1;
+    if (!play(S.slapS, { g: 0.95 * g, pan: pan * 0.55, lp: glancing ? 2200 : 0, dest: A.body })) {
+      noise({ dur: 0.09, type: 'highpass', f: 1400, gain: 0.5 * g, attack: 0.002, dest: A.body, pan: pan * 0.55 });
+    }
+    if (S.thump) thump(0, (glancing ? 0.25 : 0.55), 70);
+  },
+  /* the ringing in the ears: two close sines that beat, a slow fade; the world dulls and comes back */
+  ring: (sec, k = 1) => {
+    if (!A.ctx || sec <= 0) return;
+    const ctx = A.ctx, t = ctx.currentTime;
+    for (const [f, gg] of [[4180, 0.035], [4207, 0.028], [8400, 0.006]]) {
+      const o = ctx.createOscillator(); o.frequency.value = f; o.type = 'sine';
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gg * k, t + 0.06); g.gain.exponentialRampToValueAtTime(0.0001, t + sec);
+      o.connect(g); g.connect(A.body); o.start(t); o.stop(t + sec + 0.1);
+    }
+    A.worldLP.frequency.cancelScheduledValues(t);
+    A.worldLP.frequency.setValueAtTime(lerp(16000, 650, k), t + 0.01);
+    A.worldLP.frequency.exponentialRampToValueAtTime(16000, t + Math.max(0.6, sec * 0.9));
+  },
+  /* the commander's breath (the recording of saturation: a nose inhale and an exhale): a sharp intake on tensing, an exhale after */
+  intake: () => { if (!play('breath', { g: 0.24, rate: 1.6, offset: 0.14, dur: 0.42, lp: 3200, dest: A.body })) noise({ dur: 0.22, f: 900, f2: 2200, q: 0.9, gain: 0.08, attack: 0.03, dest: A.body }); },
+  exhale: (at, g = 0.16) => { play('breath', { g, rate: 1.1, offset: 2.17, dur: 0.95, lp: 2600, dest: A.body, at }); },
+  heart: () => { thump(0, 0.5, 52); thump(0.26, 0.32, 46); },
+};
+
+/* ---------- state ---------- */
+let G = { scene: true, slap: null, tally: { none: 0, braced: 0, flinched: 0, slaps: 0 }, cheekA: 0, cheekDir: 1, cheekT0: 0, last: null, nextRandom: 0, mouse: [], typingFocus: false };
+let seq = 0;
+const hash01 = (s) => { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return ((h >>> 0) % 10000) / 10000; };
+
+/* the tension of the commander's body, t ms after the press: rise, a short peak, a fall (held or not) */
+function tensionAt(t) {
+  const T = S.tension;
+  if (t < 0) return 0;
+  if (t < T.rise) return easeOut(t / T.rise);
+  if (t < T.rise + T.peak) return 1;
+  return clamp(1 - (t - T.rise - T.peak) / T.fall, 0, 1);
+}
+/* the band before the impact in which a press is "braced" (for the panel's note and the debug readout) */
+function bracedBand() {
+  const T = S.tension; let a = null, b = null;
+  for (let t = 0; t < T.rise + T.peak + T.fall; t += 2) { if (tensionAt(t) >= T.thr) { if (a === null) a = t; b = t; } }
+  return [a ?? 0, b ?? 0];
+}
+
+/* ---------- a slap ---------- */
+function startSlap(opts = {}) {
+  if (G.slap || $('#start').style.display !== 'none') return;
+  audioInit();
+  const id = `ps${++seq}`;
+  const style = S.style;
+  const swing = style === 'obsessive' ? Math.round(SWING.obsessive + hash01(`win:${id}`) * OBSESSIVE_SPREAD) : SWING[style];
+  const unann = opts.unannounced ?? S.unann;
+  let feints = 0;
+  if (S.feints === 'style') feints = hash01(`feint:${id}`) < (FEINT_SHARE[style] ?? FEINT_SHARE.other) ? 1 : 0;
+  else feints = Number(S.feints);
+  if (unann) feints = 0;
+  const dir = S.side === 'left' ? 1 : S.side === 'right' ? -1 : (hash01(`side:${id}`) < 0.5 ? 1 : -1); // +1: her hand comes from the screen's left (her right hand)
+  const lead = unann ? SNAP : (opts.again ? 420 : LEAD);
+  const swingAt = lead + feints * FEINT;
+  const t0 = performance.now();
+  const s = { id, style, swing, unann, feints, dir, lead, swingAt, impactAt: swingAt + swing, t0, again: !!opts.again,
+    pressAt: null, presses: 0, turned: 0, turnAt: null, result: null, tensionAtImpact: 0, phase: 'snap', doneAt: null, said: false, feintSaid: false, k0: G.k ?? 0 };
+  G.slap = s;
+  G.last = s;
+  G.back = null;
+  // the input lets go: Space must not land in the text, and the hands are the body's now (nor click a focused button)
+  const active = document.activeElement;
+  if (!opts.again) G.typingFocus = active === $('#cmd');
+  if (active && active !== document.body) active.blur();
+  if (S.reduced) { land(s, performance.now()); return; }
+  // her hand goes up: a heartbeat, her clothes on her hand's side; the swish timed to the impact
+  SFX.heart();
+  if (!unann) SFX.cloth(-dir * 0.7, 0.4);
+  SFX.swish(s.impactAt / 1000, -dir * 0.6);
+  for (let i = 0; i < feints; i++) setTimeout(() => { if (G.slap === s) SFX.cloth(-dir * 0.7, 0.5, 1.25); }, lead + i * FEINT);
+  const before = LINES[style].before;
+  if (before.length && !unann && !opts.again) setTimeout(() => { if (G.slap === s && !s.result) say(pick(before)); }, SNAP + 60);
+  if (opts.again && LINES[style].again) setTimeout(() => { if (G.slap === s && !s.result) say(pick(LINES[style].again)); }, 80);
+}
+
+function press(source) {
+  const s = G.slap; if (!s || s.result) return;
+  s.presses += 1;
+  if (s.pressAt !== null) return; // one try: the body has already let go
+  s.pressAt = performance.now() - s.t0;
+  SFX.intake();
+  // caught on a feint: the playful one says so
+  const onFeint = s.feints > 0 && s.pressAt >= s.lead && s.pressAt < s.swingAt;
+  if (onFeint && LINES[s.style].feint) setTimeout(() => { if (G.slap === s && !s.result) say(pick(LINES[s.style].feint)); }, 120);
+}
+
+/* a sharp flick of the mouse sideways turns the face away (from the moment her hand is up until the impact) */
+function onMove(e) {
+  const now = performance.now();
+  G.mouse.push([now, e.clientX]);
+  while (G.mouse.length && now - G.mouse[0][0] > 70) G.mouse.shift();
+  const s = G.slap; if (!s || s.result || s.turned) return;
+  if (G.mouse.length < 2) return;
+  const [ta, xa] = G.mouse[0], dt = (now - ta) / 1000, dx = e.clientX - xa;
+  if (dt <= 0) return;
+  const v = dx / dt;
+  if (Math.abs(v) >= S.flick && Math.abs(dx) >= innerWidth * 0.06) { s.turned = Math.sign(dx); s.turnAt = now - s.t0; SFX.cloth(0, 0.25, 1.4); }
+}
+
+function land(s, now) {
+  const t = now - s.t0;
+  s.tensionAtImpact = s.pressAt === null ? 0 : tensionAt(t - s.pressAt);
+  s.result = s.turned ? 'flinched' : s.tensionAtImpact >= S.tension.thr ? 'braced' : 'none';
+  s.landedAt = t;
+  G.tally[s.result] += 1; G.tally.slaps += 1;
+  const glancing = s.result === 'flinched';
+  const k = s.result === 'braced' ? 0.65 : glancing ? 0.45 : 1; // how hard it is felt
+  s.k = k;
+  SFX.slap(-s.dir, glancing);
+  SFX.ring(S.ring * (s.result === 'braced' ? 0.55 : glancing ? 0.4 : 1), k);
+  if (s.result === 'braced') SFX.exhale(0.45, 0.15);
+  // the cheek: a red glow on the side the hand came from, fading over half a minute
+  G.cheekA = Math.min(0.9, G.cheekA * 0.6 + 0.8 * k); G.cheekDir = s.dir; G.cheekT0 = now;
+  flash(k);
+  scatter(k);
+  // her answer, then the camera goes back to the scene
+  const pool = LINES[s.style][s.result] ?? [];
+  setTimeout(() => { if (pool.length) say(pick(pool)); }, s.style === 'cold' ? 0 : 380);
+  const cruelAgain = s.style === 'cruel' && s.result === 'flinched' && !s.again;
+  const hold = cruelAgain ? 700 : s.style === 'cold' ? 900 : 1500;
+  s.doneAt = t + hold;
+  setTimeout(() => {
+    if (G.slap !== s) return;
+    G.slap = null; G.back = { t0: performance.now(), from: 1 };
+    narrate(s.result);
+    renderTally();
+    if (cruelAgain) setTimeout(() => startSlap({ again: true }), 120);
+    else if (G.typingFocus) $('#cmd').focus();
+  }, S.reduced ? 600 : hold);
+}
+
+/* ---------- effects ---------- */
+function flash(k) {
+  const el = $('#flash');
+  el.style.transition = 'none';
+  el.style.background = 'radial-gradient(ellipse at 50% 45%, rgba(255,250,245,1), rgba(255,90,70,1) 55%, rgba(200,20,20,1))';
+  el.style.opacity = String(0.75 * k);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    el.style.transition = 'opacity 260ms cubic-bezier(.2,.7,.3,1), background 120ms';
+    el.style.background = 'radial-gradient(ellipse at 50% 45%, rgba(255,120,100,1), rgba(220,40,30,1) 60%, rgba(160,10,10,1))';
+    el.style.opacity = '0';
+  }));
+}
+function scatter(k) {
+  const spans = [...$('#mirror').children];
+  for (const sp of spans) {
+    sp.style.transition = 'none';
+    sp.style.transform = `translate(${rand(-14, 14) * k}px, ${rand(-16, 16) * k}px) rotate(${rand(-28, 28) * k}deg)`;
+  }
+  requestAnimationFrame(() => requestAnimationFrame(() => { for (const sp of spans) { sp.style.transition = ''; sp.style.transform = ''; } }));
+}
+
+/* ---------- her hand (Caveat, written in steps, beside her face) ---------- */
+function say(text) {
+  if (!text) return;
+  const el = document.createElement('div');
+  el.className = 'her-line';
+  el.textContent = text;
+  const speed = S.style === 'cruel' || S.style === 'cold' ? 24 : S.style === 'ritual' ? 45 : 34;
+  el.style.setProperty('--write', `${Math.max(140, text.length * speed)}ms`);
+  el.style.setProperty('--steps', String(Math.max(4, text.length * 2)));
+  const s = G.slap ?? G.last; const dir = s ? s.dir : 1;
+  // on the side away from her hand, beside her face
+  if (dir > 0) { el.style.left = `${innerWidth * 0.6}px`; } else { el.classList.add('right'); el.style.right = `${innerWidth * 0.6}px`; }
+  const showing = [...$('#hand').children].filter((c) => !c.classList.contains('gone')).length; // stack below the lines still showing
+  el.style.top = `${innerHeight * rand(0.22, 0.26) + showing * 54}px`;
+  el.style.transform = `rotate(${rand(-4, 3).toFixed(1)}deg)`;
+  $('#hand').appendChild(el);
+  SFX.pen();
+  setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 600); }, 2200);
+}
+
+/* ---------- the scene stand-in ---------- */
+const HER_REPLIES = [
+  ['She does not look up from the report at first.', 'Say that again. Slowly.'],
+  ['She sets the cup down, very carefully.', 'You think that was clever?'],
+  ['She tilts her head and studies the commander.', 'Go on. I’m listening.'],
+  ['She steps closer, close enough to feel her breath.', 'Look at me when you talk to me.'],
+];
+function setReply(html) { $('#reply').innerHTML = html; }
+function herReply() { const [a, sp] = pick(HER_REPLIES); setReply(`<span class="act">${a}</span> <span class="speech">“${sp}”</span>`); }
+function narrate(result) { setReply(`<span class="act">${NARR[result]}</span>`); }
+function updateMirror() {
+  const v = $('#cmd').value;
+  $('#mirror').replaceChildren(...[...v].map((ch) => { const sp = document.createElement('span'); sp.textContent = ch; return sp; }));
+}
+$('#cmd').addEventListener('input', updateMirror);
+$('#cmd').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  const v = $('#cmd').value.trim(); if (!v) return;
+  $('#cmd').value = ''; updateMirror();
+  setReply(`<span class="you">${v.replace(/[<&]/g, (c) => (c === '<' ? '&lt;' : '&amp;'))}</span>`);
+  if (S.onSend && Math.random() < 0.5) setTimeout(() => startSlap(), rand(350, 900));
+  else setTimeout(herReply, rand(700, 1300));
+});
+
+/* ---------- the camera ---------- */
+const img = $('#her'), faceImg = $('#faceArt');
+let hasFace = false;
+function frame(now) {
+  requestAnimationFrame(frame);
+  const W = innerWidth, H = innerHeight;
+  const s = G.slap;
+  // how close the camera is: snaps in on a slap, eases back after
+  let k = 0;
+  if (s && !S.reduced) k = lerp(s.k0, 1, easeOut((now - s.t0) / SNAP));
+  else if (G.back) { const p = (now - G.back.t0) / RETURN; k = 1 - easeInOut(p); if (p >= 1) G.back = null; }
+  G.k = k;
+  // her lean: -0.4 her hand up (the frame's hand side rises), toward +1 through the swing; feints twitch toward the strike and back
+  let lean = 0, sweep = -1, twitch = 0;
+  if (s && !S.reduced) {
+    const t = now - s.t0;
+    if (!s.unann) lean = -0.4 * easeOut((t - SNAP * 0.4) / 380) + 0.04 * Math.sin(t / 140) * (t > SNAP ? 1 : 0); // her hand up: the frame's hand side rises; a slight unrest
+    for (let i = 0; i < s.feints; i++) {
+      const ft = t - (s.lead + i * FEINT);
+      if (ft >= 0 && ft < FEINT) { const p = ft / FEINT; twitch = p < 0.3 ? easeIn(p / 0.3) : 1 - easeOut((p - 0.3) / 0.45); lean = -0.4 + 0.75 * twitch; }
+    }
+    if (t >= s.swingAt && !s.result) {
+      const p = (t - s.swingAt) / s.swing;
+      lean = lerp(s.unann ? 0 : -0.4, 1, easeIn(p));
+      if (S.sweep) sweep = clamp(1 - (s.impactAt - t) / SWEEP, 0, 1);
+    }
+    if (!s.result && t >= s.impactAt) land(s, now);
+    if (s.result) lean = 0;
+  }
+  // the whip: the head knocked toward her hand's side, a damped swing back
+  let whipX = 0, whipR = 0, hb = 0;
+  const L = s && s.result ? s : (G.back && G.last && G.last.result ? G.last : null);
+  if (L && L.landedAt !== undefined && !S.reduced) {
+    const tt = now - (L.t0 + L.landedAt), kk = L.k ?? 1;
+    const env = tt < 45 ? easeOut(tt / 45) : Math.exp(-(tt - 45) / 210) * Math.cos((tt - 45) / 520 * Math.PI * 2);
+    whipX = -L.dir * 0.075 * W * env * kk; whipR = -L.dir * 5.5 * env * kk;
+    hb = tt < 220 ? (1 - tt / 220) * 16 * kk : 0;
+  }
+  // the turned face (defiance): the view swings away and stays turned until the camera goes back
+  let turnX = 0;
+  const T = s ?? (G.back ? G.last : null);
+  if (T && T.turned) { const tt = now - (T.t0 + T.turnAt); turnX = T.turned * 0.11 * W * easeOut(tt / 160) * (G.back ? k : 1); hb = Math.max(hb, tt < 160 ? 10 * (1 - tt / 160) : 0); }
+  // the body's tension
+  let ten = 0, tremble = 0;
+  if (s && s.pressAt !== null && !s.result) {
+    const tt = now - s.t0 - s.pressAt; ten = tensionAt(tt);
+    if (tt > S.tension.rise + S.tension.peak && ten > 0.05) tremble = (1 - ten) * 1.6;
+  }
+  const rot = -(s ? s.dir : 1) * lean * 3.4 + whipR;
+  const dx = -(s ? s.dir : 1) * lean * 0.022 * W + whipX + turnX + (tremble ? rand(-tremble, tremble) : 0);
+  const dy = tremble ? rand(-tremble, tremble) : 0;
+  const leanIn = s && !s.result && !S.reduced ? 0.035 * clamp((now - s.t0 - SNAP) / 500, 0, 1) : 0; // she leans in a little while her hand is up
+  $('#world').style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) rotate(${rot.toFixed(2)}deg) scale(${(1 + 0.02 * ten + leanIn + (turnX ? 0.03 : 0)).toFixed(4)})`;
+  $('#hblurG').setAttribute('stdDeviation', `${hb.toFixed(1)} ${(hb * 0.12).toFixed(1)}`);
+  $('#world').style.filter = hb > 0.3 ? 'url(#hblur)' : '';
+  // her sprite: the scene's knee-length view to her face close; the face art (when loaded) crossfades in
+  if (img.naturalWidth) {
+    const nw = img.naturalWidth, nh = img.naturalHeight;
+    // in the scene: the knee-length sprite fills the height, its bottom just below the frame; close: her face at the centre, `zoom` times larger
+    const sc0 = (H * 1.04) / nh, sc1 = sc0 * S.zoom;
+    const sc = sc0 * Math.pow(sc1 / sc0, k);
+    const p0 = [W / 2 - nw * sc0 / 2 + S.face.x * nw * sc0, H * 1.02 - nh * sc0 + S.face.y * nh * sc0]; // her face on the screen in the scene
+    const p1 = [W * 0.5, H * 0.42];                                                                      // and close
+    const ox = W * 0.14, oy = H * 0.14;                                                                  // #world (and #cam) start 14 % outside the screen (room to whip and turn)
+    const px = lerp(p0[0], p1[0], k) + ox, py = lerp(p0[1], p1[1], k) + oy;
+    img.style.transform = `translate(${(px - S.face.x * nw * sc).toFixed(1)}px, ${(py - S.face.y * nh * sc).toFixed(1)}px) scale(${sc.toFixed(4)})`;
+    img.style.filter = `brightness(${lerp(1, 0.92, k)})`;
+  }
+  faceImg.style.opacity = hasFace ? String(k) : '0';
+  $('#backdrop').style.filter = `blur(${(k * 14).toFixed(1)}px) brightness(${lerp(1, 0.55, k).toFixed(3)})`;
+  $('#dimmer').style.opacity = String(0.25 * k);
+  // the side of her hand: the light dims as it rises; a dark blur from that edge in the last moment
+  const dir = s ? s.dir : 1;
+  const sideA = s && !s.result && S.sideDark ? clamp(0.42 * easeOut((now - s.t0 - SNAP) / 300) + 0.3 * twitch + 0.4 * Math.max(0, lean), 0, 0.85) : 0;
+  $('#side').style.background = `linear-gradient(${dir > 0 ? 90 : 270}deg, rgba(4,2,6,.95), rgba(4,2,6,.4) 28%, rgba(4,2,6,0) 55%)`;
+  $('#side').style.opacity = sideA.toFixed(3);
+  const sw = $('#sweep');
+  if (sweep >= 0 && s && !s.result) {
+    const x0 = dir > 0 ? -0.5 : 1.04, x1 = dir > 0 ? 0.02 : 0.52;
+    sw.style.left = `${(lerp(x0, x1, easeIn(sweep)) * W).toFixed(1)}px`;
+    sw.style.opacity = String(0.85 * Math.min(1, sweep * 2));
+  } else sw.style.opacity = '0';
+  $('#tight').style.opacity = String((0.5 * ten).toFixed(3));
+  if (A.worldG) A.worldG.gain.value = 1 - 0.55 * ten;
+  // the cheek: red on the hit side, a slow throb, fading over ~30 s
+  if (G.cheekA > 0) {
+    const age = (now - G.cheekT0) / 1000;
+    const a = G.cheekA * Math.exp(-age / 24) * (0.85 + 0.15 * Math.sin(age * 5.2));
+    const cx = G.cheekDir > 0 ? '0%' : '100%';
+    $('#cheek').style.background = `radial-gradient(ellipse 48% 62% at ${cx} 56%, rgba(210,24,20,.85), rgba(170,10,10,.35) 45%, rgba(120,0,0,0) 75%)`;
+    $('#cheek').style.opacity = a.toFixed(3);
+    if (a < 0.004) G.cheekA = 0;
+  } else $('#cheek').style.opacity = '0';
+  // the scene UI steps back while the slap runs
+  $('#reply').style.opacity = String(1 - 0.85 * k);
+  $('#inputWrap').style.opacity = String(1 - 0.6 * k);
+  // the random slap
+  if (S.random && !G.slap && !G.back && $('#start').style.display === 'none') {
+    if (!G.nextRandom) G.nextRandom = now + rand(8000, 25000);
+    if (now >= G.nextRandom) { G.nextRandom = 0; startSlap(); }
+  }
+  if (S.debug) drawDebug(now);
+}
+
+/* ---------- debug: the timeline of the last slap and the tension ---------- */
+function drawDebug(now) {
+  const c = $('#tl'), x = c.getContext('2d'), w = c.width, h = c.height;
+  x.clearRect(0, 0, w, h);
+  const s = G.slap ?? G.last;
+  const [ba, bb] = bracedBand();
+  let txt = `braced band: press ${ba}–${bb} ms before the impact\n`;
+  if (!s) { $('#dbgText').textContent = txt; return; }
+  const span = s.impactAt + 500, X = (t) => 10 + (t / span) * (w - 20);
+  x.fillStyle = '#333'; x.fillRect(X(0), 20, X(s.lead) - X(0), 14);
+  for (let i = 0; i < s.feints; i++) { x.fillStyle = '#a86a20'; x.fillRect(X(s.lead + i * FEINT), 20, X(FEINT) - X(0) - 2, 14); }
+  x.fillStyle = '#9a2a2a'; x.fillRect(X(s.swingAt), 20, X(s.impactAt) - X(s.swingAt), 14);
+  x.fillStyle = 'rgba(120,200,140,.25)'; x.fillRect(X(s.impactAt - bb), 40, X(bb - ba) - X(0), 60);
+  x.strokeStyle = '#fff'; x.beginPath(); x.moveTo(X(s.impactAt), 14); x.lineTo(X(s.impactAt), h - 6); x.stroke();
+  x.fillStyle = '#aaa'; x.font = '11px IBM Plex Mono'; x.fillText(`raise${s.unann ? ' (none)' : ''}`, X(0) + 2, 14); x.fillText('swing', X(s.swingAt) + 2, 14); x.fillText('impact', X(s.impactAt) + 4, 14);
+  const thrY = 100 - 60 * S.tension.thr; x.strokeStyle = 'rgba(255,255,255,.25)'; x.beginPath(); x.moveTo(10, thrY); x.lineTo(w - 10, thrY); x.stroke();
+  if (s.pressAt !== null) {
+    x.strokeStyle = '#7cf'; x.lineWidth = 2; x.beginPath();
+    for (let t = s.pressAt; t < span; t += 4) { const y = 100 - 60 * tensionAt(t - s.pressAt); t === s.pressAt ? x.moveTo(X(t), y) : x.lineTo(X(t), y); }
+    x.stroke(); x.lineWidth = 1;
+    txt += `pressed ${Math.round(s.impactAt - s.pressAt)} ms before the impact (presses: ${s.presses})\n`;
+  } else txt += 'no press\n';
+  if (s.turned) { x.fillStyle = '#f84'; x.fillRect(X(s.turnAt) - 1, 36, 3, 66); txt += `turned away ${Math.round(s.impactAt - s.turnAt)} ms before\n`; }
+  txt += `style ${s.style} · swing ${s.swing} ms · feints ${s.feints} · hand from the ${s.dir > 0 ? 'left' : 'right'}${s.unann ? ' · unannounced' : ''}${s.again ? ' · again' : ''}\n`;
+  txt += `result: ${s.result ?? '…'}${s.result ? ` (tension at impact ${s.tensionAtImpact.toFixed(2)})` : ''}`;
+  $('#dbgText').textContent = txt;
+}
+function renderTally() {
+  const t = G.tally;
+  $('#sumFacts').innerHTML = `slaps: ${t.slaps}<br>taken: ${t.none}<br>braced: ${t.braced}<br>turned away: ${t.flinched}`;
+}
+
+/* ---------- input ---------- */
+const typing = (el) => el && (/^(input|textarea|select)$/i.test(el.tagName) || el.isContentEditable);
+document.addEventListener('keydown', (e) => {
+  if (typing(e.target)) return;
+  if (e.key === ' ') { e.preventDefault(); if (!e.repeat) press('key'); return; }
+  if (e.key === 'n' || e.key === 'N') startSlap();
+  if (e.key === 'h' || e.key === 'H') $('#panel').classList.toggle('hidden');
+});
+$('#stage').addEventListener('pointerdown', (e) => {
+  if (e.button !== 0 || e.target.closest('#inputWrap') || e.target.closest('.card')) return;
+  if (G.slap) { e.preventDefault(); press('mouse'); }
+});
+addEventListener('pointermove', onMove);
+
+/* ---------- the panel ---------- */
+function opts(host, items, get, set) {
+  host.replaceChildren();
+  for (const it of items) {
+    const b = document.createElement('button'); b.className = 'opt' + (get() === it ? ' on' : ''); b.textContent = it;
+    b.onclick = () => { set(it); opts(host, items, get, set); };
+    host.appendChild(b);
+  }
+}
+const styleNote = () => { $('#styleNote').textContent = STYLE_NOTE[S.style]; };
+opts($('#styles'), Object.keys(SWING), () => S.style, (v) => { S.style = v; styleNote(); });
+styleNote();
+const bandNote = () => { const [a, b] = bracedBand(); $('#bandNote').textContent = `braced: press ${a}–${b} ms before the impact (a ${b - a} ms band).`; };
+for (const [id, key] of [['tRise', 'rise'], ['tPeak', 'peak'], ['tFall', 'fall'], ['tThr', 'thr']]) {
+  $(`#${id}`).oninput = () => { S.tension[key] = Number($(`#${id}`).value); $(`#${id}V`).textContent = key === 'thr' ? S.tension.thr.toFixed(2) : $(`#${id}`).value; bandNote(); };
+}
+bandNote();
+$('#flick').oninput = () => { S.flick = Number($('#flick').value); $('#flickV').textContent = $('#flick').value; };
+$('#slapNow').onclick = () => startSlap();
+$('#onSend').onchange = () => { S.onSend = $('#onSend').checked; };
+$('#random').onchange = () => { S.random = $('#random').checked; G.nextRandom = 0; };
+$('#unann').onchange = () => { S.unann = $('#unann').checked; };
+$('#feints').onchange = () => { S.feints = $('#feints').value; };
+$('#sideSel').onchange = () => { S.side = $('#sideSel').value; };
+$('#sideDark').onchange = () => { S.sideDark = $('#sideDark').checked; };
+$('#sweepOn').onchange = () => { S.sweep = $('#sweepOn').checked; };
+$('#snd').onchange = () => { S.sound = $('#snd').checked; if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
+$('#vol').oninput = () => { S.vol = Number($('#vol').value); if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
+$('#slapS').onchange = () => { S.slapS = $('#slapS').value; };
+$('#hear').onclick = () => { audioInit(); SFX.slap(0, false); };
+$('#swishS').onchange = () => { S.swishS = $('#swishS').value; };
+$('#thumpOn').onchange = () => { S.thump = $('#thumpOn').checked; };
+$('#ring').oninput = () => { S.ring = Number($('#ring').value); $('#ringV').textContent = $('#ring').value; };
+$('#fx').oninput = () => { S.face.x = Number($('#fx').value); $('#fxV').textContent = S.face.x.toFixed(2); };
+$('#fy').oninput = () => { S.face.y = Number($('#fy').value); $('#fyV').textContent = S.face.y.toFixed(2); };
+$('#zoom').oninput = () => { S.zoom = Number($('#zoom').value); $('#zoomV').textContent = S.zoom.toFixed(1); };
+$('#accent').oninput = () => document.documentElement.style.setProperty('--her', $('#accent').value);
+$('#file').onchange = () => { const f = $('#file').files[0]; if (f) img.src = URL.createObjectURL(f); };
+$('#faceFile').onchange = () => { const f = $('#faceFile').files[0]; if (f) { faceImg.src = URL.createObjectURL(f); hasFace = true; } };
+$('#dbg').onchange = () => { S.debug = $('#dbg').checked; $('#debug').style.display = S.debug ? 'block' : 'none'; };
+$('#sum').onchange = () => { S.sum = $('#sum').checked; $('#summary').style.display = S.sum ? 'block' : 'none'; renderTally(); };
+$('#rm').checked = S.reduced; $('#rm').onchange = () => { S.reduced = $('#rm').checked; };
+for (const k of Object.keys(ASSETS.bgs)) { const o = document.createElement('option'); o.value = k; o.textContent = k; $('#bg').appendChild(o); }
+$('#bg').onchange = () => { $('#backdrop').style.backgroundImage = `url(${ASSETS.bgs[$('#bg').value]})`; };
+$('#backdrop').style.backgroundImage = `url(${ASSETS.bgs.quarters_1})`;
+img.src = ASSETS.her;
+$('#go').onclick = async () => {
+  audioInit(); if (A.ctx.state === 'suspended') await A.ctx.resume();
+  $('#start').style.display = 'none';
+  herReply();
+  $('#cmd').focus();
+  loadSamples();
+};
+renderTally();
+requestAnimationFrame(frame);
+
+/* test hooks (prototype only) */
+window.__S = S; window.__G = () => G; window.__slap = (o) => startSlap(o); window.__press = () => press('test');
+</script>
+</body>
+</html>

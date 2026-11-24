@@ -20,7 +20,15 @@ npm run proto -- saturation
 npm run proto -- her_activity
 ```
 
+```bash
+npm run proto -- slap
+```
+
 Each writes `.superpowers/prototypes/<name>.html` (ignored by git): one self-contained page with the fonts, backdrops and a placeholder sprite (`tests/fixtures/layout/sprite.svg`). `--sprite <file>` uses any local sprite; **never commit the author's art**. Open the page in Chromium. `H` hides the panel; `window.__S` (settings), `window.__G()` (state) and `window.__forceO` (force the opening, 0–1, `null` to release) exist for screenshots and tests.
+
+## `slap.html` — the slap (P16 §R.3): DRAFT, in the author's rounds (not normative yet)
+
+Started on 2026-11-24 from the design talk with the author: the slap is really mini, it cuts into a text scene for a second or two and comes unexpected; most slaps are simply taken (`none`, the normal outcome), bracing is rare and hard, and turning the face away is a deliberate act of defiance (`flinched`), never an accident. Controls: Space or the left button tenses the body (a peak that fades by itself, one try a slap; the peak on the impact is `braced`); a sharp flick of the mouse sideways turns the face away. The camera snaps to her face (the art slot `face_close` when loaded, else the sprite's face zoomed); her signal is the frame's tilt, the light dimming on her hand's side, her clothes heard on that side, a feint's twitch and a dark blur from that edge in the last moment; the impact whips the frame toward her hand's side, flashes red, rings in the ears and leaves a red glow on that cheek. The sounds are recorded CC0 candidates (`assets/slap/`, `assets/LICENSES.md`) for the author to pick by ear. This section becomes the normative list once the author approves it.
 
 ## `her_activity.html` — her activity, the frame of her time, with stillness inside (P10e §15 "Her activity")
 
