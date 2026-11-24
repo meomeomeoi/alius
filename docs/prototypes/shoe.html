@@ -653,6 +653,9 @@ function render(now) {
   const mx = mc.getContext('2d'); mx.clearRect(0, 0, mc.width, mc.height);
   G.marks = G.marks.filter((q) => performance.now() - q.born < 2200);
   for (const q of G.marks) { const al = 1 - (performance.now() - q.born) / 2200; const g = mx.createRadialGradient(q.x, q.y, 0, q.x, q.y, 30); g.addColorStop(0, `rgba(255,150,140,${(0.35 * al).toFixed(3)})`); g.addColorStop(1, 'rgba(255,150,140,0)'); mx.fillStyle = g; mx.beginPath(); mx.arc(q.x, q.y, 30, 0, Math.PI * 2); mx.fill(); }
+  // setting up (not playing): a dashed line down the middle of the screen; with two feet, move "her right / left foot x" until that shoe sits on it
+  if (G.phase === 'idle' || G.phase === 'mark') { mx.save(); mx.setLineDash([6, 6]); mx.strokeStyle = 'rgba(216,228,255,.45)'; mx.lineWidth = 1; mx.beginPath(); mx.moveTo(innerWidth / 2 + (r ? (S.fit[slotKey()].x ?? 0) * innerWidth : 0), 0); mx.lineTo(innerWidth / 2 + (r ? (S.fit[slotKey()].x ?? 0) * innerWidth : 0), innerHeight); mx.stroke(); mx.restore();
+    if (twoFeet()) { mx.fillStyle = 'rgba(216,228,255,.75)'; mx.font = '12px "IBM Plex Mono"'; mx.fillText(`framing her ${G.foot} foot`, innerWidth / 2 + 8, 24); } }
   if (r && (S.debug || MARK.on)) {
     const rad = zoneRadii(r), zz = MARK.on ? MARK.pts : zonesNow();
     for (const [k, p] of Object.entries(zz)) {
