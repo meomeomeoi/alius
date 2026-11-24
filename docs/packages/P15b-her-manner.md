@@ -1,6 +1,6 @@
 # P15b — Her Manner: the Axes over the Style, Her Quirks, the Two Faces, Slow Drift
 
-**Status: spec.** Release 0.2 (post-release), after P10e, before P16b. **Depends on:** P15 (the dynamic: the practice profile, the style pair, frames, the squad's knowledge, the holder directive), P16 (practices, punishments, the slap, holds), P15a (physics, cues, the moment frames), P14b (development axes, accumulators, the weekly review, development moments), P14c (temperament, her days, `life_event`), P9d (bond, publicity), P10e (the mini-game instruments of chunk (e), which read her style), P14 (generation sites), P7a (analysis), P3b (memory). **Read:** overview; P15 (**Implemented as**, R6, R10, R18); P16 (**Implemented as**); P14b (**Implemented as**); P14c (**Implemented as**); `docs/prototypes/README.md`; this file; `docs/content/lore.md` (§0).
+**Status: spec.** Release 0.2 (post-release), after P10e **including the port of chunk (e)** (the mini-game instruments), before P16b. **Depends on:** P15 (the dynamic: the practice profile, the style pair, frames, the squad's knowledge, the holder directive), P16 (practices, punishments, the slap, holds), P15a (physics, cues, the moment frames), P14b (development axes, accumulators, the weekly review, development moments), P14c (temperament, her days, `life_event`), P9d (bond, publicity), P10e (the mini-game instruments of chunk (e), which read her style), P14 (generation sites), P7a (analysis), P3b (memory). **Read:** overview; P15 (**Implemented as**, R6, R10, R18); P16 (**Implemented as**); P14b (**Implemented as**); P14c (**Implemented as**); `docs/prototypes/README.md`; this file; `docs/content/lore.md` (§0).
 
 **Analysis tool (P7a):** every new field, chip and line carries `data-analyze` and has a glossary entry or a registry `description`; live values go through `Knowledge`. **P14:** no new call type; `profile_import` grows a section. **Lore §0:** no pronoun for the commander in any text a player or the model reads, and no feeling of the commander's.
 
@@ -18,7 +18,8 @@ Origin: the design session of 2026-11-24 (the author and the controller), after 
 - **No styles outside the dynamic** (author): an ordinary relation (no practice profile) gets none of this; the everyday face is a field of the practice profile.
 - **The contrast is not a mask by default** (author): how she is outside the dynamic is simply how she is, sincerely. It becomes a mask only when the relation is secret and she stands beside the commander before others pretending all is ordinary.
 - **Nothing approved moves** (author's rule for the prototypes): an axis at its middle reproduces the style exactly, so the prototypes, P16's numbers and the committed goldens hold for every holder whose axes sit in the middle, and for every old save.
-- No new rng draw. Every chance is a hash (`dynamicHash` / `dynamicRoll`); a seeded test that moves stops and reports.
+- No new rng draw. Every chance is a hash (`dynamicHash` / `dynamicRoll` / `practiceRoll`); a seeded test that moves stops and reports.
+- **Everything new is gated on `bond.practice.manner` being present** (a profile imported or edited after this package): a holder without it gets no bend, no mood, no `drawnBy` bonus, no quirks and no new requests, so old saves keep their numbers. Only the face rule of the holder directive (§6) applies to every holder: it is the fix.
 
 ## Rulings from the design talk (author, 2026-11-24)
 
@@ -59,27 +60,27 @@ The author's example "hard, exploring her interests to the full": `intensity` +2
 
 One reader, `mannerOf(state, reg, unitId) → { axes, drawnBy, mood }` (§4 adds the mood of the day), and one helper that bends a style's number: `bend(base, axis value, kind)`, where `kind` is a scale (multiply by `1 + step × k` per step, capped), a shift (add `step × k`) or a gate (a threshold on the axis). **At 0 every helper returns its base.**
 
-The readers this package switches over (each keeps its style table as the base; the factors are the TUNING draft below):
+The readers this package switches over (each keeps its style table as the base; the factors are the TUNING draft below). **The physics rows bend the fields the port of P10e chunk (e) created** (its plan decides the open engine questions of `docs/prototypes/README.md`: the warning lead, the jitter, the counted cues, weight's rests, the jaw's cost and release, the slap's swing): where chunk (e) kept a number in the instrument instead of the engine, P15b bends it there through the same `bend`, reading `mannerOf` through `Knowledge`-free UI state the scene already has. The plan of P15b maps each row to the field chunk (e) actually made; a row whose field does not exist after chunk (e) is reported, not invented.
 
 | reader (file) | base today | bent by |
 |---|---|---|
 | physics windows, warnings, segment length (`physics/style.ts`, `planSegment`; the ported instruments of P10e chunk (e)) | the style row of `TUNING.physics.style` | `tempo` (width, warning lead, segment length), `order` (jitter, the share of counted cues), `intensity` (pressure, `seal` one step at ±2), `warmth` (answer to a tap; `holdsUntil` one step toward `signal` at +2, toward `limit` at −2, never to `blackout` without `breath_play`), `voice` (how many cue lines a segment gives) |
-| the slap (`practice/slap.ts`) | `slap.windowMs`, feints | `tempo` (the swing's length), `warmth` (affectionate's softer favour after a flinch for any style at +2), `intensity` (cruel's second slap after defiance for any style at +2; none at −2) |
+| the slap (`practice/slap.ts`) | `slap.windowMs` (the swing's length after chunk (e)), feints | `tempo` (the swing's length), `warmth` (affectionate's softer favour after `flinched` for any style at +2), `intensity` (cruel's second slap after `flinched` for any style at +2; none at −2); `flinched` means what chunk (e) made it mean (a turned face) |
 | punishment severity (`practice/offences.ts`) | `TUNING.practice.severity.style` | `intensity` (shift) |
-| the ceremony (`practice/punish.ts`, `ceremonyOf`) | ceremony styles | `order` (+2: any style with ceremony steps of its own may run one; −2: no ceremony even for a ceremony style) |
+| the ceremony (`practice/punish.ts`, `ceremonyOf`) | ceremony styles | `order` (+2: a holder of any style runs a punishment of `minSeverity` or more as a ceremony, with the steps listed for `ritual`; −2: no ceremony even for a ceremony style) (controller's call) |
 | sealed and no-duration shares (`practice/request.ts`) | `sealedShare`, `noDurationShare` | `order` (low order raises both), `curiosity` (raises the sealed share) |
 | forgetting to let go (`practice/hold.ts`, `forgotChance`) | `hold.forgot` by style | `warmth` (down), `intensity` (up) |
 | the rest and the tap in physics (`segment.ts`: the rest rule of `jaw`) | refused by cruel and vindictive | `warmth` +2 grants a rest whatever the style; −2 refuses whatever the style |
 | permission (`practice/denial.ts`) | affectionate grants | `warmth` +2 grants like affectionate |
 | the posture call's time (`practice/postures.ts`) | by style | `tempo` |
 | what she rewards (`practice/service.ts` verdicts, physics favour) | — | `drawnBy` (a small favour bonus on the matching outcome: `pain` a hold endured past the warning, `power` an accept at the first ask, `reaction` a physics slip that is not a cheat, `discipline` a clean end, `discovery` a first practice of a kind) |
-| what she asks for (`practice/request.ts`, `practice_generate`) | her categories, the seeds | `curiosity` (the share of requests that pick a kind or a category she has not practised with the commander), `drawnBy` (in the brief) |
+| what she asks for (`practice/request.ts`, `pickSeeds`, `practice_generate`) | her categories, the seeds | `curiosity` above 0: a hashed share (`practiceRoll(holder, 'new:<request>')`) of requests filters the seed pool to kinds and categories she has not practised with the commander (if any remain; the brief says it is new); at 0 and below nothing changes (controller's call: 0 is the base); `drawnBy` (in the brief) |
 
 Everything else that reads the style word (Regard, compatibility, her reading of the commander, witnesses, cover, milestones, aftermaths, probes) keeps reading the word: the archetype decides those.
 
 ## 4. The mood of the day
 
-A session takes the colour of her day (P14c). `moodOf(state, unitId, day)` adds to `intensity`, `warmth` and `tempo` for that day only, never past ±2 after the sum:
+A session takes the colour of her day (P14c), for a holder with a `manner` block only. `moodOf(state, unitId, day)` adds to `intensity`, `warmth` and `tempo` for that day only, never past ±2 after the sum:
 
 - **Volatility** (`temperamentOf`): `moody` gives each of the three a hashed −1, 0 or +1 a day (`dynamicHash(…, 'mood:<axis>:<day>')`); `steady` gives nothing.
 - **Her day:** a `life_event` of that day with a mood moves them (bad: `warmth` −1, `intensity` +1; good: `warmth` +1, `tempo` −1). `lifeEvents` rows gain an optional `mood: 'good' | 'bad'` (absent: no effect); the author fills it.
@@ -105,15 +106,16 @@ Written once at import (§8), editable in the dossier; texts never give the comm
 
 **Which face a scene shows** (`faceNow(state, reg, unitId) → 'private' | 'everyday' | 'mask'`), decided per scene from the frame, who is present and who knows:
 
-| frame | private (only she and the commander, or the blocking is live with her, or a practice, physics or dynamic moment of hers runs) | others present who know (`knows_dynamic`, or the relation is `public`) | others present who do not know |
+| frame | private (no one but she and the commander is present, or a practice, physics or dynamic moment of hers runs) | others present who know (`knows_dynamic`, or the relation is `public`) | others present who do not know |
 |---|---|---|---|
 | `play` | dynamic | everyday | everyday |
 | `role` | dynamic | dynamic, carried by protocol and tasks | everyday, with hints only the commander catches |
 | `rule` | dynamic | dynamic | `mask` when publicity is `secret`: she acts as if all is ordinary between them; otherwise everyday with her word still standing |
 
-- **The holder directive** (`src/dynamic/directives.ts`, `holderDirective`) takes its manner from the face: `dynamic` gives the style line (§3's words of the axes, `drawnBy`, the mood of the day); `everyday` gives her everyday line and "nothing of the dynamic shows" (at `role`: "only small signs the commander would catch"); `mask` gives her everyday line and "she keeps up the appearance that all is ordinary between them". Today the manner line goes into every scene she is in at `play` or beyond; this is the fix.
+- **What the face governs** (controller's call): the standing lines about her, which would otherwise show the dynamic to people who should not see it: the holder directive (all of it, not only the style line: the frame, claims, compromat, a remembered refusal, a waiting milestone, the Regard tone), the probe line and the offer line. Directives of something that is actually running (`practice:`, `physics:`, `moment:`, an override being argued, the Leash block) are left alone: if it runs before others, it shows, and P15's signs already count that. At frame `equal` there is no everyday line (her card is enough until she holds).
+- **The holder directive** (`src/dynamic/directives.ts`, `holderDirective`) takes its manner from the face: `dynamic` gives the style line (§3's words of the axes, `drawnBy`, the mood of the day); `everyday` gives her everyday line and "nothing of the dynamic shows" in place of the whole holder directive (at `role`: "only small signs the commander would catch"); `mask` gives her everyday line and "she keeps up the appearance that all is ordinary between them". Today the manner line goes into every scene she is in at `play` or beyond; this is the fix.
 - **The switch:** when a scene turns from everyday to dynamic with her in it, her `switch` quirk is offered once.
-- **The contrast** (`bond.practice.contrast`: `low | mid | high`, judged at import from the two faces): when an observer reaches `knows_dynamic` about her, the spread of that knowledge (P15 §15.13 signs and the rumour of P3b) is multiplied by the contrast (TUNING); a high contrast is gossip. The dossier shows both faces side by side.
+- **The contrast** (`bond.practice.contrast`: `low | mid | high`, judged at import from the two faces): it scales P15's own gossip about her (`gossip()` in `dynamic/knowledge.ts`: `gossipChance` × the contrast factor, capped at 0.9; the sign amount and `gossipCap` unchanged) (controller's call; the `knows_dynamic` facts carry no P3b spread and gain none). A high contrast is talked about. The dossier shows both faces side by side.
 
 ## 7. Drift and the turn
 
@@ -129,7 +131,9 @@ Written once at import (§8), editable in the dossier; texts never give the comm
 - **Pace** (author: a real turn in about two months, and only when steered): an axis moves **one step at a time**, only through the weekly review (the model proposes, `validateReview` checks), only when its accumulator passed the threshold, and **at most one step per axis per 28 days of the dynamic** (from its first `play`). Two steps on one axis therefore need about two months of steady push; with no push, nothing moves.
 - Each step is a **development moment**: quiet, no toast; the next scene with her carries a one-time directive ("she is harder than she was"); the dossier line comes after that scene (P14b ruling).
 
-**The turn of her style.** Each style row gains its own place on the axes (`practiceStyles[].manner`: six integers −3 … +3, `AUTHOR TO TUNE`), so a holder's absolute place is her style's place plus her axes. When that place is **closer to another style's place than to her own** by `turn.margin`, for two weekly reviews in a row, and at least `turn.days` (56) since the dynamic began or since her last turn, the review may propose a **turn**: her primary becomes that style (her former primary becomes her secondary when she had none or it was further), her axes are rebased so her absolute place does not jump (clamped to ±2), and it is a development moment with its scene. A turn is rare by construction: it needs axes far from the middle, which need months.
+**Who proposes:** the engine, deterministically, when an axis is eligible (its accumulator past the threshold, 28 days since its last step) or a turn is due; the weekly review may word it and may decline it with a reason, and `fallbackReview` (when the model fails) applies it as proposed, so a campaign whose reviews fail still drifts (controller's call). **Where it is written:** as a drift overlay in `unit.development.practice` (`manner` steps and, after a turn, `primary`), never in `bond.practice`, so the readers fold it in, UNDO and "since joining" read it as every P14b drift, and the import baseline stays the imported profile; `discreteCap` does not apply to manner axes (their pace rule above is their cap).
+
+**The turn of her style.** Each style row gains its own place on the axes (`practiceStyles[].manner`: six integers −3 … +3, `AUTHOR TO TUNE`), so a holder's absolute place is her style's place plus her axes. When that place is **closer to another style's place than to her own** by `turn.margin` (distance: the sum of the absolute differences over the six axes), for two weekly reviews in a row, and at least `turn.days` (56) since the dynamic began or since her last turn, the review may propose a **turn**: her primary becomes that style (her former primary becomes her secondary when she had none or it was further), her axes are rebased (in the overlay) so her absolute place does not jump (clamped to ±2), and it is a development moment with its scene. A turn is rare by construction: it needs axes far from the middle, which need months.
 
 **The secondary's line drift** (`practice:style.secondary` along the gentle-to-harsh line of P15 R6) is retired going forward: it mixed kinds ("ritual → drill → clinical" is not "harder"). A secondary already drifted stays as it is; from now on the secondary changes only at a turn. The `developmentAxes` row stays readable for old saves and is never proposed again.
 
@@ -150,7 +154,7 @@ Written once at import (§8), editable in the dossier; texts never give the comm
 
 - **A manner step and a turn:** no `memoryRules` entry. They are P14b development moments, which already get no memory rule (`development_moment` / `development_fact`, P14b ruling); the moment's fact covers it.
 - **The face of a scene, the mood of the day, a quirk offered or voiced:** nothing remembered (prompt state and bookkeeping; a voiced quirk is in the transcript).
-- **The contrast:** no new event; it multiplies the spread of P15's existing `knows_dynamic` facts and P3b's rumours, which already carry their audience.
+- **The contrast:** no new event and no new spread; it scales P15's existing gossip chance.
 - **Journal:** no new relation event. **Chronicle:** none. **Prompt:** the holder directive (§6, §9) and the quirk directives (§5), each `dynamic:`-prefixed; no `group: 'memory'` provider.
 
 ## 11. Hidden values and off
@@ -169,11 +173,11 @@ Written once at import (§8), editable in the dossier; texts never give the comm
 | forgot chance per `warmth` step down / `intensity` step up | +0.03 / +0.02 |
 | cue lines per segment by `voice` | −2: none but the needed; −1: half; +1: ×1.5; +2: ×2 |
 | `drawnBy` favour bonus | +1 on the matching outcome (main), +0.5 (second) |
-| a request for something new by `curiosity` | −2: 0; −1: 0.05; 0: 0.15; +1: 0.3; +2: 0.5 |
+| a request for something new by `curiosity` | −2, −1, 0: 0 (nothing changes); +1: 0.2; +2: 0.4 |
 | mood | moody: −1/0/+1 a day on three axes; a bad day: warmth −1, intensity +1; a good day: warmth +1, tempo −1; a failed run: warmth −1 |
 | drift | one step per axis at most every 28 days of the dynamic; the accumulator threshold per step like P14b's discrete fields |
 | turn | `margin` 2 (absolute distance units), two reviews in a row, `days` 56 |
-| contrast | spread × 1 (low), × 1.3 (mid), × 1.6 (high) |
+| contrast | `gossipChance` × 1 (low), × 1.3 (mid), × 1.6 (high), capped at 0.9 |
 | import budget | the practice section +300 tokens |
 
 ## Acceptance criteria
@@ -183,11 +187,22 @@ Written once at import (§8), editable in the dossier; texts never give the comm
 3. A moody holder's sessions differ from day to day; a bad day of hers shows in the numbers and in one clause of the directive.
 4. Quirks reach the prompt only by trigger, once, and leave once voiced.
 5. The holder directive follows the face table: at `play` her manner shows only in private; at `rule` with a secret relation before others she keeps the appearance; the everyday line stands otherwise.
-6. The contrast multiplies the spread of `knows_dynamic`.
+6. The contrast scales P15's gossip chance about her.
 7. An axis moves at most one step per 28 days and only with its accumulator past the threshold; with no push nothing moves; a turn needs two reviews in a row past the margin and 56 days, rebases the axes, and is a quiet development moment.
 8. Import fills the new fields, validates them, honours locks; the dossier shows and edits them; every new field has `data-analyze` and a glossary entry.
 9. Off is byte-identical; the approved prototypes' numbers hold at 0; hidden values are sentinels.
 10. No text gives the commander a pronoun or a feeling.
+
+## Calls made by the controller after the builder check (2026-11-24; the author may overrule any)
+
+- P15b comes after the port of P10e chunk (e) and bends the engine fields that port creates; a missing field is reported, not invented.
+- "Private" is: no one but she and the commander present, or a practice, physics or dynamic moment of hers running (P15a's `blockingLive` is not used: it ignores who else is there).
+- The face governs every standing line about her (the whole holder directive, the probe and offer lines); running things (`practice:`, `physics:`, `moment:`, an argued override, the Leash block) are untouched; no everyday line at `equal`.
+- Curiosity at 0 or below changes nothing; "something new" is a hashed filter on the seed pool, not only a word in the brief.
+- At `order` +2 a holder of any style runs a ceremony with the `ritual` steps.
+- Everything new needs a `manner` block, so old saves keep their numbers; only the face rule touches every holder.
+- The contrast scales P15's `gossipChance`; the `knows_dynamic` facts gain no P3b spread.
+- The engine proposes manner steps and turns (the review may word or decline them; the fallback applies them); they are written as a P14b drift overlay; the turn distance is the sum of absolute differences.
 
 ## Open decisions (author)
 
