@@ -1660,13 +1660,22 @@ function svMove(x, y) {
   const dx = x - g.x, dy = y - g.y, d = Math.hypot(dx, dy); if (d < 0.5) return;
   const dtm = Math.max(1, G.t - g.lastT); g.lastT = G.t;
   g.len += d; g.pts.push([x, y]); if (g.pts.length > 40) g.pts.shift();
-  const a = Math.atan2(dy, dx); if (g.lastA !== null) { let da = a - g.lastA; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; g.turn += da; } g.lastA = a;
+  // the direction is read over pieces of at least 6 px (a trembling hand does not turn); a change of direction past ~125° is a reversal
+  // (scrubbing back and forth), not turning
+  const ax = x - (g.ax ?? g.x0), ay = y - (g.ay ?? g.y0);
+  if (Math.hypot(ax, ay) >= 6) {
+    const a = Math.atan2(ay, ax);
+    if (g.lastA !== null) { let da = a - g.lastA; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; if (Math.abs(da) > 2.2) g.rev = (g.rev ?? 0) + 1; else { g.turn += da; g.absTurn = (g.absTurn ?? 0) + Math.abs(da); } }
+    g.lastA = a; g.ax = x; g.ay = y;
+  }
   const speed = d / dtm * 1000;
-  // a circling drag is a rub (the turning adds up), a straight one a stroke of cleaning (it goes away from where it started); unsure, wait
+  // a rub turns steadily one way with no reversal; scrubbing back and forth, or a straight drag, is a stroke of cleaning; unsure, wait
   if (!g.kind) {
-    if (Math.abs(g.turn) > Math.PI * 1.2) g.kind = 'rub';
-    else if (g.len > 120 && Math.abs(g.turn) < 0.6) g.kind = 'clean';
-    else if (g.len > 300) g.kind = Math.abs(g.turn) / g.len > 0.004 ? 'rub' : 'clean';
+    const rev = g.rev ?? 0, steady = Math.abs(g.turn) > 0.7 * (g.absTurn ?? 0);
+    if (rev === 0 && steady && Math.abs(g.turn) > Math.PI * 1.2) g.kind = 'rub';
+    else if (rev >= 1 && g.len > 50) g.kind = 'clean';
+    else if (g.len > 120 && Math.abs(g.turn) < 0.8) g.kind = 'clean';
+    else if (g.len > 300) g.kind = rev === 0 && steady && Math.abs(g.turn) / g.len > 0.004 ? 'rub' : 'clean';
   }
   if (g.kind && SV.phase === 'signal') { svAnswer(g.kind); if (SV.phase !== 'craft') { SV.gest = null; return; } }
   if (SV.phase === 'craft' && g.kind === 'clean' && SV.act === 'clean') {
