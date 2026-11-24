@@ -858,7 +858,7 @@ function moveAttention(dt) {
   const s = Math.min(0.05, dt / 1000), low = 1 - G.ease / 100;
   let fx = 60 * (MOUSE.x - ATT.x), fy = 60 * (MOUSE.y - ATT.y);
   const pull = (x, y, k) => { const dx = x - ATT.x, dy = y - ATT.y, d = Math.hypot(dx, dy) || 1; const f = k * (1 + low) * Math.min(1, 380 / d); fx += (dx / d) * f; fy += (dy / d) * f; };
-  for (const u of G.urges) if (u.v > 0.3) pull(u.x, u.y, (u.v - 0.3) * (u.kind === 'itch' ? 5200 : 2600));
+  if (!(svcOn() && SV && SV.closeK > 0.3)) for (const u of G.urges) if (u.v > 0.3) pull(u.x, u.y, (u.v - 0.3) * (u.kind === 'itch' ? 5200 : 2600));
   if (G.cramp) pull(G.cramp.side < 0 ? 0.1 * innerWidth : 0.9 * innerWidth, 0.7 * innerHeight, 4200);
   ATT.vx += (fx - 13 * ATT.vx) * s; ATT.vy += (fy - 13 * ATT.vy) * s;
   // restlessness: the mouse's speed, smoothed. Moving the eyes and the head fast is the body moving: it ripples the frame, and kept up
@@ -901,10 +901,12 @@ function updateUrges(dt) {
   const s = dt / 1000, low = 1 - G.ease / 100, lis = moveAttention(dt);
   G.listening = lis; G.feeding = false;
   for (const u of G.urges) {
-    const focus = Math.hypot(ATT.x - u.x, ATT.y - u.y) < 40 + u.v * 70;
+    const serving = svcOn() && SV && SV.closeK > 0.3;
+    const focus = !serving && Math.hypot(ATT.x - u.x, ATT.y - u.y) < 40 + u.v * 70;
     u.focus = focus; if (focus) G.feeding = true;
     if (u.kind === 'itch') {
-      u.v += s * (0.026 * (1 + low) + (focus ? 0.2 : 0) - (lis && !focus && u.v < 0.85 ? 0.1 : 0));
+      if (serving) u.v -= s * 0.08; // serving her takes the whole attention: the itch fades
+      else u.v += s * (0.026 * (1 + low) + (focus ? 0.2 : 0) - (lis && !focus && u.v < 0.85 ? 0.1 : 0));
       if (u.v <= 0) { u.dead = true; G.stats.endured += 1; }
       if (u.v >= 1) { u.dead = true; G.stats.involuntary += 1; G.ease -= 8; sense('The itch wins: your hand moves before you decide.', 'body', 'body'); bodyNoise('scratch', 0.55, true); }
     } else if (u.kind === 'swallow') {
@@ -1423,7 +1425,7 @@ const herGrain = () => (fnv(`${S.seed}|${S.style}|grain`) % 2 ? 1 : -1); // 1: t
 
 let SV = null;
 function svFresh() {
-  return { phase: 'wait', next: 14000, sig: null, named: new Set(), sigAt: 0, deadline: 0, closeK: 0, closeTarget: 0, boutEnd: 0, act: null,
+  return { salt: Math.floor(Math.random() * 1e9), phase: 'wait', next: 14000, sig: null, named: new Set(), sigAt: 0, deadline: 0, closeK: 0, closeTarget: 0, boutEnd: 0, act: null,
     want: null, wantAt: 0, orderI: 0, dry: 0, quality: 0, acts: 0, dirt: null, checked: false, gest: null, relax: 0, pull: 0, off: [0, 0], offTarget: [0, 0],
     fx: { dx: 0, dy: 0, s: 1, r: 0 }, anim: null, marks: [], lickG: 0,
     stats: { bouts: 0, right: 0, wrong: 0, missed: 0, kiss: { good: 0, peck: 0, long: 0, zone: 0 }, clean: { strokes: 0, right: 0, checked: 0, missedSpot: 0, dry: 0 }, rub: { good: 0, bad: 0 }, learnt: [] } };
@@ -1464,11 +1466,22 @@ function soleRect() {
   return { x: cx - (Wd * k) / 2, y: cy - (H * k) / 2, w: Wd * k, h: H * k };
 }
 const zones = () => S.zones ?? DEFAULT_ZONES;
+/* each zone's radius: half the distance to its nearest neighbour, at least 4 % and at most 12 % of the picture's height */
+function zoneRadii(r) {
+  const z = Object.entries(zones()), out = {};
+  for (const [k, p] of z) {
+    let dmin = 1e9;
+    for (const [k2, q] of z) if (k2 !== k) dmin = Math.min(dmin, Math.hypot((p[0] - q[0]) * r.w, (p[1] - q[1]) * r.h));
+    out[k] = clamp(dmin / 2, r.h * 0.04, r.h * 0.12);
+  }
+  return out;
+}
 function zoneAt(x, y) {
   const r = soleRect(); if (!r) return null;
+  const rad = zoneRadii(r);
   let best = null, bd = 1e9;
-  for (const [k, p] of Object.entries(zones())) { const d = Math.hypot(x - (r.x + p[0] * r.w), y - (r.y + p[1] * r.h)); if (d < bd) { bd = d; best = k; } }
-  return bd < r.h * 0.17 ? best : null;
+  for (const [k, p] of Object.entries(zones())) { const d = Math.hypot(x - (r.x + p[0] * r.w), y - (r.y + p[1] * r.h)) / rad[k]; if (d < 1 && d < bd) { bd = d; best = k; } }
+  return best;
 }
 const onSole = (x, y) => { const r = soleRect(); return r && x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h; };
 /* the dirt: a mask at low resolution over the picture's own alpha, heavier where she stands (heel, ball, toes); wiped by strokes */
@@ -1491,8 +1504,11 @@ function makeDirt() {
 }
 function dirtLeft() { if (!SV.dirt) return 0; return SV.dirt.m.reduce((s, v) => s + v, 0) / Math.max(1, SV.dirt.total0); }
 function dirtIn(zone) {
-  if (!SV.dirt) return 0; const p = zones()[zone]; const { w, h, m } = SV.dirt; let s = 0, n = 0;
-  for (let y = Math.max(0, Math.round((p[1] - 0.1) * h)); y < Math.min(h, Math.round((p[1] + 0.1) * h)); y++) for (let x = Math.max(0, Math.round((p[0] - 0.12) * w)); x < Math.min(w, Math.round((p[0] + 0.12) * w)); x++) { s += m[y * w + x]; n++; }
+  if (!SV.dirt) return 0; const p = zones()[zone], r = soleRect(); if (!r) return 0;
+  const { w, h, m } = SV.dirt, rad = zoneRadii(r)[zone], rx = rad / r.w * w, ry = rad / r.h * h; let s = 0, n = 0;
+  for (let y = Math.max(0, Math.floor(p[1] * h - ry)); y < Math.min(h, Math.ceil(p[1] * h + ry)); y++) for (let x = Math.max(0, Math.floor(p[0] * w - rx)); x < Math.min(w, Math.ceil(p[0] * w + rx)); x++) {
+    if (((x - p[0] * w) / rx) ** 2 + ((y - p[1] * h) / ry) ** 2 > 1) continue; s += m[y * w + x]; n++;
+  }
   return n ? s / n : 0;
 }
 function wipe(x0, y0, x1, y1) {
@@ -1518,7 +1534,7 @@ function svSignal() {
   // during a call her foot rests on the shoulder; a cruel or playful holder may ask to be cleaned right then
   let pick2;
   if (G.call) { if (!['cruel', 'playful'].includes(S.style) || SV.callAsked) return; SV.callAsked = true; pick2 = pairs.find((p) => p.meaning === 'clean'); }
-  else pick2 = pairs[fnv(`${S.seed}|bout|${SV.stats.bouts}`) % pairs.length];
+  else pick2 = pairs[fnv(`${S.seed}|${SV.salt}|bout|${SV.stats.bouts}`) % pairs.length];
   SV.sig = pick2; SV.phase = 'signal'; SV.sigAt = G.t; SV.stats.bouts += 1; SV.gest = null; SV.deadline = 0; SV.deskStart = 0; SV.act = null;
   const mo = MOTIONS[pick2.motion], me = MEANINGS[pick2.meaning];
   SV.anim = { kind: pick2.motion, t0: G.t };
@@ -1715,7 +1731,7 @@ function svRender(now) {
   for (const q of SV.marks) { const a = 1 - (performance.now() - q.born) / 2200; const g = mx.createRadialGradient(q.x, q.y, 0, q.x, q.y, 30); g.addColorStop(0, `rgba(255,150,140,${(0.35 * a).toFixed(3)})`); g.addColorStop(1, 'rgba(255,150,140,0)'); mx.fillStyle = g; mx.beginPath(); mx.arc(q.x, q.y, 30, 0, Math.PI * 2); mx.fill(); }
   // marking zones (the prototype's zone marker)
   if (MARK.on) for (const [kz, p] of Object.entries(MARK.pts)) { mx.strokeStyle = 'rgba(216,228,255,.8)'; mx.beginPath(); mx.arc(r.x + p[0] * r.w, r.y + p[1] * r.h, 10, 0, Math.PI * 2); mx.stroke(); mx.fillStyle = 'rgba(216,228,255,.8)'; mx.font = '12px "IBM Plex Mono"'; mx.fillText(kz, r.x + p[0] * r.w + 14, r.y + p[1] * r.h + 4); }
-  if (S.debug && SV.want) { const p = zones()[SV.want]; mx.strokeStyle = 'rgba(140,255,170,.6)'; mx.beginPath(); mx.arc(r.x + p[0] * r.w, r.y + p[1] * r.h, r.h * 0.17, 0, Math.PI * 2); mx.stroke(); }
+  if (S.debug) { const rad = zoneRadii(r); for (const [kz, p] of Object.entries(zones())) { mx.strokeStyle = kz === SV.want ? 'rgba(140,255,170,.75)' : 'rgba(216,228,255,.25)'; mx.lineWidth = kz === SV.want ? 2 : 1; mx.beginPath(); mx.arc(r.x + p[0] * r.w, r.y + p[1] * r.h, rad[kz], 0, Math.PI * 2); mx.stroke(); } }
 }
 /* the zone marker (prototype tool): click the named points on the picture; the JSON travels with the picture as its sidecar */
 const MARK = { on: false, i: 0, names: ['toes', 'ball', 'arch', 'heel', 'edge'], pts: {} };
