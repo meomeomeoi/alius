@@ -352,7 +352,7 @@ Smaller ones: the deep inhale (in scent), `pet` (breath's kin), the long kiss (w
 
 **Next steps of the session (in order):**
 1. ~~A **live prototype** of breathing~~ (done 2026-11-23; the results are above).
-2. The other mini-games, one by one (breathing, weight, scent, `her_activity`, foot service under the desk and the slap done; next: the posture call, then `jaw`, boot service, `gulp`), from the controller's idea list of 2026-11-23 (several per game, mixable). The author has not picked these yet:
+2. The other mini-games, one by one (breathing, weight, scent, `her_activity`, foot service under the desk and the slap done; next: `jaw`, then boot service, `gulp`. **The posture call waits for P16b** (author, 2026-11-24): its game is P16b's points, drift and presets, so it is designed in P16b's session; chunk (e) only restyles P16's existing call card in step 3 (her word large in her hand, the timer as her foot tapping, the choices as a fan of mannequin cards: a card is clicked whole, so §15's rule against fast clicks on the mannequin holds)), from the controller's idea list of 2026-11-23 (several per game, mixable). The author has not picked these yet:
    - **weight:** a level bubble in a glass vial while the frame tilts; her own PDA screen above the commander (peeking is a slip); cracks at the edges;
    - **saturation:** a coloured haze with her perception words drifting in it; a rising tide;
    - **tongue work:** scratching grime off her boot or foot, which needs the author's art (SVG objects are excluded), plus her magnifier at the end;
@@ -360,7 +360,7 @@ Smaller ones: the deep inhale (in scent), `pet` (breath's kin), the long kiss (w
    - **jaw:** smeared, doubled letters and a spring of tension around the input;
    - **gulp:** to design;
    - ~~**slap:** the camera snaps to her face, feints as twitches of her shoulder, a red flash and a fading red vignette~~ (built, above);
-   - **posture call:** her word written large across the screen, the timer as her foot tapping, choices as a fan of mannequin cards.
+   - **posture call:** her word written large across the screen, the timer as her foot tapping, choices as a fan of mannequin cards (only as the restyle of step 3; the game waits for P16b).
 3. **Restyle the dock's cards to the scene's language** (the cards of P15/P16/P15a still use `[ BRACKETS ]`, a deviation from §6). Fix the collapsed voice cards that show only the speaker's name.
 4. Write the design into this spec (this section becomes final), then the **plan of chunk (e)**, then build with the usual scheme: one Sonnet high agent, one Opus review, fast tests, `npm run test:layout`. The plan's tasks port the prototypes in `docs/prototypes/` exactly (code, not prose; author, 2026-11-24: a port that drifts means doing the rounds again), and its review compares the game against them side by side (screenshots at the same settings).
 
