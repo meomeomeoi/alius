@@ -7,10 +7,7 @@
   - Kenney, **Impact Sounds**: `step_c0–4` (footstep_concrete), `step_w0–2` (footstep_wood), `metal_light`, `glass1–2`, `mug1–2` (impactPlate_light), `wood1–2`, `knock` (impactWood_medium), `soft1–2`, `bell` (impactBell_heavy).
   - Kenney, **Interface Sounds**: `pda_ok` (confirmation), `pda_msg` (question), `pda_call` (bong), `click`, `lamp` (switch).
   - OpenGameArt.org: `page1–6` ("10 book page flips", StarNinjas), `pencil_write`, `pencil_erase` ("Pencil sounds"), `typing1–2`, `key1–2` ("Keyboard soundpack 1", Unicae Games), `rain` ("amb rain loop 1", Kresiek The Furry; 20 s from 10 s), `crowd` ("Crowd shouting/speaking ambience"; 14 s from 4 s), `pour` (water_flowing, "30 CC0 SFX loops", rubberduck).
-- `slap/` — candidates for `slap.html` (2026-11-24), every one CC0 (Creative Commons Zero) as stated on its OpenGameArt.org page, cut to one hit, peak-normalised, mono Ogg Vorbis; the author picks by ear:
-  - `slap1`, `slap2`: "Thwack Sounds" (Jordan Irwin, AntumDeluge), `thwack-01`, `thwack-10`.
-  - `slap3`: "Impact" (qubodup), `qubodupImpactMeat01`.
-  - `slap4`: "12 wet towel hitting/falling/punching floor sounds" (qubodup; the page: "also available under CC0 as of 2024-08-24, ignore the txt file in the 7z that says otherwise"), `wet_towel_on_floor-01`.
-  - `slap5`, `slap6`: "37 hits/punches" (Independent.nu ljudbank), `hit19`, `hit18`.
+- `slap/` — the sounds of `slap.html` (2026-11-24), every one CC0 (Creative Commons Zero) as stated on its OpenGameArt.org page, cut to one hit, peak-normalised, mono Ogg Vorbis:
+  - `slap`: "Thwack Sounds" (Jordan Irwin, AntumDeluge), `thwack-01` (the author's pick by ear among six candidates).
   - `swish1–3`: "Swishes Sound Pack" (for Summoning Wars), `swish-10`, `swish-12`, `swish-9`.
   - `slap.html` also plays `ha/cloth1–4` (her clothes) and `breath-in-out.mp3` (the commander's breath).

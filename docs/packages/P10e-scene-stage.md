@@ -282,7 +282,7 @@ A separate design session goes through every mini-game (P15a's seven physics, P1
 6. **`saturation`:** now built (above).
 7. **`breath`:** A the prototype; B the inhale's depth and a quiet exhale; C trading air for her asks, a tap language, combined with weight.
 8. **`gulp`:** A swallow in her rhythm; B two capacities (mouth and air) with two keys; C asking her by signals, spills that carry into tongue work.
-9. **the slap:** A brace in time; B read her hand (shoulder feints, which side) while holding her gaze; C a counted series: brace, count and thanks typed in her rhythm, stillness.
+9. **the slap:** A brace in time; B read her hand (shoulder feints, which side) while holding her gaze; C a counted series: brace, count and thanks typed in her rhythm, stillness. (Built as one simple, hard game instead, author 2026-11-24: brace or turn the face away; the counted series stays with P16b's strokes and the ceremony.)
 Smaller ones: the deep inhale (in scent), `pet` (breath's kin), the long kiss (weight's kin), counted kisses (keep the count while she calls other numbers), the ceremony's count (slap C).
 
 **Her activity: the frame of her time (designed with the author on 2026-11-23; approved in a live prototype the same day: `docs/prototypes/her_activity.html`, normative, its README lists what to port, what is prototype-only and the open engine questions).** With a long hold (an hour of fiction or more: P15a's marathon, phases, strategies between them, attrition) the body games become games of patience and endurance. The author wants it to feel like **a long, aching wait**, broken by sounds and lines, immersive enough that the player lives in it.
@@ -340,16 +340,25 @@ Smaller ones: the deep inhale (in scent), `pet` (breath's kin), the long kiss (w
 - **The digest:** bouts, signals read right and wrong, the quality of each craft, her check, the signals learnt; for the engine `service_rated`, mastery and favour (P16).
 - **Art:** `legs_seated` (`rest`, `foot_raised`) and `sole_close` (prompts in the session; one clean picture), each with its fit; the zones of `sole_close` (each toe or the toes, the ball, the arch, the heel, the edge) are marked once per picture with the prototype's zone marker and travel with it as a sidecar. Until `sole_close` exists the prototype zooms `foot_raised`.
 
+**The slap (P16 §R.3; designed with the author on 2026-11-24 and approved in a live prototype the same day, first round: `docs/prototypes/slap.html`, normative, its README lists what to port, what is prototype-only and the open engine questions).** It replaces P16's slap overlay (the card with `[ BRACE ]`).
+- **Really mini** (author): it cuts into a text scene for a second or two, unexpected (an answer to a wrong word, a punishment), not a waiting game. Mechanically simple, and hard.
+- **Most slaps are simply taken** (`none`, the normal outcome); **bracing is rare** (`braced`); **flinching is a deliberate act of defiance**, never an accident (author): it is turning the face away.
+- **Controls:** Space or the left button tenses the body: a short peak that fades by itself, one try a slap; the peak on the impact is braced (a press 42–224 ms before it). A sharp flick of the mouse sideways turns the face away (`flinched`). Nothing else.
+- **Her signal from the world:** the camera snaps to her face (the art slot `face_close`, else her sprite's face zoomed), the frame rises and leans in on her hand's side, the light dims there and her clothes are heard there, a feint twitches the frame, a dark blur comes in from that edge in the last moment, the swish ends on the impact. Her swing lasts her style's time (the engine's `windowMs`: affectionate 700 ms … cruel 300); unannounced has no raised hand.
+- **The impact:** the frame whips toward her hand's side with a motion blur, a red flash, ringing in the ears while the world dulls, the typed letters fly apart, a red glow on that cheek that fades over about a minute; her line in her hand by style (cold silent, cruel slaps again after a turned face); the camera goes back to the scene.
+- **Sound:** recorded CC0 (the author's pick: a bright thwack at half the level, a light swish, her clothes from `her_activity`, the commander's breath from `saturation`); the ringing synthesised.
+- **Engine (for the plan of chunk (e)):** the results change meaning (a press braces or burns its try; only a turned face is `flinched`), `windowMs` becomes the swing's length and the brace band is the same for every style, unannounced loses its raised hand, her hand's side is new (hashed); the README lists them.
+
 **Next steps of the session (in order):**
 1. ~~A **live prototype** of breathing~~ (done 2026-11-23; the results are above).
-2. The other mini-games, one by one (breathing, weight, scent, `her_activity` and foot service under the desk done; next: the slap, then the posture call, `jaw`, boot service, `gulp`), from the controller's idea list of 2026-11-23 (several per game, mixable). The author has not picked these yet:
+2. The other mini-games, one by one (breathing, weight, scent, `her_activity`, foot service under the desk and the slap done; next: the posture call, then `jaw`, boot service, `gulp`), from the controller's idea list of 2026-11-23 (several per game, mixable). The author has not picked these yet:
    - **weight:** a level bubble in a glass vial while the frame tilts; her own PDA screen above the commander (peeking is a slip); cracks at the edges;
    - **saturation:** a coloured haze with her perception words drifting in it; a rising tide;
    - **tongue work:** scratching grime off her boot or foot, which needs the author's art (SVG objects are excluded), plus her magnifier at the end;
    - **her activity:** her report's pages turning; her screen;
    - **jaw:** smeared, doubled letters and a spring of tension around the input;
    - **gulp:** to design;
-   - **slap:** the camera snaps to her face, feints as twitches of her shoulder, a red flash and a fading red vignette;
+   - ~~**slap:** the camera snaps to her face, feints as twitches of her shoulder, a red flash and a fading red vignette~~ (built, above);
    - **posture call:** her word written large across the screen, the timer as her foot tapping, choices as a fan of mannequin cards.
 3. **Restyle the dock's cards to the scene's language** (the cards of P15/P16/P15a still use `[ BRACKETS ]`, a deviation from §6). Fix the collapsed voice cards that show only the speaker's name.
 4. Write the design into this spec (this section becomes final), then the **plan of chunk (e)**, then build with the usual scheme: one Sonnet high agent, one Opus review, fast tests, `npm run test:layout`. The plan's tasks port the prototypes in `docs/prototypes/` exactly (code, not prose; author, 2026-11-24: a port that drifts means doing the rounds again), and its review compares the game against them side by side (screenshots at the same settings).

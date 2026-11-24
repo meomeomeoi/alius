@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-  P10e chunk (e) reference prototype: THE SLAP (P16 §R.3, `practices.slap`). Draft for the author's rounds (not yet approved).
+  P10e chunk (e) reference prototype: THE SLAP (P16 §R.3, `practices.slap`). Approved by the author on 2026-11-24 (first round); NORMATIVE: see docs/prototypes/README.md.
   A mini-game that is really mini: it cuts into a text scene for a second or two, unannounced; most slaps are simply taken.
   Space (or the left button) is the commander's body tensing: a short peak that fades by itself, one try a slap; the peak on the
   impact is "braced" (rare). A sharp flick of the mouse to the side turns the face away: an act of defiance ("flinched").
@@ -138,7 +138,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <h4>sound</h4>
   <label><input type="checkbox" id="snd" checked> on</label>
   <label>volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.8"></label>
-  <label>slap <select id="slapS"><option value="slap1">1 · thwack (bright)</option><option value="slap2">2 · thwack (full)</option><option value="slap3">3 · meat impact</option><option value="slap4" selected>4 · wet towel</option><option value="slap5">5 · hit (bright)</option><option value="slap6">6 · hit (short)</option></select> <button class="opt" id="hear">▶</button></label>
+  <label>slap level <input type="range" id="slapLvl" min="0" max="1" step="0.05" value="0.5"><span id="slapLvlV">0.50</span> <button class="opt" id="hear">▶</button></label>
   <label>swish <select id="swishS"><option value="swish1" selected>1 · light</option><option value="swish2">2 · light, short</option><option value="swish3">3 · heavier</option><option value="synth">synth</option></select></label>
   <label><input type="checkbox" id="thumpOn" checked> a low body thump under the slap</label>
   <label>ringing s <input type="range" id="ring" min="0" max="6" step="0.5" value="3"><span id="ringV">3</span></label>
@@ -174,8 +174,7 @@ const ASSETS = {
   bgs: { quarters_1: '%%ASSET:content/core/art/backdrops/quarters_1.webp%%', quarters_dark: '%%ASSET:content/core/art/backdrops/quarters_dark.webp%%', loc_quarters_commander: '%%ASSET:content/core/art/backdrops/loc_quarters_commander.webp%%', loc_medbay: '%%ASSET:content/core/art/backdrops/loc_medbay.webp%%' },
 };
 const SAMPLE_URLS = {
-  slap1: '%%ASSET:docs/prototypes/assets/slap/slap1.ogg%%', slap2: '%%ASSET:docs/prototypes/assets/slap/slap2.ogg%%', slap3: '%%ASSET:docs/prototypes/assets/slap/slap3.ogg%%',
-  slap4: '%%ASSET:docs/prototypes/assets/slap/slap4.ogg%%', slap5: '%%ASSET:docs/prototypes/assets/slap/slap5.ogg%%', slap6: '%%ASSET:docs/prototypes/assets/slap/slap6.ogg%%',
+  slap: '%%ASSET:docs/prototypes/assets/slap/slap.ogg%%', // "Thwack Sounds" thwack-01 (author's pick, 2026-11-24)
   swish1: '%%ASSET:docs/prototypes/assets/slap/swish1.ogg%%', swish2: '%%ASSET:docs/prototypes/assets/slap/swish2.ogg%%', swish3: '%%ASSET:docs/prototypes/assets/slap/swish3.ogg%%',
   cloth1: '%%ASSET:docs/prototypes/assets/ha/cloth1.ogg%%', cloth2: '%%ASSET:docs/prototypes/assets/ha/cloth2.ogg%%', cloth3: '%%ASSET:docs/prototypes/assets/ha/cloth3.ogg%%', cloth4: '%%ASSET:docs/prototypes/assets/ha/cloth4.ogg%%',
   breath: '%%ASSET:docs/prototypes/assets/breath-in-out.mp3%%',
@@ -227,7 +226,7 @@ const NARR = { // the stand-in for the next reply's narration (the digest reache
 /* ---------- settings ---------- */
 const S = { style: 'possessive', onSend: true, random: false, unann: false, feints: 'style', side: 'auto',
   tension: { rise: 100, peak: 80, fall: 220, thr: 0.8 }, flick: 2400, sideDark: true, sweep: true,
-  sound: true, vol: 0.8, slapS: 'slap4', swishS: 'swish1', thump: true, ring: 3,
+  sound: true, vol: 0.8, slapLvl: 0.5, swishS: 'swish1', thump: true, ring: 3,
   face: { x: 0.47, y: 0.17 }, zoom: 2.6, debug: false, sum: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 
 /* ---------- audio ---------- */
@@ -303,7 +302,8 @@ const SFX = {
   /* the slap: the recording on the body bus, panned to the cheek; a glancing one is duller and quieter */
   slap: (pan, glancing) => {
     const g = glancing ? 0.5 : 1;
-    if (!play(S.slapS, { g: 0.95 * g, pan: pan * 0.55, lp: glancing ? 2200 : 0, dest: A.body })) {
+    // the author's level (slapLvl 0.5): half of the first draft's 0.95
+    if (!play('slap', { g: 0.95 * S.slapLvl * g, pan: pan * 0.55, lp: glancing ? 2200 : 0, dest: A.body })) {
       noise({ dur: 0.09, type: 'highpass', f: 1400, gain: 0.5 * g, attack: 0.002, dest: A.body, pan: pan * 0.55 });
     }
     if (S.thump) thump(0, (glancing ? 0.25 : 0.55), 70);
@@ -682,7 +682,7 @@ $('#sideDark').onchange = () => { S.sideDark = $('#sideDark').checked; };
 $('#sweepOn').onchange = () => { S.sweep = $('#sweepOn').checked; };
 $('#snd').onchange = () => { S.sound = $('#snd').checked; if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
 $('#vol').oninput = () => { S.vol = Number($('#vol').value); if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
-$('#slapS').onchange = () => { S.slapS = $('#slapS').value; };
+$('#slapLvl').oninput = () => { S.slapLvl = Number($('#slapLvl').value); $('#slapLvlV').textContent = S.slapLvl.toFixed(2); };
 $('#hear').onclick = () => { audioInit(); SFX.slap(0, false); };
 $('#swishS').onchange = () => { S.swishS = $('#swishS').value; };
 $('#thumpOn').onchange = () => { S.thump = $('#thumpOn').checked; };
