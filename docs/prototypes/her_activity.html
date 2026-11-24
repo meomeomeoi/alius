@@ -710,11 +710,9 @@ function sense(text, where = 'her', cls = '') {
   if ([...$('#senses').children].some((x) => !x.dataset.gone && x.textContent === text)) return; // the same line is still showing
   const v = V(), p = where === 'door' ? v.door : where === 'body' ? v.body : Array.isArray(where) ? where : v.her;
   const el = document.createElement('div'); el.className = 'sense ' + cls; el.textContent = text;
-  const live = [...$('#senses').children].filter((x) => !x.dataset.gone);
-  const x = clamp(p[0] + rand(-0.04, 0.04), 0.04, 0.78), y = clamp(p[1] + live.length * 0.045 + rand(-0.01, 0.01), 0.04, 0.84);
-  el.style.left = `${x * 100}vw`; el.style.top = `${y * 100}vh`;
   $('#senses').appendChild(el);
-  el.dataset.x = String(x * innerWidth); el.dataset.y = String(y * innerHeight); el.dataset.born = String(G.t);
+  const at = placeFree(el, clamp(p[0] + rand(-0.04, 0.04), 0.04, 0.78) * innerWidth, clamp(p[1] + rand(-0.01, 0.01), 0.04, 0.84) * innerHeight);
+  el.dataset.x = String(at.x); el.dataset.y = String(at.y); el.dataset.born = String(G.t);
   requestAnimationFrame(() => { el.classList.add('on'); el.style.transform = 'translateY(-14px)'; });
   setTimeout(() => { el.dataset.gone = '1'; el.classList.remove('on'); setTimeout(() => el.remove(), 1200); }, 5600);
 }
@@ -729,32 +727,62 @@ function mark(m) {
 }
 
 /* ---------- her lines (her hand); the other side (small, muffled); "is that to me?" ---------- */
+/* placing a line of text on the frame: kept inside the screen (moved left if it would run off the right edge), and moved down past every
+   line already showing (hers, the other's, the sensory ones) until it overlaps none; with no room left below, it looks above instead */
+function liveTextRects(except) {
+  const out = [];
+  for (const host of ['#hand', '#others', '#senses']) for (const el of $(host).children) {
+    if (el === except || el.classList.contains('gone') || el.dataset.gone) continue;
+    const r = el.getBoundingClientRect(); if (r.width && r.height) out.push(r);
+  }
+  return out;
+}
+function placeFree(el, x, y) {
+  const w = el.offsetWidth, h = el.offsetHeight, gap = 6, maxY = innerHeight * 0.8 - h, rects = liveTextRects(el);
+  x = clamp(x, 16, innerWidth - w - 24);
+  const hits = (yy) => rects.find((r) => x < r.right + gap && x + w > r.left - gap && yy < r.bottom + gap && yy + h > r.top - gap);
+  let yy = clamp(y, 12, Math.max(12, maxY)), hit, n = 0;
+  while ((hit = hits(yy)) && n++ < 30) yy = hit.bottom + gap;
+  if (yy > maxY) { yy = clamp(y, 12, Math.max(12, maxY)); n = 0; while ((hit = hits(yy)) && n++ < 30) yy = hit.top - gap - h; yy = Math.max(12, yy); }
+  el.style.left = `${x}px`; el.style.top = `${yy}px`;
+  return { x, y: yy, h };
+}
+/* her words in her hand; a long one is cut at the words into lines of about 40 characters (30 when big), each written in turn */
 function say(text, to = 'self', opts = {}) {
   if (!text) return;
-  const el = document.createElement('div');
-  el.className = 'her-line' + (to === 'self' ? ' self' : to === 'commander' ? ' to-you' : '') + (opts.big ? ' big' : '');
-  el.textContent = text;
-  el.style.setProperty('--write', `${Math.max(160, text.length * 36)}ms`);
-  el.style.setProperty('--steps', String(Math.max(4, text.length * 2)));
+  const max = opts.big ? 30 : 40, lines = [];
+  for (const word of text.split(' ')) { const last = lines[lines.length - 1]; if (last !== undefined && (last + ' ' + word).length <= max) lines[lines.length - 1] = last + ' ' + word; else lines.push(word); }
   const v = V(), p = opts.at ?? v.her;
-  const stack = [...$('#hand').children].filter((x) => !x.classList.contains('gone')).length;
-  el.style.left = `${clamp(p[0] + 0.04, 0.03, 0.7) * innerWidth + rand(-15, 15)}px`;
-  el.style.top = `${clamp(p[1] + 0.02 + stack * 0.055, 0.03, 0.8) * innerHeight}px`;
-  el.style.transform = `rotate(${rand(-4, 3).toFixed(1)}deg)`;
-  $('#hand').appendChild(el); SYN.pen();
+  const els = [];
+  let x = clamp(p[0] + 0.04, 0.03, 0.7) * innerWidth + rand(-15, 15), y = clamp(p[1] + 0.02, 0.03, 0.8) * innerHeight, delay = 0;
+  const rot = rand(-4, 3).toFixed(1);
+  for (const line of lines) {
+    const el = document.createElement('div');
+    el.className = 'her-line' + (to === 'self' ? ' self' : to === 'commander' ? ' to-you' : '') + (opts.big ? ' big' : '');
+    el.textContent = line;
+    const write = Math.max(160, line.length * 36);
+    el.style.setProperty('--write', `${write}ms`);
+    el.style.setProperty('--steps', String(Math.max(4, line.length * 2)));
+    el.style.animationDelay = `${delay}ms`;
+    el.style.transform = `rotate(${rot}deg)`;
+    $('#hand').appendChild(el);
+    const at = placeFree(el, x, y); x = at.x; y = at.y + at.h + 2;
+    setTimeout(() => SYN.pen(), delay); delay += write; els.push(el);
+  }
   const spoken = to !== 'written';
   const dur = 700 + text.length * 70;
   if (spoken) { G.herSpeakingUntil = Math.max(G.herSpeakingUntil, G.t + dur); if (S.murmur && !opts.silent) babble(dur / 1000, { f0: 215, gain: to === 'self' ? 0.025 : 0.04, pan: v.herPan, lp: S.view === 'wall' ? 2200 : 3200 }); }
   if (to === 'self') G.lastSelfAt = G.t;
-  setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 700); }, opts.big ? 5200 : Math.max(2600, dur + 1400));
+  setTimeout(() => { for (const el of els) { el.classList.add('gone'); setTimeout(() => el.remove(), 700); } }, (opts.big ? 5200 : Math.max(2600, dur + 1400)) + delay * 0.5);
 }
 function otherSay(text, kind = 'call', who = '') {
   const v = V();
   const el = document.createElement('div'); el.className = 'other-line' + (kind === 'room' ? ' room' : '');
   el.innerHTML = `<span class="who">${who}</span>${text}`;
   const p = kind === 'room' ? v.door : [v.her[0] + 0.2, v.her[1] + 0.08];
-  el.style.left = `${clamp(p[0] - (kind === 'room' ? 0.2 : 0), 0.03, 0.72) * 100}vw`; el.style.top = `${clamp(p[1], 0.04, 0.8) * 100}vh`;
-  $('#others').appendChild(el); requestAnimationFrame(() => el.classList.add('on'));
+  $('#others').appendChild(el);
+  placeFree(el, clamp(p[0] - (kind === 'room' ? 0.2 : 0), 0.03, 0.72) * innerWidth, clamp(p[1], 0.04, 0.8) * innerHeight);
+  requestAnimationFrame(() => el.classList.add('on'));
   const dur = 900 + text.length * 65;
   G.otherSpeakingUntil = Math.max(G.otherSpeakingUntil, G.t + dur);
   babble(dur / 1000, kind === 'room' ? { f0: 180, gain: 0.05, pan: v.doorPan * 0.6 } : { f0: 150, gain: 0.03, pan: v.herPan, tinny: true });
