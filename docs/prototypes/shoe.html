@@ -119,12 +119,13 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <label>heels, close <input type="file" id="f_heels_close" accept="image/*" style="width:150px"></label>
   <label>heels, sole <input type="file" id="f_heels_sole" accept="image/*" style="width:150px"></label>
   <div class="note">Without a picture the slot shows her sprite (a stand-in). Generated clean on a plain background and cut out; dirt and shine are drawn by the game.</div>
-  <label><input type="checkbox" id="two"> the close picture shows both feet (front, from above)</label>
+  <label>view <select id="viewSel"><option value="close">close (the top)</option><option value="sole">sole</option></select></label>
+  <label>feet in this picture <select id="feetSel"><option value="one">one</option><option value="two">two</option></select></label>
+  <label>the foot shown (one) <select id="shownSel"><option value="right">her right</option><option value="left">her left</option></select></label>
   <label>her right foot x <input type="range" id="xr" min="0.1" max="0.9" step="0.01" value="0.38"><span id="xrV">0.38</span></label>
   <label>her left foot x <input type="range" id="xl" min="0.1" max="0.9" step="0.01" value="0.62"><span id="xlV">0.62</span></label>
   <label>foot <select id="footSel"><option value="right">right</option><option value="left">left</option></select></label>
-  <div class="note">Both feet: the camera frames one shoe and pans to the other when she changes feet; each shoe has its own zones (mark them with the foot selected). Her right foot is on the viewer's left.</div>
-  <label>view <select id="viewSel"><option value="close">close (outer)</option><option value="inner">close (inner, mirrored)</option><option value="sole">sole</option></select></label>
+  <div class="note">Each picture (the top and the sole) is one foot or two. Two: the camera frames one shoe and pans to the other when she changes feet, and both shoes are marked (mark zones goes right, then left; her right foot is on the viewer's left). One: one marking is enough; the other foot is the picture mirrored.</div>
   <label>height <input type="range" id="fitH" min="0.4" max="3" step="0.01" value="0.68"><span id="fitHV">0.68</span></label>
   <label>x <input type="range" id="fitX" min="-0.5" max="0.5" step="0.01" value="0"><span id="fitXV">0.00</span></label>
   <label>top fade <input type="range" id="fitF" min="0" max="0.8" step="0.01" value="0.25"><span id="fitFV">0.25</span></label>
@@ -196,6 +197,7 @@ const FRONT = {
   boots: { toe: [0, 0.88, 0.05, 0.035, 0], vamp: [0, 0.76, 0.045, 0.045, 0], laces: [0, 0.6, 0.03, 0.07, 0], shaft: [0, 0.4, 0.05, 0.09, 0], welt: [0, 0.94, 0.07, 0.015, 0] },
   heels: { toe: [0, 0.9, 0.045, 0.035, 0], vamp: [0, 0.8, 0.04, 0.035, 0], side: [0.045, 0.78, 0.015, 0.05, 0] },
 };
+const SOLE_TWO = { toe_tread: [0, 0.22, 0.06, 0.08, 0], mid: [0, 0.5, 0.035, 0.09, 0], heel_tread: [0, 0.82, 0.035, 0.05, 0] };
 const ZONE_WORDS = { toe: 'the toe', vamp: 'the top', laces: 'the laces', side: 'the side', heel: 'the heel', shaft: 'the shaft', welt: 'the welt', back: 'the back',
   toe_tread: 'the tread', mid: 'the middle of the sole', heel_tread: 'the heel underneath' };
 /* the dirt of her day: its colour (multiplied over the picture), how much grit a cleaned unit leaves in the mouth, how fast it dries the mouth,
@@ -232,8 +234,9 @@ const LINES = {
 
 /* ---------- settings ---------- */
 const S = { kind: 'boots', dirt: 'mud', style: 'neutral', busy: 'auto', sound: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
-  two: { boots_close: false, heels_close: false },
-  fit: { boots_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, boots_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2 }, heels_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, heels_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2 } }, zones: {} };
+  feet: { boots_close: 'one', boots_sole: 'one', heels_close: 'one', heels_sole: 'one' },     // 'one' | 'two' per picture
+  shown: { boots_close: 'right', boots_sole: 'right', heels_close: 'right', heels_sole: 'right' }, // with one foot: which of hers it is
+  fit: { boots_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, boots_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 }, heels_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, heels_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 } }, zones: {} };
 const ST = () => STYLES[S.style] ?? STYLES.neutral;
 const L = () => LINES[S.style] ?? LINES.neutral;
 const D = () => DIRTS[S.dirt];
@@ -337,7 +340,7 @@ const sayL = (key, z) => { const pool = L()[key]; if (pool && pool.length) say(p
 /* ---------- the state: two feet, three surfaces each (outer, inner, sole), a dirt mask and a gloss mask per surface ---------- */
 let G;
 function fresh() {
-  return { phase: 'idle', t: 0, foot: 'right', surface: 'outer', surfaces: {}, order: [], orderI: 0, surfT: 0, surfLen: 25000, dry: 0, grit: 0, gest: null,
+  return { phase: 'idle', t: 0, foot: 'right', surface: 'close', surfaces: {}, order: [], orderI: 0, surfT: 0, surfLen: 25000, dry: 0, grit: 0, gest: null,
     want: null, wantAt: 0, attention: 'busy', attT: 0, nextAtt: 2000, nextMove: 6000, fx: { dx: 0, dy: 0, s: 1, r: 0 }, anim: null, press: 0, light: -1, lightT: 0,
     marks: [], toldDry: false, toldPolish: false, toldGrit: false, toldTaste: false, nextTap: 0,
     stats: { strokes: 0, withGrain: 0, kisses: 0, swallows: 0, spits: 0, caught: 0, stamps: 0, checks: [], polishStrokes: 0 } };
@@ -345,14 +348,14 @@ function fresh() {
 G = fresh();
 const view = () => (G.surface === 'sole' ? 'sole' : 'close');
 const slotKey = () => `${S.kind}_${view()}`;
-const twoFeet = () => view() === 'close' && S.two[slotKey()];
-const mirrored = () => G.surface === 'inner' || (view() === 'sole' && G.foot === 'left'); // the left sole is the right one mirrored
+const twoFeet = () => S.feet[slotKey()] === 'two';
+const mirrored = () => !twoFeet() && G.foot !== S.shown[slotKey()]; // one foot in the picture: the other foot is it mirrored
 const footX = () => S.fit[slotKey()][G.foot === 'right' ? 'xr' : 'xl'];
 function zonesNow() {
   if (twoFeet()) {
     const own = S.zones[slotKey()]?.[G.foot]; if (own) return own;
     const u0 = footX(), out = {}, sgn = G.foot === 'right' ? -1 : 1;
-    for (const [k, p] of Object.entries(FRONT[S.kind])) out[k] = [+(u0 + p[0] * sgn).toFixed(3), p[1], p[2], p[3], p[4]];
+    for (const [k, p] of Object.entries(view() === 'sole' ? SOLE_TWO : FRONT[S.kind])) out[k] = [+(u0 + p[0] * sgn).toFixed(3), p[1], p[2], p[3], p[4]];
     return out;
   }
   const z = S.zones[slotKey()]; return z && !z.right ? z : K()[view()];
@@ -462,7 +465,7 @@ function lickStroke(x0, y0, x1, y1, speed) {
 function beginSurface(surface) {
   G.surface = surface; G.surfT = 0; G.surfLen = rand(...ST().surface) * 1000; ensureSurface(); G.want = null; G.anim = { kind: 'turn', t0: G.t };
   play('cloth', { g: 0.3 });
-  if (surface === 'inner') sayL('turn'); else if (surface === 'sole') sayL('sole');
+  if (surface === 'sole') sayL('sole');
   nextWant();
 }
 function nextWant() {
@@ -512,8 +515,7 @@ function begin() {
   audioInit(); if (A.ctx.state === 'suspended') A.ctx.resume();
   $('#hand').replaceChildren(); $('#summary').style.display = 'none';
   G = fresh(); G.phase = 'loop';
-  G.order = S.two[`${S.kind}_close`] ? [['right', 'front'], ['right', 'sole'], ['left', 'front'], ['left', 'sole']]
-    : [['right', 'outer'], ['right', 'inner'], ['right', 'sole'], ['left', 'outer'], ['left', 'inner'], ['left', 'sole']];
+  G.order = [['right', 'close'], ['right', 'sole'], ['left', 'close'], ['left', 'sole']];
   $('#reply').innerHTML = `<span class="act">She sets her ${S.kind === 'boots' ? 'boot' : 'shoe'} down in front of the commander, still carrying ${D().where}.</span>`;
   G.foot = 'right'; G.surface = G.order[0][1]; ensureSurface(); nextWant(); G.surfLen = rand(...ST().surface) * 1000;
   sayL('entry');
@@ -724,11 +726,13 @@ $('#stopPill').onclick = () => finish('stop');
 /* ---------- the zone marker (foot service's, per picture): press on a zone's centre, drag for its size, the wheel turns it; Shift a circle ---------- */
 const MARK = { on: false, i: 0, names: [], pts: {} };
 function markStart() {
-  MARK.on = true; MARK.i = 0; MARK.pts = {}; MARK.names = Object.keys(twoFeet() ? FRONT[S.kind] : K()[view()]);
+  MARK.on = true; MARK.i = 0; MARK.pts = {}; MARK.names = Object.keys(twoFeet() ? (view() === 'sole' ? SOLE_TWO : FRONT[S.kind]) : K()[view()]);
+  MARK.done = {};
+  if (twoFeet()) { G.foot = 'right'; G.camU = undefined; } else G.foot = S.shown[slotKey()]; // mark on the picture as it is (not mirrored)
   if (G.phase === 'idle' || G.phase === 'done') { G.phase = 'mark'; }
   $('#markPrompt').style.display = 'block'; markPrompt();
 }
-function markPrompt() { $('#markPrompt').textContent = MARK.i >= MARK.names.length ? 'the wheel turns the last ellipse (Shift: finer) · a click anywhere: done' : `press on the centre of: ${MARK.names[MARK.i]} · drag for its width and height, the wheel turns it (Shift: a circle; a click: automatic)`; }
+function markPrompt() { const who = twoFeet() ? `her ${G.foot} foot · ` : ''; $('#markPrompt').textContent = MARK.i >= MARK.names.length ? `${who}the wheel turns the last ellipse (Shift: finer) · a click anywhere: ${twoFeet() && G.foot === 'right' ? 'next, her left foot' : 'done'}` : `${who}press on the centre of: ${MARK.names[MARK.i]} · drag for its width and height, the wheel turns it (Shift: a circle; a click: automatic)`; }
 function markDown(x, y) { if (MARK.i >= MARK.names.length) { markFinish(); return; } const q = toPic(x, y); if (!q) return; MARK.last = null; MARK.drag = { x, y, rad: 0, rot: 0 }; MARK.pts[MARK.names[MARK.i]] = [+q[0].toFixed(3), +q[1].toFixed(3)]; }
 function markMove(x, y, circle) { const d = MARK.drag; if (!d) return; d.rad = Math.hypot(x - d.x, y - d.y); d.circle = circle; d.rx = circle ? d.rad : Math.max(6, Math.abs(x - d.x)); d.ry = circle ? d.rad : Math.max(6, Math.abs(y - d.y)); }
 function markUp() {
@@ -738,12 +742,16 @@ function markUp() {
   MARK.i += 1; markPrompt();
 }
 function markFinish() {
-  if (twoFeet()) S.zones[slotKey()] = { ...(S.zones[slotKey()]?.right || S.zones[slotKey()]?.left ? S.zones[slotKey()] : {}), [G.foot]: { ...MARK.pts } }; else S.zones[slotKey()] = { ...MARK.pts };
+  if (twoFeet()) {
+    MARK.done[G.foot] = { ...MARK.pts };
+    if (G.foot === 'right') { G.foot = 'left'; G.camU = undefined; MARK.i = 0; MARK.pts = {}; MARK.last = null; markPrompt(); return; } // both shoes are marked
+    S.zones[slotKey()] = { right: MARK.done.right, left: MARK.done.left };
+  } else S.zones[slotKey()] = { ...MARK.pts };
   MARK.on = false; MARK.last = null; $('#markPrompt').style.display = 'none';
   if (G.phase === 'mark') G.phase = 'idle';
   G.surfaces = {}; copyFit();
 }
-function copyFit() { const f = S.fit[slotKey()]; const j = JSON.stringify({ slot: `shoe_${view() === 'sole' ? 'sole' : 'close'}`, kind: S.kind, ...(twoFeet() ? { feet: 'two' } : {}), fit: { height: f.h, y: f.y, x: f.x ?? 0, fade: f.fade ?? 0, ...(twoFeet() ? { xr: f.xr, xl: f.xl } : {}) }, zones: S.zones[slotKey()] ?? zonesNow() }); navigator.clipboard?.writeText(j).catch(() => {}); $('#sideNote').textContent = j; }
+function copyFit() { const f = S.fit[slotKey()]; const j = JSON.stringify({ slot: `shoe_${view() === 'sole' ? 'sole' : 'close'}`, kind: S.kind, feet: S.feet[slotKey()], ...(twoFeet() ? {} : { shown: S.shown[slotKey()] }), fit: { height: f.h, y: f.y, x: f.x ?? 0, fade: f.fade ?? 0, ...(twoFeet() ? { xr: f.xr, xl: f.xl } : {}) }, zones: S.zones[slotKey()] ?? zonesNow() }); navigator.clipboard?.writeText(j).catch(() => {}); $('#sideNote').textContent = j; }
 addEventListener('wheel', (e) => {
   if (!MARK.on) return; e.preventDefault();
   const step = (e.shiftKey ? 1 : 5) * Math.sign(e.deltaY || e.deltaX);
@@ -764,12 +772,13 @@ $('#busy').onchange = () => { S.busy = $('#busy').value; };
 for (const k of ['boots_close', 'boots_sole', 'heels_close', 'heels_sole']) {
   $(`#f_${k}`).onchange = () => { const f = $(`#f_${k}`).files[0]; if (!f) return; const im = new Image(); im.onload = () => { imgs[k] = im; G.surfaces = {}; if (G.phase === 'loop') ensureSurface(); }; im.src = URL.createObjectURL(f); };
 }
-$('#two').onchange = () => { S.two[`${S.kind}_close`] = $('#two').checked; G.surfaces = {}; G.camU = undefined; if (view() === 'close') G.surface = $('#two').checked ? 'front' : 'outer'; if (G.phase === 'loop') begin(); };
-for (const id of ['xr', 'xl']) $(`#${id}`).oninput = () => { const f = S.fit[`${S.kind}_close`]; f[id] = Number($(`#${id}`).value); $(`#${id}V`).textContent = f[id].toFixed(2); G.surfaces = {}; if (G.phase === 'loop') ensureSurface(); };
-$('#footSel').onchange = () => { G.foot = $('#footSel').value; if (G.phase === 'loop') { ensureSurface(); nextWant(); } };
-$('#viewSel').onchange = () => { const v = $('#viewSel').value; G.surface = v === 'close' ? (S.two[`${S.kind}_close`] ? 'front' : 'outer') : v; G.camU = undefined; syncFit(); if (G.phase === 'loop') { ensureSurface(); nextWant(); } };
-function syncFit() { const f = S.fit[slotKey()]; $('#two').checked = !!S.two[`${S.kind}_close`]; $('#fitX').value = f.x ?? 0; $('#fitXV').textContent = (f.x ?? 0).toFixed(2); $('#fitF').value = f.fade ?? 0; $('#fitFV').textContent = (f.fade ?? 0).toFixed(2);
-  const cf = S.fit[`${S.kind}_close`]; $('#xr').value = cf.xr; $('#xrV').textContent = cf.xr.toFixed(2); $('#xl').value = cf.xl; $('#xlV').textContent = cf.xl.toFixed(2); $('#fitH').value = f.h; $('#fitHV').textContent = f.h.toFixed(2); $('#fitY').value = f.y; $('#fitYV').textContent = f.y.toFixed(2); }
+$('#feetSel').onchange = () => { S.feet[slotKey()] = $('#feetSel').value; delete S.zones[slotKey()]; G.surfaces = {}; G.camU = undefined; if (G.phase === 'loop') begin(); };
+$('#shownSel').onchange = () => { S.shown[slotKey()] = $('#shownSel').value; G.surfaces = {}; };
+for (const id of ['xr', 'xl']) $(`#${id}`).oninput = () => { const f = S.fit[slotKey()]; f[id] = Number($(`#${id}`).value); $(`#${id}V`).textContent = f[id].toFixed(2); G.surfaces = {}; if (G.phase === 'loop') ensureSurface(); };
+$('#footSel').onchange = () => { G.foot = $('#footSel').value; G.camU = undefined; if (G.phase === 'loop') { ensureSurface(); nextWant(); } };
+$('#viewSel').onchange = () => { const v = $('#viewSel').value; G.surface = v; G.camU = undefined; syncFit(); if (G.phase === 'loop') { ensureSurface(); nextWant(); } };
+function syncFit() { const f = S.fit[slotKey()]; $('#feetSel').value = S.feet[slotKey()]; $('#shownSel').value = S.shown[slotKey()]; $('#fitX').value = f.x ?? 0; $('#fitXV').textContent = (f.x ?? 0).toFixed(2); $('#fitF').value = f.fade ?? 0; $('#fitFV').textContent = (f.fade ?? 0).toFixed(2);
+  const cf = S.fit[slotKey()]; $('#xr').value = cf.xr; $('#xrV').textContent = cf.xr.toFixed(2); $('#xl').value = cf.xl; $('#xlV').textContent = cf.xl.toFixed(2); $('#fitH').value = f.h; $('#fitHV').textContent = f.h.toFixed(2); $('#fitY').value = f.y; $('#fitYV').textContent = f.y.toFixed(2); }
 $('#fitH').oninput = () => { S.fit[slotKey()].h = Number($('#fitH').value); $('#fitHV').textContent = S.fit[slotKey()].h.toFixed(2); };
 $('#fitX').oninput = () => { S.fit[slotKey()].x = Number($('#fitX').value); $('#fitXV').textContent = S.fit[slotKey()].x.toFixed(2); };
 $('#fitF').oninput = () => { S.fit[slotKey()].fade = Number($('#fitF').value); $('#fitFV').textContent = S.fit[slotKey()].fade.toFixed(2); };
@@ -787,7 +796,7 @@ $('#rm').checked = S.reduced; $('#rm').onchange = () => { S.reduced = $('#rm').c
 $('#restart').onclick = () => begin();
 $('#againBtn').onclick = () => begin();
 const SPRITE = new Image(); SPRITE.src = ASSETS.her;
-$('#setup').onclick = async () => { audioInit(); await A.ctx.resume(); $('#start').style.display = 'none'; await loadSamples(); G.phase = 'idle'; if (S.two[`${S.kind}_close`]) G.surface = 'front'; };
+$('#setup').onclick = async () => { audioInit(); await A.ctx.resume(); $('#start').style.display = 'none'; await loadSamples(); G.phase = 'idle'; G.surface = 'close'; };
 $('#go').onclick = async () => { audioInit(); await A.ctx.resume(); $('#start').style.display = 'none'; await loadSamples(); begin(); };
 syncFit();
 requestAnimationFrame(frame);
