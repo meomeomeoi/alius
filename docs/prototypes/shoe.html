@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <!--
   P10e chunk (e) reference prototype: SHOE SERVICE (P15a `tongue_work` on `boot_worship`: her boots or her heels, dirty from her day).
-  Draft for the author's rounds (not yet approved). The cleaning craft is foot service's (docs/prototypes/her_activity.html, the game inside
+  Approved by the author on 2026-11-24 after four rounds; NORMATIVE (docs/prototypes/README.md says what to port). The cleaning craft is foot service's (docs/prototypes/her_activity.html, the game inside
   `service`: the dirt mask, `wipe` along her grain, the dry mouth, the zones as ellipses marked per picture), carried over to footwear; new here:
-  - two kinds of footwear (combat boots, high heels), two pictures each: `shoe_close` (on her foot, from above, three quarters) and `shoe_sole`
-    (the sole presented); the inner side is the close picture mirrored; dirt and shine are effects over one clean picture;
+  - two kinds of footwear (combat boots, high heels), two pictures each: `shoe_close` (her feet from above, the kneeling commander's view) and
+    `shoe_sole` (the sole presented); each picture shows one foot (mirrored for the other) or two (framed per foot, panning on a change of feet);
+    dirt and shine are effects over one clean picture;
   - the dirt of her day (ash, mud, oil, spores, parade dust, rain splashes): its colour, how much grit it leaves in the mouth, how it dries the
     mouth, how hard it wipes, its taste;
   - grit in the mouth: swallow it (Space) or spit it aside (the right button or X) while she is not looking;
@@ -360,7 +361,7 @@ function zonesNow() {
   }
   const z = S.zones[slotKey()]; return z && !z.right ? z : K()[view()];
 }
-const leatherNow = () => (view() === 'sole' ? [] : K().leather);
+const leatherNow = () => (view() === 'sole' ? [] : K().leather.filter((z) => Object.keys(zonesNow()).includes(z))); // only the leather zones this picture has
 const surf = () => G.surfaces[`${G.foot}_${G.surface}`];
 
 /* ---------- the picture's rect (the fit per slot; her foot's motions on top) ---------- */
@@ -429,7 +430,7 @@ function makeSurface() {
 function ensureSurface() { const key = `${G.foot}_${G.surface}`; if (!G.surfaces[key]) G.surfaces[key] = makeSurface(); return G.surfaces[key]; }
 const dirtLeft = (s = surf()) => (s ? s.m.reduce((q, v) => q + v, 0) / Math.max(1, s.total0) : 0);
 function zoneStat(zone, s = surf()) {
-  if (!s) return { dirt: 0, gloss: 1 }; const i = s.names.indexOf(zone); let d = 0, g = 0, n = 0;
+  if (!s) return { dirt: 0, gloss: 1 }; const i = s.names.indexOf(zone); if (i < 0) return { dirt: 0, gloss: 1 }; let d = 0, g = 0, n = 0; // a zone the picture does not have is never judged
   for (let p = 0; p < s.m.length; p++) if (s.zoneOf[p] === i) { d += s.m[p]; g += s.gl[p]; n++; }
   return n ? { dirt: d / n, gloss: g / n } : { dirt: 0, gloss: 1 };
 }

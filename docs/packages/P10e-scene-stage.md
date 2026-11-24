@@ -358,12 +358,19 @@ Smaller ones: the deep inhale (in scent), `pet` (breath's kin), the long kiss (w
 - **A rest** is asked by holding Shift or the right button (the engine's rule: cruel and vindictive refuse); a holder who refuses releases at her limit.
 - `oral_service` waits for P17b (its depth and rhythm).
 
+**Shoe service (P15a `tongue_work` on `boot_worship`; designed with the author on 2026-11-24 and approved in a live prototype after four rounds the same day: `docs/prototypes/shoe.html`, normative, its README lists what to port, what is prototype-only and the open engine questions).** All together (author): the dirt of her day, the shine, her inspection, her foot in use.
+- **Footwear in general**, combat boots and high heels first, worn anywhere by her taste; always dirty from her day (ash, mud, oil, spores, parade dust, rain: colour, grit, dryness, resistance, taste).
+- **Foot service's cleaning craft** carried over (strokes along her grain, the dry mouth, the kiss, the zones marked per picture); the dirt is drawn in its own colour, so dust shows on black leather.
+- **Grit in the mouth:** swallow it, or spit it aside while she is busy on her device (her taps are heard and stop when she looks); caught, she answers.
+- **Shine:** slow strokes on clean leather bring up a sheen (patent heels most); **the inspection:** a band of light sweeps across, her verdict names the worst zone.
+- **The art:** two pictures per kind, the top seen from above (the kneeling commander's view) and the sole presented; each picture one foot (mirrored for the other) or two (framed per foot, the camera pans; both marked); a fit with a top fade, all a sidecar, so a scene is preset by data.
+
 **Next steps of the session (in order):**
 1. ~~A **live prototype** of breathing~~ (done 2026-11-23; the results are above).
-2. The other mini-games, one by one (breathing, weight, scent, `her_activity`, foot service under the desk, the slap and the jaw done; next: boot service, then `gulp`. **The posture call waits for P16b** (author, 2026-11-24): its game is P16b's points, drift and presets, so it is designed in P16b's session; chunk (e) only restyles P16's existing call card in step 3 (her word large in her hand, the timer as her foot tapping, the choices as a fan of mannequin cards: a card is clicked whole, so §15's rule against fast clicks on the mannequin holds)), from the controller's idea list of 2026-11-23 (several per game, mixable). The author has not picked these yet:
+2. The other mini-games, one by one (breathing, weight, scent, `her_activity`, foot service under the desk, the slap, the jaw and shoe service done; next: `gulp`. **The posture call waits for P16b** (author, 2026-11-24): its game is P16b's points, drift and presets, so it is designed in P16b's session; chunk (e) only restyles P16's existing call card in step 3 (her word large in her hand, the timer as her foot tapping, the choices as a fan of mannequin cards: a card is clicked whole, so §15's rule against fast clicks on the mannequin holds)), from the controller's idea list of 2026-11-23 (several per game, mixable). The author has not picked these yet:
    - **weight:** a level bubble in a glass vial while the frame tilts; her own PDA screen above the commander (peeking is a slip); cracks at the edges;
    - **saturation:** a coloured haze with her perception words drifting in it; a rising tide;
-   - **tongue work:** scratching grime off her boot or foot, which needs the author's art (SVG objects are excluded), plus her magnifier at the end;
+   - ~~**tongue work:** scratching grime off her boot or foot, which needs the author's art (SVG objects are excluded), plus her magnifier at the end~~ (built: foot service and shoe service, above; the magnifier became her band of light);
    - **her activity:** her report's pages turning; her screen;
    - ~~**jaw:** smeared, doubled letters and a spring of tension around the input~~ (built, above: the input is the mouth);
    - **gulp:** to design;
