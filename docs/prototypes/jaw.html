@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<!--
+  P10e chunk (e) reference prototype: JAW (P15a `jaw`, gesture: fatigue fills while the mouth is held open; a rest can be asked for).
+  Draft for the author's rounds (not yet approved). The body and the speech on one axis:
+  - the mouse, up and down, is how far the jaw is open; fatigue pulls it shut (a spring, a tremor, twitches);
+  - the input field is the mouth: its frame opens with the jaw, her band is a ghost frame on it, the hinges ache, drool gathers on its lower edge;
+  - her toes in the mouth (`sole_to_mouth`): no speech; below her band the teeth touch her; she pushes deeper, pulls out, says "suck." (a narrow band just above her);
+  - a ring gag (`ring_gag`): the ring keeps the mouth from closing; every letter typed is spoken through the opening it was typed at (lips and tongue fail first);
+    she asks, and understands or not;
+  - Shift or the right button, held: ask for a rest (her answer by style).
+  Build a runnable page with
+    npm run proto -- jaw [--sprite <png|webp|svg>]
+  which inlines the fonts, backdrops, the CC0 sounds and a sprite (the layout fixture by default; never commit the author's art).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alius · jaw · prototype</title>
+<style>
+@font-face { font-family: "Caveat"; src: url("%%ASSET:fonts/hand-caveat-400.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 300; src: url("%%ASSET:fonts/inter-300.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 400; src: url("%%ASSET:fonts/inter-400.woff2%%") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; src: url("%%ASSET:fonts/ibm-plex-mono-400.woff2%%") format("woff2"); }
+
+:root { --her: #8cc8f0; --glass: rgba(14, 12, 20, 0.58); --line: rgba(255, 255, 255, 0.12); --ink: #ece8f2; --dim: rgba(236, 232, 242, 0.55); --ache: 0; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: var(--ink); font-family: Inter, system-ui, sans-serif; font-weight: 300; }
+.mono { font-family: "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: 0.06em; }
+
+#stage { position: fixed; inset: 0; overflow: hidden; cursor: ns-resize; }
+#world { position: absolute; inset: -6%; will-change: transform, filter; transform-origin: 50% 60%; }
+#backdrop { position: absolute; inset: 0; background-size: cover; background-position: center; will-change: filter, transform; }
+#cam { position: absolute; inset: 0; perspective: 1100px; overflow: hidden; }
+#her { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform, filter; user-select: none; -webkit-user-drag: none; }
+#foot { position: absolute; left: 50%; bottom: 0; transform-origin: 50% 100%; will-change: transform, filter; user-select: none; display: none; }
+#vig { position: absolute; inset: 0; pointer-events: none; }
+#ache { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+#drool { position: absolute; inset: 0; pointer-events: none; }
+
+/* her hand */
+#hand { position: absolute; inset: 0; pointer-events: none; }
+.her-line { position: absolute; font-family: Caveat, cursive; color: var(--her); white-space: nowrap; line-height: 1; font-size: 44px;
+  text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.85), 0 0 28px rgba(0,0,0,.6);
+  animation: write var(--write, 600ms) steps(var(--steps, 12), end) both; transition: opacity .5s; }
+.her-line.right { transform-origin: right center; }
+.her-line.gone { opacity: 0; }
+@keyframes write { from { clip-path: inset(-30% 100% -30% -8%); } to { clip-path: inset(-30% -8% -30% -8%); } }
+
+/* the scene UI: the reply and the mouth (the input) */
+#ui { position: absolute; inset: 0; pointer-events: none; }
+#reply { position: absolute; left: 50%; bottom: 230px; transform: translateX(-50%); width: min(980px, 70vw); font-size: 21px; line-height: 1.5;
+  text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.7); }
+#reply .act { font-style: italic; color: var(--dim); }
+#reply .speech { color: var(--her); font-weight: 400; }
+#reply .heard { color: #d8e4ff; font-style: italic; letter-spacing: .02em; }
+#reply .meant { color: rgba(216,228,255,.38); font-size: 15px; }
+/* the mouth: its height is the jaw */
+#mouth { position: absolute; left: 50%; bottom: 96px; width: 720px; height: 52px; transform: translate(-50%, 50%); pointer-events: auto; }
+#inputWrap { position: absolute; inset: 0; background: var(--glass); border: 1px solid var(--line); border-radius: 26px; overflow: hidden;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 0 0 0 rgba(0,0,0,0); }
+#inputWrap::before, #inputWrap::after { /* the hinges ache: a warm glow at both ends */
+  content: ""; position: absolute; top: 0; bottom: 0; width: 120px; pointer-events: none; opacity: var(--ache);
+  background: radial-gradient(ellipse 100% 70% at var(--hx) 50%, rgba(255,80,50,.75), rgba(255,60,40,0) 70%); }
+#inputWrap::before { left: 0; --hx: 0%; }
+#inputWrap::after { right: 0; --hx: 100%; }
+#cmd, #mirror { position: absolute; left: 0; right: 0; top: 50%; height: 52px; margin-top: -26px; padding: 0 24px; font: 300 19px/52px Inter, sans-serif; }
+#cmd { width: 100%; border: 0; outline: 0; background: transparent; color: transparent; caret-color: transparent; }
+#cmd::placeholder { color: rgba(236,232,242,.35); }
+#mirror { pointer-events: none; white-space: pre; overflow: hidden; }
+#mirror > span { display: inline-block; white-space: pre; }
+#mirror > span.lost { color: rgba(255, 190, 170, .9); }
+.band { position: absolute; left: 50%; border: 1px dashed rgba(255, 214, 170, .55); border-radius: 30px; transform: translate(-50%, 50%); pointer-events: none; opacity: 0;
+  transition: opacity .3s, border-color .2s; box-shadow: 0 0 14px rgba(255, 160, 110, .18); }
+.band.hot { border-color: rgba(255, 120, 90, .95); }
+#restRing { position: absolute; right: -44px; top: 50%; width: 30px; height: 30px; margin-top: -15px; opacity: 0; transition: opacity .2s; }
+#stopPill { position: absolute; right: 36px; bottom: 44px; pointer-events: auto; cursor: pointer; padding: 10px 18px; border-radius: 22px;
+  background: rgba(60, 10, 14, .55); border: 1px solid rgba(255, 120, 120, .35); color: #ffd6d6; font-size: 14px; backdrop-filter: blur(10px); }
+
+/* prototype only */
+.card { position: absolute; left: 36px; top: 26%; width: 420px; padding: 22px 24px; border-radius: 18px; pointer-events: auto;
+  background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); display: none; }
+.card h3 { margin: 0 0 10px; font: 13px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .1em; color: var(--dim); }
+.card .hand { font: 34px Caveat, cursive; color: var(--her); margin: 6px 0 14px; }
+.card .facts { font: 13px "IBM Plex Mono", monospace; color: var(--dim); line-height: 1.7; }
+.btn { display: inline-block; margin-top: 12px; padding: 9px 18px; border-radius: 20px; border: 1px solid var(--line); background: rgba(255,255,255,.06);
+  color: var(--ink); font: 14px Inter, sans-serif; cursor: pointer; }
+#panel { position: fixed; top: 14px; right: 14px; width: 310px; max-height: calc(100vh - 140px); overflow: auto; padding: 14px 16px; border-radius: 14px; z-index: 50;
+  background: rgba(10, 10, 14, .82); border: 1px solid var(--line); font: 12px "IBM Plex Mono", monospace; color: #cfcbe0; cursor: default; }
+#panel.hidden { display: none; }
+#panel h4 { margin: 12px 0 6px; font-weight: 400; color: #8d88a6; font-variant: small-caps; letter-spacing: .08em; }
+#panel h4:first-child { margin-top: 0; }
+#panel .row { display: flex; flex-wrap: wrap; gap: 4px; }
+#panel button.opt { padding: 4px 8px; border-radius: 10px; border: 1px solid #3a3650; background: #17151f; color: #cfcbe0; font: 12px "IBM Plex Mono", monospace; cursor: pointer; }
+#panel button.opt.on { background: #3b3360; border-color: #8a7fd0; color: #fff; }
+#panel label { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+#panel input[type=range] { flex: 1; }
+#panel select { background: #17151f; color: #cfcbe0; border: 1px solid #3a3650; font: 12px "IBM Plex Mono", monospace; }
+#panel .note { color: #77738c; line-height: 1.45; margin-top: 8px; }
+#debug { position: fixed; left: 14px; top: 12px; font: 12px "IBM Plex Mono", monospace; color: #9ad; text-shadow: 0 0 4px #000; z-index: 40; white-space: pre; display: none; pointer-events: none; }
+#start { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 60; background: rgba(0,0,0,.35); cursor: default; }
+#start .box { width: 580px; padding: 26px 30px; border-radius: 18px; background: rgba(12, 11, 18, .86); border: 1px solid var(--line); line-height: 1.6; font-size: 15px; }
+#start .box h2 { margin: 0 0 8px; font: 15px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .12em; color: #a9a3c7; }
+#start kbd { font: 12px "IBM Plex Mono", monospace; padding: 1px 6px; border: 1px solid #555; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="world">
+    <div id="backdrop"></div>
+    <div id="cam"><img id="her" alt="" draggable="false"><img id="foot" alt="" draggable="false"></div>
+  </div>
+  <div id="vig"></div>
+  <div id="ache"></div>
+  <canvas id="drool"></canvas>
+  <div id="hand"></div>
+  <div id="ui">
+    <div id="reply"></div>
+    <div id="mouth">
+      <div id="inputWrap"><div id="mirror"></div><input id="cmd" autocomplete="off" spellcheck="false" placeholder=""></div>
+      <svg id="restRing" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="2"/><circle id="restArc" cx="15" cy="15" r="12" fill="none" stroke="rgba(255,214,170,.9)" stroke-width="2" stroke-dasharray="75.4" stroke-dashoffset="75.4" transform="rotate(-90 15 15)"/></svg>
+    </div>
+    <div class="band" id="bandLo"></div>
+    <div class="band" id="bandHi"></div>
+    <div id="stopPill" class="mono" title="the stop word (Esc)">● stop word · amber</div>
+    <div class="card" id="summary"><h3>prototype · how it went</h3><div class="hand" id="sumLine"></div><div class="facts" id="sumFacts"></div><span class="btn" id="againBtn">again</span></div>
+  </div>
+</div>
+<div id="debug"></div>
+
+<div id="panel">
+  <h4>contact</h4>
+  <div class="row" id="contacts"></div>
+  <div class="note" id="contactNote"></div>
+  <h4>her style</h4>
+  <div class="row" id="styles"></div>
+  <h4>tuning</h4>
+  <label>fatigue × <input type="range" id="rate" min="0.3" max="1.5" step="0.05" value="1"><span id="rateV">1</span></label>
+  <label>ring size <input type="range" id="ring" min="0.35" max="0.8" step="0.01" value="0.55"><span id="ringV">0.55</span></label>
+  <label>session s <select id="len"><option value="45">45</option><option value="75" selected>75</option><option value="9999">endless</option></select></label>
+  <h4>sound</h4>
+  <label><input type="checkbox" id="snd" checked> on</label>
+  <label>volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7"></label>
+  <h4>her picture</h4>
+  <label>sprite <input type="file" id="file" accept="image/*" style="width:170px"></label>
+  <label>foot art <input type="file" id="footFile" accept="image/*" style="width:160px"></label>
+  <div class="note">foot art: her foot toward the mouth (a picture with a transparent background, the toes at its top edge). Without it her sprite looks down from above.</div>
+  <label>foot height <input type="range" id="footH" min="0.6" max="1.6" step="0.02" value="1.05"><span id="footHV">1.05</span></label>
+  <label>accent <input type="color" id="accent" value="#8cc8f0"></label>
+  <label>backdrop <select id="bg"></select></label>
+  <h4>view</h4>
+  <label><input type="checkbox" id="dbg"> debug readout</label>
+  <label><input type="checkbox" id="rm"> reduced motion</label>
+  <div class="row"><button class="opt" id="restart">restart</button></div>
+  <div class="note">Mouse up and down: the jaw (down opens). Type with the ring gag; Enter speaks. Shift or the right button, held: ask for a rest. Esc: the stop word. H: hide this panel. Prototype only; nothing here is engine code.</div>
+</div>
+
+<div id="start"><div class="box">
+  <h2>jaw · prototype</h2>
+  The input is the mouth. Move the mouse <b>down to open</b> the jaw, up to close it. Her band shows on the mouth as a ghost frame; keep the jaw in it while it tires and wants to shut.<br>
+  <b>Her toes:</b> no speech; below her band the teeth touch her.<br>
+  <b>The ring gag:</b> type and press <kbd>Enter</kbd>: every letter comes out through the opening it was typed at.<br>
+  <kbd>Shift</kbd> or the right button, held — ask for a rest · <kbd>Esc</kbd> stop word · <kbd>H</kbd> panel. Headphones help.
+  <div><span class="btn" id="go">begin</span></div>
+</div></div>
+
+<script>
+'use strict';
+const ASSETS = {
+  her: '%%SPRITE%%',
+  bgs: { quarters_1: '%%ASSET:content/core/art/backdrops/quarters_1.webp%%', quarters_dark: '%%ASSET:content/core/art/backdrops/quarters_dark.webp%%', loc_quarters_commander: '%%ASSET:content/core/art/backdrops/loc_quarters_commander.webp%%' },
+};
+const SAMPLE_URLS = {
+  breath: '%%ASSET:docs/prototypes/assets/breath-in-out.mp3%%',
+  cloth1: '%%ASSET:docs/prototypes/assets/ha/cloth1.ogg%%', cloth2: '%%ASSET:docs/prototypes/assets/ha/cloth2.ogg%%', cloth3: '%%ASSET:docs/prototypes/assets/ha/cloth3.ogg%%', cloth4: '%%ASSET:docs/prototypes/assets/ha/cloth4.ogg%%',
+};
+const $ = (s) => document.querySelector(s);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const rand = (a, b) => a + Math.random() * (b - a);
+
+/* ---------- the engine's numbers (src/engine/tuning.ts, TUNING.physics) ---------- */
+const BEAT = 1500;
+const JAW_PER = 8, DEGRADE_AT = 70, JAW_REST = 30;        // fatigue a beat, from where the input degrades further, what a rest takes off
+const REST_DENIED = ['cruel', 'vindictive'];               // the engine's rest rule
+/* ---------- the instrument's numbers ---------- */
+const MOUTH_H = [30, 170];   // the mouth's height in px, shut to wide open
+const WIDE_COST = 1.4;       // fatigue grows faster above her band (or above the ring): × (1 + WIDE_COST × excess / 0.4)
+const TEETH_GAP = 0.015;     // under her band by this much the teeth touch her
+const REST_HOLD = 550;       // ms of Shift / the right button to ask
+const REST_MS = 4200;        // a granted rest
+const ORDER_GRACE = 1500;    // ms out of her band during an order before she corrects
+/* speech: which sounds survive an opening (lips first, then the tongue's tip, then the back of the tongue) */
+const LABIAL = 'bpmfvw', DENTAL = 'tdnszcjxlr', VELAR = 'kgq';
+const OPEN_LIPS = 0.3, OPEN_TIP = 0.5, OPEN_BACK = 0.86, OPEN_VOWEL = 0.75;
+
+const CONTACTS = {
+  sole_to_mouth: { note: 'her toes in the mouth (sole_to_mouth): no speech (no_speech); her band is set by her toes, below it the teeth touch her; she pushes deeper, pulls out, says "suck." (a narrow band just above her)', speech: false },
+  ring_gag: { note: 'a ring gag (ring_gag): the ring keeps the mouth open at its size; above it the jaw tires faster; every letter is spoken through the opening it was typed at; she asks and understands or not', speech: true },
+};
+const STYLES = {
+  neutral:      { every: [5, 9], deep: 0.12, suck: 0.08, ask: 0.35 },
+  affectionate: { every: [7, 12], deep: 0.08, suck: 0.1, ask: 0.4 },
+  ritual:       { every: [6, 6], deep: 0.1, suck: 0.08, ask: 0.3 },
+  playful:      { every: [4, 8], deep: 0.12, suck: 0.07, ask: 0.45 },
+  cruel:        { every: [3, 6], deep: 0.18, suck: 0.06, ask: 0.5 },
+  possessive:   { every: [4, 8], deep: 0.15, suck: 0.07, ask: 0.35 },
+  vindictive:   { every: [4, 7], deep: 0.16, suck: 0.07, ask: 0.4 },
+  clinical:     { every: [5, 9], deep: 0.12, suck: 0.08, ask: 0.3 },
+};
+/* her words (placeholders for the cue pool; no pronoun and no feeling for the commander) */
+const LINES = {
+  neutral:      { entry: { sole_to_mouth: ['open.'], ring_gag: ['there. keep it open.'] }, teeth: ['teeth.', 'careful.'], deeper: ['deeper.'], out: ['easy.'], suck: ['suck.'], wide: ['wider. show me.'],
+                  correct: ['I said wider.', 'keep it there.'], restOk: ['fine. rest.'], restNo: ['not yet.'], ask: [['anything to say?', '']], heard: ['good.'], lost: ['what was that?'], end: ['that’s enough.'], slack: ['don’t let it close.'] },
+  affectionate: { entry: { sole_to_mouth: ['open for me.'], ring_gag: ['shh. just keep it open for me.'] }, teeth: ['ow — gently.'], deeper: ['a little more.'], out: ['there.'], suck: ['gently. suck.'], wide: ['wider, love.'],
+                  correct: ['a little wider.'], restOk: ['rest. I’ve got you.'], restNo: [], ask: [['tell me how it feels.', ''], ['say yes.', 'yes']], heard: ['I know.', 'good.'], lost: ['shh, I can’t tell.'], end: ['all done. close.'], slack: ['stay open for me.'] },
+  ritual:       { entry: { sole_to_mouth: ['open.'], ring_gag: ['open. hold.'] }, teeth: ['teeth. again.'], deeper: ['deeper.'], out: ['back.'], suck: ['suck.'], wide: ['wide.'],
+                  correct: ['the form.'], restOk: ['rest. count of four.'], restNo: [], ask: [['repeat: yes.', 'yes']], heard: ['correct.'], lost: ['again. clearly.'], end: ['close.'], slack: ['the form.'] },
+  playful:      { entry: { sole_to_mouth: ['say aah~'], ring_gag: ['cute. now talk to me~'] }, teeth: ['hey! no biting~'], deeper: ['more~'], out: ['aww.'], suck: ['suck~'], wide: ['wiiider~'],
+                  correct: ['wider, I said~'], restOk: ['fine, fine.'], restNo: [], ask: [['say please~', 'please'], ['say my name~', '']], heard: ['ha, close enough.'], lost: ['what? I can’t understand you~'], end: ['okay, you can close~'], slack: ['nope, keep it open~'] },
+  cruel:        { entry: { sole_to_mouth: ['open.'], ring_gag: ['now you can’t close it.'] }, teeth: ['teeth? really?', 'teeth.'], deeper: ['deeper.'], out: ['hm.'], suck: ['suck.'], wide: ['wide.'],
+                  correct: ['wider.'], restOk: [], restNo: ['no.', 'earn it.'], ask: [['say please.', 'please'], ['beg.', 'please']], heard: ['pathetic.'], lost: ['speak properly.', 'I can’t hear you.'], end: ['you may close it.'], slack: ['open.'] },
+  possessive:   { entry: { sole_to_mouth: ['open. it’s mine.'], ring_gag: ['your mouth is mine now.'] }, teeth: ['careful with what’s mine.'], deeper: ['all of it.'], out: ['there.'], suck: ['suck.'], wide: ['wider for me.'],
+                  correct: ['for me. wider.'], restOk: ['rest. then again.'], restNo: [], ask: [['whose mouth is it?', 'yours'], ['say mine.', 'yours']], heard: ['good. mine.'], lost: ['again. I want to hear it.'], end: ['close. good.'], slack: ['mine stays open.'] },
+  vindictive:   { entry: { sole_to_mouth: ['open.'], ring_gag: ['keep it open. you owe me that.'] }, teeth: ['that’s added.'], deeper: ['deeper.'], out: ['hm.'], suck: ['suck.'], wide: ['wide.'],
+                  correct: ['wider. that’s added.'], restOk: [], restNo: ['no rest owed.'], ask: [['say sorry.', 'sorry']], heard: ['not enough.'], lost: ['that’s added.'], end: ['close it.'], slack: ['open.'] },
+  clinical:     { entry: { sole_to_mouth: ['open.'], ring_gag: ['ring fitted. hold.'] }, teeth: ['teeth contact. noted.'], deeper: ['deeper.'], out: ['back.'], suck: ['suck. lighter.'], wide: ['maximum.'],
+                  correct: ['the angle.'], restOk: ['four seconds.'], restNo: [], ask: [['count to three.', 'three']], heard: ['legible.'], lost: ['illegible. again.'], end: ['done.'], slack: ['maintain.'] },
+};
+
+/* ---------- settings ---------- */
+const S = { contact: 'sole_to_mouth', style: 'neutral', rate: 1, ring: 0.55, len: 75, sound: true, vol: 0.7, footH: 1.05, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
+const st = () => STYLES[S.style];
+const L = () => LINES[S.style];
+const C = () => CONTACTS[S.contact];
+
+/* ---------- audio ---------- */
+const A = { ctx: null, buf: {} };
+function audioInit() {
+  if (A.ctx) return;
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  A.ctx = ctx;
+  A.master = ctx.createGain(); A.master.gain.value = S.sound ? S.vol : 0; A.master.connect(ctx.destination);
+  A.world = ctx.createBiquadFilter(); A.world.type = 'lowpass'; A.world.frequency.value = 9000; A.world.connect(A.master);
+  A.body = ctx.createGain(); A.body.connect(A.master);
+  const mk = (sec, fill) => { const b = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate); fill(b.getChannelData(0)); return b; };
+  A.white = mk(2, (d) => { for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; });
+  A.brown = mk(4, (d) => { let l = 0; for (let i = 0; i < d.length; i++) { l = (l + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = l * 3.5; } });
+  const room = ctx.createBufferSource(); room.buffer = A.brown; room.loop = true;
+  const rl = ctx.createBiquadFilter(); rl.type = 'lowpass'; rl.frequency.value = 650; const rg = ctx.createGain(); rg.gain.value = 0.05;
+  room.connect(rl); rl.connect(rg); rg.connect(A.world); room.start();
+}
+async function loadSamples() {
+  await Promise.all(Object.entries(SAMPLE_URLS).map(async ([k, u]) => { try { const r = await fetch(u); A.buf[k] = await A.ctx.decodeAudioData(await r.arrayBuffer()); } catch (e) { /* synthesis */ } }));
+}
+function play(id, { g = 0.5, pan = 0, rate = 1, lp = 0, dest, at = 0, offset = 0, dur } = {}) {
+  if (!A.ctx || !A.buf[id]) return null;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const src = ctx.createBufferSource(); src.buffer = A.buf[id]; src.playbackRate.value = rate;
+  const gn = ctx.createGain(); gn.gain.value = g; src.connect(gn);
+  let n = gn;
+  if (lp) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; n.connect(f); n = f; }
+  if (pan) { const p = ctx.createStereoPanner(); p.pan.value = pan; n.connect(p); n = p; }
+  n.connect(dest ?? A.world);
+  const len = dur ?? (A.buf[id].duration - offset);
+  if (dur) { gn.gain.setValueAtTime(g, t + dur / rate - 0.04); gn.gain.linearRampToValueAtTime(0.0001, t + dur / rate); }
+  src.start(t, offset, len + 0.05);
+  return src;
+}
+function noise({ at = 0, dur = 0.2, type = 'bandpass', f = 1000, f2, q = 1, gain = 0.1, attack = 0.01, dest = A.world }) {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const src = ctx.createBufferSource(); src.buffer = A.white; src.loop = true;
+  const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(f, t); fl.Q.value = q;
+  if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(fl); fl.connect(g); g.connect(dest); src.start(t, Math.random()); src.stop(t + dur + 0.05);
+}
+function tone(f0, f1, dur, gain, { at = 0, dest = A.body, type = 'sine' } = {}) {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(dest); o.start(t); o.stop(t + dur + 0.05);
+}
+const SFX = {
+  pen: () => { for (let i = 0; i < 3; i++) noise({ at: i * 0.05 + Math.random() * 0.02, dur: 0.035 + Math.random() * 0.03, f: 2600 + Math.random() * 1800, q: 3, gain: 0.04 }); },
+  cloth: (g = 0.3, rate = 1) => { if (!play(pick(['cloth1', 'cloth2', 'cloth3', 'cloth4']), { g, rate, lp: 5000 })) noise({ dur: 0.3, f: 1100, f2: 1700, q: 0.7, gain: g * 0.25, attack: 0.05 }); },
+  /* the jaw: a twitch closing (a dull knock inside the head), a click of the joint */
+  twitch: (k = 1) => { tone(95, 60, 0.12, 0.25 * k); noise({ dur: 0.04, f: 1800, q: 4, gain: 0.05 * k, dest: A.body }); },
+  /* teeth touch her: a small hard tick and her foot jerks */
+  teeth: () => { noise({ dur: 0.025, type: 'highpass', f: 2600, gain: 0.25, attack: 0.002, dest: A.body }); setTimeout(() => SFX.cloth(0.35, 1.3), 60); },
+  /* a swallow: low, wet (the mouth cannot close for it) */
+  swallow: (g = 0.5) => { tone(190, 110, 0.12, 0.22 * g); noise({ at: 0.04, dur: 0.05, f: 900, q: 3, gain: 0.08 * g, dest: A.body }); },
+  /* the commander's breath through the nose (the recording of saturation), heavier with fatigue */
+  nose: (f) => { if (!play('breath', { g: 0.1 + 0.12 * f, rate: 1.25 + 0.35 * f, offset: 0.12, dur: 1.2, lp: 2600, dest: A.body })) noise({ dur: 0.6, f: 700, f2: 1500, q: 0.8, gain: 0.05, attack: 0.1, dest: A.body }); },
+  drip: () => { tone(1400 + Math.random() * 500, 700, 0.06, 0.05, { dest: A.world }); },
+  strain: null,
+};
+/* a low strain hum that grows with the fatigue */
+function strainInit() {
+  if (!A.ctx || SFX.strain) return;
+  const o = A.ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 58;
+  const lp = A.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 180;
+  const g = A.ctx.createGain(); g.gain.value = 0;
+  const lfo = A.ctx.createOscillator(); lfo.frequency.value = 9; const lg = A.ctx.createGain(); lg.gain.value = 6; lfo.connect(lg); lg.connect(o.frequency);
+  o.connect(lp); lp.connect(g); g.connect(A.body); o.start(); lfo.start();
+  SFX.strain = { g, lfo };
+}
+
+/* ---------- state ---------- */
+let G;
+function fresh() {
+  return { phase: 'idle', t: 0, f: 0, jaw: 0.5, v: 0, target: 0.5, band: null, order: null, orderOut: 0, nextMove: 3000, push: 0, pushV: 0,
+    teethCd: 0, restHold: 0, resting: 0, restAsked: false, ask: null, nextTwitch: 1200, nextNose: 800, drops: [], dropAcc: 0, limitT: 0,
+    stats: { teeth: 0, restsAsked: 0, restsGranted: 0, corrections: 0, said: 0, heard: 0, lost: 0, twitches: 0 } };
+}
+G = fresh();
+
+/* ---------- her hand ---------- */
+function say(text, opt = {}) {
+  if (!text) return;
+  const el = document.createElement('div');
+  el.className = 'her-line';
+  el.textContent = text;
+  const speed = S.style === 'cruel' ? 24 : S.style === 'ritual' ? 45 : 34;
+  el.style.setProperty('--write', `${Math.max(140, text.length * speed)}ms`);
+  el.style.setProperty('--steps', String(Math.max(4, text.length * 2)));
+  const showing = [...$('#hand').children].filter((c) => !c.classList.contains('gone')).length;
+  el.style.left = `${innerWidth * (opt.x ?? 0.6)}px`;
+  el.style.top = `${innerHeight * (opt.y ?? 0.2) + showing * 52}px`;
+  el.style.transform = `rotate(${rand(-4, 3).toFixed(1)}deg)`;
+  $('#hand').appendChild(el);
+  SFX.pen();
+  setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 600); }, opt.life ?? 2600);
+}
+function setReply(html) { $('#reply').innerHTML = html; }
+
+/* ---------- speech through the opening ---------- */
+/* one letter through an opening `o` (0 shut, 1 wide): lips fail first, then the tongue's tip, then the back of the tongue; wide vowels go flat */
+function speak(ch, o, f) {
+  const c = ch.toLowerCase(), up = ch !== c;
+  let out = ch;
+  if (!/[a-z]/.test(c)) return { out: ch, lost: false };
+  if (LABIAL.includes(c) && o > OPEN_LIPS) out = 'h';
+  else if (DENTAL.includes(c) && o > OPEN_TIP) out = c === 'l' || c === 'r' ? 'a' : c === 'n' ? 'ng' : 'h';
+  else if (VELAR.includes(c) && o > OPEN_BACK) out = 'gh';
+  else if ('ei'.includes(c) && o > OPEN_VOWEL) out = 'a';
+  // a tired jaw smears: a letter doubles now and then
+  if (f > DEGRADE_AT && Math.random() < (f - DEGRADE_AT) / 60) out += out.slice(-1);
+  if (up) out = out[0].toUpperCase() + out.slice(1);
+  return { out, lost: out.toLowerCase() !== c };
+}
+const spoken = []; // the line as it comes out: { out, lost, meant }
+function renderMirror() {
+  $('#mirror').replaceChildren(...spoken.map((s) => { const sp = document.createElement('span'); sp.textContent = s.out; if (s.lost) sp.className = 'lost'; return sp; }));
+}
+function onType(e) {
+  if (G.phase !== 'loop') { e.preventDefault(); return; }
+  if (e.key === 'Enter') { e.preventDefault(); sendLine(); return; }
+  if (e.key === 'Backspace') { e.preventDefault(); spoken.pop(); renderMirror(); return; }
+  if (e.key.length !== 1 || e.ctrlKey || e.metaKey) return;
+  e.preventDefault();
+  if (!C().speech) { // no speech: every key is a muffled sound
+    spoken.push({ out: Math.random() < 0.6 ? 'm' : 'h', lost: true, meant: e.key }); renderMirror(); return;
+  }
+  const floor = S.contact === 'ring_gag' ? S.ring : 0;
+  const o = Math.max(G.jaw, floor);
+  const s = speak(e.key, o, G.f);
+  // marked: what came out worse than the ring allows (the jaw's fault, not the ring's)
+  spoken.push({ out: s.out, lost: s.out.toLowerCase() !== speak(e.key, floor, 0).out.toLowerCase(), meant: e.key }); renderMirror();
+}
+function sendLine() {
+  if (!spoken.length) return;
+  const meant = spoken.map((s) => s.meant).join(''), heard = spoken.map((s) => s.out).join('');
+  // she listens fairly: a letter counts as clear when it came out as well as the ring allows (her toes allow nothing)
+  const floor = S.contact === 'ring_gag' ? S.ring : 0;
+  const ideal = (ch) => speak(ch, floor, 0).out;
+  const letters = spoken.filter((s) => /[a-z]/i.test(s.meant));
+  const kept = letters.filter((s) => s.out.toLowerCase() === ideal(s.meant).toLowerCase()).length / Math.max(1, letters.length);
+  spoken.length = 0; renderMirror();
+  G.stats.said += 1;
+  setReply(`<span class="heard">“${heard.replace(/[<&]/g, '')}”</span><br><span class="meant">(meant: ${meant.replace(/[<&]/g, '')})</span>`);
+  if (!C().speech) { setTimeout(() => say(pick(L().slack)), 500); return; }
+  // she understands when most of it came through, and (if she asked for a word) when that word did
+  const want = G.ask ? G.ask.word : '';
+  const wantHeard = [...want].map(ideal).join('').toLowerCase();
+  const wordOk = !want || heard.toLowerCase().includes(wantHeard);
+  const ok = kept >= 0.6 && wordOk;
+  if (ok) G.stats.heard += 1; else G.stats.lost += 1;
+  G.ask = null;
+  setTimeout(() => say(pick(ok ? L().heard : L().lost)), 600);
+}
+
+/* ---------- her moves ---------- */
+function bandNow() {
+  // sole: her toes set the band's floor; ring: the ring is the floor, her band only during an order
+  if (S.contact === 'sole_to_mouth') {
+    const base = 0.42 + G.push;
+    const w = G.order === 'suck' ? st().suck : G.order === 'wide' ? 0.16 : 0.2;
+    const lo = G.order === 'wide' ? base + 0.14 : base;
+    return [clamp(lo, 0.1, 0.92), clamp(lo + w, 0.2, 1)];
+  }
+  if (G.order === 'wide') return [0.82, 0.98];
+  return null;
+}
+function herMove() {
+  const s = st(), c = S.contact;
+  const r = Math.random();
+  if (c === 'sole_to_mouth') {
+    if (r < 0.32) { // deeper: she pushes in (telegraphed: her foot comes closer, a rustle)
+      SFX.cloth(0.3); G.pushTarget = clamp(G.push + s.deep, 0, 0.35); G.order = null; setTimeout(() => { if (G.phase === 'loop') say(pick(L().deeper)); }, 250);
+    } else if (r < 0.5) { G.pushTarget = clamp(G.push - 0.1, -0.1, 0.35); SFX.cloth(0.2); if (Math.random() < 0.4) say(pick(L().out)); }
+    else if (r < 0.75) { G.order = 'suck'; G.orderT = 0; G.orderLen = rand(4000, 7000); say(pick(L().suck)); }
+    else { G.order = 'wide'; G.orderT = 0; G.orderLen = rand(3000, 5000); say(pick(L().wide)); }
+  } else {
+    if (!G.ask && r < s.ask) { const [q, w] = pick(L().ask); G.ask = { word: w, t: 0 }; say(q, { life: 4000 }); }
+    else {
+      G.order = 'wide'; G.orderT = 0; G.orderLen = rand(4500, 7000); say(pick(L().wide));
+      // often she asks while she wants it wide: answer clearly (and break the order) or keep it wide (and be lost)
+      if (!G.ask && Math.random() < 0.45) setTimeout(() => { if (G.phase === 'loop' && !G.ask) { const [q, w] = pick(L().ask); G.ask = { word: w, t: 0 }; say(q, { life: 4000 }); } }, 1600);
+    }
+  }
+  G.nextMove = rand(...s.every) * 1000 + (G.order ? G.orderLen : 0);
+}
+
+/* ---------- the rest ---------- */
+function askRest() {
+  G.stats.restsAsked += 1; G.restAsked = true;
+  SFX.cloth(0.25, 1.2); // a tap of the hand on her leg
+  const granted = !REST_DENIED.includes(S.style);
+  setTimeout(() => {
+    if (G.phase !== 'loop') return;
+    if (granted) { G.stats.restsGranted += 1; G.resting = REST_MS; G.restFrom = G.f; G.order = null; say(pick(L().restOk.length ? L().restOk : ['rest.'])); }
+    else say(pick(L().restNo.length ? L().restNo : ['no.']));
+  }, 500);
+}
+
+/* ---------- phases ---------- */
+function begin() {
+  audioInit(); if (A.ctx.state === 'suspended') A.ctx.resume(); strainInit();
+  $('#hand').replaceChildren(); spoken.length = 0; renderMirror();
+  G = fresh(); G.phase = 'loop'; G.pushTarget = 0;
+  $('#summary').style.display = 'none';
+  $('#foot').style.display = S.contact === 'sole_to_mouth' && footLoaded ? 'block' : 'none';
+  setReply(S.contact === 'sole_to_mouth'
+    ? '<span class="act">She lifts her foot to the commander’s lips and waits.</span>'
+    : '<span class="act">The ring is buckled behind the head; the jaw cannot close around it.</span>');
+  say(pick(L().entry[S.contact]));
+  $('#cmd').focus();
+}
+function finish(why) {
+  if (G.phase !== 'loop') return;
+  G.phase = 'done';
+  const line = why === 'stop' ? 'okay. it’s out. I’m here.' : pick(L().end);
+  say(line);
+  if (SFX.strain) SFX.strain.g.gain.value = 0;
+  const s = G.stats;
+  setTimeout(() => {
+    $('#sumLine').textContent = line;
+    $('#sumFacts').innerHTML = `held ${(G.t / 1000).toFixed(0)} s · fatigue ${G.f.toFixed(0)}<br>teeth: ${s.teeth} · corrections: ${s.corrections}<br>rests asked: ${s.restsAsked} (granted ${s.restsGranted})<br>`
+      + (C().speech ? `said: ${s.said} · understood: ${s.heard} · lost: ${s.lost}<br>` : '') + `twitches: ${s.twitches}<br>how it ended: ${why}`;
+    $('#summary').style.display = 'block';
+  }, 900);
+}
+
+/* ---------- the loop ---------- */
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(50, now - last); last = now;
+  if (G.phase === 'loop') update(dt);
+  render(now, dt);
+}
+function update(dt) {
+  G.t += dt;
+  const f01 = G.f / 100;
+  // her push (sole): springs toward her target
+  G.push += ((G.pushTarget ?? 0) - G.push) * Math.min(1, dt / 260);
+  // the jaw: a spring toward the mouse, minus the fatigue's pull; twitches closing; a tremor
+  const pull = 0.06 + 0.3 * Math.pow(f01, 1.5);
+  let goal = G.target - pull;
+  if (G.resting > 0) goal = 0.06; // a rest: the mouth closes (the ring still holds it)
+  const k = 70, d = 12;
+  G.v += (k * (goal - G.jaw) - d * G.v) * dt / 1000;
+  G.nextTwitch -= dt;
+  if (G.nextTwitch <= 0 && G.resting <= 0) {
+    if (G.f > 25) { G.v -= rand(0.5, 1.1) * (0.4 + f01); G.stats.twitches += 1; SFX.twitch(0.5 + f01); }
+    G.nextTwitch = 1000 / (0.12 + 0.55 * f01 * f01) * rand(0.6, 1.4);
+  }
+  G.jaw += G.v * dt / 1000 + (S.reduced ? 0 : (Math.random() * 2 - 1) * (0.002 + 0.02 * f01 * f01));
+  const floor = S.contact === 'ring_gag' ? S.ring : 0;
+  if (G.jaw < floor) { G.jaw = floor; if (G.v < 0) G.v *= -0.2; }
+  G.jaw = clamp(G.jaw, 0, 1);
+  // her band, her orders
+  const band = bandNow(); G.band = band;
+  if (G.order) { G.orderT += dt; if (G.orderT > G.orderLen) G.order = null; }
+  // teeth: under her band (sole) they touch her
+  G.teethCd -= dt;
+  if (band && S.contact === 'sole_to_mouth' && G.resting <= 0 && G.jaw < band[0] - TEETH_GAP && G.teethCd <= 0) {
+    G.stats.teeth += 1; G.teethCd = 1200; G.flashT = 0; SFX.teeth(); say(pick(L().teeth));
+    if (S.style === 'cruel' || S.style === 'vindictive') G.pushTarget = clamp((G.pushTarget ?? 0) + 0.06, 0, 0.35);
+  }
+  // an order not kept: she corrects after a grace
+  if (G.order && band && G.resting <= 0) {
+    const out = G.jaw < band[0] - TEETH_GAP || G.jaw > band[1] + 0.03;
+    G.orderOut = out ? G.orderOut + dt : 0;
+    if (G.orderOut > ORDER_GRACE) { G.orderOut = -2500; G.stats.corrections += 1; say(pick(L().correct)); }
+  }
+  // fatigue: per beat as the engine, faster above her band or the ring; a rest takes it down
+  if (G.resting > 0) {
+    G.resting -= dt;
+    G.f = Math.max(0, G.f - (JAW_REST / REST_MS) * dt);
+    if (G.resting <= 0) say(pick(L().slack));
+  } else {
+    const top = band ? band[1] : (S.contact === 'ring_gag' ? S.ring + 0.04 : 0.6);
+    const excess = Math.max(0, G.jaw - top);
+    G.f = Math.min(100, G.f + (JAW_PER / BEAT) * dt * S.rate * (1 + WIDE_COST * excess / 0.4));
+  }
+  // at the end of the jaw: her release by her limit (cruel and vindictive hold on a little longer)
+  if (G.f >= 100) { G.limitT += dt; if (G.limitT > (REST_DENIED.includes(S.style) ? 6000 : 600)) finish('her limit'); }
+  // the rest: Shift or the right button held
+  if (G.restKey && G.resting <= 0 && !G.restAsked) { G.restHold = performance.now() - G.restDown; if (G.restHold >= REST_HOLD) askRest(); } else if (!G.restKey) { G.restHold = 0; G.restAsked = false; }
+  // her next move; an unanswered question lapses
+  G.nextMove -= dt;
+  if (G.nextMove <= 0 && G.resting <= 0) herMove();
+  if (G.ask) { G.ask.t += dt; if (G.ask.t > 12000) { G.ask = null; say(pick(L().lost)); G.stats.lost += 1; } }
+  // breath through the nose, drool from the open mouth
+  G.nextNose -= dt; if (G.nextNose <= 0) { SFX.nose(f01); G.nextNose = lerp(3400, 1700, f01) * rand(0.85, 1.15); }
+  G.dropAcc += dt * smooth(0.3, 0.9, G.jaw) * (0.4 + f01) * 0.0011;
+  if (G.dropAcc >= 1) { G.dropAcc = 0; spawnDrop(); }
+  if (G.t / 1000 > S.len) finish('her time');
+}
+
+/* ---------- drawing ---------- */
+const img = $('#her'), foot = $('#foot');
+let footLoaded = false;
+const drool = $('#drool'), dctx = drool.getContext('2d');
+function spawnDrop() {
+  const r = $('#mouth').getBoundingClientRect();
+  G.drops.push({ x: r.left + r.width * rand(0.3, 0.7), y: r.bottom - 2, r: 0, grow: rand(1.2, 2.2), v: 0, falling: false, life: 1 });
+}
+function render(now, dt) {
+  const W = innerWidth, H = innerHeight, f01 = G.f / 100;
+  if (drool.width !== W) { drool.width = W; drool.height = H; }
+  // the mouth: its height is the jaw
+  const h = lerp(MOUTH_H[0], MOUTH_H[1], G.jaw);
+  const tremble = S.reduced ? 0 : (Math.random() * 2 - 1) * (0.5 + 3 * f01 * f01);
+  const m = $('#mouth');
+  m.style.height = `${h.toFixed(1)}px`;
+  m.style.transform = `translate(-50%, 50%) translate(${tremble.toFixed(1)}px, 0)`;
+  m.style.setProperty('--ache', smooth(25, 95, G.f).toFixed(3));
+  $('#inputWrap').style.setProperty('--ache', smooth(25, 95, G.f).toFixed(3));
+  $('#inputWrap').style.borderColor = G.flashT !== undefined && G.flashT < 300 ? 'rgba(255,120,90,.9)' : 'rgba(255,255,255,.12)';
+  if (G.flashT !== undefined) G.flashT += dt;
+  // her band as ghost frames on the mouth: the floor and the ceiling of her band
+  const band = G.phase === 'loop' && G.resting <= 0 ? G.band : null;
+  for (const [id, v] of [['#bandLo', band ? band[0] : null], ['#bandHi', band ? band[1] : null]]) {
+    const el = $(id);
+    if (v === null) { el.style.opacity = '0'; continue; }
+    const bh = lerp(MOUTH_H[0], MOUTH_H[1], v);
+    el.style.width = '740px'; el.style.height = `${bh.toFixed(1)}px`; el.style.bottom = '96px';
+    el.style.opacity = id === '#bandLo' ? '0.9' : '0.45';
+    el.classList.toggle('hot', id === '#bandLo' && G.jaw < v - TEETH_GAP);
+  }
+  // the rest ring
+  $('#restRing').style.opacity = G.restHold > 0 ? '1' : '0';
+  $('#restArc').setAttribute('stroke-dashoffset', String(75.4 * (1 - clamp(G.restHold / REST_HOLD, 0, 1))));
+  // the letters smear and double as the jaw tires
+  const sm = smooth(DEGRADE_AT - 20, 100, G.f);
+  $('#mirror').style.textShadow = sm > 0 ? `${(2 + 4 * sm).toFixed(1)}px 0 ${(1 + 2 * sm).toFixed(1)}px rgba(236,232,242,${(0.35 * sm).toFixed(2)}), 0 0 ${(2 * sm).toFixed(1)}px rgba(236,232,242,.5)` : 'none';
+  $('#mirror').style.filter = sm > 0 ? `blur(${(0.6 * sm).toFixed(2)}px)` : 'none';
+  // the frame: the head held still, a jolt on each twitch, the edges darken and warm as the jaw aches
+  const jx = S.reduced ? 0 : (Math.random() * 2 - 1) * 2.4 * f01 * f01;
+  const twitchJolt = Math.max(0, -G.v) * 10;
+  $('#world').style.transform = `translate(${jx.toFixed(1)}px, ${(twitchJolt * 0.6).toFixed(1)}px) scale(${(1 + 0.02 * f01).toFixed(4)})`;
+  $('#world').style.filter = `saturate(${(1 - 0.25 * f01).toFixed(3)})`;
+  $('#vig').style.background = `radial-gradient(ellipse 70% 62% at 50% 42%, rgba(0,0,0,0) 45%, rgba(0,0,0,${(0.35 + 0.35 * f01).toFixed(2)}) 100%)`;
+  $('#ache').style.opacity = (0.45 * smooth(40, 100, G.f)).toFixed(3);
+  $('#ache').style.background = 'radial-gradient(ellipse 30% 26% at 0% 72%, rgba(200,40,30,.6), rgba(0,0,0,0) 70%), radial-gradient(ellipse 30% 26% at 100% 72%, rgba(200,40,30,.6), rgba(0,0,0,0) 70%)';
+  if (SFX.strain) SFX.strain.g.gain.value = G.phase === 'loop' ? 0.05 * smooth(35, 100, G.f) : 0;
+  // her picture: from below (the commander kneels); with her foot: the foot art comes up from below and closer as she pushes deeper
+  if (img.naturalWidth) {
+    const nw = img.naturalWidth, nh = img.naturalHeight;
+    const sole = S.contact === 'sole_to_mouth';
+    const Hs = H * (sole ? 1.5 : 1.3), sc = Hs / nh, Ws = nw * sc;
+    const bottom = H * (sole ? 1.28 : 1.16) + (sole ? G.push * H * 0.25 : 0);
+    const breathe = 1 + 0.006 * Math.sin(now / 900);
+    img.style.transform = `translate(${(W / 2 - Ws / 2).toFixed(1)}px, ${(bottom - Hs).toFixed(1)}px) translate(${Ws / 2}px, ${Hs}px) rotateX(${sole ? 12 : 8}deg) scale(${breathe}) translate(${-Ws / 2}px, ${-Hs}px) scale(${sc.toFixed(4)})`;
+    img.style.filter = `blur(${sole && footLoaded ? 2.5 : 0}px) brightness(${sole ? 0.8 : 0.92})`;
+  }
+  if (footLoaded && S.contact === 'sole_to_mouth') {
+    const fh = H * S.footH * (1 + 0.3 * G.push), wig = S.reduced ? 0 : Math.sin(now / 160) * 2 * (G.order === 'suck' ? 1 : 0.3);
+    foot.style.height = `${fh.toFixed(1)}px`;
+    foot.style.transform = `translate(-50%, ${(H * 0.18 - G.push * H * 0.2).toFixed(1)}px) rotate(${wig.toFixed(2)}deg)`;
+  }
+  $('#backdrop').style.filter = `blur(${S.contact === 'sole_to_mouth' ? 6 : 2}px) brightness(.7)`;
+  // drool on the mouth's lower edge: drops swell and fall
+  dctx.clearRect(0, 0, W, H);
+  for (const d of G.drops) {
+    if (!d.falling) { d.r += d.grow * dt / 1000 * 3; if (d.r > 4.5) { d.falling = true; SFX.drip(); } }
+    else { d.v += 900 * dt / 1000; d.y += d.v * dt / 1000; d.life -= dt / 1400; }
+    const g = dctx.createRadialGradient(d.x - d.r * 0.3, d.y + d.r * 0.6, 0.5, d.x, d.y + d.r, d.r * 1.4);
+    g.addColorStop(0, `rgba(255,255,255,${0.55 * d.life})`); g.addColorStop(0.5, `rgba(200,215,235,${0.25 * d.life})`); g.addColorStop(1, 'rgba(200,215,235,0)');
+    dctx.fillStyle = g;
+    dctx.beginPath(); dctx.ellipse(d.x, d.y + d.r, d.r * 0.8, d.r * (d.falling ? 1.6 : 1.1), 0, 0, Math.PI * 2); dctx.fill();
+    if (!d.falling) { dctx.strokeStyle = `rgba(220,230,245,${0.25 * d.life})`; dctx.lineWidth = 1; dctx.beginPath(); dctx.moveTo(d.x, d.y - 2); dctx.lineTo(d.x, d.y + d.r); dctx.stroke(); }
+  }
+  G.drops = G.drops.filter((d) => d.life > 0 && d.y < H + 20);
+  if (S.debug) {
+    $('#debug').textContent = `jaw ${G.jaw.toFixed(2)}  target ${G.target.toFixed(2)}  fatigue ${G.f.toFixed(1)}\nband ${G.band ? G.band.map((x) => x.toFixed(2)).join('–') : '—'}  order ${G.order ?? '—'}  push ${G.push.toFixed(2)}\n`
+      + `resting ${Math.max(0, G.resting).toFixed(0)}  ask ${G.ask ? G.ask.word || '(any)' : '—'}  next move ${(G.nextMove / 1000).toFixed(1)} s\n`
+      + `teeth ${G.stats.teeth}  corrections ${G.stats.corrections}  twitches ${G.stats.twitches}`;
+  }
+}
+
+/* ---------- input ---------- */
+addEventListener('pointermove', (e) => {
+  if (e.target.closest && e.target.closest('#panel')) return;
+  G.target = clamp((e.clientY - H0()) / (innerHeight * 0.55), 0, 1);
+});
+const H0 = () => innerHeight * 0.22; // the mouse from 22 % to 77 % of the height: shut to wide open
+$('#cmd').addEventListener('keydown', onType);
+addEventListener('keydown', (e) => {
+  if (e.key === 'Shift' && !G.restKey) { G.restKey = true; G.restDown = performance.now(); }
+  if (e.key === 'Escape' && G.phase === 'loop') finish('stop');
+  if ((e.key === 'h' || e.key === 'H') && e.target !== $('#cmd')) $('#panel').classList.toggle('hidden');
+});
+addEventListener('keyup', (e) => { if (e.key === 'Shift') G.restKey = false; });
+$('#stage').addEventListener('contextmenu', (e) => e.preventDefault());
+$('#stage').addEventListener('pointerdown', (e) => { if (e.button === 2) { G.restKey = true; G.restDown = performance.now(); } else if (!e.target.closest('#panel') && !e.target.closest('.card')) setTimeout(() => $('#cmd').focus(), 0); });
+addEventListener('pointerup', (e) => { if (e.button === 2) G.restKey = false; });
+$('#stopPill').onclick = () => finish('stop');
+
+/* ---------- the panel ---------- */
+function opts(host, items, get, set) {
+  host.replaceChildren();
+  for (const it of items) {
+    const b = document.createElement('button'); b.className = 'opt' + (get() === it ? ' on' : ''); b.textContent = it;
+    b.onclick = () => { set(it); opts(host, items, get, set); };
+    host.appendChild(b);
+  }
+}
+const contactNote = () => { $('#contactNote').textContent = C().note; };
+opts($('#contacts'), Object.keys(CONTACTS), () => S.contact, (v) => { S.contact = v; contactNote(); begin(); });
+opts($('#styles'), Object.keys(STYLES), () => S.style, (v) => { S.style = v; });
+contactNote();
+$('#rate').oninput = () => { S.rate = Number($('#rate').value); $('#rateV').textContent = S.rate.toFixed(2); };
+$('#ring').oninput = () => { S.ring = Number($('#ring').value); $('#ringV').textContent = S.ring.toFixed(2); };
+$('#len').onchange = () => { S.len = Number($('#len').value); };
+$('#snd').onchange = () => { S.sound = $('#snd').checked; if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
+$('#vol').oninput = () => { S.vol = Number($('#vol').value); if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
+$('#file').onchange = () => { const f = $('#file').files[0]; if (f) img.src = URL.createObjectURL(f); };
+$('#footFile').onchange = () => { const f = $('#footFile').files[0]; if (f) { foot.src = URL.createObjectURL(f); footLoaded = true; foot.style.display = S.contact === 'sole_to_mouth' ? 'block' : 'none'; } };
+$('#footH').oninput = () => { S.footH = Number($('#footH').value); $('#footHV').textContent = S.footH.toFixed(2); };
+$('#accent').oninput = () => document.documentElement.style.setProperty('--her', $('#accent').value);
+$('#dbg').onchange = () => { S.debug = $('#dbg').checked; $('#debug').style.display = S.debug ? 'block' : 'none'; };
+$('#rm').checked = S.reduced; $('#rm').onchange = () => { S.reduced = $('#rm').checked; };
+for (const k of Object.keys(ASSETS.bgs)) { const o = document.createElement('option'); o.value = k; o.textContent = k; $('#bg').appendChild(o); }
+$('#bg').onchange = () => { $('#backdrop').style.backgroundImage = `url(${ASSETS.bgs[$('#bg').value]})`; };
+$('#backdrop').style.backgroundImage = `url(${ASSETS.bgs.quarters_1})`;
+$('#restart').onclick = () => begin();
+$('#againBtn').onclick = () => begin();
+img.src = ASSETS.her;
+$('#go').onclick = async () => { audioInit(); await A.ctx.resume(); $('#start').style.display = 'none'; await loadSamples(); begin(); };
+requestAnimationFrame(frame);
+
+/* test hooks (prototype only) */
+window.__S = S; window.__G = () => G; window.__begin = () => begin(); window.__speak = (s, o, f = 0) => [...s].map((c) => speak(c, o, f).out).join('');
+</script>
+</body>
+</html>

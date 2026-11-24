@@ -24,7 +24,15 @@ npm run proto -- her_activity
 npm run proto -- slap
 ```
 
+```bash
+npm run proto -- jaw
+```
+
 Each writes `.superpowers/prototypes/<name>.html` (ignored by git): one self-contained page with the fonts, backdrops and a placeholder sprite (`tests/fixtures/layout/sprite.svg`). `--sprite <file>` uses any local sprite; **never commit the author's art**. Open the page in Chromium. `H` hides the panel; `window.__S` (settings), `window.__G()` (state) and `window.__forceO` (force the opening, 0–1, `null` to release) exist for screenshots and tests.
+
+## `jaw.html` — the jaw (P15a `jaw`): DRAFT, in the author's rounds (not normative yet)
+
+Started on 2026-11-24 (the author: the body and the speech together). The mouse, up and down, is the jaw's opening (down opens); fatigue fills by the engine's +8 a beat (faster above her band or the ring) and pulls the jaw shut (a spring, a tremor, closing twitches). **The input field is the mouth:** its frame opens with the jaw, her band is a ghost frame on it, its ends (the hinges) ache warm, drool gathers on its lower edge and drips; from 70 the letters smear and double. Her toes (`sole_to_mouth`): no speech, below her band the teeth touch her ("teeth."), she pushes deeper, pulls out, orders "suck." (a narrow band just above her) or "wider."; a ring gag (`ring_gag`): the ring is the floor, every letter typed comes out through the opening it was typed at (lips fail first, then the tongue's tip, then its back; wide vowels go flat), she listens fairly (as clear as the ring allows) and often asks while she wants it wide. Shift or the right button, held 0.55 s: ask for a rest (the engine's rule: refused by cruel and vindictive; −30). `oral_service` waits for P17b (depth and rhythm). This section becomes the normative list once the author approves it.
 
 ## `slap.html` — the slap (P16 §R.3, `practices.slap`)
 
