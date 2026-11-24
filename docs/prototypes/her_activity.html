@@ -227,7 +227,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <label>close-up height <input type="range" id="closeH" min="0.35" max="1" step="0.01" value="0.62"><span id="closeHV">0.62</span></label>
   <label>close-up y <input type="range" id="closeY" min="0.3" max="0.7" step="0.01" value="0.47"><span id="closeYV">0.47</span></label>
   <div class="row"><button class="opt" id="markZones">mark zones</button></div>
-  <div class="note" id="soleNote">sole_close: her sole to the camera, toes up (one clean picture; the dirt is an effect). Until it exists the close-up uses the raised foot art, or her sprite. "mark zones": for each of toes, ball, arch, heel, edge press on its centre and drag toward a corner for its width and height (Shift: a circle; a click: an automatic size); the JSON (fit and zones) travels with the picture. Zones are never shown in play. Debug shows her signals and the zone she wants.</div>
+  <div class="note" id="soleNote">sole_close: her sole to the camera, toes up (one clean picture; the dirt is an effect). Until it exists the close-up uses the raised foot art, or her sprite. "mark zones": for each of toes, ball, arch, heel, edge press on its centre and drag toward a corner for its width and height, the mouse wheel turns it (also the last one placed, until the next is started; Shift: finer); Shift while dragging: a circle; a click: an automatic size; the JSON (fit and zones) travels with the picture. Zones are never shown in play. Debug shows her signals and the zone she wants.</div>
   <h4>what the commander perceives (view)</h4>
   <div class="row" id="views"></div>
   <label><input type="checkbox" id="blind"> blindfold (any view: hearing only)</label>
@@ -1475,15 +1475,17 @@ function zoneRadii(r) {
     let dmin = 1e9;
     for (const [k2, q] of z) if (k2 !== k) dmin = Math.min(dmin, Math.hypot((p[0] - q[0]) * r.w, (p[1] - q[1]) * r.h));
     const auto = clamp(dmin / 2, r.h * 0.04, r.h * 0.12);
-    out[k] = p[3] !== undefined ? { rx: p[2] * r.h, ry: p[3] * r.h } : p[2] !== undefined ? { rx: p[2] * r.h, ry: p[2] * r.h } : { rx: auto, ry: auto };
+    out[k] = p[3] !== undefined ? { rx: p[2] * r.h, ry: p[3] * r.h, rot: ((p[4] ?? 0) * Math.PI) / 180 } : p[2] !== undefined ? { rx: p[2] * r.h, ry: p[2] * r.h } : { rx: auto, ry: auto };
   }
   return out;
 }
+/* a point relative to a zone's centre, in the ellipse's own units (rotated back by its angle): inside when the length is under 1 */
+function inEllipse(dx, dy, z) { const a = -(z.rot ?? 0), c = Math.cos(a), sn = Math.sin(a); return [(dx * c - dy * sn) / z.rx, (dx * sn + dy * c) / z.ry]; }
 function zoneAt(x, y) {
   const r = soleRect(); if (!r) return null;
   const rad = zoneRadii(r);
   let best = null, bd = 1e9;
-  for (const [k, p] of Object.entries(zones())) { const d = Math.hypot((x - (r.x + p[0] * r.w)) / rad[k].rx, (y - (r.y + p[1] * r.h)) / rad[k].ry); if (d < 1 && d < bd) { bd = d; best = k; } }
+  for (const [k, p] of Object.entries(zones())) { const [ex, ey] = inEllipse(x - (r.x + p[0] * r.w), y - (r.y + p[1] * r.h), rad[k]); const d = Math.hypot(ex, ey); if (d < 1 && d < bd) { bd = d; best = k; } }
   return best;
 }
 const onSole = (x, y) => { const r = soleRect(); return r && x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h; };
@@ -1508,9 +1510,9 @@ function makeDirt() {
 function dirtLeft() { if (!SV.dirt) return 0; return SV.dirt.m.reduce((s, v) => s + v, 0) / Math.max(1, SV.dirt.total0); }
 function dirtIn(zone) {
   if (!SV.dirt) return 0; const p = zones()[zone], r = soleRect(); if (!r) return 0;
-  const { w, h, m } = SV.dirt, rad = zoneRadii(r)[zone], rx = rad.rx / r.w * w, ry = rad.ry / r.h * h; let s = 0, n = 0;
-  for (let y = Math.max(0, Math.floor(p[1] * h - ry)); y < Math.min(h, Math.ceil(p[1] * h + ry)); y++) for (let x = Math.max(0, Math.floor(p[0] * w - rx)); x < Math.min(w, Math.ceil(p[0] * w + rx)); x++) {
-    if (((x - p[0] * w) / rx) ** 2 + ((y - p[1] * h) / ry) ** 2 > 1) continue; s += m[y * w + x]; n++;
+  const { w, h, m } = SV.dirt, rad = zoneRadii(r)[zone], big = Math.max(rad.rx, rad.ry), bx = big / r.w * w, by = big / r.h * h; let s = 0, n = 0;
+  for (let y = Math.max(0, Math.floor(p[1] * h - by)); y < Math.min(h, Math.ceil(p[1] * h + by)); y++) for (let x = Math.max(0, Math.floor(p[0] * w - bx)); x < Math.min(w, Math.ceil(p[0] * w + bx)); x++) {
+    const [ex, ey] = inEllipse((x / w - p[0]) * r.w, (y / h - p[1]) * r.h, rad); if (ex * ex + ey * ey > 1) continue; s += m[y * w + x]; n++;
   }
   return n ? s / n : 0;
 }
@@ -1733,25 +1735,37 @@ function svRender(now) {
   SV.marks = SV.marks.filter((q) => performance.now() - q.born < 2200);
   for (const q of SV.marks) { const a = 1 - (performance.now() - q.born) / 2200; const g = mx.createRadialGradient(q.x, q.y, 0, q.x, q.y, 30); g.addColorStop(0, `rgba(255,150,140,${(0.35 * a).toFixed(3)})`); g.addColorStop(1, 'rgba(255,150,140,0)'); mx.fillStyle = g; mx.beginPath(); mx.arc(q.x, q.y, 30, 0, Math.PI * 2); mx.fill(); }
   // marking zones (the prototype's zone marker)
-  if (MARK.on) for (const [kz, p] of Object.entries(MARK.pts)) { const live = MARK.drag && kz === MARK.names[MARK.i]; const ex = live ? Math.max(6, MARK.drag.rx ?? 6) : p[2] !== undefined ? p[2] * r.h : 10, ey = live ? Math.max(6, MARK.drag.ry ?? 6) : p[3] !== undefined ? p[3] * r.h : ex; mx.strokeStyle = 'rgba(216,228,255,.8)'; mx.lineWidth = 1.5; mx.beginPath(); mx.ellipse(r.x + p[0] * r.w, r.y + p[1] * r.h, ex, ey, 0, 0, Math.PI * 2); mx.stroke(); mx.fillStyle = 'rgba(216,228,255,.8)'; mx.font = '12px "IBM Plex Mono"'; mx.fillText(kz, r.x + p[0] * r.w + 14, r.y + p[1] * r.h + 4); }
-  if (S.debug) { const rad = zoneRadii(r); for (const [kz, p] of Object.entries(zones())) { mx.strokeStyle = kz === SV.want ? 'rgba(140,255,170,.75)' : 'rgba(216,228,255,.25)'; mx.lineWidth = kz === SV.want ? 2 : 1; mx.beginPath(); mx.ellipse(r.x + p[0] * r.w, r.y + p[1] * r.h, rad[kz].rx, rad[kz].ry, 0, 0, Math.PI * 2); mx.stroke(); } }
+  if (MARK.on) for (const [kz, p] of Object.entries(MARK.pts)) { const live = MARK.drag && kz === MARK.names[MARK.i]; const ex = live ? Math.max(6, MARK.drag.rx ?? 6) : p[2] !== undefined ? p[2] * r.h : 10, ey = live ? Math.max(6, MARK.drag.ry ?? 6) : p[3] !== undefined ? p[3] * r.h : ex, er = ((live ? MARK.drag.rot ?? 0 : p[4] ?? 0) * Math.PI) / 180; mx.strokeStyle = kz === MARK.last && !live ? 'rgba(255,214,150,.9)' : 'rgba(216,228,255,.8)'; mx.lineWidth = 1.5; mx.beginPath(); mx.ellipse(r.x + p[0] * r.w, r.y + p[1] * r.h, ex, ey, er, 0, Math.PI * 2); mx.stroke(); mx.fillStyle = 'rgba(216,228,255,.8)'; mx.font = '12px "IBM Plex Mono"'; mx.fillText(kz, r.x + p[0] * r.w + 14, r.y + p[1] * r.h + 4); }
+  if (S.debug) { const rad = zoneRadii(r); for (const [kz, p] of Object.entries(zones())) { mx.strokeStyle = kz === SV.want ? 'rgba(140,255,170,.75)' : 'rgba(216,228,255,.25)'; mx.lineWidth = kz === SV.want ? 2 : 1; mx.beginPath(); mx.ellipse(r.x + p[0] * r.w, r.y + p[1] * r.h, rad[kz].rx, rad[kz].ry, rad[kz].rot ?? 0, 0, Math.PI * 2); mx.stroke(); } }
 }
 /* the zone marker (prototype tool): click the named points on the picture; the JSON travels with the picture as its sidecar */
 const MARK = { on: false, i: 0, names: ['toes', 'ball', 'arch', 'heel', 'edge'], pts: {} };
-function markStart() { MARK.on = true; MARK.i = 0; MARK.pts = {}; if (!SV) SV = svFresh(); SV.closeTarget = 1; SV.closeK = 1; $('#markPrompt').style.display = 'block'; $('#markPrompt').textContent = `press on the centre of: ${MARK.names[0]} · drag toward a corner for its width and height (Shift: a circle; a click: automatic)`; }
-function markDown(x, y) { const r = soleRect(); if (!r) return; MARK.drag = { x, y, rad: 0 }; MARK.pts[MARK.names[MARK.i]] = [+((x - r.x) / r.w).toFixed(3), +((y - r.y) / r.h).toFixed(3)]; }
+function markStart() { MARK.on = true; MARK.i = 0; MARK.pts = {}; if (!SV) SV = svFresh(); SV.closeTarget = 1; SV.closeK = 1; $('#markPrompt').style.display = 'block'; $('#markPrompt').textContent = `press on the centre of: ${MARK.names[0]} · drag toward a corner for its width and height, the wheel turns it (Shift: a circle; a click: automatic)`; }
+function markDown(x, y) { if (MARK.i >= MARK.names.length) { markFinish(); return; } const r = soleRect(); if (!r) return; MARK.last = null; MARK.drag = { x, y, rad: 0, rot: 0 }; MARK.pts[MARK.names[MARK.i]] = [+((x - r.x) / r.w).toFixed(3), +((y - r.y) / r.h).toFixed(3)]; }
 function markMove(x, y, circle) { const d = MARK.drag; if (!d) return; d.rad = Math.hypot(x - d.x, y - d.y); d.circle = circle; d.rx = circle ? d.rad : Math.max(6, Math.abs(x - d.x)); d.ry = circle ? d.rad : Math.max(6, Math.abs(y - d.y)); }
 function markUp() {
   const d = MARK.drag; if (!d) return; MARK.drag = null;
   const r = soleRect(); if (!r) return;
   const name = MARK.names[MARK.i];
-  if (d.rad > 8) MARK.pts[name] = d.circle ? [...MARK.pts[name].slice(0, 2), +Math.max(0.02, d.rad / r.h).toFixed(3)] : [...MARK.pts[name].slice(0, 2), +Math.max(0.015, d.rx / r.h).toFixed(3), +Math.max(0.015, d.ry / r.h).toFixed(3)];
+  if (d.rad > 8) MARK.pts[name] = d.circle ? [...MARK.pts[name].slice(0, 2), +Math.max(0.02, d.rad / r.h).toFixed(3)] : [...MARK.pts[name].slice(0, 2), +Math.max(0.015, d.rx / r.h).toFixed(3), +Math.max(0.015, d.ry / r.h).toFixed(3), d.rot ?? 0];
+  if (MARK.pts[name].length >= 4) MARK.last = name; // the wheel turns it until the next zone is started
   MARK.i += 1;
-  if (MARK.i >= MARK.names.length) {
-    S.zones = { ...MARK.pts }; MARK.on = false; SV.closeTarget = 0; $('#markPrompt').style.display = 'none';
-    const j = JSON.stringify({ slot: 'sole_close', fit: { height: S.closeH, y: S.closeY }, zones: S.zones }); navigator.clipboard?.writeText(j).catch(() => {}); $('#soleNote').textContent = j;
-  } else $('#markPrompt').textContent = `press on the centre of: ${MARK.names[MARK.i]} · drag toward a corner for its width and height (Shift: a circle; a click: automatic)`;
+  $('#markPrompt').textContent = MARK.i >= MARK.names.length
+    ? 'the wheel turns the last ellipse (Shift: finer) · a click anywhere: done'
+    : `press on the centre of: ${MARK.names[MARK.i]} · drag toward a corner for its width and height, the wheel turns it (Shift: a circle; a click: automatic)`;
 }
+function markFinish() {
+  S.zones = { ...MARK.pts }; MARK.on = false; MARK.last = null; SV.closeTarget = 0; $('#markPrompt').style.display = 'none';
+  const j = JSON.stringify({ slot: 'sole_close', fit: { height: S.closeH, y: S.closeY }, zones: S.zones }); navigator.clipboard?.writeText(j).catch(() => {}); $('#soleNote').textContent = j;
+}
+/* the wheel turns the ellipse being dragged, or the last one placed: 5° a notch, 1° with Shift */
+addEventListener('wheel', (e) => {
+  if (!MARK.on) return;
+  e.preventDefault();
+  const step = (e.shiftKey ? 1 : 5) * Math.sign(e.deltaY || e.deltaX);
+  if (MARK.drag && !MARK.drag.circle) MARK.drag.rot = ((MARK.drag.rot ?? 0) + step + 360) % 360;
+  else if (MARK.last && MARK.pts[MARK.last]?.length >= 4) { const z = MARK.pts[MARK.last]; z[4] = ((z[4] ?? 0) + step + 360) % 360; }
+}, { passive: false });
 
 /* ---------- the loop ---------- */
 const clockText = (m) => { const x = ((Math.round(m) % 1440) + 1440) % 1440; return `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`; };
