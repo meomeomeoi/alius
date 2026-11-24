@@ -134,6 +134,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <h4>her style</h4>
   <div class="row" id="styles"></div>
   <h4>tuning</h4>
+  <label>skill (endurance:jaw) <input type="range" id="skill" min="0" max="5" step="1" value="0"><span id="skillV">0</span></label>
   <label>fatigue × <input type="range" id="rate" min="0.3" max="1.5" step="0.05" value="1"><span id="rateV">1</span></label>
   <label>ring size <input type="range" id="ring" min="0.35" max="0.8" step="0.01" value="0.55"><span id="ringV">0.55</span></label>
   <label>session s <select id="len"><option value="45">45</option><option value="75" selected>75</option><option value="9999">endless</option></select></label>
@@ -188,6 +189,9 @@ const REST_DENIED = ['cruel', 'vindictive'];               // the engine's rest 
 /* ---------- the instrument's numbers ---------- */
 const MOUTH_H = [30, 170];   // the mouth's height in px, shut to wide open
 const WIDE_COST = 1.4;       // fatigue grows faster above her band (or above the ring): × (1 + WIDE_COST × excess / 0.4)
+const RELAXED = 0.35;        // the jaw resting just above her band's floor (on her toes, without the teeth) or on the ring costs this share
+const RELAX_ZONE = 0.06;     // how far above the floor counts as resting; from there the cost rises to 1 at her band's top
+const SKILL_CAP = 0.1;       // the engine's endurance skill: +10 % capacity a level (P15a §9.3), levels 0–5
 const TEETH_GAP = 0.015;     // under her band by this much the teeth touch her
 const REST_HOLD = 550;       // ms of Shift / the right button to ask
 const REST_MS = 4200;        // a granted rest
@@ -231,7 +235,7 @@ const LINES = {
 };
 
 /* ---------- settings ---------- */
-const S = { contact: 'sole_to_mouth', style: 'neutral', rate: 1, ring: 0.55, len: 75, sound: true, vol: 0.7, footH: 1.05, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
+const S = { contact: 'sole_to_mouth', style: 'neutral', rate: 1, skill: 0, ring: 0.55, len: 75, sound: true, vol: 0.7, footH: 1.05, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 const st = () => STYLES[S.style];
 const L = () => LINES[S.style];
 const C = () => CONTACTS[S.contact];
@@ -416,9 +420,9 @@ function herMove() {
     else if (r < 0.75) { G.order = 'suck'; G.orderT = 0; G.orderLen = rand(4000, 7000); say(pick(L().suck)); }
     else { G.order = 'wide'; G.orderT = 0; G.orderLen = rand(3000, 5000); say(pick(L().wide)); }
   } else {
-    if (!G.ask && r < s.ask) { const [q, w] = pick(L().ask); G.ask = { word: w, t: 0 }; say(q, { life: 4000 }); }
+    if (!G.ask && r < 0.4 + s.ask * 0.5) { const [q, w] = pick(L().ask); G.ask = { word: w, t: 0 }; say(q, { life: 4000 }); }
     else {
-      G.order = 'wide'; G.orderT = 0; G.orderLen = rand(4500, 7000); say(pick(L().wide));
+      G.order = 'wide'; G.orderT = 0; G.orderLen = rand(3000, 5000); say(pick(L().wide));
       // often she asks while she wants it wide: answer clearly (and break the order) or keep it wide (and be lost)
       if (!G.ask && Math.random() < 0.45) setTimeout(() => { if (G.phase === 'loop' && !G.ask) { const [q, w] = pick(L().ask); G.ask = { word: w, t: 0 }; say(q, { life: 4000 }); } }, 1600);
     }
@@ -480,17 +484,17 @@ function update(dt) {
   // her push (sole): springs toward her target
   G.push += ((G.pushTarget ?? 0) - G.push) * Math.min(1, dt / 260);
   // the jaw: a spring toward the mouse, minus the fatigue's pull; twitches closing; a tremor
-  const pull = 0.06 + 0.3 * Math.pow(f01, 1.5);
+  const pull = 0.04 + 0.18 * Math.pow(f01, 1.6);
   let goal = G.target - pull;
   if (G.resting > 0) goal = 0.06; // a rest: the mouth closes (the ring still holds it)
   const k = 70, d = 12;
   G.v += (k * (goal - G.jaw) - d * G.v) * dt / 1000;
   G.nextTwitch -= dt;
   if (G.nextTwitch <= 0 && G.resting <= 0) {
-    if (G.f > 25) { G.v -= rand(0.5, 1.1) * (0.4 + f01); G.stats.twitches += 1; SFX.twitch(0.5 + f01); }
-    G.nextTwitch = 1000 / (0.12 + 0.55 * f01 * f01) * rand(0.6, 1.4);
+    if (G.f > 25) { G.v -= rand(0.35, 0.8) * (0.3 + f01); G.stats.twitches += 1; SFX.twitch(0.5 + f01); }
+    G.nextTwitch = 1000 / (0.08 + 0.35 * f01 * f01) * rand(0.6, 1.4);
   }
-  G.jaw += G.v * dt / 1000 + (S.reduced ? 0 : (Math.random() * 2 - 1) * (0.002 + 0.02 * f01 * f01));
+  G.jaw += G.v * dt / 1000 + (S.reduced ? 0 : (Math.random() * 2 - 1) * (0.0015 + 0.012 * f01 * f01));
   const floor = S.contact === 'ring_gag' ? S.ring : 0;
   if (G.jaw < floor) { G.jaw = floor; if (G.v < 0) G.v *= -0.2; }
   G.jaw = clamp(G.jaw, 0, 1);
@@ -501,7 +505,7 @@ function update(dt) {
   G.teethCd -= dt;
   if (band && S.contact === 'sole_to_mouth' && G.resting <= 0 && G.jaw < band[0] - TEETH_GAP && G.teethCd <= 0) {
     G.stats.teeth += 1; G.teethCd = 1200; G.flashT = 0; SFX.teeth(); say(pick(L().teeth));
-    if (S.style === 'cruel' || S.style === 'vindictive') G.pushTarget = clamp((G.pushTarget ?? 0) + 0.06, 0, 0.35);
+    if ((S.style === 'cruel' || S.style === 'vindictive') && (G.pushTarget ?? 0) < 0.2) G.pushTarget = (G.pushTarget ?? 0) + 0.05; // she pushes in for the teeth, not past a point
   }
   // an order not kept: she corrects after a grace
   if (G.order && band && G.resting <= 0) {
@@ -515,9 +519,11 @@ function update(dt) {
     G.f = Math.max(0, G.f - (JAW_REST / REST_MS) * dt);
     if (G.resting <= 0) say(pick(L().slack));
   } else {
-    const top = band ? band[1] : (S.contact === 'ring_gag' ? S.ring + 0.04 : 0.6);
-    const excess = Math.max(0, G.jaw - top);
-    G.f = Math.min(100, G.f + (JAW_PER / BEAT) * dt * S.rate * (1 + WIDE_COST * excess / 0.4));
+    // what holding it open costs: resting on her toes (without the teeth) or on the ring is cheap; each step higher costs more; wide open costs most
+    const relaxed = S.contact === 'ring_gag' ? S.ring : 0.42 + G.push;
+    const above = G.jaw - relaxed - RELAX_ZONE;
+    G.cost = RELAXED + (1 - RELAXED) * clamp(above / 0.25, 0, 1) + WIDE_COST * Math.max(0, above - 0.25) / 0.4;
+    G.f = Math.min(100, G.f + (JAW_PER / BEAT) * dt * S.rate * G.cost / (1 + SKILL_CAP * S.skill));
   }
   // at the end of the jaw: her release by her limit (cruel and vindictive hold on a little longer)
   if (G.f >= 100) { G.limitT += dt; if (G.limitT > (REST_DENIED.includes(S.style) ? 6000 : 600)) finish('her limit'); }
@@ -551,8 +557,9 @@ function render(now, dt) {
   const m = $('#mouth');
   m.style.height = `${h.toFixed(1)}px`;
   m.style.transform = `translate(-50%, 50%) translate(${tremble.toFixed(1)}px, 0)`;
-  m.style.setProperty('--ache', smooth(25, 95, G.f).toFixed(3));
-  $('#inputWrap').style.setProperty('--ache', smooth(25, 95, G.f).toFixed(3));
+  // the hinges burn with what holding costs right now (resting is quiet), and more as the jaw tires
+  const burn = clamp(0.15 + 0.85 * smooth(10, 95, G.f), 0, 1) * clamp(((G.cost ?? RELAXED) - 0.2) / 1.2, 0.12, 1) * (0.9 + 0.1 * Math.sin(now / 140));
+  $('#inputWrap').style.setProperty('--ache', (G.phase === 'loop' && G.resting <= 0 ? burn : 0).toFixed(3));
   $('#inputWrap').style.borderColor = G.flashT !== undefined && G.flashT < 300 ? 'rgba(255,120,90,.9)' : 'rgba(255,255,255,.12)';
   if (G.flashT !== undefined) G.flashT += dt;
   // her band as ghost frames on the mouth: the floor and the ceiling of her band
@@ -612,6 +619,7 @@ function render(now, dt) {
   if (S.debug) {
     $('#debug').textContent = `jaw ${G.jaw.toFixed(2)}  target ${G.target.toFixed(2)}  fatigue ${G.f.toFixed(1)}\nband ${G.band ? G.band.map((x) => x.toFixed(2)).join('–') : '—'}  order ${G.order ?? '—'}  push ${G.push.toFixed(2)}\n`
       + `resting ${Math.max(0, G.resting).toFixed(0)}  ask ${G.ask ? G.ask.word || '(any)' : '—'}  next move ${(G.nextMove / 1000).toFixed(1)} s\n`
+      + `cost ×${(G.cost ?? 0).toFixed(2)}  skill ${S.skill}\n`
       + `teeth ${G.stats.teeth}  corrections ${G.stats.corrections}  twitches ${G.stats.twitches}`;
   }
 }
@@ -647,6 +655,7 @@ const contactNote = () => { $('#contactNote').textContent = C().note; };
 opts($('#contacts'), Object.keys(CONTACTS), () => S.contact, (v) => { S.contact = v; contactNote(); begin(); });
 opts($('#styles'), Object.keys(STYLES), () => S.style, (v) => { S.style = v; });
 contactNote();
+$('#skill').oninput = () => { S.skill = Number($('#skill').value); $('#skillV').textContent = $('#skill').value; };
 $('#rate').oninput = () => { S.rate = Number($('#rate').value); $('#rateV').textContent = S.rate.toFixed(2); };
 $('#ring').oninput = () => { S.ring = Number($('#ring').value); $('#ringV').textContent = S.ring.toFixed(2); };
 $('#len').onchange = () => { S.len = Number($('#len').value); };
