@@ -143,13 +143,31 @@ The frame only decides whether she holds at all (the holder directive exists fro
   - care from the commander (unasked care, `time_together`, a kept promise in the pair): `warmth` +;
   - a first practice of a kind that ended well: `curiosity` + (with `drawnBy` `discovery`: more); the same kind many times in a row: `curiosity` −;
   - her own days (P14c): bad events push `warmth` −, a good stretch `warmth` +;
-  - Regard falling low: `warmth` −; rising high: `warmth` +.
+  - Regard falling low: `warmth` −; rising high: `warmth` +;
+  - the commander keeps her forms well (a protocol kept, thanks given when she expects them, a ritual or ceremony step done right): `order` + (author, 2026-11-24: an obedient commander must be able to pull her toward forms too, not only a defiant one she respects).
+- **What draws her drifts too** (author, 2026-11-24): `drawnBy` gains a second entry, swaps its first and second, or replaces its second, at the same pace (one change at most every 28 days of the dynamic, only through the review, only past the accumulator's threshold). Accumulators (`developmentRules`, axis `manner:drawn_by.<kind>`, `AUTHOR TO TUNE`): the commander yields readily → `power`; the commander shows a lot (physics slips that are not cheats, words that slip out) → `reaction`; clean executions → `discipline`; first practices that went well → `discovery`; holds endured past the warning → `pain`. The kind with the highest accumulator that is not already first becomes the candidate; a candidate never pushes out the first entry directly (it becomes second, and may become first at a later step).
 - **Pace** (author: a real turn in about two months, and only when steered): an axis moves **one step at a time**, only through the weekly review (the model proposes, `validateReview` checks), only when its accumulator passed the threshold, and **at most one step per axis per 28 days of the dynamic** (from its first `play`). Two steps on one axis therefore need about two months of steady push; with no push, nothing moves.
 - Each step is a **development moment**: quiet, no toast; the next scene with her carries a one-time directive ("she is harder than she was"); the dossier line comes after that scene (P14b ruling).
 
 **Who proposes:** the engine, deterministically, when an axis is eligible (its accumulator past the threshold, 28 days since its last step) or a turn is due; the weekly review may word it and may decline it with a reason, and `fallbackReview` (when the model fails) applies it as proposed, so a campaign whose reviews fail still drifts (controller's call). **Where it is written:** as a drift overlay in `unit.development.practice` (`manner` steps and, after a turn, `primary`), never in `bond.practice`, so the readers fold it in, UNDO and "since joining" read it as every P14b drift, and the import baseline stays the imported profile; `discreteCap` does not apply to manner axes (their pace rule above is their cap).
 
-**The turn of her style.** Each style row gains its own place on the axes (`practiceStyles[].manner`: six integers −3 … +3, `AUTHOR TO TUNE`), so a holder's absolute place is her style's place plus her axes. When that place is **closer to another style's place than to her own** by `turn.margin` (distance: the sum of the absolute differences over the six axes), for two weekly reviews in a row, and at least `turn.days` (56) since the dynamic began or since her last turn, the review may propose a **turn**: her primary becomes that style (her former primary becomes her secondary when she had none or it was further), her axes are rebased (in the overlay) so her absolute place does not jump (clamped to ±2), and it is a development moment with its scene. A turn is rare by construction: it needs axes far from the middle, which need months.
+**The turn of her style.** Each style row gains its own place on the axes (`practiceStyles[].manner`: six integers −3 … +3), so a holder's absolute place is her style's place plus her axes. These places are **hidden coordinates with no words** (author): only her own axes (−2…+2, her departure from her style) are ever shown or worded; the wider scale keeps the extreme styles beyond what any holder's departure reaches. The places (author, 2026-11-24), with each style's nearest neighbours (the turns that are near):
+
+| style | intensity | warmth | order | voice | tempo | curiosity | nearest |
+|---|---|---|---|---|---|---|---|
+| `affectionate` | −1 | +3 | 0 | +1 | −1 | 0 | possessive, regal, playful |
+| `playful` | −1 | +1 | −2 | +2 | +1 | +2 | obsessive, affectionate, cruel |
+| `regal` | +1 | 0 | +2 | +1 | −1 | −1 | drill, possessive, ritual |
+| `ritual` | +1 | −1 | +3 | −1 | −1 | −2 | regal, vindictive, cold |
+| `drill` | +2 | −1 | +2 | +2 | +1 | −1 | regal, cruel, possessive |
+| `clinical` | +1 | −2 | +1 | 0 | 0 | +3 | cold, cruel, vindictive |
+| `possessive` | +1 | +2 | 0 | +1 | 0 | −1 | affectionate, regal, obsessive |
+| `obsessive` | +2 | +1 | −2 | +1 | +2 | 0 | cruel, playful, possessive |
+| `cold` | +1 | −3 | +1 | −3 | 0 | −1 | vindictive, clinical, ritual |
+| `vindictive` | +3 | −2 | +1 | −1 | −1 | −1 | cold, ritual, regal |
+| `cruel` | +3 | −2 | −1 | +1 | +1 | +1 | obsessive, clinical, drill |
+
+**The author's arc, as a check:** she starts `affectionate` (interest in the commander, tender as she probes); the commander yields readily and keeps her forms (`intensity` +, `warmth` −, `order` +), her first practices go well (`curiosity` +), and what draws her moves from `reaction` toward `power` and `discovery`. At `intensity` +2, `warmth` −2, `order` +2 her place (+1, +1, +2, +1, −1, 0) is 2 from `regal` and 6 from `affectionate`: a turn. Rebased, she is "regal, soft underneath, curious": vain, wanting to be served and admired, with softness and an openness to the new. When that place is **closer to another style's place than to her own** by `turn.margin` (distance: the sum of the absolute differences over the six axes), for two weekly reviews in a row, and at least `turn.days` (56) since the dynamic began or since her last turn, the review may propose a **turn**: her primary becomes that style (her former primary becomes her secondary when she had none or it was further), her axes are rebased (in the overlay) so her absolute place does not jump (clamped to ±2), and it is a development moment with its scene. A turn is rare by construction: it needs axes far from the middle, which need months.
 
 **The secondary's line drift** (`practice:style.secondary` along the gentle-to-harsh line of P15 R6) is retired going forward: it mixed kinds ("ritual → drill → clinical" is not "harder"). A secondary already drifted stays as it is; from now on the secondary changes only at a turn. The `developmentAxes` row stays readable for old saves and is never proposed again.
 
@@ -223,7 +241,7 @@ The frame only decides whether she holds at all (the holder directive exists fro
 ## Open decisions (author)
 
 - ~~The words of the axes' ends and of `drawnBy`~~ (decided, §1, §2); the `up` / `down` words of the six development rows (`AUTHOR TO WRITE`).
-- Each style's place on the axes (`practiceStyles[].manner`), which decides which turns are near and which are far.
+- ~~Each style's place on the axes~~ (decided, §7).
 - The `mood` of each `lifeEvents` row.
 
 ## Interfaces already provided by P15 (implemented — use, do not rebuild)
