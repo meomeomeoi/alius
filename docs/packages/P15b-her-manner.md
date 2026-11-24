@@ -93,10 +93,15 @@ Everything else that reads the style word (Regard, compatibility, her reading of
 
 ## 4. The mood of the day
 
-A session takes the colour of her day (P14c), for a holder with a `manner` block only. `moodOf(state, unitId, day)` adds to `intensity`, `warmth` and `tempo` for that day only, never past ±2 after the sum:
+A session takes the colour of her day (P14c), for a holder with a `manner` block only. `moodOf(state, unitId, day)` adds to `intensity`, `warmth`, `tempo` (and, on a low day, `voice`) for that day only, never past ±2 after the sum:
 
 - **Volatility** (`temperamentOf`): `moody` gives each of the three a hashed −1, 0 or +1 a day (`dynamicHash(…, 'mood:<axis>:<day>')`); `steady` gives nothing.
-- **Her day:** a `life_event` of that day with a mood moves them (bad: `warmth` −1, `intensity` +1; good: `warmth` +1, `tempo` −1). `lifeEvents` rows gain an optional `mood: 'good' | 'bad'` (absent: no effect); the author fills it.
+- **Her day** (author, 2026-11-24): a `life_event` of that day with a mood moves them. `lifeEvents` rows gain an optional `mood` (absent: no effect), three kinds because grief and irritation act differently:
+  - `good` (`warmth` +1, `tempo` −1): `found_something`, `music_found`, `good_sleep`, `made_up_with_unit`, `late_night_talk`, `gift_from_unit`, `praise_from_leader`, `letter_received`, `promotion_rumour`, `sparring_win`, `finished_book`, `plant_progress`, `learned_trick`, `cooked_something`, `song_stuck`, `stray_found`, `won_at_cards`;
+  - `irritated` (`warmth` −1, `intensity` +1): `broke_favourite_thing`, `things_touched`, `bored`, `argued_with_unit`, `snubbed`, `quartermaster_row`, `reprimand`, `weapon_broke`, `sparring_loss`, `ration_cut`, `lost_at_cards`, `restless_before_run`, `hurt_in_training`, `firmware_glitch`;
+  - `low` (`intensity` −1, `voice` −1): `old_photo`, `nightmare`, `sick_day`, `body_ache`, `firmware_update`, `cried_alone`, `memory_flash`, `corp_news`, `letter_none`, `grunt_lost`, `anniversary_of_loss`, `bloom_sighting`, `rumour_heard`;
+  - no mark (ambiguous: `vat_day` may be light or heavy, `dreamt_of_commander` touches her view of the commander rather than her mood): `outfit_change`, `hair_cut`, `weather_mood`, `wrote_journal`, `new_scar`, `vat_day`, `dreamt_of_commander`.
+  Several moods on one day add up (each axis still within ±2 after the sum); `voice` joins the axes the mood may move.
 - **A failed run** that day (P9b `failed_run`, as `vindictive` already surfaces on): `warmth` −1.
 
 The mood is never shown as a value: it shows in how she acts (the directive words it as her state today, §6) and in the numbers.
@@ -208,7 +213,7 @@ The frame only decides whether she holds at all (the holder directive exists fro
 | cue lines per segment by `voice` | −2: none but the needed; −1: half; +1: ×1.5; +2: ×2 |
 | `drawnBy` favour bonus | +1 on the matching outcome (main), +0.5 (second) |
 | a request for something new by `curiosity` | −2, −1, 0: 0 (nothing changes); +1: 0.2; +2: 0.4 |
-| mood | moody: −1/0/+1 a day on three axes; a bad day: warmth −1, intensity +1; a good day: warmth +1, tempo −1; a failed run: warmth −1 |
+| mood | moody: −1/0/+1 a day on intensity, warmth, tempo; `good`: warmth +1, tempo −1; `irritated`: warmth −1, intensity +1; `low`: intensity −1, voice −1; a failed run: warmth −1 |
 | drift | one step per axis at most every 28 days of the dynamic; the accumulator threshold per step like P14b's discrete fields |
 | turn | `margin` 2 (absolute distance units), two reviews in a row, `days` 56 |
 | contrast | `gossipChance` × 1 (low), × 1.3 (mid), × 1.6 (high), capped at 0.9 |
@@ -242,7 +247,7 @@ The frame only decides whether she holds at all (the holder directive exists fro
 
 - ~~The words of the axes' ends and of `drawnBy`~~ (decided, §1, §2); the `up` / `down` words of the six development rows (`AUTHOR TO WRITE`).
 - ~~Each style's place on the axes~~ (decided, §7).
-- The `mood` of each `lifeEvents` row.
+- ~~The `mood` of each `lifeEvents` row~~ (decided, §4).
 
 ## Interfaces already provided by P15 (implemented — use, do not rebuild)
 
