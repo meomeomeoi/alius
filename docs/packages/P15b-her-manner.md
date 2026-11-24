@@ -44,6 +44,17 @@ Six axes over the style, each an integer **−2 … +2** on her practice profile
 
 An absent `manner` (old saves, a profile imported before this package) reads as all zeros.
 
+**The words** (author, 2026-11-24; the directive and the dossier; an axis at 0 says nothing):
+
+| axis | −2 | −1 | +1 | +2 |
+|---|---|---|---|---|
+| `intensity` | gentle, she never pushes hard | measured | she pushes hard | all the way, holding nothing back |
+| `warmth` | cold through and through, no comfort after | cool, little comfort | soft underneath, she looks after the commander afterwards | tender under it all, she comforts the commander afterwards |
+| `order` | on impulse, never the same twice | loose with forms | fond of forms and counting | everything by ritual: counted, announced, in its order |
+| `voice` | silent, a look instead of a word | few words | talkative while she does it | talks the whole way through: narrating, asking, teasing |
+| `tempo` | slow, she draws everything out | unhurried | quick | sudden: no warning, it simply happens |
+| `curiosity` | keeps to what she knows | rarely tries something new | curious, likes to try new things | explores everything she can think of, to the full |
+
 ## 2. What draws her
 
 `bond.practice.drawnBy`: one or two of **`pain`**, **`power`**, **`reaction`**, **`discipline`**, **`discovery`** (the first is the main one). It says what she seeks and rewards, not how she acts:
@@ -53,6 +64,8 @@ An absent `manner` (old saves, a profile imported before this package) reads as 
 - `reaction`: what the commander shows; she rewards the visible response (a gasp, a flinch she allowed, words that slip out).
 - `discipline`: correctness; she rewards a clean execution.
 - `discovery`: the new; she rewards a first time, and is bored by repetition.
+
+In the directive (author): `pain` "the hurt itself", `power` "the commander giving way to her", `reaction` "what the commander shows: every gasp, every flinch", `discipline` "it done right, cleanly", `discovery` "the new, the first time". Example: "Her manner is cruel: slow, silent, tender under it all. What draws her is the commander giving way to her."
 
 The author's example "hard, exploring her interests to the full": `intensity` +2, `curiosity` +2, `drawnBy: ['discovery']`.
 
@@ -209,7 +222,7 @@ The frame only decides whether she holds at all (the holder directive exists fro
 
 ## Open decisions (author)
 
-- The words of the axes' ends and of `drawnBy` for the directive, the `up` / `down` words of the six development rows (`AUTHOR TO WRITE`).
+- ~~The words of the axes' ends and of `drawnBy`~~ (decided, §1, §2); the `up` / `down` words of the six development rows (`AUTHOR TO WRITE`).
 - Each style's place on the axes (`practiceStyles[].manner`), which decides which turns are near and which are far.
 - The `mood` of each `lifeEvents` row.
 
