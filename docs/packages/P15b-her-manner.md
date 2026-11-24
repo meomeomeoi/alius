@@ -104,16 +104,19 @@ Written once at import (§8), editable in the dossier; texts never give the comm
 - **Her everyday face:** `bond.practice.everyday`, one line (≤ 160 characters) of how she is outside the dynamic and how the squad sees her ("a bit of a loner, but always helps; kind and odd"). From the card and her temperament at import; editable. Sincere: it is her, not a cover.
 - **Her face in the dynamic:** the style pair, the axes, `drawnBy`, the quirks.
 
-**Which face a scene shows** (`faceNow(state, reg, unitId) → 'private' | 'everyday' | 'mask'`), decided per scene from the frame, who is present and who knows:
+**Which face a scene shows** (author, 2026-11-24: who is present and whether they know decides it, not the frame; `faceNow(state, reg, unitId) → 'dynamic' | 'dynamic_to_commander' | 'everyday' | 'mask'`):
 
-| frame | private (no one but she and the commander is present, or a practice, physics or dynamic moment of hers runs) | others present who know (`knows_dynamic`, or the relation is `public`) | others present who do not know |
-|---|---|---|---|
-| `play` | dynamic | everyday | everyday |
-| `role` | dynamic | dynamic, carried by protocol and tasks | everyday, with hints only the commander catches |
-| `rule` | dynamic | dynamic | `mask` when publicity is `secret`: she acts as if all is ordinary between them; otherwise everyday with her word still standing |
+| who is present besides her and the commander | her `audience` allows it before them | face |
+|---|---|---|
+| no one (or a practice, physics or dynamic moment of hers runs) | — | `dynamic`: her manner toward the commander |
+| only people who know (`knows_dynamic` about her, or the relation's publicity is `public`) | yes: `show_off`, `indifferent`, or `select_few` when every one of them is among her few (`pickAudience`'s `select_few` set: the squad's leader and the units close to the commander) | `dynamic_to_commander`: her manner toward the commander, her everyday self toward the others |
+| only people who know | no (`private_only`, or `select_few` and someone is not among her few) | `everyday` |
+| anyone who does not know | — | `everyday`; `mask` when the relation's publicity is `secret`: she keeps up the appearance that all is ordinary between them |
+
+The frame only decides whether she holds at all (the holder directive exists from `play`); within it, the face is the same at `play`, `role` and `rule`.
 
 - **What the face governs** (controller's call): the standing lines about her, which would otherwise show the dynamic to people who should not see it: the holder directive (all of it, not only the style line: the frame, claims, compromat, a remembered refusal, a waiting milestone, the Regard tone), the probe line and the offer line. Directives of something that is actually running (`practice:`, `physics:`, `moment:`, an override being argued, the Leash block) are left alone: if it runs before others, it shows, and P15's signs already count that. At frame `equal` there is no everyday line (her card is enough until she holds).
-- **The holder directive** (`src/dynamic/directives.ts`, `holderDirective`) takes its manner from the face: `dynamic` gives the style line (§3's words of the axes, `drawnBy`, the mood of the day); `everyday` gives her everyday line and "nothing of the dynamic shows" in place of the whole holder directive (at `role`: "only small signs the commander would catch"); `mask` gives her everyday line and "she keeps up the appearance that all is ordinary between them". Today the manner line goes into every scene she is in at `play` or beyond; this is the fix.
+- **The holder directive** (`src/dynamic/directives.ts`, `holderDirective`) takes its manner from the face: `dynamic` gives the style line (§3's words of the axes, `drawnBy`, the mood of the day); `dynamic_to_commander` gives it toward the commander and her everyday line toward the others present; `everyday` gives her everyday line and "nothing of the dynamic shows" in place of the whole holder directive; `mask` gives her everyday line and "she keeps up the appearance that all is ordinary between them". Today the manner line goes into every scene she is in at `play` or beyond; this is the fix.
 - **The switch:** when a scene turns from everyday to dynamic with her in it, her `switch` quirk is offered once.
 - **The contrast** (`bond.practice.contrast`: `low | mid | high`, judged at import from the two faces): it scales P15's own gossip about her (`gossip()` in `dynamic/knowledge.ts`: `gossipChance` × the contrast factor, capped at 0.9; the sign amount and `gossipCap` unchanged) (controller's call; the `knows_dynamic` facts carry no P3b spread and gain none). A high contrast is talked about. The dossier shows both faces side by side.
 
@@ -186,7 +189,7 @@ Written once at import (§8), editable in the dossier; texts never give the comm
 2. `drawnBy` changes what she rewards and asks for; `curiosity` changes how often she brings something new.
 3. A moody holder's sessions differ from day to day; a bad day of hers shows in the numbers and in one clause of the directive.
 4. Quirks reach the prompt only by trigger, once, and leave once voiced.
-5. The holder directive follows the face table: at `play` her manner shows only in private; at `rule` with a secret relation before others she keeps the appearance; the everyday line stands otherwise.
+5. The holder directive follows the face table: alone, her manner; before people who all know and before whom her `audience` lets her, her manner toward the commander and her everyday self toward them; otherwise her everyday self, keeping up appearances when the relation is secret.
 6. The contrast scales P15's gossip chance about her.
 7. An axis moves at most one step per 28 days and only with its accumulator past the threshold; with no push nothing moves; a turn needs two reviews in a row past the margin and 56 days, rebases the axes, and is a quiet development moment.
 8. Import fills the new fields, validates them, honours locks; the dossier shows and edits them; every new field has `data-analyze` and a glossary entry.
@@ -196,7 +199,7 @@ Written once at import (§8), editable in the dossier; texts never give the comm
 ## Calls made by the controller after the builder check (2026-11-24; the author may overrule any)
 
 - P15b comes after the port of P10e chunk (e) and bends the engine fields that port creates; a missing field is reported, not invented.
-- "Private" is: no one but she and the commander present, or a practice, physics or dynamic moment of hers running (P15a's `blockingLive` is not used: it ignores who else is there).
+- The face (corrected by the author): alone, her manner; before people who all know and before whom her `audience` lets her (`select_few`: P16's `pickAudience` set), her manner toward the commander only; otherwise her everyday self (a mask when the relation is secret). The frame does not change it. P15a's `blockingLive` is not used (it ignores who else is there).
 - The face governs every standing line about her (the whole holder directive, the probe and offer lines); running things (`practice:`, `physics:`, `moment:`, an argued override, the Leash block) are untouched; no everyday line at `equal`.
 - Curiosity at 0 or below changes nothing; "something new" is a hashed filter on the seed pool, not only a word in the brief.
 - At `order` +2 a holder of any style runs a ceremony with the `ritual` steps.
