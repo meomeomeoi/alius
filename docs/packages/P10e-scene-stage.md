@@ -350,14 +350,22 @@ Smaller ones: the deep inhale (in scent), `pet` (breath's kin), the long kiss (w
 - **Sound:** recorded CC0 (the author's pick: a bright thwack at half the level, a light swish, her clothes from `her_activity`, the commander's breath from `saturation`); the ringing synthesised.
 - **Engine (for the plan of chunk (e)):** the results change meaning (a press braces or burns its try; only a turned face is `flinched`), `windowMs` becomes the swing's length and the brace band is the same for every style, unannounced loses its raised hand, her hand's side is new (hashed); the README lists them.
 
+**The jaw (P15a `jaw`; designed with the author on 2026-11-24 and approved in a live prototype after three rounds the same day: `docs/prototypes/jaw.html`, normative, its README lists what to port, what is prototype-only and the open engine questions).** The body and the speech on one axis (author: all together).
+- **The input field is the mouth:** its frame opens with the jaw, her band is a ghost frame on it, its ends (the hinges) burn with what holding costs, drool gathers on its lower edge and drips, the letters smear from fatigue 70.
+- **The mouse's height is the jaw** (down opens); fatigue pulls it shut (a spring, a tremor, closing twitches). **Holding is a craft** (author, round 2): resting just above her toes or on the ring costs a third of the engine's rate, higher costs more, wide open most; the endurance skill adds capacity.
+- **Her toes** (`sole_to_mouth`): no speech; below her band the teeth touch her (one touch a dip, her word at most every 7 s, round 3); she pushes deeper, pulls back, orders "suck." (a narrow band just above her) or "wider." (never past 0.9, and the mouse reaches past wide open so a tired jaw can follow, round 3).
+- **The ring gag** (`ring_gag`): every letter is spoken through the opening it was typed at (lips fail first, then the tongue's tip, then its back); she listens fairly (as clear as the ring allows) and often asks while she wants it wide: answer clearly or keep the order.
+- **A rest** is asked by holding Shift or the right button (the engine's rule: cruel and vindictive refuse); a holder who refuses releases at her limit.
+- `oral_service` waits for P17b (its depth and rhythm).
+
 **Next steps of the session (in order):**
 1. ~~A **live prototype** of breathing~~ (done 2026-11-23; the results are above).
-2. The other mini-games, one by one (breathing, weight, scent, `her_activity`, foot service under the desk and the slap done; next: `jaw`, then boot service, `gulp`. **The posture call waits for P16b** (author, 2026-11-24): its game is P16b's points, drift and presets, so it is designed in P16b's session; chunk (e) only restyles P16's existing call card in step 3 (her word large in her hand, the timer as her foot tapping, the choices as a fan of mannequin cards: a card is clicked whole, so §15's rule against fast clicks on the mannequin holds)), from the controller's idea list of 2026-11-23 (several per game, mixable). The author has not picked these yet:
+2. The other mini-games, one by one (breathing, weight, scent, `her_activity`, foot service under the desk, the slap and the jaw done; next: boot service, then `gulp`. **The posture call waits for P16b** (author, 2026-11-24): its game is P16b's points, drift and presets, so it is designed in P16b's session; chunk (e) only restyles P16's existing call card in step 3 (her word large in her hand, the timer as her foot tapping, the choices as a fan of mannequin cards: a card is clicked whole, so §15's rule against fast clicks on the mannequin holds)), from the controller's idea list of 2026-11-23 (several per game, mixable). The author has not picked these yet:
    - **weight:** a level bubble in a glass vial while the frame tilts; her own PDA screen above the commander (peeking is a slip); cracks at the edges;
    - **saturation:** a coloured haze with her perception words drifting in it; a rising tide;
    - **tongue work:** scratching grime off her boot or foot, which needs the author's art (SVG objects are excluded), plus her magnifier at the end;
    - **her activity:** her report's pages turning; her screen;
-   - **jaw:** smeared, doubled letters and a spring of tension around the input;
+   - ~~**jaw:** smeared, doubled letters and a spring of tension around the input~~ (built, above: the input is the mouth);
    - **gulp:** to design;
    - ~~**slap:** the camera snaps to her face, feints as twitches of her shoulder, a red flash and a fading red vignette~~ (built, above);
    - **posture call:** her word written large across the screen, the timer as her foot tapping, choices as a fan of mannequin cards (only as the restyle of step 3; the game waits for P16b).

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   P10e chunk (e) reference prototype: JAW (P15a `jaw`, gesture: fatigue fills while the mouth is held open; a rest can be asked for).
-  Draft for the author's rounds (not yet approved). The body and the speech on one axis:
+  Approved by the author on 2026-11-24 after three rounds; NORMATIVE (docs/prototypes/README.md says what to port). The body and the speech on one axis:
   - the mouse, up and down, is how far the jaw is open; fatigue pulls it shut (a spring, a tremor, twitches);
   - the input field is the mouth: its frame opens with the jaw, her band is a ghost frame on it, the hinges ache, drool gathers on its lower edge;
   - her toes in the mouth (`sole_to_mouth`): no speech; below her band the teeth touch her; she pushes deeper, pulls out, says "suck." (a narrow band just above her);
@@ -188,7 +188,7 @@ const JAW_PER = 8, DEGRADE_AT = 70, JAW_REST = 30;        // fatigue a beat, fro
 const REST_DENIED = ['cruel', 'vindictive'];               // the engine's rest rule
 /* ---------- the instrument's numbers ---------- */
 const MOUTH_H = [30, 170];   // the mouth's height in px, shut to wide open
-const WIDE_COST = 1.4;       // fatigue grows faster above her band (or above the ring): × (1 + WIDE_COST × excess / 0.4)
+const WIDE_COST = 1.4;       // above the costly zone (0.25 over the resting zone) the cost grows by WIDE_COST per 0.4 more
 const RELAXED = 0.35;        // the jaw resting just above her band's floor (on her toes, without the teeth) or on the ring costs this share
 const RELAX_ZONE = 0.06;     // how far above the floor counts as resting; from there the cost rises to 1 at her band's top
 const SKILL_CAP = 0.1;       // the engine's endurance skill: +10 % capacity a level (P15a §9.3), levels 0–5
