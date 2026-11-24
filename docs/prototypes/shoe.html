@@ -66,7 +66,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 .card .hand { font: 32px Caveat, cursive; color: var(--her); margin: 6px 0 14px; }
 .card .facts { font: 13px "IBM Plex Mono", monospace; color: var(--dim); line-height: 1.7; }
 .btn { display: inline-block; margin-top: 12px; padding: 9px 18px; border-radius: 20px; border: 1px solid var(--line); background: rgba(255,255,255,.06); color: var(--ink); font: 14px Inter, sans-serif; cursor: pointer; }
-#panel { position: fixed; top: 14px; right: 14px; width: 320px; max-height: calc(100vh - 140px); overflow: auto; padding: 14px 16px; border-radius: 14px; z-index: 50;
+#panel { position: fixed; top: 14px; right: 14px; width: 320px; max-height: calc(100vh - 40px); overflow: auto; padding: 14px 16px; border-radius: 14px; z-index: 70;
   background: rgba(10, 10, 14, .84); border: 1px solid var(--line); font: 12px "IBM Plex Mono", monospace; color: #cfcbe0; }
 #panel.hidden { display: none; }
 #panel h4 { margin: 12px 0 6px; font-weight: 400; color: #8d88a6; font-variant: small-caps; letter-spacing: .08em; }
@@ -126,6 +126,8 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <div class="note">Both feet: the camera frames one shoe and pans to the other when she changes feet; each shoe has its own zones (mark them with the foot selected). Her right foot is on the viewer's left.</div>
   <label>view <select id="viewSel"><option value="close">close (outer)</option><option value="inner">close (inner, mirrored)</option><option value="sole">sole</option></select></label>
   <label>height <input type="range" id="fitH" min="0.4" max="3" step="0.01" value="0.68"><span id="fitHV">0.68</span></label>
+  <label>x <input type="range" id="fitX" min="-0.5" max="0.5" step="0.01" value="0"><span id="fitXV">0.00</span></label>
+  <label>top fade <input type="range" id="fitF" min="0" max="0.8" step="0.01" value="0.25"><span id="fitFV">0.25</span></label>
   <label>y <input type="range" id="fitY" min="-0.6" max="0.9" step="0.01" value="0.48"><span id="fitYV">0.48</span></label>
   <div class="row"><button class="opt" id="markZones">mark zones</button><button class="opt" id="copyFit">copy the fit</button></div>
   <div class="note" id="sideNote"></div>
@@ -147,7 +149,8 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <b>Drag</b> on them with the tongue: scrub or stroke to clean, along her grain; on clean leather, <b>slow long strokes</b> bring up a shine. A press held still: a kiss.<br>
   The mouth dries and fills with grit: <kbd>Space</kbd> swallows it; <kbd>X</kbd> or the right button spits it aside, if she is not looking.<br>
   She turns her foot, lifts the sole, changes feet. At the end she holds it to the light. <kbd>Esc</kbd> stop word · <kbd>H</kbd> panel.
-  <div><span class="btn" id="go">begin</span></div>
+  <div><span class="btn" id="go">begin</span> <span class="btn" id="setup">set up first</span></div>
+  <div style="font-size:13px;color:var(--dim);margin-top:8px">Set up: choose the view and the foot, fit each picture (height, x, y, top fade), mark its zones; then <i>restart</i> in the panel begins.</div>
 </div></div>
 
 <script>
@@ -230,7 +233,7 @@ const LINES = {
 /* ---------- settings ---------- */
 const S = { kind: 'boots', dirt: 'mud', style: 'neutral', busy: 'auto', sound: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
   two: { boots_close: false, heels_close: false },
-  fit: { boots_close: { h: 0.68, y: 0.48, xr: 0.38, xl: 0.62 }, boots_sole: { h: 0.78, y: 0.5 }, heels_close: { h: 0.68, y: 0.48, xr: 0.38, xl: 0.62 }, heels_sole: { h: 0.78, y: 0.5 } }, zones: {} };
+  fit: { boots_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, boots_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2 }, heels_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, heels_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2 } }, zones: {} };
 const ST = () => STYLES[S.style] ?? STYLES.neutral;
 const L = () => LINES[S.style] ?? LINES.neutral;
 const D = () => DIRTS[S.dirt];
@@ -368,7 +371,7 @@ function shoeRect() {
   const k = G.fx.s * (1 + 0.1 * G.press);
   // both feet in one picture: the camera centres the foot being served (and pans when she changes feet)
   G.camU = lerp(G.camU ?? (twoFeet() ? footX() : 0.5), twoFeet() ? footX() : 0.5, 0.08);
-  const cx = innerWidth / 2 + G.fx.dx - (G.camU - 0.5) * Wd * k, cy = innerHeight * fit.y + G.fx.dy;
+  const cx = innerWidth / 2 + (fit.x ?? 0) * innerWidth + G.fx.dx - (G.camU - 0.5) * Wd * k, cy = innerHeight * fit.y + G.fx.dy;
   return { x: cx - (Wd * k) / 2, y: cy - (H * k) / 2, w: Wd * k, h: H * k };
 }
 /* a point on screen → the picture's own coordinates (0–1), undoing the mirror */
@@ -602,6 +605,8 @@ function render(now) {
   const wrap = $('#shoeWrap');
   if (r) {
     wrap.style.left = `${r.x}px`; wrap.style.top = `${r.y}px`; wrap.style.width = `${r.w}px`; wrap.style.height = `${r.h}px`;
+    const fade = S.fit[slotKey()].fade ?? 0; // the top of the picture (her legs cut off) dissolves into the blurred room
+    wrap.style.webkitMaskImage = wrap.style.maskImage = fade > 0 ? `linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.35) ${(fade * 45).toFixed(1)}%, #000 ${(fade * 100).toFixed(1)}%)` : 'none';
     wrap.style.transform = `rotate(${(G.fx.r + Math.sin(now / 1900) * 0.35).toFixed(2)}deg) scaleX(${mirrored() ? -1 : 1})`;
   }
   $('#vig').style.background = `radial-gradient(ellipse 64% 58% at 50% 50%, rgba(0,0,0,0) 40%, rgba(0,0,0,${(0.4 + 0.4 * G.press).toFixed(2)}) 100%)`;
@@ -738,7 +743,7 @@ function markFinish() {
   if (G.phase === 'mark') G.phase = 'idle';
   G.surfaces = {}; copyFit();
 }
-function copyFit() { const f = S.fit[slotKey()]; const j = JSON.stringify({ slot: `shoe_${view() === 'sole' ? 'sole' : 'close'}`, kind: S.kind, ...(twoFeet() ? { feet: 'two' } : {}), fit: { height: f.h, y: f.y, ...(twoFeet() ? { xr: f.xr, xl: f.xl } : {}) }, zones: S.zones[slotKey()] ?? zonesNow() }); navigator.clipboard?.writeText(j).catch(() => {}); $('#sideNote').textContent = j; }
+function copyFit() { const f = S.fit[slotKey()]; const j = JSON.stringify({ slot: `shoe_${view() === 'sole' ? 'sole' : 'close'}`, kind: S.kind, ...(twoFeet() ? { feet: 'two' } : {}), fit: { height: f.h, y: f.y, x: f.x ?? 0, fade: f.fade ?? 0, ...(twoFeet() ? { xr: f.xr, xl: f.xl } : {}) }, zones: S.zones[slotKey()] ?? zonesNow() }); navigator.clipboard?.writeText(j).catch(() => {}); $('#sideNote').textContent = j; }
 addEventListener('wheel', (e) => {
   if (!MARK.on) return; e.preventDefault();
   const step = (e.shiftKey ? 1 : 5) * Math.sign(e.deltaY || e.deltaX);
@@ -759,12 +764,15 @@ $('#busy').onchange = () => { S.busy = $('#busy').value; };
 for (const k of ['boots_close', 'boots_sole', 'heels_close', 'heels_sole']) {
   $(`#f_${k}`).onchange = () => { const f = $(`#f_${k}`).files[0]; if (!f) return; const im = new Image(); im.onload = () => { imgs[k] = im; G.surfaces = {}; if (G.phase === 'loop') ensureSurface(); }; im.src = URL.createObjectURL(f); };
 }
-$('#two').onchange = () => { S.two[`${S.kind}_close`] = $('#two').checked; G.surfaces = {}; if (G.phase === 'loop') begin(); };
+$('#two').onchange = () => { S.two[`${S.kind}_close`] = $('#two').checked; G.surfaces = {}; G.camU = undefined; if (view() === 'close') G.surface = $('#two').checked ? 'front' : 'outer'; if (G.phase === 'loop') begin(); };
 for (const id of ['xr', 'xl']) $(`#${id}`).oninput = () => { const f = S.fit[`${S.kind}_close`]; f[id] = Number($(`#${id}`).value); $(`#${id}V`).textContent = f[id].toFixed(2); G.surfaces = {}; if (G.phase === 'loop') ensureSurface(); };
 $('#footSel').onchange = () => { G.foot = $('#footSel').value; if (G.phase === 'loop') { ensureSurface(); nextWant(); } };
-$('#viewSel').onchange = () => { const v = $('#viewSel').value; G.surface = v === 'close' ? (S.two[`${S.kind}_close`] ? 'front' : 'outer') : v; syncFit(); if (G.phase === 'loop') { ensureSurface(); nextWant(); } };
-function syncFit() { const f = S.fit[slotKey()]; $('#two').checked = !!S.two[`${S.kind}_close`]; $('#fitH').value = f.h; $('#fitHV').textContent = f.h.toFixed(2); $('#fitY').value = f.y; $('#fitYV').textContent = f.y.toFixed(2); }
+$('#viewSel').onchange = () => { const v = $('#viewSel').value; G.surface = v === 'close' ? (S.two[`${S.kind}_close`] ? 'front' : 'outer') : v; G.camU = undefined; syncFit(); if (G.phase === 'loop') { ensureSurface(); nextWant(); } };
+function syncFit() { const f = S.fit[slotKey()]; $('#two').checked = !!S.two[`${S.kind}_close`]; $('#fitX').value = f.x ?? 0; $('#fitXV').textContent = (f.x ?? 0).toFixed(2); $('#fitF').value = f.fade ?? 0; $('#fitFV').textContent = (f.fade ?? 0).toFixed(2);
+  const cf = S.fit[`${S.kind}_close`]; $('#xr').value = cf.xr; $('#xrV').textContent = cf.xr.toFixed(2); $('#xl').value = cf.xl; $('#xlV').textContent = cf.xl.toFixed(2); $('#fitH').value = f.h; $('#fitHV').textContent = f.h.toFixed(2); $('#fitY').value = f.y; $('#fitYV').textContent = f.y.toFixed(2); }
 $('#fitH').oninput = () => { S.fit[slotKey()].h = Number($('#fitH').value); $('#fitHV').textContent = S.fit[slotKey()].h.toFixed(2); };
+$('#fitX').oninput = () => { S.fit[slotKey()].x = Number($('#fitX').value); $('#fitXV').textContent = S.fit[slotKey()].x.toFixed(2); };
+$('#fitF').oninput = () => { S.fit[slotKey()].fade = Number($('#fitF').value); $('#fitFV').textContent = S.fit[slotKey()].fade.toFixed(2); };
 $('#fitY').oninput = () => { S.fit[slotKey()].y = Number($('#fitY').value); $('#fitYV').textContent = S.fit[slotKey()].y.toFixed(2); };
 $('#markZones').onclick = () => setTimeout(markStart, 50);
 $('#copyFit').onclick = () => copyFit();
@@ -779,6 +787,7 @@ $('#rm').checked = S.reduced; $('#rm').onchange = () => { S.reduced = $('#rm').c
 $('#restart').onclick = () => begin();
 $('#againBtn').onclick = () => begin();
 const SPRITE = new Image(); SPRITE.src = ASSETS.her;
+$('#setup').onclick = async () => { audioInit(); await A.ctx.resume(); $('#start').style.display = 'none'; await loadSamples(); G.phase = 'idle'; if (S.two[`${S.kind}_close`]) G.surface = 'front'; };
 $('#go').onclick = async () => { audioInit(); await A.ctx.resume(); $('#start').style.display = 'none'; await loadSamples(); begin(); };
 syncFit();
 requestAnimationFrame(frame);
