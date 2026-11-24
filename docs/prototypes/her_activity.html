@@ -1465,7 +1465,7 @@ function soleRect() {
   const img = $('#soleArt'); if (!img.naturalWidth) return null;
   const H = innerHeight * S.closeH, Wd = H * img.naturalWidth / img.naturalHeight;
   const cx = innerWidth / 2 + SV.off[0] + SV.fx.dx, cy = innerHeight * S.closeY + SV.off[1] + SV.fx.dy + SV.relax * 8;
-  const k = (0.55 + 0.45 * easeOut(SV.closeK)) * SV.fx.s;
+  const ln = SV.lean ?? 0, k = (0.55 + 0.45 * easeOut(SV.closeK)) * SV.fx.s * (1 + 0.05 * Math.max(0, ln) - 0.035 * Math.max(0, -ln));
   return { x: cx - (Wd * k) / 2, y: cy - (H * k) / 2, w: Wd * k, h: H * k };
 }
 const zones = () => S.zones ?? DEFAULT_ZONES;
@@ -1501,11 +1501,17 @@ function makeDirt() {
   const m = new Float32Array(w * h);
   const blobs = [];
   for (const [k, p] of Object.entries(zones())) for (let i = 0; i < (k === 'heel' || k === 'ball' ? 5 : 3); i++) blobs.push([p[0] + rand(-0.08, 0.08), p[1] + rand(-0.05, 0.05), rand(0.06, 0.13)]);
+  const r = soleRect(), rad = r ? zoneRadii(r) : null, asp = img.naturalWidth / img.naturalHeight;
+  const zs = rad ? Object.entries(zones()).map(([k, p]) => ({ x: p[0], y: p[1], z: { rx: rad[k].rx / r.h, ry: rad[k].ry / r.h, rot: rad[k].rot ?? 0 } })) : [];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const a = alpha[(y * w + x) * 4 + 3] / 255; if (a < 0.3) continue;
-    let v = 0.25 + Math.random() * 0.15;
+    // only the sole: the nearest zone in its own units (offsets in heights of the picture); fades out from 0.9 to 1.4 of its size
+    let dmin = zs.length ? 1e9 : 0;
+    for (const q of zs) { const [ex, ey] = inEllipse((x / w - q.x) * asp, y / h - q.y, q.z); dmin = Math.min(dmin, Math.hypot(ex, ey)); }
+    const onSoleK = 1 - smooth(0.9, 1.4, dmin); if (onSoleK <= 0.01) continue;
+    let v = (0.25 + Math.random() * 0.15);
     for (const [bx, by, br] of blobs) v += 0.5 * Math.exp(-(((x / w - bx) ** 2) + ((y / h - by) ** 2) * 0.6) / (br * br));
-    m[y * w + x] = clamp(v, 0, 1) * a;
+    m[y * w + x] = clamp(v, 0, 1) * a * onSoleK;
   }
   SV.dirt = { w, h, m, c: document.createElement('canvas') }; SV.dirt.c.width = w; SV.dirt.c.height = h;
   SV.dirt.total0 = m.reduce((s, v) => s + v, 0);
@@ -1605,7 +1611,7 @@ function svUpdate(dt) {
   if (!SV) return;
   SV.closeK += (SV.closeTarget - SV.closeK) * Math.min(1, dt / 260);
   SV.off[0] += (SV.offTarget[0] - SV.off[0]) * Math.min(1, dt / 400); SV.off[1] += (SV.offTarget[1] - SV.off[1]) * Math.min(1, dt / 400);
-  SV.relax = Math.max(0, SV.relax - dt / 2500); SV.pull = Math.max(0, SV.pull - dt / 700);
+  SV.relax = Math.max(0, SV.relax - dt / 2500); SV.pull = Math.max(0, SV.pull - dt / 700); SV.lean = (SV.lean ?? 0) * Math.max(0, 1 - dt / 600);
   // the motion of her foot (the signal's animation)
   const a = SV.anim, fx = { dx: 0, dy: 0, s: 1, r: 0 };
   if (a) {
@@ -1653,6 +1659,12 @@ function svCheck() {
   const missed = Object.keys(zones()).find((z) => dirtIn(z) > 0.25);
   if (missed) { SV.stats.clean.missedSpot += 1; SV.quality += 0; SV.acts += 1; if (G.step === 'with' || G.step === 'glancing') say(`${ZONE_WORDS[missed].replace('.', '')}. you missed it.`, 'commander'); else { SV.pull = 0.6; sense('She turns her foot to the light, and you see what you missed.', 'body'); } }
   else { SV.quality += 1; SV.acts += 1; }
+}
+/* her foot answers where it is touched: toward the lips (where she wants it), away (not there); the first time of each, a line */
+function svLean(v) {
+  SV.lean = v;
+  if (v > 0 && !SV.toldLeanIn) { SV.toldLeanIn = true; sense('Her foot presses to your lips: there.', 'body'); }
+  if (v < 0 && !SV.toldLeanOut) { SV.toldLeanOut = true; sense('Her foot shifts away: not there.', 'body'); }
 }
 /* the gestures in the close-up */
 function svDown(x, y) {
@@ -1712,14 +1724,14 @@ function svUp() {
       SV_SFX.kiss(); thirdPartyNoise(0.12); SV.marks.push({ x: g.x0, y: g.y0, born: performance.now() });
       const [lo, hi] = SS().kiss, rightZone = !SV.want || g.zone === SV.want || G.step === 'own' || G.step === 'use' && false;
       SV.acts += 1;
-      if (!rightZone) { SV.stats.kiss.zone += 1; }
+      if (!rightZone) { SV.stats.kiss.zone += 1; svLean(-0.8); } else svLean(1);
       if (d < lo) SV.stats.kiss.peck += 1; else if (d > hi) SV.stats.kiss.long += 1; else if (rightZone) { SV.stats.kiss.good += 1; SV.quality += 1; SV.relax = Math.min(1, SV.relax + 0.3); }
       if (rightZone && d >= lo && d <= hi && SV.want && G.t - SV.wantAt > 2000) svNextWant();
     }
     return;
   }
   if (SV.phase === 'craft' && g.kind === 'clean' && SV.act === 'clean') {
-    SV.stats.clean.strokes += 1; const good = (SV.goodLen ?? 0) >= (SV.badLen ?? 0); if (good) SV.stats.clean.right += 1;
+    SV.stats.clean.strokes += 1; const good = (SV.goodLen ?? 0) >= (SV.badLen ?? 0); if (good) SV.stats.clean.right += 1; svLean(good ? 0.45 : -0.45);
     SV.acts += 1; SV.quality += good ? 1 : 0.3; SV.goodLen = 0; SV.badLen = 0;
   }
   if (SV.phase === 'craft' && g.kind === 'rub' && SV.act === 'rub') {
