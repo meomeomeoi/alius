@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<!--
+  P10e chunk (e) reference prototype: SHOE SERVICE (P15a `tongue_work` on `boot_worship`: her boots or her heels, dirty from her day).
+  Draft for the author's rounds (not yet approved). The cleaning craft is foot service's (docs/prototypes/her_activity.html, the game inside
+  `service`: the dirt mask, `wipe` along her grain, the dry mouth, the zones as ellipses marked per picture), carried over to footwear; new here:
+  - two kinds of footwear (combat boots, high heels), two pictures each: `shoe_close` (on her foot, from above, three quarters) and `shoe_sole`
+    (the sole presented); the inner side is the close picture mirrored; dirt and shine are effects over one clean picture;
+  - the dirt of her day (ash, mud, oil, spores, parade dust, rain splashes): its colour, how much grit it leaves in the mouth, how it dries the
+    mouth, how hard it wipes, its taste;
+  - grit in the mouth: swallow it (Space) or spit it aside (the right button or X) while she is not looking;
+  - shine: once a patch of leather is clean, slow long strokes bring a gloss up (patent heels shine more; a boot's toe cap most);
+  - she uses her foot: turns it, presents the sole, presses it to the face, stamps, changes feet; at the end she turns it to the light
+    (a band of light sweeps across and shows every dull or dirty patch) and gives her verdict.
+  Build a runnable page with
+    npm run proto -- shoe [--sprite <png|webp|svg>]
+  which inlines the fonts, backdrops, the CC0 sounds and a sprite (the layout fixture by default; never commit the author's art).
+  Load the author's four footwear pictures in the panel (never committed).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alius · shoe service · prototype</title>
+<style>
+@font-face { font-family: "Caveat"; src: url("%%ASSET:fonts/hand-caveat-400.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 300; src: url("%%ASSET:fonts/inter-300.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 400; src: url("%%ASSET:fonts/inter-400.woff2%%") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; src: url("%%ASSET:fonts/ibm-plex-mono-400.woff2%%") format("woff2"); }
+
+:root { --her: #8cc8f0; --glass: rgba(14, 12, 20, 0.58); --line: rgba(255, 255, 255, 0.12); --ink: #ece8f2; --dim: rgba(236, 232, 242, 0.55); }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: var(--ink); font-family: Inter, system-ui, sans-serif; font-weight: 300; }
+#stage { position: fixed; inset: 0; overflow: hidden; }
+#world { position: absolute; inset: -5%; will-change: transform; }
+#backdrop { position: absolute; inset: 0; background-size: cover; background-position: center 80%; filter: blur(16px) brightness(.45) saturate(.85); }
+#shade { position: absolute; inset: 0; background: radial-gradient(ellipse 70% 60% at 50% 55%, rgba(0,0,0,0) 30%, rgba(0,0,0,.7) 100%); pointer-events: none; }
+#shoeWrap { position: absolute; left: 0; top: 0; transform-origin: 50% 50%; will-change: transform; }
+#shoe, #dirtC, #glossC, #lightC { position: absolute; left: 0; top: 0; width: 100%; height: 100%; user-select: none; -webkit-user-drag: none; }
+#dirtC { image-rendering: auto; } /* drawn over (not multiplied): dust and ash must show light on black leather */
+#glossC { mix-blend-mode: screen; }
+#lightC { mix-blend-mode: screen; pointer-events: none; }
+#markC { position: absolute; inset: 0; pointer-events: none; }
+#vig { position: absolute; inset: 0; pointer-events: none; }
+#mouthGauge { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); width: 260px; height: 8px; pointer-events: none; opacity: .85; }
+/* her hand and the sensory lines */
+#hand { position: absolute; inset: 0; pointer-events: none; }
+.her-line { position: absolute; font-family: Caveat, cursive; color: var(--her); white-space: nowrap; line-height: 1; font-size: 42px;
+  text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.85), 0 0 28px rgba(0,0,0,.6);
+  animation: write var(--write, 600ms) steps(var(--steps, 12), end) both; transition: opacity .5s; }
+.her-line.gone, .sense.gone { opacity: 0; }
+@keyframes write { from { clip-path: inset(-30% 100% -30% -8%); } to { clip-path: inset(-30% -8% -30% -8%); } }
+.sense { position: absolute; font: italic 300 16px/1.4 Inter, sans-serif; color: rgba(236,232,242,.62); text-shadow: 0 1px 2px #000, 0 0 10px rgba(0,0,0,.8); transition: opacity .8s; max-width: 380px; }
+#ui { position: absolute; inset: 0; pointer-events: none; }
+#reply { position: absolute; left: 50%; bottom: 102px; transform: translateX(-50%); width: min(980px, 70vw); font-size: 20px; line-height: 1.5; text-align: center;
+  text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.7); }
+#reply .act { font-style: italic; color: var(--dim); }
+#inputWrap { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); width: 720px; height: 52px; background: var(--glass); border: 1px solid var(--line); border-radius: 26px;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); font: 300 18px/52px Inter, sans-serif; padding: 0 24px; color: rgba(236,232,242,.35); }
+#stopPill { position: absolute; right: 36px; bottom: 44px; pointer-events: auto; cursor: pointer; padding: 10px 18px; border-radius: 22px; font: 13px "IBM Plex Mono", monospace; font-variant: small-caps;
+  background: rgba(60, 10, 14, .55); border: 1px solid rgba(255, 120, 120, .35); color: #ffd6d6; backdrop-filter: blur(10px); }
+#markPrompt { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); padding: 8px 14px; border-radius: 10px; background: rgba(10,10,14,.85); font: 12px "IBM Plex Mono", monospace; color: #dde; display: none; z-index: 30; pointer-events: none; }
+
+/* prototype only */
+.card { position: absolute; left: 36px; top: 24%; width: 440px; padding: 22px 24px; border-radius: 18px; pointer-events: auto; background: var(--glass); border: 1px solid var(--line);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); display: none; }
+.card h3 { margin: 0 0 10px; font: 13px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .1em; color: var(--dim); }
+.card .hand { font: 32px Caveat, cursive; color: var(--her); margin: 6px 0 14px; }
+.card .facts { font: 13px "IBM Plex Mono", monospace; color: var(--dim); line-height: 1.7; }
+.btn { display: inline-block; margin-top: 12px; padding: 9px 18px; border-radius: 20px; border: 1px solid var(--line); background: rgba(255,255,255,.06); color: var(--ink); font: 14px Inter, sans-serif; cursor: pointer; }
+#panel { position: fixed; top: 14px; right: 14px; width: 320px; max-height: calc(100vh - 140px); overflow: auto; padding: 14px 16px; border-radius: 14px; z-index: 50;
+  background: rgba(10, 10, 14, .84); border: 1px solid var(--line); font: 12px "IBM Plex Mono", monospace; color: #cfcbe0; }
+#panel.hidden { display: none; }
+#panel h4 { margin: 12px 0 6px; font-weight: 400; color: #8d88a6; font-variant: small-caps; letter-spacing: .08em; }
+#panel h4:first-child { margin-top: 0; }
+#panel .row { display: flex; flex-wrap: wrap; gap: 4px; }
+#panel button.opt { padding: 4px 8px; border-radius: 10px; border: 1px solid #3a3650; background: #17151f; color: #cfcbe0; font: 12px "IBM Plex Mono", monospace; cursor: pointer; }
+#panel button.opt.on { background: #3b3360; border-color: #8a7fd0; color: #fff; }
+#panel label { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+#panel input[type=range] { flex: 1; }
+#panel select { background: #17151f; color: #cfcbe0; border: 1px solid #3a3650; font: 12px "IBM Plex Mono", monospace; }
+#panel .note { color: #77738c; line-height: 1.45; margin-top: 6px; word-break: break-all; }
+#debug { position: fixed; left: 14px; top: 12px; font: 12px "IBM Plex Mono", monospace; color: #9ad; text-shadow: 0 0 4px #000; z-index: 40; white-space: pre; display: none; pointer-events: none; }
+#start { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 60; background: rgba(0,0,0,.35); }
+#start .box { width: 600px; padding: 26px 30px; border-radius: 18px; background: rgba(12, 11, 18, .88); border: 1px solid var(--line); line-height: 1.6; font-size: 15px; }
+#start .box h2 { margin: 0 0 8px; font: 15px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .12em; color: #a9a3c7; }
+#start kbd { font: 12px "IBM Plex Mono", monospace; padding: 1px 6px; border: 1px solid #555; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="world"><div id="backdrop"></div></div>
+  <div id="shade"></div>
+  <div id="shoeWrap"><img id="shoe" alt="" draggable="false"><canvas id="dirtC"></canvas><canvas id="glossC"></canvas><canvas id="lightC"></canvas></div>
+  <canvas id="markC"></canvas>
+  <div id="vig"></div>
+  <canvas id="mouthGauge" width="260" height="8"></canvas>
+  <div id="hand"></div>
+  <div id="ui">
+    <div id="reply"></div>
+    <div id="inputWrap">…</div>
+    <div id="stopPill">● stop word · amber</div>
+    <div class="card" id="summary"><h3>prototype · how it went</h3><div class="hand" id="sumLine"></div><div class="facts" id="sumFacts"></div><span class="btn" id="againBtn">again</span></div>
+  </div>
+  <div id="markPrompt"></div>
+</div>
+<div id="debug"></div>
+
+<div id="panel">
+  <h4>her footwear</h4>
+  <div class="row" id="kinds"></div>
+  <h4>her day (the dirt)</h4>
+  <div class="row" id="dirts"></div>
+  <div class="note" id="dirtNote"></div>
+  <h4>her style</h4>
+  <div class="row" id="styles"></div>
+  <label>she is busy with her device <select id="busy"><option value="auto" selected>by style</option><option value="always">always</option><option value="never">never (she watches)</option></select></label>
+  <h4>the pictures (never committed)</h4>
+  <label>boots, close <input type="file" id="f_boots_close" accept="image/*" style="width:150px"></label>
+  <label>boots, sole <input type="file" id="f_boots_sole" accept="image/*" style="width:150px"></label>
+  <label>heels, close <input type="file" id="f_heels_close" accept="image/*" style="width:150px"></label>
+  <label>heels, sole <input type="file" id="f_heels_sole" accept="image/*" style="width:150px"></label>
+  <div class="note">Without a picture the slot shows her sprite (a stand-in). Generated clean on a plain background and cut out; dirt and shine are drawn by the game.</div>
+  <label>view <select id="viewSel"><option value="close">close (outer)</option><option value="inner">close (inner, mirrored)</option><option value="sole">sole</option></select></label>
+  <label>height <input type="range" id="fitH" min="0.4" max="1.1" step="0.01" value="0.68"><span id="fitHV">0.68</span></label>
+  <label>y <input type="range" id="fitY" min="0.3" max="0.7" step="0.01" value="0.48"><span id="fitYV">0.48</span></label>
+  <div class="row"><button class="opt" id="markZones">mark zones</button><button class="opt" id="copyFit">copy the fit</button></div>
+  <div class="note" id="sideNote"></div>
+  <h4>sound</h4>
+  <label><input type="checkbox" id="snd" checked> on</label>
+  <label>volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7"></label>
+  <h4>view</h4>
+  <label>accent <input type="color" id="accent" value="#8cc8f0"></label>
+  <label>backdrop <select id="bg"></select></label>
+  <label><input type="checkbox" id="dbg"> debug (zones, the dirt and gloss left)</label>
+  <label><input type="checkbox" id="rm"> reduced motion</label>
+  <div class="row"><button class="opt" id="restart">restart</button></div>
+  <div class="note">Drag on the footwear: the tongue (scrubbing or a straight stroke cleans; on clean leather, slow long strokes polish). A press held on one spot: a kiss. Space: swallow. The right button or X: spit (only while she is not looking). Esc: the stop word. H: hide this panel. Prototype only; nothing here is engine code.</div>
+</div>
+
+<div id="start"><div class="box">
+  <h2>shoe service · prototype</h2>
+  She puts her foot forward. Her boots (or her heels) carry her day: ash, mud, oil, spores, dust.<br>
+  <b>Drag</b> on them with the tongue: scrub or stroke to clean, along her grain; on clean leather, <b>slow long strokes</b> bring up a shine. A press held still: a kiss.<br>
+  The mouth dries and fills with grit: <kbd>Space</kbd> swallows it; <kbd>X</kbd> or the right button spits it aside, if she is not looking.<br>
+  She turns her foot, lifts the sole, changes feet. At the end she holds it to the light. <kbd>Esc</kbd> stop word · <kbd>H</kbd> panel.
+  <div><span class="btn" id="go">begin</span></div>
+</div></div>
+
+<script>
+'use strict';
+const ASSETS = {
+  her: '%%SPRITE%%',
+  bgs: { quarters_1: '%%ASSET:content/core/art/backdrops/quarters_1.webp%%', quarters_dark: '%%ASSET:content/core/art/backdrops/quarters_dark.webp%%', loc_quarters_commander: '%%ASSET:content/core/art/backdrops/loc_quarters_commander.webp%%', loc_garage: '%%ASSET:content/core/art/backdrops/loc_garage.webp%%' },
+};
+const SAMPLE_URLS = {
+  cloth1: '%%ASSET:docs/prototypes/assets/ha/cloth1.ogg%%', cloth2: '%%ASSET:docs/prototypes/assets/ha/cloth2.ogg%%', cloth3: '%%ASSET:docs/prototypes/assets/ha/cloth3.ogg%%', cloth4: '%%ASSET:docs/prototypes/assets/ha/cloth4.ogg%%',
+  wood1: '%%ASSET:docs/prototypes/assets/ha/wood1.ogg%%', wood2: '%%ASSET:docs/prototypes/assets/ha/wood2.ogg%%', soft1: '%%ASSET:docs/prototypes/assets/ha/soft1.ogg%%', soft2: '%%ASSET:docs/prototypes/assets/ha/soft2.ogg%%',
+  key1: '%%ASSET:docs/prototypes/assets/ha/key1.ogg%%', key2: '%%ASSET:docs/prototypes/assets/ha/key2.ogg%%',
+};
+const GROUPS = { cloth: ['cloth1', 'cloth2', 'cloth3', 'cloth4'], wood: ['wood1', 'wood2'], soft: ['soft1', 'soft2'], key: ['key1', 'key2'] };
+const $ = (s) => document.querySelector(s);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const rand = (a, b) => a + Math.random() * (b - a);
+const fnv = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h; };
+
+/* ---------- the engine's numbers (TUNING.physics.tongue): her check at dirt ≤ 10 ---------- */
+const CHECK_AT = 0.1;
+/* ---------- the footwear: zones by view (centres as fractions of the picture, radii as fractions of its height, an angle); `leather` zones take a shine ---------- */
+const KINDS = {
+  boots: {
+    label: 'combat boots', gloss: 0.7, // how bright a full shine is (the toe cap more)
+    close: { toe: [0.62, 0.78, 0.09, 0.06, -20], vamp: [0.5, 0.62, 0.1, 0.06, -25], laces: [0.42, 0.45, 0.06, 0.1, -15], side: [0.4, 0.72, 0.11, 0.07, -10], heel: [0.22, 0.78, 0.06, 0.08, 0], shaft: [0.33, 0.26, 0.08, 0.13, -5], welt: [0.45, 0.9, 0.16, 0.025, -12] },
+    sole: { toe_tread: [0.5, 0.2, 0.13, 0.1, 0], mid: [0.5, 0.5, 0.09, 0.12, 0], heel_tread: [0.5, 0.8, 0.11, 0.09, 0] },
+    leather: ['toe', 'vamp', 'side', 'heel', 'shaft', 'welt'], bright: { toe: 1.4 },
+  },
+  heels: {
+    label: 'high heels', gloss: 1.0,
+    close: { toe: [0.7, 0.72, 0.08, 0.06, -25], vamp: [0.56, 0.6, 0.09, 0.05, -30], side: [0.45, 0.63, 0.1, 0.05, -20], back: [0.28, 0.5, 0.05, 0.07, 0], heel: [0.25, 0.78, 0.025, 0.11, 5] },
+    sole: { toe_tread: [0.5, 0.22, 0.12, 0.1, 0], mid: [0.5, 0.52, 0.07, 0.12, 0], heel_tread: [0.5, 0.86, 0.04, 0.04, 0] },
+    leather: ['toe', 'vamp', 'side', 'back', 'heel'], bright: {},
+  },
+};
+const ZONE_WORDS = { toe: 'the toe', vamp: 'the top', laces: 'the laces', side: 'the side', heel: 'the heel', shaft: 'the shaft', welt: 'the welt', back: 'the back',
+  toe_tread: 'the tread', mid: 'the middle of the sole', heel_tread: 'the heel underneath' };
+/* the dirt of her day: its colour (multiplied over the picture), how much grit a cleaned unit leaves in the mouth, how fast it dries the mouth,
+   how hard it wipes, how it lies (blobs: count, size, stretch), its taste */
+const DIRTS = {
+  ash:    { color: [104, 100, 96], grit: 0.6, dry: 1.6, resist: 1.0, blobs: [4, 0.12, 1], taste: 'Ash: dry, bitter, it coats the tongue.', where: 'the Ashway' },
+  mud:    { color: [86, 64, 44], grit: 1.0, dry: 0.5, resist: 1.25, blobs: [6, 0.1, 1], taste: 'Mud: gritty and cold; sand between the teeth.', where: 'a wet run' },
+  oil:    { color: [40, 36, 32], grit: 0.2, dry: 0.8, resist: 2.0, blobs: [3, 0.07, 3], taste: 'Machine oil: bitter, it will not wash off the tongue.', where: 'Corridor K-12' },
+  spores: { color: [104, 122, 78], grit: 0.4, dry: 0.9, resist: 1.0, blobs: [7, 0.06, 1], taste: 'Spores: sweetish, then rotten. The Bloom.', where: 'District 7' },
+  dust:   { color: [168, 148, 116], grit: 0.5, dry: 1.8, resist: 0.7, blobs: [3, 0.16, 1], taste: 'Parade-ground dust: chalky, it dries everything.', where: 'the training yard' },
+  rain:   { color: [110, 96, 80], grit: 0.3, dry: 0.4, resist: 0.6, blobs: [14, 0.035, 1], taste: 'Muddy rainwater, cold and flat.', where: 'the rain' },
+};
+/* her ways by style (drafts for her profile): how long she gives a surface, her patience before moving on, how often she looks, what she does with her foot */
+const STYLES = {
+  neutral:      { surface: [22, 34], busy: 0.5, moves: { press: 0.15, stamp: 0.05, kiss: 0.2 }, grain: 1 },
+  affectionate: { surface: [28, 40], busy: 0.4, moves: { press: 0.05, stamp: 0, kiss: 0.35 }, grain: 1 },
+  ritual:       { surface: [26, 26], busy: 0.2, moves: { press: 0.05, stamp: 0.05, kiss: 0.4 }, grain: -1 },
+  playful:      { surface: [16, 30], busy: 0.5, moves: { press: 0.3, stamp: 0.1, kiss: 0.2 }, grain: 1 },
+  cruel:        { surface: [14, 22], busy: 0.35, moves: { press: 0.35, stamp: 0.25, kiss: 0.15 }, grain: -1 },
+  possessive:   { surface: [20, 30], busy: 0.25, moves: { press: 0.3, stamp: 0.1, kiss: 0.3 }, grain: 1 },
+  cold:         { surface: [18, 26], busy: 0.7, moves: { press: 0.05, stamp: 0.15, kiss: 0.05 }, grain: -1 },
+  regal:        { surface: [24, 34], busy: 0.3, moves: { press: 0.15, stamp: 0.1, kiss: 0.45 }, grain: 1 },
+};
+const LINES = {
+  neutral:      { entry: ['clean them.'], turn: ['the other side.'], sole: ['underneath.'], kiss: ['kiss it.'], polish: ['now make it shine.'], other: ['now the other one.'], caught: ['did you just spit?'], swallowed: ['swallow it.'], good: ['good.'], poor: ['sloppy.'], missed: ['%z. you missed it.'], dull: ['%z is dull.'], stamp: ['properly.'], end: ['that will do.'] },
+  affectionate: { entry: ['would you? they’re filthy.'], turn: ['and this side, love.'], sole: ['underneath too.'], kiss: ['kiss it for me.'], polish: ['make them pretty.'], other: ['the other one, please.'], caught: ['hey. I saw that.'], swallowed: ['there you go.'], good: ['they look lovely.'], poor: ['nearly, sweetheart.'], missed: ['you missed %z.'], dull: ['%z could shine more.'], stamp: [], end: ['thank you. really.'] },
+  ritual:       { entry: ['begin with the toe.'], turn: ['the inner side.'], sole: ['the sole.'], kiss: ['kiss the toe.'], polish: ['polish.'], other: ['the left.'], caught: ['you spat. again.'], swallowed: ['swallow.'], good: ['as it should be.'], poor: ['again.'], missed: ['%z.'], dull: ['%z. it is dull.'], stamp: ['the form.'], end: ['enough. kiss them both.'] },
+  playful:      { entry: ['look what I stepped in~'], turn: ['other side~'], sole: ['tada~ underneath.'], kiss: ['kiss~'], polish: ['make them sparkle~'], other: ['and the other one~'], caught: ['eww. spitting? naughty.'], swallowed: ['yummy?'], good: ['ooh, shiny.'], poor: ['hmm, meh.'], missed: ['you missed a spot~ %z.'], dull: ['%z is so dull~'], stamp: ['faster~'], end: ['okay okay, good pet.'] },
+  cruel:        { entry: ['clean.'], turn: ['other side.'], sole: ['the sole. all of it.'], kiss: ['kiss it.'], polish: ['shine it.'], other: ['other foot.'], caught: ['you spat it out? lick it back up.'], swallowed: ['swallow.'], good: ['adequate.'], poor: ['pathetic.'], missed: ['%z. you call that clean?'], dull: ['%z. dull. again.'], stamp: ['faster.'], end: ['get away from my feet.'] },
+  possessive:   { entry: ['my boots. clean them.'], turn: ['this side too.'], sole: ['underneath. mine all over.'], kiss: ['kiss it. it’s mine.'], polish: ['make them shine for me.'], other: ['now the other.'], caught: ['you don’t waste what’s mine.'], swallowed: ['all of it. good.'], good: ['good. mine.'], poor: ['you’ll do better for me.'], missed: ['%z.'], dull: ['%z. dull.'], stamp: ['for me. properly.'], end: ['good. stay there.'] },
+  cold:         { entry: ['clean them.'], turn: ['turn.'], sole: ['sole.'], kiss: ['kiss.'], polish: ['shine.'], other: ['other.'], caught: ['you spat.'], swallowed: [], good: ['fine.'], poor: ['no.'], missed: ['%z.'], dull: ['%z.'], stamp: [], end: ['done.'] },
+  regal:        { entry: ['my boots need you.'], turn: ['the other side, if you please.'], sole: ['and beneath.'], kiss: ['kiss them. you may.'], polish: ['I want to see myself in them.'], other: ['now the other.'], caught: ['you spat at my feet?'], swallowed: ['swallow it. graciously.'], good: ['worthy.'], poor: ['unworthy.'], missed: ['%z. look again.'], dull: ['%z does not shine.'], stamp: ['I am waiting.'], end: ['you may thank me.'] },
+};
+
+/* ---------- settings ---------- */
+const S = { kind: 'boots', dirt: 'mud', style: 'neutral', busy: 'auto', sound: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
+  fit: { boots_close: { h: 0.68, y: 0.48 }, boots_sole: { h: 0.78, y: 0.5 }, heels_close: { h: 0.68, y: 0.48 }, heels_sole: { h: 0.78, y: 0.5 } }, zones: {} };
+const ST = () => STYLES[S.style] ?? STYLES.neutral;
+const L = () => LINES[S.style] ?? LINES.neutral;
+const D = () => DIRTS[S.dirt];
+const K = () => KINDS[S.kind];
+
+/* ---------- audio ---------- */
+const A = { ctx: null, buf: {} };
+function audioInit() {
+  if (A.ctx) return;
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  A.ctx = ctx;
+  A.master = ctx.createGain(); A.master.gain.value = S.sound ? S.vol : 0; A.master.connect(ctx.destination);
+  A.world = ctx.createBiquadFilter(); A.world.type = 'lowpass'; A.world.frequency.value = 9000; A.world.connect(A.master);
+  A.body = ctx.createGain(); A.body.connect(A.master);
+  const mk = (sec, fill) => { const b = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate); fill(b.getChannelData(0)); return b; };
+  A.white = mk(2, (d) => { for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; });
+  A.brown = mk(4, (d) => { let l = 0; for (let i = 0; i < d.length; i++) { l = (l + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = l * 3.5; } });
+  A.grain = mk(2, (d) => { for (let i = 0; i < d.length; i++) d[i] = Math.random() < 0.004 ? (Math.random() * 2 - 1) : 0; }); // sparse clicks: grit
+  const room = ctx.createBufferSource(); room.buffer = A.brown; room.loop = true;
+  const rl = ctx.createBiquadFilter(); rl.type = 'lowpass'; rl.frequency.value = 650; const rg = ctx.createGain(); rg.gain.value = 0.05;
+  room.connect(rl); rl.connect(rg); rg.connect(A.world); room.start();
+}
+async function loadSamples() { await Promise.all(Object.entries(SAMPLE_URLS).map(async ([k, u]) => { try { const r = await fetch(u); A.buf[k] = await A.ctx.decodeAudioData(await r.arrayBuffer()); } catch (e) { /* synthesis */ } })); }
+function play(id, { g = 0.5, pan = 0, rate = 1, lp = 0, dest, at = 0 } = {}) {
+  const key = GROUPS[id] ? pick(GROUPS[id]) : id;
+  if (!A.ctx || !A.buf[key]) return null;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const src = ctx.createBufferSource(); src.buffer = A.buf[key]; src.playbackRate.value = rate;
+  const gn = ctx.createGain(); gn.gain.value = g; src.connect(gn); let n = gn;
+  if (lp) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; n.connect(f); n = f; }
+  if (pan) { const p = ctx.createStereoPanner(); p.pan.value = pan; n.connect(p); n = p; }
+  n.connect(dest ?? A.world); src.start(t); return src;
+}
+function noise({ at = 0, dur = 0.2, type = 'bandpass', f = 1000, f2, q = 1, gain = 0.1, attack = 0.01, dest = A.world, buf }) {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const src = ctx.createBufferSource(); src.buffer = buf ?? A.white; src.loop = true;
+  const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(f, t); fl.Q.value = q;
+  if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(fl); fl.connect(g); g.connect(dest); src.start(t, Math.random()); src.stop(t + dur + 0.05);
+}
+function tone(f0, f1, dur, gain, { at = 0, dest = A.body, type = 'sine' } = {}) {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(dest); o.start(t); o.stop(t + dur + 0.05);
+}
+const SFX = {
+  pen: () => { for (let i = 0; i < 3; i++) noise({ at: i * 0.05 + Math.random() * 0.02, dur: 0.035 + Math.random() * 0.03, f: 2600 + Math.random() * 1800, q: 3, gain: 0.04 }); },
+  kiss: () => { noise({ dur: 0.07, type: 'lowpass', f: 900, gain: 0.08, attack: 0.004, dest: A.body }); noise({ at: 0.05, dur: 0.03, type: 'highpass', f: 2500, gain: 0.04, attack: 0.002, dest: A.body }); },
+  gulp: (g = 1) => { tone(190, 110, 0.12, 0.22 * g); noise({ at: 0.04, dur: 0.05, f: 900, q: 3, gain: 0.08 * g, dest: A.body }); },
+  spit: () => { noise({ dur: 0.12, type: 'bandpass', f: 2200, f2: 900, q: 0.8, gain: 0.12, attack: 0.005, dest: A.body }); noise({ at: 0.1, dur: 0.05, type: 'lowpass', f: 600, gain: 0.05, dest: A.world }); },
+  stamp: () => { tone(80, 50, 0.18, 0.5, { dest: A.world }); play('wood', { g: 0.3 }); },
+  squeak: () => { if (!A.ctx) return; const t = A.ctx.currentTime; const o = A.ctx.createOscillator(); o.frequency.setValueAtTime(rand(2600, 3600), t); o.frequency.linearRampToValueAtTime(rand(2200, 3000), t + 0.08);
+    const lfo = A.ctx.createOscillator(); lfo.frequency.value = 60; const lg = A.ctx.createGain(); lg.gain.value = 200; lfo.connect(lg); lg.connect(o.frequency);
+    const g = A.ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.015, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    o.connect(g); g.connect(A.body); o.start(t); lfo.start(t); o.stop(t + 0.1); lfo.stop(t + 0.1); },
+  tap: () => play('key', { g: 0.12, pan: 0.2, rate: rand(0.95, 1.1) }),
+};
+/* the lick: a continuous noise whose colour follows the mouth's wetness, its level the stroke's speed, and a crackle the grit */
+let LICK = null;
+function lickTick(speed) {
+  if (!A.ctx) return;
+  if (!LICK) {
+    const src = A.ctx.createBufferSource(); src.buffer = A.white; src.loop = true;
+    const f = A.ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.2; const g = A.ctx.createGain(); g.gain.value = 0;
+    src.connect(f); f.connect(g); g.connect(A.body); src.start();
+    const gs = A.ctx.createBufferSource(); gs.buffer = A.grain; gs.loop = true; const gf = A.ctx.createBiquadFilter(); gf.type = 'highpass'; gf.frequency.value = 1800; const gg = A.ctx.createGain(); gg.gain.value = 0;
+    gs.connect(gf); gf.connect(gg); gg.connect(A.body); gs.start();
+    LICK = { f, g, gg };
+  }
+  const ct = A.ctx.currentTime;
+  LICK.f.frequency.setTargetAtTime(lerp(1100, 3400, G.dry), ct, 0.05);
+  LICK.g.gain.setTargetAtTime(clamp(speed / 1800, 0, 1) * 0.07, ct, 0.04);
+  LICK.gg.gain.setTargetAtTime(clamp(speed / 1800, 0, 1) * G.grit * 0.5, ct, 0.04);
+}
+const lickStop = () => { if (LICK && A.ctx) { LICK.g.gain.setTargetAtTime(0, A.ctx.currentTime, 0.06); LICK.gg.gain.setTargetAtTime(0, A.ctx.currentTime, 0.06); } };
+
+/* ---------- her hand and the sensory lines ---------- */
+function say(text) {
+  if (!text) return;
+  const el = document.createElement('div'); el.className = 'her-line'; el.textContent = text;
+  const speed = S.style === 'cruel' || S.style === 'cold' ? 24 : S.style === 'ritual' ? 45 : 34;
+  el.style.setProperty('--write', `${Math.max(140, text.length * speed)}ms`); el.style.setProperty('--steps', String(Math.max(4, text.length * 2)));
+  const showing = [...$('#hand').querySelectorAll('.her-line:not(.gone)')].length;
+  el.style.left = `${innerWidth * 0.62}px`; el.style.top = `${innerHeight * 0.12 + showing * 50}px`; el.style.transform = `rotate(${rand(-4, 3).toFixed(1)}deg)`;
+  $('#hand').appendChild(el); SFX.pen();
+  setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 600); }, 2600);
+}
+function sense(text) {
+  const el = document.createElement('div'); el.className = 'sense'; el.textContent = text;
+  const showing = [...$('#hand').querySelectorAll('.sense:not(.gone)')].length;
+  el.style.left = `${innerWidth * 0.06}px`; el.style.top = `${innerHeight * 0.6 - showing * 46}px`;
+  $('#hand').appendChild(el);
+  setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 900); }, 3400);
+}
+const sayL = (key, z) => { const pool = L()[key]; if (pool && pool.length) say(pick(pool).replace('%z', z ? ZONE_WORDS[z] : '')); };
+
+/* ---------- the state: two feet, three surfaces each (outer, inner, sole), a dirt mask and a gloss mask per surface ---------- */
+let G;
+function fresh() {
+  return { phase: 'idle', t: 0, foot: 'right', surface: 'outer', surfaces: {}, order: [], orderI: 0, surfT: 0, surfLen: 25000, dry: 0, grit: 0, gest: null,
+    want: null, wantAt: 0, attention: 'busy', attT: 0, nextAtt: 2000, nextMove: 6000, fx: { dx: 0, dy: 0, s: 1, r: 0 }, anim: null, press: 0, light: -1, lightT: 0,
+    marks: [], toldDry: false, toldPolish: false, toldGrit: false, toldTaste: false, nextTap: 0,
+    stats: { strokes: 0, withGrain: 0, kisses: 0, swallows: 0, spits: 0, caught: 0, stamps: 0, checks: [], polishStrokes: 0 } };
+}
+G = fresh();
+const view = () => (G.surface === 'sole' ? 'sole' : 'close');
+const slotKey = () => `${S.kind}_${view()}`;
+const mirrored = () => G.surface === 'inner';
+const zonesNow = () => S.zones[slotKey()] ?? K()[view()];
+const leatherNow = () => (view() === 'sole' ? [] : K().leather);
+const surf = () => G.surfaces[`${G.foot}_${G.surface}`];
+
+/* ---------- the picture's rect (the fit per slot; her foot's motions on top) ---------- */
+const imgs = {};
+let shownSrc = null;
+function slotImg() { const i = imgs[slotKey()]; return i && i.naturalWidth ? i : null; }
+function shoeRect() {
+  const img = slotImg() ?? SPRITE; if (!img.naturalWidth) return null;
+  const fit = S.fit[slotKey()];
+  const H = innerHeight * fit.h, Wd = H * img.naturalWidth / img.naturalHeight;
+  const k = G.fx.s * (1 + 0.1 * G.press);
+  const cx = innerWidth / 2 + G.fx.dx, cy = innerHeight * fit.y + G.fx.dy;
+  return { x: cx - (Wd * k) / 2, y: cy - (H * k) / 2, w: Wd * k, h: H * k };
+}
+/* a point on screen → the picture's own coordinates (0–1), undoing the mirror */
+function toPic(x, y) { const r = shoeRect(); if (!r) return null; let u = (x - r.x) / r.w; const v = (y - r.y) / r.h; if (mirrored()) u = 1 - u; return [u, v, r]; }
+/* the zones as ellipses in px (from foot service: `zoneRadii`, `inEllipse`, `zoneAt`) */
+function zoneRadii(r) {
+  const z = Object.entries(zonesNow()), out = {};
+  for (const [k, p] of z) {
+    let dmin = 1e9;
+    for (const [k2, q] of z) if (k2 !== k) dmin = Math.min(dmin, Math.hypot((p[0] - q[0]) * r.w, (p[1] - q[1]) * r.h));
+    const auto = clamp(dmin / 2, r.h * 0.04, r.h * 0.12);
+    out[k] = p[3] !== undefined ? { rx: p[2] * r.h, ry: p[3] * r.h, rot: ((p[4] ?? 0) * Math.PI) / 180 } : p[2] !== undefined ? { rx: p[2] * r.h, ry: p[2] * r.h } : { rx: auto, ry: auto };
+  }
+  return out;
+}
+function inEllipse(dx, dy, z) { const a = -(z.rot ?? 0), c = Math.cos(a), sn = Math.sin(a); return [(dx * c - dy * sn) / z.rx, (dx * sn + dy * c) / z.ry]; }
+function zoneAtPic(u, v, r) {
+  const rad = zoneRadii(r); let best = null, bd = 1e9;
+  for (const [k, p] of Object.entries(zonesNow())) { const [ex, ey] = inEllipse((u - p[0]) * r.w, (v - p[1]) * r.h, rad[k]); const d = Math.hypot(ex, ey); if (d < 1 && d < bd) { bd = d; best = k; } }
+  return best;
+}
+const onShoe = (x, y) => { const q = toPic(x, y); return q && q[0] > 0 && q[0] < 1 && q[1] > 0 && q[1] < 1; };
+
+/* ---------- the dirt and the gloss: masks at low resolution over the picture's own alpha (foot service's `makeDirt`, by the dirt of her day) ---------- */
+function makeSurface() {
+  const img = slotImg() ?? SPRITE; if (!img.naturalWidth) return null;
+  const w = 140, h = Math.round(140 * img.naturalHeight / img.naturalWidth);
+  const base = document.createElement('canvas'); base.width = w; base.height = h; const b = base.getContext('2d'); b.drawImage(img, 0, 0, w, h);
+  const alpha = b.getImageData(0, 0, w, h).data;
+  const m = new Float32Array(w * h), gl = new Float32Array(w * h), zoneOf = new Int8Array(w * h).fill(-1), leatherMask = new Uint8Array(w * h);
+  const zs = Object.entries(zonesNow()), r = { w: w, h: h }, asp = img.naturalWidth / img.naturalHeight;
+  const rad = zoneRadii({ w: asp, h: 1 }); // radii in heights of the picture
+  const [n, size, stretch] = D().blobs, blobs = [];
+  for (const [k, p] of zs) for (let i = 0; i < n * (view() === 'sole' ? 1.5 : 1); i++) blobs.push([p[0] + rand(-0.09, 0.09), p[1] + rand(-0.06, 0.06), rand(size * 0.6, size * 1.4), rand(-1, 1)]);
+  const leather = leatherNow();
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const a = alpha[(y * w + x) * 4 + 3] / 255; if (a < 0.3) continue;
+    let dmin = 1e9, zi = -1;
+    zs.forEach(([k, p], i) => { const [ex, ey] = inEllipse((x / w - p[0]) * asp, y / h - p[1], rad[k]); const d = Math.hypot(ex, ey); if (d < dmin) { dmin = d; zi = i; } });
+    const onShoeK = 1 - smooth(0.9, 1.5, dmin); if (onShoeK <= 0.01) continue;
+    zoneOf[y * w + x] = dmin < 1.2 ? zi : -1;
+    if (zi >= 0 && leather.includes(zs[zi][0])) leatherMask[y * w + x] = 1;
+    let v = (S.dirt === 'rain' ? 0.05 : 0.22) + Math.random() * 0.12;
+    for (const [bx, by, br, sk] of blobs) { const dx = (x / w - bx) * asp, dy = y / h - by; const sx = stretch > 1 ? dx + sk * dy * 0.6 : dx; v += 0.55 * Math.exp(-((sx * sx) / (stretch * stretch) + dy * dy * 0.8) / (br * br)); }
+    m[y * w + x] = clamp(v, 0, 1) * a * onShoeK;
+  }
+  const tex = new Float32Array(w * h); for (let i = 0; i < w * h; i++) tex[i] = 0.7 + Math.random() * 0.3; // the dirt's grain
+  const s = { w, h, m, gl, tex, zoneOf, leatherMask, total0: m.reduce((q, v) => q + v, 0), c: document.createElement('canvas'), cg: document.createElement('canvas'), names: zs.map(([k]) => k) };
+  s.c.width = s.cg.width = w; s.c.height = s.cg.height = h;
+  return s;
+}
+function ensureSurface() { const key = `${G.foot}_${G.surface}`; if (!G.surfaces[key]) G.surfaces[key] = makeSurface(); return G.surfaces[key]; }
+const dirtLeft = (s = surf()) => (s ? s.m.reduce((q, v) => q + v, 0) / Math.max(1, s.total0) : 0);
+function zoneStat(zone, s = surf()) {
+  if (!s) return { dirt: 0, gloss: 1 }; const i = s.names.indexOf(zone); let d = 0, g = 0, n = 0;
+  for (let p = 0; p < s.m.length; p++) if (s.zoneOf[p] === i) { d += s.m[p]; g += s.gl[p]; n++; }
+  return n ? { dirt: d / n, gloss: g / n } : { dirt: 0, gloss: 1 };
+}
+/* a stroke of the tongue between two screen points: dirty pixels are wiped (along her grain better, worse with a dry or gritty mouth, by the dirt's resistance);
+   clean leather takes a gloss from slow strokes and loses a little from fast ones */
+function lickStroke(x0, y0, x1, y1, speed) {
+  const s = surf(); const a = toPic(x0, y0), b = toPic(x1, y1); if (!s || !a || !b) return { removed: 0, polished: 0 };
+  const r = a[2];
+  const { w, h, m, gl, leatherMask } = s;
+  // her grain: along the zone's long axis (toward the toe for 1, away for -1), across is half as good
+  const zone = zoneAtPic(b[0], b[1], r), zp = zone ? zonesNow()[zone] : null;
+  let withGrain = true;
+  if (zp) { const ang = ((zp[4] ?? 0) * Math.PI) / 180, major = zp[2] >= (zp[3] ?? zp[2]) ? ang : ang + Math.PI / 2; const du = (b[0] - a[0]) * r.w, dv = (b[1] - a[1]) * r.h, len = Math.hypot(du, dv) || 1;
+    const along = (du * Math.cos(major) + dv * Math.sin(major)) / len; withGrain = Math.abs(along) > 0.6 && Math.sign(along) === ST().grain; } // picture space (the mirror is already undone)
+  const wet = (1 - G.dry * 0.85) * (1 - G.grit * 0.4), k = (withGrain ? 1 : 0.45) * wet * 0.5 / D().resist;
+  const steps = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 4)), rad = 0.07 * w;
+  let removed = 0, polished = 0;
+  const slow = speed < 650;
+  for (let i = 0; i <= steps; i++) {
+    const px = lerp(a[0], b[0], i / steps) * w, py = lerp(a[1], b[1], i / steps) * h;
+    for (let y = Math.max(0, Math.floor(py - rad)); y < Math.min(h, Math.ceil(py + rad)); y++) for (let x = Math.max(0, Math.floor(px - rad)); x < Math.min(w, Math.ceil(px + rad)); x++) {
+      const d = Math.hypot(x - px, y - py) / rad; if (d > 1) continue; const p = y * w + x;
+      if (m[p] > 0.04) { const take = m[p] * k * (1 - d) * 0.35; m[p] -= take; removed += take; }
+      else if (leatherMask[p]) {
+        if (slow) { const add = (1 - gl[p]) * 0.06 * (1 - d) * wet; gl[p] += add; polished += add; } else gl[p] = Math.max(0, gl[p] - 0.01 * (1 - d));
+      }
+    }
+  }
+  return { removed, polished, withGrain, zone };
+}
+
+/* ---------- her moves ---------- */
+function beginSurface(surface) {
+  G.surface = surface; G.surfT = 0; G.surfLen = rand(...ST().surface) * 1000; ensureSurface(); G.want = null; G.anim = { kind: 'turn', t0: G.t };
+  play('cloth', { g: 0.3 });
+  if (surface === 'inner') sayL('turn'); else if (surface === 'sole') sayL('sole');
+  nextWant();
+}
+function nextWant() {
+  // she points at the dirtiest zone she cares about (the engine reads her `how`; here: the dirtiest, or on clean leather, the dullest)
+  const s = surf(); if (!s) return;
+  let best = null, bv = 0.12;
+  for (const z of s.names) { const st = zoneStat(z); if (st.dirt > bv) { bv = st.dirt; best = z; } }
+  if (!best && view() === 'close') { let gv = 0.6; for (const z of leatherNow()) { const st = zoneStat(z); if (st.gloss < gv) { gv = st.gloss; best = z; } } if (best && !G.toldPolish) { G.toldPolish = true; sayL('polish'); } }
+  G.want = best; G.wantAt = G.t;
+}
+function herMove() {
+  const mv = ST().moves, r = Math.random();
+  if (r < mv.stamp && G.lastQuality !== undefined && G.lastQuality < 0.5) { G.anim = { kind: 'stamp', t0: G.t }; SFX.stamp(); G.stats.stamps += 1; sayL('stamp'); }
+  else if (r < mv.stamp + mv.press) { G.anim = { kind: 'press', t0: G.t }; play('cloth', { g: 0.25 }); sense('She presses it to your face. Leather and her day, close.'); }
+  else if (r < mv.stamp + mv.press + mv.kiss) { G.kissWanted = G.t; sayL('kiss'); }
+  G.nextMove = G.t + rand(7000, 13000);
+}
+/* her attention: busy on her device (the taps are heard; they stop when she looks), glancing, watching */
+function updateAttention(dt) {
+  G.attT += dt;
+  if (G.attT > G.nextAtt) {
+    G.attT = 0;
+    const busyShare = S.busy === 'always' ? 1 : S.busy === 'never' ? 0 : ST().busy;
+    const r = Math.random();
+    G.attention = r < busyShare ? 'busy' : r < busyShare + (1 - busyShare) * 0.5 ? 'glancing' : 'watching';
+    G.nextAtt = rand(2500, 6000);
+  }
+  if (G.attention === 'busy' && G.t > G.nextTap) { SFX.tap(); G.nextTap = G.t + rand(140, 420); }
+}
+function inspect() {
+  // she turns it to the light: a band sweeps across; then her verdict on the worst zone (dirt left, or a dull leather zone)
+  G.phase = 'inspect'; G.light = 0; G.lightT = 0; play('cloth', { g: 0.3 });
+  sense('She turns it to the light.');
+}
+function verdict() {
+  const s = surf(); let worst = null, wv = 0, kind = null;
+  for (const z of s.names) { const st = zoneStat(z); if (st.dirt > 0.2 && st.dirt > wv) { wv = st.dirt; worst = z; kind = 'missed'; } }
+  if (!worst && view() === 'close') for (const z of leatherNow()) { const st = zoneStat(z); if (st.gloss < 0.35 && 1 - st.gloss > wv) { wv = 1 - st.gloss; worst = z; kind = 'dull'; } }
+  const q = clamp(1 - dirtLeft(s) * 3, 0, 1) * (view() === 'close' ? 0.5 + 0.5 * meanGloss(s) : 1);
+  G.lastQuality = q; G.stats.checks.push({ foot: G.foot, surface: G.surface, dirt: dirtLeft(s), gloss: view() === 'close' ? meanGloss(s) : null, worst, kind });
+  if (worst) sayL(kind, worst); else sayL(q > 0.6 ? 'good' : 'poor');
+}
+function meanGloss(s) { let g = 0, n = 0; for (let p = 0; p < s.gl.length; p++) if (s.leatherMask[p]) { g += s.gl[p]; n++; } return n ? g / n : 1; }
+
+/* ---------- phases ---------- */
+function begin() {
+  audioInit(); if (A.ctx.state === 'suspended') A.ctx.resume();
+  $('#hand').replaceChildren(); $('#summary').style.display = 'none';
+  G = fresh(); G.phase = 'loop';
+  G.order = [['right', 'outer'], ['right', 'inner'], ['right', 'sole'], ['left', 'outer'], ['left', 'inner'], ['left', 'sole']];
+  $('#reply').innerHTML = `<span class="act">She sets her ${S.kind === 'boots' ? 'boot' : 'shoe'} down in front of the commander, still carrying ${D().where}.</span>`;
+  G.foot = 'right'; G.surface = 'outer'; ensureSurface(); nextWant(); G.surfLen = rand(...ST().surface) * 1000;
+  sayL('entry');
+}
+function nextSurface() {
+  G.orderI += 1;
+  if (G.orderI >= G.order.length) { finish('done'); return; }
+  const [foot, surface] = G.order[G.orderI];
+  if (foot !== G.foot) { G.foot = foot; sayL('other'); G.anim = { kind: 'change', t0: G.t }; play('cloth', { g: 0.35 }); }
+  beginSurface(surface);
+}
+function finish(why) {
+  if (G.phase === 'done') return;
+  G.phase = 'done'; lickStop();
+  say(why === 'stop' ? 'okay. stop. come here.' : pick(L().end));
+  const s = G.stats;
+  setTimeout(() => {
+    $('#sumLine').textContent = why === 'stop' ? 'okay. stop. come here.' : L().end[0];
+    $('#sumFacts').innerHTML = `${K().label} · ${S.dirt} (${D().where})<br>strokes: ${s.strokes} (with her grain ${s.withGrain}) · polish strokes: ${s.polishStrokes}<br>kisses: ${s.kisses}<br>`
+      + `swallowed: ${s.swallows} · spat: ${s.spits} (caught ${s.caught})<br>stamps: ${s.stamps}<br>`
+      + s.checks.map((c) => `${c.foot} ${c.surface}: dirt ${(c.dirt * 100).toFixed(0)} %${c.gloss !== null ? `, shine ${(c.gloss * 100).toFixed(0)} %` : ''}${c.worst ? ` — ${c.kind} ${ZONE_WORDS[c.worst]}` : ''}`).join('<br>')
+      + `<br>how it ended: ${why}`;
+    $('#summary').style.display = 'block';
+  }, 1000);
+}
+
+/* ---------- the mouth: dryness and grit; swallow and spit ---------- */
+function swallow() {
+  if (G.phase !== 'loop' && G.phase !== 'inspect') return;
+  SFX.gulp(0.6 + G.grit); G.stats.swallows += 1;
+  if (G.grit > 0.25 && !G.toldTaste) { G.toldTaste = true; sense(`${D().taste} You swallow it.`); }
+  G.grit = Math.max(0, G.grit - 0.6); G.dry = Math.max(0, G.dry - 0.35);
+}
+function spit() {
+  if (G.phase !== 'loop' || G.grit < 0.05) return;
+  SFX.spit(); G.stats.spits += 1;
+  const seen = G.attention === 'watching' ? 0.75 : G.attention === 'glancing' ? 0.3 : 0.06;
+  G.grit = 0;
+  if (Math.random() < seen) { G.stats.caught += 1; sayL('caught'); G.anim = { kind: 'press', t0: G.t }; if (S.style === 'cruel') { const s = surf(); if (s) for (let p = 0; p < s.m.length; p++) if (s.zoneOf[p] >= 0) s.m[p] = Math.min(1, s.m[p] + 0.15 * Math.random()); } }
+  else sense('You spit it aside. She did not see.');
+}
+
+/* ---------- the loop ---------- */
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(50, now - last); last = now;
+  if (G.phase === 'loop' || G.phase === 'inspect') update(dt);
+  render(now);
+}
+function update(dt) {
+  G.t += dt;
+  // her foot's motions
+  const a = G.anim, fx = { dx: 0, dy: 0, s: 1, r: 0 };
+  if (a && !S.reduced) {
+    const u = (G.t - a.t0) / 1000;
+    if (a.kind === 'turn') { fx.s = 1 - 0.12 * Math.sin(Math.min(u, 0.4) / 0.4 * Math.PI); fx.r = 4 * Math.sin(Math.min(u, 0.4) / 0.4 * Math.PI); }
+    if (a.kind === 'change') { fx.dx = 120 * Math.sin(Math.min(u, 0.6) / 0.6 * Math.PI); fx.s = 1 - 0.15 * Math.sin(Math.min(u, 0.6) / 0.6 * Math.PI); }
+    if (a.kind === 'press') { const p = u < 0.4 ? easeOut(u / 0.4) : u < 2 ? 1 : Math.max(0, 1 - (u - 2) / 0.6); fx.s = 1 + 0.16 * p; G.press = p; }
+    if (a.kind === 'stamp') { fx.dy = 22 * Math.max(0, 1 - u * 3) * Math.sin(u * 40); }
+    if (u > 3) { G.anim = null; G.press = 0; }
+  }
+  G.fx = fx;
+  if (G.phase === 'inspect') {
+    G.lightT += dt; G.light = clamp(G.lightT / 1700, 0, 1);
+    if (G.lightT > 1700 && !G.judged) { G.judged = true; verdict(); }
+    if (G.lightT > 3000) { G.judged = false; G.phase = 'loop'; G.light = -1; nextSurface(); }
+    return;
+  }
+  updateAttention(dt);
+  G.surfT += dt;
+  // the mouth: grit and dryness tell themselves
+  if (G.grit > 0.7 && !G.toldGrit) { G.toldGrit = true; sense('Grit fills the mouth. Swallow it, or spit while she is not looking.'); }
+  if (G.dry > 0.85 && !G.toldDry) { G.toldDry = true; sense('Your mouth is dry; the tongue drags. Swallow.'); }
+  // her wanted zone, her moves; the surface ends when clean (and shone) or when her time for it is up
+  if (G.want && zoneStat(G.want).dirt < 0.1 && (view() === 'sole' || zoneStat(G.want).gloss > 0.55 || !leatherNow().includes(G.want))) nextWant();
+  if (G.t > G.nextMove) herMove();
+  const done = dirtLeft() <= CHECK_AT && (view() === 'sole' || meanGloss(surf()) > 0.6);
+  if (done || G.surfT > G.surfLen) inspect();
+}
+
+/* ---------- drawing ---------- */
+function render(now) {
+  const img = slotImg();
+  const want = img ? img.src : ASSETS.her; // no picture for this slot: her sprite stands in
+  if (shownSrc !== want) { shownSrc = want; $('#shoe').src = want; }
+  const r = shoeRect();
+  const wrap = $('#shoeWrap');
+  if (r) {
+    wrap.style.left = `${r.x}px`; wrap.style.top = `${r.y}px`; wrap.style.width = `${r.w}px`; wrap.style.height = `${r.h}px`;
+    wrap.style.transform = `rotate(${(G.fx.r + Math.sin(now / 1900) * 0.35).toFixed(2)}deg) scaleX(${mirrored() ? -1 : 1})`;
+  }
+  $('#vig').style.background = `radial-gradient(ellipse 64% 58% at 50% 50%, rgba(0,0,0,0) 40%, rgba(0,0,0,${(0.4 + 0.4 * G.press).toFixed(2)}) 100%)`;
+  const s = (G.phase === 'loop' || G.phase === 'inspect') ? surf() : null;
+  const dc = $('#dirtC'), gc = $('#glossC'), lc = $('#lightC');
+  if (s) {
+    const col = D().color;
+    // dirt: its own colour laid over the picture with a grain (not multiplied, so light dust shows on black boots and dark mud on light heels)
+    const cx = s.c.getContext('2d'), id = cx.createImageData(s.w, s.h);
+    for (let i = 0; i < s.w * s.h; i++) { const v = Math.min(1, s.m[i] * 1.3), t = s.tex[i]; id.data[i * 4] = col[0] * t; id.data[i * 4 + 1] = col[1] * t; id.data[i * 4 + 2] = col[2] * t; id.data[i * 4 + 3] = Math.round(v * 0.88 * (0.75 + 0.25 * t) * 255); }
+    cx.putImageData(id, 0, 0); if (dc.width !== s.w) { dc.width = s.w; dc.height = s.h; } const d2 = dc.getContext('2d'); d2.clearRect(0, 0, s.w, s.h); d2.drawImage(s.c, 0, 0);
+    // gloss: a sheen from the upper left on the polished leather (screen); brighter for patent heels and a boot's toe cap
+    const gx = s.cg.getContext('2d'), gd = gx.createImageData(s.w, s.h), bright = K().gloss;
+    for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) {
+      const i = y * s.w + x; if (!s.leatherMask[i]) continue;
+      const zn = s.zoneOf[i] >= 0 ? s.names[s.zoneOf[i]] : null, zb = (zn && K().bright[zn]) || 1;
+      const band = 0.35 + 0.65 * Math.exp(-(((x / s.w) - (y / s.h) * 0.6 - 0.12) ** 2) / 0.02); // a soft diagonal highlight
+      const v = clamp(s.gl[i] * band * bright * zb * (1 - Math.min(1, s.m[i] * 2)), 0, 1) * 200;
+      gd.data[i * 4] = v; gd.data[i * 4 + 1] = v; gd.data[i * 4 + 2] = v * 1.04; gd.data[i * 4 + 3] = 255;
+    }
+    gx.putImageData(gd, 0, 0); if (gc.width !== s.w) { gc.width = s.w; gc.height = s.h; } const g2 = gc.getContext('2d'); g2.clearRect(0, 0, s.w, s.h); g2.drawImage(s.cg, 0, 0);
+    dc.style.opacity = '1'; gc.style.opacity = '1';
+    // the inspection: a band of light sweeps across; dirt stays dark, dull leather stays matte, polished leather flares
+    if (G.light >= 0) {
+      if (lc.width !== s.w) { lc.width = s.w; lc.height = s.h; }
+      const lx = lc.getContext('2d'), ld = lx.createImageData(s.w, s.h), pos = lerp(-0.3, 1.3, easeOut(G.light));
+      for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) {
+        const i = y * s.w + x; if (s.zoneOf[i] < 0 && !s.leatherMask[i]) continue;
+        const bandv = Math.exp(-(((x / s.w) + (y / s.h) * 0.3 - pos) ** 2) / 0.006);
+        const shine = s.leatherMask[i] ? 0.15 + 0.85 * s.gl[i] : 0.25;
+        const v = bandv * shine * (1 - Math.min(1, s.m[i] * 2.5)) * 255;
+        ld.data[i * 4] = v; ld.data[i * 4 + 1] = v * 0.97; ld.data[i * 4 + 2] = v * 0.9; ld.data[i * 4 + 3] = 255;
+      }
+      lx.putImageData(ld, 0, 0); lc.style.opacity = '1';
+    } else lc.style.opacity = '0';
+  } else { dc.style.opacity = '0'; gc.style.opacity = '0'; lc.style.opacity = '0'; }
+  // the mouth (debug only: in play grit is heard in the lick's crackle and told by a sensory line, dryness by the lick's colour and a line; no bar)
+  const mg = $('#mouthGauge').getContext('2d'); mg.clearRect(0, 0, 260, 8);
+  if (G.phase === 'loop' && S.debug) { mg.fillStyle = 'rgba(210,170,120,.8)'; mg.fillRect(0, 0, 260 * G.grit, 3); mg.fillStyle = 'rgba(220,220,235,.6)'; mg.fillRect(0, 5, 260 * G.dry, 3); }
+  // marks: kisses fade where the lips were; the zone marker; debug
+  const mc = $('#markC'); if (mc.width !== innerWidth) { mc.width = innerWidth; mc.height = innerHeight; }
+  const mx = mc.getContext('2d'); mx.clearRect(0, 0, mc.width, mc.height);
+  G.marks = G.marks.filter((q) => performance.now() - q.born < 2200);
+  for (const q of G.marks) { const al = 1 - (performance.now() - q.born) / 2200; const g = mx.createRadialGradient(q.x, q.y, 0, q.x, q.y, 30); g.addColorStop(0, `rgba(255,150,140,${(0.35 * al).toFixed(3)})`); g.addColorStop(1, 'rgba(255,150,140,0)'); mx.fillStyle = g; mx.beginPath(); mx.arc(q.x, q.y, 30, 0, Math.PI * 2); mx.fill(); }
+  if (r && (S.debug || MARK.on)) {
+    const rad = zoneRadii(r), zz = MARK.on ? MARK.pts : zonesNow();
+    for (const [k, p] of Object.entries(zz)) {
+      const live = MARK.on && MARK.drag && k === MARK.names[MARK.i];
+      const ex = live ? Math.max(6, MARK.drag.rx ?? 6) : p[2] !== undefined ? p[2] * r.h : (rad[k]?.rx ?? 10), ey = live ? Math.max(6, MARK.drag.ry ?? 6) : p[3] !== undefined ? p[3] * r.h : ex;
+      const er = ((live ? MARK.drag.rot ?? 0 : p[4] ?? 0) * Math.PI) / 180 * (mirrored() ? -1 : 1);
+      const cxp = r.x + (mirrored() ? 1 - p[0] : p[0]) * r.w, cyp = r.y + p[1] * r.h;
+      mx.strokeStyle = k === G.want ? 'rgba(140,255,170,.8)' : 'rgba(216,228,255,.55)'; mx.lineWidth = k === G.want ? 2 : 1; mx.beginPath(); mx.ellipse(cxp, cyp, ex, ey, er, 0, Math.PI * 2); mx.stroke();
+      mx.fillStyle = 'rgba(216,228,255,.8)'; mx.font = '12px "IBM Plex Mono"'; mx.fillText(k, cxp + 10, cyp + 4);
+    }
+  }
+  if (S.debug && s) {
+    $('#debug').textContent = `${G.foot} ${G.surface} · dirt ${(dirtLeft() * 100).toFixed(0)} %${view() === 'close' ? ` · shine ${(meanGloss(s) * 100).toFixed(0)} %` : ''} · she wants ${G.want ?? '—'}\n`
+      + `mouth: dry ${G.dry.toFixed(2)} grit ${G.grit.toFixed(2)} · her attention ${G.attention}\n`
+      + `surface ${(G.surfT / 1000).toFixed(0)} / ${(G.surfLen / 1000).toFixed(0)} s · grain ${ST().grain > 0 ? 'toward the toe' : 'toward the heel'}\n`
+      + (s ? s.names.map((z) => { const q = zoneStat(z, s); return `${z}: dirt ${(q.dirt * 100).toFixed(0)}${leatherNow().includes(z) ? ` shine ${(q.gloss * 100).toFixed(0)}` : ''}`; }).join('  ') : '');
+  }
+}
+
+/* ---------- gestures (foot service's classifier: a press held = a kiss; scrubbing or a straight drag = a stroke) ---------- */
+function down(x, y) {
+  if (MARK.on) { markDown(x, y); return; }
+  if (G.phase !== 'loop' || !onShoe(x, y)) return;
+  G.gest = { x0: x, y0: y, x, y, t0: G.t, len: 0, rev: 0, lastA: null, lastT: performance.now(), kind: null };
+}
+function move(x, y, e) {
+  if (MARK.on) { markMove(x, y, e.shiftKey); return; }
+  const g = G.gest; if (!g) return;
+  const dx = x - g.x, dy = y - g.y, d = Math.hypot(dx, dy); if (d < 0.5) return;
+  const nowp = performance.now(), dtm = Math.max(1, nowp - g.lastT); g.lastT = nowp;
+  g.len += d;
+  const ax = x - (g.ax ?? g.x0), ay = y - (g.ay ?? g.y0);
+  if (Math.hypot(ax, ay) >= 6) { const an = Math.atan2(ay, ax); if (g.lastA !== null) { let da = an - g.lastA; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; if (Math.abs(da) > 2.2) g.rev += 1; } g.lastA = an; g.ax = x; g.ay = y; }
+  if (!g.kind && (g.len > 40 || g.rev >= 1)) g.kind = 'lick';
+  const speed = d / dtm * 1000; g.speed = lerp(g.speed ?? speed, speed, 0.2);
+  if (g.kind === 'lick') {
+    const res = lickStroke(g.x, g.y, x, y, g.speed);
+    const s = surf(); if (res.removed > 0) G.grit = clamp(G.grit + res.removed * 0.00035 * D().grit, 0, 1);
+    G.dry = clamp(G.dry + d * 0.0011 * (res.removed > 0 ? D().dry : 0.6), 0, 1);
+    lickTick(g.speed);
+    if (res.polished > 0) { g.polish = (g.polish ?? 0) + res.polished; if (Math.random() < 0.06) SFX.squeak(); }
+    if (res.withGrain) g.grainLen = (g.grainLen ?? 0) + d;
+  }
+  g.x = x; g.y = y;
+}
+function up() {
+  if (MARK.on) { markUp(); return; }
+  const g = G.gest; if (!g) return; G.gest = null; lickStop();
+  if (!g.kind && g.len < 12 && (G.t - g.t0) >= 300) {
+    // a kiss
+    SFX.kiss(); G.stats.kisses += 1; G.marks.push({ x: g.x0, y: g.y0, born: performance.now() });
+    if (G.kissWanted && G.t - G.kissWanted < 8000) { G.kissWanted = 0; if (Math.random() < 0.5) sayL('good'); }
+    return;
+  }
+  if (g.kind === 'lick') { G.stats.strokes += 1; if ((g.grainLen ?? 0) > g.len * 0.5) G.stats.withGrain += 1; if ((g.polish ?? 0) > 0.5) G.stats.polishStrokes += 1; }
+}
+const stage = $('#stage');
+stage.addEventListener('pointerdown', (e) => { if (e.button === 2) { spit(); return; } if (e.target.closest('#panel') || e.target.closest('.card') || e.target.closest('#stopPill')) return; down(e.clientX, e.clientY); });
+addEventListener('pointermove', (e) => move(e.clientX, e.clientY, e));
+addEventListener('pointerup', () => up());
+stage.addEventListener('contextmenu', (e) => e.preventDefault());
+addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === ' ') { e.preventDefault(); if (!e.repeat) swallow(); }
+  if (e.key === 'x' || e.key === 'X') spit();
+  if (e.key === 'Escape' && G.phase !== 'done' && G.phase !== 'idle') finish('stop');
+  if (e.key === 'h' || e.key === 'H') $('#panel').classList.toggle('hidden');
+});
+$('#stopPill').onclick = () => finish('stop');
+
+/* ---------- the zone marker (foot service's, per picture): press on a zone's centre, drag for its size, the wheel turns it; Shift a circle ---------- */
+const MARK = { on: false, i: 0, names: [], pts: {} };
+function markStart() {
+  MARK.on = true; MARK.i = 0; MARK.pts = {}; MARK.names = Object.keys(K()[view()]);
+  if (G.phase === 'idle' || G.phase === 'done') { G.phase = 'mark'; }
+  $('#markPrompt').style.display = 'block'; markPrompt();
+}
+function markPrompt() { $('#markPrompt').textContent = MARK.i >= MARK.names.length ? 'the wheel turns the last ellipse (Shift: finer) · a click anywhere: done' : `press on the centre of: ${MARK.names[MARK.i]} · drag for its width and height, the wheel turns it (Shift: a circle; a click: automatic)`; }
+function markDown(x, y) { if (MARK.i >= MARK.names.length) { markFinish(); return; } const q = toPic(x, y); if (!q) return; MARK.last = null; MARK.drag = { x, y, rad: 0, rot: 0 }; MARK.pts[MARK.names[MARK.i]] = [+q[0].toFixed(3), +q[1].toFixed(3)]; }
+function markMove(x, y, circle) { const d = MARK.drag; if (!d) return; d.rad = Math.hypot(x - d.x, y - d.y); d.circle = circle; d.rx = circle ? d.rad : Math.max(6, Math.abs(x - d.x)); d.ry = circle ? d.rad : Math.max(6, Math.abs(y - d.y)); }
+function markUp() {
+  const d = MARK.drag; if (!d) return; MARK.drag = null; const r = shoeRect(); if (!r) return; const name = MARK.names[MARK.i];
+  if (d.rad > 8) MARK.pts[name] = d.circle ? [...MARK.pts[name].slice(0, 2), +Math.max(0.02, d.rad / r.h).toFixed(3)] : [...MARK.pts[name].slice(0, 2), +Math.max(0.015, d.rx / r.h).toFixed(3), +Math.max(0.015, d.ry / r.h).toFixed(3), d.rot ?? 0];
+  if (MARK.pts[name].length >= 4) MARK.last = name;
+  MARK.i += 1; markPrompt();
+}
+function markFinish() {
+  S.zones[slotKey()] = { ...MARK.pts }; MARK.on = false; MARK.last = null; $('#markPrompt').style.display = 'none';
+  if (G.phase === 'mark') G.phase = 'idle';
+  G.surfaces = {}; copyFit();
+}
+function copyFit() { const j = JSON.stringify({ slot: `shoe_${view() === 'sole' ? 'sole' : 'close'}`, kind: S.kind, fit: { height: S.fit[slotKey()].h, y: S.fit[slotKey()].y }, zones: S.zones[slotKey()] ?? K()[view()] }); navigator.clipboard?.writeText(j).catch(() => {}); $('#sideNote').textContent = j; }
+addEventListener('wheel', (e) => {
+  if (!MARK.on) return; e.preventDefault();
+  const step = (e.shiftKey ? 1 : 5) * Math.sign(e.deltaY || e.deltaX);
+  if (MARK.drag && !MARK.drag.circle) MARK.drag.rot = ((MARK.drag.rot ?? 0) + step + 360) % 360;
+  else if (MARK.last && MARK.pts[MARK.last]?.length >= 4) { const z = MARK.pts[MARK.last]; z[4] = ((z[4] ?? 0) + step + 360) % 360; }
+}, { passive: false });
+
+/* ---------- the panel ---------- */
+function opts(host, items, get, set, label = (x) => x) {
+  host.replaceChildren();
+  for (const it of items) { const b = document.createElement('button'); b.className = 'opt' + (get() === it ? ' on' : ''); b.textContent = label(it); b.onclick = () => { set(it); opts(host, items, get, set, label); }; host.appendChild(b); }
+}
+opts($('#kinds'), Object.keys(KINDS), () => S.kind, (v) => { S.kind = v; syncFit(); if (G.phase !== 'idle') begin(); });
+opts($('#dirts'), Object.keys(DIRTS), () => S.dirt, (v) => { S.dirt = v; $('#dirtNote').textContent = `${DIRTS[v].where}: ${DIRTS[v].taste}`; if (G.phase !== 'idle') begin(); });
+$('#dirtNote').textContent = `${D().where}: ${D().taste}`;
+opts($('#styles'), Object.keys(STYLES), () => S.style, (v) => { S.style = v; });
+$('#busy').onchange = () => { S.busy = $('#busy').value; };
+for (const k of ['boots_close', 'boots_sole', 'heels_close', 'heels_sole']) {
+  $(`#f_${k}`).onchange = () => { const f = $(`#f_${k}`).files[0]; if (!f) return; const im = new Image(); im.onload = () => { imgs[k] = im; G.surfaces = {}; if (G.phase === 'loop') ensureSurface(); }; im.src = URL.createObjectURL(f); };
+}
+$('#viewSel').onchange = () => { const v = $('#viewSel').value; G.surface = v === 'close' ? 'outer' : v; syncFit(); if (G.phase === 'loop') { ensureSurface(); nextWant(); } };
+function syncFit() { const f = S.fit[slotKey()]; $('#fitH').value = f.h; $('#fitHV').textContent = f.h.toFixed(2); $('#fitY').value = f.y; $('#fitYV').textContent = f.y.toFixed(2); }
+$('#fitH').oninput = () => { S.fit[slotKey()].h = Number($('#fitH').value); $('#fitHV').textContent = S.fit[slotKey()].h.toFixed(2); };
+$('#fitY').oninput = () => { S.fit[slotKey()].y = Number($('#fitY').value); $('#fitYV').textContent = S.fit[slotKey()].y.toFixed(2); };
+$('#markZones').onclick = () => setTimeout(markStart, 50);
+$('#copyFit').onclick = () => copyFit();
+$('#snd').onchange = () => { S.sound = $('#snd').checked; if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
+$('#vol').oninput = () => { S.vol = Number($('#vol').value); if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
+$('#accent').oninput = () => document.documentElement.style.setProperty('--her', $('#accent').value);
+for (const k of Object.keys(ASSETS.bgs)) { const o = document.createElement('option'); o.value = k; o.textContent = k; $('#bg').appendChild(o); }
+$('#bg').onchange = () => { $('#backdrop').style.backgroundImage = `url(${ASSETS.bgs[$('#bg').value]})`; };
+$('#backdrop').style.backgroundImage = `url(${ASSETS.bgs.quarters_1})`;
+$('#dbg').onchange = () => { S.debug = $('#dbg').checked; $('#debug').style.display = S.debug ? 'block' : 'none'; };
+$('#rm').checked = S.reduced; $('#rm').onchange = () => { S.reduced = $('#rm').checked; };
+$('#restart').onclick = () => begin();
+$('#againBtn').onclick = () => begin();
+const SPRITE = new Image(); SPRITE.src = ASSETS.her;
+$('#go').onclick = async () => { audioInit(); await A.ctx.resume(); $('#start').style.display = 'none'; await loadSamples(); begin(); };
+syncFit();
+requestAnimationFrame(frame);
+
+/* test hooks (prototype only) */
+window.__S = S; window.__G = () => G; window.__begin = () => begin(); window.__swallow = () => swallow(); window.__spit = () => spit(); window.__inspect = () => inspect();
+</script>
+</body>
+</html>

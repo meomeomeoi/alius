@@ -28,7 +28,15 @@ npm run proto -- slap
 npm run proto -- jaw
 ```
 
+```bash
+npm run proto -- shoe
+```
+
 Each writes `.superpowers/prototypes/<name>.html` (ignored by git): one self-contained page with the fonts, backdrops and a placeholder sprite (`tests/fixtures/layout/sprite.svg`). `--sprite <file>` uses any local sprite; **never commit the author's art**. Open the page in Chromium. `H` hides the panel; `window.__S` (settings), `window.__G()` (state) and `window.__forceO` (force the opening, 0–1, `null` to release) exist for screenshots and tests.
+
+## `shoe.html` — shoe service (P15a `tongue_work` on `boot_worship`): DRAFT, in the author's rounds (not normative yet)
+
+Started on 2026-11-24 (the author: all together; footwear in general, combat boots and high heels first, worn anywhere by her taste, always dirty). Foot service's cleaning craft (`her_activity.html`, the game inside `service`) carried over to footwear: the dirt mask over the picture's alpha inside the marked zones, `wipe` along her grain (here: along the zone's long axis, toward the toe or the heel by her style), the dry mouth, the press held for a kiss, the zone marker. New: two pictures per kind (`shoe_close`: on her foot from above, three quarters; `shoe_sole`: the sole presented), the inner side as the close picture mirrored, three surfaces a foot and both feet; **the dirt of her day** (ash, mud, oil, spores, parade dust, rain: colour, grit, how it dries the mouth, how hard it wipes, its taste), drawn over the picture with a grain, not multiplied (dust must show light on black leather); **grit** in the mouth (Space swallows it, X or the right button spits it aside, caught by her attention: busy on her device, heard as taps, glancing, watching); **shine** (slow strokes on clean leather bring up a sheen from the upper left; patent heels and a boot's toe cap brighter; fast strokes smear it); **her foot** (turns, presents the sole, presses it to the face, stamps when the last surface was poor, changes feet); **the inspection** (a band of light sweeps across; dirt stays dark, dull leather matte; her verdict names the worst zone). The art: generated clean on a plain background (prompts in the session of 2026-11-24), loaded in the panel, never committed; zones marked per picture as sidecars. This section becomes the normative list once the author approves it.
 
 ## `jaw.html` — the jaw (P15a `jaw`, gesture)
 
