@@ -929,7 +929,7 @@ function updateUrges(dt) {
   // spawns: more and stronger as the ease goes
   const k = lerp(1, 0.5, low);
   const closeUp = svcOn() && SV && SV.closeK > 0.3;
-  if (closeUp) { G.nextItch = Math.max(G.nextItch, G.t + 3000); G.nextCramp = Math.max(G.nextCramp, G.t + 5000); }
+  if (closeUp) { G.nextItch += dt; G.nextCramp += dt; }
   if (G.t >= G.nextItch) { spawnUrge('itch'); G.nextItch = G.t + rand(7000, 14000) * k; }
   if (G.t >= G.nextSwallow) { if (!G.urges.some((u) => u.kind === 'swallow')) spawnUrge('swallow'); G.nextSwallow = G.t + rand(15000, 26000); }
   if (G.t >= G.nextCramp && !G.cramp && (G.phaseIdx >= 1 || hours > 0.6)) { spawnUrge('cramp'); G.nextCramp = G.t + rand(35000, 65000) * k; }
@@ -1519,7 +1519,7 @@ function svSignal() {
   let pick2;
   if (G.call) { if (!['cruel', 'playful'].includes(S.style) || SV.callAsked) return; SV.callAsked = true; pick2 = pairs.find((p) => p.meaning === 'clean'); }
   else pick2 = pairs[fnv(`${S.seed}|bout|${SV.stats.bouts}`) % pairs.length];
-  SV.sig = pick2; SV.phase = 'signal'; SV.sigAt = G.t; SV.stats.bouts += 1; SV.gest = null;
+  SV.sig = pick2; SV.phase = 'signal'; SV.sigAt = G.t; SV.stats.bouts += 1; SV.gest = null; SV.deadline = 0; SV.deskStart = 0; SV.act = null;
   const mo = MOTIONS[pick2.motion], me = MEANINGS[pick2.meaning];
   SV.anim = { kind: pick2.motion, t0: G.t };
   if (mo.up) G.footUpUntil = G.t + 2600;
@@ -1770,7 +1770,7 @@ function endPhase() {
 
 /* ---------- between phases: the hours pass in the dark, compressed; the commander chooses what the body does ---------- */
 function startSkip() {
-  G.phase = 'skip'; G.skipT = 0; G.skipHeard = []; MUSIC.on = false;
+  G.phase = 'skip'; G.skipT = 0; G.skipResolved = false; G.skipHeard = []; MUSIC.on = false;
   const from = G.clockMin, to = G.startMin + (G.phaseIdx + 1) * 60;
   G.skipFrom = from; G.skipTo = to;
   $('#skip').style.display = 'flex'; requestAnimationFrame(() => $('#skip').classList.add('on'));
@@ -1792,7 +1792,8 @@ function updateSkip(dt) {
 }
 /* the engine's resolveSkip: one draw at most */
 function resolveSkip(strategy) {
-  if (G.phase !== 'skip' || !G.skipShown) return;
+  if (G.phase !== 'skip' || !G.skipShown || G.skipResolved) return;
+  G.skipResolved = true;
   const act = ACT();
   let held = true, text = '', delta = 0;
   if (strategy === 'endure') {
@@ -2209,6 +2210,7 @@ function updatePresenceNote() { const sc = baseScore(), st = stepOf(sc); $('#pre
 function frame(now) {
   const dt = Math.min(120, now - (frame.last ?? now)); frame.last = now;
   if (G.phase !== 'idle' && G.phase !== 'done') G.t += dt;
+  if (G.phase === 'entry' || G.phase === 'skip' || G.phase === 'ending') { G.nextItch += dt; G.nextSwallow += dt; G.nextCramp += dt; if (SV) SV.next += dt; }
   for (let i = G.timers.length - 1; i >= 0; i--) if (G.t >= G.timers[i].at) { const x = G.timers[i]; G.timers.splice(i, 1); x.fn(); }
   switch (G.phase) {
     case 'entry': G.entryT += dt; if (G.entryT > 2200) beginPhase(0); break;
