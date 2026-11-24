@@ -193,6 +193,9 @@ const RELAXED = 0.35;        // the jaw resting just above her band's floor (on 
 const RELAX_ZONE = 0.06;     // how far above the floor counts as resting; from there the cost rises to 1 at her band's top
 const SKILL_CAP = 0.1;       // the engine's endurance skill: +10 % capacity a level (P15a §9.3), levels 0–5
 const TEETH_GAP = 0.015;     // under her band by this much the teeth touch her
+const TEETH_CD = 2500;       // one touch a dip (the jaw must come back into her band), and not more often than this
+const TEETH_SAY = 7000;      // she says it at most this often; between, only her foot jerks
+const WIDE_MAX = 0.9;        // her "wider" never asks past this (the tired jaw must still reach it)
 const REST_HOLD = 550;       // ms of Shift / the right button to ask
 const REST_MS = 4200;        // a granted rest
 const ORDER_GRACE = 1500;    // ms out of her band during an order before she corrects
@@ -318,7 +321,7 @@ function strainInit() {
 let G;
 function fresh() {
   return { phase: 'idle', t: 0, f: 0, jaw: 0.5, v: 0, target: 0.5, band: null, order: null, orderOut: 0, nextMove: 3000, push: 0, pushV: 0,
-    teethCd: 0, restHold: 0, resting: 0, restAsked: false, ask: null, nextTwitch: 1200, nextNose: 800, drops: [], dropAcc: 0, limitT: 0,
+    teethCd: 0, teethArmed: true, teethSaid: -1e9, restHold: 0, resting: 0, restAsked: false, ask: null, nextTwitch: 1200, nextNose: 800, drops: [], dropAcc: 0, limitT: 0,
     stats: { teeth: 0, restsAsked: 0, restsGranted: 0, corrections: 0, said: 0, heard: 0, lost: 0, twitches: 0 } };
 }
 G = fresh();
@@ -404,10 +407,10 @@ function bandNow() {
   if (S.contact === 'sole_to_mouth') {
     const base = 0.42 + G.push;
     const w = G.order === 'suck' ? st().suck : G.order === 'wide' ? 0.16 : 0.2;
-    const lo = G.order === 'wide' ? base + 0.14 : base;
-    return [clamp(lo, 0.1, 0.92), clamp(lo + w, 0.2, 1)];
+    const lo = G.order === 'wide' ? Math.min(base + 0.14, WIDE_MAX - w) : base;
+    return [clamp(lo, 0.1, WIDE_MAX), clamp(lo + w, 0.2, WIDE_MAX)];
   }
-  if (G.order === 'wide') return [0.82, 0.98];
+  if (G.order === 'wide') return [Math.min(0.78, WIDE_MAX - 0.14), WIDE_MAX];
   return null;
 }
 function herMove() {
@@ -415,7 +418,7 @@ function herMove() {
   const r = Math.random();
   if (c === 'sole_to_mouth') {
     if (r < 0.32) { // deeper: she pushes in (telegraphed: her foot comes closer, a rustle)
-      SFX.cloth(0.3); G.pushTarget = clamp(G.push + s.deep, 0, 0.35); G.order = null; setTimeout(() => { if (G.phase === 'loop') say(pick(L().deeper)); }, 250);
+      SFX.cloth(0.3); G.pushTarget = clamp(G.push + s.deep, 0, 0.28); G.order = null; setTimeout(() => { if (G.phase === 'loop') say(pick(L().deeper)); }, 250);
     } else if (r < 0.5) { G.pushTarget = clamp(G.push - 0.1, -0.1, 0.35); SFX.cloth(0.2); if (Math.random() < 0.4) say(pick(L().out)); }
     else if (r < 0.75) { G.order = 'suck'; G.orderT = 0; G.orderLen = rand(4000, 7000); say(pick(L().suck)); }
     else { G.order = 'wide'; G.orderT = 0; G.orderLen = rand(3000, 5000); say(pick(L().wide)); }
@@ -497,14 +500,17 @@ function update(dt) {
   G.jaw += G.v * dt / 1000 + (S.reduced ? 0 : (Math.random() * 2 - 1) * (0.0015 + 0.012 * f01 * f01));
   const floor = S.contact === 'ring_gag' ? S.ring : 0;
   if (G.jaw < floor) { G.jaw = floor; if (G.v < 0) G.v *= -0.2; }
+  if (G.jaw > 1) { G.jaw = 1; if (G.v > 0) G.v = 0; }
   G.jaw = clamp(G.jaw, 0, 1);
   // her band, her orders
   const band = bandNow(); G.band = band;
   if (G.order) { G.orderT += dt; if (G.orderT > G.orderLen) G.order = null; }
   // teeth: under her band (sole) they touch her
   G.teethCd -= dt;
-  if (band && S.contact === 'sole_to_mouth' && G.resting <= 0 && G.jaw < band[0] - TEETH_GAP && G.teethCd <= 0) {
-    G.stats.teeth += 1; G.teethCd = 1200; G.flashT = 0; SFX.teeth(); say(pick(L().teeth));
+  if (band && G.jaw >= band[0]) G.teethArmed = true;
+  if (band && S.contact === 'sole_to_mouth' && G.resting <= 0 && G.jaw < band[0] - TEETH_GAP && G.teethCd <= 0 && G.teethArmed) {
+    G.stats.teeth += 1; G.teethCd = TEETH_CD; G.teethArmed = false; G.flashT = 0; SFX.teeth();
+    if (G.t - G.teethSaid > TEETH_SAY) { G.teethSaid = G.t; say(pick(L().teeth)); }
     if ((S.style === 'cruel' || S.style === 'vindictive') && (G.pushTarget ?? 0) < 0.2) G.pushTarget = (G.pushTarget ?? 0) + 0.05; // she pushes in for the teeth, not past a point
   }
   // an order not kept: she corrects after a grace
@@ -627,9 +633,9 @@ function render(now, dt) {
 /* ---------- input ---------- */
 addEventListener('pointermove', (e) => {
   if (e.target.closest && e.target.closest('#panel')) return;
-  G.target = clamp((e.clientY - H0()) / (innerHeight * 0.55), 0, 1);
+  G.target = clamp((e.clientY - H0()) / (innerHeight * 0.48), 0, 1.6);
 });
-const H0 = () => innerHeight * 0.22; // the mouse from 22 % to 77 % of the height: shut to wide open
+const H0 = () => innerHeight * 0.2; // the mouse from 20 % to 68 % of the height: shut to wide open; below that it pulls harder (to beat a tired jaw's pull)
 $('#cmd').addEventListener('keydown', onType);
 addEventListener('keydown', (e) => {
   if (e.key === 'Shift' && !G.restKey) { G.restKey = true; G.restDown = performance.now(); }
