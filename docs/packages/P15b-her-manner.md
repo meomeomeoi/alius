@@ -201,7 +201,7 @@ The frame only decides whether she holds at all (the holder directive exists fro
 - **Hidden** (sentinels in `tests/fixtures/analyze/hidden.ts`): the accumulators of the manner axes (as every P14b accumulator), the mood of the day as a number, the distance to a turn and `turn` eligibility, which quirks are offered or voiced. The axes themselves, `drawnBy`, the faces, the quirks and the contrast are the player's profile and are shown.
 - **Off is byte-identical:** with the dynamic off nothing of this runs. With the dynamic on and every holder's axes at 0, no `drawnBy`, no quirks, no everyday line and a steady temperament, the numbers are P16's and P15a's exactly; only the holder directive changes (the face rule), which is the intended fix. `tests/dynamic/unaffected.test.ts` and `tests/practice/unaffected.test.ts` must not move; a seeded test that moves stops and reports.
 
-## TUNING draft (`AUTHOR TO TUNE`)
+## TUNING (approved by the author on 2026-11-24; the small shares, sealed, no-duration and forgot, are tuned in play)
 
 | what | value |
 |---|---|
@@ -210,7 +210,7 @@ The frame only decides whether she holds at all (the holder directive exists fro
 | sealed share per `curiosity` step / per `order` step down | +0.03 / +0.02 |
 | no-duration share per `order` step down | +0.03 (never for `ritual` / `drill` at `order` ≥ 0) |
 | forgot chance per `warmth` step down / `intensity` step up | +0.03 / +0.02 |
-| cue lines per segment by `voice` | −2: none but the needed; −1: half; +1: ×1.5; +2: ×2 |
+| cue lines per segment by `voice` | −2: none but the needed; −1: half; +1: ×1.5; +2: ×2; **never more than one line a beat, and no line within 3 s of her last** (author: a talkative holder must not flood a mini-game) |
 | `drawnBy` favour bonus | +1 on the matching outcome (main), +0.5 (second) |
 | a request for something new by `curiosity` | −2, −1, 0: 0 (nothing changes); +1: 0.2; +2: 0.4 |
 | mood | moody: −1/0/+1 a day on intensity, warmth, tempo; `good`: warmth +1, tempo −1; `irritated`: warmth −1, intensity +1; `low`: intensity −1, voice −1; a failed run: warmth −1 |
@@ -247,6 +247,7 @@ The frame only decides whether she holds at all (the holder directive exists fro
 
 - ~~The words of the axes' ends and of `drawnBy`~~ (decided, §1, §2); the `up` / `down` words of the six development rows (`AUTHOR TO WRITE`).
 - ~~Each style's place on the axes~~ (decided, §7).
+- ~~The TUNING table~~ (approved, 2026-11-24).
 - ~~The `mood` of each `lifeEvents` row~~ (decided, §4).
 
 ## Interfaces already provided by P15 (implemented — use, do not rebuild)
