@@ -144,6 +144,10 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <label>ringing s <input type="range" id="ring" min="0" max="6" step="0.5" value="3"><span id="ringV">3</span></label>
   <h4>her face</h4>
   <label>sprite <input type="file" id="file" accept="image/*" style="width:170px"></label>
+  <label>expressions <input type="file" id="exprFiles" accept="image/*" multiple style="width:150px"></label>
+  <div class="note" id="exprNote">Her sprites named by SillyTavern's labels (anger.png, joy.webp, …), as many as there are. With one sprite the face does not change.</div>
+  <label>her face now <select id="curExpr"></select></label>
+  <div class="note">The label her last line was read as (the native classifier or the mechanic model). It stays through the slap when it already fits her style.</div>
   <label>face art <input type="file" id="faceFile" accept="image/*" style="width:160px"></label>
   <div class="note">face art: the art slot <code>face_close</code> (her face close, filling the frame). Without it the camera closes in on the sprite's face.</div>
   <label>face x <input type="range" id="fx" min="0.2" max="0.8" step="0.01" value="0.47"><span id="fxV">0.47</span></label>
@@ -217,6 +221,45 @@ const LINES = {
   vindictive:   { before: [], none: ['that was owed.'], braced: ['it changes nothing.'], flinched: ['that’s added to it.'] },
   cruel:        { before: [], none: ['better.'], braced: ['look at that.'], flinched: ['face me.'], again: ['again.'] },
 };
+/* her face (SillyTavern's 28 expression labels): `before` is set while the camera snaps in, `after` when she speaks after the impact.
+   A face she already has is kept when it is in `keep` (it already fits); after a slip (unannounced) the calm styles look annoyed. Data, the author edits it. */
+const EXPR = {
+  cold:         { before: 'disapproval',    keep: ['disapproval', 'neutral', 'annoyance', 'anger', 'disgust'], after: { none: 'neutral', braced: 'neutral', flinched: 'disapproval' } },
+  cruel:        { before: 'amusement',      keep: ['amusement', 'anger', 'annoyance', 'desire', 'pride'], after: { none: 'amusement', braced: 'annoyance', flinched: 'anger' } },
+  vindictive:   { before: 'anger',          keep: ['anger', 'disapproval', 'annoyance', 'disgust'], after: { none: 'disapproval', braced: 'disapproval', flinched: 'anger' } },
+  affectionate: { before: 'disappointment', keep: ['disappointment', 'sadness', 'annoyance', 'disapproval'], after: { none: 'caring', braced: 'pride', flinched: 'sadness' } },
+  playful:      { before: 'amusement',      keep: ['amusement', 'joy', 'excitement', 'desire'], after: { none: 'amusement', braced: 'surprise', flinched: 'amusement' } },
+  clinical:     { before: 'neutral',        keep: ['neutral', 'curiosity', 'disapproval'], after: { none: 'curiosity', braced: 'curiosity', flinched: 'curiosity' } },
+  ritual:       { before: 'neutral',        keep: ['neutral', 'disapproval', 'pride'], after: { none: 'neutral', braced: 'approval', flinched: 'disapproval' } },
+  drill:        { before: 'annoyance',      keep: ['annoyance', 'anger', 'disapproval'], after: { none: 'disapproval', braced: 'approval', flinched: 'anger' } },
+  regal:        { before: 'pride',          keep: ['pride', 'disapproval', 'annoyance', 'anger'], after: { none: 'pride', braced: 'approval', flinched: 'anger' } },
+  possessive:   { before: 'anger',          keep: ['anger', 'annoyance', 'desire', 'disapproval'], after: { none: 'desire', braced: 'pride', flinched: 'anger' } },
+  obsessive:    { before: 'desire',         keep: ['desire', 'love', 'anger', 'excitement'], after: { none: 'love', braced: 'love', flinched: 'anger' } },
+};
+const CALM = ['ritual', 'clinical', 'regal']; // after a slip their `before` is annoyance
+const LABELS = ['admiration', 'amusement', 'anger', 'annoyance', 'approval', 'caring', 'confusion', 'curiosity', 'desire', 'disappointment', 'disapproval', 'disgust', 'embarrassment', 'excitement',
+  'fear', 'gratitude', 'grief', 'joy', 'love', 'nervousness', 'optimism', 'pride', 'realization', 'relief', 'remorse', 'sadness', 'surprise', 'neutral'];
+const EXPR_SWITCH = 60;      // ms into the snap: the face changes inside the camera's jerk
+const EXPR_WAIT = 120;       // the snap waits at most this long for the new face to load
+const faces = {};            // label -> url (the panel's expressions)
+let curLabel = 'neutral';    // her face now
+function beforeLabel(style, unann) {
+  const e = EXPR[style];
+  if (e.keep.includes(curLabel)) return curLabel;
+  return unann && CALM.includes(style) ? 'annoyance' : e.before;
+}
+/* shows a label: the picture of that label if there is one, else the face stays as it is (a missing sprite is never an error) */
+function showFace(label) {
+  curLabel = label; $('#curExpr').value = label;
+  const url = faces[label];
+  if (url && img.getAttribute('src') !== url) img.src = url;
+}
+function preload(label) {
+  const url = faces[label]; if (!url) return Promise.resolve();
+  const im = new Image(); im.src = url;
+  return Promise.race([im.decode().catch(() => {}), new Promise((r) => setTimeout(r, EXPR_WAIT))]);
+}
+
 const NARR = { // the stand-in for the next reply's narration (the digest reaches the scene; this only shows that it does)
   none: 'Her palm cracks across the commander’s face.',
   braced: 'Her palm cracks across the commander’s face. It is taken without a flinch.',
@@ -348,8 +391,13 @@ function bracedBand() {
 }
 
 /* ---------- a slap ---------- */
-function startSlap(opts = {}) {
-  if (G.slap || $('#start').style.display !== 'none') return;
+async function startSlap(opts = {}) {
+  if (G.slap || G.starting || $('#start').style.display !== 'none') return;
+  G.starting = true;
+  const faceBefore = beforeLabel(S.style, opts.unannounced ?? S.unann);
+  await preload(faceBefore); // the snap waits for her new face (at most EXPR_WAIT)
+  G.starting = false;
+  if (G.slap) return;
   audioInit();
   const id = `ps${++seq}`;
   const style = S.style;
@@ -364,7 +412,7 @@ function startSlap(opts = {}) {
   const swingAt = lead + feints * FEINT;
   const t0 = performance.now();
   const s = { id, style, swing, unann, feints, dir, lead, swingAt, impactAt: swingAt + swing, t0, again: !!opts.again,
-    pressAt: null, presses: 0, turned: 0, turnAt: null, result: null, tensionAtImpact: 0, phase: 'snap', doneAt: null, said: false, feintSaid: false, k0: G.k ?? 0 };
+    faceBefore, faceShown: false, pressAt: null, presses: 0, turned: 0, turnAt: null, result: null, tensionAtImpact: 0, phase: 'snap', doneAt: null, said: false, feintSaid: false, k0: G.k ?? 0 };
   G.slap = s;
   G.last = s;
   G.back = null;
@@ -372,7 +420,7 @@ function startSlap(opts = {}) {
   const active = document.activeElement;
   if (!opts.again) G.typingFocus = active === $('#cmd');
   if (active && active !== document.body) active.blur();
-  if (S.reduced) { land(s, performance.now()); return; }
+  if (S.reduced) { showFace(faceBefore); land(s, performance.now()); return; }
   // her hand goes up: a heartbeat, her clothes on her hand's side; the swish timed to the impact
   SFX.heart();
   if (!unann) SFX.cloth(-dir * 0.7, 0.4);
@@ -425,7 +473,9 @@ function land(s, now) {
   scatter(k);
   // her answer, then the camera goes back to the scene
   const pool = LINES[s.style][s.result] ?? [];
-  setTimeout(() => { if (pool.length) say(pick(pool)); }, s.style === 'cold' ? 0 : 380);
+  const faceAfter = EXPR[s.style].after[s.result];
+  void preload(faceAfter);
+  setTimeout(() => { showFace(faceAfter); if (pool.length) say(pick(pool)); }, s.style === 'cold' ? 0 : 380);
   const cruelAgain = s.style === 'cruel' && s.result === 'flinched' && !s.again;
   const hold = cruelAgain ? 700 : s.style === 'cold' ? 900 : 1500;
   s.doneAt = t + hold;
@@ -520,6 +570,7 @@ function frame(now) {
   let lean = 0, sweep = -1, twitch = 0;
   if (s && !S.reduced) {
     const t = now - s.t0;
+    if (!s.faceShown && t >= EXPR_SWITCH) { s.faceShown = true; showFace(s.faceBefore); }
     if (!s.unann) lean = -0.4 * easeOut((t - SNAP * 0.4) / 380) + 0.04 * Math.sin(t / 140) * (t > SNAP ? 1 : 0); // her hand up: the frame's hand side rises; a slight unrest
     for (let i = 0; i < s.feints; i++) {
       const ft = t - (s.lead + i * FEINT);
@@ -632,6 +683,7 @@ function drawDebug(now) {
   } else txt += 'no press\n';
   if (s.turned) { x.fillStyle = '#f84'; x.fillRect(X(s.turnAt) - 1, 36, 3, 66); txt += `turned away ${Math.round(s.impactAt - s.turnAt)} ms before\n`; }
   txt += `style ${s.style} · swing ${s.swing} ms · feints ${s.feints} · hand from the ${s.dir > 0 ? 'left' : 'right'}${s.unann ? ' · unannounced' : ''}${s.again ? ' · again' : ''}\n`;
+  txt += `face: ${s.faceBefore}${s.result ? ` → ${EXPR[s.style].after[s.result]}` : ''} (now ${curLabel})\n`;
   txt += `result: ${s.result ?? '…'}${s.result ? ` (tension at impact ${s.tensionAtImpact.toFixed(2)})` : ''}`;
   $('#dbgText').textContent = txt;
 }
@@ -700,6 +752,14 @@ for (const k of Object.keys(ASSETS.bgs)) { const o = document.createElement('opt
 $('#bg').onchange = () => { $('#backdrop').style.backgroundImage = `url(${ASSETS.bgs[$('#bg').value]})`; };
 $('#backdrop').style.backgroundImage = `url(${ASSETS.bgs.quarters_1})`;
 img.src = ASSETS.her;
+for (const l of LABELS) { const o = document.createElement('option'); o.value = l; o.textContent = l; $('#curExpr').appendChild(o); }
+$('#curExpr').value = curLabel;
+$('#curExpr').onchange = () => showFace($('#curExpr').value);
+$('#exprFiles').onchange = () => {
+  for (const f of $('#exprFiles').files) { const l = f.name.replace(/\.[^.]+$/, '').toLowerCase(); if (LABELS.includes(l)) faces[l] = URL.createObjectURL(f); }
+  $('#exprNote').textContent = `loaded: ${Object.keys(faces).sort().join(', ') || 'none (name the files by label)'}`;
+  showFace(faces[curLabel] ? curLabel : (faces.neutral ? 'neutral' : curLabel));
+};
 $('#go').onclick = async () => {
   audioInit(); if (A.ctx.state === 'suspended') await A.ctx.resume();
   $('#start').style.display = 'none';
@@ -711,7 +771,7 @@ renderTally();
 requestAnimationFrame(frame);
 
 /* test hooks (prototype only) */
-window.__S = S; window.__G = () => G; window.__slap = (o) => startSlap(o); window.__press = () => press('test');
+window.__S = S; window.__G = () => G; window.__slap = (o) => startSlap(o); window.__press = () => press('test'); window.__face = () => curLabel;
 </script>
 </body>
 </html>

@@ -47,12 +47,27 @@ Approved by the author on 2026-11-24 after the first round ("all good"; the soun
 - **Her hand** (`say`): Caveat in her accent, written in steps (speed by style), beside her face on the side away from her hand, stacked below the lines still showing, gone after 2.2 s. `before` lines for ritual ("still.") and drill ("chin up."); playful's line when the commander tensed on a feint.
 - **Her answer by style** (`LINES` as behaviour, `again`): cold is silent; cruel slaps again after a turned face; the others answer by the result.
 - **The camera** (`frame`): from the scene's knee-length sprite (its height 1.04 H, its bottom at 1.02 H) to her face at (0.5 W, 0.42 H) and `zoom` 2.6 (geometric), the backdrop blurring to 14 px and dimming to 0.55, the scene's reply and input stepping back. The art slot `face_close` (her face close, filling the frame) crossfades in when it exists; without it the sprite's face is zoomed. The face point `{ x, y }` is the picture's sidecar (0.47 / 0.17 for the test sprite).
+- **Her face changes** (author, 2026-11-24: a sudden change of face is needed, from the context; `EXPR`, `beforeLabel`, `showFace`, `preload`): no model call (the slap cannot wait for one). The `before` label is shown `EXPR_SWITCH` 60 ms into the snap, so the change hides inside the camera's jerk; the snap waits at most `EXPR_WAIT` 120 ms for that picture to load. Her face now (the label her last line was read as: the native classifier, `emotion_pick` or the extraction's emotion) is **kept when it is in her style's `keep` set** (it already fits); otherwise the table's `before` by style, and after a slip (unannounced) the calm styles (ritual, clinical, regal) look annoyed. The `after` label by style and result is shown with her line after the impact and stays until her next reply is read. A label with no sprite changes nothing (never an error). The table (`EXPR`, SillyTavern's 28 labels) is data the author edits:
+
+  | style | before | keep | after: none | braced | flinched |
+  |---|---|---|---|---|---|
+  | cold | disapproval | disapproval, neutral, annoyance, anger, disgust | neutral | neutral | disapproval |
+  | cruel | amusement | amusement, anger, annoyance, desire, pride | amusement | annoyance | anger |
+  | vindictive | anger | anger, disapproval, annoyance, disgust | disapproval | disapproval | anger |
+  | affectionate | disappointment | disappointment, sadness, annoyance, disapproval | caring | pride | sadness |
+  | playful | amusement | amusement, joy, excitement, desire | amusement | surprise | amusement |
+  | clinical | neutral | neutral, curiosity, disapproval | curiosity | curiosity | curiosity |
+  | ritual | neutral | neutral, disapproval, pride | neutral | approval | disapproval |
+  | drill | annoyance | annoyance, anger, disapproval | disapproval | approval | anger |
+  | regal | pride | pride, disapproval, annoyance, anger | pride | approval | anger |
+  | possessive | anger | anger, annoyance, desire, disapproval | desire | pride | anger |
+  | obsessive | desire | desire, love, anger, excitement | love | love | anger |
 - **The sound** (`SAMPLE_URLS`, `SFX`): the slap is `assets/slap/slap.ogg` at `0.95 × 0.5` (author: thwack bright at half the level); the swish `swish1` at rate 0.72; her clothes `ha/cloth1–4`; the commander's breath `breath-in-out.mp3` (the intake: 0.14 s on, 0.42 s at rate 1.6; the exhale from 2.17 s); the ringing, the thump and the heartbeat synthesised; the room tone as in breath.
 - **Reduced motion or the timing interaction off:** it lands at once (`none`): the flash, the ringing and the cheek only.
 
 ### Prototype only (do not port as is)
 
-- The panel, the start overlay, the tally, the debug timeline and the `__` hooks; the stand-in scene (`HER_REPLIES`, the half-the-time slap on a sent line, the random slap, `NARR`).
+- The panel (with its expressions loader and the "her face now" picker), the start overlay, the tally, the debug timeline and the `__` hooks; the stand-in scene (`HER_REPLIES`, the half-the-time slap on a sent line, the random slap, `NARR`).
 - `LINES`' texts (placeholders for the cue pool) and `FEINT_SHARE` (a stand-in for her `swing`: the engine's `slap.feints`).
 - The swish candidates `swish2`, `swish3` and the synthesised one (not chosen); the panel's tension and flick sliders (tuning tools; the defaults are the design).
 
@@ -65,6 +80,7 @@ Approved by the author on 2026-11-24 after the first round ("all good"; the soun
 - **The digest:** the result, glancing or not and the cheek reach the next reply through the existing `practice:slap:` directive; nothing new is remembered (`slap_public` already covers a slap before others; a turned face, if it becomes an offence, is remembered through her discipline).
 - **The cheek** lives in the UI across the scene (keyed by scene id, reset on a chat switch).
 - **Lines:** the cue pool needs `before`, `feint` and `again` kinds for the slap.
+- **Her face:** the table becomes data (a registry or a `TUNING` table read by style and result); the scene's sprite is set through the scene screen's `setSprite(unit, label)` (`getSpriteUrl`), which today follows only her replies (the native classifier or `emotion_pick` via the `sprite` UI event): the slap overlay needs to set it itself, preload both pictures before the snap and leave the label it set for the next reply to replace. With native expressions ST may also set the face from her next line; the slap's label holds until then. The art slot `face_close` would need a picture per label to follow the face (until then it is one picture, or the zoomed sprite).
 
 ## `her_activity.html` — her activity, the frame of her time, with stillness inside (P10e §15 "Her activity")
 
