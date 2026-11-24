@@ -227,6 +227,9 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <label>close-up height <input type="range" id="closeH" min="0.35" max="1" step="0.01" value="0.62"><span id="closeHV">0.62</span></label>
   <label>close-up y <input type="range" id="closeY" min="0.3" max="0.7" step="0.01" value="0.47"><span id="closeYV">0.47</span></label>
   <div class="row"><button class="opt" id="markZones">mark zones</button></div>
+  <label>bouts <select id="onlySel"><option value="">her choice</option><option>kiss</option><option>clean</option><option>rub</option><option>closer</option><option>still</option><option>enough</option></select></label>
+  <div class="row" id="boutNow"></div>
+  <div class="note">a bout now (prototype): her signal for that act at once, if she is not in the middle of another bout.</div>
   <div class="note" id="soleNote">sole_close: her sole to the camera, toes up (one clean picture; the dirt is an effect). Until it exists the close-up uses the raised foot art, or her sprite. "mark zones": for each of toes, ball, arch, heel, edge press on its centre and drag toward a corner for its width and height, the mouse wheel turns it (also the last one placed, until the next is started; Shift: finer); Shift while dragging: a circle; a click: an automatic size; the JSON (fit and zones) travels with the picture. Zones are never shown in play. Debug shows her signals and the zone she wants.</div>
   <h4>what the commander perceives (view)</h4>
   <div class="row" id="views"></div>
@@ -530,7 +533,7 @@ const BASE_EVENTS = [
 <script>
 'use strict';
 /* ---------- settings (the panel) ---------- */
-const S = { inner: 'stillness', closeH: 0.62, closeY: 0.47, zones: null, view: 'legs', blind: false, act: 'reading_reports', legVar: 'planted', style: 'neutral', talk: 'terse', regard: 'neutral', hold: 'keeping', mood: 'calm', seed: 37, force: '',
+const S = { only: '', inner: 'stillness', closeH: 0.62, closeY: 0.47, zones: null, view: 'legs', blind: false, act: 'reading_reports', legVar: 'planted', style: 'neutral', talk: 'terse', regard: 'neutral', hold: 'keeping', mood: 'calm', seed: 37, force: '',
   legsW: 0.62, legsB: 0.9, feetW: 0.56, feetB: 0.86, feetTilt: 6, raisedW: 0.62, raisedB: 0.9, floorShade: 0.55, knows: false, public: false, reckless: false, phases: 3, phaseLen: 90, start: 1080, level: 1, rain: true, stay: true,
   sound: true, murmur: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 const V = () => VIEWS[S.inner === 'weight' ? 'footrest' : S.view], ACT = () => ACTS[S.act], ST = () => STYLES[S.style];
@@ -1540,6 +1543,9 @@ function svSignal() {
   let pick2;
   if (G.call) { if (!['cruel', 'playful'].includes(S.style) || SV.callAsked) return; SV.callAsked = true; pick2 = pairs.find((p) => p.meaning === 'clean'); }
   else pick2 = pairs[fnv(`${S.seed}|${SV.salt}|bout|${SV.stats.bouts}`) % pairs.length];
+  const want = SV.forceMeaning || S.only;
+  if (want && !G.call) pick2 = pairs.find((q) => q.meaning === want) ?? { motion: MEANINGS[want].foot ? 'sole' : 'nudge', meaning: want };
+  SV.forceMeaning = null;
   SV.sig = pick2; SV.phase = 'signal'; SV.sigAt = G.t; SV.stats.bouts += 1; SV.gest = null; SV.deadline = 0; SV.deskStart = 0; SV.act = null;
   const mo = MOTIONS[pick2.motion], me = MEANINGS[pick2.meaning];
   SV.anim = { kind: pick2.motion, t0: G.t };
@@ -2306,6 +2312,8 @@ $('#accent').oninput = () => document.documentElement.style.setProperty('--her',
 $('#copyFit').onclick = () => { const j = JSON.stringify({ slot: 'legs_seated', states: { rest: { width: S.legsW, bottom: S.legsB }, foot_raised: { width: S.raisedW, bottom: S.raisedB } }, floorShade: S.floorShade, feet_floor: { width: S.feetW, bottom: S.feetB, tilt: S.feetTilt } }); navigator.clipboard?.writeText(j).catch(() => {}); $('#fitNote').textContent = j; };
 $('#feetFile').onchange = () => { const f = $('#feetFile').files[0]; if (f) { $('#floorArt').src = URL.createObjectURL(f); $('#floorArt').style.display = 'block'; } };
 $('#soleFile').onchange = () => { const f = $('#soleFile').files[0]; if (f) { $('#soleArt').src = URL.createObjectURL(f); $('#soleArt').dataset.own = '1'; } };
+$('#onlySel').onchange = () => { S.only = $('#onlySel').value; };
+$('#boutNow').replaceChildren(...Object.keys(MEANINGS).map((m) => { const b = document.createElement('button'); b.className = 'opt'; b.textContent = m; b.onclick = () => { if (!svcOn() || !SV || G.phase !== 'loop' || SV.phase !== 'wait') return; SV.forceMeaning = m; SV.next = G.t; }; return b; }));
 $('#markZones').onclick = () => { if (!$('#soleArt').naturalWidth) $('#soleArt').src = $('#raisedArt').src || ASSETS.her; setTimeout(markStart, 100); };
 $('#raisedFile').onchange = () => { const f = $('#raisedFile').files[0]; if (f) { $('#raisedArt').src = URL.createObjectURL(f); $('#raisedArt').style.display = 'block'; } };
 $('#showRaised').onmousedown = () => { G.previewRaised = true; }; addEventListener('mouseup', () => { G.previewRaised = false; });
