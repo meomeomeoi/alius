@@ -62923,8 +62923,12 @@ function releaseClaim(c) {
     if (c.wrote?.has(p) && read(c.el, p) === c.wrote.get(p)) writeStyle(c.el, p, v);
   }
 }
-function noteWrites(c) {
-  c.wrote = new Map([...c.saved.keys()].map((p) => [p, read(c.el, p)]));
+function writeClaimed(c, prop, value) {
+  writeStyle(c.el, prop, value);
+  (c.wrote ??= /* @__PURE__ */ new Map()).set(prop, read(c.el, prop));
+}
+function noteWrites(c, props) {
+  for (const p of props) if (c.saved.has(p)) (c.wrote ??= /* @__PURE__ */ new Map()).set(p, read(c.el, p));
 }
 function claimedProps(el) {
   const out = /* @__PURE__ */ new Set();
@@ -63140,8 +63144,7 @@ function mount(env, def, run, key) {
   const dial = env.root.querySelector(".alius-stage-dial");
   if (dial) {
     scope.dial = claimStyles(dial, ["@data-instrument"]);
-    dial.setAttribute("data-instrument", def.id);
-    noteWrites(scope.dial);
+    writeClaimed(scope.dial, "@data-instrument", def.id);
   }
   current = { key, runId: run.id, def, env, run: null, scope, mark, finishing: null };
   syncMark(current);
@@ -64075,7 +64078,7 @@ function requestAnimationFrame2(fn) {
     }
     measure();
     fn(now);
-    for (const c of cam.saved) if (c !== cam.dial) noteWrites(c);
+    if (cam.held && (G2.slap || G2.back) && !S2.reduced) for (const c of cam.ui) noteWrites(c, ["opacity"]);
   });
 }
 var E = null;
@@ -64180,11 +64183,19 @@ function build2(env, unitId) {
   }
   return out;
 }
-var CAM_PROPS = ["transform", "transform-origin", "filter", "transition", "opacity"];
+var CAM_PROPS = ["transform", "transform-origin", "filter", "transition"];
 var cam = {
   held: false,
   saved: [],
   dial: null,
+  layer: /* @__PURE__ */ new Map(),
+  ui: [],
+  /** Writes a property of a layer the camera holds, recorded (styleClaims' `writeClaimed`). */
+  put(el, prop, value) {
+    const c = this.layer.get(el);
+    if (c) writeClaimed(c, prop, value);
+    else el.style.setProperty(prop, value);
+  },
   base: null,
   backdropFilter: "",
   /** The camera leaves home: the styles it will write are saved, her face point is measured. */
@@ -64195,18 +64206,19 @@ var cam = {
     const { backdrop, sprites } = e.env.layers;
     const reply = e.env.reply;
     const wrap = $("#inputWrap");
-    this.saved = [backdrop, sprites, reply, wrap].map((el) => claimStyles(el, CAM_PROPS));
+    this.layer = new Map([backdrop, sprites].map((el) => [el, claimStyles(el, CAM_PROPS)]));
+    this.ui = [reply, wrap].map((el) => claimStyles(el, ["opacity"]));
+    this.saved = [...this.layer.values(), ...this.ui];
     const base = typeof getComputedStyle === "function" ? getComputedStyle(backdrop).filter : "";
     this.backdropFilter = base && base !== "none" ? base : "";
-    for (const el of [backdrop, sprites]) el.style.setProperty("transition", "none");
-    sprites.style.setProperty("transform-origin", "0 0");
+    for (const el of [backdrop, sprites]) this.put(el, "transition", "none");
+    this.put(sprites, "transform-origin", "0 0");
     this.base = null;
     this.measure();
     const dial = e.env.root.querySelector(".alius-stage-dial");
     if (dial) {
       const c = claimStyles(dial, ["@data-instrument"]);
-      dial.setAttribute("data-instrument", "slap");
-      noteWrites(c);
+      writeClaimed(c, "@data-instrument", "slap");
       this.saved.push(c);
       this.dial = c;
     }
@@ -64240,9 +64252,9 @@ var cam = {
     };
     const { backdrop, sprites } = e.env.layers;
     const cover = lerp4(1, 1.28, k);
-    backdrop.style.transformOrigin = "0 0";
-    backdrop.style.transform = about2(` scale(${cover.toFixed(4)})`);
-    backdrop.style.filter = `${this.backdropFilter} ${hblurAt("b", cover)} ${e.env.readable ? "" : `blur(${(k * 14 / cover).toFixed(1)}px)`} brightness(${lerp4(1, 0.55, k).toFixed(3)})`.replace(/\s+/g, " ").trim();
+    this.put(backdrop, "transform-origin", "0 0");
+    this.put(backdrop, "transform", about2(` scale(${cover.toFixed(4)})`));
+    this.put(backdrop, "filter", `${this.backdropFilter} ${hblurAt("b", cover)} ${e.env.readable ? "" : `blur(${(k * 14 / cover).toFixed(1)}px)`} brightness(${lerp4(1, 0.55, k).toFixed(3)})`.replace(/\s+/g, " ").trim());
     this.measure();
     let camera = "";
     let sc = 1;
@@ -64253,8 +64265,8 @@ var cam = {
       const px = lerp4(p0.x, p1[0], k), py = lerp4(p0.y, p1[1], k);
       camera = ` translate(${(px - sc * p0.x).toFixed(1)}px, ${(py - sc * p0.y).toFixed(1)}px) scale(${sc.toFixed(4)})`;
     }
-    sprites.style.transform = `${about2("")}${camera}`;
-    sprites.style.filter = `${hblurAt("s", sc)} brightness(${lerp4(1, 0.92, k)})`.trim();
+    this.put(sprites, "transform", `${about2("")}${camera}`);
+    this.put(sprites, "filter", `${hblurAt("s", sc)} brightness(${lerp4(1, 0.92, k)})`.trim());
     e.faceImg.style.filter = blur ? `url(#${HBLUR})` : "";
     e.faceImg.style.transform = world;
   },
@@ -64265,6 +64277,8 @@ var cam = {
     for (const c of this.saved) releaseClaim(c);
     this.saved = [];
     this.dial = null;
+    this.layer = /* @__PURE__ */ new Map();
+    this.ui = [];
     this.base = null;
     if (E) {
       E.faceImg.style.opacity = "0";
