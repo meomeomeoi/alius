@@ -172,6 +172,13 @@ The noticing roll stays the depth revision's (closeness, her perceptiveness, str
   - **It never takes the commander further than she did:** the stage and tolerance from relics rise only up to what was reached with her in person.
   - At 0.25 of an ordinary exposure, counted at most once a fiction day, and at most +3 tolerance a week from relics.
 
+- **Dependency as an edge (author, 2026-11-25).**
+  - **Not a task, not a punishment.** P17b's "pillow" reaches it through a week's task. Here the dependency **grows by itself** from how the commander breathed and touched her: the stage `adoring` of a scent kind (P15a §16.8) held for long, with a high exposure count. Most often, and only with `explicit_scenes`, it is her intimate scent (`scent_intimate`, or `scent_underwear` through a relic).
+  - **The effect:** sleep does not come without her scent near. That is P7's sleepless status on a night without her or a relic of that kind (P17g); a relic of that scent beside the commander lets sleep come.
+  - **She notices it:** a moment of hers, at most once per scent kind. Her line names how far the commander has gone, and her style answers: tender, amused, possessive or cold.
+  - **It ebbs:** the dependency eases after 21 days without the scent (as P17d's conditioned cues fade).
+  - **Memory:** her noticing is a fact for her (`dependency_noticed`, importance 2).
+
 ## Worship customs (P17g, 2026-11-25)
 
 **P17g** (`docs/packages/P17g-worship-customs.md`) builds customs that extend this package (relics: footwear and underwear among the worn things, consecration, worship of a relic alone, her check; traces). This package builds nothing of them; keep its mechanics readable by P17g (read by field and effect type, hooks where P17g needs them) and do not build the same thing here.

@@ -97,6 +97,21 @@ P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the
 - **Triggers to register:** `her_test` and `ritual_due` are live only through `registerMomentTrigger`. A test entry maps its own options onto the frame's response types.
 - **Hook:** `registerMomentTrigger(sourceId, fn)`; the response types are `yielded`, `resisted`, `returned`, `deflected` (`RESPONSE_TYPES`).
 
+## Revision of 2026-11-25: shame before her (chosen by the author)
+
+Private, not public: shame that comes from **her**, about facts the engine knows, never a narrator and never a feeling of the commander written out (P15 §16.5, lore §0). Already elsewhere and not repeated here: P17b §12 (real history, the commander's own words, dictation, edits, the verdict on the board), P15 §16.5 (disappointment, the question, the nickname), P17c (hesitation shows, reading over the shoulder), §6 here ("what do you feel?").
+
+- **"Describe it."** She has the commander describe, in typed words, what the commander is smelling, tasting or touching: her foot, the dirt of her boots, a mouthful.
+  - The answer is checked against the engine's truth: the scent layers and the stage (P17d, P15a), the dirt of her day, the item.
+  - It is the `saturation` instrument's question (P10e (e)) carried to every instrument and to scenes. A wrong or evasive answer is her correction by style; a lie, her "liar.".
+  - At most once a scene. The words the player types are the shame; the game adds none.
+- **Her laugh.** Her answer to a slip may be a short private laugh, one line and no numbers, instead of a punishment. It is chosen by her style and manner (P15b `warmth`, `humor` of P14c) and lands as tone only.
+- **Her remarks about the commander, from facts.** In private she remarks on what the engine knows of the commander: the commander's own sweat after a run (P17d's layers), stale breath, tiredness or sleeplessness (P7), an unwashed face.
+  - The engine picks the fact; her style gives the tone (teasing, cold note, caring jab); the model only voices it.
+  - **How often depends on the character:** her talkativeness (P14c) and P15b's `voice` and `curiosity` set the chance a remark is voiced (silent ones nearly never, talkative and curious ones often), at most once a scene.
+  - With the `body` domain (P15) a remark may become her condition.
+- **Memory check:** nothing new. A lie found out in "describe it" is P17g's `scent_lie_caught` path when it is about a scent; the rest is tone.
+
 ## Worship customs (P17g, 2026-11-25)
 
 **P17g** (`docs/packages/P17g-worship-customs.md`) builds customs that extend this package (rites anchored to events and worship in her absence over the emergent rituals, the shrine map, the vow of exclusivity, pacing the customs). This package builds nothing of them; keep its mechanics readable by P17g (read by field and effect type, hooks where P17g needs them) and do not build the same thing here.
