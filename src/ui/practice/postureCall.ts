@@ -9,6 +9,13 @@ import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 import { VOICE_OF } from '../voice/sources';
 import { renderVoiceCard, unitAccent } from '../voice/voiceCard';
+import { practiceOf } from '../../engine/dynamic/profile';
+import { handFamily, handOf, handScale } from '../../engine/hand';
+import type { SampleSound } from '../sound/samples';
+import { cancelCall, currentCall, startCall, CALL_SOUNDS, type CallOutcome } from '../scene/instruments/call/call';
+import { voiceLine } from '../scene/cards/voice';
+import { onStageReset } from '../scene/stage';
+import type { CardLook } from './taskCard';
 
 /** What the call card needs from its surface: the answer, whether the order interaction runs a timer, whether motion is reduced, and (tests) a clock and a timer. */
 export interface PostureCallHandlers {
@@ -21,6 +28,11 @@ export interface PostureCallHandlers {
   now?: () => number;
   schedule?: (fn: () => void, ms: number) => unknown;
   cancel?: (handle: unknown) => void;
+  /** P10e-e (`look: 'scene'`): the host of the dim, below the scene's UI (the effects layer), and the dial's corner (its ring takes her accent). */
+  dim?: HTMLElement | null;
+  dial?: HTMLElement | null;
+  /** P10e-e: her foot's taps, the fan and the card's place (cards.html's sounds). */
+  samples?: SampleSound | null;
 }
 
 /** The calls whose clock runs: when each started, and the handle of its expiry. A redraw of the scene must not start the clock again. */
@@ -37,14 +49,22 @@ export function resetPostureCalls(): void {
 export function cancelPostureCalls(cancel: (handle: unknown) => void = (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>)): void {
   for (const handle of expiries.values()) cancel(handle);
   resetPostureCalls();
+  cancelCall(); // P10e-e: the moment goes too (its timers, its elements, the dim and the dial's ring)
 }
+
+// a chat switch: the call drawn in the moment layer goes (scene ids repeat across campaigns)
+onStageReset(() => cancelCall());
 
 /**
  * Her call as a card in her voice (P16, plan R14, R24): her name for the posture she wants, and the set of her named postures as the choices. With the order interaction on the call has a window
  * (`postureWindowMs` by her style): the first draw starts the clock and schedules the late slip for when it runs out (once, whatever the redraws), a choice after the window carries `late`, and an answer
  * or a call that went away cancels the expiry. With it off nothing runs and nothing is late. Nothing while there is no call, for a holder `pick` does not choose or who is not live.
  */
-export function drawPostureCall(host: HTMLElement, state: CampaignState, reg: Registries, pick: (c: { unitId: string }) => boolean, handlers: PostureCallHandlers): void {
+export function drawPostureCall(host: HTMLElement, state: CampaignState, reg: Registries, pick: (c: { unitId: string }) => boolean, handlers: PostureCallHandlers, opts: CardLook = {}): void {
+  if (opts.look === 'scene') {
+    drawSceneCall(host, state, reg, pick, handlers);
+    return;
+  }
   host.replaceChildren();
   const now = handlers.now ?? (() => Date.now());
   const schedule = handlers.schedule ?? ((fn, ms) => setTimeout(fn, ms));
@@ -90,4 +110,41 @@ export function drawPostureCall(host: HTMLElement, state: CampaignState, reg: Re
   card.setAttribute('aria-label', `${unit.displayName} calls a posture`);
   for (const [k, v] of Object.entries(analyzeAttrs('glossary:posture_call', live))) card.setAttribute(k, v);
   host.append(card);
+}
+
+/**
+ * P10e-e Task 9: her call in the scene's look: a full-frame moment in the moment layer (`startCall` of cards.html, src/ui/scene/instruments/call/call.ts),
+ * drawn once per call (a redraw never restarts it). The answer goes to the engine at once (`take`); the moment plays its end on its own. A call gone from
+ * the state before it was answered (another scene, she stopped holding) goes at once; a new call ends the one before.
+ */
+function drawSceneCall(host: HTMLElement, state: CampaignState, reg: Registries, pick: (c: { unitId: string }) => boolean, handlers: PostureCallHandlers): void {
+  const call = state.practices?.call;
+  const unit = call === undefined ? undefined : state.squad.find((u) => u.id === call.holderId);
+  const now = currentCall();
+  const live = call !== undefined && unit !== undefined && dynamicOn(state, reg) && practiceLive(state, reg, unit.id) && pick({ unitId: unit.id });
+  const set = live ? (state.practices!.postures[unit!.id] ?? []).filter((p) => { const entry = reg.blockingPostures.get(p.postureId); return entry !== undefined && entryAllowed(state, reg, entry, [unit!.id]); }) : [];
+  const wanted = live ? set.find((p) => p.postureId === call!.postureId) : undefined;
+  if (!live || wanted === undefined) {
+    if (now !== null && !now.done) cancelCall(); // answered calls play their end; one that went away unanswered goes now
+    return;
+  }
+  if (now !== null && now.id === call!.id) return;
+  if (now !== null) cancelCall();
+  const hand = handOf(state, reg, unit!.id);
+  const style = practiceOf(state, reg, unit!.id)?.style.primary;
+  const name = plainDraft(wanted.name);
+  handlers.samples?.preload([...CALL_SOUNDS.soft, CALL_SOUNDS.fan, ...CALL_SOUNDS.place]).catch(() => undefined);
+  startCall({
+    id: call!.id, want: [wanted.postureId, name], choices: set.map((p) => [p.postureId, plainDraft(p.name)] as [string, string]),
+    baseLabel: (base) => String(reg.blockingPostures.get(base)?.label ?? base).toLowerCase(),
+    line: (outcome: CallOutcome) => voiceLine(reg, `call.${outcome}`, style, call!.id, { posture: name }).map((r) => r.text).join(''),
+    timed: handlers.timed, windowMs: postureWindowMs(state, reg, unit!.id), reduced: handlers.reduced,
+    accent: unitAccent(unit!.id), hand: hand ? handFamily(hand) : '', handScale: handScale(hand),
+    cardAttrs: analyzeNative('glossary:posture_call', { unitId: unit!.id }), // the cards answer to the analysis tool (P7a)
+    host, dim: handlers.dim ?? null, dial: handlers.dial ?? null, samples: handlers.samples ?? null,
+    take: (base, late) => handlers.take(call!.id, base, late),
+    now: handlers.now ?? (() => Date.now()),
+    schedule: handlers.schedule ?? ((fn, ms) => setTimeout(fn, ms)),
+    cancel: handlers.cancel ?? ((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>)),
+  });
 }

@@ -58,6 +58,8 @@ import { unitAccent } from '../voice/voiceCard';
 
 /** P10e-e Task 7: every card the scene draws is in the scene's look (`sceneCard`, her voice); the device's threads keep today's. */
 const SCENE_LOOK = { look: 'scene' } as const;
+/** When the called card lands in the dial (cards.html `end`: the dial takes the posture at 380 ms). */
+const CALL_LANDS_MS = 380;
 
 export interface SceneScreenCtx {
   controller: SceneController;
@@ -449,10 +451,18 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawPunishmentCards(punishmentCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerPunishment?.(id, answer); if (answer === 'negotiate') focusInput(); }, takeInstead: (id, answer) => ctx.onTakeInstead?.(id, answer), undo: (id) => ctx.onUndoPunishment?.(id), ceremony: (id, step, number) => ctx.onCeremonyStep?.(id, step, number), generation: ctx.generation }, SCENE_LOOK); // P16: her discipline
     drawDemonstrationCards(demonstrationCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => ctx.onAnswerDemonstration?.(id, answer), generation: ctx.generation }, SCENE_LOOK); // P16: her demonstration
     // P16: her call of a named posture: the choices, and (with the order interaction on) the window; the answer is staged like a chip so a swipe takes the posture back
+    // P10e-e Task 9: her call is a full-frame moment in the moment layer (cards.html `startCall`): the dim under the UI, her ring on the dial
     drawPostureCall(postureCall, s, registries, (c) => ids.has(c.unitId), {
       timed: ctx.settings().physicsInteractions?.order !== false, reduced: motionReduced(ctx.settings()),
-      take: (callId, postureId, late) => { (ctx.onStage ?? ((a) => void controller.stage(a)))({ type: 'practice/take_posture', payload: { callId, ...(postureId !== undefined ? { postureId } : {}), late } }); if (!disposed) refresh(); },
-    });
+      dim: layers.effects, dial: layers.hosts.dial, samples: ctx.samples ?? null,
+      take: (callId, postureId, late) => {
+        (ctx.onStage ?? ((a) => void controller.stage(a)))({ type: 'practice/take_posture', payload: { callId, ...(postureId !== undefined ? { postureId } : {}), late } });
+        // the dial takes the posture as the card lands in it (cards.html: `drawDial` at 380 ms; at once with reduced motion)
+        if (motionReduced(ctx.settings())) { if (!disposed) refresh(); return; }
+        const t = setTimeout(() => { timeouts.delete(t); if (!disposed) refresh(); }, CALL_LANDS_MS);
+        timeouts.add(t);
+      },
+    }, SCENE_LOOK);
     drawSlap(s); // P16: her hand is raised: the time allowed and the one key
     drawDisciplineChips(disciplineChips, s, registries, (c) => ids.has(c.unitId) && (c.channel !== 'scene' || c.sceneId === s.scene?.id), (id) => ctx.onUndoDiscipline?.(id));
     if (!ctx.onPunish) return;
@@ -836,7 +846,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
 
     const { hosts } = layers;
     layers.ascii.append(bg, caption);
-    layers.moment.append(slapHost);
+    postureCall = h('div', { class: 'alius-posture-call-host' }); // P10e-e Task 9: the call's host is the moment layer, not the dock
+    layers.moment.append(slapHost, postureCall);
     // P10e: the hosts the later tasks redraw (top line, reply, chip row, dock, dial) hold today's elements until each is replaced
     renderTopLine(hosts.topLine, {
       place: locationName(s, units), when: `DAY ${String(s.day).padStart(3, '0')} · ${s.slot.toUpperCase()}`, mode: s.scene!.mode === 'group' ? 'GROUP' : 'PRIVATE',
@@ -869,7 +880,6 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       return el;
     };
     momentHost = cards('moment', 'alius-moment-host');
-    postureCall = cards('posture-call', 'alius-posture-call-host');
     physicsHost = cards('physics', 'alius-physics-host');
     punishmentCards = cards('punishment', 'alius-punishment-cards');
     taskCards = cards('task', 'alius-task-cards');

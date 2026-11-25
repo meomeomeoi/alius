@@ -13,7 +13,7 @@ import { analyzeNative } from '../../analyze/mark';
 import { h } from '../../dom';
 import { gistRuns } from '../cards/gist';
 
-export const DOCK_SLOTS = ['moment', 'posture-call', 'physics', 'punishment', 'task', 'demonstration', 'milestone', 'claim', 'return'] as const;
+export const DOCK_SLOTS = ['moment', 'physics', 'punishment', 'task', 'demonstration', 'milestone', 'claim', 'return'] as const;
 
 export interface Dock {
   element: HTMLElement;

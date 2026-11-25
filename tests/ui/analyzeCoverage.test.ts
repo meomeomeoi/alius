@@ -35,7 +35,7 @@ import { renderCmdrCard } from '../../src/ui/commander/cmdrCard';
 import { renderTaskCard } from '../../src/ui/practice/taskCard';
 import { drawPunishmentCards } from '../../src/ui/practice/punishmentCard';
 import { drawDemonstrationCards } from '../../src/ui/practice/demonstrationCard';
-import { drawPostureCall, resetPostureCalls } from '../../src/ui/practice/postureCall';
+import { cancelPostureCalls, drawPostureCall, resetPostureCalls } from '../../src/ui/practice/postureCall';
 import { blankPractices } from '../../src/engine/practice/state';
 import { ANN as PRACTICE_ANN, BEA as PRACTICE_BEA, withService, world as practiceWorld } from '../engine/practice/world';
 import { buildKnowledge } from '../../src/analysis/knowledge';
@@ -905,8 +905,8 @@ describe('coverage: her call of a named posture (P16)', () => {
       const host = h('div');
       root.append(host);
       resetPostureCalls();
-      drawPostureCall(host, state, reg, () => true, { take: vi.fn(), timed: true, reduced: false, schedule: () => 1, cancel: () => {} });
-      expect(root.querySelector('.alius-posture-call')).not.toBeNull();
+      drawPostureCall(host, state, reg, () => true, { take: vi.fn(), timed: true, reduced: false, schedule: () => 1, cancel: () => {} }, { look: 'scene' }); // P10e-e Task 9: the moment
+      expect(root.querySelector('.alius-call')).not.toBeNull();
       expect(root.querySelectorAll('[data-posture-choice]')).toHaveLength(2);
       expect(markedWithout(root)).toEqual([]);
       expect(unresolved(root, env(state))).toEqual([]);
@@ -924,7 +924,7 @@ describe('coverage: her call of a named posture (P16)', () => {
       expect(fetchSpy).not.toHaveBeenCalled();
       expect(st.calls).toEqual([]);
     } finally {
-      resetPostureCalls();
+      cancelPostureCalls(() => {}); // P10e-e: the moment goes too
       globalThis.fetch = realFetch;
     }
   });

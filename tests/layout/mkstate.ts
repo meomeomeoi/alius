@@ -5,6 +5,7 @@
  * and a hold on the commander (the pill).
  * `dialname` / `dialwide`: Ann (ritual) has named the commander's posture (P16): `Low` for bowing (cards.html's own), or a name of 30
  * characters for bowing (it wraps, over the base name and EYES DOWN: the tallest label; the circle stays where it is for `standing`).
+ * `call`: Ann (ritual) has four named postures and calls Low (P10e-e Task 9: her posture call as a full-frame moment).
  */
 import { writeFileSync } from 'node:fs';
 import { COMMANDER, registerFrameReader, setBlocking } from '../../src/engine/blocking';
@@ -51,7 +52,7 @@ function withCards(participants: string[]): CampaignState {
   d.dynamic!.open.milestones.push({ id: 'dm1', unitId: 'unit_ann', milestoneId: 'handover', day: d.day, form: 'scene' });
   d.practices = {
     ...blankPractices(), seq: 9,
-    tasks: [{ id: 'pt1', holderId: 'unit_ann', kind: 'task', tags: ['service'], track: 'service', tier: 1, stakes: 'minor', check: 'model', proof: 'none', text: 'Bring the roster.', summary: 'bring the roster', status: 'offered', acceptForm: 'button_cost', day: d.day }],
+    tasks: [{ id: 'pt1', holderId: 'unit_ann', kind: 'task', tags: ['service'], track: 'service', tier: 1, stakes: 'minor', check: 'slot_with_her', proof: 'none', text: 'Bring me the patrol roster before evening mess. Folded, and on your knees.', summary: 'bring the roster', status: 'offered', acceptForm: 'button_cost', day: d.day, deadline: { day: d.day, slot: 'evening' } }],
     punishments: [{ id: 'pp1', holderId: 'unit_ann', entryId: 'no_messages', severity: 2, offence: { kind: 'task_broken', stakes: 'major', day: d.day }, text: 'A day without messages.', summary: 'a day without messages', status: 'offered', day: d.day }],
   } as never;
   return d;
@@ -82,5 +83,14 @@ function named(postureId: string, name: string): CampaignState {
 }
 out.dialname = named('bowing', 'Low');
 out.dialwide = named('bowing', 'All the way down, where I want'); // 30 characters, over BOWING and EYES DOWN: the tallest label
+
+/** P10e-e Task 9: Ann (ritual) named four postures and calls Low (bowing) while the commander kneels upright: her word, her foot, the fan. */
+const called = named('kneeling_upright', 'Attention');
+called.practices!.postures[ANN] = [
+  { postureId: 'kneeling_upright', name: 'Attention', day: 20 }, { postureId: 'kneeling_sitting', name: 'Rest', day: 20 },
+  { postureId: 'bowing', name: 'Low', day: 20 }, { postureId: 'all_fours', name: 'Pup', day: 20 },
+];
+called.practices!.call = { id: 'pc1', holderId: ANN, postureId: 'bowing', sceneId: called.scene!.id, at: 1 };
+out.call = called;
 
 writeFileSync(process.argv[2] ?? 'states.json', JSON.stringify(out));

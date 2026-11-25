@@ -6,7 +6,7 @@
 //   size     [width, height] (default 1920x1080)
 //   clip     optional { x, y, width, height } (negative x / y count from the right / bottom edge): both shots are cropped to it
 //   hide     selectors of the prototype hidden in its shots (its panel, its log: prototype only)
-//   moments  [{ id, state?, query?, clip?, proto(page, ctx), port(page, ctx) }]
+//   moments  [{ id, state?, query?, clip?, size?, proto(page, ctx), port(page, ctx) }]
 //            `proto` runs in the built prototype page (.superpowers/prototypes/<name>.html): drive it through its hooks (`window.__S`, `window.__G()`,
 //            `window.__forceO`, `window.__begin()`, …), its globals (a top-level `let` / `function` of its script is reachable from
 //            `page.evaluate`), its panel's buttons or the mouse and keys. `port` runs in the layout page (`/page.html?fixture=<state><query>`):
@@ -41,9 +41,43 @@ export const MOMENTS = {
         proto: (p) => setPose(p, 'bowing', 'All the way down, where I want'),
         port: async () => {},
       },
+      ...cardMoments([1920, 1080], ''),
+      ...cardMoments([1280, 800], '-1280'),
     ],
   },
 };
+
+/**
+ * cards.html: her hand of cards and the posture call (Tasks 7–10). The port's dock is drawn from the `three` fixture (a moment, a punishment, a
+ * task and her step; the prototype deals a milestone, a punishment, a claim and a task), the call from `call` (Ann, ritual, calls Low among
+ * Attention, Rest, Low and Pup: the prototype's own names, its style set to ritual and its random pick made Low).
+ */
+function cardMoments(size, suffix) {
+  const dock = { x: 0, y: Math.round(size[1] * 0.3) - 40, width: 520, height: Math.round(size[1] * 0.46) + 80 };
+  const frame = { x: 0, y: 0, width: size[0], height: size[1] };
+  const openProto = (kind) => (p) => p.evaluate((k) => { const el = [...document.querySelectorAll('#dock .card.collapsed')].find((c) => c.querySelector('.kind')?.textContent === k); el?.click(); }, kind);
+  const openPort = (kind) => (p) => p.evaluate((k) => { const el = [...document.querySelectorAll('.alius-dock-card[data-collapsed="true"]')].find((c) => c.querySelector('.alius-scard-kind')?.textContent === k); el?.querySelector('.alius-scard-head')?.dispatchEvent(new MouseEvent('click', { bubbles: true })); }, kind);
+  const call = async (p) => {
+    await p.evaluate(() => { window.__S.style = 'ritual'; const r = Math.random; Math.random = () => 0.5; window.__call(); Math.random = r; });
+  };
+  return [
+    { id: `stack${suffix}`, state: 'three', size, clip: dock, proto: openProto('punishment'), port: openPort('punishment') },
+    { id: `task${suffix}`, state: 'three', size, clip: dock, proto: openProto('task'), port: openPort('task') },
+    { id: `call-mid${suffix}`, state: 'call', size, clip: frame, proto: async (p, c) => { await call(p); await c.wait(900); }, port: async () => {} },
+    {
+      id: `call-right${suffix}`, state: 'call', size, clip: frame,
+      // the prototype is driven first and the port after it: the port's own wait times both moments (about 1.1 s after the click)
+      proto: async (p, c) => { await call(p); await c.wait(900); await p.click('.pc[data-base="bowing"]'); },
+      port: async (p, c) => { await p.click('.alius-call-card[data-posture-choice="bowing"]'); await c.wait(700); },
+    },
+    {
+      id: `call-slow${suffix}`, state: 'call', size, clip: frame,
+      // the port's call started when its page loaded: both are about half a second past her window (4000 ms, ritual) at the shot
+      proto: async (p, c) => { await call(p); await c.wait(3700); },
+      port: async () => {},
+    },
+  ];
+}
 
 /** Sets the prototype's dial to `id` (her name for it `name`, or as the prototype has it when null) and redraws it. */
 function setPose(page, id, name) {

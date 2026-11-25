@@ -21,7 +21,7 @@ beforeAll(async () => {
   reg = await loadCore();
   registerCoreProviders();
 });
-afterEach(() => { document.body.innerHTML = ''; resetPostureCalls(); });
+afterEach(() => { document.body.innerHTML = ''; cancelPostureCalls(); });
 
 /** Ann (a ritual holder at role) has two named postures and has called the first. */
 function state(withCall = true): CampaignState {
@@ -167,7 +167,7 @@ describe('the scene screen', () => {
 
   it('draws her call in the scene and the answer is staged like a chip, with the late flag', () => {
     const { host, stage } = screen();
-    expect(host.querySelectorAll('.alius-posture-call')).toHaveLength(1);
+    expect(host.querySelectorAll('.alius-layer-moment .alius-call')).toHaveLength(1); // P10e-e Task 9: a full-frame moment, not a dock card
     host.querySelector<HTMLButtonElement>('[data-posture-choice="standing_attention"]')!.click();
     expect(stage).toHaveBeenCalledWith({ type: 'practice/take_posture', payload: { callId: 'pc1', postureId: 'standing_attention', late: false } });
     vi.useRealTimers();
@@ -175,8 +175,10 @@ describe('the scene screen', () => {
 
   it('with the order interaction off the card has no timer', () => {
     const { host } = screen({ physicsInteractions: { ...DEFAULT_SETTINGS.physicsInteractions, order: false } });
-    expect(host.querySelectorAll('.alius-posture-call')).toHaveLength(1);
+    expect(host.querySelectorAll('.alius-layer-moment .alius-call')).toHaveLength(1);
     expect(host.querySelector('.alius-posture-timer')).toBeNull();
+    vi.advanceTimersByTime(800);
+    expect(host.querySelectorAll('.alius-call-dots i')).toHaveLength(0); // no clock: no taps
     vi.useRealTimers();
   });
 });

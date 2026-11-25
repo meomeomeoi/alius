@@ -1,0 +1,54 @@
+{
+  "prototype": "cards",
+  "note": "Task 9 (chunk e2): the posture call. `startCall`, `scheduleTaps`, `tap`, `choose`, `end` of cards.html, wired to the engine's call (its id, her named postures in her order, her window, her lines) instead of the prototype's panel. The CSS (`#call`, `#callWord`, `#dots`, `#callLine`, `#fan`, `.pc`, `#dimmer`, `#dial.called`) is css/65-call.css; the shots (`npm run shots -- cards`) compare the moment. `tapTimes` and `fanPlace` are the numbers of `scheduleTaps` and `startCall` as functions of their own (tests/ui/instruments/call.test.ts).",
+  "functions": [
+    {
+      "fn": "startCall",
+      "module": "src/ui/scene/instruments/call/call.ts"
+    },
+    {
+      "fn": "scheduleTaps",
+      "module": "src/ui/scene/instruments/call/call.ts"
+    },
+    {
+      "fn": "tap",
+      "module": "src/ui/scene/instruments/call/call.ts"
+    },
+    {
+      "fn": "choose",
+      "module": "src/ui/scene/instruments/call/call.ts"
+    },
+    {
+      "fn": "end",
+      "module": "src/ui/scene/instruments/call/call.ts"
+    }
+  ],
+  "tables": [],
+  "differences": [
+    {
+      "fn": "startCall",
+      "reason": "Wiring: the engine's call (`o`: its id, the called posture and her name for it, her named postures in her order that pass `entryAllowed`, her window, reduced motion, her accent and hand) replaces the prototype's panel (`S`, `NAMED.slice(0, 4)`, a random pick: the engine picks by `practiceRoll`); the elements are the call's own (`build`), the dim lives under the scene's UI (`o.dim`) and the ring on the scene's dial (`o.dial`); each card is a button (`data-posture-choice`, `data-call`, `data-analyze`) holding the dial's mannequin (`mannequinSvg(poseOf(base))`, as the prototype's build does), placed by `fanPlace` (the prototype's numbers); a hover does not move a card once the call is answered; timers go through `o.schedule` so `cancelCall` stops them; `is-writing` is the prototype's `write` class; the log line is prototype only.",
+      "diff": "@@ -1,22 +1,27 @@\n-function startCall(){\n+function startCall(o){\n if(call)return\n-const choices=NAMED.slice(0,4)\n-const others=choices.filter(n=>n[0]!==pose)\n-const want=others[Math.floor(Math.random()*others.length)]\n-const id=`call${++seq}`\n+const choices=o.choices\n+const want=o.want\n+const id=o.id\n call={\n-id,want,t0:performance.now(),taps:[],timers:[]\n+id,want,t0:o.now(),taps:[],timers:[],o,el:build(o)\n }\n-$(\"#dimmer\").style.opacity=\"0.28\"\n-$(\"#dial\").classList.add(\"called\")\n-const w=$(\"#callWord .w\")\n+const el0=call.el\n+if(el0.dim){\n+void el0.dim.offsetWidth\n+el0.dim.style.opacity=\"0.28\"\n+}\n+if(o.dial){\n+o.dial.dataset.called=\"true\"\n+o.dial.style.setProperty(\"--alius-her\",o.accent)\n+}\n+const w=el0.w\n w.textContent=want[1]\n-w.className=\"w\"\n+w.className=\"alius-call-w\"\n void w.offsetWidth\n-if(!S.reduced)w.classList.add(\"write\")\n-$(\"#dots\").replaceChildren()\n-$(\"#callLine\").textContent=\"\"\n-$(\"#callLine\").style.opacity=1\n-$(\"#call\").style.display=\"block\"\n-const fan=$(\"#fan\")\n+if(!o.reduced)w.classList.add(\"is-writing\")\n+el0.dots.replaceChildren()\n+el0.line.textContent=\"\"\n+el0.line.style.opacity=\"1\"\n+const fan=el0.fan\n fan.replaceChildren()\n@@ -24,15 +29,21 @@\n choices.forEach(([base,name],i)=>{\n-const el=document.createElement(\"div\")\n-el.className=\"pc\"\n-el.innerHTML=`${MQ[base]}<div class=\"nm\">${name}</div><div class=\"base\">${BASE_LABEL[base]}</div>`\n-const k=i-(n-1)\n-const x=k*140,rot=(i-(n-1)/2)*5,lift=Math.abs(i-(n-1)/2)*9\n+const pose=poseOf(base)\n+const el=h(\"button\",{\n+type:\"button\",class:\"alius-call-card\",\"data-posture-choice\":base,\"data-call\":id,\"aria-label\":`${name}: ${o.baseLabel(base)}`,...(o.cardAttrs??{})\n+},pose?mannequinSvg(pose):null,h(\"span\",{\n+class:\"alius-call-nm\"\n+},name),h(\"span\",{\n+class:\"alius-call-base\"\n+},o.baseLabel(base)))\n+const{\n+x,rot,lift\n+}=fanPlace(i,n)\n el.style.left=`${x}px`\n-el.style.transform=S.reduced?`translateY(${lift}px) rotate(${rot}deg)`:\"translateY(260px) rotate(0deg) scale(.6)\"\n-el.style.opacity=S.reduced?1:0\n+el.style.transform=o.reduced?`translateY(${lift}px) rotate(${rot}deg)`:\"translateY(260px) rotate(0deg) scale(.6)\"\n+el.style.opacity=o.reduced?\"1\":\"0\"\n el.onmouseenter=()=>{\n-el.style.transform=`translateY(${lift-18}px) rotate(0deg) scale(1.04)`\n+if(!call?.done)el.style.transform=`translateY(${lift-18}px) rotate(0deg) scale(1.04)`\n }\n el.onmouseleave=()=>{\n-el.style.transform=`translateY(${lift}px) rotate(${rot}deg)`\n+if(!call?.done)el.style.transform=`translateY(${lift}px) rotate(${rot}deg)`\n }\n@@ -41,4 +52,4 @@\n fan.append(el)\n-if(!S.reduced)call.timers.push(setTimeout(()=>{\n-el.style.opacity=1\n+if(!o.reduced)call.timers.push(o.schedule(()=>{\n+el.style.opacity=\"1\"\n el.style.transform=`translateY(${lift}px) rotate(${rot}deg)`\n@@ -46,5 +57,5 @@\n })\n-sfx(ASSETS.fan,0.3,0.6)\n-if(S.timed)scheduleTaps()\n-log(`she calls: ${want[1]} (${BASE_LABEL[want[0]]})${S.timed?`, ${windowOf()} ms`:\", no clock\"}`)\n+sfx(o,CALL_SOUNDS.fan,0.3,0.6)\n+if(o.timed)scheduleTaps()\n+return el0.root\n }"
+    },
+    {
+      "fn": "scheduleTaps",
+      "reason": "Wiring: her window is the engine's (`postureWindowMs`, the prototype's `windowOf`); the tap times are `tapTimes` (the prototype's loop, as a function of its own); timers through `o.schedule`; each tap knows its index for its hashed sound.",
+      "diff": "@@ -1,13 +1,6 @@\n function scheduleTaps(){\n-const win=windowOf()\n-const times=[]\n-const t=380\n-while(t<win){\n-times.push(t)\n-const k=t/win\n-t+=700-480*k*k\n-}\n-times.push(win)\n+const win=call.o.windowMs\n+const times=tapTimes(win)\n const span=300\n-times.forEach((at,i)=>call.timers.push(setTimeout(()=>tap(at/win,i===times.length-1,span),at)))\n+times.forEach((at,i)=>call.timers.push(call.o.schedule(()=>tap(at/win,i===times.length-1,span,i),at)))\n }"
+    },
+    {
+      "fn": "tap",
+      "reason": "No rng (Global Constraints): the soft sound and its rate are a hash of the call and the tap (`fnv1a`), the prototype's `Math.random`; the sound plays through the sample layer (`SampleSound.play`, the world bus and the player's level; cards.html's `sfx` is a plain buffer source with a gain and a pan); `is-bob` is the prototype's `bob` class; the elements are the call's own.",
+      "diff": "@@ -1,14 +1,15 @@\n-function tap(k,last,span){\n+function tap(k,last,span,i){\n if(!call)return\n-const d=document.createElement(\"i\")\n+const o=call.o\n+const d=h(\"i\")\n if(last)d.className=\"last\"\n d.style.left=`${(k-0.5)*span}px`\n-$(\"#dots\").append(d)\n-const w=$(\"#callWord .w\")\n-if(!S.reduced){\n-w.classList.remove(\"bob\")\n+call.el.dots.append(d)\n+const w=call.el.w\n+if(!o.reduced){\n+w.classList.remove(\"is-bob\")\n void w.offsetWidth\n-w.classList.add(\"bob\")\n+w.classList.add(\"is-bob\")\n }\n-sfx(ASSETS.soft[Math.random()<0.5?0:1],(0.22+0.4*k)*(last?1.6:1),0.35,0.92+Math.random()*0.1)\n+sfx(o,CALL_SOUNDS.soft[fnv1a(`${call.id}|${i}`)%2],(0.22+0.4*k)*(last?1.6:1),0.35,0.92+(fnv1a(`${call.id}|${i}|rate`)%1000)/1000*0.1)\n if(last)end(\"slow\",null)"
+    },
+    {
+      "fn": "choose",
+      "reason": "Wiring: the call's own state and the sample layer (cards.html `sfx`).",
+      "diff": "@@ -2,3 +2,3 @@\n if(!call||call.done)return\n-sfx(ASSETS.place[0],0.35,0.6)\n+sfx(call.o,CALL_SOUNDS.place[0],0.35,0.6)\n end(base===call.want[0]?\"right\":\"wrong\",base,el)"
+    },
+    {
+      "fn": "end",
+      "reason": "Wiring: the answer goes to the engine at once (`o.take`: the posture chosen, none for the last tap, late when the window had passed), and her line is card-voice.md §5 by her style through `voiceLine` (`o.line`); the dial takes the posture from the state (the scene redraws it 380 ms after the answer, at once with reduced motion), so `drawDial` is not called here and a void answer (R9) leaves it as it is; `is-right` / `is-wrong` / `is-writing` are the prototype's `right` / `wrongpick` / `write`; every timer goes through `o.schedule` and the last one tears the moment down (`teardown`) so nothing stays; the outcome is marked on the root (`data-outcome`) for the shots and the tests.",
+      "diff": "@@ -4,8 +4,10 @@\n c.done=true\n-for(const t of c.timers)clearTimeout(t)\n-const fan=$(\"#fan\")\n+for(const t of c.timers)c.o.cancel(t)\n+c.timers=[]\n+const o=c.o\n+const fan=c.el.fan\n const rightEl=fan.querySelector(`[data-base=\"${c.want[0]}\"]`)\n+c.el.root.dataset.outcome=outcome\n if(outcome===\"right\"){\n-pose=c.want[0]\n-if(!S.reduced){\n+if(!o.reduced&&el){\n const fx=-parseFloat(el.style.left)-30\n@@ -13,37 +15,34 @@\n el.style.transform=`translate(${fx}px, 230px) scale(.35)`\n-el.style.opacity=0\n+el.style.opacity=\"0\"\n }\n-setTimeout(drawDial,S.reduced?0:380)\n-for(const o of fan.children)if(o!==el)o.style.opacity=0\n+for(const x of fan.children)if(x!==el)x.style.opacity=\"0\"\n }\n else{\n-if(outcome===\"wrong\"&&el)el.classList.add(\"wrongpick\")\n-rightEl?.classList.add(\"right\")\n-setTimeout(()=>{\n-for(const o of fan.children){\n-o.style.opacity=0\n-if(!S.reduced)o.style.transform+=\" translateY(60px)\"\n+if(outcome===\"wrong\"&&el)el.classList.add(\"is-wrong\")\n+rightEl?.classList.add(\"is-right\")\n+c.timers.push(o.schedule(()=>{\n+for(const x of fan.children){\n+x.style.opacity=\"0\"\n+if(!o.reduced)x.style.transform+=\" translateY(60px)\"\n }\n-},900)\n+},900))\n }\n-const lineEl=$(\"#callLine\")\n-lineEl.textContent=pick(c.id,`call.${outcome}`).replaceAll(\"{posture}\",c.want[1])\n-lineEl.className=\"\"\n+const lineEl=c.el.line\n+lineEl.textContent=o.line(outcome)\n+lineEl.className=\"alius-call-line\"\n void lineEl.offsetWidth\n-if(!S.reduced)lineEl.className=\"write\"\n-log(`${outcome}${base?`: ${BASE_LABEL[base]}`:\"\"}`)\n-setTimeout(()=>{\n-$(\"#dimmer\").style.opacity=0\n-$(\"#dial\").classList.remove(\"called\")\n-$(\"#callWord .w\").textContent=\"\"\n-$(\"#dots\").replaceChildren()\n-},1300)\n-setTimeout(()=>{\n-lineEl.style.opacity=0\n-},2600)\n-setTimeout(()=>{\n-fan.replaceChildren()\n-$(\"#call\").style.display=\"none\"\n-call=null\n-},3300)\n+if(!o.reduced)lineEl.classList.add(\"is-writing\")\n+o.take(base??undefined,outcome===\"slow\"||(o.timed&&o.now()-c.t0>o.windowMs))\n+c.timers.push(o.schedule(()=>{\n+if(c.el.dim)c.el.dim.style.opacity=\"0\"\n+if(o.dial)delete o.dial.dataset.called\n+c.el.w.textContent=\"\"\n+c.el.dots.replaceChildren()\n+},1300))\n+c.timers.push(o.schedule(()=>{\n+lineEl.style.opacity=\"0\"\n+},2600))\n+c.timers.push(o.schedule(()=>{\n+teardown(c)\n+},3300))\n }"
+    }
+  ]
+}

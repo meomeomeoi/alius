@@ -23,7 +23,6 @@ if (!name || !entry) {
 const only = opt('--moment');
 const moments = entry.moments.filter((m) => only === undefined || m.id === only);
 if (moments.length === 0) { console.error(`no moment "${only}" for ${name}: ${entry.moments.map((m) => m.id).join(', ')}`); process.exit(1); }
-const size = entry.size ?? [1920, 1080];
 const settle = entry.settle ?? 400;
 
 // the prototype and the layout page
@@ -35,13 +34,14 @@ const out = resolve(root, '.superpowers/shots', name);
 mkdirSync(out, { recursive: true });
 
 /** A clip with negative x / y counted from the right / bottom edge, in the viewport. */
-const clipOf = (c) => (c ? { x: c.x < 0 ? size[0] + c.x : c.x, y: c.y < 0 ? size[1] + c.y : c.y, width: c.width, height: c.height } : undefined);
+const clipOf = (c, size) => (c ? { x: c.x < 0 ? size[0] + c.x : c.x, y: c.y < 0 ? size[1] + c.y : c.y, width: c.width, height: c.height } : undefined);
 
 const browser = await chromium().launch({ args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
 const failures = [];
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 for (const m of moments) {
-  const clip = clipOf(m.clip ?? entry.clip);
+  const size = m.size ?? entry.size ?? [1920, 1080]; // a moment may have its own size (cards: 1920x1080 and 1280x800)
+  const clip = clipOf(m.clip ?? entry.clip, size);
   const ctx = { size, wait };
   // the prototype
   const proto = await browser.newPage({ viewport: { width: size[0], height: size[1] }, deviceScaleFactor: 1 });

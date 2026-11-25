@@ -13,7 +13,7 @@ const server = await serveRoot();
 const port = server.port;
 
 const SIZES = [[1920, 1080], [1280, 800], [2560, 1440]];
-const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide'];
+const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call'];
 const failures = [];
 const faceOf = new Map(); // the dial's circle for `standing` (fixture `one`), per size
 const fail = (size, fixture, what) => failures.push(`${size[0]}x${size[1]} ${fixture}: ${what}`);
@@ -66,6 +66,7 @@ function measure(UI) {
     dock: r(q('.alius-dock-card')), curtain: r(q('.alius-curtain')), curtainOpen: q('.alius-curtain')?.dataset.open, stop: r(q('[data-stop-word]')),
     stopVisible: q('[data-stop-word]') ? getComputedStyle(q('[data-stop-word]')).visibility !== 'hidden' : false,
     chipRow: chipRowMeasure(),
+    callWord: r(q('.alius-call-w')), callCards: [...document.querySelectorAll('.alius-call-card')].map(r),
     ui: [...document.querySelectorAll(UI)].map((el) => ({ sel: el.className || el.tagName, ...r(el) })).filter((b) => b.w > 0 && b.h > 0),
   };
 }
@@ -180,6 +181,16 @@ for (const size of SIZES) {
       else if (Math.abs(m.dial.x - still.x) > 1 || Math.abs(m.dial.y - still.y) > 1) fail(size, fixture, `a long label moved the circle: ${Math.round(m.dial.x)},${Math.round(m.dial.y)} against ${Math.round(still.x)},${Math.round(still.y)} for standing`);
       if (m.dialLabel && m.dialLabel.h < 50) fail(size, fixture, `a 30-character name over BOWING and EYES DOWN is ${Math.round(m.dialLabel.w)}x${Math.round(m.dialLabel.h)}: it did not wrap into four lines`);
       if (m.dialLabel && (m.dialLabel.b > H - 2 || m.dialLabel.r > W - 2)) fail(size, fixture, `the tallest label reaches the viewport's edge: ${JSON.stringify(m.dialLabel)}`);
+    }
+    // P10e-e Task 9: her word and the fan stay inside the viewport and off her face
+    if (fixture === 'call') {
+      if (!m.callWord || m.callCards.length !== 4) fail(size, fixture, `the call is not drawn (word ${JSON.stringify(m.callWord)}, ${m.callCards.length} cards)`);
+      for (const b of [m.callWord, ...m.callCards].filter(Boolean)) {
+        if (!inside(b)) fail(size, fixture, `a part of the call is outside the viewport: ${JSON.stringify(b)}`);
+        // her face: the middle third of the head box (cards.html puts her word at 74 vw, "beside her, never on her face": the prototype's own
+        // sprite box reaches past it at 1280x800, so the whole head box is not the measure)
+        for (const hd of heads) { const third = (hd.r - hd.x) / 3; const face = { ...hd, x: hd.x + third, r: hd.r - third }; if (hit(b, face)) fail(size, fixture, `a part of the call overlaps her face: ${JSON.stringify(b)} face ${JSON.stringify(face)}`); }
+      }
     }
     if (['physics', 'three', 'four'].includes(fixture) && m.stop) {
       // A1: a small pill in the bottom-right corner, over the dial, clear of the dial, the reply, the chips and the input

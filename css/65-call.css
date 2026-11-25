@@ -1,0 +1,209 @@
+/*
+ * P10e-e Task 9: her posture call as a full-frame moment (docs/prototypes/cards.html `#call`, `#callWord`, `#dots`, `#callLine`, `#fan`, `.pc`,
+ * `#dimmer`, `#dial.called`, normative). Her word large in her hand beside her (74 vw / 13 vh), her foot's ink dots under it, the fan of her named
+ * postures rising from the dial, her line after. Sizes in her hand × her hand's measured factor. Nothing takes the pointer but the cards; every
+ * z-index stays below the analysis panel's 10. Reduced motion: no write-on, no bob, no rise (the code places the fan).
+ */
+#alius-shell .alius-call {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  --alius-call-hs: var(--alius-hand-scale, 1);
+  --alius-call-her: var(--alius-her, #ff9ec7);
+}
+
+/* the frame dims to .28 under the scene's UI (cards.html `#dimmer`, in the effects layer) */
+#alius-shell .alius-call-dim {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.45s;
+}
+
+/* the dial's ring takes her accent while she calls (cards.html `#dial.called`) */
+#alius-shell .alius-stage-dial[data-called] .alius-dial-face {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--alius-her, #ff9ec7) 75%, transparent), 0 0 26px color-mix(in srgb, var(--alius-her, #ff9ec7) 30%, transparent), 0 6px 24px rgba(0, 0, 0, 0.55);
+  transition: box-shadow 0.35s;
+}
+
+/* her word */
+#alius-shell .alius-call-word {
+  position: absolute;
+  left: 74vw;
+  top: 13vh;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+#alius-shell .alius-call-w {
+  font-family: var(--alius-font-hand, var(--alius-font-type));
+  font-size: calc(92px * var(--alius-call-hs));
+  line-height: 1;
+  color: var(--alius-call-her);
+  white-space: nowrap;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9), 0 0 18px rgba(0, 0, 0, 0.85), 0 0 40px rgba(0, 0, 0, 0.6);
+  display: inline-block;
+}
+
+#alius-shell .alius-call-w.is-writing {
+  animation: alius-call-write 520ms steps(14, end) both;
+}
+
+#alius-shell .alius-call-w.is-bob {
+  animation: alius-call-bob 0.16s ease-out;
+}
+
+@keyframes alius-call-write {
+  from { clip-path: inset(-30% 100% -30% -8%); }
+  to { clip-path: inset(-30% -8% -30% -8%); }
+}
+
+@keyframes alius-call-bob {
+  40% { transform: translateY(3px) scale(0.995); }
+}
+
+/* her foot: the dots */
+#alius-shell .alius-call-dots {
+  position: relative;
+  height: 16px;
+  margin-top: 10px;
+}
+
+#alius-shell .alius-call-dots i {
+  position: absolute;
+  top: 4px;
+  width: 7px;
+  height: 7px;
+  margin-left: -3.5px;
+  border-radius: 50%;
+  background: var(--alius-call-her);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--alius-call-her) 70%, transparent);
+  animation: alius-call-dot 0.35s ease-out both;
+}
+
+#alius-shell .alius-call-dots i.last {
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  top: 2.5px;
+  background: #fff;
+  box-shadow: 0 0 10px var(--alius-call-her);
+}
+
+@keyframes alius-call-dot {
+  from { transform: scale(2.2); opacity: 0; }
+}
+
+/* her line after the answer */
+#alius-shell .alius-call-line {
+  position: absolute;
+  left: 74vw;
+  top: calc(13vh + 140px);
+  transform: translateX(-50%);
+  font-family: var(--alius-font-hand, var(--alius-font-type));
+  font-size: calc(40px * var(--alius-call-hs));
+  color: var(--alius-call-her);
+  white-space: nowrap;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9), 0 0 14px rgba(0, 0, 0, 0.85);
+  transition: opacity 0.6s;
+}
+
+#alius-shell .alius-call-line.is-writing {
+  animation: alius-call-write 600ms steps(16, end) both;
+}
+
+/* the fan: anchored over the dial */
+#alius-shell .alius-call-fan {
+  position: absolute;
+  right: 110px;
+  bottom: calc(min(18.5vh, 200px) + 72px);
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+#alius-shell .alius-call-card {
+  position: absolute;
+  width: 150px;
+  height: 196px;
+  margin: -196px 0 0 -75px;
+  padding: 0;
+  border-radius: 14px;
+  pointer-events: auto;
+  cursor: pointer;
+  background: rgba(14, 12, 20, 0.74);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  transform-origin: 50% 120%;
+  transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.15), opacity 0.3s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: inherit;
+  font: inherit;
+}
+
+#alius-shell .alius-call-card svg {
+  width: 132px;
+  height: 132px;
+  margin-top: 6px;
+  flex: none;
+}
+
+#alius-shell .alius-call-nm {
+  font-family: var(--alius-font-hand, var(--alius-font-type));
+  font-size: calc(30px * var(--alius-call-hs));
+  line-height: 1;
+  color: var(--alius-call-her);
+  margin-top: -2px;
+}
+
+#alius-shell .alius-call-base {
+  font: 9px "IBM Plex Mono", monospace;
+  letter-spacing: 0.1em;
+  color: rgba(236, 232, 242, 0.55);
+  text-transform: uppercase;
+  margin-top: 5px;
+  padding: 0 10px;
+  text-align: center;
+  line-height: 1.3;
+}
+
+#alius-shell .alius-call-card:hover {
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.55), 0 0 0 1px color-mix(in srgb, var(--alius-call-her) 60%, transparent);
+  z-index: 9;
+}
+
+#alius-shell .alius-call-card.is-right {
+  box-shadow: 0 0 0 2px var(--alius-call-her), 0 0 30px color-mix(in srgb, var(--alius-call-her) 55%, transparent);
+}
+
+#alius-shell .alius-call-card.is-wrong {
+  animation: alius-call-shake 0.35s;
+}
+
+@keyframes alius-call-shake {
+  20% { margin-left: -83px; }
+  40% { margin-left: -67px; }
+  60% { margin-left: -80px; }
+  80% { margin-left: -71px; }
+}
+
+/* the mannequin of a card: the dial's classes (css/61-blocking.css) read the dial's accent */
+
+/* reduced motion: no write-on, no bob, no rise */
+#alius-shell .alius-call[data-reduced="true"] .alius-call-card {
+  transition: opacity 0.01s;
+}
+
+/* readable mode: no blur on the cards */
+#alius-shell.alius-readable .alius-call-card {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: rgba(12, 11, 16, 0.95);
+}

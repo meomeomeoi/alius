@@ -17661,8 +17661,8 @@ function checkCondition(ctx2, cid, when, targetCid, skillId) {
     if (ordered !== when.orderedThisRound) return false;
   }
   if (when.commanderBuildIn !== void 0) {
-    const build = cs.commander?.build;
-    if (build === void 0 || !when.commanderBuildIn.includes(build)) return false;
+    const build2 = cs.commander?.build;
+    if (build2 === void 0 || !when.commanderBuildIn.includes(build2)) return false;
   }
   if (when.upkeepWithinDays !== void 0 && !(upkeepAge(ctx2, c) <= when.upkeepWithinDays)) return false;
   if (when.upkeepOlderThanDays !== void 0 && !(upkeepAge(ctx2, c) > when.upkeepOlderThanDays)) return false;
@@ -29625,8 +29625,8 @@ function completeAction(ctx2, cid, broken = false) {
   const { cs } = ctx2;
   if (broken) applyBreakdownActionEffects(ctx2, cid);
   cs.awaitingCid = void 0;
-  const end = checkEnd(ctx2);
-  if (end) return endCombat(ctx2, end);
+  const end2 = checkEnd(ctx2);
+  if (end2) return endCombat(ctx2, end2);
   if (cs.extraAction === cid && !cs.inExtra) return;
   finishTurn(ctx2, cid);
 }
@@ -29634,8 +29634,8 @@ function runUntilInput(ctx2) {
   const { cs } = ctx2;
   for (let guard = 0; guard < 2e4; guard++) {
     if (cs.phase !== "awaiting") return;
-    const end = checkEnd(ctx2);
-    if (end) return endCombat(ctx2, end);
+    const end2 = checkEnd(ctx2);
+    if (end2) return endCombat(ctx2, end2);
     let cid;
     if (cs.awaitingCid) {
       cid = cs.awaitingCid;
@@ -30136,17 +30136,17 @@ function markHerCall(draft, mission, p) {
 }
 function applyHerCall(draft, ctx2, p) {
   const exp = draft.expedition;
-  const { call } = p;
+  const { call: call2 } = p;
   const T5 = TUNING.herCall;
-  const outcome = p.spec.outcomes.find((o) => o.id === call.outcome);
-  const unit4 = unitOf9(draft, call.unitId);
+  const outcome = p.spec.outcomes.find((o) => o.id === call2.outcome);
+  const unit4 = unitOf9(draft, call2.unitId);
   const events = applyWorldEffects(draft, ctx2, outcome.effects, { kind: "event", id: p.templateId, label: p.title });
   let marked = false;
-  if (call.outcome === "good") {
-    (powerOf(draft).merit ??= []).push({ day: draft.day, unitId: call.unitId, points: T5.meritGood });
-    events.push(...addRecord(draft, call.unitId, T5.recordGood, "her_call"));
+  if (call2.outcome === "good") {
+    (powerOf(draft).merit ??= []).push({ day: draft.day, unitId: call2.unitId, points: T5.meritGood });
+    events.push(...addRecord(draft, call2.unitId, T5.recordGood, "her_call"));
     addFact(draft, {
-      about: [call.unitId],
+      about: [call2.unitId],
       day: draft.day,
       knownBy: [...exp.party],
       tags: ["her_call"],
@@ -30154,16 +30154,16 @@ function applyHerCall(draft, ctx2, p) {
       text: `${unit4.displayName} took a decision in the field herself, and it went well: ${outcome.text}`
     });
   } else {
-    events.push(...addRecord(draft, call.unitId, T5.recordBad, "her_call"));
+    events.push(...addRecord(draft, call2.unitId, T5.recordBad, "her_call"));
     const mission = draft.missions.active.find((m) => m.id === exp.missionId);
     const tutorial = mission !== void 0 && ctx2.registries.missionTemplates.get(mission.templateId)?.tutorial === true;
     if (mission && !tutorial) {
-      const witnessIds = exp.party.filter((id) => id !== call.unitId && draft.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)));
-      marked = markHerCall(draft, mission, { unitId: call.unitId, nodeId: p.nodeId, witnessIds });
+      const witnessIds = exp.party.filter((id) => id !== call2.unitId && draft.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)));
+      marked = markHerCall(draft, mission, { unitId: call2.unitId, nodeId: p.nodeId, witnessIds });
     }
   }
-  (exp.herCalls ??= []).push({ nodeId: p.nodeId, unitId: call.unitId, outcome: call.outcome, templateId: p.templateId, odds: call.odds, marked });
-  events.push({ type: "her_call", nodeId: p.nodeId, templateId: p.templateId, unitId: call.unitId, outcome: call.outcome, missionId: exp.missionId, marked });
+  (exp.herCalls ??= []).push({ nodeId: p.nodeId, unitId: call2.unitId, outcome: call2.outcome, templateId: p.templateId, odds: call2.odds, marked });
+  events.push({ type: "her_call", nodeId: p.nodeId, templateId: p.templateId, unitId: call2.unitId, outcome: call2.outcome, missionId: exp.missionId, marked });
   return events;
 }
 function setAskFirst(draft, ctx2, unitId, on) {
@@ -31666,14 +31666,14 @@ function enterEvent(draft, ctx2, nodeId, isObjective, mission) {
   }
   const template = reg.dilemmaTemplates.get(templateId);
   const her = herCallSpecOf(template);
-  const call = her === null || isTutorialRun(draft, reg) ? null : rollHerCall(draft, reg, ctx2.rng, her, ableParty(draft));
-  if (her !== null && call !== null) {
+  const call2 = her === null || isTutorialRun(draft, reg) ? null : rollHerCall(draft, reg, ctx2.rng, her, ableParty(draft));
+  if (her !== null && call2 !== null) {
     const title3 = String(template.fixed.title);
-    const events = applyHerCall(draft, ctx2, { templateId, nodeId, title: title3, spec: her, call });
-    const said = her.outcomes.find((o) => o.id === call.outcome).text;
-    const name = draft.squad.find((u) => u.id === call.unitId)?.displayName ?? call.unitId;
-    addLog(exp, "event", `${name} took the decision herself: ${said}`, nodeId, { templateId, herCall: { unitId: call.unitId, outcome: call.outcome } });
-    exp.pending = { kind: "event", nodeId, templateId, herCall: { unitId: call.unitId, outcome: call.outcome } };
+    const events = applyHerCall(draft, ctx2, { templateId, nodeId, title: title3, spec: her, call: call2 });
+    const said = her.outcomes.find((o) => o.id === call2.outcome).text;
+    const name = draft.squad.find((u) => u.id === call2.unitId)?.displayName ?? call2.unitId;
+    addLog(exp, "event", `${name} took the decision herself: ${said}`, nodeId, { templateId, herCall: { unitId: call2.unitId, outcome: call2.outcome } });
+    exp.pending = { kind: "event", nodeId, templateId, herCall: { unitId: call2.unitId, outcome: call2.outcome } };
     exp.phase = "event";
     return events;
   }
@@ -40703,27 +40703,27 @@ function callPosture(draft, ctx2, events) {
 }
 function takePosture(draft, ctx2, callId, postureId, late2, at) {
   const reg = ctx2.registries;
-  const call = draft.practices?.call;
-  if (call === void 0 || call.id !== callId) throw new Error("That call is gone.");
-  if (!practiceLive(draft, reg, call.holderId)) throw new Error("She is not holding now.");
-  if (postureId !== void 0 && !(draft.practices.postures[call.holderId] ?? []).some((p) => p.postureId === postureId)) throw new Error("That posture is not one of hers.");
+  const call2 = draft.practices?.call;
+  if (call2 === void 0 || call2.id !== callId) throw new Error("That call is gone.");
+  if (!practiceLive(draft, reg, call2.holderId)) throw new Error("She is not holding now.");
+  if (postureId !== void 0 && !(draft.practices.postures[call2.holderId] ?? []).some((p) => p.postureId === postureId)) throw new Error("That posture is not one of hers.");
   delete draft.practices.call;
-  const base = { callId, unitId: call.holderId, holderId: call.holderId, postureId: call.postureId };
-  if (postureId !== call.postureId || late2) {
-    return [{ type: "posture_slip", ...base, ...late2 ? { late: true } : {} }, ...noteOffence(draft, ctx2, call.holderId, { kind: "posture_slip", ref: callId, stakes: "trivial", day: draft.day })];
+  const base = { callId, unitId: call2.holderId, holderId: call2.holderId, postureId: call2.postureId };
+  if (postureId !== call2.postureId || late2) {
+    return [{ type: "posture_slip", ...base, ...late2 ? { late: true } : {} }, ...noteOffence(draft, ctx2, call2.holderId, { kind: "posture_slip", ref: callId, stakes: "trivial", day: draft.day })];
   }
-  const change = { person: COMMANDER, field: "posture", value: call.postureId };
-  if (draft.scene?.blocking?.[COMMANDER]?.posture === call.postureId) return [{ type: "posture_called", ...base, taken: true }, ...addTrackXp(draft, reg, call.holderId, TRACK, TUNING.practice.posture.xp)];
+  const change = { person: COMMANDER, field: "posture", value: call2.postureId };
+  if (draft.scene?.blocking?.[COMMANDER]?.posture === call2.postureId) return [{ type: "posture_called", ...base, taken: true }, ...addTrackXp(draft, reg, call2.holderId, TRACK, TUNING.practice.posture.xp)];
   if (draft.scene === void 0 || checkChange(draft, reg, change) !== null) return [{ type: "posture_called", ...base, void: true }];
   return [
     { type: "posture_called", ...base, taken: true },
     ...setBlocking(draft, ctx2, change, { at, source: "chip" }),
-    ...addTrackXp(draft, reg, call.holderId, TRACK, TUNING.practice.posture.xp)
+    ...addTrackXp(draft, reg, call2.holderId, TRACK, TUNING.practice.posture.xp)
   ];
 }
 function callsFromEvents(draft, events) {
-  const call = draft.practices?.call;
-  if (call !== void 0 && events.some((e) => (e.type === "scene_ended" || e.type === "scene_aborted") && e.sceneId === call.sceneId)) delete draft.practices.call;
+  const call2 = draft.practices?.call;
+  if (call2 !== void 0 && events.some((e) => (e.type === "scene_ended" || e.type === "scene_aborted") && e.sceneId === call2.sceneId)) delete draft.practices.call;
   return [];
 }
 
@@ -41540,7 +41540,7 @@ function createDilemmas(deps) {
       writing.delete(first2.id);
     }
   }
-  function choose(index2, route) {
+  function choose2(index2, route) {
     const open3 = deps.app.current().state?.dilemmas?.open;
     if (!open3 || open3.status !== "presented") return [];
     const reg = deps.registries();
@@ -41560,7 +41560,7 @@ function createDilemmas(deps) {
     if (failed2 && failed2.message !== "Stale dilemma answer.") deps.toast("error", String(failed2.message ?? failed2.code));
     return events;
   }
-  return { onRequested, choose, busy: () => running3.size > 0 };
+  return { onRequested, choose: choose2, busy: () => running3.size > 0 };
 }
 
 // src/discipline/directives.ts
@@ -44777,8 +44777,8 @@ function createLife(deps) {
       return run();
     }
     busy = true;
-    const call = next ? (tried.add(next.itemId), deps.generations.generate(SITE_OF[next.channel], next.itemId)) : (tried.add(form), deps.generations.generate(FORM_SITE, form));
-    flight = call.then(() => void 0).finally(() => {
+    const call2 = next ? (tried.add(next.itemId), deps.generations.generate(SITE_OF[next.channel], next.itemId)) : (tried.add(form), deps.generations.generate(FORM_SITE, form));
+    flight = call2.then(() => void 0).finally(() => {
       flight = null;
       busy = false;
     });
@@ -45014,11 +45014,11 @@ function redacted(text3, ranges) {
   let cursor = 0;
   for (const [from, to] of [...ranges].sort((a, b) => a[0] - b[0])) {
     const start = Math.max(0, from);
-    const end = Math.min(text3.length, to);
-    if (end <= start || start < cursor) continue;
+    const end2 = Math.min(text3.length, to);
+    if (end2 <= start || start < cursor) continue;
     if (start > cursor) parts.push(text3.slice(cursor, start));
-    parts.push(h("span", { class: "alius-redact", "aria-label": "redacted" }, "\u2588".repeat(end - start)));
-    cursor = end;
+    parts.push(h("span", { class: "alius-redact", "aria-label": "redacted" }, "\u2588".repeat(end2 - start)));
+    cursor = end2;
   }
   if (cursor < text3.length) parts.push(text3.slice(cursor));
   return parts;
@@ -45263,8 +45263,8 @@ function powerDirectives(state, _reg, present2) {
     if (unit4 && askFirstHolds(state, id)) {
       out.push({ id: `${ASK_FIRST_PREFIX}${id}`, expiresAfter: "scene", text: `The commander has ordered ${unit4.displayName} to ask before she decides anything in the field.` });
     }
-    const call = unit4 && isLiving(unit4) ? herCallOf(state, id) : void 0;
-    if (unit4 && call) out.push({ id: `${HER_CALL_PREFIX}${id}`, expiresAfter: "scene", text: `${unit4.displayName} took the decision herself in the field; it went ${call === "good" ? "well" : "badly"}.` });
+    const call2 = unit4 && isLiving(unit4) ? herCallOf(state, id) : void 0;
+    if (unit4 && call2) out.push({ id: `${HER_CALL_PREFIX}${id}`, expiresAfter: "scene", text: `${unit4.displayName} took the decision herself in the field; it went ${call2 === "good" ? "well" : "badly"}.` });
     if (!unit4 || !grudgeHolds(state, id)) continue;
     out.push({
       id: `${VOTE_PREFIX}${id}`,
@@ -47231,25 +47231,25 @@ var BUILDS = {
   }
 };
 var BUILD_KEYS = ["slim", "athletic", "curvy"];
-function shares(build) {
-  const w = BUILD_KEYS.map((k) => Number.isFinite(build[k]) && build[k] > 0 ? build[k] : 0);
+function shares(build2) {
+  const w = BUILD_KEYS.map((k) => Number.isFinite(build2[k]) && build2[k] > 0 ? build2[k] : 0);
   const sum = w.reduce((a, b) => a + b, 0);
   return sum > 0 ? { slim: w[0] / sum, athletic: w[1] / sum, curvy: w[2] / sum } : { slim: 1, athletic: 0, curvy: 0 };
 }
-function blend(build) {
-  const s = shares(build);
+function blend(build2) {
+  const s = shares(build2);
   const sum = (f) => BUILD_KEYS.reduce((acc, k) => acc + s[k] * f(BUILDS[k]), 0);
   return { width: (y) => sum((c) => lerp(c.w, y)), arm: sum((c) => c.arm), armOut: (y) => sum((c) => lerp(c.armOut, y)) };
 }
 var armCenter = (y) => lerp([[100, 44], [200, 57], [300, 65], [320, 64]], y);
-function outlinePath(build, _side) {
-  const { width } = blend(build);
+function outlinePath(build2, _side) {
+  const { width } = blend(build2);
   const right = RIGHT.map(([x, y]) => [x * width(y), y]);
   const left = right.slice(0, -1).reverse().map(([x, y]) => [-x, y]);
   return catmull([...right, ...left], true);
 }
-function armPaths(build) {
-  const { arm, armOut } = blend(build);
+function armPaths(build2) {
+  const { arm, armOut } = blend(build2);
   const one4 = (sign2) => catmull(ARM.map(([x, y]) => [(armCenter(y) + (x - armCenter(y)) * arm) * armOut(y) * sign2, y]), true);
   return [one4(1), one4(-1)];
 }
@@ -47270,8 +47270,8 @@ function hairPath(hair, side) {
   return `${base} ${catmull(side === "back" ? TAIL_BACK : TAIL_FRONT, true)}`;
 }
 var fringePath = () => catmull(FRINGE, true);
-function detailPaths(build, side) {
-  const { width } = blend(build);
+function detailPaths(build2, side) {
+  const { width } = blend(build2);
   const bw = width(150);
   const out = side === "back" ? ["M0,96 C1,140 -1,190 0,232", "M-30,118 C-24,132 -14,138 -8,136 M30,118 C24,132 14,138 8,136", "M-30,268 C-18,286 -6,284 0,272 C6,284 18,286 30,268", "M-24,40 C-22,60 -16,72 -12,76 M24,40 C22,60 16,72 12,76"] : [
     "M-30,100 C-18,106 -8,104 -3,101 M30,100 C18,106 8,104 3,101",
@@ -47279,7 +47279,7 @@ function detailPaths(build, side) {
     `M${f1(-30 * width(250))},250 C-20,262 -12,270 -6,276 M${f1(30 * width(250))},250 C20,262 12,270 6,276`,
     "M-22,388 q4,6 8,0 M22,388 q-4,6 -8,0"
   ];
-  const s = shares(build);
+  const s = shares(build2);
   for (const k of BUILD_KEYS) if (s[k] >= 1 / 3) out.push(...BUILDS[k].lines);
   return out;
 }
@@ -47923,8 +47923,8 @@ function drawHeldStrip(host, state, reg, handlers2) {
     host.append(h("p", { "data-held-line": "", ...analyzeAttrs("glossary:sensory_mode", ctx2) }, `Held in ${holder2.displayName}'s quarters.`), ...answer !== null ? [answer] : [], ask2, ...send !== null ? [send] : []);
     return;
   }
-  const end = heldEndShown(held3);
-  const until = end === null ? "" : ` until ${endsWords(state, end)}`;
+  const end2 = heldEndShown(held3);
+  const until = end2 === null ? "" : ` until ${endsWords(state, end2)}`;
   host.append(h(
     "div",
     { class: "alius-held-strip", "data-held-strip": "", role: "status" },
@@ -49069,8 +49069,8 @@ function scan(text3, start) {
   const stack = [];
   let safeEnd = -1;
   let open3 = [];
-  const mark = (end) => {
-    safeEnd = end;
+  const mark = (end2) => {
+    safeEnd = end2;
     open3 = stack.map((c) => c.t);
   };
   let i = start;
@@ -51659,7 +51659,7 @@ ${line3}`;
     }, settings.llmTimeoutMs);
   });
   let answer;
-  const call = useMain ? st.generateMain({ prompt: prompt4, systemPrompt: system4, maxTokens, signal: ctrl.signal }) : st.generateWithProfile({
+  const call2 = useMain ? st.generateMain({ prompt: prompt4, systemPrompt: system4, maxTokens, signal: ctrl.signal }) : st.generateWithProfile({
     profileId: settings.mechanicProfileId,
     system: system4,
     prompt: prompt4,
@@ -51668,9 +51668,9 @@ ${line3}`;
     signal: ctrl.signal
   });
   try {
-    const won = await Promise.race([call, timedOut]);
+    const won = await Promise.race([call2, timedOut]);
     if (won === "timeout") {
-      call.then(
+      call2.then(
         (late2) => llmLog.push({ ...entry, raw: late2.text, ok: false, ms: Date.now() - started2, reason: "timeout", late: true }),
         () => {
         }
@@ -59479,7 +59479,7 @@ function sideColumn(ctx2, state, readOnly) {
   const oversight2 = latestOversight(state);
   const block2 = readOnly ? "This campaign is read-only." : endSlotBlock(state, ctx2.registries);
   const slotName = state.slot.toUpperCase();
-  const end = readOnly ? null : h("button", {
+  const end2 = readOnly ? null : h("button", {
     type: "button",
     class: "alius-btn alius-option alius-end",
     "data-end-slot": "",
@@ -59548,8 +59548,8 @@ function sideColumn(ctx2, state, readOnly) {
       ...analyzeNative("glossary:pda_device"),
       onclick: () => ctx2.onOpenPda()
     }, "OPEN PDA  [TAB]"),
-    end,
-    block2 !== null && end ? h("p", { class: "alius-dim alius-reason alius-end-reason" }, block2) : null
+    end2,
+    block2 !== null && end2 ? h("p", { class: "alius-dim alius-reason alius-end-reason" }, block2) : null
   );
 }
 function renderHub(host, device, ctx2) {
@@ -59939,14 +59939,14 @@ function renderPlanner(host, ctx2) {
     return;
   }
   const region = reg.regions.get(info.regionId);
-  const end = SLOT_INDEX[state.slot] + info.slots === 2 ? "returns in the Evening" : "returns after the day ends";
+  const end2 = SLOT_INDEX[state.slot] + info.slots === 2 ? "returns in the Evening" : "returns after the day ends";
   const without = ctx2.target.withoutCommand === true;
   const keeper = without ? state.practices?.alarm?.holderId : void 0;
   root.append(
     ...without ? [h("p", { class: "alius-banner", "data-without-command": "", ...analyzeAttrs("glossary:without_command", keeper !== void 0 ? { unitId: keeper } : {}) }, "The commander is held back: the squad goes without command (no orders, no command points).")] : [],
     h("h2", {}, `[ PLAN ] ${info.title}`),
     h("p", {}, `${String(region?.name ?? info.regionId)} \xB7 DANGER ${info.danger} \xB7 OBJECTIVE: ${info.objective}`),
-    h("p", {}, `DURATION ${info.slots} SLOTS (${end})`)
+    h("p", {}, `DURATION ${info.slots} SLOTS (${end2})`)
   );
   const living2 = state.squad.filter(isLiving);
   draft.picked = draft.picked.filter((id) => living2.some((u) => u.id === id));
@@ -63115,11 +63115,11 @@ function beginFinish(m) {
   m.finishing = f;
   queueMicrotask(() => {
     if (current !== m || m.finishing !== f) return;
-    const end = m.env.staging.outcome?.(m.runId) ?? null;
+    const end2 = m.env.staging.outcome?.(m.runId) ?? null;
     let ms = 0;
-    if (end && end.result !== "stopped" && m.run?.finish) {
+    if (end2 && end2.result !== "stopped" && m.run?.finish) {
       try {
-        ms = Math.max(0, Number(m.run.finish(end)) || 0);
+        ms = Math.max(0, Number(m.run.finish(end2)) || 0);
       } catch (err) {
         warnOnce(m.def.id, "finish", err);
         ms = 0;
@@ -63174,291 +63174,6 @@ function syncInstruments(env, run) {
   }
 }
 
-// src/ui/practice/postureCall.ts
-var started = /* @__PURE__ */ new Map();
-var expiries = /* @__PURE__ */ new Map();
-function resetPostureCalls() {
-  started.clear();
-  expiries.clear();
-}
-function cancelPostureCalls(cancel = (handle) => clearTimeout(handle)) {
-  for (const handle of expiries.values()) cancel(handle);
-  resetPostureCalls();
-}
-function drawPostureCall(host, state, reg, pick3, handlers2) {
-  host.replaceChildren();
-  const now = handlers2.now ?? (() => Date.now());
-  const schedule = handlers2.schedule ?? ((fn, ms) => setTimeout(fn, ms));
-  const cancel = handlers2.cancel ?? ((handle) => clearTimeout(handle));
-  const call = state.practices?.call;
-  const stop2 = (id) => {
-    if (expiries.has(id)) cancel(expiries.get(id));
-    expiries.delete(id);
-  };
-  const unit4 = call === void 0 ? void 0 : state.squad.find((u) => u.id === call.holderId);
-  if (call === void 0 || unit4 === void 0 || !dynamicOn(state, reg) || !practiceLive(state, reg, unit4.id) || !pick3({ unitId: unit4.id })) {
-    for (const id of [...expiries.keys()]) stop2(id);
-    started.clear();
-    return;
-  }
-  const set2 = (state.practices.postures[unit4.id] ?? []).filter((p) => {
-    const entry = reg.blockingPostures.get(p.postureId);
-    return entry !== void 0 && entryAllowed(state, reg, entry, [unit4.id]);
-  });
-  const wanted2 = set2.find((p) => p.postureId === call.postureId);
-  if (wanted2 === void 0) return;
-  const windowMs = postureWindowMs(state, reg, unit4.id);
-  if (handlers2.timed && !started.has(call.id)) {
-    started.set(call.id, now());
-    expiries.set(call.id, schedule(() => {
-      stop2(call.id);
-      handlers2.take(call.id, void 0, true);
-    }, windowMs));
-  }
-  const live3 = { unitId: unit4.id };
-  const answer = (postureId) => {
-    const late2 = handlers2.timed && started.has(call.id) && now() - started.get(call.id) > windowMs;
-    stop2(call.id);
-    handlers2.take(call.id, postureId, late2);
-  };
-  const choices = set2.map((p) => h("button", {
-    type: "button",
-    class: "alius-btn alius-tagchip",
-    "data-posture-choice": p.postureId,
-    "data-call": call.id,
-    ...analyzeNative("glossary:posture_call", live3),
-    onclick: () => answer(p.postureId)
-  }, plainDraft(p.name)));
-  const body = h(
-    "div",
-    { class: "alius-posture-body" },
-    h("p", { class: "alius-posture-name", "data-posture-call": call.id, ...analyzeAttrs("glossary:posture_call", live3) }, plainDraft(wanted2.name)),
-    ...handlers2.timed ? [h("div", {
-      class: `alius-posture-timer${handlers2.reduced ? " alius-posture-timer-still" : ""}`,
-      "data-window-ms": String(windowMs),
-      "aria-hidden": "true",
-      style: handlers2.reduced ? "" : `animation-duration:${windowMs}ms`,
-      ...analyzeAttrs("glossary:posture_call", live3)
-    })] : [],
-    h("div", { class: "alius-posture-choices" }, ...choices)
-  );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit4.displayName, body, accent: unitAccent(unit4.id) });
-  card2.classList.add("alius-posture-call");
-  card2.setAttribute("data-call", call.id);
-  card2.setAttribute("role", "group");
-  card2.setAttribute("aria-label", `${unit4.displayName} calls a posture`);
-  for (const [k, v] of Object.entries(analyzeAttrs("glossary:posture_call", live3))) card2.setAttribute(k, v);
-  host.append(card2);
-}
-
-// src/ui/practice/slapOverlay.ts
-var PHASE_TEXT = { raise: "Her hand is raised.", feint: "Her hand twitches.", strike: "Her hand comes down.", done: "" };
-var RESULT_TEXT = { none: "It lands.", braced: "Braced.", flinched: "Flinched." };
-var runs = /* @__PURE__ */ new WeakMap();
-var typing = (t) => t !== null && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
-function stop(host, run, cancel) {
-  for (const handle of run.handles) cancel(handle);
-  run.handles = [];
-  if (run.keys !== void 0) {
-    document.removeEventListener("keydown", run.keys.down);
-    document.removeEventListener("keyup", run.keys.up);
-    run.keys = void 0;
-  }
-}
-function renderSlapOverlay(host, ctx2) {
-  const { slap } = ctx2;
-  const now = ctx2.now ?? (() => Date.now());
-  const schedule = ctx2.schedule ?? ((fn, ms) => setTimeout(fn, ms));
-  const cancel = ctx2.cancel ?? ((handle) => clearTimeout(handle));
-  const unit4 = ctx2.state.squad.find((u) => u.id === slap.holderId);
-  const existing = runs.get(host);
-  if (existing !== void 0 && existing.slapId === slap.id) {
-    if (existing.card !== void 0 && !host.contains(existing.card)) host.append(existing.card);
-    return;
-  }
-  if (existing !== void 0) {
-    stop(host, existing, cancel);
-    host.replaceChildren();
-  }
-  if (unit4 === void 0 || !dynamicOn(ctx2.state, ctx2.reg)) return;
-  const run = { slapId: slap.id, start: now(), windowStart: TUNING.practice.slap.leadMs + slap.feints * TUNING.practice.slap.feintMs, windowEnd: 0, presses: 0, decided: false, down: false, handles: [], cancel };
-  run.windowEnd = run.windowStart + slap.windowMs;
-  runs.set(host, run);
-  if (ctx2.settings.physicsInteractions?.timing === false || motionReduced(ctx2.settings)) {
-    run.decided = true;
-    ctx2.onResult("none");
-    return;
-  }
-  const live3 = { unitId: unit4.id };
-  const text3 = h("p", { class: "alius-slap-text", role: "status" }, PHASE_TEXT.raise);
-  const brace = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "brace", ...analyzeNative("glossary:slap", live3), onclick: () => press() }, "[ BRACE ]");
-  const bar2 = h("div", { class: "alius-slap-bar", "aria-hidden": "true", style: `--alius-slap-ms: ${run.windowEnd}ms` });
-  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit4.displayName, body: h("div", { class: "alius-slap-body" }, text3, bar2, brace), accent: unitAccent(unit4.id) });
-  card2.classList.add("alius-slap");
-  card2.setAttribute("role", "group");
-  card2.setAttribute("aria-label", `${unit4.displayName} raises her hand`);
-  for (const [k, v] of Object.entries(analyzeAttrs("glossary:slap", live3))) card2.setAttribute(k, v);
-  const setPhase = (phase, line3) => {
-    card2.setAttribute("data-phase", phase);
-    text3.textContent = line3;
-  };
-  setPhase("raise", PHASE_TEXT.raise);
-  run.card = card2;
-  host.append(card2);
-  const resolve = (result) => {
-    if (run.decided) return;
-    run.decided = true;
-    stop(host, run, cancel);
-    setPhase("done", RESULT_TEXT[result]);
-    brace.setAttribute("aria-disabled", "true");
-    ctx2.onResult(result);
-  };
-  function press() {
-    if (run.decided) return;
-    const t = now() - run.start;
-    if (t < run.windowStart) resolve("flinched");
-    else if (t <= run.windowEnd) {
-      run.presses += 1;
-      if (run.presses >= 2) resolve("flinched");
-    }
-  }
-  cutIn(host, "slap", "HER HAND");
-  ctx2.sound?.play("alert");
-  const active = document.activeElement;
-  if (active !== null && typing(active)) active.blur();
-  const T5 = TUNING.practice.slap;
-  for (let i = 0; i < slap.feints; i++) {
-    run.handles.push(schedule(() => setPhase("feint", PHASE_TEXT.feint), T5.leadMs + i * T5.feintMs));
-    if (i < slap.feints - 1) run.handles.push(schedule(() => setPhase("raise", PHASE_TEXT.raise), T5.leadMs + (i + 1) * T5.feintMs));
-  }
-  run.handles.push(schedule(() => setPhase("strike", PHASE_TEXT.strike), run.windowStart));
-  run.handles.push(schedule(() => resolve(run.presses === 1 ? "braced" : "none"), run.windowEnd));
-  const down2 = (e) => {
-    if (!host.isConnected) {
-      stop(host, run, cancel);
-      return;
-    }
-    const ev = e;
-    if (ev.key !== " " || typing(ev.target)) return;
-    ev.preventDefault();
-    if (ev.repeat || run.down) return;
-    run.down = true;
-    press();
-  };
-  const up = (e) => {
-    if (e.key === " ") run.down = false;
-  };
-  run.keys = { down: down2, up };
-  document.addEventListener("keydown", down2);
-  document.addEventListener("keyup", up);
-}
-function clearSlapOverlay(host) {
-  const run = runs.get(host);
-  if (run !== void 0) stop(host, run, run.cancel);
-  runs.delete(host);
-  host.replaceChildren();
-}
-
-// src/ui/dynamic/frameChip.ts
-function drawFrameChips(host, state, reg, pick3, hidden) {
-  if (hidden || !dynamicOn(state, reg)) return;
-  const chips = state.squad.filter((u) => u.kind === "named" && isLiving(u) && pick3(u.id) && frameRank(dynamicOf(state, u.id)?.frame ?? "equal") >= frameRank("play")).map((u) => h(
-    "span",
-    { class: "alius-chip alius-frame-chip", "data-frame-chip": u.id, ...analyzeAttrs("glossary:frame", { unitId: u.id }) },
-    `${u.displayName.toUpperCase()}: ${String(reg.dynamicFrames.get(dynamicOf(state, u.id).frame)?.label ?? "").toUpperCase()}`
-  ));
-  if (chips.length > 0) host.append(h("div", { class: "alius-lead-chips alius-frame-chips" }, ...chips));
-}
-
-// src/ui/special/freqChip.ts
-function renderFreqChip(host, state, reg, unitId) {
-  const f = state.special?.frequency;
-  if (!f || f.burnedDay !== void 0) return;
-  const x = [...f.intercepts].reverse().find((y) => y.unitId === unitId);
-  if (!x) return;
-  const name = state.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
-  const text3 = x.text ?? fallbackFragment(reg, x, name);
-  host.append(h("span", { class: "alius-chip alius-freq-chip", "data-freq-unit": unitId, ...analyzeAttrs("glossary:frequency_intercept") }, `FREQ \u25B8 "${text3}" (unverified)`));
-}
-
-// src/ui/scene/blockingStrip.ts
-var MOVES = [
-  { move: "kneel", text: "[ KNEEL ]", posture: "kneeling_upright" },
-  { move: "sit", text: "[ SIT ]", posture: "sitting" },
-  { move: "stand", text: "[ STAND ]", posture: "standing" },
-  { move: "crawl", text: "[ CRAWL ]", posture: "all_fours" },
-  { move: "lie", text: "[ LIE DOWN ]", posture: "lying_back" }
-];
-var setBlocking2 = (change) => ({ type: "blocking/set", payload: { ...change } });
-var set = setBlocking2;
-function blockingChoices(state, reg) {
-  if (!state?.scene || !blockingLive(state, reg)) return null;
-  const scene = state.scene;
-  const units = scene.participants;
-  const name = (id) => id === COMMANDER ? "The commander" : state.squad.find((u) => u.id === id)?.displayName ?? id;
-  const labelOf4 = (registry2, id) => String(reg[registry2].get(id)?.label ?? id);
-  const row4 = (person) => {
-    const b = blockingOf(scene, person);
-    const chips = [];
-    const remover = (id) => {
-      const change = { person, field: "removed", value: id };
-      return { person, id, label: labelOf4(id === b.contact?.id ? "blockingContacts" : "blockingItems", id), change, why: checkChange(state, reg, change) };
-    };
-    if (b.posture !== void 0) chips.push({ kind: "posture", registry: "blockingPostures", id: b.posture, label: labelOf4("blockingPostures", b.posture) });
-    if (b.anchor !== void 0) chips.push({ kind: "anchor", registry: "blockingAnchors", id: b.anchor.id, label: labelOf4("blockingAnchors", b.anchor.id) });
-    if (b.contact !== void 0) chips.push({ kind: "contact", registry: "blockingContacts", id: b.contact.id, label: labelOf4("blockingContacts", b.contact.id), remove: remover(b.contact.id) });
-    const seen2 = /* @__PURE__ */ new Set();
-    for (const slot2 of WORN_SLOTS) {
-      const w = b.worn?.[slot2];
-      if (!w || seen2.has(w.id)) continue;
-      seen2.add(w.id);
-      chips.push({ kind: "worn", registry: "blockingItems", id: w.id, label: labelOf4("blockingItems", w.id), remove: remover(w.id) });
-    }
-    if (b.activity !== void 0) chips.push({ kind: "activity", registry: "blockingActivities", id: b.activity, label: labelOf4("blockingActivities", b.activity) });
-    return { person, name: name(person), chips };
-  };
-  const moves = MOVES.map((m) => {
-    const change = { person: COMMANDER, field: "posture", value: m.posture };
-    return { move: m.move, text: m.text, posture: m.posture, label: labelOf4("blockingPostures", m.posture), why: checkChange(state, reg, change), change };
-  });
-  const vocab = blockingVocabulary(state, reg);
-  const entry = (group, registry2, id, text3, change, direction) => ({
-    group,
-    registry: registry2,
-    id,
-    label: text3,
-    ...direction !== void 0 ? { direction } : {},
-    change,
-    why: (unit4) => checkChange(state, reg, change(unit4))
-  });
-  const add2 = [
-    ...vocab.anchor.map((e) => entry("anchor", "blockingAnchors", e.id, String(e.label), () => ({ person: COMMANDER, field: "anchor", value: e.id }))),
-    ...vocab.contact.flatMap((e) => e.dir === "either" ? [
-      entry("contact", "blockingContacts", e.id, `${String(e.label)} (from her)`, (unit4) => ({ person: COMMANDER, field: "contact", value: e.id, with: unit4, direction: "from" }), "from"),
-      entry("contact", "blockingContacts", e.id, `${String(e.label)} (to her)`, (unit4) => ({ person: COMMANDER, field: "contact", value: e.id, with: unit4, direction: "to" }), "to")
-    ] : [entry("contact", "blockingContacts", e.id, String(e.label), (unit4) => ({ person: COMMANDER, field: "contact", value: e.id, with: unit4 }))]),
-    ...vocab.item.map((e) => entry("worn", "blockingItems", e.id, String(e.label), (unit4) => ({ person: e.wornBy === "her" ? unit4 : COMMANDER, field: "worn", value: e.id })))
-  ];
-  return { units, rows: [...units, COMMANDER].map(row4), moves, add: add2, name, label: labelOf4 };
-}
-function guardedButton(onStage, change, why, attrs, text3) {
-  return h("button", {
-    type: "button",
-    ...attrs,
-    "aria-disabled": why !== null ? "true" : null,
-    title: why ?? attrs.title ?? null,
-    onclick: () => {
-      if (why === null) onStage(set(change));
-    }
-  }, text3);
-}
-function blockingChipEls(r, onStage) {
-  return r.chips.flatMap((c) => [
-    h("span", { class: "alius-chip", "data-kind": c.kind, ...analyzeAttrs(`${c.registry}:${c.id}`) }, c.label),
-    ...c.remove ? [guardedButton(onStage, c.remove.change, c.remove.why, { class: "alius-btn alius-blocking-x", "data-action": "remove", "data-person": c.remove.person, "data-id": c.remove.id, "aria-label": `Remove ${c.remove.label}` }, "\xD7")] : []
-  ]);
-}
-
 // src/ui/scene/dial/points.ts
 var BASE_POINTS = {
   standing: { torso: "upright", knees: "together", arms: "at_sides", head: "up", gaze: "straight", feet: "flat" },
@@ -63510,9 +63225,9 @@ function solveTwoBone(root, target, l1, l2, hint) {
   let side = sub(hint, mul(dir, dot(hint, dir)));
   if (len(side) < 1e-6) side = sub([1, 0, 0], mul(dir, dir[0]));
   if (len(side) < 1e-6) side = sub([0, 0, 1], mul(dir, dir[2]));
-  const end = add(root, mul(dir, d));
+  const end2 = add(root, mul(dir, d));
   const mid2 = add(add(root, mul(dir, a)), mul(unit3(side), h2));
-  return { mid: mid2, end };
+  return { mid: mid2, end: end2 };
 }
 var YAW = -38 * DEG;
 var ELEV = 14 * DEG;
@@ -63914,10 +63629,10 @@ function mannequinSvg(p, opts = {}) {
   if (sk.gazeDir) {
     const g = sk.gazeDir;
     const atFloor = g[1] < -1e-6 ? (sk.head[1] - 5e-3) / -g[1] : Infinity;
-    const end = Math.min(0.46, atFloor);
-    if (end > 0.14) {
+    const end2 = Math.min(0.46, atFloor);
+    if (end2 > 0.14) {
       const from = map([sk.head[0] + g[0] * 0.1, sk.head[1] + g[1] * 0.1, sk.head[2] + g[2] * 0.1]);
-      const to = map([sk.head[0] + g[0] * end, sk.head[1] + g[1] * end, sk.head[2] + g[2] * end]);
+      const to = map([sk.head[0] + g[0] * end2, sk.head[1] + g[1] * end2, sk.head[2] + g[2] * end2]);
       root.append(svg3("line", {
         class: `alius-mq-gaze${opts.hot?.includes("gaze") ? " alius-mq-hot" : ""}`,
         "stroke-dasharray": "2 3",
@@ -63940,6 +63655,816 @@ function mannequinSvg(p, opts = {}) {
     else if (j === "head") ring(sk.head, HEAD.half * scale + 3);
   }
   return root;
+}
+
+// src/ui/scene/instruments/call/call.ts
+var CALL_SOUNDS = {
+  soft: ["assets/sounds/ha/soft1.ogg", "assets/sounds/ha/soft2.ogg"],
+  fan: "assets/sounds/ha/card_fan.ogg",
+  place: ["assets/sounds/ha/card_place1.ogg", "assets/sounds/ha/card_place2.ogg"]
+};
+var call = null;
+function currentCall() {
+  return call === null ? null : { id: call.id, done: call.done === true };
+}
+function tapTimes(windowMs) {
+  const win = windowMs;
+  const times = [];
+  let t = 380;
+  while (t < win) {
+    times.push(t);
+    const k = t / win;
+    t += 700 - 480 * k * k;
+  }
+  times.push(win);
+  return times;
+}
+function fanPlace(i, n) {
+  const k = i - (n - 1);
+  return { x: k * 140, rot: (i - (n - 1) / 2) * 5, lift: Math.abs(i - (n - 1) / 2) * 9 };
+}
+var sfx = (o, file, gain2, pan, rate = 1) => {
+  o.samples?.play(file, { gain: gain2, pan, rate });
+};
+function build(o) {
+  const w = h("span", { class: "alius-call-w" });
+  const dots = h("div", { class: "alius-call-dots", "aria-hidden": "true" });
+  const line3 = h("div", { class: "alius-call-line", role: "status" });
+  const fan = h("div", { class: "alius-call-fan" });
+  const root = h(
+    "div",
+    { class: "alius-call", "data-call": o.id, "data-clock": "", role: "group", "aria-label": "She calls a posture" },
+    h("div", { class: "alius-call-word" }, w, dots),
+    line3,
+    fan
+  );
+  root.style.setProperty("--alius-her", o.accent);
+  if (o.hand !== "") root.style.setProperty("--alius-font-hand", `"${o.hand}", var(--alius-font-type)`);
+  root.style.setProperty("--alius-hand-scale", String(o.handScale));
+  if (o.reduced) root.dataset.reduced = "true";
+  o.host.append(root);
+  const dim = o.dim === null ? null : o.dim.appendChild(h("div", { class: "alius-call-dim" }));
+  return { root, w, dots, line: line3, fan, dim };
+}
+function startCall(o) {
+  if (call) return;
+  const choices = o.choices;
+  const want = o.want;
+  const id = o.id;
+  call = { id, want, t0: o.now(), taps: [], timers: [], o, el: build(o) };
+  const el0 = call.el;
+  if (el0.dim) {
+    void el0.dim.offsetWidth;
+    el0.dim.style.opacity = "0.28";
+  }
+  if (o.dial) {
+    o.dial.dataset.called = "true";
+    o.dial.style.setProperty("--alius-her", o.accent);
+  }
+  const w = el0.w;
+  w.textContent = want[1];
+  w.className = "alius-call-w";
+  void w.offsetWidth;
+  if (!o.reduced) w.classList.add("is-writing");
+  el0.dots.replaceChildren();
+  el0.line.textContent = "";
+  el0.line.style.opacity = "1";
+  const fan = el0.fan;
+  fan.replaceChildren();
+  const n = choices.length;
+  choices.forEach(([base, name], i) => {
+    const pose2 = poseOf(base);
+    const el = h(
+      "button",
+      { type: "button", class: "alius-call-card", "data-posture-choice": base, "data-call": id, "aria-label": `${name}: ${o.baseLabel(base)}`, ...o.cardAttrs ?? {} },
+      pose2 ? mannequinSvg(pose2) : null,
+      h("span", { class: "alius-call-nm" }, name),
+      h("span", { class: "alius-call-base" }, o.baseLabel(base))
+    );
+    const { x, rot, lift } = fanPlace(i, n);
+    el.style.left = `${x}px`;
+    el.style.transform = o.reduced ? `translateY(${lift}px) rotate(${rot}deg)` : "translateY(260px) rotate(0deg) scale(.6)";
+    el.style.opacity = o.reduced ? "1" : "0";
+    el.onmouseenter = () => {
+      if (!call?.done) el.style.transform = `translateY(${lift - 18}px) rotate(0deg) scale(1.04)`;
+    };
+    el.onmouseleave = () => {
+      if (!call?.done) el.style.transform = `translateY(${lift}px) rotate(${rot}deg)`;
+    };
+    el.onclick = () => choose(base, el);
+    el.dataset.base = base;
+    fan.append(el);
+    if (!o.reduced) call.timers.push(o.schedule(() => {
+      el.style.opacity = "1";
+      el.style.transform = `translateY(${lift}px) rotate(${rot}deg)`;
+    }, 120 + i * 55));
+  });
+  sfx(o, CALL_SOUNDS.fan, 0.3, 0.6);
+  if (o.timed) scheduleTaps();
+  return el0.root;
+}
+function scheduleTaps() {
+  const win = call.o.windowMs;
+  const times = tapTimes(win);
+  const span = 300;
+  times.forEach((at, i) => call.timers.push(call.o.schedule(() => tap(at / win, i === times.length - 1, span, i), at)));
+}
+function tap(k, last, span, i) {
+  if (!call) return;
+  const o = call.o;
+  const d = h("i");
+  if (last) d.className = "last";
+  d.style.left = `${(k - 0.5) * span}px`;
+  call.el.dots.append(d);
+  const w = call.el.w;
+  if (!o.reduced) {
+    w.classList.remove("is-bob");
+    void w.offsetWidth;
+    w.classList.add("is-bob");
+  }
+  sfx(o, CALL_SOUNDS.soft[fnv1a3(`${call.id}|${i}`) % 2], (0.22 + 0.4 * k) * (last ? 1.6 : 1), 0.35, 0.92 + fnv1a3(`${call.id}|${i}|rate`) % 1e3 / 1e3 * 0.1);
+  if (last) end("slow", null);
+}
+function choose(base, el) {
+  if (!call || call.done) return;
+  sfx(call.o, CALL_SOUNDS.place[0], 0.35, 0.6);
+  end(base === call.want[0] ? "right" : "wrong", base, el);
+}
+function end(outcome, base, el) {
+  const c = call;
+  if (!c || c.done) return;
+  c.done = true;
+  for (const t of c.timers) c.o.cancel(t);
+  c.timers = [];
+  const o = c.o;
+  const fan = c.el.fan;
+  const rightEl = fan.querySelector(`[data-base="${c.want[0]}"]`);
+  c.el.root.dataset.outcome = outcome;
+  if (outcome === "right") {
+    if (!o.reduced && el) {
+      const fx2 = -parseFloat(el.style.left) - 30;
+      el.style.transition = "transform .45s cubic-bezier(.5,0,.8,.4), opacity .45s";
+      el.style.transform = `translate(${fx2}px, 230px) scale(.35)`;
+      el.style.opacity = "0";
+    }
+    for (const x of fan.children) if (x !== el) x.style.opacity = "0";
+  } else {
+    if (outcome === "wrong" && el) el.classList.add("is-wrong");
+    rightEl?.classList.add("is-right");
+    c.timers.push(o.schedule(() => {
+      for (const x of fan.children) {
+        x.style.opacity = "0";
+        if (!o.reduced) x.style.transform += " translateY(60px)";
+      }
+    }, 900));
+  }
+  const lineEl = c.el.line;
+  lineEl.textContent = o.line(outcome);
+  lineEl.className = "alius-call-line";
+  void lineEl.offsetWidth;
+  if (!o.reduced) lineEl.classList.add("is-writing");
+  o.take(base ?? void 0, outcome === "slow" || o.timed && o.now() - c.t0 > o.windowMs);
+  c.timers.push(o.schedule(() => {
+    if (c.el.dim) c.el.dim.style.opacity = "0";
+    if (o.dial) delete o.dial.dataset.called;
+    c.el.w.textContent = "";
+    c.el.dots.replaceChildren();
+  }, 1300));
+  c.timers.push(o.schedule(() => {
+    lineEl.style.opacity = "0";
+  }, 2600));
+  c.timers.push(o.schedule(() => {
+    teardown2(c);
+  }, 3300));
+}
+function teardown2(c) {
+  c.el.root.remove();
+  c.el.dim?.remove();
+  if (c.o.dial) {
+    delete c.o.dial.dataset.called;
+    c.o.dial.style.removeProperty("--alius-her");
+  }
+  if (call === c) call = null;
+}
+function cancelCall() {
+  const c = call;
+  if (c === null) return;
+  c.done = true;
+  for (const t of c.timers) c.o.cancel(t);
+  c.timers = [];
+  teardown2(c);
+}
+
+// src/ui/scene/stage/dock.ts
+var DOCK_SLOTS = ["moment", "physics", "punishment", "task", "demonstration", "milestone", "claim", "return"];
+var setAside = /* @__PURE__ */ new Set();
+var ages = /* @__PURE__ */ new Map();
+var age = 0;
+function resetDock() {
+  setAside.clear();
+  ages.clear();
+  age = 0;
+}
+var running2 = (card2) => card2.hasAttribute("data-run") || card2.hasAttribute("data-clock");
+var SKIP = /^data-(analyze|dock|open|collapsed|set-aside|voice|gist|scard)/;
+function idOf2(card2, index2) {
+  const own = card2.getAttributeNames().find((n) => n.startsWith("data-") && !SKIP.test(n));
+  if (own) return `${own}=${card2.getAttribute(own)}`;
+  const inner = card2.querySelector("[data-task],[data-punishment],[data-milestone],[data-claim],[data-moment],[data-demonstration]");
+  const attr = inner?.getAttributeNames().find((n) => n.startsWith("data-") && !SKIP.test(n));
+  return inner && attr ? `${attr}=${inner.getAttribute(attr)}` : `#${index2}`;
+}
+function drawGist(card2) {
+  const head = card2.querySelector(":scope > .alius-scard-head");
+  const gist = card2.getAttribute("data-gist");
+  if (!head || gist === null) return;
+  const el = head.querySelector(":scope > .alius-scard-gist") ?? head.appendChild(h("span", { class: "alius-scard-gist" }));
+  el.replaceChildren(...gistRuns(gist).map((r) => r.value ? h("b", {}, r.text) : document.createTextNode(r.text)));
+}
+function createDock(host, names2) {
+  const slots = /* @__PURE__ */ new Map();
+  for (const n of names2) slots.set(n, h("div", { class: "alius-dock-slot", "data-slot": n }));
+  const waiting3 = h("button", { type: "button", class: "alius-dock-waiting", "aria-label": "Bring back the cards set aside", ...analyzeNative("glossary:dock_cards") });
+  waiting3.hidden = true;
+  const element = h("div", { class: "alius-dock" }, ...slots.values(), waiting3);
+  host.append(element);
+  let chosen = null;
+  let scene = "";
+  waiting3.addEventListener("click", () => {
+    for (const k of [...setAside]) if (k.startsWith(`${scene}|`)) setAside.delete(k);
+    chosen = null;
+    dock.layout(scene);
+  });
+  const dock = {
+    element,
+    slot(name) {
+      const s = slots.get(name);
+      if (!s) throw new Error(`no dock slot ${name}`);
+      return s;
+    },
+    layout(sceneId) {
+      scene = sceneId;
+      const cards = [];
+      for (const [name, slot2] of slots) {
+        [...slot2.children].forEach((c, i) => {
+          const el = c;
+          cards.push({ el, key: `${sceneId}|${name}|${idOf2(el, i)}` });
+        });
+      }
+      const fresh = cards.filter((c) => !ages.has(c.key));
+      for (const c of [...fresh].reverse()) ages.set(c.key, ++age);
+      if (fresh.some((c) => !running2(c.el))) chosen = null;
+      const shown2 = cards.filter((c) => !setAside.has(c.key)).sort((a, b) => ages.get(a.key) - ages.get(b.key));
+      const aside = cards.length - shown2.length;
+      const openKey = chosen !== null && shown2.some((c) => c.key === chosen) ? chosen : shown2.filter((c) => !running2(c.el)).at(-1)?.key ?? null;
+      if (chosen !== null && openKey !== chosen) chosen = null;
+      const collapsed = shown2.filter((c) => c.key !== openKey && !running2(c.el)).reverse();
+      const order = [...collapsed, ...shown2.filter((c) => c.key === openKey), ...shown2.filter((c) => running2(c.el))];
+      for (const { el, key } of cards) {
+        el.classList.add("alius-dock-card");
+        const gone3 = setAside.has(key);
+        el.hidden = gone3;
+        if (gone3) {
+          delete el.dataset.open;
+          delete el.dataset.collapsed;
+          el.querySelector(":scope > [data-set-aside]")?.remove();
+          continue;
+        }
+        el.style.order = String(order.findIndex((c) => c.key === key));
+        const clock = running2(el);
+        const isOpen2 = key === openKey || clock;
+        el.dataset.open = String(isOpen2);
+        if (isOpen2) delete el.dataset.collapsed;
+        else el.dataset.collapsed = "true";
+        drawGist(el);
+        if (!el.hasAttribute("data-dock-wired")) {
+          el.setAttribute("data-dock-wired", "");
+          el.addEventListener("click", (ev) => {
+            if (el.dataset.collapsed !== "true") return;
+            if (ev.target instanceof Element && ev.target.closest("button, a, input, select, textarea, summary") !== null) return;
+            const k = el.getAttribute("data-dock-key");
+            if (k) {
+              chosen = k;
+              dock.layout(scene);
+            }
+          });
+        }
+        el.setAttribute("data-dock-key", key);
+        const mark = el.querySelector(":scope > [data-set-aside]");
+        if (isOpen2 && !clock && !mark) {
+          el.append(h("button", {
+            type: "button",
+            class: "alius-dock-aside",
+            "data-set-aside": "",
+            "aria-label": "Set this card aside",
+            title: "Set aside",
+            ...analyzeNative("glossary:dock_cards"),
+            onclick: (ev) => {
+              ev.stopPropagation();
+              const k = el.getAttribute("data-dock-key");
+              if (k) setAside.add(k);
+              if (chosen === k) chosen = null;
+              dock.layout(scene);
+            }
+          }, "\xD7"));
+        } else if ((!isOpen2 || clock) && mark) mark.remove();
+      }
+      waiting3.hidden = aside === 0;
+      waiting3.textContent = `${aside} waiting`;
+    }
+  };
+  return dock;
+}
+
+// src/ui/scene/stage/look.ts
+var memory = /* @__PURE__ */ new Map();
+var DOUBLE_MS = 300;
+var clamp012 = (n) => Math.min(1, Math.max(0, n));
+function resetLook() {
+  memory.clear();
+}
+var DRAG_HOLD_MS = 8e3;
+function attachLook(frame, root, opts) {
+  const id = opts.sceneId();
+  let pan = memory.get(id) ?? 0.5;
+  let drag = null;
+  let lastClick = -Infinity;
+  let lastHand = -Infinity;
+  const apply2 = () => {
+    root.style.setProperty("--alius-pan", String(Math.round(pan * 1e4) / 1e4));
+    memory.set(id, pan);
+  };
+  const still = () => {
+    root.classList.toggle("alius-look-still", opts.reduced());
+  };
+  root.style.setProperty("--alius-pan", String(pan));
+  still();
+  const down2 = (e) => {
+    const ev = e;
+    if (ev.button !== 2) return;
+    still();
+    if (Date.now() - lastClick <= DOUBLE_MS) {
+      lastClick = -Infinity;
+      drag = null;
+      pan = 0.5;
+      lastHand = Date.now();
+      apply2();
+      return;
+    }
+    drag = { x: ev.clientX, pan, moved: false };
+    root.classList.add("alius-looking");
+    try {
+      frame.setPointerCapture?.(ev.pointerId);
+    } catch {
+    }
+  };
+  const stop2 = () => {
+    drag = null;
+    root.classList.remove("alius-looking");
+  };
+  const move = (e) => {
+    if (!drag) return;
+    if ((e.buttons & 2) === 0) {
+      stop2();
+      return;
+    }
+    const width = frame.getBoundingClientRect().width;
+    if (width <= 0) return;
+    const dx = drag.x - e.clientX;
+    if (dx === 0 && !drag.moved) return;
+    if (!drag.moved) opts.onUse?.();
+    drag.moved = true;
+    lastHand = Date.now();
+    pan = clamp012(drag.pan + dx / width);
+    apply2();
+  };
+  const up = (e) => {
+    if (!drag || e.button !== 2) return;
+    if (!drag.moved) lastClick = Date.now();
+    stop2();
+  };
+  const menu = (e) => e.preventDefault();
+  frame.addEventListener("pointerdown", down2);
+  frame.addEventListener("pointermove", move);
+  frame.addEventListener("pointerup", up);
+  frame.addEventListener("pointercancel", stop2);
+  frame.addEventListener("lostpointercapture", stop2);
+  frame.addEventListener("contextmenu", menu);
+  const detach = () => {
+    frame.removeEventListener("pointerdown", down2);
+    frame.removeEventListener("pointermove", move);
+    frame.removeEventListener("pointerup", up);
+    frame.removeEventListener("pointercancel", stop2);
+    frame.removeEventListener("lostpointercapture", stop2);
+    frame.removeEventListener("contextmenu", menu);
+    root.classList.remove("alius-looking");
+  };
+  return Object.assign(detach, {
+    turnTo(to) {
+      if (drag !== null || Date.now() - lastHand < DRAG_HOLD_MS) return false;
+      still();
+      pan = Math.min(1, Math.max(0, to));
+      apply2();
+      return true;
+    }
+  });
+}
+
+// src/ui/scene/stage/topLine.ts
+var used = /* @__PURE__ */ new Set();
+var HINTS = [
+  { kind: "look", text: "Hold the right mouse button to look around", analyze: "glossary:look_around" },
+  { kind: "history", text: "Wheel up or \u2191 for the history", analyze: "glossary:scene_history" }
+];
+function markHintUsed(kind) {
+  used.add(kind);
+  if (typeof document === "undefined") return;
+  for (const el of document.querySelectorAll(`.alius-stage-hints [data-hint="${kind}"]`)) el.hidden = true;
+}
+function resetHints() {
+  used.clear();
+  if (typeof document === "undefined") return;
+  for (const el of document.querySelectorAll(".alius-stage-hints [data-hint]")) el.hidden = false;
+}
+function renderTopLine(host, ctx2) {
+  const small = (action, text3, onclick, label2) => h("button", { type: "button", class: "alius-btn alius-topline-btn", "data-action": action, "aria-label": label2, onclick }, text3);
+  const history = h("button", {
+    type: "button",
+    class: "alius-btn alius-topline-btn",
+    "data-action": "history",
+    "aria-label": "Open the history",
+    title: "Open the history of this scene",
+    onclick: ctx2.onHistory,
+    ...analyzeNative("glossary:scene_history")
+  }, "HISTORY");
+  const right = h("div", { class: "alius-scene-tools" }, ...ctx2.tools, history, small("end", "END TRANSMISSION", ctx2.onEnd, "End the conversation"));
+  if (ctx2.onClose) right.append(small("close", "\xD7", ctx2.onClose, "Close Alius"));
+  const hints = h("div", { class: "alius-stage-hints" }, ...HINTS.map((x) => {
+    const el = h("span", { "data-hint": x.kind, ...analyzeAttrs(x.analyze) }, x.text);
+    el.hidden = used.has(x.kind);
+    return el;
+  }));
+  host.replaceChildren(h(
+    "div",
+    { class: "alius-topline" },
+    h(
+      "div",
+      { class: "alius-topline-left" },
+      h("span", { class: "alius-topline-place" }, ctx2.place),
+      h("span", { class: "alius-topline-when alius-dim" }, ` \xB7 ${ctx2.when} \xB7 ${ctx2.mode}`),
+      ...ctx2.units
+    ),
+    right
+  ), hints);
+}
+
+// src/ui/scene/stage/index.ts
+var hooks2 = /* @__PURE__ */ new Set();
+function onStageReset(fn) {
+  hooks2.add(fn);
+  return () => void hooks2.delete(fn);
+}
+function resetSceneStage() {
+  resetHints();
+  resetLook();
+  resetDock();
+  resetInstruments();
+  for (const fn of [...hooks2]) fn();
+}
+
+// src/ui/practice/postureCall.ts
+var started = /* @__PURE__ */ new Map();
+var expiries = /* @__PURE__ */ new Map();
+function resetPostureCalls() {
+  started.clear();
+  expiries.clear();
+}
+function cancelPostureCalls(cancel = (handle) => clearTimeout(handle)) {
+  for (const handle of expiries.values()) cancel(handle);
+  resetPostureCalls();
+  cancelCall();
+}
+onStageReset(() => cancelCall());
+function drawPostureCall(host, state, reg, pick3, handlers2, opts = {}) {
+  if (opts.look === "scene") {
+    drawSceneCall(host, state, reg, pick3, handlers2);
+    return;
+  }
+  host.replaceChildren();
+  const now = handlers2.now ?? (() => Date.now());
+  const schedule = handlers2.schedule ?? ((fn, ms) => setTimeout(fn, ms));
+  const cancel = handlers2.cancel ?? ((handle) => clearTimeout(handle));
+  const call2 = state.practices?.call;
+  const stop2 = (id) => {
+    if (expiries.has(id)) cancel(expiries.get(id));
+    expiries.delete(id);
+  };
+  const unit4 = call2 === void 0 ? void 0 : state.squad.find((u) => u.id === call2.holderId);
+  if (call2 === void 0 || unit4 === void 0 || !dynamicOn(state, reg) || !practiceLive(state, reg, unit4.id) || !pick3({ unitId: unit4.id })) {
+    for (const id of [...expiries.keys()]) stop2(id);
+    started.clear();
+    return;
+  }
+  const set2 = (state.practices.postures[unit4.id] ?? []).filter((p) => {
+    const entry = reg.blockingPostures.get(p.postureId);
+    return entry !== void 0 && entryAllowed(state, reg, entry, [unit4.id]);
+  });
+  const wanted2 = set2.find((p) => p.postureId === call2.postureId);
+  if (wanted2 === void 0) return;
+  const windowMs = postureWindowMs(state, reg, unit4.id);
+  if (handlers2.timed && !started.has(call2.id)) {
+    started.set(call2.id, now());
+    expiries.set(call2.id, schedule(() => {
+      stop2(call2.id);
+      handlers2.take(call2.id, void 0, true);
+    }, windowMs));
+  }
+  const live3 = { unitId: unit4.id };
+  const answer = (postureId) => {
+    const late2 = handlers2.timed && started.has(call2.id) && now() - started.get(call2.id) > windowMs;
+    stop2(call2.id);
+    handlers2.take(call2.id, postureId, late2);
+  };
+  const choices = set2.map((p) => h("button", {
+    type: "button",
+    class: "alius-btn alius-tagchip",
+    "data-posture-choice": p.postureId,
+    "data-call": call2.id,
+    ...analyzeNative("glossary:posture_call", live3),
+    onclick: () => answer(p.postureId)
+  }, plainDraft(p.name)));
+  const body = h(
+    "div",
+    { class: "alius-posture-body" },
+    h("p", { class: "alius-posture-name", "data-posture-call": call2.id, ...analyzeAttrs("glossary:posture_call", live3) }, plainDraft(wanted2.name)),
+    ...handlers2.timed ? [h("div", {
+      class: `alius-posture-timer${handlers2.reduced ? " alius-posture-timer-still" : ""}`,
+      "data-window-ms": String(windowMs),
+      "aria-hidden": "true",
+      style: handlers2.reduced ? "" : `animation-duration:${windowMs}ms`,
+      ...analyzeAttrs("glossary:posture_call", live3)
+    })] : [],
+    h("div", { class: "alius-posture-choices" }, ...choices)
+  );
+  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit4.displayName, body, accent: unitAccent(unit4.id) });
+  card2.classList.add("alius-posture-call");
+  card2.setAttribute("data-call", call2.id);
+  card2.setAttribute("role", "group");
+  card2.setAttribute("aria-label", `${unit4.displayName} calls a posture`);
+  for (const [k, v] of Object.entries(analyzeAttrs("glossary:posture_call", live3))) card2.setAttribute(k, v);
+  host.append(card2);
+}
+function drawSceneCall(host, state, reg, pick3, handlers2) {
+  const call2 = state.practices?.call;
+  const unit4 = call2 === void 0 ? void 0 : state.squad.find((u) => u.id === call2.holderId);
+  const now = currentCall();
+  const live3 = call2 !== void 0 && unit4 !== void 0 && dynamicOn(state, reg) && practiceLive(state, reg, unit4.id) && pick3({ unitId: unit4.id });
+  const set2 = live3 ? (state.practices.postures[unit4.id] ?? []).filter((p) => {
+    const entry = reg.blockingPostures.get(p.postureId);
+    return entry !== void 0 && entryAllowed(state, reg, entry, [unit4.id]);
+  }) : [];
+  const wanted2 = live3 ? set2.find((p) => p.postureId === call2.postureId) : void 0;
+  if (!live3 || wanted2 === void 0) {
+    if (now !== null && !now.done) cancelCall();
+    return;
+  }
+  if (now !== null && now.id === call2.id) return;
+  if (now !== null) cancelCall();
+  const hand = handOf(state, reg, unit4.id);
+  const style = practiceOf(state, reg, unit4.id)?.style.primary;
+  const name = plainDraft(wanted2.name);
+  handlers2.samples?.preload([...CALL_SOUNDS.soft, CALL_SOUNDS.fan, ...CALL_SOUNDS.place]).catch(() => void 0);
+  startCall({
+    id: call2.id,
+    want: [wanted2.postureId, name],
+    choices: set2.map((p) => [p.postureId, plainDraft(p.name)]),
+    baseLabel: (base) => String(reg.blockingPostures.get(base)?.label ?? base).toLowerCase(),
+    line: (outcome) => voiceLine(reg, `call.${outcome}`, style, call2.id, { posture: name }).map((r) => r.text).join(""),
+    timed: handlers2.timed,
+    windowMs: postureWindowMs(state, reg, unit4.id),
+    reduced: handlers2.reduced,
+    accent: unitAccent(unit4.id),
+    hand: hand ? handFamily(hand) : "",
+    handScale: handScale(hand),
+    cardAttrs: analyzeNative("glossary:posture_call", { unitId: unit4.id }),
+    // the cards answer to the analysis tool (P7a)
+    host,
+    dim: handlers2.dim ?? null,
+    dial: handlers2.dial ?? null,
+    samples: handlers2.samples ?? null,
+    take: (base, late2) => handlers2.take(call2.id, base, late2),
+    now: handlers2.now ?? (() => Date.now()),
+    schedule: handlers2.schedule ?? ((fn, ms) => setTimeout(fn, ms)),
+    cancel: handlers2.cancel ?? ((handle) => clearTimeout(handle))
+  });
+}
+
+// src/ui/practice/slapOverlay.ts
+var PHASE_TEXT = { raise: "Her hand is raised.", feint: "Her hand twitches.", strike: "Her hand comes down.", done: "" };
+var RESULT_TEXT = { none: "It lands.", braced: "Braced.", flinched: "Flinched." };
+var runs = /* @__PURE__ */ new WeakMap();
+var typing = (t) => t !== null && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
+function stop(host, run, cancel) {
+  for (const handle of run.handles) cancel(handle);
+  run.handles = [];
+  if (run.keys !== void 0) {
+    document.removeEventListener("keydown", run.keys.down);
+    document.removeEventListener("keyup", run.keys.up);
+    run.keys = void 0;
+  }
+}
+function renderSlapOverlay(host, ctx2) {
+  const { slap } = ctx2;
+  const now = ctx2.now ?? (() => Date.now());
+  const schedule = ctx2.schedule ?? ((fn, ms) => setTimeout(fn, ms));
+  const cancel = ctx2.cancel ?? ((handle) => clearTimeout(handle));
+  const unit4 = ctx2.state.squad.find((u) => u.id === slap.holderId);
+  const existing = runs.get(host);
+  if (existing !== void 0 && existing.slapId === slap.id) {
+    if (existing.card !== void 0 && !host.contains(existing.card)) host.append(existing.card);
+    return;
+  }
+  if (existing !== void 0) {
+    stop(host, existing, cancel);
+    host.replaceChildren();
+  }
+  if (unit4 === void 0 || !dynamicOn(ctx2.state, ctx2.reg)) return;
+  const run = { slapId: slap.id, start: now(), windowStart: TUNING.practice.slap.leadMs + slap.feints * TUNING.practice.slap.feintMs, windowEnd: 0, presses: 0, decided: false, down: false, handles: [], cancel };
+  run.windowEnd = run.windowStart + slap.windowMs;
+  runs.set(host, run);
+  if (ctx2.settings.physicsInteractions?.timing === false || motionReduced(ctx2.settings)) {
+    run.decided = true;
+    ctx2.onResult("none");
+    return;
+  }
+  const live3 = { unitId: unit4.id };
+  const text3 = h("p", { class: "alius-slap-text", role: "status" }, PHASE_TEXT.raise);
+  const brace = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "brace", ...analyzeNative("glossary:slap", live3), onclick: () => press() }, "[ BRACE ]");
+  const bar2 = h("div", { class: "alius-slap-bar", "aria-hidden": "true", style: `--alius-slap-ms: ${run.windowEnd}ms` });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit4.displayName, body: h("div", { class: "alius-slap-body" }, text3, bar2, brace), accent: unitAccent(unit4.id) });
+  card2.classList.add("alius-slap");
+  card2.setAttribute("role", "group");
+  card2.setAttribute("aria-label", `${unit4.displayName} raises her hand`);
+  for (const [k, v] of Object.entries(analyzeAttrs("glossary:slap", live3))) card2.setAttribute(k, v);
+  const setPhase = (phase, line3) => {
+    card2.setAttribute("data-phase", phase);
+    text3.textContent = line3;
+  };
+  setPhase("raise", PHASE_TEXT.raise);
+  run.card = card2;
+  host.append(card2);
+  const resolve = (result) => {
+    if (run.decided) return;
+    run.decided = true;
+    stop(host, run, cancel);
+    setPhase("done", RESULT_TEXT[result]);
+    brace.setAttribute("aria-disabled", "true");
+    ctx2.onResult(result);
+  };
+  function press() {
+    if (run.decided) return;
+    const t = now() - run.start;
+    if (t < run.windowStart) resolve("flinched");
+    else if (t <= run.windowEnd) {
+      run.presses += 1;
+      if (run.presses >= 2) resolve("flinched");
+    }
+  }
+  cutIn(host, "slap", "HER HAND");
+  ctx2.sound?.play("alert");
+  const active = document.activeElement;
+  if (active !== null && typing(active)) active.blur();
+  const T5 = TUNING.practice.slap;
+  for (let i = 0; i < slap.feints; i++) {
+    run.handles.push(schedule(() => setPhase("feint", PHASE_TEXT.feint), T5.leadMs + i * T5.feintMs));
+    if (i < slap.feints - 1) run.handles.push(schedule(() => setPhase("raise", PHASE_TEXT.raise), T5.leadMs + (i + 1) * T5.feintMs));
+  }
+  run.handles.push(schedule(() => setPhase("strike", PHASE_TEXT.strike), run.windowStart));
+  run.handles.push(schedule(() => resolve(run.presses === 1 ? "braced" : "none"), run.windowEnd));
+  const down2 = (e) => {
+    if (!host.isConnected) {
+      stop(host, run, cancel);
+      return;
+    }
+    const ev = e;
+    if (ev.key !== " " || typing(ev.target)) return;
+    ev.preventDefault();
+    if (ev.repeat || run.down) return;
+    run.down = true;
+    press();
+  };
+  const up = (e) => {
+    if (e.key === " ") run.down = false;
+  };
+  run.keys = { down: down2, up };
+  document.addEventListener("keydown", down2);
+  document.addEventListener("keyup", up);
+}
+function clearSlapOverlay(host) {
+  const run = runs.get(host);
+  if (run !== void 0) stop(host, run, run.cancel);
+  runs.delete(host);
+  host.replaceChildren();
+}
+
+// src/ui/dynamic/frameChip.ts
+function drawFrameChips(host, state, reg, pick3, hidden) {
+  if (hidden || !dynamicOn(state, reg)) return;
+  const chips = state.squad.filter((u) => u.kind === "named" && isLiving(u) && pick3(u.id) && frameRank(dynamicOf(state, u.id)?.frame ?? "equal") >= frameRank("play")).map((u) => h(
+    "span",
+    { class: "alius-chip alius-frame-chip", "data-frame-chip": u.id, ...analyzeAttrs("glossary:frame", { unitId: u.id }) },
+    `${u.displayName.toUpperCase()}: ${String(reg.dynamicFrames.get(dynamicOf(state, u.id).frame)?.label ?? "").toUpperCase()}`
+  ));
+  if (chips.length > 0) host.append(h("div", { class: "alius-lead-chips alius-frame-chips" }, ...chips));
+}
+
+// src/ui/special/freqChip.ts
+function renderFreqChip(host, state, reg, unitId) {
+  const f = state.special?.frequency;
+  if (!f || f.burnedDay !== void 0) return;
+  const x = [...f.intercepts].reverse().find((y) => y.unitId === unitId);
+  if (!x) return;
+  const name = state.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
+  const text3 = x.text ?? fallbackFragment(reg, x, name);
+  host.append(h("span", { class: "alius-chip alius-freq-chip", "data-freq-unit": unitId, ...analyzeAttrs("glossary:frequency_intercept") }, `FREQ \u25B8 "${text3}" (unverified)`));
+}
+
+// src/ui/scene/blockingStrip.ts
+var MOVES = [
+  { move: "kneel", text: "[ KNEEL ]", posture: "kneeling_upright" },
+  { move: "sit", text: "[ SIT ]", posture: "sitting" },
+  { move: "stand", text: "[ STAND ]", posture: "standing" },
+  { move: "crawl", text: "[ CRAWL ]", posture: "all_fours" },
+  { move: "lie", text: "[ LIE DOWN ]", posture: "lying_back" }
+];
+var setBlocking2 = (change) => ({ type: "blocking/set", payload: { ...change } });
+var set = setBlocking2;
+function blockingChoices(state, reg) {
+  if (!state?.scene || !blockingLive(state, reg)) return null;
+  const scene = state.scene;
+  const units = scene.participants;
+  const name = (id) => id === COMMANDER ? "The commander" : state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const labelOf4 = (registry2, id) => String(reg[registry2].get(id)?.label ?? id);
+  const row4 = (person) => {
+    const b = blockingOf(scene, person);
+    const chips = [];
+    const remover = (id) => {
+      const change = { person, field: "removed", value: id };
+      return { person, id, label: labelOf4(id === b.contact?.id ? "blockingContacts" : "blockingItems", id), change, why: checkChange(state, reg, change) };
+    };
+    if (b.posture !== void 0) chips.push({ kind: "posture", registry: "blockingPostures", id: b.posture, label: labelOf4("blockingPostures", b.posture) });
+    if (b.anchor !== void 0) chips.push({ kind: "anchor", registry: "blockingAnchors", id: b.anchor.id, label: labelOf4("blockingAnchors", b.anchor.id) });
+    if (b.contact !== void 0) chips.push({ kind: "contact", registry: "blockingContacts", id: b.contact.id, label: labelOf4("blockingContacts", b.contact.id), remove: remover(b.contact.id) });
+    const seen2 = /* @__PURE__ */ new Set();
+    for (const slot2 of WORN_SLOTS) {
+      const w = b.worn?.[slot2];
+      if (!w || seen2.has(w.id)) continue;
+      seen2.add(w.id);
+      chips.push({ kind: "worn", registry: "blockingItems", id: w.id, label: labelOf4("blockingItems", w.id), remove: remover(w.id) });
+    }
+    if (b.activity !== void 0) chips.push({ kind: "activity", registry: "blockingActivities", id: b.activity, label: labelOf4("blockingActivities", b.activity) });
+    return { person, name: name(person), chips };
+  };
+  const moves = MOVES.map((m) => {
+    const change = { person: COMMANDER, field: "posture", value: m.posture };
+    return { move: m.move, text: m.text, posture: m.posture, label: labelOf4("blockingPostures", m.posture), why: checkChange(state, reg, change), change };
+  });
+  const vocab = blockingVocabulary(state, reg);
+  const entry = (group, registry2, id, text3, change, direction) => ({
+    group,
+    registry: registry2,
+    id,
+    label: text3,
+    ...direction !== void 0 ? { direction } : {},
+    change,
+    why: (unit4) => checkChange(state, reg, change(unit4))
+  });
+  const add2 = [
+    ...vocab.anchor.map((e) => entry("anchor", "blockingAnchors", e.id, String(e.label), () => ({ person: COMMANDER, field: "anchor", value: e.id }))),
+    ...vocab.contact.flatMap((e) => e.dir === "either" ? [
+      entry("contact", "blockingContacts", e.id, `${String(e.label)} (from her)`, (unit4) => ({ person: COMMANDER, field: "contact", value: e.id, with: unit4, direction: "from" }), "from"),
+      entry("contact", "blockingContacts", e.id, `${String(e.label)} (to her)`, (unit4) => ({ person: COMMANDER, field: "contact", value: e.id, with: unit4, direction: "to" }), "to")
+    ] : [entry("contact", "blockingContacts", e.id, String(e.label), (unit4) => ({ person: COMMANDER, field: "contact", value: e.id, with: unit4 }))]),
+    ...vocab.item.map((e) => entry("worn", "blockingItems", e.id, String(e.label), (unit4) => ({ person: e.wornBy === "her" ? unit4 : COMMANDER, field: "worn", value: e.id })))
+  ];
+  return { units, rows: [...units, COMMANDER].map(row4), moves, add: add2, name, label: labelOf4 };
+}
+function guardedButton(onStage, change, why, attrs, text3) {
+  return h("button", {
+    type: "button",
+    ...attrs,
+    "aria-disabled": why !== null ? "true" : null,
+    title: why ?? attrs.title ?? null,
+    onclick: () => {
+      if (why === null) onStage(set(change));
+    }
+  }, text3);
+}
+function blockingChipEls(r, onStage) {
+  return r.chips.flatMap((c) => [
+    h("span", { class: "alius-chip", "data-kind": c.kind, ...analyzeAttrs(`${c.registry}:${c.id}`) }, c.label),
+    ...c.remove ? [guardedButton(onStage, c.remove.change, c.remove.why, { class: "alius-btn alius-blocking-x", "data-action": "remove", "data-person": c.remove.person, "data-id": c.remove.id, "aria-label": `Remove ${c.remove.label}` }, "\xD7")] : []
+  ]);
 }
 
 // src/ui/scene/dial/dial.ts
@@ -64449,11 +64974,11 @@ function actRow(host, ctx2) {
 }
 
 // src/ui/scene/stage/gauge.ts
-var clamp012 = (n) => Math.min(1, Math.max(0, n));
+var clamp013 = (n) => Math.min(1, Math.max(0, n));
 var VARS = ["--alius-gauge-narrow", "--alius-gauge-pulse", "--alius-gauge-from", "--alius-gauge-to"];
 function inputGauge(host) {
   const set2 = (name, n) => {
-    if (Number.isFinite(n)) host.style.setProperty(name, String(clamp012(n)));
+    if (Number.isFinite(n)) host.style.setProperty(name, String(clamp013(n)));
     else host.style.removeProperty(name);
   };
   return {
@@ -64551,283 +65076,6 @@ function createChipRow(host, names2) {
   };
 }
 
-// src/ui/scene/stage/dock.ts
-var DOCK_SLOTS = ["moment", "posture-call", "physics", "punishment", "task", "demonstration", "milestone", "claim", "return"];
-var setAside = /* @__PURE__ */ new Set();
-var ages = /* @__PURE__ */ new Map();
-var age = 0;
-function resetDock() {
-  setAside.clear();
-  ages.clear();
-  age = 0;
-}
-var running2 = (card2) => card2.hasAttribute("data-run") || card2.hasAttribute("data-clock");
-var SKIP = /^data-(analyze|dock|open|collapsed|set-aside|voice|gist|scard)/;
-function idOf2(card2, index2) {
-  const own = card2.getAttributeNames().find((n) => n.startsWith("data-") && !SKIP.test(n));
-  if (own) return `${own}=${card2.getAttribute(own)}`;
-  const inner = card2.querySelector("[data-task],[data-punishment],[data-milestone],[data-claim],[data-moment],[data-demonstration]");
-  const attr = inner?.getAttributeNames().find((n) => n.startsWith("data-") && !SKIP.test(n));
-  return inner && attr ? `${attr}=${inner.getAttribute(attr)}` : `#${index2}`;
-}
-function drawGist(card2) {
-  const head = card2.querySelector(":scope > .alius-scard-head");
-  const gist = card2.getAttribute("data-gist");
-  if (!head || gist === null) return;
-  const el = head.querySelector(":scope > .alius-scard-gist") ?? head.appendChild(h("span", { class: "alius-scard-gist" }));
-  el.replaceChildren(...gistRuns(gist).map((r) => r.value ? h("b", {}, r.text) : document.createTextNode(r.text)));
-}
-function createDock(host, names2) {
-  const slots = /* @__PURE__ */ new Map();
-  for (const n of names2) slots.set(n, h("div", { class: "alius-dock-slot", "data-slot": n }));
-  const waiting3 = h("button", { type: "button", class: "alius-dock-waiting", "aria-label": "Bring back the cards set aside", ...analyzeNative("glossary:dock_cards") });
-  waiting3.hidden = true;
-  const element = h("div", { class: "alius-dock" }, ...slots.values(), waiting3);
-  host.append(element);
-  let chosen = null;
-  let scene = "";
-  waiting3.addEventListener("click", () => {
-    for (const k of [...setAside]) if (k.startsWith(`${scene}|`)) setAside.delete(k);
-    chosen = null;
-    dock.layout(scene);
-  });
-  const dock = {
-    element,
-    slot(name) {
-      const s = slots.get(name);
-      if (!s) throw new Error(`no dock slot ${name}`);
-      return s;
-    },
-    layout(sceneId) {
-      scene = sceneId;
-      const cards = [];
-      for (const [name, slot2] of slots) {
-        [...slot2.children].forEach((c, i) => {
-          const el = c;
-          cards.push({ el, key: `${sceneId}|${name}|${idOf2(el, i)}` });
-        });
-      }
-      const fresh = cards.filter((c) => !ages.has(c.key));
-      for (const c of [...fresh].reverse()) ages.set(c.key, ++age);
-      if (fresh.some((c) => !running2(c.el))) chosen = null;
-      const shown2 = cards.filter((c) => !setAside.has(c.key)).sort((a, b) => ages.get(a.key) - ages.get(b.key));
-      const aside = cards.length - shown2.length;
-      const openKey = chosen !== null && shown2.some((c) => c.key === chosen) ? chosen : shown2.filter((c) => !running2(c.el)).at(-1)?.key ?? null;
-      if (chosen !== null && openKey !== chosen) chosen = null;
-      const collapsed = shown2.filter((c) => c.key !== openKey && !running2(c.el)).reverse();
-      const order = [...collapsed, ...shown2.filter((c) => c.key === openKey), ...shown2.filter((c) => running2(c.el))];
-      for (const { el, key } of cards) {
-        el.classList.add("alius-dock-card");
-        const gone3 = setAside.has(key);
-        el.hidden = gone3;
-        if (gone3) {
-          delete el.dataset.open;
-          delete el.dataset.collapsed;
-          el.querySelector(":scope > [data-set-aside]")?.remove();
-          continue;
-        }
-        el.style.order = String(order.findIndex((c) => c.key === key));
-        const clock = running2(el);
-        const isOpen2 = key === openKey || clock;
-        el.dataset.open = String(isOpen2);
-        if (isOpen2) delete el.dataset.collapsed;
-        else el.dataset.collapsed = "true";
-        drawGist(el);
-        if (!el.hasAttribute("data-dock-wired")) {
-          el.setAttribute("data-dock-wired", "");
-          el.addEventListener("click", (ev) => {
-            if (el.dataset.collapsed !== "true") return;
-            if (ev.target instanceof Element && ev.target.closest("button, a, input, select, textarea, summary") !== null) return;
-            const k = el.getAttribute("data-dock-key");
-            if (k) {
-              chosen = k;
-              dock.layout(scene);
-            }
-          });
-        }
-        el.setAttribute("data-dock-key", key);
-        const mark = el.querySelector(":scope > [data-set-aside]");
-        if (isOpen2 && !clock && !mark) {
-          el.append(h("button", {
-            type: "button",
-            class: "alius-dock-aside",
-            "data-set-aside": "",
-            "aria-label": "Set this card aside",
-            title: "Set aside",
-            ...analyzeNative("glossary:dock_cards"),
-            onclick: (ev) => {
-              ev.stopPropagation();
-              const k = el.getAttribute("data-dock-key");
-              if (k) setAside.add(k);
-              if (chosen === k) chosen = null;
-              dock.layout(scene);
-            }
-          }, "\xD7"));
-        } else if ((!isOpen2 || clock) && mark) mark.remove();
-      }
-      waiting3.hidden = aside === 0;
-      waiting3.textContent = `${aside} waiting`;
-    }
-  };
-  return dock;
-}
-
-// src/ui/scene/stage/look.ts
-var memory = /* @__PURE__ */ new Map();
-var DOUBLE_MS = 300;
-var clamp013 = (n) => Math.min(1, Math.max(0, n));
-function resetLook() {
-  memory.clear();
-}
-var DRAG_HOLD_MS = 8e3;
-function attachLook(frame, root, opts) {
-  const id = opts.sceneId();
-  let pan = memory.get(id) ?? 0.5;
-  let drag = null;
-  let lastClick = -Infinity;
-  let lastHand = -Infinity;
-  const apply2 = () => {
-    root.style.setProperty("--alius-pan", String(Math.round(pan * 1e4) / 1e4));
-    memory.set(id, pan);
-  };
-  const still = () => {
-    root.classList.toggle("alius-look-still", opts.reduced());
-  };
-  root.style.setProperty("--alius-pan", String(pan));
-  still();
-  const down2 = (e) => {
-    const ev = e;
-    if (ev.button !== 2) return;
-    still();
-    if (Date.now() - lastClick <= DOUBLE_MS) {
-      lastClick = -Infinity;
-      drag = null;
-      pan = 0.5;
-      lastHand = Date.now();
-      apply2();
-      return;
-    }
-    drag = { x: ev.clientX, pan, moved: false };
-    root.classList.add("alius-looking");
-    try {
-      frame.setPointerCapture?.(ev.pointerId);
-    } catch {
-    }
-  };
-  const stop2 = () => {
-    drag = null;
-    root.classList.remove("alius-looking");
-  };
-  const move = (e) => {
-    if (!drag) return;
-    if ((e.buttons & 2) === 0) {
-      stop2();
-      return;
-    }
-    const width = frame.getBoundingClientRect().width;
-    if (width <= 0) return;
-    const dx = drag.x - e.clientX;
-    if (dx === 0 && !drag.moved) return;
-    if (!drag.moved) opts.onUse?.();
-    drag.moved = true;
-    lastHand = Date.now();
-    pan = clamp013(drag.pan + dx / width);
-    apply2();
-  };
-  const up = (e) => {
-    if (!drag || e.button !== 2) return;
-    if (!drag.moved) lastClick = Date.now();
-    stop2();
-  };
-  const menu = (e) => e.preventDefault();
-  frame.addEventListener("pointerdown", down2);
-  frame.addEventListener("pointermove", move);
-  frame.addEventListener("pointerup", up);
-  frame.addEventListener("pointercancel", stop2);
-  frame.addEventListener("lostpointercapture", stop2);
-  frame.addEventListener("contextmenu", menu);
-  const detach = () => {
-    frame.removeEventListener("pointerdown", down2);
-    frame.removeEventListener("pointermove", move);
-    frame.removeEventListener("pointerup", up);
-    frame.removeEventListener("pointercancel", stop2);
-    frame.removeEventListener("lostpointercapture", stop2);
-    frame.removeEventListener("contextmenu", menu);
-    root.classList.remove("alius-looking");
-  };
-  return Object.assign(detach, {
-    turnTo(to) {
-      if (drag !== null || Date.now() - lastHand < DRAG_HOLD_MS) return false;
-      still();
-      pan = Math.min(1, Math.max(0, to));
-      apply2();
-      return true;
-    }
-  });
-}
-
-// src/ui/scene/stage/topLine.ts
-var used = /* @__PURE__ */ new Set();
-var HINTS = [
-  { kind: "look", text: "Hold the right mouse button to look around", analyze: "glossary:look_around" },
-  { kind: "history", text: "Wheel up or \u2191 for the history", analyze: "glossary:scene_history" }
-];
-function markHintUsed(kind) {
-  used.add(kind);
-  if (typeof document === "undefined") return;
-  for (const el of document.querySelectorAll(`.alius-stage-hints [data-hint="${kind}"]`)) el.hidden = true;
-}
-function resetHints() {
-  used.clear();
-  if (typeof document === "undefined") return;
-  for (const el of document.querySelectorAll(".alius-stage-hints [data-hint]")) el.hidden = false;
-}
-function renderTopLine(host, ctx2) {
-  const small = (action, text3, onclick, label2) => h("button", { type: "button", class: "alius-btn alius-topline-btn", "data-action": action, "aria-label": label2, onclick }, text3);
-  const history = h("button", {
-    type: "button",
-    class: "alius-btn alius-topline-btn",
-    "data-action": "history",
-    "aria-label": "Open the history",
-    title: "Open the history of this scene",
-    onclick: ctx2.onHistory,
-    ...analyzeNative("glossary:scene_history")
-  }, "HISTORY");
-  const right = h("div", { class: "alius-scene-tools" }, ...ctx2.tools, history, small("end", "END TRANSMISSION", ctx2.onEnd, "End the conversation"));
-  if (ctx2.onClose) right.append(small("close", "\xD7", ctx2.onClose, "Close Alius"));
-  const hints = h("div", { class: "alius-stage-hints" }, ...HINTS.map((x) => {
-    const el = h("span", { "data-hint": x.kind, ...analyzeAttrs(x.analyze) }, x.text);
-    el.hidden = used.has(x.kind);
-    return el;
-  }));
-  host.replaceChildren(h(
-    "div",
-    { class: "alius-topline" },
-    h(
-      "div",
-      { class: "alius-topline-left" },
-      h("span", { class: "alius-topline-place" }, ctx2.place),
-      h("span", { class: "alius-topline-when alius-dim" }, ` \xB7 ${ctx2.when} \xB7 ${ctx2.mode}`),
-      ...ctx2.units
-    ),
-    right
-  ), hints);
-}
-
-// src/ui/scene/stage/index.ts
-var hooks2 = /* @__PURE__ */ new Set();
-function onStageReset(fn) {
-  hooks2.add(fn);
-  return () => void hooks2.delete(fn);
-}
-function resetSceneStage() {
-  resetHints();
-  resetLook();
-  resetDock();
-  resetInstruments();
-  for (const fn of [...hooks2]) fn();
-}
-
 // src/ui/scene/stage/prose.ts
 var CLOSER = { '"': '"', "\u201C": "\u201D" };
 function closeOnLine(text3, from, mark) {
@@ -64839,9 +65087,9 @@ function closeOnLine(text3, from, mark) {
 }
 function boldEnd(text3, from) {
   if (text3[from + 1] !== "*") return -1;
-  const end = text3.indexOf("**", from + 3);
-  if (end < 0 || text3.slice(from + 2, end).includes("\n")) return -1;
-  return end;
+  const end2 = text3.indexOf("**", from + 3);
+  if (end2 < 0 || text3.slice(from + 2, end2).includes("\n")) return -1;
+  return end2;
 }
 function speechRuns(region) {
   const out = [];
@@ -64882,9 +65130,9 @@ function proseRuns(text3) {
   const plainRest = (i2) => {
     flush();
     const nl = text3.indexOf("\n", i2);
-    const end = nl < 0 ? text3.length : nl;
-    out.push({ kind: "prose", text: text3.slice(i2, end) });
-    return end;
+    const end2 = nl < 0 ? text3.length : nl;
+    out.push({ kind: "prose", text: text3.slice(i2, end2) });
+    return end2;
   };
   let i = 0;
   while (i < text3.length) {
@@ -64897,29 +65145,29 @@ function proseRuns(text3) {
         i = bold + 2;
         continue;
       }
-      const end = closeOnLine(text3, i, "*");
-      if (end < 0) i = plainRest(i);
-      else if (end === i + 1) {
+      const end2 = closeOnLine(text3, i, "*");
+      if (end2 < 0) i = plainRest(i);
+      else if (end2 === i + 1) {
         buf += "**";
         i += 2;
       } else {
         flush();
-        out.push({ kind: "em", text: text3.slice(i + 1, end) });
-        i = end + 1;
+        out.push({ kind: "em", text: text3.slice(i + 1, end2) });
+        i = end2 + 1;
       }
       continue;
     }
     const closer = CLOSER[c];
     if (closer !== void 0) {
-      const end = closeOnLine(text3, i, closer);
-      if (end < 0) i = plainRest(i);
-      else if (end === i + 1) {
+      const end2 = closeOnLine(text3, i, closer);
+      if (end2 < 0) i = plainRest(i);
+      else if (end2 === i + 1) {
         buf += c + closer;
         i += 2;
       } else {
         flush();
-        out.push(...speechRuns(text3.slice(i, end + 1)));
-        i = end + 1;
+        out.push(...speechRuns(text3.slice(i, end2 + 1)));
+        i = end2 + 1;
       }
       continue;
     }
@@ -65204,6 +65452,7 @@ function renderReply(host, view, opts) {
 
 // src/ui/scene/sceneScreen.ts
 var SCENE_LOOK = { look: "scene" };
+var CALL_LANDS_MS = 380;
 var loaded = /* @__PURE__ */ new Map();
 var loading = /* @__PURE__ */ new Map();
 var RETRY_MS2 = 3e4;
@@ -65495,11 +65744,22 @@ function renderSceneScreen(host, ctx2) {
     drawPostureCall(postureCall, s, registries, (c) => ids.has(c.unitId), {
       timed: ctx2.settings().physicsInteractions?.order !== false,
       reduced: motionReduced(ctx2.settings()),
+      dim: layers.effects,
+      dial: layers.hosts.dial,
+      samples: ctx2.samples ?? null,
       take: (callId, postureId, late2) => {
         (ctx2.onStage ?? ((a) => void controller.stage(a)))({ type: "practice/take_posture", payload: { callId, ...postureId !== void 0 ? { postureId } : {}, late: late2 } });
-        if (!disposed) refresh2();
+        if (motionReduced(ctx2.settings())) {
+          if (!disposed) refresh2();
+          return;
+        }
+        const t = setTimeout(() => {
+          timeouts.delete(t);
+          if (!disposed) refresh2();
+        }, CALL_LANDS_MS);
+        timeouts.add(t);
       }
-    });
+    }, SCENE_LOOK);
     drawSlap(s);
     drawDisciplineChips(disciplineChips, s, registries, (c) => ids.has(c.unitId) && (c.channel !== "scene" || c.sceneId === s.scene?.id), (id) => ctx2.onUndoDiscipline?.(id));
     if (!ctx2.onPunish) return;
@@ -65749,7 +66009,7 @@ function renderSceneScreen(host, ctx2) {
     }
   };
   document.addEventListener("keydown", onDocKey);
-  function build(s) {
+  function build2(s) {
     const units = present2(s);
     sceneKey = s.scene.id;
     unmountInstruments();
@@ -65875,7 +66135,8 @@ function renderSceneScreen(host, ctx2) {
     });
     const { hosts } = layers;
     layers.ascii.append(bg, caption);
-    layers.moment.append(slapHost);
+    postureCall = h("div", { class: "alius-posture-call-host" });
+    layers.moment.append(slapHost, postureCall);
     renderTopLine(hosts.topLine, {
       place: locationName(s, units),
       when: `DAY ${String(s.day).padStart(3, "0")} \xB7 ${s.slot.toUpperCase()}`,
@@ -65910,7 +66171,6 @@ function renderSceneScreen(host, ctx2) {
       return el;
     };
     momentHost = cards("moment", "alius-moment-host");
-    postureCall = cards("posture-call", "alius-posture-call-host");
     physicsHost = cards("physics", "alius-physics-host");
     punishmentCards = cards("punishment", "alius-punishment-cards");
     taskCards = cards("task", "alius-task-cards");
@@ -66014,7 +66274,7 @@ function renderSceneScreen(host, ctx2) {
       seen2 = -1;
       progress = /* @__PURE__ */ new Map();
       stopTyping();
-      build(s);
+      build2(s);
     } else drawBackground(s);
     const messages = controller.transcript();
     const lastReply = [...messages].reverse().find((m) => !m.isUser);
@@ -67395,24 +67655,24 @@ function herCallProvider(subject, env, k) {
   const unitId = typeof subject.data.unitId === "string" ? subject.data.unitId : null;
   const nodeId = typeof subject.data.nodeId === "string" ? subject.data.nodeId : null;
   const entries2 = [...state.lastExpedition?.herCalls ?? [], ...state.expedition?.herCalls ?? []].filter((c) => (unitId === null || c.unitId === unitId) && (nodeId === null || c.nodeId === nodeId));
-  const call = entries2.at(-1);
-  if (!call) return null;
-  const name = nameOf27(state, call.unitId);
-  const lines = [`${name} took the decision herself in the field; it went ${call.outcome === "good" ? "well" : "badly"}.`];
+  const call2 = entries2.at(-1);
+  if (!call2) return null;
+  const name = nameOf27(state, call2.unitId);
+  const lines = [`${name} took the decision herself in the field; it went ${call2.outcome === "good" ? "well" : "badly"}.`];
   const missionId = typeof subject.data.missionId === "string" ? subject.data.missionId : state.expedition?.missionId ?? state.lastExpedition?.missionId;
   const mission = [...state.missions.active, ...state.missions.offered, ...state.missions.completed].find((m) => m.id === missionId);
   const by = mission?.decidedBy;
-  if (call.outcome === "good") lines.push("It is hers: merit and boldness for her. It blames nobody.");
-  else if (by?.source === "her_call" && by.unitId === call.unitId) {
+  if (call2.outcome === "good") lines.push("It is hers: merit and boldness for her. It blames nobody.");
+  else if (by?.source === "her_call" && by.unitId === call2.unitId) {
     lines.push("The run is marked on her call: if it fails, oversight will want a name, and the commander answers for it or shifts it onto her.");
   } else if (by !== void 0) {
     lines.push(`The run already carries another mark (${nameOf27(state, by.unitId)}'s decision), so this call added none.`);
-  } else if (call.marked === true) {
+  } else if (call2.marked === true) {
     lines.push("The run was marked on her call; that mark is spent now that the run has ended.");
-  } else if (call.marked === false && mission !== void 0) {
+  } else if (call2.marked === false && mission !== void 0) {
     lines.push("A side run or a point of interest cannot be marked: nobody is asked for a name if it fails.");
   }
-  const odds = k.raw(Math.round(call.odds * 100));
+  const odds = k.raw(Math.round(call2.odds * 100));
   if (odds !== null) lines.push(`Odds it would go well: ${odds}%.`);
   return { lines };
 }
@@ -68376,7 +68636,7 @@ function createModalHost(layer) {
 }
 
 // src/ui/memory/fill.ts
-function fillValue(state, build, settings, part) {
+function fillValue(state, build2, settings, part) {
   const cfg = memoryConfig(state);
   switch (part) {
     case "facts": {
@@ -68389,9 +68649,9 @@ function fillValue(state, build, settings, part) {
     case "chronicle":
       return String(state.memory.chronicle.length);
     case "memory_tokens":
-      return `${build.memoryTokens} / ${cfg.memoryTokens}`;
+      return `${build2.memoryTokens} / ${cfg.memoryTokens}`;
     case "directive_tokens":
-      return String(build.directiveTokens);
+      return String(build2.directiveTokens);
     case "save_size":
       return `${(JSON.stringify(state).length / 1024).toFixed(1)} KB`;
   }
@@ -68404,12 +68664,12 @@ var ROWS = [
   ["directive_tokens", "Directives in the last prompt (tokens)"],
   ["save_size", "Save size"]
 ];
-function renderFill(host, state, build, settings) {
+function renderFill(host, state, build2, settings) {
   host.replaceChildren(h("div", { class: "alius-memory-fill" }, ...ROWS.map(([part, label2]) => h(
     "div",
     { class: "alius-memory-row" },
     h("span", { class: "alius-field-label" }, label2),
-    h("span", { class: "alius-stat", "data-fill": part, ...analyzeAttrs("glossary:memory_fill", { part }) }, fillValue(state, build, settings, part))
+    h("span", { class: "alius-stat", "data-fill": part, ...analyzeAttrs("glossary:memory_fill", { part }) }, fillValue(state, build2, settings, part))
   ))));
 }
 
@@ -73415,14 +73675,14 @@ function lastCharacterAvatar(chat) {
 function hideRuns(length, from, to, isSystem) {
   const runs2 = [];
   let start = null;
-  const end = Math.min(to, length - 1);
-  for (let i = Math.max(0, from); i <= end; i++) {
+  const end2 = Math.min(to, length - 1);
+  for (let i = Math.max(0, from); i <= end2; i++) {
     if (isSystem(i)) {
       if (start !== null) runs2.push([start, i - 1]);
       start = null;
     } else if (start === null) start = i;
   }
-  if (start !== null) runs2.push([start, end]);
+  if (start !== null) runs2.push([start, end2]);
   return runs2;
 }
 var isIndexRun = (r) => Array.isArray(r) && r.length === 2 && Number.isSafeInteger(r[0]) && Number.isSafeInteger(r[1]) && r[0] >= 0 && r[0] <= r[1];

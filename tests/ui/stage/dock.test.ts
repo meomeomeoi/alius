@@ -44,7 +44,7 @@ const open = (el: HTMLElement) => el.dataset.open === 'true';
 
 describe('the dock', () => {
   it('the slots are in the order the plan names', () => {
-    expect(DOCK_SLOTS).toEqual(['moment', 'posture-call', 'physics', 'punishment', 'task', 'demonstration', 'milestone', 'claim', 'return']);
+    expect(DOCK_SLOTS).toEqual(['moment', 'physics', 'punishment', 'task', 'demonstration', 'milestone', 'claim', 'return']); // P10e-e Task 9: the posture call is a moment, not a card
     const dock = dockWith();
     expect([...dock.element.querySelectorAll<HTMLElement>('.alius-dock-slot')].map((s) => s.dataset.slot)).toEqual([...DOCK_SLOTS]);
   });
@@ -87,7 +87,7 @@ describe('the dock', () => {
     const physics = h('div', { class: 'alius-physics', 'data-run': 'r1' }, h('div', { class: 'alius-physics-title' }, 'A HOLD'), h('button', { 'data-action': 'tap' }, '[ TAP ]'));
     const moment = card('m1');
     const call = card('c1');
-    const dock = dockWith(['moment', moment], ['physics', physics], ['posture-call', call]);
+    const dock = dockWith(['moment', moment], ['physics', physics], ['punishment', call]);
     expect(open(physics)).toBe(true);
     expect(physics.dataset.collapsed).toBeUndefined();
     expect(open(moment)).toBe(true); // the card that comes first opens as always
@@ -198,7 +198,7 @@ describe('the dock on the scene screen', () => {
     const t = setup();
     const dock = t.host.querySelector('.alius-stage-dock .alius-dock')!;
     expect([...dock.querySelectorAll<HTMLElement>('.alius-dock-slot')].map((s) => s.dataset.slot)).toEqual([...DOCK_SLOTS]);
-    for (const [slot, legacy] of [['moment', 'alius-moment-host'], ['posture-call', 'alius-posture-call-host'], ['physics', 'alius-physics-host'], ['punishment', 'alius-punishment-cards'], ['task', 'alius-task-cards'], ['demonstration', 'alius-demonstration-cards'], ['milestone', 'alius-milestone-cards'], ['claim', 'alius-claim-cards'], ['return', 'alius-return-cards']]) {
+    for (const [slot, legacy] of [['moment', 'alius-moment-host'], ['physics', 'alius-physics-host'], ['punishment', 'alius-punishment-cards'], ['task', 'alius-task-cards'], ['demonstration', 'alius-demonstration-cards'], ['milestone', 'alius-milestone-cards'], ['claim', 'alius-claim-cards'], ['return', 'alius-return-cards']]) {
       expect(dock.querySelector(`[data-slot="${slot}"]`)!.classList.contains(legacy), slot).toBe(true);
     }
   });

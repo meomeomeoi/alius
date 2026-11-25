@@ -512,7 +512,7 @@ Open for e4: a blackout's end is cut short by the scene end; P15a's typing lapse
   - `fanPlace(i: number, n: number): { x: number; rot: number; lift: number }` — `x = (i − (n−1)) × 140`, `rot = (i − (n−1)/2) × 5`, `lift = |i − (n−1)/2| × 9`
   - The moment's DOM: `div.alius-call[data-call][data-clock]` with `.alius-call-word` (her word), `.alius-call-dots`, `.alius-call-line` and `.alius-call-fan` holding `button.alius-call-card[data-posture-choice][data-call]` (`glossary:posture_call`), each with its mannequin, her name and the base label.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `tapTimes(5000)` starts at 380, ends at 5000, and every gap is shorter than the one before; `tapTimes(3000)` ends at 3000.
   - `fanPlace(3, 4)` → `{ x: 0, rot: 7.5, lift: 13.5 }`; `fanPlace(0, 4)` → `{ x: -420, rot: -7.5, lift: 13.5 }`.
   - `the call draws her word, a card per named posture and no timer bar` (`look: 'scene'`, fake timers):
@@ -526,17 +526,18 @@ Open for e4: a blackout's end is cut short by the scene end; P15a's typing lapse
   - `a void answer` (`posture_called` with `void`): her `call.right` line; the dial is unchanged (R9).
   - `dispose and a chat switch cancel the expiry` (`cancelPostureCalls`), and no `take` is called afterwards.
   - `tests/ui/analyzeCoverage.test.ts` "her call of a named posture" passes with the new DOM (`.alius-call`, two `[data-posture-choice]`, `glossary:posture_call`).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** by copying `cards.html`'s `startCall`, `scheduleTaps`, `tap`, `choose`, `end` and the `#call` / `.pc` CSS (its `fidelity.json`; the call's wiring to `take` is the declared difference). The numbers, for orientation:
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** by copying `cards.html`'s `startCall`, `scheduleTaps`, `tap`, `choose`, `end` and the `#call` / `.pc` CSS (its `fidelity.json`; the call's wiring to `take` is the declared difference). The numbers, for orientation:
   - dim .28; the dial ring in her accent;
   - her word at 74 vw / 13 vh, 92 px × hand scale, write-on `steps(14)` over 520 ms;
   - the dots;
   - the fan anchored 110 px from the right and `min(18.5vh, 200px) + 72px` from the bottom;
   - the right card's flight to the dial;
   - the timings 1300 / 2600 / 3300 ms.
-- [ ] **Step 4: Run** the tests, `npm test`, `npm run test:layout` (her word and the fan stay inside the viewport and off her head box at all three sizes) → PASS.
-- [ ] **Step 5: Shots:** `npm run shots -- cards` (moments: the stack, a task open, the call mid-window, right, slow). Compare with the prototype, fix any drift.
-- [ ] **Step 6: Commit** `feat(P10e-e): the posture call as a full-frame moment`
+- [x] **Step 4: Run** the tests, `npm test`, `npm run test:layout` (her word and the fan stay inside the viewport and off her head box at all three sizes) → PASS.
+- [x] **Step 5: Shots:** `npm run shots -- cards` (moments: the stack, a task open, the call mid-window, right, slow). Compare with the prototype, fix any drift.
+- [x] **Step 6: Commit** `feat(P10e-e): the posture call as a full-frame moment`
+  - *As built:* `drawPostureCall(host, state, reg, pick, handlers, opts)` with `opts.look === 'scene'` starts the moment once per call (`startCall` of `src/ui/scene/instruments/call/call.ts`, module memory: a redraw never restarts it) and returns; the handlers gain `dim` (the effects layer: the .28 dim sits under the scene's UI, as the prototype's `#dimmer` under its reply and dock), `dial` (the dial's corner: `data-called` and `--alius-her` ring the face) and `samples`. The answer goes to the engine at once from `end` (`take(callId, base | undefined, late)`); the scene redraws 380 ms later (at once with reduced motion) so the dial, drawn from the state, takes the posture as the card lands (a void answer leaves it, R9). An answered call plays its end (1.3 / 2.6 / 3.3 s) though the state no longer holds it; an unanswered call gone from the state, a new call, `cancelPostureCalls` (dispose) and `resetSceneStage` (chat switch, through `onStageReset`) end it at once (`cancelCall`: timers, elements, the dim and the ring). Her choices are her whole named set that passes `entryAllowed`, in her order (the prototype's `NAMED.slice(0, 4)` is prototype data). A tap's sound and rate are `fnv1a` of the call and the tap (no rng). The cards carry `data-analyze="glossary:posture_call"` and nothing marked is above them. The layout fixture `call` (Ann, ritual, four names, Low called) and its check: her word and the fan inside the viewport and off her face (the middle third of the head box: the prototype's own placement at 74 vw reaches into the sprite's box at 1280×800, never onto the face). `npm run shots -- cards` has the moments `stack`, `task`, `call-mid`, `call-right`, `call-slow`, each at 1920×1080 and 1280×800 (a moment may set its own `size`).
 
 ### Task 10: Arrival, sounds and the review of e2
 
