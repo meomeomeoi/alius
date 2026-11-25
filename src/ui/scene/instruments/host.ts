@@ -23,6 +23,7 @@ import type { SampleLoop, SampleSound } from '../../sound/samples';
 import type { PhysicsPanelStaging } from '../physicsPanel';
 import { unsay } from './kit/hand';
 import { heartStop } from './kit/heart';
+import { claimedProps, claimStyles, handDownAbsent, releaseClaim, type StyleClaim } from './styleClaims';
 import type { InstrumentDef, InstrumentEnv, InstrumentRun, PhysicsEnd } from './types';
 
 const defs: InstrumentDef[] = [];
@@ -72,7 +73,9 @@ interface Scope {
   dulled: boolean;
   saidIn: Set<HTMLElement>;
   samples: SampleSound | null;
-  snapshot: Array<{ el: HTMLElement; style: Map<string, string>; data: Map<string, string>; keep: Keep }>;
+  snapshot: Array<{ el: HTMLElement; style: Map<string, string>; data: Map<string, string>; keep: Keep; claim: StyleClaim }>;
+  /** R6: the dial's flag, claimed (styleClaims.ts). */
+  dial: StyleClaim | null;
 }
 
 interface Mounted {
@@ -181,12 +184,20 @@ function styleMap(el: HTMLElement): Map<string, string> {
   return m;
 }
 function snap(el: HTMLElement, keep: Keep): Scope['snapshot'][number] {
-  return { el, style: styleMap(el), data: new Map(Object.entries(el.dataset).map(([k, v]) => [k, v ?? ''])), keep };
+  const style = styleMap(el);
+  // review M4: the mount's styles are a claim (styleClaims.ts), so the slap's camera and a mount put each other's values back in any order
+  const claim = claimStyles(el, [...style.keys()].filter((p) => !keep.style.includes(p)));
+  return { el, style, data: new Map(Object.entries(el.dataset).map(([k, v]) => [k, v ?? ''])), keep, claim };
 }
 function restore(s: Scope['snapshot'][number]): void {
-  const now = styleMap(s.el);
-  for (const p of now.keys()) if (!s.keep.style.includes(p) && !s.style.has(p)) s.el.style.removeProperty(p);
-  for (const [p, v] of s.style) if (!s.keep.style.includes(p) && now.get(p) !== v) s.el.style.setProperty(p, v);
+  releaseClaim(s.claim);
+  // what the instrument added: gone, unless another surface's claim holds it now
+  const held = claimedProps(s.el);
+  for (const p of styleMap(s.el).keys()) {
+    if (s.keep.style.includes(p) || s.style.has(p)) continue;
+    if (held.has(p)) handDownAbsent(s.el, p); // another surface holds it: what it puts back is "none", as before this mount
+    else s.el.style.removeProperty(p);
+  }
   for (const k of Object.keys(s.el.dataset)) if (!s.keep.data.includes(k) && !s.data.has(k)) delete s.el.dataset[k];
   for (const [k, v] of s.data) if (!s.keep.data.includes(k) && s.el.dataset[k] !== v) s.el.dataset[k] = v;
 }
@@ -199,7 +210,7 @@ function syncMark(m: Mounted): void {
 function mount(env: InstrumentEnv, def: InstrumentDef, run: PhysicsRun, key: string): void {
   const scope: Scope = {
     staging: true, live: true, frames: new Set(), timers: new Set(), listeners: new Set(), loops: new Set(), sources: new Set(), dulled: false,
-    saidIn: new Set(), samples: null,
+    saidIn: new Set(), samples: null, dial: null,
     snapshot: [snap(env.root, SCENE_OWNED.root), ...Object.entries(env.layers).map(([name, el]) => snap(el, SCENE_OWNED[name] ?? NONE)), snap(env.input, NONE)],
   };
   scope.samples = env.samples ? scopedSamples(env.samples, scope) : null;
@@ -244,7 +255,8 @@ function mount(env: InstrumentEnv, def: InstrumentDef, run: PhysicsRun, key: str
   }) as InstrumentEnv;
   const mark = h('div', { class: 'alius-instrument', 'data-instrument': def.id }); // a plain flag: the glossary reaches it through the stop word, the dial and the contact
   env.layers.moment.append(mark);
-  env.root.querySelector<HTMLElement>('.alius-stage-dial')?.setAttribute('data-instrument', def.id);
+  const dial = env.root.querySelector<HTMLElement>('.alius-stage-dial');
+  if (dial) { scope.dial = claimStyles(dial, ['@data-instrument']); dial.setAttribute('data-instrument', def.id); } // R6: the dial dims
   current = { key, runId: run.id, def, env, run: null, scope, mark, finishing: null };
   syncMark(current);
   current.run = def.start(scoped, run); // a throw is caught by syncInstruments
@@ -283,7 +295,8 @@ export function unmountInstruments(): void {
     m.mark.remove();
     m.env.gauge.clear();
     for (const sn of s.snapshot) restore(sn);
-    m.env.root.querySelector<HTMLElement>('.alius-stage-dial')?.removeAttribute('data-instrument');
+    if (s.dial) releaseClaim(s.dial);
+    s.dial = null;
   }
 }
 

@@ -17,6 +17,8 @@ import { h } from '../../../src/ui/dom';
 import { clearSlapOverlay, renderSlapOverlay } from '../../../src/ui/practice/slapOverlay';
 import { currentSlap, isFlick, resultOf, slapTimeline, tensionAt } from '../../../src/ui/scene/instruments/slap/slap';
 import { renderSceneScreen } from '../../../src/ui/scene/sceneScreen';
+import { _resetInstrumentDefs, registerInstrument, syncInstruments, unmountInstruments } from '../../../src/ui/scene/instruments/host';
+import type { PhysicsRun } from '../../../src/engine/physics/state';
 import { resetSceneStage } from '../../../src/ui/scene/stage';
 import { errors, loadCore, run } from '../../helpers/world';
 import { setDecodeMs, slapEnv } from '../../helpers/slapEnv';
@@ -319,6 +321,60 @@ describe('the camera and the frame', () => {
     expect(o.layers.sprites.style.transform).toBe('');
     expect(o.reply.style.opacity).toBe('');
     expect(o.root.querySelector('.alius-input-line')!.getAttribute('style') ?? '').toBe('');
+    expect(o.root.querySelector('.alius-stage-dial')!.hasAttribute('data-instrument')).toBe(false);
+  });
+});
+
+describe('the slap and an instrument share the frame (review M4)', () => {
+  /** A test instrument that moves the sprites layer and dims the backdrop on every frame while it runs. */
+  function withInstrument(): void {
+    registerInstrument({
+      id: 'test',
+      matches: () => true,
+      start(env) {
+        // as an instrument does: its styles are written on every frame
+        const draw = (): void => { env.layers.sprites.style.transform = 'translateX(5px)'; env.layers.backdrop.style.opacity = '0.5'; env.raf(draw); };
+        draw();
+        return { update() {}, stop() {} };
+      },
+    });
+  }
+  const run = { id: 'p1', physicsId: 'none' } as unknown as PhysicsRun;
+  afterEach(() => _resetInstrumentDefs());
+
+  it('an instrument mounted during the slap and gone after it: the layers and the dial end as they were before both', async () => {
+    withInstrument();
+    const o = await slapping();
+    o.state.settings.physicsRealtime = true;
+    o.layers.backdrop.style.setProperty('opacity', '0.9');
+    o.to(L + 200);
+    expect(syncInstruments(o.env, run)).toBe(true);
+    o.to(L + 500 + 1500 + 650 + 100); // the slap's camera is home: the instrument's values are back
+    expect(o.layers.sprites.style.transform).toBe('translateX(5px)');
+    expect(o.layers.backdrop.style.opacity).toBe('0.5');
+    expect(o.root.querySelector('.alius-stage-dial')!.getAttribute('data-instrument')).toBe('test');
+    unmountInstruments();
+    expect(o.layers.sprites.style.transform).toBe('');
+    expect(o.layers.backdrop.style.opacity).toBe('0.9');
+    expect(o.root.querySelector('.alius-stage-dial')!.hasAttribute('data-instrument')).toBe(false);
+  });
+
+  it('an instrument running before the slap and gone during it: the slap puts back what was there before the instrument', async () => {
+    withInstrument();
+    const o = await slapping({ slap: { id: 'ps8' } });
+    o.state.settings.physicsRealtime = true;
+    // the slap starts at once; mount first with the camera still home by stopping and restarting the slap
+    resetSceneStage();
+    o.layers.backdrop.style.setProperty('opacity', '0.9');
+    expect(syncInstruments(o.env, run)).toBe(true);
+    o.draw();
+    await o.settle();
+    o.to(L + 200);
+    expect(o.root.querySelector('.alius-stage-dial')!.getAttribute('data-instrument')).toBe('slap');
+    unmountInstruments();
+    o.to(L + 500 + 1500 + 650 + 100);
+    expect(o.layers.sprites.style.transform).toBe('');
+    expect(o.layers.backdrop.style.opacity).toBe('0.9');
     expect(o.root.querySelector('.alius-stage-dial')!.hasAttribute('data-instrument')).toBe(false);
   });
 });

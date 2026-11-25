@@ -24,6 +24,7 @@ import { slapSide } from '../../../../engine/practice/slap';
 import type { SlapResult } from '../../../../engine/practice/state';
 import { TUNING } from '../../../../engine/tuning';
 import { voiceLine, type VoiceKind } from '../../cards/voice';
+import { claimStyles, releaseClaim, type StyleClaim } from '../styleClaims';
 import type { HerLook, InstrumentEnv } from '../types';
 
 /* ---------- the pure rules (slap.html's timeline, its tension and its flick, as functions of their own) ---------- */
@@ -303,11 +304,10 @@ function build(env: InstrumentEnv, unitId: string): Omit<SlapEls, 'host' | 'scen
 }
 
 /* ---------- the camera: the scene's layers as the prototype's `#world` (their own styles put back the moment it is home) ---------- */
-interface Saved { el: HTMLElement; props: Map<string, string> }
 const CAM_PROPS = ['transform', 'transform-origin', 'filter', 'transition', 'opacity'];
 const cam = {
   held: false,
-  saved: [] as Saved[],
+  saved: [] as StyleClaim[],
   base: null as { x: number; y: number } | null,
   backdropFilter: '',
   /** The camera leaves home: the styles it will write are saved, her face point is measured. */
@@ -318,14 +318,16 @@ const cam = {
     const { backdrop, sprites } = e.env.layers;
     const reply = e.env.reply;
     const wrap = $('#inputWrap');
-    this.saved = [backdrop, sprites, reply, wrap].map((el) => ({ el, props: new Map(CAM_PROPS.map((p) => [p, el.style.getPropertyValue(p)])) }));
+    // the camera's styles are claimed (styleClaims.ts): an instrument mounted or unmounted meanwhile hands its originals down, never over them
+    this.saved = [backdrop, sprites, reply, wrap].map((el) => claimStyles(el, CAM_PROPS));
     const base = typeof getComputedStyle === 'function' ? getComputedStyle(backdrop).filter : '';
     this.backdropFilter = base && base !== 'none' ? base : '';
     for (const el of [backdrop, sprites]) el.style.setProperty('transition', 'none');
     sprites.style.setProperty('transform-origin', '0 0');
     this.base = null;
     this.measure();
-    e.env.root.querySelector<HTMLElement>('.alius-stage-dial')?.setAttribute('data-instrument', 'slap');
+    const dial = e.env.root.querySelector<HTMLElement>('.alius-stage-dial');
+    if (dial) { this.saved.push(claimStyles(dial, ['@data-instrument'])); dial.setAttribute('data-instrument', 'slap'); }
   },
   /** Her face point in the scene (the sprite's sidecar point on the drawn picture), measured with the camera at home. */
   measure(): void {
@@ -335,7 +337,7 @@ const cam = {
     if (!img || !img.naturalWidth || e.env.root.dataset.curtain === 'open') return;
     const sprites = e.env.layers.sprites;
     const now = sprites.style.transform;
-    sprites.style.transform = this.saved.find((x) => x.el === sprites)?.props.get('transform') ?? '';
+    sprites.style.transform = this.saved.find((x) => x.el === sprites)?.saved.get('transform') ?? '';
     const r = img.getBoundingClientRect();
     const o = e.env.root.getBoundingClientRect();
     sprites.style.transform = now;
@@ -384,10 +386,9 @@ const cam = {
   release(): void {
     if (!this.held) return;
     this.held = false;
-    for (const s of this.saved) for (const [p, v] of s.props) { if (v) s.el.style.setProperty(p, v); else s.el.style.removeProperty(p); }
+    for (const c of this.saved) releaseClaim(c);
     this.saved = [];
     this.base = null;
-    E?.env.root.querySelector<HTMLElement>('.alius-stage-dial')?.removeAttribute('data-instrument');
     if (E) { E.faceImg.style.opacity = '0'; E.faceImg.style.transform = ''; E.faceImg.style.filter = ''; }
   },
 };
