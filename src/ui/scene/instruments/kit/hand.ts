@@ -18,7 +18,14 @@ export interface SayOpts {
   her: HerLook;
   /** Where the line starts, fractions of the frame (default the prototype's upper right, [0.6, 0.16]). */
   at?: [number, number];
-  /** The size in px before `handScale` (default 40; 34 to herself, 46 to the commander, 56 big as in the prototype). */
+  /**
+   * Whom she says it to (the prototype's `to`, default `self`): `self` is a line to herself (`.self`: 34 px, at .72), `commander` a line
+   * to the commander (`.to-you`: 46 px), anything else (`written`, `other`) the plain 40 px line.
+   */
+  to?: 'self' | 'commander' | 'written' | 'other';
+  /** A big line (`.big`: 56 px, cut at about 30 characters). */
+  big?: boolean;
+  /** The size in px before `handScale`; default the prototype's size of the line's class (see `to` and `big`). */
   size?: number;
   /** The slight tilt of a hand-written line (default on). */
   tilt?: boolean;
@@ -96,8 +103,9 @@ export function say(host: HTMLElement, text: string, opts: SayOpts): HTMLElement
   let mine = groups.get(host);
   if (!mine) groups.set(host, (mine = new Set()));
   mine.add(group);
-  const size = opts.size ?? 40, big = size >= 56;
-  const max = big ? 30 : 40, lines: string[] = [];
+  const to = opts.to ?? 'self';
+  const size = opts.size ?? (opts.big ? 56 : to === 'self' ? 34 : to === 'commander' ? 46 : 40);
+  const max = opts.big ? 30 : 40, lines: string[] = [];
   for (const word of text.split(' ')) { const last = lines[lines.length - 1]; if (last !== undefined && (last + ' ' + word).length <= max) lines[lines.length - 1] = last + ' ' + word; else lines.push(word); }
   const { W: innerWidth, H: innerHeight } = frameOf(host);
   const p = opts.at ?? [0.6, 0.16];
@@ -106,7 +114,7 @@ export function say(host: HTMLElement, text: string, opts: SayOpts): HTMLElement
   const rot = opts.tilt === false ? '0.0' : hashRand(`${text}|rot`, -4, 3).toFixed(1);
   for (const line of lines) {
     const el = document.createElement('div');
-    el.className = 'alius-her-line' + (big ? ' big' : '');
+    el.className = 'alius-her-line' + (to === 'self' ? ' self' : to === 'commander' ? ' to-you' : '') + (opts.big ? ' big' : '');
     el.dataset.line = '';
     el.textContent = line;
     const write = Math.max(160, line.length * 36);
@@ -123,7 +131,7 @@ export function say(host: HTMLElement, text: string, opts: SayOpts): HTMLElement
     delay += write; els.push(el);
   }
   const dur = 700 + text.length * 70;
-  const life = opts.ms ?? (big ? 5200 : Math.max(2600, dur + 1400)) + delay * 0.5;
+  const life = opts.ms ?? (opts.big ? 5200 : Math.max(2600, dur + 1400)) + delay * 0.5;
   later(host, life, () => {
     for (const el of els) el.classList.add('gone');
     later(host, 700, () => { group.remove(); mine!.delete(group); });

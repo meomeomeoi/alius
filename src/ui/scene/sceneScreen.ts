@@ -713,6 +713,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   function build(s: CampaignState): void {
     const units = present(s);
     sceneKey = s.scene!.id;
+    unmountInstruments(); // P10e-e: an instrument of the previous scene stops before its layers go
     layers = buildLayers(root);
     curtain?.destroy();
     delete root.dataset.curtain; // a new scene starts with the history down (the old curtain's close hook is gone)
@@ -881,7 +882,6 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     layers.frame.addEventListener('wheel', wheelUp);
     hosts.reply.addEventListener('wheel', wheelUp);
     drawBackground(s);
-    unmountInstruments(); // an instrument of the previous scene stops with its layers
     instrumentEnv = ctx.physics ? buildInstrumentEnv() : null;
   }
 

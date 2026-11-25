@@ -22,7 +22,11 @@ export interface HerLook {
   style: string;
 }
 
-/** What an instrument is given (built once per scene by the scene screen; the host scopes `raf` and `staging` to one mount). */
+/**
+ * What an instrument is given (built once per scene by the scene screen; the host scopes `raf` and `staging` to one mount). The env an
+ * instrument receives is an `Object.create` view over the scene's env (`reduced` and `readable` are live getters): read its fields, never
+ * spread or copy it.
+ */
 export interface InstrumentEnv {
   /** The scene's root (`.alius-scene`). */
   root: HTMLElement;

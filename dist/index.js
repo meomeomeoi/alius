@@ -27737,8 +27737,8 @@ function warnedUnits(state, unitIds) {
   return unitIds.filter((id) => openPremonition(state, id) !== void 0);
 }
 function warnedInput(state, unitIds) {
-  const warned = warnedUnits(state, unitIds);
-  return warned.length > 0 ? { warned } : {};
+  const warned2 = warnedUnits(state, unitIds);
+  return warned2.length > 0 ? { warned: warned2 } : {};
 }
 function premonitionLine(reg, p, name) {
   const lines = [...reg.premonitionLines.values()].find((e) => e.about === p.about)?.lines ?? ["{name} is a worry."];
@@ -31874,19 +31874,19 @@ function parseOption(raw, index2, ctx2, bad) {
     magnitudes: []
   };
   const flags = [];
-  let failed = false;
+  let failed2 = false;
   for (const e of raw.effects) {
     const mapped = toWorldEffect(e, ctx2);
     if ("rule" in mapped) {
       bad.push({ ...mapped, option: index2 });
-      failed = true;
+      failed2 = true;
       continue;
     }
     const magnitude = e.magnitude;
     if ("check" in mapped) {
       if (option2.check) {
         at("An option has at most one social check.");
-        failed = true;
+        failed2 = true;
       } else option2.check = mapped.check;
       option2.magnitudes.push(magnitude);
       continue;
@@ -31900,14 +31900,14 @@ function parseOption(raw, index2, ctx2, bad) {
     const stat3 = isObj12(r) ? r.socialStat ?? r.stat : void 0;
     if (!isObj12(r) || !SOCIAL_STATS.includes(stat3) || typeof r.rank !== "number" || !Number.isInteger(r.rank) || r.rank < 1 || r.rank > 5) {
       at("requires needs { socialStat, rank } with a rank from 1 to 5.");
-      failed = true;
+      failed2 = true;
     } else option2.requires = { stat: stat3, rank: r.rank };
   }
-  if (!failed && option2.effects.length === 0) {
+  if (!failed2 && option2.effects.length === 0) {
     at("An option needs at least one effect besides its check.");
-    failed = true;
+    failed2 = true;
   }
-  return failed ? null : { option: option2, flags };
+  return failed2 ? null : { option: option2, flags };
 }
 function parseDilemmaOutput(raw, ctx2) {
   const bad = [];
@@ -33605,15 +33605,15 @@ function sweepCovered(draft) {
 }
 var countedFacts = (facts) => facts.filter((f) => !f.tags.includes(UNTOLD_TAG)).length;
 function foldDue(state) {
-  const groups = /* @__PURE__ */ new Map();
+  const groups2 = /* @__PURE__ */ new Map();
   for (const f of state.memory.facts) {
     if (!isFoldable(state, f)) continue;
-    for (const t of foldTargets(state, f)) if (!folded(f, t)) groups.set(t, [...groups.get(t) ?? [], f]);
+    for (const t of foldTargets(state, f)) if (!folded(f, t)) groups2.set(t, [...groups2.get(t) ?? [], f]);
   }
-  if (groups.size === 0) return null;
+  if (groups2.size === 0) return null;
   const order = [...state.squad.map((u) => u.id), WORLD];
   const rank2 = (t) => order.indexOf(t) === -1 ? order.length : order.indexOf(t);
-  const best = [...groups.entries()].sort((a, b) => b[1].length - a[1].length || rank2(a[0]) - rank2(b[0]))[0];
+  const best = [...groups2.entries()].sort((a, b) => b[1].length - a[1].length || rank2(a[0]) - rank2(b[0]))[0];
   if (best[1].length < TUNING.memory.foldBatch && countedFacts(state.memory.facts) <= memoryConfig(state).factsMax) return null;
   const own = best[1].filter((f) => foldPart(state, f) === "own");
   return { target: best[0], own, shared: best[1].filter((f) => !own.includes(f)) };
@@ -41462,9 +41462,9 @@ function createDilemmas(deps) {
   const chatId = () => deps.st.getActiveChat()?.chatId;
   function answer(action, chat) {
     const events = deps.app.dispatch(action, { expectChatId: chat });
-    const failed = events.find((e) => e.type === "error");
-    if (failed && failed.code !== "chat_changed" && failed.code !== "combat_open" && failed.message !== "Stale dilemma answer.") {
-      deps.toast("error", String(failed.message ?? failed.code));
+    const failed2 = events.find((e) => e.type === "error");
+    if (failed2 && failed2.code !== "chat_changed" && failed2.code !== "combat_open" && failed2.message !== "Stale dilemma answer.") {
+      deps.toast("error", String(failed2.message ?? failed2.code));
     }
     const rejected = events.find((e) => e.type === "dilemma_rejected");
     if (rejected && deps.settings().debug) {
@@ -41551,12 +41551,12 @@ function createDilemmas(deps) {
       return [];
     }
     const events = deps.app.dispatch(action);
-    const failed = events.find((e) => e.type === "error");
-    if (failed?.code === "vote_needed" && deps.requestVote) {
+    const failed2 = events.find((e) => e.type === "error");
+    if (failed2?.code === "vote_needed" && deps.requestVote) {
       void deps.requestVote(action);
       return [];
     }
-    if (failed && failed.message !== "Stale dilemma answer.") deps.toast("error", String(failed.message ?? failed.code));
+    if (failed2 && failed2.message !== "Stale dilemma answer.") deps.toast("error", String(failed2.message ?? failed2.code));
     return events;
   }
   return { onRequested, choose, busy: () => running3.size > 0 };
@@ -42098,14 +42098,14 @@ function createPersonal(deps) {
     const s = state();
     return s !== null && s.personal?.intercepts?.open === void 0 && interceptEditor(s, reg(), channel, toUnitId) !== null;
   }
-  function failed(events) {
+  function failed2(events) {
     const bad = events.find((e) => e.type === "error");
     if (bad && bad.code !== "chat_changed") deps.toast("error", String(bad.message ?? bad.code));
     return bad !== void 0;
   }
   function act(type, payload) {
     const events = deps.app.dispatch({ type, payload }, { expectChatId: chatId() });
-    if (failed(events)) return false;
+    if (failed2(events)) return false;
     deps.refreshContext();
     return true;
   }
@@ -42727,11 +42727,11 @@ function createOnboarding(deps) {
   }
   const dispatch2 = (type, payload, expect) => {
     const events = deps.app.dispatch({ type, payload }, { expectChatId: expect });
-    const failed2 = events.find((e) => e.type === "error");
-    if (failed2 && failed2.code !== "chat_changed") deps.toast("error", String(failed2.message ?? failed2.code));
+    const failed3 = events.find((e) => e.type === "error");
+    if (failed3 && failed3.code !== "chat_changed") deps.toast("error", String(failed3.message ?? failed3.code));
     return events;
   };
-  const failed = (events) => events.some((e) => e.type === "error");
+  const failed2 = (events) => events.some((e) => e.type === "error");
   function completeIfDone(expect) {
     const s = state();
     if (!s) return;
@@ -42793,7 +42793,7 @@ function createOnboarding(deps) {
     skipFirstWords(unitId) {
       const expect = chatId();
       const events = dispatch2("onboarding/mark_spoken", { unitId }, expect);
-      if (failed(events)) return;
+      if (failed2(events)) return;
       completeIfDone(expect);
     },
     async skipStep() {
@@ -43104,10 +43104,10 @@ function createWarden(deps) {
     const sceneId = state()?.scene?.id;
     if (sceneId === void 0) return false;
     const events = deps.app.dispatch({ type: "warden/argue_started", payload: { sceneId } }, { expectChatId: expect });
-    const failed = events.find((e) => e.type === "error");
-    if (failed && failed.code !== "chat_changed") deps.toast("error", String(failed.message ?? failed.code));
+    const failed2 = events.find((e) => e.type === "error");
+    if (failed2 && failed2.code !== "chat_changed") deps.toast("error", String(failed2.message ?? failed2.code));
     refreshDirectives();
-    return failed === void 0;
+    return failed2 === void 0;
   }
   const personalOf2 = (s) => wardenOf(s)?.expectations.filter((x) => x.kind === "personal" && x.text !== void 0) ?? [];
   function needsJudge(action) {
@@ -43153,10 +43153,10 @@ function createWarden(deps) {
     if (!s || !ov) return false;
     if (a === "argue" && ov.context !== "combat") return argue();
     const events = deps.app.dispatch({ type: "warden/answer", payload: { overrideId: ov.id, answer: a } }, { expectChatId: expect });
-    const failed = events.find((e) => e.type === "error");
-    if (failed && failed.code !== "chat_changed") deps.toast("error", String(failed.message ?? failed.code));
+    const failed2 = events.find((e) => e.type === "error");
+    if (failed2 && failed2.code !== "chat_changed") deps.toast("error", String(failed2.message ?? failed2.code));
     refreshDirectives();
-    return failed === void 0;
+    return failed2 === void 0;
   }
   return {
     argue,
@@ -46032,8 +46032,8 @@ function renderEndScreen(host, state, deps) {
   if (!ended) return;
   const gen = h("div", { class: "alius-generation-chips" });
   if (deps.generation) {
-    const failed = drawGenerationChips(gen, deps.generation, state, "world", (r) => r.key === "epilogue");
-    if (failed === 0 && ended.epilogue !== void 0) drawSiteReroll(gen, deps.generation, "warden.epilogue", "epilogue");
+    const failed2 = drawGenerationChips(gen, deps.generation, state, "world", (r) => r.key === "epilogue");
+    if (failed2 === 0 && ended.epilogue !== void 0) drawSiteReroll(gen, deps.generation, "warden.epilogue", "epilogue");
   }
   const body = h(
     "div",
@@ -47719,8 +47719,8 @@ function renderDilemma(host, ctx2) {
   const gen = h("div", { class: "alius-generation-chips" });
   if (ctx2.generation && !ctx2.scapegoat) {
     const { ui, state, id } = ctx2.generation;
-    const failed = drawGenerationChips(gen, ui, state, "dilemma", (r) => r.key === id);
-    if (failed === 0) drawSiteReroll(gen, ui, "dilemma.generate", id);
+    const failed2 = drawGenerationChips(gen, ui, state, "dilemma", (r) => r.key === id);
+    if (failed2 === 0) drawSiteReroll(gen, ui, "dilemma.generate", id);
   }
   host.append(h(
     "div",
@@ -49492,7 +49492,7 @@ function createComms(deps) {
   const { st, app } = deps;
   const state = () => app.current().state;
   const chatId = () => st.getActiveChat()?.chatId;
-  const failed = (events) => {
+  const failed2 = (events) => {
     const e = events.find((x) => x.type === "error");
     if (e && e.code !== "chat_changed") deps.toast("error", String(e.message ?? e.code));
     return e !== void 0;
@@ -49615,7 +49615,7 @@ function createComms(deps) {
       const commanderText = before ? threadOf(before, unitId).find((m) => m.id === msgId)?.text : void 0;
       if (!before || commanderText === void 0) return { stale: true };
       const received = app.dispatch({ type: "dm/receive", payload: { unitId, text: reply, ...input.mode === "curt" ? { mode: "curt" } : {} } }, { expectChatId: expect });
-      if (failed(received)) return { stale: true };
+      if (failed2(received)) return { stale: true };
       deps.personal?.onReply?.(unitId, reply);
       deps.onUi({ type: "transcript" });
       const herId = threadOf(state(), unitId).at(-1)?.id;
@@ -49641,7 +49641,7 @@ function createComms(deps) {
     apply(key, text3) {
       const [unitId] = splitKey(key);
       const r = app.dispatch({ type: "dm/receive", payload: { unitId, text: text3, initiated: true } }, { expectChatId: chatId() });
-      if (failed(r)) return { stale: true };
+      if (failed2(r)) return { stale: true };
       deps.onUi({ type: "transcript" });
       return "ok";
     }
@@ -49663,7 +49663,7 @@ function createComms(deps) {
       const expect = chatId();
       const unitId = state()?.calendar.nightEvent?.unitId;
       const stored = app.dispatch({ type: "night/door_reply", payload: { text: reply } }, { expectChatId: expect });
-      if (failed(stored) || unitId === void 0) return { stale: true };
+      if (failed2(stored) || unitId === void 0) return { stale: true };
       const key = `${unitId}:${doorRef(entryId)}`;
       reads.set(key, readExchange(unitId, doorRef(entryId)).finally(() => reads.delete(key)));
       return "ok";
@@ -49692,7 +49692,7 @@ function createComms(deps) {
         }
       }
       const events = app.dispatch({ type: "dm/send", payload: { unitId, text: text3, ...opts?.interceptId !== void 0 ? { interceptId: opts.interceptId } : {}, ...opts?.skipIntercept === true ? { skipIntercept: true } : {} } }, { expectChatId: expect });
-      if (failed(events)) return;
+      if (failed2(events)) return;
       const mode = events.find((e) => e.type === "dm_sent")?.mode;
       deps.onUi({ type: "transcript" });
       if (mode === "ignore") return;
@@ -49712,7 +49712,7 @@ function createComms(deps) {
       if (!deps.settings().unitDms) return;
       const expect = chatId();
       const rolled = app.dispatch({ type: "dm/roll_initiative", payload: {} }, { expectChatId: expect });
-      if (failed(rolled)) return;
+      if (failed2(rolled)) return;
       const ids = rolled.find((e) => e.type === "dm_initiative")?.unitIds ?? [];
       for (const unitId of ids) {
         if (chatId() !== expect) return;
@@ -49726,7 +49726,7 @@ function createComms(deps) {
     async throughDoor(text3) {
       const expect = chatId();
       const said = app.dispatch({ type: "night/door_say", payload: { text: text3 } }, { expectChatId: expect });
-      if (failed(said)) return;
+      if (failed2(said)) return;
       const entry = state()?.calendar.nightEvent;
       if (!entry || entry.door?.said === void 0) return;
       await deps.generations.generate("dm.door", entry.id);
@@ -49746,13 +49746,13 @@ function createComms(deps) {
     },
     async openNight() {
       const events = app.dispatch({ type: "night/open", payload: {} }, { expectChatId: chatId() });
-      if (failed(events)) return;
+      if (failed2(events)) return;
       const entry = events.find((e) => e.type === "night_opened")?.entry;
       if (!entry) return;
       await deps.scene.start({ origin: "night", locationId: "quarters_commander", participants: [entry.unitId], nightEntryId: entry.id });
     },
     ignoreNight() {
-      failed(app.dispatch({ type: "night/ignore", payload: {} }, { expectChatId: chatId() }));
+      failed2(app.dispatch({ type: "night/ignore", payload: {} }, { expectChatId: chatId() }));
     }
   };
   return controller;
@@ -51648,8 +51648,8 @@ function createSceneController(deps) {
   const unitByAvatar = (s, avatar) => avatar === void 0 ? void 0 : s.squad.find((u) => u.cardRef === avatar);
   function dispatch2(action, expect) {
     const events = app.dispatch(action, { expectChatId: expect });
-    const failed = events.find((e) => e.type === "error");
-    if (failed && failed.code !== "chat_changed") deps.toast("error", String(failed.message ?? failed.code));
+    const failed2 = events.find((e) => e.type === "error");
+    if (failed2 && failed2.code !== "chat_changed") deps.toast("error", String(failed2.message ?? failed2.code));
     return events;
   }
   function reflect(events, extremeKinds = []) {
@@ -55291,8 +55291,8 @@ function renderWorldParams(host, ctx2) {
   const world = wizard.state.world;
   host.replaceChildren();
   const options2 = [...reg.worldOptions.values()];
-  const groups = [];
-  for (const o of options2) if (!groups.includes(String(o.group))) groups.push(String(o.group));
+  const groups2 = [];
+  for (const o of options2) if (!groups2.includes(String(o.group))) groups2.push(String(o.group));
   const scale = (o, chosen) => {
     const choices = o.choices;
     const at = Math.max(0, choices.findIndex((c) => c.id === chosen));
@@ -55363,7 +55363,7 @@ function renderWorldParams(host, ctx2) {
       ...analyzeNative(`worldPresets:${p.id}`),
       onclick: () => wizard.applyPreset(String(p.id))
     }, String(p.name)))),
-    ...groups.flatMap((g) => [
+    ...groups2.flatMap((g) => [
       h("h3", {}, g.toUpperCase()),
       ...options2.filter((o) => String(o.group) === g).map(optionBlock)
     ]),
@@ -58236,8 +58236,8 @@ function tonightItems(state, reg) {
       out.push({ kind: "dynamic", text: `Oversight will move ${nameOf28(threat.unitId)} unless the commander's Leash requests are released.`, unitId: threat.unitId, tone: "danger", analyze: "glossary:oversight_inquiry" });
     }
   }
-  const failed = fullOpenRecords(state).length;
-  const line3 = failed > 0 ? { kind: "generation", text: `${failed} generation${failed === 1 ? "" : "s"} failed.`, tone: "warn", analyze: "glossary:generation_record" } : null;
+  const failed2 = fullOpenRecords(state).length;
+  const line3 = failed2 > 0 ? { kind: "generation", text: `${failed2} generation${failed2 === 1 ? "" : "s"} failed.`, tone: "warn", analyze: "glossary:generation_record" } : null;
   return line3 ? [...cutTonight(out, TONIGHT_MAX - 1), line3] : cutTonight(out, TONIGHT_MAX);
 }
 function cutTonight(items, max) {
@@ -59725,8 +59725,8 @@ function renderReport(host, ctx2) {
   else if (ctx2.recapPending) root.append(h("p", { class: "alius-dim" }, "COMPILING\u2026"));
   if (ctx2.generation) {
     const gen = h("div", { class: "alius-generation-chips" });
-    const failed = drawGenerationChips(gen, ctx2.generation, state, "expedition", (r) => r.key === report.id);
-    if (failed === 0 && report.recap) drawSiteReroll(gen, ctx2.generation, "expedition.recap", report.id);
+    const failed2 = drawGenerationChips(gen, ctx2.generation, state, "expedition", (r) => r.key === report.id);
+    if (failed2 === 0 && report.recap) drawSiteReroll(gen, ctx2.generation, "expedition.recap", report.id);
     if (gen.childElementCount > 0) root.append(gen);
   }
   for (const line3 of lines.slice(1)) root.append(h("p", { class: "alius-report-line" }, line3));
@@ -60112,9 +60112,9 @@ function createDirector(deps) {
   const chatId = () => deps.st.getActiveChat()?.chatId;
   function answer(action, chat) {
     const events = deps.app.dispatch(action, { expectChatId: chat });
-    const failed = events.find((e) => e.type === "error");
-    if (failed && failed.code !== "chat_changed" && failed.code !== "combat_open" && failed.message !== "Stale director answer.") {
-      deps.toast("error", String(failed.message ?? failed.code));
+    const failed2 = events.find((e) => e.type === "error");
+    if (failed2 && failed2.code !== "chat_changed" && failed2.code !== "combat_open" && failed2.message !== "Stale director answer.") {
+      deps.toast("error", String(failed2.message ?? failed2.code));
     }
     const rejected = events.find((e) => e.type === "director_rejected");
     if (rejected && deps.settings().debug) {
@@ -60131,9 +60131,9 @@ function createDirector(deps) {
     },
     apply(requestId, output) {
       const events = deps.app.dispatch({ type: "director/apply", payload: { requestId, output, beatCooldownDays: deps.settings().beatCooldownDays } }, { expectChatId: chatId() });
-      const failed = events.find((e) => e.type === "error");
-      if (failed) {
-        if (failed.code !== "chat_changed" && failed.code !== "combat_open" && failed.message !== "Stale director answer.") deps.toast("error", String(failed.message ?? failed.code));
+      const failed2 = events.find((e) => e.type === "error");
+      if (failed2) {
+        if (failed2.code !== "chat_changed" && failed2.code !== "combat_open" && failed2.message !== "Stale director answer.") deps.toast("error", String(failed2.message ?? failed2.code));
         return { stale: true };
       }
       const rejected = events.find((e) => e.type === "director_rejected");
@@ -60189,10 +60189,10 @@ function createExpedition(deps) {
   const chatId = () => deps.st.getActiveChat()?.chatId;
   function act(type, payload = {}, expect) {
     const events = deps.app.dispatch({ type, payload }, { expectChatId: expect });
-    const failed = events.find((e) => e.type === "error");
-    const voteNeeded = failed?.code === "vote_needed" && deps.requestVote !== void 0;
-    if (failed && failed.code !== "chat_changed" && !voteNeeded && failed.handled !== true) deps.toast("error", String(failed.message ?? failed.code));
-    return { ok: !failed, events };
+    const failed2 = events.find((e) => e.type === "error");
+    const voteNeeded = failed2?.code === "vote_needed" && deps.requestVote !== void 0;
+    if (failed2 && failed2.code !== "chat_changed" && !voteNeeded && failed2.handled !== true) deps.toast("error", String(failed2.message ?? failed2.code));
+    return { ok: !failed2, events };
   }
   deps.generations.bind("expedition.recap", {
     build(reportId) {
@@ -62253,6 +62253,25 @@ async function pickLocation(modal, ctx2) {
   return { locationId: picked, participants: [ctx2.firstUnitId, ...extraIds] };
 }
 
+// src/ui/scene/instruments/kit/hand.ts
+var timers2 = /* @__PURE__ */ new WeakMap();
+var groups = /* @__PURE__ */ new WeakMap();
+function unsay(host) {
+  for (const t of timers2.get(host) ?? []) clearTimeout(t);
+  timers2.delete(host);
+  for (const g of groups.get(host) ?? []) g.remove();
+  groups.delete(host);
+}
+
+// src/ui/scene/instruments/kit/heart.ts
+var hearts = /* @__PURE__ */ new WeakMap();
+function heartStop(samples) {
+  const h2 = hearts.get(samples);
+  if (!h2) return;
+  for (const t of h2.timers) clearTimeout(t);
+  hearts.delete(samples);
+}
+
 // src/ui/scene/instruments/host.ts
 var defs = [];
 function instrumentFor(run, state, reg, settings) {
@@ -62262,6 +62281,13 @@ function instrumentFor(run, state, reg, settings) {
   return defs.find((d) => d.matches(run, state, reg)) ?? null;
 }
 var current = null;
+var failed = null;
+var warned = /* @__PURE__ */ new Set();
+function warnOnce(id, what, err) {
+  if (warned.has(`${id}|${what}`)) return;
+  warned.add(`${id}|${what}`);
+  console.warn(`[Alius] the instrument "${id}" failed in ${what}; the card plays the hold instead.`, err);
+}
 function scopedStaging(staging, alive2) {
   return {
     input: (i) => {
@@ -62314,11 +62340,17 @@ function unmountInstruments() {
   current = null;
   try {
     m.run?.stop();
+  } catch (err) {
+    warnOnce(m.def.id, "stop", err);
   } finally {
     m.alive.on = false;
     for (const id of m.frames) m.env.cancelRaf(id);
     m.frames.clear();
+    for (const layer of Object.values(m.env.layers)) unsay(layer);
+    unsay(m.mark);
     m.mark.remove();
+    if (m.env.samples) heartStop(m.env.samples);
+    m.env.gauge.clear();
     m.env.root.querySelector(".alius-stage-dial")?.removeAttribute("data-instrument");
   }
 }
@@ -62330,13 +62362,32 @@ function syncInstruments(env, run) {
     return false;
   }
   const key = `${state.scene?.id ?? ""}|${run.id}`;
+  const mountKey = `${key}|${def.id}`;
+  if (failed === mountKey) {
+    unmountInstruments();
+    return false;
+  }
   if (current && current.key === key && current.def === def && current.env === env) {
-    current.run?.update(run);
-    return true;
+    try {
+      current.run?.update(run);
+      return true;
+    } catch (err) {
+      warnOnce(def.id, "update", err);
+      failed = mountKey;
+      unmountInstruments();
+      return false;
+    }
   }
   unmountInstruments();
-  mount(env, def, run, key);
-  return true;
+  try {
+    mount(env, def, run, key);
+    return true;
+  } catch (err) {
+    warnOnce(def.id, "start", err);
+    failed = mountKey;
+    unmountInstruments();
+    return false;
+  }
 }
 
 // src/ui/practice/postureCall.ts
@@ -62664,7 +62715,7 @@ var unit3 = (a) => {
   const l = len(a);
   return l < 1e-9 ? [0, 1, 0] : mul(a, 1 / l);
 };
-var lerp2 = (a, b, t) => add(a, mul(sub(b, a), t));
+var lerp3 = (a, b, t) => add(a, mul(sub(b, a), t));
 function solveTwoBone(root, target, l1, l2, hint) {
   const to = sub(target, root);
   const reach = len(to);
@@ -62746,7 +62797,7 @@ function armGoal(state, c) {
   const lat = (k) => [s * k, 0, 0];
   switch (state) {
     case "at_sides":
-      if (c.base === "lying_side") return s === 1 ? { target: add(lerp2(c.hip, c.knee, 0.35), [0.06, 0, 0.06]), hint: [0.05, 0, -1] } : { target: add(sh, [0, -0.08, 0.5]), hint: [-0.3, -1, 0] };
+      if (c.base === "lying_side") return s === 1 ? { target: add(lerp3(c.hip, c.knee, 0.35), [0.06, 0, 0.06]), hint: [0.05, 0, -1] } : { target: add(sh, [0, -0.08, 0.5]), hint: [-0.3, -1, 0] };
       return { target: add(sh, [s * 0.05, -0.605, 0.02]), hint: [s * 0.3, -0.1, -1] };
     // nearly straight, the elbow a little back
     case "behind_back":
@@ -62758,9 +62809,9 @@ function armGoal(state, c) {
       return { target: add(back, lat(0.07)), hint: [s, 0.2, -0.1] };
     }
     case "on_thighs_down":
-      return { target: add(lerp2(c.hip, c.knee, 0.45), [0, 0.07, 0]), hint: [s, 0, -0.4] };
+      return { target: add(lerp3(c.hip, c.knee, 0.45), [0, 0.07, 0]), hint: [s, 0, -0.4] };
     case "on_thighs_up":
-      return { target: add(lerp2(c.hip, c.knee, 0.7), [s * 0.02, 0.06, 0]), hint: [s, 0, -0.4] };
+      return { target: add(lerp3(c.hip, c.knee, 0.7), [s * 0.02, 0.06, 0]), hint: [s, 0, -0.4] };
     case "forward_palms_up":
       return c.lying ? { target: add(add(sh, mul(S2, 0.56)), [s * 0.1, 0, 0.02]), hint: [s, 0, -0.3] } : { target: add(add(add(chest, mul(T5, 0.5)), mul(S2, -0.3)), lat(0.13)), hint: [s * 0.6, -1, -0.2] };
     // offered: the forearms reach forward and down, palms up
@@ -62851,7 +62902,7 @@ function pose(p) {
       T: T5,
       hip: hip[side],
       knee: knee[side],
-      ankle: hogtie ? lerp2(ankle.L, ankle.R, 0.5) : ankle[side],
+      ankle: hogtie ? lerp3(ankle.L, ankle.R, 0.5) : ankle[side],
       neckTop,
       headDir,
       faceDir,
@@ -64174,16 +64225,16 @@ function createCurtain(host, opts) {
 
 // src/ui/scene/stage/flash.ts
 var FLASH_MS = 2400;
-var timers2 = /* @__PURE__ */ new WeakMap();
+var timers3 = /* @__PURE__ */ new WeakMap();
 function flashLine(layer, text3, analyze, ms = FLASH_MS) {
   for (const old of layer.querySelectorAll("[data-flash]")) {
-    const t = timers2.get(old);
+    const t = timers3.get(old);
     if (t) clearTimeout(t);
     old.remove();
   }
   const el = h("p", { class: "alius-flash", "data-flash": "", role: "status", ...analyzeAttrs(analyze) }, text3);
   layer.append(el);
-  timers2.set(el, setTimeout(() => el.remove(), ms));
+  timers3.set(el, setTimeout(() => el.remove(), ms));
 }
 
 // src/ui/scene/stage/sprites.ts
@@ -64817,6 +64868,7 @@ function renderSceneScreen(host, ctx2) {
   function build(s) {
     const units = present2(s);
     sceneKey = s.scene.id;
+    unmountInstruments();
     layers = buildLayers(root);
     curtain?.destroy();
     delete root.dataset.curtain;
@@ -64991,7 +65043,6 @@ function renderSceneScreen(host, ctx2) {
     layers.frame.addEventListener("wheel", wheelUp);
     hosts.reply.addEventListener("wheel", wheelUp);
     drawBackground(s);
-    unmountInstruments();
     instrumentEnv = ctx2.physics ? buildInstrumentEnv() : null;
   }
   function buildInstrumentEnv() {
@@ -66650,12 +66701,12 @@ var stressProvider = (subject, env, knowledge2) => {
   const { unit: unit4 } = found;
   const stress = liveStress(state, unit4);
   const lines = [`${unit4.displayName}: ${stressBand2(stress).toUpperCase()}${rawSuffix(knowledge2, stress)}`];
-  const groups = /* @__PURE__ */ new Map();
+  const groups2 = /* @__PURE__ */ new Map();
   for (const e of ledgerFor(state, `stress:${unit4.id}`, state.day - 1)) {
     const label2 = ledgerLabel(e.action);
-    groups.set(label2, (groups.get(label2) ?? 0) + e.delta);
+    groups2.set(label2, (groups2.get(label2) ?? 0) + e.delta);
   }
-  const moved = [...groups].filter(([, delta]) => delta !== 0);
+  const moved = [...groups2].filter(([, delta]) => delta !== 0);
   if (moved.length === 0) lines.push("No recent changes");
   for (const [label2, delta] of moved) {
     const r = knowledge2.raw(Math.abs(delta));
@@ -67290,12 +67341,12 @@ function playBoot(screen, opts) {
     screen.append(overlay);
     const lines = [`${opts.skinLabel} // BOOT`, "LINK ........ OK", "CCP OVERSIGHT HANDSHAKE ........ OK"];
     const show = (i) => void overlay.append(h("div", { class: "alius-boot-line" }, lines[i]));
-    const timers3 = [];
+    const timers4 = [];
     let over2 = false;
     const finish2 = () => {
       if (over2) return;
       over2 = true;
-      timers3.forEach(clearTimeout);
+      timers4.forEach(clearTimeout);
       document.removeEventListener("keydown", finish2);
       document.removeEventListener("pointerdown", finish2);
       opts.signal?.removeEventListener("abort", finish2);
@@ -67303,10 +67354,10 @@ function playBoot(screen, opts) {
       resolve();
     };
     show(0);
-    timers3.push(setTimeout(() => show(1), STEP_MS));
-    timers3.push(setTimeout(() => show(2), STEP_MS * 2));
-    timers3.push(setTimeout(() => overlay.classList.add("alius-boot-fade"), STEP_MS * 3));
-    timers3.push(setTimeout(finish2, STEP_MS * 4));
+    timers4.push(setTimeout(() => show(1), STEP_MS));
+    timers4.push(setTimeout(() => show(2), STEP_MS * 2));
+    timers4.push(setTimeout(() => overlay.classList.add("alius-boot-fade"), STEP_MS * 3));
+    timers4.push(setTimeout(finish2, STEP_MS * 4));
     document.addEventListener("keydown", finish2);
     document.addEventListener("pointerdown", finish2);
     opts.signal?.addEventListener("abort", finish2);
@@ -68059,7 +68110,7 @@ ${e.parsed === void 0 ? "(none)" : JSON.stringify(e.parsed, null, 2)}`)
 // src/ui/shell/toast.ts
 var LIFETIME_MS = { info: 4e3, warn: 6e3, error: 9e3, story: 14e3 };
 function createToasts(host) {
-  const timers3 = /* @__PURE__ */ new Set();
+  const timers4 = /* @__PURE__ */ new Set();
   return {
     show(kind, text3, opts = {}) {
       const el = h("div", { class: `alius-toast alius-toast-${kind}`, role: kind === "error" ? "alert" : "status", "data-voice": opts.voice ?? "terminal" });
@@ -68069,11 +68120,11 @@ function createToasts(host) {
       const remove = () => el.remove();
       el.addEventListener("click", remove);
       host.append(el);
-      timers3.add(setTimeout(remove, LIFETIME_MS[kind]));
+      timers4.add(setTimeout(remove, LIFETIME_MS[kind]));
     },
     dispose() {
-      for (const t of timers3) clearTimeout(t);
-      timers3.clear();
+      for (const t of timers4) clearTimeout(t);
+      timers4.clear();
     }
   };
 }
@@ -69356,14 +69407,14 @@ function createApp(st, deps) {
           keystroke: () => staging.keystroke(),
           typed: (chars, beat) => staging.typed(chars, beat),
           onTap: () => {
-            const failed = api.dispatch({ type: "physics/signal", payload: {} }, { expectChatId: st.getActiveChat()?.chatId }).find((e) => e.type === "error");
-            if (failed) toast("warn", String(failed.message ?? failed.code));
+            const failed2 = api.dispatch({ type: "physics/signal", payload: {} }, { expectChatId: st.getActiveChat()?.chatId }).find((e) => e.type === "error");
+            if (failed2) toast("warn", String(failed2.message ?? failed2.code));
           }
         },
         onPastime: (_unitId, pastimeId) => {
           const events = api.dispatch({ type: "life/pastime_in_scene", payload: { pastimeId } }, { expectChatId: st.getActiveChat()?.chatId });
-          const failed = events.find((e) => e.type === "error");
-          if (failed) toast("warn", String(failed.message ?? failed.code));
+          const failed2 = events.find((e) => e.type === "error");
+          if (failed2) toast("warn", String(failed2.message ?? failed2.code));
           else sceneScreen?.refresh();
         }
       });
@@ -69518,10 +69569,10 @@ function createApp(st, deps) {
       return [...handled, ...raised];
     }
     const again = api.dispatch(action, { expectChatId: chat });
-    const failed = again.find((e) => e.type === "error");
-    if (failed) {
-      if (late2) openAlarmCard({ holderId, kind, answer: "release_late", reason: String(failed.message ?? failed.code) });
-      else toast("error", String(failed.message ?? failed.code));
+    const failed2 = again.find((e) => e.type === "error");
+    if (failed2) {
+      if (late2) openAlarmCard({ holderId, kind, answer: "release_late", reason: String(failed2.message ?? failed2.code) });
+      else toast("error", String(failed2.message ?? failed2.code));
       return [...handled, ...raised, ...again];
     }
     if (late2) toast("info", `${name} let the commander go late: the squad waited.`);
@@ -69977,8 +70028,8 @@ function createApp(st, deps) {
       if (answer !== "confirm" && answer !== "skip") return;
       if (st.getActiveChat()?.chatId !== chatId) return;
       const events = answer === "confirm" ? api.dispatch({ type: "commander/set_profile", payload: { commander } }, { expectChatId: chatId }) : api.dispatch({ type: "commander/review_done", payload: {} }, { expectChatId: chatId });
-      const failed = events.find((e) => e.type === "error");
-      if (failed) toast("error", String(failed.message ?? failed.code));
+      const failed2 = events.find((e) => e.type === "error");
+      if (failed2) toast("error", String(failed2.message ?? failed2.code));
       else if (answer === "confirm") toast("info", "Commander file updated.");
     } finally {
       reviewOpen = false;
@@ -70375,8 +70426,8 @@ function createApp(st, deps) {
     );
     if (unchanged && !resetBox.checked && !resetLifeBox.checked) return toast("info", `Nothing changed${draft.notice ? ` (${draft.notice})` : ""}.`);
     const events = api.dispatch({ type: "squad/resync", payload: { unitId, patch, ...resetBox.checked ? { resetDevelopment: true } : {}, ...resetLifeBox.checked ? { resetLife: true } : {} } }, { expectChatId: startChatId });
-    const failed = events.find((e) => e.type === "error");
-    if (failed) toast("error", String(failed.message ?? failed.code));
+    const failed2 = events.find((e) => e.type === "error");
+    if (failed2) toast("error", String(failed2.message ?? failed2.code));
     else toast("info", `${unit4.displayName} re-synced from the card.`);
   }
   async function intakeUnit() {
@@ -70668,12 +70719,12 @@ function createApp(st, deps) {
   }
   function act(action) {
     const events = api.dispatch(action, { expectChatId: st.getActiveChat()?.chatId });
-    const failed = events.find((e) => e.type === "error");
-    if (failed?.code === "vote_needed") {
+    const failed2 = events.find((e) => e.type === "error");
+    if (failed2?.code === "vote_needed") {
       void power.requestVote(action);
       return events;
     }
-    if (failed && failed.handled !== true) toast("error", String(failed.message ?? failed.code));
+    if (failed2 && failed2.handled !== true) toast("error", String(failed2.message ?? failed2.code));
     return events;
   }
   const SHORT_NAME = (reg, registry2, id) => String(reg[registry2].get(id)?.name ?? id);
@@ -71049,9 +71100,9 @@ function createApp(st, deps) {
       const chatId = st.getActiveChat()?.chatId;
       const payload = { ...opts, allowRetry: getSettings(st).easyRetry || isTutorialRun(state, registries) };
       const events = api.dispatch({ type: "combat/start", payload }, { expectChatId: chatId });
-      const failed = events.find((e) => e.type === "error");
-      if (failed) {
-        toast("error", String(failed.message ?? failed.code));
+      const failed2 = events.find((e) => e.type === "error");
+      if (failed2) {
+        toast("error", String(failed2.message ?? failed2.code));
         return false;
       }
       showCombat();
@@ -71120,9 +71171,9 @@ function createApp(st, deps) {
         }
         const action = { type: "life/time_together", payload: { unitId, pastimeId } };
         const events = warden.needsJudge(action) ? await warden.judgeThen(action) : api.dispatch(action, { expectChatId: chatId });
-        const failed = events.find((e) => e.type === "error");
-        if (failed) {
-          toast("error", String(failed.message ?? failed.code));
+        const failed2 = events.find((e) => e.type === "error");
+        if (failed2) {
+          toast("error", String(failed2.message ?? failed2.code));
           return false;
         }
         const waiting3 = state?.life?.pending;
@@ -71174,8 +71225,8 @@ function createApp(st, deps) {
         });
         return events;
       }
-      const failed = events.find((e) => e.type === "error");
-      if (failed) toast("error", String(failed.message ?? failed.code));
+      const failed2 = events.find((e) => e.type === "error");
+      if (failed2) toast("error", String(failed2.message ?? failed2.code));
       const started3 = events.find((e) => e.type === "upgrade_started");
       if (started3) told(started3.days);
       return events;
@@ -71295,9 +71346,9 @@ function createApp(st, deps) {
         toast("info", `pong: ${out.value.echo}`);
         return { ok: true, echo: out.value.echo };
       }
-      const failed = out.kind === "failed" ? out : { reason: "invalid_output", detail: "the test was dropped" };
-      toast("error", `Ping failed: ${failed.reason} \u2014 ${failed.detail}`);
-      return { ok: false, reason: failed.reason, detail: failed.detail };
+      const failed2 = out.kind === "failed" ? out : { reason: "invalid_output", detail: "the test was dropped" };
+      toast("error", `Ping failed: ${failed2.reason} \u2014 ${failed2.detail}`);
+      return { ok: false, reason: failed2.reason, detail: failed2.detail };
     }
   };
   return api;
@@ -71679,13 +71730,13 @@ registerChecks("memoryRules", (entry) => {
 var ALL_ARCHETYPES = ["frail", "slight", "average", "fit", "hardened"];
 registerChecks("imageConsistency", (entry, regs) => {
   const out = [];
-  const groups = [...regs.imageConsistency.values()];
+  const groups2 = [...regs.imageConsistency.values()];
   entry.archetypes.forEach((a, i) => {
-    const owners = groups.filter((g) => g.archetypes.includes(a));
+    const owners = groups2.filter((g) => g.archetypes.includes(a));
     if (owners.length > 1) out.push({ path: `archetypes[${i}]`, message: `archetype "${a}" is in more than one group (${owners.map((g) => g.id).join(", ")})` });
   });
-  if (groups[0]?.id === entry.id) {
-    for (const a of ALL_ARCHETYPES) if (!groups.some((g) => g.archetypes.includes(a))) out.push({ path: "archetypes", message: `archetype "${a}" is in no group` });
+  if (groups2[0]?.id === entry.id) {
+    for (const a of ALL_ARCHETYPES) if (!groups2.some((g) => g.archetypes.includes(a))) out.push({ path: "archetypes", message: `archetype "${a}" is in no group` });
   }
   return out;
 });

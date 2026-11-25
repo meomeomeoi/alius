@@ -37,6 +37,12 @@
   transition: opacity 0.6s;
 }
 
+/* to herself: smaller and fainter (her_activity.html's `.her-line.self`); the sizes of `.self`, `.to-you` and `.big` are set by `say` in
+   px × her hand's scale */
+#alius-shell .alius-her-line.self {
+  opacity: 0.72;
+}
+
 #alius-shell .alius-her-line.gone {
   opacity: 0;
 }
@@ -53,7 +59,7 @@
 
 /* the still form: no write-on (the line is there at once), no fade */
 #alius-shell.alius-reduced-motion .alius-her-line,
-#alius-shell .alius-instrument[data-reduced] .alius-her-line {
+#alius-shell .alius-scene:has(.alius-instrument[data-reduced]) .alius-her-line {
   animation: none;
   transition: none;
 }

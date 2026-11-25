@@ -16,6 +16,18 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
+/** An AudioContext stand-in: counts started oscillators and what is connected to what. */
+function fakeAudio() {
+  const param = () => ({ value: 0, setValueAtTime: () => {}, exponentialRampToValueAtTime: () => {} });
+  const out = { started: 0, connected: [] as unknown[], body: { id: 'body' }, ctx: null as never as { currentTime: number } & Record<string, unknown> };
+  out.ctx = {
+    currentTime: 0,
+    createOscillator: () => ({ type: '', frequency: param(), connect: (n: unknown) => { out.connected.push(n); }, start: () => { out.started += 1; }, stop: () => {} }),
+    createGain: () => ({ gain: param(), connect: (n: unknown) => { out.connected.push(n); } }),
+  };
+  return out;
+}
+
 const her: HerLook = { unitId: 'unit_ann', name: 'Ann', accent: '#c8a2ff', hand: 'Caveat', handScale: 1.25, style: 'neutral' };
 
 describe('the kit', () => {
@@ -67,6 +79,21 @@ describe('the kit', () => {
     expect(host.querySelector('.alius-her-line')).toBeNull();
   });
 
+  it('say keeps the prototype\'s default: a line to herself (`.self`, 34 px × handScale); to the commander `.to-you` 46; big 56', () => {
+    const host = h('div');
+    document.body.append(host);
+    const self = say(host, 'mm.', { her }).querySelector<HTMLElement>('.alius-her-line')!;
+    expect(self.classList.contains('self')).toBe(true);
+    expect(self.style.fontSize).toBe(`${34 * 1.25}px`);
+    const you = say(host, 'look at me.', { her, to: 'commander' }).querySelector<HTMLElement>('.alius-her-line')!;
+    expect(you.classList.contains('to-you')).toBe(true);
+    expect(you.style.fontSize).toBe(`${46 * 1.25}px`);
+    const big = say(host, 'now.', { her, to: 'written', big: true }).querySelector<HTMLElement>('.alius-her-line')!;
+    expect(big.className).toBe('alius-her-line big');
+    expect(big.style.fontSize).toBe('70px');
+    unsay(host);
+  });
+
   it('say cuts a long line at the words (about 40 characters a line) and unsay clears every line and timer', () => {
     const host = h('div');
     document.body.append(host);
@@ -96,5 +123,23 @@ describe('the kit', () => {
     expect(() => heartTick(samples, 64)).not.toThrow();
     heartStop(samples);
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('heartTick schedules lub-dub on the body bus; heartStop clears its timers; a restart after a long gap schedules at most one beat', () => {
+    const fake = fakeAudio();
+    const samples = { ctx: () => fake.ctx, bus: (b: string) => (b === 'body' ? fake.body : null) } as never;
+    heartTick(samples, 60); // the first beat is 0.3 s ahead: nothing due yet
+    expect(fake.started).toBe(0);
+    fake.ctx.currentTime = 2.5; // beats at 0.3, 1.3, 2.3 are due (and 2.62 is not)
+    heartTick(samples, 60);
+    expect(fake.started).toBe(6); // three lubs and three dubs
+    expect(fake.connected.filter((n) => n === fake.body)).toHaveLength(6);
+    expect(vi.getTimerCount()).toBe(3);
+    heartStop(samples);
+    expect(vi.getTimerCount()).toBe(0);
+    fake.ctx.currentTime = 600; // ten minutes later
+    heartTick(samples, 60);
+    heartTick(samples, 60);
+    expect(fake.started).toBeLessThanOrEqual(6 + 2);
   });
 });

@@ -12,6 +12,8 @@ import type { AliusSettings } from '../../../settings';
 import { analyzeAttrs } from '../../analyze/mark';
 import { h } from '../../dom';
 import type { PhysicsPanelStaging } from '../physicsPanel';
+import { unsay } from './kit/hand';
+import { heartStop } from './kit/heart';
 import type { InstrumentDef, InstrumentEnv, InstrumentRun } from './types';
 
 const defs: InstrumentDef[] = [];
@@ -25,6 +27,8 @@ export function registerInstrument(def: InstrumentDef): void {
 export function _resetInstrumentDefs(): void {
   unmountInstruments();
   defs.length = 0;
+  failed = null;
+  warned.clear();
 }
 
 /** The instrument that draws this run, or null (real time off, the run's interaction switched off, or none matches): then the card is drawn. */
@@ -45,6 +49,15 @@ interface Mounted {
   mark: HTMLElement;
 }
 let current: Mounted | null = null;
+/** The mount (`key|def`) whose start or update threw: it is not started again (the card draws that run instead). */
+let failed: string | null = null;
+const warned = new Set<string>();
+/** An instrument that throws never blanks the frame: it is stopped, warned about once per id, and the card draws the run. */
+function warnOnce(id: string, what: string, err: unknown): void {
+  if (warned.has(`${id}|${what}`)) return;
+  warned.add(`${id}|${what}`);
+  console.warn(`[Alius] the instrument "${id}" failed in ${what}; the card plays the hold instead.`, err);
+}
 
 /** A staging scoped to one mount: dead after the stop (no late input, segment end or stop word reaches the engine). */
 function scopedStaging(staging: PhysicsPanelStaging, alive: { on: boolean }): PhysicsPanelStaging {
@@ -87,7 +100,7 @@ function mount(env: InstrumentEnv, def: InstrumentDef, run: PhysicsRun, key: str
   env.layers.moment.append(mark);
   env.root.querySelector<HTMLElement>('.alius-stage-dial')?.setAttribute('data-instrument', def.id);
   current = { key, def, env, run: null, alive, frames, mark };
-  current.run = def.start(scoped, run);
+  current.run = def.start(scoped, run); // a throw is caught by syncInstruments
 }
 
 /** Stops the instrument that runs (if any): it is told to stop, then every frame it left is cancelled and its staging goes dead. */
@@ -97,11 +110,18 @@ export function unmountInstruments(): void {
   current = null;
   try {
     m.run?.stop();
+  } catch (err) {
+    warnOnce(m.def.id, 'stop', err);
   } finally {
+    // the host restores what every instrument shares, whatever its own stop did: frames, staging, her lines, the heart, the input line
     m.alive.on = false;
     for (const id of m.frames) m.env.cancelRaf(id);
     m.frames.clear();
+    for (const layer of Object.values(m.env.layers)) unsay(layer);
+    unsay(m.mark);
     m.mark.remove();
+    if (m.env.samples) heartStop(m.env.samples);
+    m.env.gauge.clear();
     m.env.root.querySelector<HTMLElement>('.alius-stage-dial')?.removeAttribute('data-instrument');
   }
 }
@@ -118,11 +138,30 @@ export function syncInstruments(env: InstrumentEnv, run: PhysicsRun | undefined)
     return false;
   }
   const key = `${state!.scene?.id ?? ''}|${run.id}`;
+  const mountKey = `${key}|${def.id}`;
+  if (failed === mountKey) {
+    unmountInstruments();
+    return false;
+  }
   if (current && current.key === key && current.def === def && current.env === env) {
-    current.run?.update(run);
-    return true;
+    try {
+      current.run?.update(run);
+      return true;
+    } catch (err) {
+      warnOnce(def.id, 'update', err);
+      failed = mountKey;
+      unmountInstruments();
+      return false;
+    }
   }
   unmountInstruments();
-  mount(env, def, run, key);
-  return true;
+  try {
+    mount(env, def, run, key);
+    return true;
+  } catch (err) {
+    warnOnce(def.id, 'start', err);
+    failed = mountKey;
+    unmountInstruments();
+    return false;
+  }
 }

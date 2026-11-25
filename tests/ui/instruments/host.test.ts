@@ -16,6 +16,8 @@ import { FakeStAdapter } from '../../../src/st/fake';
 import { h } from '../../../src/ui/dom';
 import { _resetInstrumentDefs, instrumentFor, registerInstrument } from '../../../src/ui/scene/instruments/host';
 import type { InstrumentDef, InstrumentEnv } from '../../../src/ui/scene/instruments/types';
+import { say } from '../../../src/ui/scene/instruments/kit/hand';
+import { heartTick } from '../../../src/ui/scene/instruments/kit/heart';
 import type { PhysicsPanelStaging } from '../../../src/ui/scene/physicsPanel';
 import { renderSceneScreen } from '../../../src/ui/scene/sceneScreen';
 import { resetSceneStage } from '../../../src/ui/scene/stage';
@@ -98,7 +100,7 @@ function testDef(over: Partial<InstrumentDef> = {}) {
   return { def, calls };
 }
 
-function draw(state: CampaignState, over: { settings?: Partial<AliusSettings>; staging?: Partial<PhysicsPanelStaging> } = {}) {
+function draw(state: CampaignState, over: { settings?: Partial<AliusSettings>; staging?: Partial<PhysicsPanelStaging>; samples?: never } = {}) {
   const controller = {
     send: vi.fn(() => new Promise<boolean>(() => {})), propose: vi.fn(), answer: vi.fn(), end: vi.fn(), edit: vi.fn(), stop: vi.fn(), onEdited: vi.fn(),
     transcript: () => [], onSwipe: vi.fn(), rerollState: () => ({ enabled: true, reason: '' }), rerollLast: vi.fn(), stage: vi.fn(),
@@ -118,6 +120,7 @@ function draw(state: CampaignState, over: { settings?: Partial<AliusSettings>; s
     settings: () => ({ ...DEFAULT_SETTINGS, typingSpeed: 0, ...over.settings }), onEnded: vi.fn(),
     physics: { ...staging, keystroke: vi.fn(), typed: vi.fn(), onTap: vi.fn() },
     frames: f,
+    ...(over.samples ? { samples: over.samples } : {}),
   });
   return { host, screen, input, stopWord, frames: f, q: (sel: string) => host.querySelector<HTMLElement>(sel) };
 }
@@ -240,6 +243,118 @@ describe('the instrument host', () => {
     calls.env!.staging.stopWord();
     expect(t.input).toHaveBeenCalledTimes(2);
     expect(t.stopWord).not.toHaveBeenCalled();
+  });
+
+  it('the whole stop-word chain: pill → physics/stop_word → refresh with the run gone → stop(), then no input and no frame', () => {
+    const { def, calls } = testDef();
+    registerInstrument(def);
+    const s = hold();
+    const dispatched: string[] = [];
+    const real = createStaging({
+      app: {
+        dispatch: (a: Action) => { dispatched.push(a.type); if (a.type === 'physics/stop_word') delete s.scene!.physics; return []; },
+        current: () => ({ state: s, load: { chatId: 'c' } }),
+      } as never,
+      registries: () => reg, settings: () => DEFAULT_SETTINGS, generations: { bind() {}, generate: async () => ({ kind: 'expired' }) } as never,
+      scene: { replyPending: () => false, end: async () => {} }, now: () => 0, toast: () => {},
+    });
+    const t = draw(s, { staging: { stopWord: () => real.stopWord() } });
+    t.frames.frame();
+    expect(t.input).toHaveBeenCalledTimes(1);
+    t.q('.alius-stop-pill[data-stop-word]')!.click();
+    expect(dispatched).toEqual(['physics/stop_word']);
+    t.screen.refresh(); // the app redraws after the dispatch
+    expect(calls.stop).toBe(1);
+    expect(t.q('.alius-instrument')).toBeNull();
+    expect(t.frames.pending()).toBe(0);
+    t.frames.frame();
+    vi.advanceTimersByTime(5000);
+    expect(t.input).toHaveBeenCalledTimes(1);
+  });
+
+  it('an instrument whose start throws: the card is drawn, the pill is there, the refresh completes (warned once)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { def, calls } = testDef({ start: () => { throw new Error('boom'); } });
+    registerInstrument(def);
+    const t = draw(hold());
+    expect(t.q('.alius-physics[data-run="p1"]')).not.toBeNull();
+    expect(t.q('.alius-stop-pill[data-stop-word]')).not.toBeNull();
+    expect(t.q('.alius-instrument')).toBeNull();
+    expect(t.q('.alius-stage-dial')!.hasAttribute('data-instrument')).toBe(false);
+    t.screen.refresh();
+    t.screen.refresh();
+    expect(t.q('.alius-physics[data-run="p1"]')).not.toBeNull();
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(calls.stop).toBe(0);
+  });
+
+  it('a throwing update or stop does not break the refresh (the card takes over after a failed update)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const base = testDef();
+    let n = 0;
+    registerInstrument({
+      ...base.def,
+      start(env, r) {
+        const inner = base.def.start(env, r);
+        return { update: () => { n += 1; throw new Error('update'); }, stop: () => { inner.stop(); throw new Error('stop'); } };
+      },
+    });
+    const s = hold();
+    const t = draw(s);
+    expect(t.q('.alius-instrument')).not.toBeNull();
+    expect(() => t.screen.refresh()).not.toThrow();
+    expect(n).toBe(1);
+    expect(base.calls.stop).toBe(1); // its stop ran (and threw), the host cleaned up anyway
+    expect(t.q('.alius-instrument')).toBeNull();
+    expect(t.q('.alius-physics[data-run="p1"]')).not.toBeNull();
+    expect(t.frames.pending()).toBe(0);
+    expect(warn).toHaveBeenCalledTimes(2); // update and stop, once each
+  });
+
+  it('the host restores what instruments share: her lines go and the input line is plain again', () => {
+    const { def, calls } = testDef();
+    registerInstrument(def);
+    const s = hold();
+    const t = draw(s);
+    const env = calls.env!;
+    say(env.layers.effects, 'hold it.', { her: env.her(ANN) });
+    env.gauge.narrow(0.5);
+    env.gauge.tremble(2);
+    expect(t.q('.alius-her-line')).not.toBeNull();
+    delete s.scene!.physics;
+    t.screen.refresh();
+    expect(t.q('.alius-her-line')).toBeNull();
+    const line = t.q('.alius-stage-input')!;
+    expect(line.style.getPropertyValue('--alius-gauge-narrow')).toBe('');
+    expect(line.dataset.tremble).toBeUndefined();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('a remount after a long gap does not replay the heart: the host stops it with the instrument', () => {
+    let started = 0;
+    const param = () => ({ value: 0, setValueAtTime: () => {}, exponentialRampToValueAtTime: () => {} });
+    const ctx = {
+      currentTime: 0,
+      createOscillator: () => ({ type: '', frequency: param(), connect: () => {}, start: () => { started += 1; }, stop: () => {} }),
+      createGain: () => ({ gain: param(), connect: () => {} }),
+    };
+    const samples = { ctx: () => ctx, bus: () => ({}) } as never;
+    const { def } = testDef({ start: (env) => { heartTick(env.samples!, 60); return { update: () => heartTick(env.samples!, 60), stop: () => {} }; } });
+    registerInstrument(def);
+    const s = hold();
+    const t = draw(s, { samples });
+    ctx.currentTime = 2.5;
+    t.screen.refresh(); // update: three beats due
+    expect(started).toBe(6);
+    delete s.scene!.physics;
+    t.screen.refresh(); // the instrument stops
+    expect(vi.getTimerCount()).toBe(0);
+    ctx.currentTime = 600;
+    s.scene!.physics = hold().scene!.physics; // a new run, ten minutes later
+    s.scene!.physics!.id = 'p2';
+    t.screen.refresh();
+    t.screen.refresh();
+    expect(started).toBeLessThanOrEqual(6 + 2);
   });
 
   it('the dial dims while one runs (R6), and stops dimming after', () => {
