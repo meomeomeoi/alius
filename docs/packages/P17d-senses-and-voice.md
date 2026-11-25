@@ -117,6 +117,6 @@ P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the
 - **Two TUNING blocks to extend:** `TUNING.scent` and `TUNING.stimuli`.
 - **What exists:** `scentBand`, `scentLevel`, `exposedKinds`, `perceptionWord` and `updateTrajectory` (`src/engine/physics/stimuli.ts`, `scent.ts`), the directive `physics:perception`, the stage words of `stimulusKinds[].perception`. Tolerance starts at 20 (AUTHOR TO TUNE); `sweat_stale` and washing are not built.
 
-## Ideas of 2026-11-25 (worship customs)
+## Worship customs (P17g, 2026-11-25)
 
-The design session of 2026-11-25 chose ideas that extend this package: `docs/drafts/2026-11-25-worship-customs.md` (relics: footwear and underwear among the worn things, consecration, worship of a relic alone, her check; traces). Read it before designing these parts; it says what already exists so nothing is built twice.
+**P17g** (`docs/packages/P17g-worship-customs.md`) builds customs that extend this package (relics: footwear and underwear among the worn things, consecration, worship of a relic alone, her check; traces). This package builds nothing of them; keep its mechanics readable by P17g (read by field and effect type, hooks where P17g needs them) and do not build the same thing here.

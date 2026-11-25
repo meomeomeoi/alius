@@ -1,6 +1,6 @@
 # Worship customs (design ideas, 2026-11-25)
 
-**Status:** ideas chosen by the author in the design session of 2026-11-25; not yet a package. Each idea below says what already exists (so nothing is built twice), what is new, and how it lives with the planned mechanics. Whichever package takes one (P16b, P17a–P17f or a new one) designs it in depth, writes its memory check and keeps these boundaries.
+**Status:** ideas chosen by the author in the design session of 2026-11-25; **specified as P17g** (`docs/packages/P17g-worship-customs.md`, which wins where they differ). Each idea below says what already exists (so nothing is built twice), what is new, and how it lives with the planned mechanics. Whichever package takes one (P16b, P17a–P17f or a new one) designs it in depth, writes its memory check and keeps these boundaries.
 
 **What "worship" means here (author):** worship of the commander toward her, in any form, one to one. Not a royal court, not a retinue of other soldiers: the others are at most witnesses. The `regal` style is the holder who wants it most, but any holder may grow customs of worship. Her haughtiness varies through P15b's manner axes (gracious, condescending, haughty, hungry for adoration), not through a new number.
 

@@ -97,6 +97,6 @@ P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the
 - **Triggers to register:** `her_test` and `ritual_due` are live only through `registerMomentTrigger`. A test entry maps its own options onto the frame's response types.
 - **Hook:** `registerMomentTrigger(sourceId, fn)`; the response types are `yielded`, `resisted`, `returned`, `deflected` (`RESPONSE_TYPES`).
 
-## Ideas of 2026-11-25 (worship customs)
+## Worship customs (P17g, 2026-11-25)
 
-The design session of 2026-11-25 chose ideas that extend this package: `docs/drafts/2026-11-25-worship-customs.md` (rites anchored to events and worship in her absence over the emergent rituals, the shrine map, the vow of exclusivity, pacing the customs). Read it before designing these parts; it says what already exists so nothing is built twice.
+**P17g** (`docs/packages/P17g-worship-customs.md`) builds customs that extend this package (rites anchored to events and worship in her absence over the emergent rituals, the shrine map, the vow of exclusivity, pacing the customs). This package builds nothing of them; keep its mechanics readable by P17g (read by field and effect type, hooks where P17g needs them) and do not build the same thing here.
