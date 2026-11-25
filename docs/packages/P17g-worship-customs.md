@@ -172,13 +172,36 @@ A custom not yet introduced never reaches a prompt.
   - the visitor may start using the name too (a directive for that visitor while the custom lives).
 - Needs `objectification` and `degrading_language`.
 
-**Needs, frames and weights of §2.10–2.13** (proposed, for the author)
+### 2.14 Her whims (`whim`)
+- A P16 task form: a pointless errand and its reversal ("bring it — no, take it back", "move it there — no, where it was").
+- Kept by obeying without a question; a "why?" or a sigh read by `intent_extract` is a slip.
+- Her pleasure is the pointlessness (favour by style). At most one whim a day.
+
+### 2.15 The commander as her clerk (`clerk`)
+- Lore: oversight sits above the squad. With the `command` domain (P15) the commander's reports to oversight go out **under her signature** or **in her dictation** (P17c's dictation).
+- The commander writes, she is the squad's face before the corporation. It continues P15's line ("the squad starts to address her as the real commander") toward the corporation.
+- **Risk:** oversight may notice. A suspicion of oversight grows as P13's warden pattern does: hidden, a sentinel. Found out, it is P15's compromat and a corporate consequence (the Leash requests read worse).
+
+### 2.16 Answered through her (`through_her`)
+- Outside demonstrations too: when she is present, others address her and not the commander, even about the commander's business. She answers for the commander; the commander's input turns to gestures (P17c) while the custom lives.
+- Read from P16's "she speaks for the commander" (demonstrations), generalised by the custom.
+
+### 2.17 Her table is the floor (`floor`)
+- The commander eats after her, at her feet, what she leaves (P17b's feeding).
+- Once the dynamic is public, in the mess hall before the squad. With §2.13 a visitor may ask "does it eat?".
+- Needs `pet_play` or `objectification`, and `public_humiliation` for the mess hall.
+
+**Needs, frames and weights of §2.10–2.17** (proposed, for the author)
 | Custom | Needs | `frameMin` | Weight |
 |---|---|---|---|
 | height | style `regal`, `ritual`, `drill` or `possessive`, or `service` likes | `role` | 2 |
 | tribute | style `regal` or `possessive`; the dynamic public | `role` | 1 |
 | audience | the `command` domain; `objectification` likes; a visitor available | `rule` | 1 |
 | object_naming | `objectification` and `degrading_language` likes | `role` | 1 |
+| whim | style `regal`, `playful` or `cruel` | `play` | 2 |
+| clerk | the `command` domain | `rule` | 1 |
+| through_her | `audience` not `private_only`; frame `role` or beyond | `role` | 1 |
+| floor | `pet_play` or `objectification` likes (`public_humiliation` for the mess hall) | `role` | 1 |
 
 **Memory:** `tribute` taken before the squad is P9b's existing outside perception (no new rule). An audience's decision is remembered where its command action writes. `object_naming` heard by a visitor goes through P15 §8's witness path. Height slips are bookkeeping.
 
