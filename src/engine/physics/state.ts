@@ -15,9 +15,14 @@ export type HoldsUntil = 'signal' | 'limit' | 'blackout';
 export type Attention = 'watching' | 'glancing' | 'busy';
 
 /** What the player does in a beat (`SegmentInput.kind`). */
-export const INPUT_KINDS = ['breathe', 'hold', 'release', 'mouth_breath', 'gap_breath', 'shift_weight', 'part', 'ask_rest'] as const;
+export const INPUT_KINDS = ['breathe', 'hold', 'release', 'mouth_breath', 'gap_breath', 'shift_weight', 'part', 'ask_rest', 'strain'] as const;
 export type InputKind = (typeof INPUT_KINDS)[number];
-export interface SegmentInput { beat: number; kind: InputKind; atMs?: number; part?: string }
+/**
+ * One input of a beat. `amount` (P10e-e R1, ≥ 0) is absent for every input of the turn-based card and means, per kind: `breathe`, the share of
+ * the opening held (R14: credit `caught × amount`, at most `caught`); `strain` (R15: holding on past an opening, or pressing before it), 0.5
+ * held past 150 ms, 1 held past 450 ms (she noticed).
+ */
+export interface SegmentInput { beat: number; kind: InputKind; atMs?: number; part?: string; amount?: number }
 
 export interface PlannedBeat {
   /** An opening of her rhythm (the chance to breathe): how wide it is, and whether it is false (open and shut at once). */
@@ -80,6 +85,9 @@ export interface SegmentResult {
   noise: number;
   /** The dryness of a mouth after licking (absent unless the run tracks it). */
   dryness?: number;
+  /** P10e-e R15: strains resolved (each drained its beat twice) and those she noticed (absent when none). */
+  strains?: number;
+  noticed?: number;
 }
 
 /** The state of the second physics of a hold (plan R13): its own gauge, seal and streak, on the same beats as the first. */
@@ -150,6 +158,12 @@ export interface PhysicsRun {
   dryness?: number;
   /** The capacity a marathon started with (attrition takes from it phase by phase). */
   baseCapacity?: number;
+  /**
+   * P10e-e R28: what the segments resolved, counted over the run (`caught`, `missed`, `falseTaken`, `strains`, `noticed`, `slips`, `gasps`,
+   * `cheatsCaught`; a key is absent while 0, the whole record until a segment resolved something). Only what she perceived: a relief she did not
+   * catch is not counted. `physics_outcome` carries it, and the end's directive says it in one sentence.
+   */
+  tally?: Record<string, number>;
 }
 
 export const GAUGE_FULL = 100;

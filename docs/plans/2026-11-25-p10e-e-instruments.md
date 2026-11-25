@@ -699,7 +699,7 @@ New cue kinds join `CUE_KINDS` with rows in `content/core/physicsCues.json`. Eac
   - `occlusionOf(contact: Entry | undefined): { kind: OcclusionKind; side?: 'left' | 'right'; angle?: number; view: 'ceiling' | 'room' | 'her_face' }` (default `slit` / `ceiling`)
   - `run.tally`
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `a breathe without amount counts as today` (the existing segment tests unchanged).
   - `amount .5 credits half`: `caught` 30 × .5 = +15, capped at 30 a window.
   - `a strain drains the beat twice`.
@@ -707,8 +707,9 @@ New cue kinds join `CUE_KINDS` with rows in `content/core/physicsCues.json`. Eac
   - `a cruel holder is silent in real time`: the plan's openings carry no cue, and `state.rng` advances exactly as it did before this change for the same seed.
   - `the tally counts what resolved`, and `the directive has one sentence of it after physics_outcome`, with no caught cheat named when it was not caught.
   - `occlusion` validates on every contact of the table; a contact without it is `slit` / `ceiling` (read by a reader `occlusionOf(contact)`).
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** the tests, every seeded `unaffected` and `tests/engine/physics/*` → PASS (a moved golden stops and reports).
-- [ ] **Step 5: Commit** `feat(P10e-e): breath's held credit, over-holding and her silence; the tally`
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** the tests, every seeded `unaffected` and `tests/engine/physics/*` → PASS (a moved golden stops and reports).
+- [x] **Step 5: Commit** `feat(P10e-e): breath's held credit, over-holding and her silence; the tally`
+  - *As built:* `effectiveOpenings` moves **every** opening after a noticed strain (not only the next one), as the prototype's queue of windows moves (`G.queue.forEach(… e.at += delay)`: the windows after it are scheduled from the moved one); one moved past the segment's last beat is gone. `overDelayOf(style)` reads `TUNING.physics.breath.overDelay` (`other` for any style not named). A strain resolves only for a `capacity` gauge (breath); it drains its beat once more (`drain − seal`), one a beat. A `breathe` with `amount` 0 is no breath. R4: a real-time `cues: 'none'` holder's openings carry no cue, and no attention sign is put on them either (no draw either way: the `noCueShare` draw stays turn-based only; the test pins the rng after a real-time cruel plan to values recorded before the change). The tally's keys are `caught`, `missed`, `falseTaken`, `strains`, `noticed`, `slips`, `gasps`, `cheatsCaught` (a key appears once above 0; a relief she did not catch is not counted, so the R28 list's `reliefs` is `cheatsCaught`); `physics_outcome` carries `tally` when the run has one, and `physics:end` adds one sentence ("Over the whole hold: …") worded by the physics' interaction (`tallySentence`, `src/blocking/physicsDirectives.ts`); the stop word keeps `blocking:stop` alone. `occlusionOf` is `src/engine/physics/occlusion.ts` (a leaf; `OCCLUSION_KINDS`, `OCCLUSION_VIEWS`); the table's contacts carry it (`feet_on_face` with the prototype's angle −14, `smothered_armpit` side right, `hand_over_mouth` view `her_face`; a `slide` without a view sees the room by `VIEW_OF`). `greedy` joins `CUE_KINDS` with one `physicsCues` row for breath (3 lines: the content test wants 3–5 a row, so the row holds the neutral, affectionate and ritual lines of the prototype; the other styles' come from the model). The physics_cues prompt names the kind.
 
 ### Task 14: The breath instrument
 

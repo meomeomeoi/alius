@@ -89,5 +89,18 @@
       "Her attention has drifted to something else."
     ],
     "description": "AUTHOR TO WRITE: Fallback cue lines of the kind \"look_away\", used until the model words them."
+  },
+  {
+    "id": "cue_greedy",
+    "kind": "greedy",
+    "physics": [
+      "breath"
+    ],
+    "lines": [
+      "let go.",
+      "easy. let go.",
+      "release."
+    ],
+    "description": "P10e-e: her line when she notices the commander straining for air past her opening (breath.html's `greedy`: the neutral, affectionate and ritual lines, which fit any holder; the model words her own)."
   }
 ]

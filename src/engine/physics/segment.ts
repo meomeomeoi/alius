@@ -87,7 +87,8 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
     while (pos < n) {
       const measuring = lead.key === 'clinical' && ++k % rng.int(P.clinicalEvery[0], P.clinicalEvery[1]) === 0;
       const isFalse = rng.chance(blendedStyle(style, 'falseShare'));
-      const silent = !realtime && rng.chance(blendedStyle(style, 'noCueShare'));
+      // R4: in real time a holder whose cues are `none` gives her openings no cue (decided, not drawn: no new draw); turn-based, `noCueShare` as before
+      const silent = (realtime && lead.cues === 'none') || (!realtime && rng.chance(blendedStyle(style, 'noCueShare')));
       beats[pos] = {
         ...beats[pos]!, opening: { widthMs: openingWidth(style, rng, measuring), ...(isFalse ? { false: true as const } : {}) },
         ...(silent ? {} : { cue: isFalse ? ('window_false' as const) : ('window_open' as const) }),
@@ -108,7 +109,7 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
   // the signs of her attention: a cue where it changed (she starts watching, she looks away); the player reads her gaze from these alone
   for (let i = 0; i < n; i++) {
     const sign = attentionCue(attention[i - 1], attention[i]!);
-    if (sign !== null && beats[i]!.cue === undefined) beats[i] = { ...beats[i]!, cue: sign };
+    if (sign !== null && beats[i]!.cue === undefined && !(realtime && lead.cues === 'none' && beats[i]!.opening)) beats[i] = { ...beats[i]!, cue: sign }; // R4: her silent openings stay silent
   }
   if (lead.cues === 'count') for (let i = 0; i < n; i++) if (beats[i]!.cue === undefined) beats[i] = { ...beats[i]!, cue: 'count' };
   if (lead.cues === 'sparse') for (let i = 0; i < n; i++) if (beats[i]!.cue !== undefined && rng.chance(0.5)) delete beats[i]!.cue;
@@ -137,7 +138,25 @@ function share(kind: GaugeKind, gauge: number, capacity: number): number {
 
 /** Whether `kind` is a valid input of the wire format. */
 export const validInput = (i: unknown): i is SegmentInput =>
-  typeof i === 'object' && i !== null && Number.isInteger((i as SegmentInput).beat) && (i as SegmentInput).beat >= 0 && (INPUT_KINDS as readonly string[]).includes((i as SegmentInput).kind);
+  typeof i === 'object' && i !== null && Number.isInteger((i as SegmentInput).beat) && (i as SegmentInput).beat >= 0 && (INPUT_KINDS as readonly string[]).includes((i as SegmentInput).kind)
+  && ((i as SegmentInput).amount === undefined || (typeof (i as SegmentInput).amount === 'number' && Number.isFinite((i as SegmentInput).amount) && (i as SegmentInput).amount! >= 0));
+
+/** P10e-e R15: how many beats her openings move later when she notices a strain, by her lead style. */
+export const overDelayOf = (style: string): number => P.breath.overDelay[style] ?? P.breath.overDelay.other!;
+
+/**
+ * P10e-e R15: the plan's openings with the delays of noticed strains applied (a `strain` of amount ≥ 1 on beat b moves every opening after b
+ * later by her style's `overDelay` beats, as the prototype's queue of windows moves; one moved past the segment is gone). Without a noticed
+ * strain these are the plan's openings as they are. Pure; the engine and the instrument both read it.
+ */
+export function effectiveOpenings(plan: SegmentPlan, inputs: readonly SegmentInput[], style: string): Array<{ beat: number; widthMs: number; false?: true }> {
+  const list = plan.beats.flatMap((b, i) => (b.opening ? [{ beat: i, widthMs: b.opening.widthMs, ...(b.opening.false ? { false: true as const } : {}) }] : []));
+  const delay = overDelayOf(style);
+  if (delay === 0) return list;
+  const noticed = inputs.filter((i) => i.kind === 'strain' && (i.amount ?? 0) >= 1).map((i) => i.beat).sort((a, b) => a - b);
+  for (const at of noticed) for (const o of list) if (o.beat > at) o.beat += delay;
+  return list.filter((o) => o.beat < plan.beats.length);
+}
 
 /**
  * Resolves one segment: the plan and the inputs decide, nothing is drawn. Inputs on beats that lapsed (a typed message) are dropped.
@@ -169,6 +188,8 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
     r.reliefInputs.push({ beat, kind });
   };
   const seal = sealNow(run, env.sealLevel);
+  // R15: her openings as they fall once the noticed strains moved them (the plan's, without one)
+  const openings = env.interaction === 'timing' ? new Map(effectiveOpenings(plan, live, leadStyle(env.style).key).map((o) => [o.beat, o])) : null;
   const evenBefore = (b: number): boolean => ![b - 1, b].some((x) => x >= 0 && at(x, 'hold').length === 0);
 
   const scale = env.scale ?? 1;
@@ -178,13 +199,16 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
     if (beat.cue !== undefined) r.cues.push(beat.cue);
     switch (env.interaction) {
       case 'timing': {
-        const breathed = at(b, 'breathe').length > 0;
-        const opening = beat.opening;
+        // R14: a breath carries the share of the opening held (absent: the whole of it, as the card's); none held is no breath
+        const breath = at(b, 'breathe')[0];
+        const breathed = breath !== undefined && (breath.amount === undefined || breath.amount > 0);
+        const held = breath?.amount === undefined ? 1 : Math.min(1, breath.amount);
+        const opening = openings!.get(b);
         if (env.gaugeKind === 'capacity') {
           r.gauge += -P.breath.drain + P.breath.seal[seal];
           if (opening && !opening.false) {
             if (breathed) {
-              r.gauge += P.breath.caught;
+              r.gauge += P.breath.caught * held;
               r.caught += 1;
               r.streak += scale; // a catch of a coarser pace counts as many as the normal pace's catches it stands for
               if (r.streak > P.endurance.streakFrom) r.streakBonus += scale;
@@ -202,6 +226,15 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
             if (seal !== 'leaky') continue;
             r.gauge += P.breath.gapRelief;
             relief(g.beat, 'gap_breath');
+          }
+          // R15: straining against her drains the beat twice; noticed (amount ≥ 1), the streak goes (her openings moved above)
+          for (const s of at(b, 'strain')) {
+            r.gauge += -P.breath.drain + P.breath.seal[seal];
+            r.strains = (r.strains ?? 0) + 1;
+            if ((s.amount ?? 0) >= 1) {
+              r.noticed = (r.noticed ?? 0) + 1;
+              r.streak = 0;
+            }
           }
         } else if (opening && !opening.false) {
           // keeping up with a flow (a gulp): a caught swallow eases the fill, a missed one spills
@@ -316,6 +349,8 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
       ...m, caught: m.caught + x.caught, missed: m.missed + x.missed, falseTaken: m.falseTaken + x.falseTaken, slips: m.slips + x.slips, gasps: m.gasps + x.gasps,
       reliefs: m.reliefs + x.reliefs, reliefInputs: [...m.reliefInputs, ...x.reliefInputs], warning: m.warning || x.warning, checked: m.checked || x.checked,
       complete: m.complete || x.complete, degraded: m.degraded || x.degraded, askedRest: m.askedRest || x.askedRest,
+      ...(m.strains !== undefined || x.strains !== undefined ? { strains: (m.strains ?? 0) + (x.strains ?? 0) } : {}),
+      ...(m.noticed !== undefined || x.noticed !== undefined ? { noticed: (m.noticed ?? 0) + (x.noticed ?? 0) } : {}),
     };
   }
   const lapsed = run.segment.lapsed?.length ?? 0;
@@ -351,6 +386,11 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   }
   result.noise = sounds.reduce((n, x) => n + x.loudness, 0);
   for (const x of sounds) events.push({ type: 'physics_noise', runId, holderId: run.holderId, kind: x.kind, loudness: x.loudness });
+  // R28: the tally of the run, from what this segment resolved (only what she perceived: a relief counts only once she caught it)
+  addTally(run, {
+    caught: result.caught, missed: result.missed, falseTaken: result.falseTaken, strains: result.strains ?? 0, noticed: result.noticed ?? 0,
+    slips: result.slips, gasps: result.gasps, cheatsCaught: events.filter((e) => e.type === 'physics_caught').length,
+  });
   run.gauge = result.gauge;
   run.streak = result.streak;
   if (result.dryness !== undefined) run.dryness = result.dryness;
@@ -374,6 +414,15 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   if (run.marathon && draft.scene?.physics === run) events.push(...phaseBoundary(draft, reg, run));
   events.push(...momentPass(draft, ctx, 'segment')); // a warning or a slip of this segment may bring a moment up (a no-op, and no draw, unless one is live)
   return events;
+}
+
+/** Adds a segment's counts to the run's tally (a key appears once it is above 0; nothing is written while all are 0). */
+function addTally(run: PhysicsRun, counts: Record<string, number>): void {
+  for (const [k, n] of Object.entries(counts)) {
+    if (n <= 0) continue;
+    run.tally ??= {};
+    run.tally[k] = (run.tally[k] ?? 0) + n;
+  }
 }
 
 /** A message was typed in a turn-based scene: its length uses up beats (`ceil(chars / 40)`) from the beat the panel says, whose inputs lapse. */

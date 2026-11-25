@@ -15,6 +15,7 @@ import {
   REGARD_SPEEDS, REGION_RANKS, SIGN_KINDS, SURFACE_CONDITIONS,
 } from '../engine/dynamic/types';
 import { FRAMES } from '../engine/blocking/state';
+import { OCCLUSION_KINDS, OCCLUSION_VIEWS } from '../engine/physics/occlusion';
 import { CEREMONY_CHECKS, CHECK_KINDS, EFFECT_NEEDS, PRACTICE_EVENT_TYPES, PRACTICE_KINDS, PROOFS, SEED_AUDIENCE, STAKES } from '../engine/practice/state';
 import type { WorldEffect } from '../engine/world/types';
 import { REGISTRY_NAMES, type RegistryName } from './types';
@@ -2674,6 +2675,10 @@ export const ContactSchema = BaseEntrySchema.extend({
   stimuli: z.array(str).min(1).optional(),
   sources: sourceWeights.optional(),
   mouth: z.literal(true).optional(),
+  /** P10e-e: the shape of the dark while a breathing physics runs on this contact (`occlusionOf`; absent: the slit and the ceiling). */
+  occlusion: z.object({
+    kind: z.enum(OCCLUSION_KINDS), side: z.enum(['left', 'right']).optional(), angle: z.number().min(-90).max(90).optional(), view: z.enum(OCCLUSION_VIEWS).optional(),
+  }).strict().optional(),
   label: blockLabel, description: str, promptHint: blockHint, effects: effectList,
 }).strict();
 

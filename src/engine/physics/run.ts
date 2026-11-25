@@ -161,7 +161,7 @@ export function stopPhysics(draft: CampaignState, reg: Registries, result: Outco
   if (!draft.scene || !run) return [];
   delete draft.scene.physics;
   removeSource(draft, run.sourceKind, run.sourceId);
-  const events: EngineEvent[] = [{ type: 'physics_outcome', runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...(run.second ? { secondId: run.second.physicsId } : {}), ...(run.targetId !== undefined ? { targetId: run.targetId } : {}) }]; // the target was read when the run began: P15 counts the act on it (mastery)
+  const events: EngineEvent[] = [{ type: 'physics_outcome', runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...(run.second ? { secondId: run.second.physicsId } : {}), ...(run.targetId !== undefined ? { targetId: run.targetId } : {}), ...(run.tally ? { tally: { ...run.tally } } : {}) }]; // the target was read when the run began: P15 counts the act on it (mastery)
   if (run.marathon) events.push(...finishMarathon(draft, reg, run, result));
   return events;
 }

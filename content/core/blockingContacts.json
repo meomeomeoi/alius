@@ -27,6 +27,10 @@
         "id": "saturation"
       }
     ],
+    "occlusion": {
+      "kind": "wedge",
+      "side": "right"
+    },
     "label": "Smothered armpit",
     "description": "AUTHOR TO WRITE: She presses the commander's face into her armpit.",
     "promptHint": "her armpit pressed over the commander's face",
@@ -84,6 +88,9 @@
         ]
       }
     ],
+    "occlusion": {
+      "kind": "slide"
+    },
     "label": "Smothered breasts",
     "description": "AUTHOR TO WRITE: Face pressed between her breasts.",
     "promptHint": "the commander's face pressed between her breasts",
@@ -138,6 +145,9 @@
         "id": "her_activity"
       }
     ],
+    "occlusion": {
+      "kind": "seat"
+    },
     "label": "Under her seat",
     "description": "AUTHOR TO WRITE: She sits on the commander's face as on a cushion, busy with her own thing.",
     "promptHint": "she sits on the commander's face, busy with her own thing",
@@ -192,6 +202,9 @@
         "id": "saturation"
       }
     ],
+    "occlusion": {
+      "kind": "seat"
+    },
     "label": "Face to bottom",
     "description": "AUTHOR TO WRITE: The commander's face to her bottom.",
     "promptHint": "the commander's face against her bottom",
@@ -240,6 +253,10 @@
         "id": "her_activity"
       }
     ],
+    "occlusion": {
+      "kind": "gap",
+      "angle": -14
+    },
     "label": "Feet on face",
     "description": "AUTHOR TO WRITE: She lies on the bunk, her feet resting on the commander's face, reading or on the PDA.",
     "promptHint": "she lies on her bunk, her feet resting on the commander's face",
@@ -313,6 +330,9 @@
       }
     ],
     "mouth": true,
+    "occlusion": {
+      "kind": "lift"
+    },
     "label": "Sole to mouth",
     "description": "AUTHOR TO WRITE: Her sole at the commander's lips.",
     "promptHint": "her sole at the commander's lips",
@@ -685,6 +705,9 @@
         "id": "weight"
       }
     ],
+    "occlusion": {
+      "kind": "squeeze"
+    },
     "label": "Between thighs",
     "description": "AUTHOR TO WRITE: Head locked between her thighs.",
     "promptHint": "the commander's head locked between her thighs",
@@ -1080,6 +1103,10 @@
     "id": "hand_over_mouth",
     "scope": "any",
     "dir": "her",
+    "occlusion": {
+      "kind": "lift",
+      "view": "her_face"
+    },
     "label": "Hand over mouth",
     "description": "AUTHOR TO WRITE: She covers the commander's mouth when someone enters.",
     "promptHint": "her hand over the commander's mouth"
@@ -1092,6 +1119,9 @@
       "scent_body"
     ],
     "mouth": true,
+    "occlusion": {
+      "kind": "slide"
+    },
     "label": "Face in her neck",
     "description": "AUTHOR TO WRITE: Face at her neck, her scent.",
     "promptHint": "the commander's face at her neck"

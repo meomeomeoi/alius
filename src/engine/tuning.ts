@@ -125,7 +125,14 @@ export const TUNING = Object.freeze({
    */
   physics: Object.freeze({
     beatMs: 1500, turnBeats: 4, warning: 30, releaseAt: Object.freeze({ signal: 0.15, limit: 0.05 }),
-    breath: Object.freeze({ drain: 14, caught: 30, missed: 8, cruelMissed: 4, windowEvery: Object.freeze([2, 4] as const), seal: Object.freeze({ leaky: 4, firm: 1, tight: 0 }), gapRelief: 5 }),
+    /**
+     * P10e-e R15: `overDelay` is how many beats her openings move later when she notices the commander holding on (a `strain` of amount 1), by her
+     * lead style (`other` for every style not named); `wmul` is how many times an opening's `widthMs` the instrument keeps it open (breath.html).
+     */
+    breath: Object.freeze({
+      drain: 14, caught: 30, missed: 8, cruelMissed: 4, windowEvery: Object.freeze([2, 4] as const), seal: Object.freeze({ leaky: 4, firm: 1, tight: 0 }), gapRelief: 5,
+      overDelay: Object.freeze({ cruel: 2, affectionate: 0, other: 1 } as Readonly<Record<string, number>>), wmul: 2,
+    }),
     weight: Object.freeze({ drain: 8, shiftEvery: Object.freeze([3, 5] as const), shift: Object.freeze([15, 25] as const), relief: 15 }),
     saturation: Object.freeze({ per: 10, bandFactor: Object.freeze({ faint: 0.5, noticeable: 1, strong: 1.5, overwhelming: 2 }), mouth: 20, noticed: 0.6 }),
     tongue: Object.freeze({ start: 100, right: 15, wrong: 8, checkAt: 10, dryness: 6, parts: Object.freeze(['toes', 'arch', 'heel', 'sole'] as const) }),

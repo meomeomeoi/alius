@@ -1,4 +1,4 @@
-import type { Registries } from '../content/types';
+import type { Entry, Registries } from '../content/types';
 import { bandOf, exposedKinds, perceptionWord } from '../engine/physics/stimuli';
 import { effectiveHoldsUntil, leadStyle, physicsStyleOf } from '../engine/physics/style';
 import type { EngineEvent } from '../engine/dispatch';
@@ -23,7 +23,45 @@ export function physicsDirective(event: EngineEvent, state: CampaignState, _reg:
   const text = OUTCOME[String(event.result)];
   if (text === undefined) return null;
   const her = state.squad.find((u) => u.id === event.holderId)?.displayName;
-  return { id: `${PHYSICS_PREFIX}end`, text: her ? text.replace('She ', `${her} `).replace('she ', `${her} `) : text, expiresAfter: 'next_reply' };
+  const said = her ? text.replace('She ', `${her} `).replace('she ', `${her} `) : text;
+  // R28: one sentence of what she perceived over the whole hold (`run.tally`, carried by the outcome)
+  const tally = tallySentence((event as { tally?: Record<string, number> }).tally ?? {}, _reg.contactPhysics.get(String(event.physicsId)));
+  return { id: `${PHYSICS_PREFIX}end`, text: tally === '' ? said : `${said} ${tally}`, expiresAfter: 'next_reply' };
+}
+
+/**
+ * P10e-e R28: the words of a tally, by the physics' interaction (never by its id). Each count is said only when it is above 0; a relief is
+ * named only once she caught it (`cheatsCaught`), so an uncaught cheat never reaches the model. No pronoun for the commander.
+ */
+const TALLY_WORDS: Record<string, Partial<Record<string, (n: number) => string>>> = {
+  timing: { caught: (n) => `${n} ${n === 1 ? 'opening' : 'openings'} caught`, falseTaken: (n) => `${n} false ${n === 1 ? 'opening' : 'openings'} taken` },
+  hold: { slips: (n) => `the hold broke ${times(n)}` },
+  order: { slips: (n) => `${n} ${n === 1 ? 'slip' : 'slips'} of the tongue` },
+};
+const times = (n: number): string => (n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`);
+const GENERIC: Record<string, (n: number) => string> = {
+  caught: (n) => `${n} caught`,
+  missed: (n) => `${n} missed`,
+  falseTaken: (n) => `${n} taken falsely`,
+  strains: (n) => `held on too long ${times(n)}`,
+  slips: (n) => `${n} ${n === 1 ? 'slip' : 'slips'}`,
+  gasps: (n) => `${n} ${n === 1 ? 'gasp' : 'gasps'}`,
+  cheatsCaught: (n) => `she caught ${n} ${n === 1 ? 'cheat' : 'cheats'}`,
+};
+const ORDER = ['caught', 'missed', 'falseTaken', 'strains', 'slips', 'gasps', 'cheatsCaught'];
+
+/** The tally of a run in one sentence (`''` when nothing was counted). */
+export function tallySentence(tally: Record<string, number>, phys: Entry | undefined): string {
+  const own = TALLY_WORDS[String(phys?.interaction ?? '')] ?? {};
+  const parts: string[] = [];
+  for (const k of ORDER) {
+    const n = tally[k] ?? 0;
+    if (n <= 0) continue;
+    let part = (own[k] ?? GENERIC[k]!)(n);
+    if (k === 'strains' && (tally.noticed ?? 0) > 0) part += ` (${tally.noticed} she noticed)`;
+    parts.push(part);
+  }
+  return parts.length === 0 ? '' : `Over the whole hold: ${parts.join(', ')}.`;
 }
 
 /** Sets the directives the events of one dispatch call for. Returns whether any was set. */
