@@ -122,7 +122,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <label>the floor <select id="floorSel"></select></label>
   <h4>sound</h4>
   <label><input type="checkbox" id="snd" checked> on</label>
-  <label>stream <select id="streamS"><option value="stream2" selected>water 2 (steady)</option><option value="stream1">water 1</option><option value="stream3">water 3</option><option value="pour">flowing (her_activity's)</option><option value="synth">synth</option></select></label>
+  <label>stream <select id="streamS"><option value="stream1" selected>water 1</option><option value="stream2">water 2 (steady)</option><option value="stream4">running water (CC-BY)</option><option value="stream3">water 3</option><option value="pour">flowing (her_activity's)</option><option value="synth">synth</option></select></label>
   <label>swallow <select id="swallowS"><option value="swallows" selected>swallows (recorded)</option><option value="drinks">drinking gulps (recorded)</option><option value="synth">synth</option></select></label>
   <label>volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7"></label>
   <h4>view</h4>
@@ -151,7 +151,7 @@ const ASSETS = {
 };
 const SAMPLE_URLS = {
   pour: '%%ASSET:docs/prototypes/assets/ha/pour.ogg%%',
-  stream1: '%%ASSET:docs/prototypes/assets/gulp/stream1.ogg%%', stream2: '%%ASSET:docs/prototypes/assets/gulp/stream2.ogg%%', stream3: '%%ASSET:docs/prototypes/assets/gulp/stream3.ogg%%',
+  stream1: '%%ASSET:docs/prototypes/assets/gulp/stream1.ogg%%', stream2: '%%ASSET:docs/prototypes/assets/gulp/stream2.ogg%%', stream3: '%%ASSET:docs/prototypes/assets/gulp/stream3.ogg%%', stream4: '%%ASSET:docs/prototypes/assets/gulp/stream4.ogg%%',
   swallow1: '%%ASSET:docs/prototypes/assets/gulp/swallow1.ogg%%', swallow2: '%%ASSET:docs/prototypes/assets/gulp/swallow2.ogg%%', swallow3: '%%ASSET:docs/prototypes/assets/gulp/swallow3.ogg%%',
   swallow4: '%%ASSET:docs/prototypes/assets/gulp/swallow4.ogg%%', swallow5: '%%ASSET:docs/prototypes/assets/gulp/swallow5.ogg%%',
   drink1: '%%ASSET:docs/prototypes/assets/gulp/drink1.ogg%%', drink2: '%%ASSET:docs/prototypes/assets/gulp/drink2.ogg%%', drink3: '%%ASSET:docs/prototypes/assets/gulp/drink3.ogg%%', drink4: '%%ASSET:docs/prototypes/assets/gulp/drink4.ogg%%',
@@ -207,7 +207,7 @@ const LINES = {
 const TASTE = ['Warm, and salt.', 'Bitter at the back of the tongue.', 'Warmer than expected.', 'Sharp; it catches in the throat.'];
 
 /* ---------- settings ---------- */
-const S = { streamS: 'stream2', swallowS: 'swallows', style: 'neutral', explicit: false, overH: 1.04, overX: 0.5, overSink: 0, len: 35, flowK: 1, sound: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
+const S = { streamS: 'stream1', swallowS: 'swallows', style: 'neutral', explicit: false, overH: 1.04, overX: 0.5, overSink: 0, len: 35, flowK: 1, sound: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 const ST = () => STYLES[S.style];
 const L = () => LINES[S.style];
 

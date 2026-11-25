@@ -15,4 +15,5 @@
   - `stream1–3`: "40 CC0 water / splash / slime SFX" (`loop_water_01–03`, loops); `splash_10`, `splash_09`, `splash_06`: the same pack.
   - `swallow1–5`: "Liquid Bottle Drink Set" (qubodup, `swallow-01–05`).
   - `drink1–4`: "202 More Sound Effects" (`Drink/Drink_01–04`).
+  - `stream4`: "Running Water - background noise" by HippoDevelopment (OpenGameArt.org), **CC-BY 3.0** (https://creativecommons.org/licenses/by/3.0/): attribution required wherever it ships.
   - `gulp.html` also plays `ha/pour.ogg`, `ha/cloth1–3` and `breath-in-out.mp3`.
