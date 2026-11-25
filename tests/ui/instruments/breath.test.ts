@@ -11,7 +11,7 @@ import type { Registries } from '../../../src/content/types';
 import { ceilingOf } from '../../../src/engine/backdrops';
 import { COMMANDER, registerFrameReader, resetBlockingHooks, setBlocking } from '../../../src/engine/blocking';
 import type { Action } from '../../../src/engine/dispatch';
-import { registerPhysicsStyle, resetPhysicsHooks } from '../../../src/engine/physics/style';
+import { registerHoldsUntil, registerPhysicsStyle, resetPhysicsHooks } from '../../../src/engine/physics/style';
 import type { PhysicsRun, SegmentInput, SegmentPlan } from '../../../src/engine/physics/state';
 import type { CampaignState } from '../../../src/engine/state/types';
 import type { SceneController } from '../../../src/scene/sceneController';
@@ -312,6 +312,7 @@ describe('the breath instrument on the scene', () => {
 
   it('ruling Q: her lines by style (card-voice.md §7): the entry, the tap, a model-worded cue in place of her line, cold silent', () => {
     registerPhysicsStyle(() => ({ primary: 'ritual' }));
+    registerHoldsUntil(() => 'limit'); // she ignores the first tap: her tap line answers it
     const t = draw(hold(SEAT, planOf({ 3: {}, 6: {} })), { staging: { voiced: (k: string) => (k === 'window_open' ? 'breathe for me, now' : null) } });
     t.to(900);
     expect(t.q('.alius-breath-hand')!.textContent).toContain('on my count.');
@@ -329,6 +330,21 @@ describe('the breath instrument on the scene', () => {
     c.to(3 * BEAT + 300);
     expect(_breath.G.win).not.toBeNull();
     expect(c.q('.alius-breath-hand')!.textContent).toBe(''); // cold is silent, even on her opening
+  });
+
+  it.each([
+    ['keeps the commander (limit, a first tap)', 'limit', true],
+    ['lets go (signal)', 'signal', false],
+  ])('review N1: cruel\'s tap answer follows the engine: she %s', (_what, holds, kept) => {
+    registerPhysicsStyle(() => ({ primary: 'cruel' }));
+    registerHoldsUntil(() => holds as 'limit' | 'signal');
+    const t = draw(hold(SEAT, planOf({ 9: { widthMs: 250 } })));
+    t.to(2 * BEAT);
+    t.key('keydown', 't');
+    expect(t.onTap).toHaveBeenCalledTimes(1);
+    const hand = t.q('.alius-breath-hand')!.textContent ?? '';
+    if (kept) { expect(hand).toContain('no.'); expect(_breath.G.pressT).toBeGreaterThan(1000); } // her refusal, and she presses
+    else { expect(hand).not.toContain('no.'); expect(_breath.G.pressT).toBeLessThan(1000); } // she lets go: no refusal (the exit's line answers)
   });
 
   describe('I5: playful\'s "again." (a count that ends with no window, ahead of a planned opening)', () => {

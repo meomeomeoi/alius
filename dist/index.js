@@ -64138,7 +64138,9 @@ function tap() {
   t.classList.remove("knock");
   void t.offsetWidth;
   t.classList.add("knock");
+  const kept = !tapReleases();
   E.env.tap?.();
+  if (!kept) return;
   const l = L();
   switch (S3.style) {
     case "affectionate":
@@ -64150,7 +64152,6 @@ function tap() {
       break;
     case "playful":
       say2(pick3(l.tap), "line");
-      G2.forceHonest = true;
       break;
     case "cruel":
       say2(pick3(l.tap), "line");
@@ -64508,6 +64509,11 @@ function breatheUp() {
   G2.pressedThisPress = false;
   G2.overMs = 0;
   inhaleStop();
+}
+function tapReleases() {
+  if (!E || !R4.run) return false;
+  const holds6 = effectiveHoldsUntil(E.env.state(), E.env.registries, R4.run.holderId);
+  return holds6 === "signal" || holds6 === "limit" && R4.run.taps > 0;
 }
 function beatAt(at) {
   const seg = R4.seg;

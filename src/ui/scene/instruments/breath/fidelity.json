@@ -213,8 +213,8 @@
     },
     {
       "fn": "tap",
-      "reason": "README: her answers to the tap stand in for `holdsUntil` and P15a's `physics/signal`: the tap is the engine's (`env.tap`, the scene's `onTap`). Ruling Q: her answer by style is ported (her `tap` line, cruel's press; playful's `forceHonest` is kept, though the plan's own false flag decides), but not the moves of her rhythm (an honest window scheduled after the tap): the openings are the engine's plan.",
-      "diff": "@@ -7,2 +7,3 @@\n t.classList.add(\"knock\")\n+E.env.tap?.()\n const l=L()\n@@ -10,16 +11,4 @@\n case\"affectionate\":say(pick(l.tap),\"line\")\n-if(!G.win){\n-cancelWindows()\n-scheduleWindow(G.clock+450,{\n-honest:true,silent:true\n-})\n-}\n break\n case\"neutral\":case\"ritual\":say(pick(l.tap),\"line\")\n-if(!G.win){\n-cancelWindows()\n-scheduleWindow(G.clock+BEAT*1.2,{\n-honest:true\n-})\n-}\n break"
+      "reason": "README: her answers to the tap stand in for `holdsUntil` and P15a's `physics/signal`: the tap is the engine's (`env.tap`, the scene's `onTap`). Ruling Q: her answer by style is ported (her `tap` line, cruel's press) only when the engine keeps the commander (`tapReleases`, P15a's rule: a `signal` holder lets go at once, a `limit` holder at her second tap: review N1); when she lets go, the exit's `released` line is her answer. Not ported: the moves of her rhythm after a tap (an honest window scheduled; playful's `forceHonest`, which nothing reads since the plan decides her false windows: review N3): the openings are the engine's plan.",
+      "diff": "@@ -7,2 +7,5 @@\n t.classList.add(\"knock\")\n+const kept=!tapReleases()\n+E.env.tap?.()\n+if(!kept)return\n const l=L()\n@@ -10,19 +13,6 @@\n case\"affectionate\":say(pick(l.tap),\"line\")\n-if(!G.win){\n-cancelWindows()\n-scheduleWindow(G.clock+450,{\n-honest:true,silent:true\n-})\n-}\n break\n case\"neutral\":case\"ritual\":say(pick(l.tap),\"line\")\n-if(!G.win){\n-cancelWindows()\n-scheduleWindow(G.clock+BEAT*1.2,{\n-honest:true\n-})\n-}\n break\n case\"playful\":say(pick(l.tap),\"line\")\n-G.forceHonest=true\n break"
     },
     {
       "fn": "updateLoop",

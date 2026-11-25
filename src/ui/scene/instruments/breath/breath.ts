@@ -30,7 +30,7 @@ import { fnv1a } from '../../../../engine/hub';
 import { occlusionOf } from '../../../../engine/physics/occlusion';
 import { effectiveOpenings, overDelayOf } from '../../../../engine/physics/segment';
 import type { PhysicsRun, SegmentInput } from '../../../../engine/physics/state';
-import { leadStyle, physicsStyleOf } from '../../../../engine/physics/style';
+import { effectiveHoldsUntil, leadStyle, physicsStyleOf } from '../../../../engine/physics/style';
 import type { CampaignState } from '../../../../engine/state/types';
 import { TUNING } from '../../../../engine/tuning';
 import { analyzeNative } from '../../../analyze/mark';
@@ -385,12 +385,14 @@ function tap() {
   if (G.phase !== 'loop') return;
   SFX.tap();
   const t = $('#tap'); t.classList.remove('knock'); void t.offsetWidth; t.classList.add('knock');
+  const kept = !tapReleases();
   E!.env.tap?.();
+  if (!kept) return; // she lets go: her answer is the exit's line (`released`), never a refusal
   const l = L();
   switch (S.style) {
     case 'affectionate': say(pick(l.tap), 'line'); break;
     case 'neutral': case 'ritual': say(pick(l.tap), 'line'); break;
-    case 'playful': say(pick(l.tap), 'line'); G.forceHonest = true; break;
+    case 'playful': say(pick(l.tap), 'line'); break;
     case 'cruel': say(pick(l.tap), 'line'); press(1500); break;
     default: say(pick(l.tap), 'line');
   }
@@ -662,6 +664,15 @@ function breatheUp() { G.breathing = false; G.pressedThisPress = false; G.overMs
  * The wiring (no prototype code below): the plan's openings, the reports, the lines, the mount and its end.
  * ===================================================================================================================================== */
 
+/**
+ * Whether the engine lets go at this tap (P15a's `physicsSignal`, review N1): a `signal` holder at once, a `limit` holder from her second tap,
+ * a `blackout` holder never. Her tap line is said only when she keeps the commander, so her words never contradict the engine's answer.
+ */
+function tapReleases(): boolean {
+  if (!E || !R.run) return false;
+  const holds = effectiveHoldsUntil(E.env.state(), E.env.registries, R.run.holderId);
+  return holds === 'signal' || (holds === 'limit' && R.run.taps > 0);
+}
 /** The beat of the running segment at a time of the loop's clock (an opening fires on its beat's start: moved by her delay, it is on a later beat). */
 function beatAt(at: number): number {
   const seg = R.seg;
