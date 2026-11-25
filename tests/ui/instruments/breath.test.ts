@@ -48,6 +48,8 @@ afterEach(() => {
 
 const ANN = 'unit_ann';
 const ON = ['worship', 'restraint', 'service', 'objectification', 'humiliation', 'explicit_scenes'];
+/** Breath and her own activity (passive): the instrument draws it. Breath with saturation (`smothered_armpit`) is the card's (review I2). */
+const SEAT = 'under_her_seat';
 /** A plan of 14 beats with her openings where asked (neutral width 600 unless given). */
 function planOf(openings: Record<number, { widthMs?: number; false?: true; cue?: 'window_open' | 'window_false' | null }>): SegmentPlan {
   return {
@@ -61,7 +63,7 @@ function planOf(openings: Record<number, { widthMs?: number; false?: true; cue?:
 }
 
 /** Ann holds the commander (a breathing contact), one segment running in real time, with a scripted plan. */
-function hold(contact = 'smothered_armpit', plan = planOf({ 3: {}, 6: {} }), location = 'quarters_commander'): CampaignState {
+function hold(contact = SEAT, plan = planOf({ 3: {}, 6: {} }), location = 'quarters_commander'): CampaignState {
   registerFrameReader(() => 'play');
   const s = campaign(reg, 4);
   setRelation(s, ANN, { stateId: 'confidant' });
@@ -215,6 +217,18 @@ describe('the breath instrument on the scene', () => {
     expect(breathMatches({ ...p, physicsId: 'gulp' } as PhysicsRun, s, reg)).toBe(false);
     expect(breathMatches({ ...p, physicsId: 'weight' } as PhysicsRun, s, reg)).toBe(false);
     expect(breathMatches({ ...p, second: { physicsId: 'weight', gauge: 100, capacity: 100, streak: 0 } }, s, reg)).toBe(false);
+    // a second that needs an input the instrument does not offer (saturation's mouth breath): the card draws the pair
+    for (const contact of ['smothered_armpit', 'face_to_bottom']) {
+      const t = hold(contact);
+      const r = t.scene!.physics!;
+      expect(r.second?.physicsId, contact).toBe('saturation');
+      expect(breathMatches(r, t, reg), contact).toBe(false);
+      expect(instrumentFor(r, t, reg, DEFAULT_SETTINGS), contact).toBeNull();
+    }
+    const drawn = draw(hold('smothered_armpit'));
+    expect(drawn.q('.alius-breath')).toBeNull();
+    expect(drawn.q('.alius-physics[data-run="p1"]')).not.toBeNull();
+    expect(breathMatches({ ...p, second: { physicsId: 'her_activity', gauge: 0, capacity: 100, streak: 0 } }, s, reg)).toBe(true);
   });
 
   it('draws in the effects layer, no card, no [data-analyze] over the play surface; TAP and the gap carry their glossary entries', () => {
@@ -230,7 +244,7 @@ describe('the breath instrument on the scene', () => {
   });
 
   it('inputs: an opening held from its rise to its fall reports the whole share; an over-hold she noticed is a strain of 1 and moves her next opening a beat', () => {
-    const t = draw(hold('smothered_armpit', planOf({ 3: {}, 6: {} })));
+    const t = draw(hold(SEAT, planOf({ 3: {}, 6: {} })));
     t.to(3 * BEAT - 50);
     expect(_breath.G.phase).toBe('loop');
     expect(_breath.G.win).toBeNull();
@@ -256,7 +270,7 @@ describe('the breath instrument on the scene', () => {
   });
 
   it('inputs: a short over-hold (past 150 ms, let go before 450) is a strain of 0.5, sent when the press ends; a missed opening sends nothing', () => {
-    const t = draw(hold('smothered_armpit', planOf({ 3: {}, 9: {} })));
+    const t = draw(hold(SEAT, planOf({ 3: {}, 9: {} })));
     t.to(5 * BEAT);
     t.key('keydown', ' ');
     t.to(5 * BEAT + 300);
@@ -268,7 +282,7 @@ describe('the breath instrument on the scene', () => {
   });
 
   it('a false window reached for is a breathe on its beat (the engine counts it as taken); her line is the cue pool\'s', () => {
-    const t = draw(hold('smothered_armpit', planOf({ 3: { false: true, widthMs: 450 } })));
+    const t = draw(hold(SEAT, planOf({ 3: { false: true, widthMs: 450 } })));
     t.to(3 * BEAT + 200);
     expect(t.q('.alius-breath-hand')!.textContent).toContain('her window_open'); // the lie: "now." on a false window
     t.mouse('mousedown');
@@ -281,7 +295,7 @@ describe('the breath instrument on the scene', () => {
 
   it('a cruel holder\'s silent opening writes no line; a breath through the gap of a leaky seal is reported at once', () => {
     registerPhysicsStyle(() => ({ primary: 'cruel' }));
-    const s = hold('smothered_armpit', planOf({ 3: { widthMs: 250, cue: null } }));
+    const s = hold(SEAT, planOf({ 3: { widthMs: 250, cue: null } }));
     s.scene!.physics!.seal = 'leaky';
     const t = draw(s);
     t.to(3 * BEAT + 100);
@@ -345,7 +359,7 @@ describe('the breath instrument on the scene', () => {
     expect(ceilingOf(s, reg, 'roof', null)[0]!.file).toMatch(/ceiling_sky_day/);
     expect(ceilingOf(s, reg, 'nowhere', null)).toEqual([]);
     const t = draw(hold());
-    expect(_breath.S.kind).toBe('wedge');
+    expect(_breath.S.kind).toBe('seat');
     expect(t.q('.alius-breath-ceiling')!.style.backgroundImage).toContain('/x/content/core/art/backdrops/ceiling_room_1.webp');
     t.screen.dispose();
     draw(hold('smothered_breasts', planOf({ 3: {} })));

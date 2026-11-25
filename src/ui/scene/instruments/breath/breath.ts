@@ -975,13 +975,16 @@ export function startBreath(env: InstrumentEnv, run: PhysicsRun): InstrumentRun 
   };
 }
 
-/** The breathing physics of a run: a timing interaction with a capacity gauge (read by field), alone or with a second that needs no input. */
+/**
+ * The breathing physics of a run: a timing interaction with a capacity gauge (read by field), alone or with a second that takes no input of
+ * the commander's (`passive`). A second that does (a `hold`'s weight, a `decision`'s mouth breath: breath.html has neither) is left to the
+ * card until its own instrument draws the pair.
+ */
 export function breathMatches(run: PhysicsRun, _state: CampaignState, reg: Registries): boolean {
   const p = reg.contactPhysics.get(run.physicsId);
   if (p?.interaction !== 'timing' || (p.gauge as { kind?: string } | undefined)?.kind !== 'capacity') return false;
   if (!run.second) return true;
-  const second = reg.contactPhysics.get(run.second.physicsId)?.interaction;
-  return second === 'decision' || second === 'passive';
+  return reg.contactPhysics.get(run.second.physicsId)?.interaction === 'passive';
 }
 
 registerInstrument({ id: 'breath', matches: breathMatches, start: startBreath });

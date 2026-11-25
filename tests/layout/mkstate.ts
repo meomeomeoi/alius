@@ -125,18 +125,18 @@ slaphold.scene!.physics.segment = { n: 1, state: 'running', plan: { beats: [{ cu
 out.slaphold = slaphold;
 
 /**
- * P10e-e Task 14: Ann holds the commander's face under her arm (`smothered_armpit`: breath, the wedge of dark) in the commander's quarters,
+ * P10e-e Task 14: Ann sits on the commander's face (`under_her_seat`: breath, her silhouette from below, and her own activity) in the commander's quarters,
  * real time mirrored, the first segment running with her openings every second beat (`breathhold`: the stop word's pill must stay clickable
  * and end the hold mid-breath; `breath`: the shots, whose page clears the plan's openings with `&quiet=1` and drives the windows itself).
  */
 function breathing(): CampaignState {
   const s = campaign(reg, 4);
   setRelation(s, ANN, { stateId: 'confidant' });
-  enable(s, 'worship', 'restraint');
+  enable(s, 'objectification', 'restraint');
   s.settings.physicsRealtime = true; // the campaign's mirror of real time (the instrument needs it)
   const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
   const d = r.state;
-  setBlocking(d, { registries: reg }, { person: ANN, field: 'contact', value: 'smothered_armpit', with: COMMANDER }, { at: 1, source: 'engine' });
+  setBlocking(d, { registries: reg }, { person: ANN, field: 'contact', value: 'under_her_seat', with: COMMANDER }, { at: 1, source: 'engine' });
   if (!d.scene!.physics) throw new Error('breath: no hold runs');
   d.scene!.physics.segment = {
     n: 1, state: 'running',

@@ -163,9 +163,9 @@ function slapMoments() {
 }
 
 /**
- * breath.html: breathing (Task 14). The port is the `breath` fixture (Ann holds the commander's face under her arm: `smothered_armpit`, the
- * wedge of dark, the commander's quarters, the ceiling `room_1`), its plan's openings cleared (`&quiet=1`) and her style from `&style=`; the
- * prototype is set to the same (`kind: 'wedge'`, her style). Both pages run on Playwright's fake clock, paused: each moment begins the
+ * breath.html: breathing (Task 14). The port is the `breath` fixture (Ann sits on the commander's face: `under_her_seat`, her silhouette
+ * from below, the commander's quarters, the ceiling `room_1`), its plan's openings cleared (`&quiet=1`) and her style from `&style=`; the
+ * prototype is set to the same (`kind: 'seat'`, her style). Both pages run on Playwright's fake clock, paused: each moment begins the
  * instrument at the same paused instant on both (`begin`), the clock is run to the loop, and the windows are opened by the same hooks (the
  * prototype's globals `openWindow`, `scheduleWindow`, `exit`, `blackout`, `G`; the port's `window.__breath`), so the shots are of the same
  * millisecond. The prototype's backdrop is its own stand-in (`quarters_dark`); the port's is the scene's.
@@ -188,7 +188,7 @@ function breathMoments() {
     proto: async (p) => {
       await fakeClock(p, () => document.fonts.ready);
       await p.addStyleTag({ content: '#panel, #debug, #summary, #start { visibility: hidden !important; }' }); // the reload dropped the script's own
-      await p.evaluate((st) => { Object.assign(window.__S, { style: st, kind: 'wedge', sound: false, reduced: false, cue: 'style' }); }, style);
+      await p.evaluate((st) => { Object.assign(window.__S, { style: st, kind: 'seat', sound: false, reduced: false, cue: 'style' }); }, style);
       await p.evaluate(() => { document.querySelector('#start').style.display = 'none'; begin(); });
     },
     port: async (p) => {
