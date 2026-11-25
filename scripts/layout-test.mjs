@@ -13,7 +13,7 @@ const server = await serveRoot();
 const port = server.port;
 
 const SIZES = [[1920, 1080], [1280, 800], [2560, 1440]];
-const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold'];
+const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold'];
 const failures = [];
 const faceOf = new Map(); // the dial's circle for `standing` (fixture `one`), per size
 const fail = (size, fixture, what) => failures.push(`${size[0]}x${size[1]} ${fixture}: ${what}`);
@@ -74,7 +74,7 @@ function measure(UI) {
 const browser = await chromium().launch({ args: ['--no-sandbox'] });
 for (const size of SIZES) {
   for (const fixture of FIXTURES) {
-    const { page: p, errors } = await openLayout(browser, port, fixture, size);
+    const { page: p, errors } = await openLayout(browser, port, fixture, size, fixture.startsWith('slap') ? '&deferSlap=1' : ''); // the slap starts after the scene is measured
     const m = await p.evaluate(measure, UI);
     // review I1: the stop word stays clickable over her call's fan (P15a: the stop word always ends a hold)
     if (fixture === 'callhold') {
@@ -102,6 +102,28 @@ for (const size of SIZES) {
         return ok ? 'ok' : 'covered';
       });
       if (pill !== 'ok') fail(size, fixture, `the stop word with the dial's menu open: ${pill}`);
+    }
+    // P10e-e Task 12: her slap draws under the scene's UI: mid-slap the stop word's pill (slaphold) and the input stay on top and clickable,
+    // and once the camera is home the scene's layers are as they were
+    if (fixture === 'slap' || fixture === 'slaphold') {
+      const before = await p.evaluate(() => [...document.querySelectorAll('.alius-layer-backdrop, .alius-layer-sprites')].map((el) => el.getAttribute('style') ?? ''));
+      await p.evaluate(() => window.__slapNow());
+      await p.waitForTimeout(600);
+      const mid = await p.evaluate((wantPill) => {
+        const out = [];
+        if (!document.querySelector('.alius-layer-effects .alius-slap')) out.push('no slap drawn');
+        if (document.querySelector('.alius-layer-moment .alius-slap, .alius-layer-ui .alius-slap')) out.push('the slap is drawn over the UI');
+        const top = (el) => { if (!el) return 'missing'; const b = el.getBoundingClientRect(); const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return hit === el || el.contains(hit) ? 'ok' : `covered by ${hit?.className ?? hit?.tagName}`; };
+        const input = top(document.querySelector('.alius-input-line'));
+        if (input !== 'ok') out.push(`the input line mid-slap: ${input}`);
+        if (wantPill) { const pill = top(document.querySelector('[data-stop-word]')); if (pill !== 'ok') out.push(`the stop word mid-slap: ${pill}`); }
+        if (!(document.querySelector('.alius-layer-backdrop')?.getAttribute('style') ?? '').includes('blur')) out.push('the camera did not take the backdrop');
+        return out;
+      }, fixture === 'slaphold');
+      for (const f of mid) fail(size, fixture, f);
+      await p.waitForTimeout(3600);
+      const after = await p.evaluate(() => [...document.querySelectorAll('.alius-layer-backdrop, .alius-layer-sprites')].map((el) => el.getAttribute('style') ?? ''));
+      if (JSON.stringify(after) !== JSON.stringify(before)) fail(size, fixture, `the camera did not put the layers back: ${JSON.stringify(before)} -> ${JSON.stringify(after)}`);
     }
     if (SHOTS) { mkdirSync(SHOTS, { recursive: true }); await p.screenshot({ path: join(SHOTS, `${fixture}-${size[0]}x${size[1]}.png`) }); }
     // A2: each woman at the pan that centres her (several women only); a screenshot of each when asked

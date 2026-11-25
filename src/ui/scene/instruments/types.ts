@@ -43,7 +43,15 @@ export interface InstrumentEnv {
    * never transform it; move `layers.sprites` (or a wrapper of the instrument's own inside it) instead.
    */
   spriteOf(unitId: string): HTMLImageElement | null;
-  setSprite(unitId: string, label: string): void;
+  /**
+   * Shows her sprite of a label. With `url` (a picture already resolved through `spriteUrl`) it is shown at once, with nothing in between;
+   * without, the scene resolves it (the avatar meanwhile, as her replies do). The label stays until her next reply sets another.
+   */
+  setSprite(unitId: string, label: string, url?: string): void;
+  /** The label her face shows now (her last reply's, or one an instrument set; `neutral` before any). */
+  faceOf(unitId: string): string;
+  /** The picture of her sprite for a label (null: she has none for it), decoded when it is there. */
+  spriteUrl(unitId: string, label: string): Promise<string | null>;
   state(): CampaignState;
   registries: Registries;
   settings(): AliusSettings;

@@ -7078,8 +7078,8 @@ function overrideOpen(state) {
 function openOverrideOf(state) {
   const o = overrideOpen(state);
   if (o === null) return null;
-  const holder2 = state.dynamic?.override;
-  if (holder2 !== void 0 && o === holder2) return { ...holder2, source: "holder", unitId: holder2.unitId };
+  const holder3 = state.dynamic?.override;
+  if (holder3 !== void 0 && o === holder3) return { ...holder3, source: "holder", unitId: holder3.unitId };
   return { ...o, source: "warden", unitId: wardenUnitId(state) ?? "" };
 }
 function wardenArgueStart(state, action) {
@@ -7326,7 +7326,7 @@ function validatePractice(raw, reg) {
   const dropped = [];
   if (raw === void 0) return { issues, dropped };
   if (!isObj(raw)) return { issues: ["practice must be an object"], dropped };
-  const pick3 = (field2, allowed, fallback) => {
+  const pick4 = (field2, allowed, fallback) => {
     const v = raw[field2];
     if (v === void 0) return fallback;
     if (typeof v === "string" && allowed.includes(v)) return v;
@@ -7367,11 +7367,11 @@ function validatePractice(raw, reg) {
   const practice = {
     categories,
     style: secondary === void 0 ? { primary } : { primary, secondary },
-    audience: pick3("audience", AUDIENCE, PRACTICE_DEFAULTS.audience),
-    inclination: pick3("inclination", INCLINATION, PRACTICE_DEFAULTS.inclination),
-    fairness: pick3("fairness", FAIRNESS, PRACTICE_DEFAULTS.fairness),
-    hintStyle: pick3("hintStyle", HINT_STYLE, PRACTICE_DEFAULTS.hintStyle),
-    drive: pick3("drive", DRIVE, PRACTICE_DEFAULTS.drive)
+    audience: pick4("audience", AUDIENCE, PRACTICE_DEFAULTS.audience),
+    inclination: pick4("inclination", INCLINATION, PRACTICE_DEFAULTS.inclination),
+    fairness: pick4("fairness", FAIRNESS, PRACTICE_DEFAULTS.fairness),
+    hintStyle: pick4("hintStyle", HINT_STYLE, PRACTICE_DEFAULTS.hintStyle),
+    drive: pick4("drive", DRIVE, PRACTICE_DEFAULTS.drive)
   };
   return { practice, issues, dropped };
 }
@@ -7482,8 +7482,8 @@ function witnessOf(state, reg, observerId, holderId) {
   return practiceOf(state, reg, observerId)?.categories[category]?.witness ?? "indifferent";
 }
 function reactionOf(state, reg, observerId, holderId) {
-  const frame = dynamicOf(state, observerId)?.frame;
-  if (frame !== void 0 && frame !== "equal") {
+  const frame2 = dynamicOf(state, observerId)?.frame;
+  if (frame2 !== void 0 && frame2 !== "equal") {
     const manner = practiceOf(state, reg, observerId)?.style.primary;
     if (manner === "ritual" || manner === "cold") return "respects";
     if (manner === "possessive" || manner === "cruel") return "competes";
@@ -10543,9 +10543,9 @@ var DynamicMilestoneSchema = BaseEntrySchema.extend({
   contentTags: tagList,
   description: str
 }).strict().superRefine((m, ctx2) => {
-  const frame = m.effects.some((e) => e.type === "frame");
-  if (frame && m.from === m.to) ctx2.addIssue({ code: "custom", path: ["effects"], message: "a milestone inside one frame cannot change the frame" });
-  if (!frame && m.from !== m.to) ctx2.addIssue({ code: "custom", path: ["effects"], message: "a milestone that changes the frame needs the frame effect" });
+  const frame2 = m.effects.some((e) => e.type === "frame");
+  if (frame2 && m.from === m.to) ctx2.addIssue({ code: "custom", path: ["effects"], message: "a milestone inside one frame cannot change the frame" });
+  if (!frame2 && m.from !== m.to) ctx2.addIssue({ code: "custom", path: ["effects"], message: "a milestone that changes the frame needs the frame effect" });
   if (m.sworn === true !== m.effects.some((e) => e.type === "sworn")) ctx2.addIssue({ code: "custom", path: ["sworn"], message: "`sworn` and the sworn effect go together" });
 });
 var DynamicDomainSchema = BaseEntrySchema.extend({
@@ -11045,7 +11045,7 @@ function validateBond(raw, reg) {
   const bond = { ...MODEST_BOND, ownLimits: { categories: [] } };
   if (raw === void 0) return { bond, issues, valid };
   if (!isObj2(raw)) return { bond, issues: ["the bond profile must be an object"], valid };
-  const pick3 = (field2, allowed, fallback) => {
+  const pick4 = (field2, allowed, fallback) => {
     const v = raw[field2];
     if (v === void 0) return fallback;
     if (typeof v === "string" && allowed.includes(v)) {
@@ -11055,10 +11055,10 @@ function validateBond(raw, reg) {
     issues.push(`${field2} must be one of ${allowed.join(", ")}`);
     return fallback;
   };
-  bond.leadStyle = pick3("leadStyle", LEAD_STYLES, MODEST_BOND.leadStyle);
-  bond.attachment = pick3("attachment", ATTACHMENTS, MODEST_BOND.attachment);
-  bond.desire = pick3("desire", DESIRE_LEVELS, MODEST_BOND.desire);
-  bond.publicity = pick3("publicity", PUBLICITY_LEVELS, MODEST_BOND.publicity);
+  bond.leadStyle = pick4("leadStyle", LEAD_STYLES, MODEST_BOND.leadStyle);
+  bond.attachment = pick4("attachment", ATTACHMENTS, MODEST_BOND.attachment);
+  bond.desire = pick4("desire", DESIRE_LEVELS, MODEST_BOND.desire);
+  bond.publicity = pick4("publicity", PUBLICITY_LEVELS, MODEST_BOND.publicity);
   if (raw.caretaker !== void 0) {
     if (typeof raw.caretaker === "boolean") {
       bond.caretaker = raw.caretaker;
@@ -11766,8 +11766,8 @@ function evaluateAutomatic(draft, reg, unitId, opts) {
   }
   if (target === null) {
     const rank2 = cur?.priority ?? -1;
-    const pick3 = candidates(draft, reg, unitId, "automatic", void 0, opts?.allow).find((st) => st.priority > rank2);
-    if (pick3) target = pick3.id;
+    const pick4 = candidates(draft, reg, unitId, "automatic", void 0, opts?.allow).find((st) => st.priority > rank2);
+    if (pick4) target = pick4.id;
   }
   if (target !== null) events.push(enterState(draft, unitId, target, why), ...syncPublicity(draft, reg, unitId));
   const band2 = nextLoyaltyBand(rel.loyaltyBand, rel.trust, bandShift(dispositionById(draft, reg, unitId)));
@@ -11779,8 +11779,8 @@ function evaluateAutomatic(draft, reg, unitId, opts) {
 }
 function evaluateEvent(draft, reg, unitId, eventType) {
   if (!draft.relations[unitId] || !draft.squad.some((u) => u.id === unitId)) return [];
-  const pick3 = candidates(draft, reg, unitId, "event", eventType)[0];
-  return pick3 ? [enterState(draft, unitId, pick3.id, `event:${eventType}`), ...syncPublicity(draft, reg, unitId)] : [];
+  const pick4 = candidates(draft, reg, unitId, "event", eventType)[0];
+  return pick4 ? [enterState(draft, unitId, pick4.id, `event:${eventType}`), ...syncPublicity(draft, reg, unitId)] : [];
 }
 var ORDER = ["too_soon", "no_trust", "not_interested", "committed"];
 function failedGroup(state, reg, unitId, cond) {
@@ -11970,7 +11970,7 @@ function pressureGate(state, reg, unitId, mechanic) {
   if (unit4.bond === void 0) return "no imported bond profile";
   const bond = bondOf(unit4);
   const lead = leadRank(bond.leadStyle);
-  const G2 = TUNING.personal.gates;
+  const G3 = TUNING.personal.gates;
   const tier = bondTierOf(state, reg, unitId);
   switch (mechanic) {
     case "device":
@@ -11982,7 +11982,7 @@ function pressureGate(state, reg, unitId, mechanic) {
       return jealousyAllowed(state, reg, unitId) ? null : "jealousy games are off";
     }
     case "courtship": {
-      if (lead < G2.courtship.minLeadRank) return "her lead style is too yielding";
+      if (lead < G3.courtship.minLeadRank) return "her lead style is too yielding";
       if (!intimacyOf(state).romance) return "romance is off";
       if (tier === "romantic") return null;
       const open3 = ROMANTIC_PROPOSALS.some((kind) => "stateId" in stateForProposal(state, reg, unitId, kind));
@@ -11997,11 +11997,11 @@ function pressureGate(state, reg, unitId, mechanic) {
     case "token":
       if (tier === null) return "no close or romantic tier";
       if (bond.attachment === "avoidant") return "avoidant attachment";
-      return rel.affinity >= G2.token.minAffinity ? null : "Affinity too low";
+      return rel.affinity >= G3.token.minAffinity ? null : "Affinity too low";
     case "wager": {
-      if (lead < G2.wager.minLeadRank) return "her lead style is too yielding";
-      if (rel.affinity >= G2.wager.minAffinity) return null;
-      return (impunityOf(state, reg, unitId)?.value ?? 0) >= G2.wager.minImpunity ? null : "neither warm nor brazen enough";
+      if (lead < G3.wager.minLeadRank) return "her lead style is too yielding";
+      if (rel.affinity >= G3.wager.minAffinity) return null;
+      return (impunityOf(state, reg, unitId)?.value ?? 0) >= G3.wager.minImpunity ? null : "neither warm nor brazen enough";
     }
   }
 }
@@ -13117,8 +13117,8 @@ function holderCap(state) {
   return h2 === void 0 ? 0 : h2 === "any" ? Infinity : h2;
 }
 function holdersAtPlay(state) {
-  const play = frameRank("play");
-  return state.squad.filter((u) => u.kind === "named" && isLiving(u) && frameRank(state.relations[u.id]?.dynamic?.frame ?? "equal") >= play).map((u) => u.id);
+  const play2 = frameRank("play");
+  return state.squad.filter((u) => u.kind === "named" && isLiving(u) && frameRank(state.relations[u.id]?.dynamic?.frame ?? "equal") >= play2).map((u) => u.id);
 }
 function canHold(state, reg, unitId, opts = {}) {
   return holdReason(state, reg, unitId, { ...opts, seeded: state.dynamic?.setup.units[unitId]?.seeded === true });
@@ -13232,23 +13232,23 @@ function cabinMap(state, reg) {
   state.squad.filter((u) => u.kind === "named").forEach((u, k) => {
     if (!isLiving(u)) return;
     const start = k % cabins.length;
-    let pick3 = cabins[start];
+    let pick4 = cabins[start];
     for (let i = 0; i < cabins.length; i++) {
       const c = cabins[(start + i) % cabins.length];
       if (!taken.has(String(c.id))) {
-        pick3 = c;
+        pick4 = c;
         break;
       }
     }
-    taken.add(String(pick3.id));
-    out.set(u.id, pick3);
+    taken.add(String(pick4.id));
+    out.set(u.id, pick4);
   });
   for (const u of state.squad) {
     if (u.kind === "named" || !isLiving(u)) continue;
     const free = [...cabins].reverse().find((c) => !taken.has(String(c.id)));
-    const pick3 = free ?? cabins[cabins.length - 1];
-    taken.add(String(pick3.id));
-    out.set(u.id, pick3);
+    const pick4 = free ?? cabins[cabins.length - 1];
+    taken.add(String(pick4.id));
+    out.set(u.id, pick4);
   }
   return out;
 }
@@ -13264,8 +13264,8 @@ function roomOfPerson(state, reg, here, personId) {
     const keeper = heldNow(state)?.by;
     const own = keeper !== void 0 ? cabinOf(state, reg, keeper) : null;
     if (own !== null) return own;
-    const holder2 = secondPlaceHolder(state, reg);
-    return (holder2 !== null ? cabinOf(state, reg, holder2) : null) ?? commanderCabin(reg) ?? null;
+    const holder3 = secondPlaceHolder(state, reg);
+    return (holder3 !== null ? cabinOf(state, reg, holder3) : null) ?? commanderCabin(reg) ?? null;
   }
   const w = here.find((x) => x.unitId === personId);
   if (!w || w.roomId === null) return null;
@@ -13437,10 +13437,10 @@ function place(state, reg, rooms, unit4) {
   const weights = rooms.map((room2) => routineWeight(state, reg, room2, unit4));
   const total2 = weights.reduce((a, b) => a + b, 0);
   if (total2 <= 0) return { unitId: unit4.id, roomId: null, reason: "nowhere" };
-  let pick3 = fnv1a3(`${state.day}|${state.slot}|${unit4.id}`) % total2;
+  let pick4 = fnv1a3(`${state.day}|${state.slot}|${unit4.id}`) % total2;
   for (let i = 0; i < rooms.length; i++) {
-    if (pick3 < weights[i]) return { unitId: unit4.id, roomId: rooms[i].id, reason: "routine" };
-    pick3 -= weights[i];
+    if (pick4 < weights[i]) return { unitId: unit4.id, roomId: rooms[i].id, reason: "routine" };
+    pick4 -= weights[i];
   }
   return { unitId: unit4.id, roomId: null, reason: "nowhere" };
 }
@@ -13739,13 +13739,13 @@ function dynamicAxisEntryId(d) {
   return d.field === "holds_until" ? "expect:holds_until" : "expect:worship.any";
 }
 function scaleOfAxis(key) {
-  const S2 = TUNING.development.scales;
+  const S3 = TUNING.development.scales;
   const field2 = bondField(key);
-  if (field2 !== null) return S2[field2];
+  if (field2 !== null) return S3[field2];
   const d = dynamicAxis(key);
   if (d === null || d.field === "fixed") return null;
-  if (d.kind === "practice") return d.field === "as" ? S2.practiceAs : d.field === "witness" ? S2.practiceWitness : S2.secondary;
-  return d.field === "holds_until" ? S2.holdsUntil : S2.attitude;
+  if (d.kind === "practice") return d.field === "as" ? S3.practiceAs : d.field === "witness" ? S3.practiceWitness : S3.secondary;
+  return d.field === "holds_until" ? S3.holdsUntil : S3.attitude;
 }
 function discreteAxis(unit4, key) {
   const scale = scaleOfAxis(key);
@@ -14160,7 +14160,7 @@ function recordWitnessOf(draft, reg, unitId, event, subjectId) {
 }
 
 // src/engine/discipline/perception.ts
-var punishmentFor = (reg, measure) => measure === void 0 ? void 0 : reg.punishments.get(measure);
+var punishmentFor = (reg, measure2) => measure2 === void 0 ? void 0 : reg.punishments.get(measure2);
 function perceptionOf(_reg, unit4, punishment) {
   const owned = /* @__PURE__ */ new Set([...likesOf(unit4), ...dislikesOf(unit4), ...unit4.triggers]);
   let best;
@@ -14354,21 +14354,21 @@ function applyEventToUnit(draft, reg, unitId, event, opts = {}) {
 }
 
 // src/engine/discipline/punish.ts
-var effectsOf = (reg, measure) => punishmentFor(reg, measure)?.sideEffects ?? [];
+var effectsOf = (reg, measure2) => punishmentFor(reg, measure2)?.sideEffects ?? [];
 var nameOf2 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
 var restrictionKind = (e) => e.type === "confine" ? "confined" : e.type === "no_leave" ? "no_leave" : e.type === "bench" ? "benched" : e.type === "duty" ? "duty" : null;
-function checkPunish(state, reg, unitId, measure, days) {
+function checkPunish(state, reg, unitId, measure2, days) {
   const unit4 = state.squad.find((u) => u.id === unitId);
   if (!unit4 || !state.relations[unitId]) return `Unknown unit "${unitId}".`;
   if (unit4.kind !== "named") return `${unit4.displayName} is a grunt: grunts are not disciplined this way.`;
   if (!isLiving(unit4)) return `${unit4.displayName} is no longer in service.`;
-  const pun = punishmentFor(reg, measure);
-  if (!pun) return `Unknown punishment "${measure}".`;
+  const pun = punishmentFor(reg, measure2);
+  if (!pun) return `Unknown punishment "${measure2}".`;
   const label2 = String(pun.label);
-  if (state.discipline?.applications.some((a) => a.unitId === unitId && a.measure === measure && a.day === state.day)) {
+  if (state.discipline?.applications.some((a) => a.unitId === unitId && a.measure === measure2 && a.day === state.day)) {
     return `${unit4.displayName} was already given ${label2} today.`;
   }
-  const effects2 = effectsOf(reg, measure);
+  const effects2 = effectsOf(reg, measure2);
   const confine = effects2.find((e) => e.type === "confine");
   if (days !== void 0 && confine && (!Number.isInteger(days) || days < confine.minDays || days > confine.maxDays)) {
     return `${label2} lasts ${confine.minDays} to ${confine.maxDays} days.`;
@@ -14543,8 +14543,8 @@ function captureInverse(draft, unitId, fn) {
   const appraisalsBefore = appraisalIds(unit4);
   const events = fn();
   const inverse = {};
-  const recorded = appraisalIds(draft.squad.find((u) => u.id === unitId)).filter((id) => !appraisalsBefore.includes(id));
-  if (recorded.length > 0) inverse.appraisals = recorded.map((id) => ({ unitId, id }));
+  const recorded2 = appraisalIds(draft.squad.find((u) => u.id === unitId)).filter((id) => !appraisalsBefore.includes(id));
+  if (recorded2.length > 0) inverse.appraisals = recorded2.map((id) => ({ unitId, id }));
   const moved = {};
   const deedsAfter = deedsOf(draft);
   for (const k of Object.keys(deedsAfter)) if (deedsAfter[k] !== deedsBefore[k]) moved[k] = deedsAfter[k] - deedsBefore[k];
@@ -14591,10 +14591,10 @@ var unitThreat = (draft, unitId) => draft.discipline?.threats.find((t) => t.unit
 var removeThreat = (draft, id) => {
   if (draft.discipline) draft.discipline.threats = draft.discipline.threats.filter((t) => t.id !== id);
 };
-function measureSeverity(reg, measure) {
-  if (measure === "leash") return 5;
-  if (measure === "unspecified") return 0;
-  const sev = reg.punishments.get(measure)?.severity;
+function measureSeverity(reg, measure2) {
+  if (measure2 === "leash") return 5;
+  if (measure2 === "unspecified") return 0;
+  const sev = reg.punishments.get(measure2)?.severity;
   return typeof sev === "number" ? sev : null;
 }
 function registerThreat(draft, ctx2, unitId, event, src) {
@@ -14603,13 +14603,13 @@ function registerThreat(draft, ctx2, unitId, event, src) {
   const created = draft.discipline === void 0;
   const { events, inverse } = captureInverse(draft, unitId, () => [...applyEventToUnit(draft, reg, unitId, event), ...evaluateAutomatic(draft, reg, unitId)]);
   if (created) inverse.createdDiscipline = true;
-  const measure = event.measure ?? "unspecified";
+  const measure2 = event.measure ?? "unspecified";
   const old = unitThreat(draft, unitId);
   if (old) inverse.threat = structuredClone(old);
   const threat = {
     id: nextId(draft, "th"),
     unitId,
-    measure,
+    measure: measure2,
     day: draft.day,
     deadlineDay: old?.deadlineDay ?? draft.day + 1,
     believed,
@@ -14620,7 +14620,7 @@ function registerThreat(draft, ctx2, unitId, event, src) {
   };
   const d = disciplineOf(draft);
   d.threats = [...d.threats.filter((t) => t.unitId !== unitId), threat];
-  events.push({ type: "threat_registered", threatId: threat.id, unitId, measure, believed, channel: src.channel });
+  events.push({ type: "threat_registered", threatId: threat.id, unitId, measure: measure2, believed, channel: src.channel });
   return events;
 }
 function lapseThreat(draft, ctx2, threat) {
@@ -14701,11 +14701,11 @@ function applyDisciplineEvent(draft, ctx2, unitId, event, src) {
   if (!unit4 || unit4.kind !== "named") return [];
   if (event.type === "threatened") return registerThreat(draft, ctx2, unitId, event, src);
   if (event.type === "commander_enforced" && punishmentFor(ctx2.registries, event.measure ?? "verbal")) {
-    const measure = event.measure ?? "verbal";
-    if (checkPunish(draft, ctx2.registries, unitId, measure) !== null) return [];
+    const measure2 = event.measure ?? "verbal";
+    if (checkPunish(draft, ctx2.registries, unitId, measure2) !== null) return [];
     return applyPunishment(draft, ctx2, {
       unitId,
-      measure,
+      measure: measure2,
       source: "dialogue",
       channel: src.channel,
       ...event.reading ? { reading: event.reading } : {},
@@ -14731,10 +14731,10 @@ function applyDisciplineEvent(draft, ctx2, unitId, event, src) {
       break;
     }
     case "commander_enforced": {
-      const measure = event.measure ?? "verbal";
-      const sev = measureSeverity(ctx2.registries, measure);
+      const measure2 = event.measure ?? "verbal";
+      const sev = measureSeverity(ctx2.registries, measure2);
       events.push(...enforce(draft, ctx2, unitId, {
-        measure,
+        measure: measure2,
         severity: sev !== null && sev >= 1 && sev <= 4 ? sev : 1,
         recordDelta: TUNING.impunity.enforcedFallback
       }).events);
@@ -14785,11 +14785,11 @@ function addRestriction(draft, r) {
   disciplineOf(draft).restrictions.push(r);
   return [{ type: "restriction_started", unitId: r.unitId, kind: r.kind, ...r.untilDay !== void 0 ? { untilDay: r.untilDay } : {} }];
 }
-function removeRestrictions(draft, pick3) {
+function removeRestrictions(draft, pick4) {
   const d = draft.discipline;
   if (!d) return [];
-  const gone3 = d.restrictions.filter(pick3);
-  if (gone3.length > 0) d.restrictions = d.restrictions.filter((r) => !pick3(r));
+  const gone3 = d.restrictions.filter(pick4);
+  if (gone3.length > 0) d.restrictions = d.restrictions.filter((r) => !pick4(r));
   return gone3;
 }
 function expireRestrictions(draft) {
@@ -15584,14 +15584,14 @@ function buildMission(draft, ctx2, o) {
   const reg = ctx2.registries;
   const tpl = reg.missionTemplates.get(o.templateId);
   const region = reg.regions.get(o.regionId);
-  const pick3 = (list5) => list5[ctx2.rng.int(0, list5.length - 1)];
+  const pick4 = (list5) => list5[ctx2.rng.int(0, list5.length - 1)];
   const objective = tpl.objectives.find((x) => x.node === o.objectiveNode) ?? tpl.objectives[0];
   const mission = {
     id: nextId(draft, "m"),
     source: o.source,
     templateId: o.templateId,
-    title: (o.title ?? pick3(tpl.titles)).slice(0, TUNING.director.titleMax),
-    brief: (o.brief ?? pick3(tpl.briefs)).slice(0, TUNING.director.briefMax),
+    title: (o.title ?? pick4(tpl.titles)).slice(0, TUNING.director.titleMax),
+    brief: (o.brief ?? pick4(tpl.briefs)).slice(0, TUNING.director.briefMax),
     regionId: o.regionId,
     danger: clamp11(Math.round(o.danger ?? region.danger), tpl.dangerRange[0], tpl.dangerRange[1]),
     objective: { node: objective.node, condition: objective.condition },
@@ -16036,9 +16036,9 @@ function deliverNews(draft, reg, day) {
   for (; ; ) {
     if (told().filter((r) => r.day === day).length >= cap9) break;
     const last = told().at(-1);
-    const pick3 = inQueue().filter((i) => i.urgent !== true).filter((i) => last === void 0 || i.category !== last.category).filter((i) => !told().some((r) => r.unitId === i.unitId && day - r.day < t.sameWomanDays)).filter((i) => i.kind !== "hobby" || life.delivered.filter((r) => r.hobby && day - r.day < 7).length < t.hobbyWeek).sort(order)[0];
-    if (!pick3) break;
-    events.push(...deliver(draft, reg, life, pick3, day));
+    const pick4 = inQueue().filter((i) => i.urgent !== true).filter((i) => last === void 0 || i.category !== last.category).filter((i) => !told().some((r) => r.unitId === i.unitId && day - r.day < t.sameWomanDays)).filter((i) => i.kind !== "hobby" || life.delivered.filter((r) => r.hobby && day - r.day < 7).length < t.hobbyWeek).sort(order)[0];
+    if (!pick4) break;
+    events.push(...deliver(draft, reg, life, pick4, day));
   }
   return events;
 }
@@ -16303,10 +16303,10 @@ function practise(draft, reg, unitId, hobbyId, day, slot2, opts = {}) {
   } else {
     const prev = n === 0 ? 0 : milestoneAt(life.salt, unitId, hobbyId, n - 1);
     const next = milestoneAt(life.salt, unitId, hobbyId, n);
-    const stop2 = prev + t.plateauAt * (next - prev);
+    const stop = prev + t.plateauAt * (next - prev);
     const skill = h2.skill + practiceGain(unit4, h2);
-    if (skill >= stop2) {
-      h2.skill = Math.max(stop2, h2.skill);
+    if (skill >= stop) {
+      h2.skill = Math.max(stop, h2.skill);
       h2.plateau = { at: h2.skill, since: day };
       events.push({ type: "hobby_plateau", unitId, hobbyId });
     } else {
@@ -16672,7 +16672,7 @@ function injureCommander(draft, days) {
 }
 
 // src/engine/dynamic/cover.ts
-var coverOf = (frame) => frame === "role" ? TUNING.dynamic.cover.role : frame === "rule" ? TUNING.dynamic.cover.rule : 0;
+var coverOf = (frame2) => frame2 === "role" ? TUNING.dynamic.cover.role : frame2 === "rule" ? TUNING.dynamic.cover.rule : 0;
 function coverMult(state, reg) {
   if (!dynamicOn(state, reg)) return 1;
   let best = 0;
@@ -16851,22 +16851,22 @@ function addDefiance(draft, ctx2, amount) {
 function checkEscalation(draft, ctx2) {
   const w = wardenOf(draft);
   if (!w) return [];
-  const E = TUNING.warden.escalation;
+  const E2 = TUNING.warden.escalation;
   const events = [];
   const warn = (level) => {
     w.warnings.push({ level, day: draft.day });
     events.push({ type: "warden_warning", level });
   };
-  if (w.defiance >= E.warning1 && w.warnings.length === 0) warn(1);
-  if (w.defiance >= E.warning2) {
+  if (w.defiance >= E2.warning1 && w.warnings.length === 0) warn(1);
+  if (w.defiance >= E2.warning2) {
     if (w.warnings.length === 1 && w.warnings[0].day < draft.day) warn(2);
-    else if (w.warnings.length < 2) w.defiance = E.warning2 - 1;
+    else if (w.warnings.length < 2) w.defiance = E2.warning2 - 1;
   }
-  if (w.defiance >= E.terminate) {
+  if (w.defiance >= E2.terminate) {
     const second = w.warnings[1];
     if (w.warnings.length >= 2 && second.day < draft.day) {
       events.push({ type: "commander_terminated" }, ...commanderDies(draft, ctx2, "terminated"));
-    } else w.defiance = E.terminate - 1;
+    } else w.defiance = E2.terminate - 1;
   }
   return events;
 }
@@ -17587,8 +17587,8 @@ function breakdownAction(ctx2, cid, opts = {}) {
     case "random_skill": {
       const options2 = c.skills.map((id) => skillById(ctx2.reg, id)).filter((s) => !!s && s.kind !== "passive" && s.kind !== "ultimate" && (c.cooldowns[s.id] ?? 0) === 0).map((s) => ({ s, legal: legalTargets(cs, cid, s, ctx2.reg) })).filter((o) => o.legal.length > 0);
       if (options2.length === 0) return { kind: "pass" };
-      const pick3 = ctx2.rng.pick(options2);
-      return { kind: "skill", skillId: pick3.s.id, targetCid: ctx2.rng.pick(pick3.legal) };
+      const pick4 = ctx2.rng.pick(options2);
+      return { kind: "skill", skillId: pick4.s.id, targetCid: ctx2.rng.pick(pick4.legal) };
     }
     default:
       return null;
@@ -17685,8 +17685,8 @@ function checkCondition(ctx2, cid, when, targetCid, skillId) {
     if (ordered !== when.orderedThisRound) return false;
   }
   if (when.commanderBuildIn !== void 0) {
-    const build2 = cs.commander?.build;
-    if (build2 === void 0 || !when.commanderBuildIn.includes(build2)) return false;
+    const build3 = cs.commander?.build;
+    if (build3 === void 0 || !when.commanderBuildIn.includes(build3)) return false;
   }
   if (when.upkeepWithinDays !== void 0 && !(upkeepAge(ctx2, c) <= when.upkeepWithinDays)) return false;
   if (when.upkeepOlderThanDays !== void 0 && !(upkeepAge(ctx2, c) > when.upkeepOlderThanDays)) return false;
@@ -18476,7 +18476,7 @@ function regardFromEvents(draft, reg, events) {
   const out = [];
   const noted2 = () => draft.dynamic.noted ??= {};
   for (const e of events) {
-    const holder2 = idOf(e.holderId);
+    const holder3 = idOf(e.holderId);
     const runId = idOf(e.runId);
     switch (e.type) {
       case "physics_started":
@@ -18485,14 +18485,14 @@ function regardFromEvents(draft, reg, events) {
       case "physics_caught":
       case "physics_slip":
         if (runId !== void 0) noted2().dirtyRun = runId;
-        if (holder2 !== void 0) {
-          out.push(...regardFall(draft, reg, holder2, e.type === "physics_caught" ? R2.acts.caught : R2.acts.slip, { witness: false, cause: e.type }));
-          resetServed(draft, holder2);
+        if (holder3 !== void 0) {
+          out.push(...regardFall(draft, reg, holder3, e.type === "physics_caught" ? R2.acts.caught : R2.acts.slip, { witness: false, cause: e.type }));
+          resetServed(draft, holder3);
         }
         break;
       case "physics_outcome": {
         const clean12 = (e.result === "released" || e.result === "checked") && !(runId !== void 0 && draft.dynamic.noted?.dirtyRun === runId);
-        if (clean12 && holder2 !== void 0) out.push(...regardRise(draft, reg, holder2, "dignity"));
+        if (clean12 && holder3 !== void 0) out.push(...regardRise(draft, reg, holder3, "dignity"));
         if (draft.dynamic.noted?.dirtyRun === runId) delete draft.dynamic.noted.dirtyRun;
         break;
       }
@@ -18850,8 +18850,8 @@ function rollBookings(draft, ctx2) {
     if (!ctx2.rng.chance(bookingChance(draft, reg, u.id))) continue;
     const kinds2 = bookingKindsFor(draft, reg, u.id);
     if (kinds2.length === 0) continue;
-    let pick3 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
-    const kind = kinds2.find((k) => (pick3 -= Number(k.weight)) < 0) ?? kinds2[0];
+    let pick4 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
+    const kind = kinds2.find((k) => (pick4 -= Number(k.weight)) < 0) ?? kinds2[0];
     const problem = consentProblem(draft, reg, { unitId: u.id });
     if (problem !== null) {
       noteConsentRefusal(draft, reg, u.id, problem);
@@ -19433,8 +19433,8 @@ function bandMinAt(reg, index2) {
 function holdBandOf(reg, hold) {
   return bandsOf2(reg)[bandIndex(reg, hold)]?.id ?? "";
 }
-function frameEntry(reg, frame) {
-  return reg.dynamicFrames.get(frame);
+function frameEntry(reg, frame2) {
+  return reg.dynamicFrames.get(frame2);
 }
 function compatibilityOf(state, reg, unitId) {
   const dyn = dynamicOf(state, unitId);
@@ -19479,9 +19479,9 @@ function addHold(draft, ctx2, unitId, base, cause, opts = {}) {
       else if (primary === "cold") delta *= TUNING.dynamic.romanticTier.cold;
     }
   }
-  const frame = frameEntry(reg, dyn.frame);
-  const floor = frame?.holdFloor ?? 0;
-  const ceiling = frame?.holdCeiling ?? 100;
+  const frame2 = frameEntry(reg, dyn.frame);
+  const floor = frame2?.holdFloor ?? 0;
+  const ceiling = frame2?.holdCeiling ?? 100;
   const from = dyn.hold;
   let to = round43(Math.min(ceiling, Math.max(floor, from + delta)));
   if (gain2 && to < from) to = from;
@@ -20225,16 +20225,16 @@ function reactToDynamic(draft, ctx2, observerId, holderId) {
   if (!dynamicOn(draft, reg) || observerId === holderId || observer === void 0 || observer.kind !== "named" || !isLiving(observer)) return [];
   const events = [];
   const reaction = reactionOf(draft, reg, observerId, holderId);
-  const holder2 = nameOf4(draft, holderId);
+  const holder3 = nameOf4(draft, holderId);
   if (reaction === "drawn") events.push(...addHold(draft, ctx2, observerId, TUNING.dynamic.gains.witness_drawn, "witness_drawn"));
   else if (reaction === "dislikes") events.push(...askAbout(draft, ctx2, observerId, holderId));
-  else if (reaction === "respects") reactionFact(draft, observerId, holderId, `AUTHOR TO WRITE: ${observer.displayName} respects what ${holder2} holds and keeps out of its way.`);
+  else if (reaction === "respects") reactionFact(draft, observerId, holderId, `AUTHOR TO WRITE: ${observer.displayName} respects what ${holder3} holds and keeps out of its way.`);
   else if (reaction === "competes") {
     const domainId = contestableDomain(draft, reg, observerId, holderId);
-    reactionFact(draft, observerId, holderId, `AUTHOR TO WRITE: ${observer.displayName} wants what ${holder2} holds and means to take it.`);
+    reactionFact(draft, observerId, holderId, `AUTHOR TO WRITE: ${observer.displayName} wants what ${holder3} holds and means to take it.`);
     if (domainId !== void 0 && dynamicOf(draft, observerId) !== void 0) events.push(...settleDomainConflict(draft, ctx2, observerId, holderId, domainId));
   }
-  if (leaderOf(draft)?.id === observerId) reactionFact(draft, observerId, holderId, `AUTHOR TO WRITE: ${observer.displayName} weighs what ${holder2} holds against her own standing.`);
+  if (leaderOf(draft)?.id === observerId) reactionFact(draft, observerId, holderId, `AUTHOR TO WRITE: ${observer.displayName} weighs what ${holder3} holds against her own standing.`);
   return events;
 }
 
@@ -20406,9 +20406,9 @@ function leavingQuarters(draft, ctx2, holders2) {
 function background(draft, ctx2, holders2) {
   const events = [];
   for (const h2 of holders2) {
-    const frame = dynamicOf(draft, h2).frame;
-    if (frame !== "role" && frame !== "rule") continue;
-    for (const o of othersOf(draft, h2)) events.push(...addSign(draft, ctx2, o, h2, frame === "role" ? "background_role" : "background_rule"));
+    const frame2 = dynamicOf(draft, h2).frame;
+    if (frame2 !== "role" && frame2 !== "rule") continue;
+    for (const o of othersOf(draft, h2)) events.push(...addSign(draft, ctx2, o, h2, frame2 === "role" ? "background_role" : "background_rule"));
   }
   return events;
 }
@@ -21133,17 +21133,17 @@ function standingOf(state, reg, unitId) {
   if (!unit4 || !bond || !isLiving(unit4) || unitId === wardenUnitId(state)) return null;
   const impunity = impunityOf(state, reg, unitId);
   if (!impunity) return null;
-  const S2 = TUNING.power.standing;
-  const raw = S2.merit * meritOf(state, unitId) + S2.respect * respectOf(state, unitId) + S2.impunity * (impunity.value / 100);
+  const S3 = TUNING.power.standing;
+  const raw = S3.merit * meritOf(state, unitId) + S3.respect * respectOf(state, unitId) + S3.impunity * (impunity.value / 100);
   const bonus = state.power?.hierarchy?.standingBonus;
   const extra = bonus && bonus.unitId === unitId && bonus.untilDay > state.day ? bonus.amount : 0;
   const coLeader = hasCapability(state, reg, unitId, "co_leader") ? TUNING.dynamic.coLeaderStanding : 0;
-  return Math.round(100 * raw * S2.factor[bond.leadStyle]) + extra + coLeader - standingMalus(state, reg, unitId);
+  return Math.round(100 * raw * S3.factor[bond.leadStyle]) + extra + coLeader - standingMalus(state, reg, unitId);
 }
 function computeHierarchy(draft, reg) {
   const power = powerOf(draft);
   const old = power.hierarchy;
-  const S2 = TUNING.power.standing;
+  const S3 = TUNING.power.standing;
   const h2 = { ...old, standings: {}, endorsed: old?.endorsed ?? false, computedDay: draft.day };
   if (h2.deposed && h2.deposed.untilDay <= draft.day) delete h2.deposed;
   if (h2.standingBonus && h2.standingBonus.untilDay <= draft.day) delete h2.standingBonus;
@@ -21154,7 +21154,7 @@ function computeHierarchy(draft, reg) {
   const [top, next] = ranked;
   let leader;
   const earned = top !== void 0 && (top.unit.id === old?.leaderId || meritOf(draft, top.unit.id) > 0);
-  if (top && next && earned && top.standing >= next.standing + S2.margin && leadRank(bondOf(top.unit).leadStyle) >= 2 && h2.deposed?.unitId !== top.unit.id) leader = top.unit.id;
+  if (top && next && earned && top.standing >= next.standing + S3.margin && leadRank(bondOf(top.unit).leadStyle) >= 2 && h2.deposed?.unitId !== top.unit.id) leader = top.unit.id;
   const coLeader = holderWith(draft, reg, "co_leader");
   if (coLeader === null) delete h2.coLeaderId;
   else h2.coLeaderId = coLeader;
@@ -21344,12 +21344,12 @@ var trains = (reg, activityId) => activityId !== void 0 && (reg.activities.get(a
 function surfaceHolds(state, reg, unitId, cond) {
   const scene = state.scene;
   const rel = dynamicOf(state, unitId);
-  const S2 = TUNING.dynamic.style;
+  const S3 = TUNING.dynamic.style;
   switch (cond) {
     case "peak":
       return atPeak(state, unitId);
     case "scene_edges":
-      return scene !== void 0 && inScene(state, unitId) && (scene.exchanges <= S2.edgeStart || scene.exchanges >= S2.edgeEnd);
+      return scene !== void 0 && inScene(state, unitId) && (scene.exchanges <= S3.edgeStart || scene.exchanges >= S3.edgeEnd);
     case "before_others":
       return scene !== void 0 && inScene(state, unitId) && scene.participants.length >= 2;
     case "third_person":
@@ -21374,22 +21374,22 @@ function surfaceHolds(state, reg, unitId, cond) {
     }
     case "stagnation": {
       const day = state.dynamic?.noted?.enduranceDay;
-      return day !== void 0 && state.day - day >= S2.stagnationDays;
+      return day !== void 0 && state.day - day >= S3.stagnationDays;
     }
     case "training_start":
       return scene !== void 0 && inScene(state, unitId) && trains(reg, scene.activityId);
     case "praised_or_ignored": {
       const contact = state.relations[unitId]?.contactDay;
-      return state.dynamic?.noted?.praisedDay === state.day || contact !== void 0 && state.day - contact >= S2.ignoredDays;
+      return state.dynamic?.noted?.praisedDay === state.day || contact !== void 0 && state.day - contact >= S3.ignoredDays;
     }
     case "crime_mentioned":
       return state.dynamic?.noted?.crimeDay === state.day;
     case "failed_run": {
       const e = state.lastExpedition;
-      return e !== void 0 && e.outcome === "failed" && state.day - e.day <= S2.failedRunDays;
+      return e !== void 0 && e.outcome === "failed" && state.day - e.day <= S3.failedRunDays;
     }
     case "arrival_anniversary":
-      return state.day > 0 && state.day % S2.anniversaryDays === 0;
+      return state.day > 0 && state.day % S3.anniversaryDays === 0;
   }
 }
 function leadingStyle(state, reg, unitId) {
@@ -21409,8 +21409,8 @@ function defaultExpectation(state, reg, moment) {
   const entry = primary === void 0 ? void 0 : entryOf2(reg, primary);
   const offset = unit4?.kind === "named" ? unit4.expectations?.offset : void 0;
   const point = entry?.point == null ? void 0 : { r: entry.point.r + (offset?.r ?? 0), f: entry.point.f + (offset?.f ?? 0) };
-  const frame = moment.options.filter((o) => FRAME_KEYS.includes(o.key));
-  const options2 = frame.length > 0 ? frame : [...moment.options];
+  const frame2 = moment.options.filter((o) => FRAME_KEYS.includes(o.key));
+  const options2 = frame2.length > 0 ? frame2 : [...moment.options];
   const prefer = rel !== void 0 && frameRank(rel.frame) >= frameRank("play") ? "yielded" : "returned";
   const score = (type) => {
     if (point === void 0 || rel === void 0) return 0;
@@ -21419,8 +21419,8 @@ function defaultExpectation(state, reg, moment) {
   };
   const best = Math.min(...options2.map((o) => score(o.type)));
   const tied = options2.filter((o) => score(o.type) === best);
-  const pick3 = tied.find((o) => o.type === prefer) ?? tied.find((o) => o.type === (prefer === "yielded" ? "returned" : "yielded")) ?? tied[0];
-  return { key: pick3?.key ?? "0", strength: 1 };
+  const pick4 = tied.find((o) => o.type === prefer) ?? tied.find((o) => o.type === (prefer === "yielded" ? "returned" : "yielded")) ?? tied[0];
+  return { key: pick4?.key ?? "0", strength: 1 };
 }
 function noteEvents(draft, ctx2, events) {
   if (draft.dynamic === void 0 || !dynamicOn(draft, ctx2.registries)) return [];
@@ -22746,8 +22746,8 @@ function rollTokenOffer(draft, ctx2) {
     if (!ctx2.rng.chance(chance)) continue;
     const kinds2 = kindsFor(draft, reg, u.id);
     if (kinds2.length === 0) continue;
-    let pick3 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
-    const kind = kinds2.find((k) => (pick3 -= Number(k.weight)) < 0) ?? kinds2[0];
+    let pick4 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
+    const kind = kinds2.find((k) => (pick4 -= Number(k.weight)) < 0) ?? kinds2[0];
     const label2 = labelOf(reg, String(kind.id), u.displayName);
     const tokens = personalOf(draft).tokens ??= { owned: [], given: [] };
     const dm = pushMessage(draft, u.id, { from: u.id, text: String(kind.text).replaceAll("{name}", u.displayName).replaceAll("{label}", label2), day: draft.day, slot: draft.slot, read: false, initiated: true });
@@ -23050,8 +23050,8 @@ function plainSummary(seed) {
   return seed.gist;
 }
 function stakesCeilingOf(state, holderId) {
-  const frame = dynamicOf(state, holderId)?.frame;
-  return frame === "rule" || frame === "role" || frame === "play" ? TUNING.practice.stakesCeiling[frame] : "minor";
+  const frame2 = dynamicOf(state, holderId)?.frame;
+  return frame2 === "rule" || frame2 === "role" || frame2 === "play" ? TUNING.practice.stakesCeiling[frame2] : "minor";
 }
 
 // src/engine/practice/request.ts
@@ -23239,8 +23239,8 @@ function styleTerm(state, reg, holderId) {
 }
 function severityOf(state, reg, holderId, offence) {
   const T5 = TUNING.practice.severity;
-  const frame = dynamicOf(state, holderId)?.frame;
-  const frameTerm = frame === "rule" || frame === "role" || frame === "play" ? T5.frame[frame] : 0;
+  const frame2 = dynamicOf(state, holderId)?.frame;
+  const frameTerm = frame2 === "rule" || frame2 === "role" || frame2 === "play" ? T5.frame[frame2] : 0;
   const recent2 = (state.practices?.offences[holderId] ?? []).filter((d) => state.day - d <= T5.repeat.days).length;
   const repeat = recent2 >= T5.repeat.count ? T5.repeat.add : 0;
   const confessed = offence.confessed === true ? TUNING.practice.confessedLess : 0;
@@ -23325,8 +23325,8 @@ function noteOffence(draft, ctx2, holderId, offence) {
 }
 var str2 = (v) => typeof v === "string" && v !== "" ? v : void 0;
 var answers = (state, holderId) => {
-  const frame = dynamicOf(state, holderId)?.frame;
-  return frame !== void 0 && frameRank(frame) >= frameRank("role");
+  const frame2 = dynamicOf(state, holderId)?.frame;
+  return frame2 !== void 0 && frameRank(frame2) >= frameRank("role");
 };
 function offencesFromEvents(draft, ctx2, events) {
   if (!events.some((e) => OFFENCE_SOURCES.includes(e.type))) return [];
@@ -23367,8 +23367,8 @@ var OFFENCE_SOURCES = ["refusal_noted", "milestone_refused", "override_answered"
 var HUMBLING_TAG = "public_humiliation";
 var isHumbling = (tags) => tags.includes(HUMBLING_TAG);
 function stageOf(slot2) {
-  const S2 = TUNING.practice.demonstration.stage;
-  return S2[slot2] ?? S2.other;
+  const S3 = TUNING.practice.demonstration.stage;
+  return S3[slot2] ?? S3.other;
 }
 var roomOfLocation = (reg, locationId) => [...reg.hubRooms.values()].find((r) => r.sceneLocationId === locationId)?.id;
 function pickAudience(state, reg, holderId, slot2) {
@@ -23390,9 +23390,9 @@ function demonstrationGate(state, reg, holderId, card2) {
   const audience = practiceOf(state, reg, holderId)?.audience;
   if (audience === void 0 || audience === "private_only") return "She keeps it private.";
   if (audience === "indifferent") return "She does not stage it.";
-  const frame = dynamicOf(state, holderId)?.frame ?? "equal";
-  if (frameRank(frame) < frameRank("play")) return "Her hold is too light for it.";
-  if (card2?.tier !== void 0 && card2.tier > 2 && frameRank(frame) < frameRank("role")) return "Her hold is too light for something that heavy.";
+  const frame2 = dynamicOf(state, holderId)?.frame ?? "equal";
+  if (frameRank(frame2) < frameRank("play")) return "Her hold is too light for it.";
+  if (card2?.tier !== void 0 && card2.tier > 2 && frameRank(frame2) < frameRank("role")) return "Her hold is too light for something that heavy.";
   const tags = card2?.tags ?? [];
   if (card2 === void 0 ? !["service", HUMBLING_TAG].some((t) => contentAllowed(state, reg, { contentTags: [t] }, holderId)) : tags.length === 0 || tags.some((t) => !contentAllowed(state, reg, { contentTags: [t] }, holderId))) {
     return "That is not switched on.";
@@ -23504,9 +23504,9 @@ function holdSlot(draft, ctx2, holderId, kindId, at, practiceId, events, lapsed)
     events.push({ type: "booking_lapsed", bookingId: b.id, unitId: b.unitId, lost: true, by: "hold" });
   }
   events.push(...book(draft, ctx2, { unitId: holderId, kindId, day: at.day, slot: at.slot, source: "practice" }));
-  const made = bookingsOf2(draft).at(-1);
-  made.practiceId = practiceId;
-  return made;
+  const made2 = bookingsOf2(draft).at(-1);
+  made2.practiceId = practiceId;
+  return made2;
 }
 function voidImpossible(draft, holderId, taken) {
   const events = [];
@@ -23611,8 +23611,8 @@ function extendHold(draft, ctx2, reason) {
   if (held3 === void 0 || next === null || first2 === void 0) return [];
   const events = [];
   const lapsed = [];
-  const made = holdSlot(draft, ctx2, held3.by, first2.kindId, next, first2.practiceId ?? `hold:${held3.by}`, events, lapsed);
-  held3.bookingIds.push(made.id);
+  const made2 = holdSlot(draft, ctx2, held3.by, first2.kindId, next, first2.practiceId ?? `hold:${held3.by}`, events, lapsed);
+  held3.bookingIds.push(made2.id);
   if (lapsed.length > 0) held3.lapsedIds = [...held3.lapsedIds ?? [], ...lapsed];
   held3.until = next;
   held3.extended += 1;
@@ -23863,7 +23863,7 @@ function buildPracticeInput(state, reg, request, card2 = "") {
   const unit4 = state.squad.find((u) => u.id === holderId);
   const view = practiceOf(state, reg, holderId);
   const dyn = dynamicOf(state, holderId);
-  const frame = dyn?.frame === "rule" || dyn?.frame === "role" ? dyn.frame : "play";
+  const frame2 = dyn?.frame === "rule" || dyn?.frame === "role" ? dyn.frame : "play";
   const label2 = (id) => String(reg.contentCategories.get(id)?.label ?? id);
   const seeds = request.seedIds.map((id) => seedRows(reg).find((s) => s.id === id)).filter((s) => s !== void 0);
   const unitName3 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
@@ -23873,7 +23873,7 @@ function buildPracticeInput(state, reg, request, card2 = "") {
     kind: request.kind,
     holder: { id: holderId, name: unit4.displayName },
     card: clean3(card2).slice(0, CARD_MAX),
-    frame,
+    frame: frame2,
     style: view === null ? { primary: "cold" } : { primary: view.style.primary, ...view.style.secondary !== void 0 ? { secondary: view.style.secondary } : {} },
     claims: capabilitiesOf(state, reg, holderId).map((c) => CAPABILITY_WORDS[c] ?? c),
     tracks: [...reg.dynamicTracks.values()].filter((t) => trackOpen(state, reg, holderId, t.id)).map((t) => ({ id: t.id, label: String(t.label ?? t.id), level: LEVEL_WORDS[trackLevel(state, holderId, t.id)] })),
@@ -24039,10 +24039,10 @@ var frameOf2 = (state, holderId) => {
 };
 var openTasks = (state, holderId) => (state.practices?.tasks ?? []).filter((t) => t.holderId === holderId && t.kind === "task" && t.routine !== true && t.handover === void 0 && (t.status === "offered" || t.status === "open")).length;
 function taskRoom(state, reg, holderId) {
-  const frame = frameOf2(state, holderId);
+  const frame2 = frameOf2(state, holderId);
   const open3 = openTasks(state, holderId);
-  if (open3 >= TUNING.practice.taskCap[frame]) return false;
-  return !(frameRank(frame) >= frameRank("role") && open3 >= 1 && !hasCapability(state, reg, holderId, "household_protocol"));
+  if (open3 >= TUNING.practice.taskCap[frame2]) return false;
+  return !(frameRank(frame2) >= frameRank("role") && open3 >= 1 && !hasCapability(state, reg, holderId, "household_protocol"));
 }
 var targetOf = (request, out) => request.targetUnitId ?? out.targetUnitId ?? (ROSTER_CHECKS2.includes(out.check) || out.check === "no_scene_with" ? out.checkArg : void 0);
 var writeTask = (draft, _ctx, request, out, plain8) => {
@@ -24212,8 +24212,8 @@ function refusePractice(draft, ctx2, holderId, what) {
   const events = [];
   events.push(...refuseLikeDemand(draft, ctx2, holderId, { evidence, ...severity !== void 0 ? { severity } : {} }));
   events.push(...evaluateAutomatic(draft, ctx2.registries, holderId));
-  const frame = dynamicOf(draft, holderId)?.frame;
-  if (frame !== void 0 && frameRank(frame) >= frameRank("role")) events.push(...noteOffence(draft, ctx2, holderId, { kind: "refusal", ref: what.ref, stakes: what.sealed === true ? "major" : what.stakes, day: draft.day }));
+  const frame2 = dynamicOf(draft, holderId)?.frame;
+  if (frame2 !== void 0 && frameRank(frame2) >= frameRank("role")) events.push(...noteOffence(draft, ctx2, holderId, { kind: "refusal", ref: what.ref, stakes: what.sealed === true ? "major" : what.stakes, day: draft.day }));
   return events;
 }
 function acceptByWords(draft, ctx2, holderId, ev) {
@@ -25011,8 +25011,8 @@ function alarmAnswer(state, reg, holderId, kind, alarmId, payload) {
   const unit4 = state.squad.find((u) => u.id === holderId);
   const values = unit4 === void 0 ? void 0 : valuesOf(unit4);
   const style = practiceOf(state, reg, holderId)?.style.primary;
-  const frame = dynamicOf(state, holderId)?.frame;
-  const score = (values?.mercy ?? 0) * T5.mercy + (values?.corporate ?? 0) * T5.corporate + (style === void 0 ? 0 : T5.style[style] ?? 0) + (frame === "play" || frame === "role" || frame === "rule" ? T5.frame[frame] : 0) + practiceRoll(state, holderId, `alarm:${alarmId}`) - 0.5;
+  const frame2 = dynamicOf(state, holderId)?.frame;
+  const score = (values?.mercy ?? 0) * T5.mercy + (values?.corporate ?? 0) * T5.corporate + (style === void 0 ? 0 : T5.style[style] ?? 0) + (frame2 === "play" || frame2 === "role" || frame2 === "rule" ? T5.frame[frame2] : 0) + practiceRoll(state, holderId, `alarm:${alarmId}`) - 0.5;
   return score >= T5.release ? "release" : score >= T5.late ? "release_late" : "keep";
 }
 var alarmEvent = (alarm, answer, extra = {}) => ({
@@ -25703,9 +25703,9 @@ function orderCandidate(state, reg, holderId) {
 function orderPunishment(draft, ctx2, holderId, soldierId) {
   const reg = ctx2.registries;
   if (orderCandidate(draft, reg, holderId) !== soldierId) return [];
-  const measure = orderedMeasure(draft, reg, soldierId);
-  if (measure === null) return [];
-  const row4 = reg.punishments.get(measure);
+  const measure2 = orderedMeasure(draft, reg, soldierId);
+  if (measure2 === null) return [];
+  const row4 = reg.punishments.get(measure2);
   const severity = Math.min(5, Math.max(1, Number(row4.severity)));
   const soldier = draft.squad.find((u) => u.id === soldierId).displayName;
   const O = TUNING.practice.punish.order;
@@ -25714,7 +25714,7 @@ function orderPunishment(draft, ctx2, holderId, soldierId) {
   ensurePractices(draft).punishments.push({
     id,
     holderId,
-    entryId: measure,
+    entryId: measure2,
     severity,
     offence: { kind: "refusal", ref: `order:${soldierId}`, stakes: "minor", day: draft.day },
     text: O.text.replaceAll("{soldier}", soldier).replaceAll("{what}", label2.toLowerCase()),
@@ -25908,21 +25908,21 @@ function lifeFields(type, e, intent, life) {
   const str9 = (v) => typeof v === "string" && v !== "" ? v : null;
   let who;
   let key = null;
-  const pick3 = (list5, id) => {
+  const pick4 = (list5, id) => {
     const row4 = id === null ? void 0 : list5.find((x) => x.id === id && candidates3.includes(x.unitId));
     who = row4?.unitId;
     return row4;
   };
   switch (type) {
     case "news_told": {
-      const row4 = pick3(life.news, str9(e.newsId));
+      const row4 = pick4(life.news, str9(e.newsId));
       if (!row4) return null;
       intent.newsId = row4.id;
       key = row4.id;
       break;
     }
     case "hobby_praised": {
-      const row4 = pick3(life.hobbies, str9(e.hobbyId));
+      const row4 = pick4(life.hobbies, str9(e.hobbyId));
       if (!row4) return null;
       intent.hobbyId = row4.id;
       key = row4.id;
@@ -25931,7 +25931,7 @@ function lifeFields(type, e, intent, life) {
     case "opinion_voiced":
     case "opinion_challenged":
     case "opinion_agreed": {
-      const row4 = pick3(life.topics.filter((t) => type === "opinion_voiced" ? t.pick === true : t.voiced === true), str9(e.topicId));
+      const row4 = pick4(life.topics.filter((t) => type === "opinion_voiced" ? t.pick === true : t.voiced === true), str9(e.topicId));
       if (!row4) return null;
       intent.topicId = row4.id;
       const position = str9(e.positionId);
@@ -25949,7 +25949,7 @@ function lifeFields(type, e, intent, life) {
       break;
     }
     case "joke_returned": {
-      const row4 = pick3(life.jokes, str9(e.factId));
+      const row4 = pick4(life.jokes, str9(e.factId));
       if (!row4) return null;
       intent.factId = row4.id;
       key = row4.id;
@@ -26348,8 +26348,8 @@ function answerProposal(draft, reg, a) {
   }
   const promised = [];
   if (conditioned) {
-    const made = recordPromise(draft, { kind: "made", by: rec.unitId, to: "commander", text: condition }, draft.day, [rec.unitId]).record;
-    promised.push({ type: "proposal_conditioned", unitId: rec.unitId, promiseId: made.id });
+    const made2 = recordPromise(draft, { kind: "made", by: rec.unitId, to: "commander", text: condition }, draft.day, [rec.unitId]).record;
+    promised.push({ type: "proposal_conditioned", unitId: rec.unitId, promiseId: made2.id });
   }
   return [
     { type: "proposal_answered", ...base },
@@ -26405,22 +26405,22 @@ var clamp18 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf5 = (state, id) => state.squad.find((u) => u.id === id);
 var hasFlag3 = (state, id, flag) => state.relations[id]?.flags.includes(flag) ?? false;
 function allies(state) {
-  const holder2 = wardenOf(state)?.unitId;
-  return state.squad.filter((u) => u.kind === "named" && isLiving(u) && u.id !== holder2 && hasFlag3(state, u.id, "warden_ally")).map((u) => u.id);
+  const holder3 = wardenOf(state)?.unitId;
+  return state.squad.filter((u) => u.kind === "named" && isLiving(u) && u.id !== holder3 && hasFlag3(state, u.id, "warden_ally")).map((u) => u.id);
 }
-function addSuspicion(draft, ctx2, noise2, cause, opts = {}) {
+function addSuspicion(draft, ctx2, noise3, cause, opts = {}) {
   const ls = leashswapOf(draft);
   if (!ls || !wardenOf(draft)) return [];
-  ls.intrigue.suspicion = clamp18(ls.intrigue.suspicion + noise2 * coverMult(draft, ctx2.registries), 0, 100);
+  ls.intrigue.suspicion = clamp18(ls.intrigue.suspicion + noise3 * coverMult(draft, ctx2.registries), 0, 100);
   const s = ls.intrigue.suspicion;
   const found = s >= 100 || ctx2.rng.chance(s / TUNING.warden.intrigue.discoveryDivisor);
   return found ? intrigueDiscovered(draft, ctx2, cause, opts) : [];
 }
 function allyChance(state, _reg, unitId) {
-  const A = TUNING.warden.intrigue.ally;
+  const A2 = TUNING.warden.intrigue.ally;
   const unit4 = unitOf5(state, unitId);
   const trust = state.relations[unitId]?.trust ?? 0;
-  return clamp18(A.base + A.perTrust * (trust - 50) + A.autonomy * (unit4 ? valuesOf(unit4).autonomy : 0) - A.corporate * (unit4 ? valuesOf(unit4).corporate : 0), A.min, A.max);
+  return clamp18(A2.base + A2.perTrust * (trust - 50) + A2.autonomy * (unit4 ? valuesOf(unit4).autonomy : 0) - A2.corporate * (unit4 ? valuesOf(unit4).corporate : 0), A2.min, A2.max);
 }
 function tryAlly(draft, ctx2, unitId) {
   const ls = leashswapOf(draft);
@@ -28936,8 +28936,8 @@ var wardenSlot = (draft) => {
 function openSlot(draft) {
   const o = overrideOpen(draft);
   if (o === null) return null;
-  const holder2 = holderSlot(draft);
-  if (holder2 !== null && holder2.o === o) return holder2;
+  const holder3 = holderSlot(draft);
+  if (holder3 !== null && holder3.o === o) return holder3;
   const warden = wardenSlot(draft);
   return warden !== null && warden.o === o ? warden : null;
 }
@@ -28945,9 +28945,9 @@ function clearSlot(draft, slot2) {
   if (slot2.kind === "warden") delete slot2.w.override;
   else delete draft.dynamic.override;
 }
-function argueChance(state, _reg, holder2) {
+function argueChance(state, _reg, holder3) {
   const w = wardenOf(state);
-  const her = holder2 ?? (w ? { unitId: w.unitId, satisfaction: w.satisfaction } : null);
+  const her = holder3 ?? (w ? { unitId: w.unitId, satisfaction: w.satisfaction } : null);
   if (!her) return 0;
   const rank2 = Math.max(socialRank(state, "authority"), socialRank(state, "empathy"));
   const herRank = clamp26(round3((her.satisfaction <= 50 ? 4 : 3) + (state.relations[her.unitId]?.affinity ?? 0) / 100), 1, 5);
@@ -29187,11 +29187,11 @@ function choiceOf(state, reg, route, index2, scope) {
 function routeChoices(state, reg, check, scope) {
   return check.routes.map((route, i) => choiceOf(state, reg, route, i, scope));
 }
-function resolveRoute(draft, ctx2, check, pick3, scope) {
-  const choice = routeChoices(draft, ctx2.registries, check, scope)[pick3.route];
-  if (!choice) throw new Error(`The check "${check.id}" has no route ${String(pick3.route)}.`);
+function resolveRoute(draft, ctx2, check, pick4, scope) {
+  const choice = routeChoices(draft, ctx2.registries, check, scope)[pick4.route];
+  if (!choice) throw new Error(`The check "${check.id}" has no route ${String(pick4.route)}.`);
   if (choice.disabled) throw new Error(choice.disabled);
-  const route = check.routes[pick3.route];
+  const route = check.routes[pick4.route];
   const events = [];
   let passed = true;
   switch (route.kind) {
@@ -29208,9 +29208,9 @@ function resolveRoute(draft, ctx2, check, pick3, scope) {
       break;
     }
     case "delegate": {
-      if (typeof pick3.unitId !== "string") throw new Error("Pick a unit to ask.");
-      if (!choice.unitIds?.includes(pick3.unitId)) throw new Error(`Unit "${pick3.unitId}" is not available for this request.`);
-      const unit4 = draft.squad.find((u) => u.id === pick3.unitId);
+      if (typeof pick4.unitId !== "string") throw new Error("Pick a unit to ask.");
+      if (!choice.unitIds?.includes(pick4.unitId)) throw new Error(`Unit "${pick4.unitId}" is not available for this request.`);
+      const unit4 = draft.squad.find((u) => u.id === pick4.unitId);
       const rel = draft.relations[unit4.id];
       const have = TRUST_ORDER.indexOf(trustBand(rel?.trust ?? 0));
       const need = TRUST_ORDER.indexOf(route.cost.trustCheck ?? DEFAULT_TRUST_CHECK);
@@ -29367,8 +29367,8 @@ function chooseAction(ctx2, cid) {
   const opts = options(ctx2, cid, usable3);
   switch (c.aiProfile) {
     case "erratic": {
-      const pick3 = ctx2.rng.pick(usable3);
-      return { kind: "skill", skillId: pick3.skill.id, targetCid: ctx2.rng.pick(pick3.targets) };
+      const pick4 = ctx2.rng.pick(usable3);
+      return { kind: "skill", skillId: pick4.skill.id, targetCid: ctx2.rng.pick(pick4.targets) };
     }
     case "predator": {
       const damaging = opts.filter((o) => o.damage > 0);
@@ -29813,13 +29813,13 @@ var HANDS = ["rock", "paper", "scissors"];
 var PLAYABLE_KINDS = /* @__PURE__ */ new Set(["coin", "rps", "high_card", "sparring", "expedition_bet"]);
 var BET_PICKS = ["kills", "no_damage", "objective"];
 var agreedStatus = (reg, gameId) => reg.wagerGames.get(gameId)?.kind === "expedition_bet" ? "pending_run" : "accepted";
-function checkPick(state, reg, gameId, unitId, pick3) {
+function checkPick(state, reg, gameId, unitId, pick4) {
   const kind = reg.wagerGames.get(gameId)?.kind;
   if (kind === "sparring") {
-    const h2 = pick3 === void 0 ? void 0 : handicapOf(reg, pick3);
+    const h2 = pick4 === void 0 ? void 0 : handicapOf(reg, pick4);
     if (!h2) throw new Error("Choose a handicap.");
     if ((state.relations[unitId]?.affinity ?? -100) < h2.minAffinity) throw new Error("Her Affinity does not allow that handicap.");
-  } else if (kind === "expedition_bet" && !BET_PICKS.includes(pick3 ?? "")) {
+  } else if (kind === "expedition_bet" && !BET_PICKS.includes(pick4 ?? "")) {
     throw new Error("Choose what she bets on: kills, no damage or the objective.");
   }
 }
@@ -29857,12 +29857,12 @@ function rollChallenges(draft, ctx2) {
     if (!ctx2.rng.chance(TUNING.personal.wager.chance * assertiveness(draft, reg).demandMult * pressureMultOf(draft, reg, u.id))) continue;
     const game = games[ctx2.rng.int(0, games.length - 1)];
     const stake = stakes[ctx2.rng.int(0, stakes.length - 1)];
-    let pick3;
+    let pick4;
     if (game.kind === "sparring") {
       const allowed = game.handicaps.filter((h2) => (draft.relations[u.id]?.affinity ?? -100) >= h2.minAffinity);
-      pick3 = allowed[ctx2.rng.int(0, allowed.length - 1)]?.id;
+      pick4 = allowed[ctx2.rng.int(0, allowed.length - 1)]?.id;
     } else if (game.kind === "expedition_bet") {
-      pick3 = BET_PICKS[ctx2.rng.int(0, BET_PICKS.length - 1)];
+      pick4 = BET_PICKS[ctx2.rng.int(0, BET_PICKS.length - 1)];
     }
     const dm = pushMessage(draft, u.id, {
       from: u.id,
@@ -29872,7 +29872,7 @@ function rollChallenges(draft, ctx2) {
       read: false,
       initiated: true
     });
-    const w = { id: nextPersonalId(draft, "wg"), unitId: u.id, by: "unit", gameId: String(game.id), stakeId: String(stake.id), day: draft.day, status: "offered", ...pick3 !== void 0 ? { pick: pick3 } : {}, dmId: dm.id };
+    const w = { id: nextPersonalId(draft, "wg"), unitId: u.id, by: "unit", gameId: String(game.id), stakeId: String(stake.id), day: draft.day, status: "offered", ...pick4 !== void 0 ? { pick: pick4 } : {}, dmId: dm.id };
     (personalOf(draft).wagers ??= { open: [], log: [] }).open.push(w);
     events.push({ type: "wager_offered", wagerId: w.id, unitId: u.id, gameId: w.gameId, stakeId: w.stakeId });
   }
@@ -29910,14 +29910,14 @@ function answerChallenge(draft, ctx2, wagerId, accept2, opts = {}) {
   if (u && isLiving(u)) events.push(...hitHer(draft, ctx2.registries, w.unitId, "dismissed", "minor", "declined her challenge"));
   return events;
 }
-function playChance(kind, ctx2, pick3) {
+function playChance(kind, ctx2, pick4) {
   if (kind === "coin") return { winner: ctx2.rng.chance(0.5) ? "commander" : "unit", details: {} };
   if (kind === "high_card") {
     const commanderCard = ctx2.rng.int(1, 13);
     const herCard = ctx2.rng.int(1, 13);
     return { winner: commanderCard === herCard ? "void" : commanderCard > herCard ? "commander" : "unit", details: { commanderCard, herCard } };
   }
-  const mine = HANDS.indexOf(pick3);
+  const mine = HANDS.indexOf(pick4);
   if (mine < 0) throw new Error("Pick rock, paper or scissors.");
   const throws = [];
   for (let i = 0; i < 2; i++) {
@@ -29927,7 +29927,7 @@ function playChance(kind, ctx2, pick3) {
   }
   return { winner: "void", details: { hand: HANDS[mine], throws } };
 }
-function playWager(draft, ctx2, wagerId, pick3) {
+function playWager(draft, ctx2, wagerId, pick4) {
   const reg = ctx2.registries;
   const wagers = draft.personal?.wagers;
   const w = wagers?.open.find((x) => x.id === wagerId);
@@ -29936,21 +29936,21 @@ function playWager(draft, ctx2, wagerId, pick3) {
   if (!game || !PLAYABLE_KINDS.has(String(game.kind))) throw new Error("That game is not available.");
   const u = unitOf8(draft, w.unitId);
   if (!u || !isLiving(u)) throw new Error("She is not here to play.");
-  if (game.kind === "sparring") return playSparring(draft, ctx2, w, pick3 ?? w.pick);
-  const { winner, details } = playChance(String(game.kind), ctx2, pick3 ?? w.pick);
+  if (game.kind === "sparring") return playSparring(draft, ctx2, w, pick4 ?? w.pick);
+  const { winner, details } = playChance(String(game.kind), ctx2, pick4 ?? w.pick);
   return settle2(draft, ctx2, w, winner, details);
 }
-function playSparring(draft, ctx2, w, pick3) {
+function playSparring(draft, ctx2, w, pick4) {
   const reg = ctx2.registries;
   if (draft.slot === "night") throw new Error("Nobody spars at night.");
   if (draft.scene || draft.calendar.pendingScene || draft.calendar.nightEvent || draft.dilemmas?.open?.status === "presented") throw new Error("Not now: something else holds this slot.");
   const due = bookingGuard(draft, reg, { type: "calendar/consume_slot" });
   if (due) throw new Error(due.message);
-  checkPick(draft, reg, w.gameId, w.unitId, pick3);
-  const bout = sparringBout(draft, reg, ctx2.rng, w.unitId, pick3);
+  checkPick(draft, reg, w.gameId, w.unitId, pick4);
+  const bout = sparringBout(draft, reg, ctx2.rng, w.unitId, pick4);
   const xp = addBodyXp(draft.commander, "strength", Math.round(TUNING.commander.bodyXpPerSession * TUNING.personal.sparring.bodyXp * bodyGrowthMult(draft, reg)));
   const events = [{ type: "body_trained", stat: "strength", value: xp.value, raised: xp.gained }];
-  events.push(...settle2(draft, ctx2, w, bout.winner, { handicap: pick3, rounds: bout.rounds, ...bout.draw ? { draw: true } : {} }));
+  events.push(...settle2(draft, ctx2, w, bout.winner, { handicap: pick4, rounds: bout.rounds, ...bout.draw ? { draw: true } : {} }));
   events.push(...consumeSlots(draft, 1, ctx2));
   return events;
 }
@@ -30902,9 +30902,9 @@ function applyDirectorOutput(draft, ctx2, out, opts = {}) {
   for (const o of out.missionOffers) {
     const source = o.spineBeat !== void 0 ? "story" : directorSource(draft, ctx2.registries, o.templateId, commandTaken);
     if (source === null) continue;
-    const made = offerMission(draft, ctx2, { ...o, source });
-    events.push(...made.events);
-    if (made.mission && source === "command") commandTaken = true;
+    const made2 = offerMission(draft, ctx2, { ...o, source });
+    events.push(...made2.events);
+    if (made2.mission && source === "command") commandTaken = true;
   }
   const offers2 = events.filter((e) => e.type === "mission_offered").length;
   let rumors = 0;
@@ -31025,8 +31025,8 @@ function draw(rng, list5, used2, onlyKind) {
   if (open3.length === 0) return null;
   const total2 = open3.reduce((s, c) => s + c.weight, 0);
   let r = rng.float() * total2;
-  const pick3 = open3.find((c) => (r -= c.weight) < 0) ?? open3[open3.length - 1];
-  return pick3.id;
+  const pick4 = open3.find((c) => (r -= c.weight) < 0) ?? open3[open3.length - 1];
+  return pick4.id;
 }
 function generateNodeMap(reg, rng, input) {
   const region = reg.regions.get(input.regionId);
@@ -32281,8 +32281,8 @@ function chooseDilemma(draft, ctx2, id, index2, route, wardenChecked = false, ra
     if (overridden) return overridden;
   }
   const ob = obedienceOf(draft);
-  const pick3 = ob?.who === "commander" ? herPick(draft, ctx2.registries, ob.unitId) : null;
-  const defied3 = ob !== null && pick3 !== null && pick3 !== index2;
+  const pick4 = ob?.who === "commander" ? herPick(draft, ctx2.registries, ob.unitId) : null;
+  const defied3 = ob !== null && pick4 !== null && pick4 !== index2;
   let effects2 = chosen.effects;
   let checkPassed;
   let routePassed;
@@ -32463,9 +32463,9 @@ function openDemand(draft, ctx2, unitId, opts = {}) {
   if (pool.length > 1) pool = pool.filter((t) => t.id !== last);
   if (pool.length === 0) return null;
   const total2 = pool.reduce((s, t) => s + Number(t.weight), 0);
-  const pick3 = opts.roll ?? ctx2.rng?.float();
-  if (pick3 === void 0) throw new Error("openDemand needs a roll or a stream to pick with.");
-  let r = pick3 * total2;
+  const pick4 = opts.roll ?? ctx2.rng?.float();
+  if (pick4 === void 0) throw new Error("openDemand needs a roll or a stream to pick with.");
+  let r = pick4 * total2;
   const tpl = pool.find((t) => (r -= Number(t.weight)) < 0) ?? pool[pool.length - 1];
   const stance = commandStance(draft, reg, unitId);
   const demand = {
@@ -33023,9 +33023,9 @@ function covered(draft, r) {
   return r.units.map((u, i) => ({ card: u.cardRef, id: draft.squad[i]?.id })).filter((x) => x.id !== void 0 && known3.has(x.id) && (want === true || want.includes(x.card))).map((x) => x.id);
 }
 function responseOf(seed, unitId, i) {
-  const S2 = TUNING.probes.underway;
+  const S3 = TUNING.probes.underway;
   const u = headStartHash(seed, unitId, `probe:${i}`);
-  return u < S2.yielded ? "yielded" : u < S2.yielded + S2.returned ? "returned" : u < S2.yielded + S2.returned + S2.deflected ? "deflected" : "resisted";
+  return u < S3.yielded ? "yielded" : u < S3.yielded + S3.returned ? "returned" : u < S3.yielded + S3.returned + S3.deflected ? "deflected" : "resisted";
 }
 function axisOf(draft, reg, seed, unitId, i, recent2) {
   const tier = bandIndex(reg, dynamicOf(draft, unitId)?.hold ?? 0) === 0 ? 1 : 2;
@@ -33110,13 +33110,13 @@ function applySeeds(draft, reg, r) {
     const setup = r.dynamic.units[u.cardRef];
     const id = draft.squad[i]?.id;
     if (setup?.seeded !== true || id === void 0) return;
-    const frame = setup.startFrame;
-    const floor = frame === void 0 ? 0 : Number(reg.dynamicFrames.get(frame)?.holdFloor ?? 0);
+    const frame2 = setup.startFrame;
+    const floor = frame2 === void 0 ? 0 : Number(reg.dynamicFrames.get(frame2)?.holdFloor ?? 0);
     events.push(...seedHold(draft, reg, id, floor));
     const dyn = draft.relations[id]?.dynamic;
-    if (dyn !== void 0 && frame !== void 0) {
-      dyn.frame = frame;
-      dyn.milestones.push(`seeded:${frame}`);
+    if (dyn !== void 0 && frame2 !== void 0) {
+      dyn.frame = frame2;
+      dyn.milestones.push(`seeded:${frame2}`);
     }
   });
   return events;
@@ -34288,8 +34288,8 @@ function generatePortrait(rng) {
     const [row4, col, glyph] = mark;
     rows[row4] = rows[row4].slice(0, col) + glyph + rows[row4].slice(col + 1);
   }
-  const frame = `+${"-".repeat(INNER)}+`;
-  return [frame, ...rows.map((r) => `|${r}|`), frame].join("\n");
+  const frame2 = `+${"-".repeat(INNER)}+`;
+  return [frame2, ...rows.map((r) => `|${r}|`), frame2].join("\n");
 }
 function generateDesignation(rng, taken) {
   for (let i = 0; i < 1e4; i++) {
@@ -34835,9 +34835,9 @@ function expectedOption(state, reg, moment) {
     const e = read(state, reg, moment);
     if (e !== null && moment.options.some((o) => o.key === e.key)) return e;
   }
-  const frame = moment.options.filter((o) => FRAME_KEYS2.includes(o.key));
-  const pick3 = frame.find((o) => o.type === "returned") ?? frame.find((o) => o.type === "yielded") ?? frame[0];
-  return { key: pick3?.key ?? "0", strength: 1 };
+  const frame2 = moment.options.filter((o) => FRAME_KEYS2.includes(o.key));
+  const pick4 = frame2.find((o) => o.type === "returned") ?? frame2.find((o) => o.type === "yielded") ?? frame2[0];
+  return { key: pick4?.key ?? "0", strength: 1 };
 }
 function gapOf(expected, chosen) {
   if (expected === chosen) return "matched";
@@ -35213,9 +35213,9 @@ function cannotHide(state, reg) {
   return personEffects(state, reg, COMMANDER).some((e) => e.type === "visibility" && e.hideable === false && !(posture !== void 0 && (e.unlessPosture ?? []).includes(posture)));
 }
 function optionsFor(state, reg, source, unitId) {
-  const frame = source.frame;
+  const frame2 = source.frame;
   const visitor = kindsOf2(source).includes("visitor");
-  const options2 = GENERIC_KEYS.map((key, i) => ({ key, type: frame[i].type }));
+  const options2 = GENERIC_KEYS.map((key, i) => ({ key, type: frame2[i].type }));
   const out = visitor && cannotHide(state, reg) ? options2.filter((o) => o.key !== "0") : options2;
   const scene = state.scene;
   if (visitor && sceneAffordances(state, reg).has("lock")) out.push({ key: "lock", type: "returned" });
@@ -35313,8 +35313,8 @@ function momentPass(draft, ctx2, cause, opts = {}) {
     if (live3.length > 0 && ctx2.rng.chance(chanceOf(draft))) {
       const total2 = live3.reduce((n, l) => n + Math.max(1, Math.round(l.weight * 100)), 0);
       let r = ctx2.rng.int(0, total2 - 1);
-      const pick3 = live3.find((l) => (r -= Math.max(1, Math.round(l.weight * 100))) < 0) ?? live3[live3.length - 1];
-      events.push(...fireMoment(draft, ctx2, pick3.sourceId, pick3.unitId));
+      const pick4 = live3.find((l) => (r -= Math.max(1, Math.round(l.weight * 100))) < 0) ?? live3[live3.length - 1];
+      events.push(...fireMoment(draft, ctx2, pick4.sourceId, pick4.unitId));
     }
   }
   refreshSeen(draft, reg);
@@ -35525,14 +35525,14 @@ function startPhysics(draft, ctx2, o) {
   return [{ type: "physics_started", runId: run.id, physicsId: run.physicsId, holderId: run.holderId, sourceKind: run.sourceKind, sourceId: run.sourceId, ...run.second ? { secondId: run.second.physicsId } : {}, ...o.duration !== void 0 ? { duration: o.duration } : {} }];
 }
 function chainRun(draft, reg, run) {
-  const chain2 = reg.contactPhysics.get(run.physicsId)?.chains?.find((c) => c.on === "slip");
-  const to = chain2 ? reg.contactPhysics.get(chain2.to) : void 0;
-  if (!chain2 || !to) return [];
+  const chain3 = reg.contactPhysics.get(run.physicsId)?.chains?.find((c) => c.on === "slip");
+  const to = chain3 ? reg.contactPhysics.get(chain3.to) : void 0;
+  if (!chain3 || !to) return [];
   const from = run.physicsId;
   const g = gaugeFor(draft, to);
-  run.physicsId = chain2.to;
+  run.physicsId = chain3.to;
   run.capacity = g.capacity;
-  run.gauge = chain2.start ?? g.gauge;
+  run.gauge = chain3.start ?? g.gauge;
   delete run.seal;
   delete run.sealRange;
   return [{ type: "physics_started", runId: run.id, physicsId: run.physicsId, holderId: run.holderId, sourceKind: run.sourceKind, sourceId: run.sourceId, chained: true, from }];
@@ -35632,9 +35632,9 @@ registerAfterChange((draft, reg, change) => {
   if (change.field !== "contact" && change.field !== "worn" || change.value === void 0 || draft.scene?.physics) return events;
   const kind = change.field === "contact" ? "contact" : "item";
   const main2 = physicsOf(sourceEntry(reg, kind, change.value))[0];
-  const holder2 = holderOf3(draft, kind, change.value);
-  if (main2 && holder2 && whyNotStart(draft, reg, { physicsId: main2.id, sourceKind: kind, sourceId: change.value, holderId: holder2 }) === null) {
-    events.push(...startPhysics(draft, { registries: reg }, { physicsId: main2.id, sourceKind: kind, sourceId: change.value, holderId: holder2 }));
+  const holder3 = holderOf3(draft, kind, change.value);
+  if (main2 && holder3 && whyNotStart(draft, reg, { physicsId: main2.id, sourceKind: kind, sourceId: change.value, holderId: holder3 }) === null) {
+    events.push(...startPhysics(draft, { registries: reg }, { physicsId: main2.id, sourceKind: kind, sourceId: change.value, holderId: holder3 }));
   }
   return events;
 });
@@ -37707,8 +37707,8 @@ function benchSeverity(reg) {
   const heavy = [...reg.punishments.values()].filter((p) => p.sideEffects?.some((e) => e.type === "bench"));
   return heavy.length === 0 ? null : Math.min(...heavy.map((p) => Number(p.severity)));
 }
-function punishVoteDecision(reg, unitId, measure) {
-  const pun = punishmentFor(reg, measure);
+function punishVoteDecision(reg, unitId, measure2) {
+  const pun = punishmentFor(reg, measure2);
   const limit = benchSeverity(reg);
   if (!pun || limit === null || Number(pun.severity) > limit) return null;
   return { kind: "punish", subject: unitId };
@@ -38825,10 +38825,10 @@ function exposedKinds(state, reg) {
   const contact = contactOf(scene);
   if (contact) {
     const entry = reg.blockingContacts.get(contact.id);
-    const holder2 = scene.participants.includes(contact.with) ? contact.with : Object.entries(scene.blocking ?? {}).find(([, b]) => b.contact === contact)?.[0] ?? first2;
-    add2(entry?.stimuli, holder2, contact.target);
+    const holder3 = scene.participants.includes(contact.with) ? contact.with : Object.entries(scene.blocking ?? {}).find(([, b]) => b.contact === contact)?.[0] ?? first2;
+    add2(entry?.stimuli, holder3, contact.target);
     const target = contact.target !== void 0 ? reg.worshipTargets.get(contact.target) : void 0;
-    if (target) add2(target.stimuli, holder2, contact.target, target);
+    if (target) add2(target.stimuli, holder3, contact.target, target);
   }
   for (const w of Object.values(blockingOf(scene, COMMANDER).worn ?? {})) add2(w ? reg.blockingItems.get(w.id)?.stimuli : void 0, first2);
   const run = state.lastExpedition;
@@ -38966,9 +38966,9 @@ function actsFor(state, reg) {
   const scene = state.scene;
   const contact = scene && blockingLive(state, reg) ? contactOf(scene) : void 0;
   if (!scene || !contact || reg.blockingContacts.get(contact.id)?.mouth !== true) return [];
-  const holder2 = holderOf4(state);
-  if (!contentAllowed(state, reg, { contentTags: ["worship"] }, holder2)) return [];
-  return ACT_KINDS.filter((k) => k !== "pet" || contentAllowed(state, reg, { contentTags: ["pet_play"] }, holder2));
+  const holder3 = holderOf4(state);
+  if (!contentAllowed(state, reg, { contentTags: ["worship"] }, holder3)) return [];
+  return ACT_KINDS.filter((k) => k !== "pet" || contentAllowed(state, reg, { contentTags: ["pet_play"] }, holder3));
 }
 function countedTarget(state) {
   const scene = state.scene;
@@ -38993,30 +38993,30 @@ function startAct(draft, ctx2, kind) {
   if (scene.physics) throw new Error("physics/act: a hold is running");
   if (scene.act) throw new Error("physics/act: the kisses are still being counted");
   const contact = contactOf(scene);
-  const holder2 = holderOf4(draft);
+  const holder3 = holderOf4(draft);
   const events = [];
   for (const ex of exposedKinds(draft, reg).filter((e) => reg.stimulusKinds.get(e.kind)?.family === "taste")) events.push(...applyWay(draft, ctx2, "taste", ex.kind));
-  if (k === "kiss") return [{ type: "mouth_act", kind: k, unitId: holder2 }, ...events];
+  if (k === "kiss") return [{ type: "mouth_act", kind: k, unitId: holder3 }, ...events];
   if (k === "counted") {
     const n = countedTarget(draft);
     scene.act = { kind: "counted", n, since: scene.exchanges, tries: 0 };
-    return [{ type: "mouth_act", kind: k, unitId: holder2, n }, ...events];
+    return [{ type: "mouth_act", kind: k, unitId: holder3, n }, ...events];
   }
-  const physicsId = physicsFor(draft, reg, k, holder2);
+  const physicsId = physicsFor(draft, reg, k, holder3);
   if (physicsId === null) throw new Error("physics/act: that kind of interaction is switched off or not available here");
-  return [{ type: "mouth_act", kind: k, unitId: holder2 }, ...events, ...startPhysics(draft, ctx2, { physicsId, sourceKind: "contact", sourceId: contact.id, holderId: holder2, act: k })];
+  return [{ type: "mouth_act", kind: k, unitId: holder3 }, ...events, ...startPhysics(draft, ctx2, { physicsId, sourceKind: "contact", sourceId: contact.id, holderId: holder3, act: k })];
 }
 function finishCounted(draft, _ctx, typed) {
   const act = draft.scene?.act;
   if (!act) throw new Error("physics/act_finish: no count is waiting");
   if (typeof typed !== "number" || !Number.isFinite(typed)) throw new Error("physics/act_finish needs { typed } as a number");
-  const holder2 = holderOf4(draft) ?? draft.scene.participants[0];
+  const holder3 = holderOf4(draft) ?? draft.scene.participants[0];
   if (Math.round(typed) === act.n) {
     delete draft.scene.act;
-    return [{ type: "mouth_act_done", kind: "counted", n: act.n, tries: act.tries, unitId: holder2 }];
+    return [{ type: "mouth_act_done", kind: "counted", n: act.n, tries: act.tries, unitId: holder3 }];
   }
   act.tries += 1;
-  return [{ type: "mouth_act_restart", kind: "counted", n: act.n, tries: act.tries, unitId: holder2 }];
+  return [{ type: "mouth_act_restart", kind: "counted", n: act.n, tries: act.tries, unitId: holder3 }];
 }
 
 // src/engine/physics/combined.ts
@@ -39811,8 +39811,8 @@ function oversightDayStep(draft, ctx2) {
   o.blocked = [];
   const clock = ensureClock(draft, ctx2.registries);
   if (clock === void 0) return events;
-  const holder2 = leashBlockOf(draft, ctx2.registries) ?? o.holderId;
-  if (holder2 !== null && holder2 !== void 0) o.holderId = holder2;
+  const holder3 = leashBlockOf(draft, ctx2.registries) ?? o.holderId;
+  if (holder3 !== null && holder3 !== void 0) o.holderId = holder3;
   const opened = openThread(draft, ctx2.registries);
   if (opened) o.threadId = THREAD;
   events.push(...advanceClock(draft, ctx2, OVERSIGHT_CLOCK, 1, "oversight"));
@@ -39944,8 +39944,8 @@ function holdFeed(draft, reg, unitId, event, _severity) {
 var R3 = TUNING.regard;
 function nonHolder(state, unitId) {
   const unit4 = state.squad.find((u) => u.id === unitId);
-  const frame = dynamicOf(state, unitId)?.frame;
-  return unit4 !== void 0 && unit4.kind === "named" && isLiving(unit4) && (frame === void 0 || frameRank(frame) < frameRank("play"));
+  const frame2 = dynamicOf(state, unitId)?.frame;
+  return unit4 !== void 0 && unit4.kind === "named" && isLiving(unit4) && (frame2 === void 0 || frameRank(frame2) < frameRank("play"));
 }
 var noted = (draft) => draft.dynamic.noted ??= {};
 function checkDisappointment(draft, ctx2, unitId, from, to) {
@@ -40033,8 +40033,8 @@ function expectation(state, reg, moment) {
   if (!dynamicOn(state, reg) || liveDynamic(state, moment.unitId) === void 0) return null;
   const wanted2 = expectationsOf(state, reg, moment.unitId).moments?.[moment.sourceId];
   const options2 = wanted2 === void 0 ? [] : moment.options.filter((o) => o.type === wanted2.type);
-  const pick3 = options2.find((o) => o.key === "0" || o.key === "1" || o.key === "2") ?? options2[0];
-  return wanted2 !== void 0 && pick3 !== void 0 ? { key: pick3.key, strength: wanted2.strength } : defaultExpectation(state, reg, moment);
+  const pick4 = options2.find((o) => o.key === "0" || o.key === "1" || o.key === "2") ?? options2[0];
+  return wanted2 !== void 0 && pick4 !== void 0 ? { key: pick4.key, strength: wanted2.strength } : defaultExpectation(state, reg, moment);
 }
 function compromatHint(state, reg, unitId) {
   const dyn = dynamicOn(state, reg) && liveDynamic(state, unitId) !== void 0 ? dynamicOf(state, unitId) : void 0;
@@ -40068,8 +40068,8 @@ function terminalActivity(reg) {
   return null;
 }
 function bypassAllies(state, reg, opts = {}) {
-  const holder2 = leashBlockOf(state, reg);
-  return state.squad.filter((u) => u.kind === "named" && isLiving(u) && u.id !== holder2 && (state.relations[u.id]?.trust ?? 0) >= TUNING.dynamic.bypass.allyMinTrust && (opts.tech !== true || isTech(state, reg, u.id))).map((u) => u.id);
+  const holder3 = leashBlockOf(state, reg);
+  return state.squad.filter((u) => u.kind === "named" && isLiving(u) && u.id !== holder3 && (state.relations[u.id]?.trust ?? 0) >= TUNING.dynamic.bypass.allyMinTrust && (opts.tech !== true || isTech(state, reg, u.id))).map((u) => u.id);
 }
 function bypassRoutes(state, reg) {
   const terminal = terminalActivity(reg);
@@ -40086,15 +40086,15 @@ function bypassChance(state, reg, route, allyId) {
   const B2 = TUNING.dynamic.bypass;
   if (route === "comms") return B2.comms;
   if (route === "reset") return allyId !== void 0 && isTech(state, reg, allyId) ? B2.resetTech : B2.reset;
-  const holder2 = state.squad.find((u) => u.id === leashBlockOf(state, reg));
-  return Math.min(0.95, B2.ally * TUNING.squadKnowledge.insight[holder2?.insight ?? "mid"]);
+  const holder3 = state.squad.find((u) => u.id === leashBlockOf(state, reg));
+  return Math.min(0.95, B2.ally * TUNING.squadKnowledge.insight[holder3?.insight ?? "mid"]);
 }
 var ACTION_OF = { compel: "leash/compel", suppress: "leash/suppress", terminate: "leash/terminate" };
 function bypassLeash(draft, ctx2, p) {
   const reg = ctx2.registries;
   const holderId = leashBlockOf(draft, reg);
   if (holderId === null) throw new Error("Nothing holds the Leash requests: file it as usual.");
-  const holder2 = draft.squad.find((u) => u.id === holderId);
+  const holder3 = draft.squad.find((u) => u.id === holderId);
   const why = checkLeash(draft, reg, p.kind, p.unitId);
   if (why) throw new Error(why);
   const terminal = terminalActivity(reg);
@@ -40113,12 +40113,12 @@ function bypassLeash(draft, ctx2, p) {
   const discovered = ctx2.rng.chance(bypassChance(draft, reg, p.route, p.allyId));
   const events = [{ type: "leash_bypassed", unitId: holderId, route: p.route, discovered, targetId: p.unitId, kind: p.kind, ...p.allyId !== void 0 ? { allyId: p.allyId } : {} }];
   if (discovered) {
-    events.push(...hitHer(draft, reg, holderId, "overrode_her", "major", `went around ${holder2.displayName}'s hold on the Leash`, { amplified: true }));
+    events.push(...hitHer(draft, reg, holderId, "overrode_her", "major", `went around ${holder3.displayName}'s hold on the Leash`, { amplified: true }));
     if (p.route === "ally" && p.allyId !== void 0) {
       const applied = applyRelationDelta(draft, p.allyId, "trust", TUNING.dynamic.bypass.allyTrust, "leash_bypass");
       if (applied !== 0) events.push({ type: "relation_changed", unitId: p.allyId, axis: "trust", delta: applied, applied });
     }
-    addCompromat(draft, holderId, `AUTHOR TO WRITE: ${holder2.displayName} caught the commander going around her hold on the Leash requests.`, p.allyId !== void 0 ? [p.allyId] : []);
+    addCompromat(draft, holderId, `AUTHOR TO WRITE: ${holder3.displayName} caught the commander going around her hold on the Leash requests.`, p.allyId !== void 0 ? [p.allyId] : []);
     events.push(...regardFall(draft, reg, holderId, TUNING.dynamic.bypass.regardFall, { witness: false, cause: "bypass" }));
     resetServed(draft, holderId);
   }
@@ -40722,10 +40722,10 @@ function callPosture(draft, ctx2, events) {
     const now = scene.blocking?.[COMMANDER]?.posture;
     const others = mine.filter((p) => p.postureId !== now);
     const pool = others.length > 0 ? others : mine;
-    const pick3 = pool[Math.min(pool.length - 1, Math.floor(practiceRoll(draft, holderId, `call:pick:${key}`) * pool.length))];
+    const pick4 = pool[Math.min(pool.length - 1, Math.floor(practiceRoll(draft, holderId, `call:pick:${key}`) * pool.length))];
     const id = nextPracticeId(draft, "pc");
-    ensurePractices(draft).call = { id, holderId, postureId: pick3.postureId, sceneId: scene.id, at: scene.exchanges };
-    return [{ type: "posture_called", callId: id, unitId: holderId, holderId, postureId: pick3.postureId, sceneId: scene.id }];
+    ensurePractices(draft).call = { id, holderId, postureId: pick4.postureId, sceneId: scene.id, at: scene.exchanges };
+    return [{ type: "posture_called", callId: id, unitId: holderId, holderId, postureId: pick4.postureId, sceneId: scene.id }];
   }
   return [];
 }
@@ -41481,8 +41481,8 @@ function choosesAgainstHer(state, reg, context, ref, choice) {
   if (rec !== void 0 && rec.context === context && rec.ref === ref) return rec.index !== null && rec.index !== choice;
   const holderId = herChooser(state, reg);
   if (holderId === null || !preselects(state, reg, holderId) || !choiceOpen(state, context, ref)) return false;
-  const pick3 = herPickFor(state, reg, holderId, context, ref);
-  return pick3 !== null && pick3 !== choice;
+  const pick4 = herPickFor(state, reg, holderId, context, ref);
+  return pick4 !== null && pick4 !== choice;
 }
 
 // src/loyalty/dilemmaController.ts
@@ -41620,9 +41620,9 @@ function nicknameDirective(unitName3, nickname) {
 function reputationDirective(id, text3) {
   return { id: `reputation:${id}`, expiresAfter: "scene", text: text3 };
 }
-function measureLabel(reg, measure) {
-  if (measure === "leash") return "The Leash";
-  const label2 = reg.punishments.get(measure)?.label;
+function measureLabel(reg, measure2) {
+  if (measure2 === "leash") return "The Leash";
+  const label2 = reg.punishments.get(measure2)?.label;
   return typeof label2 === "string" && label2 !== "" ? label2 : "Consequences";
 }
 
@@ -42221,7 +42221,7 @@ function createPersonal(deps) {
     takeOffToken: (tokenId) => act("token/remove", { tokenId }),
     answerToken: (offerId, accept2) => act("token/answer", { offerId, accept: accept2 }),
     answerWager: (wagerId, accept2) => act("wager/answer", { wagerId, accept: accept2 }),
-    playWager: (wagerId, pick3) => act("wager/play", { wagerId, ...pick3 !== void 0 ? { pick: pick3 } : {} }),
+    playWager: (wagerId, pick4) => act("wager/play", { wagerId, ...pick4 !== void 0 ? { pick: pick4 } : {} }),
     answerQuestion: (wagerId, text3) => act("wager/answer_question", { wagerId, text: text3 }),
     challenge: (p) => act("wager/challenge", p),
     answerSecret(secretId, choice) {
@@ -42565,9 +42565,9 @@ var isRun = (r) => Array.isArray(r) && r.length === 2 && Number.isSafeInteger(r[
 function sanitize(cur) {
   const memory2 = cur.memory;
   if (!("hidden" in memory2)) return cur;
-  const runs2 = Array.isArray(memory2.hidden) ? memory2.hidden.filter(isRun) : [];
+  const runs = Array.isArray(memory2.hidden) ? memory2.hidden.filter(isRun) : [];
   const { hidden: _drop, ...rest } = memory2;
-  return { ...cur, memory: runs2.length > 0 ? { ...rest, hidden: runs2 } : rest };
+  return { ...cur, memory: runs.length > 0 ? { ...rest, hidden: runs } : rest };
 }
 var invalid = (detail) => ({ ok: false, reason: "invalid", detail });
 var PROTO_WORDS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);
@@ -43084,9 +43084,9 @@ function createWarden(deps) {
     const length = deps.st.chatLength();
     deps.toast("info", `REWIND \u2014 day ${snap2.day} begins again.`);
     if (length - 1 < snap2.chatLength) return;
-    const runs2 = await deps.st.hideMessages(snap2.chatLength, length - 1);
-    if (chatId() !== expect || runs2.length === 0) return;
-    deps.app.dispatch({ type: "memory/hidden", payload: { add: runs2 } }, { expectChatId: expect });
+    const runs = await deps.st.hideMessages(snap2.chatLength, length - 1);
+    if (chatId() !== expect || runs.length === 0) return;
+    deps.app.dispatch({ type: "memory/hidden", payload: { add: runs } }, { expectChatId: expect });
   }
   const epilogueInput = (s) => {
     if (!s.ended) return null;
@@ -43658,11 +43658,11 @@ function styleLine(state, reg, unit4) {
 }
 function holderDirective(state, reg, unit4) {
   const dyn = dynamicOf(state, unit4.id);
-  const frame = dyn === void 0 ? void 0 : frameEntry(reg, dyn.frame);
+  const frame2 = dyn === void 0 ? void 0 : frameEntry(reg, dyn.frame);
   const waiting3 = state.dynamic?.open.milestones.find((m) => m.unitId === unit4.id);
   const asking = state.dynamic?.open.claims.find((c) => c.unitId === unit4.id);
   const holds6 = dyn !== void 0 && frameRank(dyn.frame) >= frameRank("play");
-  if (dyn === void 0 || frame === void 0 || !holds6 && waiting3 === void 0) return null;
+  if (dyn === void 0 || frame2 === void 0 || !holds6 && waiting3 === void 0) return null;
   const name = unit4.displayName;
   const claimed = dyn.domains.map((d) => reg.dynamicDomains.get(d.id)?.promptHint).filter((h2) => typeof h2 === "string").map(sentence2);
   const milestone = waiting3 === void 0 ? void 0 : reg.dynamicMilestones.get(waiting3.milestoneId);
@@ -43672,7 +43672,7 @@ function holderDirective(state, reg, unit4) {
   const refused = dyn.refusals.some((day) => state.day - day <= TUNING.dynamic.directives.refusalDays);
   const kept = compromatOf(state, unit4.id).slice(-3).map((f) => sentence2(f.text)).filter((t) => t !== "");
   const parts = [
-    ...holds6 ? [`${name} holds the lead with the commander: ${sentence2(frame.promptHint)}.`] : [],
+    ...holds6 ? [`${name} holds the lead with the commander: ${sentence2(frame2.promptHint)}.`] : [],
     ...holds6 && claimed.length > 0 ? [`What she has claimed: ${claimed.join("; ")}.`] : [],
     styleLine(state, reg, unit4),
     ...regard2 !== null ? [`Her tone toward the commander: ${sentence2(regard2)}.`] : [],
@@ -43701,8 +43701,8 @@ function dynamicDirectives(state, reg, present2) {
   const out = [];
   const units = present2.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named" && isLiving(u) && herPracticeLive(state, u.id));
   for (const unit4 of units) {
-    const holder2 = holderDirective(state, reg, unit4);
-    if (holder2 !== null) out.push(holder2);
+    const holder3 = holderDirective(state, reg, unit4);
+    if (holder3 !== null) out.push(holder3);
   }
   const probe = sceneProbe(state, units.map((u) => u.id));
   if (probe !== void 0) out.push(probeDirective(reg, units.find((u) => u.id === probe.unitId), probe.probe.axis));
@@ -43730,12 +43730,12 @@ function disappointedDirectives(state, present2) {
   const out = [];
   for (const id of present2) {
     const unit4 = state.squad.find((u) => u.id === id);
-    const holder2 = state.squad.find((u) => present2.includes(u.id) && u.id !== id && holders2.includes(u.id));
-    if (unit4 === void 0 || holder2 === void 0 || unit4.kind !== "named" || !isLiving(unit4) || disappointedSince(state, id) === void 0) continue;
+    const holder3 = state.squad.find((u) => present2.includes(u.id) && u.id !== id && holders2.includes(u.id));
+    if (unit4 === void 0 || holder3 === void 0 || unit4.kind !== "named" || !isLiving(unit4) || disappointedSince(state, id) === void 0) continue;
     out.push({
       id: `${DISAPPOINTED_PREFIX}${id}`,
       expiresAfter: "scene",
-      text: `AUTHOR TO WRITE: ${unit4.displayName} has stopped turning to the commander for advice; when she speaks she addresses ${holder2.displayName}. She does not argue and does not lecture: she is simply quieter and more distant with the commander. Show it in how she acts and speaks; never name it as a mechanic.`
+      text: `AUTHOR TO WRITE: ${unit4.displayName} has stopped turning to the commander for advice; when she speaks she addresses ${holder3.displayName}. She does not argue and does not lecture: she is simply quieter and more distant with the commander. Show it in how she acts and speaks; never name it as a mechanic.`
     });
   }
   return out;
@@ -43771,12 +43771,12 @@ function witnessDirectives(state, reg, present2) {
     if (unit4 === void 0 || unit4.kind !== "named" || !isLiving(unit4) || rows[id] === void 0) continue;
     const lines = [];
     for (const [holderId, rec] of Object.entries(rows[id])) {
-      const holder2 = state.squad.find((u) => u.id === holderId);
-      if (holder2 === void 0 || !isLiving(holder2) || dynamicOf(state, holderId) === void 0) continue;
+      const holder3 = state.squad.find((u) => u.id === holderId);
+      if (holder3 === void 0 || !isLiving(holder3) || dynamicOf(state, holderId) === void 0) continue;
       if (rec.level === "suspects_dynamic") {
-        lines.push(`AUTHOR TO WRITE: ${unit4.displayName} suspects that ${holder2.displayName} has something over the commander and gives the orders when the two are alone. She is cautious: she hints and asks small questions, and says nothing outright.`);
+        lines.push(`AUTHOR TO WRITE: ${unit4.displayName} suspects that ${holder3.displayName} has something over the commander and gives the orders when the two are alone. She is cautious: she hints and asks small questions, and says nothing outright.`);
       } else if (rec.level === "knows_dynamic") {
-        lines.push(`AUTHOR TO WRITE: ${unit4.displayName} knows that ${holder2.displayName} holds authority over the commander. ${REACTION_LINE[reactionOf(state, reg, id, holderId)](holder2.displayName)}`);
+        lines.push(`AUTHOR TO WRITE: ${unit4.displayName} knows that ${holder3.displayName} holds authority over the commander. ${REACTION_LINE[reactionOf(state, reg, id, holderId)](holder3.displayName)}`);
       }
     }
     if (lines.length > 0) out.push({ id: `${WITNESS_PREFIX}${id}`, expiresAfter: "scene", text: [...lines, "Show it in how she acts and speaks; never name it as a mechanic."].join(" ") });
@@ -43785,11 +43785,11 @@ function witnessDirectives(state, reg, present2) {
 }
 function leashBlockDirectives(state, reg, present2) {
   const holderId = leashBlockOf(state, reg);
-  const holder2 = holderId === null || !present2.includes(holderId) ? void 0 : state.squad.find((u) => u.id === holderId);
-  return holder2 === void 0 ? [] : [{
-    id: `${LEASH_BLOCK_PREFIX}${holder2.id}`,
+  const holder3 = holderId === null || !present2.includes(holderId) ? void 0 : state.squad.find((u) => u.id === holderId);
+  return holder3 === void 0 ? [] : [{
+    id: `${LEASH_BLOCK_PREFIX}${holder3.id}`,
     expiresAfter: "scene",
-    text: `AUTHOR TO WRITE: ${holder2.displayName} holds the commander's Leash requests: nothing is filed on the device without her say, and she may refuse to sign it. Show it in how she speaks about the device; never name it as a mechanic.`
+    text: `AUTHOR TO WRITE: ${holder3.displayName} holds the commander's Leash requests: nothing is filed on the device without her say, and she may refuse to sign it. Show it in how she speaks about the device; never name it as a mechanic.`
   }];
 }
 function commandDirectives(state, reg, present2) {
@@ -43817,12 +43817,12 @@ function offerDirective(event, state, reg) {
   return parts === null ? null : plainDirective({ id: `${OFFER_PREFIX}${unit4.id}`, expiresAfter: "next_reply", text: [...parts, "Show it in how she acts and speaks; never name it as a mechanic."].join(" ") });
 }
 function offerSentences(reg, unit4, o) {
-  const say2 = OFFER_LINE[o.answer];
-  if (say2 === void 0) return null;
+  const say3 = OFFER_LINE[o.answer];
+  if (say3 === void 0) return null;
   const named4 = o.corrected === void 0 ? void 0 : reg.worshipTargets.get(o.corrected);
   return [
     `The commander offers ${sentence2(o.what)} to ${unit4.displayName}${o.conditions ? ", and asks something in return" : ""}.`,
-    o.kind ? `${unit4.displayName} turns it down kindly; she is not looking for that from the commander.` : say2(unit4.displayName),
+    o.kind ? `${unit4.displayName} turns it down kindly; she is not looking for that from the commander.` : say3(unit4.displayName),
     ...o.answer === "corrected" && named4 !== void 0 ? [`What she wants is the commander's attention to her ${sentence2(String(named4.label)).toLowerCase()}.`] : []
   ];
 }
@@ -44035,9 +44035,9 @@ function practiceDirectives(state, reg, present2) {
     const asked = (state.practices?.tasks ?? []).filter((t) => t.kind === "task" && t.status === "open" && t.targetUnitId === id && t.holderId !== id && practiceLive(state, reg, t.holderId));
     if (asked.length === 0) continue;
     const lines = asked.flatMap((t) => {
-      const holder2 = state.squad.find((u) => u.id === t.holderId);
+      const holder3 = state.squad.find((u) => u.id === t.holderId);
       const what = taskLine(t);
-      return holder2 === void 0 || what === "" ? [] : [`${holder2.displayName} asked the commander for this, which involves ${target.displayName}: ${what}. Her own stance toward what ${holder2.displayName} leads in: ${witnessOf(state, reg, id, t.holderId)}.`];
+      return holder3 === void 0 || what === "" ? [] : [`${holder3.displayName} asked the commander for this, which involves ${target.displayName}: ${what}. Her own stance toward what ${holder3.displayName} leads in: ${witnessOf(state, reg, id, t.holderId)}.`];
     });
     if (lines.length > 0) out.push({ id: `${TARGET_PREFIX}${id}`, expiresAfter: "scene", text: plainDraft(`${lines.join(" ")} She reacts as she would. ${NEVER_NAME}`) });
   }
@@ -45382,9 +45382,9 @@ function bondsDirectives(builder, state, reg) {
     builder.setDirective({ id: `co_command:${id}`, expiresAfter: "manual", text: `${unit4.displayName} shares command with the commander by open agreement.` });
   }
   const hold = smotherActive(state);
-  const holder2 = hold ? state.squad.find((u) => u.id === hold.unitId) : void 0;
-  if (hold && holder2 && state.scene.participants.includes(holder2.id)) {
-    builder.setDirective({ id: `smother:${holder2.id}`, expiresAfter: "scene", text: `${holder2.displayName} has locked the hangar to keep the commander at base; she wants the commander close and safe.` });
+  const holder3 = hold ? state.squad.find((u) => u.id === hold.unitId) : void 0;
+  if (hold && holder3 && state.scene.participants.includes(holder3.id)) {
+    builder.setDirective({ id: `smother:${holder3.id}`, expiresAfter: "scene", text: `${holder3.displayName} has locked the hangar to keep the commander at base; she wants the commander close and safe.` });
   }
   for (const id of state.scene.participants) {
     const unit4 = state.squad.find((u) => u.id === id);
@@ -45556,11 +45556,11 @@ function createDiscipline(deps) {
     deps.refreshContext();
   }
   const failure = (events) => events.find((e) => e.type === "error");
-  function announcePunish(unitId, measure) {
+  function announcePunish(unitId, measure2) {
     const state2 = deps.app.current().state;
     const reg = deps.registries();
     const name = nameOf28(unitId);
-    const label2 = measureLabel(reg, measure);
+    const label2 = measureLabel(reg, measure2);
     if (state2?.scene?.participants.includes(unitId)) {
       const stance = commandStance(state2, reg, unitId);
       deps.context.setDirective(punishDirective(unitId, name, label2, String(stance === null ? "" : stanceEntry(reg, stance)?.name ?? stance)));
@@ -45569,13 +45569,13 @@ function createDiscipline(deps) {
       deps.toast("info", `The commander imposed ${label2} on ${name}.`);
     }
   }
-  function punish(unitId, measure, days) {
-    const action = { type: "discipline/punish", payload: { unitId, measure, ...days !== void 0 ? { days } : {} } };
+  function punish(unitId, measure2, days) {
+    const action = { type: "discipline/punish", payload: { unitId, measure: measure2, ...days !== void 0 ? { days } : {} } };
     const events = deps.app.dispatch(action);
     const bad = failure(events);
     if (bad?.code === "vote_needed" && deps.requestVote) {
       void deps.requestVote(action).then((r) => {
-        if (r === "ran") announcePunish(unitId, measure);
+        if (r === "ran") announcePunish(unitId, measure2);
       });
       return false;
     }
@@ -45583,7 +45583,7 @@ function createDiscipline(deps) {
       deps.toast("error", String(bad.message ?? bad.code));
       return false;
     }
-    announcePunish(unitId, measure);
+    announcePunish(unitId, measure2);
     return true;
   }
   function undo(id) {
@@ -46708,13 +46708,13 @@ function drawPracticeReroll(host, generation, kind, requestId) {
   if (generation === void 0 || requestId === void 0) return null;
   return drawSiteReroll(host, generation, practiceSite(kind), requestId);
 }
-function drawPracticeChips(host, generation, state, reg, pick3) {
+function drawPracticeChips(host, generation, state, reg, pick4) {
   if (generation === void 0 || !dynamicOn(state, reg)) return 0;
   const holderOf5 = (key) => state.practices?.requests.find((r) => r.id === key)?.holderId ?? cardOf(state, key)?.card.holderId;
   return drawGenerationChips(host, generation, state, "comms", (r) => {
     if (!r.siteId.startsWith("practice.")) return false;
-    const holder2 = holderOf5(r.key);
-    return holder2 !== void 0 && pick3({ unitId: holder2 });
+    const holder3 = holderOf5(r.key);
+    return holder3 !== void 0 && pick4({ unitId: holder3 });
   });
 }
 
@@ -46731,7 +46731,7 @@ function holdButton(o) {
     ...analyzeNative(o.analyze, o.ctx)
   }, ...scene ? [h("i", { class: "alius-pill-fill", "aria-hidden": "true" }), h("span", {}, "sign")] : ["[ SIGN ]"]);
   let timer;
-  const stop2 = () => {
+  const stop = () => {
     if (timer !== void 0) clearTimeout(timer);
     timer = void 0;
     button2.classList.remove("alius-signing");
@@ -46746,7 +46746,7 @@ function holdButton(o) {
     }, TUNING.practice.sign.holdMs);
   };
   button2.addEventListener("pointerdown", start);
-  for (const type of ["pointerup", "pointerleave", "pointercancel", "blur"]) button2.addEventListener(type, stop2);
+  for (const type of ["pointerup", "pointerleave", "pointercancel", "blur"]) button2.addEventListener(type, stop);
   button2.addEventListener("keydown", (e) => {
     if ((e.key === "Enter" || e.key === " ") && !e.repeat) {
       e.preventDefault();
@@ -46754,7 +46754,7 @@ function holdButton(o) {
     }
   });
   button2.addEventListener("keyup", (e) => {
-    if (e.key === "Enter" || e.key === " ") stop2();
+    if (e.key === "Enter" || e.key === " ") stop();
   });
   return button2;
 }
@@ -46796,25 +46796,25 @@ function linesOf(reg, kind, style) {
   return (style !== void 0 ? idx.get(`${kind}|${style}`) : void 0) ?? idx.get(`${kind}|`) ?? [];
 }
 var cap3 = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
-function fill6(frame, vals) {
-  const runs2 = [];
+function fill6(frame2, vals) {
+  const runs = [];
   const plain8 = (t) => {
     if (t === "") return;
-    const last = runs2[runs2.length - 1];
+    const last = runs[runs.length - 1];
     if (last !== void 0 && last.value === void 0) last.text += t;
-    else runs2.push({ text: t });
+    else runs.push({ text: t });
   };
   let at = 0;
-  for (const m of frame.matchAll(/\{(\w+)\}/g)) {
+  for (const m of frame2.matchAll(/\{(\w+)\}/g)) {
     const k = m[1];
-    plain8(frame.slice(at, m.index));
+    plain8(frame2.slice(at, m.index));
     at = m.index + m[0].length;
     const v = vals[k.toLowerCase()];
     if (v === void 0) plain8(`{${k}}`);
-    else runs2.push({ text: k[0] === k[0].toUpperCase() ? cap3(v) : v, value: true });
+    else runs.push({ text: k[0] === k[0].toUpperCase() ? cap3(v) : v, value: true });
   }
-  plain8(frame.slice(at));
-  return runs2;
+  plain8(frame2.slice(at));
+  return runs;
 }
 function voiceLine(reg, kind, style, key, vals) {
   const list5 = linesOf(reg, kind, style);
@@ -46846,15 +46846,15 @@ function gistOf(c) {
   }
 }
 function gistRuns(gist) {
-  const runs2 = [];
+  const runs = [];
   let at = 0;
   for (const m of gist.matchAll(/<b>([\s\S]*?)<\/b>/g)) {
-    if (m.index > at) runs2.push({ text: gist.slice(at, m.index) });
-    runs2.push({ text: m[1], value: true });
+    if (m.index > at) runs.push({ text: gist.slice(at, m.index) });
+    runs.push({ text: m[1], value: true });
     at = m.index + m[0].length;
   }
-  if (at < gist.length) runs2.push({ text: gist.slice(at) });
-  return runs2;
+  if (at < gist.length) runs.push({ text: gist.slice(at) });
+  return runs;
 }
 
 // src/engine/hand.ts
@@ -46907,9 +46907,9 @@ function herLook(state, reg, unitId) {
   const unit4 = state.squad.find((u) => u.id === unitId);
   return { unitId, name: unit4?.displayName ?? unitId, accent: unitAccent(unitId), hand: handOf(state, reg, unitId) };
 }
-function runsOf(runs2) {
-  if (typeof runs2 === "string") return [runs2];
-  return runs2.map((r) => r.value ? h("span", { class: "alius-scard-v" }, r.text) : r.text);
+function runsOf(runs) {
+  if (typeof runs === "string") return [runs];
+  return runs.map((r) => r.value ? h("span", { class: "alius-scard-v" }, r.text) : r.text);
 }
 function conditionEls(c) {
   const els = [h("div", { class: "alius-scard-cond", ...c.attrs ?? {}, ...analyzeAttrs(c.analyze, c.ctx) }, ...runsOf(c.runs))];
@@ -47122,14 +47122,14 @@ function renderSceneTaskCard(host, ctx2) {
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:task_card", live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawTaskCards(host, state, reg, pick3, handlers2, opts = {}) {
+function drawTaskCards(host, state, reg, pick4, handlers2, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const task of state.practices?.tasks ?? []) {
-    if (task.kind !== "task" && task.kind !== "hold" || task.status !== "offered" || !pick3({ unitId: task.holderId }) || !practiceLive(state, reg, task.holderId)) continue;
+    if (task.kind !== "task" && task.kind !== "hold" || task.status !== "offered" || !pick4({ unitId: task.holderId }) || !practiceLive(state, reg, task.holderId)) continue;
     renderTaskCard(host, { state, reg, task, onAnswer: (a) => handlers2.answer(task.id, a), onSign: () => handlers2.sign(task.id), focusInput: handlers2.focusInput, generation: handlers2.generation }, opts);
   }
-  drawPracticeChips(host, handlers2.generation, state, reg, pick3);
+  drawPracticeChips(host, handlers2.generation, state, reg, pick4);
 }
 var RECORD_LINES = 5;
 function renderRecordLines(state, reg) {
@@ -47260,25 +47260,25 @@ var BUILDS = {
   }
 };
 var BUILD_KEYS = ["slim", "athletic", "curvy"];
-function shares(build2) {
-  const w = BUILD_KEYS.map((k) => Number.isFinite(build2[k]) && build2[k] > 0 ? build2[k] : 0);
+function shares(build3) {
+  const w = BUILD_KEYS.map((k) => Number.isFinite(build3[k]) && build3[k] > 0 ? build3[k] : 0);
   const sum = w.reduce((a, b) => a + b, 0);
   return sum > 0 ? { slim: w[0] / sum, athletic: w[1] / sum, curvy: w[2] / sum } : { slim: 1, athletic: 0, curvy: 0 };
 }
-function blend(build2) {
-  const s = shares(build2);
+function blend(build3) {
+  const s = shares(build3);
   const sum = (f) => BUILD_KEYS.reduce((acc, k) => acc + s[k] * f(BUILDS[k]), 0);
   return { width: (y) => sum((c) => lerp(c.w, y)), arm: sum((c) => c.arm), armOut: (y) => sum((c) => lerp(c.armOut, y)) };
 }
 var armCenter = (y) => lerp([[100, 44], [200, 57], [300, 65], [320, 64]], y);
-function outlinePath(build2, _side) {
-  const { width } = blend(build2);
+function outlinePath(build3, _side) {
+  const { width } = blend(build3);
   const right = RIGHT.map(([x, y]) => [x * width(y), y]);
   const left = right.slice(0, -1).reverse().map(([x, y]) => [-x, y]);
   return catmull([...right, ...left], true);
 }
-function armPaths(build2) {
-  const { arm, armOut } = blend(build2);
+function armPaths(build3) {
+  const { arm, armOut } = blend(build3);
   const one4 = (sign2) => catmull(ARM.map(([x, y]) => [(armCenter(y) + (x - armCenter(y)) * arm) * armOut(y) * sign2, y]), true);
   return [one4(1), one4(-1)];
 }
@@ -47299,8 +47299,8 @@ function hairPath(hair, side) {
   return `${base} ${catmull(side === "back" ? TAIL_BACK : TAIL_FRONT, true)}`;
 }
 var fringePath = () => catmull(FRINGE, true);
-function detailPaths(build2, side) {
-  const { width } = blend(build2);
+function detailPaths(build3, side) {
+  const { width } = blend(build3);
   const bw = width(150);
   const out = side === "back" ? ["M0,96 C1,140 -1,190 0,232", "M-30,118 C-24,132 -14,138 -8,136 M30,118 C24,132 14,138 8,136", "M-30,268 C-18,286 -6,284 0,272 C6,284 18,286 30,268", "M-24,40 C-22,60 -16,72 -12,76 M24,40 C22,60 16,72 12,76"] : [
     "M-30,100 C-18,106 -8,104 -3,101 M30,100 C18,106 8,104 3,101",
@@ -47308,7 +47308,7 @@ function detailPaths(build2, side) {
     `M${f1(-30 * width(250))},250 C-20,262 -12,270 -6,276 M${f1(30 * width(250))},250 C20,262 12,270 6,276`,
     "M-22,388 q4,6 8,0 M22,388 q-4,6 -8,0"
   ];
-  const s = shares(build2);
+  const s = shares(build3);
   for (const k of BUILD_KEYS) if (s[k] >= 1 / 3) out.push(...BUILDS[k].lines);
   return out;
 }
@@ -47477,8 +47477,8 @@ function renderDisciplineMenu(ctx2) {
 
 // src/ui/dynamic/cards.ts
 function staticWords(state, reg, unitId, kind, key, name) {
-  const runs2 = voiceLine(reg, kind, practiceOf(state, reg, unitId)?.style.primary, key, { name });
-  return runs2.length > 0 ? runs2 : null;
+  const runs = voiceLine(reg, kind, practiceOf(state, reg, unitId)?.style.primary, key, { name });
+  return runs.length > 0 ? runs : null;
 }
 function finish2(card2, classes, attrs, label2, analyze, live3) {
   card2.classList.add(...classes);
@@ -47530,11 +47530,11 @@ function renderMilestoneCard(host, ctx2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs(entry.sworn === true ? "glossary:vow" : `dynamicMilestones:${entry.id}`, { unitId: unit4.id }))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawMilestoneCards(host, state, reg, pick3, onAnswer, opts = {}) {
+function drawMilestoneCards(host, state, reg, pick4, onAnswer, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const milestone of state.dynamic?.open.milestones ?? []) {
-    if (pick3({ unitId: milestone.unitId })) renderMilestoneCard(host, { state, reg, milestone, onAnswer: (a) => onAnswer(milestone.id, a) }, opts);
+    if (pick4({ unitId: milestone.unitId })) renderMilestoneCard(host, { state, reg, milestone, onAnswer: (a) => onAnswer(milestone.id, a) }, opts);
   }
 }
 var SUBMIT_WORDS = "AUTHOR TO WRITE: {name} has asked enough times. She waits for the commander to give way, here and now.";
@@ -47595,11 +47595,11 @@ function renderClaimCard(host, ctx2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs(entry === void 0 ? "glossary:claim" : `dynamicDomains:${entry.id}`, live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawClaimCards(host, state, reg, pick3, onAnswer, opts = {}) {
+function drawClaimCards(host, state, reg, pick4, onAnswer, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const claim2 of state.dynamic?.open.claims ?? []) {
-    if (pick3({ unitId: claim2.unitId })) renderClaimCard(host, { state, reg, claim: claim2, onAnswer: (a) => onAnswer(claim2.id, a) }, opts);
+    if (pick4({ unitId: claim2.unitId })) renderClaimCard(host, { state, reg, claim: claim2, onAnswer: (a) => onAnswer(claim2.id, a) }, opts);
   }
 }
 var RETURN_WORDS = {
@@ -47614,8 +47614,8 @@ function renderReturnCard(host, ctx2, opts = {}) {
   if (opts.look === "scene") {
     const reg = ctx2.reg;
     const pill = (kind) => scenePill(kind, () => ctx2.onAnswer(kind), { "data-return-answer": kind, "data-return": offer.id, ...analyzeNative("glossary:aftermath", live3) });
-    const runs2 = staticWords(state, reg, unit4.id, `static.return.${offer.terms}`, offer.id, unit4.displayName);
-    const words3 = runs2 ?? plainDraft(RETURN_WORDS[offer.terms]).replaceAll("{name}", unit4.displayName);
+    const runs = staticWords(state, reg, unit4.id, `static.return.${offer.terms}`, offer.id, unit4.displayName);
+    const words3 = runs ?? plainDraft(RETURN_WORDS[offer.terms]).replaceAll("{name}", unit4.displayName);
     const card3 = sceneCard({
       her: herLook(state, reg, unit4.id),
       kind: "begin again",
@@ -47651,10 +47651,10 @@ function renderReturnCard(host, ctx2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:aftermath", live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawReturnCards(host, state, reg, pick3, onAnswer, opts = {}) {
+function drawReturnCards(host, state, reg, pick4, onAnswer, opts = {}) {
   host.replaceChildren();
   const offer = state.dynamic?.open.returnOffer;
-  if (!dynamicOn(state, reg) || offer === void 0 || !pick3({ unitId: offer.unitId })) return;
+  if (!dynamicOn(state, reg) || offer === void 0 || !pick4({ unitId: offer.unitId })) return;
   renderReturnCard(host, { state, reg, offer, onAnswer }, opts);
 }
 function transferTargets(state, unitId) {
@@ -47702,7 +47702,7 @@ function renderExitCard(host, ctx2) {
       "div",
       { class: "alius-exit-means", "data-exit-means": m },
       h("span", { class: "alius-exit-means-label" }, `${MEANS_LABEL[m]}: ${done ? "done today" : "not yet"} `),
-      done ? null : m === "discipline" ? renderDisciplineMenu({ state, registries: reg, unitId, onPunish: (measure, days) => ctx2.means?.punish?.(measure, days) }) : h("button", {
+      done ? null : m === "discipline" ? renderDisciplineMenu({ state, registries: reg, unitId, onPunish: (measure2, days) => ctx2.means?.punish?.(measure2, days) }) : h("button", {
         type: "button",
         class: "alius-btn alius-option",
         "data-do-means": m,
@@ -47785,8 +47785,8 @@ function renderDynamicSection(host, ctx2) {
         redraw();
       },
       means: {
-        punish: (measure, days) => {
-          ctx2.onPunish?.(unitId, measure, days);
+        punish: (measure2, days) => {
+          ctx2.onPunish?.(unitId, measure2, days);
           redraw();
         },
         leash: () => {
@@ -47849,12 +47849,12 @@ function renderDynamicSection(host, ctx2) {
   }
   const practices = practicesBlock(state, reg, ctx2.knowledge, unitId, ctx2.hidden);
   const cards = h("div", { class: "alius-dyn-cards" });
-  const pick3 = (c) => c.unitId === unitId;
+  const pick4 = (c) => c.unitId === unitId;
   const slots = [h("div", { class: "alius-milestone-cards" }), h("div", { class: "alius-claim-cards" }), h("div", { class: "alius-return-cards" })];
   cards.append(...slots);
-  drawMilestoneCards(slots[0], state, reg, pick3, (id, a) => ctx2.actions?.answerMilestone?.(id, a));
-  drawClaimCards(slots[1], state, reg, pick3, (id, a) => ctx2.actions?.answerClaim?.(id, a));
-  drawReturnCards(slots[2], state, reg, pick3, (a) => ctx2.actions?.answerReturn?.(a));
+  drawMilestoneCards(slots[0], state, reg, pick4, (id, a) => ctx2.actions?.answerMilestone?.(id, a));
+  drawClaimCards(slots[1], state, reg, pick4, (id, a) => ctx2.actions?.answerClaim?.(id, a));
+  drawReturnCards(slots[2], state, reg, pick4, (a) => ctx2.actions?.answerReturn?.(a));
   if (holds6) drawExit(true);
   const map = bodyMapFor(state, reg, ctx2.knowledge, unitId, ctx2.readable === true);
   const mapHost = h("div", { class: "alius-dyn-bodymap" });
@@ -47940,16 +47940,16 @@ function endsWords(state, until) {
 function drawHeldStrip(host, state, reg, handlers2) {
   host.replaceChildren();
   const held3 = heldNow(state);
-  const holder2 = held3 === null ? void 0 : state.squad.find((u) => u.id === held3.by);
-  if (held3 === null || holder2 === void 0) return;
-  const ctx2 = { unitId: holder2.id };
+  const holder3 = held3 === null ? void 0 : state.squad.find((u) => u.id === held3.by);
+  if (held3 === null || holder3 === void 0) return;
+  const ctx2 = { unitId: holder3.id };
   const ask2 = h("button", { type: "button", class: "alius-btn", "data-ask-release": "", ...analyzeNative("glossary:ask_release", ctx2), onclick: () => handlers2.askRelease() }, "[ ASK TO BE LET GO ]");
   const alarm = state.practices?.alarm;
   const open3 = alarm !== void 0 && alarm.answer === "keep" && alarm.accepted !== true;
   const answer = open3 ? h("button", { type: "button", class: "alius-btn", "data-held-answer": "", ...analyzeNative("glossary:alarm", ctx2), onclick: () => handlers2.answerHer() }, "[ ANSWER HER ]") : null;
   const send = alarm !== void 0 && alarm.answer === "keep" && alarm.accepted === true && alarm.kind !== "night" ? h("button", { type: "button", class: "alius-btn", "data-held-send": "", ...analyzeNative("glossary:without_command", ctx2), onclick: () => handlers2.sendSquad(alarm.id) }, "[ SEND THE SQUAD ]") : null;
   if (handlers2.sensory) {
-    host.append(h("p", { "data-held-line": "", ...analyzeAttrs("glossary:sensory_mode", ctx2) }, `Held in ${holder2.displayName}'s quarters.`), ...answer !== null ? [answer] : [], ask2, ...send !== null ? [send] : []);
+    host.append(h("p", { "data-held-line": "", ...analyzeAttrs("glossary:sensory_mode", ctx2) }, `Held in ${holder3.displayName}'s quarters.`), ...answer !== null ? [answer] : [], ask2, ...send !== null ? [send] : []);
     return;
   }
   const end2 = heldEndShown(held3);
@@ -47958,7 +47958,7 @@ function drawHeldStrip(host, state, reg, handlers2) {
     "div",
     { class: "alius-held-strip", "data-held-strip": "", role: "status" },
     h("span", { class: "alius-chip", "data-held-chip": "", ...analyzeAttrs("glossary:held", ctx2) }, "HELD"),
-    h("span", { class: "alius-held-text" }, ` in ${holder2.displayName}'s quarters${until}. `),
+    h("span", { class: "alius-held-text" }, ` in ${holder3.displayName}'s quarters${until}. `),
     answer,
     ask2,
     send
@@ -47973,7 +47973,7 @@ function renderRoutePicker(ctx2) {
   const lockAll = () => {
     for (const b of buttons) b.setAttribute("aria-disabled", "true");
   };
-  const pick3 = (p) => {
+  const pick4 = (p) => {
     if (ctx2.locked()) return;
     lockAll();
     ctx2.onPick(p);
@@ -47993,14 +47993,14 @@ function renderRoutePicker(ctx2) {
       ...analyzeNative(r.kind === "delegate" ? "glossary:delegate" : "glossary:check_routes", { kind: r.kind }),
       onclick: () => {
         if (ctx2.locked() || r.disabled !== null) return;
-        if (r.kind !== "delegate") return pick3({ route: r.route });
+        if (r.kind !== "delegate") return pick4({ route: r.route });
         units.replaceChildren(...(r.unitIds ?? []).map((id) => {
           const u = h("button", {
             type: "button",
             class: "alius-btn alius-option",
             "data-route-unit": id,
             ...analyzeNative("glossary:delegate"),
-            onclick: () => pick3({ route: r.route, unitId: id })
+            onclick: () => pick4({ route: r.route, unitId: id })
           }, `[ ${ctx2.unitName?.(id) ?? id} ]`);
           buttons.push(u);
           return u;
@@ -48037,10 +48037,10 @@ function renderDilemma(host, ctx2) {
       routes: o.routes,
       unitName: ctx2.unitName,
       locked: () => chosen,
-      onPick: (pick3) => {
+      onPick: (pick4) => {
         chosen = true;
         for (const b of buttons) b.setAttribute("aria-disabled", "true");
-        ctx2.onChoose(o.index, pick3);
+        ctx2.onChoose(o.index, pick4);
       },
       unlock: () => {
         chosen = false;
@@ -48353,7 +48353,7 @@ var isEditable = (t) => {
   return !!el && typeof el.tagName === "string" && (["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable === true);
 };
 function attachCombatKeys(h2) {
-  const onKey = (e) => {
+  const onKey2 = (e) => {
     if (!document.getElementById("alius-shell")) return;
     if (isEditable(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
     if (document.querySelector(".alius-modal-backdrop") || e.target?.closest?.('[role="dialog"]')) return;
@@ -48373,8 +48373,8 @@ function attachCombatKeys(h2) {
     else handled = false;
     if (handled) e.preventDefault();
   };
-  document.addEventListener("keydown", onKey);
-  return () => document.removeEventListener("keydown", onKey);
+  document.addEventListener("keydown", onKey2);
+  return () => document.removeEventListener("keydown", onKey2);
 }
 
 // src/ui/combat/combatScreen.ts
@@ -50503,8 +50503,8 @@ function createMemoryController(deps) {
     }
     for (const scene of hideCandidates(s, n)) {
       if (chatId() !== expect) return;
-      const runs2 = await st.hideMessages(scene.from, scene.to);
-      if (runs2.length > 0) app.dispatch({ type: "memory/hidden", payload: { add: runs2 } }, { expectChatId: expect });
+      const runs = await st.hideMessages(scene.from, scene.to);
+      if (runs.length > 0) app.dispatch({ type: "memory/hidden", payload: { add: runs } }, { expectChatId: expect });
     }
   }
   deps.generations.bind("scene.digest", {
@@ -50838,8 +50838,8 @@ var ADDITION_WORDS = {
 var plain5 = (text3) => text3.replace(/^\s*AUTHOR TO WRITE:\s*/, "").trim().replace(/[.\s]+$/, "");
 var GAP_WORDS = { matched: "what she expected", partial: "only partly what she expected", opposite: "the opposite of what she expected" };
 function genericWord(reg, sourceId, key) {
-  const frame = reg.momentSources.get(sourceId)?.frame;
-  return ["0", "1", "2"].includes(key) ? frame?.[Number(key)]?.generic ?? key : ADDITION_WORDS[key] ?? key;
+  const frame2 = reg.momentSources.get(sourceId)?.frame;
+  return ["0", "1", "2"].includes(key) ? frame2?.[Number(key)]?.generic ?? key : ADDITION_WORDS[key] ?? key;
 }
 function momentDirective2(event, state, reg) {
   const { open: open3, lastAnswer: a } = momentsOf(state.scene);
@@ -52990,7 +52990,7 @@ function buildImportInput(card2, registries, settings, sections, world, bond, co
   const str9 = (v) => typeof v === "string" ? v : "";
   const info = world ? worldImportInfo(registries, world) : void 0;
   const enabledPractice = practiceCategories(registries).filter((c) => (content ?? []).includes(c));
-  const holder2 = { content: { enabled: [...content ?? []] } };
+  const holder3 = { content: { enabled: [...content ?? []] } };
   const asked = sections.filter((s) => s !== "disposition" && s !== "stances" || info !== void 0 && (s === "disposition" || info.options.length > 0)).filter((s) => !PRACTICE_SECTIONS.includes(s) || enabledPractice.length > 0);
   return {
     card: card2,
@@ -53007,8 +53007,8 @@ function buildImportInput(card2, registries, settings, sections, world, bond, co
     ...asked.includes("practice") ? { practice: { categories: enabledPractice } } : {},
     ...asked.includes("expectations") ? {
       expectations: {
-        targets: [...registries.worshipTargets.values()].filter((t) => contentAllowed(holder2, registries, t)).map((t) => t.id),
-        sources: [...registries.momentSources.values()].filter((t) => contentAllowed(holder2, registries, t)).map((t) => t.id)
+        targets: [...registries.worshipTargets.values()].filter((t) => contentAllowed(holder3, registries, t)).map((t) => t.id),
+        sources: [...registries.momentSources.values()].filter((t) => contentAllowed(holder3, registries, t)).map((t) => t.id)
       }
     } : {}
   };
@@ -53022,13 +53022,13 @@ function developmentAxisKeys(registries, content) {
   const base = [...fixed, ...[...registries.tastes.keys()].map((t) => `taste:${t}`)];
   const on = practiceCategories(registries).filter((c) => (content ?? []).includes(c));
   if (on.length === 0) return base;
-  const holder2 = { content: { enabled: [...content ?? []] } };
+  const holder3 = { content: { enabled: [...content ?? []] } };
   return [
     ...base,
     "practice:style.secondary",
     "expect:holds_until",
     ...on.flatMap((c) => [`practice:${c}.as`, `practice:${c}.witness`]),
-    ...[...registries.worshipTargets.values()].filter((t) => contentAllowed(holder2, registries, t)).map((t) => `expect:worship.${t.id}`)
+    ...[...registries.worshipTargets.values()].filter((t) => contentAllowed(holder3, registries, t)).map((t) => `expect:worship.${t.id}`)
   ];
 }
 var isObj49 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -53054,7 +53054,7 @@ function sanitizeProfile(raw, ctx2) {
   const dropped = [];
   const missing2 = [];
   const profile = { roleCandidates: [], signatureCandidates: [], defectCandidates: [], notes: cap6(src.notes, 300) };
-  const pick3 = (list5, section, idKey, max, accept2, make) => {
+  const pick4 = (list5, section, idKey, max, accept2, make) => {
     const out = [];
     const seen2 = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list5) ? list5 : []) {
@@ -53073,7 +53073,7 @@ function sanitizeProfile(raw, ctx2) {
     return out;
   };
   if (want("role")) {
-    profile.roleCandidates = pick3(
+    profile.roleCandidates = pick4(
       src.roleCandidates,
       "role",
       "roleId",
@@ -53084,7 +53084,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.roleCandidates.length === 0) missing2.push("role");
   }
   if (want("signature")) {
-    profile.signatureCandidates = pick3(
+    profile.signatureCandidates = pick4(
       src.signatureCandidates,
       "signature",
       "templateId",
@@ -53113,7 +53113,7 @@ function sanitizeProfile(raw, ctx2) {
     if (!isObj49(src.bond)) delete profile.bond;
   }
   if (want("defects")) {
-    profile.defectCandidates = pick3(
+    profile.defectCandidates = pick4(
       src.defectCandidates,
       "defects",
       "defectId",
@@ -53372,10 +53372,10 @@ var Wizard = class {
     this.emit();
   }
   /** P13: who holds the leash: a chosen unit (by her position in the squad) or the corporation's pick. An index outside the squad is ignored. */
-  setWardenPick(pick3) {
-    if (pick3.by === "player") {
-      if (!Number.isInteger(pick3.index) || pick3.index < 0 || pick3.index >= this.s.units.length) return;
-      this.s.campaign.warden = { by: "player", index: pick3.index };
+  setWardenPick(pick4) {
+    if (pick4.by === "player") {
+      if (!Number.isInteger(pick4.index) || pick4.index < 0 || pick4.index >= this.s.units.length) return;
+      this.s.campaign.warden = { by: "player", index: pick4.index };
     } else this.s.campaign.warden = { by: "corporation" };
     this.emit();
   }
@@ -54329,14 +54329,14 @@ function renderOpinionsEditor(host, ctx2) {
 }
 
 // src/ui/dynamic/profileBlocks.ts
-function dynamicBlockData(reg, holder2, unitId) {
-  const on = holder2.content?.enabled ?? [];
+function dynamicBlockData(reg, holder3, unitId) {
+  const on = holder3.content?.enabled ?? [];
   const categories = practiceCategories(reg).filter((c) => on.includes(c)).map((id) => ({ id, label: String(reg.contentCategories.get(id)?.label ?? id) }));
   if (categories.length === 0) return { categories, targets: [], sources: [] };
   return {
     categories,
-    targets: [...reg.worshipTargets.values()].filter((t) => contentAllowed(holder2, reg, t, unitId)).map((t) => ({ id: t.id, label: String(t.label ?? t.id) })),
-    sources: [...reg.momentSources.values()].filter((s) => contentAllowed(holder2, reg, s, unitId)).map((s) => ({
+    targets: [...reg.worshipTargets.values()].filter((t) => contentAllowed(holder3, reg, t, unitId)).map((t) => ({ id: t.id, label: String(t.label ?? t.id) })),
+    sources: [...reg.momentSources.values()].filter((s) => contentAllowed(holder3, reg, s, unitId)).map((s) => ({
       id: s.id,
       label: title(s.id.replace(/_/g, " ")),
       types: (s.frame ?? []).map((o) => o.type)
@@ -54457,16 +54457,16 @@ function renderExpectationsBlock(host, ctx2) {
   const locked = (field2) => ctx2.locks.includes(field2) || ctx2.locks.includes(field2.split(".")[0]);
   const lock = (field2, address) => control(locked(field2) ? "[ LOCKED ]" : "[ LOCK ]", { "data-lock": field2 }, address, live3, ctx2.editable, () => ctx2.onLock(field2, !locked(field2)), locked(field2));
   const live1 = (field2) => ctx2.editable && !locked(field2);
-  const A = "glossary:expectation_profile";
-  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeNative(A, live3), tabindex: "0" }, "EXPECTATIONS"));
+  const A2 = "glossary:expectation_profile";
+  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeNative(A2, live3), tabindex: "0" }, "EXPECTATIONS"));
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-holds-until": "" },
-    h("span", { class: "alius-stat", "data-analyze": A, tabindex: "0" }, "Holds until:"),
-    ...HOLDS_UNTIL.map((v) => control(word(v), { "data-id": v }, A, live3, live1("holdsUntil"), () => {
+    h("span", { class: "alius-stat", "data-analyze": A2, tabindex: "0" }, "Holds until:"),
+    ...HOLDS_UNTIL.map((v) => control(word(v), { "data-id": v }, A2, live3, live1("holdsUntil"), () => {
       if (e.holdsUntil !== v) ctx2.onSet({ holdsUntil: v });
     }, e.holdsUntil === v)),
-    lock("holdsUntil", A)
+    lock("holdsUntil", A2)
   ));
   for (const t of ctx2.targets) {
     const w = e.worship?.[t.id];
@@ -54478,7 +54478,7 @@ function renderExpectationsBlock(host, ctx2) {
       ...ATTITUDES.map((a) => control(
         word(a),
         { "data-attitude": a },
-        A,
+        A2,
         live3,
         live1(field2),
         () => ctx2.onSet({ worship: { [t.id]: w?.attitude === a ? null : { ...w, attitude: a } } }),
@@ -54487,26 +54487,26 @@ function renderExpectationsBlock(host, ctx2) {
       w === void 0 ? null : valueSelect(
         "What it means to her",
         { "data-meaning": t.id },
-        A,
+        A2,
         live3,
         live1(field2),
         w.meaning ?? "",
         [option("", "(meaning)"), ...MEANINGS.map((m) => option(m, title(m)))],
         (v) => ctx2.onSet({ worship: { [t.id]: { ...w, meaning: v } } })
       ),
-      h("span", { class: "alius-stat", "data-analyze": A, tabindex: "0" }, "Body:"),
-      ...BODY_FEELINGS.map((f) => control(word(f), { "data-body": f }, A, live3, live1("body"), () => ctx2.onSet({ body: { ...e.body, [t.id]: f } }), e.body?.[t.id] === f)),
+      h("span", { class: "alius-stat", "data-analyze": A2, tabindex: "0" }, "Body:"),
+      ...BODY_FEELINGS.map((f) => control(word(f), { "data-body": f }, A2, live3, live1("body"), () => ctx2.onSet({ body: { ...e.body, [t.id]: f } }), e.body?.[t.id] === f)),
       valueSelect(
         "Scent",
         { "data-scent": t.id },
-        A,
+        A2,
         live3,
         live1("scent"),
         String(e.scent?.base?.[t.id] ?? ""),
         [option("", "(scent)"), ...[1, 2, 3, 4, 5].map((n) => option(String(n), String(n)))],
         (v) => ctx2.onSet({ scent: { ...e.scent, base: { ...e.scent?.base, [t.id]: Number(v) } } })
       ),
-      lock(field2, A)
+      lock(field2, A2)
     ));
   }
   const sourceOf2 = (id) => ctx2.sources.find((s) => s.id === id);
@@ -54518,14 +54518,14 @@ function renderExpectationsBlock(host, ctx2) {
       "div",
       { class: "alius-dyn-row", "data-moment": id },
       h("span", { class: "alius-chip", ...analyzeNative(`momentSources:${id}`), tabindex: "0" }, src.label),
-      ...src.types.map((type) => control(word(type), { "data-type": type }, A, live3, live1(field2), () => {
+      ...src.types.map((type) => control(word(type), { "data-type": type }, A2, live3, live1(field2), () => {
         if (m.type !== type) ctx2.onSet({ moments: { [id]: { ...m, type } } });
       }, m.type === type)),
-      ...STRENGTHS2.map((n) => control(String(n), { "data-strength": String(n) }, A, live3, live1(field2), () => {
+      ...STRENGTHS2.map((n) => control(String(n), { "data-strength": String(n) }, A2, live3, live1(field2), () => {
         if (m.strength !== n) ctx2.onSet({ moments: { [id]: { ...m, strength: n } } });
       }, m.strength === n)),
-      control("[ REMOVE ]", { "data-remove-moment": id }, A, live3, live1(field2), () => ctx2.onSet({ moments: { [id]: null } })),
-      lock(field2, A)
+      control("[ REMOVE ]", { "data-remove-moment": id }, A2, live3, live1(field2), () => ctx2.onSet({ moments: { [id]: null } })),
+      lock(field2, A2)
     ));
   }
   const addable = ctx2.sources.filter((s) => e.moments?.[s.id] === void 0);
@@ -54535,7 +54535,7 @@ function renderExpectationsBlock(host, ctx2) {
     valueSelect(
       "Add a moment",
       { "data-add-moment": ctx2.unit.id },
-      A,
+      A2,
       live3,
       ctx2.editable && addable.length > 0 && !locked("moments"),
       "",
@@ -54544,71 +54544,71 @@ function renderExpectationsBlock(host, ctx2) {
     )
   ));
   for (const k of ["irritation", "pleasure"]) {
-    const input = h("input", { type: "text", class: "alius-input alius-option", "aria-label": `How her ${k} shows`, "aria-disabled": live1("tells") ? null : "true", maxlength: String(TUNING.dynamic.profile.tellMax), "data-tell": k, value: e.tells?.[k] ?? "", ...analyzeNative(A, live3) });
+    const input = h("input", { type: "text", class: "alius-input alius-option", "aria-label": `How her ${k} shows`, "aria-disabled": live1("tells") ? null : "true", maxlength: String(TUNING.dynamic.profile.tellMax), "data-tell": k, value: e.tells?.[k] ?? "", ...analyzeNative(A2, live3) });
     input.addEventListener("change", () => {
       const v = input.value;
       input.value = e.tells?.[k] ?? "";
       if (live1("tells") && v !== (e.tells?.[k] ?? "")) ctx2.onSet({ tells: { ...e.tells, [k]: v } });
     });
-    host.append(h("div", { class: "alius-dyn-row", "data-tells": k }, h("span", { class: "alius-stat", "data-analyze": A, tabindex: "0" }, `${title(k)} shows as:`), input, ...k === "pleasure" ? [lock("tells", A)] : []));
+    host.append(h("div", { class: "alius-dyn-row", "data-tells": k }, h("span", { class: "alius-stat", "data-analyze": A2, tabindex: "0" }, `${title(k)} shows as:`), input, ...k === "pleasure" ? [lock("tells", A2)] : []));
   }
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-offset": "" },
-    h("span", { class: "alius-stat", "data-analyze": A, tabindex: "0" }, "Wants the commander:"),
+    h("span", { class: "alius-stat", "data-analyze": A2, tabindex: "0" }, "Wants the commander:"),
     ...["r", "f"].map((axis) => valueSelect(
       axis === "r" ? "More yielding or less" : "Smoother or more provoking",
       { "data-offset-axis": axis },
-      A,
+      A2,
       live3,
       live1("offset"),
       String(e.offset?.[axis] ?? 0),
       OFFSET_STEPS.map((n) => option(String(n), n > 0 ? `+${n}` : String(n))),
       (v) => ctx2.onSet({ offset: { r: e.offset?.r ?? 0, f: e.offset?.f ?? 0, [axis]: Number(v) } })
     )),
-    lock("offset", A)
+    lock("offset", A2)
   ));
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-build": "" },
-    h("span", { class: "alius-stat", "data-analyze": A, tabindex: "0" }, "Build:"),
+    h("span", { class: "alius-stat", "data-analyze": A2, tabindex: "0" }, "Build:"),
     ...["slim", "athletic", "curvy"].map((k) => valueSelect(
       title(k),
       { "data-build-weight": k },
-      A,
+      A2,
       live3,
       live1("build"),
       String(e.build?.[k] ?? 0),
       BUILD_STEPS.map((n) => option(String(n), `${title(k)} ${n}`)),
       (v) => ctx2.onSet({ build: { slim: e.build?.slim ?? 0, athletic: e.build?.athletic ?? 0, curvy: e.build?.curvy ?? 0, [k]: Number(v) } })
     )),
-    lock("build", A)
+    lock("build", A2)
   ));
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-hair": "" },
-    h("span", { class: "alius-stat", "data-analyze": A, tabindex: "0" }, "Hair:"),
-    ...HAIR.map((v) => control(word(v), { "data-id": v }, A, live3, live1("hair"), () => {
+    h("span", { class: "alius-stat", "data-analyze": A2, tabindex: "0" }, "Hair:"),
+    ...HAIR.map((v) => control(word(v), { "data-id": v }, A2, live3, live1("hair"), () => {
       if (e.hair !== v) ctx2.onSet({ hair: v });
     }, e.hair === v)),
-    lock("hair", A)
+    lock("hair", A2)
   ));
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-hygiene": "" },
-    h("span", { class: "alius-stat", "data-analyze": A, tabindex: "0" }, "Hygiene:"),
-    ...HYGIENE.map((v) => control(word(v), { "data-id": v }, A, live3, live1("scent"), () => {
+    h("span", { class: "alius-stat", "data-analyze": A2, tabindex: "0" }, "Hygiene:"),
+    ...HYGIENE.map((v) => control(word(v), { "data-id": v }, A2, live3, live1("scent"), () => {
       if (e.scent?.hygiene !== v) ctx2.onSet({ scent: { ...e.scent, hygiene: v } });
     }, e.scent?.hygiene === v)),
-    lock("scent", A)
+    lock("scent", A2)
   ));
-  const traits = h("input", { type: "text", class: "alius-input alius-option", "aria-label": "Traits, separated by commas", "aria-disabled": live1("traits") ? null : "true", "data-traits": "", value: (e.traits ?? []).join(", "), ...analyzeNative(A, live3) });
+  const traits = h("input", { type: "text", class: "alius-input alius-option", "aria-label": "Traits, separated by commas", "aria-disabled": live1("traits") ? null : "true", "data-traits": "", value: (e.traits ?? []).join(", "), ...analyzeNative(A2, live3) });
   traits.addEventListener("change", () => {
     const v = traits.value;
     traits.value = (e.traits ?? []).join(", ");
     if (live1("traits")) ctx2.onSet({ traits: v.split(",").map((x) => x.trim()).filter((x) => x !== "") });
   });
-  host.append(h("div", { class: "alius-dyn-row", "data-traits-row": "" }, h("span", { class: "alius-stat", "data-analyze": A, tabindex: "0" }, "Traits:"), traits, lock("traits", A)));
+  host.append(h("div", { class: "alius-dyn-row", "data-traits-row": "" }, h("span", { class: "alius-stat", "data-analyze": A2, tabindex: "0" }, "Traits:"), traits, lock("traits", A2)));
 }
 
 // src/ui/setup/calibration.ts
@@ -54731,7 +54731,7 @@ function renderCalibration(host, ctx2) {
     const fromCandidates = !manual && cand && cand.defectCandidates.length > 0;
     const list5 = fromCandidates ? cand.defectCandidates.map((c) => ({ id: c.defectId, origin: c.origin })) : options2.defects.map((d) => ({ id: d.id, origin: "" }));
     const max = draft.secondDefect ? SETUP_LIMITS.maxDefects : 1;
-    const pick3 = (id, origin) => {
+    const pick4 = (id, origin) => {
       const cur = ch.defects;
       if (cur.some((d) => d.id === id)) return onUpdate({ defects: cur.filter((d) => d.id !== id) });
       const next = cur.length >= max ? [...cur.slice(0, max - 1), { id, origin }] : [...cur, { id, origin }];
@@ -54751,7 +54751,7 @@ function renderCalibration(host, ctx2) {
             "alius-defect-card",
             id,
             ch.defects.some((x) => x.id === id),
-            () => pick3(id, origin),
+            () => pick4(id, origin),
             h("strong", {}, nameOf17(d, id)),
             h("span", { class: "alius-dim" }, d ? ` [${String(d.category)}]` : ""),
             ...d ? defectLines(d) : [],
@@ -54853,8 +54853,8 @@ function renderCalibration(host, ctx2) {
     );
   }
   if (shown2.has("disposition") && ctx2.world) {
-    const holder3 = { world: { options: ctx2.world } };
-    const worldLevel = worldDispositionLevel(holder3, reg);
+    const holder4 = { world: { options: ctx2.world } };
+    const worldLevel = worldDispositionLevel(holder4, reg);
     const offset = ch.dispositionOffset ?? 0;
     const proposed = !manual && cand?.dispositionOffset ? cand.dispositionOffset.reason : "";
     host.append(
@@ -54863,7 +54863,7 @@ function renderCalibration(host, ctx2) {
         "DISPOSITION",
         h("p", { class: "alius-hint" }, `World level: ${String(worldLevel.name)}. The offset moves only this unit, up to two steps either way.`),
         h("div", { class: "alius-offset-row" }, ...[-2, -1, 0, 1, 2].map((o) => {
-          const levelOf3 = (x) => dispositionFor(holder3, reg, { kind: "named", dispositionOffset: x });
+          const levelOf3 = (x) => dispositionFor(holder4, reg, { kind: "named", dispositionOffset: x });
           const level = levelOf3(o);
           const same = [0, -1, 1, -2, 2].find((x) => Math.abs(x) < Math.abs(o) && levelOf3(x).id === level.id);
           return h("button", {
@@ -54897,7 +54897,7 @@ function renderCalibration(host, ctx2) {
   }
   const stanceIds = ctx2.world ? stanceOptionIds(reg, ctx2.world) : [];
   if (shown2.has("stances") && stanceIds.length > 0) {
-    const holder3 = { world: { options: ctx2.world } };
+    const holder4 = { world: { options: ctx2.world } };
     const current2 = (id) => ch.worldStances?.[id] ?? { stance: "indifferent", strength: 1, reason: "" };
     const write3 = (id, next) => onUpdate({ worldStances: { ...ch.worldStances ?? {}, [id]: { ...current2(id), ...next } } });
     host.append(
@@ -54907,7 +54907,7 @@ function renderCalibration(host, ctx2) {
         h("p", { class: "alius-hint" }, "A norm reaches a unit only through her own stance. A card that says nothing means indifferent."),
         ...stanceIds.map((id) => {
           const opt = reg.worldOptions.get(id);
-          const choice = worldChoice(holder3, reg, id).choice;
+          const choice = worldChoice(holder4, reg, id).choice;
           const cur = current2(id);
           const imported = !manual && cand?.worldStances?.[id]?.reason ? cand.worldStances[id].reason : "";
           const chip2 = (attrs, label2, on, disabled, apply2) => h("button", {
@@ -55009,8 +55009,8 @@ function renderCalibration(host, ctx2) {
       )
     );
   }
-  const holder2 = { content: { enabled: [...ctx2.content ?? []] } };
-  const dyn = dynamicBlockData(reg, holder2);
+  const holder3 = { content: { enabled: [...ctx2.content ?? []] } };
+  const dyn = dynamicBlockData(reg, holder3);
   if (dyn.categories.length > 0) {
     const dynWho = { id: draft.avatar, displayName: draft.displayName };
     if (shown2.has("practice")) {
@@ -55038,7 +55038,7 @@ function renderCalibration(host, ctx2) {
         sources: dyn.sources,
         locks: ch.expectationLocks ?? [],
         editable: true,
-        onSet: (patch) => onUpdate({ expectations: validateExpectations(mergeExpectations(ch.expectations, patch), reg, { state: holder2 }).expectations }),
+        onSet: (patch) => onUpdate({ expectations: validateExpectations(mergeExpectations(ch.expectations, patch), reg, { state: holder3 }).expectations }),
         onLock: (field2, on) => onUpdate({ expectationLocks: [...(ch.expectationLocks ?? []).filter((f) => f !== field2), ...on ? [field2] : []] })
       });
       host.append(section("expectations", "EXPECTATIONS", body));
@@ -55580,15 +55580,15 @@ function renderDynamicStep(host, ctx2) {
   const seeds = Object.values(d.units).filter((u) => u.seeded === true).length;
   const full = d.holders !== "any" && seeds >= d.holders;
   const unitRow = (u) => {
-    const pick3 = d.units[u.avatar] ?? {};
-    const seeded = pick3.seeded === true;
+    const pick4 = d.units[u.avatar] ?? {};
+    const seeded = pick4.seeded === true;
     const problem = wizard.seedBlock(u.avatar);
     return h(
       "div",
       { class: "alius-dynamic-unit", "data-avatar": u.avatar },
       h("h4", {}, u.displayName),
-      selectField("May hold", "glossary:dynamic_may_hold", "mayHold", MAY_HOLD.map((v) => [v, MAY_HOLD_LABEL[v]]), pick3.mayHold ?? "auto", (v) => wizard.setDynamicUnit(u.avatar, { mayHold: v })),
-      selectField("Sensitivity", "glossary:dynamic_sensitivity", "sensitivity", SENSITIVITIES.map((v) => [v, v]), pick3.sensitivity ?? "normal", (v) => wizard.setDynamicUnit(u.avatar, { sensitivity: v })),
+      selectField("May hold", "glossary:dynamic_may_hold", "mayHold", MAY_HOLD.map((v) => [v, MAY_HOLD_LABEL[v]]), pick4.mayHold ?? "auto", (v) => wizard.setDynamicUnit(u.avatar, { mayHold: v })),
+      selectField("Sensitivity", "glossary:dynamic_sensitivity", "sensitivity", SENSITIVITIES.map((v) => [v, v]), pick4.sensitivity ?? "normal", (v) => wizard.setDynamicUnit(u.avatar, { sensitivity: v })),
       h("button", {
         type: "button",
         class: "alius-btn alius-option alius-dynamic-seed",
@@ -55597,14 +55597,14 @@ function renderDynamicStep(host, ctx2) {
         ...analyzeNative("glossary:dynamic_seeded"),
         onclick: () => wizard.setDynamicUnit(u.avatar, { seeded: !seeded })
       }, seeded ? "SEEDED" : "SEED"),
-      seeded ? selectField("Starting frame", "glossary:dynamic_start_frame", "startFrame", [["", "none (equal)"], ...START_FRAMES.map((v) => [v, v])], pick3.startFrame ?? "", (v) => wizard.setDynamicUnit(u.avatar, { startFrame: v === "" ? null : v })) : null,
+      seeded ? selectField("Starting frame", "glossary:dynamic_start_frame", "startFrame", [["", "none (equal)"], ...START_FRAMES.map((v) => [v, v])], pick4.startFrame ?? "", (v) => wizard.setDynamicUnit(u.avatar, { startFrame: v === "" ? null : v })) : null,
       headStart ? h("button", {
         type: "button",
         class: "alius-btn alius-option alius-dynamic-underway",
         "data-scope": "unit",
-        "aria-pressed": String(pick3.underway === true),
+        "aria-pressed": String(pick4.underway === true),
         ...analyzeNative("glossary:dynamic_underway"),
-        onclick: () => wizard.setDynamicUnit(u.avatar, { underway: pick3.underway !== true })
+        onclick: () => wizard.setDynamicUnit(u.avatar, { underway: pick4.underway !== true })
       }, "ALREADY UNDERWAY") : null,
       problem !== null ? h("p", { class: "alius-dim alius-dynamic-problem" }, `Cannot be seeded: ${problem}.`) : null
     );
@@ -56372,20 +56372,20 @@ function tracePoints(pattern, seed, n = POINTS, flicker = false) {
   const out = [];
   const blip = fnv1a3(seed) % n;
   for (let i = 0; i < n; i++) {
-    const noise2 = unit2(seed, i) - 0.5;
+    const noise3 = unit2(seed, i) - 0.5;
     let v;
     switch (pattern) {
       case "steady":
-        v = i % 12 === 3 ? 0.8 : i % 12 === 4 ? 0.25 : 0.5 + noise2 * 0.06;
+        v = i % 12 === 3 ? 0.8 : i % 12 === 4 ? 0.25 : 0.5 + noise3 * 0.06;
         break;
       case "elevated":
-        v = i % 8 === 2 ? 0.88 : i % 8 === 3 ? 0.18 : 0.5 + noise2 * 0.12;
+        v = i % 8 === 2 ? 0.88 : i % 8 === 3 ? 0.18 : 0.5 + noise3 * 0.12;
         break;
       case "spiking":
-        v = i % 6 === 1 ? 1 : i % 6 === 2 ? 0 : 0.5 + noise2 * 0.2;
+        v = i % 6 === 1 ? 1 : i % 6 === 2 ? 0 : 0.5 + noise3 * 0.2;
         break;
       case "erratic":
-        v = 0.5 + noise2 * 2;
+        v = 0.5 + noise3 * 2;
         break;
       case "flat":
         v = flicker && i === blip ? 0.9 : 0.5;
@@ -56503,8 +56503,8 @@ function renderWagerForm(state, reg, unitId, onSubmit) {
       "data-action": "challenge",
       ...analyzeNative("glossary:wager", live3),
       onclick: () => {
-        const pick3 = pickHost.querySelector("select")?.value;
-        onSubmit({ gameId: gameSel.value, stakeId: stakeSel.value, ...pick3 !== void 0 ? { pick: pick3 } : {} });
+        const pick4 = pickHost.querySelector("select")?.value;
+        onSubmit({ gameId: gameSel.value, stakeId: stakeSel.value, ...pick4 !== void 0 ? { pick: pick4 } : {} });
       }
     }, "[ CHALLENGE ]")
   );
@@ -57306,7 +57306,7 @@ function dynamicSection(unit4, ctx2, state) {
     hidden: ctx2.settings().dynamicHidden === true,
     readable: ctx2.settings().readableMode,
     ...ctx2.dynamic?.actions !== void 0 ? { actions: ctx2.dynamic.actions } : {},
-    ...ctx2.onPunish !== void 0 ? { onPunish: (id, measure, days) => ctx2.onPunish(id, measure, days) } : {},
+    ...ctx2.onPunish !== void 0 ? { onPunish: (id, measure2, days) => ctx2.onPunish(id, measure2, days) } : {},
     ...ctx2.onLeash !== void 0 ? { onLeash: (id) => ctx2.onLeash(id, "compel") } : {},
     ...ctx2.dynamic?.onChanged !== void 0 ? { onChanged: ctx2.dynamic.onChanged } : {}
   });
@@ -57419,7 +57419,7 @@ function unitBlock(unit4, ctx2, state) {
       // P14c: what she has told and said
       gone3 || !ctx2.onWager ? null : renderChallenge(state, ctx2.registries, unit4.id, (choice) => ctx2.onWager?.(unit4.id, choice)),
       gone3 ? null : restrictionLine(unit4, state),
-      gone3 || !ctx2.onPunish || unit4.kind !== "named" ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit4.id, onPunish: (measure, days) => ctx2.onPunish(unit4.id, measure, days) }),
+      gone3 || !ctx2.onPunish || unit4.kind !== "named" ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit4.id, onPunish: (measure2, days) => ctx2.onPunish(unit4.id, measure2, days) }),
       gone3 ? null : h("p", { class: "alius-stress" }, chip2(`STRESS ${stressBand2(unit4.stress).toUpperCase()}${raw ? ` (${unit4.stress})` : ""}`, "glossary:stress", live3)),
       gone3 ? null : renderVitalsBlock(state, reg, unit4.id, { motion: !motionReduced(ctx2.settings()) }),
       gone3 ? null : handSelect(unit4, state, ctx2),
@@ -58400,7 +58400,7 @@ async function loadArtManifest(fetch2) {
 }
 function createArtSlots(manifest, assetUrl, unitKey) {
   const byUnit = /* @__PURE__ */ new Map();
-  const faces = /* @__PURE__ */ new Map();
+  const faces2 = /* @__PURE__ */ new Map();
   const problems = [];
   if (manifest !== null && typeof manifest === "object" && !Array.isArray(manifest)) {
     for (const [key, slots] of Object.entries(manifest)) {
@@ -58416,7 +58416,7 @@ function createArtSlots(manifest, assetUrl, unitKey) {
             problems.push(`${key}.${slot2}: ${sprite.error.issues.map((i) => `${i.path.join(".") || "(entry)"} ${i.message}`).join("; ")}`);
             continue;
           }
-          if (sprite.data.sidecar.face !== void 0) faces.set(key, sprite.data.sidecar.face);
+          if (sprite.data.sidecar.face !== void 0) faces2.set(key, sprite.data.sidecar.face);
           continue;
         }
         if (!MANIFEST_KEYS.includes(slot2)) {
@@ -58452,7 +58452,7 @@ function createArtSlots(manifest, assetUrl, unitKey) {
     },
     face(unitId) {
       const key = unitKey(unitId);
-      return key === null ? null : faces.get(key) ?? null;
+      return key === null ? null : faces2.get(key) ?? null;
     }
   };
 }
@@ -58508,8 +58508,8 @@ function currentObjective(state, reg) {
   const first2 = list5.find((o) => o.source !== "unit");
   if (first2) return { text: first2.text, dueDays: first2.dueDays, source: first2.source };
   const active = state.missions.active;
-  const pick3 = active.find((m) => m.spineBeat !== void 0) ?? [...active].filter((m) => m.deadlineDay !== void 0).sort((a, b) => a.deadlineDay - b.deadlineDay)[0] ?? active[0] ?? state.missions.offered.find((m) => m.spineBeat !== void 0);
-  if (pick3) return { text: pick3.title, dueDays: dueIn(pick3, state.day), source: "mission", missionId: pick3.id };
+  const pick4 = active.find((m) => m.spineBeat !== void 0) ?? [...active].filter((m) => m.deadlineDay !== void 0).sort((a, b) => a.deadlineDay - b.deadlineDay)[0] ?? active[0] ?? state.missions.offered.find((m) => m.spineBeat !== void 0);
+  if (pick4) return { text: pick4.title, dueDays: dueIn(pick4, state.day), source: "mission", missionId: pick4.id };
   const unit4 = list5[0];
   return unit4 ? { text: unit4.text, dueDays: unit4.dueDays, source: unit4.source } : null;
 }
@@ -59052,14 +59052,14 @@ function paintSite(pen) {
   }
   pen.path("M 120 560 l 60 -10 l 8 26 l -60 10 Z M 140 556 l 4 24 M 162 552 l 4 24", "p-fl p-thin p-dash");
   const { x: fx2, y: fy, w: fw, h: fh } = FENCE;
-  const runs2 = [
+  const runs = [
     [fx2, fy, fx2 + fw, fy],
     [fx2 + fw, fy, fx2 + fw, fy + fh],
     [fx2, fy, fx2, fy + fh],
     [fx2, fy + fh, GATE[0], fy + fh],
     [GATE[1], fy + fh, fx2 + fw, fy + fh]
   ];
-  for (const [x1, y1, x2, y2] of runs2) {
+  for (const [x1, y1, x2, y2] of runs) {
     pen.line(x1, y1, x2, y2, "p-fence");
     const n = Math.floor(Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1)) / 20);
     for (let i = 0; i <= n; i++) pen.rect(x1 + (x2 - x1) * i / Math.max(n, 1) - 1.5, y1 + (y2 - y1) * i / Math.max(n, 1) - 1.5, 3, 3, "p-post");
@@ -59463,14 +59463,14 @@ function planSection(ctx2, state, here, floor, onFloor, onRoom) {
   const unitOf13 = (id) => state.squad.find((u) => u.id === id);
   const { stage: stage2, floorBar, setFloor } = renderPlanStage({ registries: reg, state, here, floor, onFloor, onRoom });
   const panelHost = h("div", { class: "alius-room-panel-host" });
-  const frame = h("div", { class: "alius-plan-frame" }, h("div", { class: "alius-plan-scroll" }, stage2), floorBar, panelHost);
+  const frame2 = h("div", { class: "alius-plan-frame" }, h("div", { class: "alius-plan-scroll" }, stage2), floorBar, panelHost);
   const away = here.filter((w) => w.reason === "expedition").map((w) => unitOf13(w.unitId)).filter((u) => u !== void 0);
   const drawnSomewhere = (w) => w.roomId !== null && [...reg.planRooms.values()].some((p) => p.hubRoomId === w.roomId) && reg.hubRooms.has(w.roomId);
   const elsewhere = here.filter((w) => w.reason === "nowhere" || w.reason !== "expedition" && !drawnSomewhere(w)).map((w) => unitOf13(w.unitId)).filter((u) => u !== void 0);
   const section = h(
     "section",
     { class: "alius-hub-main", "aria-label": "Plan of the outpost" },
-    frame,
+    frame2,
     away.length > 0 ? strip("alius-away", "glossary:away", "AWAY", state, reg, away) : null,
     elsewhere.length > 0 ? strip("alius-elsewhere", "glossary:whereabouts", "ELSEWHERE", state, reg, elsewhere) : null
   );
@@ -59648,7 +59648,7 @@ function renderHub(host, device, ctx2) {
   setFloor = built.setFloor;
   root.append(h("div", { class: "alius-hub-body" }, section, sideColumn(ctx2, state, readOnly)));
   showPanel();
-  const onKey = (ev) => {
+  const onKey2 = (ev) => {
     const e = ev;
     if (!host.isConnected) return teardown.get(host)?.();
     if ((e.key === "PageUp" || e.key === "PageDown") && device.dataset.up !== "true" && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -59668,18 +59668,18 @@ function renderHub(host, device, ctx2) {
     e.stopPropagation();
     close();
   };
-  const onDown = (ev) => {
+  const onDown2 = (ev) => {
     if (!host.isConnected) return teardown.get(host)?.();
     if (!openRoom.has(host)) return;
     const el = ev.target;
     if (el && typeof el.closest === "function" && el.closest(".alius-room-panel, .alius-room, .alius-analyze, .alius-modal-layer, .alius-toasts")) return;
     close();
   };
-  window.addEventListener("keydown", onKey, true);
-  window.addEventListener("pointerdown", onDown, true);
+  window.addEventListener("keydown", onKey2, true);
+  window.addEventListener("pointerdown", onDown2, true);
   teardown.set(host, () => {
-    window.removeEventListener("keydown", onKey, true);
-    window.removeEventListener("pointerdown", onDown, true);
+    window.removeEventListener("keydown", onKey2, true);
+    window.removeEventListener("pointerdown", onDown2, true);
   });
 }
 
@@ -60296,9 +60296,9 @@ function renderExpeditionScreen(host, ctx2) {
       }
     }
     for (const o of options2) {
-      const picker2 = o.routes && o.disabled === null ? renderRoutePicker({ routes: o.routes, unitName: unitName3, locked: () => picked, onPick: (pick3) => {
+      const picker2 = o.routes && o.disabled === null ? renderRoutePicker({ routes: o.routes, unitName: unitName3, locked: () => picked, onPick: (pick4) => {
         picked = true;
-        controller.choose(o.index, pick3);
+        controller.choose(o.index, pick4);
       }, unlock: () => {
         picked = false;
       } }) : null;
@@ -60885,10 +60885,10 @@ function drawLeadChips(host, scene, handlers2, disabled = false) {
   };
   host.append(h("div", { class: "alius-lead-limit" }, input, " ", chip2("limit-set", "[ SET ]", send)));
 }
-function drawRuleChips(host, state, reg, pick3, on) {
+function drawRuleChips(host, state, reg, pick4, on) {
   host.replaceChildren();
   for (const rule of state.bonds?.rules ?? []) {
-    if (rule.status !== "proposed" || rule.delivered !== true || !pick3({ unitId: rule.unitId })) continue;
+    if (rule.status !== "proposed" || rule.delivered !== true || !pick4({ unitId: rule.unitId })) continue;
     const name = (state.squad.find((u) => u.id === rule.unitId)?.displayName ?? rule.unitId).toUpperCase();
     const full = state.bonds.rules.filter((r) => r.unitId === rule.unitId && r.status === "active").length >= TUNING.bonds.rules.maxActive;
     const button2 = (kind, text3, run, soft = false) => {
@@ -60966,17 +60966,17 @@ function renderRuleNote(state, reg, rule, on, opts) {
   }
   return note;
 }
-function ruleNotesFor(state, pick3 = () => true) {
-  return (state.bonds?.rules ?? []).filter((r) => pick3(r.unitId) && (r.status === "proposed" && r.delivered === true || r.status === "active" || r.lastBrokenDay !== void 0 && r.lastBrokenDay >= state.day - 1));
+function ruleNotesFor(state, pick4 = () => true) {
+  return (state.bonds?.rules ?? []).filter((r) => pick4(r.unitId) && (r.status === "proposed" && r.delivered === true || r.status === "active" || r.lastBrokenDay !== void 0 && r.lastBrokenDay >= state.day - 1));
 }
 
 // src/ui/proposalChips.ts
 var kindLabel = (s) => s.replace(/_/g, " ").toUpperCase();
 var CONDITION_MAX = 160;
-function drawProposalChips(host, state, pick3, onAnswer, reg) {
+function drawProposalChips(host, state, pick4, onAnswer, reg) {
   host.replaceChildren();
   for (const p of state.proposals ?? []) {
-    if (!pick3(p)) continue;
+    if (!pick4(p)) continue;
     const name = (state.squad.find((u) => u.id === p.unitId)?.displayName ?? p.unitId).toUpperCase();
     const label2 = h("span", { class: "alius-chip-label" }, p.from === "unit" ? `${name} PROPOSES: ${kindLabel(p.kind)}` : `${name}: ${kindLabel(p.kind)} \u2014 OPENLY OR SECRETLY?`);
     if (reg && courtshipChips(state, reg, p)) {
@@ -61051,7 +61051,7 @@ function editChip(edit, name, onKeep, onRevert) {
   return group;
 }
 var HANDS2 = ["rock", "paper", "scissors"];
-function drawPersonalChips(host, state, reg, pick3, on) {
+function drawPersonalChips(host, state, reg, pick4, on) {
   host.replaceChildren();
   const nameOf28 = (id) => (state.squad.find((u) => u.id === id)?.displayName ?? id).toUpperCase();
   const group = (unitId, address, ctx2, label2, ...kids) => {
@@ -61066,7 +61066,7 @@ function drawPersonalChips(host, state, reg, pick3, on) {
   };
   const button2 = (text3, action, onclick) => h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": action, onclick }, text3);
   const offer = state.personal?.tokens?.offer;
-  if (offer && pick3(offer.giverId)) {
+  if (offer && pick4(offer.giverId)) {
     host.append(group(
       offer.giverId,
       "glossary:token",
@@ -61077,7 +61077,7 @@ function drawPersonalChips(host, state, reg, pick3, on) {
     ));
   }
   for (const w of state.personal?.wagers?.open ?? []) {
-    if (!pick3(w.unitId)) continue;
+    if (!pick4(w.unitId)) continue;
     const game = reg.wagerGames.get(w.gameId);
     const stake = reg.wagerStakes.get(w.stakeId);
     const what = `${String(game?.label ?? w.gameId).toUpperCase()} FOR ${String(stake?.text ?? w.stakeId).toUpperCase()}`;
@@ -61100,7 +61100,7 @@ function drawPersonalChips(host, state, reg, pick3, on) {
     }
   }
   const q = state.personal?.pendingQuestion;
-  if (q && pick3(q.unitId)) {
+  if (q && pick4(q.unitId)) {
     const asks = q.winner === "commander";
     const input = h("input", { type: "text", name: "question", class: "alius-input", maxlength: "200", autocomplete: "off", "aria-label": asks ? "Your question" : "Your answer" });
     const send = () => {
@@ -61121,7 +61121,7 @@ function drawPersonalChips(host, state, reg, pick3, on) {
 }
 
 // src/ui/discipline/chips.ts
-function drawDisciplineChips(host, state, reg, pick3, onUndo) {
+function drawDisciplineChips(host, state, reg, pick4, onUndo) {
   host.replaceChildren();
   const name = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
   const group = (id, unitId, address, text3) => h(
@@ -61131,11 +61131,11 @@ function drawDisciplineChips(host, state, reg, pick3, onUndo) {
     canUndo(state, id) === null ? h("button", { type: "button", class: "alius-btn alius-tagchip", "data-undo": id, onclick: () => onUndo(id) }, "[ UNDO \u2014 not what I meant ]") : null
   );
   for (const a of state.discipline?.applications ?? []) {
-    if (a.source !== "dialogue" || a.day !== state.day || !pick3({ channel: a.channel, unitId: a.unitId, ...a.sceneId !== void 0 ? { sceneId: a.sceneId } : {} })) continue;
+    if (a.source !== "dialogue" || a.day !== state.day || !pick4({ channel: a.channel, unitId: a.unitId, ...a.sceneId !== void 0 ? { sceneId: a.sceneId } : {} })) continue;
     host.append(group(a.id, a.unitId, "glossary:discipline_logged", `DISCIPLINE LOGGED \u2014 ${measureLabel(reg, a.measure)} (${name(a.unitId)})`));
   }
   for (const t of state.discipline?.threats ?? []) {
-    if (!pick3({ channel: t.channel, unitId: t.unitId, ...t.sceneId !== void 0 ? { sceneId: t.sceneId } : {} })) continue;
+    if (!pick4({ channel: t.channel, unitId: t.unitId, ...t.sceneId !== void 0 ? { sceneId: t.sceneId } : {} })) continue;
     host.append(group(
       t.id,
       t.unitId,
@@ -61144,10 +61144,10 @@ function drawDisciplineChips(host, state, reg, pick3, onUndo) {
     ));
   }
 }
-function drawDemandChips(host, state, reg, pick3, on) {
+function drawDemandChips(host, state, reg, pick4, on) {
   host.replaceChildren();
   for (const d of state.discipline?.demands ?? []) {
-    if (d.status !== "open" || !pick3({ unitId: d.unitId })) continue;
+    if (d.status !== "open" || !pick4({ unitId: d.unitId })) continue;
     const name = (state.squad.find((u) => u.id === d.unitId)?.displayName ?? d.unitId).toUpperCase();
     const why = grantProblem(state, reg, d.id);
     const desire = reg.demandTemplates.get(d.templateId)?.kind === "desire";
@@ -61265,12 +61265,12 @@ function renderDemonstrationCard(host, ctx2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:demonstration", live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawDemonstrationCards(host, state, reg, pick3, handlers2, opts = {}) {
+function drawDemonstrationCards(host, state, reg, pick4, handlers2, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const d of state.practices?.demonstrations ?? []) {
     const waiting3 = d.status === "offered" || d.status === "open" && d.sceneId === void 0;
-    if (!waiting3 || !pick3({ unitId: d.holderId }) || !practiceLive(state, reg, d.holderId)) continue;
+    if (!waiting3 || !pick4({ unitId: d.holderId }) || !practiceLive(state, reg, d.holderId)) continue;
     renderDemonstrationCard(host, { state, reg, demonstration: d, onAnswer: (a) => handlers2.answer(d.id, a), generation: handlers2.generation }, opts);
   }
 }
@@ -61516,11 +61516,11 @@ function renderSceneCeremony(host, ctx2, name, live3, next, entryOf4) {
   finish3(card2, ["alius-ceremony"], p.id, `${name} carries out her punishment as a ceremony`, "glossary:ceremony", live3);
   host.append(card2);
 }
-function drawPunishmentCards(host, state, reg, pick3, handlers2, opts = {}) {
+function drawPunishmentCards(host, state, reg, pick4, handlers2, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const p of state.practices?.punishments ?? []) {
-    if (!pick3({ unitId: p.holderId }) || !practiceLive(state, reg, p.holderId)) continue;
+    if (!pick4({ unitId: p.holderId }) || !practiceLive(state, reg, p.holderId)) continue;
     const open3 = p.status === "offered" || p.status === "negotiating";
     if (open3 && p.forUnitId !== void 0) renderTakeInsteadCard(host, { state, reg, punishment: p, onAnswer: (a) => handlers2.takeInstead(p.id, a) }, opts);
     else if (open3) renderPunishmentCard(host, { state, reg, punishment: p, onAnswer: (a) => handlers2.answer(p.id, a), generation: handlers2.generation }, opts);
@@ -62231,7 +62231,7 @@ function renderWardenPanel(host, state, reg, deps = {}) {
     renderInvestigation(host, state);
     return;
   }
-  const E = TUNING.warden.escalation;
+  const E2 = TUNING.warden.escalation;
   const known3 = w.expectations.filter((x) => x.known);
   const unknown2 = w.expectations.length - known3.length;
   const raw = deps.showRaw === true;
@@ -62240,8 +62240,8 @@ function renderWardenPanel(host, state, reg, deps = {}) {
     "div",
     { class: "alius-defiance alius-stat", role: "meter", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(defiance), ...analyzeAttrs("glossary:warden_defiance") },
     h("div", { class: "alius-defiance-fill", style: `width:${defiance}%` }),
-    h("span", { class: "alius-defiance-mark", style: `left:${E.warning1}%`, "aria-hidden": "true" }),
-    h("span", { class: "alius-defiance-mark", style: `left:${E.warning2}%`, "aria-hidden": "true" })
+    h("span", { class: "alius-defiance-mark", style: `left:${E2.warning1}%`, "aria-hidden": "true" }),
+    h("span", { class: "alius-defiance-mark", style: `left:${E2.warning2}%`, "aria-hidden": "true" })
   );
   const active = w.restrictions.filter((r) => state.day <= r.untilDay);
   const rows = [
@@ -62629,10 +62629,10 @@ function renderDoor(host, ctx2) {
     used2 = true;
     for (const b of buttons) b.disabled = true;
   };
-  const press = (fn) => () => {
+  const press2 = (fn) => () => {
     if (used2) return;
     lock();
-    stop2();
+    stop();
     clocks.delete(entry.id);
     fn();
   };
@@ -62671,9 +62671,9 @@ function renderDoor(host, ctx2) {
       else renderDoor(host, ctx2);
     });
   }
-  const row4 = h("div", { class: "alius-row" }, option2("open", "[ OPEN ]", press(ctx2.onOpen)));
+  const row4 = h("div", { class: "alius-row" }, option2("open", "[ OPEN ]", press2(ctx2.onOpen)));
   if (!entry.door) row4.append(option2("say", "[ SAY SOMETHING THROUGH THE DOOR ]", openForm));
-  row4.append(option2("ignore", "[ STAY SILENT ]", press(ctx2.onSilent)));
+  row4.append(option2("ignore", "[ STAY SILENT ]", press2(ctx2.onSilent)));
   host.append(h(
     "section",
     { class: "alius-section alius-door alius-knock", "aria-label": `${ctx2.unitName} at the door` },
@@ -62700,14 +62700,14 @@ function renderDoor(host, ctx2) {
   let said10 = clock.remaining <= 10;
   let said5 = clock.remaining <= 5;
   let handle = null;
-  function stop2() {
+  function stop() {
     if (handle !== null) clearInterval(handle);
     handle = null;
     running.delete(host);
   }
-  running.set(host, stop2);
+  running.set(host, stop);
   handle = setInterval(() => {
-    if (!host.isConnected || used2) return stop2();
+    if (!host.isConnected || used2) return stop();
     if (held2(entry, input)) return;
     clock.remaining = Math.max(0, clock.remaining - TICK_MS / 1e3);
     paint();
@@ -62722,7 +62722,7 @@ function renderDoor(host, ctx2) {
     if (clock.remaining <= 0) {
       live3.textContent = "0 seconds left: the door stays shut and she leaves";
       lock();
-      stop2();
+      stop();
       clocks.delete(entry.id);
       ctx2.onSilent();
     }
@@ -62803,10 +62803,10 @@ function liveTextRects(host, except) {
 }
 function placeFree(host, el, x, y) {
   const f = frameOf3(host);
-  const innerWidth2 = f.W, innerHeight2 = f.H;
+  const innerWidth3 = f.W, innerHeight3 = f.H;
   const rects = liveTextRects(host, el).map((r) => ({ left: r.left - f.left, right: r.right - f.left, top: r.top - f.top, bottom: r.bottom - f.top }));
-  const w = el.offsetWidth, h2 = el.offsetHeight, gap = 6, maxY = innerHeight2 * 0.8 - h2;
-  x = clamp43(x, 16, innerWidth2 - w - 24);
+  const w = el.offsetWidth, h2 = el.offsetHeight, gap = 6, maxY = innerHeight3 * 0.8 - h2;
+  x = clamp43(x, 16, innerWidth3 - w - 24);
   const hits = (yy2) => rects.find((r) => x < r.right + gap && x + w > r.left - gap && yy2 < r.bottom + gap && yy2 + h2 > r.top - gap);
   let yy = clamp43(y, 12, Math.max(12, maxY)), hit, n = 0;
   while ((hit = hits(yy)) && n++ < 30) yy = hit.bottom + gap;
@@ -62837,10 +62837,10 @@ function say(host, text3, opts) {
     if (last !== void 0 && (last + " " + word2).length <= max) lines[lines.length - 1] = last + " " + word2;
     else lines.push(word2);
   }
-  const { W: innerWidth2, H: innerHeight2 } = frameOf3(host);
+  const { W: innerWidth3, H: innerHeight3 } = frameOf3(host);
   const p = opts.at ?? [0.6, 0.16];
   const els = [];
-  let x = clamp43(p[0] + 0.04, 0.03, 0.7) * innerWidth2 + hashRand(`${text3}|x`, -15, 15), y = clamp43(p[1] + 0.02, 0.03, 0.8) * innerHeight2, delay = 0;
+  let x = clamp43(p[0] + 0.04, 0.03, 0.7) * innerWidth3 + hashRand(`${text3}|x`, -15, 15), y = clamp43(p[1] + 0.02, 0.03, 0.8) * innerHeight3, delay = 0;
   const rot = opts.tilt === false ? "0.0" : hashRand(`${text3}|rot`, -4, 3).toFixed(1);
   for (const line3 of lines) {
     const el = document.createElement("div");
@@ -62861,7 +62861,7 @@ function say(host, text3, opts) {
     y = at.y + at.h + 2;
     if (opts.side === "right") {
       el.style.left = "";
-      el.style.right = `${Math.max(0, innerWidth2 - at.x)}px`;
+      el.style.right = `${Math.max(0, innerWidth3 - at.x)}px`;
       el.classList.add("right");
     }
     delay += write3;
@@ -63321,7 +63321,7 @@ function leanOf(base, torso, hogtie) {
   return { upright: 0, arched: -14, level: 86 }[torso];
 }
 function armGoal(state, c) {
-  const { s, shoulder: sh, chest, pelvis, S: S2, T: T5 } = c;
+  const { s, shoulder: sh, chest, pelvis, S: S3, T: T5 } = c;
   const lat = (k) => [s * k, 0, 0];
   switch (state) {
     case "at_sides":
@@ -63329,9 +63329,9 @@ function armGoal(state, c) {
       return { target: add(sh, [s * 0.05, -0.605, 0.02]), hint: [s * 0.3, -0.1, -1] };
     // nearly straight, the elbow a little back
     case "behind_back":
-      return { target: add(sub(add(pelvis, mul(S2, 0.12)), mul(T5, 0.12)), lat(0.04)), hint: [s, -0.2, -0.3] };
+      return { target: add(sub(add(pelvis, mul(S3, 0.12)), mul(T5, 0.12)), lat(0.04)), hint: [s, -0.2, -0.3] };
     case "bound":
-      return { target: add(sub(add(pelvis, mul(S2, 0.1)), mul(T5, 0.16)), lat(0.03)), hint: [s, -0.2, -0.4] };
+      return { target: add(sub(add(pelvis, mul(S3, 0.1)), mul(T5, 0.16)), lat(0.03)), hint: [s, -0.2, -0.4] };
     case "behind_head": {
       const back = sub(add(c.neckTop, mul(c.headDir, 0.09)), mul(c.faceDir, 0.075));
       return { target: add(back, lat(0.07)), hint: [s, 0.2, -0.1] };
@@ -63341,14 +63341,14 @@ function armGoal(state, c) {
     case "on_thighs_up":
       return { target: add(lerp3(c.hip, c.knee, 0.7), [s * 0.02, 0.06, 0]), hint: [s, 0, -0.4] };
     case "forward_palms_up":
-      return c.lying ? { target: add(add(sh, mul(S2, 0.56)), [s * 0.1, 0, 0.02]), hint: [s, 0, -0.3] } : { target: add(add(add(chest, mul(T5, 0.5)), mul(S2, -0.3)), lat(0.13)), hint: [s * 0.6, -1, -0.2] };
+      return c.lying ? { target: add(add(sh, mul(S3, 0.56)), [s * 0.1, 0, 0.02]), hint: [s, 0, -0.3] } : { target: add(add(add(chest, mul(T5, 0.5)), mul(S3, -0.3)), lat(0.13)), hint: [s * 0.6, -1, -0.2] };
     // offered: the forearms reach forward and down, palms up
     case "out_sideways":
       return { target: add(sh, [s * 0.56, 0.01, 0]), hint: [0, -0.5, -0.5] };
     case "raised":
       return { target: add(sh, [s * 0.1, 0.55, 0.05]), hint: [s, 0, -0.3] };
     case "holding":
-      return { target: add(add(add(pelvis, mul(S2, 0.38)), mul(T5, 0.4)), lat(0.11)), hint: [s, -0.6, 0] };
+      return { target: add(add(add(pelvis, mul(S3, 0.38)), mul(T5, 0.4)), lat(0.11)), hint: [s, -0.6, 0] };
     case "lamp":
       return { target: add(c.head, [s * 0.045, 0.36, 0.12]), hint: [s, 0, -0.2] };
     // both hands together above the head
@@ -63362,11 +63362,11 @@ function armGoal(state, c) {
     case "under_knees":
       return { target: [c.knee[0], 0.03, c.knee[2] - 0.03], hint: [s, 0.3, 0] };
     case "crossed":
-      return { target: add(sub(add(chest, mul(T5, 0.1)), mul(S2, 0.06)), lat(-0.14)), hint: [s * 0.3, -1, 0.3] };
+      return { target: add(sub(add(chest, mul(T5, 0.1)), mul(S3, 0.06)), lat(-0.14)), hint: [s * 0.3, -1, 0.3] };
     case "clasped_front":
-      return { target: add(add(add(pelvis, mul(S2, 0.16)), mul(T5, 0.2)), lat(0.025)), hint: [s, -0.5, -0.3] };
+      return { target: add(add(add(pelvis, mul(S3, 0.16)), mul(T5, 0.2)), lat(0.025)), hint: [s, -0.5, -0.3] };
     case "paws":
-      return { target: add(sub(add(chest, mul(T5, 0.2)), mul(S2, 0.1)), lat(0.07)), hint: [s * 0.5, -1, 0.2] };
+      return { target: add(sub(add(chest, mul(T5, 0.2)), mul(S3, 0.1)), lat(0.07)), hint: [s * 0.5, -1, 0.2] };
     // the hands in front of the chest, close together
     case "tucked":
       return { target: [s * 0.22, 0.04, sh[2] - 0.58], hint: [s * 0.2, 1, 0] };
@@ -63388,11 +63388,11 @@ function pose(p) {
   const legs = legsOf(base, pts, hogtie);
   const lying = LYING[base] !== void 0;
   const phi = leanOf(base, pts.torso ?? "upright", hogtie) * DEG;
-  const S2 = [0, Math.cos(phi), Math.sin(phi)];
+  const S3 = [0, Math.cos(phi), Math.sin(phi)];
   const T5 = [0, -Math.sin(phi), Math.cos(phi)];
   const pelvis = legs.pelvis;
-  const chest = add(pelvis, mul(S2, SPINE));
-  const neck = add(chest, mul(S2, NECK_BASE));
+  const chest = add(pelvis, mul(S3, SPINE));
+  const neck = add(chest, mul(S3, NECK_BASE));
   const phiN = phi * 0.55;
   const neckTop = add(neck, mul([0, Math.cos(phiN), Math.sin(phiN)], NECK));
   const pitch = { up: 0, bowed: 38, back: -55, to_floor: 90 }[pts.head ?? "up"];
@@ -63426,7 +63426,7 @@ function pose(p) {
       shoulder: shoulder[side],
       chest,
       pelvis,
-      S: S2,
+      S: S3,
       T: T5,
       hip: hip[side],
       knee: knee[side],
@@ -63885,6 +63885,927 @@ function cancelCall() {
   teardown2(c);
 }
 
+// src/ui/scene/instruments/slap/slap.ts
+var clamp44 = (x, a, b) => Math.min(b, Math.max(a, x));
+var lerp4 = (a, b, t) => a + (b - a) * t;
+var easeOut = (t) => 1 - Math.pow(1 - clamp44(t, 0, 1), 3);
+var easeIn = (t) => Math.pow(clamp44(t, 0, 1), 2);
+var easeInOut = (t) => {
+  t = clamp44(t, 0, 1);
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+};
+var rnd01 = () => fnv1a3(`${G2.rkey}|${G2.rn++}`) % 1e4 / 1e4;
+var pick3 = (a) => a[Math.floor(rnd01() * a.length)];
+var rand = (a, b) => a + rnd01() * (b - a);
+var LEAD = TUNING.practice.slap.leadMs;
+var FEINT = TUNING.practice.slap.feintMs;
+var SWING = TUNING.practice.slap.windowMs;
+var OBSESSIVE_SPREAD = TUNING.practice.slap.obsessiveSpread;
+var AGAIN_LEAD = TUNING.practice.slap.againLeadMs;
+var SNAP = 170;
+var SWEEP = 140;
+var RETURN = 650;
+var EXPR = TUNING.practice.slap.faces;
+var CALM = ["ritual", "clinical", "regal"];
+var EXPR_SWITCH = 60;
+var EXPR_WAIT = 120;
+var SAMPLE_URLS = {
+  slap: "assets/sounds/slap/slap.ogg",
+  swish1: "assets/sounds/slap/swish1.ogg",
+  cloth1: "assets/sounds/ha/cloth1.ogg",
+  cloth2: "assets/sounds/ha/cloth2.ogg",
+  cloth3: "assets/sounds/ha/cloth3.ogg",
+  cloth4: "assets/sounds/ha/cloth4.ogg",
+  breath: "assets/sounds/breath-in-out.mp3"
+};
+var faces = {};
+var curLabel = "neutral";
+function beforeLabel(style, unann) {
+  const e = EXPR[style];
+  if (e.keep.includes(curLabel)) return curLabel;
+  return unann && CALM.includes(style) ? "annoyance" : e.before;
+}
+function showFace(label2) {
+  curLabel = label2;
+  const url = faces[label2];
+  if (url && E && E.env.faceOf(E.unitId) !== label2) E.env.setSprite(E.unitId, label2, url);
+}
+function preload(label2) {
+  if (label2 in faces || !E) return Promise.resolve();
+  const e = E;
+  return Promise.race([e.env.spriteUrl(e.unitId, label2).then((u) => {
+    faces[label2] = u;
+  }, () => {
+    faces[label2] = null;
+  }), new Promise((r) => setTimeout2(r, EXPR_WAIT))]);
+}
+var S2 = {
+  style: "possessive",
+  unann: false,
+  tension: { rise: 100, peak: 80, fall: 220, thr: 0.8 },
+  flick: 2400,
+  sideDark: true,
+  sweep: true,
+  slapLvl: 0.5,
+  swishS: "swish1",
+  thump: true,
+  ring: 3,
+  face: { x: 0.47, y: 0.17 },
+  zoom: 2.6,
+  reduced: false
+};
+var performance2 = { now: () => E ? E.env.now() : 0 };
+var innerWidth2 = 0;
+var innerHeight2 = 0;
+function measure() {
+  if (!E) return;
+  const r = E.env.root.getBoundingClientRect();
+  innerWidth2 = E.env.root.clientWidth || r.width || (typeof window !== "undefined" ? window.innerWidth : 0);
+  innerHeight2 = E.env.root.clientHeight || r.height || (typeof window !== "undefined" ? window.innerHeight : 0);
+}
+var timers3 = /* @__PURE__ */ new Set();
+function setTimeout2(fn, ms) {
+  const t = globalThis.setTimeout(() => {
+    timers3.delete(t);
+    fn();
+  }, ms);
+  timers3.add(t);
+  return t;
+}
+var frameId = null;
+function requestAnimationFrame2(fn) {
+  if (!E || frameId !== null) return;
+  const e = E;
+  frameId = e.env.raf((now) => {
+    frameId = null;
+    if (E !== e) return;
+    if (!G2.slap && !G2.back && !G2.starting && G2.cheekA <= 0) {
+      cam.release();
+      return;
+    }
+    measure();
+    fn(now);
+  });
+}
+var E = null;
+var HBLUR = "alius-slap-hblur";
+var $ = (s) => {
+  const e = E;
+  if (s === "#mirror") return mirror(e);
+  if (s === "#reply") return e.env.reply;
+  if (s === "#cmd") return e.env.input;
+  if (s === "#inputWrap") return e.env.input.closest(".alius-input-line") ?? e.env.input.parentElement ?? e.env.input;
+  return e.els[s];
+};
+function mirror(e) {
+  const input = e.env.input;
+  const host = e.env.layers.moment;
+  const old = host.querySelector(":scope > .alius-slap-mirror");
+  if (old) return old;
+  const m = document.createElement("div");
+  m.className = "alius-slap-mirror";
+  m.setAttribute("aria-hidden", "true");
+  const value = typeof input.value === "string" ? input.value : "";
+  if (value === "" || e.env.reduced) return m;
+  const r = input.getBoundingClientRect();
+  const o = e.env.root.getBoundingClientRect();
+  const cs = typeof getComputedStyle === "function" ? getComputedStyle(input) : null;
+  m.style.left = `${r.left - o.left}px`;
+  m.style.top = `${r.top - o.top}px`;
+  m.style.width = `${r.width}px`;
+  m.style.height = `${r.height}px`;
+  if (cs) {
+    m.style.font = cs.font;
+    m.style.paddingLeft = cs.paddingLeft;
+    m.style.lineHeight = `${r.height}px`;
+    m.style.color = cs.color;
+    m.style.letterSpacing = cs.letterSpacing;
+    m.style.textIndent = `${-input.scrollLeft}px`;
+  }
+  m.replaceChildren(...[...value].map((ch) => {
+    const sp = document.createElement("span");
+    sp.textContent = ch;
+    return sp;
+  }));
+  host.append(m);
+  const color = input.style.color;
+  input.style.color = "transparent";
+  setTimeout2(() => {
+    m.remove();
+    input.style.color = color;
+  }, 600);
+  return m;
+}
+function build2(env, unitId) {
+  const box = document.createElement("div");
+  box.className = "alius-slap";
+  box.setAttribute("aria-hidden", "true");
+  const els = {};
+  const faceImg = document.createElement("img");
+  faceImg.className = "alius-slap-face";
+  faceImg.alt = "";
+  faceImg.draggable = false;
+  box.append(faceImg);
+  for (const id of ["side", "sweep", "dimmer", "tight", "cheek", "flash", "hand"]) {
+    const el = document.createElement("div");
+    el.className = `alius-slap-${id}`;
+    els[`#${id}`] = el;
+    box.append(el);
+  }
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg4 = document.createElementNS(svgNS, "svg");
+  svg4.setAttribute("width", "0");
+  svg4.setAttribute("height", "0");
+  svg4.setAttribute("class", "alius-slap-svg");
+  const filter = document.createElementNS(svgNS, "filter");
+  filter.setAttribute("id", HBLUR);
+  for (const [k, v] of [["x", "-10%"], ["y", "-10%"], ["width", "120%"], ["height", "120%"]]) filter.setAttribute(k, v);
+  const g = document.createElementNS(svgNS, "feGaussianBlur");
+  g.setAttribute("stdDeviation", "0 0");
+  filter.append(g);
+  svg4.append(filter);
+  box.append(svg4);
+  els["#hblurG"] = g;
+  const her = env.her(unitId);
+  els["#hand"].style.setProperty("--alius-her", her.accent);
+  if (her.hand !== "") els["#hand"].style.setProperty("--alius-font-hand", `"${her.hand}", var(--alius-font-type)`);
+  env.layers.effects.append(box);
+  const out = { env, unitId, her, box, els, faceImg, hasFace: false, offs: [] };
+  const art2 = env.art.get(unitId, "face_close");
+  if (art2) {
+    faceImg.onload = () => {
+      if (E?.faceImg === faceImg) E.hasFace = true;
+    };
+    faceImg.src = art2.url;
+  }
+  return out;
+}
+var CAM_PROPS = ["transform", "transform-origin", "filter", "transition", "opacity"];
+var cam = {
+  held: false,
+  saved: [],
+  base: null,
+  backdropFilter: "",
+  /** The camera leaves home: the styles it will write are saved, her face point is measured. */
+  hold() {
+    if (this.held || !E) return;
+    const e = E;
+    this.held = true;
+    const { backdrop, sprites } = e.env.layers;
+    const reply = e.env.reply;
+    const wrap = $("#inputWrap");
+    this.saved = [backdrop, sprites, reply, wrap].map((el) => ({ el, props: new Map(CAM_PROPS.map((p) => [p, el.style.getPropertyValue(p)])) }));
+    const base = typeof getComputedStyle === "function" ? getComputedStyle(backdrop).filter : "";
+    this.backdropFilter = base && base !== "none" ? base : "";
+    for (const el of [backdrop, sprites]) el.style.setProperty("transition", "none");
+    sprites.style.setProperty("transform-origin", "0 0");
+    this.base = null;
+    this.measure();
+    e.env.root.querySelector(".alius-stage-dial")?.setAttribute("data-instrument", "slap");
+  },
+  /** Her face point in the scene (the sprite's sidecar point on the drawn picture), measured with the camera at home. */
+  measure() {
+    if (!E || this.base) return;
+    const e = E;
+    const img = e.env.spriteOf(e.unitId);
+    if (!img || !img.naturalWidth || e.env.root.dataset.curtain === "open") return;
+    const sprites = e.env.layers.sprites;
+    const now = sprites.style.transform;
+    sprites.style.transform = this.saved.find((x) => x.el === sprites)?.props.get("transform") ?? "";
+    const r = img.getBoundingClientRect();
+    const o = e.env.root.getBoundingClientRect();
+    sprites.style.transform = now;
+    if (r.width > 0 && r.height > 0) this.base = { x: r.left - o.left + S2.face.x * r.width, y: r.top - o.top + S2.face.y * r.height };
+  },
+  /** One frame of the camera: the world's move, its motion blur, the zoom `k` to her face, the backdrop's blur and dim, the UI stepping back. */
+  draw(world, hb, k) {
+    if (!E) return;
+    if (!this.held) this.hold();
+    const e = E;
+    const W = innerWidth2, H = innerHeight2;
+    const O = [W * 0.5, H * 0.436];
+    const about2 = (extra) => `translate(${O[0].toFixed(1)}px, ${O[1].toFixed(1)}px) ${world}${extra} translate(${(-O[0]).toFixed(1)}px, ${(-O[1]).toFixed(1)}px)`;
+    const blur = e.env.readable || hb <= 0.3 ? "" : `url(#${HBLUR})`;
+    const { backdrop, sprites } = e.env.layers;
+    backdrop.style.transformOrigin = "0 0";
+    backdrop.style.transform = about2(` scale(${lerp4(1, 1.28, k).toFixed(4)})`);
+    backdrop.style.filter = `${this.backdropFilter} ${blur} ${e.env.readable ? "" : `blur(${(k * 14).toFixed(1)}px)`} brightness(${lerp4(1, 0.55, k).toFixed(3)})`.replace(/\s+/g, " ").trim();
+    this.measure();
+    let camera = "";
+    const img = e.env.spriteOf(e.unitId);
+    if (img && img.naturalWidth && this.base) {
+      const p0 = this.base, p1 = [W * 0.5, H * 0.42];
+      const sc = Math.pow(S2.zoom, k);
+      const px = lerp4(p0.x, p1[0], k), py = lerp4(p0.y, p1[1], k);
+      camera = ` translate(${(px - sc * p0.x).toFixed(1)}px, ${(py - sc * p0.y).toFixed(1)}px) scale(${sc.toFixed(4)})`;
+    }
+    sprites.style.transform = `${about2("")}${camera}`;
+    sprites.style.filter = `brightness(${lerp4(1, 0.92, k)})`;
+    e.faceImg.style.transform = world;
+  },
+  /** The camera is home: every style it wrote is put back as it was. */
+  release() {
+    if (!this.held) return;
+    this.held = false;
+    for (const s of this.saved) for (const [p, v] of s.props) {
+      if (v) s.el.style.setProperty(p, v);
+      else s.el.style.removeProperty(p);
+    }
+    this.saved = [];
+    this.base = null;
+    E?.env.root.querySelector(".alius-stage-dial")?.removeAttribute("data-instrument");
+    if (E) {
+      E.faceImg.style.opacity = "0";
+      E.faceImg.style.transform = "";
+    }
+  }
+};
+var A = { ctx: null, buf: {} };
+var made = /* @__PURE__ */ new Set();
+function recorded(c) {
+  return new Proxy(c, {
+    get(t, p) {
+      const v = Reflect.get(t, p, t);
+      if (typeof v !== "function") return v;
+      if (p === "createBufferSource" || p === "createOscillator") {
+        return (...args) => {
+          const n = v.apply(t, args);
+          made.add(n);
+          n.addEventListener?.("ended", () => made.delete(n), { once: true });
+          return n;
+        };
+      }
+      return v.bind(t);
+    }
+  });
+}
+function audioInit() {
+  if (A.ctx || !E) return;
+  const samples = E.env.samples;
+  const raw = samples?.ctx() ?? null;
+  const world = samples?.bus("world") ?? null;
+  const body = samples?.bus("body") ?? null;
+  if (!samples || !raw || !world || !body) return;
+  const ctx2 = recorded(raw);
+  A.ctx = ctx2;
+  A.worldLP = ctx2.createBiquadFilter();
+  A.worldLP.type = "lowpass";
+  A.worldLP.frequency.value = 16e3;
+  A.worldLP.Q.value = 0.4;
+  A.worldG = ctx2.createGain();
+  A.worldG.gain.value = 1;
+  A.worldLP.connect(A.worldG);
+  A.worldG.connect(world);
+  A.body = body;
+  const b = ctx2.createBuffer(1, ctx2.sampleRate * 2, ctx2.sampleRate);
+  const d = b.getChannelData(0);
+  let x = 2463534242;
+  for (let i = 0; i < d.length; i++) {
+    x ^= x << 13;
+    x ^= x >>> 17;
+    x ^= x << 5;
+    d[i] = (x >>> 0) / 4294967296 * 2 - 1;
+  }
+  A.white = b;
+  A.buf = new Proxy({}, { get: (_t, k) => typeof k === "string" && SAMPLE_URLS[k] ? samples.buffer(SAMPLE_URLS[k]) : null });
+  void samples.preload(Object.values(SAMPLE_URLS));
+}
+function chain2(node, { pan = 0, lp = 0, hp = 0, dest = A.worldLP }) {
+  let n = node;
+  if (hp) {
+    const f = A.ctx.createBiquadFilter();
+    f.type = "highpass";
+    f.frequency.value = hp;
+    n.connect(f);
+    n = f;
+  }
+  if (lp) {
+    const f = A.ctx.createBiquadFilter();
+    f.type = "lowpass";
+    f.frequency.value = lp;
+    n.connect(f);
+    n = f;
+  }
+  if (pan) {
+    const p = A.ctx.createStereoPanner();
+    p.pan.value = clamp44(pan, -1, 1);
+    n.connect(p);
+    n = p;
+  }
+  n.connect(dest);
+}
+function play(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at = 0, offset = 0, dur } = {}) {
+  if (!A.ctx || !A.buf[id]) return null;
+  const ctx2 = A.ctx, t = ctx2.currentTime + Math.max(0, at);
+  const src = ctx2.createBufferSource();
+  src.buffer = A.buf[id];
+  src.playbackRate.value = rate;
+  const gn = ctx2.createGain();
+  gn.gain.value = g;
+  src.connect(gn);
+  chain2(gn, { pan, lp, hp, dest: dest ?? A.worldLP });
+  const len2 = dur ?? A.buf[id].duration - offset;
+  if (dur) {
+    gn.gain.setValueAtTime(g, t + dur / rate - 0.03);
+    gn.gain.linearRampToValueAtTime(1e-4, t + dur / rate);
+  }
+  src.start(t, offset, len2 + 0.05);
+  return src;
+}
+function noise2({ at = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1, gain: gain2 = 0.1, attack = 0.01, dest = A.worldLP, pan = 0 }) {
+  if (!A.ctx) return;
+  const ctx2 = A.ctx, t = ctx2.currentTime + at;
+  const src = ctx2.createBufferSource();
+  src.buffer = A.white;
+  src.loop = true;
+  const fl = ctx2.createBiquadFilter();
+  fl.type = type;
+  fl.frequency.setValueAtTime(f, t);
+  fl.Q.value = q;
+  if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = ctx2.createGain();
+  g.gain.setValueAtTime(1e-4, t);
+  g.gain.exponentialRampToValueAtTime(gain2, t + attack);
+  g.gain.exponentialRampToValueAtTime(1e-4, t + dur);
+  src.connect(fl);
+  fl.connect(g);
+  chain2(g, { pan, dest });
+  src.start(t, rnd01());
+  src.stop(t + dur + 0.05);
+}
+function thump(at, gain2, f0 = 55, dest = A.body) {
+  if (!A.ctx) return;
+  const ctx2 = A.ctx, t = ctx2.currentTime + at;
+  const o = ctx2.createOscillator();
+  o.type = "sine";
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(f0 * 0.6, t + 0.14);
+  const g = ctx2.createGain();
+  g.gain.setValueAtTime(1e-4, t);
+  g.gain.exponentialRampToValueAtTime(gain2, t + 6e-3);
+  g.gain.exponentialRampToValueAtTime(1e-4, t + 0.22);
+  o.connect(g);
+  g.connect(dest);
+  o.start(t);
+  o.stop(t + 0.3);
+}
+var SFX = {
+  pen: () => {
+    for (let i = 0; i < 3; i++) noise2({ at: i * 0.05 + rnd01() * 0.02, dur: 0.035 + rnd01() * 0.03, f: 2600 + rnd01() * 1800, q: 3, gain: 0.04 });
+  },
+  /* her clothes: her hand going up, a feint's twitch (panned to her hand's side) */
+  cloth: (pan, g = 0.35, rate = 1) => {
+    if (!play(pick3(["cloth1", "cloth2", "cloth3", "cloth4"]), { g, pan, rate, lp: 6e3 })) noise2({ dur: 0.3, f: 1100, f2: 1700, q: 0.7, gain: g * 0.25, attack: 0.05, pan });
+  },
+  /* the swish of her hand: timed so that it ends on the impact */
+  swish: (atS, pan) => {
+    if (S2.swishS !== "synth" && A.buf[S2.swishS]) {
+      const rate = 0.72, d = A.buf[S2.swishS].duration / rate;
+      play(S2.swishS, { g: 0.5, pan, rate, at: atS - d * 0.85, hp: 300 });
+    } else noise2({ at: atS - 0.16, dur: 0.17, f: 900, f2: 3200, q: 0.8, gain: 0.16, attack: 0.12, pan });
+  },
+  /* the slap: the recording on the body bus, panned to the cheek; a glancing one is duller and quieter */
+  slap: (pan, glancing) => {
+    const g = glancing ? 0.5 : 1;
+    if (!play("slap", { g: 0.95 * S2.slapLvl * g, pan: pan * 0.55, lp: glancing ? 2200 : 0, dest: A.body })) {
+      noise2({ dur: 0.09, type: "highpass", f: 1400, gain: 0.5 * g, attack: 2e-3, dest: A.body, pan: pan * 0.55 });
+    }
+    if (S2.thump) thump(0, glancing ? 0.25 : 0.55, 70);
+  },
+  /* the ringing in the ears: two close sines that beat, a slow fade; the world dulls and comes back */
+  ring: (sec, k = 1) => {
+    if (!A.ctx || sec <= 0) return;
+    const ctx2 = A.ctx, t = ctx2.currentTime;
+    for (const [f, gg] of [[4180, 0.035], [4207, 0.028], [8400, 6e-3]]) {
+      const o = ctx2.createOscillator();
+      o.frequency.value = f;
+      o.type = "sine";
+      const g = ctx2.createGain();
+      g.gain.setValueAtTime(1e-4, t);
+      g.gain.exponentialRampToValueAtTime(gg * k, t + 0.06);
+      g.gain.exponentialRampToValueAtTime(1e-4, t + sec);
+      o.connect(g);
+      g.connect(A.body);
+      o.start(t);
+      o.stop(t + sec + 0.1);
+    }
+    A.worldLP.frequency.cancelScheduledValues(t);
+    A.worldLP.frequency.setValueAtTime(lerp4(16e3, 650, k), t + 0.01);
+    A.worldLP.frequency.exponentialRampToValueAtTime(16e3, t + Math.max(0.6, sec * 0.9));
+  },
+  /* the commander's breath (the recording of saturation: a nose inhale and an exhale): a sharp intake on tensing, an exhale after */
+  intake: () => {
+    if (!play("breath", { g: 0.24, rate: 1.6, offset: 0.14, dur: 0.42, lp: 3200, dest: A.body })) noise2({ dur: 0.22, f: 900, f2: 2200, q: 0.9, gain: 0.08, attack: 0.03, dest: A.body });
+  },
+  exhale: (at, g = 0.16) => {
+    play("breath", { g, rate: 1.1, offset: 2.17, dur: 0.95, lp: 2600, dest: A.body, at });
+  },
+  heart: () => {
+    thump(0, 0.5, 52);
+    thump(0.26, 0.32, 46);
+  }
+};
+var G2 = { slap: null, last: null, back: null, starting: false, k: 0, cheekA: 0, cheekDir: 1, cheekT0: 0, cheekScene: "", mouse: [], typingFocus: false, next: null, started: /* @__PURE__ */ new Set(), epoch: 0, rkey: "", rn: 0 };
+var LINES2 = {};
+function linesFor(reg, style, id) {
+  const one4 = (kind) => {
+    const runs = voiceLine(reg, kind, style, id, {});
+    return runs.length === 0 ? [] : [runs.map((r) => r.text).join("")];
+  };
+  const feint = one4("slap.feint"), again = one4("slap.again");
+  return {
+    before: one4("slap.before"),
+    none: one4("slap.after.none"),
+    braced: one4("slap.after.braced"),
+    flinched: one4("slap.after.flinched"),
+    ...feint.length > 0 ? { feint } : {},
+    ...again.length > 0 ? { again } : {}
+  };
+}
+function tensionAt(t) {
+  const T5 = S2.tension;
+  if (t < 0) return 0;
+  if (t < T5.rise) return easeOut(t / T5.rise);
+  if (t < T5.rise + T5.peak) return 1;
+  return clamp44(1 - (t - T5.rise - T5.peak) / T5.fall, 0, 1);
+}
+async function startSlap2(opts) {
+  if (G2.slap || G2.starting) return;
+  G2.starting = true;
+  const epoch = G2.epoch;
+  G2.started.add(opts.id);
+  G2.rkey = opts.id;
+  G2.rn = 0;
+  requestAnimationFrame2(frame);
+  const faceBefore = beforeLabel(S2.style, opts.unannounced ?? S2.unann);
+  await preload(faceBefore);
+  if (G2.epoch !== epoch) return;
+  G2.starting = false;
+  if (G2.slap) return;
+  audioInit();
+  const id = opts.id;
+  const style = S2.style;
+  const swing = opts.windowMs;
+  const unann = opts.unannounced ?? S2.unann;
+  let feints = opts.feints;
+  if (unann) feints = 0;
+  const dir = slapSide(id);
+  const lead = unann ? SNAP : opts.again ? AGAIN_LEAD : LEAD;
+  const swingAt = lead + feints * FEINT;
+  const t0 = performance2.now();
+  const s = {
+    id,
+    style,
+    swing,
+    unann,
+    feints,
+    dir,
+    lead,
+    swingAt,
+    impactAt: swingAt + swing,
+    t0,
+    again: !!opts.again,
+    faceBefore,
+    faceShown: false,
+    pressAt: null,
+    presses: 0,
+    turned: 0,
+    turnAt: null,
+    result: null,
+    tensionAtImpact: 0,
+    phase: "snap",
+    doneAt: null,
+    said: false,
+    feintSaid: false,
+    k0: G2.k ?? 0,
+    onResult: opts.onResult
+  };
+  G2.slap = s;
+  G2.last = s;
+  G2.back = null;
+  const active = document.activeElement;
+  if (!opts.again) G2.typingFocus = active === $("#cmd");
+  if (active && active !== document.body) active.blur();
+  requestAnimationFrame2(frame);
+  if (S2.reduced) {
+    showFace(faceBefore);
+    land(s, performance2.now());
+    return;
+  }
+  SFX.heart();
+  if (!unann) SFX.cloth(-dir * 0.7, 0.4);
+  SFX.swish(s.impactAt / 1e3, -dir * 0.6);
+  for (let i = 0; i < feints; i++) setTimeout2(() => {
+    if (G2.slap === s) SFX.cloth(-dir * 0.7, 0.5, 1.25);
+  }, lead + i * FEINT);
+  const before = LINES2[style].before;
+  if (before.length && !unann && !opts.again) setTimeout2(() => {
+    if (G2.slap === s && !s.result) say2(pick3(before));
+  }, SNAP + 60);
+  if (opts.again && LINES2[style].again) setTimeout2(() => {
+    if (G2.slap === s && !s.result) say2(pick3(LINES2[style].again));
+  }, 80);
+}
+function press(source) {
+  const s = G2.slap;
+  if (!s || s.result) return;
+  s.presses += 1;
+  if (s.pressAt !== null) return;
+  s.pressAt = performance2.now() - s.t0;
+  SFX.intake();
+  const onFeint = s.feints > 0 && s.pressAt >= s.lead && s.pressAt < s.swingAt;
+  if (onFeint && LINES2[s.style].feint) setTimeout2(() => {
+    if (G2.slap === s && !s.result) say2(pick3(LINES2[s.style].feint));
+  }, 120);
+}
+function onMove(e) {
+  const now = performance2.now();
+  G2.mouse.push([now, e.clientX]);
+  while (G2.mouse.length && now - G2.mouse[0][0] > 70) G2.mouse.shift();
+  const s = G2.slap;
+  if (!s || s.result || s.turned) return;
+  if (G2.mouse.length < 2) return;
+  const [ta, xa] = G2.mouse[0], dt = (now - ta) / 1e3, dx = e.clientX - xa;
+  if (dt <= 0) return;
+  const v = dx / dt;
+  if (Math.abs(v) >= S2.flick && Math.abs(dx) >= innerWidth2 * 0.06) {
+    s.turned = Math.sign(dx);
+    s.turnAt = now - s.t0;
+    SFX.cloth(0, 0.25, 1.4);
+  }
+}
+function land(s, now) {
+  const t = now - s.t0;
+  s.tensionAtImpact = s.pressAt === null ? 0 : tensionAt(t - s.pressAt);
+  s.result = s.turned ? "flinched" : s.tensionAtImpact >= S2.tension.thr ? "braced" : "none";
+  s.landedAt = t;
+  s.onResult(s.result);
+  const glancing = s.result === "flinched";
+  const k = s.result === "braced" ? 0.65 : glancing ? 0.45 : 1;
+  s.k = k;
+  SFX.slap(-s.dir, glancing);
+  SFX.ring(S2.ring * (s.result === "braced" ? 0.55 : glancing ? 0.4 : 1), k);
+  if (s.result === "braced") SFX.exhale(0.45, 0.15);
+  G2.cheekA = Math.min(0.9, G2.cheekA * 0.6 + 0.8 * k);
+  G2.cheekDir = s.dir;
+  G2.cheekT0 = now;
+  flash(k);
+  scatter2(k);
+  const pool = LINES2[s.style][s.result] ?? [];
+  const faceAfter = EXPR[s.style].after[s.result];
+  void preload(faceAfter);
+  setTimeout2(() => {
+    showFace(faceAfter);
+    if (pool.length) say2(pick3(pool));
+  }, s.style === "cold" ? 0 : 380);
+  const cruelAgain = s.style === "cruel" && s.result === "flinched" && !s.again;
+  const hold = cruelAgain ? 700 : s.style === "cold" ? 900 : 1500;
+  s.doneAt = t + hold;
+  setTimeout2(() => {
+    if (G2.slap !== s) return;
+    G2.slap = null;
+    G2.back = S2.reduced ? null : { t0: performance2.now(), from: 1 };
+    if (cruelAgain || G2.next) setTimeout2(() => startNext(), 120);
+    else if (G2.typingFocus) $("#cmd").focus();
+  }, S2.reduced ? 600 : hold);
+}
+function startNext() {
+  const next = G2.next;
+  G2.next = null;
+  if (next && !G2.started.has(next.id)) {
+    LINES2 = LINES_NEXT;
+    if (E) E.host.dataset.slap = next.id;
+    void startSlap2(next);
+  } else if (G2.typingFocus && E) $("#cmd").focus();
+}
+function flash(k) {
+  const el = $("#flash");
+  el.style.transition = "none";
+  el.style.background = "radial-gradient(ellipse at 50% 45%, rgba(255,250,245,1), rgba(255,90,70,1) 55%, rgba(200,20,20,1))";
+  el.style.opacity = String(0.75 * k);
+  requestTwoFrames(() => {
+    el.style.transition = "opacity 260ms cubic-bezier(.2,.7,.3,1), background 120ms";
+    el.style.background = "radial-gradient(ellipse at 50% 45%, rgba(255,120,100,1), rgba(220,40,30,1) 60%, rgba(160,10,10,1))";
+    el.style.opacity = "0";
+  });
+}
+function scatter2(k) {
+  const spans = [...$("#mirror").children];
+  for (const sp of spans) {
+    sp.style.transition = "none";
+    sp.style.transform = `translate(${rand(-14, 14) * k}px, ${rand(-16, 16) * k}px) rotate(${rand(-28, 28) * k}deg)`;
+  }
+  requestTwoFrames(() => {
+    for (const sp of spans) {
+      sp.style.transition = "";
+      sp.style.transform = "";
+    }
+  });
+}
+function requestTwoFrames(fn) {
+  setTimeout2(fn, 32);
+}
+function say2(text3) {
+  if (!text3) return;
+  const el = document.createElement("div");
+  el.className = "alius-her-line";
+  el.textContent = text3;
+  const speed = S2.style === "cruel" || S2.style === "cold" ? 24 : S2.style === "ritual" ? 45 : 34;
+  el.style.setProperty("--write", `${Math.max(140, text3.length * speed)}ms`);
+  el.style.setProperty("--steps", String(Math.max(4, text3.length * 2)));
+  el.style.fontSize = `${Math.round(44 * (E?.her.handScale ?? 1) * 100) / 100}px`;
+  const s = G2.slap ?? G2.last;
+  const dir = s ? s.dir : 1;
+  if (dir > 0) {
+    el.style.left = `${innerWidth2 * 0.6}px`;
+  } else {
+    el.classList.add("right");
+    el.style.right = `${innerWidth2 * 0.6}px`;
+  }
+  const showing = [...$("#hand").children].filter((c) => !c.classList.contains("gone")).length;
+  el.style.top = `${innerHeight2 * rand(0.22, 0.26) + showing * 54}px`;
+  el.style.transform = `rotate(${rand(-4, 3).toFixed(1)}deg)`;
+  $("#hand").appendChild(el);
+  SFX.pen();
+  setTimeout2(() => {
+    el.classList.add("gone");
+    setTimeout2(() => el.remove(), 600);
+  }, 2200);
+}
+function frame(now) {
+  requestAnimationFrame2(frame);
+  const W = innerWidth2, H = innerHeight2;
+  const s = G2.slap;
+  let k = 0;
+  if (s && !S2.reduced) k = lerp4(s.k0, 1, easeOut((now - s.t0) / SNAP));
+  else if (G2.back) {
+    const p = (now - G2.back.t0) / RETURN;
+    k = 1 - easeInOut(p);
+    if (p >= 1) G2.back = null;
+  }
+  G2.k = k;
+  let lean = 0, sweep = -1, twitch = 0;
+  if (s && !S2.reduced) {
+    const t = now - s.t0;
+    if (!s.faceShown && t >= EXPR_SWITCH) {
+      s.faceShown = true;
+      showFace(s.faceBefore);
+    }
+    if (!s.unann) lean = -0.4 * easeOut((t - SNAP * 0.4) / 380) + 0.04 * Math.sin(t / 140) * (t > SNAP ? 1 : 0);
+    for (let i = 0; i < s.feints; i++) {
+      const ft = t - (s.lead + i * FEINT);
+      if (ft >= 0 && ft < FEINT) {
+        const p = ft / FEINT;
+        twitch = p < 0.3 ? easeIn(p / 0.3) : 1 - easeOut((p - 0.3) / 0.45);
+        lean = -0.4 + 0.75 * twitch;
+      }
+    }
+    if (t >= s.swingAt && !s.result) {
+      const p = (t - s.swingAt) / s.swing;
+      lean = lerp4(s.unann ? 0 : -0.4, 1, easeIn(p));
+      if (S2.sweep) sweep = clamp44(1 - (s.impactAt - t) / SWEEP, 0, 1);
+    }
+    if (!s.result && t >= s.impactAt) land(s, now);
+    if (s.result) lean = 0;
+  }
+  let whipX = 0, whipR = 0, hb = 0;
+  const L = s && s.result ? s : G2.back && G2.last && G2.last.result ? G2.last : null;
+  if (L && L.landedAt !== void 0 && !S2.reduced) {
+    const tt = now - (L.t0 + L.landedAt), kk = L.k ?? 1;
+    const env = tt < 45 ? easeOut(tt / 45) : Math.exp(-(tt - 45) / 210) * Math.cos((tt - 45) / 520 * Math.PI * 2);
+    whipX = -L.dir * 0.075 * W * env * kk;
+    whipR = -L.dir * 5.5 * env * kk;
+    hb = tt < 220 ? (1 - tt / 220) * 16 * kk : 0;
+  }
+  let turnX = 0;
+  const T5 = s ?? (G2.back ? G2.last : null);
+  if (T5 && T5.turned) {
+    const tt = now - (T5.t0 + T5.turnAt);
+    turnX = T5.turned * 0.11 * W * easeOut(tt / 160) * (G2.back ? k : 1);
+    hb = Math.max(hb, tt < 160 ? 10 * (1 - tt / 160) : 0);
+  }
+  let ten = 0, tremble = 0;
+  if (s && s.pressAt !== null && !s.result) {
+    const tt = now - s.t0 - s.pressAt;
+    ten = tensionAt(tt);
+    if (tt > S2.tension.rise + S2.tension.peak && ten > 0.05) tremble = (1 - ten) * 1.6;
+  }
+  const rot = -(s ? s.dir : 1) * lean * 3.4 + whipR;
+  const dx = -(s ? s.dir : 1) * lean * 0.022 * W + whipX + turnX + (tremble ? rand(-tremble, tremble) : 0);
+  const dy = tremble ? rand(-tremble, tremble) : 0;
+  const leanIn = s && !s.result && !S2.reduced ? 0.035 * clamp44((now - s.t0 - SNAP) / 500, 0, 1) : 0;
+  const world = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) rotate(${rot.toFixed(2)}deg) scale(${(1 + 0.02 * ten + leanIn + (turnX ? 0.03 : 0)).toFixed(4)})`;
+  $("#hblurG").setAttribute("stdDeviation", `${hb.toFixed(1)} ${(hb * 0.12).toFixed(1)}`);
+  if ((s || G2.back) && !S2.reduced) cam.draw(world, hb, k);
+  else cam.release();
+  E.faceImg.style.opacity = E.hasFace ? String(k) : "0";
+  $("#dimmer").style.opacity = String(0.25 * k);
+  const dir = s ? s.dir : 1;
+  const sideA = s && !s.result && S2.sideDark ? clamp44(0.42 * easeOut((now - s.t0 - SNAP) / 300) + 0.3 * twitch + 0.4 * Math.max(0, lean), 0, 0.85) : 0;
+  $("#side").style.background = `linear-gradient(${dir > 0 ? 90 : 270}deg, rgba(4,2,6,.95), rgba(4,2,6,.4) 28%, rgba(4,2,6,0) 55%)`;
+  $("#side").style.opacity = sideA.toFixed(3);
+  const sw = $("#sweep");
+  if (sweep >= 0 && s && !s.result) {
+    const x0 = dir > 0 ? -0.5 : 1.04, x1 = dir > 0 ? 0.02 : 0.52;
+    sw.style.left = `${(lerp4(x0, x1, easeIn(sweep)) * W).toFixed(1)}px`;
+    sw.style.opacity = String(0.85 * Math.min(1, sweep * 2));
+  } else sw.style.opacity = "0";
+  $("#tight").style.opacity = String((0.5 * ten).toFixed(3));
+  if (A.worldG) A.worldG.gain.value = 1 - 0.55 * ten;
+  if (G2.cheekA > 0) {
+    const age2 = (now - G2.cheekT0) / 1e3;
+    const a = G2.cheekA * Math.exp(-age2 / 24) * (0.85 + 0.15 * Math.sin(age2 * 5.2));
+    const cx = G2.cheekDir > 0 ? "0%" : "100%";
+    $("#cheek").style.background = `radial-gradient(ellipse 48% 62% at ${cx} 56%, rgba(210,24,20,.85), rgba(170,10,10,.35) 45%, rgba(120,0,0,0) 75%)`;
+    $("#cheek").style.opacity = a.toFixed(3);
+    if (a < 4e-3) G2.cheekA = 0;
+  } else $("#cheek").style.opacity = "0";
+  if ((s || G2.back) && !S2.reduced) {
+    $("#reply").style.opacity = String(1 - 0.85 * k);
+    $("#inputWrap").style.opacity = String(1 - 0.6 * k);
+  }
+}
+var typing = (el) => el instanceof HTMLElement && (/^(input|textarea|select)$/i.test(el.tagName) || el.isContentEditable);
+function onKey(e) {
+  if (typing(e.target)) return;
+  if (e.key === " ") {
+    if (!G2.slap) return;
+    e.preventDefault();
+    if (!e.repeat) press("key");
+  }
+}
+var CONTROLS2 = 'button, a, input, textarea, select, summary, label, [role="button"], [contenteditable="true"], .alius-input-line, .alius-stage-dock, .alius-chip-row, .alius-stage-dial, .alius-stage-topline, .alius-curtain';
+function onDown(e) {
+  if (e.button !== 0 || e.target instanceof Element && e.target.closest(CONTROLS2)) return;
+  if (G2.slap) {
+    e.preventDefault();
+    press("mouse");
+  }
+}
+var holder2 = "";
+function bind(m, unitId) {
+  if (E && (E.env !== m.env || E.sceneId !== m.sceneId || E.unitId !== unitId || !E.box.isConnected)) stopSlap({ keepCheek: E.sceneId === m.sceneId });
+  if (G2.cheekScene !== m.sceneId) {
+    G2.cheekA = 0;
+    G2.cheekScene = m.sceneId;
+    G2.started.clear();
+    G2.last = null;
+  }
+  if (!E) {
+    E = { ...build2(m.env, unitId), host: m.host, sceneId: m.sceneId };
+    const e = E;
+    e.offs.push(m.env.listen(document, "keydown", onKey));
+    e.offs.push(m.env.listen(e.env.root, "pointerdown", onDown));
+    e.offs.push(m.env.listen(document, "pointermove", onMove));
+    curLabel = m.env.faceOf(unitId);
+    for (const k of Object.keys(faces)) delete faces[k];
+  }
+  E.host = m.host;
+  holder2 = unitId;
+  S2.reduced = m.still;
+  S2.face = m.env.art.face(unitId) ?? { x: 0.47, y: 0.17 };
+  measure();
+}
+function mountSlap(m) {
+  const slap = m.slap;
+  if (!slap) {
+    settleSlap();
+    const same = E !== null && E.env === m.env && E.sceneId === m.sceneId && E.box.isConnected;
+    if (!same && (G2.cheekScene !== m.sceneId || G2.cheekA <= 0 || holder2 === "")) {
+      if (E) stopSlap({ keepCheek: E.sceneId === m.sceneId });
+      return;
+    }
+    if (!same) bind(m, holder2);
+    if (G2.cheekA > 0) requestAnimationFrame2(frame);
+    return;
+  }
+  bind(m, slap.holderId);
+  S2.style = slap.style;
+  if (G2.cheekA > 0) requestAnimationFrame2(frame);
+  if (G2.started.has(slap.id)) return;
+  if (G2.slap || G2.starting) {
+    if (G2.next?.id !== slap.id) {
+      G2.next = slap;
+      LINES_NEXT = { [slap.style]: linesFor(m.reg, slap.style, slap.id) };
+    }
+    return;
+  }
+  LINES2 = { [slap.style]: linesFor(m.reg, slap.style, slap.id) };
+  m.host.dataset.slap = slap.id;
+  void startSlap2(slap);
+}
+var LINES_NEXT = {};
+function settleSlap() {
+  G2.next = null;
+  const s = G2.slap;
+  if (s && s.result === null || G2.starting) {
+    G2.started.delete(s ? s.id : G2.rkey);
+    G2.epoch++;
+    G2.starting = false;
+    G2.slap = null;
+    G2.back = null;
+  }
+}
+function stopSlap(opts = {}) {
+  if (G2.slap && G2.slap.result === null) G2.started.delete(G2.slap.id);
+  if (G2.starting) G2.started.delete(G2.rkey);
+  G2.epoch++;
+  G2.slap = null;
+  G2.back = null;
+  G2.starting = false;
+  G2.next = null;
+  G2.k = 0;
+  G2.mouse = [];
+  if (!opts.keepCheek) {
+    G2.cheekA = 0;
+    G2.cheekScene = "";
+    G2.started.clear();
+    G2.last = null;
+  }
+  for (const t of timers3) clearTimeout(t);
+  timers3.clear();
+  if (frameId !== null && E) E.env.cancelRaf(frameId);
+  frameId = null;
+  for (const n of made) {
+    try {
+      n.stop();
+    } catch {
+    }
+    try {
+      n.disconnect();
+    } catch {
+    }
+  }
+  made.clear();
+  try {
+    A.worldG?.disconnect();
+  } catch {
+  }
+  A.ctx = null;
+  A.buf = {};
+  delete A.worldLP;
+  delete A.worldG;
+  delete A.body;
+  delete A.white;
+  cam.release();
+  if (E) {
+    for (const off of E.offs) off();
+    E.box.remove();
+    const mirrors = E.env.root.querySelectorAll(".alius-slap-mirror");
+    if (mirrors.length > 0) E.env.input.style.removeProperty("color");
+    mirrors.forEach((m) => m.remove());
+    delete E.host.dataset.slap;
+  }
+  E = null;
+}
+function resetSlap() {
+  stopSlap();
+}
+function slapStyleOf(state, reg, holderId) {
+  const style = practiceOf(state, reg, holderId)?.style.primary;
+  return style !== void 0 && style in EXPR ? style : "possessive";
+}
+
 // src/ui/scene/stage/dock.ts
 var DOCK_SOUNDS = {
   slide: ["assets/sounds/ha/card_slide1.ogg", "assets/sounds/ha/card_slide2.ogg"],
@@ -64042,7 +64963,7 @@ function resetLook() {
   memory.clear();
 }
 var DRAG_HOLD_MS = 8e3;
-function attachLook(frame, root, opts) {
+function attachLook(frame2, root, opts) {
   const id = opts.sceneId();
   let pan = memory.get(id) ?? 0.5;
   let drag = null;
@@ -64052,15 +64973,15 @@ function attachLook(frame, root, opts) {
     root.style.setProperty("--alius-pan", String(Math.round(pan * 1e4) / 1e4));
     memory.set(id, pan);
   };
-  const still = () => {
+  const still2 = () => {
     root.classList.toggle("alius-look-still", opts.reduced());
   };
   root.style.setProperty("--alius-pan", String(pan));
-  still();
+  still2();
   const down2 = (e) => {
     const ev = e;
     if (ev.button !== 2) return;
-    still();
+    still2();
     if (Date.now() - lastClick <= DOUBLE_MS) {
       lastClick = -Infinity;
       drag = null;
@@ -64072,21 +64993,21 @@ function attachLook(frame, root, opts) {
     drag = { x: ev.clientX, pan, moved: false };
     root.classList.add("alius-looking");
     try {
-      frame.setPointerCapture?.(ev.pointerId);
+      frame2.setPointerCapture?.(ev.pointerId);
     } catch {
     }
   };
-  const stop2 = () => {
+  const stop = () => {
     drag = null;
     root.classList.remove("alius-looking");
   };
   const move = (e) => {
     if (!drag) return;
     if ((e.buttons & 2) === 0) {
-      stop2();
+      stop();
       return;
     }
-    const width = frame.getBoundingClientRect().width;
+    const width = frame2.getBoundingClientRect().width;
     if (width <= 0) return;
     const dx = drag.x - e.clientX;
     if (dx === 0 && !drag.moved) return;
@@ -64099,28 +65020,28 @@ function attachLook(frame, root, opts) {
   const up = (e) => {
     if (!drag || e.button !== 2) return;
     if (!drag.moved) lastClick = Date.now();
-    stop2();
+    stop();
   };
   const menu = (e) => e.preventDefault();
-  frame.addEventListener("pointerdown", down2);
-  frame.addEventListener("pointermove", move);
-  frame.addEventListener("pointerup", up);
-  frame.addEventListener("pointercancel", stop2);
-  frame.addEventListener("lostpointercapture", stop2);
-  frame.addEventListener("contextmenu", menu);
+  frame2.addEventListener("pointerdown", down2);
+  frame2.addEventListener("pointermove", move);
+  frame2.addEventListener("pointerup", up);
+  frame2.addEventListener("pointercancel", stop);
+  frame2.addEventListener("lostpointercapture", stop);
+  frame2.addEventListener("contextmenu", menu);
   const detach = () => {
-    frame.removeEventListener("pointerdown", down2);
-    frame.removeEventListener("pointermove", move);
-    frame.removeEventListener("pointerup", up);
-    frame.removeEventListener("pointercancel", stop2);
-    frame.removeEventListener("lostpointercapture", stop2);
-    frame.removeEventListener("contextmenu", menu);
+    frame2.removeEventListener("pointerdown", down2);
+    frame2.removeEventListener("pointermove", move);
+    frame2.removeEventListener("pointerup", up);
+    frame2.removeEventListener("pointercancel", stop);
+    frame2.removeEventListener("lostpointercapture", stop);
+    frame2.removeEventListener("contextmenu", menu);
     root.classList.remove("alius-looking");
   };
   return Object.assign(detach, {
     turnTo(to) {
       if (drag !== null || Date.now() - lastHand < DRAG_HOLD_MS) return false;
-      still();
+      still2();
       pan = Math.min(1, Math.max(0, to));
       apply2();
       return true;
@@ -64187,6 +65108,7 @@ function resetSceneStage() {
   resetLook();
   resetDock();
   resetInstruments();
+  resetSlap();
   for (const fn of [...hooks2]) fn();
 }
 
@@ -64203,9 +65125,9 @@ function cancelPostureCalls(cancel = (handle) => clearTimeout(handle)) {
   cancelCall();
 }
 onStageReset(() => cancelCall());
-function drawPostureCall(host, state, reg, pick3, handlers2, opts = {}) {
+function drawPostureCall(host, state, reg, pick4, handlers2, opts = {}) {
   if (opts.look === "scene") {
-    drawSceneCall(host, state, reg, pick3, handlers2);
+    drawSceneCall(host, state, reg, pick4, handlers2);
     return;
   }
   host.replaceChildren();
@@ -64213,13 +65135,13 @@ function drawPostureCall(host, state, reg, pick3, handlers2, opts = {}) {
   const schedule = handlers2.schedule ?? ((fn, ms) => setTimeout(fn, ms));
   const cancel = handlers2.cancel ?? ((handle) => clearTimeout(handle));
   const call2 = state.practices?.call;
-  const stop2 = (id) => {
+  const stop = (id) => {
     if (expiries.has(id)) cancel(expiries.get(id));
     expiries.delete(id);
   };
   const unit4 = call2 === void 0 ? void 0 : state.squad.find((u) => u.id === call2.holderId);
-  if (call2 === void 0 || unit4 === void 0 || !dynamicOn(state, reg) || !practiceLive(state, reg, unit4.id) || !pick3({ unitId: unit4.id })) {
-    for (const id of [...expiries.keys()]) stop2(id);
+  if (call2 === void 0 || unit4 === void 0 || !dynamicOn(state, reg) || !practiceLive(state, reg, unit4.id) || !pick4({ unitId: unit4.id })) {
+    for (const id of [...expiries.keys()]) stop(id);
     started.clear();
     return;
   }
@@ -64233,14 +65155,14 @@ function drawPostureCall(host, state, reg, pick3, handlers2, opts = {}) {
   if (handlers2.timed && !started.has(call2.id)) {
     started.set(call2.id, now());
     expiries.set(call2.id, schedule(() => {
-      stop2(call2.id);
+      stop(call2.id);
       handlers2.take(call2.id, void 0, true);
     }, windowMs));
   }
   const live3 = { unitId: unit4.id };
   const answer = (postureId) => {
     const late2 = handlers2.timed && started.has(call2.id) && now() - started.get(call2.id) > windowMs;
-    stop2(call2.id);
+    stop(call2.id);
     handlers2.take(call2.id, postureId, late2);
   };
   const choices = set2.map((p) => h("button", {
@@ -64272,11 +65194,11 @@ function drawPostureCall(host, state, reg, pick3, handlers2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:posture_call", live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawSceneCall(host, state, reg, pick3, handlers2) {
+function drawSceneCall(host, state, reg, pick4, handlers2) {
   const call2 = state.practices?.call;
   const unit4 = call2 === void 0 ? void 0 : state.squad.find((u) => u.id === call2.holderId);
   const now = currentCall();
-  const live3 = call2 !== void 0 && unit4 !== void 0 && dynamicOn(state, reg) && practiceLive(state, reg, unit4.id) && pick3({ unitId: unit4.id });
+  const live3 = call2 !== void 0 && unit4 !== void 0 && dynamicOn(state, reg) && practiceLive(state, reg, unit4.id) && pick4({ unitId: unit4.id });
   const set2 = live3 ? (state.practices.postures[unit4.id] ?? []).filter((p) => {
     const entry = reg.blockingPostures.get(p.postureId);
     return entry !== void 0 && entryAllowed(state, reg, entry, [unit4.id]);
@@ -64319,117 +65241,42 @@ function drawSceneCall(host, state, reg, pick3, handlers2) {
 }
 
 // src/ui/practice/slapOverlay.ts
-var PHASE_TEXT = { raise: "Her hand is raised.", feint: "Her hand twitches.", strike: "Her hand comes down.", done: "" };
-var RESULT_TEXT = { none: "It lands.", braced: "Braced.", flinched: "Flinched." };
-var runs = /* @__PURE__ */ new WeakMap();
-var typing = (t) => t !== null && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
-function stop(host, run, cancel) {
-  for (const handle of run.handles) cancel(handle);
-  run.handles = [];
-  if (run.keys !== void 0) {
-    document.removeEventListener("keydown", run.keys.down);
-    document.removeEventListener("keyup", run.keys.up);
-    run.keys = void 0;
-  }
-}
 function renderSlapOverlay(host, ctx2) {
-  const { slap } = ctx2;
-  const now = ctx2.now ?? (() => Date.now());
-  const schedule = ctx2.schedule ?? ((fn, ms) => setTimeout(fn, ms));
-  const cancel = ctx2.cancel ?? ((handle) => clearTimeout(handle));
-  const unit4 = ctx2.state.squad.find((u) => u.id === slap.holderId);
-  const existing = runs.get(host);
-  if (existing !== void 0 && existing.slapId === slap.id) {
-    if (existing.card !== void 0 && !host.contains(existing.card)) host.append(existing.card);
+  const { slap, state } = ctx2;
+  const sceneId = state.scene?.id;
+  if (sceneId === void 0) {
+    clearSlapOverlay(host);
     return;
   }
-  if (existing !== void 0) {
-    stop(host, existing, cancel);
-    host.replaceChildren();
-  }
-  if (unit4 === void 0 || !dynamicOn(ctx2.state, ctx2.reg)) return;
-  const run = { slapId: slap.id, start: now(), windowStart: TUNING.practice.slap.leadMs + slap.feints * TUNING.practice.slap.feintMs, windowEnd: 0, presses: 0, decided: false, down: false, handles: [], cancel };
-  run.windowEnd = run.windowStart + slap.windowMs;
-  runs.set(host, run);
-  if (ctx2.settings.physicsInteractions?.timing === false || motionReduced(ctx2.settings)) {
-    run.decided = true;
-    ctx2.onResult("none");
-    return;
-  }
-  const live3 = { unitId: unit4.id };
-  const text3 = h("p", { class: "alius-slap-text", role: "status" }, PHASE_TEXT.raise);
-  const brace = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "brace", ...analyzeNative("glossary:slap", live3), onclick: () => press() }, "[ BRACE ]");
-  const bar2 = h("div", { class: "alius-slap-bar", "aria-hidden": "true", style: `--alius-slap-ms: ${run.windowEnd}ms` });
-  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit4.displayName, body: h("div", { class: "alius-slap-body" }, text3, bar2, brace), accent: unitAccent(unit4.id) });
-  card2.classList.add("alius-slap");
-  card2.setAttribute("role", "group");
-  card2.setAttribute("aria-label", `${unit4.displayName} raises her hand`);
-  for (const [k, v] of Object.entries(analyzeAttrs("glossary:slap", live3))) card2.setAttribute(k, v);
-  const setPhase = (phase, line3) => {
-    card2.setAttribute("data-phase", phase);
-    text3.textContent = line3;
-  };
-  setPhase("raise", PHASE_TEXT.raise);
-  run.card = card2;
-  host.append(card2);
-  const resolve = (result) => {
-    if (run.decided) return;
-    run.decided = true;
-    stop(host, run, cancel);
-    setPhase("done", RESULT_TEXT[result]);
-    brace.setAttribute("aria-disabled", "true");
-    ctx2.onResult(result);
-  };
-  function press() {
-    if (run.decided) return;
-    const t = now() - run.start;
-    if (t < run.windowStart) resolve("flinched");
-    else if (t <= run.windowEnd) {
-      run.presses += 1;
-      if (run.presses >= 2) resolve("flinched");
+  const live3 = slap !== void 0 && state.squad.some((u) => u.id === slap.holderId) && dynamicOn(state, ctx2.reg);
+  mountSlap({
+    env: ctx2.env,
+    host,
+    reg: ctx2.reg,
+    sceneId,
+    still: still(ctx2.settings, ctx2.env),
+    slap: !live3 || slap === void 0 ? null : {
+      id: slap.id,
+      holderId: slap.holderId,
+      style: slapStyleOf(state, ctx2.reg, slap.holderId),
+      windowMs: slap.windowMs,
+      feints: slap.feints,
+      ...slap.unannounced ? { unannounced: true } : {},
+      ...slap.again ? { again: true } : {},
+      onResult: ctx2.onResult
     }
-  }
-  cutIn(host, "slap", "HER HAND");
-  ctx2.sound?.play("alert");
-  const active = document.activeElement;
-  if (active !== null && typing(active)) active.blur();
-  const T5 = TUNING.practice.slap;
-  for (let i = 0; i < slap.feints; i++) {
-    run.handles.push(schedule(() => setPhase("feint", PHASE_TEXT.feint), T5.leadMs + i * T5.feintMs));
-    if (i < slap.feints - 1) run.handles.push(schedule(() => setPhase("raise", PHASE_TEXT.raise), T5.leadMs + (i + 1) * T5.feintMs));
-  }
-  run.handles.push(schedule(() => setPhase("strike", PHASE_TEXT.strike), run.windowStart));
-  run.handles.push(schedule(() => resolve(run.presses === 1 ? "braced" : "none"), run.windowEnd));
-  const down2 = (e) => {
-    if (!host.isConnected) {
-      stop(host, run, cancel);
-      return;
-    }
-    const ev = e;
-    if (ev.key !== " " || typing(ev.target)) return;
-    ev.preventDefault();
-    if (ev.repeat || run.down) return;
-    run.down = true;
-    press();
-  };
-  const up = (e) => {
-    if (e.key === " ") run.down = false;
-  };
-  run.keys = { down: down2, up };
-  document.addEventListener("keydown", down2);
-  document.addEventListener("keyup", up);
+  });
 }
+var still = (settings, env) => settings.physicsInteractions?.timing === false || env.reduced;
 function clearSlapOverlay(host) {
-  const run = runs.get(host);
-  if (run !== void 0) stop(host, run, run.cancel);
-  runs.delete(host);
-  host.replaceChildren();
+  stopSlap({ keepCheek: true });
+  delete host.dataset.slap;
 }
 
 // src/ui/dynamic/frameChip.ts
-function drawFrameChips(host, state, reg, pick3, hidden) {
+function drawFrameChips(host, state, reg, pick4, hidden) {
   if (hidden || !dynamicOn(state, reg)) return;
-  const chips = state.squad.filter((u) => u.kind === "named" && isLiving(u) && pick3(u.id) && frameRank(dynamicOf(state, u.id)?.frame ?? "equal") >= frameRank("play")).map((u) => h(
+  const chips = state.squad.filter((u) => u.kind === "named" && isLiving(u) && pick4(u.id) && frameRank(dynamicOf(state, u.id)?.frame ?? "equal") >= frameRank("play")).map((u) => h(
     "span",
     { class: "alius-chip alius-frame-chip", "data-frame-chip": u.id, ...analyzeAttrs("glossary:frame", { unitId: u.id }) },
     `${u.displayName.toUpperCase()}: ${String(reg.dynamicFrames.get(dynamicOf(state, u.id).frame)?.label ?? "").toUpperCase()}`
@@ -64775,7 +65622,7 @@ function renderPhysicsPanel(host, ctx2) {
     holding.delete(host);
   };
   const stamp = (physics) => analyzeNative(`contactPhysics:${run.physicsId}`, { input: physics });
-  const press = (c) => {
+  const press2 = (c) => {
     if (!running3) return;
     if (realtime) {
       if (c.kind === "wait") return;
@@ -64799,7 +65646,7 @@ function renderPhysicsPanel(host, ctx2) {
     "data-input": c.kind,
     ...c.part !== void 0 ? { "data-part": c.part } : {},
     ...stamp(c.kind),
-    ...realtime ? { onpointerdown: () => press(c), onpointerup: () => letGo2(), onpointerleave: () => letGo2() } : { onclick: () => press(c) }
+    ...realtime ? { onpointerdown: () => press2(c), onpointerup: () => letGo2(), onpointerleave: () => letGo2() } : { onclick: () => press2(c) }
   }, c.text);
   const remaining = remainingOf(reg, run);
   const reduced = motionReduced(ctx2.settings) || ctx2.settings.readableMode;
@@ -65264,16 +66111,16 @@ function fillProse(el, text3, visible, opts = {}) {
   });
 }
 function sentenceRunIndex(text3, visible) {
-  const runs2 = proseRuns(text3);
-  const shown2 = runs2.map((r) => r.text).join("").slice(0, Math.max(0, visible));
+  const runs = proseRuns(text3);
+  const shown2 = runs.map((r) => r.text).join("").slice(0, Math.max(0, visible));
   let start = 0;
   for (const m of shown2.matchAll(/[.!?…]["”’']?\s+(?=\S)/g)) start = m.index + m[0].length;
   let acc = 0;
-  for (let i = 0; i < runs2.length; i++) {
-    if (start < acc + runs2[i].text.length) return i;
-    acc += runs2[i].text.length;
+  for (let i = 0; i < runs.length; i++) {
+    if (start < acc + runs[i].text.length) return i;
+    acc += runs[i].text.length;
   }
-  return Math.max(0, runs2.length - 1);
+  return Math.max(0, runs.length - 1);
 }
 
 // src/ui/scene/stage/curtain.ts
@@ -65411,24 +66258,24 @@ function createCurtain(host, opts) {
       last = { messages, ctx: ctx2 };
       if (opened) render();
     },
-    destroy: () => stop2()
+    destroy: () => stop()
   };
-  const stop2 = onStageReset(() => curtain.close());
+  const stop = onStageReset(() => curtain.close());
   return curtain;
 }
 
 // src/ui/scene/stage/flash.ts
 var FLASH_MS = 2400;
-var timers3 = /* @__PURE__ */ new WeakMap();
+var timers4 = /* @__PURE__ */ new WeakMap();
 function flashLine(layer, text3, analyze, ms = FLASH_MS) {
   for (const old of layer.querySelectorAll("[data-flash]")) {
-    const t = timers3.get(old);
+    const t = timers4.get(old);
     if (t) clearTimeout(t);
     old.remove();
   }
   const el = h("p", { class: "alius-flash", "data-flash": "", role: "status", ...analyzeAttrs(analyze) }, text3);
   layer.append(el);
-  timers3.set(el, setTimeout(() => el.remove(), ms));
+  timers4.set(el, setTimeout(() => el.remove(), ms));
 }
 
 // src/ui/scene/stage/sprites.ts
@@ -65569,6 +66416,19 @@ var KIND_HINT = {
   secret_affair: "propose a secret relationship"
 };
 var BUSY_TICK_MS = 500;
+var DEAD_STAGING = {
+  input: () => {
+  },
+  endSegment: () => [],
+  stopWord: () => [],
+  skip: () => [],
+  stimulus: () => [],
+  act: () => [],
+  finishCounted: () => [],
+  cue: () => null,
+  beat: () => 0,
+  clock: () => ({ startedAt: null, beatMs: 0, now: 0 })
+};
 function renderSceneScreen(host, ctx2) {
   const { controller, registries, st } = ctx2;
   const typingSpeed = () => motionReduced(ctx2.settings()) ? 0 : ctx2.settings().typingSpeed;
@@ -65587,6 +66447,7 @@ function renderSceneScreen(host, ctx2) {
   let busyTimer = null;
   let busyStarted = 0;
   const labels = /* @__PURE__ */ new Map();
+  const spriteUrls = /* @__PURE__ */ new Map();
   const timeouts = /* @__PURE__ */ new Set();
   let layers;
   let chipResizer = null;
@@ -65632,6 +66493,7 @@ function renderSceneScreen(host, ctx2) {
   let momentHost;
   let physicsHost;
   let instrumentEnv = null;
+  let slapEnv = null;
   let busyHost;
   let caption;
   let input;
@@ -65695,16 +66557,36 @@ function renderSceneScreen(host, ctx2) {
       }
     })();
   }
-  function setSprite(unit4, labelText) {
+  function setSprite(unit4, labelText, known3) {
     const img = spriteHost.querySelector(`.alius-sprite[data-unit="${unit4.id}"] img`);
     if (!img || !unit4.cardRef) return;
     labels.set(unit4.id, labelText);
+    if (known3 !== void 0) spriteUrls.set(`${unit4.id}|${labelText}`, known3);
+    const cached = spriteUrls.get(`${unit4.id}|${labelText}`);
+    if (cached !== void 0) {
+      img.setAttribute("src", cached);
+      return;
+    }
     const thumb = st.getAvatarUrl(unit4.cardRef);
     img.setAttribute("src", thumb);
     void st.getSpriteUrl(unit4.cardRef, labelText).then((url) => {
+      if (url) spriteUrls.set(`${unit4.id}|${labelText}`, url);
       if (!disposed && url && labels.get(unit4.id) === labelText) img.setAttribute("src", url);
     }).catch(() => {
     });
+  }
+  async function spriteUrl(unitId, labelText) {
+    const unit4 = state()?.squad.find((u) => u.id === unitId);
+    if (!unit4?.cardRef) return null;
+    const url = spriteUrls.get(`${unitId}|${labelText}`) ?? await st.getSpriteUrl(unit4.cardRef, labelText).catch(() => null);
+    if (!url) return null;
+    spriteUrls.set(`${unitId}|${labelText}`, url);
+    if (typeof Image === "function") {
+      const im = new Image();
+      im.src = url;
+      await (typeof im.decode === "function" ? im.decode().catch(() => void 0) : Promise.resolve());
+    }
+    return url;
   }
   function drawSprites(s, speakerAvatar) {
     const units = present2(s);
@@ -65733,8 +66615,8 @@ function renderSceneScreen(host, ctx2) {
     const units = present2(s);
     const at = units.findIndex((u) => u.cardRef !== void 0 && u.cardRef === reply.avatar || u.displayName === reply.name);
     if (at < 0) return;
-    const frame = layers.frame.getBoundingClientRect();
-    const pan = panToCentre(spriteSlots(units.length)[at].x, frame.width, frame.height);
+    const frame2 = layers.frame.getBoundingClientRect();
+    const pan = panToCentre(spriteSlots(units.length)[at].x, frame2.width, frame2.height);
     if (pan !== null) detachLook.turnTo(pan);
   }
   function drawHud(s) {
@@ -65743,7 +66625,7 @@ function renderSceneScreen(host, ctx2) {
     hud.replaceChildren(...present2(s).map((u) => {
       const st0 = registries.relationshipStates.get(s.relations[u.id]?.stateId ?? "");
       const keep2 = pulses.get(u.id);
-      const holder2 = keep2 ?? h("span", { class: "alius-pulses" });
+      const holder3 = keep2 ?? h("span", { class: "alius-pulses" });
       const glyph = h("span", { class: "alius-glyph", title: String(st0?.name ?? "") });
       glyph.textContent = String(st0?.glyph ?? "?");
       const refused = ctx2.onCompel !== void 0 && (s.scene?.refusals ?? []).some((r) => r.unitId === u.id);
@@ -65752,7 +66634,7 @@ function renderSceneScreen(host, ctx2) {
         { class: "alius-hud-unit", "data-unit": u.id },
         glyph,
         h("span", { class: "alius-hud-name" }, u.displayName),
-        holder2,
+        holder3,
         refused ? h("span", { class: "alius-refused-mark" }, "REFUSED") : null,
         refused ? h("button", {
           type: "button",
@@ -65832,23 +66714,32 @@ function renderSceneScreen(host, ctx2) {
     if (!ctx2.onPunish) return;
     const open3 = new Set([...disciplineMenus.querySelectorAll("details[open]")].map((d) => d.dataset.disciplineMenu));
     disciplineMenus.replaceChildren(...present2(s).filter((u) => u.kind === "named").map((u) => {
-      const menu = renderDisciplineMenu({ state: s, registries, unitId: u.id, onPunish: (measure, days) => ctx2.onPunish(u.id, measure, days) });
+      const menu = renderDisciplineMenu({ state: s, registries, unitId: u.id, onPunish: (measure2, days) => ctx2.onPunish(u.id, measure2, days) });
       if (open3.has(u.id)) menu.open = true;
       const many2 = present2(s).filter((x) => x.kind === "named").length > 1;
       return h("div", { class: "alius-discipline-unit", "data-discipline-chip": u.id }, many2 ? h("span", { class: "alius-dim alius-discipline-name" }, u.displayName) : null, menu);
     }));
   }
   function drawSlap(s) {
-    const slap = s.practices?.slap;
-    if (!ctx2.onSlap || slap === void 0 || slap.sceneId !== s.scene?.id || !practiceLive(s, registries, slap.holderId)) {
+    if (!ctx2.onSlap || !slapEnv) {
       clearSlapOverlay(slapHost);
       return;
     }
-    renderSlapOverlay(slapHost, { state: s, reg: registries, slap, settings: ctx2.settings(), sound: ctx2.sound, onResult: (result) => {
-      queueMicrotask(() => {
-        if (!disposed) ctx2.onSlap?.(slap.id, result);
-      });
-    } });
+    const open3 = s.practices?.slap;
+    const slap = open3 !== void 0 && open3.sceneId === s.scene?.id && practiceLive(s, registries, open3.holderId) ? open3 : void 0;
+    renderSlapOverlay(slapHost, {
+      state: s,
+      reg: registries,
+      ...slap ? { slap } : {},
+      settings: ctx2.settings(),
+      env: slapEnv,
+      onResult: (result) => {
+        if (!slap) return;
+        queueMicrotask(() => {
+          if (!disposed) ctx2.onSlap?.(slap.id, result);
+        });
+      }
+    });
   }
   function drawLets(s) {
     const open3 = letsHost.querySelector("details[open]") !== null;
@@ -66090,10 +66981,11 @@ function renderSceneScreen(host, ctx2) {
     }
   };
   document.addEventListener("keydown", onDocKey);
-  function build2(s) {
+  function build3(s) {
     const units = present2(s);
     sceneKey = s.scene.id;
     unmountInstruments();
+    if (slapHost) clearSlapOverlay(slapHost);
     layers = buildLayers(root);
     curtain?.destroy();
     delete root.dataset.curtain;
@@ -66270,7 +67162,8 @@ function renderSceneScreen(host, ctx2) {
     layers.frame.addEventListener("wheel", wheelUp);
     hosts.reply.addEventListener("wheel", wheelUp);
     drawBackground(s);
-    instrumentEnv = ctx2.physics ? buildInstrumentEnv() : null;
+    slapEnv = buildInstrumentEnv();
+    instrumentEnv = ctx2.physics ? slapEnv : null;
   }
   function buildInstrumentEnv() {
     const frames = ctx2.frames ?? {
@@ -66290,14 +67183,17 @@ function renderSceneScreen(host, ctx2) {
       reply: layers.hosts.reply,
       gauge: inputGauge(layers.hosts.input),
       spriteOf: (unitId) => spriteHost.querySelector(`.alius-sprite[data-unit="${unitId}"] img`),
-      setSprite: (unitId, labelText) => {
+      setSprite: (unitId, labelText, url) => {
         const u = unitOf13(unitId);
-        if (u) setSprite(u, labelText);
+        if (u) setSprite(u, labelText, url);
       },
+      faceOf: (unitId) => labels.get(unitId) ?? "neutral",
+      spriteUrl: (unitId, labelText) => spriteUrl(unitId, labelText),
       state: () => state(),
       registries,
       settings: () => ctx2.settings(),
-      staging: ctx2.physics,
+      staging: ctx2.physics ?? DEAD_STAGING,
+      // without the staging controller no instrument is mounted (`drawPhysics`); the slap reads none
       samples: ctx2.samples ?? null,
       art: art2,
       her: (unitId) => {
@@ -66342,7 +67238,9 @@ function renderSceneScreen(host, ctx2) {
     const s = state();
     if (!s?.scene) {
       unmountInstruments();
+      if (slapHost) clearSlapOverlay(slapHost);
       instrumentEnv = null;
+      slapEnv = null;
       root.replaceChildren(h("div", { class: "alius-stub" }, "NO SCENE OPEN"));
       delete root.dataset.stage;
       sceneKey = "";
@@ -66357,7 +67255,7 @@ function renderSceneScreen(host, ctx2) {
       seen2 = -1;
       progress = /* @__PURE__ */ new Map();
       stopTyping();
-      build2(s);
+      build3(s);
     } else drawBackground(s);
     const messages = controller.transcript();
     const lastReply = [...messages].reverse().find((m) => !m.isUser);
@@ -66379,12 +67277,12 @@ function renderSceneScreen(host, ctx2) {
     chipRow.layout();
   }
   function pulse(e) {
-    const holder2 = hud.querySelector(`.alius-hud-unit[data-unit="${e.unitId}"] .alius-pulses`);
-    if (!holder2) return;
+    const holder3 = hud.querySelector(`.alius-hud-unit[data-unit="${e.unitId}"] .alius-pulses`);
+    if (!holder3) return;
     const raw = ctx2.settings().showRawValues;
     const el = h("span", { class: `alius-pulse ${e.up ? "is-up" : "is-down"}` });
     el.textContent = `${e.up ? "\u25B2" : "\u25BC"} ${e.axis.toUpperCase()}${raw ? ` ${e.delta > 0 ? "+" : ""}${e.delta}` : ""}`;
-    holder2.append(el);
+    holder3.append(el);
     const t = setTimeout(() => {
       timeouts.delete(t);
       el.remove();
@@ -67145,11 +68043,11 @@ function stakeLines(reg, stakeId) {
   const words3 = STAKE_WORDS[String(stake?.effect)];
   return words3 ? [`If she wins: ${words3.she}.`, `If the commander wins: ${words3.commander}.`] : [];
 }
-function oddsLine(state, reg, k, gameId, unitId, pick3) {
+function oddsLine(state, reg, k, gameId, unitId, pick4) {
   const kind = String(reg.wagerGames.get(gameId)?.kind);
   if (kind === "sparring") {
-    if (pick3 === void 0) return null;
-    const odds = sparringOdds(state, reg, unitId, pick3);
+    if (pick4 === void 0) return null;
+    const odds = sparringOdds(state, reg, unitId, pick4);
     const pct6 = k.raw(Math.round(odds * 100));
     return `The commander's chance in the bout: ${bandWord(odds)}${pct6 !== null ? ` (about ${pct6} %)` : ""}.`;
   }
@@ -67394,9 +68292,9 @@ function satisfactionProvider(_s, env, k) {
 function defianceProvider(_s, env, k) {
   const w = env.state ? wardenOf(env.state) : null;
   if (!w) return null;
-  const E = TUNING.warden.escalation;
+  const E2 = TUNING.warden.escalation;
   const raw = k.raw(w.defiance);
-  const lines = [w.defiance >= E.warning2 ? "Open defiance is near the limit." : w.defiance >= E.warning1 ? "Open defiance is on the record." : "Open defiance is low."];
+  const lines = [w.defiance >= E2.warning2 ? "Open defiance is near the limit." : w.defiance >= E2.warning1 ? "Open defiance is on the record." : "Open defiance is low."];
   if (raw !== null) lines.push(`Defiance: ${raw}.`);
   if (w.warnings.length > 0) lines.push(`${w.warnings.length === 1 ? "One warning" : "Two warnings"} given.`);
   return { lines };
@@ -68466,7 +69364,7 @@ function attachAnalyzer(root, deps) {
     ev.stopImmediatePropagation();
     stopSwallowing();
   }
-  const onDown = (ev) => {
+  const onDown2 = (ev) => {
     const e = ev;
     if (!enabled()) return;
     const t = ev.target;
@@ -68486,7 +69384,7 @@ function attachAnalyzer(root, deps) {
       openFor4(el, touchStart, { pinned: true });
     }, LONG_PRESS_MS);
   };
-  const onMove = (ev) => {
+  const onMove2 = (ev) => {
     if (touchTimer === null) return;
     const e = ev;
     if (Math.hypot(e.clientX - touchStart.x, e.clientY - touchStart.y) > LONG_PRESS_MOVE_PX) touchTimer = clear(touchTimer);
@@ -68501,7 +69399,7 @@ function attachAnalyzer(root, deps) {
   const onContextMenu = (ev) => {
     if (touchTimer !== null || swallowing) ev.preventDefault();
   };
-  const onKey = (ev) => {
+  const onKey2 = (ev) => {
     const e = ev;
     if (!enabled()) return;
     const typing2 = isTyping(e.target);
@@ -68532,11 +69430,11 @@ function attachAnalyzer(root, deps) {
   root.addEventListener("pointerover", onOver);
   root.addEventListener("pointerout", onOut);
   root.addEventListener("contextmenu", onContextMenu);
-  window.addEventListener("pointerdown", onDown, true);
-  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerdown", onDown2, true);
+  window.addEventListener("pointermove", onMove2);
   window.addEventListener("pointerup", onUp);
   window.addEventListener("pointercancel", onUp);
-  window.addEventListener("keydown", onKey, true);
+  window.addEventListener("keydown", onKey2, true);
   return {
     openFor: openFor4,
     close,
@@ -68557,11 +69455,11 @@ function attachAnalyzer(root, deps) {
       root.removeEventListener("pointerover", onOver);
       root.removeEventListener("pointerout", onOut);
       root.removeEventListener("contextmenu", onContextMenu);
-      window.removeEventListener("pointerdown", onDown, true);
-      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerdown", onDown2, true);
+      window.removeEventListener("pointermove", onMove2);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
-      window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("keydown", onKey2, true);
       stopSwallowing();
       touchTimer = clear(touchTimer);
       close();
@@ -68578,12 +69476,12 @@ function playBoot(screen, opts) {
     screen.append(overlay);
     const lines = [`${opts.skinLabel} // BOOT`, "LINK ........ OK", "CCP OVERSIGHT HANDSHAKE ........ OK"];
     const show = (i) => void overlay.append(h("div", { class: "alius-boot-line" }, lines[i]));
-    const timers4 = [];
+    const timers5 = [];
     let over2 = false;
     const finish4 = () => {
       if (over2) return;
       over2 = true;
-      timers4.forEach(clearTimeout);
+      timers5.forEach(clearTimeout);
       document.removeEventListener("keydown", finish4);
       document.removeEventListener("pointerdown", finish4);
       opts.signal?.removeEventListener("abort", finish4);
@@ -68591,10 +69489,10 @@ function playBoot(screen, opts) {
       resolve();
     };
     show(0);
-    timers4.push(setTimeout(() => show(1), STEP_MS));
-    timers4.push(setTimeout(() => show(2), STEP_MS * 2));
-    timers4.push(setTimeout(() => overlay.classList.add("alius-boot-fade"), STEP_MS * 3));
-    timers4.push(setTimeout(finish4, STEP_MS * 4));
+    timers5.push(setTimeout(() => show(1), STEP_MS));
+    timers5.push(setTimeout(() => show(2), STEP_MS * 2));
+    timers5.push(setTimeout(() => overlay.classList.add("alius-boot-fade"), STEP_MS * 3));
+    timers5.push(setTimeout(finish4, STEP_MS * 4));
     document.addEventListener("keydown", finish4);
     document.addEventListener("pointerdown", finish4);
     opts.signal?.addEventListener("abort", finish4);
@@ -68660,12 +69558,12 @@ function renderChrome(chrome, screen, device, skin, assetUrl) {
     screen.style.top = box.top;
     screen.style.width = box.width;
     screen.style.height = box.height;
-    const frame = h("img", { class: "alius-device-frame", alt: "", draggable: "false", src: assetUrl(String(skin.frameImage)) });
-    frame.addEventListener("error", () => {
+    const frame2 = h("img", { class: "alius-device-frame", alt: "", draggable: "false", src: assetUrl(String(skin.frameImage)) });
+    frame2.addEventListener("error", () => {
       failedFrames.add(String(skin.frameImage));
       renderChrome(chrome, screen, device, BUILT_IN_SKIN);
     });
-    chrome.append(frame);
+    chrome.append(frame2);
     const overlay = skin.overlay;
     if (overlay) {
       const layer = h("div", { class: "alius-device-overlay" });
@@ -68720,7 +69618,7 @@ function createModalHost(layer) {
 }
 
 // src/ui/memory/fill.ts
-function fillValue(state, build2, settings, part) {
+function fillValue(state, build3, settings, part) {
   const cfg = memoryConfig(state);
   switch (part) {
     case "facts": {
@@ -68733,9 +69631,9 @@ function fillValue(state, build2, settings, part) {
     case "chronicle":
       return String(state.memory.chronicle.length);
     case "memory_tokens":
-      return `${build2.memoryTokens} / ${cfg.memoryTokens}`;
+      return `${build3.memoryTokens} / ${cfg.memoryTokens}`;
     case "directive_tokens":
-      return String(build2.directiveTokens);
+      return String(build3.directiveTokens);
     case "save_size":
       return `${(JSON.stringify(state).length / 1024).toFixed(1)} KB`;
   }
@@ -68748,12 +69646,12 @@ var ROWS = [
   ["directive_tokens", "Directives in the last prompt (tokens)"],
   ["save_size", "Save size"]
 ];
-function renderFill(host, state, build2, settings) {
+function renderFill(host, state, build3, settings) {
   host.replaceChildren(h("div", { class: "alius-memory-fill" }, ...ROWS.map(([part, label2]) => h(
     "div",
     { class: "alius-memory-row" },
     h("span", { class: "alius-field-label" }, label2),
-    h("span", { class: "alius-stat", "data-fill": part, ...analyzeAttrs("glossary:memory_fill", { part }) }, fillValue(state, build2, settings, part))
+    h("span", { class: "alius-stat", "data-fill": part, ...analyzeAttrs("glossary:memory_fill", { part }) }, fillValue(state, build3, settings, part))
   ))));
 }
 
@@ -68981,7 +69879,7 @@ function renderSysTab(host, ctx2) {
       if (err) ctx2.toast("warn", String(err.message ?? "The setting could not be changed."));
       drawDynamic();
     };
-    const pick3 = (name, options2, value, address, label2, commit) => {
+    const pick4 = (name, options2, value, address, label2, commit) => {
       const el = h("select", { name, class: "alius-input" }, ...options2.map(([v, text3]) => h("option", { value: v, selected: v === value }, text3)));
       el.value = value;
       el.addEventListener("change", () => commit(el.value));
@@ -68989,9 +69887,9 @@ function renderSysTab(host, ctx2) {
     };
     const setSetup = (patch) => send("dynamic/set_setup", patch);
     dynamicHost.append(
-      pick3("dynamicHolders", HOLDER_CAPS.map((v) => [String(v), v === 0 ? "0 (off)" : String(v)]), String(setup?.holders ?? 0), "glossary:setting_dynamic_holders", "Holders (this campaign)", (v) => setSetup({ holders: v === "any" ? "any" : Number(v) })),
-      pick3("dynamicPace", PACES.map((v) => [v, v]), setup?.pace ?? "normal", "glossary:setting_dynamic_pace", "Pace (this campaign)", (v) => setSetup({ pace: v })),
-      pick3("dynamicFrequency", FREQUENCIES.map((v) => [v, v]), setup?.frequency ?? "normal", "glossary:setting_dynamic_frequency", "Frequency (this campaign)", (v) => setSetup({ frequency: v }))
+      pick4("dynamicHolders", HOLDER_CAPS.map((v) => [String(v), v === 0 ? "0 (off)" : String(v)]), String(setup?.holders ?? 0), "glossary:setting_dynamic_holders", "Holders (this campaign)", (v) => setSetup({ holders: v === "any" ? "any" : Number(v) })),
+      pick4("dynamicPace", PACES.map((v) => [v, v]), setup?.pace ?? "normal", "glossary:setting_dynamic_pace", "Pace (this campaign)", (v) => setSetup({ pace: v })),
+      pick4("dynamicFrequency", FREQUENCIES.map((v) => [v, v]), setup?.frequency ?? "normal", "glossary:setting_dynamic_frequency", "Frequency (this campaign)", (v) => setSetup({ frequency: v }))
     );
     if (state.dynamic === void 0) return;
     for (const u of state.squad.filter((x) => x.kind === "named" && isLiving(x))) {
@@ -69000,8 +69898,8 @@ function renderSysTab(host, ctx2) {
         "div",
         { class: "alius-dynamic-row", "data-unit": u.id },
         h("span", { class: "alius-field-label" }, u.displayName),
-        pick3(`mayHold:${u.id}`, MAY_HOLD.map((v) => [v, v]), mine.mayHold ?? "auto", "glossary:dynamic_may_hold", "May hold", (v) => send("dynamic/set_unit", { unitId: u.id, mayHold: v })),
-        pick3(`sensitivity:${u.id}`, SENSITIVITIES.map((v) => [v, v]), mine.sensitivity ?? "normal", "glossary:dynamic_sensitivity", "Sensitivity", (v) => send("dynamic/set_unit", { unitId: u.id, sensitivity: v }))
+        pick4(`mayHold:${u.id}`, MAY_HOLD.map((v) => [v, v]), mine.mayHold ?? "auto", "glossary:dynamic_may_hold", "May hold", (v) => send("dynamic/set_unit", { unitId: u.id, mayHold: v })),
+        pick4(`sensitivity:${u.id}`, SENSITIVITIES.map((v) => [v, v]), mine.sensitivity ?? "normal", "glossary:dynamic_sensitivity", "Sensitivity", (v) => send("dynamic/set_unit", { unitId: u.id, sensitivity: v }))
       ));
     }
   };
@@ -69045,8 +69943,8 @@ function renderSysTab(host, ctx2) {
     const state = ctx2.getState();
     const reg = ctx2.getRegistries?.();
     if (!state || !reg || reg.contentCategories.size === 0 || !ctx2.dispatch) return [h("p", { class: "alius-dim" }, "Content categories are set when a campaign is started.")];
-    const holder2 = h("div", { class: "alius-content-host" });
-    renderContentSection(holder2, {
+    const holder3 = h("div", { class: "alius-content-host" });
+    renderContentSection(holder3, {
       enabled: state.content?.enabled ?? [],
       registries: reg,
       title: "Content",
@@ -69056,12 +69954,12 @@ function renderSysTab(host, ctx2) {
         if (err) {
           ctx2.toast("warn", String(err.message ?? "The content choice could not be changed."));
           const now = ctx2.getState();
-          renderContentSection(holder2, { enabled: now?.content?.enabled ?? [], registries: reg, title: "Content", onChange: () => {
+          renderContentSection(holder3, { enabled: now?.content?.enabled ?? [], registries: reg, title: "Content", onChange: () => {
           } });
         }
       }
     });
-    return [holder2];
+    return [holder3];
   };
   const profiles = st.listConnectionProfiles();
   const profileOptions = [
@@ -69347,7 +70245,7 @@ ${e.parsed === void 0 ? "(none)" : JSON.stringify(e.parsed, null, 2)}`)
 // src/ui/shell/toast.ts
 var LIFETIME_MS = { info: 4e3, warn: 6e3, error: 9e3, story: 14e3 };
 function createToasts(host) {
-  const timers4 = /* @__PURE__ */ new Set();
+  const timers5 = /* @__PURE__ */ new Set();
   return {
     show(kind, text3, opts = {}) {
       const el = h("div", { class: `alius-toast alius-toast-${kind}`, role: kind === "error" ? "alert" : "status", "data-voice": opts.voice ?? "terminal" });
@@ -69357,11 +70255,11 @@ function createToasts(host) {
       const remove = () => el.remove();
       el.addEventListener("click", remove);
       host.append(el);
-      timers4.add(setTimeout(remove, LIFETIME_MS[kind]));
+      timers5.add(setTimeout(remove, LIFETIME_MS[kind]));
     },
     dispose() {
-      for (const t of timers4) clearTimeout(t);
-      timers4.clear();
+      for (const t of timers5) clearTimeout(t);
+      timers5.clear();
     }
   };
 }
@@ -70466,13 +71364,13 @@ function createApp(st, deps) {
     if (!state) return;
     const preset = presetLocation;
     presetLocation = null;
-    const pick3 = preset !== null ? { locationId: preset, participants: [unitId] } : await pickLocation((o) => shell.modal(o), { registries, state, firstUnitId: unitId, candidates: state.squad });
+    const pick4 = preset !== null ? { locationId: preset, participants: [unitId] } : await pickLocation((o) => shell.modal(o), { registries, state, firstUnitId: unitId, candidates: state.squad });
     if (st.getActiveChat()?.chatId !== chatId) return;
-    if (!pick3) {
+    if (!pick4) {
       api.dispatch({ type: "calendar/cancel_scene", payload: {} }, { expectChatId: chatId });
       return;
     }
-    await beginScene({ locationId: pick3.locationId, participants: pick3.participants, origin: "activity" });
+    await beginScene({ locationId: pick4.locationId, participants: pick4.participants, origin: "activity" });
   }
   async function offerGroupScene() {
     const chatId = st.getActiveChat()?.chatId;
@@ -70599,7 +71497,7 @@ function createApp(st, deps) {
         generation: genUi,
         onOrder: (unitId) => loyalty.order(unitId),
         onCompel: (unitId) => void api.fileLeash("compel", unitId),
-        onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
+        onPunish: (unitId, measure2, days) => void discipline.punish(unitId, measure2, days),
         onUndoDiscipline: (id) => void discipline.undo(id),
         onAnswerDemand: (id, answer) => void discipline.answerDemand(id, answer),
         onAnswerMilestone: (id, answer) => void dynamic.answerMilestone(id, answer),
@@ -70862,9 +71760,9 @@ function createApp(st, deps) {
     return entry !== void 0 && open3 !== void 0 && open3.unitId === entry.unitId && CONFRONTATION_KINDS.includes(entry.kind);
   }
   function afterConfrontation(close) {
-    const still = state?.disloyalty?.open;
-    if (still) {
-      if (still.at === "mission_start") openConfrontationModal();
+    const still2 = state?.disloyalty?.open;
+    if (still2) {
+      if (still2.at === "mission_start") openConfrontationModal();
       else shell.refresh();
       return;
     }
@@ -70965,8 +71863,8 @@ function createApp(st, deps) {
     return checkLeash(s, registries, kind, unitId);
   }
   function heldFor(s, onRoute) {
-    const holder2 = leashBlockOf(s, registries);
-    const name = holder2 === null ? void 0 : s.squad.find((u) => u.id === holder2)?.displayName;
+    const holder3 = leashBlockOf(s, registries);
+    const name = holder3 === null ? void 0 : s.squad.find((u) => u.id === holder3)?.displayName;
     if (name === void 0) return {};
     const r = bypassRoutes(s, registries);
     const named4 = (ids) => ids.map((id) => ({ id, name: s.squad.find((u) => u.id === id)?.displayName ?? id }));
@@ -72063,7 +72961,7 @@ function createApp(st, deps) {
       onArc: (unitId, defectId, path, compel2) => void decideArc2(unitId, defectId, path, compel2),
       arcPaths: (unitId, defectId) => state ? arcPaths(state, registries, unitId, defectId) : [],
       canTerminate: (unitId) => state ? checkLeash(state, registries, "terminate", unitId) : "No campaign.",
-      onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
+      onPunish: (unitId, measure2, days) => void discipline.punish(unitId, measure2, days),
       onSetPublicity: (unitId, level) => void bonds.setPublicity(unitId, level),
       onSetHand: (unitId, handId) => void act({ type: "squad/set_hand", payload: { unitId, handId } }),
       onSetQuarters: (unitId, styleId) => void act({ type: "squad/set_quarters", payload: { unitId, styleId } }),
@@ -72286,7 +73184,7 @@ function createApp(st, deps) {
       personal: {
         onAnswerToken: (offerId, accept2) => void personal.answerToken(offerId, accept2),
         onAnswerWager: (wagerId, accept2) => void personal.answerWager(wagerId, accept2),
-        onPlayWager: (wagerId, pick3) => void personal.playWager(wagerId, pick3),
+        onPlayWager: (wagerId, pick4) => void personal.playWager(wagerId, pick4),
         onAnswerQuestion: (wagerId, text3) => void personal.answerQuestion(wagerId, text3)
       },
       edit: () => pendingEdit,
@@ -73160,10 +74058,10 @@ registerChecks("planRooms", (entry, regs) => {
 });
 registerRefs("deviceSkins", (entry) => {
   const out = [];
-  const bind = entry.bindTo ?? {};
-  if (typeof bind.corporationId === "string") out.push({ registry: "corporations", id: bind.corporationId, path: "bindTo.corporationId" });
-  if (typeof bind.traitId === "string") out.push({ registry: "commanderTraits", id: bind.traitId, path: "bindTo.traitId" });
-  if (typeof bind.unlockFlag === "string") out.push({ registry: "flags", id: bind.unlockFlag, path: "bindTo.unlockFlag" });
+  const bind2 = entry.bindTo ?? {};
+  if (typeof bind2.corporationId === "string") out.push({ registry: "corporations", id: bind2.corporationId, path: "bindTo.corporationId" });
+  if (typeof bind2.traitId === "string") out.push({ registry: "commanderTraits", id: bind2.traitId, path: "bindTo.traitId" });
+  if (typeof bind2.unlockFlag === "string") out.push({ registry: "flags", id: bind2.unlockFlag, path: "bindTo.unlockFlag" });
   return out;
 });
 registerChecks("deviceSkins", (entry, regs) => {
@@ -73628,9 +74526,9 @@ async function loadPacks(packRoots, fetchJson2, opts = {}) {
       const id = parsed.data.id;
       if (seen2.has(id)) return err(fmtPath(["id"], index2), `duplicate id "${id}" in this file`);
       seen2.add(id);
-      const chain2 = versions[job.registry].get(id) ?? [];
-      chain2.push({ entry: raw, pack: job.pack, file: job.file, index: index2 });
-      versions[job.registry].set(id, chain2);
+      const chain3 = versions[job.registry].get(id) ?? [];
+      chain3.push({ entry: raw, pack: job.pack, file: job.file, index: index2 });
+      versions[job.registry].set(id, chain3);
     });
   });
   const resolved = /* @__PURE__ */ new Map();
@@ -73669,11 +74567,11 @@ async function loadPacks(packRoots, fetchJson2, opts = {}) {
   const registries = emptyRegistries();
   const finalOrigin = /* @__PURE__ */ new Map();
   for (const reg of REGISTRY_NAMES) {
-    for (const [id, chain2] of versions[reg]) {
-      const k = chain2.length - 1;
+    for (const [id, chain3] of versions[reg]) {
+      const k = chain3.length - 1;
       const entry = resolve(reg, id, k);
       if (entry === null) continue;
-      const origin = chain2[k];
+      const origin = chain3[k];
       const parsed = registrySchemas[reg].safeParse(entry);
       if (!parsed.success) {
         for (const issue of parsed.error.issues) {
@@ -73757,17 +74655,17 @@ function lastCharacterAvatar(chat) {
   return void 0;
 }
 function hideRuns(length, from, to, isSystem) {
-  const runs2 = [];
+  const runs = [];
   let start = null;
   const end2 = Math.min(to, length - 1);
   for (let i = Math.max(0, from); i <= end2; i++) {
     if (isSystem(i)) {
-      if (start !== null) runs2.push([start, i - 1]);
+      if (start !== null) runs.push([start, i - 1]);
       start = null;
     } else if (start === null) start = i;
   }
-  if (start !== null) runs2.push([start, end2]);
-  return runs2;
+  if (start !== null) runs.push([start, end2]);
+  return runs;
 }
 var isIndexRun = (r) => Array.isArray(r) && r.length === 2 && Number.isSafeInteger(r[0]) && Number.isSafeInteger(r[1]) && r[0] >= 0 && r[0] <= r[1];
 var hideCommand = (unhide, run) => {
@@ -74069,9 +74967,9 @@ var RealStAdapter = class {
   }
   async hideMessages(from, to) {
     const c = ctx();
-    const runs2 = hideRuns(c.chat.length, from, to, (i) => isSystemMessage(c.chat, i));
-    for (const run of runs2) await this.slash(hideCommand(false, run));
-    return runs2;
+    const runs = hideRuns(c.chat.length, from, to, (i) => isSystemMessage(c.chat, i));
+    for (const run of runs) await this.slash(hideCommand(false, run));
+    return runs;
   }
   async unhideMessages(ranges) {
     for (const run of unhideRuns(ranges, ctx().chat.length)) await this.slash(hideCommand(true, run));

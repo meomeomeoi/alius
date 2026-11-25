@@ -6,7 +6,7 @@
  * `dialname` / `dialwide`: Ann (ritual) has named the commander's posture (P16): `Low` for bowing (cards.html's own), or a name of 30
  * characters for bowing (it wraps, over the base name and EYES DOWN: the tallest label; the circle stays where it is for `standing`).
  * `call`: Ann (ritual) has four named postures and calls Low (P10e-e Task 9: her posture call as a full-frame moment); `callhold`: the same with a
- * hold running (the stop word's pill must stay clickable over the fan).
+ * hold running (the stop word's pill must stay clickable over the fan). `slap` / `slaphold`: her slap (P10e-e Task 12), see below.
  */
 import { writeFileSync } from 'node:fs';
 import { COMMANDER, registerFrameReader, setBlocking } from '../../src/engine/blocking';
@@ -100,5 +100,27 @@ setBlocking(callhold, { registries: reg }, { person: COMMANDER, field: 'worn', v
 if (!callhold.scene!.physics) throw new Error('callhold: no hold runs');
 callhold.scene!.physics.segment = { n: 1, state: 'running', plan: { beats: [{ cue: 'warning', attention: 'watching' }, { attention: 'watching' }, { attention: 'watching' }, { attention: 'watching' }] } };
 out.callhold = callhold;
+
+/**
+ * P10e-e Task 12: Ann (possessive: a 450 ms swing) slaps the commander in the commander's quarters (`slap`, the shots: the entry holds it back
+ * with `&deferSlap=1`); `slaphold`: the same with a hold running, so the stop word's pill is there and must stay clickable through the slap.
+ */
+function slapping(): CampaignState {
+  const base = withService(world(reg, 'role'));
+  unitOf(base, ANN).bond!.practice!.style = { primary: 'possessive' };
+  setRelation(base, ANN, { stateId: 'confidant' });
+  enable(base, 'pet_play', 'restraint', 'physical_discipline_shown', 'humiliation');
+  const r = run(base, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
+  const d = r.state;
+  d.settings.physicsRealtime = true; // the campaign's mirror of real time (the instruments need it; the slap reads only reduced motion and the timing toggle)
+  d.practices = { ...(d.practices ?? blankPractices()), seq: 2, slap: { id: 'ps1', holderId: ANN, sceneId: d.scene!.id, windowMs: 450, feints: 0 } };
+  return d;
+}
+out.slap = slapping();
+const slaphold = slapping();
+setBlocking(slaphold, { registries: reg }, { person: COMMANDER, field: 'worn', value: 'ring_gag' }, { at: 1, source: 'engine' });
+if (!slaphold.scene!.physics) throw new Error('slaphold: no hold runs');
+slaphold.scene!.physics.segment = { n: 1, state: 'running', plan: { beats: [{ cue: 'warning', attention: 'watching' }, { attention: 'watching' }, { attention: 'watching' }, { attention: 'watching' }] } };
+out.slaphold = slaphold;
 
 writeFileSync(process.argv[2] ?? 'states.json', JSON.stringify(out));

@@ -5,6 +5,7 @@
  * (or is called here directly), so nothing keyed by a scene id outlives its campaign.
  */
 import { resetInstruments } from '../instruments/host';
+import { resetSlap } from '../instruments/slap/slap';
 import { resetDock } from './dock';
 import { resetLook } from './look';
 import { resetHints } from './topLine';
@@ -22,5 +23,6 @@ export function resetSceneStage(): void {
   resetLook();
   resetDock();
   resetInstruments(); // P10e-e: a chat switch stops the instrument (nothing it scheduled runs or dispatches into the new chat) and forgets a failed mount
+  resetSlap(); // P10e-e Task 12: and the slap (no late answer into the new chat); the cheek is scene memory, forgotten
   for (const fn of [...hooks]) fn();
 }

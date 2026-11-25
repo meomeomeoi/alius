@@ -179,41 +179,11 @@
   margin: 4px 0;
 }
 
-/* The slap (P16): an overlay over the scene, no room of its own; the bar fills to the strike. The reduced-motion path never draws it. */
+/* The slap (P16) is the slap instrument since P10e-e Task 12: css/66-slap.css. Its host in the moment layer takes no room and no pointer. */
 #alius-shell .alius-slap-host {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 30%;
-  z-index: 5;
+  inset: 0;
   pointer-events: none;
-}
-
-#alius-shell .alius-slap {
-  pointer-events: auto;
-  max-width: 420px;
-  margin: 0 auto;
-}
-
-#alius-shell .alius-slap-bar {
-  height: 4px;
-  background: currentColor;
-  transform-origin: left;
-  animation: alius-slap-fill var(--alius-slap-ms, 1500ms) linear forwards;
-}
-
-@keyframes alius-slap-fill {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
-}
-
-#alius-shell .alius-slap[data-phase='feint'] .alius-slap-text {
-  letter-spacing: 0.1em;
-}
-
-#alius-shell .alius-slap[data-phase='done'] .alius-slap-bar {
-  animation: none;
-  transform: scaleX(1);
 }
 
 /* The PRACTICES block of her DYNAMIC section (P16): the same one-line-a-reading rows as the section's, set a little apart under their own small heading. Words only; no colour carries a meaning alone. */

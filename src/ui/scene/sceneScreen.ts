@@ -201,6 +201,12 @@ const KIND_HINT: Record<string, string> = {
 };
 const BUSY_TICK_MS = 500;
 
+/** P10e-e Task 12: a staging that does nothing (the slap's env without the staging controller; no instrument is mounted on it). */
+const DEAD_STAGING: PhysicsPanelStaging = {
+  input: () => {}, endSegment: () => [], stopWord: () => [], skip: () => [], stimulus: () => [], act: () => [], finishCounted: () => [],
+  cue: () => null, beat: () => 0, clock: () => ({ startedAt: null, beatMs: 0, now: 0 }),
+};
+
 export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): SceneScreen {
   const { controller, registries, st } = ctx;
   /** Characters per second; instant (0) under reduced motion. */
@@ -221,6 +227,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let busyTimer: ReturnType<typeof setInterval> | null = null;
   let busyStarted = 0;
   const labels = new Map<string, string>();
+  /** P10e-e Task 12: the sprite pictures already resolved (`unitId|label` → url), so a redraw or the slap shows a face with nothing in between. */
+  const spriteUrls = new Map<string, string>();
   const timeouts = new Set<ReturnType<typeof setTimeout>>();
 
   let layers: StageLayers;
@@ -277,6 +285,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let physicsHost: HTMLElement;
   /** P10e-e: what the instruments are given, built once per scene in `build()` (null without the staging controller). */
   let instrumentEnv: InstrumentEnv | null = null;
+  /** P10e-e Task 12: the slap's view of this scene's frame (built with or without the staging controller: the slap stages nothing). */
+  let slapEnv: InstrumentEnv | null = null;
   let busyHost: HTMLElement;
   let caption: HTMLElement;
   let input: HTMLInputElement;
@@ -352,15 +362,34 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     })();
   }
 
-  function setSprite(unit: Unit, labelText: string): void {
+  function setSprite(unit: Unit, labelText: string, known?: string): void {
     const img = spriteHost.querySelector<HTMLImageElement>(`.alius-sprite[data-unit="${unit.id}"] img`);
     if (!img || !unit.cardRef) return;
     labels.set(unit.id, labelText);
+    if (known !== undefined) spriteUrls.set(`${unit.id}|${labelText}`, known);
+    const cached = spriteUrls.get(`${unit.id}|${labelText}`);
+    if (cached !== undefined) { img.setAttribute('src', cached); return; } // resolved before: shown at once, no avatar in between
     const thumb = st.getAvatarUrl(unit.cardRef);
     img.setAttribute('src', thumb);
     void st.getSpriteUrl(unit.cardRef, labelText).then((url) => {
+      if (url) spriteUrls.set(`${unit.id}|${labelText}`, url);
       if (!disposed && url && labels.get(unit.id) === labelText) img.setAttribute('src', url);
     }).catch(() => {});
+  }
+
+  /** P10e-e Task 12: the picture of her sprite for a label, resolved once and decoded (null: none for it). */
+  async function spriteUrl(unitId: string, labelText: string): Promise<string | null> {
+    const unit = state()?.squad.find((u) => u.id === unitId);
+    if (!unit?.cardRef) return null;
+    const url = spriteUrls.get(`${unitId}|${labelText}`) ?? (await st.getSpriteUrl(unit.cardRef, labelText).catch(() => null));
+    if (!url) return null;
+    spriteUrls.set(`${unitId}|${labelText}`, url);
+    if (typeof Image === 'function') {
+      const im = new Image();
+      im.src = url;
+      await (typeof im.decode === 'function' ? im.decode().catch(() => undefined) : Promise.resolve());
+    }
+    return url;
   }
 
   /**
@@ -482,12 +511,17 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
 
   /** P16: the slap that is open in this scene: the overlay, once; nothing when there is none, it is another scene's or she is not holding. The answer is sent after the draw (a redraw must not start inside its own). */
   function drawSlap(s: CampaignState): void {
-    const slap = s.practices?.slap;
-    if (!ctx.onSlap || slap === undefined || slap.sceneId !== s.scene?.id || !practiceLive(s, registries, slap.holderId)) {
+    if (!ctx.onSlap || !slapEnv) {
       clearSlapOverlay(slapHost);
       return;
     }
-    renderSlapOverlay(slapHost, { state: s, reg: registries, slap, settings: ctx.settings(), sound: ctx.sound, onResult: (result) => { queueMicrotask(() => { if (!disposed) ctx.onSlap?.(slap.id, result); }); } });
+    // P10e-e Task 12: the slap instrument; with no slap open here a slap that landed plays its end and the cheek of the scene goes on
+    const open = s.practices?.slap;
+    const slap = open !== undefined && open.sceneId === s.scene?.id && practiceLive(s, registries, open.holderId) ? open : undefined;
+    renderSlapOverlay(slapHost, {
+      state: s, reg: registries, ...(slap ? { slap } : {}), settings: ctx.settings(), env: slapEnv,
+      onResult: (result) => { if (!slap) return; queueMicrotask(() => { if (!disposed) ctx.onSlap?.(slap.id, result); }); },
+    });
   }
 
   /** P14c: `[ LET'S … ]` (the pastimes that fit this place and slot) in a private scene with one named woman; once one is set, a chip says so. */
@@ -751,6 +785,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     const units = present(s);
     sceneKey = s.scene!.id;
     unmountInstruments(); // P10e-e: an instrument of the previous scene stops before its layers go
+    if (slapHost) clearSlapOverlay(slapHost); // and the slap of the previous scene (its cheek is forgotten when the new scene draws)
     layers = buildLayers(root);
     curtain?.destroy();
     delete root.dataset.curtain; // a new scene starts with the history down (the old curtain's close hook is gone)
@@ -921,7 +956,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     layers.frame.addEventListener('wheel', wheelUp);
     hosts.reply.addEventListener('wheel', wheelUp);
     drawBackground(s);
-    instrumentEnv = ctx.physics ? buildInstrumentEnv() : null;
+    slapEnv = buildInstrumentEnv();
+    instrumentEnv = ctx.physics ? slapEnv : null;
   }
 
   /** P10e-e: the instruments' env for this scene's layers (the host scopes `raf` and `staging` to each mount). */
@@ -940,11 +976,13 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       reply: layers.hosts.reply,
       gauge: inputGauge(layers.hosts.input),
       spriteOf: (unitId) => spriteHost.querySelector<HTMLImageElement>(`.alius-sprite[data-unit="${unitId}"] img`),
-      setSprite: (unitId, labelText) => { const u = unitOf(unitId); if (u) setSprite(u, labelText); },
+      setSprite: (unitId, labelText, url) => { const u = unitOf(unitId); if (u) setSprite(u, labelText, url); },
+      faceOf: (unitId) => labels.get(unitId) ?? 'neutral',
+      spriteUrl: (unitId, labelText) => spriteUrl(unitId, labelText),
       state: () => state()!,
       registries,
       settings: () => ctx.settings(),
-      staging: ctx.physics!,
+      staging: ctx.physics ?? DEAD_STAGING, // without the staging controller no instrument is mounted (`drawPhysics`); the slap reads none
       samples: ctx.samples ?? null,
       art,
       her: (unitId) => {
@@ -977,7 +1015,9 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     const s = state();
     if (!s?.scene) {
       unmountInstruments(); // P10e-e: the scene is gone, so is its instrument
+      if (slapHost) clearSlapOverlay(slapHost); // and its slap
       instrumentEnv = null;
+      slapEnv = null;
       root.replaceChildren(h('div', { class: 'alius-stub' }, 'NO SCENE OPEN'));
       delete root.dataset.stage;
       sceneKey = '';

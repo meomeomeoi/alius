@@ -1,0 +1,245 @@
+{
+  "prototype": "slap",
+  "note": "Task 12 (chunk e3): the slap. The functions of slap.html that its README calls normative (`startSlap`, `frame`, `press`, `tensionAt`, `onMove`, `land`, `flash`, `scatter`, `SFX`, `say`, `showFace`, `preload`, `beforeLabel`, the sound's `play` / `chain` / `noise` / `thump`, the easings), its tables (`EXPR` is TUNING.practice.slap.faces; `LEAD`, `FEINT`, `SWING`, `OBSESSIVE_SPREAD` are the engine's TUNING; `SNAP`, `SWEEP`, `RETURN`, `CALM`, `EXPR_SWITCH`, `EXPR_WAIT`) and its LINES as the cardVoice rows `slap.*` by style. Module wiring beyond the listed functions (src/ui/scene/instruments/slap/slap.ts header): `performance`, `setTimeout` and `requestAnimationFrame` are the module's own (the scene's frame clock; every timer and the one frame loop are cleared by `stopSlap`), `innerWidth` / `innerHeight` are the scene frame's size, `pick` / `rand` are hashes of the slap's id and a count (no rng), `$` names the slap's own elements (in the effects layer, under the scene's UI: the stop word's pill is never covered; `npm run test:layout` checks it in `slaphold`), the scene's reply, input line and input; `LINES[style]` is built per slap from the cardVoice rows (one line picked by `voiceLine`'s hash). The sound: the prototype's world graph (a lowpass and a gain) is built in front of the sample layer's world bus and its body bus is the layer's; every source made is stopped at `stopSlap`; the room tone (the prototype's stand-in scene's) is not started. The keys: Space acts only while a slap runs and never from a field (the prototype's page-wide Space and its N / H keys are prototype only); the left button presses anywhere on the scene but on a control of its UI. `slapTimeline`, `resultOf` and `isFlick` are the timeline, the brace band and the flick as pure functions (tests/ui/practice/slapOverlay.test.ts checks `resultOf` against `tensionAt` ms by ms); the plan's `unannounced → impactAt = 500` leaves out the snap: the prototype's `lead = SNAP` wins (170 + windowMs). Shots: `npm run shots -- slap --sprite <a raster sprite>` (the prototype sizes its `<img>` by its layout box, which for the fixture's viewBox-only SVG is not its natural size, so the prototype side needs a PNG; the port draws the fixture SVG); the port's sprite is the scene's (110 vh, P10e), so at the same zoom it is a little larger than the prototype's 1.04 H stand-in.",
+  "functions": [
+    {
+      "fn": "clamp",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "lerp",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "easeOut",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "easeIn",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "easeInOut",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "beforeLabel",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "showFace",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "preload",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "chain",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "play",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "noise",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "thump",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "SFX",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "tensionAt",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "startSlap",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "press",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "onMove",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "land",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "flash",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "scatter",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "say",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    },
+    {
+      "fn": "frame",
+      "module": "src/ui/scene/instruments/slap/slap.ts"
+    }
+  ],
+  "tables": [
+    {
+      "ident": "LEAD",
+      "module": "src/ui/scene/instruments/slap/slap.ts",
+      "export": "LEAD"
+    },
+    {
+      "ident": "FEINT",
+      "module": "src/ui/scene/instruments/slap/slap.ts",
+      "export": "FEINT"
+    },
+    {
+      "ident": "SWING",
+      "module": "src/ui/scene/instruments/slap/slap.ts",
+      "export": "SWING"
+    },
+    {
+      "ident": "OBSESSIVE_SPREAD",
+      "module": "src/ui/scene/instruments/slap/slap.ts",
+      "export": "OBSESSIVE_SPREAD"
+    },
+    {
+      "ident": "SNAP",
+      "module": "src/ui/scene/instruments/slap/slap.ts",
+      "export": "SNAP"
+    },
+    {
+      "ident": "SWEEP",
+      "module": "src/ui/scene/instruments/slap/slap.ts",
+      "export": "SWEEP"
+    },
+    {
+      "ident": "RETURN",
+      "module": "src/ui/scene/instruments/slap/slap.ts",
+      "export": "RETURN"
+    },
+    {
+      "ident": "EXPR",
+      "module": "src/ui/scene/instruments/slap/slap.ts",
+      "export": "EXPR"
+    },
+    {
+      "ident": "CALM",
+      "module": "src/ui/scene/instruments/slap/slap.ts",
+      "export": "CALM"
+    },
+    {
+      "ident": "EXPR_SWITCH",
+      "module": "src/ui/scene/instruments/slap/slap.ts",
+      "export": "EXPR_SWITCH"
+    },
+    {
+      "ident": "EXPR_WAIT",
+      "module": "src/ui/scene/instruments/slap/slap.ts",
+      "export": "EXPR_WAIT"
+    }
+  ],
+  "lines": [
+    {
+      "ident": "LINES",
+      "registry": "cardVoice",
+      "cueKinds": {
+        "ritual.before": "slap.before@ritual",
+        "drill.before": "slap.before@drill",
+        "playful.feint": "slap.feint@playful",
+        "cruel.again": "slap.again@cruel",
+        "affectionate.none": "slap.after.none@affectionate",
+        "regal.none": "slap.after.none@regal",
+        "ritual.none": "slap.after.none@ritual",
+        "drill.none": "slap.after.none@drill",
+        "clinical.none": "slap.after.none@clinical",
+        "possessive.none": "slap.after.none@possessive",
+        "playful.none": "slap.after.none@playful",
+        "obsessive.none": "slap.after.none@obsessive",
+        "vindictive.none": "slap.after.none@vindictive",
+        "cruel.none": "slap.after.none@cruel",
+        "affectionate.braced": "slap.after.braced@affectionate",
+        "regal.braced": "slap.after.braced@regal",
+        "ritual.braced": "slap.after.braced@ritual",
+        "drill.braced": "slap.after.braced@drill",
+        "clinical.braced": "slap.after.braced@clinical",
+        "possessive.braced": "slap.after.braced@possessive",
+        "playful.braced": "slap.after.braced@playful",
+        "obsessive.braced": "slap.after.braced@obsessive",
+        "vindictive.braced": "slap.after.braced@vindictive",
+        "cruel.braced": "slap.after.braced@cruel",
+        "affectionate.flinched": "slap.after.flinched@affectionate",
+        "regal.flinched": "slap.after.flinched@regal",
+        "ritual.flinched": "slap.after.flinched@ritual",
+        "drill.flinched": "slap.after.flinched@drill",
+        "clinical.flinched": "slap.after.flinched@clinical",
+        "possessive.flinched": "slap.after.flinched@possessive",
+        "playful.flinched": "slap.after.flinched@playful",
+        "obsessive.flinched": "slap.after.flinched@obsessive",
+        "vindictive.flinched": "slap.after.flinched@vindictive",
+        "cruel.flinched": "slap.after.flinched@cruel"
+      }
+    }
+  ],
+  "differences": [
+    {
+      "fn": "showFace",
+      "reason": "Wiring: her face is the scene's sprite, shown through `env.setSprite(unit, label, url)` with the picture `preload` resolved (no avatar in between); the prototype's own `<img>` and its panel's \"her face now\" picker are prototype only. The prototype's `src !== url` check is the same test as the face now (`env.faceOf`) being another label, so a face she already has is not set again.",
+      "diff": "@@ -2,5 +2,4 @@\n curLabel=label\n-$(\"#curExpr\").value=label\n const url=faces[label]\n-if(url&&img.getAttribute(\"src\")!==url)img.src=url\n+if(url&&E&&E.env.faceOf(E.unitId)!==label)E.env.setSprite(E.unitId,label,url)\n }"
+    },
+    {
+      "fn": "preload",
+      "reason": "Wiring: the picture of a label is the scene's (`env.spriteUrl`: SillyTavern's sprite for her, resolved once and decoded; null when she has none), raced against `EXPR_WAIT` as in the prototype; `faces` remembers each answer (a null one too) instead of the panel's loaded files.",
+      "diff": "@@ -1,7 +1,9 @@\n function preload(label){\n-const url=faces[label]\n-if(!url)return Promise.resolve()\n-const im=new Image()\n-im.src=url\n-return Promise.race([im.decode().catch(()=>{}),new Promise(r=>setTimeout(r,EXPR_WAIT))])\n+if(label in faces||!E)return Promise.resolve()\n+const e=E\n+return Promise.race([e.env.spriteUrl(e.unitId,label).then(u=>{\n+faces[label]=u\n+},()=>{\n+faces[label]=null\n+}),new Promise(r=>setTimeout(r,EXPR_WAIT))])\n }"
+    },
+    {
+      "fn": "noise",
+      "reason": "No rng (Global Constraints): the noise's start offset is `rnd01()`, a hash of the slap's id and a running count, for the prototype's `Math.random()`.",
+      "diff": "@@ -22,3 +22,3 @@\n })\n-src.start(t,Math.random())\n+src.start(t,rnd01())\n src.stop(t+dur+0.05)"
+    },
+    {
+      "fn": "SFX",
+      "reason": "No rng (Global Constraints): the pen's three scratches take their jitter from `rnd01()` (a hash of the slap's id and a count) for the prototype's `Math.random()`.",
+      "diff": "@@ -3,3 +3,3 @@\n for(const i=0;i<3;i++)noise({\n-at:i*0.05+Math.random()*0.02,dur:0.035+Math.random()*0.03,f:2600+Math.random()*1800,q:3,gain:0.04\n+at:i*0.05+rnd01()*0.02,dur:0.035+rnd01()*0.03,f:2600+rnd01()*1800,q:3,gain:0.04\n })"
+    },
+    {
+      "fn": "startSlap",
+      "reason": "Wiring (the engine's slap instead of the prototype's scheduler): the slap is the engine's open one (`opts`: its id, its swing `windowMs` with obsessive's hashed spread already in it, its feints from her `swing`, `again`, `unannounced`, and where its answer goes); her side is `slapSide(id)` (fnv1a, R12) and cruel's second raises her hand for `TUNING.practice.slap.againLeadMs` (420, the prototype's literal). The start overlay check is prototype only. Added: the id is marked started (a redraw never starts it twice), the hash key of `rnd01` is the id, the frame loop is woken (it sleeps while nothing is drawn), and an `epoch` check after the wait for her face (a slap stopped meanwhile does not start).",
+      "diff": "@@ -1,6 +1,12 @@\n-async function startSlap(opts={}){\n-if(G.slap||G.starting||$(\"#start\").style.display!==\"none\")return\n+async function startSlap(opts){\n+if(G.slap||G.starting)return\n G.starting=true\n+const epoch=G.epoch\n+G.started.add(opts.id)\n+G.rkey=opts.id\n+G.rn=0\n+requestAnimationFrame(frame)\n const faceBefore=beforeLabel(S.style,opts.unannounced??S.unann)\n await preload(faceBefore)\n+if(G.epoch!==epoch)return\n G.starting=false\n@@ -8,12 +14,10 @@\n audioInit()\n-const id=`ps${++seq}`\n+const id=opts.id\n const style=S.style\n-const swing=style===\"obsessive\"?Math.round(SWING.obsessive+hash01(`win:${id}`)*OBSESSIVE_SPREAD):SWING[style]\n+const swing=opts.windowMs\n const unann=opts.unannounced??S.unann\n-const feints=0\n-if(S.feints===\"style\")feints=hash01(`feint:${id}`)<(FEINT_SHARE[style]??FEINT_SHARE.other)?1:0\n-else feints=Number(S.feints)\n+const feints=opts.feints\n if(unann)feints=0\n-const dir=S.side===\"left\"?1:S.side===\"right\"?-1:(hash01(`side:${id}`)<0.5?1:-1)\n-const lead=unann?SNAP:(opts.again?420:LEAD)\n+const dir=slapSide(id)\n+const lead=unann?SNAP:(opts.again?AGAIN_LEAD:LEAD)\n const swingAt=lead+feints*FEINT\n@@ -21,3 +25,3 @@\n const s={\n-id,style,swing,unann,feints,dir,lead,swingAt,impactAt:swingAt+swing,t0,again:!!opts.again,faceBefore,faceShown:false,pressAt:null,presses:0,turned:0,turnAt:null,result:null,tensionAtImpact:0,phase:\"snap\",doneAt:null,said:false,feintSaid:false,k0:G.k??0\n+id,style,swing,unann,feints,dir,lead,swingAt,impactAt:swingAt+swing,t0,again:!!opts.again,faceBefore,faceShown:false,pressAt:null,presses:0,turned:0,turnAt:null,result:null,tensionAtImpact:0,phase:\"snap\",doneAt:null,said:false,feintSaid:false,k0:G.k??0,onResult:opts.onResult\n }\n@@ -29,2 +33,3 @@\n if(active&&active!==document.body)active.blur()\n+requestAnimationFrame(frame)\n if(S.reduced){"
+    },
+    {
+      "fn": "land",
+      "reason": "Wiring: the answer goes to the engine at the impact, once (`s.onResult`, `practice/slap_answer`); the tally, `narrate` and `renderTally` are prototype only. With the still form (reduced motion, timing off) the camera never left, so there is no way back (`G.back` null: the prototype would jump to k = 1 and ease back, which the README's still form excludes). Cruel's second slap is the engine's (opened at once by `answerSlap`, it waits in `G.next`) and starts 120 ms after the hold as in the prototype (`startNext`); a slap that came meanwhile for another reason starts the same way.",
+      "diff": "@@ -5,4 +5,3 @@\n s.landedAt=t\n-G.tally[s.result]+=1\n-G.tally.slaps+=1\n+s.onResult(s.result)\n const glancing=s.result===\"flinched\"\n@@ -31,10 +30,6 @@\n G.slap=null\n-G.back={\n+G.back=S.reduced?null:{\n t0:performance.now(),from:1\n }\n-narrate(s.result)\n-renderTally()\n-if(cruelAgain)setTimeout(()=>startSlap({\n-again:true\n-}),120)\n+if(cruelAgain||G.next)setTimeout(()=>startNext(),120)\n else if(G.typingFocus)$(\"#cmd\").focus()"
+    },
+    {
+      "fn": "flash",
+      "reason": "Wiring: `requestTwoFrames` (a 32 ms timer of the slap's own, cleared by `stopSlap`) for the prototype's two nested `requestAnimationFrame`s: the module's frame function is the one loop, which sleeps when nothing is drawn.",
+      "diff": "@@ -5,3 +5,3 @@\n el.style.opacity=String(0.75*k)\n-requestAnimationFrame(()=>requestAnimationFrame(()=>{\n+requestTwoFrames(()=>{\n el.style.transition=\"opacity 260ms cubic-bezier(.2,.7,.3,1), background 120ms\"\n@@ -9,3 +9,3 @@\n el.style.opacity=\"0\"\n-}))\n+})\n }"
+    },
+    {
+      "fn": "scatter",
+      "reason": "Wiring: `requestTwoFrames` (a 32 ms timer of the slap's own) for the prototype's two nested `requestAnimationFrame`s. `$('#mirror')` lays the input's letters over it for the moment (the extension's input has no mirror of its own).",
+      "diff": "@@ -6,3 +6,3 @@\n }\n-requestAnimationFrame(()=>requestAnimationFrame(()=>{\n+requestTwoFrames(()=>{\n for(const sp of spans){\n@@ -11,3 +11,3 @@\n }\n-}))\n+})\n }"
+    },
+    {
+      "fn": "say",
+      "reason": "Her hand: the line is the instruments' `.alius-her-line` (css/63-instruments.css: her hand's family and accent from the slap's `#hand`, readable mode, the still form) for the prototype's Caveat `.her-line`, at the prototype's 44 px times her hand's measured `handScale` (R10).",
+      "diff": "@@ -3,3 +3,3 @@\n const el=document.createElement(\"div\")\n-el.className=\"her-line\"\n+el.className=\"alius-her-line\"\n el.textContent=text\n@@ -8,2 +8,3 @@\n el.style.setProperty(\"--steps\",String(Math.max(4,text.length*2)))\n+el.style.fontSize=`${Math.round(44*(E?.her.handScale??1)*100)/100}px`\n const s=G.slap??G.last"
+    },
+    {
+      "fn": "frame",
+      "reason": "Wiring: the prototype's `#world` is the scene's backdrop and sprites layers, moved through `cam.draw(world, hb, k)` (the world's transform about the prototype's origin, 50 % / 45 % of a box 14 % outside the frame; the backdrop grows to that 128 % box with the zoom, its blur and dim, the scene's own light filter kept; her sprite's layer zooms from the scene's view to her face at (0.5 W, 0.42 H), geometric, from her face point measured on the drawn sprite; readable mode: no blur), and `cam.release()` puts every style back the moment the camera is home; her sprite takes no motion blur (in the prototype's own rendering her picture stays sharp under `#world`'s filter; on the scaled layer it would blur her ×2.6). The face art is the slap's `faceImg`. The reply and the input line step back only while the camera is out (so their own styles come back). The random slap and the debug readout are prototype only.",
+      "diff": "@@ -62,18 +62,7 @@\n const leanIn=s&&!s.result&&!S.reduced?0.035*clamp((now-s.t0-SNAP)/500,0,1):0\n-$(\"#world\").style.transform=`translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) rotate(${rot.toFixed(2)}deg) scale(${(1+0.02*ten+leanIn+(turnX?0.03:0)).toFixed(4)})`\n+const world=`translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) rotate(${rot.toFixed(2)}deg) scale(${(1+0.02*ten+leanIn+(turnX?0.03:0)).toFixed(4)})`\n $(\"#hblurG\").setAttribute(\"stdDeviation\",`${hb.toFixed(1)} ${(hb*0.12).toFixed(1)}`)\n-$(\"#world\").style.filter=hb>0.3?\"url(#hblur)\":\"\"\n-if(img.naturalWidth){\n-const nw=img.naturalWidth,nh=img.naturalHeight\n-const sc0=(H*1.04)/nh,sc1=sc0*S.zoom\n-const sc=sc0*Math.pow(sc1/sc0,k)\n-const p0=[W/2-nw*sc0/2+S.face.x*nw*sc0,H*1.02-nh*sc0+S.face.y*nh*sc0]\n-const p1=[W*0.5,H*0.42]\n-const ox=W*0.14,oy=H*0.14\n-const px=lerp(p0[0],p1[0],k)+ox,py=lerp(p0[1],p1[1],k)+oy\n-img.style.transform=`translate(${(px-S.face.x*nw*sc).toFixed(1)}px, ${(py-S.face.y*nh*sc).toFixed(1)}px) scale(${sc.toFixed(4)})`\n-img.style.filter=`brightness(${lerp(1,0.92,k)})`\n-}\n-faceImg.style.opacity=hasFace?String(k):\"0\"\n-$(\"#backdrop\").style.filter=`blur(${(k*14).toFixed(1)}px) brightness(${lerp(1,0.55,k).toFixed(3)})`\n+if((s||G.back)&&!S.reduced)cam.draw(world,hb,k)\n+else cam.release()\n+E.faceImg.style.opacity=E.hasFace?String(k):\"0\"\n $(\"#dimmer\").style.opacity=String(0.25*k)\n@@ -101,12 +90,6 @@\n else $(\"#cheek\").style.opacity=\"0\"\n+if((s||G.back)&&!S.reduced){\n $(\"#reply\").style.opacity=String(1-0.85*k)\n $(\"#inputWrap\").style.opacity=String(1-0.6*k)\n-if(S.random&&!G.slap&&!G.back&&$(\"#start\").style.display===\"none\"){\n-if(!G.nextRandom)G.nextRandom=now+rand(8000,25000)\n-if(now>=G.nextRandom){\n-G.nextRandom=0\n-startSlap()\n }\n }\n-if(S.debug)drawDebug(now)\n-}"
+    }
+  ]
+}

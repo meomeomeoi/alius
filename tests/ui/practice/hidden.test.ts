@@ -13,6 +13,7 @@ import { drawHeldStrip } from '../../../src/ui/practice/heldStrip';
 import { drawInitiativeChips } from '../../../src/ui/practice/initiativeChips';
 import { drawPunishmentCards } from '../../../src/ui/practice/punishmentCard';
 import { renderSlapOverlay } from '../../../src/ui/practice/slapOverlay';
+import { slapEnv } from '../../helpers/slapEnv';
 import { buildKnowledge } from '../../../src/analysis/knowledge';
 import { renderDynamicSection } from '../../../src/ui/dynamic/section';
 import { drawTaskCards, renderRecordLines } from '../../../src/ui/practice/taskCard';
@@ -52,7 +53,7 @@ function everything(state: CampaignState, unitId: string, over: { sensory?: bool
   drawInitiativeChips(part(), { state, reg, pick: (id) => id === unitId, onAsk: noop, onConfess: noop, onAskPermission: noop, onHandOver: noop, onTakeBack: noop });
   const records = renderRecordLines(state, reg);
   if (records !== null) host.append(records);
-  renderSlapOverlay(part(), { state, reg, slap: state.practices!.slap!, settings: DEFAULT_SETTINGS, onResult: noop, schedule: () => 0, cancel: noop, now: () => 0, sound: { play: noop } });
+  renderSlapOverlay(part(), { state, reg, slap: state.practices!.slap!, settings: DEFAULT_SETTINGS, onResult: noop, env: slapEnv({ state: () => state, reg, parent: part() }).env });
   return host;
 }
 

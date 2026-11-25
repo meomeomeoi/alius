@@ -18,6 +18,7 @@
 const dialCorner = { x: -560, y: -440, width: 560, height: 440 };
 
 export const MOMENTS = {
+  slap: slapMoments(),
   cards: {
     state: 'one',
     clip: dialCorner,
@@ -94,4 +95,65 @@ function setPose(page, id, name) {
     window.eval(`pose = ${JSON.stringify(id_)}`);
     drawDial();
   }, [id, name]);
+}
+
+/**
+ * slap.html: the slap (Task 12). The port is the `slap` fixture (Ann, possessive: a 450 ms swing; her slap `ps1`, whose hashed side is her left
+ * hand, from the screen's right), held back until `window.__slapNow()`; the prototype is set to the same (`possessive`, `side: right`). Both pages
+ * run on Playwright's fake clock, paused: each slap starts at the same paused instant and the clock is run to the moment on both, so the
+ * shots are of the same millisecond (CSS transitions, the flash's fade and her line's write-on, run in real time during the short settle).
+ * Moments: her hand raised, a feint, the impact (taken), braced (Space 100 ms before), the turned face (a flick sideways), the cheek after.
+ * Run it with `--sprite <a PNG>`: the prototype sizes its `<img>` by its layout box, which for the fixture's viewBox-only SVG is not its natural
+ * size (the sprite lands off screen); the port draws the fixture SVG either way.
+ */
+function slapMoments() {
+  const IMPACT = 900 + 450; // leadMs + possessive's swing
+  const FEINT = 450;
+  const start = (feints) => ({
+    proto: async (p) => {
+      await p.click('#go');
+      await p.waitForTimeout(150);
+      await p.evaluate((f) => { Object.assign(window.__S, { style: 'possessive', side: 'right', feints: String(f), unann: false, onSend: false, random: false }); }, feints);
+      await p.clock.install({ time: 0 });
+      await p.clock.pauseAt(1000);
+      await p.evaluate(() => window.__slap());
+      await p.waitForTimeout(150);
+    },
+    port: async (p) => {
+      await p.clock.install({ time: 0 });
+      await p.clock.pauseAt(1000);
+      await p.evaluate(() => window.__slapNow());
+      await p.waitForTimeout(150);
+    },
+  });
+  const flick = async (p, size) => {
+    const y = Math.round(size[1] * 0.5);
+    let x = Math.round(size[0] * 0.3);
+    await p.mouse.move(x, y);
+    for (let i = 0; i < 6; i++) { await p.clock.runFor(16); x += 80; await p.mouse.move(x, y); }
+  };
+  const moment = (id, feints, drive) => {
+    const s = start(feints);
+    return {
+      id, query: `&deferSlap=1${feints ? `&feints=${feints}` : ''}`,
+      proto: async (p, c) => { await s.proto(p); await drive(p, c); },
+      port: async (p, c) => { await s.port(p); await drive(p, c); },
+    };
+  };
+  return {
+    state: 'slap',
+    hide: ['#panel', '#debug', '#summary'],
+    settle: 60,
+    moments: [
+      moment('raised', 0, (p) => p.clock.runFor(600)),
+      moment('feint', 1, (p) => p.clock.runFor(900 + Math.round(FEINT * 0.3))),
+      moment('impact-none', 0, (p) => p.clock.runFor(IMPACT + 60)),
+      moment('braced', 0, async (p) => { await p.clock.runFor(IMPACT - 100); await p.keyboard.press(' '); await p.clock.runFor(160); }),
+      moment('turned', 0, async (p, c) => { await p.clock.runFor(1000); await flick(p, c.size); await p.clock.runFor(IMPACT + 60 - 1000 - 96); }),
+      moment('cheek-after', 0, (p) => p.clock.runFor(IMPACT + 1500 + 650 + 800)),
+      { ...moment('impact-none-1280', 0, (p) => p.clock.runFor(IMPACT + 60)), size: [1280, 800] },
+      { ...moment('raised-1280', 0, (p) => p.clock.runFor(600)), size: [1280, 800] },
+      { ...moment('turned-1280', 0, async (p, c) => { await p.clock.runFor(1000); await flick(p, c.size); await p.clock.runFor(IMPACT + 60 - 1000 - 96); }), size: [1280, 800] },
+    ],
+  };
 }

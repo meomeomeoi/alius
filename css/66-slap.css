@@ -1,0 +1,87 @@
+/*
+ * P10e-e Task 12: the slap (docs/prototypes/slap.html, normative). Its own layer sits in the effects layer, under the scene's UI: the stop
+ * word's pill and every control stay above it. The camera moves the scene's backdrop and sprites layers (slap.ts `cam`); here are the
+ * prototype's `#faceArt`, `#side`, `#sweep`, `#dimmer`, `#tight`, `#cheek`, `#flash` and `#hand`, in its order, and the letters of the
+ * input that fly apart (`#mirror`). Nothing here takes the pointer. Readable mode turns the blur off; every z-index stays below 10.
+ */
+#alius-shell .alius-slap {
+  position: absolute;
+  inset: 0;
+  z-index: 1; /* over the effects layer's own gradient */
+  pointer-events: none;
+  overflow: hidden;
+}
+
+#alius-shell .alius-slap > * {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* the art slot `face_close`: her face close, filling the frame, crossfading in with the zoom (a 128 % box, as the prototype's world) */
+#alius-shell .alius-slap-face {
+  left: -14%;
+  top: -14%;
+  width: 128%;
+  height: 128%;
+  max-width: none;
+  object-fit: cover;
+  opacity: 0;
+  transform-origin: 50% 45%;
+  will-change: transform, opacity;
+  user-select: none;
+}
+
+#alius-shell .alius-slap-side { inset: 0; opacity: 0; }
+
+#alius-shell .alius-slap-sweep {
+  top: 8%;
+  height: 84%;
+  width: 46%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(8, 5, 8, 0.92), rgba(8, 5, 8, 0.55) 60%, rgba(8, 5, 8, 0));
+  filter: blur(38px);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+#alius-shell .alius-slap-dimmer { inset: 0; background: #000; opacity: 0; }
+
+#alius-shell .alius-slap-tight {
+  inset: 0;
+  opacity: 0;
+  background: radial-gradient(ellipse 62% 58% at 50% 44%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.85) 100%);
+}
+
+#alius-shell .alius-slap-cheek { inset: 0; opacity: 0; mix-blend-mode: normal; }
+
+#alius-shell .alius-slap-flash { inset: 0; opacity: 0; mix-blend-mode: screen; }
+
+#alius-shell .alius-slap-svg { width: 0; height: 0; }
+
+/* her hand: the instruments' line (css/63-instruments.css) at the slap's own fade */
+#alius-shell .alius-slap-hand { inset: 0; }
+
+#alius-shell .alius-slap-hand .alius-her-line {
+  line-height: 1;
+  transition: opacity 0.5s, transform 0.5s;
+}
+
+/* the letters of the line being typed fly apart and settle (the prototype's `#mirror`), laid over the input for a moment */
+#alius-shell .alius-slap-mirror {
+  position: absolute;
+  pointer-events: none;
+  white-space: pre;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+#alius-shell .alius-slap-mirror > span {
+  display: inline-block;
+  white-space: pre;
+  transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2), opacity 0.45s;
+}
+
+/* readable mode: no blur */
+#alius-shell.alius-readable .alius-slap-sweep {
+  filter: none;
+}

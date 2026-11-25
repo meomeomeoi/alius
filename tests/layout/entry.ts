@@ -1,6 +1,6 @@
 /**
  * P10e: the browser entry of the layout test (`npm run test:layout`): renders the real scene screen into the page for one named
- * fixture (`?fixture=one|two|three|four|curtain|long|physics|chips|chipsmany|dialname|dialwide|call|callhold`). A knee-length placeholder sprite (tests/fixtures/layout/sprite.svg), never the
+ * fixture (`?fixture=one|two|three|four|curtain|long|physics|chips|chipsmany|dialname|dialwide|call|callhold|slap|slaphold`). A knee-length placeholder sprite (tests/fixtures/layout/sprite.svg), never the
  * author's art; the content and the campaign states are fetched (the script serves the repo root); the model is never called.
  */
 import { loadPacks } from '../../src/content/loader';
@@ -15,7 +15,7 @@ const params = new URLSearchParams(location.search);
 const fixture = params.get('fixture') ?? 'one';
 const states = (await (await fetch('/.superpowers/layout/states.json')).json()) as Record<string, never>;
 const loaded = await loadPacks(['content/core'], (p: string) => fetch('/' + p).then((r) => r.json()));
-const state = states[['two', 'three', 'four', 'physics', 'dialname', 'dialwide', 'call', 'callhold'].includes(fixture) ? fixture : 'one'];
+const state = states[['two', 'three', 'four', 'physics', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold'].includes(fixture) ? fixture : 'one'];
 
 const words = (n: number): string => Array.from({ length: n }, (_, i) => `word${i}`).join(' ');
 const msg = (index: number, over: Partial<ChatMessage>): ChatMessage => ({ index, isUser: false, name: 'Ann', avatar: 'ann.png', text: '', swipeId: 0, swipeCount: 2, ...over });
@@ -39,6 +39,7 @@ const noop = (): [] => [];
 const screen = renderSceneScreen(view, {
   controller: controller as never, getState: () => state, registries: loaded.registries, st: st as never,
   settings: () => ({ ...DEFAULT_SETTINGS, typingSpeed: 0 }), onEnded() {}, onClose() {}, assetUrl: (p: string) => '/' + p, onOrder: () => false,
+  onSlap() {}, // P10e-e Task 12: the slap draws (its answer is not applied: the page's state is static)
   physics: { input: noop, endSegment: noop, stopWord: noop, skip: noop, stimulus: noop, act: noop, finishCounted: noop, cue: () => 'Her breath comes short.', beat: () => 0, clock: () => ({ startedAt: null, beatMs: 1500, now: 0 }), keystroke() {}, typed: () => null, onTap() {} } as never,
 });
 // review I3: ordinary chips (they fit) or too many (some really overflow); added to a slot of the row, which a redraw leaves alone
@@ -56,5 +57,15 @@ if (params.get('deferCall') === '1') {
   if (pr) delete pr.call;
   screen.refresh();
   (window as unknown as { __callNow: () => void }).__callNow = () => { if (pr) pr.call = held; screen.refresh(); };
+}
+// the slap (P10e-e Task 12): `&feints=N` gives her slap N feints; `&deferSlap=1` holds it back until `window.__slapNow()` (the shots start it when the
+// prototype's starts; the layout test measures the scene first)
+const sp = (state as { practices?: { slap?: { feints: number } } }).practices;
+if (sp?.slap && params.get('feints') !== null) sp.slap.feints = Number(params.get('feints'));
+if (params.get('deferSlap') === '1' && sp?.slap) {
+  const held = sp.slap;
+  delete sp.slap;
+  screen.refresh();
+  (window as unknown as { __slapNow: () => void }).__slapNow = () => { sp.slap = held; screen.refresh(); };
 }
 document.body.dataset.ready = 'true';

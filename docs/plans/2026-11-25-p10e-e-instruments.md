@@ -616,7 +616,7 @@ Open for e12 (P10e open items): cards are placed with CSS `order`, so screen rea
   - `resultOf(pressAt: number | null, impactAt: number, flicked: boolean): SlapResult` — flicked → `flinched`; a press 42–224 ms before the impact → `braced`; else `none`
   - `isFlick(samples: Array<{ t: number; x: number }>, width: number): boolean` — ≥ 2400 px/s over the last 70 ms and ≥ 6 % of the width
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `slapTimeline`:
     - `{ windowMs: 500, feints: 1 }` → `impactAt = 900 + 450 + 500`;
     - unannounced → `impactAt = 500`, no raised hand;
@@ -632,16 +632,17 @@ Open for e12 (P10e open items): cards are placed with CSS `order`, so screen rea
   - `reduced motion or the timing toggle off`: `onResult('none')` at once; only the flash, the ringing and the cheek.
   - `the cheek stays for the scene and is gone on a new scene or a chat switch`.
   - `hidden.test.ts` still passes: no `733`, no `windowMs` or `feints` in the HTML.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** by copying `slap.html`'s functions and tables (`fidelity.json`: the functions above, `EXPR`, the timings; the engine's slap instead of the prototype's scheduler is the declared difference). For orientation:
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** by copying `slap.html`'s functions and tables (`fidelity.json`: the functions above, `EXPR`, the timings; the engine's slap instead of the prototype's scheduler is the declared difference). For orientation:
   - the camera: zoom 2.6 to (0.5 W, 0.42 H), the backdrop blur 14 px and dim .55;
   - the lean −0.4 and the side light;
   - the impact's whip (7.5 % / 5.5°, τ 210 ms, period 520 ms), the flash, the ringing and the cheek (τ 24 s);
   - the turn of 11 % in 160 ms;
   - `face_close` from the art slots when present.
-- [ ] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS.
-- [ ] **Step 5: Shots:** `npm run shots -- slap` (moments: hand raised, a feint, the impact `none`, `braced`, the turned face, the cheek after). Fix any drift.
-- [ ] **Step 6: Commit** `feat(P10e-e): the slap instrument replaces the overlay`
+- [x] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS.
+- [x] **Step 5: Shots:** `npm run shots -- slap` (moments: hand raised, a feint, the impact `none`, `braced`, the turned face, the cheek after). Fix any drift.
+- [x] **Step 6: Commit** `feat(P10e-e): the slap instrument replaces the overlay`
+  - *As built:* `src/ui/scene/instruments/slap/slap.ts` is the port (its `fidelity.json` lists the functions, the tables against TUNING and `LINES` against the `cardVoice` rows, with ten declared differences). The slap draws in its own layer inside the **effects** layer, under the scene's UI, so the stop word's pill and every control stay on top (`npm run test:layout` fixture `slaphold` checks the pill and the input mid-slap, and that the layers are put back after); the `.alius-slap-host` stays in the moment layer as a marker (`data-slap`). The prototype's `#world` is the scene's backdrop and sprites layers, moved by `cam` (the world's transform about the prototype's origin; the backdrop grows to the 128 % box with the zoom; her sprite's layer zooms from her face point measured on the drawn sprite; every style it writes is put back the moment it is home); her sprite takes no motion blur (the prototype's own rendering leaves her sharp). `SlapOverlayCtx` is `{ state, reg, slap?, settings, env, onResult }`; `InstrumentEnv` gains `faceOf(unitId)` and `spriteUrl(unitId, label)`, and `setSprite(unitId, label, url?)` (the scene caches resolved sprite pictures, so a known face is shown with no avatar in between). The scene builds the env with or without the staging controller (a dead staging; no physics instrument mounts on it). The answer goes at the impact; a slap gone from the state before it landed stops and sends nothing; one that landed plays its end; cruel's second waits in `G.next` for the first one's hold (+120 ms, as the prototype). The cheek is module memory keyed by scene id: a redraw or a new screen of the same scene draws it on, a new scene and `resetSceneStage` forget it. `slapTimeline` follows the prototype for unannounced (`170 + windowMs`, not the plan's `500`). No `Math.random`: `pick` / `rand` hash the slap's id and a count. Shots: `npm run shots -- slap --sprite <png>` (the prototype needs a raster sprite: it sizes its `<img>` by layout, which for the fixture's viewBox-only SVG is not its natural size).
 
 ---
 
@@ -649,8 +650,8 @@ Open for e12 (P10e open items): cards are placed with CSS `order`, so screen rea
 
 Every instrument task below follows these steps. Its own section lists its files, interfaces and specific tests.
 
-- [ ] **Step 0: Open the prototype.** Read `docs/prototypes/<name>.html` whole and its README section. Build it (`npm run proto -- <name>`) and play it in Chromium for a minute. Write the task's `fidelity.json`: every function and table its README section calls normative, plus the `LINES` kinds the port takes from the cue pool. This list is the task's definition of done.
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 0: Open the prototype.** Read `docs/prototypes/<name>.html` whole and its README section. Build it (`npm run proto -- <name>`) and play it in Chromium for a minute. Write the task's `fidelity.json`: every function and table its README section calls normative, plus the `LINES` kinds the port takes from the cue pool. This list is the task's definition of done.
+- [x] **Step 1: Write the failing tests:**
   - **fidelity:** the task's `fidelity.json` passes `tests/ui/instruments/fidelity.test.ts` (it fails until the port exists);
   - the pure helpers it names (exact values from the README);
   - **keys:** Space or Shift typed into the input never act, and only the mouse acts while the field has focus;
@@ -658,11 +659,11 @@ Every instrument task below follows these steps. Its own section lists its files
   - **reduced motion and readable mode:** the still form;
   - **unmount:** `stop()` (the stop word, a new run, `resetSceneStage`, dispose) leaves no timer, `requestAnimationFrame`, audio node or document listener, restores the frame and the input, and dispatches nothing afterwards (fake clock);
   - **inputs:** the inputs it reports for a scripted beat sequence (fake clock and fake staging).
-- [ ] **Step 2: Run** them → FAIL.
-- [ ] **Step 3: Port** by copying: paste each function and table of `fidelity.json` from the prototype into its module, add types, keep names, bodies, numbers and texts as they are; then wire it. Read the engine's plan and style instead of the "prototype only" schedulers. Read her lines from the cue pool (`env.staging.cue(kind, beat)`), never from the prototype's `LINES`. Put the CSS in the task's stylesheet.
-- [ ] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS.
-- [ ] **Step 5: Shots:** `npm run shots -- <name>` at the moments the task names; compare with the prototype and fix any drift. A drift the extension cannot avoid stops and reports. **The reviewer** of the task gets the prototype file, its README section, `fidelity.json` and the shots, not this plan's summary, and checks the port against the file.
-- [ ] **Step 6: Commit** `feat(P10e-e): the <name> instrument`
+- [x] **Step 2: Run** them → FAIL.
+- [x] **Step 3: Port** by copying: paste each function and table of `fidelity.json` from the prototype into its module, add types, keep names, bodies, numbers and texts as they are; then wire it. Read the engine's plan and style instead of the "prototype only" schedulers. Read her lines from the cue pool (`env.staging.cue(kind, beat)`), never from the prototype's `LINES`. Put the CSS in the task's stylesheet.
+- [x] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS.
+- [x] **Step 5: Shots:** `npm run shots -- <name>` at the moments the task names; compare with the prototype and fix any drift. A drift the extension cannot avoid stops and reports. **The reviewer** of the task gets the prototype file, its README section, `fidelity.json` and the shots, not this plan's summary, and checks the port against the file.
+- [x] **Step 6: Commit** `feat(P10e-e): the <name> instrument`
 
 New cue kinds join `CUE_KINDS` with rows in `content/core/physicsCues.json`. Each row takes the prototype's `LINES` for that kind as its texts (the author heard them in play). The `physics_cues` call asks for them as for the others.
 
