@@ -31,7 +31,8 @@ export function physicsDirective(event: EngineEvent, state: CampaignState, _reg:
 
 /**
  * P10e-e R28: the words of a tally, by the physics' interaction (never by its id). Each count is said only when it is above 0; a relief is
- * named only once she caught it (`cheatsCaught`), so an uncaught cheat never reaches the model. No pronoun for the commander.
+ * named only once she caught it (`cheatsCaught`), so an uncaught cheat never reaches the model, and an over-hold only once she noticed it (`noticed`;
+ * the `strains` count is never said). No pronoun for the commander.
  */
 const TALLY_WORDS: Record<string, Partial<Record<string, (n: number) => string>>> = {
   timing: { caught: (n) => `${n} ${n === 1 ? 'opening' : 'openings'} caught`, falseTaken: (n) => `${n} false ${n === 1 ? 'opening' : 'openings'} taken` },
@@ -43,12 +44,13 @@ const GENERIC: Record<string, (n: number) => string> = {
   caught: (n) => `${n} caught`,
   missed: (n) => `${n} missed`,
   falseTaken: (n) => `${n} taken falsely`,
-  strains: (n) => `held on too long ${times(n)}`,
+  noticed: (n) => `held on past her opening ${times(n)}, and she noticed`,
   slips: (n) => `${n} ${n === 1 ? 'slip' : 'slips'}`,
   gasps: (n) => `${n} ${n === 1 ? 'gasp' : 'gasps'}`,
   cheatsCaught: (n) => `she caught ${n} ${n === 1 ? 'cheat' : 'cheats'}`,
 };
-const ORDER = ['caught', 'missed', 'falseTaken', 'strains', 'slips', 'gasps', 'cheatsCaught'];
+/** `strains` is never said: an over-hold she did not notice (amount 0.5) is not hers to tell; only `noticed` is. */
+const ORDER = ['caught', 'missed', 'falseTaken', 'noticed', 'slips', 'gasps', 'cheatsCaught'];
 
 /** The tally of a run in one sentence (`''` when nothing was counted). */
 export function tallySentence(tally: Record<string, number>, phys: Entry | undefined): string {
@@ -57,9 +59,7 @@ export function tallySentence(tally: Record<string, number>, phys: Entry | undef
   for (const k of ORDER) {
     const n = tally[k] ?? 0;
     if (n <= 0) continue;
-    let part = (own[k] ?? GENERIC[k]!)(n);
-    if (k === 'strains' && (tally.noticed ?? 0) > 0) part += ` (${tally.noticed} she noticed)`;
-    parts.push(part);
+    parts.push((own[k] ?? GENERIC[k]!)(n));
   }
   return parts.length === 0 ? '' : `Over the whole hold: ${parts.join(', ')}.`;
 }

@@ -185,6 +185,25 @@ describe('the tally (R28)', () => {
     expect(ofType(stop.events, 'physics_outcome')[0]).toMatchObject({ result: 'stopped', tally: t });
   });
 
+  it('a relief counts only once she caught it: cheatsCaught is the physics_caught events, an uncaught one leaves no trace', () => {
+    registerHoldsUntil(() => 'signal');
+    let caughtSeen = 0, sent = 0;
+    for (let i = 0; i < 6; i++) {
+      const s = next(holding()).state;
+      s.scene!.physics!.seal = 'leaky';
+      s.rng = seedRng(100 + i);
+      const r = end(s, [0, 1, 2, 3].map((b) => input(b, 'gap_breath')));
+      expect(errors(r.events)).toEqual([]);
+      const caught = ofType(r.events, 'physics_caught').length;
+      const tally = r.state.scene?.physics?.tally ?? (ofType(r.events, 'physics_outcome')[0] as { tally?: Record<string, number> } | undefined)?.tally ?? {};
+      expect(tally.cheatsCaught ?? 0).toBe(caught);
+      expect(Object.keys(tally)).not.toContain('reliefs');
+      caughtSeen += caught; sent += 4;
+    }
+    expect(caughtSeen).toBeGreaterThan(0);
+    expect(caughtSeen).toBeLessThan(sent); // some were not caught, and they are counted nowhere
+  });
+
   it('no tally before anything resolved (an old run reads as before)', () => {
     const s = next(holding()).state;
     expect(s.scene!.physics!.tally).toBeUndefined();

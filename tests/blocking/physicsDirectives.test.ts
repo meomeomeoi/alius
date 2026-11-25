@@ -28,8 +28,8 @@ describe('the directive has one sentence of the tally after physics_outcome', ()
     expect(rest.split(/(?<=\.)\s+/)).toHaveLength(1); // one sentence
     expect(rest).toMatch(/5 openings caught/);
     expect(rest).toMatch(/2 missed/);
-    expect(rest).toMatch(/held on too long 3 times/);
-    expect(rest).toMatch(/1 she noticed/);
+    expect(rest).toMatch(/held on past her opening once, and she noticed/);
+    expect(rest).not.toMatch(/3 times|too long/); // the strains she did not notice are never said
     expect(d.text).not.toMatch(PRONOUN);
   });
 
@@ -39,6 +39,14 @@ describe('the directive has one sentence of the tally after physics_outcome', ()
     expect(plain).not.toMatch(/cheat|secret|relief/i);
     const caught = physicsDirective(outcome({ tally: { caught: 2, slips: 3, cheatsCaught: 1 } }), s, reg)!.text;
     expect(caught).toMatch(/caught 1 cheat/);
+  });
+
+  it('an over-hold she did not notice adds nothing to the sentence', () => {
+    const s = campaign(reg, 4);
+    const name = s.squad.find((u) => u.id === ANN)!.displayName;
+    expect(physicsDirective(outcome({ tally: { strains: 4 } }), s, reg)!.text).toBe(`${name} lets go.`);
+    const one = physicsDirective(outcome({ tally: { caught: 2, strains: 4 } }), s, reg)!.text;
+    expect(one).toBe(physicsDirective(outcome({ tally: { caught: 2 } }), s, reg)!.text);
   });
 
   it('without a tally (an old run, nothing resolved) the end is the outcome\'s sentence alone', () => {
