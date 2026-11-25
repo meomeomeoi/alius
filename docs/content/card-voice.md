@@ -150,7 +150,7 @@ P10e §15 step 3, variant **B3** (author, 2026-11-25): on a card everything is i
 
 ### drill
 - **when:** `{when}. Move.` · `Done {when}. No excuses.` · `{when}, on the dot.`
-- **cost:** `{slots}. Yours are mine.` · `You're on this for {slots}.` · `{slots}, starting when I say.`
+- **cost:** `{slots}. Report when done.` · `You're on this for {slots}.` · `{slots}, starting when I say.`
 - **who:** `{who} will know.` · `I'll report it to {who}.` · `{who} will see it. Look sharp.`
 - **only her:** `Between you and me. Dismissed.` · `No one else. Understood?`
 - **weight:** `{weight}. Take it.` · `It's {weight}. Stand up straight.` · `A {weight} one. Eyes front.`
