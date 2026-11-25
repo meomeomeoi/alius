@@ -680,7 +680,7 @@ function refreshLines(beat: number): void {
   const lines: Lines = {};
   for (const k of WEIGHT_KINDS) lines[k] = own(k);
   for (const [k, cue] of VOICED) lines[k] = voiced(k, cue);
-  lines.entry = R.run && R.run.sourceKind === 'contact' ? [...voiceLines(env.registries, `weight.entry.${R.run.sourceId}` as VoiceKind, undefined)] : [];
+  lines.entry = R.run && R.run.sourceKind === 'contact' ? [...voiceLines(env.registries, `weight.entry.${R.run.sourceId}` as VoiceKind, R.lineStyle)] : []; // by style too (cold: silent, Ruling R)
   R.lines = lines;
 }
 /** Weight's line kinds (weight.html `LINES`, card-voice.md §8) and the cue kinds whose model words may take a line's place. */

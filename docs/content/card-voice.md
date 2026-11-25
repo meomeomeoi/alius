@@ -445,7 +445,7 @@ Her lines in her hand while she holds the commander's breath (P10e-e Task 14, ru
 
 ## 8. Weight (weight.html, approved by the author, 2026-11-23)
 
-Her lines in her hand while she rests her weight on the commander (P10e-e Task 16, ruling Q; `weight.html`'s `LINES`), by her style. **entry**: her first words as her weight comes down, by the contact (`weight.entry.<contact>`; a contact with no row of its own: none); **announce**: a ritual holder names each shift as she telegraphs it ("shifting." or the side it goes to, "left." / "right.", as the engine's shift really goes); **slip**: the hold broke; **longer**: the first slip of a segment (the engine puts her release off); **caught**: she felt the commander's own shift (the engine decides it at the segment's end, and the line follows it); **heavy**: she leans in heavier (her pressure rose); **released**: she got off at the commander's limit; **good** / **poor**: her verdict when she is done (most of her shifts met level, at most one slip, or not); **fall**: the commander buckled; **stop**: after the stop word. A model-written `press` cue (her own words) may take **heavy**'s place. Neutral is every style with no rows of its own. One line picked as in §2 (no rng draw). No pronoun and no feeling for the commander.
+Her lines in her hand while she rests her weight on the commander (P10e-e Task 16, ruling Q; `weight.html`'s `LINES`), by her style. **entry**: her first words as her weight comes down, by the contact (`weight.entry.<contact>`; a contact with no row of its own: none); **announce**: a ritual holder names each shift as she telegraphs it ("shifting." or the side it goes to, "left." / "right.", as the engine's shift really goes); **slip**: the hold broke; **longer**: the first slip of a segment (the hold broke, so the engine puts her release off; a tilt is never a slip); **caught**: she felt the commander's own shift (the engine decides it at the segment's end, and the line follows it); **heavy**: she leans in heavier (her pressure rose); **released**: she got off at the commander's limit; **good** / **poor**: her verdict when she is done (most of her shifts met level, at most one slip, or not); **fall**: the commander buckled; **stop**: after the stop word. A model-written `press` cue (her own words) may take **heavy**'s place. Neutral is every style with no rows of its own; cold is silent on every kind, her first words included (Ruling R). One line picked as in §2 (no rng draw). No pronoun and no feeling for the commander.
 
 ### entry
 - **human_chair:** `hold still. I’m reading.`
@@ -520,3 +520,20 @@ Her lines in her hand while she rests her weight on the commander (P10e-e Task 1
 - **fall:** `get up. we’re not done.`
 - **stop:** `fine.`
 - **longer:** `longer. you earned it.`
+
+### cold
+- **released:** silent
+- **slip:** silent
+- **caught:** silent
+- **heavy:** silent
+- **good:** silent
+- **poor:** silent
+- **fall:** silent
+- **stop:** silent
+- **longer:** silent
+- **announce:** silent
+- **entry.human_chair:** silent
+- **entry.footrest:** silent
+- **entry.straddled:** silent
+- **entry.standing_on:** silent
+- **entry.boot_on_chest:** silent

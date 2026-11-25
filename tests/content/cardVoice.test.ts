@@ -108,6 +108,7 @@ function expected(md: string): Map<string, string[]> {
   for (const it of parseVoiceMd(md)) {
     if (it.sec === 8) {
       if (it.heading === 'entry') { put(`weight.entry.${it.label}`, undefined, it.lines); continue; }
+      if (it.label.startsWith('entry.')) { put(`weight.${it.label}`, it.heading, it.lines); continue; } // a style's own first words (cold: silent)
       if (!WEIGHT_KINDS.includes(it.label)) throw new Error(`unmapped weight item: ${it.heading} › ${it.label}`);
       put(`weight.${it.label}`, it.heading === 'neutral' ? undefined : it.heading, it.lines);
       continue;
@@ -198,12 +199,16 @@ describe('cardVoice registry (P10e-e R7)', () => {
     for (const style of ['affectionate', 'ritual', 'playful', 'clinical', 'cruel']) for (const k of WEIGHT_KINDS.filter((x) => x !== 'announce')) expect(rows.some((e) => e.kind === `weight.${k}` && e.style === style), `${k}@${style}`).toBe(true);
     expect(rows.find((e) => e.kind === 'weight.announce')).toMatchObject({ style: 'ritual', lines: ['shifting.', 'left.', 'right.'] }); // read by place: the word, her left, her right
     const entries = rows.filter((e) => String(e.kind).startsWith('weight.entry.'));
-    expect(entries.map((e) => String(e.kind).slice('weight.entry.'.length)).sort()).toEqual(['boot_on_chest', 'footrest', 'human_chair', 'standing_on', 'straddled']);
+    expect(entries.filter((e) => e.style === undefined).map((e) => String(e.kind).slice('weight.entry.'.length)).sort()).toEqual(['boot_on_chest', 'footrest', 'human_chair', 'standing_on', 'straddled']);
     for (const e of entries) {
       const contact = reg.blockingContacts.get(String(e.kind).slice('weight.entry.'.length));
       expect(contact?.face, String(e.kind)).toBeDefined(); // a weight contact (it says which way the commander faces)
-      expect(e.style).toBeUndefined();
+      expect(e.style === undefined || e.style === 'cold').toBe(true);
     }
+    // Ruling R: cold is silent on every kind and every first word
+    const cold = rows.filter((e) => e.style === 'cold');
+    expect(cold).toHaveLength(WEIGHT_KINDS.length + 5);
+    expect(cold.every((e) => (e.lines as string[]).length === 0)).toBe(true);
     expect(CardVoiceSchema.safeParse({ id: 'x', kind: 'weight.entry.human_chair', lines: ['a'] }).success).toBe(true);
     expect(CardVoiceSchema.safeParse({ id: 'x', kind: 'weight.entry.Human Chair', lines: ['a'] }).success).toBe(false);
     for (const e of rows) for (const l of e.lines as string[]) expect(l, String(e.id)).not.toMatch(/\b(he|him|his|himself|he's|she's the commander)\b/i);

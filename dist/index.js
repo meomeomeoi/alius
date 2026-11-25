@@ -10865,7 +10865,7 @@ var CardVoiceSchema = BaseEntrySchema.extend({
   kind: str.refine((k) => CARD_VOICE_KINDS.includes(k) || CARD_VOICE_STATIC.test(k), "an unknown card voice kind"),
   style: str.optional(),
   lines: external_exports.array(str.max(160))
-}).strict().refine((e) => e.lines.length > 0 || e.kind.startsWith("breath.") && e.style !== void 0, "no lines (only a style's own breath row may be empty: she is silent there)");
+}).strict().refine((e) => e.lines.length > 0 || (e.kind.startsWith("breath.") || e.kind.startsWith("weight.")) && e.style !== void 0, "no lines (only a style's own breath or weight row may be empty: she is silent there)");
 registrySchemas.cardVoice = CardVoiceSchema;
 
 // src/engine/onboarding/prologue.ts
@@ -65879,7 +65879,7 @@ function refreshLines2(beat) {
   const lines = {};
   for (const k of WEIGHT_KINDS) lines[k] = own(k);
   for (const [k, cue] of VOICED2) lines[k] = voiced(k, cue);
-  lines.entry = R5.run && R5.run.sourceKind === "contact" ? [...voiceLines(env.registries, `weight.entry.${R5.run.sourceId}`, void 0)] : [];
+  lines.entry = R5.run && R5.run.sourceKind === "contact" ? [...voiceLines(env.registries, `weight.entry.${R5.run.sourceId}`, R5.lineStyle)] : [];
   R5.lines = lines;
 }
 var WEIGHT_KINDS = ["released", "slip", "caught", "heavy", "good", "poor", "fall", "stop", "longer", "announce"];

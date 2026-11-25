@@ -2686,5 +2686,95 @@
     "lines": [
       "longer. you earned it."
     ]
+  },
+  {
+    "id": "weight.released.cold",
+    "kind": "weight.released",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "weight.slip.cold",
+    "kind": "weight.slip",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "weight.caught.cold",
+    "kind": "weight.caught",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "weight.heavy.cold",
+    "kind": "weight.heavy",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "weight.good.cold",
+    "kind": "weight.good",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "weight.poor.cold",
+    "kind": "weight.poor",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "weight.fall.cold",
+    "kind": "weight.fall",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "weight.stop.cold",
+    "kind": "weight.stop",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "weight.longer.cold",
+    "kind": "weight.longer",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "weight.announce.cold",
+    "kind": "weight.announce",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "weight.entry.human_chair.cold",
+    "kind": "weight.entry.human_chair",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "weight.entry.footrest.cold",
+    "kind": "weight.entry.footrest",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "weight.entry.straddled.cold",
+    "kind": "weight.entry.straddled",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "weight.entry.standing_on.cold",
+    "kind": "weight.entry.standing_on",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "weight.entry.boot_on_chest.cold",
+    "kind": "weight.entry.boot_on_chest",
+    "style": "cold",
+    "lines": []
   }
 ]

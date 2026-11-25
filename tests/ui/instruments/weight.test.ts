@@ -456,6 +456,25 @@ describe('the weight instrument on the scene', () => {
     expect(t.q('.alius-weight-hand')!.textContent).not.toContain('her '); // the cue pool's narration is never in her hand
   });
 
+  it('Ruling R: cold is silent on every kind, her first words too; a style with no rows of its own takes neutral\'s', () => {
+    registerPhysicsStyle(() => ({ primary: 'cold' }));
+    const t = draw(hold('human_chair', planOf({})));
+    t.to(2000);
+    expect(_weight.R.lines.entry).toEqual([]);
+    for (const k of ['released', 'slip', 'caught', 'heavy', 'good', 'poor', 'fall', 'stop', 'longer', 'announce']) expect(_weight.R.lines[k], k).toEqual([]);
+    t.to(3500);
+    t.mouse('mouseup', document);
+    t.to(5000);
+    expect(_weight.G.slips).toBeGreaterThan(0);
+    expect(t.q('.alius-weight-hand')!.textContent).toBe('');
+    t.screen.dispose();
+    resetPhysicsHooks();
+    registerPhysicsStyle(() => ({ primary: 'possessive' }));
+    draw(hold('human_chair', planOf({})));
+    expect(_weight.R.lines.entry).toEqual(['hold still. I’m reading.']);
+    expect(_weight.R.lines.slip).toEqual(['careful.']);
+  });
+
   it('views by the contact: face down sees the floor (P10c, by the finish), with her legs for human_chair only; face up the ceiling and her sprite', () => {
     const s = hold('human_chair');
     expect(floorOf(s, reg, 'quarters_commander', ANN)[0]!.file).toMatch(/floor_wood\.webp$/);
