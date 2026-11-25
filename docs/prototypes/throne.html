@@ -2016,6 +2016,8 @@ function throneArt(now) {
   L.style.display = on ? 'block' : 'none'; R.style.display = on && !both ? 'block' : 'none';
   if (!on || !L.naturalWidth) return !!on;
   const vw = innerWidth, vh = innerHeight, t = now / 1000;
+  // the world (and its views) is larger than the screen by #world's inset, for the frame's shake and tilt: place by the screen, offset into the view
+  const view = $('#footrestView'), ox = (view.clientWidth - vw) / 2, oy = (view.clientHeight - vh) / 2;
   const live = G.phase === 'loop' || G.phase === 'entry', reading = live && G.att === 'busy';
   const toward = W.lean * 0.9 + W.cop * 0.5, jolt = W.jolt * 0.4;
   const h = vh * S.aH;
@@ -2032,7 +2034,7 @@ function throneArt(now) {
     // one leg: the picture is her left or her right leg (as it stands on the screen); the other side is its mirror. pair: two pictures, no mirror.
     const flip = (S.legsFeet === 'left' && side > 0) || (S.legsFeet === 'right' && side < 0) ? ' scaleX(-1)' : '';
     el.style.width = `${w}px`; el.style.height = `${h}px`;
-    el.style.transform = `translate(${(cx - w / 2 + dx).toFixed(1)}px, ${(S.aTop * vh + dy).toFixed(1)}px) rotate(${rot.toFixed(2)}deg)${flip}`;
+    el.style.transform = `translate(${(ox + cx - w / 2 + dx).toFixed(1)}px, ${(oy + S.aTop * vh + dy).toFixed(1)}px) rotate(${rot.toFixed(2)}deg)${flip}`;
     el.style.opacity = op;
     el.style.filter = `blur(${(1.2 + strF * 0.8).toFixed(1)}px) brightness(${(0.62 - strF * 0.1).toFixed(2)}) saturate(.85) drop-shadow(0 0 14px rgba(226,78,52,.45))`;
   };
