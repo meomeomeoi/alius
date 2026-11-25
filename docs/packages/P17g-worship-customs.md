@@ -102,6 +102,7 @@ A custom not yet introduced never reaches a prompt.
   - The thing's places stand for hers (a boot: the shaft, the insole, the toe; underwear by its kind).
   - Her scent's band is the item's (P17d).
 - **Her check:** she asks for it back now and then, or smells it; its scent band tells how it was kept.
+- **Recharging (author, 2026-11-25):** a relic's scent fades one band every 2 days (P17d). Giving it back for her to wear again is a rite of exchange: a `rite` anchor, for example at her return from a run. The commander brings it ("it has faded"), and it comes back at full strength after her next slot in it. A relic gone to `faint` draws her reaction by style: a haughty holder takes it back for good, a warm one renews it.
 - **Found:** an inspection of the commander's quarters (P17a) finds it: compromat (P15 §11, at the inspection's site).
 
 ### 2.4 Rites and worship in her absence (`rite`)

@@ -159,6 +159,19 @@ Where it conflicts with the sections above, this section wins. It extends P15a's
 
 The noticing roll stays the depth revision's (closeness, her perceptiveness, strength, time since). **Memory check:** nothing new; noticing writes its facts at the existing discovery site.
 
+**Chosen on 2026-11-25 (author), on top of the table above:**
+- **The commander's scent is a layered state.**
+  - What clings is a stack of **layers** on the commander: whose, which scent (the table's id), where (clothes, hands, neck or hair, face or mouth), how long it still clings.
+  - The commander's own sweat after a run or training is a layer too.
+  - The CMDR file shows "how the commander smells now" in words, never numbers.
+  - A noticing reads the most shameful layer (with the modifiers).
+  - A quick wash removes the layers whose `removed by` is wash; a shower removes all.
+  - A layer is derived and expires by slot. Stored only as `{ unitId, scent, where, untilSlot }` per layer. Absent = none, byte-identical.
+- **A relic trains at a distance (balanced).**
+  - Worship of a relic alone (P17g, the `saturation` instrument in its relic mode) moves the **same** tolerance and stage of P15a §16.8 for the relic's scent kind (socks → `scent_feet`, a shirt → `scent_armpit`, underwear → `scent_intimate`, boots → `scent_boots`).
+  - **It never takes the commander further than she did:** the stage and tolerance from relics rise only up to what was reached with her in person.
+  - At 0.25 of an ordinary exposure, counted at most once a fiction day, and at most +3 tolerance a week from relics.
+
 ## Worship customs (P17g, 2026-11-25)
 
 **P17g** (`docs/packages/P17g-worship-customs.md`) builds customs that extend this package (relics: footwear and underwear among the worn things, consecration, worship of a relic alone, her check; traces). This package builds nothing of them; keep its mechanics readable by P17g (read by field and effect type, hooks where P17g needs them) and do not build the same thing here.
