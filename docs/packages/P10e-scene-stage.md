@@ -84,6 +84,7 @@ Today the PDA cannot be raised during a scene (Tab and OPEN PDA act only on the 
 - Cards keep their content, voices and `data-analyze`; only where they are drawn changes. Their look moves to the scene's language (glass, the speaker's accent, no `[ BRACKETS ]`), voices stay readable (P10 voices).
 - **While the curtain is open** the dock moves to the right of the curtain.
 - **Full-screen moments** (the slap, a wake card after a blackout, her hand-raise cut-in) stay full-screen overlays for their short time; they are the only UI allowed to cover her.
+- **Their look and the posture call (chunk (e), 2026-11-25):** the cards' look, her voice on them and the collapsed edges are §15 "Her cards"; the posture call leaves the dock and becomes a full-frame moment (§15).
 
 ## 7. The posture dial
 
@@ -186,9 +187,9 @@ A reviewer read this spec as a builder would; these answer its questions. They a
 
 A separate design session goes through every mini-game (P15a's seven physics, P16's slap and posture call, P16b's eight) in this new space. Its principle, from this session: **the signal comes from the world** (light, sound, her line, the camera), **the control from the body** (the dial, the mouse), **the gauge on the screen or the input frame**; trackers appear only while their mini-game runs. Examples to start from: weight tilts and sags the whole frame and the commander levels it; the gaze rule makes the cursor the commander's gaze, with everything above her line blurred; stillness turns every key or mouse move into a ripple across the frame; balancing a tray is a liquid level at the bottom of the frame.
 
-## 15. Mini-game instruments: design session (in progress, 2026-11-22/23)
+## 15. Mini-game instruments: design session (done, 2026-11-22/25)
 
-**Status:** being designed in conversation with the author; not yet in the plan. When the design is done it becomes **chunk (e) of P10e** (author's ruling): the instruments are built for the mini-games that exist (P15a's physics, P16's slap and posture call) before P16b, so that P16b and later packages follow this pattern instead of being redesigned. The P10e physics card in the dock stays only as the fallback for a physics with no instrument and for switched-off interactions.
+**Status:** designed with the author (2026-11-22 … 2026-11-25); this section is final and is **chunk (e) of P10e** (author's ruling), planned in `docs/plans/2026-11-25-p10e-e-instruments.md`. The instruments are built for the mini-games that exist (P15a's physics, P16's slap and posture call) before P16b, so that P16b and later packages follow this pattern instead of being redesigned. The P10e physics card in the dock stays only as the fallback for a physics with no instrument and for switched-off interactions. **Chunk (f) of P10e, the stage setup** (sprites, placement, hands and accents, art slots, their fits and zones), is designed after (e)'s plan (see "Decided on 2026-11-25" below).
 
 **The author's principles (verbatim intent):**
 - Every mini-game is varied and **unique**. It can appear in different places. One mini-game can be **several windows, animations, trackers and buttons** at once. There is no single physics panel.
@@ -372,6 +373,15 @@ Smaller ones: the deep inhale (in scent), `pet` (breath's kin), the long kiss (w
 - **Spills** pool; by style she makes the commander lick the floor clean, and every bit licked fills the mouth again; her check is a band of light.
 - **Sound:** the author's recording of a pour into a mug (public domain), a soft and a strong loop mixed by her flow; recorded swallows and splashes.
 
+**Her cards (the dock) in the scene's language (designed with the author on 2026-11-25 and approved in a live prototype after three rounds: `docs/prototypes/cards.html`, normative, its README lists what to port, what is prototype-only and the open engine questions; the texts are `docs/content/card-voice.md`, approved).** A restyle: no card's mechanics, answers, actions or `data-analyze` change, and the PDA's thread keeps its own look (§9).
+- **Glass and her accent:** each card is the dock's glass with a stripe of her accent; her name in her hand heads it, the kind in small caps beside it. The moment and the fallback physics are not hers: a neutral stripe and a line of prose.
+- **Her voice (variant B3, author):** her words (the model's `text`, or her static words for milestones, claims, returns, the envelope) **and the conditions** are in her hand. A condition is never the model's: it is a line of card-voice.md with the engine's value put in, the value in her stronger ink, underlined. Her style has its own lines (three each) for the frequent conditions (when, what it costs, who will know, the weight) and for the posture call; any other condition is a neutral line. The line is picked by a hash of the card (no rng). The order is fixed, and a condition is never left out (a cruel holder still names the cost, P16 R6). Readable mode adds the dry line under each condition.
+- **The commander's answers** are plain pills in the cool accent of the dial, no brackets; sign is a pill held 1.2 s.
+- **Collapsed cards are the edges of her hand (variant V, author):** strips above the open card, newest on top, each with her name in her hand, the kind, the engine's short name and the most urgent condition (a sealed task shows nothing of itself). This fixes the collapsed voice cards that showed only her name. A card with a clock never collapses.
+- **The posture call is a full-frame moment (variant D, author):** her word large in her hand beside her; her foot taps her window (`postureWindowMs`) as sound and as ink dots that close up, the last one too late; her named postures rise from the dial as a fan of cards with the dial's mannequin, each clicked whole; after it, her line by style and outcome. The game of postures (points, drift, presets) stays P16b's.
+- **The dial's circle never moves:** its label hangs under it and wraps (the real corner lets a wide label shift the circle; fixed in (e)).
+- **Hands (author):** every hand of the gallery goes into the game: the six of P10b, six strict print hands and 36 candidates of every kind (`docs/prototypes/assets/hands`), each with a measured size factor (x-height and line width against Caveat).
+
 **Next steps of the session (in order):**
 1. ~~A **live prototype** of breathing~~ (done 2026-11-23; the results are above).
 2. The other mini-games, one by one (breathing, weight, scent, `her_activity`, foot service under the desk, the slap, the jaw, shoe service and gulp done: every mini-game of P15a and P16 has its instrument but the posture call (P16b) and the small kin listed above (`pet`, the long kiss, counted kisses, the ceremony's count), which reuse these instruments. **The posture call waits for P16b** (author, 2026-11-24): its game is P16b's points, drift and presets, so it is designed in P16b's session; chunk (e) only restyles P16's existing call card in step 3 (her word large in her hand, the timer as her foot tapping, the choices as a fan of mannequin cards: a card is clicked whole, so §15's rule against fast clicks on the mannequin holds)), from the controller's idea list of 2026-11-23 (several per game, mixable). The author has not picked these yet:
@@ -383,9 +393,9 @@ Smaller ones: the deep inhale (in scent), `pet` (breath's kin), the long kiss (w
    - ~~**gulp:** to design~~ (built, above);
    - ~~**slap:** the camera snaps to her face, feints as twitches of her shoulder, a red flash and a fading red vignette~~ (built, above);
    - **posture call:** her word written large across the screen, the timer as her foot tapping, choices as a fan of mannequin cards (only as the restyle of step 3; the game waits for P16b).
-3. **Restyle the dock's cards to the scene's language** (the cards of P15/P16/P15a still use `[ BRACKETS ]`, a deviation from §6). Fix the collapsed voice cards that show only the speaker's name.
+3. ~~**Restyle the dock's cards to the scene's language**~~ (done 2026-11-25: "Her cards" above).
 3a. **Decided on 2026-11-25 (author):** the dock's cards in her voice (variant B3, texts in `docs/content/card-voice.md`, approved); collapsed cards are the edges of her hand (variant V: her name, the kind, the engine's gist and the most urgent condition); the posture call is a full-frame moment (variant D) in `docs/prototypes/cards.html` (rounds in progress); **every hand of the gallery goes into the game** (the six of P10b, 36 candidates of every kind and six strict print hands; `docs/prototypes/assets/hands`, each with its size factor measured against Caveat); **the stage setup is chunk (f) of P10e**, designed after (e)'s plan: per woman (are her sprites found, how she stands on the stage, her hand and her accent as data), per art slot (load, fit, zones with the prototypes' marker, a preview in its mini-game, the sidecar saved beside the picture) and a list of every slot with its state; chunk (e) ports the games with their fallbacks (her sprite, automatic zones). The real dial's corner shifts its circle with a wide label (`.alius-stage-dial`): fixed in (e) as `cards.html` does.
-4. Write the design into this spec (this section becomes final), then the **plan of chunk (e)**, then build with the usual scheme: one Sonnet high agent, one Opus review, fast tests, `npm run test:layout`. The plan's tasks port the prototypes in `docs/prototypes/` exactly (code, not prose; author, 2026-11-24: a port that drifts means doing the rounds again), and its review compares the game against them side by side (screenshots at the same settings).
+4. ~~Write the design into this spec~~ (done 2026-11-25), then the **plan of chunk (e)** (`docs/plans/2026-11-25-p10e-e-instruments.md`), then build with the usual scheme: one Sonnet high agent, one Opus review, fast tests, `npm run test:layout`. The plan's tasks port the prototypes in `docs/prototypes/` exactly (code, not prose; author, 2026-11-24: a port that drifts means doing the rounds again), and its review compares the game against them side by side (screenshots at the same settings).
 
 ## Implemented as
 
@@ -425,10 +435,10 @@ Built as the plan describes, in `src/ui/scene/stage/` (the frame, the reply, the
 
 **Open items**
 - The 48 presets, drift and named postures come with P16b; the dial then supplies `target` and `hot`.
-- Each mini-game's instrument comes with the mini-games session (the input frame's gauge API and the dial's dimming while one runs are ready).
+- Each mini-game's instrument comes with chunk (e) (§15; the input frame's gauge API and the dial's dimming while one runs are ready).
 - Using the device in front of her as an act she may notice is a later package.
 - P17c's camera fills the frame, surface and pose-shot layers (empty today) and hides the sprites layer for a POV view.
-- Collapsed voice cards of the dock show only their first child (the speaker's name): a heading line for them is a later polish.
+- Collapsed voice cards of the dock show only their first child (the speaker's name): fixed by chunk (e) (§15 "Her cards": the edges of her hand).
 - The art in the layout test is a placeholder: legibility of the reply over the author's sprites is judged by eye (the bottom gradient is the lever).
 - A card's heading is its first child; a card whose first child is not a heading collapses oddly.
 - No touch or keyboard fallback for looking around; the curtain and the history button work by click.
