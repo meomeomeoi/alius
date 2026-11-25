@@ -236,7 +236,8 @@ describe('the dock on the scene screen', () => {
     t.set(s);
     const card = t.host.querySelector<HTMLElement>('.alius-dock [data-slot="physics"] .alius-physics[data-run]')!;
     expect(card).not.toBeNull();
-    expect((card.firstElementChild as HTMLElement).className).toBe('alius-physics-title');
+    expect((card.firstElementChild as HTMLElement).className).toBe('alius-scard-head'); // P10e-e Task 7: the fallback hold is a scene card (the kind `a hold`, no name)
+    expect(card.querySelector('.alius-scard-kind')!.textContent).toBe('a hold');
     expect(card.querySelector('[data-action="tap"]')).not.toBeNull();
     expect(card.querySelector('[data-action="stop-word"]')).toBeNull();
     const pill = t.host.querySelector<HTMLElement>('.alius-stage-dial [data-stop-word]')!;

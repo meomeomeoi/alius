@@ -458,7 +458,7 @@ Open for e4: a blackout's end is cut short by the scene end; P15a's typing lapse
   - `scenePill(text: string, onclick, attrs): HTMLButtonElement` (`button.alius-pill`).
   - Every existing `data-*` hook and `data-analyze` stays on its element. Answers keep their `data-*-answer` attributes. The text of a pill is the lower-case word of card-voice §4.
 
-- [ ] **Step 1: Write the failing tests** (jsdom, `look: 'scene'`):
+- [x] **Step 1: Write the failing tests** (jsdom, `look: 'scene'`):
   - `a task speaks in her voice`: the card has her name in `.alius-scard-who`, her words, and condition lines in the order `when → cost → lapse`. Each value is a `span.alius-scard-v` with the engine's word (`this evening`, `one slot`, `training together`).
   - `no brackets anywhere`: `/\[\s*[A-Z]/` matches nothing in the dock's text.
   - `a cruel holder still names the cost`: a `button_cost` task of a cruel holder has a cost line.
@@ -468,12 +468,13 @@ Open for e4: a blackout's end is cut short by the scene end; P15a's typing lapse
   - `the answers are the same actions`: clicking `accept` / `refuse` / `talk it over` / `negotiate` / `go` / `yield` / `do it` / `take it instead` calls the same handlers with the same ids as today. `sign` needs a 1.2 s hold (fake timers).
   - `the PDA thread is unchanged`: `drawTaskCards` without `look` gives today's `article.alius-voice` DOM (a snapshot of one card).
   - `analyze coverage`: `markedWithout`, `unresolved` and `unreachable` are empty for a dock with one card of each kind (the helpers of `tests/helpers/analyzeCoverage.ts`); the hidden sentinels are absent (`tests/fixtures/analyze/hidden.ts`).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** (open `docs/prototypes/cards.html` first; its `fidelity.json` lists `gistOf`, `fill`, `linesOf`/`pick` (as `voiceLine`, declared), `bodyOf`'s order, and the tables `NEUTRAL` / `STYLE` against `cardVoice`):
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** (open `docs/prototypes/cards.html` first; its `fidelity.json` lists `gistOf`, `fill`, `linesOf`/`pick` (as `voiceLine`, declared), `bodyOf`'s order, and the tables `NEUTRAL` / `STYLE` against `cardVoice`):
   - Port `cards.html`'s CSS for `.card`, `.head`, `.body`, `.words`, `.cond`, `.v`, `.rule`, `.pill`, `.seal`, `.steps` and `.dry` into `css/64-cards.css`, renamed to `alius-scard-*`, sizes × `--alius-hand-scale`.
   - The key of `voiceLine` is the card's id (`task.id`, `p.id`, `d.id`, `milestone.id`, …).
-- [ ] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS.
-- [ ] **Step 5: Commit** `feat(P10e-e): her cards in the scene's language and her voice`
+- [x] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS.
+- [x] **Step 5: Commit** `feat(P10e-e): her cards in the scene's language and her voice`
+  - *As built:* each draw function takes a last `opts: CardLook = {}` (`{ look?: 'scene' }`, exported from `src/ui/practice/taskCard.ts`); `renderPhysicsPanel` takes `look` in its ctx. `sceneCard` also takes `kindId` (`data-scard-kind` when it is not the word: `moment` for `a moment`, `physics` for `a hold`, `ways` for `what reaches the body`, `return` for `begin again`) and `gist` (written as `data-gist`); `conditionEls`, `herLook`, `runsOf`, `pillWord` are exported beside it. A condition is `{ runs, dry, analyze, ctx?, attrs? }`: the line carries `data-analyze` (focusable) and the draw function's old `data-*` hook (`data-demonstration-audience`, `data-for-unit`, `data-grants`). Ruling E: the punishment's `{Label}.` is the new kind `punishLabel` (card-voice.md §1 weight, "a punishment's name stands above it"); the sealed card's weight reads `weight` as the prototype's `pick(id, 'weight')` does (her style first), so no second kind. `gistOf` is `src/ui/scene/cards/gist.ts` (its `<b>` marks are drawn as elements by the dock, never parsed). The sign pill is `renderSignature({ …, look: 'scene' })`: `button.alius-pill.alius-sign` with a fill that a CSS transition grows over `--alius-sign-ms` (the prototype's rAF fill; the timer is P16's, unchanged). The answered punishment is a scene card with its chip and `undo, not what I meant`; the moment's exposing line is §3 `exposing`; a task shows `when` whatever its form whenever the engine has a deadline (the prototype's words task had none). Not ported: the ceremony's `say it` pill (no handler today: a restyle adds no mechanic). P14's `[ REROLL ]` and the failure chips keep their own look inside the dock. `css/64-cards.css`; `src/ui/scene/instruments/cards/fidelity.json` (gistOf, fill, linesOf, pick as voiceLine, NEUTRAL and STYLE against `cardVoice`).
 
 ### Task 8: Collapsed cards are the edges of her hand
 

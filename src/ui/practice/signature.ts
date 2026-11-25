@@ -8,6 +8,8 @@ export interface SignatureOpts {
   /** The analysis address of the element (a glossary entry). */
   analyze: string;
   ctx?: Record<string, unknown>;
+  /** P10e-e: the scene's look (cards.html `signPill`): a pill whose fill grows left to right while it is held and falls back when let go. */
+  look?: 'scene';
 }
 export type SignatureRenderer = (o: SignatureOpts) => HTMLElement;
 
@@ -28,10 +30,11 @@ export function resetSignature(): void {
  * `alius-signing`, which the reduced-motion rule stops moving). It is a native button, so it is reachable by keyboard.
  */
 function holdButton(o: SignatureOpts): HTMLElement {
+  const scene = o.look === 'scene';
   const button = h('button', {
-    type: 'button', class: 'alius-btn alius-tagchip alius-sign', 'data-task-sign': '', 'aria-label': 'Sign: hold to sign',
+    type: 'button', class: scene ? 'alius-pill alius-sign' : 'alius-btn alius-tagchip alius-sign', 'data-task-sign': '', 'aria-label': 'Sign: hold to sign',
     style: `--alius-sign-ms: ${TUNING.practice.sign.holdMs}ms`, ...analyzeNative(o.analyze, o.ctx),
-  }, '[ SIGN ]');
+  }, ...(scene ? [h('i', { class: 'alius-pill-fill', 'aria-hidden': 'true' }), h('span', {}, 'sign')] : ['[ SIGN ]']));
   let timer: ReturnType<typeof setTimeout> | undefined;
   const stop = (): void => {
     if (timer !== undefined) clearTimeout(timer);

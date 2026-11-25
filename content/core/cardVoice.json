@@ -93,6 +93,13 @@
     ]
   },
   {
+    "id": "punish_label",
+    "kind": "punishLabel",
+    "lines": [
+      "{Label}."
+    ]
+  },
+  {
     "id": "no_length",
     "kind": "noLength",
     "lines": [

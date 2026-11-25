@@ -13,6 +13,26 @@ import { VOICE_OF } from '../voice/sources';
 import { renderDisciplineMenu } from '../discipline/menu';
 import { renderVoiceCard, unitAccent } from '../voice/voiceCard';
 import { plainDraft } from '../../content/draft';
+import { practiceOf } from '../../engine/dynamic/profile';
+import { voiceLine, type VoiceKind, type VoiceRun } from '../scene/cards/voice';
+import { gistOf } from '../scene/cards/gist';
+import { herLook, scenePill, sceneCard, type SceneCondition } from '../scene/cards/sceneCard';
+import type { CardLook } from '../practice/taskCard';
+
+/** Her static words of card-voice.md §3 (`static.*`), filled with her name; null when the registry has none for this key. */
+function staticWords(state: CampaignState, reg: Registries, unitId: string, kind: VoiceKind, key: string, name: string): VoiceRun[] | null {
+  const runs = voiceLine(reg, kind, practiceOf(state, reg, unitId)?.style.primary, key, { name });
+  return runs.length > 0 ? runs : null;
+}
+
+/** The hooks every card of hers carries, the same in both looks. */
+function finish(card: HTMLElement, classes: string[], attrs: Record<string, string>, label: string, analyze: string, live: Record<string, unknown>): void {
+  card.classList.add(...classes);
+  for (const [k, v] of Object.entries(attrs)) card.setAttribute(k, v);
+  card.setAttribute('role', 'group');
+  card.setAttribute('aria-label', label);
+  for (const [k, v] of Object.entries(analyzeAttrs(analyze, live))) card.setAttribute(k, v);
+}
 
 export interface MilestoneCardCtx {
   state: CampaignState;
@@ -27,11 +47,25 @@ export interface MilestoneCardCtx {
  * The card is addressed by its milestone (the vow by the glossary's vow); both buttons are addressed by the glossary's milestone. The same
  * answer can be given in words in the scene or the thread; the card is the other way to give it.
  */
-export function renderMilestoneCard(host: HTMLElement, ctx: MilestoneCardCtx): void {
+export function renderMilestoneCard(host: HTMLElement, ctx: MilestoneCardCtx, opts: CardLook = {}): void {
   const { state, reg, milestone } = ctx;
   const entry = reg.dynamicMilestones.get(milestone.milestoneId) as unknown as DynamicMilestoneEntry | undefined;
   const unit = state.squad.find((u) => u.id === milestone.unitId);
   if (entry === undefined || unit === undefined) return;
+  if (opts.look === 'scene') {
+    // P10e-e Task 7: her step (or her vow) in the scene's look: her static words (card-voice.md §3), else the milestone's text; accept · refuse
+    const live = { unitId: unit.id };
+    const pill = (kind: 'accept' | 'refuse'): HTMLElement => scenePill(kind, () => ctx.onAnswer(kind), { 'data-milestone-answer': kind, 'data-milestone': milestone.id, ...analyzeNative('glossary:milestone', live) });
+    const text = plainDraft(entry.text).replaceAll('{name}', unit.displayName);
+    const card = sceneCard({
+      her: herLook(state, reg, unit.id), kind: entry.sworn === true ? 'vow' : 'step', conditions: [], answers: [pill('accept'), pill('refuse')],
+      words: staticWords(state, reg, unit.id, `static.milestone.${entry.id}`, milestone.id, unit.displayName) ?? text,
+      gist: gistOf({ kind: 'milestone', gist: text.replace(/[.\s]+$/, '') }) ?? '',
+    });
+    finish(card, ['alius-milestone'], { 'data-milestone': milestone.id }, `${unit.displayName} asks something of the commander`, entry.sworn === true ? 'glossary:vow' : `dynamicMilestones:${entry.id}`, live);
+    host.append(card);
+    return;
+  }
   const button = (kind: 'accept' | 'refuse', text: string): HTMLElement => h('button', {
     type: 'button', class: 'alius-btn alius-tagchip', 'data-milestone-answer': kind, 'data-milestone': milestone.id,
     ...analyzeNative('glossary:milestone', { unitId: unit.id }),
@@ -51,12 +85,12 @@ export function renderMilestoneCard(host: HTMLElement, ctx: MilestoneCardCtx): v
 
 /** Draws the open milestones of the units `pick` chooses (a scene's participants, one thread), replacing what `host` held. */
 export function drawMilestoneCards(
-  host: HTMLElement, state: CampaignState, reg: Registries, pick: (c: { unitId: string }) => boolean, onAnswer: (milestoneId: string, answer: 'accept' | 'refuse') => void,
+  host: HTMLElement, state: CampaignState, reg: Registries, pick: (c: { unitId: string }) => boolean, onAnswer: (milestoneId: string, answer: 'accept' | 'refuse') => void, opts: CardLook = {},
 ): void {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const milestone of state.dynamic?.open.milestones ?? []) {
-    if (pick({ unitId: milestone.unitId })) renderMilestoneCard(host, { state, reg, milestone, onAnswer: (a) => onAnswer(milestone.id, a) });
+    if (pick({ unitId: milestone.unitId })) renderMilestoneCard(host, { state, reg, milestone, onAnswer: (a) => onAnswer(milestone.id, a) }, opts);
   }
 }
 
@@ -78,12 +112,34 @@ const SUBMIT_WORDS = 'AUTHOR TO WRITE: {name} has asked enough times. She waits 
  * glossary's term for each capability, each addressable), and `[ YIELD ]` `[ REFUSE ]` `[ TALK ]`. The submit claim at `rule` is the same card
  * with her words and no domain. It shows no number and no id. TALK opens a one-to-one scene; the card stays until she is answered.
  */
-export function renderClaimCard(host: HTMLElement, ctx: ClaimCardCtx): void {
+export function renderClaimCard(host: HTMLElement, ctx: ClaimCardCtx, opts: CardLook = {}): void {
   const { state, reg, claim } = ctx;
   const unit = state.squad.find((u) => u.id === claim.unitId);
   const entry = claim.domainId === undefined ? undefined : (reg.dynamicDomains.get(claim.domainId) as unknown as DynamicDomainEntry | undefined);
   if (unit === undefined || (claim.domainId !== undefined && entry === undefined)) return;
   const live = { unitId: unit.id };
+  if (opts.look === 'scene') {
+    // P10e-e Task 7 (cards.html `bodyOf`, case `claim`): her static words for the domain (or the submit claim), then `You'd give me:` and each grant as `· {grant}`
+    const pill = (kind: ClaimAnswer, text: string): HTMLElement => scenePill(text, () => ctx.onAnswer(kind), { 'data-claim-answer': kind, 'data-claim': claim.id, ...analyzeNative('glossary:claim', live) });
+    const fallback = plainDraft(entry?.text ?? SUBMIT_WORDS).replaceAll('{name}', unit.displayName);
+    const words = staticWords(state, reg, unit.id, entry === undefined ? 'static.claim.submit' : `static.claim.${entry.id}`, claim.id, unit.displayName) ?? fallback;
+    const conditions: SceneCondition[] = [];
+    const grants = entry?.grants ?? [];
+    if (grants.length > 0) {
+      conditions.push({ runs: voiceLine(reg, 'grants', practiceOf(state, reg, unit.id)?.style.primary, claim.id, {}), dry: 'What she would hold:', analyze: 'glossary:claim', ctx: live });
+      for (const cap of grants) {
+        const term = String(reg.glossary.get(`capability_${cap}`)?.term ?? cap);
+        conditions.push({ runs: [{ text: '· ' }, { text: term.toLowerCase(), value: true }], dry: term, analyze: `glossary:capability_${cap}`, ctx: live, attrs: { 'data-grants': cap } });
+      }
+    }
+    const card = sceneCard({
+      her: herLook(state, reg, unit.id), kind: 'claim', words, conditions, answers: [pill('yield', 'yield'), pill('refuse', 'refuse'), pill('talk', 'talk it over')],
+      gist: gistOf({ kind: 'claim', domain: entry === undefined ? 'everything' : String(entry.label).toLowerCase() }) ?? '',
+    });
+    finish(card, ['alius-claim'], { 'data-claim': claim.id }, `${unit.displayName} asks something of the commander`, entry === undefined ? 'glossary:claim' : `dynamicDomains:${entry.id}`, live);
+    host.append(card);
+    return;
+  }
   const button = (kind: ClaimAnswer, text: string): HTMLElement => h('button', {
     type: 'button', class: 'alius-btn alius-tagchip', 'data-claim-answer': kind, 'data-claim': claim.id,
     ...analyzeNative('glossary:claim', live),
@@ -107,12 +163,12 @@ export function renderClaimCard(host: HTMLElement, ctx: ClaimCardCtx): void {
 
 /** Draws the open claims of the units `pick` chooses (a scene's participants, one thread), replacing what `host` held. */
 export function drawClaimCards(
-  host: HTMLElement, state: CampaignState, reg: Registries, pick: (c: { unitId: string }) => boolean, onAnswer: (claimId: string, answer: ClaimAnswer) => void,
+  host: HTMLElement, state: CampaignState, reg: Registries, pick: (c: { unitId: string }) => boolean, onAnswer: (claimId: string, answer: ClaimAnswer) => void, opts: CardLook = {},
 ): void {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const claim of state.dynamic?.open.claims ?? []) {
-    if (pick({ unitId: claim.unitId })) renderClaimCard(host, { state, reg, claim, onAnswer: (a) => onAnswer(claim.id, a) });
+    if (pick({ unitId: claim.unitId })) renderClaimCard(host, { state, reg, claim, onAnswer: (a) => onAnswer(claim.id, a) }, opts);
   }
 }
 
@@ -136,11 +192,25 @@ const RETURN_WORDS: Readonly<Record<OpenReturn['terms'], string>> = {
  * Her return offer as a card in her voice (P15, plan R15b): what she offers, in her words by the terms, and `[ ACCEPT ]` `[ REFUSE ]`. Appends one
  * card to `host`. It shows nothing of the numbers behind it. Every part is addressed by the glossary's aftermath.
  */
-export function renderReturnCard(host: HTMLElement, ctx: ReturnCardCtx): void {
+export function renderReturnCard(host: HTMLElement, ctx: ReturnCardCtx, opts: CardLook = {}): void {
   const { state, offer } = ctx;
   const unit = state.squad.find((u) => u.id === offer.unitId);
   if (unit === undefined) return;
   const live = { unitId: unit.id };
+  if (opts.look === 'scene') {
+    // P10e-e Task 7: her return in the scene's look: her static words by the terms (card-voice.md §3); accept · refuse
+    const reg = ctx.reg;
+    const pill = (kind: ReturnAnswer): HTMLElement => scenePill(kind, () => ctx.onAnswer(kind), { 'data-return-answer': kind, 'data-return': offer.id, ...analyzeNative('glossary:aftermath', live) });
+    const runs = staticWords(state, reg, unit.id, `static.return.${offer.terms}`, offer.id, unit.displayName);
+    const words = runs ?? plainDraft(RETURN_WORDS[offer.terms]).replaceAll('{name}', unit.displayName);
+    const card = sceneCard({
+      her: herLook(state, reg, unit.id), kind: 'begin again', kindId: 'return', words, conditions: [], answers: [pill('accept'), pill('refuse')],
+      gist: gistOf({ kind: 'return', gist: (typeof words === 'string' ? words : words.map((r) => r.text).join('')).replace(/[.\s]+$/, '') }) ?? '',
+    });
+    finish(card, ['alius-return'], { 'data-return': offer.id }, `${unit.displayName} offers to begin again`, 'glossary:aftermath', live);
+    host.append(card);
+    return;
+  }
   const button = (kind: ReturnAnswer, text: string): HTMLElement => h('button', {
     type: 'button', class: 'alius-btn alius-tagchip', 'data-return-answer': kind, 'data-return': offer.id,
     ...analyzeNative('glossary:aftermath', live),
@@ -160,12 +230,12 @@ export function renderReturnCard(host: HTMLElement, ctx: ReturnCardCtx): void {
 
 /** Draws her return offer when `pick` chooses her (a scene's participants, one thread), replacing what `host` held. */
 export function drawReturnCards(
-  host: HTMLElement, state: CampaignState, reg: Registries, pick: (c: { unitId: string }) => boolean, onAnswer: (answer: ReturnAnswer) => void,
+  host: HTMLElement, state: CampaignState, reg: Registries, pick: (c: { unitId: string }) => boolean, onAnswer: (answer: ReturnAnswer) => void, opts: CardLook = {},
 ): void {
   host.replaceChildren();
   const offer = state.dynamic?.open.returnOffer;
   if (!dynamicOn(state, reg) || offer === undefined || !pick({ unitId: offer.unitId })) return;
-  renderReturnCard(host, { state, reg, offer, onAnswer });
+  renderReturnCard(host, { state, reg, offer, onAnswer }, opts);
 }
 
 

@@ -13,6 +13,8 @@ import { motionReduced } from '../motion';
 import { clockText, STRATEGIES } from '../../engine/physics/marathon';
 import { exposedKinds } from '../../engine/physics/stimuli';
 import { actsFor } from '../../engine/physics/acts';
+import { pillWord, sceneCard } from './cards/sceneCard';
+import { gistOf } from './cards/gist';
 
 /** What the panel needs of the staging controller (the controller passes it as it is). */
 export interface PhysicsPanelStaging {
@@ -48,6 +50,17 @@ export interface PhysicsPanelCtx {
    * and asks this panel only whether the stop word is offered (the return value).
    */
   stopWord?: boolean;
+  /**
+   * P10e-e Task 7: the scene's look (cards.html: the fallback hold is not her voice): a neutral card, the kind `a hold` (or `what reaches the body`), her cue as its
+   * one line of prose, the controls as plain pills. Absent = today's card.
+   */
+  look?: 'scene';
+}
+
+/** A button of the panel: today's `[ WORD ]`, or in the scene's look a pill with the word in lower case (the same hooks and handlers). */
+function btn(ctx: Pick<PhysicsPanelCtx, 'look'>, attrs: Record<string, unknown>, text: string): HTMLElement {
+  if (ctx.look !== 'scene') return h('button', attrs, text);
+  return h('button', { ...attrs, class: String(attrs.class ?? '').replace(/\balius-btn\b/, 'alius-pill') }, h('span', {}, pillWord(text)));
 }
 
 interface Control { kind: InputKind | 'wait'; text: string; part?: string; relief?: true; main?: true }
@@ -151,7 +164,7 @@ export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): boo
   const secondPhys = run.second ? reg.contactPhysics.get(run.second.physicsId) : undefined;
   const owned = running ? [...controlsOf(interaction, run), ...(run.second && secondPhys ? controlsOf(String(secondPhys.interaction), { ...run, physicsId: run.second.physicsId, ...(run.second.seal ? { seal: run.second.seal } : {}) }) : [])] : [];
   const controls: Control[] = running ? [...owned.filter((c, i) => owned.findIndex((o) => o.kind === c.kind && o.part === c.part) === i), { kind: 'wait', text: '[ WAIT ]' }] : [];
-  const button = (c: Control): HTMLElement => h('button', {
+  const button = (c: Control): HTMLElement => btn(ctx, {
     type: 'button', class: 'alius-btn alius-option alius-physics-input', 'data-input': c.kind, ...(c.part !== undefined ? { 'data-part': c.part } : {}), ...stamp(c.kind),
     ...(realtime ? { onpointerdown: () => press(c), onpointerup: () => letGo(), onpointerleave: () => letGo() } : { onclick: () => press(c) }),
   }, c.text);
@@ -165,24 +178,40 @@ export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): boo
   const cueLine = cue !== undefined ? staging.cue(cue, pointer.beat) : null;
   const gauge = (reg.contactPhysics.get(run.physicsId)?.gauge as { kind: string } | undefined)?.kind;
 
-  const root = h('div', {
-    class: `alius-physics${tremor ? ' alius-physics-tremor' : ''}${tint ? ' alius-physics-tint' : ''}`, role: 'group', 'aria-label': 'A hold', 'data-run': run.id,
-  },
-    h('div', { class: 'alius-physics-title' }, `[ ${[phys?.label ?? run.physicsId, ...(secondPhys ? [secondPhys.label] : [])].map((x) => String(x).toUpperCase()).join(' + ')} ]`),
+  const label = [phys?.label ?? run.physicsId, ...(secondPhys ? [secondPhys.label] : [])].map((x) => String(x));
+  const parts = [
     run.marathon ? h('p', { class: 'alius-physics-clock', ...analyzeAttrs('glossary:marathon') }, run.marathon.hours === 'unknown' ? `${clockText(run.marathon.clockMin)} …` : `${clockText(run.marathon.clockMin)}`) : null,
     run.marathon?.summary !== undefined ? h('p', { class: 'alius-physics-summary alius-dim' }, run.marathon.summary) : null,
     run.marathon?.waiting ? h('div', { class: 'alius-physics-strategies', role: 'group', 'aria-label': 'How to spend the stretch' },
-      ...STRATEGIES.map((st) => h('button', { type: 'button', class: 'alius-btn alius-option alius-physics-strategy', 'data-strategy': st, ...analyzeNative('glossary:marathon_strategy', { strategy: st }), onclick: () => { staging.skip(st); } }, `[ ${STRATEGY_TEXT[st]} ]`))) : null,
+      ...STRATEGIES.map((st) => btn(ctx, { type: 'button', class: 'alius-btn alius-option alius-physics-strategy', 'data-strategy': st, ...analyzeNative('glossary:marathon_strategy', { strategy: st }), onclick: () => { staging.skip(st); } }, `[ ${STRATEGY_TEXT[st]} ]`))) : null,
     run.segment.state === 'held' && !run.marathon?.waiting ? h('p', { class: 'alius-physics-held alius-dim', role: 'status' }, 'She takes her time.') : null,
-    cueLine !== null && cueLine !== '' ? h('p', { class: 'alius-physics-cue', role: 'status' }, cueLine) : null,
     running && !realtime ? h('div', { class: 'alius-physics-beats', 'aria-hidden': 'true' }, ...Array.from({ length: total }, (_, i) => h('span', { class: i < pointer.beat ? 'alius-pip alius-pip-done' : 'alius-pip' }, i < pointer.beat ? '●' : '○'))) : null,
     ctx.settings.showRawValues ? h('p', { class: 'alius-physics-raw alius-dim' }, `${gauge ?? 'gauge'}: ${Math.round(run.gauge)} / ${run.capacity}`) : null,
     ...wayGroups(ctx, exposedKinds(state, reg)),
-    h('div', { class: 'alius-physics-controls' },
-      ...controls.map(button),
-      h('button', { type: 'button', class: 'alius-btn alius-option alius-physics-tap', 'data-action': 'tap', ...analyzeNative('glossary:tap_signal'), onclick: () => ctx.onTap() }, '[ TAP ]'),
-      ...(ctx.stopWord !== false ? [h('button', { type: 'button', class: 'alius-btn alius-option alius-physics-stop', 'data-action': 'stop-word', ...analyzeNative('glossary:stop_word'), onclick: () => { staging.stopWord(); } }, '[ STOP WORD ]')] : [])),
-  ) as HTMLElement;
+  ];
+  const controlEls = [
+    ...controls.map(button),
+    btn(ctx, { type: 'button', class: 'alius-btn alius-option alius-physics-tap', 'data-action': 'tap', ...analyzeNative('glossary:tap_signal'), onclick: () => ctx.onTap() }, '[ TAP ]'),
+    ...(ctx.stopWord !== false ? [btn(ctx, { type: 'button', class: 'alius-btn alius-option alius-physics-stop', 'data-action': 'stop-word', ...analyzeNative('glossary:stop_word'), onclick: () => { staging.stopWord(); } }, '[ STOP WORD ]')] : []),
+  ];
+  const cls = `alius-physics${tremor ? ' alius-physics-tremor' : ''}${tint ? ' alius-physics-tint' : ''}`;
+  let root: HTMLElement;
+  if (ctx.look === 'scene') {
+    // the fallback hold in the scene (cards.html, case `physics`): a neutral card, the kind, her cue as its prose; what else it holds; the controls as pills
+    root = sceneCard({
+      kind: 'a hold', kindId: 'physics', conditions: [], answers: [h('div', { class: 'alius-physics-controls' }, ...controlEls)], gist: gistOf({ kind: 'physics', label: label.join(' + ').toLowerCase() }) ?? '',
+      ...(cueLine !== null && cueLine !== '' ? { prose: cueLine } : {}), extra: parts.filter((p): p is HTMLElement => p !== null),
+    });
+    root.classList.add(...cls.split(' '));
+    root.setAttribute('role', 'group');
+    root.setAttribute('aria-label', 'A hold');
+    root.setAttribute('data-run', run.id);
+  } else {
+    root = h('div', { class: cls, role: 'group', 'aria-label': 'A hold', 'data-run': run.id },
+      h('div', { class: 'alius-physics-title' }, `[ ${label.map((x) => x.toUpperCase()).join(' + ')} ]`),
+      ...parts.slice(0, 4), cueLine !== null && cueLine !== '' ? h('p', { class: 'alius-physics-cue', role: 'status' }, cueLine) : null, ...parts.slice(4),
+      h('div', { class: 'alius-physics-controls' }, ...controlEls));
+  }
   root.style.setProperty('--alius-air', String(Math.round(remaining * 100) / 100));
   root.style.setProperty('--alius-strain', String(Math.round(strain * 100) / 100));
   host.replaceChildren(root);
@@ -252,7 +281,7 @@ function wayGroups(ctx: PhysicsPanelCtx, exposures: ReturnType<typeof exposedKin
     const plain = WAY_BUTTONS.filter((b) => (b.family === 'taste') === taste || b.way === 'avoid' || b.way === 'secret').filter((b) => !(taste && (b.way === 'sniff' || b.way === 'nuzzle')));
     const push = (way: string, depth?: number | string) => () => { staging.stimulus(way, ex.kind, depth); };
     const inhale: HTMLElement[] = taste || !inhaleOn ? [] : realtime
-      ? [h('button', {
+      ? [btn(ctx, {
         type: 'button', class: 'alius-btn alius-option alius-way', 'data-way': 'inhale', ...stamp('inhale'),
         onpointerdown: (e: Event) => { inhaling.set(e.currentTarget as HTMLElement, now()); },
         onpointerup: (e: Event) => {
@@ -261,10 +290,10 @@ function wayGroups(ctx: PhysicsPanelCtx, exposures: ReturnType<typeof exposedKin
           if (t !== undefined) staging.stimulus('inhale', ex.kind, Math.min(100, Math.round(((now() - t) / TUNING.stimuli.inhale.fillMs) * 100)));
         },
       }, '[ HOLD TO INHALE ]')]
-      : DEPTHS.map(([d, text]) => h('button', { type: 'button', class: 'alius-btn alius-option alius-way', 'data-way': 'inhale', 'data-depth': d, ...stamp('inhale'), onclick: push('inhale', d) }, text));
+      : DEPTHS.map(([d, text]) => btn(ctx, { type: 'button', class: 'alius-btn alius-option alius-way', 'data-way': 'inhale', 'data-depth': d, ...stamp('inhale'), onclick: push('inhale', d) }, text));
     return h('div', { class: 'alius-physics-ways', 'data-kind': ex.kind, role: 'group', 'aria-label': String(kind?.label ?? ex.kind) },
       h('span', { class: 'alius-dim' }, `${String(kind?.label ?? ex.kind)}: `),
-      ...plain.map((b) => h('button', { type: 'button', class: 'alius-btn alius-option alius-way', 'data-way': b.way, ...stamp(b.way), onclick: push(b.way) }, b.text)),
+      ...plain.map((b) => btn(ctx, { type: 'button', class: 'alius-btn alius-option alius-way', 'data-way': b.way, ...stamp(b.way), onclick: push(b.way) }, b.text)),
       ...inhale);
   }) as HTMLElement[];
 }
@@ -279,12 +308,23 @@ function drawWays(host: HTMLElement, ctx: PhysicsPanelCtx, exposures: ReturnType
     host.replaceChildren();
     return;
   }
+  if (ctx.look === 'scene') {
+    const card = sceneCard({
+      kind: 'what reaches the body', kindId: 'ways', conditions: [], extra: [...ways, ...acts], gist: 'what reaches the body',
+      answers: own ? [h('div', { class: 'alius-physics-controls' }, btn(ctx, { type: 'button', class: 'alius-btn alius-option alius-physics-stop', 'data-action': 'stop-word', ...analyzeNative('glossary:stop_word'), onclick: () => { ctx.staging.stopWord(); } }, '[ STOP WORD ]'))] : [],
+    });
+    card.classList.add('alius-physics');
+    card.setAttribute('role', 'group');
+    card.setAttribute('aria-label', 'What reaches the body');
+    host.replaceChildren(card);
+    return;
+  }
   host.replaceChildren(h('div', { class: 'alius-physics', role: 'group', 'aria-label': 'What reaches the body' },
     h('div', { class: 'alius-physics-title' }, 'WHAT REACHES THE BODY'),
     ...ways,
     ...acts,
     own ? h('div', { class: 'alius-physics-controls' },
-      h('button', { type: 'button', class: 'alius-btn alius-option alius-physics-stop', 'data-action': 'stop-word', ...analyzeNative('glossary:stop_word'), onclick: () => { ctx.staging.stopWord(); } }, '[ STOP WORD ]')) : null));
+      btn(ctx, { type: 'button', class: 'alius-btn alius-option alius-physics-stop', 'data-action': 'stop-word', ...analyzeNative('glossary:stop_word'), onclick: () => { ctx.staging.stopWord(); } }, '[ STOP WORD ]')) : null));
 }
 
 const ACT_TEXT: Record<string, string> = {
@@ -302,9 +342,9 @@ function actRow(host: HTMLElement, ctx: PhysicsPanelCtx): HTMLElement[] {
     const tally = tallies.get(host) ?? 0;
     const field = h('input', { type: 'number', name: 'counted', class: 'alius-input alius-num', 'aria-label': 'The count', min: '0', step: '1' }) as HTMLInputElement;
     return [h('div', { class: 'alius-physics-acts alius-physics-count', role: 'group', 'aria-label': 'Counted kisses' },
-      h('button', { type: 'button', class: 'alius-btn alius-option alius-act', 'data-act': 'tally', ...analyzeNative('glossary:counted_kisses'), onclick: () => { tallies.set(host, tally + 1); renderPhysicsPanel(host, ctx); } }, `[ KISS ] ${tally}`),
+      btn(ctx, { type: 'button', class: 'alius-btn alius-option alius-act', 'data-act': 'tally', ...analyzeNative('glossary:counted_kisses'), onclick: () => { tallies.set(host, tally + 1); renderPhysicsPanel(host, ctx); } }, `[ KISS ] ${tally}`),
       field,
-      h('button', { type: 'button', class: 'alius-btn alius-option alius-act', 'data-act': 'finish', ...analyzeNative('glossary:counted_kisses'), onclick: () => {
+      btn(ctx, { type: 'button', class: 'alius-btn alius-option alius-act', 'data-act': 'finish', ...analyzeNative('glossary:counted_kisses'), onclick: () => {
         const n = Number(field.value);
         tallies.delete(host);
         if (field.value.trim() !== '' && Number.isFinite(n)) {
@@ -316,5 +356,5 @@ function actRow(host: HTMLElement, ctx: PhysicsPanelCtx): HTMLElement[] {
   const acts = actsFor(state, ctx.registries);
   if (acts.length === 0) return [];
   return [h('div', { class: 'alius-physics-acts', role: 'group', 'aria-label': 'Acts of the mouth' },
-    ...acts.map((k) => h('button', { type: 'button', class: 'alius-btn alius-option alius-act', 'data-act': k, ...analyzeNative('glossary:mouth_act', { kind: k }), onclick: () => { tallies.delete(host); ctx.staging.act(k); } }, ACT_TEXT[k] ?? k)))];
+    ...acts.map((k) => btn(ctx, { type: 'button', class: 'alius-btn alius-option alius-act', 'data-act': k, ...analyzeNative('glossary:mouth_act', { kind: k }), onclick: () => { tallies.delete(host); ctx.staging.act(k); } }, ACT_TEXT[k] ?? k)))];
 }

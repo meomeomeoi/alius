@@ -15,6 +15,15 @@ import { renderVoiceCard, unitAccent } from '../voice/voiceCard';
 import type { GenerationUi } from '../generation/surface';
 import { drawPracticeChips, drawPracticeReroll } from './generation';
 import { renderSignature } from './signature';
+import { cardWhen } from '../scene/cards/when';
+import { voiceLine, type VoiceKind, type VoiceRun } from '../scene/cards/voice';
+import { gistOf } from '../scene/cards/gist';
+import { herLook, scenePill, sceneCard, type SceneCondition } from '../scene/cards/sceneCard';
+
+/** P10e-e: how a card is drawn: `scene` is the scene's own look (`sceneCard`, her voice); absent = the device's (today's DOM). */
+export interface CardLook {
+  look?: 'scene';
+}
 
 export type TaskAnswer = 'accept' | 'refuse' | 'talk';
 
@@ -66,7 +75,11 @@ function closesOf(task: Task): string {
  * accepted in words, and a signed task shows `[ SIGN ]` (press and hold) only after the words were said. REFUSE and TALK (not on an envelope) answer as asked. It shows no number but the
  * slots a task takes and no pronoun for the commander. Every part is addressed by the glossary.
  */
-export function renderTaskCard(host: HTMLElement, ctx: TaskCardCtx): void {
+export function renderTaskCard(host: HTMLElement, ctx: TaskCardCtx, opts: CardLook = {}): void {
+  if (opts.look === 'scene') {
+    renderSceneTaskCard(host, ctx);
+    return;
+  }
   const { state, reg, task } = ctx;
   const unit = state.squad.find((u) => u.id === task.holderId);
   if (unit === undefined) return;
@@ -128,6 +141,99 @@ export function renderTaskCard(host: HTMLElement, ctx: TaskCardCtx): void {
   host.append(card);
 }
 
+/** The slots a task takes as her card says them (card-voice.md `{slots}`: `one slot` · `two slots` …, never a digit). */
+const slotWords = (n: number): string => `${n === 1 ? 'one' : NUMBER_WORDS[n] ?? String(n)} slot${n === 1 ? '' : 's'}`;
+
+/** "Bea", "Bea and Cat", "Bea, Cat and Dee" (cards.html `names`). */
+export const joinNames = (a: string[]): string => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
+
+/**
+ * P10e-e Task 7: the offered task in the scene's look (cards.html `bodyOf`, case `task` / `sealed`): her words, then her conditions in the fixed
+ * order (when → what it costs → who will know → the proof → what a signed one hands over → say it → no length), each her own line with the
+ * engine's value; the answers as pills (accept · refuse · talk it over; cancel for a handover; sign held). A sealed one is the envelope: her
+ * sealed line, the weight unless she is cruel or vindictive, the track for an affectionate holder; never its text or summary.
+ */
+function renderSceneTaskCard(host: HTMLElement, ctx: TaskCardCtx): void {
+  const { state, reg, task } = ctx;
+  const unit = state.squad.find((u) => u.id === task.holderId);
+  if (unit === undefined) return;
+  const live = { unitId: unit.id };
+  const sealed = task.sealed === true;
+  const style = practiceOf(state, reg, unit.id)?.style.primary;
+  const line = (kind: VoiceKind, vals: Record<string, string>): VoiceRun[] => voiceLine(reg, kind, style, task.id, vals);
+  const conditions: SceneCondition[] = [];
+  const cond = (kind: VoiceKind, vals: Record<string, string>, dry: string, analyze: string, attrs?: Record<string, string>): void => {
+    conditions.push({ runs: line(kind, vals), dry, analyze, ctx: live, ...(attrs ? { attrs } : {}) });
+  };
+  const ladder = task.acceptForm === 'words' ? 'glossary:accept_words' : task.acceptForm === 'signed' ? 'glossary:accept_signed' : sealed ? 'glossary:sealed' : 'glossary:consent_ladder';
+  const pill = (kind: TaskAnswer, text: string, onclick: () => void, address: string): HTMLElement => scenePill(text, onclick, { 'data-task-answer': kind, 'data-task': task.id, ...analyzeNative(address, live) });
+  const when = task.kind === 'hold' ? null : cardWhen(deadlineShown(task) ?? undefined, state.day); // a hold's deadline is when the card goes stale, not when the hold is due
+  let words: VoiceRun[] | string = plainDraft(task.text);
+  if (sealed) {
+    words = line('sealed', {});
+    const label = String(reg.dynamicTracks.get(task.track)?.label ?? '');
+    if (!SPARE_STYLES.includes(String(style))) cond('weight', { weight: WEIGHT_WORDS[task.stakes] }, `Weight: ${WEIGHT_WORDS[task.stakes]}.`, 'glossary:sealed');
+    if (style === 'affectionate' && label !== '') cond('sealedTrack', { track: label.toLowerCase() }, `About: ${label}.`, 'glossary:sealed');
+  } else {
+    if (when !== null) cond('when', { when }, `Due: ${when}.`, 'glossary:practice_task');
+    if (task.acceptForm === 'button_cost') {
+      const hiddenHold = task.kind === 'hold' && task.noDuration === true;
+      const cost = taskCost(state, reg, task);
+      if (hiddenHold) { // a hold with no duration: its slots are its hidden end, and what lapses would tell its length (R16)
+        cond('costHold', {}, "Takes the commander's time until she decides.", 'glossary:consent_ladder');
+        cond('lapseHidden', {}, 'Whatever is booked meanwhile may lapse.', 'glossary:consent_ladder');
+      } else {
+        if (cost.slots > 0) cond('cost', { slots: slotWords(cost.slots) }, `Takes ${slotWords(cost.slots)} of the commander's time.`, 'glossary:consent_ladder');
+        for (const l of cost.lapses) cond('lapse', { booking: l.toLowerCase() }, `Would lapse: ${l}.`, 'glossary:consent_ladder');
+        if (cost.slots === 0 && cost.lapses.length === 0) cond('free', {}, 'Costs nothing.', 'glossary:consent_ladder');
+      }
+    }
+    if (task.acceptForm === 'words' || task.acceptForm === 'signed') {
+      const names = (task.audienceIds ?? []).map((id) => state.squad.find((u) => u.id === id)?.displayName ?? id);
+      if (names.length > 0) cond('who', { who: joinNames(names) }, `Who will know: ${joinNames(names)}.`, 'glossary:consent_ladder');
+      else cond('onlyMe', {}, 'Who will know: only her.', 'glossary:consent_ladder');
+      if (task.proof === 'in_person' || task.proof === 'witness' || task.proof === 'dm_report') {
+        const kind: VoiceKind = task.proof === 'dm_report' ? 'proof.report' : task.proof === 'witness' ? 'proof.witness' : 'proof.in_person';
+        cond(kind, {}, `Proof: ${PROOF_WORDS[task.proof]}.`, 'glossary:consent_ladder');
+      }
+    }
+    if (task.acceptForm === 'signed') {
+      if (task.handover !== undefined) {
+        const handed = HANDOVER_WORDS[task.handover] ?? task.handover;
+        cond('hands', { handed }, `Hands over: ${handed}.`, 'glossary:accept_signed');
+      } else {
+        const summary = plainDraft(task.summary).replace(/[.\s]+$/, '');
+        cond('closes', { summary }, `Closes: ${summary}.`, 'glossary:accept_signed');
+      }
+    }
+    if (task.acceptForm === 'words' || (task.acceptForm === 'signed' && task.said !== true)) cond('sayIt', {}, 'Say it in your own words.', 'glossary:accept_words');
+    if (task.noDuration === true) cond('noLength', {}, 'She has not said how long.', 'glossary:no_duration'); // no timer, no deadline: the engine keeps the end, the card shows none (R16)
+  }
+
+  const answers: HTMLElement[] = [];
+  if (task.acceptForm === 'signed' && task.said === true) answers.push(renderSignature({ onSign: ctx.onSign, analyze: 'glossary:accept_signed', ctx: live, look: 'scene' }));
+  else if (task.acceptForm === 'words' || task.acceptForm === 'signed') answers.push(pill('accept', 'accept', () => ctx.focusInput(), ladder));
+  else answers.push(pill('accept', 'accept', () => ctx.onAnswer('accept'), ladder));
+  // what the commander offered of the commander's own accord (R17) is taken back with cancel, and there is nothing to talk over
+  answers.push(pill('refuse', task.handover !== undefined ? 'cancel' : 'refuse', () => ctx.onAnswer('refuse'), task.handover !== undefined ? 'glossary:handover' : 'glossary:practice_task'));
+  if (!sealed && task.handover === undefined) answers.push(pill('talk', 'talk it over', () => ctx.onAnswer('talk'), 'glossary:practice_task'));
+  const reroll = drawPracticeReroll(h('span', { class: 'alius-task-reroll' }), ctx.generation, task.kind, task.requestId);
+  if (reroll !== null) answers.push(reroll);
+
+  const buttonForm = task.acceptForm === 'button' || task.acceptForm === 'button_cost';
+  const card = sceneCard({
+    her: herLook(state, reg, unit.id), kind: sealed ? 'sealed' : 'task', words, conditions, answers, ...(sealed ? { seal: true as const } : {}),
+    gist: gistOf({ kind: sealed ? 'sealed' : 'task', summary: plainDraft(task.summary).replace(/[.\s]+$/, ''), form: buttonForm ? 'button' : task.acceptForm, hold: task.kind === 'hold', when }) ?? '',
+  });
+  card.classList.add('alius-task');
+  card.setAttribute('data-task', task.id);
+  card.setAttribute('data-task-form', task.acceptForm);
+  card.setAttribute('role', 'group');
+  card.setAttribute('aria-label', `${unit.displayName} asks something of the commander`);
+  for (const [k, v] of Object.entries(analyzeAttrs('glossary:task_card', live))) card.setAttribute(k, v);
+  host.append(card);
+}
+
 /** Handlers of the cards a surface draws: the task's id comes with each answer. */
 export interface TaskCardHandlers {
   answer: (taskId: string, answer: TaskAnswer) => void;
@@ -138,12 +244,12 @@ export interface TaskCardHandlers {
 }
 
 /** Draws the offered tasks of the units `pick` chooses (a scene's participants, one thread), replacing what `host` held. Nothing for a holder who is not live. */
-export function drawTaskCards(host: HTMLElement, state: CampaignState, reg: Registries, pick: (c: { unitId: string }) => boolean, handlers: TaskCardHandlers): void {
+export function drawTaskCards(host: HTMLElement, state: CampaignState, reg: Registries, pick: (c: { unitId: string }) => boolean, handlers: TaskCardHandlers, opts: CardLook = {}): void {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const task of state.practices?.tasks ?? []) {
     if ((task.kind !== 'task' && task.kind !== 'hold') || task.status !== 'offered' || !pick({ unitId: task.holderId }) || !practiceLive(state, reg, task.holderId)) continue;
-    renderTaskCard(host, { state, reg, task, onAnswer: (a) => handlers.answer(task.id, a), onSign: () => handlers.sign(task.id), focusInput: handlers.focusInput, generation: handlers.generation });
+    renderTaskCard(host, { state, reg, task, onAnswer: (a) => handlers.answer(task.id, a), onSign: () => handlers.sign(task.id), focusInput: handlers.focusInput, generation: handlers.generation }, opts);
   }
   drawPracticeChips(host, handlers.generation, state, reg, pick);
 }

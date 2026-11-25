@@ -56,6 +56,9 @@ import { fillProse, proseLength, sentenceRunIndex } from './stage/prose';
 import { REPLY_MAX_LINES, measureReply, renderReply, replyView } from './stage/reply';
 import { unitAccent } from '../voice/voiceCard';
 
+/** P10e-e Task 7: every card the scene draws is in the scene's look (`sceneCard`, her voice); the device's threads keep today's. */
+const SCENE_LOOK = { look: 'scene' } as const;
+
 export interface SceneScreenCtx {
   controller: SceneController;
   getState: () => CampaignState | null;
@@ -439,12 +442,12 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   function drawDiscipline(s: CampaignState): void {
     const ids = new Set(s.scene?.participants ?? []);
     drawDemandChips(demandChips, s, registries, (c) => ids.has(c.unitId), { grant: (id) => ctx.onAnswerDemand?.(id, 'grant'), refuse: (id) => ctx.onAnswerDemand?.(id, 'refuse'), generation: ctx.generation });
-    drawMilestoneCards(milestoneCards, s, registries, (c) => ids.has(c.unitId), (id, answer) => ctx.onAnswerMilestone?.(id, answer)); // P15: her step
-    drawClaimCards(claimCards, s, registries, (c) => ids.has(c.unitId), (id, answer) => ctx.onAnswerClaim?.(id, answer)); // P15: her claim
-    drawReturnCards(returnCards, s, registries, (c) => ids.has(c.unitId), (answer) => ctx.onAnswerReturn?.(answer)); // P15: her offer to begin again
-    drawTaskCards(taskCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerTask?.(id, answer); if (answer === 'talk') focusInput(); }, sign: (id) => ctx.onSignTask?.(id), focusInput, generation: ctx.generation }); // P16: her task
-    drawPunishmentCards(punishmentCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerPunishment?.(id, answer); if (answer === 'negotiate') focusInput(); }, takeInstead: (id, answer) => ctx.onTakeInstead?.(id, answer), undo: (id) => ctx.onUndoPunishment?.(id), ceremony: (id, step, number) => ctx.onCeremonyStep?.(id, step, number), generation: ctx.generation }); // P16: her discipline
-    drawDemonstrationCards(demonstrationCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => ctx.onAnswerDemonstration?.(id, answer), generation: ctx.generation }); // P16: her demonstration
+    drawMilestoneCards(milestoneCards, s, registries, (c) => ids.has(c.unitId), (id, answer) => ctx.onAnswerMilestone?.(id, answer), SCENE_LOOK); // P15: her step
+    drawClaimCards(claimCards, s, registries, (c) => ids.has(c.unitId), (id, answer) => ctx.onAnswerClaim?.(id, answer), SCENE_LOOK); // P15: her claim
+    drawReturnCards(returnCards, s, registries, (c) => ids.has(c.unitId), (answer) => ctx.onAnswerReturn?.(answer), SCENE_LOOK); // P15: her offer to begin again
+    drawTaskCards(taskCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerTask?.(id, answer); if (answer === 'talk') focusInput(); }, sign: (id) => ctx.onSignTask?.(id), focusInput, generation: ctx.generation }, SCENE_LOOK); // P16: her task
+    drawPunishmentCards(punishmentCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerPunishment?.(id, answer); if (answer === 'negotiate') focusInput(); }, takeInstead: (id, answer) => ctx.onTakeInstead?.(id, answer), undo: (id) => ctx.onUndoPunishment?.(id), ceremony: (id, step, number) => ctx.onCeremonyStep?.(id, step, number), generation: ctx.generation }, SCENE_LOOK); // P16: her discipline
+    drawDemonstrationCards(demonstrationCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => ctx.onAnswerDemonstration?.(id, answer), generation: ctx.generation }, SCENE_LOOK); // P16: her demonstration
     // P16: her call of a named posture: the choices, and (with the order interaction on) the window; the answer is staged like a chip so a swipe takes the posture back
     drawPostureCall(postureCall, s, registries, (c) => ids.has(c.unitId), {
       timed: ctx.settings().physicsInteractions?.order !== false, reduced: motionReduced(ctx.settings()),
@@ -647,7 +650,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     renderMomentCard(momentHost, {
       state: s, registries, chips: ctx.settings().momentChips,
       onStage: (action) => { (ctx.onStage ?? ((a) => void controller.stage(a)))(action); if (!disposed) refresh(); },
-    });
+    }, SCENE_LOOK);
   }
 
   /**
@@ -660,8 +663,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     // P10e-e: an instrument draws a live run in real time instead of the card (the card's keys and holds are let go); the stop pill stays
     const run = blockingLive(s, registries) ? s.scene?.physics : undefined;
     const playing = instrumentEnv !== null && syncInstruments(instrumentEnv, run);
-    if (playing) renderPhysicsPanel(physicsHost, { state: null, registries, settings: ctx.settings(), staging, stopWord: false, onTap: () => {} });
-    const offered = playing || renderPhysicsPanel(physicsHost, { state: s, registries, settings: ctx.settings(), staging, stopWord: false, onTap: () => { staging.onTap(); if (!disposed) refresh(); } });
+    if (playing) renderPhysicsPanel(physicsHost, { state: null, registries, settings: ctx.settings(), staging, stopWord: false, onTap: () => {}, look: 'scene' });
+    const offered = playing || renderPhysicsPanel(physicsHost, { state: s, registries, settings: ctx.settings(), staging, stopWord: false, onTap: () => { staging.onTap(); if (!disposed) refresh(); }, look: 'scene' });
     if (!offered) stopHost.replaceChildren();
     else if (stopHost.querySelector('[data-stop-word]') === null) {
       stopHost.replaceChildren(h('button', { type: 'button', class: 'alius-stop-pill', 'data-stop-word': '', 'aria-label': 'Stop word', ...analyzeNative('glossary:stop_word'), onclick: () => { staging.stopWord(); } }, 'STOP WORD'));

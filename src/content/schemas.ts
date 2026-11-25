@@ -3090,7 +3090,7 @@ Object.assign(registrySchemas, { llmRefusals: LlmRefusalSchema });
 export const CARD_VOICE_KINDS = [
   'when', 'cost', 'costHold', 'lapse', 'lapseHidden', 'free', 'who', 'onlyMe',
   'proof.in_person', 'proof.witness', 'proof.report',
-  'weight', 'noLength', 'sayIt', 'closes', 'hands', 'talked', 'sealed', 'sealedTrack',
+  'weight', 'punishLabel', 'noLength', 'sayIt', 'closes', 'hands', 'talked', 'sealed', 'sealedTrack',
   'demoWho', 'demoWhoMore', 'demoNone', 'demoWhere', 'demoAgain', 'order',
   'cerTitle', 'cerWords', 'cerPosture', 'cerNumber', 'moment', 'exposing',
   'call.right', 'call.wrong', 'call.slow',

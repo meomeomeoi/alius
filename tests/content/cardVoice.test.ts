@@ -65,7 +65,7 @@ const NEUTRAL_MAP: Record<string, Record<string, (l: string[]) => Out>> = {
     'only her': all('onlyMe'),
     'the proof (added to the line)': (l) => [['proof.in_person', [l[1]!]], ['proof.witness', [l[2]!]], ['proof.report', [l[3]!]]],
   },
-  'The weight (punishment; sealed task)': { '': all('weight'), "a punishment's name stands above it in her hand": SKIP },
+  'The weight (punishment; sealed task)': { '': all('weight'), "a punishment's name stands above it in her hand": all('punishLabel') }, // P10e-e Task 7 (ruling E): her line too
   'No length given (task or punishment with no duration, R16)': { '': all('noLength') },
   'Say it (task accepted in words; a signed task before it was said)': { '': all('sayIt') },
   'What a signed task closes / hands over': { closes: all('closes'), 'hands over': (l) => [['hands', [l[0]!]]] },
