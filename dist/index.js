@@ -62915,9 +62915,16 @@ function releaseClaim(c) {
   claims2.splice(at, 1);
   for (const [p, v] of c.saved) {
     const newer = claims2.slice(at).find((x) => x.el === c.el && x.saved.has(p));
-    if (newer) newer.saved.set(p, v);
-    else writeStyle(c.el, p, v);
+    if (!newer) {
+      writeStyle(c.el, p, v);
+      continue;
+    }
+    newer.saved.set(p, v);
+    if (c.wrote?.has(p) && read(c.el, p) === c.wrote.get(p)) writeStyle(c.el, p, v);
   }
+}
+function noteWrites(c) {
+  c.wrote = new Map([...c.saved.keys()].map((p) => [p, read(c.el, p)]));
 }
 function claimedProps(el) {
   const out = /* @__PURE__ */ new Set();
@@ -63134,6 +63141,7 @@ function mount(env, def, run, key) {
   if (dial) {
     scope.dial = claimStyles(dial, ["@data-instrument"]);
     dial.setAttribute("data-instrument", def.id);
+    noteWrites(scope.dial);
   }
   current = { key, runId: run.id, def, env, run: null, scope, mark, finishing: null };
   syncMark(current);
@@ -63996,13 +64004,15 @@ function lookFaces(labels) {
   const e = E;
   for (const label2 of labels) {
     if (label2 in faces || looking.has(label2)) continue;
+    const mine = () => E === e;
     looking.set(label2, e.env.spriteUrl(e.unitId, label2).then((u) => {
-      faces[label2] = u;
+      if (mine()) faces[label2] = u;
     }, () => {
-      faces[label2] = null;
+      if (mine()) faces[label2] = null;
     }).then(() => {
+      if (!mine()) return;
       looking.delete(label2);
-      if (E === e && curLabel === label2 && (G2.slap || G2.back)) showFace(label2);
+      if (curLabel === label2 && (G2.slap || G2.back)) showFace(label2);
     }));
   }
 }
@@ -64065,6 +64075,7 @@ function requestAnimationFrame2(fn) {
     }
     measure();
     fn(now);
+    for (const c of cam.saved) if (c !== cam.dial) noteWrites(c);
   });
 }
 var E = null;
@@ -64173,6 +64184,7 @@ var CAM_PROPS = ["transform", "transform-origin", "filter", "transition", "opaci
 var cam = {
   held: false,
   saved: [],
+  dial: null,
   base: null,
   backdropFilter: "",
   /** The camera leaves home: the styles it will write are saved, her face point is measured. */
@@ -64192,8 +64204,11 @@ var cam = {
     this.measure();
     const dial = e.env.root.querySelector(".alius-stage-dial");
     if (dial) {
-      this.saved.push(claimStyles(dial, ["@data-instrument"]));
+      const c = claimStyles(dial, ["@data-instrument"]);
       dial.setAttribute("data-instrument", "slap");
+      noteWrites(c);
+      this.saved.push(c);
+      this.dial = c;
     }
   },
   /** Her face point in the scene (the sprite's sidecar point on the drawn picture), measured with the camera at home. */
@@ -64249,6 +64264,7 @@ var cam = {
     this.held = false;
     for (const c of this.saved) releaseClaim(c);
     this.saved = [];
+    this.dial = null;
     this.base = null;
     if (E) {
       E.faceImg.style.opacity = "0";
