@@ -51306,7 +51306,8 @@ function createStaging(deps) {
         startedAt = null;
       }
       if (e.type === "physics_outcome") {
-        outcomes.set(keyOf(state()?.scene?.id ?? "", String(e.runId)), { runId: String(e.runId), physicsId: String(e.physicsId), result: String(e.result) });
+        const tally = e.tally;
+        outcomes.set(keyOf(state()?.scene?.id ?? "", String(e.runId)), { runId: String(e.runId), physicsId: String(e.physicsId), result: String(e.result), ...tally ? { tally: { ...tally } } : {} });
         collected = [];
         startedAt = null;
       }
@@ -65150,6 +65151,8 @@ var R5 = {
   running: false,
   queue: [],
   sent: /* @__PURE__ */ new Set(),
+  inputs: [],
+  tapped: false,
   uneven: { sum: 0, ms: 0 },
   via: "key",
   segSlips: 0,
@@ -65817,6 +65820,7 @@ function report2(i) {
   const key = `${i.beat}|${i.kind}`;
   if (R5.sent.has(key)) return;
   R5.sent.add(key);
+  R5.inputs.push(i);
   E2.env.staging.input(i, { pointer: R5.via === "mouse" });
 }
 function reportBeat(beat, held3, even) {
@@ -65833,6 +65837,8 @@ function schedulePlan2(run, ck) {
   const endMs = Number(phys?.segmentSeconds ?? 30) * 1e3;
   R5.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0: G3.clock - (ck.now - ck.startedAt), beats: plan.beats.length, endMs, flushed: false };
   R5.sent = /* @__PURE__ */ new Set();
+  R5.inputs = [];
+  R5.tapped = false;
   R5.uneven = { sum: 0, ms: 0 };
   R5.segSlips = 0;
   R5.queue = [];
@@ -66129,7 +66135,10 @@ function listen2(env) {
         R5.via = "key";
         HOLD2.on = true;
       }
-    } else if (e.key === "t" || e.key === "T") env.tap?.();
+    } else if (e.key === "t" || e.key === "T") {
+      R5.tapped = true;
+      env.tap?.();
+    }
   });
   env.listen(document, "keyup", (e) => {
     if (e.key === " ") {
@@ -66213,14 +66222,25 @@ function startWeight(env, run, opts = {}) {
     finish(end2) {
       if (E2 !== mine) return 0;
       if (G3.phase !== "loop" && G3.phase !== "entry") return 0;
-      const limit = S4.style === "cruel" ? 5 : 15;
-      exit2(end2.result === "collapse" || end2.result === "limit_broken" || end2.result === "blackout" ? "fall" : G3.str <= limit ? "released" : "done");
+      if (end2.tally) G3.slips = end2.tally.slips ?? 0;
+      exit2(end2.result === "collapse" || end2.result === "limit_broken" || end2.result === "blackout" ? "fall" : releasedAtLimit() ? "released" : "done");
       return EXIT_MS2;
     },
     stop() {
       if (E2 === mine) stopWeight();
     }
   };
+}
+function releasedAtLimit() {
+  const run = R5.run;
+  if (!E2 || !run) return false;
+  const state = E2.env.state(), reg = E2.env.registries;
+  const holds6 = effectiveHoldsUntil(state, reg, run.holderId);
+  if (R5.tapped && (holds6 === "signal" || holds6 === "limit" && run.taps > 0)) return true;
+  const at = holds6 === "signal" ? TUNING.physics.releaseAt.signal : holds6 === "limit" ? TUNING.physics.releaseAt.limit : -1;
+  const plan = run.segment.plan;
+  const gauge = R5.seg?.flushed && plan && run.segment.state === "running" && state.scene ? resolveSegment(run, plan, R5.inputs, resolveEnvOf(state, reg, run)).gauge : run.gauge;
+  return gauge / Math3.max(1, run.capacity) <= at;
 }
 function weightMatches(run, _state, reg) {
   const p = reg.contactPhysics.get(run.physicsId);

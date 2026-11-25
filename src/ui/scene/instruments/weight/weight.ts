@@ -35,7 +35,8 @@ import { ceilingOf, floorOf } from '../../../../engine/backdrops';
 import { fnv1a } from '../../../../engine/hub';
 import { contactFaceOf, herLegsOf } from '../../../../engine/physics/occlusion';
 import type { PhysicsRun, SegmentInput } from '../../../../engine/physics/state';
-import { leadStyle, physicsStyleOf } from '../../../../engine/physics/style';
+import { resolveEnvOf, resolveSegment } from '../../../../engine/physics/segment';
+import { effectiveHoldsUntil, leadStyle, physicsStyleOf } from '../../../../engine/physics/style';
 import type { CampaignState } from '../../../../engine/state/types';
 import { TUNING } from '../../../../engine/tuning';
 import { voiceLines, type VoiceKind } from '../../cards/voice';
@@ -138,8 +139,11 @@ interface Wiring {
   seg: { n: number; startedAt: number; clock0: number; beats: number; endMs: number; flushed: boolean } | null;
   running: boolean;
   queue: Array<{ at: number; fn: () => void }>;
-  /** The inputs sent this segment (`beat|kind`): each once. */
+  /** The inputs sent this segment (`beat|kind`): each once; and the inputs themselves (the engine's view of the segment at the end). */
   sent: Set<string>;
+  inputs: SegmentInput[];
+  /** The commander tapped this segment (P15a's tap: a signal holder lets go at once). */
+  tapped: boolean;
   /** The extra drain factor accumulated over the beat (`(unevenMult − 1) × ms`) and the ms. */
   uneven: { sum: number; ms: number };
   via: 'mouse' | 'key';
@@ -150,7 +154,7 @@ interface Wiring {
 }
 const NO_LINES: Lines = { entry: [], released: [], slip: [], caught: [], heavy: [], good: [], poor: [], fall: [], stop: [], longer: [], announce: [] };
 const R: Wiring = {
-  run: null, face: 'down', legs: false, pressure: 1, lines: NO_LINES, lineStyle: 'neutral', seg: null, running: false, queue: [], sent: new Set(), uneven: { sum: 0, ms: 0 },
+  run: null, face: 'down', legs: false, pressure: 1, lines: NO_LINES, lineStyle: 'neutral', seg: null, running: false, queue: [], sent: new Set(), inputs: [], tapped: false, uneven: { sum: 0, ms: 0 },
   via: 'key', segSlips: 0, cheatsCaught: 0, spriteSrc: '', overFit: null,
 };
 const C = () => ({ face: R.face, weight: 1, shift: 1 });
@@ -618,6 +622,7 @@ function report(i: SegmentInput): void {
   const key = `${i.beat}|${i.kind}`;
   if (R.sent.has(key)) return;
   R.sent.add(key);
+  R.inputs.push(i);
   E.env.staging.input(i, { pointer: R.via === 'mouse' });
 }
 /**
@@ -640,6 +645,8 @@ function schedulePlan(run: PhysicsRun, ck: { startedAt: number | null; now: numb
   const endMs = Number(phys?.segmentSeconds ?? 30) * 1000;
   R.seg = { n: run.segment.n, startedAt: ck.startedAt!, clock0: G.clock - (ck.now - ck.startedAt!), beats: plan.beats.length, endMs, flushed: false };
   R.sent = new Set();
+  R.inputs = [];
+  R.tapped = false;
   R.uneven = { sum: 0, ms: 0 };
   R.segSlips = 0;
   R.queue = [];
@@ -881,7 +888,7 @@ function listen(env: InstrumentEnv): void {
     if (typing(e.target) || control(e.target) || e.ctrlKey || e.metaKey || e.altKey) return; // while typing, Shift is a capital: the right button shifts the weight
     if (e.key === 'Shift') { if (!e.repeat) relief(); return; }
     if (e.key === ' ') { e.preventDefault(); keySpace = true; if (!e.repeat) { R.via = 'key'; HOLD.on = true; } }
-    else if (e.key === 't' || e.key === 'T') env.tap?.(); // P15a's tap (the card's TAP): her answer is the engine's
+    else if (e.key === 't' || e.key === 'T') { R.tapped = true; env.tap?.(); } // P15a's tap (the card's TAP): her answer is the engine's
   }) as EventListener);
   env.listen(document, 'keyup', ((e: KeyboardEvent) => { if (e.key === ' ') { keySpace = false; if (!typing(e.target)) HOLD.on = false; } }) as EventListener);
   env.listen(env.root, 'mousedown', ((e: MouseEvent) => {
@@ -949,14 +956,32 @@ export function startWeight(env: InstrumentEnv, run: PhysicsRun, opts: WeightOpt
     finish(end: PhysicsEnd): number {
       if (E !== mine) return 0;
       if (G.phase !== 'loop' && G.phase !== 'entry') return 0;
-      const limit = S.style === 'cruel' ? 5 : 15;
-      exit(end.result === 'collapse' || end.result === 'limit_broken' || end.result === 'blackout' ? 'fall' : G.str <= limit ? 'released' : 'done');
+      if (end.tally) G.slips = end.tally.slips ?? 0; // her verdict counts the slips the engine counted
+      exit(end.result === 'collapse' || end.result === 'limit_broken' || end.result === 'blackout' ? 'fall' : releasedAtLimit() ? 'released' : 'done');
       return EXIT_MS;
     },
     stop() {
       if (E === mine) stopWeight();
     },
   };
+}
+
+/**
+ * Review I5 (ruling Q): she let go at the commander's limit, as the engine decided it: a tap she answered (a signal holder lets go at once), or
+ * the engine's strength at the end at or below her `holdsUntil`'s `releaseAt` (signal 15 %, limit 5 %; a blackout holder never lets go so).
+ * The end of a running segment is the engine's own resolution of the inputs this instrument sent (`resolveSegment`, pure); a hold that ended
+ * between two segments or before its end has the strength the engine last gave.
+ */
+function releasedAtLimit(): boolean {
+  const run = R.run;
+  if (!E || !run) return false;
+  const state = E.env.state(), reg = E.env.registries;
+  const holds = effectiveHoldsUntil(state, reg, run.holderId);
+  if (R.tapped && (holds === 'signal' || (holds === 'limit' && run.taps > 0))) return true; // the engine's answer to a tap (`physicsSignal`)
+  const at = holds === 'signal' ? TUNING.physics.releaseAt.signal : holds === 'limit' ? TUNING.physics.releaseAt.limit : -1;
+  const plan = run.segment.plan;
+  const gauge = R.seg?.flushed && plan && run.segment.state === 'running' && state.scene ? resolveSegment(run, plan, R.inputs, resolveEnvOf(state, reg, run)).gauge : run.gauge;
+  return gauge / Math.max(1, run.capacity) <= at;
 }
 
 /** Ruling B: what an outer instrument applies to its own frame while the core runs (the prototype's tilt, tremble and sag of `#world`). */

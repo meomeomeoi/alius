@@ -93,6 +93,8 @@ export interface PhysicsEnd {
   physicsId: string;
   /** The engine's `Outcome`: released, checked, limit_broken, blackout, stopped, collapse. */
   result: string;
+  /** The run's tally as the outcome carried it (R28: what she perceived), when it had one. */
+  tally?: Record<string, number>;
 }
 
 export interface InstrumentRun {

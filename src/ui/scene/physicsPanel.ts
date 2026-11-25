@@ -39,7 +39,7 @@ export interface PhysicsPanelStaging {
    */
   clock(): { startedAt: number | null; beatMs: number; now: number };
   /** P10e-e: how a run of the open scene ended (its `physics_outcome`), or null when none is known. Absent = never known. */
-  outcome?(runId: string): { runId: string; physicsId: string; result: string } | null;
+  outcome?(runId: string): { runId: string; physicsId: string; result: string; tally?: Record<string, number> } | null;
 }
 
 export interface PhysicsPanelCtx {

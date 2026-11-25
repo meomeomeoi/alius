@@ -11,7 +11,7 @@ import type { Registries } from '../../../src/content/types';
 import { floorOf } from '../../../src/engine/backdrops';
 import { COMMANDER, registerFrameReader, resetBlockingHooks, setBlocking } from '../../../src/engine/blocking';
 import { resolveEnvOf, resolveSegment } from '../../../src/engine/physics/segment';
-import { registerPhysicsStyle, resetPhysicsHooks } from '../../../src/engine/physics/style';
+import { registerHoldsUntil, registerPhysicsStyle, resetPhysicsHooks } from '../../../src/engine/physics/style';
 import type { PhysicsRun, SegmentInput, SegmentPlan } from '../../../src/engine/physics/state';
 import type { CampaignState } from '../../../src/engine/state/types';
 import type { SceneController } from '../../../src/scene/sceneController';
@@ -593,29 +593,39 @@ describe('the weight instrument on the scene', () => {
     expect(t.frames.pending()).toBe(0);
   });
 
-  it('the end: on her release the exit plays through finish (her line), then the host unmounts; a buckle is her fall line', async () => {
-    const s = hold();
-    const t = draw(s, { staging: { outcome: () => ({ runId: 'p1', physicsId: 'weight', result: 'released' }) } });
+  /** Ann lets go at the segment's end, or the hold ends mid-segment; `gauge` is the engine's at the segment's start (of 1000). */
+  const ending = async (opts: { holds: 'signal' | 'limit'; gauge: number; at: number; result: string; tap?: boolean; tally?: Record<string, number> }) => {
+    resetPhysicsHooks();
+    registerHoldsUntil(() => opts.holds);
+    const s = hold('human_chair', planOf({ 1: 20 })); // one shift, landing clean at 3.03 s (her verdict reads the share of clean landings)
+    Object.assign(s.scene!.physics!, { gauge: opts.gauge, capacity: 1000 });
+    const t = draw(s, { staging: { outcome: () => ({ runId: 'p1', physicsId: 'weight', result: opts.result, ...(opts.tally ? { tally: opts.tally } : {}) }) } });
+    t.balance(0.5);
     t.mouse('mousedown');
-    t.to(3000);
+    t.to(opts.at);
+    if (opts.tap) t.key('keydown', 't');
     delete s.scene!.physics;
     t.screen.refresh();
     await Promise.resolve();
     await Promise.resolve();
     expect(_weight.G.phase).toBe('exit');
-    t.to(3000 + 1000);
-    expect(t.q('.alius-weight-hand .her-line.big')!.textContent).toMatch(/good\. steady\.|wobbly\./); // she finished, her verdict
-    t.to(3000 + 2700);
-    expect(t.q('.alius-weight')).toBeNull();
-    const s2 = hold();
-    const u = draw(s2, { staging: { outcome: () => ({ runId: 'p1', physicsId: 'weight', result: 'limit_broken' }) } });
-    u.to(3000);
-    delete s2.scene!.physics;
-    u.screen.refresh();
-    await Promise.resolve();
-    await Promise.resolve();
-    u.to(3000 + 1000);
-    expect(u.q('.alius-weight-hand .her-line.big')!.textContent).toBe('…really?');
+    t.to(opts.at + 1000);
+    const line = t.q('.alius-weight-hand .her-line.big')?.textContent ?? '';
+    t.to(opts.at + 2700);
+    expect(t.q('.alius-weight')).toBeNull(); // the host unmounts after the exit
+    t.screen.dispose();
+    return line;
+  };
+
+  it('I5: her end line follows the engine: released at her limit by her holdsUntil on the engine\'s gauge, else her verdict; a buckle is her fall', async () => {
+    // a segment of 20 beats drains 160 of 1000: from 300 the engine's share is 0.14, at a signal holder's 15 % (her release); a limit holder (5 %) goes on
+    expect(await ending({ holds: 'signal', gauge: 300, at: 30_050, result: 'released' })).toBe('enough. you’re shaking.');
+    // ended mid-segment with strength to spare (her contact taken away): her verdict, its slips the engine's tally
+    expect(await ending({ holds: 'signal', gauge: 900, at: 3500, result: 'released' })).toBe('good. steady.');
+    expect(await ending({ holds: 'signal', gauge: 900, at: 3500, result: 'released', tally: { slips: 3 } })).toBe('wobbly.');
+    // the commander tapped and she let go (a signal holder): released
+    expect(await ending({ holds: 'signal', gauge: 900, at: 3500, result: 'released', tap: true })).toBe('enough. you’re shaking.');
+    expect(await ending({ holds: 'limit', gauge: 300, at: 3000, result: 'limit_broken' })).toBe('…really?');
   });
 });
 
