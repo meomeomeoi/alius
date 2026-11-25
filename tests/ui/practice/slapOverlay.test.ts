@@ -91,6 +91,12 @@ describe('the pure rules', () => {
     for (const p of [null, 900, 500]) expect(resultOf(p, 1000, true)).toBe('flinched');
     // the band is the prototype's tension: rise 100, peak 80, fall 220, braced at 0.8 (land reads tensionAt)
     for (let before = 0; before <= 400; before++) expect(resultOf(1000 - before, 1000, false), `${before} ms`).toBe(tensionAt(before) >= 0.8 ? 'braced' : 'none');
+    // the live clock is fractional: the edge is land's (about 41.52 ms), and the whole-ms band of TUNING is that band
+    expect(resultOf(1000 - 41.6, 1000, false)).toBe('braced');
+    expect(resultOf(1000 - 41.4, 1000, false)).toBe('none');
+    expect(resultOf(1000 - 224.4, 1000, false)).toBe('none');
+    const [a, b] = TUNING.practice.slap.braceBand;
+    expect([resultOf(1000 - a, 1000, false), resultOf(1000 - (a - 1), 1000, false), resultOf(1000 - b, 1000, false), resultOf(1000 - (b + 1), 1000, false)]).toEqual(['braced', 'none', 'braced', 'none']);
   });
 
   it('isFlick: at least 2400 px/s over the last 70 ms and 6 % of the width', () => {
@@ -155,6 +161,8 @@ describe('the swing and the one try', () => {
     for (let i = 0; i <= 5; i++) { document.dispatchEvent(new MouseEvent('pointermove', { clientX: 100 + i * 60, bubbles: true })); o.frame(); } // 60 px every 16 ms: 3750 px/s, 300 px
     o.to(L + 500 + 40);
     expect(o.results).toEqual(['flinched']);
+    expect(isFlick(Array.from({ length: 6 }, (_, i) => ({ t: i * 16, x: 100 + i * 60 })), 1600)).toBe(true); // the same moves, by the pure rule
+    expect(isFlick(Array.from({ length: 11 }, (_, i) => ({ t: i * 16, x: 100 + i * 5 })), 1600)).toBe(false);
     // ordinary moves do nothing
     const p = await slapping({ slap: { id: 'ps9' } });
     for (let i = 0; i <= 10; i++) { document.dispatchEvent(new MouseEvent('pointermove', { clientX: 100 + i * 5, bubbles: true })); p.frame(); }

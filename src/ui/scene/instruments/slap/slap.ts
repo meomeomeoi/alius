@@ -38,16 +38,20 @@ export function slapTimeline(slap: { windowMs: number; feints: number; unannounc
   return { snap: SNAP, impactAt: lead + feints * FEINT + slap.windowMs, feintsAt };
 }
 
-/** The result of a slap: a turned face is `flinched` whatever the tension; a press inside the brace band before the impact is `braced`; anything else `none`. */
+/**
+ * The result of a slap (land's rule, review M5): a turned face is `flinched` whatever the tension; a press whose tension is at 0.8 or more at the
+ * impact is `braced` (`tensionAt`, so a press about 41.5–224 ms before; `TUNING.practice.slap.braceBand` is that band in whole ms); else `none`.
+ */
 export function resultOf(pressAt: number | null, impactAt: number, flicked: boolean): SlapResult {
   if (flicked) return 'flinched';
   if (pressAt === null) return 'none';
-  const before = impactAt - pressAt;
-  const [a, b] = TUNING.practice.slap.braceBand;
-  return before >= a && before <= b ? 'braced' : 'none';
+  return tensionAt(impactAt - pressAt) >= S.tension.thr ? 'braced' : 'none';
 }
 
-/** A sharp flick sideways (slap.html `onMove`): over the last 70 ms, at least 2400 px/s and 6 % of the frame's width. */
+/**
+ * A sharp flick sideways (slap.html `onMove`'s rule as a function of its own, for the tests and the reader): over the samples of the last 70 ms,
+ * at least 2400 px/s and 6 % of the frame's width. `onMove` keeps the prototype's inline code; the tests drive both with the same moves.
+ */
 export function isFlick(samples: ReadonlyArray<{ t: number; x: number }>, width: number): boolean {
   if (samples.length < 2) return false;
   const last = samples[samples.length - 1]!;

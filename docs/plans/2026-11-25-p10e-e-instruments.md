@@ -650,8 +650,8 @@ Open for e12 (P10e open items): cards are placed with CSS `order`, so screen rea
 
 Every instrument task below follows these steps. Its own section lists its files, interfaces and specific tests.
 
-- [x] **Step 0: Open the prototype.** Read `docs/prototypes/<name>.html` whole and its README section. Build it (`npm run proto -- <name>`) and play it in Chromium for a minute. Write the task's `fidelity.json`: every function and table its README section calls normative, plus the `LINES` kinds the port takes from the cue pool. This list is the task's definition of done.
-- [x] **Step 1: Write the failing tests:**
+- [ ] **Step 0: Open the prototype.** Read `docs/prototypes/<name>.html` whole and its README section. Build it (`npm run proto -- <name>`) and play it in Chromium for a minute. Write the task's `fidelity.json`: every function and table its README section calls normative, plus the `LINES` kinds the port takes from the cue pool. This list is the task's definition of done.
+- [ ] **Step 1: Write the failing tests:**
   - **fidelity:** the task's `fidelity.json` passes `tests/ui/instruments/fidelity.test.ts` (it fails until the port exists);
   - the pure helpers it names (exact values from the README);
   - **keys:** Space or Shift typed into the input never act, and only the mouse acts while the field has focus;
@@ -659,11 +659,11 @@ Every instrument task below follows these steps. Its own section lists its files
   - **reduced motion and readable mode:** the still form;
   - **unmount:** `stop()` (the stop word, a new run, `resetSceneStage`, dispose) leaves no timer, `requestAnimationFrame`, audio node or document listener, restores the frame and the input, and dispatches nothing afterwards (fake clock);
   - **inputs:** the inputs it reports for a scripted beat sequence (fake clock and fake staging).
-- [x] **Step 2: Run** them → FAIL.
-- [x] **Step 3: Port** by copying: paste each function and table of `fidelity.json` from the prototype into its module, add types, keep names, bodies, numbers and texts as they are; then wire it. Read the engine's plan and style instead of the "prototype only" schedulers. Read her lines from the cue pool (`env.staging.cue(kind, beat)`), never from the prototype's `LINES`. Put the CSS in the task's stylesheet.
-- [x] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS.
-- [x] **Step 5: Shots:** `npm run shots -- <name>` at the moments the task names; compare with the prototype and fix any drift. A drift the extension cannot avoid stops and reports. **The reviewer** of the task gets the prototype file, its README section, `fidelity.json` and the shots, not this plan's summary, and checks the port against the file.
-- [x] **Step 6: Commit** `feat(P10e-e): the <name> instrument`
+- [ ] **Step 2: Run** them → FAIL.
+- [ ] **Step 3: Port** by copying: paste each function and table of `fidelity.json` from the prototype into its module, add types, keep names, bodies, numbers and texts as they are; then wire it. Read the engine's plan and style instead of the "prototype only" schedulers. Read her lines from the cue pool (`env.staging.cue(kind, beat)`), never from the prototype's `LINES`. Put the CSS in the task's stylesheet.
+- [ ] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS.
+- [ ] **Step 5: Shots:** `npm run shots -- <name>` at the moments the task names; compare with the prototype and fix any drift. A drift the extension cannot avoid stops and reports. **The reviewer** of the task gets the prototype file, its README section, `fidelity.json` and the shots, not this plan's summary, and checks the port against the file.
+- [ ] **Step 6: Commit** `feat(P10e-e): the <name> instrument`
 
 New cue kinds join `CUE_KINDS` with rows in `content/core/physicsCues.json`. Each row takes the prototype's `LINES` for that kind as its texts (the author heard them in play). The `physics_cues` call asks for them as for the others.
 

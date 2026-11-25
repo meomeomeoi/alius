@@ -442,7 +442,8 @@ describe('P10e-e Task 11: a turned face, her side, her face (R11-R13)', () => {
     expect(ofType(r.events, 'slap_dealt')).toHaveLength(1);
     expect(defied(r.state)).toEqual([`${ANN}|slap_defied|${id}`]);
     const asked = r.state.practices!.requests.filter((q) => q.kind === 'punishment' && q.offence?.kind === 'slap_defied');
-    for (const q of asked) expect(q.offence).toMatchObject({ kind: 'slap_defied', stakes: 'minor', ref: id });
+    expect(asked, 'her discipline asks for a punishment for it').toHaveLength(1);
+    expect(asked[0]!.offence).toMatchObject({ kind: 'slap_defied', stakes: 'minor', ref: id });
     for (const result of ['none', 'braced'] as const) expect(defied(answer(start(slapWorld('cold')).d, result).state), result).toEqual([]);
   });
 
