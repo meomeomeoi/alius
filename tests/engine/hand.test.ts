@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { REGISTRY_NAMES, type Registries } from '../../src/content/types';
 import { DESCRIBED_REGISTRIES, RESERVED_EVENT_TYPES } from '../../src/content/schemas';
-import { handFamily, handOf } from '../../src/engine/hand';
+import { handFamily, handOf, handScale } from '../../src/engine/hand';
 import { fnv1a } from '../../src/engine/hub';
 import type { CampaignState } from '../../src/engine/state/types';
 import '../../src/engine/actions/immersion';
@@ -16,11 +16,48 @@ const ANN = 'unit_ann';
 const ids = (): string[] => [...reg.handFonts.keys()];
 
 describe('registry handFonts', () => {
-  it('is a registry, described, with the six bundled hands in order', () => {
+  it('is a registry, described: the six of P10b in their old order, the six strict print hands, then the rest alphabetically (P10e-e, R10)', () => {
     expect(REGISTRY_NAMES).toContain('handFonts');
     expect(DESCRIBED_REGISTRIES).toContain('handFonts');
-    expect([...reg.handFonts.values()].map((e) => e.family)).toEqual(['Caveat', 'Indie Flower', 'Patrick Hand', 'Shadows Into Light', 'Kalam', 'Nanum Pen Script']);
-    for (const e of reg.handFonts.values()) expect(String(e.name).length, String(e.id)).toBeGreaterThan(0);
+    const families = [...reg.handFonts.values()].map((e) => String(e.family));
+    expect(families).toHaveLength(48);
+    expect(families.slice(0, 6)).toEqual(['Caveat', 'Indie Flower', 'Patrick Hand', 'Shadows Into Light', 'Kalam', 'Nanum Pen Script']);
+    expect(families.slice(6, 12)).toEqual(['Klee One', 'Playpen Sans', 'Neucha', 'Gaegu', 'Pangolin', 'Edu SA Beginner']);
+    const rest = families.slice(12);
+    expect(rest).toEqual([...rest].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())));
+    for (const e of reg.handFonts.values()) {
+      expect(String(e.name).length, String(e.id)).toBeGreaterThan(0);
+      expect(String(e.description), String(e.id)).not.toMatch(/AUTHOR TO WRITE/);
+    }
+  });
+});
+
+describe('handScale (P10e-e: the measured size factor)', () => {
+  const byFamily = (f: string) => [...reg.handFonts.values()].find((e) => e.family === f)!;
+  it('is 1 for Caveat (the reference) and for no hand', () => {
+    expect(handScale(byFamily('Caveat'))).toBe(1);
+    expect(handScale(null)).toBe(1);
+  });
+  it('every entry has a measured scale in [0.6, 1.7]', () => {
+    for (const e of reg.handFonts.values()) {
+      expect(typeof e.scale, String(e.id)).toBe('number');
+      expect(handScale(e), String(e.id)).toBeGreaterThanOrEqual(0.6);
+      expect(handScale(e), String(e.id)).toBeLessThanOrEqual(1.7);
+    }
+  });
+  it('a narrow hand is scaled up and a wide one down', () => {
+    // The brief named Amatic SC as the narrow one; the prototype's measureHands gives it 0.83 (its small capitals are tall), so the
+    // measured narrow hand is Just Another Hand. The rule wins (the values are what `cards.html` computes in Chromium).
+    expect(handScale(byFamily('Just Another Hand'))).toBeGreaterThan(1);
+    expect(handScale(byFamily('Rock Salt'))).toBeLessThan(1);
+    expect(handScale(byFamily('Amatic SC'))).toBe(0.83);
+  });
+  it('the measured factors stay in the clamp of the rule (0.7–1.6) and are rounded to 0.01', () => {
+    for (const e of reg.handFonts.values()) {
+      expect(handScale(e), String(e.id)).toBeGreaterThanOrEqual(0.7);
+      expect(handScale(e), String(e.id)).toBeLessThanOrEqual(1.6);
+      expect(Math.round(handScale(e) * 100) / 100, String(e.id)).toBe(handScale(e));
+    }
   });
 });
 
@@ -34,6 +71,12 @@ describe('handOf', () => {
       expect(handOf(s, reg, u.id)!.id).toBe(handOf(structuredClone(s), reg, u.id)!.id);
     }
     expect(s.squad.every((u) => u.hand === undefined)).toBe(true);
+  });
+
+  it('with no chosen hand it is fnv1a(unitId) % 48 in registry order (R10: an old save may get a new hand once)', () => {
+    const s = campaign(reg, 4);
+    expect(reg.handFonts.size).toBe(48);
+    for (const u of s.squad) expect(handOf(s, reg, u.id)!.id).toBe(ids()[fnv1a(u.id) % 48]);
   });
 
   it('the four named units do not all share one hand', () => {

@@ -17,6 +17,6 @@
   - `splash_10`, `splash_09`, `splash_06`: "40 CC0 water / splash / slime SFX" (OpenGameArt.org), CC0.
   - `gulp.html` also plays `ha/pour.ogg`, `ha/cloth1–3` and `breath-in-out.mp3`.
 
-## `hands/` (candidate hands for the author to choose from, 2026-11-25)
+## `hands/` (moved, 2026-11-25)
 
-Handwriting fonts from Google Fonts (36 of every kind, then six strict print hands: Klee One, Playpen Sans, Neucha, Gaegu, Pangolin, Edu SA Beginner) (the latin subset as Google serves it, woff2), each with its licence beside it (`<name>.license.txt`, from github.com/google/fonts): SIL Open Font License 1.1, except Rock Salt, Permanent Marker, Just Another Hand, Homemade Apple, Satisfy and Yellowtail (Apache License 2.0). Only the hands the author picks move into `fonts/` and the `handFonts` registry; the rest are removed from here.
+The 42 candidate and strict print hands (Google Fonts, the latin subset as Google serves it, woff2) went into the game whole (author, 2026-11-25): P10e-e Task 2 moved them to `fonts/hand-<name>-400.woff2` with their licences in `fonts/LICENSES/hand-<name>.txt` (SIL Open Font License 1.1, except Rock Salt, Permanent Marker, Just Another Hand, Homemade Apple, Satisfy and Yellowtail: Apache License 2.0). `cards.html` reads them from there.

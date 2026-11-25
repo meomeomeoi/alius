@@ -216,7 +216,7 @@ The README of each prototype ends with "Open engine questions (decide in the pla
   - `--alius-hand-scale` on any element `setHand` styles
   - the registry order: the six old hands first in their old order, then the six strict print hands, then the rest alphabetically. **Ruling R10:** a unit with no chosen hand may get a new one once.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `tests/assets.test.ts`:
     - `HANDS` is read from `content/core/handFonts.json` (48), not a literal;
     - each licence contains `SIL Open Font License` or `Apache License`;
@@ -224,12 +224,12 @@ The README of each prototype ends with "Open engine questions (decide in the pla
     - the face count is ≥ 13 + 42.
   - `handScale`: Caveat is 1; every entry's scale is in [0.6, 1.7]; Amatic SC's scale is > 1 (narrow); Rock Salt's is < 1 (wide).
   - `handOf` still prefers `unit.hand`; with none it is `fnv1a(unitId) % 48` in registry order.
-- [ ] **Step 2: Run** them → FAIL.
-- [ ] **Step 3: Measure and move:**
+- [x] **Step 2: Run** them → FAIL.
+- [x] **Step 3: Measure and move:**
   - `scripts/measure-hands.mjs` loads each face in Chromium and computes `measureHands` of `cards.html` (the geometric mean of Caveat's x-height of `xvzow` over the hand's and Caveat's width of `Bring me the patrol roster before evening mess.` over the hand's, clamped to 0.7–1.6, rounded to 0.01). It writes `scale` into the registry.
   - Descriptions are one line each, written plainly (e.g. Klee One: `a neat, upright pen, every letter separate.`), never "AUTHOR TO WRITE".
-- [ ] **Step 4: Run** the tests, `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P10e-e): 48 hands with a measured size`
+- [x] **Step 4: Run** the tests, `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P10e-e): 48 hands with a measured size`
 
 ### Task 3: Her voice as data (`cardVoice`) and the card's deadline words
 

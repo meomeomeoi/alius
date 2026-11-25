@@ -736,11 +736,12 @@ describe('HAND select (P10b)', () => {
   }
   const select = (host: HTMLElement, i: number) => host.querySelectorAll<HTMLSelectElement>('select[data-hand]')[i];
 
-  it('a named unit has a HAND select with the six hands, her current one selected, analyzable', () => {
+  it('a named unit has a HAND select with every hand in registry order, her current one selected, analyzable', () => {
     const { host, state } = withHand();
     expect(host.querySelectorAll('select[data-hand]')).toHaveLength(2);
     const sel = select(host, 0);
-    expect([...sel.options].map((o) => o.textContent)).toEqual(['Caveat', 'Indie Flower', 'Patrick Hand', 'Shadows Into Light', 'Kalam', 'Nanum Pen Script']);
+    expect([...sel.options].map((o) => o.textContent)).toEqual([...reg.handFonts.values()].map((e) => String(e.name)));
+    expect(sel.options).toHaveLength(48);
     expect(sel.value).toBe([...reg.handFonts.keys()][fnv1a(state.squad[0].id) % reg.handFonts.size]);
     expect(sel.closest('[data-analyze]')!.getAttribute('data-analyze')).toBe('glossary:handwriting');
     expect(markedWithout(host)).toEqual([]);

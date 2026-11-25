@@ -99,7 +99,7 @@ Approved by the author on 2026-11-25 after rounds 1–2c (the defaults of the fi
 
 ## `cards.html` — her hand of cards (the dock's cards of P15a, P15 and P16) and the posture call (P16)
 
-Approved by the author on 2026-11-25 after three rounds (the defaults of the file are the approved state). Run it with `npm run proto -- cards`; it needs `assets/hands/` (the candidate hands), `ha/soft1–2`, `ha/card_slide1–2`, `ha/card_place1–2`, `ha/card_fan` (`assets/LICENSES.md`) and draws the mannequins with the dial's own `mannequinSvg` at build time (`scripts/prototype-mannequins.ts`). The texts are `docs/content/card-voice.md` (approved): the tables of the file are a copy of it. **A restyle: no card's mechanics change** (the same answers, the same actions, the same `data-analyze`).
+Approved by the author on 2026-11-25 after three rounds (the defaults of the file are the approved state). Run it with `npm run proto -- cards`; it needs the hands in `fonts/hand-*.woff2` (moved there from `assets/hands/` by chunk (e)), `ha/soft1–2`, `ha/card_slide1–2`, `ha/card_place1–2`, `ha/card_fan` (`assets/LICENSES.md`) and draws the mannequins with the dial's own `mannequinSvg` at build time (`scripts/prototype-mannequins.ts`). The texts are `docs/content/card-voice.md` (approved): the tables of the file are a copy of it. **A restyle: no card's mechanics change** (the same answers, the same actions, the same `data-analyze`).
 
 ### Normative (port exactly)
 

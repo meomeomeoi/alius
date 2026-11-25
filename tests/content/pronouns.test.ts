@@ -440,7 +440,7 @@ describe('no pronoun for the commander in the P10b content', () => {
   });
 
   it('every handFonts name and description', () => {
-    expect(reg.handFonts.size).toBe(6);
+    expect(reg.handFonts.size).toBe(48);
     const texts = [...reg.handFonts.values()].flatMap((e): Array<[string, string]> => [[`handFonts:${e.id}.name`, String(e.name)], [`handFonts:${e.id}.description`, String(e.description)]]);
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
   });

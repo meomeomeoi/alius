@@ -1,5 +1,5 @@
 import type { Entry } from '../../content/types';
-import { handFamily } from '../../engine/hand';
+import { handFamily, handScale } from '../../engine/hand';
 import { analyzeAttrs } from '../analyze/mark';
 import { h } from '../dom';
 import { noise } from '../fx';
@@ -16,9 +16,11 @@ export interface NoteOpts {
   analyze: string;
 }
 
-/** Sets the hand of a note element (`--alius-font-hand`, the type font behind it). */
+/** Sets the hand of an element (`--alius-font-hand`, the type font behind it) and its measured size factor (`--alius-hand-scale`, P10e-e). */
 export function setHand(el: HTMLElement, hand: Entry | null): void {
-  if (hand) el.style.setProperty('--alius-font-hand', `"${handFamily(hand)}", var(--alius-font-type)`);
+  if (!hand) return;
+  el.style.setProperty('--alius-font-hand', `"${handFamily(hand)}", var(--alius-font-type)`);
+  el.style.setProperty('--alius-hand-scale', String(handScale(hand)));
 }
 
 /**

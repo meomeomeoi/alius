@@ -6,7 +6,7 @@ import type { CampaignState, HandNote, Rule } from '../../src/engine/state/types
 import { DEFAULT_SETTINGS } from '../../src/settings';
 import { renderHub, type HubCtx } from '../../src/ui/hub/hubScreen';
 import { renderInvTab } from '../../src/ui/inv/invTab';
-import { renderNote } from '../../src/ui/notes/note';
+import { renderNote, setHand } from '../../src/ui/notes/note';
 import { renderRuleNote, resetTorn } from '../../src/ui/notes/ruleNote';
 import { h } from '../../src/ui/dom';
 import { markedWithout, unreachable, unresolved } from '../helpers/analyzeCoverage';
@@ -39,6 +39,19 @@ const withRule = (r: Rule, day = 5): CampaignState => {
   return s;
 };
 const handlers = () => ({ accept: vi.fn(), negotiate: vi.fn(), refuse: vi.fn() });
+
+describe('setHand (P10e-e)', () => {
+  it('sets the family and the measured size factor (--alius-hand-scale); no hand sets nothing', () => {
+    const amatic = [...reg.handFonts.values()].find((e) => e.family === 'Amatic SC')!;
+    const el = h('div', {});
+    setHand(el, amatic);
+    expect(el.style.getPropertyValue('--alius-font-hand')).toContain('Amatic SC');
+    expect(el.style.getPropertyValue('--alius-hand-scale')).toBe(String(amatic.scale));
+    const none = h('div', {});
+    setHand(none, null);
+    expect(none.style.getPropertyValue('--alius-hand-scale')).toBe('');
+  });
+});
 
 describe('renderNote', () => {
   it('is a paper-voice note whose body sets --alius-font-hand to her family, with the type font behind it', () => {

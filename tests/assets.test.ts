@@ -21,8 +21,8 @@ beforeAll(async () => {
   bundle = await stable('dist/index.js');
 });
 const FAMILIES = ['ibm-plex-mono', 'saira-stencil-one', 'inter', 'special-elite'];
-/** P10b: the six hand fonts of the notes (SIL OFL 1.1). */
-const HANDS = ['caveat', 'indie-flower', 'patrick-hand', 'shadows-into-light', 'kalam', 'nanum-pen-script'];
+/** P10b / P10e-e: every hand of the handFonts registry, as the kebab of its family (OFL, or Apache for six). */
+const HANDS = (JSON.parse(readFileSync('content/core/handFonts.json', 'utf8')) as Array<{ family: string }>).map(({ family }) => family.toLowerCase().replace(/ /g, '-'));
 
 describe('bundled assets (spec P10 §6, acceptance 7)', () => {
   it('every font url in style.css exists on disk', () => {
@@ -33,7 +33,7 @@ describe('bundled assets (spec P10 §6, acceptance 7)', () => {
 
   it('every @font-face uses font-display: swap and a relative url', () => {
     const faces = [...css.matchAll(/@font-face\s*\{[^}]*\}/g)].map((m) => m[0]);
-    expect(faces.length).toBeGreaterThanOrEqual(13);
+    expect(faces.length).toBeGreaterThanOrEqual(13 + 42);
     for (const f of faces) {
       expect(f).toMatch(/font-display:\s*swap/);
       expect(f).toMatch(/url\(\s*["']?fonts\//);
@@ -64,16 +64,18 @@ describe('bundled assets (spec P10 §6, acceptance 7)', () => {
     for (const f of files) expect(statSync(`fonts/${f}`).size, f).toBeLessThan(120 * 1024);
   });
 
-  it('every hand font is a woff2 on disk, referenced by a relative url in style.css, with its OFL licence (P10b)', () => {
+  it('every hand font is a woff2 on disk, referenced by a relative url in style.css, with its OFL or Apache licence (P10b, P10e-e)', () => {
+    expect(HANDS).toHaveLength(48);
     for (const hand of HANDS) {
       const file = `fonts/hand-${hand}-400.woff2`;
       expect(existsSync(file), file).toBe(true);
       expect(css, file).toContain(`url("${file}")`);
       const licence = `fonts/LICENSES/hand-${hand}.txt`;
       expect(existsSync(licence), licence).toBe(true);
-      expect(readFileSync(licence, 'utf8')).toMatch(/SIL OPEN FONT LICENSE/i);
+      expect(readFileSync(licence, 'utf8'), licence).toMatch(/SIL OPEN FONT LICENSE|Apache License/i);
     }
     expect(readdirSync('fonts').filter((f) => f.startsWith('hand-'))).toHaveLength(HANDS.length);
+    expect(readdirSync('fonts/LICENSES').filter((f) => f.startsWith('hand-'))).toHaveLength(HANDS.length);
   });
 
   it('the hand font faces match the handFonts registry (family names)', () => {

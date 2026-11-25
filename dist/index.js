@@ -9939,6 +9939,8 @@ registrySchemas.dmBehaviours = DmBehaviourSchema;
 var HandFontSchema = BaseEntrySchema.extend({
   name: str.max(60),
   family: str.max(60).regex(/^[A-Za-z0-9 ]+$/, "a plain CSS family name"),
+  /** P10e-e: the hand's size factor against Caveat (1), measured once by `scripts/measure-hands.mjs`; every size in her hand is multiplied by it. */
+  scale: external_exports.number().min(0.6).max(1.7),
   description: str.max(DESCRIPTION_MAX)
 }).strict();
 registrySchemas.handFonts = HandFontSchema;
@@ -48448,10 +48450,16 @@ function handOf(state, reg, unitId) {
   return all.length === 0 ? null : all[fnv1a3(unitId) % all.length];
 }
 var handFamily = (hand) => String(hand.family);
+function handScale(hand) {
+  const s = hand?.scale;
+  return typeof s === "number" && Number.isFinite(s) && s > 0 ? s : 1;
+}
 
 // src/ui/notes/note.ts
 function setHand(el, hand) {
-  if (hand) el.style.setProperty("--alius-font-hand", `"${handFamily(hand)}", var(--alius-font-type)`);
+  if (!hand) return;
+  el.style.setProperty("--alius-font-hand", `"${handFamily(hand)}", var(--alius-font-type)`);
+  el.style.setProperty("--alius-hand-scale", String(handScale(hand)));
 }
 function renderNote(o) {
   const note = h(

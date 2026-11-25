@@ -17,3 +17,12 @@ export function handOf(state: CampaignState, reg: Registries, unitId: string): E
 
 /** The CSS family of a hand (what `--alius-font-hand` gets). */
 export const handFamily = (hand: Entry): string => String(hand.family);
+
+/**
+ * The hand's measured size factor (P10e-e): every size in her hand is multiplied by it (Caveat is 1). 1 for no hand, or for an entry
+ * without a number (a pack written before the field).
+ */
+export function handScale(hand: Entry | null): number {
+  const s = hand?.scale;
+  return typeof s === 'number' && Number.isFinite(s) && s > 0 ? s : 1;
+}

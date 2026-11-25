@@ -2270,6 +2270,8 @@ registrySchemas.dmBehaviours = DmBehaviourSchema;
 export const HandFontSchema = BaseEntrySchema.extend({
   name: str.max(60),
   family: str.max(60).regex(/^[A-Za-z0-9 ]+$/, 'a plain CSS family name'),
+  /** P10e-e: the hand's size factor against Caveat (1), measured once by `scripts/measure-hands.mjs`; every size in her hand is multiplied by it. */
+  scale: z.number().min(0.6).max(1.7),
   description: str.max(DESCRIPTION_MAX),
 }).strict();
 export type HandFontEntry = z.infer<typeof HandFontSchema>;

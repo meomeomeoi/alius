@@ -3,36 +3,336 @@
     "id": "caveat",
     "name": "Caveat",
     "family": "Caveat",
-    "description": "AUTHOR TO WRITE: a quick, slanted, impatient hand."
+    "scale": 1,
+    "description": "a quick, slanted, impatient hand."
   },
   {
     "id": "indie_flower",
     "name": "Indie Flower",
     "family": "Indie Flower",
-    "description": "AUTHOR TO WRITE: round, open, a little childish."
+    "scale": 0.78,
+    "description": "round, open, a little childish."
   },
   {
     "id": "patrick_hand",
     "name": "Patrick Hand",
     "family": "Patrick Hand",
-    "description": "AUTHOR TO WRITE: neat block letters, a careful hand."
+    "scale": 0.87,
+    "description": "neat block letters, a careful hand."
   },
   {
     "id": "shadows_into_light",
     "name": "Shadows Into Light",
     "family": "Shadows Into Light",
-    "description": "AUTHOR TO WRITE: thin and tall, written fast and light."
+    "scale": 0.75,
+    "description": "thin and tall, written fast and light."
   },
   {
     "id": "kalam",
     "name": "Kalam",
     "family": "Kalam",
-    "description": "AUTHOR TO WRITE: a confident marker hand, sure of itself."
+    "scale": 0.78,
+    "description": "a confident marker hand, sure of itself."
   },
   {
     "id": "nanum_pen_script",
     "name": "Nanum Pen Script",
     "family": "Nanum Pen Script",
-    "description": "AUTHOR TO WRITE: small, cramped and fine, written with a pen close to the paper."
+    "scale": 0.84,
+    "description": "small, cramped and fine, written with a pen close to the paper."
+  },
+  {
+    "id": "klee_one",
+    "name": "Klee One",
+    "family": "Klee One",
+    "scale": 0.76,
+    "description": "a neat, upright pen, every letter separate."
+  },
+  {
+    "id": "playpen_sans",
+    "name": "Playpen Sans",
+    "family": "Playpen Sans",
+    "scale": 0.71,
+    "description": "round, even print, like a careful marker on a whiteboard."
+  },
+  {
+    "id": "neucha",
+    "name": "Neucha",
+    "family": "Neucha",
+    "scale": 0.83,
+    "description": "plain narrow print, quick but tidy."
+  },
+  {
+    "id": "gaegu",
+    "name": "Gaegu",
+    "family": "Gaegu",
+    "scale": 0.88,
+    "description": "soft rounded print, small and friendly."
+  },
+  {
+    "id": "pangolin",
+    "name": "Pangolin",
+    "family": "Pangolin",
+    "scale": 0.75,
+    "description": "firm, even block letters pressed hard into the paper."
+  },
+  {
+    "id": "edu_sa_beginner",
+    "name": "Edu SA Beginner",
+    "family": "Edu SA Beginner",
+    "scale": 0.94,
+    "description": "school print, each letter formed the way it was taught."
+  },
+  {
+    "id": "amatic_sc",
+    "name": "Amatic SC",
+    "family": "Amatic SC",
+    "scale": 0.83,
+    "description": "tall, thin capitals, all in a narrow row."
+  },
+  {
+    "id": "annie_use_your_telescope",
+    "name": "Annie Use Your Telescope",
+    "family": "Annie Use Your Telescope",
+    "scale": 0.89,
+    "description": "loose and airy, letters that lean as they like."
+  },
+  {
+    "id": "architects_daughter",
+    "name": "Architects Daughter",
+    "family": "Architects Daughter",
+    "scale": 0.76,
+    "description": "square drafting print, written along a ruler."
+  },
+  {
+    "id": "caveat_brush",
+    "name": "Caveat Brush",
+    "family": "Caveat Brush",
+    "scale": 0.92,
+    "description": "a quick slanted hand in a thick brush pen."
+  },
+  {
+    "id": "cedarville_cursive",
+    "name": "Cedarville Cursive",
+    "family": "Cedarville Cursive",
+    "scale": 0.86,
+    "description": "a light, joined school cursive."
+  },
+  {
+    "id": "covered_by_your_grace",
+    "name": "Covered By Your Grace",
+    "family": "Covered By Your Grace",
+    "scale": 0.85,
+    "description": "tall, bold strokes written in a hurry."
+  },
+  {
+    "id": "dancing_script",
+    "name": "Dancing Script",
+    "family": "Dancing Script",
+    "scale": 1.03,
+    "description": "a lively, looping cursive, joined and bouncing."
+  },
+  {
+    "id": "dawning_of_a_new_day",
+    "name": "Dawning of a New Day",
+    "family": "Dawning of a New Day",
+    "scale": 1.06,
+    "description": "a fine, sprawling scrawl, hard to read at a glance."
+  },
+  {
+    "id": "delius",
+    "name": "Delius",
+    "family": "Delius",
+    "scale": 0.76,
+    "description": "rounded, careful print, almost typed."
+  },
+  {
+    "id": "gloria_hallelujah",
+    "name": "Gloria Hallelujah",
+    "family": "Gloria Hallelujah",
+    "scale": 0.7,
+    "description": "big, cheerful marker print with wide letters."
+  },
+  {
+    "id": "gochi_hand",
+    "name": "Gochi Hand",
+    "family": "Gochi Hand",
+    "scale": 0.8,
+    "description": "chunky, comic print in a felt pen."
+  },
+  {
+    "id": "handlee",
+    "name": "Handlee",
+    "family": "Handlee",
+    "scale": 0.8,
+    "description": "easy, even print, written without fuss."
+  },
+  {
+    "id": "homemade_apple",
+    "name": "Homemade Apple",
+    "family": "Homemade Apple",
+    "scale": 0.7,
+    "description": "wide, sweeping cursive that takes up the whole line."
+  },
+  {
+    "id": "just_another_hand",
+    "name": "Just Another Hand",
+    "family": "Just Another Hand",
+    "scale": 1.16,
+    "description": "tall, narrow letters squeezed close together."
+  },
+  {
+    "id": "kristi",
+    "name": "Kristi",
+    "family": "Kristi",
+    "scale": 1.09,
+    "description": "thin, quick cursive with long tails."
+  },
+  {
+    "id": "la_belle_aurore",
+    "name": "La Belle Aurore",
+    "family": "La Belle Aurore",
+    "scale": 0.83,
+    "description": "an elegant slanted cursive in a fine pen."
+  },
+  {
+    "id": "loved_by_the_king",
+    "name": "Loved by the King",
+    "family": "Loved by the King",
+    "scale": 0.8,
+    "description": "thin, scratchy print, a little unsteady."
+  },
+  {
+    "id": "marck_script",
+    "name": "Marck Script",
+    "family": "Marck Script",
+    "scale": 0.93,
+    "description": "a smooth, confident cursive in a felt pen."
+  },
+  {
+    "id": "mrs_saint_delafield",
+    "name": "Mrs Saint Delafield",
+    "family": "Mrs Saint Delafield",
+    "scale": 1.36,
+    "description": "an ornate copperplate signature hand, all flourish."
+  },
+  {
+    "id": "mynerve",
+    "name": "Mynerve",
+    "family": "Mynerve",
+    "scale": 0.83,
+    "description": "plain everyday print, a little rough at the edges."
+  },
+  {
+    "id": "nanum_brush_script",
+    "name": "Nanum Brush Script",
+    "family": "Nanum Brush Script",
+    "scale": 1.05,
+    "description": "narrow brush strokes, quick and dry."
+  },
+  {
+    "id": "nothing_you_could_do",
+    "name": "Nothing You Could Do",
+    "family": "Nothing You Could Do",
+    "scale": 0.75,
+    "description": "a loose, scrawled cursive, written fast."
+  },
+  {
+    "id": "over_the_rainbow",
+    "name": "Over the Rainbow",
+    "family": "Over the Rainbow",
+    "scale": 0.7,
+    "description": "light, open print with a gentle slope."
+  },
+  {
+    "id": "permanent_marker",
+    "name": "Permanent Marker",
+    "family": "Permanent Marker",
+    "scale": 0.7,
+    "description": "heavy marker capitals, loud on the page."
+  },
+  {
+    "id": "pinyon_script",
+    "name": "Pinyon Script",
+    "family": "Pinyon Script",
+    "scale": 0.98,
+    "description": "formal calligraphy, slow and exact."
+  },
+  {
+    "id": "reenie_beanie",
+    "name": "Reenie Beanie",
+    "family": "Reenie Beanie",
+    "scale": 0.93,
+    "description": "a scruffy, hurried scrawl in a ballpoint."
+  },
+  {
+    "id": "rock_salt",
+    "name": "Rock Salt",
+    "family": "Rock Salt",
+    "scale": 0.7,
+    "description": "wide, rough marker letters that crowd the line."
+  },
+  {
+    "id": "satisfy",
+    "name": "Satisfy",
+    "family": "Satisfy",
+    "scale": 0.93,
+    "description": "a round, brushed cursive, smooth and easy."
+  },
+  {
+    "id": "sedgwick_ave",
+    "name": "Sedgwick Ave",
+    "family": "Sedgwick Ave",
+    "scale": 0.7,
+    "description": "spiky street print in a thick marker."
+  },
+  {
+    "id": "shantell_sans",
+    "name": "Shantell Sans",
+    "family": "Shantell Sans",
+    "scale": 0.74,
+    "description": "a bouncy, uneven print, never quite level."
+  },
+  {
+    "id": "square_peg",
+    "name": "Square Peg",
+    "family": "Square Peg",
+    "scale": 1.43,
+    "description": "a small, light cursive with tall loops."
+  },
+  {
+    "id": "sue_ellen_francisco",
+    "name": "Sue Ellen Francisco",
+    "family": "Sue Ellen Francisco",
+    "scale": 1.12,
+    "description": "tall, skinny letters written very fast."
+  },
+  {
+    "id": "the_girl_next_door",
+    "name": "The Girl Next Door",
+    "family": "The Girl Next Door",
+    "scale": 0.72,
+    "description": "loose, light print with a soft slant."
+  },
+  {
+    "id": "waiting_for_the_sunrise",
+    "name": "Waiting for the Sunrise",
+    "family": "Waiting for the Sunrise",
+    "scale": 0.79,
+    "description": "a thin, drifting hand with long strokes."
+  },
+  {
+    "id": "yellowtail",
+    "name": "Yellowtail",
+    "family": "Yellowtail",
+    "scale": 0.95,
+    "description": "a bold, swinging retro cursive."
+  },
+  {
+    "id": "zeyada",
+    "name": "Zeyada",
+    "family": "Zeyada",
+    "scale": 0.92,
+    "description": "a quick, sharp, untidy scrawl."
   }
 ]

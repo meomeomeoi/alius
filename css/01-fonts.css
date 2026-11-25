@@ -3,6 +3,8 @@
  * style.css, which SillyTavern loads from the extension folder, so nothing is requested from anywhere else.
  * Licences: fonts/LICENSES/ (IBM Plex Mono, Saira Stencil One and Inter are SIL OFL 1.1; Special Elite is Apache-2.0).
  * P10b: six hand fonts for notes (Caveat, Indie Flower, Patrick Hand, Shadows Into Light, Kalam, Nanum Pen Script), SIL OFL 1.1, fonts/LICENSES/hand-*.txt.
+ * P10e-e: 42 more hands (Google Fonts, latin subset), SIL OFL 1.1 except Rock Salt, Permanent Marker, Just Another Hand, Homemade Apple,
+ * Satisfy and Yellowtail (Apache-2.0); fonts/LICENSES/hand-*.txt. The order follows the handFonts registry.
  */
 @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/ibm-plex-mono-400.woff2") format("woff2"); }
 @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/ibm-plex-mono-600.woff2") format("woff2"); }
@@ -17,3 +19,45 @@
 @font-face { font-family: "Shadows Into Light"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-shadows-into-light-400.woff2") format("woff2"); }
 @font-face { font-family: "Kalam"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-kalam-400.woff2") format("woff2"); }
 @font-face { font-family: "Nanum Pen Script"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-nanum-pen-script-400.woff2") format("woff2"); }
+@font-face { font-family: "Klee One"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-klee-one-400.woff2") format("woff2"); }
+@font-face { font-family: "Playpen Sans"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-playpen-sans-400.woff2") format("woff2"); }
+@font-face { font-family: "Neucha"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-neucha-400.woff2") format("woff2"); }
+@font-face { font-family: "Gaegu"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-gaegu-400.woff2") format("woff2"); }
+@font-face { font-family: "Pangolin"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-pangolin-400.woff2") format("woff2"); }
+@font-face { font-family: "Edu SA Beginner"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-edu-sa-beginner-400.woff2") format("woff2"); }
+@font-face { font-family: "Amatic SC"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-amatic-sc-400.woff2") format("woff2"); }
+@font-face { font-family: "Annie Use Your Telescope"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-annie-use-your-telescope-400.woff2") format("woff2"); }
+@font-face { font-family: "Architects Daughter"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-architects-daughter-400.woff2") format("woff2"); }
+@font-face { font-family: "Caveat Brush"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-caveat-brush-400.woff2") format("woff2"); }
+@font-face { font-family: "Cedarville Cursive"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-cedarville-cursive-400.woff2") format("woff2"); }
+@font-face { font-family: "Covered By Your Grace"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-covered-by-your-grace-400.woff2") format("woff2"); }
+@font-face { font-family: "Dancing Script"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-dancing-script-400.woff2") format("woff2"); }
+@font-face { font-family: "Dawning of a New Day"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-dawning-of-a-new-day-400.woff2") format("woff2"); }
+@font-face { font-family: "Delius"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-delius-400.woff2") format("woff2"); }
+@font-face { font-family: "Gloria Hallelujah"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-gloria-hallelujah-400.woff2") format("woff2"); }
+@font-face { font-family: "Gochi Hand"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-gochi-hand-400.woff2") format("woff2"); }
+@font-face { font-family: "Handlee"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-handlee-400.woff2") format("woff2"); }
+@font-face { font-family: "Homemade Apple"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-homemade-apple-400.woff2") format("woff2"); }
+@font-face { font-family: "Just Another Hand"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-just-another-hand-400.woff2") format("woff2"); }
+@font-face { font-family: "Kristi"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-kristi-400.woff2") format("woff2"); }
+@font-face { font-family: "La Belle Aurore"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-la-belle-aurore-400.woff2") format("woff2"); }
+@font-face { font-family: "Loved by the King"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-loved-by-the-king-400.woff2") format("woff2"); }
+@font-face { font-family: "Marck Script"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-marck-script-400.woff2") format("woff2"); }
+@font-face { font-family: "Mrs Saint Delafield"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-mrs-saint-delafield-400.woff2") format("woff2"); }
+@font-face { font-family: "Mynerve"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-mynerve-400.woff2") format("woff2"); }
+@font-face { font-family: "Nanum Brush Script"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-nanum-brush-script-400.woff2") format("woff2"); }
+@font-face { font-family: "Nothing You Could Do"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-nothing-you-could-do-400.woff2") format("woff2"); }
+@font-face { font-family: "Over the Rainbow"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-over-the-rainbow-400.woff2") format("woff2"); }
+@font-face { font-family: "Permanent Marker"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-permanent-marker-400.woff2") format("woff2"); }
+@font-face { font-family: "Pinyon Script"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-pinyon-script-400.woff2") format("woff2"); }
+@font-face { font-family: "Reenie Beanie"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-reenie-beanie-400.woff2") format("woff2"); }
+@font-face { font-family: "Rock Salt"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-rock-salt-400.woff2") format("woff2"); }
+@font-face { font-family: "Satisfy"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-satisfy-400.woff2") format("woff2"); }
+@font-face { font-family: "Sedgwick Ave"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-sedgwick-ave-400.woff2") format("woff2"); }
+@font-face { font-family: "Shantell Sans"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-shantell-sans-400.woff2") format("woff2"); }
+@font-face { font-family: "Square Peg"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-square-peg-400.woff2") format("woff2"); }
+@font-face { font-family: "Sue Ellen Francisco"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-sue-ellen-francisco-400.woff2") format("woff2"); }
+@font-face { font-family: "The Girl Next Door"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-the-girl-next-door-400.woff2") format("woff2"); }
+@font-face { font-family: "Waiting for the Sunrise"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-waiting-for-the-sunrise-400.woff2") format("woff2"); }
+@font-face { font-family: "Yellowtail"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-yellowtail-400.woff2") format("woff2"); }
+@font-face { font-family: "Zeyada"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-zeyada-400.woff2") format("woff2"); }
