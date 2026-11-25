@@ -411,6 +411,16 @@ The README of each prototype ends with "Open engine questions (decide in the pla
 - [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** the tests, `npm run test:layout` → PASS.
 - [x] **Step 5: Commit** `fix(P10e-e): the dial's circle no longer moves with its label; side-by-side shots`
 
+**Chunk e1 closed (2026-11-25).** Tasks 1–6 reviewed one by one, then the chunk as a whole. The chunk review's fixes (75c1780, 968238b) settled the host's contract:
+- the real-time default migrates once for existing installs;
+- `InstrumentRun.finish?(end)` lets a run's end play (the stop word, a scene end, a chat switch and a new run still unmount at once);
+- the host undoes what a mount leaves: scoped samples, `env.timeout` / `env.listen`, the style and `data-*` of the root, the layers and the input;
+- her lines go through `env.say`;
+- the host's mark has no `data-analyze` (`instrument` is reachable through the `see` lists of `stop_word`, `posture_dial` and `contact_physics`);
+- both real-time gates are required (the global setting and the campaign's mirror).
+
+Open for e4: a blackout's end is cut short by the scene end; P15a's typing lapse against breath's mouse rule.
+
 ---
 
 ## Chunk e2: her cards and the posture call (`cards.html`)
