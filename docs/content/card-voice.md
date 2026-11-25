@@ -121,11 +121,11 @@ P10e §15 step 3, variant **B3** (author, 2026-11-25): on a card everything is i
 - **weight:** `I'd call it {weight}.` · `Severity: {weight}.` · `{weight}. Proportionate.`
 
 ### possessive
-- **when:** `{when}. You're mine then.` · `I want you on it {when}.` · `{when}, and not a minute for anyone else.`
-- **cost:** `{slots} of your time. Mine.` · `I'm taking {slots}.` · `{slots}. They were always mine.`
-- **who:** `{who} will know whose you are.` · `I'll let {who} see.` · `{who} will know. Let them.`
-- **only her:** `Nobody else gets this. Only me.` · `This one stays mine.`
-- **weight:** `{weight}. You'll remember who gave it.` · `A {weight} one, from me.` · `It's {weight}. Mine to give.`
+- **when:** `{when}. Keep the rest of the day clear.` · `I want you on it {when}.` · `{when}, and not a minute for anyone else.`
+- **cost:** `{slots} of your time, and I want all of it.` · `I'm taking {slots}.` · `{slots}. Don't fill them with anyone else.`
+- **who:** `{who} will know who you answer to.` · `I'll let {who} see.` · `{who} will know. Let them.`
+- **only her:** `Nobody else gets this. Only me.` · `This one stays between us. Don't share it.`
+- **weight:** `{weight}. You'll remember who gave it.` · `A {weight} one, from me.` · `It's {weight}. And it's from me, no one else.`
 
 ### playful
 - **when:** `{when}~ don't be late.` · `{when}, or I'll think of something.` · `{when}. Tick tock.`
@@ -144,7 +144,7 @@ P10e §15 step 3, variant **B3** (author, 2026-11-25): on a card everything is i
 ### obsessive
 - **when:** `{when}. I'll be counting.` · `{when}. I'll know if it isn't.` · `I want it {when}. I'll be watching for it.`
 - **cost:** `{slots}, all of them for me.` · `I need {slots} of you.` · `{slots}. I'll know where you spend them.`
-- **who:** `{who} will know. I'll see that they do.` · `I'll tell {who}. I'll watch them hear it.` · `{who} will know you're mine.`
+- **who:** `{who} will know. I'll see that they do.` · `I'll tell {who}. I'll watch them hear it.` · `{who} will know. I'll ask them later what they saw.`
 - **only her:** `No one else will ever know.` · `Only me. Always only me.`
 - **weight:** `It's {weight}. I thought about it a long time.` · `{weight}. I chose it carefully.` · `A {weight} one. I'll watch you take it.`
 
@@ -240,9 +240,9 @@ Variant **D** (author, 2026-11-25): a short full-frame moment, like the slap. He
 - **slow:** `Too slow. Noted.` · `Response time: unacceptable.` · `You hesitated. I saw.`
 
 ### possessive
-- **right:** `Good. Mine, and quick about it.` · `That's how I like you.` · `Yes. Stay like that for me.`
-- **wrong:** `I said {posture}. Mine, not yours.` · `Not that. {posture}, for me.` · `You know what {posture} means. Do it.`
-- **slow:** `When I call, you come. Faster.` · `Too slow for me.` · `Don't make me wait for what's mine.`
+- **right:** `Good. Quick, the way I taught you.` · `That's how I like you.` · `Yes. Stay like that for me.`
+- **wrong:** `I said {posture}. My word, not your guess.` · `Not that. {posture}, for me.` · `You know what {posture} means. Do it.`
+- **slow:** `When I call, you come. Faster.` · `Too slow for me.` · `Don't make me wait. Not me.`
 
 ### playful
 - **right:** `Ooh, quick~` · `Good! Gold star.` · `Look at you go.`
