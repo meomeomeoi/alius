@@ -285,10 +285,11 @@ The README of each prototype ends with "Open engine questions (decide in the pla
   - `createArtSlots(manifest: unknown, assetUrl: (p: string) => string, unitKey: (unitId: string) => string | null): ArtSlots`
   - The manifest: `{ [unitKey]: { [slot]: { file: string; sidecar?: ArtSidecar } } }`, where `unitKey` is the unit's card avatar file name (stable across campaigns).
   - `over_explicit` is returned only when `explicit_scenes` is on; the caller passes the gate.
+  - *As built:* the caller passes the gate as `get(unitId, slot, { explicit })` (absent = off), computed by `explicitArtAllowed(state, reg, unitId)` (`explicit_scenes` on and not among her own limits). `ART_SLOT_IDS` lists the slots. The manifest may also hold `legs_astride.left` / `legs_astride.right`; with both (and `legs_astride` absent or `feet: 'pair'`) `get(…, 'legs_astride')` answers `{ url: <left>, sidecar: { …, feet: 'pair' }, pair: { left, right } }`. A file must be a relative path under `content/local/art/` (no scheme, root or `..`). Loaded through `AppDeps.loadArt` (`src/index.ts` fetches `content/local/art/art.json`; a failure = none); the app holds `art` for the instrument host (Task 5). The prototypes' extra keys (`slot`, `kind`, `states`, `floorShade`) are dropped: chunk (f) writes `floorShade` into the `fit` of `legs_seated.rest`, and `legs_seated`'s `states` become the two slots.
 
-- [ ] **Step 1: Write the failing tests:** `an absent manifest gives null for every slot`; `a slot resolves to assetUrl('content/local/art/<file>') with its sidecar`; `a malformed entry is skipped, not thrown` (zod, logged once); `over_explicit needs the explicit gate`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run**, `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P10e-e): art slots with sidecars (empty until chunk f)`
+- [x] **Step 1: Write the failing tests:** `an absent manifest gives null for every slot`; `a slot resolves to assetUrl('content/local/art/<file>') with its sidecar`; `a malformed entry is skipped, not thrown` (zod, logged once); `over_explicit needs the explicit gate`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run**, `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P10e-e): art slots with sidecars (empty until chunk f)`
 
 ### Task 5: The instrument host and the shared kit
 

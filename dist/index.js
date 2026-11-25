@@ -13464,7 +13464,7 @@ function validateExpectations(raw, reg, ctx2) {
     if (t.length > max) issues.push(`expectations.${field2} was cut to ${max} characters`);
     return t.slice(0, max).trim();
   };
-  const num6 = (v, lo, hi) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : void 0;
+  const num7 = (v, lo, hi) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : void 0;
   const target = (id) => reg.worshipTargets.get(id);
   const open3 = (id) => ctx2.state === void 0 || contentAllowed(ctx2.state, reg, target(id), ctx2.unitId);
   for (const key of Object.keys(raw)) if (!EXPECTATION_FIELDS.includes(key)) issues.push(`expectations has no field "${key}"`);
@@ -13499,8 +13499,8 @@ function validateExpectations(raw, reg, ctx2) {
     }
   }
   if (raw.offset !== void 0) {
-    const r = isObj4(raw.offset) ? num6(raw.offset.r, -L.offsetMax, L.offsetMax) : void 0;
-    const f = isObj4(raw.offset) ? num6(raw.offset.f, -L.offsetMax, L.offsetMax) : void 0;
+    const r = isObj4(raw.offset) ? num7(raw.offset.r, -L.offsetMax, L.offsetMax) : void 0;
+    const f = isObj4(raw.offset) ? num7(raw.offset.f, -L.offsetMax, L.offsetMax) : void 0;
     if (r === void 0 || f === void 0) issues.push("expectations.offset needs numbers r and f");
     else {
       if (isObj4(raw.offset) && (Math.abs(Number(raw.offset.r)) > L.offsetMax || Math.abs(Number(raw.offset.f)) > L.offsetMax)) issues.push(`expectations.offset was clamped to \xB1${L.offsetMax}`);
@@ -13598,9 +13598,9 @@ function validateExpectations(raw, reg, ctx2) {
   }
   if (raw.build !== void 0) {
     const b = isObj4(raw.build) ? raw.build : {};
-    const slim = num6(b.slim, 0, 1);
-    const athletic = num6(b.athletic, 0, 1);
-    const curvy = num6(b.curvy, 0, 1);
+    const slim = num7(b.slim, 0, 1);
+    const athletic = num7(b.athletic, 0, 1);
+    const curvy = num7(b.curvy, 0, 1);
     if (slim === void 0 || athletic === void 0 || curvy === void 0) issues.push("expectations.build needs the weights slim, athletic and curvy");
     else out.build = { slim, athletic, curvy };
   }
@@ -49815,7 +49815,7 @@ function registerSceneContext(builder, deps) {
       const reg = deps.registries();
       const raw = deps.settings().showRawValues;
       const romance = intimacyOf(s).romance;
-      const num6 = (n) => raw ? ` (${n})` : "";
+      const num7 = (n) => raw ? ` (${n})` : "";
       const here = new Set(s.scene?.participants ?? []);
       const lifeOn = lifeMode(s) !== "off";
       return presentUnits2(s).map((u) => {
@@ -49824,9 +49824,9 @@ function registerSceneContext(builder, deps) {
         const covered3 = rel.affair?.hiddenFrom.some((id) => here.has(id)) === true;
         const st = reg.relationshipStates.get(covered3 ? "comrade" : rel.stateId);
         const axes = [
-          `trust ${trustBand(rel.trust)}${num6(rel.trust)}`,
-          `affinity ${affinityBand(rel.affinity)}${num6(rel.affinity)}`,
-          ...romance && !covered3 ? [`attraction ${attractionBand(rel.attraction)}${num6(rel.attraction)}`] : []
+          `trust ${trustBand(rel.trust)}${num7(rel.trust)}`,
+          `affinity ${affinityBand(rel.affinity)}${num7(rel.affinity)}`,
+          ...romance && !covered3 ? [`attraction ${attractionBand(rel.attraction)}${num7(rel.attraction)}`] : []
         ].join(", ");
         const defects = u.defects.map((d) => {
           const def = reg.defects.get(d.id);
@@ -49834,7 +49834,7 @@ function registerSceneContext(builder, deps) {
         }).join("");
         const t = lifeOn && u.kind === "named" ? temperamentOf(s, u.id) : null;
         const temper = t ? `; temperament: ${t.talkativeness}, ${t.volatility}, ${t.humor} humor` : "";
-        return `${u.displayName} \u2014 state ${String(st?.name ?? "Comrade")}${st ? ` (${String(st.promptHint)})` : ""}; ${axes}; stress ${stressBand(u.stress)}${num6(u.stress)}${temper}${defects}`;
+        return `${u.displayName} \u2014 state ${String(st?.name ?? "Comrade")}${st ? ` (${String(st.promptHint)})` : ""}; ${axes}; stress ${stressBand(u.stress)}${num7(u.stress)}${temper}${defects}`;
       }).join("\n");
     }
   });
@@ -56684,16 +56684,16 @@ function relationLine(unit4, state, ctx2) {
   const rel = state.relations[unit4.id];
   if (!rel) return null;
   const raw = ctx2.settings().showRawValues;
-  const num6 = (n) => raw ? ` (${n})` : "";
+  const num7 = (n) => raw ? ` (${n})` : "";
   const live3 = { unitId: unit4.id };
   const chip2 = (text3, address, data) => h("span", { class: "alius-chip", ...analyzeAttrs(address, data) }, text3);
   const parts = [
     chip2(`${String(ctx2.registries.relationshipStates.get(rel.stateId)?.name ?? rel.stateId).toUpperCase()}`, `relationshipStates:${rel.stateId}`),
-    chip2(`TRUST ${trustBand(rel.trust).toUpperCase()}${num6(rel.trust)}`, "glossary:trust", live3)
+    chip2(`TRUST ${trustBand(rel.trust).toUpperCase()}${num7(rel.trust)}`, "glossary:trust", live3)
   ];
   if (unit4.kind !== "grunt") {
-    parts.push(chip2(`AFFINITY ${affinityBand(rel.affinity).toUpperCase()}${num6(rel.affinity)}`, "glossary:affinity", live3));
-    if (intimacyOf(state).romance) parts.push(chip2(`ATTRACTION ${attractionBand(rel.attraction).toUpperCase()}${num6(rel.attraction)}`, "glossary:attraction", live3));
+    parts.push(chip2(`AFFINITY ${affinityBand(rel.affinity).toUpperCase()}${num7(rel.affinity)}`, "glossary:affinity", live3));
+    if (intimacyOf(state).romance) parts.push(chip2(`ATTRACTION ${attractionBand(rel.attraction).toUpperCase()}${num7(rel.attraction)}`, "glossary:attraction", live3));
   }
   return h("p", { class: "alius-relation" }, ...joinWith(parts, " \xB7 "));
 }
@@ -58004,6 +58004,80 @@ function createSamples(deps) {
         void c?.close?.()?.catch?.(() => void 0);
       } catch {
       }
+    }
+  };
+}
+
+// src/ui/scene/art.ts
+var ART_SLOT_IDS = [
+  "over",
+  "over_explicit",
+  "face_close",
+  "legs_seated.rest",
+  "legs_seated.foot_raised",
+  "legs_astride",
+  "sole_close",
+  "feet_floor",
+  "shoe_close.boots",
+  "shoe_close.heels",
+  "shoe_sole.boots",
+  "shoe_sole.heels"
+];
+var PAIR_KEYS = ["legs_astride.left", "legs_astride.right"];
+var MANIFEST_KEYS = [...ART_SLOT_IDS, ...PAIR_KEYS];
+var num6 = external_exports.number().finite();
+var zoneSet = external_exports.record(external_exports.string(), external_exports.array(num6).min(2).max(5));
+var sidecarSchema = external_exports.object({
+  fit: external_exports.record(external_exports.string(), num6).optional(),
+  zones: external_exports.union([external_exports.object({ right: zoneSet, left: zoneSet }), zoneSet]).optional(),
+  feet: external_exports.enum(["one", "pair", "two"]).optional(),
+  shown: external_exports.enum(["left", "right"]).optional(),
+  face: external_exports.object({ x: num6, y: num6 }).optional()
+});
+var fileSchema = external_exports.string().min(1).refine((f) => !/^[a-z][a-z0-9+.-]*:/i.test(f) && !f.startsWith("/") && !f.includes("\\") && !f.split("/").includes(".."), "not a path under content/local/art");
+var entrySchema = external_exports.object({ file: fileSchema, sidecar: sidecarSchema.optional() });
+var ART_ROOT = "content/local/art/";
+function createArtSlots(manifest, assetUrl, unitKey) {
+  const byUnit = /* @__PURE__ */ new Map();
+  const problems = [];
+  if (manifest !== null && typeof manifest === "object" && !Array.isArray(manifest)) {
+    for (const [key, slots] of Object.entries(manifest)) {
+      if (slots === null || typeof slots !== "object" || Array.isArray(slots)) {
+        problems.push(`${key}: not an object`);
+        continue;
+      }
+      const kept = /* @__PURE__ */ new Map();
+      for (const [slot2, raw] of Object.entries(slots)) {
+        if (!MANIFEST_KEYS.includes(slot2)) {
+          problems.push(`${key}.${slot2}: unknown slot`);
+          continue;
+        }
+        const parsed = entrySchema.safeParse(raw);
+        if (!parsed.success) {
+          problems.push(`${key}.${slot2}: ${parsed.error.issues.map((i) => `${i.path.join(".") || "(entry)"} ${i.message}`).join("; ")}`);
+          continue;
+        }
+        kept.set(slot2, { file: parsed.data.file, sidecar: parsed.data.sidecar ?? {} });
+      }
+      if (kept.size > 0) byUnit.set(key, kept);
+    }
+  }
+  if (problems.length > 0) console.warn(`[Alius] art: ${problems.length} entr${problems.length === 1 ? "y" : "ies"} skipped \u2014 ${problems.join(" | ")}`);
+  const urlOf = (file) => assetUrl(ART_ROOT + file);
+  return {
+    get(unitId, slot2, gate2) {
+      if (slot2 === "over_explicit" && gate2?.explicit !== true) return null;
+      const key = unitKey(unitId);
+      const slots = key === null ? void 0 : byUnit.get(key);
+      if (slots === void 0) return null;
+      const entry = slots.get(slot2);
+      if (slot2 === "legs_astride") {
+        const left = slots.get(PAIR_KEYS[0]), right = slots.get(PAIR_KEYS[1]);
+        if (left !== void 0 && right !== void 0 && (entry === void 0 || entry.sidecar.feet === "pair")) {
+          return { url: urlOf(left.file), sidecar: { ...entry?.sidecar ?? left.sidecar, feet: "pair" }, pair: { left: urlOf(left.file), right: urlOf(right.file) } };
+        }
+      }
+      return entry === void 0 ? null : { url: urlOf(entry.file), sidecar: entry.sidecar };
     }
   };
 }
@@ -68377,6 +68451,8 @@ function createApp(st, deps) {
   let contentErrors = [];
   let lorebook = null;
   let hubArt = [];
+  const artKey = (unitId) => state?.squad.find((u) => u.id === unitId)?.cardRef ?? null;
+  let art2 = createArtSlots(null, deps.assetUrl ?? ((p) => p), artKey);
   let load = { kind: "none" };
   let state = null;
   let saver = null;
@@ -70947,6 +71023,8 @@ function createApp(st, deps) {
       } catch (e) {
         contentErrors = [{ pack: "(loader)", file: "", path: "", message: errText3(e) }];
       }
+      const artManifest = deps.loadArt ? await deps.loadArt().catch(() => null) : null;
+      art2 = createArtSlots(artManifest, deps.assetUrl ?? ((p) => p), artKey);
       if (contentErrors.length > 0) {
         for (const e of contentErrors) console.warn(`[Alius] content: ${e.pack} ${e.file} ${e.path} \u2014 ${e.message}`);
         toast("warn", `Content: ${contentErrors.length} error(s) \u2014 see SYS \u203A debug`);
@@ -72665,8 +72743,10 @@ async function main() {
   const st = new RealStAdapter();
   const app = createApp(st, {
     loadContent: () => loadPacks(CONTENT_ROOTS, fetchJson, { optional: ["../content/local"] }),
-    assetUrl: (p) => new URL("../" + p, import.meta.url).href
+    assetUrl: (p) => new URL("../" + p, import.meta.url).href,
     // relative to dist/index.js
+    loadArt: () => fetchJson("../content/local/art/art.json").catch(() => null)
+    // P10e-e: the author's own art; absent = none
   });
   const launcher = installLauncher({
     open: () => app.shell.open(),

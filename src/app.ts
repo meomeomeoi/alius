@@ -145,6 +145,7 @@ import { renderMarks } from './ui/device/marks';
 import { pickSkin } from './ui/device/skins';
 import { createSound, type SoundId } from './ui/sound/sound';
 import { createSamples } from './ui/sound/samples';
+import { createArtSlots, type ArtSlots } from './ui/scene/art';
 import { renderHub } from './ui/hub/hubScreen';
 import { endSlotBlock } from './ui/hub/model';
 import { renderMapTab } from './ui/map/mapTab';
@@ -291,6 +292,8 @@ export interface AppDeps {
   shellFactory?: typeof createShell;
   /** URL of a file shipped with the extension (the optional world map image). */
   assetUrl?: (path: string) => string;
+  /** P10e-e: the author's art manifest, `content/local/art/art.json` (absent = no art; a failure is read as absent). */
+  loadArt?: () => Promise<unknown>;
   /** How long the oversight form's "review" takes (default 1800 ms, 0 with reduced motion); tests pass 0. */
   leashDelayMs?: number;
 }
@@ -305,6 +308,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   let lorebook: Lorebook | null = null;
   /** The hub art the packs declare (extension-relative paths); none declared = the blueprint, nothing requested. */
   let hubArt: string[] = []; // installed into new campaigns by deployCampaign (P1 Task 8)
+  /** P10e-e: the unit's card avatar file is the key of her art (stable across campaigns). */
+  const artKey = (unitId: string): string | null => state?.squad.find((u) => u.id === unitId)?.cardRef ?? null;
+  let art: ArtSlots = createArtSlots(null, deps.assetUrl ?? ((p) => p), artKey); // P10e-e: the instruments' pictures per slot (read by the instrument host)
   let load: LoadResult = { kind: 'none' };
   let state: CampaignState | null = null;
   let saver: ReturnType<typeof createSaver> | null = null;
@@ -2867,6 +2873,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       } catch (e) {
         contentErrors = [{ pack: '(loader)', file: '', path: '', message: errText(e) }];
       }
+      // P10e-e: the art slots (content/local/art/art.json; absent or unreadable = none, a malformed entry is skipped by the resolver)
+      const artManifest = deps.loadArt ? await deps.loadArt().catch(() => null) : null;
+      art = createArtSlots(artManifest, deps.assetUrl ?? ((p) => p), artKey);
       if (contentErrors.length > 0) {
         for (const e of contentErrors) console.warn(`[Alius] content: ${e.pack} ${e.file} ${e.path} — ${e.message}`);
         toast('warn', `Content: ${contentErrors.length} error(s) — see SYS › debug`);

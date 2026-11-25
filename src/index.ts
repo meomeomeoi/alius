@@ -16,6 +16,7 @@ async function main(): Promise<void> {
   const app = createApp(st, {
     loadContent: () => loadPacks(CONTENT_ROOTS, fetchJson, { optional: ['../content/local'] }),
     assetUrl: (p) => new URL('../' + p, import.meta.url).href, // relative to dist/index.js
+    loadArt: () => fetchJson('../content/local/art/art.json').catch(() => null), // P10e-e: the author's own art; absent = none
   });
 
   // Launcher first: a failing start must never hide the extension from the user.
