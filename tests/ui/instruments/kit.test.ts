@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 /** P10e-e Task 5: the shared kit of the instruments, copied from the prototypes. */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { chaikin } from '../../../src/ui/scene/instruments/kit/chaikin';
 import { SEAT_BODY, SHAPES, squashOf } from '../../../src/ui/scene/instruments/kit/dark';
@@ -141,5 +143,13 @@ describe('the kit', () => {
     heartTick(samples, 60);
     heartTick(samples, 60);
     expect(fake.started).toBeLessThanOrEqual(6 + 2);
+  });
+
+  it('readable mode: her lines in the type font, with no write-on (as P10b\'s notes)', () => {
+    const css = readFileSync(join(__dirname, '../../../css/63-instruments.css'), 'utf8');
+    const rule = /#alius-shell\.alius-readable \.alius-her-line\s*\{([^}]*)\}/.exec(css);
+    expect(rule).not.toBeNull();
+    expect(rule![1]).toMatch(/font-family:\s*var\(--alius-font-type\)/);
+    expect(rule![1]).toMatch(/animation:\s*none/);
   });
 });

@@ -35,12 +35,6 @@ export interface SayOpts {
   side?: 'left' | 'right';
 }
 
-/** The instrument host's note of every host a mount writes into (so its unmount clears only those). */
-let recorder: ((host: HTMLElement) => void) | null = null;
-export function recordSays(fn: ((host: HTMLElement) => void) | null): void {
-  recorder = fn;
-}
-
 const timers = new WeakMap<HTMLElement, Set<ReturnType<typeof setTimeout>>>();
 const groups = new WeakMap<HTMLElement, Set<HTMLElement>>();
 
@@ -106,7 +100,6 @@ export function say(host: HTMLElement, text: string, opts: SayOpts): HTMLElement
   group.dataset.textHost = '';
   if (!text) return group;
   host.appendChild(group);
-  recorder?.(host);
   let mine = groups.get(host);
   if (!mine) groups.set(host, (mine = new Set()));
   mine.add(group);

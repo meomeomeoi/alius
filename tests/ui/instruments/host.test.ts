@@ -16,7 +16,7 @@ import { FakeStAdapter } from '../../../src/st/fake';
 import { h } from '../../../src/ui/dom';
 import { _resetInstrumentDefs, instrumentFor, registerInstrument } from '../../../src/ui/scene/instruments/host';
 import type { InstrumentDef, InstrumentEnv, PhysicsEnd } from '../../../src/ui/scene/instruments/types';
-import { recordSays, say, unsay } from '../../../src/ui/scene/instruments/kit/hand';
+import { say, unsay } from '../../../src/ui/scene/instruments/kit/hand';
 import { heartTick } from '../../../src/ui/scene/instruments/kit/heart';
 import type { PhysicsPanelStaging } from '../../../src/ui/scene/physicsPanel';
 import { renderSceneScreen } from '../../../src/ui/scene/sceneScreen';
@@ -364,7 +364,7 @@ describe('the instrument host', () => {
     const s = hold();
     const t = draw(s);
     const env = calls.env!;
-    say(env.layers.effects, 'hold it.', { her: env.her(ANN) });
+    env.say(env.layers.effects, 'hold it.', { her: env.her(ANN) });
     env.gauge.narrow(0.5);
     env.gauge.tremble(2);
     expect(t.q('.alius-her-line')).not.toBeNull();
@@ -547,23 +547,63 @@ describe('the instrument host', () => {
     expect(mark.hasAttribute('data-readable')).toBe(true);
   });
 
-  it('the unmount clears only the lines this mount wrote', async () => {
+  it('the unmount clears only the lines this mount wrote through env.say (a line someone else writes in a layer stays)', async () => {
     const { def, calls } = testDef();
     registerInstrument(def);
     const s = hold();
     const t = draw(s);
     const env = calls.env!;
-    const other = h('div');
-    env.layers.pose.append(other);
-    say(env.layers.effects, 'mine.', { her: env.her(ANN) });
-    recordSays(null); // a line someone else writes (not through this mount)
-    say(other, 'not mine.', { her: env.her(ANN) });
+    env.say(env.layers.effects, 'mine.', { her: env.her(ANN) });
+    say(env.layers.moment, 'the slap\'s line.', { her: env.her(ANN) }); // written by another surface (the slap overlay) straight with the kit
     delete s.scene!.physics;
     t.screen.refresh();
     await flush();
     expect(t.q('.alius-layer-effects .alius-her-line')).toBeNull();
-    expect(other.querySelector('.alius-her-line')).not.toBeNull();
-    unsay(other);
+    expect(t.q('.alius-layer-moment .alius-her-line')).not.toBeNull();
+    unsay(t.q('.alius-layer-moment')!);
+  });
+
+  it('a source that ended is no longer kept (a long hold does not pile up nodes)', () => {
+    const nodes: EventTarget[] = [];
+    const ctx = {
+      currentTime: 0,
+      createOscillator: () => { const n = Object.assign(new EventTarget(), { stop: vi.fn(), disconnect: () => {}, connect: () => {}, start: () => {} }); nodes.push(n); return n; },
+    };
+    const samples = { play: vi.fn(), loop: vi.fn(), preload: async () => {}, buffer: () => null, ctx: () => ctx, bus: () => ({}), setWorldDull: vi.fn(), setNight: vi.fn(), setMuffle: vi.fn(), setSensory: vi.fn(), dispose: vi.fn() };
+    let made: { stop: ReturnType<typeof vi.fn> }[] = [];
+    const { def } = testDef({
+      start(env) {
+        const c = env.samples!.ctx() as unknown as typeof ctx;
+        made = [c.createOscillator(), c.createOscillator()] as never;
+        return { update: () => {}, stop: () => {} };
+      },
+    });
+    registerInstrument(def);
+    draw(hold(), { samples: samples as never });
+    nodes[0].dispatchEvent(new Event('ended'));
+    resetSceneStage();
+    expect(made[0].stop).not.toHaveBeenCalled(); // it ended on its own: forgotten
+    expect(made[1].stop).toHaveBeenCalled();
+  });
+
+  it('the input field\'s own style and data-* are put back too', async () => {
+    const { def } = testDef({
+      start(env) {
+        env.input.style.letterSpacing = '0.4em';
+        env.input.dataset.jaw = 'open';
+        return { update: () => {}, stop: () => {} };
+      },
+    });
+    registerInstrument(def);
+    const s = hold();
+    const t = draw(s);
+    const input = t.q('input[name="cmd"]')!;
+    expect(input.dataset.jaw).toBe('open');
+    delete s.scene!.physics;
+    t.screen.refresh();
+    await flush();
+    expect(input.style.letterSpacing).toBe('');
+    expect(input.dataset.jaw).toBeUndefined();
   });
 
   it('the dial dims while one runs (R6), and stops dimming after', async () => {

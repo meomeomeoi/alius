@@ -11,6 +11,7 @@ import type { SampleSound } from '../../sound/samples';
 import type { ArtSlots } from '../art';
 import type { PhysicsPanelStaging } from '../physicsPanel';
 import type { InputGauge } from '../stage/gauge';
+import type { SayOpts } from './kit/hand';
 
 /** How she looks on the frame: her name, her accent colour, her hand (a CSS family) and its measured size factor, her lead physics style. */
 export interface HerLook {
@@ -55,6 +56,11 @@ export interface InstrumentEnv {
   /** The author's pictures per slot (null answers fall back as each README says). */
   art: ArtSlots;
   her(unitId: string): HerLook;
+  /**
+   * Her line on the frame (`kit/hand.ts`'s `say`). An instrument writes through this, not the kit's `say`: the host clears, at the unmount,
+   * the hosts this mount wrote to and no other (another surface's lines in the same layer stay).
+   */
+  say(host: HTMLElement, text: string, opts: SayOpts): HTMLElement;
   /** The frame clock (the `raf` timestamps' clock). The plan's beats are placed in wall time through `staging.clock()`. */
   now(): number;
   raf(fn: FrameRequestCallback): number;

@@ -57,6 +57,12 @@
   transform-origin: right center;
 }
 
+/* readable mode: her lines in the type font, written at once (as P10b's notes in her hand, css/18-voices.css) */
+#alius-shell.alius-readable .alius-her-line {
+  font-family: var(--alius-font-type);
+  animation: none;
+}
+
 /* the still form: no write-on (the line is there at once), no fade */
 #alius-shell.alius-reduced-motion .alius-her-line,
 #alius-shell .alius-scene:has(.alius-instrument[data-reduced]) .alius-her-line {

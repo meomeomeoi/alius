@@ -5,6 +5,7 @@ import { handFamily, handOf, handScale } from '../../engine/hand';
 import { physicsStyleOf } from '../../engine/physics/style';
 import { syncInstruments, unmountInstruments } from './instruments';
 import type { InstrumentEnv } from './instruments/types';
+import { say } from './instruments/kit/hand';
 import { sceneBackdrop, slotLight } from '../../engine/backdrops';
 import { blockingLive } from '../../engine/blocking';
 import { intimacyOf } from '../../engine/relations/gain';
@@ -919,6 +920,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       now: () => frames.now(),
       raf: (fn) => frames.raf(fn),
       cancelRaf: (id) => frames.cancelRaf(id),
+      say: (host, text, opts) => say(host, text, opts),
       timeout: (fn, ms) => { const t = setTimeout(fn, ms); return () => clearTimeout(t); },
       listen: (target, type, fn, opts) => { target.addEventListener(type, fn, opts); return () => target.removeEventListener(type, fn, opts); },
       get reduced() { return motionReduced(ctx.settings()); },

@@ -43788,12 +43788,12 @@ function offerDirective(event, state, reg) {
   return parts === null ? null : plainDirective({ id: `${OFFER_PREFIX}${unit4.id}`, expiresAfter: "next_reply", text: [...parts, "Show it in how she acts and speaks; never name it as a mechanic."].join(" ") });
 }
 function offerSentences(reg, unit4, o) {
-  const say = OFFER_LINE[o.answer];
-  if (say === void 0) return null;
+  const say2 = OFFER_LINE[o.answer];
+  if (say2 === void 0) return null;
   const named4 = o.corrected === void 0 ? void 0 : reg.worshipTargets.get(o.corrected);
   return [
     `The commander offers ${sentence2(o.what)} to ${unit4.displayName}${o.conditions ? ", and asks something in return" : ""}.`,
-    o.kind ? `${unit4.displayName} turns it down kindly; she is not looking for that from the commander.` : say(unit4.displayName),
+    o.kind ? `${unit4.displayName} turns it down kindly; she is not looking for that from the commander.` : say2(unit4.displayName),
     ...o.answer === "corrected" && named4 !== void 0 ? [`What she wants is the commander's attention to her ${sentence2(String(named4.label)).toLowerCase()}.`] : []
   ];
 }
@@ -62265,18 +62265,122 @@ async function pickLocation(modal, ctx2) {
   return { locationId: picked, participants: [ctx2.firstUnitId, ...extraIds] };
 }
 
+// src/ui/scene/instruments/kit/math.ts
+var clamp43 = (x, a, b) => Math.min(b, Math.max(a, x));
+
 // src/ui/scene/instruments/kit/hand.ts
-var recorder = null;
-function recordSays(fn) {
-  recorder = fn;
-}
 var timers2 = /* @__PURE__ */ new WeakMap();
 var groups = /* @__PURE__ */ new WeakMap();
+function later(host, ms, fn) {
+  let set2 = timers2.get(host);
+  if (!set2) timers2.set(host, set2 = /* @__PURE__ */ new Set());
+  const t = setTimeout(() => {
+    set2.delete(t);
+    fn();
+  }, ms);
+  set2.add(t);
+}
 function unsay(host) {
   for (const t of timers2.get(host) ?? []) clearTimeout(t);
   timers2.delete(host);
   for (const g of groups.get(host) ?? []) g.remove();
   groups.delete(host);
+}
+function frameOf3(host) {
+  const r = host.getBoundingClientRect();
+  const W = host.clientWidth || r.width || (typeof innerWidth === "number" ? innerWidth : 0);
+  const H = host.clientHeight || r.height || (typeof innerHeight === "number" ? innerHeight : 0);
+  return { W, H, left: r.left, top: r.top };
+}
+function hashRand(key, a, b) {
+  return a + fnv1a3(key) % 1e4 / 1e4 * (b - a);
+}
+function liveTextRects(host, except) {
+  const out = [];
+  const scope = host.closest(".alius-scene") ?? host;
+  for (const el of scope.querySelectorAll("[data-text-host] > [data-line]")) {
+    if (el === except || el.classList.contains("gone") || el.dataset.gone) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width && r.height) out.push(r);
+  }
+  return out;
+}
+function placeFree(host, el, x, y) {
+  const f = frameOf3(host);
+  const innerWidth2 = f.W, innerHeight2 = f.H;
+  const rects = liveTextRects(host, el).map((r) => ({ left: r.left - f.left, right: r.right - f.left, top: r.top - f.top, bottom: r.bottom - f.top }));
+  const w = el.offsetWidth, h2 = el.offsetHeight, gap = 6, maxY = innerHeight2 * 0.8 - h2;
+  x = clamp43(x, 16, innerWidth2 - w - 24);
+  const hits = (yy2) => rects.find((r) => x < r.right + gap && x + w > r.left - gap && yy2 < r.bottom + gap && yy2 + h2 > r.top - gap);
+  let yy = clamp43(y, 12, Math.max(12, maxY)), hit, n = 0;
+  while ((hit = hits(yy)) && n++ < 30) yy = hit.bottom + gap;
+  if (yy > maxY) {
+    yy = clamp43(y, 12, Math.max(12, maxY));
+    n = 0;
+    while ((hit = hits(yy)) && n++ < 30) yy = hit.top - gap - h2;
+    yy = Math.max(12, yy);
+  }
+  el.style.left = `${x}px`;
+  el.style.top = `${yy}px`;
+  return { x, y: yy, h: h2 };
+}
+function say(host, text3, opts) {
+  const group = document.createElement("div");
+  group.className = "alius-her-lines";
+  group.dataset.textHost = "";
+  if (!text3) return group;
+  host.appendChild(group);
+  let mine = groups.get(host);
+  if (!mine) groups.set(host, mine = /* @__PURE__ */ new Set());
+  mine.add(group);
+  const to = opts.to ?? "self";
+  const size = opts.size ?? (opts.big ? 56 : to === "self" ? 34 : to === "commander" ? 46 : 40);
+  const max = opts.big ? 30 : 40, lines = [];
+  for (const word2 of text3.split(" ")) {
+    const last = lines[lines.length - 1];
+    if (last !== void 0 && (last + " " + word2).length <= max) lines[lines.length - 1] = last + " " + word2;
+    else lines.push(word2);
+  }
+  const { W: innerWidth2, H: innerHeight2 } = frameOf3(host);
+  const p = opts.at ?? [0.6, 0.16];
+  const els = [];
+  let x = clamp43(p[0] + 0.04, 0.03, 0.7) * innerWidth2 + hashRand(`${text3}|x`, -15, 15), y = clamp43(p[1] + 0.02, 0.03, 0.8) * innerHeight2, delay = 0;
+  const rot = opts.tilt === false ? "0.0" : hashRand(`${text3}|rot`, -4, 3).toFixed(1);
+  for (const line3 of lines) {
+    const el = document.createElement("div");
+    el.className = "alius-her-line" + (to === "self" ? " self" : to === "commander" ? " to-you" : "") + (opts.big ? " big" : "");
+    el.dataset.line = "";
+    el.textContent = line3;
+    const write3 = Math.max(160, line3.length * 36);
+    el.style.setProperty("--write", `${write3}ms`);
+    el.style.setProperty("--steps", String(Math.max(4, line3.length * 2)));
+    el.style.setProperty("--alius-font-hand", `"${opts.her.hand}", var(--alius-font-type)`);
+    el.style.setProperty("--alius-her", opts.her.accent);
+    el.style.fontSize = `${Math.round(size * opts.her.handScale * 100) / 100}px`;
+    el.style.animationDelay = `${delay}ms`;
+    el.style.transform = `rotate(${rot}deg)`;
+    group.appendChild(el);
+    const at = placeFree(host, el, x, y);
+    x = at.x;
+    y = at.y + at.h + 2;
+    if (opts.side === "right") {
+      el.style.left = "";
+      el.style.right = `${Math.max(0, innerWidth2 - at.x)}px`;
+      el.classList.add("right");
+    }
+    delay += write3;
+    els.push(el);
+  }
+  const dur = 700 + text3.length * 70;
+  const life = opts.ms ?? (opts.big ? 5200 : Math.max(2600, dur + 1400)) + delay * 0.5;
+  later(host, life, () => {
+    for (const el of els) el.classList.add("gone");
+    later(host, 700, () => {
+      group.remove();
+      mine.delete(group);
+    });
+  });
+  return group;
 }
 
 // src/ui/scene/instruments/kit/heart.ts
@@ -62340,7 +62444,10 @@ function scopedSamples(samples, scope) {
         if (typeof p === "string" && SOURCE_MAKERS.has(p)) {
           return (...args) => {
             const node = value.apply(t, args);
-            if (scope.live) scope.sources.add(node);
+            if (scope.live) {
+              scope.sources.add(node);
+              node.addEventListener?.("ended", () => scope.sources.delete(node), { once: true });
+            }
             return node;
           };
         }
@@ -62422,7 +62529,7 @@ function mount(env, def, run, key) {
     dulled: false,
     saidIn: /* @__PURE__ */ new Set(),
     samples: null,
-    snapshot: [snap(env.root, SCENE_OWNED.root), ...Object.entries(env.layers).map(([name, el]) => snap(el, SCENE_OWNED[name] ?? NONE4))]
+    snapshot: [snap(env.root, SCENE_OWNED.root), ...Object.entries(env.layers).map(([name, el]) => snap(el, SCENE_OWNED[name] ?? NONE4)), snap(env.input, NONE4)]
   };
   scope.samples = env.samples ? scopedSamples(env.samples, scope) : null;
   const scoped = Object.create(env, {
@@ -62458,6 +62565,12 @@ function mount(env, def, run, key) {
         };
       }
     },
+    say: {
+      value: (host, text3, opts) => {
+        if (scope.live) scope.saidIn.add(host);
+        return env.say(host, text3, opts);
+      }
+    },
     listen: {
       value: (target, type, fn, opts) => {
         if (!scope.live) return () => {
@@ -62477,9 +62590,6 @@ function mount(env, def, run, key) {
   env.root.querySelector(".alius-stage-dial")?.setAttribute("data-instrument", def.id);
   current = { key, runId: run.id, def, env, run: null, scope, mark, finishing: null };
   syncMark(current);
-  recordSays((host) => {
-    if (scope.live) scope.saidIn.add(host);
-  });
   current.run = def.start(scoped, run);
 }
 function unmountInstruments() {
@@ -62495,7 +62605,6 @@ function unmountInstruments() {
     const s = m.scope;
     s.staging = false;
     s.live = false;
-    recordSays(null);
     for (const id of s.frames) m.env.cancelRaf(id);
     s.frames.clear();
     for (const t of s.timers) clearTimeout(t);
@@ -65306,6 +65415,7 @@ function renderSceneScreen(host, ctx2) {
       now: () => frames.now(),
       raf: (fn) => frames.raf(fn),
       cancelRaf: (id) => frames.cancelRaf(id),
+      say: (host2, text3, opts) => say(host2, text3, opts),
       timeout: (fn, ms) => {
         const t = setTimeout(fn, ms);
         return () => clearTimeout(t);

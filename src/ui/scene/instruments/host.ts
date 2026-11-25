@@ -9,7 +9,7 @@
  * (chat switch) and the screen's dispose stop it at once.
  *
  * Each mount gets its own view of the env (`Object.create`): `raf`, `timeout`, `listen` and `samples` are recorded and undone at the
- * unmount, `staging` goes dead, the lines it wrote with `say` go, its heart stops, the input line is plain again, and the `style` and
+ * unmount, `staging` goes dead, the lines it wrote with `env.say` go, its heart stops, the input line is plain again, and the `style` and
  * `data-*` of the scene's root and of every layer are put back as they were at the mount (the scene's own keys excepted). Whatever an
  * instrument's own `stop` forgets, nothing it made outlives it or reaches the next run or the next chat.
  */
@@ -21,7 +21,7 @@ import type { AliusSettings } from '../../../settings';
 import { h } from '../../dom';
 import type { SampleLoop, SampleSound } from '../../sound/samples';
 import type { PhysicsPanelStaging } from '../physicsPanel';
-import { recordSays, unsay } from './kit/hand';
+import { unsay } from './kit/hand';
 import { heartStop } from './kit/heart';
 import type { InstrumentDef, InstrumentEnv, InstrumentRun, PhysicsEnd } from './types';
 
@@ -128,8 +128,12 @@ function scopedSamples(samples: SampleSound, scope: Scope): SampleSound {
         if (typeof value !== 'function') return value;
         if (typeof p === 'string' && SOURCE_MAKERS.has(p)) {
           return (...args: unknown[]) => {
-            const node = (value as (...a: unknown[]) => { stop(when?: number): void; disconnect(): void }).apply(t, args);
-            if (scope.live) scope.sources.add(node);
+            const node = (value as (...a: unknown[]) => { stop(when?: number): void; disconnect(): void; addEventListener?: EventTarget['addEventListener'] }).apply(t, args);
+            if (scope.live) {
+              scope.sources.add(node);
+              // a source that ended is forgotten: a long hold (two thumps a beat) does not pile up nodes until the unmount
+              node.addEventListener?.('ended', () => scope.sources.delete(node), { once: true });
+            }
             return node;
           };
         }
@@ -196,7 +200,7 @@ function mount(env: InstrumentEnv, def: InstrumentDef, run: PhysicsRun, key: str
   const scope: Scope = {
     staging: true, live: true, frames: new Set(), timers: new Set(), listeners: new Set(), loops: new Set(), sources: new Set(), dulled: false,
     saidIn: new Set(), samples: null,
-    snapshot: [snap(env.root, SCENE_OWNED.root), ...Object.entries(env.layers).map(([name, el]) => snap(el, SCENE_OWNED[name] ?? NONE))],
+    snapshot: [snap(env.root, SCENE_OWNED.root), ...Object.entries(env.layers).map(([name, el]) => snap(el, SCENE_OWNED[name] ?? NONE)), snap(env.input, NONE)],
   };
   scope.samples = env.samples ? scopedSamples(env.samples, scope) : null;
   const scoped: InstrumentEnv = Object.create(env, {
@@ -222,6 +226,12 @@ function mount(env: InstrumentEnv, def: InstrumentDef, run: PhysicsRun, key: str
         return () => { clearTimeout(t); scope.timers.delete(t); };
       },
     },
+    say: {
+      value: (host: HTMLElement, text: string, opts: Parameters<InstrumentEnv['say']>[2]): HTMLElement => {
+        if (scope.live) scope.saidIn.add(host);
+        return env.say(host, text, opts);
+      },
+    },
     listen: {
       value: (target: EventTarget, type: string, fn: EventListener, opts?: AddEventListenerOptions | boolean): (() => void) => {
         if (!scope.live) return () => {};
@@ -237,7 +247,6 @@ function mount(env: InstrumentEnv, def: InstrumentDef, run: PhysicsRun, key: str
   env.root.querySelector<HTMLElement>('.alius-stage-dial')?.setAttribute('data-instrument', def.id);
   current = { key, runId: run.id, def, env, run: null, scope, mark, finishing: null };
   syncMark(current);
-  recordSays((host) => { if (scope.live) scope.saidIn.add(host); });
   current.run = def.start(scoped, run); // a throw is caught by syncInstruments
 }
 
@@ -255,7 +264,6 @@ export function unmountInstruments(): void {
     const s = m.scope;
     s.staging = false;
     s.live = false;
-    recordSays(null);
     for (const id of s.frames) m.env.cancelRaf(id);
     s.frames.clear();
     for (const t of s.timers) clearTimeout(t);
