@@ -150,13 +150,15 @@ interface Wiring {
   via: 'mouse' | 'key';
   segSlips: number;
   cheatsCaught: number;
+  /** The segment whose resolved strength was taken (once each). */
+  synced: number;
   spriteSrc: string;
   overFit: { height: number; x: number; sink: number } | null;
 }
 const NO_LINES: Lines = { entry: [], released: [], slip: [], caught: [], heavy: [], good: [], poor: [], fall: [], stop: [], longer: [], announce: [] };
 const R: Wiring = {
   run: null, face: 'down', legs: false, pressure: 1, lines: NO_LINES, lineStyle: 'neutral', seg: null, running: false, queue: [], sent: new Set(), inputs: [], tapped: false, uneven: { sum: 0, ms: 0 },
-  via: 'key', segSlips: 0, cheatsCaught: 0, spriteSrc: '', overFit: null,
+  via: 'key', segSlips: 0, cheatsCaught: 0, synced: -1, spriteSrc: '', overFit: null,
 };
 const C = () => ({ face: R.face, weight: 1, shift: 1 });
 const ST = () => STYLES[S.style];
@@ -697,10 +699,13 @@ function refreshLines(beat: number): void {
 export const WEIGHT_KINDS = ['released', 'slip', 'caught', 'heavy', 'good', 'poor', 'fall', 'stop', 'longer', 'announce'] as const;
 const VOICED: ReadonlyArray<[string, CueKind]> = [['heavy', 'press']];
 
-/** She felt the commander's own shift (the engine's `cheatRoll`, at the segment's end): her line, her heavier lean for 3 beats, the press. */
+/**
+ * She felt the commander's own shift (the engine's `cheatRoll`, at the segment's end): her line, the press, a jolt and a crack. The prototype's
+ * −10 and heavier lean for 3 beats are not played: the engine charges a catch as slips and raises no pressure, so the strength stays its own.
+ */
 function caughtBy(): void {
   if (G.phase !== 'loop' && G.phase !== 'entry') return;
-  G.caughtN += 1; say(pick(L().caught)); G.pressure = 1.5; G.pressureUntil = G.clock + 3 * BEAT; SFX.press(0.55); G.jolt = 1; crack(0.6);
+  G.caughtN += 1; say(pick(L().caught)); SFX.press(0.55); G.jolt = 1; crack(0.6);
 }
 /** She leans in heavier (the engine's `run.pressure` rose at a boundary): her line, the press. */
 function heavier(): void {
@@ -832,6 +837,7 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   R.pressure = run.pressure ?? 1;
   R.seg = null; R.running = false; R.queue = []; R.sent = new Set(); R.uneven = { sum: 0, ms: 0 }; R.via = 'key'; R.segSlips = 0;
   R.cheatsCaught = run.tally?.cheatsCaught ?? 0;
+  R.synced = -1;
   R.spriteSrc = '';
   // the engine's numbers, as a share of the gauge (a capacity above 100 makes every step smaller)
   const k = 100 / Math.max(1, run.capacity);
@@ -974,6 +980,8 @@ export function startWeight(env: InstrumentEnv, run: PhysicsRun, opts: WeightOpt
   return {
     update(next: PhysicsRun) {
       if (E !== mine) return;
+      // a segment resolved: the strength is the engine's from now (no jump when the next one starts)
+      if (next.segment.state === 'held' && R.seg !== null && R.seg.n === next.segment.n && R.synced !== next.segment.n) { R.synced = next.segment.n; G.str = clamp((next.gauge / Math.max(1, next.capacity)) * 100, 0, 100); }
       R.run = next;
       const pressure = next.pressure ?? 1;
       if (pressure > R.pressure) { R.pressure = pressure; refreshLines(0); heavier(); } else R.pressure = pressure;

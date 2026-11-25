@@ -65158,6 +65158,7 @@ var R5 = {
   via: "key",
   segSlips: 0,
   cheatsCaught: 0,
+  synced: -1,
   spriteSrc: "",
   overFit: null
 };
@@ -65897,8 +65898,6 @@ function caughtBy() {
   if (G3.phase !== "loop" && G3.phase !== "entry") return;
   G3.caughtN += 1;
   say3(pick4(L2().caught));
-  G3.pressure = 1.5;
-  G3.pressureUntil = G3.clock + 3 * BEAT2;
   SFX2.press(0.55);
   G3.jolt = 1;
   crack(0.6);
@@ -66067,6 +66066,7 @@ function bind2(env, run) {
   R5.via = "key";
   R5.segSlips = 0;
   R5.cheatsCaught = run.tally?.cheatsCaught ?? 0;
+  R5.synced = -1;
   R5.spriteSrc = "";
   const k = 100 / Math3.max(1, run.capacity);
   BEAT2 = TUNING.physics.beatMs;
@@ -66214,6 +66214,10 @@ function startWeight(env, run, opts = {}) {
   return {
     update(next) {
       if (E2 !== mine) return;
+      if (next.segment.state === "held" && R5.seg !== null && R5.seg.n === next.segment.n && R5.synced !== next.segment.n) {
+        R5.synced = next.segment.n;
+        G3.str = clamp43(next.gauge / Math3.max(1, next.capacity) * 100, 0, 100);
+      }
       R5.run = next;
       const pressure = next.pressure ?? 1;
       if (pressure > R5.pressure) {

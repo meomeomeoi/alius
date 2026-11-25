@@ -477,6 +477,20 @@ describe('the weight instrument on the scene', () => {
     expect(_weight.R.lines.slip).toEqual(['careful.']);
   });
 
+  it('a segment resolved: the strength is the engine\'s at once; a catch is no local lean (the engine raises no pressure)', () => {
+    const s = hold('human_chair', planOf({}));
+    const t = draw(s);
+    t.mouse('mousedown');
+    t.to(5000);
+    s.scene!.physics!.segment = { ...s.scene!.physics!.segment, state: 'held' };
+    s.scene!.physics!.gauge = 40;
+    s.scene!.physics!.tally = { cheatsCaught: 1 };
+    t.screen.refresh();
+    expect(_weight.G.str).toBe(40);
+    expect(_weight.G.pressure).toBe(1);
+    expect(_weight.G.caughtN).toBe(1);
+  });
+
   it('views by the contact: face down sees the floor (P10c, by the finish), with her legs for human_chair only; face up the ceiling and her sprite', () => {
     const s = hold('human_chair');
     expect(floorOf(s, reg, 'quarters_commander', ANN)[0]!.file).toMatch(/floor_wood\.webp$/);
