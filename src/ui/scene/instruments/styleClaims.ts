@@ -3,15 +3,17 @@
  * writes for a while (the slap's camera and an instrument's mount both touch the backdrop and sprites layers and flag the dial).
  *
  * The contract every surface relies on:
- * - `claimStyles(el, props)` saves what those properties are now; the claimant may then write them.
- * - A claimant that writes records what it wrote with `noteWrites(claim)` (the slap does after each frame). A passive claim (the host's
+ * - `claimStyles(el, props)` saves what those properties are now. Claim only the properties you write.
+ * - A claimant writes them with `writeClaimed(claim, prop, value)`, which records the write as it is made (`noteWrites(claim, props)` records
+ *   properties just written by code that cannot route through it, read back at once, in the same synchronous call). A write is never
+ *   inferred by reading the element later: another surface's value must never be booked as the claimant's. A passive claim (the host's
  *   snapshot of a mount) writes nothing and records nothing.
  * - `releaseClaim(claim)`, in any order:
  *   - no other claim holds the property: its saved value is put back;
  *   - an older claim holds it: its saved value is put back (what the older one had there);
  *   - a newer claim holds it: its saved value is handed up to the newer one (which will put it back when it goes); and if the element still
- *     shows this claim's own last write (the newer one never wrote over it), the saved value is put back now as well, so nothing of a
- *     claimant outlives it under a passive claim.
+ *     shows this claim's own last recorded write (no one wrote over it since), the saved value is put back now as well, so nothing of a
+ *     claimant outlives it under a passive claim, and nobody else's value is ever written over.
  * - The last claim to let go of a property puts back what was there before any claim came.
  * A leaf: no imports.
  */
@@ -59,9 +61,15 @@ export function releaseClaim(c: StyleClaim): void {
   }
 }
 
-/** Records what the claimant has written to its properties (their values now), for `releaseClaim`. */
-export function noteWrites(c: StyleClaim): void {
-  c.wrote = new Map([...c.saved.keys()].map((p) => [p, read(c.el, p)]));
+/** Writes a claimed property and records the write (the value as the element now holds it). */
+export function writeClaimed(c: StyleClaim, prop: string, value: string | null): void {
+  writeStyle(c.el, prop, value);
+  (c.wrote ??= new Map()).set(prop, read(c.el, prop));
+}
+
+/** Records properties the claimant has just written by other means (read back at once, in the same synchronous call as the write). */
+export function noteWrites(c: StyleClaim, props: readonly string[]): void {
+  for (const p of props) if (c.saved.has(p)) (c.wrote ??= new Map()).set(p, read(c.el, p));
 }
 
 /** The properties of `el` some claim holds now. */

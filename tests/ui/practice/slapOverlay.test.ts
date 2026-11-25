@@ -431,6 +431,55 @@ describe('the slap and an instrument share the frame (review M4)', () => {
     expect(cameraLeft(o)).toEqual([]);
   });
 
+  it('values an instrument sets once during the slap (a backdrop opacity, a transition) survive the slap\'s release (review I5)', async () => {
+    registerInstrument({
+      id: 'once', matches: () => true,
+      start(env) { env.layers.backdrop.style.opacity = '0.5'; env.layers.backdrop.style.transition = 'opacity 1s'; return { update() {}, stop() {} }; },
+    });
+    const o = await slapping({ sprite: true });
+    o.state.settings.physicsRealtime = true;
+    o.to(L + 200);
+    expect(syncInstruments(o.env, run)).toBe(true);
+    o.to(L + 500 + 1500 + 650 + 100); // the slap's camera is home, the instrument still runs
+    expect(o.layers.backdrop.style.opacity).toBe('0.5');
+    expect(o.layers.backdrop.style.transition).toBe('opacity 1s');
+    expect(o.layers.backdrop.style.transform).toBe('');
+    unmountInstruments();
+    expect(o.layers.backdrop.style.opacity).toBe('');
+    expect(o.layers.backdrop.style.transition).toBe('');
+  });
+
+  it('an instrument writing the backdrop\'s opacity every frame is never written over, not for one frame (review I5)', async () => {
+    withInstrument();
+    const o = await slapping({ sprite: true });
+    o.state.settings.physicsRealtime = true;
+    o.to(L + 200);
+    expect(syncInstruments(o.env, run)).toBe(true);
+    // the instrument writes `style.opacity`; anything else that sets the backdrop's opacity (the slap's release) would go through setProperty
+    const writes = vi.spyOn(o.layers.backdrop.style, 'setProperty');
+    const removes = vi.spyOn(o.layers.backdrop.style, 'removeProperty');
+    const seen = new Set<string>();
+    const end = L + 500 + 1500 + 650 + 200;
+    while (o.now() < end) { o.frame(); seen.add(o.layers.backdrop.style.opacity); }
+    expect(writes.mock.calls.filter((c) => c[0] === 'opacity')).toEqual([]);
+    expect(removes.mock.calls.filter((c) => c[0] === 'opacity')).toEqual([]);
+    expect([...seen]).toEqual(['0.5']);
+  });
+
+  it('an opacity a mount added is gone when it unmounts during the slap (review M10)', async () => {
+    withInstrument();
+    const o = await slapping({ sprite: true });
+    o.state.settings.physicsRealtime = true;
+    o.to(L + 200);
+    expect(syncInstruments(o.env, run)).toBe(true);
+    o.to(L + 300);
+    unmountInstruments();
+    expect(o.layers.backdrop.style.opacity).toBe('');
+    o.to(L + 500 + 1500 + 650 + 100);
+    expect(o.layers.backdrop.style.opacity).toBe('');
+    expect(o.layers.sprites.style.transform).toBe('');
+  });
+
   it('an instrument running before the slap and gone during it: the slap puts back what was there before the instrument', async () => {
     withInstrument();
     const o = await slapping({ slap: { id: 'ps8' } });

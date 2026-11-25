@@ -24,7 +24,7 @@ import { slapSide } from '../../../../engine/practice/slap';
 import type { SlapResult } from '../../../../engine/practice/state';
 import { TUNING } from '../../../../engine/tuning';
 import { voiceLine, type VoiceKind } from '../../cards/voice';
-import { claimStyles, noteWrites, releaseClaim, type StyleClaim } from '../styleClaims';
+import { claimStyles, noteWrites, releaseClaim, writeClaimed, type StyleClaim } from '../styleClaims';
 import type { HerLook, InstrumentEnv } from '../types';
 
 /* ---------- the pure rules (slap.html's timeline, its tension and its flick, as functions of their own) ---------- */
@@ -189,7 +189,8 @@ function requestAnimationFrame(fn: (now: number) => void): void {
     if (!G.slap && !G.back && !G.starting && G.cheekA <= 0) { cam.release(); return; } // nothing to draw: the loop sleeps
     measure();
     fn(now);
-    for (const c of cam.saved) if (c !== cam.dial) noteWrites(c); // what the camera wrote this frame (styleClaims' contract; the dial's flag is written once)
+    // the reply's and the input line's opacity were written by `frame` just now (the prototype's own lines): recorded in this same call
+    if (cam.held && (G.slap || G.back) && !S.reduced) for (const c of cam.ui) noteWrites(c, ['opacity']);
   });
 }
 
@@ -312,11 +313,19 @@ function build(env: InstrumentEnv, unitId: string): Omit<SlapEls, 'host' | 'scen
 }
 
 /* ---------- the camera: the scene's layers as the prototype's `#world` (their own styles put back the moment it is home) ---------- */
-const CAM_PROPS = ['transform', 'transform-origin', 'filter', 'transition', 'opacity'];
+const CAM_PROPS = ['transform', 'transform-origin', 'filter', 'transition'];
 const cam = {
   held: false,
   saved: [] as StyleClaim[],
   dial: null as StyleClaim | null,
+  layer: new Map<HTMLElement, StyleClaim>(),
+  ui: [] as StyleClaim[],
+  /** Writes a property of a layer the camera holds, recorded (styleClaims' `writeClaimed`). */
+  put(el: HTMLElement, prop: string, value: string): void {
+    const c = this.layer.get(el);
+    if (c) writeClaimed(c, prop, value);
+    else el.style.setProperty(prop, value);
+  },
   base: null as { x: number; y: number } | null,
   backdropFilter: '',
   /** The camera leaves home: the styles it will write are saved, her face point is measured. */
@@ -328,15 +337,18 @@ const cam = {
     const reply = e.env.reply;
     const wrap = $('#inputWrap');
     // the camera's styles are claimed (styleClaims.ts): an instrument mounted or unmounted meanwhile hands its originals down, never over them
-    this.saved = [backdrop, sprites, reply, wrap].map((el) => claimStyles(el, CAM_PROPS));
+    // claimed: only what the camera writes on each (styleClaims' contract), recorded as it is written
+    this.layer = new Map([backdrop, sprites].map((el) => [el, claimStyles(el, CAM_PROPS)]));
+    this.ui = [reply, wrap].map((el) => claimStyles(el, ['opacity']));
+    this.saved = [...this.layer.values(), ...this.ui];
     const base = typeof getComputedStyle === 'function' ? getComputedStyle(backdrop).filter : '';
     this.backdropFilter = base && base !== 'none' ? base : '';
-    for (const el of [backdrop, sprites]) el.style.setProperty('transition', 'none');
-    sprites.style.setProperty('transform-origin', '0 0');
+    for (const el of [backdrop, sprites]) this.put(el, 'transition', 'none');
+    this.put(sprites, 'transform-origin', '0 0');
     this.base = null;
     this.measure();
     const dial = e.env.root.querySelector<HTMLElement>('.alius-stage-dial');
-    if (dial) { const c = claimStyles(dial, ['@data-instrument']); dial.setAttribute('data-instrument', 'slap'); noteWrites(c); this.saved.push(c); this.dial = c; }
+    if (dial) { const c = claimStyles(dial, ['@data-instrument']); writeClaimed(c, '@data-instrument', 'slap'); this.saved.push(c); this.dial = c; }
   },
   /** Her face point in the scene (the sprite's sidecar point on the drawn picture), measured with the camera at home. */
   measure(): void {
@@ -370,9 +382,9 @@ const cam = {
     // the backdrop: the world's move; it grows to the prototype's 128 % box with the zoom, so the whip and the turn never show its edge;
     // its blur (14 px at k = 1) and the motion blur are the prototype's on screen (divided by that growth)
     const cover = lerp(1, 1.28, k);
-    backdrop.style.transformOrigin = '0 0';
-    backdrop.style.transform = about(` scale(${cover.toFixed(4)})`);
-    backdrop.style.filter = `${this.backdropFilter} ${hblurAt('b', cover)} ${e.env.readable ? '' : `blur(${((k * 14) / cover).toFixed(1)}px)`} brightness(${lerp(1, 0.55, k).toFixed(3)})`.replace(/\s+/g, ' ').trim();
+    this.put(backdrop, 'transform-origin', '0 0');
+    this.put(backdrop, 'transform', about(` scale(${cover.toFixed(4)})`));
+    this.put(backdrop, 'filter', `${this.backdropFilter} ${hblurAt('b', cover)} ${e.env.readable ? '' : `blur(${((k * 14) / cover).toFixed(1)}px)`} brightness(${lerp(1, 0.55, k).toFixed(3)})`.replace(/\s+/g, ' ').trim());
     // her sprite: the scene's view to her face close (`zoom` geometric), inside the world (a sprite redrawn by the scene keeps the camera)
     this.measure();
     let camera = '';
@@ -384,9 +396,9 @@ const cam = {
       const px = lerp(p0.x, p1[0]!, k), py = lerp(p0.y, p1[1]!, k);
       camera = ` translate(${(px - sc * p0.x).toFixed(1)}px, ${(py - sc * p0.y).toFixed(1)}px) scale(${sc.toFixed(4)})`;
     }
-    sprites.style.transform = `${about('')}${camera}`;
+    this.put(sprites, 'transform', `${about('')}${camera}`);
     // her sprite takes the world's motion blur (the prototype's `#her` is inside `#world`), in the frame's pixels
-    sprites.style.filter = `${hblurAt('s', sc)} brightness(${lerp(1, 0.92, k)})`.trim();
+    this.put(sprites, 'filter', `${hblurAt('s', sc)} brightness(${lerp(1, 0.92, k)})`.trim());
     e.faceImg.style.filter = blur ? `url(#${HBLUR})` : '';
     // the face art (when loaded) crossfades in: a 128 % box of its own, moved as the world
     e.faceImg.style.transform = world;
@@ -398,6 +410,8 @@ const cam = {
     for (const c of this.saved) releaseClaim(c);
     this.saved = [];
     this.dial = null;
+    this.layer = new Map();
+    this.ui = [];
     this.base = null;
     if (E) { E.faceImg.style.opacity = '0'; E.faceImg.style.transform = ''; E.faceImg.style.filter = ''; }
   },
