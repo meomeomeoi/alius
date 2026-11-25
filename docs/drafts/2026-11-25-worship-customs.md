@@ -68,18 +68,22 @@
 - **New:** the commander vows to serve and worship only her. Breaking it is a sacrilege with heavy consequences; the squad's interactions and P9c's courtship and `claimed` are what can break it.
 - It can be P15's vow milestone in this form.
 
-## 2. Not all at once, and not all in every dynamic (open: the author's ruling needed)
+## 2. Not all at once, and not all in every dynamic (approved in principle by the author, 2026-11-25)
 
 The author's concern: these customs must not fall on the player at once, and not every dynamic should grow all of them. The author's hint: through what is liked at squad creation.
 
-**Proposal (to rule on):**
+**The approach (approved; details to the package that builds it):**
 1. **The campaign** (WORLD PARAMETERS › DYNAMIC, at creation and in SYS): which customs exist at all, as a list of toggles like the content categories, plus a density (`few` / `normal` / `many`).
-2. **Her customs** are derived from her profile. Each custom declares what it needs:
+2. **Her customs** are derived from her profile, **through what already exists, never a new field** (author, 2026-11-25):
+   - her attitude to each category is P15's `bond.practice.categories[id].as` / `witness` (`watersports` included), read only through `practiceOf` (it folds in what the campaign switched off and her own limits);
+   - its drift is P14b's development: the axis kinds `practice` and `expect` that P15 added, the weekly review, and P15b's manner axes. A custom follows her attitude as it drifts. When she stops enjoying a category, the custom that needs it fades as a neglected one does.
+
+   Each custom declares what it needs:
    - categories with her `as` at `enjoys` or `craves` (P15 `bond.practice.categories`);
    - a style or manner axes, an `audience`, a trait;
    - for the shrine of her defect, a defect of hers.
 
-   From those that fit, a stable pick (`dynamicHash`, no rng) keeps **at most K active customs**: K grows with her frame (`play` 1, `role` 2, `rule` 3), scaled by the density. Two holders therefore grow different customs. Her dossier's PRACTICE block shows hers and, while the edit lock allows it, lets the player swap one, as with the other profile fields.
+   From those that fit, a stable pick (`dynamicHash`, no rng) keeps **at most K active customs**. **K is a setting** (author, 2026-11-25) per frame, defaults `play` 1, `role` 2, `rule` 3; the density scales the defaults. Two holders therefore grow different customs. Her dossier's PRACTICE block shows hers and, while the edit lock allows it, lets the player swap one, as with the other profile fields.
 3. **Pacing:**
    - a new custom appears at most once a fiction week, through a first moment where she does it for the first time (P14c first moments, P15a moments), not a tutorial;
    - its rule is explained by the analysis tool after it first happened;
