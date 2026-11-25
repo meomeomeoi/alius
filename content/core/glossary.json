@@ -1874,7 +1874,7 @@
   {
     "id": "handwriting",
     "term": "Handwriting",
-    "short": "Each named soldier writes her notes in her own hand. You can change which of the six hands she uses.",
+    "short": "Each named soldier writes her notes in her own hand. You can change which hand she uses.",
     "long": "AUTHOR TO WRITE: A note left in the quarters, in the gear or under the door is written in the soldier's hand. Every soldier starts with a hand picked from her name; the HAND select in her dossier changes it. Readable mode shows notes in the plain type font.",
     "see": [
       "night_door"

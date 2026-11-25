@@ -22,7 +22,7 @@ const faces = registry.map(({ family }) => {
   return `@font-face { font-family: "${family}"; src: url("data:font/woff2;base64,${b64}") format("woff2"); }`;
 }).join('\n');
 
-const browser = await chromium.launch();
+const browser = await chromium.launch({ args: ['--no-sandbox'] });
 try {
   const page = await browser.newPage();
   await page.setContent(`<!doctype html><style>${faces}</style><body></body>`);

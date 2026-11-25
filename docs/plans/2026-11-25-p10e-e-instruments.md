@@ -222,7 +222,7 @@ The README of each prototype ends with "Open engine questions (decide in the pla
     - each licence contains `SIL Open Font License` or `Apache License`;
     - each woff2 is under 120 KB (all are);
     - the face count is ≥ 13 + 42.
-  - `handScale`: Caveat is 1; every entry's scale is in [0.6, 1.7]; Amatic SC's scale is > 1 (narrow); Rock Salt's is < 1 (wide).
+  - `handScale`: Caveat is 1; every entry's scale is in [0.6, 1.7]; Just Another Hand's scale is > 1 (narrow); Rock Salt's is < 1 (wide); Amatic SC's is 0.83 (amended in Task 2: the prototype's `measureHands` gives Amatic SC 0.83, its small capitals are tall; the file wins).
   - `handOf` still prefers `unit.hand`; with none it is `fnv1a(unitId) % 48` in registry order.
 - [x] **Step 2: Run** them → FAIL.
 - [x] **Step 3: Measure and move:**
