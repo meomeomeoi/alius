@@ -331,6 +331,48 @@ describe('the breath instrument on the scene', () => {
     expect(c.q('.alius-breath-hand')!.textContent).toBe(''); // cold is silent, even on her opening
   });
 
+  describe('I5: playful\'s "again." (a count that ends with no window, ahead of a planned opening)', () => {
+    /** Mounts her with a seed for the module's Math.random set during the entry (the tease is decided when the segment is scheduled). */
+    const run = (style: string, plan: SegmentPlan, seedN: number) => {
+      resetPhysicsHooks();
+      registerPhysicsStyle(() => ({ primary: style as 'playful' }));
+      const t = draw(hold(SEAT, plan));
+      t.to(1000);
+      _breath.seed(seedN);
+      const seen: Array<{ at: number; text: string; win: boolean }> = [];
+      let last = '';
+      while (t.frames.now() < 8 * BEAT) {
+        t.frames.frame();
+        const text = t.q('.alius-breath-hand')!.textContent ?? '';
+        if (text !== last) { seen.push({ at: t.frames.now(), text, win: _breath.G.win !== null }); last = text; }
+      }
+      const out = { seen, reports: reports(t), opened: _breath.G.windowsOpened };
+      t.screen.dispose();
+      return out;
+    };
+    it('plays for playful when the gap before her opening holds it: "three… two… again.", nothing opens, nothing is reported; her opening comes on its planned beat', () => {
+      let teased = 0;
+      for (let n = 1; n <= 40; n++) {
+        const r = run('playful', planOf({ 5: { widthMs: 450 } }), n);
+        const again = r.seen.find((x) => /again\./.test(x.text));
+        if (!again) continue;
+        teased++;
+        expect(again.win).toBe(false); // nothing open at "again."
+        expect(again.at).toBeLessThan(5 * BEAT - 200 - BEAT + 1);
+        expect(r.reports).toEqual([]); // the tease is never an opening
+        expect(r.opened).toBe(1); // only the planned one opened
+      }
+      expect(teased).toBeGreaterThan(0);
+    });
+    it('never when the gap is too short, and never for another style', () => {
+      for (let n = 1; n <= 40; n++) {
+        // the planned opening on beat 2: from the loop's start there is no room for a count and a beat before it
+        expect(run('playful', planOf({ 2: { widthMs: 450 } }), n).seen.some((x) => /again\./.test(x.text)), `seed ${n}`).toBe(false);
+        expect(run('ritual', planOf({ 5: {} }), n).seen.some((x) => /again\./.test(x.text)), `seed ${n}`).toBe(false);
+      }
+    });
+  });
+
   it('a cruel holder\'s silent opening writes no line; a breath through the gap of a leaky seal is reported at once', () => {
     registerPhysicsStyle(() => ({ primary: 'cruel' }));
     const s = hold(SEAT, planOf({ 3: { widthMs: 250, cue: null } }));

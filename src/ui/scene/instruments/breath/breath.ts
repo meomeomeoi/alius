@@ -280,17 +280,30 @@ function clearHand() { $('#hand').replaceChildren(); countEl = null; }
 function push(at: number, fn: () => void, tag = 'win') { G.queue.push({ at, fn, tag }); G.queue.sort((a, b) => a.at - b.at); }
 function cancelWindows() { G.queue = G.queue.filter((e) => e.tag !== 'win'); }
 const cueMode = () => (S.cue === 'style' ? st().cue : S.cue);
-function scheduleWindow(at: number, opts: { false?: true; widthMs?: number; quiet?: boolean; silent?: boolean } = {}) {
+function scheduleWindow(at: number, opts: { false?: true; widthMs?: number; quiet?: boolean; silent?: boolean; after?: number } = {}) {
   const s = st(), c = s.count, j = () => (Math.random() * 2 - 1) * s.jitter;
   const isFalse = opts.false === true;
   const mode = cueMode();
   // only a counting holder counts; a playful one sometimes teases with a count; the rest give only "now." (or nothing): react fast
   const counts = mode === 'count' || (mode === 'false' && Math.random() < (s.tease ?? 0));
   if (!opts.silent && counts) {
-    for (const [k, word] of [[3, 'three…'], [2, 'two…'], [1, 'one…']] as const) {
-      const when = at - k * c + j();
-      if (when >= G.clock) push(when, () => say(word, 'count'));
+    const word = (when: number, w: string) => { if (when >= G.clock) push(when, () => say(w, 'count')); };
+    // playful's tease: a count that ends in "again." and opens nothing; the planned opening comes 200 ms + 1–2 beats after it, on its own
+    // beat (the prototype's new window), so the tease is played ahead of it, and only where the gap before it holds the whole count
+    if (s.again && !G.lastAgain && Math.random() < s.again) {
+      const T = at - 200 - randInt(1, 2) * BEAT;
+      if (T - 3 * c - s.jitter >= (opts.after ?? G.clock)) {
+        G.lastAgain = true;
+        word(T - 3 * c + j(), 'three…');
+        word(T - 2 * c + j(), 'two…');
+        push(T - c + j(), () => say(pick(L().again), 'count'));
+        push(T + 200, () => scheduleWindow(G.clock + (at - T - 200), { ...opts, after: G.clock })); // her delay moves it with the rest
+        return;
+      }
     }
+    word(at - 3 * c + j(), 'three…');
+    word(at - 2 * c + j(), 'two…');
+    word(at - c + j(), 'one…');
   }
   G.lastAgain = false;
   // the opening's beat is its entry's time (moved with it by her delay); one that came due during the entry plays as the loop begins, as a late
@@ -717,10 +730,13 @@ function schedulePlan(run: PhysicsRun, ck: { startedAt: number | null; now: numb
   R.strain = null; // a press across the boundary strains in this segment afresh (and is reported in it)
   G.air = clamp((run.gauge / run.capacity) * 100, 0, 100); // the engine's air (it resolved the last segment)
   refreshLines(0);
+  let after = G.clock; // a tease never starts before the previous opening is over
   for (const o of effectiveOpenings(plan, [], styleKey())) {
     const at = R.seg.clock0 + o.beat * BEAT; // one already due (it fell in the entry) opens at once, on its own beat (review I3)
     const cue = plan.beats[o.beat]?.cue;
-    scheduleWindow(at, { ...(o.false ? { false: true as const } : {}), widthMs: o.widthMs, quiet: cue !== 'window_open' && cue !== 'window_false' });
+    scheduleWindow(at, { ...(o.false ? { false: true as const } : {}), widthMs: o.widthMs, quiet: cue !== 'window_open' && cue !== 'window_false', after });
+    const r = st();
+    after = Math.max(after, at + (r.snappy ? 110 : 260) + o.widthMs * S.wmul + (r.snappy ? 140 : 320));
   }
 }
 const styleKey = (): string => (E && R.run ? leadStyle(physicsStyleOf(E.env.state(), R.run.holderId, E.env.registries)).key : 'neutral');
@@ -1041,6 +1057,8 @@ export const _breath = {
   windowOpenness, windowDone, openWindow, closeWindow, updateLoop, letters, say, begin, exit, blackout, wake, scheduleWindow, tap, fresh,
   setG(g: Glob): void { G = g; },
   setWidth(ms: number): void { R.widthMs = ms; },
+  /** Tests: the seed of the module's `Math.random` (a xorshift, no rng draw). */
+  seed(n: number): void { seed = n >>> 0 || 1; },
   /** The shots: the frame clock starts again (a fake clock installed after the page began). */
   resetClock(): void { frame.last = undefined; },
   /** The shots: her opening now, with her lines of this beat (the prototype's `__openWindow`). */
