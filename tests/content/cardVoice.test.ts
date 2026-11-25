@@ -25,7 +25,7 @@ function parseVoiceMd(md: string): Item[] {
     if (raw.startsWith('## ')) { sec = 0; cur = null; continue; }
     const h3 = /^### (.+)$/.exec(raw);
     if (h3) { heading = h3[1]!.trim(); cur = null; continue; }
-    if (!heading || ![1, 2, 3, 5].includes(sec)) continue;
+    if (!heading || ![1, 2, 3, 5, 6].includes(sec)) continue;
     const bullet = /^- (.*)$/.exec(raw);
     if (bullet) {
       const body = bullet[1]!;
@@ -89,6 +89,8 @@ const NEUTRAL_MAP: Record<string, Record<string, (l: string[]) => Out>> = {
   'Her return': new Proxy({}, { get: (_t, id: string) => all(`static.return.${id}`) }),
   'The moment (the situation, not her: one dim line of prose, not her hand)': { '': all('moment'), exposing: all('exposing') },
 };
+/** §6 (P10e-e Task 11): the slap's lines by her style. */
+const SLAP_LABEL: Record<string, string> = { before: 'slap.before', feint: 'slap.feint', again: 'slap.again', none: 'slap.after.none', braced: 'slap.after.braced', flinched: 'slap.after.flinched' };
 const STYLE_LABEL: Record<string, string> = { when: 'when', cost: 'cost', who: 'who', 'only her': 'onlyMe', weight: 'weight', right: 'call.right', wrong: 'call.wrong', slow: 'call.slow' };
 
 /** Every md item as `kind|style` → lines; throws on an item the map does not name. */
@@ -100,6 +102,12 @@ function expected(md: string): Map<string, string[]> {
     out.set(key, lines);
   };
   for (const it of parseVoiceMd(md)) {
+    if (it.sec === 6) {
+      const kind = SLAP_LABEL[it.label];
+      if (!kind) throw new Error(`unmapped slap item: ${it.heading} › ${it.label}`);
+      put(kind, it.heading, it.lines);
+      continue;
+    }
     if (it.sec === 2 || (it.sec === 5 && !it.heading.startsWith('Neutral'))) {
       const kind = STYLE_LABEL[it.label];
       if (!kind) throw new Error(`unmapped style item: ${it.heading} › ${it.label}`);

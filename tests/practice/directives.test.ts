@@ -350,6 +350,17 @@ describe('every directive of R23 (Task 38)', () => {
     }
   });
 
+  it('the slap names the cheek her hand came from (P10e-e Task 11: side 1 is her right hand, the left cheek)', () => {
+    const s = inScene(withPractices(base(), {}), [ANN]);
+    const left = issuedDirective({ type: 'slap_dealt', holderId: ANN, result: 'none', side: 1 }, s, reg)!;
+    const right = issuedDirective({ type: 'slap_dealt', holderId: ANN, result: 'flinched', side: -1 }, s, reg)!;
+    hygiene(left, `practice:slap:${ANN}`, 'next_reply');
+    hygiene(right, `practice:slap:${ANN}`, 'next_reply');
+    expect(left.text).toMatch(/ on the left cheek\./);
+    expect(right.text).toMatch(/ on the right cheek\./);
+    expect(issuedDirective({ type: 'slap_dealt', holderId: ANN, result: 'none' }, s, reg)!.text).not.toMatch(/cheek/); // an old event without a side names none
+  });
+
   it('what is not live gives nothing: a holder who dropped below play, one who is gone, a scene she is not in', () => {
     const s = inScene(withPractices(base(), { tasks: [task({ status: 'offered' })] }), [ANN]);
     for (const e of [{ type: 'service_rated', holderId: ANN, kind: 'pleased' }, { type: 'slap_dealt', holderId: ANN, result: 'none' }, { type: 'permission_answered', holderId: ANN, answer: 'grant' }]) {

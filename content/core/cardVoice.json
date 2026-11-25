@@ -1272,5 +1272,281 @@
       "You never could keep up.",
       "Late. I'm not surprised."
     ]
+  },
+  {
+    "id": "slap.before.ritual",
+    "kind": "slap.before",
+    "style": "ritual",
+    "lines": [
+      "still."
+    ]
+  },
+  {
+    "id": "slap.before.drill",
+    "kind": "slap.before",
+    "style": "drill",
+    "lines": [
+      "chin up."
+    ]
+  },
+  {
+    "id": "slap.feint.playful",
+    "kind": "slap.feint",
+    "style": "playful",
+    "lines": [
+      "flinchy~"
+    ]
+  },
+  {
+    "id": "slap.again.cruel",
+    "kind": "slap.again",
+    "style": "cruel",
+    "lines": [
+      "again."
+    ]
+  },
+  {
+    "id": "slap.after.none.affectionate",
+    "kind": "slap.after.none",
+    "style": "affectionate",
+    "lines": [
+      "there. it’s done.",
+      "shh. done."
+    ]
+  },
+  {
+    "id": "slap.after.none.regal",
+    "kind": "slap.after.none",
+    "style": "regal",
+    "lines": [
+      "you may thank me."
+    ]
+  },
+  {
+    "id": "slap.after.none.ritual",
+    "kind": "slap.after.none",
+    "style": "ritual",
+    "lines": [
+      "one."
+    ]
+  },
+  {
+    "id": "slap.after.none.drill",
+    "kind": "slap.after.none",
+    "style": "drill",
+    "lines": [
+      "eyes front."
+    ]
+  },
+  {
+    "id": "slap.after.none.clinical",
+    "kind": "slap.after.none",
+    "style": "clinical",
+    "lines": [
+      "noted."
+    ]
+  },
+  {
+    "id": "slap.after.none.possessive",
+    "kind": "slap.after.none",
+    "style": "possessive",
+    "lines": [
+      "mine to strike."
+    ]
+  },
+  {
+    "id": "slap.after.none.playful",
+    "kind": "slap.after.none",
+    "style": "playful",
+    "lines": [
+      "didn’t see that coming?",
+      "ha."
+    ]
+  },
+  {
+    "id": "slap.after.none.obsessive",
+    "kind": "slap.after.none",
+    "style": "obsessive",
+    "lines": [
+      "you felt that. you felt me."
+    ]
+  },
+  {
+    "id": "slap.after.none.vindictive",
+    "kind": "slap.after.none",
+    "style": "vindictive",
+    "lines": [
+      "that was owed."
+    ]
+  },
+  {
+    "id": "slap.after.none.cruel",
+    "kind": "slap.after.none",
+    "style": "cruel",
+    "lines": [
+      "better."
+    ]
+  },
+  {
+    "id": "slap.after.braced.affectionate",
+    "kind": "slap.after.braced",
+    "style": "affectionate",
+    "lines": [
+      "brave.",
+      "look at you."
+    ]
+  },
+  {
+    "id": "slap.after.braced.regal",
+    "kind": "slap.after.braced",
+    "style": "regal",
+    "lines": [
+      "well taken. now thank me."
+    ]
+  },
+  {
+    "id": "slap.after.braced.ritual",
+    "kind": "slap.after.braced",
+    "style": "ritual",
+    "lines": [
+      "still. as it should be."
+    ]
+  },
+  {
+    "id": "slap.after.braced.drill",
+    "kind": "slap.after.braced",
+    "style": "drill",
+    "lines": [
+      "that’s discipline."
+    ]
+  },
+  {
+    "id": "slap.after.braced.clinical",
+    "kind": "slap.after.braced",
+    "style": "clinical",
+    "lines": [
+      "no flinch. interesting."
+    ]
+  },
+  {
+    "id": "slap.after.braced.possessive",
+    "kind": "slap.after.braced",
+    "style": "possessive",
+    "lines": [
+      "good. mine."
+    ]
+  },
+  {
+    "id": "slap.after.braced.playful",
+    "kind": "slap.after.braced",
+    "style": "playful",
+    "lines": [
+      "ooh. ready for me?"
+    ]
+  },
+  {
+    "id": "slap.after.braced.obsessive",
+    "kind": "slap.after.braced",
+    "style": "obsessive",
+    "lines": [
+      "you were waiting for me."
+    ]
+  },
+  {
+    "id": "slap.after.braced.vindictive",
+    "kind": "slap.after.braced",
+    "style": "vindictive",
+    "lines": [
+      "it changes nothing."
+    ]
+  },
+  {
+    "id": "slap.after.braced.cruel",
+    "kind": "slap.after.braced",
+    "style": "cruel",
+    "lines": [
+      "look at that."
+    ]
+  },
+  {
+    "id": "slap.after.flinched.affectionate",
+    "kind": "slap.after.flinched",
+    "style": "affectionate",
+    "lines": [
+      "shh. come here.",
+      "I know. I know."
+    ]
+  },
+  {
+    "id": "slap.after.flinched.regal",
+    "kind": "slap.after.flinched",
+    "style": "regal",
+    "lines": [
+      "you turn from me?"
+    ]
+  },
+  {
+    "id": "slap.after.flinched.ritual",
+    "kind": "slap.after.flinched",
+    "style": "ritual",
+    "lines": [
+      "you moved."
+    ]
+  },
+  {
+    "id": "slap.after.flinched.drill",
+    "kind": "slap.after.flinched",
+    "style": "drill",
+    "lines": [
+      "you turned your face. fault."
+    ]
+  },
+  {
+    "id": "slap.after.flinched.clinical",
+    "kind": "slap.after.flinched",
+    "style": "clinical",
+    "lines": [
+      "turned away. noted."
+    ]
+  },
+  {
+    "id": "slap.after.flinched.possessive",
+    "kind": "slap.after.flinched",
+    "style": "possessive",
+    "lines": [
+      "don’t you turn from me."
+    ]
+  },
+  {
+    "id": "slap.after.flinched.playful",
+    "kind": "slap.after.flinched",
+    "style": "playful",
+    "lines": [
+      "running away~?"
+    ]
+  },
+  {
+    "id": "slap.after.flinched.obsessive",
+    "kind": "slap.after.flinched",
+    "style": "obsessive",
+    "lines": [
+      "look at me. only me."
+    ]
+  },
+  {
+    "id": "slap.after.flinched.vindictive",
+    "kind": "slap.after.flinched",
+    "style": "vindictive",
+    "lines": [
+      "that’s added to it."
+    ]
+  },
+  {
+    "id": "slap.after.flinched.cruel",
+    "kind": "slap.after.flinched",
+    "style": "cruel",
+    "lines": [
+      "face me."
+    ]
   }
 ]

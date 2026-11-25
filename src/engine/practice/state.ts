@@ -38,7 +38,7 @@ export type AcceptForm = (typeof ACCEPT_FORMS)[number];
 
 export const OFFENCE_KINDS = [
   'task_broken', 'rule_broken', 'protocol_slip', 'denial_broken', 'refusal', 'milestone_refused', 'countermand_overruled',
-  'physics_slip', 'physics_caught', 'posture_slip', 'false_report', 'asked', 'unfair', 'hold_defied',
+  'physics_slip', 'physics_caught', 'posture_slip', 'false_report', 'asked', 'unfair', 'hold_defied', 'slap_defied',
 ] as const;
 export type OffenceKind = (typeof OFFENCE_KINDS)[number];
 
@@ -384,7 +384,7 @@ export const OFFENCE_WORDS: Readonly<Record<OffenceKind, string>> = Object.freez
   task_broken: 'a task she gave was not kept', rule_broken: 'a rule of hers was broken', protocol_slip: 'a rule of address slipped', denial_broken: 'something that needed her permission was done without it',
   refusal: 'the commander refused her', milestone_refused: 'the commander refused what she offered', countermand_overruled: 'the commander overruled her call', physics_slip: 'the commander slipped in what she held',
   physics_caught: 'the commander was caught cheating at what she held', posture_slip: 'the commander slipped out of a posture', false_report: 'a report the commander made turned out false', asked: 'the commander asked for it',
-  unfair: 'nothing the commander did', hold_defied: 'the commander defied her hold',
+  unfair: 'nothing the commander did', hold_defied: 'the commander defied her hold', slap_defied: 'the commander turned the face away from her slap',
 });
 
 /** How hard a punishment weighs, as a word (the card and the model never see the number): 1 to 2 light, 3 heavy, 4 to 5 harsh. */

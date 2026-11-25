@@ -11,7 +11,8 @@ import '../../../src/engine/actions/practice';
 import { dynamicOf } from '../../../src/engine/dynamic/state';
 import { isThreat } from '../../../src/engine/dynamic/reading';
 import { noteOffence } from '../../../src/engine/practice/offences';
-import { slapWindowMs, startSlap } from '../../../src/engine/practice/slap';
+import { slapSide, slapWindowMs, startSlap } from '../../../src/engine/practice/slap';
+import { EXPRESSION_LABELS } from '../../../src/llm/calls/intentExtract';
 import { blankPractices, practiceRoll, SLAP_RESULTS, type OpenPunishment, type SlapResult } from '../../../src/engine/practice/state';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { TUNING } from '../../../src/engine/tuning';
@@ -427,5 +428,70 @@ describe('what the model is told', () => {
       expect(d.text).not.toMatch(/AUTHOR TO WRITE/);
     }
     expect(issuedDirective({ type: 'slap_dealt', unitId: ANN, holderId: ANN, result: 'flinched' }, slapWorld('cold'), reg)!.text).toMatch(/flinch/i);
+  });
+});
+
+describe('P10e-e Task 11: a turned face, her side, her face (R11-R13)', () => {
+  const defied = (s: CampaignState): string[] => (s.practices?.noted?.keys ?? []).filter((k) => k.includes('|slap_defied|'));
+
+  it('a turned face is her offence: flinched notes slap_defied (minor) after slap_dealt; none and braced note none', () => {
+    const s = start(slapWorld('cold')).d;
+    const id = s.practices!.slap!.id;
+    const r = answer(s, 'flinched');
+    expect(errors(r.events)).toEqual([]);
+    expect(ofType(r.events, 'slap_dealt')).toHaveLength(1);
+    expect(defied(r.state)).toEqual([`${ANN}|slap_defied|${id}`]);
+    const asked = r.state.practices!.requests.filter((q) => q.kind === 'punishment' && q.offence?.kind === 'slap_defied');
+    for (const q of asked) expect(q.offence).toMatchObject({ kind: 'slap_defied', stakes: 'minor', ref: id });
+    for (const result of ['none', 'braced'] as const) expect(defied(answer(start(slapWorld('cold')).d, result).state), result).toEqual([]);
+  });
+
+  it('cruel still slaps again after a turned face, and vindictive still adds to the count', () => {
+    const r = answer(start(slapWorld('cruel')).d, 'flinched');
+    expect(r.state.practices!.slap).toMatchObject({ again: true });
+    expect(defied(r.state)).toHaveLength(1);
+    const base = slapWorld('vindictive');
+    const p: OpenPunishment = { id: 'pp1', holderId: ANN, entryId: 'the_slap', severity: 4, offence: { kind: 'task_broken', stakes: 'minor', day: base.day }, text: 'x', summary: 'the slap', status: 'accepted', day: base.day, count: 2 };
+    base.practices = { ...blankPractices(), seq: 3, punishments: [p] };
+    expect(answer(start(base, { punishmentId: 'pp1' }).d, 'flinched').state.practices!.punishments[0].count).toBe(3);
+  });
+
+  it('the side is the hash of the id: the same id the same side, both sides over twenty ids; slap_dealt carries it', () => {
+    expect(slapSide('ps7')).toBe(slapSide('ps7'));
+    const sides = new Set(Array.from({ length: 20 }, (_, i) => slapSide(`ps${i}`)));
+    expect([...sides].sort()).toEqual([-1, 1]);
+    const s = start(slapWorld('cold')).d;
+    const id = s.practices!.slap!.id;
+    expect(ofType(answer(s, 'none').events, 'slap_dealt')[0]).toMatchObject({ side: slapSide(id) });
+  });
+
+  it('faces holds every style: eleven rows, each after with the three results, every label one of the 28 expressions', () => {
+    const faces = TUNING.practice.slap.faces;
+    expect(Object.keys(faces).sort()).toEqual([...reg.practiceStyles.keys()].sort());
+    expect(Object.keys(faces)).toHaveLength(11);
+    const labels: readonly string[] = EXPRESSION_LABELS;
+    for (const [style, f] of Object.entries(faces)) {
+      expect(Object.keys(f.after).sort(), style).toEqual([...SLAP_RESULTS].sort());
+      for (const l of [f.before, ...f.keep, ...Object.values(f.after)]) expect(labels, `${style}: ${l}`).toContain(l);
+    }
+    expect(faces.cruel).toEqual({ before: 'amusement', keep: ['amusement', 'anger', 'annoyance', 'desire', 'pride'], after: { none: 'amusement', braced: 'annoyance', flinched: 'anger' } });
+    expect(TUNING.practice.slap.braceBand).toEqual([42, 224]);
+    expect(TUNING.practice.slap.againLeadMs).toBe(420);
+  });
+
+  it('the directive names the cheek', () => {
+    const left = issuedDirective({ type: 'slap_dealt', unitId: ANN, holderId: ANN, result: 'none', side: 1 }, slapWorld('cold'), reg)!;
+    const right = issuedDirective({ type: 'slap_dealt', unitId: ANN, holderId: ANN, result: 'braced', side: -1 }, slapWorld('cold'), reg)!;
+    expect(left.text).toMatch(/ on the left cheek\./);
+    expect(right.text).toMatch(/ on the right cheek\./);
+    for (const d of [left, right]) expect(d.text).not.toMatch(/\b(he|him|his|himself)\b/i);
+  });
+
+  it('no rng: the state\'s rng is the same before and after a slap is dealt, whatever the result', () => {
+    for (const result of SLAP_RESULTS) {
+      const s = start(slapWorld('cruel')).d;
+      const before = structuredClone(s.rng);
+      expect(answer(s, result).state.rng, result).toEqual(before);
+    }
   });
 });

@@ -1448,6 +1448,29 @@ var TUNING = Object.freeze({
       /** The time her raised hand is up before any feint or the strike (`leadMs`) and the length of each feint (`feintMs`), in milliseconds (`AUTHOR TO TUNE`): the time to brace in is the last `windowMs` before the strike lands. */
       leadMs: 900,
       feintMs: 450,
+      /**
+       * P10e-e (R12, slap.html): `windowMs` is the swing's length; a press `braceBand` ms before the impact braces (the commander's body: the tension's
+       * rise 100, peak 80, fall 220 at the 0.8 mark), the same for every style; cruel's second slap after a turned face raises her hand for `againLeadMs`.
+       */
+      braceBand: Object.freeze([42, 224]),
+      againLeadMs: 420,
+      /**
+       * P10e-e (R13, slap.html `EXPR`, the 28 expression labels; data the author edits): her face by style. `before` is shown as the camera snaps in unless
+       * her face now is in `keep` (it already fits); `after` by the result, with her line after the impact.
+       */
+      faces: Object.freeze({
+        cold: { before: "disapproval", keep: ["disapproval", "neutral", "annoyance", "anger", "disgust"], after: { none: "neutral", braced: "neutral", flinched: "disapproval" } },
+        cruel: { before: "amusement", keep: ["amusement", "anger", "annoyance", "desire", "pride"], after: { none: "amusement", braced: "annoyance", flinched: "anger" } },
+        vindictive: { before: "anger", keep: ["anger", "disapproval", "annoyance", "disgust"], after: { none: "disapproval", braced: "disapproval", flinched: "anger" } },
+        affectionate: { before: "disappointment", keep: ["disappointment", "sadness", "annoyance", "disapproval"], after: { none: "caring", braced: "pride", flinched: "sadness" } },
+        playful: { before: "amusement", keep: ["amusement", "joy", "excitement", "desire"], after: { none: "amusement", braced: "surprise", flinched: "amusement" } },
+        clinical: { before: "neutral", keep: ["neutral", "curiosity", "disapproval"], after: { none: "curiosity", braced: "curiosity", flinched: "curiosity" } },
+        ritual: { before: "neutral", keep: ["neutral", "disapproval", "pride"], after: { none: "neutral", braced: "approval", flinched: "disapproval" } },
+        drill: { before: "annoyance", keep: ["annoyance", "anger", "disapproval"], after: { none: "disapproval", braced: "approval", flinched: "anger" } },
+        regal: { before: "pride", keep: ["pride", "disapproval", "annoyance", "anger"], after: { none: "pride", braced: "approval", flinched: "anger" } },
+        possessive: { before: "anger", keep: ["anger", "annoyance", "desire", "disapproval"], after: { none: "desire", braced: "pride", flinched: "anger" } },
+        obsessive: { before: "desire", keep: ["desire", "love", "anger", "excitement"], after: { none: "love", braced: "love", flinched: "anger" } }
+      }),
       /** The styles that slap with no warning after a slip (R21); the favour each outcome moves, the Regard a slap before others costs those who saw it (`regardFall`'s humiliation) and what she says (drafts, no number). */
       unannouncedStyles: Object.freeze(["cold", "cruel", "drill", "vindictive"]),
       favour: Object.freeze({ none: 1, braced: 2, flinched: -1, softer: 1 }),
@@ -1455,7 +1478,7 @@ var TUNING = Object.freeze({
       words: Object.freeze({
         none: "has struck the commander, and is content that it was taken",
         braced: "has struck the commander, who held still, and is pleased by it",
-        flinched: "has struck the commander, who flinched, and is displeased by it"
+        flinched: "has struck the commander, who flinched and turned the face away from her hand, so that it only grazed, and is displeased by it"
       })
     }),
     /**
@@ -7582,7 +7605,8 @@ var OFFENCE_WORDS = Object.freeze({
   false_report: "a report the commander made turned out false",
   asked: "the commander asked for it",
   unfair: "nothing the commander did",
-  hold_defied: "the commander defied her hold"
+  hold_defied: "the commander defied her hold",
+  slap_defied: "the commander turned the face away from her slap"
 });
 function severityWord(severity) {
   return severity <= 2 ? "light" : severity === 3 ? "heavy" : "harsh";
@@ -23115,6 +23139,9 @@ function slapFeints(state, holderId, slapId) {
   if (swing < T5.feintFrom) return 0;
   return practiceRoll(state, holderId, `feint:${slapId}`) < T5.feintPerLevel * (swing - (T5.feintFrom - 1)) ? 1 : 0;
 }
+function slapSide(slapId) {
+  return fnv1a3(slapId) % 2 === 0 ? 1 : -1;
+}
 var witnessesOf2 = (state, holderId) => (state.scene?.participants ?? []).filter((id) => id !== holderId && state.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)));
 function markSlapped(draft, punishmentId) {
   const p = punishmentId === void 0 ? void 0 : draft.practices?.punishments.find((x) => x.id === punishmentId);
@@ -23168,13 +23195,14 @@ function deal(draft, ctx2, holderId, result, slap) {
   const T5 = TUNING.practice.slap;
   const style = styleOf2(draft, reg, holderId);
   const witnesses = slap.public === true ? witnessesOf2(draft, holderId) : [];
-  const events = [{ type: "slap_dealt", unitId: holderId, holderId, result, public: slap.public === true, ...witnesses.length > 0 ? { present: [holderId, ...witnesses] } : {} }];
+  const events = [{ type: "slap_dealt", unitId: holderId, holderId, result, public: slap.public === true, side: slapSide(slap.id), ...witnesses.length > 0 ? { present: [holderId, ...witnesses] } : {} }];
   addFavour(draft, holderId, T5.favour[result]);
   if (result === "braced") events.push(...regardRise(draft, reg, holderId, "dignity"));
   if (result === "flinched") {
     if (style === "affectionate") addFavour(draft, holderId, T5.favour.softer);
     flinchedSentence(draft, slap, style);
     if (style === "cruel" && slap.again !== true) events.push(...startSlap(draft, ctx2, holderId, { again: true, ...slap.punishmentId !== void 0 ? { punishmentId: slap.punishmentId } : {} }));
+    events.push(...noteOffence(draft, ctx2, holderId, { kind: "slap_defied", ref: slap.id, stakes: "minor", day: draft.day }));
   }
   events.push(...practise2(draft, holderId, ["swing"], style ?? ""));
   if (witnesses.length > 0) {
@@ -44048,7 +44076,8 @@ function slapDirective(event, state, reg) {
   const unit4 = state.squad.find((u) => u.id === event.holderId);
   const how = typeof event.result === "string" ? TUNING.practice.slap.words[event.result] : void 0;
   if (unit4 === void 0 || how === void 0 || !practiceLive(state, reg, unit4.id)) return null;
-  return { id: `${SLAP_PREFIX}${unit4.id}`, expiresAfter: "next_reply", text: plainDraft(`${unit4.displayName} ${how}. ${NEVER_NAME}`) };
+  const cheek = event.side === 1 ? ", on the left cheek" : event.side === -1 ? ", on the right cheek" : "";
+  return { id: `${SLAP_PREFIX}${unit4.id}`, expiresAfter: "next_reply", text: plainDraft(`${unit4.displayName} ${how}${cheek}. ${NEVER_NAME}`) };
 }
 function cancelledRewardDirective(event, state, reg) {
   const unit4 = state.squad.find((u) => u.id === event.holderId);

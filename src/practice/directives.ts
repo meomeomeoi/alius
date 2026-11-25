@@ -177,7 +177,9 @@ function slapDirective(event: { type: string; [k: string]: unknown }, state: Cam
   const unit = state.squad.find((u) => u.id === event.holderId);
   const how = typeof event.result === 'string' ? (TUNING.practice.slap.words as Record<string, string | undefined>)[event.result] : undefined;
   if (unit === undefined || how === undefined || !practiceLive(state, reg, unit.id)) return null;
-  return { id: `${SLAP_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`${unit.displayName} ${how}. ${NEVER_NAME}`) };
+  // P10e-e (R12): the cheek her hand came from (side 1 is her right hand: the commander's left cheek); an old event without a side names none
+  const cheek = event.side === 1 ? ', on the left cheek' : event.side === -1 ? ', on the right cheek' : '';
+  return { id: `${SLAP_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: plainDraft(`${unit.displayName} ${how}${cheek}. ${NEVER_NAME}`) };
 }
 
 /** A task kept and given nothing for it (a cancelled reward, R16), for her next reply only: it was good, and it was not good enough. Nothing is said of why. */

@@ -587,15 +587,16 @@ Open for e12 (P10e open items): cards are placed with CSS `order`, so screen rea
   - `slap_dealt { …; side: 1 | -1 }`
   - `TUNING.practice.slap.faces: Record<ProfileStyle, { before: string; keep: string[]; after: Record<SlapResult, string> }>`
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `a turned face is her offence`: `answerSlap(…, 'flinched')` emits `slap_dealt` and her offence `slap_defied` (minor). `none` and `braced` note none.
   - `cruel still slaps again after a turned face` (as today), and `vindictive still adds to the count`.
   - `the side is the hash of the id`: two calls give the same side; over 20 ids both sides appear.
   - `faces holds every style`: 11 rows, each `after` with the three results, every label one of the 28 SillyTavern expressions.
   - `the directive names the cheek`.
   - `no rng`: `state.rng` is equal before and after a slap is dealt (a deep compare).
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** the tests, the seeded `unaffected` tests, `npm test` → PASS (a moved golden stops and reports).
-- [ ] **Step 5: Commit** `feat(P10e-e): the slap's meanings, her side, her face and her lines`
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** the tests, the seeded `unaffected` tests, `npm test` → PASS (a moved golden stops and reports).
+- [x] **Step 5: Commit** `feat(P10e-e): the slap's meanings, her side, her face and her lines`
+  - *As built:* `slap_defied` joins `OFFENCE_KINDS` and `OFFENCE_WORDS` ("the commander turned the face away from her slap"). `deal` notes it after the style answers (cruel's second slap, vindictive's +1, affectionate's softer favour), ref the slap's id. `slapSide` lives in `src/engine/practice/slap.ts`. `TUNING.practice.slap.faces` is typed `Record<ProfileStyle, SlapFace>` (`SlapFace` exported from `tuning.ts`, a type-only import of `ProfileStyle`). `words.flinched` now says the face was turned away and the blow only grazed. The directive puts the cheek before the closing sentence (`…, on the left cheek. Show it in how she acts…`), because every practice directive ends with that sentence; an event with no `side` names no cheek. The slap lines are 34 `cardVoice` rows `slap.<kind>.<style>` (style rows only, so cold, with none, stays silent: no neutral fallback). `docs/content/card-voice.md` gains §6, the readable copy, and `tests/content/cardVoice.test.ts` reads §6 too.
 
 ### Task 12: The slap instrument
 

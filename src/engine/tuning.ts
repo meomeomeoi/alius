@@ -1,3 +1,8 @@
+import type { ProfileStyle } from './dynamic/types';
+
+/** P10e-e (R13): her face before a slap and after it, by her style (the 28 expression labels of the sprites). */
+export interface SlapFace { readonly before: string; readonly keep: readonly string[]; readonly after: Readonly<Record<'none' | 'braced' | 'flinched', string>> }
+
 /** Rule constants of the P2 economy and calendar (draft balance values). Content-like data lives in JSON. */
 export const TUNING = Object.freeze({
   /** P7: the commander's body, presence and traits (draft balance values). */
@@ -1092,13 +1097,35 @@ export const TUNING = Object.freeze({
       obsessiveSpread: 400, unannounced: 0.3, feintFrom: 2, feintPerLevel: 0.1,
       /** The time her raised hand is up before any feint or the strike (`leadMs`) and the length of each feint (`feintMs`), in milliseconds (`AUTHOR TO TUNE`): the time to brace in is the last `windowMs` before the strike lands. */
       leadMs: 900, feintMs: 450,
+      /**
+       * P10e-e (R12, slap.html): `windowMs` is the swing's length; a press `braceBand` ms before the impact braces (the commander's body: the tension's
+       * rise 100, peak 80, fall 220 at the 0.8 mark), the same for every style; cruel's second slap after a turned face raises her hand for `againLeadMs`.
+       */
+      braceBand: Object.freeze([42, 224] as const), againLeadMs: 420,
+      /**
+       * P10e-e (R13, slap.html `EXPR`, the 28 expression labels; data the author edits): her face by style. `before` is shown as the camera snaps in unless
+       * her face now is in `keep` (it already fits); `after` by the result, with her line after the impact.
+       */
+      faces: Object.freeze({
+        cold: { before: 'disapproval', keep: ['disapproval', 'neutral', 'annoyance', 'anger', 'disgust'], after: { none: 'neutral', braced: 'neutral', flinched: 'disapproval' } },
+        cruel: { before: 'amusement', keep: ['amusement', 'anger', 'annoyance', 'desire', 'pride'], after: { none: 'amusement', braced: 'annoyance', flinched: 'anger' } },
+        vindictive: { before: 'anger', keep: ['anger', 'disapproval', 'annoyance', 'disgust'], after: { none: 'disapproval', braced: 'disapproval', flinched: 'anger' } },
+        affectionate: { before: 'disappointment', keep: ['disappointment', 'sadness', 'annoyance', 'disapproval'], after: { none: 'caring', braced: 'pride', flinched: 'sadness' } },
+        playful: { before: 'amusement', keep: ['amusement', 'joy', 'excitement', 'desire'], after: { none: 'amusement', braced: 'surprise', flinched: 'amusement' } },
+        clinical: { before: 'neutral', keep: ['neutral', 'curiosity', 'disapproval'], after: { none: 'curiosity', braced: 'curiosity', flinched: 'curiosity' } },
+        ritual: { before: 'neutral', keep: ['neutral', 'disapproval', 'pride'], after: { none: 'neutral', braced: 'approval', flinched: 'disapproval' } },
+        drill: { before: 'annoyance', keep: ['annoyance', 'anger', 'disapproval'], after: { none: 'disapproval', braced: 'approval', flinched: 'anger' } },
+        regal: { before: 'pride', keep: ['pride', 'disapproval', 'annoyance', 'anger'], after: { none: 'pride', braced: 'approval', flinched: 'anger' } },
+        possessive: { before: 'anger', keep: ['anger', 'annoyance', 'desire', 'disapproval'], after: { none: 'desire', braced: 'pride', flinched: 'anger' } },
+        obsessive: { before: 'desire', keep: ['desire', 'love', 'anger', 'excitement'], after: { none: 'love', braced: 'love', flinched: 'anger' } },
+      } satisfies Record<ProfileStyle, SlapFace>) as Readonly<Record<ProfileStyle, SlapFace>>,
       /** The styles that slap with no warning after a slip (R21); the favour each outcome moves, the Regard a slap before others costs those who saw it (`regardFall`'s humiliation) and what she says (drafts, no number). */
       unannouncedStyles: Object.freeze(['cold', 'cruel', 'drill', 'vindictive'] as readonly string[]),
       favour: Object.freeze({ none: 1, braced: 2, flinched: -1, softer: 1 } as const), publicRegard: 3,
       words: Object.freeze({
         none: 'has struck the commander, and is content that it was taken',
         braced: 'has struck the commander, who held still, and is pleased by it',
-        flinched: 'has struck the commander, who flinched, and is displeased by it',
+        flinched: 'has struck the commander, who flinched and turned the face away from her hand, so that it only grazed, and is displeased by it',
       } as const),
     }),
     /**

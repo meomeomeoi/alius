@@ -273,3 +273,66 @@ Variant **D** (author, 2026-11-25): a short full-frame moment, like the slap. He
 - **right:** `For once.` · `So you can.` · `Good. Don't expect thanks.`
 - **wrong:** `Wrong. Like always. {posture}.` · `{posture}. You'd forget your own name.` · `Not {posture}. Another one for the list.`
 - **slow:** `Too slow. Another one for the list.` · `You never could keep up.` · `Late. I'm not surprised.`
+
+---
+
+## 6. The slap (slap.html, approved by the author, 2026-11-24)
+
+Her lines in her hand around the slap (P10e-e Task 11; `slap.html`'s `LINES`, heard in play). **before**: as the camera snaps in (ritual, drill); **feint**: the commander tensed on a feint (playful); **again**: her second slap after a turned face (cruel); **none**, **braced**, **flinched**: after the impact, by the result (a turned face is `flinched`). One line picked as in §2 (a hash, no rng draw). Cold is silent. No pronoun and no feeling for the commander.
+
+### affectionate
+- **none:** `there. it’s done.` · `shh. done.`
+- **braced:** `brave.` · `look at you.`
+- **flinched:** `shh. come here.` · `I know. I know.`
+
+### cold
+Silent: no line before or after.
+
+### ritual
+- **before:** `still.`
+- **none:** `one.`
+- **braced:** `still. as it should be.`
+- **flinched:** `you moved.`
+
+### clinical
+- **none:** `noted.`
+- **braced:** `no flinch. interesting.`
+- **flinched:** `turned away. noted.`
+
+### possessive
+- **none:** `mine to strike.`
+- **braced:** `good. mine.`
+- **flinched:** `don’t you turn from me.`
+
+### playful
+- **feint:** `flinchy~`
+- **none:** `didn’t see that coming?` · `ha.`
+- **braced:** `ooh. ready for me?`
+- **flinched:** `running away~?`
+
+### cruel
+- **again:** `again.`
+- **none:** `better.`
+- **braced:** `look at that.`
+- **flinched:** `face me.`
+
+### obsessive
+- **none:** `you felt that. you felt me.`
+- **braced:** `you were waiting for me.`
+- **flinched:** `look at me. only me.`
+
+### drill
+- **before:** `chin up.`
+- **none:** `eyes front.`
+- **braced:** `that’s discipline.`
+- **flinched:** `you turned your face. fault.`
+
+### regal
+- **none:** `you may thank me.`
+- **braced:** `well taken. now thank me.`
+- **flinched:** `you turn from me?`
+
+### vindictive
+- **none:** `that was owed.`
+- **braced:** `it changes nothing.`
+- **flinched:** `that’s added to it.`

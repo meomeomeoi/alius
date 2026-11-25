@@ -1,7 +1,7 @@
 /**
  * The slap (P16, plan R21, spec §R.3): a holder strikes the commander's face, from her discipline (the `slap` effect) or with no warning after a slip in a scene with her. The engine opens it
- * (`startSlap`: her time allowed by style, her feints by her `swing`) and the UI runs the one-key time allowed and answers (`answerSlap`): none (nothing in time), braced (pressed inside the time allowed) or
- * flinched (too early, on a feint, a second press). Each outcome moves her favour and the rest by her style; every slap is a threat to the commander (`slap_dealt`), makes her `swing`
+ * (`startSlap`: her swing's length by style, her feints by her `swing`) and the slap instrument answers (`answerSlap`, P10e-e R11): none (taken), braced (the body tensed on the impact) or
+ * flinched (the face turned away: a defiance, also her offence `slap_defied`); `slap_dealt.side` is her hand's side (`slapSide`). Each outcome moves her favour and the rest by her style; every slap is a threat to the commander (`slap_dealt`), makes her `swing`
  * better and, before others, costs the commander the Regard of those who saw it and is remembered by those present. With no scene with her there is nothing to brace in: it lands unseen. Nothing here draws.
  */
 import type { Registries } from '../../content/types';
@@ -11,10 +11,12 @@ import { addFavour } from '../dynamic/hold';
 import { practiceOf } from '../dynamic/profile';
 import { regardFall, regardRise } from '../dynamic/regard';
 import { isLiving } from '../economy';
+import { fnv1a } from '../hub';
 import { herSkillOf, practise } from '../physics/skill';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { ensurePractices, nextPracticeId, practiceLive } from './gate';
+import { noteOffence } from './offences';
 import { practiceRoll, SLAP_RESULTS, type OpenPunishment, type PracticeState, type SlapResult } from './state';
 
 /** What asks for a slap: which punishment (its effect), a second one after a flinch (`again`), or `unannounced` (after a slip in a scene). */
@@ -36,6 +38,14 @@ export function slapFeints(state: CampaignState, holderId: string, slapId: strin
   const swing = herSkillOf(state, holderId).swing;
   if (swing < T.feintFrom) return 0;
   return practiceRoll(state, holderId, `feint:${slapId}`) < T.feintPerLevel * (swing - (T.feintFrom - 1)) ? 1 : 0;
+}
+
+/**
+ * P10e-e (R12): the side her hand comes from, a hash of the slap's id (no draw): `1` is her right hand (the screen's left, the commander's left
+ * cheek), `-1` her left. The same slap always the same side; `slap_dealt.side` carries it to the directive.
+ */
+export function slapSide(slapId: string): 1 | -1 {
+  return fnv1a(slapId) % 2 === 0 ? 1 : -1;
 }
 
 /** The named living soldiers in the open scene besides her: who sees the slap. */
@@ -110,13 +120,15 @@ function deal(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, holderId
   const T = TUNING.practice.slap;
   const style = styleOf(draft, reg, holderId);
   const witnesses = slap.public === true ? witnessesOf(draft, holderId) : [];
-  const events: EngineEvent[] = [{ type: 'slap_dealt', unitId: holderId, holderId, result, public: slap.public === true, ...(witnesses.length > 0 ? { present: [holderId, ...witnesses] } : {}) }];
+  const events: EngineEvent[] = [{ type: 'slap_dealt', unitId: holderId, holderId, result, public: slap.public === true, side: slapSide(slap.id), ...(witnesses.length > 0 ? { present: [holderId, ...witnesses] } : {}) }];
   addFavour(draft, holderId, T.favour[result]);
   if (result === 'braced') events.push(...regardRise(draft, reg, holderId, 'dignity'));
   if (result === 'flinched') {
     if (style === 'affectionate') addFavour(draft, holderId, T.favour.softer); // she is gentler: the flinch is forgiven
     flinchedSentence(draft, slap, style);
     if (style === 'cruel' && slap.again !== true) events.push(...startSlap(draft, ctx, holderId, { again: true, ...(slap.punishmentId !== undefined ? { punishmentId: slap.punishmentId } : {}) }));
+    // R11: a turned face is a defiance, her offence like any other (her discipline remembers it through `noteOffence`; no draw)
+    events.push(...noteOffence(draft, ctx, holderId, { kind: 'slap_defied', ref: slap.id, stakes: 'minor', day: draft.day }));
   }
   events.push(...practise(draft, holderId, ['swing'], style ?? ''));
   if (witnesses.length > 0) {
@@ -127,8 +139,8 @@ function deal(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, holderId
 }
 
 /**
- * The commander's answer to the slap that is open (`practice/slap_answer { slapId, result }`): the UI sends `none` when the time allowed ran out, `braced` for a press inside it and `flinched` for an early
- * press, a press on a feint or a second press. The slap is closed and what it does lands (`deal`). Throws for a slap that is not open, a result that is no result or a holder who is not live. Draws nothing.
+ * The commander's answer to the slap that is open (`practice/slap_answer { slapId, result }`). P10e-e (R11): the slap instrument sends `braced` for a press 42–224 ms before the impact,
+ * `none` for anything else (no press, a press too early, on a feint or after) and `flinched` only for a turned face (a defiance: also her offence `slap_defied`). The slap is closed and what it does lands (`deal`). Throws for a slap that is not open, a result that is no result or a holder who is not live. Draws nothing.
  */
 export function answerSlap(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, slapId: string, result: unknown): EngineEvent[] {
   const slap = draft.practices?.slap;
