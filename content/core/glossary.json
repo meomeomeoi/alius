@@ -3513,5 +3513,15 @@
     "term": "More above",
     "short": "The reply is longer than the lines shown. Click to open the history and read all of it.",
     "long": "AUTHOR TO WRITE: The wheel up over the picture or the reply opens the history too; Esc closes it."
+  },
+  {
+    "id": "instrument",
+    "term": "Instrument",
+    "short": "A mini-game of the body: it plays her rhythm; the stop word always ends it.",
+    "long": "AUTHOR TO WRITE: An instrument replaces the hold's card while real-time contact is on and that kind of interaction is not switched off in SYS; otherwise the card plays the hold turn by turn. The posture dial dims while it runs; the STOP WORD pill stays where it always is.",
+    "see": [
+      "stop_word",
+      "contact_physics"
+    ]
   }
 ]

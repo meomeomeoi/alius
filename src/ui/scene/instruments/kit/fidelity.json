@@ -1,0 +1,106 @@
+{
+  "prototype": "breath",
+  "note": "The kit spans three prototypes: an entry with its own `prototype` reads that file (weight, her_activity); the rest read breath.html. The diffs are of the sources with types stripped (esbuild) and whitespace, semicolons, trailing commas and const/let/var unified; Task 6's normalize may format them differently and regenerates them.",
+  "functions": [
+    {
+      "fn": "clamp",
+      "module": "src/ui/scene/instruments/kit/math.ts"
+    },
+    {
+      "fn": "lerp",
+      "module": "src/ui/scene/instruments/kit/math.ts"
+    },
+    {
+      "fn": "smooth",
+      "module": "src/ui/scene/instruments/kit/math.ts"
+    },
+    {
+      "fn": "sideFrame",
+      "module": "src/ui/scene/instruments/kit/dark.ts"
+    },
+    {
+      "fn": "squashOf",
+      "module": "src/ui/scene/instruments/kit/dark.ts"
+    },
+    {
+      "fn": "blob",
+      "module": "src/ui/scene/instruments/kit/dark.ts"
+    },
+    {
+      "fn": "SHAPES",
+      "module": "src/ui/scene/instruments/kit/dark.ts"
+    },
+    {
+      "fn": "thump",
+      "module": "src/ui/scene/instruments/kit/heart.ts"
+    },
+    {
+      "fn": "heartTick",
+      "module": "src/ui/scene/instruments/kit/heart.ts"
+    },
+    {
+      "prototype": "weight",
+      "fn": "chaikin",
+      "module": "src/ui/scene/instruments/kit/chaikin.ts"
+    },
+    {
+      "prototype": "her_activity",
+      "fn": "liveTextRects",
+      "module": "src/ui/scene/instruments/kit/hand.ts"
+    },
+    {
+      "prototype": "her_activity",
+      "fn": "placeFree",
+      "module": "src/ui/scene/instruments/kit/hand.ts"
+    },
+    {
+      "prototype": "her_activity",
+      "fn": "say",
+      "module": "src/ui/scene/instruments/kit/hand.ts"
+    }
+  ],
+  "tables": [
+    {
+      "ident": "SEAT_BODY",
+      "module": "src/ui/scene/instruments/kit/dark.ts",
+      "export": "SEAT_BODY"
+    }
+  ],
+  "differences": [
+    {
+      "fn": "SHAPES",
+      "reason": "The rejected seat variants (seat_x_rigid, seat_x_soft, seat_x_depth, seat_x_edges) are not ported (README: \"do not port them\"; Task 5 brief). Every other shape is the prototype's, token for token; the shapes read the prototype's `S.angle` / `S.side` from the module's exported `S`.",
+      "diff": "-seat_x_rigid(g, W, H, o, s) {\n-const ex = Math.max(0, o - 1), oc = Math.min(o, 1)\n-const rx = 0.78 * H, ry = 0.62 * H\n-const gap = (-0.03 + oc * 0.04 + ex * 1.4) * H\n-const cy = H * (0.47 - oc * 0.2 - ex * 1.1) + s.sway * H * 8e-3\n-const gx = s.sway2 * H * 0.018\n-const lcx = W / 2 + gx - gap - rx, rcx = W / 2 + gx + gap + rx\n-const top = lerp(H * 1.03, cy, Math.pow(oc, 0.7)) - ex * H\n-g.fillRect(0, top, W, H - top + 4)\n-g.globalCompositeOperation = \"destination-out\"\n-g.beginPath()\n-g.ellipse(lcx, cy + s.sway2 * H * 6e-3, rx, ry, 0, 0, Math.PI * 2)\n-g.fill()\n-g.beginPath()\n-g.ellipse(rcx, cy - s.sway2 * H * 6e-3, rx, ry, 0, 0, Math.PI * 2)\n-g.fill()\n-g.globalCompositeOperation = \"source-over\"\n-const bottom = cy + ry\n-return { focus: [0.5 + gx / W, Math.min(0.9, (bottom - 0.03 * H) / H)], lip: [(W / 2 + gx + 0.035 * H) / W, Math.min(0.94, (bottom - 0.02 * H) / H)], text: [(W / 2 + gx + 0.1 * H) / W, (cy + 0.22 * H) / H] }\n-}\n-seat_x_soft(g, W, H, o, s) {\n-const ex = Math.max(0, o - 1)\n-const [a, b] = s.sp\n-const La = clamp(a.L, -0.2, 1.1), Lb = clamp(b.L, -0.2, 1.1), Lm = (La + Lb) / 2\n-const rx = 0.8 * H, ry = 0.64 * H\n-const gap = (-0.04 + clamp(Lm, 0, 1) * 0.045 + ex * 1.4) * H\n-const gx = s.sway2 * H * 0.016\n-const cyOf = (L) => H * (0.47 - clamp(L, -0.2, 1) * 0.2 - ex * 1.1) + s.sway * H * 5e-3\n-const top = lerp(H * 1.03, (cyOf(La) + cyOf(Lb)) / 2, Math.pow(clamp(Lm, 0, 1), 0.7)) - ex * H\n-g.fillRect(0, top, W, H - top + 4)\n-g.globalCompositeOperation = \"destination-out\"\n-blob(g, W / 2 + gx - gap - rx, cyOf(La), rx, ry, squashOf(a), 0.3, s.t, -1)\n-blob(g, W / 2 + gx + gap + rx, cyOf(Lb), rx, ry, squashOf(b), 2.1, s.t, 1)\n-g.globalCompositeOperation = \"source-over\"\n-const bottom = (cyOf(La) + cyOf(Lb)) / 2 + ry\n-return { focus: [0.5, Math.min(0.9, (bottom - 0.03 * H) / H)], lip: [(W / 2 + gx + 0.035 * H) / W, Math.min(0.94, (bottom - 0.02 * H) / H)], text: [(W / 2 + gx + 0.1 * H) / W, ((cyOf(La) + cyOf(Lb)) / 2 + 0.22 * H) / H] }\n-}\n-seat_x_depth(g, W, H, o, s) {\n-const ex = Math.max(0, o - 1)\n-const [a, b] = s.sp\n-const V = [W / 2 + s.sway2 * H * 0.014, H * 0.4]\n-const P = (L) => 1.12 / (1 + 0.68 * clamp(L, -0.15, 1.2) + ex * 4)\n-const Pa = P(a.L), Pb = P(b.L), Pm = (Pa + Pb) / 2\n-const rx = 0.84 * H, ry = 0.7 * H\n-const gap = (-0.05 + clamp((a.L + b.L) / 2, 0, 1) * 0.035) * H\n-g.fillRect(0, 0, W, H)\n-g.globalCompositeOperation = \"destination-out\"\n-g.beginPath()\n-g.ellipse(V[0], V[1] - 0.62 * H * Pm, 0.95 * H * Pm, 0.75 * H * Pm, 0, 0, Math.PI * 2)\n-g.fill()\n-blob(g, V[0] - (gap + rx) * Pa, V[1] + 0.12 * H * Pa, rx * Pa, ry * Pa, squashOf(a), 0.3, s.t, -1)\n-blob(g, V[0] + (gap + rx) * Pb, V[1] + 0.12 * H * Pb, rx * Pb, ry * Pb, squashOf(b), 2.1, s.t, 1)\n-g.globalCompositeOperation = \"source-over\"\n-const bottom = V[1] + (0.12 * H + ry) * Pm\n-return { focus: [V[0] / W, Math.min(0.9, (bottom - 0.02 * H) / H)], lip: [(V[0] + 0.03 * H) / W, Math.min(0.94, bottom / H)], text: [(V[0] + 0.22 * H * Pm) / W, (V[1] + 0.1 * H) / H] }\n-}\n-seat_x_edges(g, W, H, o, s) {\n-const ex = Math.max(0, o - 1)\n-const [a, b] = s.sp\n-const Lm = (a.L + b.L) / 2\n-const V = [W / 2 + s.sway2 * H * 0.014, H * 0.42]\n-const P = 1.24 / (1 + 0.52 * clamp(Lm, -0.15, 1.2) + ex * 4)\n-const sq = squashOf({ L: Lm, v: (a.v + b.v) / 2 })\n-g.fillRect(0, 0, W, H)\n-g.globalCompositeOperation = \"destination-out\"\n-blob(g, V[0], V[1], 1.02 * H * P * (1 + sq * 0.06), 0.6 * H * P * (1 - sq * 0.08), sq, 1.2, s.t, 0)\n-g.beginPath()\n-g.ellipse(V[0], V[1] - 0.66 * H * P, 0.82 * H * P, 0.62 * H * P, 0, 0, Math.PI * 2)\n-g.fill()\n-for (const [side, x] of [[-1, a], [1, b]]) {\n-const Pt = 1.24 / (1 + 0.52 * clamp(x.L, -0.15, 1.2) + ex * 4)\n-const tilt = side * (0.62 + clamp(x.L, 0, 1) * 0.12)\n-g.beginPath()\n-g.ellipse(V[0] + side * 0.6 * H * Pt, V[1] + 0.5 * H * Pt, 0.3 * H * Pt * (1 + sq * 0.1), 0.78 * H * Pt, tilt, 0, Math.PI * 2)\n-g.fill()\n-}\n-g.globalCompositeOperation = \"source-over\"\n-const low = V[1] + 0.55 * H * P\n-return { focus: [V[0] / W, Math.min(0.92, (low + 0.25 * H) / H)], lip: [V[0] / W + 0.01, Math.min(0.94, (low + 0.18 * H) / H)], text: [(V[0] + 0.18 * H) / W, (V[1] - 0.05 * H) / H] }\n-}"
+    },
+    {
+      "fn": "thump",
+      "reason": "Wiring: the audio context and the destination are the SampleSound's (`ctx()`, `bus('body')`), passed in by heartTick, instead of the prototype's global `A.ctx` / `A.body` (Task 1 ruling: each port plays on ctx()+bus()).",
+      "diff": "+function thump(ctx, at, gain, f0 = 55, dest) {\n+const t = at\n-function thump(at, gain, f0 = 55, dest = A.body) {\n-if (!A.ctx) return\n-const ctx = A.ctx, t = at"
+    },
+    {
+      "fn": "heartTick",
+      "reason": "Wiring: the state (`A.nextBeat`, `heart.lastBeatMs`, `heart.stopped`) is kept per SampleSound and the first beat is set 0.3 s ahead as the prototype's audioInit does; `bpm` is passed in (the instrument derives it from its gauge as its README says: 64 -> 150 bpm by smooth(85, 5, air)) and so is `air` for the loudness (the prototype reads `G.air`); the pulse's timeouts are kept so heartStop clears them (an instrument's stop leaves no timer).",
+      "diff": "+function heartTick(samples, bpm, air = 100) {\n+const ctx = samples.ctx(), body = samples.bus(\"body\")\n+const heart = heartOf(samples)\n+if (!ctx || !body || heart.stopped) return\n+if (heart.nextBeat === null) heart.nextBeat = ctx.currentTime + 0.3\n+while (heart.nextBeat < ctx.currentTime + 0.12) {\n+const period = 60 / bpm\n+const loud = lerp(0.35, 0.95, smooth(80, 10, air))\n+thump(ctx, heart.nextBeat, loud, 52, body)\n+thump(ctx, heart.nextBeat + Math.max(0.2, period * 0.3), loud * 0.6, 46, body)\n+const delay = (heart.nextBeat - ctx.currentTime) * 1e3\n+const t = setTimeout(() => {\n+heart.timers.delete(t)\n-function heartTick(nowMs) {\n-if (!A.ctx || heart.stopped) return\n-const ctx = A.ctx\n-while (A.nextBeat < ctx.currentTime + 0.12) {\n-const period = 60 / heart.bpm\n-const loud = lerp(0.35, 0.95, smooth(80, 10, G.air))\n-thump(A.nextBeat, loud, 52)\n-thump(A.nextBeat + Math.max(0.2, period * 0.3), loud * 0.6, 46)\n-const delay = (A.nextBeat - ctx.currentTime) * 1e3\n-setTimeout(() => {\n+heart.timers.add(t)\n+heart.nextBeat += period\n-A.nextBeat += period"
+    },
+    {
+      "fn": "liveTextRects",
+      "reason": "Wiring: the lines live in the scene, not in the page's #hand / #others / #senses: every `[data-text-host] > [data-line]` inside the scene root is a line already showing.",
+      "diff": "+function liveTextRects(host, except) {\n-function liveTextRects(except) {\n+const scope = host.closest(\".alius-scene\") ?? host\n+for (const el of scope.querySelectorAll(\"[data-text-host] > [data-line]\")) {\n-for (const host of [\"#hand\", \"#others\", \"#senses\"]) for (const el of $(host).children) {"
+    },
+    {
+      "fn": "placeFree",
+      "reason": "Wiring: the frame is the host's box (the scene), not the window: `innerWidth` / `innerHeight` are the host's size and the rects of the lines are moved into the host's coordinates; the host is the first argument.",
+      "diff": "+function placeFree(host, el, x, y) {\n+const f = frameOf(host)\n+const innerWidth = f.W, innerHeight = f.H\n+const rects = liveTextRects(host, el).map((r) => ({ left: r.left - f.left, right: r.right - f.left, top: r.top - f.top, bottom: r.bottom - f.top }))\n+const w = el.offsetWidth, h = el.offsetHeight, gap = 6, maxY = innerHeight * 0.8 - h\n-function placeFree(el, x, y) {\n-const w = el.offsetWidth, h = el.offsetHeight, gap = 6, maxY = innerHeight * 0.8 - h, rects = liveTextRects(el)"
+    },
+    {
+      "fn": "say",
+      "reason": "Wiring: the line is written into `host` (one group per call) in her hand (`HerLook.hand`, the CSS variable --alius-font-hand) at `size` x `HerLook.handScale` in her accent, instead of the page's #hand in Caveat at a class size; `to` / `opts.big` become `size` (56 or more is big, as the prototype's .big); `at` defaults to the prototype's weight/her_activity upper right; the jitter of place and tilt is `hashRand` of the text instead of `rand` (no random draw); `tilt`, `ms` and `side` (breath's right-anchored align) are options; the pen's sound, her murmur (`babble`) and the speaking clocks (`G.herSpeakingUntil`, `G.lastSelfAt`) are the instrument's, not the kit's; the fade and removal timers are kept per host so `unsay(host)` clears them.",
+      "diff": "+function say(host, text, opts) {\n+const group = document.createElement(\"div\")\n+group.className = \"alius-her-lines\"\n+group.dataset.textHost = \"\"\n+if (!text) return group\n+host.appendChild(group)\n+const mine = groups.get(host)\n+if (!mine) groups.set(host, mine =  new Set())\n+mine.add(group)\n+const size = opts.size ?? 40, big = size >= 56\n+const max = big ? 30 : 40, lines = []\n-function say(text, to = \"self\", opts = {}) {\n-if (!text) return\n-const max = opts.big ? 30 : 40, lines = []\n+const { W: innerWidth, H: innerHeight } = frameOf(host)\n+const p = opts.at ?? [0.6, 0.16]\n-const v = V(), p = opts.at ?? v.her\n+const x = clamp(p[0] + 0.04, 0.03, 0.7) * innerWidth + hashRand(`${text}|x`, -15, 15), y = clamp(p[1] + 0.02, 0.03, 0.8) * innerHeight, delay = 0\n+const rot = opts.tilt === false ? \"0.0\" : hashRand(`${text}|rot`, -4, 3).toFixed(1)\n-const x = clamp(p[0] + 0.04, 0.03, 0.7) * innerWidth + rand(-15, 15), y = clamp(p[1] + 0.02, 0.03, 0.8) * innerHeight, delay = 0\n-const rot = rand(-4, 3).toFixed(1)\n+el.className = \"alius-her-line\" + (big ? \" big\" : \"\")\n+el.dataset.line = \"\"\n-el.className = \"her-line\" + (to === \"self\" ? \" self\" : to === \"commander\" ? \" to-you\" : \"\") + (opts.big ? \" big\" : \"\")\n+el.style.setProperty(\"--alius-font-hand\", `\"${opts.her.hand}\", const(--alius-font-type)`)\n+el.style.setProperty(\"--alius-her\", opts.her.accent)\n+el.style.fontSize = `${Math.round(size * opts.her.handScale * 100) / 100}px`\n+group.appendChild(el)\n+const at = placeFree(host, el, x, y)\n-$(\"#hand\").appendChild(el)\n-const at = placeFree(el, x, y)\n+if (opts.side === \"right\") {\n+el.style.left = \"\"\n+el.style.right = `${Math.max(0, innerWidth - at.x)}px`\n+el.classList.add(\"right\")\n+}\n-setTimeout(() => SYN.pen(), delay)\n-const spoken = to !== \"written\"\n+const life = opts.ms ?? (big ? 5200 : Math.max(2600, dur + 1400)) + delay * 0.5\n+later(host, life, () => {\n+for (const el of els) el.classList.add(\"gone\")\n+later(host, 700, () => {\n+group.remove()\n+mine.delete(group)\n+})\n+})\n+return group\n-if (spoken) {\n-G.herSpeakingUntil = Math.max(G.herSpeakingUntil, G.t + dur)\n-if (S.murmur && !opts.silent) babble(dur / 1e3, { f0: 215, gain: to === \"self\" ? 0.025 : 0.04, pan: v.herPan, lp: S.view === \"wall\" ? 2200 : 3200 })\n-if (to === \"self\") G.lastSelfAt = G.t\n-setTimeout(() => {\n-for (const el of els) {\n-el.classList.add(\"gone\")\n-setTimeout(() => el.remove(), 700)\n-}\n-}, (opts.big ? 5200 : Math.max(2600, dur + 1400)) + delay * 0.5)\n-}"
+    },
+    {
+      "fn": "stepSpring",
+      "reason": "No function of its own in the prototype: weight.html steps its springs inline in frame() (\"the springs are stepped in pieces of at most 8 ms\": `const n = Math.max(1, Math.ceil(h / 0.008)), hs = h / n` and `G.ctlV += (k * (target - G.ctl) - d * G.ctlV) * hs; G.ctl += G.ctlV * hs;`). The kit takes that step over one spring `s` (x, v), with `h = dtMs / 1000`. The fidelity test cannot find it with protoFunction; the reviewer diffs it by hand against weight.html lines 523-530.",
+      "diff": "+function stepSpring(s, target, k, d, dtMs) {\n+const h = dtMs / 1e3\n const n = Math.max(1, Math.ceil(h / 8e-3)), hs = h / n\n for (const i = 0; i < n; i++) {\n-const k = 90, d = 14\n-G.ctlV += (k * (target - G.ctl) - d * G.ctlV) * hs\n-G.ctl += G.ctlV * hs\n+s.v += (k * (target - s.x) - d * s.v) * hs\n+s.x += s.v * hs\n }"
+    }
+  ]
+}

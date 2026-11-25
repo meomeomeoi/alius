@@ -47,7 +47,7 @@ function hold(contact = 'smothered_armpit', over: { segment?: 'running' | 'held'
   if (over.gauge !== undefined) st.scene!.physics!.gauge = over.gauge;
   return st;
 }
-const settings = (over: Partial<AliusSettings> = {}): AliusSettings => ({ ...DEFAULT_SETTINGS, ...over });
+const settings = (over: Partial<AliusSettings> = {}): AliusSettings => ({ ...DEFAULT_SETTINGS, physicsRealtime: false, ...over }); // P10e-e: the card tests are turn-based unless a test says otherwise (DEFAULT_SETTINGS is real time now)
 const fake = () => {
   const calls: Array<[string, unknown]> = [];
   const staging: PhysicsPanelStaging = {
@@ -59,7 +59,7 @@ const fake = () => {
     act: (kind) => { calls.push(['act', kind]); return []; },
     finishCounted: (n) => { calls.push(['count', n]); return []; },
     cue: (kind) => `[${kind}]`,
-    beat: () => 0,
+    beat: () => 0, clock: () => ({ startedAt: null, beatMs: 1500, now: 0 }),
   };
   return { calls, staging };
 };

@@ -330,6 +330,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'moment', 'moment_card', 'contact_physics', 'wake_up', 'tap_signal', 'stop_word', 'physics_panel', 'endurance_training', 'marathon', 'marathon_strategy', 'mouth_act', 'counted_kisses', 'endurance_skill', 'commander_condition', 'stimulus', 'blocking', 'worship_target', 'escalation', 'device_out_of_reach', 'blocking_strip',
   // P10e (the top line's history button and the hints of the scene stage; the dial adds its own)
   'scene_history', 'look_around', 'posture_dial', 'dock_cards', 'chip_overflow', 'reply_more',
+  // P10e-e (the instrument host: the mark on an instrument's root)
+  'instrument',
   // P15 (the PRACTICE and EXPECTATIONS editors; later tasks add their own)
   'practice_profile', 'practice_as', 'practice_witness', 'practice_style', 'practice_audience', 'inclination', 'fairness', 'hint_style', 'drive', 'expectation_profile',
   // P15 (the DYNAMIC block of WORLD PARAMETERS; `setting_dynamic_*` are settings, checked with the settings)

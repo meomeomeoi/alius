@@ -74,7 +74,7 @@ function draw(state: CampaignState) {
     onPunish: vi.fn(), onUndoDiscipline: vi.fn(), onSlap: vi.fn(), onPastime: vi.fn(),
     onAnswerTask: vi.fn(), onAnswerPunishment: vi.fn(), onAnswerMilestone: vi.fn(), onTakeInstead: vi.fn(), onUndoPunishment: vi.fn(), onCeremonyStep: vi.fn(),
     generation: { records: () => [], retry: vi.fn(), drop: vi.fn(), reroll: vi.fn() } as never,
-    physics: { input: noop, endSegment: noop, stopWord: noop, skip: noop, stimulus: noop, act: noop, finishCounted: noop, cue: () => null, beat: () => 0, keystroke: vi.fn(), typed: vi.fn(), onTap: vi.fn() },
+    physics: { input: noop, endSegment: noop, stopWord: noop, skip: noop, stimulus: noop, act: noop, finishCounted: noop, cue: () => null, beat: () => 0, clock: () => ({ startedAt: null, beatMs: 1500, now: 0 }), keystroke: vi.fn(), typed: vi.fn(), onTap: vi.fn() },
   });
   return { host, screen };
 }

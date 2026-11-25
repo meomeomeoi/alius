@@ -965,6 +965,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     if (s?.scene) {
       sceneScreen = renderSceneScreen(host, {
         controller: scene, getState: () => state, registries, st, settings: () => getSettings(st), onEnded: leaveScene, sound, samples, // P10e-e: the instruments' recorded sounds
+        art: { get: (unitId, slot, gate) => art.get(unitId, slot, gate), face: (unitId) => art.face(unitId) }, // P10e-e: the instruments' pictures (read through, the manifest may load later)
         onClose: () => shell.close(), // P10e: the shell's own close is hidden on the scene screen; the top line carries it
         assetUrl: deps.assetUrl, // P10c: backdrops live in the extension folder
         generation: genUi,
@@ -989,7 +990,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         onAnswerRule: answerRule,
         onStage: (action) => { scene.stage(action); }, // P15a: a BLOCKING chip goes through the scene controller (the swipe rebases on it)
         physics: { // P15a: the hold panel's inputs go to the staging controller, never through `stage` (a hold is not rolled back by a swipe)
-          input: (i) => staging.input(i), endSegment: () => staging.endSegment(), stopWord: () => staging.stopWord(), skip: (st) => staging.skip(st), stimulus: (w, k, d) => staging.stimulus(w, k, d), act: (k) => staging.act(k), finishCounted: (n) => staging.finishCounted(n), cue: (k, b) => staging.cue(k, b), beat: () => staging.beat(),
+          input: (i) => staging.input(i), endSegment: () => staging.endSegment(), stopWord: () => staging.stopWord(), skip: (st) => staging.skip(st), stimulus: (w, k, d) => staging.stimulus(w, k, d), act: (k) => staging.act(k), finishCounted: (n) => staging.finishCounted(n), cue: (k, b) => staging.cue(k, b), beat: () => staging.beat(), clock: () => staging.clock(),
           keystroke: () => staging.keystroke(), typed: (chars, beat) => staging.typed(chars, beat),
           onTap: () => { const failed = api.dispatch({ type: 'physics/signal', payload: {} }, { expectChatId: st.getActiveChat()?.chatId }).find((e) => e.type === 'error'); if (failed) toast('warn', String(failed.message ?? failed.code)); },
         },

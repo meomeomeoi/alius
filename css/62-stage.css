@@ -220,6 +220,11 @@
   gap: 8px;
 }
 
+/* P10e-e R6: the dial dims while an instrument runs (the body is busy); the stop word's pill above it keeps its full strength */
+#alius-shell .alius-stage-dial[data-instrument] .alius-dial-host {
+  opacity: 0.35;
+}
+
 /* the stop word (A1): a small pill, never a card's own big button; it carries the safety signal and is always where the eye expects it */
 #alius-shell .alius-stop-pill {
   padding: 3px 14px;

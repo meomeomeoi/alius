@@ -11444,14 +11444,14 @@ var affinityBand = (n) => n <= -60 ? "hostile" : n <= -30 ? "cold" : n < 0 ? "co
 var attractionBand = (n) => n < 10 ? "none" : n < 25 ? "faint" : n < 50 ? "interested" : "strong";
 var stressBand = (n) => n < 25 ? "calm" : n < 50 ? "tense" : n < 80 ? "strained" : "breaking";
 var NO_SHIFT = { enter: 0, exit: 0 };
-function nextLoyaltyBand(current, trust, shift = NO_SHIFT) {
+function nextLoyaltyBand(current2, trust, shift = NO_SHIFT) {
   const L = TUNING.relations.loyalty;
   const breakingEnter = L.breakingEnter + shift.enter;
   const waveringEnter = L.waveringEnter + shift.enter;
   const steady = L.steady + shift.exit;
   const breakingExit = L.breakingExit + shift.exit;
   if (trust < breakingEnter) return "breaking";
-  switch (current) {
+  switch (current2) {
     case "steady":
       return trust < waveringEnter ? "wavering" : "steady";
     case "wavering":
@@ -30671,8 +30671,8 @@ function validateDirectorOutput(state, reg, raw, opts) {
     else if (days !== void 0 && !(Number.isInteger(days) && days >= 1 && days <= 14)) reject("objectiveHint", "dueDays is a whole number from 1 to 14");
     else output.objectiveHint = { text: text3, ...days !== void 0 ? { dueDays: days } : {} };
   }
-  const current = currentBeat(state, reg)?.id;
-  const beatOpen = (id) => id === current && (state.world.spine?.proposed === id || proposedNow === id);
+  const current2 = currentBeat(state, reg)?.id;
+  const beatOpen = (id) => id === current2 && (state.world.spine?.proposed === id || proposedNow === id);
   if (!only) {
     list5("missionOffers").forEach((o, i) => {
       const part = `missionOffers[${i}]`;
@@ -45601,20 +45601,20 @@ function stubText(name) {
 }
 function createRouter() {
   const renderers = /* @__PURE__ */ new Map();
-  let current = "hub";
+  let current2 = "hub";
   return {
-    current: () => current,
+    current: () => current2,
     go(id) {
-      current = id;
+      current2 = id;
     },
     register(id, render) {
       renderers.set(id, render);
     },
     render(host) {
       host.replaceChildren();
-      const render = renderers.get(current);
-      if (render) guarded(host, `screen ${current}`, render);
-      else host.append(h("pre", { class: "alius-stub" }, stubText(current.toUpperCase())));
+      const render = renderers.get(current2);
+      if (render) guarded(host, `screen ${current2}`, render);
+      else host.append(h("pre", { class: "alius-stub" }, stubText(current2.toUpperCase())));
     }
   };
 }
@@ -46310,7 +46310,8 @@ var DEFAULT_SETTINGS = {
   momentFrequency: "normal",
   momentExplicit: "rarer",
   momentChips: "chips",
-  physicsRealtime: false,
+  physicsRealtime: true,
+  // P10e-e: the instruments play in real time (the engine's mirror default stays false: a campaign that never mirrored it resolves as before)
   physicsInteractions: { ...DEFAULT_SCENE_SETTINGS.physicsInteractions },
   marathonPace: "normal"
 };
@@ -48560,8 +48561,8 @@ function renderInvTab(host, ctx2) {
     const slotOf = (i) => reg.items.get(i.itemId)?.slot;
     const nameOf28 = (i) => reg.items.get(i.itemId)?.name ?? `UNKNOWN ${i.itemId}`;
     const items = state.inventory.filter((i) => filter === "all" || slotOf(i) === filter);
-    const current = state.inventory.find((i) => i.uid === selected2) ?? null;
-    if (!current) selected2 = null;
+    const current2 = state.inventory.find((i) => i.uid === selected2) ?? null;
+    if (!current2) selected2 = null;
     const resStat = (text3, address) => h("span", { class: "alius-stat", ...analyzeAttrs(address) }, text3);
     const res = h(
       "p",
@@ -48618,8 +48619,8 @@ function renderInvTab(host, ctx2) {
       }))));
     }
     host.append(h("section", { class: "alius-section alius-inv" }, h("h2", {}, "[ INVENTORY ]"), res, filters, list5));
-    if (current) host.append(comparePanel(state, current));
-    if (checkWorkshop(state) === null) host.append(workshopPanel(state, current));
+    if (current2) host.append(comparePanel(state, current2));
+    if (checkWorkshop(state) === null) host.append(workshopPanel(state, current2));
   }
   function comparePanel(state, item) {
     const units = activeRosterUnits(state);
@@ -50868,6 +50869,9 @@ function createStaging(deps) {
       if (!r?.segment.plan || startedAt === null) return 0;
       return Math.min(r.segment.plan.beats.length - 1, Math.max(0, Math.floor((deps.now() - startedAt) / TUNING.physics.beatMs)));
     },
+    clock() {
+      return { startedAt, beatMs: TUNING.physics.beatMs, now: deps.now() };
+    },
     keystroke() {
       lapseUntil = deps.now() + TUNING.physics.typing.lapseMs;
     },
@@ -52290,8 +52294,8 @@ function createSceneController(deps) {
         return;
       }
       lastApply = null;
-      const current = state();
-      if (current !== la.after || !deps.restore(la.before, la.after)) {
+      const current2 = state();
+      if (current2 !== la.after || !deps.restore(la.before, la.after)) {
         rollbackStaging(index2);
         debug(DEBUG_NOT_ROLLED_BACK);
         return;
@@ -52450,11 +52454,11 @@ function renderCommanderFile(host, ctx2) {
       h("p", {}, "BUILD: ", h("span", { class: "alius-chip", ...analyzeAttrs("glossary:archetype") }, archetype))
     )
   );
-  const picker2 = (kind, current) => h("div", { class: "alius-cmdr-pick" }, ...DESCRIPTORS[kind].map((word2, i) => h("button", {
+  const picker2 = (kind, current2) => h("div", { class: "alius-cmdr-pick" }, ...DESCRIPTORS[kind].map((word2, i) => h("button", {
     type: "button",
     class: "alius-btn alius-option",
     [`data-${kind}`]: String(i + 1),
-    "aria-pressed": String(current === i + 1),
+    "aria-pressed": String(current2 === i + 1),
     ...analyzeNative(`glossary:${kind}`),
     onclick: () => onChange({ kind, value: i + 1 })
   }, word2)));
@@ -53832,7 +53836,7 @@ var option = (value, text3, selected2 = false) => h("option", { value, selected:
 var title = (s) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 function renderTemperamentBlock(host, ctx2) {
   const live3 = { unitId: ctx2.unit.id };
-  const { temperament: current } = ctx2;
+  const { temperament: current2 } = ctx2;
   host.replaceChildren(h("p", { class: "alius-stat", ...analyzeAttrs("glossary:temperament", live3) }, "TEMPERAMENT"));
   for (const field2 of TEMPERAMENT_FIELDS) {
     const locked = ctx2.locks.includes(field2);
@@ -53848,9 +53852,9 @@ function renderTemperamentBlock(host, ctx2) {
         live3,
         ctx2.editable && !locked,
         () => {
-          if (current[field2] !== word2) ctx2.onSet(field2, word2);
+          if (current2[field2] !== word2) ctx2.onSet(field2, word2);
         },
-        current[field2] === word2
+        current2[field2] === word2
       )),
       control(locked ? "[ LOCKED ]" : "[ LOCK ]", { "data-lock": field2 }, "glossary:temperament", live3, ctx2.editable, () => ctx2.onLock(field2, !locked), locked)
     ));
@@ -54092,13 +54096,13 @@ function renderPracticeBlock(host, ctx2) {
 var STRENGTHS2 = [1, 2, 3];
 var OFFSET_STEPS = [-0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3];
 var BUILD_STEPS = [0, 0.5, 1];
-function valueSelect(label2, attrs, address, ctx2, enabled, current, options2, onPick) {
+function valueSelect(label2, attrs, address, ctx2, enabled, current2, options2, onPick) {
   const el = h("select", { class: "alius-input alius-option", "aria-label": label2, "aria-disabled": enabled ? null : "true", ...attrs, ...analyzeNative(address, ctx2) }, ...options2);
-  el.value = current;
+  el.value = current2;
   el.addEventListener("change", () => {
     const value = el.value;
-    el.value = current;
-    if (enabled && value !== current) onPick(value);
+    el.value = current2;
+    if (enabled && value !== current2) onPick(value);
   });
   return el;
 }
@@ -54549,8 +54553,8 @@ function renderCalibration(host, ctx2) {
   const stanceIds = ctx2.world ? stanceOptionIds(reg, ctx2.world) : [];
   if (shown2.has("stances") && stanceIds.length > 0) {
     const holder3 = { world: { options: ctx2.world } };
-    const current = (id) => ch.worldStances?.[id] ?? { stance: "indifferent", strength: 1, reason: "" };
-    const write3 = (id, next) => onUpdate({ worldStances: { ...ch.worldStances ?? {}, [id]: { ...current(id), ...next } } });
+    const current2 = (id) => ch.worldStances?.[id] ?? { stance: "indifferent", strength: 1, reason: "" };
+    const write3 = (id, next) => onUpdate({ worldStances: { ...ch.worldStances ?? {}, [id]: { ...current2(id), ...next } } });
     host.append(
       section(
         "stances",
@@ -54559,7 +54563,7 @@ function renderCalibration(host, ctx2) {
         ...stanceIds.map((id) => {
           const opt = reg.worldOptions.get(id);
           const choice = worldChoice(holder3, reg, id).choice;
-          const cur = current(id);
+          const cur = current2(id);
           const imported = !manual && cand?.worldStances?.[id]?.reason ? cand.worldStances[id].reason : "";
           const chip2 = (attrs, label2, on, disabled, apply2) => h("button", {
             type: "button",
@@ -54825,7 +54829,7 @@ var TEXT = {
 };
 var DAYS = [0, 7, 14, 30];
 function renderHeadStartSection(host, wizard) {
-  const current = wizard.state.headStart.days;
+  const current2 = wizard.state.headStart.days;
   host.append(h(
     "section",
     { class: "alius-section alius-head-start" },
@@ -54835,7 +54839,7 @@ function renderHeadStartSection(host, wizard) {
       type: "button",
       class: "alius-card alius-option alius-head-start-choice",
       "data-days": String(d),
-      "aria-pressed": String(current === d),
+      "aria-pressed": String(current2 === d),
       ...analyzeNative("glossary:head_start"),
       onclick: () => wizard.setHeadStart(d)
     }, h("strong", {}, HEAD_START_LABEL[d]), h("p", {}, TEXT[d]))))
@@ -55168,13 +55172,13 @@ var TEXT2 = {
   normal: "Soldiers change slowly from what they live through."
 };
 function renderDevelopmentSection(host, wizard) {
-  const current = wizard.state.development;
+  const current2 = wizard.state.development;
   const select = h(
     "select",
     { name: "characterDevelopment", class: "alius-input" },
-    ...["off", "slow", "normal"].map((m) => h("option", { value: m, selected: m === current }, DEVELOPMENT_LABEL[m]))
+    ...["off", "slow", "normal"].map((m) => h("option", { value: m, selected: m === current2 }, DEVELOPMENT_LABEL[m]))
   );
-  select.value = current;
+  select.value = current2;
   select.addEventListener("change", () => wizard.setDevelopment(select.value));
   host.append(h(
     "section",
@@ -55182,7 +55186,7 @@ function renderDevelopmentSection(host, wizard) {
     h("h3", {}, "CHARACTER DEVELOPMENT"),
     h("p", { class: "alius-hint" }, "Nothing is announced when a soldier changes: it shows in how she acts, and her file records it afterwards. Her card and her own limits never change."),
     h("label", { class: "alius-field alius-option", ...analyzeNative("glossary:character_development") }, h("span", { class: "alius-field-label" }, "Pace"), select),
-    h("p", { class: "alius-dim", "data-development-text": current }, TEXT2[current])
+    h("p", { class: "alius-dim", "data-development-text": current2 }, TEXT2[current2])
   ));
 }
 
@@ -55195,13 +55199,13 @@ var TEXT3 = {
   often: "Something happens to a soldier twice a week, and the news comes more often."
 };
 function renderLifeSection(host, wizard) {
-  const current = wizard.state.lifeEvents;
+  const current2 = wizard.state.lifeEvents;
   const select = h(
     "select",
     { name: "lifeEvents", class: "alius-input" },
-    ...["off", "rare", "normal", "often"].map((m) => h("option", { value: m, selected: m === current }, LIFE_LABEL[m]))
+    ...["off", "rare", "normal", "often"].map((m) => h("option", { value: m, selected: m === current2 }, LIFE_LABEL[m]))
   );
-  select.value = current;
+  select.value = current2;
   select.addEventListener("change", () => wizard.setLifeEvents(select.value));
   host.append(h(
     "section",
@@ -55209,7 +55213,7 @@ function renderLifeSection(host, wizard) {
     h("h3", {}, "LIFE EVENTS"),
     h("p", { class: "alius-hint" }, "Soldiers have days of their own: hobbies, opinions and things that happen off-screen. Nothing is announced; it reaches the commander through talk, messages and notes."),
     h("label", { class: "alius-field alius-option", ...analyzeNative("glossary:setting_life_events") }, h("span", { class: "alius-field-label" }, "How often"), select),
-    h("p", { class: "alius-dim", "data-life-text": current }, TEXT3[current])
+    h("p", { class: "alius-dim", "data-life-text": current2 }, TEXT3[current2])
   ));
 }
 
@@ -57101,26 +57105,26 @@ function unitBlock(unit4, ctx2, state) {
   );
 }
 function handSelect(unit4, state, ctx2) {
-  const current = handOf(state, ctx2.registries, unit4.id);
-  if (!ctx2.onSetHand || !current) return null;
+  const current2 = handOf(state, ctx2.registries, unit4.id);
+  if (!ctx2.onSetHand || !current2) return null;
   const select = h("select", { class: "alius-input", "data-hand": unit4.id, "aria-label": `Handwriting of ${unit4.displayName}` }, ...[...ctx2.registries.handFonts.values()].map((e) => {
     const option2 = h("option", { value: String(e.id) }, String(e.name));
-    if (e.id === current.id) option2.setAttribute("selected", "");
+    if (e.id === current2.id) option2.setAttribute("selected", "");
     return option2;
   }));
-  select.value = String(current.id);
+  select.value = String(current2.id);
   select.addEventListener("change", () => ctx2.onSetHand(unit4.id, select.value));
   return h("label", { class: "alius-stat alius-hand", ...analyzeNative("glossary:handwriting", { unitId: unit4.id }) }, "HAND ", select);
 }
 function quartersSelect(unit4, state, ctx2) {
-  const current = quartersOf(state, ctx2.registries, unit4.id);
-  if (!ctx2.onSetQuarters || !current) return null;
+  const current2 = quartersOf(state, ctx2.registries, unit4.id);
+  if (!ctx2.onSetQuarters || !current2) return null;
   const select = h("select", { class: "alius-input", "data-quarters": unit4.id, "aria-label": `Quarters of ${unit4.displayName}` }, ...[...ctx2.registries.quartersStyles.values()].map((e) => {
     const option2 = h("option", { value: String(e.id), title: String(e.description) }, String(e.name));
-    if (e.id === current.id) option2.setAttribute("selected", "");
+    if (e.id === current2.id) option2.setAttribute("selected", "");
     return option2;
   }));
-  select.value = String(current.id);
+  select.value = String(current2.id);
   select.addEventListener("change", () => ctx2.onSetQuarters(unit4.id, select.value));
   return h("label", { class: "alius-stat alius-quarters", ...analyzeNative("glossary:quarters", { unitId: unit4.id }) }, "QUARTERS ", select);
 }
@@ -59419,7 +59423,7 @@ function renderMapTab(host, ctx2) {
   const known3 = knownRegions(state, reg);
   const knownIds = new Set(known3.map((r) => String(r.id)));
   const regions = [...reg.regions.values()];
-  let current = selectedRegion(host, state, reg, known3);
+  let current2 = selectedRegion(host, state, reg, known3);
   const select = (id) => {
     if (!knownIds.has(id)) return;
     host.dataset.selected = id;
@@ -59445,7 +59449,7 @@ function renderMapTab(host, ctx2) {
       const poly = svg2("polygon", {
         points,
         "data-region": id,
-        class: `alius-hotspot${isKnown ? "" : " alius-nosignal"}${current?.id === id ? " alius-selected" : ""}`,
+        class: `alius-hotspot${isKnown ? "" : " alius-nosignal"}${current2?.id === id ? " alius-selected" : ""}`,
         "aria-label": isKnown ? String(r.name) : "NO SIGNAL",
         ...isKnown ? { tabindex: "0", role: "button" } : { "aria-disabled": "true" }
       });
@@ -59475,7 +59479,7 @@ function renderMapTab(host, ctx2) {
         if (r && knownIds.has(String(r.id))) {
           cell.append(h("button", {
             type: "button",
-            class: `alius-btn alius-region-btn${current?.id === r.id ? " alius-selected" : ""}`,
+            class: `alius-btn alius-region-btn${current2?.id === r.id ? " alius-selected" : ""}`,
             "data-region": String(r.id),
             onclick: () => select(String(r.id))
           }, String(r.name)));
@@ -59490,9 +59494,9 @@ function renderMapTab(host, ctx2) {
   }
   drawMap();
   host.append(mapBox);
-  if (current) {
-    current = known3.find((r) => r.id === current.id);
-    if (current) host.append(regionPanel(state, current, ctx2));
+  if (current2) {
+    current2 = known3.find((r) => r.id === current2.id);
+    if (current2) host.append(regionPanel(state, current2, ctx2));
   }
 }
 
@@ -60425,13 +60429,13 @@ function roster(state, ctx2) {
 }
 var RATION_LABEL = { equal: "EQUAL", fighters_first: "FIGHTERS FIRST", commander_short: "COMMANDER SHORT" };
 function rations(state, ctx2) {
-  const current = rationsOf(state);
+  const current2 = rationsOf(state);
   const section = h("section", { class: "alius-section alius-rations", "data-rations": "" }, h("h2", {}, h("span", { class: "alius-stat", ...analyzeAttrs("glossary:rations") }, "RATIONS")));
   section.append(h("div", { class: "alius-rations-modes" }, ...RATION_MODES.map((mode) => h("button", {
     type: "button",
     class: "alius-btn alius-option",
     "data-rations-mode": mode,
-    "aria-pressed": String(mode === current),
+    "aria-pressed": String(mode === current2),
     ...analyzeNative("glossary:rations", { mode }),
     onclick: () => ctx2.onSetRations?.(mode)
   }, `[ ${RATION_LABEL[mode]} ]`))));
@@ -61527,10 +61531,10 @@ function renderCommsTab(host, ctx2) {
     if (contacts.some((u) => u.id === wanted)) selected.set(host, wanted);
     wanted = void 0;
   }
-  let current = selected.get(host);
-  if (current && !contacts.some((u) => u.id === current)) {
+  let current2 = selected.get(host);
+  if (current2 && !contacts.some((u) => u.id === current2)) {
     selected.delete(host);
-    current = void 0;
+    current2 = void 0;
   }
   const open3 = (id) => {
     selected.set(host, id);
@@ -61544,7 +61548,7 @@ function renderCommsTab(host, ctx2) {
     const renamed = decor !== null && decor.parts.includes("contact") ? decor : null;
     const row4 = h("button", {
       type: "button",
-      class: `alius-btn alius-contact${u.id === current ? " is-open" : ""}${renamed?.fadedUntil !== void 0 ? " is-faded" : ""}`,
+      class: `alius-btn alius-contact${u.id === current2 ? " is-open" : ""}${renamed?.fadedUntil !== void 0 ? " is-faded" : ""}`,
       "data-unit": u.id,
       onclick: () => open3(u.id)
     }, renamed ? renamed.contactName : u.displayName, " ", dot2);
@@ -61554,17 +61558,17 @@ function renderCommsTab(host, ctx2) {
     return row4;
   }));
   const thread = h("div", { class: "alius-thread alius-voice alius-voice-personal", "data-voice": "personal", role: "log", "aria-live": "polite" });
-  if (!current) {
+  if (!current2) {
     thread.append(h("p", { class: "alius-dim" }, "SELECT A CONTACT"));
   } else {
-    const unit4 = contacts.find((u) => u.id === current);
+    const unit4 = contacts.find((u) => u.id === current2);
     const decor = decorOf(state, unit4.id);
     const alias = decor !== null && decor.parts.includes("contact") ? decor.contactName : null;
     thread.append(h("h3", {}, alias !== null ? `// ${alias.toUpperCase()} [${unit4.displayName.toUpperCase()}]` : `// ${unit4.displayName.toUpperCase()}`));
     const accent = unitAccent(unit4.id);
     const played2 = revealed.get(host) ?? /* @__PURE__ */ new Set();
     revealed.set(host, played2);
-    const messages = state.dms[current] ?? [];
+    const messages = state.dms[current2] ?? [];
     let lastMine = -1;
     messages.forEach((x, i) => {
       if (x.from === "commander") lastMine = i;
@@ -61576,24 +61580,24 @@ function renderCommsTab(host, ctx2) {
         bubble.classList.add("alius-msg", "is-commander");
         bubble.prepend(h("span", { class: "alius-msg-meta" }, stampText(m.day, m.slot)));
         thread.append(bubble);
-        const receipt = i === lastMine ? renderReceipt(state, current, m) : null;
+        const receipt = i === lastMine ? renderReceipt(state, current2, m) : null;
         if (receipt) thread.append(receipt);
         return;
       }
-      const shown2 = renderHerMessage(state, ctx2.registries, current, m, { revealed: played2, accent, onReveal: (id) => {
+      const shown2 = renderHerMessage(state, ctx2.registries, current2, m, { revealed: played2, accent, onReveal: (id) => {
         played2.add(id);
         renderCommsTab(host, ctx2);
       } });
       if (m.violation && m.violation.length > 0) drawViolation(shown2[shown2.length - 1], violationLabels(ctx2.registries, m.violation));
       thread.append(...shown2);
     });
-    const doorId = state.calendar.nightEvent?.unitId === current ? state.calendar.nightEvent.id : null;
+    const doorId = state.calendar.nightEvent?.unitId === current2 ? state.calendar.nightEvent.id : null;
     const genHost = h("div", { class: "alius-generation-chips" });
-    drawGenerationChips(genHost, ctx2.generation, state, "comms", (r) => r.key.startsWith(`${current}:`) || r.key === doorId);
-    const her = ctx2.reply?.state(current);
-    if (her) drawSiteReroll(genHost, ctx2.generation, "dm.reply", her.siteKey, () => ctx2.reply.run(current), her.reroll);
+    drawGenerationChips(genHost, ctx2.generation, state, "comms", (r) => r.key.startsWith(`${current2}:`) || r.key === doorId);
+    const her = ctx2.reply?.state(current2);
+    if (her) drawSiteReroll(genHost, ctx2.generation, "dm.reply", her.siteKey, () => ctx2.reply.run(current2), her.reroll);
     if (genHost.childElementCount > 0) thread.append(genHost);
-    if (hesitates(state, ctx2.registries, current)) {
+    if (hesitates(state, ctx2.registries, current2)) {
       const key = messages.at(-1).id;
       const motion = ctx2.motion?.() ?? true;
       const done = typingPlayed(host, key);
@@ -61603,12 +61607,12 @@ function renderCommsTab(host, ctx2) {
       thread.append(typing2);
     }
     const chips = h("div", { class: "alius-chips" });
-    drawProposalChips(chips, state, (p) => p.channel === "dm" && p.unitId === current, ctx2.onAnswer, ctx2.registries);
+    drawProposalChips(chips, state, (p) => p.channel === "dm" && p.unitId === current2, ctx2.onAnswer, ctx2.registries);
     const disciplineChips = h("div", { class: "alius-chips alius-discipline-chips" });
-    drawDisciplineChips(disciplineChips, state, ctx2.registries, (c) => c.channel === "dm" && c.unitId === current, (id) => ctx2.onUndoDiscipline?.(id));
+    drawDisciplineChips(disciplineChips, state, ctx2.registries, (c) => c.channel === "dm" && c.unitId === current2, (id) => ctx2.onUndoDiscipline?.(id));
     const input = h("input", { type: "text", name: "dm", class: "alius-input", autocomplete: "off", "aria-label": `Message ${unit4.displayName}` });
     const pending4 = ctx2.edit?.() ?? null;
-    const waiting3 = pending4 !== null && pending4.toUnitId === current ? pending4 : null;
+    const waiting3 = pending4 !== null && pending4.toUnitId === current2 ? pending4 : null;
     input.value = waiting3 ? waiting3.edited : drafts.get(host) ?? "";
     if (waiting3) input.readOnly = true;
     else input.addEventListener("input", () => drafts.set(host, input.value));
@@ -61624,39 +61628,39 @@ function renderCommsTab(host, ctx2) {
       if (e.key === "Enter") send();
     });
     const demandChips = h("div", { class: "alius-chips alius-discipline-chips" });
-    drawDemandChips(demandChips, state, ctx2.registries, (c) => c.unitId === current, {
+    drawDemandChips(demandChips, state, ctx2.registries, (c) => c.unitId === current2, {
       grant: (id) => ctx2.onAnswerDemand?.(id, "grant"),
       refuse: (id) => ctx2.onAnswerDemand?.(id, "refuse"),
       talk: (id) => ctx2.onTalkDemand?.(id),
       generation: ctx2.generation
     });
     const milestoneCards = h("div", { class: "alius-milestone-cards" });
-    drawMilestoneCards(milestoneCards, state, ctx2.registries, (c) => c.unitId === current, (id, answer) => ctx2.onAnswerMilestone?.(id, answer));
+    drawMilestoneCards(milestoneCards, state, ctx2.registries, (c) => c.unitId === current2, (id, answer) => ctx2.onAnswerMilestone?.(id, answer));
     const claimCards = h("div", { class: "alius-claim-cards" });
-    drawClaimCards(claimCards, state, ctx2.registries, (c) => c.unitId === current, (id, answer) => ctx2.onAnswerClaim?.(id, answer));
+    drawClaimCards(claimCards, state, ctx2.registries, (c) => c.unitId === current2, (id, answer) => ctx2.onAnswerClaim?.(id, answer));
     const returnCards = h("div", { class: "alius-return-cards" });
-    drawReturnCards(returnCards, state, ctx2.registries, (c) => c.unitId === current, (answer) => ctx2.onAnswerReturn?.(answer));
+    drawReturnCards(returnCards, state, ctx2.registries, (c) => c.unitId === current2, (answer) => ctx2.onAnswerReturn?.(answer));
     const taskCards = h("div", { class: "alius-task-cards" });
-    drawTaskCards(taskCards, state, ctx2.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx2.onAnswerTask?.(id, answer), sign: (id) => ctx2.onSignTask?.(id), focusInput: () => input.focus(), generation: ctx2.generation });
+    drawTaskCards(taskCards, state, ctx2.registries, (c) => c.unitId === current2, { answer: (id, answer) => ctx2.onAnswerTask?.(id, answer), sign: (id) => ctx2.onSignTask?.(id), focusInput: () => input.focus(), generation: ctx2.generation });
     const punishmentCards = h("div", { class: "alius-punishment-cards" });
-    drawPunishmentCards(punishmentCards, state, ctx2.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx2.onAnswerPunishment?.(id, answer), takeInstead: (id, answer) => ctx2.onTakeInstead?.(id, answer), undo: (id) => ctx2.onUndoPunishment?.(id), ceremony: (id, step, number) => ctx2.onCeremonyStep?.(id, step, number), generation: ctx2.generation });
+    drawPunishmentCards(punishmentCards, state, ctx2.registries, (c) => c.unitId === current2, { answer: (id, answer) => ctx2.onAnswerPunishment?.(id, answer), takeInstead: (id, answer) => ctx2.onTakeInstead?.(id, answer), undo: (id) => ctx2.onUndoPunishment?.(id), ceremony: (id, step, number) => ctx2.onCeremonyStep?.(id, step, number), generation: ctx2.generation });
     const demonstrationCards = h("div", { class: "alius-demonstration-cards" });
-    drawDemonstrationCards(demonstrationCards, state, ctx2.registries, (c) => c.unitId === current, { answer: (id, answer) => ctx2.onAnswerDemonstration?.(id, answer), generation: ctx2.generation });
+    drawDemonstrationCards(demonstrationCards, state, ctx2.registries, (c) => c.unitId === current2, { answer: (id, answer) => ctx2.onAnswerDemonstration?.(id, answer), generation: ctx2.generation });
     const offerInner = h("div", { class: "alius-offer-chips-host" });
     const initiativeInner = h("div", { class: "alius-initiative-host" });
     const offerChips = h("div", { class: "alius-offer-surface" }, offerInner, initiativeInner);
-    if (ctx2.onOffer) drawOfferChips(offerInner, { state, reg: ctx2.registries, pick: (id) => id === current, onOffer: ctx2.onOffer, answered: () => messages.at(-1)?.from !== "commander", memory: host });
-    if (ctx2.initiative) drawInitiativeChips(initiativeInner, { state, reg: ctx2.registries, pick: (id) => id === current, memory: host, ...ctx2.initiative });
+    if (ctx2.onOffer) drawOfferChips(offerInner, { state, reg: ctx2.registries, pick: (id) => id === current2, onOffer: ctx2.onOffer, answered: () => messages.at(-1)?.from !== "commander", memory: host });
+    if (ctx2.initiative) drawInitiativeChips(initiativeInner, { state, reg: ctx2.registries, pick: (id) => id === current2, memory: host, ...ctx2.initiative });
     const ruleChips = h("div", { class: "alius-chips alius-discipline-chips" });
     const answers2 = { accept: (id) => ctx2.onAnswerRule?.(id, "accept"), negotiate: (id) => ctx2.onAnswerRule?.(id, "negotiate"), refuse: (id) => ctx2.onAnswerRule?.(id, "refuse"), generation: ctx2.generation };
-    for (const rule of ruleNotesFor(state, (id) => id === current).filter((r) => r.status === "proposed")) ruleChips.append(renderRuleNote(state, ctx2.registries, rule, answers2, { motion: ctx2.motion?.() ?? true }));
+    for (const rule of ruleNotesFor(state, (id) => id === current2).filter((r) => r.status === "proposed")) ruleChips.append(renderRuleNote(state, ctx2.registries, rule, answers2, { motion: ctx2.motion?.() ?? true }));
     const personalChips = h("div", { class: "alius-chips alius-discipline-chips" });
-    if (ctx2.personal) drawPersonalChips(personalChips, state, ctx2.registries, (id) => id === current, ctx2.personal);
+    if (ctx2.personal) drawPersonalChips(personalChips, state, ctx2.registries, (id) => id === current2, ctx2.personal);
     const editor = waiting3 ? contacts.find((u) => u.id === waiting3.editorId) : void 0;
     const editChips = waiting3 ? editChip(waiting3, editor?.displayName ?? waiting3.editorId, () => ctx2.onAnswerEdit?.(true), () => ctx2.onAnswerEdit?.(false)) : null;
     const sendButton = h("button", { type: "button", class: "alius-btn", "data-action": "send", ...waiting3 ? { "aria-disabled": "true" } : {}, onclick: send }, "[ SEND ]");
     thread.append(chips, disciplineChips, demandChips, milestoneCards, claimCards, returnCards, taskCards, punishmentCards, demonstrationCards, offerChips, ruleChips, personalChips, ...editChips ? [editChips] : [], h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "MSG>"), input, sendButton));
-    if (unreadMessages(state, current) > 0) queueMicrotask(() => ctx2.onRead(unit4.id));
+    if (unreadMessages(state, current2) > 0) queueMicrotask(() => ctx2.onRead(unit4.id));
   }
   host.append(h("section", { class: "alius-section alius-comms" }, h("h2", {}, "[ PDA COMMS ]"), h("div", { class: "alius-comms-body" }, list5, thread)));
 }
@@ -62247,6 +62251,92 @@ async function pickLocation(modal, ctx2) {
   if (!picked) return null;
   const extraIds = boxes.filter((b) => b.checked).map((b) => b.value).slice(0, MAX_PARTICIPANTS - 1);
   return { locationId: picked, participants: [ctx2.firstUnitId, ...extraIds] };
+}
+
+// src/ui/scene/instruments/host.ts
+var defs = [];
+function instrumentFor(run, state, reg, settings) {
+  if (settings.physicsRealtime !== true) return null;
+  const interaction = String(reg.contactPhysics.get(run.physicsId)?.interaction ?? "");
+  if (settings.physicsInteractions?.[interaction] === false) return null;
+  return defs.find((d) => d.matches(run, state, reg)) ?? null;
+}
+var current = null;
+function scopedStaging(staging, alive2) {
+  return {
+    input: (i) => {
+      if (alive2.on) staging.input(i);
+    },
+    endSegment: () => alive2.on ? staging.endSegment() : [],
+    stopWord: () => alive2.on ? staging.stopWord() : [],
+    skip: (s) => alive2.on ? staging.skip(s) : [],
+    stimulus: (w, k, d) => alive2.on ? staging.stimulus(w, k, d) : [],
+    act: (k) => alive2.on ? staging.act(k) : [],
+    finishCounted: (n) => alive2.on ? staging.finishCounted(n) : [],
+    cue: (k, b) => alive2.on ? staging.cue(k, b) : null,
+    beat: () => staging.beat(),
+    clock: () => staging.clock()
+  };
+}
+function mount(env, def, run, key) {
+  const alive2 = { on: true };
+  const frames = /* @__PURE__ */ new Set();
+  const scoped = Object.create(env, {
+    staging: { value: scopedStaging(env.staging, alive2) },
+    raf: {
+      value: (fn) => {
+        if (!alive2.on) return 0;
+        const id = env.raf((t) => {
+          frames.delete(id);
+          if (alive2.on) fn(t);
+        });
+        frames.add(id);
+        return id;
+      }
+    },
+    cancelRaf: { value: (id) => {
+      frames.delete(id);
+      env.cancelRaf(id);
+    } }
+  });
+  const mark = h("div", { class: "alius-instrument", "data-instrument": def.id, ...analyzeAttrs("glossary:instrument") });
+  mark.removeAttribute("tabindex");
+  if (env.reduced) mark.dataset.reduced = "";
+  if (env.readable) mark.dataset.readable = "";
+  env.layers.moment.append(mark);
+  env.root.querySelector(".alius-stage-dial")?.setAttribute("data-instrument", def.id);
+  current = { key, def, env, run: null, alive: alive2, frames, mark };
+  current.run = def.start(scoped, run);
+}
+function unmountInstruments() {
+  const m = current;
+  if (!m) return;
+  current = null;
+  try {
+    m.run?.stop();
+  } finally {
+    m.alive.on = false;
+    for (const id of m.frames) m.env.cancelRaf(id);
+    m.frames.clear();
+    m.mark.remove();
+    m.env.root.querySelector(".alius-stage-dial")?.removeAttribute("data-instrument");
+  }
+}
+function syncInstruments(env, run) {
+  const state = run ? env.state() : null;
+  const def = run && state ? instrumentFor(run, state, env.registries, env.settings()) : null;
+  if (!run || !def) {
+    unmountInstruments();
+    return false;
+  }
+  const key = `${state.scene?.id ?? ""}|${run.id}`;
+  if (current && current.key === key && current.def === def && current.env === env) {
+    current.run?.update(run);
+    return true;
+  }
+  unmountInstruments();
+  mount(env, def, run, key);
+  return true;
 }
 
 // src/ui/practice/postureCall.ts
@@ -63800,6 +63890,7 @@ function resetSceneStage() {
   resetHints();
   resetLook();
   resetDock();
+  unmountInstruments();
   for (const fn of [...hooks2]) fn();
 }
 
@@ -64292,6 +64383,7 @@ function renderSceneScreen(host, ctx2) {
   let stopHost;
   let momentHost;
   let physicsHost;
+  let instrumentEnv = null;
   let busyHost;
   let caption;
   let input;
@@ -64663,12 +64755,17 @@ function renderSceneScreen(host, ctx2) {
   }
   function drawPhysics(s) {
     if (!ctx2.physics) {
+      unmountInstruments();
       physicsHost.replaceChildren();
       stopHost.replaceChildren();
       return;
     }
     const staging = ctx2.physics;
-    const offered2 = renderPhysicsPanel(physicsHost, { state: s, registries, settings: ctx2.settings(), staging, stopWord: false, onTap: () => {
+    const run = blockingLive(s, registries) ? s.scene?.physics : void 0;
+    const playing = instrumentEnv !== null && syncInstruments(instrumentEnv, run);
+    if (playing) renderPhysicsPanel(physicsHost, { state: null, registries, settings: ctx2.settings(), staging, stopWord: false, onTap: () => {
+    } });
+    const offered2 = playing || renderPhysicsPanel(physicsHost, { state: s, registries, settings: ctx2.settings(), staging, stopWord: false, onTap: () => {
       staging.onTap();
       if (!disposed) refresh2();
     } });
@@ -64894,6 +64991,59 @@ function renderSceneScreen(host, ctx2) {
     layers.frame.addEventListener("wheel", wheelUp);
     hosts.reply.addEventListener("wheel", wheelUp);
     drawBackground(s);
+    unmountInstruments();
+    instrumentEnv = ctx2.physics ? buildInstrumentEnv() : null;
+  }
+  function buildInstrumentEnv() {
+    const frames = ctx2.frames ?? {
+      now: () => typeof performance !== "undefined" ? performance.now() : Date.now(),
+      raf: (fn) => typeof requestAnimationFrame === "function" ? requestAnimationFrame(fn) : setTimeout(() => fn(Date.now()), 16),
+      cancelRaf: (id) => {
+        if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(id);
+        else clearTimeout(id);
+      }
+    };
+    const art2 = ctx2.art ?? createArtSlots(null, (p) => p, () => null);
+    const unitOf13 = (unitId) => state()?.squad.find((u) => u.id === unitId);
+    return {
+      root,
+      layers: { pose: layers.pose, effects: layers.effects, moment: layers.moment, frame: layers.frame, backdrop: layers.backdrop, sprites: layers.sprites },
+      input,
+      reply: layers.hosts.reply,
+      gauge: inputGauge(layers.hosts.input),
+      spriteOf: (unitId) => spriteHost.querySelector(`.alius-sprite[data-unit="${unitId}"] img`),
+      setSprite: (unitId, labelText) => {
+        const u = unitOf13(unitId);
+        if (u) setSprite(u, labelText);
+      },
+      state: () => state(),
+      registries,
+      settings: () => ctx2.settings(),
+      staging: ctx2.physics,
+      samples: ctx2.samples ?? null,
+      art: art2,
+      her: (unitId) => {
+        const s = state();
+        const hand = handOf(s, registries, unitId);
+        return {
+          unitId,
+          name: unitOf13(unitId)?.displayName ?? unitId,
+          accent: unitAccent(unitId),
+          hand: hand ? handFamily(hand) : "",
+          handScale: handScale(hand),
+          style: String(physicsStyleOf(s, unitId, registries).primary)
+        };
+      },
+      now: () => frames.now(),
+      raf: (fn) => frames.raf(fn),
+      cancelRaf: (id) => frames.cancelRaf(id),
+      get reduced() {
+        return motionReduced(ctx2.settings());
+      },
+      get readable() {
+        return ctx2.settings().readableMode === true;
+      }
+    };
   }
   function syncOrder() {
     if (!orderToggle) return;
@@ -64904,6 +65054,8 @@ function renderSceneScreen(host, ctx2) {
     if (disposed) return;
     const s = state();
     if (!s?.scene) {
+      unmountInstruments();
+      instrumentEnv = null;
       root.replaceChildren(h("div", { class: "alius-stub" }, "NO SCENE OPEN"));
       delete root.dataset.stage;
       sceneKey = "";
@@ -64989,6 +65141,7 @@ function renderSceneScreen(host, ctx2) {
       document.removeEventListener("keydown", onDocKey);
       curtain?.destroy();
       detachLook?.();
+      unmountInstruments();
       cancelPostureCalls();
       clearSlapOverlay(slapHost);
       backdropToken++;
@@ -66197,11 +66350,11 @@ var MODE_LABEL = { equal: "equal", fighters_first: "fighters first", commander_s
 function rationsProvider(subject, env) {
   const state = env.state;
   if (!state) return null;
-  const current = rationsOf(state);
-  const asked = typeof subject.data.mode === "string" && subject.data.mode in RATION_TEXT ? subject.data.mode : current;
-  const lines = [`Current mode: ${MODE_LABEL[current]}.`];
-  if (asked !== current) lines.push(`${MODE_LABEL[asked][0].toUpperCase()}${MODE_LABEL[asked].slice(1)}: ${RATION_TEXT[asked]}`);
-  else lines.push(RATION_TEXT[current]);
+  const current2 = rationsOf(state);
+  const asked = typeof subject.data.mode === "string" && subject.data.mode in RATION_TEXT ? subject.data.mode : current2;
+  const lines = [`Current mode: ${MODE_LABEL[current2]}.`];
+  if (asked !== current2) lines.push(`${MODE_LABEL[asked][0].toUpperCase()}${MODE_LABEL[asked].slice(1)}: ${RATION_TEXT[asked]}`);
+  else lines.push(RATION_TEXT[current2]);
   lines.push(votingOn(state, env.registries) && rationsVotable(state, env.registries) ? "A shortage is on or coming: a change goes to a squad vote." : "A change takes effect at once.");
   return { lines };
 }
@@ -66363,13 +66516,13 @@ function rawLines(effects2, k) {
 function worldOptionProvider(subject, env, k) {
   const state = env.state;
   if (!state) return null;
-  const current = worldChoice(state, env.registries, subject.id);
-  if (!current) return null;
-  const lines = [`Now: ${String(current.choice.label)}`];
-  const shownId = typeof subject.data.choice === "string" ? subject.data.choice : current.choice.id;
-  const shown2 = current.option.choices.find((c) => c.id === shownId) ?? current.choice;
-  if (shown2.id !== current.choice.id) lines.push(`This choice: ${String(shown2.label)}`);
-  lines.push(current.option.live === true ? "Can change during the campaign." : "Locked at campaign start.");
+  const current2 = worldChoice(state, env.registries, subject.id);
+  if (!current2) return null;
+  const lines = [`Now: ${String(current2.choice.label)}`];
+  const shownId = typeof subject.data.choice === "string" ? subject.data.choice : current2.choice.id;
+  const shown2 = current2.option.choices.find((c) => c.id === shownId) ?? current2.choice;
+  if (shown2.id !== current2.choice.id) lines.push(`This choice: ${String(shown2.label)}`);
+  lines.push(current2.option.live === true ? "Can change during the campaign." : "Locked at campaign start.");
   lines.push(...shown2.effects.map((fx2) => summarizeWorldOptionEffect(fx2, env.registries)));
   lines.push(...rawLines(shown2.effects, k));
   return { lines };
@@ -67571,26 +67724,26 @@ function renderSysTab(host, ctx2) {
     if (!state || !reg || reg.worldOptions.size === 0) return [h("p", { class: "alius-dim" }, "World options are set when a campaign is started.")];
     return [...reg.worldOptions.values()].map((option2) => {
       const id = String(option2.id);
-      const current = worldChoice(state, reg, id).choice;
+      const current2 = worldChoice(state, reg, id).choice;
       const live3 = option2.live === true;
       let control2;
       if (live3 && ctx2.dispatch) {
         const el = h(
           "select",
           { name: `world:${id}`, class: "alius-input" },
-          ...option2.choices.map((c) => h("option", { value: c.id, selected: c.id === current.id }, c.label))
+          ...option2.choices.map((c) => h("option", { value: c.id, selected: c.id === current2.id }, c.label))
         );
-        el.value = current.id;
+        el.value = current2.id;
         el.addEventListener("change", () => {
           const events = ctx2.dispatch?.({ type: "world/set_option", payload: { optionId: id, choiceId: el.value } }) ?? [];
           const err = events.find((e) => e.type === "error");
           if (err) {
             ctx2.toast("warn", String(err.message ?? "The option could not be changed."));
-            el.value = ctx2.getState() ? worldChoice(ctx2.getState(), reg, id).choice.id : current.id;
+            el.value = ctx2.getState() ? worldChoice(ctx2.getState(), reg, id).choice.id : current2.id;
           }
         });
         control2 = el;
-      } else control2 = h("span", { class: "alius-world-value" }, String(current.label));
+      } else control2 = h("span", { class: "alius-world-value" }, String(current2.label));
       return h(
         "div",
         { class: "alius-field alius-option alius-world-row", "data-option": id, ...analyzeAttrs(`worldOptions:${id}`) },
@@ -69149,6 +69302,8 @@ function createApp(st, deps) {
         sound,
         samples,
         // P10e-e: the instruments' recorded sounds
+        art: { get: (unitId, slot2, gate2) => art2.get(unitId, slot2, gate2), face: (unitId) => art2.face(unitId) },
+        // P10e-e: the instruments' pictures (read through, the manifest may load later)
         onClose: () => shell.close(),
         // P10e: the shell's own close is hidden on the scene screen; the top line carries it
         assetUrl: deps.assetUrl,
@@ -69197,6 +69352,7 @@ function createApp(st, deps) {
           finishCounted: (n) => staging.finishCounted(n),
           cue: (k, b) => staging.cue(k, b),
           beat: () => staging.beat(),
+          clock: () => staging.clock(),
           keystroke: () => staging.keystroke(),
           typed: (chars, beat) => staging.typed(chars, beat),
           onTap: () => {
@@ -69221,12 +69377,12 @@ function createApp(st, deps) {
     if (s && entry) {
       const drawDoor = () => {
         const now = state;
-        const current = now && now.slot === "night" ? now.calendar.nightEvent : void 0;
-        if (!now || !current || now.scene || confrontationNight(now)) return;
-        const unit4 = now.squad.find((u) => u.id === current.unitId);
+        const current2 = now && now.slot === "night" ? now.calendar.nightEvent : void 0;
+        if (!now || !current2 || now.scene || confrontationNight(now)) return;
+        const unit4 = now.squad.find((u) => u.id === current2.unitId);
         const settings = getSettings(st);
         renderDoor(host, {
-          entry: current,
+          entry: current2,
           unitName: unit4?.displayName ?? "Someone",
           ...unit4 ? { silhouette: () => unitPortrait(st, unit4, { palette: settings.palette, dither: false, size: 220 }) } : {},
           seconds: settings.doorTimer,
@@ -70187,7 +70343,7 @@ function createApp(st, deps) {
     }
     if (sections.includes("opinions")) patch.opinions = c.opinions ?? {};
     const { practice: currentPractice, ...currentBond } = unit4.bond ?? {};
-    const current = {
+    const current2 = {
       ...unit4.bond !== void 0 ? { bond: currentBond } : {},
       ...currentPractice !== void 0 ? { practice: currentPractice } : {},
       ...unit4.expectations !== void 0 ? { expectations: unit4.expectations } : {},
@@ -70215,7 +70371,7 @@ function createApp(st, deps) {
       // P14c: raw profile
     };
     const unchanged = Object.keys(patch).every(
-      (k) => JSON.stringify(patch[k]) === JSON.stringify(current[k])
+      (k) => JSON.stringify(patch[k]) === JSON.stringify(current2[k])
     );
     if (unchanged && !resetBox.checked && !resetLifeBox.checked) return toast("info", `Nothing changed${draft.notice ? ` (${draft.notice})` : ""}.`);
     const events = api.dispatch({ type: "squad/resync", payload: { unitId, patch, ...resetBox.checked ? { resetDevelopment: true } : {}, ...resetLifeBox.checked ? { resetLife: true } : {} } }, { expectChatId: startChatId });

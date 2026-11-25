@@ -1,6 +1,12 @@
 import type { Registries } from '../../content/types';
 import type { SampleSound } from '../sound/samples';
+import { createArtSlots, type ArtSlots } from './art';
+import { handFamily, handOf, handScale } from '../../engine/hand';
+import { physicsStyleOf } from '../../engine/physics/style';
+import { syncInstruments, unmountInstruments } from './instruments';
+import type { InstrumentEnv } from './instruments/types';
 import { sceneBackdrop, slotLight } from '../../engine/backdrops';
+import { blockingLive } from '../../engine/blocking';
 import { intimacyOf } from '../../engine/relations/gain';
 import { ROMANTIC_PROPOSALS } from '../../engine/relations/vocab';
 import type { CampaignState, Unit } from '../../engine/state/types';
@@ -59,6 +65,10 @@ export interface SceneScreenCtx {
   sound?: { play(id: 'typing' | 'alert'): void };
   /** P10e-e: the recorded sounds the instruments play (one per app, beside `sound`). Absent = the instruments are silent. */
   samples?: SampleSound;
+  /** P10e-e: the author's pictures per slot for the instruments. Absent = none (every instrument falls back as its README says). */
+  art?: ArtSlots;
+  /** P10e-e: the instruments' frame clock (tests inject a fake one). Absent = `performance.now` and `requestAnimationFrame`. */
+  frames?: { now(): number; raf(fn: FrameRequestCallback): number; cancelRaf(id: number): void };
   /** Called after [END TRANSMISSION] finished (the app returns to the PDA). */
   onEnded: () => void;
   /** P10e: the × of the top line (the shell's own close is hidden on the scene screen). Absent = no button. */
@@ -107,7 +117,7 @@ export interface SceneScreenCtx {
   onPastime?: (unitId: string, pastimeId: string) => void;
   /** P15a: a BLOCKING chip's action (the app passes the scene controller's `stage`). Absent: the controller's own `stage`. */
   onStage?: (action: Action) => void;
-  /** P15a: the staging controller under the physics panel (its inputs, cues and stop word) and the tap. Absent: no panel is drawn. */
+  /** P15a: the staging controller under the physics panel (its inputs, cues and stop word) and the tap. Absent: no panel is drawn (and no instrument). */
   physics?: PhysicsPanelStaging & { keystroke(): void; typed(chars: number, beat?: number): unknown; onTap(): void };
 }
 
@@ -256,6 +266,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let stopHost: HTMLElement;
   let momentHost: HTMLElement;
   let physicsHost: HTMLElement;
+  /** P10e-e: what the instruments are given, built once per scene in `build()` (null without the staging controller). */
+  let instrumentEnv: InstrumentEnv | null = null;
   let busyHost: HTMLElement;
   let caption: HTMLElement;
   let input: HTMLInputElement;
@@ -642,9 +654,13 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
    * posture dial calls the same handler, whenever the panel would offer the stop word (a run, or anything that holds the commander).
    */
   function drawPhysics(s: CampaignState): void {
-    if (!ctx.physics) { physicsHost.replaceChildren(); stopHost.replaceChildren(); return; }
+    if (!ctx.physics) { unmountInstruments(); physicsHost.replaceChildren(); stopHost.replaceChildren(); return; }
     const staging = ctx.physics;
-    const offered = renderPhysicsPanel(physicsHost, { state: s, registries, settings: ctx.settings(), staging, stopWord: false, onTap: () => { staging.onTap(); if (!disposed) refresh(); } });
+    // P10e-e: an instrument draws a live run in real time instead of the card (the card's keys and holds are let go); the stop pill stays
+    const run = blockingLive(s, registries) ? s.scene?.physics : undefined;
+    const playing = instrumentEnv !== null && syncInstruments(instrumentEnv, run);
+    if (playing) renderPhysicsPanel(physicsHost, { state: null, registries, settings: ctx.settings(), staging, stopWord: false, onTap: () => {} });
+    const offered = playing || renderPhysicsPanel(physicsHost, { state: s, registries, settings: ctx.settings(), staging, stopWord: false, onTap: () => { staging.onTap(); if (!disposed) refresh(); } });
     if (!offered) stopHost.replaceChildren();
     else if (stopHost.querySelector('[data-stop-word]') === null) {
       stopHost.replaceChildren(h('button', { type: 'button', class: 'alius-stop-pill', 'data-stop-word': '', 'aria-label': 'Stop word', ...analyzeNative('glossary:stop_word'), onclick: () => { staging.stopWord(); } }, 'STOP WORD'));
@@ -865,6 +881,47 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     layers.frame.addEventListener('wheel', wheelUp);
     hosts.reply.addEventListener('wheel', wheelUp);
     drawBackground(s);
+    unmountInstruments(); // an instrument of the previous scene stops with its layers
+    instrumentEnv = ctx.physics ? buildInstrumentEnv() : null;
+  }
+
+  /** P10e-e: the instruments' env for this scene's layers (the host scopes `raf` and `staging` to each mount). */
+  function buildInstrumentEnv(): InstrumentEnv {
+    const frames = ctx.frames ?? {
+      now: () => (typeof performance !== 'undefined' ? performance.now() : Date.now()),
+      raf: (fn: FrameRequestCallback) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(fn) : (setTimeout(() => fn(Date.now()), 16) as unknown as number)),
+      cancelRaf: (id: number) => { if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(id); else clearTimeout(id); },
+    };
+    const art = ctx.art ?? createArtSlots(null, (p) => p, () => null);
+    const unitOf = (unitId: string): Unit | undefined => state()?.squad.find((u) => u.id === unitId);
+    return {
+      root,
+      layers: { pose: layers.pose, effects: layers.effects, moment: layers.moment, frame: layers.frame, backdrop: layers.backdrop, sprites: layers.sprites },
+      input,
+      reply: layers.hosts.reply,
+      gauge: inputGauge(layers.hosts.input),
+      spriteOf: (unitId) => spriteHost.querySelector<HTMLImageElement>(`.alius-sprite[data-unit="${unitId}"] img`),
+      setSprite: (unitId, labelText) => { const u = unitOf(unitId); if (u) setSprite(u, labelText); },
+      state: () => state()!,
+      registries,
+      settings: () => ctx.settings(),
+      staging: ctx.physics!,
+      samples: ctx.samples ?? null,
+      art,
+      her: (unitId) => {
+        const s = state()!;
+        const hand = handOf(s, registries, unitId);
+        return {
+          unitId, name: unitOf(unitId)?.displayName ?? unitId, accent: unitAccent(unitId), hand: hand ? handFamily(hand) : '', handScale: handScale(hand),
+          style: String(physicsStyleOf(s, unitId, registries).primary),
+        };
+      },
+      now: () => frames.now(),
+      raf: (fn) => frames.raf(fn),
+      cancelRaf: (id) => frames.cancelRaf(id),
+      get reduced() { return motionReduced(ctx.settings()); },
+      get readable() { return ctx.settings().readableMode === true; },
+    };
   }
 
   function syncOrder(): void {
@@ -877,6 +934,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     if (disposed) return;
     const s = state();
     if (!s?.scene) {
+      unmountInstruments(); // P10e-e: the scene is gone, so is its instrument
+      instrumentEnv = null;
       root.replaceChildren(h('div', { class: 'alius-stub' }, 'NO SCENE OPEN'));
       delete root.dataset.stage;
       sceneKey = '';
@@ -956,6 +1015,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       document.removeEventListener('keydown', onDocKey);
       curtain?.destroy();
       detachLook?.();
+      unmountInstruments(); // P10e-e: no frame, timer or late input of an instrument outlives the screen
       cancelPostureCalls(); // no late slip for a call whose scene is gone (P16)
       clearSlapOverlay(slapHost); // and no late answer to a slap whose scene is gone
       backdropToken++;

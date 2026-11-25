@@ -43,6 +43,8 @@ export interface StagingController {
   input(i: SegmentInput): void;
   /** The beat of the running segment the clock is at (real time): where an input made now lands. */
   beat(): number;
+  /** P10e-e R5: when the running segment started (null while none runs), the length of a beat and now, all on the controller's clock. */
+  clock(): { startedAt: number | null; beatMs: number; now: number };
   /** A key was typed in the scene input (real time: maintenance lapses for `TUNING.physics.typing.lapseMs`). */
   keystroke(): void;
   /** A message was sent (turn-based: its length uses beats from `beat`). */
@@ -221,6 +223,9 @@ export function createStaging(deps: StagingDeps): StagingController {
       const r = run();
       if (!r?.segment.plan || startedAt === null) return 0;
       return Math.min(r.segment.plan.beats.length - 1, Math.max(0, Math.floor((deps.now() - startedAt) / TUNING.physics.beatMs)));
+    },
+    clock() {
+      return { startedAt, beatMs: TUNING.physics.beatMs, now: deps.now() };
     },
     keystroke() {
       lapseUntil = deps.now() + TUNING.physics.typing.lapseMs;

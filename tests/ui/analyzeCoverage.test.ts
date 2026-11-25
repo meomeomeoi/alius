@@ -1206,7 +1206,7 @@ describe('coverage: the scene (P15a)', () => {
       renderMomentCard(card, { state, registries: reg, chips: 'chips', onStage: vi.fn() });
       renderPhysicsPanel(panel, {
         state, registries: reg, settings: DEFAULT_SETTINGS, onTap: vi.fn(),
-        staging: { input: vi.fn(), endSegment: () => [], stopWord: () => [], skip: () => [], stimulus: () => [], act: () => [], finishCounted: () => [], cue: () => null, beat: () => 0 },
+        staging: { input: vi.fn(), endSegment: () => [], stopWord: () => [], skip: () => [], stimulus: () => [], act: () => [], finishCounted: () => [], cue: () => null, beat: () => 0, clock: () => ({ startedAt: null, beatMs: 1500, now: 0 }) },
       });
       expect(markedWithout(root)).toEqual([]);
       expect(unresolved(root, env(state))).toEqual([]);

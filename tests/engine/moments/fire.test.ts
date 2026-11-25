@@ -289,7 +289,8 @@ describe('the scene settings mirror', () => {
 
   it('the mirror syncs (setting → campaign) and a campaign that already holds it is left alone', () => {
     const s = campaign(reg, 4);
-    expect(sceneSettingsPatch(s, { ...DEFAULT_SETTINGS })).toBeNull(); // old saves: no dispatch, no change
+    expect(sceneSettingsPatch(s, { ...DEFAULT_SETTINGS, physicsRealtime: false })).toBeNull(); // old saves: no dispatch, no change (ruling A: pinned to turn-based)
+    expect(sceneSettingsPatch(s, { ...DEFAULT_SETTINGS })).toMatchObject({ physicsRealtime: true }); // P10e-e: the global default is real time now; the campaign's mirror follows it on load
     const mine = { ...DEFAULT_SETTINGS, momentFrequency: 'often' as const, physicsRealtime: true, physicsInteractions: { ...DEFAULT_SETTINGS.physicsInteractions, hold: false } };
     const patch = sceneSettingsPatch(s, mine);
     expect(patch).toMatchObject({ momentFrequency: 'often', physicsRealtime: true });

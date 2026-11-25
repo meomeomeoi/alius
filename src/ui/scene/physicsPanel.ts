@@ -25,6 +25,11 @@ export interface PhysicsPanelStaging {
   finishCounted(typed: number): EngineEvent[];
   cue(kind: CueKind, beat: number): string | null;
   beat(): number;
+  /**
+   * P10e-e R5: the staging clock, so an instrument places the plan's beats in wall time: when the running segment started (null while
+   * none runs), the length of a beat and the controller's now (the same clock).
+   */
+  clock(): { startedAt: number | null; beatMs: number; now: number };
 }
 
 export interface PhysicsPanelCtx {

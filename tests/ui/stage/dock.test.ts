@@ -183,7 +183,7 @@ describe('the dock on the scene screen', () => {
       controller, getState: () => state, registries: reg, st: new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' }),
       settings: () => ({ ...DEFAULT_SETTINGS, typingSpeed: 0 }), onEnded: vi.fn(),
       physics: {
-        input: vi.fn(), endSegment: () => [], stopWord, skip: () => [], stimulus: () => [], act: () => [], finishCounted: () => [], cue: () => null, beat: () => 0,
+        input: vi.fn(), endSegment: () => [], stopWord, skip: () => [], stimulus: () => [], act: () => [], finishCounted: () => [], cue: () => null, beat: () => 0, clock: () => ({ startedAt: null, beatMs: 1500, now: 0 }),
         keystroke: vi.fn(), typed: vi.fn(), onTap: vi.fn(),
       },
     });

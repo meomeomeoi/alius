@@ -200,7 +200,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   momentFrequency: 'normal',
   momentExplicit: 'rarer',
   momentChips: 'chips',
-  physicsRealtime: false,
+  physicsRealtime: true, // P10e-e: the instruments play in real time (the engine's mirror default stays false: a campaign that never mirrored it resolves as before)
   physicsInteractions: { ...DEFAULT_SCENE_SETTINGS.physicsInteractions },
   marathonPace: 'normal',
 };

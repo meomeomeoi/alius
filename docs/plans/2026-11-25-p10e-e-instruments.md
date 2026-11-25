@@ -344,8 +344,9 @@ The README of each prototype ends with "Open engine questions (decide in the pla
   - `heartTick(samples: SampleSound, bpm: number): void`
   - `SHAPES` (with the type `Shape`), `SEAT_BODY`, `squashOf`
   - `interface Digest { physicsId: string; hers: string[]; mine: string[]; ended: string }`
+  - *As built:* `chaikin(pts)` is the prototype's one pass (its signature kept, as the fidelity rule asks); three passes are `chaikin(chaikin(chaikin(pts)))` as the prototypes call it. `say(host, text, opts)` returns the group of its lines (`.alius-her-lines`), `unsay(host)` clears every line and timer it left; `placeFree(host, el, x, y)` takes the host first (the frame is the host's box, not the window). `heartTick(samples, bpm, air = 100)` takes the air for the loudness (the prototype reads `G.air`); `heartLastBeat(samples)` and `heartStop(samples)` beside it. `kit/dark.ts` exports the prototype's `S` (`angle`, `side`) that the shapes read; `kit/math.ts` holds `clamp`, `lerp`, `smooth`. The kit's `fidelity.json` adds a per-entry `prototype` (weight, her_activity) to the format of Task 6, and declares `stepSpring` (inline in weight.html's frame loop, no function of its own) as a difference. The host gives each mount its own `raf` (cancelled at the stop) and `staging` (dead after the stop, the stop word included); the mark `.alius-instrument[data-analyze="glossary:instrument"]` is in the moment layer while one runs. `SceneScreenCtx` gains `art?` (the app passes a read-through of its `art`) and `frames?` (a fake frame clock for tests). R6 dims `.alius-dial-host` inside `.alius-stage-dial[data-instrument]`, so the stop word's pill keeps its full strength. `tests/ui/physicsPanel.test.ts` pins `physicsRealtime: false` in its settings fixture (ruling A).
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `no instrument, the card as today`: with no definition registered, `drawPhysics` draws `.alius-physics` (today's DOM, unchanged).
   - `turn-based draws the card`: with a test definition that matches, and `physicsRealtime` false or the run's interaction toggled off, the card is drawn and `start` is never called.
   - `real time mounts once per run`: `start` is called once for `run.id`; a redraw calls `update`; a new run id stops the old one; no run → `stop`.
@@ -357,14 +358,14 @@ The README of each prototype ends with "Open engine questions (decide in the pla
     - `stepSpring` with a 100 ms step stays bounded (k 260, d 16; the weight fix of 2026-11-23);
     - `chaikin` ×1 of a square has 8 points;
     - `say` writes in `--hand` × `handScale`, never uses `innerHTML` for the text, and is gone after its life.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement:**
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement:**
   - `InstrumentEnv` is built once in `build()`. `her()` reads `handOf` / `handScale` / `unitAccent` / `physicsStyleOf(...).primary`.
   - The kit is copied, not rewritten: `src/ui/scene/instruments/kit/fidelity.json` lists `SHAPES`, `SEAT_BODY`, `squashOf`, `blob` (breath.html), `chaikin`, the spring step (weight.html), `say` and `placeFree` (her_activity.html), `heartTick` (breath.html). Task 6's fidelity test checks them once it exists; until then the reviewer diffs them by hand.
   - A definition is registered by importing `src/ui/scene/instruments/index.ts`, which imports each instrument module. Chunks e3–e11 add one line each.
   - `glossary:instrument` ("A mini-game of the body: it plays her rhythm; the stop word always ends it.") marks the instrument's root.
-- [ ] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS.
-- [ ] **Step 5: Commit** `feat(P10e-e): the instrument host, its kit, the staging clock, the dial dims`
+- [x] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS.
+- [x] **Step 5: Commit** `feat(P10e-e): the instrument host, its kit, the staging clock, the dial dims`
 
 ### Task 6: The dial's circle stays put; the side-by-side shots
 

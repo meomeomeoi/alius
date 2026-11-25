@@ -39,7 +39,7 @@ const noop = (): [] => [];
 const screen = renderSceneScreen(view, {
   controller: controller as never, getState: () => state, registries: loaded.registries, st: st as never,
   settings: () => ({ ...DEFAULT_SETTINGS, typingSpeed: 0 }), onEnded() {}, onClose() {}, assetUrl: (p: string) => '/' + p, onOrder: () => false,
-  physics: { input: noop, endSegment: noop, stopWord: noop, skip: noop, stimulus: noop, act: noop, finishCounted: noop, cue: () => 'Her breath comes short.', beat: () => 0, keystroke() {}, typed: () => null, onTap() {} } as never,
+  physics: { input: noop, endSegment: noop, stopWord: noop, skip: noop, stimulus: noop, act: noop, finishCounted: noop, cue: () => 'Her breath comes short.', beat: () => 0, clock: () => ({ startedAt: null, beatMs: 1500, now: 0 }), keystroke() {}, typed: () => null, onTap() {} } as never,
 });
 // review I3: ordinary chips (they fit) or too many (some really overflow); added to a slot of the row, which a redraw leaves alone
 if (fixture === 'chips' || fixture === 'chipsmany') {

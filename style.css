@@ -3315,6 +3315,11 @@
   gap: 8px;
 }
 
+/* P10e-e R6: the dial dims while an instrument runs (the body is busy); the stop word's pill above it keeps its full strength */
+#alius-shell .alius-stage-dial[data-instrument] .alius-dial-host {
+  opacity: 0.35;
+}
+
 /* the stop word (A1): a small pill, never a card's own big button; it carries the safety signal and is always where the eye expects it */
 #alius-shell .alius-stop-pill {
   padding: 3px 14px;
@@ -4396,6 +4401,66 @@
 @media (max-width: 1100px) {
   #alius-shell .alius-stage-dock { left: 0; }
   #alius-shell .alius-dial-face { width: 140px; height: 140px; }
+}
+
+/*
+ * P10e-e: the instruments (mini-games of the body) over the scene's frame. The host marks a running instrument's root
+ * (`.alius-instrument`, in the moment layer); each instrument draws in the pose, effects and moment layers. Her lines are the prototypes'
+ * `.her-line` (her_activity.html): her hand, her accent, a stepped write-on, a fade. Nothing here takes the pointer: an instrument that
+ * needs the mouse takes it back on its own element. Every z-index stays below the analysis panel's 10.
+ */
+#alius-shell .alius-instrument {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* the low-resolution canvases (1/DS of the frame), stretched by the browser: the softness of every edge comes from this */
+#alius-shell .alius-lowres {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* her hand (her words, aloud or written) */
+#alius-shell .alius-her-lines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#alius-shell .alius-her-line {
+  position: absolute;
+  font-family: var(--alius-font-hand, var(--alius-font-type));
+  color: var(--alius-her, #8cc8f0);
+  white-space: nowrap;
+  line-height: 1;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9), 0 0 14px rgba(0, 0, 0, 0.85), 0 0 28px rgba(0, 0, 0, 0.6);
+  animation: alius-write var(--write, 600ms) steps(var(--steps, 12), end) both;
+  transition: opacity 0.6s;
+}
+
+#alius-shell .alius-her-line.gone {
+  opacity: 0;
+}
+
+@keyframes alius-write {
+  from { clip-path: inset(-30% 100% -30% -8%); }
+  to { clip-path: inset(-30% -8% -30% -8%); }
+}
+
+/* anchored at its right end (breath.html's `.her-line.right`) */
+#alius-shell .alius-her-line.right {
+  transform-origin: right center;
+}
+
+/* the still form: no write-on (the line is there at once), no fade */
+#alius-shell.alius-reduced-motion .alius-her-line,
+#alius-shell .alius-instrument[data-reduced] .alius-her-line {
+  animation: none;
+  transition: none;
 }
 
 /* World parameters and disposition controls (P8). Palette variables only. */

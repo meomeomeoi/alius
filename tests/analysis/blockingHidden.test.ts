@@ -73,7 +73,7 @@ function scene(hid: Hidden, fire = true): CampaignState {
 }
 
 const noStaging = (): PhysicsPanelStaging => ({
-  input: () => undefined, endSegment: () => [], stopWord: () => [], skip: () => [], stimulus: () => [], act: () => [], finishCounted: () => [], cue: (k) => `[${k}]`, beat: () => 0,
+  input: () => undefined, endSegment: () => [], stopWord: () => [], skip: () => [], stimulus: () => [], act: () => [], finishCounted: () => [], cue: (k) => `[${k}]`, beat: () => 0, clock: () => ({ startedAt: null, beatMs: 1500, now: 0 }),
 });
 
 /** The whole scene screen of P15a as a host: the strip, the moment card and the physics panel. */

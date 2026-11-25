@@ -4,6 +4,7 @@
  * The app calls `resetSceneStage()` beside `practice.onChatChanged()`; a module with such memory registers with `onStageReset`
  * (or is called here directly), so nothing keyed by a scene id outlives its campaign.
  */
+import { unmountInstruments } from '../instruments/host';
 import { resetDock } from './dock';
 import { resetLook } from './look';
 import { resetHints } from './topLine';
@@ -20,5 +21,6 @@ export function resetSceneStage(): void {
   resetHints();
   resetLook();
   resetDock();
+  unmountInstruments(); // P10e-e: a chat switch stops the instrument (nothing it scheduled runs or dispatches into the new chat)
   for (const fn of [...hooks]) fn();
 }
