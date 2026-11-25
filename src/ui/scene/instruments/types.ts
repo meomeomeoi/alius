@@ -50,7 +50,7 @@ export interface InstrumentEnv {
   setSprite(unitId: string, label: string, url?: string): void;
   /** The label her face shows now (her last reply's, or one an instrument set; `neutral` before any). */
   faceOf(unitId: string): string;
-  /** The picture of her sprite for a label (null: she has none for it), decoded when it is there. */
+  /** The picture of her sprite for a label (null: she has none for it); its decoding is the caller's. */
   spriteUrl(unitId: string, label: string): Promise<string | null>;
   state(): CampaignState;
   registries: Registries;

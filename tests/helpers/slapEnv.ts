@@ -21,9 +21,17 @@ export interface SlapEnvOpts {
   /** The labels she has a sprite for (each answers `/sprites/<label>.png`). */
   labels?: string[];
   art?: Partial<ArtSlots>;
+  /** The scene's sprite lookup takes this long (fake timers; default at once). */
+  lookupMs?: number;
   /** Where the frame is drawn (default the document's body). */
   parent?: HTMLElement;
 }
+
+/** jsdom has no `HTMLImageElement.decode`: a decode that takes `decodeMs` (fake timers; default at once). */
+export let decodeMs = 0;
+export const setDecodeMs = (ms: number): void => { decodeMs = ms; };
+const proto = HTMLImageElement.prototype as unknown as { decode?: () => Promise<void> };
+if (typeof proto.decode !== 'function') proto.decode = () => new Promise<void>((r) => { if (decodeMs > 0) setTimeout(r, decodeMs); else r(); });
 
 export function slapEnv(o: SlapEnvOpts) {
   let t = 1000;
@@ -49,7 +57,10 @@ export function slapEnv(o: SlapEnvOpts) {
     spriteOf: () => null,
     setSprite: (unitId: string, label: string, url?: string) => { face = label; setSprite(unitId, label, url); },
     faceOf: () => face,
-    spriteUrl: async (_u: string, label: string) => (labels.has(label) ? `/sprites/${label}.png` : null),
+    spriteUrl: async (_u: string, label: string) => {
+      if (o.lookupMs) await new Promise((r) => setTimeout(r, o.lookupMs));
+      return labels.has(label) ? `/sprites/${label}.png` : null;
+    },
     state: o.state, registries: o.reg, settings: () => ({ ...DEFAULT_SETTINGS, ...o.settings }) as AliusSettings,
     staging: { input() {}, endSegment: () => [], stopWord: () => [], skip: () => [], stimulus: () => [], act: () => [], finishCounted: () => [], cue: () => null, beat: () => 0, clock: () => ({ startedAt: null, beatMs: 0, now: 0 }) },
     samples: null,
@@ -74,6 +85,8 @@ export function slapEnv(o: SlapEnvOpts) {
   };
   return {
     env, root, layers, input, reply, stop, setSprite,
+    /** Her face changes (a reply of hers read as `label`). */
+    setFace: (label: string) => { face = label; },
     /** ms since the clock's start (1000). */
     now: () => t - 1000,
     frame,

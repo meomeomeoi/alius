@@ -92,7 +92,7 @@ export const SAMPLE_URLS: Readonly<Record<string, string>> = {
   breath: 'assets/sounds/breath-in-out.mp3',
 };
 
-/** The url of each label of her face, filled by `preload` (null: no sprite for it, the face stays). */
+/** The url of each label of her face (slap.html's `faces`, the panel's loaded files): filled by `lookFaces` as the scene answers (null: no sprite for it). */
 const faces: Record<string, string | null> = {};
 let curLabel = 'neutral';
 function beforeLabel(style: string, unann: boolean) {
@@ -100,15 +100,53 @@ function beforeLabel(style: string, unann: boolean) {
   if (e.keep.includes(curLabel)) return curLabel;
   return unann && CALM.includes(style) ? 'annoyance' : e.before;
 }
+/* shows a label: the picture of that label if there is one, else the face stays as it is (a missing sprite is never an error) */
 function showFace(label: string) {
   curLabel = label;
   const url = faces[label];
   if (url && E && E.env.faceOf(E.unitId) !== label) E.env.setSprite(E.unitId, label, url);
 }
 function preload(label: string) {
-  if (label in faces || !E) return Promise.resolve();
+  const url = faces[label]; if (!url) return Promise.resolve();
+  const im = new Image(); im.src = url;
+  return Promise.race([im.decode().catch(() => {}), new Promise((r) => setTimeout(r, EXPR_WAIT))]);
+}
+/** The lookups of her faces under way (label → its promise), for this frame. */
+const looking = new Map<string, Promise<void>>();
+/**
+ * Asks the scene for the picture of each label her style may show (her `before`, `keep` and `after` ones, and `annoyance`): the prototype has
+ * them at hand, the scene answers through SillyTavern. A face whose answer comes after its moment is shown then, while the slap still holds
+ * the frame (late, never lost).
+ */
+function lookFaces(labels: readonly string[]): void {
+  if (!E) return;
   const e = E;
-  return Promise.race([e.env.spriteUrl(e.unitId, label).then((u) => { faces[label] = u; }, () => { faces[label] = null; }), new Promise((r) => setTimeout(r, EXPR_WAIT))]);
+  for (const label of labels) {
+    if (label in faces || looking.has(label)) continue;
+    looking.set(label, e.env.spriteUrl(e.unitId, label).then((u) => { faces[label] = u; }, () => { faces[label] = null; }).then(() => {
+      looking.delete(label);
+      if (E === e && curLabel === label && (G.slap || G.back)) showFace(label);
+    }));
+  }
+}
+/** Her style's labels (`lookFaces`). */
+const facesOf = (style: string): string[] => {
+  const e = EXPR[style as keyof typeof EXPR];
+  return e ? [e.before, ...e.keep, ...Object.values(e.after), 'annoyance'] : [];
+};
+/**
+ * Her face now, read for each slap (the prototype's `curLabel`): the scene's label for her, unless it is still the one the last slap left (a
+ * label with no sprite changes nothing on the scene, but it is her face for the slap that follows, as in the prototype).
+ */
+let leftBySlap: { label: string; scene: string } | null = null;
+function readFaceNow(): void {
+  if (!E) return;
+  const scene = E.env.faceOf(E.unitId);
+  curLabel = leftBySlap && leftBySlap.scene === scene ? leftBySlap.label : scene;
+}
+/** What the slap left as her face (read by the next slap's `readFaceNow`). */
+function noteFaceLeft(): void {
+  if (E) leftBySlap = { label: curLabel, scene: E.env.faceOf(E.unitId) };
 }
 
 /* ---------- settings (slap.html `S`: the approved defaults; the style, the face point and the still form are hers and the scene's) ---------- */
@@ -595,6 +633,7 @@ function land(s: Slap, now: number) {
   setTimeout(() => {
     if (G.slap !== s) return;
     G.slap = null; G.back = S.reduced ? null : { t0: performance.now(), from: 1 };
+    noteFaceLeft();
     if (cruelAgain || G.next) setTimeout(() => startNext(), 120);
     else if (G.typingFocus) $('#cmd').focus();
   }, S.reduced ? 600 : hold);
@@ -604,7 +643,7 @@ function land(s: Slap, now: number) {
 function startNext(): void {
   const next = G.next;
   G.next = null;
-  if (next && !G.started.has(next.id)) { LINES = LINES_NEXT; if (E) E.host.dataset.slap = next.id; void startSlap(next); }
+  if (next && !G.started.has(next.id)) { LINES = LINES_NEXT; if (E) E.host.dataset.slap = next.id; readFaceNow(); void startSlap(next); }
   else if (G.typingFocus && E) $('#cmd').focus();
 }
 
@@ -781,8 +820,9 @@ function bind(m: SlapMount, unitId: string): void {
     e.offs.push(m.env.listen(document, 'keydown', onKey as EventListener));
     e.offs.push(m.env.listen(e.env.root, 'pointerdown', onDown as EventListener));
     e.offs.push(m.env.listen(document, 'pointermove', onMove as EventListener));
-    curLabel = m.env.faceOf(unitId);
     for (const k of Object.keys(faces)) delete faces[k];
+    looking.clear();
+    leftBySlap = null;
   }
   E.host = m.host;
   holder = unitId;
@@ -808,11 +848,13 @@ export function mountSlap(m: SlapMount): void {
   }
   bind(m, slap.holderId);
   S.style = slap.style;
+  lookFaces(facesOf(slap.style));
   if (G.cheekA > 0) requestAnimationFrame(frame);
   if (G.started.has(slap.id)) return;
   if (G.slap || G.starting) { if (G.next?.id !== slap.id) { G.next = slap; LINES_NEXT = { [slap.style]: linesFor(m.reg, slap.style, slap.id) }; } return; }
   LINES = { [slap.style]: linesFor(m.reg, slap.style, slap.id) };
   m.host.dataset.slap = slap.id;
+  readFaceNow();
   void startSlap(slap);
 }
 /** The lines of the slap that waits (`G.next`). */

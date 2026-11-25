@@ -377,18 +377,13 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     }).catch(() => {});
   }
 
-  /** P10e-e Task 12: the picture of her sprite for a label, resolved once and decoded (null: none for it). */
+  /** P10e-e Task 12: the picture of her sprite for a label, resolved once (null: none for it); the slap decodes it itself (slap.html `preload`). */
   async function spriteUrl(unitId: string, labelText: string): Promise<string | null> {
     const unit = state()?.squad.find((u) => u.id === unitId);
     if (!unit?.cardRef) return null;
     const url = spriteUrls.get(`${unitId}|${labelText}`) ?? (await st.getSpriteUrl(unit.cardRef, labelText).catch(() => null));
     if (!url) return null;
     spriteUrls.set(`${unitId}|${labelText}`, url);
-    if (typeof Image === 'function') {
-      const im = new Image();
-      im.src = url;
-      await (typeof im.decode === 'function' ? im.decode().catch(() => undefined) : Promise.resolve());
-    }
     return url;
   }
 

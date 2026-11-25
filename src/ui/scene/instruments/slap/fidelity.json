@@ -193,13 +193,8 @@
   "differences": [
     {
       "fn": "showFace",
-      "reason": "Wiring: her face is the scene's sprite, shown through `env.setSprite(unit, label, url)` with the picture `preload` resolved (no avatar in between); the prototype's own `<img>` and its panel's \"her face now\" picker are prototype only. The prototype's `src !== url` check is the same test as the face now (`env.faceOf`) being another label, so a face she already has is not set again.",
+      "reason": "Wiring: her face is the scene's sprite, shown through `env.setSprite(unit, label, url)` with the picture `faces` holds (the scene's answers, asked for her style's labels when the slap binds: `lookFaces`; a face whose answer comes after its moment is shown then, never lost); the prototype's own `<img>` and its panel's \"her face now\" picker are prototype only. The prototype's `src !== url` check is the same test as the face now (`env.faceOf`) being another label.",
       "diff": "@@ -2,5 +2,4 @@\n curLabel=label\n-$(\"#curExpr\").value=label\n const url=faces[label]\n-if(url&&img.getAttribute(\"src\")!==url)img.src=url\n+if(url&&E&&E.env.faceOf(E.unitId)!==label)E.env.setSprite(E.unitId,label,url)\n }"
-    },
-    {
-      "fn": "preload",
-      "reason": "Wiring: the picture of a label is the scene's (`env.spriteUrl`: SillyTavern's sprite for her, resolved once and decoded; null when she has none), raced against `EXPR_WAIT` as in the prototype; `faces` remembers each answer (a null one too) instead of the panel's loaded files.",
-      "diff": "@@ -1,7 +1,9 @@\n function preload(label){\n-const url=faces[label]\n-if(!url)return Promise.resolve()\n-const im=new Image()\n-im.src=url\n-return Promise.race([im.decode().catch(()=>{}),new Promise(r=>setTimeout(r,EXPR_WAIT))])\n+if(label in faces||!E)return Promise.resolve()\n+const e=E\n+return Promise.race([e.env.spriteUrl(e.unitId,label).then(u=>{\n+faces[label]=u\n+},()=>{\n+faces[label]=null\n+}),new Promise(r=>setTimeout(r,EXPR_WAIT))])\n }"
     },
     {
       "fn": "noise",
@@ -218,8 +213,8 @@
     },
     {
       "fn": "land",
-      "reason": "Wiring: the answer goes to the engine at the impact, once (`s.onResult`, `practice/slap_answer`); the tally, `narrate` and `renderTally` are prototype only. With the still form (reduced motion, timing off) the camera never left, so there is no way back (`G.back` null: the prototype would jump to k = 1 and ease back, which the README's still form excludes). Cruel's second slap is the engine's (opened at once by `answerSlap`, it waits in `G.next`) and starts 120 ms after the hold as in the prototype (`startNext`); a slap that came meanwhile for another reason starts the same way.",
-      "diff": "@@ -5,4 +5,3 @@\n s.landedAt=t\n-G.tally[s.result]+=1\n-G.tally.slaps+=1\n+s.onResult(s.result)\n const glancing=s.result===\"flinched\"\n@@ -31,10 +30,6 @@\n G.slap=null\n-G.back={\n+G.back=S.reduced?null:{\n t0:performance.now(),from:1\n }\n-narrate(s.result)\n-renderTally()\n-if(cruelAgain)setTimeout(()=>startSlap({\n-again:true\n-}),120)\n+if(cruelAgain||G.next)setTimeout(()=>startNext(),120)\n else if(G.typingFocus)$(\"#cmd\").focus()"
+      "reason": "Wiring: the answer goes to the engine at the impact, once (`s.onResult`, `practice/slap_answer`); the tally, `narrate` and `renderTally` are prototype only. With the still form (reduced motion, timing off) the camera never left, so there is no way back (`G.back` null: the prototype would jump to k = 1 and ease back, which the README's still form excludes). Cruel's second slap is the engine's (opened at once by `answerSlap`, it waits in `G.next`) and starts 120 ms after the hold as in the prototype (`startNext`); a slap that came meanwhile for another reason starts the same way. At the end of the hold the face the slap left is noted (`noteFaceLeft`), so the next slap reads her face now as the prototype's `curLabel` does.",
+      "diff": "@@ -5,4 +5,3 @@\n s.landedAt=t\n-G.tally[s.result]+=1\n-G.tally.slaps+=1\n+s.onResult(s.result)\n const glancing=s.result===\"flinched\"\n@@ -31,10 +30,7 @@\n G.slap=null\n-G.back={\n+G.back=S.reduced?null:{\n t0:performance.now(),from:1\n }\n-narrate(s.result)\n-renderTally()\n-if(cruelAgain)setTimeout(()=>startSlap({\n-again:true\n-}),120)\n+noteFaceLeft()\n+if(cruelAgain||G.next)setTimeout(()=>startNext(),120)\n else if(G.typingFocus)$(\"#cmd\").focus()"
     },
     {
       "fn": "flash",

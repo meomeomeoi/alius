@@ -19,7 +19,7 @@ import { currentSlap, isFlick, resultOf, slapTimeline, tensionAt } from '../../.
 import { renderSceneScreen } from '../../../src/ui/scene/sceneScreen';
 import { resetSceneStage } from '../../../src/ui/scene/stage';
 import { errors, loadCore, run } from '../../helpers/world';
-import { slapEnv } from '../../helpers/slapEnv';
+import { setDecodeMs, slapEnv } from '../../helpers/slapEnv';
 import { ANN, unitOf, world } from '../../engine/practice/world';
 
 let reg: Registries;
@@ -51,9 +51,9 @@ function holding(style: string, over: Partial<Slap> = {}): CampaignState {
 }
 
 /** The slap drawn into a test frame. */
-async function slapping(over: { style?: string; slap?: Partial<Slap>; settings?: Partial<AliusSettings>; reduced?: boolean; face?: string } = {}) {
+async function slapping(over: { style?: string; slap?: Partial<Slap>; settings?: Partial<AliusSettings>; reduced?: boolean; face?: string; lookupMs?: number } = {}) {
   let state = holding(over.style ?? 'possessive', over.slap);
-  const f = slapEnv({ state: () => state, reg, ...(over.settings ? { settings: over.settings } : {}), ...(over.reduced ? { reduced: true } : {}), ...(over.face ? { face: over.face } : {}) });
+  const f = slapEnv({ state: () => state, reg, ...(over.settings ? { settings: over.settings } : {}), ...(over.reduced ? { reduced: true } : {}), ...(over.face ? { face: over.face } : {}), ...(over.lookupMs ? { lookupMs: over.lookupMs } : {}) });
   const host = h('div', { class: 'alius-slap-host' });
   f.layers.moment.append(host);
   const results: SlapResult[] = [];
@@ -195,6 +195,41 @@ describe('her face and her lines', () => {
     const kept = await slapping({ style: 'cruel', face: 'anger', slap: { id: 'ps5' } });
     kept.to(160);
     expect(kept.setSprite).not.toHaveBeenCalled();
+  });
+
+  it('her face now is read for each slap: a second slap keeps the face the first one left, or reads the face her reply gave her since (review I1)', async () => {
+    const P = FACES.possessive;
+    for (const reply of [null, 'joy'] as const) {
+      const o = await slapping({ style: 'possessive', face: 'neutral' });
+      o.to(L + 450 + 1500 + 650 + 200); // the first slap: taken, her after face, the camera home
+      expect(o.setSprite).toHaveBeenLastCalledWith(ANN, P.after.none, `/sprites/${P.after.none}.png`);
+      if (reply) o.setFace(reply); // her next reply was read as joy
+      o.setSprite.mockClear();
+      const next = structuredClone(o.state);
+      next.practices!.slap = { ...next.practices!.slap!, id: 'ps2' };
+      o.set(next);
+      o.draw();
+      await o.settle();
+      o.tick(160);
+      if (reply === null) expect(o.setSprite, 'desire is in keep: kept').not.toHaveBeenCalled();
+      else expect(o.setSprite).toHaveBeenCalledWith(ANN, P.before, `/sprites/${P.before}.png`);
+      resetSceneStage();
+    }
+  });
+
+  it('a slow lookup and a slow decode delay her before face; they never lose it (review I3)', async () => {
+    setDecodeMs(400);
+    try {
+      const o = await slapping({ style: 'cruel', face: 'neutral', lookupMs: 500 });
+      o.to(300);
+      await o.settle();
+      expect(o.setSprite).not.toHaveBeenCalled(); // the scene has not answered yet
+      o.to(600);
+      await o.settle();
+      expect(o.setSprite).toHaveBeenCalledWith(ANN, FACES.cruel.before, `/sprites/${FACES.cruel.before}.png`);
+    } finally {
+      setDecodeMs(0);
+    }
   });
 
   it('her lines are cardVoice rows of her style: ritual says its before line; cold is silent', async () => {
