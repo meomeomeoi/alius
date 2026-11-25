@@ -33,6 +33,12 @@
 
 ## Global Constraints
 
+- **The prototype file is the source, not this plan (author, 2026-11-25).**
+  - The implementer of an instrument task opens `docs/prototypes/<name>.html` and its README section first, and keeps both open for the whole task.
+  - The code is **copied** from the file (JS to TS: add types, change nothing else) and then wired. It is never rewritten from the descriptions here.
+  - Every number, curve, shape, colour, timing, SVG path and text quoted in this plan is a summary for orientation. **Where the plan and the file differ, the file wins**; report the difference in the commit message.
+  - The fidelity tests of Task 6 enforce it: the listed functions must match the prototype token for token after types are stripped, and the listed tables and lines must be equal.
+  - A difference the wiring forces (the engine's plan instead of the prototype's scheduler, the cue pool instead of `LINES`) is declared in the task's `fidelity.json` with its reason. An undeclared difference fails the test.
 - **Port, don't redraw (author, 2026-11-24):** shapes, silhouettes, numbers, easings, timings, colours, sounds and her lines' behaviour come from the prototype's code. Adapt only the wiring. Where the extension cannot do a thing the same way, **stop and report**. Every instrument task ends with a side-by-side review: `scripts/instrument-shots.mjs` (Task 6) shoots the prototype and the port at the same settings.
 - **No rng draw** in any new code. A chance is `fnv1a` of a stable key, or `practiceRoll` / `dynamicRoll` where the package already uses them. The one existing draw path a new input may reach is P15a's `cheatRoll` for a relief input (as today: only when the commander takes a relief). **A seeded test that moves stops and reports**: `tests/blocking/unaffected.test.ts`, `tests/dynamic/unaffected.test.ts`, `tests/practice/unaffected.test.ts`, `tests/warden/unaffected.test.ts`, `tests/life/unaffected.test.ts`, `tests/special/unaffected.test.ts`, `tests/engine/physics/*`. Never regenerate a golden.
 - **Old inputs mean what they meant.** A `SegmentInput` without the new fields resolves exactly as today. The turn-based card and its tests do not change.
@@ -349,6 +355,7 @@ The README of each prototype ends with "Open engine questions (decide in the pla
 - [ ] **Step 2: Run** → FAIL.
 - [ ] **Step 3: Implement:**
   - `InstrumentEnv` is built once in `build()`. `her()` reads `handOf` / `handScale` / `unitAccent` / `physicsStyleOf(...).primary`.
+  - The kit is copied, not rewritten: `src/ui/scene/instruments/kit/fidelity.json` lists `SHAPES`, `SEAT_BODY`, `squashOf`, `blob` (breath.html), `chaikin`, the spring step (weight.html), `say` and `placeFree` (her_activity.html), `heartTick` (breath.html). Task 6's fidelity test checks them once it exists; until then the reviewer diffs them by hand.
   - A definition is registered by importing `src/ui/scene/instruments/index.ts`, which imports each instrument module. Chunks e3–e11 add one line each.
   - `glossary:instrument` ("A mini-game of the body: it plays her rhythm; the stop word always ends it.") marks the instrument's root.
 - [ ] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS.
@@ -358,15 +365,27 @@ The README of each prototype ends with "Open engine questions (decide in the pla
 
 **Files:**
 - Modify: `src/ui/scene/dial/dial.ts`, `css/62-stage.css` (`.alius-dial-label` absolute under the face, 240 px, wraps; her name over the base name as in `cards.html`'s `drawDial`, the EYES line under them when relevant), `scripts/layout-test.mjs` (a fixture with a wide label)
-- Create: `scripts/instrument-shots.mjs`; `package.json` gains `"shots": "node scripts/instrument-shots.mjs"` (not part of `npm test`)
+- Create: `tests/helpers/protoFidelity.ts`, `tests/ui/instruments/fidelity.test.ts`, `scripts/instrument-shots.mjs`; `package.json` gains `"shots": "node scripts/instrument-shots.mjs"` (not part of `npm test`)
 - Test: `tests/ui/dial/dial.test.ts`
 
 **Interfaces:**
-- Produces: `npm run shots -- <name> [--state <fixture>]`. It builds the prototype (`npm run proto`) and the layout page with the same fixture, drives both to the named moments listed in the instrument task, and writes `.superpowers/shots/<name>/{proto,port}-<moment>.png` side by side.
+- Produces:
+  - **The fidelity helpers** (`tests/helpers/protoFidelity.ts`):
+    - `protoSource(name: string): string` — the `<script>` of `docs/prototypes/<name>.html`
+    - `protoFunction(name: string, fn: string): string` — the source of one top-level function or `const fn = (…) =>` of the prototype, found by a small parser over the script (balanced braces, strings, template literals and comments skipped)
+    - `portFunction(modulePath: string, fn: string): string` — the same function of the port, its types stripped by esbuild's `transform` (`loader: 'ts'`)
+    - `normalize(src: string): string` — whitespace, semicolons, trailing commas and `const` / `let` / `var` unified, comments dropped; **identifiers are not renamed**
+    - `protoValue(name: string, ident: string): unknown` — a top-level `const` table of the prototype, evaluated in a sandbox (`new Function` over the declaration alone: `STYLES`, `SHAPES` data, `SEAT_BODY`, `ACTS`, `EXPR`, `LINES`, `COLORS`, `SCENT`, …)
+  - **The fidelity test** (`tests/ui/instruments/fidelity.test.ts`) reads `src/ui/scene/instruments/<name>/fidelity.json`: `{ prototype: string; functions: Array<{ fn: string; module: string; as?: string }>; tables: Array<{ ident: string; module: string; export: string }>; lines?: Array<{ ident: string; cueKinds: Record<string, string> }>; differences: Array<{ fn: string; reason: string; diff: string }> }`.
+    - For every function, `normalize(protoFunction)` equals `normalize(portFunction)`, except the hunks listed in `differences` (each a unified diff of the normalized sources, with its reason).
+    - For every table, `protoValue` deep-equals the port's export.
+    - For every `lines` entry, the prototype's `LINES[kind]` equal the `physicsCues` (or `cardVoice`) rows the port reads.
+  - **The shots:** `npm run shots -- <name> [--state <fixture>]`. It builds the prototype (`npm run proto`) and the layout page with the same fixture, drives both to the named moments listed in the instrument task, and writes `.superpowers/shots/<name>/{proto,port}-<moment>.png` side by side.
 
 - [ ] **Step 1: Write the failing tests:**
   - `the label shows her name over the base name`: `.alius-dial-name` text `LOW`, `.alius-dial-sub` text `BOWING`; with no name of hers, the base alone.
   - Layout test: the face's x is the same (±1 px) for `standing` and for a posture whose label is 30 characters.
+  - `protoFunction('breath', 'windowOpenness')` returns the function's whole source; `normalize` makes two formattings of the same code equal and keeps a renamed identifier different; `protoValue('weight', 'STYLES')` returns the table; a fixture `fidelity.json` with an undeclared difference fails with the diff in the message.
 - [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** the tests, `npm run test:layout` → PASS.
 - [ ] **Step 5: Commit** `fix(P10e-e): the dial's circle no longer moves with its label; side-by-side shots`
 
@@ -418,7 +437,7 @@ The README of each prototype ends with "Open engine questions (decide in the pla
   - `the PDA thread is unchanged`: `drawTaskCards` without `look` gives today's `article.alius-voice` DOM (a snapshot of one card).
   - `analyze coverage`: `markedWithout`, `unresolved` and `unreachable` are empty for a dock with one card of each kind (the helpers of `tests/helpers/analyzeCoverage.ts`); the hidden sentinels are absent (`tests/fixtures/analyze/hidden.ts`).
 - [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement:**
+- [ ] **Step 3: Implement** (open `docs/prototypes/cards.html` first; its `fidelity.json` lists `gistOf`, `fill`, `linesOf`/`pick` (as `voiceLine`, declared), `bodyOf`'s order, and the tables `NEUTRAL` / `STYLE` against `cardVoice`):
   - Port `cards.html`'s CSS for `.card`, `.head`, `.body`, `.words`, `.cond`, `.v`, `.rule`, `.pill`, `.seal`, `.steps` and `.dry` into `css/64-cards.css`, renamed to `alius-scard-*`, sizes × `--alius-hand-scale`.
   - The key of `voiceLine` is the card's id (`task.id`, `p.id`, `d.id`, `milestone.id`, …).
 - [ ] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS.
@@ -474,7 +493,7 @@ The README of each prototype ends with "Open engine questions (decide in the pla
   - `dispose and a chat switch cancel the expiry` (`cancelPostureCalls`), and no `take` is called afterwards.
   - `tests/ui/analyzeCoverage.test.ts` "her call of a named posture" passes with the new DOM (`.alius-call`, two `[data-posture-choice]`, `glossary:posture_call`).
 - [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** the port with `cards.html`'s numbers:
+- [ ] **Step 3: Implement** by copying `cards.html`'s `startCall`, `scheduleTaps`, `tap`, `choose`, `end` and the `#call` / `.pc` CSS (its `fidelity.json`; the call's wiring to `take` is the declared difference). The numbers, for orientation:
   - dim .28; the dial ring in her accent;
   - her word at 74 vw / 13 vh, 92 px × hand scale, write-on `steps(14)` over 520 ms;
   - the dots;
@@ -569,7 +588,7 @@ The README of each prototype ends with "Open engine questions (decide in the pla
   - `the cheek stays for the scene and is gone on a new scene or a chat switch`.
   - `hidden.test.ts` still passes: no `733`, no `windowMs` or `feints` in the HTML.
 - [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** the port with the README's numbers:
+- [ ] **Step 3: Implement** by copying `slap.html`'s functions and tables (`fidelity.json`: the functions above, `EXPR`, the timings; the engine's slap instead of the prototype's scheduler is the declared difference). For orientation:
   - the camera: zoom 2.6 to (0.5 W, 0.42 H), the backdrop blur 14 px and dim .55;
   - the lean −0.4 and the side light;
   - the impact's whip (7.5 % / 5.5°, τ 210 ms, period 520 ms), the flash, the ringing and the cheek (τ 24 s);
@@ -585,7 +604,9 @@ The README of each prototype ends with "Open engine questions (decide in the pla
 
 Every instrument task below follows these steps. Its own section lists its files, interfaces and specific tests.
 
+- [ ] **Step 0: Open the prototype.** Read `docs/prototypes/<name>.html` whole and its README section. Build it (`npm run proto -- <name>`) and play it in Chromium for a minute. Write the task's `fidelity.json`: every function and table its README section calls normative, plus the `LINES` kinds the port takes from the cue pool. This list is the task's definition of done.
 - [ ] **Step 1: Write the failing tests:**
+  - **fidelity:** the task's `fidelity.json` passes `tests/ui/instruments/fidelity.test.ts` (it fails until the port exists);
   - the pure helpers it names (exact values from the README);
   - **keys:** Space or Shift typed into the input never act, and only the mouse acts while the field has focus;
   - **fallback:** no art slot → her sprite, or the automatic zones, as the README says;
@@ -593,9 +614,9 @@ Every instrument task below follows these steps. Its own section lists its files
   - **unmount:** `stop()` (the stop word, a new run, `resetSceneStage`, dispose) leaves no timer, `requestAnimationFrame`, audio node or document listener, restores the frame and the input, and dispatches nothing afterwards (fake clock);
   - **inputs:** the inputs it reports for a scripted beat sequence (fake clock and fake staging).
 - [ ] **Step 2: Run** them → FAIL.
-- [ ] **Step 3: Port** the prototype's functions named in the task into its folder, keeping their names. Read the engine's plan and style instead of the "prototype only" schedulers. Read her lines from the cue pool (`env.staging.cue(kind, beat)`), never from the prototype's `LINES`. Put the CSS in the task's stylesheet.
+- [ ] **Step 3: Port** by copying: paste each function and table of `fidelity.json` from the prototype into its module, add types, keep names, bodies, numbers and texts as they are; then wire it. Read the engine's plan and style instead of the "prototype only" schedulers. Read her lines from the cue pool (`env.staging.cue(kind, beat)`), never from the prototype's `LINES`. Put the CSS in the task's stylesheet.
 - [ ] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS.
-- [ ] **Step 5: Shots:** `npm run shots -- <name>` at the moments the task names; compare with the prototype and fix any drift. A drift the extension cannot avoid stops and reports.
+- [ ] **Step 5: Shots:** `npm run shots -- <name>` at the moments the task names; compare with the prototype and fix any drift. A drift the extension cannot avoid stops and reports. **The reviewer** of the task gets the prototype file, its README section, `fidelity.json` and the shots, not this plan's summary, and checks the port against the file.
 - [ ] **Step 6: Commit** `feat(P10e-e): the <name> instrument`
 
 New cue kinds join `CUE_KINDS` with rows in `content/core/physicsCues.json`. Each row takes the prototype's `LINES` for that kind as its texts (the author heard them in play). The `physics_cues` call asks for them as for the others.
