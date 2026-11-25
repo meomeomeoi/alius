@@ -143,13 +143,16 @@ interface Wiring {
   /** The inputs sent this segment (`beat|kind`): each once; and the inputs themselves (the engine's view of the segment at the end). */
   sent: Set<string>;
   inputs: SegmentInput[];
-  /** The commander tapped this segment (P15a's tap: a signal holder lets go at once). */
+  /** The commander tapped and the engine has not answered yet (P15a's tap: a signal holder lets go at once); `taps`, the run's count seen. */
   tapped: boolean;
+  taps: number;
   /** The extra drain factor accumulated over the beat (`(unevenMult − 1) × ms`) and the ms. */
   uneven: { sum: number; ms: number };
   via: 'mouse' | 'key';
   segSlips: number;
   cheatsCaught: number;
+  /** The pair's steady beats (the core's outer instrument gives them), or null alone. */
+  steady: (() => readonly number[]) | null;
   /** The segment whose resolved strength was taken (once each). */
   synced: number;
   spriteSrc: string;
@@ -157,8 +160,8 @@ interface Wiring {
 }
 const NO_LINES: Lines = { entry: [], released: [], slip: [], caught: [], heavy: [], good: [], poor: [], fall: [], stop: [], longer: [], announce: [] };
 const R: Wiring = {
-  run: null, face: 'down', legs: false, pressure: 1, lines: NO_LINES, lineStyle: 'neutral', seg: null, running: false, queue: [], sent: new Set(), inputs: [], tapped: false, uneven: { sum: 0, ms: 0 },
-  via: 'key', segSlips: 0, cheatsCaught: 0, synced: -1, spriteSrc: '', overFit: null,
+  run: null, face: 'down', legs: false, pressure: 1, lines: NO_LINES, lineStyle: 'neutral', seg: null, running: false, queue: [], sent: new Set(), inputs: [], tapped: false, taps: 0, uneven: { sum: 0, ms: 0 },
+  via: 'key', segSlips: 0, cheatsCaught: 0, steady: null, synced: -1, spriteSrc: '', overFit: null,
 };
 const C = () => ({ face: R.face, weight: 1, shift: 1 });
 const ST = () => STYLES[S.style];
@@ -342,6 +345,7 @@ function landShift() {
 function onBeat() {
   G.beat += 1;
   const grace = graceOf(G.beat - 1);
+  if (!grace && !HOLD.on && !G.slipThisBeat) slip(); // the hold broke in the beat's last frame: the slip is that beat's
   const evenNow = grace || (HOLD.on && !G.slipThisBeat && Math.abs(G.cop - G.ctl) <= S.tol);
   G.held.push(grace || (HOLD.on && !G.slipThisBeat)); G.even.push(evenNow);
   if (G.held.length > 8) { G.held.shift(); G.even.shift(); }
@@ -384,7 +388,7 @@ function updateLoop(dt: number) {
   G.clock += dt;
   const beatNow = Math.floor((G.clock - R.seg!.clock0) / BEAT);
   while (G.beat < beatNow) { onBeat(); planBeat(); }
-  if (!HOLD.on && !G.slipThisBeat && G.clock > BEAT) slip(); // the first beat is grace: time to take the weight
+  if (!HOLD.on && !G.slipThisBeat && G.clock > BEAT && !R.seg!.flushed) slip(); // the first beat is grace: time to take the weight
   if (G.pressureUntil < G.clock) G.pressure = R.pressure;
   const c = C();
   const err = G.cop - G.ctl;
@@ -651,7 +655,6 @@ function schedulePlan(run: PhysicsRun, ck: { startedAt: number | null; now: numb
   R.seg = { n: run.segment.n, startedAt: ck.startedAt!, clock0: G.clock - (ck.now - ck.startedAt!), beats: plan.beats.length, endMs, flushed: false };
   R.sent = new Set();
   R.inputs = [];
-  R.tapped = false;
   R.uneven = { sum: 0, ms: 0 };
   R.segSlips = 0;
   R.queue = [];
@@ -837,6 +840,7 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   R.pressure = run.pressure ?? 1;
   R.seg = null; R.running = false; R.queue = []; R.sent = new Set(); R.uneven = { sum: 0, ms: 0 }; R.via = 'key'; R.segSlips = 0;
   R.cheatsCaught = run.tally?.cheatsCaught ?? 0;
+  R.taps = run.taps; R.tapped = false;
   R.synced = -1;
   R.spriteSrc = '';
   // the engine's numbers, as a share of the gauge (a capacity above 100 makes every step smaller)
@@ -926,7 +930,7 @@ function stopWeight(): void {
   lastLine = null;
   HOLD.on = false;
   mouseX = 0.5;
-  R.run = null; R.seg = null; R.running = false; R.queue = []; R.sent = new Set(); R.lines = NO_LINES;
+  R.run = null; R.seg = null; R.running = false; R.queue = []; R.sent = new Set(); R.lines = NO_LINES; R.steady = null;
   G = fresh();
   E = null;
 }
@@ -943,6 +947,11 @@ export interface WeightOpts {
   keys?: boolean;
   /** Its own room tone (the prototype's low brown noise). Default: on, off in the core (the outer instrument's room is heard). */
   roomTone?: boolean;
+  /**
+   * In a pair with a timing physics: the beats of the running segment on which the breath was held (the engine's `steady`, `mergeInputs`),
+   * which the outer instrument knows from its own inputs; the core's end reads them as the engine does (25 % less drain there).
+   */
+  steady?: () => readonly number[];
 }
 
 /**
@@ -969,6 +978,7 @@ export function startWeight(env: InstrumentEnv, run: PhysicsRun, opts: WeightOpt
   E = build(env, opts.host ?? env.layers.effects, core);
   innerWidth = 0; innerHeight = 0;
   S.roomTone = opts.roomTone ?? !core;
+  R.steady = opts.steady ?? null;
   bind(env, run);
   if (opts.keys ?? !core) listen(env);
   else env.listen(env.input, 'input', () => { letters.acc = 99; });
@@ -982,6 +992,7 @@ export function startWeight(env: InstrumentEnv, run: PhysicsRun, opts: WeightOpt
       if (E !== mine) return;
       // a segment resolved: the strength is the engine's from now (no jump when the next one starts)
       if (next.segment.state === 'held' && R.seg !== null && R.seg.n === next.segment.n && R.synced !== next.segment.n) { R.synced = next.segment.n; G.str = clamp((next.gauge / Math.max(1, next.capacity)) * 100, 0, 100); }
+      if (next.taps > R.taps) { R.taps = next.taps; R.tapped = false; } // the engine answered the tap and kept the commander: no release by it
       R.run = next;
       const pressure = next.pressure ?? 1;
       if (pressure > R.pressure) { R.pressure = pressure; refreshLines(0); heavier(); } else R.pressure = pressure;
@@ -991,7 +1002,7 @@ export function startWeight(env: InstrumentEnv, run: PhysicsRun, opts: WeightOpt
     finish(end: PhysicsEnd): number {
       if (E !== mine) return 0;
       if (G.phase !== 'loop' && G.phase !== 'entry') return 0;
-      if (end.tally) G.slips = end.tally.slips ?? 0; // her verdict counts the slips the engine counted
+      G.slips = end.tally?.slips ?? 0; // her verdict counts the slips the engine counted (no tally: it counted none)
       exit(end.result === 'collapse' || end.result === 'limit_broken' || end.result === 'blackout' ? 'fall' : releasedAtLimit() ? 'released' : 'done');
       return EXIT_MS;
     },
@@ -1028,7 +1039,9 @@ function releasedAtLimit(): boolean {
   if (R.tapped && (holds === 'signal' || (holds === 'limit' && run.taps > 0))) return true; // the engine's answer to a tap (`physicsSignal`)
   const at = holds === 'signal' ? TUNING.physics.releaseAt.signal : holds === 'limit' ? TUNING.physics.releaseAt.limit : -1;
   const plan = run.segment.plan;
-  const gauge = R.seg?.flushed && plan && run.segment.state === 'running' && state.scene ? resolveSegment(run, plan, R.inputs, resolveEnvOf(state, reg, run)).gauge : run.gauge;
+  const env = state.scene ? resolveEnvOf(state, reg, run) : null;
+  const steady = R.steady ? { steady: new Set(R.steady()) } : {}; // in a pair: the breath held steadies the weight, as `physicsInput` resolves it
+  const gauge = R.seg?.flushed && plan && run.segment.state === 'running' && env ? resolveSegment(run, plan, R.inputs, { ...env, ...steady }).gauge : run.gauge;
   return gauge / Math.max(1, run.capacity) <= at;
 }
 

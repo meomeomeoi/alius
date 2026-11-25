@@ -65154,10 +65154,12 @@ var R5 = {
   sent: /* @__PURE__ */ new Set(),
   inputs: [],
   tapped: false,
+  taps: 0,
   uneven: { sum: 0, ms: 0 },
   via: "key",
   segSlips: 0,
   cheatsCaught: 0,
+  steady: null,
   synced: -1,
   spriteSrc: "",
   overFit: null
@@ -65463,6 +65465,7 @@ function landShift() {
 function onBeat() {
   G3.beat += 1;
   const grace = graceOf(G3.beat - 1);
+  if (!grace && !HOLD2.on && !G3.slipThisBeat) slip();
   const evenNow = grace || HOLD2.on && !G3.slipThisBeat && Math3.abs(G3.cop - G3.ctl) <= S4.tol;
   G3.held.push(grace || HOLD2.on && !G3.slipThisBeat);
   G3.even.push(evenNow);
@@ -65533,7 +65536,7 @@ function updateLoop2(dt) {
     onBeat();
     planBeat();
   }
-  if (!HOLD2.on && !G3.slipThisBeat && G3.clock > BEAT2) slip();
+  if (!HOLD2.on && !G3.slipThisBeat && G3.clock > BEAT2 && !R5.seg.flushed) slip();
   if (G3.pressureUntil < G3.clock) G3.pressure = R5.pressure;
   const c = C();
   const err = G3.cop - G3.ctl;
@@ -65842,7 +65845,6 @@ function schedulePlan2(run, ck) {
   R5.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0: G3.clock - (ck.now - ck.startedAt), beats: plan.beats.length, endMs, flushed: false };
   R5.sent = /* @__PURE__ */ new Set();
   R5.inputs = [];
-  R5.tapped = false;
   R5.uneven = { sum: 0, ms: 0 };
   R5.segSlips = 0;
   R5.queue = [];
@@ -66066,6 +66068,8 @@ function bind2(env, run) {
   R5.via = "key";
   R5.segSlips = 0;
   R5.cheatsCaught = run.tally?.cheatsCaught ?? 0;
+  R5.taps = run.taps;
+  R5.tapped = false;
   R5.synced = -1;
   R5.spriteSrc = "";
   const k = 100 / Math3.max(1, run.capacity);
@@ -66190,6 +66194,7 @@ function stopWeight() {
   R5.queue = [];
   R5.sent = /* @__PURE__ */ new Set();
   R5.lines = NO_LINES2;
+  R5.steady = null;
   G3 = fresh2();
   E2 = null;
 }
@@ -66201,6 +66206,7 @@ function startWeight(env, run, opts = {}) {
   innerWidth3 = 0;
   innerHeight3 = 0;
   S4.roomTone = opts.roomTone ?? !core;
+  R5.steady = opts.steady ?? null;
   bind2(env, run);
   if (opts.keys ?? !core) listen2(env);
   else env.listen(env.input, "input", () => {
@@ -66218,6 +66224,10 @@ function startWeight(env, run, opts = {}) {
         R5.synced = next.segment.n;
         G3.str = clamp43(next.gauge / Math3.max(1, next.capacity) * 100, 0, 100);
       }
+      if (next.taps > R5.taps) {
+        R5.taps = next.taps;
+        R5.tapped = false;
+      }
       R5.run = next;
       const pressure = next.pressure ?? 1;
       if (pressure > R5.pressure) {
@@ -66234,7 +66244,7 @@ function startWeight(env, run, opts = {}) {
     finish(end2) {
       if (E2 !== mine) return 0;
       if (G3.phase !== "loop" && G3.phase !== "entry") return 0;
-      if (end2.tally) G3.slips = end2.tally.slips ?? 0;
+      G3.slips = end2.tally?.slips ?? 0;
       exit2(end2.result === "collapse" || end2.result === "limit_broken" || end2.result === "blackout" ? "fall" : releasedAtLimit() ? "released" : "done");
       return EXIT_MS2;
     },
@@ -66264,7 +66274,9 @@ function releasedAtLimit() {
   if (R5.tapped && (holds6 === "signal" || holds6 === "limit" && run.taps > 0)) return true;
   const at = holds6 === "signal" ? TUNING.physics.releaseAt.signal : holds6 === "limit" ? TUNING.physics.releaseAt.limit : -1;
   const plan = run.segment.plan;
-  const gauge = R5.seg?.flushed && plan && run.segment.state === "running" && state.scene ? resolveSegment(run, plan, R5.inputs, resolveEnvOf(state, reg, run)).gauge : run.gauge;
+  const env = state.scene ? resolveEnvOf(state, reg, run) : null;
+  const steady = R5.steady ? { steady: new Set(R5.steady()) } : {};
+  const gauge = R5.seg?.flushed && plan && run.segment.state === "running" && env ? resolveSegment(run, plan, R5.inputs, { ...env, ...steady }).gauge : run.gauge;
   return gauge / Math3.max(1, run.capacity) <= at;
 }
 function weightMatches(run, _state, reg) {

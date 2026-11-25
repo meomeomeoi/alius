@@ -340,6 +340,35 @@ describe('the weight instrument on the scene', () => {
     expect(_weight.G).toMatchObject({ shifts: 1, cleanShifts: 1 });
   });
 
+  it('a release in the last frame of a beat is that beat\'s slip: the screen and the engine count the same', () => {
+    const plan = planOf({});
+    const s = hold('human_chair', plan);
+    const t = draw(s);
+    t.balance(0.5);
+    t.mouse('mousedown');
+    t.to(5 * BEAT);
+    // the frame before the one that crosses into beat 6
+    const crosses = (): boolean => Math.floor((_weight.G.clock + 16 - _weight.R.seg!.clock0) / BEAT) > _weight.G.beat;
+    while (!crosses()) t.frames.frame();
+    t.mouse('mouseup', document);
+    t.frames.frame();
+    t.mouse('mousedown');
+    t.to(30_000);
+    const r = resolveSegment(s.scene!.physics!, plan, reports(t), resolveEnvOf(s, reg, s.scene!.physics!));
+    expect(r.slips).toBe(_weight.G.slips);
+    expect(r.slips).toBeGreaterThanOrEqual(1);
+  });
+
+  it('no slip is shown after the flush (the engine is not told of it)', () => {
+    const t = draw(hold('human_chair', planOf({})));
+    t.mouse('mousedown');
+    t.to(30_000 - 200);
+    const slips = _weight.G.slips;
+    t.mouse('mouseup', document);
+    t.to(30_000 - 20);
+    expect(_weight.G.slips).toBe(slips);
+  });
+
   it('I3: the entry\'s grace: beats that end before the first loop beat is over are never charged, held or not', () => {
     const plan = planOf({});
     const s = hold('human_chair', plan);
@@ -643,6 +672,31 @@ describe('the weight instrument on the scene', () => {
     expect(await ending({ holds: 'signal', gauge: 900, at: 3500, result: 'released', tap: true })).toBe('enough. you’re shaking.');
     expect(await ending({ holds: 'limit', gauge: 300, at: 3000, result: 'limit_broken' })).toBe('…really?');
   });
+
+  it('a tap the engine answered without letting go is no release later; no tally is no slip', async () => {
+    resetPhysicsHooks();
+    registerHoldsUntil(() => 'limit');
+    const s = hold('human_chair', planOf({ 1: 20 }));
+    Object.assign(s.scene!.physics!, { gauge: 900, capacity: 1000 });
+    const t = draw(s, { staging: { outcome: () => ({ runId: 'p1', physicsId: 'weight', result: 'released' }) } });
+    t.balance(0.5);
+    t.mouse('mousedown');
+    t.to(2500);
+    t.key('keydown', 't'); // a limit holder ignores the first tap: the run goes on, its count is 1
+    s.scene!.physics = { ...s.scene!.physics!, taps: 1 };
+    t.screen.refresh();
+    t.to(3200);
+    t.mouse('mouseup', document); // a slip on screen, which the engine's (absent) tally does not hold
+    t.to(3400);
+    t.mouse('mousedown');
+    t.to(3500);
+    delete s.scene!.physics; // her contact taken away: released, but not by the tap
+    t.screen.refresh();
+    await Promise.resolve();
+    await Promise.resolve();
+    t.to(4500);
+    expect(t.q('.alius-weight-hand .her-line.big')!.textContent).toBe('good. steady.');
+  });
 });
 
 describe('ruling B: the core inside another instrument', () => {
@@ -666,6 +720,41 @@ describe('ruling B: the core inside another instrument', () => {
     _resetInstrumentDefs();
     registerInstrument({ id: 'breath', matches: breathMatches, start: startBreath });
     registerInstrument({ id: 'weight', matches: weightMatches, start: (env, run) => startWeight(env, run) });
+  });
+
+  it('the core\'s end reads the pair\'s steady beats as the engine does: steadied, the weight is not at her limit', async () => {
+    const end = async (steady: boolean): Promise<string> => {
+      _resetInstrumentDefs();
+      resetPhysicsHooks();
+      registerHoldsUntil(() => 'signal');
+      let core: WeightCoreRun | null = null;
+      registerInstrument({
+        id: 'outer', matches: (run) => run.second?.physicsId === 'weight',
+        start(env, run) {
+          const host = h('div');
+          env.layers.effects.append(host);
+          core = startWeight(env, coreRun(run, 'second')!, { host, core: true, ...(steady ? { steady: () => Array.from({ length: 20 }, (_, i) => i) } : {}) });
+          return { update: (next) => core!.update(coreRun(next, 'second')!), finish: (e) => core!.finish!(e), stop: () => core!.stop() };
+        },
+      });
+      const s = hold('between_thighs', planOf({}));
+      Object.assign(s.scene!.physics!.second!, { gauge: 290, capacity: 1000 });
+      const t = draw(s, { staging: { outcome: () => ({ runId: 'p1', physicsId: 'breath', result: 'released' }) } });
+      core!.balance(0.5);
+      core!.hold(true, 'mouse');
+      t.to(30_050);
+      delete s.scene!.physics;
+      t.screen.refresh();
+      await Promise.resolve();
+      await Promise.resolve();
+      t.to(31_100);
+      const line = t.q('.alius-weight-hand .her-line.big')?.textContent ?? '';
+      t.screen.dispose();
+      return line;
+    };
+    // 20 beats drain 160 of 1000 (290 → 130: at her 15 %), steadied 120 (→ 170: above it)
+    expect(await end(false)).toBe('enough. you’re shaking.');
+    expect(await end(true)).not.toBe('enough. you’re shaking.');
   });
 
   it('the core mounts in the outer instrument\'s host with no view, no keys and no room tone of its own; the outer drives it, reads its frame, and unmounts it cleanly', async () => {
