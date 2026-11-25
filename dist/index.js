@@ -58024,6 +58024,7 @@ var ART_SLOT_IDS = [
   "shoe_sole.heels"
 ];
 var PAIR_KEYS = ["legs_astride.left", "legs_astride.right"];
+var SPRITE_KEY = "sprite";
 var MANIFEST_KEYS = [...ART_SLOT_IDS, ...PAIR_KEYS];
 var num6 = external_exports.number().finite();
 var zoneSet = external_exports.record(external_exports.string(), external_exports.array(num6).min(2).max(5));
@@ -58034,11 +58035,23 @@ var sidecarSchema = external_exports.object({
   shown: external_exports.enum(["left", "right"]).optional(),
   face: external_exports.object({ x: num6, y: num6 }).optional()
 });
-var fileSchema = external_exports.string().min(1).refine((f) => !/^[a-z][a-z0-9+.-]*:/i.test(f) && !f.startsWith("/") && !f.includes("\\") && !f.split("/").includes(".."), "not a path under content/local/art");
+var fileSchema = external_exports.string().min(1).refine((f) => !/^[a-z][a-z0-9+.-]*:/i.test(f) && !f.startsWith("/") && !f.includes("\\") && !f.includes("%") && !f.split("/").includes(".."), "not a path under content/local/art");
 var entrySchema = external_exports.object({ file: fileSchema, sidecar: sidecarSchema.optional() });
+var spriteSchema = external_exports.object({ sidecar: sidecarSchema });
 var ART_ROOT = "content/local/art/";
+var isAbsent = (message) => /\b404\b|ENOENT|not found/i.test(message);
+async function loadArtManifest(fetch2) {
+  try {
+    return await fetch2();
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (!isAbsent(message)) console.warn(`[Alius] art: content/local/art/art.json could not be read \u2014 ${message}`);
+    return null;
+  }
+}
 function createArtSlots(manifest, assetUrl, unitKey) {
   const byUnit = /* @__PURE__ */ new Map();
+  const faces = /* @__PURE__ */ new Map();
   const problems = [];
   if (manifest !== null && typeof manifest === "object" && !Array.isArray(manifest)) {
     for (const [key, slots] of Object.entries(manifest)) {
@@ -58048,6 +58061,15 @@ function createArtSlots(manifest, assetUrl, unitKey) {
       }
       const kept = /* @__PURE__ */ new Map();
       for (const [slot2, raw] of Object.entries(slots)) {
+        if (slot2 === SPRITE_KEY) {
+          const sprite = spriteSchema.safeParse(raw);
+          if (!sprite.success) {
+            problems.push(`${key}.${slot2}: ${sprite.error.issues.map((i) => `${i.path.join(".") || "(entry)"} ${i.message}`).join("; ")}`);
+            continue;
+          }
+          if (sprite.data.sidecar.face !== void 0) faces.set(key, sprite.data.sidecar.face);
+          continue;
+        }
         if (!MANIFEST_KEYS.includes(slot2)) {
           problems.push(`${key}.${slot2}: unknown slot`);
           continue;
@@ -58078,6 +58100,10 @@ function createArtSlots(manifest, assetUrl, unitKey) {
         }
       }
       return entry === void 0 ? null : { url: urlOf(entry.file), sidecar: entry.sidecar };
+    },
+    face(unitId) {
+      const key = unitKey(unitId);
+      return key === null ? null : faces.get(key) ?? null;
     }
   };
 }
@@ -72096,7 +72122,7 @@ function collectArt(packs) {
   }
   return { hub: [...hub.values()] };
 }
-var isAbsent = (message) => /\b404\b|ENOENT|not found/i.test(message);
+var isAbsent2 = (message) => /\b404\b|ENOENT|not found/i.test(message);
 async function loadPacks(packRoots, fetchJson2, opts = {}) {
   const errors = [];
   const manifestResults = await Promise.all(packRoots.map((root) => settle5(fetchJson2, `${root}/manifest.json`)));
@@ -72104,7 +72130,7 @@ async function loadPacks(packRoots, fetchJson2, opts = {}) {
   manifestResults.forEach((res, i) => {
     const root = packRoots[i];
     if (!res.ok) {
-      if (opts.optional?.includes(root) && isAbsent(res.message)) return;
+      if (opts.optional?.includes(root) && isAbsent2(res.message)) return;
       errors.push({ pack: root, file: "manifest.json", path: "", message: res.message });
       return;
     }
@@ -72745,7 +72771,7 @@ async function main() {
     loadContent: () => loadPacks(CONTENT_ROOTS, fetchJson, { optional: ["../content/local"] }),
     assetUrl: (p) => new URL("../" + p, import.meta.url).href,
     // relative to dist/index.js
-    loadArt: () => fetchJson("../content/local/art/art.json").catch(() => null)
+    loadArt: () => loadArtManifest(() => fetchJson("../content/local/art/art.json"))
     // P10e-e: the author's own art; absent = none
   });
   const launcher = installLauncher({

@@ -2,6 +2,7 @@ import { createApp } from './app';
 import { loadPacks } from './content/loader';
 import { RealStAdapter } from './st/real';
 import { installLauncher } from './ui/launcher';
+import { loadArtManifest } from './ui/scene/art';
 
 const CONTENT_ROOTS = ['../content/core', '../content/local']; // relative to dist/index.js; the second is the player's own pack (P15a) and may be absent
 
@@ -16,7 +17,7 @@ async function main(): Promise<void> {
   const app = createApp(st, {
     loadContent: () => loadPacks(CONTENT_ROOTS, fetchJson, { optional: ['../content/local'] }),
     assetUrl: (p) => new URL('../' + p, import.meta.url).href, // relative to dist/index.js
-    loadArt: () => fetchJson('../content/local/art/art.json').catch(() => null), // P10e-e: the author's own art; absent = none
+    loadArt: () => loadArtManifest(() => fetchJson('../content/local/art/art.json')), // P10e-e: the author's own art; absent = none
   });
 
   // Launcher first: a failing start must never hide the extension from the user.

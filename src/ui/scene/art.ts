@@ -16,6 +16,8 @@ export type ArtSlotId = (typeof ART_SLOT_IDS)[number];
 
 /** The two files of `legs_astride` with `feet: 'pair'` (her left and her right leg in two pictures). */
 const PAIR_KEYS = ['legs_astride.left', 'legs_astride.right'] as const;
+/** A sidecar-only key: her scene sprite's own sidecar (the face point; slap README, weight's `S.face`). It has no file of its own. */
+const SPRITE_KEY = 'sprite';
 const MANIFEST_KEYS: readonly string[] = [...ART_SLOT_IDS, ...PAIR_KEYS];
 
 /** Zones are points `[x, y]`, circles `[x, y, r]` or ellipses `[x, y, rx, ry, rot]` in the picture's own 0–1 coordinates; two feet in one picture carry one set per foot. */
@@ -31,7 +33,10 @@ export interface ArtSidecar {
 export interface ArtPicture {
   url: string;
   sidecar: ArtSidecar;
-  /** `legs_astride` with `feet: 'pair'`: her two legs as two files (`url` is the left one). */
+  /**
+   * `legs_astride` as two files (her left and her right leg; `url` is the left one). Consumers branch on `pair`, not on
+   * `sidecar.feet`: a `legs_astride` entry may say `feet: 'pair'` while its two files are missing, and then `pair` is absent.
+   */
   pair?: { left: string; right: string };
 }
 
@@ -42,6 +47,8 @@ export interface ArtGate {
 
 export interface ArtSlots {
   get(unitId: string, slot: ArtSlotId, gate?: ArtGate): ArtPicture | null;
+  /** The face point of her scene sprite (0–1 of the picture), from the manifest's sidecar-only `sprite` entry; null = the instrument's default. */
+  face(unitId: string): { x: number; y: number } | null;
 }
 
 const num = z.number().finite();
@@ -53,15 +60,34 @@ const sidecarSchema = z.object({
   shown: z.enum(['left', 'right']).optional(),
   face: z.object({ x: num, y: num }).optional(),
 }); // unknown keys (the prototypes' `slot`, `kind`) are dropped
-/** A relative path under `content/local/art/`: no scheme, no root, no `..`, no backslash. */
-const fileSchema = z.string().min(1).refine((f) => !/^[a-z][a-z0-9+.-]*:/i.test(f) && !f.startsWith('/') && !f.includes('\\') && !f.split('/').includes('..'), 'not a path under content/local/art');
+/** A relative path under `content/local/art/`: no scheme, no root, no `..`, no backslash, no `%` (a URL decodes `%2e%2e` as `..`). */
+const fileSchema = z.string().min(1).refine((f) => !/^[a-z][a-z0-9+.-]*:/i.test(f) && !f.startsWith('/') && !f.includes('\\') && !f.includes('%') && !f.split('/').includes('..'), 'not a path under content/local/art');
 const entrySchema = z.object({ file: fileSchema, sidecar: sidecarSchema.optional() });
+const spriteSchema = z.object({ sidecar: sidecarSchema });
 
 export const ART_ROOT = 'content/local/art/';
 
 /** May her `over_explicit` picture be shown? `explicit_scenes` on in the campaign and not among her own limits. */
 export function explicitArtAllowed(state: ContentHolder, reg: Registries, unitId: string): boolean {
+  // the id of `EXPLICIT_CATEGORY` (src/bonds/directives.ts), written out: that module pulls the prompt layer into the UI
   return contentAllowed(state, reg, { contentTags: ['explicit_scenes'] }, unitId);
+}
+
+/** A fetch that failed because the file is not there, not because it is broken (the rule of `content/loader.ts`). */
+const isAbsent = (message: string): boolean => /\b404\b|ENOENT|not found/i.test(message);
+
+/**
+ * Reads the manifest through `fetch`: a missing file is no art, silently; any other failure (a syntax error, a server error)
+ * is also no art, with one warning.
+ */
+export async function loadArtManifest(fetch: () => Promise<unknown>): Promise<unknown> {
+  try {
+    return await fetch();
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (!isAbsent(message)) console.warn(`[Alius] art: content/local/art/art.json could not be read — ${message}`);
+    return null;
+  }
 }
 
 /**
@@ -70,12 +96,19 @@ export function explicitArtAllowed(state: ContentHolder, reg: Registries, unitId
  */
 export function createArtSlots(manifest: unknown, assetUrl: (p: string) => string, unitKey: (unitId: string) => string | null): ArtSlots {
   const byUnit = new Map<string, Map<string, { file: string; sidecar: ArtSidecar }>>();
+  const faces = new Map<string, { x: number; y: number }>();
   const problems: string[] = [];
   if (manifest !== null && typeof manifest === 'object' && !Array.isArray(manifest)) {
     for (const [key, slots] of Object.entries(manifest as Record<string, unknown>)) {
       if (slots === null || typeof slots !== 'object' || Array.isArray(slots)) { problems.push(`${key}: not an object`); continue; }
       const kept = new Map<string, { file: string; sidecar: ArtSidecar }>();
       for (const [slot, raw] of Object.entries(slots as Record<string, unknown>)) {
+        if (slot === SPRITE_KEY) {
+          const sprite = spriteSchema.safeParse(raw);
+          if (!sprite.success) { problems.push(`${key}.${slot}: ${sprite.error.issues.map((i) => `${i.path.join('.') || '(entry)'} ${i.message}`).join('; ')}`); continue; }
+          if (sprite.data.sidecar.face !== undefined) faces.set(key, sprite.data.sidecar.face);
+          continue;
+        }
         if (!MANIFEST_KEYS.includes(slot)) { problems.push(`${key}.${slot}: unknown slot`); continue; }
         const parsed = entrySchema.safeParse(raw);
         if (!parsed.success) { problems.push(`${key}.${slot}: ${parsed.error.issues.map((i) => `${i.path.join('.') || '(entry)'} ${i.message}`).join('; ')}`); continue; }
@@ -100,6 +133,10 @@ export function createArtSlots(manifest: unknown, assetUrl: (p: string) => strin
         }
       }
       return entry === undefined ? null : { url: urlOf(entry.file), sidecar: entry.sidecar };
+    },
+    face(unitId) {
+      const key = unitKey(unitId);
+      return key === null ? null : faces.get(key) ?? null;
     },
   };
 }

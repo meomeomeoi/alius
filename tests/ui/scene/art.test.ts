@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ART_SLOT_IDS, createArtSlots, explicitArtAllowed } from '../../../src/ui/scene/art';
+import { ART_SLOT_IDS, createArtSlots, explicitArtAllowed, loadArtManifest } from '../../../src/ui/scene/art';
 
 const assetUrl = (p: string) => `ext://${p}`;
 const keys: Record<string, string> = { u1: 'Mira.png', u2: 'Sana.png' };
@@ -61,6 +61,10 @@ describe('art slots (P10e-e)', () => {
         over: { file: 42 },
         face_close: { file: 'mira/face.webp', sidecar: { face: { x: 'left' } } },
         sole_close: { file: '../../secrets.json' },
+        shoe_sole: { file: 'x.webp' },
+        'shoe_sole.boots': { file: 'mira/%2e%2e/%2e%2e/secrets.json' },
+        legs_astride: { sidecar: { feet: 'one' } },
+        sprite: { file: 'a.webp' },
         feet_floor: { file: 'mira/feet.webp' },
         unknown_slot: { file: 'mira/x.webp' },
       },
@@ -71,6 +75,9 @@ describe('art slots (P10e-e)', () => {
     expect(art.get('u1', 'over')).toBeNull();
     expect(art.get('u1', 'face_close')).toBeNull();
     expect(art.get('u1', 'sole_close')).toBeNull(); // a file outside content/local/art
+    expect(art.get('u1', 'shoe_sole.boots')).toBeNull(); // percent-encoded dots
+    expect(art.get('u1', 'legs_astride')).toBeNull(); // only the sprite entry may go without a file
+    expect(art.face('u1')).toBeNull(); // a sprite entry without a sidecar
     expect(art.get('u1', 'feet_floor')?.url).toBe('ext://content/local/art/mira/feet.webp');
     expect(art.get('u2', 'over')).toBeNull();
     for (let i = 0; i < 3; i += 1) art.get('u1', 'over');
@@ -91,5 +98,25 @@ describe('art slots (P10e-e)', () => {
     expect(explicitArtAllowed({ squad } as never, reg, 'u1')).toBe(false);
     expect(explicitArtAllowed({ squad, content: { enabled: ['explicit_scenes'] } } as never, reg, 'u1')).toBe(true);
     expect(explicitArtAllowed({ squad, content: { enabled: ['explicit_scenes'] } } as never, reg, 'u2')).toBe(false); // her own limit
+  });
+
+  it('the sprite entry is sidecar-only and gives her face point', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const art = createArtSlots({ 'Mira.png': { sprite: { sidecar: { face: { x: 0.47, y: 0.17 } } } }, 'Sana.png': { over: { file: 'sana/over.webp' } } }, assetUrl, unitKey);
+    expect(warn).not.toHaveBeenCalled();
+    expect(art.face('u1')).toEqual({ x: 0.47, y: 0.17 });
+    expect(art.face('u2')).toBeNull();
+    expect(art.face('nobody')).toBeNull();
+    for (const slot of ART_SLOT_IDS) expect(art.get('u1', slot, { explicit: true })).toBeNull();
+    expect(createArtSlots(null, assetUrl, unitKey).face('u1')).toBeNull();
+  });
+
+  it('a missing art.json is silent, a broken one warns once', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(await loadArtManifest(async () => { throw new Error('HTTP 404 for ../content/local/art/art.json'); })).toBeNull();
+    expect(warn).not.toHaveBeenCalled();
+    expect(await loadArtManifest(async () => { throw new SyntaxError('Unexpected token } in JSON'); })).toBeNull();
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(await loadArtManifest(async () => ({ a: 1 }))).toEqual({ a: 1 });
   });
 });
