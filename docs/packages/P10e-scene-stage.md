@@ -1,6 +1,6 @@
 # P10e — The scene stage: full frame, prose subtitles, the history curtain, the posture dial
 
-**Status: implemented** (2026-11-22; plan `docs/plans/2026-11-22-p10e-scene-stage.md`; manual test `docs/MANUAL_TEST_P10e.md`). **Depends on:** P10 (shell, `motionReduced` / `visualFlags`, `unitAccent`), P10b, P10c (full-bleed backdrop, light, knee-length sprites), P14 (generation chips), P15a (blocking, moments, physics), P15, P16. **Prepares:** the mini-games design session (next), P16b, P17, P17c (camera, POV views, pose shots, frames).
+**Status: chunks (a–d) implemented** (2026-11-22; plan `docs/plans/2026-11-22-p10e-scene-stage.md`; manual test `docs/MANUAL_TEST_P10e.md`). **Chunk (e), the mini-game instruments, her cards and the posture call: planned** (§15; plan `docs/plans/2026-11-25-p10e-e-instruments.md`). **Chunk (f), the stage setup: to design** (§15). **Depends on:** P10 (shell, `motionReduced` / `visualFlags`, `unitAccent`), P10b, P10c (full-bleed backdrop, light, knee-length sprites), P14 (generation chips), P15a (blocking, moments, physics), P15, P16. **Prepares:** the mini-games design session (next), P16b, P17, P17c (camera, POV views, pose shots, frames).
 
 **Analysis tool (P7a)** rules apply: every chip, option, card and the dial carry `data-analyze`.
 
