@@ -117,6 +117,48 @@ P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the
 - **Two TUNING blocks to extend:** `TUNING.scent` and `TUNING.stimuli`.
 - **What exists:** `scentBand`, `scentLevel`, `exposedKinds`, `perceptionWord` and `updateTrajectory` (`src/engine/physics/stimuli.ts`, `scent.ts`), the directive `physics:perception`, the stage words of `stimulusKinds[].perception`. Tolerance starts at 20 (AUTHOR TO TUNE); `sweat_stale` and washing are not built.
 
+## Revision of 2026-11-25: the scents and their shame (approved by the author)
+
+Where it conflicts with the sections above, this section wins. It extends P15a's `stimulusKinds` (the four sweats, feet, armpits, body, worn things; `scent_intimate` / `taste_intimate` specified in P15a §16.15) and §2's signature scent with **what a scent means when someone else notices it on the commander**.
+
+**Each scent has:**
+- `shame` 0–4: 0 means nothing, 1 "you were close", 2 intimacy, 3 humiliating, 4 explicit;
+- a content gate;
+- how long it **clings**: short 1 slot, medium 3, long 6;
+- what **removes** it: a quick wash (§2's wash) or only a shower (a slot's activity).
+
+| Scent (id) | What | Shame | Gate | Clings | Removed by |
+|---|---|---|---|---|---|
+| `sig_perfume`, `sig_soap`, `sig_mint`, `sig_gun_oil`, `sig_antiseptic`, `sig_engine_oil`, `sig_smoke`, `sig_coffee`, `sig_leather`, `sig_vat` (the vat's sterile sweetness of constructs) | her signature (§2; one each) | 1 | — | medium (clothes longer) | wash |
+| `scent_body`, `scent_hair` | her skin, her hair | 2 | — | medium | wash |
+| `breath` | her breath (a kiss) | 2 | — | short | wash |
+| `saliva` | her saliva on the commander's face | 3 | `bodily_fluids` | short | wash |
+| `sweat_exertion`, `sweat_heat` | her sweat | 2 | `bodily_fluids` | medium | wash |
+| `sweat_fear` | her fear (the shame is rather hers: it tells of her anxiety) | 2 | `bodily_fluids` | medium | wash |
+| `sweat_night`, `sweat_stale` | night sweat, stale sweat | 3 | `bodily_fluids` | long | shower |
+| `scent_feet`, `scent_armpit` | her feet, her armpits | 3 | `worship` | long (on the face) | shower |
+| `scent_worn`, `scent_boots` | her worn things, the inside of her boots | 3 | `worship` | long | shower |
+| `polish`, `dirt_of_day` | boot polish, the dirt of her day on the lips | 3 | `worship` | until washed | wash |
+| `scent_underwear` | her worn underwear | 4 | `worship` + `explicit_scenes` | long | shower |
+| `scent_intimate` | her musk, her arousal (her anatomy by her card) | 4 | `explicit_scenes` | long | shower |
+| `semen` | her semen (anatomy `penis` or `both`) | 4 | `explicit_scenes` + `her_anatomy` | long | shower |
+| `after_sex` | the mixed scent of a night, the sheets | 4 | `explicit_scenes` | long | shower |
+| `urine` | urine | 4 | `watersports` | long | shower |
+| `latex_lube` | latex, lubricant (`strap` and items) | 3 | `explicit_scenes` | medium | wash |
+| `blood` | blood after physical discipline (alarming more than shameful) | 2 | `pain_rough` | until washed | wash |
+| `alcohol` | drinking together | 1 | — | short | wash |
+| `ash`, `oil`, `spores`, `mud`, `dust`, `rain` | where she came from (the dirt of her day) | 0 | — | until washed | wash |
+
+**Modifiers** (the result is clamped to 0–4):
+- where it is on the commander: clothes −1, hands 0, neck or hair 0, face or mouth +1;
+- who notices: someone who already knows of the dynamic (P15 levels) −1, since it is not news.
+
+**On whom the shame lands:**
+- the commander: P15's `regardFall` with the noticer as a witness, at the scent's shame as the humiliation, and P9's nickname deeds;
+- her: when their relation is secret, a noticed scent is P9d's publicity path and writes its discovery fact there.
+
+The noticing roll stays the depth revision's (closeness, her perceptiveness, strength, time since). **Memory check:** nothing new; noticing writes its facts at the existing discovery site.
+
 ## Worship customs (P17g, 2026-11-25)
 
 **P17g** (`docs/packages/P17g-worship-customs.md`) builds customs that extend this package (relics: footwear and underwear among the worn things, consecration, worship of a relic alone, her check; traces). This package builds nothing of them; keep its mechanics readable by P17g (read by field and effect type, hooks where P17g needs them) and do not build the same thing here.
