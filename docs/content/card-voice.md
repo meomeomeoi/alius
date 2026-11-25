@@ -250,7 +250,7 @@ Variant **D** (author, 2026-11-25): a short full-frame moment, like the slap. He
 - **slow:** `Too slo-ow~` · `Did you fall asleep?` · `I counted. You lost.`
 
 ### cruel
-- **right:** `Finally.` · `About time.` · `Good dog. That's all you are.`
+- **right:** `Finally.` · `About time.` · `Good. That's all you're good for.`
 - **wrong:** `Wrong. Pathetic. {posture}.` · `Can't even get {posture} right.` · `{posture}. Are you stupid?`
 - **slow:** `Too slow. You'll pay for that.` · `I won't call twice.` · `Slow. As always.`
 
