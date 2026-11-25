@@ -16,3 +16,7 @@
   - `swallow1–5`: "Liquid Bottle Drink Set" (qubodup, OpenGameArt.org), CC0, `swallow-01–05`.
   - `splash_10`, `splash_09`, `splash_06`: "40 CC0 water / splash / slime SFX" (OpenGameArt.org), CC0.
   - `gulp.html` also plays `ha/pour.ogg`, `ha/cloth1–3` and `breath-in-out.mp3`.
+
+## `hands/` (candidate hands for the author to choose from, 2026-11-25)
+
+Handwriting fonts from Google Fonts (the latin subset as Google serves it, woff2), each with its licence beside it (`<name>.license.txt`, from github.com/google/fonts): SIL Open Font License 1.1, except Rock Salt, Permanent Marker, Just Another Hand, Homemade Apple, Satisfy and Yellowtail (Apache License 2.0). Only the hands the author picks move into `fonts/` and the `handFonts` registry; the rest are removed from here.
