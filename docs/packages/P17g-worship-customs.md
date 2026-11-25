@@ -181,9 +181,48 @@ The journal reaches a prompt only through `praise_kept` facts and the margin not
 6. Hidden values never reach a panel, a toast, a label, a prompt or a reading (sentinels).
 7. Every element carries `data-analyze`; every generation goes through P14; no pronoun for the commander.
 
-## 6. Open for the author
+## 6. Numbers (approved by the author, 2026-11-25)
 
-- The density's scaling and `pace.perDay` defaults.
-- The table of `needs` per custom (a draft is in `docs/drafts/2026-11-25-worship-customs.md`; the plan proposes it).
-- The weight of sacrilege (the vow's break).
+Scales for reference: trust 0–100, Regard 0–100 (start 50, ordinary rises +1…+4), stress 0–100. All go into `TUNING.customs` (and the registry for needs and weights).
+
+**The frame**
+| What | Number |
+|---|---|
+| K active customs by frame (a setting) | `play` 1 · `role` 2 · `rule` 3 |
+| Density `few` / `normal` / `many` | K × 0.5 rounded down (at least 1) / K × 1 / K + 1 |
+| Days between new customs | at least 7 fiction days |
+| Cooldown after her first moment is refused | 14 days |
+| Fading without upkeep | 14 days |
+| Offered rites a fiction day (all customs) | 2 |
+| `customs:` directives in one reply | at most 1 |
+| Her pick's hidden spread | weight × (1 + hash / 4) |
+| `regal`'s weight multiplier | ×2 for `praise`, `shrine`, `relic` |
+
+**Needs, frames and base weights** (categories read through `practiceOf`; "likes" = `as` `enjoys` or `craves`)
+| Custom | Needs | `frameMin` | Weight |
+|---|---|---|---|
+| praise | nothing | `play` | 3 |
+| rite | `service` likes | `play` | 3 |
+| acceptance | `worship` likes | `play` | 2 |
+| token | `worship` likes | `play` | 2 |
+| shrine | `worship` likes | `role` | 2 |
+| relic | `worship` likes (underwear: also `explicit_scenes`) | `role` | 2 |
+| trace | `worship` likes | `role` | 1 |
+| defect | `worship` likes, a defect of hers, trust ≥ 50 | `role` | 1 |
+| vow | `worship` `craves`, or style `possessive` / `obsessive` / `regal` | `role` (with P15's vow milestone) | 1 |
+
+**Inside the customs**
+- **Praise:** true praise ×2, general ×1, false ×0. A false praise is seen through at once by a holder with `curiosity` ≥ +1 or `clinical`, by others on the second within 14 days; seen through, it is her slip (minor). One kept line a week, quoted at most once a week.
+- **Shrine:** known = mastery level 2 (P16b); favoured = 3 `pleased` verdicts for acts at that zone; consecrated = favoured plus a rite there she named (a P17e ritual). At most one rise a scene a zone. `shrine_slighted`: stakes `minor`.
+- **Relic:** scent one band down every 2 days (P17d); her check every 5–9 days (hashed); `relic_washed`: stakes `minor`.
+- **Traces' lifetime:** where she sat, to the end of the slot; a footprint, to the end of the slot or until cleaned; lips on a glass, to the end of the next slot; hair on the pillow, a day.
+- **Acceptance:** more gesture and fewer words at P15b `warmth` ≤ −1 or `voice` ≤ −1.
+- **Defect:** trust ≥ 50 for her to accept; for 7 days after a worship her defect's stress gains are −25 % and its breakdown chance ×0.75, refreshed at most once a day; Regard +2 the first time, then +1 at most once a week (`value`).
+- **Token:** with it, commander stress −2 per node, at most −10 a run; without it, once the custom is active, +6 stress before the first fight.
+- **Vow broken (sacrilege):** `regardFall` with humiliation 5 (P15: 5 × 1.5 × her style factor); trust −30; her aftermath's weights `revenge` ×2, `grief` ×2.
+
+**Memory importance** (1–5): `praise_kept` 2 (her), `zone_consecrated` 2 (the pair), `worshipped_unseen` 2 (her), `defect_worshipped` 3 (her), `vow_broken` 5 (her; spread only to those who learn of it).
+
+## 7. Open for the author
+
 - The relic places of underwear by kind.
