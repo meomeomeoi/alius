@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<!--
+  P10e chunk (e) reference prototype: GULP (P15a `gulp`, timing; content `watersports`, which requires `bodily_fluids`).
+  Draft for the author's rounds (not yet approved). Scheme C (author, 2026-11-25): swallow and breathe as two resources, a signal to her,
+  and what is spilled carried into cleaning.
+  - The view looks up at her: the ceiling, and her picture by the chain `over_naked` (explicit content on and she is undressed) → `over`
+    → her ordinary sprite through the camera from below (weight's face-up placement). Nothing of a body is drawn; the stream is heard.
+  - The mouth is a warm tide at the bottom of the screen with ripples where the stream lands; overflow runs over the edges and is spilled.
+  - Space: a swallow (~0.7 s, no air while it lasts). Shift: a breath through the nose (with a full mouth it may become a cough, which spills).
+    The right button or T: a tap on her, asking for slower; her answer by style. Air is the frame's edges and the heart; the reflex a cough.
+  - What was spilled pools on the floor; by her style she makes the commander clean it with the tongue (shoe service's craft on the floor
+    art); every bit wiped fills the mouth again. Her check is a band of light over the floor.
+  Build a runnable page with
+    npm run proto -- gulp [--sprite <png|webp|svg>]
+  which inlines the fonts, backdrops, the CC0 sounds and a sprite (the layout fixture by default; never commit the author's art).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alius · gulp · prototype</title>
+<style>
+@font-face { font-family: "Caveat"; src: url("%%ASSET:fonts/hand-caveat-400.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 300; src: url("%%ASSET:fonts/inter-300.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 400; src: url("%%ASSET:fonts/inter-400.woff2%%") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; src: url("%%ASSET:fonts/ibm-plex-mono-400.woff2%%") format("woff2"); }
+
+:root { --her: #8cc8f0; --glass: rgba(14, 12, 20, 0.58); --line: rgba(255, 255, 255, 0.12); --ink: #ece8f2; --dim: rgba(236, 232, 242, 0.55); }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: var(--ink); font-family: Inter, system-ui, sans-serif; font-weight: 300; }
+#stage { position: fixed; inset: 0; overflow: hidden; }
+#world { position: absolute; inset: -4%; will-change: transform, filter; }
+#ceiling, #floor { position: absolute; inset: 0; background-size: cover; background-position: center; will-change: transform, filter; }
+#floor { opacity: 0; }
+#cam { position: absolute; inset: 0; perspective: 1100px; overflow: hidden; }
+#her, #over { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; user-select: none; -webkit-user-drag: none; }
+#over { display: none; }
+#puddleC { position: absolute; left: 0; top: 0; pointer-events: none; opacity: 0; }
+#tide { position: absolute; inset: 0; pointer-events: none; }
+#vig { position: absolute; inset: 0; pointer-events: none; }
+#markC { position: absolute; inset: 0; pointer-events: none; }
+#hand { position: absolute; inset: 0; pointer-events: none; }
+.her-line { position: absolute; font-family: Caveat, cursive; color: var(--her); white-space: nowrap; line-height: 1; font-size: 42px;
+  text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.85), 0 0 28px rgba(0,0,0,.6);
+  animation: write var(--write, 600ms) steps(var(--steps, 12), end) both; transition: opacity .5s; }
+.her-line.gone, .sense.gone { opacity: 0; }
+@keyframes write { from { clip-path: inset(-30% 100% -30% -8%); } to { clip-path: inset(-30% -8% -30% -8%); } }
+.sense { position: absolute; font: italic 300 16px/1.4 Inter, sans-serif; color: rgba(236,232,242,.62); text-shadow: 0 1px 2px #000, 0 0 10px rgba(0,0,0,.8); transition: opacity .8s; max-width: 380px; }
+#ui { position: absolute; inset: 0; pointer-events: none; }
+#reply { position: absolute; left: 50%; bottom: 102px; transform: translateX(-50%); width: min(980px, 70vw); font-size: 20px; line-height: 1.5; text-align: center;
+  text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.7); }
+#reply .act { font-style: italic; color: var(--dim); }
+#stopPill { position: absolute; right: 36px; bottom: 44px; pointer-events: auto; cursor: pointer; padding: 10px 18px; border-radius: 22px; font: 13px "IBM Plex Mono", monospace; font-variant: small-caps;
+  background: rgba(60, 10, 14, .55); border: 1px solid rgba(255, 120, 120, .35); color: #ffd6d6; backdrop-filter: blur(10px); }
+#tap { position: absolute; left: 50%; top: 58%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; border: 1.5px solid rgba(255, 214, 170, .7); opacity: 0; transition: opacity .4s; pointer-events: none; }
+#tap.knock { animation: knock .35s; }
+@keyframes knock { 30% { transform: scale(.7); } }
+
+/* prototype only */
+.card { position: absolute; left: 36px; top: 24%; width: 440px; padding: 22px 24px; border-radius: 18px; pointer-events: auto; background: var(--glass); border: 1px solid var(--line);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); display: none; }
+.card h3 { margin: 0 0 10px; font: 13px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .1em; color: var(--dim); }
+.card .hand { font: 32px Caveat, cursive; color: var(--her); margin: 6px 0 14px; }
+.card .facts { font: 13px "IBM Plex Mono", monospace; color: var(--dim); line-height: 1.7; }
+.btn { display: inline-block; margin-top: 12px; padding: 9px 18px; border-radius: 20px; border: 1px solid var(--line); background: rgba(255,255,255,.06); color: var(--ink); font: 14px Inter, sans-serif; cursor: pointer; }
+#panel { position: fixed; top: 14px; right: 14px; width: 320px; max-height: calc(100vh - 40px); overflow: auto; padding: 14px 16px; border-radius: 14px; z-index: 70;
+  background: rgba(10, 10, 14, .84); border: 1px solid var(--line); font: 12px "IBM Plex Mono", monospace; color: #cfcbe0; }
+#panel.hidden { display: none; }
+#panel h4 { margin: 12px 0 6px; font-weight: 400; color: #8d88a6; font-variant: small-caps; letter-spacing: .08em; }
+#panel h4:first-child { margin-top: 0; }
+#panel .row { display: flex; flex-wrap: wrap; gap: 4px; }
+#panel button.opt { padding: 4px 8px; border-radius: 10px; border: 1px solid #3a3650; background: #17151f; color: #cfcbe0; font: 12px "IBM Plex Mono", monospace; cursor: pointer; }
+#panel button.opt.on { background: #3b3360; border-color: #8a7fd0; color: #fff; }
+#panel label { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+#panel input[type=range] { flex: 1; }
+#panel select { background: #17151f; color: #cfcbe0; border: 1px solid #3a3650; font: 12px "IBM Plex Mono", monospace; }
+#panel .note { color: #77738c; line-height: 1.45; margin-top: 6px; word-break: break-all; }
+#debug { position: fixed; left: 14px; top: 12px; font: 12px "IBM Plex Mono", monospace; color: #9ad; text-shadow: 0 0 4px #000; z-index: 40; white-space: pre; display: none; pointer-events: none; }
+#start { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 60; background: rgba(0,0,0,.35); }
+#start .box { width: 600px; padding: 26px 30px; border-radius: 18px; background: rgba(12, 11, 18, .88); border: 1px solid var(--line); line-height: 1.6; font-size: 15px; }
+#start .box h2 { margin: 0 0 8px; font: 15px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .12em; color: #a9a3c7; }
+#start kbd { font: 12px "IBM Plex Mono", monospace; padding: 1px 6px; border: 1px solid #555; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="world">
+    <div id="ceiling"></div>
+    <div id="floor"></div>
+    <div id="cam"><img id="her" alt="" draggable="false"><img id="over" alt="" draggable="false"></div>
+    <canvas id="puddleC"></canvas>
+  </div>
+  <canvas id="tide"></canvas>
+  <div id="vig"></div>
+  <canvas id="markC"></canvas>
+  <div id="tap"></div>
+  <div id="hand"></div>
+  <div id="ui">
+    <div id="reply"></div>
+    <div id="stopPill">● stop word · amber</div>
+    <div class="card" id="summary"><h3>prototype · how it went</h3><div class="hand" id="sumLine"></div><div class="facts" id="sumFacts"></div><span class="btn" id="againBtn">again</span></div>
+  </div>
+</div>
+<div id="debug"></div>
+
+<div id="panel">
+  <h4>her style</h4>
+  <div class="row" id="styles"></div>
+  <div class="note" id="styleNote"></div>
+  <h4>her picture (the chain over_naked → over → her sprite)</h4>
+  <label><input type="checkbox" id="explicit"> explicit content on and she is undressed (uses over_naked)</label>
+  <label>over <input type="file" id="fileOver" accept="image/*" style="width:170px"></label>
+  <label>over_naked <input type="file" id="fileNaked" accept="image/*" style="width:150px"></label>
+  <label>over height <input type="range" id="overH" min="0.6" max="1.8" step="0.01" value="1.04"><span id="overHV">1.04</span></label>
+  <label>over x <input type="range" id="overX" min="0.3" max="0.7" step="0.01" value="0.5"><span id="overXV">0.50</span></label>
+  <label>over sink <input type="range" id="overSink" min="0" max="0.3" step="0.01" value="0"><span id="overSinkV">0.00</span></label>
+  <div class="row"><button class="opt" id="copyOver">copy the fit</button></div>
+  <div class="note" id="overNote">The over slots are placed as in weight (anchored to the bottom, room for her lean); without them her sprite rises from the bottom edge. The fit travels with the picture as a sidecar.</div>
+  <h4>tuning</h4>
+  <label>her volume s <input type="range" id="len" min="15" max="60" step="5" value="35"><span id="lenV">35</span></label>
+  <label>flow × <input type="range" id="flowK" min="0.5" max="1.6" step="0.05" value="1"><span id="flowKV">1.00</span></label>
+  <label>the room <select id="ceil"></select></label>
+  <label>the floor <select id="floorSel"></select></label>
+  <h4>sound</h4>
+  <label><input type="checkbox" id="snd" checked> on</label>
+  <label>volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7"></label>
+  <h4>view</h4>
+  <label>accent <input type="color" id="accent" value="#8cc8f0"></label>
+  <label><input type="checkbox" id="dbg"> debug readout</label>
+  <label><input type="checkbox" id="rm"> reduced motion</label>
+  <div class="row"><button class="opt" id="restart">restart</button></div>
+  <div class="note">Space (held: gulp after gulp): swallow. Shift: breathe through the nose. The right button or T: a tap on her (asking for slower). In the cleaning: drag on the puddle with the tongue; Space still swallows. Esc: the stop word. H: hide this panel. Prototype only; nothing here is engine code.</div>
+</div>
+
+<div id="start"><div class="box">
+  <h2>gulp · prototype</h2>
+  She stands over the commander. The mouth is the tide at the bottom of the screen; her stream fills it.<br>
+  <kbd>Space</kbd> swallows (hold for gulp after gulp; no air while you swallow). <kbd>Shift</kbd> breathes through the nose: with a full mouth it may turn into a cough.<br>
+  The right button or <kbd>T</kbd>: tap her, ask for slower. What overflows or is coughed out is spilled; she may make you clean it.<br>
+  <kbd>Esc</kbd> stop word · <kbd>H</kbd> panel. Headphones help.
+  <div><span class="btn" id="go">begin</span> <span class="btn" id="setup">set up first</span></div>
+</div></div>
+
+<script>
+'use strict';
+const ASSETS = {
+  her: '%%SPRITE%%',
+  ceilings: { ceiling_room_1: '%%ASSET:content/core/art/backdrops/ceiling_room_1.webp%%', ceiling_dark: '%%ASSET:content/core/art/backdrops/ceiling_dark.webp%%', ceiling_technical: '%%ASSET:content/core/art/backdrops/ceiling_technical.webp%%' },
+  floors: { floor_wood: '%%ASSET:content/core/art/backdrops/floor_wood.webp%%', floor_concrete: '%%ASSET:content/core/art/backdrops/floor_concrete.webp%%', floor_linoleum: '%%ASSET:content/core/art/backdrops/floor_linoleum.webp%%', floor_tatami: '%%ASSET:content/core/art/backdrops/floor_tatami.webp%%' },
+};
+const SAMPLE_URLS = {
+  pour: '%%ASSET:docs/prototypes/assets/ha/pour.ogg%%', breath: '%%ASSET:docs/prototypes/assets/breath-in-out.mp3%%',
+  cloth1: '%%ASSET:docs/prototypes/assets/ha/cloth1.ogg%%', cloth2: '%%ASSET:docs/prototypes/assets/ha/cloth2.ogg%%', cloth3: '%%ASSET:docs/prototypes/assets/ha/cloth3.ogg%%',
+};
+const GROUPS = { cloth: ['cloth1', 'cloth2', 'cloth3'] };
+const $ = (s) => document.querySelector(s);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const rand = (a, b) => a + Math.random() * (b - a);
+
+/* ---------- the engine's numbers (TUNING.physics: gulpFill caught 5, spill 20; swallows 4–8 a segment; a spill chains to tongue_work at dirt 60) ---------- */
+const SPILL_CHAIN_DIRT = 60;
+/* ---------- the instrument's numbers ---------- */
+const GULP_MS = 700;        // a swallow takes this long; no air while it lasts
+const GULP_TAKES = 0.4;     // a swallow takes this share of a full mouth
+const BREATH_MS = 520;      // a breath through the nose
+const BREATH_GIVES = 0.42;  // air a breath gives
+const AIR_DRAIN = 0.045;    // air a second while the mouth holds anything
+const AIR_GULP = 0.11;      // air a swallow costs
+const COUGH_FROM = 0.55;    // a breath with the mouth fuller than this may become a cough (chance rises to 0.7 at full)
+const REFLEX_SURGE = 0.55;  // a flow faster than this (mouths a second) builds the reflex; so do gulps without a breath (from the fourth)
+/* her flow by style: base (mouths a second), its variation, pauses, surges (how often, how strong, the warning before them), her answer to a tap */
+const STYLES = {
+  neutral:      { base: 0.2, vary: 0.25, pause: 0.25, surgeEvery: [7, 12], surge: 1.6, warn: 700, tap: 'slower', check: 'clean' },
+  affectionate: { base: 0.15, vary: 0.2, pause: 0.4, surgeEvery: [12, 20], surge: 1.3, warn: 1100, tap: 'pause', check: 'herself' },
+  ritual:       { base: 0.19, vary: 0.05, pause: 0.15, surgeEvery: [8, 8], surge: 1.5, warn: 900, tap: 'hold', check: 'clean', announce: true },
+  playful:      { base: 0.19, vary: 0.45, pause: 0.35, surgeEvery: [5, 9], surge: 1.8, warn: 500, tap: 'faster', check: 'clean', feint: 0.4 },
+  cruel:        { base: 0.26, vary: 0.35, pause: 0.1, surgeEvery: [4, 7], surge: 2.1, warn: 0, tap: 'surge', check: 'clean' },
+  possessive:   { base: 0.22, vary: 0.2, pause: 0.15, surgeEvery: [6, 10], surge: 1.7, warn: 600, tap: 'slower', check: 'clean' },
+  cold:         { base: 0.21, vary: 0.1, pause: 0.1, surgeEvery: [9, 14], surge: 1.4, warn: 400, tap: 'none', check: 'clean' },
+};
+const STYLE_NOTE = {
+  neutral: 'an even stream with now and then a surge (heard ~0.7 s before)', affectionate: 'gentle, pauses often; a tap makes her pause; she wipes up herself',
+  ritual: 'measured; she announces the surge ("now."); a tap: "hold."', playful: 'uneven, feints (the sound rises, no surge); a tap makes her go faster',
+  cruel: 'fast, surges without warning; a tap brings a surge', possessive: 'firm; a tap slows her a little', cold: 'even and steady; a tap changes nothing',
+};
+const LINES = {
+  neutral:      { entry: ['open. drink.'], surge: [], tapped: ['slower, then.'], spill: ['careful.'], cough: ['breathe.'], done: ['all of it. good.'], clean: ['you spilled. clean it.'], cleaned: ['good.'], missed: ['there. you missed it.'] },
+  affectionate: { entry: ['shh. drink for me.'], surge: [], tapped: ['okay, okay. I’ll wait.'], spill: ['it’s alright.'], cough: ['easy. breathe.'], done: ['good. so good.'], clean: ['leave it, I’ll get it.'], cleaned: [], missed: [] },
+  ritual:       { entry: ['open. drink.'], surge: ['now.'], tapped: ['hold.'], spill: ['a spill.'], cough: ['compose yourself.'], done: ['finished.'], clean: ['the floor. with your tongue.'], cleaned: ['as it should be.'], missed: ['there. again.'] },
+  playful:      { entry: ['say ahh~'], surge: [], tapped: ['slower? hmm. no~'], spill: ['oops~'], cough: ['too much?'], done: ['all gone~'], clean: ['look at that mess. lick it up~'], cleaned: ['shiny.'], missed: ['you missed a spot~'] },
+  cruel:        { entry: ['drink.'], surge: [], tapped: ['you don’t ask.'], spill: ['wasteful.'], cough: ['pathetic.'], done: ['all of it. good.'], clean: ['lick it up.'], cleaned: ['adequate.'], missed: ['there. all of it.'] },
+  possessive:   { entry: ['drink. all of it is yours.'], surge: [], tapped: ['a little slower. for you.'], spill: ['that was yours.'], cough: ['breathe. then more.'], done: ['good. mine.'], clean: ['you don’t waste me. clean it.'], cleaned: ['good.'], missed: ['all of it.'] },
+  cold:         { entry: ['drink.'], surge: [], tapped: [], spill: [], cough: [], done: ['done.'], clean: ['clean it.'], cleaned: ['fine.'], missed: ['there.'] },
+};
+/* what the commander notices of the taste (stand-ins for P15a's stimulus layer: her state, the day) */
+const TASTE = ['Warm, and salt.', 'Bitter at the back of the tongue.', 'Warmer than expected.', 'Sharp; it catches in the throat.'];
+
+/* ---------- settings ---------- */
+const S = { style: 'neutral', explicit: false, overH: 1.04, overX: 0.5, overSink: 0, len: 35, flowK: 1, sound: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
+const ST = () => STYLES[S.style];
+const L = () => LINES[S.style];
+
+/* ---------- audio ---------- */
+const A = { ctx: null, buf: {} };
+function audioInit() {
+  if (A.ctx) return;
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  A.ctx = ctx;
+  A.master = ctx.createGain(); A.master.gain.value = S.sound ? S.vol : 0; A.master.connect(ctx.destination);
+  A.world = ctx.createBiquadFilter(); A.world.type = 'lowpass'; A.world.frequency.value = 9000; A.world.connect(A.master);
+  A.body = ctx.createGain(); A.body.connect(A.master);
+  const mk = (sec, fill) => { const b = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate); fill(b.getChannelData(0)); return b; };
+  A.white = mk(2, (d) => { for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; });
+  A.brown = mk(4, (d) => { let l = 0; for (let i = 0; i < d.length; i++) { l = (l + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = l * 3.5; } });
+  const room = ctx.createBufferSource(); room.buffer = A.brown; room.loop = true;
+  const rl = ctx.createBiquadFilter(); rl.type = 'lowpass'; rl.frequency.value = 650; const rg = ctx.createGain(); rg.gain.value = 0.05;
+  room.connect(rl); rl.connect(rg); rg.connect(A.world); room.start();
+}
+async function loadSamples() { await Promise.all(Object.entries(SAMPLE_URLS).map(async ([k, u]) => { try { const r = await fetch(u); A.buf[k] = await A.ctx.decodeAudioData(await r.arrayBuffer()); } catch (e) { /* synthesis */ } })); }
+function play(id, { g = 0.5, rate = 1, lp = 0, dest, at = 0, offset = 0, dur } = {}) {
+  const key = GROUPS[id] ? pick(GROUPS[id]) : id;
+  if (!A.ctx || !A.buf[key]) return null;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const src = ctx.createBufferSource(); src.buffer = A.buf[key]; src.playbackRate.value = rate;
+  const gn = ctx.createGain(); gn.gain.value = g; src.connect(gn); let n = gn;
+  if (lp) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; n.connect(f); n = f; }
+  n.connect(dest ?? A.world);
+  if (dur) { gn.gain.setValueAtTime(g, t + dur / rate - 0.04); gn.gain.linearRampToValueAtTime(0.0001, t + dur / rate); }
+  src.start(t, offset, dur ? dur + 0.05 : undefined); return src;
+}
+function noise({ at = 0, dur = 0.2, type = 'bandpass', f = 1000, f2, q = 1, gain = 0.1, attack = 0.01, dest = A.world }) {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const src = ctx.createBufferSource(); src.buffer = A.white; src.loop = true;
+  const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(f, t); fl.Q.value = q;
+  if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(fl); fl.connect(g); g.connect(dest); src.start(t, Math.random()); src.stop(t + dur + 0.05);
+}
+function tone(f0, f1, dur, gain, { at = 0, dest = A.body, type = 'sine' } = {}) {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(dest); o.start(t); o.stop(t + dur + 0.05);
+}
+const SFX = {
+  pen: () => { for (let i = 0; i < 3; i++) noise({ at: i * 0.05 + Math.random() * 0.02, dur: 0.035 + Math.random() * 0.03, f: 2600 + Math.random() * 1800, q: 3, gain: 0.04 }); },
+  gulp: (g = 1) => { tone(190, 105, 0.14, 0.26 * g); noise({ at: 0.05, dur: 0.06, f: 850, q: 3, gain: 0.09 * g, dest: A.body }); tone(120, 80, 0.12, 0.12 * g, { at: 0.18 }); },
+  cough: () => { for (let i = 0; i < 2; i++) { noise({ at: i * 0.22, dur: 0.16, type: 'bandpass', f: 700, f2: 300, q: 0.7, gain: 0.28, attack: 0.005, dest: A.body }); tone(160, 90, 0.12, 0.2, { at: i * 0.22 }); } noise({ at: 0.1, dur: 0.25, type: 'highpass', f: 2500, gain: 0.06, dest: A.world }); },
+  splash: (g = 0.5) => noise({ dur: 0.2, type: 'highpass', f: 1800, gain: 0.09 * g, attack: 0.005, dest: A.world }),
+  breath: () => { if (!play('breath', { g: 0.2, rate: 1.4, offset: 0.12, dur: 0.6, lp: 2800, dest: A.body })) noise({ dur: 0.45, f: 800, f2: 1800, q: 0.9, gain: 0.07, attack: 0.08, dest: A.body }); },
+  heart: (k) => { tone(52, 40, 0.18, 0.25 + 0.4 * k); tone(46, 36, 0.15, 0.16 + 0.25 * k, { at: 0.24 }); },
+  tap: () => { noise({ dur: 0.03, type: 'highpass', f: 1800, gain: 0.18, attack: 0.002, dest: A.body }); noise({ at: 0.13, dur: 0.03, type: 'highpass', f: 1800, gain: 0.16, attack: 0.002, dest: A.body }); },
+};
+/* the stream: the recorded water loop, its level and rate following her flow (a surge is heard rising before it lands); a synthesised splash on the tide */
+const STREAM = { src: null, g: null, lp: null, noise: null, ng: null };
+function streamInit() {
+  if (!A.ctx || STREAM.g) return;
+  STREAM.g = A.ctx.createGain(); STREAM.g.gain.value = 0; STREAM.lp = A.ctx.createBiquadFilter(); STREAM.lp.type = 'lowpass'; STREAM.lp.frequency.value = 2400;
+  STREAM.lp.connect(STREAM.g); STREAM.g.connect(A.world);
+  if (A.buf.pour) { STREAM.src = A.ctx.createBufferSource(); STREAM.src.buffer = A.buf.pour; STREAM.src.loop = true; STREAM.src.connect(STREAM.lp); STREAM.src.start(); }
+  const n = A.ctx.createBufferSource(); n.buffer = A.white; n.loop = true; const bp = A.ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = 0.8;
+  STREAM.ng = A.ctx.createGain(); STREAM.ng.gain.value = 0; n.connect(bp); bp.connect(STREAM.ng); STREAM.ng.connect(A.world); n.start(); STREAM.bp = bp;
+}
+function streamSet(flow, rising) {
+  if (!STREAM.g) return;
+  const t = A.ctx.currentTime, k = clamp(flow / 0.8, 0, 1.4);
+  STREAM.g.gain.setTargetAtTime(A.buf.pour ? 0.5 * k : 0, t, 0.08);
+  STREAM.ng.gain.setTargetAtTime((A.buf.pour ? 0.02 : 0.08) * k, t, 0.08);
+  STREAM.lp.frequency.setTargetAtTime(1600 + 2600 * k + (rising ? 1200 : 0), t, 0.1);
+  if (STREAM.src) STREAM.src.playbackRate.setTargetAtTime(0.9 + 0.25 * k + (rising ? 0.15 : 0), t, 0.1);
+  STREAM.bp.frequency.setTargetAtTime(900 + 1200 * k, t, 0.1);
+}
+
+/* ---------- her hand and the sensory lines ---------- */
+function say(text) {
+  if (!text) return;
+  const el = document.createElement('div'); el.className = 'her-line'; el.textContent = text;
+  const speed = S.style === 'cruel' || S.style === 'cold' ? 24 : S.style === 'ritual' ? 45 : 34;
+  el.style.setProperty('--write', `${Math.max(140, text.length * speed)}ms`); el.style.setProperty('--steps', String(Math.max(4, text.length * 2)));
+  const showing = [...$('#hand').querySelectorAll('.her-line:not(.gone)')].length;
+  el.style.left = `${innerWidth * 0.6}px`; el.style.top = `${innerHeight * 0.14 + showing * 50}px`; el.style.transform = `rotate(${rand(-4, 3).toFixed(1)}deg)`;
+  $('#hand').appendChild(el); SFX.pen();
+  setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 600); }, 2600);
+}
+function sense(text) {
+  const el = document.createElement('div'); el.className = 'sense'; el.textContent = text;
+  const showing = [...$('#hand').querySelectorAll('.sense:not(.gone)')].length;
+  el.style.left = `${innerWidth * 0.06}px`; el.style.top = `${innerHeight * 0.4 - showing * 46}px`;
+  $('#hand').appendChild(el);
+  setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 900); }, 3400);
+}
+const sayL = (k) => { const p = L()[k]; if (p && p.length) say(pick(p)); };
+
+/* ---------- state ---------- */
+let G;
+function fresh() {
+  return { phase: 'idle', t: 0, fill: 0, air: 1, reflex: 0, gulping: 0, breathing: 0, gulpsInRow: 0, spaceHeld: false, flow: 0, flowTarget: 0, surge: null, nextSurge: 6000,
+    paused: 0, tapCd: 0, poured: 0, spilled: 0, ripple: 0, splashT: 0, drops: [], lastHeart: 0, tasteCd: 6000, shake: 0, cam: 0, end: 0,
+    puddle: null, cleanT: 0, light: -1, gest: null,
+    stats: { gulps: 0, breaths: 0, coughs: 0, overflows: 0, taps: 0, spilled: 0, cleaned: null, swallowedWhileCleaning: 0 } };
+}
+G = fresh();
+
+/* ---------- her flow: a plan of pauses, surges with their warning, feints (the engine's segment plan gives these) ---------- */
+function planFlow(dt) {
+  const s = ST();
+  if (G.paused > 0) { G.paused -= dt; G.flowTarget = 0; }
+  else {
+    // her base with a slow wander; now and then a pause
+    G.flowTarget = s.base * S.flowK * (1 + s.vary * Math.sin(G.t / 1300) * Math.sin(G.t / 3700 + 1));
+    if (Math.random() < (s.pause * dt) / 9000) { G.paused = rand(700, 1800); }
+  }
+  // a surge: warned (her line for a ritual holder; the stream's sound rising otherwise), then it lands; a playful feint warns and does not land
+  G.nextSurge -= dt;
+  if (!G.surge && G.nextSurge <= 0 && G.paused <= 0) {
+    const feint = s.feint && Math.random() < s.feint;
+    G.surge = { t0: G.t, warn: s.warn, len: rand(1200, 2200), feint };
+    if (s.announce) setTimeout(() => G.phase === 'loop' && sayL('surge'), Math.max(0, s.warn - 600));
+    G.nextSurge = rand(...s.surgeEvery) * 1000;
+  }
+  let rising = false;
+  if (G.surge) {
+    const u = G.t - G.surge.t0;
+    if (u < G.surge.warn) rising = true;
+    else if (!G.surge.feint && u < G.surge.warn + G.surge.len) G.flowTarget *= s.surge;
+    else if (u >= G.surge.warn + (G.surge.feint ? 300 : G.surge.len)) G.surge = null;
+  }
+  G.flow = lerp(G.flow, G.flowTarget, Math.min(1, dt / 220));
+  streamSet(G.flow, rising);
+}
+
+/* ---------- the body: swallow, breathe, the reflex, overflow and coughs ---------- */
+function startGulp() {
+  if (G.gulping > 0 || G.breathing > 0) return;
+  G.gulping = GULP_MS; G.stats.gulps += 1; G.gulpsInRow += 1; SFX.gulp(0.6 + G.fill);
+  G.air = Math.max(0, G.air - AIR_GULP);
+  if (G.gulpsInRow >= 4) G.reflex = Math.min(1, G.reflex + 0.12 * (G.gulpsInRow - 3));
+  if (G.phase === 'clean') G.stats.swallowedWhileCleaning += 1;
+}
+function startBreath() {
+  if (G.gulping > 0 || G.breathing > 0) return;
+  G.breathing = BREATH_MS; G.stats.breaths += 1; G.gulpsInRow = 0; SFX.breath();
+  const coughChance = smooth(COUGH_FROM, 1, G.fill) * 0.7 + G.reflex * 0.3;
+  if (Math.random() < coughChance) setTimeout(() => cough('breath'), 220);
+}
+function cough(why) {
+  if (G.phase !== 'loop' && G.phase !== 'clean') return;
+  G.stats.coughs += 1; SFX.cough(); G.shake = 1;
+  const out = Math.min(G.fill, 0.25 + 0.2 * G.fill); spill(out, true);
+  G.reflex = Math.max(0, G.reflex - 0.6); G.breathing = 0; G.air = Math.min(1, G.air + 0.2);
+  if (Math.random() < 0.6) setTimeout(() => sayL('cough'), 400);
+}
+function spill(amount, coughed) {
+  if (amount <= 0) return;
+  G.fill = Math.max(0, G.fill - amount); G.spilled += amount; G.stats.spilled += amount;
+  SFX.splash(0.4 + amount);
+  for (let i = 0; i < 6 + amount * 20; i++) G.drops.push({ x: rand(0.02, 0.98), y: 1 - tideH() / innerHeight, vx: rand(-0.12, 0.12), vy: rand(-0.4, -0.1) * (coughed ? 1.6 : 0.6), life: 1 });
+  if (!coughed && Math.random() < 0.4) setTimeout(() => sayL('spill'), 300);
+}
+function tap() {
+  if (G.phase !== 'loop' || G.tapCd > 0) return;
+  G.tapCd = 2500; G.stats.taps += 1; SFX.tap();
+  const el = $('#tap'); el.style.opacity = '1'; el.classList.remove('knock'); void el.offsetWidth; el.classList.add('knock'); setTimeout(() => { el.style.opacity = '0'; }, 700);
+  const how = ST().tap;
+  setTimeout(() => {
+    sayL('tapped');
+    if (how === 'pause') G.paused = 2500;
+    else if (how === 'slower') { G.paused = 600; S._slow = (S._slow ?? 1) * 0.8; }
+    else if (how === 'hold') G.paused = 1500;
+    else if (how === 'faster') { G.surge = { t0: G.t, warn: 300, len: 1600, feint: false }; }
+    else if (how === 'surge') { G.surge = { t0: G.t, warn: 0, len: 2200, feint: false }; }
+  }, 400);
+}
+
+/* ---------- phases ---------- */
+function begin() {
+  audioInit(); if (A.ctx.state === 'suspended') A.ctx.resume(); streamInit();
+  $('#hand').replaceChildren(); $('#summary').style.display = 'none';
+  G = fresh(); G.phase = 'entry'; S._slow = 1;
+  $('#reply').innerHTML = '<span class="act">She stands over the commander, and waits for the mouth to open.</span>';
+  setTimeout(() => { if (G.phase === 'entry') { G.phase = 'loop'; G.end = S.len * 1000; sayL('entry'); } }, 1400);
+}
+function endFlow() {
+  G.phase = 'after'; streamSet(0, false); sayL('done');
+  // what was spilled pools on the floor: by her style she makes the commander clean it (the engine's chain to tongue_work at dirt 60)
+  setTimeout(() => {
+    if (G.spilled > 0.15 && ST().check === 'clean') { sayL('clean'); setTimeout(startClean, 1300); }
+    else { if (G.spilled > 0.15) { sayL('clean'); sense('She wipes it up herself.'); } setTimeout(() => finish('done'), 1500); }
+  }, 1200);
+}
+function finish(why) {
+  if (G.phase === 'done') return;
+  G.phase = 'done'; streamSet(0, false);
+  if (why === 'stop') say('okay. stop. here.');
+  const s = G.stats;
+  setTimeout(() => {
+    $('#sumLine').textContent = why === 'stop' ? 'okay. stop. here.' : (L().done[0] ?? 'done.');
+    $('#sumFacts').innerHTML = `her style: ${S.style} · her volume ${S.len} s<br>swallows: ${s.gulps} · breaths: ${s.breaths} · coughs: ${s.coughs}<br>taps: ${s.taps}<br>`
+      + `spilled: ${(s.spilled * 100).toFixed(0)} % of a mouthful in all<br>`
+      + (s.cleaned !== null ? `the floor: ${(s.cleaned * 100).toFixed(0)} % left · swallowed while cleaning: ${s.swallowedWhileCleaning}<br>` : '')
+      + `how it ended: ${why}`;
+    $('#summary').style.display = 'block';
+  }, 900);
+}
+
+/* ---------- the cleaning: the puddle on the floor art, wiped with the tongue; every bit wiped fills the mouth ---------- */
+function startClean() {
+  G.phase = 'clean'; G.cleanT = 0;
+  const w = 160, h = 100, m = new Float32Array(w * h);
+  const n = 4 + Math.round(G.spilled * 6), blobs = [];
+  for (let i = 0; i < n; i++) blobs.push([rand(0.3, 0.7), rand(0.35, 0.75), rand(0.05, 0.14)]);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let v = 0; for (const [bx, by, br] of blobs) v += Math.exp(-(((x / w - bx) * 1.6) ** 2 + (y / h - by) ** 2) / (br * br)); m[y * w + x] = clamp(v * 1.2 - 0.15, 0, 1) * clamp(G.spilled * 1.5, 0.4, 1); }
+  G.puddle = { w, h, m, total0: m.reduce((a, b) => a + b, 0), c: document.createElement('canvas') }; G.puddle.c.width = w; G.puddle.c.height = h;
+  G.fill = Math.min(G.fill, 0.15); G.light = -1;
+  $('#reply').innerHTML = '<span class="act">Down to the floor, where it spilled.</span>';
+}
+const puddleLeft = () => (G.puddle ? G.puddle.m.reduce((a, b) => a + b, 0) / Math.max(1, G.puddle.total0) : 0);
+function puddleRect() { const W = innerWidth, H = innerHeight; return { x: W * 0.1, y: H * 0.22, w: W * 0.8, h: H * 0.62 }; }
+function wipePuddle(x0, y0, x1, y1) {
+  const p = G.puddle; if (!p) return 0; const r = puddleRect();
+  const steps = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 4)), rad = 0.06 * p.w; let took = 0;
+  for (let i = 0; i <= steps; i++) {
+    const px = ((lerp(x0, x1, i / steps) - r.x) / r.w) * p.w, py = ((lerp(y0, y1, i / steps) - r.y) / r.h) * p.h;
+    for (let y = Math.max(0, Math.floor(py - rad)); y < Math.min(p.h, Math.ceil(py + rad)); y++) for (let x = Math.max(0, Math.floor(px - rad)); x < Math.min(p.w, Math.ceil(px + rad)); x++) {
+      const d = Math.hypot(x - px, y - py) / rad; if (d > 1) continue; const k = y * p.w + x; const t = p.m[k] * 0.3 * (1 - d); p.m[k] -= t; took += t;
+    }
+  }
+  return took;
+}
+
+/* ---------- the loop ---------- */
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(50, now - last); last = now;
+  if (G.phase === 'entry' || G.phase === 'loop' || G.phase === 'after' || G.phase === 'clean') update(dt);
+  render(now, dt);
+}
+function update(dt) {
+  G.t += dt;
+  G.cam = Math.min(1, G.cam + dt / 900);
+  G.tapCd = Math.max(0, G.tapCd - dt); G.shake = Math.max(0, G.shake - dt / 500);
+  if (G.phase === 'loop') {
+    planFlow(dt);
+    const inflow = G.flow * (S._slow ?? 1) * dt / 1000;
+    G.fill += inflow; G.poured += inflow;
+    if (G.flow > REFLEX_SURGE) G.reflex = Math.min(1, G.reflex + (G.flow - REFLEX_SURGE) * dt / 2500);
+    if (Math.random() < G.flow * dt / 1200) G.ripple = 1;
+    G.end -= dt; if (G.end <= 0) endFlow();
+  }
+  // the reflex cools down; at full it is a cough
+  G.reflex = Math.max(0, G.reflex - dt / 9000);
+  if (G.reflex >= 1) cough('reflex');
+  // a swallow takes its share over its time; held Space gulps again
+  if (G.gulping > 0) { const take = GULP_TAKES * Math.min(dt, G.gulping) / GULP_MS; G.fill = Math.max(0, G.fill - take); G.gulping -= dt; if (G.gulping <= 0 && G.spaceHeld) startGulp(); }
+  if (G.breathing > 0) { G.air = Math.min(1, G.air + BREATH_GIVES * Math.min(dt, G.breathing) / BREATH_MS); G.breathing -= dt; }
+  // air drains while the mouth holds anything; at nothing the body breathes by itself (and with a full mouth that is a cough)
+  if (G.fill > 0.05 && G.breathing <= 0) G.air = Math.max(0, G.air - AIR_DRAIN * dt / 1000);
+  if (G.air <= 0 && G.breathing <= 0 && G.gulping <= 0) { sense('The body breathes by itself.'); startBreath(); if (G.fill > 0.3) cough('air'); }
+  // overflow: what does not fit runs over the edges
+  if (G.fill > 1) { const over = G.fill - 1; G.fill = 1; if (!G.brimming) { G.brimming = true; G.stats.overflows += 1; } spill(over + 0.04, false); } // one overflow an event
+  else if (G.fill < 0.9) G.brimming = false;
+  // the taste, now and then
+  G.tasteCd -= dt; if (G.phase === 'loop' && G.tasteCd <= 0 && G.fill > 0.3) { sense(pick(TASTE)); G.tasteCd = rand(9000, 15000); }
+  // the heart: faster as the air goes
+  const bpm = lerp(70, 150, smooth(0.6, 0, G.air));
+  if (G.t - G.lastHeart > 60000 / bpm) { G.lastHeart = G.t; SFX.heart(smooth(0.6, 0, G.air)); }
+  // drops
+  for (const d of G.drops) { d.vy += 1.6 * dt / 1000; d.x += d.vx * dt / 1000; d.y += d.vy * dt / 1000; d.life -= dt / 1300; }
+  G.drops = G.drops.filter((d) => d.life > 0 && d.y < 1.1);
+  // the cleaning: done when the floor is nearly dry; then her check in a band of light
+  if (G.phase === 'clean') {
+    G.cleanT += dt;
+    if (G.light < 0 && (puddleLeft() <= 0.1 || G.cleanT > 40000)) { G.light = 0; sense('She looks at the floor against the light.'); }
+    if (G.light >= 0) { G.light += dt / 1700; if (G.light >= 1 && !G.judged) { G.judged = true; G.stats.cleaned = puddleLeft(); sayL(puddleLeft() > 0.15 ? 'missed' : 'cleaned'); setTimeout(() => finish('done'), 1800); } }
+  }
+}
+const tideH = () => lerp(0, innerHeight * 0.36, clamp(G.fill, 0, 1));
+
+/* ---------- drawing ---------- */
+function placeSprite(img, opts) {
+  if (!img.naturalWidth) return;
+  const vw = innerWidth, vh = innerHeight, nw = img.naturalWidth, nh = img.naturalHeight;
+  const Hs = vh * opts.h, sc = Hs / nh, Ws = nw * sc;
+  const fx = opts.x * vw + (opts.dx ?? 0), bottom = vh * (opts.bottom ?? 1);
+  const left = fx - Ws / 2, top = bottom - Hs;
+  img.style.transform = `translate(${left}px, ${top}px) translate(${Ws / 2}px, ${Hs}px) rotate(${(opts.rot ?? 0).toFixed(2)}deg) rotateX(${(opts.rx ?? 0).toFixed(2)}deg) translate(${-Ws / 2}px, ${-Hs}px) scale(${sc})`;
+}
+const overImgs = { over: null, naked: null };
+function render(now, dt) {
+  const W = innerWidth, H = innerHeight;
+  const cleaning = G.phase === 'clean' || (G.phase === 'done' && G.puddle);
+  // her picture by the chain: over_naked (explicit and undressed) → over → her sprite from below (weight's face-up placement)
+  const useImg = cleaning ? null : (S.explicit && overImgs.naked) ? overImgs.naked : overImgs.over;
+  const ov = $('#over'), her = $('#her');
+  const sway = Math.sin(now / 1400) * 0.6 + (G.surge && G.t - G.surge.t0 > G.surge.warn ? Math.sin(now / 90) * 0.4 : 0);
+  if (useImg) {
+    if (ov.src !== useImg.src) ov.src = useImg.src; ov.style.display = '';
+    const oh = S.overH, ow = (H * oh) * useImg.naturalWidth / useImg.naturalHeight;
+    const overscan = Math.max(0.02, (ow / 2) * Math.sin(6 * Math.PI / 180) / H + 0.01);
+    placeSprite(ov, { h: oh, x: S.overX, bottom: 1 + overscan + S.overSink, rot: sway });
+    her.style.opacity = '0';
+  } else { ov.style.display = 'none'; her.style.opacity = cleaning ? '0' : '1'; placeSprite(her, { h: 1.55, x: 0.5, bottom: 1.42, rot: sway, rx: 10 }); }
+  $('#ceiling').style.opacity = cleaning ? '0' : '1';
+  $('#ceiling').style.filter = `blur(3px) brightness(.55)`;
+  $('#floor').style.opacity = cleaning ? '1' : '0';
+  $('#floor').style.filter = 'blur(1px) brightness(.6) saturate(.85)';
+  const sh = S.reduced ? 0 : G.shake * 8 + (G.gulping > 0 ? Math.sin(G.gulping / GULP_MS * Math.PI) * 2 : 0);
+  $('#world').style.transform = `translate(${rand(-sh, sh).toFixed(1)}px, ${(rand(-sh, sh) + (G.gulping > 0 ? 3 * Math.sin(G.gulping / GULP_MS * Math.PI) : 0)).toFixed(1)}px)`;
+  // air: the frame's edges close in and darken; the reflex warms them
+  const airK = smooth(0.7, 0, G.air), rk = G.reflex;
+  $('#vig').style.background = `radial-gradient(ellipse ${lerp(80, 52, airK)}% ${lerp(76, 48, airK)}% at 50% 45%, rgba(0,0,0,0) 45%, rgba(${Math.round(20 + 60 * rk)},${Math.round(6 + 4 * rk)},4,${(0.35 + 0.55 * airK).toFixed(2)}) 100%)`;
+  // the tide: the mouth's fill as a warm liquid at the bottom, ripples where the stream lands, a swell when swallowing; overflow drops
+  const tc = $('#tide'); if (tc.width !== W || tc.height !== H) { tc.width = W; tc.height = H; }
+  const x = tc.getContext('2d'); x.clearRect(0, 0, W, H);
+  const th = tideH();
+  if (th > 1) {
+    const surf = H - th, t = now / 1000, rip = G.ripple; G.ripple = Math.max(0, G.ripple - dt / 600);
+    x.beginPath(); x.moveTo(0, H);
+    for (let px = 0; px <= W; px += 8) {
+      const u = px / W;
+      const wave = Math.sin(u * 9 + t * 2.1) * 4 + Math.sin(u * 23 - t * 3.4) * 2 + rip * 10 * Math.exp(-((u - 0.5) ** 2) / 0.01) * Math.sin(t * 18 - u * 40)
+        + (G.gulping > 0 ? -10 * Math.sin(G.gulping / GULP_MS * Math.PI) * Math.exp(-((u - 0.5) ** 2) / 0.08) : 0);
+      x.lineTo(px, surf + wave);
+    }
+    x.lineTo(W, H); x.closePath();
+    const g = x.createLinearGradient(0, surf, 0, H);
+    g.addColorStop(0, 'rgba(255,226,140,0.46)'); g.addColorStop(0.25, 'rgba(236,190,96,0.42)'); g.addColorStop(1, 'rgba(190,140,60,0.55)');
+    x.fillStyle = g; x.fill();
+    // the surface's sheen
+    x.strokeStyle = 'rgba(255,245,210,0.55)'; x.lineWidth = 2; x.beginPath();
+    for (let px = 0; px <= W; px += 8) { const u = px / W; const wave = Math.sin(u * 9 + t * 2.1) * 4 + Math.sin(u * 23 - t * 3.4) * 2 + rip * 10 * Math.exp(-((u - 0.5) ** 2) / 0.01) * Math.sin(t * 18 - u * 40); px === 0 ? x.moveTo(px, surf + wave) : x.lineTo(px, surf + wave); }
+    x.stroke();
+    // near full the edges brim and quiver
+    if (G.fill > 0.85) { x.fillStyle = `rgba(255,230,160,${(0.25 * smooth(0.85, 1, G.fill)).toFixed(2)})`; x.fillRect(0, surf - 6, 14, th); x.fillRect(W - 14, surf - 6, 14, th); }
+  }
+  for (const d of G.drops) { x.fillStyle = `rgba(255,228,150,${(0.7 * d.life).toFixed(2)})`; x.beginPath(); x.ellipse(d.x * W, d.y * H, 3, 5, 0, 0, Math.PI * 2); x.fill(); }
+  // the puddle on the floor (cleaning): glossy liquid over the floor art; her check is a band of light across it
+  const pc = $('#puddleC');
+  if (cleaning && G.puddle) {
+    const r = puddleRect(), p = G.puddle, cx2 = p.c.getContext('2d'), id = cx2.createImageData(p.w, p.h);
+    const band = G.light >= 0 ? lerp(-0.3, 1.3, easeOut(G.light)) : -9;
+    for (let yy = 0; yy < p.h; yy++) for (let xx = 0; xx < p.w; xx++) {
+      const i = yy * p.w + xx, v = p.m[i]; if (v < 0.01) { id.data[i * 4 + 3] = 0; continue; }
+      const sheen = 0.5 + 0.5 * Math.exp(-(((xx / p.w) - (yy / p.h) * 0.5 - 0.2) ** 2) / 0.02), lb = Math.exp(-(((xx / p.w) + (yy / p.h) * 0.3 - band) ** 2) / 0.006);
+      id.data[i * 4] = 230 + 25 * lb; id.data[i * 4 + 1] = 205 + 50 * lb; id.data[i * 4 + 2] = 130 + 120 * lb; id.data[i * 4 + 3] = Math.round(clamp(v * (0.45 + 0.25 * sheen) + lb * v * 0.5, 0, 1) * 255);
+    }
+    cx2.putImageData(id, 0, 0);
+    if (pc.width !== p.w || pc.height !== p.h) { pc.width = p.w; pc.height = p.h; }
+    pc.getContext('2d').clearRect(0, 0, p.w, p.h); pc.getContext('2d').drawImage(p.c, 0, 0);
+    pc.style.left = `${r.x + W * 0.04}px`; pc.style.top = `${r.y + H * 0.04}px`; pc.style.width = `${r.w}px`; pc.style.height = `${r.h}px`; pc.style.opacity = '1';
+  } else pc.style.opacity = '0';
+  if (S.debug) $('#debug').textContent = `phase ${G.phase} · fill ${G.fill.toFixed(2)} · air ${G.air.toFixed(2)} · reflex ${G.reflex.toFixed(2)}\nflow ${G.flow.toFixed(2)} (target ${G.flowTarget.toFixed(2)}) · surge ${G.surge ? (G.surge.feint ? 'feint' : 'yes') : '—'} · paused ${Math.max(0, G.paused).toFixed(0)}\n`
+    + `poured ${G.poured.toFixed(2)} · spilled ${G.spilled.toFixed(2)} · left ${(G.end / 1000).toFixed(0)} s${G.puddle ? ` · puddle ${(puddleLeft() * 100).toFixed(0)} %` : ''}`;
+}
+
+/* ---------- input ---------- */
+addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === ' ') { e.preventDefault(); if (!e.repeat) { G.spaceHeld = true; if (G.phase === 'loop' || G.phase === 'clean' || G.phase === 'after') startGulp(); } }
+  if (e.key === 'Shift' && !e.repeat && (G.phase === 'loop' || G.phase === 'clean')) startBreath();
+  if (e.key === 't' || e.key === 'T') tap();
+  if (e.key === 'Escape' && G.phase !== 'done' && G.phase !== 'idle') finish('stop');
+  if (e.key === 'h' || e.key === 'H') $('#panel').classList.toggle('hidden');
+});
+addEventListener('keyup', (e) => { if (e.key === ' ') G.spaceHeld = false; });
+const stage = $('#stage');
+stage.addEventListener('contextmenu', (e) => e.preventDefault());
+stage.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('#panel') || e.target.closest('.card') || e.target.closest('#stopPill')) return;
+  if (e.button === 2) { tap(); return; }
+  if (G.phase === 'clean') G.gest = { x: e.clientX, y: e.clientY };
+});
+addEventListener('pointermove', (e) => {
+  const g = G.gest; if (!g || G.phase !== 'clean') return;
+  const took = wipePuddle(g.x, g.y, e.clientX, e.clientY);
+  if (took > 0) G.fill = Math.min(1.2, G.fill + took * 0.0016); // what is licked up fills the mouth again
+  g.x = e.clientX; g.y = e.clientY;
+});
+addEventListener('pointerup', () => { G.gest = null; });
+$('#stopPill').onclick = () => finish('stop');
+
+/* ---------- the panel ---------- */
+function opts(host, items, get, set) {
+  host.replaceChildren();
+  for (const it of items) { const b = document.createElement('button'); b.className = 'opt' + (get() === it ? ' on' : ''); b.textContent = it; b.onclick = () => { set(it); opts(host, items, get, set); }; host.appendChild(b); }
+}
+const styleNote = () => { $('#styleNote').textContent = STYLE_NOTE[S.style]; };
+opts($('#styles'), Object.keys(STYLES), () => S.style, (v) => { S.style = v; styleNote(); });
+styleNote();
+$('#explicit').onchange = () => { S.explicit = $('#explicit').checked; };
+const loadOver = (key, input) => { const f = input.files[0]; if (!f) return; const im = new Image(); im.onload = () => { overImgs[key] = im; }; im.src = URL.createObjectURL(f); };
+$('#fileOver').onchange = () => loadOver('over', $('#fileOver'));
+$('#fileNaked').onchange = () => loadOver('naked', $('#fileNaked'));
+for (const [id, key] of [['overH', 'overH'], ['overX', 'overX'], ['overSink', 'overSink']]) $(`#${id}`).oninput = () => { S[key] = Number($(`#${id}`).value); $(`#${id}V`).textContent = S[key].toFixed(2); };
+$('#copyOver').onclick = () => { const j = JSON.stringify({ slot: S.explicit && overImgs.naked ? 'over_naked' : 'over', fit: { height: S.overH, x: S.overX, sink: S.overSink } }); navigator.clipboard?.writeText(j).catch(() => {}); $('#overNote').textContent = j; };
+$('#len').oninput = () => { S.len = Number($('#len').value); $('#lenV').textContent = $('#len').value; };
+$('#flowK').oninput = () => { S.flowK = Number($('#flowK').value); $('#flowKV').textContent = S.flowK.toFixed(2); };
+for (const k of Object.keys(ASSETS.ceilings)) { const o = document.createElement('option'); o.value = k; o.textContent = k; $('#ceil').appendChild(o); }
+for (const k of Object.keys(ASSETS.floors)) { const o = document.createElement('option'); o.value = k; o.textContent = k; $('#floorSel').appendChild(o); }
+$('#ceil').onchange = () => { $('#ceiling').style.backgroundImage = `url(${ASSETS.ceilings[$('#ceil').value]})`; };
+$('#floorSel').onchange = () => { $('#floor').style.backgroundImage = `url(${ASSETS.floors[$('#floorSel').value]})`; };
+$('#ceiling').style.backgroundImage = `url(${ASSETS.ceilings.ceiling_room_1})`;
+$('#floor').style.backgroundImage = `url(${ASSETS.floors.floor_wood})`;
+$('#snd').onchange = () => { S.sound = $('#snd').checked; if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
+$('#vol').oninput = () => { S.vol = Number($('#vol').value); if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
+$('#accent').oninput = () => document.documentElement.style.setProperty('--her', $('#accent').value);
+$('#dbg').onchange = () => { S.debug = $('#dbg').checked; $('#debug').style.display = S.debug ? 'block' : 'none'; };
+$('#rm').checked = S.reduced; $('#rm').onchange = () => { S.reduced = $('#rm').checked; };
+$('#restart').onclick = () => begin();
+$('#againBtn').onclick = () => begin();
+$('#her').src = ASSETS.her;
+$('#setup').onclick = async () => { audioInit(); await A.ctx.resume(); $('#start').style.display = 'none'; await loadSamples(); };
+$('#go').onclick = async () => { audioInit(); await A.ctx.resume(); $('#start').style.display = 'none'; await loadSamples(); begin(); };
+requestAnimationFrame(frame);
+
+/* test hooks (prototype only) */
+window.__S = S; window.__G = () => G; window.__begin = () => begin(); window.__gulp = () => startGulp(); window.__breathe = () => startBreath(); window.__tap = () => tap();
+</script>
+</body>
+</html>
