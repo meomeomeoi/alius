@@ -39269,7 +39269,7 @@ function resolveSegment(run, plan, inputs, env) {
   };
   const seal = sealNow(run, env.sealLevel);
   const openings = env.interaction === "timing" ? new Map(effectiveOpenings(plan, live3, leadStyle(env.style).key).map((o) => [o.beat, o])) : null;
-  const evenBefore = (b) => ![b - 1, b].some((x) => x >= 0 && at(x, "hold").length === 0);
+  const evenBefore = (b) => ![b - 1, b].some((x) => x >= 0 && (at(x, "hold").length === 0 || at(x, "uneven").some((u) => u.part === "tilted")));
   const scale = env.scale ?? 1;
   for (let b = 0; b < run_; b++) {
     const beat = plan.beats[b];
@@ -65462,7 +65462,7 @@ function onBeat() {
     G3.held.shift();
     G3.even.shift();
   }
-  reportBeat(G3.beat - 1, evenNow);
+  reportBeat(G3.beat - 1, G3.held[G3.held.length - 1], evenNow);
   G3.slipThisBeat = false;
 }
 function slip() {
@@ -65815,13 +65815,13 @@ function report2(i) {
   R5.sent.add(key);
   E2.env.staging.input(i, { pointer: R5.via === "mouse" });
 }
-function reportBeat(beat, even) {
+function reportBeat(beat, held3, even) {
   const u = R5.uneven;
   const amount = u.ms > 0 ? Math3.round(u.sum / u.ms * 1e3) / 1e3 : 0;
   R5.uneven = { sum: 0, ms: 0 };
   if (beat < 0) return;
-  if (even) report2({ beat, kind: "hold" });
-  report2({ beat, kind: "uneven", amount });
+  if (held3) report2({ beat, kind: "hold" });
+  report2({ beat, kind: "uneven", amount, ...held3 && !even ? { part: "tilted" } : {} });
 }
 function schedulePlan2(run, ck) {
   const plan = run.segment.plan;
@@ -65930,7 +65930,7 @@ function before2() {
   while (R5.running && R5.queue.length && R5.queue[0].at <= G3.clock) R5.queue.shift().fn();
   if (R5.running && R5.seg && !R5.seg.flushed && G3.clock - R5.seg.clock0 >= R5.seg.endMs - 300) {
     R5.seg.flushed = true;
-    reportBeat(segBeat(), HOLD2.on && !G3.slipThisBeat && Math3.abs(G3.cop - G3.ctl) <= S4.tol);
+    reportBeat(segBeat(), HOLD2.on && !G3.slipThisBeat, HOLD2.on && !G3.slipThisBeat && Math3.abs(G3.cop - G3.ctl) <= S4.tol);
   }
   const input = e.env.input;
   if (input.value !== "" || e.mirror.childElementCount > 0) placeMirror2(e);

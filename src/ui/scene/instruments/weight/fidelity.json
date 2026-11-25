@@ -251,8 +251,8 @@
     },
     {
       "fn": "onBeat",
-      "reason": "Wiring (R16, R17): as a beat ends it is reported: `hold` when it was held and level (`evenNow`), `uneven` with the mean extra drain factor of the beat (`reportBeat`).",
-      "diff": "@@ -9,2 +9,3 @@\n }\n+reportBeat(G.beat-1,evenNow)\n G.slipThisBeat=false"
+      "reason": "Wiring (R16, Ruling S): as a beat ends it is reported: `hold` when it was held (the prototype's slip is the hold breaking; a tilt only drains, so it is never withheld), `uneven` with the mean extra drain factor of the beat, marked `tilted` when the held beat ended off level (`reportBeat`).",
+      "diff": "@@ -9,2 +9,3 @@\n }\n+reportBeat(G.beat-1,G.held[G.held.length-1],evenNow)\n G.slipThisBeat=false"
     },
     {
       "fn": "slip",

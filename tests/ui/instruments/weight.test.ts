@@ -10,6 +10,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import type { Registries } from '../../../src/content/types';
 import { floorOf } from '../../../src/engine/backdrops';
 import { COMMANDER, registerFrameReader, resetBlockingHooks, setBlocking } from '../../../src/engine/blocking';
+import { resolveEnvOf, resolveSegment } from '../../../src/engine/physics/segment';
 import { registerPhysicsStyle, resetPhysicsHooks } from '../../../src/engine/physics/style';
 import type { PhysicsRun, SegmentInput, SegmentPlan } from '../../../src/engine/physics/state';
 import type { CampaignState } from '../../../src/engine/state/types';
@@ -235,7 +236,7 @@ describe('the weight instrument on the scene', () => {
     expect(t.q('.alius-stage-dial .alius-stop-pill[data-stop-word]')).not.toBeNull();
   });
 
-  it('inputs: a level, held beat reports hold; a tilted one does not (and costs as uneven); her own shift at once; a slip sends no hold', () => {
+  it('inputs: every held beat reports hold; a tilted one is marked tilted and costs as uneven (Ruling S); her own shift at once; a slip sends no hold', () => {
     const t = draw(hold('human_chair', planOf({})));
     t.balance(0.5);
     t.mouse('mousedown');
@@ -248,9 +249,11 @@ describe('the weight instrument on the scene', () => {
     // beat 3 tilted: the balance hard right
     t.balance(1);
     t.to(4 * BEAT + 100);
-    expect(reports(t).some((i) => i.kind === 'hold' && i.beat === 3)).toBe(false);
+    expect(reports(t).some((i) => i.kind === 'hold' && i.beat === 3)).toBe(true); // held: a tilt is never a slip (Ruling S)
     const uneven3 = reports(t).find((i) => i.kind === 'uneven' && i.beat === 3)!;
     expect(uneven3.amount).toBeGreaterThan(0.5); // 1.2 × (|err| − tol/2), err about 1.15 once the balance has gone
+    expect(uneven3.part).toBe('tilted');
+    expect(uneven2.part).toBeUndefined();
     // beat 5: level again, then let go mid-beat: a slip (no hold for the beat)
     t.balance(0.5);
     t.to(5 * BEAT + 400);
@@ -275,6 +278,27 @@ describe('the weight instrument on the scene', () => {
     // each beat once: no beat and kind is sent twice
     const keys = reports(t).map((i) => `${i.beat}|${i.kind}`);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it('Ruling S: the instrument and the engine agree: a tilted held beat is no engine slip, and the slips are the same count', () => {
+    const plan = planOf({});
+    const s = hold('human_chair', plan);
+    const t = draw(s);
+    t.balance(0.5);
+    t.mouse('mousedown');
+    t.to(3 * BEAT);
+    t.balance(1); // held, tilted for a few beats
+    t.to(7 * BEAT);
+    t.balance(0.5);
+    t.to(9 * BEAT + 300);
+    t.mouse('mouseup', document); // two slips: beats 9 and 10
+    t.to(10 * BEAT + 700);
+    t.mouse('mousedown');
+    t.to(30_000);
+    const r = resolveSegment(s.scene!.physics!, plan, reports(t), resolveEnvOf(s, reg, s.scene!.physics!));
+    expect(r.slips).toBe(_weight.G.slips);
+    expect(r.slips).toBe(2);
+    expect(reports(t).filter((i) => i.kind === 'uneven' && i.part === 'tilted').length).toBeGreaterThanOrEqual(3);
   });
 
   it('the last beat of the segment is flushed before its end (300 ms ahead)', () => {

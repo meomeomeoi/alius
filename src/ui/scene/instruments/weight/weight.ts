@@ -12,8 +12,9 @@
  * - her shifts are the engine's plan (`plan.beats[].shift`, placed in wall time through `staging.clock()`): each lands at the start of its beat
  *   (+30 ms, the prototype's), telegraphed `STYLES[].tele` before; its cost is the plan's; a playful holder's feints (35 %) are told between two
  *   planned shifts, never instead of one; her attention is the plan's beat by beat; her heavier lean is `run.pressure` (a boundary's `press`);
- * - every beat is reported once as it ends (or 300 ms before the segment's end): `hold` when it was held and level (`|err| ≤ tol`, R17) and
- *   `uneven` with the mean extra drain factor of the beat (R16); the commander's own shift at once (`shift_weight`); whether she felt it is the
+ * - every beat is reported once as it ends (or 300 ms before the segment's end): `hold` when it was held (Ruling S: a tilt is never a slip,
+ *   as the prototype's) and `uneven` with the mean extra drain factor of the beat (R16), marked `part: 'tilted'` when it ended off level
+ *   (`|err| > tol`), which the engine's shift rule reads; the commander's own shift at once (`shift_weight`); whether she felt it is the
  *   engine's (`cheatRoll` at the segment's end), so her `caught` line follows `run.tally.cheatsCaught`; a report the mouse made is exempt from
  *   the typing lapse (ruling O);
  * - her lines are `cardVoice` `weight.*` by her style (ruling Q; `weight.entry.<contact>` for her first words); a model-worded `press` cue may
@@ -334,7 +335,7 @@ function onBeat() {
   const evenNow = HOLD.on && !G.slipThisBeat && Math.abs(G.cop - G.ctl) <= S.tol;
   G.held.push(HOLD.on && !G.slipThisBeat); G.even.push(evenNow);
   if (G.held.length > 8) { G.held.shift(); G.even.shift(); }
-  reportBeat(G.beat - 1, evenNow);
+  reportBeat(G.beat - 1, G.held[G.held.length - 1], evenNow);
   G.slipThisBeat = false;
 }
 function slip() { // a beat in which the hold broke is a slip (the engine drains twice); it lands the moment the hold breaks
@@ -611,14 +612,17 @@ function report(i: SegmentInput): void {
   R.sent.add(key);
   E.env.staging.input(i, { pointer: R.via === 'mouse' });
 }
-/** A beat ends: `hold` when it was held and level (R17), `uneven` with the mean extra drain factor of the beat (R16). */
-function reportBeat(beat: number, even: boolean): void {
+/**
+ * A beat ends: `hold` when it was held (Ruling S: the prototype's slip is the hold breaking, never a tilt), `uneven` with the mean extra drain
+ * factor of the beat (R16) and, when the held beat ended off level, `part: 'tilted'` (what the engine's shift rule reads as uneven).
+ */
+function reportBeat(beat: number, held: boolean, even: boolean): void {
   const u = R.uneven;
   const amount = u.ms > 0 ? Math.round((u.sum / u.ms) * 1000) / 1000 : 0;
   R.uneven = { sum: 0, ms: 0 };
   if (beat < 0) return;
-  if (even) report({ beat, kind: 'hold' });
-  report({ beat, kind: 'uneven', amount });
+  if (held) report({ beat, kind: 'hold' });
+  report({ beat, kind: 'uneven', amount, ...(held && !even ? { part: 'tilted' } : {}) });
 }
 
 /** A running segment the loop has not scheduled yet: her shifts, telegraphed by her style, placed on the loop's clock. */
@@ -714,7 +718,7 @@ function before(): void {
   while (R.running && R.queue.length && R.queue[0]!.at <= G.clock) R.queue.shift()!.fn();
   if (R.running && R.seg && !R.seg.flushed && G.clock - R.seg.clock0 >= R.seg.endMs - 300) {
     R.seg.flushed = true;
-    reportBeat(segBeat(), HOLD.on && !G.slipThisBeat && Math.abs(G.cop - G.ctl) <= S.tol);
+    reportBeat(segBeat(), HOLD.on && !G.slipThisBeat, HOLD.on && !G.slipThisBeat && Math.abs(G.cop - G.ctl) <= S.tol);
   }
   const input = e.env.input as HTMLInputElement;
   if (input.value !== '' || e.mirror.childElementCount > 0) placeMirror(e);

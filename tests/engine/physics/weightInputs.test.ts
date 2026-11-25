@@ -77,8 +77,17 @@ describe('old inputs: today\'s numbers', () => {
     expect(resolveSegment(mk(), shifted, holds.filter((i) => i.beat !== 2), env()).gauge).toBe(100 - DRAIN * 5 - 20);
     // no hold on the beat before
     expect(resolveSegment(mk(), shifted, holds.filter((i) => i.beat !== 1), env()).gauge).toBe(100 - DRAIN * 5 - 20);
-    // an uneven input alone does not make it uneven for the shift (the UI sends no hold on a tilted beat: that is what the shift reads)
+    // an uneven input without a tilt does not make it uneven for the shift; a held beat that ended tilted does (Ruling S), on the shift's beat or the one before
     expect(resolveSegment(mk(), shifted, [...holds, input(2, 'uneven', { amount: 0.4 })], env()).gauge).toBeCloseTo(100 - DRAIN * 4 - DRAIN * 0.4, 10);
+    expect(resolveSegment(mk(), shifted, [...holds, input(2, 'uneven', { amount: 0.4, part: 'tilted' })], env()).gauge).toBeCloseTo(100 - DRAIN * 4 - DRAIN * 0.4 - 20, 10);
+    expect(resolveSegment(mk(), shifted, [...holds, input(1, 'uneven', { amount: 0, part: 'tilted' })], env()).gauge).toBe(100 - DRAIN * 4 - 20);
+    expect(resolveSegment(mk(), shifted, [...holds, input(3, 'uneven', { amount: 0, part: 'tilted' })], env()).gauge).toBe(100 - DRAIN * 4); // after the shift: nothing
+  });
+
+  it('Ruling S: a held but tilted beat is no slip; it costs only its uneven drain', () => {
+    const r = resolveSegment(mk(), four(), [...holds, input(1, 'uneven', { amount: 0.6, part: 'tilted' })], env());
+    expect(r).toMatchObject({ slips: 0 });
+    expect(r.gauge).toBeCloseTo(100 - DRAIN * 4 - DRAIN * 0.6, 10);
   });
 });
 

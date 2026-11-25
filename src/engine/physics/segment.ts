@@ -190,7 +190,9 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
   const seal = sealNow(run, env.sealLevel);
   // R15: her openings as they fall once the noticed strains moved them (the plan's, without one)
   const openings = env.interaction === 'timing' ? new Map(effectiveOpenings(plan, live, leadStyle(env.style).key).map((o) => [o.beat, o])) : null;
-  const evenBefore = (b: number): boolean => ![b - 1, b].some((x) => x >= 0 && at(x, 'hold').length === 0);
+  // a shift costs when the hold was uneven on its beat or the one before: no hold there, or (Ruling S) a hold that ended off level, which the
+  // instrument carries on that beat's `uneven` input as `part: 'tilted'` (an old input has no part: as before)
+  const evenBefore = (b: number): boolean => ![b - 1, b].some((x) => x >= 0 && (at(x, 'hold').length === 0 || at(x, 'uneven').some((u) => u.part === 'tilted')));
 
   const scale = env.scale ?? 1;
   for (let b = 0; b < run_; b++) {
