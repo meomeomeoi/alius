@@ -32,6 +32,21 @@ const rowOf = (state: CampaignState, kind: string): Row | undefined => state.com
 export const toleranceOf = (state: CampaignState, kind: string): number => rowOf(state, kind)?.tolerance ?? T.startTolerance;
 export const stageIndex = (stage: Stage): number => STAGES.indexOf(stage);
 
+/**
+ * P10e-e R18: how many words scent's head holds, the commander's tolerance for her scent being the saturation capacity (P15a §16.8). The
+ * prototype counts it as `6 + Math.round(tolerance / 12)` (saturation.html `capacity`), a whole number of words.
+ */
+export const headCapacity = (tolerance: number): number => 6 + Math.round(tolerance / 12);
+
+/**
+ * P10e-e R18: the commander's tolerance for the scent of a run's holder: the first kind of hers the commander is exposed to that is breathed
+ * (registry family other than `taste`: her scent or her sweat), else the starting tolerance. Pure; nothing draws.
+ */
+export function scentToleranceOf(state: CampaignState, reg: Registries, holderId: string): number {
+  const ex = exposedKinds(state, reg).find((e) => e.holderId === holderId && String(reg.stimulusKinds.get(e.kind)?.family) !== 'taste');
+  return ex ? toleranceOf(state, ex.kind) : T.startTolerance;
+}
+
 /** The stage a share of seeking gives: boundaries at 0.2 / 0.4 / 0.6 / 0.8. */
 export const stageOf = (seek: number): Stage => STAGES[T.stages.filter((b) => seek >= b).length]!;
 

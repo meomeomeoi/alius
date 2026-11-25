@@ -5,7 +5,7 @@
  * same outcome (the latency rule).
  */
 import type { Registries } from '../../content/types';
-import { blockingOf } from '../blocking';
+import { blockingOf, contactTargetOf } from '../blocking';
 import { SEALS, type CueKind, type InteractionType, type Seal } from '../blocking/types';
 import { fnv1a } from '../hub';
 import { sceneSettingsOf } from '../moments/settings';
@@ -24,6 +24,8 @@ import {
   INPUT_KINDS, type Attention, type PhysicsRun, type PhysicsStyle, type PlannedBeat, type ScentBand, type SegmentInput, type SegmentPlan, type SegmentResult,
 } from './state';
 import { blendedStyle, leadStyle, physicsStyleOf, styleRows } from './style';
+import { scentBand } from './scent';
+import { headCapacity, scentToleranceOf } from './stimuli';
 
 /** The commander's stillness skill (P16b): reads 0 until it lands, so every slip is as loud as it is. */
 export const stillnessOf = (_state: CampaignState): number => 0;
@@ -38,6 +40,8 @@ export interface ResolveEnv {
   /** Her `seal` level: one step tighter per 2 levels. */
   sealLevel: number;
   band: ScentBand;
+  /** P10e-e R18: the words scent's head holds (`headCapacity`): one `inhale` or blown word is `capacity / head` of the gauge. Absent: the starting tolerance's. */
+  head?: number;
   /** Beats on which the breath was held while a hold runs with it: the strength drains 25 % less there (`combined.ts`). */
   steady?: ReadonlySet<number>;
   /** A marathon's pace scale (`paceScale`): every beat's change of the gauge, and the streak xp, count this many times (1 = no scale). Applied per beat, before the clamp. */
@@ -127,7 +131,10 @@ export function resolveEnvOf(state: CampaignState, reg: Registries, run: Physics
   const phys = reg.contactPhysics.get(run.physicsId)!;
   return {
     gaugeKind: (phys.gauge as { kind: GaugeKind }).kind, interaction: String(phys.interaction) as InteractionType, style: physicsStyleOf(state, run.holderId, reg),
-    sealLevel: herSkillOf(state, run.holderId).seal, band: 'noticeable', // Task 26 reads the scent band of the part she presses
+    sealLevel: herSkillOf(state, run.holderId).seal,
+    // R19: her own band, of the part she presses (a contact's target; an item has none: the rest of her)
+    band: scentBand(state, reg, run.holderId, run.sourceKind === 'contact' ? contactTargetOf(state.scene, reg, run.sourceId) ?? run.targetId : undefined),
+    head: headCapacity(scentToleranceOf(state, reg, run.holderId)),
   };
 }
 
@@ -195,6 +202,9 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
   const evenBefore = (b: number): boolean => ![b - 1, b].some((x) => x >= 0 && (at(x, 'hold').length === 0 || at(x, 'uneven').some((u) => u.part === 'tilted')));
 
   const scale = env.scale ?? 1;
+  // R18: scent's head (decision): whether the instrument reported the words breathed in, and what one word is worth of the gauge
+  const inhaled = env.interaction === 'decision' && live.some((i) => i.kind === 'inhale');
+  const word = cap / (env.head ?? headCapacity(TUNING.stimuli.startTolerance));
   for (let b = 0; b < run_; b++) {
     const beat = plan.beats[b]!;
     const beatStart = r.gauge;
@@ -269,9 +279,11 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
         break;
       }
       case 'decision': {
-        r.gauge += P.saturation.per * P.saturation.bandFactor[env.band];
+        // R18: the instrument's head is the gauge: a segment with any inhale fills by the words breathed in alone (one word = cap / head)
+        if (inhaled) for (const g of at(b, 'inhale')) r.gauge += (g.amount ?? 0) * word;
+        else r.gauge += P.saturation.per * P.saturation.bandFactor[env.band];
         for (const g of at(b, 'mouth_breath')) {
-          r.gauge -= P.saturation.mouth;
+          r.gauge -= g.amount === undefined ? P.saturation.mouth : g.amount * word;
           relief(g.beat, 'mouth_breath');
         }
         break;

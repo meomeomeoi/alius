@@ -330,6 +330,11 @@ const holder: MemoryResolver = (draft, event) => {
 };
 registerMemoryResolver('physics_outcome', holder, { ids: ['her'], vars: ['name', 'result', 'physics'] });
 registerMemoryResolver('physics_caught', holder, { ids: ['her'], vars: ['name', 'result', 'physics'] });
+// P10e-e R20: a lie under her scent that the body gave away; she remembers it (her question and a right answer are bookkeeping)
+registerMemoryResolver('scent_lie_caught', (draft, event) => {
+  const her = subjectOf(draft, event.holderId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
+}, { ids: ['her'], vars: ['name'] });
 
 // the body layer (P15a): a stage that a stimulus of hers has reached for the commander, while she was there
 registerMemoryResolver('stimulus_stage_changed', (draft, event, reg) => {

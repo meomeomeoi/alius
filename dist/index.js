@@ -7179,7 +7179,7 @@ var frameRank = (f) => FRAMES.indexOf(f);
 var NOTE_MAX = 120;
 
 // src/engine/physics/state.ts
-var INPUT_KINDS = ["breathe", "hold", "release", "mouth_breath", "gap_breath", "shift_weight", "part", "ask_rest", "strain", "uneven"];
+var INPUT_KINDS = ["breathe", "hold", "release", "mouth_breath", "gap_breath", "shift_weight", "part", "ask_rest", "strain", "uneven", "inhale"];
 
 // src/engine/dynamic/types.ts
 var PROFILE_STYLES = ["affectionate", "cold", "ritual", "clinical", "possessive", "playful", "cruel", "obsessive", "drill", "regal", "vindictive"];
@@ -8492,6 +8492,9 @@ var RESERVED_EVENT_TYPES = [
   "mouth_act_restart",
   "condition_set",
   "condition_ended",
+  // P10e-e (scent's question, R20)
+  "scent_answer",
+  "scent_lie_caught",
   // P10c
   "quarters_set",
   // P13
@@ -34044,6 +34047,10 @@ var holder = (draft, event) => {
 };
 registerMemoryResolver("physics_outcome", holder, { ids: ["her"], vars: ["name", "result", "physics"] });
 registerMemoryResolver("physics_caught", holder, { ids: ["her"], vars: ["name", "result", "physics"] });
+registerMemoryResolver("scent_lie_caught", (draft, event) => {
+  const her = subjectOf3(draft, event.holderId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
+}, { ids: ["her"], vars: ["name"] });
 registerMemoryResolver("stimulus_stage_changed", (draft, event, reg) => {
   const her = subjectOf3(draft, event.holderId);
   const kind = reg.stimulusKinds.get(String(event.kind));
@@ -38878,7 +38885,13 @@ var T4 = TUNING.stimuli;
 var WAYS = ["avoid", "sniff", "inhale", "nuzzle", "ordered", "secret", "taste"];
 var SEEKING = /* @__PURE__ */ new Set(["sniff", "inhale", "nuzzle", "ordered", "secret", "taste"]);
 var rowOf2 = (state, kind) => state.commander.stimuli?.[kind];
+var toleranceOf = (state, kind) => rowOf2(state, kind)?.tolerance ?? T4.startTolerance;
 var stageIndex = (stage2) => STAGES.indexOf(stage2);
+var headCapacity = (tolerance) => 6 + Math.round(tolerance / 12);
+function scentToleranceOf(state, reg, holderId) {
+  const ex = exposedKinds(state, reg).find((e) => e.holderId === holderId && String(reg.stimulusKinds.get(e.kind)?.family) !== "taste");
+  return ex ? toleranceOf(state, ex.kind) : T4.startTolerance;
+}
 var stageOf2 = (seek) => STAGES[T4.stages.filter((b) => seek >= b).length];
 function inhaleZone(band2, tolerance) {
   const b = BAND_INDEX[band2];
@@ -39098,7 +39111,7 @@ function finishCounted(draft, _ctx, typed) {
 var OWNS = {
   timing: ["breathe", "gap_breath", "strain"],
   hold: ["hold", "shift_weight", "uneven"],
-  decision: ["mouth_breath"],
+  decision: ["mouth_breath", "inhale"],
   order: ["part"],
   gesture: ["ask_rest"],
   passive: []
@@ -39209,8 +39222,9 @@ function resolveEnvOf(state, reg, run) {
     interaction: String(phys.interaction),
     style: physicsStyleOf(state, run.holderId, reg),
     sealLevel: herSkillOf(state, run.holderId).seal,
-    band: "noticeable"
-    // Task 26 reads the scent band of the part she presses
+    // R19: her own band, of the part she presses (a contact's target; an item has none: the rest of her)
+    band: scentBand(state, reg, run.holderId, run.sourceKind === "contact" ? contactTargetOf(state.scene, reg, run.sourceId) ?? run.targetId : void 0),
+    head: headCapacity(scentToleranceOf(state, reg, run.holderId))
   };
 }
 function share(kind, gauge, capacity) {
@@ -39271,6 +39285,8 @@ function resolveSegment(run, plan, inputs, env) {
   const openings = env.interaction === "timing" ? new Map(effectiveOpenings(plan, live3, leadStyle(env.style).key).map((o) => [o.beat, o])) : null;
   const evenBefore = (b) => ![b - 1, b].some((x) => x >= 0 && (at(x, "hold").length === 0 || at(x, "uneven").some((u) => u.part === "tilted")));
   const scale = env.scale ?? 1;
+  const inhaled = env.interaction === "decision" && live3.some((i) => i.kind === "inhale");
+  const word2 = cap9 / (env.head ?? headCapacity(TUNING.stimuli.startTolerance));
   for (let b = 0; b < run_; b++) {
     const beat = plan.beats[b];
     const beatStart = r.gauge;
@@ -39341,9 +39357,10 @@ function resolveSegment(run, plan, inputs, env) {
         break;
       }
       case "decision": {
-        r.gauge += P2.saturation.per * P2.saturation.bandFactor[env.band];
+        if (inhaled) for (const g of at(b, "inhale")) r.gauge += (g.amount ?? 0) * word2;
+        else r.gauge += P2.saturation.per * P2.saturation.bandFactor[env.band];
         for (const g of at(b, "mouth_breath")) {
-          r.gauge -= P2.saturation.mouth;
+          r.gauge -= g.amount === void 0 ? P2.saturation.mouth : g.amount * word2;
           relief2(g.beat, "mouth_breath");
         }
         break;
@@ -39642,6 +39659,22 @@ registerAction("physics/act_finish", (draft, payload, ctx2) => {
   if (!draft.scene) throw new Error("physics/act_finish: no scene is open");
   if (!isObj39(payload)) throw new Error("physics/act_finish needs { typed }");
   return finishCounted(draft, ctx2, payload.typed);
+});
+registerAction("physics/answer", (draft, payload, ctx2) => {
+  live2(draft, ctx2.registries, "physics/answer");
+  if (!isObj39(payload) || str7(payload.runId) === void 0 || typeof payload.right !== "boolean" || typeof payload.lie !== "boolean" || typeof payload.caught !== "boolean") {
+    throw new Error("physics/answer needs { runId, right, lie, caught }");
+  }
+  const run = draft.scene.physics;
+  if (!run || run.id !== payload.runId) throw new Error("Stale physics run.");
+  if (payload.caught && !payload.lie) throw new Error("physics/answer: only a lie can be caught");
+  const decision = [run.physicsId, run.second?.physicsId].some((id) => id !== void 0 && ctx2.registries.contactPhysics.get(id)?.interaction === "decision");
+  if (!decision) throw new Error("physics/answer: she asks only under a decision physics");
+  const { right, lie, caught } = payload;
+  return [
+    { type: "scent_answer", runId: run.id, holderId: run.holderId, right, lie, caught },
+    ...lie && caught ? [{ type: "scent_lie_caught", holderId: run.holderId }] : []
+  ];
 });
 
 // src/engine/actions/life.ts

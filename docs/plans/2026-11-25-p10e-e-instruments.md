@@ -819,12 +819,14 @@ For the author (e12): her caught line comes up to 30 s late (the engine decides 
   - `headCapacity(tolerance: number): number`
   - the action `physics/answer { runId: string; right: boolean; lie: boolean; caught: boolean }`, which emits `scent_answer { runId, holderId, right, lie, caught }` and, when `lie && caught`, `scent_lie_caught { holderId }`
 
-- [ ] **Step 1:** Tests:
+- [x] **Step 1:** Tests:
   - `inhale replaces the passive fill`: two `inhale` inputs of 3 and 2 words at capacity 10 fill 50; a segment with none fills as today.
   - `a mouth breath with amount blows words out` (−amount × 100 / capacity).
   - `the band is hers`, not `'noticeable'`: a holder at band `strong` fills × 1.5 by the passive rule. **This changes resolution for real holders.** If a seeded physics test moves, stop and report.
   - `a caught lie is remembered once`, with audience her; a lie not caught writes nothing.
-- [ ] **Steps 2–5** as Task 13 (`feat(P10e-e): scent's head, her band, her question`).
+- [x] **Steps 2–5** as Task 13 (`feat(P10e-e): scent's head, her band, her question`).
+
+*As built:* `headCapacity` is the prototype's `6 + Math.round(tolerance / 12)` (saturation.html `capacity`: a whole number of words; the plan's `tolerance / 12` unrounded, the prototype wins). One word is `run.capacity / head` of the gauge (100 / head at endurance 0: a full head is a full gauge at any endurance). `ResolveEnv.head` is `headCapacity(scentToleranceOf(...))`, the commander's tolerance for the first breathed (non-taste) kind of hers exposed, else the starting one. The band is `scentBand` of the contact's target (`contactTargetOf`, else `run.targetId`; an item has none: her rest). `inhale` joins `INPUT_KINDS` and the decision interaction's `OWNS`. `physics/answer` refuses a stale run, a caught truth and a run with no decision physics; `scent_answer` / `scent_lie_caught` join the memory event list. No seeded test, golden or `tests/sim/*` moved (full suite 718 files green).
 
 ### Task 18: The scent instrument
 

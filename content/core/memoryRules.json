@@ -906,6 +906,19 @@
     ]
   },
   {
+    "id": "scent_lie_caught",
+    "event": "scent_lie_caught",
+    "text": "Under {name}'s scent, the commander lied about it, and a cough gave the lie away.",
+    "importance": 2,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "physics",
+      "scent_lie"
+    ]
+  },
+  {
     "id": "stimulus_craving",
     "event": "stimulus_stage_changed",
     "when": {

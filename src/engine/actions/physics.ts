@@ -101,3 +101,26 @@ registerAction('physics/act_finish', (draft, payload, ctx) => {
   if (!isObj(payload)) throw new Error('physics/act_finish needs { typed }');
   return finishCounted(draft, ctx, payload.typed);
 });
+
+/**
+ * P10e-e R20: `physics/answer { runId, right, lie, caught }`: the commander's answer to her question under scent, as the instrument judged it by
+ * her rule (`right`), whether a word said was not the body's own (`lie`) and whether the body gave the lie away (`caught`, only with a lie).
+ * Emits `scent_answer` (bookkeeping) and, for a lie she found out, `scent_lie_caught` (remembered by her). Only for a run with a decision
+ * physics (read by interaction, never by id). Draws no rng.
+ */
+registerAction('physics/answer', (draft, payload, ctx) => {
+  live(draft, ctx.registries, 'physics/answer');
+  if (!isObj(payload) || str(payload.runId) === undefined || typeof payload.right !== 'boolean' || typeof payload.lie !== 'boolean' || typeof payload.caught !== 'boolean') {
+    throw new Error('physics/answer needs { runId, right, lie, caught }');
+  }
+  const run = draft.scene!.physics;
+  if (!run || run.id !== payload.runId) throw new Error('Stale physics run.');
+  if (payload.caught && !payload.lie) throw new Error('physics/answer: only a lie can be caught');
+  const decision = [run.physicsId, run.second?.physicsId].some((id) => id !== undefined && ctx.registries.contactPhysics.get(id)?.interaction === 'decision');
+  if (!decision) throw new Error('physics/answer: she asks only under a decision physics');
+  const { right, lie, caught } = payload;
+  return [
+    { type: 'scent_answer', runId: run.id, holderId: run.holderId, right, lie, caught },
+    ...(lie && caught ? [{ type: 'scent_lie_caught', holderId: run.holderId }] : []),
+  ];
+});
