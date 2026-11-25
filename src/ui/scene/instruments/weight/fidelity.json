@@ -251,8 +251,8 @@
     },
     {
       "fn": "onBeat",
-      "reason": "Wiring (R16, Ruling S): as a beat ends it is reported: `hold` when it was held (the prototype's slip is the hold breaking; a tilt only drains, so it is never withheld), `uneven` with the mean extra drain factor of the beat, marked `tilted` when the held beat ended off level (`reportBeat`).",
-      "diff": "@@ -9,2 +9,3 @@\n }\n+reportBeat(G.beat-1,G.held[G.held.length-1],evenNow)\n G.slipThisBeat=false"
+      "reason": "Wiring (R16, Ruling S, review I3): as a beat ends it is reported: `hold` when it was held (the prototype's slip is the hold breaking; a tilt only drains, so it is never withheld), `uneven` with the mean extra drain factor of the beat, marked `tilted` when the held beat ended off level (`reportBeat`). A beat that ended inside the prototype's grace (the entry and the loop's first beat: `graceOf`) is held and level, so the engine charges nothing the screen forgave.",
+      "diff": "@@ -2,4 +2,5 @@\n G.beat+=1\n-const evenNow=HOLD.on&&!G.slipThisBeat&&Math.abs(G.cop-G.ctl)<=S.tol\n-G.held.push(HOLD.on&&!G.slipThisBeat)\n+const grace=graceOf(G.beat-1)\n+const evenNow=grace||(HOLD.on&&!G.slipThisBeat&&Math.abs(G.cop-G.ctl)<=S.tol)\n+G.held.push(grace||(HOLD.on&&!G.slipThisBeat))\n G.even.push(evenNow)\n@@ -9,2 +10,3 @@\n }\n+reportBeat(G.beat-1,G.held[G.held.length-1],evenNow)\n G.slipThisBeat=false"
     },
     {
       "fn": "slip",

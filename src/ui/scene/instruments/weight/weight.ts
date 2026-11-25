@@ -332,8 +332,9 @@ function landShift() {
 }
 function onBeat() {
   G.beat += 1;
-  const evenNow = HOLD.on && !G.slipThisBeat && Math.abs(G.cop - G.ctl) <= S.tol;
-  G.held.push(HOLD.on && !G.slipThisBeat); G.even.push(evenNow);
+  const grace = graceOf(G.beat - 1);
+  const evenNow = grace || (HOLD.on && !G.slipThisBeat && Math.abs(G.cop - G.ctl) <= S.tol);
+  G.held.push(grace || (HOLD.on && !G.slipThisBeat)); G.even.push(evenNow);
   if (G.held.length > 8) { G.held.shift(); G.even.shift(); }
   reportBeat(G.beat - 1, G.held[G.held.length - 1], evenNow);
   G.slipThisBeat = false;
@@ -598,6 +599,13 @@ function segBeat(): number {
   const seg = R.seg;
   if (!seg) return 0;
   return clamp(Math.floor((G.clock - seg.clock0) / BEAT), 0, seg.beats - 1);
+}
+/**
+ * The prototype's grace (review I3: "a slip… after one beat of grace", its `G.clock > BEAT`): a beat that ended before the loop's first beat is
+ * over (the entry's beats among them) is held and level, so the engine charges nothing the screen forgave. Beat −1 (before the first) too.
+ */
+function graceOf(beat: number): boolean {
+  return beat < 0 || (R.seg !== null && R.seg.clock0 + (beat + 1) * BEAT <= BEAT);
 }
 /** Each beat as it begins: her attention is the plan's (the prototype's `beatTail` drew it; her shifts are scheduled with the segment). */
 function planBeat(): void {

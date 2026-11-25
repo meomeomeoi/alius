@@ -65455,8 +65455,9 @@ function landShift() {
 }
 function onBeat() {
   G3.beat += 1;
-  const evenNow = HOLD2.on && !G3.slipThisBeat && Math3.abs(G3.cop - G3.ctl) <= S4.tol;
-  G3.held.push(HOLD2.on && !G3.slipThisBeat);
+  const grace = graceOf(G3.beat - 1);
+  const evenNow = grace || HOLD2.on && !G3.slipThisBeat && Math3.abs(G3.cop - G3.ctl) <= S4.tol;
+  G3.held.push(grace || HOLD2.on && !G3.slipThisBeat);
   G3.even.push(evenNow);
   if (G3.held.length > 8) {
     G3.held.shift();
@@ -65803,6 +65804,9 @@ function segBeat() {
   const seg = R5.seg;
   if (!seg) return 0;
   return clamp43(Math3.floor((G3.clock - seg.clock0) / BEAT2), 0, seg.beats - 1);
+}
+function graceOf(beat) {
+  return beat < 0 || R5.seg !== null && R5.seg.clock0 + (beat + 1) * BEAT2 <= BEAT2;
 }
 function planBeat() {
   const b = R5.run?.segment.plan?.beats[G3.beat];

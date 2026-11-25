@@ -338,6 +338,20 @@ describe('the weight instrument on the scene', () => {
     expect(_weight.G).toMatchObject({ shifts: 1, cleanShifts: 1 });
   });
 
+  it('I3: the entry\'s grace: beats that end before the first loop beat is over are never charged, held or not', () => {
+    const plan = planOf({});
+    const s = hold('human_chair', plan);
+    const t = draw(s);
+    t.balance(0.5);
+    t.to(1800); // not holding through the entry
+    t.mouse('mousedown');
+    t.to(30_000);
+    expect(reports(t).filter((i) => i.kind === 'hold').map((i) => i.beat).slice(0, 3)).toEqual([0, 1, 2]);
+    expect(_weight.G.slips).toBe(0);
+    const r = resolveSegment(s.scene!.physics!, plan, reports(t), resolveEnvOf(s, reg, s.scene!.physics!));
+    expect(r.slips).toBe(0);
+  });
+
   it('the last beat of the segment is flushed before its end (300 ms ahead)', () => {
     const t = draw(hold('human_chair', planOf({})));
     t.mouse('mousedown');
