@@ -11,10 +11,8 @@
   - `slap`: "Thwack Sounds" (Jordan Irwin, AntumDeluge), `thwack-01` (the author's pick by ear among six candidates).
   - `swish1–3`: "Swishes Sound Pack" (for Summoning Wars), `swish-10`, `swish-12`, `swish-9`.
   - `slap.html` also plays `ha/cloth1–4` (her clothes) and `breath-in-out.mp3` (the commander's breath).
-- `gulp/` — the sounds of `gulp.html` (2026-11-25), every one CC0 (Creative Commons Zero) as stated on its OpenGameArt.org page, mono Ogg Vorbis, loudness-normalised; candidates the author picks by ear:
-  - `stream1–3`: "40 CC0 water / splash / slime SFX" (`loop_water_01–03`, loops); `splash_10`, `splash_09`, `splash_06`: the same pack.
-  - `swallow1–5`: "Liquid Bottle Drink Set" (qubodup, `swallow-01–05`).
-  - `drink1–4`: "202 More Sound Effects" (`Drink/Drink_01–04`).
-  - `stream4`: "Running Water - background noise" by HippoDevelopment (OpenGameArt.org), **CC-BY 3.0** (https://creativecommons.org/licenses/by/3.0/): attribution required wherever it ships.
-  - `mug_soft`, `mug_strong`: "Pouring water in mug in sink" by earthcalling, **public domain**, via Wikimedia Commons (https://commons.wikimedia.org/wiki/File:Pouring_water_in_mug_in_sink.ogg; brought by the author, 2026-11-25): the soft pour (3.45–7.05 s) and the strong one (13.2–17.9 s), each made a seamless loop (its end crossfaded into its start over 0.45 s), loudness-normalised.
+- `gulp/` — the sounds of `gulp.html` (2026-11-25), the author's choice:
+  - `mug_soft`, `mug_strong`: "Pouring water in mug in sink" by earthcalling, **public domain**, via Wikimedia Commons (https://commons.wikimedia.org/wiki/File:Pouring_water_in_mug_in_sink.ogg; brought by the author): the soft pour (3.45–7.05 s) and the strong one (13.2–17.9 s), each made a seamless loop (its end crossfaded into its start over 0.45 s), loudness-normalised.
+  - `swallow1–5`: "Liquid Bottle Drink Set" (qubodup, OpenGameArt.org), CC0, `swallow-01–05`.
+  - `splash_10`, `splash_09`, `splash_06`: "40 CC0 water / splash / slime SFX" (OpenGameArt.org), CC0.
   - `gulp.html` also plays `ha/pour.ogg`, `ha/cloth1–3` and `breath-in-out.mp3`.

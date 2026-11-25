@@ -365,15 +365,22 @@ Smaller ones: the deep inhale (in scent), `pet` (breath's kin), the long kiss (w
 - **Shine:** slow strokes on clean leather bring up a sheen (patent heels most); **the inspection:** a band of light sweeps across, her verdict names the worst zone.
 - **The art:** two pictures per kind, the top seen from above (the kneeling commander's view) and the sole presented; each picture one foot (mirrored for the other) or two (framed per foot, the camera pans; both marked); a fit with a top fade, all a sidecar, so a scene is preset by data.
 
+**Gulp (P15a `gulp`; content `watersports`; designed with the author on 2026-11-25 and approved in a live prototype after four rounds the same day: `docs/prototypes/gulp.html`, normative, its README lists what to port, what is prototype-only and the open engine questions).** Scheme C (author): swallowing and breathing as two resources, a signal to her, spills carried into cleaning.
+- **Looking up at her** over the ceiling: her picture by the chain `over_explicit` (explicit content on: what watersports needs, her anatomy by her card, not nudity) → `over` (weight's slot) → her sprite from below; nothing of a body is drawn, the stream is heard.
+- **The mouth is a warm tide** at the bottom of the screen; a swallow (Space) takes a part and no air, a breath (Shift) gives air and with a full mouth may be a cough that spills; air is the frame's edges and the heart; gulping without a breath and a fast flow build the reflex.
+- **Her flow** by style: pauses, surges with a warning (ritual in words, cruel none, playful feints); a tap asks for slower and she answers by style.
+- **Spills** pool; by style she makes the commander lick the floor clean, and every bit licked fills the mouth again; her check is a band of light.
+- **Sound:** the author's recording of a pour into a mug (public domain), a soft and a strong loop mixed by her flow; recorded swallows and splashes.
+
 **Next steps of the session (in order):**
 1. ~~A **live prototype** of breathing~~ (done 2026-11-23; the results are above).
-2. The other mini-games, one by one (breathing, weight, scent, `her_activity`, foot service under the desk, the slap, the jaw and shoe service done; next: `gulp`. **The posture call waits for P16b** (author, 2026-11-24): its game is P16b's points, drift and presets, so it is designed in P16b's session; chunk (e) only restyles P16's existing call card in step 3 (her word large in her hand, the timer as her foot tapping, the choices as a fan of mannequin cards: a card is clicked whole, so §15's rule against fast clicks on the mannequin holds)), from the controller's idea list of 2026-11-23 (several per game, mixable). The author has not picked these yet:
+2. The other mini-games, one by one (breathing, weight, scent, `her_activity`, foot service under the desk, the slap, the jaw, shoe service and gulp done: every mini-game of P15a and P16 has its instrument but the posture call (P16b) and the small kin listed above (`pet`, the long kiss, counted kisses, the ceremony's count), which reuse these instruments. **The posture call waits for P16b** (author, 2026-11-24): its game is P16b's points, drift and presets, so it is designed in P16b's session; chunk (e) only restyles P16's existing call card in step 3 (her word large in her hand, the timer as her foot tapping, the choices as a fan of mannequin cards: a card is clicked whole, so §15's rule against fast clicks on the mannequin holds)), from the controller's idea list of 2026-11-23 (several per game, mixable). The author has not picked these yet:
    - **weight:** a level bubble in a glass vial while the frame tilts; her own PDA screen above the commander (peeking is a slip); cracks at the edges;
    - **saturation:** a coloured haze with her perception words drifting in it; a rising tide;
    - ~~**tongue work:** scratching grime off her boot or foot, which needs the author's art (SVG objects are excluded), plus her magnifier at the end~~ (built: foot service and shoe service, above; the magnifier became her band of light);
    - **her activity:** her report's pages turning; her screen;
    - ~~**jaw:** smeared, doubled letters and a spring of tension around the input~~ (built, above: the input is the mouth);
-   - **gulp:** to design;
+   - ~~**gulp:** to design~~ (built, above);
    - ~~**slap:** the camera snaps to her face, feints as twitches of her shoulder, a red flash and a fading red vignette~~ (built, above);
    - **posture call:** her word written large across the screen, the timer as her foot tapping, choices as a fan of mannequin cards (only as the restyle of step 3; the game waits for P16b).
 3. **Restyle the dock's cards to the scene's language** (the cards of P15/P16/P15a still use `[ BRACKETS ]`, a deviation from §6). Fix the collapsed voice cards that show only the speaker's name.

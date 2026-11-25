@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   P10e chunk (e) reference prototype: GULP (P15a `gulp`, timing; content `watersports`, which requires `bodily_fluids`).
-  Draft for the author's rounds (not yet approved). Scheme C (author, 2026-11-25): swallow and breathe as two resources, a signal to her,
+  Approved by the author on 2026-11-25 after four rounds; NORMATIVE (docs/prototypes/README.md says what to port). Scheme C (author, 2026-11-25): swallow and breathe as two resources, a signal to her,
   and what is spilled carried into cleaning.
   - The view looks up at her: the ceiling, and her picture by the chain `over_explicit` (explicit content on: the picture shows what watersports needs, her anatomy by her card; not nudity as such) → `over`
     → her ordinary sprite through the camera from below (weight's face-up placement). Nothing of a body is drawn; the stream is heard.
@@ -122,8 +122,8 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <label>the floor <select id="floorSel"></select></label>
   <h4>sound</h4>
   <label><input type="checkbox" id="snd" checked> on</label>
-  <label>stream <select id="streamS"><option value="mug" selected>into a mug (soft ↔ strong by her flow)</option><option value="mug_strong">into a mug, strong</option><option value="mug_soft">into a mug, soft</option><option value="stream1">water 1</option><option value="stream2">water 2 (steady)</option><option value="stream4">running water (CC-BY)</option><option value="stream3">water 3</option><option value="pour">flowing (her_activity's)</option><option value="synth">synth</option></select></label>
-  <label>swallow <select id="swallowS"><option value="swallows" selected>swallows (recorded)</option><option value="drinks">drinking gulps (recorded)</option><option value="synth">synth</option></select></label>
+  <label>stream <select id="streamS"><option value="mug" selected>into a mug (soft ↔ strong by her flow)</option><option value="mug_strong">into a mug, strong</option><option value="mug_soft">into a mug, soft</option><option value="synth">synth</option></select></label>
+  <label>swallow <select id="swallowS"><option value="swallows" selected>swallows (recorded)</option><option value="synth">synth</option></select></label>
   <label>volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7"></label>
   <h4>view</h4>
   <label>accent <input type="color" id="accent" value="#8cc8f0"></label>
@@ -150,17 +150,14 @@ const ASSETS = {
   floors: { floor_wood: '%%ASSET:content/core/art/backdrops/floor_wood.webp%%', floor_concrete: '%%ASSET:content/core/art/backdrops/floor_concrete.webp%%', floor_linoleum: '%%ASSET:content/core/art/backdrops/floor_linoleum.webp%%', floor_tatami: '%%ASSET:content/core/art/backdrops/floor_tatami.webp%%' },
 };
 const SAMPLE_URLS = {
-  pour: '%%ASSET:docs/prototypes/assets/ha/pour.ogg%%',
-  stream1: '%%ASSET:docs/prototypes/assets/gulp/stream1.ogg%%', stream2: '%%ASSET:docs/prototypes/assets/gulp/stream2.ogg%%', stream3: '%%ASSET:docs/prototypes/assets/gulp/stream3.ogg%%', stream4: '%%ASSET:docs/prototypes/assets/gulp/stream4.ogg%%',
   mug_soft: '%%ASSET:docs/prototypes/assets/gulp/mug_soft.ogg%%', mug_strong: '%%ASSET:docs/prototypes/assets/gulp/mug_strong.ogg%%',
   swallow1: '%%ASSET:docs/prototypes/assets/gulp/swallow1.ogg%%', swallow2: '%%ASSET:docs/prototypes/assets/gulp/swallow2.ogg%%', swallow3: '%%ASSET:docs/prototypes/assets/gulp/swallow3.ogg%%',
   swallow4: '%%ASSET:docs/prototypes/assets/gulp/swallow4.ogg%%', swallow5: '%%ASSET:docs/prototypes/assets/gulp/swallow5.ogg%%',
-  drink1: '%%ASSET:docs/prototypes/assets/gulp/drink1.ogg%%', drink2: '%%ASSET:docs/prototypes/assets/gulp/drink2.ogg%%', drink3: '%%ASSET:docs/prototypes/assets/gulp/drink3.ogg%%', drink4: '%%ASSET:docs/prototypes/assets/gulp/drink4.ogg%%',
   splash1: '%%ASSET:docs/prototypes/assets/gulp/splash_10.ogg%%', splash2: '%%ASSET:docs/prototypes/assets/gulp/splash_09.ogg%%', splash3: '%%ASSET:docs/prototypes/assets/gulp/splash_06.ogg%%',
   breath: '%%ASSET:docs/prototypes/assets/breath-in-out.mp3%%',
   cloth1: '%%ASSET:docs/prototypes/assets/ha/cloth1.ogg%%', cloth2: '%%ASSET:docs/prototypes/assets/ha/cloth2.ogg%%', cloth3: '%%ASSET:docs/prototypes/assets/ha/cloth3.ogg%%',
 };
-const GROUPS = { cloth: ['cloth1', 'cloth2', 'cloth3'], swallows: ['swallow1', 'swallow2', 'swallow3', 'swallow4', 'swallow5'], drinks: ['drink1', 'drink2', 'drink3', 'drink4'], splash: ['splash1', 'splash2', 'splash3'] };
+const GROUPS = { cloth: ['cloth1', 'cloth2', 'cloth3'], swallows: ['swallow1', 'swallow2', 'swallow3', 'swallow4', 'swallow5'], splash: ['splash1', 'splash2', 'splash3'] };
 const $ = (s) => document.querySelector(s);
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 const lerp = (a, b, t) => a + (b - a) * t;
