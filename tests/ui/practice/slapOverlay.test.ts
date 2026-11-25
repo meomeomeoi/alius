@@ -51,9 +51,9 @@ function holding(style: string, over: Partial<Slap> = {}): CampaignState {
 }
 
 /** The slap drawn into a test frame. */
-async function slapping(over: { style?: string; slap?: Partial<Slap>; settings?: Partial<AliusSettings>; reduced?: boolean; face?: string; lookupMs?: number; sprite?: boolean; art?: boolean } = {}) {
+async function slapping(over: { style?: string; slap?: Partial<Slap>; settings?: Partial<AliusSettings>; reduced?: boolean; face?: string; lookupMs?: number; sprite?: boolean; art?: boolean; audio?: boolean } = {}) {
   let state = holding(over.style ?? 'possessive', over.slap);
-  const f = slapEnv({ state: () => state, reg, ...(over.settings ? { settings: over.settings } : {}), ...(over.reduced ? { reduced: true } : {}), ...(over.face ? { face: over.face } : {}), ...(over.lookupMs ? { lookupMs: over.lookupMs } : {}), ...(over.sprite ? { sprite: true } : {}), ...(over.art ? { art: { get: () => ({ url: '/art/face_close.webp', sidecar: {} }) } } : {}) });
+  const f = slapEnv({ state: () => state, reg, ...(over.settings ? { settings: over.settings } : {}), ...(over.reduced ? { reduced: true } : {}), ...(over.face ? { face: over.face } : {}), ...(over.lookupMs ? { lookupMs: over.lookupMs } : {}), ...(over.sprite ? { sprite: true } : {}), ...(over.audio ? { audio: true } : {}), ...(over.art ? { art: { get: () => ({ url: '/art/face_close.webp', sidecar: {} }) } } : {}) });
   const host = h('div', { class: 'alius-slap-host' });
   f.layers.moment.append(host);
   const results: SlapResult[] = [];
@@ -158,6 +158,18 @@ describe('the swing and the one try', () => {
     for (let i = 0; i <= 10; i++) { document.dispatchEvent(new MouseEvent('pointermove', { clientX: 100 + i * 5, bubbles: true })); p.frame(); }
     p.to(L + 500 + 40);
     expect(p.results).toEqual(['none']);
+  });
+
+  it('with the history curtain open no press and no flick is read: the slap is taken (review M3)', async () => {
+    const o = await slapping();
+    Object.defineProperty(o.root, 'clientWidth', { value: 1600, configurable: true });
+    o.root.dataset.curtain = 'open';
+    o.to(L + 200);
+    for (let i = 0; i <= 5; i++) { document.dispatchEvent(new MouseEvent('pointermove', { clientX: 100 + i * 60, bubbles: true })); o.frame(); }
+    o.to(L + 500 - 100);
+    o.space();
+    o.to(L + 500 + 40);
+    expect(o.results).toEqual(['none']);
   });
 
   it('the input loses its focus when the slap starts; Space typed into the field before it is not counted', async () => {
@@ -341,8 +353,8 @@ describe('the cheek', () => {
 });
 
 describe('going away', () => {
-  it('clearing it (dispose) leaves no timer, no frame, no listener; no answer comes after; the frame is put back', async () => {
-    const o = await slapping();
+  it('clearing it (dispose) leaves no timer, no frame, no listener, no sound; no answer comes after; the frame is put back', async () => {
+    const o = await slapping({ audio: true });
     o.to(L + 200);
     const remove = vi.spyOn(document, 'removeEventListener');
     clearSlapOverlay(o.host);
@@ -350,6 +362,8 @@ describe('going away', () => {
     remove.mockRestore();
     expect(vi.getTimerCount()).toBe(0);
     expect(o.pendingFrames()).toBe(0);
+    expect(o.audio.sources.length).toBeGreaterThan(0);
+    expect(o.audio.sources.filter((x) => x.started && !x.stopped)).toEqual([]);
     o.space();
     o.tick(2000);
     expect(o.results).toEqual([]);
@@ -359,13 +373,15 @@ describe('going away', () => {
     expect(currentSlap()).toBeNull();
   });
 
-  it('a slap gone from the state before it landed (its scene ended) stops at once and sends nothing', async () => {
-    const o = await slapping();
+  it('a slap gone from the state before it landed (its scene ended) stops at once and sends nothing; its sounds stop, the input gets its focus back (review M7)', async () => {
+    const o = await slapping({ audio: true });
     o.to(L + 100);
+    expect(o.audio.sources.some((x) => x.started)).toBe(true); // her heartbeat, her clothes, the swish timed to the impact
     const s = structuredClone(o.state);
     delete s.practices!.slap;
     o.set(s);
     o.draw();
+    expect(o.audio.sources.filter((x) => x.started && !x.stopped)).toEqual([]);
     o.tick(3000);
     expect(o.results).toEqual([]);
     expect(o.layers.sprites.style.transform).toBe('');

@@ -10,6 +10,7 @@ import { h } from '../../src/ui/dom';
 import type { ArtSlots } from '../../src/ui/scene/art';
 import { say } from '../../src/ui/scene/instruments/kit/hand';
 import type { InstrumentEnv } from '../../src/ui/scene/instruments/types';
+import type { SampleSound } from '../../src/ui/sound/samples';
 
 export interface SlapEnvOpts {
   state: () => CampaignState;
@@ -25,6 +26,8 @@ export interface SlapEnvOpts {
   sprite?: boolean;
   /** The scene's sprite lookup takes this long (fake timers; default at once). */
   lookupMs?: number;
+  /** A fake audio context behind `samples` (its sources are listed in `audio.sources`); default no sound. */
+  audio?: boolean;
   /** Where the frame is drawn (default the document's body). */
   parent?: HTMLElement;
 }
@@ -50,6 +53,7 @@ export function slapEnv(o: SlapEnvOpts) {
   const ui = h('div', { class: 'alius-layer alius-layer-ui' }, reply, line, dial);
   root.append(layers.backdrop, layers.frame, layers.pose, layers.sprites, layers.effects, ui, layers.moment);
   (o.parent ?? document.body).append(root);
+  const audio = { sources: [] as Array<{ started: boolean; stopped: boolean }> };
   const setSprite = vi.fn();
   let spriteImg: HTMLImageElement | null = null;
   if (o.sprite) {
@@ -72,7 +76,7 @@ export function slapEnv(o: SlapEnvOpts) {
     },
     state: o.state, registries: o.reg, settings: () => ({ ...DEFAULT_SETTINGS, ...o.settings }) as AliusSettings,
     staging: { input() {}, endSegment: () => [], stopWord: () => [], skip: () => [], stimulus: () => [], act: () => [], finishCounted: () => [], cue: () => null, beat: () => 0, clock: () => ({ startedAt: null, beatMs: 0, now: 0 }) },
-    samples: null,
+    samples: o.audio ? fakeSamples(audio) : null,
     art: { get: () => null, face: () => null, ...o.art } as ArtSlots,
     her: (unitId) => ({ unitId, name: 'Ann', accent: '#8cc8f0', hand: 'Caveat', handScale: 1, style: 'neutral' }),
     say: (host, text, opts) => say(host, text, opts),
@@ -93,7 +97,7 @@ export function slapEnv(o: SlapEnvOpts) {
     for (const fn of due) fn(t);
   };
   return {
-    env, root, layers, input, reply, stop, setSprite,
+    env, root, layers, input, reply, stop, setSprite, audio,
     /** Her face changes (a reply of hers read as `label`). */
     setFace: (label: string) => { face = label; },
     /** ms since the clock's start (1000). */
@@ -104,5 +108,30 @@ export function slapEnv(o: SlapEnvOpts) {
     /** Lets the promises settle (the slap's start waits for her face). */
     async settle(): Promise<void> { for (let i = 0; i < 6; i++) await Promise.resolve(); },
     pendingFrames: () => queue.size,
+  };
+}
+
+/** A sample layer over a fake AudioContext: every buffer source and oscillator made on it is listed with whether it started and stopped. */
+function fakeSamples(audio: { sources: Array<{ started: boolean; stopped: boolean }> }): SampleSound {
+  const param = () => ({ value: 0, setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {}, cancelScheduledValues() {}, setTargetAtTime() {} });
+  const node = () => ({ connect() {}, disconnect() {} });
+  const source = () => {
+    const rec = { started: false, stopped: false };
+    audio.sources.push(rec);
+    return { ...node(), buffer: null, loop: false, type: 'sine', playbackRate: param(), frequency: param(), start() { rec.started = true; }, stop() { rec.stopped = true; }, addEventListener() {} };
+  };
+  const ctx = {
+    currentTime: 0, sampleRate: 8000, destination: node(),
+    createGain: () => ({ ...node(), gain: param() }),
+    createBiquadFilter: () => ({ ...node(), type: 'lowpass', frequency: param(), Q: param() }),
+    createStereoPanner: () => ({ ...node(), pan: param() }),
+    createBufferSource: source,
+    createOscillator: source,
+    createBuffer: (_c: number, n: number) => ({ duration: n / 8000, getChannelData: () => new Float32Array(n) }),
+  };
+  return {
+    play() {}, loop: () => ({ setGain() {}, setRate() {}, stop() {} }), preload: async () => {}, buffer: () => null,
+    ctx: () => ctx as unknown as AudioContext, bus: () => node() as unknown as AudioNode,
+    setWorldDull() {}, setNight() {}, setMuffle() {}, setSensory() {}, dispose() {},
   };
 }

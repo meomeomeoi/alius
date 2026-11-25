@@ -836,9 +836,11 @@ function bind(m: SlapMount, unitId: string): void {
   if (!E) {
     E = { ...build(m.env, unitId), host: m.host, sceneId: m.sceneId };
     const e = E;
-    e.offs.push(m.env.listen(document, 'keydown', onKey as EventListener));
-    e.offs.push(m.env.listen(e.env.root, 'pointerdown', onDown as EventListener));
-    e.offs.push(m.env.listen(document, 'pointermove', onMove as EventListener));
+    // with the history curtain open the commander is reading, not in the frame: no press, no flick (review M3)
+    const reading = (): boolean => e.env.root.dataset.curtain === 'open';
+    e.offs.push(m.env.listen(document, 'keydown', ((ev: KeyboardEvent) => { if (!reading()) onKey(ev); }) as EventListener));
+    e.offs.push(m.env.listen(e.env.root, 'pointerdown', ((ev: PointerEvent) => { if (!reading()) onDown(ev); }) as EventListener));
+    e.offs.push(m.env.listen(document, 'pointermove', ((ev: PointerEvent) => { if (!reading()) onMove(ev); }) as EventListener));
     for (const k of Object.keys(faces)) delete faces[k];
     looking.clear();
     leftBySlap = null;
@@ -898,6 +900,13 @@ export function settleSlap(): void {
     G.starting = false;
     G.slap = null;
     G.back = null;
+    // what it scheduled goes with it (review M7): its sounds (the swish timed to the impact, her clothes) and its timers; the input gets its focus back
+    for (const n of made) { try { n.stop(); } catch { /* not started, or already stopped */ } }
+    made.clear();
+    for (const t of timers) clearTimeout(t);
+    timers.clear();
+    if (E) $('#hand').replaceChildren(); // her line before it (its fade was a timer)
+    if (G.typingFocus && E) $('#cmd').focus();
   }
 }
 
