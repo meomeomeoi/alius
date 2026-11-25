@@ -236,13 +236,14 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <label>drain in a long hold <input type="range" id="frameDrain" min="0.15" max="1" step="0.05" value="0.35"><span id="frameDrainV">0.35</span></label>
   <div class="note">weight.html was tuned for a 45 s session (her full weight lasts about 20 s without your own shifts); the throne is a long hold, so its drain is scaled. 1 = weight.html's numbers.</div>
   <label>legs art (legs_astride) <input type="file" id="astrideFile" accept="image/*" style="width:170px"></label>
-  <label>the picture is <select id="astrideFeet"><option value="one">one leg (mirrored for the other)</option><option value="two">both legs</option></select></label>
+  <label>the picture is <select id="astrideFeet"><option value="left">her left leg (the one on the left of the screen; mirrored for the right)</option><option value="right">her right leg (the one on the right of the screen; mirrored for the left)</option><option value="pair">two pictures: left and right (no mirror)</option><option value="two">both legs in one picture</option></select></label>
+  <label>right leg art (for "two pictures") <input type="file" id="astrideFileR" accept="image/*" style="width:170px"></label>
   <label>art height <input type="range" id="aH" min="0.4" max="1.6" step="0.01" value="1"><span id="aHV">1</span></label>
   <label>art x (the leg's centre) <input type="range" id="aX" min="-0.1" max="0.4" step="0.005" value="0.08"><span id="aXV">0.08</span></label>
   <label>art top <input type="range" id="aTop" min="-0.6" max="0.4" step="0.01" value="-0.1"><span id="aTopV">-0.1</span></label>
   <label>art tilt ° <input type="range" id="aTilt" min="-30" max="30" step="1" value="8"><span id="aTiltV">8</span></label>
   <div class="row"><button class="opt" id="astrideFit">copy the fit</button></div>
-  <div class="note" id="astrideNote">An art slot (legs_astride): her lower leg hanging (knee at the top edge of the picture, the foot at its bottom), seen from below and behind by the commander on all fours, on a transparent background; one leg (mirrored for the other) or both. It replaces the silhouettes. Never committed. Its fit travels with it as a sidecar ("copy the fit").</div>
+  <div class="note" id="astrideNote">An art slot (legs_astride): her lower leg hanging (knee at the top edge of the picture, the foot at its bottom), seen from below and behind by the commander on all fours, on a transparent background: her left or her right leg (mirrored for the other), two pictures (left and right), or both legs in one. It replaces the silhouettes. Never committed. Its fit travels with it as a sidecar ("copy the fit").</div>
   <div class="row"><button class="opt" id="tVisitor">a visitor now</button><button class="opt" id="tCup">her mug now</button><button class="opt" id="tSign">she signs now</button><button class="opt" id="tRise">she rises now</button></div>
   <div class="note">Space / left button: bear her. Mouse: balance. Shift / right button: your own shift. When anyone talks about the commander, the body flinches: steady the balance at once. Her mug narrows the level (she moves carefully while it is there); out of level for half a second and it spills. While she signs, keep the mouse still. Her activity "holding audience" brings visitors one after another.</div>
   <h4>the game inside the frame</h4>
@@ -571,7 +572,7 @@ const BASE_EVENTS = [
 <script>
 'use strict';
 /* ---------- settings (the panel) ---------- */
-const S = { frameDrain: 0.35, legsArt: null, legsFeet: 'one', aH: 1.0, aX: 0.08, aTop: -0.1, aTilt: 8, throne: true, contact: 'human_chair', visitorKind: 'business', bodyFollows: true, props: true, only: '', inner: 'weight', closeH: 0.62, closeY: 0.47, zones: null, view: 'legs', blind: false, act: 'reading_reports', legVar: 'planted', style: 'neutral', talk: 'terse', regard: 'neutral', hold: 'keeping', mood: 'calm', seed: 37, force: '',
+const S = { frameDrain: 0.35, legsArt: null, legsArtR: null, legsFeet: 'left', aH: 1.0, aX: 0.08, aTop: -0.1, aTilt: 8, throne: true, contact: 'human_chair', visitorKind: 'business', bodyFollows: true, props: true, only: '', inner: 'weight', closeH: 0.62, closeY: 0.47, zones: null, view: 'legs', blind: false, act: 'reading_reports', legVar: 'planted', style: 'neutral', talk: 'terse', regard: 'neutral', hold: 'keeping', mood: 'calm', seed: 37, force: '',
   legsW: 0.62, legsB: 0.9, feetW: 0.56, feetB: 0.86, feetTilt: 6, raisedW: 0.62, raisedB: 0.9, floorShade: 0.55, knows: false, public: false, reckless: false, phases: 3, phaseLen: 90, start: 1080, level: 1, rain: true, stay: true,
   sound: true, murmur: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 const V = () => VIEWS[S.inner === 'weight' ? 'footrest' : S.view], ACT = () => ACTS[S.act], ST = () => STYLES[S.style];
@@ -2011,28 +2012,31 @@ const tOutC = document.createElement('canvas'), toctx = tOutC.getContext('2d');
 function throneArt(now) {
   const L = $('#astrideL'), R = $('#astrideR');
   const on = throneOn() && S.contact === 'human_chair' && S.legsArt;
-  L.style.display = on ? 'block' : 'none'; R.style.display = on && S.legsFeet === 'one' ? 'block' : 'none';
+  const both = S.legsFeet === 'two', pair = S.legsFeet === 'pair';
+  L.style.display = on ? 'block' : 'none'; R.style.display = on && !both ? 'block' : 'none';
   if (!on || !L.naturalWidth) return !!on;
   const vw = innerWidth, vh = innerHeight, t = now / 1000;
   const live = G.phase === 'loop' || G.phase === 'entry', reading = live && G.att === 'busy';
   const toward = W.lean * 0.9 + W.cop * 0.5, jolt = W.jolt * 0.4;
-  const h = vh * S.aH, w = h * L.naturalWidth / L.naturalHeight;
+  const h = vh * S.aH;
   const strF = smooth(100, 0, W.str);
   const op = G.risen ? '0' : '1';
   const place = (el, side) => {
     const own = side * toward, press = Math.max(0, own), lift = Math.max(0, -own);
     const sw = S.reduced ? 0 : (reading ? Math.sin(t * 3.1 + (side > 0 ? 1.7 : 0)) * (side > 0 ? 1 : 0.35) : Math.sin(t * 0.8 + side) * 0.25);
-    const cx = S.legsFeet === 'two' ? vw / 2 : (side < 0 ? S.aX * vw : vw - S.aX * vw);
-    const dx = S.legsFeet === 'two' ? toward * 0.02 * vw : -side * (press * 0.035 - lift * 0.03) * vw;
+    const w = h * (el.naturalWidth || 1) / (el.naturalHeight || 1);
+    const cx = both ? vw / 2 : (side < 0 ? S.aX * vw : vw - S.aX * vw);
+    const dx = both ? toward * 0.02 * vw : -side * (press * 0.035 - lift * 0.03) * vw;
     const dy = (-lift * 0.07 + jolt * 0.02) * vh;
-    const rot = (S.legsFeet === 'two' ? toward * 2 : -side * S.aTilt) + sw * 2.2;
-    const flip = S.legsFeet === 'one' && side > 0 ? ' scaleX(-1)' : '';
+    const rot = (both ? toward * 2 : -side * S.aTilt) + sw * 2.2;
+    // one leg: the picture is her left or her right leg (as it stands on the screen); the other side is its mirror. pair: two pictures, no mirror.
+    const flip = (S.legsFeet === 'left' && side > 0) || (S.legsFeet === 'right' && side < 0) ? ' scaleX(-1)' : '';
     el.style.width = `${w}px`; el.style.height = `${h}px`;
     el.style.transform = `translate(${(cx - w / 2 + dx).toFixed(1)}px, ${(S.aTop * vh + dy).toFixed(1)}px) rotate(${rot.toFixed(2)}deg)${flip}`;
     el.style.opacity = op;
     el.style.filter = `blur(${(1.2 + strF * 0.8).toFixed(1)}px) brightness(${(0.62 - strF * 0.1).toFixed(2)}) saturate(.85) drop-shadow(0 0 14px rgba(226,78,52,.45))`;
   };
-  place(L, -1); if (S.legsFeet === 'one') place(R, 1);
+  place(L, -1); if (!both) place(R, 1);
   return true;
 }
 function throneLegs(now) {
@@ -2696,9 +2700,10 @@ $('#propsOn').onchange = (e) => { S.props = e.target.checked; };
 $('#tVisitor').onclick = () => throneVisitor(); $('#tCup').onclick = throneCup; $('#tSign').onclick = throneSign; $('#tRise').onclick = throneRise;
 
 bindRange('frameDrain', 'frameDrain'); bindRange('aH', 'aH'); bindRange('aX', 'aX'); bindRange('aTop', 'aTop'); bindRange('aTilt', 'aTilt');
-$('#astrideFeet').onchange = (e) => { S.legsFeet = e.target.value; };
-$('#astrideFile').onchange = () => { const f = $('#astrideFile').files[0]; if (!f) return; const u = URL.createObjectURL(f); $('#astrideL').src = u; $('#astrideR').src = u; S.legsArt = u; };
-$('#astrideFit').onclick = () => { const j = JSON.stringify({ slot: 'legs_astride', feet: S.legsFeet, fit: { height: S.aH, x: S.aX, top: S.aTop, tilt: S.aTilt } }); navigator.clipboard?.writeText(j).catch(() => {}); $('#astrideNote').textContent = j; };
+$('#astrideFeet').onchange = (e) => { S.legsFeet = e.target.value; $('#astrideR').src = S.legsFeet === 'pair' && S.legsArtR ? S.legsArtR : (S.legsArt ?? ''); };
+$('#astrideFile').onchange = () => { const f = $('#astrideFile').files[0]; if (!f) return; const u = URL.createObjectURL(f); S.legsArt = u; $('#astrideL').src = u; if (S.legsFeet !== 'pair' || !S.legsArtR) $('#astrideR').src = u; };
+$('#astrideFileR').onchange = () => { const f = $('#astrideFileR').files[0]; if (!f) return; const u = URL.createObjectURL(f); S.legsArtR = u; S.legsFeet = 'pair'; $('#astrideFeet').value = 'pair'; $('#astrideR').src = u; if (!S.legsArt) { S.legsArt = u; $('#astrideL').src = u; } };
+$('#astrideFit').onclick = () => { const j = JSON.stringify({ slot: 'legs_astride', feet: S.legsFeet === 'two' ? 'two' : S.legsFeet === 'pair' ? 'pair' : 'one', ...(S.legsFeet === 'left' || S.legsFeet === 'right' ? { shown: S.legsFeet } : {}), fit: { height: S.aH, x: S.aX, top: S.aTop, tilt: S.aTilt } }); navigator.clipboard?.writeText(j).catch(() => {}); $('#astrideNote').textContent = j; };
 </script>
 </body>
 </html>
