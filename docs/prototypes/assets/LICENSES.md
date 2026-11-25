@@ -16,4 +16,5 @@
   - `swallow1–5`: "Liquid Bottle Drink Set" (qubodup, `swallow-01–05`).
   - `drink1–4`: "202 More Sound Effects" (`Drink/Drink_01–04`).
   - `stream4`: "Running Water - background noise" by HippoDevelopment (OpenGameArt.org), **CC-BY 3.0** (https://creativecommons.org/licenses/by/3.0/): attribution required wherever it ships.
+  - `mug_soft`, `mug_strong`: "Pouring water in mug in sink" by earthcalling, **public domain**, via Wikimedia Commons (https://commons.wikimedia.org/wiki/File:Pouring_water_in_mug_in_sink.ogg; brought by the author, 2026-11-25): the soft pour (3.45–7.05 s) and the strong one (13.2–17.9 s), each made a seamless loop (its end crossfaded into its start over 0.45 s), loudness-normalised.
   - `gulp.html` also plays `ha/pour.ogg`, `ha/cloth1–3` and `breath-in-out.mp3`.

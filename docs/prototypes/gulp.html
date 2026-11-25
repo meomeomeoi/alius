@@ -122,7 +122,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <label>the floor <select id="floorSel"></select></label>
   <h4>sound</h4>
   <label><input type="checkbox" id="snd" checked> on</label>
-  <label>stream <select id="streamS"><option value="stream1" selected>water 1</option><option value="stream2">water 2 (steady)</option><option value="stream4">running water (CC-BY)</option><option value="stream3">water 3</option><option value="pour">flowing (her_activity's)</option><option value="synth">synth</option></select></label>
+  <label>stream <select id="streamS"><option value="mug" selected>into a mug (soft ↔ strong by her flow)</option><option value="mug_strong">into a mug, strong</option><option value="mug_soft">into a mug, soft</option><option value="stream1">water 1</option><option value="stream2">water 2 (steady)</option><option value="stream4">running water (CC-BY)</option><option value="stream3">water 3</option><option value="pour">flowing (her_activity's)</option><option value="synth">synth</option></select></label>
   <label>swallow <select id="swallowS"><option value="swallows" selected>swallows (recorded)</option><option value="drinks">drinking gulps (recorded)</option><option value="synth">synth</option></select></label>
   <label>volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7"></label>
   <h4>view</h4>
@@ -152,6 +152,7 @@ const ASSETS = {
 const SAMPLE_URLS = {
   pour: '%%ASSET:docs/prototypes/assets/ha/pour.ogg%%',
   stream1: '%%ASSET:docs/prototypes/assets/gulp/stream1.ogg%%', stream2: '%%ASSET:docs/prototypes/assets/gulp/stream2.ogg%%', stream3: '%%ASSET:docs/prototypes/assets/gulp/stream3.ogg%%', stream4: '%%ASSET:docs/prototypes/assets/gulp/stream4.ogg%%',
+  mug_soft: '%%ASSET:docs/prototypes/assets/gulp/mug_soft.ogg%%', mug_strong: '%%ASSET:docs/prototypes/assets/gulp/mug_strong.ogg%%',
   swallow1: '%%ASSET:docs/prototypes/assets/gulp/swallow1.ogg%%', swallow2: '%%ASSET:docs/prototypes/assets/gulp/swallow2.ogg%%', swallow3: '%%ASSET:docs/prototypes/assets/gulp/swallow3.ogg%%',
   swallow4: '%%ASSET:docs/prototypes/assets/gulp/swallow4.ogg%%', swallow5: '%%ASSET:docs/prototypes/assets/gulp/swallow5.ogg%%',
   drink1: '%%ASSET:docs/prototypes/assets/gulp/drink1.ogg%%', drink2: '%%ASSET:docs/prototypes/assets/gulp/drink2.ogg%%', drink3: '%%ASSET:docs/prototypes/assets/gulp/drink3.ogg%%', drink4: '%%ASSET:docs/prototypes/assets/gulp/drink4.ogg%%',
@@ -207,7 +208,7 @@ const LINES = {
 const TASTE = ['Warm, and salt.', 'Bitter at the back of the tongue.', 'Warmer than expected.', 'Sharp; it catches in the throat.'];
 
 /* ---------- settings ---------- */
-const S = { streamS: 'stream1', swallowS: 'swallows', style: 'neutral', explicit: false, overH: 1.04, overX: 0.5, overSink: 0, len: 35, flowK: 1, sound: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
+const S = { streamS: 'mug', swallowS: 'swallows', style: 'neutral', explicit: false, overH: 1.04, overX: 0.5, overSink: 0, len: 35, flowK: 1, sound: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 const ST = () => STYLES[S.style];
 const L = () => LINES[S.style];
 
@@ -276,9 +277,15 @@ function streamInit() {
 }
 /* the recorded loop chosen in the panel (synth: only the filtered noise) */
 function streamSource() {
-  if (STREAM.src) { try { STREAM.src.stop(); } catch (e) { /* already stopped */ } STREAM.src = null; }
+  for (const k of ['src', 'src2']) if (STREAM[k]) { try { STREAM[k].stop(); } catch (e) { /* already stopped */ } STREAM[k] = null; }
+  const mk = (buf, gain) => { const src = A.ctx.createBufferSource(); src.buffer = buf; src.loop = true; const g = A.ctx.createGain(); g.gain.value = gain; src.connect(g); g.connect(STREAM.lp); src.start(); return { src, g }; };
+  if (S.streamS === 'mug' && A.buf.mug_soft && A.buf.mug_strong) {
+    // the recording of a pour into a mug (public domain): its soft and its strong part, mixed by her flow
+    const a = mk(A.buf.mug_soft, 1), b = mk(A.buf.mug_strong, 0); STREAM.src = a.src; STREAM.mixA = a.g; STREAM.src2 = b.src; STREAM.mixB = b.g; return;
+  }
+  STREAM.mixA = STREAM.mixB = null;
   const buf = S.streamS !== 'synth' ? A.buf[S.streamS] : null;
-  if (buf) { STREAM.src = A.ctx.createBufferSource(); STREAM.src.buffer = buf; STREAM.src.loop = true; STREAM.src.connect(STREAM.lp); STREAM.src.start(); }
+  if (buf) STREAM.src = mk(buf, 1).src;
 }
 function streamSet(flow, rising) {
   if (!STREAM.g) return;
@@ -286,7 +293,10 @@ function streamSet(flow, rising) {
   STREAM.g.gain.setTargetAtTime(STREAM.src ? 0.5 * k : 0, t, 0.08);
   STREAM.ng.gain.setTargetAtTime((STREAM.src ? 0.02 : 0.08) * k, t, 0.08);
   STREAM.lp.frequency.setTargetAtTime(1600 + 2600 * k + (rising ? 1200 : 0), t, 0.1);
-  if (STREAM.src) STREAM.src.playbackRate.setTargetAtTime(0.9 + 0.25 * k + (rising ? 0.15 : 0), t, 0.1);
+  if (STREAM.mixA) { const m = smooth(0.25, 0.9, k); STREAM.mixA.gain.setTargetAtTime(1 - m, t, 0.12); STREAM.mixB.gain.setTargetAtTime(m, t, 0.12); } // soft ↔ strong by her flow
+  const rate = STREAM.mixA ? 0.96 + 0.08 * k + (rising ? 0.06 : 0) : 0.9 + 0.25 * k + (rising ? 0.15 : 0); // a recording keeps nearly its own pitch
+  if (STREAM.src) STREAM.src.playbackRate.setTargetAtTime(rate, t, 0.1);
+  if (STREAM.src2) STREAM.src2.playbackRate.setTargetAtTime(rate, t, 0.1);
   STREAM.bp.frequency.setTargetAtTime(900 + 1200 * k, t, 0.1);
 }
 
