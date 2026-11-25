@@ -4826,6 +4826,73 @@
   background: rgba(12, 11, 16, 0.95);
 }
 
+/* ---- Task 8: collapsed cards are the edges of her hand (cards.html `render`) ----
+   The slots are `display: contents`: a card's place is its CSS `order` (set by the dock), across slots: the strips newest on top, then the open
+   card, then the cards with a clock. */
+#alius-shell .alius-dock {
+  gap: 0;
+  padding: 6px 8px 10px 4px;
+}
+
+#alius-shell .alius-dock-slot {
+  display: contents;
+}
+
+/* a card the dock draws that is not one of hers (P14's chips, an old surface) keeps its own room */
+#alius-shell .alius-dock-card:not(.alius-scard) {
+  margin-bottom: 8px;
+}
+
+#alius-shell .alius-dock-waiting {
+  order: -1;
+  margin-bottom: 8px;
+}
+
+#alius-shell .alius-dock-card.alius-scard[data-collapsed="true"] {
+  cursor: pointer;
+  margin-bottom: -6px;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.25);
+}
+
+#alius-shell .alius-dock-card.alius-scard[data-collapsed="true"] > .alius-scard-head {
+  padding: 9px 14px 14px 18px;
+}
+
+#alius-shell .alius-scard[data-collapsed="true"] .alius-scard-who {
+  font-size: calc(21px * var(--alius-scard-hs));
+}
+
+#alius-shell .alius-scard[data-collapsed="true"] .alius-scard-gist {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  font: 300 13.5px var(--alius-font-sans);
+  color: var(--alius-scard-ink);
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#alius-shell .alius-scard[data-collapsed="true"] .alius-scard-gist b {
+  font-weight: 400;
+  color: var(--alius-scard-acc);
+}
+
+#alius-shell .alius-dock-card.alius-scard[data-collapsed="true"]:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35), 0 0 0 1px color-mix(in srgb, var(--alius-scard-acc) 40%, transparent);
+}
+
+#alius-shell .alius-dock-card.alius-scard[data-open="true"] {
+  margin-top: 4px;
+}
+
+/* the cards with a clock come after the open one */
+#alius-shell .alius-dock-card.alius-scard[data-open="true"]:is([data-run], [data-clock]) {
+  margin-top: 10px;
+}
+
 /* World parameters and disposition controls (P8). Palette variables only. */
 #alius-shell .alius-world-option {
   margin: 0 0 14px;

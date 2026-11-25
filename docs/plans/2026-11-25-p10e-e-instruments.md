@@ -488,14 +488,15 @@ Open for e4: a blackout's end is cut short by the scene end; P15a's typing lapse
   - The dock draws a collapsed card as its head line and `span.alius-scard-gist` (from `data-gist`).
   - `running(card)` is `data-run` **or** `data-clock`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `a collapsed card shows her name, its kind and its gist`, never only the name: a task's strip reads `Ann`, `task`, `bring the roster · this evening`.
   - `a sealed strip shows ✉ and nothing else of it`.
   - `newest on top, the open one below them`: three cards → DOM order `[c3, c2]` strips, then `c1` open (the open one is the newest unless the commander chose another).
   - `a click opens a strip, the open one becomes a strip`.
   - `a running hold is never collapsed` (as today) and `the set-aside counter still works`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run**, `npm run test:layout` → PASS.
-- [ ] **Step 5: Commit** `feat(P10e-e): collapsed cards show her name, the kind and the gist`
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run**, `npm run test:layout` → PASS.
+- [x] **Step 5: Commit** `feat(P10e-e): collapsed cards show her name, the kind and the gist`
+  - *As built:* the dock remembers when each card first came (module memory by its key, `resetDock` forgets it): newer = later; drawn at once, the first in the slots' order counts as the newest, so the old rule (a punishment opens before a task) holds for a batch. A new card (not one with a clock) clears the commander's choice, so it opens (cards.html `addCard`). The slots are `display: contents` and each card gets its CSS `order` (strips newest on top, the open card, the cards with a clock): the DOM order of the slots is not touched (the draw functions keep their hosts), so the tests read the order from `style.order`. A card with a clock gets no × (cards.html draws none for `run`). The gist span is drawn into `.alius-scard-head` from `data-gist` on every layout (`gistRuns`: `<b>` as an element, the rest text).
 
 ### Task 9: The posture call as a full-frame moment
 

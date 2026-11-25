@@ -36088,16 +36088,16 @@ function spreadRumors(draft, _ctx) {
       continue;
     }
     const span = spanOf(fact.spread, fact.importance);
-    const age = draft.day - fact.day;
+    const age2 = draft.day - fact.day;
     const heard = [];
     for (const id of squad) {
-      if (fact.knownBy.includes(id) || age < hashDay(fact.id, id, span) + 1) continue;
+      if (fact.knownBy.includes(id) || age2 < hashDay(fact.id, id, span) + 1) continue;
       fact.knownBy.push(id);
       (fact.heard ??= {})[id] = draft.day;
       heard.push(id);
     }
     if (heard.length > 0) events.push({ type: "rumor_heard", factId: fact.id, unitIds: heard });
-    if (squad.every((id) => fact.knownBy.includes(id)) || age >= span) delete fact.spread;
+    if (squad.every((id) => fact.knownBy.includes(id)) || age2 >= span) delete fact.spread;
   }
   return events;
 }
@@ -36268,8 +36268,8 @@ function receiptOf(state, unitId, msg) {
   const at = thread.findIndex((m) => m.id === msg.id);
   const answer = thread.slice(at + 1).find((m) => m.from !== "commander");
   if (answer) return { status: "read", slotsAgo: Math.max(0, now - slotIndex(answer.day, answer.slot)) };
-  const age = now - slotIndex(msg.day, msg.slot);
-  return age >= 1 ? { status: "left_on_read", slotsAgo: age } : { status: "delivered" };
+  const age2 = now - slotIndex(msg.day, msg.slot);
+  return age2 >= 1 ? { status: "left_on_read", slotsAgo: age2 } : { status: "delivered" };
 }
 
 // src/engine/notes/write.ts
@@ -46815,6 +46815,17 @@ function gistOf(c) {
     default:
       return c.gist ?? "";
   }
+}
+function gistRuns(gist) {
+  const runs2 = [];
+  let at = 0;
+  for (const m of gist.matchAll(/<b>([\s\S]*?)<\/b>/g)) {
+    if (m.index > at) runs2.push({ text: gist.slice(at, m.index) });
+    runs2.push({ text: m[1], value: true });
+    at = m.index + m[0].length;
+  }
+  if (at < gist.length) runs2.push({ text: gist.slice(at) });
+  return runs2;
 }
 
 // src/engine/hand.ts
@@ -64543,17 +64554,28 @@ function createChipRow(host, names2) {
 // src/ui/scene/stage/dock.ts
 var DOCK_SLOTS = ["moment", "posture-call", "physics", "punishment", "task", "demonstration", "milestone", "claim", "return"];
 var setAside = /* @__PURE__ */ new Set();
+var ages = /* @__PURE__ */ new Map();
+var age = 0;
 function resetDock() {
   setAside.clear();
+  ages.clear();
+  age = 0;
 }
-var running2 = (card2) => card2.hasAttribute("data-run");
-var SKIP = /^data-(analyze|dock|open|collapsed|set-aside|voice)/;
+var running2 = (card2) => card2.hasAttribute("data-run") || card2.hasAttribute("data-clock");
+var SKIP = /^data-(analyze|dock|open|collapsed|set-aside|voice|gist|scard)/;
 function idOf2(card2, index2) {
   const own = card2.getAttributeNames().find((n) => n.startsWith("data-") && !SKIP.test(n));
   if (own) return `${own}=${card2.getAttribute(own)}`;
   const inner = card2.querySelector("[data-task],[data-punishment],[data-milestone],[data-claim],[data-moment],[data-demonstration]");
   const attr = inner?.getAttributeNames().find((n) => n.startsWith("data-") && !SKIP.test(n));
   return inner && attr ? `${attr}=${inner.getAttribute(attr)}` : `#${index2}`;
+}
+function drawGist(card2) {
+  const head = card2.querySelector(":scope > .alius-scard-head");
+  const gist = card2.getAttribute("data-gist");
+  if (!head || gist === null) return;
+  const el = head.querySelector(":scope > .alius-scard-gist") ?? head.appendChild(h("span", { class: "alius-scard-gist" }));
+  el.replaceChildren(...gistRuns(gist).map((r) => r.value ? h("b", {}, r.text) : document.createTextNode(r.text)));
 }
 function createDock(host, names2) {
   const slots = /* @__PURE__ */ new Map();
@@ -64585,10 +64607,15 @@ function createDock(host, names2) {
           cards.push({ el, key: `${sceneId}|${name}|${idOf2(el, i)}` });
         });
       }
-      const shown2 = cards.filter((c) => !setAside.has(c.key));
+      const fresh = cards.filter((c) => !ages.has(c.key));
+      for (const c of [...fresh].reverse()) ages.set(c.key, ++age);
+      if (fresh.some((c) => !running2(c.el))) chosen = null;
+      const shown2 = cards.filter((c) => !setAside.has(c.key)).sort((a, b) => ages.get(a.key) - ages.get(b.key));
       const aside = cards.length - shown2.length;
-      const openKey = chosen !== null && shown2.some((c) => c.key === chosen) ? chosen : shown2[0]?.key ?? null;
+      const openKey = chosen !== null && shown2.some((c) => c.key === chosen) ? chosen : shown2.filter((c) => !running2(c.el)).at(-1)?.key ?? null;
       if (chosen !== null && openKey !== chosen) chosen = null;
+      const collapsed = shown2.filter((c) => c.key !== openKey && !running2(c.el)).reverse();
+      const order = [...collapsed, ...shown2.filter((c) => c.key === openKey), ...shown2.filter((c) => running2(c.el))];
       for (const { el, key } of cards) {
         el.classList.add("alius-dock-card");
         const gone3 = setAside.has(key);
@@ -64599,10 +64626,13 @@ function createDock(host, names2) {
           el.querySelector(":scope > [data-set-aside]")?.remove();
           continue;
         }
-        const isOpen2 = key === openKey || running2(el);
+        el.style.order = String(order.findIndex((c) => c.key === key));
+        const clock = running2(el);
+        const isOpen2 = key === openKey || clock;
         el.dataset.open = String(isOpen2);
         if (isOpen2) delete el.dataset.collapsed;
         else el.dataset.collapsed = "true";
+        drawGist(el);
         if (!el.hasAttribute("data-dock-wired")) {
           el.setAttribute("data-dock-wired", "");
           el.addEventListener("click", (ev) => {
@@ -64617,7 +64647,7 @@ function createDock(host, names2) {
         }
         el.setAttribute("data-dock-key", key);
         const mark = el.querySelector(":scope > [data-set-aside]");
-        if (isOpen2 && !mark) {
+        if (isOpen2 && !clock && !mark) {
           el.append(h("button", {
             type: "button",
             class: "alius-dock-aside",
@@ -64633,7 +64663,7 @@ function createDock(host, names2) {
               dock.layout(scene);
             }
           }, "\xD7"));
-        } else if (!isOpen2 && mark) mark.remove();
+        } else if ((!isOpen2 || clock) && mark) mark.remove();
       }
       waiting3.hidden = aside === 0;
       waiting3.textContent = `${aside} waiting`;

@@ -14,6 +14,10 @@ import { COMMANDER, resetBlockingHooks, setBlocking } from '../../../src/engine/
 import { enable } from '../../helpers/bonds';
 import '../../../src/engine/actions/physics';
 import { campaign, errors, loadCore, run, setRelation } from '../../helpers/loyalty';
+import { sceneCard } from '../../../src/ui/scene/cards/sceneCard';
+import { drawTaskCards } from '../../../src/ui/practice/taskCard';
+import { blankPractices } from '../../../src/engine/practice/state';
+import { ANN, withService, world } from '../../engine/practice/world';
 import '../../../src/engine/actions/blocking';
 
 let reg: Registries;
@@ -247,5 +251,104 @@ describe('the dock on the scene screen', () => {
     // set aside or collapsed, the pill stays
     card.querySelector<HTMLButtonElement>('[data-set-aside]')?.click();
     expect(t.host.querySelector('[data-stop-word]')).not.toBeNull();
+  });
+});
+
+/** A scene card (cards.html) of hers: `id` as its `data-task`, its gist. */
+const her = (id: string, gist = `${id} gist`) => {
+  const el = sceneCard({ her: { unitId: 'unit_ann', name: 'Ann', accent: '#ff9ec7', hand: null }, kind: 'task', words: `words of ${id}`, conditions: [], answers: [], gist });
+  el.setAttribute('data-task', id);
+  return el;
+};
+/** The cards of the dock in the order they are seen (the slots are `display: contents`; the dock sets each card's CSS `order`). */
+const seen = (dock: { element: HTMLElement }) => [...dock.element.querySelectorAll<HTMLElement>('.alius-dock-card')].filter((c) => !c.hidden)
+  .sort((a, b) => Number(a.style.order) - Number(b.style.order)).map((c) => c.getAttribute('data-task'));
+
+describe('collapsed cards are the edges of her hand (P10e-e Task 8, cards.html `render`)', () => {
+  it('a collapsed card shows her name, its kind and its gist, never only the name', () => {
+    const s = withService(world(reg, 'role'));
+    s.practices = { ...blankPractices(), seq: 3, tasks: [
+      { id: 'pt1', holderId: ANN, kind: 'task', tags: ['service'], track: 'service', tier: 1, stakes: 'minor', check: 'model', proof: 'none', text: 'Bring the roster.', summary: 'bring the roster', status: 'offered', acceptForm: 'button_cost', day: 20, deadline: { day: 20, slot: 'evening' } },
+      { id: 'pt2', holderId: ANN, kind: 'task', tags: ['service'], track: 'service', tier: 1, stakes: 'major', check: 'model', proof: 'none', text: 'SECRET', summary: 'SECRET', status: 'offered', acceptForm: 'sealed', sealed: true, day: 20 },
+      { id: 'pt3', holderId: ANN, kind: 'task', tags: ['service'], track: 'service', tier: 1, stakes: 'minor', check: 'model', proof: 'none', text: 'Kneel.', summary: 'kneel', status: 'offered', acceptForm: 'button', day: 20 },
+    ] } as never;
+    const host = h('div');
+    document.body.append(host);
+    const dock = createDock(host, DOCK_SLOTS);
+    drawTaskCards(dock.slot('task'), s, reg, () => true, { answer: vi.fn(), sign: vi.fn(), focusInput: vi.fn() }, { look: 'scene' });
+    dock.layout('sc1');
+    // drawn at once, the first in the slots' order counts as the newest (it opens); the commander opens the third
+    dock.element.querySelector<HTMLElement>('[data-task="pt3"] .alius-scard-head')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const strip = dock.element.querySelector<HTMLElement>('[data-task="pt1"]')!;
+    expect(strip.dataset.collapsed).toBe('true');
+    const head = strip.querySelector<HTMLElement>('.alius-scard-head')!;
+    expect(head.querySelector('.alius-scard-who')!.textContent).toBe('Ann');
+    expect(head.querySelector('.alius-scard-kind')!.textContent).toBe('task');
+    const gist = head.querySelector<HTMLElement>('.alius-scard-gist')!;
+    expect(gist.textContent).toBe('bring the roster · this evening');
+    expect(gist.querySelector('b')!.textContent).toBe('this evening'); // the value in her accent
+    // a sealed strip: the envelope and nothing else of it
+    const sealed = dock.element.querySelector<HTMLElement>('[data-task="pt2"]')!;
+    expect(sealed.dataset.collapsed).toBe('true');
+    expect(sealed.querySelector('.alius-scard-gist')!.textContent).toBe('✉');
+    expect(sealed.outerHTML).not.toContain('SECRET');
+  });
+
+  it('newest on top, the open one below them (the open one is the newest unless the commander chose another)', () => {
+    const host = h('div');
+    document.body.append(host);
+    const dock = createDock(host, DOCK_SLOTS);
+    const slot = dock.slot('task');
+    // they arrive one by one: c2, then c3, then c1 (the newest)
+    slot.append(her('c2'));
+    dock.layout('sc1');
+    slot.append(her('c3'));
+    dock.layout('sc1');
+    slot.append(her('c1'));
+    dock.layout('sc1');
+    expect(seen(dock)).toEqual(['c3', 'c2', 'c1']);
+    const at = (id: string) => slot.querySelector<HTMLElement>(`[data-task="${id}"]`)!;
+    expect(at('c1').dataset.open).toBe('true');
+    expect(at('c2').dataset.collapsed).toBe('true');
+    expect(at('c3').dataset.collapsed).toBe('true');
+    // a redraw (new nodes, the same cards) keeps the order
+    slot.replaceChildren(her('c2'), her('c3'), her('c1'));
+    dock.layout('sc1');
+    expect(seen(dock)).toEqual(['c3', 'c2', 'c1']);
+  });
+
+  it('a click opens a strip; the open one becomes a strip (newest on top again)', () => {
+    const host = h('div');
+    document.body.append(host);
+    const dock = createDock(host, DOCK_SLOTS);
+    const slot = dock.slot('task');
+    for (const id of ['c1', 'c2', 'c3']) { slot.append(her(id)); dock.layout('sc1'); }
+    expect(seen(dock)).toEqual(['c2', 'c1', 'c3']);
+    const at = (id: string) => slot.querySelector<HTMLElement>(`[data-task="${id}"]`)!;
+    at('c1').querySelector<HTMLElement>('.alius-scard-head')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(at('c1').dataset.open).toBe('true');
+    expect(at('c3').dataset.collapsed).toBe('true');
+    expect(seen(dock)).toEqual(['c3', 'c2', 'c1']);
+    // a new card arrives: it is the one open now
+    slot.append(her('c4'));
+    dock.layout('sc1');
+    expect(at('c4').dataset.open).toBe('true');
+    expect(seen(dock)).toEqual(['c3', 'c2', 'c1', 'c4']);
+  });
+
+  it('a card with a clock never collapses: drawn open after the open card (data-run or data-clock)', () => {
+    const host = h('div');
+    document.body.append(host);
+    const dock = createDock(host, DOCK_SLOTS);
+    const clock = her('k1');
+    clock.setAttribute('data-clock', '');
+    dock.slot('physics').append(clock);
+    dock.layout('sc1');
+    dock.slot('task').append(her('c1'), her('c2'));
+    dock.layout('sc1');
+    expect(clock.dataset.open).toBe('true');
+    expect(seen(dock).at(-1)).toBe('k1');
+    expect(dock.element.querySelectorAll('[data-open="true"]')).toHaveLength(2);
+    expect(clock.querySelector('[data-set-aside]')).toBeNull(); // a clock is not set aside
   });
 });
