@@ -63,7 +63,7 @@ export function renderDemonstrationCard(host: HTMLElement, ctx: DemonstrationCar
     const who = joinNames(names);
     cond(names.length === 0 ? 'demoNone' : others ? 'demoWhoMore' : 'demoWho', { who }, `Before: ${before}.`, { 'data-demonstration-audience': '' });
     cond('demoWhere', { place, slot }, `${place}, ${slot}. It takes the slot.`, { 'data-demonstration-place': d.stage });
-    if (d.status === 'open') cond('demoAgain', {}, 'The scene did not open. Press GO again.');
+    if (d.status === 'open') cond('demoAgain', {}, 'The scene did not open. Press go again.');
     const pill = (kind: DemonstrationAnswer, text: string): HTMLElement => scenePill(text, () => { if (kind === 'go' && closed) return; ctx.onAnswer(kind); }, {
       'data-demonstration-answer': kind, 'data-demonstration': d.id, ...analyzeNative('glossary:demonstration', live),
       ...(kind === 'go' && closed ? { 'aria-disabled': 'true', title: `She wants it in the ${slot}.` } : {}),

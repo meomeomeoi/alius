@@ -61188,7 +61188,7 @@ function renderDemonstrationCard(host, ctx2, opts = {}) {
     const who = joinNames4(names2);
     cond(names2.length === 0 ? "demoNone" : others ? "demoWhoMore" : "demoWho", { who }, `Before: ${before}.`, { "data-demonstration-audience": "" });
     cond("demoWhere", { place: place2, slot: slot2 }, `${place2}, ${slot2}. It takes the slot.`, { "data-demonstration-place": d.stage });
-    if (d.status === "open") cond("demoAgain", {}, "The scene did not open. Press GO again.");
+    if (d.status === "open") cond("demoAgain", {}, "The scene did not open. Press go again.");
     const pill = (kind, text3) => scenePill(text3, () => {
       if (kind === "go" && closed) return;
       ctx2.onAnswer(kind);
@@ -64781,21 +64781,20 @@ function renderPhysicsPanel(host, ctx2) {
   const cueLine = cue !== void 0 ? staging.cue(cue, pointer.beat) : null;
   const gauge = reg.contactPhysics.get(run.physicsId)?.gauge?.kind;
   const label2 = [phys?.label ?? run.physicsId, ...secondPhys ? [secondPhys.label] : []].map((x) => String(x));
-  const parts = [
-    run.marathon ? h("p", { class: "alius-physics-clock", ...analyzeAttrs("glossary:marathon") }, run.marathon.hours === "unknown" ? `${clockText2(run.marathon.clockMin)} \u2026` : `${clockText2(run.marathon.clockMin)}`) : null,
-    run.marathon?.summary !== void 0 ? h("p", { class: "alius-physics-summary alius-dim" }, run.marathon.summary) : null,
-    run.marathon?.waiting ? h(
-      "div",
-      { class: "alius-physics-strategies", role: "group", "aria-label": "How to spend the stretch" },
-      ...STRATEGIES.map((st) => btn(ctx2, { type: "button", class: "alius-btn alius-option alius-physics-strategy", "data-strategy": st, ...analyzeNative("glossary:marathon_strategy", { strategy: st }), onclick: () => {
-        staging.skip(st);
-      } }, `[ ${STRATEGY_TEXT[st]} ]`))
-    ) : null,
-    run.segment.state === "held" && !run.marathon?.waiting ? h("p", { class: "alius-physics-held alius-dim", role: "status" }, "She takes her time.") : null,
-    running3 && !realtime ? h("div", { class: "alius-physics-beats", "aria-hidden": "true" }, ...Array.from({ length: total2 }, (_, i) => h("span", { class: i < pointer.beat ? "alius-pip alius-pip-done" : "alius-pip" }, i < pointer.beat ? "\u25CF" : "\u25CB"))) : null,
-    ctx2.settings.showRawValues ? h("p", { class: "alius-physics-raw alius-dim" }, `${gauge ?? "gauge"}: ${Math.round(run.gauge)} / ${run.capacity}`) : null,
-    ...wayGroups(ctx2, exposedKinds(state, reg))
-  ];
+  const clock = run.marathon ? h("p", { class: "alius-physics-clock", ...analyzeAttrs("glossary:marathon") }, run.marathon.hours === "unknown" ? `${clockText2(run.marathon.clockMin)} \u2026` : `${clockText2(run.marathon.clockMin)}`) : null;
+  const summary = run.marathon?.summary !== void 0 ? h("p", { class: "alius-physics-summary alius-dim" }, run.marathon.summary) : null;
+  const strategies = run.marathon?.waiting ? h(
+    "div",
+    { class: "alius-physics-strategies", role: "group", "aria-label": "How to spend the stretch" },
+    ...STRATEGIES.map((st) => btn(ctx2, { type: "button", class: "alius-btn alius-option alius-physics-strategy", "data-strategy": st, ...analyzeNative("glossary:marathon_strategy", { strategy: st }), onclick: () => {
+      staging.skip(st);
+    } }, `[ ${STRATEGY_TEXT[st]} ]`))
+  ) : null;
+  const heldLine2 = run.segment.state === "held" && !run.marathon?.waiting ? h("p", { class: "alius-physics-held alius-dim", role: "status" }, "She takes her time.") : null;
+  const cueEl = cueLine !== null && cueLine !== "" ? h("p", { class: "alius-physics-cue", role: "status" }, cueLine) : null;
+  const beats = running3 && !realtime ? h("div", { class: "alius-physics-beats", "aria-hidden": "true" }, ...Array.from({ length: total2 }, (_, i) => h("span", { class: i < pointer.beat ? "alius-pip alius-pip-done" : "alius-pip" }, i < pointer.beat ? "\u25CF" : "\u25CB"))) : null;
+  const raw = ctx2.settings.showRawValues ? h("p", { class: "alius-physics-raw alius-dim" }, `${gauge ?? "gauge"}: ${Math.round(run.gauge)} / ${run.capacity}`) : null;
+  const ways = wayGroups(ctx2, exposedKinds(state, reg));
   const controlEls = [
     ...controls.map(button2),
     btn(ctx2, { type: "button", class: "alius-btn alius-option alius-physics-tap", "data-action": "tap", ...analyzeNative("glossary:tap_signal"), onclick: () => ctx2.onTap() }, "[ TAP ]"),
@@ -64813,7 +64812,7 @@ function renderPhysicsPanel(host, ctx2) {
       answers: [h("div", { class: "alius-physics-controls" }, ...controlEls)],
       gist: gistOf({ kind: "physics", label: label2.join(" + ").toLowerCase() }) ?? "",
       ...cueLine !== null && cueLine !== "" ? { prose: cueLine } : {},
-      extra: parts.filter((p) => p !== null)
+      extra: [clock, summary, strategies, heldLine2, beats, raw, ...ways].filter((p) => p !== null)
     });
     root.classList.add(...cls.split(" "));
     root.setAttribute("role", "group");
@@ -64824,9 +64823,14 @@ function renderPhysicsPanel(host, ctx2) {
       "div",
       { class: cls, role: "group", "aria-label": "A hold", "data-run": run.id },
       h("div", { class: "alius-physics-title" }, `[ ${label2.map((x) => x.toUpperCase()).join(" + ")} ]`),
-      ...parts.slice(0, 4),
-      cueLine !== null && cueLine !== "" ? h("p", { class: "alius-physics-cue", role: "status" }, cueLine) : null,
-      ...parts.slice(4),
+      clock,
+      summary,
+      strategies,
+      heldLine2,
+      cueEl,
+      beats,
+      raw,
+      ...ways,
       h("div", { class: "alius-physics-controls" }, ...controlEls)
     );
   }

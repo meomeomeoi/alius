@@ -130,6 +130,8 @@ function drawSceneCall(host: HTMLElement, state: CampaignState, reg: Registries,
     if (now !== null && !now.done) cancelCall(); // answered calls play their end; one that went away unanswered goes now
     return;
   }
+  // the same call drawn already (answered or not): a redraw never restarts it. If the engine refused the answer, the call is still open in the
+  // state, so once this moment has gone (its teardown at 3.3 s) the next redraw draws the call again, as an unanswered card would stay (review M5)
   if (now !== null && now.id === call!.id) return;
   if (now !== null) cancelCall();
   const hand = handOf(state, reg, unit!.id);

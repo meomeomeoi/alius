@@ -20,6 +20,7 @@ import { drawPunishmentCards } from '../../../src/ui/practice/punishmentCard';
 import { resetSignature } from '../../../src/ui/practice/signature';
 import { drawTaskCards } from '../../../src/ui/practice/taskCard';
 import { renderMomentCard } from '../../../src/ui/scene/momentCard';
+import { renderPhysicsPanel } from '../../../src/ui/scene/physicsPanel';
 import { voiceLine } from '../../../src/ui/scene/cards/voice';
 import { COMMANDER, registerFrameReader, resetBlockingHooks, setBlocking } from '../../../src/engine/blocking';
 import { fireMoment } from '../../../src/engine/moments/fire';
@@ -31,6 +32,7 @@ import { hiddenFixture } from '../../fixtures/analyze/hidden';
 import { ANN, BEA, unitOf, withService, world } from '../../engine/practice/world';
 import '../../../src/engine/actions/blocking';
 import '../../../src/engine/actions/moments';
+import '../../../src/engine/actions/physics';
 
 let reg: Registries;
 beforeAll(async () => {
@@ -233,6 +235,36 @@ describe('her cards in her voice (look: scene)', () => {
     expect(el.querySelector('.alius-task-due')!.textContent).toBe('Due: today, evening.');
     expect([...el.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['[ ACCEPT ]', '[ REFUSE ]', '[ TALK ]']);
     expect(el.querySelector('.alius-pill')).toBeNull();
+    // the whole card, as the device draws it (review M8: today's DOM, pinned)
+    expect(card.outerHTML).toMatchSnapshot();
+  });
+
+  it('analyze coverage: the moment, the fallback hold and the ways cards in the scene look (review M8)', () => {
+    registerFrameReader(() => 'play');
+    const base = withService(world(reg, 'play'));
+    setRelation(base, ANN, { stateId: 'confidant' });
+    enable(base, 'pet_play', 'restraint', 'humiliation');
+    const r = run(base, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
+    const s = r.state;
+    setBlocking(s, { registries: reg }, { person: COMMANDER, field: 'worn', value: 'paw_mitts' }, { at: 1, source: 'engine' });
+    fireMoment(s, { registries: reg }, 'third_party', ANN);
+    const root = h('div', { id: 'alius-shell' });
+    document.body.append(root);
+    const noop2 = (): [] => [];
+    const staging = { input: noop, endSegment: noop2, stopWord: noop2, skip: noop2, stimulus: noop2, act: noop2, finishCounted: noop2, cue: () => 'Her breath comes short.', beat: () => 0, clock: () => ({ startedAt: null, beatMs: 1500, now: 0 }) };
+    renderMomentCard(root.appendChild(h('div')), { state: s, registries: reg, chips: 'chips', onStage: noop }, SCENE);
+    renderPhysicsPanel(root.appendChild(h('div')), { state: s, registries: reg, settings: { ...DEFAULT_SETTINGS, physicsRealtime: false }, staging, onTap: noop, look: 'scene' }); // the ways: the mitts hold
+    const hold = structuredClone(s);
+    setBlocking(hold, { registries: reg }, { person: COMMANDER, field: 'worn', value: 'ring_gag' }, { at: 2, source: 'engine' });
+    expect(hold.scene!.physics).toBeDefined();
+    hold.scene!.physics!.segment = { n: 1, state: 'running', plan: { beats: [{ cue: 'warning', attention: 'watching' }, { attention: 'watching' }] } } as never;
+    renderPhysicsPanel(root.appendChild(h('div')), { state: hold, registries: reg, settings: { ...DEFAULT_SETTINGS, physicsRealtime: false }, staging, onTap: noop, look: 'scene' });
+    expect([...root.querySelectorAll('[data-scard-kind]')].map((c) => c.getAttribute('data-scard-kind')).sort()).toEqual(['moment', 'physics', 'ways']);
+    expect(root.textContent).not.toMatch(/\[\s*[A-Z]/);
+    expect(markedWithout(root)).toEqual([]);
+    expect(unresolved(root, env(s))).toEqual([]);
+    expect(unreachable(root)).toEqual([]);
+    for (const b of root.querySelectorAll('button.alius-pill')) expect(b.hasAttribute('data-analyze'), b.outerHTML.slice(0, 120)).toBe(true);
   });
 
   it('analyze coverage: a dock with one card of each kind is marked, resolves and is reachable; no hidden value reaches it', () => {

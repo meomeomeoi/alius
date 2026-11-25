@@ -179,16 +179,16 @@ export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): boo
   const gauge = (reg.contactPhysics.get(run.physicsId)?.gauge as { kind: string } | undefined)?.kind;
 
   const label = [phys?.label ?? run.physicsId, ...(secondPhys ? [secondPhys.label] : [])].map((x) => String(x));
-  const parts = [
-    run.marathon ? h('p', { class: 'alius-physics-clock', ...analyzeAttrs('glossary:marathon') }, run.marathon.hours === 'unknown' ? `${clockText(run.marathon.clockMin)} …` : `${clockText(run.marathon.clockMin)}`) : null,
-    run.marathon?.summary !== undefined ? h('p', { class: 'alius-physics-summary alius-dim' }, run.marathon.summary) : null,
-    run.marathon?.waiting ? h('div', { class: 'alius-physics-strategies', role: 'group', 'aria-label': 'How to spend the stretch' },
-      ...STRATEGIES.map((st) => btn(ctx, { type: 'button', class: 'alius-btn alius-option alius-physics-strategy', 'data-strategy': st, ...analyzeNative('glossary:marathon_strategy', { strategy: st }), onclick: () => { staging.skip(st); } }, `[ ${STRATEGY_TEXT[st]} ]`))) : null,
-    run.segment.state === 'held' && !run.marathon?.waiting ? h('p', { class: 'alius-physics-held alius-dim', role: 'status' }, 'She takes her time.') : null,
-    running && !realtime ? h('div', { class: 'alius-physics-beats', 'aria-hidden': 'true' }, ...Array.from({ length: total }, (_, i) => h('span', { class: i < pointer.beat ? 'alius-pip alius-pip-done' : 'alius-pip' }, i < pointer.beat ? '●' : '○'))) : null,
-    ctx.settings.showRawValues ? h('p', { class: 'alius-physics-raw alius-dim' }, `${gauge ?? 'gauge'}: ${Math.round(run.gauge)} / ${run.capacity}`) : null,
-    ...wayGroups(ctx, exposedKinds(state, reg)),
-  ];
+  // what the card holds besides its cue and its controls, named so both looks can order them explicitly (review M6)
+  const clock = run.marathon ? h('p', { class: 'alius-physics-clock', ...analyzeAttrs('glossary:marathon') }, run.marathon.hours === 'unknown' ? `${clockText(run.marathon.clockMin)} …` : `${clockText(run.marathon.clockMin)}`) : null;
+  const summary = run.marathon?.summary !== undefined ? h('p', { class: 'alius-physics-summary alius-dim' }, run.marathon.summary) : null;
+  const strategies = run.marathon?.waiting ? h('div', { class: 'alius-physics-strategies', role: 'group', 'aria-label': 'How to spend the stretch' },
+    ...STRATEGIES.map((st) => btn(ctx, { type: 'button', class: 'alius-btn alius-option alius-physics-strategy', 'data-strategy': st, ...analyzeNative('glossary:marathon_strategy', { strategy: st }), onclick: () => { staging.skip(st); } }, `[ ${STRATEGY_TEXT[st]} ]`))) : null;
+  const heldLine = run.segment.state === 'held' && !run.marathon?.waiting ? h('p', { class: 'alius-physics-held alius-dim', role: 'status' }, 'She takes her time.') : null;
+  const cueEl = cueLine !== null && cueLine !== '' ? h('p', { class: 'alius-physics-cue', role: 'status' }, cueLine) : null;
+  const beats = running && !realtime ? h('div', { class: 'alius-physics-beats', 'aria-hidden': 'true' }, ...Array.from({ length: total }, (_, i) => h('span', { class: i < pointer.beat ? 'alius-pip alius-pip-done' : 'alius-pip' }, i < pointer.beat ? '●' : '○'))) : null;
+  const raw = ctx.settings.showRawValues ? h('p', { class: 'alius-physics-raw alius-dim' }, `${gauge ?? 'gauge'}: ${Math.round(run.gauge)} / ${run.capacity}`) : null;
+  const ways = wayGroups(ctx, exposedKinds(state, reg));
   const controlEls = [
     ...controls.map(button),
     btn(ctx, { type: 'button', class: 'alius-btn alius-option alius-physics-tap', 'data-action': 'tap', ...analyzeNative('glossary:tap_signal'), onclick: () => ctx.onTap() }, '[ TAP ]'),
@@ -200,7 +200,7 @@ export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): boo
     // the fallback hold in the scene (cards.html, case `physics`): a neutral card, the kind, her cue as its prose; what else it holds; the controls as pills
     root = sceneCard({
       kind: 'a hold', kindId: 'physics', conditions: [], answers: [h('div', { class: 'alius-physics-controls' }, ...controlEls)], gist: gistOf({ kind: 'physics', label: label.join(' + ').toLowerCase() }) ?? '',
-      ...(cueLine !== null && cueLine !== '' ? { prose: cueLine } : {}), extra: parts.filter((p): p is HTMLElement => p !== null),
+      ...(cueLine !== null && cueLine !== '' ? { prose: cueLine } : {}), extra: [clock, summary, strategies, heldLine, beats, raw, ...ways].filter((p): p is HTMLElement => p !== null),
     });
     root.classList.add(...cls.split(' '));
     root.setAttribute('role', 'group');
@@ -209,7 +209,7 @@ export function renderPhysicsPanel(host: HTMLElement, ctx: PhysicsPanelCtx): boo
   } else {
     root = h('div', { class: cls, role: 'group', 'aria-label': 'A hold', 'data-run': run.id },
       h('div', { class: 'alius-physics-title' }, `[ ${label.map((x) => x.toUpperCase()).join(' + ')} ]`),
-      ...parts.slice(0, 4), cueLine !== null && cueLine !== '' ? h('p', { class: 'alius-physics-cue', role: 'status' }, cueLine) : null, ...parts.slice(4),
+      clock, summary, strategies, heldLine, cueEl, beats, raw, ...ways,
       h('div', { class: 'alius-physics-controls' }, ...controlEls));
   }
   root.style.setProperty('--alius-air', String(Math.round(remaining * 100) / 100));

@@ -48,4 +48,13 @@ if (fixture === 'chips' || fixture === 'chipsmany') {
   screen.refresh();
 }
 if (fixture === 'curtain') (root.querySelector('[data-action="history"]') as HTMLElement).click();
+// the shots (scripts/instrument-moments.mjs): `&deferCall=1` holds her call back until `window.__callNow()`, so the port's call starts when the
+// prototype's does (the page's own load time would put the port a second ahead)
+if (params.get('deferCall') === '1') {
+  const pr = (state as { practices?: { call?: unknown } }).practices;
+  const held = pr?.call;
+  if (pr) delete pr.call;
+  screen.refresh();
+  (window as unknown as { __callNow: () => void }).__callNow = () => { if (pr) pr.call = held; screen.refresh(); };
+}
 document.body.dataset.ready = 'true';

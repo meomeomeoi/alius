@@ -11,7 +11,7 @@
 //            `window.__forceO`, `window.__begin()`, …), its globals (a top-level `let` / `function` of its script is reachable from
 //            `page.evaluate`), its panel's buttons or the mouse and keys. `port` runs in the layout page (`/page.html?fixture=<state><query>`):
 //            drive it through the DOM, the mouse and keys. Both end at the moment to shoot; the script waits `settle` ms (default 400) after each.
-//            ctx: { size, wait(ms) }.
+//            ctx: { size, wait(ms) }; `port` also gets `ctx.proto` (the prototype's page), to act on both at the same moment.
 // Shots are deviceScaleFactor 1 (for looking at, not for print).
 
 /** cards.html: the dial's label (Task 6). The circle stays put, the label hangs under it; her name over the base name. */
@@ -63,18 +63,19 @@ function cardMoments(size, suffix) {
   return [
     { id: `stack${suffix}`, state: 'three', size, clip: dock, proto: openProto('punishment'), port: openPort('punishment') },
     { id: `task${suffix}`, state: 'three', size, clip: dock, proto: openProto('task'), port: openPort('task') },
-    { id: `call-mid${suffix}`, state: 'call', size, clip: frame, proto: async (p, c) => { await call(p); await c.wait(900); }, port: async () => {} },
+    // the port's call is held back (`&deferCall=1`) and started with the prototype's: the prototype is driven first, then the port, so the port's
+    // own waits time both (they are a few ms apart at the shot)
+    { id: `call-mid${suffix}`, state: 'call', query: '&deferCall=1', size, clip: frame, proto: call, port: async (p, c) => { await p.evaluate(() => window.__callNow()); await c.wait(900); } },
     {
-      id: `call-right${suffix}`, state: 'call', size, clip: frame,
-      // the prototype is driven first and the port after it: the port's own wait times both moments (about 1.1 s after the click)
-      proto: async (p, c) => { await call(p); await c.wait(900); await p.click('.pc[data-base="bowing"]'); },
-      port: async (p, c) => { await p.click('.alius-call-card[data-posture-choice="bowing"]'); await c.wait(700); },
+      id: `call-right${suffix}`, state: 'call', query: '&deferCall=1', size, clip: frame,
+      // the layout page's `stage` does not apply the answer (a static state), so the port's dial does not take the posture here (tests/ui/practice/postureCall.test.ts pins it)
+      proto: call,
+      port: async (p, c) => { await p.evaluate(() => window.__callNow()); await c.wait(900); await c.proto.click('.pc[data-base="bowing"]'); await p.click('.alius-call-card[data-posture-choice="bowing"]'); await c.wait(700); },
     },
     {
-      id: `call-slow${suffix}`, state: 'call', size, clip: frame,
-      // the port's call started when its page loaded: both are about half a second past her window (4000 ms, ritual) at the shot
-      proto: async (p, c) => { await call(p); await c.wait(3700); },
-      port: async () => {},
+      id: `call-slow${suffix}`, state: 'call', query: '&deferCall=1', size, clip: frame,
+      proto: call,
+      port: async (p, c) => { await p.evaluate(() => window.__callNow()); await c.wait(4100); },
     },
   ];
 }

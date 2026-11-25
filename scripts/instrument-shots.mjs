@@ -56,7 +56,7 @@ for (const m of moments) {
   await port.evaluate(() => document.fonts.ready);
   try {
     await m.proto(proto, ctx);
-    await m.port(port, ctx);
+    await m.port(port, { ...ctx, proto }); // the port's step may drive the prototype too (to act on both at the same moment)
     await wait(settle);
     const files = { proto: join(out, `proto-${m.id}.png`), port: join(out, `port-${m.id}.png`) };
     await proto.screenshot({ path: files.proto, clip });
