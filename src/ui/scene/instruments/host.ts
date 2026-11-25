@@ -23,7 +23,7 @@ import type { SampleLoop, SampleSound } from '../../sound/samples';
 import type { PhysicsPanelStaging } from '../physicsPanel';
 import { unsay } from './kit/hand';
 import { heartStop } from './kit/heart';
-import { claimedProps, claimStyles, handDownAbsent, releaseClaim, type StyleClaim } from './styleClaims';
+import { claimedProps, claimStyles, handDownAbsent, noteWrites, releaseClaim, type StyleClaim } from './styleClaims';
 import type { InstrumentDef, InstrumentEnv, InstrumentRun, PhysicsEnd } from './types';
 
 const defs: InstrumentDef[] = [];
@@ -256,7 +256,7 @@ function mount(env: InstrumentEnv, def: InstrumentDef, run: PhysicsRun, key: str
   const mark = h('div', { class: 'alius-instrument', 'data-instrument': def.id }); // a plain flag: the glossary reaches it through the stop word, the dial and the contact
   env.layers.moment.append(mark);
   const dial = env.root.querySelector<HTMLElement>('.alius-stage-dial');
-  if (dial) { scope.dial = claimStyles(dial, ['@data-instrument']); dial.setAttribute('data-instrument', def.id); } // R6: the dial dims
+  if (dial) { scope.dial = claimStyles(dial, ['@data-instrument']); dial.setAttribute('data-instrument', def.id); noteWrites(scope.dial); } // R6: the dial dims
   current = { key, runId: run.id, def, env, run: null, scope, mark, finishing: null };
   syncMark(current);
   current.run = def.start(scoped, run); // a throw is caught by syncInstruments

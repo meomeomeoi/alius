@@ -1,14 +1,23 @@
 /**
- * P10e-e review M4: a stack of owners for the inline styles (and attributes) of the scene's elements that more than one surface writes for a
- * while (the slap's camera and an instrument's mount both move the backdrop and sprites layers and flag the dial). A claim saves the values it
- * will write over and puts them back when it is released, as a stack does, in whatever order the claims end:
- * - released while an older claim still holds the property: it puts back its saved value (what the older one had written);
- * - released while a newer claim holds it: it writes nothing and hands its saved value to the newer one, which puts it back in its turn;
- * - the last one to let go puts back what was there before any came. A leaf: no imports.
+ * P10e-e review M4, I4: a stack of owners for the inline styles (and attributes, `@name`) of the scene's elements that more than one surface
+ * writes for a while (the slap's camera and an instrument's mount both touch the backdrop and sprites layers and flag the dial).
+ *
+ * The contract every surface relies on:
+ * - `claimStyles(el, props)` saves what those properties are now; the claimant may then write them.
+ * - A claimant that writes records what it wrote with `noteWrites(claim)` (the slap does after each frame). A passive claim (the host's
+ *   snapshot of a mount) writes nothing and records nothing.
+ * - `releaseClaim(claim)`, in any order:
+ *   - no other claim holds the property: its saved value is put back;
+ *   - an older claim holds it: its saved value is put back (what the older one had there);
+ *   - a newer claim holds it: its saved value is handed up to the newer one (which will put it back when it goes); and if the element still
+ *     shows this claim's own last write (the newer one never wrote over it), the saved value is put back now as well, so nothing of a
+ *     claimant outlives it under a passive claim.
+ * - The last claim to let go of a property puts back what was there before any claim came.
+ * A leaf: no imports.
  */
 
 /** An attribute is claimed as `@<name>`; anything else is a style property. `null` = absent. */
-export interface StyleClaim { el: Element; saved: Map<string, string | null> }
+export interface StyleClaim { el: Element; saved: Map<string, string | null>; wrote?: Map<string, string | null> }
 
 /** In the order they were made (oldest first). */
 const claims: StyleClaim[] = [];
@@ -44,9 +53,15 @@ export function releaseClaim(c: StyleClaim): void {
   claims.splice(at, 1);
   for (const [p, v] of c.saved) {
     const newer = claims.slice(at).find((x) => x.el === c.el && x.saved.has(p));
-    if (newer) newer.saved.set(p, v);
-    else writeStyle(c.el, p, v);
+    if (!newer) { writeStyle(c.el, p, v); continue; }
+    newer.saved.set(p, v);
+    if (c.wrote?.has(p) && read(c.el, p) === c.wrote.get(p)) writeStyle(c.el, p, v); // its own write is still showing: it goes with it
   }
+}
+
+/** Records what the claimant has written to its properties (their values now), for `releaseClaim`. */
+export function noteWrites(c: StyleClaim): void {
+  c.wrote = new Map([...c.saved.keys()].map((p) => [p, read(c.el, p)]));
 }
 
 /** The properties of `el` some claim holds now. */

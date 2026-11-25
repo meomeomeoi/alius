@@ -24,7 +24,7 @@ import { slapSide } from '../../../../engine/practice/slap';
 import type { SlapResult } from '../../../../engine/practice/state';
 import { TUNING } from '../../../../engine/tuning';
 import { voiceLine, type VoiceKind } from '../../cards/voice';
-import { claimStyles, releaseClaim, type StyleClaim } from '../styleClaims';
+import { claimStyles, noteWrites, releaseClaim, type StyleClaim } from '../styleClaims';
 import type { HerLook, InstrumentEnv } from '../types';
 
 /* ---------- the pure rules (slap.html's timeline, its tension and its flick, as functions of their own) ---------- */
@@ -186,6 +186,7 @@ function requestAnimationFrame(fn: (now: number) => void): void {
     if (!G.slap && !G.back && !G.starting && G.cheekA <= 0) { cam.release(); return; } // nothing to draw: the loop sleeps
     measure();
     fn(now);
+    for (const c of cam.saved) if (c !== cam.dial) noteWrites(c); // what the camera wrote this frame (styleClaims' contract; the dial's flag is written once)
   });
 }
 
@@ -312,6 +313,7 @@ const CAM_PROPS = ['transform', 'transform-origin', 'filter', 'transition', 'opa
 const cam = {
   held: false,
   saved: [] as StyleClaim[],
+  dial: null as StyleClaim | null,
   base: null as { x: number; y: number } | null,
   backdropFilter: '',
   /** The camera leaves home: the styles it will write are saved, her face point is measured. */
@@ -331,7 +333,7 @@ const cam = {
     this.base = null;
     this.measure();
     const dial = e.env.root.querySelector<HTMLElement>('.alius-stage-dial');
-    if (dial) { this.saved.push(claimStyles(dial, ['@data-instrument'])); dial.setAttribute('data-instrument', 'slap'); }
+    if (dial) { const c = claimStyles(dial, ['@data-instrument']); dial.setAttribute('data-instrument', 'slap'); noteWrites(c); this.saved.push(c); this.dial = c; }
   },
   /** Her face point in the scene (the sprite's sidecar point on the drawn picture), measured with the camera at home. */
   measure(): void {
@@ -392,6 +394,7 @@ const cam = {
     this.held = false;
     for (const c of this.saved) releaseClaim(c);
     this.saved = [];
+    this.dial = null;
     this.base = null;
     if (E) { E.faceImg.style.opacity = '0'; E.faceImg.style.transform = ''; E.faceImg.style.filter = ''; }
   },

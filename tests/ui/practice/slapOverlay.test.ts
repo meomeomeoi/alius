@@ -367,6 +367,49 @@ describe('the slap and an instrument share the frame (review M4)', () => {
     expect(o.root.querySelector('.alius-stage-dial')!.hasAttribute('data-instrument')).toBe(false);
   });
 
+  /** A passive instrument: it writes none of the camera's properties. */
+  function passiveInstrument(): void {
+    registerInstrument({ id: 'quiet', matches: () => true, start: () => ({ update() {}, stop() {} }) });
+  }
+  const CAMERA = ['transform', 'transform-origin', 'filter', 'transition'];
+  const cameraLeft = (o: { layers: { backdrop: HTMLElement; sprites: HTMLElement }; reply: HTMLElement }): string[] => [
+    ...CAMERA.flatMap((p) => [['backdrop', o.layers.backdrop], ['sprites', o.layers.sprites]].filter(([, el]) => (el as HTMLElement).style.getPropertyValue(p) !== '').map(([n]) => `${n} ${p}`)),
+    ...(o.reply.style.opacity !== '' ? ['reply opacity'] : []),
+  ];
+
+  it('a passive instrument mounted during the slap: once the slap ends, nothing of the camera stays while the instrument runs (review I4)', async () => {
+    passiveInstrument();
+    const o = await slapping({ sprite: true });
+    o.state.settings.physicsRealtime = true;
+    o.to(L + 200); // the camera is out: zoom, blur, dim, transition none
+    expect(cameraLeft(o).length).toBeGreaterThan(0);
+    expect(syncInstruments(o.env, run)).toBe(true);
+    o.to(L + 500 + 1500 + 650 + 100);
+    expect(cameraLeft(o)).toEqual([]);
+    expect(o.root.querySelector('.alius-stage-dial')!.getAttribute('data-instrument')).toBe('quiet');
+    unmountInstruments();
+    expect(cameraLeft(o)).toEqual([]);
+    expect(o.root.querySelector('.alius-stage-dial')!.hasAttribute('data-instrument')).toBe(false);
+  });
+
+  it('a slap withdrawn mid-zoom under a passive instrument leaves nothing of the camera (review I4)', async () => {
+    passiveInstrument();
+    const o = await slapping({ sprite: true });
+    o.state.settings.physicsRealtime = true;
+    o.to(L + 100);
+    expect(syncInstruments(o.env, run)).toBe(true);
+    o.to(L + 150);
+    const gone = structuredClone(o.state);
+    delete gone.practices!.slap;
+    o.set(gone);
+    o.draw();
+    o.tick(50);
+    expect(o.results).toEqual([]);
+    expect(cameraLeft(o)).toEqual([]);
+    unmountInstruments();
+    expect(cameraLeft(o)).toEqual([]);
+  });
+
   it('an instrument running before the slap and gone during it: the slap puts back what was there before the instrument', async () => {
     withInstrument();
     const o = await slapping({ slap: { id: 'ps8' } });
