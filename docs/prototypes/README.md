@@ -36,7 +36,53 @@ npm run proto -- shoe
 npm run proto -- gulp
 ```
 
+```bash
+npm run proto -- cards
+```
+
 Each writes `.superpowers/prototypes/<name>.html` (ignored by git): one self-contained page with the fonts, backdrops and a placeholder sprite (`tests/fixtures/layout/sprite.svg`). `--sprite <file>` uses any local sprite; **never commit the author's art**. Open the page in Chromium. `H` hides the panel; `window.__S` (settings), `window.__G()` (state) and `window.__forceO` (force the opening, 0–1, `null` to release) exist for screenshots and tests.
+
+## `cards.html` — her hand of cards (the dock's cards of P15a, P15 and P16) and the posture call (P16)
+
+Approved by the author on 2026-11-25 after three rounds (the defaults of the file are the approved state). Run it with `npm run proto -- cards`; it needs `assets/hands/` (the candidate hands), `ha/soft1–2`, `ha/card_slide1–2`, `ha/card_place1–2`, `ha/card_fan` (`assets/LICENSES.md`) and draws the mannequins with the dial's own `mannequinSvg` at build time (`scripts/prototype-mannequins.ts`). The texts are `docs/content/card-voice.md` (approved): the tables of the file are a copy of it. **A restyle: no card's mechanics change** (the same answers, the same actions, the same `data-analyze`).
+
+### Normative (port exactly)
+
+- **The card** (CSS `.card`, `.head`, `.body`): glass `rgba(14,12,20,.60)` with a 1 px `rgba(255,255,255,.12)` line, radius 16, blur 16, a shadow `0 10px 30px rgba(0,0,0,.35)`; a 3 px stripe of her accent on the left edge (12 px from top and bottom, opacity .85). The head line: **her name in her hand** (26 px × the hand's factor, her accent) and the kind in small caps (11 px Plex, dim, lower case: `task`, `sealed`, `punishment`, `order`, `ceremony`, `demonstration`, `step`, `vow`, `claim`, `begin again`, `a moment`, `a hold`); the set-aside × (24 px round) top right.
+- **Her voice** (`bodyOf`): her words (`text`, or the static words of card-voice §3) in her hand, 27 px × factor, line height 1.18, her accent; a thin rule (her accent fading to nothing); then **the conditions, each a line of her own** in her hand, 22 px × factor, her accent mixed 62 % into the ink, **the engine's value in her full accent, underlined** (1.5 px, offset 4 px, her accent at 55 %). The order is fixed (when → what it costs → who will know → the proof → what a signed one hands over → say it → no length; a punishment: her words → `{Label}.` → the weight; an order: `{Soldier}: {label}.`; a demonstration: before whom → where and when; a claim: `You'd give me:` and the grants as `· {grant}`); a condition is never left out (a cruel holder names the cost).
+- **The lines** (`linesOf`, `pick`, `fill`): her style's own lines for `when`, `cost`, `who`, `onlyMe`, `weight` and the call (card-voice §2, §5), the neutral lines (§1) for anything else and for a style with none; one line picked by `fnv1a(cardId|style|kind) % n` (no rng; one card always says the same); `{x}` is the engine's value as it is, `{X}` capitalised where it opens a sentence; each value wrapped in the stronger ink.
+- **The card's words for a deadline** (`WHENS`): `today`, `this morning` / `this afternoon` / `this evening` / `tonight`, `tomorrow`, `tomorrow morning` … `tomorrow night`, `in two days` … `in seven days` (then `in a few days`), with `, in the morning` … when a slot is named. No frame puts "by" or "until" before it.
+- **The moment and the fallback physics** are not her voice: a neutral stripe, the kind only (no name), one line of prose (Inter 300 italic 17 px; the moment's line from card-voice §3), the commander's options as pills, "Or answer in your own words." dim italic.
+- **The commander's answers** (`.pill`): rounded pills (radius 18, 7 × 16 px, Inter 400 14 px), the cool accent of the dial (`#3b97ff` at 45 % border, 10 % fill, 24 % / 75 % on hover), no brackets, lower case words (card-voice §4). **Sign** is a pill held 1.2 s, its fill growing left to right and falling back when let go.
+- **The sealed envelope**: a wax seal 30 px in her accent (a radial gradient and a dashed inner ring) in the head line, left of the ×; her line from §1 "sealed"; the weight unless she is cruel or vindictive; affectionate names the track.
+- **The ceremony**: her title line, the steps as a list in her hand (✓ done, struck through, faded; › next in her accent; · later), the next step's own control.
+- **Readable mode**: no blur, opaque glass (`rgba(12,11,16,.95)`), and under each condition its dry line (Plex 11.5 px, dim: `Due: this evening.`, `Weight: heavy.` …).
+- **Collapsed cards are the edges of her hand** (`render`, `gistOf`): one card is open (the one the commander opened, else the newest); the others are strips **above it, newest on top**, each overlapping the next by 6 px (`margin-bottom: -6px`); a strip shows her name in her hand (21 px × factor), the kind, and **the gist**: the engine's short name and the most urgent condition (a task's summary · `{when}`; a hold's summary; a sealed task `✉` and nothing else; a punishment's label · weight; an order `{soldier}: {label}`; a ceremony's label · `next: {step}`; a demonstration's place · slot; a claim's domain; a step or a vow its own gist), Inter 300 13.5 px with the value in her accent, ellipsis at the end. Hover lifts a strip 4 px and rings it in her accent; a click opens it (the open one becomes a strip). **A card with a clock never collapses** (a running hold, and the posture call is not a card at all): it is drawn open after the open card. The ×, the `N waiting` counter and its click to bring them back stay as P10e built them.
+- **Arrival**: a new card slides in from the left (46 px, −2°, 0.5 s `cubic-bezier(.2,.8,.3,1)`) with `card_slide` (gain .25, pan −0.6); opening a strip plays `card_slide` at .18; an answer plays `card_place` at .25.
+- **The dial's circle never moves** (`#dial`, `#dialLabel`): the label hangs under the circle (absolute, centred, 240 px wide, wraps), her name for the posture on top and the base name under it (10 px, .75); the real `.alius-stage-dial` lets a wide label widen the corner and shift the circle.
+- **The posture call** (`startCall`, `scheduleTaps`, `tap`, `choose`, `end`): a short full-frame moment.
+  - **Entry:** the frame dims to 0.28 (0.45 s); the dial's ring takes her accent; **her word** (her name for the posture) is written on in her hand, 92 px × factor, at 74 vw / 13 vh (beside her, never on her face), `steps(14)` over 520 ms; the fan rises with `card_fan` (gain .3, pan .6).
+  - **Her foot keeps the time** (only with the order interaction on): taps from 380 ms, each next one `700 − 480·k²` ms later (`k` = the time gone / her window), the last exactly at the window's end; each tap is `soft1` or `soft2` (gain `(0.22 + 0.4·k)`, ×1.6 for the last; pan .35; rate 0.92–1.02), an ink dot under her word at `(k − 0.5) × 300` px (7 px, her accent and glow; the last 10 px, white: too late) and a small bob of the word (0.16 s). Her window is the engine's (`postureWindowMs`: ritual 4000, drill 3000, others 5000).
+  - **The fan** rises from the dial: her named postures in a stable order, each a card 150 × 196 (glass `.74`, radius 14), the dial's mannequin 132 px, her name for it in her hand (30 px × factor), the base name under it (9 px caps, wraps); the cards side by side 140 px apart, the rightmost over the dial (the fan's anchor 110 px from the right edge, `min(18.5vh, 200px) + 72px` from the bottom), each turned `(i − (n−1)/2) × 5°` and lowered `|i − (n−1)/2| × 9` px; they rise from 260 px below at 0.6 scale, 55 ms apart; hover straightens a card, lifts it 18 px and scales it 1.04. **A card is clicked whole.**
+  - **Right:** `card_place`, the card flies into the dial (0.45 s, shrinking to .35) and the dial's figure takes the posture at 380 ms; the others fade. **Wrong:** the card shakes (0.35 s) and the right one is ringed in her accent (she shows which); the fan sinks after 0.9 s. **Slow:** the last tap. Then her line (card-voice §5 by style and outcome, `{posture}` her word) is written on in her hand, 40 px × factor, at 13 vh + 140 px (600 ms); the dim lifts at 1.3 s, her line fades at 2.6 s, all is gone at 3.3 s.
+  - **Without the order interaction** there is no clock: no taps, no dots, no slow; only right or wrong.
+  - **Reduced motion:** no write-on, no bob, no rise (the fan appears placed), the dots and sounds stay.
+- **The hands** (`HANDS`, `measureHands`): every hand of the gallery goes into the game (author, 2026-11-25): the six of P10b, the six strict print hands (Klee One, Playpen Sans, Neucha, Gaegu, Pangolin, Edu SA Beginner) and the 36 candidates. **Each hand's size factor is measured**, not set: the geometric mean of Caveat's x-height over hers and Caveat's width of `Bring me the patrol roster before evening mess.` over hers, clamped to 0.7–1.6; every size in her hand is multiplied by it.
+
+### Prototype only (do not port as is)
+
+- The panel (adders, deal, clear, styles, hands, accents, the deadline picker, display switches), the gallery (G), the log line, the `__` hooks.
+- The scene around the dock (backdrop, sprite, reply, input, the dial's stand-in): the scene is P10e's.
+- The cards' data (`KINDS`: texts, labels, names, the lapse of "training together") and the called posture (random here; the engine's `callPosture` picks by `practiceRoll`), the four choices (the engine's set is her `practices.postures` that pass `entryAllowed`), the ceremony's "(take it on the dial)" pill (the commander's posture does a posture step).
+
+### Open engine questions (decide in the plan of chunk (e))
+
+- Where the voice lives: the tables of card-voice.md as content the author can edit (read by kind and style) or as code.
+- The card's deadline words (`this evening`, `tonight`) differ from `dueWords` (`today, evening`), which the PDA's practice block also uses: a second function for the scene's cards, or one for both.
+- The hands: 42 new fonts in `fonts/` and the `handFonts` registry with a measured `scale`; `handOf` picks a unit's hand by `fnv1a(unitId) % n` in registry order, so a longer list gives most old units a new hand (keep it, or keep the six for units with no `hand`).
+- The recorded sounds (`soft`, `card_*`) are the extension's first sound files: the sound layer synthesises everything today.
+- The engine's third outcome: a right answer the commander cannot take now (held in place, no standing room) is `posture_called` with `void`; the prototype has no line for it.
+- **Memory check:** nothing new (a restyle; the call's outcomes are P16's `posture_called` (`taken` / `void`) and `posture_slip` (`late`), already decided there).
 
 ## `gulp.html` — gulp (P15a `gulp`, timing; content `watersports`, which requires `bodily_fluids`)
 
