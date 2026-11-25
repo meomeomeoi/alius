@@ -11,7 +11,8 @@
     "sim": "node scripts/sim.mjs",
     "dial:sheet": "node scripts/dial-sheet.mjs",
     "test:layout": "node scripts/layout-test.mjs",
-    "proto": "node scripts/prototype.mjs"
+    "proto": "node scripts/prototype.mjs",
+    "shots": "node scripts/instrument-shots.mjs"
   },
   "dependencies": {
     "zod": "^3.23.8"

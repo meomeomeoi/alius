@@ -1063,12 +1063,16 @@
   transition: none;
 }
 
-/* the posture dial: a dark glass circle with a thin ticked ring, the commander's body in it, the posture's name under it */
+/* the posture dial: a dark glass circle with a thin ticked ring, the commander's body in it, the posture's name under it.
+   P10e-e (cards.html): the circle never moves. The label hangs under it out of the flow, in a fixed room (the circle's bottom 58 px from the
+   edge, as in the prototype), so a long or a second line never widens the corner or shifts the circle. */
 #alius-shell .alius-dial {
+  --alius-dial-label-room: 34px;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  padding-bottom: var(--alius-dial-label-room);
 }
 
 #alius-shell .alius-dial-fan {
@@ -1128,19 +1132,35 @@
   background: color-mix(in srgb, var(--alius-bg) 94%, #000);
 }
 
+/* cards.html `#dialLabel`: centred under the circle, 240 px wide, wraps; her name over the base name, the eyes under them. The width never
+   passes the corner's margin (24 px each side of the circle), so a small screen's label stays inside the viewport. */
 #alius-shell .alius-dial-label {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  font-size: 11px;
+  position: absolute;
+  left: 50%;
+  top: calc(100% - var(--alius-dial-label-room) + 8px);
+  transform: translateX(-50%);
+  width: 240px;
+  max-width: calc(100% + 48px);
+  text-align: center;
+  line-height: 1.35;
+  font: 11px var(--alius-font);
   letter-spacing: 0.14em;
   color: color-mix(in srgb, var(--alius-trust) 60%, #ffffff);
-  text-shadow: 0 1px 6px color-mix(in srgb, var(--alius-bg) 90%, transparent);
+  text-shadow: 0 1px 6px #000;
+  text-transform: uppercase;
+  overflow-wrap: break-word;
+  pointer-events: none;
 }
 
-#alius-shell .alius-dial-sub {
+#alius-shell .alius-dial-name {
+  display: block;
+}
+
+#alius-shell .alius-dial-sub,
+#alius-shell .alius-dial-eyes {
+  display: block;
   font-size: 10px;
-  letter-spacing: 0.12em;
+  opacity: 0.75;
 }
 
 /* the fan: what the blocking offers now, over the dial, growing up and to the left */

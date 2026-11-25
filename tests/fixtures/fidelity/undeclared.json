@@ -1,0 +1,9 @@
+{
+  "prototype": "breath",
+  "functions": [
+    { "fn": "clamp", "module": "tests/fixtures/fidelity/port.ts" },
+    { "fn": "lerp", "module": "tests/fixtures/fidelity/port.ts" }
+  ],
+  "tables": [],
+  "differences": []
+}

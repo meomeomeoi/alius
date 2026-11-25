@@ -3,6 +3,8 @@
  * `one`: one woman; `physics`: one woman and a running hold (a ring gag: its card, its cue and the stop word's pill);
  * `three` / `four`: three or four women in the commander's quarters with her cards open (a moment, a milestone, a task and a punishment: a tall dock)
  * and a hold on the commander (the pill).
+ * `dialname` / `dialwide`: Ann (ritual) has named the commander's posture (P16): `Low` for bowing (cards.html's own), or a name of 30
+ * characters for kneeling upright (the label wraps under the circle; the circle stays where it is for `standing`).
  */
 import { writeFileSync } from 'node:fs';
 import { COMMANDER, registerFrameReader, setBlocking } from '../../src/engine/blocking';
@@ -12,7 +14,7 @@ import { blankPractices } from '../../src/engine/practice/state';
 import type { CampaignState } from '../../src/engine/state/types';
 import { enable } from '../helpers/bonds';
 import { campaign, loadCore, run, setRelation } from '../helpers/loyalty';
-import { holderBond } from '../engine/practice/world';
+import { ANN, holderBond, unitOf, withService, world } from '../engine/practice/world';
 import '../../src/engine/actions/blocking';
 import '../../src/engine/actions/physics';
 
@@ -66,5 +68,19 @@ out.physics = physics;
 out.two = scene(['unit_ann', 'unit_bea'], 'quarters_commander', true);
 out.three = withCards(['unit_ann', 'unit_bea', 'unit_cat']);
 out.four = withCards(['unit_ann', 'unit_bea', 'unit_cat', 'unit_dee']);
+
+/** Ann (ritual) named the commander's posture `postureId` `name`; the commander holds it. */
+function named(postureId: string, name: string): CampaignState {
+  const base = withService(world(reg, 'role'));
+  unitOf(base, ANN).bond!.practice!.style = { primary: 'ritual' };
+  base.practices = { ...blankPractices(), seq: 1, postures: { [ANN]: [{ postureId, name, day: 20 }] } };
+  setRelation(base, ANN, { stateId: 'confidant' });
+  enable(base, 'pet_play', 'restraint');
+  const r = run(base, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
+  setBlocking(r.state, { registries: reg }, { person: COMMANDER, field: 'posture', value: postureId }, { at: 1, source: 'engine' });
+  return r.state;
+}
+out.dialname = named('bowing', 'Low');
+out.dialwide = named('kneeling_upright', 'All the way down, where I want'); // 30 characters
 
 writeFileSync(process.argv[2] ?? 'states.json', JSON.stringify(out));

@@ -1,7 +1,8 @@
 /**
  * P10e §7: the posture dial, bottom right of the scene: a dark glass circle with a thin ticked ring that shows the commander's
- * body as the three-quarter mannequin (`mannequinSvg`: posture only, no air, no strength, no other tracker). Under it the
- * posture's name (her own name for it when a holder present named it, P16) and a second dim line when relevant (EYES DOWN).
+ * body as the three-quarter mannequin (`mannequinSvg`: posture only, no air, no strength, no other tracker). Under it, hanging so that the
+ * circle never moves (P10e-e, cards.html), the posture's name: her own name for it over the base name when a holder present named it (P16),
+ * the base name alone otherwise, and a dim line when relevant (EYES DOWN).
  * A click on the centre opens a fan of what the blocking offers now: the commander's moves, each as a small mannequin with
  * its name, then the places, contacts and items the scene allows as lists. It is the BLOCKING strip's model (`blockingChoices`):
  * what is offered, the reasons a gate refuses, the actions sent — nothing about the rules changes. Drawn only while the blocking
@@ -53,7 +54,8 @@ export function renderPostureDial(host: HTMLElement, ctx: PostureDialCtx): void 
   // the label: her name for it when a holder present named this posture, else the registry's label
   const knowledge = buildKnowledge(state, ctx.settings ?? DEFAULT_SETTINGS);
   const herName = (state.scene?.participants ?? []).map((id) => knowledge.practice(id, reg).postures.find((p) => p.postureId === postureId)?.name).find((n) => n !== undefined);
-  const label = (herName ?? choices.label('blockingPostures', postureId)).toUpperCase();
+  const base = choices.label('blockingPostures', postureId).toUpperCase();
+  const label = herName !== undefined ? herName.toUpperCase() : base;
   const eyes = EYES[pose.points.gaze ?? 'straight'];
 
   // the fan
@@ -111,9 +113,14 @@ export function renderPostureDial(host: HTMLElement, ctx: PostureDialCtx): void 
     who, list('PLACE', 'anchor'), list('CONTACT', 'contact'), list('WEARING', 'worn')));
   if (wasOpen) fan.open = true;
 
-  const name = h('span', { class: 'alius-dial-name' });
-  name.textContent = label;
+  // the label hangs under the circle (cards.html `drawDial`): her name over the base name (the base alone when she has none), the eyes under them
+  const line = (cls: string, text: string): HTMLElement => {
+    const el = h('span', { class: cls });
+    el.textContent = text;
+    return el;
+  };
   host.replaceChildren(h('div', { class: 'alius-dial', 'data-reduced': String(ctx.reduced) },
     fan,
-    h('div', { class: 'alius-dial-label' }, name, eyes ? h('span', { class: 'alius-dial-sub alius-dim' }, eyes) : null)));
+    h('div', { class: 'alius-dial-label' }, line('alius-dial-name', label), herName !== undefined ? line('alius-dial-sub', base) : null,
+      eyes ? line('alius-dial-eyes', eyes) : null)));
 }

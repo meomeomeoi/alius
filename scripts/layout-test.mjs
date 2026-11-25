@@ -2,46 +2,25 @@
 //   npm run test:layout
 // Playwright is not a dependency of the package: it comes from the environment (NODE_PATH or a global install, e.g. /opt/node-tools) and so does
 // its Chromium; nothing is declared in package.json for it.
-// esbuild bundles tests/layout/entry.ts, the campaign states are built in Node, the repo root is served on 127.0.0.1 (a file URL cannot
-// fetch), and Chromium measures the scene at 1920x1080, 1280x800 and 2560x1440. Exits non-zero with the list of failures.
-import { build } from 'esbuild';
-import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
-import { createServer } from 'node:http';
-import { createRequire } from 'node:module';
-import { dirname, extname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+// The page and its server are scripts/layout-page.mjs (shared with `npm run shots`); Chromium measures the scene at 1920x1080, 1280x800
+// and 2560x1440. Exits non-zero with the list of failures.
+import { mkdirSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { buildLayoutPage, chromium, openLayout, serveRoot } from './layout-page.mjs';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const out = resolve(root, '.superpowers/layout');
-mkdirSync(out, { recursive: true });
-
-await build({ entryPoints: [resolve(root, 'tests/layout/entry.ts')], outfile: resolve(out, 'entry.js'), bundle: true, format: 'esm', platform: 'browser', target: 'es2022', logLevel: 'error' });
-await build({ entryPoints: [resolve(root, 'tests/layout/mkstate.ts')], outfile: resolve(out, 'mkstate.mjs'), bundle: true, format: 'esm', platform: 'node', target: 'es2022', logLevel: 'error', external: ['node:*'] });
-execFileSync('node', [resolve(out, 'mkstate.mjs'), resolve(out, 'states.json')], { cwd: root, stdio: 'inherit' });
-// the page: the real stylesheet, the bundled entry
-const page = '<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="/style.css"><style>html,body{margin:0;height:100%;background:#000}</style></head><body><script type="module" src="/.superpowers/layout/entry.js"></script></body></html>';
-
-const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.woff': 'font/woff' };
-const server = createServer((req, res) => {
-  const url = decodeURIComponent((req.url || '/').split('?')[0]);
-  if (url === '/page.html') { res.writeHead(200, { 'content-type': 'text/html' }); res.end(page); return; }
-  const file = join(root, url);
-  if (!file.startsWith(root) || !existsSync(file) || statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }
-  res.writeHead(200, { 'content-type': types[extname(file)] || 'application/octet-stream' });
-  res.end(readFileSync(file));
-});
-await new Promise((r) => server.listen(0, '127.0.0.1', r));
-const port = server.address().port;
+await buildLayoutPage();
+const server = await serveRoot();
+const port = server.port;
 
 const SIZES = [[1920, 1080], [1280, 800], [2560, 1440]];
-const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany'];
+const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide'];
 const failures = [];
+const faceOf = new Map(); // the dial's circle for `standing` (fixture `one`), per size
 const fail = (size, fixture, what) => failures.push(`${size[0]}x${size[1]} ${fixture}: ${what}`);
 const SHOTS = process.env.LAYOUT_SHOTS ? resolve(process.env.LAYOUT_SHOTS) : null;
 
 /** Every box of the UI a head must stay clear of (the dock is measured as the box that clips its cards, not as each card). */
-const UI = '.alius-topline-left, .alius-scene-tools, .alius-reply, .alius-chip-row, .alius-input-line, .alius-stage-dock, .alius-dock-waiting, .alius-dial, .alius-stop-pill, .alius-stage-status > *, .alius-flash';
+const UI = '.alius-topline-left, .alius-scene-tools, .alius-reply, .alius-chip-row, .alius-input-line, .alius-stage-dock, .alius-dock-waiting, .alius-dial, .alius-dial-label, .alius-stop-pill, .alius-stage-status > *, .alius-flash';
 
 /**
  * Runs in the page: the pan that puts each sprite in the middle of the view (found by measuring the sprite at pan 0 and at pan 1, not from the code's
@@ -83,6 +62,7 @@ function measure(UI) {
     vw: innerWidth, vh: innerHeight, scrollW: document.documentElement.scrollWidth, scrollH: document.documentElement.scrollHeight,
     backdrop: r(q('.alius-layer-backdrop')), backdropShown: getComputedStyle(q('.alius-layer-backdrop')).display !== 'none', image: q('.alius-scene')?.dataset.backdrop,
     sprites: imgs, reply: r(q('.alius-reply')), replyOverflow: q('.alius-reply')?.dataset.overflow, input: r(q('.alius-input-line')), dial: r(q('.alius-dial-face')),
+    dialName: q('.alius-dial-name')?.textContent ?? null, dialSub: q('.alius-dial-sub')?.textContent ?? null, dialLabel: r(q('.alius-dial-label')),
     dock: r(q('.alius-dock-card')), curtain: r(q('.alius-curtain')), curtainOpen: q('.alius-curtain')?.dataset.open, stop: r(q('[data-stop-word]')),
     stopVisible: q('[data-stop-word]') ? getComputedStyle(q('[data-stop-word]')).visibility !== 'hidden' : false,
     chipRow: chipRowMeasure(),
@@ -90,17 +70,10 @@ function measure(UI) {
   };
 }
 
-const { chromium } = createRequire(import.meta.url)('playwright');
-const browser = await chromium.launch({ args: ['--no-sandbox'] });
+const browser = await chromium().launch({ args: ['--no-sandbox'] });
 for (const size of SIZES) {
   for (const fixture of FIXTURES) {
-    const p = await browser.newPage({ viewport: { width: size[0], height: size[1] }, deviceScaleFactor: 1 });
-    const errors = [];
-    p.on('pageerror', (e) => errors.push(e.message));
-    await p.goto(`http://127.0.0.1:${port}/page.html?fixture=${fixture}`);
-    await p.waitForSelector('body[data-ready="true"]', { timeout: 20000 });
-    try { await p.waitForSelector('.alius-scene[data-backdrop="image"]', { timeout: 8000 }); } catch { /* reported below */ }
-    await p.waitForTimeout(700);
+    const { page: p, errors } = await openLayout(browser, port, fixture, size);
     const m = await p.evaluate(measure, UI);
     // the stop word stays on top and clickable with the dial's menu open (the safety control is never covered)
     if (fixture === 'physics') {
@@ -197,6 +170,15 @@ for (const size of SIZES) {
       const c = m.chipRow;
       if (!c || c.past === 0) fail(size, fixture, 'forty chips did not overflow the row');
       else if (!c.overflow || c.more !== `+${c.past}`) fail(size, fixture, `the row shows "${c.more}" for ${c.past} chips past its edge`);
+    }
+    // P10e-e: the dial's circle never moves: a 30-character name of hers wraps under it, and the circle stands where it does for `standing`
+    if (fixture === 'one') faceOf.set(`${W}x${H}`, m.dial);
+    if (fixture === 'dialname' && (m.dialName !== 'LOW' || m.dialSub !== 'BOWING')) fail(size, fixture, `the label reads "${m.dialName}" / "${m.dialSub}", not LOW over BOWING`);
+    if (fixture === 'dialwide') {
+      const still = faceOf.get(`${W}x${H}`);
+      if (!m.dial || !still) fail(size, fixture, 'no dial to compare');
+      else if (Math.abs(m.dial.x - still.x) > 1 || Math.abs(m.dial.y - still.y) > 1) fail(size, fixture, `a long label moved the circle: ${Math.round(m.dial.x)},${Math.round(m.dial.y)} against ${Math.round(still.x)},${Math.round(still.y)} for standing`);
+      if (m.dialLabel && m.dialLabel.h < 25) fail(size, fixture, `a 30-character label did not wrap (${Math.round(m.dialLabel.w)}x${Math.round(m.dialLabel.h)})`);
     }
     if (['physics', 'three', 'four'].includes(fixture) && m.stop) {
       // A1: a small pill in the bottom-right corner, over the dial, clear of the dial, the reply, the chips and the input

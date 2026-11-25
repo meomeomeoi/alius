@@ -62278,7 +62278,14 @@ function instrumentFor(run, state, reg, settings) {
   if (settings.physicsRealtime !== true) return null;
   const interaction = String(reg.contactPhysics.get(run.physicsId)?.interaction ?? "");
   if (settings.physicsInteractions?.[interaction] === false) return null;
-  return defs.find((d) => d.matches(run, state, reg)) ?? null;
+  return defs.find((d) => {
+    try {
+      return d.matches(run, state, reg);
+    } catch (err) {
+      warnOnce(d.id, "matches", err);
+      return false;
+    }
+  }) ?? null;
 }
 var current = null;
 var failed = null;
@@ -62353,6 +62360,10 @@ function unmountInstruments() {
     m.env.gauge.clear();
     m.env.root.querySelector(".alius-stage-dial")?.removeAttribute("data-instrument");
   }
+}
+function resetInstruments() {
+  unmountInstruments();
+  failed = null;
 }
 function syncInstruments(env, run) {
   const state = run ? env.state() : null;
@@ -63178,7 +63189,8 @@ function renderPostureDial(host, ctx2) {
   const stage2 = (change) => ctx2.onStage(setBlocking2(change));
   const knowledge2 = buildKnowledge(state, ctx2.settings ?? DEFAULT_SETTINGS);
   const herName = (state.scene?.participants ?? []).map((id) => knowledge2.practice(id, reg).postures.find((p) => p.postureId === postureId)?.name).find((n) => n !== void 0);
-  const label2 = (herName ?? choices.label("blockingPostures", postureId)).toUpperCase();
+  const base = choices.label("blockingPostures", postureId).toUpperCase();
+  const label2 = herName !== void 0 ? herName.toUpperCase() : base;
   const eyes = EYES2[pose2.points.gaze ?? "straight"];
   const units = choices.units;
   const who = units.length > 1 ? h("select", { name: "dial-with", class: "alius-select", "aria-label": "With" }, ...units.map((u) => h("option", { value: u }, choices.name(u)))) : null;
@@ -63250,13 +63262,22 @@ function renderPostureDial(host, ctx2) {
     list5("WEARING", "worn")
   ));
   if (wasOpen) fan.open = true;
-  const name = h("span", { class: "alius-dial-name" });
-  name.textContent = label2;
+  const line3 = (cls, text3) => {
+    const el = h("span", { class: cls });
+    el.textContent = text3;
+    return el;
+  };
   host.replaceChildren(h(
     "div",
     { class: "alius-dial", "data-reduced": String(ctx2.reduced) },
     fan,
-    h("div", { class: "alius-dial-label" }, name, eyes ? h("span", { class: "alius-dial-sub alius-dim" }, eyes) : null)
+    h(
+      "div",
+      { class: "alius-dial-label" },
+      line3("alius-dial-name", label2),
+      herName !== void 0 ? line3("alius-dial-sub", base) : null,
+      eyes ? line3("alius-dial-eyes", eyes) : null
+    )
   ));
 }
 
@@ -63941,7 +63962,7 @@ function resetSceneStage() {
   resetHints();
   resetLook();
   resetDock();
-  unmountInstruments();
+  resetInstruments();
   for (const fn of [...hooks2]) fn();
 }
 

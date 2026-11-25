@@ -63,25 +63,41 @@ describe('the posture dial (P10e §7)', () => {
     expect(t.q('.alius-dial-name')!.textContent).toBe(String(reg.blockingPostures.get('kneeling_upright')!.label).toUpperCase());
   });
 
-  it('her name for the posture is the label when a holder present named it (P16)', () => {
+  /** Ann (ritual) is present and has named postures (P16). */
+  function named(postures: Array<{ postureId: string; name: string }>): CampaignState {
     const base = withService(world(reg, 'role'));
     unitOf(base, ANN).bond!.practice!.style = { primary: 'ritual' };
-    base.practices = { ...blankPractices(), seq: 1, postures: { [ANN]: [{ postureId: 'kneeling_upright', name: 'Down', day: 20 }] } };
+    base.practices = { ...blankPractices(), seq: 1, postures: { [ANN]: postures.map((p) => ({ ...p, day: 20 })) } };
     setRelation(base, ANN, { stateId: 'confidant' });
     enable(base, 'pet_play', 'restraint');
     const r = run(base, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
     expect(errors(r.events)).toEqual([]);
-    const s = put(r.state, posture('kneeling_upright'));
+    return r.state;
+  }
+
+  it('her name for the posture is the label when a holder present named it (P16)', () => {
+    const s = put(named([{ postureId: 'kneeling_upright', name: 'Down' }]), posture('kneeling_upright'));
     expect(draw(s).q('.alius-dial-name')!.textContent).toBe('DOWN');
     // another posture keeps its own label
     expect(draw(put(s, posture('sitting'))).q('.alius-dial-name')!.textContent).toBe(String(reg.blockingPostures.get('sitting')!.label).toUpperCase());
   });
 
-  it('a second dim line says where the eyes are when that is not the default', () => {
+  it('the label shows her name over the base name (cards.html drawDial); with no name of hers, the base alone', () => {
+    const t = draw(put(named([{ postureId: 'bowing', name: 'Low' }]), posture('bowing')));
+    expect(t.q('.alius-dial-name')!.textContent).toBe('LOW');
+    expect(t.q('.alius-dial-sub')!.textContent).toBe('BOWING');
+    // the order: her name, the base name, then the eyes
+    expect(t.qa('.alius-dial-label > *').map((e) => e.className.split(' ')[0])).toEqual(['alius-dial-name', 'alius-dial-sub', 'alius-dial-eyes']);
+    const plain = draw(put(scene(), posture('bowing')));
+    expect(plain.q('.alius-dial-name')!.textContent).toBe('BOWING');
+    expect(plain.q('.alius-dial-sub')).toBeNull();
+  });
+
+  it('a dim line under them says where the eyes are when that is not the default', () => {
     const down = draw(put(scene(), posture('bowing')));
-    expect(down.q('.alius-dial-sub')!.textContent).toBe('EYES DOWN');
+    expect(down.q('.alius-dial-eyes')!.textContent).toBe('EYES DOWN');
     const plain = draw(put(scene(), posture('standing')));
-    expect(plain.q('.alius-dial-sub')?.textContent ?? '').toBe('');
+    expect(plain.q('.alius-dial-eyes')).toBeNull();
   });
 
   it('the figure has no text; the label is HTML', () => {
