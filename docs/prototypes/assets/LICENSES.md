@@ -11,3 +11,8 @@
   - `slap`: "Thwack Sounds" (Jordan Irwin, AntumDeluge), `thwack-01` (the author's pick by ear among six candidates).
   - `swish1–3`: "Swishes Sound Pack" (for Summoning Wars), `swish-10`, `swish-12`, `swish-9`.
   - `slap.html` also plays `ha/cloth1–4` (her clothes) and `breath-in-out.mp3` (the commander's breath).
+- `gulp/` — the sounds of `gulp.html` (2026-11-25), every one CC0 (Creative Commons Zero) as stated on its OpenGameArt.org page, mono Ogg Vorbis, loudness-normalised; candidates the author picks by ear:
+  - `stream1–3`: "40 CC0 water / splash / slime SFX" (`loop_water_01–03`, loops); `splash_10`, `splash_09`, `splash_06`: the same pack.
+  - `swallow1–5`: "Liquid Bottle Drink Set" (qubodup, `swallow-01–05`).
+  - `drink1–4`: "202 More Sound Effects" (`Drink/Drink_01–04`).
+  - `gulp.html` also plays `ha/pour.ogg`, `ha/cloth1–3` and `breath-in-out.mp3`.

@@ -122,6 +122,8 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <label>the floor <select id="floorSel"></select></label>
   <h4>sound</h4>
   <label><input type="checkbox" id="snd" checked> on</label>
+  <label>stream <select id="streamS"><option value="stream2" selected>water 2 (steady)</option><option value="stream1">water 1</option><option value="stream3">water 3</option><option value="pour">flowing (her_activity's)</option><option value="synth">synth</option></select></label>
+  <label>swallow <select id="swallowS"><option value="swallows" selected>swallows (recorded)</option><option value="drinks">drinking gulps (recorded)</option><option value="synth">synth</option></select></label>
   <label>volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7"></label>
   <h4>view</h4>
   <label>accent <input type="color" id="accent" value="#8cc8f0"></label>
@@ -148,10 +150,16 @@ const ASSETS = {
   floors: { floor_wood: '%%ASSET:content/core/art/backdrops/floor_wood.webp%%', floor_concrete: '%%ASSET:content/core/art/backdrops/floor_concrete.webp%%', floor_linoleum: '%%ASSET:content/core/art/backdrops/floor_linoleum.webp%%', floor_tatami: '%%ASSET:content/core/art/backdrops/floor_tatami.webp%%' },
 };
 const SAMPLE_URLS = {
-  pour: '%%ASSET:docs/prototypes/assets/ha/pour.ogg%%', breath: '%%ASSET:docs/prototypes/assets/breath-in-out.mp3%%',
+  pour: '%%ASSET:docs/prototypes/assets/ha/pour.ogg%%',
+  stream1: '%%ASSET:docs/prototypes/assets/gulp/stream1.ogg%%', stream2: '%%ASSET:docs/prototypes/assets/gulp/stream2.ogg%%', stream3: '%%ASSET:docs/prototypes/assets/gulp/stream3.ogg%%',
+  swallow1: '%%ASSET:docs/prototypes/assets/gulp/swallow1.ogg%%', swallow2: '%%ASSET:docs/prototypes/assets/gulp/swallow2.ogg%%', swallow3: '%%ASSET:docs/prototypes/assets/gulp/swallow3.ogg%%',
+  swallow4: '%%ASSET:docs/prototypes/assets/gulp/swallow4.ogg%%', swallow5: '%%ASSET:docs/prototypes/assets/gulp/swallow5.ogg%%',
+  drink1: '%%ASSET:docs/prototypes/assets/gulp/drink1.ogg%%', drink2: '%%ASSET:docs/prototypes/assets/gulp/drink2.ogg%%', drink3: '%%ASSET:docs/prototypes/assets/gulp/drink3.ogg%%', drink4: '%%ASSET:docs/prototypes/assets/gulp/drink4.ogg%%',
+  splash1: '%%ASSET:docs/prototypes/assets/gulp/splash_10.ogg%%', splash2: '%%ASSET:docs/prototypes/assets/gulp/splash_09.ogg%%', splash3: '%%ASSET:docs/prototypes/assets/gulp/splash_06.ogg%%',
+  breath: '%%ASSET:docs/prototypes/assets/breath-in-out.mp3%%',
   cloth1: '%%ASSET:docs/prototypes/assets/ha/cloth1.ogg%%', cloth2: '%%ASSET:docs/prototypes/assets/ha/cloth2.ogg%%', cloth3: '%%ASSET:docs/prototypes/assets/ha/cloth3.ogg%%',
 };
-const GROUPS = { cloth: ['cloth1', 'cloth2', 'cloth3'] };
+const GROUPS = { cloth: ['cloth1', 'cloth2', 'cloth3'], swallows: ['swallow1', 'swallow2', 'swallow3', 'swallow4', 'swallow5'], drinks: ['drink1', 'drink2', 'drink3', 'drink4'], splash: ['splash1', 'splash2', 'splash3'] };
 const $ = (s) => document.querySelector(s);
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -199,7 +207,7 @@ const LINES = {
 const TASTE = ['Warm, and salt.', 'Bitter at the back of the tongue.', 'Warmer than expected.', 'Sharp; it catches in the throat.'];
 
 /* ---------- settings ---------- */
-const S = { style: 'neutral', explicit: false, overH: 1.04, overX: 0.5, overSink: 0, len: 35, flowK: 1, sound: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
+const S = { streamS: 'stream2', swallowS: 'swallows', style: 'neutral', explicit: false, overH: 1.04, overX: 0.5, overSink: 0, len: 35, flowK: 1, sound: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 const ST = () => STYLES[S.style];
 const L = () => LINES[S.style];
 
@@ -249,9 +257,9 @@ function tone(f0, f1, dur, gain, { at = 0, dest = A.body, type = 'sine' } = {}) 
 }
 const SFX = {
   pen: () => { for (let i = 0; i < 3; i++) noise({ at: i * 0.05 + Math.random() * 0.02, dur: 0.035 + Math.random() * 0.03, f: 2600 + Math.random() * 1800, q: 3, gain: 0.04 }); },
-  gulp: (g = 1) => { tone(190, 105, 0.14, 0.26 * g); noise({ at: 0.05, dur: 0.06, f: 850, q: 3, gain: 0.09 * g, dest: A.body }); tone(120, 80, 0.12, 0.12 * g, { at: 0.18 }); },
+  gulp: (g = 1) => { if (S.swallowS !== 'synth' && play(S.swallowS, { g: 0.55 * clamp(g, 0.5, 1.4), rate: rand(0.95, 1.05), dest: A.body })) return; tone(190, 105, 0.14, 0.26 * g); noise({ at: 0.05, dur: 0.06, f: 850, q: 3, gain: 0.09 * g, dest: A.body }); tone(120, 80, 0.12, 0.12 * g, { at: 0.18 }); },
   cough: () => { for (let i = 0; i < 2; i++) { noise({ at: i * 0.22, dur: 0.16, type: 'bandpass', f: 700, f2: 300, q: 0.7, gain: 0.28, attack: 0.005, dest: A.body }); tone(160, 90, 0.12, 0.2, { at: i * 0.22 }); } noise({ at: 0.1, dur: 0.25, type: 'highpass', f: 2500, gain: 0.06, dest: A.world }); },
-  splash: (g = 0.5) => noise({ dur: 0.2, type: 'highpass', f: 1800, gain: 0.09 * g, attack: 0.005, dest: A.world }),
+  splash: (g = 0.5) => play('splash', { g: clamp(0.25 + 0.5 * g, 0.2, 0.8), rate: rand(0.9, 1.15) }) || noise({ dur: 0.2, type: 'highpass', f: 1800, gain: 0.09 * g, attack: 0.005, dest: A.world }),
   breath: () => { if (!play('breath', { g: 0.2, rate: 1.4, offset: 0.12, dur: 0.6, lp: 2800, dest: A.body })) noise({ dur: 0.45, f: 800, f2: 1800, q: 0.9, gain: 0.07, attack: 0.08, dest: A.body }); },
   heart: (k) => { tone(52, 40, 0.18, 0.25 + 0.4 * k); tone(46, 36, 0.15, 0.16 + 0.25 * k, { at: 0.24 }); },
   tap: () => { noise({ dur: 0.03, type: 'highpass', f: 1800, gain: 0.18, attack: 0.002, dest: A.body }); noise({ at: 0.13, dur: 0.03, type: 'highpass', f: 1800, gain: 0.16, attack: 0.002, dest: A.body }); },
@@ -262,15 +270,21 @@ function streamInit() {
   if (!A.ctx || STREAM.g) return;
   STREAM.g = A.ctx.createGain(); STREAM.g.gain.value = 0; STREAM.lp = A.ctx.createBiquadFilter(); STREAM.lp.type = 'lowpass'; STREAM.lp.frequency.value = 2400;
   STREAM.lp.connect(STREAM.g); STREAM.g.connect(A.world);
-  if (A.buf.pour) { STREAM.src = A.ctx.createBufferSource(); STREAM.src.buffer = A.buf.pour; STREAM.src.loop = true; STREAM.src.connect(STREAM.lp); STREAM.src.start(); }
+  streamSource();
   const n = A.ctx.createBufferSource(); n.buffer = A.white; n.loop = true; const bp = A.ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = 0.8;
   STREAM.ng = A.ctx.createGain(); STREAM.ng.gain.value = 0; n.connect(bp); bp.connect(STREAM.ng); STREAM.ng.connect(A.world); n.start(); STREAM.bp = bp;
+}
+/* the recorded loop chosen in the panel (synth: only the filtered noise) */
+function streamSource() {
+  if (STREAM.src) { try { STREAM.src.stop(); } catch (e) { /* already stopped */ } STREAM.src = null; }
+  const buf = S.streamS !== 'synth' ? A.buf[S.streamS] : null;
+  if (buf) { STREAM.src = A.ctx.createBufferSource(); STREAM.src.buffer = buf; STREAM.src.loop = true; STREAM.src.connect(STREAM.lp); STREAM.src.start(); }
 }
 function streamSet(flow, rising) {
   if (!STREAM.g) return;
   const t = A.ctx.currentTime, k = clamp(flow / 0.8, 0, 1.4);
-  STREAM.g.gain.setTargetAtTime(A.buf.pour ? 0.5 * k : 0, t, 0.08);
-  STREAM.ng.gain.setTargetAtTime((A.buf.pour ? 0.02 : 0.08) * k, t, 0.08);
+  STREAM.g.gain.setTargetAtTime(STREAM.src ? 0.5 * k : 0, t, 0.08);
+  STREAM.ng.gain.setTargetAtTime((STREAM.src ? 0.02 : 0.08) * k, t, 0.08);
   STREAM.lp.frequency.setTargetAtTime(1600 + 2600 * k + (rising ? 1200 : 0), t, 0.1);
   if (STREAM.src) STREAM.src.playbackRate.setTargetAtTime(0.9 + 0.25 * k + (rising ? 0.15 : 0), t, 0.1);
   STREAM.bp.frequency.setTargetAtTime(900 + 1200 * k, t, 0.1);
@@ -607,6 +621,8 @@ $('#ceil').onchange = () => { $('#ceiling').style.backgroundImage = `url(${ASSET
 $('#floorSel').onchange = () => { $('#floor').style.backgroundImage = `url(${ASSETS.floors[$('#floorSel').value]})`; };
 $('#ceiling').style.backgroundImage = `url(${ASSETS.ceilings.ceiling_room_1})`;
 $('#floor').style.backgroundImage = `url(${ASSETS.floors.floor_wood})`;
+$('#streamS').onchange = () => { S.streamS = $('#streamS').value; if (STREAM.g) streamSource(); };
+$('#swallowS').onchange = () => { S.swallowS = $('#swallowS').value; audioInit(); SFX.gulp(1); };
 $('#snd').onchange = () => { S.sound = $('#snd').checked; if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
 $('#vol').oninput = () => { S.vol = Number($('#vol').value); if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
 $('#accent').oninput = () => document.documentElement.style.setProperty('--her', $('#accent').value);
