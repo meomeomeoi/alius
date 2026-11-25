@@ -23,7 +23,7 @@ export interface SampleSourceLike {
 }
 export interface SampleContextLike extends Omit<AudioContextLike, 'createBufferSource'> {
   createBufferSource(): SampleSourceLike;
-  createBiquadFilter(): { type: string; frequency: ParamLike; Q: ParamLike; connect(node: unknown): unknown };
+  createBiquadFilter(): { type: string; frequency: ParamLike & { setTargetAtTime?(value: number, time: number, constant: number): unknown }; Q: ParamLike; connect(node: unknown): unknown };
   createStereoPanner(): { pan: ParamLike; connect(node: unknown): unknown };
 }
 
@@ -55,8 +55,12 @@ export interface SampleLoop {
 export interface SampleSound {
   /** Plays a file named from the repo root (`'assets/sounds/ha/soft1.ogg'`). Silent when muted, before the first gesture, or when the file cannot be had. */
   play(file: string, opts?: SampleOptions): void;
-  /** Loops a file until `stop`. The handle works (and does nothing) even when the sound cannot play. */
+  /** Loops a file until `stop`. Muted, it still runs (silent through the master), so unmuting makes it heard; before the first gesture or when the file cannot be had the handle is inert. */
   loop(file: string, opts?: SampleOptions): SampleLoop;
+  /** The prototypes' `loadSamples`: fetches and decodes each file once (warms an instrument's palette). Never throws; a file that fails is left out. */
+  preload(files: string[]): Promise<void>;
+  /** The prototypes' `A.buf[key]`: the decoded buffer, or null before it is decoded (or when it failed). */
+  buffer(file: string): AudioBuffer | null;
   /** The context, made on demand once the player has touched the page; null before that or after dispose. */
   ctx(): AudioContext | null;
   /** A bus's input node, for sounds an instrument synthesises; null without a context. */
@@ -82,6 +86,8 @@ export const FAILED_RETRY_MS = 30_000;
 /** The world bus's lowpass, clear and fully dull (the prototypes'). */
 const CLEAR_HZ = 16000;
 const DULL_HZ = 380;
+/** The time constant of the world's dullness (breath.html's `setTargetAtTime(…, 0.15)`). */
+const DULL_SMOOTH_S = 0.15;
 const SILENCE = 0.0001;
 const FADE_S = 0.03;
 
@@ -97,11 +103,11 @@ function browserAudio(): SampleContextLike {
 interface Graph {
   c: SampleContextLike;
   master: { gain: ParamLike; connect(node: unknown): unknown };
-  world: { type: string; frequency: ParamLike; Q: ParamLike; connect(node: unknown): unknown };
+  world: ReturnType<SampleContextLike['createBiquadFilter']>;
   body: { gain: ParamLike; connect(node: unknown): unknown };
 }
 
-type Cached = { buffer: Promise<unknown> } | { failedAt: number };
+type Cached = { buffer: Promise<unknown>; value?: unknown } | { failedAt: number };
 
 export function createSamples(deps: SampleDeps): SampleSound {
   let graph: Graph | null = null;
@@ -175,8 +181,12 @@ export function createSamples(deps: SampleDeps): SampleSound {
       if (!res.ok) throw new Error(`audio ${file}: ${res.status}`);
       return c.decodeAudioData(await res.arrayBuffer());
     })();
-    files.set(file, { buffer });
-    buffer.catch(() => files.set(file, { failedAt: Date.now() }));
+    const entry: Cached = { buffer };
+    files.set(file, entry);
+    buffer.then(
+      (value) => { entry.value = value; },
+      () => files.set(file, { failedAt: Date.now() }),
+    );
     return buffer;
   }
 
@@ -231,7 +241,6 @@ export function createSamples(deps: SampleDeps): SampleSound {
     },
 
     loop(file, opts = {}) {
-      if (level() <= 0) return silentLoop;
       const g = audio();
       if (!g) return silentLoop;
       const pending = load(g.c, file);
@@ -291,6 +300,17 @@ export function createSamples(deps: SampleDeps): SampleSound {
       };
     },
 
+    async preload(list) {
+      const g = audio();
+      if (!g) return;
+      await Promise.all(list.map((f) => load(g.c, f)?.catch(() => undefined)));
+    },
+
+    buffer(file) {
+      const cached = files.get(file);
+      return cached && 'buffer' in cached && cached.value !== undefined ? (cached.value as AudioBuffer) : null;
+    },
+
     ctx() {
       return (audio()?.c ?? null) as unknown as AudioContext | null;
     },
@@ -303,7 +323,10 @@ export function createSamples(deps: SampleDeps): SampleSound {
 
     setWorldDull(f) {
       dull = clamp(f, 0, 1);
-      if (graph && !disposed) graph.world.frequency.value = dullHz();
+      if (!graph || disposed) return;
+      const freq = graph.world.frequency;
+      if (freq.setTargetAtTime) freq.setTargetAtTime(dullHz(), graph.c.currentTime, DULL_SMOOTH_S); // as breath.html smooths it
+      else freq.value = dullHz();
     },
 
     setNight(on) {

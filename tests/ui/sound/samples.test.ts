@@ -10,7 +10,7 @@ interface Node {
   kind: string;
   to: unknown[];
   gain?: { value: number; sets: Array<[number, number]>; ramps: Array<[number, number]> };
-  frequency?: { value: number };
+  frequency?: { value: number; targets: Array<[number, number, number]> };
   pan?: { value: number };
   playbackRate?: { value: number };
   buffer?: unknown;
@@ -26,6 +26,8 @@ function param(value = 0) {
     setValueAtTime(v: number, t: number) { p.sets.push([v, t]); p.value = v; },
     linearRampToValueAtTime(v: number, t: number) { p.ramps.push([v, t]); },
     exponentialRampToValueAtTime(v: number, t: number) { p.ramps.push([v, t]); },
+    targets: [] as Array<[number, number, number]>,
+    setTargetAtTime(v: number, t: number, c: number) { p.targets.push([v, t, c]); p.value = v; },
     cancelScheduledValues() { /* nothing */ },
   };
   return p;
@@ -119,12 +121,58 @@ describe('the sample sound layer (P10e-e Task 1)', () => {
   it('muted plays nothing', async () => {
     const { audio, fetchMock, samples } = setup({ soundMuted: true });
     samples.play(FILE, { gain: 0.3 });
-    const loop = samples.loop(FILE, { gain: 0.3 });
-    loop.setGain(0.5);
-    loop.stop();
     await flush();
     expect(sources(audio.rec).filter((s) => s.started!.length > 0)).toHaveLength(0);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('a loop started while muted runs silent through the master, and unmuting makes it heard', async () => {
+    const { audio, samples, set } = setup({ soundMuted: true, soundVolume: 100 });
+    samples.loop(FILE, { gain: 0.3 });
+    await flush();
+    const [src] = sources(audio.rec);
+    expect(src.loop).toBe(true);
+    expect(src.started).toHaveLength(1);
+    expect(pathGain(src, audio.rec.destination)).toBe(0);
+    set({ soundMuted: false });
+    samples.setNight(false); // any call refreshes the master
+    expect(pathGain(src, audio.rec.destination)).toBeCloseTo(0.3, 6);
+  });
+
+  it('a loop before the first gesture is inert', async () => {
+    const { make, fetchMock, samples } = setup({}, { gesture: false });
+    const l = samples.loop(FILE);
+    l.setGain(1);
+    l.stop();
+    await flush();
+    expect(make).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('preload decodes each file once, and a later play needs no fetch; buffer is null before the decode and the buffer after', async () => {
+    const { audio, fetchMock, samples } = setup();
+    const OTHER = 'assets/sounds/ha/soft2.ogg';
+    expect(samples.buffer(FILE)).toBeNull();
+    const done = samples.preload([FILE, OTHER, FILE]);
+    expect(samples.buffer(FILE)).toBeNull();
+    await done;
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(audio.rec.decoded).toBe(2);
+    expect(samples.buffer(FILE)).toEqual({ duration: 2 });
+    expect(samples.buffer(OTHER)).toEqual({ duration: 2 });
+    samples.play(FILE);
+    samples.loop(OTHER);
+    await flush();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(sources(audio.rec).filter((s) => s.started!.length > 0)).toHaveLength(2);
+  });
+
+  it('preload never throws, and a failed file has no buffer', async () => {
+    const { samples } = setup({}, { fetchFails: true });
+    await expect(samples.preload([FILE])).resolves.toBeUndefined();
+    expect(samples.buffer(FILE)).toBeNull();
+    const before = setup({}, { gesture: false });
+    await expect(before.samples.preload([FILE])).resolves.toBeUndefined();
   });
 
   it('nothing is made before the first user gesture', async () => {
@@ -217,6 +265,9 @@ describe('the sample sound layer (P10e-e Task 1)', () => {
     expect(world.frequency!.value).toBeCloseTo(16000, 3);
     samples.setWorldDull(1);
     expect(world.frequency!.value).toBeCloseTo(380, 3);
+    // smoothed as breath.html:905: setTargetAtTime(…, now, 0.15)
+    expect(world.frequency!.targets.at(-1)![1]).toBe(0);
+    expect(world.frequency!.targets.at(-1)![2]).toBe(0.15);
     samples.setWorldDull(0.5);
     expect(world.frequency!.value).toBeCloseTo(16000 * Math.pow(380 / 16000, 0.5), 3);
     // the body bus reaches the master without a filter

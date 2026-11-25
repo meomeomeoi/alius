@@ -57704,6 +57704,7 @@ function createSound(deps) {
 var FAILED_RETRY_MS = 3e4;
 var CLEAR_HZ = 16e3;
 var DULL_HZ = 380;
+var DULL_SMOOTH_S = 0.15;
 var SILENCE2 = 1e-4;
 var FADE_S = 0.03;
 var clamp42 = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -57778,8 +57779,14 @@ function createSamples(deps) {
       if (!res.ok) throw new Error(`audio ${file}: ${res.status}`);
       return c.decodeAudioData(await res.arrayBuffer());
     })();
-    files.set(file, { buffer });
-    buffer.catch(() => files.set(file, { failedAt: Date.now() }));
+    const entry = { buffer };
+    files.set(file, entry);
+    buffer.then(
+      (value) => {
+        entry.value = value;
+      },
+      () => files.set(file, { failedAt: Date.now() })
+    );
     return buffer;
   }
   function wire(g, buffer, opts, gain2) {
@@ -57833,7 +57840,6 @@ function createSamples(deps) {
       );
     },
     loop(file, opts = {}) {
-      if (level() <= 0) return silentLoop;
       const g = audio();
       if (!g) return silentLoop;
       const pending4 = load(g.c, file);
@@ -57891,6 +57897,15 @@ function createSamples(deps) {
         }
       };
     },
+    async preload(list5) {
+      const g = audio();
+      if (!g) return;
+      await Promise.all(list5.map((f) => load(g.c, f)?.catch(() => void 0)));
+    },
+    buffer(file) {
+      const cached = files.get(file);
+      return cached && "buffer" in cached && cached.value !== void 0 ? cached.value : null;
+    },
     ctx() {
       return audio()?.c ?? null;
     },
@@ -57901,7 +57916,10 @@ function createSamples(deps) {
     },
     setWorldDull(f) {
       dull = clamp42(f, 0, 1);
-      if (graph && !disposed) graph.world.frequency.value = dullHz();
+      if (!graph || disposed) return;
+      const freq = graph.world.frequency;
+      if (freq.setTargetAtTime) freq.setTargetAtTime(dullHz(), graph.c.currentTime, DULL_SMOOTH_S);
+      else freq.value = dullHz();
     },
     setNight(on) {
       night = on;

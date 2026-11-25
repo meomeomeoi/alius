@@ -175,14 +175,18 @@ The README of each prototype ends with "Open engine questions (decide in the pla
 
 **Interfaces:**
 - Produces:
-  - `interface SampleSound`:
-    - `play(file, opts?: { gain?: number; pan?: number; rate?: number; at?: number; offset?: number; duration?: number; bus?: 'world' | 'body' }): void`
-    - `loop(file, opts?): { setGain(g, ms?): void; setRate(r, ms?): void; stop(ms?): void }`
-    - `ctx(): AudioContext | null`
-    - `bus(name: 'world' | 'body'): AudioNode | null`
-    - `setWorldDull(f: number): void` (0 clear … 1 the prototypes' fully dull world: lowpass `16000·(380/16000)^f`)
-    - `dispose(): void`
-  - `createSamples(deps: { settings: () => AliusSettings; assetUrl: (p: string) => string; audio?: () => AudioContextLike }): SampleSound`
+  - `interface SampleSound` (as built; `src/ui/sound/samples.ts`):
+    - `play(file, opts?: { gain?: number (default 0.5); pan?: number; rate?: number; at?: number; offset?: number; duration?: number; bus?: 'world' | 'body' (default world) }): void`: the slap's `play` (a `duration` fades over its last 30 ms). Muted, before a gesture or when the file failed: nothing.
+    - `loop(file, opts?): { setGain(g, ms?): void; setRate(r, ms?): void; stop(ms?): void }`: muted, it still runs silent through the master (unmuting makes it heard); before the first gesture or when the file failed the handle is inert.
+    - `preload(files: string[]): Promise<void>`: the prototypes' `loadSamples` (each file fetched and decoded once; never throws).
+    - `buffer(file): AudioBuffer | null`: the prototypes' `A.buf[key]` (null before the decode or after a failure).
+    - `ctx(): AudioContext | null`, `bus(name: 'world' | 'body'): AudioNode | null` (made on demand after the first user gesture; null after dispose).
+    - `setWorldDull(f: number): void` (0 clear … 1 the prototypes' fully dull world: lowpass `16000·(380/16000)^f`, smoothed `setTargetAtTime(…, now, 0.15)` as breath.html).
+    - `setNight(on)`, `setMuffle(on)`, `setSensory(on)`: the gains of `createSound` (`NIGHT_GAIN`, `MUFFLE_GAIN`, `TUNING.practice.hold.sensoryVolume`); the app forwards the shell's night and sensory switches and `syncSound`'s muffle.
+    - `dispose(): void` (stops loops, closes only a context it made).
+  - The graph: master gain (the player's level: volume, mute, night, muffle, sensory) → destination; world bus = lowpass (Q 0.4) → master; body bus = gain → master, never dull. The level is on the master, so a sound an instrument synthesises into a bus follows it.
+  - **Ruling (review of Task 1):** each instrument ports its own `play` / `chain` from its prototype onto `ctx()` + `bus()` + `buffer()` (after `preload` of its palette); the layer's own `play` is the slap's.
+  - `createSamples(deps: { settings: () => AliusSettings; assetUrl: (p: string) => string; audio?: () => SampleContextLike }): SampleSound` (`SampleContextLike` = `AudioContextLike` with `createBiquadFilter`, `createStereoPanner` and a buffer source with `playbackRate` / `loop` / `stop` / `start(when, offset, duration)`). Failed files are not asked for again for `FAILED_RETRY_MS` (30 s).
   - Files are named from the repo root: `'assets/sounds/ha/soft1.ogg'`.
 
 - [x] **Step 1: Write the failing tests:**
