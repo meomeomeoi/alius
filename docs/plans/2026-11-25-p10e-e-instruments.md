@@ -185,7 +185,7 @@ The README of each prototype ends with "Open engine questions (decide in the pla
   - `createSamples(deps: { settings: () => AliusSettings; assetUrl: (p: string) => string; audio?: () => AudioContextLike }): SampleSound`
   - Files are named from the repo root: `'assets/sounds/ha/soft1.ogg'`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `a sample plays through assetUrl with the master gain`: a fake context, `soundVolume` 50, `play('assets/sounds/ha/soft1.ogg', { gain: .3 })`. Expect one fetch of `assetUrl('assets/sounds/ha/soft1.ogg')` and a gain node at `.3 × .5`.
   - `muted plays nothing`: with `soundMuted` on, no source is started.
   - `a buffer is decoded once`: two plays of the same file make one fetch.
@@ -193,10 +193,10 @@ The README of each prototype ends with "Open engine questions (decide in the pla
   - `night and muffle apply`: the night and muffle gains of `createSound` multiply in (same constants).
   - `dispose stops loops and closes nothing it did not open`.
   - `tests/assets.test.ts`: every file under `assets/sounds/` is named in `assets/sounds/LICENSES.md`; no file is over 400 KB; no `http` url in `src/ui/sound/`.
-- [ ] **Step 2: Run** `npx vitest run tests/ui/sound/samples.test.ts tests/assets.test.ts` → FAIL.
-- [ ] **Step 3: Implement** `createSamples` with the context created on the first user gesture, as `createSound` does. Use the two buses of the prototypes: the world bus through the `setWorldDull` lowpass, the body bus never dull. Copy only the files some prototype's normative section names.
-- [ ] **Step 4: Run** the tests, `npx tsc --noEmit`, `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P10e-e): the sample sound layer and the instruments' recorded sounds`
+- [x] **Step 2: Run** `npx vitest run tests/ui/sound/samples.test.ts tests/assets.test.ts` → FAIL.
+- [x] **Step 3: Implement** `createSamples` with the context created on the first user gesture, as `createSound` does. Use the two buses of the prototypes: the world bus through the `setWorldDull` lowpass, the body bus never dull. Copy only the files some prototype's normative section names.
+- [x] **Step 4: Run** the tests, `npx tsc --noEmit`, `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P10e-e): the sample sound layer and the instruments' recorded sounds`
 
 ### Task 2: The 48 hands
 

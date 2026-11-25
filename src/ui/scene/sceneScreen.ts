@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import type { SampleSound } from '../sound/samples';
 import { sceneBackdrop, slotLight } from '../../engine/backdrops';
 import { intimacyOf } from '../../engine/relations/gain';
 import { ROMANTIC_PROPOSALS } from '../../engine/relations/vocab';
@@ -56,6 +57,8 @@ export interface SceneScreenCtx {
   settings: () => AliusSettings;
   /** P10: the typing tick while a reply is typed out (rate-limited by the player). */
   sound?: { play(id: 'typing' | 'alert'): void };
+  /** P10e-e: the recorded sounds the instruments play (one per app, beside `sound`). Absent = the instruments are silent. */
+  samples?: SampleSound;
   /** Called after [END TRANSMISSION] finished (the app returns to the PDA). */
   onEnded: () => void;
   /** P10e: the × of the top line (the shell's own close is hidden on the scene screen). Absent = no button. */

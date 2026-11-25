@@ -57700,6 +57700,236 @@ function createSound(deps) {
   return api;
 }
 
+// src/ui/sound/samples.ts
+var FAILED_RETRY_MS = 3e4;
+var CLEAR_HZ = 16e3;
+var DULL_HZ = 380;
+var SILENCE2 = 1e-4;
+var FADE_S = 0.03;
+var clamp42 = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+function browserAudio2() {
+  const g = globalThis;
+  const Ctor = g.AudioContext ?? g.webkitAudioContext;
+  if (!Ctor) throw new Error("no AudioContext");
+  return new Ctor();
+}
+function createSamples(deps) {
+  let graph = null;
+  let unavailable = false;
+  let disposed = false;
+  let gestured = false;
+  let dull = 0;
+  let night = false;
+  let muffle = false;
+  let sensory = false;
+  const files = /* @__PURE__ */ new Map();
+  const loops = /* @__PURE__ */ new Set();
+  const level = () => {
+    const s = deps.settings();
+    return s.soundMuted ? 0 : s.soundVolume / 100 * (night ? NIGHT_GAIN : 1) * (muffle ? MUFFLE_GAIN : 1) * (sensory ? TUNING.practice.hold.sensoryVolume : 1);
+  };
+  const dullHz = () => CLEAR_HZ * Math.pow(DULL_HZ / CLEAR_HZ, clamp42(dull, 0, 1));
+  const GESTURES = ["pointerdown", "keydown", "touchstart"];
+  const userActive = () => gestured || typeof navigator !== "undefined" && navigator.userActivation?.hasBeenActive === true;
+  const stopWatching = () => {
+    if (typeof document !== "undefined") for (const t of GESTURES) document.removeEventListener(t, onGesture, true);
+  };
+  function onGesture() {
+    gestured = true;
+    stopWatching();
+  }
+  if (typeof document !== "undefined") for (const t of GESTURES) document.addEventListener(t, onGesture, true);
+  function audio() {
+    if (disposed || unavailable || !userActive()) return null;
+    if (!graph) {
+      let c;
+      try {
+        c = (deps.audio ?? browserAudio2)();
+      } catch {
+        unavailable = true;
+        return null;
+      }
+      const master = c.createGain();
+      master.connect(c.destination);
+      const world = c.createBiquadFilter();
+      world.type = "lowpass";
+      world.frequency.value = dullHz();
+      world.Q.value = 0.4;
+      world.connect(master);
+      const body = c.createGain();
+      body.gain.value = 1;
+      body.connect(master);
+      graph = { c, master, world, body };
+    }
+    if (graph.c.state === "suspended") void graph.c.resume?.()?.catch?.(() => void 0);
+    graph.master.gain.value = level();
+    return graph;
+  }
+  function refresh2() {
+    if (graph && !disposed) graph.master.gain.value = level();
+  }
+  function load(c, file) {
+    const cached = files.get(file);
+    if (cached && "buffer" in cached) return cached.buffer;
+    if (cached && Date.now() - cached.failedAt < FAILED_RETRY_MS) return null;
+    const url = deps.assetUrl(file);
+    const buffer = (async () => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`audio ${file}: ${res.status}`);
+      return c.decodeAudioData(await res.arrayBuffer());
+    })();
+    files.set(file, { buffer });
+    buffer.catch(() => files.set(file, { failedAt: Date.now() }));
+    return buffer;
+  }
+  function wire(g, buffer, opts, gain2) {
+    const { c } = g;
+    const src = c.createBufferSource();
+    src.buffer = buffer;
+    src.playbackRate.value = opts.rate ?? 1;
+    const gn = c.createGain();
+    gn.gain.value = gain2;
+    src.connect(gn);
+    let out = gn;
+    if (opts.pan) {
+      const p = c.createStereoPanner();
+      p.pan.value = clamp42(opts.pan, -1, 1);
+      gn.connect(p);
+      out = p;
+    }
+    out.connect(opts.bus === "body" ? g.body : g.world);
+    return { src, gn };
+  }
+  const silentLoop = { setGain() {
+  }, setRate() {
+  }, stop() {
+  } };
+  return {
+    play(file, opts = {}) {
+      if (level() <= 0) return;
+      const g = audio();
+      if (!g) return;
+      const pending4 = load(g.c, file);
+      if (!pending4) return;
+      pending4.then(
+        (buffer) => {
+          if (disposed || !graph) return;
+          const { c } = graph;
+          const gain2 = opts.gain ?? 0.5;
+          const rate = opts.rate ?? 1;
+          const t = c.currentTime + Math.max(0, opts.at ?? 0);
+          const offset = opts.offset ?? 0;
+          const { src, gn } = wire(graph, buffer, opts, gain2);
+          const whole = buffer.duration ?? 0;
+          const len2 = opts.duration ?? Math.max(0, whole - offset);
+          if (opts.duration) {
+            gn.gain.setValueAtTime(gain2, t + opts.duration / rate - FADE_S);
+            gn.gain.linearRampToValueAtTime(SILENCE2, t + opts.duration / rate);
+          }
+          src.start(t, offset, len2 + 0.05);
+        },
+        () => void 0
+        // a missing file is silent
+      );
+    },
+    loop(file, opts = {}) {
+      if (level() <= 0) return silentLoop;
+      const g = audio();
+      if (!g) return silentLoop;
+      const pending4 = load(g.c, file);
+      if (!pending4) return silentLoop;
+      let gain2 = opts.gain ?? 0.5;
+      let rate = opts.rate ?? 1;
+      let stopped = false;
+      let live3 = null;
+      const entry = {
+        stopNow() {
+          stopped = true;
+          try {
+            live3?.src.stop();
+          } catch {
+          }
+          loops.delete(entry);
+        }
+      };
+      loops.add(entry);
+      pending4.then(
+        (buffer) => {
+          if (stopped || disposed || !graph) return;
+          live3 = wire(graph, buffer, { ...opts, rate }, gain2);
+          live3.src.loop = true;
+          live3.src.start(graph.c.currentTime + Math.max(0, opts.at ?? 0), opts.offset ?? 0);
+        },
+        () => loops.delete(entry)
+      );
+      const ramp = (p, v, ms) => {
+        if (!graph) return;
+        const t = graph.c.currentTime;
+        if (ms && ms > 0) {
+          p.setValueAtTime(p.value, t);
+          p.linearRampToValueAtTime(v, t + ms / 1e3);
+        } else p.value = v;
+      };
+      return {
+        setGain(v, ms) {
+          gain2 = v;
+          if (live3 && !stopped) ramp(live3.gn.gain, v, ms);
+        },
+        setRate(r, ms) {
+          rate = r;
+          if (live3 && !stopped) ramp(live3.src.playbackRate, r, ms);
+        },
+        stop(ms) {
+          if (stopped) return;
+          if (!live3 || !graph || !ms || ms <= 0) return entry.stopNow();
+          stopped = true;
+          loops.delete(entry);
+          const t = graph.c.currentTime;
+          live3.gn.gain.setValueAtTime(live3.gn.gain.value, t);
+          live3.gn.gain.linearRampToValueAtTime(SILENCE2, t + ms / 1e3);
+          live3.src.stop(t + ms / 1e3);
+        }
+      };
+    },
+    ctx() {
+      return audio()?.c ?? null;
+    },
+    bus(name) {
+      const g = audio();
+      if (!g) return null;
+      return name === "body" ? g.body : g.world;
+    },
+    setWorldDull(f) {
+      dull = clamp42(f, 0, 1);
+      if (graph && !disposed) graph.world.frequency.value = dullHz();
+    },
+    setNight(on) {
+      night = on;
+      refresh2();
+    },
+    setMuffle(on) {
+      muffle = on;
+      refresh2();
+    },
+    setSensory(on) {
+      sensory = on;
+      refresh2();
+    },
+    dispose() {
+      if (disposed) return;
+      for (const l of [...loops]) l.stopNow();
+      stopWatching();
+      disposed = true;
+      const c = graph?.c;
+      graph = null;
+      try {
+        void c?.close?.()?.catch?.(() => void 0);
+      } catch {
+      }
+    }
+  };
+}
+
 // src/ui/shell/status.ts
 var stat = (cls, text3, address) => h("span", { class: `${cls} alius-stat`, ...analyzeAttrs(address) }, text3);
 function renderStatusHeader(host, state) {
@@ -68120,7 +68350,9 @@ function createApp(st, deps) {
     for (const id of TAB_IDS) shell.setTabLocked(id, locked.has(id));
   }
   function syncSound(events) {
-    sound.setMuffle(muffled(state, registries));
+    const hooded = muffled(state, registries);
+    sound.setMuffle(hooded);
+    samples.setMuffle(hooded);
     for (const id of bellsFor(events, state, registries)) sound.play(id);
   }
   function announceUnlocks(before, after) {
@@ -68735,6 +68967,8 @@ function createApp(st, deps) {
         settings: () => getSettings(st),
         onEnded: leaveScene,
         sound,
+        samples,
+        // P10e-e: the instruments' recorded sounds
         onClose: () => shell.close(),
         // P10e: the shell's own close is hidden on the scene screen; the top line carries it
         assetUrl: deps.assetUrl,
@@ -70108,8 +70342,21 @@ function createApp(st, deps) {
   }
   const SHORT_NAME = (reg, registry2, id) => String(reg[registry2].get(id)?.name ?? id);
   const sound = createSound({ settings: () => getSettings(st), registries: () => registries, assetUrl: deps.assetUrl });
+  const samples = createSamples({ settings: () => getSettings(st), assetUrl: deps.assetUrl ?? ((p) => p) });
+  const shellSound = {
+    ...sound,
+    setNight: (on) => {
+      sound.setNight(on);
+      samples.setNight(on);
+    },
+    setSensory: (on) => {
+      sound.setSensory(on);
+      samples.setSensory(on);
+    }
+  };
   const shell = (deps.shellFactory ?? createShell)({
-    sound,
+    sound: shellSound,
+    // P10e-e: its night and sensory switches reach the samples too
     generation: genUi,
     st,
     getState: () => state,

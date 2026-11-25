@@ -93,4 +93,21 @@ describe('bundled assets (spec P10 §6, acceptance 7)', () => {
     expect(vars).toMatch(/--alius-font-sans:\s*"Inter",\s*system-ui,\s*sans-serif/);
     expect(vars).toMatch(/--alius-font-type:\s*"Special Elite",\s*"Courier New",\s*monospace/);
   });
+
+  it('every recorded sound under assets/sounds/ is named in its LICENSES.md and under 400 KB (P10e-e)', () => {
+    const licences = readFileSync('assets/sounds/LICENSES.md', 'utf8');
+    const walk = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? walk(`${dir}/${d.name}`) : [`${dir}/${d.name}`]));
+    const files = walk('assets/sounds').filter((f) => f !== 'assets/sounds/LICENSES.md');
+    expect(files.length).toBeGreaterThan(0);
+    for (const f of files) {
+      const rel = f.slice('assets/sounds/'.length);
+      expect(licences, rel).toContain(`\`${rel}\``);
+      expect(statSync(f).size, f).toBeLessThanOrEqual(400 * 1024);
+    }
+  });
+
+  it('the sound layer names no http url (P10e-e)', () => {
+    for (const f of readdirSync('src/ui/sound')) expect(readFileSync(`src/ui/sound/${f}`, 'utf8'), f).not.toMatch(/https?:/);
+  });
 });

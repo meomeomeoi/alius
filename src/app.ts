@@ -144,6 +144,7 @@ import { renderOpsTab, type OpsTabCtx } from './ui/ops/opsTab';
 import { renderMarks } from './ui/device/marks';
 import { pickSkin } from './ui/device/skins';
 import { createSound, type SoundId } from './ui/sound/sound';
+import { createSamples } from './ui/sound/samples';
 import { renderHub } from './ui/hub/hubScreen';
 import { endSlotBlock } from './ui/hub/model';
 import { renderMapTab } from './ui/map/mapTab';
@@ -367,7 +368,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
   /** P15a: the muffle follows the commander's ears and a bell rings on a move (nothing before the sound exists or without a state). */
   function syncSound(events: EngineEvent[]): void {
-    sound.setMuffle(muffled(state, registries));
+    const hooded = muffled(state, registries);
+    sound.setMuffle(hooded);
+    samples.setMuffle(hooded); // P10e-e: the instruments' recorded sounds muffle too
     for (const id of bellsFor(events, state, registries)) sound.play(id as SoundId);
   }
 
@@ -955,7 +958,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     const s = state;
     if (s?.scene) {
       sceneScreen = renderSceneScreen(host, {
-        controller: scene, getState: () => state, registries, st, settings: () => getSettings(st), onEnded: leaveScene, sound,
+        controller: scene, getState: () => state, registries, st, settings: () => getSettings(st), onEnded: leaveScene, sound, samples, // P10e-e: the instruments' recorded sounds
         onClose: () => shell.close(), // P10e: the shell's own close is hidden on the scene screen; the top line carries it
         assetUrl: deps.assetUrl, // P10c: backdrops live in the extension folder
         generation: genUi,
@@ -2381,8 +2384,15 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const SHORT_NAME = (reg: Registries, registry: 'roles' | 'defects', id: string): string => String(reg[registry].get(id)?.name ?? id);
 
   const sound = createSound({ settings: () => getSettings(st), registries: () => registries, assetUrl: deps.assetUrl });
+  /** P10e-e: the instruments' recorded sounds (`assets/sounds/`); the shell's night and sensory switches reach both. */
+  const samples = createSamples({ settings: () => getSettings(st), assetUrl: deps.assetUrl ?? ((p) => p) });
+  const shellSound: typeof sound = {
+    ...sound,
+    setNight: (on) => { sound.setNight(on); samples.setNight(on); },
+    setSensory: (on) => { sound.setSensory(on); samples.setSensory(on); },
+  };
   const shell = (deps.shellFactory ?? createShell)({
-    sound,
+    sound: shellSound, // P10e-e: its night and sensory switches reach the samples too
     generation: genUi,
     st,
     getState: () => state,
