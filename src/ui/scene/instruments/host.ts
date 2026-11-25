@@ -36,7 +36,14 @@ export function instrumentFor(run: PhysicsRun, state: CampaignState, reg: Regist
   if (settings.physicsRealtime !== true) return null;
   const interaction = String(reg.contactPhysics.get(run.physicsId)?.interaction ?? '');
   if ((settings.physicsInteractions as Record<string, boolean> | undefined)?.[interaction] === false) return null;
-  return defs.find((d) => d.matches(run, state, reg)) ?? null;
+  return defs.find((d) => {
+    try {
+      return d.matches(run, state, reg);
+    } catch (err) {
+      warnOnce(d.id, 'matches', err); // a throwing matches never aborts the refresh: the next definition is asked, else the card draws
+      return false;
+    }
+  }) ?? null;
 }
 
 interface Mounted {
@@ -124,6 +131,15 @@ export function unmountInstruments(): void {
     m.env.gauge.clear();
     m.env.root.querySelector<HTMLElement>('.alius-stage-dial')?.removeAttribute('data-instrument');
   }
+}
+
+/**
+ * A chat switch (`resetSceneStage`): stops the instrument and forgets which mount failed. The failed mount is keyed by scene and run id,
+ * which repeat across campaigns, so it must not keep the next chat's instrument from starting.
+ */
+export function resetInstruments(): void {
+  unmountInstruments();
+  failed = null;
 }
 
 /**

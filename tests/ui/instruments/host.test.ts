@@ -288,6 +288,38 @@ describe('the instrument host', () => {
     expect(calls.stop).toBe(0);
   });
 
+  it('a failed mount is forgotten on a chat switch: the same scene and run ids in the next chat start the instrument again', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let tries = 0;
+    const base = testDef();
+    registerInstrument({ ...base.def, start(env, r) { tries += 1; if (tries === 1) throw new Error('boom'); return base.def.start(env, r); } });
+    const s = hold();
+    const t = draw(s);
+    expect(t.q('.alius-instrument')).toBeNull(); // the first start threw: the card plays the run
+    t.screen.refresh();
+    expect(tries).toBe(1); // not retried within the scene
+    resetSceneStage(); // a chat switch: scene ids and run ids repeat across campaigns
+    t.screen.refresh();
+    expect(tries).toBe(2);
+    expect(t.q('.alius-instrument')).not.toBeNull();
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it('a throwing matches does not abort the refresh: the next definition is asked, else the card is drawn (warned once)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    registerInstrument({ ...testDef().def, id: 'bad', matches: () => { throw new Error('matches'); } });
+    const s = hold();
+    const t = draw(s);
+    expect(t.q('.alius-physics[data-run="p1"]')).not.toBeNull();
+    expect(() => t.screen.refresh()).not.toThrow();
+    expect(warn).toHaveBeenCalledTimes(1);
+    const good = testDef({ id: 'good' });
+    registerInstrument(good.def);
+    t.screen.refresh();
+    expect(good.calls.start).toEqual(['p1']);
+    expect(instrumentFor(s.scene!.physics!, s, reg, DEFAULT_SETTINGS)).toBe(good.def);
+  });
+
   it('a throwing update or stop does not break the refresh (the card takes over after a failed update)', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const base = testDef();
