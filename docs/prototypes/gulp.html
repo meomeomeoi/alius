@@ -3,7 +3,7 @@
   P10e chunk (e) reference prototype: GULP (P15a `gulp`, timing; content `watersports`, which requires `bodily_fluids`).
   Draft for the author's rounds (not yet approved). Scheme C (author, 2026-11-25): swallow and breathe as two resources, a signal to her,
   and what is spilled carried into cleaning.
-  - The view looks up at her: the ceiling, and her picture by the chain `over_naked` (explicit content on and she is undressed) → `over`
+  - The view looks up at her: the ceiling, and her picture by the chain `over_explicit` (explicit content on: the picture shows what watersports needs, her anatomy by her card; not nudity as such) → `over`
     → her ordinary sprite through the camera from below (weight's face-up placement). Nothing of a body is drawn; the stream is heard.
   - The mouth is a warm tide at the bottom of the screen with ripples where the stream lands; overflow runs over the edges and is spilled.
   - Space: a swallow (~0.7 s, no air while it lasts). Shift: a breath through the nose (with a full mouth it may become a cough, which spills).
@@ -106,10 +106,10 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <h4>her style</h4>
   <div class="row" id="styles"></div>
   <div class="note" id="styleNote"></div>
-  <h4>her picture (the chain over_naked → over → her sprite)</h4>
-  <label><input type="checkbox" id="explicit"> explicit content on and she is undressed (uses over_naked)</label>
+  <h4>her picture (the chain over_explicit → over → her sprite)</h4>
+  <label><input type="checkbox" id="explicit"> explicit content on (watersports): uses over_explicit</label>
   <label>over <input type="file" id="fileOver" accept="image/*" style="width:170px"></label>
-  <label>over_naked <input type="file" id="fileNaked" accept="image/*" style="width:150px"></label>
+  <label>over_explicit <input type="file" id="fileNaked" accept="image/*" style="width:150px"></label>
   <label>over height <input type="range" id="overH" min="0.6" max="1.8" step="0.01" value="1.04"><span id="overHV">1.04</span></label>
   <label>over x <input type="range" id="overX" min="0.3" max="0.7" step="0.01" value="0.5"><span id="overXV">0.50</span></label>
   <label>over sink <input type="range" id="overSink" min="0" max="0.3" step="0.01" value="0"><span id="overSinkV">0.00</span></label>
@@ -495,12 +495,12 @@ const overImgs = { over: null, naked: null };
 function render(now, dt) {
   const W = innerWidth, H = innerHeight;
   const cleaning = G.phase === 'clean' || (G.phase === 'done' && G.puddle);
-  // her picture by the chain: over_naked (explicit and undressed) → over → her sprite from below (weight's face-up placement)
+  // her picture by the chain: over_explicit (explicit content on) → over → her sprite from below (weight's face-up placement)
   const useImg = cleaning ? null : (S.explicit && overImgs.naked) ? overImgs.naked : overImgs.over;
   const ov = $('#over'), her = $('#her');
   const sway = Math.sin(now / 1400) * 0.6 + (G.surge && G.t - G.surge.t0 > G.surge.warn ? Math.sin(now / 90) * 0.4 : 0);
   if (useImg) {
-    if (ov.src !== useImg.src) ov.src = useImg.src; ov.style.display = '';
+    if (ov.src !== useImg.src) ov.src = useImg.src; ov.style.display = 'block'; // (the stylesheet hides #over: '' would hide it again)
     const oh = S.overH, ow = (H * oh) * useImg.naturalWidth / useImg.naturalHeight;
     const overscan = Math.max(0.02, (ow / 2) * Math.sin(6 * Math.PI / 180) / H + 0.01);
     placeSprite(ov, { h: oh, x: S.overX, bottom: 1 + overscan + S.overSink, rot: sway });
@@ -598,7 +598,7 @@ const loadOver = (key, input) => { const f = input.files[0]; if (!f) return; con
 $('#fileOver').onchange = () => loadOver('over', $('#fileOver'));
 $('#fileNaked').onchange = () => loadOver('naked', $('#fileNaked'));
 for (const [id, key] of [['overH', 'overH'], ['overX', 'overX'], ['overSink', 'overSink']]) $(`#${id}`).oninput = () => { S[key] = Number($(`#${id}`).value); $(`#${id}V`).textContent = S[key].toFixed(2); };
-$('#copyOver').onclick = () => { const j = JSON.stringify({ slot: S.explicit && overImgs.naked ? 'over_naked' : 'over', fit: { height: S.overH, x: S.overX, sink: S.overSink } }); navigator.clipboard?.writeText(j).catch(() => {}); $('#overNote').textContent = j; };
+$('#copyOver').onclick = () => { const j = JSON.stringify({ slot: S.explicit && overImgs.naked ? 'over_explicit' : 'over', fit: { height: S.overH, x: S.overX, sink: S.overSink } }); navigator.clipboard?.writeText(j).catch(() => {}); $('#overNote').textContent = j; };
 $('#len').oninput = () => { S.len = Number($('#len').value); $('#lenV').textContent = $('#len').value; };
 $('#flowK').oninput = () => { S.flowK = Number($('#flowK').value); $('#flowKV').textContent = S.flowK.toFixed(2); };
 for (const k of Object.keys(ASSETS.ceilings)) { const o = document.createElement('option'); o.value = k; o.textContent = k; $('#ceil').appendChild(o); }
