@@ -40,7 +40,62 @@ npm run proto -- gulp
 npm run proto -- cards
 ```
 
+```bash
+npm run proto -- throne
+```
+
 Each writes `.superpowers/prototypes/<name>.html` (ignored by git): one self-contained page with the fonts, backdrops and a placeholder sprite (`tests/fixtures/layout/sprite.svg`). `--sprite <file>` uses any local sprite; **never commit the author's art**. Open the page in Chromium. `H` hides the panel; `window.__S` (settings), `window.__G()` (state) and `window.__forceO` (force the opening, 0–1, `null` to release) exist for screenshots and tests.
+
+## `throne.html` — the throne (the weight inside her activity's frame, with the throne layer)
+
+Approved by the author on 2026-11-25 after rounds 1–2c (the defaults of the file are the approved state; the long hold's drain 0.35). Run it with `npm run proto -- throne`. **It is `her_activity.html` as approved, with the weight inside it, plus the throne layer**: search the file for `THE THRONE`. Everything outside that block and the few marked edits below is `her_activity.html` and keeps its own normative status. Where the frame and the weight are concerned, port `her_activity.html` and `weight.html`, not this copy; this section covers what the throne adds.
+
+### Normative (port exactly)
+
+- **The throne is the weight inside her activity's frame at any of her activities** (author: not only an audience). `holding_audience` is one more activity row (`ACTS.holding_audience`: visitors one after another, her folder, her signature, her mug). **`human_chair`** (she sits on the commander's back: weight 1.0, shift 1.0, as weight.html's contact) or **`footrest`** (her feet: 0.6, 0.7).
+- **The long hold's drain** (`S.frameDrain`): the strength's drain per beat × **0.35** inside the frame (weight.html was tuned for a 45 s session). In the extension it is the difficulty setting `longHoldStrain` (`light` 0.25, `normal` 0.35, `heavy` 0.6, `raw` 1).
+- **Her body follows her lines** (`throneBody`, `wCueShift`, `T_TELE`). A line of hers may carry a body cue; the cue's telegraph is her voice (her style's `T_TELE`, ×1.4 while her mug is there):
+  - `lean`: a shift to a side by a hash, magnitude 0.45–0.75, ×0.35 with her mug;
+  - `press`: pressure 1.5 for 2 beats and a jolt;
+  - `laugh`: three jolts 170 ms apart;
+  - `cross`: the centre of weight to a side (0.45) and it stays; her line once;
+  - `settle`: back to the centre;
+  - `rise`: §below.
+
+  Her own lines to herself move her 40 % of the time (a hash: `settle`, `cross` or `lean`). Her own scheduled shifts wait 3 beats after a cue.
+- **The flinch** (`throneFlinch`, in `throneUpdate`): when anyone talks about the commander (`about` on her line, `otherAbout` on the other's, 0.7 s after it), the balance gets a kick of ±2.4.
+  - Steadied within 0.8 s (error ≤ 1.6 × tolerance and holding): held.
+  - Otherwise a `jerk` noise (loudness 0.4, visible); an unaware visitor notices with 0.35.
+- **Her mug on the commander's back** (`throneCup`, `throneCupEnd`, in `throneUpdate`):
+  - the tolerance narrows to **0.12**, with a 1.5 s settling moment;
+  - she moves carefully while it is there: her own shifts at 0.35 of their size and 1.5× slower; no laugh, no rising;
+  - **0.5 s** out of level spills it (her reaction by style, a felt fault);
+  - she takes it back after 20–35 s.
+- **She signs on the commander's back** (`throneSign`): 3.8 s; the mouse must stay still (smoothed speed > 140 px/s for 160 ms: the pen skids); one redo, then she gives up; her shifts wait while she writes.
+- **She rises and sits back down** (`throneRise`): her weight is gone for 3–6 s, then she lands all at once. Not holding or not level: −18 × weight, a crack, her felt fault.
+- **Visitors of three kinds** (`throneVisitor`, `THRONE_VISITS` as the **shape** of the script; the texts are placeholders):
+  - `business`: real decisions about the commander, taken over the commander's head, each with a dim line saying what changed;
+  - `aware`: comments; may rest her boots on the commander too (pressure ≥ 1.35 while there);
+  - `unaware`: mentions veiled, silence, a risk.
+- **The end:** at `with` / `glancing` she may have the commander thank her for the seat (`throneThank`): typed within 9 s, `/thank/i`; her answer by style.
+- **Her legs on `human_chair`:**
+  - **silhouettes:** weight.html's `legsHang` / `LEG_FEET.relaxed`, as `tLegsHang` / `tLegPoints`; the rim of flesh light; gone while she is up;
+  - **or the art slot `legs_astride`** (`throneArt`): her left or her right leg (the other mirrored), two pictures (left and right) or both in one. Its fit `{ height, x, top, tilt }` is placed by the screen, offset into the world (which is larger than the screen for the shake). It is moved by her weight as the silhouettes are: the leg on her side presses in, the other lifts; a foot bounces while she reads; a jolt. Blurred 1.2 px (more as the strength goes) with a flesh drop-shadow.
+- **Her lines** (`T_LINES`: `spill`, `skid`, `thank`, `thanked`, `noThanks`), the `regal` rows of the frame (`STYLES.regal`), the weight (`W_STYLES.regal`, `W_LINES.regal`, `W_FALL.regal`) and the throne. With `human_chair` the rest and the end are worded for a seat ("She shifts her weight off your back…", "She gets off your back.").
+- **The digest:** her body's cues, landings, spills, skids, visitors (boots, decisions), flinches (the held ones only for the commander), the thanks.
+
+### Prototype only (do not port as is)
+
+- Everything that is `her_activity.html` (port that file); the panel's throne section (the toggles and the "now" buttons, the art loader and its sliders, "copy the fit"); `S.props` (the engine plans her mug, her signing, her rising and visitors as peaks).
+- `THRONE_VISITS`' texts and the body cues on `CALL`, `VISIT`, `CARDS`: the shape is normative, the texts come from the script call (`activity_script`), which gains `body`, `about`, `feet` and `decision` on its lines.
+
+### Open engine questions (decide in the plan of chunk (e))
+
+- **Decisions over the commander's head** are P15's command capabilities (countermand, roster, a punishment ordered) applied by the visitor's business: the script proposes, the engine decides which real matter (the commander's roster, a requisition) and applies it through the command domain. Without the domain she decides nothing (the visitor's business stays talk).
+- **The script's new fields:** `body` (one of the six cues), `about` (a line about the commander), `feet` (an aware visitor rests her boots), `decision` (a real matter), validated by the engine.
+- **`longHoldStrain`:** a scene setting mirrored like `marathonPace`. It applies only to a weight run inside a frame, so old runs stay byte-identical.
+- **The art slot `legs_astride`** with `feet: 'one' | 'pair' | 'two'` and `shown: 'left' | 'right'`.
+- **Memory check:** as P17g §2.12 (an audience's decision is remembered where its command action writes; a visitor who rests her boots on the commander is P15 §8's witness path, `knows`); a spill and a skid are bookkeeping.
 
 ## `cards.html` — her hand of cards (the dock's cards of P15a, P15 and P16) and the posture call (P16)
 

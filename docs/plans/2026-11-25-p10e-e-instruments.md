@@ -275,8 +275,8 @@ The README of each prototype ends with "Open engine questions (decide in the pla
 
 **Interfaces:**
 - Produces:
-  - `type ArtSlotId = 'over' | 'over_explicit' | 'face_close' | 'legs_seated.rest' | 'legs_seated.foot_raised' | 'sole_close' | 'feet_floor' | 'shoe_close.boots' | 'shoe_close.heels' | 'shoe_sole.boots' | 'shoe_sole.heels'`
-  - `interface ArtSidecar { fit?: Record<string, number>; zones?: Record<string, number[]> | { right: Record<string, number[]>; left: Record<string, number[]> }; feet?: 'one' | 'two'; shown?: 'left' | 'right'; face?: { x: number; y: number } }`
+  - `type ArtSlotId = 'over' | 'over_explicit' | 'face_close' | 'legs_seated.rest' | 'legs_seated.foot_raised' | 'legs_astride' | 'sole_close' | 'feet_floor' | 'shoe_close.boots' | 'shoe_close.heels' | 'shoe_sole.boots' | 'shoe_sole.heels'`
+  - `interface ArtSidecar { fit?: Record<string, number>; zones?: Record<string, number[]> | { right: Record<string, number[]>; left: Record<string, number[]> }; feet?: 'one' | 'pair' | 'two'; shown?: 'left' | 'right'; face?: { x: number; y: number } }` (`legs_astride` with `feet: 'pair'` has two files: `legs_astride.left` and `legs_astride.right`)
   - `interface ArtSlots { get(unitId: string, slot: ArtSlotId): { url: string; sidecar: ArtSidecar } | null }`
   - `createArtSlots(manifest: unknown, assetUrl: (p: string) => string, unitKey: (unitId: string) => string | null): ArtSlots`
   - The manifest: `{ [unitKey]: { [slot]: { file: string; sidecar?: ArtSidecar } } }`, where `unitKey` is the unit's card avatar file name (stable across campaigns).
@@ -917,6 +917,43 @@ New cue kinds join `CUE_KINDS` with rows in `content/core/physicsCues.json`. Eac
   - `the body's timers do not fire after a skip`;
   - `the lines never overlap and stay inside the frame` (`placeFree` on 6 lines).
 - Shots: the four views, under the desk with `legs_seated` and with the silhouettes, a call (her foot on the shoulder), a skip between phases, the forgotten end.
+
+### Task 24b: The throne (`throne.html`)
+
+The throne is the weight inside her activity's frame, at any of her activities, with the throne layer. Its README section is the spec. Port the block `THE THRONE` of `docs/prototypes/throne.html` and its marked edits; the frame and the weight come from Task 24 and Task 16 (their own prototypes).
+
+**Files:**
+- Create: `src/ui/scene/instruments/activity/throne.ts`, `css/71-activity.css` (the throne's rules)
+- Modify:
+  - `src/engine/moments/settings.ts`, `src/settings.ts`, `src/ui/shell/sysTab.ts` (`longHoldStrain: 'light' | 'normal' | 'heavy' | 'raw'`, a scene setting mirrored as `marathonPace`; SYS › Scenes "Long holds")
+  - `src/engine/physics/segment.ts` (the weight's drain × `LONG_HOLD[longHoldStrain]` only for a run inside a frame: `run.sourceKind === 'activity'` or a `second` of one)
+  - `content/core/blockingActivities.json` (`holding_audience` with its `frame`)
+  - `src/llm/calls/activityScript.ts` (the lines gain `body?: 'lean' | 'press' | 'laugh' | 'cross' | 'settle' | 'rise'`, `about?: true`, `feet?: true`, `decision?: { kind: 'roster' | 'requisition' | 'punishment'; ref?: string }`; validated; R26)
+  - `src/engine/actions/physics.ts` (`physics/decide { runId, kind, ref }`: a decision of the script applied through P15's command capabilities; refused without the `command` domain)
+  - `content/core/cardVoice.json` (kinds `throne.spill`, `throne.skid`, `throne.thank`, `throne.thanked`, `throne.noThanks` by style, from `T_LINES`)
+  - the `regal` rows of the frame's and the weight's tables (Tasks 16, 24)
+- Test: `tests/ui/instruments/throne.test.ts`, `tests/engine/physics/longHold.test.ts`, `tests/engine/physics/decide.test.ts`
+
+**Interfaces:**
+- Consumes: Task 24's frame (`presenceOf`, the script, the visitor peaks), Task 16's weight instrument (its state and springs), `ArtSlots.get(unitId, 'legs_astride')`.
+- Produces:
+  - `LONG_HOLD: Record<LongHoldStrain, number>` = `{ light: 0.25, normal: 0.35, heavy: 0.6, raw: 1 }`
+  - the action `physics/decide`, which emits `physics_decided { runId, holderId, kind, ref }`
+  - `throne.ts` exports the ported functions with their prototype names (`throneBody`, `wCueShift`, `throneRise`, `throneFlinch`, `throneCup`, `throneCupEnd`, `throneSign`, `throneUpdate`, `throneVisitor`, `throneThank`, `throneArt`, `throneLegs`, `tLegsHang`, `tLegPoints`) and the tables `T_TELE`, `THRONE_VISITS` (as the shape), `T_LINES` (as `cardVoice` rows)
+
+Follow the shape of an instrument task. Its `fidelity.json` lists those functions and tables against `throne.html`, plus the marked edits inside `wPlanShift` (careful), `wUpdate` (the drain), `wLimit` and `finish` (the seat's wording).
+
+- **Tests:**
+  - `longHoldStrain` normal scales a framed weight run's drain to 0.35, raw to 1, and a run outside a frame is unchanged (the seeded physics tests and every `unaffected` golden stay put);
+  - with her mug the tolerance is 0.12 and her shifts are 0.35 of their size; 0.5 s out of level spills (fake clock);
+  - a flinch steadied within 0.8 s is held, otherwise a `jerk` noise;
+  - a skid needs 160 ms above 140 px/s;
+  - a landing out of level costs 18 × weight;
+  - `throneArt` places a picture of her left leg at `x` from the left edge of the screen and its mirror at `x` from the right (the world's inset compensated; the fix of 2026-11-25), and `pair` uses two files without a mirror;
+  - `physics/decide` without the `command` domain is refused, and with it changes the commander's roster through P15's capability;
+  - the script's `body` / `about` / `feet` / `decision` are validated (an unknown cue is dropped).
+- **Shots:** `human_chair` with the silhouettes and with `legs_astride`, a visitor with business (her decision's line), her mug, her signing, her rising, the thanks.
+- **Memory check:** as P17g §2.12. `physics_decided` is remembered where its command action writes (no new rule); a spill and a skid are bookkeeping.
 
 ---
 

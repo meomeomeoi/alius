@@ -160,6 +160,7 @@ A custom not yet introduced never reaches a prompt.
 - In her activity's frame with a visitor (P10e (e)), the commander is her chair or footstool (`weight`). The visitor comes with **real business**: a leave, a roster, a complaint, a request from her thread.
 - With the `command` domain (P15) she decides it by her own power, over the commander's head, sitting on the commander: a countermand, a roster change, a punishment ordered. It is real, with its consequences in the game, through P15's existing command capabilities.
 - The humiliation is that the commander's authority is used while the commander is furniture.
+- **The throne itself** (the weight inside her activity's frame at any activity, her body following her lines, the flinch, her mug, her signing, her rising, visitors of three kinds, the thanks, her legs as `legs_astride`) is designed and approved as `docs/prototypes/throne.html` and ported by P10e chunk (e), Task 24b. This custom only decides when an audience with real business comes.
 - **Before a witness who knows** (author's pick): a visitor who already `knows` the dynamic comes on purpose and talks with her as usual. She may offer the visitor to rest her feet on the commander too. This is P17b §8's rare outcome, but from her hand; it needs `public_humiliation` and `objectification` and her `audience: show_off`.
 
 ### 2.13 She speaks of the commander as a thing (`object_naming`)
