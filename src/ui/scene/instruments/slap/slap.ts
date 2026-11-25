@@ -128,9 +128,12 @@ function lookFaces(labels: readonly string[]): void {
   const e = E;
   for (const label of labels) {
     if (label in faces || looking.has(label)) continue;
-    looking.set(label, e.env.spriteUrl(e.unitId, label).then((u) => { faces[label] = u; }, () => { faces[label] = null; }).then(() => {
+    // an answer for a frame that is gone (another holder, another scene: `bind` cleared `faces`) writes nothing (review M9)
+    const mine = (): boolean => E === e;
+    looking.set(label, e.env.spriteUrl(e.unitId, label).then((u) => { if (mine()) faces[label] = u; }, () => { if (mine()) faces[label] = null; }).then(() => {
+      if (!mine()) return;
       looking.delete(label);
-      if (E === e && curLabel === label && (G.slap || G.back)) showFace(label);
+      if (curLabel === label && (G.slap || G.back)) showFace(label);
     }));
   }
 }

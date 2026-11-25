@@ -254,6 +254,27 @@ describe('her face and her lines', () => {
     }
   });
 
+  it('a face lookup answered after the frame changed holder writes nothing into the new holder\'s faces (review M9)', async () => {
+    const o = await slapping({ style: 'cruel', face: 'neutral', lookupMs: 500 }); // Ann's lookups are under way
+    // before they answer, the slap binds to Bea (another holder): a new frame of faces
+    const bea = structuredClone(o.state);
+    bea.squad.push({ ...structuredClone(bea.squad.find((u) => u.id === ANN)!), id: 'unit_bea', displayName: 'Bea' });
+    bea.practices!.slap = { ...bea.practices!.slap!, id: 'ps3', holderId: 'unit_bea' };
+    o.set(bea);
+    const asked: string[] = [];
+    const lookup = o.env.spriteUrl;
+    o.env.spriteUrl = async (unitId, label) => { asked.push(`${unitId}|${label}`); return unitId === 'unit_bea' ? null : lookup(unitId, label); };
+    o.draw();
+    await o.settle();
+    o.tick(700); // Ann's answers come now
+    await o.settle();
+    o.tick(300);
+    await o.settle();
+    // Bea has no sprites: had Ann's answers landed in her faces, her before face would have been set with Ann's picture
+    expect(asked.some((a) => a.startsWith('unit_bea|'))).toBe(true);
+    expect(o.setSprite.mock.calls.filter((c) => c[0] === 'unit_bea')).toEqual([]);
+  });
+
   it('her lines are cardVoice rows of her style: ritual says its before line; cold is silent', async () => {
     const o = await slapping({ style: 'ritual' });
     o.to(SNAP_PLUS);
