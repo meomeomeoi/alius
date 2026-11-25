@@ -253,7 +253,7 @@ The README of each prototype ends with "Open engine questions (decide in the pla
   - `voiceLine(reg: Registries, kind: VoiceKind, style: string | undefined, key: string, vals: Record<string, string>): VoiceRun[]` — her style's lines when the registry has `{kind, style}`, else `{kind}` with no style; the line is `fnv1a(\`${key}|${style ?? 'neutral'}|${kind}\`) % n`. `{x}` is the value as it is and `{X}` capitalised; each value is a run with `value: true`.
   - `cardWhen(deadline: { day: number; slot?: Slot } | undefined, today: number): string | null` — the WHENS of `cards.html`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `cardVoice holds every line of card-voice.md`: a parser over `docs/content/card-voice.md` (backticked lines under each heading) equals the registry's lines, kind by kind and style by style.
   - `her style first, neutral otherwise`: `voiceLine(reg, 'when', 'cold', 'c1', { when: 'this evening' })` is one of cold's three; `voiceLine(reg, 'sayIt', 'cold', …)` is a neutral line.
   - `the same key gives the same line`, and `two keys spread`: over 30 keys every line of a three-line kind appears.
@@ -265,10 +265,10 @@ The README of each prototype ends with "Open engine questions (decide in the pla
     - (22, 20, `morning`) → `in two days, in the morning`;
     - (30, 20) → `in a few days`;
     - past → `today`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** the schema, the JSON (§1–§5 of card-voice.md; §3's static words as `static.*`; §5 as `call.*`) and the two readers.
-- [ ] **Step 4: Run**, `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P10e-e): her voice on the cards as data`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** the schema, the JSON (§1–§5 of card-voice.md; §3's static words as `static.*`; §5 as `call.*`) and the two readers.
+- [x] **Step 4: Run**, `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P10e-e): her voice on the cards as data`
 
 ### Task 4: Art slots and sidecars
 

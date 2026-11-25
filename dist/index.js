@@ -7731,7 +7731,9 @@ var REGISTRY_NAMES = [
   "practiceSeeds",
   "holderPunishments",
   "implements",
-  "ceremonySteps"
+  "ceremonySteps",
+  // P10e-e
+  "cardVoice"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -10715,6 +10717,56 @@ var LlmRefusalSchema = BaseEntrySchema.extend({
   scope: external_exports.enum(["json", "any"]).default("json")
 }).strict();
 Object.assign(registrySchemas, { llmRefusals: LlmRefusalSchema });
+var CARD_VOICE_KINDS = [
+  "when",
+  "cost",
+  "costHold",
+  "lapse",
+  "lapseHidden",
+  "free",
+  "who",
+  "onlyMe",
+  "proof.in_person",
+  "proof.witness",
+  "proof.report",
+  "weight",
+  "noLength",
+  "sayIt",
+  "closes",
+  "hands",
+  "talked",
+  "sealed",
+  "sealedTrack",
+  "demoWho",
+  "demoWhoMore",
+  "demoNone",
+  "demoWhere",
+  "demoAgain",
+  "order",
+  "cerTitle",
+  "cerWords",
+  "cerPosture",
+  "cerNumber",
+  "moment",
+  "exposing",
+  "call.right",
+  "call.wrong",
+  "call.slow",
+  "grants",
+  "slap.before",
+  "slap.feint",
+  "slap.again",
+  "slap.after.none",
+  "slap.after.braced",
+  "slap.after.flinched"
+];
+var CARD_VOICE_STATIC = /^static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)$/;
+var CardVoiceSchema = BaseEntrySchema.extend({
+  kind: str.refine((k) => CARD_VOICE_KINDS.includes(k) || CARD_VOICE_STATIC.test(k), "an unknown card voice kind"),
+  style: str.optional(),
+  lines: external_exports.array(str.max(160)).min(1)
+}).strict();
+registrySchemas.cardVoice = CardVoiceSchema;
 
 // src/engine/onboarding/prologue.ts
 function prologueFor(reg, startId, mode) {
@@ -71707,6 +71759,7 @@ registerChecks("deviceAccessRules", (entry, regs) => {
 });
 registerRefs("dmBehaviours", (entry) => (entry.when?.states ?? []).map((id, i) => ({ registry: "relationshipStates", id, path: `when.states[${i}]` })));
 registerRefs("handNotes", (entry) => (entry.when?.states ?? []).map((id, i) => ({ registry: "relationshipStates", id, path: `when.states[${i}]` })));
+registerRefs("cardVoice", (entry) => typeof entry.style === "string" ? [{ registry: "practiceStyles", id: entry.style, path: "style" }] : []);
 registerRefs("bookingKinds", (entry) => typeof entry.locationId === "string" ? [{ registry: "locations", id: entry.locationId, path: "locationId" }] : []);
 registerRefs("headStartMoments", (entry) => {
   const delta = entry.eventDelta;

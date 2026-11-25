@@ -1,0 +1,1269 @@
+[
+  {
+    "id": "when",
+    "kind": "when",
+    "lines": [
+      "I want it done {when}.",
+      "Have it done {when}.",
+      "{When}. Not later."
+    ]
+  },
+  {
+    "id": "cost",
+    "kind": "cost",
+    "lines": [
+      "It will take {slots} of your time.",
+      "That's {slots} of your time."
+    ]
+  },
+  {
+    "id": "cost_hold",
+    "kind": "costHold",
+    "lines": [
+      "Your time is mine until I say otherwise.",
+      "It lasts as long as I want it to."
+    ]
+  },
+  {
+    "id": "lapse",
+    "kind": "lapse",
+    "lines": [
+      "{Booking} won't happen.",
+      "{Booking} falls through for this."
+    ]
+  },
+  {
+    "id": "lapse_hidden",
+    "kind": "lapseHidden",
+    "lines": [
+      "Whatever you had planned meanwhile may fall through."
+    ]
+  },
+  {
+    "id": "free",
+    "kind": "free",
+    "lines": [
+      "It costs you nothing.",
+      "It won't cost you a thing."
+    ]
+  },
+  {
+    "id": "who",
+    "kind": "who",
+    "lines": [
+      "{Who} will know.",
+      "{Who} will hear of it."
+    ]
+  },
+  {
+    "id": "only_me",
+    "kind": "onlyMe",
+    "lines": [
+      "No one but me will know.",
+      "Only I will know."
+    ]
+  },
+  {
+    "id": "proof.in_person",
+    "kind": "proof.in_person",
+    "lines": [
+      "In person."
+    ]
+  },
+  {
+    "id": "proof.witness",
+    "kind": "proof.witness",
+    "lines": [
+      "Before a witness."
+    ]
+  },
+  {
+    "id": "proof.report",
+    "kind": "proof.report",
+    "lines": [
+      "In a report to me."
+    ]
+  },
+  {
+    "id": "weight",
+    "kind": "weight",
+    "lines": [
+      "A {weight} one.",
+      "It's {weight}."
+    ]
+  },
+  {
+    "id": "no_length",
+    "kind": "noLength",
+    "lines": [
+      "How long is for me to decide.",
+      "I haven't said how long. I won't.",
+      "It ends when I say."
+    ]
+  },
+  {
+    "id": "say_it",
+    "kind": "sayIt",
+    "lines": [
+      "Say it. In your own words.",
+      "I want to hear you say it."
+    ]
+  },
+  {
+    "id": "closes",
+    "kind": "closes",
+    "lines": [
+      "Sign, and it's settled: {summary}."
+    ]
+  },
+  {
+    "id": "hands",
+    "kind": "hands",
+    "lines": [
+      "Sign, and {handed} is mine."
+    ]
+  },
+  {
+    "id": "talked",
+    "kind": "talked",
+    "lines": [
+      "We're still talking about it.",
+      "I'm listening. For now."
+    ]
+  },
+  {
+    "id": "sealed",
+    "kind": "sealed",
+    "lines": [
+      "Don't open it yet. Say yes first.",
+      "It's sealed. You'll read it once you've said yes.",
+      "What's inside is for after you agree."
+    ]
+  },
+  {
+    "id": "sealed_track",
+    "kind": "sealedTrack",
+    "lines": [
+      "It's about {track}."
+    ]
+  },
+  {
+    "id": "demo_who",
+    "kind": "demoWho",
+    "lines": [
+      "In front of {who}.",
+      "{Who} will be watching."
+    ]
+  },
+  {
+    "id": "demo_who_more",
+    "kind": "demoWhoMore",
+    "lines": [
+      "In front of {who}, and whoever else is there."
+    ]
+  },
+  {
+    "id": "demo_none",
+    "kind": "demoNone",
+    "lines": [
+      "In front of whoever is there."
+    ]
+  },
+  {
+    "id": "demo_where",
+    "kind": "demoWhere",
+    "lines": [
+      "{Place}, {slot}. Keep it free.",
+      "{Place}, in the {slot}. That's your {slot} gone."
+    ]
+  },
+  {
+    "id": "demo_again",
+    "kind": "demoAgain",
+    "lines": [
+      "It didn't happen. Come again."
+    ]
+  },
+  {
+    "id": "order",
+    "kind": "order",
+    "lines": [
+      "{Soldier}: {label}.",
+      "For {soldier}: {label}. Or you take it."
+    ]
+  },
+  {
+    "id": "cer_title",
+    "kind": "cerTitle",
+    "lines": [
+      "{Label}, done properly.",
+      "{Label}. Step by step."
+    ]
+  },
+  {
+    "id": "cer_words",
+    "kind": "cerWords",
+    "lines": [
+      "Say it."
+    ]
+  },
+  {
+    "id": "cer_posture",
+    "kind": "cerPosture",
+    "lines": [
+      "{Posture}. Now."
+    ]
+  },
+  {
+    "id": "cer_number",
+    "kind": "cerNumber",
+    "lines": [
+      "How many? You say."
+    ]
+  },
+  {
+    "id": "moment",
+    "kind": "moment",
+    "lines": [
+      "Something hangs in the air.",
+      "It could go either way.",
+      "A moment, and it's yours to take."
+    ]
+  },
+  {
+    "id": "exposing",
+    "kind": "exposing",
+    "lines": [
+      "{Name} could give you away."
+    ]
+  },
+  {
+    "id": "call.right",
+    "kind": "call.right",
+    "lines": [
+      "Good.",
+      "Like that.",
+      "That's it."
+    ]
+  },
+  {
+    "id": "call.wrong",
+    "kind": "call.wrong",
+    "lines": [
+      "Not that. {posture}.",
+      "I said {posture}.",
+      "Wrong. {posture}."
+    ]
+  },
+  {
+    "id": "call.slow",
+    "kind": "call.slow",
+    "lines": [
+      "Too slow.",
+      "I'm still waiting.",
+      "When I say it, not after."
+    ]
+  },
+  {
+    "id": "static.milestone.first_yes",
+    "kind": "static.milestone.first_yes",
+    "lines": [
+      "Say yes to me. Just once, and mean it."
+    ]
+  },
+  {
+    "id": "static.milestone.first_protocol",
+    "kind": "static.milestone.first_protocol",
+    "lines": [
+      "I'd like a rule between us. Your first one. Will you keep it?"
+    ]
+  },
+  {
+    "id": "static.milestone.first_night_held",
+    "kind": "static.milestone.first_night_held",
+    "lines": [
+      "Stay with me tonight. On my terms."
+    ]
+  },
+  {
+    "id": "static.milestone.vow",
+    "kind": "static.milestone.vow",
+    "lines": [
+      "I want your word. Said aloud, and kept."
+    ]
+  },
+  {
+    "id": "static.milestone.handover",
+    "kind": "static.milestone.handover",
+    "lines": [
+      "Give me the command. Not on paper: to me."
+    ]
+  },
+  {
+    "id": "static.milestone.private_rule",
+    "kind": "static.milestone.private_rule",
+    "lines": [
+      "One rule, only for us. Nobody else needs to know it."
+    ]
+  },
+  {
+    "id": "static.milestone.cooling",
+    "kind": "static.milestone.cooling",
+    "lines": [
+      "We've drifted, you and I. Do you want this back?"
+    ]
+  },
+  {
+    "id": "static.milestone.command_lost",
+    "kind": "static.milestone.command_lost",
+    "lines": [
+      "It's gone, the command. Do you understand what that makes you?"
+    ]
+  },
+  {
+    "id": "static.milestone.rekindle",
+    "kind": "static.milestone.rekindle",
+    "lines": [
+      "I want to start this again. Properly, this time."
+    ]
+  },
+  {
+    "id": "static.claim.private_time",
+    "kind": "static.claim.private_time",
+    "lines": [
+      "I want your evenings, as many as I like, when I like."
+    ]
+  },
+  {
+    "id": "static.claim.body",
+    "kind": "static.claim.body",
+    "lines": [
+      "I want a say in how you look. And how you keep yourself."
+    ]
+  },
+  {
+    "id": "static.claim.device",
+    "kind": "static.claim.device",
+    "lines": [
+      "Give me your device. And the Leash, while you're at it."
+    ]
+  },
+  {
+    "id": "static.claim.household",
+    "kind": "static.claim.household",
+    "lines": [
+      "I want your service outside our scenes too. My quarters, your second home."
+    ]
+  },
+  {
+    "id": "static.claim.others",
+    "kind": "static.claim.others",
+    "lines": [
+      "I want a say in who else you spend yourself on."
+    ]
+  },
+  {
+    "id": "static.claim.command",
+    "kind": "static.claim.command",
+    "lines": [
+      "I want to give orders too. And to be called the one in command."
+    ]
+  },
+  {
+    "id": "static.claim.submit",
+    "kind": "static.claim.submit",
+    "lines": [
+      "I've asked enough times. Give way to me. Here, now."
+    ]
+  },
+  {
+    "id": "static.return.lower_band",
+    "kind": "static.return.lower_band",
+    "lines": [
+      "Let's begin again. A smaller step than before."
+    ]
+  },
+  {
+    "id": "static.return.after_punishment",
+    "kind": "static.return.after_punishment",
+    "lines": [
+      "Let's begin again, once you've paid for how it ended."
+    ]
+  },
+  {
+    "id": "grants",
+    "kind": "grants",
+    "lines": [
+      "You'd give me:"
+    ]
+  },
+  {
+    "id": "when.affectionate",
+    "kind": "when",
+    "style": "affectionate",
+    "lines": [
+      "Could you have it done {when}?",
+      "{When}, if you can, love.",
+      "I'd like it {when}. Don't rush it."
+    ]
+  },
+  {
+    "id": "cost.affectionate",
+    "kind": "cost",
+    "style": "affectionate",
+    "lines": [
+      "It'll take {slots} of your time. I'll make it worth it.",
+      "{Slots} of your time. Spend it on me?",
+      "Just {slots} of your time."
+    ]
+  },
+  {
+    "id": "who.affectionate",
+    "kind": "who",
+    "style": "affectionate",
+    "lines": [
+      "{Who} will know, and that's alright.",
+      "I'll tell {who}. Gently.",
+      "{Who} will know. Only them."
+    ]
+  },
+  {
+    "id": "only_me.affectionate",
+    "kind": "onlyMe",
+    "style": "affectionate",
+    "lines": [
+      "Just between us.",
+      "No one else. Only me."
+    ]
+  },
+  {
+    "id": "weight.affectionate",
+    "kind": "weight",
+    "style": "affectionate",
+    "lines": [
+      "It's {weight}. I'm sorry it has to be.",
+      "A {weight} one, but you'll manage.",
+      "{Weight}. I'll be there."
+    ]
+  },
+  {
+    "id": "call.right.affectionate",
+    "kind": "call.right",
+    "style": "affectionate",
+    "lines": [
+      "Good. Just like that.",
+      "There you are. Lovely.",
+      "Perfect, love."
+    ]
+  },
+  {
+    "id": "call.wrong.affectionate",
+    "kind": "call.wrong",
+    "style": "affectionate",
+    "lines": [
+      "Not that one, love. {posture}.",
+      "Close. {posture}, though.",
+      "Mm, no. {posture}. You'll get it."
+    ]
+  },
+  {
+    "id": "call.slow.affectionate",
+    "kind": "call.slow",
+    "style": "affectionate",
+    "lines": [
+      "A little faster next time?",
+      "I'll wait. This time.",
+      "Slow, but you got there. Almost."
+    ]
+  },
+  {
+    "id": "when.cold",
+    "kind": "when",
+    "style": "cold",
+    "lines": [
+      "{When}.",
+      "Done {when}.",
+      "{When}. Not later."
+    ]
+  },
+  {
+    "id": "cost.cold",
+    "kind": "cost",
+    "style": "cold",
+    "lines": [
+      "{Slots}.",
+      "It costs {slots}.",
+      "{Slots} of your time. Noted."
+    ]
+  },
+  {
+    "id": "who.cold",
+    "kind": "who",
+    "style": "cold",
+    "lines": [
+      "{Who} will know.",
+      "{Who}. That's all.",
+      "I'll inform {who}."
+    ]
+  },
+  {
+    "id": "only_me.cold",
+    "kind": "onlyMe",
+    "style": "cold",
+    "lines": [
+      "No one else.",
+      "Me. No one else."
+    ]
+  },
+  {
+    "id": "weight.cold",
+    "kind": "weight",
+    "style": "cold",
+    "lines": [
+      "{Weight}.",
+      "It's {weight}.",
+      "{Weight}. Don't argue."
+    ]
+  },
+  {
+    "id": "call.right.cold",
+    "kind": "call.right",
+    "style": "cold",
+    "lines": [
+      "Fine.",
+      "Acceptable.",
+      "Yes."
+    ]
+  },
+  {
+    "id": "call.wrong.cold",
+    "kind": "call.wrong",
+    "style": "cold",
+    "lines": [
+      "No. {posture}.",
+      "{posture}. Not that.",
+      "Wrong."
+    ]
+  },
+  {
+    "id": "call.slow.cold",
+    "kind": "call.slow",
+    "style": "cold",
+    "lines": [
+      "Late.",
+      "Too slow.",
+      "I don't repeat myself."
+    ]
+  },
+  {
+    "id": "when.ritual",
+    "kind": "when",
+    "style": "ritual",
+    "lines": [
+      "It is to be done {when}.",
+      "{When}, as is proper.",
+      "The hour is set: {when}."
+    ]
+  },
+  {
+    "id": "cost.ritual",
+    "kind": "cost",
+    "style": "ritual",
+    "lines": [
+      "It asks {slots} of your time.",
+      "You will give {slots} to it.",
+      "{Slots}, set aside for this."
+    ]
+  },
+  {
+    "id": "who.ritual",
+    "kind": "who",
+    "style": "ritual",
+    "lines": [
+      "{Who} will bear witness.",
+      "It will be known to {who}.",
+      "{Who} shall know of it."
+    ]
+  },
+  {
+    "id": "only_me.ritual",
+    "kind": "onlyMe",
+    "style": "ritual",
+    "lines": [
+      "It stays within these walls.",
+      "Only I will witness it."
+    ]
+  },
+  {
+    "id": "weight.ritual",
+    "kind": "weight",
+    "style": "ritual",
+    "lines": [
+      "It is a {weight} one.",
+      "Its weight is {weight}.",
+      "{Weight}, as the rule asks."
+    ]
+  },
+  {
+    "id": "call.right.ritual",
+    "kind": "call.right",
+    "style": "ritual",
+    "lines": [
+      "As it should be.",
+      "Correct. Hold it.",
+      "{posture}. Properly done."
+    ]
+  },
+  {
+    "id": "call.wrong.ritual",
+    "kind": "call.wrong",
+    "style": "ritual",
+    "lines": [
+      "That is not {posture}.",
+      "The form is {posture}. Again.",
+      "Wrong form. {posture}."
+    ]
+  },
+  {
+    "id": "call.slow.ritual",
+    "kind": "call.slow",
+    "style": "ritual",
+    "lines": [
+      "You missed the count.",
+      "On the word, not after it.",
+      "The moment passed. That is noted."
+    ]
+  },
+  {
+    "id": "when.clinical",
+    "kind": "when",
+    "style": "clinical",
+    "lines": [
+      "Deadline: {when}.",
+      "I'll check it {when}.",
+      "Complete it {when}. I'll note the time."
+    ]
+  },
+  {
+    "id": "cost.clinical",
+    "kind": "cost",
+    "style": "clinical",
+    "lines": [
+      "Expect it to take {slots}.",
+      "Cost to you: {slots}.",
+      "{Slots}. I've accounted for it."
+    ]
+  },
+  {
+    "id": "who.clinical",
+    "kind": "who",
+    "style": "clinical",
+    "lines": [
+      "{Who} will be informed.",
+      "Observers: {who}.",
+      "{Who} will know. It's useful."
+    ]
+  },
+  {
+    "id": "only_me.clinical",
+    "kind": "onlyMe",
+    "style": "clinical",
+    "lines": [
+      "No observers. Only me.",
+      "It stays in my notes."
+    ]
+  },
+  {
+    "id": "weight.clinical",
+    "kind": "weight",
+    "style": "clinical",
+    "lines": [
+      "I'd call it {weight}.",
+      "Severity: {weight}.",
+      "{Weight}. Proportionate."
+    ]
+  },
+  {
+    "id": "call.right.clinical",
+    "kind": "call.right",
+    "style": "clinical",
+    "lines": [
+      "Correct.",
+      "Good. Response time acceptable.",
+      "That's the one."
+    ]
+  },
+  {
+    "id": "call.wrong.clinical",
+    "kind": "call.wrong",
+    "style": "clinical",
+    "lines": [
+      "Incorrect. I asked for {posture}.",
+      "That's not {posture}. Noted.",
+      "Wrong posture. {posture}."
+    ]
+  },
+  {
+    "id": "call.slow.clinical",
+    "kind": "call.slow",
+    "style": "clinical",
+    "lines": [
+      "Too slow. Noted.",
+      "Response time: unacceptable.",
+      "You hesitated. I saw."
+    ]
+  },
+  {
+    "id": "when.possessive",
+    "kind": "when",
+    "style": "possessive",
+    "lines": [
+      "{When}. Keep the rest of the day clear.",
+      "I want you on it {when}.",
+      "{When}, and not a minute for anyone else."
+    ]
+  },
+  {
+    "id": "cost.possessive",
+    "kind": "cost",
+    "style": "possessive",
+    "lines": [
+      "{Slots} of your time, and I want all of it.",
+      "I'm taking {slots}.",
+      "{Slots} of your time. Don't give it to anyone else."
+    ]
+  },
+  {
+    "id": "who.possessive",
+    "kind": "who",
+    "style": "possessive",
+    "lines": [
+      "{Who} will know who you answer to.",
+      "I'll let {who} see.",
+      "{Who} will know. Let them."
+    ]
+  },
+  {
+    "id": "only_me.possessive",
+    "kind": "onlyMe",
+    "style": "possessive",
+    "lines": [
+      "Nobody else gets this. Only me.",
+      "This one stays between us. Don't share it."
+    ]
+  },
+  {
+    "id": "weight.possessive",
+    "kind": "weight",
+    "style": "possessive",
+    "lines": [
+      "{Weight}. You'll remember who gave it.",
+      "A {weight} one, from me.",
+      "It's {weight}. And it's from me, no one else."
+    ]
+  },
+  {
+    "id": "call.right.possessive",
+    "kind": "call.right",
+    "style": "possessive",
+    "lines": [
+      "Good. Quick, the way I taught you.",
+      "That's how I like you.",
+      "Yes. Stay like that for me."
+    ]
+  },
+  {
+    "id": "call.wrong.possessive",
+    "kind": "call.wrong",
+    "style": "possessive",
+    "lines": [
+      "I said {posture}. My word, not your guess.",
+      "Not that. {posture}, for me.",
+      "You know what {posture} means. Do it."
+    ]
+  },
+  {
+    "id": "call.slow.possessive",
+    "kind": "call.slow",
+    "style": "possessive",
+    "lines": [
+      "When I call, you come. Faster.",
+      "Too slow for me.",
+      "Don't make me wait. Not me."
+    ]
+  },
+  {
+    "id": "when.playful",
+    "kind": "when",
+    "style": "playful",
+    "lines": [
+      "{When}~ don't be late.",
+      "{When}, or I'll think of something.",
+      "{When}. Tick tock."
+    ]
+  },
+  {
+    "id": "cost.playful",
+    "kind": "cost",
+    "style": "playful",
+    "lines": [
+      "Only {slots}~",
+      "It'll cost you {slots}. Worth it?",
+      "{Slots} of your time. I'll have fun with it."
+    ]
+  },
+  {
+    "id": "who.playful",
+    "kind": "who",
+    "style": "playful",
+    "lines": [
+      "{Who} gets to know~",
+      "Guess who'll find out? {Who}.",
+      "{Who} will know. Smile for them."
+    ]
+  },
+  {
+    "id": "only_me.playful",
+    "kind": "onlyMe",
+    "style": "playful",
+    "lines": [
+      "Our little secret.",
+      "Just you and me~"
+    ]
+  },
+  {
+    "id": "weight.playful",
+    "kind": "weight",
+    "style": "playful",
+    "lines": [
+      "Oh, it's {weight}.",
+      "A {weight} one~",
+      "{Weight}. Brace yourself."
+    ]
+  },
+  {
+    "id": "call.right.playful",
+    "kind": "call.right",
+    "style": "playful",
+    "lines": [
+      "Ooh, quick~",
+      "Good! Gold star.",
+      "Look at you go."
+    ]
+  },
+  {
+    "id": "call.wrong.playful",
+    "kind": "call.wrong",
+    "style": "playful",
+    "lines": [
+      "Nope~ {posture}.",
+      "Cute, but no. {posture}.",
+      "Wrong one! {posture}, silly."
+    ]
+  },
+  {
+    "id": "call.slow.playful",
+    "kind": "call.slow",
+    "style": "playful",
+    "lines": [
+      "Too slo-ow~",
+      "Did you fall asleep?",
+      "I counted. You lost."
+    ]
+  },
+  {
+    "id": "when.cruel",
+    "kind": "when",
+    "style": "cruel",
+    "lines": [
+      "{When}. Don't make me ask twice.",
+      "{When}. Late, and you'll regret it.",
+      "{When}. Not a minute after."
+    ]
+  },
+  {
+    "id": "cost.cruel",
+    "kind": "cost",
+    "style": "cruel",
+    "lines": [
+      "{Slots}. As if you had better things to do.",
+      "It takes {slots}. I don't care what else you had.",
+      "{Slots}. Spent on me."
+    ]
+  },
+  {
+    "id": "who.cruel",
+    "kind": "who",
+    "style": "cruel",
+    "lines": [
+      "{Who} will know. All of it.",
+      "I'll make sure {who} hears.",
+      "{Who} will know exactly what you are."
+    ]
+  },
+  {
+    "id": "only_me.cruel",
+    "kind": "onlyMe",
+    "style": "cruel",
+    "lines": [
+      "No one else. Yet.",
+      "Just me. For now."
+    ]
+  },
+  {
+    "id": "weight.cruel",
+    "kind": "weight",
+    "style": "cruel",
+    "lines": [
+      "{Weight}. You earned it.",
+      "It's {weight}. Good.",
+      "A {weight} one. You'll feel it."
+    ]
+  },
+  {
+    "id": "call.right.cruel",
+    "kind": "call.right",
+    "style": "cruel",
+    "lines": [
+      "Finally.",
+      "About time.",
+      "Good. That's all you're good for."
+    ]
+  },
+  {
+    "id": "call.wrong.cruel",
+    "kind": "call.wrong",
+    "style": "cruel",
+    "lines": [
+      "Wrong. Pathetic. {posture}.",
+      "Can't even get {posture} right.",
+      "{posture}. Are you stupid?"
+    ]
+  },
+  {
+    "id": "call.slow.cruel",
+    "kind": "call.slow",
+    "style": "cruel",
+    "lines": [
+      "Too slow. You'll pay for that.",
+      "I won't call twice.",
+      "Slow. As always."
+    ]
+  },
+  {
+    "id": "when.obsessive",
+    "kind": "when",
+    "style": "obsessive",
+    "lines": [
+      "{When}. I'll be counting.",
+      "{When}. I'll know if it isn't.",
+      "I want it {when}. I'll be watching for it."
+    ]
+  },
+  {
+    "id": "cost.obsessive",
+    "kind": "cost",
+    "style": "obsessive",
+    "lines": [
+      "{Slots}, and every minute of it for me.",
+      "I need {slots} of you.",
+      "{Slots} of your time. I'll know how you spend it."
+    ]
+  },
+  {
+    "id": "who.obsessive",
+    "kind": "who",
+    "style": "obsessive",
+    "lines": [
+      "{Who} will know. I'll see that they do.",
+      "I'll tell {who}. I'll watch them hear it.",
+      "{Who} will know. I'll ask them later what they saw."
+    ]
+  },
+  {
+    "id": "only_me.obsessive",
+    "kind": "onlyMe",
+    "style": "obsessive",
+    "lines": [
+      "No one else will ever know.",
+      "Only me. Always only me."
+    ]
+  },
+  {
+    "id": "weight.obsessive",
+    "kind": "weight",
+    "style": "obsessive",
+    "lines": [
+      "It's {weight}. I thought about it a long time.",
+      "{Weight}. I chose it carefully.",
+      "A {weight} one. I'll watch you take it."
+    ]
+  },
+  {
+    "id": "call.right.obsessive",
+    "kind": "call.right",
+    "style": "obsessive",
+    "lines": [
+      "Yes. Exactly as I pictured it.",
+      "Perfect. Don't move.",
+      "There. I've been waiting for that."
+    ]
+  },
+  {
+    "id": "call.wrong.obsessive",
+    "kind": "call.wrong",
+    "style": "obsessive",
+    "lines": [
+      "No. {posture}. You know it. I know you know it.",
+      "That's not {posture}. Why would you do that?",
+      "{posture}. I've shown you a hundred times."
+    ]
+  },
+  {
+    "id": "call.slow.obsessive",
+    "kind": "call.slow",
+    "style": "obsessive",
+    "lines": [
+      "I counted every second.",
+      "You made me wait. I noticed.",
+      "Too slow. I'll remember."
+    ]
+  },
+  {
+    "id": "when.drill",
+    "kind": "when",
+    "style": "drill",
+    "lines": [
+      "{When}. Move.",
+      "Done {when}. No excuses.",
+      "{When}, on the dot."
+    ]
+  },
+  {
+    "id": "cost.drill",
+    "kind": "cost",
+    "style": "drill",
+    "lines": [
+      "{Slots}. Report when done.",
+      "You're on this for {slots}.",
+      "{Slots}, starting when I say."
+    ]
+  },
+  {
+    "id": "who.drill",
+    "kind": "who",
+    "style": "drill",
+    "lines": [
+      "{Who} will know.",
+      "I'll report it to {who}.",
+      "{Who} will see it. Look sharp."
+    ]
+  },
+  {
+    "id": "only_me.drill",
+    "kind": "onlyMe",
+    "style": "drill",
+    "lines": [
+      "Between you and me. Dismissed.",
+      "No one else. Understood?"
+    ]
+  },
+  {
+    "id": "weight.drill",
+    "kind": "weight",
+    "style": "drill",
+    "lines": [
+      "{Weight}. Take it.",
+      "It's {weight}. Stand up straight.",
+      "A {weight} one. Eyes front."
+    ]
+  },
+  {
+    "id": "call.right.drill",
+    "kind": "call.right",
+    "style": "drill",
+    "lines": [
+      "Good.",
+      "Hold it. Don't move.",
+      "That's it. Again later."
+    ]
+  },
+  {
+    "id": "call.wrong.drill",
+    "kind": "call.wrong",
+    "style": "drill",
+    "lines": [
+      "Wrong! {posture}!",
+      "{posture}, I said! Move!",
+      "That's not {posture}. Again!"
+    ]
+  },
+  {
+    "id": "call.slow.drill",
+    "kind": "call.slow",
+    "style": "drill",
+    "lines": [
+      "Too slow! Again!",
+      "On the word! Not after!",
+      "Faster than that."
+    ]
+  },
+  {
+    "id": "when.regal",
+    "kind": "when",
+    "style": "regal",
+    "lines": [
+      "You will have it done {when}.",
+      "{When}. I'll expect it.",
+      "{When}, as I wish it."
+    ]
+  },
+  {
+    "id": "cost.regal",
+    "kind": "cost",
+    "style": "regal",
+    "lines": [
+      "You will give me {slots}.",
+      "{Slots} of your time, which I'm taking.",
+      "It asks {slots} of your time. You'll give it gladly."
+    ]
+  },
+  {
+    "id": "who.regal",
+    "kind": "who",
+    "style": "regal",
+    "lines": [
+      "{Who} may know.",
+      "I'll allow {who} to know.",
+      "{Who} will learn of it, by my leave."
+    ]
+  },
+  {
+    "id": "only_me.regal",
+    "kind": "onlyMe",
+    "style": "regal",
+    "lines": [
+      "It's for me alone.",
+      "No one else is worthy of it."
+    ]
+  },
+  {
+    "id": "weight.regal",
+    "kind": "weight",
+    "style": "regal",
+    "lines": [
+      "I've judged it {weight}.",
+      "It's {weight}. That's my ruling.",
+      "A {weight} one. Accept it with grace."
+    ]
+  },
+  {
+    "id": "call.right.regal",
+    "kind": "call.right",
+    "style": "regal",
+    "lines": [
+      "You may stay so.",
+      "Better.",
+      "That will do."
+    ]
+  },
+  {
+    "id": "call.wrong.regal",
+    "kind": "call.wrong",
+    "style": "regal",
+    "lines": [
+      "I asked for {posture}.",
+      "{posture}. Do try to keep up.",
+      "Not that. {posture}, as I said."
+    ]
+  },
+  {
+    "id": "call.slow.regal",
+    "kind": "call.slow",
+    "style": "regal",
+    "lines": [
+      "I am kept waiting.",
+      "When I speak, you move.",
+      "Too slow to please me."
+    ]
+  },
+  {
+    "id": "when.vindictive",
+    "kind": "when",
+    "style": "vindictive",
+    "lines": [
+      "{When}. You owe me that much.",
+      "{When}. Don't fail me again.",
+      "{When}. After what you did, you'll be on time."
+    ]
+  },
+  {
+    "id": "cost.vindictive",
+    "kind": "cost",
+    "style": "vindictive",
+    "lines": [
+      "{Slots}. Call it what you owe.",
+      "It'll take {slots}. You've taken more from me.",
+      "{Slots}. Consider it payment."
+    ]
+  },
+  {
+    "id": "who.vindictive",
+    "kind": "who",
+    "style": "vindictive",
+    "lines": [
+      "{Who} will know what you did.",
+      "I'll tell {who}. They should know.",
+      "{Who} will know. Let them judge you too."
+    ]
+  },
+  {
+    "id": "only_me.vindictive",
+    "kind": "onlyMe",
+    "style": "vindictive",
+    "lines": [
+      "Only me. I haven't decided about the rest.",
+      "No one else. This time."
+    ]
+  },
+  {
+    "id": "weight.vindictive",
+    "kind": "weight",
+    "style": "vindictive",
+    "lines": [
+      "{Weight}. And you got off lightly.",
+      "It's {weight}. You know why.",
+      "A {weight} one. It's only fair."
+    ]
+  },
+  {
+    "id": "call.right.vindictive",
+    "kind": "call.right",
+    "style": "vindictive",
+    "lines": [
+      "For once.",
+      "So you can.",
+      "Good. Don't expect thanks."
+    ]
+  },
+  {
+    "id": "call.wrong.vindictive",
+    "kind": "call.wrong",
+    "style": "vindictive",
+    "lines": [
+      "Wrong. Like always. {posture}.",
+      "{posture}. You'd forget your own name.",
+      "Not {posture}. Another one for the list."
+    ]
+  },
+  {
+    "id": "call.slow.vindictive",
+    "kind": "call.slow",
+    "style": "vindictive",
+    "lines": [
+      "Too slow. Another one for the list.",
+      "You never could keep up.",
+      "Late. I'm not surprised."
+    ]
+  }
+]

@@ -3078,3 +3078,37 @@ export const LlmRefusalSchema = BaseEntrySchema.extend({
 }).strict();
 
 Object.assign(registrySchemas, { llmRefusals: LlmRefusalSchema });
+
+// ---------------------------------------------------------------------------------------------
+// P10e-e (R7): her voice on the scene cards
+
+/**
+ * The fixed kinds of her card lines (card-voice.md §1, §2, §5; the slap's of Task 11). A later kind (the throne's) is added here and
+ * `VoiceKind` (`src/ui/scene/cards/voice.ts`) follows. The static words of §3 are `static.milestone.<id>`, `static.claim.<domainId>`,
+ * `static.claim.submit` and `static.return.<terms>` (`CARD_VOICE_STATIC`).
+ */
+export const CARD_VOICE_KINDS = [
+  'when', 'cost', 'costHold', 'lapse', 'lapseHidden', 'free', 'who', 'onlyMe',
+  'proof.in_person', 'proof.witness', 'proof.report',
+  'weight', 'noLength', 'sayIt', 'closes', 'hands', 'talked', 'sealed', 'sealedTrack',
+  'demoWho', 'demoWhoMore', 'demoNone', 'demoWhere', 'demoAgain', 'order',
+  'cerTitle', 'cerWords', 'cerPosture', 'cerNumber', 'moment', 'exposing',
+  'call.right', 'call.wrong', 'call.slow',
+  'grants',
+  'slap.before', 'slap.feint', 'slap.again', 'slap.after.none', 'slap.after.braced', 'slap.after.flinched',
+] as const;
+/** The kinds of her static words (card-voice.md §3), keyed by a milestone id, a domain id (or `submit`) and the return's terms. */
+export const CARD_VOICE_STATIC = /^static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)$/;
+
+/**
+ * P10e-e R7: a table of her lines on the scene's cards (`docs/content/card-voice.md` is the readable copy, approved by the author). Read
+ * by `kind` and `style` (`voiceLine`), never by id: a row with `style` is that holder style's own variants, a row without is the neutral
+ * lines. `{x}` is the engine's value as it is, `{X}` capitalised where it opens a sentence.
+ */
+export const CardVoiceSchema = BaseEntrySchema.extend({
+  kind: str.refine((k) => (CARD_VOICE_KINDS as readonly string[]).includes(k) || CARD_VOICE_STATIC.test(k), 'an unknown card voice kind'),
+  style: str.optional(),
+  lines: z.array(str.max(160)).min(1),
+}).strict();
+export type CardVoiceEntry = z.infer<typeof CardVoiceSchema>;
+registrySchemas.cardVoice = CardVoiceSchema;

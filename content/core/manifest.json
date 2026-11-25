@@ -110,6 +110,7 @@
     "practiceSeeds": "practiceSeeds.json",
     "holderPunishments": "holderPunishments.json",
     "implements": "implements.json",
-    "ceremonySteps": "ceremonySteps.json"
+    "ceremonySteps": "ceremonySteps.json",
+    "cardVoice": "cardVoice.json"
   }
 }

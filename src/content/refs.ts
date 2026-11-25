@@ -889,6 +889,10 @@ registerRefs('dmBehaviours', (entry) =>
 registerRefs('handNotes', (entry) =>
   ((entry.when as { states?: string[] } | undefined)?.states ?? []).map((id, i) => ({ registry: 'relationshipStates' as const, id, path: `when.states[${i}]` })));
 
+// P10e-e: a card voice row's `style` is a practice style.
+registerRefs('cardVoice', (entry) =>
+  typeof entry.style === 'string' ? [{ registry: 'practiceStyles' as const, id: entry.style, path: 'style' }] : []);
+
 // P9c: a booking kind names the location of its scene.
 registerRefs('bookingKinds', (entry) =>
   typeof entry.locationId === 'string' ? [{ registry: 'locations' as const, id: entry.locationId, path: 'locationId' }] : []);
