@@ -781,7 +781,6 @@ function before(): void {
   const input = e.env.input as HTMLInputElement;
   if (input.value !== letters.prev) letters.sync();
   placeMirror(e);
-  keepInFrame(e);
   // the segment: scheduled when it runs, flushed just before it ends
   const run = R.run;
   const ck = e.env.staging.clock();
@@ -803,10 +802,13 @@ function before(): void {
 function after(): void {
   const e = E;
   if (!e) return;
-  keepInFrame(e); // a line written in this frame is inside the frame before it is painted
+  // a line written since the last frame is moved inside the frame before it is painted (layout is read only then: review N4)
+  const last = e.els['#hand']!.lastElementChild;
+  if (last !== lastLine) { lastLine = last; keepInFrame(e); }
   noteWrites(e.claims[0]!, ['opacity']);
   noteWrites(e.claims[1]!, ['width', 'border-color']);
 }
+let lastLine: Element | null = null;
 /** Her lines stay inside the frame (ruling Q): a line that would run past an edge is moved back in (one wider than 40 % wraps, by its CSS). */
 function keepInFrame(e: BreathEls): void {
   for (const el of e.els['#hand']!.children as HTMLCollectionOf<HTMLElement>) {
@@ -1002,6 +1004,7 @@ function stopBreath(): void {
   styleCache.clear();
   letters.chars = []; letters.prev = ''; letters.acc = 0;
   countEl = null;
+  lastLine = null;
   window.__forceO = null;
   R.run = null; R.seg = null; R.running = false; R.strain = null; R.lines = NO_LINES;
   G = fresh();

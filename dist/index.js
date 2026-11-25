@@ -64622,7 +64622,6 @@ function before() {
   const input = e.env.input;
   if (input.value !== letters.prev) letters.sync();
   placeMirror(e);
-  keepInFrame(e);
   const run = R4.run;
   const ck = e.env.staging.clock();
   R4.running = run !== null && run.segment.state === "running" && run.segment.plan !== void 0 && ck.startedAt !== null;
@@ -64642,10 +64641,15 @@ function before() {
 function after() {
   const e = E;
   if (!e) return;
-  keepInFrame(e);
+  const last = e.els["#hand"].lastElementChild;
+  if (last !== lastLine) {
+    lastLine = last;
+    keepInFrame(e);
+  }
   noteWrites(e.claims[0], ["opacity"]);
   noteWrites(e.claims[1], ["width", "border-color"]);
 }
+var lastLine = null;
 function keepInFrame(e) {
   for (const el of e.els["#hand"].children) {
     const w = el.offsetWidth, x = el.offsetLeft;
@@ -64900,6 +64904,7 @@ function stopBreath() {
   letters.prev = "";
   letters.acc = 0;
   countEl = null;
+  lastLine = null;
   window2.__forceO = null;
   R4.run = null;
   R4.seg = null;
