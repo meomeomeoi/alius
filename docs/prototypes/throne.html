@@ -244,7 +244,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <div class="row"><button class="opt" id="astrideFit">copy the fit</button></div>
   <div class="note" id="astrideNote">An art slot (legs_astride): her lower leg hanging (knee at the top edge of the picture, the foot at its bottom), seen from below and behind by the commander on all fours, on a transparent background; one leg (mirrored for the other) or both. It replaces the silhouettes. Never committed. Its fit travels with it as a sidecar ("copy the fit").</div>
   <div class="row"><button class="opt" id="tVisitor">a visitor now</button><button class="opt" id="tCup">her mug now</button><button class="opt" id="tSign">she signs now</button><button class="opt" id="tRise">she rises now</button></div>
-  <div class="note">Space / left button: bear her. Mouse: balance. Shift / right button: your own shift. When anyone talks about the commander, the body flinches: steady the balance at once. Her mug narrows the level; out of level for a moment and it spills. While she signs, keep the mouse still. Her activity "holding audience" brings visitors one after another.</div>
+  <div class="note">Space / left button: bear her. Mouse: balance. Shift / right button: your own shift. When anyone talks about the commander, the body flinches: steady the balance at once. Her mug narrows the level (she moves carefully while it is there); out of level for half a second and it spills. While she signs, keep the mouse still. Her activity "holding audience" brings visitors one after another.</div>
   <h4>the game inside the frame</h4>
   <div class="row" id="inners"></div>
   <div class="note">stillness: the urges and restlessness. weight: the approved weight (footrest) inside the frame: hold Space or the left button, balance with the mouse, Shift or the right button to shift your own weight; her attention, lines, calls and the end come from the frame.</div>
@@ -1287,8 +1287,9 @@ function wPlanShift() {
   const st = W_ST();
   const isFeint = Math.random() < st.feint;
   const dir = Math.random() < 0.5 ? -1 : 1;
-  const target = isFeint ? W.copTarget : clamp(W.copTarget * 0.25 + dir * rand(st.mag[0], st.mag[1]) * WT.shift, -1, 1);
-  const tele = rand(st.tele[0], st.tele[1]);
+  const careful = throneOn() && G.cup ? 0.35 : 1; // the throne: her own tea on the commander's back makes her careful
+  const target = isFeint ? W.copTarget : clamp(W.copTarget * 0.25 + dir * rand(st.mag[0], st.mag[1]) * WT.shift * careful, -1, 1);
+  const tele = rand(st.tele[0], st.tele[1]) * (careful < 1 ? 1.5 : 1);
   W.shift = { landAt: W.clock + Math.max(tele, 0) + 30, teleAt: W.clock, tele, target, feint: isFeint, dir: Math.sign(target - W.cop) || dir, landed: false };
   if (st.announce && (G.step === 'with' || G.step === 'glancing')) say(target < W.cop ? 'left.' : 'right.', 'commander');
   if (tele > 0) {
@@ -2072,11 +2073,12 @@ function wCueShift(dir, mag, tele) {
 }
 function throneBody(kind, e) {
   if (!throneOn() || !S.bodyFollows || G.phase !== 'loop' || G.risen) return;
-  const tele = rand(...(T_TELE[S.style] ?? T_TELE.neutral));
+  if (G.cup && (kind === 'laugh' || kind === 'rise')) return; // she would not jostle her own tea
+  const tele = rand(...(T_TELE[S.style] ?? T_TELE.neutral)) * (G.cup ? 1.4 : 1);
   const side = (fnv(`${S.seed}:${e?.text ?? kind}:${G.phaseIdx}`) % 2) ? 1 : -1;
   G.stats.bodyCues = (G.stats.bodyCues ?? 0) + 1;
   switch (kind) {
-    case 'lean': wCueShift(side, rand(0.45, 0.75), tele); break; // she leans to the desk, to the visitor: her weight goes forward and to a side
+    case 'lean': wCueShift(side, rand(0.45, 0.75) * (G.cup ? 0.35 : 1), tele); break; // she leans to the desk, to the visitor: her weight goes forward and to a side
     case 'press': after(tele, () => { if (!W || G.risen) return; W.pressure = Math.max(W.pressure, 1.5); W.pressureUntil = W.clock + 2 * WT.BEAT; W_SFX.press(0.4); W.jolt = Math.max(W.jolt, 0.6); }); break;
     case 'laugh': for (let k = 0; k < 3; k++) after(tele * 0.4 + k * 170, () => { if (!W || G.risen) return; W.jolt = Math.max(W.jolt, 0.45); W.cop += (k % 2 ? -1 : 1) * 0.09; W_SFX.press(0.18); }); break;
     case 'cross': after(tele, () => { if (!W || G.risen) return; W.copTarget = clamp(side * 0.45, -1, 1); W_SFX.rustle(0.08, side * 0.7); if (!G.toldCross) { G.toldCross = true; sense(S.contact === 'human_chair' ? 'She crosses her legs. Her weight slides to one side and stays there.' : 'She crosses her ankles on your back; the weight goes to one side.', 'body'); } }); break;
@@ -2086,7 +2088,7 @@ function throneBody(kind, e) {
 }
 /* she gets up (or takes her feet off) and comes back down all at once: a landing to be ready for */
 function throneRise() {
-  if (!throneOn() || G.risen || G.phase !== 'loop') return;
+  if (!throneOn() || G.risen || G.phase !== 'loop' || G.cup) return;
   const hc = S.contact === 'human_chair';
   G.risen = { until: G.t + rand(3000, 6000) }; W.resting = true; W.shift = null;
   W_SFX.creak(0.3, 0.14); sense(hc ? 'She gets up. The weight is gone; your back does not believe it.' : 'She takes her feet off your back and stands.', 'body');
@@ -2108,7 +2110,8 @@ function throneFlinch() {
 /* her mug on the commander's back: the level must hold tighter; out of level for 0.35 s and it spills */
 function throneCup() {
   if (!throneOn() || G.phase !== 'loop' || G.cup || G.risen) return;
-  G.cup = { over: 0, until: G.t + rand(20000, 35000) }; WT.tol = 0.1;
+  G.cup = { over: 0, until: G.t + rand(20000, 35000), grace: G.t + 1500 }; WT.tol = 0.12;
+  if (W.shift && !W.shift.landed) W.shift = null; W.nextShiftBeat = Math.max(W.nextShiftBeat, W.beat + 2);
   play('mug', { g: 0.45, pan: 0 }); sense('She sets her mug down on your back. Warm through the shirt.', 'body');
 }
 function throneCupEnd(spilled) {
@@ -2157,8 +2160,8 @@ function throneUpdate(dt) {
     }
   }
   if (G.cup) {
-    if (err > WT.tol) G.cup.over += dt; else G.cup.over = Math.max(0, G.cup.over - dt * 0.5);
-    if (G.cup.over > 350) { throneCupEnd(true); if (G.step === 'with' || G.step === 'glancing') after(600, () => say(tLine('spill'), 'commander')); }
+    if (G.t < G.cup.grace) G.cup.over = 0; else if (err > WT.tol) G.cup.over += dt; else G.cup.over = Math.max(0, G.cup.over - dt * 0.5);
+    if (G.cup.over > 500) { throneCupEnd(true); if (G.step === 'with' || G.step === 'glancing') after(600, () => say(tLine('spill'), 'commander')); }
     else if (G.t > G.cup.until) throneCupEnd(false);
   }
   if (G.sign) {
