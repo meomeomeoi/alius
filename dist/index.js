@@ -63845,6 +63845,7 @@ function teardown2(c) {
     c.o.dial.style.removeProperty("--alius-her");
   }
   if (call === c) call = null;
+  c.o.onGone?.();
 }
 function cancelCall() {
   const c = call;
@@ -64275,6 +64276,7 @@ function drawSceneCall(host, state, reg, pick3, handlers2) {
     dial: handlers2.dial ?? null,
     samples: handlers2.samples ?? null,
     take: (base, late2) => handlers2.take(call2.id, base, late2),
+    ...handlers2.onGone ? { onGone: handlers2.onGone } : {},
     now: handlers2.now ?? (() => Date.now()),
     schedule: handlers2.schedule ?? ((fn, ms) => setTimeout(fn, ms)),
     cancel: handlers2.cancel ?? ((handle) => clearTimeout(handle))
@@ -65587,6 +65589,7 @@ function renderSceneScreen(host, ctx2) {
   let dock;
   let blockingHost;
   let stopHost;
+  let stopLift;
   let momentHost;
   let physicsHost;
   let instrumentEnv = null;
@@ -65769,6 +65772,9 @@ function renderSceneScreen(host, ctx2) {
       dim: layers.effects,
       dial: layers.hosts.dial,
       samples: ctx2.samples ?? null,
+      onGone: () => {
+        if (!disposed) placeStop();
+      },
       take: (callId, postureId, late2) => {
         (ctx2.onStage ?? ((a) => void controller.stage(a)))({ type: "practice/take_posture", payload: { callId, ...postureId !== void 0 ? { postureId } : {}, late: late2 } });
         if (motionReduced(ctx2.settings())) {
@@ -65993,6 +65999,20 @@ function renderSceneScreen(host, ctx2) {
       } }, "STOP WORD"));
     }
   }
+  function placeStop() {
+    if (!stopLift || !stopHost) return;
+    const calling = currentCall() !== null;
+    if (calling && stopHost.parentElement !== stopLift && stopHost.childElementCount > 0) {
+      const r = stopHost.getBoundingClientRect();
+      const b = layers.moment.getBoundingClientRect();
+      stopLift.style.left = `${r.left - b.left}px`;
+      stopLift.style.top = `${r.top - b.top}px`;
+      stopLift.style.width = `${r.width}px`;
+      stopLift.append(stopHost);
+    } else if (!calling && stopHost.parentElement === stopLift) {
+      layers.hosts.dial.prepend(stopHost);
+    }
+  }
   function drawBanner() {
     banner.replaceChildren();
     if (pacing) banner.append(h("div", { class: "alius-pacing", role: "status" }, "TIME IS PASSING"));
@@ -66203,6 +66223,8 @@ function renderSceneScreen(host, ctx2) {
     stopHost = h("div", { class: "alius-stop-host" });
     blockingHost = h("div", { class: "alius-dial-host" });
     hosts.dial.append(stopHost, blockingHost);
+    stopLift = h("div", { class: "alius-stop-lift" });
+    layers.moment.append(stopLift);
     const wheelUp = (ev) => {
       if (ev.deltaY < 0) curtain.open();
     };
@@ -66313,6 +66335,7 @@ function renderSceneScreen(host, ctx2) {
     drawBlocking(s);
     drawMoment(s);
     drawPhysics(s);
+    placeStop();
     dock.layout(s.scene.id);
     chipRow.layout();
   }

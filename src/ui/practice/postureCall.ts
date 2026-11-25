@@ -33,6 +33,8 @@ export interface PostureCallHandlers {
   dial?: HTMLElement | null;
   /** P10e-e: her foot's taps, the fan and the card's place (cards.html's sounds). */
   samples?: SampleSound | null;
+  /** P10e-e: the moment is gone (the scene puts the stop word's pill back under the call's layer). */
+  onGone?: () => void;
 }
 
 /** The calls whose clock runs: when each started, and the handle of its expiry. A redraw of the scene must not start the clock again. */
@@ -143,6 +145,7 @@ function drawSceneCall(host: HTMLElement, state: CampaignState, reg: Registries,
     cardAttrs: analyzeNative('glossary:posture_call', { unitId: unit!.id }), // the cards answer to the analysis tool (P7a)
     host, dim: handlers.dim ?? null, dial: handlers.dial ?? null, samples: handlers.samples ?? null,
     take: (base, late) => handlers.take(call!.id, base, late),
+    ...(handlers.onGone ? { onGone: handlers.onGone } : {}),
     now: handlers.now ?? (() => Date.now()),
     schedule: handlers.schedule ?? ((fn, ms) => setTimeout(fn, ms)),
     cancel: handlers.cancel ?? ((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>)),

@@ -5,7 +5,8 @@
  * and a hold on the commander (the pill).
  * `dialname` / `dialwide`: Ann (ritual) has named the commander's posture (P16): `Low` for bowing (cards.html's own), or a name of 30
  * characters for bowing (it wraps, over the base name and EYES DOWN: the tallest label; the circle stays where it is for `standing`).
- * `call`: Ann (ritual) has four named postures and calls Low (P10e-e Task 9: her posture call as a full-frame moment).
+ * `call`: Ann (ritual) has four named postures and calls Low (P10e-e Task 9: her posture call as a full-frame moment); `callhold`: the same with a
+ * hold running (the stop word's pill must stay clickable over the fan).
  */
 import { writeFileSync } from 'node:fs';
 import { COMMANDER, registerFrameReader, setBlocking } from '../../src/engine/blocking';
@@ -92,5 +93,12 @@ called.practices!.postures[ANN] = [
 ];
 called.practices!.call = { id: 'pc1', holderId: ANN, postureId: 'bowing', sceneId: called.scene!.id, at: 1 };
 out.call = called;
+/** Review I1: the same call while a hold runs (a ring gag): the stop word's pill must stay clickable over the fan. */
+const callhold = structuredClone(called);
+callhold.content = { enabled: [...(callhold.content?.enabled ?? []), 'humiliation'] };
+setBlocking(callhold, { registries: reg }, { person: COMMANDER, field: 'worn', value: 'ring_gag' }, { at: 2, source: 'engine' });
+if (!callhold.scene!.physics) throw new Error('callhold: no hold runs');
+callhold.scene!.physics.segment = { n: 1, state: 'running', plan: { beats: [{ cue: 'warning', attention: 'watching' }, { attention: 'watching' }, { attention: 'watching' }, { attention: 'watching' }] } };
+out.callhold = callhold;
 
 writeFileSync(process.argv[2] ?? 'states.json', JSON.stringify(out));

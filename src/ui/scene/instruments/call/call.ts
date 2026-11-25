@@ -51,6 +51,8 @@ export interface CallOpts {
   samples: SampleSound | null;
   /** Attributes of every card (its `data-analyze`, P7a). */
   cardAttrs?: Record<string, string>;
+  /** Called once the moment is gone (its teardown, a cancel): the scene puts the stop word's pill back in the dial's corner. */
+  onGone?: () => void;
   /** The answer to the engine: the posture chosen (none: too slow) and whether the window had passed. */
   take: (base: string | undefined, late: boolean) => void;
   now: () => number;
@@ -195,6 +197,7 @@ function teardown(c: Call): void {
     c.o.dial.style.removeProperty('--alius-her');
   }
   if (call === c) call = null;
+  c.o.onGone?.();
 }
 
 /** The call goes at once (dispose, a chat switch, the call gone from the scene): no timer runs, no answer is sent, nothing it drew stays. */

@@ -14,6 +14,10 @@ import type { SceneController } from '../../../src/scene/sceneController';
 import { FakeStAdapter } from '../../../src/st/fake';
 import { renderSceneScreen } from '../../../src/ui/scene/sceneScreen';
 import { errors, loadCore, run } from '../../helpers/world';
+import { COMMANDER, setBlocking } from '../../../src/engine/blocking';
+import { setRelation } from '../../helpers/loyalty';
+import { enable } from '../../helpers/bonds';
+import '../../../src/engine/actions/blocking';
 import { ANN, unitOf, withService, world } from '../../engine/practice/world';
 
 let reg: Registries;
@@ -152,7 +156,10 @@ describe('the timer', () => {
 describe('the scene screen', () => {
   function screen(over: Record<string, unknown> = {}) {
     vi.useFakeTimers();
-    const started = run(state(), reg, { type: 'scene/start', payload: { locationId: 'quarters_unit', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
+    const base = state();
+    setRelation(base, ANN, { stateId: 'confidant' }); // the blocking is live (the dial, the pill)
+    enable(base, 'pet_play', 'restraint');
+    const started = run(base, reg, { type: 'scene/start', payload: { locationId: 'quarters_unit', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
     expect(errors(started.events)).toEqual([]);
     const s = started.state;
     s.practices!.call = { id: 'pc1', holderId: ANN, postureId: 'kneeling_upright', sceneId: s.scene!.id, at: 3 };
@@ -161,8 +168,12 @@ describe('the scene screen', () => {
     const controller = { send: vi.fn(), propose: vi.fn(), answer: vi.fn(), end: vi.fn(async () => {}), edit: vi.fn(async () => {}), stop: vi.fn(), onEdited: vi.fn(), transcript: () => [], onSwipe: vi.fn(), resume: vi.fn(), idle: vi.fn(), dispose: vi.fn(), start: vi.fn(), stage } as unknown as SceneController;
     const host = h('div');
     document.body.append(host);
-    renderSceneScreen(host, { controller, getState: () => s, registries: reg, st, settings: () => ({ ...DEFAULT_SETTINGS, typingSpeed: 0, ...over }), onEnded: vi.fn(), onStage: stage } as never);
-    return { host, stage };
+    const stopWord = vi.fn(() => []);
+    const noop = (): [] => [];
+    const physics = { input: noop, endSegment: noop, stopWord, skip: noop, stimulus: noop, act: noop, finishCounted: noop, cue: () => null, beat: () => 0, clock: () => ({ startedAt: null, beatMs: 1500, now: 0 }), keystroke: vi.fn(), typed: vi.fn(), onTap: vi.fn() };
+    if (over.held === true) setBlocking(s, { registries: reg }, { person: COMMANDER, field: 'worn', value: 'paw_mitts' }, { at: 1, source: 'engine' });
+    const screen = renderSceneScreen(host, { controller, getState: () => s, registries: reg, st, settings: () => ({ ...DEFAULT_SETTINGS, typingSpeed: 0, ...over }), onEnded: vi.fn(), onStage: stage, physics } as never);
+    return { host, stage, stopWord, screen, s };
   }
 
   it('draws her call in the scene and the answer is staged like a chip, with the late flag', () => {
@@ -179,6 +190,44 @@ describe('the scene screen', () => {
     expect(host.querySelector('.alius-posture-timer')).toBeNull();
     vi.advanceTimersByTime(800);
     expect(host.querySelectorAll('.alius-call-dots i')).toHaveLength(0); // no clock: no taps
+    vi.useRealTimers();
+  });
+
+  it('the stop word stays reachable over her call: the pill is lifted above the fan, and clicking it sends the stop word (review I1)', () => {
+    const { host, stopWord } = screen({ held: true });
+    const pill = host.querySelector<HTMLButtonElement>('[data-stop-word]')!;
+    expect(pill).not.toBeNull();
+    expect(pill.closest('.alius-layer-moment .alius-stop-lift')).not.toBeNull(); // above the call's layer while it is drawn
+    expect(host.querySelector('.alius-layer-moment .alius-call')).not.toBeNull();
+    pill.click();
+    expect(stopWord).toHaveBeenCalledTimes(1);
+    // the call answered and gone: the pill is back in the dial's corner
+    host.querySelector<HTMLButtonElement>('[data-posture-choice="kneeling_upright"]')!.click();
+    expect(host.querySelector('.alius-call')!.getAttribute('data-outcome')).toBe('right');
+    vi.advanceTimersByTime(3300);
+    expect(host.querySelector('.alius-call')).toBeNull();
+    expect(host.querySelector('[data-stop-word]')!.closest('.alius-stage-dial .alius-stop-host')).not.toBeNull();
+    vi.useRealTimers();
+  });
+
+  it('the dial is redrawn 380 ms after a right answer, at once with reduced motion (cards.html `drawDial` at 380 ms; review M4)', () => {
+    for (const reduced of [false, true]) {
+      const { host, stage, s } = screen(reduced ? { reducedMotion: true } : {});
+      stage.mockImplementation(((a: { type: string }) => { if (a.type === 'practice/take_posture') { delete s.practices!.call; setBlocking(s, { registries: reg }, { person: COMMANDER, field: 'posture', value: 'kneeling_upright' }, { at: 2, source: 'chip' }); } return []; }) as never);
+      const label = () => host.querySelector('.alius-dial-name')?.textContent;
+      const before = label();
+      host.querySelector<HTMLButtonElement>('[data-posture-choice="kneeling_upright"]')!.click();
+      if (reduced) expect(label()).toBe('DOWN');
+      else {
+        expect(label()).toBe(before);
+        vi.advanceTimersByTime(379);
+        expect(label()).toBe(before);
+        vi.advanceTimersByTime(1);
+        expect(label()).toBe('DOWN');
+      }
+      cancelPostureCalls();
+      document.body.innerHTML = '';
+    }
     vi.useRealTimers();
   });
 });

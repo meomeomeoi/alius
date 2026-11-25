@@ -13,7 +13,7 @@ const server = await serveRoot();
 const port = server.port;
 
 const SIZES = [[1920, 1080], [1280, 800], [2560, 1440]];
-const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call'];
+const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold'];
 const failures = [];
 const faceOf = new Map(); // the dial's circle for `standing` (fixture `one`), per size
 const fail = (size, fixture, what) => failures.push(`${size[0]}x${size[1]} ${fixture}: ${what}`);
@@ -76,6 +76,18 @@ for (const size of SIZES) {
   for (const fixture of FIXTURES) {
     const { page: p, errors } = await openLayout(browser, port, fixture, size);
     const m = await p.evaluate(measure, UI);
+    // review I1: the stop word stays clickable over her call's fan (P15a: the stop word always ends a hold)
+    if (fixture === 'callhold') {
+      const pill = await p.evaluate(() => {
+        const el = document.querySelector('[data-stop-word]');
+        if (!el) return 'missing';
+        if (!document.querySelector('.alius-call-card')) return 'no call drawn';
+        const b = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
+        return hit === el || el.contains(hit) ? 'ok' : `covered by ${hit?.className ?? hit?.tagName}`;
+      });
+      if (pill !== 'ok') fail(size, fixture, `the stop word during her call: ${pill}`);
+    }
     // the stop word stays on top and clickable with the dial's menu open (the safety control is never covered)
     if (fixture === 'physics') {
       const pill = await p.evaluate(() => {
@@ -183,7 +195,7 @@ for (const size of SIZES) {
       if (m.dialLabel && (m.dialLabel.b > H - 2 || m.dialLabel.r > W - 2)) fail(size, fixture, `the tallest label reaches the viewport's edge: ${JSON.stringify(m.dialLabel)}`);
     }
     // P10e-e Task 9: her word and the fan stay inside the viewport and off her face
-    if (fixture === 'call') {
+    if (fixture === 'call' || fixture === 'callhold') {
       if (!m.callWord || m.callCards.length !== 4) fail(size, fixture, `the call is not drawn (word ${JSON.stringify(m.callWord)}, ${m.callCards.length} cards)`);
       for (const b of [m.callWord, ...m.callCards].filter(Boolean)) {
         if (!inside(b)) fail(size, fixture, `a part of the call is outside the viewport: ${JSON.stringify(b)}`);

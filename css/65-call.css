@@ -207,3 +207,27 @@
   backdrop-filter: none;
   background: rgba(12, 11, 16, 0.95);
 }
+
+/* P10e-e fix I1 (review of e2): the stop word's pill is lifted above the call while the call is drawn (the scene moves its host into this holder,
+   at the place it had in the dial's corner). P15a's "the stop word always ends a hold" outranks the prototype's fan over the corner. */
+#alius-shell .alius-stop-lift {
+  position: absolute;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+#alius-shell .alius-stop-lift:empty {
+  display: none;
+}
+
+#alius-shell .alius-stop-lift .alius-stop-pill {
+  pointer-events: auto;
+}
+
+/* an answered call's cards (faded, sinking, flying into the dial) no longer take the pointer */
+#alius-shell .alius-call[data-outcome] .alius-call-card {
+  pointer-events: none;
+}

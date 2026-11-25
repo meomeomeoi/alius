@@ -23,6 +23,7 @@ import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
 import { drawClaimCards, drawMilestoneCards, drawReturnCards, type ClaimAnswer, type ReturnAnswer } from '../dynamic/cards';
 import { drawDemonstrationCards, type DemonstrationAnswer } from '../practice/demonstrationCard';
 import { cancelPostureCalls, drawPostureCall } from '../practice/postureCall';
+import { currentCall } from './instruments/call/call';
 import { clearSlapOverlay, renderSlapOverlay } from '../practice/slapOverlay';
 import type { SlapResult } from '../../engine/practice/state';
 import { practiceLive } from '../../engine/practice/gate';
@@ -270,6 +271,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let blockingHost: HTMLElement;
   /** P10e A1: the stop word's pill, in the dial's corner (it shows with or without the dial). */
   let stopHost: HTMLElement;
+  /** P10e-e fix I1: while her call is drawn the stop word's pill is lifted into the moment layer, above the fan (P15a: the stop word always ends a hold). */
+  let stopLift: HTMLElement;
   let momentHost: HTMLElement;
   let physicsHost: HTMLElement;
   /** P10e-e: what the instruments are given, built once per scene in `build()` (null without the staging controller). */
@@ -454,7 +457,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     // P10e-e Task 9: her call is a full-frame moment in the moment layer (cards.html `startCall`): the dim under the UI, her ring on the dial
     drawPostureCall(postureCall, s, registries, (c) => ids.has(c.unitId), {
       timed: ctx.settings().physicsInteractions?.order !== false, reduced: motionReduced(ctx.settings()),
-      dim: layers.effects, dial: layers.hosts.dial, samples: ctx.samples ?? null,
+      dim: layers.effects, dial: layers.hosts.dial, samples: ctx.samples ?? null, onGone: () => { if (!disposed) placeStop(); },
       take: (callId, postureId, late) => {
         (ctx.onStage ?? ((a) => void controller.stage(a)))({ type: 'practice/take_posture', payload: { callId, ...(postureId !== undefined ? { postureId } : {}), late } });
         // the dial takes the posture as the card lands in it (cards.html: `drawDial` at 380 ms; at once with reduced motion)
@@ -681,6 +684,26 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     }
   }
 
+  /**
+   * P10e-e fix I1 (review of e2): the fan of her call lies over the dial's corner (cards.html), and the call's layer is above the scene's UI. P15a's
+   * rule outranks the prototype's geometry: while a call is drawn, the pill is moved, as it is, into a holder in the moment layer above the call,
+   * at the place it had in the corner (measured before the move); it goes back when the call is gone.
+   */
+  function placeStop(): void {
+    if (!stopLift || !stopHost) return;
+    const calling = currentCall() !== null;
+    if (calling && stopHost.parentElement !== stopLift && stopHost.childElementCount > 0) {
+      const r = stopHost.getBoundingClientRect();
+      const b = layers.moment.getBoundingClientRect();
+      stopLift.style.left = `${r.left - b.left}px`;
+      stopLift.style.top = `${r.top - b.top}px`;
+      stopLift.style.width = `${r.width}px`;
+      stopLift.append(stopHost);
+    } else if (!calling && stopHost.parentElement === stopLift) {
+      layers.hosts.dial.prepend(stopHost);
+    }
+  }
+
   function drawBanner(): void {
     banner.replaceChildren();
     if (pacing) banner.append(h('div', { class: 'alius-pacing', role: 'status' }, 'TIME IS PASSING'));
@@ -891,6 +914,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     stopHost = h('div', { class: 'alius-stop-host' });
     blockingHost = h('div', { class: 'alius-dial-host' });
     hosts.dial.append(stopHost, blockingHost);
+    stopLift = h('div', { class: 'alius-stop-lift' });
+    layers.moment.append(stopLift);
     // the wheel up over the frame or the reply lets the history down
     const wheelUp = (ev: Event): void => { if ((ev as WheelEvent).deltaY < 0) curtain.open(); };
     layers.frame.addEventListener('wheel', wheelUp);
@@ -984,6 +1009,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawBlocking(s);
     drawMoment(s);
     drawPhysics(s);
+    placeStop();
     dock.layout(s.scene.id);
     chipRow.layout();
   }

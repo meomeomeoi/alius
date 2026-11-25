@@ -109,7 +109,8 @@ const PLACES: Array<[string, string]> = [
   ['task card', '.alius-stage-dock [data-slot="task"] [data-task]'],
   ['punishment card', '.alius-stage-dock [data-slot="punishment"] [data-punishment]'],
   ['posture call (P10e-e Task 9: a full-frame moment in the moment layer)', '.alius-layer-moment .alius-posture-call-host .alius-call[data-call="pc1"] [data-posture-choice]'],
-  ['physics stop word: the pill at the dial (A1)', '.alius-stage-dial .alius-stop-host button.alius-stop-pill[data-stop-word][data-analyze="glossary:stop_word"]'],
+  // her call is open in this fixture: the pill is lifted above the call's fan, as it is (review of e2, I1); it is at the dial otherwise (dock.test)
+  ['physics stop word: the pill, lifted above her call (A1, review I1)', '.alius-layer-moment .alius-stop-lift .alius-stop-host button.alius-stop-pill[data-stop-word][data-analyze="glossary:stop_word"]'],
   ['claim cards', '.alius-stage-dock [data-slot="claim"]'],
   ['return cards', '.alius-stage-dock [data-slot="return"]'],
   ['demonstration cards', '.alius-stage-dock [data-slot="demonstration"]'],
