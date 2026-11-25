@@ -7179,7 +7179,7 @@ var frameRank = (f) => FRAMES.indexOf(f);
 var NOTE_MAX = 120;
 
 // src/engine/physics/state.ts
-var INPUT_KINDS = ["breathe", "hold", "release", "mouth_breath", "gap_breath", "shift_weight", "part", "ask_rest", "strain"];
+var INPUT_KINDS = ["breathe", "hold", "release", "mouth_breath", "gap_breath", "shift_weight", "part", "ask_rest", "strain", "uneven"];
 
 // src/engine/dynamic/types.ts
 var PROFILE_STYLES = ["affectionate", "cold", "ritual", "clinical", "possessive", "playful", "cruel", "obsessive", "drill", "regal", "vindictive"];
@@ -7319,6 +7319,8 @@ function occlusionOf(contact) {
     view
   };
 }
+var CONTACT_FACES = ["up", "down"];
+var HER_LEGS = ["hang"];
 
 // src/engine/dynamic/profile.ts
 var PRACTICE_DEFAULTS = Object.freeze({
@@ -10403,6 +10405,10 @@ var ContactSchema = BaseEntrySchema.extend({
     angle: external_exports.number().min(-90).max(90).optional(),
     view: external_exports.enum(OCCLUSION_VIEWS).optional()
   }).strict().optional(),
+  /** P10e-e: which way the commander faces under a weight (`contactFaceOf`: up sees her and the ceiling, down the floor; absent: down). */
+  face: external_exports.enum(CONTACT_FACES).optional(),
+  /** P10e-e: her legs hang in the face-down view (`herLegsOf`; absent: she is out of view). */
+  legs: external_exports.enum(HER_LEGS).optional(),
   label: blockLabel,
   description: str,
   promptHint: blockHint,
@@ -39308,6 +39314,8 @@ function resolveSegment(run, plan, inputs, env) {
           r.slips += 1;
           r.gauge -= drain;
         }
+        const uneven = at(b, "uneven")[0];
+        if (uneven !== void 0) r.gauge -= drain * (uneven.amount ?? 0);
         if (beat.shift !== void 0 && !evenBefore(b)) r.gauge -= beat.shift;
         for (const g of at(b, "shift_weight")) {
           r.gauge += P2.weight.relief;

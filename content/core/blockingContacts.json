@@ -500,6 +500,7 @@
         "id": "weight"
       }
     ],
+    "face": "down",
     "label": "Footrest",
     "description": "AUTHOR TO WRITE: Her feet resting on the commander's back.",
     "promptHint": "her feet rest on the commander's back",
@@ -536,6 +537,8 @@
         "id": "weight"
       }
     ],
+    "face": "down",
+    "legs": "hang",
     "label": "Human chair",
     "description": "AUTHOR TO WRITE: She sits on the commander.",
     "promptHint": "she sits on the commander as on a chair",
@@ -569,6 +572,7 @@
         "id": "weight"
       }
     ],
+    "face": "up",
     "label": "Standing on",
     "description": "AUTHOR TO WRITE: She stands on the commander's back.",
     "promptHint": "she stands on the commander's back",
@@ -595,6 +599,7 @@
         "posture": "lying_back"
       }
     },
+    "face": "up",
     "label": "Straddled",
     "description": "AUTHOR TO WRITE: She sits astride the chest pinning the arms.",
     "promptHint": "she sits astride the chest, pinning the arms",
@@ -634,6 +639,7 @@
         "id": "weight"
       }
     ],
+    "face": "up",
     "label": "Boot on chest",
     "description": "AUTHOR TO WRITE: Her boot on the commander's chest.",
     "promptHint": "her boot on the commander's chest",
@@ -670,6 +676,7 @@
         "pressure": 0.5
       }
     ],
+    "face": "down",
     "label": "On hands",
     "description": "AUTHOR TO WRITE: Her foot on the commander's open palms.",
     "promptHint": "her foot on the commander's open palms",
@@ -815,6 +822,7 @@
         "id": "weight"
       }
     ],
+    "face": "down",
     "label": "Knee on back",
     "description": "AUTHOR TO WRITE: Her knee on the commander's back.",
     "promptHint": "her knee on the commander's back",

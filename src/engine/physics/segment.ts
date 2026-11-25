@@ -256,6 +256,9 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
           r.slips += 1;
           r.gauge -= drain;
         }
+        // R16: held off level, the beat drains more: the mean extra factor of the beat (the instrument's), one a beat
+        const uneven = at(b, 'uneven')[0];
+        if (uneven !== undefined) r.gauge -= drain * (uneven.amount ?? 0);
         if (beat.shift !== undefined && !evenBefore(b)) r.gauge -= beat.shift;
         for (const g of at(b, 'shift_weight')) {
           r.gauge += P.weight.relief;

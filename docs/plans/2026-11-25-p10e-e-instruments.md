@@ -754,12 +754,13 @@ For the author (e12): breath.html has no cold style, so a cold holder is silent 
 - Modify: `src/engine/physics/state.ts` (`uneven`), `src/engine/physics/segment.ts` (R16), `content/core/blockingContacts.json` and its schema (`face: 'up' | 'down'` on the weight contacts: up for `straddled`, `standing_on`, `boot_on_chest`; down for `human_chair`, `footrest`, `knee_on_back`, `on_hands`)
 - Test: `tests/engine/physics/weightInputs.test.ts`
 
-- [ ] **Step 1:** Tests:
+- [x] **Step 1:** Tests:
   - `an uneven input drains drain × amount`;
   - `no uneven input: today's numbers` (the existing tests);
   - `a shift landing on a beat with no hold costs as today`;
   - `face reads by field`.
-- [ ] **Steps 2–5** as Task 13 (`feat(P10e-e): uneven holding costs strength`).
+- [x] **Steps 2–5** as Task 13 (`feat(P10e-e): uneven holding costs strength`).
+  - *As built:* `uneven` joins `INPUT_KINDS`; on a `hold` beat the first `uneven` input costs `drain × amount` (the beat's drain: her pressure and a pair's steady breath included; absent or 0 amount costs nothing, it is never a hold, so the beat still slips without one). The shift's rule is unchanged (`evenBefore`: a hold on the beat and the one before). The readers are in `src/engine/physics/occlusion.ts` (the leaf of a contact's view): `contactFaceOf(contact)` (`face`, absent = `down`) and, added for Task 16, `herLegsOf(contact)` (`legs: 'hang'`, absent = out of view): weight.html draws her legs for `human_chair` and only hears her for `footrest`, and the port must read that by field, so `human_chair` carries `legs: "hang"` (the other face-down contacts, `knee_on_back` and `on_hands`, have no legs drawn: footrest's form). `standing_on` is face up as the plan and the prototype say, although its `implies` lays the receiver `lying_front` (the prototype's note: "on the back, she stands on you"). Nothing is remembered (memory check e5).
 
 ### Task 16: The weight instrument
 

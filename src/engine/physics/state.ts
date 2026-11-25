@@ -15,12 +15,13 @@ export type HoldsUntil = 'signal' | 'limit' | 'blackout';
 export type Attention = 'watching' | 'glancing' | 'busy';
 
 /** What the player does in a beat (`SegmentInput.kind`). */
-export const INPUT_KINDS = ['breathe', 'hold', 'release', 'mouth_breath', 'gap_breath', 'shift_weight', 'part', 'ask_rest', 'strain'] as const;
+export const INPUT_KINDS = ['breathe', 'hold', 'release', 'mouth_breath', 'gap_breath', 'shift_weight', 'part', 'ask_rest', 'strain', 'uneven'] as const;
 export type InputKind = (typeof INPUT_KINDS)[number];
 /**
  * One input of a beat. `amount` (P10e-e R1, ≥ 0) is absent for every input of the turn-based card and means, per kind: `breathe`, the share of
  * the opening held (R14: credit `caught × amount`, at most `caught`); `strain` (R15: holding on past an opening, or pressing before it), 0.5
- * held past 150 ms, 1 held past 450 ms (she noticed).
+ * held past 150 ms, 1 held past 450 ms (she noticed); `uneven` (R16: weight held off level), the mean extra drain factor of the beat
+ * (`1.2·max(0, |err| − tol/2)`), costing `drain × amount` (absent or 0: nothing).
  */
 export interface SegmentInput { beat: number; kind: InputKind; atMs?: number; part?: string; amount?: number }
 
