@@ -67,7 +67,7 @@ describe('the fidelity helpers', () => {
     expect(normalize(frag)).toContain('G.bubbleX+=G.bubbleV*hs');
   });
 
-  it('portFunction is the port\'s function with its types stripped (esbuild)', () => {
+  it('portFunction is the port\'s function with its types stripped (TypeScript\'s transpileModule, which renames nothing)', () => {
     const src = portFunction('src/ui/scene/instruments/kit/chaikin.ts', 'chaikin');
     expect(src.startsWith('function chaikin(pts) {')).toBe(true);
     expect(src).not.toMatch(/Pt\[\]|: number/);
@@ -82,6 +82,9 @@ describe('the fidelity helpers', () => {
     expect(normalize('const s = "var let";')).toContain('"var let"');
     expect(normalize('const s = `${a} var ${b}`;')).toContain('`${a} var ${b}`');
     expect(normalize('const s = "a; b { c }";')).toBe('const s="a; b { c }"'); // no line break inside a string
+    // a `/` after a name or a number divides; after `}` or `(` it opens a regex (the masker and the tokenizer agree)
+    expect(normalize('const q = (i / 72) * x / y;')).toBe('const q=(i/72)*x/y');
+    expect(normalize('if (a) {}\n/[}{]/g.test(s)')).toBe('if(a){}\n/[}{]/g.test(s)');
     expect(normalize('let x = 0.008, y = 1000;')).toBe(normalize('const x = 8e-3, y = 1e3'));
   });
 
@@ -124,6 +127,11 @@ describe('the fidelity check', () => {
     expect(await checkFidelity(ok, { registries: reg })).toEqual([]);
     const badTable: FidelitySpec = { prototype: 'breath', functions: [], differences: [], tables: [{ ident: 'SEAT_BODY', module: 'tests/fixtures/fidelity/port.ts', export: 'SEAT_BODY' }] };
     expect((await checkFidelity(badTable, { registries: reg })).join('\n')).toMatch(/SEAT_BODY/);
+    // a table that holds functions is never compared by value (JSON would drop them): an empty SFX, or SHAPES with a changed method, fails
+    const sfx: FidelitySpec = { prototype: 'breath', functions: [], differences: [], tables: [{ ident: 'SFX', module: 'tests/fixtures/fidelity/port.ts', export: 'SFX' }] };
+    expect((await checkFidelity(sfx, { registries: reg })).join('\n')).toMatch(/SFX.*holds functions.*list it under `functions`/s);
+    const shapes: FidelitySpec = { prototype: 'breath', functions: [], differences: [], tables: [{ ident: 'SHAPES', module: 'tests/fixtures/fidelity/port.ts', export: 'SHAPES' }] };
+    expect((await checkFidelity(shapes, { registries: reg })).join('\n')).toMatch(/SHAPES.*holds functions/s);
     const badLine: FidelitySpec = { ...ok, lines: [{ ident: 'NEUTRAL', registry: 'cardVoice', cueKinds: { when: 'cost' } }] };
     expect((await checkFidelity(badLine, { registries: reg })).join('\n')).toMatch(/NEUTRAL\.when/);
   });

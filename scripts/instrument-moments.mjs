@@ -38,7 +38,7 @@ export const MOMENTS = {
       {
         id: 'dial-wide', // a name of 30 characters wraps under the circle; the circle has not moved
         state: 'dialwide',
-        proto: (p) => setPose(p, 'kneeling_upright', 'All the way down, where I want'),
+        proto: (p) => setPose(p, 'bowing', 'All the way down, where I want'),
         port: async () => {},
       },
     ],

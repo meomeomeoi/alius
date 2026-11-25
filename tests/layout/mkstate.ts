@@ -4,7 +4,7 @@
  * `three` / `four`: three or four women in the commander's quarters with her cards open (a moment, a milestone, a task and a punishment: a tall dock)
  * and a hold on the commander (the pill).
  * `dialname` / `dialwide`: Ann (ritual) has named the commander's posture (P16): `Low` for bowing (cards.html's own), or a name of 30
- * characters for kneeling upright (the label wraps under the circle; the circle stays where it is for `standing`).
+ * characters for bowing (it wraps, over the base name and EYES DOWN: the tallest label; the circle stays where it is for `standing`).
  */
 import { writeFileSync } from 'node:fs';
 import { COMMANDER, registerFrameReader, setBlocking } from '../../src/engine/blocking';
@@ -81,6 +81,6 @@ function named(postureId: string, name: string): CampaignState {
   return r.state;
 }
 out.dialname = named('bowing', 'Low');
-out.dialwide = named('kneeling_upright', 'All the way down, where I want'); // 30 characters
+out.dialwide = named('bowing', 'All the way down, where I want'); // 30 characters, over BOWING and EYES DOWN: the tallest label
 
 writeFileSync(process.argv[2] ?? 'states.json', JSON.stringify(out));

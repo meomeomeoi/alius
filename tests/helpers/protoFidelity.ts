@@ -52,6 +52,13 @@ export interface FidelitySpec {
 
 const KEYWORDS_BEFORE_REGEX = new Set(['return', 'typeof', 'case', 'in', 'of', 'new', 'delete', 'void', 'throw', 'else', 'do', 'yield', 'await', 'instanceof']);
 const isIdent = (c: string | undefined): boolean => c !== undefined && /[A-Za-z0-9_$]/.test(c);
+/**
+ * Whether a `/` starts a regex here: after nothing, after a punctuator that cannot end an expression (its last character is one of these; `)`
+ * and `]` end one, `}` is read as the end of a block, so a regex may follow it), or after a keyword such as `return`. The masker (by
+ * character) and the tokenizer (by token) both ask this, so they never disagree.
+ */
+const REGEX_AFTER_CHARS = '(,=:[!&|?{};+-*%<>~^';
+const regexMayStart = (prevChar: string, word: string): boolean => prevChar === '' || REGEX_AFTER_CHARS.includes(prevChar) || (word !== '' && KEYWORDS_BEFORE_REGEX.has(word));
 
 /** Code positions only: the inside of strings, templates (with their `${}`), comments and regexes are spaces; quotes and delimiters stay. */
 export function mask(src: string): string {
@@ -135,7 +142,7 @@ export function mask(src: string): string {
       const j = endTemplate(i);
       blank(i + 1, j - 1);
       prev = c; word = ''; i = j;
-    } else if (c === '/' && (prev === '' || '(,=:[!&|?{};+-*%<>~^'.includes(prev) || (word !== '' && KEYWORDS_BEFORE_REGEX.has(word)))) {
+    } else if (c === '/' && regexMayStart(prev, isIdent(prev) ? word : '')) {
       const j = endRegex(i);
       blank(i + 1, j - 1);
       prev = '/'; word = ''; i = j;
@@ -293,7 +300,6 @@ export function portFunction(modulePath: string, fn: string): string {
 /** See the module's comment. */
 type Tok = { t: 'id' | 'num' | 'str' | 'tpl' | 're' | 'p'; v: string; nl: boolean };
 const PUNCT = ['>>>=', '...', '===', '!==', '**=', '<<=', '>>=', '>>>', '&&=', '||=', '??=', '=>', '==', '!=', '<=', '>=', '&&', '||', '??', '?.', '++', '--', '+=', '-=', '*=', '/=', '%=', '&=', '|=', '^=', '**', '<<', '>>'];
-const REGEX_AFTER_ID = KEYWORDS_BEFORE_REGEX;
 
 /** The tokens of `src` (comments dropped; `nl` marks a token that starts a new line). Numbers, strings and templates are canonical. */
 function tokens(src: string): Tok[] {
@@ -332,7 +338,7 @@ function tokens(src: string): Tok[] {
       continue;
     }
     const prev = out[out.length - 1];
-    if (c === '/' && (!prev || (prev.t === 'p' && !')]}'.includes(prev.v)) || (prev.t === 'id' && REGEX_AFTER_ID.has(prev.v)))) {
+    if (c === '/' && regexMayStart(prev ? prev.v[prev.v.length - 1]! : '', prev?.t === 'id' ? prev.v : '')) {
       let j = i + 1;
       while (j < n && m[j] !== '/') j++;
       j++;
@@ -535,6 +541,31 @@ function atPath(value: unknown, path: string): unknown {
   return path.split('.').reduce<unknown>((v, k) => (v !== null && typeof v === 'object' ? (v as Record<string, unknown>)[k] : undefined), value);
 }
 
+/** The paths of every function inside a value (a table that holds one is not compared by value). */
+function functionsIn(v: unknown, path: string, seen = new Set<unknown>()): string[] {
+  if (typeof v === 'function') return [path];
+  if (v === null || typeof v !== 'object' || seen.has(v)) return [];
+  seen.add(v);
+  return Object.entries(v as Record<string, unknown>).flatMap(([k, x]) => functionsIn(x, `${path}.${k}`, seen));
+}
+
+/** The path of the first difference of two plain values (numbers exactly, NaN and ±Infinity included; keys in any order), or null. */
+function firstDifference(a: unknown, b: unknown, path: string): string | null {
+  if (typeof a === 'number' && typeof b === 'number') return a === b || (Number.isNaN(a) && Number.isNaN(b)) ? null : path;
+  if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return a === b ? null : path;
+  if (Array.isArray(a) !== Array.isArray(b)) return path;
+  const ka = Object.keys(a as object);
+  const kb = Object.keys(b as object);
+  if (ka.length !== kb.length || ka.some((k) => !Object.prototype.hasOwnProperty.call(b, k))) return `${path} (keys ${JSON.stringify(ka)} / ${JSON.stringify(kb)})`;
+  for (const k of ka) {
+    const d = firstDifference((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k], `${path}.${k}`);
+    if (d !== null) return d;
+  }
+  return null;
+}
+/** JSON that keeps NaN and ±Infinity visible. */
+const show = (v: unknown): string => JSON.stringify(v, (_k, x: unknown) => (typeof x === 'number' && !Number.isFinite(x) ? String(x) : x));
+
 /** Every way the port departs from its prototype beyond what `spec.differences` declares (empty: it passes). */
 export async function checkFidelity(spec: FidelitySpec, opts: { registries: Registries }): Promise<string[]> {
   const failures: string[] = [];
@@ -550,7 +581,7 @@ export async function checkFidelity(spec: FidelitySpec, opts: { registries: Regi
     try {
       a = normalize(f.fragment ? protoFragment(proto, f.fragment.from, f.fragment.to) : protoFunction(proto, f.fn));
       let port = portFunction(f.module, f.as ?? f.fn);
-      if (f.as !== undefined) port = port.replace(new RegExp(`\\b${f.as}\\b`), f.fn); // the declared name only
+      if (f.as !== undefined) port = port.replace(new RegExp(`(?<![\\w$])${f.as.replace(/[$]/g, '\\$&')}(?![\\w$])`), f.fn); // the declared name only
       b = normalize(port);
     } catch (err) {
       failures.push(`${f.fn} (${proto}.html → ${f.module}): ${(err as Error).message}`);
@@ -576,9 +607,15 @@ export async function checkFidelity(spec: FidelitySpec, opts: { registries: Regi
       const want = protoValue(proto, t.ident, t.deps);
       const mod = (await import(/* @vite-ignore */ join(ROOT, t.module))) as Record<string, unknown>;
       if (!(t.export in mod)) throw new Error(`${t.module} exports no "${t.export}"`);
-      const got = JSON.parse(JSON.stringify(mod[t.export])) as unknown;
-      if (!isDeepStrictEqual(JSON.parse(JSON.stringify(want)), got)) {
-        failures.push(`the table ${t.ident} (${proto}.html) is not equal to ${t.export} of ${t.module}:\n  prototype: ${JSON.stringify(want)}\n  port:      ${JSON.stringify(got)}`);
+      const got = mod[t.export];
+      const fns = [...functionsIn(want, t.ident), ...functionsIn(got, t.export)];
+      if (fns.length > 0) {
+        failures.push(`the table ${t.ident} (${proto}.html → ${t.module}) holds functions (${fns.slice(0, 4).join(', ')}${fns.length > 4 ? ', …' : ''}): a table is compared by value, so list it under \`functions\` instead (its whole declaration is compared, as SHAPES is)`);
+        continue;
+      }
+      const where = firstDifference(want, got, t.ident);
+      if (where !== null) {
+        failures.push(`the table ${t.ident} (${proto}.html) is not equal to ${t.export} of ${t.module} (first at ${where}):\n  prototype: ${show(want)}\n  port:      ${show(got)}`);
       }
     } catch (err) {
       failures.push(`the table ${t.ident} (${proto}.html → ${t.module}): ${(err as Error).message}`);
@@ -598,7 +635,8 @@ export async function checkFidelity(spec: FidelitySpec, opts: { registries: Regi
       let got: unknown;
       if ((l.registry ?? 'physicsCues') === 'cardVoice') {
         const [kind, style] = target.split('@');
-        got = [...opts.registries.cardVoice.values()].find((e) => e.kind === kind && e.style === style)?.lines;
+        const rows = [...opts.registries.cardVoice.values()].filter((e) => e.kind === kind && e.style === style);
+        got = rows.length === 1 ? rows[0]!.lines : rows.length === 0 ? undefined : `${rows.length} rows of kind ${target}`;
       } else {
         const rows = [...opts.registries.physicsCues.values()].filter((e) => e.kind === target && (l.physics === undefined || ((e.physics ?? []) as string[]).includes(l.physics)));
         got = rows.length === 1 ? rows[0]!.lines : rows.length === 0 ? undefined : `${rows.length} rows of kind ${target}`;

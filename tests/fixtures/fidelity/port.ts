@@ -5,3 +5,7 @@ export const clamp = (x: number, a: number, b: number): number => Math.min(a, Ma
 export const lerp = (a: number, b: number, t: number): number =>
   a + (b - a) * t;
 export const SEAT_BODY: Array<[number, number]> = [[0.57, -1.6]];
+// breath.html's SFX (an object of sound functions) as an empty table: a table holding functions is never compared by value
+export const SFX = {};
+// breath.html's SHAPES listed as a table, one method body changed: it fails (functions are compared under `functions`)
+export const SHAPES = { slit(): number { return 0; } };

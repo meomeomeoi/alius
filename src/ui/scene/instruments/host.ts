@@ -140,6 +140,8 @@ export function unmountInstruments(): void {
 export function resetInstruments(): void {
   unmountInstruments();
   failed = null;
+  // `warned` stays: it is keyed by the instrument's id (not a scene), and it only keeps a broken instrument from filling the console once per
+  // chat; a fresh failure after the switch still draws the card, it is just not warned about again
 }
 
 /**

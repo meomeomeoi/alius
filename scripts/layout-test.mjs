@@ -178,7 +178,8 @@ for (const size of SIZES) {
       const still = faceOf.get(`${W}x${H}`);
       if (!m.dial || !still) fail(size, fixture, 'no dial to compare');
       else if (Math.abs(m.dial.x - still.x) > 1 || Math.abs(m.dial.y - still.y) > 1) fail(size, fixture, `a long label moved the circle: ${Math.round(m.dial.x)},${Math.round(m.dial.y)} against ${Math.round(still.x)},${Math.round(still.y)} for standing`);
-      if (m.dialLabel && m.dialLabel.h < 25) fail(size, fixture, `a 30-character label did not wrap (${Math.round(m.dialLabel.w)}x${Math.round(m.dialLabel.h)})`);
+      if (m.dialLabel && m.dialLabel.h < 50) fail(size, fixture, `a 30-character name over BOWING and EYES DOWN is ${Math.round(m.dialLabel.w)}x${Math.round(m.dialLabel.h)}: it did not wrap into four lines`);
+      if (m.dialLabel && (m.dialLabel.b > H - 2 || m.dialLabel.r > W - 2)) fail(size, fixture, `the tallest label reaches the viewport's edge: ${JSON.stringify(m.dialLabel)}`);
     }
     if (['physics', 'three', 'four'].includes(fixture) && m.stop) {
       // A1: a small pill in the bottom-right corner, over the dial, clear of the dial, the reply, the chips and the input
