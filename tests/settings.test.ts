@@ -254,4 +254,22 @@ describe('P9d ruleWording', () => {
     updateSettings(st, { ruleWording: false });
     expect(getSettings(st).ruleWording).toBe(false);
   });
+
+  it('P10e-e: a stored physicsRealtime false (the old default, written back) is flipped to true once; a later choice of false stays', () => {
+    const st = new FakeStAdapter();
+    st.settings = { physicsRealtime: false, palette: 'amber' }; // an install from before the instruments
+    expect(getSettings(st).physicsRealtime).toBe(true);
+    expect(st.settings.physicsRealtimeDefaultMigrated).toBe(true);
+    expect(getSettings(st).physicsRealtime).toBe(true);
+    updateSettings(st, { physicsRealtime: false }); // the player turns it off: it stays off
+    expect(getSettings(st).physicsRealtime).toBe(false);
+    expect(getSettings(st).physicsRealtime).toBe(false);
+    expect(Object.keys(getSettings(st))).not.toContain('physicsRealtimeDefaultMigrated'); // a flag of the stored settings, not a setting
+  });
+
+  it('P10e-e: a new install starts in real time and is marked as migrated', () => {
+    const st = new FakeStAdapter();
+    expect(getSettings(st).physicsRealtime).toBe(true);
+    expect(st.settings.physicsRealtimeDefaultMigrated).toBe(true);
+  });
 });

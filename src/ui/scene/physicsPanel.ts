@@ -30,6 +30,8 @@ export interface PhysicsPanelStaging {
    * none runs), the length of a beat and the controller's now (the same clock).
    */
   clock(): { startedAt: number | null; beatMs: number; now: number };
+  /** P10e-e: how a run of the open scene ended (its `physics_outcome`), or null when none is known. Absent = never known. */
+  outcome?(runId: string): { runId: string; physicsId: string; result: string } | null;
 }
 
 export interface PhysicsPanelCtx {

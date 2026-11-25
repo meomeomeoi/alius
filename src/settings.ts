@@ -294,9 +294,20 @@ function store(st: StAdapter, s: AliusSettings): void {
   Object.assign(st.getSettings(), s);
 }
 
+/**
+ * P10e-e: a flag of the stored settings (not a setting): the old default `physicsRealtime: false` was written back into every install by
+ * the default-merge, so the new default (true) is applied once to an install that does not carry the flag; a later choice stays.
+ */
+const REALTIME_MIGRATED = 'physicsRealtimeDefaultMigrated';
+
 /** Reads extensionSettings.alius, fixing invalid fields and filling defaults (written back, not saved). */
 export function getSettings(st: StAdapter): AliusSettings {
-  const s = merge(DEFAULT_SETTINGS, st.getSettings());
+  const raw = st.getSettings();
+  const s = merge(DEFAULT_SETTINGS, raw);
+  if (isObj(raw) && raw[REALTIME_MIGRATED] !== true) {
+    s.physicsRealtime = true;
+    raw[REALTIME_MIGRATED] = true;
+  }
   store(st, s);
   return s;
 }

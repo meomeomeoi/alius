@@ -45,6 +45,8 @@ export interface StagingController {
   beat(): number;
   /** P10e-e R5: when the running segment started (null while none runs), the length of a beat and now, all on the controller's clock. */
   clock(): { startedAt: number | null; beatMs: number; now: number };
+  /** P10e-e: how a run of the open scene ended (the `physics_outcome` this controller saw), or null. */
+  outcome(runId: string): { runId: string; physicsId: string; result: string } | null;
   /** A key was typed in the scene input (real time: maintenance lapses for `TUNING.physics.typing.lapseMs`). */
   keystroke(): void;
   /** A message was sent (turn-based: its length uses beats from `beat`). */
@@ -87,6 +89,8 @@ export function createStaging(deps: StagingDeps): StagingController {
   const pools = new Map<string, ReturnType<typeof completeCues>>();
   const asked = new Set<string>();
   const ended = new Set<string>();
+  /** P10e-e: the outcomes seen, by scene and run (an instrument plays the end of its run). */
+  const outcomes = new Map<string, { runId: string; physicsId: string; result: string }>();
   const work = new Set<Promise<unknown>>();
 
   const state = (): CampaignState | null => deps.app.current().state;
@@ -148,6 +152,7 @@ export function createStaging(deps: StagingDeps): StagingController {
         startedAt = null;
       }
       if (e.type === 'physics_outcome') {
+        outcomes.set(keyOf(state()?.scene?.id ?? '', String(e.runId)), { runId: String(e.runId), physicsId: String(e.physicsId), result: String(e.result) });
         collected = [];
         startedAt = null;
       }
@@ -224,6 +229,9 @@ export function createStaging(deps: StagingDeps): StagingController {
       if (!r?.segment.plan || startedAt === null) return 0;
       return Math.min(r.segment.plan.beats.length - 1, Math.max(0, Math.floor((deps.now() - startedAt) / TUNING.physics.beatMs)));
     },
+    outcome(runId) {
+      return outcomes.get(keyOf(state()?.scene?.id ?? '', runId)) ?? null;
+    },
     clock() {
       return { startedAt, beatMs: TUNING.physics.beatMs, now: deps.now() };
     },
@@ -267,6 +275,7 @@ export function createStaging(deps: StagingDeps): StagingController {
       pools.clear();
       asked.clear();
       ended.clear();
+      outcomes.clear();
     },
     resume() {
       active = true;

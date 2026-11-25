@@ -1289,7 +1289,8 @@
     "long": "AUTHOR TO WRITE: Some contacts carry a gauge (air, strength, saturation, cleanliness, her task, the jaw). It runs in segments, one beat at a time or in real time, and the story only reports it. The stop word ends it at once, whatever she wants.",
     "see": [
       "endurance_skill",
-      "moment"
+      "moment",
+      "instrument"
     ]
   },
   {
@@ -2637,7 +2638,8 @@
     "long": "AUTHOR TO WRITE: The stop word is never part of the fiction and never refused. It ends the hold at once, mid-segment or between segments, in either mode, and she stops what she is doing for the next reply.",
     "see": [
       "tap_signal",
-      "blocking"
+      "blocking",
+      "instrument"
     ]
   },
   {
@@ -3493,7 +3495,8 @@
     "long": "AUTHOR TO WRITE: The dial shows posture only. The name under it is her own name for the posture when a holder gave it one. A choice that is grayed out says why. Changes made after a reply are taken back if that reply is swiped.",
     "see": [
       "blocking",
-      "blocking_strip"
+      "blocking_strip",
+      "instrument"
     ]
   },
   {

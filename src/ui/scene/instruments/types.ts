@@ -37,13 +37,20 @@ export interface InstrumentEnv {
   reply: HTMLElement;
   /** The input line as a gauge surface (P10e §5). */
   gauge: InputGauge;
+  /**
+   * Her sprite's picture now. The scene replaces the `<img>` on every redraw (`drawSprites`): re-query it every frame, never keep it, and
+   * never transform it; move `layers.sprites` (or a wrapper of the instrument's own inside it) instead.
+   */
   spriteOf(unitId: string): HTMLImageElement | null;
   setSprite(unitId: string, label: string): void;
   state(): CampaignState;
   registries: Registries;
   settings(): AliusSettings;
   staging: PhysicsPanelStaging;
-  /** The recorded sounds (null = silent). */
+  /**
+   * The recorded sounds (null = silent). A mount's view records the loops it starts and the sources it makes on `ctx()` (stopped at the
+   * unmount) and puts the world's dullness back; `dispose`, `setNight`, `setMuffle` and `setSensory` do nothing there (they are the app's).
+   */
   samples: SampleSound | null;
   /** The author's pictures per slot (null answers fall back as each README says). */
   art: ArtSlots;
@@ -52,15 +59,33 @@ export interface InstrumentEnv {
   now(): number;
   raf(fn: FrameRequestCallback): number;
   cancelRaf(id: number): void;
+  /** A timer (returns its cancel); a mount's are cleared at its unmount. */
+  timeout(fn: () => void, ms: number): () => void;
+  /** A listener on any target (the document included; returns its removal); a mount's are removed at its unmount. */
+  listen(target: EventTarget, type: string, fn: EventListener, opts?: AddEventListenerOptions | boolean): () => void;
   /** `motionReduced(settings)`: the instrument draws its still form. */
   reduced: boolean;
   /** Readable mode: no blur. */
   readable: boolean;
 }
 
+/** How a run ended (the engine's `physics_outcome`), handed to `InstrumentRun.finish`. */
+export interface PhysicsEnd {
+  runId: string;
+  physicsId: string;
+  /** The engine's `Outcome`: released, checked, limit_broken, blackout, stopped, collapse. */
+  result: string;
+}
+
 export interface InstrumentRun {
   /** The run changed (a redraw of the scene): the same run id. */
   update(run: PhysicsRun): void;
+  /**
+   * The run ended (it is gone from the state): how many ms to keep drawing its end (an exit, a blackout, a wake) before the host unmounts.
+   * The staging is already dead (no input reaches the engine); frames, timers and listeners still run until the unmount. Absent or 0 =
+   * unmount at once. A new run, a scene end, a chat switch, a stage reset and dispose still unmount at once.
+   */
+  finish?(end: PhysicsEnd): number;
   /** Leaves nothing behind: no timer, frame, audio node or document listener; the frame and the input restored. */
   stop(): void;
 }

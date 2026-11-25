@@ -20628,10 +20628,10 @@ function rollbackAfter(draft, index2) {
   if (scene.physics) return false;
   const i = log.findIndex((e) => e.at > index2);
   if (i < 0) return false;
-  const snap = log[i];
-  if (Object.keys(snap.blocking).length === 0) delete scene.blocking;
-  else scene.blocking = structuredClone(snap.blocking);
-  if (snap.moments !== void 0) scene.moments = structuredClone(snap.moments);
+  const snap2 = log[i];
+  if (Object.keys(snap2.blocking).length === 0) delete scene.blocking;
+  else scene.blocking = structuredClone(snap2.blocking);
+  if (snap2.moments !== void 0) scene.moments = structuredClone(snap2.moments);
   else delete scene.moments;
   log.splice(i);
   if (log.length === 0) delete scene.stagingLog;
@@ -20645,13 +20645,13 @@ function pushLog(draft, at, meta2 = {}) {
   if (log.length > TUNING.blocking.logMax) log.splice(0, log.length - TUNING.blocking.logMax);
 }
 function scrubLog(draft, drop2) {
-  for (const snap of draft.scene?.stagingLog ?? []) {
-    for (const [person, rec] of Object.entries(snap.blocking)) {
+  for (const snap2 of draft.scene?.stagingLog ?? []) {
+    for (const [person, rec] of Object.entries(snap2.blocking)) {
       for (const [slot2, w] of Object.entries(rec.worn ?? {})) if (w && drop2("item", w.id, person)) delete rec.worn[slot2];
       if (rec.worn && Object.keys(rec.worn).length === 0) delete rec.worn;
       if (rec.contact && drop2("contact", rec.contact.id, person)) delete rec.contact;
       if (rec.activity !== void 0 && drop2("activity", rec.activity, person)) delete rec.activity;
-      if (Object.keys(rec).length === 0) delete snap.blocking[person];
+      if (Object.keys(rec).length === 0) delete snap2.blocking[person];
     }
   }
 }
@@ -42592,8 +42592,8 @@ function migrate(raw) {
 // src/st/persistence.ts
 var METADATA_KEY = "alius";
 var DAY_START_KEY = "alius_day_start";
-function writeDayStart(st, snap) {
-  st.writeMetadata(DAY_START_KEY, snap);
+function writeDayStart(st, snap2) {
+  st.writeMetadata(DAY_START_KEY, snap2);
   st.saveMetadata().catch((e) => console.warn("[Alius] saving the day-start snapshot failed", e));
 }
 function readDayStart(st) {
@@ -43047,15 +43047,15 @@ function createWarden(deps) {
     const expect = chatId();
     const s = state();
     if (!s || expect === void 0) return;
-    const snap = readDayStart(deps.st);
+    const snap2 = readDayStart(deps.st);
     const fallBack = () => {
       deps.app.dispatch({ type: "warden/no_snapshot", payload: { cause } }, { expectChatId: expect });
     };
-    if (!snap || snap.chatId !== expect || !isLeashswap(snap.state) || !deps.restore(structuredClone(snap.state), s)) return fallBack();
+    if (!snap2 || snap2.chatId !== expect || !isLeashswap(snap2.state) || !deps.restore(structuredClone(snap2.state), s)) return fallBack();
     const length = deps.st.chatLength();
-    deps.toast("info", `REWIND \u2014 day ${snap.day} begins again.`);
-    if (length - 1 < snap.chatLength) return;
-    const runs2 = await deps.st.hideMessages(snap.chatLength, length - 1);
+    deps.toast("info", `REWIND \u2014 day ${snap2.day} begins again.`);
+    if (length - 1 < snap2.chatLength) return;
+    const runs2 = await deps.st.hideMessages(snap2.chatLength, length - 1);
     if (chatId() !== expect || runs2.length === 0) return;
     deps.app.dispatch({ type: "memory/hidden", payload: { add: runs2 } }, { expectChatId: expect });
   }
@@ -43186,8 +43186,8 @@ function createWarden(deps) {
       if (s?.ended) void epilogue().catch(() => {
       });
       else if (s && isLeashswap(s)) {
-        const snap = readDayStart(deps.st);
-        if (!snap || snap.chatId !== chatId()) snapshot();
+        const snap2 = readDayStart(deps.st);
+        if (!snap2 || snap2.chatId !== chatId()) snapshot();
       }
       void ask2().catch(() => {
       });
@@ -46399,8 +46399,14 @@ function merge(base, over2) {
 function store(st, s) {
   Object.assign(st.getSettings(), s);
 }
+var REALTIME_MIGRATED = "physicsRealtimeDefaultMigrated";
 function getSettings(st) {
-  const s = merge(DEFAULT_SETTINGS, st.getSettings());
+  const raw = st.getSettings();
+  const s = merge(DEFAULT_SETTINGS, raw);
+  if (isObj45(raw) && raw[REALTIME_MIGRATED] !== true) {
+    s.physicsRealtime = true;
+    raw[REALTIME_MIGRATED] = true;
+  }
   store(st, s);
   return s;
 }
@@ -50736,6 +50742,7 @@ function createStaging(deps) {
   const pools = /* @__PURE__ */ new Map();
   const asked = /* @__PURE__ */ new Set();
   const ended = /* @__PURE__ */ new Set();
+  const outcomes = /* @__PURE__ */ new Map();
   const work = /* @__PURE__ */ new Set();
   const state = () => deps.app.current().state;
   const chatId = () => deps.app.current().load?.chatId;
@@ -50800,6 +50807,7 @@ function createStaging(deps) {
         startedAt = null;
       }
       if (e.type === "physics_outcome") {
+        outcomes.set(keyOf(state()?.scene?.id ?? "", String(e.runId)), { runId: String(e.runId), physicsId: String(e.physicsId), result: String(e.result) });
         collected = [];
         startedAt = null;
       }
@@ -50869,6 +50877,9 @@ function createStaging(deps) {
       if (!r?.segment.plan || startedAt === null) return 0;
       return Math.min(r.segment.plan.beats.length - 1, Math.max(0, Math.floor((deps.now() - startedAt) / TUNING.physics.beatMs)));
     },
+    outcome(runId) {
+      return outcomes.get(keyOf(state()?.scene?.id ?? "", runId)) ?? null;
+    },
     clock() {
       return { startedAt, beatMs: TUNING.physics.beatMs, now: deps.now() };
     },
@@ -50912,6 +50923,7 @@ function createStaging(deps) {
       pools.clear();
       asked.clear();
       ended.clear();
+      outcomes.clear();
     },
     resume() {
       active = true;
@@ -51512,9 +51524,9 @@ function createEnvelope(host) {
     return { kind: "failed", reason: last.reason, detail: last.detail, ...recordId !== void 0 ? { recordId } : {}, fallbackApplied };
   }
   function undoSnapshot(siteId, key) {
-    const snap = snapshots.get(siteId);
-    if (!snap || snap.key !== key || snap.chatId !== host.chatId()) return "There is nothing to restore.";
-    if (!host.restoreSnapshot(snap.before, snap.after)) return MOVED_REASON;
+    const snap2 = snapshots.get(siteId);
+    if (!snap2 || snap2.key !== key || snap2.chatId !== host.chatId()) return "There is nothing to restore.";
+    if (!host.restoreSnapshot(snap2.before, snap2.after)) return MOVED_REASON;
     snapshots.delete(siteId);
     return null;
   }
@@ -51528,9 +51540,9 @@ function createEnvelope(host) {
         const why2 = h2.canUndo(key);
         return why2 === null ? { enabled: true } : { enabled: false, reason: why2 };
       }
-      const snap = snapshots.get(siteId);
-      if (!snap || snap.key !== key || snap.chatId !== host.chatId()) return { enabled: false, reason: "There is nothing to restore." };
-      return host.state() === snap.after ? { enabled: true } : { enabled: false, reason: MOVED_REASON };
+      const snap2 = snapshots.get(siteId);
+      if (!snap2 || snap2.key !== key || snap2.chatId !== host.chatId()) return { enabled: false, reason: "There is nothing to restore." };
+      return host.state() === snap2.after ? { enabled: true } : { enabled: false, reason: MOVED_REASON };
     }
     const why = h2.committed?.(key) ?? null;
     return why === null ? { enabled: true } : { enabled: false, reason: why };
@@ -62254,6 +62266,10 @@ async function pickLocation(modal, ctx2) {
 }
 
 // src/ui/scene/instruments/kit/hand.ts
+var recorder = null;
+function recordSays(fn) {
+  recorder = fn;
+}
 var timers2 = /* @__PURE__ */ new WeakMap();
 var groups = /* @__PURE__ */ new WeakMap();
 function unsay(host) {
@@ -62275,7 +62291,7 @@ function heartStop(samples) {
 // src/ui/scene/instruments/host.ts
 var defs = [];
 function instrumentFor(run, state, reg, settings) {
-  if (settings.physicsRealtime !== true) return null;
+  if (settings.physicsRealtime !== true || sceneSettingsOf(state).physicsRealtime !== true) return null;
   const interaction = String(reg.contactPhysics.get(run.physicsId)?.interaction ?? "");
   if (settings.physicsInteractions?.[interaction] === false) return null;
   return defs.find((d) => {
@@ -62295,69 +62311,221 @@ function warnOnce(id, what, err) {
   warned.add(`${id}|${what}`);
   console.warn(`[Alius] the instrument "${id}" failed in ${what}; the card plays the hold instead.`, err);
 }
-function scopedStaging(staging, alive2) {
+function scopedStaging(staging, scope) {
+  const on = () => scope.staging && scope.live;
   return {
     input: (i) => {
-      if (alive2.on) staging.input(i);
+      if (on()) staging.input(i);
     },
-    endSegment: () => alive2.on ? staging.endSegment() : [],
-    stopWord: () => alive2.on ? staging.stopWord() : [],
-    skip: (s) => alive2.on ? staging.skip(s) : [],
-    stimulus: (w, k, d) => alive2.on ? staging.stimulus(w, k, d) : [],
-    act: (k) => alive2.on ? staging.act(k) : [],
-    finishCounted: (n) => alive2.on ? staging.finishCounted(n) : [],
-    cue: (k, b) => alive2.on ? staging.cue(k, b) : null,
+    endSegment: () => on() ? staging.endSegment() : [],
+    stopWord: () => on() ? staging.stopWord() : [],
+    skip: (s) => on() ? staging.skip(s) : [],
+    stimulus: (w, k, d) => on() ? staging.stimulus(w, k, d) : [],
+    act: (k) => on() ? staging.act(k) : [],
+    finishCounted: (n) => on() ? staging.finishCounted(n) : [],
+    cue: (k, b) => on() ? staging.cue(k, b) : null,
     beat: () => staging.beat(),
     clock: () => staging.clock()
   };
 }
+var SOURCE_MAKERS = /* @__PURE__ */ new Set(["createBufferSource", "createOscillator", "createConstantSource"]);
+function scopedSamples(samples, scope) {
+  let proxied = null;
+  const view = (real) => {
+    if (proxied?.real === real) return proxied.view;
+    const v = new Proxy(real, {
+      get(t, p) {
+        const value = Reflect.get(t, p, t);
+        if (typeof value !== "function") return value;
+        if (typeof p === "string" && SOURCE_MAKERS.has(p)) {
+          return (...args) => {
+            const node = value.apply(t, args);
+            if (scope.live) scope.sources.add(node);
+            return node;
+          };
+        }
+        return value.bind(t);
+      }
+    });
+    proxied = { real, view: v };
+    return v;
+  };
+  return {
+    play: (file, opts) => {
+      if (scope.live) samples.play(file, opts);
+    },
+    loop: (file, opts) => {
+      const l = samples.loop(file, opts);
+      if (scope.live) scope.loops.add(l);
+      else l.stop(0);
+      return l;
+    },
+    preload: (files) => samples.preload(files),
+    buffer: (file) => samples.buffer(file),
+    ctx: () => {
+      const c = samples.ctx();
+      return c ? view(c) : null;
+    },
+    bus: (name) => samples.bus(name),
+    setWorldDull: (f) => {
+      if (!scope.live) return;
+      scope.dulled = true;
+      samples.setWorldDull(f);
+    },
+    setNight: () => {
+    },
+    setMuffle: () => {
+    },
+    setSensory: () => {
+    },
+    dispose: () => {
+    }
+  };
+}
+var SCENE_OWNED = {
+  root: { style: ["--alius-pan"], data: ["stage", "backdrop", "light", "curtain"] },
+  backdrop: { style: ["background-image"], data: [] },
+  sprites: { style: [], data: ["count", "crowd"] }
+};
+var NONE4 = { style: [], data: [] };
+function styleMap(el) {
+  const m = /* @__PURE__ */ new Map();
+  for (let i = 0; i < el.style.length; i++) {
+    const p = el.style.item(i);
+    m.set(p, el.style.getPropertyValue(p));
+  }
+  return m;
+}
+function snap(el, keep2) {
+  return { el, style: styleMap(el), data: new Map(Object.entries(el.dataset).map(([k, v]) => [k, v ?? ""])), keep: keep2 };
+}
+function restore(s) {
+  const now = styleMap(s.el);
+  for (const p of now.keys()) if (!s.keep.style.includes(p) && !s.style.has(p)) s.el.style.removeProperty(p);
+  for (const [p, v] of s.style) if (!s.keep.style.includes(p) && now.get(p) !== v) s.el.style.setProperty(p, v);
+  for (const k of Object.keys(s.el.dataset)) if (!s.keep.data.includes(k) && !s.data.has(k)) delete s.el.dataset[k];
+  for (const [k, v] of s.data) if (!s.keep.data.includes(k) && s.el.dataset[k] !== v) s.el.dataset[k] = v;
+}
+function syncMark(m) {
+  m.mark.toggleAttribute("data-reduced", m.env.reduced);
+  m.mark.toggleAttribute("data-readable", m.env.readable);
+}
 function mount(env, def, run, key) {
-  const alive2 = { on: true };
-  const frames = /* @__PURE__ */ new Set();
+  const scope = {
+    staging: true,
+    live: true,
+    frames: /* @__PURE__ */ new Set(),
+    timers: /* @__PURE__ */ new Set(),
+    listeners: /* @__PURE__ */ new Set(),
+    loops: /* @__PURE__ */ new Set(),
+    sources: /* @__PURE__ */ new Set(),
+    dulled: false,
+    saidIn: /* @__PURE__ */ new Set(),
+    samples: null,
+    snapshot: [snap(env.root, SCENE_OWNED.root), ...Object.entries(env.layers).map(([name, el]) => snap(el, SCENE_OWNED[name] ?? NONE4))]
+  };
+  scope.samples = env.samples ? scopedSamples(env.samples, scope) : null;
   const scoped = Object.create(env, {
-    staging: { value: scopedStaging(env.staging, alive2) },
+    staging: { value: scopedStaging(env.staging, scope) },
+    samples: { value: scope.samples },
     raf: {
       value: (fn) => {
-        if (!alive2.on) return 0;
+        if (!scope.live) return 0;
         const id = env.raf((t) => {
-          frames.delete(id);
-          if (alive2.on) fn(t);
+          scope.frames.delete(id);
+          if (scope.live) fn(t);
         });
-        frames.add(id);
+        scope.frames.add(id);
         return id;
       }
     },
     cancelRaf: { value: (id) => {
-      frames.delete(id);
+      scope.frames.delete(id);
       env.cancelRaf(id);
-    } }
+    } },
+    timeout: {
+      value: (fn, ms) => {
+        if (!scope.live) return () => {
+        };
+        const t = setTimeout(() => {
+          scope.timers.delete(t);
+          if (scope.live) fn();
+        }, ms);
+        scope.timers.add(t);
+        return () => {
+          clearTimeout(t);
+          scope.timers.delete(t);
+        };
+      }
+    },
+    listen: {
+      value: (target, type, fn, opts) => {
+        if (!scope.live) return () => {
+        };
+        target.addEventListener(type, fn, opts);
+        const off = () => {
+          target.removeEventListener(type, fn, opts);
+          scope.listeners.delete(off);
+        };
+        scope.listeners.add(off);
+        return off;
+      }
+    }
   });
-  const mark = h("div", { class: "alius-instrument", "data-instrument": def.id, ...analyzeAttrs("glossary:instrument") });
-  mark.removeAttribute("tabindex");
-  if (env.reduced) mark.dataset.reduced = "";
-  if (env.readable) mark.dataset.readable = "";
+  const mark = h("div", { class: "alius-instrument", "data-instrument": def.id });
   env.layers.moment.append(mark);
   env.root.querySelector(".alius-stage-dial")?.setAttribute("data-instrument", def.id);
-  current = { key, def, env, run: null, alive: alive2, frames, mark };
+  current = { key, runId: run.id, def, env, run: null, scope, mark, finishing: null };
+  syncMark(current);
+  recordSays((host) => {
+    if (scope.live) scope.saidIn.add(host);
+  });
   current.run = def.start(scoped, run);
 }
 function unmountInstruments() {
   const m = current;
   if (!m) return;
   current = null;
+  if (m.finishing?.timer) clearTimeout(m.finishing.timer);
   try {
     m.run?.stop();
   } catch (err) {
     warnOnce(m.def.id, "stop", err);
   } finally {
-    m.alive.on = false;
-    for (const id of m.frames) m.env.cancelRaf(id);
-    m.frames.clear();
-    for (const layer of Object.values(m.env.layers)) unsay(layer);
-    unsay(m.mark);
+    const s = m.scope;
+    s.staging = false;
+    s.live = false;
+    recordSays(null);
+    for (const id of s.frames) m.env.cancelRaf(id);
+    s.frames.clear();
+    for (const t of s.timers) clearTimeout(t);
+    s.timers.clear();
+    for (const off of [...s.listeners]) off();
+    for (const l of s.loops) {
+      try {
+        l.stop(0);
+      } catch {
+      }
+    }
+    s.loops.clear();
+    for (const n of s.sources) {
+      try {
+        n.stop();
+      } catch {
+      }
+      try {
+        n.disconnect();
+      } catch {
+      }
+    }
+    s.sources.clear();
+    if (s.dulled) m.env.samples?.setWorldDull(0);
+    if (s.samples) heartStop(s.samples);
+    for (const host of s.saidIn) unsay(host);
+    s.saidIn.clear();
     m.mark.remove();
-    if (m.env.samples) heartStop(m.env.samples);
     m.env.gauge.clear();
+    for (const sn of s.snapshot) restore(sn);
     m.env.root.querySelector(".alius-stage-dial")?.removeAttribute("data-instrument");
   }
 }
@@ -62365,10 +62533,38 @@ function resetInstruments() {
   unmountInstruments();
   failed = null;
 }
+function beginFinish(m) {
+  m.scope.staging = false;
+  const f = { timer: null };
+  m.finishing = f;
+  queueMicrotask(() => {
+    if (current !== m || m.finishing !== f) return;
+    const end = m.env.staging.outcome?.(m.runId) ?? null;
+    let ms = 0;
+    if (end && end.result !== "stopped" && m.run?.finish) {
+      try {
+        ms = Math.max(0, Number(m.run.finish(end)) || 0);
+      } catch (err) {
+        warnOnce(m.def.id, "finish", err);
+        ms = 0;
+      }
+    }
+    if (ms <= 0) unmountInstruments();
+    else f.timer = setTimeout(() => {
+      if (current === m) unmountInstruments();
+    }, ms);
+  });
+}
 function syncInstruments(env, run) {
-  const state = run ? env.state() : null;
-  const def = run && state ? instrumentFor(run, state, env.registries, env.settings()) : null;
-  if (!run || !def) {
+  const state = env.state();
+  if (current && current.env !== env) unmountInstruments();
+  if (!run) {
+    if (current && !current.finishing && state?.scene && current.key.startsWith(`${state.scene.id}|`)) beginFinish(current);
+    else if (current && !current.finishing) unmountInstruments();
+    return false;
+  }
+  const def = state ? instrumentFor(run, state, env.registries, env.settings()) : null;
+  if (!def) {
     unmountInstruments();
     return false;
   }
@@ -62378,7 +62574,8 @@ function syncInstruments(env, run) {
     unmountInstruments();
     return false;
   }
-  if (current && current.key === key && current.def === def && current.env === env) {
+  if (current && current.key === key && current.def === def && !current.finishing) {
+    syncMark(current);
     try {
       current.run?.update(run);
       return true;
@@ -65109,6 +65306,14 @@ function renderSceneScreen(host, ctx2) {
       now: () => frames.now(),
       raf: (fn) => frames.raf(fn),
       cancelRaf: (id) => frames.cancelRaf(id),
+      timeout: (fn, ms) => {
+        const t = setTimeout(fn, ms);
+        return () => clearTimeout(t);
+      },
+      listen: (target, type, fn, opts) => {
+        target.addEventListener(type, fn, opts);
+        return () => target.removeEventListener(type, fn, opts);
+      },
       get reduced() {
         return motionReduced(ctx2.settings());
       },
@@ -68838,7 +69043,7 @@ function createApp(st, deps) {
     state: () => state,
     chatId: () => st.getActiveChat()?.chatId,
     dispatch: (a, o) => api.dispatch(a, o),
-    restoreSnapshot: (snap, expected) => api.restoreSnapshot(snap, expected),
+    restoreSnapshot: (snap2, expected) => api.restoreSnapshot(snap2, expected),
     contentLine: () => contentLine(state, registries),
     toast: (kind, text3) => toast(kind, text3)
   });
@@ -69045,8 +69250,8 @@ function createApp(st, deps) {
     // P13: the judged action goes through the app's own path (votes, refusal toasts)
     startScene: (o) => beginScene(o),
     // P13: the ARGUE scene with the warden
-    restore: (snap, expected) => {
-      if (!api.restoreSnapshot(snap, expected)) return false;
+    restore: (snap2, expected) => {
+      if (!api.restoreSnapshot(snap2, expected)) return false;
       afterLoad();
       return true;
     }
@@ -69425,6 +69630,7 @@ function createApp(st, deps) {
           cue: (k, b) => staging.cue(k, b),
           beat: () => staging.beat(),
           clock: () => staging.clock(),
+          outcome: (runId) => staging.outcome(runId),
           keystroke: () => staging.keystroke(),
           typed: (chars, beat) => staging.typed(chars, beat),
           onTap: () => {
@@ -71335,11 +71541,11 @@ function createApp(st, deps) {
       if (!raisingAlarm && (action.type === "expedition/start" || action.type === "night/open") && r.events.some((e) => e.type === "error" && e.code === "held_alarm")) return raiseHeldAlarm(action, r.events);
       return r.events;
     },
-    restoreSnapshot(snap, expectedCurrent) {
+    restoreSnapshot(snap2, expectedCurrent) {
       if (!state || state !== expectedCurrent || load.kind !== "ok") return false;
-      state = snap;
-      load = { kind: "ok", state: snap, chatId: load.chatId };
-      saver?.save(snap);
+      state = snap2;
+      load = { kind: "ok", state: snap2, chatId: load.chatId };
+      saver?.save(snap2);
       syncMinConfidence();
       applyContext();
       syncBadges();

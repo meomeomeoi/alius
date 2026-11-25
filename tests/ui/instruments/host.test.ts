@@ -15,8 +15,8 @@ import { DEFAULT_SETTINGS, type AliusSettings } from '../../../src/settings';
 import { FakeStAdapter } from '../../../src/st/fake';
 import { h } from '../../../src/ui/dom';
 import { _resetInstrumentDefs, instrumentFor, registerInstrument } from '../../../src/ui/scene/instruments/host';
-import type { InstrumentDef, InstrumentEnv } from '../../../src/ui/scene/instruments/types';
-import { say } from '../../../src/ui/scene/instruments/kit/hand';
+import type { InstrumentDef, InstrumentEnv, PhysicsEnd } from '../../../src/ui/scene/instruments/types';
+import { recordSays, say, unsay } from '../../../src/ui/scene/instruments/kit/hand';
 import { heartTick } from '../../../src/ui/scene/instruments/kit/heart';
 import type { PhysicsPanelStaging } from '../../../src/ui/scene/physicsPanel';
 import { renderSceneScreen } from '../../../src/ui/scene/sceneScreen';
@@ -52,8 +52,12 @@ function hold(): CampaignState {
   setBlocking(st, { registries: reg }, { person: ANN, field: 'contact', value: 'smothered_armpit', with: COMMANDER }, { at: 3, source: 'chip' });
   const r = run(st, reg, { type: 'physics/next_segment', payload: { runId: 'p1' } });
   expect(errors(r.events)).toEqual([]);
+  r.state.settings.physicsRealtime = true; // the campaign's mirror of the real-time setting (the host needs both)
   return r.state;
 }
+
+/** Lets the host's end-of-run microtask run (it asks the staging for the outcome a microtask after the redraw). */
+const flush = async (): Promise<void> => { await Promise.resolve(); await Promise.resolve(); };
 
 /** A fake frame clock: `raf` queues, `frame()` runs what is queued. */
 function frames() {
@@ -76,7 +80,7 @@ function frames() {
 
 /** A test instrument: it draws a mark, presses `hold` on every frame, and (on purpose) forgets to cancel its frame when stopped. */
 function testDef(over: Partial<InstrumentDef> = {}) {
-  const calls = { start: [] as string[], update: [] as string[], stop: 0, env: null as InstrumentEnv | null };
+  const calls = { start: [] as string[], update: [] as string[], stop: 0, env: null as InstrumentEnv | null, finish: null as ((e: PhysicsEnd) => number) | null };
   const def: InstrumentDef = {
     id: 'test',
     matches: () => true,
@@ -93,6 +97,7 @@ function testDef(over: Partial<InstrumentDef> = {}) {
       return {
         update: (next: PhysicsRun) => { calls.update.push(next.id); },
         stop: () => { calls.stop += 1; mark.remove(); },
+        finish: (e: PhysicsEnd) => (calls.finish ? calls.finish(e) : 0),
       };
     },
     ...over,
@@ -158,7 +163,7 @@ describe('the instrument host', () => {
     expect(instrumentFor(s.scene!.physics!, s, reg, DEFAULT_SETTINGS)?.id).toBe('b');
   });
 
-  it('real time mounts once per run: a redraw updates, a new run stops the old one, no run stops it', () => {
+  it('real time mounts once per run: a redraw updates, a new run stops the old one, no run stops it', async () => {
     const { def, calls } = testDef();
     registerInstrument(def);
     const s = hold();
@@ -166,7 +171,7 @@ describe('the instrument host', () => {
     expect(calls.start).toEqual(['p1']);
     expect(t.q('.alius-physics')).toBeNull(); // no card while the instrument draws
     expect(t.q('.alius-layer-moment .test-instrument')).not.toBeNull();
-    expect(t.q('.alius-instrument[data-analyze="glossary:instrument"]')).not.toBeNull();
+    expect(t.q('.alius-instrument[data-instrument="test"]')).not.toBeNull();
     t.screen.refresh();
     t.screen.refresh();
     expect(calls.start).toEqual(['p1']);
@@ -177,6 +182,7 @@ describe('the instrument host', () => {
     expect(calls.start).toEqual(['p1', 'p2']);
     delete s.scene!.physics;
     t.screen.refresh();
+    await flush();
     expect(calls.stop).toBe(2);
     expect(t.q('.test-instrument')).toBeNull();
     expect(t.q('.alius-instrument')).toBeNull();
@@ -245,25 +251,34 @@ describe('the instrument host', () => {
     expect(t.stopWord).not.toHaveBeenCalled();
   });
 
-  it('the whole stop-word chain: pill → physics/stop_word → refresh with the run gone → stop(), then no input and no frame', () => {
+  it('the whole stop-word chain: pill → physics/stop_word → refresh with the run gone → stop() at once (no end is played), then no input and no frame', async () => {
     const { def, calls } = testDef();
     registerInstrument(def);
     const s = hold();
     const dispatched: string[] = [];
     const real = createStaging({
       app: {
-        dispatch: (a: Action) => { dispatched.push(a.type); if (a.type === 'physics/stop_word') delete s.scene!.physics; return []; },
+        dispatch: (a: Action) => {
+          dispatched.push(a.type);
+          if (a.type !== 'physics/stop_word') return [];
+          delete s.scene!.physics;
+          return [{ type: 'physics_outcome', runId: 'p1', physicsId: 'breath', result: 'stopped' }];
+        },
         current: () => ({ state: s, load: { chatId: 'c' } }),
       } as never,
       registries: () => reg, settings: () => DEFAULT_SETTINGS, generations: { bind() {}, generate: async () => ({ kind: 'expired' }) } as never,
       scene: { replyPending: () => false, end: async () => {} }, now: () => 0, toast: () => {},
     });
-    const t = draw(s, { staging: { stopWord: () => real.stopWord() } });
+    const finish = vi.fn(() => 3000);
+    calls.finish = finish;
+    const t = draw(s, { staging: { stopWord: () => real.stopWord(), outcome: (id) => real.outcome(id) } });
     t.frames.frame();
     expect(t.input).toHaveBeenCalledTimes(1);
     t.q('.alius-stop-pill[data-stop-word]')!.click();
     expect(dispatched).toEqual(['physics/stop_word']);
     t.screen.refresh(); // the app redraws after the dispatch
+    await flush();
+    expect(finish).not.toHaveBeenCalled(); // the stop word plays no end
     expect(calls.stop).toBe(1);
     expect(t.q('.alius-instrument')).toBeNull();
     expect(t.frames.pending()).toBe(0);
@@ -343,7 +358,7 @@ describe('the instrument host', () => {
     expect(warn).toHaveBeenCalledTimes(2); // update and stop, once each
   });
 
-  it('the host restores what instruments share: her lines go and the input line is plain again', () => {
+  it('the host restores what instruments share: her lines go and the input line is plain again', async () => {
     const { def, calls } = testDef();
     registerInstrument(def);
     const s = hold();
@@ -355,6 +370,7 @@ describe('the instrument host', () => {
     expect(t.q('.alius-her-line')).not.toBeNull();
     delete s.scene!.physics;
     t.screen.refresh();
+    await flush();
     expect(t.q('.alius-her-line')).toBeNull();
     const line = t.q('.alius-stage-input')!;
     expect(line.style.getPropertyValue('--alius-gauge-narrow')).toBe('');
@@ -362,7 +378,7 @@ describe('the instrument host', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('a remount after a long gap does not replay the heart: the host stops it with the instrument', () => {
+  it('a remount after a long gap does not replay the heart: the host stops it with the instrument', async () => {
     let started = 0;
     const param = () => ({ value: 0, setValueAtTime: () => {}, exponentialRampToValueAtTime: () => {} });
     const ctx = {
@@ -380,6 +396,7 @@ describe('the instrument host', () => {
     expect(started).toBe(6);
     delete s.scene!.physics;
     t.screen.refresh(); // the instrument stops
+    await flush();
     expect(vi.getTimerCount()).toBe(0);
     ctx.currentTime = 600;
     s.scene!.physics = hold().scene!.physics; // a new run, ten minutes later
@@ -389,7 +406,167 @@ describe('the instrument host', () => {
     expect(started).toBeLessThanOrEqual(6 + 2);
   });
 
-  it('the dial dims while one runs (R6), and stops dimming after', () => {
+  it('the end of a run: finish(outcome) keeps it drawing (staging dead) for the ms it asks, then the host unmounts', async () => {
+    const { def, calls } = testDef();
+    const ends: PhysicsEnd[] = [];
+    calls.finish = (e) => { ends.push(e); return 2000; };
+    registerInstrument(def);
+    const s = hold();
+    let outcome: PhysicsEnd | null = null;
+    const t = draw(s, { staging: { outcome: () => outcome } });
+    t.frames.frame();
+    expect(t.input).toHaveBeenCalledTimes(1);
+    delete s.scene!.physics;
+    outcome = { runId: 'p1', physicsId: 'breath', result: 'blackout' }; // the staging hears of it a microtask after the redraw
+    t.screen.refresh();
+    await flush();
+    expect(ends).toEqual([{ runId: 'p1', physicsId: 'breath', result: 'blackout' }]);
+    expect(calls.stop).toBe(0);
+    expect(t.q('.alius-instrument')).not.toBeNull();
+    t.frames.frame(); // its frames still run (the exit plays) …
+    expect(t.frames.pending()).toBe(1);
+    expect(t.input).toHaveBeenCalledTimes(1); // … but nothing reaches the engine
+    t.screen.refresh(); // a redraw meanwhile changes nothing
+    vi.advanceTimersByTime(1999);
+    expect(calls.stop).toBe(0);
+    vi.advanceTimersByTime(1);
+    expect(calls.stop).toBe(1);
+    expect(t.q('.alius-instrument')).toBeNull();
+    expect(t.frames.pending()).toBe(0);
+  });
+
+  it('no known outcome: the host unmounts at once; a new run, a reset or dispose cut an end short', async () => {
+    const { def, calls } = testDef();
+    calls.finish = () => 5000;
+    registerInstrument(def);
+    const s = hold();
+    const run1 = s.scene!.physics!;
+    let outcome: PhysicsEnd | null = null;
+    const t = draw(s, { staging: { outcome: () => outcome } });
+    delete s.scene!.physics;
+    t.screen.refresh();
+    await flush();
+    expect(calls.stop).toBe(1); // nothing known: no end
+    // a new run mid-end
+    s.scene!.physics = { ...run1, id: 'p2' };
+    t.screen.refresh();
+    delete s.scene!.physics;
+    outcome = { runId: 'p2', physicsId: 'breath', result: 'released' };
+    t.screen.refresh();
+    await flush();
+    expect(calls.stop).toBe(1);
+    s.scene!.physics = { ...run1, id: 'p3' };
+    t.screen.refresh();
+    expect(calls.stop).toBe(2);
+    expect(calls.start).toEqual(['p1', 'p2', 'p3']);
+    // a reset mid-end
+    delete s.scene!.physics;
+    outcome = { runId: 'p3', physicsId: 'breath', result: 'released' };
+    t.screen.refresh();
+    await flush();
+    expect(calls.stop).toBe(2);
+    resetSceneStage();
+    expect(calls.stop).toBe(3);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('the host undoes what stop() forgets: a loop, a source, a timer, a document listener, a blur and a mark on the layers', async () => {
+    const loopStop = vi.fn();
+    const sourceStop = vi.fn();
+    const dull = vi.fn();
+    const ctx = { currentTime: 0, createBufferSource: () => ({ stop: sourceStop, disconnect: () => {}, connect: () => {}, start: () => {} }) };
+    const samples = {
+      play: vi.fn(), loop: vi.fn(() => ({ setGain: () => {}, setRate: () => {}, stop: loopStop })), preload: async () => {}, buffer: () => null,
+      ctx: () => ctx, bus: () => ({}), setWorldDull: dull, setNight: vi.fn(), setMuffle: vi.fn(), setSensory: vi.fn(), dispose: vi.fn(),
+    };
+    const late = vi.fn();
+    const keyed = vi.fn();
+    const { def } = testDef({
+      start(env) {
+        env.samples!.loop('assets/sounds/x.ogg');
+        (env.samples!.ctx() as unknown as typeof ctx).createBufferSource();
+        env.samples!.setWorldDull(0.8);
+        env.samples!.dispose(); // never the app's
+        env.timeout(late, 1000);
+        env.listen(document, 'keydown', keyed);
+        env.layers.backdrop.style.filter = 'blur(6px)';
+        env.layers.effects.dataset.tunnel = '0.7';
+        env.root.style.setProperty('--alius-tilt', '3deg');
+        return { update: () => {}, stop: () => {} }; // forgets all of it
+      },
+    });
+    registerInstrument(def);
+    const s = hold();
+    const t = draw(s, { samples: samples as never });
+    const backdrop = t.q('.alius-layer-backdrop')!;
+    expect(backdrop.style.filter).toBe('blur(6px)');
+    t.q('.alius-scene')!.style.setProperty('--alius-pan', '0.3'); // the scene's own (looking around) is left alone
+    delete s.scene!.physics;
+    t.screen.refresh();
+    await flush();
+    expect(loopStop).toHaveBeenCalled();
+    expect(sourceStop).toHaveBeenCalled();
+    expect(dull).toHaveBeenLastCalledWith(0);
+    expect(samples.dispose).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(5000);
+    expect(late).not.toHaveBeenCalled();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
+    expect(keyed).not.toHaveBeenCalled();
+    expect(backdrop.style.filter).toBe('');
+    expect(t.q('.alius-layer-effects')!.dataset.tunnel).toBeUndefined();
+    const root = t.q('.alius-scene')!;
+    expect(root.style.getPropertyValue('--alius-tilt')).toBe('');
+    expect(root.style.getPropertyValue('--alius-pan')).toBe('0.3');
+    expect(root.dataset.stage).toBe('frame');
+  });
+
+  it('the play layers carry no [data-analyze] from the host (the mark is a plain flag)', () => {
+    const { def, calls } = testDef();
+    registerInstrument(def);
+    const t = draw(hold());
+    const mark = t.q('.alius-instrument')!;
+    expect(mark.hasAttribute('data-analyze')).toBe(false);
+    for (const el of [mark, ...Object.values(calls.env!.layers)]) expect(el.closest('[data-analyze]')).toBeNull();
+  });
+
+  it('real time needs the campaign mirror too; the mark follows reduced motion and readable mode on each redraw', () => {
+    const { def } = testDef();
+    registerInstrument(def);
+    const s = hold();
+    s.settings.physicsRealtime = false;
+    expect(instrumentFor(s.scene!.physics!, s, reg, DEFAULT_SETTINGS)).toBeNull();
+    s.settings.physicsRealtime = true;
+    const settings: Partial<AliusSettings> = {};
+    const t = draw(s, { settings });
+    const mark = t.q('.alius-instrument')!;
+    expect(mark.hasAttribute('data-reduced')).toBe(false);
+    settings.reducedMotion = true;
+    settings.readableMode = true;
+    t.screen.refresh();
+    expect(mark.hasAttribute('data-reduced')).toBe(true);
+    expect(mark.hasAttribute('data-readable')).toBe(true);
+  });
+
+  it('the unmount clears only the lines this mount wrote', async () => {
+    const { def, calls } = testDef();
+    registerInstrument(def);
+    const s = hold();
+    const t = draw(s);
+    const env = calls.env!;
+    const other = h('div');
+    env.layers.pose.append(other);
+    say(env.layers.effects, 'mine.', { her: env.her(ANN) });
+    recordSays(null); // a line someone else writes (not through this mount)
+    say(other, 'not mine.', { her: env.her(ANN) });
+    delete s.scene!.physics;
+    t.screen.refresh();
+    await flush();
+    expect(t.q('.alius-layer-effects .alius-her-line')).toBeNull();
+    expect(other.querySelector('.alius-her-line')).not.toBeNull();
+    unsay(other);
+  });
+
+  it('the dial dims while one runs (R6), and stops dimming after', async () => {
     const { def } = testDef();
     registerInstrument(def);
     const s = hold();
@@ -397,6 +574,7 @@ describe('the instrument host', () => {
     expect(t.q('.alius-stage-dial')!.dataset.instrument).toBe('test');
     delete s.scene!.physics;
     t.screen.refresh();
+    await flush();
     expect(t.q('.alius-stage-dial')!.hasAttribute('data-instrument')).toBe(false);
   });
 });
@@ -415,5 +593,19 @@ describe('the staging clock (R5)', () => {
     staging.tick(10_500); // the running segment starts its clock
     clock.now = 12_000;
     expect(staging.clock()).toEqual({ startedAt: 10_500, beatMs: 1500, now: 12_000 });
+  });
+
+  it('outcome(runId): the physics_outcome it saw for the open scene; a reset forgets it', () => {
+    const s = hold();
+    const staging = createStaging({
+      app: { dispatch: () => [], current: () => ({ state: s, load: { chatId: 'c' } }) } as never,
+      registries: () => reg, settings: () => DEFAULT_SETTINGS, generations: { bind() {}, generate: async () => ({ kind: 'expired' }) } as never,
+      scene: { replyPending: () => false, end: async () => {} }, now: () => 0, toast: () => {},
+    });
+    expect(staging.outcome('p1')).toBeNull();
+    staging.onEvents([{ type: 'physics_outcome', runId: 'p1', physicsId: 'breath', result: 'released' }]);
+    expect(staging.outcome('p1')).toEqual({ runId: 'p1', physicsId: 'breath', result: 'released' });
+    staging.reset();
+    expect(staging.outcome('p1')).toBeNull();
   });
 });
