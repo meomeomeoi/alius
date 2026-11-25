@@ -269,6 +269,22 @@ describe('the breath instrument on the scene', () => {
     expect(_breath.G.win!.beat).toBe(7);
   });
 
+  it.each([0, 1])('an opening her rhythm puts on beat %i, inside the 1.8 s entry, plays as the loop begins and is reported on its own beat', (beat) => {
+    const t = draw(hold(SEAT, planOf({ [beat]: {}, 4: {} })));
+    t.to(1700);
+    expect(_breath.G.phase).toBe('entry');
+    expect(_breath.G.win).toBeNull();
+    t.to(1900);
+    expect(_breath.G.phase).toBe('loop');
+    expect(_breath.G.win).not.toBeNull();
+    expect(_breath.G.win!.beat).toBe(beat);
+    t.mouse('mousedown');
+    t.to(1900 + 260 + 1200);
+    t.mouse('mouseup', document);
+    t.to(1900 + 2000);
+    expect(reports(t)[0]).toEqual({ beat, kind: 'breathe', amount: 1 });
+  });
+
   it('inputs: a short over-hold (past 150 ms, let go before 450) is a strain of 0.5, sent when the press ends; a missed opening sends nothing', () => {
     const t = draw(hold(SEAT, planOf({ 3: {}, 9: {} })));
     t.to(5 * BEAT);

@@ -292,7 +292,11 @@ function scheduleWindow(at: number, opts: { false?: true; widthMs?: number; quie
     }
   }
   G.lastAgain = false;
-  push(at, () => { const b = beatAt(G.clock); R.widthMs = opts.widthMs ?? s.windowMs; refreshLines(b); openWindow(isFalse, mode === 'none' || opts.quiet === true); G.win!.beat = b; });
+  // the opening's beat is its entry's time (moved with it by her delay); one that came due during the entry plays as the loop begins, as a late
+  // event of the prototype's queue does, and is reported on its own beat; a window still open is closed first
+  const fire = () => { const b = beatAt(e.at); if (G.win) closeWindow(); R.widthMs = opts.widthMs ?? s.windowMs; refreshLines(b); openWindow(isFalse, mode === 'none' || opts.quiet === true); G.win!.beat = b; };
+  push(at, fire);
+  const e = G.queue.find((x) => x.fn === fire)!;
 }
 function openWindow(isFalse: boolean, quiet = false) {
   const s = st();
@@ -695,8 +699,7 @@ function schedulePlan(run: PhysicsRun, ck: { startedAt: number | null; now: numb
   G.air = clamp((run.gauge / run.capacity) * 100, 0, 100); // the engine's air (it resolved the last segment)
   refreshLines(0);
   for (const o of effectiveOpenings(plan, [], styleKey())) {
-    const at = R.seg.clock0 + o.beat * BEAT;
-    if (at < G.clock - 120) continue; // already gone by (the entry played over it)
+    const at = R.seg.clock0 + o.beat * BEAT; // one already due (it fell in the entry) opens at once, on its own beat (review I3)
     const cue = plan.beats[o.beat]?.cue;
     scheduleWindow(at, { ...(o.false ? { false: true as const } : {}), widthMs: o.widthMs, quiet: cue !== 'window_open' && cue !== 'window_false' });
   }
