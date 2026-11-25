@@ -39097,7 +39097,7 @@ function finishCounted(draft, _ctx, typed) {
 // src/engine/physics/combined.ts
 var OWNS = {
   timing: ["breathe", "gap_breath", "strain"],
-  hold: ["hold", "shift_weight"],
+  hold: ["hold", "shift_weight", "uneven"],
   decision: ["mouth_breath"],
   order: ["part"],
   gesture: ["ask_rest"],

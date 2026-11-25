@@ -113,6 +113,24 @@ describe('breath + weight', () => {
     expect(none.state.scene!.physics!.second!.gauge).toBe(100 - 24);
   });
 
+  it('N1: a tilted held beat with a shift resolves on the weight as in a single run: the tilt\'s drain and the shift\'s charge both land', () => {
+    const plan = [beat(), beat(), beat({ shift: 20, cue: 'shift' }), beat()];
+    const s = combined('between_thighs', plan);
+    s.scene!.physics!.seal = 'tight';
+    const breaths = [0, 1, 2, 3].map((b) => input(b, 'breathe')); // breathing every beat: no steady beat, the weight's drain is its own
+    const holds = [0, 1, 2, 3].map((b) => input(b, 'hold'));
+    const tilt: SegmentInput = { beat: 2, kind: 'uneven', amount: 0.5, part: 'tilted' };
+    expect(mergeInputs('timing', 'hold', { beats: plan }, [...holds, tilt]).second).toContainEqual(tilt);
+    const r = end(s, [...breaths, ...holds, tilt]);
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.scene!.physics!.second!.gauge).toBeCloseTo(100 - 32 - 8 * 0.5 - 20, 6);
+    expect(r.state.scene!.physics!.last!.slips).toBe(0);
+    // the same beats alone, a weight run of its own
+    const single = combined('human_chair', plan);
+    const w = end(single, [...holds, tilt]);
+    expect(w.state.scene!.physics!.gauge).toBeCloseTo(r.state.scene!.physics!.second!.gauge, 6);
+  });
+
   it('a slip in either is a slip of the run: the weight slipped, the hold lasts longer, the noise is a creak', () => {
     const s = combined('between_thighs');
     s.scene!.physics!.seal = 'tight';
