@@ -30,6 +30,8 @@ export interface PhysicsPanelStaging {
   act(kind: string): EngineEvent[];
   finishCounted(typed: number): EngineEvent[];
   cue(kind: CueKind, beat: number): string | null;
+  /** P10e-e ruling Q: her cue line of a kind only when the model worded it (never the registry's narration); absent = never. */
+  voiced?(kind: CueKind, beat: number): string | null;
   beat(): number;
   /**
    * P10e-e R5: the staging clock, so an instrument places the plan's beats in wall time: when the running segment started (null while

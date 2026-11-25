@@ -336,3 +336,109 @@ Silent: no line before or after.
 - **none:** `that was owed.`
 - **braced:** `it changes nothing.`
 - **flinched:** `that’s added to it.`
+
+## 7. Breathing (breath.html, tested by the author in play, 2026-11-23)
+
+Her lines in her hand while she holds the commander's breath (P10e-e Task 14, ruling Q; `breath.html`'s `LINES`, heard in play), by her style. **entry**: as the dark comes down; **now**: as her opening comes (a false one too: the lie); **hold**: now and then after an opening; **early** / **fake**: the commander reached for a false opening (playful's own, else her early line); **tap**: her answer to the tap; **low**: once the air runs low; **greedy**: she noticed the commander holding on past her opening; **again**: playful's teasing count that ends with no opening; **released**: as she lets go at her limit; **good** / **poor**: her verdict when she is done with the commander (most openings caught or not); **stop**: after the stop word; **wake**: after a blackout. A model-written cue of that moment (her own words, from her cue pool) may take a line's place. Neutral is every style with no rows of its own; cold is silent. One line picked as in §2 (no rng draw). No pronoun and no feeling for the commander.
+
+### neutral
+- **greedy:** `let go.`
+- **entry:** `breathe when I say.`
+- **now:** `now.`
+- **hold:** `hold it.`
+- **early:** `not yet.` · `wait.`
+- **tap:** `I know.`
+- **low:** `hold it.`
+- **good:** `good. you listened.`
+- **poor:** `sloppy. we’ll do this again.`
+- **released:** `breathe.`
+- **stop:** `okay. I’ve got you.`
+- **wake:** `there you are.`
+
+### affectionate
+- **greedy:** `easy. let go.`
+- **entry:** `easy. breathe when I tell you.`
+- **now:** `now, love.` · `now.`
+- **hold:** `hold for me.`
+- **early:** `shh. not yet.`
+- **tap:** `I’ve got you.`
+- **low:** `almost.`
+- **good:** `so good for me.`
+- **poor:** `you’re learning.`
+- **released:** `breathe. I’ve got you.`
+- **stop:** `okay. okay. I’m here.`
+- **wake:** `hey. there you are.`
+
+### ritual
+- **greedy:** `release.`
+- **entry:** `on my count.`
+- **now:** `now.`
+- **hold:** `hold.`
+- **early:** `on the count.`
+- **tap:** `noted.`
+- **low:** `hold.`
+- **good:** `as it should be.`
+- **poor:** `again. until it’s right.`
+- **released:** `breathe.`
+- **stop:** `stopping.`
+- **wake:** `back. good.`
+
+### playful
+- **greedy:** `so greedy~` · `greedy, greedy.`
+- **entry:** `let’s see how greedy you are.`
+- **now:** `now!` · `now~`
+- **hold:** `hold it~`
+- **early:** `ah-ah.`
+- **tap:** `say please.`
+- **low:** `cute.`
+- **good:** `you didn’t fall for it. boring.`
+- **poor:** `you fell for it every time.`
+- **released:** `fine, fine. breathe.`
+- **stop:** `okay. game over. I’m here.`
+- **wake:** `boo. you’re back.`
+- **fake:** `gotcha.` · `too eager.` · `so greedy.`
+- **again:** `again.`
+
+### cruel
+- **greedy:** `greedy. now wait.`
+- **entry:** `you breathe when I allow it.`
+- **now:** `now.`
+- **hold:** `hold it.`
+- **early:** `no.`
+- **tap:** `no.`
+- **low:** `not yet.`
+- **good:** `adequate.`
+- **poor:** `pathetic.`
+- **released:** `breathe. I’m not done.`
+- **stop:** `fine.`
+- **wake:** `awake? good.`
+
+### possessive
+- **greedy:** `you take when I give.`
+- **entry:** `every breath is mine.`
+- **now:** `now.`
+- **hold:** `hold it for me.`
+- **early:** `mine. wait.`
+- **tap:** `not yet.`
+- **low:** `stay with me.`
+- **good:** `good. mine.`
+- **poor:** `you’ll learn my rhythm.`
+- **released:** `breathe. you’re still mine.`
+- **stop:** `okay. I’m here.`
+- **wake:** `you came back to me.`
+
+### cold
+- **greedy:** silent
+- **entry:** silent
+- **now:** silent
+- **hold:** silent
+- **early:** silent
+- **tap:** silent
+- **low:** silent
+- **good:** silent
+- **poor:** silent
+- **released:** silent
+- **stop:** silent
+- **wake:** silent
+- **fake:** silent
+- **again:** silent

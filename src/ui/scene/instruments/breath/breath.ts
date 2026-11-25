@@ -24,7 +24,7 @@
  * - the end is the engine's: on its outcome the exit plays (her line, the dark leaving), or the blackout and the wake, through `finish`.
  */
 import type { Registries } from '../../../../content/types';
-import type { Seal } from '../../../../engine/blocking/types';
+import type { CueKind, Seal } from '../../../../engine/blocking/types';
 import { ceilingOf } from '../../../../engine/backdrops';
 import { fnv1a } from '../../../../engine/hub';
 import { occlusionOf } from '../../../../engine/physics/occlusion';
@@ -34,6 +34,7 @@ import { leadStyle, physicsStyleOf } from '../../../../engine/physics/style';
 import type { CampaignState } from '../../../../engine/state/types';
 import { TUNING } from '../../../../engine/tuning';
 import { analyzeNative } from '../../../analyze/mark';
+import { voiceLines, type VoiceKind } from '../../cards/voice';
 import { registerInstrument } from '../host';
 import { claimStyles, noteWrites, releaseClaim, type StyleClaim } from '../styleClaims';
 import type { InstrumentEnv, InstrumentRun, PhysicsEnd } from '../types';
@@ -372,6 +373,14 @@ function tap() {
   SFX.tap();
   const t = $('#tap'); t.classList.remove('knock'); void t.offsetWidth; t.classList.add('knock');
   E!.env.tap?.();
+  const l = L();
+  switch (S.style) {
+    case 'affectionate': say(pick(l.tap), 'line'); break;
+    case 'neutral': case 'ritual': say(pick(l.tap), 'line'); break;
+    case 'playful': say(pick(l.tap), 'line'); G.forceHonest = true; break;
+    case 'cruel': say(pick(l.tap), 'line'); press(1500); break;
+    default: say(pick(l.tap), 'line');
+  }
 }
 function press(ms = 500) { G.pressT = Math.max(G.pressT, ms); G.shake = 1; for (const x of G.sp) x.v -= 1.6; if (S.kind === 'squeeze') { G.squeezeT = 0; SFX.snap(); } }
 
@@ -655,10 +664,21 @@ function beatNow(): number {
 /** Her lines for a beat, from her cue pool (her style's words from the model, else the registry's), read while the staging is live. */
 function refreshLines(beat: number): void {
   if (!E) return;
-  const c = (k: Parameters<InstrumentEnv['staging']['cue']>[0]): string[] => { const l = E!.env.staging.cue(k, beat); return l ? [l] : []; };
-  const wf = c('window_false');
-  R.lines = { ...NO_LINES, now: c('window_open'), fake: wf, early: wf, greedy: c('greedy'), low: c('warning'), released: c('lift') };
+  const env = E.env;
+  const own = (k: string): string[] => [...voiceLines(env.registries, `breath.${k}` as VoiceKind, S.style)];
+  // her own words from the model for that moment, when it worded them (never the cue pool's fallback narration), else her line of §7
+  const voiced = (k: string, cue: CueKind): string[] => { const v = env.staging.voiced?.(cue, beat) ?? null; return v ? [v] : own(k); };
+  const lines: Lines = {};
+  for (const k of BREATH_KINDS) lines[k] = own(k);
+  for (const [k, cue] of VOICED) lines[k] = voiced(k, cue);
+  // the prototype's playful-only kinds are absent for the others (its `L().fake ?? L().early` reads that)
+  if (lines.fake!.length === 0) lines.fake = undefined as unknown as string[];
+  if (lines.again!.length === 0) lines.again = undefined as unknown as string[];
+  R.lines = lines;
 }
+/** Breath's line kinds (breath.html `LINES`, card-voice.md §7) and the cue kinds whose model words may take a line's place. */
+const BREATH_KINDS = ['greedy', 'entry', 'now', 'hold', 'early', 'tap', 'low', 'good', 'poor', 'released', 'stop', 'wake', 'fake', 'again'] as const;
+const VOICED: ReadonlyArray<[string, CueKind]> = [['now', 'window_open'], ['fake', 'window_false'], ['greedy', 'greedy'], ['low', 'warning']];
 /** Sends an input of this segment to the engine (once), exempt from the typing lapse when the mouse made it (ruling O). */
 function report(i: SegmentInput): void {
   if (!E || !R.seg) return;
@@ -735,6 +755,7 @@ function before(): void {
   const input = e.env.input as HTMLInputElement;
   if (input.value !== letters.prev) letters.sync();
   placeMirror(e);
+  keepInFrame(e);
   // the segment: scheduled when it runs, flushed just before it ends
   const run = R.run;
   const ck = e.env.staging.clock();
@@ -756,8 +777,23 @@ function before(): void {
 function after(): void {
   const e = E;
   if (!e) return;
+  keepInFrame(e); // a line written in this frame is inside the frame before it is painted
   noteWrites(e.claims[0]!, ['opacity']);
   noteWrites(e.claims[1]!, ['width', 'border-color']);
+}
+/** Her lines stay inside the frame (ruling Q): a line that would run past an edge is moved back in (one wider than 40 % wraps, by its CSS). */
+function keepInFrame(e: BreathEls): void {
+  for (const el of e.els['#hand']!.children as HTMLCollectionOf<HTMLElement>) {
+    const w = el.offsetWidth, x = el.offsetLeft;
+    if (!w) continue;
+    if (x + w > innerWidth - 8) {
+      if (el.style.right) el.style.right = '8px';
+      else el.style.left = `${Math.max(8, innerWidth - 8 - w)}px`;
+    } else if (x < 8) {
+      if (el.style.right) el.style.right = `${Math.max(8, innerWidth - 8 - w)}px`;
+      else el.style.left = '8px';
+    }
+  }
 }
 /** The letters lie over the input (the prototype's `#mirror` over `#cmd`): same box, same font, same scroll. */
 function placeMirror(e: BreathEls): void {
@@ -784,7 +820,7 @@ function grainTile(): string | null {
 function build(env: InstrumentEnv): BreathEls {
   const box = document.createElement('div');
   box.className = 'alius-breath';
-  box.setAttribute('aria-hidden', 'true');
+  box.setAttribute('aria-hidden', 'true'); // as the effects layer it lives in (stage/layers.ts): T is TAP's key
   const els: Record<string, HTMLElement> = {};
   const div = (id: string, parent: HTMLElement): HTMLElement => { const el = document.createElement('div'); el.className = `alius-breath-${id}`; els[`#${id}`] = el; parent.append(el); return el; };
   const world = div('world', box);
@@ -808,7 +844,6 @@ function build(env: InstrumentEnv): BreathEls {
   for (const [k, v] of Object.entries(analyzeNative('glossary:tap_signal'))) tapEl.setAttribute(k, v);
   tapEl.setAttribute('role', 'button');
   tapEl.setAttribute('aria-label', 'Tap');
-  tapEl.removeAttribute('aria-hidden');
   const gapEl = div('gap', box);
   for (const [k, v] of Object.entries(analyzeNative('glossary:gap_breath'))) gapEl.setAttribute(k, v);
   gapEl.setAttribute('role', 'button');
@@ -842,7 +877,6 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   R.leaky = run.seal === 'leaky';
   R.widthMs = STYLES[R.row]!.windowMs;
   R.seg = null; R.running = false; R.strain = null; R.via = 'key'; R.spriteBox = null;
-  R.lines = NO_LINES;
   // the engine's numbers, as a share of the gauge (a capacity above 100 makes every step smaller)
   const k = 100 / Math.max(1, run.capacity);
   BEAT = TUNING.physics.beatMs;
@@ -955,6 +989,7 @@ export function startBreath(env: InstrumentEnv, run: PhysicsRun): InstrumentRun 
   bind(env, run);
   listen(env);
   frame.last = undefined;
+  refreshLines(0);
   begin();
   requestAnimationFrame(frame);
   const mine = E;
@@ -967,6 +1002,7 @@ export function startBreath(env: InstrumentEnv, run: PhysicsRun): InstrumentRun 
     },
     finish(end: PhysicsEnd): number {
       if (E !== mine) return 0;
+      refreshLines(beatNow()); // her lines of §7 (the staging is dead now: no model words)
       if (end.result === 'blackout') { blackout(); return BLACKOUT_MS; }
       if (G.phase !== 'loop' && G.phase !== 'entry') return 0;
       exit(end.result === 'checked' ? 'done' : 'released');

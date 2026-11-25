@@ -69,6 +69,11 @@ export interface StagingController {
   tick(nowMs: number): void;
   /** One of her cue lines of a kind for a beat of the running segment, or `null`. */
   cue(kind: CueKind, beat: number): string | null;
+  /**
+   * P10e-e ruling Q: one of her cue lines of a kind for a beat, only when the model worded that kind for this run (her own words), never the
+   * registry's fallback narration; `null` otherwise. An instrument writes this in her hand in place of its own line.
+   */
+  voiced(kind: CueKind, beat: number): string | null;
   /** A chat switch: the clock stops, the inputs and the pool go, nothing more is dispatched until `resume`. */
   reset(): void;
   /** A campaign was opened: an open run is driven again. */
@@ -90,6 +95,8 @@ export function createStaging(deps: StagingDeps): StagingController {
   let startedAt: number | null = null;
   let lapseUntil = 0;
   const pools = new Map<string, ReturnType<typeof completeCues>>();
+  /** The model's own lines per run (only the kinds it worded): ruling Q. */
+  const voicedPools = new Map<string, CuePool>();
   const asked = new Set<string>();
   const ended = new Set<string>();
   /** P10e-e: the outcomes seen, by scene and run (an instrument plays the end of its run). */
@@ -131,6 +138,7 @@ export function createStaging(deps: StagingDeps): StagingController {
     apply(key, value, input) {
       if (!active || runKey(state()) !== key) return { stale: true };
       pools.set(key, completeCues(value, deps.registries(), input.physicsId));
+      if (value) voicedPools.set(key, value);
       return 'ok';
     },
     fallback(key, input) {
@@ -269,6 +277,12 @@ export function createStaging(deps: StagingDeps): StagingController {
       const pool = pools.get(runKey(state()) ?? r.id) ?? completeCues(null, deps.registries(), r.physicsId);
       return pickCue(pool, kind, `${r.id}|${r.segment.n}|${beat}`);
     },
+    voiced(kind, beat) {
+      const r = run();
+      if (!active || !r) return null;
+      const lines = voicedPools.get(runKey(state()) ?? '')?.[kind];
+      return lines && lines.length > 0 ? pickCue({ [kind]: lines } as Record<CueKind, string[]>, kind, `${r.id}|${r.segment.n}|${beat}`) : null;
+    },
     reset() {
       active = false;
       generation += 1;
@@ -276,6 +290,7 @@ export function createStaging(deps: StagingDeps): StagingController {
       startedAt = null;
       lapseUntil = 0;
       pools.clear();
+      voicedPools.clear();
       asked.clear();
       ended.clear();
       outcomes.clear();

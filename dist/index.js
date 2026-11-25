@@ -10820,14 +10820,29 @@ var CARD_VOICE_KINDS = [
   "slap.again",
   "slap.after.none",
   "slap.after.braced",
-  "slap.after.flinched"
+  "slap.after.flinched",
+  // P10e-e ruling Q: breath's lines (breath.html `LINES`, card-voice.md §7); an empty row is a style that is silent there (cold)
+  "breath.greedy",
+  "breath.entry",
+  "breath.now",
+  "breath.hold",
+  "breath.early",
+  "breath.tap",
+  "breath.low",
+  "breath.good",
+  "breath.poor",
+  "breath.released",
+  "breath.stop",
+  "breath.wake",
+  "breath.fake",
+  "breath.again"
 ];
 var CARD_VOICE_STATIC = /^static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)$/;
 var CardVoiceSchema = BaseEntrySchema.extend({
   kind: str.refine((k) => CARD_VOICE_KINDS.includes(k) || CARD_VOICE_STATIC.test(k), "an unknown card voice kind"),
   style: str.optional(),
-  lines: external_exports.array(str.max(160)).min(1)
-}).strict();
+  lines: external_exports.array(str.max(160))
+}).strict().refine((e) => e.lines.length > 0 || e.kind.startsWith("breath.") && e.style !== void 0, "no lines (only a style's own breath row may be empty: she is silent there)");
 registrySchemas.cardVoice = CardVoiceSchema;
 
 // src/engine/onboarding/prologue.ts
@@ -46871,6 +46886,9 @@ function linesOf(reg, kind, style) {
   const idx = indexOf(reg.cardVoice);
   return (style !== void 0 ? idx.get(`${kind}|${style}`) : void 0) ?? idx.get(`${kind}|`) ?? [];
 }
+function voiceLines(reg, kind, style) {
+  return linesOf(reg, kind, style);
+}
 var cap3 = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
 function fill6(frame3, vals) {
   const runs = [];
@@ -50991,21 +51009,19 @@ var GENERIC = {
   caught: (n) => `${n} caught`,
   missed: (n) => `${n} missed`,
   falseTaken: (n) => `${n} taken falsely`,
-  strains: (n) => `held on too long ${times(n)}`,
+  noticed: (n) => `held on past her opening ${times(n)}, and she noticed`,
   slips: (n) => `${n} ${n === 1 ? "slip" : "slips"}`,
   gasps: (n) => `${n} ${n === 1 ? "gasp" : "gasps"}`,
   cheatsCaught: (n) => `she caught ${n} ${n === 1 ? "cheat" : "cheats"}`
 };
-var ORDER3 = ["caught", "missed", "falseTaken", "strains", "slips", "gasps", "cheatsCaught"];
+var ORDER3 = ["caught", "missed", "falseTaken", "noticed", "slips", "gasps", "cheatsCaught"];
 function tallySentence(tally, phys) {
   const own = TALLY_WORDS[String(phys?.interaction ?? "")] ?? {};
   const parts = [];
   for (const k of ORDER3) {
     const n = tally[k] ?? 0;
     if (n <= 0) continue;
-    let part = (own[k] ?? GENERIC[k])(n);
-    if (k === "strains" && (tally.noticed ?? 0) > 0) part += ` (${tally.noticed} she noticed)`;
-    parts.push(part);
+    parts.push((own[k] ?? GENERIC[k])(n));
   }
   return parts.length === 0 ? "" : `Over the whole hold: ${parts.join(", ")}.`;
 }
@@ -51187,6 +51203,7 @@ function createStaging(deps) {
   let startedAt = null;
   let lapseUntil = 0;
   const pools = /* @__PURE__ */ new Map();
+  const voicedPools = /* @__PURE__ */ new Map();
   const asked = /* @__PURE__ */ new Set();
   const ended = /* @__PURE__ */ new Set();
   const outcomes = /* @__PURE__ */ new Map();
@@ -51230,6 +51247,7 @@ function createStaging(deps) {
     apply(key, value, input) {
       if (!active || runKey(state()) !== key) return { stale: true };
       pools.set(key, completeCues(value, deps.registries(), input.physicsId));
+      if (value) voicedPools.set(key, value);
       return "ok";
     },
     fallback(key, input) {
@@ -51361,6 +51379,12 @@ function createStaging(deps) {
       const pool = pools.get(runKey(state()) ?? r.id) ?? completeCues(null, deps.registries(), r.physicsId);
       return pickCue(pool, kind, `${r.id}|${r.segment.n}|${beat}`);
     },
+    voiced(kind, beat) {
+      const r = run();
+      if (!active || !r) return null;
+      const lines = voicedPools.get(runKey(state()) ?? "")?.[kind];
+      return lines && lines.length > 0 ? pickCue({ [kind]: lines }, kind, `${r.id}|${r.segment.n}|${beat}`) : null;
+    },
     reset() {
       active = false;
       generation += 1;
@@ -51368,6 +51392,7 @@ function createStaging(deps) {
       startedAt = null;
       lapseUntil = 0;
       pools.clear();
+      voicedPools.clear();
       asked.clear();
       ended.clear();
       outcomes.clear();
@@ -63097,6 +63122,7 @@ function scopedStaging(staging, scope) {
     act: (k) => on() ? staging.act(k) : [],
     finishCounted: (n) => on() ? staging.finishCounted(n) : [],
     cue: (k, b) => on() ? staging.cue(k, b) : null,
+    voiced: (k, b) => on() ? staging.voiced?.(k, b) ?? null : null,
     beat: () => staging.beat(),
     clock: () => staging.clock()
   };
@@ -63969,13 +63995,16 @@ function scheduleWindow(at, opts = {}) {
     }
   }
   G2.lastAgain = false;
-  push(at, () => {
-    const b = beatAt(G2.clock);
+  const fire = () => {
+    const b = beatAt(e.at);
+    if (G2.win) closeWindow();
     R4.widthMs = opts.widthMs ?? s.windowMs;
     refreshLines(b);
     openWindow(isFalse, mode === "none" || opts.quiet === true);
     G2.win.beat = b;
-  });
+  };
+  push(at, fire);
+  const e = G2.queue.find((x) => x.fn === fire);
 }
 function openWindow(isFalse, quiet = false) {
   const s = st();
@@ -64096,6 +64125,26 @@ function tap() {
   void t.offsetWidth;
   t.classList.add("knock");
   E.env.tap?.();
+  const l = L();
+  switch (S3.style) {
+    case "affectionate":
+      say2(pick3(l.tap), "line");
+      break;
+    case "neutral":
+    case "ritual":
+      say2(pick3(l.tap), "line");
+      break;
+    case "playful":
+      say2(pick3(l.tap), "line");
+      G2.forceHonest = true;
+      break;
+    case "cruel":
+      say2(pick3(l.tap), "line");
+      press(1500);
+      break;
+    default:
+      say2(pick3(l.tap), "line");
+  }
 }
 function press(ms = 500) {
   G2.pressT = Math2.max(G2.pressT, ms);
@@ -64458,13 +64507,21 @@ function beatNow() {
 }
 function refreshLines(beat) {
   if (!E) return;
-  const c = (k) => {
-    const l = E.env.staging.cue(k, beat);
-    return l ? [l] : [];
+  const env = E.env;
+  const own = (k) => [...voiceLines(env.registries, `breath.${k}`, S3.style)];
+  const voiced = (k, cue) => {
+    const v = env.staging.voiced?.(cue, beat) ?? null;
+    return v ? [v] : own(k);
   };
-  const wf = c("window_false");
-  R4.lines = { ...NO_LINES, now: c("window_open"), fake: wf, early: wf, greedy: c("greedy"), low: c("warning"), released: c("lift") };
+  const lines = {};
+  for (const k of BREATH_KINDS) lines[k] = own(k);
+  for (const [k, cue] of VOICED) lines[k] = voiced(k, cue);
+  if (lines.fake.length === 0) lines.fake = void 0;
+  if (lines.again.length === 0) lines.again = void 0;
+  R4.lines = lines;
 }
+var BREATH_KINDS = ["greedy", "entry", "now", "hold", "early", "tap", "low", "good", "poor", "released", "stop", "wake", "fake", "again"];
+var VOICED = [["now", "window_open"], ["fake", "window_false"], ["greedy", "greedy"], ["low", "warning"]];
 function report(i) {
   if (!E || !R4.seg) return;
   R4.seg.reported.push(i);
@@ -64510,7 +64567,6 @@ function schedulePlan(run, ck) {
   refreshLines(0);
   for (const o of effectiveOpenings(plan, [], styleKey())) {
     const at = R4.seg.clock0 + o.beat * BEAT;
-    if (at < G2.clock - 120) continue;
     const cue = plan.beats[o.beat]?.cue;
     scheduleWindow(at, { ...o.false ? { false: true } : {}, widthMs: o.widthMs, quiet: cue !== "window_open" && cue !== "window_false" });
   }
@@ -64547,6 +64603,7 @@ function before() {
   const input = e.env.input;
   if (input.value !== letters.prev) letters.sync();
   placeMirror(e);
+  keepInFrame(e);
   const run = R4.run;
   const ck = e.env.staging.clock();
   R4.running = run !== null && run.segment.state === "running" && run.segment.plan !== void 0 && ck.startedAt !== null;
@@ -64566,8 +64623,22 @@ function before() {
 function after() {
   const e = E;
   if (!e) return;
+  keepInFrame(e);
   noteWrites(e.claims[0], ["opacity"]);
   noteWrites(e.claims[1], ["width", "border-color"]);
+}
+function keepInFrame(e) {
+  for (const el of e.els["#hand"].children) {
+    const w = el.offsetWidth, x = el.offsetLeft;
+    if (!w) continue;
+    if (x + w > innerWidth2 - 8) {
+      if (el.style.right) el.style.right = "8px";
+      else el.style.left = `${Math2.max(8, innerWidth2 - 8 - w)}px`;
+    } else if (x < 8) {
+      if (el.style.right) el.style.right = `${Math2.max(8, innerWidth2 - 8 - w)}px`;
+      else el.style.left = "8px";
+    }
+  }
 }
 function placeMirror(e) {
   const input = e.env.input;
@@ -64633,7 +64704,6 @@ function build(env) {
   for (const [k, v] of Object.entries(analyzeNative("glossary:tap_signal"))) tapEl.setAttribute(k, v);
   tapEl.setAttribute("role", "button");
   tapEl.setAttribute("aria-label", "Tap");
-  tapEl.removeAttribute("aria-hidden");
   const gapEl = div("gap", box);
   for (const [k, v] of Object.entries(analyzeNative("glossary:gap_breath"))) gapEl.setAttribute(k, v);
   gapEl.setAttribute("role", "button");
@@ -64677,7 +64747,6 @@ function bind(env, run) {
   R4.strain = null;
   R4.via = "key";
   R4.spriteBox = null;
-  R4.lines = NO_LINES;
   const k = 100 / Math2.max(1, run.capacity);
   BEAT = TUNING.physics.beatMs;
   DRAIN = TUNING.physics.breath.drain * k;
@@ -64827,6 +64896,7 @@ function startBreath(env, run) {
   bind(env, run);
   listen(env);
   frame.last = void 0;
+  refreshLines(0);
   begin();
   requestAnimationFrame2(frame);
   const mine = E;
@@ -64839,6 +64909,7 @@ function startBreath(env, run) {
     },
     finish(end2) {
       if (E !== mine) return 0;
+      refreshLines(beatNow());
       if (end2.result === "blackout") {
         blackout();
         return BLACKOUT_MS;
@@ -64856,8 +64927,7 @@ function breathMatches(run, _state, reg) {
   const p = reg.contactPhysics.get(run.physicsId);
   if (p?.interaction !== "timing" || p.gauge?.kind !== "capacity") return false;
   if (!run.second) return true;
-  const second = reg.contactPhysics.get(run.second.physicsId)?.interaction;
-  return second === "decision" || second === "passive";
+  return reg.contactPhysics.get(run.second.physicsId)?.interaction === "passive";
 }
 registerInstrument({ id: "breath", matches: breathMatches, start: startBreath });
 
@@ -73279,6 +73349,7 @@ function createApp(st2, deps) {
           act: (k) => staging.act(k),
           finishCounted: (n) => staging.finishCounted(n),
           cue: (k, b) => staging.cue(k, b),
+          voiced: (k, b) => staging.voiced(k, b),
           beat: () => staging.beat(),
           clock: () => staging.clock(),
           outcome: (runId) => staging.outcome(runId),

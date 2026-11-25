@@ -19,14 +19,13 @@ const states = (await (await fetch('/.superpowers/layout/states.json')).json()) 
 const loaded = await loadPacks(['content/core'], (p: string) => fetch('/' + p).then((r) => r.json()));
 const state = states[['two', 'three', 'four', 'physics', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold'].includes(fixture) ? fixture : 'one'];
 // the breath instrument (P10e-e Task 14): `&style=<key>` is her physics style; `&quiet=1` clears the plan's openings (the shots open the windows
-// themselves through `window.__breath`, as the prototype's through its hooks); the segment started as the page loaded; her lines stand in for her
-// cue pool with the prototype's neutral ones; the stop word ends the hold (the run goes, the scene redraws), as the engine's does
+// themselves through `window.__breath`, as the prototype's through its hooks); the segment started as the page loaded; the stop word ends the hold (the run goes, the scene redraws), as the engine's does
 const breathing = fixture === 'breath' || fixture === 'breathhold';
 if (breathing && params.get('style')) registerPhysicsStyle(() => ({ primary: params.get('style') as never }));
 const run = (state as { scene?: { physics?: { segment: { plan?: { beats: Array<{ opening?: unknown; cue?: unknown }> } } } } }).scene?.physics;
 if (breathing && params.get('quiet') === '1') for (const b of run?.segment.plan?.beats ?? []) { delete b.opening; delete b.cue; }
 const startedAt = Date.now();
-const BREATH_LINES: Record<string, string> = { window_open: 'now.', window_false: 'gotcha.', greedy: 'let go.', warning: 'hold it.', lift: 'breathe.' };
+
 
 const words = (n: number): string => Array.from({ length: n }, (_, i) => `word${i}`).join(' ');
 const msg = (index: number, over: Partial<ChatMessage>): ChatMessage => ({ index, isUser: false, name: 'Ann', avatar: 'ann.png', text: '', swipeId: 0, swipeCount: 2, ...over });
@@ -54,7 +53,7 @@ const screen = renderSceneScreen(view, {
   physics: {
     input: noop, endSegment: noop, skip: noop, stimulus: noop, act: noop, finishCounted: noop, beat: () => 0, keystroke() {}, typed: () => null, onTap() {},
     stopWord: () => { if (breathing && run) { delete (state as { scene: { physics?: unknown } }).scene.physics; screen.refresh(); } return []; },
-    cue: (k: string) => (breathing ? BREATH_LINES[k] ?? null : 'Her breath comes short.'),
+    cue: () => 'Her breath comes short.', // the cue pool's narration: the card's (her hand on breath writes her own lines, card-voice.md §7)
     clock: () => (breathing ? { startedAt, beatMs: 1500, now: Date.now() } : { startedAt: null, beatMs: 1500, now: 0 }),
   } as never,
 });

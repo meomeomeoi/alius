@@ -38,6 +38,11 @@ function linesOf(reg: Registries, kind: VoiceKind, style: string | undefined): r
   return (style !== undefined ? idx.get(`${kind}|${style}`) : undefined) ?? idx.get(`${kind}|`) ?? [];
 }
 
+/** All her lines of a kind (her style's rows, else the neutral ones): an instrument that picks among them itself, as its prototype does (breath). */
+export function voiceLines(reg: Registries, kind: VoiceKind, style: string | undefined): readonly string[] {
+  return linesOf(reg, kind, style);
+}
+
 const cap = (s: string): string => (s ? s[0]!.toUpperCase() + s.slice(1) : s);
 
 /** Fills a frame (cards.html `fill`): `{x}` is the value as it is, `{X}` capitalised (it opens a sentence); each value is a run of its own. A value not given stays as written. */

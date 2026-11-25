@@ -112,6 +112,7 @@ function scopedStaging(staging: PhysicsPanelStaging, scope: Scope): PhysicsPanel
     act: (k) => (on() ? staging.act(k) : []),
     finishCounted: (n) => (on() ? staging.finishCounted(n) : []),
     cue: (k, b) => (on() ? staging.cue(k, b) : null),
+    voiced: (k, b) => (on() ? staging.voiced?.(k, b) ?? null : null),
     beat: () => staging.beat(),
     clock: () => staging.clock(),
   };

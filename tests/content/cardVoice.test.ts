@@ -25,7 +25,7 @@ function parseVoiceMd(md: string): Item[] {
     if (raw.startsWith('## ')) { sec = 0; cur = null; continue; }
     const h3 = /^### (.+)$/.exec(raw);
     if (h3) { heading = h3[1]!.trim(); cur = null; continue; }
-    if (!heading || ![1, 2, 3, 5, 6].includes(sec)) continue;
+    if (!heading || ![1, 2, 3, 5, 6, 7].includes(sec)) continue;
     const bullet = /^- (.*)$/.exec(raw);
     if (bullet) {
       const body = bullet[1]!;
@@ -89,6 +89,8 @@ const NEUTRAL_MAP: Record<string, Record<string, (l: string[]) => Out>> = {
   'Her return': new Proxy({}, { get: (_t, id: string) => all(`static.return.${id}`) }),
   'The moment (the situation, not her: one dim line of prose, not her hand)': { '': all('moment'), exposing: all('exposing') },
 };
+/** §7 (P10e-e Task 14, ruling Q): breath's lines by her style (breath.html `LINES`; neutral is the rows with no style; cold's are empty). */
+const BREATH_KINDS = ['greedy', 'entry', 'now', 'hold', 'early', 'tap', 'low', 'good', 'poor', 'released', 'stop', 'wake', 'fake', 'again'];
 /** §6 (P10e-e Task 11): the slap's lines by her style. */
 const SLAP_LABEL: Record<string, string> = { before: 'slap.before', feint: 'slap.feint', again: 'slap.again', none: 'slap.after.none', braced: 'slap.after.braced', flinched: 'slap.after.flinched' };
 const STYLE_LABEL: Record<string, string> = { when: 'when', cost: 'cost', who: 'who', 'only her': 'onlyMe', weight: 'weight', right: 'call.right', wrong: 'call.wrong', slow: 'call.slow' };
@@ -102,6 +104,11 @@ function expected(md: string): Map<string, string[]> {
     out.set(key, lines);
   };
   for (const it of parseVoiceMd(md)) {
+    if (it.sec === 7) {
+      if (!BREATH_KINDS.includes(it.label)) throw new Error(`unmapped breath item: ${it.heading} › ${it.label}`);
+      put(`breath.${it.label}`, it.heading === 'neutral' ? undefined : it.heading, it.lines);
+      continue;
+    }
     if (it.sec === 6) {
       const kind = SLAP_LABEL[it.label];
       if (!kind) throw new Error(`unmapped slap item: ${it.heading} › ${it.label}`);
@@ -141,6 +148,9 @@ describe('cardVoice registry (P10e-e R7)', () => {
     expect(CardVoiceSchema.safeParse({ id: 'x', kind: 'when', lines: [] }).success).toBe(false);
     expect(CardVoiceSchema.safeParse({ id: 'x', kind: 'static.milestone.first_yes', lines: ['a'] }).success).toBe(true);
     expect(CardVoiceSchema.safeParse({ id: 'x', kind: 'slap.after.braced', style: 'cruel', lines: ['a'] }).success).toBe(true);
+    expect(CardVoiceSchema.safeParse({ id: 'x', kind: 'breath.now', style: 'cold', lines: [] }).success).toBe(true); // a silent style
+    expect(CardVoiceSchema.safeParse({ id: 'x', kind: 'breath.now', lines: [] }).success).toBe(false); // the neutral row never
+    expect(CardVoiceSchema.safeParse({ id: 'x', kind: 'slap.before', style: 'cold', lines: [] }).success).toBe(false);
   });
 
   it('cardVoice holds every line of card-voice.md', () => {
@@ -164,6 +174,14 @@ describe('cardVoice registry (P10e-e R7)', () => {
       const cl = /^static\.claim\.(.+)$/.exec(String(e.kind));
       if (cl && cl[1] !== 'submit') expect(reg.dynamicDomains.has(cl[1]!), cl[1]).toBe(true);
     }
+  });
+
+  it('breath\'s lines (ruling Q): every kind of breath.html for its six styles, cold silent, and no pronoun for the commander (lore §0)', () => {
+    const rows = [...reg.cardVoice.values()].filter((e) => String(e.kind).startsWith('breath.'));
+    for (const k of BREATH_KINDS) expect(rows.some((e) => e.kind === `breath.${k}`), k).toBe(true);
+    expect(rows.filter((e) => e.style === 'cold').every((e) => (e.lines as string[]).length === 0)).toBe(true);
+    expect(rows.filter((e) => e.style === 'cold')).toHaveLength(BREATH_KINDS.length);
+    for (const e of rows) for (const l of e.lines as string[]) expect(l, String(e.id)).not.toMatch(/\b(he|him|his|himself|he's|she's the commander)\b/i);
   });
 
   it('a value that opens a sentence is capitalised (her name for a posture is kept as she says it)', () => {

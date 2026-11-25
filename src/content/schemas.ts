@@ -3101,6 +3101,9 @@ export const CARD_VOICE_KINDS = [
   'call.right', 'call.wrong', 'call.slow',
   'grants',
   'slap.before', 'slap.feint', 'slap.again', 'slap.after.none', 'slap.after.braced', 'slap.after.flinched',
+  // P10e-e ruling Q: breath's lines (breath.html `LINES`, card-voice.md §7); an empty row is a style that is silent there (cold)
+  'breath.greedy', 'breath.entry', 'breath.now', 'breath.hold', 'breath.early', 'breath.tap', 'breath.low', 'breath.good', 'breath.poor',
+  'breath.released', 'breath.stop', 'breath.wake', 'breath.fake', 'breath.again',
 ] as const;
 /** The kinds of her static words (card-voice.md §3), keyed by a milestone id, a domain id (or `submit`) and the return's terms. */
 export const CARD_VOICE_STATIC = /^static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)$/;
@@ -3113,7 +3116,7 @@ export const CARD_VOICE_STATIC = /^static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9
 export const CardVoiceSchema = BaseEntrySchema.extend({
   kind: str.refine((k) => (CARD_VOICE_KINDS as readonly string[]).includes(k) || CARD_VOICE_STATIC.test(k), 'an unknown card voice kind'),
   style: str.optional(),
-  lines: z.array(str.max(160)).min(1),
-}).strict();
+  lines: z.array(str.max(160)),
+}).strict().refine((e) => e.lines.length > 0 || (e.kind.startsWith('breath.') && e.style !== undefined), 'no lines (only a style\'s own breath row may be empty: she is silent there)');
 export type CardVoiceEntry = z.infer<typeof CardVoiceSchema>;
 registrySchemas.cardVoice = CardVoiceSchema;

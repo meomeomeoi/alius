@@ -297,16 +297,38 @@ describe('the breath instrument on the scene', () => {
     expect(reports(t).some((i) => i.beat === 3)).toBe(false); // the opening of beat 3 was missed: no breathe
   });
 
-  it('a false window reached for is a breathe on its beat (the engine counts it as taken); her line is the cue pool\'s', () => {
+  it('a false window reached for is a breathe on its beat (the engine counts it as taken); her lines are §7\'s, never the cue pool\'s narration', () => {
     const t = draw(hold(SEAT, planOf({ 3: { false: true, widthMs: 450 } })));
     t.to(3 * BEAT + 200);
-    expect(t.q('.alius-breath-hand')!.textContent).toContain('her window_open'); // the lie: "now." on a false window
+    expect(t.q('.alius-breath-hand')!.textContent).toContain('now.'); // the lie: her "now." on a false window
     t.mouse('mousedown');
     t.to(3 * BEAT + 300); // let go within 150 ms of the snap (held on, it would be an over-hold)
     t.mouse('mouseup', document);
     t.to(3 * BEAT + 700);
     expect(reports(t)).toEqual([{ beat: 3, kind: 'breathe' }]);
-    expect(t.q('.alius-breath-hand')!.textContent).toContain('her window_false');
+    expect(t.q('.alius-breath-hand')!.textContent).toMatch(/not yet\.|wait\./); // neutral has no `fake`: her `early` (the prototype's `fake ?? early`)
+    expect(t.q('.alius-breath-hand')!.textContent).not.toContain('her '); // the cue pool's fallback narration is never in her hand
+  });
+
+  it('ruling Q: her lines by style (card-voice.md §7): the entry, the tap, a model-worded cue in place of her line, cold silent', () => {
+    registerPhysicsStyle(() => ({ primary: 'ritual' }));
+    const t = draw(hold(SEAT, planOf({ 3: {}, 6: {} })), { staging: { voiced: (k: string) => (k === 'window_open' ? 'breathe for me, now' : null) } });
+    t.to(900);
+    expect(t.q('.alius-breath-hand')!.textContent).toContain('on my count.');
+    t.to(3 * BEAT + 300);
+    expect(t.q('.alius-breath-hand')!.textContent).toContain('breathe for me, now'); // the model worded window_open: her own words
+    expect(t.q('.alius-breath-hand')!.textContent).toMatch(/one…|two…/); // the count is hers (ritual)
+    t.to(5 * BEAT);
+    t.mouse('mousedown', t.q('.alius-breath-tap')!);
+    expect(t.onTap).toHaveBeenCalledTimes(1);
+    expect(t.q('.alius-breath-hand')!.textContent).toContain('noted.');
+    t.screen.dispose();
+    resetPhysicsHooks();
+    registerPhysicsStyle(() => ({ primary: 'cold' }));
+    const c = draw(hold(SEAT, planOf({ 3: {} })));
+    c.to(3 * BEAT + 300);
+    expect(_breath.G.win).not.toBeNull();
+    expect(c.q('.alius-breath-hand')!.textContent).toBe(''); // cold is silent, even on her opening
   });
 
   it('a cruel holder\'s silent opening writes no line; a breath through the gap of a leaky seal is reported at once', () => {
@@ -435,7 +457,7 @@ describe('the breath instrument on the scene', () => {
     expect(stopped).not.toHaveBeenCalled();
   });
 
-  it('the end: on her release the exit plays through finish (her lift line), then the host unmounts', async () => {
+  it('the end: on her release the exit plays through finish (her released line), then the host unmounts', async () => {
     const s = hold();
     const t = draw(s, { staging: { outcome: () => ({ runId: 'p1', physicsId: 'breath', result: 'released' }) } });
     t.to(3000);
@@ -445,7 +467,7 @@ describe('the breath instrument on the scene', () => {
     await Promise.resolve();
     expect(_breath.G.phase).toBe('exit');
     t.to(3000 + 900);
-    expect(t.q('.alius-breath-hand')!.textContent).toContain('her lift');
+    expect(t.q('.alius-breath-hand')!.textContent).toContain('breathe.');
     t.to(3000 + 2700);
     expect(t.q('.alius-breath')).toBeNull();
   });

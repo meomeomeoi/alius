@@ -1,6 +1,6 @@
 {
   "prototype": "breath",
-  "note": "Task 14 (chunk e4): breathing. The functions of breath.html that its README calls normative (the dark's `render`, `sizeCanvases`, `setStyle`; the window's `openWindow`, `windowOpenness`, `windowDone`, `closeWindow`; `updateLoop`, `frame`; her hand's `say`, `fade`, `clearHand`; `heartTick`; the sound's `audioInit`, `noise`, `thump`, `SFX`, `inhaleStart`, `inhaleStop`; the phases `begin`, `exit`, `blackout`, `wake`; `tap`, `press`; the input's `letters`, `typing`, `breatheDown`, `breatheUp`; the state's `fresh`, `push`, `cancelWindows`, `cueMode`, `st`, `L`, the easings and `pick` / `randInt`), its tables (`STYLES`, `REST_OPEN`, `VIEW_OF`) and the kit's (`SHAPES`, `SEAT_BODY`, `squashOf`, `chaikin`, checked by kit/fidelity.json). Module wiring beyond the listed functions (breath.ts header): `performance`, `setTimeout`, `requestAnimationFrame`, `innerWidth` / `innerHeight` and `Math.random` are the module's own (the scene's frame clock, the mount's timers and frames, the scene's size, a xorshift seeded by fnv1a of the scene and the run: no rng draw); `window` is the module's own `{ __forceO }` (the shots' hook); `$` names the instrument's elements in the effects layer (under the scene's UI: the stop word's pill is never covered), the scene's reply, input line and input, and the letters laid over the input; the reply's opacity and the line's width and border are written through claims (styleClaims.ts, recorded as written); the prototype's top-level listeners are the mount's (`env.listen`: Space and T never from a field or a control, the left button only on the frame, preventDefault so the field keeps its focus; Enter in the field sends the line as heard); the grain tile is made per mount. The engine's numbers (BEAT, DRAIN, CAUGHT, MISSED, CRUEL_MISSED, SEAL_RELIEF) are TUNING.physics.breath scaled to the run's capacity (the air is the gauge's share); the air is set from the engine's gauge as each segment starts. `S` is the approved defaults with the run's shape (`occlusionOf` of the contact: kind, side, angle; the kit's `S` is set the same), the view (`ceiling` falls back to `room` when the scene has no ceiling art or it fails to load), her face point (`art.face`) and the still form (`env.reduced`, `env.readable`). Her lines: see `L` and `cues` (the kinds the port takes from the cue pool). The prototype's `KINDS` and the rejected `seat_x_*` shapes, the panel, the start overlay, the summary, the debug readout and the `__` hooks are prototype only (`_breath` is the tests' and the shots' hook). Added: the gap of a leaky seal (`gap_breath`, a dashed ring under the TAP ring, glossary `gap_breath`), as the card's button today. CSS (checked by the shots): the prototype's styles under `.alius-breath` (her lines in her hand at its sizes × her hand's measured scale, R10); the narrowed input line keeps a min-width of 420 px, because the scene's line carries its prompt and tools beside the field (the prototype's has neither); her own <img> is sized to its natural size each frame. The `greedy` row of physicsCues holds the neutral, affectionate and ritual lines of LINES.*.greedy (the content test wants 3–5 lines a row; the model words her own style's).",
+  "note": "Task 14 (chunk e4): breathing. The functions of breath.html that its README calls normative (the dark's `render`, `sizeCanvases`, `setStyle`; the window's `openWindow`, `windowOpenness`, `windowDone`, `closeWindow`; `updateLoop`, `frame`; her hand's `say`, `fade`, `clearHand`; `heartTick`; the sound's `audioInit`, `noise`, `thump`, `SFX`, `inhaleStart`, `inhaleStop`; the phases `begin`, `exit`, `blackout`, `wake`; `tap`, `press`; the input's `letters`, `typing`, `breatheDown`, `breatheUp`; the state's `fresh`, `push`, `cancelWindows`, `cueMode`, `st`, `L`, the easings and `pick` / `randInt`), its tables (`STYLES`, `REST_OPEN`, `VIEW_OF`) and the kit's (`SHAPES`, `SEAT_BODY`, `squashOf`, `chaikin`, checked by kit/fidelity.json). Module wiring beyond the listed functions (breath.ts header): `performance`, `setTimeout`, `requestAnimationFrame`, `innerWidth` / `innerHeight` and `Math.random` are the module's own (the scene's frame clock, the mount's timers and frames, the scene's size, a xorshift seeded by fnv1a of the scene and the run: no rng draw); `window` is the module's own `{ __forceO }` (the shots' hook); `$` names the instrument's elements in the effects layer (under the scene's UI: the stop word's pill is never covered), the scene's reply, input line and input, and the letters laid over the input; the reply's opacity and the line's width and border are written through claims (styleClaims.ts, recorded as written); the prototype's top-level listeners are the mount's (`env.listen`: Space and T never from a field or a control, the left button only on the frame, preventDefault so the field keeps its focus; Enter in the field sends the line as heard); the grain tile is made per mount. The engine's numbers (BEAT, DRAIN, CAUGHT, MISSED, CRUEL_MISSED, SEAL_RELIEF) are TUNING.physics.breath scaled to the run's capacity (the air is the gauge's share); the air is set from the engine's gauge as each segment starts. `S` is the approved defaults with the run's shape (`occlusionOf` of the contact: kind, side, angle; the kit's `S` is set the same), the view (`ceiling` falls back to `room` when the scene has no ceiling art or it fails to load), her face point (`art.face`) and the still form (`env.reduced`, `env.readable`). Her lines: see `L` (ruling Q: `cardVoice` `breath.*`, checked by `lines`; the model's words of window_open, window_false, greedy and warning may take their place). Playful's 'again.' is not ported: it moves her rhythm (no opening now, one 1–2 beats later), which only the engine's plan can (R3); said while the planned opening opens it would be a lie the prototype never tells. Its rows are in cardVoice for the day the plan has such beats. The prototype's `KINDS` and the rejected `seat_x_*` shapes, the panel, the start overlay, the summary, the debug readout and the `__` hooks are prototype only (`_breath` is the tests' and the shots' hook). Added: the gap of a leaky seal (`gap_breath`, a dashed ring under the TAP ring, glossary `gap_breath`), as the card's button today. CSS (checked by the shots): the prototype's styles under `.alius-breath` (her lines in her hand at its sizes × her hand's measured scale, R10); the narrowed input line keeps a min-width of 420 px, because the scene's line carries its prompt and tools beside the field (the prototype's has neither); her own <img> is sized to its natural size each frame. Her lines wrap inside the frame (max 40 %, and `keepInFrame` moves one back from an edge); the prototype's are short and on one line. The `greedy` row of physicsCues (Task 13) is only the model's fallback for its own call; the hand never writes it.",
   "functions": [
     {
       "fn": "easeOut",
@@ -213,8 +213,8 @@
     },
     {
       "fn": "tap",
-      "reason": "README: her answers to the tap stand in for `holdsUntil` and P15a's `physics/signal`: the tap is the engine's (`env.tap`, the scene's `onTap`), whatever her style; the ring's knock and sound are the prototype's.",
-      "diff": "@@ -7,28 +7,3 @@\n t.classList.add(\"knock\")\n-const l=L()\n-switch(S.style){\n-case\"affectionate\":say(pick(l.tap),\"line\")\n-if(!G.win){\n-cancelWindows()\n-scheduleWindow(G.clock+450,{\n-honest:true,silent:true\n-})\n-}\n-break\n-case\"neutral\":case\"ritual\":say(pick(l.tap),\"line\")\n-if(!G.win){\n-cancelWindows()\n-scheduleWindow(G.clock+BEAT*1.2,{\n-honest:true\n-})\n-}\n-break\n-case\"playful\":say(pick(l.tap),\"line\")\n-G.forceHonest=true\n-break\n-case\"cruel\":say(pick(l.tap),\"line\")\n-press(1500)\n-break\n-default:say(pick(l.tap),\"line\")\n-}\n+E.env.tap?.()\n }"
+      "reason": "README: her answers to the tap stand in for `holdsUntil` and P15a's `physics/signal`: the tap is the engine's (`env.tap`, the scene's `onTap`). Ruling Q: her answer by style is ported (her `tap` line, cruel's press; playful's `forceHonest` is kept, though the plan's own false flag decides), but not the moves of her rhythm (an honest window scheduled after the tap): the openings are the engine's plan.",
+      "diff": "@@ -7,2 +7,3 @@\n t.classList.add(\"knock\")\n+E.env.tap?.()\n const l=L()\n@@ -10,16 +11,4 @@\n case\"affectionate\":say(pick(l.tap),\"line\")\n-if(!G.win){\n-cancelWindows()\n-scheduleWindow(G.clock+450,{\n-honest:true,silent:true\n-})\n-}\n break\n case\"neutral\":case\"ritual\":say(pick(l.tap),\"line\")\n-if(!G.win){\n-cancelWindows()\n-scheduleWindow(G.clock+BEAT*1.2,{\n-honest:true\n-})\n-}\n break"
     },
     {
       "fn": "updateLoop",
@@ -248,16 +248,90 @@
     },
     {
       "fn": "L",
-      "reason": "Her lines are her cue pool's (`staging.cue(kind, beat)`), never the prototype's LINES: `now` → window_open, `fake` and `early` → window_false, `greedy` → greedy, `low` → warning, `released` → lift; `entry`, `hold`, `tap`, `good`, `poor`, `stop`, `wake` and `again` have no cue kind and say nothing.",
+      "reason": "Ruling Q: her lines are the `cardVoice` rows `breath.<kind>` of her style (card-voice.md §7: breath.html's LINES verbatim, neutral for every style with no rows of its own, cold silent), read by `refreshLines` while her moment comes; a model-worded cue of that moment (`staging.voiced`: window_open for `now`, window_false for `fake`, greedy, warning for `low`) takes the line's place; the cue pool's fallback narration is never written in her hand. `fake` and `again` are absent for a style that has none (the prototype's `L().fake ?? L().early`).",
       "diff": "@@ -1 +1 @@\n-const L=()=>LINES[S.style]\n+const L=()=>R.lines"
     }
   ],
-  "cues": {
-    "now": "window_open",
-    "fake": "window_false",
-    "early": "window_false",
-    "greedy": "greedy",
-    "low": "warning",
-    "released": "lift"
-  }
+  "lines": [
+    {
+      "ident": "LINES",
+      "registry": "cardVoice",
+      "cueKinds": {
+        "neutral.greedy": "breath.greedy",
+        "neutral.entry": "breath.entry",
+        "neutral.now": "breath.now",
+        "neutral.hold": "breath.hold",
+        "neutral.early": "breath.early",
+        "neutral.tap": "breath.tap",
+        "neutral.low": "breath.low",
+        "neutral.good": "breath.good",
+        "neutral.poor": "breath.poor",
+        "neutral.released": "breath.released",
+        "neutral.stop": "breath.stop",
+        "neutral.wake": "breath.wake",
+        "affectionate.greedy": "breath.greedy@affectionate",
+        "affectionate.entry": "breath.entry@affectionate",
+        "affectionate.now": "breath.now@affectionate",
+        "affectionate.hold": "breath.hold@affectionate",
+        "affectionate.early": "breath.early@affectionate",
+        "affectionate.tap": "breath.tap@affectionate",
+        "affectionate.low": "breath.low@affectionate",
+        "affectionate.good": "breath.good@affectionate",
+        "affectionate.poor": "breath.poor@affectionate",
+        "affectionate.released": "breath.released@affectionate",
+        "affectionate.stop": "breath.stop@affectionate",
+        "affectionate.wake": "breath.wake@affectionate",
+        "ritual.greedy": "breath.greedy@ritual",
+        "ritual.entry": "breath.entry@ritual",
+        "ritual.now": "breath.now@ritual",
+        "ritual.hold": "breath.hold@ritual",
+        "ritual.early": "breath.early@ritual",
+        "ritual.tap": "breath.tap@ritual",
+        "ritual.low": "breath.low@ritual",
+        "ritual.good": "breath.good@ritual",
+        "ritual.poor": "breath.poor@ritual",
+        "ritual.released": "breath.released@ritual",
+        "ritual.stop": "breath.stop@ritual",
+        "ritual.wake": "breath.wake@ritual",
+        "playful.greedy": "breath.greedy@playful",
+        "playful.entry": "breath.entry@playful",
+        "playful.now": "breath.now@playful",
+        "playful.hold": "breath.hold@playful",
+        "playful.early": "breath.early@playful",
+        "playful.fake": "breath.fake@playful",
+        "playful.again": "breath.again@playful",
+        "playful.tap": "breath.tap@playful",
+        "playful.low": "breath.low@playful",
+        "playful.good": "breath.good@playful",
+        "playful.poor": "breath.poor@playful",
+        "playful.released": "breath.released@playful",
+        "playful.stop": "breath.stop@playful",
+        "playful.wake": "breath.wake@playful",
+        "cruel.greedy": "breath.greedy@cruel",
+        "cruel.entry": "breath.entry@cruel",
+        "cruel.now": "breath.now@cruel",
+        "cruel.hold": "breath.hold@cruel",
+        "cruel.early": "breath.early@cruel",
+        "cruel.tap": "breath.tap@cruel",
+        "cruel.low": "breath.low@cruel",
+        "cruel.good": "breath.good@cruel",
+        "cruel.poor": "breath.poor@cruel",
+        "cruel.released": "breath.released@cruel",
+        "cruel.stop": "breath.stop@cruel",
+        "cruel.wake": "breath.wake@cruel",
+        "possessive.greedy": "breath.greedy@possessive",
+        "possessive.entry": "breath.entry@possessive",
+        "possessive.now": "breath.now@possessive",
+        "possessive.hold": "breath.hold@possessive",
+        "possessive.early": "breath.early@possessive",
+        "possessive.tap": "breath.tap@possessive",
+        "possessive.low": "breath.low@possessive",
+        "possessive.good": "breath.good@possessive",
+        "possessive.poor": "breath.poor@possessive",
+        "possessive.released": "breath.released@possessive",
+        "possessive.stop": "breath.stop@possessive",
+        "possessive.wake": "breath.wake@possessive"
+      }
+    }
+  ]
 }

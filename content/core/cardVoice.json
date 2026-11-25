@@ -1548,5 +1548,675 @@
     "lines": [
       "face me."
     ]
+  },
+  {
+    "id": "breath.greedy",
+    "kind": "breath.greedy",
+    "lines": [
+      "let go."
+    ]
+  },
+  {
+    "id": "breath.entry",
+    "kind": "breath.entry",
+    "lines": [
+      "breathe when I say."
+    ]
+  },
+  {
+    "id": "breath.now",
+    "kind": "breath.now",
+    "lines": [
+      "now."
+    ]
+  },
+  {
+    "id": "breath.hold",
+    "kind": "breath.hold",
+    "lines": [
+      "hold it."
+    ]
+  },
+  {
+    "id": "breath.early",
+    "kind": "breath.early",
+    "lines": [
+      "not yet.",
+      "wait."
+    ]
+  },
+  {
+    "id": "breath.tap",
+    "kind": "breath.tap",
+    "lines": [
+      "I know."
+    ]
+  },
+  {
+    "id": "breath.low",
+    "kind": "breath.low",
+    "lines": [
+      "hold it."
+    ]
+  },
+  {
+    "id": "breath.good",
+    "kind": "breath.good",
+    "lines": [
+      "good. you listened."
+    ]
+  },
+  {
+    "id": "breath.poor",
+    "kind": "breath.poor",
+    "lines": [
+      "sloppy. we’ll do this again."
+    ]
+  },
+  {
+    "id": "breath.released",
+    "kind": "breath.released",
+    "lines": [
+      "breathe."
+    ]
+  },
+  {
+    "id": "breath.stop",
+    "kind": "breath.stop",
+    "lines": [
+      "okay. I’ve got you."
+    ]
+  },
+  {
+    "id": "breath.wake",
+    "kind": "breath.wake",
+    "lines": [
+      "there you are."
+    ]
+  },
+  {
+    "id": "breath.greedy.affectionate",
+    "kind": "breath.greedy",
+    "style": "affectionate",
+    "lines": [
+      "easy. let go."
+    ]
+  },
+  {
+    "id": "breath.entry.affectionate",
+    "kind": "breath.entry",
+    "style": "affectionate",
+    "lines": [
+      "easy. breathe when I tell you."
+    ]
+  },
+  {
+    "id": "breath.now.affectionate",
+    "kind": "breath.now",
+    "style": "affectionate",
+    "lines": [
+      "now, love.",
+      "now."
+    ]
+  },
+  {
+    "id": "breath.hold.affectionate",
+    "kind": "breath.hold",
+    "style": "affectionate",
+    "lines": [
+      "hold for me."
+    ]
+  },
+  {
+    "id": "breath.early.affectionate",
+    "kind": "breath.early",
+    "style": "affectionate",
+    "lines": [
+      "shh. not yet."
+    ]
+  },
+  {
+    "id": "breath.tap.affectionate",
+    "kind": "breath.tap",
+    "style": "affectionate",
+    "lines": [
+      "I’ve got you."
+    ]
+  },
+  {
+    "id": "breath.low.affectionate",
+    "kind": "breath.low",
+    "style": "affectionate",
+    "lines": [
+      "almost."
+    ]
+  },
+  {
+    "id": "breath.good.affectionate",
+    "kind": "breath.good",
+    "style": "affectionate",
+    "lines": [
+      "so good for me."
+    ]
+  },
+  {
+    "id": "breath.poor.affectionate",
+    "kind": "breath.poor",
+    "style": "affectionate",
+    "lines": [
+      "you’re learning."
+    ]
+  },
+  {
+    "id": "breath.released.affectionate",
+    "kind": "breath.released",
+    "style": "affectionate",
+    "lines": [
+      "breathe. I’ve got you."
+    ]
+  },
+  {
+    "id": "breath.stop.affectionate",
+    "kind": "breath.stop",
+    "style": "affectionate",
+    "lines": [
+      "okay. okay. I’m here."
+    ]
+  },
+  {
+    "id": "breath.wake.affectionate",
+    "kind": "breath.wake",
+    "style": "affectionate",
+    "lines": [
+      "hey. there you are."
+    ]
+  },
+  {
+    "id": "breath.greedy.ritual",
+    "kind": "breath.greedy",
+    "style": "ritual",
+    "lines": [
+      "release."
+    ]
+  },
+  {
+    "id": "breath.entry.ritual",
+    "kind": "breath.entry",
+    "style": "ritual",
+    "lines": [
+      "on my count."
+    ]
+  },
+  {
+    "id": "breath.now.ritual",
+    "kind": "breath.now",
+    "style": "ritual",
+    "lines": [
+      "now."
+    ]
+  },
+  {
+    "id": "breath.hold.ritual",
+    "kind": "breath.hold",
+    "style": "ritual",
+    "lines": [
+      "hold."
+    ]
+  },
+  {
+    "id": "breath.early.ritual",
+    "kind": "breath.early",
+    "style": "ritual",
+    "lines": [
+      "on the count."
+    ]
+  },
+  {
+    "id": "breath.tap.ritual",
+    "kind": "breath.tap",
+    "style": "ritual",
+    "lines": [
+      "noted."
+    ]
+  },
+  {
+    "id": "breath.low.ritual",
+    "kind": "breath.low",
+    "style": "ritual",
+    "lines": [
+      "hold."
+    ]
+  },
+  {
+    "id": "breath.good.ritual",
+    "kind": "breath.good",
+    "style": "ritual",
+    "lines": [
+      "as it should be."
+    ]
+  },
+  {
+    "id": "breath.poor.ritual",
+    "kind": "breath.poor",
+    "style": "ritual",
+    "lines": [
+      "again. until it’s right."
+    ]
+  },
+  {
+    "id": "breath.released.ritual",
+    "kind": "breath.released",
+    "style": "ritual",
+    "lines": [
+      "breathe."
+    ]
+  },
+  {
+    "id": "breath.stop.ritual",
+    "kind": "breath.stop",
+    "style": "ritual",
+    "lines": [
+      "stopping."
+    ]
+  },
+  {
+    "id": "breath.wake.ritual",
+    "kind": "breath.wake",
+    "style": "ritual",
+    "lines": [
+      "back. good."
+    ]
+  },
+  {
+    "id": "breath.greedy.playful",
+    "kind": "breath.greedy",
+    "style": "playful",
+    "lines": [
+      "so greedy~",
+      "greedy, greedy."
+    ]
+  },
+  {
+    "id": "breath.entry.playful",
+    "kind": "breath.entry",
+    "style": "playful",
+    "lines": [
+      "let’s see how greedy you are."
+    ]
+  },
+  {
+    "id": "breath.now.playful",
+    "kind": "breath.now",
+    "style": "playful",
+    "lines": [
+      "now!",
+      "now~"
+    ]
+  },
+  {
+    "id": "breath.hold.playful",
+    "kind": "breath.hold",
+    "style": "playful",
+    "lines": [
+      "hold it~"
+    ]
+  },
+  {
+    "id": "breath.early.playful",
+    "kind": "breath.early",
+    "style": "playful",
+    "lines": [
+      "ah-ah."
+    ]
+  },
+  {
+    "id": "breath.tap.playful",
+    "kind": "breath.tap",
+    "style": "playful",
+    "lines": [
+      "say please."
+    ]
+  },
+  {
+    "id": "breath.low.playful",
+    "kind": "breath.low",
+    "style": "playful",
+    "lines": [
+      "cute."
+    ]
+  },
+  {
+    "id": "breath.good.playful",
+    "kind": "breath.good",
+    "style": "playful",
+    "lines": [
+      "you didn’t fall for it. boring."
+    ]
+  },
+  {
+    "id": "breath.poor.playful",
+    "kind": "breath.poor",
+    "style": "playful",
+    "lines": [
+      "you fell for it every time."
+    ]
+  },
+  {
+    "id": "breath.released.playful",
+    "kind": "breath.released",
+    "style": "playful",
+    "lines": [
+      "fine, fine. breathe."
+    ]
+  },
+  {
+    "id": "breath.stop.playful",
+    "kind": "breath.stop",
+    "style": "playful",
+    "lines": [
+      "okay. game over. I’m here."
+    ]
+  },
+  {
+    "id": "breath.wake.playful",
+    "kind": "breath.wake",
+    "style": "playful",
+    "lines": [
+      "boo. you’re back."
+    ]
+  },
+  {
+    "id": "breath.fake.playful",
+    "kind": "breath.fake",
+    "style": "playful",
+    "lines": [
+      "gotcha.",
+      "too eager.",
+      "so greedy."
+    ]
+  },
+  {
+    "id": "breath.again.playful",
+    "kind": "breath.again",
+    "style": "playful",
+    "lines": [
+      "again."
+    ]
+  },
+  {
+    "id": "breath.greedy.cruel",
+    "kind": "breath.greedy",
+    "style": "cruel",
+    "lines": [
+      "greedy. now wait."
+    ]
+  },
+  {
+    "id": "breath.entry.cruel",
+    "kind": "breath.entry",
+    "style": "cruel",
+    "lines": [
+      "you breathe when I allow it."
+    ]
+  },
+  {
+    "id": "breath.now.cruel",
+    "kind": "breath.now",
+    "style": "cruel",
+    "lines": [
+      "now."
+    ]
+  },
+  {
+    "id": "breath.hold.cruel",
+    "kind": "breath.hold",
+    "style": "cruel",
+    "lines": [
+      "hold it."
+    ]
+  },
+  {
+    "id": "breath.early.cruel",
+    "kind": "breath.early",
+    "style": "cruel",
+    "lines": [
+      "no."
+    ]
+  },
+  {
+    "id": "breath.tap.cruel",
+    "kind": "breath.tap",
+    "style": "cruel",
+    "lines": [
+      "no."
+    ]
+  },
+  {
+    "id": "breath.low.cruel",
+    "kind": "breath.low",
+    "style": "cruel",
+    "lines": [
+      "not yet."
+    ]
+  },
+  {
+    "id": "breath.good.cruel",
+    "kind": "breath.good",
+    "style": "cruel",
+    "lines": [
+      "adequate."
+    ]
+  },
+  {
+    "id": "breath.poor.cruel",
+    "kind": "breath.poor",
+    "style": "cruel",
+    "lines": [
+      "pathetic."
+    ]
+  },
+  {
+    "id": "breath.released.cruel",
+    "kind": "breath.released",
+    "style": "cruel",
+    "lines": [
+      "breathe. I’m not done."
+    ]
+  },
+  {
+    "id": "breath.stop.cruel",
+    "kind": "breath.stop",
+    "style": "cruel",
+    "lines": [
+      "fine."
+    ]
+  },
+  {
+    "id": "breath.wake.cruel",
+    "kind": "breath.wake",
+    "style": "cruel",
+    "lines": [
+      "awake? good."
+    ]
+  },
+  {
+    "id": "breath.greedy.possessive",
+    "kind": "breath.greedy",
+    "style": "possessive",
+    "lines": [
+      "you take when I give."
+    ]
+  },
+  {
+    "id": "breath.entry.possessive",
+    "kind": "breath.entry",
+    "style": "possessive",
+    "lines": [
+      "every breath is mine."
+    ]
+  },
+  {
+    "id": "breath.now.possessive",
+    "kind": "breath.now",
+    "style": "possessive",
+    "lines": [
+      "now."
+    ]
+  },
+  {
+    "id": "breath.hold.possessive",
+    "kind": "breath.hold",
+    "style": "possessive",
+    "lines": [
+      "hold it for me."
+    ]
+  },
+  {
+    "id": "breath.early.possessive",
+    "kind": "breath.early",
+    "style": "possessive",
+    "lines": [
+      "mine. wait."
+    ]
+  },
+  {
+    "id": "breath.tap.possessive",
+    "kind": "breath.tap",
+    "style": "possessive",
+    "lines": [
+      "not yet."
+    ]
+  },
+  {
+    "id": "breath.low.possessive",
+    "kind": "breath.low",
+    "style": "possessive",
+    "lines": [
+      "stay with me."
+    ]
+  },
+  {
+    "id": "breath.good.possessive",
+    "kind": "breath.good",
+    "style": "possessive",
+    "lines": [
+      "good. mine."
+    ]
+  },
+  {
+    "id": "breath.poor.possessive",
+    "kind": "breath.poor",
+    "style": "possessive",
+    "lines": [
+      "you’ll learn my rhythm."
+    ]
+  },
+  {
+    "id": "breath.released.possessive",
+    "kind": "breath.released",
+    "style": "possessive",
+    "lines": [
+      "breathe. you’re still mine."
+    ]
+  },
+  {
+    "id": "breath.stop.possessive",
+    "kind": "breath.stop",
+    "style": "possessive",
+    "lines": [
+      "okay. I’m here."
+    ]
+  },
+  {
+    "id": "breath.wake.possessive",
+    "kind": "breath.wake",
+    "style": "possessive",
+    "lines": [
+      "you came back to me."
+    ]
+  },
+  {
+    "id": "breath.greedy.cold",
+    "kind": "breath.greedy",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "breath.entry.cold",
+    "kind": "breath.entry",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "breath.now.cold",
+    "kind": "breath.now",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "breath.hold.cold",
+    "kind": "breath.hold",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "breath.early.cold",
+    "kind": "breath.early",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "breath.tap.cold",
+    "kind": "breath.tap",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "breath.low.cold",
+    "kind": "breath.low",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "breath.good.cold",
+    "kind": "breath.good",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "breath.poor.cold",
+    "kind": "breath.poor",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "breath.released.cold",
+    "kind": "breath.released",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "breath.stop.cold",
+    "kind": "breath.stop",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "breath.wake.cold",
+    "kind": "breath.wake",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "breath.fake.cold",
+    "kind": "breath.fake",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "breath.again.cold",
+    "kind": "breath.again",
+    "style": "cold",
+    "lines": []
   }
 ]

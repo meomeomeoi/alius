@@ -141,6 +141,10 @@ for (const size of SIZES) {
         if (input !== 'ok') out.push(`the input mid-breath: ${input}`);
         const pill = top(document.querySelector('[data-stop-word]'));
         if (pill !== 'ok') out.push(`the stop word mid-breath: ${pill}`);
+        for (const l of document.querySelectorAll('.alius-breath-hand .her-line')) {
+          const r = l.getBoundingClientRect();
+          if (r.left < 0 || r.right > innerWidth || r.top < 0 || r.bottom > innerHeight) out.push(`her line "${l.textContent}" leaves the frame: ${JSON.stringify(r)}`);
+        }
         const b = document.querySelector('.alius-input-line')?.getBoundingClientRect();
         if (!b || b.right > innerWidth || b.left < 0 || b.bottom > innerHeight) out.push(`the narrowed input line leaves the viewport: ${JSON.stringify(b)}`);
         return out;
