@@ -322,7 +322,7 @@ function landShift() {
   G.copTarget = sh.target;
   const c = C();
   // the engine's rule: a shift costs when the hold was uneven on this beat or the one before
-  const uneven = !HOLD.on || G.slipThisBeat || Math.abs(G.cop - G.ctl) > S.tol || G.held.slice(-1).some((h) => !h);
+  const uneven = G.even.slice(-2).some((h) => !h);
   SFX.press(0.35 + c.weight * 0.3); SFX.rustle(0.05, Math.sign(sh.target - G.cop) * 0.6);
   if (uneven) {
     const cost = sh.cost;
@@ -643,7 +643,9 @@ function schedulePlan(run: PhysicsRun, ck: { startedAt: number | null; now: numb
   const shifts = plan.beats.flatMap((b, i) => (b.shift !== undefined ? [i] : []));
   let prev = -1;
   for (const b of shifts) {
-    const landAt = R.seg.clock0 + b * BEAT + 30;
+    // it lands as its beat's end is judged (+30 ms, the prototype's), so its check is the engine's: held and level on its beat and the one before;
+    // the last beat's is judged at the flush, 300 ms before the segment's end
+    const landAt = R.seg.clock0 + Math.min((b + 1) * BEAT, endMs - 300) + 30;
     // a playful holder's feint: her shadow leans and comes back, between two planned shifts (never instead of one: the plan's shift lands)
     if (st.feint > 0 && Math.random() < st.feint) {
       const mid = Math.round((prev + b) / 2);
@@ -654,7 +656,8 @@ function schedulePlan(run: PhysicsRun, ck: { startedAt: number | null; now: numb
     }
     const tele = rand(st.tele[0], st.tele[1]);
     const cost = (plan.beats[b]!.shift ?? 0) * (100 / Math.max(1, run.capacity));
-    push(landAt - 30 - tele, () => planShift({ tele, feint: false, cost }));
+    // a telegraph that comes due late (a segment that starts with it overdue) is shortened, so the shift still lands on time
+    push(landAt - 30 - tele, () => { const late = G.clock - (landAt - 30 - tele); planShift({ tele: late > 50 ? Math.max(0, tele - late) : tele, feint: false, cost }); });
     prev = b;
   }
 }
@@ -718,7 +721,7 @@ function before(): void {
   while (R.running && R.queue.length && R.queue[0]!.at <= G.clock) R.queue.shift()!.fn();
   if (R.running && R.seg && !R.seg.flushed && G.clock - R.seg.clock0 >= R.seg.endMs - 300) {
     R.seg.flushed = true;
-    reportBeat(segBeat(), HOLD.on && !G.slipThisBeat, HOLD.on && !G.slipThisBeat && Math.abs(G.cop - G.ctl) <= S.tol);
+    if (G.beat < R.seg.beats) { onBeat(); planBeat(); } // the last beat ends here: judged and reported as the others
   }
   const input = e.env.input as HTMLInputElement;
   if (input.value !== '' || e.mirror.childElementCount > 0) placeMirror(e);

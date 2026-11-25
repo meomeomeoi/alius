@@ -179,7 +179,7 @@ describe('the weight instrument: the pure helpers', () => {
       const t = draw(hold('human_chair', planOf({ 6: 20 })));
       t.mouse('mousedown');
       let tele: { at: number; land: number; lean: number } | null = null;
-      while (t.frames.now() < 6 * BEAT + 200) {
+      while (t.frames.now() < 7 * BEAT + 200) {
         t.frames.frame();
         const sh = _weight.G.shift;
         if (sh && !tele) tele = { at: t.frames.now(), land: sh.landAt - sh.teleAt, lean: _weight.G.leanTarget };
@@ -188,11 +188,11 @@ describe('the weight instrument: the pure helpers', () => {
       const lead = tele!.land - 30;
       expect(lead, style).toBeGreaterThanOrEqual(lo);
       expect(lead, style).toBeLessThanOrEqual(hi);
-      // her lean shows the telegraph (none without one), and the shift lands at the start of its beat
+      // her lean shows the telegraph (none without one), and the shift lands as its beat's end is judged (I2)
       if (hi > 0) expect(Math.abs(tele!.lean), style).toBeGreaterThan(0.5);
       else expect(tele!.lean, style).toBe(0);
-      expect(tele!.at, style).toBeGreaterThanOrEqual(6 * BEAT - hi - 32);
-      expect(tele!.at, style).toBeLessThanOrEqual(6 * BEAT - lo + 32);
+      expect(tele!.at, style).toBeGreaterThanOrEqual(7 * BEAT - hi - 32);
+      expect(tele!.at, style).toBeLessThanOrEqual(7 * BEAT - lo + 32);
       expect(_weight.G.shifts, style).toBe(1);
       t.screen.dispose();
     }
@@ -202,7 +202,7 @@ describe('the weight instrument: the pure helpers', () => {
     registerPhysicsStyle(() => ({ primary: 'ritual' }));
     const t = draw(hold('human_chair', planOf({ 6: 20 })));
     t.mouse('mousedown');
-    t.to(6 * BEAT);
+    t.to(7 * BEAT);
     const said = t.q('.alius-weight-hand')!.textContent ?? '';
     const target = _weight.G.shift?.target ?? _weight.G.copTarget;
     expect(said).toMatch(target < _weight.G.cop ? /shifting\.|left\./ : /shifting\.|right\./);
@@ -301,6 +301,43 @@ describe('the weight instrument on the scene', () => {
     expect(reports(t).filter((i) => i.kind === 'uneven' && i.part === 'tilted').length).toBeGreaterThanOrEqual(3);
   });
 
+  it('I2: a shift that lands clean on screen is not charged by the engine; one that lands hard is, and by the same rule', () => {
+    const plan = planOf({ 4: 20 });
+    const s = hold('human_chair', plan);
+    const t = draw(s);
+    t.balance(0.5);
+    t.mouse('mousedown');
+    t.to(30_000);
+    expect(_weight.G).toMatchObject({ shifts: 1, cleanShifts: 1, hardShifts: 0 });
+    // resolved from a deep gauge, so a whole segment's drain never reaches the floor and hides the cost
+    const deep = (x: CampaignState): PhysicsRun => ({ ...x.scene!.physics!, gauge: 1000, capacity: 1000 });
+    const env = resolveEnvOf(s, reg, s.scene!.physics!);
+    const withShift = resolveSegment(deep(s), plan, reports(t), env).gauge;
+    const without = resolveSegment(deep(s), planOf({}), reports(t), env).gauge;
+    expect(withShift).toBe(without); // no charge on beat 4
+    // tilted at the end of the shift's beat: hard on screen, and the engine takes the cost
+    const s2 = hold('human_chair', plan);
+    const u = draw(s2);
+    u.balance(0.5);
+    u.mouse('mousedown');
+    u.to(4 * BEAT + 200);
+    u.balance(1);
+    u.to(5 * BEAT + 600);
+    u.balance(0.5);
+    u.to(30_000);
+    expect(_weight.G).toMatchObject({ shifts: 1, cleanShifts: 0, hardShifts: 1 });
+    const env2 = resolveEnvOf(s2, reg, s2.scene!.physics!);
+    expect(resolveSegment(deep(s2), plan, reports(u), env2).gauge).toBeCloseTo(resolveSegment(deep(s2), planOf({}), reports(u), env2).gauge - 20, 10);
+  });
+
+  it('a shift on the segment\'s last beat lands after its flush, by the same rule', () => {
+    const t = draw(hold('human_chair', planOf({ 19: 20 })));
+    t.balance(0.5);
+    t.mouse('mousedown');
+    t.to(30_000 - 200);
+    expect(_weight.G).toMatchObject({ shifts: 1, cleanShifts: 1 });
+  });
+
   it('the last beat of the segment is flushed before its end (300 ms ahead)', () => {
     const t = draw(hold('human_chair', planOf({})));
     t.mouse('mousedown');
@@ -315,10 +352,10 @@ describe('the weight instrument on the scene', () => {
     const t = draw(hold('human_chair', planOf({ 4: 20, 8: 20 })));
     t.balance(0.5);
     t.mouse('mousedown');
-    t.to(4 * BEAT + 200);
+    t.to(5 * BEAT + 200);
     expect(_weight.G).toMatchObject({ shifts: 1, cleanShifts: 1, hardShifts: 0 });
     t.balance(1); // tilted when the next one lands
-    t.to(8 * BEAT + 200);
+    t.to(9 * BEAT + 200);
     expect(_weight.G).toMatchObject({ shifts: 2, cleanShifts: 1, hardShifts: 1 });
     expect(t.q('.alius-weight-cracks')!.children.length).toBeGreaterThan(0);
   });
@@ -334,7 +371,7 @@ describe('the weight instrument on the scene', () => {
       t.mouse('mousedown');
       let seen = 0;
       let last: unknown = null;
-      while (t.frames.now() < 18 * BEAT + 200) {
+      while (t.frames.now() < 19 * BEAT + 200) {
         t.frames.frame();
         const sh = _weight.G.shift;
         if (sh && sh !== last && sh.feint) seen++;
@@ -451,7 +488,7 @@ describe('the weight instrument on the scene', () => {
     const t = draw(hold('human_chair', planOf({ 4: 20 })), { settings: { reducedMotion: true, readableMode: true } });
     t.balance(1);
     t.mouse('mousedown');
-    t.to(4 * BEAT + 300); // a hard landing: a crack and a jolt
+    t.to(5 * BEAT + 300); // a hard landing: a crack and a jolt
     const world = t.q('.alius-weight-world')!.style.transform;
     expect(world).toMatch(/^translate\(0\.0px, [0-9.-]+px\)/); // no tremble (the sag stays: it is the slip itself)
     for (const sel of ['.alius-weight-floor', '.alius-weight-world']) expect(t.q(sel)!.style.filter).not.toMatch(/blur\((?!0px)/);
@@ -477,7 +514,7 @@ describe('the weight instrument on the scene', () => {
     const before = reply.style.opacity;
     t.balance(1);
     t.mouse('mousedown');
-    t.to(4 * BEAT + 300);
+    t.to(5 * BEAT + 300);
     expect(reply.style.opacity).toBe('0.4');
     expect(audio.sources.length).toBeGreaterThan(0);
     expect(field.dataset.weightLetters).toBe('');

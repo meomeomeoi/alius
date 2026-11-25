@@ -246,8 +246,8 @@
     },
     {
       "fn": "landShift",
-      "reason": "The cost of a shift is the engine's (the plan's `shift`, scaled to the run's capacity), not the prototype's `rand(SHIFT_COST) × weight × pressure`.",
-      "diff": "@@ -15,3 +15,3 @@\n if(uneven){\n-const cost=rand(SHIFT_COST[0],SHIFT_COST[1])*c.weight*G.pressure\n+const cost=sh.cost\n G.str-=cost"
+      "reason": "The engine judges a shift (review I2), so the landing is judged by the engine's rule: the scheduler lands each planned shift as its beat's end is judged (`(b+1)·BEAT + 30`, the last beat at the flush), and it is uneven when its beat or the one before ended not held or tilted (the last two of `G.even`, the beats just reported), so a clean landing on screen is never charged and a hard one is; its cost is the engine's (the plan's `shift`, scaled to the run's capacity), not the prototype's `rand(SHIFT_COST) × weight × pressure`.",
+      "diff": "@@ -11,3 +11,3 @@\n const c=C()\n-const uneven=!HOLD.on||G.slipThisBeat||Math.abs(G.cop-G.ctl)>S.tol||G.held.slice(-1).some(h=>!h)\n+const uneven=G.even.slice(-2).some(h=>!h)\n SFX.press(0.35+c.weight*0.3)\n@@ -15,3 +15,3 @@\n if(uneven){\n-const cost=rand(SHIFT_COST[0],SHIFT_COST[1])*c.weight*G.pressure\n+const cost=sh.cost\n G.str-=cost"
     },
     {
       "fn": "onBeat",

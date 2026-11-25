@@ -65436,7 +65436,7 @@ function landShift() {
   G3.shifts += 1;
   G3.copTarget = sh.target;
   const c = C();
-  const uneven = !HOLD2.on || G3.slipThisBeat || Math3.abs(G3.cop - G3.ctl) > S4.tol || G3.held.slice(-1).some((h2) => !h2);
+  const uneven = G3.even.slice(-2).some((h2) => !h2);
   SFX2.press(0.35 + c.weight * 0.3);
   SFX2.rustle(0.05, Math3.sign(sh.target - G3.cop) * 0.6);
   if (uneven) {
@@ -65843,7 +65843,7 @@ function schedulePlan2(run, ck) {
   const shifts = plan.beats.flatMap((b, i) => b.shift !== void 0 ? [i] : []);
   let prev = -1;
   for (const b of shifts) {
-    const landAt = R5.seg.clock0 + b * BEAT2 + 30;
+    const landAt = R5.seg.clock0 + Math3.min((b + 1) * BEAT2, endMs - 300) + 30;
     if (st2.feint > 0 && Math3.random() < st2.feint) {
       const mid2 = Math3.round((prev + b) / 2);
       if (mid2 - prev >= 2 && b - mid2 >= 1) {
@@ -65853,7 +65853,10 @@ function schedulePlan2(run, ck) {
     }
     const tele = rand(st2.tele[0], st2.tele[1]);
     const cost = (plan.beats[b].shift ?? 0) * (100 / Math3.max(1, run.capacity));
-    push2(landAt - 30 - tele, () => planShift({ tele, feint: false, cost }));
+    push2(landAt - 30 - tele, () => {
+      const late2 = G3.clock - (landAt - 30 - tele);
+      planShift({ tele: late2 > 50 ? Math3.max(0, tele - late2) : tele, feint: false, cost });
+    });
     prev = b;
   }
 }
@@ -65930,7 +65933,10 @@ function before2() {
   while (R5.running && R5.queue.length && R5.queue[0].at <= G3.clock) R5.queue.shift().fn();
   if (R5.running && R5.seg && !R5.seg.flushed && G3.clock - R5.seg.clock0 >= R5.seg.endMs - 300) {
     R5.seg.flushed = true;
-    reportBeat(segBeat(), HOLD2.on && !G3.slipThisBeat, HOLD2.on && !G3.slipThisBeat && Math3.abs(G3.cop - G3.ctl) <= S4.tol);
+    if (G3.beat < R5.seg.beats) {
+      onBeat();
+      planBeat();
+    }
   }
   const input = e.env.input;
   if (input.value !== "" || e.mirror.childElementCount > 0) placeMirror2(e);
