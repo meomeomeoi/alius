@@ -6,6 +6,8 @@
 //   size     [width, height] (default 1920x1080)
 //   clip     optional { x, y, width, height } (negative x / y count from the right / bottom edge): both shots are cropped to it
 //   hide     selectors of the prototype hidden in its shots (its panel, its log: prototype only)
+//   rasterSprite  true: without `--sprite`, the prototype gets the layout fixture's sprite drawn as a PNG at run time (an SVG with only a viewBox
+//            has no natural size for a prototype that sizes its <img> by layout)
 //   moments  [{ id, state?, query?, clip?, size?, proto(page, ctx), port(page, ctx) }]
 //            `proto` runs in the built prototype page (.superpowers/prototypes/<name>.html): drive it through its hooks (`window.__S`, `window.__G()`,
 //            `window.__forceO`, `window.__begin()`, …), its globals (a top-level `let` / `function` of its script is reachable from
@@ -103,8 +105,8 @@ function setPose(page, id, name) {
  * run on Playwright's fake clock, paused: each slap starts at the same paused instant and the clock is run to the moment on both, so the
  * shots are of the same millisecond (CSS transitions, the flash's fade and her line's write-on, run in real time during the short settle).
  * Moments: her hand raised, a feint, the impact (taken), braced (Space 100 ms before), the turned face (a flick sideways), the cheek after.
- * Run it with `--sprite <a PNG>`: the prototype sizes its `<img>` by its layout box, which for the fixture's viewBox-only SVG is not its natural
- * size (the sprite lands off screen); the port draws the fixture SVG either way.
+ * The prototype sizes its `<img>` by its layout box, which for the fixture's viewBox-only SVG is not its natural size (the sprite would land off
+ * screen): `rasterSprite` has the script draw the fixture as a PNG for it at run time; the port draws the fixture SVG.
  */
 function slapMoments() {
   const IMPACT = 900 + 450; // leadMs + possessive's swing
@@ -142,6 +144,7 @@ function slapMoments() {
   };
   return {
     state: 'slap',
+    rasterSprite: true, // the prototype sizes its <img> by layout: the fixture's SVG is drawn as a PNG at run time (scripts/instrument-shots.mjs)
     hide: ['#panel', '#debug', '#summary'],
     settle: 60,
     moments: [

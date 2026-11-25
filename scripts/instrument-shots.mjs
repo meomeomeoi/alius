@@ -25,18 +25,31 @@ const moments = entry.moments.filter((m) => only === undefined || m.id === only)
 if (moments.length === 0) { console.error(`no moment "${only}" for ${name}: ${entry.moments.map((m) => m.id).join(', ')}`); process.exit(1); }
 const settle = entry.settle ?? 400;
 
-// the prototype and the layout page
-const sprite = opt('--sprite');
+const out = resolve(root, '.superpowers/shots', name);
+mkdirSync(out, { recursive: true });
+const browser = await chromium().launch({ args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
+
+// the prototype and the layout page. An entry with `rasterSprite` gets, without `--sprite`, the layout fixture's placeholder sprite drawn as a
+// PNG at run time (into the shots' folder, which git ignores): a prototype that sizes its <img> by its layout box cannot place a viewBox-only SVG
+let sprite = opt('--sprite');
+if (!sprite && entry.rasterSprite) {
+  const svg = readFileSync(join(root, 'tests/fixtures/layout/sprite.svg'), 'utf8');
+  const [, vw, vh] = /viewBox="0 0 (\d+(?:\.\d+)?) (\d+(?:\.\d+)?)"/.exec(svg) ?? [];
+  const w = Math.round(Number(vw) || 847), hh = Math.round(Number(vh) || 1238);
+  const page = await browser.newPage({ viewport: { width: w, height: hh }, deviceScaleFactor: 1 });
+  await page.setContent(`<style>html,body{margin:0;background:transparent}</style><img style="display:block;width:${w}px;height:${hh}px" src="data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}">`);
+  await page.evaluate(() => Promise.all([...document.images].map((i) => i.decode())));
+  sprite = join(out, 'sprite.png');
+  await page.screenshot({ path: sprite, omitBackground: true });
+  await page.close();
+}
 execFileSync('node', [join(root, 'scripts/prototype.mjs'), name, ...(sprite ? ['--sprite', sprite] : [])], { cwd: root, stdio: ['ignore', 'ignore', 'inherit'] });
 await buildLayoutPage();
 const server = await serveRoot();
-const out = resolve(root, '.superpowers/shots', name);
-mkdirSync(out, { recursive: true });
 
 /** A clip with negative x / y counted from the right / bottom edge, in the viewport. */
 const clipOf = (c, size) => (c ? { x: c.x < 0 ? size[0] + c.x : c.x, y: c.y < 0 ? size[1] + c.y : c.y, width: c.width, height: c.height } : undefined);
 
-const browser = await chromium().launch({ args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
 const failures = [];
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 for (const m of moments) {
