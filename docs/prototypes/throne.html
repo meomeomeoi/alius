@@ -54,6 +54,9 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 #footrestView { perspective: 1400px; }
 #wFloor { inset: -20%; transform-origin: 50% 40%; }
 #wShadow { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* the throne: her legs astride as a picture (art slot legs_astride), near and out of focus, lit at the edge like the silhouettes */
+.astride { position: absolute; top: 0; left: 0; transform-origin: 50% 0%; display: none; pointer-events: none; will-change: transform, opacity;
+  filter: blur(1.2px) brightness(.62) saturate(.85) drop-shadow(0 0 14px rgba(226,78,52,.45)); transition: opacity .35s ease; }
 #close { position: absolute; inset: 0; pointer-events: none; }
 #closeShade { position: absolute; inset: 0; background: radial-gradient(ellipse 60% 70% at 50% 48%, rgba(20,14,16,.55) 0%, rgba(4,3,5,.92) 70%); }
 #soleArt, #dirtC { position: absolute; transform-origin: 50% 70%; }
@@ -152,7 +155,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
     <div class="view" id="legsView"><div class="bg" id="deskUnder"></div><canvas class="lightC" id="deskLight"></canvas><canvas id="legs"></canvas><img id="legsArt" class="legsArt" alt="" draggable="false" style="display:none"><img id="raisedArt" class="legsArt" alt="" draggable="false" style="display:none"><img id="deskFrame" alt="" draggable="false"><div id="floorShadow" style="position:absolute;inset:0;pointer-events:none"></div><div id="deskShade"></div></div>
     <div class="view" id="floorView"><div class="bg" id="floorBg"></div><div id="feetShadow" style="position:absolute;pointer-events:none;opacity:0"></div><img id="floorArt" class="legsArt" alt="" draggable="false" style="display:none;-webkit-mask-image:linear-gradient(to bottom, transparent 0%, #000 30%);mask-image:linear-gradient(to bottom, transparent 0%, #000 30%)"><canvas class="lightC" id="floorLight"></canvas><div id="bunkEdge" style="position:absolute;inset:0;background:linear-gradient(to bottom, rgba(0,0,0,.92) 0%, rgba(0,0,0,.55) 12%, rgba(0,0,0,0) 30%)"></div></div>
     <div class="view" id="wallView"><div class="bg" id="wallBg"></div><canvas class="lightC" id="wallLight"></canvas></div>
-    <div class="view" id="footrestView"><div class="bg" id="wFloor"></div><canvas id="wShadow"></canvas></div>
+    <div class="view" id="footrestView"><div class="bg" id="wFloor"></div><canvas id="wShadow"></canvas><img id="astrideL" class="astride" alt="" draggable="false"><img id="astrideR" class="astride" alt="" draggable="false"></div>
     <div class="view" id="blindView"></div>
   </div>
   <div id="close" style="display:none"><div id="closeShade"></div><img id="soleArt" alt="" draggable="false"><canvas id="dirtC"></canvas><canvas id="markC"></canvas></div>
@@ -230,6 +233,16 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <label>visitor <select id="visitorSel"><option value="business">with business (she decides about the commander)</option><option value="aware">who knows (may rest her boots too)</option><option value="unaware">unaware (silence, a risk)</option></select></label>
   <label><input type="checkbox" id="bodyFollows" checked> her body follows her lines</label>
   <label><input type="checkbox" id="propsOn" checked> her mug, her signing, her rising, a visitor (by themselves)</label>
+  <label>drain in a long hold <input type="range" id="frameDrain" min="0.15" max="1" step="0.05" value="0.35"><span id="frameDrainV">0.35</span></label>
+  <div class="note">weight.html was tuned for a 45 s session (her full weight lasts about 20 s without your own shifts); the throne is a long hold, so its drain is scaled. 1 = weight.html's numbers.</div>
+  <label>legs art (legs_astride) <input type="file" id="astrideFile" accept="image/*" style="width:170px"></label>
+  <label>the picture is <select id="astrideFeet"><option value="one">one leg (mirrored for the other)</option><option value="two">both legs</option></select></label>
+  <label>art height <input type="range" id="aH" min="0.4" max="1.6" step="0.01" value="1"><span id="aHV">1</span></label>
+  <label>art x (the leg's centre) <input type="range" id="aX" min="-0.1" max="0.4" step="0.005" value="0.08"><span id="aXV">0.08</span></label>
+  <label>art top <input type="range" id="aTop" min="-0.6" max="0.4" step="0.01" value="-0.1"><span id="aTopV">-0.1</span></label>
+  <label>art tilt ° <input type="range" id="aTilt" min="-30" max="30" step="1" value="8"><span id="aTiltV">8</span></label>
+  <div class="row"><button class="opt" id="astrideFit">copy the fit</button></div>
+  <div class="note" id="astrideNote">An art slot (legs_astride): her lower leg hanging (knee at the top edge of the picture, the foot at its bottom), seen from below and behind by the commander on all fours, on a transparent background; one leg (mirrored for the other) or both. It replaces the silhouettes. Never committed. Its fit travels with it as a sidecar ("copy the fit").</div>
   <div class="row"><button class="opt" id="tVisitor">a visitor now</button><button class="opt" id="tCup">her mug now</button><button class="opt" id="tSign">she signs now</button><button class="opt" id="tRise">she rises now</button></div>
   <div class="note">Space / left button: bear her. Mouse: balance. Shift / right button: your own shift. When anyone talks about the commander, the body flinches: steady the balance at once. Her mug narrows the level; out of level for a moment and it spills. While she signs, keep the mouse still. Her activity "holding audience" brings visitors one after another.</div>
   <h4>the game inside the frame</h4>
@@ -523,6 +536,8 @@ const STYLES = {
     noticed: ['did I say move?', 'pathetic.'], correct: ['still, chair.'], call: ['my chair. it creaks today.'], end: ['get up. we’re not done tomorrow.'], askReply: ['adequate.'], breach: ['chairs don’t talk.'], silent: ['chair. I asked you something.'] },
   clinical:     { name: 'subject', bias: 0.3, watch: 0.3,
     noticed: ['movement. noted.', 'again. noted.'], correct: ['posture.'], call: ['the subject.'], end: ['session over. noted: everything.'], askReply: ['noted.'], breach: ['unsolicited. noted.'], silent: ['no response. noted.'] },
+  regal:        { name: 'my seat', bias: -0.2, watch: 0.1,
+    noticed: ['steady.', 'a seat does not fidget.'], correct: ['steady.'], call: ['my seat.'], end: ['you may get up.'], askReply: ['acceptable.', 'good.'], breach: ['I was not speaking to you.'], silent: ['I asked you a question.'] },
   ritual:       { name: 'kneeler', bias: 0, watch: 0.1,
     noticed: ['posture.'], correct: ['posture.'], call: ['the kneeler.'], end: ['released.'], askReply: ['as it should be.'], breach: ['you were not addressed.'], silent: ['you were addressed.'] },
 };
@@ -556,7 +571,7 @@ const BASE_EVENTS = [
 <script>
 'use strict';
 /* ---------- settings (the panel) ---------- */
-const S = { throne: true, contact: 'human_chair', visitorKind: 'business', bodyFollows: true, props: true, only: '', inner: 'weight', closeH: 0.62, closeY: 0.47, zones: null, view: 'legs', blind: false, act: 'reading_reports', legVar: 'planted', style: 'neutral', talk: 'terse', regard: 'neutral', hold: 'keeping', mood: 'calm', seed: 37, force: '',
+const S = { frameDrain: 0.35, legsArt: null, legsFeet: 'one', aH: 1.0, aX: 0.08, aTop: -0.1, aTilt: 8, throne: true, contact: 'human_chair', visitorKind: 'business', bodyFollows: true, props: true, only: '', inner: 'weight', closeH: 0.62, closeY: 0.47, zones: null, view: 'legs', blind: false, act: 'reading_reports', legVar: 'planted', style: 'neutral', talk: 'terse', regard: 'neutral', hold: 'keeping', mood: 'calm', seed: 37, force: '',
   legsW: 0.62, legsB: 0.9, feetW: 0.56, feetB: 0.86, feetTilt: 6, raisedW: 0.62, raisedB: 0.9, floorShade: 0.55, knows: false, public: false, reckless: false, phases: 3, phaseLen: 90, start: 1080, level: 1, rain: true, stay: true,
   sound: true, murmur: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 const V = () => VIEWS[S.inner === 'weight' ? 'footrest' : S.view], ACT = () => ACTS[S.act], ST = () => STYLES[S.style];
@@ -1181,6 +1196,7 @@ const W_STYLES = {
   playful:      { tele: [500, 750], feint: 0.35, heavy: 0.15, mag: [0.35, 0.8] },
   clinical:     { tele: [150, 1100], feint: 0,   heavy: 0.1,  mag: [0.3, 0.9] },
   cruel:        { tele: [0, 0], feint: 0,        heavy: 0.35, mag: [0.6, 1.0] },
+  regal:        { tele: [900, 1200], feint: 0,   heavy: 0.25, mag: [0.3, 0.6] },
 };
 const W_LINES = {
   neutral:      { slip: ['careful.'], heavy: ['mm. heavier.'], rest: ['rest. a moment.'] },
@@ -1189,8 +1205,9 @@ const W_LINES = {
   playful:      { slip: ['oops~'], heavy: ['boop. heavier.'], rest: ['fine, a break~'] },
   clinical:     { slip: ['noted.'], heavy: ['load increased.'], rest: ['recovery interval.'] },
   cruel:        { slip: ['pathetic.'], heavy: ['heavier.'], rest: ['…fine. a moment.'] },
+  regal:        { slip: ['steady.'], heavy: ['I’ll lean back.'], rest: ['rest. briefly.'] },
 };
-const W_FALL = { neutral: '…really? enough.', affectionate: 'hey, hey. that’s enough for tonight.', ritual: 'down. noted. we stop.', playful: 'timber! okay, you’re done.', clinical: 'failure point reached. session over.', cruel: 'useless. get out of my sight.', possessive: 'enough. you’ll do better for me.', cold: 'get up. go.' };
+const W_FALL = { neutral: '…really? enough.', affectionate: 'hey, hey. that’s enough for tonight.', ritual: 'down. noted. we stop.', playful: 'timber! okay, you’re done.', clinical: 'failure point reached. session over.', cruel: 'useless. get out of my sight.', possessive: 'enough. you’ll do better for me.', cold: 'get up. go.', regal: 'a pity. I’ll find a sturdier seat.' };
 const W_RESTS = { affectionate: 2, cruel: 0 };
 const W_ST = () => W_STYLES[S.style] ?? W_STYLES.neutral, W_L = () => W_LINES[S.style] ?? W_LINES.neutral;
 const weightOn = () => S.inner === 'weight';
@@ -1361,7 +1378,7 @@ function wUpdate(dt) {
   if (W.pressureUntil < W.clock) W.pressure = 1;
   const err = W.cop - W.ctl;
   const unevenMult = 1 + 1.2 * Math.max(0, Math.abs(err) - WT.tol * 0.5);
-  W.str -= (WT.W_DRAIN / WT.BEAT) * dt * WT.weight * W.pressure * unevenMult;
+  W.str -= (WT.W_DRAIN / WT.BEAT) * dt * WT.weight * W.pressure * unevenMult * (throneOn() ? S.frameDrain : 1); // the throne: a long hold drains slower (weight.html was tuned for a 45 s session)
   if (W.shift && !W.shift.landed && W.clock >= W.shift.landAt) wLandShift();
   W.reliefCd = Math.max(0, W.reliefCd - dt);
   W.hissCd -= dt; if (W.str < 45 && W.hissCd <= 0) { W_SFX.hiss(lerp(0.02, 0.12, smooth(45, 5, W.str))); W.hissCd = lerp(2200, 900, smooth(45, 5, W.str)); }
@@ -1988,7 +2005,37 @@ const tLegC = document.createElement('canvas'), tlctx = tLegC.getContext('2d');
 const tCompC = document.createElement('canvas'), tcctx = tCompC.getContext('2d');
 const tRimC = document.createElement('canvas'), trctx = tRimC.getContext('2d');
 const tOutC = document.createElement('canvas'), toctx = tOutC.getContext('2d');
+/* the picture of her legs (one leg, mirrored for the other; or both in one picture): placed by its fit, moved by her weight as the
+   silhouettes are (the leg on her side presses in, the other lifts; a foot bounces while she reads; a jolt), gone while she is up */
+function throneArt(now) {
+  const L = $('#astrideL'), R = $('#astrideR');
+  const on = throneOn() && S.contact === 'human_chair' && S.legsArt;
+  L.style.display = on ? 'block' : 'none'; R.style.display = on && S.legsFeet === 'one' ? 'block' : 'none';
+  if (!on || !L.naturalWidth) return !!on;
+  const vw = innerWidth, vh = innerHeight, t = now / 1000;
+  const live = G.phase === 'loop' || G.phase === 'entry', reading = live && G.att === 'busy';
+  const toward = W.lean * 0.9 + W.cop * 0.5, jolt = W.jolt * 0.4;
+  const h = vh * S.aH, w = h * L.naturalWidth / L.naturalHeight;
+  const strF = smooth(100, 0, W.str);
+  const op = G.risen ? '0' : '1';
+  const place = (el, side) => {
+    const own = side * toward, press = Math.max(0, own), lift = Math.max(0, -own);
+    const sw = S.reduced ? 0 : (reading ? Math.sin(t * 3.1 + (side > 0 ? 1.7 : 0)) * (side > 0 ? 1 : 0.35) : Math.sin(t * 0.8 + side) * 0.25);
+    const cx = S.legsFeet === 'two' ? vw / 2 : (side < 0 ? S.aX * vw : vw - S.aX * vw);
+    const dx = S.legsFeet === 'two' ? toward * 0.02 * vw : -side * (press * 0.035 - lift * 0.03) * vw;
+    const dy = (-lift * 0.07 + jolt * 0.02) * vh;
+    const rot = (S.legsFeet === 'two' ? toward * 2 : -side * S.aTilt) + sw * 2.2;
+    const flip = S.legsFeet === 'one' && side > 0 ? ' scaleX(-1)' : '';
+    el.style.width = `${w}px`; el.style.height = `${h}px`;
+    el.style.transform = `translate(${(cx - w / 2 + dx).toFixed(1)}px, ${(S.aTop * vh + dy).toFixed(1)}px) rotate(${rot.toFixed(2)}deg)${flip}`;
+    el.style.opacity = op;
+    el.style.filter = `blur(${(1.2 + strF * 0.8).toFixed(1)}px) brightness(${(0.62 - strF * 0.1).toFixed(2)}) saturate(.85) drop-shadow(0 0 14px rgba(226,78,52,.45))`;
+  };
+  place(L, -1); if (S.legsFeet === 'one') place(R, 1);
+  return true;
+}
 function throneLegs(now) {
+  if (throneArt(now)) return;
   if (S.contact !== 'human_chair') return;
   const Wd = wShC.width, H = wShC.height;
   for (const c of [tLegC, tCompC, tRimC, tOutC]) if (c.width !== Wd || c.height !== H) { c.width = Wd; c.height = H; }
@@ -2014,7 +2061,7 @@ function throneLegs(now) {
 }
 
 /* her body follows her lines. The telegraph is her voice: the move lands as the line is being said (~0.7 s into it). */
-const T_TELE = { neutral: [600, 900], affectionate: [900, 1200], ritual: [700, 800], playful: [450, 800], clinical: [200, 1100], cruel: [150, 350], possessive: [450, 700], cold: [500, 700] };
+const T_TELE = { neutral: [600, 900], affectionate: [900, 1200], ritual: [700, 800], playful: [450, 800], clinical: [200, 1100], cruel: [150, 350], possessive: [450, 700], cold: [500, 700], regal: [900, 1200] };
 function wCueShift(dir, mag, tele) {
   if (!W || W.over || W.resting) return;
   const target = clamp(W.copTarget * 0.25 + dir * mag * WT.shift, -1, 1);
@@ -2088,11 +2135,11 @@ addEventListener('mousemove', (e) => {
   T_MOUSE.speed = T_MOUSE.speed * 0.7 + v * 0.3; T_MOUSE.x = e.clientX; T_MOUSE.y = e.clientY; T_MOUSE.t = now;
 });
 const T_LINES = {
-  spill: { neutral: ['…look what you did.'], affectionate: ['oh — it’s alright. hold still.'], ritual: ['you spilled. that is noted.'], playful: ['oops~ that’s on you.'], clinical: ['spillage. noted.'], cruel: ['you’ll lick that up later.'], possessive: ['careful with my things.'], cold: ['clumsy.'] },
-  skid: { neutral: ['hold still. again.'], affectionate: ['still, please. once more.'], ritual: ['the signature is ruined. again.'], playful: ['you made me scribble~'], clinical: ['the writing surface moved.'], cruel: ['a desk doesn’t move.'], possessive: ['still. you’re mine to write on.'], cold: ['again.'] },
-  thank: { neutral: ['say thank you for the seat.'], affectionate: ['say thank you. for letting me sit.'], ritual: ['thank me for the honour.'], playful: ['what do we say~?'], clinical: ['acknowledge it.'], cruel: ['thank me.'], possessive: ['thank me for using you.'], cold: ['thank me.'] },
-  thanked: { neutral: ['good.'], affectionate: ['good. up you get.'], ritual: ['accepted.'], playful: ['cute.'], clinical: ['noted.'], cruel: ['…fine.'], possessive: ['good.'], cold: ['fine.'] },
-  noThanks: { neutral: ['nothing? noted.'], affectionate: ['…next time, then.'], ritual: ['the form was not kept.'], playful: ['rude~'], clinical: ['no response. noted.'], cruel: ['you’ll learn.'], possessive: ['we’ll work on that.'], cold: ['noted.'] },
+  spill: { neutral: ['…look what you did.'], affectionate: ['oh — it’s alright. hold still.'], ritual: ['you spilled. that is noted.'], playful: ['oops~ that’s on you.'], clinical: ['spillage. noted.'], cruel: ['you’ll lick that up later.'], possessive: ['careful with my things.'], cold: ['clumsy.'] , regal: ['you spilled my tea.']},
+  skid: { neutral: ['hold still. again.'], affectionate: ['still, please. once more.'], ritual: ['the signature is ruined. again.'], playful: ['you made me scribble~'], clinical: ['the writing surface moved.'], cruel: ['a desk doesn’t move.'], possessive: ['still. you’re mine to write on.'], cold: ['again.'] , regal: ['a desk does not move. again.']},
+  thank: { neutral: ['say thank you for the seat.'], affectionate: ['say thank you. for letting me sit.'], ritual: ['thank me for the honour.'], playful: ['what do we say~?'], clinical: ['acknowledge it.'], cruel: ['thank me.'], possessive: ['thank me for using you.'], cold: ['thank me.'] , regal: ['thank me for the honour of my weight.']},
+  thanked: { neutral: ['good.'], affectionate: ['good. up you get.'], ritual: ['accepted.'], playful: ['cute.'], clinical: ['noted.'], cruel: ['…fine.'], possessive: ['good.'], cold: ['fine.'] , regal: ['you may.']},
+  noThanks: { neutral: ['nothing? noted.'], affectionate: ['…next time, then.'], ritual: ['the form was not kept.'], playful: ['rude~'], clinical: ['no response. noted.'], cruel: ['you’ll learn.'], possessive: ['we’ll work on that.'], cold: ['noted.'] , regal: ['how ungrateful.']},
 };
 const tLine = (kind) => pick((T_LINES[kind][S.style] ?? T_LINES[kind].neutral));
 function throneUpdate(dt) {
@@ -2644,6 +2691,11 @@ $('#visitorSel').value = S.visitorKind; $('#visitorSel').onchange = (e) => { S.v
 $('#bodyFollows').onchange = (e) => { S.bodyFollows = e.target.checked; };
 $('#propsOn').onchange = (e) => { S.props = e.target.checked; };
 $('#tVisitor').onclick = () => throneVisitor(); $('#tCup').onclick = throneCup; $('#tSign').onclick = throneSign; $('#tRise').onclick = throneRise;
+
+bindRange('frameDrain', 'frameDrain'); bindRange('aH', 'aH'); bindRange('aX', 'aX'); bindRange('aTop', 'aTop'); bindRange('aTilt', 'aTilt');
+$('#astrideFeet').onchange = (e) => { S.legsFeet = e.target.value; };
+$('#astrideFile').onchange = () => { const f = $('#astrideFile').files[0]; if (!f) return; const u = URL.createObjectURL(f); $('#astrideL').src = u; $('#astrideR').src = u; S.legsArt = u; };
+$('#astrideFit').onclick = () => { const j = JSON.stringify({ slot: 'legs_astride', feet: S.legsFeet, fit: { height: S.aH, x: S.aX, top: S.aTop, tilt: S.aTilt } }); navigator.clipboard?.writeText(j).catch(() => {}); $('#astrideNote').textContent = j; };
 </script>
 </body>
 </html>
