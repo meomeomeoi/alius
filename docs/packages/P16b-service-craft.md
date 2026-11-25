@@ -248,3 +248,7 @@ P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the
 P10e (the scene stage) is implemented; see its **Implemented as**. It rebuilt only how the scene is drawn.
 
 - The posture dial (`renderPostureDial`, bottom right of the scene) draws the commander's body with `mannequinSvg(pose, { target, hot })`: pass the target pose and the drifting joints (`shoulders`, `elbows`, `hips`, `knees`, `head`, `gaze`) and it draws the dashed ghost and the amber rings; nothing drives them yet. Point states are `PointStates` (`dial/points.ts`); the 47 presets of blocking.md §7.3 are a test fixture (`tests/fixtures/dial/presets.ts`) for you to turn into registry content, and `npm run dial:sheet` renders them. Keys 1-7 for joints have no handler (the scene leaves them to you). Her name for a posture is read through `Knowledge.practice`. The fan reads `blockingChoices`; new choices there appear in the dial and the strip.
+
+## Ideas of 2026-11-25 (worship customs)
+
+The design session of 2026-11-25 chose ideas that extend this package: `docs/drafts/2026-11-25-worship-customs.md` (praise with memory for `regal`, accepting worship in her body, her token on a run, the shrine of her defect). Read it before designing these parts; it says what already exists so nothing is built twice.

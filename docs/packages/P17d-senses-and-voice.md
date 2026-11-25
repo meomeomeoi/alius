@@ -116,3 +116,7 @@ P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the
 - **The scent model:** P15a's `scentBand(state, reg, unitId, part)` reads only base × hygiene (`normal`) × situation (after a run, after training). Washing, intention, clinging, noticing, rooms, nameless lines under a blindfold, the sweat layer that `tongue_work` lowers and the conditioned reactions from a stimulus stage of `craving` are yours.
 - **Two TUNING blocks to extend:** `TUNING.scent` and `TUNING.stimuli`.
 - **What exists:** `scentBand`, `scentLevel`, `exposedKinds`, `perceptionWord` and `updateTrajectory` (`src/engine/physics/stimuli.ts`, `scent.ts`), the directive `physics:perception`, the stage words of `stimulusKinds[].perception`. Tolerance starts at 20 (AUTHOR TO TUNE); `sweat_stale` and washing are not built.
+
+## Ideas of 2026-11-25 (worship customs)
+
+The design session of 2026-11-25 chose ideas that extend this package: `docs/drafts/2026-11-25-worship-customs.md` (relics: footwear and underwear among the worn things, consecration, worship of a relic alone, her check; traces). Read it before designing these parts; it says what already exists so nothing is built twice.
