@@ -19,9 +19,11 @@ import { DEFAULT_SETTINGS, type AliusSettings } from '../../../src/settings';
 import { FakeStAdapter } from '../../../src/st/fake';
 import { h } from '../../../src/ui/dom';
 import type { ArtSlots } from '../../../src/ui/scene/art';
-import { instrumentFor } from '../../../src/ui/scene/instruments/host';
-import { _weight, startWeight, weightFrame, weightMatches } from '../../../src/ui/scene/instruments/weight/weight';
-import type { InstrumentEnv } from '../../../src/ui/scene/instruments/types';
+import { _resetInstrumentDefs, instrumentFor, registerInstrument } from '../../../src/ui/scene/instruments/host';
+import { _weight, startWeight, weightFrame, weightMatches, type WeightCoreRun } from '../../../src/ui/scene/instruments/weight/weight';
+import { breathMatches, startBreath } from '../../../src/ui/scene/instruments/breath/breath';
+import { coreRun } from '../../../src/engine/physics/run';
+import type { InstrumentDef } from '../../../src/ui/scene/instruments/types';
 import type { PhysicsPanelStaging } from '../../../src/ui/scene/physicsPanel';
 import { renderSceneScreen } from '../../../src/ui/scene/sceneScreen';
 import { resetSceneStage } from '../../../src/ui/scene/stage';
@@ -66,7 +68,7 @@ function hold(contact = 'human_chair', plan = planOf({ 5: 20, 9: 20 }), location
   setBlocking(st, { registries: reg }, { person: ANN, field: 'contact', value: contact, with: COMMANDER }, { at: 3, source: 'chip' });
   const r = run(st, reg, { type: 'physics/next_segment', payload: { runId: 'p1' } });
   expect(errors(r.events)).toEqual([]);
-  expect(r.state.scene!.physics!.physicsId).toBe('weight');
+  expect(r.state.scene!.physics!.physicsId === 'weight' || r.state.scene!.physics!.second?.physicsId === 'weight').toBe(true);
   r.state.scene!.physics!.segment.plan = plan;
   return r.state;
 }
@@ -630,37 +632,74 @@ describe('the weight instrument on the scene', () => {
 });
 
 describe('ruling B: the core inside another instrument', () => {
-  it('draws the level, her lines and the cracks into the host given, with no view of its own, and reports as the full mount', () => {
-    const s = hold('human_chair', planOf({}));
-    const t = draw(s, { settings: { physicsRealtime: false } }); // the card draws: the outer instrument stands in for it here
-    expect(t.q('.alius-weight')).toBeNull();
-    const outer = h('div', { class: 'outer' });
-    t.q('.alius-layer-effects')!.append(outer);
-    const env: InstrumentEnv = {
-      root: t.q('.alius-scene')!, layers: {
-        pose: t.q('.alius-layer-pose')!, effects: t.q('.alius-layer-effects')!, moment: t.q('.alius-layer-moment')!, frame: t.q('.alius-layer-frame')!,
-        backdrop: t.q('.alius-layer-backdrop')!, sprites: t.q('.alius-layer-sprites')!,
-      },
-      input: t.q('input[name="cmd"]')!, reply: t.q('[role="log"]')!, gauge: { clear() {} } as never,
-      spriteOf: () => null, setSprite() {}, faceOf: () => 'neutral', spriteUrl: async () => null, state: () => s, registries: reg, settings: () => DEFAULT_SETTINGS,
-      staging: t.staging as never, samples: null, art: { get: () => null, face: () => null }, her: () => ({ unitId: ANN, name: 'Ann', accent: '#8cc8f0', hand: '', handScale: 1, style: 'neutral' }),
-      say: () => h('div'), now: () => t.frames.now(), raf: (fn) => t.frames.raf(fn), cancelRaf: (id) => t.frames.cancelRaf(id),
-      timeout: (fn, ms) => { const x = setTimeout(fn, ms); return () => clearTimeout(x); },
-      listen: (target, type, fn, opts) => { target.addEventListener(type, fn, opts); return () => target.removeEventListener(type, fn, opts); },
-      reduced: false, readable: false,
-    };
-    const core = startWeight(env, s.scene!.physics!, { host: outer, core: true });
-    const box = outer.querySelector<HTMLElement>(':scope > .alius-weight[data-core]')!;
+  /** A dummy outer instrument for a breath-and-weight pair (`between_thighs`): it draws its own host and mounts the weight's core in it. */
+  const outerDef = (seen: { core: WeightCoreRun | null; host: HTMLElement | null; updates: PhysicsRun[] }): InstrumentDef => ({
+    id: 'outer',
+    matches: (run) => run.second?.physicsId === 'weight',
+    start(env, run) {
+      const host = h('div', { class: 'outer' });
+      env.layers.effects.append(host);
+      seen.host = host;
+      seen.core = startWeight(env, coreRun(run, 'second')!, { host, core: true });
+      return {
+        update(next) { const v = coreRun(next, 'second')!; seen.updates.push(v); seen.core!.update(v); },
+        stop() { seen.core!.stop(); host.remove(); },
+      };
+    },
+  });
+  afterEach(() => {
+    // the shipped instruments again, in their order (the test replaced them with its outer one)
+    _resetInstrumentDefs();
+    registerInstrument({ id: 'breath', matches: breathMatches, start: startBreath });
+    registerInstrument({ id: 'weight', matches: weightMatches, start: (env, run) => startWeight(env, run) });
+  });
+
+  it('the core mounts in the outer instrument\'s host with no view, no keys and no room tone of its own; the outer drives it, reads its frame, and unmounts it cleanly', async () => {
+    _resetInstrumentDefs();
+    const seen = { core: null as WeightCoreRun | null, host: null as HTMLElement | null, updates: [] as PhysicsRun[] };
+    registerInstrument(outerDef(seen));
+    const s = hold('between_thighs', planOf({}));
+    const run = s.scene!.physics!;
+    expect(run.physicsId).toBe('breath');
+    expect(run.second?.physicsId).toBe('weight');
+    run.second!.gauge = 70;
+    const audio = fakeAudio();
+    const t = draw(s, { samples: audio.samples });
+    const box = seen.host!.querySelector<HTMLElement>(':scope > .alius-weight[data-core]')!;
     expect(box).not.toBeNull();
     expect(box.querySelector('.alius-weight-vial svg')).not.toBeNull();
+    expect(_weight.R.run?.physicsId).toBe('weight'); // the weight's own view: its gauge, not breath's
+    expect(_weight.R.run?.gauge).toBe(70);
+    expect(_weight.S.roomTone).toBe(false);
+    // its keys are the outer instrument's: Space and the frame's buttons do nothing here
+    t.to(2000);
+    t.key('keydown', ' ');
     t.mouse('mousedown');
+    expect(_weight.HOLD.on).toBe(false);
+    seen.core!.hold(true, 'mouse');
+    seen.core!.balance(0.5);
     t.to(3 * BEAT + 100);
     expect(reports(t).filter((i) => i.kind === 'hold').map((i) => i.beat)).toEqual([0, 1, 2]);
+    seen.core!.shift('mouse');
+    expect(reports(t).some((i) => i.kind === 'shift_weight')).toBe(true);
+    t.screen.refresh();
+    expect(seen.updates.at(-1)?.physicsId).toBe('weight');
     const fr = weightFrame();
     expect(fr.cam).toBe(1);
     expect(Number.isFinite(fr.tilt)).toBe(true);
-    core.stop();
-    expect(outer.querySelector('.alius-weight')).toBeNull();
-    expect(t.q('.alius-weight-mirror')).toBeNull();
+    // unmounted by the host (a stage reset): nothing left, nothing sent afterwards
+    resetSceneStage();
+    await Promise.resolve();
+    expect(seen.host!.isConnected).toBe(false);
+    expect(document.querySelector('.alius-weight')).toBeNull();
+    expect(document.querySelector('.alius-weight-mirror')).toBeNull();
+    expect(t.frames.pending()).toBe(0);
+    expect(audio.sources.every((n) => n.stopped)).toBe(true);
+    const sent = t.input.mock.calls.length;
+    seen.core!.hold(true, 'mouse');
+    seen.core!.shift('mouse');
+    vi.advanceTimersByTime(5000);
+    t.frames.frame();
+    expect(t.input.mock.calls.length).toBe(sent);
   });
 });

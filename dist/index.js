@@ -65137,7 +65137,8 @@ var S4 = {
   overSink: 0,
   debug: false,
   reduced: false,
-  readable: false
+  readable: false,
+  roomTone: true
 };
 var NO_LINES2 = { entry: [], released: [], slip: [], caught: [], heavy: [], good: [], poor: [], fall: [], stop: [], longer: [], announce: [] };
 var R5 = {
@@ -65194,18 +65195,20 @@ function audioInit2() {
       d[i] = l * 3.5;
     }
   });
-  const room2 = ctx2.createBufferSource();
-  room2.buffer = A2.brown;
-  room2.loop = true;
-  const rl = ctx2.createBiquadFilter();
-  rl.type = "lowpass";
-  rl.frequency.value = 500;
-  A2.roomG = ctx2.createGain();
-  A2.roomG.gain.value = 0.05;
-  room2.connect(rl);
-  rl.connect(A2.roomG);
-  A2.roomG.connect(A2.world);
-  room2.start();
+  if (S4.roomTone) {
+    const room2 = ctx2.createBufferSource();
+    room2.buffer = A2.brown;
+    room2.loop = true;
+    const rl = ctx2.createBiquadFilter();
+    rl.type = "lowpass";
+    rl.frequency.value = 500;
+    A2.roomG = ctx2.createGain();
+    A2.roomG.gain.value = 0.05;
+    room2.connect(rl);
+    rl.connect(A2.roomG);
+    A2.roomG.connect(A2.world);
+    room2.start();
+  }
   const rum = ctx2.createBufferSource();
   rum.buffer = A2.brown;
   rum.loop = true;
@@ -66193,11 +66196,16 @@ function stopWeight() {
 var EXIT_MS2 = 2600;
 function startWeight(env, run, opts = {}) {
   stopWeight();
-  E2 = build2(env, opts.host ?? env.layers.effects, opts.core === true);
+  const core = opts.core === true;
+  E2 = build2(env, opts.host ?? env.layers.effects, core);
   innerWidth3 = 0;
   innerHeight3 = 0;
+  S4.roomTone = opts.roomTone ?? !core;
   bind2(env, run);
-  listen2(env);
+  if (opts.keys ?? !core) listen2(env);
+  else env.listen(env.input, "input", () => {
+    letters2.acc = 99;
+  });
   frame2.last = void 0;
   refreshLines2(0);
   begin2();
@@ -66228,6 +66236,19 @@ function startWeight(env, run, opts = {}) {
     },
     stop() {
       if (E2 === mine) stopWeight();
+    },
+    hold(on, via) {
+      if (E2 !== mine) return;
+      if (on) R5.via = via;
+      HOLD2.on = on;
+    },
+    shift(via) {
+      if (E2 !== mine) return;
+      R5.via = via;
+      relief();
+    },
+    balance(x) {
+      if (E2 === mine) mouseX = clamp43(x, 0, 1);
     }
   };
 }

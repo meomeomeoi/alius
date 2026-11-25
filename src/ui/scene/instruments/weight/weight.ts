@@ -25,9 +25,10 @@
  * - the end is the engine's: on its outcome the exit plays through `finish`.
  *
  * Ruling B: the core (the balance, the bubble, the level, her lines, the cracks and the reports) mounts inside another instrument with
- * `startWeight(env, run, { host, core: true })`: it draws into that host with no view of its own (no floor, no ceiling, no sprite, no tilt of a
- * world), and the outer instrument tilts and shakes its own frame by `weightFrame()` (the prototype's tilt, tremble and sag). Its keys are the
- * same (Space, Shift, the left and the right button on the scene's frame).
+ * `startWeight(env, coreRun(run, 'second'), { host, core: true })` (the weight's own view of the run, also to every `update`): it draws into
+ * that host with no view of its own (no floor, no ceiling, no sprite, no tilt of a world), and the outer instrument tilts and shakes its own
+ * frame by `weightFrame()` (the prototype's tilt, tremble and sag). In the core its own keys and its room tone are off by default (`keys`,
+ * `roomTone`): the outer instrument owns them and forwards the commander's acts (`WeightCoreRun.hold`, `shift`, `balance`).
  */
 import type { Registries } from '../../../../content/types';
 import type { CueKind } from '../../../../engine/blocking/types';
@@ -124,7 +125,7 @@ const ROW_BY_CUES: Record<string, string> = { honest: 'neutral', count: 'ritual'
 /* ---------- settings (weight.html `S`: the approved defaults; the contact, the style, the fit of `over`, her face point and the still form are the run's and the scene's) ---------- */
 const S = {
   legs: 'hang', foot: 'relaxed', legShade: 'shadow', toFall: false, style: 'neutral', task: 'reading', tol: 0.18, drain: 1, len: 45, unevenCost: true, sound: true, vol: 0.7,
-  face: { x: 0.5, y: 0.21 }, overH: 1.04, overX: 0.5, overSink: 0, debug: false, reduced: false, readable: false,
+  face: { x: 0.5, y: 0.21 }, overH: 1.04, overX: 0.5, overSink: 0, debug: false, reduced: false, readable: false, roomTone: true,
 };
 type Lines = Record<string, string[]>;
 /** What the prototype read from its panel and its scheduler, here from the run (see the module's note). */
@@ -179,9 +180,11 @@ function audioInit() {
   const mk = (sec: number, fill: (d: Float32Array) => void) => { const b = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate); fill(b.getChannelData(0)); return b; };
   A.white = mk(2, (d) => { for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; });
   A.brown = mk(4, (d) => { let l = 0; for (let i = 0; i < d.length; i++) { l = (l + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = l * 3.5; } });
-  const room = ctx.createBufferSource(); room.buffer = A.brown; room.loop = true;
-  const rl = ctx.createBiquadFilter(); rl.type = 'lowpass'; rl.frequency.value = 500; A.roomG = ctx.createGain(); A.roomG.gain.value = 0.05;
-  room.connect(rl); rl.connect(A.roomG); A.roomG.connect(A.world); room.start();
+  if (S.roomTone) {
+    const room = ctx.createBufferSource(); room.buffer = A.brown; room.loop = true;
+    const rl = ctx.createBiquadFilter(); rl.type = 'lowpass'; rl.frequency.value = 500; A.roomG = ctx.createGain(); A.roomG.gain.value = 0.05;
+    room.connect(rl); rl.connect(A.roomG); A.roomG.connect(A.world); room.start();
+  }
   // the strain: a low rumble whose tremble grows as the strength goes
   const rum = ctx.createBufferSource(); rum.buffer = A.brown; rum.loop = true;
   A.rumLP = ctx.createBiquadFilter(); A.rumLP.type = 'lowpass'; A.rumLP.frequency.value = 120;
@@ -930,15 +933,39 @@ export interface WeightOpts {
   host?: HTMLElement;
   /** Ruling B: the core only (the balance, the level, her lines, the cracks, the reports), no view of its own; see the module's note. */
   core?: boolean;
+  /** Its own keys and buttons (Space, Shift, T, the left and the right button, the mouse's balance). Default: on, off in the core (the outer instrument owns them and drives the core). */
+  keys?: boolean;
+  /** Its own room tone (the prototype's low brown noise). Default: on, off in the core (the outer instrument's room is heard). */
+  roomTone?: boolean;
 }
 
-/** Starts the instrument on a run (the host's `start`, or an outer instrument's with `{ host, core: true }`). */
-export function startWeight(env: InstrumentEnv, run: PhysicsRun, opts: WeightOpts = {}): InstrumentRun {
+/**
+ * The core's run as an outer instrument drives it (ruling B). The outer instrument passes the weight's own view of the run, at the start and
+ * to every `update`: `coreRun(run, 'second')` (`src/engine/physics/run.ts`) when weight is the run's second physics (its gauge, capacity and
+ * pressure, never the main one's), the run itself when weight is the main. With `keys: false` it forwards the commander's acts:
+ */
+export interface WeightCoreRun extends InstrumentRun {
+  /** The commander bears her (or lets go); `mouse` when a button did it (exempt from the typing lapse, ruling O). */
+  hold(on: boolean, via: 'mouse' | 'key'): void;
+  /** The commander's own shift of weight (the prototype's `relief`: 2.6 s of cooldown). */
+  shift(via: 'mouse' | 'key'): void;
+  /** The commander's balance, 0 left … 1 right of the frame. */
+  balance(x: number): void;
+}
+
+/**
+ * Starts the instrument on a run: the host's `start` (`startWeight(env, run)`), or an outer instrument's with `{ host, core: true }` and the
+ * weight's own view of the run (`coreRun(run, 'second')` when weight is the second physics; see `WeightCoreRun`). One weight runs at a time.
+ */
+export function startWeight(env: InstrumentEnv, run: PhysicsRun, opts: WeightOpts = {}): WeightCoreRun {
   stopWeight();
-  E = build(env, opts.host ?? env.layers.effects, opts.core === true);
+  const core = opts.core === true;
+  E = build(env, opts.host ?? env.layers.effects, core);
   innerWidth = 0; innerHeight = 0;
+  S.roomTone = opts.roomTone ?? !core;
   bind(env, run);
-  listen(env);
+  if (opts.keys ?? !core) listen(env);
+  else env.listen(env.input, 'input', () => { letters.acc = 99; });
   frame.last = undefined;
   refreshLines(0);
   begin();
@@ -962,6 +989,19 @@ export function startWeight(env: InstrumentEnv, run: PhysicsRun, opts: WeightOpt
     },
     stop() {
       if (E === mine) stopWeight();
+    },
+    hold(on: boolean, via: 'mouse' | 'key') {
+      if (E !== mine) return;
+      if (on) R.via = via;
+      HOLD.on = on;
+    },
+    shift(via: 'mouse' | 'key') {
+      if (E !== mine) return;
+      R.via = via;
+      relief();
+    },
+    balance(x: number) {
+      if (E === mine) mouseX = clamp(x, 0, 1);
     },
   };
 }
