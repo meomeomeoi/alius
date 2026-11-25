@@ -275,7 +275,18 @@ function build(env: InstrumentEnv, unitId: string): Omit<SlapEls, 'host' | 'scen
   const g = document.createElementNS(svgNS, 'feGaussianBlur');
   g.setAttribute('stdDeviation', '0 0');
   filter.append(g);
-  svg.append(filter);
+  // the same blur for the scene's layers the camera scales (the backdrop, her sprite): a filter is drawn in the layer's own pixels, so its
+  // deviation is the world's divided by the layer's scale (set per frame by `cam.draw`), and on screen it is the prototype's
+  const scaled = (suffix: string): Element => {
+    const f = filter.cloneNode(false) as Element;
+    f.setAttribute('id', `${HBLUR}-${suffix}`);
+    const gg = document.createElementNS(svgNS, 'feGaussianBlur');
+    gg.setAttribute('stdDeviation', '0 0');
+    f.append(gg);
+    els[`#hblur-${suffix}`] = gg as unknown as HTMLElement;
+    return f;
+  };
+  svg.append(filter, scaled('b'), scaled('s'));
   box.append(svg);
   els['#hblurG'] = g as unknown as HTMLElement;
   const her = env.her(unitId);
@@ -338,26 +349,34 @@ const cam = {
     const W = innerWidth, H = innerHeight;
     const O = [W * 0.5, H * 0.436]; // the prototype's #world: 14 % outside the frame, its origin at 50 % 45 %
     const about = (extra: string): string => `translate(${O[0].toFixed(1)}px, ${O[1].toFixed(1)}px) ${world}${extra} translate(${(-O[0]).toFixed(1)}px, ${(-O[1]).toFixed(1)}px)`;
-    const blur = e.env.readable || hb <= 0.3 ? '' : `url(#${HBLUR})`;
+    const blur = !e.env.readable && hb > 0.3; // the prototype's `filter: url(#hblur)` on `#world` (readable mode: no blur)
+    /** The motion blur of a layer drawn at `scale`: the world's deviation divided by it, so that on screen it is the prototype's. */
+    const hblurAt = (suffix: string, scale: number): string => {
+      e.els[`#hblur-${suffix}`]!.setAttribute('stdDeviation', `${(hb / scale).toFixed(2)} ${((hb * 0.12) / scale).toFixed(2)}`);
+      return blur ? `url(#${HBLUR}-${suffix})` : '';
+    };
     const { backdrop, sprites } = e.env.layers;
-    // the backdrop: the world's move; it grows to the prototype's 128 % box with the zoom, so the whip and the turn never show its edge
+    // the backdrop: the world's move; it grows to the prototype's 128 % box with the zoom, so the whip and the turn never show its edge;
+    // its blur (14 px at k = 1) and the motion blur are the prototype's on screen (divided by that growth)
+    const cover = lerp(1, 1.28, k);
     backdrop.style.transformOrigin = '0 0';
-    backdrop.style.transform = about(` scale(${lerp(1, 1.28, k).toFixed(4)})`);
-    backdrop.style.filter = `${this.backdropFilter} ${blur} ${e.env.readable ? '' : `blur(${(k * 14).toFixed(1)}px)`} brightness(${lerp(1, 0.55, k).toFixed(3)})`.replace(/\s+/g, ' ').trim();
-    // her sprite: the scene's view to her face close (`zoom` geometric), inside the world
+    backdrop.style.transform = about(` scale(${cover.toFixed(4)})`);
+    backdrop.style.filter = `${this.backdropFilter} ${hblurAt('b', cover)} ${e.env.readable ? '' : `blur(${((k * 14) / cover).toFixed(1)}px)`} brightness(${lerp(1, 0.55, k).toFixed(3)})`.replace(/\s+/g, ' ').trim();
+    // her sprite: the scene's view to her face close (`zoom` geometric), inside the world (a sprite redrawn by the scene keeps the camera)
     this.measure();
     let camera = '';
+    let sc = 1;
     const img = e.env.spriteOf(e.unitId);
-    if (img && img.naturalWidth && this.base) {
+    if (img && this.base) {
       const p0 = this.base, p1 = [W * 0.5, H * 0.42];
-      const sc = Math.pow(S.zoom, k);
+      sc = Math.pow(S.zoom, k);
       const px = lerp(p0.x, p1[0]!, k), py = lerp(p0.y, p1[1]!, k);
       camera = ` translate(${(px - sc * p0.x).toFixed(1)}px, ${(py - sc * p0.y).toFixed(1)}px) scale(${sc.toFixed(4)})`;
     }
     sprites.style.transform = `${about('')}${camera}`;
-    // her sprite takes no motion blur: in the prototype's own rendering her picture (a composited layer of its own inside `#world`) stays sharp
-    // under the world's SVG filter; on the scaled sprites layer the filter would be drawn at the layer's scale and blur her ×2.6
-    sprites.style.filter = `brightness(${lerp(1, 0.92, k)})`;
+    // her sprite takes the world's motion blur (the prototype's `#her` is inside `#world`), in the frame's pixels
+    sprites.style.filter = `${hblurAt('s', sc)} brightness(${lerp(1, 0.92, k)})`.trim();
+    e.faceImg.style.filter = blur ? `url(#${HBLUR})` : '';
     // the face art (when loaded) crossfades in: a 128 % box of its own, moved as the world
     e.faceImg.style.transform = world;
   },
@@ -369,7 +388,7 @@ const cam = {
     this.saved = [];
     this.base = null;
     E?.env.root.querySelector<HTMLElement>('.alius-stage-dial')?.removeAttribute('data-instrument');
-    if (E) { E.faceImg.style.opacity = '0'; E.faceImg.style.transform = ''; }
+    if (E) { E.faceImg.style.opacity = '0'; E.faceImg.style.transform = ''; E.faceImg.style.filter = ''; }
   },
 };
 

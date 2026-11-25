@@ -21,6 +21,8 @@ export interface SlapEnvOpts {
   /** The labels she has a sprite for (each answers `/sprites/<label>.png`). */
   labels?: string[];
   art?: Partial<ArtSlots>;
+  /** Her sprite is drawn (a picture 400 × 1100 at (760, 30) in the frame); default none. */
+  sprite?: boolean;
   /** The scene's sprite lookup takes this long (fake timers; default at once). */
   lookupMs?: number;
   /** Where the frame is drawn (default the document's body). */
@@ -49,12 +51,19 @@ export function slapEnv(o: SlapEnvOpts) {
   root.append(layers.backdrop, layers.frame, layers.pose, layers.sprites, layers.effects, ui, layers.moment);
   (o.parent ?? document.body).append(root);
   const setSprite = vi.fn();
+  let spriteImg: HTMLImageElement | null = null;
+  if (o.sprite) {
+    spriteImg = h('img', { class: 'alius-sprite-img' }) as HTMLImageElement;
+    Object.defineProperty(spriteImg, 'naturalWidth', { value: 400 });
+    spriteImg.getBoundingClientRect = () => ({ left: 760, top: 30, width: 400, height: 1100, right: 1160, bottom: 1130, x: 760, y: 30, toJSON: () => ({}) }) as DOMRect;
+    layers.sprites.append(spriteImg);
+  }
   let face = o.face ?? 'neutral';
   const labels = new Set(o.labels ?? ['neutral', 'anger', 'amusement', 'disapproval', 'desire', 'pride', 'annoyance', 'love', 'caring', 'sadness', 'approval', 'curiosity', 'surprise', 'disappointment']);
   const env: InstrumentEnv = {
     root, layers, input, reply,
     gauge: { narrow() {}, tremble() {}, pulse() {}, window() {}, clear() {} },
-    spriteOf: () => null,
+    spriteOf: () => spriteImg,
     setSprite: (unitId: string, label: string, url?: string) => { face = label; setSprite(unitId, label, url); },
     faceOf: () => face,
     spriteUrl: async (_u: string, label: string) => {

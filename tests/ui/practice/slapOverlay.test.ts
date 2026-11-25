@@ -51,9 +51,9 @@ function holding(style: string, over: Partial<Slap> = {}): CampaignState {
 }
 
 /** The slap drawn into a test frame. */
-async function slapping(over: { style?: string; slap?: Partial<Slap>; settings?: Partial<AliusSettings>; reduced?: boolean; face?: string; lookupMs?: number } = {}) {
+async function slapping(over: { style?: string; slap?: Partial<Slap>; settings?: Partial<AliusSettings>; reduced?: boolean; face?: string; lookupMs?: number; sprite?: boolean; art?: boolean } = {}) {
   let state = holding(over.style ?? 'possessive', over.slap);
-  const f = slapEnv({ state: () => state, reg, ...(over.settings ? { settings: over.settings } : {}), ...(over.reduced ? { reduced: true } : {}), ...(over.face ? { face: over.face } : {}), ...(over.lookupMs ? { lookupMs: over.lookupMs } : {}) });
+  const f = slapEnv({ state: () => state, reg, ...(over.settings ? { settings: over.settings } : {}), ...(over.reduced ? { reduced: true } : {}), ...(over.face ? { face: over.face } : {}), ...(over.lookupMs ? { lookupMs: over.lookupMs } : {}), ...(over.sprite ? { sprite: true } : {}), ...(over.art ? { art: { get: () => ({ url: '/art/face_close.webp', sidecar: {} }) } } : {}) });
   const host = h('div', { class: 'alius-slap-host' });
   f.layers.moment.append(host);
   const results: SlapResult[] = [];
@@ -271,6 +271,28 @@ describe('the camera and the frame', () => {
     expect(o.root.querySelector('.alius-stage-dial')!.getAttribute('data-instrument')).toBe('slap'); // R6: the dial dims
     expect(o.layers.backdrop.style.filter).toMatch(/blur/);
     expect(o.reply.style.opacity).not.toBe('');
+  });
+
+  it('the camera zooms her sprite to her face and the impact blurs her, the backdrop and the face art in the frame\'s pixels (review I2, M1)', async () => {
+    const o = await slapping({ sprite: true, art: true });
+    Object.defineProperty(o.root, 'clientWidth', { value: 1920, configurable: true });
+    Object.defineProperty(o.root, 'clientHeight', { value: 1080, configurable: true });
+    const art = o.layers.effects.querySelector<HTMLImageElement>('.alius-slap-face')!;
+    expect(art.getAttribute('src')).toBe('/art/face_close.webp');
+    art.dispatchEvent(new Event('load'));
+    o.to(L + 300); // k = 1: her face close
+    expect(o.layers.sprites.style.transform).toMatch(/scale\(2\.6000\)$/);
+    expect(Number(art.style.opacity)).toBe(1);
+    expect(o.layers.backdrop.style.filter).toMatch(/blur\(10\.9px\)/); // 14 px on screen: 14 / 1.28 in the grown layer
+    o.to(L + 500 + 30); // 30 ms after the impact: the whip's blur, about 13.8 px
+    const dev = (id: string): number => Number(o.layers.effects.querySelector(`#${id} feGaussianBlur`)!.getAttribute('stdDeviation')!.split(' ')[0]);
+    const hb = dev('alius-slap-hblur');
+    expect(hb).toBeGreaterThan(10);
+    expect(o.layers.sprites.style.filter).toContain('url(#alius-slap-hblur-s)');
+    expect(dev('alius-slap-hblur-s')).toBeCloseTo(hb / 2.6, 1);
+    expect(o.layers.backdrop.style.filter).toContain('url(#alius-slap-hblur-b)');
+    expect(dev('alius-slap-hblur-b')).toBeCloseTo(hb / 1.28, 1);
+    expect(art.style.filter).toBe('url(#alius-slap-hblur)');
   });
 
   it('the camera puts the frame back when it is home: the layers, the reply and the input line as they were', async () => {
