@@ -59,6 +59,12 @@
 @font-face { font-family: "Waiting for the Sunrise"; src: url("%%ASSET:docs/prototypes/assets/hands/waiting-for-the-sunrise.woff2%%") format("woff2"); }
 @font-face { font-family: "Yellowtail"; src: url("%%ASSET:docs/prototypes/assets/hands/yellowtail.woff2%%") format("woff2"); }
 @font-face { font-family: "Zeyada"; src: url("%%ASSET:docs/prototypes/assets/hands/zeyada.woff2%%") format("woff2"); }
+@font-face { font-family: "Klee One"; src: url("%%ASSET:docs/prototypes/assets/hands/klee-one.woff2%%") format("woff2"); }
+@font-face { font-family: "Playpen Sans"; src: url("%%ASSET:docs/prototypes/assets/hands/playpen-sans.woff2%%") format("woff2"); }
+@font-face { font-family: "Neucha"; src: url("%%ASSET:docs/prototypes/assets/hands/neucha.woff2%%") format("woff2"); }
+@font-face { font-family: "Gaegu"; src: url("%%ASSET:docs/prototypes/assets/hands/gaegu.woff2%%") format("woff2"); }
+@font-face { font-family: "Pangolin"; src: url("%%ASSET:docs/prototypes/assets/hands/pangolin.woff2%%") format("woff2"); }
+@font-face { font-family: "Edu SA Beginner"; src: url("%%ASSET:docs/prototypes/assets/hands/edu-sa-beginner.woff2%%") format("woff2"); }
 @font-face { font-family: "Inter"; font-weight: 300; src: url("%%ASSET:fonts/inter-300.woff2%%") format("woff2"); }
 @font-face { font-family: "Inter"; font-weight: 400; src: url("%%ASSET:fonts/inter-400.woff2%%") format("woff2"); }
 @font-face { font-family: "IBM Plex Mono"; font-weight: 400; src: url("%%ASSET:fonts/ibm-plex-mono-400.woff2%%") format("woff2"); }
@@ -315,8 +321,9 @@ $('#her').src = ASSETS.sprite;
 const STYLES = ['neutral', 'affectionate', 'cold', 'ritual', 'clinical', 'possessive', 'playful', 'cruel', 'obsessive', 'drill', 'regal', 'vindictive'];
 /** The hands: the six of the game (P10b `handFonts`) and the candidates. The size factor is measured (the x-height against Caveat's), not set by hand. */
 const GAME_HANDS = ['Caveat', 'Kalam', 'Patrick Hand', 'Indie Flower', 'Shadows Into Light', 'Nanum Pen Script'];
+const STRICT = ["Klee One", "Playpen Sans", "Neucha", "Gaegu", "Pangolin", "Edu SA Beginner"];
 const CANDIDATES = ["Amatic SC", "Annie Use Your Telescope", "Architects Daughter", "Caveat Brush", "Cedarville Cursive", "Covered By Your Grace", "Dancing Script", "Dawning of a New Day", "Delius", "Gloria Hallelujah", "Gochi Hand", "Handlee", "Homemade Apple", "Just Another Hand", "Kristi", "La Belle Aurore", "Loved by the King", "Marck Script", "Mrs Saint Delafield", "Mynerve", "Nanum Brush Script", "Nothing You Could Do", "Over the Rainbow", "Permanent Marker", "Pinyon Script", "Reenie Beanie", "Rock Salt", "Satisfy", "Sedgwick Ave", "Shantell Sans", "Square Peg", "Sue Ellen Francisco", "The Girl Next Door", "Waiting for the Sunrise", "Yellowtail", "Zeyada"];
-const HANDS = [...GAME_HANDS, ...CANDIDATES];
+const HANDS = [...GAME_HANDS, ...STRICT, ...CANDIDATES];
 const HS = {};
 function measureHands() {
   const c = document.createElement('canvas').getContext('2d');

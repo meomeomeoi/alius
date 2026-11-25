@@ -19,4 +19,4 @@
 
 ## `hands/` (candidate hands for the author to choose from, 2026-11-25)
 
-Handwriting fonts from Google Fonts (the latin subset as Google serves it, woff2), each with its licence beside it (`<name>.license.txt`, from github.com/google/fonts): SIL Open Font License 1.1, except Rock Salt, Permanent Marker, Just Another Hand, Homemade Apple, Satisfy and Yellowtail (Apache License 2.0). Only the hands the author picks move into `fonts/` and the `handFonts` registry; the rest are removed from here.
+Handwriting fonts from Google Fonts (36 of every kind, then six strict print hands: Klee One, Playpen Sans, Neucha, Gaegu, Pangolin, Edu SA Beginner) (the latin subset as Google serves it, woff2), each with its licence beside it (`<name>.license.txt`, from github.com/google/fonts): SIL Open Font License 1.1, except Rock Salt, Permanent Marker, Just Another Hand, Homemade Apple, Satisfy and Yellowtail (Apache License 2.0). Only the hands the author picks move into `fonts/` and the `handFonts` registry; the rest are removed from here.
