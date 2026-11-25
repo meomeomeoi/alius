@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<!--
+  P10e chunk (e) reference prototype: HER HAND OF CARDS (the dock's cards of P15a / P15 / P16 in the scene's language) and THE POSTURE CALL (P16, variant D).
+  Draft for the author's rounds (2026-11-25); once approved it is NORMATIVE (docs/prototypes/README.md).
+  - Every card is glass with her accent; her words AND the conditions are in her hand (variant B3); a condition is never the model's: it is a line of
+    docs/content/card-voice.md (approved) with the engine's value put in, the value in stronger ink. The answers are the commander's: plain pills.
+  - Collapsed cards are the edges of cards in her hand: one strip each (her accent, her name in her hand, the kind, the engine's gist and the most urgent condition).
+  - A card with a clock (the posture call, a running hold) never collapses.
+  - The posture call is a short full-frame moment: her word large in her hand, her foot tapping the time (sound and ink dots that close up), the fan of her
+    named postures rising from the dial (mannequins as the dial draws them), her line after.
+  Build a runnable page with
+    npm run proto -- cards [--sprite <png|webp|svg>]
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alius · her cards · prototype</title>
+<style>
+@font-face { font-family: "Caveat"; src: url("%%ASSET:fonts/hand-caveat-400.woff2%%") format("woff2"); }
+@font-face { font-family: "Kalam"; src: url("%%ASSET:fonts/hand-kalam-400.woff2%%") format("woff2"); }
+@font-face { font-family: "Patrick Hand"; src: url("%%ASSET:fonts/hand-patrick-hand-400.woff2%%") format("woff2"); }
+@font-face { font-family: "Indie Flower"; src: url("%%ASSET:fonts/hand-indie-flower-400.woff2%%") format("woff2"); }
+@font-face { font-family: "Shadows Into Light"; src: url("%%ASSET:fonts/hand-shadows-into-light-400.woff2%%") format("woff2"); }
+@font-face { font-family: "Nanum Pen Script"; src: url("%%ASSET:fonts/hand-nanum-pen-script-400.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 300; src: url("%%ASSET:fonts/inter-300.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 400; src: url("%%ASSET:fonts/inter-400.woff2%%") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; src: url("%%ASSET:fonts/ibm-plex-mono-400.woff2%%") format("woff2"); }
+
+:root {
+  --her: #ff9ec7;            /* her accent (unitAccent) */
+  --hand: Caveat;            /* her hand (P10b) */
+  --hs: 1;                   /* the hand's size factor (hands differ in x-height) */
+  --cmd: #3b97ff;            /* the commander's cool accent (the dial's) */
+  --glass: rgba(14, 12, 20, 0.60); --line: rgba(255, 255, 255, 0.12); --ink: #ece8f2; --dim: rgba(236, 232, 242, 0.55); --bg: #0b0a10;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: var(--ink); font-family: Inter, system-ui, sans-serif; font-weight: 300; }
+
+/* ---------- the scene (stand-in for P10e's stage) ---------- */
+#stage { position: fixed; inset: 0; overflow: hidden; }
+#backdrop { position: absolute; inset: 0; background-size: cover; background-position: center; transition: filter .5s; }
+#her { position: absolute; left: 50%; top: 3vh; height: 110vh; transform: translateX(-50%); user-select: none; -webkit-user-drag: none; transition: filter .5s; }
+#grad { position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0,0,0,.45), rgba(0,0,0,0) 9%, rgba(0,0,0,0) 58%, rgba(0,0,0,.72) 86%, rgba(0,0,0,.86)); }
+#dimmer { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .45s; }
+#topline { position: absolute; left: 18px; top: 14px; font: 12px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .1em; color: var(--dim); }
+#reply { position: absolute; left: 50%; bottom: 112px; transform: translateX(-50%); width: min(1080px, 56vw); font-size: 21px; line-height: 1.5;
+  text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.7); }
+#reply .who { font: 11px "IBM Plex Mono", monospace; letter-spacing: .14em; color: var(--dim); display: block; margin-bottom: 4px; }
+#reply .act { font-style: italic; color: var(--dim); }
+#reply .speech { color: var(--her); font-weight: 400; }
+#inputWrap { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); width: min(1080px, 56vw); height: 52px;
+  background: var(--glass); border: 1px solid var(--line); border-radius: 26px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+#cmd { position: absolute; inset: 0; width: 100%; padding: 0 24px; border: 0; outline: 0; background: transparent; color: var(--ink); font: 300 19px/52px Inter, sans-serif; }
+#cmd::placeholder { color: rgba(236,232,242,.35); }
+body.flash-input #inputWrap { box-shadow: 0 0 0 2px color-mix(in srgb, var(--cmd) 70%, transparent); transition: box-shadow .2s; }
+
+/* the posture dial (as P10e draws it) */
+#dial { position: absolute; right: 36px; bottom: 40px; display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 4; }
+#dialFace { position: relative; width: min(18.5vh, 200px); height: min(18.5vh, 200px); border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--cmd) 12%, var(--bg)), color-mix(in srgb, var(--bg) 94%, #000) 78%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cmd) 30%, transparent), 0 6px 24px rgba(0,0,0,.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  transition: box-shadow .35s; }
+#dialFace::before { content: ""; position: absolute; inset: 3px; border-radius: 50%;
+  background: repeating-conic-gradient(from -0.7deg, color-mix(in srgb, var(--cmd) 55%, transparent) 0 1.4deg, transparent 1.4deg 7.5deg);
+  -webkit-mask: radial-gradient(circle, transparent 93%, #000 94%); mask: radial-gradient(circle, transparent 93%, #000 94%); }
+#dialFace svg { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity .3s; }
+#dial.called #dialFace { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--her) 75%, transparent), 0 0 26px color-mix(in srgb, var(--her) 30%, transparent), 0 6px 24px rgba(0,0,0,.55); }
+#dialLabel { font: 11px "IBM Plex Mono", monospace; letter-spacing: .14em; color: color-mix(in srgb, var(--cmd) 60%, #fff); text-shadow: 0 1px 6px #000; text-transform: uppercase; }
+#stopPill { position: absolute; right: 36px; bottom: calc(min(18.5vh, 200px) + 76px); padding: 7px 14px; border-radius: 18px; font: 11px "IBM Plex Mono", monospace; letter-spacing: .12em;
+  background: rgba(60, 10, 14, .55); border: 1px solid rgba(255, 120, 120, .35); color: #ffd6d6; backdrop-filter: blur(10px); display: none; cursor: pointer; }
+
+/* the mannequin's classes (css/61-blocking.css, palette fixed) */
+.alius-mannequin { display: block; overflow: visible; }
+.alius-mq-floor { fill: color-mix(in srgb, var(--cmd) 9%, transparent); stroke: color-mix(in srgb, var(--cmd) 22%, transparent); stroke-width: .8; }
+.alius-mq-out, .alius-mq-fill { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.alius-mq-out { stroke: color-mix(in srgb, var(--cmd) 30%, #fff); }
+.alius-mq-fill { stroke: color-mix(in srgb, var(--cmd) 42%, #0d1020); }
+.alius-mq-out.alius-mq-far { stroke: color-mix(in srgb, var(--cmd) 62%, #1a2034); }
+.alius-mq-fill.alius-mq-far { stroke: color-mix(in srgb, var(--cmd) 26%, #0b0d18); }
+.alius-mq-head { fill: color-mix(in srgb, var(--cmd) 42%, #0d1020); stroke: color-mix(in srgb, var(--cmd) 30%, #fff); stroke-width: 1.6; }
+.alius-mq-face { fill: color-mix(in srgb, var(--cmd) 70%, #fff); }
+.alius-mq-gaze { stroke: color-mix(in srgb, var(--cmd) 50%, transparent); stroke-width: 1.2; stroke-linecap: round; }
+.alius-mq-hint { fill: none; stroke: rgba(210,146,0,.5); stroke-width: 1.6; stroke-linecap: round; }
+.alius-mq-hint.alius-mq-plane { fill: rgba(210,146,0,.05); stroke: rgba(210,146,0,.25); stroke-width: 1; }
+.alius-mq-shadow { fill: rgba(0,0,0,.3); }
+
+/* ---------- her hand of cards: the dock ---------- */
+#dock { position: absolute; left: 36px; top: 30vh; width: 420px; max-height: 46vh; overflow-y: auto; overflow-x: visible; padding: 6px 8px 10px 4px;
+  display: flex; flex-direction: column; scrollbar-width: none; z-index: 3; }
+#dock::-webkit-scrollbar { display: none; }
+#waiting { position: absolute; left: 36px; top: calc(30vh - 30px); font: 11px "IBM Plex Mono", monospace; letter-spacing: .12em; color: var(--dim);
+  padding: 4px 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--glass); cursor: pointer; display: none; }
+
+.card { --acc: var(--her); position: relative; flex: none; border-radius: 16px; background: var(--glass); border: 1px solid var(--line);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  transition: transform .28s cubic-bezier(.2,.8,.3,1), box-shadow .28s, opacity .28s; }
+.card::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 3px; background: var(--acc); opacity: .85; }
+.card.neutral { --acc: rgba(236,232,242,.45); }
+.card.arrive { animation: arrive .5s cubic-bezier(.2,.8,.3,1) both; }
+@keyframes arrive { from { transform: translateX(-46px) rotate(-2deg); opacity: 0; } }
+
+/* the head line: her name in her hand, the kind */
+.head { display: flex; align-items: baseline; gap: 10px; padding: 12px 40px 0 20px; min-width: 0; }
+.who { font-family: var(--hand), cursive; font-size: calc(26px * var(--hs)); line-height: 1; color: var(--acc); white-space: nowrap; }
+.kind { font: 11px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .14em; color: var(--dim); text-transform: lowercase; white-space: nowrap; }
+.gist { display: none; }
+.aside { position: absolute; right: 10px; top: 10px; width: 24px; height: 24px; border-radius: 12px; border: 1px solid var(--line); background: transparent;
+  color: var(--dim); font: 13px Inter, sans-serif; cursor: pointer; line-height: 20px; padding: 0; }
+.aside:hover { color: var(--ink); background: rgba(255,255,255,.08); }
+
+/* her words and the conditions, in her hand */
+.body { padding: 6px 22px 16px 20px; }
+.words { font-family: var(--hand), cursive; font-size: calc(27px * var(--hs)); line-height: 1.18; color: var(--acc); margin: 4px 0 10px;
+  text-shadow: 0 1px 1px rgba(0,0,0,.4); }
+.cond { font-family: var(--hand), cursive; font-size: calc(22px * var(--hs)); line-height: 1.2; color: color-mix(in srgb, var(--acc) 62%, var(--ink)); margin: 3px 0; }
+.cond .v { color: var(--acc); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--acc) 55%, transparent);
+  text-decoration-thickness: 1.5px; text-underline-offset: 4px; filter: brightness(1.12); }
+.rule { height: 1px; margin: 10px 0 8px; background: linear-gradient(90deg, color-mix(in srgb, var(--acc) 40%, transparent), transparent); }
+.dry { display: none; font: 11.5px "IBM Plex Mono", monospace; color: var(--dim); margin: 0 0 6px 2px; }
+body.readable .dry { display: block; }
+.prose { font-style: italic; font-size: 17px; line-height: 1.45; color: var(--ink); margin: 6px 0 4px; }
+.hint { font-style: italic; font-size: 14px; color: var(--dim); margin-top: 8px; }
+
+/* the commander's answers: plain pills in the cool accent */
+.answers { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.pill { padding: 7px 16px; border-radius: 18px; border: 1px solid color-mix(in srgb, var(--cmd) 45%, transparent); background: color-mix(in srgb, var(--cmd) 10%, transparent);
+  color: #dce8ff; font: 400 14px Inter, sans-serif; cursor: pointer; position: relative; overflow: hidden; transition: background .15s, border-color .15s; }
+.pill:hover { background: color-mix(in srgb, var(--cmd) 24%, transparent); border-color: color-mix(in srgb, var(--cmd) 75%, transparent); }
+.pill[aria-disabled="true"] { opacity: .45; cursor: default; }
+.pill .fill { position: absolute; inset: 0; transform-origin: left; transform: scaleX(0); background: color-mix(in srgb, var(--cmd) 40%, transparent); }
+.pill span { position: relative; }
+.numin { width: 64px; padding: 6px 10px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--cmd) 45%, transparent); background: rgba(0,0,0,.25); color: var(--ink); font: 14px Inter; }
+
+/* the sealed envelope: a wax seal in her accent over a folded glass */
+.card.sealed .body { background: linear-gradient(160deg, rgba(255,255,255,.04), transparent 40%), linear-gradient(20deg, transparent 55%, rgba(255,255,255,.035)); border-radius: 0 0 16px 16px; }
+.seal { position: absolute; right: 44px; top: 9px; width: 30px; height: 30px; border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, color-mix(in srgb, var(--acc) 70%, #fff), var(--acc) 45%, color-mix(in srgb, var(--acc) 55%, #300) 100%);
+  box-shadow: 0 2px 6px rgba(0,0,0,.5), inset 0 -2px 4px rgba(0,0,0,.35); }
+.seal::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; border: 1.5px dashed rgba(60,0,20,.35); }
+
+/* the ceremony's steps */
+.steps { list-style: none; margin: 6px 0 0; padding: 0; }
+.steps li { font-family: var(--hand), cursive; font-size: calc(22px * var(--hs)); line-height: 1.3; color: color-mix(in srgb, var(--acc) 45%, var(--dim)); display: flex; gap: 10px; align-items: baseline; }
+.steps li .m { width: 14px; font: 13px Inter; color: var(--dim); }
+.steps li.done { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--acc) 50%, transparent); opacity: .6; }
+.steps li.next { color: var(--acc); }
+.grants { margin: 4px 0 0 2px; }
+
+/* collapsed: the edge of a card in her hand */
+.card.collapsed { cursor: pointer; margin-bottom: -6px; box-shadow: 0 -2px 10px rgba(0,0,0,.25); }
+.card.collapsed .body, .card.collapsed .aside, .card.collapsed .seal { display: none; }
+.card.collapsed .head { padding: 9px 14px 14px 18px; }
+.card.collapsed .who { font-size: calc(21px * var(--hs)); }
+.card.collapsed .gist { display: block; flex: 1; min-width: 0; font: 300 13.5px Inter, sans-serif; color: var(--ink); opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card.collapsed .gist b { font-weight: 400; color: var(--acc); }
+.card.collapsed:hover { transform: translateY(-4px); box-shadow: 0 -4px 16px rgba(0,0,0,.35), 0 0 0 1px color-mix(in srgb, var(--acc) 40%, transparent); }
+.card.open { margin-top: 4px; }
+.card.open + .card { margin-top: 10px; }
+
+/* readable mode: no blur, opaque glass */
+body.readable .card, body.readable #inputWrap { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(12,11,16,.95); }
+
+/* ---------- the posture call: her word, her foot, the fan ---------- */
+#call { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+#callWord { position: absolute; left: 74vw; top: 13vh; transform: translateX(-50%); text-align: center; }
+#callWord .w { font-family: var(--hand), cursive; font-size: calc(92px * var(--hs)); line-height: 1; color: var(--her); white-space: nowrap;
+  text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.85), 0 0 40px rgba(0,0,0,.6); display: inline-block; }
+#callWord .w.write { animation: write 520ms steps(14, end) both; }
+#callWord .w.bob { animation: bob .16s ease-out; }
+@keyframes write { from { clip-path: inset(-30% 100% -30% -8%); } to { clip-path: inset(-30% -8% -30% -8%); } }
+@keyframes bob { 40% { transform: translateY(3px) scale(.995); } }
+#dots { position: relative; height: 16px; margin-top: 10px; }
+#dots i { position: absolute; top: 4px; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%; background: var(--her); box-shadow: 0 0 6px color-mix(in srgb, var(--her) 70%, transparent);
+  animation: dot .35s ease-out both; }
+#dots i.last { width: 10px; height: 10px; margin-left: -5px; top: 2.5px; background: #fff; box-shadow: 0 0 10px var(--her); }
+@keyframes dot { from { transform: scale(2.2); opacity: 0; } }
+#callLine { position: absolute; left: 74vw; top: calc(13vh + 140px); transform: translateX(-50%); font-family: var(--hand), cursive; font-size: calc(40px * var(--hs));
+  color: var(--her); white-space: nowrap; text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.85); transition: opacity .6s; }
+#callLine.write { animation: write 600ms steps(16, end) both; }
+#fan { position: absolute; right: 110px; bottom: calc(min(18.5vh, 200px) + 72px); width: 0; height: 0; pointer-events: none; }
+.pc { position: absolute; width: 150px; height: 196px; margin: -196px 0 0 -75px; border-radius: 14px; pointer-events: auto; cursor: pointer;
+  background: rgba(14, 12, 20, .74); border: 1px solid var(--line); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 12px 28px rgba(0,0,0,.45);
+  transform-origin: 50% 120%; transition: transform .32s cubic-bezier(.2,.9,.3,1.15), opacity .3s, box-shadow .2s; display: flex; flex-direction: column; align-items: center; }
+.pc svg { width: 132px; height: 132px; margin-top: 6px; }
+.pc .nm { font-family: var(--hand), cursive; font-size: calc(30px * var(--hs)); line-height: 1; color: var(--her); margin-top: -2px; }
+.pc .base { font: 9px "IBM Plex Mono", monospace; letter-spacing: .1em; color: var(--dim); text-transform: uppercase; margin-top: 5px; padding: 0 10px; text-align: center; line-height: 1.3; }
+.pc:hover { box-shadow: 0 16px 34px rgba(0,0,0,.55), 0 0 0 1px color-mix(in srgb, var(--her) 60%, transparent); z-index: 9; }
+.pc.right { box-shadow: 0 0 0 2px var(--her), 0 0 30px color-mix(in srgb, var(--her) 55%, transparent); }
+.pc.wrongpick { animation: shake .35s; }
+@keyframes shake { 20% { margin-left: -83px; } 40% { margin-left: -67px; } 60% { margin-left: -80px; } 80% { margin-left: -71px; } }
+
+body.reduced .card.arrive { animation: none; }
+body.reduced #callWord .w.write, body.reduced #callWord .w.bob, body.reduced #callLine.write { animation: none; }
+body.reduced .pc { transition: opacity .01s; }
+
+/* ---------- prototype only ---------- */
+#panel { position: fixed; top: 14px; right: 14px; width: 320px; max-height: calc(100vh - 330px); overflow: auto; padding: 14px 16px; border-radius: 14px; z-index: 50;
+  background: rgba(10, 10, 14, .86); border: 1px solid var(--line); font: 12px "IBM Plex Mono", monospace; color: #cfcbe0; }
+#panel.hidden { display: none; }
+#panel h4 { margin: 12px 0 6px; font-weight: 400; color: #8d88a6; font-variant: small-caps; letter-spacing: .08em; }
+#panel h4:first-child { margin-top: 0; }
+#panel .row { display: flex; flex-wrap: wrap; gap: 4px; }
+#panel button.opt { padding: 4px 8px; border-radius: 10px; border: 1px solid #3a3650; background: #17151f; color: #cfcbe0; font: 12px "IBM Plex Mono", monospace; cursor: pointer; }
+#panel button.opt.on { background: #3b3360; border-color: #8a7fd0; color: #fff; }
+#panel label { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+#panel select { background: #17151f; color: #cfcbe0; border: 1px solid #3a3650; font: 12px "IBM Plex Mono", monospace; }
+#panel .note { color: #77738c; line-height: 1.45; margin-top: 8px; }
+#log { position: fixed; left: 50%; top: 12px; transform: translateX(-50%); font: 12px "IBM Plex Mono", monospace; color: #9ad; text-shadow: 0 0 4px #000; z-index: 40; pointer-events: none; transition: opacity .6s; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="backdrop"></div>
+  <img id="her" alt="" draggable="false">
+  <div id="grad"></div>
+  <div id="dimmer"></div>
+  <div id="topline">commander quarters · day 020 · evening · private · Ann</div>
+  <div id="reply"><span class="who">ANN</span><span class="act">She leans back against the desk and looks at you for a while.</span> <span class="speech">"We should talk about how you've been doing."</span></div>
+  <div id="inputWrap"><input id="cmd" autocomplete="off" spellcheck="false" placeholder="say something…"></div>
+  <div id="waiting"></div>
+  <div id="dock"></div>
+  <div id="stopPill">STOP WORD</div>
+  <div id="dial"><div id="dialFace"></div><div id="dialLabel"></div></div>
+  <div id="call"><div id="callWord"><span class="w"></span><div id="dots"></div></div><div id="callLine"></div><div id="fan"></div></div>
+</div>
+<div id="log"></div>
+
+<div id="panel">
+  <h4>her cards</h4>
+  <div class="row" id="adders"></div>
+  <div class="row" style="margin-top:6px"><button class="opt" id="deal">deal a hand</button><button class="opt" id="clear">clear</button></div>
+  <h4>the posture call</h4>
+  <div class="row"><button class="opt" id="callBtn">she calls a posture (C)</button></div>
+  <label><input type="checkbox" id="timed" checked> the order interaction is on (her foot keeps the time)</label>
+  <div class="note" id="winNote"></div>
+  <h4>her style</h4>
+  <div class="row" id="styles"></div>
+  <h4>her hand</h4>
+  <div class="row" id="hands"></div>
+  <h4>her accent</h4>
+  <div class="row" id="accents"></div>
+  <h4>the deadline the engine set</h4>
+  <select id="whenSel"></select>
+  <h4>display</h4>
+  <label><input type="checkbox" id="readable"> readable mode (no blur; the dry line under each condition)</label>
+  <label><input type="checkbox" id="reduced"> reduced motion</label>
+  <label><input type="checkbox" id="sound" checked> sound</label>
+  <div class="note">H hides this panel. Each card's lines are picked by a hash of the card (no rng), so one card always says the same thing; "deal a hand" deals new card ids.</div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const ASSETS = {
+  bg: '%%ASSET:content/core/art/backdrops/loc_quarters_commander.webp%%',
+  sprite: '%%SPRITE%%',
+  soft: ['%%ASSET:docs/prototypes/assets/ha/soft1.ogg%%', '%%ASSET:docs/prototypes/assets/ha/soft2.ogg%%'],
+  slide: ['%%ASSET:docs/prototypes/assets/ha/card_slide1.ogg%%', '%%ASSET:docs/prototypes/assets/ha/card_slide2.ogg%%'],
+  fan: '%%ASSET:docs/prototypes/assets/ha/card_fan.ogg%%',
+  place: ['%%ASSET:docs/prototypes/assets/ha/card_place1.ogg%%', '%%ASSET:docs/prototypes/assets/ha/card_place2.ogg%%'],
+};
+$('#backdrop').style.backgroundImage = `url(${ASSETS.bg})`;
+$('#her').src = ASSETS.sprite;
+
+/* ---------- settings ---------- */
+const STYLES = ['neutral', 'affectionate', 'cold', 'ritual', 'clinical', 'possessive', 'playful', 'cruel', 'obsessive', 'drill', 'regal', 'vindictive'];
+const HANDS = [['Caveat', 1], ['Kalam', 0.8], ['Patrick Hand', 0.86], ['Indie Flower', 0.84], ['Shadows Into Light', 0.9], ['Nanum Pen Script', 1.12]];
+const ACCENTS = ['#ff9ec7', '#ffb86b', '#8fd6ff', '#b6e88a', '#d0a8ff', '#7ee7d0'];   // UNIT_ACCENTS
+const WHENS = ['today', 'this morning', 'this afternoon', 'this evening', 'tonight', 'tomorrow', 'tomorrow morning', 'tomorrow evening', 'in two days', 'in two days, in the morning', 'in a few days'];
+const S = window.__S = { style: 'possessive', hand: 'Caveat', accent: ACCENTS[0], when: 'this evening', timed: true, sound: true, reduced: false, readable: false };
+
+/* ---------- her voice (docs/content/card-voice.md, approved 2026-11-25) ---------- */
+const NEUTRAL = {
+  when: ['I want it done {when}.', 'Have it done {when}.', '{When}. Not later.'],
+  cost: ['It will take {slots} of your time.', "That's {slots} of your time."],
+  costHold: ['Your time is mine until I say otherwise.', 'It lasts as long as I want it to.'],
+  lapse: ["{Booking} won't happen.", '{Booking} falls through for this.'],
+  lapseHidden: ['Whatever you had planned meanwhile may fall through.'],
+  free: ['It costs you nothing.', "It won't cost you a thing."],
+  who: ['{Who} will know.', '{Who} will hear of it.'],
+  onlyMe: ['No one but me will know.', 'Only I will know.'],
+  proof: { in_person: 'In person.', witness: 'Before a witness.', report: 'In a report to me.' },
+  weight: ['A {weight} one.', "It's {weight}."],
+  noLength: ['How long is for me to decide.', "I haven't said how long. I won't.", 'It ends when I say.'],
+  sayIt: ['Say it. In your own words.', 'I want to hear you say it.'],
+  closes: ["Sign, and it's settled: {summary}."],
+  hands: ['Sign, and {handed} is mine.'],
+  talked: ["We're still talking about it.", "I'm listening. For now."],
+  sealed: ["Don't open it yet. Say yes first.", "It's sealed. You'll read it once you've said yes.", "What's inside is for after you agree."],
+  sealedTrack: ["It's about {track}."],
+  demoWho: ['In front of {who}.', '{Who} will be watching.'],
+  demoWhoMore: ['In front of {who}, and whoever else is there.'],
+  demoNone: ['In front of whoever is there.'],
+  demoWhere: ['{Place}, {slot}. Keep it free.', '{Place}, in the {slot}. That\'s your {slot} gone.'],
+  demoAgain: ["It didn't happen. Come again."],
+  order: ['{Soldier}: {label}.', 'For {soldier}: {label}. Or you take it.'],
+  cerTitle: ['{Label}, done properly.', '{Label}. Step by step.'],
+  cerWords: ['Say it.'], cerPosture: ['{Posture}. Now.'], cerNumber: ['How many? You say.'],
+  moment: ['Something hangs in the air.', 'It could go either way.', "A moment, and it's yours to take."],
+  exposing: ['{Name} could give you away.'],
+  call: {
+    right: ['Good.', 'Like that.', "That's it."],
+    wrong: ['Not that. {posture}.', 'I said {posture}.', 'Wrong. {posture}.'],
+    slow: ['Too slow.', "I'm still waiting.", 'When I say it, not after.'],
+  },
+};
+const STYLE = {
+  affectionate: {
+    when: ['Could you have it done {when}?', '{When}, if you can, love.', "I'd like it {when}. Don't rush it."],
+    cost: ["It'll take {slots} of your time. I'll make it worth it.", '{Slots} of your time. Spend it on me?', 'Just {slots} of your time.'],
+    who: ["{Who} will know, and that's alright.", "I'll tell {who}. Gently.", '{Who} will know. Only them.'],
+    onlyMe: ['Just between us.', 'No one else. Only me.'],
+    weight: ["It's {weight}. I'm sorry it has to be.", "A {weight} one, but you'll manage.", "{Weight}. I'll be there."],
+    call: { right: ['Good. Just like that.', 'There you are. Lovely.', 'Perfect, love.'], wrong: ['Not that one, love. {posture}.', 'Close. {posture}, though.', "Mm, no. {posture}. You'll get it."], slow: ['A little faster next time?', "I'll wait. This time.", 'Slow, but you got there. Almost.'] },
+  },
+  cold: {
+    when: ['{When}.', 'Done {when}.', '{When}. Not later.'],
+    cost: ['{Slots}.', 'It costs {slots}.', '{Slots} of your time. Noted.'],
+    who: ['{Who} will know.', "{Who}. That's all.", "I'll inform {who}."],
+    onlyMe: ['No one else.', 'Me. No one else.'],
+    weight: ['{Weight}.', "It's {weight}.", "{Weight}. Don't argue."],
+    call: { right: ['Fine.', 'Acceptable.', 'Yes.'], wrong: ['No. {posture}.', '{posture}. Not that.', 'Wrong.'], slow: ['Late.', 'Too slow.', "I don't repeat myself."] },
+  },
+  ritual: {
+    when: ['It is to be done {when}.', '{When}, as is proper.', 'The hour is set: {when}.'],
+    cost: ['It asks {slots} of your time.', 'You will give {slots} to it.', '{Slots}, set aside for this.'],
+    who: ['{Who} will bear witness.', 'It will be known to {who}.', '{Who} shall know of it.'],
+    onlyMe: ['It stays within these walls.', 'Only I will witness it.'],
+    weight: ['It is a {weight} one.', 'Its weight is {weight}.', '{Weight}, as the rule asks.'],
+    call: { right: ['As it should be.', 'Correct. Hold it.', '{posture}. Properly done.'], wrong: ['That is not {posture}.', 'The form is {posture}. Again.', 'Wrong form. {posture}.'], slow: ['You missed the count.', 'On the word, not after it.', 'The moment passed. That is noted.'] },
+  },
+  clinical: {
+    when: ['Deadline: {when}.', "I'll check it {when}.", "Complete it {when}. I'll note the time."],
+    cost: ['Expect it to take {slots}.', 'Cost to you: {slots}.', "{Slots}. I've accounted for it."],
+    who: ['{Who} will be informed.', 'Observers: {who}.', "{Who} will know. It's useful."],
+    onlyMe: ['No observers. Only me.', 'It stays in my notes.'],
+    weight: ["I'd call it {weight}.", 'Severity: {weight}.', '{Weight}. Proportionate.'],
+    call: { right: ['Correct.', 'Good. Response time acceptable.', "That's the one."], wrong: ['Incorrect. I asked for {posture}.', "That's not {posture}. Noted.", 'Wrong posture. {posture}.'], slow: ['Too slow. Noted.', 'Response time: unacceptable.', 'You hesitated. I saw.'] },
+  },
+  possessive: {
+    when: ['{When}. Keep the rest of the day clear.', 'I want you on it {when}.', '{When}, and not a minute for anyone else.'],
+    cost: ['{Slots} of your time, and I want all of it.', "I'm taking {slots}.", "{Slots} of your time. Don't give it to anyone else."],
+    who: ['{Who} will know who you answer to.', "I'll let {who} see.", '{Who} will know. Let them.'],
+    onlyMe: ['Nobody else gets this. Only me.', "This one stays between us. Don't share it."],
+    weight: ["{Weight}. You'll remember who gave it.", 'A {weight} one, from me.', "It's {weight}. And it's from me, no one else."],
+    call: { right: ['Good. Quick, the way I taught you.', "That's how I like you.", 'Yes. Stay like that for me.'], wrong: ['I said {posture}. My word, not your guess.', 'Not that. {posture}, for me.', 'You know what {posture} means. Do it.'], slow: ['When I call, you come. Faster.', 'Too slow for me.', "Don't make me wait. Not me."] },
+  },
+  playful: {
+    when: ["{When}~ don't be late.", "{When}, or I'll think of something.", '{When}. Tick tock.'],
+    cost: ['Only {slots}~', "It'll cost you {slots}. Worth it?", "{Slots} of your time. I'll have fun with it."],
+    who: ['{Who} gets to know~', "Guess who'll find out? {Who}.", '{Who} will know. Smile for them.'],
+    onlyMe: ['Our little secret.', 'Just you and me~'],
+    weight: ["Oh, it's {weight}.", 'A {weight} one~', '{Weight}. Brace yourself.'],
+    call: { right: ['Ooh, quick~', 'Good! Gold star.', 'Look at you go.'], wrong: ['Nope~ {posture}.', 'Cute, but no. {posture}.', 'Wrong one! {posture}, silly.'], slow: ['Too slo-ow~', 'Did you fall asleep?', 'I counted. You lost.'] },
+  },
+  cruel: {
+    when: ["{When}. Don't make me ask twice.", "{When}. Late, and you'll regret it.", '{When}. Not a minute after.'],
+    cost: ['{Slots}. As if you had better things to do.', "It takes {slots}. I don't care what else you had.", '{Slots}. Spent on me.'],
+    who: ['{Who} will know. All of it.', "I'll make sure {who} hears.", '{Who} will know exactly what you are.'],
+    onlyMe: ['No one else. Yet.', 'Just me. For now.'],
+    weight: ['{Weight}. You earned it.', "It's {weight}. Good.", "A {weight} one. You'll feel it."],
+    call: { right: ['Finally.', 'About time.', "Good. That's all you're good for."], wrong: ['Wrong. Pathetic. {posture}.', "Can't even get {posture} right.", '{posture}. Are you stupid?'], slow: ["Too slow. You'll pay for that.", "I won't call twice.", 'Slow. As always.'] },
+  },
+  obsessive: {
+    when: ["{When}. I'll be counting.", "{When}. I'll know if it isn't.", "I want it {when}. I'll be watching for it."],
+    cost: ['{Slots}, and every minute of it for me.', 'I need {slots} of you.', "{Slots} of your time. I'll know how you spend it."],
+    who: ["{Who} will know. I'll see that they do.", "I'll tell {who}. I'll watch them hear it.", "{Who} will know. I'll ask them later what they saw."],
+    onlyMe: ['No one else will ever know.', 'Only me. Always only me.'],
+    weight: ["It's {weight}. I thought about it a long time.", '{Weight}. I chose it carefully.', "A {weight} one. I'll watch you take it."],
+    call: { right: ['Yes. Exactly as I pictured it.', "Perfect. Don't move.", "There. I've been waiting for that."], wrong: ['No. {posture}. You know it. I know you know it.', "That's not {posture}. Why would you do that?", "{posture}. I've shown you a hundred times."], slow: ['I counted every second.', 'You made me wait. I noticed.', "Too slow. I'll remember."] },
+  },
+  drill: {
+    when: ['{When}. Move.', 'Done {when}. No excuses.', '{When}, on the dot.'],
+    cost: ['{Slots}. Report when done.', "You're on this for {slots}.", '{Slots}, starting when I say.'],
+    who: ['{Who} will know.', "I'll report it to {who}.", '{Who} will see it. Look sharp.'],
+    onlyMe: ['Between you and me. Dismissed.', 'No one else. Understood?'],
+    weight: ['{Weight}. Take it.', "It's {weight}. Stand up straight.", 'A {weight} one. Eyes front.'],
+    call: { right: ['Good.', "Hold it. Don't move.", "That's it. Again later."], wrong: ['Wrong! {posture}!', '{posture}, I said! Move!', "That's not {posture}. Again!"], slow: ['Too slow! Again!', 'On the word! Not after!', 'Faster than that.'] },
+  },
+  regal: {
+    when: ['You will have it done {when}.', "{When}. I'll expect it.", '{When}, as I wish it.'],
+    cost: ['You will give me {slots}.', "{Slots} of your time, which I'm taking.", "It asks {slots} of your time. You'll give it gladly."],
+    who: ['{Who} may know.', "I'll allow {who} to know.", '{Who} will learn of it, by my leave.'],
+    onlyMe: ["It's for me alone.", 'No one else is worthy of it.'],
+    weight: ["I've judged it {weight}.", "It's {weight}. That's my ruling.", 'A {weight} one. Accept it with grace.'],
+    call: { right: ['You may stay so.', 'Better.', 'That will do.'], wrong: ['I asked for {posture}.', '{posture}. Do try to keep up.', 'Not that. {posture}, as I said.'], slow: ['I am kept waiting.', 'When I speak, you move.', 'Too slow to please me.'] },
+  },
+  vindictive: {
+    when: ['{When}. You owe me that much.', "{When}. Don't fail me again.", "{When}. After what you did, you'll be on time."],
+    cost: ["{Slots}. Call it what you owe.", "It'll take {slots}. You've taken more from me.", '{Slots}. Consider it payment.'],
+    who: ['{Who} will know what you did.', "I'll tell {who}. They should know.", '{Who} will know. Let them judge you too.'],
+    onlyMe: ["Only me. I haven't decided about the rest.", 'No one else. This time.'],
+    weight: ['{Weight}. And you got off lightly.', "It's {weight}. You know why.", "A {weight} one. It's only fair."],
+    call: { right: ['For once.', 'So you can.', "Good. Don't expect thanks."], wrong: ['Wrong. Like always. {posture}.', "{posture}. You'd forget your own name.", 'Not {posture}. Another one for the list.'], slow: ['Too slow. Another one for the list.', 'You never could keep up.', "Late. I'm not surprised."] },
+  },
+};
+const SPARE = ['cruel', 'vindictive'];   // a sealed envelope says nothing of its weight
+
+const fnv1a = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h >>> 0; };
+/** One of the lines: her style's when it has the kind, else the neutral ones; picked by a hash of the card and the kind (no rng). */
+function linesOf(kind) {
+  const path = kind.split('.');
+  const get = (o) => path.reduce((a, k) => (a == null ? a : a[k]), o);
+  return get(STYLE[S.style] ?? {}) ?? get(NEUTRAL);
+}
+function pick(cardId, kind) { const list = linesOf(kind); return list[fnv1a(`${cardId}|${S.style}|${kind}`) % list.length]; }
+const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+/** Fills a frame: `{x}` is the value as it is, `{X}` capitalised (it opens a sentence); each value is wrapped as her stronger ink. */
+function fill(frame, vals) {
+  const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+  return esc(frame).replace(/\{(\w+)\}/g, (_, k) => {
+    const v = vals[k.toLowerCase()];
+    if (v === undefined) return `{${k}}`;
+    return `<span class="v">${esc(k[0] === k[0].toUpperCase() ? cap(v) : v)}</span>`;
+  });
+}
+
+/* ---------- the cards ---------- */
+const CAPS = { device_floor: 'Holds the device', leash_block: 'Answers for the Leash' };
+let seq = 0;
+const KINDS = {
+  moment: () => ({ kind: 'moment', title: 'a moment', neutral: true, gist: 'it could go either way' }),
+  task: () => ({ kind: 'task', title: 'task', words: 'Bring me the patrol roster before evening mess. Folded, and on your knees.', summary: 'bring the roster', form: 'button', slots: 1 }),
+  task_hold: () => ({ kind: 'task', title: 'task', words: 'Stay with me tonight. You read, I work.', summary: 'stay with her tonight', form: 'button', hold: true, noLength: true }),
+  task_words: () => ({ kind: 'task', title: 'task', words: 'Say it where Bea can hear: that you serve me.', summary: 'say it before Bea', form: 'words', who: ['Bea'], proof: 'witness' }),
+  task_signed: () => ({ kind: 'task', title: 'task', words: "Give me your device. I'll keep it a week.", summary: 'her device for a week', form: 'signed', who: [], handed: 'the device', said: true }),
+  sealed: () => ({ kind: 'sealed', title: 'sealed', words: null, form: 'button', stakes: 'heavy', track: 'service' }),
+  punishment: () => ({ kind: 'punishment', title: 'punishment', words: 'You forgot the roster. So tomorrow you speak to no one but me. Not a message, not a word on the comms.', label: 'A day without messages', weight: 'heavy' }),
+  order: () => ({ kind: 'order', title: 'order', words: 'Cat was late on the wall again. Deal with her. Or take it for her.', soldier: 'Cat', label: 'Corner time' }),
+  ceremony: () => ({ kind: 'ceremony', title: 'ceremony', label: 'Her hand', steps: [['fetch_implement', 'Fetch the implement', 'chip'], ['ask_formally', 'Ask for it formally', 'words'], ['take_the_posture', 'Take the posture', 'posture', 'Low'], ['name_the_number', 'Name the number', 'number'], ['the_execution', 'The execution', 'chip'], ['the_thanks', 'The thanks', 'words']], done: 1 }),
+  demonstration: () => ({ kind: 'demonstration', title: 'demonstration', words: 'Tonight at mess you will kneel by my chair and pour for me. Let them watch how well you do it.', who: ['Bea', 'Cat'], more: true, place: 'Mess hall', slot: 'evening' }),
+  milestone: () => ({ kind: 'milestone', title: 'step', words: 'Give me the command. Not on paper: to me.', gist: 'the handover of command' }),
+  vow: () => ({ kind: 'milestone', title: 'vow', words: 'I want your word. Said aloud, and kept.', gist: 'the vow' }),
+  claim: () => ({ kind: 'claim', title: 'claim', words: 'Give me your device. And the Leash, while you\'re at it.', domain: 'the device', grants: ['device_floor', 'leash_block'] }),
+  ret: () => ({ kind: 'return', title: 'begin again', words: 'Let\'s begin again. A smaller step than before.', gist: 'a smaller step' }),
+  physics: () => ({ kind: 'physics', title: 'a hold', neutral: true, run: true, cue: 'Her breath comes short.', label: 'jaw' }),
+};
+const ADDERS = [['moment', 'moment'], ['task', 'task'], ['task_hold', 'hold'], ['task_words', 'in words'], ['task_signed', 'signed'], ['sealed', 'sealed'], ['punishment', 'punishment'], ['order', 'order'], ['ceremony', 'ceremony'], ['demonstration', 'demonstration'], ['milestone', 'milestone'], ['vow', 'vow'], ['claim', 'claim'], ['ret', 'return'], ['physics', 'hold (fallback)']];
+
+let cards = [];      // newest last
+let openId = null;   // the card the commander opened (else the newest)
+const aside = new Set();
+
+function addCard(type, quiet) {
+  const c = { id: `c${++seq}-${type}`, type, ...KINDS[type]() };
+  cards.push(c);
+  if (!quiet) { openId = null; sfx(ASSETS.slide[seq % 2], 0.25, -0.6); }
+  render(c.id);
+}
+
+/** The gist of a collapsed card: the engine's short name and the most urgent condition (never a sealed summary). */
+function gistOf(c) {
+  switch (c.kind) {
+    case 'task': return c.hold ? `${c.summary}` : `${c.summary}${c.form === 'button' ? ` · <b>${S.when}</b>` : ''}`;
+    case 'sealed': return '✉';
+    case 'punishment': return `${c.label.toLowerCase()} · <b>${c.weight}</b>`;
+    case 'order': return `${c.soldier}: ${c.label.toLowerCase()}`;
+    case 'ceremony': return `${c.label.toLowerCase()} · next: ${c.steps[c.done]?.[1].toLowerCase() ?? 'done'}`;
+    case 'demonstration': return `${c.place.toLowerCase()} · <b>${c.slot}</b>`;
+    case 'claim': return c.domain;
+    case 'physics': return c.label;
+    default: return c.gist ?? '';
+  }
+}
+
+function pill(text, onclick, extra = {}) {
+  const b = document.createElement('button');
+  b.className = 'pill'; b.type = 'button'; b.innerHTML = `<span>${text}</span>`;
+  for (const [k, v] of Object.entries(extra)) b.setAttribute(k, v);
+  b.onclick = (e) => { e.stopPropagation(); if (b.getAttribute('aria-disabled') !== 'true') onclick(); };
+  return b;
+}
+/** SIGN: press and hold (P16 R6), the pill fills over 1.2 s. */
+function signPill(done) {
+  const b = pill('sign', () => {}); const f = document.createElement('i'); f.className = 'fill'; b.prepend(f);
+  let t0 = 0, raf = 0;
+  const stop = () => { cancelAnimationFrame(raf); f.style.transition = 'transform .25s'; f.style.transform = 'scaleX(0)'; };
+  b.onpointerdown = (e) => { e.stopPropagation(); t0 = performance.now(); f.style.transition = 'none';
+    const step = () => { const k = Math.min(1, (performance.now() - t0) / 1200); f.style.transform = `scaleX(${k})`; if (k >= 1) { done(); return; } raf = requestAnimationFrame(step); }; step(); };
+  b.onpointerup = b.onpointerleave = stop;
+  return b;
+}
+function line(cls, html, dry) {
+  const frag = document.createDocumentFragment();
+  const p = document.createElement('div'); p.className = cls; p.innerHTML = html; frag.append(p);
+  if (dry) { const d = document.createElement('div'); d.className = 'dry'; d.textContent = dry; frag.append(d); }
+  return frag;
+}
+const names = (a) => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
+
+function answer(c, what) {
+  if (what === 'focus') { $('#cmd').focus(); document.body.classList.add('flash-input'); setTimeout(() => document.body.classList.remove('flash-input'), 700); log(`${c.title}: answer in words`); return; }
+  log(`${c.title}: ${what}`);
+  sfx(ASSETS.place[fnv1a(c.id) % 2], 0.25, -0.6);
+  cards = cards.filter((x) => x.id !== c.id);
+  if (openId === c.id) openId = null;
+  render();
+}
+
+function bodyOf(c) {
+  const b = document.createElement('div'); b.className = 'body';
+  const id = c.id;
+  const answers = document.createElement('div'); answers.className = 'answers';
+  if (c.words) b.append(line('words', c.words.replace(/[&<>]/g, (x) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[x])));
+  const conds = [];
+  const cond = (kind, vals, dry) => conds.push(line('cond', fill(pick(id, kind), vals), dry));
+  switch (c.kind) {
+    case 'moment': {
+      b.append(line('prose', pick(id, 'moment')));
+      for (const o of ['hide', 'as is', 'show yourself', 'ask her to lock the door', 'ask her with a look']) answers.append(pill(o, () => answer(c, o)));
+      b.append(answers, line('hint', 'Or answer in your own words.'));
+      return b;
+    }
+    case 'physics': {
+      b.append(line('prose', c.cue));
+      for (const o of ['ask for a rest', 'wait', 'tap']) answers.append(pill(o, () => log(`hold: ${o}`)));
+      b.append(answers);
+      return b;
+    }
+    case 'task': {
+      if (!c.hold && c.form === 'button') cond('when', { when: S.when }, `Due: ${S.when}.`);
+      if (c.form === 'button') {
+        if (c.hold && c.noLength) { cond('costHold', {}, "Takes the commander's time until she decides."); cond('lapseHidden', {}, 'Whatever is booked meanwhile may lapse.'); }
+        else if (c.slots) cond('cost', { slots: c.slots === 1 ? 'one slot' : `${c.slots} slots` }, `Takes ${c.slots} slot of the commander's time.`);
+        else cond('free', {}, 'Costs nothing.');
+        if (!c.hold) cond('lapse', { booking: 'training together' }, 'Would lapse: Training together.');
+      }
+      if (c.form === 'words' || c.form === 'signed') {
+        if (c.who.length) cond('who', { who: names(c.who) }, `Who will know: ${names(c.who)}.`); else cond('onlyMe', {}, 'Who will know: only her.');
+        if (c.proof) conds.push(line('cond', NEUTRAL.proof[c.proof], `Proof: ${c.proof === 'witness' ? 'before a witness' : c.proof}.`));
+      }
+      if (c.form === 'signed') cond('hands', { handed: c.handed }, `Hands over: ${c.handed}.`);
+      if (c.form === 'words' || (c.form === 'signed' && !c.said)) cond('sayIt', {});
+      if (c.noLength && !c.hold) cond('noLength', {}, 'She has not said how long.');
+      if (conds.length) b.append(document.createElement('div')), b.lastChild.className = 'rule';
+      b.append(...conds);
+      if (c.form === 'signed' && c.said) answers.append(signPill(() => answer(c, 'signed')));
+      else answers.append(pill('accept', () => answer(c, c.form === 'button' ? 'accept' : 'focus')));
+      answers.append(pill(c.handed ? 'cancel' : 'refuse', () => answer(c, 'refuse')));
+      if (!c.handed) answers.append(pill('talk it over', () => answer(c, 'talk')));
+      b.append(answers);
+      return b;
+    }
+    case 'sealed': {
+      b.append(line('words', fill(pick(id, 'sealed'), {})));
+      const parts = [];
+      if (!SPARE.includes(S.style)) parts.push(line('cond', fill(pick(id, 'weight'), { weight: c.stakes }), `Weight: ${c.stakes}.`));
+      if (S.style === 'affectionate') parts.push(line('cond', fill(pick(id, 'sealedTrack'), { track: c.track }), `About: ${c.track}.`));
+      if (parts.length) { const r = document.createElement('div'); r.className = 'rule'; b.append(r, ...parts); }
+      answers.append(pill('accept', () => answer(c, 'accept')), pill('refuse', () => answer(c, 'refuse')));
+      b.append(answers);
+      return b;
+    }
+    case 'punishment': {
+      const r = document.createElement('div'); r.className = 'rule'; b.append(r);
+      b.append(line('cond', fill('{Label}.', { label: c.label }), `${c.label}.`));
+      cond('weight', { weight: c.weight }, `Weight: ${c.weight}.`); b.append(...conds);
+      answers.append(pill('accept', () => answer(c, 'accept')), pill('negotiate', () => answer(c, 'focus')), pill('refuse', () => answer(c, 'refuse')));
+      b.append(answers);
+      return b;
+    }
+    case 'order': {
+      const r = document.createElement('div'); r.className = 'rule'; b.append(r);
+      cond('order', { soldier: c.soldier, label: c.label.toLowerCase() }, `For ${c.soldier}: ${c.label}.`); b.append(...conds);
+      answers.append(pill('do it', () => answer(c, 'do it')), pill('take it instead', () => answer(c, 'take it')), pill('refuse', () => answer(c, 'refuse')));
+      b.append(answers);
+      return b;
+    }
+    case 'ceremony': {
+      b.append(line('words', fill(pick(id, 'cerTitle'), { label: c.label })));
+      const ol = document.createElement('ol'); ol.className = 'steps';
+      c.steps.forEach(([sid, label, check, posture], i) => {
+        const li = document.createElement('li'); li.className = i < c.done ? 'done' : i === c.done ? 'next' : '';
+        li.innerHTML = `<span class="m">${i < c.done ? '✓' : i === c.done ? '›' : '·'}</span><span>${label}</span>`;
+        ol.append(li);
+      });
+      b.append(ol);
+      const next = c.steps[c.done];
+      if (next) {
+        const [, label, check, posture] = next;
+        const adv = () => { c.done++; log(`ceremony: ${label}`); render(); };
+        if (check === 'chip') answers.append(pill(label.toLowerCase(), adv));
+        else if (check === 'words') { b.append(line('cond', fill(pick(id, 'cerWords'), {}), 'Say it in your own words.')); answers.append(pill('say it', () => { answer(c, 'focus'); })); }
+        else if (check === 'posture') b.append(line('cond', fill(pick(id, 'cerPosture'), { posture }), `Take the posture: ${posture}.`));
+        else if (check === 'number') {
+          b.append(line('cond', fill(pick(id, 'cerNumber'), {}), 'A number from 1 to 50.'));
+          const n = document.createElement('input'); n.className = 'numin'; n.type = 'number'; n.min = 1; n.max = 50; n.onclick = (e) => e.stopPropagation();
+          answers.append(n, pill('name it', () => { if (n.value) adv(); }));
+        }
+        if (check === 'posture') answers.append(pill('(take it on the dial)', () => adv()));
+        b.append(answers);
+      }
+      return b;
+    }
+    case 'demonstration': {
+      const r = document.createElement('div'); r.className = 'rule'; b.append(r);
+      cond(c.more ? 'demoWhoMore' : 'demoWho', { who: names(c.who) }, `Before: ${names(c.who)}${c.more ? ' and others' : ''}.`);
+      cond('demoWhere', { place: c.place, slot: c.slot }, `${c.place}, ${c.slot}. It takes the slot.`);
+      b.append(...conds);
+      answers.append(pill('go', () => answer(c, 'go')), pill('refuse', () => answer(c, 'refuse')));
+      b.append(answers);
+      return b;
+    }
+    case 'claim': {
+      const r = document.createElement('div'); r.className = 'rule'; b.append(r);
+      b.append(line('cond', "You'd give me:", 'What she would hold:'));
+      for (const g of c.grants) b.append(line('cond grants', `· <span class="v">${CAPS[g].toLowerCase()}</span>`, CAPS[g]));
+      answers.append(pill('yield', () => answer(c, 'yield')), pill('refuse', () => answer(c, 'refuse')), pill('talk it over', () => answer(c, 'talk')));
+      b.append(answers);
+      return b;
+    }
+    default: {
+      answers.append(pill('accept', () => answer(c, 'accept')), pill('refuse', () => answer(c, 'refuse')));
+      b.append(answers);
+      return b;
+    }
+  }
+}
+
+function render(arrived) {
+  const dock = $('#dock');
+  const shown = cards.filter((c) => !aside.has(c.id));
+  // a card with a clock never collapses; else the one the commander opened, or the newest
+  const open = openId && shown.some((c) => c.id === openId) ? openId : shown.filter((c) => !c.run).at(-1)?.id;
+  const collapsed = shown.filter((c) => c.id !== open && !c.run).reverse();   // newest on top
+  const order = [...collapsed, ...shown.filter((c) => c.id === open), ...shown.filter((c) => c.run)];
+  dock.replaceChildren(...order.map((c) => {
+    const el = document.createElement('article');
+    el.className = `card${c.neutral ? ' neutral' : ''}${c.kind === 'sealed' ? ' sealed' : ''}${c.id === open || c.run ? ' open' : ' collapsed'}${c.id === arrived && !S.reduced ? ' arrive' : ''}`;
+    el.dataset.id = c.id;
+    const head = document.createElement('div'); head.className = 'head';
+    head.innerHTML = `${c.neutral ? '' : '<span class="who">Ann</span>'}<span class="kind">${c.title}</span><span class="gist">${gistOf(c)}</span>`;
+    el.append(head);
+    if (c.kind === 'sealed') { const s = document.createElement('div'); s.className = 'seal'; el.append(s); }
+    if (c.id === open || c.run) {
+      if (!c.run) { const x = document.createElement('button'); x.className = 'aside'; x.textContent = '×'; x.title = 'set aside';
+        x.onclick = (e) => { e.stopPropagation(); aside.add(c.id); if (openId === c.id) openId = null; render(); }; el.append(x); }
+      el.append(bodyOf(c));
+    } else el.onclick = () => { openId = c.id; sfx(ASSETS.slide[fnv1a(c.id) % 2], 0.18, -0.6); render(); };
+    return el;
+  }));
+  const w = $('#waiting'); const n = cards.filter((c) => aside.has(c.id)).length;
+  w.style.display = n ? 'block' : 'none'; w.textContent = `${n} waiting`;
+  w.onclick = () => { aside.clear(); render(); };
+  $('#stopPill').style.display = cards.some((c) => c.run) ? 'block' : 'none';
+}
+
+/* ---------- the dial ---------- */
+const MQ = %%MANNEQUINS%%;
+const BASE_LABEL = { standing: 'standing', standing_attention: 'at attention', sitting: 'sitting', sitting_floor: 'on the floor', kneeling_upright: 'kneeling upright', kneeling_sitting: 'kneeling, sitting back', bowing: 'bowing', all_fours: 'on all fours', crouching: 'crouching', lying_back: 'on the back', lying_front: 'face down', lying_side: 'on the side', curled: 'curled' };
+/** Her named postures (P16 `practices.postures`): her word for a base posture. */
+const NAMED = [['kneeling_upright', 'Attention'], ['kneeling_sitting', 'Rest'], ['bowing', 'Low'], ['all_fours', 'Pup'], ['standing_attention', 'Up']];
+let pose = 'kneeling_upright';
+function drawDial() { $('#dialFace').innerHTML = MQ[pose]; const named = NAMED.find((n) => n[0] === pose); $('#dialLabel').textContent = named ? `${BASE_LABEL[pose]} · ${named[1]}` : BASE_LABEL[pose]; }
+
+/* ---------- the posture call (variant D) ---------- */
+const WINDOW = { ritual: 4000, drill: 3000 };   // TUNING.practice.posture.windowMs; other 5000
+const windowOf = () => WINDOW[S.style] ?? 5000;
+let call = null;
+function startCall() {
+  if (call) return;
+  const choices = NAMED.slice(0, 4);
+  const others = choices.filter((n) => n[0] !== pose);
+  const want = others[Math.floor(Math.random() * others.length)];   // prototype: the engine picks by practiceRoll
+  const id = `call${++seq}`;
+  call = { id, want, t0: performance.now(), taps: [], timers: [] };
+  $('#dimmer').style.opacity = '0.28';
+  $('#dial').classList.add('called');
+  const w = $('#callWord .w'); w.textContent = want[1]; w.className = 'w'; void w.offsetWidth; if (!S.reduced) w.classList.add('write');
+  $('#dots').replaceChildren(); $('#callLine').textContent = ''; $('#callLine').style.opacity = 1;
+  $('#call').style.display = 'block';
+  // the fan rises from the dial: a hand of cards, stable order
+  const fan = $('#fan'); fan.replaceChildren();
+  const n = choices.length;
+  choices.forEach(([base, name], i) => {
+    const el = document.createElement('div'); el.className = 'pc';
+    el.innerHTML = `${MQ[base]}<div class="nm">${name}</div><div class="base">${BASE_LABEL[base]}</div>`;
+    const k = i - (n - 1);                 // the rightmost card sits over the dial
+    const x = k * 140, rot = (i - (n - 1) / 2) * 5, lift = Math.abs(i - (n - 1) / 2) * 9;
+    el.style.left = `${x}px`;
+    el.style.transform = S.reduced ? `translateY(${lift}px) rotate(${rot}deg)` : 'translateY(260px) rotate(0deg) scale(.6)';
+    el.style.opacity = S.reduced ? 1 : 0;
+    el.onmouseenter = () => { el.style.transform = `translateY(${lift - 18}px) rotate(0deg) scale(1.04)`; };
+    el.onmouseleave = () => { el.style.transform = `translateY(${lift}px) rotate(${rot}deg)`; };
+    el.onclick = () => choose(base, el);
+    el.dataset.base = base;
+    fan.append(el);
+    if (!S.reduced) call.timers.push(setTimeout(() => { el.style.opacity = 1; el.style.transform = `translateY(${lift}px) rotate(${rot}deg)`; }, 120 + i * 55));
+  });
+  sfx(ASSETS.fan, 0.3, 0.6);
+  if (S.timed) scheduleTaps();
+  log(`she calls: ${want[1]} (${BASE_LABEL[want[0]]})${S.timed ? `, ${windowOf()} ms` : ', no clock'}`);
+}
+/** Her foot: taps that close up toward the end of the window (700 → 220 ms apart); the last one is "too late". */
+function scheduleTaps() {
+  const win = windowOf();
+  const times = []; let t = 380;
+  while (t < win) { times.push(t); const k = t / win; t += 700 - 480 * k * k; }
+  times.push(win);
+  const span = 300;   // the dots' width in px
+  times.forEach((at, i) => call.timers.push(setTimeout(() => tap(at / win, i === times.length - 1, span), at)));
+}
+function tap(k, last, span) {
+  if (!call) return;
+  const d = document.createElement('i'); if (last) d.className = 'last';
+  d.style.left = `${(k - 0.5) * span}px`; $('#dots').append(d);
+  const w = $('#callWord .w');
+  if (!S.reduced) { w.classList.remove('bob'); void w.offsetWidth; w.classList.add('bob'); }
+  sfx(ASSETS.soft[Math.random() < 0.5 ? 0 : 1], (0.22 + 0.4 * k) * (last ? 1.6 : 1), 0.35, 0.92 + Math.random() * 0.1);
+  if (last) end('slow', null);
+}
+function choose(base, el) {
+  if (!call || call.done) return;
+  sfx(ASSETS.place[0], 0.35, 0.6);
+  end(base === call.want[0] ? 'right' : 'wrong', base, el);
+}
+function end(outcome, base, el) {
+  const c = call; if (!c || c.done) return;
+  c.done = true; for (const t of c.timers) clearTimeout(t);
+  const fan = $('#fan');
+  const rightEl = fan.querySelector(`[data-base="${c.want[0]}"]`);
+  if (outcome === 'right') {
+    pose = c.want[0];
+    if (!S.reduced) { const fx = -parseFloat(el.style.left) - 30; el.style.transition = 'transform .45s cubic-bezier(.5,0,.8,.4), opacity .45s'; el.style.transform = `translate(${fx}px, 230px) scale(.35)`; el.style.opacity = 0; }
+    setTimeout(drawDial, S.reduced ? 0 : 380);
+    for (const o of fan.children) if (o !== el) o.style.opacity = 0;
+  } else {
+    if (outcome === 'wrong' && el) el.classList.add('wrongpick');
+    rightEl?.classList.add('right');   // she shows which one it was
+    setTimeout(() => { for (const o of fan.children) { o.style.opacity = 0; if (!S.reduced) o.style.transform += ' translateY(60px)'; } }, 900);
+  }
+  const lineEl = $('#callLine');
+  lineEl.textContent = pick(c.id, `call.${outcome}`).replaceAll('{posture}', c.want[1]);
+  lineEl.className = ''; void lineEl.offsetWidth; if (!S.reduced) lineEl.className = 'write';
+  log(`${outcome}${base ? `: ${BASE_LABEL[base]}` : ''}`);
+  setTimeout(() => { $('#dimmer').style.opacity = 0; $('#dial').classList.remove('called'); $('#callWord .w').textContent = ''; $('#dots').replaceChildren(); }, 1300);
+  setTimeout(() => { lineEl.style.opacity = 0; }, 2600);
+  setTimeout(() => { fan.replaceChildren(); $('#call').style.display = 'none'; call = null; }, 3300);
+}
+
+/* ---------- sound ---------- */
+let ctx = null; const buffers = new Map();
+async function buf(url) { if (!buffers.has(url)) buffers.set(url, fetch(url).then((r) => r.arrayBuffer()).then((a) => ctx.decodeAudioData(a))); return buffers.get(url); }
+async function sfx(url, gain = 0.3, pan = 0, rate = 1) {
+  if (!S.sound) return;
+  ctx ??= new AudioContext(); if (ctx.state === 'suspended') ctx.resume();
+  const b = await buf(url); const src = ctx.createBufferSource(); src.buffer = b; src.playbackRate.value = rate;
+  const g = ctx.createGain(); g.gain.value = gain; const p = ctx.createStereoPanner(); p.pan.value = pan;
+  src.connect(g); g.connect(p); p.connect(ctx.destination); src.start();
+}
+
+/* ---------- the panel ---------- */
+let logT = 0;
+function log(t) { const l = $('#log'); l.textContent = t; l.style.opacity = 1; clearTimeout(logT); logT = setTimeout(() => { l.style.opacity = 0; }, 2500); }
+function opts(host, list, cur, onPick, label = (x) => x) {
+  host.replaceChildren(...list.map((v) => { const b = document.createElement('button'); b.className = `opt${v === cur ? ' on' : ''}`; b.textContent = label(v); b.onclick = () => { onPick(v); opts(host, list, v, onPick, label); }; return b; }));
+}
+for (const [type, label] of ADDERS) { const b = document.createElement('button'); b.className = 'opt'; b.textContent = label; b.onclick = () => addCard(type); $('#adders').append(b); }
+opts($('#styles'), STYLES, S.style, (v) => { S.style = v; winNote(); render(); });
+opts($('#hands'), HANDS.map((h) => h[0]), S.hand, (v) => { S.hand = v; const h = HANDS.find((x) => x[0] === v); document.documentElement.style.setProperty('--hand', `"${v}"`); document.documentElement.style.setProperty('--hs', h[1]); });
+opts($('#accents'), ACCENTS, S.accent, (v) => { S.accent = v; document.documentElement.style.setProperty('--her', v); }, (v) => '●');
+[...$('#accents').children].forEach((b, i) => { b.style.color = ACCENTS[i]; });
+$('#accents').addEventListener('click', () => [...$('#accents').children].forEach((b, i) => { b.style.color = ACCENTS[i]; }));
+$('#whenSel').replaceChildren(...WHENS.map((w) => Object.assign(document.createElement('option'), { value: w, textContent: w, selected: w === S.when })));
+$('#whenSel').onchange = (e) => { S.when = e.target.value; render(); };
+$('#timed').onchange = (e) => { S.timed = e.target.checked; winNote(); };
+$('#readable').onchange = (e) => { S.readable = e.target.checked; document.body.classList.toggle('readable', S.readable); };
+$('#reduced').onchange = (e) => { S.reduced = e.target.checked; document.body.classList.toggle('reduced', S.reduced); };
+$('#sound').onchange = (e) => { S.sound = e.target.checked; };
+$('#callBtn').onclick = startCall;
+$('#deal').onclick = () => { cards = []; aside.clear(); openId = null; for (const t of ['milestone', 'punishment', 'claim', 'task']) addCard(t, true); render(); };
+$('#clear').onclick = () => { cards = []; aside.clear(); openId = null; render(); };
+function winNote() { $('#winNote').textContent = S.timed ? `her window: ${windowOf()} ms (ritual 4000, drill 3000, others 5000)` : 'no clock: no taps, no lateness (only right or wrong)'; }
+document.addEventListener('keydown', (e) => {
+  if (e.target === $('#cmd')) return;
+  if (e.key === 'h' || e.key === 'H') $('#panel').classList.toggle('hidden');
+  if (e.key === 'c' || e.key === 'C') startCall();
+});
+$('#cmd').addEventListener('keydown', (e) => { if (e.key === 'Enter' && $('#cmd').value.trim()) { log(`you: ${$('#cmd').value}`); $('#cmd').value = ''; } });
+
+$('#call').style.display = 'none';
+document.documentElement.style.setProperty('--her', S.accent);
+winNote(); drawDial();
+for (const t of ['milestone', 'punishment', 'claim', 'task']) addCard(t, true);
+render();
+window.__G = () => ({ cards, openId, call, pose });
+window.__call = startCall;
+window.__add = addCard;
+</script>
+</body>
+</html>

@@ -14,7 +14,7 @@ P10e §15 step 3, variant **B3** (author, 2026-11-25): on a card everything is i
 
 **The values the lines take:**
 - `{when}`: `today` · `this morning` / `this afternoon` / `this evening` / `tonight` · `tomorrow` · `tomorrow morning` … `tomorrow night` · `in two days` (… `in seven days`, then `in a few days`), with `, in the morning` … when a slot is named. *(Today the card says "today, evening"; the card's words become "this evening" / "tonight", so every frame below reads right.)*
-- `{slots}`: `one slot` · `two slots` · `three slots` …
+- `{slots}`: `one slot` · `two slots` · `three slots` … (a frame reads with one slot as well as with three: it never says "them" of the slots)
 - `{who}`: `Bea` · `Bea and Cat` · `Bea, Cat and Dee`.
 - `{weight}`: a task's stakes `slight` · `light` · `heavy` · `grave`; a punishment's `light` · `heavy` · `harsh`.
 - `{label}`: the punishment's name (`A day without messages`, `Corner time`).
@@ -94,7 +94,7 @@ P10e §15 step 3, variant **B3** (author, 2026-11-25): on a card everything is i
 
 ### affectionate
 - **when:** `Could you have it done {when}?` · `{when}, if you can, love.` · `I'd like it {when}. Don't rush it.`
-- **cost:** `It'll take {slots} of your time. I'll make it worth it.` · `{slots}. Spend them on me?` · `Just {slots} of your time.`
+- **cost:** `It'll take {slots} of your time. I'll make it worth it.` · `{slots} of your time. Spend it on me?` · `Just {slots} of your time.`
 - **who:** `{who} will know, and that's alright.` · `I'll tell {who}. Gently.` · `{who} will know. Only them.`
 - **only her:** `Just between us.` · `No one else. Only me.`
 - **weight:** `It's {weight}. I'm sorry it has to be.` · `A {weight} one, but you'll manage.` · `{weight}. I'll be there.`
@@ -122,14 +122,14 @@ P10e §15 step 3, variant **B3** (author, 2026-11-25): on a card everything is i
 
 ### possessive
 - **when:** `{when}. Keep the rest of the day clear.` · `I want you on it {when}.` · `{when}, and not a minute for anyone else.`
-- **cost:** `{slots} of your time, and I want all of it.` · `I'm taking {slots}.` · `{slots}. Don't fill them with anyone else.`
+- **cost:** `{slots} of your time, and I want all of it.` · `I'm taking {slots}.` · `{slots} of your time. Don't give it to anyone else.`
 - **who:** `{who} will know who you answer to.` · `I'll let {who} see.` · `{who} will know. Let them.`
 - **only her:** `Nobody else gets this. Only me.` · `This one stays between us. Don't share it.`
 - **weight:** `{weight}. You'll remember who gave it.` · `A {weight} one, from me.` · `It's {weight}. And it's from me, no one else.`
 
 ### playful
 - **when:** `{when}~ don't be late.` · `{when}, or I'll think of something.` · `{when}. Tick tock.`
-- **cost:** `Only {slots}~` · `It'll cost you {slots}. Worth it?` · `{slots} of your time. I'll have fun with them.`
+- **cost:** `Only {slots}~` · `It'll cost you {slots}. Worth it?` · `{slots} of your time. I'll have fun with it.`
 - **who:** `{who} gets to know~` · `Guess who'll find out? {who}.` · `{who} will know. Smile for them.`
 - **only her:** `Our little secret.` · `Just you and me~`
 - **weight:** `Oh, it's {weight}.` · `A {weight} one~` · `{weight}. Brace yourself.`
@@ -143,7 +143,7 @@ P10e §15 step 3, variant **B3** (author, 2026-11-25): on a card everything is i
 
 ### obsessive
 - **when:** `{when}. I'll be counting.` · `{when}. I'll know if it isn't.` · `I want it {when}. I'll be watching for it.`
-- **cost:** `{slots}, all of them for me.` · `I need {slots} of you.` · `{slots}. I'll know where you spend them.`
+- **cost:** `{slots}, and every minute of it for me.` · `I need {slots} of you.` · `{slots} of your time. I'll know how you spend it.`
 - **who:** `{who} will know. I'll see that they do.` · `I'll tell {who}. I'll watch them hear it.` · `{who} will know. I'll ask them later what they saw.`
 - **only her:** `No one else will ever know.` · `Only me. Always only me.`
 - **weight:** `It's {weight}. I thought about it a long time.` · `{weight}. I chose it carefully.` · `A {weight} one. I'll watch you take it.`
@@ -157,7 +157,7 @@ P10e §15 step 3, variant **B3** (author, 2026-11-25): on a card everything is i
 
 ### regal
 - **when:** `You will have it done {when}.` · `{when}. I'll expect it.` · `{when}, as I wish it.`
-- **cost:** `You will give me {slots}.` · `{slots} of your time, which I'm taking.` · `It asks {slots}. You'll give them gladly.`
+- **cost:** `You will give me {slots}.` · `{slots} of your time, which I'm taking.` · `It asks {slots} of your time. You'll give it gladly.`
 - **who:** `{who} may know.` · `I'll allow {who} to know.` · `{who} will learn of it, by my leave.`
 - **only her:** `It's for me alone.` · `No one else is worthy of it.`
 - **weight:** `I've judged it {weight}.` · `It's {weight}. That's my ruling.` · `A {weight} one. Accept it with grace.`
@@ -210,7 +210,7 @@ P10e §15 step 3, variant **B3** (author, 2026-11-25): on a card everything is i
 
 ---
 
-## 5. The posture call (draft for the author's approval)
+## 5. The posture call (approved by the author, 2026-11-25)
 
 Variant **D** (author, 2026-11-25): a short full-frame moment, like the slap. Her word is her name for the posture (`{posture}`, the model's word, kept by the engine), large in her hand; her foot taps the time; the fan of her named postures rises from the dial. After the answer one line in her hand, picked as in §2 (a hash, no rng draw). Three outcomes: **right** (the right posture in time), **wrong** (another posture), **slow** (the time ran out). Without the order interaction there is no time, so only right and wrong.
 

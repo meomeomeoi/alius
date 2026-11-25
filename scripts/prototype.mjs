@@ -3,6 +3,7 @@
 //   npm run proto -- breath --sprite ~/her.webp  (any local sprite; it is inlined into the output, never into the repo)
 // `%%ASSET:<path from the repo root>%%` becomes a data URL of that file, `%%SPRITE%%` the sprite. A file URL cannot load fonts,
 // so everything is inlined. The page goes to .superpowers/prototypes/<name>.html (ignored by git).
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,6 +28,14 @@ html = html.replace(/%%ASSET:([^%]+)%%/g, (_, p) => {
   return dataUrl(file);
 });
 html = html.replaceAll('%%SPRITE%%', dataUrl(sprite));
+// the dial's own mannequins (src/ui/scene/dial), drawn now so a prototype never carries a stale copy
+if (html.includes('%%MANNEQUINS%%')) {
+  const { build } = await import('esbuild');
+  const tmp = resolve(root, '.superpowers/prototypes/mannequins.mjs');
+  mkdirSync(dirname(tmp), { recursive: true });
+  await build({ entryPoints: [resolve(root, 'scripts/prototype-mannequins.ts')], outfile: tmp, bundle: true, format: 'esm', platform: 'node', target: 'es2022', logLevel: 'error', external: ['jsdom'] });
+  html = html.replaceAll('%%MANNEQUINS%%', execFileSync('node', [tmp], { cwd: root, encoding: 'utf8' }).trim());
+}
 const outDir = resolve(root, '.superpowers/prototypes');
 mkdirSync(outDir, { recursive: true });
 const out = resolve(outDir, `${name}.html`);
