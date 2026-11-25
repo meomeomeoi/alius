@@ -207,3 +207,69 @@ P10e §15 step 3, variant **B3** (author, 2026-11-25): on a card everything is i
 ## 4. The answers (the commander's pills, no brackets)
 
 `accept` · `refuse` · `talk it over` · `negotiate` · `go` · `yield` · `do it` · `take it instead` · `cancel` · `sign` (press and hold) · `undo, not what I meant` · `name it` (the ceremony's number) · ceremony chip steps in lower case by their label (`fetch the implement`, `the execution`, `the reconciliation`).
+
+---
+
+## 5. The posture call (draft for the author's approval)
+
+Variant **D** (author, 2026-11-25): a short full-frame moment, like the slap. Her word is her name for the posture (`{posture}`, the model's word, kept by the engine), large in her hand; her foot taps the time; the fan of her named postures rises from the dial. After the answer one line in her hand, picked as in §2 (a hash, no rng draw). Three outcomes: **right** (the right posture in time), **wrong** (another posture), **slow** (the time ran out). Without the order interaction there is no time, so only right and wrong.
+
+### Neutral (a style with no line of its own)
+- **right:** `Good.` · `Like that.` · `That's it.`
+- **wrong:** `Not that. {posture}.` · `I said {posture}.` · `Wrong. {posture}.`
+- **slow:** `Too slow.` · `I'm still waiting.` · `When I say it, not after.`
+
+### affectionate
+- **right:** `Good. Just like that.` · `There you are. Lovely.` · `Perfect, love.`
+- **wrong:** `Not that one, love. {posture}.` · `Close. {posture}, though.` · `Mm, no. {posture}. You'll get it.`
+- **slow:** `A little faster next time?` · `I'll wait. This time.` · `Slow, but you got there. Almost.`
+
+### cold
+- **right:** `Fine.` · `Acceptable.` · `Yes.`
+- **wrong:** `No. {posture}.` · `{posture}. Not that.` · `Wrong.`
+- **slow:** `Late.` · `Too slow.` · `I don't repeat myself.`
+
+### ritual
+- **right:** `As it should be.` · `Correct. Hold it.` · `{posture}. Properly done.`
+- **wrong:** `That is not {posture}.` · `The form is {posture}. Again.` · `Wrong form. {posture}.`
+- **slow:** `You missed the count.` · `On the word, not after it.` · `The moment passed. That is noted.`
+
+### clinical
+- **right:** `Correct.` · `Good. Response time acceptable.` · `That's the one.`
+- **wrong:** `Incorrect. I asked for {posture}.` · `That's not {posture}. Noted.` · `Wrong posture. {posture}.`
+- **slow:** `Too slow. Noted.` · `Response time: unacceptable.` · `You hesitated. I saw.`
+
+### possessive
+- **right:** `Good. Mine, and quick about it.` · `That's how I like you.` · `Yes. Stay like that for me.`
+- **wrong:** `I said {posture}. Mine, not yours.` · `Not that. {posture}, for me.` · `You know what {posture} means. Do it.`
+- **slow:** `When I call, you come. Faster.` · `Too slow for me.` · `Don't make me wait for what's mine.`
+
+### playful
+- **right:** `Ooh, quick~` · `Good! Gold star.` · `Look at you go.`
+- **wrong:** `Nope~ {posture}.` · `Cute, but no. {posture}.` · `Wrong one! {posture}, silly.`
+- **slow:** `Too slo-ow~` · `Did you fall asleep?` · `I counted. You lost.`
+
+### cruel
+- **right:** `Finally.` · `About time.` · `Good dog. That's all you are.`
+- **wrong:** `Wrong. Pathetic. {posture}.` · `Can't even get {posture} right.` · `{posture}. Are you stupid?`
+- **slow:** `Too slow. You'll pay for that.` · `I won't call twice.` · `Slow. As always.`
+
+### obsessive
+- **right:** `Yes. Exactly as I pictured it.` · `Perfect. Don't move.` · `There. I've been waiting for that.`
+- **wrong:** `No. {posture}. You know it. I know you know it.` · `That's not {posture}. Why would you do that?` · `{posture}. I've shown you a hundred times.`
+- **slow:** `I counted every second.` · `You made me wait. I noticed.` · `Too slow. I'll remember.`
+
+### drill
+- **right:** `Good.` · `Hold it. Don't move.` · `That's it. Again later.`
+- **wrong:** `Wrong! {posture}!` · `{posture}, I said! Move!` · `That's not {posture}. Again!`
+- **slow:** `Too slow! Again!` · `On the word! Not after!` · `Faster than that.`
+
+### regal
+- **right:** `You may stay so.` · `Better.` · `That will do.`
+- **wrong:** `I asked for {posture}.` · `{posture}. Do try to keep up.` · `Not that. {posture}, as I said.`
+- **slow:** `I am kept waiting.` · `When I speak, you move.` · `Too slow to please me.`
+
+### vindictive
+- **right:** `For once.` · `So you can.` · `Good. Don't expect thanks.`
+- **wrong:** `Wrong. Like always. {posture}.` · `{posture}. You'd forget your own name.` · `Not {posture}. Another one for the list.`
+- **slow:** `Too slow. Another one for the list.` · `You never could keep up.` · `Late. I'm not surprised.`
