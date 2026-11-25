@@ -11089,10 +11089,10 @@ function validateBond(raw, reg) {
     }
   }
   if (raw.practice !== void 0) {
-    const read = validatePractice(raw.practice, reg);
-    for (const issue of read.issues) issues.push(issue);
-    if (read.practice !== void 0) {
-      bond.practice = read.practice;
+    const read2 = validatePractice(raw.practice, reg);
+    for (const issue of read2.issues) issues.push(issue);
+    if (read2.practice !== void 0) {
+      bond.practice = read2.practice;
       valid.push("practice");
     }
   }
@@ -14772,8 +14772,8 @@ function restrictionReason(state, reg, unitId, use, activityId) {
     const why = reasonOf(state, r, use, activityId);
     if (why) return why;
   }
-  for (const read of readers) {
-    const why = read(state, reg, unitId, use);
+  for (const read2 of readers) {
+    const why = read2(state, reg, unitId, use);
     if (why !== null) return why;
   }
   return null;
@@ -16739,8 +16739,8 @@ function commanderRestriction(state, reg, use, activityId, toUnitId, locationId)
       if (r.what === "no_dms" && use === "dm") return `The warden has revoked the commander's messages until day ${r.untilDay}.`;
     }
   }
-  for (const read of readers2) {
-    const why = read(state, reg, use, activityId, toUnitId, locationId);
+  for (const read2 of readers2) {
+    const why = read2(state, reg, use, activityId, toUnitId, locationId);
     if (why !== null) return why;
   }
   return null;
@@ -19240,15 +19240,15 @@ function runTargetOf(state, reg, targetId) {
   return void 0;
 }
 function physicsStyleOf(state, unitId, reg) {
-  for (const read of styleReaders) {
-    const s = read(state, unitId, reg);
+  for (const read2 of styleReaders) {
+    const s = read2(state, unitId, reg);
     if (s !== null) return s;
   }
   return { primary: "neutral" };
 }
 function holdsUntilOf(state, unitId) {
-  for (const read of holdsReaders) {
-    const h2 = read(state, unitId);
+  for (const read2 of holdsReaders) {
+    const h2 = read2(state, unitId);
     if (h2 !== null) return h2;
   }
   return "signal";
@@ -20605,8 +20605,8 @@ function registerBlockingGate(fn) {
   liveGates.push(fn);
 }
 function frameOf(state, unitId) {
-  for (const read of frameReaders) {
-    const f = read(state, unitId);
+  for (const read2 of frameReaders) {
+    const f = read2(state, unitId);
     if (f !== null) return f;
   }
   return "equal";
@@ -21877,7 +21877,7 @@ function dynamicIntentInput(state, reg, participants, _channel) {
   const milestoneRows2 = open3.milestones.filter((m) => present2.includes(m.unitId));
   const milestoneLabels = {};
   for (const m of milestoneRows2) milestoneLabels[m.id] = String(reg.dynamicMilestones.get(m.milestoneId)?.promptHint ?? m.milestoneId);
-  const claims2 = open3.claims.filter((c) => present2.includes(c.unitId)).map((c) => c.id);
+  const claims3 = open3.claims.filter((c) => present2.includes(c.unitId)).map((c) => c.id);
   const offers2 = open3.offers.filter((o) => present2.includes(o.unitId) && o.confirmed !== true).map((o) => o.id);
   const exits = (open3.exits ?? []).filter((e) => present2.includes(e.unitId)).map((e) => e.id);
   const slips2 = participants.length >= 2 ? present2.filter((id) => {
@@ -21889,14 +21889,14 @@ function dynamicIntentInput(state, reg, participants, _channel) {
     ...probes2.length > 0 ? ["probe_answered"] : [],
     ...observed.length > 0 ? ["probe_observed"] : [],
     ...milestoneRows2.length > 0 ? ["milestone_accepted", "milestone_refused"] : [],
-    ...claims2.length > 0 || exits.length > 0 ? ["compromise_reached"] : [],
+    ...claims3.length > 0 || exits.length > 0 ? ["compromise_reached"] : [],
     ...offers2.length > 0 ? ["offer_answered"] : [],
     ...compromat.length > 0 ? ["compromat_mentioned"] : [],
     ...slips2.length > 0 ? ["protocol_slip"] : []
   ];
   if (types.length === 0) return {};
   return {
-    dynamic: { types, probes: probes2, observed, milestones: milestoneRows2.map((m) => m.id), claims: claims2, exits, offers: offers2, compromat, slips: slips2, probeAxes, milestoneLabels }
+    dynamic: { types, probes: probes2, observed, milestones: milestoneRows2.map((m) => m.id), claims: claims3, exits, offers: offers2, compromat, slips: slips2, probeAxes, milestoneLabels }
   };
 }
 function applyDynamicIntent(draft, ctx2, unitId, ev, batch = []) {
@@ -30304,7 +30304,7 @@ function squadCombatant(state, reg, unit4, index2, row4, synergies) {
   }
   for (const { inst } of wornItems(state, reg, unit4)) add2(itemStats(reg, inst)?.effects, `item:${inst.uid}`);
   for (const s of synergies) if (s.unitId === unit4.id) add2(reg.synergies.get(s.synergyId)?.effects, `synergy:${s.synergyId}`);
-  for (const read of combatPassives) add2(read(state, reg, unit4.id), "dynamic");
+  for (const read2 of combatPassives) add2(read2(state, reg, unit4.id), "dynamic");
   return {
     cid: `s${index2 + 1}`,
     side: "squad",
@@ -32008,8 +32008,8 @@ function effectSign(fx2, units) {
     case "unit_event": {
       const key = `unit_event:${fx2.valueAxes?.length ? fx2.valueAxes.map((a) => a.axis).join("+") : fx2.event}`;
       const hearers = presentNamed(units);
-      const read = hearers.map((u) => alignment(fx2, u));
-      return { pos: read.some((a) => a > 0), neg: read.some((a) => a < 0), key };
+      const read2 = hearers.map((u) => alignment(fx2, u));
+      return { pos: read2.some((a) => a > 0), neg: read2.some((a) => a < 0), key };
     }
     default:
       return { pos: false, neg: false, key: fx2.type };
@@ -34831,8 +34831,8 @@ function registerExpectation(fn) {
 var FRAME_KEYS2 = ["0", "1", "2"];
 var atOf = (scene) => scene.readIndex ?? scene.startIndex;
 function expectedOption(state, reg, moment) {
-  for (const read of expectations) {
-    const e = read(state, reg, moment);
+  for (const read2 of expectations) {
+    const e = read2(state, reg, moment);
     if (e !== null && moment.options.some((o) => o.key === e.key)) return e;
   }
   const frame2 = moment.options.filter((o) => FRAME_KEYS2.includes(o.key));
@@ -40178,10 +40178,10 @@ registerAction("profile/set_practice", (draft, payload, ctx2) => {
   const locked = unit4.practiceLocks ?? [];
   if (patchedFields(patch).some((f) => locked.includes(f))) throw new Error("That field is locked.");
   const merged = mergePractice(unit4.bond?.practice, patch);
-  const read = validatePractice(merged, ctx2.registries);
-  if (read.practice === void 0 || read.issues.length > 0) throw new Error(read.issues.length > 0 ? read.issues.join("; ") : "A practice needs a primary style.");
+  const read2 = validatePractice(merged, ctx2.registries);
+  if (read2.practice === void 0 || read2.issues.length > 0) throw new Error(read2.issues.length > 0 ? read2.issues.join("; ") : "A practice needs a primary style.");
   if (unit4.bond === void 0) unit4.bond = { ...MODEST_BOND, ownLimits: { categories: [] } };
-  unit4.bond.practice = read.practice;
+  unit4.bond.practice = read2.practice;
   return [];
 });
 registerAction("profile/lock_practice", (draft, payload, ctx2) => {
@@ -40211,16 +40211,16 @@ registerAction("profile/set_expectation", (draft, payload, ctx2) => {
   if (unknown2.length > 0) throw new Error(`An expectation profile has no field "${unknown2[0]}".`);
   if (expectationFields(patch).some((f) => lockedExpectation(unit4, f))) throw new Error("That field is locked.");
   const merged = mergeExpectations(unit4.expectations, patch);
-  const read = validateExpectations(merged, ctx2.registries, { unitId: unit4.id });
-  if (read.issues.length > 0) throw new Error(read.issues.join("; "));
+  const read2 = validateExpectations(merged, ctx2.registries, { unitId: unit4.id });
+  if (read2.issues.length > 0) throw new Error(read2.issues.join("; "));
   if (isObj40(patch.worship)) {
     for (const [id, entry] of Object.entries(patch.worship)) {
       const target = ctx2.registries.worshipTargets.get(id);
       if (entry !== null && target !== void 0 && !contentAllowed(draft, ctx2.registries, target, unit4.id)) throw new Error(`"${target.label ?? id}" is closed in this campaign.`);
     }
   }
-  if (read.expectations === void 0) delete unit4.expectations;
-  else unit4.expectations = read.expectations;
+  if (read2.expectations === void 0) delete unit4.expectations;
+  else unit4.expectations = read2.expectations;
   return [];
 });
 registerAction("profile/lock_expectation", (draft, payload, ctx2) => {
@@ -41967,16 +41967,16 @@ function createPower(deps) {
     if (!send({ type: "vote/open", payload: { kind: needed.kind, subject: needed.subject } }, chat)) return "cancelled";
     const opened = state()?.power?.votes.open;
     if (!opened) return "cancelled";
-    const read = liveVote(state()) ?? opened;
-    const lines = await ballotLines(read);
+    const read2 = liveVote(state()) ?? opened;
+    const lines = await ballotLines(read2);
     if (chatId() !== chat) return "cancelled";
-    const answer = await deps.showVote(read, lines);
+    const answer = await deps.showVote(read2, lines);
     if (chatId() !== chat) return "cancelled";
     const rerun = () => {
       const payload = { ...action.payload ?? {}, voteId: opened.id };
       return send({ ...action, payload }, chat) ? "ran" : "cancelled";
     };
-    if (answer.choice === "carry" && read.status === "passed") return rerun();
+    if (answer.choice === "carry" && read2.status === "passed") return rerun();
     if (answer.choice === "overrule") {
       if (overrule(opened.id, answer.means, answer.punish)) return rerun();
       drop2(opened.id);
@@ -53103,13 +53103,13 @@ function sanitizeProfile(raw, ctx2) {
   }
   let bond = ctx2.bond ?? null;
   if (want("bond")) {
-    const read = validateBond(src.bond, ctx2.registries);
-    profile.bond = read.bond;
-    bond = read.bond;
+    const read2 = validateBond(src.bond, ctx2.registries);
+    profile.bond = read2.bond;
+    bond = read2.bond;
     const reason = cap6(isObj49(src.bond) ? src.bond.reason : void 0, TUNING.bonds.limits.noteMax);
     if (reason !== "") profile.bondReason = reason;
-    for (const issue of read.issues) if (/unknown content category/.test(issue)) dropped.push(`bond:${issue.match(/"([^"]*)"/)?.[1] ?? "(invalid)"}`);
-    if (read.valid.length === 0) missing2.push("bond");
+    for (const issue of read2.issues) if (/unknown content category/.test(issue)) dropped.push(`bond:${issue.match(/"([^"]*)"/)?.[1] ?? "(invalid)"}`);
+    if (read2.valid.length === 0) missing2.push("bond");
     if (!isObj49(src.bond)) delete profile.bond;
   }
   if (want("defects")) {
@@ -53237,15 +53237,15 @@ function sanitizeProfile(raw, ctx2) {
     profile.opinions = out;
   }
   if (want("practice")) {
-    const read = validatePractice(src.practice, ctx2.registries);
-    for (const id of read.dropped) dropped.push(id);
-    if (read.practice !== void 0) profile.practice = read.practice;
+    const read2 = validatePractice(src.practice, ctx2.registries);
+    for (const id of read2.dropped) dropped.push(id);
+    if (read2.practice !== void 0) profile.practice = read2.practice;
     else missing2.push("practice");
   }
   if (want("expectations")) {
-    const read = validateExpectations(src.expectations, ctx2.registries, { state: { content: { enabled: [...ctx2.content ?? []] } } });
-    for (const id of read.dropped) dropped.push(id);
-    if (read.expectations !== void 0) profile.expectations = read.expectations;
+    const read2 = validateExpectations(src.expectations, ctx2.registries, { state: { content: { enabled: [...ctx2.content ?? []] } } });
+    for (const id of read2.dropped) dropped.push(id);
+    if (read2.expectations !== void 0) profile.expectations = read2.expectations;
     else missing2.push("expectations");
   }
   if (want("baseline")) {
@@ -55022,8 +55022,8 @@ function renderCalibration(host, ctx2) {
         locks: ch.practiceLocks ?? [],
         editable: true,
         onSet: (patch) => {
-          const read = validatePractice(mergePractice(ch.bond?.practice, { ...patch }), reg);
-          if (read.practice !== void 0) onUpdate({ bond: { ...ch.bond ?? { ...MODEST_BOND, ownLimits: { categories: [] } }, practice: read.practice } });
+          const read2 = validatePractice(mergePractice(ch.bond?.practice, { ...patch }), reg);
+          if (read2.practice !== void 0) onUpdate({ bond: { ...ch.bond ?? { ...MODEST_BOND, ownLimits: { categories: [] } }, practice: read2.practice } });
         },
         onLock: (field2, on) => onUpdate({ practiceLocks: [...(ch.practiceLocks ?? []).filter((f) => f !== field2), ...on ? [field2] : []] })
       });
@@ -62888,6 +62888,46 @@ function heartStop(samples) {
   hearts.delete(samples);
 }
 
+// src/ui/scene/instruments/styleClaims.ts
+var claims2 = [];
+var read = (el, prop) => {
+  if (prop.startsWith("@")) return el.getAttribute(prop.slice(1));
+  const v = el.style.getPropertyValue(prop);
+  return v === "" ? null : v;
+};
+function writeStyle(el, prop, value) {
+  if (prop.startsWith("@")) {
+    if (value === null) el.removeAttribute(prop.slice(1));
+    else el.setAttribute(prop.slice(1), value);
+    return;
+  }
+  if (value === null) el.style.removeProperty(prop);
+  else el.style.setProperty(prop, value);
+}
+function claimStyles(el, props) {
+  const c = { el, saved: new Map(props.map((p) => [p, read(el, p)])) };
+  claims2.push(c);
+  return c;
+}
+function releaseClaim(c) {
+  const at = claims2.indexOf(c);
+  if (at < 0) return;
+  claims2.splice(at, 1);
+  for (const [p, v] of c.saved) {
+    const newer = claims2.slice(at).find((x) => x.el === c.el && x.saved.has(p));
+    if (newer) newer.saved.set(p, v);
+    else writeStyle(c.el, p, v);
+  }
+}
+function claimedProps(el) {
+  const out = /* @__PURE__ */ new Set();
+  for (const c of claims2) if (c.el === el) for (const p of c.saved.keys()) out.add(p);
+  return out;
+}
+function handDownAbsent(el, prop) {
+  for (const c of claims2) if (c.el === el && c.saved.has(prop)) c.saved.set(prop, null);
+}
+
 // src/ui/scene/instruments/host.ts
 var defs = [];
 function instrumentFor(run, state, reg, settings) {
@@ -63000,12 +63040,18 @@ function styleMap(el) {
   return m;
 }
 function snap(el, keep2) {
-  return { el, style: styleMap(el), data: new Map(Object.entries(el.dataset).map(([k, v]) => [k, v ?? ""])), keep: keep2 };
+  const style = styleMap(el);
+  const claim2 = claimStyles(el, [...style.keys()].filter((p) => !keep2.style.includes(p)));
+  return { el, style, data: new Map(Object.entries(el.dataset).map(([k, v]) => [k, v ?? ""])), keep: keep2, claim: claim2 };
 }
 function restore(s) {
-  const now = styleMap(s.el);
-  for (const p of now.keys()) if (!s.keep.style.includes(p) && !s.style.has(p)) s.el.style.removeProperty(p);
-  for (const [p, v] of s.style) if (!s.keep.style.includes(p) && now.get(p) !== v) s.el.style.setProperty(p, v);
+  releaseClaim(s.claim);
+  const held3 = claimedProps(s.el);
+  for (const p of styleMap(s.el).keys()) {
+    if (s.keep.style.includes(p) || s.style.has(p)) continue;
+    if (held3.has(p)) handDownAbsent(s.el, p);
+    else s.el.style.removeProperty(p);
+  }
   for (const k of Object.keys(s.el.dataset)) if (!s.keep.data.includes(k) && !s.data.has(k)) delete s.el.dataset[k];
   for (const [k, v] of s.data) if (!s.keep.data.includes(k) && s.el.dataset[k] !== v) s.el.dataset[k] = v;
 }
@@ -63025,6 +63071,7 @@ function mount(env, def, run, key) {
     dulled: false,
     saidIn: /* @__PURE__ */ new Set(),
     samples: null,
+    dial: null,
     snapshot: [snap(env.root, SCENE_OWNED.root), ...Object.entries(env.layers).map(([name, el]) => snap(el, SCENE_OWNED[name] ?? NONE4)), snap(env.input, NONE4)]
   };
   scope.samples = env.samples ? scopedSamples(env.samples, scope) : null;
@@ -63083,7 +63130,11 @@ function mount(env, def, run, key) {
   });
   const mark = h("div", { class: "alius-instrument", "data-instrument": def.id });
   env.layers.moment.append(mark);
-  env.root.querySelector(".alius-stage-dial")?.setAttribute("data-instrument", def.id);
+  const dial = env.root.querySelector(".alius-stage-dial");
+  if (dial) {
+    scope.dial = claimStyles(dial, ["@data-instrument"]);
+    dial.setAttribute("data-instrument", def.id);
+  }
   current = { key, runId: run.id, def, env, run: null, scope, mark, finishing: null };
   syncMark(current);
   current.run = def.start(scoped, run);
@@ -63131,7 +63182,8 @@ function unmountInstruments() {
     m.mark.remove();
     m.env.gauge.clear();
     for (const sn of s.snapshot) restore(sn);
-    m.env.root.querySelector(".alius-stage-dial")?.removeAttribute("data-instrument");
+    if (s.dial) releaseClaim(s.dial);
+    s.dial = null;
   }
 }
 function resetInstruments() {
@@ -63931,13 +63983,41 @@ function showFace(label2) {
   if (url && E && E.env.faceOf(E.unitId) !== label2) E.env.setSprite(E.unitId, label2, url);
 }
 function preload(label2) {
-  if (label2 in faces || !E) return Promise.resolve();
-  const e = E;
-  return Promise.race([e.env.spriteUrl(e.unitId, label2).then((u) => {
-    faces[label2] = u;
-  }, () => {
-    faces[label2] = null;
+  const url = faces[label2];
+  if (!url) return Promise.resolve();
+  const im = new Image();
+  im.src = url;
+  return Promise.race([im.decode().catch(() => {
   }), new Promise((r) => setTimeout2(r, EXPR_WAIT))]);
+}
+var looking = /* @__PURE__ */ new Map();
+function lookFaces(labels) {
+  if (!E) return;
+  const e = E;
+  for (const label2 of labels) {
+    if (label2 in faces || looking.has(label2)) continue;
+    looking.set(label2, e.env.spriteUrl(e.unitId, label2).then((u) => {
+      faces[label2] = u;
+    }, () => {
+      faces[label2] = null;
+    }).then(() => {
+      looking.delete(label2);
+      if (E === e && curLabel === label2 && (G2.slap || G2.back)) showFace(label2);
+    }));
+  }
+}
+var facesOf = (style) => {
+  const e = EXPR[style];
+  return e ? [e.before, ...e.keep, ...Object.values(e.after), "annoyance"] : [];
+};
+var leftBySlap = null;
+function readFaceNow() {
+  if (!E) return;
+  const scene = E.env.faceOf(E.unitId);
+  curLabel = leftBySlap && leftBySlap.scene === scene ? leftBySlap.label : scene;
+}
+function noteFaceLeft() {
+  if (E) leftBySlap = { label: curLabel, scene: E.env.faceOf(E.unitId) };
 }
 var S2 = {
   style: "possessive",
@@ -64063,7 +64143,16 @@ function build2(env, unitId) {
   const g = document.createElementNS(svgNS, "feGaussianBlur");
   g.setAttribute("stdDeviation", "0 0");
   filter.append(g);
-  svg4.append(filter);
+  const scaled2 = (suffix) => {
+    const f = filter.cloneNode(false);
+    f.setAttribute("id", `${HBLUR}-${suffix}`);
+    const gg = document.createElementNS(svgNS, "feGaussianBlur");
+    gg.setAttribute("stdDeviation", "0 0");
+    f.append(gg);
+    els[`#hblur-${suffix}`] = gg;
+    return f;
+  };
+  svg4.append(filter, scaled2("b"), scaled2("s"));
   box.append(svg4);
   els["#hblurG"] = g;
   const her = env.her(unitId);
@@ -64094,14 +64183,18 @@ var cam = {
     const { backdrop, sprites } = e.env.layers;
     const reply = e.env.reply;
     const wrap = $("#inputWrap");
-    this.saved = [backdrop, sprites, reply, wrap].map((el) => ({ el, props: new Map(CAM_PROPS.map((p) => [p, el.style.getPropertyValue(p)])) }));
+    this.saved = [backdrop, sprites, reply, wrap].map((el) => claimStyles(el, CAM_PROPS));
     const base = typeof getComputedStyle === "function" ? getComputedStyle(backdrop).filter : "";
     this.backdropFilter = base && base !== "none" ? base : "";
     for (const el of [backdrop, sprites]) el.style.setProperty("transition", "none");
     sprites.style.setProperty("transform-origin", "0 0");
     this.base = null;
     this.measure();
-    e.env.root.querySelector(".alius-stage-dial")?.setAttribute("data-instrument", "slap");
+    const dial = e.env.root.querySelector(".alius-stage-dial");
+    if (dial) {
+      this.saved.push(claimStyles(dial, ["@data-instrument"]));
+      dial.setAttribute("data-instrument", "slap");
+    }
   },
   /** Her face point in the scene (the sprite's sidecar point on the drawn picture), measured with the camera at home. */
   measure() {
@@ -64111,7 +64204,7 @@ var cam = {
     if (!img || !img.naturalWidth || e.env.root.dataset.curtain === "open") return;
     const sprites = e.env.layers.sprites;
     const now = sprites.style.transform;
-    sprites.style.transform = this.saved.find((x) => x.el === sprites)?.props.get("transform") ?? "";
+    sprites.style.transform = this.saved.find((x) => x.el === sprites)?.saved.get("transform") ?? "";
     const r = img.getBoundingClientRect();
     const o = e.env.root.getBoundingClientRect();
     sprites.style.transform = now;
@@ -64125,38 +64218,42 @@ var cam = {
     const W = innerWidth2, H = innerHeight2;
     const O = [W * 0.5, H * 0.436];
     const about2 = (extra) => `translate(${O[0].toFixed(1)}px, ${O[1].toFixed(1)}px) ${world}${extra} translate(${(-O[0]).toFixed(1)}px, ${(-O[1]).toFixed(1)}px)`;
-    const blur = e.env.readable || hb <= 0.3 ? "" : `url(#${HBLUR})`;
+    const blur = !e.env.readable && hb > 0.3;
+    const hblurAt = (suffix, scale) => {
+      e.els[`#hblur-${suffix}`].setAttribute("stdDeviation", `${(hb / scale).toFixed(2)} ${(hb * 0.12 / scale).toFixed(2)}`);
+      return blur ? `url(#${HBLUR}-${suffix})` : "";
+    };
     const { backdrop, sprites } = e.env.layers;
+    const cover = lerp4(1, 1.28, k);
     backdrop.style.transformOrigin = "0 0";
-    backdrop.style.transform = about2(` scale(${lerp4(1, 1.28, k).toFixed(4)})`);
-    backdrop.style.filter = `${this.backdropFilter} ${blur} ${e.env.readable ? "" : `blur(${(k * 14).toFixed(1)}px)`} brightness(${lerp4(1, 0.55, k).toFixed(3)})`.replace(/\s+/g, " ").trim();
+    backdrop.style.transform = about2(` scale(${cover.toFixed(4)})`);
+    backdrop.style.filter = `${this.backdropFilter} ${hblurAt("b", cover)} ${e.env.readable ? "" : `blur(${(k * 14 / cover).toFixed(1)}px)`} brightness(${lerp4(1, 0.55, k).toFixed(3)})`.replace(/\s+/g, " ").trim();
     this.measure();
     let camera = "";
+    let sc = 1;
     const img = e.env.spriteOf(e.unitId);
-    if (img && img.naturalWidth && this.base) {
+    if (img && this.base) {
       const p0 = this.base, p1 = [W * 0.5, H * 0.42];
-      const sc = Math.pow(S2.zoom, k);
+      sc = Math.pow(S2.zoom, k);
       const px = lerp4(p0.x, p1[0], k), py = lerp4(p0.y, p1[1], k);
       camera = ` translate(${(px - sc * p0.x).toFixed(1)}px, ${(py - sc * p0.y).toFixed(1)}px) scale(${sc.toFixed(4)})`;
     }
     sprites.style.transform = `${about2("")}${camera}`;
-    sprites.style.filter = `brightness(${lerp4(1, 0.92, k)})`;
+    sprites.style.filter = `${hblurAt("s", sc)} brightness(${lerp4(1, 0.92, k)})`.trim();
+    e.faceImg.style.filter = blur ? `url(#${HBLUR})` : "";
     e.faceImg.style.transform = world;
   },
   /** The camera is home: every style it wrote is put back as it was. */
   release() {
     if (!this.held) return;
     this.held = false;
-    for (const s of this.saved) for (const [p, v] of s.props) {
-      if (v) s.el.style.setProperty(p, v);
-      else s.el.style.removeProperty(p);
-    }
+    for (const c of this.saved) releaseClaim(c);
     this.saved = [];
     this.base = null;
-    E?.env.root.querySelector(".alius-stage-dial")?.removeAttribute("data-instrument");
     if (E) {
       E.faceImg.style.opacity = "0";
       E.faceImg.style.transform = "";
+      E.faceImg.style.filter = "";
     }
   }
 };
@@ -64505,6 +64602,7 @@ function land(s, now) {
     if (G2.slap !== s) return;
     G2.slap = null;
     G2.back = S2.reduced ? null : { t0: performance2.now(), from: 1 };
+    noteFaceLeft();
     if (cruelAgain || G2.next) setTimeout2(() => startNext(), 120);
     else if (G2.typingFocus) $("#cmd").focus();
   }, S2.reduced ? 600 : hold);
@@ -64515,6 +64613,7 @@ function startNext() {
   if (next && !G2.started.has(next.id)) {
     LINES2 = LINES_NEXT;
     if (E) E.host.dataset.slap = next.id;
+    readFaceNow();
     void startSlap2(next);
   } else if (G2.typingFocus && E) $("#cmd").focus();
 }
@@ -64694,11 +64793,19 @@ function bind(m, unitId) {
   if (!E) {
     E = { ...build2(m.env, unitId), host: m.host, sceneId: m.sceneId };
     const e = E;
-    e.offs.push(m.env.listen(document, "keydown", onKey));
-    e.offs.push(m.env.listen(e.env.root, "pointerdown", onDown));
-    e.offs.push(m.env.listen(document, "pointermove", onMove));
-    curLabel = m.env.faceOf(unitId);
+    const reading2 = () => e.env.root.dataset.curtain === "open";
+    e.offs.push(m.env.listen(document, "keydown", (ev) => {
+      if (!reading2()) onKey(ev);
+    }));
+    e.offs.push(m.env.listen(e.env.root, "pointerdown", (ev) => {
+      if (!reading2()) onDown(ev);
+    }));
+    e.offs.push(m.env.listen(document, "pointermove", (ev) => {
+      if (!reading2()) onMove(ev);
+    }));
     for (const k of Object.keys(faces)) delete faces[k];
+    looking.clear();
+    leftBySlap = null;
   }
   E.host = m.host;
   holder2 = unitId;
@@ -64721,6 +64828,7 @@ function mountSlap(m) {
   }
   bind(m, slap.holderId);
   S2.style = slap.style;
+  lookFaces(facesOf(slap.style));
   if (G2.cheekA > 0) requestAnimationFrame2(frame);
   if (G2.started.has(slap.id)) return;
   if (G2.slap || G2.starting) {
@@ -64732,6 +64840,7 @@ function mountSlap(m) {
   }
   LINES2 = { [slap.style]: linesFor(m.reg, slap.style, slap.id) };
   m.host.dataset.slap = slap.id;
+  readFaceNow();
   void startSlap2(slap);
 }
 var LINES_NEXT = {};
@@ -64744,6 +64853,17 @@ function settleSlap() {
     G2.starting = false;
     G2.slap = null;
     G2.back = null;
+    for (const n of made) {
+      try {
+        n.stop();
+      } catch {
+      }
+    }
+    made.clear();
+    for (const t of timers3) clearTimeout(t);
+    timers3.clear();
+    if (E) $("#hand").replaceChildren();
+    if (G2.typingFocus && E) $("#cmd").focus();
   }
 }
 function stopSlap(opts = {}) {
@@ -66581,11 +66701,6 @@ function renderSceneScreen(host, ctx2) {
     const url = spriteUrls.get(`${unitId}|${labelText}`) ?? await st.getSpriteUrl(unit4.cardRef, labelText).catch(() => null);
     if (!url) return null;
     spriteUrls.set(`${unitId}|${labelText}`, url);
-    if (typeof Image === "function") {
-      const im = new Image();
-      im.src = url;
-      await (typeof im.decode === "function" ? im.decode().catch(() => void 0) : Promise.resolve());
-    }
     return url;
   }
   function drawSprites(s, speakerAvatar) {
@@ -67689,11 +67804,11 @@ var FELT_LINE = "[[dynamic_felt]]";
 var plain7 = (text3) => plainDraft(text3).trim();
 var LEVEL_WORDS2 = { suspects_close: "has noticed something", suspects_dynamic: "suspects", knows_dynamic: "knows" };
 var MASTERY_WORDS = ["no", "one", "two", "three", "four", "five"];
-function viewed(read) {
+function viewed(read2) {
   return (s, env, k) => {
     const unitId = unitIdOf3(s);
     if (!env.state || unitId === null) return null;
-    const lines = read(s, env, k.dynamic(unitId, env.registries), unitId);
+    const lines = read2(s, env, k.dynamic(unitId, env.registries), unitId);
     return lines.length > 0 ? { lines } : null;
   };
 }
@@ -67765,12 +67880,12 @@ var MARK_WORDS = { 1: "a slot", 2: "two slots", 3: "three slots" };
 var unitIdOf4 = (s) => typeof s.data.unitId === "string" ? s.data.unitId : null;
 var nameOf24 = (env, unitId) => env.state?.squad.find((u) => u.id === unitId)?.displayName ?? "She";
 var STATUS_WORDS = { offered: "waiting for an answer", open: "accepted", negotiating: "being talked over", accepted: "accepted" };
-function viewed2(read) {
+function viewed2(read2) {
   return (s, env, k) => {
     if (!env.state) return null;
     const given = unitIdOf4(s);
     const units = given !== null ? [given] : practiceHolders(env.state, env.registries);
-    const lines = units.flatMap((id) => read(s, env, k.practice(id, env.registries), id, k));
+    const lines = units.flatMap((id) => read2(s, env, k.practice(id, env.registries), id, k));
     return lines.length > 0 ? { lines } : null;
   };
 }
@@ -67830,8 +67945,8 @@ function implementReading(s, env) {
   return { lines: [`It leaves ${entry.mark.kind} for ${MARK_WORDS[entry.mark.slots ?? 1] ?? "some slots"}.`] };
 }
 function registerPracticeProviders() {
-  const on = (id, read) => {
-    registerAnalyzeProvider(`glossary:${id}`, viewed2(read));
+  const on = (id, read2) => {
+    registerAnalyzeProvider(`glossary:${id}`, viewed2(read2));
   };
   on("practice", practiceLines);
   for (const id of ["practice_task", "task_card", "consent_ladder", "accept_words", "accept_signed"]) on(id, taskLines);
