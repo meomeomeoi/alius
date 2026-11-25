@@ -28,7 +28,7 @@ import type { CueKind, Seal } from '../../../../engine/blocking/types';
 import { ceilingOf } from '../../../../engine/backdrops';
 import { fnv1a } from '../../../../engine/hub';
 import { occlusionOf } from '../../../../engine/physics/occlusion';
-import { effectiveOpenings } from '../../../../engine/physics/segment';
+import { effectiveOpenings, overDelayOf } from '../../../../engine/physics/segment';
 import type { PhysicsRun, SegmentInput } from '../../../../engine/physics/state';
 import { leadStyle, physicsStyleOf } from '../../../../engine/physics/style';
 import type { CampaignState } from '../../../../engine/state/types';
@@ -95,7 +95,6 @@ const easeOut = (t: number) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
 const easeIn = (t: number) => Math.pow(clamp(t, 0, 1), 2);
 const pick = <T>(a: readonly T[]) => a[Math.floor(Math.random() * a.length)];
 const randInt = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
-void randInt;
 
 /* ---------- the engine's numbers (TUNING.physics.breath: the air of the instrument is the gauge's share, so they are scaled by its capacity) ---------- */
 let BEAT = TUNING.physics.beatMs;
@@ -130,12 +129,13 @@ const S = {
 /** What the prototype read from its panel and its scheduler, here from the run: her style's row, the run's seal, the opening being played. */
 interface Wiring {
   run: PhysicsRun | null;
-  holder: string;
   row: string;
+  /** Her delay in beats after a noticed strain: the engine's own (`overDelayOf`), so the two never disagree. */
+  overDelay: number;
   seal: Seal;
   widthMs: number;
   lines: Lines;
-  seg: { n: number; startedAt: number; clock0: number; beats: number; endMs: number; flushed: boolean; reported: SegmentInput[] } | null;
+  seg: { n: number; startedAt: number; clock0: number; beats: number; endMs: number; flushed: boolean } | null;
   running: boolean;
   strain: { beat: number; amount: number; sent: boolean } | null;
   via: 'mouse' | 'key';
@@ -144,8 +144,8 @@ interface Wiring {
 }
 type Lines = Record<string, string[]>;
 const NO_LINES: Lines = { now: [], fake: [], early: [], greedy: [], low: [], released: [], entry: [], hold: [], tap: [], good: [], poor: [], stop: [], wake: [], again: [] };
-const R: Wiring = { run: null, holder: '', row: 'neutral', seal: 'tight', widthMs: 600, lines: NO_LINES, seg: null, running: false, strain: null, via: 'key', spriteBox: null, leaky: false };
-const st = () => ({ ...STYLES[R.row]!, seal: R.seal as string, windowMs: R.widthMs });
+const R: Wiring = { run: null, row: 'neutral', overDelay: 1, seal: 'tight', widthMs: 600, lines: NO_LINES, seg: null, running: false, strain: null, via: 'key', spriteBox: null, leaky: false };
+const st = () => ({ ...STYLES[R.row]!, seal: R.seal as string, windowMs: R.widthMs, overDelay: R.overDelay });
 const L = () => R.lines;
 
 /* ---------- audio: everything synthesised ---------- */
@@ -682,7 +682,6 @@ const VOICED: ReadonlyArray<[string, CueKind]> = [['now', 'window_open'], ['fake
 /** Sends an input of this segment to the engine (once), exempt from the typing lapse when the mouse made it (ruling O). */
 function report(i: SegmentInput): void {
   if (!E || !R.seg) return;
-  R.seg.reported.push(i);
   E.env.staging.input(i, { pointer: R.via === 'mouse' });
 }
 /** An opening comes to its end (or the segment does): what was taken of it. A false one reached for is a breath the engine counts as taken. */
@@ -711,11 +710,11 @@ function flushStrain(): void {
 function schedulePlan(run: PhysicsRun, ck: { startedAt: number | null; now: number }): void {
   const plan = run.segment.plan!;
   cancelWindows();
-  if (G.win && R.seg) { reportWindow(G.win); G.win = null; } // the last segment's opening is over with it
+  if (G.win && R.seg) G.win = null; // the last segment's opening is over with it (flushed before its end: never credited to this one)
   const phys = E!.env.registries.contactPhysics.get(run.physicsId);
   const endMs = Number(phys?.segmentSeconds ?? 20) * 1000;
-  R.seg = { n: run.segment.n, startedAt: ck.startedAt!, clock0: G.clock - (ck.now - ck.startedAt!), beats: plan.beats.length, endMs, flushed: false, reported: [] };
-  R.strain = G.breathing ? R.strain : null;
+  R.seg = { n: run.segment.n, startedAt: ck.startedAt!, clock0: G.clock - (ck.now - ck.startedAt!), beats: plan.beats.length, endMs, flushed: false };
+  R.strain = null; // a press across the boundary strains in this segment afresh (and is reported in it)
   G.air = clamp((run.gauge / run.capacity) * 100, 0, 100); // the engine's air (it resolved the last segment)
   refreshLines(0);
   for (const o of effectiveOpenings(plan, [], styleKey())) {
@@ -871,8 +870,8 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S.style = lead.key;
   R.row = lead.key in STYLES ? lead.key : ROW_BY_CUES[lead.cues] ?? 'neutral';
+  R.overDelay = overDelayOf(lead.key);
   R.run = run;
-  R.holder = run.holderId;
   R.seal = run.seal ?? 'tight';
   R.leaky = run.seal === 'leaky';
   R.widthMs = STYLES[R.row]!.windowMs;
@@ -893,20 +892,25 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   S.view = occ.view === 'her_face' ? 'her' : occ.view;
   // her face point (the sprite's sidecar), the ceiling over the commander (P10c), the grain
   S.face = env.art.face(run.holderId) ?? { x: 0.5, y: 0.21 };
-  const owner = state.scene?.participants[0] ?? null;
-  const ceiling = state.scene ? ceilingOf(state, reg, state.scene.locationId, owner)[0] : undefined;
+  // the owner as the scene's backdrop reads it (the first present participant: sceneScreen's `present(s)[0]`)
+  const owner = state.scene?.participants.find((id) => state.squad.some((u) => u.id === id)) ?? null;
+  const ceilings = state.scene ? ceilingOf(state, reg, state.scene.locationId, owner) : [];
   const ceilEl = E!.els['#ceiling']!;
   if (S.view === 'ceiling') {
-    if (!ceiling) S.view = 'room'; // no ceiling art: the room beside, as for a face pressed against her
-    else {
-      const url = env.assetUrl ? env.assetUrl(ceiling.file) : ceiling.file;
+    // each candidate in turn (P10c: a file that fails falls to the next); none, or none loads: the room beside, never a blank frame
+    const tryAt = (i: number): void => {
+      if (E?.env !== env || S.view !== 'ceiling') return;
+      const c = ceilings[i];
+      if (!c) { S.view = 'room'; return; }
+      const url = env.assetUrl ? env.assetUrl(c.file) : c.file;
       ceilEl.style.backgroundImage = `url("${url.replace(/"/g, '%22')}")`;
       if (typeof Image === 'function') {
         const probe = new Image();
-        probe.onerror = () => { if (E?.env === env && S.view === 'ceiling') S.view = 'room'; }; // a missing file: the room, never a blank frame
+        probe.onerror = () => tryAt(i + 1);
         probe.src = url;
       }
-    }
+    };
+    tryAt(0);
   }
   const grain = grainTile();
   if (grain) E!.els['#grain']!.style.backgroundImage = `url(${grain})`;
@@ -921,19 +925,19 @@ function listen(env: InstrumentEnv): void {
   const control = (t: EventTarget | null): boolean => t instanceof Element && t.closest('button, a, [role="button"], select, [data-action]') !== null;
   env.listen(document, 'keydown', ((e: KeyboardEvent) => {
     if (typing(e.target) || control(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.key === ' ') { e.preventDefault(); if (!e.repeat && G.phase === 'loop') { R.via = 'key'; R.strain = null; breatheDown(); } }
+    if (e.key === ' ') { e.preventDefault(); if (!e.repeat) { R.via = 'key'; R.strain = null; breatheDown(); } }
     else if (e.key === 't' || e.key === 'T') tap();
   }) as EventListener);
-  env.listen(document, 'keyup', ((e: KeyboardEvent) => { if (e.key === ' ' && !typing(e.target) && G.breathing && R.via === 'key') { flushStrain(); breatheUp(); } }) as EventListener);
+  env.listen(document, 'keyup', ((e: KeyboardEvent) => { if (e.key === ' ' && !typing(e.target)) { flushStrain(); breatheUp(); } }) as EventListener);
   env.listen(env.root, 'mousedown', ((e: MouseEvent) => {
-    if (e.button !== 0 || G.phase !== 'loop') return;
+    if (e.button !== 0) return;
     const t = e.target as Element | null;
     if (!t || (t !== env.layers.frame && !env.layers.frame.contains(t))) return; // only the frame: never a control of the scene's UI
     e.preventDefault(); // the field keeps the focus: the mouse breathes while typing
     R.via = 'mouse'; R.strain = null;
     breatheDown();
   }) as EventListener);
-  env.listen(document, 'mouseup', ((e: MouseEvent) => { if (e.button === 0 && G.breathing && R.via === 'mouse') { flushStrain(); breatheUp(); } }) as EventListener);
+  env.listen(document, 'mouseup', ((e: MouseEvent) => { if (e.button === 0 && G.breathing) { flushStrain(); breatheUp(); } }) as EventListener);
   env.listen(E!.els['#tap']!, 'mousedown', ((e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); tap(); }) as EventListener);
   env.listen(E!.els['#gap']!, 'mousedown', ((e: MouseEvent) => {
     e.preventDefault(); e.stopPropagation();

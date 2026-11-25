@@ -363,6 +363,32 @@ describe('the breath instrument on the scene', () => {
     expect(_breath.G.breathing).toBe(false);
   });
 
+  it('review M5: Space breathes during the entry too (as the prototype), and either device lets go', () => {
+    const t = draw(hold());
+    t.to(800);
+    expect(_breath.G.phase).toBe('entry');
+    t.key('keydown', ' ');
+    expect(_breath.G.breathing).toBe(true);
+    t.mouse('mouseup', document);
+    expect(_breath.G.breathing).toBe(false);
+    t.to(2500);
+    t.key('keydown', 't');
+    expect(t.onTap).toHaveBeenCalledTimes(1); // T is TAP's key (the ring lives in the effects layer, hidden from assistive tech)
+  });
+
+  it('review M6: a ceiling that fails falls to the next candidate (the day\'s two skies on the roof), then the room', async () => {
+    const tried: string[] = [];
+    vi.stubGlobal('Image', class { onerror: (() => void) | null = null; set src(v: string) { if (!v.includes('ceiling')) return; tried.push(v); if (tried.length === 1) queueMicrotask(() => this.onerror?.()); } });
+    const s = hold(SEAT, planOf({ 3: {} }));
+    s.scene!.locationId = 'roof';
+    s.slot = 'morning';
+    const t = draw(s);
+    await Promise.resolve(); await Promise.resolve();
+    expect(tried).toHaveLength(2);
+    expect(_breath.S.view).toBe('ceiling');
+    expect(t.q('.alius-breath-ceiling')!.style.backgroundImage).toContain(tried[1]!.replace(/^\/x\//, ''));
+  });
+
   it('the letters lie over the input; a line sent short of air carries its lost letters as dots', () => {
     const t = draw(hold());
     t.to(2000);

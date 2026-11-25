@@ -63732,8 +63732,8 @@ var S3 = {
   readable: false
 };
 var NO_LINES = { now: [], fake: [], early: [], greedy: [], low: [], released: [], entry: [], hold: [], tap: [], good: [], poor: [], stop: [], wake: [], again: [] };
-var R4 = { run: null, holder: "", row: "neutral", seal: "tight", widthMs: 600, lines: NO_LINES, seg: null, running: false, strain: null, via: "key", spriteBox: null, leaky: false };
-var st = () => ({ ...STYLES[R4.row], seal: R4.seal, windowMs: R4.widthMs });
+var R4 = { run: null, row: "neutral", overDelay: 1, seal: "tight", widthMs: 600, lines: NO_LINES, seg: null, running: false, strain: null, via: "key", spriteBox: null, leaky: false };
+var st = () => ({ ...STYLES[R4.row], seal: R4.seal, windowMs: R4.widthMs, overDelay: R4.overDelay });
 var L = () => R4.lines;
 var A = { ctx: null };
 function audioInit() {
@@ -64524,7 +64524,6 @@ var BREATH_KINDS = ["greedy", "entry", "now", "hold", "early", "tap", "low", "go
 var VOICED = [["now", "window_open"], ["fake", "window_false"], ["greedy", "greedy"], ["low", "warning"]];
 function report(i) {
   if (!E || !R4.seg) return;
-  R4.seg.reported.push(i);
   E.env.staging.input(i, { pointer: R4.via === "mouse" });
 }
 function reportWindow(w) {
@@ -64555,14 +64554,11 @@ function flushStrain() {
 function schedulePlan(run, ck) {
   const plan = run.segment.plan;
   cancelWindows();
-  if (G2.win && R4.seg) {
-    reportWindow(G2.win);
-    G2.win = null;
-  }
+  if (G2.win && R4.seg) G2.win = null;
   const phys = E.env.registries.contactPhysics.get(run.physicsId);
   const endMs = Number(phys?.segmentSeconds ?? 20) * 1e3;
-  R4.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0: G2.clock - (ck.now - ck.startedAt), beats: plan.beats.length, endMs, flushed: false, reported: [] };
-  R4.strain = G2.breathing ? R4.strain : null;
+  R4.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0: G2.clock - (ck.now - ck.startedAt), beats: plan.beats.length, endMs, flushed: false };
+  R4.strain = null;
   G2.air = clamp43(run.gauge / run.capacity * 100, 0, 100);
   refreshLines(0);
   for (const o of effectiveOpenings(plan, [], styleKey())) {
@@ -64737,8 +64733,8 @@ function bind(env, run) {
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S3.style = lead.key;
   R4.row = lead.key in STYLES ? lead.key : ROW_BY_CUES[lead.cues] ?? "neutral";
+  R4.overDelay = overDelayOf(lead.key);
   R4.run = run;
-  R4.holder = run.holderId;
   R4.seal = run.seal ?? "tight";
   R4.leaky = run.seal === "leaky";
   R4.widthMs = STYLES[R4.row].windowMs;
@@ -64763,22 +64759,26 @@ function bind(env, run) {
   S2.side = { ...S3.side };
   S3.view = occ.view === "her_face" ? "her" : occ.view;
   S3.face = env.art.face(run.holderId) ?? { x: 0.5, y: 0.21 };
-  const owner = state.scene?.participants[0] ?? null;
-  const ceiling = state.scene ? ceilingOf(state, reg, state.scene.locationId, owner)[0] : void 0;
+  const owner = state.scene?.participants.find((id) => state.squad.some((u) => u.id === id)) ?? null;
+  const ceilings = state.scene ? ceilingOf(state, reg, state.scene.locationId, owner) : [];
   const ceilEl = E.els["#ceiling"];
   if (S3.view === "ceiling") {
-    if (!ceiling) S3.view = "room";
-    else {
-      const url = env.assetUrl ? env.assetUrl(ceiling.file) : ceiling.file;
+    const tryAt = (i) => {
+      if (E?.env !== env || S3.view !== "ceiling") return;
+      const c = ceilings[i];
+      if (!c) {
+        S3.view = "room";
+        return;
+      }
+      const url = env.assetUrl ? env.assetUrl(c.file) : c.file;
       ceilEl.style.backgroundImage = `url("${url.replace(/"/g, "%22")}")`;
       if (typeof Image === "function") {
         const probe = new Image();
-        probe.onerror = () => {
-          if (E?.env === env && S3.view === "ceiling") S3.view = "room";
-        };
+        probe.onerror = () => tryAt(i + 1);
         probe.src = url;
       }
-    }
+    };
+    tryAt(0);
   }
   const grain = grainTile();
   if (grain) E.els["#grain"].style.backgroundImage = `url(${grain})`;
@@ -64793,7 +64793,7 @@ function listen(env) {
     if (typing(e.target) || control2(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === " ") {
       e.preventDefault();
-      if (!e.repeat && G2.phase === "loop") {
+      if (!e.repeat) {
         R4.via = "key";
         R4.strain = null;
         breatheDown();
@@ -64801,13 +64801,13 @@ function listen(env) {
     } else if (e.key === "t" || e.key === "T") tap();
   });
   env.listen(document, "keyup", (e) => {
-    if (e.key === " " && !typing(e.target) && G2.breathing && R4.via === "key") {
+    if (e.key === " " && !typing(e.target)) {
       flushStrain();
       breatheUp();
     }
   });
   env.listen(env.root, "mousedown", (e) => {
-    if (e.button !== 0 || G2.phase !== "loop") return;
+    if (e.button !== 0) return;
     const t = e.target;
     if (!t || t !== env.layers.frame && !env.layers.frame.contains(t)) return;
     e.preventDefault();
@@ -64816,7 +64816,7 @@ function listen(env) {
     breatheDown();
   });
   env.listen(document, "mouseup", (e) => {
-    if (e.button === 0 && G2.breathing && R4.via === "mouse") {
+    if (e.button === 0 && G2.breathing) {
       flushStrain();
       breatheUp();
     }
