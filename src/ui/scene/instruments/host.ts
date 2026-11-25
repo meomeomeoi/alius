@@ -104,7 +104,7 @@ function warnOnce(id: string, what: string, err: unknown): void {
 function scopedStaging(staging: PhysicsPanelStaging, scope: Scope): PhysicsPanelStaging {
   const on = (): boolean => scope.staging && scope.live;
   return {
-    input: (i) => { if (on()) staging.input(i); },
+    input: (i, o) => { if (on()) staging.input(i, o); },
     endSegment: () => (on() ? staging.endSegment() : []),
     stopWord: () => (on() ? staging.stopWord() : []),
     skip: (s) => (on() ? staging.skip(s) : []),
@@ -216,6 +216,7 @@ function mount(env: InstrumentEnv, def: InstrumentDef, run: PhysicsRun, key: str
   scope.samples = env.samples ? scopedSamples(env.samples, scope) : null;
   const scoped: InstrumentEnv = Object.create(env, {
     staging: { value: scopedStaging(env.staging, scope) },
+    tap: { value: (): void => { if (scope.staging && scope.live) env.tap?.(); } },
     samples: { value: scope.samples },
     raf: {
       value: (fn: FrameRequestCallback): number => {

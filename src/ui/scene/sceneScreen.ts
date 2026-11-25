@@ -992,6 +992,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       raf: (fn) => frames.raf(fn),
       cancelRaf: (id) => frames.cancelRaf(id),
       say: (host, text, opts) => say(host, text, opts),
+      tap: () => ctx.physics?.onTap(),
+      assetUrl: (p) => (ctx.assetUrl ?? ((x: string) => x))(p),
       timeout: (fn, ms) => { const t = setTimeout(fn, ms); return () => clearTimeout(t); },
       listen: (target, type, fn, opts) => { target.addEventListener(type, fn, opts); return () => target.removeEventListener(type, fn, opts); },
       get reduced() { return motionReduced(ctx.settings()); },

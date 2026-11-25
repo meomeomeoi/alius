@@ -60,3 +60,19 @@ export function sceneBackdrop(state: Pick<CampaignState, 'squad' | 'slot'>, reg:
   add(str(loc.background), false);
   return out;
 }
+
+/**
+ * P10e-e: the ceiling over a scene (what the commander sees lying on the back: breath.html's `#ceiling`), best first. The finish is the owner's
+ * room style's `ceiling` at a `perUnit` location, else the location's `ceiling`; the files are the `backdrops` of `surface: 'ceiling'` with that
+ * `finish` whose `slots` (if any) hold the scene's slot, in registry order. Empty = no ceiling art (the instrument falls back to the room).
+ */
+export function ceilingOf(state: Pick<CampaignState, 'squad' | 'slot'>, reg: Registries, locationId: string, ownerId: string | null): BackdropCandidate[] {
+  const loc = reg.locations.get(locationId);
+  if (!loc) return [];
+  const own = loc.perUnit === true && ownerId !== null ? str(quartersOf(state, reg, ownerId)?.ceiling) : undefined;
+  const finish = own ?? str(loc.ceiling);
+  if (finish === undefined) return [];
+  return [...reg.backdrops.values()]
+    .filter((b) => b.kind === 'surface' && b.surface === 'ceiling' && b.finish === finish && (!Array.isArray(b.slots) || (b.slots as string[]).includes(state.slot)))
+    .flatMap((b) => (str(b.file) ? [{ file: String(b.file), slotted: Array.isArray(b.slots) }] : []));
+}

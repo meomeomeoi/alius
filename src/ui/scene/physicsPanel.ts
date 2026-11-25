@@ -18,7 +18,11 @@ import { gistOf } from './cards/gist';
 
 /** What the panel needs of the staging controller (the controller passes it as it is). */
 export interface PhysicsPanelStaging {
-  input(i: SegmentInput): void;
+  /**
+   * An input of the running segment. P10e-e ruling O: `pointer` marks an input an instrument's mouse made (breath's rule: only the mouse acts
+   * while the field has focus), which the typing lapse never drops; the card's and the keyboard's inputs go without it, as before.
+   */
+  input(i: SegmentInput, opts?: { pointer?: boolean }): void;
   endSegment(): EngineEvent[];
   stopWord(): EngineEvent[];
   skip(strategy: string): EngineEvent[];

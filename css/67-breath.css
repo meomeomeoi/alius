@@ -1,0 +1,166 @@
+/*
+ * P10e-e Task 14: breathing (docs/prototypes/breath.html, normative). The instrument's own layer sits in the effects layer, under the scene's
+ * UI: the stop word's pill and every control stay above it. Here are the prototype's `#world` (`#backdrop`, `#ceiling`, `#cam` > `#her`, `#warm`),
+ * `#dark`, `#grain`, `#tunnel`, `#hand` with her lines, `#tap` and `#black`, in its order, and the letters laid over the input (`#mirror`). Only the
+ * TAP ring and the gap take the pointer. Her lines are in her hand at the prototype's sizes × her hand's measured scale; readable mode writes them
+ * in the type font with no write-on and no blur; reduced motion has no write-on. Every z-index stays below 10.
+ */
+#alius-shell .alius-breath {
+  position: absolute;
+  inset: 0;
+  z-index: 1; /* over the effects layer's own gradient */
+  overflow: hidden;
+  pointer-events: none;
+  background: #000;
+  --alius-breath-hand-scale: 1;
+}
+
+#alius-shell .alius-breath > *,
+#alius-shell .alius-breath-world > * {
+  position: absolute;
+  pointer-events: none;
+}
+
+#alius-shell .alius-breath-world { inset: 0; will-change: filter, transform; }
+#alius-shell .alius-breath-backdrop { inset: -6%; background-size: cover; background-position: center; will-change: transform, filter; }
+#alius-shell .alius-breath-ceiling { inset: -8%; background-size: cover; background-position: center; opacity: 0; will-change: transform, filter, opacity; }
+#alius-shell .alius-breath-cam { inset: 0; perspective: 1100px; overflow: hidden; }
+
+#alius-shell .alius-breath-her {
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: none;
+  transform-origin: 0 0;
+  will-change: transform, filter;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+#alius-shell .alius-breath-warm { inset: 0; mix-blend-mode: soft-light; }
+#alius-shell .alius-breath-dark { inset: 0; width: 100%; height: 100%; }
+#alius-shell .alius-breath-grain { inset: -40px; mix-blend-mode: screen; opacity: 0; }
+#alius-shell .alius-breath-tunnel { inset: 0; }
+#alius-shell .alius-breath-black { inset: 0; background: #000; opacity: 0; }
+
+/* her hand */
+#alius-shell .alius-breath-hand { inset: 0; }
+
+#alius-shell .alius-breath-hand .her-line {
+  position: absolute;
+  font-family: var(--alius-font-hand, "Caveat"), cursive;
+  color: var(--alius-her, #8cc8f0);
+  white-space: nowrap;
+  line-height: 1;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9), 0 0 14px rgba(0, 0, 0, 0.85), 0 0 28px rgba(0, 0, 0, 0.6);
+  animation: alius-breath-write var(--write, 600ms) steps(var(--steps, 12), end) both;
+  transition: opacity 0.5s, transform 0.5s;
+}
+
+#alius-shell .alius-breath-hand .her-line.right { transform-origin: right center; }
+#alius-shell .alius-breath-hand .her-line.gone { opacity: 0; }
+#alius-shell .alius-breath-hand .her-line.count { font-size: calc(46px * var(--alius-breath-hand-scale)); }
+#alius-shell .alius-breath-hand .her-line.now { font-size: calc(68px * var(--alius-breath-hand-scale)); }
+#alius-shell .alius-breath-hand .her-line.line { font-size: calc(40px * var(--alius-breath-hand-scale)); }
+#alius-shell .alius-breath-hand .her-line.big { font-size: calc(60px * var(--alius-breath-hand-scale)); }
+
+@keyframes alius-breath-write {
+  from { clip-path: inset(-30% 100% -30% -8%); }
+  to { clip-path: inset(-30% -8% -30% -8%); }
+}
+
+#alius-shell .alius-breath[data-reduced] .her-line { animation: none; }
+
+#alius-shell .alius-breath[data-readable] .her-line {
+  animation: none;
+  font-family: var(--alius-font-type);
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9);
+}
+
+/* the TAP ring at the lip of the opening, and the gap of a leaky seal under it: the only pointer here */
+#alius-shell .alius-breath .alius-breath-tap,
+#alius-shell .alius-breath .alius-breath-gap {
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 1.5px solid rgba(255, 214, 170, 0.75);
+  box-shadow: 0 0 12px rgba(255, 170, 110, 0.45), inset 0 0 6px rgba(255, 170, 110, 0.4);
+  opacity: 0;
+  transition: opacity 0.6s;
+}
+
+#alius-shell .alius-breath-tap::after,
+#alius-shell .alius-breath-gap::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px;
+  border-radius: 50%;
+  background: rgba(255, 220, 190, 0.9);
+}
+
+#alius-shell .alius-breath-tap::before,
+#alius-shell .alius-breath-gap::before {
+  position: absolute;
+  left: 36px;
+  top: 6px;
+  font: 12px var(--alius-font-mono, "IBM Plex Mono"), monospace;
+  font-variant: small-caps;
+  color: rgba(255, 214, 170, 0.7);
+  white-space: nowrap;
+}
+
+#alius-shell .alius-breath-tap::before { content: "tap"; }
+#alius-shell .alius-breath-gap::before { content: "the gap"; }
+#alius-shell .alius-breath-gap { width: 22px; height: 22px; margin: -11px 0 0 -11px; border-style: dashed; }
+
+#alius-shell .alius-breath-tap.knock { animation: alius-breath-knock 0.35s; }
+@keyframes alius-breath-knock { 30% { transform: scale(0.7); } }
+#alius-shell .alius-breath[data-reduced] .alius-breath-tap.knock { animation: none; }
+
+#alius-shell .alius-breath .alius-breath-tap:focus-visible,
+#alius-shell .alius-breath .alius-breath-gap:focus-visible {
+  outline: 2px solid var(--alius-accent, #8cc8f0);
+  outline-offset: 3px;
+}
+
+/* the input under the air: its letters are drawn over it, each fading and blurring on its own (the field's own text goes transparent) */
+#alius-shell .alius-input[data-breath-letters] {
+  color: transparent;
+  caret-color: var(--alius-fg, #ece8f2);
+}
+
+#alius-shell .alius-input-line > .alius-breath-mirror {
+  position: absolute;
+  pointer-events: none;
+  overflow: hidden;
+  white-space: pre;
+  font-family: var(--alius-font-sans);
+  font-size: 15px;
+  line-height: normal;
+  display: flex;
+  align-items: center;
+  padding: 1px 2px;
+}
+
+#alius-shell .alius-input-line > .alius-breath-mirror > span {
+  display: inline-block;
+  white-space: pre;
+}
+
+/* the scene's line carries its prompt and its tools (the prototype's field has neither): it narrows with the air no further than they fit
+   beside a field of some width, and its tools never wrap */
+#alius-shell .alius-input-line:has(> .alius-breath-mirror) {
+  min-width: min(420px, 100%);
+}
+
+#alius-shell .alius-input-line:has(> .alius-breath-mirror) .alius-input-tools,
+#alius-shell .alius-input-line:has(> .alius-breath-mirror) .alius-input-tools > * {
+  white-space: nowrap;
+  flex-wrap: nowrap;
+}

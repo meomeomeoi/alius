@@ -39,8 +39,11 @@ export interface StagingDeps {
 export interface StagingController {
   /** The events of a settled dispatch (the app calls it from `followUps`): a run that starts asks for her cue pool; a blackout ends the scene. */
   onEvents(events: readonly EngineEvent[]): void;
-  /** The panel's input for the segment that is running. Maintenance inputs lapse while keys are typed (real time). */
-  input(i: SegmentInput): void;
+  /**
+   * The panel's input for the segment that is running. Maintenance inputs lapse while keys are typed (real time), unless the mouse made them
+   * (`pointer`, P10e-e ruling O: an instrument's mouse acts while the field has focus).
+   */
+  input(i: SegmentInput, opts?: { pointer?: boolean }): void;
   /** The beat of the running segment the clock is at (real time): where an input made now lands. */
   beat(): number;
   /** P10e-e R5: when the running segment started (null while none runs), the length of a beat and now, all on the controller's clock. */
@@ -218,10 +221,10 @@ export function createStaging(deps: StagingDeps): StagingController {
       handle(events);
       if (active) advance(deps.now());
     },
-    input(i) {
+    input(i, opts) {
       const r = run();
       if (!active || !r || r.segment.state !== 'running') return;
-      if (MAINTENANCE.has(i.kind) && deps.now() < lapseUntil) return;
+      if (MAINTENANCE.has(i.kind) && opts?.pointer !== true && deps.now() < lapseUntil) return;
       collected.push(i);
     },
     beat() {

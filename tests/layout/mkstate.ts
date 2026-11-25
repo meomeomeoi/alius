@@ -7,6 +7,7 @@
  * characters for bowing (it wraps, over the base name and EYES DOWN: the tallest label; the circle stays where it is for `standing`).
  * `call`: Ann (ritual) has four named postures and calls Low (P10e-e Task 9: her posture call as a full-frame moment); `callhold`: the same with a
  * hold running (the stop word's pill must stay clickable over the fan). `slap` / `slaphold`: her slap (P10e-e Task 12), see below.
+ * `breath` / `breathhold`: the breath instrument (P10e-e Task 14), see below.
  */
 import { writeFileSync } from 'node:fs';
 import { COMMANDER, registerFrameReader, setBlocking } from '../../src/engine/blocking';
@@ -122,5 +123,28 @@ setBlocking(slaphold, { registries: reg }, { person: COMMANDER, field: 'worn', v
 if (!slaphold.scene!.physics) throw new Error('slaphold: no hold runs');
 slaphold.scene!.physics.segment = { n: 1, state: 'running', plan: { beats: [{ cue: 'warning', attention: 'watching' }, { attention: 'watching' }, { attention: 'watching' }, { attention: 'watching' }] } };
 out.slaphold = slaphold;
+
+/**
+ * P10e-e Task 14: Ann holds the commander's face under her arm (`smothered_armpit`: breath, the wedge of dark) in the commander's quarters,
+ * real time mirrored, the first segment running with her openings every second beat (`breathhold`: the stop word's pill must stay clickable
+ * and end the hold mid-breath; `breath`: the shots, whose page clears the plan's openings with `&quiet=1` and drives the windows itself).
+ */
+function breathing(): CampaignState {
+  const s = campaign(reg, 4);
+  setRelation(s, ANN, { stateId: 'confidant' });
+  enable(s, 'worship', 'restraint');
+  s.settings.physicsRealtime = true; // the campaign's mirror of real time (the instrument needs it)
+  const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
+  const d = r.state;
+  setBlocking(d, { registries: reg }, { person: ANN, field: 'contact', value: 'smothered_armpit', with: COMMANDER }, { at: 1, source: 'engine' });
+  if (!d.scene!.physics) throw new Error('breath: no hold runs');
+  d.scene!.physics.segment = {
+    n: 1, state: 'running',
+    plan: { beats: Array.from({ length: 14 }, (_, i) => (i % 2 === 1 ? { attention: 'watching' as const, cue: 'window_open' as const, opening: { widthMs: 600 } } : { attention: 'watching' as const })) },
+  };
+  return d;
+}
+out.breath = breathing();
+out.breathhold = breathing();
 
 writeFileSync(process.argv[2] ?? 'states.json', JSON.stringify(out));

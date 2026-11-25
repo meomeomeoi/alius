@@ -1,0 +1,263 @@
+{
+  "prototype": "breath",
+  "note": "Task 14 (chunk e4): breathing. The functions of breath.html that its README calls normative (the dark's `render`, `sizeCanvases`, `setStyle`; the window's `openWindow`, `windowOpenness`, `windowDone`, `closeWindow`; `updateLoop`, `frame`; her hand's `say`, `fade`, `clearHand`; `heartTick`; the sound's `audioInit`, `noise`, `thump`, `SFX`, `inhaleStart`, `inhaleStop`; the phases `begin`, `exit`, `blackout`, `wake`; `tap`, `press`; the input's `letters`, `typing`, `breatheDown`, `breatheUp`; the state's `fresh`, `push`, `cancelWindows`, `cueMode`, `st`, `L`, the easings and `pick` / `randInt`), its tables (`STYLES`, `REST_OPEN`, `VIEW_OF`) and the kit's (`SHAPES`, `SEAT_BODY`, `squashOf`, `chaikin`, checked by kit/fidelity.json). Module wiring beyond the listed functions (breath.ts header): `performance`, `setTimeout`, `requestAnimationFrame`, `innerWidth` / `innerHeight` and `Math.random` are the module's own (the scene's frame clock, the mount's timers and frames, the scene's size, a xorshift seeded by fnv1a of the scene and the run: no rng draw); `window` is the module's own `{ __forceO }` (the shots' hook); `$` names the instrument's elements in the effects layer (under the scene's UI: the stop word's pill is never covered), the scene's reply, input line and input, and the letters laid over the input; the reply's opacity and the line's width and border are written through claims (styleClaims.ts, recorded as written); the prototype's top-level listeners are the mount's (`env.listen`: Space and T never from a field or a control, the left button only on the frame, preventDefault so the field keeps its focus; Enter in the field sends the line as heard); the grain tile is made per mount. The engine's numbers (BEAT, DRAIN, CAUGHT, MISSED, CRUEL_MISSED, SEAL_RELIEF) are TUNING.physics.breath scaled to the run's capacity (the air is the gauge's share); the air is set from the engine's gauge as each segment starts. `S` is the approved defaults with the run's shape (`occlusionOf` of the contact: kind, side, angle; the kit's `S` is set the same), the view (`ceiling` falls back to `room` when the scene has no ceiling art or it fails to load), her face point (`art.face`) and the still form (`env.reduced`, `env.readable`). Her lines: see `L` and `cues` (the kinds the port takes from the cue pool). The prototype's `KINDS` and the rejected `seat_x_*` shapes, the panel, the start overlay, the summary, the debug readout and the `__` hooks are prototype only (`_breath` is the tests' and the shots' hook). Added: the gap of a leaky seal (`gap_breath`, a dashed ring under the TAP ring, glossary `gap_breath`), as the card's button today. CSS (checked by the shots): the prototype's styles under `.alius-breath` (her lines in her hand at its sizes × her hand's measured scale, R10); the narrowed input line keeps a min-width of 420 px, because the scene's line carries its prompt and tools beside the field (the prototype's has neither); her own <img> is sized to its natural size each frame. The `greedy` row of physicsCues holds the neutral, affectionate and ritual lines of LINES.*.greedy (the content test wants 3–5 lines a row; the model words her own style's).",
+  "functions": [
+    {
+      "fn": "easeOut",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "easeIn",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "pick",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "randInt",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "audioInit",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "noise",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "thump",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "SFX",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "inhaleStart",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "inhaleStop",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "heartTick",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "fresh",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "say",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "fade",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "clearHand",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "push",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "cancelWindows",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "cueMode",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "scheduleWindow",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "openWindow",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "windowOpenness",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "windowDone",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "closeWindow",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "begin",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "exit",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "blackout",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "wake",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "tap",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "press",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "updateLoop",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "frame",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "sizeCanvases",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "setStyle",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "render",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "letters",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "typing",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "breatheDown",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "breatheUp",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "st",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    },
+    {
+      "fn": "L",
+      "module": "src/ui/scene/instruments/breath/breath.ts"
+    }
+  ],
+  "tables": [
+    {
+      "ident": "STYLES",
+      "module": "src/ui/scene/instruments/breath/breath.ts",
+      "export": "STYLES"
+    },
+    {
+      "ident": "REST_OPEN",
+      "module": "src/ui/scene/instruments/breath/breath.ts",
+      "export": "REST_OPEN"
+    },
+    {
+      "ident": "VIEW_OF",
+      "module": "src/ui/scene/instruments/breath/breath.ts",
+      "export": "VIEW_OF"
+    }
+  ],
+  "differences": [
+    {
+      "fn": "audioInit",
+      "reason": "Wiring (ruling D): the context is the sample layer's (`samples.ctx()`, the mount's recorded view) and the prototype's master goes into the layer's body bus instead of the destination (the player's level is the layer's master; the prototype's own world lowpass and body gain are kept in front, so the world still goes dull to 90 Hz at a blackout, below the layer's 380 Hz). No context yet (before the player's first gesture, or no sound): nothing is built, and the frame asks again.",
+      "diff": "@@ -2,3 +2,5 @@\n if(A.ctx)return\n-const ctx=new(window.AudioContext||window.webkitAudioContext)()\n+const ctx=E?.env.samples?.ctx()??null\n+const out=E?.env.samples?.bus(\"body\")??null\n+if(!ctx||!out)return\n A.ctx=ctx\n@@ -6,3 +8,3 @@\n A.master.gain.value=S.sound?S.vol:0\n-A.master.connect(ctx.destination)\n+A.master.connect(out)\n A.world=ctx.createBiquadFilter()"
+    },
+    {
+      "fn": "scheduleWindow",
+      "reason": "Prototype only (README: the rhythm scheduler): the openings, their widths and the false ones are the engine's plan (`effectiveOpenings`, placed per running segment on the loop's clock), so `isFalse` is the plan's flag; the playful 'again.' (a count with no window, the window moved 1–2 beats) needs a planned opening to vanish and is not ported. A count step that would fall before now (an opening early in a segment) is skipped instead of firing at once. The window's beat, its width (`R.widthMs`, read by `st()`) and her lines for that beat (`refreshLines`) are set as it opens; a silent opening is the plan's (no cue on its beat: R4) as well as `cues: none`.",
+      "diff": "@@ -2,3 +2,3 @@\n const s=st(),c=s.count,j=()=>(Math.random()*2-1)*s.jitter\n-const isFalse=!opts.honest&&!G.forceHonest&&Math.random()<s.falseShare\n+const isFalse=opts.false===true\n const mode=cueMode()\n@@ -6,14 +6,15 @@\n if(!opts.silent&&counts){\n-push(at-3*c+j(),()=>say(\"three…\",\"count\"))\n-push(at-2*c+j(),()=>say(\"two…\",\"count\"))\n-if(s.again&&!G.lastAgain&&!opts.honest&&Math.random()<s.again){\n-G.lastAgain=true\n-push(at-c+j(),()=>say(pick(L().again),\"count\"))\n-push(at+200,()=>scheduleWindow(G.clock+randInt(1,2)*BEAT))\n-return\n+for(const[k,word]of[[3,\"three…\"],[2,\"two…\"],[1,\"one…\"]]){\n+const when=at-k*c+j()\n+if(when>=G.clock)push(when,()=>say(word,\"count\"))\n }\n-push(at-c+j(),()=>say(\"one…\",\"count\"))\n }\n G.lastAgain=false\n-push(at,()=>openWindow(isFalse,mode===\"none\"||opts.silent===\"quiet\"))\n+push(at,()=>{\n+const b=beatAt(G.clock)\n+R.widthMs=opts.widthMs??s.windowMs\n+refreshLines(b)\n+openWindow(isFalse,mode===\"none\"||opts.quiet===true)\n+G.win.beat=b\n+})\n }"
+    },
+    {
+      "fn": "closeWindow",
+      "reason": "Wiring: the opening is reported to the engine as it closes (`reportWindow`: a `breathe` with the share held, `credit / CAUGHT`, or a false window reached for). Prototype only: the end after `S.len` windows (the engine ends the hold) and the next window's scheduling (the plan has them).",
+      "diff": "@@ -3,2 +3,3 @@\n G.win=null\n+reportWindow(w)\n if(!w.false){\n@@ -20,7 +21,2 @@\n }\n-if(G.windowsOpened>=S.len){\n-push(G.clock+BEAT,()=>exit(\"done\"),\"end\")\n-return\n }\n-scheduleWindow(w.t0+randInt(2,4)*BEAT)\n-}"
+    },
+    {
+      "fn": "begin",
+      "reason": "Wiring: no audio context yet is not an error (`A.ctx &&`). Prototype only: the summary and wake cards (P15a's wake card follows the scene) and the stand-in reply (the scene's reply is the model's).",
+      "diff": "@@ -2,3 +2,3 @@\n audioInit()\n-if(A.ctx.state===\"suspended\")A.ctx.resume()\n+if(A.ctx&&A.ctx.state===\"suspended\")A.ctx.resume()\n clearHand()\n@@ -8,6 +8,3 @@\n heart.bpm=64\n-$(\"#summary\").style.display=\"none\"\n-$(\"#wake\").style.display=\"none\"\n $(\"#black\").style.opacity=0\n-setReply(`<span class=\"act\">She settles in and the light goes. Her voice comes from above, close and amused.</span> <span class=\"speech\">“Breathe when I say.”</span>`,0.35)\n setTimeout(()=>G.phase===\"entry\"&&say(pick(L().entry),\"line\",{"
+    },
+    {
+      "fn": "exit",
+      "reason": "Prototype only: the summary card (the instrument's `finish` returns how long the end plays; the host unmounts then).",
+      "diff": "@@ -21,3 +21,2 @@\n },700)\n-setTimeout(showSummary,2300)\n }"
+    },
+    {
+      "fn": "wake",
+      "reason": "Prototype only: its stand-in wake card and summary (P15a's wake card follows the scene, ruling P).",
+      "diff": "@@ -1,3 +1,2 @@\n function wake(){\n-$(\"#wake\").style.display=\"none\"\n heart.stopped=false\n@@ -17,3 +16,2 @@\n })\n-setTimeout(showSummary,1200)\n }"
+    },
+    {
+      "fn": "tap",
+      "reason": "README: her answers to the tap stand in for `holdsUntil` and P15a's `physics/signal`: the tap is the engine's (`env.tap`, the scene's `onTap`), whatever her style; the ring's knock and sound are the prototype's.",
+      "diff": "@@ -7,28 +7,3 @@\n t.classList.add(\"knock\")\n-const l=L()\n-switch(S.style){\n-case\"affectionate\":say(pick(l.tap),\"line\")\n-if(!G.win){\n-cancelWindows()\n-scheduleWindow(G.clock+450,{\n-honest:true,silent:true\n-})\n-}\n-break\n-case\"neutral\":case\"ritual\":say(pick(l.tap),\"line\")\n-if(!G.win){\n-cancelWindows()\n-scheduleWindow(G.clock+BEAT*1.2,{\n-honest:true\n-})\n-}\n-break\n-case\"playful\":say(pick(l.tap),\"line\")\n-G.forceHonest=true\n-break\n-case\"cruel\":say(pick(l.tap),\"line\")\n-press(1500)\n-break\n-default:say(pick(l.tap),\"line\")\n-}\n+E.env.tap?.()\n }"
+    },
+    {
+      "fn": "updateLoop",
+      "reason": "Wiring (R15): an over-hold past 150 ms is noted as a strain of 0.5 (sent when the press ends, `strained`), and at 450 ms, when she notices, a strain of 1 is sent at once (the engine moves her openings as the queue here does). The end of the air is the engine's (her release at her threshold, the limit, the blackout at a segment's boundary): the air stops at 0 instead of ending the hold here.",
+      "diff": "@@ -39,2 +39,3 @@\n if(S.over&&G.overMs>150){\n+strained(0.5)\n G.air-=((DRAIN-SEAL_RELIEF[s.seal])/BEAT)*dt*S.drain\n@@ -51,2 +52,3 @@\n G.streak=0\n+strained(1)\n say(pick(L().greedy),\"line\")\n@@ -74,6 +76,3 @@\n }\n-if(S.bplay?G.air<=0:G.air<=5){\n-G.air=Math.max(0,G.air)\n-S.bplay?blackout():exit(\"released\")\n-}\n+if(G.air<=0)G.air=0\n }"
+    },
+    {
+      "fn": "frame",
+      "reason": "Wiring: the loop runs only while a segment runs (the engine drains nothing while the run is held between segments), and the plan's openings are scheduled per segment, not at the entry's end. Ruling P: the blackout's wake plays at once at 5.2 s (the prototype waits for its wake card's button; P15a's wake card follows the scene).",
+      "diff": "@@ -12,3 +12,2 @@\n G.clock=0\n-scheduleWindow(randInt(2,3)*BEAT+600)\n }\n@@ -16,3 +15,3 @@\n }\n-case\"loop\":updateLoop(dt)\n+case\"loop\":if(R.running)updateLoop(dt)\n break\n@@ -38,6 +37,3 @@\n if(p>4600)heart.stopped=true\n-if(p>5200&&$(\"#wake\").style.display!==\"block\"){\n-$(\"#wake\").style.display=\"block\"\n-$(\"#wakeLine\").textContent=\"…\"\n-}\n+if(p>5200)wake()\n break"
+    },
+    {
+      "fn": "setStyle",
+      "reason": "Readable mode turns off blur (Global Constraints, P10): a filter's `blur(…)` is written as `blur(0px)`.",
+      "diff": "@@ -1,6 +1,3 @@\n function setStyle(sel,prop,v){\n-const k=sel+prop\n-if(styleCache.get(k)===v)return\n-styleCache.set(k,v)\n-$(sel).style[prop]=v\n-}\n+if(S.readable&&prop===\"filter\")v=v.replace(/blur\\([^)]*\\)/g, 'blur(0px)'); const k = sel + prop; if (styleCache.get(k) === v)\n+    return; styleCache.set(k, v); $(sel).style[prop] = v; }"
+    },
+    {
+      "fn": "render",
+      "reason": "Wiring: her sprite at k = 0 sits where the scene draws it (`R.spriteBox`, the scene's own <img> measured each frame), so the camera starts and ends on the scene's sprite with no jump; without it the prototype's stand-in placement. The stop word's pill is the scene's and is never faded (P15a: the stop word always works). The debug readout is prototype only.",
+      "diff": "@@ -70,4 +70,5 @@\n const vw=innerWidth,vh=innerHeight,nw=img.naturalWidth,nh=img.naturalHeight\n-const Hn=vh*0.96,Sn=Hn/nh,Wn=nw*Sn\n-const faceN=[vw*0.5-Wn/2+S.face.x*Wn,vh-Hn+vh*0.05+S.face.y*Hn]\n+const box=R.spriteBox\n+const Hn=box?box.h:vh*0.96,Sn=Hn/nh,Wn=nw*Sn\n+const faceN=box?[box.x+S.face.x*Wn,box.y+S.face.y*Hn]:[vw*0.5-Wn/2+S.face.x*Wn,vh-Hn+vh*0.05+S.face.y*Hn]\n const Sc=(vh*S.zoom)/nh\n@@ -118,3 +119,2 @@\n tapEl.style.top=`${clamp(G.lip[1],0.05,0.92)*innerHeight}px`\n-$(\"#stopPill\").style.opacity=live?\"1\":\"0\"\n $(\"#reply\").style.opacity=live?\"0.38\":\"1\"\n@@ -124,3 +124,2 @@\n $(\"#inputWrap\").style.borderColor=live&&G.air<30?`rgba(220,60,70,${(0.3+0.5*pulse).toFixed(2)})`:\"\"\n-if(S.debug)$(\"#debug\").textContent=`air ${G.air.toFixed(0)}  bpm ${heart.bpm.toFixed(0)}  o ${o.toFixed(2)}  phase ${G.phase}\\nwindows ${G.windowsOpened}/${S.len===999?\"∞\":S.len}  caught ${G.caught}  missed ${G.missed}  false ${G.falseTaken}  over ${G.overholds}  streak ${G.streak}${G.win?`  [${G.win.false?\"FALSE \":\"\"}window ${G.win.W}ms credit ${G.win.credit.toFixed(0)}]`:\"\"}`\n }"
+    },
+    {
+      "fn": "letters",
+      "reason": "Readable mode: the letters fade, never blur. `send` returns the line as heard (lost letters as dots, spaces kept) for the scene to send (the scene's Enter sends it and clears the field; its reply shows it): the prototype's stand-in reply is prototype only.",
+      "diff": "@@ -29,3 +29,3 @@\n sp.textContent=x.ch\n-const blur=(1-x.c)*5\n+const blur=S.readable?0:(1-x.c)*5\n sp.style.color=blur<0.3?`rgba(236,232,242,${x.c})`:\"transparent\"\n@@ -36,7 +36,5 @@\n },send(){\n-if(!this.chars.length)return\n-const html=this.chars.map(x=>(x.c<0.22?`<span class=\"lost\">${x.ch===\" \"?\" \":\"·\"}</span>`:x.ch.replace(/[<&]/g, (q) => (q === '<' ? '&lt;' : '&amp;')))).join('');\n-    setReply(`<span class=\"you\">“${html}”</span>`, G.phase === 'loop' ? 0.38 : 1);\n-    $('#cmd').value = ''; this.prev = ''; this.chars = []; this.draw();\n-  },\n-};\n+if(!this.chars.length)return null\n+return this.chars.map(x=>(x.c<0.22?(x.ch===\" \"?\" \":\"·\"):x.ch)).join(\"\")\n+}\n+}"
+    },
+    {
+      "fn": "st",
+      "reason": "Wiring: her style's row (the prototype's `STYLES`, a style it has no row for read by its `cues`), with the engine's seal (the run's) and the plan's opening width.",
+      "diff": "@@ -1 +1,3 @@\n-const st=()=>STYLES[S.style]\n+const st=()=>({\n+...STYLES[R.row],seal:R.seal,windowMs:R.widthMs\n+})"
+    },
+    {
+      "fn": "L",
+      "reason": "Her lines are her cue pool's (`staging.cue(kind, beat)`), never the prototype's LINES: `now` → window_open, `fake` and `early` → window_false, `greedy` → greedy, `low` → warning, `released` → lift; `entry`, `hold`, `tap`, `good`, `poor`, `stop`, `wake` and `again` have no cue kind and say nothing.",
+      "diff": "@@ -1 +1 @@\n-const L=()=>LINES[S.style]\n+const L=()=>R.lines"
+    }
+  ],
+  "cues": {
+    "now": "window_open",
+    "fake": "window_false",
+    "early": "window_false",
+    "greedy": "greedy",
+    "low": "warning",
+    "released": "lift"
+  }
+}

@@ -81,6 +81,10 @@ export interface InstrumentEnv {
   reduced: boolean;
   /** Readable mode: no blur. */
   readable: boolean;
+  /** The tap (P15a's `physics/signal`, the signal inside the fiction): dead from the end of the run. Absent = no tap here. */
+  tap?(): void;
+  /** An extension-relative path as a URL the page can load (the scene's `assetUrl`). Absent = the path as it is. */
+  assetUrl?(path: string): string;
 }
 
 /** How a run ended (the engine's `physics_outcome`), handed to `InstrumentRun.finish`. */

@@ -30,7 +30,10 @@ let reg: Registries;
 beforeAll(async () => {
   reg = await loadCore();
 });
-beforeEach(() => vi.useFakeTimers());
+beforeEach(() => {
+  vi.useFakeTimers();
+  _resetInstrumentDefs(); // the shipped instruments (breath, registered at import) are not this file's: each test registers its own
+});
 afterEach(() => {
   vi.useRealTimers();
   resetSceneStage();

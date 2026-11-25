@@ -3,4 +3,5 @@
  * wins). Chunks e3–e11 add one import line each.
  */
 export { instrumentFor, registerInstrument, syncInstruments, unmountInstruments } from './host';
+import './breath/breath';
 export type { HerLook, InstrumentDef, InstrumentEnv, InstrumentRun } from './types';

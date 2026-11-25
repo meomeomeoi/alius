@@ -2632,6 +2632,17 @@
     ]
   },
   {
+    "id": "gap_breath",
+    "term": "Breathing through the gap",
+    "short": "With a leaky seal some air gets past her between openings. Taking it is a quiet cheat: she may catch it, by where her eyes are.",
+    "long": "AUTHOR TO WRITE: Only a leaky seal leaves a gap. A breath through it gives a little air at once, in any beat; it is a relief she did not allow, so she may notice it, more likely while she is watching, and a caught one costs more than it gave.",
+    "see": [
+      "tap_signal",
+      "contact_physics",
+      "instrument"
+    ]
+  },
+  {
     "id": "stop_word",
     "term": "Stop word",
     "short": "Your own signal, outside the story. It always ends the hold and takes away the contact or item, whatever she holds to.",

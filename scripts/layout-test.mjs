@@ -13,7 +13,7 @@ const server = await serveRoot();
 const port = server.port;
 
 const SIZES = [[1920, 1080], [1280, 800], [2560, 1440]];
-const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold'];
+const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breathhold'];
 const failures = [];
 const faceOf = new Map(); // the dial's circle for `standing` (fixture `one`), per size
 const fail = (size, fixture, what) => failures.push(`${size[0]}x${size[1]} ${fixture}: ${what}`);
@@ -124,6 +124,42 @@ for (const size of SIZES) {
       await p.waitForTimeout(3600);
       const after = await p.evaluate(() => [...document.querySelectorAll('.alius-layer-backdrop, .alius-layer-sprites')].map((el) => el.getAttribute('style') ?? ''));
       if (JSON.stringify(after) !== JSON.stringify(before)) fail(size, fixture, `the camera did not put the layers back: ${JSON.stringify(before)} -> ${JSON.stringify(after)}`);
+    }
+    // P10e-e Task 14: the breath instrument draws under the scene's UI; mid-breath (Space held) the stop word's pill and the input stay on top
+    // and clickable, and the pill ends the hold at once: the instrument is gone, the input and its line are as they were
+    if (fixture === 'breathhold') {
+      await p.waitForTimeout(2200); // the entry (1.8 s): the dark is down
+      await p.mouse.move(size[0] * 0.5, size[1] * 0.3);
+      await p.keyboard.down(' ');
+      await p.waitForTimeout(300);
+      const mid = await p.evaluate(() => {
+        const out = [];
+        if (!document.querySelector('.alius-layer-effects > .alius-breath')) out.push('no breath drawn');
+        if (document.querySelector('.alius-layer-moment .alius-breath, .alius-layer-ui .alius-breath')) out.push('the breath is drawn over the UI');
+        const top = (el) => { if (!el) return 'missing'; const b = el.getBoundingClientRect(); const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return hit === el || el.contains(hit) ? 'ok' : `covered by ${hit?.className ?? hit?.tagName}`; };
+        const input = top(document.querySelector('.alius-input'));
+        if (input !== 'ok') out.push(`the input mid-breath: ${input}`);
+        const pill = top(document.querySelector('[data-stop-word]'));
+        if (pill !== 'ok') out.push(`the stop word mid-breath: ${pill}`);
+        const b = document.querySelector('.alius-input-line')?.getBoundingClientRect();
+        if (!b || b.right > innerWidth || b.left < 0 || b.bottom > innerHeight) out.push(`the narrowed input line leaves the viewport: ${JSON.stringify(b)}`);
+        return out;
+      });
+      for (const f of mid) fail(size, fixture, f);
+      await p.click('[data-stop-word]');
+      await p.waitForTimeout(200);
+      await p.keyboard.up(' ');
+      const after = await p.evaluate(() => {
+        const out = [];
+        if (document.querySelector('.alius-breath')) out.push('the stop word did not end the hold: the breath is still drawn');
+        if (document.querySelector('.alius-breath-mirror') || document.querySelector('.alius-input[data-breath-letters]')) out.push('the input still carries the letters');
+        const l = document.querySelector('.alius-input-line')?.getAttribute('style') ?? '';
+        if (/width|border-color/.test(l)) out.push(`the input line was not put back: ${JSON.stringify(l)}`);
+        const reply = document.querySelector('[role="log"]')?.getAttribute('style') ?? '';
+        if (/opacity/.test(reply)) out.push(`the reply was not put back: ${JSON.stringify(reply)}`);
+        return out;
+      });
+      for (const f of after) fail(size, fixture, f);
     }
     if (SHOTS) { mkdirSync(SHOTS, { recursive: true }); await p.screenshot({ path: join(SHOTS, `${fixture}-${size[0]}x${size[1]}.png`) }); }
     // A2: each woman at the pan that centres her (several women only); a screenshot of each when asked

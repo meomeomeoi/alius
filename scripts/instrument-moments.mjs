@@ -21,6 +21,7 @@ const dialCorner = { x: -560, y: -440, width: 560, height: 440 };
 
 export const MOMENTS = {
   slap: slapMoments(),
+  breath: breathMoments(),
   cards: {
     state: 'one',
     clip: dialCorner,
@@ -157,6 +158,70 @@ function slapMoments() {
       { ...moment('impact-none-1280', 0, (p) => p.clock.runFor(IMPACT + 60)), size: [1280, 800] },
       { ...moment('raised-1280', 0, (p) => p.clock.runFor(600)), size: [1280, 800] },
       { ...moment('turned-1280', 0, async (p, c) => { await p.clock.runFor(1000); await flick(p, c.size); await p.clock.runFor(IMPACT + 60 - 1000 - 96); }), size: [1280, 800] },
+    ],
+  };
+}
+
+/**
+ * breath.html: breathing (Task 14). The port is the `breath` fixture (Ann holds the commander's face under her arm: `smothered_armpit`, the
+ * wedge of dark, the commander's quarters, the ceiling `room_1`), its plan's openings cleared (`&quiet=1`) and her style from `&style=`; the
+ * prototype is set to the same (`kind: 'wedge'`, her style). Both pages run on Playwright's fake clock, paused: each moment begins the
+ * instrument at the same paused instant on both (`begin`), the clock is run to the loop, and the windows are opened by the same hooks (the
+ * prototype's globals `openWindow`, `scheduleWindow`, `exit`, `blackout`, `G`; the port's `window.__breath`), so the shots are of the same
+ * millisecond. The prototype's backdrop is its own stand-in (`quarters_dark`); the port's is the scene's.
+ * Moments: the entry, a count (ritual: "two…"), "now." (neutral), a false window (playful), low air (the tunnel), the exit, a blackout; the
+ * entry, "now." and low air again at 1280x800.
+ */
+async function fakeClock(p, ready) {
+  await p.clock.install({ time: 0 });
+  await p.reload();
+  await p.evaluate(ready);
+  await p.waitForTimeout(1500); // the page's own start (the backdrop, the sprite) in real time, the fake clock flowing with it
+  const now = await p.evaluate(() => Date.now());
+  await p.clock.pauseAt(now + 200);
+}
+function breathMoments() {
+  const LOOP = 1900; // the entry is 1800 ms: the loop has begun
+  const start = (style) => ({
+    // the clock is installed and the page loaded again, so every frame and timer is the fake clock's from the start (a frame the real clock
+    // had queued would put the frame clock's `last` in the real clock's time); then it is paused a little ahead and both begin there
+    proto: async (p) => {
+      await fakeClock(p, () => document.fonts.ready);
+      await p.addStyleTag({ content: '#panel, #debug, #summary, #start { visibility: hidden !important; }' }); // the reload dropped the script's own
+      await p.evaluate((st) => { Object.assign(window.__S, { style: st, kind: 'wedge', sound: false, reduced: false, cue: 'style' }); }, style);
+      await p.evaluate(() => { document.querySelector('#start').style.display = 'none'; begin(); });
+    },
+    port: async (p) => {
+      await fakeClock(p, async () => { while (document.body.dataset.ready !== 'true') await new Promise((r) => setTimeout(r, 50)); });
+      await p.evaluate(() => { window.__breath.begin(); });
+    },
+  });
+  /** On both: the prototype's own window of the loop is cancelled (the port's plan has none: `&quiet=1`), then `drive` runs on each. */
+  const moment = (id, style, before, proto, port, after, size) => {
+    const s = start(style);
+    return {
+      id, query: `&quiet=1&style=${style}`, ...(size ? { size } : {}),
+      proto: async (p) => { await s.proto(p); await p.clock.runFor(before); await p.evaluate(proto); await p.clock.runFor(after); },
+      port: async (p) => { await s.port(p); await p.clock.runFor(before); await p.evaluate(port); await p.clock.runFor(after); },
+    };
+  };
+  const none = () => {};
+  return {
+    state: 'breath',
+    rasterSprite: true, // the prototype sizes its <img> by layout: the fixture's SVG is drawn as a PNG at run time (scripts/instrument-shots.mjs)
+    hide: ['#panel', '#debug', '#summary', '#start'],
+    settle: 60,
+    moments: [
+      moment('entry', 'neutral', 900, none, none, 0),
+      moment('count-ritual', 'ritual', LOOP, () => { cancelWindows(); scheduleWindow(G.clock + 1900); }, () => { const b = window.__breath; b.lines(); b.scheduleWindow(b.G.clock + 1900, { widthMs: 500 }); }, 800),
+      moment('now-neutral', 'neutral', LOOP, () => { cancelWindows(); openWindow(false); }, () => window.__breath.open(false), 400),
+      moment('false-playful', 'playful', LOOP, () => { cancelWindows(); openWindow(true); }, () => window.__breath.open(true), 250),
+      moment('low-air', 'neutral', LOOP, () => { cancelWindows(); G.air = 18; }, () => { window.__breath.lines(); window.__breath.G.air = 18; }, 900),
+      moment('exit', 'neutral', LOOP, () => { cancelWindows(); exit('released'); }, () => { window.__breath.lines(); window.__breath.exit('released'); }, 1000),
+      moment('blackout', 'neutral', LOOP, () => { cancelWindows(); blackout(); }, () => window.__breath.blackout(), 2500),
+      moment('entry-1280', 'neutral', 900, none, none, 0, [1280, 800]),
+      moment('now-neutral-1280', 'neutral', LOOP, () => { cancelWindows(); openWindow(false); }, () => window.__breath.open(false), 400, [1280, 800]),
+      moment('low-air-1280', 'neutral', LOOP, () => { cancelWindows(); G.air = 18; }, () => { window.__breath.lines(); window.__breath.G.air = 18; }, 900, [1280, 800]),
     ],
   };
 }
