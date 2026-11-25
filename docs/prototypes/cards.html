@@ -56,7 +56,8 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 body.flash-input #inputWrap { box-shadow: 0 0 0 2px color-mix(in srgb, var(--cmd) 70%, transparent); transition: box-shadow .2s; }
 
 /* the posture dial (as P10e draws it) */
-#dial { position: absolute; right: 36px; bottom: 40px; display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 4; }
+/* the circle never moves: the label hangs under it, centred, and wraps instead of widening the corner (the real `.alius-stage-dial` widens and shifts the circle) */
+#dial { position: absolute; right: 36px; bottom: 58px; z-index: 4; }
 #dialFace { position: relative; width: min(18.5vh, 200px); height: min(18.5vh, 200px); border-radius: 50%;
   background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--cmd) 12%, var(--bg)), color-mix(in srgb, var(--bg) 94%, #000) 78%);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cmd) 30%, transparent), 0 6px 24px rgba(0,0,0,.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
@@ -66,7 +67,9 @@ body.flash-input #inputWrap { box-shadow: 0 0 0 2px color-mix(in srgb, var(--cmd
   -webkit-mask: radial-gradient(circle, transparent 93%, #000 94%); mask: radial-gradient(circle, transparent 93%, #000 94%); }
 #dialFace svg { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity .3s; }
 #dial.called #dialFace { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--her) 75%, transparent), 0 0 26px color-mix(in srgb, var(--her) 30%, transparent), 0 6px 24px rgba(0,0,0,.55); }
-#dialLabel { font: 11px "IBM Plex Mono", monospace; letter-spacing: .14em; color: color-mix(in srgb, var(--cmd) 60%, #fff); text-shadow: 0 1px 6px #000; text-transform: uppercase; }
+#dialLabel { position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%); width: 240px; text-align: center; line-height: 1.35;
+  font: 11px "IBM Plex Mono", monospace; letter-spacing: .14em; color: color-mix(in srgb, var(--cmd) 60%, #fff); text-shadow: 0 1px 6px #000; text-transform: uppercase; }
+#dialLabel .sub { display: block; font-size: 10px; opacity: .75; }
 #stopPill { position: absolute; right: 36px; bottom: calc(min(18.5vh, 200px) + 76px); padding: 7px 14px; border-radius: 18px; font: 11px "IBM Plex Mono", monospace; letter-spacing: .12em;
   background: rgba(60, 10, 14, .55); border: 1px solid rgba(255, 120, 120, .35); color: #ffd6d6; backdrop-filter: blur(10px); display: none; cursor: pointer; }
 
@@ -651,7 +654,7 @@ const BASE_LABEL = { standing: 'standing', standing_attention: 'at attention', s
 /** Her named postures (P16 `practices.postures`): her word for a base posture. */
 const NAMED = [['kneeling_upright', 'Attention'], ['kneeling_sitting', 'Rest'], ['bowing', 'Low'], ['all_fours', 'Pup'], ['standing_attention', 'Up']];
 let pose = 'kneeling_upright';
-function drawDial() { $('#dialFace').innerHTML = MQ[pose]; const named = NAMED.find((n) => n[0] === pose); $('#dialLabel').textContent = named ? `${BASE_LABEL[pose]} · ${named[1]}` : BASE_LABEL[pose]; }
+function drawDial() { $('#dialFace').innerHTML = MQ[pose]; const named = NAMED.find((n) => n[0] === pose); $('#dialLabel').innerHTML = named ? `${named[1]}<span class="sub">${BASE_LABEL[pose]}</span>` : BASE_LABEL[pose]; }
 
 /* ---------- the posture call (variant D) ---------- */
 const WINDOW = { ritual: 4000, drill: 3000 };   // TUNING.practice.posture.windowMs; other 5000
