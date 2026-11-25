@@ -403,11 +403,52 @@ describe('cards arrive and sound (P10e-e Task 10, cards.html `addCard`, `render`
     expect(plays.at(-1)![0]).toMatch(/card_slide[12]\.ogg$/);
     expect(plays.at(-1)![1]).toMatchObject({ gain: 0.18, pan: -0.6 });
     const open = slot.querySelector<HTMLElement>('[data-task="c2"]')!;
-    const answer = h('button', { type: 'button', class: 'alius-pill' }, h('span', {}, 'accept'));
+    const answer = h('button', { type: 'button', class: 'alius-pill', 'data-task-answer': 'accept' }, h('span', {}, 'accept'));
     open.querySelector('.alius-scard-body')!.append(answer);
+    const before = plays.length;
     answer.click();
+    expect(plays).toHaveLength(before); // nothing yet: the card is not gone
+    open.remove(); // the answer settled it: the redraw has no c2
+    dock.layout('sc1');
     expect(plays.at(-1)![0]).toMatch(/card_place[12]\.ogg$/);
     expect(plays.at(-1)![1]).toMatchObject({ gain: 0.25, pan: -0.6 });
+  });
+
+  it('card_place plays only for an answer that settles the card (review I2): not negotiate, not the fallback hold, not a ceremony step', () => {
+    const { dock, plays } = sounding();
+    const places = () => plays.filter(([f]) => /card_place/.test(f)).length;
+    // her discipline, negotiated: the card stays
+    const pun = her('p1');
+    pun.setAttribute('data-punishment', 'p1');
+    const negotiate = h('button', { type: 'button', class: 'alius-pill', 'data-punishment-answer': 'negotiate' }, 'negotiate');
+    pun.append(negotiate);
+    dock.slot('punishment').append(pun);
+    dock.layout('sc1');
+    negotiate.click();
+    dock.layout('sc1');
+    expect(places()).toBe(0);
+    // the fallback hold: tap, wait, breathe; and the hold ending afterwards plays nothing either
+    const hold = sceneCard({ kind: 'a hold', kindId: 'physics', conditions: [], answers: ['tap', 'wait', 'breathe'].map((w) => h('button', { type: 'button', class: 'alius-pill alius-physics-input', 'data-input': w }, w)), gist: 'jaw' });
+    hold.classList.add('alius-physics');
+    hold.setAttribute('data-run', 'r1');
+    dock.slot('physics').append(hold);
+    dock.layout('sc1');
+    for (const b of hold.querySelectorAll<HTMLButtonElement>('button')) b.click();
+    hold.remove();
+    dock.layout('sc1');
+    expect(places()).toBe(0);
+    // a ceremony's step, even its last one
+    const cer = her('cer');
+    cer.setAttribute('data-punishment', 'p9');
+    const step = h('button', { type: 'button', class: 'alius-pill', 'data-ceremony-do': 'the_thanks' }, 'the thanks');
+    cer.append(step);
+    dock.slot('punishment').replaceChildren(cer);
+    dock.layout('sc1');
+    cer.querySelector<HTMLElement>('.alius-scard-head')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    step.click();
+    cer.remove();
+    dock.layout('sc1');
+    expect(places()).toBe(0);
   });
 
   it('the sounds go through the sample layer: muted, nothing is made', async () => {

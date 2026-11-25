@@ -63861,6 +63861,7 @@ var DOCK_SOUNDS = {
   slide: ["assets/sounds/ha/card_slide1.ogg", "assets/sounds/ha/card_slide2.ogg"],
   place: ["assets/sounds/ha/card_place1.ogg", "assets/sounds/ha/card_place2.ogg"]
 };
+var ANSWERS = '[data-task-answer],[data-task-sign],[data-punishment-answer],[data-take-answer],[data-demonstration-answer],[data-milestone-answer],[data-claim-answer],[data-return-answer],[data-undo-practice],[data-action="moment-answer"]';
 var DOCK_SLOTS = ["moment", "physics", "punishment", "task", "demonstration", "milestone", "claim", "return"];
 var setAside = /* @__PURE__ */ new Set();
 var ages = /* @__PURE__ */ new Map();
@@ -63901,11 +63902,12 @@ function createDock(host, names2, opts = {}) {
   host.append(element);
   let chosen = null;
   let scene = "";
+  let answered = null;
   element.addEventListener("click", (ev) => {
-    const pill = ev.target instanceof Element ? ev.target.closest(".alius-pill") : null;
+    const pill = ev.target instanceof Element ? ev.target.closest(ANSWERS) : null;
     const card2 = pill?.closest(".alius-dock-card");
-    if (!pill || !card2 || card2.dataset.open !== "true" || pill.classList.contains("alius-sign") || pill.getAttribute("aria-disabled") === "true") return;
-    sfx2(DOCK_SOUNDS.place[fnv1a3(card2.getAttribute("data-dock-key") ?? "") % 2], 0.25, -0.6);
+    if (!pill || !card2 || card2.dataset.open !== "true" || card2.closest(".alius-physics") !== null || pill.getAttribute("aria-disabled") === "true") return;
+    answered = card2.getAttribute("data-dock-key");
   }, true);
   waiting3.addEventListener("click", () => {
     for (const k of [...setAside]) if (k.startsWith(`${scene}|`)) setAside.delete(k);
@@ -63931,6 +63933,10 @@ function createDock(host, names2, opts = {}) {
       const fresh = cards.filter((c) => !ages.has(c.key));
       for (const c of [...fresh].reverse()) ages.set(c.key, ++age);
       if (fresh.some((c) => !running2(c.el))) chosen = null;
+      if (answered !== null) {
+        if (!cards.some((c) => c.key === answered)) sfx2(DOCK_SOUNDS.place[fnv1a3(answered) % 2], 0.25, -0.6);
+        answered = null;
+      }
       const quiet = !dealt.has(sceneId);
       dealt.add(sceneId);
       const arriving = quiet ? [] : fresh.filter((c) => !running2(c.el) && !setAside.has(c.key));

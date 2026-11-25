@@ -21,6 +21,9 @@ export const DOCK_SOUNDS = {
   place: ['assets/sounds/ha/card_place1.ogg', 'assets/sounds/ha/card_place2.ogg'],
 } as const;
 
+/** The commander's answers that settle a card (the prototype's `answer`): never the fallback hold's controls or a ceremony's step. */
+const ANSWERS = '[data-task-answer],[data-task-sign],[data-punishment-answer],[data-take-answer],[data-demonstration-answer],[data-milestone-answer],[data-claim-answer],[data-return-answer],[data-undo-practice],[data-action="moment-answer"]';
+
 /** What the dock plays and asks (P10e-e Task 10): the sample layer and whether motion is reduced. Absent = silent, and cards arrive. */
 export interface DockOpts {
   samples?: () => SampleSound | null;
@@ -86,12 +89,14 @@ export function createDock(host: HTMLElement, names: readonly string[], opts: Do
   let chosen: string | null = null;
   let scene = '';
 
-  // an answer plays `card_place` (cards.html `answer`): a pill of an open card, not the held sign (its own gesture)
+  // an answer plays `card_place` (cards.html `answer`), once the card it answered is gone: an answer that keeps the card (negotiate, the accept of a
+  // words task, which only focuses the input) plays nothing, nor do the fallback hold's controls or a ceremony's steps (cards.html: `log` / `adv`)
+  let answered: string | null = null;
   element.addEventListener('click', (ev) => {
-    const pill = ev.target instanceof Element ? ev.target.closest('.alius-pill') : null;
+    const pill = ev.target instanceof Element ? ev.target.closest(ANSWERS) : null;
     const card = pill?.closest<HTMLElement>('.alius-dock-card');
-    if (!pill || !card || card.dataset.open !== 'true' || pill.classList.contains('alius-sign') || pill.getAttribute('aria-disabled') === 'true') return;
-    sfx(DOCK_SOUNDS.place[fnv1a(card.getAttribute('data-dock-key') ?? '') % 2], 0.25, -0.6);
+    if (!pill || !card || card.dataset.open !== 'true' || card.closest('.alius-physics') !== null || pill.getAttribute('aria-disabled') === 'true') return;
+    answered = card.getAttribute('data-dock-key');
   }, true);
 
   waiting.addEventListener('click', () => {
@@ -120,6 +125,11 @@ export function createDock(host: HTMLElement, names: readonly string[], opts: Do
       const fresh = cards.filter((c) => !ages.has(c.key));
       for (const c of [...fresh].reverse()) ages.set(c.key, ++age);
       if (fresh.some((c) => !running(c.el))) chosen = null; // a new card opens (cards.html `addCard`)
+      // the card answered last is gone: it was put down (cards.html `answer`); one that stayed was not settled by it
+      if (answered !== null) {
+        if (!cards.some((c) => c.key === answered)) sfx(DOCK_SOUNDS.place[fnv1a(answered) % 2], 0.25, -0.6);
+        answered = null;
+      }
       // Task 10: a new card slides in with `card_slide` (cards.html `addCard`); the cards there as the scene opens are dealt quietly
       const quiet = !dealt.has(sceneId);
       dealt.add(sceneId);
