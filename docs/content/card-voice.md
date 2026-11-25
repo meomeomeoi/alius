@@ -1,4 +1,4 @@
-# Her voice on the cards (draft for the author's approval)
+# Her voice on the cards (approved by the author, 2026-11-25)
 
 P10e §15 step 3, variant **B3** (author, 2026-11-25): on a card everything is in her hand: her words on top (the model's `text`, or the static lines of §3), then the **conditions** as her own lines. A condition is never written by the model: it is a line from these tables with the engine's value put in. The value (in `{braces}`) is drawn in her ink, a little stronger, so it reads at a glance; the frame around it is hers.
 
