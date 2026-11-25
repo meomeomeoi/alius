@@ -145,6 +145,43 @@ A custom not yet introduced never reaches a prompt.
 - A break is **sacrilege**: her aftermath by style (P15 §9, weighted toward `revenge` / `grief`), Regard falls, her trust breaks, and the squad may learn of it by P15 §8's paths.
 - **Two holders:** a second holder's claim on the commander meets the vow through P15's conflict settlement.
 
+### 2.10 Never above her (`height`)
+- A protocol rule (a new P16 rule kind `height`): the commander's head is never above hers. When she sits, the commander is on the floor; when she stands, the commander kneels.
+- The engine checks it from both persons' base postures in the blocking (standing > sitting > kneeling > lying): no extractor, no model. A breach is a slip (`protocol_slip`).
+- On the base plan (P10d) the commander's default posture in a room with her is lower.
+- It comes like every custom: not at once, not in every game (author).
+
+### 2.11 The commander's glory is her tribute (`tribute`)
+- **Opens only when their dynamic is public** (P15's knowledge levels: enough of the squad `knows`, or the relation's publicity, P9d).
+- After a run that went well she takes the credit before others. The run's merit and feats (P9b) raise **her** standing, not the commander's; outside perception reads "she stands behind the commander".
+- Her line names it ("my commander did well — I keep it well").
+
+### 2.12 Decisions about the commander while under her (`audience`)
+- In her activity's frame with a visitor (P10e (e)), the commander is her chair or footstool (`weight`). The visitor comes with **real business**: a leave, a roster, a complaint, a request from her thread.
+- With the `command` domain (P15) she decides it by her own power, over the commander's head, sitting on the commander: a countermand, a roster change, a punishment ordered. It is real, with its consequences in the game, through P15's existing command capabilities.
+- The humiliation is that the commander's authority is used while the commander is furniture.
+- **Before a witness who knows** (author's pick): a visitor who already `knows` the dynamic comes on purpose and talks with her as usual. She may offer the visitor to rest her feet on the commander too. This is P17b §8's rare outcome, but from her hand; it needs `public_humiliation` and `objectification` and her `audience: show_off`.
+
+### 2.13 She speaks of the commander as a thing (`object_naming`)
+- **A mechanic, not only a line** (author): before others she names the commander as an object (her name for it: "my chair", "the footrest", "it"), from her style and the commander's current use in the blocking.
+- She does not address the commander at all while she does.
+- **State:** her object-name for the commander (`customs.active[].data.name`), chosen once by her (a flavor kind through P14, sanitized; never a pronoun of the commander) and kept until the custom fades.
+- **Effects:**
+  - the visitor's reaction by P15 §8 (`drawn` / `indifferent` / `dislikes`);
+  - the nickname's deeds (P9);
+  - the visitor may start using the name too (a directive for that visitor while the custom lives).
+- Needs `objectification` and `degrading_language`.
+
+**Needs, frames and weights of §2.10–2.13** (proposed, for the author)
+| Custom | Needs | `frameMin` | Weight |
+|---|---|---|---|
+| height | style `regal`, `ritual`, `drill` or `possessive`, or `service` likes | `role` | 2 |
+| tribute | style `regal` or `possessive`; the dynamic public | `role` | 1 |
+| audience | the `command` domain; `objectification` likes; a visitor available | `rule` | 1 |
+| object_naming | `objectification` and `degrading_language` likes | `role` | 1 |
+
+**Memory:** `tribute` taken before the squad is P9b's existing outside perception (no new rule). An audience's decision is remembered where its command action writes. `object_naming` heard by a visitor goes through P15 §8's witness path. Height slips are bookkeeping.
+
 ## 3. UI
 
 - **Her PRACTICE block** (dossier): her active customs, each with `data-analyze` (its description; what keeps it; never what is coming), and the swap.
