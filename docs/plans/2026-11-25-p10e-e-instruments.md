@@ -545,12 +545,13 @@ Open for e4: a blackout's end is cut short by the scene end; P15a's typing lapse
 - Modify: `src/ui/scene/stage/dock.ts` (a new card slides in: 46 px, −2°, 0.5 s, `card_slide` at .25 pan −0.6; opening a strip `card_slide` at .18; `card_place` at .25 on an answer), `css/64-cards.css`
 - Test: `tests/ui/stage/dock.test.ts`
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `a new card arrives once`: `.is-arriving` on its first draw only, never on a redraw; none under reduced motion.
   - `the sounds play through the sample layer`, at the gains above; none when muted.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run**, `npm test`, `npm run test:layout` → PASS.
-- [ ] **Step 5: Review of e2:** `npm run shots -- cards` at 1920×1080 and 1280×800. Record the side-by-side in the task's commit message (what was compared, what differed and was fixed).
-- [ ] **Step 6: Commit** `feat(P10e-e): cards arrive and sound; e2 reviewed against cards.html`
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run**, `npm test`, `npm run test:layout` → PASS.
+- [x] **Step 5: Review of e2:** `npm run shots -- cards` at 1920×1080 and 1280×800. Record the side-by-side in the task's commit message (what was compared, what differed and was fixed).
+- [x] **Step 6: Commit** `feat(P10e-e): cards arrive and sound; e2 reviewed against cards.html`
+  - *As built:* `createDock(host, names, { samples?, reduced? })` (getters; the scene passes `ctx.samples` and `motionReduced`). The cards there when a scene's first layout runs are dealt quietly (module memory of the dealt scenes, reset with the stage), as cards.html deals its first hand with `addCard(t, true)`; a card first seen after that gets `.is-arriving` (not with reduced motion) and plays `card_slide` (`fnv1a(key) % 2`, gain .25, pan −0.6), once for a batch. Opening a strip plays `card_slide` at .18; a click on a pill of an open card plays `card_place` at .25 (not the held `sign`, nor a soft-disabled pill), caught on the dock in the capture phase (`scenePill` stops the bubble). The sounds go through `SampleSound.play` (muted: nothing; the palette is preloaded at `createDock`). e2 review (shots at 1920×1080 and 1280×800): the cards, the strips, the call mid-window, right and slow match the prototype; what differs is the unit's hand and accent (`handOf` / `unitAccent`), the dock's left edge and width (P10e's: 18 px, `min(420px, 26vw)`, 360 px under 1400 px wide), the dial's circle 10 px higher (Task 6). Fixed during the review: the `three` fixture's task got a deadline and a slot so its conditions show; the call's moments are shot full-frame and timed so both sides are at the same point.
 
 ---
 

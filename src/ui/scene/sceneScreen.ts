@@ -873,7 +873,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     inputLine = h('div', { class: 'alius-input-line alius-stage-cmd' }, h('span', { class: 'alius-prompt' }, 'CMD>'), input, h('div', { class: 'alius-input-tools' }, orderToggle, orderWho, propose, who));
     hosts.input.append(inputLine);
     // P10e §6: her hand: every card host is a slot of the dock (the host keeps its old class, the draw functions are unchanged)
-    dock = createDock(hosts.dock, DOCK_SLOTS);
+    dock = createDock(hosts.dock, DOCK_SLOTS, { samples: () => ctx.samples ?? null, reduced: () => motionReduced(ctx.settings()) }); // P10e-e Task 10: cards arrive and sound
     const cards = (slot: string, cls: string): HTMLElement => {
       const el = dock.slot(slot);
       el.classList.add(cls);

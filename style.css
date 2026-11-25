@@ -4893,6 +4893,16 @@
   margin-top: 10px;
 }
 
+/* ---- Task 10: a new card slides in from the left (cards.html `.card.arrive`); the dock adds the class on its first draw only, never with
+   reduced motion ---- */
+#alius-shell .alius-scard.is-arriving {
+  animation: alius-scard-arrive 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+@keyframes alius-scard-arrive {
+  from { transform: translateX(-46px) rotate(-2deg); opacity: 0; }
+}
+
 /*
  * P10e-e Task 9: her posture call as a full-frame moment (docs/prototypes/cards.html `#call`, `#callWord`, `#dots`, `#callLine`, `#fan`, `.pc`,
  * `#dimmer`, `#dial.called`, normative). Her word large in her hand beside her (74 vw / 13 vh), her foot's ink dots under it, the fan of her named

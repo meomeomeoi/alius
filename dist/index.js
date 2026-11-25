@@ -63856,13 +63856,19 @@ function cancelCall() {
 }
 
 // src/ui/scene/stage/dock.ts
+var DOCK_SOUNDS = {
+  slide: ["assets/sounds/ha/card_slide1.ogg", "assets/sounds/ha/card_slide2.ogg"],
+  place: ["assets/sounds/ha/card_place1.ogg", "assets/sounds/ha/card_place2.ogg"]
+};
 var DOCK_SLOTS = ["moment", "physics", "punishment", "task", "demonstration", "milestone", "claim", "return"];
 var setAside = /* @__PURE__ */ new Set();
 var ages = /* @__PURE__ */ new Map();
 var age = 0;
+var dealt = /* @__PURE__ */ new Set();
 function resetDock() {
   setAside.clear();
   ages.clear();
+  dealt.clear();
   age = 0;
 }
 var running2 = (card2) => card2.hasAttribute("data-run") || card2.hasAttribute("data-clock");
@@ -63881,7 +63887,11 @@ function drawGist(card2) {
   const el = head.querySelector(":scope > .alius-scard-gist") ?? head.appendChild(h("span", { class: "alius-scard-gist" }));
   el.replaceChildren(...gistRuns(gist).map((r) => r.value ? h("b", {}, r.text) : document.createTextNode(r.text)));
 }
-function createDock(host, names2) {
+function createDock(host, names2, opts = {}) {
+  const sfx2 = (file, gain2, pan) => {
+    opts.samples?.()?.play?.(file, { gain: gain2, pan });
+  };
+  void opts.samples?.()?.preload?.([...DOCK_SOUNDS.slide, ...DOCK_SOUNDS.place])?.catch(() => void 0);
   const slots = /* @__PURE__ */ new Map();
   for (const n of names2) slots.set(n, h("div", { class: "alius-dock-slot", "data-slot": n }));
   const waiting3 = h("button", { type: "button", class: "alius-dock-waiting", "aria-label": "Bring back the cards set aside", ...analyzeNative("glossary:dock_cards") });
@@ -63890,6 +63900,12 @@ function createDock(host, names2) {
   host.append(element);
   let chosen = null;
   let scene = "";
+  element.addEventListener("click", (ev) => {
+    const pill = ev.target instanceof Element ? ev.target.closest(".alius-pill") : null;
+    const card2 = pill?.closest(".alius-dock-card");
+    if (!pill || !card2 || card2.dataset.open !== "true" || pill.classList.contains("alius-sign") || pill.getAttribute("aria-disabled") === "true") return;
+    sfx2(DOCK_SOUNDS.place[fnv1a3(card2.getAttribute("data-dock-key") ?? "") % 2], 0.25, -0.6);
+  }, true);
   waiting3.addEventListener("click", () => {
     for (const k of [...setAside]) if (k.startsWith(`${scene}|`)) setAside.delete(k);
     chosen = null;
@@ -63914,6 +63930,11 @@ function createDock(host, names2) {
       const fresh = cards.filter((c) => !ages.has(c.key));
       for (const c of [...fresh].reverse()) ages.set(c.key, ++age);
       if (fresh.some((c) => !running2(c.el))) chosen = null;
+      const quiet = !dealt.has(sceneId);
+      dealt.add(sceneId);
+      const arriving = quiet ? [] : fresh.filter((c) => !running2(c.el) && !setAside.has(c.key));
+      for (const c of arriving) if (opts.reduced?.() !== true) c.el.classList.add("is-arriving");
+      if (arriving.length > 0) sfx2(DOCK_SOUNDS.slide[fnv1a3(arriving[0].key) % 2], 0.25, -0.6);
       const shown2 = cards.filter((c) => !setAside.has(c.key)).sort((a, b) => ages.get(a.key) - ages.get(b.key));
       const aside = cards.length - shown2.length;
       const openKey = chosen !== null && shown2.some((c) => c.key === chosen) ? chosen : shown2.filter((c) => !running2(c.el)).at(-1)?.key ?? null;
@@ -63945,6 +63966,7 @@ function createDock(host, names2) {
             const k = el.getAttribute("data-dock-key");
             if (k) {
               chosen = k;
+              sfx2(DOCK_SOUNDS.slide[fnv1a3(k) % 2], 0.18, -0.6);
               dock.layout(scene);
             }
           });
@@ -64233,7 +64255,7 @@ function drawSceneCall(host, state, reg, pick3, handlers2) {
   const hand = handOf(state, reg, unit4.id);
   const style = practiceOf(state, reg, unit4.id)?.style.primary;
   const name = plainDraft(wanted2.name);
-  handlers2.samples?.preload([...CALL_SOUNDS.soft, CALL_SOUNDS.fan, ...CALL_SOUNDS.place]).catch(() => void 0);
+  void handlers2.samples?.preload?.([...CALL_SOUNDS.soft, CALL_SOUNDS.fan, ...CALL_SOUNDS.place])?.catch(() => void 0);
   startCall({
     id: call2.id,
     want: [wanted2.postureId, name],
@@ -66164,7 +66186,7 @@ function renderSceneScreen(host, ctx2) {
     }
     inputLine = h("div", { class: "alius-input-line alius-stage-cmd" }, h("span", { class: "alius-prompt" }, "CMD>"), input, h("div", { class: "alius-input-tools" }, orderToggle, orderWho, propose2, who));
     hosts.input.append(inputLine);
-    dock = createDock(hosts.dock, DOCK_SLOTS);
+    dock = createDock(hosts.dock, DOCK_SLOTS, { samples: () => ctx2.samples ?? null, reduced: () => motionReduced(ctx2.settings()) });
     const cards = (slot2, cls) => {
       const el = dock.slot(slot2);
       el.classList.add(cls);

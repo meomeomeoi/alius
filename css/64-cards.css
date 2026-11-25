@@ -389,3 +389,13 @@
 #alius-shell .alius-dock-card.alius-scard[data-open="true"]:is([data-run], [data-clock]) {
   margin-top: 10px;
 }
+
+/* ---- Task 10: a new card slides in from the left (cards.html `.card.arrive`); the dock adds the class on its first draw only, never with
+   reduced motion ---- */
+#alius-shell .alius-scard.is-arriving {
+  animation: alius-scard-arrive 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+@keyframes alius-scard-arrive {
+  from { transform: translateX(-46px) rotate(-2deg); opacity: 0; }
+}

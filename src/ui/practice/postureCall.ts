@@ -133,7 +133,7 @@ function drawSceneCall(host: HTMLElement, state: CampaignState, reg: Registries,
   const hand = handOf(state, reg, unit!.id);
   const style = practiceOf(state, reg, unit!.id)?.style.primary;
   const name = plainDraft(wanted.name);
-  handlers.samples?.preload([...CALL_SOUNDS.soft, CALL_SOUNDS.fan, ...CALL_SOUNDS.place]).catch(() => undefined);
+  void handlers.samples?.preload?.([...CALL_SOUNDS.soft, CALL_SOUNDS.fan, ...CALL_SOUNDS.place])?.catch(() => undefined);
   startCall({
     id: call!.id, want: [wanted.postureId, name], choices: set.map((p) => [p.postureId, plainDraft(p.name)] as [string, string]),
     baseLabel: (base) => String(reg.blockingPostures.get(base)?.label ?? base).toLowerCase(),

@@ -12,6 +12,20 @@
 import { analyzeNative } from '../../analyze/mark';
 import { h } from '../../dom';
 import { gistRuns } from '../cards/gist';
+import { fnv1a } from '../../../engine/hub';
+import type { SampleSound } from '../../sound/samples';
+
+/** The dock's sounds (cards.html `ASSETS.slide`, `ASSETS.place`), named from the repo root. */
+export const DOCK_SOUNDS = {
+  slide: ['assets/sounds/ha/card_slide1.ogg', 'assets/sounds/ha/card_slide2.ogg'],
+  place: ['assets/sounds/ha/card_place1.ogg', 'assets/sounds/ha/card_place2.ogg'],
+} as const;
+
+/** What the dock plays and asks (P10e-e Task 10): the sample layer and whether motion is reduced. Absent = silent, and cards arrive. */
+export interface DockOpts {
+  samples?: () => SampleSound | null;
+  reduced?: () => boolean;
+}
 
 export const DOCK_SLOTS = ['moment', 'physics', 'punishment', 'task', 'demonstration', 'milestone', 'claim', 'return'] as const;
 
@@ -27,9 +41,12 @@ const setAside = new Set<string>();
 /** When each card first came: a larger number is newer (by key). */
 const ages = new Map<string, number>();
 let age = 0;
+/** The scenes whose cards were dealt (their first layout: the cards there as the scene opens arrive quietly). */
+const dealt = new Set<string>();
 export function resetDock(): void {
   setAside.clear();
   ages.clear();
+  dealt.clear();
   age = 0;
 }
 
@@ -55,7 +72,10 @@ function drawGist(card: HTMLElement): void {
   el.replaceChildren(...gistRuns(gist).map((r) => (r.value ? h('b', {}, r.text) : document.createTextNode(r.text))));
 }
 
-export function createDock(host: HTMLElement, names: readonly string[]): Dock {
+export function createDock(host: HTMLElement, names: readonly string[], opts: DockOpts = {}): Dock {
+  /** cards.html `sfx`: a recorded sound through the sample layer (muted, it makes nothing). */
+  const sfx = (file: string, gain: number, pan: number): void => { opts.samples?.()?.play?.(file, { gain, pan }); };
+  void opts.samples?.()?.preload?.([...DOCK_SOUNDS.slide, ...DOCK_SOUNDS.place])?.catch(() => undefined);
   const slots = new Map<string, HTMLElement>();
   for (const n of names) slots.set(n, h('div', { class: 'alius-dock-slot', 'data-slot': n }));
   const waiting = h('button', { type: 'button', class: 'alius-dock-waiting', 'aria-label': 'Bring back the cards set aside', ...analyzeNative('glossary:dock_cards') });
@@ -65,6 +85,14 @@ export function createDock(host: HTMLElement, names: readonly string[]): Dock {
   /** The card the commander chose to open (by key). */
   let chosen: string | null = null;
   let scene = '';
+
+  // an answer plays `card_place` (cards.html `answer`): a pill of an open card, not the held sign (its own gesture)
+  element.addEventListener('click', (ev) => {
+    const pill = ev.target instanceof Element ? ev.target.closest('.alius-pill') : null;
+    const card = pill?.closest<HTMLElement>('.alius-dock-card');
+    if (!pill || !card || card.dataset.open !== 'true' || pill.classList.contains('alius-sign') || pill.getAttribute('aria-disabled') === 'true') return;
+    sfx(DOCK_SOUNDS.place[fnv1a(card.getAttribute('data-dock-key') ?? '') % 2], 0.25, -0.6);
+  }, true);
 
   waiting.addEventListener('click', () => {
     for (const k of [...setAside]) if (k.startsWith(`${scene}|`)) setAside.delete(k);
@@ -92,6 +120,12 @@ export function createDock(host: HTMLElement, names: readonly string[]): Dock {
       const fresh = cards.filter((c) => !ages.has(c.key));
       for (const c of [...fresh].reverse()) ages.set(c.key, ++age);
       if (fresh.some((c) => !running(c.el))) chosen = null; // a new card opens (cards.html `addCard`)
+      // Task 10: a new card slides in with `card_slide` (cards.html `addCard`); the cards there as the scene opens are dealt quietly
+      const quiet = !dealt.has(sceneId);
+      dealt.add(sceneId);
+      const arriving = quiet ? [] : fresh.filter((c) => !running(c.el) && !setAside.has(c.key));
+      for (const c of arriving) if (opts.reduced?.() !== true) c.el.classList.add('is-arriving');
+      if (arriving.length > 0) sfx(DOCK_SOUNDS.slide[fnv1a(arriving[0]!.key) % 2], 0.25, -0.6);
       const shown = cards.filter((c) => !setAside.has(c.key)).sort((a, b) => ages.get(a.key)! - ages.get(b.key)!); // oldest first, as cards.html's `cards`
       const aside = cards.length - shown.length;
       const openKey = chosen !== null && shown.some((c) => c.key === chosen) ? chosen : (shown.filter((c) => !running(c.el)).at(-1)?.key ?? null);
@@ -126,6 +160,7 @@ export function createDock(host: HTMLElement, names: readonly string[]): Dock {
             const k = el.getAttribute('data-dock-key');
             if (k) {
               chosen = k;
+              sfx(DOCK_SOUNDS.slide[fnv1a(k) % 2], 0.18, -0.6); // cards.html: opening a strip
               dock.layout(scene);
             }
           });

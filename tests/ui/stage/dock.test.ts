@@ -15,6 +15,7 @@ import { enable } from '../../helpers/bonds';
 import '../../../src/engine/actions/physics';
 import { campaign, errors, loadCore, run, setRelation } from '../../helpers/loyalty';
 import { sceneCard } from '../../../src/ui/scene/cards/sceneCard';
+import { createSamples, type SampleSound } from '../../../src/ui/sound/samples';
 import { drawTaskCards } from '../../../src/ui/practice/taskCard';
 import { blankPractices } from '../../../src/engine/practice/state';
 import { ANN, withService, world } from '../../engine/practice/world';
@@ -350,5 +351,83 @@ describe('collapsed cards are the edges of her hand (P10e-e Task 8, cards.html `
     expect(seen(dock).at(-1)).toBe('k1');
     expect(dock.element.querySelectorAll('[data-open="true"]')).toHaveLength(2);
     expect(clock.querySelector('[data-set-aside]')).toBeNull(); // a clock is not set aside
+  });
+});
+
+describe('cards arrive and sound (P10e-e Task 10, cards.html `addCard`, `render`, `answer`)', () => {
+  function sounding(reduced = false) {
+    const plays: Array<[string, { gain?: number; pan?: number }]> = [];
+    const samples = { play: (file: string, o: { gain?: number; pan?: number } = {}) => { plays.push([file, o]); }, preload: async () => {} } as unknown as SampleSound;
+    const host = h('div');
+    document.body.append(host);
+    const dock = createDock(host, DOCK_SLOTS, { samples: () => samples, reduced: () => reduced });
+    return { dock, plays };
+  }
+
+  it('a new card arrives once: .is-arriving on its first draw only, never on a redraw; the cards of a scene as it opens are dealt quietly', () => {
+    const { dock, plays } = sounding();
+    const slot = dock.slot('task');
+    slot.append(her('c1'));
+    dock.layout('sc1'); // the scene opens with c1: dealt, no arrival
+    expect(slot.querySelector('.is-arriving')).toBeNull();
+    expect(plays).toEqual([]);
+    slot.append(her('c2'));
+    dock.layout('sc1');
+    expect(slot.querySelector('[data-task="c2"]')!.classList.contains('is-arriving')).toBe(true);
+    expect(slot.querySelector('[data-task="c1"]')!.classList.contains('is-arriving')).toBe(false);
+    expect(plays).toHaveLength(1);
+    expect(plays[0]![0]).toMatch(/^assets\/sounds\/ha\/card_slide[12]\.ogg$/);
+    expect(plays[0]![1]).toMatchObject({ gain: 0.25, pan: -0.6 });
+    slot.replaceChildren(her('c1'), her('c2')); // a redraw: new nodes, the same cards
+    dock.layout('sc1');
+    expect(slot.querySelector('.is-arriving')).toBeNull();
+    expect(plays).toHaveLength(1);
+  });
+
+  it('none arrives with reduced motion (the sound stays)', () => {
+    const { dock, plays } = sounding(true);
+    dock.slot('task').append(her('c1'));
+    dock.layout('sc1');
+    dock.slot('task').append(her('c2'));
+    dock.layout('sc1');
+    expect(dock.element.querySelector('.is-arriving')).toBeNull();
+    expect(plays).toHaveLength(1);
+  });
+
+  it('opening a strip plays card_slide at .18; an answer plays card_place at .25', () => {
+    const { dock, plays } = sounding();
+    const slot = dock.slot('task');
+    slot.append(her('c1'), her('c2'));
+    dock.layout('sc1');
+    slot.querySelector<HTMLElement>('[data-task="c2"] .alius-scard-head')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(plays.at(-1)![0]).toMatch(/card_slide[12]\.ogg$/);
+    expect(plays.at(-1)![1]).toMatchObject({ gain: 0.18, pan: -0.6 });
+    const open = slot.querySelector<HTMLElement>('[data-task="c2"]')!;
+    const answer = h('button', { type: 'button', class: 'alius-pill' }, h('span', {}, 'accept'));
+    open.querySelector('.alius-scard-body')!.append(answer);
+    answer.click();
+    expect(plays.at(-1)![0]).toMatch(/card_place[12]\.ogg$/);
+    expect(plays.at(-1)![1]).toMatchObject({ gain: 0.25, pan: -0.6 });
+  });
+
+  it('the sounds go through the sample layer: muted, nothing is made', async () => {
+    const node = () => ({ connect: () => undefined, gain: { value: 1 }, frequency: { value: 0 }, Q: { value: 0 }, type: '' });
+    const sources = vi.fn(() => ({ ...node(), playbackRate: { value: 1 }, start: vi.fn(), stop: vi.fn() }));
+    const audio = vi.fn(() => ({ currentTime: 0, destination: {}, state: 'running', createGain: node, createBiquadFilter: node, createStereoPanner: node, createBufferSource: sources, decodeAudioData: async () => ({ duration: 1 }), close: async () => {} }));
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(1) })));
+    const samples = createSamples({ settings: () => ({ ...DEFAULT_SETTINGS, soundMuted: true }), assetUrl: (p) => p, audio: audio as never });
+    document.dispatchEvent(new Event('pointerdown'));
+    const host = h('div');
+    document.body.append(host);
+    const dock = createDock(host, DOCK_SLOTS, { samples: () => samples, reduced: () => false });
+    dock.slot('task').append(her('c1'));
+    dock.layout('sc1');
+    dock.slot('task').append(her('c2'));
+    dock.layout('sc1');
+    expect(dock.element.querySelector('.is-arriving')).not.toBeNull();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(sources).not.toHaveBeenCalled(); // the dock asked for its sounds; muted, the layer started none
+    samples.dispose();
+    vi.unstubAllGlobals();
   });
 });
