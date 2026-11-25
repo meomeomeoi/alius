@@ -22,6 +22,7 @@ const dialCorner = { x: -560, y: -440, width: 560, height: 440 };
 export const MOMENTS = {
   slap: slapMoments(),
   breath: breathMoments(),
+  weight: weightMoments(),
   cards: {
     state: 'one',
     clip: dialCorner,
@@ -222,6 +223,67 @@ function breathMoments() {
       moment('entry-1280', 'neutral', 900, none, none, 0, [1280, 800]),
       moment('now-neutral-1280', 'neutral', LOOP, () => { cancelWindows(); openWindow(false); }, () => window.__breath.open(false), 400, [1280, 800]),
       moment('low-air-1280', 'neutral', LOOP, () => { cancelWindows(); G.air = 18; }, () => { window.__breath.lines(); window.__breath.G.air = 18; }, 900, [1280, 800]),
+    ],
+  };
+}
+
+/**
+ * weight.html: weight (Task 16). The port is the `weight` fixture (Ann in the commander's quarters: `human_chair`, face down with her legs), or
+ * `weightfoot` (footrest: out of view) and `weightup` (boot_on_chest: face up, her sprite from below), its plan's shifts cleared (`&quiet=1`)
+ * and her style from `&style=`; the prototype is set to the same (`S.contact`, `S.style`). Both pages run on Playwright's fake clock, paused:
+ * each moment begins the instrument at the same paused instant on both (`begin`), the commander bears her (`HOLD.on`) with the balance in the
+ * middle, the clock is run into the loop, and her shift, a crack or low strength are made by the same hooks (the prototype's globals
+ * `planShift`, `crack`, `G`, `HOLD`, `__mouse`; the port's `window.__weight`). The prototype's own scheduler is held off (its next shift far
+ * away, her heavier lean off) and her attention set busy, as the port's plan. The `over` moment gives both the fixture's sprite (drawn as a PNG
+ * at run time, never the author's art) as the art slot `over`. The prototype's room is its stand-in; the port's is the scene.
+ * Moments: face up (her sprite, then `over`), face down (human_chair with her legs, footrest), a telegraph, a crack, low strength; face down
+ * and face up again at 1280x800.
+ */
+function weightMoments() {
+  const LOOP = 1900; // the entry is 1600 ms: the loop has begun
+  const start = (contact, style) => ({
+    proto: async (p) => {
+      await fakeClock(p, () => document.fonts.ready);
+      await p.addStyleTag({ content: '#panel, #debug, #summary, #start { visibility: hidden !important; }' });
+      await p.evaluate(([c, st]) => { Object.assign(window.__S, { contact: c, style: st, sound: false, reduced: false, task: 'game' }); STYLES[st].heavy = 0; }, [contact, style]);
+      await p.evaluate(() => { document.querySelector('#start').style.display = 'none'; begin(); G.nextShiftBeat = 1e9; HOLD.on = true; window.__mouse(0.5); });
+    },
+    port: async (p) => {
+      await fakeClock(p, async () => { while (document.body.dataset.ready !== 'true') await new Promise((r) => setTimeout(r, 50)); });
+      await p.evaluate(() => { const w = window.__weight; w.begin(); w.HOLD.on = true; w.mouse(0.5); });
+    },
+  });
+  /** On both: `drive` runs on each after `before` ms of the clock, then `after` ms more. The prototype's attention is held busy (the port's plan). */
+  const moment = (id, state, contact, style, before, proto, port, after, size) => {
+    const s = start(contact, style);
+    const busy = (p) => p.evaluate(() => { G.att = 'busy'; });
+    return {
+      id, state, query: `&quiet=1&style=${style}`, ...(size ? { size } : {}),
+      proto: async (p) => { await s.proto(p); await p.clock.runFor(before); await busy(p); await p.evaluate(proto); await busy(p); await p.clock.runFor(after); },
+      port: async (p) => { await s.port(p); await p.clock.runFor(before); await p.evaluate(port); await p.clock.runFor(after); },
+    };
+  };
+  const none = () => {};
+  const over = {
+    proto: () => { const o = document.querySelector('#over'); o.src = document.querySelector('#her').src; o.style.display = ''; },
+    port: () => window.__weight.setOver('/.superpowers/shots/weight/sprite.png'),
+  };
+  return {
+    state: 'weight',
+    rasterSprite: true, // the prototype sizes its <img> by layout: the fixture's SVG is drawn as a PNG at run time (scripts/instrument-shots.mjs)
+    hide: ['#panel', '#debug', '#summary', '#start'],
+    settle: 60,
+    moments: [
+      moment('up-sprite', 'weightup', 'boot_on_chest', 'neutral', LOOP, none, none, 600),
+      moment('up-over', 'weightup', 'boot_on_chest', 'neutral', LOOP, over.proto, over.port, 600),
+      moment('down-legs', 'weight', 'human_chair', 'neutral', LOOP, none, none, 600),
+      moment('down-footrest', 'weightfoot', 'footrest', 'neutral', LOOP, none, none, 600),
+      moment('telegraph', 'weight', 'human_chair', 'neutral', LOOP, () => planShift(), () => window.__weight.shift(), 450),
+      moment('crack', 'weight', 'human_chair', 'neutral', LOOP, () => { crack(1); G.jolt = 1; }, () => { window.__weight.crack(1); window.__weight.G.jolt = 1; }, 300),
+      moment('low-strength', 'weight', 'human_chair', 'neutral', LOOP, () => { G.str = 24; }, () => { window.__weight.G.str = 24; }, 900),
+      moment('down-legs-1280', 'weight', 'human_chair', 'neutral', LOOP, none, none, 600, [1280, 800]),
+      moment('up-sprite-1280', 'weightup', 'boot_on_chest', 'neutral', LOOP, none, none, 600, [1280, 800]),
+      moment('low-strength-1280', 'weight', 'human_chair', 'neutral', LOOP, () => { G.str = 24; }, () => { window.__weight.G.str = 24; }, 900, [1280, 800]),
     ],
   };
 }

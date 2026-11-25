@@ -76,3 +76,19 @@ export function ceilingOf(state: Pick<CampaignState, 'squad' | 'slot'>, reg: Reg
     .filter((b) => b.kind === 'surface' && b.surface === 'ceiling' && b.finish === finish && (!Array.isArray(b.slots) || (b.slots as string[]).includes(state.slot)))
     .flatMap((b) => (str(b.file) ? [{ file: String(b.file), slotted: Array.isArray(b.slots) }] : []));
 }
+
+/**
+ * P10e-e Task 16: the floor under a scene (what the commander sees face down: weight.html's `#floor`), best first. The finish is the owner's
+ * room style's `floor` at a `perUnit` location, else the location's `floor`; the files are the `backdrops` of `surface: 'floor'` with that
+ * `finish` whose `slots` (if any) hold the scene's slot, in registry order. Empty = no floor art (the instrument falls back to the room).
+ */
+export function floorOf(state: Pick<CampaignState, 'squad' | 'slot'>, reg: Registries, locationId: string, ownerId: string | null): BackdropCandidate[] {
+  const loc = reg.locations.get(locationId);
+  if (!loc) return [];
+  const own = loc.perUnit === true && ownerId !== null ? str(quartersOf(state, reg, ownerId)?.floor) : undefined;
+  const finish = own ?? str(loc.floor);
+  if (finish === undefined) return [];
+  return [...reg.backdrops.values()]
+    .filter((b) => b.kind === 'surface' && b.surface === 'floor' && b.finish === finish && (!Array.isArray(b.slots) || (b.slots as string[]).includes(state.slot)))
+    .flatMap((b) => (str(b.file) ? [{ file: String(b.file), slotted: Array.isArray(b.slots) }] : []));
+}

@@ -2218,5 +2218,473 @@
     "kind": "breath.again",
     "style": "cold",
     "lines": []
+  },
+  {
+    "id": "weight.entry.human_chair",
+    "kind": "weight.entry.human_chair",
+    "lines": [
+      "hold still. I’m reading."
+    ]
+  },
+  {
+    "id": "weight.entry.footrest",
+    "kind": "weight.entry.footrest",
+    "lines": [
+      "stay. you’re a good height."
+    ]
+  },
+  {
+    "id": "weight.entry.straddled",
+    "kind": "weight.entry.straddled",
+    "lines": [
+      "comfortable?"
+    ]
+  },
+  {
+    "id": "weight.entry.standing_on",
+    "kind": "weight.entry.standing_on",
+    "lines": [
+      "don’t you dare wobble."
+    ]
+  },
+  {
+    "id": "weight.entry.boot_on_chest",
+    "kind": "weight.entry.boot_on_chest",
+    "lines": [
+      "stay down."
+    ]
+  },
+  {
+    "id": "weight.released",
+    "kind": "weight.released",
+    "lines": [
+      "enough. you’re shaking."
+    ]
+  },
+  {
+    "id": "weight.slip",
+    "kind": "weight.slip",
+    "lines": [
+      "careful."
+    ]
+  },
+  {
+    "id": "weight.caught",
+    "kind": "weight.caught",
+    "lines": [
+      "I felt that."
+    ]
+  },
+  {
+    "id": "weight.heavy",
+    "kind": "weight.heavy",
+    "lines": [
+      "mm. heavier."
+    ]
+  },
+  {
+    "id": "weight.good",
+    "kind": "weight.good",
+    "lines": [
+      "good. steady."
+    ]
+  },
+  {
+    "id": "weight.poor",
+    "kind": "weight.poor",
+    "lines": [
+      "wobbly."
+    ]
+  },
+  {
+    "id": "weight.fall",
+    "kind": "weight.fall",
+    "lines": [
+      "…really?"
+    ]
+  },
+  {
+    "id": "weight.stop",
+    "kind": "weight.stop",
+    "lines": [
+      "okay. up you get."
+    ]
+  },
+  {
+    "id": "weight.longer",
+    "kind": "weight.longer",
+    "lines": [
+      "longer now."
+    ]
+  },
+  {
+    "id": "weight.released.affectionate",
+    "kind": "weight.released",
+    "style": "affectionate",
+    "lines": [
+      "okay, okay. I’m off."
+    ]
+  },
+  {
+    "id": "weight.slip.affectionate",
+    "kind": "weight.slip",
+    "style": "affectionate",
+    "lines": [
+      "easy…"
+    ]
+  },
+  {
+    "id": "weight.caught.affectionate",
+    "kind": "weight.caught",
+    "style": "affectionate",
+    "lines": [
+      "you can ask, you know."
+    ]
+  },
+  {
+    "id": "weight.heavy.affectionate",
+    "kind": "weight.heavy",
+    "style": "affectionate",
+    "lines": [
+      "let me lean a little."
+    ]
+  },
+  {
+    "id": "weight.good.affectionate",
+    "kind": "weight.good",
+    "style": "affectionate",
+    "lines": [
+      "you held me so well."
+    ]
+  },
+  {
+    "id": "weight.poor.affectionate",
+    "kind": "weight.poor",
+    "style": "affectionate",
+    "lines": [
+      "you’ll get stronger."
+    ]
+  },
+  {
+    "id": "weight.fall.affectionate",
+    "kind": "weight.fall",
+    "style": "affectionate",
+    "lines": [
+      "hey, hey. I’ve got you."
+    ]
+  },
+  {
+    "id": "weight.stop.affectionate",
+    "kind": "weight.stop",
+    "style": "affectionate",
+    "lines": [
+      "okay. come here."
+    ]
+  },
+  {
+    "id": "weight.longer.affectionate",
+    "kind": "weight.longer",
+    "style": "affectionate",
+    "lines": [
+      "a little longer."
+    ]
+  },
+  {
+    "id": "weight.released.ritual",
+    "kind": "weight.released",
+    "style": "ritual",
+    "lines": [
+      "released."
+    ]
+  },
+  {
+    "id": "weight.slip.ritual",
+    "kind": "weight.slip",
+    "style": "ritual",
+    "lines": [
+      "again."
+    ]
+  },
+  {
+    "id": "weight.caught.ritual",
+    "kind": "weight.caught",
+    "style": "ritual",
+    "lines": [
+      "that is not yours to take."
+    ]
+  },
+  {
+    "id": "weight.heavy.ritual",
+    "kind": "weight.heavy",
+    "style": "ritual",
+    "lines": [
+      "bearing."
+    ]
+  },
+  {
+    "id": "weight.good.ritual",
+    "kind": "weight.good",
+    "style": "ritual",
+    "lines": [
+      "as it should be."
+    ]
+  },
+  {
+    "id": "weight.poor.ritual",
+    "kind": "weight.poor",
+    "style": "ritual",
+    "lines": [
+      "again tomorrow."
+    ]
+  },
+  {
+    "id": "weight.fall.ritual",
+    "kind": "weight.fall",
+    "style": "ritual",
+    "lines": [
+      "down. noted."
+    ]
+  },
+  {
+    "id": "weight.stop.ritual",
+    "kind": "weight.stop",
+    "style": "ritual",
+    "lines": [
+      "stopping."
+    ]
+  },
+  {
+    "id": "weight.longer.ritual",
+    "kind": "weight.longer",
+    "style": "ritual",
+    "lines": [
+      "longer."
+    ]
+  },
+  {
+    "id": "weight.announce.ritual",
+    "kind": "weight.announce",
+    "style": "ritual",
+    "lines": [
+      "shifting.",
+      "left.",
+      "right."
+    ]
+  },
+  {
+    "id": "weight.released.playful",
+    "kind": "weight.released",
+    "style": "playful",
+    "lines": [
+      "fine, you win. this time."
+    ]
+  },
+  {
+    "id": "weight.slip.playful",
+    "kind": "weight.slip",
+    "style": "playful",
+    "lines": [
+      "oops~"
+    ]
+  },
+  {
+    "id": "weight.caught.playful",
+    "kind": "weight.caught",
+    "style": "playful",
+    "lines": [
+      "cheater~"
+    ]
+  },
+  {
+    "id": "weight.heavy.playful",
+    "kind": "weight.heavy",
+    "style": "playful",
+    "lines": [
+      "boop. heavier."
+    ]
+  },
+  {
+    "id": "weight.good.playful",
+    "kind": "weight.good",
+    "style": "playful",
+    "lines": [
+      "boring. you didn’t fall once."
+    ]
+  },
+  {
+    "id": "weight.poor.playful",
+    "kind": "weight.poor",
+    "style": "playful",
+    "lines": [
+      "you fell for every one."
+    ]
+  },
+  {
+    "id": "weight.fall.playful",
+    "kind": "weight.fall",
+    "style": "playful",
+    "lines": [
+      "timber!"
+    ]
+  },
+  {
+    "id": "weight.stop.playful",
+    "kind": "weight.stop",
+    "style": "playful",
+    "lines": [
+      "fine, fine. up."
+    ]
+  },
+  {
+    "id": "weight.longer.playful",
+    "kind": "weight.longer",
+    "style": "playful",
+    "lines": [
+      "ooh, overtime."
+    ]
+  },
+  {
+    "id": "weight.released.clinical",
+    "kind": "weight.released",
+    "style": "clinical",
+    "lines": [
+      "limit reached. noted."
+    ]
+  },
+  {
+    "id": "weight.slip.clinical",
+    "kind": "weight.slip",
+    "style": "clinical",
+    "lines": [
+      "noted."
+    ]
+  },
+  {
+    "id": "weight.caught.clinical",
+    "kind": "weight.caught",
+    "style": "clinical",
+    "lines": [
+      "unauthorised shift. noted."
+    ]
+  },
+  {
+    "id": "weight.heavy.clinical",
+    "kind": "weight.heavy",
+    "style": "clinical",
+    "lines": [
+      "load increased."
+    ]
+  },
+  {
+    "id": "weight.good.clinical",
+    "kind": "weight.good",
+    "style": "clinical",
+    "lines": [
+      "acceptable variance."
+    ]
+  },
+  {
+    "id": "weight.poor.clinical",
+    "kind": "weight.poor",
+    "style": "clinical",
+    "lines": [
+      "reaction time: poor."
+    ]
+  },
+  {
+    "id": "weight.fall.clinical",
+    "kind": "weight.fall",
+    "style": "clinical",
+    "lines": [
+      "failure point reached."
+    ]
+  },
+  {
+    "id": "weight.stop.clinical",
+    "kind": "weight.stop",
+    "style": "clinical",
+    "lines": [
+      "session ended."
+    ]
+  },
+  {
+    "id": "weight.longer.clinical",
+    "kind": "weight.longer",
+    "style": "clinical",
+    "lines": [
+      "extending."
+    ]
+  },
+  {
+    "id": "weight.released.cruel",
+    "kind": "weight.released",
+    "style": "cruel",
+    "lines": [
+      "barely. get up."
+    ]
+  },
+  {
+    "id": "weight.slip.cruel",
+    "kind": "weight.slip",
+    "style": "cruel",
+    "lines": [
+      "pathetic."
+    ]
+  },
+  {
+    "id": "weight.caught.cruel",
+    "kind": "weight.caught",
+    "style": "cruel",
+    "lines": [
+      "did I say you could move?"
+    ]
+  },
+  {
+    "id": "weight.heavy.cruel",
+    "kind": "weight.heavy",
+    "style": "cruel",
+    "lines": [
+      "heavier."
+    ]
+  },
+  {
+    "id": "weight.good.cruel",
+    "kind": "weight.good",
+    "style": "cruel",
+    "lines": [
+      "adequate."
+    ]
+  },
+  {
+    "id": "weight.poor.cruel",
+    "kind": "weight.poor",
+    "style": "cruel",
+    "lines": [
+      "useless."
+    ]
+  },
+  {
+    "id": "weight.fall.cruel",
+    "kind": "weight.fall",
+    "style": "cruel",
+    "lines": [
+      "get up. we’re not done."
+    ]
+  },
+  {
+    "id": "weight.stop.cruel",
+    "kind": "weight.stop",
+    "style": "cruel",
+    "lines": [
+      "fine."
+    ]
+  },
+  {
+    "id": "weight.longer.cruel",
+    "kind": "weight.longer",
+    "style": "cruel",
+    "lines": [
+      "longer. you earned it."
+    ]
   }
 ]

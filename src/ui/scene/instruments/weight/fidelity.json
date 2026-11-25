@@ -1,0 +1,313 @@
+{
+  "prototype": "weight",
+  "note": "Task 16 (chunk e5): weight. The functions of weight.html that its README calls normative: the views (`placeSprite`, `render` with the face-up lean and press, `#screenGlow`, the frame's tilt, sag and tremble, the strain vignette, the level), the floor (`drawFloor` with her screen's light, `legsHang`, `legPoints`, `fillPts`, `LEG_FEET.relaxed`, the kit's `chaikin`), `crack` / `healCracks`, her hand's `say`, the input's `letters` and `typing`, the sound (`audioInit`, `noise`, `thump`, `SFX`), the mechanics (`planShift`, `landShift`, `onBeat`, `slip`, `relief`, `updateLoop`, `frame` with both springs stepped in pieces of at most 8 ms), the phases (`begin`, `exit`), the state (`fresh`, `C`, `ST`, `L`, `size`, `setStyle`, `easeOut`, `pick`, `randInt`, `rand`), its table `STYLES` (the telegraph's lead `tele`, `feint`, `mag`, `announce`) and its `LINES` (checked by `lines`, ruling Q: `cardVoice` `weight.*` by style; her first words `weight.entry.<contact>`; a model-worded `press` cue may take `heavy`'s place). Module wiring beyond the listed functions (weight.ts header): `performance`, `setTimeout`, `requestAnimationFrame`, `innerWidth` / `innerHeight` and `Math.random` are the module's own (the scene's frame clock, the mount's timers and frames, the scene's size, a xorshift seeded by fnv1a of the scene and the run: no rng draw); `$` names the instrument's elements in the effects layer (under the scene's UI: the stop word's pill is never covered; the level's ids prefixed, vial.ts), the scene's reply and input, and the letters laid over the input (`#mirror`); the reply's opacity is written through a claim (styleClaims.ts, recorded as written). The prototype's top-level listeners are the mount's (`env.listen`): Space and Shift never from a field or a control (typing: Shift is a capital), the left button bears her and the right one shifts only on the scene's frame (preventDefault, so the field keeps its focus: the mouse acts while typing), the balance follows the mouse over the document, the context menu is kept off the frame, a key-up of Space or a mouse-up releases whichever pressed, as the prototype's; T is P15a's tap (the card's TAP; weight.html has none, the tap stays the player's). The prototype's scheduler (`onBeat`'s caller `beatTail`, `planShift`'s timing, `attentionDraw`) is the engine's plan: her shifts land on their planned beats (+30 ms, telegraphed by `STYLES[].tele` before), playful's feints are told between two planned shifts (never instead of one), her attention is the plan's beat by beat (`planBeat`), her heavier lean is `run.pressure` (a boundary's press: her `heavy` line). The engine's numbers (`BEAT`, `W_DRAIN`, `RELIEF`) are TUNING.physics scaled to the run's capacity, a shift's cost is the plan's; the strength is set from the engine's gauge as each segment starts; `CAUGHT` and `ATTENTION` are the engine's (`cheatRoll` at the segment's end). `S` is the approved defaults (legs `hang`, foot `relaxed`, shade `shadow`) with the run's style row (`ROW_BY_CUES` for a style the prototype has no row of), the fit of `over` (the art slot's sidecar), her face point and the still form (`env.reduced`, `env.readable`); the contact is read by field (`contactFaceOf`, `herLegsOf`), never by id. The room view is the scene itself (the box is clear until her view fades in: no copy of the backdrop or of her sprite); the floor and the ceiling are P10c's surfaces by finish (`floorOf`, `ceilingOf`; none, or none loads: the scene's backdrop); her sprite in the face-up view is the scene's picture, drawn at its natural size. Ruling B: `startWeight(env, run, { host, core: true })` mounts the core in another instrument (no views; `weightFrame()` for the outer frame). Not ported (README): the rejected legs `x_side`, `x_forward` (`lowerLeg`, `legsSide`, `legsForward`, `limb`, `legsHangB`, `drawLeg`, `M`, `MD`), the feet `first` and `pointed`, the shade `black`, the panel, the start overlay, the summary, the debug readout, the stand-in reply and the `__` hooks (`_weight` is the tests' and the shots' hook). CSS (checked by the shots): the prototype's styles under `.alius-weight`; her lines in her hand at its sizes × her hand's measured scale (R10), wrapping inside the frame (max 40 %, `keepInFrame`); readable mode drops every blur (the glass bed's too).",
+  "functions": [
+    {
+      "fn": "easeOut",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "pick",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "randInt",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "rand",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "C",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "ST",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "L",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "audioInit",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "noise",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "thump",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "SFX",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "fresh",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "say",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "crack",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "healCracks",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "planShift",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "landShift",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "onBeat",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "slip",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "relief",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "begin",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "exit",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "updateLoop",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "frame",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "size",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "setStyle",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "LEG_FEET",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "legPoints",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "fillPts",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "legsHang",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "drawFloor",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "placeSprite",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "render",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "letters",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    },
+    {
+      "fn": "typing",
+      "module": "src/ui/scene/instruments/weight/weight.ts"
+    }
+  ],
+  "tables": [
+    {
+      "ident": "STYLES",
+      "module": "src/ui/scene/instruments/weight/weight.ts",
+      "export": "STYLES"
+    }
+  ],
+  "lines": [
+    {
+      "ident": "LINES",
+      "registry": "cardVoice",
+      "cueKinds": {
+        "entry.human_chair": "weight.entry.human_chair",
+        "entry.footrest": "weight.entry.footrest",
+        "entry.straddled": "weight.entry.straddled",
+        "entry.standing_on": "weight.entry.standing_on",
+        "entry.boot_on_chest": "weight.entry.boot_on_chest",
+        "neutral.released": "weight.released",
+        "neutral.slip": "weight.slip",
+        "neutral.caught": "weight.caught",
+        "neutral.heavy": "weight.heavy",
+        "neutral.good": "weight.good",
+        "neutral.poor": "weight.poor",
+        "neutral.fall": "weight.fall",
+        "neutral.stop": "weight.stop",
+        "neutral.longer": "weight.longer",
+        "affectionate.released": "weight.released@affectionate",
+        "affectionate.slip": "weight.slip@affectionate",
+        "affectionate.caught": "weight.caught@affectionate",
+        "affectionate.heavy": "weight.heavy@affectionate",
+        "affectionate.good": "weight.good@affectionate",
+        "affectionate.poor": "weight.poor@affectionate",
+        "affectionate.fall": "weight.fall@affectionate",
+        "affectionate.stop": "weight.stop@affectionate",
+        "affectionate.longer": "weight.longer@affectionate",
+        "ritual.released": "weight.released@ritual",
+        "ritual.slip": "weight.slip@ritual",
+        "ritual.caught": "weight.caught@ritual",
+        "ritual.heavy": "weight.heavy@ritual",
+        "ritual.good": "weight.good@ritual",
+        "ritual.poor": "weight.poor@ritual",
+        "ritual.fall": "weight.fall@ritual",
+        "ritual.stop": "weight.stop@ritual",
+        "ritual.longer": "weight.longer@ritual",
+        "playful.released": "weight.released@playful",
+        "playful.slip": "weight.slip@playful",
+        "playful.caught": "weight.caught@playful",
+        "playful.heavy": "weight.heavy@playful",
+        "playful.good": "weight.good@playful",
+        "playful.poor": "weight.poor@playful",
+        "playful.fall": "weight.fall@playful",
+        "playful.stop": "weight.stop@playful",
+        "playful.longer": "weight.longer@playful",
+        "clinical.released": "weight.released@clinical",
+        "clinical.slip": "weight.slip@clinical",
+        "clinical.caught": "weight.caught@clinical",
+        "clinical.heavy": "weight.heavy@clinical",
+        "clinical.good": "weight.good@clinical",
+        "clinical.poor": "weight.poor@clinical",
+        "clinical.fall": "weight.fall@clinical",
+        "clinical.stop": "weight.stop@clinical",
+        "clinical.longer": "weight.longer@clinical",
+        "cruel.released": "weight.released@cruel",
+        "cruel.slip": "weight.slip@cruel",
+        "cruel.caught": "weight.caught@cruel",
+        "cruel.heavy": "weight.heavy@cruel",
+        "cruel.good": "weight.good@cruel",
+        "cruel.poor": "weight.poor@cruel",
+        "cruel.fall": "weight.fall@cruel",
+        "cruel.stop": "weight.stop@cruel",
+        "cruel.longer": "weight.longer@cruel",
+        "ritual.announce": "weight.announce@ritual"
+      }
+    }
+  ],
+  "differences": [
+    {
+      "fn": "C",
+      "reason": "Prototype only (README: the contacts' `weight` / `shift` multipliers are the prototype's; the game reads its contact and `run.pressure`): the face is the contact's (`contactFaceOf`, by field), the multipliers are 1.",
+      "diff": "@@ -1 +1,3 @@\n-const C=()=>CONTACTS[S.contact]\n+const C=()=>({\n+face:R.face,weight:1,shift:1\n+})"
+    },
+    {
+      "fn": "L",
+      "reason": "Ruling Q: her lines are `cardVoice` `weight.*` by her style (`refreshLines`, R.lines); the table is checked by `lines`.",
+      "diff": "@@ -1 +1 @@\n-const L=()=>LINES[S.style]\n+const L=()=>R.lines"
+    },
+    {
+      "fn": "audioInit",
+      "reason": "Wiring (ruling D): the context is the sample layer's (`samples.ctx()`, the mount's recorded view) and the prototype's master goes into the layer's body bus instead of the destination (the player's level is the layer's). No context yet (before the player's first gesture, or no sound): nothing is built, and the frame asks again.",
+      "diff": "@@ -2,3 +2,5 @@\n if(A.ctx)return\n-const ctx=new(window.AudioContext||window.webkitAudioContext)()\n+const ctx=E?.env.samples?.ctx()??null\n+const out=E?.env.samples?.bus(\"body\")??null\n+if(!ctx||!out)return\n A.ctx=ctx\n@@ -6,3 +8,3 @@\n A.master.gain.value=S.sound?S.vol:0\n-A.master.connect(ctx.destination)\n+A.master.connect(out)\n A.world=ctx.createBiquadFilter()"
+    },
+    {
+      "fn": "crack",
+      "reason": "The still form (reduced motion: no write-on): the crack is drawn at once; a page with no Web Animations does the same.",
+      "diff": "@@ -35,3 +35,4 @@\n path.style.strokeDashoffset=String(len)\n-path.animate([{\n+if(S.reduced||typeof path.animate!==\"function\")path.style.strokeDashoffset=\"0\"\n+else path.animate([{\n strokeDashoffset:len"
+    },
+    {
+      "fn": "planShift",
+      "reason": "Prototype only (README: her shift schedule is the engine's plan): the scheduler calls it at the planned shift's beat minus the telegraph, so the telegraph's lead (`rand(st.tele)`, drawn by the scheduler on the same xorshift) and whether it is a feint come in `opts`, with the plan's cost; ritual's side words are her `announce` row's (the word, her left, her right: no line inline in code); out of view (face down, no legs: footrest's form, read by field) the rustle and the creak are heard to her side.",
+      "diff": "@@ -1,14 +1,14 @@\n-function planShift(){\n+function planShift(opts){\n const st=ST(),c=C()\n-const isFeint=Math.random()<st.feint\n+const isFeint=opts.feint\n const dir=Math.random()<0.5?-1:1\n const target=isFeint?G.copTarget:clamp(G.copTarget*0.25+dir*rand(st.mag[0],st.mag[1])*c.shift,-1,1)\n-const tele=rand(st.tele[0],st.tele[1])\n+const tele=opts.tele\n G.shift={\n-landAt:G.clock+Math.max(tele,0)+30,teleAt:G.clock,tele,target,feint:isFeint,dir:Math.sign(target-G.cop)||dir,landed:false\n+landAt:G.clock+Math.max(tele,0)+30,teleAt:G.clock,tele,target,feint:isFeint,dir:Math.sign(target-G.cop)||dir,landed:false,cost:opts.cost\n }\n-if(st.announce)say(pick(L().announce.slice(0,1).concat(target<G.cop?[\"left.\"]:[\"right.\"])))\n+if(st.announce)say(pick(L().announce.slice(0,1).concat(target<G.cop?L().announce.slice(1,2):L().announce.slice(2,3))))\n if(tele>0){\n G.leanTarget=isFeint?dir*0.8:Math.sign(target-G.cop)*0.9\n-const side=Math.sign(G.leanTarget)*0.85,foot=S.contact===\"footrest\"\n+const side=Math.sign(G.leanTarget)*0.85,foot=R.face===\"down\"&&!R.legs\n SFX.rustle(foot?0.1:0.06,side)"
+    },
+    {
+      "fn": "landShift",
+      "reason": "The cost of a shift is the engine's (the plan's `shift`, scaled to the run's capacity), not the prototype's `rand(SHIFT_COST) × weight × pressure`.",
+      "diff": "@@ -15,3 +15,3 @@\n if(uneven){\n-const cost=rand(SHIFT_COST[0],SHIFT_COST[1])*c.weight*G.pressure\n+const cost=sh.cost\n G.str-=cost"
+    },
+    {
+      "fn": "onBeat",
+      "reason": "Wiring (R16, R17): as a beat ends it is reported: `hold` when it was held and level (`evenNow`), `uneven` with the mean extra drain factor of the beat (`reportBeat`).",
+      "diff": "@@ -9,2 +9,3 @@\n }\n+reportBeat(G.beat-1,evenNow)\n G.slipThisBeat=false"
+    },
+    {
+      "fn": "slip",
+      "reason": "Prototype only: the end time (`G.end`) is the engine's; her `longer` line follows the engine's extension (`run.extend` grows once per segment with a slip), so it is said on the first slip of a segment.",
+      "diff": "@@ -10,4 +10,4 @@\n if(G.slips===1||Math.random()<0.5)say(pick(L().slip))\n-G.end+=6000\n-if(G.slips%2===1)setTimeout(()=>say(pick(L().longer)),900)\n+R.segSlips+=1\n+if(R.segSlips===1)setTimeout(()=>say(pick(L().longer)),900)\n }"
+    },
+    {
+      "fn": "relief",
+      "reason": "The catch is the engine's (`cheatRoll` at the segment's end, by her attention and her reading skill): the shift is reported at once (`shift_weight`) and gives the relief, and her `caught` line, press and heavier lean follow `run.tally.cheatsCaught` (`caughtBy`), so her words never contradict the engine's answer. Only while a segment runs (between two segments nothing is resolved).",
+      "diff": "@@ -1,3 +1,3 @@\n function relief(){\n-if(G.phase!==\"loop\"||G.reliefCd>0)return\n+if(G.phase!==\"loop\"||G.reliefCd>0||!R.running)return\n G.reliefCd=2600\n@@ -6,15 +6,6 @@\n SFX.rustle(0.05)\n-if(Math.random()<CAUGHT[G.att]){\n-G.caughtN+=1\n-say(pick(L().caught))\n-G.str-=10\n-G.pressure=1.5\n-G.pressureUntil=G.clock+3*BEAT\n-SFX.press(0.55)\n-G.jolt=1\n-crack(0.6)\n-}\n-else{\n+report({\n+beat:segBeat(),kind:\"shift_weight\"\n+})\n G.str=Math.min(100,G.str+RELIEF)\n }\n-}"
+    },
+    {
+      "fn": "begin",
+      "reason": "Wiring: no audio context yet is not an error (`A.ctx &&`). Her first words are her `weight.entry.<contact>` row (`L().entry`). Prototype only: the summary card and the stand-in reply (the scene's reply is the model's).",
+      "diff": "@@ -2,3 +2,3 @@\n audioInit()\n-if(A.ctx.state===\"suspended\")A.ctx.resume()\n+if(A.ctx&&A.ctx.state===\"suspended\")A.ctx.resume()\n $(\"#hand\").replaceChildren()\n@@ -9,5 +9,3 @@\n G.end=S.len*1000\n-$(\"#summary\").style.display=\"none\"\n-setReply(`<span class=\"act\">${S.contact===\"human_chair\"?\"She lowers herself onto your back without a word and opens her screen.\":C().face===\"down\"?\"She settles her feet on your back and leans back in her chair.\":\"She steps over you and lets her weight come down, a little at a time.\"}</span>`,0.4)\n-setTimeout(()=>G.phase===\"entry\"&&say(pick(LINES.entry[S.contact])),700)\n+setTimeout(()=>G.phase===\"entry\"&&say(pick(L().entry)),700)\n }"
+    },
+    {
+      "fn": "exit",
+      "reason": "Prototype only: the summary card (the host unmounts after `finish`'s 2.6 s).",
+      "diff": "@@ -19,3 +19,2 @@\n },900)\n-setTimeout(showSummary,2300)\n }"
+    },
+    {
+      "fn": "updateLoop",
+      "reason": "Wiring: the beats are the running segment's (on the loop's clock from `clock0`), each beat's attention is the plan's (`planBeat` for the prototype's `beatTail`), her pressure at rest is the engine's (`run.pressure`), the uneven factor is accumulated for the beat's report (R16). Prototype only: the ends (a buckle, her release at 15 %, the length) are the engine's outcome (`finish`); the strength stops at 0.",
+      "diff": "@@ -2,9 +2,9 @@\n G.clock+=dt\n-const beatNow=Math.floor(G.clock/BEAT)\n+const beatNow=Math.floor((G.clock-R.seg.clock0)/BEAT)\n while(G.beat<beatNow){\n onBeat()\n-beatTail()\n+planBeat()\n }\n if(!HOLD.on&&!G.slipThisBeat&&G.clock>BEAT)slip()\n-if(G.pressureUntil<G.clock)G.pressure=1\n+if(G.pressureUntil<G.clock)G.pressure=R.pressure\n const c=C()\n@@ -13,2 +13,4 @@\n G.str-=(W_DRAIN/BEAT)*dt*S.drain*c.weight*G.pressure*unevenMult\n+R.uneven.sum+=(unevenMult-1)*dt\n+R.uneven.ms+=dt\n if(G.shift&&!G.shift.landed&&G.clock>=G.shift.landAt)landShift()\n@@ -35,10 +37,3 @@\n G.str=0\n-exit(\"fall\")\n-return\n }\n-if(G.str<=(S.style===\"cruel\"?5:15)&&!S.toFall){\n-exit(\"released\")\n-return\n }\n-if(G.clock>=G.end)exit(\"done\")\n-}"
+    },
+    {
+      "fn": "frame",
+      "reason": "Wiring: the loop runs only while a segment runs (between two segments the hold is held and nothing drains), as breath's.",
+      "diff": "@@ -12,3 +12,3 @@\n break\n-case\"loop\":updateLoop(dt)\n+case\"loop\":if(R.running)updateLoop(dt)\n break"
+    },
+    {
+      "fn": "setStyle",
+      "reason": "Readable mode (P10): no blur. (The normaliser prints the regex's line as it is.)",
+      "diff": "@@ -1,6 +1,3 @@\n const setStyle=(sel,prop,v)=>{\n-const key=sel+prop\n-if(cache.get(key)===v)return\n-cache.set(key,v)\n-$(sel).style[prop]=v\n-}\n+if(S.readable&&prop===\"filter\")v=v.replace(/blur\\([^)]*\\)/g, 'blur(0px)'); const key = sel + prop; if (cache.get(key) === v)\n+    return; cache.set(key, v); $(sel).style[prop] = v; };"
+    },
+    {
+      "fn": "LEG_FEET",
+      "reason": "README: the feet `pointed` and `first` were rejected; only the author's `relaxed` is ported.",
+      "diff": "@@ -1,3 +1,3 @@\n const LEG_FEET={\n-relaxed:[[-0.05,-0.08],[0.105,-0.08],[0.122,0.1],[0.12,0.28],[0.104,0.45],[0.091,0.58],[0.085,0.66],[0.087,0.71],[0.096,0.77],[0.107,0.84],[0.112,0.9],[0.106,0.95],[0.088,0.99],[0.06,1],[0.035,0.97],[0.016,0.9],[-0.05,0.84]],pointed:[[-0.05,-0.08],[0.105,-0.08],[0.122,0.1],[0.12,0.28],[0.104,0.45],[0.091,0.58],[0.084,0.66],[0.086,0.72],[0.092,0.8],[0.096,0.88],[0.094,0.95],[0.082,1],[0.064,1.02],[0.045,1],[0.03,0.93],[-0.05,0.84]],first:[[-0.05,-0.08],[0.105,-0.08],[0.122,0.12],[0.118,0.3],[0.097,0.5],[0.08,0.66],[0.086,0.74],[0.112,0.82],[0.118,0.9],[0.09,0.95],[0.03,0.93],[-0.05,0.9]]\n+relaxed:[[-0.05,-0.08],[0.105,-0.08],[0.122,0.1],[0.12,0.28],[0.104,0.45],[0.091,0.58],[0.085,0.66],[0.087,0.71],[0.096,0.77],[0.107,0.84],[0.112,0.9],[0.106,0.95],[0.088,0.99],[0.06,1],[0.035,0.97],[0.016,0.9],[-0.05,0.84]]\n }"
+    },
+    {
+      "fn": "drawFloor",
+      "reason": "Read by field, never by contact id: her legs are drawn where the contact says they hang (`herLegsOf`: human_chair), otherwise she is out of view and her screen's pool sits at footrest's height; the rejected legs `x_side` and `x_forward` are not ported.",
+      "diff": "@@ -12,3 +12,3 @@\n const flick=0.85+0.15*Math.sin(now/130)*Math.sin(now/47)\n-const px=W*(0.5+G.cop*0.1+G.lean*0.16),py=H*(S.contact===\"footrest\"?0.24:0.3)\n+const px=W*(0.5+G.cop*0.1+G.lean*0.16),py=H*(!R.legs?0.24:0.3)\n sctx.filter=`blur(${Math.round(H*0.07)}px)`\n@@ -22,3 +22,3 @@\n shC.dataset.screen=att.toFixed(2)\n-if(S.contact!==\"human_chair\")return\n+if(!R.legs)return\n const t=now/1000\n@@ -30,5 +30,3 @@\n const jolt=G.jolt*0.4\n-if(S.legs===\"x_side\")legsSide(lctx,W,H,toward,swing,jolt)\n-else if(S.legs===\"x_forward\")legsForward(lctx,W,H,toward,swing,jolt,reading)\n-else legsHang(lctx,W,H,toward,swing,jolt,reading,t)\n+legsHang(lctx,W,H,toward,swing,jolt,reading,t)\n cctx.globalCompositeOperation=\"source-over\""
+    },
+    {
+      "fn": "render",
+      "reason": "The room view is the scene itself (no copy of her idle sprite); the stop word's pill is the scene's (always shown); the debug readout is prototype only.",
+      "diff": "@@ -39,5 +39,2 @@\n setStyle(\"#screenGlow\",\"background\",`radial-gradient(ellipse 30% 26% at ${50+G.cop*3}% 34%, rgba(110,160,255,${(0.32*scr).toFixed(2)}) 0%, rgba(0,0,0,0) 100%)`)\n-placeSprite($(\"#herIdle\"),0,S.face,{\n-h:0.96,x:0.5,bottom:1.05\n-})\n const sv=live?strF:0\n@@ -61,5 +58,3 @@\n letters.tick(live?strF:0)\n-setStyle(\"#stopPill\",\"opacity\",live?\"1\":\"0\")\n setStyle(\"#reply\",\"opacity\",live?\"0.4\":\"1\")\n-if(S.debug)$(\"#debug\").textContent=`str ${G.str.toFixed(0)}  cop ${G.cop.toFixed(2)}  ctl ${G.ctl.toFixed(2)}  err ${err.toFixed(2)}  att ${G.att}  pressure ${G.pressure.toFixed(2)}\\nshifts ${G.shifts} clean ${G.cleanShifts} hard ${G.hardShifts} slips ${G.slips} reliefs ${G.reliefs} caught ${G.caughtN}  t ${(G.clock/1000).toFixed(1)}/${(G.end/1000).toFixed(0)}${G.shift?`  [shift in ${(G.shift.landAt-G.clock).toFixed(0)}ms${G.shift.feint?\" FEINT\":\"\"}]`:\"\"}`\n }"
+    },
+    {
+      "fn": "letters",
+      "reason": "A same-length edit (a letter typed over a selection) is redrawn too (the prototype compared lengths only and showed the old letters); the still form (reduced motion): the letters do not tremble.",
+      "diff": "@@ -6,3 +6,3 @@\n const v=$(\"#cmd\").value,m=$(\"#mirror\")\n-if(m.childElementCount!==v.length)m.replaceChildren(...[...v].map(ch=>{\n+if(m.textContent!==v)m.replaceChildren(...[...v].map(ch=>{\n const s=document.createElement(\"span\")\n@@ -11,3 +11,3 @@\n }))\n-const a=f*f*4+(G.jolt>0.5?5:0)\n+const a=S.reduced?0:f*f*4+(G.jolt>0.5?5:0)\n [...m.children].forEach(s=>{"
+    }
+  ]
+}

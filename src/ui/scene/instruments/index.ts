@@ -4,4 +4,5 @@
  */
 export { instrumentFor, registerInstrument, syncInstruments, unmountInstruments } from './host';
 import './breath/breath';
+import './weight/weight';
 export type { HerLook, InstrumentDef, InstrumentEnv, InstrumentRun } from './types';

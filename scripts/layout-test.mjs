@@ -13,7 +13,7 @@ const server = await serveRoot();
 const port = server.port;
 
 const SIZES = [[1920, 1080], [1280, 800], [2560, 1440]];
-const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breathhold'];
+const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breathhold', 'weighthold'];
 const failures = [];
 const faceOf = new Map(); // the dial's circle for `standing` (fixture `one`), per size
 const fail = (size, fixture, what) => failures.push(`${size[0]}x${size[1]} ${fixture}: ${what}`);
@@ -159,6 +159,47 @@ for (const size of SIZES) {
         if (document.querySelector('.alius-breath-mirror') || document.querySelector('.alius-input[data-breath-letters]')) out.push('the input still carries the letters');
         const l = document.querySelector('.alius-input-line')?.getAttribute('style') ?? '';
         if (/width|border-color/.test(l)) out.push(`the input line was not put back: ${JSON.stringify(l)}`);
+        const reply = document.querySelector('[role="log"]')?.getAttribute('style') ?? '';
+        if (/opacity/.test(reply)) out.push(`the reply was not put back: ${JSON.stringify(reply)}`);
+        return out;
+      });
+      for (const f of after) fail(size, fixture, f);
+    }
+    // P10e-e Task 16: the weight instrument draws under the scene's UI; mid-weight (Space held, the level shown) the stop word's pill and the
+    // input stay on top and clickable, her lines and the level stay in the frame, and the pill ends the hold at once: the instrument is gone,
+    // the input and the reply are as they were
+    if (fixture === 'weighthold') {
+      await p.waitForTimeout(2000); // the entry (1.6 s): her view is in
+      await p.mouse.move(size[0] * 0.5, size[1] * 0.3);
+      await p.keyboard.down(' ');
+      await p.waitForTimeout(1200);
+      const mid = await p.evaluate(() => {
+        const out = [];
+        if (!document.querySelector('.alius-layer-effects > .alius-weight')) out.push('no weight drawn');
+        if (document.querySelector('.alius-layer-moment .alius-weight, .alius-layer-ui .alius-weight')) out.push('the weight is drawn over the UI');
+        const top = (el) => { if (!el) return 'missing'; const b = el.getBoundingClientRect(); const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return hit === el || el.contains(hit) ? 'ok' : `covered by ${hit?.className ?? hit?.tagName}`; };
+        const input = top(document.querySelector('.alius-input'));
+        if (input !== 'ok') out.push(`the input mid-weight: ${input}`);
+        const pill = top(document.querySelector('[data-stop-word]'));
+        if (pill !== 'ok') out.push(`the stop word mid-weight: ${pill}`);
+        for (const l of document.querySelectorAll('.alius-weight-hand .her-line')) {
+          const r = l.getBoundingClientRect();
+          if (r.left < 0 || r.right > innerWidth || r.top < 0 || r.bottom > innerHeight) out.push(`her line "${l.textContent}" leaves the frame: ${JSON.stringify(r)}`);
+        }
+        const v = document.querySelector('.alius-weight-vial')?.getBoundingClientRect();
+        if (!v || v.left < 0 || v.right > innerWidth || v.top < 0 || v.bottom > innerHeight) out.push(`the level leaves the frame: ${JSON.stringify(v)}`);
+        const line = document.querySelector('.alius-input-line')?.getBoundingClientRect();
+        if (v && line && v.bottom > line.top) out.push(`the level covers the input line: ${JSON.stringify(v)} / ${JSON.stringify(line)}`);
+        return out;
+      });
+      for (const f of mid) fail(size, fixture, f);
+      await p.click('[data-stop-word]');
+      await p.waitForTimeout(200);
+      await p.keyboard.up(' ');
+      const after = await p.evaluate(() => {
+        const out = [];
+        if (document.querySelector('.alius-weight')) out.push('the stop word did not end the hold: the weight is still drawn');
+        if (document.querySelector('.alius-weight-mirror') || document.querySelector('.alius-input[data-weight-letters]')) out.push('the input still carries the letters');
         const reply = document.querySelector('[role="log"]')?.getAttribute('style') ?? '';
         if (/opacity/.test(reply)) out.push(`the reply was not put back: ${JSON.stringify(reply)}`);
         return out;

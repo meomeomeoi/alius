@@ -1,0 +1,146 @@
+/*
+ * P10e-e Task 16: weight (docs/prototypes/weight.html, normative). The instrument's own layer sits in the effects layer, under the scene's UI:
+ * the stop word's pill and every control stay above it. Here are the prototype's `#world` (`#roomView`, `#floorView` with `#floor` and the
+ * shadow canvas, `#upView` with `#ceiling`, `#cam` > `#her` / `#over` and `#screenGlow`), `#strainV`, `#cracks`, `#hand` with her lines and
+ * `#vial` (the level), in its order, and the letters laid over the input (`#mirror`). The room view is the scene itself: the layer is clear
+ * until her view fades in. Nothing here takes the pointer (the frame under it does). Her lines are in her hand at the prototype's sizes × her
+ * hand's measured scale; readable mode writes them in the type font with no write-on and no blur; reduced motion has no write-on. In the core
+ * (ruling B: `data-core`, inside another instrument) only the level, her lines, the cracks and the strain are drawn. Every z-index stays below 10.
+ */
+#alius-shell .alius-weight {
+  position: absolute;
+  inset: 0;
+  z-index: 1; /* over the effects layer's own gradient */
+  overflow: hidden;
+  pointer-events: none;
+  --alius-weight-hand-scale: 1;
+}
+
+#alius-shell .alius-weight > *,
+#alius-shell .alius-weight-world > *,
+#alius-shell .alius-weight-view > * {
+  position: absolute;
+  pointer-events: none;
+}
+
+#alius-shell .alius-weight-world { inset: -7%; will-change: transform, filter; }
+#alius-shell .alius-weight-view { inset: 0; opacity: 0; }
+#alius-shell .alius-weight-roomView { opacity: 1; }
+#alius-shell .alius-weight-floor,
+#alius-shell .alius-weight-ceiling { inset: 0; background-size: cover; background-position: center; will-change: transform, filter; }
+#alius-shell .alius-weight-floorView { perspective: 1400px; overflow: hidden; background: #0d0b0a; }
+#alius-shell .alius-weight-floor { inset: -20%; transform-origin: 50% 40%; }
+#alius-shell .alius-weight-upView { background: #0a090c; }
+#alius-shell .alius-weight-shadow { inset: 0; width: 100%; height: 100%; }
+#alius-shell .alius-weight-cam { inset: 0; perspective: 1100px; overflow: hidden; }
+
+#alius-shell .alius-weight-her,
+#alius-shell .alius-weight-over {
+  left: 0;
+  top: 0;
+  max-width: none;
+  transform-origin: 0 0;
+  will-change: transform;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+#alius-shell .alius-weight-screenGlow { inset: 0; mix-blend-mode: screen; }
+#alius-shell .alius-weight-strainV { inset: 0; }
+#alius-shell .alius-weight-cracks { inset: 0; width: 100%; height: 100%; }
+#alius-shell .alius-weight-cracks path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+/* her hand */
+#alius-shell .alius-weight-hand { inset: 0; }
+
+#alius-shell .alius-weight-hand .her-line {
+  position: absolute;
+  font-family: var(--alius-font-hand, "Caveat"), cursive;
+  color: var(--alius-her, #8cc8f0);
+  white-space: normal; /* the prototype's lines are short; a longer one (her own words from the model) wraps inside the frame (ruling Q) */
+  max-width: 40%;
+  width: max-content;
+  line-height: 1;
+  font-size: calc(42px * var(--alius-weight-hand-scale));
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9), 0 0 14px rgba(0, 0, 0, 0.85), 0 0 28px rgba(0, 0, 0, 0.6);
+  animation: alius-weight-write var(--write, 600ms) steps(var(--steps, 12), end) both;
+  transition: opacity 0.5s;
+}
+
+#alius-shell .alius-weight-hand .her-line.big { font-size: calc(58px * var(--alius-weight-hand-scale)); }
+#alius-shell .alius-weight-hand .her-line.gone { opacity: 0; }
+
+@keyframes alius-weight-write {
+  from { clip-path: inset(-30% 100% -30% -8%); }
+  to { clip-path: inset(-30% -8% -30% -8%); }
+}
+
+#alius-shell .alius-weight[data-reduced] .her-line { animation: none; }
+
+#alius-shell .alius-weight[data-readable] .her-line {
+  animation: none;
+  font-family: var(--alius-font-type);
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9);
+}
+
+#alius-shell .alius-weight[data-readable] .alius-weight-cracks path { filter: none !important; }
+
+/* the level: a spirit level of glass and brass, the one instrument of this game */
+#alius-shell .alius-weight-vial {
+  left: 50%;
+  bottom: 186px;
+  width: 460px;
+  height: 70px;
+  margin-left: -230px;
+  scale: 1.3;
+  opacity: 0;
+  transition: opacity 0.8s;
+}
+
+#alius-shell .alius-weight-vial .glassbed {
+  position: absolute;
+  left: 40px;
+  right: 40px;
+  top: 16px;
+  height: 38px;
+  border-radius: 19px;
+  backdrop-filter: blur(5px) brightness(1.15);
+  -webkit-backdrop-filter: blur(5px) brightness(1.15);
+}
+
+#alius-shell .alius-weight-vial svg {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 2px rgba(0, 0, 0, 0.6));
+}
+
+#alius-shell .alius-weight[data-readable] .alius-weight-vial .glassbed { backdrop-filter: brightness(1.15); -webkit-backdrop-filter: brightness(1.15); }
+
+/* the core (ruling B): no view of its own */
+#alius-shell .alius-weight[data-core] .alius-weight-world { display: none; }
+
+/* the input under load: its letters are drawn over it and tremble (the field's own text goes transparent) */
+#alius-shell .alius-input[data-weight-letters] {
+  color: transparent;
+  caret-color: var(--alius-fg, #ece8f2);
+}
+
+#alius-shell .alius-input-line > .alius-weight-mirror {
+  position: absolute;
+  pointer-events: none;
+  overflow: hidden;
+  white-space: pre;
+  font-family: var(--alius-font-sans);
+  font-size: 15px;
+  line-height: normal;
+  display: flex;
+  align-items: center;
+  padding: 1px 2px;
+  color: rgba(236, 232, 242, 0.95);
+}
+
+#alius-shell .alius-input-line > .alius-weight-mirror > span {
+  display: inline-block;
+  white-space: pre;
+}

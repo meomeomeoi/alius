@@ -25,7 +25,7 @@ function parseVoiceMd(md: string): Item[] {
     if (raw.startsWith('## ')) { sec = 0; cur = null; continue; }
     const h3 = /^### (.+)$/.exec(raw);
     if (h3) { heading = h3[1]!.trim(); cur = null; continue; }
-    if (!heading || ![1, 2, 3, 5, 6, 7].includes(sec)) continue;
+    if (!heading || ![1, 2, 3, 5, 6, 7, 8].includes(sec)) continue;
     const bullet = /^- (.*)$/.exec(raw);
     if (bullet) {
       const body = bullet[1]!;
@@ -91,6 +91,8 @@ const NEUTRAL_MAP: Record<string, Record<string, (l: string[]) => Out>> = {
 };
 /** §7 (P10e-e Task 14, ruling Q): breath's lines by her style (breath.html `LINES`; neutral is the rows with no style; cold's are empty). */
 const BREATH_KINDS = ['greedy', 'entry', 'now', 'hold', 'early', 'tap', 'low', 'good', 'poor', 'released', 'stop', 'wake', 'fake', 'again'];
+/** §8 (P10e-e Task 16, ruling Q): weight's lines by her style (weight.html `LINES`); her first words by the contact (`weight.entry.<contact>`). */
+const WEIGHT_KINDS = ['released', 'slip', 'caught', 'heavy', 'good', 'poor', 'fall', 'stop', 'longer', 'announce'];
 /** §6 (P10e-e Task 11): the slap's lines by her style. */
 const SLAP_LABEL: Record<string, string> = { before: 'slap.before', feint: 'slap.feint', again: 'slap.again', none: 'slap.after.none', braced: 'slap.after.braced', flinched: 'slap.after.flinched' };
 const STYLE_LABEL: Record<string, string> = { when: 'when', cost: 'cost', who: 'who', 'only her': 'onlyMe', weight: 'weight', right: 'call.right', wrong: 'call.wrong', slow: 'call.slow' };
@@ -104,6 +106,12 @@ function expected(md: string): Map<string, string[]> {
     out.set(key, lines);
   };
   for (const it of parseVoiceMd(md)) {
+    if (it.sec === 8) {
+      if (it.heading === 'entry') { put(`weight.entry.${it.label}`, undefined, it.lines); continue; }
+      if (!WEIGHT_KINDS.includes(it.label)) throw new Error(`unmapped weight item: ${it.heading} › ${it.label}`);
+      put(`weight.${it.label}`, it.heading === 'neutral' ? undefined : it.heading, it.lines);
+      continue;
+    }
     if (it.sec === 7) {
       if (!BREATH_KINDS.includes(it.label)) throw new Error(`unmapped breath item: ${it.heading} › ${it.label}`);
       put(`breath.${it.label}`, it.heading === 'neutral' ? undefined : it.heading, it.lines);
@@ -181,6 +189,23 @@ describe('cardVoice registry (P10e-e R7)', () => {
     for (const k of BREATH_KINDS) expect(rows.some((e) => e.kind === `breath.${k}`), k).toBe(true);
     expect(rows.filter((e) => e.style === 'cold').every((e) => (e.lines as string[]).length === 0)).toBe(true);
     expect(rows.filter((e) => e.style === 'cold')).toHaveLength(BREATH_KINDS.length);
+    for (const e of rows) for (const l of e.lines as string[]) expect(l, String(e.id)).not.toMatch(/\b(he|him|his|himself|he's|she's the commander)\b/i);
+  });
+
+  it('weight\'s lines (ruling Q): every kind of weight.html for its six styles, her first words by a real weight contact, no pronoun for the commander', () => {
+    const rows = [...reg.cardVoice.values()].filter((e) => String(e.kind).startsWith('weight.'));
+    for (const k of WEIGHT_KINDS) expect(rows.some((e) => e.kind === `weight.${k}`), k).toBe(true);
+    for (const style of ['affectionate', 'ritual', 'playful', 'clinical', 'cruel']) for (const k of WEIGHT_KINDS.filter((x) => x !== 'announce')) expect(rows.some((e) => e.kind === `weight.${k}` && e.style === style), `${k}@${style}`).toBe(true);
+    expect(rows.find((e) => e.kind === 'weight.announce')).toMatchObject({ style: 'ritual', lines: ['shifting.', 'left.', 'right.'] }); // read by place: the word, her left, her right
+    const entries = rows.filter((e) => String(e.kind).startsWith('weight.entry.'));
+    expect(entries.map((e) => String(e.kind).slice('weight.entry.'.length)).sort()).toEqual(['boot_on_chest', 'footrest', 'human_chair', 'standing_on', 'straddled']);
+    for (const e of entries) {
+      const contact = reg.blockingContacts.get(String(e.kind).slice('weight.entry.'.length));
+      expect(contact?.face, String(e.kind)).toBeDefined(); // a weight contact (it says which way the commander faces)
+      expect(e.style).toBeUndefined();
+    }
+    expect(CardVoiceSchema.safeParse({ id: 'x', kind: 'weight.entry.human_chair', lines: ['a'] }).success).toBe(true);
+    expect(CardVoiceSchema.safeParse({ id: 'x', kind: 'weight.entry.Human Chair', lines: ['a'] }).success).toBe(false);
     for (const e of rows) for (const l of e.lines as string[]) expect(l, String(e.id)).not.toMatch(/\b(he|him|his|himself|he's|she's the commander)\b/i);
   });
 

@@ -8,6 +8,7 @@
  * `call`: Ann (ritual) has four named postures and calls Low (P10e-e Task 9: her posture call as a full-frame moment); `callhold`: the same with a
  * hold running (the stop word's pill must stay clickable over the fan). `slap` / `slaphold`: her slap (P10e-e Task 12), see below.
  * `breath` / `breathhold`: the breath instrument (P10e-e Task 14), see below.
+ * `weight` / `weightfoot` / `weightup` / `weighthold`: the weight instrument (P10e-e Task 16), see below.
  */
 import { writeFileSync } from 'node:fs';
 import { COMMANDER, registerFrameReader, setBlocking } from '../../src/engine/blocking';
@@ -146,5 +147,31 @@ function breathing(): CampaignState {
 }
 out.breath = breathing();
 out.breathhold = breathing();
+
+/**
+ * P10e-e Task 16: Ann rests her weight on the commander in the commander's quarters, real time mirrored, the first segment running with a shift
+ * every fourth beat: `weight` (human_chair: face down, her legs), `weightfoot` (footrest: face down, out of view), `weightup` (boot_on_chest:
+ * face up, her sprite from below) for the shots, whose page clears the plan's shifts with `&quiet=1` and drives them itself; `weighthold`
+ * (human_chair): the stop word's pill must stay clickable and end the hold mid-weight.
+ */
+function weighting(contact: string): CampaignState {
+  const s = campaign(reg, 4);
+  setRelation(s, ANN, { stateId: 'confidant' });
+  enable(s, 'objectification', 'restraint', 'humiliation', 'pain_rough');
+  s.settings.physicsRealtime = true; // the campaign's mirror of real time (the instrument needs it)
+  const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
+  const d = r.state;
+  setBlocking(d, { registries: reg }, { person: ANN, field: 'contact', value: contact, with: COMMANDER }, { at: 1, source: 'engine' });
+  if (d.scene!.physics?.physicsId !== 'weight') throw new Error(`weight (${contact}): no weight runs`);
+  d.scene!.physics.segment = {
+    n: 1, state: 'running',
+    plan: { beats: Array.from({ length: 20 }, (_, i) => (i % 4 === 3 ? { attention: 'busy' as const, cue: 'shift' as const, shift: 20 } : { attention: 'busy' as const })) },
+  };
+  return d;
+}
+out.weight = weighting('human_chair');
+out.weightfoot = weighting('footrest');
+out.weightup = weighting('boot_on_chest');
+out.weighthold = weighting('human_chair');
 
 writeFileSync(process.argv[2] ?? 'states.json', JSON.stringify(out));

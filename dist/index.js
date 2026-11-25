@@ -2358,8 +2358,8 @@ function bodyGrowthMult(state, reg) {
 function addBodyXp(commander, stat3, amount) {
   const body = commander.body ??= { ...TUNING.commander.defaults.body };
   const xp = commander.bodyXp ??= { strength: 0, endurance: 0, reflexes: 0 };
-  const before2 = body[stat3];
-  if (before2 >= 5 || !(amount > 0)) return { value: before2, gained: false };
+  const before3 = body[stat3];
+  if (before3 >= 5 || !(amount > 0)) return { value: before3, gained: false };
   let pool = xp[stat3] + amount;
   while (body[stat3] < 5 && pool >= TUNING.commander.bodyXpSteps[body[stat3] - 1]) {
     pool -= TUNING.commander.bodyXpSteps[body[stat3] - 1];
@@ -2367,7 +2367,7 @@ function addBodyXp(commander, stat3, amount) {
   }
   xp[stat3] = body[stat3] >= 5 ? 0 : pool;
   commander.archetype = archetypeOf(body);
-  return { value: body[stat3], gained: body[stat3] > before2 };
+  return { value: body[stat3], gained: body[stat3] > before3 };
 }
 function intimidationBonus(state) {
   const p = commanderProfile(state);
@@ -2403,35 +2403,35 @@ function commanderLine(state) {
 // src/engine/ledger.ts
 var RESOURCES = ["credits", "supplies", "plyx"];
 var AXES = ["trust", "affinity", "attraction"];
-function recordLedger(before2, after2, action) {
+function recordLedger(before3, after3, action) {
   const entries2 = [];
-  const push2 = (key, delta) => {
-    if (Number.isFinite(delta) && delta !== 0) entries2.push({ day: before2.day, slot: before2.slot, action, key, delta });
+  const push3 = (key, delta) => {
+    if (Number.isFinite(delta) && delta !== 0) entries2.push({ day: before3.day, slot: before3.slot, action, key, delta });
   };
-  for (const r of RESOURCES) push2(`res:${r}`, (after2.resources?.[r] ?? 0) - (before2.resources?.[r] ?? 0));
-  push2("res:cmdr_stress", (after2.commander?.stress ?? 0) - (before2.commander?.stress ?? 0));
-  const stressBefore = new Map(before2.squad.map((u) => [u.id, u.stress]));
-  for (const u of after2.squad) {
+  for (const r of RESOURCES) push3(`res:${r}`, (after3.resources?.[r] ?? 0) - (before3.resources?.[r] ?? 0));
+  push3("res:cmdr_stress", (after3.commander?.stress ?? 0) - (before3.commander?.stress ?? 0));
+  const stressBefore = new Map(before3.squad.map((u) => [u.id, u.stress]));
+  for (const u of after3.squad) {
     const was = stressBefore.get(u.id);
-    if (was !== void 0) push2(`stress:${u.id}`, (u.stress ?? 0) - (was ?? 0));
+    if (was !== void 0) push3(`stress:${u.id}`, (u.stress ?? 0) - (was ?? 0));
   }
-  for (const [id, rel] of Object.entries(after2.relations)) {
-    const was = before2.relations[id];
+  for (const [id, rel] of Object.entries(after3.relations)) {
+    const was = before3.relations[id];
     if (!was) continue;
-    for (const axis of AXES) push2(`axis:${id}:${axis}`, (rel[axis] ?? 0) - (was[axis] ?? 0));
-    push2(`record:${id}`, (rel.impunityRecord ?? 0) - (was.impunityRecord ?? 0));
-    push2(`want:${id}`, (rel.want ?? 0) - (was.want ?? 0));
+    for (const axis of AXES) push3(`axis:${id}:${axis}`, (rel[axis] ?? 0) - (was[axis] ?? 0));
+    push3(`record:${id}`, (rel.impunityRecord ?? 0) - (was.impunityRecord ?? 0));
+    push3(`want:${id}`, (rel.want ?? 0) - (was.want ?? 0));
   }
-  for (const [id, now] of Object.entries(after2.power?.hierarchy?.standings ?? {})) {
-    const was = before2.power?.hierarchy?.standings?.[id];
-    if (was !== void 0) push2(`standing:${id}`, now - was);
+  for (const [id, now] of Object.entries(after3.power?.hierarchy?.standings ?? {})) {
+    const was = before3.power?.hierarchy?.standings?.[id];
+    if (was !== void 0) push3(`standing:${id}`, now - was);
   }
-  if (before2.commander?.body !== void 0 && after2.commander?.body !== void 0) for (const stat3 of BODY_STATS) push2(`body:${stat3}`, (after2.commander?.body?.[stat3] ?? 0) - (before2.commander?.body?.[stat3] ?? 0));
-  if (entries2.length > 0) after2.ledger = [...after2.ledger ?? [], ...entries2];
-  if (!after2.ledger) return;
-  const oldest = after2.day - (TUNING.ledger.days - 1);
-  const kept = after2.ledger.filter((e) => e.day >= oldest);
-  after2.ledger = capByKind(kept, TUNING.ledger.max);
+  if (before3.commander?.body !== void 0 && after3.commander?.body !== void 0) for (const stat3 of BODY_STATS) push3(`body:${stat3}`, (after3.commander?.body?.[stat3] ?? 0) - (before3.commander?.body?.[stat3] ?? 0));
+  if (entries2.length > 0) after3.ledger = [...after3.ledger ?? [], ...entries2];
+  if (!after3.ledger) return;
+  const oldest = after3.day - (TUNING.ledger.days - 1);
+  const kept = after3.ledger.filter((e) => e.day >= oldest);
+  after3.ledger = capByKind(kept, TUNING.ledger.max);
 }
 var kindOf = (e) => e.key.slice(0, e.key.indexOf(":"));
 function capByKind(list5, max) {
@@ -2531,7 +2531,7 @@ function forgetPower(draft, unitId) {
 var RANGE = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] };
 var defaultHandler = ({ relation }, axis, amount) => {
   const [lo, hi] = RANGE[axis];
-  const before2 = relation[axis];
+  const before3 = relation[axis];
   let applied = amount;
   if (amount > 0) {
     const done = relation.dailyGain[axis];
@@ -2542,8 +2542,8 @@ var defaultHandler = ({ relation }, axis, amount) => {
     }
     applied = Math.round(sum);
   }
-  relation[axis] = Math.min(hi, Math.max(lo, before2 + applied));
-  const real = relation[axis] - before2;
+  relation[axis] = Math.min(hi, Math.max(lo, before3 + applied));
+  const real = relation[axis] - before3;
   if (real > 0) relation.dailyGain[axis] += real;
   return real;
 };
@@ -2748,8 +2748,8 @@ function splitmix32(a) {
     return (t ^ t >>> 15) >>> 0;
   };
 }
-function seedRng(seed2) {
-  const mix = splitmix32(seed2);
+function seedRng(seed3) {
+  const mix = splitmix32(seed3);
   const state = [mix(), mix(), mix(), mix()];
   const rng = new Rng(state);
   for (let i = 0; i < 12; i++) rng.float();
@@ -6080,8 +6080,8 @@ var ZodSet = class _ZodSet extends ZodType {
       maxSize: { value: maxSize, message: errorUtil.toString(message) }
     });
   }
-  size(size, message) {
-    return this.min(size, message).max(size, message);
+  size(size2, message) {
+    return this.min(size2, message).max(size2, message);
   }
   nonempty(message) {
     return this.min(1, message);
@@ -7320,7 +7320,13 @@ function occlusionOf(contact) {
   };
 }
 var CONTACT_FACES = ["up", "down"];
+function contactFaceOf(contact) {
+  return contact?.face === "up" ? "up" : "down";
+}
 var HER_LEGS = ["hang"];
+function herLegsOf(contact) {
+  return contact?.legs === "hang" ? "hang" : null;
+}
 
 // src/engine/dynamic/profile.ts
 var PRACTICE_DEFAULTS = Object.freeze({
@@ -7358,7 +7364,7 @@ function validatePractice(raw, reg) {
   const dropped = [];
   if (raw === void 0) return { issues, dropped };
   if (!isObj(raw)) return { issues: ["practice must be an object"], dropped };
-  const pick5 = (field2, allowed, fallback) => {
+  const pick6 = (field2, allowed, fallback) => {
     const v = raw[field2];
     if (v === void 0) return fallback;
     if (typeof v === "string" && allowed.includes(v)) return v;
@@ -7399,11 +7405,11 @@ function validatePractice(raw, reg) {
   const practice = {
     categories,
     style: secondary === void 0 ? { primary } : { primary, secondary },
-    audience: pick5("audience", AUDIENCE, PRACTICE_DEFAULTS.audience),
-    inclination: pick5("inclination", INCLINATION, PRACTICE_DEFAULTS.inclination),
-    fairness: pick5("fairness", FAIRNESS, PRACTICE_DEFAULTS.fairness),
-    hintStyle: pick5("hintStyle", HINT_STYLE, PRACTICE_DEFAULTS.hintStyle),
-    drive: pick5("drive", DRIVE, PRACTICE_DEFAULTS.drive)
+    audience: pick6("audience", AUDIENCE, PRACTICE_DEFAULTS.audience),
+    inclination: pick6("inclination", INCLINATION, PRACTICE_DEFAULTS.inclination),
+    fairness: pick6("fairness", FAIRNESS, PRACTICE_DEFAULTS.fairness),
+    hintStyle: pick6("hintStyle", HINT_STYLE, PRACTICE_DEFAULTS.hintStyle),
+    drive: pick6("drive", DRIVE, PRACTICE_DEFAULTS.drive)
   };
   return { practice, issues, dropped };
 }
@@ -7514,8 +7520,8 @@ function witnessOf(state, reg, observerId, holderId) {
   return practiceOf(state, reg, observerId)?.categories[category]?.witness ?? "indifferent";
 }
 function reactionOf(state, reg, observerId, holderId) {
-  const frame3 = dynamicOf(state, observerId)?.frame;
-  if (frame3 !== void 0 && frame3 !== "equal") {
+  const frame4 = dynamicOf(state, observerId)?.frame;
+  if (frame4 !== void 0 && frame4 !== "equal") {
     const manner = practiceOf(state, reg, observerId)?.style.primary;
     if (manner === "ritual" || manner === "cold") return "respects";
     if (manner === "possessive" || manner === "cruel") return "competes";
@@ -7556,8 +7562,8 @@ function dynamicTerm(state, reg, unitId) {
 }
 function standingMalus(state, reg, holderId) {
   if (!dynamicLive(state, reg)) return 0;
-  const R5 = TUNING.squadKnowledge.reaction;
-  return Math.min(R5.standingMax, Math.round(dislikers(state, reg, holderId).reduce((sum, id) => sum + scaleOf(state, reg, id), 0) * R5.dislikesStanding));
+  const R6 = TUNING.squadKnowledge.reaction;
+  return Math.min(R6.standingMax, Math.round(dislikers(state, reg, holderId).reduce((sum, id) => sum + scaleOf(state, reg, id), 0) * R6.dislikesStanding));
 }
 
 // src/engine/practice/state.ts
@@ -10586,9 +10592,9 @@ var DynamicMilestoneSchema = BaseEntrySchema.extend({
   contentTags: tagList,
   description: str
 }).strict().superRefine((m, ctx2) => {
-  const frame3 = m.effects.some((e) => e.type === "frame");
-  if (frame3 && m.from === m.to) ctx2.addIssue({ code: "custom", path: ["effects"], message: "a milestone inside one frame cannot change the frame" });
-  if (!frame3 && m.from !== m.to) ctx2.addIssue({ code: "custom", path: ["effects"], message: "a milestone that changes the frame needs the frame effect" });
+  const frame4 = m.effects.some((e) => e.type === "frame");
+  if (frame4 && m.from === m.to) ctx2.addIssue({ code: "custom", path: ["effects"], message: "a milestone inside one frame cannot change the frame" });
+  if (!frame4 && m.from !== m.to) ctx2.addIssue({ code: "custom", path: ["effects"], message: "a milestone that changes the frame needs the frame effect" });
   if (m.sworn === true !== m.effects.some((e) => e.type === "sworn")) ctx2.addIssue({ code: "custom", path: ["sworn"], message: "`sworn` and the sworn effect go together" });
 });
 var DynamicDomainSchema = BaseEntrySchema.extend({
@@ -10841,9 +10847,20 @@ var CARD_VOICE_KINDS = [
   "breath.stop",
   "breath.wake",
   "breath.fake",
-  "breath.again"
+  "breath.again",
+  // P10e-e ruling Q: weight's lines (weight.html `LINES`, card-voice.md §8); her first words are `weight.entry.<contact>` (CARD_VOICE_STATIC)
+  "weight.released",
+  "weight.slip",
+  "weight.caught",
+  "weight.heavy",
+  "weight.good",
+  "weight.poor",
+  "weight.fall",
+  "weight.stop",
+  "weight.longer",
+  "weight.announce"
 ];
-var CARD_VOICE_STATIC = /^static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)$/;
+var CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+)$/;
 var CardVoiceSchema = BaseEntrySchema.extend({
   kind: str.refine((k) => CARD_VOICE_KINDS.includes(k) || CARD_VOICE_STATIC.test(k), "an unknown card voice kind"),
   style: str.optional(),
@@ -11103,7 +11120,7 @@ function validateBond(raw, reg) {
   const bond = { ...MODEST_BOND, ownLimits: { categories: [] } };
   if (raw === void 0) return { bond, issues, valid };
   if (!isObj2(raw)) return { bond, issues: ["the bond profile must be an object"], valid };
-  const pick5 = (field2, allowed, fallback) => {
+  const pick6 = (field2, allowed, fallback) => {
     const v = raw[field2];
     if (v === void 0) return fallback;
     if (typeof v === "string" && allowed.includes(v)) {
@@ -11113,10 +11130,10 @@ function validateBond(raw, reg) {
     issues.push(`${field2} must be one of ${allowed.join(", ")}`);
     return fallback;
   };
-  bond.leadStyle = pick5("leadStyle", LEAD_STYLES, MODEST_BOND.leadStyle);
-  bond.attachment = pick5("attachment", ATTACHMENTS, MODEST_BOND.attachment);
-  bond.desire = pick5("desire", DESIRE_LEVELS, MODEST_BOND.desire);
-  bond.publicity = pick5("publicity", PUBLICITY_LEVELS, MODEST_BOND.publicity);
+  bond.leadStyle = pick6("leadStyle", LEAD_STYLES, MODEST_BOND.leadStyle);
+  bond.attachment = pick6("attachment", ATTACHMENTS, MODEST_BOND.attachment);
+  bond.desire = pick6("desire", DESIRE_LEVELS, MODEST_BOND.desire);
+  bond.publicity = pick6("publicity", PUBLICITY_LEVELS, MODEST_BOND.publicity);
   if (raw.caretaker !== void 0) {
     if (typeof raw.caretaker === "boolean") {
       bond.caretaker = raw.caretaker;
@@ -11528,11 +11545,11 @@ var attractionBand = (n) => n < 10 ? "none" : n < 25 ? "faint" : n < 50 ? "inter
 var stressBand = (n) => n < 25 ? "calm" : n < 50 ? "tense" : n < 80 ? "strained" : "breaking";
 var NO_SHIFT = { enter: 0, exit: 0 };
 function nextLoyaltyBand(current2, trust, shift = NO_SHIFT) {
-  const L2 = TUNING.relations.loyalty;
-  const breakingEnter = L2.breakingEnter + shift.enter;
-  const waveringEnter = L2.waveringEnter + shift.enter;
-  const steady = L2.steady + shift.exit;
-  const breakingExit = L2.breakingExit + shift.exit;
+  const L3 = TUNING.relations.loyalty;
+  const breakingEnter = L3.breakingEnter + shift.enter;
+  const waveringEnter = L3.waveringEnter + shift.enter;
+  const steady = L3.steady + shift.exit;
+  const breakingExit = L3.breakingExit + shift.exit;
   if (trust < breakingEnter) return "breaking";
   switch (current2) {
     case "steady":
@@ -11544,8 +11561,8 @@ function nextLoyaltyBand(current2, trust, shift = NO_SHIFT) {
   }
 }
 var initialLoyaltyBand = (trust, shift = NO_SHIFT) => {
-  const L2 = TUNING.relations.loyalty;
-  return trust < L2.breakingEnter + shift.enter ? "breaking" : trust < L2.waveringEnter + shift.enter ? "wavering" : "steady";
+  const L3 = TUNING.relations.loyalty;
+  return trust < L3.breakingEnter + shift.enter ? "breaking" : trust < L3.waveringEnter + shift.enter ? "wavering" : "steady";
 };
 
 // src/engine/dynamic/capabilities.ts
@@ -11594,10 +11611,10 @@ function intimacyOf(state) {
 }
 var p3GainHandler = ({ state, relation }, axis, amount) => {
   const [lo, hi] = RANGE2[axis];
-  const before2 = relation[axis];
+  const before3 = relation[axis];
   const effective = amount > 0 ? amount / (1 + relation.dailyGain[axis] / relationK(state)) : amount;
-  relation[axis] = Math.min(hi, Math.max(lo, before2 + roundAway(effective)));
-  const real = relation[axis] - before2;
+  relation[axis] = Math.min(hi, Math.max(lo, before3 + roundAway(effective)));
+  const real = relation[axis] - before3;
   if (real > 0) relation.dailyGain[axis] += real;
   return real;
 };
@@ -11824,8 +11841,8 @@ function evaluateAutomatic(draft, reg, unitId, opts) {
   }
   if (target === null) {
     const rank2 = cur?.priority ?? -1;
-    const pick5 = candidates(draft, reg, unitId, "automatic", void 0, opts?.allow).find((st2) => st2.priority > rank2);
-    if (pick5) target = pick5.id;
+    const pick6 = candidates(draft, reg, unitId, "automatic", void 0, opts?.allow).find((st2) => st2.priority > rank2);
+    if (pick6) target = pick6.id;
   }
   if (target !== null) events.push(enterState(draft, unitId, target, why), ...syncPublicity(draft, reg, unitId));
   const band2 = nextLoyaltyBand(rel.loyaltyBand, rel.trust, bandShift(dispositionById(draft, reg, unitId)));
@@ -11837,8 +11854,8 @@ function evaluateAutomatic(draft, reg, unitId, opts) {
 }
 function evaluateEvent(draft, reg, unitId, eventType) {
   if (!draft.relations[unitId] || !draft.squad.some((u) => u.id === unitId)) return [];
-  const pick5 = candidates(draft, reg, unitId, "event", eventType)[0];
-  return pick5 ? [enterState(draft, unitId, pick5.id, `event:${eventType}`), ...syncPublicity(draft, reg, unitId)] : [];
+  const pick6 = candidates(draft, reg, unitId, "event", eventType)[0];
+  return pick6 ? [enterState(draft, unitId, pick6.id, `event:${eventType}`), ...syncPublicity(draft, reg, unitId)] : [];
 }
 var ORDER = ["too_soon", "no_trust", "not_interested", "committed"];
 function failedGroup(state, reg, unitId, cond) {
@@ -12028,7 +12045,7 @@ function pressureGate(state, reg, unitId, mechanic) {
   if (unit4.bond === void 0) return "no imported bond profile";
   const bond = bondOf(unit4);
   const lead = leadRank(bond.leadStyle);
-  const G4 = TUNING.personal.gates;
+  const G5 = TUNING.personal.gates;
   const tier = bondTierOf(state, reg, unitId);
   switch (mechanic) {
     case "device":
@@ -12040,7 +12057,7 @@ function pressureGate(state, reg, unitId, mechanic) {
       return jealousyAllowed(state, reg, unitId) ? null : "jealousy games are off";
     }
     case "courtship": {
-      if (lead < G4.courtship.minLeadRank) return "her lead style is too yielding";
+      if (lead < G5.courtship.minLeadRank) return "her lead style is too yielding";
       if (!intimacyOf(state).romance) return "romance is off";
       if (tier === "romantic") return null;
       const open3 = ROMANTIC_PROPOSALS.some((kind) => "stateId" in stateForProposal(state, reg, unitId, kind));
@@ -12055,11 +12072,11 @@ function pressureGate(state, reg, unitId, mechanic) {
     case "token":
       if (tier === null) return "no close or romantic tier";
       if (bond.attachment === "avoidant") return "avoidant attachment";
-      return rel.affinity >= G4.token.minAffinity ? null : "Affinity too low";
+      return rel.affinity >= G5.token.minAffinity ? null : "Affinity too low";
     case "wager": {
-      if (lead < G4.wager.minLeadRank) return "her lead style is too yielding";
-      if (rel.affinity >= G4.wager.minAffinity) return null;
-      return (impunityOf(state, reg, unitId)?.value ?? 0) >= G4.wager.minImpunity ? null : "neither warm nor brazen enough";
+      if (lead < G5.wager.minLeadRank) return "her lead style is too yielding";
+      if (rel.affinity >= G5.wager.minAffinity) return null;
+      return (impunityOf(state, reg, unitId)?.value ?? 0) >= G5.wager.minImpunity ? null : "neither warm nor brazen enough";
     }
   }
 }
@@ -12554,9 +12571,9 @@ function withRequirements(reg, ids) {
 function setCategories(draft, reg, enabled) {
   const known3 = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
   const next = withRequirements(reg, known3.filter((id) => enabled.includes(id)));
-  const before2 = enabledCategories(draft);
-  const added = next.filter((id) => !before2.includes(id));
-  const removed = before2.filter((id) => !next.includes(id));
+  const before3 = enabledCategories(draft);
+  const added = next.filter((id) => !before3.includes(id));
+  const removed = before3.filter((id) => !next.includes(id));
   draft.content = { enabled: next };
   if (added.length === 0 && removed.length === 0) return [];
   const withdrawn = removed.length > 0 ? withdrawTagged(draft, reg, removed) : [];
@@ -12772,11 +12789,11 @@ function scaleRefusal(state, reg, unitId, chance) {
 var commanderStress = (state) => state.commander.stress ?? 0;
 var commanderStressBand = (state) => stressBand(commanderStress(state));
 function addCommanderStress(draft, amount, source) {
-  const before2 = commanderStress(draft);
-  const next = Math.min(100, Math.max(0, before2 + amount));
-  if (next === before2) return [];
+  const before3 = commanderStress(draft);
+  const next = Math.min(100, Math.max(0, before3 + amount));
+  if (next === before3) return [];
   draft.commander.stress = next;
-  return [{ type: "commander_stress_changed", delta: next - before2, source }];
+  return [{ type: "commander_stress_changed", delta: next - before3, source }];
 }
 
 // src/engine/physics/conditions.ts
@@ -12830,20 +12847,20 @@ function socialGrowthMult(state, reg, stat3) {
   return traitEffects(state, reg, "social_growth").filter((fx2) => fx2.stat === stat3).reduce((m, fx2) => m * fx2.mult, 1);
 }
 function addSocialPoints(commander, stat3, amount) {
-  const before2 = commander.socialStats[stat3];
+  const before3 = commander.socialStats[stat3];
   const points = commander.socialPoints ??= {
     authority: SOCIAL_THRESHOLDS[commander.socialStats.authority - 1] ?? 0,
     insight: SOCIAL_THRESHOLDS[commander.socialStats.insight - 1] ?? 0,
     empathy: SOCIAL_THRESHOLDS[commander.socialStats.empathy - 1] ?? 0,
     cunning: SOCIAL_THRESHOLDS[commander.socialStats.cunning - 1] ?? 0
   };
-  const floor = SOCIAL_THRESHOLDS[before2 - 1] ?? 0;
+  const floor = SOCIAL_THRESHOLDS[before3 - 1] ?? 0;
   const next = Math.min(MAX_POINTS, Math.max(points[stat3], floor) + amount);
   const gained = next - Math.max(points[stat3], floor);
   points[stat3] = next;
-  const rank2 = Math.max(before2, rankForPoints(next));
+  const rank2 = Math.max(before3, rankForPoints(next));
   commander.socialStats[stat3] = rank2;
-  return { rank: rank2, gained, rankedUp: rank2 > before2 };
+  return { rank: rank2, gained, rankedUp: rank2 > before3 };
 }
 function meetsSocialRequirements(state, requires) {
   return Object.entries(requires).every(([stat3, min]) => socialRank(state, stat3) >= min);
@@ -13024,8 +13041,8 @@ function leaderVoteWeight(state, reg) {
 function countermandChance(state, reg) {
   const leader = leaderOf(state);
   if (!leader || unitObeys(state, leader.id)) return 0;
-  const C = TUNING.power.countermand;
-  return Math.min(C.cap, C.chance * privilegeScale(state, reg));
+  const C2 = TUNING.power.countermand;
+  return Math.min(C2.cap, C2.chance * privilegeScale(state, reg));
 }
 function countermandOpen(state) {
   const c = state.power?.countermand;
@@ -13290,23 +13307,23 @@ function cabinMap(state, reg) {
   state.squad.filter((u) => u.kind === "named").forEach((u, k) => {
     if (!isLiving(u)) return;
     const start = k % cabins.length;
-    let pick5 = cabins[start];
+    let pick6 = cabins[start];
     for (let i = 0; i < cabins.length; i++) {
       const c = cabins[(start + i) % cabins.length];
       if (!taken.has(String(c.id))) {
-        pick5 = c;
+        pick6 = c;
         break;
       }
     }
-    taken.add(String(pick5.id));
-    out.set(u.id, pick5);
+    taken.add(String(pick6.id));
+    out.set(u.id, pick6);
   });
   for (const u of state.squad) {
     if (u.kind === "named" || !isLiving(u)) continue;
     const free = [...cabins].reverse().find((c) => !taken.has(String(c.id)));
-    const pick5 = free ?? cabins[cabins.length - 1];
-    taken.add(String(pick5.id));
-    out.set(u.id, pick5);
+    const pick6 = free ?? cabins[cabins.length - 1];
+    taken.add(String(pick6.id));
+    out.set(u.id, pick6);
   }
   return out;
 }
@@ -13495,10 +13512,10 @@ function place(state, reg, rooms, unit4) {
   const weights = rooms.map((room2) => routineWeight(state, reg, room2, unit4));
   const total2 = weights.reduce((a, b) => a + b, 0);
   if (total2 <= 0) return { unitId: unit4.id, roomId: null, reason: "nowhere" };
-  let pick5 = fnv1a3(`${state.day}|${state.slot}|${unit4.id}`) % total2;
+  let pick6 = fnv1a3(`${state.day}|${state.slot}|${unit4.id}`) % total2;
   for (let i = 0; i < rooms.length; i++) {
-    if (pick5 < weights[i]) return { unitId: unit4.id, roomId: rooms[i].id, reason: "routine" };
-    pick5 -= weights[i];
+    if (pick6 < weights[i]) return { unitId: unit4.id, roomId: rooms[i].id, reason: "routine" };
+    pick6 -= weights[i];
   }
   return { unitId: unit4.id, roomId: null, reason: "nowhere" };
 }
@@ -13534,7 +13551,7 @@ function validateExpectations(raw, reg, ctx2) {
   if (raw === void 0) return { issues, dropped };
   if (!isObj4(raw)) return { issues: ["expectations must be an object"], dropped };
   const out = {};
-  const L2 = TUNING.dynamic.profile;
+  const L3 = TUNING.dynamic.profile;
   const drop2 = (field2, id, why) => {
     issues.push(`expectations.${field2} ${why} "${id}"`);
     dropped.push(`expectations:${field2}.${id}`);
@@ -13582,11 +13599,11 @@ function validateExpectations(raw, reg, ctx2) {
     }
   }
   if (raw.offset !== void 0) {
-    const r = isObj4(raw.offset) ? num7(raw.offset.r, -L2.offsetMax, L2.offsetMax) : void 0;
-    const f = isObj4(raw.offset) ? num7(raw.offset.f, -L2.offsetMax, L2.offsetMax) : void 0;
+    const r = isObj4(raw.offset) ? num7(raw.offset.r, -L3.offsetMax, L3.offsetMax) : void 0;
+    const f = isObj4(raw.offset) ? num7(raw.offset.f, -L3.offsetMax, L3.offsetMax) : void 0;
     if (r === void 0 || f === void 0) issues.push("expectations.offset needs numbers r and f");
     else {
-      if (isObj4(raw.offset) && (Math.abs(Number(raw.offset.r)) > L2.offsetMax || Math.abs(Number(raw.offset.f)) > L2.offsetMax)) issues.push(`expectations.offset was clamped to \xB1${L2.offsetMax}`);
+      if (isObj4(raw.offset) && (Math.abs(Number(raw.offset.r)) > L3.offsetMax || Math.abs(Number(raw.offset.f)) > L3.offsetMax)) issues.push(`expectations.offset was clamped to \xB1${L3.offsetMax}`);
       out.offset = { r, f };
     }
   }
@@ -13596,7 +13613,7 @@ function validateExpectations(raw, reg, ctx2) {
       const tells2 = {};
       for (const k of ["irritation", "pleasure"]) {
         if (raw.tells[k] === void 0) continue;
-        const t = text3(`tells.${k}`, raw.tells[k], L2.tellMax);
+        const t = text3(`tells.${k}`, raw.tells[k], L3.tellMax);
         if (t !== void 0) tells2[k] = t;
       }
       for (const k of Object.keys(raw.tells)) if (k !== "irritation" && k !== "pleasure") issues.push(`expectations.tells has no field "${k}"`);
@@ -13626,7 +13643,7 @@ function validateExpectations(raw, reg, ctx2) {
         }
         const entry = { attitude: w.attitude };
         if (w.how !== void 0) {
-          const how = text3(`worship.${id}.how`, w.how, L2.howMax);
+          const how = text3(`worship.${id}.how`, w.how, L3.howMax);
           if (how !== void 0) entry.how = how;
         }
         if (w.meaning !== void 0) {
@@ -13696,11 +13713,11 @@ function validateExpectations(raw, reg, ctx2) {
     else {
       const traits = [];
       for (const [i, t] of raw.traits.entries()) {
-        const v = text3(`traits[${i}]`, t, L2.traitMax);
+        const v = text3(`traits[${i}]`, t, L3.traitMax);
         if (v !== void 0 && !traits.includes(v)) traits.push(v);
       }
-      if (traits.length > L2.traitsMax) issues.push(`expectations.traits was cut to ${L2.traitsMax}`);
-      if (traits.length > 0) out.traits = traits.slice(0, L2.traitsMax);
+      if (traits.length > L3.traitsMax) issues.push(`expectations.traits was cut to ${L3.traitsMax}`);
+      if (traits.length > 0) out.traits = traits.slice(0, L3.traitsMax);
     }
   }
   return { ...Object.keys(out).length > 0 ? { expectations: out } : {}, issues, dropped };
@@ -13797,13 +13814,13 @@ function dynamicAxisEntryId(d) {
   return d.field === "holds_until" ? "expect:holds_until" : "expect:worship.any";
 }
 function scaleOfAxis(key) {
-  const S5 = TUNING.development.scales;
+  const S6 = TUNING.development.scales;
   const field2 = bondField(key);
-  if (field2 !== null) return S5[field2];
+  if (field2 !== null) return S6[field2];
   const d = dynamicAxis(key);
   if (d === null || d.field === "fixed") return null;
-  if (d.kind === "practice") return d.field === "as" ? S5.practiceAs : d.field === "witness" ? S5.practiceWitness : S5.secondary;
-  return d.field === "holds_until" ? S5.holdsUntil : S5.attitude;
+  if (d.kind === "practice") return d.field === "as" ? S6.practiceAs : d.field === "witness" ? S6.practiceWitness : S6.secondary;
+  return d.field === "holds_until" ? S6.holdsUntil : S6.attitude;
 }
 function discreteAxis(unit4, key) {
   const scale = scaleOfAxis(key);
@@ -14048,8 +14065,8 @@ function flipReading(r) {
   };
 }
 var readingOf = (a) => ({ wanted: a.wanted, initiator: a.initiator, harm: a.harm, outcome: a.outcome });
-function knowsAbout(state, unitId, subject, after2) {
-  return state.memory.facts.some((f) => f.day > after2 && f.about.includes(subject) && f.about.length <= TUNING.development.reviseAboutMax && (f.knownBy.includes(unitId) || f.knownBy.includes("*") || f.heard?.[unitId] !== void 0));
+function knowsAbout(state, unitId, subject, after3) {
+  return state.memory.facts.some((f) => f.day > after3 && f.about.includes(subject) && f.about.length <= TUNING.development.reviseAboutMax && (f.knownBy.includes(unitId) || f.knownBy.includes("*") || f.heard?.[unitId] !== void 0));
 }
 function mergePushes(into, add2) {
   for (const p of add2) {
@@ -14478,9 +14495,9 @@ function applyPunishment(draft, ctx2, p) {
         out.push(...addRestriction(draft, base));
         extra.restrictionIds = [id];
       } else if (fx2.type === "resource") {
-        const before2 = draft.resources[fx2.resource];
-        draft.resources[fx2.resource] = Math.max(0, before2 + fx2.amount);
-        const delta = draft.resources[fx2.resource] - before2;
+        const before3 = draft.resources[fx2.resource];
+        draft.resources[fx2.resource] = Math.max(0, before3 + fx2.amount);
+        const delta = draft.resources[fx2.resource] - before3;
         if (delta !== 0) {
           out.push({ type: "resource_changed", resource: fx2.resource, amount: delta });
           extra.resources = { ...extra.resources ?? {}, [fx2.resource]: delta };
@@ -14534,11 +14551,11 @@ function setRecord(draft, unitId, value) {
 function addRecord(draft, unitId, amount, reason) {
   if (!draft.relations[unitId]) return [];
   const T5 = TUNING.impunity;
-  const before2 = recordOf(draft, unitId);
-  const after2 = Math.min(T5.recordMax, Math.max(T5.recordMin, before2 + amount));
-  const delta = after2 - before2;
+  const before3 = recordOf(draft, unitId);
+  const after3 = Math.min(T5.recordMax, Math.max(T5.recordMin, before3 + amount));
+  const delta = after3 - before3;
   if (delta === 0) return [];
-  setRecord(draft, unitId, after2);
+  setRecord(draft, unitId, after3);
   return [{ type: "impunity_changed", unitId, delta, reason }];
 }
 function decayRecords(draft) {
@@ -14584,7 +14601,7 @@ var appraisalIds = (unit4) => [...unit4?.development?.pending ?? [], ...unit4?.d
 function captureInverse(draft, unitId, fn) {
   const rel = draft.relations[unitId];
   const unit4 = draft.squad.find((u) => u.id === unitId);
-  const before2 = rel && unit4 ? {
+  const before3 = rel && unit4 ? {
     trust: rel.trust,
     affinity: rel.affinity,
     attraction: rel.attraction,
@@ -14607,26 +14624,26 @@ function captureInverse(draft, unitId, fn) {
   const deedsAfter = deedsOf(draft);
   for (const k of Object.keys(deedsAfter)) if (deedsAfter[k] !== deedsBefore[k]) moved[k] = deedsAfter[k] - deedsBefore[k];
   if (Object.keys(moved).length > 0) inverse.deeds = moved;
-  const after2 = draft.relations[unitId];
+  const after3 = draft.relations[unitId];
   const unitAfter = draft.squad.find((u) => u.id === unitId);
-  if (!before2 || !after2 || !unitAfter) return { events, inverse };
+  if (!before3 || !after3 || !unitAfter) return { events, inverse };
   const axes = {};
-  for (const a of ["trust", "affinity", "attraction"]) if (after2[a] !== before2[a]) axes[a] = after2[a] - before2[a];
+  for (const a of ["trust", "affinity", "attraction"]) if (after3[a] !== before3[a]) axes[a] = after3[a] - before3[a];
   if (Object.keys(axes).length > 0) inverse.axes = axes;
-  if (unitAfter.stress !== before2.stress) inverse.stress = unitAfter.stress - before2.stress;
-  const record2 = recordOf(draft, unitId) - before2.record;
+  if (unitAfter.stress !== before3.stress) inverse.stress = unitAfter.stress - before3.stress;
+  const record2 = recordOf(draft, unitId) - before3.record;
   if (record2 !== 0) inverse.record = record2;
   const daily = {};
-  for (const a of ["trust", "affinity", "attraction"]) if (after2.dailyGain[a] !== before2.daily[a]) daily[a] = after2.dailyGain[a] - before2.daily[a];
+  for (const a of ["trust", "affinity", "attraction"]) if (after3.dailyGain[a] !== before3.daily[a]) daily[a] = after3.dailyGain[a] - before3.daily[a];
   if (Object.keys(daily).length > 0) inverse.dailyGain = daily;
-  if (after2.stateId !== before2.stateId) inverse.state = { from: before2.stateId, to: after2.stateId, sinceFrom: before2.stateSince };
-  if (before2.publicity && JSON.stringify(after2.publicity ?? null) !== JSON.stringify(before2.publicity)) inverse.publicity = before2.publicity;
-  if (after2.loyaltyBand !== before2.band) inverse.loyaltyBand = { from: before2.band, to: after2.loyaltyBand };
+  if (after3.stateId !== before3.stateId) inverse.state = { from: before3.stateId, to: after3.stateId, sinceFrom: before3.stateSince };
+  if (before3.publicity && JSON.stringify(after3.publicity ?? null) !== JSON.stringify(before3.publicity)) inverse.publicity = before3.publicity;
+  if (after3.loyaltyBand !== before3.band) inverse.loyaltyBand = { from: before3.band, to: after3.loyaltyBand };
   const kept = /* @__PURE__ */ new Map();
-  for (const k of before2.history) kept.set(k, (kept.get(k) ?? 0) + 1);
+  for (const k of before3.history) kept.set(k, (kept.get(k) ?? 0) + 1);
   const added = [];
   const stillThere2 = /* @__PURE__ */ new Map();
-  for (const h2 of after2.history) {
+  for (const h2 of after3.history) {
     const k = JSON.stringify(h2);
     const left = kept.get(k) ?? 0;
     if (left > 0) {
@@ -14637,7 +14654,7 @@ function captureInverse(draft, unitId, fn) {
   if (added.length > 0) inverse.history = structuredClone(added);
   const dropped = [];
   const seen2 = /* @__PURE__ */ new Map();
-  before2.history.forEach((k, at) => {
+  before3.history.forEach((k, at) => {
     const n = (seen2.get(k) ?? 0) + 1;
     seen2.set(k, n);
     if (n > (stillThere2.get(k) ?? 0)) dropped.push({ at, line: JSON.parse(k) });
@@ -14843,11 +14860,11 @@ function addRestriction(draft, r) {
   disciplineOf(draft).restrictions.push(r);
   return [{ type: "restriction_started", unitId: r.unitId, kind: r.kind, ...r.untilDay !== void 0 ? { untilDay: r.untilDay } : {} }];
 }
-function removeRestrictions(draft, pick5) {
+function removeRestrictions(draft, pick6) {
   const d = draft.discipline;
   if (!d) return [];
-  const gone3 = d.restrictions.filter(pick5);
-  if (gone3.length > 0) d.restrictions = d.restrictions.filter((r) => !pick5(r));
+  const gone3 = d.restrictions.filter(pick6);
+  if (gone3.length > 0) d.restrictions = d.restrictions.filter((r) => !pick6(r));
   return gone3;
 }
 function expireRestrictions(draft) {
@@ -15262,10 +15279,10 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
   for (const fx2 of effects2) {
     switch (fx2.type) {
       case "resource": {
-        const before2 = draft.resources[fx2.resource];
-        const after2 = Math.max(0, before2 + fx2.amount);
-        draft.resources[fx2.resource] = after2;
-        if (after2 !== before2) events.push({ type: "resource_changed", resource: fx2.resource, amount: after2 - before2 });
+        const before3 = draft.resources[fx2.resource];
+        const after3 = Math.max(0, before3 + fx2.amount);
+        draft.resources[fx2.resource] = after3;
+        if (after3 !== before3) events.push({ type: "resource_changed", resource: fx2.resource, amount: after3 - before3 });
         break;
       }
       case "carried_supplies": {
@@ -15276,10 +15293,10 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
       case "faction": {
         const factionId = fx2.factionId === OWN_FACTION ? draft.commander.corporationId ?? "" : fx2.factionId;
         if (!reg.corporations.has(factionId)) break;
-        const before2 = draft.world.factions[factionId] ?? 0;
-        const after2 = clamp10(before2 + fx2.amount, -100, 100);
-        draft.world.factions[factionId] = after2;
-        if (after2 !== before2) events.push({ type: "faction_changed", factionId, amount: after2 - before2, standing: after2 });
+        const before3 = draft.world.factions[factionId] ?? 0;
+        const after3 = clamp10(before3 + fx2.amount, -100, 100);
+        draft.world.factions[factionId] = after3;
+        if (after3 !== before3) events.push({ type: "faction_changed", factionId, amount: after3 - before3, standing: after3 });
         break;
       }
       case "clock":
@@ -15298,11 +15315,11 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
         break;
       }
       case "clearance": {
-        const before2 = draft.world.clearanceTier ?? 0;
-        const after2 = Math.min(3, Math.max(before2, fx2.tier));
-        if (after2 > before2) {
-          draft.world.clearanceTier = after2;
-          events.push({ type: "clearance_raised", tier: after2 });
+        const before3 = draft.world.clearanceTier ?? 0;
+        const after3 = Math.min(3, Math.max(before3, fx2.tier));
+        if (after3 > before3) {
+          draft.world.clearanceTier = after3;
+          events.push({ type: "clearance_raised", tier: after3 });
         }
         break;
       }
@@ -15341,10 +15358,10 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
         break;
       }
       case "leash": {
-        const before2 = draft.leash.authorizationsLeft;
-        draft.leash.authorizationsLeft = Math.max(0, before2 + fx2.amount);
-        if (draft.leash.authorizationsLeft !== before2) {
-          events.push({ type: "leash_changed", amount: draft.leash.authorizationsLeft - before2, left: draft.leash.authorizationsLeft });
+        const before3 = draft.leash.authorizationsLeft;
+        draft.leash.authorizationsLeft = Math.max(0, before3 + fx2.amount);
+        if (draft.leash.authorizationsLeft !== before3) {
+          events.push({ type: "leash_changed", amount: draft.leash.authorizationsLeft - before3, left: draft.leash.authorizationsLeft });
         }
         break;
       }
@@ -15642,14 +15659,14 @@ function buildMission(draft, ctx2, o) {
   const reg = ctx2.registries;
   const tpl = reg.missionTemplates.get(o.templateId);
   const region = reg.regions.get(o.regionId);
-  const pick5 = (list5) => list5[ctx2.rng.int(0, list5.length - 1)];
+  const pick6 = (list5) => list5[ctx2.rng.int(0, list5.length - 1)];
   const objective = tpl.objectives.find((x) => x.node === o.objectiveNode) ?? tpl.objectives[0];
   const mission = {
     id: nextId(draft, "m"),
     source: o.source,
     templateId: o.templateId,
-    title: (o.title ?? pick5(tpl.titles)).slice(0, TUNING.director.titleMax),
-    brief: (o.brief ?? pick5(tpl.briefs)).slice(0, TUNING.director.briefMax),
+    title: (o.title ?? pick6(tpl.titles)).slice(0, TUNING.director.titleMax),
+    brief: (o.brief ?? pick6(tpl.briefs)).slice(0, TUNING.director.briefMax),
     regionId: o.regionId,
     danger: clamp11(Math.round(o.danger ?? region.danger), tpl.dangerRange[0], tpl.dangerRange[1]),
     objective: { node: objective.node, condition: objective.condition },
@@ -15905,9 +15922,9 @@ function lockedTabs(state, reg) {
   for (const row4 of reg.uiUnlocks.values()) if (!holds(state, conditionOf(row4))) out.add(tabOf(row4));
   return out;
 }
-function unlockedBetween(before2, after2, reg) {
-  const was = lockedTabs(before2, reg);
-  const now = lockedTabs(after2, reg);
+function unlockedBetween(before3, after3, reg) {
+  const was = lockedTabs(before3, reg);
+  const now = lockedTabs(after3, reg);
   return [...reg.uiUnlocks.values()].filter((row4) => was.has(tabOf(row4)) && !now.has(tabOf(row4)));
 }
 
@@ -15983,12 +16000,12 @@ function takesPart(state, unitId) {
   const u = unitOf2(state, unitId);
   return u !== void 0 && u.kind === "named" && isLiving(u) && state.expedition?.party.includes(u.id) !== true;
 }
-function placesOf(state, reg, unitId, day, cache) {
+function placesOf(state, reg, unitId, day, cache2) {
   const key = `${unitId}|${day}`;
-  const kept = cache?.get(key);
+  const kept = cache2?.get(key);
   if (kept) return kept;
   const places = DAY_SLOTS.map((slot2) => whereaboutAt(state, reg, unitId, day, slot2));
-  cache?.set(key, places);
+  cache2?.set(key, places);
   return places;
 }
 function isPrivateRoom(reg, roomId) {
@@ -16094,9 +16111,9 @@ function deliverNews(draft, reg, day) {
   for (; ; ) {
     if (told().filter((r) => r.day === day).length >= cap9) break;
     const last = told().at(-1);
-    const pick5 = inQueue().filter((i) => i.urgent !== true).filter((i) => last === void 0 || i.category !== last.category).filter((i) => !told().some((r) => r.unitId === i.unitId && day - r.day < t.sameWomanDays)).filter((i) => i.kind !== "hobby" || life.delivered.filter((r) => r.hobby && day - r.day < 7).length < t.hobbyWeek).sort(order)[0];
-    if (!pick5) break;
-    events.push(...deliver(draft, reg, life, pick5, day));
+    const pick6 = inQueue().filter((i) => i.urgent !== true).filter((i) => last === void 0 || i.category !== last.category).filter((i) => !told().some((r) => r.unitId === i.unitId && day - r.day < t.sameWomanDays)).filter((i) => i.kind !== "hobby" || life.delivered.filter((r) => r.hobby && day - r.day < 7).length < t.hobbyWeek).sort(order)[0];
+    if (!pick6) break;
+    events.push(...deliver(draft, reg, life, pick6, day));
   }
   return events;
 }
@@ -16234,7 +16251,7 @@ function openTopic(draft, reg, unitId, topicId) {
   const pending4 = (draft.life.units[unitId] ??= { last: {} }).pendingTopics ??= [];
   if (!pending4.includes(topicId)) pending4.push(topicId);
 }
-function practiceSlots(state, reg, unitId, day, cache) {
+function practiceSlots(state, reg, unitId, day, cache2) {
   const unit4 = unitOf2(state, unitId);
   const life = state.life;
   if (lifeMode(state) === "off" || !life || !unit4 || !unit4.hobbies?.some((h2) => h2.state === "active") || !takesPart(state, unitId)) return [];
@@ -16242,7 +16259,7 @@ function practiceSlots(state, reg, unitId, day, cache) {
   if (state.lastExpedition?.day === day && state.lastExpedition.party.includes(unitId)) return [];
   const order = [...reg.hobbies.keys()];
   const out = [];
-  const places = placesOf(state, reg, unitId, day, cache);
+  const places = placesOf(state, reg, unitId, day, cache2);
   for (const [i, slot2] of DAY_SLOTS.entries()) {
     const w = places[i];
     const busy = life.busy.find((b) => b.unitId === unitId && b.slot === busySlot(day, slot2));
@@ -16475,8 +16492,8 @@ function sharePractice(draft, reg, aId, bId, hobbyId, day) {
 }
 
 // src/engine/headStart/hash.ts
-var headStartRaw = (seed2, unitId, key) => fnv1a3(`${seed2}|${unitId}|head_start|${key}`);
-var headStartHash = (seed2, unitId, key) => headStartRaw(seed2, unitId, key) / 2 ** 32;
+var headStartRaw = (seed3, unitId, key) => fnv1a3(`${seed3}|${unitId}|head_start|${key}`);
+var headStartHash = (seed3, unitId, key) => headStartRaw(seed3, unitId, key) / 2 ** 32;
 
 // src/engine/headStart/develop.ts
 var AXES2 = ["trust", "affinity", "attraction"];
@@ -16485,12 +16502,12 @@ function impressionOf(d) {
   const sum = d.trust + d.affinity;
   return sum > 0 ? "positive" : sum < 0 ? "negative" : "neutral";
 }
-function developRelation(rel, d, days, seed2, unitId) {
+function developRelation(rel, d, days, seed3, unitId) {
   const k = TUNING.headStart.k[days];
   const spreadMax = TUNING.headStart.spread;
   for (const axis of AXES2) {
     if (d[axis] === 0) continue;
-    const spread2 = headStartRaw(seed2, unitId, `spread:${axis}`) % (2 * spreadMax + 1) - spreadMax;
+    const spread2 = headStartRaw(seed3, unitId, `spread:${axis}`) % (2 * spreadMax + 1) - spreadMax;
     const [lo, hi] = RANGE3[axis];
     rel[axis] = Math.min(hi, Math.max(lo, rel[axis] + Math.round(d[axis] * k) + spread2));
   }
@@ -16500,9 +16517,9 @@ function crimeChance(state, reg, unit4, days) {
   const chance = TUNING.headStart.crime[days] * (reactsToCrime(unit4, crime) ? TUNING.headStart.crimeReactMult : 1);
   return Math.min(TUNING.headStart.crimeCap, chance);
 }
-function rollCrime(draft, reg, unit4, days, seed2) {
+function rollCrime(draft, reg, unit4, days, seed3) {
   if (draft.relations[unit4.id]?.flags.includes("knows_crime")) return false;
-  if (headStartHash(seed2, unit4.id, "crime") >= crimeChance(draft, reg, unit4, days)) return false;
+  if (headStartHash(seed3, unit4.id, "crime") >= crimeChance(draft, reg, unit4, days)) return false;
   revealCrime(draft, reg, [unit4.id]);
   return true;
 }
@@ -16730,7 +16747,7 @@ function injureCommander(draft, days) {
 }
 
 // src/engine/dynamic/cover.ts
-var coverOf = (frame3) => frame3 === "role" ? TUNING.dynamic.cover.role : frame3 === "rule" ? TUNING.dynamic.cover.rule : 0;
+var coverOf = (frame4) => frame4 === "role" ? TUNING.dynamic.cover.role : frame4 === "rule" ? TUNING.dynamic.cover.rule : 0;
 function coverMult(state, reg) {
   if (!dynamicOn(state, reg)) return 1;
   let best = 0;
@@ -16909,22 +16926,22 @@ function addDefiance(draft, ctx2, amount) {
 function checkEscalation(draft, ctx2) {
   const w = wardenOf(draft);
   if (!w) return [];
-  const E3 = TUNING.warden.escalation;
+  const E4 = TUNING.warden.escalation;
   const events = [];
   const warn = (level) => {
     w.warnings.push({ level, day: draft.day });
     events.push({ type: "warden_warning", level });
   };
-  if (w.defiance >= E3.warning1 && w.warnings.length === 0) warn(1);
-  if (w.defiance >= E3.warning2) {
+  if (w.defiance >= E4.warning1 && w.warnings.length === 0) warn(1);
+  if (w.defiance >= E4.warning2) {
     if (w.warnings.length === 1 && w.warnings[0].day < draft.day) warn(2);
-    else if (w.warnings.length < 2) w.defiance = E3.warning2 - 1;
+    else if (w.warnings.length < 2) w.defiance = E4.warning2 - 1;
   }
-  if (w.defiance >= E3.terminate) {
+  if (w.defiance >= E4.terminate) {
     const second = w.warnings[1];
     if (w.warnings.length >= 2 && second.day < draft.day) {
       events.push({ type: "commander_terminated" }, ...commanderDies(draft, ctx2, "terminated"));
-    } else w.defiance = E3.terminate - 1;
+    } else w.defiance = E4.terminate - 1;
   }
   return events;
 }
@@ -17097,10 +17114,10 @@ function commanderSkill(state, physicsId) {
 function addEnduranceXp(draft, physicsId, xp) {
   const book2 = draft.commander.endurance ??= {};
   const row4 = book2[physicsId] ??= { xp: 0, level: 0 };
-  const before2 = row4.level;
+  const before3 = row4.level;
   row4.xp += xp;
   row4.level = levelForXp(row4.xp);
-  return { type: "endurance_gained", physicsId, xp: row4.xp, gained: xp, level: row4.level, leveledUp: row4.level > before2 };
+  return { type: "endurance_gained", physicsId, xp: row4.xp, gained: xp, level: row4.level, leveledUp: row4.level > before3 };
 }
 function trainEndurance(draft, physicsId) {
   if (draft.commander.endurance?.[physicsId]?.trainedDay === draft.day) return null;
@@ -17500,12 +17517,12 @@ function addStress(ctx2, cid, amount, _source) {
     if (delta > 0 && e.direction === "gain" || delta < 0 && e.direction === "relief") delta *= Math.max(0, 1 + e.pct / 100);
   }
   delta = Math.round(delta);
-  const before2 = c.stress;
-  c.stress = Math.min(100, Math.max(0, before2 + delta));
-  const applied = c.stress - before2;
+  const before3 = c.stress;
+  c.stress = Math.min(100, Math.max(0, before3 + delta));
+  const applied = c.stress - before3;
   if (applied !== 0) ctx2.log({ kind: "stress", target: cid, amount: applied });
   for (const t of [50, 80, 100]) {
-    if (before2 < t && c.stress >= t) fireTrigger(ctx2, "onStressThreshold", { actorCid: cid, threshold: t });
+    if (before3 < t && c.stress >= t) fireTrigger(ctx2, "onStressThreshold", { actorCid: cid, threshold: t });
   }
   if (c.stress >= 100 && !c.breakdown) enterBreakdown(ctx2, cid);
   return applied;
@@ -17645,8 +17662,8 @@ function breakdownAction(ctx2, cid, opts = {}) {
     case "random_skill": {
       const options2 = c.skills.map((id) => skillById(ctx2.reg, id)).filter((s) => !!s && s.kind !== "passive" && s.kind !== "ultimate" && (c.cooldowns[s.id] ?? 0) === 0).map((s) => ({ s, legal: legalTargets(cs, cid, s, ctx2.reg) })).filter((o) => o.legal.length > 0);
       if (options2.length === 0) return { kind: "pass" };
-      const pick5 = ctx2.rng.pick(options2);
-      return { kind: "skill", skillId: pick5.s.id, targetCid: ctx2.rng.pick(pick5.legal) };
+      const pick6 = ctx2.rng.pick(options2);
+      return { kind: "skill", skillId: pick6.s.id, targetCid: ctx2.rng.pick(pick6.legal) };
     }
     default:
       return null;
@@ -17743,8 +17760,8 @@ function checkCondition(ctx2, cid, when, targetCid, skillId) {
     if (ordered !== when.orderedThisRound) return false;
   }
   if (when.commanderBuildIn !== void 0) {
-    const build4 = cs.commander?.build;
-    if (build4 === void 0 || !when.commanderBuildIn.includes(build4)) return false;
+    const build5 = cs.commander?.build;
+    if (build5 === void 0 || !when.commanderBuildIn.includes(build5)) return false;
   }
   if (when.upkeepWithinDays !== void 0 && !(upkeepAge(ctx2, c) <= when.upkeepWithinDays)) return false;
   if (when.upkeepOlderThanDays !== void 0 && !(upkeepAge(ctx2, c) > when.upkeepOlderThanDays)) return false;
@@ -18563,9 +18580,9 @@ function regardFromEvents(draft, reg, events) {
         for (const id of namedInService(draft)) out.push(...regardRise(draft, reg, id, "value", V.feat));
         break;
       case "expedition_ended": {
-        const report2 = draft.lastExpedition;
-        if (e.outcome !== "success" || report2 === void 0 || report2.id !== e.reportId) break;
-        for (const id of report2.party) out.push(...regardRise(draft, reg, id, "value", V.run));
+        const report3 = draft.lastExpedition;
+        if (e.outcome !== "success" || report3 === void 0 || report3.id !== e.reportId) break;
+        for (const id of report3.party) out.push(...regardRise(draft, reg, id, "value", V.run));
         break;
       }
     }
@@ -18908,8 +18925,8 @@ function rollBookings(draft, ctx2) {
     if (!ctx2.rng.chance(bookingChance(draft, reg, u.id))) continue;
     const kinds2 = bookingKindsFor(draft, reg, u.id);
     if (kinds2.length === 0) continue;
-    let pick5 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
-    const kind = kinds2.find((k) => (pick5 -= Number(k.weight)) < 0) ?? kinds2[0];
+    let pick6 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
+    const kind = kinds2.find((k) => (pick6 -= Number(k.weight)) < 0) ?? kinds2[0];
     const problem = consentProblem(draft, reg, { unitId: u.id });
     if (problem !== null) {
       noteConsentRefusal(draft, reg, u.id, problem);
@@ -18987,8 +19004,8 @@ function cancelBooking(draft, ctx2, bookingId) {
 function markPlayed(draft, reg, booking) {
   booking.status = "played";
   delete booking.conflict;
-  const relief = Number(kindOf2(reg, booking.kindId)?.wantRelief ?? 0);
-  return relieveWant(draft, booking.unitId, relief, "booking");
+  const relief2 = Number(kindOf2(reg, booking.kindId)?.wantRelief ?? 0);
+  return relieveWant(draft, booking.unitId, relief2, "booking");
 }
 function playBooking(draft, ctx2, id) {
   const reg = ctx2.registries;
@@ -19359,19 +19376,19 @@ function blended(m, declared) {
 }
 var largest = (m, k) => MOTIVES.every((j) => j === k || m[k] > m[j]);
 function regionOf(reading2, declared) {
-  const R5 = TUNING.position.region;
+  const R6 = TUNING.position.region;
   const m = blended(reading2.motive, declared);
   const { r, f, p } = reading2;
-  if (reading2.flat >= R5.flat) return "hollow";
-  if (reading2.deflect >= R5.deflect) return "elusive";
+  if (reading2.flat >= R6.flat) return "hollow";
+  if (reading2.deflect >= R6.deflect) return "elusive";
   if (largest(m, "fear")) return "cowed";
-  if (f >= R5.friction && largest(m, "gain")) return "double_game";
-  if (f < R5.friction && largest(m, "gain")) return "calculating";
-  if (f >= R5.friction && p >= R5.play) return "bratty";
-  if (f >= R5.friction) return "proud";
-  if (r >= R5.ready && f >= 0 && largest(m, "process")) return "hungry";
+  if (f >= R6.friction && largest(m, "gain")) return "double_game";
+  if (f < R6.friction && largest(m, "gain")) return "calculating";
+  if (f >= R6.friction && p >= R6.play) return "bratty";
+  if (f >= R6.friction) return "proud";
+  if (r >= R6.ready && f >= 0 && largest(m, "process")) return "hungry";
   if (r < 0) return "reluctant";
-  if (r >= R5.ready && largest(m, "order")) return "dutiful";
+  if (r >= R6.ready && largest(m, "order")) return "dutiful";
   return "devoted";
 }
 function motiveOf(sample) {
@@ -19491,12 +19508,12 @@ function bandMinAt(reg, index2) {
 function holdBandOf(reg, hold) {
   return bandsOf2(reg)[bandIndex(reg, hold)]?.id ?? "";
 }
-function frameEntry(reg, frame3) {
-  return reg.dynamicFrames.get(frame3);
+function frameEntry(reg, frame4) {
+  return reg.dynamicFrames.get(frame4);
 }
 function compatibilityOf(state, reg, unitId) {
   const dyn = dynamicOf(state, unitId);
-  const C = TUNING.position;
+  const C2 = TUNING.position;
   const D3 = TUNING.dynamic.compatibility;
   if (dyn === void 0 || dyn.readOf.updates === 0) return 1;
   const unit4 = state.squad.find((u) => u.id === unitId);
@@ -19506,14 +19523,14 @@ function compatibilityOf(state, reg, unitId) {
   const rd = dyn.readOf;
   if (entry.point === null) {
     const bad = rd.region === "double_game" || rd.region === "hollow" ? 1 : 0;
-    return Math.min(D3.max, Math.max(D3.min, 1 + C.clinical.sincere * (rd.sincere ?? 0) - C.clinical.hollow * bad));
+    return Math.min(D3.max, Math.max(D3.min, 1 + C2.clinical.sincere * (rd.sincere ?? 0) - C2.clinical.hollow * bad));
   }
   const offset = unit4?.kind === "named" ? unit4.expectations?.offset : void 0;
   const point = { r: entry.point.r + (offset?.r ?? 0), f: entry.point.f + (offset?.f ?? 0) };
   let value = D3.max - D3.perDistance * distanceToPoint(rd, point);
   if (entry.point.notWith === "other_women") {
     const others = state.squad.filter((u) => u.id !== unitId && u.kind === "named" && bondTierOf(state, reg, u.id) === "romantic").length;
-    value -= C.notWith * others;
+    value -= C2.notWith * others;
   }
   return Math.min(D3.max, Math.max(D3.min, value));
 }
@@ -19537,9 +19554,9 @@ function addHold(draft, ctx2, unitId, base, cause, opts = {}) {
       else if (primary === "cold") delta *= TUNING.dynamic.romanticTier.cold;
     }
   }
-  const frame3 = frameEntry(reg, dyn.frame);
-  const floor = frame3?.holdFloor ?? 0;
-  const ceiling = frame3?.holdCeiling ?? 100;
+  const frame4 = frameEntry(reg, dyn.frame);
+  const floor = frame4?.holdFloor ?? 0;
+  const ceiling = frame4?.holdCeiling ?? 100;
   const from = dyn.hold;
   let to = round43(Math.min(ceiling, Math.max(floor, from + delta)));
   if (gain2 && to < from) to = from;
@@ -20001,11 +20018,11 @@ function commandKeptEnforced(draft, ctx2, unitId, e) {
   const dyn = dynamicOf(draft, unitId);
   if (e.severity < 3 || dyn?.aftermath?.kind !== "command_kept") return { events: [] };
   const aftermath = structuredClone(dyn.aftermath);
-  const before2 = structuredClone(dyn.domains);
+  const before3 = structuredClone(dyn.domains);
   const override = draft.dynamic?.override?.unitId === unitId ? structuredClone(draft.dynamic.override) : void 0;
   const events = endCommandKept(draft, ctx2, unitId, "force");
   const kept = new Set(dyn.domains.map((d) => d.id));
-  return { events, undo: { domains: before2.filter((d) => !kept.has(d.id)), aftermath, ...override !== void 0 ? { override } : {} } };
+  return { events, undo: { domains: before3.filter((d) => !kept.has(d.id)), aftermath, ...override !== void 0 ? { override } : {} } };
 }
 function restoreCommandKept(draft, ctx2, unitId, undo) {
   const reg = ctx2.registries;
@@ -20464,9 +20481,9 @@ function leavingQuarters(draft, ctx2, holders2) {
 function background(draft, ctx2, holders2) {
   const events = [];
   for (const h2 of holders2) {
-    const frame3 = dynamicOf(draft, h2).frame;
-    if (frame3 !== "role" && frame3 !== "rule") continue;
-    for (const o of othersOf(draft, h2)) events.push(...addSign(draft, ctx2, o, h2, frame3 === "role" ? "background_role" : "background_rule"));
+    const frame4 = dynamicOf(draft, h2).frame;
+    if (frame4 !== "role" && frame4 !== "rule") continue;
+    for (const o of othersOf(draft, h2)) events.push(...addSign(draft, ctx2, o, h2, frame4 === "role" ? "background_role" : "background_rule"));
   }
   return events;
 }
@@ -20491,11 +20508,11 @@ function gossip(draft, ctx2, holders2) {
   const reg = ctx2.registries;
   const events = [];
   for (const h2 of holders2) {
-    const before2 = new Map(othersOf(draft, h2).map((id) => [id, levelOf2(draft, id, h2)]));
-    for (const o of before2.keys()) {
-      if (before2.get(o) === "knows_dynamic") continue;
+    const before3 = new Map(othersOf(draft, h2).map((id) => [id, levelOf2(draft, id, h2)]));
+    for (const o of before3.keys()) {
+      if (before3.get(o) === "knows_dynamic") continue;
       let total2 = 0;
-      for (const [y, level] of before2) {
+      for (const [y, level] of before3) {
         if (y === o || level !== "knows_dynamic" && level !== "suspects_dynamic") continue;
         if (dynamicRoll(draft, o, `gossip:${y}:${h2}`) >= T5.gossipChance) continue;
         const row4 = signRow(reg, level === "knows_dynamic" ? "gossip_knows" : "gossip_suspects");
@@ -21162,12 +21179,12 @@ function recordMerit(draft, cs) {
     else if (e.kind === "downed" && isEnemy(e.target)) credit(e.actor, M2.finishingBlow);
     else if (e.kind === "heal") credit(e.actor, (e.amount ?? 0) / M2.healPer);
   }
-  const fresh2 = [...points].filter(([id, n]) => n > 0 && draft.squad.find((u) => u.id === id)?.kind === "named");
-  if (fresh2.length === 0 && !draft.power?.merit) return;
+  const fresh3 = [...points].filter(([id, n]) => n > 0 && draft.squad.find((u) => u.id === id)?.kind === "named");
+  if (fresh3.length === 0 && !draft.power?.merit) return;
   const power = powerOf(draft);
   power.merit = (power.merit ?? []).filter((m) => draft.day - m.day < M2.windowDays);
   for (const c of cs.combatants) {
-    const hit = fresh2.find(([id]) => id === c.unitId);
+    const hit = fresh3.find(([id]) => id === c.unitId);
     if (hit) power.merit.push({ day: draft.day, unitId: hit[0], points: round22(hit[1]) });
   }
   if (power.merit.length === 0) delete power.merit;
@@ -21191,17 +21208,17 @@ function standingOf(state, reg, unitId) {
   if (!unit4 || !bond || !isLiving(unit4) || unitId === wardenUnitId(state)) return null;
   const impunity = impunityOf(state, reg, unitId);
   if (!impunity) return null;
-  const S5 = TUNING.power.standing;
-  const raw = S5.merit * meritOf(state, unitId) + S5.respect * respectOf(state, unitId) + S5.impunity * (impunity.value / 100);
+  const S6 = TUNING.power.standing;
+  const raw = S6.merit * meritOf(state, unitId) + S6.respect * respectOf(state, unitId) + S6.impunity * (impunity.value / 100);
   const bonus = state.power?.hierarchy?.standingBonus;
   const extra = bonus && bonus.unitId === unitId && bonus.untilDay > state.day ? bonus.amount : 0;
   const coLeader = hasCapability(state, reg, unitId, "co_leader") ? TUNING.dynamic.coLeaderStanding : 0;
-  return Math.round(100 * raw * S5.factor[bond.leadStyle]) + extra + coLeader - standingMalus(state, reg, unitId);
+  return Math.round(100 * raw * S6.factor[bond.leadStyle]) + extra + coLeader - standingMalus(state, reg, unitId);
 }
 function computeHierarchy(draft, reg) {
   const power = powerOf(draft);
   const old = power.hierarchy;
-  const S5 = TUNING.power.standing;
+  const S6 = TUNING.power.standing;
   const h2 = { ...old, standings: {}, endorsed: old?.endorsed ?? false, computedDay: draft.day };
   if (h2.deposed && h2.deposed.untilDay <= draft.day) delete h2.deposed;
   if (h2.standingBonus && h2.standingBonus.untilDay <= draft.day) delete h2.standingBonus;
@@ -21212,7 +21229,7 @@ function computeHierarchy(draft, reg) {
   const [top, next] = ranked;
   let leader;
   const earned = top !== void 0 && (top.unit.id === old?.leaderId || meritOf(draft, top.unit.id) > 0);
-  if (top && next && earned && top.standing >= next.standing + S5.margin && leadRank(bondOf(top.unit).leadStyle) >= 2 && h2.deposed?.unitId !== top.unit.id) leader = top.unit.id;
+  if (top && next && earned && top.standing >= next.standing + S6.margin && leadRank(bondOf(top.unit).leadStyle) >= 2 && h2.deposed?.unitId !== top.unit.id) leader = top.unit.id;
   const coLeader = holderWith(draft, reg, "co_leader");
   if (coLeader === null) delete h2.coLeaderId;
   else h2.coLeaderId = coLeader;
@@ -21316,14 +21333,14 @@ function addMastery(draft, reg, unitId, targetId, xp) {
   const unit4 = draft.squad.find((u) => u.id === unitId);
   const rel = draft.relations[unitId];
   if (!dynamicOn(draft, reg) || unit4 === void 0 || unit4.kind !== "named" || !isLiving(unit4) || rel === void 0 || !reg.worshipTargets.has(targetId) || !(xp > 0)) return [];
-  const before2 = masteryLevel(draft, unitId, targetId);
+  const before3 = masteryLevel(draft, unitId, targetId);
   rel.mastery = { ...rel.mastery, [targetId]: round45((rel.mastery?.[targetId] ?? 0) + xp) };
-  const after2 = masteryLevel(draft, unitId, targetId);
+  const after3 = masteryLevel(draft, unitId, targetId);
   const events = [];
-  for (let level = before2 + 1; level <= after2; level++) events.push({ type: "mastery_gained", unitId, targetId, level });
+  for (let level = before3 + 1; level <= after3; level++) events.push({ type: "mastery_gained", unitId, targetId, level });
   const open3 = TUNING.mastery.revealLevel;
   const target = reg.worshipTargets.get(targetId);
-  if (before2 < open3 && after2 >= open3 && !zoneRevealed(draft, unitId, targetId) && contentAllowed(draft, reg, target, unitId)) {
+  if (before3 < open3 && after3 >= open3 && !zoneRevealed(draft, unitId, targetId) && contentAllowed(draft, reg, target, unitId)) {
     events.push({
       type: "zone_revealed",
       unitId,
@@ -21402,12 +21419,12 @@ var trains = (reg, activityId) => activityId !== void 0 && (reg.activities.get(a
 function surfaceHolds(state, reg, unitId, cond) {
   const scene = state.scene;
   const rel = dynamicOf(state, unitId);
-  const S5 = TUNING.dynamic.style;
+  const S6 = TUNING.dynamic.style;
   switch (cond) {
     case "peak":
       return atPeak(state, unitId);
     case "scene_edges":
-      return scene !== void 0 && inScene(state, unitId) && (scene.exchanges <= S5.edgeStart || scene.exchanges >= S5.edgeEnd);
+      return scene !== void 0 && inScene(state, unitId) && (scene.exchanges <= S6.edgeStart || scene.exchanges >= S6.edgeEnd);
     case "before_others":
       return scene !== void 0 && inScene(state, unitId) && scene.participants.length >= 2;
     case "third_person":
@@ -21432,22 +21449,22 @@ function surfaceHolds(state, reg, unitId, cond) {
     }
     case "stagnation": {
       const day = state.dynamic?.noted?.enduranceDay;
-      return day !== void 0 && state.day - day >= S5.stagnationDays;
+      return day !== void 0 && state.day - day >= S6.stagnationDays;
     }
     case "training_start":
       return scene !== void 0 && inScene(state, unitId) && trains(reg, scene.activityId);
     case "praised_or_ignored": {
       const contact = state.relations[unitId]?.contactDay;
-      return state.dynamic?.noted?.praisedDay === state.day || contact !== void 0 && state.day - contact >= S5.ignoredDays;
+      return state.dynamic?.noted?.praisedDay === state.day || contact !== void 0 && state.day - contact >= S6.ignoredDays;
     }
     case "crime_mentioned":
       return state.dynamic?.noted?.crimeDay === state.day;
     case "failed_run": {
       const e = state.lastExpedition;
-      return e !== void 0 && e.outcome === "failed" && state.day - e.day <= S5.failedRunDays;
+      return e !== void 0 && e.outcome === "failed" && state.day - e.day <= S6.failedRunDays;
     }
     case "arrival_anniversary":
-      return state.day > 0 && state.day % S5.anniversaryDays === 0;
+      return state.day > 0 && state.day % S6.anniversaryDays === 0;
   }
 }
 function leadingStyle(state, reg, unitId) {
@@ -21467,8 +21484,8 @@ function defaultExpectation(state, reg, moment) {
   const entry = primary === void 0 ? void 0 : entryOf2(reg, primary);
   const offset = unit4?.kind === "named" ? unit4.expectations?.offset : void 0;
   const point = entry?.point == null ? void 0 : { r: entry.point.r + (offset?.r ?? 0), f: entry.point.f + (offset?.f ?? 0) };
-  const frame3 = moment.options.filter((o) => FRAME_KEYS.includes(o.key));
-  const options2 = frame3.length > 0 ? frame3 : [...moment.options];
+  const frame4 = moment.options.filter((o) => FRAME_KEYS.includes(o.key));
+  const options2 = frame4.length > 0 ? frame4 : [...moment.options];
   const prefer = rel !== void 0 && frameRank(rel.frame) >= frameRank("play") ? "yielded" : "returned";
   const score = (type) => {
     if (point === void 0 || rel === void 0) return 0;
@@ -21477,8 +21494,8 @@ function defaultExpectation(state, reg, moment) {
   };
   const best = Math.min(...options2.map((o) => score(o.type)));
   const tied = options2.filter((o) => score(o.type) === best);
-  const pick5 = tied.find((o) => o.type === prefer) ?? tied.find((o) => o.type === (prefer === "yielded" ? "returned" : "yielded")) ?? tied[0];
-  return { key: pick5?.key ?? "0", strength: 1 };
+  const pick6 = tied.find((o) => o.type === prefer) ?? tied.find((o) => o.type === (prefer === "yielded" ? "returned" : "yielded")) ?? tied[0];
+  return { key: pick6?.key ?? "0", strength: 1 };
 }
 function noteEvents(draft, ctx2, events) {
   if (draft.dynamic === void 0 || !dynamicOn(draft, ctx2.registries)) return [];
@@ -21819,8 +21836,8 @@ function probeChance(state, reg, unitId) {
 function pickAxis(draft, reg, unitId, tier, recent2) {
   const axes = [...reg.probeAxes.values()].map((a) => a).filter((a) => a.tier <= tier);
   const skip = recent2.slice(-TUNING.probes.skipRecent);
-  const fresh2 = axes.filter((a) => !skip.includes(a.id));
-  const pool = fresh2.length > 0 ? fresh2 : axes;
+  const fresh3 = axes.filter((a) => !skip.includes(a.id));
+  const pool = fresh3.length > 0 ? fresh3 : axes;
   return pool[Math.min(pool.length - 1, Math.floor(dynamicRoll(draft, unitId, "probe_axis") * pool.length))];
 }
 function staysInQueue(draft, id) {
@@ -22276,8 +22293,8 @@ function challengeOpinion(draft, reg, unitId, topicId, weight, positionId) {
   if (at < 0) return [];
   const asked = positionId === void 0 ? -1 : ids.indexOf(positionId);
   const toward = asked >= 0 && asked !== at ? asked < at ? "first" : "last" : at > ids.length - 1 - at ? "first" : at < ids.length - 1 - at ? "last" : "first";
-  const before2 = opinion.push === void 0 ? 0 : opinion.push.toward === "first" ? opinion.push.amount : -opinion.push.amount;
-  const net = before2 + (toward === "first" ? weight : -weight);
+  const before3 = opinion.push === void 0 ? 0 : opinion.push.toward === "first" ? opinion.push.amount : -opinion.push.amount;
+  const net = before3 + (toward === "first" ? weight : -weight);
   if (net === 0) delete opinion.push;
   else opinion.push = { toward: net > 0 ? "first" : "last", amount: Math.abs(net) };
   const t = TUNING.life.opinion;
@@ -22374,13 +22391,13 @@ function lifeView(state, reg, unitId, visible = () => true) {
 
 // src/engine/life/events.ts
 var eventsOf = (reg) => [...reg.lifeEvents.values()];
-function roomsToday(state, reg, unitId, day, cache) {
-  return placesOf(state, reg, unitId, day, cache).map((w) => {
+function roomsToday(state, reg, unitId, day, cache2) {
+  return placesOf(state, reg, unitId, day, cache2).map((w) => {
     const room2 = w.roomId ? reg.hubRooms.get(w.roomId) : void 0;
     return { reason: w.reason, locationId: typeof room2?.sceneLocationId === "string" ? room2.sceneLocationId : null };
   });
 }
-function requiresHold(state, reg, unitId, req, day, cache) {
+function requiresHold(state, reg, unitId, req, day, cache2) {
   if (!req) return true;
   const unit4 = unitOf2(state, unitId);
   if (!unit4) return false;
@@ -22394,7 +22411,7 @@ function requiresHold(state, reg, unitId, req, day, cache) {
         ok = (unit4.hobbies ?? []).some((h2) => h2.state === "active" && (value === "any" || h2.id === value));
         break;
       case "location":
-        ok = roomsToday(state, reg, unitId, day, cache).some((r) => r.reason === "routine" && r.locationId !== null && value.includes(r.locationId));
+        ok = roomsToday(state, reg, unitId, day, cache2).some((r) => r.reason === "routine" && r.locationId !== null && value.includes(r.locationId));
         break;
       case "activity": {
         const lo = day * SLOTS_PER_DAY;
@@ -22490,7 +22507,7 @@ function weekOf2(state, unitId, day) {
   const w = state.life?.units[unitId]?.week;
   return w !== void 0 && w.n === week ? w : { n: week, events: 0, notable: 0 };
 }
-function eventPool(state, reg, unitId, day, cache = /* @__PURE__ */ new Map()) {
+function eventPool(state, reg, unitId, day, cache2 = /* @__PURE__ */ new Map()) {
   const life = state.life;
   if (!life || !takesPart(state, unitId)) return [];
   const mine = life.units[unitId]?.last ?? {};
@@ -22501,15 +22518,15 @@ function eventPool(state, reg, unitId, day, cache = /* @__PURE__ */ new Map()) {
     if (mine[e.id] !== void 0 && day - mine[e.id] < cooldown) return false;
     if (life.kinds.some((k) => k.kind === e.id && k.unitId !== unitId && day - k.day < TUNING.life.squadKindDays)) return false;
     if (e.yearly === true && lifeHash(life, `${unitId}|vat`) % TUNING.life.cooldown.yearly !== day % TUNING.life.cooldown.yearly) return false;
-    return requiresHold(state, reg, unitId, e.requires, day, cache);
+    return requiresHold(state, reg, unitId, e.requires, day, cache2);
   });
 }
-function pickLifeEvent(state, reg, unitId, day, cache) {
+function pickLifeEvent(state, reg, unitId, day, cache2) {
   const life = state.life;
   const mode = lifeMode(state);
   if (!life || mode === "off" || !takesPart(state, unitId)) return null;
   const week = weekOf2(state, unitId, day);
-  const pool = eventPool(state, reg, unitId, day, cache);
+  const pool = eventPool(state, reg, unitId, day, cache2);
   if (pool.length === 0) return null;
   const yearly = pool.filter((e) => e.yearly === true);
   if (yearly.length === 0 && week.events >= weekAllowance(state, unitId, week.n)) return null;
@@ -22804,8 +22821,8 @@ function rollTokenOffer(draft, ctx2) {
     if (!ctx2.rng.chance(chance)) continue;
     const kinds2 = kindsFor(draft, reg, u.id);
     if (kinds2.length === 0) continue;
-    let pick5 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
-    const kind = kinds2.find((k) => (pick5 -= Number(k.weight)) < 0) ?? kinds2[0];
+    let pick6 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
+    const kind = kinds2.find((k) => (pick6 -= Number(k.weight)) < 0) ?? kinds2[0];
     const label2 = labelOf(reg, String(kind.id), u.displayName);
     const tokens = personalOf(draft).tokens ??= { owned: [], given: [] };
     const dm = pushMessage(draft, u.id, { from: u.id, text: String(kind.text).replaceAll("{name}", u.displayName).replaceAll("{label}", label2), day: draft.day, slot: draft.slot, read: false, initiated: true });
@@ -23076,13 +23093,13 @@ var seedRows = (reg) => [...reg.practiceSeeds.values()];
 function seedPool(state, reg, holderId, kind, opts = {}) {
   const view = practiceOf(state, reg, holderId);
   const tier = bondTierOf(state, reg, holderId);
-  return seedRows(reg).filter((seed2) => {
-    if (seed2.kind !== kind || !contentAllowed(state, reg, seed2, holderId)) return false;
-    if (seed2.contentTags.some((t) => view?.categories[t] !== void 0 && view.categories[t].as === "none")) return false;
-    if (!trackOpen(state, reg, holderId, seed2.track) || seed2.tier > trackLevel(state, holderId, seed2.track) + 1) return false;
-    if (opts.minTier !== void 0 && seed2.tier < opts.minTier) return false;
-    if (seed2.needs !== void 0 && !hasCapability(state, reg, holderId, seed2.needs)) return false;
-    return seed2.romantic !== true || tier === "romantic";
+  return seedRows(reg).filter((seed3) => {
+    if (seed3.kind !== kind || !contentAllowed(state, reg, seed3, holderId)) return false;
+    if (seed3.contentTags.some((t) => view?.categories[t] !== void 0 && view.categories[t].as === "none")) return false;
+    if (!trackOpen(state, reg, holderId, seed3.track) || seed3.tier > trackLevel(state, holderId, seed3.track) + 1) return false;
+    if (opts.minTier !== void 0 && seed3.tier < opts.minTier) return false;
+    if (seed3.needs !== void 0 && !hasCapability(state, reg, holderId, seed3.needs)) return false;
+    return seed3.romantic !== true || tier === "romantic";
   });
 }
 function pickSeeds(state, reg, holderId, kind, opts = {}) {
@@ -23092,9 +23109,9 @@ function pickSeeds(state, reg, holderId, kind, opts = {}) {
   const rest = [...pool];
   const picked = [];
   for (let i = 0; i < want && rest.length > 0; i++) {
-    const total2 = rest.reduce((sum, seed2) => sum + seed2.weight, 0);
+    const total2 = rest.reduce((sum, seed3) => sum + seed3.weight, 0);
     let at = practiceRoll(state, holderId, `seeds:${kind}:${i}`) * total2;
-    let index2 = rest.findIndex((seed2) => (at -= seed2.weight) < 0);
+    let index2 = rest.findIndex((seed3) => (at -= seed3.weight) < 0);
     if (index2 < 0) index2 = rest.length - 1;
     picked.push(rest[index2].id);
     rest.splice(index2, 1);
@@ -23104,12 +23121,12 @@ function pickSeeds(state, reg, holderId, kind, opts = {}) {
 function fallbackLine(kind, gist) {
   return TUNING.practice.fallback[kind].replaceAll("{gist}", gist);
 }
-function plainSummary(seed2) {
-  return seed2.gist;
+function plainSummary(seed3) {
+  return seed3.gist;
 }
 function stakesCeilingOf(state, holderId) {
-  const frame3 = dynamicOf(state, holderId)?.frame;
-  return frame3 === "rule" || frame3 === "role" || frame3 === "play" ? TUNING.practice.stakesCeiling[frame3] : "minor";
+  const frame4 = dynamicOf(state, holderId)?.frame;
+  return frame4 === "rule" || frame4 === "role" || frame4 === "play" ? TUNING.practice.stakesCeiling[frame4] : "minor";
 }
 
 // src/engine/practice/request.ts
@@ -23297,8 +23314,8 @@ function styleTerm(state, reg, holderId) {
 }
 function severityOf(state, reg, holderId, offence) {
   const T5 = TUNING.practice.severity;
-  const frame3 = dynamicOf(state, holderId)?.frame;
-  const frameTerm = frame3 === "rule" || frame3 === "role" || frame3 === "play" ? T5.frame[frame3] : 0;
+  const frame4 = dynamicOf(state, holderId)?.frame;
+  const frameTerm = frame4 === "rule" || frame4 === "role" || frame4 === "play" ? T5.frame[frame4] : 0;
   const recent2 = (state.practices?.offences[holderId] ?? []).filter((d) => state.day - d <= T5.repeat.days).length;
   const repeat = recent2 >= T5.repeat.count ? T5.repeat.add : 0;
   const confessed = offence.confessed === true ? TUNING.practice.confessedLess : 0;
@@ -23383,8 +23400,8 @@ function noteOffence(draft, ctx2, holderId, offence) {
 }
 var str2 = (v) => typeof v === "string" && v !== "" ? v : void 0;
 var answers = (state, holderId) => {
-  const frame3 = dynamicOf(state, holderId)?.frame;
-  return frame3 !== void 0 && frameRank(frame3) >= frameRank("role");
+  const frame4 = dynamicOf(state, holderId)?.frame;
+  return frame4 !== void 0 && frameRank(frame4) >= frameRank("role");
 };
 function offencesFromEvents(draft, ctx2, events) {
   if (!events.some((e) => OFFENCE_SOURCES.includes(e.type))) return [];
@@ -23425,8 +23442,8 @@ var OFFENCE_SOURCES = ["refusal_noted", "milestone_refused", "override_answered"
 var HUMBLING_TAG = "public_humiliation";
 var isHumbling = (tags) => tags.includes(HUMBLING_TAG);
 function stageOf(slot2) {
-  const S5 = TUNING.practice.demonstration.stage;
-  return S5[slot2] ?? S5.other;
+  const S6 = TUNING.practice.demonstration.stage;
+  return S6[slot2] ?? S6.other;
 }
 var roomOfLocation = (reg, locationId) => [...reg.hubRooms.values()].find((r) => r.sceneLocationId === locationId)?.id;
 function pickAudience(state, reg, holderId, slot2) {
@@ -23448,9 +23465,9 @@ function demonstrationGate(state, reg, holderId, card2) {
   const audience = practiceOf(state, reg, holderId)?.audience;
   if (audience === void 0 || audience === "private_only") return "She keeps it private.";
   if (audience === "indifferent") return "She does not stage it.";
-  const frame3 = dynamicOf(state, holderId)?.frame ?? "equal";
-  if (frameRank(frame3) < frameRank("play")) return "Her hold is too light for it.";
-  if (card2?.tier !== void 0 && card2.tier > 2 && frameRank(frame3) < frameRank("role")) return "Her hold is too light for something that heavy.";
+  const frame4 = dynamicOf(state, holderId)?.frame ?? "equal";
+  if (frameRank(frame4) < frameRank("play")) return "Her hold is too light for it.";
+  if (card2?.tier !== void 0 && card2.tier > 2 && frameRank(frame4) < frameRank("role")) return "Her hold is too light for something that heavy.";
   const tags = card2?.tags ?? [];
   if (card2 === void 0 ? !["service", HUMBLING_TAG].some((t) => contentAllowed(state, reg, { contentTags: [t] }, holderId)) : tags.length === 0 || tags.some((t) => !contentAllowed(state, reg, { contentTags: [t] }, holderId))) {
     return "That is not switched on.";
@@ -23921,7 +23938,7 @@ function buildPracticeInput(state, reg, request, card2 = "") {
   const unit4 = state.squad.find((u) => u.id === holderId);
   const view = practiceOf(state, reg, holderId);
   const dyn = dynamicOf(state, holderId);
-  const frame3 = dyn?.frame === "rule" || dyn?.frame === "role" ? dyn.frame : "play";
+  const frame4 = dyn?.frame === "rule" || dyn?.frame === "role" ? dyn.frame : "play";
   const label2 = (id) => String(reg.contentCategories.get(id)?.label ?? id);
   const seeds = request.seedIds.map((id) => seedRows(reg).find((s) => s.id === id)).filter((s) => s !== void 0);
   const unitName3 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
@@ -23931,7 +23948,7 @@ function buildPracticeInput(state, reg, request, card2 = "") {
     kind: request.kind,
     holder: { id: holderId, name: unit4.displayName },
     card: clean3(card2).slice(0, CARD_MAX),
-    frame: frame3,
+    frame: frame4,
     style: view === null ? { primary: "cold" } : { primary: view.style.primary, ...view.style.secondary !== void 0 ? { secondary: view.style.secondary } : {} },
     claims: capabilitiesOf(state, reg, holderId).map((c) => CAPABILITY_WORDS[c] ?? c),
     tracks: [...reg.dynamicTracks.values()].filter((t) => trackOpen(state, reg, holderId, t.id)).map((t) => ({ id: t.id, label: String(t.label ?? t.id), level: LEVEL_WORDS[trackLevel(state, holderId, t.id)] })),
@@ -23987,23 +24004,23 @@ function validatePracticeOutput(state, reg, request, raw) {
   const issues = [];
   if (request.kind === "punishment") return validatePunishmentCard(state, reg, request, raw);
   const pool = seedPool(state, reg, holderId, request.kind);
-  const seed2 = typeof raw.seedId === "string" ? pool.find((s) => s.id === raw.seedId) : void 0;
-  if (raw.seedId !== void 0 && seed2 === void 0) issues.push("seedId is not an offered seed and was dropped");
+  const seed3 = typeof raw.seedId === "string" ? pool.find((s) => s.id === raw.seedId) : void 0;
+  if (raw.seedId !== void 0 && seed3 === void 0) issues.push("seedId is not an offered seed and was dropped");
   const tags = (Array.isArray(raw.tags) ? raw.tags : []).filter((t) => typeof t === "string").filter((t, i, all) => all.indexOf(t) === i);
   const kept = tags.filter((t) => reg.contentCategories.has(t) && contentAllowed(state, reg, { contentTags: [t] }, holderId));
   if (kept.length < tags.length) issues.push(`tags ${tags.filter((t) => !kept.includes(t)).join(", ")} are not available and were dropped`);
   if (kept.length === 0) return null;
   const asked = typeof raw.track === "string" ? raw.track : void 0;
-  const track = asked !== void 0 && trackOpen(state, reg, holderId, asked) ? asked : seed2 !== void 0 && trackOpen(state, reg, holderId, seed2.track) ? seed2.track : void 0;
+  const track = asked !== void 0 && trackOpen(state, reg, holderId, asked) ? asked : seed3 !== void 0 && trackOpen(state, reg, holderId, seed3.track) ? seed3.track : void 0;
   if (track === void 0) return null;
   if (track !== asked) issues.push("track was not open and was replaced");
   const cap9 = trackLevel(state, holderId, track) + 1;
-  const tierRaw = typeof raw.tier === "number" && Number.isFinite(raw.tier) ? Math.round(raw.tier) : seed2?.tier ?? 1;
+  const tierRaw = typeof raw.tier === "number" && Number.isFinite(raw.tier) ? Math.round(raw.tier) : seed3?.tier ?? 1;
   const floor = request.chainOf === void 0 ? 1 : state.practices?.tasks.filter((x) => x.chainId === request.chainOf).at(-1)?.tier ?? 1;
   const tier = Math.min(Math.min(5, cap9), Math.max(1, floor, tierRaw));
   if (tier !== raw.tier) issues.push("tier was clamped");
   const ceiling = stakesCeilingOf(state, holderId);
-  const stakesRaw = STAKES.includes(raw.stakes) ? raw.stakes : seed2?.stakes ?? "minor";
+  const stakesRaw = STAKES.includes(raw.stakes) ? raw.stakes : seed3?.stakes ?? "minor";
   const stakes = stakeRank(stakesRaw) > stakeRank(ceiling) ? ceiling : stakesRaw;
   if (stakes !== raw.stakes) issues.push("stakes were clamped");
   const units = eligibleUnits(state, holderId);
@@ -24026,7 +24043,7 @@ function validatePracticeOutput(state, reg, request, raw) {
     checkArg = fieldUnit;
     issues.push("a field task takes a roster check");
   } else if (check !== raw.check) issues.push("check was changed to model");
-  const proof = PROOFS.includes(raw.proof) ? raw.proof : seed2?.proof ?? "none";
+  const proof = PROOFS.includes(raw.proof) ? raw.proof : seed3?.proof ?? "none";
   let deadline;
   if (isObj6(raw.deadline) && typeof raw.deadline.days === "number" && Number.isFinite(raw.deadline.days)) {
     const D3 = TUNING.practice.deadlineDays;
@@ -24034,7 +24051,7 @@ function validatePracticeOutput(state, reg, request, raw) {
     if (days !== raw.deadline.days) issues.push("deadline was clamped");
     deadline = { days, ...typeof raw.deadline.slot === "string" && SLOTS4.includes(raw.deadline.slot) ? { slot: raw.deadline.slot } : {} };
   } else if (request.kind === "task") {
-    deadline = { days: seed2?.days ?? TUNING.practice.defaultDeadlineDays };
+    deadline = { days: seed3?.days ?? TUNING.practice.defaultDeadlineDays };
     issues.push("deadline was missing and is the seed's or the default");
   }
   const eligible4 = request.kind === "demonstration" ? watchersOf(state, reg, holderId) : units;
@@ -24046,14 +24063,14 @@ function validatePracticeOutput(state, reg, request, raw) {
   let summary = plainText2(raw.summary, TUNING.practice.summaryMax);
   if (text3 === "" || hasCommanderPronoun(text3) || hasCommanderPronoun(summary)) return null;
   if (summary === "") {
-    if (seed2 === void 0) return null;
-    summary = seed2.gist;
+    if (seed3 === void 0) return null;
+    summary = seed3.gist;
     issues.push("summary was empty and is the seed's gist");
   }
   return {
     output: {
       kind: request.kind,
-      ...seed2 !== void 0 ? { seedId: seed2.id } : {},
+      ...seed3 !== void 0 ? { seedId: seed3.id } : {},
       tags: kept,
       track,
       tier,
@@ -24097,10 +24114,10 @@ var frameOf2 = (state, holderId) => {
 };
 var openTasks = (state, holderId) => (state.practices?.tasks ?? []).filter((t) => t.holderId === holderId && t.kind === "task" && t.routine !== true && t.handover === void 0 && (t.status === "offered" || t.status === "open")).length;
 function taskRoom(state, reg, holderId) {
-  const frame3 = frameOf2(state, holderId);
+  const frame4 = frameOf2(state, holderId);
   const open3 = openTasks(state, holderId);
-  if (open3 >= TUNING.practice.taskCap[frame3]) return false;
-  return !(frameRank(frame3) >= frameRank("role") && open3 >= 1 && !hasCapability(state, reg, holderId, "household_protocol"));
+  if (open3 >= TUNING.practice.taskCap[frame4]) return false;
+  return !(frameRank(frame4) >= frameRank("role") && open3 >= 1 && !hasCapability(state, reg, holderId, "household_protocol"));
 }
 var targetOf = (request, out) => request.targetUnitId ?? out.targetUnitId ?? (ROSTER_CHECKS2.includes(out.check) || out.check === "no_scene_with" ? out.checkArg : void 0);
 var writeTask = (draft, _ctx, request, out, plain8) => {
@@ -24143,12 +24160,12 @@ var HOLD_SLOTS = { trivial: 1, minor: 1, major: 2, severe: 3 };
 var holdBusy = (state) => state.practices?.held !== void 0 || (state.practices?.tasks ?? []).some((t) => t.kind === "hold" && (t.status === "offered" || t.status === "open"));
 var writeHold = (draft, ctx2, request, out, plain8) => {
   if (holdBusy(draft)) {
-    const seed3 = out.seedId === void 0 ? void 0 : ctx2.registries.practiceSeeds.get(out.seedId);
-    return writeTask(draft, ctx2, request, { ...out, kind: "task", deadline: out.deadline ?? { days: seed3?.days ?? TUNING.practice.defaultDeadlineDays } }, plain8);
+    const seed4 = out.seedId === void 0 ? void 0 : ctx2.registries.practiceSeeds.get(out.seedId);
+    return writeTask(draft, ctx2, request, { ...out, kind: "task", deadline: out.deadline ?? { days: seed4?.days ?? TUNING.practice.defaultDeadlineDays } }, plain8);
   }
   const p = ensurePractices(draft);
   const id = nextPracticeId(draft, "pt");
-  const seed2 = out.seedId === void 0 ? void 0 : ctx2.registries.practiceSeeds.get(out.seedId);
+  const seed3 = out.seedId === void 0 ? void 0 : ctx2.registries.practiceSeeds.get(out.seedId);
   const task = {
     id,
     holderId: request.holderId,
@@ -24167,7 +24184,7 @@ var writeHold = (draft, ctx2, request, out, plain8) => {
     ...plain8 ? { plain: true } : {},
     status: "offered",
     ...request.sealed === true ? { sealed: true } : {},
-    ...seed2?.sensory === true ? { sensory: true } : {},
+    ...seed3?.sensory === true ? { sensory: true } : {},
     slots: HOLD_SLOTS[out.stakes],
     acceptForm: acceptFormOf(out.stakes, request.sealed),
     day: draft.day,
@@ -24270,8 +24287,8 @@ function refusePractice(draft, ctx2, holderId, what) {
   const events = [];
   events.push(...refuseLikeDemand(draft, ctx2, holderId, { evidence, ...severity !== void 0 ? { severity } : {} }));
   events.push(...evaluateAutomatic(draft, ctx2.registries, holderId));
-  const frame3 = dynamicOf(draft, holderId)?.frame;
-  if (frame3 !== void 0 && frameRank(frame3) >= frameRank("role")) events.push(...noteOffence(draft, ctx2, holderId, { kind: "refusal", ref: what.ref, stakes: what.sealed === true ? "major" : what.stakes, day: draft.day }));
+  const frame4 = dynamicOf(draft, holderId)?.frame;
+  if (frame4 !== void 0 && frameRank(frame4) >= frameRank("role")) events.push(...noteOffence(draft, ctx2, holderId, { kind: "refusal", ref: what.ref, stakes: what.sealed === true ? "major" : what.stakes, day: draft.day }));
   return events;
 }
 function acceptByWords(draft, ctx2, holderId, ev) {
@@ -24836,8 +24853,8 @@ var RECENT_MAX = TUNING.probes.recentMax;
 var isOpenTask = (t) => t.kind === "task" && t.status === "open" && t.routine !== true;
 var stepUp2 = (s) => STAKES[Math.min(STAKES.length - 1, stakeRank(s) + 1)];
 function formOf(reg, task) {
-  const seed2 = task.seedId === void 0 ? void 0 : reg.practiceSeeds.get(task.seedId);
-  return typeof seed2?.gist === "string" ? seed2.gist : task.summary.slice(0, 40);
+  const seed3 = task.seedId === void 0 ? void 0 : reg.practiceSeeds.get(task.seedId);
+  return typeof seed3?.gist === "string" ? seed3.gist : task.summary.slice(0, 40);
 }
 function settleTask(draft, ctx2, taskId, outcome, via, opts = {}) {
   const reg = ctx2.registries;
@@ -25069,8 +25086,8 @@ function alarmAnswer(state, reg, holderId, kind, alarmId, payload) {
   const unit4 = state.squad.find((u) => u.id === holderId);
   const values = unit4 === void 0 ? void 0 : valuesOf(unit4);
   const style = practiceOf(state, reg, holderId)?.style.primary;
-  const frame3 = dynamicOf(state, holderId)?.frame;
-  const score = (values?.mercy ?? 0) * T5.mercy + (values?.corporate ?? 0) * T5.corporate + (style === void 0 ? 0 : T5.style[style] ?? 0) + (frame3 === "play" || frame3 === "role" || frame3 === "rule" ? T5.frame[frame3] : 0) + practiceRoll(state, holderId, `alarm:${alarmId}`) - 0.5;
+  const frame4 = dynamicOf(state, holderId)?.frame;
+  const score = (values?.mercy ?? 0) * T5.mercy + (values?.corporate ?? 0) * T5.corporate + (style === void 0 ? 0 : T5.style[style] ?? 0) + (frame4 === "play" || frame4 === "role" || frame4 === "rule" ? T5.frame[frame4] : 0) + practiceRoll(state, holderId, `alarm:${alarmId}`) - 0.5;
   return score >= T5.release ? "release" : score >= T5.late ? "release_late" : "keep";
 }
 var alarmEvent = (alarm, answer, extra = {}) => ({
@@ -25279,21 +25296,21 @@ function fallbackOutput(state, reg, request) {
     return { kind: "punishment", tags: [], track: "discipline", tier: 1, stakes: "minor", check: "model", proof: "none", text: fallbackLine("punishment", label2), summary: label2 };
   }
   const pool = seedPool(state, reg, request.holderId, request.kind);
-  const seed2 = request.seedIds.map((id) => pool.find((s) => s.id === id)).find((s) => s !== void 0);
-  if (seed2 === void 0) return null;
+  const seed3 = request.seedIds.map((id) => pool.find((s) => s.id === id)).find((s) => s !== void 0);
+  if (seed3 === void 0) return null;
   const ceiling = stakesCeilingOf(state, request.holderId);
   return {
     kind: request.kind,
-    seedId: seed2.id,
-    tags: [...seed2.contentTags],
-    track: seed2.track,
-    tier: seed2.tier,
-    stakes: stakeRank(seed2.stakes) > stakeRank(ceiling) ? ceiling : seed2.stakes,
-    check: seed2.check ?? "model",
-    proof: seed2.proof ?? "none",
-    ...request.kind === "task" ? { deadline: { days: seed2.days ?? TUNING.practice.defaultDeadlineDays } } : {},
-    text: fallbackLine(request.kind, seed2.gist),
-    summary: plainSummary(seed2)
+    seedId: seed3.id,
+    tags: [...seed3.contentTags],
+    track: seed3.track,
+    tier: seed3.tier,
+    stakes: stakeRank(seed3.stakes) > stakeRank(ceiling) ? ceiling : seed3.stakes,
+    check: seed3.check ?? "model",
+    proof: seed3.proof ?? "none",
+    ...request.kind === "task" ? { deadline: { days: seed3.days ?? TUNING.practice.defaultDeadlineDays } } : {},
+    text: fallbackLine(request.kind, seed3.gist),
+    summary: plainSummary(seed3)
   };
 }
 function issuePractice(draft, ctx2, requestId, output) {
@@ -25378,7 +25395,7 @@ function runPunishmentEffect(draft, ctx2, p, fx2) {
       const targetId = atBase(draft, holderId)[0];
       if (targetId === void 0) return [];
       const name = draft.squad.find((u) => u.id === targetId)?.displayName ?? targetId;
-      const C = TUNING.practice.punish.confession;
+      const C2 = TUNING.practice.punish.confession;
       const stakes = TUNING.practice.punish.stakesOf[p.severity - 1];
       const id = nextPracticeId(draft, "pt");
       const task = {
@@ -25386,14 +25403,14 @@ function runPunishmentEffect(draft, ctx2, p, fx2) {
         holderId,
         kind: "task",
         tags: ["public_humiliation"],
-        track: C.track,
+        track: C2.track,
         tier: p.severity,
         stakes,
         check: "model",
         proof: "none",
-        deadline: { day: draft.day + C.days },
-        text: C.text.replaceAll("{name}", name),
-        summary: C.summary.replaceAll("{name}", name),
+        deadline: { day: draft.day + C2.days },
+        text: C2.text.replaceAll("{name}", name),
+        summary: C2.summary.replaceAll("{name}", name),
         plain: true,
         status: "open",
         targetUnitId: targetId,
@@ -25486,9 +25503,9 @@ function ceremonyOf(state, reg, holderId, severity) {
   return rows.length === 0 ? null : rows.map((e) => String(e.id));
 }
 function ceremonyCount(style, severity, named4) {
-  const C = TUNING.practice.ceremony;
-  const low = C.lowNumber[severity] ?? 0;
-  return style !== void 0 && C.doubledBy.includes(style) && named4 < low ? named4 * 2 : named4;
+  const C2 = TUNING.practice.ceremony;
+  const low = C2.lowNumber[severity] ?? 0;
+  return style !== void 0 && C2.doubledBy.includes(style) && named4 < low ? named4 * 2 : named4;
 }
 var stepEntry = (reg, id) => reg.ceremonySteps.get(id);
 var runningCeremony = (state, id) => {
@@ -25966,21 +25983,21 @@ function lifeFields(type, e, intent, life) {
   const str9 = (v) => typeof v === "string" && v !== "" ? v : null;
   let who;
   let key = null;
-  const pick5 = (list5, id) => {
+  const pick6 = (list5, id) => {
     const row4 = id === null ? void 0 : list5.find((x) => x.id === id && candidates3.includes(x.unitId));
     who = row4?.unitId;
     return row4;
   };
   switch (type) {
     case "news_told": {
-      const row4 = pick5(life.news, str9(e.newsId));
+      const row4 = pick6(life.news, str9(e.newsId));
       if (!row4) return null;
       intent.newsId = row4.id;
       key = row4.id;
       break;
     }
     case "hobby_praised": {
-      const row4 = pick5(life.hobbies, str9(e.hobbyId));
+      const row4 = pick6(life.hobbies, str9(e.hobbyId));
       if (!row4) return null;
       intent.hobbyId = row4.id;
       key = row4.id;
@@ -25989,7 +26006,7 @@ function lifeFields(type, e, intent, life) {
     case "opinion_voiced":
     case "opinion_challenged":
     case "opinion_agreed": {
-      const row4 = pick5(life.topics.filter((t) => type === "opinion_voiced" ? t.pick === true : t.voiced === true), str9(e.topicId));
+      const row4 = pick6(life.topics.filter((t) => type === "opinion_voiced" ? t.pick === true : t.voiced === true), str9(e.topicId));
       if (!row4) return null;
       intent.topicId = row4.id;
       const position = str9(e.positionId);
@@ -26007,7 +26024,7 @@ function lifeFields(type, e, intent, life) {
       break;
     }
     case "joke_returned": {
-      const row4 = pick5(life.jokes, str9(e.factId));
+      const row4 = pick6(life.jokes, str9(e.factId));
       if (!row4) return null;
       intent.factId = row4.id;
       key = row4.id;
@@ -26177,10 +26194,10 @@ function validateIntents(raw, ctx2) {
       intent.text = text3;
     } else if (type === "compromise_reached" && ctx2.dynamic !== void 0 && (typeof e.claimId === "string" && ctx2.dynamic.claims.includes(e.claimId) || typeof e.exitId === "string" && ctx2.dynamic.exits.includes(e.exitId))) {
       const claim2 = typeof e.claimId === "string" && ctx2.dynamic.claims.includes(e.claimId) ? e.claimId : void 0;
-      const exit2 = typeof e.exitId === "string" && ctx2.dynamic.exits.includes(e.exitId) ? e.exitId : void 0;
+      const exit3 = typeof e.exitId === "string" && ctx2.dynamic.exits.includes(e.exitId) ? e.exitId : void 0;
       if (actor !== "commander") continue;
       if (claim2 !== void 0) intent.claimId = claim2;
-      if (exit2 !== void 0) intent.exitId = exit2;
+      if (exit3 !== void 0) intent.exitId = exit3;
       if (typeof e.text === "string") intent.text = e.text.replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.rules.textMax).trim();
     } else if (type === "compromise_reached" && ctx2.practice !== void 0 && (typeof e.taskId === "string" || typeof e.punishmentId === "string" || typeof e.alarmId === "string")) {
       const found = actor === "commander" ? practiceCompromise(e, intent, ctx2.practice) : null;
@@ -26466,19 +26483,19 @@ function allies(state) {
   const holder3 = wardenOf(state)?.unitId;
   return state.squad.filter((u) => u.kind === "named" && isLiving(u) && u.id !== holder3 && hasFlag3(state, u.id, "warden_ally")).map((u) => u.id);
 }
-function addSuspicion(draft, ctx2, noise4, cause, opts = {}) {
+function addSuspicion(draft, ctx2, noise5, cause, opts = {}) {
   const ls = leashswapOf(draft);
   if (!ls || !wardenOf(draft)) return [];
-  ls.intrigue.suspicion = clamp18(ls.intrigue.suspicion + noise4 * coverMult(draft, ctx2.registries), 0, 100);
+  ls.intrigue.suspicion = clamp18(ls.intrigue.suspicion + noise5 * coverMult(draft, ctx2.registries), 0, 100);
   const s = ls.intrigue.suspicion;
   const found = s >= 100 || ctx2.rng.chance(s / TUNING.warden.intrigue.discoveryDivisor);
   return found ? intrigueDiscovered(draft, ctx2, cause, opts) : [];
 }
 function allyChance(state, _reg, unitId) {
-  const A3 = TUNING.warden.intrigue.ally;
+  const A4 = TUNING.warden.intrigue.ally;
   const unit4 = unitOf5(state, unitId);
   const trust = state.relations[unitId]?.trust ?? 0;
-  return clamp18(A3.base + A3.perTrust * (trust - 50) + A3.autonomy * (unit4 ? valuesOf(unit4).autonomy : 0) - A3.corporate * (unit4 ? valuesOf(unit4).corporate : 0), A3.min, A3.max);
+  return clamp18(A4.base + A4.perTrust * (trust - 50) + A4.autonomy * (unit4 ? valuesOf(unit4).autonomy : 0) - A4.corporate * (unit4 ? valuesOf(unit4).corporate : 0), A4.min, A4.max);
 }
 function tryAlly(draft, ctx2, unitId) {
   const ls = leashswapOf(draft);
@@ -26773,8 +26790,8 @@ function emitSign(draft, ctx2, unitId, about2, level) {
   if (!unit4) return [];
   const rec = loyaltyRecord(draft, unitId);
   const lines = [...ctx2.registries.loyaltySigns.values()].filter((s) => s.about === about2 && (about2 !== "mutiny" || s.level === level) && (unit4.kind === "named" || s.kind === "fact"));
-  const fresh2 = lines.filter((s) => !rec.signs.some((r) => r.signId === s.id));
-  const pool = fresh2.length > 0 ? fresh2 : lines;
+  const fresh3 = lines.filter((s) => !rec.signs.some((r) => r.signId === s.id));
+  const pool = fresh3.length > 0 ? fresh3 : lines;
   if (pool.length === 0) return [];
   const line3 = ctx2.rng.pick(pool);
   const kind = line3.kind;
@@ -27136,9 +27153,9 @@ function leaderRank(state, reg) {
   return Math.min(5, Math.max(1, Math.round(standing3 / TUNING.power.challenge.standingPerRank)));
 }
 function challengeChance(state, reg, stat3) {
-  const C = TUNING.power.challenge;
+  const C2 = TUNING.power.challenge;
   const mine = isSocial(stat3) ? socialRank(state, stat3) : commanderProfile(state).body[stat3];
-  return Math.min(C.max, Math.max(C.min, C.base + C.perRank * (mine - leaderRank(state, reg))));
+  return Math.min(C2.max, Math.max(C2.min, C2.base + C2.perRank * (mine - leaderRank(state, reg))));
 }
 var challengeCooldown = (state) => Math.max(0, (state.power?.hierarchy?.challengeCooldownUntil ?? 0) - state.day);
 function challenge(draft, ctx2, stat3) {
@@ -27149,14 +27166,14 @@ function challenge(draft, ctx2, stat3) {
   if (draft.scene) throw new Error("Finish the open scene before challenging anyone.");
   const left = challengeCooldown(draft);
   if (left > 0) throw new Error(`The last challenge is too recent: ${left} days left.`);
-  const C = TUNING.power.challenge;
+  const C2 = TUNING.power.challenge;
   const chance = challengeChance(draft, reg, stat3);
   const won = ctx2.rng.chance(chance);
   const h2 = powerOf(draft).hierarchy;
-  h2.challengeCooldownUntil = draft.day + C.cooldownDays;
+  h2.challengeCooldownUntil = draft.day + C2.cooldownDays;
   const events = [{ type: "challenge_resolved", unitId: leader.id, stat: stat3, chance, won }];
   if (won) {
-    h2.deposed = { unitId: leader.id, untilDay: draft.day + C.deposedDays };
+    h2.deposed = { unitId: leader.id, untilDay: draft.day + C2.deposedDays };
     delete h2.leaderId;
     events.push(...changeLeader(draft, reg, leader.id, void 0));
     events.push(...applyEventToUnit(draft, reg, leader.id, {
@@ -27167,9 +27184,9 @@ function challenge(draft, ctx2, stat3) {
       evidence: "won the challenge",
       confidence: 1
     }));
-    events.push(...addRecord(draft, leader.id, C.winRecord, "challenge_won"));
+    events.push(...addRecord(draft, leader.id, C2.winRecord, "challenge_won"));
   } else {
-    h2.standingBonus = { unitId: leader.id, amount: TUNING.power.standing.lostChallengeBonus, untilDay: draft.day + C.cooldownDays };
+    h2.standingBonus = { unitId: leader.id, amount: TUNING.power.standing.lostChallengeBonus, untilDay: draft.day + C2.cooldownDays };
     events.push(...applyEventToUnit(draft, reg, leader.id, {
       type: "challenge_lost",
       actor: "commander",
@@ -27178,7 +27195,7 @@ function challenge(draft, ctx2, stat3) {
       evidence: "lost the challenge",
       confidence: 1
     }));
-    for (const u of namedLiving4(draft)) events.push(...addRecord(draft, u.id, C.lossRecord, "challenge_lost"));
+    for (const u of namedLiving4(draft)) events.push(...addRecord(draft, u.id, C2.lossRecord, "challenge_lost"));
   }
   events.push(...evaluateAutomatic(draft, reg, leader.id));
   return events;
@@ -28368,9 +28385,9 @@ function runActivity(draft, ctx2, request) {
     switch (fx2.type) {
       case "resource": {
         const wanted2 = scaled(fx2.amount + (fx2.perStat ? fx2.perStat.per * socialRank(draft, fx2.perStat.stat) : 0), draft, reg, fx2.scale);
-        const before2 = draft.resources[fx2.resource];
-        draft.resources[fx2.resource] = Math.max(0, before2 + wanted2);
-        events.push({ type: "resource_changed", resource: fx2.resource, amount: draft.resources[fx2.resource] - before2 });
+        const before3 = draft.resources[fx2.resource];
+        draft.resources[fx2.resource] = Math.max(0, before3 + wanted2);
+        events.push({ type: "resource_changed", resource: fx2.resource, amount: draft.resources[fx2.resource] - before3 });
         break;
       }
       case "commander_stat": {
@@ -29245,11 +29262,11 @@ function choiceOf(state, reg, route, index2, scope) {
 function routeChoices(state, reg, check, scope) {
   return check.routes.map((route, i) => choiceOf(state, reg, route, i, scope));
 }
-function resolveRoute(draft, ctx2, check, pick5, scope) {
-  const choice = routeChoices(draft, ctx2.registries, check, scope)[pick5.route];
-  if (!choice) throw new Error(`The check "${check.id}" has no route ${String(pick5.route)}.`);
+function resolveRoute(draft, ctx2, check, pick6, scope) {
+  const choice = routeChoices(draft, ctx2.registries, check, scope)[pick6.route];
+  if (!choice) throw new Error(`The check "${check.id}" has no route ${String(pick6.route)}.`);
   if (choice.disabled) throw new Error(choice.disabled);
-  const route = check.routes[pick5.route];
+  const route = check.routes[pick6.route];
   const events = [];
   let passed = true;
   switch (route.kind) {
@@ -29266,9 +29283,9 @@ function resolveRoute(draft, ctx2, check, pick5, scope) {
       break;
     }
     case "delegate": {
-      if (typeof pick5.unitId !== "string") throw new Error("Pick a unit to ask.");
-      if (!choice.unitIds?.includes(pick5.unitId)) throw new Error(`Unit "${pick5.unitId}" is not available for this request.`);
-      const unit4 = draft.squad.find((u) => u.id === pick5.unitId);
+      if (typeof pick6.unitId !== "string") throw new Error("Pick a unit to ask.");
+      if (!choice.unitIds?.includes(pick6.unitId)) throw new Error(`Unit "${pick6.unitId}" is not available for this request.`);
+      const unit4 = draft.squad.find((u) => u.id === pick6.unitId);
       const rel = draft.relations[unit4.id];
       const have = TRUST_ORDER.indexOf(trustBand(rel?.trust ?? 0));
       const need = TRUST_ORDER.indexOf(route.cost.trustCheck ?? DEFAULT_TRUST_CHECK);
@@ -29425,8 +29442,8 @@ function chooseAction(ctx2, cid) {
   const opts = options(ctx2, cid, usable3);
   switch (c.aiProfile) {
     case "erratic": {
-      const pick5 = ctx2.rng.pick(usable3);
-      return { kind: "skill", skillId: pick5.skill.id, targetCid: ctx2.rng.pick(pick5.targets) };
+      const pick6 = ctx2.rng.pick(usable3);
+      return { kind: "skill", skillId: pick6.skill.id, targetCid: ctx2.rng.pick(pick6.targets) };
     }
     case "predator": {
       const damaging = opts.filter((o) => o.damage > 0);
@@ -29871,13 +29888,13 @@ var HANDS = ["rock", "paper", "scissors"];
 var PLAYABLE_KINDS = /* @__PURE__ */ new Set(["coin", "rps", "high_card", "sparring", "expedition_bet"]);
 var BET_PICKS = ["kills", "no_damage", "objective"];
 var agreedStatus = (reg, gameId) => reg.wagerGames.get(gameId)?.kind === "expedition_bet" ? "pending_run" : "accepted";
-function checkPick(state, reg, gameId, unitId, pick5) {
+function checkPick(state, reg, gameId, unitId, pick6) {
   const kind = reg.wagerGames.get(gameId)?.kind;
   if (kind === "sparring") {
-    const h2 = pick5 === void 0 ? void 0 : handicapOf(reg, pick5);
+    const h2 = pick6 === void 0 ? void 0 : handicapOf(reg, pick6);
     if (!h2) throw new Error("Choose a handicap.");
     if ((state.relations[unitId]?.affinity ?? -100) < h2.minAffinity) throw new Error("Her Affinity does not allow that handicap.");
-  } else if (kind === "expedition_bet" && !BET_PICKS.includes(pick5 ?? "")) {
+  } else if (kind === "expedition_bet" && !BET_PICKS.includes(pick6 ?? "")) {
     throw new Error("Choose what she bets on: kills, no damage or the objective.");
   }
 }
@@ -29915,12 +29932,12 @@ function rollChallenges(draft, ctx2) {
     if (!ctx2.rng.chance(TUNING.personal.wager.chance * assertiveness(draft, reg).demandMult * pressureMultOf(draft, reg, u.id))) continue;
     const game = games[ctx2.rng.int(0, games.length - 1)];
     const stake = stakes[ctx2.rng.int(0, stakes.length - 1)];
-    let pick5;
+    let pick6;
     if (game.kind === "sparring") {
       const allowed = game.handicaps.filter((h2) => (draft.relations[u.id]?.affinity ?? -100) >= h2.minAffinity);
-      pick5 = allowed[ctx2.rng.int(0, allowed.length - 1)]?.id;
+      pick6 = allowed[ctx2.rng.int(0, allowed.length - 1)]?.id;
     } else if (game.kind === "expedition_bet") {
-      pick5 = BET_PICKS[ctx2.rng.int(0, BET_PICKS.length - 1)];
+      pick6 = BET_PICKS[ctx2.rng.int(0, BET_PICKS.length - 1)];
     }
     const dm = pushMessage(draft, u.id, {
       from: u.id,
@@ -29930,7 +29947,7 @@ function rollChallenges(draft, ctx2) {
       read: false,
       initiated: true
     });
-    const w = { id: nextPersonalId(draft, "wg"), unitId: u.id, by: "unit", gameId: String(game.id), stakeId: String(stake.id), day: draft.day, status: "offered", ...pick5 !== void 0 ? { pick: pick5 } : {}, dmId: dm.id };
+    const w = { id: nextPersonalId(draft, "wg"), unitId: u.id, by: "unit", gameId: String(game.id), stakeId: String(stake.id), day: draft.day, status: "offered", ...pick6 !== void 0 ? { pick: pick6 } : {}, dmId: dm.id };
     (personalOf(draft).wagers ??= { open: [], log: [] }).open.push(w);
     events.push({ type: "wager_offered", wagerId: w.id, unitId: u.id, gameId: w.gameId, stakeId: w.stakeId });
   }
@@ -29968,14 +29985,14 @@ function answerChallenge(draft, ctx2, wagerId, accept2, opts = {}) {
   if (u && isLiving(u)) events.push(...hitHer(draft, ctx2.registries, w.unitId, "dismissed", "minor", "declined her challenge"));
   return events;
 }
-function playChance(kind, ctx2, pick5) {
+function playChance(kind, ctx2, pick6) {
   if (kind === "coin") return { winner: ctx2.rng.chance(0.5) ? "commander" : "unit", details: {} };
   if (kind === "high_card") {
     const commanderCard = ctx2.rng.int(1, 13);
     const herCard = ctx2.rng.int(1, 13);
     return { winner: commanderCard === herCard ? "void" : commanderCard > herCard ? "commander" : "unit", details: { commanderCard, herCard } };
   }
-  const mine = HANDS.indexOf(pick5);
+  const mine = HANDS.indexOf(pick6);
   if (mine < 0) throw new Error("Pick rock, paper or scissors.");
   const throws = [];
   for (let i = 0; i < 2; i++) {
@@ -29985,7 +30002,7 @@ function playChance(kind, ctx2, pick5) {
   }
   return { winner: "void", details: { hand: HANDS[mine], throws } };
 }
-function playWager(draft, ctx2, wagerId, pick5) {
+function playWager(draft, ctx2, wagerId, pick6) {
   const reg = ctx2.registries;
   const wagers = draft.personal?.wagers;
   const w = wagers?.open.find((x) => x.id === wagerId);
@@ -29994,21 +30011,21 @@ function playWager(draft, ctx2, wagerId, pick5) {
   if (!game || !PLAYABLE_KINDS.has(String(game.kind))) throw new Error("That game is not available.");
   const u = unitOf8(draft, w.unitId);
   if (!u || !isLiving(u)) throw new Error("She is not here to play.");
-  if (game.kind === "sparring") return playSparring(draft, ctx2, w, pick5 ?? w.pick);
-  const { winner, details } = playChance(String(game.kind), ctx2, pick5 ?? w.pick);
+  if (game.kind === "sparring") return playSparring(draft, ctx2, w, pick6 ?? w.pick);
+  const { winner, details } = playChance(String(game.kind), ctx2, pick6 ?? w.pick);
   return settle2(draft, ctx2, w, winner, details);
 }
-function playSparring(draft, ctx2, w, pick5) {
+function playSparring(draft, ctx2, w, pick6) {
   const reg = ctx2.registries;
   if (draft.slot === "night") throw new Error("Nobody spars at night.");
   if (draft.scene || draft.calendar.pendingScene || draft.calendar.nightEvent || draft.dilemmas?.open?.status === "presented") throw new Error("Not now: something else holds this slot.");
   const due = bookingGuard(draft, reg, { type: "calendar/consume_slot" });
   if (due) throw new Error(due.message);
-  checkPick(draft, reg, w.gameId, w.unitId, pick5);
-  const bout = sparringBout(draft, reg, ctx2.rng, w.unitId, pick5);
+  checkPick(draft, reg, w.gameId, w.unitId, pick6);
+  const bout = sparringBout(draft, reg, ctx2.rng, w.unitId, pick6);
   const xp = addBodyXp(draft.commander, "strength", Math.round(TUNING.commander.bodyXpPerSession * TUNING.personal.sparring.bodyXp * bodyGrowthMult(draft, reg)));
   const events = [{ type: "body_trained", stat: "strength", value: xp.value, raised: xp.gained }];
-  events.push(...settle2(draft, ctx2, w, bout.winner, { handicap: pick5, rounds: bout.rounds, ...bout.draw ? { draw: true } : {} }));
+  events.push(...settle2(draft, ctx2, w, bout.winner, { handicap: pick6, rounds: bout.rounds, ...bout.draw ? { draw: true } : {} }));
   events.push(...consumeSlots(draft, 1, ctx2));
   return events;
 }
@@ -30520,11 +30537,11 @@ function applyLevelUps(draft, reg, unit4) {
   const events = [];
   const cap9 = levelCap(draft);
   while (unit4.xp >= xpToNext(unit4.level) && unit4.level < cap9) {
-    const before2 = hpGrowth(reg, unit4, unit4.level);
+    const before3 = hpGrowth(reg, unit4, unit4.level);
     unit4.xp -= xpToNext(unit4.level);
     unit4.level += 1;
     unit4.skillPoints += 1;
-    unit4.currentHp += hpGrowth(reg, unit4, unit4.level) - before2;
+    unit4.currentHp += hpGrowth(reg, unit4, unit4.level) - before3;
     events.push({ type: "level_up", unitId: unit4.id, level: unit4.level });
   }
   return events;
@@ -30993,10 +31010,10 @@ function answerRequest(draft, ctx2, requestId, raw, opts = {}) {
   const events = applyDirectorOutput(draft, ctx2, output, { fallback: opts.fallback });
   delete draft.world.director.pending;
   draft.world.director.lastTickDay = draft.day;
-  const after2 = draft.world.director.after;
-  if (after2) {
+  const after3 = draft.world.director.after;
+  if (after3) {
     delete draft.world.director.after;
-    events.push(...openRequest(draft, after2));
+    events.push(...openRequest(draft, after3));
   }
   if (rejected.length > 0) events.push({ type: "director_rejected", rejected });
   return events;
@@ -31083,8 +31100,8 @@ function draw(rng, list5, used2, onlyKind) {
   if (open3.length === 0) return null;
   const total2 = open3.reduce((s, c) => s + c.weight, 0);
   let r = rng.float() * total2;
-  const pick5 = open3.find((c) => (r -= c.weight) < 0) ?? open3[open3.length - 1];
-  return pick5.id;
+  const pick6 = open3.find((c) => (r -= c.weight) < 0) ?? open3[open3.length - 1];
+  return pick6.id;
 }
 function generateNodeMap(reg, rng, input) {
   const region = reg.regions.get(input.regionId);
@@ -31100,9 +31117,9 @@ function generateNodeMap(reg, rng, input) {
   };
   for (let l = 0; l < layerCount; l++) {
     const list5 = candidates2(reg, region, l, input.danger);
-    const size = rng.int(2, 3);
+    const size2 = rng.int(2, 3);
     const ids = [];
-    for (let i = 0; i < size; i++) {
+    for (let i = 0; i < size2; i++) {
       const type = draw(rng, list5, used2) ?? none();
       bump2(type, 1);
       const id = `n${l}_${i}`;
@@ -31500,9 +31517,9 @@ function dedupeHints(hints) {
 function applyHints(draft, ctx2, exp) {
   const events = [];
   const hints = dedupeHints(exp.hints);
-  const size = TUNING.relations.maxEventsPerExchange;
-  for (let i = 0; i < hints.length; i += size) {
-    const batch = hints.slice(i, i + size).map((h2) => ({ ...h2, confidence: 1 }));
+  const size2 = TUNING.relations.maxEventsPerExchange;
+  for (let i = 0; i < hints.length; i += size2) {
+    const batch = hints.slice(i, i + size2).map((h2) => ({ ...h2, confidence: 1 }));
     events.push(...applyIntents(draft, ctx2, { channel: "scene", participants: exp.party, intents: { events: batch } }));
   }
   return events;
@@ -31564,7 +31581,7 @@ function endExpedition(draft, ctx2, outcome) {
   const injuries = logIds(exp, "injuries");
   const deaths = logIds(exp, "deaths");
   const breakdowns = logIds(exp, "breakdowns");
-  const report2 = {
+  const report3 = {
     id: `rep_${exp.id}`,
     missionId: exp.missionId,
     missionTitle: mission?.title ?? "Unknown mission",
@@ -31581,10 +31598,10 @@ function endExpedition(draft, ctx2, outcome) {
     acknowledged: false,
     debriefed: false
   };
-  if (rewards) report2.rewards = structuredClone(rewards);
-  if (exp.herCalls && exp.herCalls.length > 0) report2.herCalls = structuredClone(exp.herCalls);
-  if (exp.withoutCommand !== void 0) report2.withoutCommand = { ...exp.withoutCommand };
-  draft.lastExpedition = report2;
+  if (rewards) report3.rewards = structuredClone(rewards);
+  if (exp.herCalls && exp.herCalls.length > 0) report3.herCalls = structuredClone(exp.herCalls);
+  if (exp.withoutCommand !== void 0) report3.withoutCommand = { ...exp.withoutCommand };
+  draft.lastExpedition = report3;
   events.push(...resolveBets(draft, ctx2, outcome));
   events.push(...hideInjuries(draft, reg, exp.party, [...injuries, ...deaths]));
   let line3 = `Expedition to ${regionLabel}: ${OUTCOME_TEXT[outcome]}.`;
@@ -31601,7 +31618,7 @@ function endExpedition(draft, ctx2, outcome) {
   if (scapegoat) events.push(...openScapegoat(draft, ctx2, scapegoat));
   draft.lastExpedition.day = draft.day;
   events.push(...openRequest(draft, "expedition"));
-  events.push({ type: "expedition_ended", outcome, reportId: report2.id });
+  events.push({ type: "expedition_ended", outcome, reportId: report3.id });
   return events;
 }
 function exhaustion(draft, exp) {
@@ -31636,32 +31653,32 @@ function cleanRecap(text3) {
   return text3.replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, " ").replace(/<[^>]*>?/g, " ").replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, TUNING.expedition.recapMax).trim();
 }
 var OUTCOME_LABEL = { success: "OBJECTIVE SECURED", retreated: "RETREATED", failed: "FAILED: SQUAD BEATEN BACK" };
-function reportLines(report2, state, reg) {
+function reportLines(report3, state, reg) {
   const nameOf28 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-  const region = reg.regions.get(report2.regionId);
+  const region = reg.regions.get(report3.regionId);
   const lines = [
     "AFTER-ACTION REPORT",
-    `Mission: ${report2.missionTitle}`,
-    `Region: ${region ? regionName(region) : report2.regionId} // Day ${report2.day}`,
-    `Outcome: ${OUTCOME_LABEL[report2.outcome]}`,
-    `Squad: ${report2.party.map(nameOf28).join(", ")}`
+    `Mission: ${report3.missionTitle}`,
+    `Region: ${region ? regionName(region) : report3.regionId} // Day ${report3.day}`,
+    `Outcome: ${OUTCOME_LABEL[report3.outcome]}`,
+    `Squad: ${report3.party.map(nameOf28).join(", ")}`
   ];
-  const route = report2.nodes.map((t) => String(reg.nodeTypes.get(t)?.name ?? t));
+  const route = report3.nodes.map((t) => String(reg.nodeTypes.get(t)?.name ?? t));
   if (route.length > 0) lines.push(`Route: ${route.join(" > ")}`);
-  for (const entry of report2.log) lines.push(entry.text);
-  const loot = describeLoot(report2.loot, reg);
-  lines.push(report2.outcome === "success" ? `Loot banked: ${loot}.` : `Loot lost: ${loot}.`);
-  if (report2.rewards) {
-    const r = report2.rewards;
+  for (const entry of report3.log) lines.push(entry.text);
+  const loot = describeLoot(report3.loot, reg);
+  lines.push(report3.outcome === "success" ? `Loot banked: ${loot}.` : `Loot lost: ${loot}.`);
+  if (report3.rewards) {
+    const r = report3.rewards;
     const parts = [`${r.credits} credits`, `${r.plyx} PLYX`, ...r.items];
     if (r.faction) parts.push(`${r.faction.id} standing +${r.faction.amount}`);
     if (r.clearance !== void 0) parts.push(`clearance tier ${r.clearance}`);
     lines.push(`Rewards: ${parts.join(", ")}.`);
   }
-  if (report2.injuries.length > 0) lines.push(`Injured: ${report2.injuries.map(nameOf28).join(", ")}.`);
-  if (report2.deaths.length > 0) lines.push(`Fallen: ${report2.deaths.map(nameOf28).join(", ")}.`);
-  if (report2.breakdowns.length > 0) lines.push(`Breakdown: ${report2.breakdowns.map(nameOf28).join(", ")}.`);
-  if (report2.recap) lines.push("", report2.recap);
+  if (report3.injuries.length > 0) lines.push(`Injured: ${report3.injuries.map(nameOf28).join(", ")}.`);
+  if (report3.deaths.length > 0) lines.push(`Fallen: ${report3.deaths.map(nameOf28).join(", ")}.`);
+  if (report3.breakdowns.length > 0) lines.push(`Breakdown: ${report3.breakdowns.map(nameOf28).join(", ")}.`);
+  if (report3.recap) lines.push("", report3.recap);
   return lines;
 }
 var nodeNumber = (exp) => exp.path.length;
@@ -32339,8 +32356,8 @@ function chooseDilemma(draft, ctx2, id, index2, route, wardenChecked = false, ra
     if (overridden) return overridden;
   }
   const ob = obedienceOf(draft);
-  const pick5 = ob?.who === "commander" ? herPick(draft, ctx2.registries, ob.unitId) : null;
-  const defied3 = ob !== null && pick5 !== null && pick5 !== index2;
+  const pick6 = ob?.who === "commander" ? herPick(draft, ctx2.registries, ob.unitId) : null;
+  const defied3 = ob !== null && pick6 !== null && pick6 !== index2;
   let effects2 = chosen.effects;
   let checkPassed;
   let routePassed;
@@ -32521,9 +32538,9 @@ function openDemand(draft, ctx2, unitId, opts = {}) {
   if (pool.length > 1) pool = pool.filter((t) => t.id !== last);
   if (pool.length === 0) return null;
   const total2 = pool.reduce((s, t) => s + Number(t.weight), 0);
-  const pick5 = opts.roll ?? ctx2.rng?.float();
-  if (pick5 === void 0) throw new Error("openDemand needs a roll or a stream to pick with.");
-  let r = pick5 * total2;
+  const pick6 = opts.roll ?? ctx2.rng?.float();
+  if (pick6 === void 0) throw new Error("openDemand needs a roll or a stream to pick with.");
+  let r = pick6 * total2;
   const tpl = pool.find((t) => (r -= Number(t.weight)) < 0) ?? pool[pool.length - 1];
   const stance = commandStance(draft, reg, unitId);
   const demand = {
@@ -33080,19 +33097,19 @@ function covered(draft, r) {
   const known3 = new Set((draft.headStart?.units ?? []).map((u) => u.unitId));
   return r.units.map((u, i) => ({ card: u.cardRef, id: draft.squad[i]?.id })).filter((x) => x.id !== void 0 && known3.has(x.id) && (want === true || want.includes(x.card))).map((x) => x.id);
 }
-function responseOf(seed2, unitId, i) {
-  const S5 = TUNING.probes.underway;
-  const u = headStartHash(seed2, unitId, `probe:${i}`);
-  return u < S5.yielded ? "yielded" : u < S5.yielded + S5.returned ? "returned" : u < S5.yielded + S5.returned + S5.deflected ? "deflected" : "resisted";
+function responseOf(seed3, unitId, i) {
+  const S6 = TUNING.probes.underway;
+  const u = headStartHash(seed3, unitId, `probe:${i}`);
+  return u < S6.yielded ? "yielded" : u < S6.yielded + S6.returned ? "returned" : u < S6.yielded + S6.returned + S6.deflected ? "deflected" : "resisted";
 }
-function axisOf(draft, reg, seed2, unitId, i, recent2) {
+function axisOf(draft, reg, seed3, unitId, i, recent2) {
   const tier = bandIndex(reg, dynamicOf(draft, unitId)?.hold ?? 0) === 0 ? 1 : 2;
   const axes = [...reg.probeAxes.values()].map((a) => a).filter((a) => a.tier <= tier);
-  const fresh2 = axes.filter((a) => !recent2.slice(-TUNING.probes.skipRecent).includes(a.id));
-  const pool = fresh2.length > 0 ? fresh2 : axes;
-  return pool[headStartRaw(seed2, unitId, `axis:${i}`) % pool.length];
+  const fresh3 = axes.filter((a) => !recent2.slice(-TUNING.probes.skipRecent).includes(a.id));
+  const pool = fresh3.length > 0 ? fresh3 : axes;
+  return pool[headStartRaw(seed3, unitId, `axis:${i}`) % pool.length];
 }
-function pickProbeMoment(reg, unit4, seed2, opts = {}) {
+function pickProbeMoment(reg, unit4, seed3, opts = {}) {
   const maxTier = opts.maxTier ?? 2;
   const rows = [...reg.headStartMoments.values()].filter((m) => {
     if (!(m.tags ?? []).includes("probe")) return false;
@@ -33100,7 +33117,7 @@ function pickProbeMoment(reg, unit4, seed2, opts = {}) {
     return axis !== void 0 && axis.tier <= maxTier && (opts.axes === void 0 || opts.axes.includes(axis.id));
   });
   if (rows.length === 0) return null;
-  const keyed = rows.map((m) => ({ m, h: headStartHash(seed2, unit4.id, `probe_moment:${String(m.id)}`) }));
+  const keyed = rows.map((m) => ({ m, h: headStartHash(seed3, unit4.id, `probe_moment:${String(m.id)}`) }));
   keyed.sort((a, b) => a.h - b.h || String(a.m.id).localeCompare(String(b.m.id)));
   return keyed[0].m;
 }
@@ -33108,7 +33125,7 @@ function applyDynamicHeadStart(draft, reg, r) {
   const hs = draft.headStart;
   if (hs === void 0 || draft.dynamic === void 0 || !dynamicOn(draft, reg)) return [];
   const events = [];
-  const seed2 = draft.dynamic.salt;
+  const seed3 = draft.dynamic.salt;
   for (const unitId of covered(draft, r)) {
     const unit4 = draft.squad.find((u) => u.id === unitId);
     const mine = hs.units.find((u) => u.unitId === unitId);
@@ -33118,9 +33135,9 @@ function applyDynamicHeadStart(draft, reg, r) {
     if (n <= 0) continue;
     const probed = [];
     for (let i = 0; i < n; i++) {
-      const before2 = dynamicOf(draft, unitId);
-      const axis = axisOf(draft, reg, seed2, unitId, i, before2?.recent ?? []);
-      events.push(...answerProbe(draft, { registries: reg }, unitId, responseOf(seed2, unitId, i), void 0, 1, false, { retro: true }));
+      const before3 = dynamicOf(draft, unitId);
+      const axis = axisOf(draft, reg, seed3, unitId, i, before3?.recent ?? []);
+      events.push(...answerProbe(draft, { registries: reg }, unitId, responseOf(seed3, unitId, i), void 0, 1, false, { retro: true }));
       const dyn2 = dynamicOf(draft, unitId);
       if (dyn2 === void 0) break;
       dyn2.probes.issued += 1;
@@ -33132,7 +33149,7 @@ function applyDynamicHeadStart(draft, reg, r) {
     if (dyn === void 0) continue;
     dyn.probes.lastDay = draft.day - 1;
     if (!draft.dynamic.queue.includes(unitId) && probeQueueRoom(draft) > 0) draft.dynamic.queue.push(unitId);
-    const moment = pickProbeMoment(reg, unit4, seed2, { axes: probed });
+    const moment = pickProbeMoment(reg, unit4, seed3, { axes: probed });
     if (moment !== null && !mine.moments.includes(String(moment.id))) mine.moments.push(String(moment.id));
   }
   return events;
@@ -33168,13 +33185,13 @@ function applySeeds(draft, reg, r) {
     const setup = r.dynamic.units[u.cardRef];
     const id = draft.squad[i]?.id;
     if (setup?.seeded !== true || id === void 0) return;
-    const frame3 = setup.startFrame;
-    const floor = frame3 === void 0 ? 0 : Number(reg.dynamicFrames.get(frame3)?.holdFloor ?? 0);
+    const frame4 = setup.startFrame;
+    const floor = frame4 === void 0 ? 0 : Number(reg.dynamicFrames.get(frame4)?.holdFloor ?? 0);
     events.push(...seedHold(draft, reg, id, floor));
     const dyn = draft.relations[id]?.dynamic;
-    if (dyn !== void 0 && frame3 !== void 0) {
-      dyn.frame = frame3;
-      dyn.milestones.push(`seeded:${frame3}`);
+    if (dyn !== void 0 && frame4 !== void 0) {
+      dyn.frame = frame4;
+      dyn.milestones.push(`seeded:${frame4}`);
     }
   });
   return events;
@@ -34346,8 +34363,8 @@ function generatePortrait(rng) {
     const [row4, col, glyph] = mark;
     rows[row4] = rows[row4].slice(0, col) + glyph + rows[row4].slice(col + 1);
   }
-  const frame3 = `+${"-".repeat(INNER)}+`;
-  return [frame3, ...rows.map((r) => `|${r}|`), frame3].join("\n");
+  const frame4 = `+${"-".repeat(INNER)}+`;
+  return [frame4, ...rows.map((r) => `|${r}|`), frame4].join("\n");
 }
 function generateDesignation(rng, taken) {
   for (let i = 0; i < 1e4; i++) {
@@ -34893,9 +34910,9 @@ function expectedOption(state, reg, moment) {
     const e = read2(state, reg, moment);
     if (e !== null && moment.options.some((o) => o.key === e.key)) return e;
   }
-  const frame3 = moment.options.filter((o) => FRAME_KEYS2.includes(o.key));
-  const pick5 = frame3.find((o) => o.type === "returned") ?? frame3.find((o) => o.type === "yielded") ?? frame3[0];
-  return { key: pick5?.key ?? "0", strength: 1 };
+  const frame4 = moment.options.filter((o) => FRAME_KEYS2.includes(o.key));
+  const pick6 = frame4.find((o) => o.type === "returned") ?? frame4.find((o) => o.type === "yielded") ?? frame4[0];
+  return { key: pick6?.key ?? "0", strength: 1 };
 }
 function gapOf(expected, chosen) {
   if (expected === chosen) return "matched";
@@ -35172,9 +35189,9 @@ function liveSources(state, reg, opts = {}) {
             if (obscured && unitId === scene.participants[0]) weight += 1;
             break;
           case "mood_jump": {
-            const before2 = moments.seen?.[unitId];
+            const before3 = moments.seen?.[unitId];
             const now = moodOf(state, reg, unitId);
-            if (before2 && now && (before2.stress !== now.stress || before2.want !== now.want || before2.vitals !== now.vitals)) {
+            if (before3 && now && (before3.stress !== now.stress || before3.want !== now.want || before3.vitals !== now.vitals)) {
               weight += temperamentOf(state, unitId).volatility === "moody" ? TUNING.moments.moodyMult : 1;
             }
             break;
@@ -35271,9 +35288,9 @@ function cannotHide(state, reg) {
   return personEffects(state, reg, COMMANDER).some((e) => e.type === "visibility" && e.hideable === false && !(posture !== void 0 && (e.unlessPosture ?? []).includes(posture)));
 }
 function optionsFor(state, reg, source, unitId) {
-  const frame3 = source.frame;
+  const frame4 = source.frame;
   const visitor = kindsOf2(source).includes("visitor");
-  const options2 = GENERIC_KEYS.map((key, i) => ({ key, type: frame3[i].type }));
+  const options2 = GENERIC_KEYS.map((key, i) => ({ key, type: frame4[i].type }));
   const out = visitor && cannotHide(state, reg) ? options2.filter((o) => o.key !== "0") : options2;
   const scene = state.scene;
   if (visitor && sceneAffordances(state, reg).has("lock")) out.push({ key: "lock", type: "returned" });
@@ -35371,8 +35388,8 @@ function momentPass(draft, ctx2, cause, opts = {}) {
     if (live3.length > 0 && ctx2.rng.chance(chanceOf(draft))) {
       const total2 = live3.reduce((n, l) => n + Math.max(1, Math.round(l.weight * 100)), 0);
       let r = ctx2.rng.int(0, total2 - 1);
-      const pick5 = live3.find((l) => (r -= Math.max(1, Math.round(l.weight * 100))) < 0) ?? live3[live3.length - 1];
-      events.push(...fireMoment(draft, ctx2, pick5.sourceId, pick5.unitId));
+      const pick6 = live3.find((l) => (r -= Math.max(1, Math.round(l.weight * 100))) < 0) ?? live3[live3.length - 1];
+      events.push(...fireMoment(draft, ctx2, pick6.sourceId, pick6.unitId));
     }
   }
   refreshSeen(draft, reg);
@@ -36599,9 +36616,9 @@ registerAction("night/open", (draft, _payload, ctx2) => {
   if (draft.slot !== "night" || !draft.calendar.nightEvent) throw new Error("night/open: there is no night event to open.");
   if (isConfrontation(draft.calendar.nightEvent)) throw new Error("This is not a knock: answer it from its own panel.");
   const entry = draft.calendar.nightEvent;
-  const relief = entry.kind === WANT_VISIT_KIND ? relieveWant(draft, entry.unitId, TUNING.bonds.want.relief.wantVisit, "want_visit") : [];
+  const relief2 = entry.kind === WANT_VISIT_KIND ? relieveWant(draft, entry.unitId, TUNING.bonds.want.relief.wantVisit, "want_visit") : [];
   const confession = entry.kind === SECRET_NIGHT_KIND ? confess(draft, ctx2, entry.unitId) : [];
-  return [{ type: "night_opened", entry }, ...relief, ...confession];
+  return [{ type: "night_opened", entry }, ...relief2, ...confession];
 });
 var DOOR_SAY_MAX = 300;
 var DOOR_REPLY_MAX = 400;
@@ -36660,10 +36677,10 @@ var SLOTS5 = ["morning", "afternoon", "evening"];
 function cosignChance(state, _reg, _targetId) {
   const w = wardenOf(state);
   if (!w) return 1;
-  const C = TUNING.warden.cosign;
+  const C2 = TUNING.warden.cosign;
   const unit4 = state.squad.find((u) => u.id === w.unitId);
   const affinity = state.relations[w.unitId]?.affinity ?? 0;
-  return clamp37(C.base + C.perSatisfaction * (w.satisfaction - 50) + C.corporate * (unit4 ? valuesOf(unit4).corporate : 0) - C.mercy * (unit4 ? valuesOf(unit4).mercy : 0) + C.perAffinity * affinity, C.min, C.max);
+  return clamp37(C2.base + C2.perSatisfaction * (w.satisfaction - 50) + C2.corporate * (unit4 ? valuesOf(unit4).corporate : 0) - C2.mercy * (unit4 ? valuesOf(unit4).mercy : 0) + C2.perAffinity * affinity, C2.min, C2.max);
 }
 function rollCosign(draft, ctx2, targetId, kind) {
   const w = wardenOf(draft);
@@ -36741,8 +36758,8 @@ function wardenGone(draft, ctx2, how) {
   return startRemoval(draft, ctx2, "death");
 }
 function reportChance(state, _reg) {
-  const R5 = TUNING.warden.verdict.report;
-  return clamp38(R5.base + R5.perKompromat * (kompromatOf(state).length - TUNING.warden.kompromat.needed) + R5.perCunning * (socialRank(state, "cunning") - 1), R5.min, R5.max);
+  const R6 = TUNING.warden.verdict.report;
+  return clamp38(R6.base + R6.perKompromat * (kompromatOf(state).length - TUNING.warden.kompromat.needed) + R6.perCunning * (socialRank(state, "cunning") - 1), R6.min, R6.max);
 }
 var REPORT_CONTEXT = "warden_report";
 function presentReport(draft, ctx2) {
@@ -36810,16 +36827,16 @@ function wardenReportChoice(draft, ctx2, context, optionId) {
 }
 function remoteExpectations(state) {
   if (!state.leashswap?.remote) return [];
-  const R5 = TUNING.warden.remote;
+  const R6 = TUNING.warden.remote;
   return [
-    { id: "remote_quota", kind: "meet_quota", weight: R5.quota, source: "corporate", known: true },
-    { id: "remote_obey", kind: "obey_oversight", weight: R5.obey, source: "corporate", known: true }
+    { id: "remote_quota", kind: "meet_quota", weight: R6.quota, source: "corporate", known: true },
+    { id: "remote_obey", kind: "obey_oversight", weight: R6.obey, source: "corporate", known: true }
   ];
 }
 function remoteDayStep(draft, ctx2) {
   const ls = leashswapOf(draft);
   if (!ls?.remote || wardenOf(draft)) return [];
-  const R5 = TUNING.warden.remote;
+  const R6 = TUNING.warden.remote;
   const events = [];
   const done = draft.missions.completed;
   if (done.some((m) => m.status === "failed" && m.outcomeDay === draft.day)) {
@@ -36827,7 +36844,7 @@ function remoteDayStep(draft, ctx2) {
     if (id !== void 0) events.push(...applyRemotePunishment(draft, ctx2, id));
   }
   const since = draft.day - ls.remote.sinceDay;
-  if (since > 0 && since % R5.missionDays === 0 && !done.some((m) => m.status === "completed" && m.outcomeDay !== void 0 && m.outcomeDay > draft.day - R5.missionDays && m.outcomeDay <= draft.day)) {
+  if (since > 0 && since % R6.missionDays === 0 && !done.some((m) => m.status === "completed" && m.outcomeDay !== void 0 && m.outcomeDay > draft.day - R6.missionDays && m.outcomeDay <= draft.day)) {
     const id = pickPunishment(draft, ctx2.registries, 1);
     if (id !== null) events.push(...applyRemotePunishment(draft, ctx2, id));
   }
@@ -37992,10 +38009,10 @@ registerAction("item/reroll", (draft, payload, ctx2) => {
   const pool = [...ctx2.registries.affixes.values()].filter((a) => a.appliesTo === "item" && a.drawback !== true && !inst.affixes.includes(a.id) && (!a.slots || a.slots.includes(slot2))).map((a) => a.id);
   if (pool.length === 0) throw new Error("No other affix can roll on this item.");
   const events = spend(draft, 0, rerollCost(inst));
-  const before2 = inst.affixes[i];
+  const before3 = inst.affixes[i];
   inst.affixes[i] = ctx2.rng.pick(pool);
   draft.workshopSession.opsLeft -= 1;
-  return [...events, { type: "item_rerolled", uid: inst.uid, from: before2, to: inst.affixes[i] }];
+  return [...events, { type: "item_rerolled", uid: inst.uid, from: before3, to: inst.affixes[i] }];
 });
 registerAction("item/dismantle", (draft, payload, ctx2) => {
   session(draft);
@@ -38602,14 +38619,14 @@ function applyShift(unit4, dev, s) {
   const up = s.direction === "up";
   if (kind === "value") {
     const axis = s.axis.slice("value:".length);
-    const before2 = valuesOf(unit4)[axis];
+    const before3 = valuesOf(unit4)[axis];
     const old = dev.drift[axis] ?? 0;
     const cap9 = isAnchored(unit4, s.axis) ? D2.anchoredValueCap : D2.valueCap;
     const delta = D2.nudge * (isAnchored(unit4, s.axis) ? D2.anchorInertia : 1);
     const next = s.size === "nudge" ? old + (up ? delta : -delta) : Math.trunc(old) + (up ? 1 : -1);
     dev.drift[axis] = round5(Math.min(cap9, Math.max(-cap9, next)));
-    const after2 = valuesOf(unit4)[axis];
-    return after2 === before2 ? null : { from: String(before2), to: String(after2) };
+    const after3 = valuesOf(unit4)[axis];
+    return after3 === before3 ? null : { from: String(before3), to: String(after3) };
   }
   if (kind === "bond" || kind === "practice" || kind === "expect") {
     const d = discreteAxis(unit4, s.axis);
@@ -39245,8 +39262,8 @@ function resolveSegment(run, plan, inputs, env) {
     cues: [],
     noise: 0
   };
-  const before2 = share(env.gaugeKind, run.gauge, cap9);
-  const relief = (beat, kind) => {
+  const before3 = share(env.gaugeKind, run.gauge, cap9);
+  const relief2 = (beat, kind) => {
     r.reliefs += 1;
     r.reliefInputs.push({ beat, kind });
   };
@@ -39285,7 +39302,7 @@ function resolveSegment(run, plan, inputs, env) {
           for (const g of at(b, "gap_breath")) {
             if (seal !== "leaky") continue;
             r.gauge += P2.breath.gapRelief;
-            relief(g.beat, "gap_breath");
+            relief2(g.beat, "gap_breath");
           }
           for (const s of at(b, "strain")) {
             r.gauge += -P2.breath.drain + P2.breath.seal[seal];
@@ -39319,7 +39336,7 @@ function resolveSegment(run, plan, inputs, env) {
         if (beat.shift !== void 0 && !evenBefore(b)) r.gauge -= beat.shift;
         for (const g of at(b, "shift_weight")) {
           r.gauge += P2.weight.relief;
-          relief(g.beat, "shift_weight");
+          relief2(g.beat, "shift_weight");
         }
         break;
       }
@@ -39327,7 +39344,7 @@ function resolveSegment(run, plan, inputs, env) {
         r.gauge += P2.saturation.per * P2.saturation.bandFactor[env.band];
         for (const g of at(b, "mouth_breath")) {
           r.gauge -= P2.saturation.mouth;
-          relief(g.beat, "mouth_breath");
+          relief2(g.beat, "mouth_breath");
         }
         break;
       }
@@ -39355,8 +39372,8 @@ function resolveSegment(run, plan, inputs, env) {
   if (run.dryness !== void 0 && r.dryness === void 0) r.dryness = run.dryness;
   r.checked = env.interaction === "order" && r.gauge <= P2.tongue.checkAt;
   r.complete = env.interaction === "passive" && r.gauge >= 100;
-  const after2 = share(env.gaugeKind, r.gauge, cap9);
-  r.warning = before2 > P2.warning / 100 && after2 <= P2.warning / 100;
+  const after3 = share(env.gaugeKind, r.gauge, cap9);
+  r.warning = before3 > P2.warning / 100 && after3 <= P2.warning / 100;
   r.noise = r.slips + r.gasps > 0 ? P2.noiseSlip : 0;
   return r;
 }
@@ -40043,8 +40060,8 @@ function holdFeed(draft, reg, unitId, event, _severity) {
 var R3 = TUNING.regard;
 function nonHolder(state, unitId) {
   const unit4 = state.squad.find((u) => u.id === unitId);
-  const frame3 = dynamicOf(state, unitId)?.frame;
-  return unit4 !== void 0 && unit4.kind === "named" && isLiving(unit4) && (frame3 === void 0 || frameRank(frame3) < frameRank("play"));
+  const frame4 = dynamicOf(state, unitId)?.frame;
+  return unit4 !== void 0 && unit4.kind === "named" && isLiving(unit4) && (frame4 === void 0 || frameRank(frame4) < frameRank("play"));
 }
 var noted = (draft) => draft.dynamic.noted ??= {};
 function checkDisappointment(draft, ctx2, unitId, from, to) {
@@ -40132,8 +40149,8 @@ function expectation(state, reg, moment) {
   if (!dynamicOn(state, reg) || liveDynamic(state, moment.unitId) === void 0) return null;
   const wanted2 = expectationsOf(state, reg, moment.unitId).moments?.[moment.sourceId];
   const options2 = wanted2 === void 0 ? [] : moment.options.filter((o) => o.type === wanted2.type);
-  const pick5 = options2.find((o) => o.key === "0" || o.key === "1" || o.key === "2") ?? options2[0];
-  return wanted2 !== void 0 && pick5 !== void 0 ? { key: pick5.key, strength: wanted2.strength } : defaultExpectation(state, reg, moment);
+  const pick6 = options2.find((o) => o.key === "0" || o.key === "1" || o.key === "2") ?? options2[0];
+  return wanted2 !== void 0 && pick6 !== void 0 ? { key: pick6.key, strength: wanted2.strength } : defaultExpectation(state, reg, moment);
 }
 function compromatHint(state, reg, unitId) {
   const dyn = dynamicOn(state, reg) && liveDynamic(state, unitId) !== void 0 ? dynamicOf(state, unitId) : void 0;
@@ -40821,10 +40838,10 @@ function callPosture(draft, ctx2, events) {
     const now = scene.blocking?.[COMMANDER]?.posture;
     const others = mine.filter((p) => p.postureId !== now);
     const pool = others.length > 0 ? others : mine;
-    const pick5 = pool[Math.min(pool.length - 1, Math.floor(practiceRoll(draft, holderId, `call:pick:${key}`) * pool.length))];
+    const pick6 = pool[Math.min(pool.length - 1, Math.floor(practiceRoll(draft, holderId, `call:pick:${key}`) * pool.length))];
     const id = nextPracticeId(draft, "pc");
-    ensurePractices(draft).call = { id, holderId, postureId: pick5.postureId, sceneId: scene.id, at: scene.exchanges };
-    return [{ type: "posture_called", callId: id, unitId: holderId, holderId, postureId: pick5.postureId, sceneId: scene.id }];
+    ensurePractices(draft).call = { id, holderId, postureId: pick6.postureId, sceneId: scene.id, at: scene.exchanges };
+    return [{ type: "posture_called", callId: id, unitId: holderId, holderId, postureId: pick6.postureId, sceneId: scene.id }];
   }
   return [];
 }
@@ -41580,8 +41597,8 @@ function choosesAgainstHer(state, reg, context, ref, choice) {
   if (rec !== void 0 && rec.context === context && rec.ref === ref) return rec.index !== null && rec.index !== choice;
   const holderId = herChooser(state, reg);
   if (holderId === null || !preselects(state, reg, holderId) || !choiceOpen(state, context, ref)) return false;
-  const pick5 = herPickFor(state, reg, holderId, context, ref);
-  return pick5 !== null && pick5 !== choice;
+  const pick6 = herPickFor(state, reg, holderId, context, ref);
+  return pick6 !== null && pick6 !== choice;
 }
 
 // src/loyalty/dilemmaController.ts
@@ -42122,8 +42139,8 @@ function createPower(deps) {
     return send({ type: "power/countermand", payload: { answer } }, chatId());
   }
   function herCallsEnded(reportId) {
-    const report2 = state()?.lastExpedition;
-    if (report2 && report2.id === reportId && (report2.herCalls?.length ?? 0) > 0) deps.refreshContext();
+    const report3 = state()?.lastExpedition;
+    if (report3 && report3.id === reportId && (report3.herCalls?.length ?? 0) > 0) deps.refreshContext();
   }
   async function askFirst(unitId, on) {
     return send({ type: "power/ask_first", payload: { unitId, on } }, chatId());
@@ -42320,7 +42337,7 @@ function createPersonal(deps) {
     takeOffToken: (tokenId) => act("token/remove", { tokenId }),
     answerToken: (offerId, accept2) => act("token/answer", { offerId, accept: accept2 }),
     answerWager: (wagerId, accept2) => act("wager/answer", { wagerId, accept: accept2 }),
-    playWager: (wagerId, pick5) => act("wager/play", { wagerId, ...pick5 !== void 0 ? { pick: pick5 } : {} }),
+    playWager: (wagerId, pick6) => act("wager/play", { wagerId, ...pick6 !== void 0 ? { pick: pick6 } : {} }),
     answerQuestion: (wagerId, text3) => act("wager/answer_question", { wagerId, text: text3 }),
     challenge: (p) => act("wager/challenge", p),
     answerSecret(secretId, choice) {
@@ -42627,8 +42644,8 @@ var CURRENT_VERSION = 1;
 var migrations = [
   // v0 -> v1: early prototype saved only day, slot and seed.
   (v0) => {
-    const seed2 = typeof v0.seed === "number" ? v0.seed : 1;
-    const base = createCampaign({ seed: seed2, commanderName: "" });
+    const seed3 = typeof v0.seed === "number" ? v0.seed : 1;
+    const base = createCampaign({ seed: seed3, commanderName: "" });
     return {
       ...base,
       day: v0.day,
@@ -42943,9 +42960,9 @@ function createOnboarding(deps) {
     async debriefTutorial() {
       const s = state();
       const step = s ? currentStep(s, reg()) : null;
-      const report2 = s?.lastExpedition;
-      if (!s || !step || step.completion !== "debriefed" || !report2 || report2.missionId !== s.onboarding?.tutorialMissionId) return false;
-      const who = report2.party.filter((id) => livingNamed(s).some((u) => u.id === id) && restrictionReason(s, reg(), id, "scene") === null).slice(0, TUNING.scene.maxParticipants);
+      const report3 = s?.lastExpedition;
+      if (!s || !step || step.completion !== "debriefed" || !report3 || report3.missionId !== s.onboarding?.tutorialMissionId) return false;
+      const who = report3.party.filter((id) => livingNamed(s).some((u) => u.id === id) && restrictionReason(s, reg(), id, "scene") === null).slice(0, TUNING.scene.maxParticipants);
       if (who.length === 0) {
         deps.toast("warn", "Nobody from the patrol is free to debrief.");
         return false;
@@ -43609,9 +43626,9 @@ function createDevelopment(deps) {
   const state = () => deps.app.current().state;
   let flight = null;
   let busy = false;
-  const fresh2 = /* @__PURE__ */ new Set();
-  const isRedo = (s, unitId) => !fresh2.has(unitId) && !unitDue(s, unitId) && s.squad.find((u) => u.id === unitId)?.development?.lastApplied !== void 0;
-  function before2(s, unitId) {
+  const fresh3 = /* @__PURE__ */ new Set();
+  const isRedo = (s, unitId) => !fresh3.has(unitId) && !unitDue(s, unitId) && s.squad.find((u) => u.id === unitId)?.development?.lastApplied !== void 0;
+  function before3(s, unitId) {
     if (!isRedo(s, unitId)) return s;
     const c = structuredClone(s);
     undoReview(c, unitId);
@@ -43649,7 +43666,7 @@ function createDevelopment(deps) {
         const why = reviewCommitted(s, key);
         if (why !== null) return { expired: why };
       } else if (!unitDue(s, key)) return { expired: "She has nothing to review." };
-      const view = before2(s, key);
+      const view = before3(s, key);
       return reviewInput(view, view.squad.find((u) => u.id === key));
     },
     parse: (raw, input) => readReview(raw, input),
@@ -43661,7 +43678,7 @@ function createDevelopment(deps) {
     fallback(key) {
       const s = state();
       if (!s) return false;
-      const view = before2(s, key);
+      const view = before3(s, key);
       return !dispatchReview(key, fallbackReview(view, deps.registries(), key), "fallback").some((e) => e.type === "error");
     },
     committed(key) {
@@ -43692,14 +43709,14 @@ function createDevelopment(deps) {
     const due = reviewDue(s, deps.registries());
     if (due === null) return;
     busy = true;
-    fresh2.add(due);
+    fresh3.add(due);
     flight = (async () => {
       deps.app.dispatch({ type: "generation/close", payload: { siteId: SITE2, key: due, outcome: "dropped" } }, { expectChatId: chatId() });
       await deps.generations.generate(SITE2, due);
     })().finally(() => {
       flight = null;
       busy = false;
-      fresh2.delete(due);
+      fresh3.delete(due);
     });
     await flight;
   }
@@ -43757,11 +43774,11 @@ function styleLine(state, reg, unit4) {
 }
 function holderDirective(state, reg, unit4) {
   const dyn = dynamicOf(state, unit4.id);
-  const frame3 = dyn === void 0 ? void 0 : frameEntry(reg, dyn.frame);
+  const frame4 = dyn === void 0 ? void 0 : frameEntry(reg, dyn.frame);
   const waiting3 = state.dynamic?.open.milestones.find((m) => m.unitId === unit4.id);
   const asking = state.dynamic?.open.claims.find((c) => c.unitId === unit4.id);
   const holds6 = dyn !== void 0 && frameRank(dyn.frame) >= frameRank("play");
-  if (dyn === void 0 || frame3 === void 0 || !holds6 && waiting3 === void 0) return null;
+  if (dyn === void 0 || frame4 === void 0 || !holds6 && waiting3 === void 0) return null;
   const name = unit4.displayName;
   const claimed = dyn.domains.map((d) => reg.dynamicDomains.get(d.id)?.promptHint).filter((h2) => typeof h2 === "string").map(sentence2);
   const milestone = waiting3 === void 0 ? void 0 : reg.dynamicMilestones.get(waiting3.milestoneId);
@@ -43771,7 +43788,7 @@ function holderDirective(state, reg, unit4) {
   const refused = dyn.refusals.some((day) => state.day - day <= TUNING.dynamic.directives.refusalDays);
   const kept = compromatOf(state, unit4.id).slice(-3).map((f) => sentence2(f.text)).filter((t) => t !== "");
   const parts = [
-    ...holds6 ? [`${name} holds the lead with the commander: ${sentence2(frame3.promptHint)}.`] : [],
+    ...holds6 ? [`${name} holds the lead with the commander: ${sentence2(frame4.promptHint)}.`] : [],
     ...holds6 && claimed.length > 0 ? [`What she has claimed: ${claimed.join("; ")}.`] : [],
     styleLine(state, reg, unit4),
     ...regard2 !== null ? [`Her tone toward the commander: ${sentence2(regard2)}.`] : [],
@@ -43916,12 +43933,12 @@ function offerDirective(event, state, reg) {
   return parts === null ? null : plainDirective({ id: `${OFFER_PREFIX}${unit4.id}`, expiresAfter: "next_reply", text: [...parts, "Show it in how she acts and speaks; never name it as a mechanic."].join(" ") });
 }
 function offerSentences(reg, unit4, o) {
-  const say4 = OFFER_LINE[o.answer];
-  if (say4 === void 0) return null;
+  const say5 = OFFER_LINE[o.answer];
+  if (say5 === void 0) return null;
   const named4 = o.corrected === void 0 ? void 0 : reg.worshipTargets.get(o.corrected);
   return [
     `The commander offers ${sentence2(o.what)} to ${unit4.displayName}${o.conditions ? ", and asks something in return" : ""}.`,
-    o.kind ? `${unit4.displayName} turns it down kindly; she is not looking for that from the commander.` : say4(unit4.displayName),
+    o.kind ? `${unit4.displayName} turns it down kindly; she is not looking for that from the commander.` : say5(unit4.displayName),
     ...o.answer === "corrected" && named4 !== void 0 ? [`What she wants is the commander's attention to her ${sentence2(String(named4.label)).toLowerCase()}.`] : []
   ];
 }
@@ -44112,8 +44129,8 @@ function practiceDirectives(state, reg, present2) {
       const physical = reg.holderPunishments.get(x.entryId)?.effects?.some((e) => e.type === "physical" || e.type === "slap") === true;
       const how = !physical ? "" : shown2 ? " It is shown as it happens." : " It is only reported, in a line, and never shown.";
       const crowd = (x.audienceIds ?? []).map((id) => state.squad.find((u) => u.id === id)?.displayName ?? id);
-      const before2 = crowd.length > 0 ? ` It is done before ${crowd.join(" and ")}, who watch.` : "";
-      return `${unit4.displayName} carries out the punishment she gave the commander: ${phrase(x.summary)}.${how}${before2}`;
+      const before3 = crowd.length > 0 ? ` It is done before ${crowd.join(" and ")}, who watch.` : "";
+      return `${unit4.displayName} carries out the punishment she gave the commander: ${phrase(x.summary)}.${how}${before3}`;
     });
     out.push({ id: `${PUNISHMENT_PREFIX}${unit4.id}`, expiresAfter: "scene", text: plainDraft(`${lines.join(" ")} ${NEVER_NAME}`) });
   }
@@ -45380,9 +45397,9 @@ var HER_CALL_PREFIX = "power:herCall:";
 var HER_CALL_DAYS = 1;
 var DERIVED3 = ["power:vote:", "power:leader", "power:outside", "power:ask_first:", "power:herCall:"];
 function herCallOf(state, unitId) {
-  const report2 = state.lastExpedition;
-  if (!report2 || state.day - report2.day > HER_CALL_DAYS) return void 0;
-  return report2.herCalls?.filter((c) => c.unitId === unitId).at(-1)?.outcome;
+  const report3 = state.lastExpedition;
+  if (!report3 || state.day - report3.day > HER_CALL_DAYS) return void 0;
+  return report3.herCalls?.filter((c) => c.unitId === unitId).at(-1)?.outcome;
 }
 function powerDirectives(state, _reg, present2) {
   const out = [];
@@ -45705,9 +45722,9 @@ function createDiscipline(deps) {
 }
 
 // src/ui/shell/guard.ts
-function guarded(host, what, render2) {
+function guarded(host, what, render3) {
   try {
-    render2(host);
+    render3(host);
   } catch (e) {
     console.error(`[Alius] ${what} failed to render`, e);
     const message = e instanceof Error ? e.message : String(e);
@@ -45736,13 +45753,13 @@ function createRouter() {
     go(id) {
       current2 = id;
     },
-    register(id, render2) {
-      renderers.set(id, render2);
+    register(id, render3) {
+      renderers.set(id, render3);
     },
     render(host) {
       host.replaceChildren();
-      const render2 = renderers.get(current2);
-      if (render2) guarded(host, `screen ${current2}`, render2);
+      const render3 = renderers.get(current2);
+      if (render3) guarded(host, `screen ${current2}`, render3);
       else host.append(h("pre", { class: "alius-stub" }, stubText(current2.toUpperCase())));
     }
   };
@@ -45963,8 +45980,8 @@ function fullOpenRecords(state) {
   return (state.generations?.records ?? []).filter((r) => r.status === "open" && sites.get(r.siteId)?.record === "full");
 }
 var GLOSSARY = "generation_failed";
-function declare(id, callType, surface, reroll, record2, label2, held3) {
-  registerGenerationSite({ id, callType, surface, reroll, record: record2, glossary: GLOSSARY, label: () => label2, ...held3 ? { held: held3 } : {} });
+function declare(id, callType, surface2, reroll, record2, label2, held3) {
+  registerGenerationSite({ id, callType, surface: surface2, reroll, record: record2, glossary: GLOSSARY, label: () => label2, ...held3 ? { held: held3 } : {} });
 }
 declare("scene.intents", "intent_extract", "scene", "revert", "full", "Scene reading");
 declare("scene.summary", "scene_summary", "day", "revert", "full", "Scene summary");
@@ -46053,10 +46070,10 @@ function drawReroll(host, state, onReroll, pending4 = false) {
   host.append(btn2);
   return btn2;
 }
-function chipsFor(state, surface, filter) {
+function chipsFor(state, surface2, filter) {
   return (state.generations?.records ?? []).filter((r) => {
     const site = generationSite(r.siteId);
-    return site !== void 0 && site.record === "full" && site.surface === surface && (filter === void 0 || filter(r));
+    return site !== void 0 && site.record === "full" && site.surface === surface2 && (filter === void 0 || filter(r));
   });
 }
 
@@ -46131,9 +46148,9 @@ function drawRecordChip(host, ui, state, rec, opts = {}) {
     onDrop: () => ui.generations.drop(rec.id)
   });
 }
-function drawGenerationChips(host, ui, state, surface, filter) {
+function drawGenerationChips(host, ui, state, surface2, filter) {
   if (!ui) return 0;
-  const list5 = chipsFor(state, surface, filter);
+  const list5 = chipsFor(state, surface2, filter);
   for (const rec of list5) drawRecordChip(host, ui, state, rec);
   return list5.length;
 }
@@ -46807,13 +46824,13 @@ function drawPracticeReroll(host, generation, kind, requestId) {
   if (generation === void 0 || requestId === void 0) return null;
   return drawSiteReroll(host, generation, practiceSite(kind), requestId);
 }
-function drawPracticeChips(host, generation, state, reg, pick5) {
+function drawPracticeChips(host, generation, state, reg, pick6) {
   if (generation === void 0 || !dynamicOn(state, reg)) return 0;
   const holderOf5 = (key) => state.practices?.requests.find((r) => r.id === key)?.holderId ?? cardOf(state, key)?.card.holderId;
   return drawGenerationChips(host, generation, state, "comms", (r) => {
     if (!r.siteId.startsWith("practice.")) return false;
     const holder3 = holderOf5(r.key);
-    return holder3 !== void 0 && pick5({ unitId: holder3 });
+    return holder3 !== void 0 && pick6({ unitId: holder3 });
   });
 }
 
@@ -46898,7 +46915,7 @@ function voiceLines(reg, kind, style) {
   return linesOf(reg, kind, style);
 }
 var cap3 = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
-function fill6(frame3, vals) {
+function fill6(frame4, vals) {
   const runs = [];
   const plain8 = (t) => {
     if (t === "") return;
@@ -46907,15 +46924,15 @@ function fill6(frame3, vals) {
     else runs.push({ text: t });
   };
   let at = 0;
-  for (const m of frame3.matchAll(/\{(\w+)\}/g)) {
+  for (const m of frame4.matchAll(/\{(\w+)\}/g)) {
     const k = m[1];
-    plain8(frame3.slice(at, m.index));
+    plain8(frame4.slice(at, m.index));
     at = m.index + m[0].length;
     const v = vals[k.toLowerCase()];
     if (v === void 0) plain8(`{${k}}`);
     else runs.push({ text: k[0] === k[0].toUpperCase() ? cap3(v) : v, value: true });
   }
-  plain8(frame3.slice(at));
+  plain8(frame4.slice(at));
   return runs;
 }
 function voiceLine(reg, kind, style, key, vals) {
@@ -47224,14 +47241,14 @@ function renderSceneTaskCard(host, ctx2) {
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:task_card", live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawTaskCards(host, state, reg, pick5, handlers2, opts = {}) {
+function drawTaskCards(host, state, reg, pick6, handlers2, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const task of state.practices?.tasks ?? []) {
-    if (task.kind !== "task" && task.kind !== "hold" || task.status !== "offered" || !pick5({ unitId: task.holderId }) || !practiceLive(state, reg, task.holderId)) continue;
+    if (task.kind !== "task" && task.kind !== "hold" || task.status !== "offered" || !pick6({ unitId: task.holderId }) || !practiceLive(state, reg, task.holderId)) continue;
     renderTaskCard(host, { state, reg, task, onAnswer: (a) => handlers2.answer(task.id, a), onSign: () => handlers2.sign(task.id), focusInput: handlers2.focusInput, generation: handlers2.generation }, opts);
   }
-  drawPracticeChips(host, handlers2.generation, state, reg, pick5);
+  drawPracticeChips(host, handlers2.generation, state, reg, pick6);
 }
 var RECORD_LINES = 5;
 function renderRecordLines(state, reg) {
@@ -47313,8 +47330,8 @@ var Pen = class _Pen {
     return pen;
   }
 };
-function scatter(seed2) {
-  let s = seed2 >>> 0;
+function scatter(seed3) {
+  let s = seed3 >>> 0;
   return () => {
     s = Math.imul(s, 1664525) + 1013904223 >>> 0;
     return s / 4294967296;
@@ -47362,25 +47379,25 @@ var BUILDS = {
   }
 };
 var BUILD_KEYS = ["slim", "athletic", "curvy"];
-function shares(build4) {
-  const w = BUILD_KEYS.map((k) => Number.isFinite(build4[k]) && build4[k] > 0 ? build4[k] : 0);
+function shares(build5) {
+  const w = BUILD_KEYS.map((k) => Number.isFinite(build5[k]) && build5[k] > 0 ? build5[k] : 0);
   const sum = w.reduce((a, b) => a + b, 0);
   return sum > 0 ? { slim: w[0] / sum, athletic: w[1] / sum, curvy: w[2] / sum } : { slim: 1, athletic: 0, curvy: 0 };
 }
-function blend(build4) {
-  const s = shares(build4);
+function blend(build5) {
+  const s = shares(build5);
   const sum = (f) => BUILD_KEYS.reduce((acc, k) => acc + s[k] * f(BUILDS[k]), 0);
   return { width: (y) => sum((c) => lerp(c.w, y)), arm: sum((c) => c.arm), armOut: (y) => sum((c) => lerp(c.armOut, y)) };
 }
 var armCenter = (y) => lerp([[100, 44], [200, 57], [300, 65], [320, 64]], y);
-function outlinePath(build4, _side) {
-  const { width } = blend(build4);
+function outlinePath(build5, _side) {
+  const { width } = blend(build5);
   const right = RIGHT.map(([x, y]) => [x * width(y), y]);
   const left = right.slice(0, -1).reverse().map(([x, y]) => [-x, y]);
   return catmull([...right, ...left], true);
 }
-function armPaths(build4) {
-  const { arm, armOut } = blend(build4);
+function armPaths(build5) {
+  const { arm, armOut } = blend(build5);
   const one4 = (sign2) => catmull(ARM.map(([x, y]) => [(armCenter(y) + (x - armCenter(y)) * arm) * armOut(y) * sign2, y]), true);
   return [one4(1), one4(-1)];
 }
@@ -47401,8 +47418,8 @@ function hairPath(hair, side) {
   return `${base} ${catmull(side === "back" ? TAIL_BACK : TAIL_FRONT, true)}`;
 }
 var fringePath = () => catmull(FRINGE, true);
-function detailPaths(build4, side) {
-  const { width } = blend(build4);
+function detailPaths(build5, side) {
+  const { width } = blend(build5);
   const bw = width(150);
   const out = side === "back" ? ["M0,96 C1,140 -1,190 0,232", "M-30,118 C-24,132 -14,138 -8,136 M30,118 C24,132 14,138 8,136", "M-30,268 C-18,286 -6,284 0,272 C6,284 18,286 30,268", "M-24,40 C-22,60 -16,72 -12,76 M24,40 C22,60 16,72 12,76"] : [
     "M-30,100 C-18,106 -8,104 -3,101 M30,100 C18,106 8,104 3,101",
@@ -47410,7 +47427,7 @@ function detailPaths(build4, side) {
     `M${f1(-30 * width(250))},250 C-20,262 -12,270 -6,276 M${f1(30 * width(250))},250 C20,262 12,270 6,276`,
     "M-22,388 q4,6 8,0 M22,388 q-4,6 -8,0"
   ];
-  const s = shares(build4);
+  const s = shares(build5);
   for (const k of BUILD_KEYS) if (s[k] >= 1 / 3) out.push(...BUILDS[k].lines);
   return out;
 }
@@ -47472,7 +47489,7 @@ function figure(ctx2, side, cx, oy) {
 function zoneEl(ctx2, z2) {
   const X = (z2.x - 50) * 2.5;
   const Y = z2.y * 5;
-  const R5 = Math.max(6, z2.r * 2);
+  const R6 = Math.max(6, z2.r * 2);
   const word2 = z2.known && z2.attitude !== void 0 ? z2.attitude : "not known yet";
   const g = svgEl("g", {
     class: `alius-bm-zone is-${stateOf(z2)}`,
@@ -47486,9 +47503,9 @@ function zoneEl(ctx2, z2) {
     "aria-label": `${z2.label}: ${word2}`,
     ...z2.known && z2.attitude !== void 0 ? { "data-attitude": z2.attitude } : {}
   });
-  g.append(svgEl("circle", { cx: X, cy: Y, r: R5, class: "alius-bm-ring" }));
+  g.append(svgEl("circle", { cx: X, cy: Y, r: R6, class: "alius-bm-ring" }));
   const rings = z2.scent !== void 0 ? z2.scent : 0;
-  for (let i = 1; i <= rings; i++) g.append(svgEl("circle", { cx: X, cy: Y, r: R5 * i / (rings + 1), class: "alius-bm-scent" }));
+  for (let i = 1; i <= rings; i++) g.append(svgEl("circle", { cx: X, cy: Y, r: R6 * i / (rings + 1), class: "alius-bm-scent" }));
   const mark = (cls, x, y, text3) => {
     const t = svgEl("text", { x, y, class: cls, "text-anchor": "middle" });
     t.textContent = text3;
@@ -47496,8 +47513,8 @@ function zoneEl(ctx2, z2) {
   };
   if (!z2.known) mark("alius-bm-q", X, Y + 4, "?");
   else if (z2.meaning !== void 0) mark("alius-bm-meaning", X, Y + 4, MEANING_ICON[z2.meaning]);
-  if (z2.explicit === true) mark("alius-bm-explicit", X - R5, Y - R5 + 4, "\u25C7");
-  if (z2.mastery > 0) mark("alius-bm-dots", X, Y + R5 + 9, dotsOf(z2.mastery));
+  if (z2.explicit === true) mark("alius-bm-explicit", X - R6, Y - R6 + 4, "\u25C7");
+  if (z2.mastery > 0) mark("alius-bm-dots", X, Y + R6 + 9, dotsOf(z2.mastery));
   return g;
 }
 function row2(ctx2, z2, label2) {
@@ -47632,11 +47649,11 @@ function renderMilestoneCard(host, ctx2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs(entry.sworn === true ? "glossary:vow" : `dynamicMilestones:${entry.id}`, { unitId: unit4.id }))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawMilestoneCards(host, state, reg, pick5, onAnswer, opts = {}) {
+function drawMilestoneCards(host, state, reg, pick6, onAnswer, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const milestone of state.dynamic?.open.milestones ?? []) {
-    if (pick5({ unitId: milestone.unitId })) renderMilestoneCard(host, { state, reg, milestone, onAnswer: (a) => onAnswer(milestone.id, a) }, opts);
+    if (pick6({ unitId: milestone.unitId })) renderMilestoneCard(host, { state, reg, milestone, onAnswer: (a) => onAnswer(milestone.id, a) }, opts);
   }
 }
 var SUBMIT_WORDS = "AUTHOR TO WRITE: {name} has asked enough times. She waits for the commander to give way, here and now.";
@@ -47697,11 +47714,11 @@ function renderClaimCard(host, ctx2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs(entry === void 0 ? "glossary:claim" : `dynamicDomains:${entry.id}`, live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawClaimCards(host, state, reg, pick5, onAnswer, opts = {}) {
+function drawClaimCards(host, state, reg, pick6, onAnswer, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const claim2 of state.dynamic?.open.claims ?? []) {
-    if (pick5({ unitId: claim2.unitId })) renderClaimCard(host, { state, reg, claim: claim2, onAnswer: (a) => onAnswer(claim2.id, a) }, opts);
+    if (pick6({ unitId: claim2.unitId })) renderClaimCard(host, { state, reg, claim: claim2, onAnswer: (a) => onAnswer(claim2.id, a) }, opts);
   }
 }
 var RETURN_WORDS = {
@@ -47753,10 +47770,10 @@ function renderReturnCard(host, ctx2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:aftermath", live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawReturnCards(host, state, reg, pick5, onAnswer, opts = {}) {
+function drawReturnCards(host, state, reg, pick6, onAnswer, opts = {}) {
   host.replaceChildren();
   const offer = state.dynamic?.open.returnOffer;
-  if (!dynamicOn(state, reg) || offer === void 0 || !pick5({ unitId: offer.unitId })) return;
+  if (!dynamicOn(state, reg) || offer === void 0 || !pick6({ unitId: offer.unitId })) return;
   renderReturnCard(host, { state, reg, offer, onAnswer }, opts);
 }
 function transferTargets(state, unitId) {
@@ -47951,12 +47968,12 @@ function renderDynamicSection(host, ctx2) {
   }
   const practices = practicesBlock(state, reg, ctx2.knowledge, unitId, ctx2.hidden);
   const cards = h("div", { class: "alius-dyn-cards" });
-  const pick5 = (c) => c.unitId === unitId;
+  const pick6 = (c) => c.unitId === unitId;
   const slots = [h("div", { class: "alius-milestone-cards" }), h("div", { class: "alius-claim-cards" }), h("div", { class: "alius-return-cards" })];
   cards.append(...slots);
-  drawMilestoneCards(slots[0], state, reg, pick5, (id, a) => ctx2.actions?.answerMilestone?.(id, a));
-  drawClaimCards(slots[1], state, reg, pick5, (id, a) => ctx2.actions?.answerClaim?.(id, a));
-  drawReturnCards(slots[2], state, reg, pick5, (a) => ctx2.actions?.answerReturn?.(a));
+  drawMilestoneCards(slots[0], state, reg, pick6, (id, a) => ctx2.actions?.answerMilestone?.(id, a));
+  drawClaimCards(slots[1], state, reg, pick6, (id, a) => ctx2.actions?.answerClaim?.(id, a));
+  drawReturnCards(slots[2], state, reg, pick6, (a) => ctx2.actions?.answerReturn?.(a));
   if (holds6) drawExit(true);
   const map = bodyMapFor(state, reg, ctx2.knowledge, unitId, ctx2.readable === true);
   const mapHost = h("div", { class: "alius-dyn-bodymap" });
@@ -48075,7 +48092,7 @@ function renderRoutePicker(ctx2) {
   const lockAll = () => {
     for (const b of buttons) b.setAttribute("aria-disabled", "true");
   };
-  const pick5 = (p) => {
+  const pick6 = (p) => {
     if (ctx2.locked()) return;
     lockAll();
     ctx2.onPick(p);
@@ -48095,14 +48112,14 @@ function renderRoutePicker(ctx2) {
       ...analyzeNative(r.kind === "delegate" ? "glossary:delegate" : "glossary:check_routes", { kind: r.kind }),
       onclick: () => {
         if (ctx2.locked() || r.disabled !== null) return;
-        if (r.kind !== "delegate") return pick5({ route: r.route });
+        if (r.kind !== "delegate") return pick6({ route: r.route });
         units.replaceChildren(...(r.unitIds ?? []).map((id) => {
           const u = h("button", {
             type: "button",
             class: "alius-btn alius-option",
             "data-route-unit": id,
             ...analyzeNative("glossary:delegate"),
-            onclick: () => pick5({ route: r.route, unitId: id })
+            onclick: () => pick6({ route: r.route, unitId: id })
           }, `[ ${ctx2.unitName?.(id) ?? id} ]`);
           buttons.push(u);
           return u;
@@ -48139,10 +48156,10 @@ function renderDilemma(host, ctx2) {
       routes: o.routes,
       unitName: ctx2.unitName,
       locked: () => chosen,
-      onPick: (pick5) => {
+      onPick: (pick6) => {
         chosen = true;
         for (const b of buttons) b.setAttribute("aria-disabled", "true");
-        ctx2.onChoose(o.index, pick5);
+        ctx2.onChoose(o.index, pick6);
       },
       unlock: () => {
         chosen = false;
@@ -48563,7 +48580,7 @@ function renderCombatScreen(host, ctx2) {
     orderMode = null;
     selSkill = row4.skill.id;
     selTarget = needsTarget(row4.skill) ? row4.targets[0] ?? null : null;
-    render2();
+    render3();
   }
   function confirm(state) {
     const cs = state.combat;
@@ -48596,7 +48613,7 @@ function renderCombatScreen(host, ctx2) {
     if (legal.length === 0) return;
     const i = selTarget ? legal.indexOf(selTarget) : -1;
     selTarget = legal[(i + dir + legal.length) % legal.length];
-    render2();
+    render3();
   }
   const visibleOrderIds = (state) => [...reg.orders.keys()].filter((id) => orderUnlocked(state, reg, id));
   function issueOrder2(state, index2) {
@@ -48661,7 +48678,7 @@ function renderCombatScreen(host, ctx2) {
       selSkill = null;
       selTarget = null;
       orderMode = null;
-      render2();
+      render3();
     },
     compel: () => {
       const s = ctx2.getState();
@@ -48808,7 +48825,7 @@ function renderCombatScreen(host, ctx2) {
       h("button", { type: "button", class: "alius-btn", "data-act": "continue", onclick: () => ctx2.onClose() }, "[ CONTINUE ]")
     );
   }
-  function render2() {
+  function render3() {
     const state = ctx2.getState();
     root.replaceChildren();
     if (!state) return;
@@ -48886,7 +48903,7 @@ function renderCombatScreen(host, ctx2) {
             orderMode = orderMode === id ? null : id;
             selSkill = null;
             selTarget = null;
-            render2();
+            render3();
           }
         }
       }, `[${"QWERTY"[i]}] ${o.name} ${cost}CP`);
@@ -48955,7 +48972,7 @@ function renderCombatScreen(host, ctx2) {
       logBox
     );
   }
-  render2();
+  render3();
   function handle(events) {
     const state = ctx2.getState();
     for (const ev of events) {
@@ -48970,7 +48987,7 @@ function renderCombatScreen(host, ctx2) {
     }
   }
   return {
-    refresh: render2,
+    refresh: render3,
     handle,
     dispose: () => {
       keysOff();
@@ -48992,7 +49009,7 @@ function renderInvTab(host, ctx2) {
   let filter = "all";
   let selected2 = null;
   let compareUnit = null;
-  function render2() {
+  function render3() {
     host.replaceChildren();
     const state = ctx2.getState();
     if (!state) {
@@ -49019,7 +49036,7 @@ function renderInvTab(host, ctx2) {
       { class: "alius-inv-filters" },
       ...["all", "weapon", "upper", "lower"].map((f) => h("button", { type: "button", class: "alius-btn", "data-filter": f, "aria-pressed": filter === f ? "true" : "false", onclick: () => {
         filter = f;
-        render2();
+        render3();
       } }, upper(f)))
     );
     const list5 = h(
@@ -49037,7 +49054,7 @@ function renderInvTab(host, ctx2) {
             ...analyzeNative(`items:${i.itemId}`),
             onclick: () => {
               selected2 = i.uid;
-              render2();
+              render3();
             }
           },
           h("span", { class: "alius-inv-name" }, nameOf28(i)),
@@ -49083,7 +49100,7 @@ function renderInvTab(host, ctx2) {
     picker2.value = compareUnit ?? "";
     picker2.addEventListener("change", () => {
       compareUnit = picker2.value;
-      render2();
+      render3();
     });
     const reason = unit4 ? canEquip(reg, unit4, item) : "NO UNIT";
     let afterLine = null;
@@ -49091,11 +49108,11 @@ function renderInvTab(host, ctx2) {
       try {
         const sample = structuredClone(state);
         const s2 = sample.squad.find((u) => u.id === unit4.id);
-        const before2 = unitStats(sample, reg, s2);
+        const before3 = unitStats(sample, reg, s2);
         for (const x of sample.squad) for (const k of ["weapon", "upper", "lower"]) if (x.equipment[k] === item.uid) delete x.equipment[k];
         s2.equipment[slot2] = item.uid;
-        const after2 = unitStats(sample, reg, s2);
-        afterLine = h("p", { class: "alius-dim", "data-after": "true" }, `${unit4.displayName}: ${STATS2.map((k) => `${upper(k)} ${before2[k]}\u2192${after2[k]}`).join(" \xB7 ")}`);
+        const after3 = unitStats(sample, reg, s2);
+        afterLine = h("p", { class: "alius-dim", "data-after": "true" }, `${unit4.displayName}: ${STATS2.map((k) => `${upper(k)} ${before3[k]}\u2192${after3[k]}`).join(" \xB7 ")}`);
       } catch {
         afterLine = null;
       }
@@ -49157,7 +49174,7 @@ function renderInvTab(host, ctx2) {
       h("div", { class: "alius-inv-recipes" }, ...recipes)
     );
   }
-  render2();
+  render3();
 }
 
 // src/llm/text.ts
@@ -49998,9 +50015,9 @@ function createComms(deps) {
         const at = thread.findIndex((m) => m.id === ref);
         if (at < 0) return { expired: "That message is gone." };
         if (at !== thread.length - 1) return { expired: "A newer message came after it." };
-        const before2 = thread[at - 1];
-        if (!before2 || before2.from !== "commander") return { expired: "No message of the commander came before it." };
-        commanderText = before2.text;
+        const before3 = thread[at - 1];
+        if (!before3 || before3.from !== "commander") return { expired: "No message of the commander came before it." };
+        commanderText = before3.text;
         reply = thread[at].text;
       }
       return readInput(s, unit4, commanderText, reply) ?? { expired: "She is not here." };
@@ -50052,9 +50069,9 @@ function createComms(deps) {
     apply(key, reply, input) {
       const [unitId, msgId] = splitKey(key);
       const expect = chatId();
-      const before2 = state();
-      const commanderText = before2 ? threadOf(before2, unitId).find((m) => m.id === msgId)?.text : void 0;
-      if (!before2 || commanderText === void 0) return { stale: true };
+      const before3 = state();
+      const commanderText = before3 ? threadOf(before3, unitId).find((m) => m.id === msgId)?.text : void 0;
+      if (!before3 || commanderText === void 0) return { stale: true };
       const received = app.dispatch({ type: "dm/receive", payload: { unitId, text: reply, ...input.mode === "curt" ? { mode: "curt" } : {} } }, { expectChatId: expect });
       if (failed2(received)) return { stale: true };
       deps.personal?.onReply?.(unitId, reply);
@@ -50062,8 +50079,8 @@ function createComms(deps) {
       const herId = threadOf(state(), unitId).at(-1)?.id;
       if (herId === void 0) return "ok";
       const run = readExchange(unitId, herId).then(() => {
-        const after2 = state();
-        if (after2 && chatId() === expect) deps.generations.takeSnapshot("dm.reply", key, before2, after2);
+        const after3 = state();
+        if (after3 && chatId() === expect) deps.generations.takeSnapshot("dm.reply", key, before3, after3);
       }).finally(() => reads.delete(key));
       reads.set(key, run);
       return "ok";
@@ -50233,6 +50250,14 @@ function ceilingOf(state, reg, locationId, ownerId) {
   const finish4 = own ?? str8(loc.ceiling);
   if (finish4 === void 0) return [];
   return [...reg.backdrops.values()].filter((b) => b.kind === "surface" && b.surface === "ceiling" && b.finish === finish4 && (!Array.isArray(b.slots) || b.slots.includes(state.slot))).flatMap((b) => str8(b.file) ? [{ file: String(b.file), slotted: Array.isArray(b.slots) }] : []);
+}
+function floorOf2(state, reg, locationId, ownerId) {
+  const loc = reg.locations.get(locationId);
+  if (!loc) return [];
+  const own = loc.perUnit === true && ownerId !== null ? str8(quartersOf(state, reg, ownerId)?.floor) : void 0;
+  const finish4 = own ?? str8(loc.floor);
+  if (finish4 === void 0) return [];
+  return [...reg.backdrops.values()].filter((b) => b.kind === "surface" && b.surface === "floor" && b.finish === finish4 && (!Array.isArray(b.slots) || b.slots.includes(state.slot))).flatMap((b) => str8(b.file) ? [{ file: String(b.file), slotted: Array.isArray(b.slots) }] : []);
 }
 
 // src/scene/context.ts
@@ -50948,8 +50973,8 @@ var ADDITION_WORDS = {
 var plain5 = (text3) => text3.replace(/^\s*AUTHOR TO WRITE:\s*/, "").trim().replace(/[.\s]+$/, "");
 var GAP_WORDS = { matched: "what she expected", partial: "only partly what she expected", opposite: "the opposite of what she expected" };
 function genericWord(reg, sourceId, key) {
-  const frame3 = reg.momentSources.get(sourceId)?.frame;
-  return ["0", "1", "2"].includes(key) ? frame3?.[Number(key)]?.generic ?? key : ADDITION_WORDS[key] ?? key;
+  const frame4 = reg.momentSources.get(sourceId)?.frame;
+  return ["0", "1", "2"].includes(key) ? frame4?.[Number(key)]?.generic ?? key : ADDITION_WORDS[key] ?? key;
 }
 function momentDirective2(event, state, reg) {
   const { open: open3, lastAnswer: a } = momentsOf(state.scene);
@@ -52065,8 +52090,8 @@ function createEnvelope(host) {
       h2.fallback(rec.key, isExpired(input) ? null : input);
       host.dispatch({ type: "generation/close", payload: { id: recordId, outcome: "kept_fallback" } }, { expectChatId: chatId });
     },
-    takeSnapshot(siteId, key, before2, after2) {
-      snapshots.set(siteId, { chatId: host.chatId(), key, before: before2, after: after2 });
+    takeSnapshot(siteId, key, before3, after3) {
+      snapshots.set(siteId, { chatId: host.chatId(), key, before: before3, after: after3 });
     },
     clearSnapshots() {
       snapshots.clear();
@@ -52117,7 +52142,7 @@ function createSceneController(deps) {
   let awaitingReextract = false;
   const busyChats = /* @__PURE__ */ new Map();
   const chatKey = () => st2.getActiveChat()?.chatId ?? "";
-  const begin2 = (chat) => {
+  const begin3 = (chat) => {
     busyChats.set(chat, (busyChats.get(chat) ?? 0) + 1);
     return chat;
   };
@@ -52329,8 +52354,8 @@ function createSceneController(deps) {
       const expect = chatId();
       const from = extracted;
       const nextPointer = k.to + 1;
-      const before2 = state();
-      if (!before2 || !before2.scene) return { stale: true };
+      const before3 = state();
+      if (!before3 || !before3.scene) return { stale: true };
       const flaggedHere = result.contentViolations.map((v) => v.category);
       if (flaggedHere.length > 0) debug(`Content flagged on reply ${lastReply.index}: ${flaggedHere.join(", ")}.`);
       const events = dispatch2({
@@ -52347,11 +52372,11 @@ function createSceneController(deps) {
         }
       }, expect);
       if (events.some((e) => e.type === "error")) return { stale: true };
-      const after2 = state();
+      const after3 = state();
       extracted = nextPointer;
       const landed = events.find((e) => e.type === "intents_applied")?.landed ?? result.intents.events.map((e) => e.type);
       const directives = reflect(events, result.intents.events.filter((e) => e.severity === "extreme" && landed.includes(e.type)).map((e) => e.type));
-      if (after2 && after2 !== before2) lastApply = { lastReplyIndex: lastReply.index, from, to: k.to, before: before2, after: after2, directives };
+      if (after3 && after3 !== before3) lastApply = { lastReplyIndex: lastReply.index, from, to: k.to, before: before3, after: after3, directives };
       if (deps.settings().spriteMode === "emotion_pick") {
         for (const em of result.emotions) deps.onUi({ type: "sprite", unitId: em.unitId, label: em.label });
       }
@@ -52418,7 +52443,7 @@ function createSceneController(deps) {
     const expect = chatId();
     awaitingReextract = false;
     try {
-      const before2 = st2.chatLength();
+      const before3 = st2.chatLength();
       deps.onCommanderLine?.(t);
       try {
         await st2.sendUserMessage(t);
@@ -52427,7 +52452,7 @@ function createSceneController(deps) {
         return false;
       }
       if (disposed || chatId() !== expect || !state()?.scene) return true;
-      if (!st2.getChatMessages(before2).some((m) => !m.isUser)) {
+      if (!st2.getChatMessages(before3).some((m) => !m.isUser)) {
         deps.toast("warn", "No reply arrived. The chat may still be busy generating, or no group member was chosen to answer. Press STOP, wait a moment, then use \u21BB to regenerate.");
         deps.onUi({ type: "transcript" });
         return true;
@@ -52438,7 +52463,7 @@ function createSceneController(deps) {
       const settings = deps.settings();
       const due = settings.intentMode === "exchange" || settings.intentMode === "every_n" && exchanges > 0 && exchanges % settings.intentEveryN === 0;
       const applied = due ? await extract2(expect) : false;
-      await showSprites(st2.getChatMessages(before2).filter((m) => !m.isUser), applied);
+      await showSprites(st2.getChatMessages(before3).filter((m) => !m.isUser), applied);
       if (deps.memory) background2 = background2.then(() => deps.memory.digestIfDue()).catch(() => {
       });
       if (exchanges >= settings.scenePacing) deps.onUi({ type: "pacing" });
@@ -52548,14 +52573,14 @@ function createSceneController(deps) {
     parse: (raw, input) => readSceneSummary(raw, input),
     apply(sceneId, summary) {
       const expect = chatId();
-      const before2 = state();
-      if (!before2) return { stale: true };
+      const before3 = state();
+      if (!before3) return { stale: true };
       if (summary.contentViolations.length > 0) debug(`Scene summary flagged excluded content: ${summary.contentViolations.map((v) => v.category).join(", ")}.`);
-      if (before2.scene?.id === sceneId) {
+      if (before3.scene?.id === sceneId) {
         const events2 = dispatch2({ type: "scene/end", payload: { summary, endIndex: st2.chatLength() - 1 } }, expect);
-        const after2 = state();
-        if (events2.some((e) => e.type === "error") || !after2) return { stale: true };
-        deps.generations.takeSnapshot("scene.summary", sceneId, before2, after2);
+        const after3 = state();
+        if (events2.some((e) => e.type === "error") || !after3) return { stale: true };
+        deps.generations.takeSnapshot("scene.summary", sceneId, before3, after3);
         summaryKey = sceneId;
         return "ok";
       }
@@ -52600,7 +52625,7 @@ function createSceneController(deps) {
       const here = chatKey();
       if (text3.trim() !== "" && openingRun?.chat === here) return openingRun.run.then(() => controller.send(text3));
       if (text3.trim() === "" || busyHere() || !state()?.scene) return Promise.resolve(false);
-      const run = sendNow(text3.trim(), begin2(here));
+      const run = sendNow(text3.trim(), begin3(here));
       const mine = { chat: here, run };
       inflight = mine;
       void run.finally(() => {
@@ -52613,11 +52638,11 @@ function createSceneController(deps) {
       if (busyHere() || !scene) return Promise.resolve();
       if (openedScene === scene.id || st2.getChatMessages(Math.min(scene.startIndex, st2.chatLength())).length > 0) return Promise.resolve();
       openedScene = scene.id;
-      const chat = begin2(chatKey());
+      const chat = begin3(chatKey());
       const run = (async () => {
         const expect = chatId();
         try {
-          const before2 = st2.chatLength();
+          const before3 = st2.chatLength();
           try {
             await st2.triggerReplies();
           } catch (e) {
@@ -52625,7 +52650,7 @@ function createSceneController(deps) {
             return;
           }
           if (disposed || chatId() !== expect || !state()?.scene) return;
-          const replies = st2.getChatMessages(before2).filter((m) => !m.isUser);
+          const replies = st2.getChatMessages(before3).filter((m) => !m.isUser);
           deps.onUi({ type: "transcript" });
           if (replies.length === 0) {
             deps.toast("warn", "Nobody spoke first. Say something to start, or use \u21BB to try again.");
@@ -52698,7 +52723,7 @@ function createSceneController(deps) {
       const s = state();
       const scene = s?.scene;
       if (!s || !scene) return;
-      const chat = begin2(expect ?? "");
+      const chat = begin3(expect ?? "");
       try {
         if (st2.getChatMessages(extracted).some((m) => !m.isUser)) await extract2(expect);
         await deps.generations.generate("scene.summary", scene.id);
@@ -52723,7 +52748,7 @@ function createSceneController(deps) {
       const key = summaryKey;
       if (key === null) return;
       const expect = chatId();
-      const chat = begin2(expect ?? "");
+      const chat = begin3(expect ?? "");
       try {
         await deps.generations.reroll("scene.summary", key);
       } finally {
@@ -52758,10 +52783,10 @@ function createSceneController(deps) {
       const p = action.payload;
       const needsAt = /^(blocking\/|moment\/|practice\/take_posture$)/.test(action.type) && typeof p === "object" && p !== null && !Array.isArray(p) && p.at === void 0;
       const sent = needsAt ? { ...action, payload: { ...p, at: st2.chatLength() } } : action;
-      const before2 = state();
+      const before3 = state();
       const events = dispatch2(sent, chatId());
-      const after2 = state();
-      if (lastApply && before2 && lastApply.after === before2 && after2 && after2 !== before2) lastApply.after = after2;
+      const after3 = state();
+      if (lastApply && before3 && lastApply.after === before3 && after3 && after3 !== before3) lastApply.after = after3;
       return events;
     },
     onEdited(index2) {
@@ -53202,7 +53227,7 @@ function sanitizeProfile(raw, ctx2) {
   const dropped = [];
   const missing2 = [];
   const profile = { roleCandidates: [], signatureCandidates: [], defectCandidates: [], notes: cap6(src.notes, 300) };
-  const pick5 = (list5, section, idKey, max, accept2, make) => {
+  const pick6 = (list5, section, idKey, max, accept2, make) => {
     const out = [];
     const seen2 = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list5) ? list5 : []) {
@@ -53221,7 +53246,7 @@ function sanitizeProfile(raw, ctx2) {
     return out;
   };
   if (want("role")) {
-    profile.roleCandidates = pick5(
+    profile.roleCandidates = pick6(
       src.roleCandidates,
       "role",
       "roleId",
@@ -53232,7 +53257,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.roleCandidates.length === 0) missing2.push("role");
   }
   if (want("signature")) {
-    profile.signatureCandidates = pick5(
+    profile.signatureCandidates = pick6(
       src.signatureCandidates,
       "signature",
       "templateId",
@@ -53261,7 +53286,7 @@ function sanitizeProfile(raw, ctx2) {
     if (!isObj49(src.bond)) delete profile.bond;
   }
   if (want("defects")) {
-    profile.defectCandidates = pick5(
+    profile.defectCandidates = pick6(
       src.defectCandidates,
       "defects",
       "defectId",
@@ -53520,10 +53545,10 @@ var Wizard = class {
     this.emit();
   }
   /** P13: who holds the leash: a chosen unit (by her position in the squad) or the corporation's pick. An index outside the squad is ignored. */
-  setWardenPick(pick5) {
-    if (pick5.by === "player") {
-      if (!Number.isInteger(pick5.index) || pick5.index < 0 || pick5.index >= this.s.units.length) return;
-      this.s.campaign.warden = { by: "player", index: pick5.index };
+  setWardenPick(pick6) {
+    if (pick6.by === "player") {
+      if (!Number.isInteger(pick6.index) || pick6.index < 0 || pick6.index >= this.s.units.length) return;
+      this.s.campaign.warden = { by: "player", index: pick6.index };
     } else this.s.campaign.warden = { by: "corporation" };
     this.emit();
   }
@@ -53727,11 +53752,11 @@ var Wizard = class {
     return null;
   }
   /** A calibrated unit's offset and stances were read against the old world: offer a re-import. */
-  worldChanged(before2) {
-    const after2 = this.s.world.options;
+  worldChanged(before3) {
+    const after3 = this.s.world.options;
     const reg = this.deps.registries;
-    const matters = Object.keys(after2).some((id) => {
-      if (after2[id] === before2[id]) return false;
+    const matters = Object.keys(after3).some((id) => {
+      if (after3[id] === before3[id]) return false;
       const option2 = reg.worldOptions.get(id);
       return option2 !== void 0 && (option2.squadStance === true || option2.choices.some((c) => c.effects.some((e) => e.type === "disposition")));
     });
@@ -53742,19 +53767,19 @@ var Wizard = class {
   applyPreset(id) {
     const preset = this.deps.registries.worldPresets.get(id);
     if (!preset) return;
-    const before2 = { ...this.s.world.options };
+    const before3 = { ...this.s.world.options };
     this.s.world = { options: { ...defaultWorldOptions(this.deps.registries), ...preset.choices }, preset: id };
-    this.worldChanged(before2);
+    this.worldChanged(before3);
     this.emit();
   }
   /** Sets one option's choice; the preset mark follows (null unless the options still equal one). Unknown ids are ignored. */
   setWorldOption(optionId, choiceId) {
     const option2 = this.deps.registries.worldOptions.get(optionId);
     if (!option2 || !option2.choices.some((c) => c.id === choiceId)) return;
-    const before2 = { ...this.s.world.options };
-    const options2 = { ...before2, [optionId]: choiceId };
+    const before3 = { ...this.s.world.options };
+    const options2 = { ...before3, [optionId]: choiceId };
     this.s.world = { options: options2, preset: this.presetOf(options2) };
-    this.worldChanged(before2);
+    this.worldChanged(before3);
     this.emit();
   }
   /** "What this changes": the description of every choice that is not its option's default, never a number. */
@@ -54605,16 +54630,16 @@ function renderExpectationsBlock(host, ctx2) {
   const locked = (field2) => ctx2.locks.includes(field2) || ctx2.locks.includes(field2.split(".")[0]);
   const lock = (field2, address) => control(locked(field2) ? "[ LOCKED ]" : "[ LOCK ]", { "data-lock": field2 }, address, live3, ctx2.editable, () => ctx2.onLock(field2, !locked(field2)), locked(field2));
   const live1 = (field2) => ctx2.editable && !locked(field2);
-  const A3 = "glossary:expectation_profile";
-  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeNative(A3, live3), tabindex: "0" }, "EXPECTATIONS"));
+  const A4 = "glossary:expectation_profile";
+  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeNative(A4, live3), tabindex: "0" }, "EXPECTATIONS"));
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-holds-until": "" },
-    h("span", { class: "alius-stat", "data-analyze": A3, tabindex: "0" }, "Holds until:"),
-    ...HOLDS_UNTIL.map((v) => control(word(v), { "data-id": v }, A3, live3, live1("holdsUntil"), () => {
+    h("span", { class: "alius-stat", "data-analyze": A4, tabindex: "0" }, "Holds until:"),
+    ...HOLDS_UNTIL.map((v) => control(word(v), { "data-id": v }, A4, live3, live1("holdsUntil"), () => {
       if (e.holdsUntil !== v) ctx2.onSet({ holdsUntil: v });
     }, e.holdsUntil === v)),
-    lock("holdsUntil", A3)
+    lock("holdsUntil", A4)
   ));
   for (const t of ctx2.targets) {
     const w = e.worship?.[t.id];
@@ -54626,7 +54651,7 @@ function renderExpectationsBlock(host, ctx2) {
       ...ATTITUDES.map((a) => control(
         word(a),
         { "data-attitude": a },
-        A3,
+        A4,
         live3,
         live1(field2),
         () => ctx2.onSet({ worship: { [t.id]: w?.attitude === a ? null : { ...w, attitude: a } } }),
@@ -54635,26 +54660,26 @@ function renderExpectationsBlock(host, ctx2) {
       w === void 0 ? null : valueSelect(
         "What it means to her",
         { "data-meaning": t.id },
-        A3,
+        A4,
         live3,
         live1(field2),
         w.meaning ?? "",
         [option("", "(meaning)"), ...MEANINGS.map((m) => option(m, title(m)))],
         (v) => ctx2.onSet({ worship: { [t.id]: { ...w, meaning: v } } })
       ),
-      h("span", { class: "alius-stat", "data-analyze": A3, tabindex: "0" }, "Body:"),
-      ...BODY_FEELINGS.map((f) => control(word(f), { "data-body": f }, A3, live3, live1("body"), () => ctx2.onSet({ body: { ...e.body, [t.id]: f } }), e.body?.[t.id] === f)),
+      h("span", { class: "alius-stat", "data-analyze": A4, tabindex: "0" }, "Body:"),
+      ...BODY_FEELINGS.map((f) => control(word(f), { "data-body": f }, A4, live3, live1("body"), () => ctx2.onSet({ body: { ...e.body, [t.id]: f } }), e.body?.[t.id] === f)),
       valueSelect(
         "Scent",
         { "data-scent": t.id },
-        A3,
+        A4,
         live3,
         live1("scent"),
         String(e.scent?.base?.[t.id] ?? ""),
         [option("", "(scent)"), ...[1, 2, 3, 4, 5].map((n) => option(String(n), String(n)))],
         (v) => ctx2.onSet({ scent: { ...e.scent, base: { ...e.scent?.base, [t.id]: Number(v) } } })
       ),
-      lock(field2, A3)
+      lock(field2, A4)
     ));
   }
   const sourceOf2 = (id) => ctx2.sources.find((s) => s.id === id);
@@ -54666,14 +54691,14 @@ function renderExpectationsBlock(host, ctx2) {
       "div",
       { class: "alius-dyn-row", "data-moment": id },
       h("span", { class: "alius-chip", ...analyzeNative(`momentSources:${id}`), tabindex: "0" }, src.label),
-      ...src.types.map((type) => control(word(type), { "data-type": type }, A3, live3, live1(field2), () => {
+      ...src.types.map((type) => control(word(type), { "data-type": type }, A4, live3, live1(field2), () => {
         if (m.type !== type) ctx2.onSet({ moments: { [id]: { ...m, type } } });
       }, m.type === type)),
-      ...STRENGTHS2.map((n) => control(String(n), { "data-strength": String(n) }, A3, live3, live1(field2), () => {
+      ...STRENGTHS2.map((n) => control(String(n), { "data-strength": String(n) }, A4, live3, live1(field2), () => {
         if (m.strength !== n) ctx2.onSet({ moments: { [id]: { ...m, strength: n } } });
       }, m.strength === n)),
-      control("[ REMOVE ]", { "data-remove-moment": id }, A3, live3, live1(field2), () => ctx2.onSet({ moments: { [id]: null } })),
-      lock(field2, A3)
+      control("[ REMOVE ]", { "data-remove-moment": id }, A4, live3, live1(field2), () => ctx2.onSet({ moments: { [id]: null } })),
+      lock(field2, A4)
     ));
   }
   const addable = ctx2.sources.filter((s) => e.moments?.[s.id] === void 0);
@@ -54683,7 +54708,7 @@ function renderExpectationsBlock(host, ctx2) {
     valueSelect(
       "Add a moment",
       { "data-add-moment": ctx2.unit.id },
-      A3,
+      A4,
       live3,
       ctx2.editable && addable.length > 0 && !locked("moments"),
       "",
@@ -54692,71 +54717,71 @@ function renderExpectationsBlock(host, ctx2) {
     )
   ));
   for (const k of ["irritation", "pleasure"]) {
-    const input = h("input", { type: "text", class: "alius-input alius-option", "aria-label": `How her ${k} shows`, "aria-disabled": live1("tells") ? null : "true", maxlength: String(TUNING.dynamic.profile.tellMax), "data-tell": k, value: e.tells?.[k] ?? "", ...analyzeNative(A3, live3) });
+    const input = h("input", { type: "text", class: "alius-input alius-option", "aria-label": `How her ${k} shows`, "aria-disabled": live1("tells") ? null : "true", maxlength: String(TUNING.dynamic.profile.tellMax), "data-tell": k, value: e.tells?.[k] ?? "", ...analyzeNative(A4, live3) });
     input.addEventListener("change", () => {
       const v = input.value;
       input.value = e.tells?.[k] ?? "";
       if (live1("tells") && v !== (e.tells?.[k] ?? "")) ctx2.onSet({ tells: { ...e.tells, [k]: v } });
     });
-    host.append(h("div", { class: "alius-dyn-row", "data-tells": k }, h("span", { class: "alius-stat", "data-analyze": A3, tabindex: "0" }, `${title(k)} shows as:`), input, ...k === "pleasure" ? [lock("tells", A3)] : []));
+    host.append(h("div", { class: "alius-dyn-row", "data-tells": k }, h("span", { class: "alius-stat", "data-analyze": A4, tabindex: "0" }, `${title(k)} shows as:`), input, ...k === "pleasure" ? [lock("tells", A4)] : []));
   }
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-offset": "" },
-    h("span", { class: "alius-stat", "data-analyze": A3, tabindex: "0" }, "Wants the commander:"),
+    h("span", { class: "alius-stat", "data-analyze": A4, tabindex: "0" }, "Wants the commander:"),
     ...["r", "f"].map((axis) => valueSelect(
       axis === "r" ? "More yielding or less" : "Smoother or more provoking",
       { "data-offset-axis": axis },
-      A3,
+      A4,
       live3,
       live1("offset"),
       String(e.offset?.[axis] ?? 0),
       OFFSET_STEPS.map((n) => option(String(n), n > 0 ? `+${n}` : String(n))),
       (v) => ctx2.onSet({ offset: { r: e.offset?.r ?? 0, f: e.offset?.f ?? 0, [axis]: Number(v) } })
     )),
-    lock("offset", A3)
+    lock("offset", A4)
   ));
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-build": "" },
-    h("span", { class: "alius-stat", "data-analyze": A3, tabindex: "0" }, "Build:"),
+    h("span", { class: "alius-stat", "data-analyze": A4, tabindex: "0" }, "Build:"),
     ...["slim", "athletic", "curvy"].map((k) => valueSelect(
       title(k),
       { "data-build-weight": k },
-      A3,
+      A4,
       live3,
       live1("build"),
       String(e.build?.[k] ?? 0),
       BUILD_STEPS.map((n) => option(String(n), `${title(k)} ${n}`)),
       (v) => ctx2.onSet({ build: { slim: e.build?.slim ?? 0, athletic: e.build?.athletic ?? 0, curvy: e.build?.curvy ?? 0, [k]: Number(v) } })
     )),
-    lock("build", A3)
+    lock("build", A4)
   ));
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-hair": "" },
-    h("span", { class: "alius-stat", "data-analyze": A3, tabindex: "0" }, "Hair:"),
-    ...HAIR.map((v) => control(word(v), { "data-id": v }, A3, live3, live1("hair"), () => {
+    h("span", { class: "alius-stat", "data-analyze": A4, tabindex: "0" }, "Hair:"),
+    ...HAIR.map((v) => control(word(v), { "data-id": v }, A4, live3, live1("hair"), () => {
       if (e.hair !== v) ctx2.onSet({ hair: v });
     }, e.hair === v)),
-    lock("hair", A3)
+    lock("hair", A4)
   ));
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-hygiene": "" },
-    h("span", { class: "alius-stat", "data-analyze": A3, tabindex: "0" }, "Hygiene:"),
-    ...HYGIENE.map((v) => control(word(v), { "data-id": v }, A3, live3, live1("scent"), () => {
+    h("span", { class: "alius-stat", "data-analyze": A4, tabindex: "0" }, "Hygiene:"),
+    ...HYGIENE.map((v) => control(word(v), { "data-id": v }, A4, live3, live1("scent"), () => {
       if (e.scent?.hygiene !== v) ctx2.onSet({ scent: { ...e.scent, hygiene: v } });
     }, e.scent?.hygiene === v)),
-    lock("scent", A3)
+    lock("scent", A4)
   ));
-  const traits = h("input", { type: "text", class: "alius-input alius-option", "aria-label": "Traits, separated by commas", "aria-disabled": live1("traits") ? null : "true", "data-traits": "", value: (e.traits ?? []).join(", "), ...analyzeNative(A3, live3) });
+  const traits = h("input", { type: "text", class: "alius-input alius-option", "aria-label": "Traits, separated by commas", "aria-disabled": live1("traits") ? null : "true", "data-traits": "", value: (e.traits ?? []).join(", "), ...analyzeNative(A4, live3) });
   traits.addEventListener("change", () => {
     const v = traits.value;
     traits.value = (e.traits ?? []).join(", ");
     if (live1("traits")) ctx2.onSet({ traits: v.split(",").map((x) => x.trim()).filter((x) => x !== "") });
   });
-  host.append(h("div", { class: "alius-dyn-row", "data-traits-row": "" }, h("span", { class: "alius-stat", "data-analyze": A3, tabindex: "0" }, "Traits:"), traits, lock("traits", A3)));
+  host.append(h("div", { class: "alius-dyn-row", "data-traits-row": "" }, h("span", { class: "alius-stat", "data-analyze": A4, tabindex: "0" }, "Traits:"), traits, lock("traits", A4)));
 }
 
 // src/ui/setup/calibration.ts
@@ -54879,7 +54904,7 @@ function renderCalibration(host, ctx2) {
     const fromCandidates = !manual && cand && cand.defectCandidates.length > 0;
     const list5 = fromCandidates ? cand.defectCandidates.map((c) => ({ id: c.defectId, origin: c.origin })) : options2.defects.map((d) => ({ id: d.id, origin: "" }));
     const max = draft.secondDefect ? SETUP_LIMITS.maxDefects : 1;
-    const pick5 = (id, origin) => {
+    const pick6 = (id, origin) => {
       const cur = ch.defects;
       if (cur.some((d) => d.id === id)) return onUpdate({ defects: cur.filter((d) => d.id !== id) });
       const next = cur.length >= max ? [...cur.slice(0, max - 1), { id, origin }] : [...cur, { id, origin }];
@@ -54899,7 +54924,7 @@ function renderCalibration(host, ctx2) {
             "alius-defect-card",
             id,
             ch.defects.some((x) => x.id === id),
-            () => pick5(id, origin),
+            () => pick6(id, origin),
             h("strong", {}, nameOf17(d, id)),
             h("span", { class: "alius-dim" }, d ? ` [${String(d.category)}]` : ""),
             ...d ? defectLines(d) : [],
@@ -55728,15 +55753,15 @@ function renderDynamicStep(host, ctx2) {
   const seeds = Object.values(d.units).filter((u) => u.seeded === true).length;
   const full = d.holders !== "any" && seeds >= d.holders;
   const unitRow = (u) => {
-    const pick5 = d.units[u.avatar] ?? {};
-    const seeded = pick5.seeded === true;
+    const pick6 = d.units[u.avatar] ?? {};
+    const seeded = pick6.seeded === true;
     const problem = wizard.seedBlock(u.avatar);
     return h(
       "div",
       { class: "alius-dynamic-unit", "data-avatar": u.avatar },
       h("h4", {}, u.displayName),
-      selectField("May hold", "glossary:dynamic_may_hold", "mayHold", MAY_HOLD.map((v) => [v, MAY_HOLD_LABEL[v]]), pick5.mayHold ?? "auto", (v) => wizard.setDynamicUnit(u.avatar, { mayHold: v })),
-      selectField("Sensitivity", "glossary:dynamic_sensitivity", "sensitivity", SENSITIVITIES.map((v) => [v, v]), pick5.sensitivity ?? "normal", (v) => wizard.setDynamicUnit(u.avatar, { sensitivity: v })),
+      selectField("May hold", "glossary:dynamic_may_hold", "mayHold", MAY_HOLD.map((v) => [v, MAY_HOLD_LABEL[v]]), pick6.mayHold ?? "auto", (v) => wizard.setDynamicUnit(u.avatar, { mayHold: v })),
+      selectField("Sensitivity", "glossary:dynamic_sensitivity", "sensitivity", SENSITIVITIES.map((v) => [v, v]), pick6.sensitivity ?? "normal", (v) => wizard.setDynamicUnit(u.avatar, { sensitivity: v })),
       h("button", {
         type: "button",
         class: "alius-btn alius-option alius-dynamic-seed",
@@ -55745,14 +55770,14 @@ function renderDynamicStep(host, ctx2) {
         ...analyzeNative("glossary:dynamic_seeded"),
         onclick: () => wizard.setDynamicUnit(u.avatar, { seeded: !seeded })
       }, seeded ? "SEEDED" : "SEED"),
-      seeded ? selectField("Starting frame", "glossary:dynamic_start_frame", "startFrame", [["", "none (equal)"], ...START_FRAMES.map((v) => [v, v])], pick5.startFrame ?? "", (v) => wizard.setDynamicUnit(u.avatar, { startFrame: v === "" ? null : v })) : null,
+      seeded ? selectField("Starting frame", "glossary:dynamic_start_frame", "startFrame", [["", "none (equal)"], ...START_FRAMES.map((v) => [v, v])], pick6.startFrame ?? "", (v) => wizard.setDynamicUnit(u.avatar, { startFrame: v === "" ? null : v })) : null,
       headStart ? h("button", {
         type: "button",
         class: "alius-btn alius-option alius-dynamic-underway",
         "data-scope": "unit",
-        "aria-pressed": String(pick5.underway === true),
+        "aria-pressed": String(pick6.underway === true),
         ...analyzeNative("glossary:dynamic_underway"),
-        onclick: () => wizard.setDynamicUnit(u.avatar, { underway: pick5.underway !== true })
+        onclick: () => wizard.setDynamicUnit(u.avatar, { underway: pick6.underway !== true })
       }, "ALREADY UNDERWAY") : null,
       problem !== null ? h("p", { class: "alius-dim alius-dynamic-problem" }, `Cannot be seeded: ${problem}.`) : null
     );
@@ -55896,7 +55921,7 @@ function renderSetupScreen(host, ctx2) {
   let search = "";
   let lastStep = null;
   let root = null;
-  const render2 = () => {
+  const render3 = () => {
     if (root && !host.contains(root)) return;
     const s = wizard.state;
     let title3;
@@ -56016,7 +56041,7 @@ function renderSetupScreen(host, ctx2) {
     input.value = search;
     input.addEventListener("input", () => {
       search = input.value;
-      render2();
+      render3();
     });
     const wardenHost = h("div", { class: "alius-warden-host" });
     renderWardenPick(wardenHost, wizard);
@@ -56122,8 +56147,8 @@ function renderSetupScreen(host, ctx2) {
   }
   const wizardDesireBond = () => wizard.desireBondDefects;
   subscriptions.get(wizard)?.();
-  subscriptions.set(wizard, wizard.subscribe(render2));
-  render2();
+  subscriptions.set(wizard, wizard.subscribe(render3));
+  render3();
 }
 
 // src/ui/power/hierarchy.ts
@@ -56514,26 +56539,26 @@ function renderHubDayLine(host, state, reg, unitId) {
 // src/ui/vitals/trace.ts
 var SVG_NS3 = "http://www.w3.org/2000/svg";
 var POINTS = 48;
-var unit2 = (seed2, i) => fnv1a3(`${seed2}${i}`) % 1e3 / 1e3;
+var unit2 = (seed3, i) => fnv1a3(`${seed3}${i}`) % 1e3 / 1e3;
 var clamp41 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
-function tracePoints(pattern, seed2, n = POINTS, flicker = false) {
+function tracePoints(pattern, seed3, n = POINTS, flicker = false) {
   const out = [];
-  const blip = fnv1a3(seed2) % n;
+  const blip = fnv1a3(seed3) % n;
   for (let i = 0; i < n; i++) {
-    const noise4 = unit2(seed2, i) - 0.5;
+    const noise5 = unit2(seed3, i) - 0.5;
     let v;
     switch (pattern) {
       case "steady":
-        v = i % 12 === 3 ? 0.8 : i % 12 === 4 ? 0.25 : 0.5 + noise4 * 0.06;
+        v = i % 12 === 3 ? 0.8 : i % 12 === 4 ? 0.25 : 0.5 + noise5 * 0.06;
         break;
       case "elevated":
-        v = i % 8 === 2 ? 0.88 : i % 8 === 3 ? 0.18 : 0.5 + noise4 * 0.12;
+        v = i % 8 === 2 ? 0.88 : i % 8 === 3 ? 0.18 : 0.5 + noise5 * 0.12;
         break;
       case "spiking":
-        v = i % 6 === 1 ? 1 : i % 6 === 2 ? 0 : 0.5 + noise4 * 0.2;
+        v = i % 6 === 1 ? 1 : i % 6 === 2 ? 0 : 0.5 + noise5 * 0.2;
         break;
       case "erratic":
-        v = 0.5 + noise4 * 2;
+        v = 0.5 + noise5 * 2;
         break;
       case "flat":
         v = flicker && i === blip ? 0.9 : 0.5;
@@ -56543,7 +56568,7 @@ function tracePoints(pattern, seed2, n = POINTS, flicker = false) {
   }
   return out;
 }
-function renderTrace(pattern, seed2, opts) {
+function renderTrace(pattern, seed3, opts) {
   const svg4 = document.createElementNS(SVG_NS3, "svg");
   svg4.setAttribute("viewBox", `0 0 ${POINTS * 2} 24`);
   svg4.setAttribute("class", `alius-trace${opts.motion ? " is-sweeping" : ""}`);
@@ -56551,7 +56576,7 @@ function renderTrace(pattern, seed2, opts) {
   svg4.setAttribute("role", "img");
   svg4.setAttribute("aria-label", opts.label ?? `Vitals trace: ${pattern}`);
   const line3 = document.createElementNS(SVG_NS3, "polyline");
-  const points = tracePoints(pattern, seed2, POINTS, opts.flicker === true).map((v, i) => `${i * 2},${(22 - v * 20).toFixed(1)}`);
+  const points = tracePoints(pattern, seed3, POINTS, opts.flicker === true).map((v, i) => `${i * 2},${(22 - v * 20).toFixed(1)}`);
   line3.setAttribute("points", points.join(" "));
   line3.setAttribute("fill", "none");
   line3.setAttribute("stroke", "currentColor");
@@ -56651,8 +56676,8 @@ function renderWagerForm(state, reg, unitId, onSubmit) {
       "data-action": "challenge",
       ...analyzeNative("glossary:wager", live3),
       onclick: () => {
-        const pick5 = pickHost.querySelector("select")?.value;
-        onSubmit({ gameId: gameSel.value, stakeId: stakeSel.value, ...pick5 !== void 0 ? { pick: pick5 } : {} });
+        const pick6 = pickHost.querySelector("select")?.value;
+        onSubmit({ gameId: gameSel.value, stakeId: stakeSel.value, ...pick6 !== void 0 ? { pick: pick6 } : {} });
       }
     }, "[ CHALLENGE ]")
   );
@@ -56697,8 +56722,8 @@ function ditherBayer4(src, w, h2, levels) {
 }
 
 // src/ui/portrait/portrait.ts
-function portraitOptions(s, size) {
-  return { palette: s.palette, dither: visualFlags(s).dither, ...size !== void 0 ? { size } : {} };
+function portraitOptions(s, size2) {
+  return { palette: s.palette, dither: visualFlags(s).dither, ...size2 !== void 0 ? { size: size2 } : {} };
 }
 var RETRY_MS = 3e4;
 var spriteCache = /* @__PURE__ */ new WeakMap();
@@ -56707,7 +56732,7 @@ function showDithered(img, url) {
   img.setAttribute("src", url);
   img.classList.add("alius-portrait-dithered");
 }
-function ditherWhenLoaded(img, key, palette, size) {
+function ditherWhenLoaded(img, key, palette, size2) {
   const hit = dithered.get(key);
   if (hit?.url) return showDithered(img, hit.url);
   if (hit?.failedAt !== void 0 && Date.now() - hit.failedAt < RETRY_MS) return;
@@ -56716,17 +56741,17 @@ function ditherWhenLoaded(img, key, palette, size) {
     if (again?.url) return showDithered(img, again.url);
     try {
       const canvas = document.createElement("canvas");
-      canvas.width = size;
-      canvas.height = size;
+      canvas.width = size2;
+      canvas.height = size2;
       const ctx2 = canvas.getContext("2d");
       const nw = img.naturalWidth;
       const nh = img.naturalHeight;
       if (!ctx2 || !nw || !nh) throw new Error("nothing to draw on or from");
       const side = Math.min(nw, nh);
-      ctx2.drawImage(img, (nw - side) / 2, 0, side, side, 0, 0, size, size);
-      const src = ctx2.getImageData(0, 0, size, size);
-      const out = ctx2.createImageData(size, size);
-      out.data.set(ditherBayer4(src.data, size, size, PALETTE_RGB[palette]));
+      ctx2.drawImage(img, (nw - side) / 2, 0, side, side, 0, 0, size2, size2);
+      const src = ctx2.getImageData(0, 0, size2, size2);
+      const out = ctx2.createImageData(size2, size2);
+      out.data.set(ditherBayer4(src.data, size2, size2, PALETTE_RGB[palette]));
       ctx2.putImageData(out, 0, 0);
       const url = canvas.toDataURL("image/png");
       dithered.set(key, { url });
@@ -56744,21 +56769,21 @@ function unitPortrait(st2, unit4, o) {
   }
   if (!unit4.cardRef) return null;
   const card2 = unit4.cardRef;
-  const size = o.size ?? 96;
-  const key = `${card2}|${o.palette}|${size}`;
+  const size2 = o.size ?? 96;
+  const key = `${card2}|${o.palette}|${size2}`;
   const avatar = st2.getAvatarUrl(card2);
-  let cache = spriteCache.get(st2);
-  if (!cache) spriteCache.set(st2, cache = /* @__PURE__ */ new Map());
-  const known3 = cache.get(card2);
+  let cache2 = spriteCache.get(st2);
+  if (!cache2) spriteCache.set(st2, cache2 = /* @__PURE__ */ new Map());
+  const known3 = cache2.get(card2);
   const cached = o.dither ? dithered.get(key)?.url : void 0;
-  const img = h("img", { class: "alius-portrait", src: cached ?? known3?.url ?? avatar, alt: unit4.displayName, width: String(size), height: String(size) });
+  const img = h("img", { class: "alius-portrait", src: cached ?? known3?.url ?? avatar, alt: unit4.displayName, width: String(size2), height: String(size2) });
   if (cached) {
     img.classList.add("alius-portrait-dithered");
     return img;
   }
   let usingAvatar = !known3?.url;
   const settle6 = () => {
-    if (o.dither) ditherWhenLoaded(img, key, o.palette, size);
+    if (o.dither) ditherWhenLoaded(img, key, o.palette, size2);
   };
   img.addEventListener("error", () => {
     if (usingAvatar) return;
@@ -56771,7 +56796,7 @@ function unitPortrait(st2, unit4, o) {
   }
   st2.getSpriteUrl(card2, "neutral").then(
     (url) => {
-      cache.set(card2, { url: url || null, at: Date.now() });
+      cache2.set(card2, { url: url || null, at: Date.now() });
       if (url) {
         usingAvatar = false;
         img.setAttribute("src", url);
@@ -57247,12 +57272,12 @@ function equipmentBlock(unit4, ctx2, state) {
 function loadoutBlock(unit4, ctx2) {
   const reg = ctx2.registries;
   const known3 = knownSkills(reg, unit4);
-  const size = loadoutSize(reg, unit4);
+  const size2 = loadoutSize(reg, unit4);
   const chosen = new Set(activeLoadout(reg, unit4));
   const boxes = [];
   const sync = () => {
     const count2 = boxes.filter((b) => b.checked).length;
-    for (const b of boxes) b.disabled = !b.checked && count2 >= size;
+    for (const b of boxes) b.disabled = !b.checked && count2 >= size2;
   };
   const rows = known3.map((id) => {
     const box = h("input", { type: "checkbox", "data-skill": id, checked: chosen.has(id) });
@@ -57264,7 +57289,7 @@ function loadoutBlock(unit4, ctx2) {
     return h("label", { class: "alius-option", ...analyzeNative(`skills:${id}`) }, box, ` ${skillById(reg, id)?.name ?? id}`);
   });
   sync();
-  return h("div", { class: "alius-loadout", "data-unit": unit4.id }, h("p", { class: "alius-dim" }, `LOADOUT ${chosen.size}/${size}`), ...rows);
+  return h("div", { class: "alius-loadout", "data-unit": unit4.id }, h("p", { class: "alius-dim" }, `LOADOUT ${chosen.size}/${size2}`), ...rows);
 }
 function progressionBlock(unit4, ctx2, state) {
   const cost = respecCost(unit4);
@@ -57785,9 +57810,9 @@ function rumorPost(r, ctx2) {
   return post;
 }
 function renderMissionBoard(host, state, ctx2) {
-  const size = facilityEffect(state, ctx2.registries, "comms", "missionBoardSize");
+  const size2 = facilityEffect(state, ctx2.registries, "comms", "missionBoardSize");
   const offered2 = state.missions.offered;
-  const board = h("section", { class: "alius-section alius-board" }, h("h2", {}, h("span", { class: "alius-stat", ...analyzeAttrs("glossary:mission_board") }, `MISSION BOARD ${offered2.length}/${size}`)));
+  const board = h("section", { class: "alius-section alius-board" }, h("h2", {}, h("span", { class: "alius-stat", ...analyzeAttrs("glossary:mission_board") }, `MISSION BOARD ${offered2.length}/${size2}`)));
   if ((state.world.incomingUnits ?? 0) > 0) {
     board.append(h(
       "p",
@@ -58081,10 +58106,10 @@ function pickSkin(state, reg, override) {
 }
 var pct2 = (part, whole) => `${+(part / whole * 100).toFixed(3)}%`;
 function screenBox(skin) {
-  const size = skin.frameSize;
+  const size2 = skin.frameSize;
   const rect = skin.screenRect;
-  if (skin.kind !== "image" || !size || !rect) return null;
-  return { left: pct2(rect.x, size.w), top: pct2(rect.y, size.h), width: pct2(rect.w, size.w), height: pct2(rect.h, size.h) };
+  if (skin.kind !== "image" || !size2 || !rect) return null;
+  return { left: pct2(rect.x, size2.w), top: pct2(rect.y, size2.h), width: pct2(rect.w, size2.w), height: pct2(rect.h, size2.h) };
 }
 
 // src/ui/sound/sound.ts
@@ -58656,8 +58681,8 @@ function currentObjective(state, reg) {
   const first2 = list5.find((o) => o.source !== "unit");
   if (first2) return { text: first2.text, dueDays: first2.dueDays, source: first2.source };
   const active = state.missions.active;
-  const pick5 = active.find((m) => m.spineBeat !== void 0) ?? [...active].filter((m) => m.deadlineDay !== void 0).sort((a, b) => a.deadlineDay - b.deadlineDay)[0] ?? active[0] ?? state.missions.offered.find((m) => m.spineBeat !== void 0);
-  if (pick5) return { text: pick5.title, dueDays: dueIn(pick5, state.day), source: "mission", missionId: pick5.id };
+  const pick6 = active.find((m) => m.spineBeat !== void 0) ?? [...active].filter((m) => m.deadlineDay !== void 0).sort((a, b) => a.deadlineDay - b.deadlineDay)[0] ?? active[0] ?? state.missions.offered.find((m) => m.spineBeat !== void 0);
+  if (pick6) return { text: pick6.title, dueDays: dueIn(pick6, state.day), source: "mission", missionId: pick6.id };
   const unit4 = list5[0];
   return unit4 ? { text: unit4.text, dueDays: unit4.dueDays, source: unit4.source } : null;
 }
@@ -58756,8 +58781,8 @@ function latestOversight(state) {
 function initialsOf(unit4) {
   if (unit4.kind === "grunt") return "GR";
   const words3 = unit4.displayName.trim().split(/\s+/).filter(Boolean);
-  const letters2 = words3.length >= 2 ? `${words3[0][0]}${words3[1][0]}` : (words3[0] ?? "?").slice(0, 2);
-  return letters2.toUpperCase();
+  const letters3 = words3.length >= 2 ? `${words3[0][0]}${words3[1][0]}` : (words3[0] ?? "?").slice(0, 2);
+  return letters3.toUpperCase();
 }
 function renderMarker(state, reg, unit4) {
   const tone = markerTone(state, reg, unit4);
@@ -59157,9 +59182,9 @@ var GATE = [432, 502];
 var siteGroup = null;
 function drawSite(pen) {
   if (!siteGroup || siteGroup.doc !== document) {
-    const fresh2 = Pen.group("p-site");
-    paintSite(fresh2);
-    siteGroup = { doc: document, g: fresh2.g };
+    const fresh3 = Pen.group("p-site");
+    paintSite(fresh3);
+    siteGroup = { doc: document, g: fresh3.g };
   }
   pen.g.append(siteGroup.g.cloneNode(true));
 }
@@ -59224,15 +59249,15 @@ function paintSite(pen) {
   }
 }
 function door(pen, d) {
-  const { x, y, side, size } = d;
+  const { x, y, side, size: size2 } = d;
   if (side === "n" || side === "s") {
-    pen.line(x, y, x + size, y, "p-doorcut");
+    pen.line(x, y, x + size2, y, "p-doorcut");
     const sy = side === "n" ? -1 : 1;
-    pen.path(`M ${x} ${y} L ${x} ${y + sy * size} A ${size} ${size} 0 0 ${side === "n" ? 0 : 1} ${x + size} ${y}`, "p-fl p-thin");
+    pen.path(`M ${x} ${y} L ${x} ${y + sy * size2} A ${size2} ${size2} 0 0 ${side === "n" ? 0 : 1} ${x + size2} ${y}`, "p-fl p-thin");
   } else {
-    pen.line(x, y, x, y + size, "p-doorcut");
+    pen.line(x, y, x, y + size2, "p-doorcut");
     const sx = side === "w" ? -1 : 1;
-    pen.path(`M ${x} ${y} L ${x + sx * size} ${y} A ${size} ${size} 0 0 ${side === "w" ? 1 : 0} ${x} ${y + size}`, "p-fl p-thin");
+    pen.path(`M ${x} ${y} L ${x + sx * size2} ${y} A ${size2} ${size2} 0 0 ${side === "w" ? 1 : 0} ${x} ${y + size2}`, "p-fl p-thin");
   }
 }
 function hatch(pen, r, step = 12) {
@@ -59330,9 +59355,9 @@ var roofGroups = /* @__PURE__ */ new WeakMap();
 function drawRoofs(pen, reg) {
   let g = roofGroups.get(reg);
   if (!g) {
-    const fresh2 = Pen.group("p-roofs");
-    paintRoofs(fresh2, reg);
-    roofGroups.set(reg, g = fresh2.g);
+    const fresh3 = Pen.group("p-roofs");
+    paintRoofs(fresh3, reg);
+    roofGroups.set(reg, g = fresh3.g);
   }
   pen.g.append(g.cloneNode(true));
 }
@@ -59611,14 +59636,14 @@ function planSection(ctx2, state, here, floor, onFloor, onRoom) {
   const unitOf13 = (id) => state.squad.find((u) => u.id === id);
   const { stage: stage2, floorBar, setFloor } = renderPlanStage({ registries: reg, state, here, floor, onFloor, onRoom });
   const panelHost = h("div", { class: "alius-room-panel-host" });
-  const frame3 = h("div", { class: "alius-plan-frame" }, h("div", { class: "alius-plan-scroll" }, stage2), floorBar, panelHost);
+  const frame4 = h("div", { class: "alius-plan-frame" }, h("div", { class: "alius-plan-scroll" }, stage2), floorBar, panelHost);
   const away = here.filter((w) => w.reason === "expedition").map((w) => unitOf13(w.unitId)).filter((u) => u !== void 0);
   const drawnSomewhere = (w) => w.roomId !== null && [...reg.planRooms.values()].some((p) => p.hubRoomId === w.roomId) && reg.hubRooms.has(w.roomId);
   const elsewhere = here.filter((w) => w.reason === "nowhere" || w.reason !== "expedition" && !drawnSomewhere(w)).map((w) => unitOf13(w.unitId)).filter((u) => u !== void 0);
   const section = h(
     "section",
     { class: "alius-hub-main", "aria-label": "Plan of the outpost" },
-    frame3,
+    frame4,
     away.length > 0 ? strip("alius-away", "glossary:away", "AWAY", state, reg, away) : null,
     elsewhere.length > 0 ? strip("alius-elsewhere", "glossary:whereabouts", "ELSEWHERE", state, reg, elsewhere) : null
   );
@@ -60210,21 +60235,21 @@ function renderPlanner(host, ctx2) {
 var DEBRIEF_MAX = TUNING.scene.maxParticipants;
 function renderReport(host, ctx2) {
   const { state, controller } = ctx2;
-  const report2 = state.lastExpedition;
-  if (!report2) return;
-  const lines = reportLines({ ...report2, recap: void 0 }, state, ctx2.registries);
+  const report3 = state.lastExpedition;
+  if (!report3) return;
+  const lines = reportLines({ ...report3, recap: void 0 }, state, ctx2.registries);
   const root = h("section", { class: "alius-section alius-report" }, h("h2", {}, lines[0] ?? "AFTER-ACTION REPORT"));
-  if (report2.recap) root.append(h("p", { class: "alius-recap" }, report2.recap));
+  if (report3.recap) root.append(h("p", { class: "alius-recap" }, report3.recap));
   else if (ctx2.recapPending) root.append(h("p", { class: "alius-dim" }, "COMPILING\u2026"));
   if (ctx2.generation) {
     const gen = h("div", { class: "alius-generation-chips" });
-    const failed2 = drawGenerationChips(gen, ctx2.generation, state, "expedition", (r) => r.key === report2.id);
-    if (failed2 === 0 && report2.recap) drawSiteReroll(gen, ctx2.generation, "expedition.recap", report2.id);
+    const failed2 = drawGenerationChips(gen, ctx2.generation, state, "expedition", (r) => r.key === report3.id);
+    if (failed2 === 0 && report3.recap) drawSiteReroll(gen, ctx2.generation, "expedition.recap", report3.id);
     if (gen.childElementCount > 0) root.append(gen);
   }
   for (const line3 of lines.slice(1)) root.append(h("p", { class: "alius-report-line" }, line3));
-  if (state.slot !== "night" && !report2.debriefed) {
-    const candidates3 = report2.party.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
+  if (state.slot !== "night" && !report3.debriefed) {
+    const candidates3 = report3.party.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
     const full = ctx2.debriefPick.length >= DEBRIEF_MAX;
     const section = h("div", { class: "alius-debrief" }, h("h3", {}, "DEBRIEF"));
     for (const u of candidates3) {
@@ -60334,14 +60359,14 @@ function renderExpeditionScreen(host, ctx2) {
         } }, "[ CONFIRM RETREAT ]"),
         h("button", { type: "button", class: "alius-btn", onclick: () => {
           confirming = false;
-          render2();
+          render3();
         } }, "[ KEEP GOING ]")
       );
     } else {
       if (exp.objectiveDone && travel) actions.append(h("button", { type: "button", class: "alius-btn", onclick: () => controller.return() }, "[ RETURN TO BASE ]"));
       if (!state.combat) actions.append(h("button", { type: "button", class: "alius-btn", onclick: () => {
         confirming = true;
-        render2();
+        render3();
       } }, "[ RETREAT ]"));
     }
     root.append(actions);
@@ -60373,7 +60398,7 @@ function renderExpeditionScreen(host, ctx2) {
       select.value = cover;
       select.addEventListener("change", () => {
         cover = select.value;
-        render2();
+        render3();
       });
       panel.append(h("p", { class: "alius-banner" }, "The commander is exposed: someone must cover the commander."), select);
     }
@@ -60437,16 +60462,16 @@ function renderExpeditionScreen(host, ctx2) {
           if (mine.disabled === null) controller.choose(mine.index);
         }, onDefy: () => {
           defiedNode = pending4.nodeId;
-          render2();
+          render3();
         } }));
         root.append(panel);
         return;
       }
     }
     for (const o of options2) {
-      const picker2 = o.routes && o.disabled === null ? renderRoutePicker({ routes: o.routes, unitName: unitName3, locked: () => picked, onPick: (pick5) => {
+      const picker2 = o.routes && o.disabled === null ? renderRoutePicker({ routes: o.routes, unitName: unitName3, locked: () => picked, onPick: (pick6) => {
         picked = true;
-        controller.choose(o.index, pick5);
+        controller.choose(o.index, pick6);
       }, unlock: () => {
         picked = false;
       } }) : null;
@@ -60472,7 +60497,7 @@ function renderExpeditionScreen(host, ctx2) {
     }
     root.append(panel);
   }
-  function render2() {
+  function render3() {
     if (disposed) return;
     host.replaceChildren();
     const root = h("div", { class: "alius-expedition" });
@@ -60489,7 +60514,7 @@ function renderExpeditionScreen(host, ctx2) {
       return;
     }
     if (state.lastExpedition && !state.lastExpedition.acknowledged) {
-      renderReport(root, { state, registries: reg, controller, recapPending: ctx2.recapPending?.() ?? false, onClose: ctx2.onClose, redraw: render2, debriefPick, generation: ctx2.generation });
+      renderReport(root, { state, registries: reg, controller, recapPending: ctx2.recapPending?.() ?? false, onClose: ctx2.onClose, redraw: render3, debriefPick, generation: ctx2.generation });
       return;
     }
     const target = controller.planning();
@@ -60499,14 +60524,14 @@ function renderExpeditionScreen(host, ctx2) {
         planKey = key;
         draft = newDraft();
       }
-      renderPlanner(root, { state, registries: reg, target, draft, controller, onClose: ctx2.onClose, redraw: render2 });
+      renderPlanner(root, { state, registries: reg, target, draft, controller, onClose: ctx2.onClose, redraw: render3 });
       return;
     }
     root.append(h("section", { class: "alius-section" }, h("p", {}, "NO EXPEDITION"), h("button", { type: "button", class: "alius-btn", onclick: ctx2.onClose }, "[ BACK ]")));
   }
-  render2();
+  render3();
   return {
-    refresh: render2,
+    refresh: render3,
     dispose() {
       disposed = true;
       host.replaceChildren();
@@ -60690,20 +60715,20 @@ function createExpedition(deps) {
   deps.generations.bind("expedition.recap", {
     build(reportId) {
       const s = state();
-      const report2 = s?.lastExpedition;
-      if (!s || !report2 || report2.id !== reportId) return { expired: "A newer report replaced it." };
+      const report3 = s?.lastExpedition;
+      if (!s || !report3 || report3.id !== reportId) return { expired: "A newer report replaced it." };
       const reg = deps.registries();
-      const region = reg.regions.get(report2.regionId);
+      const region = reg.regions.get(report3.regionId);
       return {
         commanderName: s.commander.name,
-        missionTitle: report2.missionTitle,
-        regionName: String(region?.name ?? report2.regionId),
+        missionTitle: report3.missionTitle,
+        regionName: String(region?.name ?? report3.regionId),
         environment: String(region?.environmentPrompt ?? ""),
-        outcome: report2.outcome,
-        lines: reportLines(report2, s, reg),
-        ...report2.withoutCommand !== void 0 ? { withoutCommand: true } : {},
+        outcome: report3.outcome,
+        lines: reportLines(report3, s, reg),
+        ...report3.withoutCommand !== void 0 ? { withoutCommand: true } : {},
         // P16: the commander was not with the squad
-        units: report2.party.map((id) => {
+        units: report3.party.map((id) => {
           const u = s.squad.find((x) => x.id === id);
           return { name: u?.displayName ?? id, role: String(reg.roles.get(u?.roleId ?? "")?.name ?? u?.roleId ?? "soldier") };
         })
@@ -60806,9 +60831,9 @@ function createExpedition(deps) {
       act("expedition/ack_squad_call");
     },
     async requestRecap() {
-      const report2 = state()?.lastExpedition;
-      if (!report2 || report2.recap !== void 0 || !deps.settings().expeditionRecap) return;
-      await deps.generations.generate("expedition.recap", report2.id);
+      const report3 = state()?.lastExpedition;
+      if (!report3 || report3.recap !== void 0 || !deps.settings().expeditionRecap) return;
+      await deps.generations.generate("expedition.recap", report3.id);
     },
     async debrief(unitIds) {
       const s = state();
@@ -61033,10 +61058,10 @@ function drawLeadChips(host, scene, handlers2, disabled = false) {
   };
   host.append(h("div", { class: "alius-lead-limit" }, input, " ", chip2("limit-set", "[ SET ]", send)));
 }
-function drawRuleChips(host, state, reg, pick5, on) {
+function drawRuleChips(host, state, reg, pick6, on) {
   host.replaceChildren();
   for (const rule of state.bonds?.rules ?? []) {
-    if (rule.status !== "proposed" || rule.delivered !== true || !pick5({ unitId: rule.unitId })) continue;
+    if (rule.status !== "proposed" || rule.delivered !== true || !pick6({ unitId: rule.unitId })) continue;
     const name = (state.squad.find((u) => u.id === rule.unitId)?.displayName ?? rule.unitId).toUpperCase();
     const full = state.bonds.rules.filter((r) => r.unitId === rule.unitId && r.status === "active").length >= TUNING.bonds.rules.maxActive;
     const button2 = (kind, text3, run, soft = false) => {
@@ -61114,17 +61139,17 @@ function renderRuleNote(state, reg, rule, on, opts) {
   }
   return note;
 }
-function ruleNotesFor(state, pick5 = () => true) {
-  return (state.bonds?.rules ?? []).filter((r) => pick5(r.unitId) && (r.status === "proposed" && r.delivered === true || r.status === "active" || r.lastBrokenDay !== void 0 && r.lastBrokenDay >= state.day - 1));
+function ruleNotesFor(state, pick6 = () => true) {
+  return (state.bonds?.rules ?? []).filter((r) => pick6(r.unitId) && (r.status === "proposed" && r.delivered === true || r.status === "active" || r.lastBrokenDay !== void 0 && r.lastBrokenDay >= state.day - 1));
 }
 
 // src/ui/proposalChips.ts
 var kindLabel = (s) => s.replace(/_/g, " ").toUpperCase();
 var CONDITION_MAX = 160;
-function drawProposalChips(host, state, pick5, onAnswer, reg) {
+function drawProposalChips(host, state, pick6, onAnswer, reg) {
   host.replaceChildren();
   for (const p of state.proposals ?? []) {
-    if (!pick5(p)) continue;
+    if (!pick6(p)) continue;
     const name = (state.squad.find((u) => u.id === p.unitId)?.displayName ?? p.unitId).toUpperCase();
     const label2 = h("span", { class: "alius-chip-label" }, p.from === "unit" ? `${name} PROPOSES: ${kindLabel(p.kind)}` : `${name}: ${kindLabel(p.kind)} \u2014 OPENLY OR SECRETLY?`);
     if (reg && courtshipChips(state, reg, p)) {
@@ -61199,7 +61224,7 @@ function editChip(edit, name, onKeep, onRevert) {
   return group;
 }
 var HANDS2 = ["rock", "paper", "scissors"];
-function drawPersonalChips(host, state, reg, pick5, on) {
+function drawPersonalChips(host, state, reg, pick6, on) {
   host.replaceChildren();
   const nameOf28 = (id) => (state.squad.find((u) => u.id === id)?.displayName ?? id).toUpperCase();
   const group = (unitId, address, ctx2, label2, ...kids) => {
@@ -61214,7 +61239,7 @@ function drawPersonalChips(host, state, reg, pick5, on) {
   };
   const button2 = (text3, action, onclick) => h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": action, onclick }, text3);
   const offer = state.personal?.tokens?.offer;
-  if (offer && pick5(offer.giverId)) {
+  if (offer && pick6(offer.giverId)) {
     host.append(group(
       offer.giverId,
       "glossary:token",
@@ -61225,7 +61250,7 @@ function drawPersonalChips(host, state, reg, pick5, on) {
     ));
   }
   for (const w of state.personal?.wagers?.open ?? []) {
-    if (!pick5(w.unitId)) continue;
+    if (!pick6(w.unitId)) continue;
     const game = reg.wagerGames.get(w.gameId);
     const stake = reg.wagerStakes.get(w.stakeId);
     const what = `${String(game?.label ?? w.gameId).toUpperCase()} FOR ${String(stake?.text ?? w.stakeId).toUpperCase()}`;
@@ -61248,7 +61273,7 @@ function drawPersonalChips(host, state, reg, pick5, on) {
     }
   }
   const q = state.personal?.pendingQuestion;
-  if (q && pick5(q.unitId)) {
+  if (q && pick6(q.unitId)) {
     const asks = q.winner === "commander";
     const input = h("input", { type: "text", name: "question", class: "alius-input", maxlength: "200", autocomplete: "off", "aria-label": asks ? "Your question" : "Your answer" });
     const send = () => {
@@ -61269,7 +61294,7 @@ function drawPersonalChips(host, state, reg, pick5, on) {
 }
 
 // src/ui/discipline/chips.ts
-function drawDisciplineChips(host, state, reg, pick5, onUndo) {
+function drawDisciplineChips(host, state, reg, pick6, onUndo) {
   host.replaceChildren();
   const name = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
   const group = (id, unitId, address, text3) => h(
@@ -61279,11 +61304,11 @@ function drawDisciplineChips(host, state, reg, pick5, onUndo) {
     canUndo(state, id) === null ? h("button", { type: "button", class: "alius-btn alius-tagchip", "data-undo": id, onclick: () => onUndo(id) }, "[ UNDO \u2014 not what I meant ]") : null
   );
   for (const a of state.discipline?.applications ?? []) {
-    if (a.source !== "dialogue" || a.day !== state.day || !pick5({ channel: a.channel, unitId: a.unitId, ...a.sceneId !== void 0 ? { sceneId: a.sceneId } : {} })) continue;
+    if (a.source !== "dialogue" || a.day !== state.day || !pick6({ channel: a.channel, unitId: a.unitId, ...a.sceneId !== void 0 ? { sceneId: a.sceneId } : {} })) continue;
     host.append(group(a.id, a.unitId, "glossary:discipline_logged", `DISCIPLINE LOGGED \u2014 ${measureLabel(reg, a.measure)} (${name(a.unitId)})`));
   }
   for (const t of state.discipline?.threats ?? []) {
-    if (!pick5({ channel: t.channel, unitId: t.unitId, ...t.sceneId !== void 0 ? { sceneId: t.sceneId } : {} })) continue;
+    if (!pick6({ channel: t.channel, unitId: t.unitId, ...t.sceneId !== void 0 ? { sceneId: t.sceneId } : {} })) continue;
     host.append(group(
       t.id,
       t.unitId,
@@ -61292,10 +61317,10 @@ function drawDisciplineChips(host, state, reg, pick5, onUndo) {
     ));
   }
 }
-function drawDemandChips(host, state, reg, pick5, on) {
+function drawDemandChips(host, state, reg, pick6, on) {
   host.replaceChildren();
   for (const d of state.discipline?.demands ?? []) {
-    if (d.status !== "open" || !pick5({ unitId: d.unitId })) continue;
+    if (d.status !== "open" || !pick6({ unitId: d.unitId })) continue;
     const name = (state.squad.find((u) => u.id === d.unitId)?.displayName ?? d.unitId).toUpperCase();
     const why = grantProblem(state, reg, d.id);
     const desire = reg.demandTemplates.get(d.templateId)?.kind === "desire";
@@ -61355,7 +61380,7 @@ function renderDemonstrationCard(host, ctx2, opts = {}) {
   const place2 = String(reg.locations.get(d.stage)?.name ?? d.stage);
   const names2 = d.audienceIds.map((id) => nameOf20(state, id));
   const others = (d.narrated ?? []).length > 0;
-  const before2 = names2.length === 0 ? "others" : others ? `${joinNames4(names2)} and others` : joinNames4(names2);
+  const before3 = names2.length === 0 ? "others" : others ? `${joinNames4(names2)} and others` : joinNames4(names2);
   if (opts.look === "scene") {
     const style = practiceOf(state, reg, unit4.id)?.style.primary;
     const conditions = [];
@@ -61363,7 +61388,7 @@ function renderDemonstrationCard(host, ctx2, opts = {}) {
       conditions.push({ runs: voiceLine(reg, kind, style, d.id, vals), dry, analyze: "glossary:demonstration", ctx: live3, attrs });
     };
     const who = joinNames4(names2);
-    cond(names2.length === 0 ? "demoNone" : others ? "demoWhoMore" : "demoWho", { who }, `Before: ${before2}.`, { "data-demonstration-audience": "" });
+    cond(names2.length === 0 ? "demoNone" : others ? "demoWhoMore" : "demoWho", { who }, `Before: ${before3}.`, { "data-demonstration-audience": "" });
     cond("demoWhere", { place: place2, slot: slot2 }, `${place2}, ${slot2}. It takes the slot.`, { "data-demonstration-place": d.stage });
     if (d.status === "open") cond("demoAgain", {}, "The scene did not open. Press go again.");
     const pill = (kind, text3) => scenePill(text3, () => {
@@ -61394,7 +61419,7 @@ function renderDemonstrationCard(host, ctx2, opts = {}) {
   }
   const parts = [
     h("p", { class: "alius-demonstration-text" }, plainDraft(d.text)),
-    h("p", { class: "alius-demonstration-watch", "data-demonstration-audience": "", ...analyzeAttrs("glossary:demonstration", live3) }, `Before: ${before2}.`),
+    h("p", { class: "alius-demonstration-watch", "data-demonstration-audience": "", ...analyzeAttrs("glossary:demonstration", live3) }, `Before: ${before3}.`),
     h("p", { class: "alius-demonstration-place", "data-demonstration-place": d.stage, ...analyzeAttrs("glossary:demonstration", live3) }, `${place2}, ${slot2}. It takes the slot.`),
     ...d.status === "open" ? [h("p", { class: "alius-demonstration-hint" }, "The scene did not open. Press GO again.")] : [],
     h(
@@ -61413,12 +61438,12 @@ function renderDemonstrationCard(host, ctx2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:demonstration", live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawDemonstrationCards(host, state, reg, pick5, handlers2, opts = {}) {
+function drawDemonstrationCards(host, state, reg, pick6, handlers2, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const d of state.practices?.demonstrations ?? []) {
     const waiting3 = d.status === "offered" || d.status === "open" && d.sceneId === void 0;
-    if (!waiting3 || !pick5({ unitId: d.holderId }) || !practiceLive(state, reg, d.holderId)) continue;
+    if (!waiting3 || !pick6({ unitId: d.holderId }) || !practiceLive(state, reg, d.holderId)) continue;
     renderDemonstrationCard(host, { state, reg, demonstration: d, onAnswer: (a) => handlers2.answer(d.id, a), generation: handlers2.generation }, opts);
   }
 }
@@ -61664,11 +61689,11 @@ function renderSceneCeremony(host, ctx2, name, live3, next, entryOf4) {
   finish3(card2, ["alius-ceremony"], p.id, `${name} carries out her punishment as a ceremony`, "glossary:ceremony", live3);
   host.append(card2);
 }
-function drawPunishmentCards(host, state, reg, pick5, handlers2, opts = {}) {
+function drawPunishmentCards(host, state, reg, pick6, handlers2, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const p of state.practices?.punishments ?? []) {
-    if (!pick5({ unitId: p.holderId }) || !practiceLive(state, reg, p.holderId)) continue;
+    if (!pick6({ unitId: p.holderId }) || !practiceLive(state, reg, p.holderId)) continue;
     const open3 = p.status === "offered" || p.status === "negotiating";
     if (open3 && p.forUnitId !== void 0) renderTakeInsteadCard(host, { state, reg, punishment: p, onAnswer: (a) => handlers2.takeInstead(p.id, a) }, opts);
     else if (open3) renderPunishmentCard(host, { state, reg, punishment: p, onAnswer: (a) => handlers2.answer(p.id, a), generation: handlers2.generation }, opts);
@@ -62257,10 +62282,10 @@ function renderCommsTab(host, ctx2) {
       const key = messages.at(-1).id;
       const motion = ctx2.motion?.() ?? true;
       const done = typingPlayed(host, key);
-      const typing3 = renderTyping(motion && !done);
-      if (motion && done) typing3.textContent = "stopped typing";
-      else if (motion) armTyping(host, typing3, key);
-      thread.append(typing3);
+      const typing4 = renderTyping(motion && !done);
+      if (motion && done) typing4.textContent = "stopped typing";
+      else if (motion) armTyping(host, typing4, key);
+      thread.append(typing4);
     }
     const chips = h("div", { class: "alius-chips" });
     drawProposalChips(chips, state, (p) => p.channel === "dm" && p.unitId === current2, ctx2.onAnswer, ctx2.registries);
@@ -62379,7 +62404,7 @@ function renderWardenPanel(host, state, reg, deps = {}) {
     renderInvestigation(host, state);
     return;
   }
-  const E3 = TUNING.warden.escalation;
+  const E4 = TUNING.warden.escalation;
   const known3 = w.expectations.filter((x) => x.known);
   const unknown2 = w.expectations.length - known3.length;
   const raw = deps.showRaw === true;
@@ -62388,8 +62413,8 @@ function renderWardenPanel(host, state, reg, deps = {}) {
     "div",
     { class: "alius-defiance alius-stat", role: "meter", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(defiance), ...analyzeAttrs("glossary:warden_defiance") },
     h("div", { class: "alius-defiance-fill", style: `width:${defiance}%` }),
-    h("span", { class: "alius-defiance-mark", style: `left:${E3.warning1}%`, "aria-hidden": "true" }),
-    h("span", { class: "alius-defiance-mark", style: `left:${E3.warning2}%`, "aria-hidden": "true" })
+    h("span", { class: "alius-defiance-mark", style: `left:${E4.warning1}%`, "aria-hidden": "true" }),
+    h("span", { class: "alius-defiance-mark", style: `left:${E4.warning2}%`, "aria-hidden": "true" })
   );
   const active = w.restrictions.filter((r) => state.day <= r.untilDay);
   const rows = [
@@ -62956,10 +62981,10 @@ function liveTextRects(host, except) {
 }
 function placeFree(host, el, x, y) {
   const f = frameOf3(host);
-  const innerWidth4 = f.W, innerHeight4 = f.H;
+  const innerWidth5 = f.W, innerHeight5 = f.H;
   const rects = liveTextRects(host, el).map((r) => ({ left: r.left - f.left, right: r.right - f.left, top: r.top - f.top, bottom: r.bottom - f.top }));
-  const w = el.offsetWidth, h2 = el.offsetHeight, gap = 6, maxY = innerHeight4 * 0.8 - h2;
-  x = clamp43(x, 16, innerWidth4 - w - 24);
+  const w = el.offsetWidth, h2 = el.offsetHeight, gap = 6, maxY = innerHeight5 * 0.8 - h2;
+  x = clamp43(x, 16, innerWidth5 - w - 24);
   const hits = (yy2) => rects.find((r) => x < r.right + gap && x + w > r.left - gap && yy2 < r.bottom + gap && yy2 + h2 > r.top - gap);
   let yy = clamp43(y, 12, Math.max(12, maxY)), hit, n = 0;
   while ((hit = hits(yy)) && n++ < 30) yy = hit.bottom + gap;
@@ -62983,17 +63008,17 @@ function say(host, text3, opts) {
   if (!mine) groups.set(host, mine = /* @__PURE__ */ new Set());
   mine.add(group);
   const to = opts.to ?? "self";
-  const size = opts.size ?? (opts.big ? 56 : to === "self" ? 34 : to === "commander" ? 46 : 40);
+  const size2 = opts.size ?? (opts.big ? 56 : to === "self" ? 34 : to === "commander" ? 46 : 40);
   const max = opts.big ? 30 : 40, lines = [];
   for (const word2 of text3.split(" ")) {
     const last = lines[lines.length - 1];
     if (last !== void 0 && (last + " " + word2).length <= max) lines[lines.length - 1] = last + " " + word2;
     else lines.push(word2);
   }
-  const { W: innerWidth4, H: innerHeight4 } = frameOf3(host);
+  const { W: innerWidth5, H: innerHeight5 } = frameOf3(host);
   const p = opts.at ?? [0.6, 0.16];
   const els = [];
-  let x = clamp43(p[0] + 0.04, 0.03, 0.7) * innerWidth4 + hashRand(`${text3}|x`, -15, 15), y = clamp43(p[1] + 0.02, 0.03, 0.8) * innerHeight4, delay = 0;
+  let x = clamp43(p[0] + 0.04, 0.03, 0.7) * innerWidth5 + hashRand(`${text3}|x`, -15, 15), y = clamp43(p[1] + 0.02, 0.03, 0.8) * innerHeight5, delay = 0;
   const rot = opts.tilt === false ? "0.0" : hashRand(`${text3}|rot`, -4, 3).toFixed(1);
   for (const line3 of lines) {
     const el = document.createElement("div");
@@ -63005,7 +63030,7 @@ function say(host, text3, opts) {
     el.style.setProperty("--steps", String(Math.max(4, line3.length * 2)));
     el.style.setProperty("--alius-font-hand", `"${opts.her.hand}", var(--alius-font-type)`);
     el.style.setProperty("--alius-her", opts.her.accent);
-    el.style.fontSize = `${Math.round(size * opts.her.handScale * 100) / 100}px`;
+    el.style.fontSize = `${Math.round(size2 * opts.her.handScale * 100) / 100}px`;
     el.style.animationDelay = `${delay}ms`;
     el.style.transform = `rotate(${rot}deg)`;
     group.appendChild(el);
@@ -63014,7 +63039,7 @@ function say(host, text3, opts) {
     y = at.y + at.h + 2;
     if (opts.side === "right") {
       el.style.left = "";
-      el.style.right = `${Math.max(0, innerWidth4 - at.x)}px`;
+      el.style.right = `${Math.max(0, innerWidth5 - at.x)}px`;
       el.classList.add("right");
     }
     delay += write3;
@@ -63485,7 +63510,7 @@ var SHAPES = {
     const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
     const th = S2.angle * Math.PI / 180;
     const ax = [Math.sin(th), -Math.cos(th)], nx = [Math.cos(th), Math.sin(th)];
-    const C = [W * 0.5 + s.sway * H * 4e-3, H * 0.52];
+    const C2 = [W * 0.5 + s.sway * H * 4e-3, H * 0.52];
     const Lh = 0.78 * H;
     const toe = (6e-3 + oc * 0.085 + s.sway * 3e-3 + ex * ex * 1.4) * H, heel = (oc * 0.016 + ex * ex * 1.4) * H;
     const left = [], right = [];
@@ -63495,7 +63520,7 @@ var SHAPES = {
       let hw = lerp2(heel, toe, k * k);
       hw *= 1 - 0.32 * Math.exp(-((k - 0.55) ** 2) / 0.02);
       if (k > 0.84) hw *= 1 + (k - 0.84) * 3.2;
-      const px = C[0] + ax[0] * sp, py = C[1] + ax[1] * sp;
+      const px = C2[0] + ax[0] * sp, py = C2[1] + ax[1] * sp;
       left.push([px - nx[0] * hw, py - nx[1] * hw]);
       right.push([px + nx[0] * hw, py + nx[1] * hw]);
     }
@@ -63504,7 +63529,7 @@ var SHAPES = {
     for (let i = right.length - 1; i >= 0; i--) g.lineTo(right[i][0], right[i][1]);
     g.closePath();
     g.fill();
-    const at = (k) => [C[0] + ax[0] * (k * 2 - 1) * Lh, C[1] + ax[1] * (k * 2 - 1) * Lh];
+    const at = (k) => [C2[0] + ax[0] * (k * 2 - 1) * Lh, C2[1] + ax[1] * (k * 2 - 1) * Lh];
     const tip = at(0.78), mid2 = at(0.64);
     return { focus: [mid2[0] / W, mid2[1] / H], lip: [(tip[0] + nx[0] * (toe * 0.9 + 0.012 * H)) / W, (tip[1] + nx[1] * toe) / H], text: [(tip[0] + 0.1 * H) / W, (tip[1] + 0.03 * H) / H] };
   },
@@ -63531,15 +63556,15 @@ var SHAPES = {
   slide(g, W, H, o, s) {
     const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
     const d = s.slideDir;
-    const R5 = 1.08 * H, shift = (0.02 + oc * 0.3 + ex * 1.8) * H;
+    const R6 = 1.08 * H, shift = (0.02 + oc * 0.3 + ex * 1.8) * H;
     const cx = W / 2 - d * shift + s.sway * H * 6e-3, cy = H * (0.5 + s.slideY * 0.14);
     g.fillRect(0, 0, W, H);
     g.globalCompositeOperation = "destination-out";
     g.beginPath();
-    g.arc(cx, cy, R5, 0, Math.PI * 2);
+    g.arc(cx, cy, R6, 0, Math.PI * 2);
     g.fill();
     g.globalCompositeOperation = "source-over";
-    const edgeX = d < 0 ? cx - R5 : cx + R5;
+    const edgeX = d < 0 ? cx - R6 : cx + R6;
     const lipX = d < 0 ? Math.max(edgeX, 0) : Math.min(edgeX, W);
     return d < 0 ? { focus: [Math.max(0.06, edgeX / W * 0.5), cy / H], lip: [lipX / W + 6e-3, (cy - 0.25 * H) / H], text: [(lipX + 0.07 * H) / W, (cy - 0.1 * H) / H], align: "left" } : { focus: [Math.min(0.94, 1 - (1 - edgeX / W) * 0.5), cy / H], lip: [lipX / W - 6e-3, (cy - 0.25 * H) / H], text: [(lipX - 0.07 * H) / W, (cy - 0.1 * H) / H], align: "right" };
   },
@@ -63551,8 +63576,8 @@ var SHAPES = {
     const rock = s.sway2 * 0.022;
     const cr = Math.cos(rock), sr = Math.sin(rock);
     const side = (x, flip) => {
-      const L2 = clamp43(x.L, -0.2, 1.2), sq = squashOf(x);
-      const P3 = 1.38 / (1 + 0.28 * L2 + ex * 4);
+      const L3 = clamp43(x.L, -0.2, 1.2), sq = squashOf(x);
+      const P3 = 1.38 / (1 + 0.28 * L3 + ex * 4);
       return SEAT_BODY.map(([px, py], i) => {
         let X = px, Y = py;
         if (Y > 0) {
@@ -63560,7 +63585,7 @@ var SHAPES = {
           Y *= 1 - 0.04 * sq;
         }
         if (i >= 10) {
-          X = X * (1 - 0.55 * sq) + 0.035 * clamp43(L2, 0, 1);
+          X = X * (1 - 0.55 * sq) + 0.035 * clamp43(L3, 0, 1);
           Y += 0.12 * sq;
         }
         X *= flip;
@@ -64589,13 +64614,13 @@ function schedulePlan(run, ck) {
   R4.strain = null;
   G2.air = clamp43(run.gauge / run.capacity * 100, 0, 100);
   refreshLines(0);
-  let after2 = G2.clock;
+  let after3 = G2.clock;
   for (const o of effectiveOpenings(plan, [], styleKey())) {
     const at = R4.seg.clock0 + o.beat * BEAT;
     const cue = plan.beats[o.beat]?.cue;
-    scheduleWindow(at, { ...o.false ? { false: true } : {}, widthMs: o.widthMs, quiet: cue !== "window_open" && cue !== "window_false", after: after2 });
+    scheduleWindow(at, { ...o.false ? { false: true } : {}, widthMs: o.widthMs, quiet: cue !== "window_open" && cue !== "window_false", after: after3 });
     const r = st();
-    after2 = Math2.max(after2, at + (r.snappy ? 110 : 260) + o.widthMs * S3.wmul + (r.snappy ? 140 : 320));
+    after3 = Math2.max(after3, at + (r.snappy ? 110 : 260) + o.widthMs * S3.wmul + (r.snappy ? 140 : 320));
   }
 }
 var styleKey = () => E && R4.run ? leadStyle(physicsStyleOf(E.env.state(), R4.run.holderId, E.env.registries)).key : "neutral";
@@ -64967,6 +64992,1234 @@ function breathMatches(run, _state, reg) {
 }
 registerInstrument({ id: "breath", matches: breathMatches, start: startBreath });
 
+// src/ui/scene/instruments/weight/vial.ts
+var VIAL_IDS = {
+  brass: "alius-weight-brass",
+  liquid: "alius-weight-liquid",
+  sheen: "alius-weight-sheen",
+  bubble: "alius-weight-bubble",
+  soft: "alius-weight-soft",
+  tube: "alius-weight-tube"
+};
+var VIAL_SVG = `<svg viewBox="0 0 460 70" width="460" height="70">
+  <defs>
+    <linearGradient id="${VIAL_IDS.brass}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5a3f17"/><stop offset=".22" stop-color="#e8c77c"/><stop offset=".45" stop-color="#a77b33"/><stop offset=".7" stop-color="#6a4a1a"/><stop offset="1" stop-color="#c9a15a"/>
+    </linearGradient>
+    <linearGradient id="${VIAL_IDS.liquid}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3c66a" stop-opacity=".5"/><stop offset=".55" stop-color="#c88426" stop-opacity=".62"/><stop offset="1" stop-color="#7a4210" stop-opacity=".78"/>
+    </linearGradient>
+    <linearGradient id="${VIAL_IDS.sheen}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".18" stop-color="#fff" stop-opacity=".08"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".18"/>
+    </linearGradient>
+    <radialGradient id="${VIAL_IDS.bubble}" cx=".5" cy=".42" r=".6">
+      <stop offset="0" stop-color="#fffbe9" stop-opacity=".18"/><stop offset=".62" stop-color="#fff6d8" stop-opacity=".32"/><stop offset=".86" stop-color="#fff" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="${VIAL_IDS.soft}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>
+    <clipPath id="${VIAL_IDS.tube}"><rect x="40" y="16" width="380" height="38" rx="19"/></clipPath>
+  </defs>
+  <!-- the glow it casts when level -->
+  <ellipse data-v="vGlow" cx="230" cy="58" rx="170" ry="10" fill="#f2b452" opacity="0" filter="url(#${VIAL_IDS.soft})"/>
+  <!-- the tube -->
+  <rect x="40" y="16" width="380" height="38" rx="19" fill="rgba(10,8,14,.35)"/>
+  <g clip-path="url(#${VIAL_IDS.tube})">
+    <rect data-v="vLiquid" x="30" y="16" width="400" height="38" fill="url(#${VIAL_IDS.liquid})"/>
+    <!-- engraved scale -->
+    <g data-v="vTicks" stroke="#3a2205" stroke-opacity=".55" stroke-width="1"></g>
+    <g data-v="vMarks"><line x1="0" y1="16" x2="0" y2="54" stroke="#ffe7a8" stroke-width="1.6"/><line x1="0" y1="16" x2="0" y2="54" stroke="#ffe7a8" stroke-width="1.6"/></g>
+    <!-- the bubble: elastic, it stretches when it moves fast -->
+    <g data-v="vBubble"><ellipse rx="30" ry="12" fill="url(#${VIAL_IDS.bubble})"/><ellipse cx="-8" cy="-6" rx="10" ry="2.6" fill="#fff" opacity=".8"/></g>
+    <rect x="40" y="16" width="380" height="38" rx="19" fill="url(#${VIAL_IDS.sheen})"/>
+  </g>
+  <rect x="40.5" y="16.5" width="379" height="37" rx="18.5" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="1"/>
+  <!-- brass ends -->
+  <g><rect x="18" y="10" width="34" height="50" rx="9" fill="url(#${VIAL_IDS.brass})"/><rect x="18" y="10" width="34" height="50" rx="9" fill="none" stroke="#2a1c08" stroke-opacity=".6"/>
+    <circle cx="29" cy="35" r="3.2" fill="#3a2a10"/><line x1="26.8" y1="35" x2="31.2" y2="35" stroke="#d7b46a" stroke-width="1"/></g>
+  <g><rect x="408" y="10" width="34" height="50" rx="9" fill="url(#${VIAL_IDS.brass})"/><rect x="408" y="10" width="34" height="50" rx="9" fill="none" stroke="#2a1c08" stroke-opacity=".6"/>
+    <circle cx="431" cy="35" r="3.2" fill="#3a2a10"/><line x1="431" y1="32.8" x2="431" y2="37.2" stroke="#d7b46a" stroke-width="1"/></g>
+</svg>`;
+function buildVial() {
+  const box = document.createElement("div");
+  box.className = "alius-weight-vial";
+  box.setAttribute("aria-hidden", "true");
+  const bed = document.createElement("div");
+  bed.className = "glassbed";
+  box.append(bed);
+  box.insertAdjacentHTML("beforeend", VIAL_SVG);
+  const part = (k) => box.querySelector(`[data-v="${k}"]`);
+  const parts = { vGlow: part("vGlow"), vLiquid: part("vLiquid"), vTicks: part("vTicks"), vMarks: part("vMarks"), vBubble: part("vBubble") };
+  ((g) => {
+    for (let x = 60; x <= 400; x += 10) {
+      const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      const big = (x - 230) % 50 === 0;
+      l.setAttribute("x1", String(x));
+      l.setAttribute("x2", String(x));
+      l.setAttribute("y1", "16");
+      l.setAttribute("y2", big ? "26" : "21");
+      g.appendChild(l);
+    }
+  })(parts.vTicks);
+  return { box, parts };
+}
+
+// src/ui/scene/instruments/weight/weight.ts
+var E2 = null;
+var innerWidth3 = 0;
+var innerHeight3 = 0;
+var performance3 = { now: () => E2 ? E2.env.now() : 0 };
+function setTimeout3(fn, ms) {
+  if (E2) E2.env.timeout(() => {
+    fn();
+  }, ms);
+}
+function requestAnimationFrame3(fn) {
+  if (!E2) return;
+  const e = E2;
+  e.frameId = e.env.raf((now) => {
+    e.frameId = null;
+    if (E2 !== e) return;
+    before2();
+    fn(now);
+    after2();
+  });
+}
+var seed2 = 2463534242;
+function rnd012() {
+  seed2 ^= seed2 << 13;
+  seed2 >>>= 0;
+  seed2 ^= seed2 >>> 17;
+  seed2 ^= seed2 << 5;
+  seed2 >>>= 0;
+  return seed2 / 4294967296;
+}
+var Math3 = Object.create(globalThis.Math, { random: { value: rnd012 } });
+var $2 = (s) => {
+  const e = E2;
+  if (s === "#mirror") return e.mirror;
+  if (s === "#reply") return e.env.reply;
+  if (s === "#cmd") return e.env.input;
+  return e.els[s];
+};
+var inputLine2 = (env) => env.input.closest(".alius-input-line") ?? env.input.parentElement ?? env.input;
+var easeOut2 = (t) => 1 - Math3.pow(1 - clamp43(t, 0, 1), 3);
+var pick4 = (a) => a[Math3.floor(Math3.random() * a.length)];
+var randInt2 = (a, b) => a + Math3.floor(Math3.random() * (b - a + 1));
+var rand = (a, b) => a + Math3.random() * (b - a);
+var BEAT2 = TUNING.physics.beatMs;
+var W_DRAIN = TUNING.physics.weight.drain;
+var RELIEF = TUNING.physics.weight.relief;
+var STYLES2 = {
+  neutral: { tele: [650, 850], feint: 0, heavy: 0.15, mag: [0.35, 0.7], watchBias: 0, note: "her shadow leans about 0.7 s before her weight moves" },
+  affectionate: { tele: [900, 1100], feint: 0, heavy: 0.05, mag: [0.25, 0.5], watchBias: -0.1, note: "long, gentle warnings; small shifts; rarely heavier" },
+  ritual: { tele: [750, 750], feint: 0, heavy: 0.1, mag: [0.4, 0.6], watchBias: 0, note: "announces each shift in her hand, evenly, every fourth beat", announce: true, even: 4 },
+  playful: { tele: [500, 750], feint: 0.35, heavy: 0.15, mag: [0.35, 0.8], watchBias: 0, note: "feints: her shadow leans and comes back" },
+  clinical: { tele: [150, 1100], feint: 0, heavy: 0.1, mag: [0.3, 0.9], watchBias: 0.1, note: "the warning time changes every shift: she measures how fast you learn" },
+  cruel: { tele: [0, 0], feint: 0, heavy: 0.35, mag: [0.6, 1], watchBias: 0.2, note: "no warning; big shifts; often leans in heavier; watches more" }
+};
+var ROW_BY_CUES2 = { honest: "neutral", count: "ritual", announce: "ritual", false: "playful", none: "cruel", shift: "clinical" };
+var S4 = {
+  legs: "hang",
+  foot: "relaxed",
+  legShade: "shadow",
+  toFall: false,
+  style: "neutral",
+  task: "reading",
+  tol: 0.18,
+  drain: 1,
+  len: 45,
+  unevenCost: true,
+  sound: true,
+  vol: 0.7,
+  face: { x: 0.5, y: 0.21 },
+  overH: 1.04,
+  overX: 0.5,
+  overSink: 0,
+  debug: false,
+  reduced: false,
+  readable: false
+};
+var NO_LINES2 = { entry: [], released: [], slip: [], caught: [], heavy: [], good: [], poor: [], fall: [], stop: [], longer: [], announce: [] };
+var R5 = {
+  run: null,
+  face: "down",
+  legs: false,
+  pressure: 1,
+  lines: NO_LINES2,
+  lineStyle: "neutral",
+  seg: null,
+  running: false,
+  queue: [],
+  sent: /* @__PURE__ */ new Set(),
+  uneven: { sum: 0, ms: 0 },
+  via: "key",
+  segSlips: 0,
+  cheatsCaught: 0,
+  spriteSrc: "",
+  overFit: null
+};
+var C = () => ({ face: R5.face, weight: 1, shift: 1 });
+var ST = () => STYLES2[S4.style];
+var L2 = () => R5.lines;
+var A2 = { ctx: null };
+function audioInit2() {
+  if (A2.ctx) return;
+  const ctx2 = E2?.env.samples?.ctx() ?? null;
+  const out = E2?.env.samples?.bus("body") ?? null;
+  if (!ctx2 || !out) return;
+  A2.ctx = ctx2;
+  A2.master = ctx2.createGain();
+  A2.master.gain.value = S4.sound ? S4.vol : 0;
+  A2.master.connect(out);
+  A2.world = ctx2.createBiquadFilter();
+  A2.world.type = "lowpass";
+  A2.world.frequency.value = 14e3;
+  A2.world.connect(A2.master);
+  A2.body = ctx2.createGain();
+  A2.body.connect(A2.master);
+  const mk = (sec, fill7) => {
+    const b = ctx2.createBuffer(1, ctx2.sampleRate * sec, ctx2.sampleRate);
+    fill7(b.getChannelData(0));
+    return b;
+  };
+  A2.white = mk(2, (d) => {
+    for (let i = 0; i < d.length; i++) d[i] = Math3.random() * 2 - 1;
+  });
+  A2.brown = mk(4, (d) => {
+    let l = 0;
+    for (let i = 0; i < d.length; i++) {
+      l = (l + 0.02 * (Math3.random() * 2 - 1)) / 1.02;
+      d[i] = l * 3.5;
+    }
+  });
+  const room2 = ctx2.createBufferSource();
+  room2.buffer = A2.brown;
+  room2.loop = true;
+  const rl = ctx2.createBiquadFilter();
+  rl.type = "lowpass";
+  rl.frequency.value = 500;
+  A2.roomG = ctx2.createGain();
+  A2.roomG.gain.value = 0.05;
+  room2.connect(rl);
+  rl.connect(A2.roomG);
+  A2.roomG.connect(A2.world);
+  room2.start();
+  const rum = ctx2.createBufferSource();
+  rum.buffer = A2.brown;
+  rum.loop = true;
+  A2.rumLP = ctx2.createBiquadFilter();
+  A2.rumLP.type = "lowpass";
+  A2.rumLP.frequency.value = 120;
+  A2.rumG = ctx2.createGain();
+  A2.rumG.gain.value = 0;
+  const lfo = ctx2.createOscillator();
+  lfo.frequency.value = 9;
+  A2.lfo = lfo;
+  const lfoG = ctx2.createGain();
+  lfoG.gain.value = 0;
+  A2.lfoG = lfoG;
+  lfo.connect(lfoG);
+  lfoG.connect(A2.rumG.gain);
+  lfo.start();
+  rum.connect(A2.rumLP);
+  A2.rumLP.connect(A2.rumG);
+  A2.rumG.connect(A2.body);
+  rum.start();
+}
+function noise3({ at = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1, gain: gain2 = 0.1, attack = 0.01, dest = A2.world, pan = 0 }) {
+  if (!A2.ctx) return;
+  const ctx2 = A2.ctx, t = ctx2.currentTime + at;
+  const src = ctx2.createBufferSource();
+  src.buffer = A2.white;
+  src.loop = true;
+  const fl = ctx2.createBiquadFilter();
+  fl.type = type;
+  fl.frequency.setValueAtTime(f, t);
+  fl.Q.value = q;
+  if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = ctx2.createGain();
+  g.gain.setValueAtTime(1e-4, t);
+  g.gain.exponentialRampToValueAtTime(gain2, t + attack);
+  g.gain.exponentialRampToValueAtTime(1e-4, t + dur);
+  src.connect(fl);
+  fl.connect(g);
+  if (pan) {
+    const pn = ctx2.createStereoPanner();
+    pn.pan.value = clamp43(pan, -1, 1);
+    g.connect(pn);
+    pn.connect(dest);
+  } else g.connect(dest);
+  src.start(t, Math3.random());
+  src.stop(t + dur + 0.05);
+}
+function thump2(at, gain2, f0 = 55, dest = A2.body) {
+  if (!A2.ctx) return;
+  const ctx2 = A2.ctx, t = ctx2.currentTime + at;
+  const o = ctx2.createOscillator();
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(f0 * 0.55, t + 0.18);
+  const g = ctx2.createGain();
+  g.gain.setValueAtTime(1e-4, t);
+  g.gain.exponentialRampToValueAtTime(gain2, t + 8e-3);
+  g.gain.exponentialRampToValueAtTime(1e-4, t + 0.3);
+  o.connect(g);
+  g.connect(dest);
+  o.start(t);
+  o.stop(t + 0.35);
+}
+var SFX2 = {
+  pen: () => {
+    const n = randInt2(3, 5);
+    for (let i = 0; i < n; i++) noise3({ at: i * 0.05 + Math3.random() * 0.02, dur: 0.035 + Math3.random() * 0.03, f: 2600 + Math3.random() * 1800, q: 3, gain: 0.05 });
+  },
+  // a creak: stick-slip, a fast train of clicks through a wooden resonance
+  creak: (len2 = 0.35, gain2 = 0.16, pan = 0) => {
+    const n = Math3.floor(len2 * rand(40, 70));
+    for (let i = 0; i < n; i++) noise3({ at: i / n * len2 + Math3.random() * 4e-3, dur: 0.012, f: rand(420, 780), q: 9, gain: gain2 * (0.5 + Math3.random() * 0.5), attack: 1e-3, pan });
+  },
+  rustle: (g = 0.08, pan = 0) => noise3({ dur: 0.42, f: 1100, f2: 1600, q: 0.7, gain: g, attack: 0.1, pan }),
+  press: (g = 0.5) => {
+    thump2(0, g, 62);
+    noise3({ dur: 0.16, type: "lowpass", f: 300, gain: 0.25, attack: 5e-3, dest: A2.body });
+  },
+  tap: () => noise3({ dur: 0.012, type: "highpass", f: 3200, gain: 0.05, attack: 1e-3 }),
+  // her fingers on her screen
+  hiss: (g) => noise3({ dur: 0.5, f: 3600, f2: 2800, q: 2, gain: g, attack: 0.08, dest: A2.body }),
+  // breath through the teeth
+  grunt: () => noise3({ dur: 0.22, type: "lowpass", f: 420, gain: 0.3, attack: 0.01, dest: A2.body }),
+  fall: () => {
+    thump2(0, 0.9, 48);
+    thump2(0.09, 0.5, 70, A2.world);
+    SFX2.creak(0.5, 0.2);
+  }
+};
+var HOLD2 = { on: false };
+var G3;
+function fresh2() {
+  return {
+    phase: "idle",
+    phaseT: 0,
+    clock: 0,
+    str: 100,
+    cam: 0,
+    cop: 0,
+    copTarget: 0,
+    lean: 0,
+    leanTarget: 0,
+    ctl: 0,
+    ctlV: 0,
+    bubbleX: 0,
+    bubbleV: 0,
+    beat: -1,
+    slipThisBeat: false,
+    nextShiftBeat: 3,
+    shift: null,
+    pressure: 1,
+    pressureUntil: -1,
+    att: "busy",
+    attPlan: [],
+    held: [],
+    even: [],
+    slips: 0,
+    hardShifts: 0,
+    shifts: 0,
+    cleanShifts: 0,
+    reliefs: 0,
+    caughtN: 0,
+    reliefCd: 0,
+    lowest: 100,
+    jolt: 0,
+    sag: 0,
+    end: S4.len * 1e3,
+    reason: "",
+    tapCd: 0,
+    hissCd: 0,
+    saidLow: false
+  };
+}
+G3 = fresh2();
+function say3(text3, big = false, at = [0.6, 0.16]) {
+  if (!text3) return;
+  const el = document.createElement("div");
+  el.className = "her-line" + (big ? " big" : "");
+  el.textContent = text3;
+  el.style.setProperty("--write", `${Math3.max(160, text3.length * 36)}ms`);
+  el.style.setProperty("--steps", String(Math3.max(4, text3.length * 2)));
+  const stack = big ? 0 : [...$2("#hand").children].filter((x) => !x.classList.contains("gone") && !x.classList.contains("big")).length;
+  el.style.left = `${at[0] * innerWidth3 + (Math3.random() * 30 - 15)}px`;
+  el.style.top = `${at[1] * innerHeight3 + stack * 52 + (Math3.random() * 14 - 7)}px`;
+  el.style.transform = `rotate(${(Math3.random() * 7 - 4).toFixed(1)}deg)`;
+  $2("#hand").appendChild(el);
+  SFX2.pen();
+  if (!big) setTimeout3(() => {
+    el.classList.add("gone");
+    setTimeout3(() => el.remove(), 600);
+  }, 2600);
+}
+var cracks = [];
+function crack(strength = 1) {
+  const W = innerWidth3, H = innerHeight3;
+  const side = randInt2(0, 3);
+  const p0 = side === 0 ? [rand(0.1, 0.9) * W, 0] : side === 1 ? [W, rand(0.1, 0.9) * H] : side === 2 ? [rand(0.1, 0.9) * W, H] : [0, rand(0.1, 0.9) * H];
+  const inward = side === 0 ? [0, 1] : side === 1 ? [-1, 0] : side === 2 ? [0, -1] : [1, 0];
+  const segs = [];
+  const grow = (p, dir, len2, depth) => {
+    let q = p, d = dir;
+    const steps = randInt2(4, 8);
+    const pts = [q];
+    for (let i = 0; i < steps; i++) {
+      const a = Math3.atan2(d[1], d[0]) + rand(-0.55, 0.55);
+      d = [Math3.cos(a), Math3.sin(a)];
+      const l = len2 / steps * rand(0.6, 1.4);
+      q = [q[0] + d[0] * l, q[1] + d[1] * l];
+      pts.push(q);
+      if (depth < 2 && Math3.random() < 0.28) grow(q, [Math3.cos(a + rand(-1.2, 1.2)), Math3.sin(a + rand(-1.2, 1.2))], len2 * 0.45, depth + 1);
+    }
+    segs.push(pts);
+  };
+  grow(p0, inward, rand(90, 230) * strength, 0);
+  const svg4 = $2("#cracks");
+  const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  for (const pts of segs) {
+    const d = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
+    for (const [col, w, off] of [["rgba(0,0,0,.55)", 2.6, 1], ["rgba(255,255,255,.78)", 1, 0], ["rgba(255,190,150,.35)", 4, 0]]) {
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", d);
+      path.setAttribute("stroke", col);
+      path.setAttribute("stroke-width", String(w));
+      if (off) path.setAttribute("transform", "translate(1 1)");
+      if (w === 4) path.setAttribute("filter", "blur(2px)"), path.style.filter = "blur(2px)";
+      const len2 = 600;
+      path.style.strokeDasharray = String(len2);
+      path.style.strokeDashoffset = String(len2);
+      if (S4.reduced || typeof path.animate !== "function") path.style.strokeDashoffset = "0";
+      else path.animate([{ strokeDashoffset: len2 }, { strokeDashoffset: 0 }], { duration: 260, easing: "cubic-bezier(.2,.9,.3,1)", fill: "forwards" });
+      g.appendChild(path);
+    }
+  }
+  svg4.appendChild(g);
+  cracks.push({ g, born: performance3.now() });
+}
+function healCracks(now) {
+  for (let i = cracks.length - 1; i >= 0; i--) {
+    const age2 = (now - cracks[i].born) / 1e3;
+    const op = 1 - smooth(8, 22, age2);
+    cracks[i].g.style.opacity = op.toFixed(3);
+    if (op <= 0) {
+      cracks[i].g.remove();
+      cracks.splice(i, 1);
+    }
+  }
+}
+function planShift(opts) {
+  const st2 = ST(), c = C();
+  const isFeint = opts.feint;
+  const dir = Math3.random() < 0.5 ? -1 : 1;
+  const target = isFeint ? G3.copTarget : clamp43(G3.copTarget * 0.25 + dir * rand(st2.mag[0], st2.mag[1]) * c.shift, -1, 1);
+  const tele = opts.tele;
+  G3.shift = { landAt: G3.clock + Math3.max(tele, 0) + 30, teleAt: G3.clock, tele, target, feint: isFeint, dir: Math3.sign(target - G3.cop) || dir, landed: false, cost: opts.cost };
+  if (st2.announce) say3(pick4(L2().announce.slice(0, 1).concat(target < G3.cop ? L2().announce.slice(1, 2) : L2().announce.slice(2, 3))));
+  if (tele > 0) {
+    G3.leanTarget = isFeint ? dir * 0.8 : Math3.sign(target - G3.cop) * 0.9;
+    const side = Math3.sign(G3.leanTarget) * 0.85, foot = R5.face === "down" && !R5.legs;
+    SFX2.rustle(foot ? 0.1 : 0.06, side);
+    if (foot) SFX2.creak(0.28, 0.12, side);
+  }
+}
+function landShift() {
+  const sh = G3.shift;
+  sh.landed = true;
+  G3.leanTarget = 0;
+  if (sh.feint) {
+    G3.shift = null;
+    return;
+  }
+  G3.shifts += 1;
+  G3.copTarget = sh.target;
+  const c = C();
+  const uneven = !HOLD2.on || G3.slipThisBeat || Math3.abs(G3.cop - G3.ctl) > S4.tol || G3.held.slice(-1).some((h2) => !h2);
+  SFX2.press(0.35 + c.weight * 0.3);
+  SFX2.rustle(0.05, Math3.sign(sh.target - G3.cop) * 0.6);
+  if (uneven) {
+    const cost = sh.cost;
+    G3.str -= cost;
+    G3.hardShifts += 1;
+    G3.jolt = 1;
+    crack(1);
+    SFX2.creak(0.4, 0.2);
+    SFX2.grunt();
+  } else {
+    G3.cleanShifts += 1;
+    G3.jolt = 0.35;
+  }
+  G3.shift = null;
+}
+function onBeat() {
+  G3.beat += 1;
+  const evenNow = HOLD2.on && !G3.slipThisBeat && Math3.abs(G3.cop - G3.ctl) <= S4.tol;
+  G3.held.push(HOLD2.on && !G3.slipThisBeat);
+  G3.even.push(evenNow);
+  if (G3.held.length > 8) {
+    G3.held.shift();
+    G3.even.shift();
+  }
+  reportBeat(G3.beat - 1, evenNow);
+  G3.slipThisBeat = false;
+}
+function slip() {
+  {
+    G3.slipThisBeat = true;
+    G3.slips += 1;
+    G3.str -= W_DRAIN * C().weight * G3.pressure;
+    G3.jolt = 1;
+    G3.sag = 1;
+    crack(0.8);
+    SFX2.creak(0.5, 0.22);
+    if (G3.slips === 1 || Math3.random() < 0.5) say3(pick4(L2().slip));
+    R5.segSlips += 1;
+    if (R5.segSlips === 1) setTimeout3(() => say3(pick4(L2().longer)), 900);
+  }
+}
+function relief() {
+  if (G3.phase !== "loop" || G3.reliefCd > 0 || !R5.running) return;
+  G3.reliefCd = 2600;
+  G3.reliefs += 1;
+  SFX2.creak(0.22, 0.1);
+  SFX2.rustle(0.05);
+  report2({ beat: segBeat(), kind: "shift_weight" });
+  G3.str = Math3.min(100, G3.str + RELIEF);
+}
+function begin2() {
+  audioInit2();
+  if (A2.ctx && A2.ctx.state === "suspended") A2.ctx.resume();
+  $2("#hand").replaceChildren();
+  $2("#cracks").replaceChildren();
+  cracks.length = 0;
+  G3 = fresh2();
+  G3.phase = "entry";
+  G3.end = S4.len * 1e3;
+  setTimeout3(() => G3.phase === "entry" && say3(pick4(L2().entry)), 700);
+}
+function exit2(reason) {
+  if (G3.phase !== "loop" && G3.phase !== "entry") return;
+  G3.phase = "exit";
+  G3.phaseT = 0;
+  G3.reason = reason;
+  const l = L2(), ratio = G3.cleanShifts / Math3.max(1, G3.shifts);
+  const line3 = reason === "stop" ? pick4(l.stop) : reason === "fall" ? pick4(l.fall) : reason === "released" ? pick4(l.released) : ratio >= 0.7 && G3.slips <= 1 ? pick4(l.good) : pick4(l.poor);
+  if (reason === "fall") {
+    SFX2.fall();
+    G3.jolt = 1.5;
+  } else {
+    SFX2.rustle(0.12);
+    SFX2.hiss(0.2);
+  }
+  setTimeout3(() => {
+    $2("#hand").replaceChildren();
+    say3(line3, true, [0.56, 0.2]);
+  }, 900);
+}
+function updateLoop2(dt) {
+  G3.clock += dt;
+  const beatNow2 = Math3.floor((G3.clock - R5.seg.clock0) / BEAT2);
+  while (G3.beat < beatNow2) {
+    onBeat();
+    planBeat();
+  }
+  if (!HOLD2.on && !G3.slipThisBeat && G3.clock > BEAT2) slip();
+  if (G3.pressureUntil < G3.clock) G3.pressure = R5.pressure;
+  const c = C();
+  const err = G3.cop - G3.ctl;
+  const unevenMult = S4.unevenCost ? 1 + 1.2 * Math3.max(0, Math3.abs(err) - S4.tol * 0.5) : 1;
+  G3.str -= W_DRAIN / BEAT2 * dt * S4.drain * c.weight * G3.pressure * unevenMult;
+  R5.uneven.sum += (unevenMult - 1) * dt;
+  R5.uneven.ms += dt;
+  if (G3.shift && !G3.shift.landed && G3.clock >= G3.shift.landAt) landShift();
+  G3.reliefCd = Math3.max(0, G3.reliefCd - dt);
+  G3.tapCd -= dt;
+  if (G3.att === "busy" && G3.tapCd <= 0) {
+    SFX2.tap();
+    G3.tapCd = rand(110, 420);
+  } else if (G3.att === "glancing" && G3.tapCd <= 0) {
+    SFX2.tap();
+    G3.tapCd = rand(700, 1400);
+  }
+  G3.hissCd -= dt;
+  if (G3.str < 45 && G3.hissCd <= 0) {
+    SFX2.hiss(lerp2(0.02, 0.12, smooth(45, 5, G3.str)));
+    G3.hissCd = lerp2(2200, 900, smooth(45, 5, G3.str));
+  }
+  G3.lowest = Math3.min(G3.lowest, G3.str);
+  if (G3.str < 30 && !G3.saidLow) {
+    G3.saidLow = true;
+  }
+  if (G3.str <= 0) {
+    G3.str = 0;
+  }
+}
+var mouseX = 0.5;
+function frame2(now) {
+  const dt = Math3.min(120, now - (frame2.last ?? now));
+  frame2.last = now;
+  G3.phaseT += dt;
+  const h2 = dt / 1e3;
+  switch (G3.phase) {
+    case "entry":
+      G3.cam = easeOut2(G3.phaseT / 1600);
+      if (G3.phaseT >= 1600) {
+        G3.phase = "loop";
+        G3.clock = 0;
+      }
+      break;
+    case "loop":
+      if (R5.running) updateLoop2(dt);
+      break;
+    case "exit":
+      G3.cam = 1 - easeOut2(G3.phaseT / 1500);
+      G3.str = lerp2(G3.str, 100, clamp43(dt / 700, 0, 1));
+      break;
+    default:
+      G3.cam = 0;
+  }
+  const t = now / 1e3;
+  const wander = S4.reduced ? 0 : Math3.sin(t * 0.9) * 0.05 + Math3.sin(t * 2.3 + 1) * 0.025;
+  G3.cop += (G3.copTarget + wander - G3.cop) * clamp43(h2 * (G3.shift?.landed === false ? 2 : 7), 0, 1);
+  G3.lean += (G3.leanTarget - G3.lean) * clamp43(h2 * 6, 0, 1);
+  const target = (mouseX * 2 - 1) * 1.15;
+  const n = Math3.max(1, Math3.ceil(h2 / 8e-3)), hs = h2 / n, liveErr = G3.phase === "loop" || G3.phase === "entry";
+  for (let i = 0; i < n; i++) {
+    const k = 90, d = 14;
+    G3.ctlV += (k * (target - G3.ctl) - d * G3.ctlV) * hs;
+    G3.ctl += G3.ctlV * hs;
+    const e = liveErr ? G3.cop - G3.ctl : 0;
+    const bv = 260 * (clamp43(e, -1.2, 1.2) - G3.bubbleX) - 16 * G3.bubbleV;
+    G3.bubbleV += bv * hs;
+    G3.bubbleX += G3.bubbleV * hs;
+  }
+  const err = liveErr ? G3.cop - G3.ctl : 0;
+  G3.jolt = Math3.max(0, G3.jolt - h2 * 2.2);
+  G3.sag = Math3.max(0, G3.sag - h2 * 1.6);
+  if (A2.ctx) {
+    const ct = A2.ctx.currentTime, f = G3.phase === "loop" ? smooth(60, 0, G3.str) : 0;
+    A2.rumG.gain.setTargetAtTime(f * 0.25, ct, 0.2);
+    A2.lfoG.gain.setTargetAtTime(f * 0.2, ct, 0.2);
+    A2.lfo.frequency.setTargetAtTime(lerp2(7, 13, f), ct, 0.3);
+    A2.master.gain.setTargetAtTime(S4.sound ? S4.vol : 0, ct, 0.05);
+  }
+  render2(now, dt, err);
+  requestAnimationFrame3(frame2);
+}
+frame2.last = void 0;
+var shC;
+var sctx;
+function size() {
+  shC.width = Math3.ceil(innerWidth3 / DS);
+  shC.height = Math3.ceil(innerHeight3 / DS);
+}
+var cache = /* @__PURE__ */ new Map();
+var setStyle2 = (sel, prop, v) => {
+  if (S4.readable && prop === "filter") v = v.replace(/blur\([^)]*\)/g, "blur(0px)");
+  const key = sel + prop;
+  if (cache.get(key) === v) return;
+  cache.set(key, v);
+  $2(sel).style[prop] = v;
+};
+var legC;
+var lctx;
+var compC;
+var cctx;
+var rimC;
+var rctx;
+var outC;
+var octx;
+var LEG_FEET = {
+  // relaxed: the ankle narrows a little (the ankle bone a touch wider), the instep curves on smoothly, the foot tapers to toes pointing down and in
+  relaxed: [[-0.05, -0.08], [0.105, -0.08], [0.122, 0.1], [0.12, 0.28], [0.104, 0.45], [0.091, 0.58], [0.085, 0.66], [0.087, 0.71], [0.096, 0.77], [0.107, 0.84], [0.112, 0.9], [0.106, 0.95], [0.088, 0.99], [0.06, 1], [0.035, 0.97], [0.016, 0.9], [-0.05, 0.84]]
+};
+function legPoints(W, H, side, press3, lift, swing) {
+  return LEG_FEET[S4.foot].map(([x, y]) => {
+    const down2 = clamp43(y, 0, 1);
+    const X = x + press3 * 0.035 * (0.4 + down2) - lift * 0.03 * down2 + swing * 0.012 * down2 * down2;
+    const Y = (S4.foot === "first" ? y : y * 0.86) - lift * 0.07 * down2 + swing * 0.01 * down2;
+    return [side < 0 ? X * W : W - X * W, Y * H];
+  });
+}
+function fillPts(ctx2, pts) {
+  ctx2.beginPath();
+  pts.forEach((q, i) => i ? ctx2.lineTo(q[0], q[1]) : ctx2.moveTo(q[0], q[1]));
+  ctx2.closePath();
+  ctx2.fill();
+}
+function legsHang(ctx2, W, H, toward, swing, jolt, reading2, t) {
+  for (const side of [-1, 1]) {
+    const own = side * toward, press3 = Math3.max(0, own), lift = Math3.max(0, -own);
+    const sw = S4.reduced ? 0 : reading2 ? Math3.sin(t * 3.1 + (side > 0 ? 1.7 : 0)) * (side > 0 ? 1 : 0.35) : Math3.sin(t * 0.8 + side) * 0.25;
+    fillPts(ctx2, chaikin(chaikin(chaikin(legPoints(W, H, side, press3 + jolt * 0.2 * side, lift, sw)))));
+  }
+}
+function drawFloor2(now) {
+  const W = shC.width, H = shC.height;
+  for (const c of [legC, compC, rimC, outC]) if (c.width !== W || c.height !== H) {
+    c.width = W;
+    c.height = H;
+  }
+  sctx.clearRect(0, 0, W, H);
+  const live3 = G3.phase === "loop" || G3.phase === "entry";
+  const att = live3 ? { busy: 1, glancing: 0.45 + 0.25 * Math3.sin(now / 90), watching: 0.05 }[G3.att] : 0;
+  const flick = 0.85 + 0.15 * Math3.sin(now / 130) * Math3.sin(now / 47);
+  const px = W * (0.5 + G3.cop * 0.1 + G3.lean * 0.16), py = H * (!R5.legs ? 0.24 : 0.3);
+  sctx.filter = `blur(${Math3.round(H * 0.07)}px)`;
+  sctx.globalCompositeOperation = "lighter";
+  sctx.fillStyle = `rgba(120,170,255,${(0.34 * att * flick * G3.cam).toFixed(3)})`;
+  sctx.beginPath();
+  sctx.ellipse(px, py, W * 0.15, H * 0.1, 0, 0, Math3.PI * 2);
+  sctx.fill();
+  sctx.globalCompositeOperation = "source-over";
+  sctx.filter = "none";
+  shC.dataset.screen = att.toFixed(2);
+  if (!R5.legs) return;
+  const t = now / 1e3;
+  const reading2 = live3 && G3.att === "busy";
+  lctx.clearRect(0, 0, W, H);
+  lctx.fillStyle = "#fff";
+  const toward = G3.lean * 0.9 + G3.cop * 0.5;
+  const swing = S4.reduced ? 0 : reading2 ? Math3.sin(t * 3.1) : Math3.sin(t * 0.8) * 0.25;
+  const jolt = G3.jolt * 0.4;
+  legsHang(lctx, W, H, toward, swing, jolt, reading2, t);
+  cctx.globalCompositeOperation = "source-over";
+  cctx.clearRect(0, 0, W, H);
+  cctx.fillStyle = "#fff";
+  cctx.fillRect(0, 0, W, H);
+  cctx.globalCompositeOperation = "destination-out";
+  cctx.drawImage(legC, 0, 0);
+  cctx.globalCompositeOperation = "source-over";
+  rctx.clearRect(0, 0, W, H);
+  rctx.filter = `blur(${Math3.round(H * 0.022)}px)`;
+  rctx.drawImage(compC, 0, 0);
+  rctx.filter = "none";
+  rctx.globalCompositeOperation = "source-in";
+  rctx.fillStyle = "rgb(226,78,52)";
+  rctx.fillRect(0, 0, W, H);
+  rctx.globalCompositeOperation = "source-over";
+  octx.globalCompositeOperation = "source-over";
+  octx.clearRect(0, 0, W, H);
+  octx.filter = `blur(${Math3.round(H * (S4.legs === "forward" ? 0.016 : 0.012))}px)`;
+  octx.drawImage(legC, 0, 0);
+  octx.filter = "none";
+  octx.globalCompositeOperation = "source-in";
+  octx.fillStyle = S4.legShade === "black" ? "rgb(8,5,9)" : "rgb(34,22,22)";
+  octx.fillRect(0, 0, W, H);
+  octx.globalCompositeOperation = "source-atop";
+  octx.globalAlpha = 0.55;
+  octx.drawImage(rimC, 0, 0);
+  octx.globalAlpha = 1;
+  octx.globalCompositeOperation = "source-over";
+  sctx.globalAlpha = smooth(0.2, 0.9, G3.cam);
+  sctx.drawImage(outC, 0, 0);
+  sctx.globalAlpha = 1;
+}
+function placeSprite(img, k, face, opts) {
+  if (!img.naturalWidth) return;
+  const vw = innerWidth3, vh = innerHeight3, nw = img.naturalWidth, nh = img.naturalHeight;
+  const Hs = vh * opts.h, sc = Hs / nh, Ws = nw * sc;
+  const fx2 = opts.x * vw + (opts.dx ?? 0), bottom = vh * (opts.bottom ?? 1);
+  const left = fx2 - Ws / 2, top = bottom - Hs;
+  img.style.transform = `translate(${left}px, ${top}px) translate(${Ws / 2}px, ${Hs}px) rotate(${(opts.rot ?? 0).toFixed(2)}deg) rotateX(${(opts.rx ?? 0).toFixed(2)}deg) translate(${-Ws / 2}px, ${-Hs}px) scale(${sc})`;
+}
+function render2(now, dt, err) {
+  const c = C(), live3 = G3.phase === "loop" || G3.phase === "entry";
+  const k = G3.cam, strF = smooth(100, 0, G3.str);
+  const down2 = c.face === "down";
+  setStyle2("#roomView", "opacity", (1 - smooth(0.1, 0.7, k)).toFixed(3));
+  setStyle2("#floorView", "opacity", (down2 ? smooth(0.3, 0.9, k) : 0).toFixed(3));
+  setStyle2("#upView", "opacity", (!down2 ? smooth(0.3, 0.9, k) : 0).toFixed(3));
+  const tilt = clamp43(err, -1.2, 1.2) * 6 * k;
+  const amp = S4.reduced ? 0 : (Math3.pow(strF, 2) * 5 + G3.jolt * 7) * k;
+  const jx = (Math3.random() * 2 - 1) * amp, jy = (Math3.random() * 2 - 1) * amp + G3.sag * 26 * k;
+  $2("#world").style.transform = `translate(${jx.toFixed(1)}px, ${jy.toFixed(1)}px) rotate(${tilt.toFixed(2)}deg)`;
+  const near = 1 + strF * 0.22 * k + G3.sag * 0.04;
+  setStyle2("#floor", "transform", `scale(${near.toFixed(3)})`);
+  setStyle2("#floor", "filter", `blur(${(0.4 + strF * 1.8).toFixed(1)}px) brightness(${(0.6 - strF * 0.16).toFixed(2)}) saturate(.85)`);
+  if (down2) drawFloor2(now);
+  const over2 = $2("#over");
+  const useOver = over2.style.display !== "none" && over2.naturalWidth;
+  const press3 = 1 + strF * 0.12 * k + G3.sag * 0.03;
+  const lean = G3.lean * 3.2 + G3.cop * 2.2;
+  if (useOver) {
+    const oh = S4.overH * press3, ow = innerHeight3 * oh * over2.naturalWidth / over2.naturalHeight;
+    const overscan = Math3.max(0.02, ow / 2 * Math3.sin(6 * Math3.PI / 180) / innerHeight3 + 0.01);
+    placeSprite(over2, k, S4.face, { h: oh, x: S4.overX, dx: G3.cop * innerWidth3 * 0.03, bottom: 1 + overscan + S4.overSink, rot: lean });
+    $2("#her").style.opacity = "0";
+  } else {
+    $2("#her").style.opacity = "1";
+    placeSprite($2("#her"), k, S4.face, { h: 1.55 * press3, x: 0.5, dx: G3.cop * innerWidth3 * 0.04, bottom: 1.42, rot: lean, rx: 10 });
+  }
+  setStyle2("#ceiling", "transform", `scale(${(1.1 + strF * 0.06).toFixed(3)})`);
+  setStyle2("#ceiling", "filter", `blur(${(3 + strF * 2).toFixed(1)}px) brightness(.55)`);
+  const scr = live3 && !down2 ? { busy: 1, glancing: 0.5, watching: 0.05 }[G3.att] : 0;
+  setStyle2("#screenGlow", "background", `radial-gradient(ellipse 30% 26% at ${50 + G3.cop * 3}% 34%, rgba(110,160,255,${(0.32 * scr).toFixed(2)}) 0%, rgba(0,0,0,0) 100%)`);
+  const sv = live3 ? strF : 0;
+  setStyle2("#strainV", "background", sv < 0.02 ? "none" : `radial-gradient(ellipse 75% 70% at 50% 50%, rgba(0,0,0,0) ${(70 - sv * 30).toFixed(0)}%, rgba(30,6,4,${(0.25 + sv * 0.5).toFixed(2)}) 100%)`);
+  setStyle2("#world", "filter", `saturate(${(1 - sv * 0.45).toFixed(2)})`);
+  healCracks(now);
+  setStyle2("#vial", "opacity", live3 ? "1" : "0");
+  const half = 190 * 0.86;
+  const bx = 230 + clamp43(G3.bubbleX, -1.15, 1.15) * half;
+  const stretch = 1 + Math3.min(0.6, Math3.abs(G3.bubbleV) * 0.12), squash = 1 / Math3.sqrt(stretch);
+  $2("#vBubble").setAttribute("transform", `translate(${bx.toFixed(1)} 35) scale(${stretch.toFixed(3)} ${squash.toFixed(3)})`);
+  const tolPx = S4.tol * half;
+  const marks = $2("#vMarks").children;
+  marks[0].setAttribute("transform", `translate(${(230 - tolPx - 30).toFixed(1)} 0)`);
+  marks[1].setAttribute("transform", `translate(${(230 + tolPx + 30).toFixed(1)} 0)`);
+  const level = Math3.abs(err) <= S4.tol;
+  for (const m of marks) m.setAttribute("stroke-opacity", level ? "1" : ".35");
+  $2("#vGlow").setAttribute("opacity", (live3 && level ? 0.55 : 0).toString());
+  $2("#vLiquid").setAttribute("transform", `translate(${(Math3.sin(now / 400) * 1.5).toFixed(2)} 0)`);
+  $2("#vial").style.transform = `rotate(${(tilt * 0.35).toFixed(2)}deg)`;
+  letters2.tick(live3 ? strF : 0);
+  setStyle2("#reply", "opacity", live3 ? "0.4" : "1");
+}
+var letters2 = {
+  acc: 0,
+  off: [],
+  tick(f) {
+    this.acc += 16;
+    if (this.acc < 50) return;
+    this.acc = 0;
+    const v = $2("#cmd").value, m = $2("#mirror");
+    if (m.textContent !== v) m.replaceChildren(...[...v].map((ch) => {
+      const s = document.createElement("span");
+      s.textContent = ch;
+      return s;
+    }));
+    const a = S4.reduced ? 0 : f * f * 4 + (G3.jolt > 0.5 ? 5 : 0);
+    [...m.children].forEach((s) => {
+      s.style.transform = a < 0.1 ? "" : `translate(${((Math3.random() * 2 - 1) * a * 0.4).toFixed(1)}px, ${((Math3.random() * 2 - 1) * a).toFixed(1)}px)`;
+    });
+    m.scrollLeft = $2("#cmd").scrollLeft;
+  }
+};
+var typing2 = (t) => t && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
+function segBeat() {
+  const seg = R5.seg;
+  if (!seg) return 0;
+  return clamp43(Math3.floor((G3.clock - seg.clock0) / BEAT2), 0, seg.beats - 1);
+}
+function planBeat() {
+  const b = R5.run?.segment.plan?.beats[G3.beat];
+  if (b) G3.att = b.attention;
+}
+function report2(i) {
+  if (!E2 || !R5.seg || i.beat < 0 || i.beat >= R5.seg.beats) return;
+  const key = `${i.beat}|${i.kind}`;
+  if (R5.sent.has(key)) return;
+  R5.sent.add(key);
+  E2.env.staging.input(i, { pointer: R5.via === "mouse" });
+}
+function reportBeat(beat, even) {
+  const u = R5.uneven;
+  const amount = u.ms > 0 ? Math3.round(u.sum / u.ms * 1e3) / 1e3 : 0;
+  R5.uneven = { sum: 0, ms: 0 };
+  if (beat < 0) return;
+  if (even) report2({ beat, kind: "hold" });
+  report2({ beat, kind: "uneven", amount });
+}
+function schedulePlan2(run, ck) {
+  const plan = run.segment.plan;
+  const phys = E2.env.registries.contactPhysics.get(run.physicsId);
+  const endMs = Number(phys?.segmentSeconds ?? 30) * 1e3;
+  R5.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0: G3.clock - (ck.now - ck.startedAt), beats: plan.beats.length, endMs, flushed: false };
+  R5.sent = /* @__PURE__ */ new Set();
+  R5.uneven = { sum: 0, ms: 0 };
+  R5.segSlips = 0;
+  R5.queue = [];
+  G3.beat = -1;
+  G3.held = [];
+  G3.even = [];
+  G3.slipThisBeat = false;
+  if (G3.shift && !G3.shift.landed) G3.shift = null;
+  G3.str = clamp43(run.gauge / run.capacity * 100, 0, 100);
+  refreshLines2(0);
+  const st2 = ST();
+  const shifts = plan.beats.flatMap((b, i) => b.shift !== void 0 ? [i] : []);
+  let prev = -1;
+  for (const b of shifts) {
+    const landAt = R5.seg.clock0 + b * BEAT2 + 30;
+    if (st2.feint > 0 && Math3.random() < st2.feint) {
+      const mid2 = Math3.round((prev + b) / 2);
+      if (mid2 - prev >= 2 && b - mid2 >= 1) {
+        const tele2 = rand(st2.tele[0], st2.tele[1]);
+        push2(R5.seg.clock0 + mid2 * BEAT2 - tele2, () => planShift({ tele: tele2, feint: true, cost: 0 }));
+      }
+    }
+    const tele = rand(st2.tele[0], st2.tele[1]);
+    const cost = (plan.beats[b].shift ?? 0) * (100 / Math3.max(1, run.capacity));
+    push2(landAt - 30 - tele, () => planShift({ tele, feint: false, cost }));
+    prev = b;
+  }
+}
+function push2(at, fn) {
+  R5.queue.push({ at, fn });
+  R5.queue.sort((a, b) => a.at - b.at);
+}
+function refreshLines2(beat) {
+  if (!E2) return;
+  const env = E2.env;
+  const own = (k) => [...voiceLines(env.registries, `weight.${k}`, R5.lineStyle)];
+  const voiced = (k, cue) => {
+    const v = env.staging.voiced?.(cue, beat) ?? null;
+    return v ? [v] : own(k);
+  };
+  const lines = {};
+  for (const k of WEIGHT_KINDS) lines[k] = own(k);
+  for (const [k, cue] of VOICED2) lines[k] = voiced(k, cue);
+  lines.entry = R5.run && R5.run.sourceKind === "contact" ? [...voiceLines(env.registries, `weight.entry.${R5.run.sourceId}`, void 0)] : [];
+  R5.lines = lines;
+}
+var WEIGHT_KINDS = ["released", "slip", "caught", "heavy", "good", "poor", "fall", "stop", "longer", "announce"];
+var VOICED2 = [["heavy", "press"]];
+function caughtBy() {
+  if (G3.phase !== "loop" && G3.phase !== "entry") return;
+  G3.caughtN += 1;
+  say3(pick4(L2().caught));
+  G3.pressure = 1.5;
+  G3.pressureUntil = G3.clock + 3 * BEAT2;
+  SFX2.press(0.55);
+  G3.jolt = 1;
+  crack(0.6);
+}
+function heavier() {
+  if (G3.phase !== "loop" && G3.phase !== "entry") return;
+  say3(pick4(L2().heavy));
+  SFX2.press(0.3);
+  G3.jolt = 0.5;
+}
+function before2() {
+  const e = E2;
+  const r = e.env.root.getBoundingClientRect();
+  const w = e.env.root.clientWidth || r.width || globalThis.innerWidth || 0, h2 = e.env.root.clientHeight || r.height || globalThis.innerHeight || 0;
+  if (w !== innerWidth3 || h2 !== innerHeight3) {
+    innerWidth3 = w;
+    innerHeight3 = h2;
+    size();
+  }
+  S4.reduced = e.env.reduced;
+  S4.readable = e.env.readable;
+  e.box.toggleAttribute("data-reduced", S4.reduced);
+  e.box.toggleAttribute("data-readable", S4.readable);
+  e.mirror.toggleAttribute("data-readable", S4.readable);
+  if (!A2.ctx) audioInit2();
+  if (!e.core) {
+    const scene = R5.run ? e.env.spriteOf(R5.run.holderId) : null;
+    const src = scene?.getAttribute("src") ?? "";
+    const her = e.els["#her"];
+    if (src !== "" && src !== R5.spriteSrc) {
+      R5.spriteSrc = src;
+      her.setAttribute("src", src);
+    }
+    for (const img of [her, e.els["#over"]]) {
+      if (img.naturalWidth && img.style.width !== `${img.naturalWidth}px`) {
+        img.style.width = `${img.naturalWidth}px`;
+        img.style.height = `${img.naturalHeight}px`;
+      }
+    }
+  }
+  const run = R5.run;
+  const ck = e.env.staging.clock();
+  R5.running = run !== null && run.segment.state === "running" && run.segment.plan !== void 0 && ck.startedAt !== null;
+  if (G3.phase === "loop" && R5.running && (R5.seg === null || R5.seg.n !== run.segment.n || R5.seg.startedAt !== ck.startedAt)) schedulePlan2(run, ck);
+  while (R5.running && R5.queue.length && R5.queue[0].at <= G3.clock) R5.queue.shift().fn();
+  if (R5.running && R5.seg && !R5.seg.flushed && G3.clock - R5.seg.clock0 >= R5.seg.endMs - 300) {
+    R5.seg.flushed = true;
+    reportBeat(segBeat(), HOLD2.on && !G3.slipThisBeat && Math3.abs(G3.cop - G3.ctl) <= S4.tol);
+  }
+  const input = e.env.input;
+  if (input.value !== "" || e.mirror.childElementCount > 0) placeMirror2(e);
+}
+function after2() {
+  const e = E2;
+  if (!e) return;
+  const last = e.els["#hand"].lastElementChild;
+  if (last !== lastLine2) {
+    lastLine2 = last;
+    keepInFrame2(e);
+  }
+  noteWrites(e.claims[0], ["opacity"]);
+}
+var lastLine2 = null;
+function keepInFrame2(e) {
+  for (const el of e.els["#hand"].children) {
+    const w = el.offsetWidth, x = el.offsetLeft;
+    if (!w) continue;
+    if (x + w > innerWidth3 - 8) el.style.left = `${Math3.max(8, innerWidth3 - 8 - w)}px`;
+    else if (x < 8) el.style.left = "8px";
+  }
+}
+function placeMirror2(e) {
+  const input = e.env.input;
+  const m = e.mirror;
+  m.style.left = `${input.offsetLeft}px`;
+  m.style.top = `${input.offsetTop}px`;
+  m.style.width = `${input.offsetWidth}px`;
+  m.style.height = `${input.offsetHeight}px`;
+}
+function build2(env, host, core) {
+  const box = document.createElement("div");
+  box.className = "alius-weight";
+  box.setAttribute("aria-hidden", "true");
+  box.toggleAttribute("data-core", core);
+  const els = {};
+  const el = (tag2, id, parent) => {
+    const x = document.createElement(tag2);
+    x.className = `alius-weight-${id}`;
+    els[`#${id}`] = x;
+    parent.append(x);
+    return x;
+  };
+  const world = el("div", "world", box);
+  for (const v of ["roomView", "floorView", "upView"]) el("div", v, world).classList.add("alius-weight-view");
+  el("div", "floor", els["#floorView"]);
+  el("div", "ceiling", els["#upView"]);
+  const cam2 = el("div", "cam", els["#upView"]);
+  for (const id of ["her", "over"]) {
+    const img = el("img", id, cam2);
+    img.alt = "";
+    img.draggable = false;
+  }
+  els["#over"].style.display = "none";
+  el("div", "screenGlow", els["#upView"]);
+  el("div", "strainV", box);
+  const svg4 = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg4.setAttribute("class", "alius-weight-cracks");
+  els["#cracks"] = svg4;
+  box.append(svg4);
+  el("div", "hand", box);
+  const vial = buildVial();
+  els["#vial"] = vial.box;
+  for (const [k, v] of Object.entries(vial.parts)) els[`#${k}`] = v;
+  box.append(vial.box);
+  host.append(box);
+  const off = () => {
+    if (core) {
+      const c = document.createElement("canvas");
+      return { canvas: c, ctx: nullContext(c) };
+    }
+    const l = lowres(document.createElement("div"));
+    l.canvas.remove();
+    return l;
+  };
+  const shadow = core ? off() : lowres(els["#floorView"]);
+  shadow.canvas.classList.add("alius-weight-shadow");
+  shC = shadow.canvas;
+  sctx = shadow.ctx;
+  const legs = off(), comp = off(), rim = off(), out = off();
+  legC = legs.canvas;
+  lctx = legs.ctx;
+  compC = comp.canvas;
+  cctx = comp.ctx;
+  rimC = rim.canvas;
+  rctx = rim.ctx;
+  outC = out.canvas;
+  octx = out.ctx;
+  const mirror2 = document.createElement("div");
+  mirror2.className = "alius-weight-mirror";
+  mirror2.setAttribute("aria-hidden", "true");
+  inputLine2(env).append(mirror2);
+  env.input.dataset.weightLetters = "";
+  const claims3 = [claimStyles(env.reply, ["opacity"])];
+  return { env, box, els, mirror: mirror2, claims: claims3, frameId: null, core };
+}
+function bind2(env, run) {
+  const state = env.state();
+  const reg = env.registries;
+  seed2 = fnv1a3(`${state.scene?.id ?? ""}|${run.id}|weight`) >>> 0 || 2463534242;
+  const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
+  S4.style = lead.key in STYLES2 ? lead.key : ROW_BY_CUES2[lead.cues] ?? "neutral";
+  R5.lineStyle = lead.key;
+  R5.run = run;
+  const contact = run.sourceKind === "contact" ? reg.blockingContacts.get(run.sourceId) : void 0;
+  R5.face = contactFaceOf(contact);
+  R5.legs = R5.face === "down" && herLegsOf(contact) === "hang";
+  R5.pressure = run.pressure ?? 1;
+  R5.seg = null;
+  R5.running = false;
+  R5.queue = [];
+  R5.sent = /* @__PURE__ */ new Set();
+  R5.uneven = { sum: 0, ms: 0 };
+  R5.via = "key";
+  R5.segSlips = 0;
+  R5.cheatsCaught = run.tally?.cheatsCaught ?? 0;
+  R5.spriteSrc = "";
+  const k = 100 / Math3.max(1, run.capacity);
+  BEAT2 = TUNING.physics.beatMs;
+  W_DRAIN = TUNING.physics.weight.drain * k;
+  RELIEF = TUNING.physics.weight.relief * k;
+  S4.face = env.art.face(run.holderId) ?? { x: 0.5, y: 0.21 };
+  const over2 = E2.core ? null : env.art.get(run.holderId, "over");
+  const fit2 = over2?.sidecar.fit;
+  R5.overFit = over2 ? { height: fit2?.height ?? 1.04, x: fit2?.x ?? 0.5, sink: fit2?.sink ?? 0 } : null;
+  S4.overH = R5.overFit?.height ?? 1.04;
+  S4.overX = R5.overFit?.x ?? 0.5;
+  S4.overSink = R5.overFit?.sink ?? 0;
+  const overEl = E2.els["#over"];
+  if (over2) {
+    overEl.onerror = () => {
+      overEl.style.display = "none";
+    };
+    overEl.src = over2.url;
+    overEl.style.display = "";
+  }
+  if (!E2.core) {
+    const owner = state.scene?.participants.find((id) => state.squad.some((u) => u.id === id)) ?? null;
+    const loc = state.scene?.locationId ?? "";
+    surface(env, E2.els[R5.face === "down" ? "#floor" : "#ceiling"], R5.face === "down" ? floorOf2(state, reg, loc, owner) : ceilingOf(state, reg, loc, owner));
+  }
+  const look = env.her(run.holderId);
+  E2.box.style.setProperty("--alius-her", look.accent);
+  if (look.hand !== "") E2.box.style.setProperty("--alius-font-hand", `"${look.hand}", var(--alius-font-type)`);
+  E2.box.style.setProperty("--alius-weight-hand-scale", String(look.handScale || 1));
+}
+function surface(env, el, files) {
+  const tryAt = (i) => {
+    if (E2?.env !== env) return;
+    const c = files[i];
+    if (!c) {
+      el.style.backgroundImage = env.layers.backdrop.style.backgroundImage;
+      el.dataset.fallback = "room";
+      return;
+    }
+    const url = env.assetUrl ? env.assetUrl(c.file) : c.file;
+    el.style.backgroundImage = `url("${url.replace(/"/g, "%22")}")`;
+    if (typeof Image === "function") {
+      const probe = new Image();
+      probe.onerror = () => tryAt(i + 1);
+      probe.src = url;
+    }
+  };
+  tryAt(0);
+}
+function listen2(env) {
+  const control2 = (t) => t instanceof Element && t.closest('button, a, [role="button"], select, [data-action]') !== null;
+  const onFrame = (t) => t instanceof Node && (t === env.layers.frame || env.layers.frame.contains(t));
+  let keySpace = false;
+  env.listen(document, "mousemove", (e) => {
+    const r = env.root.getBoundingClientRect();
+    const w = innerWidth3 || r.width || globalThis.innerWidth || 0;
+    mouseX = w > 0 ? (e.clientX - r.left) / w : 0.5;
+  });
+  env.listen(document, "keydown", (e) => {
+    if (typing2(e.target) || control2(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === "Shift") {
+      if (!e.repeat) relief();
+      return;
+    }
+    if (e.key === " ") {
+      e.preventDefault();
+      keySpace = true;
+      if (!e.repeat) {
+        R5.via = "key";
+        HOLD2.on = true;
+      }
+    } else if (e.key === "t" || e.key === "T") env.tap?.();
+  });
+  env.listen(document, "keyup", (e) => {
+    if (e.key === " ") {
+      keySpace = false;
+      if (!typing2(e.target)) HOLD2.on = false;
+    }
+  });
+  env.listen(env.root, "mousedown", (e) => {
+    if (!onFrame(e.target)) return;
+    e.preventDefault();
+    if (e.button === 0) {
+      R5.via = "mouse";
+      HOLD2.on = true;
+    } else if (e.button === 2) relief();
+  });
+  env.listen(document, "mouseup", (e) => {
+    if (e.button === 0 && !keySpace) HOLD2.on = false;
+  });
+  env.listen(env.layers.frame, "contextmenu", (e) => e.preventDefault());
+  env.listen(env.input, "input", () => {
+    letters2.acc = 99;
+  });
+}
+function stopWeight() {
+  const e = E2;
+  if (!e) return;
+  if (e.frameId !== null) e.env.cancelRaf(e.frameId);
+  try {
+    A2.master?.disconnect();
+  } catch {
+  }
+  A2 = { ctx: null };
+  for (const c of e.claims) releaseClaim(c);
+  e.box.remove();
+  e.mirror.remove();
+  delete e.env.input.dataset.weightLetters;
+  cache.clear();
+  cracks.length = 0;
+  letters2.acc = 0;
+  lastLine2 = null;
+  HOLD2.on = false;
+  mouseX = 0.5;
+  R5.run = null;
+  R5.seg = null;
+  R5.running = false;
+  R5.queue = [];
+  R5.sent = /* @__PURE__ */ new Set();
+  R5.lines = NO_LINES2;
+  G3 = fresh2();
+  E2 = null;
+}
+var EXIT_MS2 = 2600;
+function startWeight(env, run, opts = {}) {
+  stopWeight();
+  E2 = build2(env, opts.host ?? env.layers.effects, opts.core === true);
+  innerWidth3 = 0;
+  innerHeight3 = 0;
+  bind2(env, run);
+  listen2(env);
+  frame2.last = void 0;
+  refreshLines2(0);
+  begin2();
+  requestAnimationFrame3(frame2);
+  const mine = E2;
+  return {
+    update(next) {
+      if (E2 !== mine) return;
+      R5.run = next;
+      const pressure = next.pressure ?? 1;
+      if (pressure > R5.pressure) {
+        R5.pressure = pressure;
+        refreshLines2(0);
+        heavier();
+      } else R5.pressure = pressure;
+      const caught = next.tally?.cheatsCaught ?? 0;
+      if (caught > R5.cheatsCaught) {
+        R5.cheatsCaught = caught;
+        caughtBy();
+      }
+    },
+    finish(end2) {
+      if (E2 !== mine) return 0;
+      if (G3.phase !== "loop" && G3.phase !== "entry") return 0;
+      const limit = S4.style === "cruel" ? 5 : 15;
+      exit2(end2.result === "collapse" || end2.result === "limit_broken" || end2.result === "blackout" ? "fall" : G3.str <= limit ? "released" : "done");
+      return EXIT_MS2;
+    },
+    stop() {
+      if (E2 === mine) stopWeight();
+    }
+  };
+}
+function weightMatches(run, _state, reg) {
+  const p = reg.contactPhysics.get(run.physicsId);
+  if (p?.interaction !== "hold" || p.gauge?.kind !== "capacity") return false;
+  if (!run.second) return true;
+  return reg.contactPhysics.get(run.second.physicsId)?.interaction === "passive";
+}
+registerInstrument({ id: "weight", matches: weightMatches, start: (env, run) => startWeight(env, run) });
+
 // src/ui/scene/dial/points.ts
 var BASE_POINTS = {
   standing: { torso: "upright", knees: "together", arms: "at_sides", head: "up", gaze: "straight", feet: "flat" },
@@ -65085,7 +66338,7 @@ function leanOf(base, torso, hogtie) {
   return { upright: 0, arched: -14, level: 86 }[torso];
 }
 function armGoal(state, c) {
-  const { s, shoulder: sh, chest, pelvis, S: S5, T: T5 } = c;
+  const { s, shoulder: sh, chest, pelvis, S: S6, T: T5 } = c;
   const lat = (k) => [s * k, 0, 0];
   switch (state) {
     case "at_sides":
@@ -65093,9 +66346,9 @@ function armGoal(state, c) {
       return { target: add(sh, [s * 0.05, -0.605, 0.02]), hint: [s * 0.3, -0.1, -1] };
     // nearly straight, the elbow a little back
     case "behind_back":
-      return { target: add(sub(add(pelvis, mul(S5, 0.12)), mul(T5, 0.12)), lat(0.04)), hint: [s, -0.2, -0.3] };
+      return { target: add(sub(add(pelvis, mul(S6, 0.12)), mul(T5, 0.12)), lat(0.04)), hint: [s, -0.2, -0.3] };
     case "bound":
-      return { target: add(sub(add(pelvis, mul(S5, 0.1)), mul(T5, 0.16)), lat(0.03)), hint: [s, -0.2, -0.4] };
+      return { target: add(sub(add(pelvis, mul(S6, 0.1)), mul(T5, 0.16)), lat(0.03)), hint: [s, -0.2, -0.4] };
     case "behind_head": {
       const back = sub(add(c.neckTop, mul(c.headDir, 0.09)), mul(c.faceDir, 0.075));
       return { target: add(back, lat(0.07)), hint: [s, 0.2, -0.1] };
@@ -65105,14 +66358,14 @@ function armGoal(state, c) {
     case "on_thighs_up":
       return { target: add(lerp3(c.hip, c.knee, 0.7), [s * 0.02, 0.06, 0]), hint: [s, 0, -0.4] };
     case "forward_palms_up":
-      return c.lying ? { target: add(add(sh, mul(S5, 0.56)), [s * 0.1, 0, 0.02]), hint: [s, 0, -0.3] } : { target: add(add(add(chest, mul(T5, 0.5)), mul(S5, -0.3)), lat(0.13)), hint: [s * 0.6, -1, -0.2] };
+      return c.lying ? { target: add(add(sh, mul(S6, 0.56)), [s * 0.1, 0, 0.02]), hint: [s, 0, -0.3] } : { target: add(add(add(chest, mul(T5, 0.5)), mul(S6, -0.3)), lat(0.13)), hint: [s * 0.6, -1, -0.2] };
     // offered: the forearms reach forward and down, palms up
     case "out_sideways":
       return { target: add(sh, [s * 0.56, 0.01, 0]), hint: [0, -0.5, -0.5] };
     case "raised":
       return { target: add(sh, [s * 0.1, 0.55, 0.05]), hint: [s, 0, -0.3] };
     case "holding":
-      return { target: add(add(add(pelvis, mul(S5, 0.38)), mul(T5, 0.4)), lat(0.11)), hint: [s, -0.6, 0] };
+      return { target: add(add(add(pelvis, mul(S6, 0.38)), mul(T5, 0.4)), lat(0.11)), hint: [s, -0.6, 0] };
     case "lamp":
       return { target: add(c.head, [s * 0.045, 0.36, 0.12]), hint: [s, 0, -0.2] };
     // both hands together above the head
@@ -65126,11 +66379,11 @@ function armGoal(state, c) {
     case "under_knees":
       return { target: [c.knee[0], 0.03, c.knee[2] - 0.03], hint: [s, 0.3, 0] };
     case "crossed":
-      return { target: add(sub(add(chest, mul(T5, 0.1)), mul(S5, 0.06)), lat(-0.14)), hint: [s * 0.3, -1, 0.3] };
+      return { target: add(sub(add(chest, mul(T5, 0.1)), mul(S6, 0.06)), lat(-0.14)), hint: [s * 0.3, -1, 0.3] };
     case "clasped_front":
-      return { target: add(add(add(pelvis, mul(S5, 0.16)), mul(T5, 0.2)), lat(0.025)), hint: [s, -0.5, -0.3] };
+      return { target: add(add(add(pelvis, mul(S6, 0.16)), mul(T5, 0.2)), lat(0.025)), hint: [s, -0.5, -0.3] };
     case "paws":
-      return { target: add(sub(add(chest, mul(T5, 0.2)), mul(S5, 0.1)), lat(0.07)), hint: [s * 0.5, -1, 0.2] };
+      return { target: add(sub(add(chest, mul(T5, 0.2)), mul(S6, 0.1)), lat(0.07)), hint: [s * 0.5, -1, 0.2] };
     // the hands in front of the chest, close together
     case "tucked":
       return { target: [s * 0.22, 0.04, sh[2] - 0.58], hint: [s * 0.2, 1, 0] };
@@ -65152,11 +66405,11 @@ function pose(p) {
   const legs = legsOf(base, pts, hogtie);
   const lying = LYING[base] !== void 0;
   const phi = leanOf(base, pts.torso ?? "upright", hogtie) * DEG;
-  const S5 = [0, Math.cos(phi), Math.sin(phi)];
+  const S6 = [0, Math.cos(phi), Math.sin(phi)];
   const T5 = [0, -Math.sin(phi), Math.cos(phi)];
   const pelvis = legs.pelvis;
-  const chest = add(pelvis, mul(S5, SPINE));
-  const neck = add(chest, mul(S5, NECK_BASE));
+  const chest = add(pelvis, mul(S6, SPINE));
+  const neck = add(chest, mul(S6, NECK_BASE));
   const phiN = phi * 0.55;
   const neckTop = add(neck, mul([0, Math.cos(phiN), Math.sin(phiN)], NECK));
   const pitch = { up: 0, bowed: 38, back: -55, to_floor: 90 }[pts.head ?? "up"];
@@ -65190,7 +66443,7 @@ function pose(p) {
       shoulder: shoulder[side],
       chest,
       pelvis,
-      S: S5,
+      S: S6,
       T: T5,
       hip: hip[side],
       knee: knee[side],
@@ -65228,10 +66481,10 @@ function lay(sk, axis, deg) {
     toe: pair(sk.toe),
     gazeDir: sk.gazeDir ? r(sk.gazeDir) : null
   };
-  const surface = [[turned.pelvis, 0.11], [turned.chest, 0.12], [turned.neckTop, 0.04], [turned.head, 0.1]];
+  const surface2 = [[turned.pelvis, 0.11], [turned.chest, 0.12], [turned.neckTop, 0.04], [turned.head, 0.1]];
   const RADIUS = { shoulder: 0.05, elbow: 0.045, hand: 0.035, hip: 0.065, knee: 0.05, ankle: 0.045, toe: 0.035 };
-  for (const k of Object.keys(RADIUS)) surface.push([turned[k].L, RADIUS[k]], [turned[k].R, RADIUS[k]]);
-  const lowest = Math.min(...surface.map(([v, rad]) => v[1] - rad));
+  for (const k of Object.keys(RADIUS)) surface2.push([turned[k].L, RADIUS[k]], [turned[k].R, RADIUS[k]]);
+  const lowest = Math.min(...surface2.map(([v, rad]) => v[1] - rad));
   const lift = 5e-3 - lowest;
   const up = (v) => [v[0], v[1] + lift, v[2]];
   const upPair = (o) => ({ L: up(o.L), R: up(o.R) });
@@ -65479,7 +66732,7 @@ function fanPlace(i, n) {
 var sfx = (o, file, gain2, pan, rate = 1) => {
   o.samples?.play(file, { gain: gain2, pan, rate });
 };
-function build2(o) {
+function build3(o) {
   const w = h("span", { class: "alius-call-w" });
   const dots = h("div", { class: "alius-call-dots", "aria-hidden": "true" });
   const line3 = h("div", { class: "alius-call-line", role: "status" });
@@ -65504,7 +66757,7 @@ function startCall(o) {
   const choices = o.choices;
   const want = o.want;
   const id = o.id;
-  call = { id, want, t0: o.now(), taps: [], timers: [], o, el: build2(o) };
+  call = { id, want, t0: o.now(), taps: [], timers: [], o, el: build3(o) };
   const el0 = call.el;
   if (el0.dim) {
     void el0.dim.offsetWidth;
@@ -65652,15 +66905,15 @@ function cancelCall() {
 // src/ui/scene/instruments/slap/slap.ts
 var clamp44 = (x, a, b) => Math.min(b, Math.max(a, x));
 var lerp4 = (a, b, t) => a + (b - a) * t;
-var easeOut2 = (t) => 1 - Math.pow(1 - clamp44(t, 0, 1), 3);
+var easeOut3 = (t) => 1 - Math.pow(1 - clamp44(t, 0, 1), 3);
 var easeIn2 = (t) => Math.pow(clamp44(t, 0, 1), 2);
 var easeInOut = (t) => {
   t = clamp44(t, 0, 1);
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 };
-var rnd012 = () => fnv1a3(`${G3.rkey}|${G3.rn++}`) % 1e4 / 1e4;
-var pick4 = (a) => a[Math.floor(rnd012() * a.length)];
-var rand = (a, b) => a + rnd012() * (b - a);
+var rnd013 = () => fnv1a3(`${G4.rkey}|${G4.rn++}`) % 1e4 / 1e4;
+var pick5 = (a) => a[Math.floor(rnd013() * a.length)];
+var rand2 = (a, b) => a + rnd013() * (b - a);
 var LEAD = TUNING.practice.slap.leadMs;
 var FEINT = TUNING.practice.slap.feintMs;
 var SWING = TUNING.practice.slap.windowMs;
@@ -65692,7 +66945,7 @@ function beforeLabel(style, unann) {
 function showFace(label2) {
   curLabel = label2;
   const url = faces[label2];
-  if (url && E2 && E2.env.faceOf(E2.unitId) !== label2) E2.env.setSprite(E2.unitId, label2, url);
+  if (url && E3 && E3.env.faceOf(E3.unitId) !== label2) E3.env.setSprite(E3.unitId, label2, url);
 }
 function preload(label2) {
   const url = faces[label2];
@@ -65700,15 +66953,15 @@ function preload(label2) {
   const im = new Image();
   im.src = url;
   return Promise.race([im.decode().catch(() => {
-  }), new Promise((r) => setTimeout3(r, EXPR_WAIT))]);
+  }), new Promise((r) => setTimeout4(r, EXPR_WAIT))]);
 }
 var looking = /* @__PURE__ */ new Map();
 function lookFaces(labels) {
-  if (!E2) return;
-  const e = E2;
+  if (!E3) return;
+  const e = E3;
   for (const label2 of labels) {
     if (label2 in faces || looking.has(label2)) continue;
-    const mine = () => E2 === e;
+    const mine = () => E3 === e;
     looking.set(label2, e.env.spriteUrl(e.unitId, label2).then((u) => {
       if (mine()) faces[label2] = u;
     }, () => {
@@ -65716,7 +66969,7 @@ function lookFaces(labels) {
     }).then(() => {
       if (!mine()) return;
       looking.delete(label2);
-      if (curLabel === label2 && (G3.slap || G3.back)) showFace(label2);
+      if (curLabel === label2 && (G4.slap || G4.back)) showFace(label2);
     }));
   }
 }
@@ -65726,14 +66979,14 @@ var facesOf = (style) => {
 };
 var leftBySlap = null;
 function readFaceNow() {
-  if (!E2) return;
-  const scene = E2.env.faceOf(E2.unitId);
+  if (!E3) return;
+  const scene = E3.env.faceOf(E3.unitId);
   curLabel = leftBySlap && leftBySlap.scene === scene ? leftBySlap.label : scene;
 }
 function noteFaceLeft() {
-  if (E2) leftBySlap = { label: curLabel, scene: E2.env.faceOf(E2.unitId) };
+  if (E3) leftBySlap = { label: curLabel, scene: E3.env.faceOf(E3.unitId) };
 }
-var S4 = {
+var S5 = {
   style: "possessive",
   unann: false,
   tension: { rise: 100, peak: 80, fall: 220, thr: 0.8 },
@@ -65748,17 +67001,17 @@ var S4 = {
   zoom: 2.6,
   reduced: false
 };
-var performance3 = { now: () => E2 ? E2.env.now() : 0 };
-var innerWidth3 = 0;
-var innerHeight3 = 0;
+var performance4 = { now: () => E3 ? E3.env.now() : 0 };
+var innerWidth4 = 0;
+var innerHeight4 = 0;
 function measure() {
-  if (!E2) return;
-  const r = E2.env.root.getBoundingClientRect();
-  innerWidth3 = E2.env.root.clientWidth || r.width || (typeof window !== "undefined" ? window.innerWidth : 0);
-  innerHeight3 = E2.env.root.clientHeight || r.height || (typeof window !== "undefined" ? window.innerHeight : 0);
+  if (!E3) return;
+  const r = E3.env.root.getBoundingClientRect();
+  innerWidth4 = E3.env.root.clientWidth || r.width || (typeof window !== "undefined" ? window.innerWidth : 0);
+  innerHeight4 = E3.env.root.clientHeight || r.height || (typeof window !== "undefined" ? window.innerHeight : 0);
 }
 var timers3 = /* @__PURE__ */ new Set();
-function setTimeout3(fn, ms) {
+function setTimeout4(fn, ms) {
   const t = globalThis.setTimeout(() => {
     timers3.delete(t);
     fn();
@@ -65767,25 +67020,25 @@ function setTimeout3(fn, ms) {
   return t;
 }
 var frameId = null;
-function requestAnimationFrame3(fn) {
-  if (!E2 || frameId !== null) return;
-  const e = E2;
+function requestAnimationFrame4(fn) {
+  if (!E3 || frameId !== null) return;
+  const e = E3;
   frameId = e.env.raf((now) => {
     frameId = null;
-    if (E2 !== e) return;
-    if (!G3.slap && !G3.back && !G3.starting && G3.cheekA <= 0) {
+    if (E3 !== e) return;
+    if (!G4.slap && !G4.back && !G4.starting && G4.cheekA <= 0) {
       cam.release();
       return;
     }
     measure();
     fn(now);
-    if (cam.held && (G3.slap || G3.back) && !S4.reduced) for (const c of cam.ui) noteWrites(c, ["opacity"]);
+    if (cam.held && (G4.slap || G4.back) && !S5.reduced) for (const c of cam.ui) noteWrites(c, ["opacity"]);
   });
 }
-var E2 = null;
+var E3 = null;
 var HBLUR = "alius-slap-hblur";
-var $2 = (s) => {
-  const e = E2;
+var $3 = (s) => {
+  const e = E3;
   if (s === "#mirror") return mirror(e);
   if (s === "#reply") return e.env.reply;
   if (s === "#cmd") return e.env.input;
@@ -65825,13 +67078,13 @@ function mirror(e) {
   host.append(m);
   const color = input.style.color;
   input.style.color = "transparent";
-  setTimeout3(() => {
+  setTimeout4(() => {
     m.remove();
     input.style.color = color;
   }, 600);
   return m;
 }
-function build3(env, unitId) {
+function build4(env, unitId) {
   const box = document.createElement("div");
   box.className = "alius-slap";
   box.setAttribute("aria-hidden", "true");
@@ -65878,7 +67131,7 @@ function build3(env, unitId) {
   const art2 = env.art.get(unitId, "face_close");
   if (art2) {
     faceImg.onload = () => {
-      if (E2?.faceImg === faceImg) E2.hasFace = true;
+      if (E3?.faceImg === faceImg) E3.hasFace = true;
     };
     faceImg.src = art2.url;
   }
@@ -65901,12 +67154,12 @@ var cam = {
   backdropFilter: "",
   /** The camera leaves home: the styles it will write are saved, her face point is measured. */
   hold() {
-    if (this.held || !E2) return;
-    const e = E2;
+    if (this.held || !E3) return;
+    const e = E3;
     this.held = true;
     const { backdrop, sprites } = e.env.layers;
     const reply = e.env.reply;
-    const wrap = $2("#inputWrap");
+    const wrap = $3("#inputWrap");
     this.layer = new Map([backdrop, sprites].map((el) => [el, claimStyles(el, CAM_PROPS)]));
     this.ui = [reply, wrap].map((el) => claimStyles(el, ["opacity"]));
     this.saved = [...this.layer.values(), ...this.ui];
@@ -65926,8 +67179,8 @@ var cam = {
   },
   /** Her face point in the scene (the sprite's sidecar point on the drawn picture), measured with the camera at home. */
   measure() {
-    if (!E2 || this.base) return;
-    const e = E2;
+    if (!E3 || this.base) return;
+    const e = E3;
     const img = e.env.spriteOf(e.unitId);
     if (!img || !img.naturalWidth || e.env.root.dataset.curtain === "open") return;
     const sprites = e.env.layers.sprites;
@@ -65936,14 +67189,14 @@ var cam = {
     const r = img.getBoundingClientRect();
     const o = e.env.root.getBoundingClientRect();
     sprites.style.transform = now;
-    if (r.width > 0 && r.height > 0) this.base = { x: r.left - o.left + S4.face.x * r.width, y: r.top - o.top + S4.face.y * r.height };
+    if (r.width > 0 && r.height > 0) this.base = { x: r.left - o.left + S5.face.x * r.width, y: r.top - o.top + S5.face.y * r.height };
   },
   /** One frame of the camera: the world's move, its motion blur, the zoom `k` to her face, the backdrop's blur and dim, the UI stepping back. */
   draw(world, hb, k) {
-    if (!E2) return;
+    if (!E3) return;
     if (!this.held) this.hold();
-    const e = E2;
-    const W = innerWidth3, H = innerHeight3;
+    const e = E3;
+    const W = innerWidth4, H = innerHeight4;
     const O = [W * 0.5, H * 0.436];
     const about2 = (extra) => `translate(${O[0].toFixed(1)}px, ${O[1].toFixed(1)}px) ${world}${extra} translate(${(-O[0]).toFixed(1)}px, ${(-O[1]).toFixed(1)}px)`;
     const blur = !e.env.readable && hb > 0.3;
@@ -65962,7 +67215,7 @@ var cam = {
     const img = e.env.spriteOf(e.unitId);
     if (img && this.base) {
       const p0 = this.base, p1 = [W * 0.5, H * 0.42];
-      sc = Math.pow(S4.zoom, k);
+      sc = Math.pow(S5.zoom, k);
       const px = lerp4(p0.x, p1[0], k), py = lerp4(p0.y, p1[1], k);
       camera = ` translate(${(px - sc * p0.x).toFixed(1)}px, ${(py - sc * p0.y).toFixed(1)}px) scale(${sc.toFixed(4)})`;
     }
@@ -65981,14 +67234,14 @@ var cam = {
     this.layer = /* @__PURE__ */ new Map();
     this.ui = [];
     this.base = null;
-    if (E2) {
-      E2.faceImg.style.opacity = "0";
-      E2.faceImg.style.transform = "";
-      E2.faceImg.style.filter = "";
+    if (E3) {
+      E3.faceImg.style.opacity = "0";
+      E3.faceImg.style.transform = "";
+      E3.faceImg.style.filter = "";
     }
   }
 };
-var A2 = { ctx: null, buf: {} };
+var A3 = { ctx: null, buf: {} };
 var made = /* @__PURE__ */ new Set();
 function recorded(c) {
   return new Proxy(c, {
@@ -66007,24 +67260,24 @@ function recorded(c) {
     }
   });
 }
-function audioInit2() {
-  if (A2.ctx || !E2) return;
-  const samples = E2.env.samples;
+function audioInit3() {
+  if (A3.ctx || !E3) return;
+  const samples = E3.env.samples;
   const raw = samples?.ctx() ?? null;
   const world = samples?.bus("world") ?? null;
   const body = samples?.bus("body") ?? null;
   if (!samples || !raw || !world || !body) return;
   const ctx2 = recorded(raw);
-  A2.ctx = ctx2;
-  A2.worldLP = ctx2.createBiquadFilter();
-  A2.worldLP.type = "lowpass";
-  A2.worldLP.frequency.value = 16e3;
-  A2.worldLP.Q.value = 0.4;
-  A2.worldG = ctx2.createGain();
-  A2.worldG.gain.value = 1;
-  A2.worldLP.connect(A2.worldG);
-  A2.worldG.connect(world);
-  A2.body = body;
+  A3.ctx = ctx2;
+  A3.worldLP = ctx2.createBiquadFilter();
+  A3.worldLP.type = "lowpass";
+  A3.worldLP.frequency.value = 16e3;
+  A3.worldLP.Q.value = 0.4;
+  A3.worldG = ctx2.createGain();
+  A3.worldG.gain.value = 1;
+  A3.worldLP.connect(A3.worldG);
+  A3.worldG.connect(world);
+  A3.body = body;
   const b = ctx2.createBuffer(1, ctx2.sampleRate * 2, ctx2.sampleRate);
   const d = b.getChannelData(0);
   let x = 2463534242;
@@ -66034,28 +67287,28 @@ function audioInit2() {
     x ^= x << 5;
     d[i] = (x >>> 0) / 4294967296 * 2 - 1;
   }
-  A2.white = b;
-  A2.buf = new Proxy({}, { get: (_t, k) => typeof k === "string" && SAMPLE_URLS[k] ? samples.buffer(SAMPLE_URLS[k]) : null });
+  A3.white = b;
+  A3.buf = new Proxy({}, { get: (_t, k) => typeof k === "string" && SAMPLE_URLS[k] ? samples.buffer(SAMPLE_URLS[k]) : null });
   void samples.preload(Object.values(SAMPLE_URLS));
 }
-function chain2(node, { pan = 0, lp = 0, hp = 0, dest = A2.worldLP }) {
+function chain2(node, { pan = 0, lp = 0, hp = 0, dest = A3.worldLP }) {
   let n = node;
   if (hp) {
-    const f = A2.ctx.createBiquadFilter();
+    const f = A3.ctx.createBiquadFilter();
     f.type = "highpass";
     f.frequency.value = hp;
     n.connect(f);
     n = f;
   }
   if (lp) {
-    const f = A2.ctx.createBiquadFilter();
+    const f = A3.ctx.createBiquadFilter();
     f.type = "lowpass";
     f.frequency.value = lp;
     n.connect(f);
     n = f;
   }
   if (pan) {
-    const p = A2.ctx.createStereoPanner();
+    const p = A3.ctx.createStereoPanner();
     p.pan.value = clamp44(pan, -1, 1);
     n.connect(p);
     n = p;
@@ -66063,16 +67316,16 @@ function chain2(node, { pan = 0, lp = 0, hp = 0, dest = A2.worldLP }) {
   n.connect(dest);
 }
 function play(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at = 0, offset = 0, dur } = {}) {
-  if (!A2.ctx || !A2.buf[id]) return null;
-  const ctx2 = A2.ctx, t = ctx2.currentTime + Math.max(0, at);
+  if (!A3.ctx || !A3.buf[id]) return null;
+  const ctx2 = A3.ctx, t = ctx2.currentTime + Math.max(0, at);
   const src = ctx2.createBufferSource();
-  src.buffer = A2.buf[id];
+  src.buffer = A3.buf[id];
   src.playbackRate.value = rate;
   const gn = ctx2.createGain();
   gn.gain.value = g;
   src.connect(gn);
-  chain2(gn, { pan, lp, hp, dest: dest ?? A2.worldLP });
-  const len2 = dur ?? A2.buf[id].duration - offset;
+  chain2(gn, { pan, lp, hp, dest: dest ?? A3.worldLP });
+  const len2 = dur ?? A3.buf[id].duration - offset;
   if (dur) {
     gn.gain.setValueAtTime(g, t + dur / rate - 0.03);
     gn.gain.linearRampToValueAtTime(1e-4, t + dur / rate);
@@ -66080,11 +67333,11 @@ function play(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at = 0, of
   src.start(t, offset, len2 + 0.05);
   return src;
 }
-function noise3({ at = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1, gain: gain2 = 0.1, attack = 0.01, dest = A2.worldLP, pan = 0 }) {
-  if (!A2.ctx) return;
-  const ctx2 = A2.ctx, t = ctx2.currentTime + at;
+function noise4({ at = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1, gain: gain2 = 0.1, attack = 0.01, dest = A3.worldLP, pan = 0 }) {
+  if (!A3.ctx) return;
+  const ctx2 = A3.ctx, t = ctx2.currentTime + at;
   const src = ctx2.createBufferSource();
-  src.buffer = A2.white;
+  src.buffer = A3.white;
   src.loop = true;
   const fl = ctx2.createBiquadFilter();
   fl.type = type;
@@ -66098,12 +67351,12 @@ function noise3({ at = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1, gain
   src.connect(fl);
   fl.connect(g);
   chain2(g, { pan, dest });
-  src.start(t, rnd012());
+  src.start(t, rnd013());
   src.stop(t + dur + 0.05);
 }
-function thump2(at, gain2, f0 = 55, dest = A2.body) {
-  if (!A2.ctx) return;
-  const ctx2 = A2.ctx, t = ctx2.currentTime + at;
+function thump3(at, gain2, f0 = 55, dest = A3.body) {
+  if (!A3.ctx) return;
+  const ctx2 = A3.ctx, t = ctx2.currentTime + at;
   const o = ctx2.createOscillator();
   o.type = "sine";
   o.frequency.setValueAtTime(f0, t);
@@ -66117,33 +67370,33 @@ function thump2(at, gain2, f0 = 55, dest = A2.body) {
   o.start(t);
   o.stop(t + 0.3);
 }
-var SFX2 = {
+var SFX3 = {
   pen: () => {
-    for (let i = 0; i < 3; i++) noise3({ at: i * 0.05 + rnd012() * 0.02, dur: 0.035 + rnd012() * 0.03, f: 2600 + rnd012() * 1800, q: 3, gain: 0.04 });
+    for (let i = 0; i < 3; i++) noise4({ at: i * 0.05 + rnd013() * 0.02, dur: 0.035 + rnd013() * 0.03, f: 2600 + rnd013() * 1800, q: 3, gain: 0.04 });
   },
   /* her clothes: her hand going up, a feint's twitch (panned to her hand's side) */
   cloth: (pan, g = 0.35, rate = 1) => {
-    if (!play(pick4(["cloth1", "cloth2", "cloth3", "cloth4"]), { g, pan, rate, lp: 6e3 })) noise3({ dur: 0.3, f: 1100, f2: 1700, q: 0.7, gain: g * 0.25, attack: 0.05, pan });
+    if (!play(pick5(["cloth1", "cloth2", "cloth3", "cloth4"]), { g, pan, rate, lp: 6e3 })) noise4({ dur: 0.3, f: 1100, f2: 1700, q: 0.7, gain: g * 0.25, attack: 0.05, pan });
   },
   /* the swish of her hand: timed so that it ends on the impact */
   swish: (atS, pan) => {
-    if (S4.swishS !== "synth" && A2.buf[S4.swishS]) {
-      const rate = 0.72, d = A2.buf[S4.swishS].duration / rate;
-      play(S4.swishS, { g: 0.5, pan, rate, at: atS - d * 0.85, hp: 300 });
-    } else noise3({ at: atS - 0.16, dur: 0.17, f: 900, f2: 3200, q: 0.8, gain: 0.16, attack: 0.12, pan });
+    if (S5.swishS !== "synth" && A3.buf[S5.swishS]) {
+      const rate = 0.72, d = A3.buf[S5.swishS].duration / rate;
+      play(S5.swishS, { g: 0.5, pan, rate, at: atS - d * 0.85, hp: 300 });
+    } else noise4({ at: atS - 0.16, dur: 0.17, f: 900, f2: 3200, q: 0.8, gain: 0.16, attack: 0.12, pan });
   },
   /* the slap: the recording on the body bus, panned to the cheek; a glancing one is duller and quieter */
   slap: (pan, glancing) => {
     const g = glancing ? 0.5 : 1;
-    if (!play("slap", { g: 0.95 * S4.slapLvl * g, pan: pan * 0.55, lp: glancing ? 2200 : 0, dest: A2.body })) {
-      noise3({ dur: 0.09, type: "highpass", f: 1400, gain: 0.5 * g, attack: 2e-3, dest: A2.body, pan: pan * 0.55 });
+    if (!play("slap", { g: 0.95 * S5.slapLvl * g, pan: pan * 0.55, lp: glancing ? 2200 : 0, dest: A3.body })) {
+      noise4({ dur: 0.09, type: "highpass", f: 1400, gain: 0.5 * g, attack: 2e-3, dest: A3.body, pan: pan * 0.55 });
     }
-    if (S4.thump) thump2(0, glancing ? 0.25 : 0.55, 70);
+    if (S5.thump) thump3(0, glancing ? 0.25 : 0.55, 70);
   },
   /* the ringing in the ears: two close sines that beat, a slow fade; the world dulls and comes back */
   ring: (sec, k = 1) => {
-    if (!A2.ctx || sec <= 0) return;
-    const ctx2 = A2.ctx, t = ctx2.currentTime;
+    if (!A3.ctx || sec <= 0) return;
+    const ctx2 = A3.ctx, t = ctx2.currentTime;
     for (const [f, gg] of [[4180, 0.035], [4207, 0.028], [8400, 6e-3]]) {
       const o = ctx2.createOscillator();
       o.frequency.value = f;
@@ -66153,27 +67406,27 @@ var SFX2 = {
       g.gain.exponentialRampToValueAtTime(gg * k, t + 0.06);
       g.gain.exponentialRampToValueAtTime(1e-4, t + sec);
       o.connect(g);
-      g.connect(A2.body);
+      g.connect(A3.body);
       o.start(t);
       o.stop(t + sec + 0.1);
     }
-    A2.worldLP.frequency.cancelScheduledValues(t);
-    A2.worldLP.frequency.setValueAtTime(lerp4(16e3, 650, k), t + 0.01);
-    A2.worldLP.frequency.exponentialRampToValueAtTime(16e3, t + Math.max(0.6, sec * 0.9));
+    A3.worldLP.frequency.cancelScheduledValues(t);
+    A3.worldLP.frequency.setValueAtTime(lerp4(16e3, 650, k), t + 0.01);
+    A3.worldLP.frequency.exponentialRampToValueAtTime(16e3, t + Math.max(0.6, sec * 0.9));
   },
   /* the commander's breath (the recording of saturation: a nose inhale and an exhale): a sharp intake on tensing, an exhale after */
   intake: () => {
-    if (!play("breath", { g: 0.24, rate: 1.6, offset: 0.14, dur: 0.42, lp: 3200, dest: A2.body })) noise3({ dur: 0.22, f: 900, f2: 2200, q: 0.9, gain: 0.08, attack: 0.03, dest: A2.body });
+    if (!play("breath", { g: 0.24, rate: 1.6, offset: 0.14, dur: 0.42, lp: 3200, dest: A3.body })) noise4({ dur: 0.22, f: 900, f2: 2200, q: 0.9, gain: 0.08, attack: 0.03, dest: A3.body });
   },
   exhale: (at, g = 0.16) => {
-    play("breath", { g, rate: 1.1, offset: 2.17, dur: 0.95, lp: 2600, dest: A2.body, at });
+    play("breath", { g, rate: 1.1, offset: 2.17, dur: 0.95, lp: 2600, dest: A3.body, at });
   },
   heart: () => {
-    thump2(0, 0.5, 52);
-    thump2(0.26, 0.32, 46);
+    thump3(0, 0.5, 52);
+    thump3(0.26, 0.32, 46);
   }
 };
-var G3 = { slap: null, last: null, back: null, starting: false, k: 0, cheekA: 0, cheekDir: 1, cheekT0: 0, cheekScene: "", mouse: [], typingFocus: false, next: null, started: /* @__PURE__ */ new Set(), epoch: 0, rkey: "", rn: 0 };
+var G4 = { slap: null, last: null, back: null, starting: false, k: 0, cheekA: 0, cheekDir: 1, cheekT0: 0, cheekScene: "", mouse: [], typingFocus: false, next: null, started: /* @__PURE__ */ new Set(), epoch: 0, rkey: "", rn: 0 };
 var LINES2 = {};
 function linesFor(reg, style, id) {
   const one4 = (kind) => {
@@ -66191,36 +67444,36 @@ function linesFor(reg, style, id) {
   };
 }
 function tensionAt(t) {
-  const T5 = S4.tension;
+  const T5 = S5.tension;
   if (t < 0) return 0;
-  if (t < T5.rise) return easeOut2(t / T5.rise);
+  if (t < T5.rise) return easeOut3(t / T5.rise);
   if (t < T5.rise + T5.peak) return 1;
   return clamp44(1 - (t - T5.rise - T5.peak) / T5.fall, 0, 1);
 }
 async function startSlap2(opts) {
-  if (G3.slap || G3.starting) return;
-  G3.starting = true;
-  const epoch = G3.epoch;
-  G3.started.add(opts.id);
-  G3.rkey = opts.id;
-  G3.rn = 0;
-  requestAnimationFrame3(frame2);
-  const faceBefore = beforeLabel(S4.style, opts.unannounced ?? S4.unann);
+  if (G4.slap || G4.starting) return;
+  G4.starting = true;
+  const epoch = G4.epoch;
+  G4.started.add(opts.id);
+  G4.rkey = opts.id;
+  G4.rn = 0;
+  requestAnimationFrame4(frame3);
+  const faceBefore = beforeLabel(S5.style, opts.unannounced ?? S5.unann);
   await preload(faceBefore);
-  if (G3.epoch !== epoch) return;
-  G3.starting = false;
-  if (G3.slap) return;
-  audioInit2();
+  if (G4.epoch !== epoch) return;
+  G4.starting = false;
+  if (G4.slap) return;
+  audioInit3();
   const id = opts.id;
-  const style = S4.style;
+  const style = S5.style;
   const swing = opts.windowMs;
-  const unann = opts.unannounced ?? S4.unann;
+  const unann = opts.unannounced ?? S5.unann;
   let feints = opts.feints;
   if (unann) feints = 0;
   const dir = slapSide(id);
   const lead = unann ? SNAP : opts.again ? AGAIN_LEAD : LEAD;
   const swingAt = lead + feints * FEINT;
-  const t0 = performance3.now();
+  const t0 = performance4.now();
   const s = {
     id,
     style,
@@ -66245,111 +67498,111 @@ async function startSlap2(opts) {
     doneAt: null,
     said: false,
     feintSaid: false,
-    k0: G3.k ?? 0,
+    k0: G4.k ?? 0,
     onResult: opts.onResult
   };
-  G3.slap = s;
-  G3.last = s;
-  G3.back = null;
+  G4.slap = s;
+  G4.last = s;
+  G4.back = null;
   const active = document.activeElement;
-  if (!opts.again) G3.typingFocus = active === $2("#cmd");
+  if (!opts.again) G4.typingFocus = active === $3("#cmd");
   if (active && active !== document.body) active.blur();
-  requestAnimationFrame3(frame2);
-  if (S4.reduced) {
+  requestAnimationFrame4(frame3);
+  if (S5.reduced) {
     showFace(faceBefore);
-    land(s, performance3.now());
+    land(s, performance4.now());
     return;
   }
-  SFX2.heart();
-  if (!unann) SFX2.cloth(-dir * 0.7, 0.4);
-  SFX2.swish(s.impactAt / 1e3, -dir * 0.6);
-  for (let i = 0; i < feints; i++) setTimeout3(() => {
-    if (G3.slap === s) SFX2.cloth(-dir * 0.7, 0.5, 1.25);
+  SFX3.heart();
+  if (!unann) SFX3.cloth(-dir * 0.7, 0.4);
+  SFX3.swish(s.impactAt / 1e3, -dir * 0.6);
+  for (let i = 0; i < feints; i++) setTimeout4(() => {
+    if (G4.slap === s) SFX3.cloth(-dir * 0.7, 0.5, 1.25);
   }, lead + i * FEINT);
-  const before2 = LINES2[style].before;
-  if (before2.length && !unann && !opts.again) setTimeout3(() => {
-    if (G3.slap === s && !s.result) say3(pick4(before2));
+  const before3 = LINES2[style].before;
+  if (before3.length && !unann && !opts.again) setTimeout4(() => {
+    if (G4.slap === s && !s.result) say4(pick5(before3));
   }, SNAP + 60);
-  if (opts.again && LINES2[style].again) setTimeout3(() => {
-    if (G3.slap === s && !s.result) say3(pick4(LINES2[style].again));
+  if (opts.again && LINES2[style].again) setTimeout4(() => {
+    if (G4.slap === s && !s.result) say4(pick5(LINES2[style].again));
   }, 80);
 }
 function press2(source) {
-  const s = G3.slap;
+  const s = G4.slap;
   if (!s || s.result) return;
   s.presses += 1;
   if (s.pressAt !== null) return;
-  s.pressAt = performance3.now() - s.t0;
-  SFX2.intake();
+  s.pressAt = performance4.now() - s.t0;
+  SFX3.intake();
   const onFeint = s.feints > 0 && s.pressAt >= s.lead && s.pressAt < s.swingAt;
-  if (onFeint && LINES2[s.style].feint) setTimeout3(() => {
-    if (G3.slap === s && !s.result) say3(pick4(LINES2[s.style].feint));
+  if (onFeint && LINES2[s.style].feint) setTimeout4(() => {
+    if (G4.slap === s && !s.result) say4(pick5(LINES2[s.style].feint));
   }, 120);
 }
 function onMove(e) {
-  const now = performance3.now();
-  G3.mouse.push([now, e.clientX]);
-  while (G3.mouse.length && now - G3.mouse[0][0] > 70) G3.mouse.shift();
-  const s = G3.slap;
+  const now = performance4.now();
+  G4.mouse.push([now, e.clientX]);
+  while (G4.mouse.length && now - G4.mouse[0][0] > 70) G4.mouse.shift();
+  const s = G4.slap;
   if (!s || s.result || s.turned) return;
-  if (G3.mouse.length < 2) return;
-  const [ta, xa] = G3.mouse[0], dt = (now - ta) / 1e3, dx = e.clientX - xa;
+  if (G4.mouse.length < 2) return;
+  const [ta, xa] = G4.mouse[0], dt = (now - ta) / 1e3, dx = e.clientX - xa;
   if (dt <= 0) return;
   const v = dx / dt;
-  if (Math.abs(v) >= S4.flick && Math.abs(dx) >= innerWidth3 * 0.06) {
+  if (Math.abs(v) >= S5.flick && Math.abs(dx) >= innerWidth4 * 0.06) {
     s.turned = Math.sign(dx);
     s.turnAt = now - s.t0;
-    SFX2.cloth(0, 0.25, 1.4);
+    SFX3.cloth(0, 0.25, 1.4);
   }
 }
 function land(s, now) {
   const t = now - s.t0;
   s.tensionAtImpact = s.pressAt === null ? 0 : tensionAt(t - s.pressAt);
-  s.result = s.turned ? "flinched" : s.tensionAtImpact >= S4.tension.thr ? "braced" : "none";
+  s.result = s.turned ? "flinched" : s.tensionAtImpact >= S5.tension.thr ? "braced" : "none";
   s.landedAt = t;
   s.onResult(s.result);
   const glancing = s.result === "flinched";
   const k = s.result === "braced" ? 0.65 : glancing ? 0.45 : 1;
   s.k = k;
-  SFX2.slap(-s.dir, glancing);
-  SFX2.ring(S4.ring * (s.result === "braced" ? 0.55 : glancing ? 0.4 : 1), k);
-  if (s.result === "braced") SFX2.exhale(0.45, 0.15);
-  G3.cheekA = Math.min(0.9, G3.cheekA * 0.6 + 0.8 * k);
-  G3.cheekDir = s.dir;
-  G3.cheekT0 = now;
+  SFX3.slap(-s.dir, glancing);
+  SFX3.ring(S5.ring * (s.result === "braced" ? 0.55 : glancing ? 0.4 : 1), k);
+  if (s.result === "braced") SFX3.exhale(0.45, 0.15);
+  G4.cheekA = Math.min(0.9, G4.cheekA * 0.6 + 0.8 * k);
+  G4.cheekDir = s.dir;
+  G4.cheekT0 = now;
   flash(k);
   scatter2(k);
   const pool = LINES2[s.style][s.result] ?? [];
   const faceAfter = EXPR[s.style].after[s.result];
   void preload(faceAfter);
-  setTimeout3(() => {
+  setTimeout4(() => {
     showFace(faceAfter);
-    if (pool.length) say3(pick4(pool));
+    if (pool.length) say4(pick5(pool));
   }, s.style === "cold" ? 0 : 380);
   const cruelAgain = s.style === "cruel" && s.result === "flinched" && !s.again;
   const hold = cruelAgain ? 700 : s.style === "cold" ? 900 : 1500;
   s.doneAt = t + hold;
-  setTimeout3(() => {
-    if (G3.slap !== s) return;
-    G3.slap = null;
-    G3.back = S4.reduced ? null : { t0: performance3.now(), from: 1 };
+  setTimeout4(() => {
+    if (G4.slap !== s) return;
+    G4.slap = null;
+    G4.back = S5.reduced ? null : { t0: performance4.now(), from: 1 };
     noteFaceLeft();
-    if (cruelAgain || G3.next) setTimeout3(() => startNext(), 120);
-    else if (G3.typingFocus) $2("#cmd").focus();
-  }, S4.reduced ? 600 : hold);
+    if (cruelAgain || G4.next) setTimeout4(() => startNext(), 120);
+    else if (G4.typingFocus) $3("#cmd").focus();
+  }, S5.reduced ? 600 : hold);
 }
 function startNext() {
-  const next = G3.next;
-  G3.next = null;
-  if (next && !G3.started.has(next.id)) {
+  const next = G4.next;
+  G4.next = null;
+  if (next && !G4.started.has(next.id)) {
     LINES2 = LINES_NEXT;
-    if (E2) E2.host.dataset.slap = next.id;
+    if (E3) E3.host.dataset.slap = next.id;
     readFaceNow();
     void startSlap2(next);
-  } else if (G3.typingFocus && E2) $2("#cmd").focus();
+  } else if (G4.typingFocus && E3) $3("#cmd").focus();
 }
 function flash(k) {
-  const el = $2("#flash");
+  const el = $3("#flash");
   el.style.transition = "none";
   el.style.background = "radial-gradient(ellipse at 50% 45%, rgba(255,250,245,1), rgba(255,90,70,1) 55%, rgba(200,20,20,1))";
   el.style.opacity = String(0.75 * k);
@@ -66360,10 +67613,10 @@ function flash(k) {
   });
 }
 function scatter2(k) {
-  const spans = [...$2("#mirror").children];
+  const spans = [...$3("#mirror").children];
   for (const sp of spans) {
     sp.style.transition = "none";
-    sp.style.transform = `translate(${rand(-14, 14) * k}px, ${rand(-16, 16) * k}px) rotate(${rand(-28, 28) * k}deg)`;
+    sp.style.transform = `translate(${rand2(-14, 14) * k}px, ${rand2(-16, 16) * k}px) rotate(${rand2(-28, 28) * k}deg)`;
   }
   requestTwoFrames(() => {
     for (const sp of spans) {
@@ -66373,133 +67626,133 @@ function scatter2(k) {
   });
 }
 function requestTwoFrames(fn) {
-  setTimeout3(fn, 32);
+  setTimeout4(fn, 32);
 }
-function say3(text3) {
+function say4(text3) {
   if (!text3) return;
   const el = document.createElement("div");
   el.className = "alius-her-line";
   el.textContent = text3;
-  const speed = S4.style === "cruel" || S4.style === "cold" ? 24 : S4.style === "ritual" ? 45 : 34;
+  const speed = S5.style === "cruel" || S5.style === "cold" ? 24 : S5.style === "ritual" ? 45 : 34;
   el.style.setProperty("--write", `${Math.max(140, text3.length * speed)}ms`);
   el.style.setProperty("--steps", String(Math.max(4, text3.length * 2)));
-  el.style.fontSize = `${Math.round(44 * (E2?.her.handScale ?? 1) * 100) / 100}px`;
-  const s = G3.slap ?? G3.last;
+  el.style.fontSize = `${Math.round(44 * (E3?.her.handScale ?? 1) * 100) / 100}px`;
+  const s = G4.slap ?? G4.last;
   const dir = s ? s.dir : 1;
   if (dir > 0) {
-    el.style.left = `${innerWidth3 * 0.6}px`;
+    el.style.left = `${innerWidth4 * 0.6}px`;
   } else {
     el.classList.add("right");
-    el.style.right = `${innerWidth3 * 0.6}px`;
+    el.style.right = `${innerWidth4 * 0.6}px`;
   }
-  const showing = [...$2("#hand").children].filter((c) => !c.classList.contains("gone")).length;
-  el.style.top = `${innerHeight3 * rand(0.22, 0.26) + showing * 54}px`;
-  el.style.transform = `rotate(${rand(-4, 3).toFixed(1)}deg)`;
-  $2("#hand").appendChild(el);
-  SFX2.pen();
-  setTimeout3(() => {
+  const showing = [...$3("#hand").children].filter((c) => !c.classList.contains("gone")).length;
+  el.style.top = `${innerHeight4 * rand2(0.22, 0.26) + showing * 54}px`;
+  el.style.transform = `rotate(${rand2(-4, 3).toFixed(1)}deg)`;
+  $3("#hand").appendChild(el);
+  SFX3.pen();
+  setTimeout4(() => {
     el.classList.add("gone");
-    setTimeout3(() => el.remove(), 600);
+    setTimeout4(() => el.remove(), 600);
   }, 2200);
 }
-function frame2(now) {
-  requestAnimationFrame3(frame2);
-  const W = innerWidth3, H = innerHeight3;
-  const s = G3.slap;
+function frame3(now) {
+  requestAnimationFrame4(frame3);
+  const W = innerWidth4, H = innerHeight4;
+  const s = G4.slap;
   let k = 0;
-  if (s && !S4.reduced) k = lerp4(s.k0, 1, easeOut2((now - s.t0) / SNAP));
-  else if (G3.back) {
-    const p = (now - G3.back.t0) / RETURN;
+  if (s && !S5.reduced) k = lerp4(s.k0, 1, easeOut3((now - s.t0) / SNAP));
+  else if (G4.back) {
+    const p = (now - G4.back.t0) / RETURN;
     k = 1 - easeInOut(p);
-    if (p >= 1) G3.back = null;
+    if (p >= 1) G4.back = null;
   }
-  G3.k = k;
+  G4.k = k;
   let lean = 0, sweep = -1, twitch = 0;
-  if (s && !S4.reduced) {
+  if (s && !S5.reduced) {
     const t = now - s.t0;
     if (!s.faceShown && t >= EXPR_SWITCH) {
       s.faceShown = true;
       showFace(s.faceBefore);
     }
-    if (!s.unann) lean = -0.4 * easeOut2((t - SNAP * 0.4) / 380) + 0.04 * Math.sin(t / 140) * (t > SNAP ? 1 : 0);
+    if (!s.unann) lean = -0.4 * easeOut3((t - SNAP * 0.4) / 380) + 0.04 * Math.sin(t / 140) * (t > SNAP ? 1 : 0);
     for (let i = 0; i < s.feints; i++) {
       const ft = t - (s.lead + i * FEINT);
       if (ft >= 0 && ft < FEINT) {
         const p = ft / FEINT;
-        twitch = p < 0.3 ? easeIn2(p / 0.3) : 1 - easeOut2((p - 0.3) / 0.45);
+        twitch = p < 0.3 ? easeIn2(p / 0.3) : 1 - easeOut3((p - 0.3) / 0.45);
         lean = -0.4 + 0.75 * twitch;
       }
     }
     if (t >= s.swingAt && !s.result) {
       const p = (t - s.swingAt) / s.swing;
       lean = lerp4(s.unann ? 0 : -0.4, 1, easeIn2(p));
-      if (S4.sweep) sweep = clamp44(1 - (s.impactAt - t) / SWEEP, 0, 1);
+      if (S5.sweep) sweep = clamp44(1 - (s.impactAt - t) / SWEEP, 0, 1);
     }
     if (!s.result && t >= s.impactAt) land(s, now);
     if (s.result) lean = 0;
   }
   let whipX = 0, whipR = 0, hb = 0;
-  const L2 = s && s.result ? s : G3.back && G3.last && G3.last.result ? G3.last : null;
-  if (L2 && L2.landedAt !== void 0 && !S4.reduced) {
-    const tt = now - (L2.t0 + L2.landedAt), kk = L2.k ?? 1;
-    const env = tt < 45 ? easeOut2(tt / 45) : Math.exp(-(tt - 45) / 210) * Math.cos((tt - 45) / 520 * Math.PI * 2);
-    whipX = -L2.dir * 0.075 * W * env * kk;
-    whipR = -L2.dir * 5.5 * env * kk;
+  const L3 = s && s.result ? s : G4.back && G4.last && G4.last.result ? G4.last : null;
+  if (L3 && L3.landedAt !== void 0 && !S5.reduced) {
+    const tt = now - (L3.t0 + L3.landedAt), kk = L3.k ?? 1;
+    const env = tt < 45 ? easeOut3(tt / 45) : Math.exp(-(tt - 45) / 210) * Math.cos((tt - 45) / 520 * Math.PI * 2);
+    whipX = -L3.dir * 0.075 * W * env * kk;
+    whipR = -L3.dir * 5.5 * env * kk;
     hb = tt < 220 ? (1 - tt / 220) * 16 * kk : 0;
   }
   let turnX = 0;
-  const T5 = s ?? (G3.back ? G3.last : null);
+  const T5 = s ?? (G4.back ? G4.last : null);
   if (T5 && T5.turned) {
     const tt = now - (T5.t0 + T5.turnAt);
-    turnX = T5.turned * 0.11 * W * easeOut2(tt / 160) * (G3.back ? k : 1);
+    turnX = T5.turned * 0.11 * W * easeOut3(tt / 160) * (G4.back ? k : 1);
     hb = Math.max(hb, tt < 160 ? 10 * (1 - tt / 160) : 0);
   }
   let ten = 0, tremble = 0;
   if (s && s.pressAt !== null && !s.result) {
     const tt = now - s.t0 - s.pressAt;
     ten = tensionAt(tt);
-    if (tt > S4.tension.rise + S4.tension.peak && ten > 0.05) tremble = (1 - ten) * 1.6;
+    if (tt > S5.tension.rise + S5.tension.peak && ten > 0.05) tremble = (1 - ten) * 1.6;
   }
   const rot = -(s ? s.dir : 1) * lean * 3.4 + whipR;
-  const dx = -(s ? s.dir : 1) * lean * 0.022 * W + whipX + turnX + (tremble ? rand(-tremble, tremble) : 0);
-  const dy = tremble ? rand(-tremble, tremble) : 0;
-  const leanIn = s && !s.result && !S4.reduced ? 0.035 * clamp44((now - s.t0 - SNAP) / 500, 0, 1) : 0;
+  const dx = -(s ? s.dir : 1) * lean * 0.022 * W + whipX + turnX + (tremble ? rand2(-tremble, tremble) : 0);
+  const dy = tremble ? rand2(-tremble, tremble) : 0;
+  const leanIn = s && !s.result && !S5.reduced ? 0.035 * clamp44((now - s.t0 - SNAP) / 500, 0, 1) : 0;
   const world = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) rotate(${rot.toFixed(2)}deg) scale(${(1 + 0.02 * ten + leanIn + (turnX ? 0.03 : 0)).toFixed(4)})`;
-  $2("#hblurG").setAttribute("stdDeviation", `${hb.toFixed(1)} ${(hb * 0.12).toFixed(1)}`);
-  if ((s || G3.back) && !S4.reduced) cam.draw(world, hb, k);
+  $3("#hblurG").setAttribute("stdDeviation", `${hb.toFixed(1)} ${(hb * 0.12).toFixed(1)}`);
+  if ((s || G4.back) && !S5.reduced) cam.draw(world, hb, k);
   else cam.release();
-  E2.faceImg.style.opacity = E2.hasFace ? String(k) : "0";
-  $2("#dimmer").style.opacity = String(0.25 * k);
+  E3.faceImg.style.opacity = E3.hasFace ? String(k) : "0";
+  $3("#dimmer").style.opacity = String(0.25 * k);
   const dir = s ? s.dir : 1;
-  const sideA = s && !s.result && S4.sideDark ? clamp44(0.42 * easeOut2((now - s.t0 - SNAP) / 300) + 0.3 * twitch + 0.4 * Math.max(0, lean), 0, 0.85) : 0;
-  $2("#side").style.background = `linear-gradient(${dir > 0 ? 90 : 270}deg, rgba(4,2,6,.95), rgba(4,2,6,.4) 28%, rgba(4,2,6,0) 55%)`;
-  $2("#side").style.opacity = sideA.toFixed(3);
-  const sw = $2("#sweep");
+  const sideA = s && !s.result && S5.sideDark ? clamp44(0.42 * easeOut3((now - s.t0 - SNAP) / 300) + 0.3 * twitch + 0.4 * Math.max(0, lean), 0, 0.85) : 0;
+  $3("#side").style.background = `linear-gradient(${dir > 0 ? 90 : 270}deg, rgba(4,2,6,.95), rgba(4,2,6,.4) 28%, rgba(4,2,6,0) 55%)`;
+  $3("#side").style.opacity = sideA.toFixed(3);
+  const sw = $3("#sweep");
   if (sweep >= 0 && s && !s.result) {
     const x0 = dir > 0 ? -0.5 : 1.04, x1 = dir > 0 ? 0.02 : 0.52;
     sw.style.left = `${(lerp4(x0, x1, easeIn2(sweep)) * W).toFixed(1)}px`;
     sw.style.opacity = String(0.85 * Math.min(1, sweep * 2));
   } else sw.style.opacity = "0";
-  $2("#tight").style.opacity = String((0.5 * ten).toFixed(3));
-  if (A2.worldG) A2.worldG.gain.value = 1 - 0.55 * ten;
-  if (G3.cheekA > 0) {
-    const age2 = (now - G3.cheekT0) / 1e3;
-    const a = G3.cheekA * Math.exp(-age2 / 24) * (0.85 + 0.15 * Math.sin(age2 * 5.2));
-    const cx = G3.cheekDir > 0 ? "0%" : "100%";
-    $2("#cheek").style.background = `radial-gradient(ellipse 48% 62% at ${cx} 56%, rgba(210,24,20,.85), rgba(170,10,10,.35) 45%, rgba(120,0,0,0) 75%)`;
-    $2("#cheek").style.opacity = a.toFixed(3);
-    if (a < 4e-3) G3.cheekA = 0;
-  } else $2("#cheek").style.opacity = "0";
-  if ((s || G3.back) && !S4.reduced) {
-    $2("#reply").style.opacity = String(1 - 0.85 * k);
-    $2("#inputWrap").style.opacity = String(1 - 0.6 * k);
+  $3("#tight").style.opacity = String((0.5 * ten).toFixed(3));
+  if (A3.worldG) A3.worldG.gain.value = 1 - 0.55 * ten;
+  if (G4.cheekA > 0) {
+    const age2 = (now - G4.cheekT0) / 1e3;
+    const a = G4.cheekA * Math.exp(-age2 / 24) * (0.85 + 0.15 * Math.sin(age2 * 5.2));
+    const cx = G4.cheekDir > 0 ? "0%" : "100%";
+    $3("#cheek").style.background = `radial-gradient(ellipse 48% 62% at ${cx} 56%, rgba(210,24,20,.85), rgba(170,10,10,.35) 45%, rgba(120,0,0,0) 75%)`;
+    $3("#cheek").style.opacity = a.toFixed(3);
+    if (a < 4e-3) G4.cheekA = 0;
+  } else $3("#cheek").style.opacity = "0";
+  if ((s || G4.back) && !S5.reduced) {
+    $3("#reply").style.opacity = String(1 - 0.85 * k);
+    $3("#inputWrap").style.opacity = String(1 - 0.6 * k);
   }
 }
-var typing2 = (el) => el instanceof HTMLElement && (/^(input|textarea|select)$/i.test(el.tagName) || el.isContentEditable);
+var typing3 = (el) => el instanceof HTMLElement && (/^(input|textarea|select)$/i.test(el.tagName) || el.isContentEditable);
 function onKey(e) {
-  if (typing2(e.target)) return;
+  if (typing3(e.target)) return;
   if (e.key === " ") {
-    if (!G3.slap) return;
+    if (!G4.slap) return;
     e.preventDefault();
     if (!e.repeat) press2("key");
   }
@@ -66507,23 +67760,23 @@ function onKey(e) {
 var CONTROLS2 = 'button, a, input, textarea, select, summary, label, [role="button"], [contenteditable="true"], .alius-input-line, .alius-stage-dock, .alius-chip-row, .alius-stage-dial, .alius-stage-topline, .alius-curtain';
 function onDown(e) {
   if (e.button !== 0 || e.target instanceof Element && e.target.closest(CONTROLS2)) return;
-  if (G3.slap) {
+  if (G4.slap) {
     e.preventDefault();
     press2("mouse");
   }
 }
 var holder2 = "";
-function bind2(m, unitId) {
-  if (E2 && (E2.env !== m.env || E2.sceneId !== m.sceneId || E2.unitId !== unitId || !E2.box.isConnected)) stopSlap({ keepCheek: E2.sceneId === m.sceneId });
-  if (G3.cheekScene !== m.sceneId) {
-    G3.cheekA = 0;
-    G3.cheekScene = m.sceneId;
-    G3.started.clear();
-    G3.last = null;
+function bind3(m, unitId) {
+  if (E3 && (E3.env !== m.env || E3.sceneId !== m.sceneId || E3.unitId !== unitId || !E3.box.isConnected)) stopSlap({ keepCheek: E3.sceneId === m.sceneId });
+  if (G4.cheekScene !== m.sceneId) {
+    G4.cheekA = 0;
+    G4.cheekScene = m.sceneId;
+    G4.started.clear();
+    G4.last = null;
   }
-  if (!E2) {
-    E2 = { ...build3(m.env, unitId), host: m.host, sceneId: m.sceneId };
-    const e = E2;
+  if (!E3) {
+    E3 = { ...build4(m.env, unitId), host: m.host, sceneId: m.sceneId };
+    const e = E3;
     const reading2 = () => e.env.root.dataset.curtain === "open";
     e.offs.push(m.env.listen(document, "keydown", (ev) => {
       if (!reading2()) onKey(ev);
@@ -66538,33 +67791,33 @@ function bind2(m, unitId) {
     looking.clear();
     leftBySlap = null;
   }
-  E2.host = m.host;
+  E3.host = m.host;
   holder2 = unitId;
-  S4.reduced = m.still;
-  S4.face = m.env.art.face(unitId) ?? { x: 0.47, y: 0.17 };
+  S5.reduced = m.still;
+  S5.face = m.env.art.face(unitId) ?? { x: 0.47, y: 0.17 };
   measure();
 }
 function mountSlap(m) {
   const slap = m.slap;
   if (!slap) {
     settleSlap();
-    const same = E2 !== null && E2.env === m.env && E2.sceneId === m.sceneId && E2.box.isConnected;
-    if (!same && (G3.cheekScene !== m.sceneId || G3.cheekA <= 0 || holder2 === "")) {
-      if (E2) stopSlap({ keepCheek: E2.sceneId === m.sceneId });
+    const same = E3 !== null && E3.env === m.env && E3.sceneId === m.sceneId && E3.box.isConnected;
+    if (!same && (G4.cheekScene !== m.sceneId || G4.cheekA <= 0 || holder2 === "")) {
+      if (E3) stopSlap({ keepCheek: E3.sceneId === m.sceneId });
       return;
     }
-    if (!same) bind2(m, holder2);
-    if (G3.cheekA > 0) requestAnimationFrame3(frame2);
+    if (!same) bind3(m, holder2);
+    if (G4.cheekA > 0) requestAnimationFrame4(frame3);
     return;
   }
-  bind2(m, slap.holderId);
-  S4.style = slap.style;
+  bind3(m, slap.holderId);
+  S5.style = slap.style;
   lookFaces(facesOf(slap.style));
-  if (G3.cheekA > 0) requestAnimationFrame3(frame2);
-  if (G3.started.has(slap.id)) return;
-  if (G3.slap || G3.starting) {
-    if (G3.next?.id !== slap.id) {
-      G3.next = slap;
+  if (G4.cheekA > 0) requestAnimationFrame4(frame3);
+  if (G4.started.has(slap.id)) return;
+  if (G4.slap || G4.starting) {
+    if (G4.next?.id !== slap.id) {
+      G4.next = slap;
       LINES_NEXT = { [slap.style]: linesFor(m.reg, slap.style, slap.id) };
     }
     return;
@@ -66576,14 +67829,14 @@ function mountSlap(m) {
 }
 var LINES_NEXT = {};
 function settleSlap() {
-  G3.next = null;
-  const s = G3.slap;
-  if (s && s.result === null || G3.starting) {
-    G3.started.delete(s ? s.id : G3.rkey);
-    G3.epoch++;
-    G3.starting = false;
-    G3.slap = null;
-    G3.back = null;
+  G4.next = null;
+  const s = G4.slap;
+  if (s && s.result === null || G4.starting) {
+    G4.started.delete(s ? s.id : G4.rkey);
+    G4.epoch++;
+    G4.starting = false;
+    G4.slap = null;
+    G4.back = null;
     for (const n of made) {
       try {
         n.stop();
@@ -66593,29 +67846,29 @@ function settleSlap() {
     made.clear();
     for (const t of timers3) clearTimeout(t);
     timers3.clear();
-    if (E2) $2("#hand").replaceChildren();
-    if (G3.typingFocus && E2) $2("#cmd").focus();
+    if (E3) $3("#hand").replaceChildren();
+    if (G4.typingFocus && E3) $3("#cmd").focus();
   }
 }
 function stopSlap(opts = {}) {
-  if (G3.slap && G3.slap.result === null) G3.started.delete(G3.slap.id);
-  if (G3.starting) G3.started.delete(G3.rkey);
-  G3.epoch++;
-  G3.slap = null;
-  G3.back = null;
-  G3.starting = false;
-  G3.next = null;
-  G3.k = 0;
-  G3.mouse = [];
+  if (G4.slap && G4.slap.result === null) G4.started.delete(G4.slap.id);
+  if (G4.starting) G4.started.delete(G4.rkey);
+  G4.epoch++;
+  G4.slap = null;
+  G4.back = null;
+  G4.starting = false;
+  G4.next = null;
+  G4.k = 0;
+  G4.mouse = [];
   if (!opts.keepCheek) {
-    G3.cheekA = 0;
-    G3.cheekScene = "";
-    G3.started.clear();
-    G3.last = null;
+    G4.cheekA = 0;
+    G4.cheekScene = "";
+    G4.started.clear();
+    G4.last = null;
   }
   for (const t of timers3) clearTimeout(t);
   timers3.clear();
-  if (frameId !== null && E2) E2.env.cancelRaf(frameId);
+  if (frameId !== null && E3) E3.env.cancelRaf(frameId);
   frameId = null;
   for (const n of made) {
     try {
@@ -66629,25 +67882,25 @@ function stopSlap(opts = {}) {
   }
   made.clear();
   try {
-    A2.worldG?.disconnect();
+    A3.worldG?.disconnect();
   } catch {
   }
-  A2.ctx = null;
-  A2.buf = {};
-  delete A2.worldLP;
-  delete A2.worldG;
-  delete A2.body;
-  delete A2.white;
+  A3.ctx = null;
+  A3.buf = {};
+  delete A3.worldLP;
+  delete A3.worldG;
+  delete A3.body;
+  delete A3.white;
   cam.release();
-  if (E2) {
-    for (const off of E2.offs) off();
-    E2.box.remove();
-    const mirrors = E2.env.root.querySelectorAll(".alius-slap-mirror");
-    if (mirrors.length > 0) E2.env.input.style.removeProperty("color");
+  if (E3) {
+    for (const off of E3.offs) off();
+    E3.box.remove();
+    const mirrors = E3.env.root.querySelectorAll(".alius-slap-mirror");
+    if (mirrors.length > 0) E3.env.input.style.removeProperty("color");
     mirrors.forEach((m) => m.remove());
-    delete E2.host.dataset.slap;
+    delete E3.host.dataset.slap;
   }
-  E2 = null;
+  E3 = null;
 }
 function resetSlap() {
   stopSlap();
@@ -66731,16 +67984,16 @@ function createDock(host, names2, opts = {}) {
           cards.push({ el, key: `${sceneId}|${name}|${idOf2(el, i)}` });
         });
       }
-      const fresh2 = cards.filter((c) => !ages.has(c.key));
-      for (const c of [...fresh2].reverse()) ages.set(c.key, ++age);
-      if (fresh2.some((c) => !running2(c.el))) chosen = null;
+      const fresh3 = cards.filter((c) => !ages.has(c.key));
+      for (const c of [...fresh3].reverse()) ages.set(c.key, ++age);
+      if (fresh3.some((c) => !running2(c.el))) chosen = null;
       if (answered !== null) {
         if (!cards.some((c) => c.key === answered)) sfx2(DOCK_SOUNDS.place[fnv1a3(answered) % 2], 0.25, -0.6);
         answered = null;
       }
       const quiet = !dealt.has(sceneId);
       dealt.add(sceneId);
-      const arriving = quiet ? [] : fresh2.filter((c) => !running2(c.el) && !setAside.has(c.key));
+      const arriving = quiet ? [] : fresh3.filter((c) => !running2(c.el) && !setAside.has(c.key));
       for (const c of arriving) if (opts.reduced?.() !== true) c.el.classList.add("is-arriving");
       if (arriving.length > 0) sfx2(DOCK_SOUNDS.slide[fnv1a3(arriving[0].key) % 2], 0.25, -0.6);
       const shown2 = cards.filter((c) => !setAside.has(c.key)).sort((a, b) => ages.get(a.key) - ages.get(b.key));
@@ -66814,7 +68067,7 @@ function resetLook() {
   memory.clear();
 }
 var DRAG_HOLD_MS = 8e3;
-function attachLook(frame3, root, opts) {
+function attachLook(frame4, root, opts) {
   const id = opts.sceneId();
   let pan = memory.get(id) ?? 0.5;
   let drag = null;
@@ -66844,7 +68097,7 @@ function attachLook(frame3, root, opts) {
     drag = { x: ev.clientX, pan, moved: false };
     root.classList.add("alius-looking");
     try {
-      frame3.setPointerCapture?.(ev.pointerId);
+      frame4.setPointerCapture?.(ev.pointerId);
     } catch {
     }
   };
@@ -66858,7 +68111,7 @@ function attachLook(frame3, root, opts) {
       stop();
       return;
     }
-    const width = frame3.getBoundingClientRect().width;
+    const width = frame4.getBoundingClientRect().width;
     if (width <= 0) return;
     const dx = drag.x - e.clientX;
     if (dx === 0 && !drag.moved) return;
@@ -66874,19 +68127,19 @@ function attachLook(frame3, root, opts) {
     stop();
   };
   const menu = (e) => e.preventDefault();
-  frame3.addEventListener("pointerdown", down2);
-  frame3.addEventListener("pointermove", move);
-  frame3.addEventListener("pointerup", up);
-  frame3.addEventListener("pointercancel", stop);
-  frame3.addEventListener("lostpointercapture", stop);
-  frame3.addEventListener("contextmenu", menu);
+  frame4.addEventListener("pointerdown", down2);
+  frame4.addEventListener("pointermove", move);
+  frame4.addEventListener("pointerup", up);
+  frame4.addEventListener("pointercancel", stop);
+  frame4.addEventListener("lostpointercapture", stop);
+  frame4.addEventListener("contextmenu", menu);
   const detach = () => {
-    frame3.removeEventListener("pointerdown", down2);
-    frame3.removeEventListener("pointermove", move);
-    frame3.removeEventListener("pointerup", up);
-    frame3.removeEventListener("pointercancel", stop);
-    frame3.removeEventListener("lostpointercapture", stop);
-    frame3.removeEventListener("contextmenu", menu);
+    frame4.removeEventListener("pointerdown", down2);
+    frame4.removeEventListener("pointermove", move);
+    frame4.removeEventListener("pointerup", up);
+    frame4.removeEventListener("pointercancel", stop);
+    frame4.removeEventListener("lostpointercapture", stop);
+    frame4.removeEventListener("contextmenu", menu);
     root.classList.remove("alius-looking");
   };
   return Object.assign(detach, {
@@ -66976,9 +68229,9 @@ function cancelPostureCalls(cancel = (handle) => clearTimeout(handle)) {
   cancelCall();
 }
 onStageReset(() => cancelCall());
-function drawPostureCall(host, state, reg, pick5, handlers2, opts = {}) {
+function drawPostureCall(host, state, reg, pick6, handlers2, opts = {}) {
   if (opts.look === "scene") {
-    drawSceneCall(host, state, reg, pick5, handlers2);
+    drawSceneCall(host, state, reg, pick6, handlers2);
     return;
   }
   host.replaceChildren();
@@ -66991,7 +68244,7 @@ function drawPostureCall(host, state, reg, pick5, handlers2, opts = {}) {
     expiries.delete(id);
   };
   const unit4 = call2 === void 0 ? void 0 : state.squad.find((u) => u.id === call2.holderId);
-  if (call2 === void 0 || unit4 === void 0 || !dynamicOn(state, reg) || !practiceLive(state, reg, unit4.id) || !pick5({ unitId: unit4.id })) {
+  if (call2 === void 0 || unit4 === void 0 || !dynamicOn(state, reg) || !practiceLive(state, reg, unit4.id) || !pick6({ unitId: unit4.id })) {
     for (const id of [...expiries.keys()]) stop(id);
     started.clear();
     return;
@@ -67045,11 +68298,11 @@ function drawPostureCall(host, state, reg, pick5, handlers2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:posture_call", live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawSceneCall(host, state, reg, pick5, handlers2) {
+function drawSceneCall(host, state, reg, pick6, handlers2) {
   const call2 = state.practices?.call;
   const unit4 = call2 === void 0 ? void 0 : state.squad.find((u) => u.id === call2.holderId);
   const now = currentCall();
-  const live3 = call2 !== void 0 && unit4 !== void 0 && dynamicOn(state, reg) && practiceLive(state, reg, unit4.id) && pick5({ unitId: unit4.id });
+  const live3 = call2 !== void 0 && unit4 !== void 0 && dynamicOn(state, reg) && practiceLive(state, reg, unit4.id) && pick6({ unitId: unit4.id });
   const set2 = live3 ? (state.practices.postures[unit4.id] ?? []).filter((p) => {
     const entry = reg.blockingPostures.get(p.postureId);
     return entry !== void 0 && entryAllowed(state, reg, entry, [unit4.id]);
@@ -67125,9 +68378,9 @@ function clearSlapOverlay(host) {
 }
 
 // src/ui/dynamic/frameChip.ts
-function drawFrameChips(host, state, reg, pick5, hidden) {
+function drawFrameChips(host, state, reg, pick6, hidden) {
   if (hidden || !dynamicOn(state, reg)) return;
-  const chips = state.squad.filter((u) => u.kind === "named" && isLiving(u) && pick5(u.id) && frameRank(dynamicOf(state, u.id)?.frame ?? "equal") >= frameRank("play")).map((u) => h(
+  const chips = state.squad.filter((u) => u.kind === "named" && isLiving(u) && pick6(u.id) && frameRank(dynamicOf(state, u.id)?.frame ?? "equal") >= frameRank("play")).map((u) => h(
     "span",
     { class: "alius-chip alius-frame-chip", "data-frame-chip": u.id, ...analyzeAttrs("glossary:frame", { unitId: u.id }) },
     `${u.displayName.toUpperCase()}: ${String(reg.dynamicFrames.get(dynamicOf(state, u.id).frame)?.label ?? "").toUpperCase()}`
@@ -67570,7 +68823,7 @@ function renderPhysicsPanel(host, ctx2) {
 }
 function wireKeys(host) {
   if (keyHandlers.has(host)) return;
-  const typing3 = (t) => t !== null && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
+  const typing4 = (t) => t !== null && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
   const down2 = (e) => {
     if (!host.isConnected) {
       unwireKeys(host);
@@ -67579,7 +68832,7 @@ function wireKeys(host) {
     const ev = e;
     const t = ev.target;
     const realtime = host.dataset.realtime === "1";
-    if (ev.key !== " " || typing3(t) || !realtime && t !== null && /^button$/i.test(t.tagName)) return;
+    if (ev.key !== " " || typing4(t) || !realtime && t !== null && /^button$/i.test(t.tagName)) return;
     const main2 = host.querySelector(".alius-physics-input[data-input]");
     if (!main2) return;
     ev.preventDefault();
@@ -67622,7 +68875,7 @@ function wayGroups(ctx2, exposures) {
     const taste = kind?.family === "taste";
     const stamp = (way) => analyzeNative(`stimulusKinds:${ex.kind}`, { way });
     const plain8 = WAY_BUTTONS.filter((b) => b.family === "taste" === taste || b.way === "avoid" || b.way === "secret").filter((b) => !(taste && (b.way === "sniff" || b.way === "nuzzle")));
-    const push2 = (way, depth) => () => {
+    const push3 = (way, depth) => () => {
       staging.stimulus(way, ex.kind, depth);
     };
     const inhale2 = taste || !inhaleOn ? [] : realtime ? [btn(ctx2, {
@@ -67638,12 +68891,12 @@ function wayGroups(ctx2, exposures) {
         inhaling.delete(e.currentTarget);
         if (t !== void 0) staging.stimulus("inhale", ex.kind, Math.min(100, Math.round((now() - t) / TUNING.stimuli.inhale.fillMs * 100)));
       }
-    }, "[ HOLD TO INHALE ]")] : DEPTHS.map(([d, text3]) => btn(ctx2, { type: "button", class: "alius-btn alius-option alius-way", "data-way": "inhale", "data-depth": d, ...stamp("inhale"), onclick: push2("inhale", d) }, text3));
+    }, "[ HOLD TO INHALE ]")] : DEPTHS.map(([d, text3]) => btn(ctx2, { type: "button", class: "alius-btn alius-option alius-way", "data-way": "inhale", "data-depth": d, ...stamp("inhale"), onclick: push3("inhale", d) }, text3));
     return h(
       "div",
       { class: "alius-physics-ways", "data-kind": ex.kind, role: "group", "aria-label": String(kind?.label ?? ex.kind) },
       h("span", { class: "alius-dim" }, `${String(kind?.label ?? ex.kind)}: `),
-      ...plain8.map((b) => btn(ctx2, { type: "button", class: "alius-btn alius-option alius-way", "data-way": b.way, ...stamp(b.way), onclick: push2(b.way) }, b.text)),
+      ...plain8.map((b) => btn(ctx2, { type: "button", class: "alius-btn alius-option alius-way", "data-way": b.way, ...stamp(b.way), onclick: push3(b.way) }, b.text)),
       ...inhale2
     );
   });
@@ -67947,12 +69200,12 @@ function fillProse(el, text3, visible, opts = {}) {
     if (left <= 0) return;
     const part = run.text.slice(0, left);
     left -= part.length;
-    const fresh2 = opts.newestFrom !== void 0 && index2 >= opts.newestFrom;
+    const fresh3 = opts.newestFrom !== void 0 && index2 >= opts.newestFrom;
     const cls = (...c) => c.filter(Boolean).join(" ");
     let node;
-    if (run.kind === "em") node = h("em", { class: cls("alius-glitch", run.speech === true && speechClass, fresh2 && "alius-prose-new") });
-    else if (run.kind === "speech") node = h("span", { class: cls(speechClass, fresh2 && "alius-prose-new") });
-    else if (fresh2) node = h("span", { class: "alius-prose-new" });
+    if (run.kind === "em") node = h("em", { class: cls("alius-glitch", run.speech === true && speechClass, fresh3 && "alius-prose-new") });
+    else if (run.kind === "speech") node = h("span", { class: cls(speechClass, fresh3 && "alius-prose-new") });
+    else if (fresh3) node = h("span", { class: "alius-prose-new" });
     else {
       el.append(document.createTextNode(part));
       return;
@@ -67991,7 +69244,7 @@ function createCurtain(host, opts) {
   host.append(element);
   let opened = false;
   let last = null;
-  function render2() {
+  function render3() {
     if (!last) return;
     const { messages, ctx: ctx2 } = last;
     const stick = scroller.childElementCount === 0 || atEnd(scroller);
@@ -68094,7 +69347,7 @@ function createCurtain(host, opts) {
       element.dataset.open = "true";
       element.setAttribute("aria-hidden", "false");
       opts.onOpen();
-      render2();
+      render3();
       scroller.scrollTop = scroller.scrollHeight;
     },
     close() {
@@ -68107,7 +69360,7 @@ function createCurtain(host, opts) {
     isOpen: () => opened,
     draw(messages, ctx2) {
       last = { messages, ctx: ctx2 };
-      if (opened) render2();
+      if (opened) render3();
     },
     destroy: () => stop()
   };
@@ -68311,7 +69564,7 @@ function renderSceneScreen(host, ctx2) {
   let spriteHost;
   let hud;
   let curtain;
-  let inputLine2;
+  let inputLine3;
   let wordsChecked = null;
   let replyHost;
   let chips;
@@ -68461,8 +69714,8 @@ function renderSceneScreen(host, ctx2) {
     const units = present2(s);
     const at = units.findIndex((u) => u.cardRef !== void 0 && u.cardRef === reply.avatar || u.displayName === reply.name);
     if (at < 0) return;
-    const frame3 = layers.frame.getBoundingClientRect();
-    const pan = panToCentre(spriteSlots(units.length)[at].x, frame3.width, frame3.height);
+    const frame4 = layers.frame.getBoundingClientRect();
+    const pan = panToCentre(spriteSlots(units.length)[at].x, frame4.width, frame4.height);
     if (pan !== null) detachLook.turnTo(pan);
   }
   function drawHud(s) {
@@ -68670,8 +69923,8 @@ function renderSceneScreen(host, ctx2) {
       stopTyping();
       if (lastIndex > seen2) seen2 = lastIndex;
     } else {
-      const fresh2 = seen2 < 0 ? [] : messages.filter((m) => m.index > seen2);
-      const newest = [...fresh2].reverse().find((m) => !m.isUser);
+      const fresh3 = seen2 < 0 ? [] : messages.filter((m) => m.index > seen2);
+      const newest = [...fresh3].reverse().find((m) => !m.isUser);
       if (newest && speed > 0 && !progress.has(newest.index)) {
         animating = newest.index;
         progress.set(newest.index, 0);
@@ -68817,7 +70070,7 @@ function renderSceneScreen(host, ctx2) {
   }
   function moveInput(to) {
     const focused = document.activeElement === input;
-    to.append(inputLine2);
+    to.append(inputLine3);
     if (focused) focusInput();
   }
   const onDocKey = (e) => {
@@ -68827,7 +70080,7 @@ function renderSceneScreen(host, ctx2) {
     }
   };
   document.addEventListener("keydown", onDocKey);
-  function build4(s) {
+  function build5(s) {
     const units = present2(s);
     sceneKey = s.scene.id;
     unmountInstruments();
@@ -68981,8 +70234,8 @@ function renderSceneScreen(host, ctx2) {
       chipResizer = new ResizeObserver(() => chipRow.layout());
       chipResizer.observe(chipRow.element);
     }
-    inputLine2 = h("div", { class: "alius-input-line alius-stage-cmd" }, h("span", { class: "alius-prompt" }, "CMD>"), input, h("div", { class: "alius-input-tools" }, orderToggle, orderWho, propose2, who));
-    hosts.input.append(inputLine2);
+    inputLine3 = h("div", { class: "alius-input-line alius-stage-cmd" }, h("span", { class: "alius-prompt" }, "CMD>"), input, h("div", { class: "alius-input-tools" }, orderToggle, orderWho, propose2, who));
+    hosts.input.append(inputLine3);
     dock = createDock(hosts.dock, DOCK_SLOTS, { samples: () => ctx2.samples ?? null, reduced: () => motionReduced(ctx2.settings()) });
     const cards = (slot2, cls) => {
       const el = dock.slot(slot2);
@@ -69103,7 +70356,7 @@ function renderSceneScreen(host, ctx2) {
       seen2 = -1;
       progress = /* @__PURE__ */ new Map();
       stopTyping();
-      build4(s);
+      build5(s);
     } else drawBackground(s);
     const messages = controller.transcript();
     const lastReply = [...messages].reverse().find((m) => !m.isUser);
@@ -69879,8 +71132,8 @@ function kindProvider(subject, env, k) {
   if (!kind) return null;
   const place2 = String(env.registries.locations.get(String(kind.locationId))?.name ?? kind.locationId);
   const lines = [`Played in the ${SLOT_WORD2[String(kind.slot)]} at ${place2}.${kind.tier === "romantic" ? " Only for a romantic relationship." : ""}`];
-  const relief = k.raw(Number(kind.wantRelief));
-  if (relief !== null) lines.push(`It lowers her want by ${relief}.`);
+  const relief2 = k.raw(Number(kind.wantRelief));
+  if (relief2 !== null) lines.push(`It lowers her want by ${relief2}.`);
   return { lines };
 }
 var GAME_ODDS = { coin: 50, rps: 44, high_card: 46 };
@@ -69891,11 +71144,11 @@ function stakeLines(reg, stakeId) {
   const words3 = STAKE_WORDS[String(stake?.effect)];
   return words3 ? [`If she wins: ${words3.she}.`, `If the commander wins: ${words3.commander}.`] : [];
 }
-function oddsLine(state, reg, k, gameId, unitId, pick5) {
+function oddsLine(state, reg, k, gameId, unitId, pick6) {
   const kind = String(reg.wagerGames.get(gameId)?.kind);
   if (kind === "sparring") {
-    if (pick5 === void 0) return null;
-    const odds = sparringOdds(state, reg, unitId, pick5);
+    if (pick6 === void 0) return null;
+    const odds = sparringOdds(state, reg, unitId, pick6);
     const pct6 = k.raw(Math.round(odds * 100));
     return `The commander's chance in the bout: ${bandWord(odds)}${pct6 !== null ? ` (about ${pct6} %)` : ""}.`;
   }
@@ -70140,9 +71393,9 @@ function satisfactionProvider(_s, env, k) {
 function defianceProvider(_s, env, k) {
   const w = env.state ? wardenOf(env.state) : null;
   if (!w) return null;
-  const E3 = TUNING.warden.escalation;
+  const E4 = TUNING.warden.escalation;
   const raw = k.raw(w.defiance);
-  const lines = [w.defiance >= E3.warning2 ? "Open defiance is near the limit." : w.defiance >= E3.warning1 ? "Open defiance is on the record." : "Open defiance is low."];
+  const lines = [w.defiance >= E4.warning2 ? "Open defiance is near the limit." : w.defiance >= E4.warning1 ? "Open defiance is on the record." : "Open defiance is low."];
   if (raw !== null) lines.push(`Defiance: ${raw}.`);
   if (w.warnings.length > 0) lines.push(`${w.warnings.length === 1 ? "One warning" : "Two warnings"} given.`);
   return { lines };
@@ -70998,13 +72251,13 @@ function renderPanel(host, view, on) {
 
 // src/ui/analyze/place.ts
 var MARGIN = 4;
-function placePanel(anchor, size, viewport, gap = 12) {
+function placePanel(anchor, size2, viewport, gap = 12) {
   let left = anchor.x + gap;
   let top = anchor.y + gap;
-  if (left + size.w > viewport.w - MARGIN) left = anchor.x - gap - size.w;
-  if (top + size.h > viewport.h - MARGIN) top = anchor.y - gap - size.h;
-  left = Math.max(MARGIN, Math.min(left, viewport.w - size.w - MARGIN));
-  top = Math.max(MARGIN, Math.min(top, viewport.h - size.h - MARGIN));
+  if (left + size2.w > viewport.w - MARGIN) left = anchor.x - gap - size2.w;
+  if (top + size2.h > viewport.h - MARGIN) top = anchor.y - gap - size2.h;
+  left = Math.max(MARGIN, Math.min(left, viewport.w - size2.w - MARGIN));
+  top = Math.max(MARGIN, Math.min(top, viewport.h - size2.h - MARGIN));
   return { left, top };
 }
 
@@ -71076,7 +72329,7 @@ function attachAnalyzer(root, deps) {
     }
     return false;
   }
-  function render2(analyzingMs, wipe) {
+  function render3(analyzingMs, wipe) {
     if (!panelEl || stack.length === 0) return;
     const env = deps.getEnv();
     const models = stack.map((s) => buildPanelModel(s, env));
@@ -71100,17 +72353,17 @@ function attachAnalyzer(root, deps) {
     const ms = animationMs(mode, seen2.has(top.address), reduced());
     seen2.add(top.address);
     if (ms > 0) {
-      render2(ms, mode === "full");
+      render3(ms, mode === "full");
       animTimer = setTimeout(() => {
         animTimer = null;
-        render2(0, false);
+        render3(0, false);
       }, ms);
     } else {
-      render2(0, false);
+      render3(0, false);
     }
   }
   function rerender() {
-    if (animTimer === null) render2(0, false);
+    if (animTimer === null) render3(0, false);
   }
   function pin() {
     pinned = true;
@@ -71250,7 +72503,7 @@ function attachAnalyzer(root, deps) {
   const onKey2 = (ev) => {
     const e = ev;
     if (!enabled()) return;
-    const typing3 = isTyping(e.target);
+    const typing4 = isTyping(e.target);
     if (e.key === "Escape") {
       if (!panelEl) return;
       e.preventDefault();
@@ -71259,12 +72512,12 @@ function attachAnalyzer(root, deps) {
       return;
     }
     if (e.key === "Backspace") {
-      if (!panelEl || typing3) return;
+      if (!panelEl || typing4) return;
       e.preventDefault();
       pop();
       return;
     }
-    const isHelp = e.key === "F1" || e.key === "?" && !typing3 && !e.ctrlKey && !e.metaKey && !e.altKey;
+    const isHelp = e.key === "F1" || e.key === "?" && !typing4 && !e.ctrlKey && !e.metaKey && !e.altKey;
     if (!isHelp) return;
     const active = document.activeElement;
     const el = active && root.contains(active) ? active.closest(ANALYZE) : null;
@@ -71399,19 +72652,19 @@ function renderChrome(chrome, screen, device, skin, assetUrl) {
   device.style.setProperty("--device-led", String(skin.ledColor));
   device.style.setProperty("--device-accent", String(skin.accent));
   if (skin.kind === "image" && assetUrl && box) {
-    const size = skin.frameSize;
-    device.style.setProperty("--device-ratio", `${size.w} / ${size.h}`);
+    const size2 = skin.frameSize;
+    device.style.setProperty("--device-ratio", `${size2.w} / ${size2.h}`);
     screen.style.position = "absolute";
     screen.style.left = box.left;
     screen.style.top = box.top;
     screen.style.width = box.width;
     screen.style.height = box.height;
-    const frame3 = h("img", { class: "alius-device-frame", alt: "", draggable: "false", src: assetUrl(String(skin.frameImage)) });
-    frame3.addEventListener("error", () => {
+    const frame4 = h("img", { class: "alius-device-frame", alt: "", draggable: "false", src: assetUrl(String(skin.frameImage)) });
+    frame4.addEventListener("error", () => {
       failedFrames.add(String(skin.frameImage));
       renderChrome(chrome, screen, device, BUILT_IN_SKIN);
     });
-    chrome.append(frame3);
+    chrome.append(frame4);
     const overlay = skin.overlay;
     if (overlay) {
       const layer = h("div", { class: "alius-device-overlay" });
@@ -71466,7 +72719,7 @@ function createModalHost(layer) {
 }
 
 // src/ui/memory/fill.ts
-function fillValue(state, build4, settings, part) {
+function fillValue(state, build5, settings, part) {
   const cfg = memoryConfig(state);
   switch (part) {
     case "facts": {
@@ -71479,9 +72732,9 @@ function fillValue(state, build4, settings, part) {
     case "chronicle":
       return String(state.memory.chronicle.length);
     case "memory_tokens":
-      return `${build4.memoryTokens} / ${cfg.memoryTokens}`;
+      return `${build5.memoryTokens} / ${cfg.memoryTokens}`;
     case "directive_tokens":
-      return String(build4.directiveTokens);
+      return String(build5.directiveTokens);
     case "save_size":
       return `${(JSON.stringify(state).length / 1024).toFixed(1)} KB`;
   }
@@ -71494,12 +72747,12 @@ var ROWS = [
   ["directive_tokens", "Directives in the last prompt (tokens)"],
   ["save_size", "Save size"]
 ];
-function renderFill(host, state, build4, settings) {
+function renderFill(host, state, build5, settings) {
   host.replaceChildren(h("div", { class: "alius-memory-fill" }, ...ROWS.map(([part, label2]) => h(
     "div",
     { class: "alius-memory-row" },
     h("span", { class: "alius-field-label" }, label2),
-    h("span", { class: "alius-stat", "data-fill": part, ...analyzeAttrs("glossary:memory_fill", { part }) }, fillValue(state, build4, settings, part))
+    h("span", { class: "alius-stat", "data-fill": part, ...analyzeAttrs("glossary:memory_fill", { part }) }, fillValue(state, build5, settings, part))
   ))));
 }
 
@@ -71727,7 +72980,7 @@ function renderSysTab(host, ctx2) {
       if (err) ctx2.toast("warn", String(err.message ?? "The setting could not be changed."));
       drawDynamic();
     };
-    const pick5 = (name, options2, value, address, label2, commit) => {
+    const pick6 = (name, options2, value, address, label2, commit) => {
       const el = h("select", { name, class: "alius-input" }, ...options2.map(([v, text3]) => h("option", { value: v, selected: v === value }, text3)));
       el.value = value;
       el.addEventListener("change", () => commit(el.value));
@@ -71735,9 +72988,9 @@ function renderSysTab(host, ctx2) {
     };
     const setSetup = (patch) => send("dynamic/set_setup", patch);
     dynamicHost.append(
-      pick5("dynamicHolders", HOLDER_CAPS.map((v) => [String(v), v === 0 ? "0 (off)" : String(v)]), String(setup?.holders ?? 0), "glossary:setting_dynamic_holders", "Holders (this campaign)", (v) => setSetup({ holders: v === "any" ? "any" : Number(v) })),
-      pick5("dynamicPace", PACES.map((v) => [v, v]), setup?.pace ?? "normal", "glossary:setting_dynamic_pace", "Pace (this campaign)", (v) => setSetup({ pace: v })),
-      pick5("dynamicFrequency", FREQUENCIES.map((v) => [v, v]), setup?.frequency ?? "normal", "glossary:setting_dynamic_frequency", "Frequency (this campaign)", (v) => setSetup({ frequency: v }))
+      pick6("dynamicHolders", HOLDER_CAPS.map((v) => [String(v), v === 0 ? "0 (off)" : String(v)]), String(setup?.holders ?? 0), "glossary:setting_dynamic_holders", "Holders (this campaign)", (v) => setSetup({ holders: v === "any" ? "any" : Number(v) })),
+      pick6("dynamicPace", PACES.map((v) => [v, v]), setup?.pace ?? "normal", "glossary:setting_dynamic_pace", "Pace (this campaign)", (v) => setSetup({ pace: v })),
+      pick6("dynamicFrequency", FREQUENCIES.map((v) => [v, v]), setup?.frequency ?? "normal", "glossary:setting_dynamic_frequency", "Frequency (this campaign)", (v) => setSetup({ frequency: v }))
     );
     if (state.dynamic === void 0) return;
     for (const u of state.squad.filter((x) => x.kind === "named" && isLiving(x))) {
@@ -71746,8 +72999,8 @@ function renderSysTab(host, ctx2) {
         "div",
         { class: "alius-dynamic-row", "data-unit": u.id },
         h("span", { class: "alius-field-label" }, u.displayName),
-        pick5(`mayHold:${u.id}`, MAY_HOLD.map((v) => [v, v]), mine.mayHold ?? "auto", "glossary:dynamic_may_hold", "May hold", (v) => send("dynamic/set_unit", { unitId: u.id, mayHold: v })),
-        pick5(`sensitivity:${u.id}`, SENSITIVITIES.map((v) => [v, v]), mine.sensitivity ?? "normal", "glossary:dynamic_sensitivity", "Sensitivity", (v) => send("dynamic/set_unit", { unitId: u.id, sensitivity: v }))
+        pick6(`mayHold:${u.id}`, MAY_HOLD.map((v) => [v, v]), mine.mayHold ?? "auto", "glossary:dynamic_may_hold", "May hold", (v) => send("dynamic/set_unit", { unitId: u.id, mayHold: v })),
+        pick6(`sensitivity:${u.id}`, SENSITIVITIES.map((v) => [v, v]), mine.sensitivity ?? "normal", "glossary:dynamic_sensitivity", "Sensitivity", (v) => send("dynamic/set_unit", { unitId: u.id, sensitivity: v }))
       ));
     }
   };
@@ -72233,8 +73486,8 @@ function createShell(deps) {
       });
       return;
     }
-    const render2 = tabRenderers.get(tab);
-    if (render2) guarded(panel2, `tab ${tab}`, render2);
+    const render3 = tabRenderers.get(tab);
+    if (render3) guarded(panel2, `tab ${tab}`, render3);
     else panel2.append(tabStub(tab));
   }
   function glitch() {
@@ -72523,8 +73776,8 @@ function createShell(deps) {
         api.showScreen("pda");
       }
     },
-    registerHub(render2) {
-      hubRender = render2;
+    registerHub(render3) {
+      hubRender = render3;
       if (isOpen2() && onHubLayer()) renderHub2();
     },
     isDeviceUp,
@@ -72537,12 +73790,12 @@ function createShell(deps) {
       if (up) api.showScreen("pda");
       else if (router.current() === "pda") api.showScreen("hub");
     },
-    registerTab(id, render2) {
-      tabRenderers.set(id, render2);
+    registerTab(id, render3) {
+      tabRenderers.set(id, render3);
       if (isOpen2() && isDeviceUp() && tab === id) renderTab();
     },
-    registerScreen(id, render2, opts) {
-      router.register(id, render2);
+    registerScreen(id, render3, opts) {
+      router.register(id, render3);
       if (opts?.refresh) screenRefresh.set(id, opts.refresh);
       else screenRefresh.delete(id);
       if (isOpen2() && router.current() === id) renderView();
@@ -72620,20 +73873,20 @@ function createShell(deps) {
     }
     if (modals?.isOpen()) return;
     const plain8 = !e.ctrlKey && !e.metaKey && !e.altKey;
-    const typing3 = isEditable2(e.target);
+    const typing4 = isEditable2(e.target);
     const where = router.current();
     if (e.key === "Escape") {
-      if (where === "pda" && !typing3) {
+      if (where === "pda" && !typing4) {
         e.preventDefault();
         api.setDevice(false);
-      } else if (where === "scene" && !typing3 && sceneDeviceUp && root?.querySelector('.alius-scene[data-curtain="open"]') === null) {
+      } else if (where === "scene" && !typing4 && sceneDeviceUp && root?.querySelector('.alius-scene[data-curtain="open"]') === null) {
         e.preventDefault();
         api.setDevice(false);
       }
       return;
     }
     if (e.key === "Tab") {
-      if (!plain8 || e.shiftKey || isControl(e.target) || isInsideOverlay(e.target) || typing3) return;
+      if (!plain8 || e.shiftKey || isControl(e.target) || isInsideOverlay(e.target) || typing4) return;
       if (where === "hub" || where === "pda") {
         e.preventDefault();
         api.setDevice(where === "hub");
@@ -72645,7 +73898,7 @@ function createShell(deps) {
       }
       return;
     }
-    if (/^[0-8]$/.test(e.key) && plain8 && !typing3) {
+    if (/^[0-8]$/.test(e.key) && plain8 && !typing4) {
       const id = e.key === "0" ? "home" : KEY_TABS[Number(e.key) - 1];
       if (where === "pda" || where === "scene" && sceneDeviceUp) selectTab(id);
       else if (where === "hub") api.showTab(id);
@@ -72722,15 +73975,15 @@ function createApp(st2, deps) {
     samples.setMuffle(hooded);
     for (const id of bellsFor(events, state, registries)) sound.play(id);
   }
-  function announceUnlocks(before2, after2) {
-    for (const row4 of unlockedBetween(before2, after2, registries)) toast("info", String(row4.notice), { voice: VOICE_OF.toast });
+  function announceUnlocks(before3, after3) {
+    for (const row4 of unlockedBetween(before3, after3, registries)) toast("info", String(row4.notice), { voice: VOICE_OF.toast });
   }
   function syncBadges() {
     syncLocks();
     shell.setTabBadge("comms", state ? unreadCount(state) : 0);
     shell.setTabBadge("home", state ? unreadNotes(state) : 0);
-    const fresh2 = state ? state.missions.offered.filter((m) => (m.source === "command" || m.source === "story") && !seenOffers.has(m.id)).length : 0;
-    shell.setTabBadge("ops", fresh2);
+    const fresh3 = state ? state.missions.offered.filter((m) => (m.source === "command" || m.source === "story") && !seenOffers.has(m.id)).length : 0;
+    shell.setTabBadge("ops", fresh3);
     shell.setTabBadge("sys", generationBadge(state));
   }
   const seenOffers = /* @__PURE__ */ new Set();
@@ -72893,7 +74146,7 @@ function createApp(st2, deps) {
     st: st2,
     app: sceneApp,
     memory: memory2,
-    restore: (before2, expected) => api.restoreSnapshot(before2, expected),
+    restore: (before3, expected) => api.restoreSnapshot(before3, expected),
     generations,
     registries: () => registries,
     settings: () => getSettings(st2),
@@ -73212,13 +74465,13 @@ function createApp(st2, deps) {
     if (!state) return;
     const preset = presetLocation;
     presetLocation = null;
-    const pick5 = preset !== null ? { locationId: preset, participants: [unitId] } : await pickLocation((o) => shell.modal(o), { registries, state, firstUnitId: unitId, candidates: state.squad });
+    const pick6 = preset !== null ? { locationId: preset, participants: [unitId] } : await pickLocation((o) => shell.modal(o), { registries, state, firstUnitId: unitId, candidates: state.squad });
     if (st2.getActiveChat()?.chatId !== chatId) return;
-    if (!pick5) {
+    if (!pick6) {
       api.dispatch({ type: "calendar/cancel_scene", payload: {} }, { expectChatId: chatId });
       return;
     }
-    await beginScene({ locationId: pick5.locationId, participants: pick5.participants, origin: "activity" });
+    await beginScene({ locationId: pick6.locationId, participants: pick6.participants, origin: "activity" });
   }
   async function offerGroupScene() {
     const chatId = st2.getActiveChat()?.chatId;
@@ -73897,11 +75150,11 @@ function createApp(st2, deps) {
     }
   }
   function startRecap() {
-    const report2 = state?.lastExpedition;
-    if (!report2 || report2.recap !== void 0 || !getSettings(st2).expeditionRecap) return;
-    recapPendingFor = report2.id;
+    const report3 = state?.lastExpedition;
+    if (!report3 || report3.recap !== void 0 || !getSettings(st2).expeditionRecap) return;
+    recapPendingFor = report3.id;
     void expedition.requestRecap().catch((e) => console.warn("[Alius] expedition recap failed", e)).finally(() => {
-      if (recapPendingFor === report2.id) recapPendingFor = null;
+      if (recapPendingFor === report3.id) recapPendingFor = null;
       shell.refresh();
     });
   }
@@ -75033,7 +76286,7 @@ function createApp(st2, deps) {
       personal: {
         onAnswerToken: (offerId, accept2) => void personal.answerToken(offerId, accept2),
         onAnswerWager: (wagerId, accept2) => void personal.answerWager(wagerId, accept2),
-        onPlayWager: (wagerId, pick5) => void personal.playWager(wagerId, pick5),
+        onPlayWager: (wagerId, pick6) => void personal.playWager(wagerId, pick6),
         onAnswerQuestion: (wagerId, text3) => void personal.answerQuestion(wagerId, text3)
       },
       edit: () => pendingEdit,
@@ -75277,7 +76530,7 @@ function createApp(st2, deps) {
       if (!state) {
         return load.kind === "readonly" ? [{ type: "error", code: "read_only", message: "Campaign is read-only." }] : [{ type: "error", code: "no_campaign", message: "No Alius campaign in this chat." }];
       }
-      const before2 = state;
+      const before3 = state;
       const r = dispatch(state, action, registries);
       if (r.state !== state) {
         state = r.state;
@@ -75287,7 +76540,7 @@ function createApp(st2, deps) {
         }
       }
       reportEvents(r.events);
-      if (r.state !== before2) announceUnlocks(before2, r.state);
+      if (r.state !== before3) announceUnlocks(before3, r.state);
       applyContext();
       syncBadges();
       syncSound(r.events);
@@ -75907,10 +77160,10 @@ registerChecks("planRooms", (entry, regs) => {
 });
 registerRefs("deviceSkins", (entry) => {
   const out = [];
-  const bind3 = entry.bindTo ?? {};
-  if (typeof bind3.corporationId === "string") out.push({ registry: "corporations", id: bind3.corporationId, path: "bindTo.corporationId" });
-  if (typeof bind3.traitId === "string") out.push({ registry: "commanderTraits", id: bind3.traitId, path: "bindTo.traitId" });
-  if (typeof bind3.unlockFlag === "string") out.push({ registry: "flags", id: bind3.unlockFlag, path: "bindTo.unlockFlag" });
+  const bind4 = entry.bindTo ?? {};
+  if (typeof bind4.corporationId === "string") out.push({ registry: "corporations", id: bind4.corporationId, path: "bindTo.corporationId" });
+  if (typeof bind4.traitId === "string") out.push({ registry: "commanderTraits", id: bind4.traitId, path: "bindTo.traitId" });
+  if (typeof bind4.unlockFlag === "string") out.push({ registry: "flags", id: bind4.unlockFlag, path: "bindTo.unlockFlag" });
   return out;
 });
 registerChecks("deviceSkins", (entry, regs) => {
@@ -76088,8 +77341,8 @@ function axisKeyProblem(key, regs, allowTag) {
 }
 registerChecks("developmentRules", (entry, regs) => {
   const out = [];
-  const push2 = entry.push ?? [];
-  push2.forEach((p, i) => {
+  const push3 = entry.push ?? [];
+  push3.forEach((p, i) => {
     const problem = typeof p.axis === "string" ? axisKeyProblem(p.axis, regs, true) : "the axis must be a string";
     if (problem) out.push({ path: `push[${i}].axis`, message: problem });
   });

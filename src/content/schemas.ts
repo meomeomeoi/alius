@@ -3108,9 +3108,11 @@ export const CARD_VOICE_KINDS = [
   // P10e-e ruling Q: breath's lines (breath.html `LINES`, card-voice.md §7); an empty row is a style that is silent there (cold)
   'breath.greedy', 'breath.entry', 'breath.now', 'breath.hold', 'breath.early', 'breath.tap', 'breath.low', 'breath.good', 'breath.poor',
   'breath.released', 'breath.stop', 'breath.wake', 'breath.fake', 'breath.again',
+  // P10e-e ruling Q: weight's lines (weight.html `LINES`, card-voice.md §8); her first words are `weight.entry.<contact>` (CARD_VOICE_STATIC)
+  'weight.released', 'weight.slip', 'weight.caught', 'weight.heavy', 'weight.good', 'weight.poor', 'weight.fall', 'weight.stop', 'weight.longer', 'weight.announce',
 ] as const;
-/** The kinds of her static words (card-voice.md §3), keyed by a milestone id, a domain id (or `submit`) and the return's terms. */
-export const CARD_VOICE_STATIC = /^static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)$/;
+/** The kinds of her static words (card-voice.md §3), keyed by a milestone id, a domain id (or `submit`) and the return's terms; and her first words under a weight, by the contact (§8, `weight.entry.<contact>`). */
+export const CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+)$/;
 
 /**
  * P10e-e R7: a table of her lines on the scene's cards (`docs/content/card-voice.md` is the readable copy, approved by the author). Read

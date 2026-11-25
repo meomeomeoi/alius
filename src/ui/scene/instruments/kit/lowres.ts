@@ -13,7 +13,7 @@ export interface LowRes {
 }
 
 /** A context that ignores every call (a page with no canvas support): an instrument still runs, it only draws nothing. */
-function nullContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
+export function nullContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   const target: Record<string | symbol, unknown> = { canvas };
   return new Proxy(target, {
     get: (t, p) => (p in t ? t[p] : () => undefined),

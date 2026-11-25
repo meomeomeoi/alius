@@ -12,7 +12,8 @@ export type VoiceKind =
   | (typeof CARD_VOICE_KINDS)[number]
   | `static.milestone.${string}`
   | `static.claim.${string}`
-  | `static.return.${string}`;
+  | `static.return.${string}`
+  | `weight.entry.${string}`;
 
 /** A run of a filled line: her frame, or the engine's value (`value: true`, drawn in her stronger ink). */
 export interface VoiceRun { text: string; value?: true }

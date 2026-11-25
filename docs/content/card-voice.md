@@ -442,3 +442,81 @@ Her lines in her hand while she holds the commander's breath (P10e-e Task 14, ru
 - **wake:** silent
 - **fake:** silent
 - **again:** silent
+
+## 8. Weight (weight.html, approved by the author, 2026-11-23)
+
+Her lines in her hand while she rests her weight on the commander (P10e-e Task 16, ruling Q; `weight.html`'s `LINES`), by her style. **entry**: her first words as her weight comes down, by the contact (`weight.entry.<contact>`; a contact with no row of its own: none); **announce**: a ritual holder names each shift as she telegraphs it ("shifting." or the side it goes to, "left." / "right.", as the engine's shift really goes); **slip**: the hold broke; **longer**: the first slip of a segment (the engine puts her release off); **caught**: she felt the commander's own shift (the engine decides it at the segment's end, and the line follows it); **heavy**: she leans in heavier (her pressure rose); **released**: she got off at the commander's limit; **good** / **poor**: her verdict when she is done (most of her shifts met level, at most one slip, or not); **fall**: the commander buckled; **stop**: after the stop word. A model-written `press` cue (her own words) may take **heavy**'s place. Neutral is every style with no rows of its own. One line picked as in §2 (no rng draw). No pronoun and no feeling for the commander.
+
+### entry
+- **human_chair:** `hold still. I’m reading.`
+- **footrest:** `stay. you’re a good height.`
+- **straddled:** `comfortable?`
+- **standing_on:** `don’t you dare wobble.`
+- **boot_on_chest:** `stay down.`
+
+### neutral
+- **released:** `enough. you’re shaking.`
+- **slip:** `careful.`
+- **caught:** `I felt that.`
+- **heavy:** `mm. heavier.`
+- **good:** `good. steady.`
+- **poor:** `wobbly.`
+- **fall:** `…really?`
+- **stop:** `okay. up you get.`
+- **longer:** `longer now.`
+
+### affectionate
+- **released:** `okay, okay. I’m off.`
+- **slip:** `easy…`
+- **caught:** `you can ask, you know.`
+- **heavy:** `let me lean a little.`
+- **good:** `you held me so well.`
+- **poor:** `you’ll get stronger.`
+- **fall:** `hey, hey. I’ve got you.`
+- **stop:** `okay. come here.`
+- **longer:** `a little longer.`
+
+### ritual
+- **released:** `released.`
+- **slip:** `again.`
+- **caught:** `that is not yours to take.`
+- **heavy:** `bearing.`
+- **good:** `as it should be.`
+- **poor:** `again tomorrow.`
+- **fall:** `down. noted.`
+- **stop:** `stopping.`
+- **longer:** `longer.`
+- **announce:** `shifting.` · `left.` · `right.`
+
+### playful
+- **released:** `fine, you win. this time.`
+- **slip:** `oops~`
+- **caught:** `cheater~`
+- **heavy:** `boop. heavier.`
+- **good:** `boring. you didn’t fall once.`
+- **poor:** `you fell for every one.`
+- **fall:** `timber!`
+- **stop:** `fine, fine. up.`
+- **longer:** `ooh, overtime.`
+
+### clinical
+- **released:** `limit reached. noted.`
+- **slip:** `noted.`
+- **caught:** `unauthorised shift. noted.`
+- **heavy:** `load increased.`
+- **good:** `acceptable variance.`
+- **poor:** `reaction time: poor.`
+- **fall:** `failure point reached.`
+- **stop:** `session ended.`
+- **longer:** `extending.`
+
+### cruel
+- **released:** `barely. get up.`
+- **slip:** `pathetic.`
+- **caught:** `did I say you could move?`
+- **heavy:** `heavier.`
+- **good:** `adequate.`
+- **poor:** `useless.`
+- **fall:** `get up. we’re not done.`
+- **stop:** `fine.`
+- **longer:** `longer. you earned it.`
