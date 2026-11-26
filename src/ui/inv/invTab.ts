@@ -8,7 +8,7 @@ import { unitStats } from '../../engine/combat/stats';
 import type { CampaignState, ItemInstance } from '../../engine/state/types';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h, type Child } from '../dom';
-import { handOf } from '../../engine/hand';
+import { herHand } from '../stage/look';
 import { notesFor } from '../../engine/notes';
 import { renderNote } from '../notes/note';
 
@@ -81,7 +81,7 @@ export function renderInvTab(host: HTMLElement, ctx: InvTabCtx): void {
     const gearNotes = notesFor(state, 'gear');
     if (gearNotes.length > 0) {
       host.append(h('section', { class: 'alius-section alius-gear-notes' }, h('h2', {}, '[ NOTES IN YOUR GEAR ]'), ...gearNotes.map((n) => renderNote({
-        text: n.text, unitName: state.squad.find((u) => u.id === n.unitId)?.displayName ?? n.unitId, hand: handOf(state, reg, n.unitId), read: n.read === true,
+        text: n.text, unitName: state.squad.find((u) => u.id === n.unitId)?.displayName ?? n.unitId, hand: herHand(state, reg, n.unitId), read: n.read === true,
         ...(ctx.onReadNote ? { onRead: () => ctx.onReadNote!(n.id) } : {}), analyze: 'glossary:hand_note',
       }))));
     }

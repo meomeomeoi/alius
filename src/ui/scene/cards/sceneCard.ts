@@ -7,7 +7,7 @@
  * are given `look: 'scene'`; without it their DOM is today's.
  */
 import type { Entry, Registries } from '../../../content/types';
-import { handOf } from '../../../engine/hand';
+import { herHand } from '../../stage/look';
 import type { CampaignState } from '../../../engine/state/types';
 import { analyzeAttrs } from '../../analyze/mark';
 import { h, type Child } from '../../dom';
@@ -23,10 +23,10 @@ export interface HerLook {
   hand: Entry | null;
 }
 
-/** Her look on a card: her display name, `unitAccent` and her hand (`handOf`). */
+/** Her look on a card: her display name, `unitAccent` and her hand (`herHand`). */
 export function herLook(state: CampaignState, reg: Registries, unitId: string): HerLook {
   const unit = state.squad.find((u) => u.id === unitId);
-  return { unitId, name: unit?.displayName ?? unitId, accent: unitAccent(unitId), hand: handOf(state, reg, unitId) };
+  return { unitId, name: unit?.displayName ?? unitId, accent: unitAccent(unitId), hand: herHand(state, reg, unitId) };
 }
 
 /** One condition: her line (runs), its dry wording (readable mode) and the analysis address of the line. */

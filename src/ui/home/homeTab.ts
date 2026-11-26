@@ -1,7 +1,7 @@
 import type { Registries } from '../../content/types';
 import { clockText } from '../../engine/calendar';
 import { isLiving } from '../../engine/economy';
-import { handOf } from '../../engine/hand';
+import { herHand } from '../stage/look';
 import { notesFor } from '../../engine/notes';
 import { deviceAccess } from '../../engine/personal/access';
 import { decorOf, pinnedNotes, wallpaperUnit } from '../../engine/personal/decor';
@@ -109,11 +109,11 @@ export function renderHomeTab(host: HTMLElement, ctx: HomeCtx): void {
   const answers = ctx.rule;
   for (const rule of ruleNotesFor(state)) notes.push(renderRuleNote(state, reg, rule, answers, { motion: !motionReduced(settings) }));
   for (const p of pinnedNotes(state, reg)) {
-    for (const line of p.lines) notes.push(renderNote({ text: line, unitName: nameOf(state, p.unitId), hand: handOf(state, reg, p.unitId), read: true, analyze: 'glossary:hand_note' }));
+    for (const line of p.lines) notes.push(renderNote({ text: line, unitName: nameOf(state, p.unitId), hand: herHand(state, reg, p.unitId), read: true, analyze: 'glossary:hand_note' }));
   }
   for (const n of [...notesFor(state, 'quarters'), ...notesFor(state, 'door')]) {
     notes.push(renderNote({
-      text: n.text, unitName: nameOf(state, n.unitId), hand: handOf(state, reg, n.unitId), read: n.read === true, onRead: () => ctx.onReadNote(n.id), analyze: 'glossary:hand_note',
+      text: n.text, unitName: nameOf(state, n.unitId), hand: herHand(state, reg, n.unitId), read: n.read === true, onRead: () => ctx.onReadNote(n.id), analyze: 'glossary:hand_note',
     }));
   }
 

@@ -10,7 +10,8 @@ import { h } from '../dom';
 import { VOICE_OF } from '../voice/sources';
 import { renderVoiceCard, unitAccent } from '../voice/voiceCard';
 import { practiceOf } from '../../engine/dynamic/profile';
-import { handFamily, handOf, handScale } from '../../engine/hand';
+import { handFamily, handScale } from '../../engine/hand';
+import { herHand } from '../stage/look';
 import type { SampleSound } from '../sound/samples';
 import { cancelCall, currentCall, startCall, CALL_SOUNDS, type CallOutcome } from '../scene/instruments/call/call';
 import { voiceLine } from '../scene/cards/voice';
@@ -134,7 +135,7 @@ function drawSceneCall(host: HTMLElement, state: CampaignState, reg: Registries,
   // state, so once this moment has gone (its teardown at 3.3 s) the next redraw draws the call again, as an unanswered card would stay (review M5)
   if (now !== null && now.id === call!.id) return;
   if (now !== null) cancelCall();
-  const hand = handOf(state, reg, unit!.id);
+  const hand = herHand(state, reg, unit!.id);
   const style = practiceOf(state, reg, unit!.id)?.style.primary;
   const name = plainDraft(wanted.name);
   void handlers.samples?.preload?.([...CALL_SOUNDS.soft, CALL_SOUNDS.fan, ...CALL_SOUNDS.place])?.catch(() => undefined);

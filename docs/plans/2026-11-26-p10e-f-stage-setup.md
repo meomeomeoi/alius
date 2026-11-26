@@ -142,17 +142,17 @@ Everything is saved as files in her own expressions folder.
   - `unitAccent(unitId)` keeps its signature and returns `stageLookOf(id)?.accent` first.
   - CSS variables on `.alius-sprite`: `--alius-sprite-scale` (default 1), `--alius-sprite-dx`, `--alius-sprite-dy` (default 0, in fractions of her height). They multiply and offset whatever the crowd rules set; the bottom anchoring of two or more women is kept.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `herHand`:
     - with `unit.hand` set → that hand, whatever `stage.json` says;
     - without it and with a `stage.json` hand → the card's;
     - with an unknown `stage.json` hand → `handOf`'s hash;
   - `unitAccent` with an override → the override; without → the hash, as before;
   - `drawSprites` with a stand `{ scale: 1.2, x: 0.05, y: -0.1 }` writes the three variables on her `.alius-sprite`; a woman without a look gets none.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** The CSS applies the variables as one transform on the sprite's inner box so the panorama slot and the speaker's scale still compose.
-- [ ] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS. The layout fixtures carry no look, so nothing moves.
-- [ ] **Step 5: Commit** `feat(P10e-f): her stand, face, hand and accent from her folder`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** The CSS applies the variables as one transform on the sprite's inner box so the panorama slot and the speaker's scale still compose.
+- [x] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS. The layout fixtures carry no look, so nothing moves.
+- [x] **Step 5: Commit** `feat(P10e-f): her stand, face, hand and accent from her folder`
 
 ## Chunk f2: SYS › STAGE
 

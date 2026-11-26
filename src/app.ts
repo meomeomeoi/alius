@@ -147,7 +147,8 @@ import { pickSkin } from './ui/device/skins';
 import { createSound, type SoundId } from './ui/sound/sound';
 import { createSamples } from './ui/sound/samples';
 import { createArtSlots, type ArtSlots } from './ui/scene/art';
-import { loadStageFolders, type StageFolder } from './ui/stage/load';
+import { loadStageFolders, type StageFolder, type StageSetup } from './ui/stage/load';
+import { setStageLooks } from './ui/stage/look';
 import { renderHub } from './ui/hub/hubScreen';
 import { endSlotBlock } from './ui/hub/model';
 import { renderMapTab } from './ui/map/mapTab';
@@ -334,6 +335,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     const mine = ++stageLoads;
     const had = stageFolders.size > 0;
     if (had) { stageFolders = new Map(); rebuildArt(); } // nothing of another campaign's squad while the new one loads
+    setStageLooks(new Map()); // her look is keyed by unit id, and ids repeat across campaigns
     const read = units.length === 0 ? new Map<string, StageFolder>() : await loadStageFolders(st, units).catch((e) => {
       console.warn('[Alius] stage: the stage folders could not be read', e);
       return new Map<string, StageFolder>();
@@ -341,6 +343,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     if (mine !== stageLoads) return; // a newer load (a chat switch, a refresh) owns the result
     stageFolders = read;
     rebuildArt();
+    const looks = new Map<string, StageSetup>();
+    for (const u of units) { const setup = read.get(u.cardRef!)?.setup; if (setup) looks.set(u.id, setup); }
+    setStageLooks(looks); // P10e-f: her stand, hand and accent (the face is read by the art slots)
     if (force || had || read.size > 0) shell.refresh();
   }
   let load: LoadResult = { kind: 'none' };
@@ -2933,6 +2938,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
           generations.clearSnapshots(); // a revert snapshot belongs to one campaign
           staging.reset(); // P15a: a hold's clock, inputs and cue pool belong to one chat
           resetDynamicSection(); // P15: an exit card left open in a dossier belongs to one chat (the key repeats across campaigns)
+          setStageLooks(new Map()); // P10e-f: her look is keyed by unit id (ids repeat across campaigns); openCampaign reads the new squad's
+          stageLoadedFor = null;
           openCampaign();
           staging.resume();
           shell.refresh();

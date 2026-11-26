@@ -45878,6 +45878,39 @@ function herPickView(state, reg) {
   return index2 === null ? null : { index: index2, name: state.squad.find((u) => u.id === o.unitId)?.displayName ?? o.unitId };
 }
 
+// src/engine/hand.ts
+function handOf(state, reg, unitId) {
+  const unit5 = state.squad.find((u) => u.id === unitId);
+  if (!unit5 || unit5.kind !== "named") return null;
+  const chosen = unit5.hand === void 0 ? void 0 : reg.handFonts.get(unit5.hand);
+  if (chosen) return chosen;
+  const all = [...reg.handFonts.values()];
+  return all.length === 0 ? null : all[fnv1a3(unitId) % all.length];
+}
+var handFamily = (hand) => String(hand.family);
+function handScale(hand) {
+  const s = hand?.scale;
+  return typeof s === "number" && Number.isFinite(s) && s > 0 ? s : 1;
+}
+
+// src/ui/stage/look.ts
+var looks = /* @__PURE__ */ new Map();
+function setStageLooks(map) {
+  looks = new Map(map);
+}
+function stageLookOf(unitId) {
+  return looks.get(unitId) ?? null;
+}
+function herHand(state, reg, unitId) {
+  const unit5 = state.squad.find((u) => u.id === unitId);
+  if (!unit5 || unit5.kind !== "named") return null;
+  const chosen = unit5.hand === void 0 ? void 0 : reg.handFonts.get(unit5.hand);
+  if (chosen) return chosen;
+  const card2 = stageLookOf(unitId)?.hand;
+  const fromCard = card2 === void 0 ? void 0 : reg.handFonts.get(card2);
+  return fromCard ?? handOf(state, reg, unitId);
+}
+
 // src/ui/fx.ts
 var SVG_NS = "http://www.w3.org/2000/svg";
 var fxSeq = 0;
@@ -45906,7 +45939,7 @@ function cssUrl(path) {
 
 // src/ui/voice/voiceCard.ts
 var UNIT_ACCENTS = ["#ff9ec7", "#ffb86b", "#8fd6ff", "#b6e88a", "#d0a8ff", "#7ee7d0"];
-var unitAccent = (unitId) => UNIT_ACCENTS[fnv1a3(unitId) % UNIT_ACCENTS.length];
+var unitAccent = (unitId) => stageLookOf(unitId)?.accent ?? UNIT_ACCENTS[fnv1a3(unitId) % UNIT_ACCENTS.length];
 function redacted(text3, ranges) {
   const parts2 = [];
   let cursor = 0;
@@ -47733,21 +47766,6 @@ function gistRuns(gist) {
   return runs;
 }
 
-// src/engine/hand.ts
-function handOf(state, reg, unitId) {
-  const unit5 = state.squad.find((u) => u.id === unitId);
-  if (!unit5 || unit5.kind !== "named") return null;
-  const chosen = unit5.hand === void 0 ? void 0 : reg.handFonts.get(unit5.hand);
-  if (chosen) return chosen;
-  const all = [...reg.handFonts.values()];
-  return all.length === 0 ? null : all[fnv1a3(unitId) % all.length];
-}
-var handFamily = (hand) => String(hand.family);
-function handScale(hand) {
-  const s = hand?.scale;
-  return typeof s === "number" && Number.isFinite(s) && s > 0 ? s : 1;
-}
-
 // src/ui/notes/note.ts
 function setHand(el, hand) {
   if (!hand) return;
@@ -47781,7 +47799,7 @@ function renderNote(o) {
 // src/ui/scene/cards/sceneCard.ts
 function herLook(state, reg, unitId) {
   const unit5 = state.squad.find((u) => u.id === unitId);
-  return { unitId, name: unit5?.displayName ?? unitId, accent: unitAccent(unitId), hand: handOf(state, reg, unitId) };
+  return { unitId, name: unit5?.displayName ?? unitId, accent: unitAccent(unitId), hand: herHand(state, reg, unitId) };
 }
 function runsOf(runs) {
   if (typeof runs === "string") return [runs];
@@ -49827,7 +49845,7 @@ function renderInvTab(host, ctx2) {
       host.append(h("section", { class: "alius-section alius-gear-notes" }, h("h2", {}, "[ NOTES IN YOUR GEAR ]"), ...gearNotes.map((n) => renderNote({
         text: n.text,
         unitName: state.squad.find((u) => u.id === n.unitId)?.displayName ?? n.unitId,
-        hand: handOf(state, reg, n.unitId),
+        hand: herHand(state, reg, n.unitId),
         read: n.read === true,
         ...ctx2.onReadNote ? { onRead: () => ctx2.onReadNote(n.id) } : {},
         analyze: "glossary:hand_note"
@@ -61702,13 +61720,13 @@ function quartersNotes(state, reg, ctx2) {
   const cards = notesFor(state, "quarters").map((n) => renderNote({
     text: n.text,
     unitName: unitName2(state, n.unitId),
-    hand: handOf(state, reg, n.unitId),
+    hand: herHand(state, reg, n.unitId),
     read: n.read === true,
     ...ctx2.onReadNote ? { onRead: () => ctx2.onReadNote(n.id) } : {},
     analyze: "glossary:hand_note"
   }));
   for (const p of pinnedNotes(state, reg)) {
-    for (const line3 of p.lines) cards.push(renderNote({ text: line3, unitName: unitName2(state, p.unitId), hand: handOf(state, reg, p.unitId), read: true, analyze: "glossary:hand_note" }));
+    for (const line3 of p.lines) cards.push(renderNote({ text: line3, unitName: unitName2(state, p.unitId), hand: herHand(state, reg, p.unitId), read: true, analyze: "glossary:hand_note" }));
   }
   return cards;
 }
@@ -63907,7 +63925,7 @@ function renderRuleNote(state, reg, rule, on, opts) {
     h("p", { class: "alius-note-body" }, rule.text),
     h("p", { class: "alius-note-sign" }, `\u2014 ${name}`)
   );
-  setHand(note, unit5 ? handOf(state, reg, unit5.id) : null);
+  setHand(note, unit5 ? herHand(state, reg, unit5.id) : null);
   if (rule.status === "active") note.append(h("p", { class: "alius-note-sign alius-note-sign-commander" }, `\u2014 ${state.commander.name}`));
   if (broken2) {
     note.classList.add("is-torn");
@@ -65360,13 +65378,13 @@ function renderHomeTab(host, ctx2) {
   const answers2 = ctx2.rule;
   for (const rule of ruleNotesFor(state)) notes.push(renderRuleNote(state, reg, rule, answers2, { motion: !motionReduced(settings) }));
   for (const p of pinnedNotes(state, reg)) {
-    for (const line3 of p.lines) notes.push(renderNote({ text: line3, unitName: nameOf22(state, p.unitId), hand: handOf(state, reg, p.unitId), read: true, analyze: "glossary:hand_note" }));
+    for (const line3 of p.lines) notes.push(renderNote({ text: line3, unitName: nameOf22(state, p.unitId), hand: herHand(state, reg, p.unitId), read: true, analyze: "glossary:hand_note" }));
   }
   for (const n of [...notesFor(state, "quarters"), ...notesFor(state, "door")]) {
     notes.push(renderNote({
       text: n.text,
       unitName: nameOf22(state, n.unitId),
-      hand: handOf(state, reg, n.unitId),
+      hand: herHand(state, reg, n.unitId),
       read: n.read === true,
       onRead: () => ctx2.onReadNote(n.id),
       analyze: "glossary:hand_note"
@@ -79266,7 +79284,7 @@ function drawSceneCall(host, state, reg, pick12, handlers2) {
   }
   if (now !== null && now.id === call2.id) return;
   if (now !== null) cancelCall();
-  const hand = handOf(state, reg, unit5.id);
+  const hand = herHand(state, reg, unit5.id);
   const style = practiceOf(state, reg, unit5.id)?.style.primary;
   const name = plainDraft(wanted2.name);
   void handlers2.samples?.preload?.([...CALL_SOUNDS.soft, CALL_SOUNDS.fan, ...CALL_SOUNDS.place])?.catch(() => void 0);
@@ -80649,6 +80667,13 @@ function renderSceneScreen(host, ctx2) {
       const img2 = h("img", { alt: u.displayName, class: "alius-sprite-img" });
       const el = h("div", { class: `alius-sprite ${slots[i].cls}${u.cardRef && u.cardRef === speakerAvatar ? " is-speaking" : ""}`, "data-unit": u.id }, img2);
       el.style.setProperty("--alius-sprite-x", `${slots[i].x}cqh`);
+      const stand = stageLookOf(u.id)?.stand;
+      if (stand !== void 0) {
+        el.classList.add("alius-has-stand");
+        el.style.setProperty("--alius-sprite-scale", String(stand.scale));
+        el.style.setProperty("--alius-sprite-dx", String(stand.x));
+        el.style.setProperty("--alius-sprite-dy", String(stand.y));
+      }
       return el;
     }));
     spriteHost.replaceChildren(pano);
@@ -81249,7 +81274,7 @@ function renderSceneScreen(host, ctx2) {
       art: art2,
       her: (unitId) => {
         const s = state();
-        const hand = handOf(s, registries, unitId);
+        const hand = herHand(s, registries, unitId);
         return {
           unitId,
           name: unitOf13(unitId)?.displayName ?? unitId,
@@ -84893,6 +84918,7 @@ function createApp(st3, deps) {
       stageFolders = /* @__PURE__ */ new Map();
       rebuildArt();
     }
+    setStageLooks(/* @__PURE__ */ new Map());
     const read2 = units.length === 0 ? /* @__PURE__ */ new Map() : await loadStageFolders(st3, units).catch((e) => {
       console.warn("[Alius] stage: the stage folders could not be read", e);
       return /* @__PURE__ */ new Map();
@@ -84900,6 +84926,12 @@ function createApp(st3, deps) {
     if (mine !== stageLoads) return;
     stageFolders = read2;
     rebuildArt();
+    const looks2 = /* @__PURE__ */ new Map();
+    for (const u of units) {
+      const setup2 = read2.get(u.cardRef)?.setup;
+      if (setup2) looks2.set(u.id, setup2);
+    }
+    setStageLooks(looks2);
     if (force || had || read2.size > 0) shell.refresh();
   }
   let load = { kind: "none" };
@@ -87500,6 +87532,8 @@ function createApp(st3, deps) {
           generations.clearSnapshots();
           staging.reset();
           resetDynamicSection();
+          setStageLooks(/* @__PURE__ */ new Map());
+          stageLoadedFor = null;
           openCampaign();
           staging.resume();
           shell.refresh();

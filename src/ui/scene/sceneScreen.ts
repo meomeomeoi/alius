@@ -1,7 +1,8 @@
 import type { Registries } from '../../content/types';
 import type { SampleSound } from '../sound/samples';
 import { createArtSlots, type ArtSlots } from './art';
-import { handFamily, handOf, handScale } from '../../engine/hand';
+import { handFamily, handScale } from '../../engine/hand';
+import { herHand, stageLookOf } from '../stage/look';
 import { physicsStyleOf } from '../../engine/physics/style';
 import { syncInstruments, unmountInstruments } from './instruments';
 import type { InstrumentEnv } from './instruments/types';
@@ -401,6 +402,13 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       const img = h('img', { alt: u.displayName, class: 'alius-sprite-img' });
       const el = h('div', { class: `alius-sprite ${slots[i].cls}${u.cardRef && u.cardRef === speakerAvatar ? ' is-speaking' : ''}`, 'data-unit': u.id }, img);
       el.style.setProperty('--alius-sprite-x', `${slots[i].x}cqh`);
+      const stand = stageLookOf(u.id)?.stand; // P10e-f: how she stands, from her stage folder (none = today's placement)
+      if (stand !== undefined) {
+        el.classList.add('alius-has-stand');
+        el.style.setProperty('--alius-sprite-scale', String(stand.scale));
+        el.style.setProperty('--alius-sprite-dx', String(stand.x));
+        el.style.setProperty('--alius-sprite-dy', String(stand.y));
+      }
       return el;
     }));
     spriteHost.replaceChildren(pano);
@@ -982,7 +990,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       art,
       her: (unitId) => {
         const s = state()!;
-        const hand = handOf(s, registries, unitId);
+        const hand = herHand(s, registries, unitId);
         return {
           unitId, name: unitOf(unitId)?.displayName ?? unitId, accent: unitAccent(unitId), hand: hand ? handFamily(hand) : '', handScale: handScale(hand),
           style: String(physicsStyleOf(s, unitId, registries).primary),

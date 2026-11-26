@@ -1,4 +1,5 @@
 import { fnv1a } from '../../engine/hub';
+import { stageLookOf } from '../stage/look';
 import { h, type Child } from '../dom';
 import { noise } from '../fx';
 import type { Voice } from './sources';
@@ -24,7 +25,7 @@ export interface VoiceCardOpts {
 export const UNIT_ACCENTS = ['#ff9ec7', '#ffb86b', '#8fd6ff', '#b6e88a', '#d0a8ff', '#7ee7d0'] as const;
 
 /** A unit's accent: a fixed function of her id (P10b may make it data). */
-export const unitAccent = (unitId: string): string => UNIT_ACCENTS[fnv1a(unitId) % UNIT_ACCENTS.length];
+export const unitAccent = (unitId: string): string => stageLookOf(unitId)?.accent ?? UNIT_ACCENTS[fnv1a(unitId) % UNIT_ACCENTS.length]; // P10e-f: her card's accent first
 
 /** The body with the redacted ranges replaced by bars: sorted, clamped, overlapping and empty ranges skipped. */
 function redacted(text: string, ranges: Array<[number, number]>): Child[] {

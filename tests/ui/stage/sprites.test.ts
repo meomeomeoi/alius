@@ -11,6 +11,7 @@ import { renderSceneScreen, type SceneScreen } from '../../../src/ui/scene/scene
 import { resetSceneStage } from '../../../src/ui/scene/stage';
 import { DRAG_HOLD_MS } from '../../../src/ui/scene/stage/look';
 import { PANORAMA_RATIO, panToCentre, panoramaWidth, spriteSlots } from '../../../src/ui/scene/stage/sprites';
+import { setStageLooks } from '../../../src/ui/stage/look';
 import { campaign, errors, loadCore, run } from '../../helpers/world';
 
 let reg: Registries;
@@ -22,6 +23,7 @@ afterEach(() => {
   vi.useRealTimers();
   document.body.innerHTML = '';
   resetSceneStage();
+  setStageLooks(new Map());
 });
 
 describe('where the women stand in room space (A2)', () => {
@@ -107,6 +109,21 @@ describe('the sprites in the scene (A2)', () => {
     expect(t.qa('.alius-sprite').map((e) => ['pos-far-left', 'pos-left', 'pos-right', 'pos-far-right'].find((c) => e.classList.contains(c)))).toEqual(['pos-far-left', 'pos-left', 'pos-right', 'pos-far-right']);
     expect(t.q('.alius-layer-sprites').dataset.crowd).toBe('true');
     expect(setup([ANN, BEA, CAT], [msg(0)]).q('.alius-layer-sprites').dataset.crowd).toBeUndefined();
+  });
+});
+
+describe('how she stands, from her stage folder (P10e-f)', () => {
+  it('her stand writes the three variables on her sprite; a woman without a look gets none', () => {
+    setStageLooks(new Map([[ANN, { stand: { scale: 1.2, x: 0.05, y: -0.1 } }]]));
+    const t = setup([ANN, BEA], [msg(0)]);
+    const ann = t.q(`.alius-sprite[data-unit="${ANN}"]`);
+    expect(ann.style.getPropertyValue('--alius-sprite-scale')).toBe('1.2');
+    expect(ann.style.getPropertyValue('--alius-sprite-dx')).toBe('0.05');
+    expect(ann.style.getPropertyValue('--alius-sprite-dy')).toBe('-0.1');
+    expect(ann.classList.contains('alius-has-stand')).toBe(true);
+    const bea = t.q(`.alius-sprite[data-unit="${BEA}"]`);
+    for (const v of ['--alius-sprite-scale', '--alius-sprite-dx', '--alius-sprite-dy']) expect(bea.style.getPropertyValue(v)).toBe('');
+    expect(bea.classList.contains('alius-has-stand')).toBe(false);
   });
 });
 

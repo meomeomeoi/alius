@@ -1,5 +1,5 @@
 import type { Registries } from '../../content/types';
-import { handOf } from '../../engine/hand';
+import { herHand } from '../stage/look';
 import type { CampaignState, Rule } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
@@ -32,7 +32,7 @@ export function renderRuleNote(state: CampaignState, reg: Registries, rule: Rule
     h('p', { class: 'alius-note-body' }, rule.text),
     h('p', { class: 'alius-note-sign' }, `— ${name}`),
   );
-  setHand(note, unit ? handOf(state, reg, unit.id) : null);
+  setHand(note, unit ? herHand(state, reg, unit.id) : null);
   if (rule.status === 'active') note.append(h('p', { class: 'alius-note-sign alius-note-sign-commander' }, `— ${state.commander.name}`));
   if (broken) {
     note.classList.add('is-torn');

@@ -6,7 +6,7 @@ import type { Whereabout } from '../../engine/hub';
 import type { CampaignState, Unit } from '../../engine/state/types';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
-import { handOf } from '../../engine/hand';
+import { herHand } from '../stage/look';
 import { notesFor } from '../../engine/notes';
 import { pinnedNotes } from '../../engine/personal/decor';
 import { renderNote } from '../notes/note';
@@ -134,11 +134,11 @@ const unitName = (state: CampaignState, id: string): string => state.squad.find(
 /** The quarters notes (newest first, each with [GOT IT]) and the pinned notes of units with device access 2 (already read: they stay up). */
 function quartersNotes(state: CampaignState, reg: Registries, ctx: HubCtx): HTMLElement[] {
   const cards = notesFor(state, 'quarters').map((n) => renderNote({
-    text: n.text, unitName: unitName(state, n.unitId), hand: handOf(state, reg, n.unitId), read: n.read === true,
+    text: n.text, unitName: unitName(state, n.unitId), hand: herHand(state, reg, n.unitId), read: n.read === true,
     ...(ctx.onReadNote ? { onRead: () => ctx.onReadNote!(n.id) } : {}), analyze: 'glossary:hand_note',
   }));
   for (const p of pinnedNotes(state, reg)) {
-    for (const line of p.lines) cards.push(renderNote({ text: line, unitName: unitName(state, p.unitId), hand: handOf(state, reg, p.unitId), read: true, analyze: 'glossary:hand_note' }));
+    for (const line of p.lines) cards.push(renderNote({ text: line, unitName: unitName(state, p.unitId), hand: herHand(state, reg, p.unitId), read: true, analyze: 'glossary:hand_note' }));
   }
   return cards;
 }

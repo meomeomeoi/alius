@@ -127,6 +127,17 @@
   object-fit: contain;
 }
 
+/* P10e-f: how she stands, from her stage folder: one transform on the picture inside her slot, so the panorama slot, the crowd's
+   heights and the speaker's light still compose. The offsets are fractions of her drawn height (the slot's), the scale grows
+   from her feet; set only for a woman with a stand (no art = today's placement). */
+#alius-shell .alius-sprite { --alius-sprite-h: 110vh; }
+#alius-shell .alius-sprite:not(:only-child) { --alius-sprite-h: 97vh; }
+#alius-shell .alius-layer-sprites[data-crowd="true"] .alius-sprite { --alius-sprite-h: 82vh; }
+#alius-shell .alius-sprite.alius-has-stand .alius-sprite-img {
+  transform-origin: 50% 100%;
+  transform: translate(calc(var(--alius-sprite-dx, 0) * var(--alius-sprite-h)), calc(var(--alius-sprite-dy, 0) * var(--alius-sprite-h))) scale(var(--alius-sprite-scale, 1));
+}
+
 /* the scene's light tints the sprite, so a daylight sprite does not glow in a dark room */
 #alius-shell .alius-scene[data-light="evening"] .alius-sprite { --alius-sprite-light: 0.9; --alius-sprite-tint: sepia(0.2) saturate(1.05); }
 #alius-shell .alius-scene[data-light="night"] .alius-sprite { --alius-sprite-light: 0.62; --alius-sprite-tint: saturate(0.8) hue-rotate(-8deg); }
