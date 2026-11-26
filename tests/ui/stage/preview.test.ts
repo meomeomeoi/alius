@@ -41,6 +41,13 @@ import '../../../src/engine/actions/physics';
 import '../../../src/engine/actions/life';
 import '../../../src/engine/actions/dynamic';
 import '../../../src/engine/actions/practice';
+import type { SceneScreenCtx } from '../../../src/ui/scene/sceneScreen';
+// the scene screen's context is watched (the real one still runs): the preview passes the staging the way play does
+const seen: { ctx: SceneScreenCtx | null } = { ctx: null };
+vi.mock('../../../src/ui/scene/sceneScreen', async (orig) => {
+  const real = await orig<typeof import('../../../src/ui/scene/sceneScreen')>();
+  return { ...real, renderSceneScreen: (host: HTMLElement, ctx: SceneScreenCtx) => { seen.ctx = ctx; return real.renderSceneScreen(host, ctx); } };
+});
 import type { Registries } from '../../../src/content/types';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { registerCoreProviders } from '../../../src/analysis/providers/core';
@@ -114,6 +121,15 @@ describe('the preview in the mini-game (P10e-f Task 8)', () => {
     expect(o).not.toBeNull();
     expect(o!.querySelector('[data-instrument="weight"]')).not.toBeNull();
     expect(o!.querySelector<HTMLImageElement>('.alius-weight-over')?.getAttribute('src')).toBe('blob:test/over');
+  });
+
+  it('its physics forwards every staging method, as play does (relief, decide, service, spit, restart, getUp, found, woke, script)', async () => {
+    const { ctx, her } = setup();
+    seen.ctx = null;
+    openPreview(her.id, 'over', { url: 'blob:test/over', sidecar: {} }, ctx);
+    await flush();
+    const p = seen.ctx!.physics as unknown as Record<string, unknown>;
+    for (const m of ['relief', 'decide', 'service', 'spit', 'restart', 'getUp', 'found', 'woke', 'script']) expect(typeof p[m], m).toBe('function');
   });
 
   it('her sprite is her real one (the app adapter\'s URL)', async () => {

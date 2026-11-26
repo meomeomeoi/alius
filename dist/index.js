@@ -85683,6 +85683,15 @@ function openPreview(unitId, key, draft, ctx2) {
       outcome: (runId) => s.outcome(runId),
       keystroke: () => s.keystroke(),
       typed: (chars, beat) => s.typed(chars, beat),
+      relief: (r) => s.relief(r),
+      decide: (k, ref) => s.decide(k, ref),
+      service: (runId, v) => s.service(runId, v),
+      spit: (b, a) => s.spit(b, a),
+      restart: () => s.restart(),
+      getUp: () => s.getUp(),
+      found: (finderId) => s.found(finderId),
+      woke: () => s.woke(),
+      script: (phase) => s.script(phase),
       onTap: () => {
         act({ type: "physics/signal", payload: {} });
       }
@@ -88100,6 +88109,16 @@ function createApp(st3, deps) {
           outcome: (runId) => staging.outcome(runId),
           keystroke: () => staging.keystroke(),
           typed: (chars, beat) => staging.typed(chars, beat),
+          // P10e-e: the instruments' optional calls (a relief, her decision, a service verdict, spitting, a restarted clock, getting up, being found, her waking, her script)
+          relief: (r) => staging.relief(r),
+          decide: (k, ref) => staging.decide(k, ref),
+          service: (runId, v) => staging.service(runId, v),
+          spit: (b, a) => staging.spit(b, a),
+          restart: () => staging.restart(),
+          getUp: () => staging.getUp(),
+          found: (finderId) => staging.found(finderId),
+          woke: () => staging.woke(),
+          script: (phase) => staging.script(phase),
           onTap: () => {
             const failed2 = api.dispatch({ type: "physics/signal", payload: {} }, { expectChatId: st3.getActiveChat()?.chatId }).find((e) => e.type === "error");
             if (failed2) toast("warn", String(failed2.message ?? failed2.code));

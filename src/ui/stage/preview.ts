@@ -250,6 +250,8 @@ export function openPreview(unitId: string, key: SlotKey, draft: SlotDraft, ctx:
       input: (i, o) => s.input(i, o), endSegment: () => s.endSegment(), stopWord: () => s.stopWord(), skip: (x) => s.skip(x), stimulus: (w, k, d) => s.stimulus(w, k, d),
       answer: (r, l, c) => s.answer(r, l, c), act: (k) => s.act(k), finishCounted: (n) => s.finishCounted(n), cue: (k, b) => s.cue(k, b), voiced: (k, b) => s.voiced(k, b),
       beat: () => s.beat(), clock: () => s.clock(), outcome: (runId) => s.outcome(runId), keystroke: () => s.keystroke(), typed: (chars, beat) => s.typed(chars, beat),
+      relief: (r) => s.relief(r), decide: (k, ref) => s.decide(k, ref), service: (runId, v) => s.service(runId, v), spit: (b, a) => s.spit(b, a), restart: () => s.restart(),
+      getUp: () => s.getUp(), found: (finderId) => s.found(finderId), woke: () => s.woke(), script: (phase) => s.script(phase),
       onTap: () => { act({ type: 'physics/signal', payload: {} }); },
     },
   });
