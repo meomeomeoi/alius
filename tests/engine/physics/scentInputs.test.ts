@@ -122,24 +122,32 @@ describe('fix round 1, Ruling U: the gauge follows the head down', () => {
     expect(OWNS.decision).toContain('scatter');
   });
 
-  it('a full head ("lost in her") never breaks a limit, collapses or blacks out: she lets go (a fill is not the air)', async () => {
+  it('fix round 2, Ruling U: the gauge never ends a headed hold: a full head and one word short of it give no outcome, for every holder', async () => {
     const { registerHoldsUntil } = await import('../../../src/engine/physics/style');
     for (const holds of ['blackout', 'limit', 'signal'] as const) {
-      resetPhysicsHooks();
-      registerHoldsUntil(() => holds);
-      let s = underFeet();
-      s = run(s, reg, { type: 'physics/next_segment', payload: { runId: s.scene!.physics!.id } }).state;
-      const p = s.scene!.physics!;
-      const beats = p.segment.plan!.beats.length;
-      const head = resolveEnvOf(s, reg, p).head!;
-      // the head fills to overflow in the segment (the engine's gauge full)
-      const inputs: SegmentInput[] = Array.from({ length: beats }, (_, b) => input(b, 'inhale', { amount: b === 0 ? head : 0 }));
-      const r = run(s, reg, { type: 'physics/segment_end', payload: { runId: p.id, segment: p.segment.n, inputs } });
-      expect(errors(r.events)).toEqual([]);
-      const outcome = r.events.find((e) => e.type === 'physics_outcome') as { result?: string } | undefined;
-      expect(['limit_broken', 'collapse', 'blackout'], holds).not.toContain(outcome?.result);
-      expect(outcome?.result ?? 'running', holds).toMatch(/released|running/); // a blackout holder holds on to a fill as a limit holder (effectiveHoldsUntil: blackout is the air's)
+      for (const short of [0, 1]) {
+        resetPhysicsHooks();
+        registerHoldsUntil(() => holds);
+        let s = underFeet();
+        s = run(s, reg, { type: 'physics/next_segment', payload: { runId: s.scene!.physics!.id } }).state;
+        const p = s.scene!.physics!;
+        const beats = p.segment.plan!.beats.length;
+        const head = resolveEnvOf(s, reg, p).head!;
+        const inputs: SegmentInput[] = Array.from({ length: beats }, (_, b) => input(b, 'inhale', { amount: b === 0 ? head - short : 0 }));
+        const r = run(s, reg, { type: 'physics/segment_end', payload: { runId: p.id, segment: p.segment.n, inputs } });
+        expect(errors(r.events)).toEqual([]);
+        expect(r.events.filter((e) => e.type === 'physics_outcome'), `${holds} ${short}`).toEqual([]);
+        expect(r.state.scene!.physics, `${holds} ${short}`).toBeDefined();
+        expect(r.state.scene!.physics!.headed).toBe(true);
+      }
     }
+  });
+
+  it('fix round 2, N2: the second physics\' view does not carry the main run\'s headed', async () => {
+    const { coreRun } = await import('../../../src/engine/physics/run');
+    const p = { ...mk(), headed: true as const, second: { physicsId: 'her_activity', gauge: 0, capacity: 100, streak: 0 } };
+    expect(coreRun(p, 'second')!.headed).toBeUndefined();
+    expect(coreRun(p, 'main')!.headed).toBe(true);
   });
 
   it('an overflow followed by its recovery (half the head scattered) leaves the hold running, the gauge where the head is', async () => {

@@ -170,8 +170,8 @@ export interface PhysicsRun {
    */
   tally?: Record<string, number>;
   /**
-   * Ruling U: the scent instrument reports the head as the gauge (a decision segment held an `inhale`): a full head is "lost in her", which
-   * the commander recovers from, so a spent gauge is never a broken limit, a collapse or a blackout (she lets go). Absent: as before.
+   * Ruling U: the scent instrument reports the head as the gauge (a decision segment held an `inhale`): the prototype never ends on the head
+   * ("lost in her" is a play state), so the fill never ends the hold at a boundary (`releaseOf` answers `continue`). Absent: as before.
    */
   headed?: true;
 }

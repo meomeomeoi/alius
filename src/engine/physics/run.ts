@@ -246,16 +246,18 @@ export const coreRun = (run: PhysicsRun, which: 'main' | 'second'): PhysicsRun |
 function withoutLeak(view: PhysicsRun, second: NonNullable<PhysicsRun['second']>): PhysicsRun {
   if (second.seal === undefined) delete view.seal;
   if (second.pressure === undefined) delete view.pressure;
+  delete view.headed; // Ruling U: the main run's head is not the second's gauge
   delete view.second;
   return view;
 }
 
 function releaseOf(state: CampaignState, reg: Registries, run: PhysicsRun): Release {
+  // Ruling U: the scent instrument's head is the gauge, and the prototype never ends on it (a full head is "lost in her", a play state): a
+  // headed run never ends at a boundary by its fill, neither full nor at her letting-go thresholds. It ends by the tap, the stop word, the
+  // contact or item taken away, or her activity's duration.
+  if (run.headed) return 'continue';
   const left = remainingOf(reg, run);
   const holds: HoldsUntil = effectiveHoldsUntil(state, reg, run.holderId);
-  // Ruling U: the scent instrument's head is the gauge; a full head is "lost in her", recoverable: never a broken limit or a collapse (a
-  // fill is not the air, so no blackout either): at a boundary that finds it full she lets go
-  if (left <= 0 && run.headed) return 'release';
   if (left <= 0) return holds === 'blackout' && isAir(reg, run.physicsId) ? 'blackout' : holds === 'signal' ? 'collapse' : 'limit_broken';
   if (holds === 'signal' && left <= TUNING.physics.releaseAt.signal) return 'release';
   if (holds === 'limit' && left <= TUNING.physics.releaseAt.limit) return 'release';
