@@ -1198,6 +1198,13 @@ Also settled: her verdict (R27) averages only the crafts she judged (bouts in `c
 
 ---
 
+**Chunk e10 closed (2026-11-26).** Tasks 27–28 by one implementer, one review of the chunk, one fix round, re-review clean. Rulings:
+- **R clarified:** Ruling R applies only to a style the prototype has no lines for; where a prototype gives cold its own lines (`shoe.html`), they ship verbatim.
+- **AC:** a spit is decided when it is made (`physics/spit`, one draw at input time, as Ruling Y) with the prototype's chances 0.75 / 0.3 / 0.06, which win over R31's engine chances; a seen spit is `physics_caught`.
+- **AD:** wipes and a spit made while the engine holds the run are not lost: wipes arrive on the next segment's first beat, a spit is decided at once.
+
+Also settled: `scene.shoeDone { runId, holderId }` is written only when a shoe run ends `checked`, and a verdict after the run's end must match it (a stopped run is refused); `physics/service` may end an open shoe run as `checked`; `InstrumentEnv.drawable` and `redraw` hand a missing or broken picture to the physics card at once; a wipe counts only below the lowest dirt reached. For the author (e12): the digest's wording for a caught spit and `wipes` absent from the tally, `wetDay` the same in every campaign (and a drilled wet day with P14c off), a real footwear field (the tastes reader can never name heels; heels are read from her likes by keyword), the DIRTS prose, the spit's chance while held taken from the attention the UI sends, the TDD order, two stale reasons in `shoe/fidelity.json` (fixed at e12).
+
 ## Chunk e11: gulp (`gulp.html`)
 
 **Memory check (e11):** nothing new in this chunk. What `watersports` remembers is P17b's (strong compromat; a mark seen by others). Spills and the cleaning are bookkeeping; a slip of her discipline is remembered as her discipline does.
