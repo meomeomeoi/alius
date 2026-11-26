@@ -175,6 +175,37 @@ describe('her page: sprites, stand, hand, accent (P10e-f)', () => {
     expect(sheet.isConnected).toBe(false);
   });
 
+  it('a second close while the question is open asks nothing more (one question at a time)', async () => {
+    let answer: (v: string) => void = () => {};
+    const { sheet, close, modal } = await open({ modal: () => new Promise<string>((r) => { answer = r; }) });
+    sheet.querySelectorAll<HTMLButtonElement>('.alius-stage-hand')[1].click();
+    close();
+    close();
+    sheet.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await flush();
+    expect(modal).toHaveBeenCalledTimes(1);
+    answer('keep');
+    await flush();
+    close(); // answered: the next close asks again
+    await flush();
+    expect(modal).toHaveBeenCalledTimes(2);
+  });
+
+  it('closing with only a slot\'s draft unsaved asks too (her look unchanged)', async () => {
+    const { sheet, close, modal } = await open({ modal: async () => 'keep' });
+    sheet.querySelector<HTMLButtonElement>('li[data-slot="over"] [data-action="edit"]')!.click();
+    await flush();
+    const ed = sheet.querySelector<HTMLElement>('.alius-stage-slot-editor[data-slot="over"]')!;
+    const x = ed.querySelector<HTMLInputElement>('[data-proto="overX"]')!;
+    x.value = '0.6';
+    x.dispatchEvent(new Event('input', { bubbles: true }));
+    close();
+    await flush();
+    expect(modal).toHaveBeenCalledTimes(1);
+    expect(String((modal.mock.calls[0]![0] as { body: string }).body)).toContain('A slot has');
+    expect(sheet.isConnected).toBe(true);
+  });
+
   it('in the shell it stands before the toast host (a toast it raises lies over it) and before the modal layer', async () => {
     const shell = document.createElement('div');
     shell.id = 'alius-shell';

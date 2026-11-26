@@ -24,6 +24,14 @@ function vexFolder(extra: Record<string, Blob> = {}): FakeStAdapter {
 afterEach(() => vi.restoreAllMocks());
 
 describe('her stage folder (P10e-f)', () => {
+  it('a second picture type of one slot is ignored: the first one listed is the slot', async () => {
+    const folders = await loadStageFolders(vexFolder({ 'over.png': img() }), units); // listed after over.webp
+    const vex = folders.get('Vex.png')!;
+    expect([...vex.slots.keys()]).toEqual(['over', 'legs_astride.left']);
+    expect(vex.slots.get('over')!.url).toMatch(/\/over\.webp\?/);
+    expect(vex.slots.get('over')!.sidecar).toEqual({ fit: { height: 1.04, x: 0.5 } });
+  });
+
   it('a slot of her folder resolves with its sidecar and the folder URL', async () => {
     const folders = await loadStageFolders(vexFolder(), units);
     const vex = folders.get('Vex.png')!;

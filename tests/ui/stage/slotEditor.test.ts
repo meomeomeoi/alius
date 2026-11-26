@@ -241,6 +241,29 @@ describe('a slot: save and remove', () => {
   });
 });
 
+describe('a slot after a chat switch (the fix wave)', () => {
+  it('a save that lands after a chat switch says nothing and touches nothing of the editor', async () => {
+    const { ctx, her, st } = await setup();
+    let land: (v: boolean) => void = () => {};
+    const gate = new Promise<boolean>((r) => { land = r; });
+    st.uploadStageFile = () => gate; // every upload waits for the same answer
+    const onStored = vi.fn();
+    const host = document.createElement('div');
+    document.body.append(host);
+    openSlotEditor(host, her.id, 'over', { ...ctx, draft: { url: null, sidecar: {} }, onStored });
+    const root = host.querySelector<HTMLElement>('.alius-stage-slot-editor')!;
+    choose(root.querySelector<HTMLInputElement>('input[type=file]')!, png(1));
+    root.querySelector<HTMLButtonElement>('[data-action=save]')!.click();
+    await flush();
+    st.switchChat({ chatId: 'c2', isGroup: true, groupId: 'g2' });
+    land(true);
+    await flush();
+    expect(ctx.toast).not.toHaveBeenCalled();
+    expect(onStored).not.toHaveBeenCalled();
+    expect(root.querySelector('.alius-stage-status')!.textContent).toBe('unsaved'); // never redrawn after the switch
+  });
+});
+
 describe('a slot of art.json saved on her page (the fix wave)', () => {
   /** Her art comes from the manifest alone: `over` at `ext://content/local/art/ann/over.webp`, with a fit. */
   async function manifestSetup() {

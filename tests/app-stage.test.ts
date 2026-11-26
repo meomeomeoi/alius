@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 /**
  * P10e-f fix wave: the app's stage load (`loadStage` in `src/app.ts`). A woman who joins during play gets her folder's look without a chat
- * reopen.
+ * reopen; an older load finishing after a newer one is dropped; a chat switch clears the looks of the campaign left (unit ids repeat).
  */
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { createApp } from '../src/app';
 import { loadPacks } from '../src/content/loader';
+import { createCampaign } from '../src/engine/state/create';
 import type { SetupResult } from '../src/engine/setup';
 import { FakeStAdapter } from '../src/st/fake';
 import { stageLookOf } from '../src/ui/stage/look';
@@ -74,5 +75,49 @@ describe('the app\'s stage load (P10e-f fix wave)', () => {
     const zed = app.current().state!.squad.find((u) => u.cardRef === 'zed.png')!;
     expect(stageLookOf(zed.id)?.accent).toBe('#222222');
     expect(lists).toBeGreaterThan(0);
+  });
+
+  it('an older load that finishes after a newer one is dropped', async () => {
+    const { st, app, rhea } = await boot();
+    const real = st.fetchStageJson.bind(st);
+    const gates: Array<() => void> = [];
+    let n = 0;
+    // the first reload is held until the second one has finished; each reads the folder as it was when it started
+    st.fetchStageJson = async (avatar, file) => {
+      const mine = ++n;
+      const answer = await real(avatar, file);
+      if (mine === 1) await new Promise<void>((r) => gates.push(r));
+      return answer;
+    };
+    const older = app.refreshStage();
+    st.stageFiles.set('rhea.png', new Map([['stage.json', json({ accent: '#333333' })]]));
+    await app.refreshStage();
+    expect(stageLookOf(rhea.id)?.accent).toBe('#333333');
+    gates.forEach((g) => g());
+    await older;
+    await flush();
+    expect(stageLookOf(rhea.id)?.accent).toBe('#333333'); // not the older load's #111111
+  });
+
+  it('a chat switch clears the looks of the campaign left, before anything of the new chat is read', async () => {
+    const { st, rhea } = await boot();
+    st.listStageFiles = async () => [];
+    st.fetchStageJson = async () => null;
+    st.switchChat({ chatId: 'elsewhere', isGroup: true, groupId: 'gz' }); // no campaign there
+    expect(stageLookOf(rhea.id)).toBeNull();
+    await flush();
+    expect(stageLookOf(rhea.id)).toBeNull();
+  });
+
+  it('a chat switch into a campaign that cannot be opened (read-only) clears the looks too', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { st, app, rhea } = await boot();
+    const broken = JSON.parse(JSON.stringify(createCampaign({ seed: 1, commanderName: 'Vale' })));
+    broken.scene = { id: 's1', participants: null, startIndex: 0 }; // throws on resume: the load stops before the stage is read
+    st.metadataByChat.set('bad', { alius: broken });
+    st.switchChat({ chatId: 'bad', isGroup: true, groupId: 'gb' });
+    expect(app.current().load.kind).toBe('readonly');
+    expect(stageLookOf(rhea.id)).toBeNull();
+    vi.restoreAllMocks();
   });
 });
