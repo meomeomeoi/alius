@@ -17,19 +17,21 @@ export async function buildLayoutPage() {
   const out = resolve(root, '.superpowers/layout');
   mkdirSync(out, { recursive: true });
   await build({ entryPoints: [resolve(root, 'tests/layout/entry.ts')], outfile: resolve(out, 'entry.js'), bundle: true, format: 'esm', platform: 'browser', target: 'es2022', logLevel: 'error' });
+  await build({ entryPoints: [resolve(root, 'tests/layout/stage.ts')], outfile: resolve(out, 'stage.js'), bundle: true, format: 'esm', platform: 'browser', target: 'es2022', logLevel: 'error' }); // P10e-f: her page in SYS › STAGE
   await build({ entryPoints: [resolve(root, 'tests/layout/mkstate.ts')], outfile: resolve(out, 'mkstate.mjs'), bundle: true, format: 'esm', platform: 'node', target: 'es2022', logLevel: 'error', external: ['node:*'] });
   execFileSync('node', [resolve(out, 'mkstate.mjs'), resolve(out, 'states.json')], { cwd: root, stdio: 'inherit' });
 }
 
 // the page: the real stylesheet, the bundled entry
-const page = '<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="/style.css"><style>html,body{margin:0;height:100%;background:#000}</style></head><body><script type="module" src="/.superpowers/layout/entry.js"></script></body></html>';
+const page = (entry = 'entry') => '<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="/style.css"><style>html,body{margin:0;height:100%;background:#000}</style></head><body><script type="module" src="/.superpowers/layout/' + entry + '.js"></script></body></html>';
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.png': 'image/png', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.woff': 'font/woff', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg' };
 
 /** Serves the repo root (and `/page.html`) on 127.0.0.1; resolves to `{ port, close }`. */
 export async function serveRoot() {
   const server = createServer((req, res) => {
     const url = decodeURIComponent((req.url || '/').split('?')[0]);
-    if (url === '/page.html') { res.writeHead(200, { 'content-type': 'text/html' }); res.end(page); return; }
+    // the stage fixtures (P10e-f) are her page in SYS › STAGE, not the scene: their own entry
+    if (url === '/page.html') { res.writeHead(200, { 'content-type': 'text/html' }); res.end(page(/[?&]fixture=stage/.test(req.url || '') ? 'stage' : 'entry')); return; }
     const file = join(root, url);
     if (!file.startsWith(root) || !existsSync(file) || statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }
     res.writeHead(200, { 'content-type': types[extname(file)] || 'application/octet-stream' });
@@ -51,7 +53,7 @@ export async function openLayout(browser, port, fixture, [width, height], query 
   p.on('pageerror', (e) => errors.push(e.message));
   await p.goto(`http://127.0.0.1:${port}/page.html?fixture=${fixture}${query}`);
   await p.waitForSelector('body[data-ready="true"]', { timeout: 20000 });
-  try { await p.waitForSelector('.alius-scene[data-backdrop="image"]', { timeout: 8000 }); } catch { /* the layout test reports it */ }
+  if (!fixture.startsWith('stage')) try { await p.waitForSelector('.alius-scene[data-backdrop="image"]', { timeout: 8000 }); } catch { /* the layout test reports it */ }
   await p.waitForTimeout(700);
   return { page: p, errors };
 }

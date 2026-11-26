@@ -6662,9 +6662,10 @@
 }
 
 #alius-shell .alius-stage-slot-row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
-#alius-shell .alius-stage-slot-side { display: grid; gap: 6px; min-width: 300px; flex: 1; }
-#alius-shell .alius-stage-fit { display: grid; gap: 6px; }
-#alius-shell .alius-stage-fit select { max-width: 100%; }
+/* the side never grows past the sheet: a long option of a select (the legs astride's "the picture is") is cut, not the sheet's width */
+#alius-shell .alius-stage-slot-side { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; flex: 1 1 300px; min-width: 0; max-width: 100%; }
+#alius-shell .alius-stage-fit { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+#alius-shell .alius-stage-fit select { max-width: 100%; min-width: 0; }
 
 /* the slot's preview frame: the picture whole (16:10, the stage's shape); the zone marker's canvas lies over it */
 #alius-shell .alius-stage-slot-frame {

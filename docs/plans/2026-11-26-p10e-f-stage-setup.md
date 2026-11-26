@@ -326,7 +326,11 @@ Everything is saved as files in her own expressions folder.
   - test an Expressions override with a subfolder;
   - switch the chat with the sheet open.
 
-- [ ] **Step 1:** add the two fixtures and run `npm run test:layout` → PASS.
-- [ ] **Step 2:** `npm test`, `npm run typecheck` → PASS.
-- [ ] **Step 3:** write the docs and the manual test; tick this plan's boxes.
-- [ ] **Step 4: Commit** `docs(P10e-f): chunk f closed`
+- [x] **Step 1:** add the two fixtures and run `npm run test:layout` → PASS.
+- [x] **Step 2:** `npm test`, `npm run typecheck` → PASS.
+- [x] **Step 3:** write the docs and the manual test; tick this plan's boxes.
+- [x] **Step 4: Commit** `docs(P10e-f): chunk f closed`
+
+**As built (f5):**
+- **8b (before Task 9):** the app's scene `physics` did not forward the staging controller's optional methods (`relief`, `decide`, `service`, `spit`, `restart`, `getUp`, `found`, `woke`, `script`): dead in play since chunk (e). Forwarded in `src/app.ts` and `src/ui/stage/preview.ts`; pinned by `tests/app-physicsForward.test.ts` and a case in `tests/ui/stage/preview.test.ts`. No seeded or golden test moved.
+- The fixtures `stage` and `stageslot` have their own page entry, `tests/layout/stage.ts` (the page serves it for a `stage*` fixture; `openLayout` does not wait for a backdrop there), instead of a branch of `tests/layout/entry.ts`. `stageslot` opens every slot's editor in turn. The fixture found the slot editor's side panel widening past the sheet at 1280×800 (a long option of the legs astride's select); fixed in `css/75-stage-setup.css` (`minmax(0, 1fr)` columns).

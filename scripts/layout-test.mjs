@@ -593,10 +593,64 @@ for (const size of SIZES) {
     }
   }
 }
+
+// P10e-f Task 9: her page in SYS › STAGE (`stage`) and every slot's editor on it (`stageslot`): the sheet fills the viewport, the page does not
+// overflow, every control lies inside the sheet's width and, scrolled into view, inside the viewport and on top (nothing covers it), and no
+// element of the sheet stands at or above the analysis panel's z 10
+const STAGE_FIXTURES = ['stage', 'stageslot'];
+/** Runs in the page: what is wrong with the sheet's controls under `scope` (scrolling each one into view). */
+function stageControls(scope) {
+  const out = [];
+  const sheet = document.querySelector('.alius-stage-sheet');
+  if (!sheet) return ['no sheet'];
+  const sb = sheet.getBoundingClientRect();
+  if (Math.abs(sb.left) > 1 || Math.abs(sb.top) > 1 || Math.abs(sb.width - innerWidth) > 1 || Math.abs(sb.height - innerHeight) > 1) out.push(`the sheet is ${JSON.stringify(sb)}, not the viewport`);
+  const host = document.querySelector(scope);
+  if (!host) return [...out, `nothing at ${scope}`];
+  for (const el of [sheet, ...sheet.querySelectorAll('*')]) {
+    const z = parseInt(getComputedStyle(el).zIndex, 10);
+    if (Number.isFinite(z) && z >= 10) out.push(`${el.className || el.tagName} has z-index ${z} (the analysis panel is 10)`);
+  }
+  const controls = [...host.querySelectorAll('button, select, input:not([type="file"]), label.alius-field')].filter((el) => { const b = el.getBoundingClientRect(); return b.width > 0 && b.height > 0 && getComputedStyle(el).visibility !== 'hidden'; });
+  if (controls.length === 0) out.push(`no control under ${scope}`);
+  for (const el of controls) {
+    const name = `${el.tagName.toLowerCase()}${el.dataset.action ? `[${el.dataset.action}]` : el.name ? `[${el.name}]` : ''} "${(el.textContent || '').trim().slice(0, 30)}"`;
+    let b = el.getBoundingClientRect();
+    if (b.left < sb.left - 1 || b.right > sb.right + 1) { out.push(`${name} lies past the sheet's sides: ${Math.round(b.left)}..${Math.round(b.right)}`); continue; }
+    el.scrollIntoView({ block: 'center', inline: 'nearest' });
+    b = el.getBoundingClientRect();
+    if (b.left < -1 || b.top < -1 || b.right > innerWidth + 1 || b.bottom > innerHeight + 1) { out.push(`${name} is off-screen even scrolled into view: ${JSON.stringify(b)}`); continue; }
+    const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+    if (!(hit === el || el.contains(hit) || hit?.contains(el) && hit.tagName === 'LABEL')) out.push(`${name} is covered by ${hit?.className || hit?.tagName}`);
+  }
+  return out;
+}
+for (const size of SIZES) {
+  for (const fixture of STAGE_FIXTURES) {
+    const { page: p, errors } = await openLayout(browser, port, fixture, size);
+    for (const e of errors) fail(size, fixture, `page error: ${e}`);
+    const over = await p.evaluate(() => ({ w: document.documentElement.scrollWidth, h: document.documentElement.scrollHeight }));
+    if (over.w > size[0] + 1 || over.h > size[1] + 1) fail(size, fixture, `the page overflows: ${over.w}x${over.h}`);
+    if (fixture === 'stage') for (const f of await p.evaluate(stageControls, '.alius-stage-sheet')) fail(size, fixture, f);
+    if (fixture === 'stageslot') {
+      const keys = await p.evaluate(() => [...document.querySelectorAll('.alius-stage-slot-list li[data-slot]')].map((li) => li.dataset.slot));
+      if (keys.length === 0) fail(size, fixture, 'no slot listed');
+      for (const key of keys) {
+        await p.evaluate((k) => document.querySelector(`.alius-stage-slot-list li[data-slot="${k}"] [data-action="edit"]`).click(), key);
+        await p.waitForTimeout(150);
+        if (!(await p.$(`.alius-stage-slot-editor[data-slot="${key}"]`))) { fail(size, fixture, `${key}: EDIT opened no editor`); continue; }
+        for (const f of await p.evaluate(stageControls, `.alius-stage-slot-editor[data-slot="${key}"]`)) fail(size, fixture, `${key}: ${f}`);
+        if (SHOTS) { mkdirSync(SHOTS, { recursive: true }); await p.screenshot({ path: join(SHOTS, `${fixture}-${key}-${size[0]}x${size[1]}.png`) }); }
+      }
+    }
+    if (SHOTS && fixture === 'stage') { mkdirSync(SHOTS, { recursive: true }); await p.screenshot({ path: join(SHOTS, `${fixture}-${size[0]}x${size[1]}.png`) }); }
+    await p.close();
+  }
+}
 await browser.close();
 server.close();
 if (failures.length > 0) {
   console.error(`layout test: ${failures.length} failure(s)\n  ${failures.join('\n  ')}`);
   process.exit(1);
 }
-console.log(`layout test: ${SIZES.length} sizes x ${FIXTURES.length} fixtures, all good`);
+console.log(`layout test: ${SIZES.length} sizes x ${FIXTURES.length + STAGE_FIXTURES.length} fixtures, all good`);

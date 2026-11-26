@@ -173,3 +173,14 @@ P10e chunk (e) (the mini-game instruments, her cards and the posture call) is im
 - **The view of a contact:** `occlusionOf(contact)` (`kind`: `slit` / `gap` / `lift` / `slide` / `seat` / `squeeze` / `wedge`; `side`, `angle`; `view`: `ceiling` / `room` / `her_face`), `contactFaceOf` (`up` / `down`), `herLegsOf` (`src/engine/physics/occlusion.ts`); the ceiling and the floor of a scene are `ceilingOf` / `floorOf` (`src/engine/backdrops.ts`, P10c surfaces, else the backdrop). Her activity's views (`her`, `legs`, `floor`, `wall`, blind) are read from the blocking by field (`viewOf` in `activity/frame.ts`: a `frame` backdrop of the commander's anchor, a `feet_floor` pose shot, a `pov_corner` place, an item on the eyes).
 - **Sound:** `SampleSound.setWorldDull(f)` (the world bus's lowpass, the body bus never dull), `setMuffle` / `setNight` / `setSensory` follow the shell; your sensory and muffle states can drive them.
 - **Art slots:** `ART_SLOT_IDS` (`over`, `over_explicit`, `face_close`, `legs_seated.rest|foot_raised`, `legs_astride`, `sole_close`, `feet_floor`, `shoe_close.*`, `shoe_sole.*`) and the per-unit face point `ArtSlots.face(unitId)`; chunk (f) builds their setup.
+
+## Interfaces already provided by P10e (f) (implemented — use, do not rebuild)
+
+P10e chunk (f) (the stage setup) is implemented; see **Implemented as: chunk (f)** in `docs/packages/P10e-scene-stage.md` (rulings F1–F10, open items). It is where the author's art for §5 should live.
+
+- **Her stage folder:** `characters/<first segment of her sprite folder>/alius/`, read and written only through `src/st/` (`listStageFiles`, `fetchStageJson`, `uploadStageFile`, `deleteStageFile`, `stageFolder`). A new per-unit picture (a pose shot, a per-unit room override) is a file there named by its key, with its sidecar `<key>.fit.json` (never `<key>.json`); add the key to `SLOT_INFO` (`src/ui/stage/slots.ts`) and to the resolver's keys, and it gets a row, a state, LOAD, SAVE and REMOVE for free.
+- **Resolving:** `createArtSlots(manifest, assetUrl, unitKey, folders)` (`loadStageFolders` → `StageFolder`): her folder first, then `content/local/art/art.json`; a missing picture still falls back.
+- **Her look:** `stageLookOf(unitId)` (stand: scale and offset of her scene sprite; her face point), `herHand`, `unitAccent`; a camera or a pose shot that places her should read the stand, not a constant.
+- **Fit and zones:** a new slot's fit controls are a port of its prototype's panel (`src/ui/stage/fit/`, declared in `src/ui/stage/fidelity.json`); zones use `markZones` (the prototypes' marker).
+- **Checking it:** `openPreview(unitId, key, draft, ctx)` runs the real scene screen on `demoStateFor(instrument, unit, reg, key)`; a new view gets a demo builder in `src/ui/stage/demo.ts` (the layout fixtures share them).
+
