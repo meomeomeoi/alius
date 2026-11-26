@@ -46,6 +46,7 @@ SillyTavern extension (TypeScript). Design docs live in `docs/`.
 - Before extending P7 read its **Non-obvious things to know** (same spec): registry-free readers need mirrored state, new relation join sites must call `applyFirstImpression`, quiet nights, modal order, `aria-disabled`, seeded-RNG shifts.
 - When you finish a package, update its spec (status line and an **Implemented as** section), the status table in `docs/00-overview.md` §9, the interface list in §5.4, and add an **Interfaces already provided by <package>** note to the specs of the packages that depend on it.
 - `npm test` rebuilds `dist/index.js` and `style.css`; commit them with your change.
+- **How often to run the tests** (the full suite is ~750 files and takes 5–6 minutes; most of it is loading modules per file, not the tests). Inside a task run only the tests of what you touch, by file or folder (`npx vitest run tests/ui/stage tests/st/stageFolder.test.ts`: seconds), and `npm run build` before a commit so `dist/index.js` and `style.css` are current. Run the **full** `npm test`, `npm run typecheck` and, where CSS changed, `npm run test:layout` **once at the end of a chunk**, before the push (and again after a merge that touched code). A reviewer runs them once. `npx vitest related` is not a shortcut here: shared modules pull in a third of the suite.
 
 ## Releasing a version
 A *version* (0.1.0, 0.2.0, …) is a whole release, not a package. When the user says a version is ready (and only then):
