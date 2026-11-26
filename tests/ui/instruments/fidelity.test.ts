@@ -189,6 +189,20 @@ describe('the stage setup\'s ports match their prototypes (P10e-f)', () => {
     const failures = await checkFidelity(spec, { registries: reg });
     expect(failures.join('\n\n')).toBe('');
   });
+  it('it covers the zone marker of both prototypes: zoneRadii / zoneAt and the marker\'s handlers', () => {
+    const spec = JSON.parse(readFileSync(STAGE, 'utf8')) as FidelitySpec;
+    const of = (proto: string) => spec.functions.filter((f) => (f.prototype ?? spec.prototype) === proto).map((f) => f.fn);
+    for (const fn of ['zoneRadii', 'zoneAt', 'inEllipse', 'MARK', 'markStart', 'markDown', 'markMove', 'markUp', 'markFinish', 'onWheel', 'drawMarks']) expect(of('her_activity')).toContain(fn);
+    for (const fn of ['zoneRadii', 'zoneAtPic', 'inEllipse', 'toPic', 'MARK', 'markStart', 'markPrompt', 'markDown', 'markMove', 'markUp', 'markFinish', 'onWheel', 'drawMarks']) expect(of('shoe')).toContain(fn);
+  });
+  it('a difference scoped to a module does not excuse the function of the same name in another', async () => {
+    const spec = JSON.parse(readFileSync(STAGE, 'utf8')) as FidelitySpec;
+    const finish = spec.differences.find((d) => d.fn === 'markFinish')!;
+    const moved = { ...spec, differences: spec.differences.map((d) => (d === finish ? { ...d, module: 'src/ui/stage/fit/shoe.ts' } : d)) };
+    const failures = (await checkFidelity(moved, { registries: reg })).join('\n');
+    expect(failures).toMatch(/markFinish \(her_activity\.html.*undeclared/s);
+    expect(failures).toMatch(/markFinish: 1 declared hunk\(s\) no longer/);
+  });
   it('an edited port fails: a "copy the fit" with a changed key, a control with a changed range', async () => {
     const spec = JSON.parse(readFileSync(STAGE, 'utf8')) as FidelitySpec;
     const fn = spec.functions.find((f) => f.fn === 'copyOver')!;

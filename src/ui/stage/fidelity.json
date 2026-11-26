@@ -1,6 +1,6 @@
 {
   "prototype": "weight",
-  "note": "P10e-f chunk f3: the stage setup's ports of the prototypes' panels (src/ui/stage/fit/). Each slot's fit controls are its prototype's panel inputs (`controls`: label, range, step and default, or a select's options), bound by the prototype's own handlers (run over the editor's elements through a `$` that finds `[data-proto=<id>]`; the prototype's page parts the editor does not show are detached stand-ins), and its \"copy the fit\" gives the sidecar (unknown keys such as `slot`, `kind`, `states` are dropped by `sidecarSchema`). Not ported (prototype only): the game, its loaders, the clipboard. Module wiring beyond the listed functions: each panel's `load` (the sidecar into the prototype's `S`, as the slot's instrument reads it), `value`, `ids`, `writes`, and her_activity's split of its one legs JSON into the three pictures' sidecars as `frame.ts` reads them.",
+  "note": "P10e-f chunk f3: the stage setup's ports of the prototypes' panels (src/ui/stage/fit/). Each slot's fit controls are its prototype's panel inputs (`controls`: label, range, step and default, or a select's options), bound by the prototype's own handlers (run over the editor's elements through a `$` that finds `[data-proto=<id>]`; the prototype's page parts the editor does not show are detached stand-ins), and its \"copy the fit\" gives the sidecar (unknown keys such as `slot`, `kind`, `states` are dropped by `sidecarSchema`). The zone marker (Task 7) is foot service's (her_activity.html, for `sole_close`) and shoe.html's (the shoe slots), each in its panel's module; `soleRect` / `shoeRect` are the editor's (the picture drawn whole, `object-fit: contain`, in the slot's frame: no close-up zoom, no camera pan), `SV` is an empty stand-in, and the prototypes' page listeners are `markZones`'s (zones.ts: the left button on the canvas, the pointer's moves and release over the document, the wheel on the canvas; coordinates in the canvas's pixels). Not ported (prototype only): the game, its loaders, the clipboard, the shoe's centre line while setting up. Module wiring beyond the listed functions: each panel's `load` (the sidecar into the prototype's `S`, as the slot's instrument reads it), `value`, `ids`, `writes`, and her_activity's split of its one legs JSON into the three pictures' sidecars as `frame.ts` reads them.",
   "functions": [
     {
       "fn": "bindOver",
@@ -144,6 +144,147 @@
       "fn": "copyFit",
       "module": "src/ui/stage/fit/shoe.ts",
       "prototype": "shoe"
+    },
+    {
+      "fn": "zones",
+      "module": "src/ui/stage/fit/activity.ts",
+      "prototype": "her_activity"
+    },
+    {
+      "fn": "zoneRadii",
+      "module": "src/ui/stage/fit/activity.ts",
+      "prototype": "her_activity"
+    },
+    {
+      "fn": "inEllipse",
+      "module": "src/ui/stage/fit/activity.ts",
+      "prototype": "her_activity"
+    },
+    {
+      "fn": "zoneAt",
+      "module": "src/ui/stage/fit/activity.ts",
+      "prototype": "her_activity"
+    },
+    {
+      "fn": "MARK",
+      "module": "src/ui/stage/fit/activity.ts",
+      "prototype": "her_activity"
+    },
+    {
+      "fn": "markStart",
+      "module": "src/ui/stage/fit/activity.ts",
+      "prototype": "her_activity"
+    },
+    {
+      "fn": "markDown",
+      "module": "src/ui/stage/fit/activity.ts",
+      "prototype": "her_activity"
+    },
+    {
+      "fn": "markMove",
+      "module": "src/ui/stage/fit/activity.ts",
+      "prototype": "her_activity"
+    },
+    {
+      "fn": "markUp",
+      "module": "src/ui/stage/fit/activity.ts",
+      "prototype": "her_activity"
+    },
+    {
+      "fn": "markFinish",
+      "module": "src/ui/stage/fit/activity.ts",
+      "prototype": "her_activity"
+    },
+    {
+      "fn": "onWheel",
+      "module": "src/ui/stage/fit/activity.ts",
+      "prototype": "her_activity",
+      "fragment": {
+        "from": "addEventListener('wheel', (e) => {",
+        "to": "}, { passive: false });"
+      }
+    },
+    {
+      "fn": "drawMarks",
+      "module": "src/ui/stage/fit/activity.ts",
+      "prototype": "her_activity",
+      "fragment": {
+        "from": "if (MARK.on) for (const [kz, p] of Object.entries(MARK.pts))",
+        "to": "if (MARK.on) for (const [kz, p] of Object.entries(MARK.pts))"
+      }
+    },
+    {
+      "fn": "toPic",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    },
+    {
+      "fn": "zoneRadii",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    },
+    {
+      "fn": "inEllipse",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    },
+    {
+      "fn": "zoneAtPic",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    },
+    {
+      "fn": "MARK",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    },
+    {
+      "fn": "markStart",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    },
+    {
+      "fn": "markPrompt",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    },
+    {
+      "fn": "markDown",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    },
+    {
+      "fn": "markMove",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    },
+    {
+      "fn": "markUp",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    },
+    {
+      "fn": "markFinish",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    },
+    {
+      "fn": "onWheel",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe",
+      "fragment": {
+        "from": "addEventListener('wheel', (e) => {",
+        "to": "}, { passive: false });"
+      }
+    },
+    {
+      "fn": "drawMarks",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe",
+      "fragment": {
+        "from": "if (r && (S.debug || MARK.on)) {",
+        "to": "mx.fillText(k, cxp + 10, cyp + 4);"
+      }
     }
   ],
   "tables": [],
@@ -223,6 +364,36 @@
       "fn": "copyFit",
       "reason": "Two changes: no clipboard (the function returns the JSON, which becomes the draft's sidecar), and the zones written are only those marked: the prototype writes the automatic zones (`zonesNow()`) when none are marked, and the instrument reads those itself when a sidecar has none (shoe.ts `fitFrom`), so play is the same while the slot list can tell a marked slot (`zoned`) from a fitted one.",
       "diff": "@@ -9,6 +9,6 @@\n }:{})\n-},zones:S.zones[slotKey()]??zonesNow()\n+},zones:S.zones[slotKey()]\n })\n-navigator.clipboard?.writeText(j).catch(()=>{})\n $(\"#sideNote\").textContent=j\n+return j\n }"
+    },
+    {
+      "fn": "markFinish",
+      "reason": "The prototype also writes its JSON to the clipboard; the editor never touches the clipboard (the zones go into the draft's sidecar through `markZones`).",
+      "diff": "@@ -13,3 +13,2 @@\n })\n-navigator.clipboard?.writeText(j).catch(()=>{})\n $(\"#soleNote\").textContent=j",
+      "module": "src/ui/stage/fit/activity.ts"
+    },
+    {
+      "fn": "onWheel",
+      "reason": "The prototype's top-level wheel listener (on the window, `passive: false`); the port is the handler, which `markZones` attaches to the marker's canvas with `passive: false`.",
+      "diff": "@@ -1,2 +1,2 @@\n-addEventListener(\"wheel\",e=>{\n+function onWheel(e){\n if(!MARK.on)return\n@@ -9,4 +9,2 @@\n }\n-},{\n-passive:false\n-})\n+}",
+      "module": "src/ui/stage/fit/activity.ts"
+    },
+    {
+      "fn": "drawMarks",
+      "reason": "The prototype draws this inline in its render loop; the port wraps it in a function `markZones` calls after each event, on the marker's canvas (no other change).",
+      "diff": "@@ -1 +1,2 @@\n+function drawMarks(mx,r){\n if(MARK.on)for(const[kz,p]of Object.entries(MARK.pts)){\n@@ -12 +13,2 @@\n }\n+}",
+      "module": "src/ui/stage/fit/activity.ts"
+    },
+    {
+      "fn": "onWheel",
+      "reason": "The prototype's top-level wheel listener (on the window, `passive: false`); the port is the handler, which `markZones` attaches to the marker's canvas with `passive: false`.",
+      "diff": "@@ -1,2 +1,2 @@\n-addEventListener(\"wheel\",e=>{\n+function onWheel(e){\n if(!MARK.on)return\n@@ -9,4 +9,2 @@\n }\n-},{\n-passive:false\n-})\n+}",
+      "module": "src/ui/stage/fit/shoe.ts"
+    },
+    {
+      "fn": "drawMarks",
+      "reason": "The prototype draws this inline in its render loop; the port wraps it in a function `markZones` calls after each event, on the marker's canvas (no other change).",
+      "diff": "@@ -1 +1,2 @@\n+function drawMarks(mx,r){\n if(r&&(S.debug||MARK.on)){\n@@ -17 +18,2 @@\n }\n+}",
+      "module": "src/ui/stage/fit/shoe.ts"
     }
   ]
 }

@@ -19824,13 +19824,13 @@ function runningStage(state, reg, unitId) {
 var hasEffect2 = (effects2, type) => effects2.some((e) => e.type === type);
 function sabotagesVotes(state, reg, unitId) {
   if (!dynamicLive(state, reg)) return false;
-  const running3 = runningStage(state, reg, unitId);
-  return running3 !== void 0 && hasEffect2(running3.stage.effects, "vote_sabotage");
+  const running4 = runningStage(state, reg, unitId);
+  return running4 !== void 0 && hasEffect2(running4.stage.effects, "vote_sabotage");
 }
 function slipsOpen(state, reg, unitId) {
-  const running3 = runningStage(state, reg, unitId);
-  const fx2 = running3?.stage.effects.find((e) => e.type === "protocol_slips");
-  return running3 !== void 0 && fx2 !== void 0 && state.day <= running3.startDay + fx2.days;
+  const running4 = runningStage(state, reg, unitId);
+  const fx2 = running4?.stage.effects.find((e) => e.type === "protocol_slips");
+  return running4 !== void 0 && fx2 !== void 0 && state.day <= running4.startDay + fx2.days;
 }
 function commandStruggleOf(state, reg) {
   if (reg !== void 0 && !dynamicLive(state, reg)) return null;
@@ -42356,7 +42356,7 @@ function choosesAgainstHer(state, reg, context, ref, choice) {
 
 // src/loyalty/dilemmaController.ts
 function createDilemmas(deps) {
-  const running3 = /* @__PURE__ */ new Set();
+  const running4 = /* @__PURE__ */ new Set();
   const chatId = () => deps.st.getActiveChat()?.chatId;
   function answer(action, chat) {
     const events = deps.app.dispatch(action, { expectChatId: chat });
@@ -42424,8 +42424,8 @@ function createDilemmas(deps) {
     const first2 = deps.app.current().state?.dilemmas?.open;
     const chat = chatId();
     const key = `${chat ?? ""}:${first2?.id ?? ""}`;
-    if (!first2 || first2.status !== "requested" || first2.context === "scapegoat" || running3.has(key)) return;
-    running3.add(key);
+    if (!first2 || first2.status !== "requested" || first2.context === "scapegoat" || running4.has(key)) return;
+    running4.add(key);
     writing.add(first2.id);
     try {
       const fallback = (id) => void answer({ type: "dilemma/fallback", payload: { requestId: id } }, chat);
@@ -42433,7 +42433,7 @@ function createDilemmas(deps) {
       const out = await deps.generations.generate("dilemma.generate", first2.id);
       if (out.kind === "expired" && chatId() === chat && requestOf2(first2.id)?.status === "requested") fallback(first2.id);
     } finally {
-      running3.delete(key);
+      running4.delete(key);
       writing.delete(first2.id);
     }
   }
@@ -42457,7 +42457,7 @@ function createDilemmas(deps) {
     if (failed2 && failed2.message !== "Stale dilemma answer.") deps.toast("error", String(failed2.message ?? failed2.code));
     return events;
   }
-  return { onRequested, choose: choose2, busy: () => running3.size > 0 };
+  return { onRequested, choose: choose2, busy: () => running4.size > 0 };
 }
 
 // src/discipline/directives.ts
@@ -44866,9 +44866,9 @@ function practiceDirectives(state, reg, present2) {
     out.push({ id: `${PROTOCOL_PREFIX}${unit5.id}`, expiresAfter: "scene", text: plainDraft(`${unit5.displayName} holds the commander to these standing forms of address and conduct: ${forms.join("; ")}. She notices a slip and may remark on it. ${NEVER_NAME}`) });
   }
   for (const unit5 of holdersIn(state, reg, present2)) {
-    const running3 = (state.practices?.punishments ?? []).filter((x) => x.holderId === unit5.id && x.forUnitId === void 0 && x.status === "accepted" && nextCeremonyStep(x) !== void 0);
-    if (running3.length > 0) {
-      const lines4 = running3.map((x) => {
+    const running4 = (state.practices?.punishments ?? []).filter((x) => x.holderId === unit5.id && x.forUnitId === void 0 && x.status === "accepted" && nextCeremonyStep(x) !== void 0);
+    if (running4.length > 0) {
+      const lines4 = running4.map((x) => {
         const hint = String(reg.ceremonySteps.get(nextCeremonyStep(x))?.promptHint ?? "");
         return `${unit5.displayName} is carrying out the punishment she gave the commander as a ceremony, one step at a time: ${phrase(x.summary)}. The next step: ${phrase(hint)}.`;
       });
@@ -63449,7 +63449,7 @@ function worldDirectives(builder, state, reg) {
 // src/world/directorController.ts
 var DAY_ENDED = "The day ended: the engine planned the world.";
 function createDirector(deps) {
-  const running3 = /* @__PURE__ */ new Set();
+  const running4 = /* @__PURE__ */ new Set();
   const chatId = () => deps.st.getActiveChat()?.chatId;
   function answer(action, chat) {
     const events = deps.app.dispatch(action, { expectChatId: chat });
@@ -63498,8 +63498,8 @@ function createDirector(deps) {
     const chat = chatId();
     expireStale(pending4?.id, chat);
     const key = `${chat ?? ""}:${pending4?.id ?? ""}`;
-    if (!state || !pending4 || running3.has(key)) return;
-    running3.add(key);
+    if (!state || !pending4 || running4.has(key)) return;
+    running4.add(key);
     try {
       const settings = deps.settings();
       if (!settings.directorEnabled) {
@@ -63509,7 +63509,7 @@ function createDirector(deps) {
       const out = await deps.generations.generate("director.tick", pending4.id);
       if (out.kind === "failed" && out.reason === "no_profile" && chatId() === chat) answer({ type: "director/fallback", payload: { requestId: pending4.id } }, chat);
     } finally {
-      running3.delete(key);
+      running4.delete(key);
     }
   }
   function useFallback() {
@@ -63520,7 +63520,7 @@ function createDirector(deps) {
     answer({ type: "director/fallback", payload: { requestId: pending4.id } }, chat);
     deps.app.dispatch({ type: "generation/close", payload: { siteId: "director.tick", key: pending4.id, outcome: "kept_fallback" } }, { expectChatId: chat });
   }
-  return { onRequested, useFallback, busy: () => running3.size > 0 };
+  return { onRequested, useFallback, busy: () => running4.size > 0 };
 }
 
 // src/world/expeditionController.ts
@@ -73781,8 +73781,8 @@ function fillPts3(ctx2, pts) {
   ctx2.closePath();
   ctx2.fill();
 }
-function shinFront(W3, H, K2, Ak, o) {
-  const k = [K2[0] * W3, K2[1] * H], a = [Ak[0] * W3, Ak[1] * H];
+function shinFront(W3, H, K3, Ak, o) {
+  const k = [K3[0] * W3, K3[1] * H], a = [Ak[0] * W3, Ak[1] * H];
   const dx = a[0] - k[0], dy = a[1] - k[1], len2 = Math8.hypot(dx, dy) || 1, tx = dx / len2, ty = dy / len2, nx = -ty, ny = tx;
   const outer = o.outer;
   const L6 = [], R11 = [];
@@ -79687,7 +79687,7 @@ function renderPhysicsPanel(host, ctx2) {
   const phys = reg.contactPhysics.get(run.physicsId);
   const interaction = String(phys?.interaction ?? "");
   const realtime = ctx2.settings.physicsRealtime === true;
-  const running3 = run.segment.state === "running" && run.segment.plan !== void 0;
+  const running4 = run.segment.state === "running" && run.segment.plan !== void 0;
   const total2 = run.segment.plan?.beats.length ?? 0;
   const key = `${run.id}|${run.segment.n}`;
   if (pointers.get(host)?.key !== key) pointers.set(host, { key, beat: 0 });
@@ -79699,7 +79699,7 @@ function renderPhysicsPanel(host, ctx2) {
   };
   const stamp = (physics) => analyzeNative(`contactPhysics:${run.physicsId}`, { input: physics });
   const press4 = (c) => {
-    if (!running3) return;
+    if (!running4) return;
     if (realtime) {
       if (c.kind === "wait") return;
       staging.input({ beat: staging.beat(), kind: c.kind });
@@ -79714,8 +79714,8 @@ function renderPhysicsPanel(host, ctx2) {
     }
   };
   const secondPhys = run.second ? reg.contactPhysics.get(run.second.physicsId) : void 0;
-  const owned = running3 ? [...controlsOf(interaction, run), ...run.second && secondPhys ? controlsOf(String(secondPhys.interaction), { ...run, physicsId: run.second.physicsId, ...run.second.seal ? { seal: run.second.seal } : {} }) : []] : [];
-  const controls = running3 ? [...owned.filter((c, i) => owned.findIndex((o) => o.kind === c.kind && o.part === c.part) === i), { kind: "wait", text: "[ WAIT ]" }] : [];
+  const owned = running4 ? [...controlsOf(interaction, run), ...run.second && secondPhys ? controlsOf(String(secondPhys.interaction), { ...run, physicsId: run.second.physicsId, ...run.second.seal ? { seal: run.second.seal } : {} }) : []] : [];
+  const controls = running4 ? [...owned.filter((c, i) => owned.findIndex((o) => o.kind === c.kind && o.part === c.part) === i), { kind: "wait", text: "[ WAIT ]" }] : [];
   const button2 = (c) => btn(ctx2, {
     type: "button",
     class: "alius-btn alius-option alius-physics-input",
@@ -79727,9 +79727,9 @@ function renderPhysicsPanel(host, ctx2) {
   const remaining = remainingOf(reg, run);
   const reduced = motionReduced(ctx2.settings) || ctx2.settings.readableMode;
   const strain2 = 1 - remaining;
-  const tremor = running3 && strain2 >= 0.7 && !reduced;
+  const tremor = running4 && strain2 >= 0.7 && !reduced;
   const tint2 = strain2 >= 0.7 && reduced;
-  const cue = running3 ? run.segment.plan.beats[Math.min(pointer.beat, total2 - 1)]?.cue : void 0;
+  const cue = running4 ? run.segment.plan.beats[Math.min(pointer.beat, total2 - 1)]?.cue : void 0;
   const cueLine = cue !== void 0 ? staging.cue(cue, pointer.beat) : null;
   const gauge = reg.contactPhysics.get(run.physicsId)?.gauge?.kind;
   const label2 = [phys?.label ?? run.physicsId, ...secondPhys ? [secondPhys.label] : []].map((x) => String(x));
@@ -79744,7 +79744,7 @@ function renderPhysicsPanel(host, ctx2) {
   ) : null;
   const heldLine2 = run.segment.state === "held" && !run.marathon?.waiting ? h("p", { class: "alius-physics-held alius-dim", role: "status" }, "She takes her time.") : null;
   const cueEl = cueLine !== null && cueLine !== "" ? h("p", { class: "alius-physics-cue", role: "status" }, cueLine) : null;
-  const beats = running3 && !realtime ? h("div", { class: "alius-physics-beats", "aria-hidden": "true" }, ...Array.from({ length: total2 }, (_, i) => h("span", { class: i < pointer.beat ? "alius-pip alius-pip-done" : "alius-pip" }, i < pointer.beat ? "\u25CF" : "\u25CB"))) : null;
+  const beats = running4 && !realtime ? h("div", { class: "alius-physics-beats", "aria-hidden": "true" }, ...Array.from({ length: total2 }, (_, i) => h("span", { class: i < pointer.beat ? "alius-pip alius-pip-done" : "alius-pip" }, i < pointer.beat ? "\u25CF" : "\u25CB"))) : null;
   const raw = ctx2.settings.showRawValues ? h("p", { class: "alius-physics-raw alius-dim" }, `${gauge ?? "gauge"}: ${Math.round(run.gauge)} / ${run.capacity}`) : null;
   const ways = wayGroups(ctx2, exposedKinds(state, reg));
   const controlEls = [
@@ -80669,12 +80669,12 @@ function renderSceneScreen(host, ctx2) {
       const img2 = h("img", { alt: u.displayName, class: "alius-sprite-img" });
       const el = h("div", { class: `alius-sprite ${slots[i].cls}${u.cardRef && u.cardRef === speakerAvatar ? " is-speaking" : ""}`, "data-unit": u.id }, img2);
       el.style.setProperty("--alius-sprite-x", `${slots[i].x}cqh`);
-      const stand = stageLookOf(u.id)?.stand;
-      if (stand !== void 0) {
+      const stand3 = stageLookOf(u.id)?.stand;
+      if (stand3 !== void 0) {
         el.classList.add("alius-has-stand");
-        el.style.setProperty("--alius-sprite-scale", String(stand.scale));
-        el.style.setProperty("--alius-sprite-dx", String(stand.x));
-        el.style.setProperty("--alius-sprite-dy", String(stand.y));
+        el.style.setProperty("--alius-sprite-scale", String(stand3.scale));
+        el.style.setProperty("--alius-sprite-dx", String(stand3.x));
+        el.style.setProperty("--alius-sprite-dy", String(stand3.y));
       }
       return el;
     }));
@@ -84000,7 +84000,7 @@ function renderLookEditor(host, draft, opts) {
   });
   placeSprite3();
   placeDot();
-  const stand = h(
+  const stand3 = h(
     "section",
     { class: "alius-stage-block alius-stage-stand" },
     h("h3", {}, "How she stands"),
@@ -84068,7 +84068,7 @@ function renderLookEditor(host, draft, opts) {
     h("h3", {}, "Her accent"),
     h("div", { class: "alius-stage-swatches" }, ...swatches, h("label", { class: "alius-field alius-option", ...analyzeNative("glossary:stage_accent") }, h("span", { class: "alius-field-label" }, "Own color"), picker2), accentHash)
   );
-  host.replaceChildren(stand, hand, accent);
+  host.replaceChildren(stand3, hand, accent);
 }
 
 // src/ui/stage/fit/activity.ts
@@ -84084,7 +84084,16 @@ var ACTIVITY_CONTROLS = {
   feetB: { label: "feet bottom", type: "range", min: 0.6, max: 1.2, step: 0.01, value: 0.86 },
   feetTilt: { label: "tilt (\xB0)", type: "range", min: 0, max: 25, step: 1, value: 6 }
 };
-var $11 = () => null;
+var stand = /* @__PURE__ */ new Map();
+var detached = (sel) => {
+  let el = stand.get(sel);
+  if (!el) {
+    el = document.createElement("div");
+    stand.set(sel, el);
+  }
+  return el;
+};
+var $11 = detached;
 var defaults = () => Object.fromEntries(Object.entries(ACTIVITY_CONTROLS).map(([k, c]) => [k, c.value]));
 var S13 = { ...defaults(), zones: null };
 var updatePresenceNote = () => {
@@ -84125,6 +84134,112 @@ function copySole() {
   const j = JSON.stringify({ slot: "sole_close", fit: { height: S13.closeH, y: S13.closeY }, zones: S13.zones });
   return j;
 }
+var rectOf2 = () => null;
+function soleRect2() {
+  return rectOf2();
+}
+var SV2 = null;
+var svFresh2 = () => ({});
+var MARK3 = { on: false, i: 0, names: ["toes", "ball", "arch", "heel", "edge"], pts: {} };
+function markStart() {
+  MARK3.on = true;
+  MARK3.i = 0;
+  MARK3.pts = {};
+  if (!SV2) SV2 = svFresh2();
+  SV2.closeTarget = 1;
+  SV2.closeK = 1;
+  $11("#markPrompt").style.display = "block";
+  $11("#markPrompt").textContent = `press on the centre of: ${MARK3.names[0]} \xB7 drag toward a corner for its width and height, the wheel turns it (Shift: a circle; a click: automatic)`;
+}
+function markDown2(x, y) {
+  if (MARK3.i >= MARK3.names.length) {
+    markFinish();
+    return;
+  }
+  const r = soleRect2();
+  if (!r) return;
+  MARK3.last = null;
+  MARK3.drag = { x, y, rad: 0, rot: 0 };
+  MARK3.pts[MARK3.names[MARK3.i]] = [+((x - r.x) / r.w).toFixed(3), +((y - r.y) / r.h).toFixed(3)];
+}
+function markMove2(x, y, circle) {
+  const d = MARK3.drag;
+  if (!d) return;
+  d.rad = Math.hypot(x - d.x, y - d.y);
+  d.circle = circle;
+  d.rx = circle ? d.rad : Math.max(6, Math.abs(x - d.x));
+  d.ry = circle ? d.rad : Math.max(6, Math.abs(y - d.y));
+}
+function markUp2() {
+  const d = MARK3.drag;
+  if (!d) return;
+  MARK3.drag = null;
+  const r = soleRect2();
+  if (!r) return;
+  const name = MARK3.names[MARK3.i];
+  if (d.rad > 8) MARK3.pts[name] = d.circle ? [...MARK3.pts[name].slice(0, 2), +Math.max(0.02, d.rad / r.h).toFixed(3)] : [...MARK3.pts[name].slice(0, 2), +Math.max(0.015, d.rx / r.h).toFixed(3), +Math.max(0.015, d.ry / r.h).toFixed(3), d.rot ?? 0];
+  if (MARK3.pts[name].length >= 4) MARK3.last = name;
+  MARK3.i += 1;
+  $11("#markPrompt").textContent = MARK3.i >= MARK3.names.length ? "the wheel turns the last ellipse (Shift: finer) \xB7 a click anywhere: done" : `press on the centre of: ${MARK3.names[MARK3.i]} \xB7 drag toward a corner for its width and height, the wheel turns it (Shift: a circle; a click: automatic)`;
+}
+function markFinish() {
+  S13.zones = { ...MARK3.pts };
+  MARK3.on = false;
+  MARK3.last = null;
+  SV2.closeTarget = 0;
+  $11("#markPrompt").style.display = "none";
+  const j = JSON.stringify({ slot: "sole_close", fit: { height: S13.closeH, y: S13.closeY }, zones: S13.zones });
+  $11("#soleNote").textContent = j;
+}
+function onWheel(e) {
+  if (!MARK3.on) return;
+  e.preventDefault();
+  const step = (e.shiftKey ? 1 : 5) * Math.sign(e.deltaY || e.deltaX);
+  if (MARK3.drag && !MARK3.drag.circle) MARK3.drag.rot = ((MARK3.drag.rot ?? 0) + step + 360) % 360;
+  else if (MARK3.last && MARK3.pts[MARK3.last]?.length >= 4) {
+    const z2 = MARK3.pts[MARK3.last];
+    z2[4] = ((z2[4] ?? 0) + step + 360) % 360;
+  }
+}
+function drawMarks(mx, r) {
+  if (MARK3.on) for (const [kz, p] of Object.entries(MARK3.pts)) {
+    const live3 = MARK3.drag && kz === MARK3.names[MARK3.i];
+    const ex = live3 ? Math.max(6, MARK3.drag.rx ?? 6) : p[2] !== void 0 ? p[2] * r.h : 10, ey = live3 ? Math.max(6, MARK3.drag.ry ?? 6) : p[3] !== void 0 ? p[3] * r.h : ex, er = (live3 ? MARK3.drag.rot ?? 0 : p[4] ?? 0) * Math.PI / 180;
+    mx.strokeStyle = kz === MARK3.last && !live3 ? "rgba(255,214,150,.9)" : "rgba(216,228,255,.8)";
+    mx.lineWidth = 1.5;
+    mx.beginPath();
+    mx.ellipse(r.x + p[0] * r.w, r.y + p[1] * r.h, ex, ey, er, 0, Math.PI * 2);
+    mx.stroke();
+    mx.fillStyle = "rgba(216,228,255,.8)";
+    mx.font = '12px "IBM Plex Mono"';
+    mx.fillText(kz, r.x + p[0] * r.w + 14, r.y + p[1] * r.h + 4);
+  }
+}
+var activityMarker = {
+  names: () => [...MARK3.names],
+  start(rect) {
+    rectOf2 = rect;
+    markStart();
+  },
+  down: (x, y) => markDown2(x, y),
+  move: (x, y, circle) => markMove2(x, y, circle),
+  up: () => markUp2(),
+  wheel: (e) => onWheel(e),
+  draw: (mx, r) => drawMarks(mx, r),
+  on: () => MARK3.on,
+  dragging: () => !!MARK3.drag,
+  /** Ends the marking without keeping it. */
+  abort() {
+    MARK3.on = false;
+    MARK3.drag = null;
+    MARK3.last = null;
+  },
+  result: () => S13.zones,
+  lookup: () => $11,
+  setLookup(l) {
+    $11 = l;
+  }
+};
 var IDS = {
   "legs_seated.rest": ["legsW", "legsB", "floorShade"],
   "legs_seated.foot_raised": ["raisedW", "raisedB"],
@@ -84196,7 +84311,16 @@ var SHOE_CONTROLS = {
   fitF: { label: "top fade", type: "range", min: 0, max: 0.8, step: 0.01, value: 0.25 },
   fitY: { label: "y", type: "range", min: -0.6, max: 0.9, step: 0.01, value: 0.48 }
 };
-var $12 = () => null;
+var stand2 = /* @__PURE__ */ new Map();
+var detached2 = (sel) => {
+  let el = stand2.get(sel);
+  if (!el) {
+    el = document.createElement("div");
+    stand2.set(sel, el);
+  }
+  return el;
+};
+var $12 = detached2;
 var S14 = { kind: "boots", feet: {}, shown: {}, fit: {}, zones: {} };
 var G12 = { phase: "idle", surface: "close", foot: "right", camU: void 0, surfaces: {} };
 var begin8 = () => {
@@ -84211,9 +84335,23 @@ function reset() {
   S14.fit = { boots_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, boots_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 }, heels_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, heels_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 } };
   S14.zones = {};
 }
+var K2 = () => KINDS2[S14.kind];
 var view2 = () => G12.surface === "sole" ? "sole" : "close";
 var slotKey2 = () => `${S14.kind}_${view2()}`;
 var twoFeet2 = () => S14.feet[slotKey2()] === "two";
+var mirrored2 = () => !twoFeet2() && G12.foot !== S14.shown[slotKey2()];
+var footX2 = () => S14.fit[slotKey2()][G12.foot === "right" ? "xr" : "xl"];
+function zonesNow2() {
+  if (twoFeet2()) {
+    const own = S14.zones[slotKey2()]?.[G12.foot];
+    if (own) return own;
+    const u0 = footX2(), out = {}, sgn = G12.foot === "right" ? -1 : 1;
+    for (const [k, p] of Object.entries(view2() === "sole" ? SOLE_TWO : FRONT[S14.kind])) out[k] = [+(u0 + p[0] * sgn).toFixed(3), p[1], p[2], p[3], p[4]];
+    return out;
+  }
+  const z2 = S14.zones[slotKey2()];
+  return z2 && !z2.right ? z2 : K2()[view2()];
+}
 function bindShoeFeet() {
   $12("#feetSel").onchange = () => {
     S14.feet[slotKey2()] = $12("#feetSel").value;
@@ -84294,6 +84432,157 @@ function copyFit() {
   $12("#sideNote").textContent = j;
   return j;
 }
+var rectOf3 = () => null;
+function shoeRect2() {
+  return rectOf3();
+}
+function toPic2(x, y) {
+  const r = shoeRect2();
+  if (!r) return null;
+  let u = (x - r.x) / r.w;
+  const v = (y - r.y) / r.h;
+  if (mirrored2()) u = 1 - u;
+  return [u, v, r];
+}
+function zoneRadii3(r) {
+  const z2 = Object.entries(zonesNow2()), out = {};
+  for (const [k, p] of z2) {
+    let dmin = 1e9;
+    for (const [k2, q] of z2) if (k2 !== k) dmin = Math.min(dmin, Math.hypot((p[0] - q[0]) * r.w, (p[1] - q[1]) * r.h));
+    const auto = clamp41(dmin / 2, r.h * 0.04, r.h * 0.12);
+    out[k] = p[3] !== void 0 ? { rx: p[2] * r.h, ry: p[3] * r.h, rot: (p[4] ?? 0) * Math.PI / 180 } : p[2] !== void 0 ? { rx: p[2] * r.h, ry: p[2] * r.h } : { rx: auto, ry: auto };
+  }
+  return out;
+}
+var MARK4 = { on: false, i: 0, names: [], pts: {} };
+function markStart2() {
+  MARK4.on = true;
+  MARK4.i = 0;
+  MARK4.pts = {};
+  MARK4.names = Object.keys(twoFeet2() ? view2() === "sole" ? SOLE_TWO : FRONT[S14.kind] : K2()[view2()]);
+  MARK4.done = {};
+  if (twoFeet2()) {
+    G12.foot = "right";
+    G12.camU = void 0;
+  } else G12.foot = S14.shown[slotKey2()];
+  if (G12.phase === "idle" || G12.phase === "done") {
+    G12.phase = "mark";
+  }
+  $12("#markPrompt").style.display = "block";
+  markPrompt();
+}
+function markPrompt() {
+  const who = twoFeet2() ? `her ${G12.foot} foot \xB7 ` : "";
+  $12("#markPrompt").textContent = MARK4.i >= MARK4.names.length ? `${who}the wheel turns the last ellipse (Shift: finer) \xB7 a click anywhere: ${twoFeet2() && G12.foot === "right" ? "next, her left foot" : "done"}` : `${who}press on the centre of: ${MARK4.names[MARK4.i]} \xB7 drag for its width and height, the wheel turns it (Shift: a circle; a click: automatic)`;
+}
+function markDown3(x, y) {
+  if (MARK4.i >= MARK4.names.length) {
+    markFinish2();
+    return;
+  }
+  const q = toPic2(x, y);
+  if (!q) return;
+  MARK4.last = null;
+  MARK4.drag = { x, y, rad: 0, rot: 0 };
+  MARK4.pts[MARK4.names[MARK4.i]] = [+q[0].toFixed(3), +q[1].toFixed(3)];
+}
+function markMove3(x, y, circle) {
+  const d = MARK4.drag;
+  if (!d) return;
+  d.rad = Math.hypot(x - d.x, y - d.y);
+  d.circle = circle;
+  d.rx = circle ? d.rad : Math.max(6, Math.abs(x - d.x));
+  d.ry = circle ? d.rad : Math.max(6, Math.abs(y - d.y));
+}
+function markUp3() {
+  const d = MARK4.drag;
+  if (!d) return;
+  MARK4.drag = null;
+  const r = shoeRect2();
+  if (!r) return;
+  const name = MARK4.names[MARK4.i];
+  if (d.rad > 8) MARK4.pts[name] = d.circle ? [...MARK4.pts[name].slice(0, 2), +Math.max(0.02, d.rad / r.h).toFixed(3)] : [...MARK4.pts[name].slice(0, 2), +Math.max(0.015, d.rx / r.h).toFixed(3), +Math.max(0.015, d.ry / r.h).toFixed(3), d.rot ?? 0];
+  if (MARK4.pts[name].length >= 4) MARK4.last = name;
+  MARK4.i += 1;
+  markPrompt();
+}
+function markFinish2() {
+  if (twoFeet2()) {
+    MARK4.done[G12.foot] = { ...MARK4.pts };
+    if (G12.foot === "right") {
+      G12.foot = "left";
+      G12.camU = void 0;
+      MARK4.i = 0;
+      MARK4.pts = {};
+      MARK4.last = null;
+      markPrompt();
+      return;
+    }
+    S14.zones[slotKey2()] = { right: MARK4.done.right, left: MARK4.done.left };
+  } else S14.zones[slotKey2()] = { ...MARK4.pts };
+  MARK4.on = false;
+  MARK4.last = null;
+  $12("#markPrompt").style.display = "none";
+  if (G12.phase === "mark") G12.phase = "idle";
+  G12.surfaces = {};
+  copyFit();
+}
+function onWheel2(e) {
+  if (!MARK4.on) return;
+  e.preventDefault();
+  const step = (e.shiftKey ? 1 : 5) * Math.sign(e.deltaY || e.deltaX);
+  if (MARK4.drag && !MARK4.drag.circle) MARK4.drag.rot = ((MARK4.drag.rot ?? 0) + step + 360) % 360;
+  else if (MARK4.last && MARK4.pts[MARK4.last]?.length >= 4) {
+    const z2 = MARK4.pts[MARK4.last];
+    z2[4] = ((z2[4] ?? 0) + step + 360) % 360;
+  }
+}
+function drawMarks2(mx, r) {
+  if (r && (S14.debug || MARK4.on)) {
+    const rad = zoneRadii3(r), zz = MARK4.on ? MARK4.pts : zonesNow2();
+    for (const [k, p] of Object.entries(zz)) {
+      const live3 = MARK4.on && MARK4.drag && k === MARK4.names[MARK4.i];
+      const ex = live3 ? Math.max(6, MARK4.drag.rx ?? 6) : p[2] !== void 0 ? p[2] * r.h : rad[k]?.rx ?? 10, ey = live3 ? Math.max(6, MARK4.drag.ry ?? 6) : p[3] !== void 0 ? p[3] * r.h : ex;
+      const er = (live3 ? MARK4.drag.rot ?? 0 : p[4] ?? 0) * Math.PI / 180 * (mirrored2() ? -1 : 1);
+      const cxp = r.x + (mirrored2() ? 1 - p[0] : p[0]) * r.w, cyp = r.y + p[1] * r.h;
+      mx.strokeStyle = k === G12.want ? "rgba(140,255,170,.8)" : "rgba(216,228,255,.55)";
+      mx.lineWidth = k === G12.want ? 2 : 1;
+      mx.beginPath();
+      mx.ellipse(cxp, cyp, ex, ey, er, 0, Math.PI * 2);
+      mx.stroke();
+      mx.fillStyle = "rgba(216,228,255,.8)";
+      mx.font = '12px "IBM Plex Mono"';
+      mx.fillText(k, cxp + 10, cyp + 4);
+    }
+  }
+}
+var shoeMarker = {
+  names() {
+    return Object.keys(twoFeet2() ? view2() === "sole" ? SOLE_TWO : FRONT[S14.kind] : K2()[view2()]);
+  },
+  start(rect) {
+    rectOf3 = rect;
+    markStart2();
+  },
+  down: (x, y) => markDown3(x, y),
+  move: (x, y, circle) => markMove3(x, y, circle),
+  up: () => markUp3(),
+  wheel: (e) => onWheel2(e),
+  draw: (mx, r) => drawMarks2(mx, r),
+  on: () => MARK4.on,
+  dragging: () => !!MARK4.drag,
+  abort() {
+    MARK4.on = false;
+    MARK4.drag = null;
+    MARK4.last = null;
+    if (G12.phase === "mark") G12.phase = "idle";
+  },
+  result: () => S14.zones[slotKey2()],
+  lookup: () => $12,
+  setLookup(l) {
+    $12 = l;
+  }
+};
 function selectSlot(key) {
   const [slot2, kind] = key.split(".");
   S14.kind = kind;
@@ -84456,6 +84745,121 @@ var weightPanel = {
   copy: () => JSON.parse(copyOver())
 };
 
+// src/ui/stage/fit/index.ts
+var PANELS = Object.fromEntries([weightPanel, activityPanel, thronePanel, shoePanel, slapPanel].map((p) => [p.prototype, p]));
+var panelOf = (key) => PANELS[SLOT_INFO[key].prototype] ?? slapPanel;
+
+// src/ui/stage/zones.ts
+function markerOf(key) {
+  if (!SLOT_INFO[key].zones) return null;
+  return SLOT_INFO[key].prototype === "shoe.html" ? shoeMarker : activityMarker;
+}
+function pictureRect(canvas, picture) {
+  const iw = picture.naturalWidth, ih = picture.naturalHeight, cw = canvas.width, ch = canvas.height;
+  if (!(iw > 0 && ih > 0 && cw > 0 && ch > 0)) return null;
+  const k = Math.min(cw / iw, ch / ih), w = iw * k, h2 = ih * k;
+  return { x: (cw - w) / 2, y: (ch - h2) / 2, w, h: h2 };
+}
+var running3 = null;
+function markZones(canvas, picture, key, sidecar, onChange) {
+  running3?.();
+  const marker = markerOf(key);
+  if (marker === null) return () => {
+  };
+  panelOf(key).load(key, sidecar);
+  const host = canvas.parentElement ?? canvas;
+  let prompt4 = host.querySelector('[data-proto="markPrompt"]');
+  if (prompt4 === null) {
+    prompt4 = document.createElement("div");
+    prompt4.className = "alius-stage-zone-prompt";
+    prompt4.dataset.proto = "markPrompt";
+    prompt4.setAttribute("role", "status");
+    host.append(prompt4);
+  }
+  prompt4.hidden = false;
+  const before8 = marker.lookup();
+  const promptEl = prompt4;
+  marker.setLookup((sel) => sel === "#markPrompt" ? promptEl : before8(sel));
+  if (canvas.clientWidth > 0 && canvas.clientHeight > 0) {
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
+  }
+  const rect = () => pictureRect(canvas, picture);
+  const local = (e) => {
+    const b = canvas.getBoundingClientRect();
+    const sx = b.width > 0 ? canvas.width / b.width : 1, sy = b.height > 0 ? canvas.height / b.height : 1;
+    return [(e.clientX - b.left) * sx, (e.clientY - b.top) * sy];
+  };
+  const draw2 = () => {
+    const mx = canvas.getContext("2d");
+    if (!mx) return;
+    mx.clearRect(0, 0, canvas.width, canvas.height);
+    const r = rect();
+    if (r && marker.on()) marker.draw(mx, r);
+  };
+  let done = false;
+  const end2 = () => {
+    if (done) return;
+    done = true;
+    canvas.removeEventListener("mousedown", onDown2);
+    canvas.removeEventListener("wheel", onWheel3);
+    canvas.removeEventListener("contextmenu", onContext);
+    document.removeEventListener("mousemove", onMove2);
+    document.removeEventListener("mouseup", onUp);
+    if (marker.on()) marker.abort();
+    marker.setLookup(before8);
+    promptEl.style.display = "none";
+    promptEl.hidden = true;
+    delete canvas.dataset.marking;
+    draw2();
+    if (running3 === end2) running3 = null;
+  };
+  const after9 = () => {
+    draw2();
+    if (!marker.on() && !done) {
+      const zones2 = marker.result();
+      end2();
+      if (zones2) onChange(structuredClone(zones2));
+    }
+  };
+  const onDown2 = (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const [x, y] = local(e);
+    marker.down(x, y);
+    after9();
+  };
+  const onMove2 = (e) => {
+    if (!marker.dragging()) return;
+    const [x, y] = local(e);
+    marker.move(x, y, e.shiftKey);
+    draw2();
+  };
+  const onUp = (e) => {
+    if (e.button !== 0 || !marker.dragging()) return;
+    marker.up();
+    after9();
+  };
+  const onWheel3 = (e) => {
+    marker.wheel(e);
+    draw2();
+  };
+  const onContext = (e) => e.preventDefault();
+  canvas.addEventListener("mousedown", onDown2);
+  canvas.addEventListener("wheel", onWheel3, { passive: false });
+  canvas.addEventListener("contextmenu", onContext);
+  document.addEventListener("mousemove", onMove2);
+  document.addEventListener("mouseup", onUp);
+  canvas.dataset.marking = "";
+  marker.start(rect);
+  draw2();
+  running3 = end2;
+  return end2;
+}
+function stopMarking() {
+  running3?.();
+}
+
 // src/ui/stage/slotEditor.ts
 var MAX_PICTURE_BYTES = 20 * 1024 * 1024;
 var MIME_EXT = { "image/png": "png", "image/webp": "webp", "image/jpeg": "jpg", "image/gif": "gif", "image/avif": "avif" };
@@ -84469,8 +84873,6 @@ function refusal2(file) {
   if (imageExt(file) === null) return "That picture type is not listed by SillyTavern: use png, webp, jpg, gif or avif.";
   return null;
 }
-var PANELS = Object.fromEntries([weightPanel, activityPanel, thronePanel, shoePanel, slapPanel].map((p) => [p.prototype, p]));
-var panelOf = (key) => PANELS[SLOT_INFO[key].prototype] ?? slapPanel;
 function toSidecar(raw) {
   const clean13 = Object.fromEntries(Object.entries(raw ?? {}).filter(([, v]) => v !== null && v !== void 0));
   return sidecarSchema.parse(clean13);
@@ -84519,7 +84921,8 @@ function openSlotEditor(host, unitId, key, ctx2) {
     img2.hidden = false;
     empty.hidden = true;
   };
-  const frame9 = h("div", { class: "alius-stage-slot-frame", "data-slot": key }, img2, empty);
+  const canvas = info.zones ? h("canvas", { class: "alius-stage-zones", "aria-hidden": "true" }) : null;
+  const frame9 = h("div", { class: "alius-stage-slot-frame", "data-slot": key }, img2, empty, canvas);
   drawPicture();
   const file = h("input", { type: "file", name: "load", accept: "image/*" });
   const load = h("label", { class: "alius-field alius-option alius-stage-load", ...analyzeNative("glossary:stage_load") }, h("span", { class: "alius-field-label" }, "[ LOAD ] a picture"), file);
@@ -84541,16 +84944,16 @@ function openSlotEditor(host, unitId, key, ctx2) {
   });
   const note = panel.note(key);
   const fit2 = h("div", { class: "alius-stage-fit", "data-prototype": panel.prototype }, ...rows, note === null ? null : h("p", { class: "alius-dim" }, note));
-  const detached = /* @__PURE__ */ new Map();
+  const detached3 = /* @__PURE__ */ new Map();
   const $15 = (selector) => {
     const id = selector.replace(/^#/, "");
     const own = fit2.querySelector(`[data-proto="${id}"]`);
     if (own) return own;
-    let el = detached.get(id);
+    let el = detached3.get(id);
     if (!el) {
       el = document.createElement("input");
       el.value = id in panel.controls ? String(panel.value(id)) : "";
-      detached.set(id, el);
+      detached3.set(id, el);
     }
     return el;
   };
@@ -84559,11 +84962,20 @@ function openSlotEditor(host, unitId, key, ctx2) {
   const saveBtn = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "save", ...analyzeNative("glossary:stage_fit") }, "[ SAVE ]");
   const removeBtn = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "remove", ...analyzeNative("glossary:stage_remove") }, "[ REMOVE ]");
   const closeBtn = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "close", ...analyzeNative("glossary:stage_setup") }, "[ CLOSE ]");
-  const actions = h("div", { class: "alius-stage-slot-actions" }, saveBtn, removeBtn, closeBtn, status);
+  const zonesBtn = canvas === null ? null : h("button", { type: "button", class: "alius-btn alius-option", "data-action": "zones", ...analyzeNative("glossary:stage_zones") }, "[ MARK ZONES ]");
+  zonesBtn?.addEventListener("click", () => {
+    if (canvas === null || draft.url === null) return;
+    markZones(canvas, img2, key, draft.sidecar, (zones2) => {
+      draft.sidecar = { ...draft.sidecar, zones: zones2 };
+      edited();
+    });
+  });
+  const actions = h("div", { class: "alius-stage-slot-actions" }, zonesBtn, saveBtn, removeBtn, closeBtn, status);
   const dirty = () => draft.file !== void 0 || JSON.stringify(draft.sidecar) !== saved;
   const inFolder = () => avatar !== null && ctx2.folders().get(avatar)?.slots.has(key) === true;
   const mark2 = () => {
     saveBtn.disabled = !dirty() || avatar === null;
+    if (zonesBtn) zonesBtn.disabled = draft.url === null;
     removeBtn.disabled = !inFolder();
     status.textContent = dirty() ? "unsaved" : "";
   };
@@ -84588,6 +85000,7 @@ function openSlotEditor(host, unitId, key, ctx2) {
       ctx2.toast("warn", why);
       return;
     }
+    stopMarking();
     if (ownUrl !== null) URL.revokeObjectURL(ownUrl);
     ownUrl = URL.createObjectURL(chosen);
     draft.file = chosen;
@@ -84619,6 +85032,7 @@ function openSlotEditor(host, unitId, key, ctx2) {
     const ok = await removeSlot(ctx2.st, avatar, key, ctx2.refresh);
     if (!stillHere()) return;
     if (!ok) ctx2.toast("warn", `${info.label} could not be removed.`);
+    stopMarking();
     if (ownUrl !== null) {
       URL.revokeObjectURL(ownUrl);
       ownUrl = null;
@@ -84649,6 +85063,7 @@ function openSlotEditor(host, unitId, key, ctx2) {
     drop: () => {
       if (dropped) return;
       dropped = true;
+      stopMarking();
       if (ownUrl !== null) URL.revokeObjectURL(ownUrl);
       ownUrl = null;
       if (openEditor === self) openEditor = null;
@@ -84793,8 +85208,8 @@ function openStageSheet(unitId, ctx2) {
     const wanted2 = facesWanted(reg);
     const rows = wanted2.map((label2) => {
       const has3 = found2.has(label2);
-      const stand = has3 ? null : standInFor(label2, found2);
-      return h("li", { "data-label": label2, "data-found": String(has3) }, `${label2}: ${has3 ? "found" : `missing \u2014 ${stand === null ? "her sprite stays as it is" : `stands in: ${stand}`}`}`);
+      const stand3 = has3 ? null : standInFor(label2, found2);
+      return h("li", { "data-label": label2, "data-found": String(has3) }, `${label2}: ${has3 ? "found" : `missing \u2014 ${stand3 === null ? "her sprite stays as it is" : `stands in: ${stand3}`}`}`);
     });
     spritesBlock.replaceChildren(
       h("h3", {}, "Her sprites"),
@@ -85464,7 +85879,7 @@ function createShell(deps) {
     renderChrome(chrome, screen, device, skin, wanted2?.assetUrl);
     dressed = { device, skin, assetUrl: wanted2?.assetUrl };
   }
-  function drawMarks() {
+  function drawMarks3() {
     const layer = device?.querySelector(".alius-device-marks");
     if (layer) deps.marks?.(layer);
   }
@@ -85482,7 +85897,7 @@ function createShell(deps) {
     root.classList.toggle("alius-sensory", flags.sensory);
     renderStatus();
     deps.sound?.setSensory?.(flags.sensory);
-    drawMarks();
+    drawMarks3();
     const night = deps.getState()?.slot === "night";
     if (night) root.dataset.night = "true";
     else delete root.dataset.night;
@@ -85629,7 +86044,7 @@ function createShell(deps) {
     hubHost = h("div", { class: "alius-hub-host" });
     host.append(hubHost, dev);
     applySkin();
-    drawMarks();
+    drawMarks3();
     applyDevice(up2);
     updateNarrow();
     renderHub2();
@@ -85642,7 +86057,7 @@ function createShell(deps) {
     sceneDeviceHost = h("div", { class: "alius-scene-device", "data-up": String(sceneDeviceUp) }, dev);
     view3.append(sceneDeviceHost);
     applySkin();
-    drawMarks();
+    drawMarks3();
     applyDevice(sceneDeviceUp);
     updateNarrow();
     renderStatus();

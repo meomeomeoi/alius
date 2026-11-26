@@ -3703,5 +3703,15 @@
     "see": [
       "stage_setup"
     ]
+  },
+  {
+    "id": "stage_zones",
+    "term": "Zones",
+    "short": "The parts of her foot or footwear a mini-game tells apart, marked on the picture with the mini-game's own marker.",
+    "long": "For each zone asked for: a click places it (its size then follows from its neighbors), a press and a drag gives an ellipse that the mouse wheel turns (5° a notch, 1° with Shift), Shift and a drag a circle. Two feet in one picture are marked one after the other, her right foot first. Zones are never shown in play.",
+    "see": [
+      "stage_setup",
+      "stage_fit"
+    ]
   }
 ]

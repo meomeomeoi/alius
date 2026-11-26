@@ -212,3 +212,29 @@
 }
 
 #alius-shell .alius-stage-slot-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+
+/* the zone marker: a canvas over the picture (it takes the pointer only while marking) and the prototype's prompt */
+#alius-shell .alius-stage-zones {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+#alius-shell .alius-stage-zones[data-marking] { pointer-events: auto; cursor: crosshair; }
+
+#alius-shell .alius-stage-zone-prompt {
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  transform: translateX(-50%);
+  z-index: 1;
+  max-width: calc(100% - 16px);
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--alius-bg) 85%, transparent);
+  color: var(--alius-fg);
+  font: 12px var(--alius-font);
+  pointer-events: none;
+}

@@ -369,7 +369,7 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   // P16 (Task 39: the remaining ids)
   'protocol', 'routine', 'favour', 'denial',
   // P10e-f (the stage setup: SYS › STAGE)
-  'stage_setup', 'stage_slot_state', 'stage_sprites', 'stage_stand', 'stage_face', 'stage_hand', 'stage_accent', 'stage_load', 'stage_fit', 'stage_remove',
+  'stage_setup', 'stage_slot_state', 'stage_sprites', 'stage_stand', 'stage_face', 'stage_hand', 'stage_accent', 'stage_load', 'stage_fit', 'stage_remove', 'stage_zones',
 ];
 
 let registered = false;

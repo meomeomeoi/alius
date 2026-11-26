@@ -38,7 +38,8 @@ const ROOT = resolve(__dirname, '../..');
  *   default; the row of that `kind`, and of `physics` when given) or `cardVoice` (`kind` or `kind@style`).
  * - `differences`: hunks of the unified diff (one line of context, `@@` headers) of the normalized prototype (`-`) against the normalized port
  *   (`+`), each entry with its `reason`. Every hunk of a function's diff must be declared (several entries may share an `fn`), and every
- *   declared hunk must still exist.
+ *   declared hunk must still exist. A `module` scopes the entry to the function of that module (P10e-f: two prototypes' ports in one
+ *   spec may share a name, `markFinish`).
  */
 export interface FidelitySpec {
   prototype: string;
@@ -59,7 +60,7 @@ export interface FidelitySpec {
    * `protoControl(prototype, id)`. A row that differs is declared in `differences` as `<export>.<id>` with the port's row as JSON.
    */
   controls?: Array<{ module: string; export: string; prototype?: string }>;
-  differences: Array<{ fn: string; reason: string; diff: string }>;
+  differences: Array<{ fn: string; reason: string; diff: string; module?: string }>;
 }
 
 /** A control of a prototype's panel, as `protoControl` reads it from the HTML. */
@@ -627,6 +628,7 @@ export async function checkFidelity(spec: FidelitySpec, opts: { registries: Regi
   const linePaths = new Set((spec.lines ?? []).flatMap((l) => Object.keys(l.cueKinds).map((p) => `${l.ident}.${p}`)));
   const controlTables = new Set((spec.controls ?? []).map((c) => c.export));
   for (const d of spec.differences) {
+    if (d.module !== undefined && !spec.functions.some((f) => f.fn === d.fn && f.module === d.module)) failures.push(`a difference is declared for "${d.fn}" of ${d.module}, which is not a listed function of that module`);
     if (!named.has(d.fn) && !linePaths.has(d.fn) && !controlTables.has(d.fn.split('.')[0]!)) failures.push(`a difference is declared for "${d.fn}", which is not a listed function or line`);
     if (d.reason.trim() === '') failures.push(`the difference of "${d.fn}" has no reason`);
   }
@@ -644,7 +646,7 @@ export async function checkFidelity(spec: FidelitySpec, opts: { registries: Regi
       continue;
     }
     const actual = unifiedHunks(a, b);
-    const declared = spec.differences.filter((d) => d.fn === f.fn).flatMap((d) => declaredHunks(d.diff));
+    const declared = spec.differences.filter((d) => d.fn === f.fn && (d.module === undefined || d.module === f.module)).flatMap((d) => declaredHunks(d.diff));
     const undeclared = actual.filter((h) => !declared.includes(h));
     const gone = declared.filter((h) => !actual.includes(h));
     if (undeclared.length > 0) {

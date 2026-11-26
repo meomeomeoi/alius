@@ -261,7 +261,7 @@ Everything is saved as files in her own expressions folder.
   - the shoe slots: shoe.html's surfaces and zones.
 - Two feet in one picture (`feet: 'two'`) mark one set per foot (`{ right, left }`).
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - a click at (0.4, 0.6) with no neighbour gives `[0.4, 0.6, r]` with r in [0.04, 0.12];
   - a drag gives an ellipse; four wheel notches turn it 20°, with Shift 4°;
   - Shift + click gives a circle;
@@ -269,10 +269,10 @@ Everything is saved as files in her own expressions folder.
   - `feet: 'two'` asks for the right foot's set, then the left's;
   - the saved sidecar round-trips through `art.ts`'s schema;
   - the fidelity test covers `zoneRadii` / `zoneAt` and the marker's handlers.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Port** the marker from the prototype files.
-- [ ] **Step 4: Run** the tests, `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P10e-f): the zone marker`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Port** the marker from the prototype files.
+- [x] **Step 4: Run** the tests, `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P10e-f): the zone marker`
 
 ## Chunk f4: the preview
 

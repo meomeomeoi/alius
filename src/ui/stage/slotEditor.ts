@@ -2,18 +2,15 @@ import type { StAdapter } from '../../st/adapter';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 import { sidecarSchema, type ArtSidecar } from '../scene/art';
-import { activityPanel } from './fit/activity';
-import type { FitPanel, Lookup } from './fit/panel';
-import { shoePanel } from './fit/shoe';
-import { slapPanel } from './fit/slap';
-import { thronePanel } from './fit/throne';
-import { weightPanel } from './fit/weight';
+import { panelOf } from './fit';
+import type { Lookup } from './fit/panel';
 import type { StageCtx } from './section';
 import { SLOT_INFO, SLOT_STATE_WORD, slotState, visibleSlotKeys, type SlotKey } from './slots';
+import { markZones, stopMarking } from './zones';
 
 /**
  * P10e-f: her slots on her page. The list of her slot keys with their state, and the editor of one slot: LOAD (an image file, kept as a
- * draft until SAVE), the fit (the slot's prototype panel, ported: `fit/`), SAVE (the picture, then its sidecar `<key>.fit.json`) and
+ * draft until SAVE), the fit (the slot's prototype panel, ported: `fit/`), the zones (the prototypes' marker, `zones.ts`), SAVE (the picture, then its sidecar `<key>.fit.json`) and
  * REMOVE. Setup data about a card, outside any campaign: nothing here dispatches, saves a campaign or draws an rng.
  */
 
@@ -41,10 +38,6 @@ export function refusal(file: File): string | null {
   if (imageExt(file) === null) return 'That picture type is not listed by SillyTavern: use png, webp, jpg, gif or avif.';
   return null;
 }
-
-/** The panel of a slot's prototype. */
-const PANELS: Readonly<Record<string, FitPanel>> = Object.fromEntries([weightPanel, activityPanel, thronePanel, shoePanel, slapPanel].map((p) => [p.prototype, p]));
-export const panelOf = (key: SlotKey): FitPanel => PANELS[SLOT_INFO[key].prototype] ?? slapPanel;
 
 /** A panel's copy as a sidecar: nulls dropped (`zones: null` before any marking), unknown keys (`slot`, `kind`) dropped by the schema. */
 function toSidecar(raw: unknown): ArtSidecar {
@@ -111,7 +104,8 @@ export function openSlotEditor(host: HTMLElement, unitId: string, key: SlotKey, 
     if (draft.url === null) { img.removeAttribute('src'); img.hidden = true; empty.hidden = false; return; }
     img.src = draft.url; img.hidden = false; empty.hidden = true;
   };
-  const frame = h('div', { class: 'alius-stage-slot-frame', 'data-slot': key }, img, empty);
+  const canvas = info.zones ? h('canvas', { class: 'alius-stage-zones', 'aria-hidden': 'true' }) as HTMLCanvasElement : null;
+  const frame = h('div', { class: 'alius-stage-slot-frame', 'data-slot': key }, img, empty, canvas);
   drawPicture();
 
   // --- LOAD
@@ -152,12 +146,19 @@ export function openSlotEditor(host: HTMLElement, unitId: string, key: SlotKey, 
   const saveBtn = h('button', { type: 'button', class: 'alius-btn alius-option', 'data-action': 'save', ...analyzeNative('glossary:stage_fit') }, '[ SAVE ]') as HTMLButtonElement;
   const removeBtn = h('button', { type: 'button', class: 'alius-btn alius-option', 'data-action': 'remove', ...analyzeNative('glossary:stage_remove') }, '[ REMOVE ]') as HTMLButtonElement;
   const closeBtn = h('button', { type: 'button', class: 'alius-btn alius-option', 'data-action': 'close', ...analyzeNative('glossary:stage_setup') }, '[ CLOSE ]');
-  const actions = h('div', { class: 'alius-stage-slot-actions' }, saveBtn, removeBtn, closeBtn, status);
+  // the zones: the prototypes' marker on the picture (shown only while marking)
+  const zonesBtn = canvas === null ? null : h('button', { type: 'button', class: 'alius-btn alius-option', 'data-action': 'zones', ...analyzeNative('glossary:stage_zones') }, '[ MARK ZONES ]') as HTMLButtonElement;
+  zonesBtn?.addEventListener('click', () => {
+    if (canvas === null || draft.url === null) return;
+    markZones(canvas, img, key, draft.sidecar, (zones) => { draft.sidecar = { ...draft.sidecar, zones }; edited(); });
+  });
+  const actions = h('div', { class: 'alius-stage-slot-actions' }, zonesBtn, saveBtn, removeBtn, closeBtn, status);
 
   const dirty = (): boolean => draft.file !== undefined || JSON.stringify(draft.sidecar) !== saved;
   const inFolder = (): boolean => avatar !== null && ctx.folders().get(avatar)?.slots.has(key) === true;
   const mark = (): void => {
     saveBtn.disabled = !dirty() || avatar === null;
+    if (zonesBtn) zonesBtn.disabled = draft.url === null;
     removeBtn.disabled = !inFolder();
     status.textContent = dirty() ? 'unsaved' : '';
   };
@@ -179,6 +180,7 @@ export function openSlotEditor(host: HTMLElement, unitId: string, key: SlotKey, 
     if (!chosen) return;
     const why = refusal(chosen);
     if (why !== null) { ctx.toast('warn', why); return; }
+    stopMarking(); // the zones are marked on the picture shown
     if (ownUrl !== null) URL.revokeObjectURL(ownUrl);
     ownUrl = URL.createObjectURL(chosen);
     draft.file = chosen;
@@ -211,6 +213,7 @@ export function openSlotEditor(host: HTMLElement, unitId: string, key: SlotKey, 
     const ok = await removeSlot(ctx.st, avatar, key, ctx.refresh);
     if (!stillHere()) return;
     if (!ok) ctx.toast('warn', `${info.label} could not be removed.`);
+    stopMarking();
     if (ownUrl !== null) { URL.revokeObjectURL(ownUrl); ownUrl = null; }
     delete draft.file;
     draft.url = null;
@@ -237,6 +240,7 @@ export function openSlotEditor(host: HTMLElement, unitId: string, key: SlotKey, 
     drop: () => {
       if (dropped) return;
       dropped = true;
+      stopMarking();
       if (ownUrl !== null) URL.revokeObjectURL(ownUrl);
       ownUrl = null;
       if (openEditor === self) openEditor = null;
