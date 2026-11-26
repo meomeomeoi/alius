@@ -155,7 +155,7 @@ registerAction('physics/woke', (draft, payload, ctx) => {
 /**
  * P10e-e Task 25 (R27): `physics/service { runId, verdict }`: her verdict on a session of foot service in her frame, from the crafts' quality
  * (`verdictOf`, the instrument's), through P16's `rateService(…, 'engine', sceneId)`: once a scene (a second is ignored, as `rateService` does).
- * The run is her frame that is open, or the one that just ended (its id is the scene's last, the frame done is hers): the instrument says it at
+ * The run is her frame that is open, or the one that just ended (its id is the scene's last and the frame done's): the instrument says it at
  * the session's end. Memory: none new (`service_rated` lands as P16 decided). Draws no rng.
  */
 registerAction('physics/service', (draft, payload, ctx) => {
@@ -167,7 +167,7 @@ registerAction('physics/service', (draft, payload, ctx) => {
   const run = scene.physics;
   let holderId: string;
   if (run !== undefined && run.id === payload.runId && run.sourceKind === 'activity') holderId = run.holderId;
-  else if (run === undefined && payload.runId === `p${scene.physicsCount ?? 0}` && scene.frameDone !== undefined) holderId = scene.frameDone.holderId;
+  else if (run === undefined && scene.frameDone !== undefined && scene.frameDone.runId === payload.runId && payload.runId === `p${scene.physicsCount ?? 0}`) holderId = scene.frameDone.holderId;
   else throw new Error('physics/service: stale physics run (only her frame, open or just ended)');
   return rateService(draft, ctx, holderId, payload.verdict as Verdict, 'engine', scene.id);
 });

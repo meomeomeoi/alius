@@ -1021,14 +1021,9 @@
       "diff": "@@ -2,3 +2,3 @@\n return{\n-salt:Math.floor(Math.random()*1000000000),phase:\"wait\",next:14000,sig:null,named:new Set(),sigAt:0,deadline:0,closeK:0,closeTarget:0,boutEnd:0,act:null,want:null,wantAt:0,orderI:0,dry:0,quality:0,acts:0,dirt:null,checked:false,gest:null,relax:0,pull:0,off:[0,0],offTarget:[0,0],fx:{\n+salt:fnv(`${X.env.state().day}|${X.env.state().scene?.id??\"\"}`),phase:\"wait\",next:14000,sig:null,named:new Set(),sigAt:0,deadline:0,closeK:0,closeTarget:0,boutEnd:0,act:null,want:null,wantAt:0,orderI:0,dry:0,quality:0,acts:0,dirt:null,checked:false,gest:null,relax:0,pull:0,off:[0,0],offTarget:[0,0],fx:{\n dx:0,dy:0,s:1,r:0"
     },
     {
-      "fn": "thirdPartyNoise",
-      "reason": "Rulings X and Y: the sound of the craft while she does not cover it also reaches the engine as a relief of her frame (`craftNoise`: `physics/relief`, involuntary, unseen, amount = loudness × (1 − cover), only while a third party could hear it, at most once a second): never a caught cheat. The third party's own hearing is the prototype's (its chance on the frame's xorshift: no rng).",
-      "diff": "@@ -12,2 +12,3 @@\n }\n+craftNoise(loud*(1-cover))\n }"
-    },
-    {
       "fn": "svEndBout",
-      "reason": "The session's quality is the mean of its bouts' (`sessionQ` / `sessionN`): her verdict at the end (`verdictOf`, by the prototype's threshold of the good line, `physics/service`).",
-      "diff": "@@ -3,2 +3,4 @@\n const q=SV.acts?SV.quality/SV.acts:(good?1:0)\n+SV.sessionQ=(SV.sessionQ??0)+q\n+SV.sessionN=(SV.sessionN??0)+1\n if(!desk){"
+      "reason": "R27 (review I2): the session's quality is the crafts' (the bouts she judges with her good or poor line: phase `craft` / `lowering`, not a desk bout, a misread or an unanswered signal), their mean (`sessionQ` / `sessionN`): her verdict at the end (`verdictOf`, by the prototype's threshold of the good line, `physics/service`).",
+      "diff": "@@ -5,2 +5,4 @@\n if(SV.phase===\"craft\"||SV.phase===\"lowering\"){\n+SV.sessionQ=(SV.sessionQ??0)+q\n+SV.sessionN=(SV.sessionN??0)+1\n if(q>=0.6){"
     },
     {
       "fn": "svUpdate",

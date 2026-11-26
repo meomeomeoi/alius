@@ -16,9 +16,10 @@
  *   verbatim: Rulings Q and Z);
  * - the close-up's picture is the art slot `sole_close` (its sidecar's `fit { height, y }` and `zones`), else her raised foot
  *   (`legs_seated.foot_raised`), else her sprite; without a sidecar the automatic zones (`DEFAULT_ZONES`);
- * - the sounds the craft makes while she is not covering them reach the engine as a relief of the frame (`physics/relief`: `involuntary`,
- *   `unseen`, amount = loudness × (1 − cover): never a caught cheat), only while a third party could hear them (the call, an unaware visitor);
- * - her verdict at the session's end is `physics/service` (`verdictOf` of the bouts' mean quality); the stop word gives none;
+ * - the sounds of the craft matter only to a third party (Ruling AB: `thirdPartyNoise`, the prototype's, the call and an unaware visitor
+ *   hearing them through `callHeard` / `visitorHeard`); she expects them, so nothing of them reaches the engine;
+ * - her verdict at the session's end is `physics/service` (`verdictOf` of the mean quality of the crafts she judged, R27); the stop word
+ *   gives none;
  * - not ported: the zone marker (chunk f), the panel's test tools (`bouts`, the act buttons, `S.only`), the debug readout.
  */
 import type { Registries } from '../../../../content/types';
@@ -184,19 +185,7 @@ function thirdPartyNoise(loud: number) {
   const cover = coverNow();
   if (G.call && G.t >= G.herSpeakingUntil && loud * (1 - cover) > 0.06 && !G.call.heard && Math.random() < 0.35) { G.call.heard = true; G.stats.heardOnLine += 1; callHeard(); }
   if (G.visitor && !S.knows && loud * (1 - cover) > 0.06 && !G.visitor.heard && Math.random() < 0.35) { G.visitor.heard = true; G.stats.heardByVisitor += 1; visitorHeard(); }
-  craftNoise(loud * (1 - cover));
 }
-/**
- * The sound of the craft while she does not cover it, told to the engine as a relief of her frame (Rulings X and Y): only while a third party
- * could hear it (she expects the sounds of her service), never a caught cheat (`involuntary`), not more than once a second.
- */
-function craftNoise(amount: number): void {
-  const third = (G.call && G.t >= G.herSpeakingUntil) || (G.visitor && !S.knows);
-  if (!third || amount <= 0.06 || G.t - (SV.toldAt ?? -1e9) < 1000) return;
-  SV.toldAt = G.t;
-  X?.env.staging.relief?.({ kind: 'relieve', amount: Math.round(clamp(amount, 0, 1) * 1000) / 1000, part: 'unseen', involuntary: true });
-}
-
 /* ---------- the close-up: sole_close (or foot_raised zoomed, or her sprite, until the author has one) ---------- */
 function soleRect() {
   const img = $('#soleArt'); if (!img.naturalWidth) return null;
@@ -334,9 +323,9 @@ function svNextWant() {
 function svEndBout(good: boolean, desk = false) {
   lickStop();
   const q = SV.acts ? SV.quality / SV.acts : (good ? 1 : 0);
-  SV.sessionQ = (SV.sessionQ ?? 0) + q; SV.sessionN = (SV.sessionN ?? 0) + 1;
   if (!desk) {
     if (SV.phase === 'craft' || SV.phase === 'lowering') {
+      SV.sessionQ = (SV.sessionQ ?? 0) + q; SV.sessionN = (SV.sessionN ?? 0) + 1;
       if (q >= 0.6) { svSay(SL().good); if (G.step === 'own') { G.press = 1; sense('A press of her foot: approval, without a word.', 'body'); } }
       else { svSay(SL().poor); if (G.step === 'own') { SV.pull = 1; sense('She pulls her foot away before you are done.', 'body'); } }
     }
@@ -551,11 +540,13 @@ export function svFinish(how: string): void {
   if (!SV) return;
   lickStop();
   SV.closeTarget = 0;
-  if (how === 'stop' || SV.stats.bouts === 0 || SV.told) return;
+  if (how === 'stop' || SV.told) return;
+  // R27: the crafts' quality only (the bouts she judged with her good or poor line), the craft still open counted as it stands
   const open = SV.phase === 'craft' && SV.acts ? SV.quality / SV.acts : null;
   const n = (SV.sessionN ?? 0) + (open !== null ? 1 : 0), q = ((SV.sessionQ ?? 0) + (open ?? 0)) / Math.max(1, n);
+  if (n === 0) return; // no craft was judged: no verdict
   SV.told = true;
-  X?.env.staging.service?.(X.runId, verdictOf(n ? q : 0));
+  X?.env.staging.service?.(X.runId, verdictOf(q));
 }
 /** The frame leaves: the lick's loop stops, nothing is kept. */
 export function detachService(): void {

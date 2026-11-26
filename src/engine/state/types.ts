@@ -660,7 +660,7 @@ export interface SceneRecord {
    * P10e-e R24 (review I1): the frame of her time that ended in this scene (her, her activity, and the commander's placement then): it does not
    * start again until her activity or the commander's placement changes (the stop word, GET UP, being found and her release end it for good).
    */
-  frameDone?: { holderId: string; activity: string; placed: string };
+  frameDone?: { holderId: string; activity: string; placed: string; runId?: string };
   /** P15a: how many runs this scene had (the next run's id). */
   physicsCount?: number;
   /** P15a: slots this scene spent beyond its own (a blackout, a marathon), consumed when it ends. */

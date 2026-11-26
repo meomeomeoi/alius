@@ -35849,7 +35849,7 @@ function stopPhysics(draft, reg, result) {
   if (!draft.scene || !run) return [];
   delete draft.scene.physics;
   if (run.sourceKind !== "activity") removeSource(draft, run.sourceKind, run.sourceId);
-  else draft.scene.frameDone = { holderId: run.holderId, activity: run.sourceId, placed: placementKey(draft) };
+  else draft.scene.frameDone = { holderId: run.holderId, activity: run.sourceId, placed: placementKey(draft), runId: run.id };
   const events = [{ type: "physics_outcome", runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...run.second ? { secondId: run.second.physicsId } : {}, ...run.targetId !== void 0 ? { targetId: run.targetId } : {}, ...run.tally ? { tally: { ...run.tally } } : {} }];
   if (run.marathon) events.push(...finishMarathon(draft, reg, run, result));
   return events;
@@ -40091,7 +40091,7 @@ registerAction("physics/service", (draft, payload, ctx2) => {
   const run = scene.physics;
   let holderId;
   if (run !== void 0 && run.id === payload.runId && run.sourceKind === "activity") holderId = run.holderId;
-  else if (run === void 0 && payload.runId === `p${scene.physicsCount ?? 0}` && scene.frameDone !== void 0) holderId = scene.frameDone.holderId;
+  else if (run === void 0 && scene.frameDone !== void 0 && scene.frameDone.runId === payload.runId && payload.runId === `p${scene.physicsCount ?? 0}`) holderId = scene.frameDone.holderId;
   else throw new Error("physics/service: stale physics run (only her frame, open or just ended)");
   return rateService(draft, ctx2, holderId, payload.verdict, "engine", scene.id);
 });
@@ -71259,13 +71259,6 @@ function thirdPartyNoise(loud) {
     G7.stats.heardByVisitor += 1;
     visitorHeard2();
   }
-  craftNoise(loud * (1 - cover));
-}
-function craftNoise(amount) {
-  const third = G7.call && G7.t >= G7.herSpeakingUntil || G7.visitor && !S8.knows;
-  if (!third || amount <= 0.06 || G7.t - (SV.toldAt ?? -1e9) < 1e3) return;
-  SV.toldAt = G7.t;
-  X2?.env.staging.relief?.({ kind: "relieve", amount: Math7.round(clamp41(amount, 0, 1) * 1e3) / 1e3, part: "unseen", involuntary: true });
 }
 function soleRect() {
   const img2 = $6("#soleArt");
@@ -71478,10 +71471,10 @@ function svNextWant() {
 function svEndBout(good, desk = false) {
   lickStop();
   const q = SV.acts ? SV.quality / SV.acts : good ? 1 : 0;
-  SV.sessionQ = (SV.sessionQ ?? 0) + q;
-  SV.sessionN = (SV.sessionN ?? 0) + 1;
   if (!desk) {
     if (SV.phase === "craft" || SV.phase === "lowering") {
+      SV.sessionQ = (SV.sessionQ ?? 0) + q;
+      SV.sessionN = (SV.sessionN ?? 0) + 1;
       if (q >= 0.6) {
         svSay(SL().good);
         if (G7.step === "own") {
@@ -71870,11 +71863,12 @@ function svFinish(how) {
   if (!SV) return;
   lickStop();
   SV.closeTarget = 0;
-  if (how === "stop" || SV.stats.bouts === 0 || SV.told) return;
+  if (how === "stop" || SV.told) return;
   const open3 = SV.phase === "craft" && SV.acts ? SV.quality / SV.acts : null;
   const n = (SV.sessionN ?? 0) + (open3 !== null ? 1 : 0), q = ((SV.sessionQ ?? 0) + (open3 ?? 0)) / Math7.max(1, n);
+  if (n === 0) return;
   SV.told = true;
-  X2?.env.staging.service?.(X2.runId, verdictOf(n ? q : 0));
+  X2?.env.staging.service?.(X2.runId, verdictOf(q));
 }
 function detachService() {
   try {

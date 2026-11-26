@@ -138,11 +138,49 @@ describe('physics/service', () => {
     expect(ofType(r.events, 'service_rated')).toEqual([expect.objectContaining({ holderId: ANN, kind: 'adequate' })]);
   });
 
+  /** Her frame ended by the stop word, then a contact of hers (her feet on the commander's back: `footrest`, weight) runs: not a frame. */
+  function laterContact(): { s: CampaignState; frameRun: string } {
+    const s = underDesk();
+    const frameRun = s.scene!.physics!.id;
+    const ended = run(s, reg, { type: 'physics/stop_word', payload: {} }).state;
+    expect(ended.scene!.frameDone?.runId).toBe(frameRun);
+    setBlocking(ended, { registries: reg }, { person: ANN, field: 'activity', value: 'idle' }, { at: 3, source: 'chip' }); // an activity with no frame
+    setBlocking(ended, { registries: reg }, { person: ANN, field: 'contact', value: 'footrest', with: COMMANDER }, { at: 4, source: 'chip' });
+    if (!ended.scene!.physics) {
+      const r = run(ended, reg, { type: 'physics/start', payload: { physicsId: 'weight', sourceKind: 'contact', sourceId: 'footrest', holderId: ANN } });
+      expect(errors(r.events)).toEqual([]);
+      return { s: r.state, frameRun };
+    }
+    return { s: ended, frameRun };
+  }
+
   it('refuses a stale run, an unknown verdict, and a run that is not her frame', () => {
     const s = underDesk();
     const runId = s.scene!.physics!.id;
     expect(errors(run(s, reg, { type: 'physics/service', payload: { runId: 'p9', verdict: 'pleased' } }).events).length).toBeGreaterThan(0);
     expect(errors(run(s, reg, { type: 'physics/service', payload: { runId, verdict: 'thrilled' } }).events).length).toBeGreaterThan(0);
     expect(errors(run(s, reg, { type: 'physics/service', payload: {} }).events).length).toBeGreaterThan(0);
+    // a contact's run, open: not her frame
+    const { s: c } = laterContact();
+    const contact = c.scene!.physics!;
+    expect(contact.sourceKind).toBe('contact');
+    const r = run(c, reg, { type: 'physics/service', payload: { runId: contact.id, verdict: 'pleased' } });
+    expect(errors(r.events).length).toBeGreaterThan(0);
+    expect(ofType(r.events, 'service_rated')).toEqual([]);
+  });
+
+  it('review M1: a stale frame done never rates a later run that is not a frame (the frame done carries its run)', () => {
+    const { s: c, frameRun } = laterContact();
+    const contact = c.scene!.physics!.id;
+    expect(contact).not.toBe(frameRun);
+    // the contact's run ends too: no run open, the scene's last run is the contact's, the frame done is the earlier frame's
+    const ended = run(c, reg, { type: 'physics/stop_word', payload: {} }).state;
+    expect(ended.scene!.physics).toBeUndefined();
+    expect(ended.scene!.frameDone?.runId).toBe(frameRun);
+    for (const id of [contact, frameRun]) {
+      const r = run(ended, reg, { type: 'physics/service', payload: { runId: id, verdict: 'pleased' } });
+      expect(errors(r.events).length).toBeGreaterThan(0);
+      expect(ofType(r.events, 'service_rated')).toEqual([]);
+    }
   });
 });

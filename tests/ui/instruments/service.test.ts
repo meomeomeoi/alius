@@ -316,7 +316,30 @@ describe('what it reports', () => {
     expect(t2.staging.service).not.toHaveBeenCalled();
   });
 
-  it('the sounds of the craft reach the engine only while a third party could hear them: a relief, involuntary, unseen, loud × (1 − cover)', () => {
+  it('review I2: the verdict is the crafts\' quality only: three still bouts and one poor kiss do not please her', () => {
+    const t = draw(served());
+    t.to(2400);
+    const SV = _service.SV;
+    for (let i = 0; i < 3; i++) { SV.phase = 'signal'; SV.sig = { motion: 'nudge', meaning: 'still' }; SV.act = 'still'; _service.svAnswer('still'); } // desk bouts read right
+    expect(SV.stats.right).toBe(3);
+    expect(SV.sessionN ?? 0).toBe(0); // no craft judged yet
+    Object.assign(SV, { phase: 'craft', act: 'kiss', acts: 3, quality: 0.5 }); // a poor kiss (q ≈ .17)
+    _service.svEndBout(true);
+    _activity.finish('done');
+    expect(t.staging.service).toHaveBeenCalledTimes(1);
+    const verdict = (t.staging.service as ReturnType<typeof vi.fn>).mock.calls[0]![1];
+    expect(verdict).not.toBe('pleased');
+    expect(verdict).toBe(verdictOf(0.5 / 3));
+    // misread and unanswered signals do not enter it either; no craft at all: no verdict
+    const t2 = draw(served());
+    t2.to(2400);
+    const S2 = _service.SV;
+    S2.phase = 'signal'; S2.sig = { motion: 'sole', meaning: 'kiss' }; _service.svAnswer('rub');
+    _activity.finish('done');
+    expect(t2.staging.service).not.toHaveBeenCalled();
+  });
+
+  it('Ruling AB: the sounds of the craft matter only to a third party (the prototype\'s thirdPartyNoise): nothing of them reaches the engine', () => {
     const t = draw(served());
     t.to(2400);
     sized(t);
@@ -325,12 +348,36 @@ describe('what it reports', () => {
     const SV = _service.SV;
     const [x, y] = centreOf('ball');
     SV.phase = 'craft'; SV.act = 'kiss'; SV.want = 'ball'; SV.closeK = 1;
-    at(10000); _service.svDown(x, y); at(11000); _service.svUp(); // a kiss, nobody else there
-    expect(relief.mock.calls.length).toBe(before);
     _activity.G.call = { heard: false }; _activity.G.herSpeakingUntil = 0;
-    at(20000); _service.svDown(x, y); at(21000); _service.svUp();
-    const r = relief.mock.calls.at(-1)![0];
-    expect(r).toEqual({ kind: 'relieve', amount: 0.12, part: 'unseen', involuntary: true });
+    for (let i = 0; i < 12; i++) { at(10000 + i * 2000); _service.svDown(x, y); at(11000 + i * 2000); _service.svUp(); } // kisses on the line
+    expect(relief.mock.calls.length).toBe(before);
+    expect(_activity.G.call.heard).toBe(true); // the line heard one (0.12 > 0.06, a third of the time on the frame's xorshift)
+  });
+
+  it.each([
+    ['the stop word (the run gone, stopped)', (t: ReturnType<typeof draw>, s: CampaignState) => { delete s.scene!.physics; t.screen.refresh(); }],
+    ['a new run', (t: ReturnType<typeof draw>, s: CampaignState) => { s.scene!.physics = { ...s.scene!.physics!, id: 'p2' }; t.screen.refresh(); }],
+    ['a stage reset', () => resetSceneStage()],
+  ])('review M3: unmount (%s): the lick stops, the close-up goes, no verdict and no relief is sent afterwards', async (_what, end) => {
+    const s = served();
+    const physicsId = s.scene!.physics!.physicsId;
+    const t = draw(s, { staging: { outcome: () => ({ runId: 'p1', physicsId, result: 'stopped' }) } as never });
+    t.to(2400);
+    sized(t);
+    const stop = vi.fn();
+    const old = _service.SV;
+    old.lick = { src: { stop }, f: {}, g: {} };
+    Object.assign(old, { phase: 'craft', act: 'kiss', acts: 1, quality: 1, closeK: 1, closeTarget: 1 });
+    const reliefs = (t.staging.relief as ReturnType<typeof vi.fn>).mock.calls.length;
+    end(t, s);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(stop).toHaveBeenCalled();
+    expect(_service.SV).not.toBe(old);
+    if (_what !== 'a new run') expect(t.host.querySelector('.alius-act-close')).toBeNull();
+    t.to(t.frames.now() + 60000);
+    expect(t.staging.service).not.toHaveBeenCalled();
+    if (_what !== 'a new run') expect((t.staging.relief as ReturnType<typeof vi.fn>).mock.calls.length).toBe(reliefs); // a new run is a new session of its own
   });
 
   it('stop() leaves no service behind: the lick stops, nothing is dispatched afterwards', () => {
