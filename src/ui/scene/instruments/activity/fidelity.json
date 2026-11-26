@@ -486,6 +486,81 @@
         "thank.ritual": "throne.thank@ritual",
         "thank.regal": "throne.thank@regal"
       }
+    },
+    {
+      "ident": "ACTS",
+      "registry": "cardVoice",
+      "cueKinds": {
+        "reading_book.self": "activity.self.reading_book",
+        "reading_reports.self": "activity.self.reading_reports",
+        "writing_report.self": "activity.self.writing_report",
+        "chatting_on_pda.self": "activity.self.chatting_on_pda",
+        "sleeping.self": "activity.self.sleeping",
+        "music.self": "activity.self.music",
+        "cleaning_weapon.self": "activity.self.cleaning_weapon",
+        "mending_clothes.self": "activity.self.mending_clothes",
+        "drinking.self": "activity.self.drinking",
+        "sketching.self": "activity.self.sketching"
+      }
+    },
+    {
+      "prototype": "throne",
+      "ident": "ACTS",
+      "registry": "cardVoice",
+      "cueKinds": {
+        "holding_audience.self": "activity.self.holding_audience"
+      }
+    },
+    {
+      "ident": "TO_YOU",
+      "registry": "cardVoice",
+      "format": "toYou",
+      "cueKinds": {
+        "any": "activity.toYou.any",
+        "reading_book": "activity.toYou.reading_book",
+        "reading_reports": "activity.toYou.reading_reports",
+        "sketching": "activity.toYou.sketching",
+        "drinking": "activity.toYou.drinking",
+        "chatting_on_pda": "activity.toYou.chatting_on_pda"
+      }
+    },
+    {
+      "ident": "TO_YOU",
+      "registry": "cardVoice",
+      "format": "ask",
+      "cueKinds": {
+        "any": "activity.ask.any",
+        "reading_book": "activity.ask.reading_book",
+        "reading_reports": "activity.ask.reading_reports",
+        "writing_report": "activity.ask.writing_report",
+        "drinking": "activity.ask.drinking",
+        "cleaning_weapon": "activity.ask.cleaning_weapon",
+        "mending_clothes": "activity.ask.mending_clothes"
+      }
+    },
+    {
+      "ident": "CALL",
+      "registry": "cardVoice",
+      "format": "exchange",
+      "cueKinds": {
+        ".": "activity.exchange.call"
+      }
+    },
+    {
+      "ident": "VISIT",
+      "registry": "cardVoice",
+      "format": "exchange",
+      "cueKinds": {
+        ".": "activity.exchange.visit"
+      }
+    },
+    {
+      "ident": "CARDS",
+      "registry": "cardVoice",
+      "format": "exchange",
+      "cueKinds": {
+        ".": "activity.exchange.cards"
+      }
     }
   ],
   "differences": [
@@ -503,11 +578,6 @@
       "fn": "audioInit",
       "reason": "Ruling D: the scene's context and its body bus (`samples.ctx()`, `samples.bus('body')`), the decoded buffers through `samples.buffer` (preloaded); the weight's strain rumble is the weight core's own (Ruling B), not the frame's; the nodes are kept so the unmount stops them.",
       "diff": "@@ -2,7 +2,13 @@\n if(A.ctx)return\n-const ctx=new(window.AudioContext||window.webkitAudioContext)()\n+const samples=E?.env.samples??null\n+const ctx=samples?.ctx()??null,out=samples?.bus(\"body\")??null\n+if(!ctx||!out||!samples)return\n A.ctx=ctx\n+A.buf=new Proxy({},{\n+get:(_t,k)=>(typeof k===\"string\"&&SAMPLE_URLS[k]?samples.buffer(SAMPLE_URLS[k]):null)\n+})\n+void samples.preload(Object.values(SAMPLE_URLS))\n A.master=ctx.createGain()\n A.master.gain.value=S.sound?S.vol:0\n-A.master.connect(ctx.destination)\n+A.master.connect(out)\n A.world=ctx.createBiquadFilter()\n@@ -44,23 +50,2 @@\n A.hum2.frequency.value=100\n-const rum=ctx.createBufferSource()\n-rum.buffer=A.brown\n-rum.loop=true\n-A.rumLP=ctx.createBiquadFilter()\n-A.rumLP.type=\"lowpass\"\n-A.rumLP.frequency.value=120\n-A.rumG=ctx.createGain()\n-A.rumG.gain.value=0\n-const lfo=ctx.createOscillator()\n-lfo.frequency.value=9\n-A.lfo=lfo\n-const lfoG=ctx.createGain()\n-lfoG.gain.value=0\n-A.lfoG=lfoG\n-lfo.connect(lfoG)\n-lfoG.connect(A.rumG.gain)\n-lfo.start()\n-rum.connect(A.rumLP)\n-A.rumLP.connect(A.rumG)\n-A.rumG.connect(A.body)\n-rum.start()\n A.humG=ctx.createGain()\n@@ -72,3 +57,3 @@\n A.hum2.start()\n-loadSamples()\n+A.nodes=[room,A.hum,A.hum2]\n }"
-    },
-    {
-      "fn": "sense",
-      "reason": "A `[data-line]` so every line on the scene avoids it; the kit's `placeFree` on the instrument's box; the class after layout on the mount's next frame.",
-      "diff": "@@ -7,2 +7,3 @@\n el.textContent=text\n+el.dataset.line=\"\"\n $(\"#senses\").appendChild(el)\n@@ -12,3 +13,3 @@\n el.dataset.born=String(G.t)\n-requestAnimationFrame(()=>{\n+requestAnimationFrameOnce(()=>{\n el.classList.add(\"on\")"
     },
     {
       "fn": "say",
@@ -690,14 +760,24 @@
       "diff": "@@ -7,3 +7,3 @@\n W.resting=true\n-W.rests+=1\n+W.rests=(W.rests??0)+1\n W_SFX.rustle(0.12,0)\n@@ -15,2 +15,3 @@\n W.str=Math.min(100,W.str+30)\n+weightCore.report(\"rest\",30)\n W_SFX.press(0.35)"
     },
     {
-      "fn": "wBuckle",
-      "reason": "Ruling W: on the weight core's state; the engine buckles the strength back to 35 itself at 0 (frame runs) and ends the session at the third (`physics_buckle`, collapse); `W.buckles` starts at 0.",
-      "diff": "@@ -1,3 +1,3 @@\n function wBuckle(){\n-W.buckles+=1\n+W.buckles=(W.buckles??0)+1\n W_SFX.fall()"
-    },
-    {
       "fn": "begin",
       "reason": "The engine's run starts the frame: her presence is the engine's (`presenceOf` for the run's phase), the clock the marathon's; her first gesture is a sensory line (the scene's reply is the transcript, not the prototype's stand-in); the panel's resets, the sample loader and the start overlay are the prototype's.",
       "diff": "@@ -1,27 +1,14 @@\n function begin(){\n-audioInit()\n-if(A.ctx.state===\"suspended\")A.ctx.resume()\n for(const k of Object.keys(LOOPS))loopOff(k)\n-if(A.ctx)A.humG.gain.setTargetAtTime(0.012,A.ctx.currentTime,0.5)\n-for(const id of[\"#hand\",\"#senses\",\"#others\"])$(id).replaceChildren()\n G=fresh()\n-setScore(baseScore())\n-W=wFresh()\n-SV=svcOn()?svFresh():null\n-if(SV&&$(\"#soleArt\").dataset.own!==\"1\")$(\"#soleArt\").src=$(\"#raisedArt\").src||ASSETS.her\n-if(svcOn())S.view=\"legs\"\n-$(\"#cracks\").replaceChildren()\n-cracks.length=0\n-HOLD.on=false\n-$(\"#summary\").style.display=\"none\"\n-$(\"#getUp\").style.display=\"none\"\n-$(\"#skip\").style.display=\"none\"\n-$(\"#skip\").classList.remove(\"on\")\n+setStep(presenceOf(E.env.state(),E.env.registries,R.run,R.run.marathon?.phase??1))\n+G.clockMin=S.start\n+G.startMin=S.start\n+G.phaseIdx=(R.run.marathon?.phase??1)-1\n G.phase=\"entry\"\n G.entryT=0\n-const entry=weightOn()?\"She points at the floor before her chair, and when you are down on all fours she settles her feet on your back and leans back.\":{\n+const entry=weightOn()&&throneOn()&&S.contact===\"human_chair\"?\"She points at the floor. When you are down on all fours she lowers herself onto your back, without a word, and opens her folder.\":weightOn()?\"She points at the floor before her chair, and when you are down on all fours she settles her feet on your back and leans back.\":{\n her:\"She points at the floor beside her chair without looking up.\",legs:\"She pushes her chair back, points under the desk, and pulls the chair in again once you are there.\",floor:\"She points at the floor by her bunk. \\\"Down. Eyes down.\\\"\",wall:\"She turns you to face the wall by the shoulder, and goes back to her chair.\"\n }[S.view]\n-setReply(`<span class=\"act\">${entry}</span>${S.stay?\" <span class=\\\"speech\\\">“Stay.”</span>\":\"\"}`,0.5)\n-updatePresenceNote()\n+if(entry)after(60,()=>sense(`${entry}${S.stay?\" “Stay.”\":\"\"}`,\"body\"))\n }"
+    },
+    {
+      "fn": "ACTS.reading_reports.self",
+      "reason": "'authorised' is written 'authorized' (the house's US-spelling test, tests/content/spelling.test.ts)",
+      "diff": "[\"…three wounded. three.\",\"the commander authorized the detour. hm.\",\"that’s not what she told me.\",\"requisition denied. again.\",\"node four. why node four.\",\"who signs these.\"]"
+    },
+    {
+      "fn": "sense",
+      "reason": "A `[data-line]` so every line on the scene avoids it; the kit's `placeFree` on the instrument's box; the class after layout on the mount's next frame. A line asked for before the scene's size is known waits for it (review M-R1).",
+      "diff": "@@ -2,2 +2,6 @@\n if(!text)return\n+if(!innerWidth||!innerHeight){\n+after(100,()=>sense(text,where,cls))\n+return\n+}\n if([...$(\"#senses\").children].some(x=>!x.dataset.gone&&x.textContent===text))return\n@@ -7,2 +11,3 @@\n el.textContent=text\n+el.dataset.line=\"\"\n $(\"#senses\").appendChild(el)\n@@ -12,3 +17,3 @@\n el.dataset.born=String(G.t)\n-requestAnimationFrame(()=>{\n+requestAnimationFrameOnce(()=>{\n el.classList.add(\"on\")"
+    },
+    {
+      "fn": "wBuckle",
+      "reason": "Ruling W and review M-R4: on the weight core's state; the count is the engine's (it buckles the strength back to 35 at 0 in frame runs, counts in `second.buckles`, and its third ends the frame as `collapse`, whose outcome plays her verdict through `finish('failed')`): the frame's update reads `W.buckles` from the run.",
+      "diff": "@@ -1,3 +1,2 @@\n function wBuckle(){\n-W.buckles+=1\n W_SFX.fall()\n@@ -9,6 +8,2 @@\n W.str=35\n-if(W.buckles>=3){\n-W.over=true\n-after(1200,()=>finish(\"failed\"))\n }\n-}"
     }
   ]
 }

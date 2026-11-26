@@ -444,7 +444,7 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   else {
     // two physics on the same beats: each input goes to its owner and the pair's conflicts apply (`combined.ts`)
     const envSecond = { ...resolveEnvOf(draft, reg, second), scale };
-    const merged = mergeInputs(envMain.interaction, envSecond.interaction, plan, inputs);
+    const merged = mergeInputs(envMain.interaction, envSecond.interaction, plan, inputs, run.sourceKind === 'activity'); // review N2: her frame's weight owns her rise, rest and landing
     const steady = new Set(merged.steady);
     const m = resolveSegment(run, plan, merged.main, envMain.interaction === 'hold' ? { ...envMain, steady } : envMain);
     const x = resolveSegment(second, plan, merged.second, envSecond.interaction === 'hold' ? { ...envSecond, steady } : envSecond);

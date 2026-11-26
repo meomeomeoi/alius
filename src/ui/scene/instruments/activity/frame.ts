@@ -258,6 +258,7 @@ function setStep(step: Presence) { G.step = step; }
 /* ---------- what reaches the commander: sensory lines on the side of the source, sounds panned there ---------- */
 function sense(text: string, where: Any = 'her', cls = '') {
   if (!text) return;
+  if (!innerWidth || !innerHeight) { after(100, () => sense(text, where, cls)); return; } // review M-R1: placed once the scene's size is known (never over its top bar)
   if ([...$('#senses').children].some((x) => !(x as HTMLElement).dataset.gone && x.textContent === text)) return; // the same line is still showing
   const v = V(), p = where === 'door' ? v.door : where === 'body' ? v.body : Array.isArray(where) ? where : v.her;
   const el = document.createElement('div'); el.className = 'sense ' + cls; el.textContent = text; el.dataset.line = '';
@@ -413,11 +414,10 @@ function wLimit() {
   after(rand(3500, 5000), () => { W.resting = false; W.str = Math.min(100, W.str + 30); weightCore.report('rest', 30); W_SFX.press(0.35); sense(hcR ? 'Her weight settles back.' : 'Her feet come back down.', 'body'); });
 }
 function wBuckle() {
-  W.buckles = (W.buckles ?? 0) + 1; W_SFX.fall(); W.jolt = 1.5; W.sag = 1; crack(1.2);
+  W_SFX.fall(); W.jolt = 1.5; W.sag = 1; crack(1.2);
   sense('Your arms give. You go down under her feet.', 'body', 'body');
   bodyNoise('slump', 1, true, true);
   W.str = 35;
-  if (W.buckles >= 3) { W.over = true; after(1200, () => finish('failed')); }
 }
 
 /* ---------- the urges: the cursor is the commander's attention ---------- */
@@ -1340,6 +1340,8 @@ export function startFrame(env: InstrumentEnv, run: PhysicsRun): InstrumentRun {
       if (E !== mine) return;
       R.run = next;
       if (next.second) E.core?.update(coreRun(next, 'second')!);
+      // review M-R4: one buckle count, the engine's (its third ends the frame: the outcome plays her verdict through `finish('failed')`)
+      if (weightOn()) { W.buckles = next.second?.buckles ?? 0; if (W.buckles >= 3) W.over = true; }
       if (next.marathon) S.phases = next.marathon.phases;
     },
     finish(end: PhysicsEnd): number {

@@ -36040,7 +36040,7 @@ function decideBoundary(draft, ctx2, run, result) {
   let outcome = null;
   let move;
   if (result.checked) outcome = "checked";
-  else if (result.complete) outcome = "released";
+  else if (result.complete && run.sourceKind !== "activity") outcome = "released";
   else {
     const release2 = releaseCheck(draft, reg, run);
     if (release2 === "release") {
@@ -36053,7 +36053,7 @@ function decideBoundary(draft, ctx2, run, result) {
   }
   if (outcome === null) {
     const scene = draft.scene;
-    if (move === void 0 && (draft.slot === "night" || resting(draft, reg, run.holderId)) && blockingOf(scene, run.holderId).activity !== "sleeping") {
+    if (move === void 0 && run.sourceKind !== "activity" && (draft.slot === "night" || resting(draft, reg, run.holderId)) && blockingOf(scene, run.holderId).activity !== "sleeping") {
       if (ctx2.rng.chance(1 - (1 - P.asleep.perBeat) ** result.beatsRun)) {
         if (setQuietly(draft, reg, { person: run.holderId, field: "activity", value: "sleeping" })) {
           (scene.sleepUntil ??= {})[run.holderId] = scene.exchanges + ctx2.rng.int(P.asleep.exchanges[0], P.asleep.exchanges[1]);
@@ -39387,9 +39387,11 @@ var COMBINE_RULES = [
 ];
 var STEADY_DRAIN = 0.75;
 var has = (a, b, rule) => COMBINE_RULES.some((r) => r.rule === rule && (r.pair[0] === a && r.pair[1] === b || r.pair[0] === b && r.pair[1] === a));
-function mergeInputs(mainI, secondI, plan, inputs) {
-  const main2 = inputs.filter((i) => OWNS[mainI].includes(i.kind));
-  const second = inputs.filter((i) => OWNS[secondI].includes(i.kind) && !main2.includes(i));
+var FRAME_REST_PARTS = ["up", "rest", "charge"];
+function mergeInputs(mainI, secondI, plan, inputs, framed = false) {
+  const owns = (it, i) => OWNS[it].includes(i.kind) || framed && it === "hold" && i.kind === "ask_rest" && FRAME_REST_PARTS.includes(i.part ?? "");
+  const main2 = inputs.filter((i) => owns(mainI, i));
+  const second = inputs.filter((i) => owns(secondI, i) && !main2.includes(i));
   const timing = mainI === "timing" ? "main" : secondI === "timing" ? "second" : null;
   let notices = 0;
   if (timing !== null && has(mainI, secondI, "mouth_in_opening")) {
@@ -39747,7 +39749,7 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
   if (!second) result = resolveSegment(run, plan, inputs, envMain);
   else {
     const envSecond = { ...resolveEnvOf(draft, reg, second), scale };
-    const merged = mergeInputs(envMain.interaction, envSecond.interaction, plan, inputs);
+    const merged = mergeInputs(envMain.interaction, envSecond.interaction, plan, inputs, run.sourceKind === "activity");
     const steady = new Set(merged.steady);
     const m = resolveSegment(run, plan, merged.main, envMain.interaction === "hold" ? { ...envMain, steady } : envMain);
     const x = resolveSegment(second, plan, merged.second, envSecond.interaction === "hold" ? { ...envSecond, steady } : envSecond);
@@ -71395,6 +71397,10 @@ function setStep(step) {
 }
 function sense2(text3, where = "her", cls = "") {
   if (!text3) return;
+  if (!innerWidth6 || !innerHeight6) {
+    after6(100, () => sense2(text3, where, cls));
+    return;
+  }
   if ([...$6("#senses").children].some((x) => !x.dataset.gone && x.textContent === text3)) return;
   const v = V2(), p = where === "door" ? v.door : where === "body" ? v.body : Array.isArray(where) ? where : v.her;
   const el = document.createElement("div");
@@ -71644,7 +71650,6 @@ function wLimit() {
   });
 }
 function wBuckle() {
-  W2.buckles = (W2.buckles ?? 0) + 1;
   W_SFX2.fall();
   W2.jolt = 1.5;
   W2.sag = 1;
@@ -71652,10 +71657,6 @@ function wBuckle() {
   sense2("Your arms give. You go down under her feet.", "body", "body");
   bodyNoise2("slump", 1, true, true);
   W2.str = 35;
-  if (W2.buckles >= 3) {
-    W2.over = true;
-    after6(1200, () => finish5("failed"));
-  }
 }
 var MOUSE = { x: 0, y: 0, down: false };
 function anchors() {
@@ -73198,6 +73199,10 @@ function startFrame2(env, run) {
       if (E5 !== mine) return;
       R8.run = next;
       if (next.second) E5.core?.update(coreRun(next, "second"));
+      if (weightOn()) {
+        W2.buckles = next.second?.buckles ?? 0;
+        if (W2.buckles >= 3) W2.over = true;
+      }
       if (next.marathon) S8.phases = next.marathon.phases;
     },
     finish(end2) {

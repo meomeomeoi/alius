@@ -81,7 +81,7 @@ export function decideBoundary(draft: CampaignState, ctx: Pick<EngineCtx, 'regis
   let outcome: Outcome | null = null;
   let move: string | undefined;
   if (result.checked) outcome = 'checked';
-  else if (result.complete) outcome = 'released';
+  else if (result.complete && run.sourceKind !== 'activity') outcome = 'released'; // Ruling AA: her frame never ends by its progress (her pacing, the marathon, ends it)
   else {
     const release = releaseCheck(draft, reg, run);
     if (release === 'release') {
@@ -94,7 +94,8 @@ export function decideBoundary(draft: CampaignState, ctx: Pick<EngineCtx, 'regis
   }
   if (outcome === null) {
     const scene = draft.scene!;
-    if (move === undefined && (draft.slot === 'night' || resting(draft, reg, run.holderId)) && blockingOf(scene, run.holderId).activity !== 'sleeping') {
+    // Ruling AA: in her frame her activity is the frame (falling asleep would change it and end it): she does not doze off here
+    if (move === undefined && run.sourceKind !== 'activity' && (draft.slot === 'night' || resting(draft, reg, run.holderId)) && blockingOf(scene, run.holderId).activity !== 'sleeping') {
       if (ctx.rng.chance(1 - (1 - P.asleep.perBeat) ** result.beatsRun)) {
         if (setQuietly(draft, reg, { person: run.holderId, field: 'activity', value: 'sleeping' })) {
           (scene.sleepUntil ??= {})[run.holderId] = scene.exchanges + ctx.rng.int(P.asleep.exchanges[0], P.asleep.exchanges[1]);

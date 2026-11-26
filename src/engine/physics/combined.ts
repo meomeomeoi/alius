@@ -30,10 +30,17 @@ export interface Merged {
   steady: number[];
 }
 
-/** Routes each input to the physics that owns it and applies the conflicts of the pair. */
-export function mergeInputs(mainI: InteractionType, secondI: InteractionType, plan: SegmentPlan, inputs: SegmentInput[]): Merged {
-  const main = inputs.filter((i) => OWNS[mainI].includes(i.kind));
-  const second = inputs.filter((i) => OWNS[secondI].includes(i.kind) && !main.includes(i));
+/** Ruling W: in her frame the weight also owns her rise and rest and a hard landing (`ask_rest` with these parts). */
+export const FRAME_REST_PARTS: readonly string[] = ['up', 'rest', 'charge'];
+
+/**
+ * Routes each input to the physics that owns it and applies the conflicts of the pair. `framed` (a run of her frame, review N2): the hold side
+ * also owns `ask_rest` with a part of `FRAME_REST_PARTS`; any other pair routes exactly as before.
+ */
+export function mergeInputs(mainI: InteractionType, secondI: InteractionType, plan: SegmentPlan, inputs: SegmentInput[], framed = false): Merged {
+  const owns = (it: InteractionType, i: SegmentInput): boolean => OWNS[it].includes(i.kind) || (framed && it === 'hold' && i.kind === 'ask_rest' && FRAME_REST_PARTS.includes(i.part ?? ''));
+  const main = inputs.filter((i) => owns(mainI, i));
+  const second = inputs.filter((i) => owns(secondI, i) && !main.includes(i));
   const timing = mainI === 'timing' ? 'main' : secondI === 'timing' ? 'second' : null;
   let notices = 0;
   if (timing !== null && has(mainI, secondI, 'mouth_in_opening')) {

@@ -44,7 +44,12 @@ export interface FidelitySpec {
   functions: Array<{ fn: string; module: string; as?: string; prototype?: string; fragment?: { from: string; to: string } }>;
   /** `additions`: keys the port's table adds, each from another prototype (its reason): compared without them. */
   tables: Array<{ ident: string; module: string; export: string; prototype?: string; deps?: string[]; additions?: Record<string, string> }>;
-  lines?: Array<{ ident: string; prototype?: string; registry?: 'physicsCues' | 'cardVoice'; physics?: string; cueKinds: Record<string, string> }>;
+  /**
+   * `format` reads a table of objects as the registry's strings (her_activity's placeholders, Ruling Z): `toYou` / `ask` the `text` of the items
+   * without / with `ask`; `exchange` each `{ other, her }` as `other|her` and `{ other, mention: { plain, veiled } }` as `other|plain|veiled`.
+   * A path `.` is the whole table.
+   */
+  lines?: Array<{ ident: string; prototype?: string; registry?: 'physicsCues' | 'cardVoice'; physics?: string; format?: 'toYou' | 'ask' | 'exchange'; cueKinds: Record<string, string> }>;
   differences: Array<{ fn: string; reason: string; diff: string }>;
 }
 
@@ -538,6 +543,15 @@ function declaredHunks(diff: string): string[] {
   return out.map((h) => h.trimEnd()).filter((h) => h !== '');
 }
 
+/** A table's items as the registry's strings (`lines[].format`); a value with no format is as it is. */
+function formatLines(v: unknown, format: 'toYou' | 'ask' | 'exchange' | undefined): unknown {
+  if (format === undefined || !Array.isArray(v)) return v;
+  const items = v as Array<Record<string, unknown>>;
+  if (format === 'exchange') return items.map((x) => { const m = x.mention as { plain: string; veiled: string } | undefined; return m ? `${String(x.other)}|${m.plain}|${m.veiled}` : `${String(x.other)}|${String(x.her)}`; });
+  const out = items.filter((x) => (format === 'ask') === (x.ask === true)).map((x) => String(x.text));
+  return out.length > 0 ? out : undefined;
+}
+
 function atPath(value: unknown, path: string): unknown {
   return path.split('.').reduce<unknown>((v, k) => (v !== null && typeof v === 'object' ? (v as Record<string, unknown>)[k] : undefined), value);
 }
@@ -614,6 +628,7 @@ export async function checkFidelity(spec: FidelitySpec, opts: { registries: Regi
         for (const [k, reason] of Object.entries(t.additions)) {
           if (reason.trim() === '') failures.push(`the addition ${t.export}.${k} has no reason`);
           if (!(k in (got as Record<string, unknown>))) failures.push(`the addition ${t.export}.${k} is declared but not in the port`);
+          if (typeof want === 'object' && want !== null && k in (want as Record<string, unknown>)) failures.push(`the addition ${t.export}.${k} is a key of the prototype's ${t.ident} too: a changed row is a difference, not an addition`);
         }
         got = Object.fromEntries(Object.entries(got as Record<string, unknown>).filter(([k]) => !(k in t.additions!)));
       }
@@ -640,7 +655,7 @@ export async function checkFidelity(spec: FidelitySpec, opts: { registries: Regi
       continue;
     }
     for (const [path, target] of Object.entries(l.cueKinds)) {
-      const want = atPath(table, path);
+      const want = formatLines(path === '.' ? table : atPath(table, path), l.format);
       let got: unknown;
       if ((l.registry ?? 'physicsCues') === 'cardVoice') {
         const [kind, style] = target.split('@');
