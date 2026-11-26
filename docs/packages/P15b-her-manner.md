@@ -89,7 +89,7 @@ The readers this package switches over (each keeps its style table as the base; 
 | what she rewards (`practice/service.ts` verdicts, physics favour) | — | `drawnBy` (a small favour bonus on the matching outcome: `pain` a hold endured past the warning, `power` an accept at the first ask, `reaction` a physics slip that is not a cheat, `discipline` a clean end, `discovery` a first practice of a kind) |
 | what she asks for (`practice/request.ts`, `pickSeeds`, `practice_generate`) | her categories, the seeds | `curiosity` above 0: a hashed share (`practiceRoll(holder, 'new:<request>')`) of requests filters the seed pool to kinds and categories she has not practised with the commander (if any remain; the brief says it is new); at 0 and below nothing changes (controller's call: 0 is the base); `drawnBy` (in the brief) |
 
-Everything else that reads the style word (Regard, compatibility, her reading of the commander, witnesses, cover, milestones, aftermaths, probes) keeps reading the word: the archetype decides those.
+Everything else that reads the style word (Regard, compatibility, her reading of the commander, witnesses, cover, milestones, aftermaths, probes) keeps reading the word: the archetype decides those. **Exception (§12, 2026-11-26):** the probe pool also reads a row's `needs` (styles, `drawnBy`, manner, likes).
 
 ## 4. The mood of the day
 
@@ -200,6 +200,48 @@ The frame only decides whether she holds at all (the holder directive exists fro
 
 - **Hidden** (sentinels in `tests/fixtures/analyze/hidden.ts`): the accumulators of the manner axes (as every P14b accumulator), the mood of the day as a number, the distance to a turn and `turn` eligibility, which quirks are offered or voiced. The axes themselves, `drawnBy`, the faces, the quirks and the contrast are the player's profile and are shown.
 - **Off is byte-identical:** with the dynamic off nothing of this runs. With the dynamic on and every holder's axes at 0, no `drawnBy`, no quirks, no everyday line and a steady temperament, the numbers are P16's and P15a's exactly; only the holder directive changes (the face rule), which is the intended fix. `tests/dynamic/unaffected.test.ts` and `tests/practice/unaffected.test.ts` must not move; a seeded test that moves stops and reports.
+
+## 12. Probing by manner: the `regal` entry (revision of 2026-11-26)
+
+From the design session of 2026-11-26 (`docs/drafts/2026-11-26-regal.md`; this section wins where they differ). `regal` here is not a queen with titles or a court: the commander **serves her and worships her as something higher**, more openly than with the other styles. These additions give her a way in, added to P15 §15.1's probing; any woman whose profile fits gets them, and `regal` gets them twice as often.
+
+### 12.1 How rows are added without moving anything
+- **Today:** `pickAxis` (`src/engine/dynamic/probes.ts`) picks evenly over every `probeAxes` row of the band's tier (`dynamicRoll`, no rng draw). New rows added as they are would shift every campaign's pick and move seeded tests.
+- **`needs` on a row:** `probeAxes[].needs?: Array<{ styles?, drawnBy?, manner?, likes? }>`, a list of alternatives. One alternative is enough; inside one every field must hold:
+  - `styles`: her primary is one of them;
+  - `drawnBy`: one of hers (§2);
+  - `manner`: bounds per axis (`{ warmth: [-2, 0] }`);
+  - `likes`: `{ <category>: 'enjoys' | 'craves' }` through `practiceOf` (at least that).
+- **Gate:** a row with `needs` enters her pool only when `bond.practice.manner` is present (this package's gate) and an alternative holds. A woman who matches none keeps the old pool byte for byte; old saves are untouched. `src/engine/dynamic/headStart.ts`, which builds the same pool, filters the same way.
+- **Weight:** a matching row whose `styles` alternative names her primary takes two places in the pool.
+- **Where:** probes stay in scenes (`sceneProbe`, answered by the scene's `intent_extract` with the existing `probe_answered { axis, response, tone }`). `dm_reply` carries no probe; every gesture below is written for a scene.
+- **The face (§6)** governs the probe line as before.
+
+### 12.2 The new axes (`probeAxes` rows; texts `AUTHOR TO WRITE`, needs are drafts)
+| Axis | Gesture (the main model invents it from `promptHint`) | Yield | Needs |
+|---|---|---|---|
+| `admiration` | "how do I look?" (a new uniform, after the hair) | a sincere compliment (`tone: sincere`); `ironic` is a deflection | `regal`; or `drawnBy: power` with `warmth ≤ 0` |
+| `deference` | lets it be seen she expects to go first, get the better seat, be served first; holds out her hand, half joking, "well?" (kissed = yield; shaken or laughed off = deflected) | the commander gives way | `regal`, `ritual` or `possessive` |
+| `credit` | in the first scene after a run she tells the commander's plan as hers ("my plan worked, didn't it?") | silence, or agreeing | `regal` or `drill` |
+| `gaze` | holds the look to see who looks away; or, having caught the commander looking at her legs, crosses them and lets a shoe dangle from her toes (the shoe only with `likes: { worship: enjoys }`) | the commander looks away first / keeps looking at the shoe | `regal` or `playful` |
+| `corrected_praise` | the commander praises her and she corrects it: "not pretty. Say beautiful." | the commander repeats it as told | `regal` |
+| `feet_in_lap` | in a shared evening (a P14c pastime) she puts her feet on the commander's lap as if only for comfort | they stay, or the commander starts to rub them (`foot_rub`) | `likes: { worship: enjoys }` |
+| `hypothetical` | "would you kneel if I asked?" | a yes | `regal` or `playful`; or `curiosity ≥ +1` |
+
+- `tier` per row as the existing rows (`deference`, `credit`, `corrected_praise`, `hypothetical` 1; `admiration`, `gaze`, `feet_in_lap` 2: drafts).
+- **`hypothetical`** writes the commander's answer as her fact, which she may quote later ("you said you would"): new event `hypothetical_answered { unitId, answer }` (the answer is the extractor's short paraphrase, never the commander's raw text in an event).
+
+### 12.3 Not axes
+- **The joke that stopped being a joke** (a `first_yes` form). On `testing` she plays at being a queen ("bring it, servant"); one day she stops smiling and the commander still does it. A `dynamicMilestones` row `equal → play` with `requires.style: ['regal']` (and the same band as `first_yes`), offer `scene`, placed **before** `first_yes` in the registry so it replaces it for her and nobody else's graph changes. Text `AUTHOR TO WRITE`.
+- **The first time below her.** An innocent occasion: her lace came undone after a run, and the commander kneels to tie it. She looks down and lets it last ("wait"). A P15a moment source `first_below` (her options: let it last / thank / tease), once per pair, at `testing`, only for a woman for whom a §12.1 row would match. When P17c's camera "from below" exists, this moment is its first use; until then nothing changes on screen.
+- **What wakes her.** For a `regal` woman (or `drawnBy: power` with `warmth ≤ 0`) a `latent` inclination also wakes from **being admired**: three P3 `praised` events from the commander toward her in 14 days. A new cause in `latentCause`, gated like §12.1. (Probe yields cannot be the cause: a latent woman does not probe before she wakes.)
+- **Moved to P16b:** "she names the service before the commander does" (it needs P16b's count of unasked care).
+
+### 12.4 Memory, hidden, off
+- **Memory check:** probe answers stay P15's bookkeeping. `hypothetical_answered` gets a `memoryRules` entry (audience: her; no spread; importance 1). The milestone and the moment write what P15 and P15a already write. No journal phrase, no chronicle, no `group: 'memory'` provider.
+- **Hidden:** that a gesture was a probe and on which axis (P15, as today).
+- **Off:** a woman without `manner`, or matching no `needs`, keeps her old pool, her old milestone graph and her old moment sources. `tests/dynamic/unaffected.test.ts` must not move; a seeded test that moves stops and reports. Adding the moment source and the milestone row must move no seeded test either: check the P15a and P15 goldens.
+- **Acceptance:** (11) a `regal` woman with `manner` present is offered the new axes, twice as often as matching non-`regal` women; a woman with no matching `needs` gets the same axes, in the same order, as before this section; `hypothetical_answered` writes her fact; the joke milestone replaces `first_yes` only for `regal`; `first_below` comes once per pair; the latent cause wakes a `regal` woman after three praises in 14 days.
 
 ## TUNING (approved by the author on 2026-11-24; the small shares, sealed, no-duration and forgot, are tuned in play)
 

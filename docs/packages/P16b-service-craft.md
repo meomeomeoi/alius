@@ -120,6 +120,7 @@ The vocabulary (points, states, tags, modifiers and the 48 presets) is `docs/con
 
 - **Practices cost free slots** (author ruling: fair). A hold, a drill, a care session each spend the slot they take; P15 hold, P16 favour and P15 Regard are where the slot is repaid.
 - **Unasked care:** a free slot spent on her without her asking (cleaning her boots, tidying her quarters, preparing her gear, mending, learning her body map by asking others): a service activity (P15a §4) with `presence: unnoticed`. Whether she notices is a hashed roll on her perceptiveness and the activity's visibility. **Noticed:** a moment "I saw what you did while I was out" (by style: warmth, amusement, a note in her hand), favour +, motive `her` +, Regard by style. **Unnoticed:** it stays only in the commander's record. Anticipation in her presence is P16 §R.5.
+- **She names the service before the commander does** (from the 2026-11-26 session, moved here from P15b §12 because it needs this count): at the fourth noticed unasked care in 7 days by a woman still on `testing` (a `regal` woman, or `curiosity ≥ +1`), a directive offers her line once ("fourth time this week you've brought me coffee. Did I ask?"; `AUTHOR TO WRITE`), triggered and gone once voiced (P14c §0). Nothing new is stored; no memory rule (a line, not an event).
 
 ## 11. The programmes of the new styles
 

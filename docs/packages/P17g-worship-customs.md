@@ -12,7 +12,7 @@
 
 **Analysis tool (P7a)** and **P14** rules apply. Hidden values (which custom she is drawn to next, the hash of her pick, a custom's growth before it shows, the shrine state of a zone before it is consecrated) are sentinels in `tests/fixtures/analyze/hidden.ts`. **Lore §0:** no pronoun for the commander, no feeling of the commander, in any text a player or the model reads.
 
-Origin: the design session of 2026-11-25 with the author.
+Origin: the design session of 2026-11-25 with the author. **Revision of 2026-11-26** (§8): stages on customs, eight new customs of the `regal` direction and the far end (the absolute whim, her prerogative); it adds P17 (stagings), P17c (gestures), P2 (activity choice) and P10d (the cabin override) to the dependencies.
 
 ## Goal
 
@@ -35,7 +35,8 @@ Worship of the commander toward her, in any form, one to one, grows into **custo
 ### 1.1 The registry
 
 `worshipCustoms` entries: `{ id, label, description, kind, needs, weight, frameMin, pace, promptHint }`.
-- `kind`: `praise` | `shrine` | `relic` | `rite` | `trace` | `acceptance` | `defect` | `token` | `vow` (read by kind, never by id).
+- `kind`: `praise` | `shrine` | `relic` | `rite` | `trace` | `acceptance` | `defect` | `token` | `vow` (read by kind, never by id); §8 adds `salute`, `after_her`, `chamber`, `cabin`, `attendance`, `seat`, `foot_gag`, `spit`, `prerogative`.
+- `stages?`: §8.1 (2026-11-26).
 - `needs`:
   - `categories?: Array<{ id, as: 'enjoys' | 'craves' }>`
   - `styles?: Style[]`
@@ -177,6 +178,7 @@ A custom not yet introduced never reaches a prompt.
 - A P16 task form: a pointless errand and its reversal ("bring it — no, take it back", "move it there — no, where it was").
 - Kept by obeying without a question; a "why?" or a sigh read by `intent_extract` is a slip.
 - Her pleasure is the pointlessness (favour by style). At most one whim a day.
+- **Stages (2026-11-26):** this is stage 1; the whim grows to absolute at `rule` (§8.4.1).
 
 ### 2.15 The commander as her clerk (`clerk`)
 - Lore: oversight sits above the squad. With the `command` domain (P15) the commander's reports to oversight go out **under her signature** or **in her dictation** (P17c's dictation).
@@ -288,3 +290,223 @@ Scales for reference: trust 0–100, Regard 0–100 (start 50, ordinary rises +1
 ## 7. Open for the author
 
 - The relic places of underwear by kind.
+
+## 8. Revision of 2026-11-26: stages, the `regal` customs, the far end
+
+From the design session of 2026-11-26 with the author (`docs/drafts/2026-11-26-regal.md`; this section wins where they differ, and wins over §1–§7 where it changes them). `regal` here is not a queen with titles, a coronation or a court: the commander **serves her and worships her as something higher**. The approved throne (`docs/prototypes/throne.html`) is the reference: her life goes on above, the commander is the ground of her comfort, she barely notices the effort, her attention is rare. Its probing (the way in) is P15b §12.
+
+**Rulings (author, 2026-11-26):**
+1. Any holder whose profile fits may grow these customs; `regal` weighs them ×2. A custom that depends on her character reads her manner, not the style word.
+2. The chamber (§8.3.3) is urine only; no new content category.
+3. At the last stage of the whim (§8.4.1) a whim is absolute: it cannot be disputed, however strange it is; not doing it is a heavy offence, not a break.
+4. Her delay of a run (§8.4.2) touches optional missions only.
+5. Every stage is open by default; the player may lower a ceiling per custom.
+6. Growth works by **stages on customs** (§8.1), not by the tracks alone. (Rejected: letting P16's track levels cap the model's intensity and nothing else; no ceiling per idea, no visible place on it.)
+7. Her prerogative acts at the moment of choice; there is no planner of the commander's week (§8.4.2).
+
+**Dropped:** carrying her (the soldiers are far stronger than the commander); titles, coronation, petitions, pardons and anything that needs a court; the commander speaking of self in the third person (P17b §3).
+
+### 8.1 Stages (general to every custom)
+
+**Data.** `worshipCustoms[].stages?: Array<{ label, requires: { frame, tracks?, categories?, attitude?, capabilities?, milestone? }, stakes, promptHint, description }>`:
+- `frame`: `play` | `role` | `rule`;
+- `tracks`: P15 track levels (`{ humiliation: 2 }`);
+- `categories`: all enabled;
+- `attitude`: her `as` for a category through `practiceOf` (`enjoys` | `craves`, at least);
+- `capabilities`: P15 capabilities she holds (by capability, never by domain id);
+- `milestone`: one the pair has passed (`private_rule` for the far end);
+- `stakes`: the P16 consent ladder (R.1) for her offer of the stage; `severe` writes the CMDR record line.
+
+Stage 1 is the custom as introduced today. A custom without `stages` is unchanged. Each new custom below has its own `kind` (the code reads customs by kind, never by id): `salute`, `after_her`, `chamber`, `cabin`, `attendance`, `seat`, `foot_gag`, `spit`, `prerogative`; the `whim` row gains `stages`.
+
+**Notation in the tables:** a frame (`play`); a category name alone = enabled; `name N` = the P15 track at level N or more; `craves name` / `enjoys name` = her attitude; a capability in backticks = she holds it; *seen* = others see it (below).
+
+**Seen stages.** A stage marked *seen* is not offered while the relation is secret or her `audience` is `private_only` (as `tribute`, §2.11). Taken, it feeds P15's suspicion through a `dynamicSigns` row: an existing one where it fits (`protocol_public`), else a new one named in the stage.
+
+**State.** `customs.active[].stage` (1-based), `stagedOn?: number` (day), `stale?: number` (hidden).
+
+**How a stage grows.**
+1. **Staleness (hidden):** each time the custom is kept, `stale` +1. Her threshold `TUNING.customs.staleAt` (6) × her manner: `drawnBy: discovery` or `curiosity ≥ +1` ×0.6; `order ≥ +1` or `drawnBy: discipline` ×1.5; a hidden spread by `dynamicHash`. A fresh stage is not left early. Staleness changes nothing about upkeep or fading.
+2. **Her offer:** when `stale` has reached her threshold, the next stage's `requires` hold, it is under the ceiling and the pacing allows, she offers it as a first moment (§1.2's mechanism), in the consent form of its `stakes`.
+3. **Pacing:** at least 7 fiction days since this custom's last step; at most one new custom **or** one step-up per holder a fiction week (shared with §1.2).
+4. **Accepted:** the stage rises, `stale` = 0, `custom_stage` is emitted.
+5. **Refused:** the custom stays, 14-day cooldown for it. At stakes `major` or above the refusal is hers in P16's sense (her discipline may follow). Never an exit.
+6. **Falling back:** one stage down, never more at once, when its `requires` stop holding (the frame cooled, a track decayed, a category switched off, her attitude drifted, P14b) or after 14 days without upkeep. Stage 1 falling is §1.2's fading.
+
+**The player's hand.**
+- Content categories are hard gates.
+- **SYS › Dynamic › Customs:** a **ceiling** per custom (stages 1…N) beside its toggle; default all open (ruling 5). SYS lists every stage's label and description, as it lists content categories (choosing what may happen needs to know it). Lowering it under the current stage drops the custom to the ceiling at the next day step, with no offence.
+- Refusing in the fiction, the exit (P15 E2) and the stop word (P15a §9.4), untouched.
+- The PRACTICE block shows each active custom with **its current stage label**, never the next; analyze explains a stage after it happened.
+
+**Prompt.** The custom's `customs:` directive reads the current stage's `promptHint` (§1.5).
+
+### 8.2 Calls on the stages (Claude, 2026-11-26; the author may overrule any)
+- Stages are written for the new customs and `whim` only; the customs of §2 may get them later.
+- Falling back is one stage at a time; the cabin's stress cost is at its stage 3 only; the absolute whim is consented to once, at the stage.
+
+### 8.3 The middle: new customs
+
+Labels, hints and descriptions `AUTHOR TO WRITE`; stakes are drafts.
+
+#### 8.3.1 The salute (`salute`)
+- **Needs:** `manner.order ≥ +1`, or primary `drill`, `ritual` or `regal`; `regal` ×2; `frameMin` `play`; weight 2. (Her value axes have no discipline or rank axis; values are not read.)
+- **Rule:** a P16 rule template like `stand_when_i_enter`, judged the same way (`check: 'intent'`): when she enters or passes, the commander stands to attention (`standing_attention`) and salutes; she does not return it. A miss is `protocol_slip`.
+
+| Stage | What | Requires | Stakes |
+|---|---|---|---|
+| 1 | in jest, between them | `play` | trivial |
+| 2 | seriously, before the squad (*seen*, `protocol_public`) | `role`, public_humiliation, `public_humiliation 1` | minor |
+| 3 | kneeling, before anyone, never returned (*seen*, `protocol_public`) | `role`, `humiliation 2`, `public_humiliation 2` | major |
+
+#### 8.3.2 After her (`after_her`)
+- **Needs:** `service` likes; weight 2; `frameMin` `play`.
+- **Rule template** `after_her` with `of: eat | sleep | wash`: the commander does it only after she has. The engine has no meal, sleep or wash events (whereabouts are a hashed room per slot), so it is judged like `stand_when_i_enter` (`check: 'intent'`: the extractor reports a breach a scene shows); its directive reminds the model once in a scene where it fits.
+- Stage 4 is a scene beat: after her bath (`bathing_her`) she tells the commander to wash in her water.
+
+| Stage | What | Requires | Stakes |
+|---|---|---|---|
+| 1 | eats after her | `play`, service | trivial |
+| 2 | goes to bed after her | `role` | minor |
+| 3 | washes after her | `role`, `humiliation 1` | minor |
+| 4 | washes in her used bathwater | `role`, `humiliation 3` | major |
+
+#### 8.3.3 The chamber (`chamber`; urine only, ruling 2)
+- **Extends** P17b's `watersports` (drink only from her, the bowl, `gulp`); no new category.
+- **Needs:** `watersports` likes; weight 1; `frameMin` `role`.
+
+| Stage | What | Requires | Stakes |
+|---|---|---|---|
+| 1 | the commander holds the vessel for her and carries it out | `role`, watersports, `service 2` | major |
+| 2 | at night the commander is her chamber pot (the `gulp` physics) | `rule`, `humiliation 3`, `craves watersports` | severe |
+
+#### 8.3.4 Her cabin (`cabin`)
+- **Today:** `cabinMap` (`src/engine/basePlan.ts`) derives cabins from the order of joining (no state); `roomOfPerson(…, 'commander')` already moves the commander for a hold and for `second_place`.
+- **New:** a stackable reader `registerCabinOverride` (P10d's rule kept: nothing stored in the plan; the swap lives in `customs.active[].data`; the reader answers null with no live custom, so the plan stays byte-identical).
+- **Needs:** `second_place` (the `household` domain opens at `role`); weight 1; `frameMin` `role`.
+
+| Stage | What | Requires | Stakes |
+|---|---|---|---|
+| 1 | now and then she takes the commander's cabin for the night; the commander sleeps in hers | `role`, `second_place` | minor |
+| 2 | the cabins are swapped: the plan names the commander's cabin hers (*seen*, new sign `cabin_taken`) | `role`, `household_protocol`, `humiliation 1` | major |
+| 3 | **no cabin**: the commander lives as furniture of her room; the plan draws the commander there, default posture `footrest` (*seen*, `cabin_taken`) | `rule`, objectification | severe |
+
+- **Cost:** at stage 3 a night on the floor adds commander stress +2 (P7, no draw), unless she kept the commander at her bed that night.
+
+#### 8.3.5 Waiting while she gets ready (`attendance`)
+- **Uses:** the activity `holding_for_her`, a P16 named posture with drift (P16b), the slot it burns, P16 R.9's "until I decide".
+- **Needs:** `service` likes; `regal` ×2; weight 2; `frameMin` `play`.
+
+| Stage | What | Requires | Stakes |
+|---|---|---|---|
+| 1 | waits at her door until she comes out | `play` | trivial |
+| 2 | kneels in her room holding her shoes while she does her face (a posture instrument; the slot burns) | `role`, `service 1` | minor |
+| 3 | waits for hours with no promise of being called in (no duration) | `role`, `service 3` | major |
+
+#### 8.3.6 Her seat (`seat`)
+- **Exists:** the contact `under_her_seat` (she sits on the commander's face as on a cushion, busy with her own thing: breath physics plus her activity, no speech, no sight; `docs/content/blocking.md` §3), the approved dark shape `seat` (P10e §15) and `her_activity` as a contact physics on it. No new instrument: the custom only decides when and how often it comes.
+- **Needs:** `objectification` likes and `restraint` enabled; `regal` ×2; weight 1; `frameMin` `play`.
+
+| Stage | What | Requires | Stakes |
+|---|---|---|---|
+| 1 | briefly, "to see" | `play`, objectification, restraint | minor |
+| 2 | her seat for reading or her PDA | `role`, `humiliation 2` | major |
+| 3 | her chair: in her quarters she sits nowhere else | `rule`, `craves objectification` | severe |
+
+#### 8.3.7 Her foot as a gag (`foot_gag`)
+- **Exists:** the contact `sole_to_mouth` (no speech, the `jaw` physics), P17c gestures, P17's stagings (the condition `composure`).
+- **Needs:** `worship` likes; weight 1; `frameMin` `play`.
+
+| Stage | What | Requires | Stakes |
+|---|---|---|---|
+| 1 | alone, while she talks on comms | `play`, worship | minor |
+| 2 | with a visitor in the room; the commander answers only by gesture | `role`, `humiliation 2` | major |
+| 3 | during a comms call the commander must answer (P15a's phase event), voice kept steady for the caller: a P17 staging, `composure`, Strain = the caller noticing | `rule`, exposure_risk | severe |
+
+(There is no call with oversight in the engine; none is invented.)
+
+#### 8.3.8 Seasoned (`spit`)
+- **Extends** P17b's spit (a moment: accept / turn away / thank) and feeding from her mouth.
+- **Needs:** `bodily_fluids` likes; weight 1; `frameMin` `play`.
+
+| Stage | What | Requires | Stakes |
+|---|---|---|---|
+| 1 | in jest, into the commander's mug | `play`, bodily_fluids | trivial |
+| 2 | into the commander's food, in private | `role`, `humiliation 2` | minor |
+| 3 | into the commander's food in the mess hall (*seen*, new sign `seasoned_public`) | `role`, public_humiliation, `public_humiliation 2` | major |
+| 4 | everything the commander eats has been in her mouth first | `rule`, `craves bodily_fluids` | severe |
+
+### 8.4 The far end
+
+#### 8.4.1 The whim becomes absolute (`whim` gains stages)
+§2.14's whim is stage 1.
+
+| Stage | What | Requires | Stakes |
+|---|---|---|---|
+| 1 | a pointless errand and its reversal (§2.14) | `play` | trivial |
+| 2 | any whim of hers within the enabled categories and her limits; contradictory ("do it — no, undo it — why did you undo it?") | `role` | minor |
+| 3 | **absolute**: the whim card has no REFUSE; at night too ("wake up, straighten my pillow") | `rule`, `private_rule` | severe, accepted once for the stage |
+
+- **Absolute (ruling 3):** at stage 3 a whim cannot be disputed; however strange, it is not wrong. The card offers only ACCEPT (its button; the consent was given once at the stage, with the signature and the CMDR line "Every whim. Day N."). A whim **reported not done** (`intent_extract`, or her check) is a new offence kind `whim_defied` at the **highest severity** of her discipline. It is not a break and ends nothing.
+- **Not judged is not defied:** P16 R6 breaks an unjudged model task at its deadline; an absolute whim nobody judged is `void` instead.
+- **Not issued** when the commander cannot act: held by another holder, on a run, in a scene with another woman, or under another holder's rule that forbids it. A night whim comes only as her own night entry (P5 `enqueueNight`).
+- **Untouched:** the exit (P15 E2) and the stop word (P15a §9.4).
+- At most one whim a day (§2.14).
+
+#### 8.4.2 Her prerogative (`prerogative`)
+**No planner (ruling 7).** The engine has no planned week: slots are chosen as they come; the only entries ahead are P9c bookings. Her prerogative acts at the moment of choice, with no change to P2's calendar:
+- **Cancel:** she takes back a booking the commander holds with another woman (P9c), or the activity standing in the current slot (a training, a pastime, a free evening); the slot shows "cancelled by her".
+- **Veto:** an activity the commander picks for a slot goes to her first. She answers at once by her mood (`dynamicHash`) or "later"; then the slot waits, and is lost if no answer comes before it ends.
+- **The run:** a guard at the launch (stage 4).
+
+**Needs:** `book_ahead` (the `private_time` domain); `regal` ×2; weight 1; `frameMin` `role`.
+
+| Stage | What | Requires | Stakes |
+|---|---|---|---|
+| 1 | now and then she cancels the commander's activity in a slot | `role`, `book_ahead` | minor |
+| 2 | she cancels at will, the commander's bookings with other women included; the other woman learns it from her, not from the commander | `rule`, `relation_rules` | major |
+| 3 | **veto**: every activity the commander picks waits for her approval | `rule`, `private_rule` | severe |
+| 4 | **her whim over a run**: she delays the launch of an optional mission (source `side` or `rumor`, never `command` or `story`, never with `spineBeat` or `threadId`) by slots; one with a deadline may expire, one without (a `side` mission from a point of interest) costs the day; the squad sees why (*seen*, new sign `run_delayed`) | `rule`, stage 3 held 14 days | severe |
+
+- **Hooks:** P9c's booking conflicts (taking back the other woman's booking); a guard in `src/engine/dispatch.ts` beside `booking_due` / `held` (P16), **`her_veto`**: it sends an activity choice to her (stages 1–3) or refuses a launch with her line (stage 4, only for a mission the row allows). `calendar/cancel_scene` is not used (it is the commander backing out of an open scene).
+- **Not issued** on a run, while held by another holder, or during the prologue's steps (P11).
+- **Cost:** a cancelled booking with another woman is the commander's broken plan toward her (P3 deltas through `eventDeltas`, with a journal phrase); an expired mission fails as P5 says.
+- The prerogative's powers come from stages of a custom; P15's domain table stays as built.
+
+### 8.5 Memory check (CLAUDE.md rule)
+- **`custom_stage { unitId, customId, stage }`:** private stages: a `memoryRules` entry (audience: the pair; importance minor 1, major 2, severe 3). *Seen* stages (salute 2–3, spit 3, cabin 2–3): audience the witnesses or the squad, spread squad, importance 2; rumours outside the squad only with `public_humiliation` (P15 B4). `severe` stages also write the CMDR record line (P16 R.1).
+- **`whim_defied`:** her discipline writes its own facts; no rule.
+- **`plan_cancelled { holderId, otherId? }`:** with another woman, a `memoryRules` entry (audience: that woman; spread low; importance 1) and an `eventDeltas[].journal` phrase for the relation event; without one, bookkeeping.
+- **`run_delayed { holderId, missionId, expired }`:** a `memoryRules` entry (audience: the squad; importance 2); P5's failure writes its own report lines.
+- Staleness, falling back, a ceiling change: bookkeeping.
+- **Chronicle:** none. **Prompt:** the `customs:` directive (§8.1); no `group: 'memory'` provider.
+
+### 8.6 Hidden values and off
+- **Hidden** (sentinels): `stale` and her threshold, the next stage and whether it is ready, whether a whim is contradictory on purpose, her veto answer before it is given, the caller's noticing in `foot_gag` 3 (the staging's Strain).
+- **Off is byte-identical:** customs off, nothing; a custom without `stages` behaves as before this section; `registerCabinOverride` answers null with no live `cabin` custom; `her_veto` passes when no `prerogative` stage is live. No rng draw (`dynamicHash`, `dynamicRoll`). `tests/customs/unaffected.test.ts` must not move; a seeded test that moves stops and reports.
+- No text gives the commander a pronoun or a feeling.
+
+### 8.7 Acceptance criteria (added)
+8. A custom with stages grows one stage at a time, only through her offer, only when stale, its `requires` hold, it is under the ceiling and the weekly pacing allows; refused, it cools 14 days; it falls one stage when a requirement fails or after 14 days without upkeep.
+9. The ceiling in SYS lists every stage and caps the custom; lowering it below the current stage drops it at the next day step with no offence; the dossier shows the current stage only.
+10. *Seen* stages are never offered to a secret relation or to a `private_only` audience, and feed their sign.
+11. The absolute whim has no REFUSE, enters `whim_defied` at the highest severity only when reported not done, is void when unjudged, and is never issued when the commander cannot act; the exit and the stop word still work.
+12. The prerogative cancels, vetoes and delays only what its stage allows; a `command` or `story` mission, a spine or thread mission and the prologue are never touched.
+13. The cabin override draws the plan from the custom and nothing else; without the custom the plan is byte-identical.
+
+### 8.8 Numbers (drafts; `TUNING.customs`)
+| What | Number |
+|---|---|
+| `staleAt` | 6 kept occurrences |
+| staleness scale | ×0.6 (`discovery`, `curiosity ≥ +1`), ×1.5 (`order ≥ +1`, `discipline`) |
+| days between steps of one custom | 7 |
+| new customs or step-ups per holder a week | 1 |
+| cooldown after a refused stage | 14 days |
+| fall back without upkeep | 14 days, one stage |
+| cabin stage 3: a night on the floor | commander stress +2 |
+| prerogative stage 4 needs stage 3 held | 14 days |
+| `regal`'s weight multiplier | ×2 also for `salute`, `attendance`, `seat`, `prerogative` |
+
+### 8.9 Open for the author
+- Every label, hint and description, the stage names in SYS and the dossier, her lines for each stage's offer.
+- The needs and weights of each new custom (drafts above).
