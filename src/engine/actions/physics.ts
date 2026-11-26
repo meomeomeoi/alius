@@ -1,6 +1,6 @@
 import { blockingLive } from '../blocking';
 import { registerAction } from '../dispatch';
-import { physicsSignal, startPhysics, stopWord } from '../physics/run';
+import { foundPosed, getUp, physicsSignal, startPhysics, stopWord } from '../physics/run';
 import { finishCounted, startAct } from '../physics/acts';
 import { applyWay, decayStimuli } from '../physics/stimuli';
 import { registerDayEndStep } from '../calendar';
@@ -123,4 +123,16 @@ registerAction('physics/answer', (draft, payload, ctx) => {
     { type: 'scent_answer', runId: run.id, holderId: run.holderId, right, lie, caught },
     ...(lie && caught ? [{ type: 'scent_lie_caught', holderId: run.holderId }] : []),
   ];
+});
+
+/** P10e-e R28: `physics/get_up { runId }`: the commander gets up alone after her forgotten end (her offence `hold_defied`, through her practices). */
+registerAction('physics/get_up', (draft, payload, ctx) => {
+  live(draft, ctx.registries, 'physics/get_up');
+  return getUp(draft, ctx, isObj(payload) ? payload.runId : undefined);
+});
+
+/** P10e-e R28: `physics/found { runId, finderId }`: a visitor of her frame comes in and finds the commander posed (`found_posed`). */
+registerAction('physics/found', (draft, payload, ctx) => {
+  live(draft, ctx.registries, 'physics/found');
+  return foundPosed(draft, ctx, isObj(payload) ? payload.runId : undefined, isObj(payload) ? payload.finderId : undefined);
 });

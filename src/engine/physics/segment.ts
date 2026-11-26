@@ -411,6 +411,7 @@ export function nextSegment(draft: CampaignState, ctx: { registries: Registries;
   if (!run || run.id !== runId) throw new Error('Stale physics run.');
   if (run.segment.state !== 'held') throw new Error('A segment is running already.');
   if (run.marathon?.waiting) throw new Error('The phase is over: choose how to spend the stretch first.');
+  if (run.forgotten) throw new Error('She has left: the commander waits posed (get up, or wait to be found).');
   run.segment = { n: run.segment.n + 1, state: 'running', plan: planSegment(draft, ctx.registries, run, ctx.rng) };
   return [{ type: 'physics_segment', runId: run.id, n: run.segment.n, phase: 'start', beats: run.segment.plan!.beats.length }];
 }
@@ -557,6 +558,11 @@ function phaseBoundary(draft: CampaignState, reg: Registries, run: PhysicsRun): 
   if (m.segmentsDone < phaseSegments(draft, reg, run)) return [];
   if (m.phase >= m.phases) {
     m.clockMin += hoursPerPhase(m) * 60;
+    // R28: in her frame, at `use` in its last phase, she forgets the commander: she leaves, the commander stays posed (the run waits, nothing drains)
+    if (run.sourceKind === 'activity' && presenceOf(draft, reg, run, m.phase) === 'use') {
+      run.forgotten = true;
+      return [{ type: 'marathon_phase', runId: run.id, phase: m.phase, over: true, last: true }, ...creditHold(draft, reg, run), { type: 'forgotten_end', runId: run.id, holderId: run.holderId }];
+    }
     return [{ type: 'marathon_phase', runId: run.id, phase: m.phase, over: true, last: true }, ...creditHold(draft, reg, run), ...stopPhysics(draft, reg, 'released')];
   }
   m.waiting = true;

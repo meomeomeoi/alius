@@ -196,6 +196,11 @@ export interface PhysicsRun {
    * ("lost in her" is a play state), so the fill never ends the hold at a boundary (`releaseOf` answers `continue`). Absent: as before.
    */
   headed?: true;
+  /**
+   * P10e-e R28: her frame ended forgotten (presence `use` in its last phase): she left and the commander stays posed; nothing more is planned
+   * until `physics/get_up`, `physics/found` or the stop word ends it. Absent: as before.
+   */
+  forgotten?: true;
 }
 
 export const GAUGE_FULL = 100;

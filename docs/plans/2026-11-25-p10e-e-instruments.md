@@ -986,13 +986,14 @@ Also settled: the reply block is lifted clear of the open mouth through a claim 
   - `src/blocking/physicsDirectives.ts` (the frame's tally sentence)
 - Test: `tests/engine/physics/forgotten.test.ts`, `tests/engine/memory/framed.test.ts`
 
-- [ ] **Step 1:** Tests:
+- [x] **Step 1:** Tests:
   - `in use the end is forgotten and the commander stays posed`;
   - `get_up after "stay" is her offence hold_defied`;
   - `found_posed is remembered by the finder and spreads as a squad rumor`;
   - `forgotten_end is a fact of hers only`;
   - `the digest sentence carries no uncaught relief`.
-- [ ] **Steps 2–5** as Task 13 (`feat(P10e-e): the forgotten end, being found, her hour's digest`).
+- [x] **Steps 2–5** as Task 13 (`feat(P10e-e): the forgotten end, being found, her hour's digest`).
+  - *As built:* at the last phase boundary of a frame run whose presence there is `use`, the run is marked `forgotten` (held, nothing planned: `nextSegment` refuses and the staging controller waits) and `forgotten_end { runId, holderId }` is emitted instead of the release; the commander's blocking is untouched. `physics/get_up { runId }` (only after a forgotten end) emits `physics_got_up { stayed: true }` and ends the frame (released); her practices read it as `hold_defied` (major, through `offencesFromEvents`: this layer imports nothing of them). `physics/found { runId, finderId }` (another named soldier) emits `found_posed` and ends the frame. The stop word ends it at once. Staging: `getUp()`, `found(finderId)`. **Memory:** `memoryRules` `forgotten_end` (about and audience her, importance 2, no spread) and `found_posed` (about her, audience the finder, importance 3, spread `slow`: a squad rumor, not hidden from the commander), each with its resolver; their texts reach prompts as remembered facts (the `memory` group) and nothing else (no journal delta, no chronicle line). The directive: the passive tally says only `cheatsCaught` (`she noticed the commander move N times`), her frame's end reads "She is done with her own time…", and the live `physics:` directive of a frame never says "a relief taken" (only a caught one, through the tally).
 
 ### Task 24: The frame instrument with stillness inside
 

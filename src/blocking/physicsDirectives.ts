@@ -20,7 +20,7 @@ export function physicsDirective(event: EngineEvent, state: CampaignState, _reg:
   }
   if (event.type !== 'physics_outcome') return null;
   if (event.result === 'stopped') return { id: `${BLOCKING_PREFIX}stop`, text: STOP_TEXT, expiresAfter: 'next_reply' };
-  const text = OUTCOME[String(event.result)];
+  const text = event.sourceKind === 'activity' && event.result === 'released' ? FRAME_END : OUTCOME[String(event.result)];
   if (text === undefined) return null;
   const her = state.squad.find((u) => u.id === event.holderId)?.displayName;
   const said = her ? text.replace('She ', `${her} `).replace('she ', `${her} `) : text;
@@ -39,6 +39,8 @@ const TALLY_WORDS: Record<string, Partial<Record<string, (n: number) => string>>
   hold: { slips: (n) => `the hold broke ${times(n)}` },
   order: { slips: (n) => `${n} ${n === 1 ? 'slip' : 'slips'} of the tongue` },
   gesture: { slips: (n) => `the teeth touched her ${times(n)}` },
+  // R28: her frame (the stillness inside): only a relief or a fidget she caught is said
+  passive: { cheatsCaught: (n) => `she noticed the commander move ${times(n)}` },
 };
 const times = (n: number): string => (n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`);
 const GENERIC: Record<string, (n: number) => string> = {
@@ -109,7 +111,7 @@ export function physicsLines(state: CampaignState, reg: Registries): Directive |
   if (!state.scene || !run) return null;
   const name = state.squad.find((u) => u.id === run.holderId)?.displayName ?? run.holderId;
   const style = leadStyle(physicsStyleOf(state, run.holderId, reg)).key;
-  const source = run.sourceKind === 'contact' ? reg.blockingContacts.get(run.sourceId) : reg.blockingItems.get(run.sourceId);
+  const source = run.sourceKind === 'contact' ? reg.blockingContacts.get(run.sourceId) : run.sourceKind === 'item' ? reg.blockingItems.get(run.sourceId) : reg.blockingActivities.get(run.sourceId);
   const what = String(source?.label ?? run.sourceId).toLowerCase();
   const also = run.second ? ` and ${String(reg.contactPhysics.get(run.second.physicsId)?.label ?? run.second.physicsId).toLowerCase()} at once` : '';
   const parts = [`${name} has the commander in a hold (${what}${also}); her rhythm is ${RHYTHM[style] ?? RHYTHM.neutral}.`, EXPECTS[effectiveHoldsUntil(state, reg, run.holderId)]];
@@ -122,7 +124,7 @@ export function physicsLines(state: CampaignState, reg: Registries): Directive |
     if (last.falseTaken > 0) said.push('a false opening taken');
     if (last.slips > 0) said.push(count(last.slips, 'a slip', 'slips'));
     if (last.gasps > 0) said.push('a gasp');
-    if (last.reliefs > 0) said.push('a relief taken');
+    if (last.reliefs > 0 && run.sourceKind !== 'activity') said.push('a relief taken'); // R28: in her frame a relief is said only once she caught it (the tally)
     if (last.noise > 0) said.push('some noise');
     if (last.warning) said.push('close to the limit');
     if (said.length > 0) parts.push(`Last stretch: ${said.join(', ')}.`);
@@ -131,6 +133,8 @@ export function physicsLines(state: CampaignState, reg: Registries): Directive |
   return { id: `${PHYSICS_PREFIX}${run.physicsId}`, text: parts.join(' '), expiresAfter: 'manual' };
 }
 
+/** R28: her frame ends: she is done with her own time (whether she forgot the commander is her memory's, not this directive's). */
+const FRAME_END = 'She is done with her own time, and the hold is over.';
 const OUTCOME: Record<string, string> = {
   released: 'She lets go.', checked: 'She checks the work and is done.', collapse: 'The commander gives out and she lets go.',
   limit_broken: 'The commander is pushed past the limit before she lets go.', blackout: 'The commander blacks out.',

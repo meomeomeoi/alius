@@ -76,6 +76,9 @@ export interface StagingController {
   answer(right: boolean, lie: boolean, caught: boolean): EngineEvent[];
   /** A marathon between two phases: how the commander spends the stretch (`physics/skip`). */
   skip(strategy: string): EngineEvent[];
+  /** P10e-e R28: after her forgotten end the commander gets up alone (`physics/get_up`), or a visitor of the frame comes in (`physics/found`). */
+  getUp(): EngineEvent[];
+  found(finderId: string): EngineEvent[];
   /** Drives the clock: ends a real-time segment on time and starts the next one when nothing is pending. */
   tick(nowMs: number): void;
   /** One of her cue lines of a kind for a beat of the running segment, or `null`. */
@@ -278,7 +281,7 @@ export function createStaging(deps: StagingDeps): StagingController {
       return;
     }
     // held: nothing drains; a marathon between two phases waits for the player's strategy; otherwise the next segment starts when no reply is on its way (a silent holder never waits)
-    if (r.marathon?.waiting) return;
+    if (r.marathon?.waiting || r.forgotten) return; // R28: after her forgotten end nothing is planned: the commander waits posed
     if (!deps.scene.replyPending() || silent(s, r.holderId)) {
       const events = dispatch({ type: 'physics/next_segment', payload: { runId: r.id } });
       if (!events.some((e) => e.type === 'error')) {
@@ -344,6 +347,14 @@ export function createStaging(deps: StagingDeps): StagingController {
     },
     skip(strategy) {
       return active && run() ? dispatch({ type: 'physics/skip', payload: { strategy } }) : [];
+    },
+    getUp() {
+      const r = run();
+      return active && r?.forgotten ? dispatch({ type: 'physics/get_up', payload: { runId: r.id } }) : [];
+    },
+    found(finderId) {
+      const r = run();
+      return active && r?.forgotten ? dispatch({ type: 'physics/found', payload: { runId: r.id, finderId } }) : [];
     },
     tick(nowMs) {
       if (active) advance(nowMs);

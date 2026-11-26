@@ -23533,13 +23533,16 @@ function offencesFromEvents(draft, ctx2, events) {
       case "rule_broken":
         note(unitId, "rule_broken", str2(e.ruleId), "minor");
         break;
+      case "physics_got_up":
+        if (e.stayed === true) note(str2(e.holderId), "hold_defied", str2(e.runId), "major");
+        break;
       default:
         break;
     }
   }
   return out;
 }
-var OFFENCE_SOURCES = ["refusal_noted", "milestone_refused", "override_answered", "physics_slip", "physics_caught", "rule_broken"];
+var OFFENCE_SOURCES = ["refusal_noted", "milestone_refused", "override_answered", "physics_slip", "physics_caught", "rule_broken", "physics_got_up"];
 
 // src/engine/practice/audience.ts
 var HUMBLING_TAG = "public_humiliation";
@@ -34151,6 +34154,15 @@ registerMemoryResolver("scent_lie_caught", (draft, event) => {
   const her = subjectOf3(draft, event.holderId);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
 }, { ids: ["her"], vars: ["name"] });
+registerMemoryResolver("forgotten_end", (draft, event) => {
+  const her = subjectOf3(draft, event.holderId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
+}, { ids: ["her"], vars: ["name"] });
+registerMemoryResolver("found_posed", (draft, event) => {
+  const her = subjectOf3(draft, event.holderId);
+  const finder = subjectOf3(draft, event.finderId);
+  return her && finder ? { ids: { her: [her.id], finder: [finder.id] }, vars: { name: her.name, finder: finder.name } } : null;
+}, { ids: ["her", "finder"], vars: ["name", "finder"] });
 registerMemoryResolver("stimulus_stage_changed", (draft, event, reg) => {
   const her = subjectOf3(draft, event.holderId);
   const kind = reg.stimulusKinds.get(String(event.kind));
@@ -35793,6 +35805,20 @@ function finishMarathon(draft, reg, run, result) {
     ...setCondition(draft, reg, "stiff", { day: draft.day, slot: draft.slot }),
     { type: "marathon_done", hours: Math.round(elapsed / 60 * 100) / 100, unitId: run.holderId, physicsId: run.physicsId, result, phases: m.phase }
   ];
+}
+function getUp(draft, ctx2, runId) {
+  const run = draft.scene?.physics;
+  if (!run || run.id !== runId) throw new Error("physics/get_up: stale physics run");
+  if (!run.forgotten) throw new Error("physics/get_up: she has not left the commander");
+  return [{ type: "physics_got_up", runId: run.id, holderId: run.holderId, stayed: true }, ...stopPhysics(draft, ctx2.registries, "released")];
+}
+function foundPosed(draft, ctx2, runId, finderId) {
+  const run = draft.scene?.physics;
+  if (!run || run.id !== runId) throw new Error("physics/found: stale physics run");
+  if (!run.forgotten) throw new Error("physics/found: she has not left the commander");
+  const finder = draft.squad.find((u) => u.id === finderId);
+  if (typeof finderId !== "string" || finderId === run.holderId || finder === void 0 || finder.kind !== "named") throw new Error("physics/found: the finder is another named soldier");
+  return [{ type: "found_posed", runId: run.id, holderId: run.holderId, finderId }, ...stopPhysics(draft, ctx2.registries, "released")];
 }
 function physicsSignal(draft, ctx2) {
   const run = draft.scene?.physics;
@@ -39646,6 +39672,7 @@ function nextSegment(draft, ctx2, runId) {
   if (!run || run.id !== runId) throw new Error("Stale physics run.");
   if (run.segment.state !== "held") throw new Error("A segment is running already.");
   if (run.marathon?.waiting) throw new Error("The phase is over: choose how to spend the stretch first.");
+  if (run.forgotten) throw new Error("She has left: the commander waits posed (get up, or wait to be found).");
   run.segment = { n: run.segment.n + 1, state: "running", plan: planSegment(draft, ctx2.registries, run, ctx2.rng) };
   return [{ type: "physics_segment", runId: run.id, n: run.segment.n, phase: "start", beats: run.segment.plan.beats.length }];
 }
@@ -39797,6 +39824,10 @@ function phaseBoundary(draft, reg, run) {
   if (m.segmentsDone < phaseSegments(draft, reg, run)) return [];
   if (m.phase >= m.phases) {
     m.clockMin += hoursPerPhase(m) * 60;
+    if (run.sourceKind === "activity" && presenceOf2(draft, reg, run, m.phase) === "use") {
+      run.forgotten = true;
+      return [{ type: "marathon_phase", runId: run.id, phase: m.phase, over: true, last: true }, ...creditHold(draft, reg, run), { type: "forgotten_end", runId: run.id, holderId: run.holderId }];
+    }
     return [{ type: "marathon_phase", runId: run.id, phase: m.phase, over: true, last: true }, ...creditHold(draft, reg, run), ...stopPhysics(draft, reg, "released")];
   }
   m.waiting = true;
@@ -39929,6 +39960,14 @@ registerAction("physics/answer", (draft, payload, ctx2) => {
     { type: "scent_answer", runId: run.id, holderId: run.holderId, right, lie, caught },
     ...lie && caught ? [{ type: "scent_lie_caught", holderId: run.holderId }] : []
   ];
+});
+registerAction("physics/get_up", (draft, payload, ctx2) => {
+  live2(draft, ctx2.registries, "physics/get_up");
+  return getUp(draft, ctx2, isObj39(payload) ? payload.runId : void 0);
+});
+registerAction("physics/found", (draft, payload, ctx2) => {
+  live2(draft, ctx2.registries, "physics/found");
+  return foundPosed(draft, ctx2, isObj39(payload) ? payload.runId : void 0, isObj39(payload) ? payload.finderId : void 0);
 });
 
 // src/engine/actions/life.ts
@@ -53050,7 +53089,7 @@ function physicsDirective(event, state, _reg) {
   }
   if (event.type !== "physics_outcome") return null;
   if (event.result === "stopped") return { id: `${BLOCKING_PREFIX}stop`, text: STOP_TEXT, expiresAfter: "next_reply" };
-  const text3 = OUTCOME[String(event.result)];
+  const text3 = event.sourceKind === "activity" && event.result === "released" ? FRAME_END : OUTCOME[String(event.result)];
   if (text3 === void 0) return null;
   const her = state.squad.find((u) => u.id === event.holderId)?.displayName;
   const said = her ? text3.replace("She ", `${her} `).replace("she ", `${her} `) : text3;
@@ -53061,7 +53100,9 @@ var TALLY_WORDS = {
   timing: { caught: (n) => `${n} ${n === 1 ? "opening" : "openings"} caught`, falseTaken: (n) => `${n} false ${n === 1 ? "opening" : "openings"} taken` },
   hold: { slips: (n) => `the hold broke ${times(n)}` },
   order: { slips: (n) => `${n} ${n === 1 ? "slip" : "slips"} of the tongue` },
-  gesture: { slips: (n) => `the teeth touched her ${times(n)}` }
+  gesture: { slips: (n) => `the teeth touched her ${times(n)}` },
+  // R28: her frame (the stillness inside): only a relief or a fidget she caught is said
+  passive: { cheatsCaught: (n) => `she noticed the commander move ${times(n)}` }
 };
 var times = (n) => n === 1 ? "once" : n === 2 ? "twice" : `${n} times`;
 var GENERIC = {
@@ -53129,7 +53170,7 @@ function physicsLines(state, reg) {
   if (!state.scene || !run) return null;
   const name = state.squad.find((u) => u.id === run.holderId)?.displayName ?? run.holderId;
   const style = leadStyle(physicsStyleOf(state, run.holderId, reg)).key;
-  const source = run.sourceKind === "contact" ? reg.blockingContacts.get(run.sourceId) : reg.blockingItems.get(run.sourceId);
+  const source = run.sourceKind === "contact" ? reg.blockingContacts.get(run.sourceId) : run.sourceKind === "item" ? reg.blockingItems.get(run.sourceId) : reg.blockingActivities.get(run.sourceId);
   const what = String(source?.label ?? run.sourceId).toLowerCase();
   const also = run.second ? ` and ${String(reg.contactPhysics.get(run.second.physicsId)?.label ?? run.second.physicsId).toLowerCase()} at once` : "";
   const parts2 = [`${name} has the commander in a hold (${what}${also}); her rhythm is ${RHYTHM[style] ?? RHYTHM.neutral}.`, EXPECTS[effectiveHoldsUntil(state, reg, run.holderId)]];
@@ -53142,7 +53183,7 @@ function physicsLines(state, reg) {
     if (last2.falseTaken > 0) said.push("a false opening taken");
     if (last2.slips > 0) said.push(count(last2.slips, "a slip", "slips"));
     if (last2.gasps > 0) said.push("a gasp");
-    if (last2.reliefs > 0) said.push("a relief taken");
+    if (last2.reliefs > 0 && run.sourceKind !== "activity") said.push("a relief taken");
     if (last2.noise > 0) said.push("some noise");
     if (last2.warning) said.push("close to the limit");
     if (said.length > 0) parts2.push(`Last stretch: ${said.join(", ")}.`);
@@ -53150,6 +53191,7 @@ function physicsLines(state, reg) {
   }
   return { id: `${PHYSICS_PREFIX}${run.physicsId}`, text: parts2.join(" "), expiresAfter: "manual" };
 }
+var FRAME_END = "She is done with her own time, and the hold is over.";
 var OUTCOME = {
   released: "She lets go.",
   checked: "She checks the work and is done.",
@@ -53525,7 +53567,7 @@ function createStaging(deps) {
       if (s.settings.physicsRealtime === true && now - startedAt >= seconds * 1e3) endSegment();
       return;
     }
-    if (r.marathon?.waiting) return;
+    if (r.marathon?.waiting || r.forgotten) return;
     if (!deps.scene.replyPending() || silent(s, r.holderId)) {
       const events = dispatch2({ type: "physics/next_segment", payload: { runId: r.id } });
       if (!events.some((e) => e.type === "error")) {
@@ -53589,6 +53631,14 @@ function createStaging(deps) {
     },
     skip(strategy) {
       return active && run() ? dispatch2({ type: "physics/skip", payload: { strategy } }) : [];
+    },
+    getUp() {
+      const r = run();
+      return active && r?.forgotten ? dispatch2({ type: "physics/get_up", payload: { runId: r.id } }) : [];
+    },
+    found(finderId) {
+      const r = run();
+      return active && r?.forgotten ? dispatch2({ type: "physics/found", payload: { runId: r.id, finderId } }) : [];
     },
     tick(nowMs) {
       if (active) advance2(nowMs);

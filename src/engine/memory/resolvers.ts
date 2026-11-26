@@ -336,6 +336,18 @@ registerMemoryResolver('scent_lie_caught', (draft, event) => {
   return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
 }, { ids: ['her'], vars: ['name'] });
 
+// P10e-e R28: her frame. She forgot the commander posed and left (a fact of hers only); someone came in and found the commander posed (the finder
+// remembers it, and it spreads as a squad rumor)
+registerMemoryResolver('forgotten_end', (draft, event) => {
+  const her = subjectOf(draft, event.holderId);
+  return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
+}, { ids: ['her'], vars: ['name'] });
+registerMemoryResolver('found_posed', (draft, event) => {
+  const her = subjectOf(draft, event.holderId);
+  const finder = subjectOf(draft, event.finderId);
+  return her && finder ? { ids: { her: [her.id], finder: [finder.id] }, vars: { name: her.name, finder: finder.name } } : null;
+}, { ids: ['her', 'finder'], vars: ['name', 'finder'] });
+
 // the body layer (P15a): a stage that a stimulus of hers has reached for the commander, while she was there
 registerMemoryResolver('stimulus_stage_changed', (draft, event, reg) => {
   const her = subjectOf(draft, event.holderId);

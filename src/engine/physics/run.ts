@@ -198,6 +198,27 @@ function finishMarathon(draft: CampaignState, reg: Registries, run: PhysicsRun, 
   ];
 }
 
+/**
+ * P10e-e R28: the commander gets up alone after her forgotten end. She placed the commander and never said to get up (`stayed`): her practices
+ * read `physics_got_up` as her offence `hold_defied` (they answer it, not this layer). Ends the frame. Draws nothing.
+ */
+export function getUp(draft: CampaignState, ctx: { registries: Registries }, runId: unknown): EngineEvent[] {
+  const run = draft.scene?.physics;
+  if (!run || run.id !== runId) throw new Error('physics/get_up: stale physics run');
+  if (!run.forgotten) throw new Error('physics/get_up: she has not left the commander');
+  return [{ type: 'physics_got_up', runId: run.id, holderId: run.holderId, stayed: true }, ...stopPhysics(draft, ctx.registries, 'released')];
+}
+
+/** P10e-e R28: a visitor of her frame comes in and finds the commander posed after her forgotten end (`found_posed`); the frame ends. */
+export function foundPosed(draft: CampaignState, ctx: { registries: Registries }, runId: unknown, finderId: unknown): EngineEvent[] {
+  const run = draft.scene?.physics;
+  if (!run || run.id !== runId) throw new Error('physics/found: stale physics run');
+  if (!run.forgotten) throw new Error('physics/found: she has not left the commander');
+  const finder = draft.squad.find((u) => u.id === finderId);
+  if (typeof finderId !== 'string' || finderId === run.holderId || finder === undefined || finder.kind !== 'named') throw new Error('physics/found: the finder is another named soldier');
+  return [{ type: 'found_posed', runId: run.id, holderId: run.holderId, finderId }, ...stopPhysics(draft, ctx.registries, 'released')];
+}
+
 /** The tap (the signal inside the fiction): what it does is what she holds the commander until. */
 export function physicsSignal(draft: CampaignState, ctx: { registries: Registries }): EngineEvent[] {
   const run = draft.scene?.physics;
