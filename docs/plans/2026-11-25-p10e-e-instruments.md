@@ -1139,6 +1139,11 @@ Also settled: an ended frame does not restart until her activity or the commande
 
 ---
 
+**Chunk e9 closed (2026-11-26).** Tasks 25–26 by one implementer, one review of the chunk, one fix round, re-review clean. Rulings:
+- **AB:** the plan's "`relieve` for the sounds the craft makes" is overruled by the prototype: service sounds matter only to a third party (the call's covering, ported exactly as `thirdPartyNoise`); a craft sound reports no relief, makes no draw and gives no `physics_noticed`.
+
+Also settled: her verdict (R27) averages only the crafts she judged (bouts in `craft` / `lowering`), with no verdict when none was judged; `frameDone` carries its `runId` and `physics/service` after a run's end rates only that frame run, once a scene; her signals are hashed per holder (`fnv1a`, no rng). For the author (e12): the `adequate` cut at 0.3 (the prototype has only good and poor; in [0.3, 0.6) she says her poor line while the engine records `adequate`), five signal pairs rather than 4–6 (P16b's kneel / go / look at me have no gesture), no engine events for misread signals (`foot_signal_missed`, pair mastery: P16b), the composed naming line from `MOTIONS` / `MEANINGS`, her `how` read by English keywords, the patience clamp, the `practiceLive` gate, an empty craft bout scoring 1, the service stats not reaching the digest, whether a third party hearing the craft should reach the engine.
+
 ## Chunk e10: shoe service (`shoe.html`)
 
 **Memory check (e10):** a spit she saw is `physics_caught` (R31, already remembered). Her verdict is P16's `rateService`. Grit, shine and the inspection are bookkeeping.
