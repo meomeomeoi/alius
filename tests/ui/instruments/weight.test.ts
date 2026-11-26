@@ -270,7 +270,7 @@ describe('the weight instrument on the scene', () => {
     // her own shift: the right button, reported at once on its beat, then 2.6 s of cooldown
     t.to(7 * BEAT + 200);
     t.mouse('mousedown', t.q('.alius-layer-frame')!, 2);
-    expect(reports(t).filter((i) => i.kind === 'shift_weight')).toEqual([{ beat: 7, kind: 'shift_weight' }]);
+    expect(reports(t).filter((i) => i.kind === 'shift_weight')).toEqual([{ beat: 7, kind: 'shift_weight', part: 'free' }]); // Ruling AE: decided at once, not caught
     t.to(8 * BEAT);
     t.mouse('mousedown', t.q('.alius-layer-frame')!, 2);
     expect(reports(t).filter((i) => i.kind === 'shift_weight')).toHaveLength(1); // still cooling down
@@ -475,16 +475,41 @@ describe('the weight instrument on the scene', () => {
     s.scene!.physics!.pressure = 1.25;
     t.screen.refresh();
     expect(t.q('.alius-weight-hand')!.textContent).toContain('more of me now');
-    // her own shift taken: nothing said until the engine decides (at the segment's end); then her line
-    t.mouse('mousedown', t.q('.alius-layer-frame')!, 2);
-    t.to(3500);
-    expect(t.q('.alius-weight-hand')!.textContent).not.toContain('did I say you could move?');
+    // a catch the engine counted elsewhere (the tally) says nothing: her line follows only her own decision of the shift (Ruling AE)
     s.scene!.physics!.tally = { cheatsCaught: 1 };
     t.screen.refresh();
-    expect(t.q('.alius-weight-hand')!.textContent).toContain('did I say you could move?');
-    t.screen.refresh();
-    expect((t.q('.alius-weight-hand')!.textContent!.match(/did I say/g) ?? []).length).toBe(1); // once per catch
+    t.to(3200);
+    expect(t.q('.alius-weight-hand')!.textContent).not.toContain('did I say you could move?');
     expect(t.q('.alius-weight-hand')!.textContent).not.toContain('her '); // the cue pool's narration is never in her hand
+  });
+
+  it('Ruling AE: her own shift is decided at once (physics/relief, one draw): caught, her line at once, 10 strength off and her lean; else the relief', () => {
+    registerPhysicsStyle(() => ({ primary: 'cruel' }));
+    let caught = true;
+    const relief = vi.fn(() => (caught ? [{ type: 'physics_caught' }] : [{ type: 'physics_cheat' }]));
+    const s = hold('human_chair', planOf({}));
+    const t = draw(s, { staging: { relief } as never });
+    t.mouse('mousedown');
+    t.to(3000);
+    const before = _weight.G.str;
+    t.mouse('mousedown', t.q('.alius-layer-frame')!, 2);
+    expect(relief).toHaveBeenCalledTimes(1);
+    expect(relief.mock.calls[0]).toEqual([{ kind: 'shift_weight', attention: _weight.G.att }]);
+    expect(_weight.G.str).toBeCloseTo(before - 10, 5); // weight.html: 10 strength off, never a gain first
+    expect(_weight.G.pressure).toBe(1.5);
+    expect(_weight.G.caughtN).toBe(1);
+    t.to(3100);
+    expect(t.q('.alius-weight-hand')!.textContent).toContain('did I say you could move?'); // at once, not at the segment's end
+    expect(reports(t).filter((i) => i.kind === 'shift_weight')).toEqual([{ beat: 2, kind: 'shift_weight', part: 'caught' }]);
+    // not caught: the relief (+15), no line
+    caught = false;
+    t.to(3000 + 2 * BEAT);
+    const mid = _weight.G.str;
+    t.mouse('mousedown', t.q('.alius-layer-frame')!, 2);
+    expect(relief).toHaveBeenCalledTimes(2);
+    expect(_weight.G.str).toBeCloseTo(Math.min(100, mid + 15), 5);
+    expect(_weight.G.caughtN).toBe(1);
+    expect(reports(t).filter((i) => i.kind === 'shift_weight').map((i) => i.part)).toEqual(['caught', 'free']);
   });
 
   it('Ruling R: cold is silent on every kind, her first words too; a style with no rows of its own takes neutral\'s', () => {
@@ -506,7 +531,7 @@ describe('the weight instrument on the scene', () => {
     expect(_weight.R.lines.slip).toEqual(['careful.']);
   });
 
-  it('a segment resolved: the strength is the engine\'s at once; a catch is no local lean (the engine raises no pressure)', () => {
+  it('a segment resolved: the strength is the engine\'s at once; the tally alone plays no catch (Ruling AE: the catch is decided at the shift)', () => {
     const s = hold('human_chair', planOf({}));
     const t = draw(s);
     t.mouse('mousedown');
@@ -517,7 +542,7 @@ describe('the weight instrument on the scene', () => {
     t.screen.refresh();
     expect(_weight.G.str).toBe(40);
     expect(_weight.G.pressure).toBe(1);
-    expect(_weight.G.caughtN).toBe(1);
+    expect(_weight.G.caughtN).toBe(0);
   });
 
   it('views by the contact: face down sees the floor (P10c, by the finish), with her legs for human_chair only; face up the ceiling and her sprite', () => {

@@ -384,7 +384,7 @@ function svUpdate(dt: number) {
 function svCheck() {
   SV.checked = true; SV.stats.clean.checked += 1;
   const missed = Object.keys(zones()).find((z) => dirtIn(z) > 0.25);
-  if (missed) { SV.stats.clean.missedSpot += 1; SV.quality += 0; SV.acts += 1; if (G.step === 'with' || G.step === 'glancing') say(`${ZONE_WORDS[missed]!.replace('.', '')}. you missed it.`, 'commander'); else { SV.pull = 0.6; sense('She turns her foot to the light, and you see what you missed.', 'body'); } }
+  if (missed) { SV.stats.clean.missedSpot += 1; SV.quality += 0; SV.acts += 1; if (G.step === 'with' || G.step === 'glancing') say(`${ZONE_WORDS[missed]!.replace('.', '')}. ${voiceLines(X!.env.registries, 'service.missed' as VoiceKind, undefined)[0] ?? ''}`, 'commander'); else { SV.pull = 0.6; sense('She turns her foot to the light, and you see what you missed.', 'body'); } }
   else { SV.quality += 1; SV.acts += 1; }
 }
 /* her foot answers where it is touched: toward the lips (where she wants it), away (not there); the first time of each, a line */

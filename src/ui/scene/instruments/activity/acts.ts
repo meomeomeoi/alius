@@ -2,7 +2,7 @@
  * P10e-e Task 24: her activities' marks, sounds and ends (her_activity.html `ACTS`, as it is), the views (`VIEWS`) and the base by the hour
  * (`BASE_EVENTS`). The engine's half of `ACTS` (absorb, hear, light, unit, total, per, legs and what the activity brings) is `blockingActivities`
  * `frame` (R24); the marks, sounds and ends stay here, the instrument's data. Her self-talk (`ACTS[].self`) is the script's (the model's,
- * `activity_script`): the prototype's placeholders are not shipped. Nothing here is her line: the marks are sensory lines on the side of the
+ * `activity_script`); until it arrives, the prototype's lines play as `cardVoice` rows `activity.self.<activity>` (Ruling Z). Nothing here is her line: the marks are sensory lines on the side of the
  * source (P17d), worded by the view.
  */
 export interface Mark { w: number; sfx: string | null; g?: number; prog?: number; then?: string; legs?: 'shift'; len?: [number, number]; seen: string; heard: string }

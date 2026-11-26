@@ -6,7 +6,7 @@ import { foundPosed, frameWoke, getUp, physicsSignal, startPhysics, stopPhysics,
 import { finishCounted, startAct } from '../physics/acts';
 import { applyWay, decayStimuli } from '../physics/stimuli';
 import { registerDayEndStep } from '../calendar';
-import { frameRelief, marathonSkip, nextSegment, physicsInput, shoeSpit, typedBeats } from '../physics/segment';
+import { physicsRelief, marathonSkip, nextSegment, physicsInput, shoeSpit, typedBeats } from '../physics/segment';
 import { rateService } from '../practice/service';
 import { VERDICTS, type Verdict } from '../practice/state';
 
@@ -141,11 +141,15 @@ registerAction('physics/found', (draft, payload, ctx) => {
   return foundPosed(draft, ctx, isObj(payload) ? payload.runId : undefined, isObj(payload) ? payload.finderId : undefined);
 });
 
-/** P10e-e Rulings X and Y: `physics/relief { runId, beat, kind, amount, part, involuntary? }`: a relief of the body in her frame, decided at once (one draw). */
+/**
+ * P10e-e Rulings X, Y and AE: `physics/relief { runId, beat, kind, amount, part, attention?, involuntary? }`, decided at once (one draw): a
+ * relief of the body in her frame (`relieve`, `fidget`), or the commander's own shift of weight or mouth breath in an instrument (`shift_weight`,
+ * `mouth_breath`).
+ */
 registerAction('physics/relief', (draft, payload, ctx) => {
   live(draft, ctx.registries, 'physics/relief');
   if (!isObj(payload)) throw new Error('physics/relief needs a payload');
-  return frameRelief(draft, ctx, payload);
+  return physicsRelief(draft, ctx, payload);
 });
 
 /** P10e-e Ruling AC (e10 fix I2): `physics/spit { runId, beat, attention }`: grit spat aside in shoe service, decided at once (one draw). */

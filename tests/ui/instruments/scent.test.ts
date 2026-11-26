@@ -325,7 +325,7 @@ describe('the scent instrument on the scene', () => {
     t.mouse('mouseup', document, 2);
     t.to(3 * BEAT + 10);
     const beat2 = reports(t).filter((i) => i.beat === 2);
-    expect(beat2).toEqual([{ beat: 2, kind: 'mouth_breath', amount: 2 }, { beat: 2, kind: 'inhale', amount: 0 }]);
+    expect(beat2).toEqual([{ beat: 2, kind: 'mouth_breath', amount: 2, part: 'decided' }, { beat: 2, kind: 'inhale', amount: 0 }]); // Ruling AE: its catches are decided
     expect(t.input.mock.calls.find((c) => (c[0] as SegmentInput).kind === 'mouth_breath')![1]).toEqual({ pointer: true });
     fill(2); // the head is 3 again: the engine holds 1, so 2 are gained
     t.to(4 * BEAT + 10);
@@ -335,20 +335,28 @@ describe('the scent instrument on the scene', () => {
     expect(reports(t).filter((i) => i.kind === 'inhale').map((i) => i.beat)).toEqual(Array.from({ length: 20 }, (_, i) => i));
   });
 
-  it('her mouth line follows the engine\'s catch (run.tally.cheatsCaught), never a roll of its own', () => {
+  it('Ruling AE: each blown word is decided at once by the engine (physics/relief, the loudness: 0.25 short, 0.6 long); heard, her mouth line at once', () => {
     registerPhysicsStyle(() => ({ primary: 'cruel' }));
+    const heard: boolean[] = [];
+    const relief = vi.fn((r: { amount: number }) => { void r; const h = heard.shift() ?? false; return h ? [{ type: 'physics_caught' }] : [{ type: 'physics_cheat' }]; });
     const s = hold();
-    const t = draw(s);
+    const t = draw(s, { staging: { relief } as never });
     t.to(2000);
     fill(5);
+    heard.push(false, false, false, true);
     t.mouse('mousedown', undefined, 2);
-    t.to(4000);
-    t.mouse('mouseup', document, 2);
-    expect(t.q('.alius-scent-hand')!.textContent).not.toContain('did I say you could?');
-    s.scene!.physics!.tally = { cheatsCaught: 1 };
-    t.screen.refresh();
-    expect(t.q('.alius-scent-hand')!.textContent).toContain('did I say you could?');
+    t.to(2000 + 3 * 420 + 60);
+    const louds = relief.mock.calls.map((c) => (c[0] as { amount: number }).amount);
+    expect(louds).toEqual([0.25, 0.25, 0.25, 0.6]); // a word every 420 ms; a short breath is quiet, past 900 ms it is heard more
+    expect(relief.mock.calls[0]![0]).toMatchObject({ kind: 'mouth_breath', attention: _scent.G.att });
+    expect(t.q('.alius-scent-hand')!.textContent).toContain('did I say you could?'); // at once, on the word she heard
     expect(_scent.G.order?.k).toBe('still'); // cruel: still, after a punished mouth breath
+    t.mouse('mouseup', document, 2);
+    // a catch the engine counted elsewhere (the tally) plays nothing more
+    const said = (t.q('.alius-scent-hand')!.textContent!.match(/did I say/g) ?? []).length;
+    s.scene!.physics!.tally = { cheatsCaught: 5 };
+    t.screen.refresh();
+    expect((t.q('.alius-scent-hand')!.textContent!.match(/did I say/g) ?? []).length).toBe(said);
   });
 
   it('her question: an honest answer is sent at once; a lie waits for the body: a cough within two breaths sends it caught ("liar."), else kept', () => {

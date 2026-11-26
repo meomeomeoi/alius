@@ -72,6 +72,11 @@ function measure(UI) {
     instrument: q('.alius-stage-dial')?.dataset.instrument ?? null,
     // her lines on the frame and the instrument's own controls (kit `say`, the moment layer's buttons); a line still fading in may sit off its place
     instrumentUi: [...document.querySelectorAll('.alius-her-lines .her-line, .alius-layer-moment button')].map((el) => ({ sel: el.className || el.tagName, ...r(el) })).filter((b) => b.w > 0 && b.h > 0),
+    // final review I2: the instrument's controls that must never lie over the reply's prose (the weight's vial, the moment layer's buttons and
+    // marked controls: GET UP, the controls between the hours); her call's fan of cards is measured by its own checks (inside the viewport,
+    // off her face), as a rotated card's box is wider than the card
+    instrumentControls: [...document.querySelectorAll('.alius-weight-vial, .alius-layer-moment button, .alius-layer-moment [data-analyze]')].filter((el) => !el.closest('.alius-call') && !el.className?.toString().includes('alius-call') && getComputedStyle(el).visibility !== 'hidden').map((el) => ({ sel: el.className?.baseVal ?? el.className ?? el.tagName, ...r(el) })).filter((b) => b.w > 0 && b.h > 0),
+    replyText: (() => { const el = q('.alius-reply'); if (!el || !el.textContent.trim()) return null; const rg = document.createRange(); rg.selectNodeContents(el); const rs = [...rg.getClientRects()].filter((x) => x.width > 0 && x.height > 0); if (rs.length === 0) return null; const x = Math.min(...rs.map((a) => a.left)), y = Math.min(...rs.map((a) => a.top)), rr = Math.max(...rs.map((a) => a.right)), b = Math.max(...rs.map((a) => a.bottom)); return { x, y, r: rr, b, w: rr - x, h: b - y }; })(),
     ui: [...document.querySelectorAll(UI)].map((el) => ({ sel: el.className || el.tagName, ...r(el) })).filter((b) => b.w > 0 && b.h > 0),
   };
 }
@@ -563,6 +568,8 @@ for (const size of SIZES) {
       else if (Math.abs(m.dial.x - still.x) > 1 || Math.abs(m.dial.y - still.y) > 1) fail(size, fixture, `the instrument moved the dial's circle: ${Math.round(m.dial.x)},${Math.round(m.dial.y)} against ${Math.round(still.x)},${Math.round(still.y)} for standing`);
       if (!fixture.startsWith('call') && !fixture.startsWith('slap') && !m.instrument) fail(size, fixture, 'no instrument is drawing (the dial carries no data-instrument)');
       for (const b of m.instrumentUi) if (!inside(b)) fail(size, fixture, `the instrument's ${b.sel} is outside the viewport: ${JSON.stringify(b)}`);
+      // final review I2: no instrument control lies over the reply's text (the scene's prose, the player must read it)
+      if (m.replyText) for (const b of m.instrumentControls) if (hit(b, m.replyText)) fail(size, fixture, `the instrument's ${b.sel} overlaps the reply's text: ${JSON.stringify(b)} over ${JSON.stringify(m.replyText)}`);
     }
     // P10e-e Task 9: her word and the fan stay inside the viewport and off her face
     if (fixture === 'call' || fixture === 'callhold') {

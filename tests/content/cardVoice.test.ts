@@ -103,10 +103,10 @@ const SCENT_CONTACTS = ['feet_on_face', 'face_to_bottom', 'smothered_armpit'];
 const JAW_KINDS = ['teeth', 'deeper', 'out', 'suck', 'wide', 'correct', 'restOk', 'restNo', 'ask', 'heard', 'lost', 'end', 'slack', 'stop'];
 const JAW_CONTACTS = ['sole_to_mouth', 'ring_gag'];
 /** §11 (P10e-e Task 24, ruling Q): her frame's lines by her style (her_activity.html `STYLES`); §12 (Task 24b): the throne's (throne.html `T_LINES`). */
-const ACTIVITY_KINDS = ['name', 'noticed', 'correct', 'call', 'end', 'askReply', 'breach', 'silent', 'stop', 'rest', 'fall'];
+const ACTIVITY_KINDS = ['name', 'noticed', 'correct', 'call', 'end', 'askReply', 'breach', 'silent', 'stop', 'rest', 'fall', 'woke', 'wokeMumble', 'comeIn', 'stay'];
 const THRONE_KINDS = ['spill', 'skid', 'thank', 'thanked', 'noThanks'];
 /** §13 (P10e-e Task 26): foot service's lines by her style (her_activity.html `SVC_LINES`) and her words for the zones (`ZONE_WORDS`). */
-const SERVICE_KINDS = ['good', 'poor', 'wrong'];
+const SERVICE_KINDS = ['good', 'poor', 'wrong', 'missed'];
 /** §14 (P10e-e Task 28): shoe service's lines by her style (shoe.html `LINES`, cold silent) and her words for the zones (`ZONE_WORDS`). */
 const SHOE_KINDS = ['entry', 'turn', 'sole', 'kiss', 'polish', 'other', 'caught', 'swallowed', 'good', 'poor', 'missed', 'dull', 'stamp', 'end', 'stop'];
 /** §15 (P10e-e Task 30): gulp's lines by her style (gulp.html `LINES`, cold's own). */
@@ -143,7 +143,7 @@ function expected(md: string): Map<string, string[]> {
     }
     if (it.sec === 11 || it.sec === 12) {
       const kinds = it.sec === 11 ? ACTIVITY_KINDS : THRONE_KINDS;
-      if (it.sec === 11 && /^(self|toYou|ask|exchange)\.[a-z0-9_]+$/.test(it.label)) { put(`activity.${it.label}`, it.heading === 'neutral' ? undefined : it.heading, it.lines); continue; } // Ruling Z: the placeholders
+      if (it.sec === 11 && /^(self|toYou|ask|exchange|entry)\.[a-z0-9_]+$/.test(it.label)) { put(`activity.${it.label}`, it.heading === 'neutral' ? undefined : it.heading, it.lines); continue; } // Ruling Z: the placeholders
       if (!kinds.includes(it.label)) throw new Error(`unmapped ${it.sec === 11 ? 'activity' : 'throne'} item: ${it.heading} › ${it.label}`);
       put(`${it.sec === 11 ? 'activity' : 'throne'}.${it.label}`, it.heading === 'neutral' ? undefined : it.heading, it.lines);
       continue;

@@ -47,9 +47,11 @@ export interface FidelitySpec {
   /**
    * `format` reads a table of objects as the registry's strings (her_activity's placeholders, Ruling Z): `toYou` / `ask` the `text` of the items
    * without / with `ask`; `exchange` each `{ other, her }` as `other|her` and `{ other, mention: { plain, veiled } }` as `other|plain|veiled`;
-   * `line` a single string as a row of one line (her_activity's `ZONE_WORDS`, e9). A path `.` is the whole table.
+   * `line` a single string as a row of one line (her_activity's `ZONE_WORDS`, e9). A path `.` is the whole table. `literal` (final review
+   * Minor 3: her words that the prototype writes inline in a function): each path is the prototype's text itself, which must stand in its
+   * source as written, and the row is that one line (`ident` names nothing; `inline` by convention).
    */
-  lines?: Array<{ ident: string; prototype?: string; registry?: 'physicsCues' | 'cardVoice'; physics?: string; format?: 'toYou' | 'ask' | 'exchange' | 'line'; cueKinds: Record<string, string> }>;
+  lines?: Array<{ ident: string; prototype?: string; registry?: 'physicsCues' | 'cardVoice'; physics?: string; format?: 'toYou' | 'ask' | 'exchange' | 'line' | 'literal'; cueKinds: Record<string, string> }>;
   differences: Array<{ fn: string; reason: string; diff: string }>;
 }
 
@@ -544,7 +546,7 @@ function declaredHunks(diff: string): string[] {
 }
 
 /** A table's items as the registry's strings (`lines[].format`); a value with no format is as it is. */
-function formatLines(v: unknown, format: 'toYou' | 'ask' | 'exchange' | 'line' | undefined): unknown {
+function formatLines(v: unknown, format: 'toYou' | 'ask' | 'exchange' | 'line' | 'literal' | undefined): unknown {
   if (format === 'line') return typeof v === 'string' ? [v] : v;
   if (format === undefined || !Array.isArray(v)) return v;
   const items = v as Array<Record<string, unknown>>;
@@ -649,14 +651,20 @@ export async function checkFidelity(spec: FidelitySpec, opts: { registries: Regi
   for (const l of spec.lines ?? []) {
     const proto = l.prototype ?? spec.prototype;
     let table: unknown;
-    try {
-      table = protoValue(proto, l.ident);
-    } catch (err) {
-      failures.push(`the lines ${l.ident} (${proto}.html): ${(err as Error).message}`);
-      continue;
+    if (l.format !== 'literal') {
+      try {
+        table = protoValue(proto, l.ident);
+      } catch (err) {
+        failures.push(`the lines ${l.ident} (${proto}.html): ${(err as Error).message}`);
+        continue;
+      }
     }
     for (const [path, target] of Object.entries(l.cueKinds)) {
-      const want = formatLines(path === '.' ? table : atPath(table, path), l.format);
+      if (l.format === 'literal' && !protoSource(proto).includes(path)) {
+        failures.push(`the inline line ${JSON.stringify(path)} is not in ${proto}.html`);
+        continue;
+      }
+      const want = l.format === 'literal' ? [path] : formatLines(path === '.' ? table : atPath(table, path), l.format);
       let got: unknown;
       if ((l.registry ?? 'physicsCues') === 'cardVoice') {
         const [kind, style] = target.split('@');

@@ -474,8 +474,8 @@
     },
     {
       "fn": "updateLoop",
-      "reason": "Prototype only (README: her attention schedule is the engine's plan): her attention is the plan's beat of the running segment (`attentionNow`). Whether she heard a mouth breath is the engine's (`cheatRoll` on the `mouth_breath` relief at the segment's end): the word blown is counted for the beat's report (`blown`) and her answer (`heardMouth`) follows the engine's catch (`run.tally.cheatsCaught`, in `update`). The end is the engine's (`finish`): the prototype's own length (`S.len`) never ends it.",
-      "diff": "@@ -7,3 +7,3 @@\n G.beat+=1\n-G.att=attentionDraw()\n+G.att=attentionNow()\n if(G.att===\"busy\"&&S.task===\"reading\"&&Math.random()<0.35)SFX.page()\n@@ -53,4 +53,3 @@\n G.counts.mouthWords+=1\n-const loud=G.mouthMs<900?0.25:0.6\n-if(Math.random()<NOTICED[G.att]*loud)heardMouth()\n+blown()\n }\n@@ -108,3 +107,2 @@\n G.o=lerp(G.o,0.35,clamp(h*0.5,0,1))\n-if(G.clock>G.endAt)exit(\"done\")\n }"
+      "reason": "Prototype only (README: her attention schedule is the engine's plan): her attention is the plan's beat of the running segment (`attentionNow`). Ruling AE (final review I1): whether she heard a blown word is decided at once by the engine (`blown(loud)`: `physics/relief` `mouth_breath`, one draw with the prototype's `NOTICED[G.att] × loud`, the same table as `TUNING.physics.gaze.caught`), in place of `Math.random()`; her answer (`heardMouth`) plays at once, as the prototype's, and the word is counted for the beat's `mouth_breath` report (marked `decided`, never rolled again at the segment's end). The end is the engine's (`finish`): the prototype's own length (`S.len`) never ends it.",
+      "diff": "@@ -7,3 +7,3 @@\n G.beat+=1\n-G.att=attentionDraw()\n+G.att=attentionNow()\n if(G.att===\"busy\"&&S.task===\"reading\"&&Math.random()<0.35)SFX.page()\n@@ -54,3 +54,3 @@\n const loud=G.mouthMs<900?0.25:0.6\n-if(Math.random()<NOTICED[G.att]*loud)heardMouth()\n+if(blown(loud))heardMouth()\n }\n@@ -108,3 +108,2 @@\n G.o=lerp(G.o,0.35,clamp(h*0.5,0,1))\n-if(G.clock>G.endAt)exit(\"done\")\n }"
     },
     {
       "fn": "frame",

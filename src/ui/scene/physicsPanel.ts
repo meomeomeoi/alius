@@ -4,7 +4,7 @@ import { blockingLive, blockingOf, COMMANDER, contactOf } from '../../engine/blo
 import type { CueKind } from '../../engine/blocking/types';
 import type { EngineEvent } from '../../engine/dispatch';
 import { remainingOf } from '../../engine/physics/run';
-import type { InputKind, PhysicsRun, SegmentInput } from '../../engine/physics/state';
+import type { InputKind, PhysicsRun, ReliefReport, SegmentInput } from '../../engine/physics/state';
 import type { CampaignState } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import type { AliusSettings } from '../../settings';
@@ -46,8 +46,8 @@ export interface PhysicsPanelStaging {
   /** P10e-e R28: after her forgotten end, the commander gets up alone, or a visitor of the frame finds the commander. Absent = never. */
   getUp?(): EngineEvent[];
   found?(finderId: string): EngineEvent[];
-  /** P10e-e Rulings X and Y: a relief of the body in her frame, decided at once (`physics/relief`). Absent = never. */
-  relief?(r: { kind: 'relieve' | 'fidget'; amount: number; part: string; involuntary?: boolean }): EngineEvent[];
+  /** P10e-e Rulings X, Y and AE: a relief decided at once (`physics/relief`; `ReliefReport`). Absent = never. */
+  relief?(r: ReliefReport): EngineEvent[];
   /** P10e-e review I7: she woke: her frame ends (`physics/woke`). Absent = never. */
   woke?(): EngineEvent[];
   /** P10e-e Task 26: her verdict on a session of foot service in her frame, or of shoe service (Task 28) (`physics/service`), at the session's end (alive until the unmount). Absent = never. */

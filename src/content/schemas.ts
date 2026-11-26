@@ -2277,8 +2277,11 @@ registrySchemas.dmBehaviours = DmBehaviourSchema;
 export const HandFontSchema = BaseEntrySchema.extend({
   name: str.max(60),
   family: str.max(60).regex(/^[A-Za-z0-9 ]+$/, 'a plain CSS family name'),
-  /** P10e-e: the hand's size factor against Caveat (1), measured once by `scripts/measure-hands.mjs`; every size in her hand is multiplied by it. */
-  scale: z.number().min(0.6).max(1.7),
+  /**
+   * P10e-e: the hand's size factor against Caveat (1), measured once by `scripts/measure-hands.mjs`; every size in her hand is multiplied by it.
+   * Final review Minor 9: a (local) entry without it loads at 1 and the loader warns (`loadPacks`), so the hand is never lost silently.
+   */
+  scale: z.number().min(0.6).max(1.7).default(1),
   description: str.max(DESCRIPTION_MAX),
 }).strict();
 export type HandFontEntry = z.infer<typeof HandFontSchema>;
@@ -3143,10 +3146,13 @@ export const CARD_VOICE_KINDS = [
   // P10e-e ruling Q: her frame's fixed lines (her_activity.html `STYLES`: her name for the commander, and her lines by situation); `activity.stop`
   // is finish's line after the stop word
   'activity.name', 'activity.noticed', 'activity.correct', 'activity.call', 'activity.end', 'activity.askReply', 'activity.breach', 'activity.silent', 'activity.stop', 'activity.rest', 'activity.fall',
+  // final review Minor 3: her spoken words the prototype writes inline (her waking words at `with` / `glancing` and elsewhere, her "come in." to a
+  // visitor, "Stay." after her entry); her spoken order in an entry is `activity.entry.<view>` (CARD_VOICE_STATIC)
+  'activity.woke', 'activity.wokeMumble', 'activity.comeIn', 'activity.stay',
   // P10e-e 24b: the throne's lines (throne.html `T_LINES`)
   'throne.spill', 'throne.skid', 'throne.thank', 'throne.thanked', 'throne.noThanks',
   // P10e-e Task 26: foot service's lines (her_activity.html `SVC_LINES`); her words for the zones are `service.zone.<zone>` (CARD_VOICE_STATIC, `ZONE_WORDS`)
-  'service.good', 'service.poor', 'service.wrong',
+  'service.good', 'service.poor', 'service.wrong', 'service.missed',
   // P10e-e Task 28: shoe service's lines (shoe.html `LINES`, card-voice.md §14); her words for the zones are `shoe.zone.<zone>` (CARD_VOICE_STATIC,
   // `ZONE_WORDS`); `shoe.stop` is finish's line after the stop word (the prototype's inline one)
   'shoe.entry', 'shoe.turn', 'shoe.sole', 'shoe.kiss', 'shoe.polish', 'shoe.other', 'shoe.caught', 'shoe.swallowed', 'shoe.good', 'shoe.poor',
@@ -3156,7 +3162,7 @@ export const CARD_VOICE_KINDS = [
   'gulp.entry', 'gulp.surge', 'gulp.tapped', 'gulp.spill', 'gulp.cough', 'gulp.done', 'gulp.clean', 'gulp.cleaned', 'gulp.missed', 'gulp.stop',
 ] as const;
 /** The kinds of her static words (card-voice.md §3), keyed by a milestone id, a domain id (or `submit`) and the return's terms; her first words under a weight, by the contact (§8, `weight.entry.<contact>`); under her scent, her first words and her named places by the contact (§9); in the jaw, her first words by what holds the mouth open (§10, `jaw.entry.<contact>`). */
-export const CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+|scent\.(entry|here)\.[a-z0-9_]+|jaw\.entry\.[a-z0-9_]+|activity\.(self|toYou|ask|exchange)\.[a-z0-9_]+|service\.zone\.[a-z0-9_]+|shoe\.zone\.[a-z0-9_]+)$/;
+export const CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+|scent\.(entry|here)\.[a-z0-9_]+|jaw\.entry\.[a-z0-9_]+|activity\.(self|toYou|ask|exchange|entry)\.[a-z0-9_]+|service\.zone\.[a-z0-9_]+|shoe\.zone\.[a-z0-9_]+)$/;
 
 /**
  * P10e-e R7: a table of her lines on the scene's cards (`docs/content/card-voice.md` is the readable copy, approved by the author). Read

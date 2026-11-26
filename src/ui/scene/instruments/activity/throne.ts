@@ -69,6 +69,8 @@ const play = (id: string, opts?: Any) => X?.play(id, opts);
 const herFeels = (kind: string, gross: boolean) => X?.herFeels(kind, gross);
 const bodyNoise = (kind: string, loud: number, visible: boolean, gross = false) => X?.bodyNoise(kind, loud, visible, gross);
 const visitorHeard = () => X?.visitorHeard();
+/** Final review Minor 3: her spoken words the prototype writes inline (`cardVoice`, as the frame's `spoken`). */
+const spoken = (kind: string): string => (X ? voiceLines(X.env.registries, kind as VoiceKind, S.style)[0] ?? '' : '');
 const steps = (n: number, fromPan: number, toPan: number, g0: number, g1: number, gap = 0.42, wood = false, lp = 1800) => X?.steps(n, fromPan, toPan, g0, g1, gap, wood, lp);
 const V = (): Any => X!.V();
 const rand = (a: number, b: number) => X!.rand(a, b);
@@ -292,7 +294,7 @@ export function throneVisitor(kind?: string) {
   const dp = V().doorPan, name = S.visitorName ?? '';
   steps(5, -dp * 0.3, dp, 0.08, 0.4, 0.42);
   after(2300, () => { play('knock', { g: 0.5, pan: dp }); after(260, () => play('knock', { g: 0.45, pan: dp })); });
-  after(3300, () => say('come in.', 'other'));
+  after(3300, () => say(spoken('activity.comeIn'), 'other'));
   after(4600, () => { play('door_open', { g: 0.5, pan: dp }); G.visitor = { name, heard: kind !== 'unaware', aware: kind !== 'unaware', knows: kind !== 'unaware', kind }; G.stats.visitors = (G.stats.visitors ?? 0) + 1; sense(kind === 'unaware' ? `The door opens. ${name}, in the doorway: she does not look down.` : kind === 'aware' ? `${name} comes in and looks down at you first, then at her.` : `${name} comes in with a folder, all business.`, 'door', 'base'); });
   after(6000 + 3 * 8500, () => { if (!G.visitor) return; play('door_close', { g: 0.5, pan: dp }); sense('The door shuts behind her visitor.', 'door', 'base'); G.visitor = null; });
 }

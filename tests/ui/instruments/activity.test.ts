@@ -179,12 +179,12 @@ describe('stillness: the commander\'s attention and the urges', () => {
     t.to(2400);
     _activity.G.urges = [{ kind: 'itch', x: 300, y: 300, v: 0.5, born: 0, seed: 0 }];
     _activity.relieveAt(300, 300);
-    expect(reports(t).find((x) => x.kind === 'relieve')).toEqual({ kind: 'relieve', amount: 0.35, part: 'seen' });
+    expect(reports(t).find((x) => x.kind === 'relieve')).toEqual({ kind: 'relieve', amount: 0.35, part: 'seen', attention: _activity.G.att }); // Minor 6: her attention as shown, read between segments
     // her speech covers it: the amount carries the cover; a swallow is unseen
     _activity.G.herSpeakingUntil = _activity.G.t + 5000;
     _activity.G.urges = [{ kind: 'swallow', x: 300, y: 300, v: 0.5, born: 0, seed: 0 }];
     _activity.relieveAt(300, 300);
-    expect(reports(t).at(-1)).toEqual({ kind: 'relieve', amount: 0.038, part: 'unseen' });
+    expect(reports(t).at(-1)).toEqual({ kind: 'relieve', amount: 0.038, part: 'unseen', attention: _activity.G.att });
   });
 
   it('the engine\'s catch plays her tell at once; the body giving way is reported as involuntary', () => {
@@ -194,6 +194,37 @@ describe('stillness: the commander\'s attention and the urges', () => {
     expect(_activity.G.pauseUntil).toBeGreaterThan(_activity.G.t);
     _activity.bodyNoise('slump', 1, true, true);
     expect(reports(t).at(-1)).toMatchObject({ involuntary: true });
+  });
+
+  it('final review Minor 1: the friend she names is a real soldier outside the scene; with none, the line is not said', () => {
+    const t = draw(framed());
+    t.to(2400);
+    _activity.R.listener = { id: 'unit_x', name: 'Bea' };
+    expect(_activity.toYou('chatting_on_pda')!.map((x) => x.text)).toContain('Bea says hi. don’t answer.');
+    expect(JSON.stringify(_activity.toYou('chatting_on_pda'))).not.toContain('Vex');
+    _activity.R.listener = null;
+    expect((_activity.toYou('chatting_on_pda') ?? []).filter((x) => !x.ask)).toEqual([]);
+  });
+
+  it('final review Minor 3: her inline spoken words are cardVoice rows (verbatim); a view begun again never stacks its entry lines', () => {
+    const t = draw(framed());
+    t.to(2400);
+    expect(_activity.spoken('activity.woke')).toBe('…what are you doing.');
+    expect(_activity.spoken('activity.comeIn')).toBe('come in.');
+    expect(_activity.spoken('activity.entry.floor')).toBe('Down. Eyes down.');
+    expect(_activity.spoken('activity.stay')).toBe('Stay.');
+    _activity.S.view = 'floor';
+    _activity.resetClock();
+    _activity.begin();
+    t.to(t.frames.now() + 200);
+    _activity.S.view = 'her';
+    _activity.resetClock();
+    _activity.begin();
+    t.to(t.frames.now() + 200);
+    const senses = [...t.host.querySelectorAll('.alius-act-senses > *')].map((x) => x.textContent ?? '');
+    expect(senses.filter((x) => x.startsWith('She points at the floor beside her chair'))).toHaveLength(1);
+    expect(senses.some((x) => x.includes('Down. Eyes down.'))).toBe(false); // the floor's entry was cleared with its view
+    expect(_activity.nightRoom('none')).toBe(1); // no picture measured (jsdom has no canvas): the scene's own level
   });
 
   it('Space typed into the field never acts; only the mouse acts while it has the focus', () => {

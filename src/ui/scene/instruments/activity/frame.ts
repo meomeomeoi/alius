@@ -8,12 +8,14 @@
  * The functions are the prototype's, copied (types added). The wiring, declared in `fidelity.json`:
  * - her presence is the engine's (`presenceOf` per phase), her attention the plan's beat by beat (`plan.beats[].attention`): no `baseScore`,
  *   no `attentionDraw` here;
- * - the body's reliefs and fidgets are reported to the engine (`relieve` / `fidget`, `amount` the loudness, `cover` this frame's `coverNow`);
- *   whether she noticed is the engine's (`cheatRoll` at the segment's end): the tell and her answer play when `run.tally.cheatsCaught` grows;
- *   a third party (the line of a call, an unaware visitor) hears by the prototype's own threshold (no draw);
- * - her lines are `cardVoice` `activity.*` by her style (ruling Q; a style the prototype has no row of reads neutral's); her script is the
- *   model's (`staging.script(phase)`, `activity_script`); without it she says nothing of her own (the prototype's `TO_YOU`, `CALL`, `VISIT`,
- *   `CARDS` and `ACTS[].self` are placeholders and are not shipped); a mention of the commander goes through the engine's `mentionText`;
+ * - the body's reliefs and fidgets are decided at once by the engine (Rulings X and Y: `physics/relief` `relieve` / `fidget`, `amount` the
+ *   loudness × (1 − this frame's `coverNow`), `part` its visibility, one draw with the prototype's noticing); her tell and her answer play from
+ *   the dispatch's answer (`bodyNoise`), at once, as the prototype's; a third party (the line of a call, an unaware visitor) hears by the
+ *   prototype's own threshold (no draw);
+ * - her lines are `cardVoice` `activity.*` by her style (ruling Q; a style the prototype has no row of reads neutral's), her spoken words in
+ *   the entry narration and her waking words included; her script is the model's (`staging.script(phase)`, `activity_script`); until it
+ *   arrives and whenever it fails, the prototype's `TO_YOU`, `CALL`, `VISIT`, `CARDS` and `ACTS[].self` play as `cardVoice` rows (Ruling Z),
+ *   and the script replaces the lines it has; a mention of the commander goes through the engine's `mentionText`;
  * - the phases, the hours between them and the end are the engine's marathon (`run.marathon`): a phase ends when the engine waits for the
  *   strategy, the strategy is `physics/skip` (the engine's `resolveSkip`, its summary the run's), the end is the engine's outcome or its
  *   `forgotten` (R28: GET UP is `physics/get_up`, the finder `physics/found`);
@@ -351,7 +353,7 @@ function bodyNoise(kind: string, loud: number, visible: boolean, gross = false, 
   G.faultsRecent = G.faultsRecent.filter((x: number) => G.t - x < 40000);
   const cover = coverNow();
   // Rulings X and Y: whether she heard or saw it is the engine's one draw, at once: loud × (1 − cover) and its visibility go with it
-  const events = kind === 'speak' ? [] : E!.env.staging.relief?.({ kind: kind === 'fidget' ? 'fidget' : 'relieve', amount: Math.round(loud * (1 - cover) * 1000) / 1000, part: G.away ? 'away' : !visible ? 'unseen' : G.call || G.visitor ? 'seen_shared' : 'seen', ...(involuntary ? { involuntary: true } : {}) }) ?? [];
+  const events = kind === 'speak' ? [] : E!.env.staging.relief?.({ kind: kind === 'fidget' ? 'fidget' : 'relieve', amount: Math.round(loud * (1 - cover) * 1000) / 1000, part: G.away ? 'away' : !visible ? 'unseen' : G.call || G.visitor ? 'seen_shared' : 'seen', attention: G.att, ...(involuntary ? { involuntary: true } : {}) }) ?? [];
   const noticed = events.some((e) => e.type === 'physics_caught' || e.type === 'physics_noticed');
   // on a call, while she listens and not speaks, the line hears what the room hears
   if (G.call && G.t >= G.herSpeakingUntil && loud * (1 - cover) > 0.28 && !G.call.heard) { G.call.heard = true; G.stats.heardOnLine += 1; callHeard(); }
@@ -376,7 +378,7 @@ function herFeels(kind: string, gross: boolean) {
 function react(gross: boolean) {
   const act = ACT();
   if (act.sleep) { G.stirs += 1; play('cloth', { g: 0.35, pan: V().herPan }); sense(G.stirs >= 3 ? 'She wakes.' : 'She stirs, turns over, and settles again.', 'her');
-    if (G.stirs >= 3) { G.stats.woke = true; after(1200, () => say(G.step === 'with' || G.step === 'glancing' ? '…what are you doing.' : '…', 'commander')); after(3500, () => finish('woke')); } return; }
+    if (G.stirs >= 3) { G.stats.woke = true; after(1200, () => say(G.step === 'with' || G.step === 'glancing' ? spoken('activity.woke') : spoken('activity.wokeMumble'), 'commander')); after(3500, () => finish('woke')); } return; }
   const step = G.step, st = ST();
   const body = () => {
     G.press = 1; G.footUpUntil = G.t + 2600; play('soft', { g: 0.35, pan: V().herPan * 0.5 });
@@ -548,7 +550,12 @@ function relieveAt(x: number, y: number) {
    hour arrives and whenever it fails; the model's script replaces them where it has a line ---------- */
 type Exchange = { other: string; her?: string; mention?: { plain: string; veiled: string } };
 const lines = (kind: string): string[] => [...voiceLines(E!.env.registries, kind as VoiceKind, S.style)];
-const TO_YOU: Any = new Proxy({}, { get: (_t, k: string) => { const a = [...lines(`activity.toYou.${k}`).map((text) => ({ text })), ...lines(`activity.ask.${k}`).map((text) => ({ text, ask: true }))]; return a.length ? a : undefined; } });
+/** Final review Minor 3: her spoken words that the prototype writes inline (her waking words, "come in.", the floor's order, "Stay."), `cardVoice` rows of one line under the fidelity gate. */
+const spoken = (kind: string): string => lines(kind)[0] ?? '';
+/* final review Minor 1: a line that names someone (`{Name}`, the prototype's placeholder friend `OTHERS.friend`) names a real soldier of the squad
+   outside the scene (`R.listener`); with none, the line is not said */
+const named = (text: string): string | null => (text.includes('{Name}') ? (R.listener ? text.split('{Name}').join(R.listener.name) : null) : text);
+const TO_YOU: Any = new Proxy({}, { get: (_t, k: string) => { const a = [...lines(`activity.toYou.${k}`).flatMap((text) => { const t = named(text); return t === null ? [] : [{ text: t }]; }), ...lines(`activity.ask.${k}`).map((text) => ({ text, ask: true }))]; return a.length ? a : undefined; } });
 const exchange = (k: string): Exchange[] => lines(`activity.exchange.${k}`).map((l) => { const [other, a, b] = l.split('|'); return b !== undefined ? { other: other!, mention: { plain: a!, veiled: b } } : { other: other!, her: a! }; });
 const CALL: Any = new Proxy([], { get: (_t, k) => (exchange('call') as Any)[k] });
 const VISIT: Any = new Proxy([], { get: (_t, k) => (exchange('visit') as Any)[k] });
@@ -659,7 +666,7 @@ function visitorPeak() {
   const dp = V().doorPan;
   steps(5, -dp * 0.3, dp, 0.08, 0.4, 0.42);
   after(2300, () => { play('knock', { g: 0.5, pan: dp }); after(260, () => play('knock', { g: 0.45, pan: dp })); });
-  after(3300, () => say('come in.', 'other'));
+  after(3300, () => say(spoken('activity.comeIn'), 'other'));
   after(4600, () => { play('door_open', { g: 0.5, pan: dp }); G.visitor = { name: R.listener!.name, heard: S.knows, knows: S.knows }; sense(V().sight && !S.blind ? `${R.listener!.name} leans in the doorway.` : 'The door opens. Someone in the doorway: a voice you know.', 'door', 'base'); });
   runPlaceholder(exchangeScript(VISIT, 6, [4, 6]), 'room');
   after(6000 + VISIT.length * 8500, () => { if (!G.visitor) return; play('door_close', { g: 0.5, pan: dp }); sense('The door shuts behind her visitor.', 'door', 'base'); G.visitor = null; });
@@ -1009,7 +1016,8 @@ function render(now: number, dt: number) {
   const ck = SV ? SV.closeK : 0;
   setStyle('#world', 'filter', `saturate(${(wr ? 1 - wr.strF * 0.45 : 1 - low * 0.4).toFixed(2)}) brightness(${((1 - dusk * 0.25) * dark * (1 - ck * 0.4)).toFixed(2)}) blur(${(S.readable ? 0 : ck * 6).toFixed(1)}px)`);
   // her view is the scene itself: its room dims with the evening and goes dark when she turns the light off, as the prototype's room does
-  E!.env.layers.backdrop.style.filter = view === 'her' ? `brightness(${((1 - dusk * 0.25) * dark * 0.62).toFixed(2)})` : '';
+  // final review: graded to the prototype's night room (her_activity.html's `quarters_dark` under `#herBg`'s blur and .62), whatever the scene's art
+  E!.env.layers.backdrop.style.filter = view === 'her' ? `${S.readable ? '' : 'blur(1.5px) '}brightness(${((1 - dusk * 0.25) * dark * 0.62 * nightRoom(E!.env.layers.backdrop.style.backgroundImage)).toFixed(2)})` : '';
   // her view: her sprite (the scene's), the lamp or the screen on her; she leans a little toward the commander when she looks
   if (view === 'her') {
     const look = G.att === 'watching' ? 1 : G.att === 'glancing' ? 0.4 : 0;
@@ -1133,9 +1141,12 @@ function build(env: InstrumentEnv): FrameEls {
   const wallV = el('div', 'wallView', world, 'alius-act-view'); el('div', 'wallBg', wallV, 'alius-act-bg'); el('canvas', 'wallLight', wallV, 'alius-act-light');
   const footV = el('div', 'footrestView', world, 'alius-act-view'); el('div', 'wFloor', footV, 'alius-act-bg'); el('canvas', 'wShadow', footV);
   for (const id of ['astrideL', 'astrideR']) { const img = el<HTMLImageElement>('img', id, footV, 'alius-act-astride'); img.alt = ''; img.draggable = false; img.style.display = 'none'; }
-  el('div', 'weightHost', footV);
   el('div', 'blindView', world, 'alius-act-view');
-  el('canvas', 'grain', box); el('div', 'vignette', box); el('canvas', 'urges', box);
+  el('canvas', 'grain', box); el('div', 'vignette', box);
+  // final review I2: the weight core (its strain, cracks, her hand and the vial) stands on the stage, as throne.html's `#strainV`, `#cracks`
+  // and `#ui > #vial` do, outside the world (inset −6 %, which would put the vial 6 % lower, over the scene's reply)
+  el('div', 'weightHost', box);
+  el('canvas', 'urges', box);
   for (const id of ['senses', 'others', 'hand']) el('div', id, box).dataset.textHost = '';
   el('div', 'void', box).style.display = 'none';
   env.layers.effects.append(box);
@@ -1285,12 +1296,45 @@ function listen(env: InstrumentEnv): void {
 /* ---------- phases ---------- */
 function begin() {
   for (const k of Object.keys(LOOPS)) loopOff(k);
+  for (const id of ['#hand', '#senses', '#others']) $(id).replaceChildren(); // final review: a view begun again within one mount never stacks its entry lines
   G = fresh(); svBegin(); setStep(presenceOf(E!.env.state(), E!.env.registries, R.run!, R.run!.marathon?.phase ?? 1));
   G.clockMin = S.start; G.startMin = S.start; G.phaseIdx = (R.run!.marathon?.phase ?? 1) - 1;
   G.phase = 'entry'; G.entryT = 0;
   // her first gesture (the prototype writes it into its reply; the scene's reply is the transcript: a sensory line at the commander's place)
-  const entry = weightOn() && throneOn() && S.contact === 'human_chair' ? 'She points at the floor. When you are down on all fours she lowers herself onto your back, without a word, and opens her folder.' : weightOn() ? 'She points at the floor before her chair, and when you are down on all fours she settles her feet on your back and leans back.' : ({ her: 'She points at the floor beside her chair without looking up.', legs: 'She pushes her chair back, points under the desk, and pulls the chair in again once you are there.', floor: 'She points at the floor by her bunk. "Down. Eyes down."', wall: 'She turns you to face the wall by the shoulder, and goes back to her chair.' } as Record<string, string>)[S.view];
-  if (entry) after(60, () => sense(`${entry}${S.stay ? ' “Stay.”' : ''}`, 'body')); // on the first frames: the scene's size is known then
+  const entry = weightOn() && throneOn() && S.contact === 'human_chair' ? 'She points at the floor. When you are down on all fours she lowers herself onto your back, without a word, and opens her folder.' : weightOn() ? 'She points at the floor before her chair, and when you are down on all fours she settles her feet on your back and leans back.' : ({ her: 'She points at the floor beside her chair without looking up.', legs: 'She pushes her chair back, points under the desk, and pulls the chair in again once you are there.', floor: `She points at the floor by her bunk. "${spoken('activity.entry.floor')}"`, wall: 'She turns you to face the wall by the shoulder, and goes back to her chair.' } as Record<string, string>)[S.view];
+  if (entry) after(60, () => sense(`${entry}${S.stay ? ` “${spoken('activity.stay')}”` : ''}`, 'body')); // on the first frames: the scene's size is known then
+}
+
+/**
+ * Final review: the prototype's room in her view is a night picture (`quarters_dark`, mean luminance 50.4 of 255) at .62; the port's is the
+ * scene's own art, often a lit room. Her view grades it to the same level: brightness × (50.4 / the picture's own mean luminance), between
+ * .25 and 1, measured once per picture on a 32 × 32 canvas (1 until it is measured, and where no canvas can be had).
+ */
+const NIGHT_ROOM_LUMA = 50.4;
+const roomLuma = new Map<string, number | null>();
+function nightRoom(bg: string): number {
+  const m = /url\("?([^")]+)"?\)/.exec(bg);
+  if (!m) return 1;
+  const src = m[1]!;
+  if (!roomLuma.has(src)) {
+    roomLuma.set(src, null);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas'); c.width = 32; c.height = 32;
+        const x = c.getContext('2d', { willReadFrequently: true } as CanvasRenderingContext2DSettings);
+        if (!x) return;
+        x.drawImage(img, 0, 0, 32, 32);
+        const d = x.getImageData(0, 0, 32, 32).data;
+        let sum = 0;
+        for (let i = 0; i < d.length; i += 4) sum += 0.299 * d[i]! + 0.587 * d[i + 1]! + 0.114 * d[i + 2]!;
+        roomLuma.set(src, sum / (d.length / 4));
+      } catch { /* a picture that cannot be read keeps its own level */ }
+    };
+    img.src = src;
+  }
+  const l = roomLuma.get(src);
+  return l ? clamp(NIGHT_ROOM_LUMA / l, 0.25, 1) : 1;
 }
 
 function stopFrame(): void {
@@ -1300,7 +1344,7 @@ function stopFrame(): void {
   e.core?.stop();
   detachThrone();
   detachService();
-  THRONE.speaks = () => true; THRONE.slipped = () => {}; THRONE.limit = () => {}; THRONE.buckle = () => {};
+  THRONE.speaks = () => true; THRONE.slipped = () => {}; THRONE.limit = () => {}; THRONE.buckle = () => {}; THRONE.away = () => false; THRONE.caught = () => {};
   for (const n of A.nodes ?? []) { try { n.stop(); } catch { /* stopped */ } }
   for (const k of Object.keys(LOOPS)) { try { LOOPS[k].src.stop(); } catch { /* stopped */ } delete LOOPS[k]; }
   try { A.master?.disconnect(); } catch { /* not connected */ }
@@ -1338,6 +1382,9 @@ export function startFrame(env: InstrumentEnv, run: PhysicsRun): InstrumentRun {
     THRONE.slipped = () => wSlipFelt();
     THRONE.limit = () => { if (G.phase === 'loop') wLimit(); };
     THRONE.buckle = () => { if (G.phase === 'loop' && !W.over) wBuckle(); };
+    // Ruling AE: her catch of the commander's own shift (throne.html's `wRelief`): nothing while she is out; caught, the frame's tell
+    THRONE.away = () => G.away === true;
+    THRONE.caught = () => herFeels('the commander shifting under her feet', false);
   }
   // e9: foot service under the desk (her foot within reach), its close-up over the world
   if (S.inner === 'service') attachService({ env, holderId: run.holderId, runId: run.id, pace: servicePaceOf(env.state(), env.registries, run.holderId), G: () => G, S, A: () => A, ACT, MOUSE, ATT, after, sense, say, play, noise, coverNow, callHeard, visitorHeard, clockText, pick, rand, random: () => Math.random(), now: () => performance.now(), setStyle, els: E.els });
@@ -1390,5 +1437,9 @@ export const _activity = {
   seed(n: number): void { seed = n >>> 0 || 1; },
   resetClock(): void { frame.last = undefined; },
   mouse(x: number, y: number): void { MOUSE.x = x; MOUSE.y = y; },
+  /** Final review: her `TO_YOU` lines, as played (a named friend filled with a real soldier, or not said), and her inline spoken words. */
+  toYou: (k: string): Array<{ text: string; ask?: boolean }> | undefined => TO_YOU[k],
+  spoken: (k: string): string => spoken(k),
+  nightRoom,
   planScript, exchangeScript, begin, incomingCall, visitorPeak, falseAlarm, fresh, sense, say, mark, coverNow, herEars, bodyNoise, react, moveAttention, updateUrges, spawnUrge, relieveAt, runScript, planPeaks, startSkip, resolveSkip, finish, getUp, found, beginPhase, endPhase, placeFree,
 };

@@ -597,6 +597,12 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   });
   const stagingClock = setInterval(() => staging.tick(Date.now()), 250) as unknown as { unref?: () => void };
   stagingClock.unref?.(); // never keeps a process alive on its own
+  // P10e-e Ruling AF: while the page is hidden the real-time clock pauses (the instruments' frames are frozen too) and resumes where it left off
+  if (typeof document !== 'undefined') {
+    const onVisibility = (): void => staging.visibility(document.hidden, Date.now());
+    document.addEventListener('visibilitychange', onVisibility);
+    if (document.hidden) onVisibility();
+  }
   const comms = createComms({ ...sceneDeps, scene, personal: { beforeSend: (u, t) => personal.beforeSend(u, t), answerEdit: (k) => personal.answerEdit(k), onReply: (u, t) => personal.onReply(u, t) } });
   const worldDeps = {
     st,

@@ -14,9 +14,10 @@
  *   planned shifts, never instead of one; her attention is the plan's beat by beat; her heavier lean is `run.pressure` (a boundary's `press`);
  * - every beat is reported once as it ends (or 300 ms before the segment's end): `hold` when it was held (Ruling S: a tilt is never a slip,
  *   as the prototype's) and `uneven` with the mean extra drain factor of the beat (R16), marked `part: 'tilted'` when it ended off level
- *   (`|err| > tol`), which the engine's shift rule reads; the commander's own shift at once (`shift_weight`); whether she felt it is the
- *   engine's (`cheatRoll` at the segment's end), so her `caught` line follows `run.tally.cheatsCaught`; a report the mouse made is exempt from
- *   the typing lapse (ruling O);
+ *   (`|err| > tol`), which the engine's shift rule reads; the commander's own shift is decided at once (Ruling AE: `physics/relief`, one
+ *   draw with the prototype's `CAUGHT`), and the prototype's answer plays at once (caught: her line, 10 strength off, her heavier lean; else
+ *   the relief), its segment input marked with the answer (`shift_weight` `caught` / `free`); a report the mouse made is exempt from the typing
+ *   lapse (ruling O);
  * - her lines are `cardVoice` `weight.*` by her style (ruling Q; `weight.entry.<contact>` for her first words); a model-worded `press` cue may
  *   take her `heavy` line's place; the cue pool's narration is never written in her hand;
  * - `performance`, `setTimeout`, `requestAnimationFrame`, `innerWidth` / `innerHeight` and `Math.random` are this module's own: the scene's frame
@@ -153,18 +154,19 @@ interface Wiring {
   uneven: { sum: number; ms: number };
   via: 'mouse' | 'key';
   segSlips: number;
-  cheatsCaught: number;
   /** The pair's steady beats (the core's outer instrument gives them), or null alone. */
   steady: (() => readonly number[]) | null;
   /** The segment whose resolved strength was taken (once each). */
   synced: number;
+  /** Final review I2: how far the vial is lifted to clear the reply's text (0: where the prototype has it). */
+  vialLift: number;
   spriteSrc: string;
   overFit: { height: number; x: number; sink: number } | null;
 }
 const NO_LINES: Lines = { entry: [], released: [], slip: [], caught: [], heavy: [], good: [], poor: [], fall: [], stop: [], longer: [], announce: [] };
 const R: Wiring = {
   run: null, face: 'down', legs: false, pressure: 1, lines: NO_LINES, lineStyle: 'neutral', seg: null, running: false, queue: [], sent: new Set(), inputs: [], tapped: false, taps: 0, uneven: { sum: 0, ms: 0 },
-  via: 'key', segSlips: 0, cheatsCaught: 0, steady: null, synced: -1, spriteSrc: '', overFit: null,
+  via: 'key', segSlips: 0, steady: null, synced: -1, vialLift: 0, spriteSrc: '', overFit: null,
 };
 const C = () => ({ face: R.face, weight: 1, shift: 1 });
 const ST = () => STYLES[S.style];
@@ -372,8 +374,9 @@ function relief() {
   if (G.phase !== 'loop' || G.reliefCd > 0 || !R.running) return;
   G.reliefCd = 2600; G.reliefs += 1;
   SFX.creak(0.22, 0.1); SFX.rustle(0.05);
-  report({ beat: segBeat(), kind: 'shift_weight' });
-  G.str = Math.min(100, G.str + RELIEF);
+  if (caughtNow()) {
+    G.caughtN += 1; say(pick(L().caught)); G.str -= 10; G.pressure = 1.5; G.pressureUntil = G.clock + 3 * BEAT; SFX.press(0.55); G.jolt = 1; crack(0.6);
+  } else { G.str = Math.min(100, G.str + RELIEF); }
 }
 
 /* ---------- phases ---------- */
@@ -714,12 +717,18 @@ export const WEIGHT_KINDS = ['released', 'slip', 'caught', 'heavy', 'good', 'poo
 const VOICED: ReadonlyArray<[string, CueKind]> = [['heavy', 'press']];
 
 /**
- * She felt the commander's own shift (the engine's `cheatRoll`, at the segment's end): her line, the press, a jolt and a crack. The prototype's
- * −10 and heavier lean for 3 beats are not played: the engine charges a catch as slips and raises no pressure, so the strength stays its own.
+ * Ruling AE (final review I1): whether she felt the commander's own shift, decided at once by the engine (`physics/relief`, one draw with
+ * weight.html's `CAUGHT[her attention]`; in her frame nothing while she is out, `THRONE.away`), in place of the prototype's `Math.random()`.
+ * The segment's input carries the answer (`shift_weight` `caught` / `free`), so the engine charges what the screen shows: the relief, or
+ * 10 strength off and her heavier lean (1.5 for 3 beats). In her frame a catch is also her tell (`THRONE.caught`, throne.html's `herFeels`).
  */
-function caughtBy(): void {
-  if (G.phase !== 'loop' && G.phase !== 'entry') return;
-  G.caughtN += 1; say(pick(L().caught)); SFX.press(0.55); G.jolt = 1; crack(0.6);
+function caughtNow(): boolean {
+  const beat = segBeat();
+  const events = E?.env.staging.relief?.({ kind: 'shift_weight', ...(THRONE.away() ? { part: 'away' } : {}), attention: G.att }) ?? [];
+  const caught = events.some((e) => e.type === 'physics_caught');
+  report({ beat, kind: 'shift_weight', part: caught ? 'caught' : 'free' });
+  if (caught) THRONE.caught();
+  return caught;
 }
 /** She leans in heavier (the engine's `run.pressure` rose at a boundary): her line, the press. */
 function heavier(): void {
@@ -762,6 +771,29 @@ function before(): void {
   }
   const input = e.env.input as HTMLInputElement;
   if (input.value !== '' || e.mirror.childElementCount > 0) placeMirror(e);
+  clearReply(e);
+}
+/**
+ * Final review I2: the vial stands where the prototype's does (`bottom: 186px` of the stage), unless the scene's reply (the prose, which the
+ * prototype's short reply never reaches) runs up to it: then it is lifted just clear of the reply's text, never over it.
+ */
+function clearReply(e: WeightEls): void {
+  const vial = e.els['#vial']!;
+  const text = replyTextTop(e.env.reply);
+  if (text === null) return;
+  const laid = vial.getBoundingClientRect().bottom + R.vialLift;
+  const lift = Math.max(0, Math.ceil(laid - (text - 6)));
+  if (Math.abs(lift - R.vialLift) < 2) return;
+  R.vialLift = lift;
+  vial.style.marginBottom = lift > 0 ? `${lift}px` : '';
+}
+/** The top of the reply's text as laid out (its first line), or null with no text (or no layout). */
+function replyTextTop(reply: HTMLElement): number | null {
+  if (!reply.textContent?.trim() || typeof document.createRange !== 'function') return null;
+  const range = document.createRange();
+  range.selectNodeContents(reply);
+  const rects = typeof range.getClientRects === 'function' ? [...range.getClientRects()].filter((x) => x.width > 0 && x.height > 0) : [];
+  return rects.length > 0 ? Math.min(...rects.map((x) => x.top)) : null;
 }
 /** After the prototype's frame: the reply's opacity it wrote is recorded as the claim's (styleClaims' contract); a new line kept in the frame. */
 function after(): void {
@@ -850,9 +882,9 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   R.legs = R.face === 'down' && herLegsOf(contact) === 'hang';
   R.pressure = run.pressure ?? 1;
   R.seg = null; R.running = false; R.queue = []; R.sent = new Set(); R.uneven = { sum: 0, ms: 0 }; R.via = 'key'; R.segSlips = 0;
-  R.cheatsCaught = run.tally?.cheatsCaught ?? 0;
   R.taps = run.taps; R.tapped = false;
   R.synced = -1;
+  R.vialLift = 0;
   R.spriteSrc = '';
   // the engine's numbers, as a share of the gauge (a capacity above 100 makes every step smaller)
   const k = 100 / Math.max(1, run.capacity);
@@ -1009,8 +1041,6 @@ export function startWeight(env: InstrumentEnv, run: PhysicsRun, opts: WeightOpt
       R.run = next;
       const pressure = next.pressure ?? 1;
       if (pressure > R.pressure) { R.pressure = pressure; refreshLines(0); heavier(); } else R.pressure = pressure;
-      const caught = next.tally?.cheatsCaught ?? 0;
-      if (caught > R.cheatsCaught) { R.cheatsCaught = caught; caughtBy(); }
     },
     finish(end: PhysicsEnd): number {
       if (E !== mine) return 0;
@@ -1092,6 +1122,10 @@ export const THRONE = {
   limit: (): void => {},
   /** Ruling W: the strength at 0 in her frame (her frame's `wBuckle`). */
   buckle: (): void => {},
+  /** Ruling AE: she is out of the room (her frame's `G.away`): she catches no shift (throne.html's `wRelief`). */
+  away: (): boolean => false,
+  /** Ruling AE: she caught the commander's shift in her frame: her tell (throne.html's `wRelief`, `herFeels`). */
+  caught: (): void => {},
 };
 /** 24b: the core's state the throne layer moves (the prototype's `W`, `HOLD`, `W_SFX`, `WT.tol`), for the frame's throne only. */
 export const weightCore = {

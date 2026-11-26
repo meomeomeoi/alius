@@ -5807,7 +5807,42 @@
     "id": "activity.toyou.chatting_on_pda",
     "kind": "activity.toYou.chatting_on_pda",
     "lines": [
-      "Vex says hi. don’t answer."
+      "{Name} says hi. don’t answer."
+    ]
+  },
+  {
+    "id": "activity.woke",
+    "kind": "activity.woke",
+    "lines": [
+      "…what are you doing."
+    ]
+  },
+  {
+    "id": "activity.wokemumble",
+    "kind": "activity.wokeMumble",
+    "lines": [
+      "…"
+    ]
+  },
+  {
+    "id": "activity.comein",
+    "kind": "activity.comeIn",
+    "lines": [
+      "come in."
+    ]
+  },
+  {
+    "id": "activity.stay",
+    "kind": "activity.stay",
+    "lines": [
+      "Stay."
+    ]
+  },
+  {
+    "id": "activity.entry.floor",
+    "kind": "activity.entry.floor",
+    "lines": [
+      "Down. Eyes down."
     ]
   },
   {
@@ -5996,6 +6031,13 @@
     "kind": "service.wrong",
     "lines": [
       "no."
+    ]
+  },
+  {
+    "id": "service.missed",
+    "kind": "service.missed",
+    "lines": [
+      "you missed it."
     ]
   },
   {

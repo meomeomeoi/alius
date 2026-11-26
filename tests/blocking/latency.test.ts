@@ -177,6 +177,43 @@ describe('the latency rule', () => {
     tick(w, 6000);
     expect(w.h.actions.filter((a) => a === 'physics/segment_end')).toHaveLength(2);
   });
+  it('Ruling AF: while the page is hidden the real-time clock pauses (no segment ends or starts, nothing is synthesised) and resumes where it left off', async () => {
+    const w = await world({ settings: { }, contact: 'footrest' });
+    const s = structuredClone(w.h.state());
+    s.settings.physicsRealtime = true;
+    w.h.set(s);
+    play(w);
+    tick(w, 1000);
+    expect(run(w)!.segment).toMatchObject({ n: 2, state: 'running' });
+    w.staging.input({ beat: 0, kind: 'hold' });
+    tick(w, 10_000); // 10 s of the 30 s segment
+    const actions = w.h.actions.length;
+    const startedAt = w.staging.clock().startedAt!;
+    w.staging.visibility(true, w.clock.now);
+    tick(w, 60_000); // hidden for 60 s
+    expect(w.h.actions.length).toBe(actions); // not one dispatch: no physics/segment_end, no next segment
+    expect(run(w)!.segment).toMatchObject({ n: 2, state: 'running' });
+    w.staging.visibility(false, w.clock.now);
+    expect(w.staging.clock().startedAt).toBe(startedAt + 60_000); // its start moved by the hidden time
+    expect(w.clock.now - w.staging.clock().startedAt!).toBe(10_000); // where it left off
+    tick(w, 19_000);
+    expect(run(w)!.segment.state).toBe('running'); // 29 s of the segment played
+    tick(w, 2000);
+    expect(w.h.actions.filter((a) => a === 'physics/segment_end')).toHaveLength(2); // the clock ended it, with the input made before
+    // shown twice or hidden twice changes nothing
+    w.staging.visibility(false, w.clock.now);
+    w.staging.visibility(true, w.clock.now);
+    w.staging.visibility(true, w.clock.now + 5000);
+    w.staging.visibility(false, w.clock.now + 7000);
+  });
+
+  it('Ruling AF: turn-based play is not paused by a hidden page', async () => {
+    const w = await world();
+    w.staging.visibility(true, w.clock.now);
+    play(w);
+    tick(w, 1000);
+    expect(run(w)!.segment).toMatchObject({ n: 2, state: 'running' });
+  });
 });
 
 describe('the two ends', () => {

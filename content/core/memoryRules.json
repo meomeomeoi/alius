@@ -908,7 +908,7 @@
   {
     "id": "scent_lie_caught",
     "event": "scent_lie_caught",
-    "text": "Under {name}'s scent, the commander lied about it, and a cough gave the lie away.",
+    "text": "Asked by {name} about her scent, the commander lied to {name}, and a cough gave the lie away.",
     "importance": 2,
     "about": "her",
     "audience": "her",

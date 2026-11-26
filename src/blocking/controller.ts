@@ -4,7 +4,7 @@ import type { CueKind } from '../engine/blocking/types';
 import type { Action, EngineEvent } from '../engine/dispatch';
 import { temperamentOf } from '../engine/life/state';
 import { leadStyle, physicsStyleOf } from '../engine/physics/style';
-import type { SegmentInput } from '../engine/physics/state';
+import type { ReliefReport, SegmentInput } from '../engine/physics/state';
 import type { CampaignState } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
 import type { Envelope } from '../llm/envelope';
@@ -79,8 +79,12 @@ export interface StagingController {
   /** P10e-e R28: after her forgotten end the commander gets up alone (`physics/get_up`), or a visitor of the frame comes in (`physics/found`). */
   getUp(): EngineEvent[];
   found(finderId: string): EngineEvent[];
-  /** P10e-e Rulings X and Y: a relief of the body in her frame (`physics/relief`), decided at once. */
-  relief(r: { kind: 'relieve' | 'fidget'; amount: number; part: string; involuntary?: boolean }): EngineEvent[];
+  /**
+   * P10e-e Rulings X, Y and AE: a relief decided at once (`physics/relief`): the body in her frame (`relieve`, `fidget`), or the commander's own
+   * shift of weight or mouth breath in an instrument (`shift_weight`, `mouth_breath` with its loudness). `attention` is hers as shown, read
+   * only between segments (Minor 6).
+   */
+  relief(r: ReliefReport): EngineEvent[];
   /** P10e-e review I7: she woke (the third stir in her sleep): her frame ends (`physics/woke`). */
   woke(): EngineEvent[];
   /** P10e-e 24b: a decision of her hour's script (`physics/decide`, through her command capability; refused without it). */
@@ -93,6 +97,12 @@ export interface StagingController {
   restart(): void;
   /** Drives the clock: ends a real-time segment on time and starts the next one when nothing is pending. */
   tick(nowMs: number): void;
+  /**
+   * P10e-e Ruling AF (final review I3): the page was hidden or shown again (the app's `visibilitychange`). While it is hidden and real time is
+   * on, the clock pauses: no segment ends or starts (the instruments' frames are frozen too, as the prototypes freeze); shown again, the running
+   * segment resumes where it left off (its start moves by the hidden time). Nothing is synthesised. Turn-based play is not paused.
+   */
+  visibility(hidden: boolean, nowMs: number): void;
   /** One of her cue lines of a kind for a beat of the running segment, or `null`. */
   cue(kind: CueKind, beat: number): string | null;
   /**
@@ -125,6 +135,8 @@ export function createStaging(deps: StagingDeps): StagingController {
   let collected: SegmentInput[] = [];
   let startedAt: number | null = null;
   let lapseUntil = 0;
+  /** Ruling AF: when the page was hidden (null while it is shown). */
+  let hiddenAt: number | null = null;
   const pools = new Map<string, ReturnType<typeof completeCues>>();
   /** The model's own lines per run (only the kinds it worded): ruling Q. */
   const voicedPools = new Map<string, CuePool>();
@@ -279,6 +291,7 @@ export function createStaging(deps: StagingDeps): StagingController {
     const s = state();
     const r = s?.scene?.physics;
     if (!s || !r) return;
+    if (hiddenAt !== null && s.settings.physicsRealtime === true) return; // Ruling AF: the page is hidden, the clock is paused
     if (!blockingLive(s, deps.registries())) {
       // the bond fell below close with a hold running: the layer is gone, so every segment action would fail; the hold ends here, once, through the stop word (it has no live guard)
       dispatch({ type: 'physics/stop_word', payload: {} });
@@ -393,6 +406,15 @@ export function createStaging(deps: StagingDeps): StagingController {
     },
     tick(nowMs) {
       if (active) advance(nowMs);
+    },
+    visibility(hidden, nowMs) {
+      if (hidden) {
+        hiddenAt ??= nowMs;
+        return;
+      }
+      if (hiddenAt === null) return;
+      if (startedAt !== null) startedAt += Math.max(0, nowMs - hiddenAt); // the running segment resumes where it left off
+      hiddenAt = null;
     },
     cue(kind, beat) {
       const r = run();

@@ -96,7 +96,9 @@ describe('the throne (24b)', () => {
     t.to(2600);
     expect(_activity.S.inner).toBe('weight');
     expect(_activity.S.contact).toBe('human_chair');
-    expect(t.host.querySelector('.alius-act-footrestView .alius-weight')).not.toBeNull();
+    // final review I2: the core stands on the stage (outside the world's −6 % inset), as throne.html's `#ui > #vial` does
+    expect(t.host.querySelector('.alius-activity > .alius-act-weightHost .alius-weight')).not.toBeNull();
+    expect(t.host.querySelector('.alius-act-world .alius-weight')).toBeNull();
   });
 
   it('with her mug the tolerance is 0.12 and her shifts are 0.35 of their size; 0.5 s out of level spills', () => {

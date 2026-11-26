@@ -11,8 +11,9 @@
  * - the engine's numbers are TUNING (`BAND`, `INHALE_FILL_MS`, `BEAT`); her band is `scentBand` of the part she presses (R19), the stage and
  *   the tolerance are the commander's own for her scent (`stimuli.ts`), the capacity `headCapacity`; her attention is the plan's beat by beat;
  * - every beat of a running segment is reported once as it ends (300 ms before the segment's end for the last): `inhale` with the words the
- *   head gained over what the engine holds (R18), `mouth_breath` with the words the mouth blew out in it (a relief the engine may catch:
- *   `cheatRoll`; her `mouth` line follows the engine's catch, `run.tally.cheatsCaught`); a deep breath is P15a's `physics/stimulus` (its depth
+ *   head gained over what the engine holds (R18), `mouth_breath` with the words the mouth blew out in it (marked `decided`:
+ *   Ruling AE, each blown word is decided at once by `physics/relief`, one draw with the prototype's `NOTICED[att] × loud`, and her `mouth`
+ *   answer plays at once when she heard it); a deep breath is P15a's `physics/stimulus` (its depth
  *   lands in the zone of the engine that the body's own answer names); her question's answer is `physics/answer` (R20), at once, or for a lie
  *   once the body gave it away (a cough within two breaths) or kept it;
  * - her lines are `cardVoice` `scent.*` by her style (ruling Q; cold is silent), held in the prototype's `LINES` shape; her question's words
@@ -636,7 +637,8 @@ function updateLoop(dt: number) {
     G.mouthMs += dt; G.mouthTick -= dt;
     if (G.mouthTick <= 0 && G.head.length) {
       G.mouthTick = 420; blowWord(); G.counts.mouthWords! += 1;
-      blown();
+      const loud = G.mouthMs < 900 ? 0.25 : 0.6;
+      if (blown(loud)) heardMouth();
     }
   } else { if (!G.inhaling && BR.kind === 'mouth') breathStop(); G.mouthMs = 0; }
   // the need to breathe: some air, one way or the other
@@ -883,14 +885,13 @@ interface Wiring {
   blownBeat: number;
   via: 'mouse' | 'key';
   mouthVia: 'mouse' | 'key';
-  cheatsCaught: number;
   /** Her question answered with a lie the body has not given away yet: the verdict sent once it does (or it is kept). */
   pending: { right: boolean } | null;
   /** The kind of her scent the deep inhale is (P15a's stimulus), or null. */
   kind: string | null;
   plan: Array<{ attention: string }>;
 }
-const R: Wiring = { run: null, lineStyle: 'neutral', seg: null, running: false, held: 0, blownBeat: 0, via: 'key', mouthVia: 'key', cheatsCaught: 0, pending: null, kind: null, plan: [] };
+const R: Wiring = { run: null, lineStyle: 'neutral', seg: null, running: false, held: 0, blownBeat: 0, via: 'key', mouthVia: 'key', pending: null, kind: null, plan: [] };
 
 /** Her attention now: the plan's beat of the running segment (the prototype drew it). */
 function attentionNow(): string {
@@ -899,9 +900,14 @@ function attentionNow(): string {
   const b = clamp(Math.floor((G.clock - seg.clock0) / BEAT), 0, seg.beats - 1);
   return R.plan[b]?.attention ?? 'busy';
 }
-/** A word the mouth blew out: counted for this beat's `mouth_breath`. */
-function blown(): void {
+/**
+ * A word the mouth blew out: counted for this beat's `mouth_breath` (marked `decided`), and whether she heard it, decided at once (Ruling AE:
+ * `physics/relief`, one draw with the prototype's `NOTICED[her attention] × loud`, in place of its `Math.random()`); true when she heard it.
+ */
+function blown(loud: number): boolean {
   R.blownBeat += 1;
+  const events = E?.env.staging.relief?.({ kind: 'mouth_breath', amount: loud, attention: G.att }) ?? [];
+  return events.some((e) => e.type === 'physics_caught');
 }
 /** Her lines (cardVoice `scent.*`) in the prototype's `LINES` shape, by her style (neutral's when hers has no row; cold is silent). */
 function refreshLines(): void {
@@ -936,7 +942,7 @@ function report(i: SegmentInput, pointer: boolean): void {
 function reportBeat(beat: number): void {
   const blownN = R.blownBeat;
   R.blownBeat = 0;
-  if (blownN > 0) { report({ beat, kind: 'mouth_breath', amount: blownN }, R.mouthVia === 'mouse'); R.held = Math.max(0, R.held - blownN); }
+  if (blownN > 0) { report({ beat, kind: 'mouth_breath', amount: blownN, part: 'decided' }, R.mouthVia === 'mouse'); R.held = Math.max(0, R.held - blownN); }
   const level = Math.min(capacity(), G.head.length);
   report({ beat, kind: 'inhale', amount: Math.max(0, level - R.held) }, false);
   if (level < R.held) report({ beat, kind: 'scatter', amount: Math.round((R.held - level) * 1000) / 1000 }, false);
@@ -1141,7 +1147,6 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   R.lineStyle = lead.key;
   R.run = run;
   R.seg = null; R.running = false; R.held = 0; R.blownBeat = 0; R.via = 'key'; R.mouthVia = 'key'; R.pending = null; R.plan = [];
-  R.cheatsCaught = run.tally?.cheatsCaught ?? 0;
   BEAT = TUNING.physics.beatMs;
   const occ = occlusionOf(run.sourceKind === 'contact' ? reg.blockingContacts.get(run.sourceId) : undefined);
   S.contact = (CONTACT_OF[occ.kind] ?? 'feet_on_face') as typeof S.contact;
@@ -1256,9 +1261,6 @@ export function startScent(env: InstrumentEnv, run: PhysicsRun): InstrumentRun {
     update(next: PhysicsRun) {
       if (E !== mine) return;
       R.run = next;
-      // she heard a mouth breath: the engine caught the relief (`cheatRoll` at the segment's end), her answer by style follows it
-      const caught = next.tally?.cheatsCaught ?? 0;
-      if (caught > R.cheatsCaught) { R.cheatsCaught = caught; if (G.phase === 'loop' || G.phase === 'entry') heardMouth(); }
     },
     finish(end: PhysicsEnd): number {
       if (E !== mine) return 0;

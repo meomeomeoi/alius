@@ -130,8 +130,8 @@ export function physicsLines(state: CampaignState, reg: Registries): Directive |
     if (last.slips > 0) said.push(count(last.slips, 'a slip', 'slips'));
     if ((last.spills ?? 0) > 0) said.push(`spilled ${times(last.spills!)}`); // P10e-e R32: a gulp's spills, as spills
     if (last.gasps > 0) said.push('a gasp');
-    // R28: in her frame and in an order run (shoe service's spit, e10 M2) a relief is said only once she caught it (the tally)
-    if (last.reliefs > 0 && run.sourceKind !== 'activity' && reg.contactPhysics.get(run.physicsId)?.interaction !== 'order') said.push('a relief taken');
+    // R28 (e10 M2, final review Minor 4): in every run a relief is said only once she caught it (at the segment's end or at once)
+    if ((last.cheats ?? 0) > 0) said.push('a relief taken');
     if (last.noise > 0) said.push('some noise');
     if (last.warning) said.push('close to the limit');
     if (said.length > 0) parts.push(`Last stretch: ${said.join(', ')}.`);

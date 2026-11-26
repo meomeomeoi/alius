@@ -24,7 +24,11 @@ export type InputKind = (typeof INPUT_KINDS)[number];
  * (`1.2·max(0, |err| − tol/2)`), costing `drain × amount` (absent or 0: nothing); with `part: 'tilted'` (Ruling S) the beat ended held but
  * off level, which a shift on it or the next beat reads as uneven (it is never a slip: the tilt costs only as drain). `inhale` (R18: scent's
  * head), the words a breath left in the head this beat, each worth the gauge's capacity over the head's (`headCapacity`); a segment that holds
- * any `inhale` fills by them alone. `mouth_breath` with `amount` (R18), the words blown out of the head (absent: the card's flat cost). `scatter` (Ruling U), the words that left the
+ * any `inhale` fills by them alone. `mouth_breath` with `amount` (R18), the words blown out of the head (absent: the card's flat cost). Ruling AE:
+ * an instrument decides its own `shift_weight` and `mouth_breath` at once (`physics/relief`, one draw) and marks the segment input with `part`:
+ * `shift_weight` `free` (not caught: the relief) or `caught` (weight.html: 10 strength off and her heavier lean, 1.5 for 3 beats), and
+ * `mouth_breath` `decided` (its catches are already made); a marked input is never rolled again at the segment's end. Unmarked (the card,
+ * turn-based): as before, `cheatRoll` at the segment's end. `scatter` (Ruling U), the words that left the
  * head without the mouth (a cough, the overflow's recovery, an answer's spent words): the fill falls by as many words; no relief, nothing else.
  * `bite` (R21: the jaw), the beat's mean cost factor of the opening (jaw.html's `G.cost`: about ⅓ resting on her toes or the ring, 1 at her
  * band's top, more wide open); a gesture segment that holds any costs `jaw.per × amount` a beat instead of the flat `jaw.per`. With
@@ -39,6 +43,14 @@ export type InputKind = (typeof INPUT_KINDS)[number];
  * one too), `part: 'more'` is an overflow running on (its amount only); what was spilled is carried on the run (`gulp`) to her flow's end.
  */
 export interface SegmentInput { beat: number; kind: InputKind; atMs?: number; part?: string; amount?: number }
+
+/**
+ * P10e-e Rulings X, Y and AE: what an instrument sends with `physics/relief` (the run id and the beat are the staging's): a relief of the body
+ * in her frame (`relieve`, `fidget`: `amount` loudness × (1 − cover), `part` its visibility, `involuntary` the body giving way), the commander's
+ * own shift of weight (`shift_weight`; `part: 'away'` while she is out of the room) or a mouth breath's blown word (`mouth_breath`, `amount` its
+ * loudness). `attention` is hers as the instrument shows it, read only between segments.
+ */
+export interface ReliefReport { kind: 'relieve' | 'fidget' | 'shift_weight' | 'mouth_breath'; amount?: number; part?: string; involuntary?: boolean; attention?: string }
 
 /** P10e-e R22: her orders in the jaw (her toes: `deeper`, `pull_back`, `suck`, `wider`; the ring: `wider`). Each is a cue kind of the same name. */
 export const JAW_ORDERS = ['deeper', 'suck', 'wider', 'pull_back'] as const;
@@ -92,6 +104,11 @@ export interface SegmentSummary {
   warning?: boolean;
   /** P10e-e R32: a gulp's spills (each a slip, counted apart from `slips`: the overflows and the coughs). */
   spills?: number;
+  /**
+   * P10e-e (final review, Minor 4): the reliefs she caught in this stretch (at the segment's end, or at once: Rulings Y, AC, AE), so the
+   * running directive names a relief only once she perceived it. Absent when she caught none.
+   */
+  cheats?: number;
 }
 
 /** The scent bands (plan R13); the saturation physics reads them. */
@@ -183,7 +200,11 @@ export interface PhysicsRun {
   /** Her pattern moved on (a change of rhythm): added to the personal offset when the next segment is planned. */
   rhythmShift?: number;
   /** `held`: the body waits in a neutral state (nothing drains) until the next segment starts. */
-  segment: { n: number; state: 'running' | 'held'; plan?: SegmentPlan; /** Beats whose inputs lapsed because a message was typed (turn-based). */ lapsed?: number[] };
+  segment: {
+    n: number; state: 'running' | 'held'; plan?: SegmentPlan; /** Beats whose inputs lapsed because a message was typed (turn-based). */ lapsed?: number[];
+    /** P10e-e Ruling AE: reliefs decided at once (Rulings Y, AC, AE) that she caught while this segment ran (absent: none); read at its end. */
+    caughtNow?: number;
+  };
   startedExchange: number;
   /** Taps that a `limit` holder ignored. */
   taps: number;

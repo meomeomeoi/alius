@@ -168,7 +168,15 @@ var TUNING = Object.freeze({
       overDelay: Object.freeze({ cruel: 2, affectionate: 0, other: 1 }),
       wmul: 2
     }),
-    weight: Object.freeze({ drain: 8, shiftEvery: Object.freeze([3, 5]), shift: Object.freeze([15, 25]), relief: 15 }),
+    weight: Object.freeze({
+      drain: 8,
+      shiftEvery: Object.freeze([3, 5]),
+      shift: Object.freeze([15, 25]),
+      relief: 15,
+      /** P10e-e Ruling AE (weight.html `relief`): a shift she caught at once costs 10 and leans her in heavier, 1.5 for 3 beats. */
+      caught: 10,
+      caughtLean: Object.freeze({ pressure: 1.5, beats: 3 })
+    }),
     saturation: Object.freeze({ per: 10, bandFactor: Object.freeze({ faint: 0.5, noticeable: 1, strong: 1.5, overwhelming: 2 }), mouth: 20, noticed: 0.6 }),
     tongue: Object.freeze({ start: 100, right: 15, wrong: 8, checkAt: 10, dryness: 6, parts: Object.freeze(["toes", "arch", "heel", "sole"]) }),
     /**
@@ -7226,8 +7234,8 @@ var SCOPES = ["any", "dynamic"];
 function effectsOfEntry(entry) {
   const e = entry;
   const declared = Array.isArray(e?.effects) ? e.effects : [];
-  const named4 = Array.isArray(e?.physics) ? e.physics : [];
-  const extra = named4.filter((p) => !declared.some((d) => d.type === "physics" && d.id === p.id)).map((p) => ({ type: "physics", id: p.id }));
+  const named5 = Array.isArray(e?.physics) ? e.physics : [];
+  const extra = named5.filter((p) => !declared.some((d) => d.type === "physics" && d.id === p.id)).map((p) => ({ type: "physics", id: p.id }));
   return [...declared, ...extra];
 }
 
@@ -10088,8 +10096,11 @@ registrySchemas.dmBehaviours = DmBehaviourSchema;
 var HandFontSchema = BaseEntrySchema.extend({
   name: str.max(60),
   family: str.max(60).regex(/^[A-Za-z0-9 ]+$/, "a plain CSS family name"),
-  /** P10e-e: the hand's size factor against Caveat (1), measured once by `scripts/measure-hands.mjs`; every size in her hand is multiplied by it. */
-  scale: external_exports.number().min(0.6).max(1.7),
+  /**
+   * P10e-e: the hand's size factor against Caveat (1), measured once by `scripts/measure-hands.mjs`; every size in her hand is multiplied by it.
+   * Final review Minor 9: a (local) entry without it loads at 1 and the loader warns (`loadPacks`), so the hand is never lost silently.
+   */
+  scale: external_exports.number().min(0.6).max(1.7).default(1),
   description: str.max(DESCRIPTION_MAX)
 }).strict();
 registrySchemas.handFonts = HandFontSchema;
@@ -11029,6 +11040,12 @@ var CARD_VOICE_KINDS = [
   "activity.stop",
   "activity.rest",
   "activity.fall",
+  // final review Minor 3: her spoken words the prototype writes inline (her waking words at `with` / `glancing` and elsewhere, her "come in." to a
+  // visitor, "Stay." after her entry); her spoken order in an entry is `activity.entry.<view>` (CARD_VOICE_STATIC)
+  "activity.woke",
+  "activity.wokeMumble",
+  "activity.comeIn",
+  "activity.stay",
   // P10e-e 24b: the throne's lines (throne.html `T_LINES`)
   "throne.spill",
   "throne.skid",
@@ -11039,6 +11056,7 @@ var CARD_VOICE_KINDS = [
   "service.good",
   "service.poor",
   "service.wrong",
+  "service.missed",
   // P10e-e Task 28: shoe service's lines (shoe.html `LINES`, card-voice.md §14); her words for the zones are `shoe.zone.<zone>` (CARD_VOICE_STATIC,
   // `ZONE_WORDS`); `shoe.stop` is finish's line after the stop word (the prototype's inline one)
   "shoe.entry",
@@ -11069,7 +11087,7 @@ var CARD_VOICE_KINDS = [
   "gulp.missed",
   "gulp.stop"
 ];
-var CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+|scent\.(entry|here)\.[a-z0-9_]+|jaw\.entry\.[a-z0-9_]+|activity\.(self|toYou|ask|exchange)\.[a-z0-9_]+|service\.zone\.[a-z0-9_]+|shoe\.zone\.[a-z0-9_]+)$/;
+var CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+|scent\.(entry|here)\.[a-z0-9_]+|jaw\.entry\.[a-z0-9_]+|activity\.(self|toYou|ask|exchange|entry)\.[a-z0-9_]+|service\.zone\.[a-z0-9_]+|shoe\.zone\.[a-z0-9_]+)$/;
 var CardVoiceSchema = BaseEntrySchema.extend({
   kind: str.refine((k) => CARD_VOICE_KINDS.includes(k) || CARD_VOICE_STATIC.test(k), "an unknown card voice kind"),
   style: str.optional(),
@@ -11113,8 +11131,8 @@ function completionReason(state, reg, step) {
     case "no_open_scene":
       return state.scene ? "A scene is still open." : null;
     case "all_spoken": {
-      const spoken2 = new Set(o?.spoken ?? []);
-      return livingNamed(state).every((u) => spoken2.has(u.id)) ? null : "Not every soldier has been spoken to yet.";
+      const spoken4 = new Set(o?.spoken ?? []);
+      return livingNamed(state).every((u) => spoken4.has(u.id)) ? null : "Not every soldier has been spoken to yet.";
     }
     case "tutorial_returned": {
       if (state.expedition) return "The patrol is still out.";
@@ -13261,8 +13279,8 @@ function rollCountermand(draft, ctx2, req) {
   const leader = leaderOf(draft);
   if (!leader || unitObeys(draft, leader.id)) return null;
   if (ctx2.registries.activities.get(req.activityId)?.countermandable !== true) return null;
-  const named4 = (id) => draft.squad.some((u) => u.id === id && u.kind === "named") && id !== leader.id;
-  const unitId = (req.companionId !== void 0 ? [req.companionId] : req.unitIds ?? []).find(named4);
+  const named5 = (id) => draft.squad.some((u) => u.id === id && u.kind === "named") && id !== leader.id;
+  const unitId = (req.companionId !== void 0 ? [req.companionId] : req.unitIds ?? []).find(named5);
   if (unitId === void 0) return null;
   if (!ctx2.rng.chance(countermandChance(draft, ctx2.registries))) return null;
   const { countermandChecked: _skip, ...payload } = req;
@@ -13333,13 +13351,13 @@ function concealedAffairs(state, reg) {
 function leverageOf(state, reg, unitId) {
   const rel = state.relations[unitId];
   if (!rel) return [];
-  const named4 = namedLiving(state);
+  const named5 = namedLiving(state);
   const out = [];
   const crime = state.commander.crimeId === null ? void 0 : reg.crimes.get(state.commander.crimeId);
   for (const flag of rel.flags) {
     if (reg.flags.get(flag)?.leverage !== true) continue;
     if (flag === CRIME_FLAG && crime?.damaging === false) continue;
-    const others = named4.filter((u) => u.id !== unitId);
+    const others = named5.filter((u) => u.id !== unitId);
     if (others.length > 0 && others.every((u) => state.relations[u.id]?.flags.includes(flag))) continue;
     out.push(flag);
   }
@@ -15144,8 +15162,8 @@ function raiseTone(draft, reg, tone5) {
   const scene = draft.scene;
   if (!scene || tone5 !== "romantic" && tone5 !== "intimate") return [];
   if (!intimacyOf(draft).romance) return [];
-  const named4 = scene.participants.filter((id) => draft.squad.find((u) => u.id === id)?.kind === "named").length;
-  if (named4 > 1) return [];
+  const named5 = scene.participants.filter((id) => draft.squad.find((u) => u.id === id)?.kind === "named").length;
+  if (named5 > 1) return [];
   if (scene.tone !== void 0 && TONE_RANK[scene.tone] >= TONE_RANK[tone5]) return [];
   scene.tone = tone5;
   return [{ type: "scene_tone", tone: tone5 }, ...decideSceneLead(draft, reg)];
@@ -19289,8 +19307,8 @@ function reveal(fact, holderId) {
 }
 function mentionCompromat(draft, _ctx, holderId, factId, summary) {
   const mine = compromatOf(draft, holderId);
-  const named4 = factId === void 0 ? void 0 : mine.find((f) => f.id === factId);
-  if (named4 !== void 0) return reveal(named4, holderId);
+  const named5 = factId === void 0 ? void 0 : mine.find((f) => f.id === factId);
+  if (named5 !== void 0) return reveal(named5, holderId);
   const text3 = (summary ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
   if (text3 === "") return [];
   let best;
@@ -21877,8 +21895,8 @@ function answerOffer(state, reg, unitId, composition) {
   const sharp = reads.find((r) => r.attitude === "dislikes" && r.unknown === void 0);
   const unknown2 = reads.find((r) => r.unknown !== void 0);
   if (sharp === void 0 && unknown2 !== void 0) {
-    const named4 = Object.entries(expectationsOf(state, reg, unitId).worship ?? {}).find(([id, w]) => w.attitude === "craves" && id !== unknown2.unknown)?.[0];
-    return { answer: "corrected", hold: 0, favour: 0, attitude: worshipOf(state, reg, unitId, unknown2.unknown), reveal: unknown2.unknown, ...named4 !== void 0 ? { corrected: named4 } : {} };
+    const named5 = Object.entries(expectationsOf(state, reg, unitId).worship ?? {}).find(([id, w]) => w.attitude === "craves" && id !== unknown2.unknown)?.[0];
+    return { answer: "corrected", hold: 0, favour: 0, attitude: worshipOf(state, reg, unitId, unknown2.unknown), reveal: unknown2.unknown, ...named5 !== void 0 ? { corrected: named5 } : {} };
   }
   const attitude = sharp !== void 0 ? "dislikes" : bestOf(reads.map((r) => r.attitude));
   const mood = satisfactionOf(state, reg, unitId);
@@ -22262,10 +22280,10 @@ function countJoke(draft, reg, unitId, factId) {
 }
 function countCompanions(draft, reg, ids) {
   if (developmentMode(draft) === "off") return [];
-  const named4 = [...new Set(ids)].filter((id) => draft.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)));
+  const named5 = [...new Set(ids)].filter((id) => draft.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)));
   const events = [];
-  for (const a of named4) {
-    for (const b of named4) if (a !== b) bump(draft, a, `companion:${b}`);
+  for (const a of named5) {
+    for (const b of named5) if (a !== b) bump(draft, a, `companion:${b}`);
     events.push(...checkHabits(draft, reg, a));
   }
   return events;
@@ -22764,9 +22782,9 @@ function shareChance(state, reg, unitId, entry) {
 }
 function milestoneHobby(draft, reg, unitId, entry, day) {
   const unit4 = unitOf2(draft, unitId);
-  const named4 = entry.becomes?.hobby ?? (entry.requires?.hobby !== "any" ? entry.requires?.hobby : void 0);
+  const named5 = entry.becomes?.hobby ?? (entry.requires?.hobby !== "any" ? entry.requires?.hobby : void 0);
   const movable = (unit4?.hobbies ?? []).filter((h2) => h2.state === "active" && h2.mastered !== true && h2.ceiling !== true && h2.milestones.length < 4 && reg.hobbies.has(h2.id));
-  if (named4 !== void 0) return movable.some((h2) => h2.id === named4) ? named4 : null;
+  if (named5 !== void 0) return movable.some((h2) => h2.id === named5) ? named5 : null;
   return movable.length === 0 ? null : movable[lifeHash(draft.life, `${unitId}|${day}|milestone`) % movable.length].id;
 }
 function applyBecomes(draft, reg, unitId, entry, day, facts) {
@@ -24710,8 +24728,8 @@ var asksPermission = (t) => t.asks === ASKS_PERMISSION;
 var templateOf2 = (reg, rule) => reg.relationshipRuleTemplates.get(rule.templateId);
 function permissionRuleOf(state, reg, holderId) {
   const mine = rulesOf(state).filter((r) => r.unitId === holderId && r.status === "active" && templateOf2(reg, r)?.asks === ASKS_PERMISSION);
-  const named4 = state.practices?.permission;
-  return mine.find((r) => named4 !== void 0 && named4.holderId === holderId && named4.ruleId === r.id) ?? mine[0];
+  const named5 = state.practices?.permission;
+  return mine.find((r) => named5 !== void 0 && named5.holderId === holderId && named5.ruleId === r.id) ?? mine[0];
 }
 var denialPossible = (state, reg, holderId) => canProposeRule(state, reg, holderId, { practice: true, filter: asksPermission });
 var writeDenialRule = (draft, ctx2, request, out, plain8) => {
@@ -25237,9 +25255,9 @@ function deadlineSweep(draft, ctx2) {
 }
 var bySay = (t) => t.check === "model" || t.check === "dm_report";
 function witnessesOf3(state, task) {
-  const named4 = [subjectOf(task), ...task.audienceIds ?? []].filter((id) => id !== void 0 && id !== task.holderId);
+  const named5 = [subjectOf(task), ...task.audienceIds ?? []].filter((id) => id !== void 0 && id !== task.holderId);
   const away = state.expedition?.party ?? [];
-  return [...new Set(named4)].filter((id) => state.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)) && !away.includes(id));
+  return [...new Set(named5)].filter((id) => state.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)) && !away.includes(id));
 }
 function falseReportChance(state, _reg, task) {
   const T5 = TUNING.practice.falseReport;
@@ -25719,10 +25737,10 @@ function ceremonyOf(state, reg, holderId, severity) {
   const rows = [...reg.ceremonySteps.values()].filter((e) => Array.isArray(e.styles) && e.styles.includes(style)).sort((a, b) => Number(a.order) - Number(b.order));
   return rows.length === 0 ? null : rows.map((e) => String(e.id));
 }
-function ceremonyCount(style, severity, named4) {
+function ceremonyCount(style, severity, named5) {
   const C3 = TUNING.practice.ceremony;
   const low = C3.lowNumber[severity] ?? 0;
-  return style !== void 0 && C3.doubledBy.includes(style) && named4 < low ? named4 * 2 : named4;
+  return style !== void 0 && C3.doubledBy.includes(style) && named5 < low ? named5 * 2 : named5;
 }
 var stepEntry = (reg, id) => reg.ceremonySteps.get(id);
 var runningCeremony = (state, id) => {
@@ -26050,8 +26068,8 @@ function takeInstead(draft, ctx2, punishmentId, answer) {
   events.push(...hitHer(draft, reg, soldierId, "spared_for", "minor", "was spared by the commander"));
   countDeed(draft, "protected");
   const here = (draft.scene?.participants ?? []).filter((id) => id !== holderId);
-  const named4 = draft.squad.filter((u) => u.kind === "named" && isLiving(u) && !(draft.expedition?.party ?? []).includes(u.id));
-  for (const u of named4) events.push(...addRecord(draft, u.id, TUNING.practice.takeInstead.record, "took_it"));
+  const named5 = draft.squad.filter((u) => u.kind === "named" && isLiving(u) && !(draft.expedition?.party ?? []).includes(u.id));
+  for (const u of named5) events.push(...addRecord(draft, u.id, TUNING.practice.takeInstead.record, "took_it"));
   const entryId = pickHolderPunishment(draft, reg, holderId, p.severity);
   if (entryId !== null) {
     const entry = reg.holderPunishments.get(entryId);
@@ -33105,9 +33123,9 @@ function intelOf(state, reg) {
   if (beats) add2("spine", beats.id, `A story step was reached: ${String(beats.title ?? beats.id)}.`);
   const plan = state.missions.active.find((m) => !seen2.has(`plan:${m.id}`)) ?? state.missions.offered.find((m) => !seen2.has(`plan:${m.id}`));
   if (plan) add2("plan", plan.id, `The squad plans "${plan.title}".`);
-  const named4 = state.squad.filter((u) => u.kind === "named" && isLiving(u) && !seen2.has(`squad:${u.id}`));
-  if (named4.length > 0) {
-    const u = named4[fnv1a3(`intel|${state.day}`) % named4.length];
+  const named5 = state.squad.filter((u) => u.kind === "named" && isLiving(u) && !seen2.has(`squad:${u.id}`));
+  if (named5.length > 0) {
+    const u = named5[fnv1a3(`intel|${state.day}`) % named5.length];
     const role = String(reg.roles.get(u.roleId)?.name ?? u.roleId);
     const defect = u.defects[0] ? String(reg.defects.get(u.defects[0].id)?.name ?? u.defects[0].id) : null;
     add2("squad", u.id, `${u.displayName} is a ${role.toLowerCase()}${defect ? ` with ${defect}` : ""}.`);
@@ -33130,9 +33148,9 @@ function paymentFor(answers2, pressure) {
   return { credits, supplies, plyx };
 }
 function leak(draft, ctx2, d) {
-  const named4 = draft.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
-  const events = [...revealCrime(draft, ctx2.registries, named4)];
-  for (const id of named4) {
+  const named5 = draft.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
+  const events = [...revealCrime(draft, ctx2.registries, named5)];
+  for (const id of named5) {
     const flags = draft.relations[id]?.flags;
     if (flags && !flags.includes("knows_debts")) flags.push("knows_debts");
   }
@@ -34522,8 +34540,8 @@ function dispatch(state, action, registries) {
   if (gate2 && votingOn(state, registries)) {
     const decision = gate2(state, action.payload, registries);
     if (decision) {
-      const named4 = action.payload?.voteId;
-      if (!voteFor(state, decision.kind, decision.subject, named4)) {
+      const named5 = action.payload?.voteId;
+      if (!voteFor(state, decision.kind, decision.subject, named5)) {
         try {
           handler2(structuredClone(state), action.payload, { registries, rng: new Rng(state.rng) });
         } catch (e) {
@@ -34531,7 +34549,7 @@ function dispatch(state, action, registries) {
         }
         return { state, events: [{ type: "error", code: "vote_needed", kind: decision.kind, subject: decision.subject }] };
       }
-      voteId = named4;
+      voteId = named5;
     }
   }
   const draft = structuredClone(state);
@@ -35269,11 +35287,11 @@ function engineRipe(state, reg, sourceId, unitId) {
   return ripeReaders.length > 0 && ripeIdsFor(state, reg, unitId).includes(sourceId);
 }
 function ripeSources(state, reg) {
-  const named4 = state.scene === void 0 || ripeReaders.length === 0 ? /* @__PURE__ */ new Set() : new Set(state.scene.participants.flatMap((id) => ripeIdsFor(state, reg, id).filter((sid) => {
+  const named5 = state.scene === void 0 || ripeReaders.length === 0 ? /* @__PURE__ */ new Set() : new Set(state.scene.participants.flatMap((id) => ripeIdsFor(state, reg, id).filter((sid) => {
     const s = reg.momentSources.get(sid);
     return s !== void 0 && sourceAllowed(state, reg, s, [id]);
   })));
-  return [...reg.momentSources.values()].filter((s) => named4.has(s.id) || Array.isArray(s.live) && s.live.includes("extracted") && sourceAllowed(state, reg, s));
+  return [...reg.momentSources.values()].filter((s) => named5.has(s.id) || Array.isArray(s.live) && s.live.includes("extracted") && sourceAllowed(state, reg, s));
 }
 
 // src/engine/vitals.ts
@@ -35872,8 +35890,8 @@ function whyNotStart(state, reg, o) {
   const gate2 = whyNotAllowed(state, reg, phys, o.holderId);
   if (gate2 !== null) return gate2;
   if (o.second !== void 0) {
-    const named4 = o.sourceKind === "activity" ? framedContactPhysics(state, reg, o.holderId) : physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId));
-    if (o.second === o.physicsId || !named4.some((p) => p.id === o.second)) return `"${o.sourceId}" has no ${o.second} physics to add.`;
+    const named5 = o.sourceKind === "activity" ? framedContactPhysics(state, reg, o.holderId) : physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId));
+    if (o.second === o.physicsId || !named5.some((p) => p.id === o.second)) return `"${o.sourceId}" has no ${o.second} physics to add.`;
     const second = reg.contactPhysics.get(o.second);
     const why = second ? whyNotAllowed(state, reg, second, o.holderId) : "Unknown physics.";
     if (why !== null) return why;
@@ -39861,7 +39879,8 @@ function resolveSegment(run, plan, inputs, env) {
           else if (g.part === "charge") r.gauge -= g.amount ?? 0;
           if (at2(b, "ask_rest").some((g) => g.part === "up")) break;
         }
-        const drain = P3.weight.drain * (run.pressure ?? 1) * (env.steady?.has(b) ? STEADY_DRAIN : 1);
+        const leaned = live3.some((i) => i.kind === "shift_weight" && i.part === "caught" && b > i.beat && b <= i.beat + P3.weight.caughtLean.beats);
+        const drain = P3.weight.drain * (leaned ? P3.weight.caughtLean.pressure : run.pressure ?? 1) * (env.steady?.has(b) ? STEADY_DRAIN : 1);
         const flow = drain * (env.longHold ?? 1);
         r.gauge -= flow;
         if (at2(b, "hold").length === 0) {
@@ -39872,8 +39891,14 @@ function resolveSegment(run, plan, inputs, env) {
         if (uneven !== void 0) r.gauge -= flow * (uneven.amount ?? 0);
         if (beat.shift !== void 0 && !evenBefore(b)) r.gauge -= beat.shift;
         for (const g of at2(b, "shift_weight")) {
+          if (g.part === "caught") {
+            r.gauge -= P3.weight.caught;
+            r.reliefs += 1;
+            continue;
+          }
           r.gauge += P3.weight.relief;
-          relief2(g.beat, "shift_weight");
+          if (g.part === "free") r.reliefs += 1;
+          else relief2(g.beat, "shift_weight");
         }
         break;
       }
@@ -39882,7 +39907,8 @@ function resolveSegment(run, plan, inputs, env) {
         else r.gauge += P3.saturation.per * P3.saturation.bandFactor[env.band];
         for (const g of at2(b, "mouth_breath")) {
           r.gauge -= g.amount === void 0 ? P3.saturation.mouth : g.amount * word2;
-          relief2(g.beat, "mouth_breath");
+          if (g.part === "decided") r.reliefs += 1;
+          else relief2(g.beat, "mouth_breath");
         }
         for (const g of at2(b, "scatter")) r.gauge -= (g.amount ?? 0) * word2;
         break;
@@ -40027,6 +40053,7 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
     spills: result.spills ?? 0,
     spilled: result.spilled !== void 0 ? Math.round(result.spilled * 100) / 100 : 0
   });
+  const cheats = events.filter((e) => e.type === "physics_caught").length + (run.segment.caughtNow ?? 0);
   run.gauge = result.gauge;
   run.streak = result.streak;
   if (result.dryness !== void 0) run.dryness = result.dryness;
@@ -40040,7 +40067,8 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
     noise: result.noise,
     cues: result.cues,
     ...result.warning ? { warning: true } : {},
-    ...result.spills ? { spills: result.spills } : {}
+    ...result.spills ? { spills: result.spills } : {},
+    ...cheats > 0 ? { cheats } : {}
   };
   run.segment = { n: run.segment.n, state: "held" };
   events.unshift({ type: "physics_segment", runId, n: segment, phase: "end", physicsId, caught: result.caught, missed: result.missed, slips: result.slips, reliefs: result.reliefs, lapsed, warning: result.warning });
@@ -40152,7 +40180,7 @@ function shoeSpit(draft, ctx2, payload) {
   const attention = beats && beats.length > 0 ? beats[Math.min(beat, beats.length - 1)].attention : shown2;
   const events = [{ type: "physics_cheat", runId: run.id, holderId: run.holderId, kind: "spit", beat }];
   if (!ctx2.rng.chance(P3.shoe.spitSeen[attention] ?? 0)) return events;
-  addTally(run, { cheatsCaught: 1 });
+  caughtAtOnce(run);
   return [...events, { type: "physics_caught", runId: run.id, holderId: run.holderId, kind: "spit", beat }];
 }
 var commanderLevel = (state, physicsId) => state.commander.endurance?.[physicsId]?.level ?? 0;
@@ -40167,7 +40195,7 @@ function frameRelief(draft, ctx2, payload) {
   const beat = Number.isInteger(payload.beat) ? payload.beat : 0;
   const involuntary = payload.involuntary === true;
   const ears = frameOf3(ctx2.registries.blockingActivities.get(run.sourceId))?.hear ?? 1;
-  const attention = run.segment.plan?.beats[Math.max(0, Math.min(beat, (run.segment.plan?.beats.length ?? 1) - 1))]?.attention ?? "busy";
+  const attention = attentionAt(run, beat, payload.attention);
   const pHeard = part === "away" ? 0 : Math.min(1, amount * ears * 1.35);
   const pSeen = part === "seen" || part === "seen_shared" ? P3.gaze.caught[attention] * (part === "seen_shared" ? 0.6 : 1) : 0;
   const p = 1 - (1 - pSeen) * (1 - pHeard);
@@ -40177,8 +40205,39 @@ function frameRelief(draft, ctx2, payload) {
     addTally(run, { moved: 1 });
     return [{ type: "physics_noticed", runId: run.id, holderId: run.holderId, beat }];
   }
-  addTally(run, { cheatsCaught: 1 });
+  caughtAtOnce(run);
   return [...events, { type: "physics_caught", runId: run.id, holderId: run.holderId, kind, beat }];
+}
+function attentionAt(run, beat, shown2) {
+  const beats = run.segment.state === "running" ? run.segment.plan?.beats : void 0;
+  if (beats && beats.length > 0) return beats[Math.max(0, Math.min(beat, beats.length - 1))].attention;
+  return typeof shown2 === "string" && ["watching", "glancing", "busy"].includes(shown2) ? shown2 : "busy";
+}
+function caughtAtOnce(run) {
+  addTally(run, { cheatsCaught: 1 });
+  if (run.segment.state === "running") run.segment.caughtNow = (run.segment.caughtNow ?? 0) + 1;
+  else if (run.last) run.last.cheats = (run.last.cheats ?? 0) + 1;
+}
+function instrumentRelief(draft, ctx2, payload) {
+  const run = draft.scene?.physics;
+  if (!run || run.id !== payload.runId) throw new Error("Stale physics run.");
+  const kind = payload.kind;
+  const interaction = kind === "shift_weight" ? "hold" : "decision";
+  const owns = [run.physicsId, run.second?.physicsId].some((id) => id !== void 0 && ctx2.registries.contactPhysics.get(id)?.interaction === interaction);
+  if (!owns) throw new Error(`physics/relief: ${kind} only in a ${interaction} run`);
+  if (run.forgotten) throw new Error("physics/relief: she has left");
+  const amount = kind === "mouth_breath" ? typeof payload.amount === "number" && Number.isFinite(payload.amount) ? Math.max(0, Math.min(1, payload.amount)) : null : 1;
+  if (amount === null) throw new Error("physics/relief: a mouth breath needs its loudness (amount 0\u20131)");
+  const beat = Number.isInteger(payload.beat) && payload.beat >= 0 ? payload.beat : 0;
+  const attention = attentionAt(run, beat, payload.attention);
+  const p = payload.part === "away" ? 0 : P3.gaze.caught[attention] * amount;
+  const events = [{ type: "physics_cheat", runId: run.id, holderId: run.holderId, kind, beat }];
+  if (p <= 0 || !ctx2.rng.chance(p)) return events;
+  caughtAtOnce(run);
+  return [...events, { type: "physics_caught", runId: run.id, holderId: run.holderId, kind, beat }];
+}
+function physicsRelief(draft, ctx2, payload) {
+  return payload.kind === "shift_weight" || payload.kind === "mouth_breath" ? instrumentRelief(draft, ctx2, payload) : frameRelief(draft, ctx2, payload);
 }
 
 // src/engine/actions/physics.ts
@@ -40282,7 +40341,7 @@ registerAction("physics/found", (draft, payload, ctx2) => {
 registerAction("physics/relief", (draft, payload, ctx2) => {
   live2(draft, ctx2.registries, "physics/relief");
   if (!isObj39(payload)) throw new Error("physics/relief needs a payload");
-  return frameRelief(draft, ctx2, payload);
+  return physicsRelief(draft, ctx2, payload);
 });
 registerAction("physics/spit", (draft, payload, ctx2) => {
   live2(draft, ctx2.registries, "physics/spit");
@@ -44629,11 +44688,11 @@ function offerDirective(event, state, reg) {
 function offerSentences(reg, unit4, o) {
   const say12 = OFFER_LINE[o.answer];
   if (say12 === void 0) return null;
-  const named4 = o.corrected === void 0 ? void 0 : reg.worshipTargets.get(o.corrected);
+  const named5 = o.corrected === void 0 ? void 0 : reg.worshipTargets.get(o.corrected);
   return [
     `The commander offers ${sentence2(o.what)} to ${unit4.displayName}${o.conditions ? ", and asks something in return" : ""}.`,
     o.kind ? `${unit4.displayName} turns it down kindly; she is not looking for that from the commander.` : say12(unit4.displayName),
-    ...o.answer === "corrected" && named4 !== void 0 ? [`What she wants is the commander's attention to her ${sentence2(String(named4.label)).toLowerCase()}.`] : []
+    ...o.answer === "corrected" && named5 !== void 0 ? [`What she wants is the commander's attention to her ${sentence2(String(named5.label)).toLowerCase()}.`] : []
   ];
 }
 function offerReplyLine(state, reg, unitId) {
@@ -46576,9 +46635,9 @@ function renderOnboardingCard(host, ctx2) {
   if (mine) {
     body2.append(h("div", { class: "alius-row" }, button("[ RESUME SCENE ]", "resume", address, () => controller.resumeScene())));
   } else if (step.kind === "scene" && step.perUnit === true) {
-    const spoken2 = new Set(state.onboarding?.spoken ?? []);
+    const spoken4 = new Set(state.onboarding?.spoken ?? []);
     body2.append(h("ul", { class: "alius-onboarding-units" }, ...livingNamed(state).map((u) => {
-      const done = spoken2.has(u.id);
+      const done = spoken4.has(u.id);
       const held3 = restrictionReason(state, reg, u.id, "scene");
       return h(
         "li",
@@ -53577,7 +53636,7 @@ function physicsLines(state, reg) {
     if (last4.slips > 0) said.push(count(last4.slips, "a slip", "slips"));
     if ((last4.spills ?? 0) > 0) said.push(`spilled ${times(last4.spills)}`);
     if (last4.gasps > 0) said.push("a gasp");
-    if (last4.reliefs > 0 && run.sourceKind !== "activity" && reg.contactPhysics.get(run.physicsId)?.interaction !== "order") said.push("a relief taken");
+    if ((last4.cheats ?? 0) > 0) said.push("a relief taken");
     if (last4.noise > 0) said.push("some noise");
     if (last4.warning) said.push("close to the limit");
     if (said.length > 0) parts2.push(`Last stretch: ${said.join(", ")}.`);
@@ -53796,6 +53855,7 @@ function createStaging(deps) {
   let collected = [];
   let startedAt = null;
   let lapseUntil = 0;
+  let hiddenAt = null;
   const pools = /* @__PURE__ */ new Map();
   const voicedPools = /* @__PURE__ */ new Map();
   const asked = /* @__PURE__ */ new Set();
@@ -53954,6 +54014,7 @@ function createStaging(deps) {
     const s = state();
     const r = s?.scene?.physics;
     if (!s || !r) return;
+    if (hiddenAt !== null && s.settings.physicsRealtime === true) return;
     if (!blockingLive(s, deps.registries())) {
       dispatch2({ type: "physics/stop_word", payload: {} });
       collected = [];
@@ -54064,6 +54125,15 @@ function createStaging(deps) {
     },
     tick(nowMs) {
       if (active) advance2(nowMs);
+    },
+    visibility(hidden, nowMs) {
+      if (hidden) {
+        hiddenAt ??= nowMs;
+        return;
+      }
+      if (hiddenAt === null) return;
+      if (startedAt !== null) startedAt += Math.max(0, nowMs - hiddenAt);
+      hiddenAt = null;
     },
     cue(kind, beat) {
       const r = run();
@@ -60581,12 +60651,12 @@ function activityCard(a, state, ctx2) {
   );
 }
 function pastimeCard(a, state, ctx2) {
-  const named4 = state.squad.filter((u) => isLiving(u) && u.kind === "named");
+  const named5 = state.squad.filter((u) => isLiving(u) && u.kind === "named");
   const sel = h(
     "select",
     { name: "companion", "aria-label": `Companion for ${String(a.name)}` },
     h("option", { value: "" }, "\u2014 choose \u2014"),
-    ...named4.map((u) => h("option", { value: u.id }, u.displayName))
+    ...named5.map((u) => h("option", { value: u.id }, u.displayName))
   );
   const picker2 = h("div", { class: "alius-pastime-picker" });
   const draw2 = () => {
@@ -65192,8 +65262,8 @@ function renderHomeTab(host, ctx2) {
       }
     }
   }
-  const named4 = state.squad.filter((u) => u.kind === "named" && isLiving(u));
-  const lines3 = named4.flatMap((u) => {
+  const named5 = state.squad.filter((u) => u.kind === "named" && isLiving(u));
+  const lines3 = named5.flatMap((u) => {
     const level = deviceAccess(state, reg, u.id);
     if (level < 1) return [];
     const decor = decorOf(state, u.id);
@@ -67277,9 +67347,9 @@ var R6 = {
   uneven: { sum: 0, ms: 0 },
   via: "key",
   segSlips: 0,
-  cheatsCaught: 0,
   steady: null,
   synced: -1,
+  vialLift: 0,
   spriteSrc: "",
   overFit: null
 };
@@ -67618,8 +67688,18 @@ function relief() {
   G4.reliefs += 1;
   SFX3.creak(0.22, 0.1);
   SFX3.rustle(0.05);
-  report3({ beat: segBeat(), kind: "shift_weight" });
-  G4.str = Math4.min(100, G4.str + RELIEF);
+  if (caughtNow()) {
+    G4.caughtN += 1;
+    say4(pick5(L3().caught));
+    G4.str -= 10;
+    G4.pressure = 1.5;
+    G4.pressureUntil = G4.clock + 3 * BEAT3;
+    SFX3.press(0.55);
+    G4.jolt = 1;
+    crack(0.6);
+  } else {
+    G4.str = Math4.min(100, G4.str + RELIEF);
+  }
 }
 function begin3() {
   audioInit3();
@@ -68024,13 +68104,13 @@ function refreshLines3(beat) {
 }
 var WEIGHT_KINDS = ["released", "slip", "caught", "heavy", "good", "poor", "fall", "stop", "longer", "announce"];
 var VOICED2 = [["heavy", "press"]];
-function caughtBy() {
-  if (G4.phase !== "loop" && G4.phase !== "entry") return;
-  G4.caughtN += 1;
-  say4(pick5(L3().caught));
-  SFX3.press(0.55);
-  G4.jolt = 1;
-  crack(0.6);
+function caughtNow() {
+  const beat = segBeat();
+  const events = E3?.env.staging.relief?.({ kind: "shift_weight", ...THRONE.away() ? { part: "away" } : {}, attention: G4.att }) ?? [];
+  const caught = events.some((e) => e.type === "physics_caught");
+  report3({ beat, kind: "shift_weight", part: caught ? "caught" : "free" });
+  if (caught) THRONE.caught();
+  return caught;
 }
 function heavier() {
   if (G4.phase !== "loop" && G4.phase !== "entry") return;
@@ -68082,6 +68162,24 @@ function before3() {
   }
   const input = e.env.input;
   if (input.value !== "" || e.mirror.childElementCount > 0) placeMirror3(e);
+  clearReply(e);
+}
+function clearReply(e) {
+  const vial = e.els["#vial"];
+  const text3 = replyTextTop(e.env.reply);
+  if (text3 === null) return;
+  const laid = vial.getBoundingClientRect().bottom + R6.vialLift;
+  const lift2 = Math4.max(0, Math4.ceil(laid - (text3 - 6)));
+  if (Math4.abs(lift2 - R6.vialLift) < 2) return;
+  R6.vialLift = lift2;
+  vial.style.marginBottom = lift2 > 0 ? `${lift2}px` : "";
+}
+function replyTextTop(reply) {
+  if (!reply.textContent?.trim() || typeof document.createRange !== "function") return null;
+  const range2 = document.createRange();
+  range2.selectNodeContents(reply);
+  const rects = typeof range2.getClientRects === "function" ? [...range2.getClientRects()].filter((x) => x.width > 0 && x.height > 0) : [];
+  return rects.length > 0 ? Math4.min(...rects.map((x) => x.top)) : null;
 }
 function after3() {
   const e = E3;
@@ -68195,10 +68293,10 @@ function bind3(env, run) {
   R6.uneven = { sum: 0, ms: 0 };
   R6.via = "key";
   R6.segSlips = 0;
-  R6.cheatsCaught = run.tally?.cheatsCaught ?? 0;
   R6.taps = run.taps;
   R6.tapped = false;
   R6.synced = -1;
+  R6.vialLift = 0;
   R6.spriteSrc = "";
   const k = 100 / Math4.max(1, run.capacity);
   BEAT3 = TUNING.physics.beatMs;
@@ -68364,11 +68462,6 @@ function startWeight(env, run, opts = {}) {
         refreshLines3(0);
         heavier();
       } else R6.pressure = pressure;
-      const caught = next.tally?.cheatsCaught ?? 0;
-      if (caught > R6.cheatsCaught) {
-        R6.cheatsCaught = caught;
-        caughtBy();
-      }
     },
     finish(end2) {
       if (E3 !== mine) return 0;
@@ -68432,6 +68525,11 @@ var THRONE = {
   },
   /** Ruling W: the strength at 0 in her frame (her frame's `wBuckle`). */
   buckle: () => {
+  },
+  /** Ruling AE: she is out of the room (her frame's `G.away`): she catches no shift (throne.html's `wRelief`). */
+  away: () => false,
+  /** Ruling AE: she caught the commander's shift in her frame: her tell (throne.html's `wRelief`, `herFeels`). */
+  caught: () => {
   }
 };
 var weightCore = {
@@ -69731,7 +69829,8 @@ function updateLoop3(dt) {
       G5.mouthTick = 420;
       blowWord();
       G5.counts.mouthWords += 1;
-      blown();
+      const loud = G5.mouthMs < 900 ? 0.25 : 0.6;
+      if (blown(loud)) heardMouth();
     }
   } else {
     if (!G5.inhaling && BR.kind === "mouth") breathStop();
@@ -69864,8 +69963,8 @@ function spawnStreams(n, strength) {
 function spawnMotes(dt) {
   const h2 = dt / 1e3;
   for (const z2 of G5.zones) {
-    const named4 = G5.order && G5.order.k === "here" && G5.zones[G5.order.ti] === z2;
-    const rate = z2.w * stim() * 26 * G5.darkA * (1 + G5.sat / 120) * (named4 ? 3 : 1);
+    const named5 = G5.order && G5.order.k === "here" && G5.zones[G5.order.ti] === z2;
+    const rate = z2.w * stim() * 26 * G5.darkA * (1 + G5.sat / 120) * (named5 ? 3 : 1);
     let n = rate * h2;
     while (n > 0) {
       if (Math5.random() < Math5.min(1, n)) parts.push({ mote: true, x: (z2.p[0] + rand3(-0.035, 0.035)) * innerWidth5, y: (z2.p[1] + rand3(-0.03, 0.03)) * innerHeight5, vx: rand3(-18, 18), vy: rand3(-34, -8), life: 1, decay: rand3(0.25, 0.45), size: rand3(0.8, 2.4), tw: rand3(0, 6.28), a: clamp41(z2.w * stim(), 0.3, 1.2) });
@@ -70110,15 +70209,17 @@ var tint = {
   }
 };
 var typing4 = (t) => t && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
-var R7 = { run: null, lineStyle: "neutral", seg: null, running: false, held: 0, blownBeat: 0, via: "key", mouthVia: "key", cheatsCaught: 0, pending: null, kind: null, plan: [] };
+var R7 = { run: null, lineStyle: "neutral", seg: null, running: false, held: 0, blownBeat: 0, via: "key", mouthVia: "key", pending: null, kind: null, plan: [] };
 function attentionNow() {
   const seg = R7.seg;
   if (!seg) return "busy";
   const b = clamp41(Math5.floor((G5.clock - seg.clock0) / BEAT4), 0, seg.beats - 1);
   return R7.plan[b]?.attention ?? "busy";
 }
-function blown() {
+function blown(loud) {
   R7.blownBeat += 1;
+  const events = E4?.env.staging.relief?.({ kind: "mouth_breath", amount: loud, attention: G5.att }) ?? [];
+  return events.some((e) => e.type === "physics_caught");
 }
 function refreshLines4() {
   if (!E4) return;
@@ -70158,7 +70259,7 @@ function reportBeat3(beat) {
   const blownN = R7.blownBeat;
   R7.blownBeat = 0;
   if (blownN > 0) {
-    report4({ beat, kind: "mouth_breath", amount: blownN }, R7.mouthVia === "mouse");
+    report4({ beat, kind: "mouth_breath", amount: blownN, part: "decided" }, R7.mouthVia === "mouse");
     R7.held = Math5.max(0, R7.held - blownN);
   }
   const level = Math5.min(capacity(), G5.head.length);
@@ -70379,7 +70480,6 @@ function bind4(env, run) {
   R7.mouthVia = "key";
   R7.pending = null;
   R7.plan = [];
-  R7.cheatsCaught = run.tally?.cheatsCaught ?? 0;
   BEAT4 = TUNING.physics.beatMs;
   const occ = occlusionOf(run.sourceKind === "contact" ? reg.blockingContacts.get(run.sourceId) : void 0);
   S6.contact = CONTACT_OF[occ.kind] ?? "feet_on_face";
@@ -70533,11 +70633,6 @@ function startScent(env, run) {
     update(next) {
       if (E4 !== mine) return;
       R7.run = next;
-      const caught = next.tally?.cheatsCaught ?? 0;
-      if (caught > R7.cheatsCaught) {
-        R7.cheatsCaught = caught;
-        if (G5.phase === "loop" || G5.phase === "entry") heardMouth();
-      }
     },
     finish(end2) {
       if (E4 !== mine) return 0;
@@ -70604,12 +70699,12 @@ function servicePaceOf(state, reg, holderId) {
   const patience = style === "cruel" ? row4.patience : Math.min(P4.patience[1], Math.max(P4.patience[0], row4.patience));
   const how = howOfFeet(state, reg, holderId);
   const tilt = /\bslow/.test(how) ? P4.slow : /\b(quick|fast|brisk)/.test(how) ? P4.quick : { kiss: 1, tempo: 1 };
-  const named4 = [...new Set([...how.matchAll(ZONE_WORD)].map((m) => m[1].startsWith("toe") ? "toes" : m[1]))];
+  const named5 = [...new Set([...how.matchAll(ZONE_WORD)].map((m) => m[1].startsWith("toe") ? "toes" : m[1]))];
   const heel = how.indexOf("heel"), toe = how.search(/\btoe/);
   const grain = heel >= 0 && toe >= 0 ? heel < toe ? -1 : 1 : fnv1a3(`${holderId}|grain`) % 2 ? 1 : -1;
   const order = Object.fromEntries(Object.keys(ZONES_OF).map((act) => {
     const hashed = shuffleBy(ZONES_OF[act], fnv1a3(`${holderId}|order|${act}`));
-    const first2 = named4.filter((z2) => hashed.includes(z2));
+    const first2 = named5.filter((z2) => hashed.includes(z2));
     return [act, [...first2, ...hashed.filter((z2) => !first2.includes(z2))]];
   }));
   return { patience, kiss: [row4.kiss[0] * tilt.kiss, row4.kiss[1] * tilt.kiss], tempo: row4.tempo * tilt.tempo, every: row4.every, grain, order };
@@ -70940,6 +71035,7 @@ var play2 = (id, opts) => X?.play(id, opts);
 var herFeels = (kind, gross) => X?.herFeels(kind, gross);
 var bodyNoise = (kind, loud, visible, gross = false) => X?.bodyNoise(kind, loud, visible, gross);
 var visitorHeard = () => X?.visitorHeard();
+var spoken2 = (kind) => X ? voiceLines(X.env.registries, kind, S7.style)[0] ?? "" : "";
 var steps = (n, fromPan, toPan, g0, g1, gap = 0.42, wood = false, lp = 1800) => X?.steps(n, fromPan, toPan, g0, g1, gap, wood, lp);
 var V = () => X.V();
 var rand4 = (a, b) => X.rand(a, b);
@@ -71285,7 +71381,7 @@ function throneVisitor(kind) {
     play2("knock", { g: 0.5, pan: dp });
     after5(260, () => play2("knock", { g: 0.45, pan: dp }));
   });
-  after5(3300, () => say6("come in.", "other"));
+  after5(3300, () => say6(spoken2("activity.comeIn"), "other"));
   after5(4600, () => {
     play2("door_open", { g: 0.5, pan: dp });
     G6.visitor = { name, heard: kind !== "unaware", aware: kind !== "unaware", knows: kind !== "unaware", kind };
@@ -71833,7 +71929,7 @@ function svCheck() {
     SV.stats.clean.missedSpot += 1;
     SV.quality += 0;
     SV.acts += 1;
-    if (G7.step === "with" || G7.step === "glancing") say7(`${ZONE_WORDS[missed].replace(".", "")}. you missed it.`, "commander");
+    if (G7.step === "with" || G7.step === "glancing") say7(`${ZONE_WORDS[missed].replace(".", "")}. ${voiceLines(X2.env.registries, "service.missed", void 0)[0] ?? ""}`, "commander");
     else {
       SV.pull = 0.6;
       sense2("She turns her foot to the light, and you see what you missed.", "body");
@@ -72600,9 +72696,9 @@ function say8(text3, to = "self", opts = {}) {
   const v = V2(), p = opts.at ?? v.her;
   E5.env.say($7("#hand"), text3, { her: E5.env.her(R8.run.holderId), at: [clamp41(p[0] + 0.04, 0.03, 0.7), clamp41(p[1] + 0.02, 0.03, 0.8)], to: to === "self" || to === "commander" ? to : "other", ...opts.big ? { big: true } : {} });
   SYN.pen();
-  const spoken2 = to !== "written";
+  const spoken4 = to !== "written";
   const dur = 700 + text3.length * 70;
-  if (spoken2) {
+  if (spoken4) {
     G8.herSpeakingUntil = Math8.max(G8.herSpeakingUntil, G8.t + dur);
     if (S9.murmur && !opts.silent) babble(dur / 1e3, { f0: 215, gain: to === "self" ? 0.025 : 0.04, pan: v.herPan, lp: S9.view === "wall" ? 2200 : 3200 });
   }
@@ -72682,7 +72778,7 @@ function bodyNoise2(kind, loud, visible, gross = false, involuntary = INVOLUNTAR
   BODY_SFX[kind]?.();
   G8.faultsRecent = G8.faultsRecent.filter((x) => G8.t - x < 4e4);
   const cover = coverNow2();
-  const events = kind === "speak" ? [] : E5.env.staging.relief?.({ kind: kind === "fidget" ? "fidget" : "relieve", amount: Math8.round(loud * (1 - cover) * 1e3) / 1e3, part: G8.away ? "away" : !visible ? "unseen" : G8.call || G8.visitor ? "seen_shared" : "seen", ...involuntary ? { involuntary: true } : {} }) ?? [];
+  const events = kind === "speak" ? [] : E5.env.staging.relief?.({ kind: kind === "fidget" ? "fidget" : "relieve", amount: Math8.round(loud * (1 - cover) * 1e3) / 1e3, part: G8.away ? "away" : !visible ? "unseen" : G8.call || G8.visitor ? "seen_shared" : "seen", attention: G8.att, ...involuntary ? { involuntary: true } : {} }) ?? [];
   const noticed = events.some((e) => e.type === "physics_caught" || e.type === "physics_noticed");
   if (G8.call && G8.t >= G8.herSpeakingUntil && loud * (1 - cover) > 0.28 && !G8.call.heard) {
     G8.call.heard = true;
@@ -72731,7 +72827,7 @@ function react(gross) {
     sense3(G8.stirs >= 3 ? "She wakes." : "She stirs, turns over, and settles again.", "her");
     if (G8.stirs >= 3) {
       G8.stats.woke = true;
-      after7(1200, () => say8(G8.step === "with" || G8.step === "glancing" ? "\u2026what are you doing." : "\u2026", "commander"));
+      after7(1200, () => say8(G8.step === "with" || G8.step === "glancing" ? spoken3("activity.woke") : spoken3("activity.wokeMumble"), "commander"));
       after7(3500, () => finish5("woke"));
     }
     return;
@@ -73039,8 +73135,13 @@ function relieveAt(x, y) {
   }
 }
 var lines2 = (kind) => [...voiceLines(E5.env.registries, kind, S9.style)];
+var spoken3 = (kind) => lines2(kind)[0] ?? "";
+var named4 = (text3) => text3.includes("{Name}") ? R8.listener ? text3.split("{Name}").join(R8.listener.name) : null : text3;
 var TO_YOU = new Proxy({}, { get: (_t, k) => {
-  const a = [...lines2(`activity.toYou.${k}`).map((text3) => ({ text: text3 })), ...lines2(`activity.ask.${k}`).map((text3) => ({ text: text3, ask: true }))];
+  const a = [...lines2(`activity.toYou.${k}`).flatMap((text3) => {
+    const t = named4(text3);
+    return t === null ? [] : [{ text: t }];
+  }), ...lines2(`activity.ask.${k}`).map((text3) => ({ text: text3, ask: true }))];
   return a.length ? a : void 0;
 } });
 var exchange2 = (k) => lines2(`activity.exchange.${k}`).map((l) => {
@@ -73216,7 +73317,7 @@ function visitorPeak() {
     play4("knock", { g: 0.5, pan: dp });
     after7(260, () => play4("knock", { g: 0.45, pan: dp }));
   });
-  after7(3300, () => say8("come in.", "other"));
+  after7(3300, () => say8(spoken3("activity.comeIn"), "other"));
   after7(4600, () => {
     play4("door_open", { g: 0.5, pan: dp });
     G8.visitor = { name: R8.listener.name, heard: S9.knows, knows: S9.knows };
@@ -73839,7 +73940,7 @@ function render5(now, dt) {
   const dusk = smooth(18 * 60 + 30, 20 * 60, G8.clockMin), dark = G8.lightsOff ? 0.35 : 1;
   const ck = SV ? SV.closeK : 0;
   setStyle5("#world", "filter", `saturate(${(wr ? 1 - wr.strF * 0.45 : 1 - low * 0.4).toFixed(2)}) brightness(${((1 - dusk * 0.25) * dark * (1 - ck * 0.4)).toFixed(2)}) blur(${(S9.readable ? 0 : ck * 6).toFixed(1)}px)`);
-  E5.env.layers.backdrop.style.filter = view2 === "her" ? `brightness(${((1 - dusk * 0.25) * dark * 0.62).toFixed(2)})` : "";
+  E5.env.layers.backdrop.style.filter = view2 === "her" ? `${S9.readable ? "" : "blur(1.5px) "}brightness(${((1 - dusk * 0.25) * dark * 0.62 * nightRoom(E5.env.layers.backdrop.style.backgroundImage)).toFixed(2)})` : "";
   if (view2 === "her") {
     const look = G8.att === "watching" ? 1 : G8.att === "glancing" ? 0.4 : 0;
     G8.lookS = lerp2(G8.lookS ?? 0, look, Math8.min(1, dt / 400));
@@ -74042,10 +74143,10 @@ function build5(env) {
     img2.draggable = false;
     img2.style.display = "none";
   }
-  el("div", "weightHost", footV);
   el("div", "blindView", world, "alius-act-view");
   el("canvas", "grain", box);
   el("div", "vignette", box);
+  el("div", "weightHost", box);
   el("canvas", "urges", box);
   for (const id of ["senses", "others", "hand"]) el("div", id, box).dataset.textHost = "";
   el("div", "void", box).style.display = "none";
@@ -74281,6 +74382,7 @@ function listen5(env) {
 }
 function begin5() {
   for (const k of Object.keys(LOOPS)) loopOff(k);
+  for (const id of ["#hand", "#senses", "#others"]) $7(id).replaceChildren();
   G8 = fresh5();
   svBegin();
   setStep(presenceOf2(E5.env.state(), E5.env.registries, R8.run, R8.run.marathon?.phase ?? 1));
@@ -74289,8 +74391,37 @@ function begin5() {
   G8.phaseIdx = (R8.run.marathon?.phase ?? 1) - 1;
   G8.phase = "entry";
   G8.entryT = 0;
-  const entry = weightOn() && throneOn() && S9.contact === "human_chair" ? "She points at the floor. When you are down on all fours she lowers herself onto your back, without a word, and opens her folder." : weightOn() ? "She points at the floor before her chair, and when you are down on all fours she settles her feet on your back and leans back." : { her: "She points at the floor beside her chair without looking up.", legs: "She pushes her chair back, points under the desk, and pulls the chair in again once you are there.", floor: 'She points at the floor by her bunk. "Down. Eyes down."', wall: "She turns you to face the wall by the shoulder, and goes back to her chair." }[S9.view];
-  if (entry) after7(60, () => sense3(`${entry}${S9.stay ? " \u201CStay.\u201D" : ""}`, "body"));
+  const entry = weightOn() && throneOn() && S9.contact === "human_chair" ? "She points at the floor. When you are down on all fours she lowers herself onto your back, without a word, and opens her folder." : weightOn() ? "She points at the floor before her chair, and when you are down on all fours she settles her feet on your back and leans back." : { her: "She points at the floor beside her chair without looking up.", legs: "She pushes her chair back, points under the desk, and pulls the chair in again once you are there.", floor: `She points at the floor by her bunk. "${spoken3("activity.entry.floor")}"`, wall: "She turns you to face the wall by the shoulder, and goes back to her chair." }[S9.view];
+  if (entry) after7(60, () => sense3(`${entry}${S9.stay ? ` \u201C${spoken3("activity.stay")}\u201D` : ""}`, "body"));
+}
+var NIGHT_ROOM_LUMA = 50.4;
+var roomLuma = /* @__PURE__ */ new Map();
+function nightRoom(bg) {
+  const m = /url\("?([^")]+)"?\)/.exec(bg);
+  if (!m) return 1;
+  const src = m[1];
+  if (!roomLuma.has(src)) {
+    roomLuma.set(src, null);
+    const img2 = new Image();
+    img2.onload = () => {
+      try {
+        const c = document.createElement("canvas");
+        c.width = 32;
+        c.height = 32;
+        const x = c.getContext("2d", { willReadFrequently: true });
+        if (!x) return;
+        x.drawImage(img2, 0, 0, 32, 32);
+        const d = x.getImageData(0, 0, 32, 32).data;
+        let sum = 0;
+        for (let i = 0; i < d.length; i += 4) sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        roomLuma.set(src, sum / (d.length / 4));
+      } catch {
+      }
+    };
+    img2.src = src;
+  }
+  const l = roomLuma.get(src);
+  return l ? clamp41(NIGHT_ROOM_LUMA / l, 0.25, 1) : 1;
 }
 function stopFrame() {
   const e = E5;
@@ -74305,6 +74436,9 @@ function stopFrame() {
   THRONE.limit = () => {
   };
   THRONE.buckle = () => {
+  };
+  THRONE.away = () => false;
+  THRONE.caught = () => {
   };
   for (const n of A6.nodes ?? []) {
     try {
@@ -74361,6 +74495,8 @@ function startFrame2(env, run) {
     THRONE.buckle = () => {
       if (G8.phase === "loop" && !W2.over) wBuckle();
     };
+    THRONE.away = () => G8.away === true;
+    THRONE.caught = () => herFeels2("the commander shifting under her feet", false);
   }
   if (S9.inner === "service") attachService({ env, holderId: run.holderId, runId: run.id, pace: servicePaceOf(env.state(), env.registries, run.holderId), G: () => G8, S: S9, A: () => A6, ACT: ACT2, MOUSE: MOUSE2, ATT: ATT3, after: after7, sense: sense3, say: say8, play: play4, noise: noise7, coverNow: coverNow2, callHeard: callHeard2, visitorHeard: visitorHeard3, clockText: clockText4, pick: pick8, rand: rand6, random: () => Math8.random(), now: () => performance8.now(), setStyle: setStyle5, els: E5.els });
   listen5(env);
@@ -80595,9 +80731,9 @@ function renderSceneScreen(host, ctx2) {
     const open3 = letsHost.querySelector("details[open]") !== null;
     letsHost.replaceChildren();
     const sc = s.scene;
-    const named4 = present2(s).filter((u) => u.kind === "named");
-    if (!sc || !ctx2.onPastime || lifeMode(s) === "off" || sc.mode !== "private" || named4.length !== 1) return;
-    const unit4 = named4[0];
+    const named5 = present2(s).filter((u) => u.kind === "named");
+    if (!sc || !ctx2.onPastime || lifeMode(s) === "off" || sc.mode !== "private" || named5.length !== 1) return;
+    const unit4 = named5[0];
     if (sc.pastime) {
       const p = registries.pastimes.get(sc.pastime.id);
       if (p) letsHost.append(h("span", { class: "alius-chip", "data-quiet-hour": sc.pastime.id, ...analyzeAttrs(`pastimes:${p.id}`) }, `TIME TOGETHER: ${String(p.label).toUpperCase()}`));
@@ -84930,6 +85066,11 @@ function createApp(st3, deps) {
   });
   const stagingClock = setInterval(() => staging.tick(Date.now()), 250);
   stagingClock.unref?.();
+  if (typeof document !== "undefined") {
+    const onVisibility = () => staging.visibility(document.hidden, Date.now());
+    document.addEventListener("visibilitychange", onVisibility);
+    if (document.hidden) onVisibility();
+  }
   const comms = createComms({ ...sceneDeps, scene, personal: { beforeSend: (u, t) => personal.beforeSend(u, t), answerEdit: (k) => personal.answerEdit(k), onReply: (u, t) => personal.onReply(u, t) } });
   const worldDeps = {
     st: st3,
@@ -85232,8 +85373,8 @@ function createApp(st3, deps) {
     const chatId = st3.getActiveChat()?.chatId;
     const s = state;
     if (!s) return;
-    const named4 = (ids2) => ids2.map((id) => s.squad.find((u) => u.id === id)).filter((u) => u && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated" && restrictionReason(s, registries, u.id, "scene") === null);
-    const ids = [...new Set(named4(s.roster.activeIds).map((u) => u.id))].slice(0, TUNING.scene.maxParticipants);
+    const named5 = (ids2) => ids2.map((id) => s.squad.find((u) => u.id === id)).filter((u) => u && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated" && restrictionReason(s, registries, u.id, "scene") === null);
+    const ids = [...new Set(named5(s.roster.activeIds).map((u) => u.id))].slice(0, TUNING.scene.maxParticipants);
     if (ids.length === 0) return;
     const answer = await shell.modal({
       title: "Linger at the table?",
@@ -85725,11 +85866,11 @@ function createApp(st3, deps) {
     const name = holder3 === null ? void 0 : s.squad.find((u) => u.id === holder3)?.displayName;
     if (name === void 0) return {};
     const r = bypassRoutes(s, registries);
-    const named4 = (ids) => ids.map((id) => ({ id, name: s.squad.find((u) => u.id === id)?.displayName ?? id }));
+    const named5 = (ids) => ids.map((id) => ({ id, name: s.squad.find((u) => u.id === id)?.displayName ?? id }));
     return {
       heldBy: name,
       onRoute,
-      routes: { comms: r.comms, reset: { ...r.reset, allies: named4(r.reset.allies) }, ally: { ...r.ally, allies: named4(r.ally.allies) } }
+      routes: { comms: r.comms, reset: { ...r.reset, allies: named5(r.reset.allies) }, ally: { ...r.ally, allies: named5(r.ally.allies) } }
     };
   }
   async function fileLeash(kind, unitId) {
@@ -88436,6 +88577,9 @@ async function loadPacks(packRoots, fetchJson2, opts = {}) {
           errors.push({ pack: origin.pack, file: origin.file, path: fmtPath(issue.path, origin.index), message: issue.message });
         }
         continue;
+      }
+      if (reg === "handFonts" && entry.scale === void 0) {
+        errors.push({ pack: origin.pack, file: origin.file, path: fmtPath(["scale"], origin.index), message: "no `scale`: the hand is read at 1 (measure it with scripts/measure-hands.mjs)" });
       }
       registries[reg].set(id, parsed.data);
       finalOrigin.set(`${reg}\0${id}`, origin);
