@@ -194,7 +194,7 @@ Everything is saved as files in her own expressions folder.
   - `saveStageSetup(st, avatar, setup: StageSetup): Promise<boolean>`: uploads `stage.json` (`baseName` `stage`, `ext` `json`, a `Blob` of `application/json`), then `app.refreshStage()`.
   - `facesWanted(reg): string[]`: the labels the instruments ask for, read from `TUNING.practice.slap.faces` (every `before` / `keep` / `after` label) and the frame's face table in chunk (e)'s code. The implementer finds the frame's table; it reads by field.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - **sprites:** the labels found, each wanted label marked found or missing; a missing one names its stand-in: the instrument's fallback, from the slap's `keep` set or `neutral`;
   - **stand:**
     - three sliders (scale 0.5–1.6, x and y −0.5…0.5) move a live preview of her sprite drawn with the stage's own classes;
@@ -204,10 +204,10 @@ Everything is saved as files in her own expressions folder.
   - **accent:** `UNIT_ACCENTS` swatches plus a colour input; "from the hash" clears it;
   - closing with unsaved edits asks once; a chat switch closes without asking and saves nothing;
   - a woman with no sprite folder: "no sprites found", and the page still works.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** The sheet's slot list is Task 6's; leave its host empty here.
-- [ ] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS.
-- [ ] **Step 5: Commit** `feat(P10e-f): her page — sprites, stand, hand, accent`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** The sheet's slot list is Task 6's; leave its host empty here.
+- [x] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS.
+- [x] **Step 5: Commit** `feat(P10e-f): her page — sprites, stand, hand, accent`
 
 ## Chunk f3: the slots
 

@@ -25,6 +25,7 @@ import { INTERACTION_TOGGLES, type InteractionToggle } from '../../engine/moment
 import { h } from '../dom';
 import { createArtSlots } from '../scene/art';
 import { renderStageSection, type StageCtx, type StageDeps } from '../stage/section';
+import { openStageSheet } from '../stage/sheet';
 import { emptyRegistries } from '../../content/types';
 import type { ModalOpts } from './modal';
 import type { ToastKind } from './toast';
@@ -581,7 +582,7 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     art: ctx.stage?.art ?? (() => noArt), folders: ctx.stage?.folders ?? (() => new Map()), refresh: ctx.stage?.refresh ?? (async () => {}),
     settings: () => getSettings(st), setSetting: (patch) => { apply(patch); },
     toast: ctx.toast, modal: ctx.modal,
-    openSheet: () => {}, // her page is Task 5's
+    openSheet: (unitId) => { openStageSheet(unitId, stageCtx); },
   };
   renderStageSection(stageHost, stageCtx);
 

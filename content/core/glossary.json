@@ -3629,5 +3629,50 @@
       "stage_setup"
     ],
     "long": "With nothing, the mini-game falls back to her sprite or the plain stage. A slot without zones never reads zoned."
+  },
+  {
+    "id": "stage_sprites",
+    "term": "Her sprites",
+    "short": "The expression labels her folder has, the ones the mini-games ask for, and what stands in for a missing one.",
+    "long": "The slap shows a face by her style; a missing label falls back to a fitting face she has, else neutral, else her sprite stays as it is.",
+    "see": [
+      "stage_setup"
+    ]
+  },
+  {
+    "id": "stage_stand",
+    "term": "How she stands",
+    "short": "The scale and the offsets of her scene sprite, one set for every expression.",
+    "long": "The offsets are fractions of her drawn height; the scale grows from her feet. Without a set, the stage places her as always.",
+    "see": [
+      "stage_setup"
+    ]
+  },
+  {
+    "id": "stage_face",
+    "term": "Her face point",
+    "short": "Where her face is on her scene sprite: the slap's camera closes in on this point.",
+    "long": "A click on the view sets it. Without it the slap uses the manifest's point or its own default.",
+    "see": [
+      "stage_setup"
+    ]
+  },
+  {
+    "id": "stage_hand",
+    "term": "Her hand",
+    "short": "The handwriting her written lines and notes use, shown as a sample at its own size.",
+    "long": "A campaign that chose her hand itself keeps its choice; from the hash, every campaign picks one from her id.",
+    "see": [
+      "stage_setup"
+    ]
+  },
+  {
+    "id": "stage_accent",
+    "term": "Her accent",
+    "short": "The color of her lines, cards and marks: one of the palette, or a color of your own.",
+    "long": "From the hash, it is picked from the palette by her id.",
+    "see": [
+      "stage_setup"
+    ]
   }
 ]
