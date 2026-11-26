@@ -30,7 +30,8 @@ import { occlusionOf } from '../../../../engine/physics/occlusion';
 import { scentBand } from '../../../../engine/physics/scent';
 import { contactTargetOf } from '../../../../engine/blocking';
 import type { PhysicsRun, SegmentInput } from '../../../../engine/physics/state';
-import { exposedKinds, headCapacity, inhaleZone, toleranceOf } from '../../../../engine/physics/stimuli';
+import { exposedKinds, inhaleZone, scentToleranceOf } from '../../../../engine/physics/stimuli';
+import { contentAllowed } from '../../../../engine/bonds/content';
 import { leadStyle, physicsStyleOf } from '../../../../engine/physics/style';
 import type { CampaignState } from '../../../../engine/state/types';
 import { TUNING } from '../../../../engine/tuning';
@@ -555,7 +556,7 @@ function inhaleEnd(forced = false) {
   SFX.exhale(d);
   breathWords(d, forced);
   for (const x of G.sp) x.v += 0.3; // she feels the breath
-  deepInhale(d, false);
+  if (!forced) deepInhale(d, false);
   if (G.lie > 0) { G.lie -= 1; if (G.lie === 0) answered(null); }
   const o = G.order;
   if (o && (o.k === 'deeper' || o.k === 'gently' || o.k === 'here') && !forced) {
@@ -569,7 +570,7 @@ function inhaleEnd(forced = false) {
 function reflex() {
   G.inhaling = false; breathStop(); G.counts.coughs! += 1; G.reflexCd = 1400; G.shake = 1.4; G.sinceBreath = 0;
   SFX.cough(); burst(); scatter(2); // a cough throws words out of the head
-  deepInhale(G.depth, true);
+  if (!G.forcedDeep) deepInhale(G.depth, true);
   if (G.lie > 0) { say(pick(LINES.liar)); G.lie = 0; answered(true); G.counts.liesFound! += 1; press(); setTimeout(press, 400); } else say(pick(LINES.cough));
   if (G.order && G.order.k !== 'ask' && G.order.k !== 'still') orderDone(false);
   const v = ($('#cmd') as HTMLInputElement).value; if (v) { ($('#cmd') as HTMLInputElement).value = v.slice(0, Math.max(0, v.length - randInt(3, 8))); tint.sync(true); }
@@ -927,17 +928,18 @@ function report(i: SegmentInput, pointer: boolean): void {
   E.env.staging.input(i, { pointer });
 }
 /**
- * A beat of the running segment ended: the words the head gained over what the engine holds (`inhale`, R18; the head is the gauge: a word
- * scattered by a cough, the overflow or an answer is not given back, it is the next breath's to make up) and the words the mouth blew out.
+ * A beat of the running segment ended (Ruling U: the head is the gauge, both ways): the words the mouth blew out (`mouth_breath`), the words
+ * the head gained over what the engine holds (`inhale`) and the words it lost without the mouth (`scatter`: a cough, the overflow's recovery,
+ * an answer's spent words), so the engine's fill is the head's at every beat's end (capped at the capacity: the overflow is the head's own).
  */
 function reportBeat(beat: number): void {
   const blownN = R.blownBeat;
   R.blownBeat = 0;
   if (blownN > 0) { report({ beat, kind: 'mouth_breath', amount: blownN }, R.mouthVia === 'mouse'); R.held = Math.max(0, R.held - blownN); }
-  const cap = capacity();
-  const gained = Math.max(0, Math.min(cap, G.head.length) - R.held);
-  report({ beat, kind: 'inhale', amount: gained }, false);
-  R.held = Math.min(cap, R.held + gained);
+  const level = Math.min(capacity(), G.head.length);
+  report({ beat, kind: 'inhale', amount: Math.max(0, level - R.held) }, false);
+  if (level < R.held) report({ beat, kind: 'scatter', amount: Math.round((R.held - level) * 1000) / 1000 }, false);
+  R.held = level;
 }
 /** Her question was answered: the verdict the engine records (`physics/answer`, R20). `caught`: null while a lie is still open is not sent. */
 export function answered(caught: boolean | null): void {
@@ -949,7 +951,7 @@ export function answered(caught: boolean | null): void {
 /** An answer with no lie in it: sent at once. A lie waits for the body (`answered`). */
 export function judged(right: boolean, lie: boolean): void {
   if (!E) return;
-  if (lie) { R.pending = { right }; return; }
+  if (lie) { answered(null); R.pending = { right }; return; } // a lie still open is sent as kept before the next one waits
   E.env.staging.answer?.(right, false, false);
 }
 /**
@@ -1050,9 +1052,16 @@ function body(state: CampaignState, reg: Registries, run: PhysicsRun): void {
   R.kind = ex?.kind ?? null;
   const row = ex ? state.commander.stimuli?.[ex.kind] : undefined;
   S.stage = row?.stage ?? STAGES[0];
-  S.tol = ex ? toleranceOf(state, ex.kind) : TUNING.stimuli.startTolerance;
-  void headCapacity; // the engine's own count of the same head (`capacity()` is the prototype's, equal)
+  S.tol = scentToleranceOf(state, reg, run.holderId);
+  // her scent's stand-in (README: her own is P17d): sweat, only while a sweat of hers may reach the commander (the content gate, by field)
+  const fluids = [...reg.stimulusKinds.values()].some((k) => String(k.family) === 'sweat' && contentAllowed(state, reg, k, run.holderId));
+  S.color = fluids ? 'sweat' : DRY_SCENT[S.contact] ?? 'soap';
 }
+/**
+ * Her scent with no bodily fluids (the `bodily_fluids` category off, or her own limit): the prototype's own scents without fluids, by the
+ * contact (her feet: leather; the rest: soap). An open item for the author with P17d's own scents.
+ */
+export const DRY_SCENT: Record<string, string> = { feet_on_face: 'leather', face_to_bottom: 'soap', smothered_armpit: 'soap' };
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 function svgEl(tag: string, attrs: Record<string, string>, parent: Element): SVGElement {

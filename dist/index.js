@@ -7179,7 +7179,7 @@ var frameRank = (f) => FRAMES.indexOf(f);
 var NOTE_MAX = 120;
 
 // src/engine/physics/state.ts
-var INPUT_KINDS = ["breathe", "hold", "release", "mouth_breath", "gap_breath", "shift_weight", "part", "ask_rest", "strain", "uneven", "inhale"];
+var INPUT_KINDS = ["breathe", "hold", "release", "mouth_breath", "gap_breath", "shift_weight", "part", "ask_rest", "strain", "uneven", "inhale", "scatter"];
 
 // src/engine/dynamic/types.ts
 var PROFILE_STYLES = ["affectionate", "cold", "ritual", "clinical", "possessive", "playful", "cruel", "obsessive", "drill", "regal", "vindictive"];
@@ -35723,6 +35723,7 @@ function withoutLeak(view, second) {
 function releaseOf(state, reg, run) {
   const left = remainingOf(reg, run);
   const holds6 = effectiveHoldsUntil(state, reg, run.holderId);
+  if (left <= 0 && run.headed) return "release";
   if (left <= 0) return holds6 === "blackout" && isAir(reg, run.physicsId) ? "blackout" : holds6 === "signal" ? "collapse" : "limit_broken";
   if (holds6 === "signal" && left <= TUNING.physics.releaseAt.signal) return "release";
   if (holds6 === "limit" && left <= TUNING.physics.releaseAt.limit) return "release";
@@ -39143,7 +39144,7 @@ function finishCounted(draft, _ctx, typed) {
 var OWNS = {
   timing: ["breathe", "gap_breath", "strain"],
   hold: ["hold", "shift_weight", "uneven"],
-  decision: ["mouth_breath", "inhale"],
+  decision: ["mouth_breath", "inhale", "scatter"],
   order: ["part"],
   gesture: ["ask_rest"],
   passive: []
@@ -39395,6 +39396,7 @@ function resolveSegment(run, plan, inputs, env) {
           r.gauge -= g.amount === void 0 ? P2.saturation.mouth : g.amount * word2;
           relief2(g.beat, "mouth_breath");
         }
+        for (const g of at(b, "scatter")) r.gauge -= (g.amount ?? 0) * word2;
         break;
       }
       case "order": {
@@ -39480,6 +39482,7 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
       ...m.noticed !== void 0 || x.noticed !== void 0 ? { noticed: (m.noticed ?? 0) + (x.noticed ?? 0) } : {}
     };
   }
+  if (envMain.interaction === "decision" && inputs.some((i) => i.kind === "inhale")) run.headed = true;
   const lapsed = run.segment.lapsed?.length ?? 0;
   const physicsId = run.physicsId;
   const events = [];
@@ -67485,7 +67488,7 @@ function inhaleEnd(forced = false) {
   SFX3.exhale(d);
   breathWords(d, forced);
   for (const x of G4.sp) x.v += 0.3;
-  deepInhale(d, false);
+  if (!forced) deepInhale(d, false);
   if (G4.lie > 0) {
     G4.lie -= 1;
     if (G4.lie === 0) answered(null);
@@ -67518,7 +67521,7 @@ function reflex() {
   SFX3.cough();
   burst();
   scatter2(2);
-  deepInhale(G4.depth, true);
+  if (!G4.forcedDeep) deepInhale(G4.depth, true);
   if (G4.lie > 0) {
     say4(pick5(LINES2.liar));
     G4.lie = 0;
@@ -68055,10 +68058,10 @@ function reportBeat2(beat) {
     report3({ beat, kind: "mouth_breath", amount: blownN }, R6.mouthVia === "mouse");
     R6.held = Math4.max(0, R6.held - blownN);
   }
-  const cap9 = capacity();
-  const gained = Math4.max(0, Math4.min(cap9, G4.head.length) - R6.held);
-  report3({ beat, kind: "inhale", amount: gained }, false);
-  R6.held = Math4.min(cap9, R6.held + gained);
+  const level = Math4.min(capacity(), G4.head.length);
+  report3({ beat, kind: "inhale", amount: Math4.max(0, level - R6.held) }, false);
+  if (level < R6.held) report3({ beat, kind: "scatter", amount: Math4.round((R6.held - level) * 1e3) / 1e3 }, false);
+  R6.held = level;
 }
 function answered(caught) {
   const p = R6.pending;
@@ -68069,6 +68072,7 @@ function answered(caught) {
 function judged(right, lie) {
   if (!E3) return;
   if (lie) {
+    answered(null);
     R6.pending = { right };
     return;
   }
@@ -68163,8 +68167,11 @@ function body(state, reg, run) {
   R6.kind = ex?.kind ?? null;
   const row4 = ex ? state.commander.stimuli?.[ex.kind] : void 0;
   S5.stage = row4?.stage ?? STAGES[0];
-  S5.tol = ex ? toleranceOf(state, ex.kind) : TUNING.stimuli.startTolerance;
+  S5.tol = scentToleranceOf(state, reg, run.holderId);
+  const fluids = [...reg.stimulusKinds.values()].some((k) => String(k.family) === "sweat" && contentAllowed(state, reg, k, run.holderId));
+  S5.color = fluids ? "sweat" : DRY_SCENT[S5.contact] ?? "soap";
 }
+var DRY_SCENT = { feet_on_face: "leather", face_to_bottom: "soap", smothered_armpit: "soap" };
 var SVG_NS7 = "http://www.w3.org/2000/svg";
 function svgEl2(tag2, attrs, parent) {
   const el = document.createElementNS(SVG_NS7, tag2);

@@ -10,7 +10,8 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import { COMMANDER, registerFrameReader, resetBlockingHooks, setBlocking } from '../../../src/engine/blocking';
-import { headCapacity } from '../../../src/engine/physics/stimuli';
+import { headCapacity, scentToleranceOf } from '../../../src/engine/physics/stimuli';
+import { resolveEnvOf, resolveSegment } from '../../../src/engine/physics/segment';
 import { registerPhysicsStyle, resetPhysicsHooks } from '../../../src/engine/physics/style';
 import type { PhysicsRun, SegmentInput, SegmentPlan } from '../../../src/engine/physics/state';
 import type { CampaignState } from '../../../src/engine/state/types';
@@ -538,5 +539,98 @@ describe('the scent instrument on the scene', () => {
     expect(t.q('.alius-scent-hand')!.textContent).toContain('enough. for now.');
     t.to(3000 + 2700);
     expect(t.q('.alius-scent')).toBeNull();
+  });
+});
+
+describe('fix round 1', () => {
+  const lostOf = (t: ReturnType<typeof draw>, beat: number) => reports(t).filter((i) => i.beat === beat && i.kind === 'scatter').reduce((n, i) => n + (i.amount ?? 0), 0);
+
+  it('Ruling U: a cough, the overflow\'s recovery and an answer each report the words lost (scatter), so the engine\'s fill follows the head down', () => {
+    const t = draw(hold());
+    t.to(2000);
+    fill(5);
+    t.to(2 * BEAT + 10); // beat 1 ends: +5
+    _scent.G.inhaling = true; _scent.G.depth = 1;
+    _scent.reflex(); // a cough throws 2 words out
+    t.to(3 * BEAT + 10);
+    expect(lostOf(t, 2)).toBe(2);
+    // an answer: the two words said leave the head (and a right one scatters 2 more)
+    _scent.addWord('her toes', 'place:toes');
+    t.to(4 * BEAT + 10);
+    _scent.ask();
+    for (const w of ['her toes']) [...t.host.querySelectorAll<HTMLElement>('.pw.pick')].find((x) => x.textContent!.endsWith(w))!.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    [...t.host.querySelectorAll<HTMLElement>('.pw.pick:not(.lie):not(.chosen)')][0]!.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    const before = _scent.G.head.length;
+    t.to(5 * BEAT + 10);
+    expect(lostOf(t, 4)).toBe(4 - before); // 4 in the head before her question; what is left is in the engine
+    // the overflow: lost in her, then half the head scatters
+    fill(_scent.capacity() + 1 - _scent.G.head.length);
+    t.to(5 * BEAT + 100);
+    expect(_scent.G.lost).toBeGreaterThan(0);
+    t.to(8 * BEAT + 10);
+    expect(reports(t).filter((i) => i.kind === 'scatter' && i.beat >= 5).length).toBeGreaterThan(0);
+  });
+
+  it('Ruling U: the engine\'s fill and the visible head agree at the segment\'s end, within one word', () => {
+    const s = hold();
+    const t = draw(s);
+    t.to(2000);
+    fill(4);
+    t.to(3 * BEAT);
+    _scent.G.inhaling = true; _scent.G.depth = 1; _scent.reflex();
+    t.to(6 * BEAT);
+    fill(_scent.capacity() + 1 - _scent.G.head.length); // lost in her
+    t.to(12 * BEAT);
+    t.mouse('mousedown', undefined, 2);
+    t.to(13 * BEAT);
+    t.mouse('mouseup', document, 2);
+    t.to(30_000 - 290); // the last beats flushed
+    const p = s.scene!.physics!;
+    const env = resolveEnvOf(s, reg, p);
+    const gauge = resolveSegment(p, p.segment.plan!, reports(t), env).gauge;
+    const words = gauge / (p.capacity / env.head!);
+    expect(Math.abs(words - Math.min(_scent.capacity(), _scent.G.head.length))).toBeLessThanOrEqual(1);
+  });
+
+  it('I2: the body\'s own breaths (the need to breathe, the overflow) are not the commander\'s deep inhale: no physics/stimulus, the stage stays', () => {
+    const s = hold();
+    const t = draw(s);
+    const before = JSON.stringify(s.commander.stimuli ?? null);
+    t.to(2000);
+    // the need to breathe: 7 s without a breath, the body breathes deep by itself
+    t.to(2000 + 7200 + 1600);
+    expect(_scent.G.counts.breaths! + _scent.G.counts.coughs!).toBeGreaterThan(0); // breathed by itself (or coughed on it)
+    // the overflow: lost in her, a forced deep breath 900 ms later
+    fill(_scent.capacity() + 1);
+    t.to(2000 + 7200 + 1600 + 3000);
+    expect(_scent.G.counts.lost).toBe(1);
+    expect(t.stimulus).not.toHaveBeenCalled();
+    expect(JSON.stringify(s.commander.stimuli ?? null)).toBe(before);
+    // a breath the commander takes is
+    _scent.G.inhaling = true; _scent.G.depth = 0.9; _scent.G.forcedDeep = false;
+    _scent.inhaleEnd();
+    expect(t.stimulus).toHaveBeenCalledTimes(1);
+  });
+
+  it('I3: with bodily fluids off her stand-in scent is not sweat (the prototype\'s leather for her feet); on, it is sweat', () => {
+    const off = hold();
+    const t = draw(off);
+    t.to(2000);
+    expect(_scent.S.color).toBe('leather');
+    _scent.G.zoneNow = null; _scent.G.I = 0.4;
+    _scent.breathWords(0.5);
+    vi.advanceTimersByTime(600);
+    for (const h of _scent.G.head) expect(['salt', 'sweat', 'skin', 'damp heat', 'musk', 'a sharp tang', 'dried salt', 'her run', 'brine', 'body heat', 'warm damp', 'her effort']).not.toContain(h.w);
+    t.screen.dispose();
+    const on = hold();
+    enable(on, 'bodily_fluids');
+    draw(on).to(2000);
+    expect(_scent.S.color).toBe('sweat');
+  });
+
+  it('M3: the head\'s capacity is the engine\'s (headCapacity of scentToleranceOf)', () => {
+    const s = hold();
+    draw(s).to(2000);
+    expect(_scent.capacity()).toBe(headCapacity(scentToleranceOf(s, reg, ANN)));
   });
 });

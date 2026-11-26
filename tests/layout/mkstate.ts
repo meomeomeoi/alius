@@ -184,7 +184,7 @@ out.weighthold = weighting('human_chair');
 function scenting(): CampaignState {
   const s = campaign(reg, 4);
   setRelation(s, ANN, { stateId: 'confidant' });
-  enable(s, 'objectification', 'restraint', 'humiliation', 'worship');
+  enable(s, 'objectification', 'restraint', 'humiliation', 'worship', 'bodily_fluids'); // her sweat (the prototype's default scent) may reach the commander
   s.settings.physicsRealtime = true; // the campaign's mirror of real time (the instrument needs it)
   const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
   const d = r.state;
