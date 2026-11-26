@@ -3,6 +3,26 @@ import type { ProfileStyle } from './dynamic/types';
 /** P10e-e (R13): her face before a slap and after it, by her style (the 28 expression labels of the sprites). */
 export interface SlapFace { readonly before: string; readonly keep: readonly string[]; readonly after: Readonly<Record<'none' | 'braced' | 'flinched', string>> }
 
+/**
+ * P10e-e R32: her flow in gulp by style (gulp.html `STYLES`, verbatim): her base in mouths a second, its slow wander (`vary`), how often she
+ * pauses (`pause`), her surges (every `surgeEvery` seconds, `surge` times her flow, after a warning of `warn` ms; `announce`: she says it,
+ * `feint`: the share of warnings with no surge after them), her answer to a tap (`tap`, the instrument's) and who cleans what was spilled
+ * (`check`: `clean` the commander, `herself` she wipes it up). A style the table has no row of reads neutral's.
+ */
+export interface GulpRow {
+  readonly base: number; readonly vary: number; readonly pause: number; readonly surgeEvery: readonly [number, number]; readonly surge: number; readonly warn: number;
+  readonly tap: string; readonly check: string; readonly announce?: boolean; readonly feint?: number;
+}
+export const GULP_STYLES: Readonly<Record<string, GulpRow>> = Object.freeze({
+  neutral:      Object.freeze({ base: 0.2, vary: 0.25, pause: 0.25, surgeEvery: Object.freeze([7, 12] as const), surge: 1.6, warn: 700, tap: 'slower', check: 'clean' }),
+  affectionate: Object.freeze({ base: 0.15, vary: 0.2, pause: 0.4, surgeEvery: Object.freeze([12, 20] as const), surge: 1.3, warn: 1100, tap: 'pause', check: 'herself' }),
+  ritual:       Object.freeze({ base: 0.19, vary: 0.05, pause: 0.15, surgeEvery: Object.freeze([8, 8] as const), surge: 1.5, warn: 900, tap: 'hold', check: 'clean', announce: true }),
+  playful:      Object.freeze({ base: 0.19, vary: 0.45, pause: 0.35, surgeEvery: Object.freeze([5, 9] as const), surge: 1.8, warn: 500, tap: 'faster', check: 'clean', feint: 0.4 }),
+  cruel:        Object.freeze({ base: 0.26, vary: 0.35, pause: 0.1, surgeEvery: Object.freeze([4, 7] as const), surge: 2.1, warn: 0, tap: 'surge', check: 'clean' }),
+  possessive:   Object.freeze({ base: 0.22, vary: 0.2, pause: 0.15, surgeEvery: Object.freeze([6, 10] as const), surge: 1.7, warn: 600, tap: 'slower', check: 'clean' }),
+  cold:         Object.freeze({ base: 0.21, vary: 0.1, pause: 0.1, surgeEvery: Object.freeze([9, 14] as const), surge: 1.4, warn: 400, tap: 'none', check: 'clean' }),
+});
+
 /** Rule constants of the P2 economy and calendar (draft balance values). Content-like data lives in JSON. */
 export const TUNING = Object.freeze({
   /** P7: the commander's body, presence and traits (draft balance values). */
@@ -165,6 +185,12 @@ export const TUNING = Object.freeze({
       } as Record<string, { readonly every: readonly [number, number]; readonly ask: number }>),
     }),
     gulp: Object.freeze({ swallows: Object.freeze([4, 8] as const), spillDirt: 60 }), progressPerBeat: 5,
+    /**
+     * P10e-e R32 (gulp.html): her flow in real time, planned by hash from her style's row (`styles`): the first warning `firstMs` in (the
+     * prototype's `nextSurge`), a pause per beat at `pause × beatMs / 9000` (its per-millisecond chance), the surge one beat long (inside its
+     * 1.2–2.2 s). Her volume (`volumeMs`, the prototype's default 35 s) ends the flow; what was spilled is cleaned from `cleanFrom` mouthfuls.
+     */
+    gulpFlow: Object.freeze({ styles: GULP_STYLES, firstMs: 6000, volumeMs: 35000, cleanFrom: 0.15 }),
     asleep: Object.freeze({ perBeat: 0.08, exchanges: Object.freeze([1, 3] as const) }),
     forget: Object.freeze({ base: 0.10, cruel: 0.15, perImpunity: 0.002, from: 50 }), slipExtend: 1,
     /**

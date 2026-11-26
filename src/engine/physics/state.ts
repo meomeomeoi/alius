@@ -15,7 +15,7 @@ export type HoldsUntil = 'signal' | 'limit' | 'blackout';
 export type Attention = 'watching' | 'glancing' | 'busy';
 
 /** What the player does in a beat (`SegmentInput.kind`). */
-export const INPUT_KINDS = ['breathe', 'hold', 'release', 'mouth_breath', 'gap_breath', 'shift_weight', 'part', 'ask_rest', 'strain', 'uneven', 'inhale', 'scatter', 'bite', 'relieve', 'fidget', 'wipe', 'spit'] as const;
+export const INPUT_KINDS = ['breathe', 'hold', 'release', 'mouth_breath', 'gap_breath', 'shift_weight', 'part', 'ask_rest', 'strain', 'uneven', 'inhale', 'scatter', 'bite', 'relieve', 'fidget', 'wipe', 'spit', 'swallow', 'spill'] as const;
 export type InputKind = (typeof INPUT_KINDS)[number];
 /**
  * One input of a beat. `amount` (P10e-e R1, ≥ 0) is absent for every input of the turn-based card and means, per kind: `breathe`, the share of
@@ -33,6 +33,9 @@ export type InputKind = (typeof INPUT_KINDS)[number];
  * `wipe` (R29: shoe service) carries the zone it wiped (`part`) and the share of the whole footwear's dirt mask it took off (`amount`); a segment
  * that holds any wipe follows the mask (−100 × amount a wipe, one a beat) instead of the right or wrong part. `spit` (R31, Ruling AC) is not a
  * segment input: the instrument reports it through `physics/spit`, decided at once (one draw, shoe.html's chances; seen, `physics_caught`).
+ * `swallow` (R32: gulp) carries the mouth the beat's swallows took (`amount`, in mouthfuls: a full mouth is 1) and `spill` the mouthfuls
+ * spilled (an overflow, a cough); a segment that holds either follows the mouth (the plan's `flow` in, the swallows and spills out, × the
+ * capacity) instead of the windows. A spill is a slip; what was spilled is carried on the run (`gulp`) to her flow's end.
  */
 export interface SegmentInput { beat: number; kind: InputKind; atMs?: number; part?: string; amount?: number }
 
@@ -56,6 +59,13 @@ export interface PlannedBeat {
   order?: JawOrder;
   orderMs?: number;
   ask?: true;
+  /**
+   * P10e-e R32 (gulp, real time): her flow on this beat, planned by hash (R3) from her style's row (`TUNING.physics.gulpFlow`): `level` in
+   * mouths a second (her base with its wander, × her surge on a surge beat, 0 in a pause), `surge` a surge lands on this beat, `warn` her
+   * warning sounds at this beat's end (the stream rising her row's `warn` ms before the next beat; with no surge on it, a feint), `pause` she
+   * pauses. The instrument plays it; a reading never shows it.
+   */
+  flow?: { level: number; surge?: true; warn?: true; pause?: true };
   attention: Attention;
 }
 /** The plan of one segment, drawn once at its start and stored in the run; the UI plays it and a reading never shows it. */
@@ -114,6 +124,9 @@ export interface SegmentResult {
   noticed?: number;
   /** Ruling W: buckles of a weight inside her frame (the strength back to 35 each). */
   buckles?: number;
+  /** P10e-e R32: the mouthfuls spilled in a segment that followed the mouth, and how many spills (absent when none). */
+  spilled?: number;
+  spills?: number;
 }
 
 /** The state of the second physics of a hold (plan R13): its own gauge, seal and streak, on the same beats as the first. */
@@ -203,6 +216,13 @@ export interface PhysicsRun {
    * until `physics/get_up`, `physics/found` or the stop word ends it. Absent: as before.
    */
   forgotten?: true;
+  /**
+   * P10e-e R32: a gulp the instrument reports (a segment held a swallow or a spill): the mouthfuls spilled over her flow. Such a run never
+   * ends by its fill (the prototype overflows and spills; Ruling U's shape); at her flow's end (her volume) it chains to the cleaning at
+   * `100 × spilled` when she makes the commander clean (her row's `check`, over `cleanFrom`), else it is released. It stays on the run after
+   * the chain: that floor is the gulp's own cleaning (the gulp instrument draws it), checked at its segment's end. Absent: as before.
+   */
+  gulp?: { spilled: number };
 }
 
 export const GAUGE_FULL = 100;

@@ -155,9 +155,10 @@ export function startPhysics(draft: CampaignState, ctx: { registries: Registries
 
 /**
  * A slip opens the physics its entry chains to (a spilled swallow: tongue work on the floor at dirt 60): the run goes on with the same source and
- * holder in the new physics, at the chain's starting gauge. Nothing when the physics has no chain.
+ * holder in the new physics, at the chain's starting gauge (or `start`: P10e-e R32, a gulp's cleaning from what was spilled). Nothing when the
+ * physics has no chain.
  */
-export function chainRun(draft: CampaignState, reg: Registries, run: PhysicsRun): EngineEvent[] {
+export function chainRun(draft: CampaignState, reg: Registries, run: PhysicsRun, start?: number): EngineEvent[] {
   const chain = (reg.contactPhysics.get(run.physicsId)?.chains as Array<{ on: string; to: string; start?: number }> | undefined)?.find((c) => c.on === 'slip');
   const to = chain ? reg.contactPhysics.get(chain.to) : undefined;
   if (!chain || !to) return [];
@@ -165,7 +166,7 @@ export function chainRun(draft: CampaignState, reg: Registries, run: PhysicsRun)
   const g = gaugeFor(draft, to);
   run.physicsId = chain.to;
   run.capacity = g.capacity;
-  run.gauge = chain.start ?? g.gauge;
+  run.gauge = start ?? chain.start ?? g.gauge; // R32: a gulp's cleaning starts from what was spilled (`floorStart`)
   delete run.seal;
   delete run.sealRange;
   return [{ type: 'physics_started', runId: run.id, physicsId: run.physicsId, holderId: run.holderId, sourceKind: run.sourceKind, sourceId: run.sourceId, chained: true, from }];
@@ -293,6 +294,7 @@ function withoutLeak(view: PhysicsRun, second: NonNullable<PhysicsRun['second']>
   if (second.seal === undefined) delete view.seal;
   if (second.pressure === undefined) delete view.pressure;
   delete view.headed; // Ruling U: the main run's head is not the second's gauge
+  delete view.gulp; // R32: nor is its mouth
   delete view.second;
   return view;
 }
@@ -302,6 +304,8 @@ function releaseOf(state: CampaignState, reg: Registries, run: PhysicsRun): Rele
   // headed run never ends at a boundary by its fill, neither full nor at her letting-go thresholds. It ends by the tap, the stop word, the
   // contact or item taken away, or her activity's duration.
   if (run.headed) return 'continue';
+  // R32: a gulp the instrument reports never ends by its fill either (the prototype overflows and spills); her flow's end ends it
+  if (run.gulp) return 'continue';
   const left = remainingOf(reg, run);
   const holds: HoldsUntil = effectiveHoldsUntil(state, reg, run.holderId);
   if (left <= 0) return holds === 'blackout' && isAir(reg, run.physicsId) ? 'blackout' : holds === 'signal' ? 'collapse' : 'limit_broken';

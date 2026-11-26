@@ -28,6 +28,7 @@ import { scentBand } from './scent';
 import { isShoeRun } from './footwear';
 import { headCapacity, scentToleranceOf } from './stimuli';
 import { ATT_BY_STEP, frameOf, presenceOf, PRESENCE_WATCH } from './presence';
+import { floorStart, flowEnded, gulpRowOf, isGulpPhysics, isGulpRun, layFlow } from './gulp';
 
 /** The commander's stillness skill (P16b): reads 0 until it lands, so every slip is as loud as it is. */
 export const stillnessOf = (_state: CampaignState): number => 0;
@@ -125,6 +126,8 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
   if (lead.cues === 'sparse') for (let i = 0; i < n; i++) if (beats[i]!.cue !== undefined && rng.chance(0.5)) delete beats[i]!.cue;
   // R22: her moves in the jaw, in real time only (the turn-based card is unchanged); by hash after every draw above, so no draw is added or moved
   if (realtime && interactions.includes('gesture') && jawSourceOf(run, reg) !== null) planJaw(beats, state, run, jawRowOf(lead));
+  // R32: her flow in gulp, in real time only (the turn-based card is unchanged); by hash after every draw above, so no draw is added or moved
+  if (realtime && isGulpPhysics(phys)) layFlow(beats, state, run, gulpRowOf(lead.key), n);
   return { beats };
 }
 
@@ -277,6 +280,8 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
   const word = cap / (env.head ?? headCapacity(TUNING.stimuli.startTolerance));
   // R29: whether the shoe instrument reported the mask (any wipe): then the wipes, not the parts, clean
   const wiped = env.interaction === 'order' && live.some((i) => i.kind === 'wipe');
+  // R32: whether the gulp instrument reported the mouth (any swallow or spill): then the mouth, not the windows, is the gauge
+  const mouthed = env.interaction === 'timing' && env.gaugeKind === 'fill' && live.some((i) => i.kind === 'swallow' || i.kind === 'spill');
   for (let b = 0; b < run_; b++) {
     const beat = plan.beats[b]!;
     const beatStart = r.gauge;
@@ -319,6 +324,17 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
               r.noticed = (r.noticed ?? 0) + 1;
               r.streak = 0;
             }
+          }
+        } else if (mouthed) {
+          // R32: the mouth: her flow on this beat comes in (mouths a second × the beat), the swallows and the spills go out (× the capacity);
+          // a spill is a slip, and what was spilled is counted for her flow's end
+          r.gauge += (beat.flow?.level ?? 0) * (P.beatMs / 1000) * cap;
+          for (const g of at(b, 'swallow')) r.gauge -= (g.amount ?? 0) * cap;
+          for (const g of at(b, 'spill')) {
+            r.gauge -= (g.amount ?? 0) * cap;
+            r.slips += 1;
+            r.spills = (r.spills ?? 0) + 1;
+            r.spilled = (r.spilled ?? 0) + (g.amount ?? 0);
           }
         } else if (opening && !opening.false) {
           // keeping up with a flow (a gulp): a caught swallow eases the fill, a missed one spills
@@ -406,7 +422,9 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
     if (r.restGranted && !bitten) r.gauge = Math.max(0, r.gauge - P.jawRest);
   }
   if (run.dryness !== undefined && r.dryness === undefined) r.dryness = run.dryness;
-  r.checked = env.interaction === 'order' && r.gauge <= P.tongue.checkAt;
+  // R32: the floor after a gulp (the run carries `gulp`) is one segment: gulp.html's cleaning ends at 10 % left (the instrument ends the segment
+  // there) or after its 40 s, and her check follows either way
+  r.checked = env.interaction === 'order' && (r.gauge <= P.tongue.checkAt || run.gulp !== undefined);
   r.complete = env.interaction === 'passive' && r.gauge >= 100;
   const after = share(env.gaugeKind, r.gauge, cap);
   r.warning = before > P.warning / 100 && after <= P.warning / 100;
@@ -469,6 +487,9 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   }
   // Ruling U: a decision segment the scent instrument reported (its head is the gauge): a full head is recoverable (`releaseOf`)
   if (envMain.interaction === 'decision' && inputs.some((i) => (i as SegmentInput).kind === 'inhale')) run.headed = true;
+  // R32: a gulp the instrument reported (its mouth is the gauge): it carries what was spilled to her flow's end
+  if (isGulpRun(run, reg) && inputs.some((i) => (i as SegmentInput).kind === 'swallow' || (i as SegmentInput).kind === 'spill')) run.gulp ??= { spilled: 0 };
+  if (run.gulp && result.spilled !== undefined && isGulpRun(run, reg)) run.gulp.spilled = Math.round((run.gulp.spilled + result.spilled) * 1e6) / 1e6;
   const lapsed = run.segment.lapsed?.length ?? 0;
   const physicsId = run.physicsId;
   const events: EngineEvent[] = [];
@@ -505,7 +526,7 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   // R28: the tally of the run, from what this segment resolved (only what she perceived: a relief counts only once she caught it)
   addTally(run, {
     caught: result.caught, missed: result.missed, falseTaken: result.falseTaken, strains: result.strains ?? 0, noticed: result.noticed ?? 0,
-    slips: result.slips, gasps: result.gasps, cheatsCaught: events.filter((e) => e.type === 'physics_caught').length,
+    slips: result.slips - (result.spills ?? 0), gasps: result.gasps, cheatsCaught: events.filter((e) => e.type === 'physics_caught').length, spills: result.spills ?? 0,
   });
   run.gauge = result.gauge;
   run.streak = result.streak;
@@ -518,11 +539,23 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   events.unshift({ type: 'physics_segment', runId, n: segment, phase: 'end', physicsId, caught: result.caught, missed: result.missed, slips: result.slips, reliefs: result.reliefs, lapsed, warning: result.warning });
   if (result.streakBonus > 0) events.push(addEnduranceXp(draft, physicsId, Math.round(TUNING.physics.endurance.streak * result.streakBonus * 100) / 100));
   if (secondBonus > 0 && run.second) events.push(addEnduranceXp(draft, run.second.physicsId, TUNING.physics.endurance.streak * secondBonus));
+  const gulped = run.gulp !== undefined && isGulpRun(run, reg);
   if (result.slips > 0) {
     events.push({ type: 'physics_slip', runId, kind: 'slip', count: result.slips, holderId: run.holderId });
-    const chained = chainRun(draft, reg, run);
-    if (chained.length > 0) events.push(...chained);
-    else run.extend += TUNING.physics.slipExtend;
+    if (!gulped) { // R32: a gulp's spills are carried to her flow's end (below), where the cleaning starts from all of them
+      const chained = chainRun(draft, reg, run);
+      if (chained.length > 0) events.push(...chained);
+      else run.extend += TUNING.physics.slipExtend;
+    }
+  }
+  // R32: her flow's end (her volume): she makes the commander clean what was spilled (her row's `check`, over `cleanFrom`) at 100 × spilled,
+  // else the hold is released (little spilled, or she wipes it up herself)
+  if (gulped && flowEnded(draft, run, beatsPerSegment(draft, Number(reg.contactPhysics.get(physicsId)?.segmentSeconds)))) {
+    const row = gulpRowOf(leadStyle(physicsStyleOf(draft, run.holderId, reg)).key);
+    if (run.gulp!.spilled > TUNING.physics.gulpFlow.cleanFrom && row.check === 'clean') events.push(...chainRun(draft, reg, run, floorStart(run.gulp!.spilled)));
+    else events.push(...creditHold(draft, reg, run), ...stopPhysics(draft, reg, 'released'));
+    events.push(...momentPass(draft, ctx, 'segment'));
+    return events;
   }
   // Ruling W: the third buckle under her weight ends the session (her verdict is the instrument's)
   if (run.sourceKind === 'activity' && (run.second?.buckles ?? 0) >= 3) {

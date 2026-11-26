@@ -52,9 +52,11 @@ const GENERIC: Record<string, (n: number) => string> = {
   gasps: (n) => `${n} ${n === 1 ? 'gasp' : 'gasps'}`,
   cheatsCaught: (n) => `she caught ${n} ${n === 1 ? 'cheat' : 'cheats'}`,
   moved: (n) => `she noticed the body give way ${times(n)}`,
+  // R32: a gulp's spills (an overflow, a cough), said as spills whatever the run became (its cleaning)
+  spills: (n) => `spilled ${times(n)}`,
 };
 /** `strains` is never said: an over-hold she did not notice (amount 0.5) is not hers to tell; only `noticed` is. */
-const ORDER = ['caught', 'missed', 'falseTaken', 'noticed', 'slips', 'gasps', 'cheatsCaught', 'moved'];
+const ORDER = ['caught', 'missed', 'falseTaken', 'noticed', 'slips', 'spills', 'gasps', 'cheatsCaught', 'moved'];
 
 /** The tally of a run in one sentence (`''` when nothing was counted). */
 export function tallySentence(tally: Record<string, number>, phys: Entry | undefined): string {
