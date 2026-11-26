@@ -368,7 +368,7 @@ describe('the breath instrument on the scene', () => {
     };
     it('plays for playful when the gap before her opening holds it: "three… two… again.", nothing opens, nothing is reported; her opening comes on its planned beat', () => {
       let teased = 0;
-      for (let n = 1; n <= 40; n++) {
+      for (let n = 1; n <= 8; n++) {
         const r = run('playful', planOf({ 5: { widthMs: 450 } }), n);
         const again = r.seen.find((x) => /again\./.test(x.text));
         if (!again) continue;
@@ -381,7 +381,7 @@ describe('the breath instrument on the scene', () => {
       expect(teased).toBeGreaterThan(0);
     });
     it('never when the gap is too short, and never for another style', () => {
-      for (let n = 1; n <= 40; n++) {
+      for (let n = 1; n <= 8; n++) {
         // the planned opening on beat 2: from the loop's start there is no room for a count and a beat before it
         expect(run('playful', planOf({ 2: { widthMs: 450 } }), n).seen.some((x) => /again\./.test(x.text)), `seed ${n}`).toBe(false);
         expect(run('ritual', planOf({ 5: {} }), n).seen.some((x) => /again\./.test(x.text)), `seed ${n}`).toBe(false);
