@@ -217,7 +217,9 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
     unitId: unit.id,
     sentinels: {
       numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57, 43, 47, 67, 4.37, 2.19, 47.31, 63.17, 5.13, 19, 83.77, 6.83, 31.41, 8.86, 0.6174, 37.37, 61.61, 59.59, 0.4141, 23.23, 7.77, 44.44, 13.37, 26, 34, 733],
-      texts: ['SENTINEL-UNTOLD', 'SENTINEL-KEEPS', 'SENTINEL-UNVOICED', 'SENTINEL-QUEUED', 'stargazing', 'woodcarving', untoldEvent.id, keepsEvent.id, 'SENTINEL-PENDING', 'SENTINEL-MISREAD', 'SENTINEL-UNSHOWN-MOMENT', 'SENTINEL-UNSHOWN-FACT', 'SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE', 'SENTINEL_EXPECTATION', 'SENTINEL_KOMPROMAT', 'SENTINEL_COMPROMAT_P15', 'SENTINEL_TELL', 'SENTINEL_WORSHIP_HOW', 'SENTINEL_KNOWLEDGE_P15', 'SENTINEL_SEALED_TEXT', 'SENTINEL_SEALED_SUMMARY', 'SENTINEL_FALSE_REPORT', 'nothing the commander did', 'cancelled_reward', 'end of the afternoon'],
+      texts: ['SENTINEL-UNTOLD', 'SENTINEL-KEEPS', 'SENTINEL-UNVOICED', 'SENTINEL-QUEUED', 'stargazing', 'woodcarving', untoldEvent.id, keepsEvent.id, 'SENTINEL-PENDING', 'SENTINEL-MISREAD', 'SENTINEL-UNSHOWN-MOMENT', 'SENTINEL-UNSHOWN-FACT', 'SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE', 'SENTINEL_EXPECTATION', 'SENTINEL_KOMPROMAT', 'SENTINEL_COMPROMAT_P15', 'SENTINEL_TELL', 'SENTINEL_WORSHIP_HOW', 'SENTINEL_KNOWLEDGE_P15', 'SENTINEL_SEALED_TEXT', 'SENTINEL_SEALED_SUMMARY', 'SENTINEL_FALSE_REPORT', 'nothing the commander did', 'cancelled_reward', 'end of the afternoon',
+        // P10e-e R25: her presence in her frame is never shown as a word (it is derived, never stored: no state carries it)
+        'presence: with', 'presence: glancing', 'presence: own', 'presence: use', 'her presence'],
     },
   };
 }

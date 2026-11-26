@@ -5,7 +5,8 @@
  * when its source goes, and ends when a switched-off category takes its source away.
  */
 import type { Entry, Registries } from '../../content/types';
-import { blockingLive, COMMANDER, contactOf, contactTargetOf, hasSource, registerAfterChange, removeSource, type BlockingChange } from '../blocking';
+import { blockingLive, blockingOf, COMMANDER, contactOf, contactTargetOf, hasSource, registerAfterChange, removeSource, type BlockingChange } from '../blocking';
+import { latestFor } from '../blocking/snapshots';
 import { contentAllowed, registerWithdrawal } from '../bonds/content';
 import type { EngineEvent } from '../dispatch';
 import { sceneSettingsOf } from '../moments/settings';
@@ -16,6 +17,7 @@ import { extraSlotsFor, initMarathon, isMarathon } from './marathon';
 import { setCondition } from './conditions';
 import { commanderSkill } from './skill';
 import { type HoldsUntil, type Outcome, type PhysicsRun } from './state';
+import { frameOf } from './presence';
 import type { Seal } from '../blocking/types';
 
 export interface PhysicsRef { id: string; seal?: Seal[]; pressure?: number }
@@ -26,7 +28,16 @@ export function physicsOf(entry: Entry | undefined): PhysicsRef[] {
   return Array.isArray(entry?.physics) ? (entry!.physics as PhysicsRef[]) : [];
 }
 
-const sourceEntry = (reg: Registries, kind: 'contact' | 'item', id: string): Entry | undefined => (kind === 'contact' ? reg.blockingContacts.get(id) : reg.blockingItems.get(id));
+const sourceEntry = (reg: Registries, kind: PhysicsRun['sourceKind'], id: string): Entry | undefined => (kind === 'contact' ? reg.blockingContacts.get(id) : kind === 'item' ? reg.blockingItems.get(id) : reg.blockingActivities.get(id));
+
+/** P10e-e R24: whether a source is in the scene: a contact or an item as the blocking holds it, her activity while she is still at it. */
+const sourceHere = (scene: SceneRecord | undefined, kind: PhysicsRun['sourceKind'], id: string, holderId: string): boolean =>
+  kind === 'activity' ? blockingOf(scene, holderId).activity === id : hasSource(scene, kind, id);
+
+/** P10e-e R24: the physics of her time (read by field: the one passive physics whose gauge is progress), or undefined. */
+export function framePhysicsOf(reg: Registries): Entry | undefined {
+  return [...reg.contactPhysics.values()].find((p) => p.interaction === 'passive' && (p.gauge as { kind?: string } | undefined)?.kind === 'progress');
+}
 
 /** The soldier a source belongs to: the other party of a contact, else the first soldier in the scene. */
 function holderOf(state: CampaignState, kind: 'contact' | 'item', id: string): string | undefined {
@@ -53,7 +64,7 @@ function gaugeFor(state: CampaignState, phys: Entry): { gauge: number; capacity:
 
 export interface StartOptions {
   physicsId: string;
-  sourceKind: 'contact' | 'item';
+  sourceKind: 'contact' | 'item' | 'activity';
   sourceId: string;
   holderId: string;
   duration?: { hours: number } | 'unknown';
@@ -79,12 +90,16 @@ export function whyNotStart(state: CampaignState, reg: Registries, o: StartOptio
   const phys = reg.contactPhysics.get(o.physicsId);
   if (!phys) return `Unknown physics "${o.physicsId}".`;
   if (!scene.participants.includes(o.holderId)) return `${o.holderId} is not in the scene.`;
-  if (!hasSource(scene, o.sourceKind, o.sourceId)) return `Nothing in the scene is "${o.sourceId}".`;
-  if (o.act === undefined && !physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).some((p) => p.id === o.physicsId)) return `"${o.sourceId}" has no ${o.physicsId} physics.`;
+  if (!sourceHere(scene, o.sourceKind, o.sourceId, o.holderId)) return `Nothing in the scene is "${o.sourceId}".`;
+  if (o.sourceKind === 'activity') {
+    // R24: her activity's frame runs the physics of her time; its second is the commander's contact with her (a hold), named by the caller
+    if (frameOf(reg.blockingActivities.get(o.sourceId)) === null || framePhysicsOf(reg)?.id !== o.physicsId) return `"${o.sourceId}" has no frame.`;
+  } else if (o.act === undefined && !physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).some((p) => p.id === o.physicsId)) return `"${o.sourceId}" has no ${o.physicsId} physics.`;
   const gate = whyNotAllowed(state, reg, phys, o.holderId);
   if (gate !== null) return gate;
   if (o.second !== undefined) {
-    if (o.second === o.physicsId || !physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).some((p) => p.id === o.second)) return `"${o.sourceId}" has no ${o.second} physics to add.`;
+    const named = o.sourceKind === 'activity' ? framedContactPhysics(state, reg, o.holderId) : physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId));
+    if (o.second === o.physicsId || !named.some((p) => p.id === o.second)) return `"${o.sourceId}" has no ${o.second} physics to add.`;
     const second = reg.contactPhysics.get(o.second);
     const why = second ? whyNotAllowed(state, reg, second, o.holderId) : 'Unknown physics.';
     if (why !== null) return why;
@@ -102,7 +117,7 @@ export function startPhysics(draft: CampaignState, ctx: { registries: Registries
   if (why !== null) throw new Error(why);
   const scene = draft.scene!;
   const phys = reg.contactPhysics.get(o.physicsId)!;
-  const ref = physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).find((p) => p.id === o.physicsId);
+  const ref = o.sourceKind === 'activity' ? undefined : physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).find((p) => p.id === o.physicsId);
   const range = ref?.seal ? [...ref.seal].sort((a, b) => SEAL_ORDER.indexOf(a) - SEAL_ORDER.indexOf(b)) : undefined;
   const lead = leadStyle(physicsStyleOf(draft, o.holderId, reg)).seal;
   const seal = range ? range[lead === 'loosest' ? 0 : lead === 'tightest' ? range.length - 1 : Math.floor(range.length / 2)] : undefined;
@@ -123,8 +138,8 @@ export function startPhysics(draft: CampaignState, ctx: { registries: Registries
     run.baseCapacity = run.capacity;
   }
   // a second physics: the one asked for, or the source's own second entry when it may run (it is left out quietly when it may not)
-  const list = physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId));
-  const secondRef = o.act !== undefined ? undefined : o.second !== undefined ? list.find((p) => p.id === o.second) : list.find((p) => p.id !== o.physicsId);
+  const list = o.sourceKind === 'activity' ? framedContactPhysics(draft, reg, o.holderId) : physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId));
+  const secondRef = o.act !== undefined ? undefined : o.second !== undefined ? list.find((p) => p.id === o.second) : o.sourceKind === 'activity' ? undefined : list.find((p) => p.id !== o.physicsId);
   const secondPhys = secondRef ? reg.contactPhysics.get(secondRef.id) : undefined;
   if (secondRef && secondPhys && whyNotAllowed(draft, reg, secondPhys, o.holderId) === null) {
     const sr = secondRef.seal ? [...secondRef.seal].sort((a, b) => SEAL_ORDER.indexOf(a) - SEAL_ORDER.indexOf(b)) : undefined;
@@ -160,7 +175,7 @@ export function stopPhysics(draft: CampaignState, reg: Registries, result: Outco
   const run = draft.scene?.physics;
   if (!draft.scene || !run) return [];
   delete draft.scene.physics;
-  removeSource(draft, run.sourceKind, run.sourceId);
+  if (run.sourceKind !== 'activity') removeSource(draft, run.sourceKind, run.sourceId); // R24: her activity goes on when her frame ends
   const events: EngineEvent[] = [{ type: 'physics_outcome', runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...(run.second ? { secondId: run.second.physicsId } : {}), ...(run.targetId !== undefined ? { targetId: run.targetId } : {}), ...(run.tally ? { tally: { ...run.tally } } : {}) }]; // the target was read when the run began: P15 counts the act on it (mastery)
   if (run.marathon) events.push(...finishMarathon(draft, reg, run, result));
   return events;
@@ -278,7 +293,52 @@ export function releaseCheck(state: CampaignState, reg: Registries, run: Physics
 // ---------------------------------------------------------------------------------------------
 // keeping the run in step with the blocking
 
-const gone = (scene: SceneRecord | undefined, run: PhysicsRun): boolean => !hasSource(scene, run.sourceKind, run.sourceId);
+const gone = (scene: SceneRecord | undefined, run: PhysicsRun): boolean => !sourceHere(scene, run.sourceKind, run.sourceId, run.holderId);
+
+/** The physics of the commander's contact with her that may run inside her frame (R27: a hold, the weight), in the contact's order. */
+function framedContactPhysics(state: CampaignState, reg: Registries, holderId: string): PhysicsRef[] {
+  const contact = state.scene ? contactOf(state.scene) : undefined;
+  if (!contact || ![contact.with, ...Object.entries(state.scene?.blocking ?? {}).filter(([, b]) => b.contact?.id === contact.id).map(([k]) => k)].includes(holderId)) return [];
+  return physicsOf(reg.blockingContacts.get(contact.id)).filter((p) => reg.contactPhysics.get(p.id)?.interaction === 'hold');
+}
+
+/**
+ * P10e-e R24: whether the commander is placed by her: an anchor of the commander's relative to her, a contact between them, or the commander's
+ * posture set in the fiction (the newest log entry naming it came from a reading or the engine, never the player's own chip).
+ */
+export function placedBy(state: CampaignState, holderId: string): boolean {
+  const scene = state.scene;
+  const mine = blockingOf(scene, COMMANDER);
+  if (mine.anchor?.relTo === holderId) return true;
+  if (mine.contact?.with === holderId || blockingOf(scene, holderId).contact?.with === COMMANDER) return true;
+  if (mine.posture === undefined) return false;
+  const set = latestFor(scene, COMMANDER, 'posture');
+  return set !== undefined && set.source !== 'chip';
+}
+
+/**
+ * P10e-e R24: the frame of her time starts when her blocking activity has a `frame` and the commander is placed by her, with or without a
+ * contact (a contact with a hold physics runs as its second: the weight inside), as a marathon of her activity's hours (`unknown` without
+ * them). Nothing else starts a marathon. Draws nothing.
+ */
+function startFrame(draft: CampaignState, reg: Registries): EngineEvent[] {
+  const scene = draft.scene;
+  const phys = framePhysicsOf(reg);
+  if (!scene || scene.physics || !phys || !blockingLive(draft, reg)) return [];
+  for (const holderId of scene.participants) {
+    const activity = blockingOf(scene, holderId).activity;
+    const frame = activity !== undefined ? frameOf(reg.blockingActivities.get(activity)) : null;
+    if (activity === undefined || frame === null || !placedBy(draft, holderId)) continue;
+    // a contact whose own physics is not a hold runs as a contact run, as before (the frame does not take it)
+    const contact = contactOf(scene);
+    if (contact && physicsOf(reg.blockingContacts.get(contact.id)).some((p) => reg.contactPhysics.get(p.id)?.interaction !== 'hold')) continue;
+    const second = framedContactPhysics(draft, reg, holderId)[0]?.id;
+    const o: StartOptions = { physicsId: String(phys.id), sourceKind: 'activity', sourceId: activity, holderId, duration: frame.hours !== undefined ? { hours: frame.hours } : 'unknown', ...(second !== undefined ? { second } : {}) };
+    if (whyNotStart(draft, reg, o) === null) return startPhysics(draft, { registries: reg }, o);
+  }
+  return [];
+}
+const PLACING: ReadonlySet<string> = new Set(['activity', 'anchor', 'posture', 'contact']);
 
 /** Counted kisses have no one to count for once the contact is gone (the stop word, a chip, a switched-off category): the act goes with it. */
 function dropOrphanAct(draft: CampaignState): void {
@@ -291,6 +351,11 @@ registerAfterChange((draft: CampaignState, reg: Registries, change: BlockingChan
   dropOrphanAct(draft);
   const run = draft.scene?.physics;
   if (run && gone(draft.scene, run)) events.push(...stopPhysics(draft, reg, 'released'));
+  // R27: the weight inside her frame goes with the contact that brought it
+  const framed = draft.scene?.physics;
+  if (framed?.sourceKind === 'activity' && framed.second && !framedContactPhysics(draft, reg, framed.holderId).some((p) => p.id === framed.second!.physicsId)) delete framed.second;
+  // R24: her frame starts from the blocking (before a contact's own run: a hold contact runs inside the frame)
+  if (!draft.scene?.physics && PLACING.has(change.field) && change.value !== undefined) events.push(...startFrame(draft, reg));
   if ((change.field !== 'contact' && change.field !== 'worn') || change.value === undefined || draft.scene?.physics) return events;
   const kind = change.field === 'contact' ? 'contact' : 'item';
   const main = physicsOf(sourceEntry(reg, kind, change.value))[0];

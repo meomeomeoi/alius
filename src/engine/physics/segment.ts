@@ -26,6 +26,7 @@ import {
 import { blendedStyle, leadStyle, physicsStyleOf, styleRows } from './style';
 import { scentBand } from './scent';
 import { headCapacity, scentToleranceOf } from './stimuli';
+import { ATT_BY_STEP, frameOf, presenceOf, PRESENCE_WATCH } from './presence';
 
 /** The commander's stillness skill (P16b): reads 0 until it lands, so every slip is as loud as it is. */
 export const stillnessOf = (_state: CampaignState): number => 0;
@@ -46,6 +47,8 @@ export interface ResolveEnv {
   steady?: ReadonlySet<number>;
   /** A marathon's pace scale (`paceScale`): every beat's change of the gauge, and the streak xp, count this many times (1 = no scale). Applied per beat, before the clamp. */
   scale?: number;
+  /** P10e-e R27: how well she hears the commander in her frame (her activity's `frame.hear`); absent outside a frame. */
+  hear?: number;
 }
 
 const P = TUNING.physics;
@@ -82,7 +85,9 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
   const lead = leadStyle(style);
   const realtime = sceneSettingsOf(state).physicsRealtime;
   const activity = blockingOf(state.scene, run.holderId).activity;
-  const attention = attentionPlan(n, activity !== undefined ? (reg.blockingActivities.get(activity)?.attention as string | undefined) : undefined, style, rng);
+  const word = activity !== undefined ? (reg.blockingActivities.get(activity)?.attention as string | undefined) : undefined;
+  // R25: in her frame her attention mixes her activity's word with her presence (her_activity.html `attentionDraw`: 0.4 / 0.6, her style's watch); one draw a beat, as before
+  const attention = attentionPlan(n, word, style, rng, run.sourceKind === 'activity' ? frameWeights(state, reg, run, word, lead.key) : undefined);
   const beats: PlannedBeat[] = attention.map((a) => ({ attention: a }));
   const interactions = [String(phys.interaction), ...(run.second ? [String(reg.contactPhysics.get(run.second.physicsId)?.interaction)] : [])];
   if (interactions.includes('timing')) {
@@ -120,6 +125,18 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
   // R22: her moves in the jaw, in real time only (the turn-based card is unchanged); by hash after every draw above, so no draw is added or moved
   if (realtime && interactions.includes('gesture') && jawSourceOf(run, reg) !== null) planJaw(beats, state, run, jawRowOf(lead));
   return { beats };
+}
+
+/** R25: her attention's weights `[watching, glancing]` in her frame: `0.4 × the activity's + 0.6 × her presence's`, her style's watch bias on watching; asleep, busy. */
+function frameWeights(state: CampaignState, reg: Registries, run: PhysicsRun, word: string | undefined, key: string): [number, number] {
+  if (frameOf(reg.blockingActivities.get(run.sourceId))?.sleep) return [0, 0];
+  const [w0, g0] = P.gaze.attention[word ?? 'on_commander'] ?? P.gaze.attention.on_commander!;
+  const a = [w0!, g0!, Math.max(0, 1 - w0! - g0!)];
+  const b = ATT_BY_STEP[presenceOf(state, reg, run, run.marathon?.phase ?? 1)];
+  const p = [0, 1, 2].map((i) => 0.4 * a[i]! + 0.6 * b[i]!);
+  p[0] = clamp(p[0]! + (PRESENCE_WATCH[key as keyof typeof PRESENCE_WATCH] ?? 0), 0, 1);
+  const sum = p[0]! + p[1]! + p[2]!;
+  return [p[0]! / sum, p[1]! / sum];
 }
 
 /**
@@ -182,6 +199,7 @@ export function resolveEnvOf(state: CampaignState, reg: Registries, run: Physics
     // R19: her own band, of the part she presses (a contact's target; an item has none: the rest of her)
     band: scentBand(state, reg, run.holderId, run.sourceKind === 'contact' ? contactTargetOf(state.scene, reg, run.sourceId) ?? run.targetId : undefined),
     head: headCapacity(scentToleranceOf(state, reg, run.holderId)),
+    ...(run.sourceKind === 'activity' ? { hear: frameOf(reg.blockingActivities.get(run.sourceId))?.hear ?? 1 } : {}),
   };
 }
 
@@ -193,7 +211,8 @@ function share(kind: GaugeKind, gauge: number, capacity: number): number {
 /** Whether `kind` is a valid input of the wire format. */
 export const validInput = (i: unknown): i is SegmentInput =>
   typeof i === 'object' && i !== null && Number.isInteger((i as SegmentInput).beat) && (i as SegmentInput).beat >= 0 && (INPUT_KINDS as readonly string[]).includes((i as SegmentInput).kind)
-  && ((i as SegmentInput).amount === undefined || (typeof (i as SegmentInput).amount === 'number' && Number.isFinite((i as SegmentInput).amount) && (i as SegmentInput).amount! >= 0));
+  && ((i as SegmentInput).amount === undefined || (typeof (i as SegmentInput).amount === 'number' && Number.isFinite((i as SegmentInput).amount) && (i as SegmentInput).amount! >= 0))
+  && ((i as SegmentInput).cover === undefined || (typeof (i as SegmentInput).cover === 'number' && (i as SegmentInput).cover! >= 0 && (i as SegmentInput).cover! <= 1));
 
 /** P10e-e R15: how many beats her openings move later when she notices a strain, by her lead style. */
 export const overDelayOf = (style: string): number => P.breath.overDelay[style] ?? P.breath.overDelay.other!;
@@ -348,6 +367,12 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
       }
       case 'passive':
         r.gauge += P.progressPerBeat;
+        // R27: the stillness inside her frame: a relief or a fidget is P15a's relief, and a noise of loudness × her ears × (1 − cover)
+        for (const g of [...at(b, 'relieve'), ...at(b, 'fidget')]) {
+          relief(g.beat, g.kind);
+          r.frameReliefs = (r.frameReliefs ?? 0) + 1;
+          r.frameNoise = (r.frameNoise ?? 0) + (g.amount ?? 0) * (env.hear ?? 1) * (1 - clamp(g.cover ?? 0, 0, 0.92));
+        }
         break;
       case 'gesture': {
         const bites = at(b, 'bite');
@@ -455,8 +480,15 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
     }
   }
   // every slip is a sound, by the physics it came from (the extra slips of a catch are the first one's)
-  const mainPart = { gasps: result.gasps - (secondPart?.gasps ?? 0), slips: result.slips - (secondPart?.slips ?? 0), reliefs: result.reliefs - (secondPart?.reliefs ?? 0) };
+  const mainPart = { gasps: result.gasps - (secondPart?.gasps ?? 0), slips: result.slips - (secondPart?.slips ?? 0), reliefs: result.reliefs - (secondPart?.reliefs ?? 0) - (result.frameReliefs ?? 0) };
   sounds = segmentNoise(mainPart, envMain.interaction, stillnessOf(draft));
+  // R27: the frame's reliefs and fidgets are as loud as she could hear them (a sound under `frameQuiet` is no noise: her speech covered it)
+  const frameNoise = (result.frameNoise ?? 0) * (1 - stillnessOf(draft));
+  if (frameNoise >= P.frameQuiet) {
+    const have = sounds.find((y) => y.kind === 'rustle');
+    if (have) have.loudness += frameNoise;
+    else sounds.push({ kind: 'rustle', loudness: Math.round(frameNoise * 1000) / 1000 });
+  }
   if (secondPart) {
     for (const x of segmentNoise(secondPart, secondPart.interaction, stillnessOf(draft))) {
       const have = sounds.find((y) => y.kind === x.kind);

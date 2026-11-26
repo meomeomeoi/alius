@@ -2,7 +2,7 @@
  * P15a: the state before each change to the blocking, so that a swipe, an edit or a delete takes back what came after a reply
  * (plan R7). Physics is never rolled back; only `blocking` (and, from Task 13, `moments`).
  */
-import type { CampaignState } from '../state/types';
+import type { CampaignState, SceneRecord } from '../state/types';
 import type { StagingSnapshot, WornSlot } from './state';
 import { TUNING } from '../tuning';
 
@@ -51,4 +51,11 @@ export function scrubLog(draft: CampaignState, drop: (kind: 'item' | 'contact' |
       if (Object.keys(rec).length === 0) delete snap.blocking[person];
     }
   }
+}
+
+/** P10e-e R24: the newest log entry that set a field of a person (who set it: its `source`), or undefined. */
+export function latestFor(scene: Pick<SceneRecord, 'stagingLog'> | undefined, person: string, field: string): StagingSnapshot | undefined {
+  const log = scene?.stagingLog ?? [];
+  for (let i = log.length - 1; i >= 0; i--) if (log[i]!.person === person && log[i]!.field === field) return log[i];
+  return undefined;
 }

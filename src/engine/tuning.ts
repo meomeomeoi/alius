@@ -156,6 +156,8 @@ export const TUNING = Object.freeze({
       } as Record<string, { readonly every: readonly [number, number]; readonly ask: number }>),
     }),
     gulp: Object.freeze({ swallows: Object.freeze([4, 8] as const), spillDirt: 60 }), progressPerBeat: 5,
+    /** P10e-e R27: a relief or fidget in her frame quieter than this (loudness × her ears × (1 − cover)) makes no noise: her speech, a voice, the rain covered it. */
+    frameQuiet: 0.2,
     asleep: Object.freeze({ perBeat: 0.08, exchanges: Object.freeze([1, 3] as const) }),
     forget: Object.freeze({ base: 0.10, cruel: 0.15, perImpunity: 0.002, from: 50 }), slipExtend: 1,
     blackout: Object.freeze({ slots: 1, stress: 5 }),

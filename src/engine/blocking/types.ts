@@ -125,6 +125,24 @@ export interface ItemEntry extends Described {
   promptHint: string;
   effects?: BlockingEffect[];
 }
+/** P10e-e R24: the frame of her time on an activity (her_activity.html `ACTS`, read by field). */
+export interface ActivityFrame {
+  absorb: number;
+  hear: number;
+  light: 'lamp' | 'screen' | 'dark';
+  unit: string;
+  total: number;
+  per: [number, number];
+  legs: 'swing' | 'tap' | 'still' | 'asleep' | 'beat';
+  hours?: number;
+  call?: true;
+  visitor?: true;
+  sleep?: true;
+  music?: true;
+  drink?: true;
+  /** The throne (24b): visitors one after another, her folder, her signature, her mug. */
+  audience?: true;
+}
 export interface BlockingActivityEntry extends Described {
   scope: Scope;
   contentTags?: string[];
@@ -138,6 +156,8 @@ export interface BlockingActivityEntry extends Described {
   judged?: true;
   sources?: Record<string, number>;
   fromActivities?: string[];
+  /** P10e-e R24: the frame of her time (see the schema). */
+  frame?: ActivityFrame;
   promptHint: string;
   effects?: BlockingEffect[];
 }

@@ -2718,6 +2718,17 @@ export const BlockingActivitySchema = BaseEntrySchema.extend({
   sources: sourceWeights.optional(),
   /** The P2 activity ids whose scene opens with this one (`scene.activityId`). */
   fromActivities: z.array(str).min(1).optional(),
+  /**
+   * P10e-e R24: the frame of her time (her_activity.html `ACTS`): how her presence drifts a phase (`absorb`), how well she hears the commander,
+   * her light, her clock (`unit`, `total`, `per` the seconds between her marks), her legs under the desk, her hours (absent: unknown) and what
+   * the activity brings (a call, a visitor, sleep, music, a drink). An activity with a frame starts `her_activity` when she placed the commander.
+   */
+  frame: z.object({
+    absorb: z.number().min(-1).max(1), hear: z.number().min(0).max(1), light: z.enum(['lamp', 'screen', 'dark']), unit: str, total: z.number().positive(),
+    per: z.tuple([z.number().positive(), z.number().positive()]), legs: z.enum(['swing', 'tap', 'still', 'asleep', 'beat']), hours: z.number().positive().optional(),
+    call: z.literal(true).optional(), visitor: z.literal(true).optional(), sleep: z.literal(true).optional(), music: z.literal(true).optional(), drink: z.literal(true).optional(),
+    audience: z.literal(true).optional(),
+  }).strict().optional(),
   label: blockLabel, description: str, promptHint: blockHint, effects: effectList,
 }).strict();
 
