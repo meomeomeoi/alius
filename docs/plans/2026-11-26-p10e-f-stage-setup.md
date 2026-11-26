@@ -116,17 +116,17 @@ Everything is saved as files in her own expressions folder.
   - `createArtSlots(manifest, assetUrl, unitKey, folders?: Map<string, StageFolder>)`: a slot in `folders` wins; `face(unitId)` reads `setup.face` first. URLs from the folder are used as given (they are server paths already, not `assetUrl`'d).
   - `app.refreshStage(): Promise<void>` reloads and rebuilds `art`, then redraws the open screen.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - a fake folder with `over.webp`, `over.fit.json` and `legs_astride.left.png` resolves `get(u, 'over')` with the sidecar and the folder URL;
   - with `art.json` also naming `over`, the folder's picture wins, and an `art.json`-only slot still resolves;
   - a `stage.json` with `face` beats `art.json`'s `sprite.face`;
   - a broken sidecar gives the picture with `{}` and **one** `console.warn` for the load; a broken `stage.json` gives `setup: null` and one warning;
   - `wallpaper.png` (not a slot) is ignored;
   - no folder → the map has no entry and `createArtSlots` answers exactly as without `folders`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** `load.ts`, the fourth parameter of `createArtSlots` and the app wiring. The load runs after `loadContent` and the art manifest, for the squad's named units with a `cardRef`; a campaign with none loads nothing.
-- [ ] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS, with no layout change.
-- [ ] **Step 5: Commit** `feat(P10e-f): her folder feeds the art slots`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** `load.ts`, the fourth parameter of `createArtSlots` and the app wiring. The load runs after `loadContent` and the art manifest, for the squad's named units with a `cardRef`; a campaign with none loads nothing.
+- [x] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS, with no layout change.
+- [x] **Step 5: Commit** `feat(P10e-f): her folder feeds the art slots`
 
 ### Task 3: Her look on the stage: stand, face, hand, accent
 

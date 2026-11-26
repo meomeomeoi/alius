@@ -147,6 +147,7 @@ import { pickSkin } from './ui/device/skins';
 import { createSound, type SoundId } from './ui/sound/sound';
 import { createSamples } from './ui/sound/samples';
 import { createArtSlots, type ArtSlots } from './ui/scene/art';
+import { loadStageFolders, type StageFolder } from './ui/stage/load';
 import { renderHub } from './ui/hub/hubScreen';
 import { endSlotBlock } from './ui/hub/model';
 import { renderMapTab } from './ui/map/mapTab';
@@ -209,6 +210,8 @@ export interface AliusApp {
   context: ContextBuilder;
   /** Re-renders the injected context after providers or directives changed. */
   refreshContext(): void;
+  /** P10e-f: reloads the squad's stage folders (her art and her look), rebuilds the art slots and redraws the open screen. */
+  refreshStage(): Promise<void>;
   shell: ShellApi;
   /** Opens the CCP intake wizard (refused in a read-only campaign chat). */
   openSetup(): void;
@@ -312,6 +315,34 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   /** P10e-e: the unit's card avatar file is the key of her art (stable across campaigns). */
   const artKey = (unitId: string): string | null => state?.squad.find((u) => u.id === unitId)?.cardRef ?? null;
   let art: ArtSlots = createArtSlots(null, deps.assetUrl ?? ((p) => p), artKey); // P10e-e: the instruments' pictures per slot (read by the instrument host)
+  /** P10e-e: the manifest as read at start; P10e-f: the squad's stage folders, keyed by card (the first source of the art slots). */
+  let artManifest: unknown = null;
+  let stageFolders = new Map<string, StageFolder>();
+  /** The chat and cards the folders were read for (a rewind or a replace of the same squad reads nothing again), and a counter that drops a stale load. */
+  let stageLoadedFor: string | null = null;
+  let stageLoads = 0;
+  const rebuildArt = (): void => { art = createArtSlots(artManifest, deps.assetUrl ?? ((p) => p), artKey, stageFolders); };
+  /**
+   * P10e-f: reads her stage folder for every named unit with a card. A campaign with none reads nothing; a chat switch while it
+   * runs drops its answer. The screen is redrawn only when there was or is something (no art = today's game, untouched).
+   */
+  async function loadStage(force: boolean): Promise<void> {
+    const units = (state?.squad ?? []).filter((u) => u.kind === 'named' && typeof u.cardRef === 'string' && u.cardRef !== '');
+    const key = `${st.getActiveChat()?.chatId ?? ''}|${units.map((u) => u.cardRef).sort().join(',')}`;
+    if (!force && key === stageLoadedFor) return;
+    stageLoadedFor = key;
+    const mine = ++stageLoads;
+    const had = stageFolders.size > 0;
+    if (had) { stageFolders = new Map(); rebuildArt(); } // nothing of another campaign's squad while the new one loads
+    const read = units.length === 0 ? new Map<string, StageFolder>() : await loadStageFolders(st, units).catch((e) => {
+      console.warn('[Alius] stage: the stage folders could not be read', e);
+      return new Map<string, StageFolder>();
+    });
+    if (mine !== stageLoads) return; // a newer load (a chat switch, a refresh) owns the result
+    stageFolders = read;
+    rebuildArt();
+    if (force || had || read.size > 0) shell.refresh();
+  }
   let load: LoadResult = { kind: 'none' };
   let state: CampaignState | null = null;
   let saver: ReturnType<typeof createSaver> | null = null;
@@ -1699,6 +1730,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       api.dispatch({ type: 'commander/seed', payload: {} }, { expectChatId: load.chatId });
     }
     carryOverContent();
+    void loadStage(false); // P10e-f: her stage folder (art and look); only when the chat or the squad's cards changed
     applyContext();
     syncBadges();
     adoptScene();
@@ -2722,6 +2754,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       return true;
     },
     refreshContext: applyContext,
+    refreshStage: () => loadStage(true),
     replaceState,
     openSetup,
     deployCampaign,
@@ -2882,8 +2915,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         contentErrors = [{ pack: '(loader)', file: '', path: '', message: errText(e) }];
       }
       // P10e-e: the art slots (content/local/art/art.json; absent or unreadable = none, a malformed entry is skipped by the resolver)
-      const artManifest = deps.loadArt ? await deps.loadArt().catch(() => null) : null;
-      art = createArtSlots(artManifest, deps.assetUrl ?? ((p) => p), artKey);
+      artManifest = deps.loadArt ? await deps.loadArt().catch(() => null) : null;
+      rebuildArt();
       if (contentErrors.length > 0) {
         for (const e of contentErrors) console.warn(`[Alius] content: ${e.pack} ${e.file} ${e.path} — ${e.message}`);
         toast('warn', `Content: ${contentErrors.length} error(s) — see SYS › debug`);

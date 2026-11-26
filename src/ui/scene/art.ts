@@ -18,7 +18,8 @@ export type ArtSlotId = (typeof ART_SLOT_IDS)[number];
 const PAIR_KEYS = ['legs_astride.left', 'legs_astride.right'] as const;
 /** A sidecar-only key: her scene sprite's own sidecar (the face point; slap README, weight's `S.face`). It has no file of its own. */
 const SPRITE_KEY = 'sprite';
-const MANIFEST_KEYS: readonly string[] = [...ART_SLOT_IDS, ...PAIR_KEYS];
+/** Every file key a slot may have: the slot ids and the two files of `legs_astride` as a pair (P10e-f: her folder's file names). */
+export const MANIFEST_KEYS: readonly string[] = [...ART_SLOT_IDS, ...PAIR_KEYS];
 
 /** Zones are points `[x, y]`, circles `[x, y, r]` or ellipses `[x, y, rx, ry, rot]` in the picture's own 0–1 coordinates; two feet in one picture carry one set per foot. */
 type ZoneSet = Record<string, number[]>;
@@ -40,6 +41,12 @@ export interface ArtPicture {
   pair?: { left: string; right: string };
 }
 
+/** The part of her stage folder (`src/ui/stage/load.ts`, `StageFolder`) the resolver reads; declared here so the scene does not import the setup screen. */
+export interface StageFolderLike {
+  slots: ReadonlyMap<string, { url: string; sidecar: ArtSidecar }>;
+  setup: { face?: { x: number; y: number } } | null;
+}
+
 export interface ArtGate {
   /** `explicit_scenes` is on for her (`explicitArtAllowed`); without it `over_explicit` is null. */
   explicit?: boolean;
@@ -53,7 +60,7 @@ export interface ArtSlots {
 
 const num = z.number().finite();
 const zoneSet = z.record(z.string(), z.array(num).min(2).max(5));
-const sidecarSchema = z.object({
+export const sidecarSchema = z.object({
   fit: z.record(z.string(), num).optional(),
   zones: z.union([z.object({ right: zoneSet, left: zoneSet }), zoneSet]).optional(),
   feet: z.enum(['one', 'pair', 'two']).optional(),
@@ -93,15 +100,22 @@ export async function loadArtManifest(fetch: () => Promise<unknown>): Promise<un
 /**
  * The resolver. `manifest` is `content/local/art/art.json` (absent, null or not an object = no art): `{ [unitKey]: { [slot]: { file, sidecar? } } }`,
  * keyed by the unit's card avatar file name (stable across campaigns). A malformed entry is skipped, and the problems are logged once.
+ * P10e-f: `folders` (her stage folder, `loadStageFolders`, keyed the same way) is the first source: a slot found there wins over
+ * the manifest, its URL is used as given (a server path already), and her `stage.json` face wins over the manifest's `sprite.face`.
  */
-export function createArtSlots(manifest: unknown, assetUrl: (p: string) => string, unitKey: (unitId: string) => string | null): ArtSlots {
-  const byUnit = new Map<string, Map<string, { file: string; sidecar: ArtSidecar }>>();
+export function createArtSlots(
+  manifest: unknown,
+  assetUrl: (p: string) => string,
+  unitKey: (unitId: string) => string | null,
+  folders?: ReadonlyMap<string, StageFolderLike>,
+): ArtSlots {
+  const byUnit = new Map<string, Map<string, { url: string; sidecar: ArtSidecar }>>();
   const faces = new Map<string, { x: number; y: number }>();
   const problems: string[] = [];
   if (manifest !== null && typeof manifest === 'object' && !Array.isArray(manifest)) {
     for (const [key, slots] of Object.entries(manifest as Record<string, unknown>)) {
       if (slots === null || typeof slots !== 'object' || Array.isArray(slots)) { problems.push(`${key}: not an object`); continue; }
-      const kept = new Map<string, { file: string; sidecar: ArtSidecar }>();
+      const kept = new Map<string, { url: string; sidecar: ArtSidecar }>();
       for (const [slot, raw] of Object.entries(slots as Record<string, unknown>)) {
         if (slot === SPRITE_KEY) {
           const sprite = spriteSchema.safeParse(raw);
@@ -112,13 +126,22 @@ export function createArtSlots(manifest: unknown, assetUrl: (p: string) => strin
         if (!MANIFEST_KEYS.includes(slot)) { problems.push(`${key}.${slot}: unknown slot`); continue; }
         const parsed = entrySchema.safeParse(raw);
         if (!parsed.success) { problems.push(`${key}.${slot}: ${parsed.error.issues.map((i) => `${i.path.join('.') || '(entry)'} ${i.message}`).join('; ')}`); continue; }
-        kept.set(slot, { file: parsed.data.file, sidecar: parsed.data.sidecar ?? {} });
+        kept.set(slot, { url: assetUrl(ART_ROOT + parsed.data.file), sidecar: parsed.data.sidecar ?? {} });
       }
       if (kept.size > 0) byUnit.set(key, kept);
     }
   }
   if (problems.length > 0) console.warn(`[Alius] art: ${problems.length} entr${problems.length === 1 ? 'y' : 'ies'} skipped — ${problems.join(' | ')}`);
-  const urlOf = (file: string) => assetUrl(ART_ROOT + file);
+  for (const [key, folder] of folders ?? []) {
+    if (folder.slots.size > 0) {
+      const merged = new Map([...(byUnit.get(key) ?? []), ...folder.slots]); // her folder wins, slot by slot
+      // `legs_astride` as a pair in her folder wins over a single `legs_astride` of the manifest (and the reverse)
+      if (folder.slots.has(PAIR_KEYS[0]) && folder.slots.has(PAIR_KEYS[1]) && !folder.slots.has('legs_astride')) merged.delete('legs_astride');
+      if (folder.slots.has('legs_astride') && !(folder.slots.has(PAIR_KEYS[0]) && folder.slots.has(PAIR_KEYS[1]))) { merged.delete(PAIR_KEYS[0]); merged.delete(PAIR_KEYS[1]); }
+      byUnit.set(key, merged);
+    }
+    if (folder.setup?.face !== undefined) faces.set(key, folder.setup.face);
+  }
   return {
     get(unitId, slot, gate) {
       if (slot === 'over_explicit' && gate?.explicit !== true) return null;
@@ -129,10 +152,10 @@ export function createArtSlots(manifest: unknown, assetUrl: (p: string) => strin
       if (slot === 'legs_astride') {
         const left = slots.get(PAIR_KEYS[0]), right = slots.get(PAIR_KEYS[1]);
         if (left !== undefined && right !== undefined && (entry === undefined || entry.sidecar.feet === 'pair')) {
-          return { url: urlOf(left.file), sidecar: { ...(entry?.sidecar ?? left.sidecar), feet: 'pair' }, pair: { left: urlOf(left.file), right: urlOf(right.file) } };
+          return { url: left.url, sidecar: { ...(entry?.sidecar ?? left.sidecar), feet: 'pair' }, pair: { left: left.url, right: right.url } };
         }
       }
-      return entry === undefined ? null : { url: urlOf(entry.file), sidecar: entry.sidecar };
+      return entry === undefined ? null : { url: entry.url, sidecar: entry.sidecar };
     },
     face(unitId) {
       const key = unitKey(unitId);

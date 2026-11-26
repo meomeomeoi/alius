@@ -120,3 +120,20 @@ describe('art slots (P10e-e)', () => {
     expect(await loadArtManifest(async () => ({ a: 1 }))).toEqual({ a: 1 });
   });
 });
+
+describe('art slots: her stage folder as the first source (P10e-f)', () => {
+  it('a folder slot wins with its URL as given; the face of her stage.json wins', () => {
+    const folders = new Map([['Mira.png', { slots: new Map([['over', { url: '/characters/Mira/alius/over.png?t=1', sidecar: { fit: { height: 1 } } }]]), setup: { face: { x: 0.5, y: 0.25 } } }]]);
+    const art = createArtSlots({ 'Mira.png': { over: { file: 'mira/over.webp' }, face_close: { file: 'mira/face.webp' }, sprite: { sidecar: { face: { x: 0.1, y: 0.1 } } } } }, assetUrl, unitKey, folders);
+    expect(art.get('u1', 'over')).toEqual({ url: '/characters/Mira/alius/over.png?t=1', sidecar: { fit: { height: 1 } } });
+    expect(art.get('u1', 'face_close')?.url).toBe('ext://content/local/art/mira/face.webp');
+    expect(art.face('u1')).toEqual({ x: 0.5, y: 0.25 });
+  });
+
+  it('over_explicit from her folder keeps its gate', () => {
+    const folders = new Map([['Mira.png', { slots: new Map([['over_explicit', { url: '/characters/Mira/alius/over_explicit.png', sidecar: {} }]]), setup: null }]]);
+    const art = createArtSlots(null, assetUrl, unitKey, folders);
+    expect(art.get('u1', 'over_explicit')).toBeNull();
+    expect(art.get('u1', 'over_explicit', { explicit: true })?.url).toBe('/characters/Mira/alius/over_explicit.png');
+  });
+});
