@@ -170,6 +170,16 @@ describe('the preview in the mini-game (P10e-f Task 8)', () => {
     expect(JSON.stringify(getSettings(st))).toBe(before);
   });
 
+  it('in the shell it stands after the toast host and before the modal layer (a modal opened over it lies on top)', async () => {
+    const { ctx, her, shell } = setup();
+    shell.innerHTML = '<div class="alius-frame"></div><div class="alius-stage-sheet"></div><div class="alius-toasts"></div><div class="alius-modal-layer"></div>';
+    openPreview(her.id, 'over', { url: 'blob:test/over', sidecar: {} }, ctx);
+    await flush();
+    expect(overlay()!.parentElement).toBe(shell);
+    expect(overlay()!.nextElementSibling).toBe(shell.querySelector('.alius-modal-layer')); // same z (3) as the modal backdrop: the later one is on top
+    expect(overlay()!.previousElementSibling).toBe(shell.querySelector('.alius-toasts'));
+  });
+
   it('closing removes the overlay and resets the scene stage; Esc too', async () => {
     const { ctx, her } = setup();
     const reset = vi.fn();

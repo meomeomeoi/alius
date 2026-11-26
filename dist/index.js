@@ -83959,7 +83959,7 @@ function renderLookEditor(host, draft, opts) {
   const dot2 = h("span", { class: "alius-stage-face-dot", "aria-hidden": "true" });
   const figure2 = h("span", { class: "alius-sprite-img alius-stage-figure", role: "button", "aria-label": "Set her face point", ...analyzeAttrs("glossary:stage_face") }, img2, dot2);
   const sprite = h("div", { class: "alius-sprite pos-center alius-has-stand" }, figure2);
-  const view3 = h("div", { class: "alius-stage-preview", "data-sprite": opts.spriteUrl === null ? "none" : "found" }, sprite);
+  const view3 = h("div", { class: "alius-stage-look-view", "data-sprite": opts.spriteUrl === null ? "none" : "found" }, sprite);
   const placeDot = () => {
     const f = draft.face;
     dot2.hidden = f === void 0;
@@ -85645,7 +85645,7 @@ function openPreview(unitId, key, draft, ctx2) {
     }
   });
   const host = (typeof document !== "undefined" ? document.getElementById("alius-shell") : null) ?? document.body;
-  host.append(overlay);
+  host.insertBefore(overlay, host.querySelector(":scope > .alius-modal-layer"));
   current2 = { st: ctx2.st, close };
   resetSceneStage();
   const s = staging;
@@ -86229,7 +86229,7 @@ function openStageSheet(unitId, ctx2) {
       void requestClose();
     }
   });
-  host.append(sheet);
+  host.insertBefore(sheet, host.querySelector(":scope > .alius-toasts"));
   current3 = { st: ctx2.st, close: finish8 };
   sheet.focus();
   return () => {

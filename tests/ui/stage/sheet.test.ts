@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import { handFamily, handScale } from '../../../src/engine/hand';
@@ -78,7 +79,7 @@ describe('her page: sprites, stand, hand, accent (P10e-f)', () => {
         st.stageFiles.set(s.squad[0].cardRef!, new Map([['stage.json', json({ hand: [...reg.handFonts.keys()][3], accent: '#123456' })]]));
       },
     });
-    const sprite = sheet.querySelector<HTMLElement>('.alius-stage-preview .alius-sprite.alius-has-stand')!;
+    const sprite = sheet.querySelector<HTMLElement>('.alius-stage-look-view .alius-sprite.alius-has-stand')!;
     expect(sprite.querySelector('.alius-sprite-img')).not.toBeNull();
     const slider = (k: string) => sheet.querySelector<HTMLInputElement>(`input[name="stand.${k}"]`)!;
     expect([slider('scale').min, slider('scale').max, slider('x').min, slider('x').max, slider('y').min, slider('y').max]).toEqual(['0.5', '1.6', '-0.5', '0.5', '-0.5', '0.5']);
@@ -99,6 +100,15 @@ describe('her page: sprites, stand, hand, accent (P10e-f)', () => {
     expect(await blobJson(blob as Blob)).toEqual({ hand: [...reg.handFonts.keys()][3], accent: '#123456', stand: { scale: 1.2, x: 0, y: -0.1 }, face: { x: 0.47, y: 0.17 } });
     expect(refresh).toHaveBeenCalledTimes(1);
     expect(sheet.querySelector<HTMLButtonElement>('[data-action="save"]')!.disabled).toBe(true); // nothing left unsaved
+  });
+
+  it('the look view has a class of its own: CHECK\'s overlay class (`.alius-stage-preview`) is not on her page, and is styled once', async () => {
+    const { sheet } = await open();
+    expect(sheet.querySelector('.alius-stage-look-view')).not.toBeNull();
+    expect(sheet.querySelector('.alius-stage-preview')).toBeNull();
+    const css = readFileSync('css/75-stage-setup.css', 'utf8');
+    expect(css.match(/\.alius-stage-preview\s*\{/g)?.length).toBe(1); // only the overlay's own rule
+    expect(css).not.toMatch(/\.alius-stage-preview(\s+[.#\w]|\[)/); // no rule of the look view under the overlay's name
   });
 
   it('saveStageSetup writes stage.json and reloads', async () => {
@@ -165,6 +175,21 @@ describe('her page: sprites, stand, hand, accent (P10e-f)', () => {
     expect(sheet.isConnected).toBe(false);
   });
 
+  it('in the shell it stands before the toast host (a toast it raises lies over it) and before the modal layer', async () => {
+    const shell = document.createElement('div');
+    shell.id = 'alius-shell';
+    shell.innerHTML = '<div class="alius-frame"></div><div class="alius-toasts"></div><div class="alius-modal-layer"></div>';
+    document.body.append(shell);
+    const { sheet } = await open();
+    expect(sheet.parentElement).toBe(shell);
+    expect(sheet.nextElementSibling).toBe(shell.querySelector('.alius-toasts')); // same z (2): the later one in the DOM is on top
+    const css = readFileSync('css/75-stage-setup.css', 'utf8');
+    const z = (sel: string, file: string) => Number(new RegExp(`${sel.replace(/\./g, '\\.')}\\s*\\{[^}]*z-index:\\s*(\\d+)`).exec(readFileSync(file, 'utf8'))?.[1]);
+    expect(z('.alius-stage-sheet', 'css/75-stage-setup.css')).toBe(z('.alius-toasts', 'css/10-shell.css'));
+    expect(z('.alius-stage-sheet', 'css/75-stage-setup.css')).toBeLessThan(z('.alius-modal-backdrop', 'css/10-shell.css'));
+    expect(css).not.toMatch(/z-index:\s*(1\d|[2-9]\d|\d{3,})/); // every z below the analysis panel's 10
+  });
+
   it('closing with nothing changed does not ask', async () => {
     const { sheet, close, modal } = await open();
     close();
@@ -186,7 +211,7 @@ describe('her page: sprites, stand, hand, accent (P10e-f)', () => {
   it('a woman with no sprite folder: "no sprites found", and the page still works', async () => {
     const { sheet, upload } = await open();
     expect(sheet.querySelector('.alius-stage-no-sprites')!.textContent).toContain('No sprites found');
-    expect(sheet.querySelector('.alius-stage-preview')!.getAttribute('data-sprite')).toBe('none');
+    expect(sheet.querySelector('.alius-stage-look-view')!.getAttribute('data-sprite')).toBe('none');
     sheet.querySelectorAll<HTMLButtonElement>('.alius-stage-swatch')[0].click();
     sheet.querySelector<HTMLButtonElement>('[data-action="save"]')!.click();
     await flush();

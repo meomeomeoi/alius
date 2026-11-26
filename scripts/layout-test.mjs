@@ -597,7 +597,42 @@ for (const size of SIZES) {
 // P10e-f Task 9: her page in SYS › STAGE (`stage`) and every slot's editor on it (`stageslot`): the sheet fills the viewport, the page does not
 // overflow, every control lies inside the sheet's width and, scrolled into view, inside the viewport and on top (nothing covers it), and no
 // element of the sheet stands at or above the analysis panel's z 10
-const STAGE_FIXTURES = ['stage', 'stageslot'];
+// P10e-f fix wave: nothing of the sheet covers another of its controls or headings where it stands (the body scrolled to each in turn, not
+// centred), a toast raised over the sheet and a modal opened over the preview are on top, and CHECK's preview fills the viewport (`stagecheck`)
+const STAGE_FIXTURES = ['stage', 'stageslot', 'stagecheck'];
+/** Runs in the page: the sheet's controls and headings that another element of the sheet lies over (five points of each, each scrolled to nearest from the top). */
+function stageCovered() {
+  const out = [];
+  const sheet = document.querySelector('.alius-stage-sheet');
+  if (!sheet) return ['no sheet'];
+  const body = sheet.querySelector('.alius-stage-sheet-body');
+  const targets = [...sheet.querySelectorAll('button, select, input:not([type="file"]), label.alius-field, h2, h3')].filter((el) => { const b = el.getBoundingClientRect(); return b.width > 0 && b.height > 0 && getComputedStyle(el).visibility !== 'hidden'; });
+  for (const el of targets) {
+    if (body) body.scrollTop = 0;
+    el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    const b = el.getBoundingClientRect();
+    const name = `${el.tagName.toLowerCase()}${el.dataset.action ? `[${el.dataset.action}]` : el.name ? `[${el.name}]` : ''} "${(el.textContent || '').trim().slice(0, 30)}"`;
+    const pts = [[b.left + b.width / 2, b.top + b.height / 2], [b.left + 2, b.top + 2], [b.right - 2, b.top + 2], [b.left + 2, b.bottom - 2], [b.right - 2, b.bottom - 2]];
+    for (const [x, y] of pts) {
+      if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
+      const hit = document.elementFromPoint(x, y);
+      if (hit === null || hit === el || el.contains(hit) || (hit.contains(el) && (hit.tagName === 'LABEL' || hit.tagName === 'H2' || hit.tagName === 'H3'))) continue;
+      out.push(`${name} is covered at ${Math.round(x)},${Math.round(y)} by ${hit.className || hit.tagName}`);
+      break;
+    }
+  }
+  if (body) body.scrollTop = 0;
+  return out;
+}
+/** Runs in the page: whether the element at the middle of the last of `sel` is inside it (it is on top). */
+function onTop(sel) {
+  const all = document.querySelectorAll(sel);
+  const el = all[all.length - 1];
+  if (!el) return `nothing at ${sel}`;
+  const b = el.getBoundingClientRect();
+  const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+  return hit !== null && (hit === el || el.contains(hit)) ? null : `${sel} is under ${hit?.className || hit?.tagName}`;
+}
 /** Runs in the page: what is wrong with the sheet's controls under `scope` (scrolling each one into view). */
 function stageControls(scope) {
   const out = [];
@@ -632,6 +667,21 @@ for (const size of SIZES) {
     const over = await p.evaluate(() => ({ w: document.documentElement.scrollWidth, h: document.documentElement.scrollHeight }));
     if (over.w > size[0] + 1 || over.h > size[1] + 1) fail(size, fixture, `the page overflows: ${over.w}x${over.h}`);
     if (fixture === 'stage') for (const f of await p.evaluate(stageControls, '.alius-stage-sheet')) fail(size, fixture, f);
+    if (fixture === 'stage' || fixture === 'stageslot') for (const f of await p.evaluate(stageCovered)) fail(size, fixture, f);
+    if (fixture === 'stage') {
+      await p.evaluate(() => window.__stageToast('A toast over the sheet.'));
+      const why = await p.evaluate(onTop, '.alius-toast');
+      if (why) fail(size, fixture, `a toast raised over the sheet: ${why}`);
+    }
+    if (fixture === 'stagecheck') {
+      const pv = await p.evaluate(() => { const el = document.querySelector('.alius-stage-preview'); if (!el) return null; const b = el.getBoundingClientRect(); return { left: b.left, top: b.top, width: b.width, height: b.height, inner: [innerWidth, innerHeight] }; });
+      if (!pv) fail(size, fixture, 'CHECK opened no preview');
+      else if (Math.abs(pv.left) > 1 || Math.abs(pv.top) > 1 || Math.abs(pv.width - pv.inner[0]) > 1 || Math.abs(pv.height - pv.inner[1]) > 1) fail(size, fixture, `the preview is ${JSON.stringify(pv)}, not the viewport`);
+      await p.evaluate(() => window.__stageModal());
+      await p.waitForTimeout(100);
+      const why = await p.evaluate(onTop, '.alius-modal');
+      if (why) fail(size, fixture, `a modal opened over the preview: ${why}`);
+    }
     if (fixture === 'stageslot') {
       const keys = await p.evaluate(() => [...document.querySelectorAll('.alius-stage-slot-list li[data-slot]')].map((li) => li.dataset.slot));
       if (keys.length === 0) fail(size, fixture, 'no slot listed');

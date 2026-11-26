@@ -39,7 +39,7 @@ export function renderLookEditor(host: HTMLElement, draft: StageSetup, opts: Loo
   // the figure carries the stage's own class: the stand's transform of `.alius-sprite.alius-has-stand .alius-sprite-img` is the scene's
   const figure = h('span', { class: 'alius-sprite-img alius-stage-figure', role: 'button', 'aria-label': 'Set her face point', ...analyzeAttrs('glossary:stage_face') }, img, dot);
   const sprite = h('div', { class: 'alius-sprite pos-center alius-has-stand' }, figure);
-  const view = h('div', { class: 'alius-stage-preview', 'data-sprite': opts.spriteUrl === null ? 'none' : 'found' }, sprite);
+  const view = h('div', { class: 'alius-stage-look-view', 'data-sprite': opts.spriteUrl === null ? 'none' : 'found' }, sprite);
 
   const placeDot = (): void => {
     const f = draft.face;

@@ -1,7 +1,8 @@
 /*
  * P10e-f: SYS › STAGE (her list and the list of every slot) and her page (a full-screen sheet over the shell). Every z-index stays
- * below the analysis panel's 10 (the sheet is 2: above the scene's device, below the shell's modals at 3; the preview of a slot is 3, over
- * the sheet). No url().
+ * below the analysis panel's 10. The sheet is 2, as the toasts: it is inserted before `.alius-toasts`, so a toast it raises lies over it;
+ * the preview of a slot (CHECK) is 3, as the modal backdrop: it is inserted before `.alius-modal-layer`, so it lies over the sheet and the
+ * toasts and a modal opened over it lies on top. No url().
  */
 #alius-shell .alius-stage-list {
   list-style: none;
@@ -88,7 +89,7 @@
 #alius-shell .alius-stage-wanted { margin: 0; padding-left: 18px; columns: 3 14em; }
 #alius-shell .alius-stage-wanted [data-found="false"] { color: var(--alius-accent); }
 
-/* how she stands: her view drawn with the stage's own classes, in a box of its own height */
+/* how she stands: her view drawn with the stage's own classes, in a box of its own height (`.alius-stage-look-view`: not CHECK's overlay class) */
 #alius-shell .alius-stage-stand-row {
   display: flex;
   gap: 16px;
@@ -96,7 +97,7 @@
   flex-wrap: wrap;
 }
 
-#alius-shell .alius-stage-preview {
+#alius-shell .alius-stage-look-view {
   position: relative;
   width: 300px;
   height: 380px;
@@ -106,7 +107,7 @@
   container-type: size;
 }
 
-#alius-shell .alius-stage-preview .alius-sprite {
+#alius-shell .alius-stage-look-view .alius-sprite {
   --alius-sprite-h: 380px;
   top: 4%;
   bottom: auto;
@@ -128,7 +129,7 @@
   pointer-events: none;
 }
 
-#alius-shell .alius-stage-preview[data-sprite="none"] .alius-stage-figure { min-width: 120px; }
+#alius-shell .alius-stage-look-view[data-sprite="none"] .alius-stage-figure { min-width: 120px; }
 
 #alius-shell .alius-stage-face-dot {
   position: absolute;
@@ -241,7 +242,7 @@
   pointer-events: none;
 }
 
-/* CHECK: the slot's mini-game in a sandbox over the shell (z 3: above her page at 2; a modal opened later still lands above it) */
+/* CHECK: the slot's mini-game in a sandbox over the shell (z 3: above her page at 2; before the modal layer in the DOM, so a modal lands above it) */
 #alius-shell .alius-stage-preview {
   position: absolute;
   inset: 0;

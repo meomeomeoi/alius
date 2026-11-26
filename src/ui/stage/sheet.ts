@@ -9,8 +9,8 @@ import type { StageCtx } from './section';
 import { renderSlotList } from './slotEditor';
 
 /**
- * P10e-f: her page, a full-screen sheet over the shell (z 2: above the scene's device, below the shell's modals and the analysis
- * panel). Her sprites, how she stands and her face point, her hand, her accent; her slots (`renderSlotList`, in `.alius-stage-slots-host`).
+ * P10e-f: her page, a full-screen sheet over the shell (z 2: above the scene's device, below the shell's toasts, which come after it in
+ * the DOM at the same z, its modals and the analysis panel). Her sprites, how she stands and her face point, her hand, her accent; her slots (`renderSlotList`, in `.alius-stage-slots-host`).
  * The edits are a draft: SAVE writes `stage.json` (a slot saves itself), closing with unsaved edits asks once, a chat switch closes it at
  * once and saves nothing. Setup data about a card, outside any campaign: nothing here dispatches, saves a campaign or draws an rng.
  */
@@ -178,7 +178,8 @@ export function openStageSheet(unitId: string, ctx: StageCtx): () => void {
     if (e.key === 'Escape') { e.preventDefault(); void requestClose(); }
   });
 
-  host.append(sheet);
+  // before the toast host: the sheet and the toasts share z 2, so the later one in the DOM (the toasts it raises) lies on top
+  host.insertBefore(sheet, host.querySelector(':scope > .alius-toasts'));
   current = { st: ctx.st, close: finish };
   sheet.focus();
   return () => { void requestClose(); };

@@ -1,6 +1,6 @@
 /**
  * P10e-f: CHECK — a slot tried in its mini-game (spec §16.3). The real scene screen runs in a sandbox overlay over the shell (z 3: above
- * her page, below the analysis panel) on a demo state built for the slot's instrument (`demo.ts`) with her as the holder:
+ * her page and the toasts, below a modal (it stands before the modal layer) and the analysis panel) on a demo state built for the slot's instrument (`demo.ts`) with her as the holder:
  * - her real sprites (a `FakeStAdapter` that asks the app's adapter for her sprite and avatar URLs, and answers everything else itself);
  * - the slot's unsaved draft as its picture (an `ArtSlots` over her folder with the draft in place of the slot; the other slots read as
  *   in play);
@@ -235,7 +235,8 @@ export function openPreview(unitId: string, key: SlotKey, draft: SlotDraft, ctx:
   });
 
   const host = (typeof document !== 'undefined' ? document.getElementById('alius-shell') : null) ?? document.body;
-  host.append(overlay);
+  // before the modal layer: the preview and the modal backdrop share z 3, so the later one in the DOM (a modal opened over it) lies on top
+  host.insertBefore(overlay, host.querySelector(':scope > .alius-modal-layer'));
   current = { st: ctx.st, close };
   resetSceneStage(); // and nothing the real scene left by the same scene id reaches the demo
   const s = staging;
