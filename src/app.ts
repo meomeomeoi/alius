@@ -322,20 +322,29 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   /** The chat and cards the folders were read for (a rewind or a replace of the same squad reads nothing again), and a counter that drops a stale load. */
   let stageLoadedFor: string | null = null;
   let stageLoads = 0;
+  /** The chat the folders and looks held now were read in (null after a chat switch): a reload in the same chat keeps them until it lands. */
+  let stageChat: string | null = null;
   const rebuildArt = (): void => { art = createArtSlots(artManifest, deps.assetUrl ?? ((p) => p), artKey, stageFolders); };
   /**
    * P10e-f: reads her stage folder for every named unit with a card. A campaign with none reads nothing; a chat switch while it
-   * runs drops its answer. The screen is redrawn only when there was or is something (no art = today's game, untouched).
+   * runs drops its answer. The screen is redrawn only when there was or is something (no art = today's game, untouched). Called after
+   * every load and every engine dispatch (a woman who joins in play); the key check makes it free when the chat and the cards are unchanged.
    */
   async function loadStage(force: boolean): Promise<void> {
     const units = (state?.squad ?? []).filter((u) => u.kind === 'named' && typeof u.cardRef === 'string' && u.cardRef !== '');
-    const key = `${st.getActiveChat()?.chatId ?? ''}|${units.map((u) => u.cardRef).sort().join(',')}`;
+    const chat = st.getActiveChat()?.chatId ?? '';
+    const key = `${chat}|${units.map((u) => u.cardRef).sort().join(',')}`;
     if (!force && key === stageLoadedFor) return;
     stageLoadedFor = key;
     const mine = ++stageLoads;
     const had = stageFolders.size > 0;
-    if (had) { stageFolders = new Map(); rebuildArt(); } // nothing of another campaign's squad while the new one loads
-    setStageLooks(new Map()); // her look is keyed by unit id, and ids repeat across campaigns
+    if (chat !== stageChat) {
+      // another chat: nothing of another campaign's squad while the new one loads (her look is keyed by unit id, and ids repeat across
+      // campaigns); in the same chat (a refresh, a woman who joined) what is drawn stays until the new read lands
+      stageChat = chat;
+      if (had) { stageFolders = new Map(); rebuildArt(); }
+      setStageLooks(new Map());
+    }
     const read = units.length === 0 ? new Map<string, StageFolder>() : await loadStageFolders(st, units).catch((e) => {
       console.warn('[Alius] stage: the stage folders could not be read', e);
       return new Map<string, StageFolder>();
@@ -2944,6 +2953,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
           resetDynamicSection(); // P15: an exit card left open in a dossier belongs to one chat (the key repeats across campaigns)
           setStageLooks(new Map()); // P10e-f: her look is keyed by unit id (ids repeat across campaigns); openCampaign reads the new squad's
           stageLoadedFor = null;
+          stageChat = null;
           openCampaign();
           staging.resume();
           shell.refresh();
@@ -2984,6 +2994,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       }
       reportEvents(r.events);
       if (r.state !== before) announceUnlocks(before, r.state);
+      if (r.state !== before) void loadStage(false); // P10e-f: a woman who joined in play (a new card in the squad) gets her stage folder
       applyContext();
       syncBadges();
       syncSound(r.events); // P15a: muffled under a hood, a bell on every move of a bell collar

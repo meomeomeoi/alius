@@ -87396,21 +87396,26 @@ function createApp(st3, deps) {
   let stageFolders = /* @__PURE__ */ new Map();
   let stageLoadedFor = null;
   let stageLoads = 0;
+  let stageChat = null;
   const rebuildArt = () => {
     art2 = createArtSlots(artManifest, deps.assetUrl ?? ((p) => p), artKey, stageFolders);
   };
   async function loadStage(force) {
     const units = (state?.squad ?? []).filter((u) => u.kind === "named" && typeof u.cardRef === "string" && u.cardRef !== "");
-    const key = `${st3.getActiveChat()?.chatId ?? ""}|${units.map((u) => u.cardRef).sort().join(",")}`;
+    const chat = st3.getActiveChat()?.chatId ?? "";
+    const key = `${chat}|${units.map((u) => u.cardRef).sort().join(",")}`;
     if (!force && key === stageLoadedFor) return;
     stageLoadedFor = key;
     const mine = ++stageLoads;
     const had = stageFolders.size > 0;
-    if (had) {
-      stageFolders = /* @__PURE__ */ new Map();
-      rebuildArt();
+    if (chat !== stageChat) {
+      stageChat = chat;
+      if (had) {
+        stageFolders = /* @__PURE__ */ new Map();
+        rebuildArt();
+      }
+      setStageLooks(/* @__PURE__ */ new Map());
     }
-    setStageLooks(/* @__PURE__ */ new Map());
     const read2 = units.length === 0 ? /* @__PURE__ */ new Map() : await loadStageFolders(st3, units).catch((e) => {
       console.warn("[Alius] stage: the stage folders could not be read", e);
       return /* @__PURE__ */ new Map();
@@ -90038,6 +90043,7 @@ function createApp(st3, deps) {
           resetDynamicSection();
           setStageLooks(/* @__PURE__ */ new Map());
           stageLoadedFor = null;
+          stageChat = null;
           openCampaign();
           staging.resume();
           shell.refresh();
@@ -90070,6 +90076,7 @@ function createApp(st3, deps) {
       }
       reportEvents(r.events);
       if (r.state !== before8) announceUnlocks(before8, r.state);
+      if (r.state !== before8) void loadStage(false);
       applyContext();
       syncBadges();
       syncSound(r.events);
