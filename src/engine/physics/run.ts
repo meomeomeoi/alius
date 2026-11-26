@@ -253,6 +253,9 @@ function withoutLeak(view: PhysicsRun, second: NonNullable<PhysicsRun['second']>
 function releaseOf(state: CampaignState, reg: Registries, run: PhysicsRun): Release {
   const left = remainingOf(reg, run);
   const holds: HoldsUntil = effectiveHoldsUntil(state, reg, run.holderId);
+  // Ruling U: the scent instrument's head is the gauge; a full head is "lost in her", recoverable: never a broken limit or a collapse (a
+  // fill is not the air, so no blackout either): at a boundary that finds it full she lets go
+  if (left <= 0 && run.headed) return 'release';
   if (left <= 0) return holds === 'blackout' && isAir(reg, run.physicsId) ? 'blackout' : holds === 'signal' ? 'collapse' : 'limit_broken';
   if (holds === 'signal' && left <= TUNING.physics.releaseAt.signal) return 'release';
   if (holds === 'limit' && left <= TUNING.physics.releaseAt.limit) return 'release';

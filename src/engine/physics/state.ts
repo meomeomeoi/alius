@@ -15,7 +15,7 @@ export type HoldsUntil = 'signal' | 'limit' | 'blackout';
 export type Attention = 'watching' | 'glancing' | 'busy';
 
 /** What the player does in a beat (`SegmentInput.kind`). */
-export const INPUT_KINDS = ['breathe', 'hold', 'release', 'mouth_breath', 'gap_breath', 'shift_weight', 'part', 'ask_rest', 'strain', 'uneven', 'inhale'] as const;
+export const INPUT_KINDS = ['breathe', 'hold', 'release', 'mouth_breath', 'gap_breath', 'shift_weight', 'part', 'ask_rest', 'strain', 'uneven', 'inhale', 'scatter'] as const;
 export type InputKind = (typeof INPUT_KINDS)[number];
 /**
  * One input of a beat. `amount` (P10e-e R1, ≥ 0) is absent for every input of the turn-based card and means, per kind: `breathe`, the share of
@@ -24,7 +24,8 @@ export type InputKind = (typeof INPUT_KINDS)[number];
  * (`1.2·max(0, |err| − tol/2)`), costing `drain × amount` (absent or 0: nothing); with `part: 'tilted'` (Ruling S) the beat ended held but
  * off level, which a shift on it or the next beat reads as uneven (it is never a slip: the tilt costs only as drain). `inhale` (R18: scent's
  * head), the words a breath left in the head this beat, each worth the gauge's capacity over the head's (`headCapacity`); a segment that holds
- * any `inhale` fills by them alone. `mouth_breath` with `amount` (R18), the words blown out of the head (absent: the card's flat cost).
+ * any `inhale` fills by them alone. `mouth_breath` with `amount` (R18), the words blown out of the head (absent: the card's flat cost). `scatter` (Ruling U), the words that left the
+ * head without the mouth (a cough, the overflow's recovery, an answer's spent words): the fill falls by as many words; no relief, nothing else.
  */
 export interface SegmentInput { beat: number; kind: InputKind; atMs?: number; part?: string; amount?: number }
 
@@ -168,6 +169,11 @@ export interface PhysicsRun {
    * catch is not counted. `physics_outcome` carries it, and the end's directive says it in one sentence.
    */
   tally?: Record<string, number>;
+  /**
+   * Ruling U: the scent instrument reports the head as the gauge (a decision segment held an `inhale`): a full head is "lost in her", which
+   * the commander recovers from, so a spent gauge is never a broken limit, a collapse or a blackout (she lets go). Absent: as before.
+   */
+  headed?: true;
 }
 
 export const GAUGE_FULL = 100;

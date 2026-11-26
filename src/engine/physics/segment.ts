@@ -286,6 +286,8 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
           r.gauge -= g.amount === undefined ? P.saturation.mouth : g.amount * word;
           relief(g.beat, 'mouth_breath');
         }
+        // Ruling U: words that left the head without the mouth (a cough, the overflow, an answer): the fill follows the head down
+        for (const g of at(b, 'scatter')) r.gauge -= (g.amount ?? 0) * word;
         break;
       }
       case 'order': {
@@ -370,6 +372,8 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
       ...(m.noticed !== undefined || x.noticed !== undefined ? { noticed: (m.noticed ?? 0) + (x.noticed ?? 0) } : {}),
     };
   }
+  // Ruling U: a decision segment the scent instrument reported (its head is the gauge): a full head is recoverable (`releaseOf`)
+  if (envMain.interaction === 'decision' && inputs.some((i) => (i as SegmentInput).kind === 'inhale')) run.headed = true;
   const lapsed = run.segment.lapsed?.length ?? 0;
   const physicsId = run.physicsId;
   const events: EngineEvent[] = [];

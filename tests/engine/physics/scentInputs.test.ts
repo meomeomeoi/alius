@@ -15,7 +15,7 @@ import type { PhysicsRun, SegmentInput, SegmentPlan } from '../../../src/engine/
 import type { CampaignState } from '../../../src/engine/state/types';
 import { TUNING } from '../../../src/engine/tuning';
 import { enable } from '../../helpers/bonds';
-import { campaign, loadCore, run, setRelation } from '../../helpers/loyalty';
+import { campaign, errors, loadCore, run, setRelation } from '../../helpers/loyalty';
 import '../../../src/engine/actions/blocking';
 import '../../../src/engine/actions/physics';
 
@@ -98,5 +98,64 @@ describe('the band is hers (R19)', () => {
   it('the head follows the commander\'s tolerance for her scent', () => {
     const s = underFeet();
     expect(resolveEnvOf(s, reg, s.scene!.physics!).head).toBe(headCapacity(TUNING.stimuli.startTolerance));
+  });
+});
+
+describe('fix round 1, Ruling U: the gauge follows the head down', () => {
+  it('a scatter (words that left the head without the mouth: a cough, the overflow, an answer) lowers the fill by amount × capacity / head, and is no relief', () => {
+    const r = resolveSegment(mk({ gauge: 80 }), quiet(), [input(0, 'inhale', { amount: 0 }), input(1, 'scatter', { amount: 2 })], env());
+    expect(r.gauge).toBe(60);
+    expect(r.reliefs).toBe(0);
+    expect(r.reliefInputs).toEqual([]);
+    // a cough (2), the overflow's half (5) and an answer's words (3), each its own beat
+    const all = resolveSegment(mk({ gauge: 100 }), quiet(), [input(3, 'inhale', { amount: 0 }), input(0, 'scatter', { amount: 2 }), input(1, 'scatter', { amount: 5 }), input(2, 'scatter', { amount: 3 })], env());
+    expect(all.gauge).toBe(0);
+    expect(validInput({ beat: 0, kind: 'scatter', amount: 1 })).toBe(true);
+  });
+
+  it('a scatter alone (no inhale) leaves the passive fill as today, less its words', () => {
+    expect(resolveSegment(mk({ gauge: 0 }), quiet(), [input(3, 'scatter', { amount: 1 })], env()).gauge).toBe(4 * SAT.per - 10);
+  });
+
+  it('it belongs to the decision interaction in a pair', async () => {
+    const { OWNS } = await import('../../../src/engine/physics/combined');
+    expect(OWNS.decision).toContain('scatter');
+  });
+
+  it('a full head ("lost in her") never breaks a limit, collapses or blacks out: she lets go (a fill is not the air)', async () => {
+    const { registerHoldsUntil } = await import('../../../src/engine/physics/style');
+    for (const holds of ['blackout', 'limit', 'signal'] as const) {
+      resetPhysicsHooks();
+      registerHoldsUntil(() => holds);
+      let s = underFeet();
+      s = run(s, reg, { type: 'physics/next_segment', payload: { runId: s.scene!.physics!.id } }).state;
+      const p = s.scene!.physics!;
+      const beats = p.segment.plan!.beats.length;
+      const head = resolveEnvOf(s, reg, p).head!;
+      // the head fills to overflow in the segment (the engine's gauge full)
+      const inputs: SegmentInput[] = Array.from({ length: beats }, (_, b) => input(b, 'inhale', { amount: b === 0 ? head : 0 }));
+      const r = run(s, reg, { type: 'physics/segment_end', payload: { runId: p.id, segment: p.segment.n, inputs } });
+      expect(errors(r.events)).toEqual([]);
+      const outcome = r.events.find((e) => e.type === 'physics_outcome') as { result?: string } | undefined;
+      expect(['limit_broken', 'collapse', 'blackout'], holds).not.toContain(outcome?.result);
+      expect(outcome?.result ?? 'running', holds).toMatch(/released|running/); // a blackout holder holds on to a fill as a limit holder (effectiveHoldsUntil: blackout is the air's)
+    }
+  });
+
+  it('an overflow followed by its recovery (half the head scattered) leaves the hold running, the gauge where the head is', async () => {
+    const { registerHoldsUntil } = await import('../../../src/engine/physics/style');
+    registerHoldsUntil(() => 'limit');
+    let s = underFeet();
+    s = run(s, reg, { type: 'physics/next_segment', payload: { runId: s.scene!.physics!.id } }).state;
+    const p = s.scene!.physics!;
+    const beats = p.segment.plan!.beats.length;
+    const head = resolveEnvOf(s, reg, p).head!;
+    const lost = Math.ceil(head / 2);
+    const inputs: SegmentInput[] = Array.from({ length: beats }, (_, b) => input(b, 'inhale', { amount: b === 0 ? head : 0 }));
+    inputs.push(input(3, 'scatter', { amount: lost }));
+    const r = run(s, reg, { type: 'physics/segment_end', payload: { runId: p.id, segment: p.segment.n, inputs } });
+    expect(errors(r.events)).toEqual([]);
+    expect(r.events.some((e) => e.type === 'physics_outcome')).toBe(false);
+    expect(r.state.scene!.physics!.gauge).toBeCloseTo(((head - lost) * p.capacity) / head, 6);
   });
 });
