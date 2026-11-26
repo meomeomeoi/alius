@@ -119,10 +119,11 @@ function draw(state: CampaignState, over: { settings?: Partial<AliusSettings>; s
   document.body.append(host);
   const input = vi.fn();
   const service = vi.fn(() => []);
+  const spit = vi.fn((_b: number, _a: string): Array<{ type: string }> => []);
   const f = frames();
   const noop = (): [] => [];
   const staging = {
-    input, service, endSegment: noop, stopWord: vi.fn(() => []), skip: noop, act: noop, finishCounted: noop, stimulus: noop, cue: (k: string) => `her ${k}`, beat: () => 0,
+    input, service, spit, endSegment: noop, stopWord: vi.fn(() => []), skip: noop, act: noop, finishCounted: noop, stimulus: noop, cue: (k: string) => `her ${k}`, beat: () => 0,
     clock: () => ({ startedAt: 0, beatMs: BEAT, now: f.now() }), ...over.staging,
   };
   const screen = renderSceneScreen(host, {
@@ -145,7 +146,7 @@ function draw(state: CampaignState, over: { settings?: Partial<AliusSettings>; s
     target.dispatchEvent(e);
     return e;
   };
-  return { host, screen, input, service, frames: f, q, to, pointer, key, field, staging };
+  return { host, screen, input, service, spit, frames: f, q, to, pointer, key, field, staging };
 }
 const reports = (t: ReturnType<typeof draw>): SegmentInput[] => t.input.mock.calls.map((c) => c[0] as SegmentInput);
 const handText = (t: ReturnType<typeof draw>) => [...t.host.querySelectorAll('.alius-shoe-hand .her-line')].map((e) => e.textContent).join(' | ');
@@ -199,14 +200,17 @@ describe('the shoe instrument: matching and its pictures', () => {
     expect(_shoe.S.kind).toBe('heels');
   });
 
-  it('a picture that fails to load hands the run to the card at the next redraw', () => {
+  it('a picture that fails to load hands the run to the card at once (M4: it asks for a redraw); a stage reset forgets it (M5)', () => {
     const t = draw(hold(), { art: artOf(undefined, '/broken') });
     t.to(100);
     expect(t.q('.alius-shoe')).not.toBeNull();
     _shoe.imgs.boots_sole!.onerror!(new Event('error'));
-    t.screen.refresh();
     expect(t.q('.alius-shoe')).toBeNull();
     expect(t.q('.alius-physics[data-run="p1"]')).not.toBeNull();
+    resetSceneStage();
+    document.body.innerHTML = '';
+    const again = draw(hold(), { art: artOf(undefined, '/broken') });
+    expect(again.q('.alius-shoe')).not.toBeNull();
   });
 });
 
@@ -323,46 +327,106 @@ describe('the shoe instrument on the scene', () => {
     G.grit = 0.5;
     t.pointer('pointerdown', undefined, 2);
     expect(G.stats.spits).toBe(1);
-    const spits = t.input.mock.calls.filter((c) => (c[0] as SegmentInput).kind === 'spit');
-    expect(spits).toHaveLength(1);
-    expect(spits[0]![1]).toEqual({ pointer: true });
+    expect(t.spit).toHaveBeenCalledTimes(1); // Ruling AC: decided by the engine at once, not a segment input
+    expect(reports(t).some((i) => i.kind === 'spit')).toBe(false);
     G.grit = 0.5;
     t.key('X');
     expect(G.stats.spits).toBe(2);
-    expect(t.input.mock.calls.filter((c) => (c[0] as SegmentInput).kind === 'spit')[1]![1]).toEqual({ pointer: false });
+    expect(t.spit).toHaveBeenCalledTimes(2);
     G.grit = 0.01; // nothing to spit
     t.pointer('pointerdown', undefined, 2);
     expect(G.stats.spits).toBe(2);
   });
 
-  it('a spit is answered as the engine decided it: seen (the tally) her caught line and her press; unseen, her not seeing', () => {
-    const s = hold();
-    const t = draw(s);
-    t.to(100);
+  it('Ruling AC: a spit is answered at once as the engine decided it (her beat and her attention shown); seen: her caught line and her press; unseen: her not seeing', () => {
+    const t = draw(hold());
+    t.to(2 * BEAT + 100);
     _shoe.G.grit = 0.5;
+    t.spit.mockReturnValueOnce([{ type: 'physics_cheat' }, { type: 'physics_caught' }]);
     t.pointer('pointerdown', undefined, 2);
-    expect(handText(t)).not.toContain('did you just spit?'); // not at once: the engine decides at the segment's end
-    // the segment resolved: she saw it
-    s.scene!.physics = { ...s.scene!.physics!, segment: { n: 1, state: 'held' }, tally: { cheatsCaught: 1, slips: 2 } };
-    t.screen.refresh();
-    t.to(300);
+    expect(t.spit).toHaveBeenCalledWith(2, _shoe.G.attention);
     expect(handText(t)).toContain('did you just spit?');
     expect(_shoe.G.stats.caught).toBe(1);
     expect(_shoe.G.anim).toMatchObject({ kind: 'press' });
-    // the next segment: a spit she did not see
-    s.scene!.physics = { ...s.scene!.physics!, segment: { n: 2, state: 'running', plan: quietPlan() } };
-    t.screen.refresh();
-    t.to(400);
     _shoe.G.grit = 0.5;
     t.pointer('pointerdown', undefined, 2);
-    s.scene!.physics = { ...s.scene!.physics!, segment: { n: 2, state: 'held' } };
-    t.screen.refresh();
-    t.to(500);
     expect(senseText(t)).toContain('You spit it aside. She did not see.');
     expect(_shoe.G.stats.caught).toBe(1);
   });
 
-  it('her verdict at the session\'s end: the mean quality of the surfaces she judged (physics/service, once, with her id)', () => {
+  it('Ruling AD: what is wiped while the run is held reaches the next segment\'s first beat; a spit while held is decided at once', () => {
+    const s = hold();
+    let started = 0;
+    const clock = { now: () => 0 };
+    const t = draw(s, { staging: { clock: () => ({ startedAt: started, beatMs: BEAT, now: clock.now() }) } });
+    clock.now = t.frames.now;
+    t.to(100);
+    s.scene!.physics = { ...s.scene!.physics!, segment: { n: 1, state: 'held' } };
+    t.screen.refresh();
+    t.to(200);
+    const surf = _shoe.ensureSurface();
+    const before = surf.m.reduce((a: number, v: number) => a + v, 0);
+    const [x, y] = zonePoint('toe');
+    const r = t.host.querySelector('.alius-scene')!.getBoundingClientRect();
+    t.pointer('pointerdown', undefined, 0, x + r.left, y + r.top);
+    for (let i = 1; i <= 12; i++) { t.frames.frame(); t.pointer('pointermove', document, 0, x + r.left + (i % 2 ? 40 : -40), y + r.top + i); }
+    t.pointer('pointerup', document);
+    const after = surf.m.reduce((a: number, v: number) => a + v, 0);
+    _shoe.G.grit = 0.5;
+    t.pointer('pointerdown', undefined, 2);
+    expect(t.spit).toHaveBeenCalledTimes(1); // held: decided all the same
+    t.to(3 * BEAT);
+    expect(reports(t).filter((i) => i.kind === 'wipe')).toHaveLength(0); // nothing reaches a held run
+    // the run resumes: the next segment's first beat carries what was wiped meanwhile
+    const now = t.frames.now();
+    s.scene!.physics = { ...s.scene!.physics!, segment: { n: 2, state: 'running', plan: quietPlan() } };
+    started = now;
+    t.screen.refresh();
+    t.to(now + BEAT + 100);
+    const wipes = reports(t).filter((i) => i.kind === 'wipe');
+    expect(wipes).toHaveLength(1);
+    expect(wipes[0]!.beat).toBe(0);
+    expect(wipes[0]!.amount!).toBeCloseTo((before - after) / surf.total0 / 4, 4);
+  });
+
+  it('M1: fresh dirt on a wiped zone (a cruel holder, a spit she saw) is not counted again when it is wiped off', () => {
+    const t = draw(hold());
+    t.to(100);
+    const surf = _shoe.ensureSurface();
+    const toe = surf.names.indexOf('toe');
+    for (let p = 0; p < surf.m.length; p++) if (surf.zoneOf[p] === toe) surf.m[p] *= 0.5; // wiped
+    t.to(BEAT + 50);
+    const first = reports(t).filter((i) => i.kind === 'wipe');
+    expect(first).toHaveLength(1);
+    for (let p = 0; p < surf.m.length; p++) if (surf.zoneOf[p] === toe) surf.m[p] *= 2; // fresh dirt, then wiped to the same level
+    t.to(2 * BEAT + 50);
+    for (let p = 0; p < surf.m.length; p++) if (surf.zoneOf[p] === toe) surf.m[p] *= 0.5;
+    t.to(3 * BEAT + 50);
+    expect(reports(t).filter((i) => i.kind === 'wipe')).toHaveLength(1);
+  });
+
+  it('M8: the engine\'s check ends the cleaning first: she judges the surface in front of her, says her end, gives her verdict once', async () => {
+    const s = hold();
+    const t = draw(s, { staging: { outcome: () => ({ runId: 'p1', physicsId: 'tongue_work', result: 'checked' }) } as never });
+    t.to(100);
+    const G = _shoe.G;
+    G.phase = 'inspect'; G.judged = false; // her inspection under way, before her verdict
+    delete s.scene!.physics;
+    t.screen.refresh();
+    await Promise.resolve();
+    expect(G.stats.checks).toHaveLength(1);
+    expect(G.phase).toBe('done');
+    expect(t.service).toHaveBeenCalledTimes(1);
+    expect(t.service).toHaveBeenCalledWith('p1', verdictOf(G.lastQuality));
+    expect(handText(t)).toContain('that will do.');
+    t.to(2000);
+    expect(t.q('.alius-shoe')).not.toBeNull(); // her end plays
+    t.to(3000);
+    vi.advanceTimersByTime(3000);
+    expect(t.service).toHaveBeenCalledTimes(1);
+  });
+
+  it('her verdict at the session\'s end: the mean quality of the surfaces she judged (physics/service, once)', () => {
     const t = draw(hold());
     t.to(100);
     const G = _shoe.G;
@@ -375,13 +439,13 @@ describe('the shoe instrument on the scene', () => {
     expect(G.phase).toBe('done');
     t.to(300);
     expect(t.service).toHaveBeenCalledTimes(1);
-    expect(t.service).toHaveBeenCalledWith('p1', verdictOf(0.7), ANN);
+    expect(t.service).toHaveBeenCalledWith('p1', verdictOf(0.7));
     expect(handText(t)).toContain('that will do.');
     t.to(2000);
     expect(t.service).toHaveBeenCalledTimes(1);
   });
 
-  it('her lines are hers (cardVoice by style); ruling R: cold is silent, her first words included', () => {
+  it('her lines are hers (cardVoice by style); cold has the prototype\'s own lines (Ruling R clarified), silent where it has none', () => {
     const t = draw(hold());
     t.to(100);
     expect(handText(t)).toBe('clean them.');
@@ -397,11 +461,10 @@ describe('the shoe instrument on the scene', () => {
     registerPhysicsStyle(() => ({ primary: 'cold' }));
     const k = draw(hold());
     k.to(100);
-    expect(handText(k)).toBe('');
-    _shoe.verdict();
-    _shoe.herMove();
-    k.to(400);
-    expect(handText(k)).toBe('');
+    expect(handText(k)).toBe('clean them.');
+    expect(_shoe.LINES.cold!.swallowed).toEqual([]);
+    expect(_shoe.LINES.cold!.stamp).toEqual([]);
+    expect(_shoe.LINES.cold!.end).toEqual(['done.']);
   });
 
   it('the still form: no motion of her foot; readable mode marked (no blur)', () => {

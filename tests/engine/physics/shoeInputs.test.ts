@@ -8,7 +8,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import { COMMANDER, registerFrameReader, resetBlockingHooks, setBlocking } from '../../../src/engine/blocking';
 import { OWNS } from '../../../src/engine/physics/combined';
-import { physicsInput, resolveSegment, validInput, type ResolveEnv } from '../../../src/engine/physics/segment';
+import { physicsInput, resolveSegment, shoeSpit, validInput, type ResolveEnv } from '../../../src/engine/physics/segment';
 import { resetPhysicsHooks } from '../../../src/engine/physics/style';
 import { INPUT_KINDS, type PhysicsRun, type SegmentInput, type SegmentPlan } from '../../../src/engine/physics/state';
 import type { Rng } from '../../../src/engine/rng';
@@ -92,33 +92,51 @@ function booted(): CampaignState {
   return st;
 }
 
-describe('spitting is a relief (R31)', () => {
-  it('a spit is a relief: cheatRoll decides (one draw a spit, none without one)', () => {
-    expect(INPUT_KINDS).toContain('spit');
-    expect(OWNS.order).toContain('spit');
+/** An rng that records the chance it was asked and answers as given. */
+function chanceRng(yes: boolean): Rng & { asked: number[] } {
+  const r = { asked: [] as number[], chance: (p: number) => { r.asked.push(p); return yes; }, float: () => { throw new Error('no float'); }, int: () => { throw new Error('no int'); }, pick: () => { throw new Error('no pick'); } };
+  return r as unknown as Rng & { asked: number[] };
+}
+
+describe('spitting (R31, Ruling AC): decided when it is made', () => {
+  it('a spit is no segment relief any more: the segment resolves it as nothing, and draws nothing for it', () => {
     const r = resolveSegment(mk(), plan(4), [input(2, 'spit')], env());
-    expect(r.reliefs).toBe(1);
-    expect(r.reliefInputs).toEqual([{ beat: 2, kind: 'spit' }]);
-    expect(r.gauge).toBe(100); // a spit cleans nothing
+    expect(r).toMatchObject({ reliefs: 0, reliefInputs: [], gauge: 100 });
     const s = booted();
     const quiet = fakeRng(true);
-    physicsInput(s, { registries: reg, rng: quiet }, 'p1', 1, [input(0, 'wipe', { part: 'toe', amount: 0.1 })]);
+    physicsInput(s, { registries: reg, rng: quiet }, 'p1', 1, [input(0, 'wipe', { part: 'toe', amount: 0.1 }), input(1, 'spit')]);
     expect(quiet.draws).toBe(0);
   });
 
-  it('seen: physics_caught (a double slip); unseen: a cheat she did not catch, nothing counted', () => {
-    const seen = booted();
-    const yes = fakeRng(true);
-    const ev = physicsInput(seen, { registries: reg, rng: yes }, 'p1', 1, [input(1, 'spit')]);
-    expect(yes.draws).toBeGreaterThanOrEqual(1); // the catch, then the boundary's own draws for a slip (as for any caught relief)
-    expect(ev.filter((e) => e.type === 'physics_cheat')).toEqual([expect.objectContaining({ kind: 'spit', beat: 1 })]);
-    expect(ev.find((e) => e.type === 'physics_caught')).toMatchObject({ kind: 'spit', beat: 1, holderId: ANN });
-    expect(seen.scene!.physics!.tally).toMatchObject({ cheatsCaught: 1, slips: 2 });
+  it('physics/spit: one draw with the prototype\'s chance by her planned attention on the beat (0.75 / 0.3 / 0.06); seen, physics_caught and the tally', () => {
+    for (const [attention, p] of [['watching', 0.75], ['glancing', 0.3], ['busy', 0.06]] as const) {
+      const s = booted();
+      s.scene!.physics!.segment.plan = { beats: Array.from({ length: 4 }, () => ({ attention, part: 'toes' })) };
+      const rng = chanceRng(true);
+      const ev = shoeSpit(s, { registries: reg, rng }, { runId: 'p1', beat: 2, attention: 'busy' });
+      expect(rng.asked).toEqual([p]);
+      expect(ev.map((e) => e.type)).toEqual(['physics_cheat', 'physics_caught']);
+      expect(ev[1]).toMatchObject({ kind: 'spit', beat: 2, holderId: ANN });
+      expect(s.scene!.physics!.tally).toMatchObject({ cheatsCaught: 1 });
+    }
     const unseen = booted();
-    const no = fakeRng(false);
-    const ev2 = physicsInput(unseen, { registries: reg, rng: no }, 'p1', 1, [input(1, 'spit')]);
-    expect(no.draws).toBe(1); // the catch only
-    expect(ev2.some((e) => e.type === 'physics_caught')).toBe(false);
+    const no = chanceRng(false);
+    const ev = shoeSpit(unseen, { registries: reg, rng: no }, { runId: 'p1', beat: 0, attention: 'busy' });
+    expect(no.asked).toEqual([0.75]);
+    expect(ev.map((e) => e.type)).toEqual(['physics_cheat']);
     expect(unseen.scene!.physics!.tally?.cheatsCaught).toBeUndefined();
+  });
+
+  it('Ruling AD: a spit while the run is held is decided too, by the attention shown; a stale run or another physics is refused', () => {
+    const s = booted();
+    s.scene!.physics!.segment = { n: 1, state: 'held' };
+    const rng = chanceRng(true);
+    expect(shoeSpit(s, { registries: reg, rng }, { runId: 'p1', beat: 0, attention: 'glancing' }).map((e) => e.type)).toEqual(['physics_cheat', 'physics_caught']);
+    expect(rng.asked).toEqual([0.3]);
+    expect(() => shoeSpit(s, { registries: reg, rng }, { runId: 'p9', beat: 0, attention: 'busy' })).toThrow(/Stale/);
+    const r = run(s, reg, { type: 'physics/spit', payload: { runId: 'p1', beat: 0, attention: 'busy' } });
+    expect(r.events.some((e) => e.type === 'physics_cheat')).toBe(true);
+    s.scene!.physics!.physicsId = 'jaw';
+    expect(() => shoeSpit(s, { registries: reg, rng }, { runId: 'p1', beat: 0, attention: 'busy' })).toThrow(/shoe/);
   });
 });

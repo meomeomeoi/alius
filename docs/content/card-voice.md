@@ -1091,7 +1091,7 @@ Kinds `service.good` / `service.poor` (her line at the end of a bout by its qual
 
 ## 14. Shoe service (shoe.html, approved by the author, 2026-11-24)
 
-Kinds `shoe.<kind>` by her style (shoe.html `LINES`, verbatim): her first words (`entry`), turning her foot (`turn`), presenting the sole (`sole`), asking for a kiss (`kiss`), her first wish for a shine (`polish`), changing feet (`other`), a spit she saw (`caught`), a swallow (`swallowed`), her verdict on a surface (`good` / `poor`, or the worst zone: `missed` over 0.2 of dirt, `dull` under 0.35 of shine; `%z` is her word for the zone), a stamp after a poor surface (`stamp`) and her end (`end`); `stop` is her line after the stop word (the prototype's `finish('stop')`). A style not listed reads neutral's; cold is silent (Ruling R), her first words included. Her words for the zones are `shoe.zone.<zone>` (no style, under **zones** below).
+Kinds `shoe.<kind>` by her style (shoe.html `LINES`, verbatim): her first words (`entry`), turning her foot (`turn`), presenting the sole (`sole`), asking for a kiss (`kiss`), her first wish for a shine (`polish`), changing feet (`other`), a spit she saw (`caught`), a swallow (`swallowed`), her verdict on a surface (`good` / `poor`, or the worst zone: `missed` over 0.2 of dirt, `dull` under 0.35 of shine; `%z` is her word for the zone), a stamp after a poor surface (`stamp`) and her end (`end`); `stop` is her line after the stop word (the prototype's `finish('stop')`). A style not listed reads neutral's (Ruling R); cold has the prototype's own lines (silent where it has none). Her words for the zones are `shoe.zone.<zone>` (no style, under **zones** below).
 
 ### neutral
 - **entry:** `clean them.`
@@ -1191,21 +1191,20 @@ Kinds `shoe.<kind>` by her style (shoe.html `LINES`, verbatim): her first words 
 - **end:** `good. stay there.`
 
 ### cold
-- **entry:** silent
-- **turn:** silent
-- **sole:** silent
-- **kiss:** silent
-- **polish:** silent
-- **other:** silent
-- **caught:** silent
+- **entry:** `clean them.`
+- **turn:** `turn.`
+- **sole:** `sole.`
+- **kiss:** `kiss.`
+- **polish:** `shine.`
+- **other:** `other.`
+- **caught:** `you spat.`
 - **swallowed:** silent
-- **good:** silent
-- **poor:** silent
-- **missed:** silent
-- **dull:** silent
+- **good:** `fine.`
+- **poor:** `no.`
+- **missed:** `%z.`
+- **dull:** `%z.`
 - **stamp:** silent
-- **end:** silent
-- **stop:** silent
+- **end:** `done.`
 
 ### regal
 - **entry:** `my boots need you.`

@@ -12,12 +12,13 @@
  * - the pictures are the art slots `shoe_close.<kind>` and `shoe_sole.<kind>`, each with its sidecar (`feet`, `shown`, `fit`, `zones`); without
  *   both pictures of her footwear (or when one fails to load) the physics card plays the hold (`shoeDrawable`, README: no stand-in sprite);
  * - each beat of a running segment is reported once as it ends (the last 300 ms before the segment's end): `wipe` with the zone wiped most and
- *   the share of the whole footwear's dirt taken off in the beat (each of the four surfaces is a quarter; R29), `pointer`; a spit at once as
- *   `spit` (R31). Whether she saw it is the engine's (`cheatRoll` at the segment's end): her answer follows `run.tally.cheatsCaught`;
+ *   the share of the whole footwear's dirt taken off in the beat (each of the four surfaces is a quarter; R29), `pointer`; what is wiped while
+ *   the run is held is carried by the next beat reported (Ruling AD). A spit is decided at once by the engine (`physics/spit`, Ruling AC: one
+ *   draw with the prototype's chance), whether a segment runs or the run is held, and her answer follows at once;
  * - her verdict at the session's end (after the last surface, or when the engine's check ended the run first) is `physics/service`
  *   (`verdictOf` of the mean quality of the surfaces she judged, R27); the stop word gives none;
- * - her lines are `cardVoice` `shoe.*` by her style, her words for the zones `shoe.zone.<zone>` (Rulings Q, R, Z: verbatim, a style the
- *   prototype has no row of reads neutral's, cold is silent);
+ * - her lines are `cardVoice` `shoe.*` by her style, her words for the zones `shoe.zone.<zone>` (Rulings Q, R, Z: verbatim, cold's own
+ *   lines included; a style the prototype has no row of reads neutral's);
  * - `performance`, `setTimeout`, `requestAnimationFrame`, `innerWidth` / `innerHeight`, `document` (for the masks' canvases) and `Math.random`
  *   are this module's own (the frame clock, the mount's timers and frames, the scene's size, a canvas that never fails, a xorshift seeded by
  *   the scene and the run: no rng draw).
@@ -35,6 +36,7 @@ import { TUNING } from '../../../../engine/tuning';
 import type { ArtPicture } from '../../art';
 import { voiceLines, type VoiceKind } from '../../cards/voice';
 import { registerInstrument } from '../host';
+import { onStageReset } from '../../stage';
 import { clamp, lerp, smooth } from '../kit/math';
 import type { InstrumentEnv, InstrumentRun, PhysicsEnd } from '../types';
 
@@ -473,12 +475,9 @@ function swallow() {
 function spit() {
   if (G.phase !== 'loop' || G.grit < 0.05) return;
   SFX.spit(); G.stats.spits += 1;
+  const seen = G.attention === 'watching' ? 0.75 : G.attention === 'glancing' ? 0.3 : 0.06;
   G.grit = 0;
-  reportSpit();
-}
-/** Her answer to a spit, once the engine decided whether she saw it (R31: `cheatRoll` at the segment's end; the prototype's two branches). */
-function spitAnswer(seen: boolean) {
-  if (seen) { G.stats.caught += 1; sayL('caught'); G.anim = { kind: 'press', t0: G.t }; if (S.style === 'cruel') { const s = surf(); if (s) for (let p = 0; p < s.m.length; p++) if (s.zoneOf[p] >= 0) s.m[p] = Math.min(1, s.m[p] + 0.15 * Math.random()); } }
+  if (spitSeen(seen)) { G.stats.caught += 1; sayL('caught'); G.anim = { kind: 'press', t0: G.t }; if (S.style === 'cruel') { const s = surf(); if (s) for (let p = 0; p < s.m.length; p++) if (s.zoneOf[p] >= 0) s.m[p] = Math.min(1, s.m[p] + 0.15 * Math.random()); } }
   else sense('You spit it aside. She did not see.');
 }
 
@@ -657,9 +656,6 @@ interface Wiring {
   plan: PlannedBeat[];
   /** Each surface's dirt (sum of its mask) and each zone's at the last report: what a beat wiped is the difference. */
   sums: Record<string, { total: number; zones: number[] }>;
-  /** The spits sent in the running segment and not answered yet; the catches already answered (`tally.cheatsCaught`). */
-  spits: number;
-  caught: number;
   /** The qualities of the surfaces she judged (`verdict`'s `G.lastQuality`), for her verdict on the session. */
   qualities: number[];
   checks: number;
@@ -668,9 +664,10 @@ interface Wiring {
   lastNow: number;
   ended: string | null;
 }
-const R: Wiring = { run: null, lineStyle: 'neutral', seg: null, running: false, plan: [], sums: {}, spits: 0, caught: 0, qualities: [], checks: 0, verdictSent: false, ox: 0, oy: 0, lastNow: 0, ended: null };
+const R: Wiring = { run: null, lineStyle: 'neutral', seg: null, running: false, plan: [], sums: {}, qualities: [], checks: 0, verdictSent: false, ox: 0, oy: 0, lastNow: 0, ended: null };
 /** Pictures that failed to load (by url): the instrument is not drawn for them again (the card plays). Module memory, kept across mounts. */
 const broken = new Set<string>();
+onStageReset(() => broken.clear()); // e10 M5: a chat switch forgets them (a replaced file at the same url is tried again)
 
 /** Her attention now: the plan's on the beat being played (P15a's, by her activity and her style); between segments, as it was. */
 function planAttention(): string {
@@ -687,12 +684,14 @@ function report(i: SegmentInput, pointer: boolean): void {
   if (!E || !R.seg || !R.running) return;
   E.env.staging.input(i, { pointer });
 }
-let spitVia: 'mouse' | 'key' = 'key';
-/** A spit (R31): reported at once; whether she saw it comes with the segment's end. */
-function reportSpit(): void {
-  if (!R.seg || !R.running) return;
-  R.spits += 1;
-  report({ beat: beatNow(), kind: 'spit' }, spitVia === 'mouse');
+/**
+ * Ruling AC: whether she saw the spit is the engine's, decided now (`physics/spit`: one draw with the prototype's chance by her attention on
+ * the beat, or by the attention shown while the run is held); `chance` is the prototype's own number, which the engine's table repeats.
+ */
+function spitSeen(_chance: number): boolean {
+  if (!E) return false;
+  const events = E.env.staging.spit?.(beatNow(), G.attention) ?? [];
+  return events.some((e) => e.type === 'physics_caught');
 }
 /** A surface's dirt and its zones' (the sums of its mask). */
 function sumsOf(s: Any): { total: number; zones: number[] } {
@@ -701,16 +700,20 @@ function sumsOf(s: Any): { total: number; zones: number[] } {
   for (let p = 0; p < s.m.length; p++) { total += s.m[p]; if (s.zoneOf[p] >= 0) zones[s.zoneOf[p]] += s.m[p]; }
   return { total, zones };
 }
-/** What the surfaces' masks lost since the last report: the share of the whole footwear's dirt (each surface a quarter) and the zone wiped most. */
+/**
+ * What the surfaces' masks lost since the last report: the share of the whole footwear's dirt (each surface a quarter) and the zone wiped most.
+ * Only what falls below the lowest level a surface (and a zone) has reached counts (e10 M1): fresh dirt (a cruel holder's, after a spit she saw)
+ * wiped again is not counted twice.
+ */
 function wipedNow(): { amount: number; part?: string } {
   let amount = 0, part: string | undefined, best = 0;
   for (const [key, s] of Object.entries(G.surfaces) as Array<[string, Any]>) {
     if (!s || !(s.total0 > 0)) continue;
-    const now = sumsOf(s), was = R.sums[key] ?? now;
-    const lost = was.total - now.total;
-    if (lost > 0) amount += lost / s.total0 / 4; // a cruel holder's fresh dirt (after a spit she saw) is not reported back: amounts are ≥ 0
-    now.zones.forEach((z, i) => { const d = (was.zones[i] ?? z) - z; if (d > best) { best = d; part = s.names[i]; } });
-    R.sums[key] = now;
+    const now = sumsOf(s), low = R.sums[key] ?? now;
+    const lost = low.total - now.total;
+    if (lost > 0) amount += lost / s.total0 / 4;
+    now.zones.forEach((z, i) => { const d = (low.zones[i] ?? z) - z; if (d > best) { best = d; part = s.names[i]; } });
+    R.sums[key] = { total: Math.min(low.total, now.total), zones: now.zones.map((z, i) => Math.min(low.zones[i] ?? z, z)) };
   }
   return { amount, ...(part !== undefined ? { part } : {}) };
 }
@@ -733,8 +736,7 @@ function startSegment(run: PhysicsRun, ck: { startedAt: number | null; now: numb
   const first = Math.max(0, Math.floor((G.t - clock0) / TUNING.physics.beatMs));
   R.seg = { n: run.segment.n, startedAt: ck.startedAt!, clock0, beats: plan.beats.length, endMs, flushed: false, reported: Math.min(first, plan.beats.length) };
   R.plan = plan.beats;
-  R.spits = 0;
-  wipedNow(); // what was wiped between segments reached no segment: it starts the next one's count from here
+  // Ruling AD: what was wiped while the run was held is not lost: the first beat reported carries it (the gauge keeps following the mask)
 }
 /** Her lines (cardVoice `shoe.*` by her style) in the prototype's `LINES` shape. */
 function refreshLines(): void {
@@ -750,7 +752,7 @@ function sendVerdict(): void {
   if (R.qualities.length === 0) return;
   const q = R.qualities.reduce((a, b) => a + b, 0) / R.qualities.length;
   const v = verdictOf(q);
-  E.env.staging.service?.(R.run.id, v, R.run.holderId); // open: rated and ended; ended by the engine's check first: rated by its id and holder
+  E.env.staging.service?.(R.run.id, v); // open: rated and ended; ended `checked` by the engine first: rated by its id (the scene's `shoeDone`)
 }
 
 /** Each frame before the prototype's: the size, the still form, the sound, the backdrop, the segment and its reports. */
@@ -829,7 +831,7 @@ function bind(env: InstrumentEnv, run: PhysicsRun, art: { close: ArtPicture; sol
   S.style = lead.key;
   R.lineStyle = lead.key;
   R.run = run;
-  R.seg = null; R.running = false; R.plan = []; R.sums = {}; R.spits = 0; R.caught = run.tally?.cheatsCaught ?? 0; R.qualities = []; R.checks = 0; R.verdictSent = false; R.ended = null;
+  R.seg = null; R.running = false; R.plan = []; R.sums = {}; R.qualities = []; R.checks = 0; R.verdictSent = false; R.ended = null;
   S.feet = { boots_close: 'one', boots_sole: 'one', heels_close: 'one', heels_sole: 'one' };
   S.shown = { boots_close: 'right', boots_sole: 'right', heels_close: 'right', heels_sole: 'right' };
   S.fit = { boots_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, boots_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 }, heels_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, heels_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 } };
@@ -839,7 +841,7 @@ function bind(env: InstrumentEnv, run: PhysicsRun, art: { close: ArtPicture; sol
   for (const [side, pic] of [['close', art.close], ['sole', art.sole]] as const) {
     const im = new Image();
     im.alt = '';
-    im.onerror = () => { broken.add(pic.url); if (E?.env === env) E.box.dataset.broken = ''; };
+    im.onerror = () => { broken.add(pic.url); if (E?.env === env) { E.box.dataset.broken = ''; env.redraw?.(); } }; // e10 M4: the card takes the run at once
     im.src = pic.url;
     imgs[`${art.kind}_${side}`] = im;
   }
@@ -884,7 +886,7 @@ function listen(env: InstrumentEnv): void {
   const at = (e: PointerEvent): [number, number] => [e.clientX - R.ox, e.clientY - R.oy];
   env.listen(env.root, 'pointerdown', ((e: PointerEvent) => {
     if (!onFrame(e.target)) return;
-    if (e.button === 2) { e.preventDefault(); spitVia = 'mouse'; spit(); return; }
+    if (e.button === 2) { e.preventDefault(); spit(); return; }
     if (e.button !== 0) return;
     const [x, y] = at(e);
     down(x, y);
@@ -895,7 +897,7 @@ function listen(env: InstrumentEnv): void {
   env.listen(globalThis.document, 'keydown', ((e: KeyboardEvent) => {
     if (typing(e.target) || control(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === ' ') { e.preventDefault(); if (!e.repeat) swallow(); }
-    if (e.key === 'x' || e.key === 'X') { spitVia = 'key'; spit(); }
+    if (e.key === 'x' || e.key === 'X') { spit(); }
   }) as EventListener);
 }
 
@@ -943,13 +945,7 @@ export function startShoe(env: InstrumentEnv, run: PhysicsRun): InstrumentRun {
   return {
     update(next: PhysicsRun) {
       if (E !== mine) return;
-      const prev = R.run;
       R.run = next;
-      // R31: her answer to a spit, as the engine decided it at the segment's end (the catch counted in the tally)
-      const caught = next.tally?.cheatsCaught ?? 0;
-      const resolved = prev !== null && (next.segment.n !== prev.segment.n || next.segment.state !== prev.segment.state) && prev.segment.state === 'running';
-      while (R.caught < caught) { R.caught += 1; R.spits = Math.max(0, R.spits - 1); spitAnswer(true); }
-      if (resolved && R.spits > 0) { R.spits = 0; spitAnswer(false); }
     },
     finish(end: PhysicsEnd): number {
       if (E !== mine) return 0;
@@ -957,7 +953,7 @@ export function startShoe(env: InstrumentEnv, run: PhysicsRun): InstrumentRun {
       if (G.phase === 'done') return EXIT_MS; // her verdict ended it: her last line plays out
       if (end.result !== 'checked' || G.phase === 'wait') return 0;
       // the engine's check (≤ 10) ended the cleaning first: she judges the surface in front of her, says her end and gives her verdict
-      if (G.phase === 'loop' && surf()) verdict();
+      if ((G.phase === 'loop' || (G.phase === 'inspect' && !G.judged)) && surf()) verdict(); // e10 M6: a surface not yet judged is judged now
       while (R.checks < G.stats.checks.length) { R.checks += 1; R.qualities.push(G.lastQuality); }
       finish('done');
       sendVerdict();
@@ -985,7 +981,7 @@ export const _shoe = {
   /** Tests: her pictures as the instrument loads them (`boots_close`, …). */
   get imgs(): Record<string, HTMLImageElement> { return imgs; },
   begin, swallow, spit, inspect, verdict, update, render, shoeRect, toPic, zonesNow, leatherNow, zoneStat, lickStroke, makeSurface, ensureSurface, dirtLeft, meanGloss,
-  nextSurface, nextWant, herMove, down, move, up, fresh, digest, spitAnswer, twoFeet, mirrored, footX,
+  nextSurface, nextWant, herMove, down, move, up, fresh, digest, twoFeet, mirrored, footX,
   setG(g: Any): void { G = g; },
   seed(n: number): void { reseed(n); },
   /** The shots: the frame clock starts again (a fake clock installed after the page began). */

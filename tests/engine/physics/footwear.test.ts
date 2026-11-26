@@ -128,27 +128,41 @@ describe('shoe service (a run on her footwear)', () => {
     expect(shoePaceOf(booted('clinical'), reg, ANN)).toEqual(STYLES.neutral);
   });
 
-  it('her verdict lands once through rateService and ends the cleaning as checked (no draw)', () => {
+  it('her verdict lands once through rateService and ends the cleaning as checked (no draw); the run is recorded as shoe service done', () => {
     const s = booted();
     const r = run(s, reg, { type: 'physics/service', payload: { runId: 'p1', verdict: 'pleased' } });
     expect(errors(r.events)).toEqual([]);
     expect(ofType(r.events, 'service_rated')).toHaveLength(1);
     expect(ofType(r.events, 'physics_outcome')[0]).toMatchObject({ runId: 'p1', result: 'checked' });
     expect(r.state.scene!.physics).toBeUndefined();
+    expect(r.state.scene!.shoeDone).toEqual({ runId: 'p1', holderId: ANN });
     expect(r.state.rng).toEqual(s.rng);
-    // the run just ended (the engine's own check, or her verdict): a late verdict for it is taken (once a scene: ignored here), never a stale one
-    const again = run(r.state, reg, { type: 'physics/service', payload: { runId: 'p1', verdict: 'displeased', holderId: ANN } });
+    // a late verdict for it is taken (once a scene: ignored here); a stale id is refused
+    const again = run(r.state, reg, { type: 'physics/service', payload: { runId: 'p1', verdict: 'displeased' } });
     expect(errors(again.events)).toEqual([]);
     expect(ofType(again.events, 'service_rated')).toHaveLength(0);
-    expect(errors(run(r.state, reg, { type: 'physics/service', payload: { runId: 'p0', verdict: 'pleased', holderId: ANN } }).events)).not.toEqual([]);
-    expect(errors(run(r.state, reg, { type: 'physics/service', payload: { runId: 'p1', verdict: 'pleased', holderId: 'unit_bea' } }).events)).not.toEqual([]);
+    expect(errors(run(r.state, reg, { type: 'physics/service', payload: { runId: 'p0', verdict: 'pleased' } }).events)).not.toEqual([]);
   });
 
-  it('the engine\'s check ended the run first: her verdict on the run that just ended is rated', () => {
+  it('the engine\'s check ended the run first (a real segment to ≤ 10): her verdict on it is rated, the holder the record\'s', () => {
     const s = booted();
-    const ended = run(s, reg, { type: 'physics/stop_word', payload: {} }).state;
-    const r = run(ended, reg, { type: 'physics/service', payload: { runId: 'p1', verdict: 'adequate', holderId: ANN } });
+    s.scene!.physics!.gauge = 15;
+    const st = run(s, reg, { type: 'physics/next_segment', payload: { runId: 'p1' } }).state;
+    const ended = run(st, reg, { type: 'physics/segment_end', payload: { runId: 'p1', segment: 1, inputs: [{ beat: 0, kind: 'wipe', part: 'toe', amount: 0.1 }] } });
+    expect(ofType(ended.events, 'physics_outcome')[0]).toMatchObject({ result: 'checked' });
+    expect(ended.state.scene!.shoeDone).toEqual({ runId: 'p1', holderId: ANN });
+    const r = run(ended.state, reg, { type: 'physics/service', payload: { runId: 'p1', verdict: 'adequate', holderId: 'unit_bea' } });
     expect(errors(r.events)).toEqual([]);
-    expect(ofType(r.events, 'service_rated')[0]).toMatchObject({ kind: 'adequate' });
+    expect(ofType(r.events, 'service_rated')[0]).toMatchObject({ kind: 'adequate', unitId: ANN });
+  });
+
+  it('a shoe run ended by the stop word, or another run that just ended, is refused', () => {
+    const stopped = run(booted(), reg, { type: 'physics/stop_word', payload: {} }).state;
+    expect(stopped.scene!.shoeDone).toBeUndefined();
+    expect(errors(run(stopped, reg, { type: 'physics/service', payload: { runId: 'p1', verdict: 'displeased', holderId: ANN } }).events)).not.toEqual([]);
+    const other = booted();
+    other.scene!.physics = { ...other.scene!.physics!, physicsId: 'jaw', sourceId: 'sole_to_mouth' };
+    const st = run(other, reg, { type: 'physics/stop_word', payload: {} }).state;
+    expect(errors(run(st, reg, { type: 'physics/service', payload: { runId: 'p1', verdict: 'pleased', holderId: ANN } }).events)).not.toEqual([]);
   });
 });

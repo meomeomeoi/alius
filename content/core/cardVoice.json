@@ -6749,43 +6749,57 @@
     "id": "shoe.entry.cold",
     "kind": "shoe.entry",
     "style": "cold",
-    "lines": []
+    "lines": [
+      "clean them."
+    ]
   },
   {
     "id": "shoe.turn.cold",
     "kind": "shoe.turn",
     "style": "cold",
-    "lines": []
+    "lines": [
+      "turn."
+    ]
   },
   {
     "id": "shoe.sole.cold",
     "kind": "shoe.sole",
     "style": "cold",
-    "lines": []
+    "lines": [
+      "sole."
+    ]
   },
   {
     "id": "shoe.kiss.cold",
     "kind": "shoe.kiss",
     "style": "cold",
-    "lines": []
+    "lines": [
+      "kiss."
+    ]
   },
   {
     "id": "shoe.polish.cold",
     "kind": "shoe.polish",
     "style": "cold",
-    "lines": []
+    "lines": [
+      "shine."
+    ]
   },
   {
     "id": "shoe.other.cold",
     "kind": "shoe.other",
     "style": "cold",
-    "lines": []
+    "lines": [
+      "other."
+    ]
   },
   {
     "id": "shoe.caught.cold",
     "kind": "shoe.caught",
     "style": "cold",
-    "lines": []
+    "lines": [
+      "you spat."
+    ]
   },
   {
     "id": "shoe.swallowed.cold",
@@ -6797,25 +6811,33 @@
     "id": "shoe.good.cold",
     "kind": "shoe.good",
     "style": "cold",
-    "lines": []
+    "lines": [
+      "fine."
+    ]
   },
   {
     "id": "shoe.poor.cold",
     "kind": "shoe.poor",
     "style": "cold",
-    "lines": []
+    "lines": [
+      "no."
+    ]
   },
   {
     "id": "shoe.missed.cold",
     "kind": "shoe.missed",
     "style": "cold",
-    "lines": []
+    "lines": [
+      "%z."
+    ]
   },
   {
     "id": "shoe.dull.cold",
     "kind": "shoe.dull",
     "style": "cold",
-    "lines": []
+    "lines": [
+      "%z."
+    ]
   },
   {
     "id": "shoe.stamp.cold",
@@ -6827,7 +6849,9 @@
     "id": "shoe.end.cold",
     "kind": "shoe.end",
     "style": "cold",
-    "lines": []
+    "lines": [
+      "done."
+    ]
   },
   {
     "id": "shoe.entry.regal",
@@ -6947,12 +6971,6 @@
     "lines": [
       "okay. stop. come here."
     ]
-  },
-  {
-    "id": "shoe.stop.cold",
-    "kind": "shoe.stop",
-    "style": "cold",
-    "lines": []
   },
   {
     "id": "shoe.zone.toe",

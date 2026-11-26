@@ -83,6 +83,8 @@ export interface InstrumentEnv {
   readable: boolean;
   /** The tap (P15a's `physics/signal`, the signal inside the fiction): dead from the end of the run. Absent = no tap here. */
   tap?(): void;
+  /** P10e-e e10 M4: asks the scene to draw again now (a picture failed: the card takes the run at once). Absent = the next redraw. */
+  redraw?(): void;
   /** An extension-relative path as a URL the page can load (the scene's `assetUrl`). Absent = the path as it is. */
   assetUrl?(path: string): string;
 }

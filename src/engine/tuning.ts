@@ -140,7 +140,11 @@ export const TUNING = Object.freeze({
      * P10e-e Task 27 (R30): shoe service. `wetShare`: the share of days that are wet (`wetDay`: a hash of the day; the state has no weather),
      * whose dirt is rain when no run or drill of hers says otherwise. `AUTHOR TO TUNE`.
      */
-    shoe: Object.freeze({ wetShare: 0.25 }),
+    shoe: Object.freeze({
+      wetShare: 0.25,
+      /** Ruling AC (e10 fix I2): her chance to see a spit, by her attention (shoe.html `spit`'s 0.75 / 0.3 / 0.06), one draw when it is made. */
+      spitSeen: Object.freeze({ watching: 0.75, glancing: 0.3, busy: 0.06 } as Record<string, number>),
+    }),
     gulpFill: Object.freeze({ caught: 5, spill: 20 }), jawRest: 30, noiseSlip: 1,
     jaw: Object.freeze({ per: 8, degradeAt: 70 }),
     /**

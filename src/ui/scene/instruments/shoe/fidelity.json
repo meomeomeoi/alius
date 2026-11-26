@@ -1,6 +1,6 @@
 {
   "prototype": "shoe",
-  "note": "Task 28 (chunk e10): shoe service. The functions of shoe.html that its README calls normative: foot service's craft carried over (`zoneRadii`, `inEllipse`, `zoneAtPic`, `onShoe`, the gesture classifier in `down` / `move` / `up` with the kiss as a press held ≥ 0.3 s under 12 px, the lick sound `lickTick` / `lickStop`); the pictures and the camera (`shoeRect` with `camU` eased by 0.08 a frame, `toPic`, `twoFeet`, `mirrored`, `footX`, `zonesNow`, `leatherNow`, `slotKey`, `view`, `slotImg`, `surf`); the zones (`KINDS`, `FRONT`, `SOLE_TWO`); the surfaces and their order (`fresh`, `begin`, `beginSurface`, `nextSurface`); the dirt of her day (`DIRTS`, `makeSurface`, `ensureSurface`, `dirtLeft`, `zoneStat`); the tongue and the shine (`lickStroke`); the mouth (`swallow`, `spit`); her attention (`updateAttention`); her foot (`herMove`, `update`'s `anim`); her want (`nextWant`); the inspection (`inspect`, `verdict`, `meanGloss`, `render`'s light canvas); the drawing (`render`: the dirt in its own colour with a fixed grain, the gloss screen-blended, the light band, the kisses' marks, the vignette); the loop (`frame`, `update`); her hand (`say`, `sense`, `sayL`); the sound (`audioInit`, `loadSamples`, `play`, `noise`, `tone`, `SFX`, `GROUPS`); the helpers (`clamp`, `lerp`, `smooth` from the kit, `easeOut`, `pick`, `rand`, `ST`, `L`, `D`, `K`); the engine's `CHECK_AT` (TUNING `tongue.checkAt` / 100) and her ways `STYLES` (the prototype's drafts, verbatim in the engine's `physics/footwear.ts`, read by her lead style). Lines (Rulings Q, R, Z): `LINES` are the `cardVoice` rows `shoe.<kind>` by style (a style the prototype has no row of reads neutral's; cold silent, declared), `ZONE_WORDS` the rows `shoe.zone.<zone>`; no kind of hers has a cue kind, so no model cue replaces a line. Module wiring beyond the listed functions (shoe.ts header): `performance`, `setTimeout`, `requestAnimationFrame`, `innerWidth` / `innerHeight` and `Math.random` are the module's own (the scene's frame clock, the mount's timers and frames, the scene's size, a xorshift seeded by fnv1a of the scene and the run: no rng draw); `document.createElement('canvas')` makes a canvas whose context never fails (a page with no canvas draws nothing); `$` names the instrument's elements in the effects layer (under the scene's UI: the stop word's pill and the field are never covered), and the prototype's own page parts (`#reply`, `#summary`, `#sumLine`, `#sumFacts`, `#debug`, `#mouthGauge`) are detached elements. `MARK` is the zone marker's state, off (the marker is chunk f's: `markDown` / `markMove` / `markUp` do nothing); `ASSETS.her` and `SPRITE` (her sprite as a stand-in) are empty: without both pictures of her footwear (`shoe_close.<kind>`, `shoe_sole.<kind>`, their sidecars `{ feet, shown, fit: { height, y, x, fade, xr, xl }, zones }`) or when one fails to load the card plays the hold (`drawable`, README: no stand-in sprite). The prototype's top-level listeners are the mount's (`env.listen`): the left button on the frame is `down` (relative to the scene's root), the pointer's moves and its release over the document `move` / `up`, the right button on the frame spits; Space swallows and X spits only from outside a field or a control (typed there they are letters: ruling O); Escape and H are the scene's (the stop word is its pill). Reports (R29, R31, R27): each beat of a running segment, as it ends (the last 300 ms before the segment's end), one `wipe` with the zone wiped most and the share of the whole footwear's dirt taken off in the beat (each of the four surfaces a quarter: the engine's gauge is 100 × the dirt left), `pointer`; a spit at once (`spit`); her verdict at the session's end, or when the engine's check ended the run first (`physics/service`, `verdictOf` of the mean quality of the surfaces she judged). Not ported (README: prototype only): the panel, the start overlay and its set up, the summary card, the debug readout, the `__` hooks (`_shoe` is the tests' and the shots' hook), the zone marker and `copyFit`, the prototype's texts as code (her lines are `cardVoice`). The dirt's `taste` and `where` texts stay in `DIRTS` (sensory lines, not her voice). CSS (checked by the shots): the prototype's styles under `.alius-shoe` (her lines in her hand at 42 px × her hand's measured scale; the sensory lines; the room's backdrop blurred 16 px and dimmed to 0.45, the shade and the vignette).",
+  "note": "Task 28 (chunk e10): shoe service. The functions of shoe.html that its README calls normative: foot service's craft carried over (`zoneRadii`, `inEllipse`, `zoneAtPic`, `onShoe`, the gesture classifier in `down` / `move` / `up` with the kiss as a press held ≥ 0.3 s under 12 px, the lick sound `lickTick` / `lickStop`); the pictures and the camera (`shoeRect` with `camU` eased by 0.08 a frame, `toPic`, `twoFeet`, `mirrored`, `footX`, `zonesNow`, `leatherNow`, `slotKey`, `view`, `slotImg`, `surf`); the zones (`KINDS`, `FRONT`, `SOLE_TWO`); the surfaces and their order (`fresh`, `begin`, `beginSurface`, `nextSurface`); the dirt of her day (`DIRTS`, `makeSurface`, `ensureSurface`, `dirtLeft`, `zoneStat`); the tongue and the shine (`lickStroke`); the mouth (`swallow`, `spit`); her attention (`updateAttention`); her foot (`herMove`, `update`'s `anim`); her want (`nextWant`); the inspection (`inspect`, `verdict`, `meanGloss`, `render`'s light canvas); the drawing (`render`: the dirt in its own colour with a fixed grain, the gloss screen-blended, the light band, the kisses' marks, the vignette); the loop (`frame`, `update`); her hand (`say`, `sense`, `sayL`); the sound (`audioInit`, `loadSamples`, `play`, `noise`, `tone`, `SFX`, `GROUPS`); the helpers (`clamp`, `lerp`, `smooth` from the kit, `easeOut`, `pick`, `rand`, `ST`, `L`, `D`, `K`); the engine's `CHECK_AT` (TUNING `tongue.checkAt` / 100) and her ways `STYLES` (the prototype's drafts, verbatim in the engine's `physics/footwear.ts`, read by her lead style). Lines (Rulings Q, R, Z): `LINES` are the `cardVoice` rows `shoe.<kind>` by style (a style the prototype has no row of reads neutral's; cold's own lines verbatim), `ZONE_WORDS` the rows `shoe.zone.<zone>`; no kind of hers has a cue kind, so no model cue replaces a line. Module wiring beyond the listed functions (shoe.ts header): `performance`, `setTimeout`, `requestAnimationFrame`, `innerWidth` / `innerHeight` and `Math.random` are the module's own (the scene's frame clock, the mount's timers and frames, the scene's size, a xorshift seeded by fnv1a of the scene and the run: no rng draw); `document.createElement('canvas')` makes a canvas whose context never fails (a page with no canvas draws nothing); `$` names the instrument's elements in the effects layer (under the scene's UI: the stop word's pill and the field are never covered), and the prototype's own page parts (`#reply`, `#summary`, `#sumLine`, `#sumFacts`, `#debug`, `#mouthGauge`) are detached elements. `MARK` is the zone marker's state, off (the marker is chunk f's: `markDown` / `markMove` / `markUp` do nothing); `ASSETS.her` and `SPRITE` (her sprite as a stand-in) are empty: without both pictures of her footwear (`shoe_close.<kind>`, `shoe_sole.<kind>`, their sidecars `{ feet, shown, fit: { height, y, x, fade, xr, xl }, zones }`) or when one fails to load the card plays the hold (`drawable`, README: no stand-in sprite). The prototype's top-level listeners are the mount's (`env.listen`): the left button on the frame is `down` (relative to the scene's root), the pointer's moves and its release over the document `move` / `up`, the right button on the frame spits; Space swallows and X spits only from outside a field or a control (typed there they are letters: ruling O); Escape and H are the scene's (the stop word is its pill). Reports (R29, R31, R27): each beat of a running segment, as it ends (the last 300 ms before the segment's end), one `wipe` with the zone wiped most and the share of the whole footwear's dirt taken off in the beat (each of the four surfaces a quarter: the engine's gauge is 100 × the dirt left), `pointer`; a spit at once (`spit`); her verdict at the session's end, or when the engine's check ended the run first (`physics/service`, `verdictOf` of the mean quality of the surfaces she judged). Not ported (README: prototype only): the panel, the start overlay and its set up, the summary card, the debug readout, the `__` hooks (`_shoe` is the tests' and the shots' hook), the zone marker and `copyFit`, the prototype's texts as code (her lines are `cardVoice`). The dirt's `taste` and `where` texts stay in `DIRTS` (sensory lines, not her voice). CSS (checked by the shots): the prototype's styles under `.alius-shoe` (her lines in her hand at 42 px × her hand's measured scale; the sensory lines; the room's backdrop blurred 16 px and dimmed to 0.45, the shade and the vignette).",
   "functions": [
     {
       "fn": "clamp",
@@ -455,68 +455,8 @@
     },
     {
       "fn": "spit",
-      "reason": "R31: a spit is a relief that the engine decides (`cheatRoll` at the segment's end, by the plan's attention on the spit's beat and her `reading`), not the prototype's own chance (0.75 / 0.3 / 0.06): the spit is reported at once (`reportSpit`: `spit` on the beat, `pointer` from the right button) and the prototype's two answers moved, unchanged, into `spitAnswer(seen)`, which plays when the segment resolves (seen: `run.tally.cheatsCaught` rose; else her `She did not see.` line).",
-      "diff": "@@ -4,16 +4,4 @@\n G.stats.spits+=1\n-const seen=G.attention===\"watching\"?0.75:G.attention===\"glancing\"?0.3:0.06\n G.grit=0\n-if(Math.random()<seen){\n-G.stats.caught+=1\n-sayL(\"caught\")\n-G.anim={\n-kind:\"press\",t0:G.t\n-}\n-if(S.style===\"cruel\"){\n-const s=surf()\n-if(s)for(const p=0;p<s.m.length;p++)if(s.zoneOf[p]>=0)s.m[p]=Math.min(1,s.m[p]+0.15*Math.random())\n-}\n-}\n-else sense(\"You spit it aside. She did not see.\")\n+reportSpit()\n }"
-    },
-    {
-      "fn": "LINES.cold.entry",
-      "reason": "Ruling R (binding for this chunk): cold is silent on every `shoe.*` kind, her first words included; shoe.html gives cold terse lines, the ruling overrules them (for the author: e12).",
-      "diff": "[]"
-    },
-    {
-      "fn": "LINES.cold.turn",
-      "reason": "Ruling R (binding for this chunk): cold is silent on every `shoe.*` kind, her first words included; shoe.html gives cold terse lines, the ruling overrules them (for the author: e12).",
-      "diff": "[]"
-    },
-    {
-      "fn": "LINES.cold.sole",
-      "reason": "Ruling R (binding for this chunk): cold is silent on every `shoe.*` kind, her first words included; shoe.html gives cold terse lines, the ruling overrules them (for the author: e12).",
-      "diff": "[]"
-    },
-    {
-      "fn": "LINES.cold.kiss",
-      "reason": "Ruling R (binding for this chunk): cold is silent on every `shoe.*` kind, her first words included; shoe.html gives cold terse lines, the ruling overrules them (for the author: e12).",
-      "diff": "[]"
-    },
-    {
-      "fn": "LINES.cold.polish",
-      "reason": "Ruling R (binding for this chunk): cold is silent on every `shoe.*` kind, her first words included; shoe.html gives cold terse lines, the ruling overrules them (for the author: e12).",
-      "diff": "[]"
-    },
-    {
-      "fn": "LINES.cold.other",
-      "reason": "Ruling R (binding for this chunk): cold is silent on every `shoe.*` kind, her first words included; shoe.html gives cold terse lines, the ruling overrules them (for the author: e12).",
-      "diff": "[]"
-    },
-    {
-      "fn": "LINES.cold.caught",
-      "reason": "Ruling R (binding for this chunk): cold is silent on every `shoe.*` kind, her first words included; shoe.html gives cold terse lines, the ruling overrules them (for the author: e12).",
-      "diff": "[]"
-    },
-    {
-      "fn": "LINES.cold.good",
-      "reason": "Ruling R (binding for this chunk): cold is silent on every `shoe.*` kind, her first words included; shoe.html gives cold terse lines, the ruling overrules them (for the author: e12).",
-      "diff": "[]"
-    },
-    {
-      "fn": "LINES.cold.poor",
-      "reason": "Ruling R (binding for this chunk): cold is silent on every `shoe.*` kind, her first words included; shoe.html gives cold terse lines, the ruling overrules them (for the author: e12).",
-      "diff": "[]"
-    },
-    {
-      "fn": "LINES.cold.missed",
-      "reason": "Ruling R (binding for this chunk): cold is silent on every `shoe.*` kind, her first words included; shoe.html gives cold terse lines, the ruling overrules them (for the author: e12).",
-      "diff": "[]"
-    },
-    {
-      "fn": "LINES.cold.dull",
-      "reason": "Ruling R (binding for this chunk): cold is silent on every `shoe.*` kind, her first words included; shoe.html gives cold terse lines, the ruling overrules them (for the author: e12).",
-      "diff": "[]"
-    },
-    {
-      "fn": "LINES.cold.end",
-      "reason": "Ruling R (binding for this chunk): cold is silent on every `shoe.*` kind, her first words included; shoe.html gives cold terse lines, the ruling overrules them (for the author: e12).",
-      "diff": "[]"
+      "reason": "Ruling AC (e10 fix I2): whether she saw the spit is decided by the engine when the spit is made (`physics/spit`: one draw on the engine's rng, with the prototype's chance by her attention, 0.75 / 0.3 / 0.06, `TUNING.physics.shoe.spitSeen`; while a segment runs her planned attention on the beat, else the attention shown), so a caught spit is `physics_caught` and in the tally. `spitSeen(seen)` asks it and answers at once; the prototype's two branches are unchanged.",
+      "diff": "@@ -6,3 +6,3 @@\n G.grit=0\n-if(Math.random()<seen){\n+if(spitSeen(seen)){\n G.stats.caught+=1"
     }
   ]
 }

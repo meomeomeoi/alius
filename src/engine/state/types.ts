@@ -661,6 +661,8 @@ export interface SceneRecord {
    * start again until her activity or the commander's placement changes (the stop word, GET UP, being found and her release end it for good).
    */
   frameDone?: { holderId: string; activity: string; placed: string; runId?: string };
+  /** P10e-e fix I3 (e10): a shoe service run that ended `checked` (her inspection or the engine's check): her verdict on it may follow (`physics/service`). Written only for shoe runs. */
+  shoeDone?: { runId: string; holderId: string };
   /** P15a: how many runs this scene had (the next run's id). */
   physicsCount?: number;
   /** P15a: slots this scene spent beyond its own (a blackout, a marathon), consumed when it ends. */

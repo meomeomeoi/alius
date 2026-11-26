@@ -25,6 +25,7 @@ import {
 } from './state';
 import { blendedStyle, leadStyle, physicsStyleOf, styleRows } from './style';
 import { scentBand } from './scent';
+import { isShoeRun } from './footwear';
 import { headCapacity, scentToleranceOf } from './stimuli';
 import { ATT_BY_STEP, frameOf, presenceOf, PRESENCE_WATCH } from './presence';
 
@@ -374,8 +375,6 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
         // R29: shoe service's zones are the parts: a segment the instrument reported wipes in follows the mask (100 × the dirt left)
         if (wiped) for (const g of at(b, 'wipe')) r.gauge -= GAUGE_FULL * (g.amount ?? 0);
         else for (const g of at(b, 'part')) r.gauge -= g.part !== undefined && g.part === beat.part && (run.dryness ?? 0) < 100 ? P.tongue.right : P.tongue.wrong;
-        // R31: grit spat aside is a relief (she may see it: `cheatRoll` below, in `physicsInput`)
-        for (const g of at(b, 'spit')) relief(g.beat, 'spit');
         if (run.dryness !== undefined) r.dryness = Math.min(100, (r.dryness ?? run.dryness) + P.tongue.dryness);
         break;
       }
@@ -617,6 +616,26 @@ export function marathonSkip(draft: CampaignState, ctx: { registries: Registries
   else delete m.spare;
   events.push({ type: 'marathon_phase', runId: run.id, phase: m.phase, phases: m.hours === 'unknown' ? undefined : m.phases, strategy, held: k.held, summary: k.summary, clock: clockText(m.clockMin) });
   return events;
+}
+
+/**
+ * P10e-e Ruling AC (e10 fix I2): a spit of grit during shoe service, decided when it is made, whether a segment runs or the run is held (her
+ * answer follows at once, as the prototype's). One draw with shoe.html's chance by her attention (`TUNING.physics.shoe.spitSeen`): her
+ * planned attention on the beat while a segment runs, else the attention the instrument shows (the last planned). Seen: `physics_caught`
+ * (remembered as any caught cheat) and the tally's `cheatsCaught`. Shoe runs only.
+ */
+export function shoeSpit(draft: CampaignState, ctx: { registries: Registries; rng: Rng }, payload: Record<string, unknown>): EngineEvent[] {
+  const run = draft.scene?.physics;
+  if (!run || run.id !== payload.runId) throw new Error('Stale physics run.');
+  if (!isShoeRun(run, ctx.registries)) throw new Error('physics/spit: only in shoe service');
+  const beat = Number.isInteger(payload.beat) && (payload.beat as number) >= 0 ? (payload.beat as number) : 0;
+  const shown = typeof payload.attention === 'string' && ['watching', 'glancing', 'busy'].includes(payload.attention) ? (payload.attention as Attention) : 'busy';
+  const beats = run.segment.state === 'running' ? run.segment.plan?.beats : undefined;
+  const attention = beats && beats.length > 0 ? beats[Math.min(beat, beats.length - 1)]!.attention : shown;
+  const events: EngineEvent[] = [{ type: 'physics_cheat', runId: run.id, holderId: run.holderId, kind: 'spit', beat }];
+  if (!ctx.rng.chance(P.shoe.spitSeen[attention] ?? 0)) return events;
+  addTally(run, { cheatsCaught: 1 });
+  return [...events, { type: 'physics_caught', runId: run.id, holderId: run.holderId, kind: 'spit', beat }];
 }
 
 const commanderLevel = (state: CampaignState, physicsId: string): number => state.commander.endurance?.[physicsId]?.level ?? 0;

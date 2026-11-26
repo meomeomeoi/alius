@@ -135,7 +135,8 @@ function scopedStaging(staging: PhysicsPanelStaging, scope: Scope): PhysicsPanel
     relief: (x) => (on() ? staging.relief?.(x) ?? [] : []),
     woke: () => (on() ? staging.woke?.() ?? [] : []),
     // e9: her verdict is said at the session's end, when the run is already gone: alive until the unmount (never into a new scene or chat)
-    service: (id, v, holder) => (scope.live ? (holder !== undefined ? staging.service?.(id, v, holder) : staging.service?.(id, v)) ?? [] : []),
+    service: (id, v) => (scope.live ? staging.service?.(id, v) ?? [] : []),
+    spit: (b, a) => (on() ? staging.spit?.(b, a) ?? [] : []),
     beat: () => staging.beat(),
     clock: () => staging.clock(),
   };
@@ -262,6 +263,7 @@ function mount(env: InstrumentEnv, def: InstrumentDef, run: PhysicsRun, key: str
         return () => { clearTimeout(t); scope.timers.delete(t); };
       },
     },
+    redraw: { value: (): void => { if (scope.live) env.redraw?.(); } },
     say: {
       value: (host: HTMLElement, text: string, opts: Parameters<InstrumentEnv['say']>[2]): HTMLElement => {
         if (scope.live) scope.saidIn.add(host);

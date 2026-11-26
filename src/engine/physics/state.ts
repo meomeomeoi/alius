@@ -31,8 +31,8 @@ export type InputKind = (typeof INPUT_KINDS)[number];
  * `part: 'teeth'` (R22) it is a touch of the teeth on her: a slip, never a cost. `relieve` and `fidget` (R27, Rulings X and Y) are not
  * segment inputs: her frame reports them through `physics/relief` (`amount` loudness × (1 − cover), `part` its visibility), decided at once.
  * `wipe` (R29: shoe service) carries the zone it wiped (`part`) and the share of the whole footwear's dirt mask it took off (`amount`); a segment
- * that holds any wipe follows the mask (−100 × amount a wipe, one a beat) instead of the right or wrong part. `spit` (R31) is a relief: grit
- * spat aside, which she may see (`cheatRoll` at the segment's end; seen, `physics_caught`).
+ * that holds any wipe follows the mask (−100 × amount a wipe, one a beat) instead of the right or wrong part. `spit` (R31, Ruling AC) is not a
+ * segment input: the instrument reports it through `physics/spit`, decided at once (one draw, shoe.html's chances; seen, `physics_caught`).
  */
 export interface SegmentInput { beat: number; kind: InputKind; atMs?: number; part?: string; amount?: number }
 

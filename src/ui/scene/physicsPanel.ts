@@ -50,11 +50,10 @@ export interface PhysicsPanelStaging {
   relief?(r: { kind: 'relieve' | 'fidget'; amount: number; part: string; involuntary?: boolean }): EngineEvent[];
   /** P10e-e review I7: she woke: her frame ends (`physics/woke`). Absent = never. */
   woke?(): EngineEvent[];
-  /**
-   * P10e-e Task 26: her verdict on a session of foot service in her frame (`physics/service`), at the session's end (alive until the unmount).
-   * Task 28: shoe service's too; `holderId` names her when the engine's check ended the run first. Absent = never.
-   */
-  service?(runId: string, verdict: 'pleased' | 'adequate' | 'displeased', holderId?: string): EngineEvent[];
+  /** P10e-e Task 26: her verdict on a session of foot service in her frame, or of shoe service (Task 28) (`physics/service`), at the session's end (alive until the unmount). Absent = never. */
+  service?(runId: string, verdict: 'pleased' | 'adequate' | 'displeased'): EngineEvent[];
+  /** P10e-e Ruling AC: grit spat aside in shoe service, decided at once (`physics/spit`; `attention` is hers as shown, read while the run is held). Absent = never. */
+  spit?(beat: number, attention: string): EngineEvent[];
   /** P10e-e 24b: a decision of her script through her command capability (`physics/decide`). Absent = never. */
   decide?(kind: string, ref?: string): EngineEvent[];
   /** P10e-e: how a run of the open scene ended (its `physics_outcome`), or null when none is known. Absent = never known. */

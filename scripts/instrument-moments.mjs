@@ -587,9 +587,10 @@ function serviceMoments() {
  * likes name heels); its two pictures are the prototype's stand-in, the layout fixture's sprite drawn as a PNG (`&art=`, as the prototype's
  * `SPRITE`: no art is committed). Both pages run on Playwright's fake clock, paused; each moment begins on both at the same instant (`begin`),
  * her foot's own moves held off (`G.nextMove`), and the same calls drive both: the tongue through `down` / `move` / `up` at the same zone, a
- * spit while she is busy on her device (the prototype's own chance answers at once; the port's answer is the engine's at the segment's end,
- * shown here with `spitAnswer(false)`), the shine on clean leather by slow strokes, her inspection. Moments: boots from above, heels with the
- * sole presented, grit, a spit while she taps, shine, the inspection; boots from above at 1280x800.
+ * spit while she is busy on her device (the prototype's chance answers at once; the port's is the engine's, also
+ * decided at once as the prototype's: both are given the same answer, not seen), the shine on clean leather by slow strokes, her
+ * inspection. Moments: boots from above, heels with the sole presented, grit, a spit while she taps, shine, the inspection's band and her
+ * verdict; boots from above at 1280x800.
  */
 function shoeMoments() {
   const ART = '/.superpowers/shots/shoe/sprite.png';
@@ -640,7 +641,7 @@ function shoeMoments() {
         const G = k === K.proto ? 'G' : 'window.__shoe.G';
         await p.evaluate(`${G}.grit = 0.6; ${G}.attention = 'busy';`);
         if (k === K.proto) await p.evaluate(() => { const m = Math.random; Math.random = () => 0.5; spit(); Math.random = m; });
-        else await p.evaluate(() => { window.__shoe.spit(); window.__shoe.spitAnswer(false); });
+        else await p.evaluate(() => { window.__shoe.spit(); }); // the layout page's staging decides nothing: not seen, as the prototype's draw here
         await p.clock.runFor(700);
       }),
       moment('shine', 'boots', 'mud', async (p, k) => {
@@ -649,7 +650,9 @@ function shoeMoments() {
         await strokes(p, k, 'toe', 40, 12, 40);
         await p.clock.runFor(200);
       }),
-      moment('inspection', 'boots', 'mud', async (p, k) => { await strokes(p, k, 'toe', 24, 40, 30); await p.evaluate(`${k}inspect()`); await p.clock.runFor(900); }),
+      // e10 M9: the band of light half way across (about 500 ms of its 1.7 s), and her verdict naming the worst zone (after 1.7 s)
+      moment('inspection', 'boots', 'mud', async (p, k) => { await strokes(p, k, 'toe', 24, 40, 30); await p.evaluate(`${k}inspect()`); await p.clock.runFor(500); }),
+      moment('inspection-verdict', 'boots', 'mud', async (p, k) => { await strokes(p, k, 'toe', 24, 40, 30); await p.evaluate(`${k}inspect()`); await p.clock.runFor(1800); }),
       moment('boots-above-1280', 'boots', 'mud', (p) => p.clock.runFor(800), [1280, 800]),
     ],
   };

@@ -125,7 +125,8 @@ export function physicsLines(state: CampaignState, reg: Registries): Directive |
     if (last.falseTaken > 0) said.push('a false opening taken');
     if (last.slips > 0) said.push(count(last.slips, 'a slip', 'slips'));
     if (last.gasps > 0) said.push('a gasp');
-    if (last.reliefs > 0 && run.sourceKind !== 'activity') said.push('a relief taken'); // R28: in her frame a relief is said only once she caught it (the tally)
+    // R28: in her frame and in an order run (shoe service's spit, e10 M2) a relief is said only once she caught it (the tally)
+    if (last.reliefs > 0 && run.sourceKind !== 'activity' && reg.contactPhysics.get(run.physicsId)?.interaction !== 'order') said.push('a relief taken');
     if (last.noise > 0) said.push('some noise');
     if (last.warning) said.push('close to the limit');
     if (said.length > 0) parts.push(`Last stretch: ${said.join(', ')}.`);

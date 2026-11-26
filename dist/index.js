@@ -166,7 +166,11 @@ var TUNING = Object.freeze({
      * P10e-e Task 27 (R30): shoe service. `wetShare`: the share of days that are wet (`wetDay`: a hash of the day; the state has no weather),
      * whose dirt is rain when no run or drill of hers says otherwise. `AUTHOR TO TUNE`.
      */
-    shoe: Object.freeze({ wetShare: 0.25 }),
+    shoe: Object.freeze({
+      wetShare: 0.25,
+      /** Ruling AC (e10 fix I2): her chance to see a spit, by her attention (shoe.html `spit`'s 0.75 / 0.3 / 0.06), one draw when it is made. */
+      spitSeen: Object.freeze({ watching: 0.75, glancing: 0.3, busy: 0.06 })
+    }),
     gulpFill: Object.freeze({ caught: 5, spill: 20 }),
     jawRest: 30,
     noiseSlip: 1,
@@ -35601,6 +35605,48 @@ function momentPass(draft, ctx2, cause, opts = {}) {
   return events;
 }
 
+// src/engine/physics/footwear.ts
+var DIRT_KINDS = ["ash", "mud", "oil", "spores", "dust", "rain"];
+var HEELS = /\b(high[- ]?)?heel(s|ed)?\b|\bstilettos?\b|\bpumps\b/i;
+function footwearOf(state, _reg, unitId) {
+  const u = state.squad.find((x) => x.id === unitId);
+  if (!u) return "boots";
+  return [...likesOf(u), ...tastesOf(u)].some((t) => HEELS.test(t)) ? "heels" : "boots";
+}
+function wetDay(state) {
+  return fnv1a3(`wet_day|${state.day}`) % 1e3 / 1e3 < TUNING.physics.shoe.wetShare;
+}
+function trainedToday(state, reg, unitId) {
+  const from = busySlot(state.day, "morning"), to = busySlot(state.day, "night");
+  return (state.life?.busy ?? []).some((b) => b.unitId === unitId && b.slot >= from && b.slot <= to && b.activityId !== void 0 && (reg.activities.get(b.activityId)?.effects ?? []).some((e) => TUNING.dynamic.style.trainingEffects.includes(e.type)));
+}
+function dirtOfDay(state, reg, unitId) {
+  const run = state.lastExpedition;
+  if (run && run.day === state.day && run.party.includes(unitId)) {
+    const dirt = reg.regions.get(run.regionId)?.dirt;
+    if (typeof dirt === "string" && DIRT_KINDS.includes(dirt)) return dirt;
+  }
+  if (trainedToday(state, reg, unitId)) return "dust";
+  if (wetDay(state)) return "rain";
+  return "dust";
+}
+function isShoeRun(run, reg) {
+  const phys = reg.contactPhysics.get(run.physicsId);
+  if (phys?.interaction !== "order" || phys.gauge?.kind !== "dirt" || run.sourceKind !== "contact") return false;
+  const targets = reg.blockingContacts.get(run.sourceId)?.target ?? [];
+  return targets.some((t) => reg.worshipTargets.get(t)?.footwear === true);
+}
+var STYLES = {
+  neutral: { surface: [22, 34], busy: 0.5, moves: { press: 0.15, stamp: 0.05, kiss: 0.2 }, grain: 1 },
+  affectionate: { surface: [28, 40], busy: 0.4, moves: { press: 0.05, stamp: 0, kiss: 0.35 }, grain: 1 },
+  ritual: { surface: [26, 26], busy: 0.2, moves: { press: 0.05, stamp: 0.05, kiss: 0.4 }, grain: -1 },
+  playful: { surface: [16, 30], busy: 0.5, moves: { press: 0.3, stamp: 0.1, kiss: 0.2 }, grain: 1 },
+  cruel: { surface: [14, 22], busy: 0.35, moves: { press: 0.35, stamp: 0.25, kiss: 0.15 }, grain: -1 },
+  possessive: { surface: [20, 30], busy: 0.25, moves: { press: 0.3, stamp: 0.1, kiss: 0.3 }, grain: 1 },
+  cold: { surface: [18, 26], busy: 0.7, moves: { press: 0.05, stamp: 0.15, kiss: 0.05 }, grain: -1 },
+  regal: { surface: [24, 34], busy: 0.3, moves: { press: 0.15, stamp: 0.1, kiss: 0.45 }, grain: 1 }
+};
+
 // src/engine/physics/gaze.ts
 var G = TUNING.physics.gaze;
 function attentionPlan(n, attention, style, rng, weights) {
@@ -35877,6 +35923,7 @@ function stopPhysics(draft, reg, result) {
   delete draft.scene.physics;
   if (run.sourceKind !== "activity") removeSource(draft, run.sourceKind, run.sourceId);
   else draft.scene.frameDone = { holderId: run.holderId, activity: run.sourceId, placed: placementKey(draft), runId: run.id };
+  if (result === "checked" && isShoeRun(run, reg)) draft.scene.shoeDone = { runId: run.id, holderId: run.holderId };
   const events = [{ type: "physics_outcome", runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...run.second ? { secondId: run.second.physicsId } : {}, ...run.targetId !== void 0 ? { targetId: run.targetId } : {}, ...run.tally ? { tally: { ...run.tally } } : {} }];
   if (run.marathon) events.push(...finishMarathon(draft, reg, run, result));
   return events;
@@ -39174,48 +39221,6 @@ registerAction("moment/answer", (draft, payload, ctx2) => {
   return answerMoment(draft, ctx2, momentId, key, "chip", tone4, at2 !== void 0 ? { at: at2 } : {});
 });
 
-// src/engine/physics/footwear.ts
-var DIRT_KINDS = ["ash", "mud", "oil", "spores", "dust", "rain"];
-var HEELS = /\b(high[- ]?)?heel(s|ed)?\b|\bstilettos?\b|\bpumps\b/i;
-function footwearOf(state, _reg, unitId) {
-  const u = state.squad.find((x) => x.id === unitId);
-  if (!u) return "boots";
-  return [...likesOf(u), ...tastesOf(u)].some((t) => HEELS.test(t)) ? "heels" : "boots";
-}
-function wetDay(state) {
-  return fnv1a3(`wet_day|${state.day}`) % 1e3 / 1e3 < TUNING.physics.shoe.wetShare;
-}
-function trainedToday(state, reg, unitId) {
-  const from = busySlot(state.day, "morning"), to = busySlot(state.day, "night");
-  return (state.life?.busy ?? []).some((b) => b.unitId === unitId && b.slot >= from && b.slot <= to && b.activityId !== void 0 && (reg.activities.get(b.activityId)?.effects ?? []).some((e) => TUNING.dynamic.style.trainingEffects.includes(e.type)));
-}
-function dirtOfDay(state, reg, unitId) {
-  const run = state.lastExpedition;
-  if (run && run.day === state.day && run.party.includes(unitId)) {
-    const dirt = reg.regions.get(run.regionId)?.dirt;
-    if (typeof dirt === "string" && DIRT_KINDS.includes(dirt)) return dirt;
-  }
-  if (trainedToday(state, reg, unitId)) return "dust";
-  if (wetDay(state)) return "rain";
-  return "dust";
-}
-function isShoeRun(run, reg) {
-  const phys = reg.contactPhysics.get(run.physicsId);
-  if (phys?.interaction !== "order" || phys.gauge?.kind !== "dirt" || run.sourceKind !== "contact") return false;
-  const targets = reg.blockingContacts.get(run.sourceId)?.target ?? [];
-  return targets.some((t) => reg.worshipTargets.get(t)?.footwear === true);
-}
-var STYLES = {
-  neutral: { surface: [22, 34], busy: 0.5, moves: { press: 0.15, stamp: 0.05, kiss: 0.2 }, grain: 1 },
-  affectionate: { surface: [28, 40], busy: 0.4, moves: { press: 0.05, stamp: 0, kiss: 0.35 }, grain: 1 },
-  ritual: { surface: [26, 26], busy: 0.2, moves: { press: 0.05, stamp: 0.05, kiss: 0.4 }, grain: -1 },
-  playful: { surface: [16, 30], busy: 0.5, moves: { press: 0.3, stamp: 0.1, kiss: 0.2 }, grain: 1 },
-  cruel: { surface: [14, 22], busy: 0.35, moves: { press: 0.35, stamp: 0.25, kiss: 0.15 }, grain: -1 },
-  possessive: { surface: [20, 30], busy: 0.25, moves: { press: 0.3, stamp: 0.1, kiss: 0.3 }, grain: 1 },
-  cold: { surface: [18, 26], busy: 0.7, moves: { press: 0.05, stamp: 0.15, kiss: 0.05 }, grain: -1 },
-  regal: { surface: [24, 34], busy: 0.3, moves: { press: 0.15, stamp: 0.1, kiss: 0.45 }, grain: 1 }
-};
-
 // src/engine/physics/scent.ts
 var S = TUNING.scent;
 function scentLevel(state, _reg, unitId, part) {
@@ -39783,7 +39788,6 @@ function resolveSegment(run, plan, inputs, env) {
       case "order": {
         if (wiped) for (const g of at2(b, "wipe")) r.gauge -= GAUGE_FULL * (g.amount ?? 0);
         else for (const g of at2(b, "part")) r.gauge -= g.part !== void 0 && g.part === beat.part && (run.dryness ?? 0) < 100 ? P2.tongue.right : P2.tongue.wrong;
-        for (const g of at2(b, "spit")) relief2(g.beat, "spit");
         if (run.dryness !== void 0) r.dryness = Math.min(100, (r.dryness ?? run.dryness) + P2.tongue.dryness);
         break;
       }
@@ -40021,6 +40025,19 @@ function marathonSkip(draft, ctx2, strategy) {
   events.push({ type: "marathon_phase", runId: run.id, phase: m.phase, phases: m.hours === "unknown" ? void 0 : m.phases, strategy, held: k.held, summary: k.summary, clock: clockText2(m.clockMin) });
   return events;
 }
+function shoeSpit(draft, ctx2, payload) {
+  const run = draft.scene?.physics;
+  if (!run || run.id !== payload.runId) throw new Error("Stale physics run.");
+  if (!isShoeRun(run, ctx2.registries)) throw new Error("physics/spit: only in shoe service");
+  const beat = Number.isInteger(payload.beat) && payload.beat >= 0 ? payload.beat : 0;
+  const shown2 = typeof payload.attention === "string" && ["watching", "glancing", "busy"].includes(payload.attention) ? payload.attention : "busy";
+  const beats = run.segment.state === "running" ? run.segment.plan?.beats : void 0;
+  const attention = beats && beats.length > 0 ? beats[Math.min(beat, beats.length - 1)].attention : shown2;
+  const events = [{ type: "physics_cheat", runId: run.id, holderId: run.holderId, kind: "spit", beat }];
+  if (!ctx2.rng.chance(P2.shoe.spitSeen[attention] ?? 0)) return events;
+  addTally(run, { cheatsCaught: 1 });
+  return [...events, { type: "physics_caught", runId: run.id, holderId: run.holderId, kind: "spit", beat }];
+}
 var commanderLevel = (state, physicsId) => state.commander.endurance?.[physicsId]?.level ?? 0;
 function frameRelief(draft, ctx2, payload) {
   const run = draft.scene?.physics;
@@ -40150,6 +40167,11 @@ registerAction("physics/relief", (draft, payload, ctx2) => {
   if (!isObj39(payload)) throw new Error("physics/relief needs a payload");
   return frameRelief(draft, ctx2, payload);
 });
+registerAction("physics/spit", (draft, payload, ctx2) => {
+  live2(draft, ctx2.registries, "physics/spit");
+  if (!isObj39(payload)) throw new Error("physics/spit needs a payload");
+  return shoeSpit(draft, ctx2, payload);
+});
 registerAction("physics/woke", (draft, payload, ctx2) => {
   live2(draft, ctx2.registries, "physics/woke");
   return frameWoke(draft, ctx2, isObj39(payload) ? payload.runId : void 0);
@@ -40169,7 +40191,7 @@ registerAction("physics/service", (draft, payload, ctx2) => {
   const latest = payload.runId === `p${scene.physicsCount ?? 0}`;
   if (run !== void 0 && run.id === payload.runId && run.sourceKind === "activity") holderId = run.holderId;
   else if (run === void 0 && scene.frameDone !== void 0 && scene.frameDone.runId === payload.runId && latest) holderId = scene.frameDone.holderId;
-  else if (run === void 0 && latest && scene.frameDone?.runId !== payload.runId && typeof payload.holderId === "string" && scene.participants.includes(payload.holderId)) holderId = payload.holderId;
+  else if (run === void 0 && latest && scene.shoeDone !== void 0 && scene.shoeDone.runId === payload.runId) holderId = scene.shoeDone.holderId;
   else throw new Error("physics/service: stale physics run (her frame or her shoe service, open or just ended)");
   return rateService(draft, ctx2, holderId, payload.verdict, "engine", scene.id);
 });
@@ -51763,7 +51785,8 @@ function scopedStaging(staging, scope) {
     relief: (x) => on() ? staging.relief?.(x) ?? [] : [],
     woke: () => on() ? staging.woke?.() ?? [] : [],
     // e9: her verdict is said at the session's end, when the run is already gone: alive until the unmount (never into a new scene or chat)
-    service: (id, v, holder3) => scope.live ? (holder3 !== void 0 ? staging.service?.(id, v, holder3) : staging.service?.(id, v)) ?? [] : [],
+    service: (id, v) => scope.live ? staging.service?.(id, v) ?? [] : [],
+    spit: (b, a) => on() ? staging.spit?.(b, a) ?? [] : [],
     beat: () => staging.beat(),
     clock: () => staging.clock()
   };
@@ -51911,6 +51934,9 @@ function mount(env, def, run, key) {
         };
       }
     },
+    redraw: { value: () => {
+      if (scope.live) env.redraw?.();
+    } },
     say: {
       value: (host, text3, opts) => {
         if (scope.live) scope.saidIn.add(host);
@@ -53427,7 +53453,7 @@ function physicsLines(state, reg) {
     if (last3.falseTaken > 0) said.push("a false opening taken");
     if (last3.slips > 0) said.push(count(last3.slips, "a slip", "slips"));
     if (last3.gasps > 0) said.push("a gasp");
-    if (last3.reliefs > 0 && run.sourceKind !== "activity") said.push("a relief taken");
+    if (last3.reliefs > 0 && run.sourceKind !== "activity" && reg.contactPhysics.get(run.physicsId)?.interaction !== "order") said.push("a relief taken");
     if (last3.noise > 0) said.push("some noise");
     if (last3.warning) said.push("close to the limit");
     if (said.length > 0) parts2.push(`Last stretch: ${said.join(", ")}.`);
@@ -53901,8 +53927,12 @@ function createStaging(deps) {
       const r = run();
       return active && r ? dispatch2({ type: "physics/decide", payload: { runId: r.id, kind, ...ref !== void 0 ? { ref } : {} } }) : [];
     },
-    service(runId, verdict2, holderId) {
-      return active ? dispatch2({ type: "physics/service", payload: { runId, verdict: verdict2, ...holderId !== void 0 ? { holderId } : {} } }) : [];
+    service(runId, verdict2) {
+      return active ? dispatch2({ type: "physics/service", payload: { runId, verdict: verdict2 } }) : [];
+    },
+    spit(beat, attention) {
+      const r = run();
+      return active && r ? dispatch2({ type: "physics/spit", payload: { runId: r.id, beat, attention } }) : [];
     },
     tick(nowMs) {
       if (active) advance2(nowMs);
@@ -74241,2137 +74271,18 @@ function frameMatches(run, state, reg) {
 }
 registerInstrument({ id: "her_activity", matches: frameMatches, start: (env, run) => startFrame2(env, run) });
 
-// src/ui/scene/instruments/shoe/shoe.ts
-var E6 = null;
-var innerWidth8 = 0;
-var innerHeight8 = 0;
-var performance9 = { now: () => E6 ? E6.env.now() : 0 };
-function setTimeout7(fn, ms) {
-  if (E6) E6.env.timeout(() => {
-    fn();
-  }, ms);
-}
-function requestAnimationFrame7(fn) {
-  if (!E6) return;
-  const e = E6;
-  e.frameId = e.env.raf((now) => {
-    e.frameId = null;
-    if (E6 !== e) return;
-    before6(now);
-    fn(now);
-    after8(now);
-  });
-}
-var seed6 = 2463534242;
-function rnd016() {
-  seed6 ^= seed6 << 13;
-  seed6 >>>= 0;
-  seed6 ^= seed6 >>> 17;
-  seed6 ^= seed6 << 5;
-  seed6 >>>= 0;
-  return seed6 / 4294967296;
-}
-var reseed2 = (n) => {
-  seed6 = n >>> 0 || 2463534242;
-};
-var Math9 = Object.create(globalThis.Math, { random: { value: rnd016 } });
-function safeCanvas2() {
-  const c = globalThis.document.createElement("canvas");
-  const real = c.getContext.bind(c);
-  let ctx2 = null;
-  c.getContext = (k) => {
-    if (ctx2) return ctx2;
-    let r = null;
-    try {
-      r = real(k);
-    } catch {
-      r = null;
-    }
-    const noop = () => {
-    };
-    ctx2 = r ?? new Proxy({ canvas: c }, { get: (t, p) => p in t ? t[p] : p === "createImageData" || p === "getImageData" ? (_a, _b, w, h2) => ({ data: new Uint8ClampedArray(Math9.max(0, (w ?? _a) * (h2 ?? _b) * 4) || 0) }) : p === "createRadialGradient" || p === "createLinearGradient" ? () => ({ addColorStop: noop }) : noop, set: () => true });
-    if (r) {
-      const gid = r.getImageData.bind(r);
-      r.getImageData = (x, y, w, h2) => {
-        try {
-          return gid(x, y, w, h2);
-        } catch {
-          return { data: new Uint8ClampedArray(w * h2 * 4) };
-        }
-      };
-    }
-    return ctx2;
-  };
-  return c;
-}
-var document3 = { createElement: (tag2) => tag2 === "canvas" ? safeCanvas2() : globalThis.document.createElement(tag2) };
-var DETACHED = /* @__PURE__ */ new Map();
-var $8 = (s) => {
-  const e = E6;
-  if (e.els[s]) return e.els[s];
-  let d = DETACHED.get(s);
-  if (!d) {
-    d = s === "#mouthGauge" ? safeCanvas2() : globalThis.document.createElement("div");
-    DETACHED.set(s, d);
-  }
-  return d;
-};
-var easeOut5 = (t) => 1 - Math9.pow(1 - clamp41(t, 0, 1), 3);
-var pick9 = (a) => a[Math9.floor(Math9.random() * a.length)];
-var rand7 = (a, b) => a + Math9.random() * (b - a);
-var CHECK_AT = TUNING.physics.tongue.checkAt / 100;
-var KINDS2 = {
-  boots: {
-    label: "combat boots",
-    gloss: 0.7,
-    // how bright a full shine is (the toe cap more)
-    close: { toe: [0.62, 0.78, 0.09, 0.06, -20], vamp: [0.5, 0.62, 0.1, 0.06, -25], laces: [0.42, 0.45, 0.06, 0.1, -15], side: [0.4, 0.72, 0.11, 0.07, -10], heel: [0.22, 0.78, 0.06, 0.08, 0], shaft: [0.33, 0.26, 0.08, 0.13, -5], welt: [0.45, 0.9, 0.16, 0.025, -12] },
-    sole: { toe_tread: [0.5, 0.2, 0.13, 0.1, 0], mid: [0.5, 0.5, 0.09, 0.12, 0], heel_tread: [0.5, 0.8, 0.11, 0.09, 0] },
-    leather: ["toe", "vamp", "side", "heel", "shaft", "welt"],
-    bright: { toe: 1.4 }
-  },
-  heels: {
-    label: "high heels",
-    gloss: 1,
-    close: { toe: [0.7, 0.72, 0.08, 0.06, -25], vamp: [0.56, 0.6, 0.09, 0.05, -30], side: [0.45, 0.63, 0.1, 0.05, -20], back: [0.28, 0.5, 0.05, 0.07, 0], heel: [0.25, 0.78, 0.025, 0.11, 5] },
-    sole: { toe_tread: [0.5, 0.22, 0.12, 0.1, 0], mid: [0.5, 0.52, 0.07, 0.12, 0], heel_tread: [0.5, 0.86, 0.04, 0.04, 0] },
-    leather: ["toe", "vamp", "side", "back", "heel"],
-    bright: {}
-  }
-};
-var FRONT = {
-  boots: { toe: [0, 0.88, 0.05, 0.035, 0], vamp: [0, 0.76, 0.045, 0.045, 0], laces: [0, 0.6, 0.03, 0.07, 0], shaft: [0, 0.4, 0.05, 0.09, 0], welt: [0, 0.94, 0.07, 0.015, 0] },
-  heels: { toe: [0, 0.9, 0.045, 0.035, 0], vamp: [0, 0.8, 0.04, 0.035, 0], side: [0.045, 0.78, 0.015, 0.05, 0] }
-};
-var SOLE_TWO = { toe_tread: [0, 0.22, 0.06, 0.08, 0], mid: [0, 0.5, 0.035, 0.09, 0], heel_tread: [0, 0.82, 0.035, 0.05, 0] };
-var ZONE_WORDS2 = new Proxy({}, { get: (_t, k) => (E6 ? voiceLines(E6.env.registries, `shoe.zone.${String(k)}`, void 0)[0] : void 0) ?? String(k) });
-var DIRTS = {
-  ash: { color: [104, 100, 96], grit: 0.6, dry: 1.6, resist: 1, blobs: [4, 0.12, 1], taste: "Ash: dry, bitter, it coats the tongue.", where: "the Ashway" },
-  mud: { color: [86, 64, 44], grit: 1, dry: 0.5, resist: 1.25, blobs: [6, 0.1, 1], taste: "Mud: gritty and cold; sand between the teeth.", where: "a wet run" },
-  oil: { color: [40, 36, 32], grit: 0.2, dry: 0.8, resist: 2, blobs: [3, 0.07, 3], taste: "Machine oil: bitter, it will not wash off the tongue.", where: "Corridor K-12" },
-  spores: { color: [104, 122, 78], grit: 0.4, dry: 0.9, resist: 1, blobs: [7, 0.06, 1], taste: "Spores: sweetish, then rotten. The Bloom.", where: "District 7" },
-  dust: { color: [168, 148, 116], grit: 0.5, dry: 1.8, resist: 0.7, blobs: [3, 0.16, 1], taste: "Parade-ground dust: chalky, it dries everything.", where: "the training yard" },
-  rain: { color: [110, 96, 80], grit: 0.3, dry: 0.4, resist: 0.6, blobs: [14, 0.035, 1], taste: "Muddy rainwater, cold and flat.", where: "the rain" }
-};
-var LINE_KINDS = ["entry", "turn", "sole", "kiss", "polish", "other", "caught", "swallowed", "good", "poor", "missed", "dull", "stamp", "end", "stop"];
-var LINES4 = { neutral: {} };
-var S10 = {
-  kind: "boots",
-  dirt: "mud",
-  style: "neutral",
-  busy: "auto",
-  sound: true,
-  vol: 0.7,
-  debug: false,
-  reduced: false,
-  feet: { boots_close: "one", boots_sole: "one", heels_close: "one", heels_sole: "one" },
-  // 'one' | 'two' per picture
-  shown: { boots_close: "right", boots_sole: "right", heels_close: "right", heels_sole: "right" },
-  // with one foot: which of hers it is
-  fit: { boots_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, boots_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 }, heels_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, heels_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 } },
-  zones: {}
-};
-var ST4 = () => STYLES[S10.style] ?? STYLES.neutral;
-var L4 = () => LINES4[S10.style] ?? LINES4.neutral;
-var D3 = () => DIRTS[S10.dirt];
-var K = () => KINDS2[S10.kind];
-var A7 = { ctx: null, buf: {} };
-var SAMPLE_URLS3 = {
-  cloth1: "assets/sounds/ha/cloth1.ogg",
-  cloth2: "assets/sounds/ha/cloth2.ogg",
-  cloth3: "assets/sounds/ha/cloth3.ogg",
-  cloth4: "assets/sounds/ha/cloth4.ogg",
-  wood1: "assets/sounds/ha/wood1.ogg",
-  wood2: "assets/sounds/ha/wood2.ogg",
-  soft1: "assets/sounds/ha/soft1.ogg",
-  soft2: "assets/sounds/ha/soft2.ogg",
-  key1: "assets/sounds/ha/key1.ogg",
-  key2: "assets/sounds/ha/key2.ogg"
-};
-var GROUPS2 = { cloth: ["cloth1", "cloth2", "cloth3", "cloth4"], wood: ["wood1", "wood2"], soft: ["soft1", "soft2"], key: ["key1", "key2"] };
-function audioInit6() {
-  if (A7.ctx) return;
-  const ctx2 = E6?.env.samples?.ctx() ?? null;
-  const out = E6?.env.samples?.bus("body") ?? null;
-  if (!ctx2 || !out) return;
-  A7.ctx = ctx2;
-  A7.master = ctx2.createGain();
-  A7.master.gain.value = S10.sound ? S10.vol : 0;
-  A7.master.connect(out);
-  A7.world = ctx2.createBiquadFilter();
-  A7.world.type = "lowpass";
-  A7.world.frequency.value = 9e3;
-  A7.world.connect(A7.master);
-  A7.body = ctx2.createGain();
-  A7.body.connect(A7.master);
-  const mk = (sec, fill7) => {
-    const b = ctx2.createBuffer(1, ctx2.sampleRate * sec, ctx2.sampleRate);
-    fill7(b.getChannelData(0));
-    return b;
-  };
-  A7.white = mk(2, (d) => {
-    for (let i = 0; i < d.length; i++) d[i] = Math9.random() * 2 - 1;
-  });
-  A7.brown = mk(4, (d) => {
-    let l = 0;
-    for (let i = 0; i < d.length; i++) {
-      l = (l + 0.02 * (Math9.random() * 2 - 1)) / 1.02;
-      d[i] = l * 3.5;
-    }
-  });
-  A7.grain = mk(2, (d) => {
-    for (let i = 0; i < d.length; i++) d[i] = Math9.random() < 4e-3 ? Math9.random() * 2 - 1 : 0;
-  });
-  const room2 = ctx2.createBufferSource();
-  room2.buffer = A7.brown;
-  room2.loop = true;
-  const rl = ctx2.createBiquadFilter();
-  rl.type = "lowpass";
-  rl.frequency.value = 650;
-  const rg = ctx2.createGain();
-  rg.gain.value = 0.05;
-  room2.connect(rl);
-  rl.connect(rg);
-  rg.connect(A7.world);
-  room2.start();
-}
-function loadSamples2() {
-  const samples = E6?.env.samples;
-  if (!samples) return;
-  A7.buf = new Proxy({}, { get: (_t, k) => typeof k === "string" && SAMPLE_URLS3[k] ? samples.buffer(SAMPLE_URLS3[k]) : null });
-  void samples.preload(Object.values(SAMPLE_URLS3));
-}
-function play5(id, { g = 0.5, pan = 0, rate = 1, lp = 0, dest, at: at2 = 0 } = {}) {
-  const key = GROUPS2[id] ? pick9(GROUPS2[id]) : id;
-  if (!A7.ctx || !A7.buf[key]) return null;
-  const ctx2 = A7.ctx, t = ctx2.currentTime + at2;
-  const src = ctx2.createBufferSource();
-  src.buffer = A7.buf[key];
-  src.playbackRate.value = rate;
-  const gn = ctx2.createGain();
-  gn.gain.value = g;
-  src.connect(gn);
-  let n = gn;
-  if (lp) {
-    const f = ctx2.createBiquadFilter();
-    f.type = "lowpass";
-    f.frequency.value = lp;
-    n.connect(f);
-    n = f;
-  }
-  if (pan) {
-    const p = ctx2.createStereoPanner();
-    p.pan.value = pan;
-    n.connect(p);
-    n = p;
-  }
-  n.connect(dest ?? A7.world);
-  src.start(t);
-  return src;
-}
-function noise8({ at: at2 = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1, gain: gain2 = 0.1, attack = 0.01, dest = A7.world, buf }) {
-  if (!A7.ctx) return;
-  const ctx2 = A7.ctx, t = ctx2.currentTime + at2;
-  const src = ctx2.createBufferSource();
-  src.buffer = buf ?? A7.white;
-  src.loop = true;
-  const fl = ctx2.createBiquadFilter();
-  fl.type = type;
-  fl.frequency.setValueAtTime(f, t);
-  fl.Q.value = q;
-  if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
-  const g = ctx2.createGain();
-  g.gain.setValueAtTime(1e-4, t);
-  g.gain.exponentialRampToValueAtTime(gain2, t + attack);
-  g.gain.exponentialRampToValueAtTime(1e-4, t + dur);
-  src.connect(fl);
-  fl.connect(g);
-  g.connect(dest);
-  src.start(t, Math9.random());
-  src.stop(t + dur + 0.05);
-}
-function tone3(f0, f12, dur, gain2, { at: at2 = 0, dest = A7.body, type = "sine" } = {}) {
-  if (!A7.ctx) return;
-  const ctx2 = A7.ctx, t = ctx2.currentTime + at2;
-  const o = ctx2.createOscillator();
-  o.type = type;
-  o.frequency.setValueAtTime(f0, t);
-  o.frequency.exponentialRampToValueAtTime(f12, t + dur);
-  const g = ctx2.createGain();
-  g.gain.setValueAtTime(1e-4, t);
-  g.gain.exponentialRampToValueAtTime(gain2, t + 0.01);
-  g.gain.exponentialRampToValueAtTime(1e-4, t + dur);
-  o.connect(g);
-  g.connect(dest);
-  o.start(t);
-  o.stop(t + dur + 0.05);
-}
-var SFX5 = {
-  pen: () => {
-    for (let i = 0; i < 3; i++) noise8({ at: i * 0.05 + Math9.random() * 0.02, dur: 0.035 + Math9.random() * 0.03, f: 2600 + Math9.random() * 1800, q: 3, gain: 0.04 });
-  },
-  kiss: () => {
-    noise8({ dur: 0.07, type: "lowpass", f: 900, gain: 0.08, attack: 4e-3, dest: A7.body });
-    noise8({ at: 0.05, dur: 0.03, type: "highpass", f: 2500, gain: 0.04, attack: 2e-3, dest: A7.body });
-  },
-  gulp: (g = 1) => {
-    tone3(190, 110, 0.12, 0.22 * g);
-    noise8({ at: 0.04, dur: 0.05, f: 900, q: 3, gain: 0.08 * g, dest: A7.body });
-  },
-  spit: () => {
-    noise8({ dur: 0.12, type: "bandpass", f: 2200, f2: 900, q: 0.8, gain: 0.12, attack: 5e-3, dest: A7.body });
-    noise8({ at: 0.1, dur: 0.05, type: "lowpass", f: 600, gain: 0.05, dest: A7.world });
-  },
-  stamp: () => {
-    tone3(80, 50, 0.18, 0.5, { dest: A7.world });
-    play5("wood", { g: 0.3 });
-  },
-  squeak: () => {
-    if (!A7.ctx) return;
-    const t = A7.ctx.currentTime;
-    const o = A7.ctx.createOscillator();
-    o.frequency.setValueAtTime(rand7(2600, 3600), t);
-    o.frequency.linearRampToValueAtTime(rand7(2200, 3e3), t + 0.08);
-    const lfo = A7.ctx.createOscillator();
-    lfo.frequency.value = 60;
-    const lg = A7.ctx.createGain();
-    lg.gain.value = 200;
-    lfo.connect(lg);
-    lg.connect(o.frequency);
-    const g = A7.ctx.createGain();
-    g.gain.setValueAtTime(1e-4, t);
-    g.gain.exponentialRampToValueAtTime(0.015, t + 0.01);
-    g.gain.exponentialRampToValueAtTime(1e-4, t + 0.09);
-    o.connect(g);
-    g.connect(A7.body);
-    o.start(t);
-    lfo.start(t);
-    o.stop(t + 0.1);
-    lfo.stop(t + 0.1);
-  },
-  tap: () => play5("key", { g: 0.12, pan: 0.2, rate: rand7(0.95, 1.1) })
-};
-var LICK = null;
-function lickTick2(speed) {
-  if (!A7.ctx) return;
-  if (!LICK) {
-    const src = A7.ctx.createBufferSource();
-    src.buffer = A7.white;
-    src.loop = true;
-    const f = A7.ctx.createBiquadFilter();
-    f.type = "bandpass";
-    f.Q.value = 1.2;
-    const g = A7.ctx.createGain();
-    g.gain.value = 0;
-    src.connect(f);
-    f.connect(g);
-    g.connect(A7.body);
-    src.start();
-    const gs = A7.ctx.createBufferSource();
-    gs.buffer = A7.grain;
-    gs.loop = true;
-    const gf = A7.ctx.createBiquadFilter();
-    gf.type = "highpass";
-    gf.frequency.value = 1800;
-    const gg = A7.ctx.createGain();
-    gg.gain.value = 0;
-    gs.connect(gf);
-    gf.connect(gg);
-    gg.connect(A7.body);
-    gs.start();
-    LICK = { f, g, gg };
-  }
-  const ct = A7.ctx.currentTime;
-  LICK.f.frequency.setTargetAtTime(lerp2(1100, 3400, G9.dry), ct, 0.05);
-  LICK.g.gain.setTargetAtTime(clamp41(speed / 1800, 0, 1) * 0.07, ct, 0.04);
-  LICK.gg.gain.setTargetAtTime(clamp41(speed / 1800, 0, 1) * G9.grit * 0.5, ct, 0.04);
-}
-var lickStop2 = () => {
-  if (LICK && A7.ctx) {
-    LICK.g.gain.setTargetAtTime(0, A7.ctx.currentTime, 0.06);
-    LICK.gg.gain.setTargetAtTime(0, A7.ctx.currentTime, 0.06);
-  }
-};
-function say9(text3) {
-  if (!text3) return;
-  const el = document3.createElement("div");
-  el.className = "her-line";
-  el.textContent = text3;
-  const speed = S10.style === "cruel" || S10.style === "cold" ? 24 : S10.style === "ritual" ? 45 : 34;
-  el.style.setProperty("--write", `${Math9.max(140, text3.length * speed)}ms`);
-  el.style.setProperty("--steps", String(Math9.max(4, text3.length * 2)));
-  const showing = [...$8("#hand").querySelectorAll(".her-line:not(.gone)")].length;
-  el.style.left = `${innerWidth8 * 0.62}px`;
-  el.style.top = `${innerHeight8 * 0.12 + showing * 50}px`;
-  el.style.transform = `rotate(${rand7(-4, 3).toFixed(1)}deg)`;
-  $8("#hand").appendChild(el);
-  SFX5.pen();
-  setTimeout7(() => {
-    el.classList.add("gone");
-    setTimeout7(() => el.remove(), 600);
-  }, 2600);
-}
-function sense4(text3) {
-  const el = document3.createElement("div");
-  el.className = "sense";
-  el.textContent = text3;
-  const showing = [...$8("#hand").querySelectorAll(".sense:not(.gone)")].length;
-  el.style.left = `${innerWidth8 * 0.06}px`;
-  el.style.top = `${innerHeight8 * 0.6 - showing * 46}px`;
-  $8("#hand").appendChild(el);
-  setTimeout7(() => {
-    el.classList.add("gone");
-    setTimeout7(() => el.remove(), 900);
-  }, 3400);
-}
-var sayL = (key, z2) => {
-  const pool = L4()[key];
-  if (pool && pool.length) say9(pick9(pool).replace("%z", z2 ? ZONE_WORDS2[z2] : ""));
-};
-var G9;
-function fresh6() {
-  return {
-    phase: "idle",
-    t: 0,
-    foot: "right",
-    surface: "close",
-    surfaces: {},
-    order: [],
-    orderI: 0,
-    surfT: 0,
-    surfLen: 25e3,
-    dry: 0,
-    grit: 0,
-    gest: null,
-    want: null,
-    wantAt: 0,
-    attention: "busy",
-    attT: 0,
-    nextAtt: 2e3,
-    nextMove: 6e3,
-    fx: { dx: 0, dy: 0, s: 1, r: 0 },
-    anim: null,
-    press: 0,
-    light: -1,
-    lightT: 0,
-    marks: [],
-    toldDry: false,
-    toldPolish: false,
-    toldGrit: false,
-    toldTaste: false,
-    nextTap: 0,
-    stats: { strokes: 0, withGrain: 0, kisses: 0, swallows: 0, spits: 0, caught: 0, stamps: 0, checks: [], polishStrokes: 0 }
-  };
-}
-G9 = fresh6();
-var view = () => G9.surface === "sole" ? "sole" : "close";
-var slotKey = () => `${S10.kind}_${view()}`;
-var twoFeet = () => S10.feet[slotKey()] === "two";
-var mirrored = () => !twoFeet() && G9.foot !== S10.shown[slotKey()];
-var footX = () => S10.fit[slotKey()][G9.foot === "right" ? "xr" : "xl"];
-function zonesNow() {
-  if (twoFeet()) {
-    const own = S10.zones[slotKey()]?.[G9.foot];
-    if (own) return own;
-    const u0 = footX(), out = {}, sgn = G9.foot === "right" ? -1 : 1;
-    for (const [k, p] of Object.entries(view() === "sole" ? SOLE_TWO : FRONT[S10.kind])) out[k] = [+(u0 + p[0] * sgn).toFixed(3), p[1], p[2], p[3], p[4]];
-    return out;
-  }
-  const z2 = S10.zones[slotKey()];
-  return z2 && !z2.right ? z2 : K()[view()];
-}
-var leatherNow = () => view() === "sole" ? [] : K().leather.filter((z2) => Object.keys(zonesNow()).includes(z2));
-var surf = () => G9.surfaces[`${G9.foot}_${G9.surface}`];
-var imgs = {};
-var shownSrc = null;
-function slotImg() {
-  const i = imgs[slotKey()];
-  return i && i.naturalWidth ? i : null;
-}
-function shoeRect() {
-  const img2 = slotImg() ?? SPRITE;
-  if (!img2.naturalWidth) return null;
-  const fit2 = S10.fit[slotKey()];
-  const H = innerHeight8 * fit2.h, Wd = H * img2.naturalWidth / img2.naturalHeight;
-  const k = G9.fx.s * (1 + 0.1 * G9.press);
-  G9.camU = lerp2(G9.camU ?? (twoFeet() ? footX() : 0.5), twoFeet() ? footX() : 0.5, 0.08);
-  const cx = innerWidth8 / 2 + (fit2.x ?? 0) * innerWidth8 + G9.fx.dx - (G9.camU - 0.5) * Wd * k, cy = innerHeight8 * fit2.y + G9.fx.dy;
-  return { x: cx - Wd * k / 2, y: cy - H * k / 2, w: Wd * k, h: H * k };
-}
-function toPic(x, y) {
-  const r = shoeRect();
-  if (!r) return null;
-  let u = (x - r.x) / r.w;
-  const v = (y - r.y) / r.h;
-  if (mirrored()) u = 1 - u;
-  return [u, v, r];
-}
-function zoneRadii2(r) {
-  const z2 = Object.entries(zonesNow()), out = {};
-  for (const [k, p] of z2) {
-    let dmin = 1e9;
-    for (const [k2, q] of z2) if (k2 !== k) dmin = Math9.min(dmin, Math9.hypot((p[0] - q[0]) * r.w, (p[1] - q[1]) * r.h));
-    const auto = clamp41(dmin / 2, r.h * 0.04, r.h * 0.12);
-    out[k] = p[3] !== void 0 ? { rx: p[2] * r.h, ry: p[3] * r.h, rot: (p[4] ?? 0) * Math9.PI / 180 } : p[2] !== void 0 ? { rx: p[2] * r.h, ry: p[2] * r.h } : { rx: auto, ry: auto };
-  }
-  return out;
-}
-function inEllipse2(dx, dy, z2) {
-  const a = -(z2.rot ?? 0), c = Math9.cos(a), sn = Math9.sin(a);
-  return [(dx * c - dy * sn) / z2.rx, (dx * sn + dy * c) / z2.ry];
-}
-function zoneAtPic(u, v, r) {
-  const rad = zoneRadii2(r);
-  let best = null, bd = 1e9;
-  for (const [k, p] of Object.entries(zonesNow())) {
-    const [ex, ey] = inEllipse2((u - p[0]) * r.w, (v - p[1]) * r.h, rad[k]);
-    const d = Math9.hypot(ex, ey);
-    if (d < 1 && d < bd) {
-      bd = d;
-      best = k;
-    }
-  }
-  return best;
-}
-var onShoe = (x, y) => {
-  const q = toPic(x, y);
-  return q && q[0] > 0 && q[0] < 1 && q[1] > 0 && q[1] < 1;
-};
-function makeSurface() {
-  const img2 = slotImg() ?? SPRITE;
-  if (!img2.naturalWidth) return null;
-  const w = 140, h2 = Math9.round(140 * img2.naturalHeight / img2.naturalWidth);
-  const base = document3.createElement("canvas");
-  base.width = w;
-  base.height = h2;
-  const b = base.getContext("2d");
-  b.drawImage(img2, 0, 0, w, h2);
-  const alpha = b.getImageData(0, 0, w, h2).data;
-  const m = new Float32Array(w * h2), gl = new Float32Array(w * h2), zoneOf = new Int8Array(w * h2).fill(-1), leatherMask = new Uint8Array(w * h2);
-  const zs = Object.entries(zonesNow()), r = { w, h: h2 }, asp = img2.naturalWidth / img2.naturalHeight;
-  const rad = zoneRadii2({ w: asp, h: 1 });
-  const [n, size4, stretch] = D3().blobs, blobs = [];
-  for (const [k, p] of zs) for (let i = 0; i < n * (view() === "sole" ? 1.5 : 1); i++) blobs.push([p[0] + rand7(-0.09, 0.09), p[1] + rand7(-0.06, 0.06), rand7(size4 * 0.6, size4 * 1.4), rand7(-1, 1)]);
-  const leather = leatherNow();
-  for (let y = 0; y < h2; y++) for (let x = 0; x < w; x++) {
-    const a = alpha[(y * w + x) * 4 + 3] / 255;
-    if (a < 0.3) continue;
-    let dmin = 1e9, zi = -1;
-    zs.forEach(([k, p], i) => {
-      const [ex, ey] = inEllipse2((x / w - p[0]) * asp, y / h2 - p[1], rad[k]);
-      const d = Math9.hypot(ex, ey);
-      if (d < dmin) {
-        dmin = d;
-        zi = i;
-      }
-    });
-    const onShoeK = 1 - smooth(0.9, 1.5, dmin);
-    if (onShoeK <= 0.01) continue;
-    zoneOf[y * w + x] = dmin < 1.2 ? zi : -1;
-    if (zi >= 0 && leather.includes(zs[zi][0])) leatherMask[y * w + x] = 1;
-    let v = (S10.dirt === "rain" ? 0.05 : 0.22) + Math9.random() * 0.12;
-    for (const [bx, by, br, sk] of blobs) {
-      const dx = (x / w - bx) * asp, dy = y / h2 - by;
-      const sx = stretch > 1 ? dx + sk * dy * 0.6 : dx;
-      v += 0.55 * Math9.exp(-(sx * sx / (stretch * stretch) + dy * dy * 0.8) / (br * br));
-    }
-    m[y * w + x] = clamp41(v, 0, 1) * a * onShoeK;
-  }
-  const tex = new Float32Array(w * h2);
-  for (let i = 0; i < w * h2; i++) tex[i] = 0.7 + Math9.random() * 0.3;
-  const s = { w, h: h2, m, gl, tex, zoneOf, leatherMask, total0: m.reduce((q, v) => q + v, 0), c: document3.createElement("canvas"), cg: document3.createElement("canvas"), names: zs.map(([k]) => k) };
-  s.c.width = s.cg.width = w;
-  s.c.height = s.cg.height = h2;
-  return s;
-}
-function ensureSurface() {
-  const key = `${G9.foot}_${G9.surface}`;
-  if (!G9.surfaces[key]) G9.surfaces[key] = makeSurface();
-  return G9.surfaces[key];
-}
-var dirtLeft2 = (s = surf()) => s ? s.m.reduce((q, v) => q + v, 0) / Math9.max(1, s.total0) : 0;
-function zoneStat(zone, s = surf()) {
-  if (!s) return { dirt: 0, gloss: 1 };
-  const i = s.names.indexOf(zone);
-  if (i < 0) return { dirt: 0, gloss: 1 };
-  let d = 0, g = 0, n = 0;
-  for (let p = 0; p < s.m.length; p++) if (s.zoneOf[p] === i) {
-    d += s.m[p];
-    g += s.gl[p];
-    n++;
-  }
-  return n ? { dirt: d / n, gloss: g / n } : { dirt: 0, gloss: 1 };
-}
-function lickStroke(x0, y0, x1, y1, speed) {
-  const s = surf();
-  const a = toPic(x0, y0), b = toPic(x1, y1);
-  if (!s || !a || !b) return { removed: 0, polished: 0 };
-  const r = a[2];
-  const { w, h: h2, m, gl, leatherMask } = s;
-  const zone = zoneAtPic(b[0], b[1], r), zp = zone ? zonesNow()[zone] : null;
-  let withGrain = true;
-  if (zp) {
-    const ang = (zp[4] ?? 0) * Math9.PI / 180, major = zp[2] >= (zp[3] ?? zp[2]) ? ang : ang + Math9.PI / 2;
-    const du = (b[0] - a[0]) * r.w, dv = (b[1] - a[1]) * r.h, len2 = Math9.hypot(du, dv) || 1;
-    const along = (du * Math9.cos(major) + dv * Math9.sin(major)) / len2;
-    withGrain = Math9.abs(along) > 0.6 && Math9.sign(along) === ST4().grain;
-  }
-  const wet = (1 - G9.dry * 0.85) * (1 - G9.grit * 0.4), k = (withGrain ? 1 : 0.45) * wet * 0.5 / D3().resist;
-  const steps3 = Math9.max(1, Math9.ceil(Math9.hypot(x1 - x0, y1 - y0) / 4)), rad = 0.07 * w;
-  let removed = 0, polished = 0;
-  const slow = speed < 650;
-  for (let i = 0; i <= steps3; i++) {
-    const px = lerp2(a[0], b[0], i / steps3) * w, py = lerp2(a[1], b[1], i / steps3) * h2;
-    for (let y = Math9.max(0, Math9.floor(py - rad)); y < Math9.min(h2, Math9.ceil(py + rad)); y++) for (let x = Math9.max(0, Math9.floor(px - rad)); x < Math9.min(w, Math9.ceil(px + rad)); x++) {
-      const d = Math9.hypot(x - px, y - py) / rad;
-      if (d > 1) continue;
-      const p = y * w + x;
-      if (m[p] > 0.04) {
-        const take = m[p] * k * (1 - d) * 0.35;
-        m[p] -= take;
-        removed += take;
-      } else if (leatherMask[p]) {
-        if (slow) {
-          const add2 = (1 - gl[p]) * 0.06 * (1 - d) * wet;
-          gl[p] += add2;
-          polished += add2;
-        } else gl[p] = Math9.max(0, gl[p] - 0.01 * (1 - d));
-      }
-    }
-  }
-  return { removed, polished, withGrain, zone };
-}
-function beginSurface(surface2) {
-  G9.surface = surface2;
-  G9.surfT = 0;
-  G9.surfLen = rand7(...ST4().surface) * 1e3;
-  ensureSurface();
-  G9.want = null;
-  G9.anim = { kind: "turn", t0: G9.t };
-  play5("cloth", { g: 0.3 });
-  if (surface2 === "sole") sayL("sole");
-  nextWant();
-}
-function nextWant() {
-  const s = surf();
-  if (!s) return;
-  let best = null, bv = 0.12;
-  for (const z2 of s.names) {
-    const st3 = zoneStat(z2);
-    if (st3.dirt > bv) {
-      bv = st3.dirt;
-      best = z2;
-    }
-  }
-  if (!best && view() === "close") {
-    let gv = 0.6;
-    for (const z2 of leatherNow()) {
-      const st3 = zoneStat(z2);
-      if (st3.gloss < gv) {
-        gv = st3.gloss;
-        best = z2;
-      }
-    }
-    if (best && !G9.toldPolish) {
-      G9.toldPolish = true;
-      sayL("polish");
-    }
-  }
-  G9.want = best;
-  G9.wantAt = G9.t;
-}
-function herMove2() {
-  const mv = ST4().moves, r = Math9.random();
-  if (r < mv.stamp && G9.lastQuality !== void 0 && G9.lastQuality < 0.5) {
-    G9.anim = { kind: "stamp", t0: G9.t };
-    SFX5.stamp();
-    G9.stats.stamps += 1;
-    sayL("stamp");
-  } else if (r < mv.stamp + mv.press) {
-    G9.anim = { kind: "press", t0: G9.t };
-    play5("cloth", { g: 0.25 });
-    sense4("She presses it to your face. Leather and her day, close.");
-  } else if (r < mv.stamp + mv.press + mv.kiss) {
-    G9.kissWanted = G9.t;
-    sayL("kiss");
-  }
-  G9.nextMove = G9.t + rand7(7e3, 13e3);
-}
-function updateAttention(dt) {
-  G9.attT += dt;
-  if (G9.attT > G9.nextAtt) {
-    G9.attT = 0;
-    G9.attention = planAttention();
-    G9.nextAtt = 0;
-  }
-  if (G9.attention === "busy" && G9.t > G9.nextTap) {
-    SFX5.tap();
-    G9.nextTap = G9.t + rand7(140, 420);
-  }
-}
-function inspect() {
-  G9.phase = "inspect";
-  G9.light = 0;
-  G9.lightT = 0;
-  play5("cloth", { g: 0.3 });
-  sense4("She turns it to the light.");
-}
-function verdict() {
-  const s = surf();
-  let worst = null, wv = 0, kind = null;
-  for (const z2 of s.names) {
-    const st3 = zoneStat(z2);
-    if (st3.dirt > 0.2 && st3.dirt > wv) {
-      wv = st3.dirt;
-      worst = z2;
-      kind = "missed";
-    }
-  }
-  if (!worst && view() === "close") for (const z2 of leatherNow()) {
-    const st3 = zoneStat(z2);
-    if (st3.gloss < 0.35 && 1 - st3.gloss > wv) {
-      wv = 1 - st3.gloss;
-      worst = z2;
-      kind = "dull";
-    }
-  }
-  const q = clamp41(1 - dirtLeft2(s) * 3, 0, 1) * (view() === "close" ? 0.5 + 0.5 * meanGloss(s) : 1);
-  G9.lastQuality = q;
-  G9.stats.checks.push({ foot: G9.foot, surface: G9.surface, dirt: dirtLeft2(s), gloss: view() === "close" ? meanGloss(s) : null, worst, kind });
-  if (worst) sayL(kind, worst);
-  else sayL(q > 0.6 ? "good" : "poor");
-}
-function meanGloss(s) {
-  if (!s) return 1;
-  let g = 0, n = 0;
-  for (let p = 0; p < s.gl.length; p++) if (s.leatherMask[p]) {
-    g += s.gl[p];
-    n++;
-  }
-  return n ? g / n : 1;
-}
-function begin6() {
-  audioInit6();
-  if (A7.ctx && A7.ctx.state === "suspended") A7.ctx.resume();
-  $8("#hand").replaceChildren();
-  $8("#summary").style.display = "none";
-  G9 = fresh6();
-  G9.phase = "loop";
-  G9.order = [["right", "close"], ["right", "sole"], ["left", "close"], ["left", "sole"]];
-  $8("#reply").innerHTML = `<span class="act">She sets her ${S10.kind === "boots" ? "boot" : "shoe"} down in front of the commander, still carrying ${D3().where}.</span>`;
-  G9.foot = "right";
-  G9.surface = G9.order[0][1];
-  ensureSurface();
-  nextWant();
-  G9.surfLen = rand7(...ST4().surface) * 1e3;
-  sayL("entry");
-}
-function nextSurface() {
-  G9.orderI += 1;
-  if (G9.orderI >= G9.order.length) {
-    finish6("done");
-    return;
-  }
-  const [foot2, surface2] = G9.order[G9.orderI];
-  if (foot2 !== G9.foot) {
-    G9.foot = foot2;
-    sayL("other");
-    G9.anim = { kind: "change", t0: G9.t };
-    play5("cloth", { g: 0.35 });
-  }
-  beginSurface(surface2);
-}
-function finish6(why) {
-  if (G9.phase === "done") return;
-  G9.phase = "done";
-  lickStop2();
-  say9(why === "stop" ? pick9(L4().stop) : pick9(L4().end));
-  const s = G9.stats;
-  setTimeout7(() => {
-    $8("#sumLine").textContent = why === "stop" ? pick9(L4().stop) : L4().end[0];
-    $8("#sumFacts").innerHTML = `${K().label} \xB7 ${S10.dirt} (${D3().where})<br>strokes: ${s.strokes} (with her grain ${s.withGrain}) \xB7 polish strokes: ${s.polishStrokes}<br>kisses: ${s.kisses}<br>swallowed: ${s.swallows} \xB7 spat: ${s.spits} (caught ${s.caught})<br>stamps: ${s.stamps}<br>` + s.checks.map((c) => `${c.foot} ${c.surface}: dirt ${(c.dirt * 100).toFixed(0)} %${c.gloss !== null ? `, shine ${(c.gloss * 100).toFixed(0)} %` : ""}${c.worst ? ` \u2014 ${c.kind} ${ZONE_WORDS2[c.worst]}` : ""}`).join("<br>") + `<br>how it ended: ${why}`;
-    $8("#summary").style.display = "block";
-  }, 1e3);
-}
-function swallow() {
-  if (G9.phase !== "loop" && G9.phase !== "inspect") return;
-  SFX5.gulp(0.6 + G9.grit);
-  G9.stats.swallows += 1;
-  if (G9.grit > 0.25 && !G9.toldTaste) {
-    G9.toldTaste = true;
-    sense4(`${D3().taste} You swallow it.`);
-  }
-  G9.grit = Math9.max(0, G9.grit - 0.6);
-  G9.dry = Math9.max(0, G9.dry - 0.35);
-}
-function spit() {
-  if (G9.phase !== "loop" || G9.grit < 0.05) return;
-  SFX5.spit();
-  G9.stats.spits += 1;
-  G9.grit = 0;
-  reportSpit();
-}
-function spitAnswer(seen2) {
-  if (seen2) {
-    G9.stats.caught += 1;
-    sayL("caught");
-    G9.anim = { kind: "press", t0: G9.t };
-    if (S10.style === "cruel") {
-      const s = surf();
-      if (s) {
-        for (let p = 0; p < s.m.length; p++) if (s.zoneOf[p] >= 0) s.m[p] = Math9.min(1, s.m[p] + 0.15 * Math9.random());
-      }
-    }
-  } else sense4("You spit it aside. She did not see.");
-}
-var last2 = 0;
-function frame6(now) {
-  requestAnimationFrame7(frame6);
-  const dt = Math9.min(50, now - last2);
-  last2 = now;
-  if (G9.phase === "loop" || G9.phase === "inspect") update2(dt);
-  render6(now);
-}
-function update2(dt) {
-  G9.t += dt;
-  const a = G9.anim, fx2 = { dx: 0, dy: 0, s: 1, r: 0 };
-  if (a && !S10.reduced) {
-    const u = (G9.t - a.t0) / 1e3;
-    if (a.kind === "turn") {
-      fx2.s = 1 - 0.12 * Math9.sin(Math9.min(u, 0.4) / 0.4 * Math9.PI);
-      fx2.r = 4 * Math9.sin(Math9.min(u, 0.4) / 0.4 * Math9.PI);
-    }
-    if (a.kind === "change") {
-      fx2.dx = 120 * Math9.sin(Math9.min(u, 0.6) / 0.6 * Math9.PI);
-      fx2.s = 1 - 0.15 * Math9.sin(Math9.min(u, 0.6) / 0.6 * Math9.PI);
-    }
-    if (a.kind === "press") {
-      const p = u < 0.4 ? easeOut5(u / 0.4) : u < 2 ? 1 : Math9.max(0, 1 - (u - 2) / 0.6);
-      fx2.s = 1 + 0.16 * p;
-      G9.press = p;
-    }
-    if (a.kind === "stamp") {
-      fx2.dy = 22 * Math9.max(0, 1 - u * 3) * Math9.sin(u * 40);
-    }
-    if (u > 3) {
-      G9.anim = null;
-      G9.press = 0;
-    }
-  }
-  G9.fx = fx2;
-  if (G9.phase === "inspect") {
-    G9.lightT += dt;
-    G9.light = clamp41(G9.lightT / 1700, 0, 1);
-    if (G9.lightT > 1700 && !G9.judged) {
-      G9.judged = true;
-      verdict();
-    }
-    if (G9.lightT > 3e3) {
-      G9.judged = false;
-      G9.phase = "loop";
-      G9.light = -1;
-      nextSurface();
-    }
-    return;
-  }
-  if (!surf()) {
-    ensureSurface();
-    nextWant();
-  }
-  updateAttention(dt);
-  G9.surfT += dt;
-  if (G9.grit > 0.7 && !G9.toldGrit) {
-    G9.toldGrit = true;
-    sense4("Grit fills the mouth. Swallow it, or spit while she is not looking.");
-  }
-  if (G9.dry > 0.85 && !G9.toldDry) {
-    G9.toldDry = true;
-    sense4("Your mouth is dry; the tongue drags. Swallow.");
-  }
-  if (G9.want && zoneStat(G9.want).dirt < 0.1 && (view() === "sole" || zoneStat(G9.want).gloss > 0.55 || !leatherNow().includes(G9.want))) nextWant();
-  if (G9.t > G9.nextMove) herMove2();
-  const done = dirtLeft2() <= CHECK_AT && (view() === "sole" || meanGloss(surf()) > 0.6);
-  if (done || G9.surfT > G9.surfLen) inspect();
-}
-function render6(now) {
-  const img2 = slotImg();
-  const want = img2 ? img2.src : ASSETS.her;
-  if (shownSrc !== want) {
-    shownSrc = want;
-    $8("#shoe").src = want;
-  }
-  const r = shoeRect();
-  const wrap = $8("#shoeWrap");
-  if (r) {
-    wrap.style.left = `${r.x}px`;
-    wrap.style.top = `${r.y}px`;
-    wrap.style.width = `${r.w}px`;
-    wrap.style.height = `${r.h}px`;
-    const fade2 = S10.fit[slotKey()].fade ?? 0;
-    wrap.style.webkitMaskImage = wrap.style.maskImage = fade2 > 0 ? `linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.35) ${(fade2 * 45).toFixed(1)}%, #000 ${(fade2 * 100).toFixed(1)}%)` : "none";
-    wrap.style.transform = `rotate(${(G9.fx.r + Math9.sin(now / 1900) * 0.35).toFixed(2)}deg) scaleX(${mirrored() ? -1 : 1})`;
-  }
-  $8("#vig").style.background = `radial-gradient(ellipse 64% 58% at 50% 50%, rgba(0,0,0,0) 40%, rgba(0,0,0,${(0.4 + 0.4 * G9.press).toFixed(2)}) 100%)`;
-  const s = G9.phase === "loop" || G9.phase === "inspect" ? surf() : null;
-  const dc = $8("#dirtC"), gc = $8("#glossC"), lc = $8("#lightC");
-  if (s) {
-    const col = D3().color;
-    const cx = s.c.getContext("2d"), id = cx.createImageData(s.w, s.h);
-    for (let i = 0; i < s.w * s.h; i++) {
-      const v = Math9.min(1, s.m[i] * 1.3), t = s.tex[i];
-      id.data[i * 4] = col[0] * t;
-      id.data[i * 4 + 1] = col[1] * t;
-      id.data[i * 4 + 2] = col[2] * t;
-      id.data[i * 4 + 3] = Math9.round(v * 0.88 * (0.75 + 0.25 * t) * 255);
-    }
-    cx.putImageData(id, 0, 0);
-    if (dc.width !== s.w || dc.height !== s.h) {
-      dc.width = s.w;
-      dc.height = s.h;
-    }
-    const d2 = dc.getContext("2d");
-    d2.clearRect(0, 0, s.w, s.h);
-    d2.drawImage(s.c, 0, 0);
-    const gx = s.cg.getContext("2d"), gd = gx.createImageData(s.w, s.h), bright = K().gloss;
-    for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) {
-      const i = y * s.w + x;
-      if (!s.leatherMask[i]) continue;
-      const zn = s.zoneOf[i] >= 0 ? s.names[s.zoneOf[i]] : null, zb = zn && K().bright[zn] || 1;
-      const band2 = 0.35 + 0.65 * Math9.exp(-((x / s.w - y / s.h * 0.6 - 0.12) ** 2) / 0.02);
-      const v = clamp41(s.gl[i] * band2 * bright * zb * (1 - Math9.min(1, s.m[i] * 2)), 0, 1) * 200;
-      gd.data[i * 4] = v;
-      gd.data[i * 4 + 1] = v;
-      gd.data[i * 4 + 2] = v * 1.04;
-      gd.data[i * 4 + 3] = 255;
-    }
-    gx.putImageData(gd, 0, 0);
-    if (gc.width !== s.w || gc.height !== s.h) {
-      gc.width = s.w;
-      gc.height = s.h;
-    }
-    const g2 = gc.getContext("2d");
-    g2.clearRect(0, 0, s.w, s.h);
-    g2.drawImage(s.cg, 0, 0);
-    dc.style.opacity = "1";
-    gc.style.opacity = "1";
-    if (G9.light >= 0) {
-      if (lc.width !== s.w || lc.height !== s.h) {
-        lc.width = s.w;
-        lc.height = s.h;
-      }
-      const lx = lc.getContext("2d"), ld = lx.createImageData(s.w, s.h), pos = lerp2(-0.3, 1.3, easeOut5(G9.light));
-      for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) {
-        const i = y * s.w + x;
-        if (s.zoneOf[i] < 0 && !s.leatherMask[i]) continue;
-        const bandv = Math9.exp(-((x / s.w + y / s.h * 0.3 - pos) ** 2) / 6e-3);
-        const shine = s.leatherMask[i] ? 0.15 + 0.85 * s.gl[i] : 0.25;
-        const v = bandv * shine * (1 - Math9.min(1, s.m[i] * 2.5)) * 255;
-        ld.data[i * 4] = v;
-        ld.data[i * 4 + 1] = v * 0.97;
-        ld.data[i * 4 + 2] = v * 0.9;
-        ld.data[i * 4 + 3] = 255;
-      }
-      lx.putImageData(ld, 0, 0);
-      lc.style.opacity = "1";
-    } else lc.style.opacity = "0";
-  } else {
-    dc.style.opacity = "0";
-    gc.style.opacity = "0";
-    lc.style.opacity = "0";
-  }
-  const mg = $8("#mouthGauge").getContext("2d");
-  mg.clearRect(0, 0, 260, 8);
-  if (G9.phase === "loop" && S10.debug) {
-    mg.fillStyle = "rgba(210,170,120,.8)";
-    mg.fillRect(0, 0, 260 * G9.grit, 3);
-    mg.fillStyle = "rgba(220,220,235,.6)";
-    mg.fillRect(0, 5, 260 * G9.dry, 3);
-  }
-  const mc = $8("#markC");
-  if (mc.width !== innerWidth8) {
-    mc.width = innerWidth8;
-    mc.height = innerHeight8;
-  }
-  const mx = mc.getContext("2d");
-  mx.clearRect(0, 0, mc.width, mc.height);
-  G9.marks = G9.marks.filter((q) => performance9.now() - q.born < 2200);
-  for (const q of G9.marks) {
-    const al = 1 - (performance9.now() - q.born) / 2200;
-    const g = mx.createRadialGradient(q.x, q.y, 0, q.x, q.y, 30);
-    g.addColorStop(0, `rgba(255,150,140,${(0.35 * al).toFixed(3)})`);
-    g.addColorStop(1, "rgba(255,150,140,0)");
-    mx.fillStyle = g;
-    mx.beginPath();
-    mx.arc(q.x, q.y, 30, 0, Math9.PI * 2);
-    mx.fill();
-  }
-  if (G9.phase === "idle" || G9.phase === "mark") {
-    mx.save();
-    mx.setLineDash([6, 6]);
-    mx.strokeStyle = "rgba(216,228,255,.45)";
-    mx.lineWidth = 1;
-    mx.beginPath();
-    mx.moveTo(innerWidth8 / 2 + (r ? (S10.fit[slotKey()].x ?? 0) * innerWidth8 : 0), 0);
-    mx.lineTo(innerWidth8 / 2 + (r ? (S10.fit[slotKey()].x ?? 0) * innerWidth8 : 0), innerHeight8);
-    mx.stroke();
-    mx.restore();
-    if (twoFeet()) {
-      mx.fillStyle = "rgba(216,228,255,.75)";
-      mx.font = '12px "IBM Plex Mono"';
-      mx.fillText(`framing her ${G9.foot} foot`, innerWidth8 / 2 + 8, 24);
-    }
-  }
-  if (r && (S10.debug || MARK2.on)) {
-    const rad = zoneRadii2(r), zz = MARK2.on ? MARK2.pts : zonesNow();
-    for (const [k, p] of Object.entries(zz)) {
-      const live3 = MARK2.on && MARK2.drag && k === MARK2.names[MARK2.i];
-      const ex = live3 ? Math9.max(6, MARK2.drag.rx ?? 6) : p[2] !== void 0 ? p[2] * r.h : rad[k]?.rx ?? 10, ey = live3 ? Math9.max(6, MARK2.drag.ry ?? 6) : p[3] !== void 0 ? p[3] * r.h : ex;
-      const er = (live3 ? MARK2.drag.rot ?? 0 : p[4] ?? 0) * Math9.PI / 180 * (mirrored() ? -1 : 1);
-      const cxp = r.x + (mirrored() ? 1 - p[0] : p[0]) * r.w, cyp = r.y + p[1] * r.h;
-      mx.strokeStyle = k === G9.want ? "rgba(140,255,170,.8)" : "rgba(216,228,255,.55)";
-      mx.lineWidth = k === G9.want ? 2 : 1;
-      mx.beginPath();
-      mx.ellipse(cxp, cyp, ex, ey, er, 0, Math9.PI * 2);
-      mx.stroke();
-      mx.fillStyle = "rgba(216,228,255,.8)";
-      mx.font = '12px "IBM Plex Mono"';
-      mx.fillText(k, cxp + 10, cyp + 4);
-    }
-  }
-  if (S10.debug && s) {
-    $8("#debug").textContent = `${G9.foot} ${G9.surface} \xB7 dirt ${(dirtLeft2() * 100).toFixed(0)} %${view() === "close" ? ` \xB7 shine ${(meanGloss(s) * 100).toFixed(0)} %` : ""} \xB7 she wants ${G9.want ?? "\u2014"}
-mouth: dry ${G9.dry.toFixed(2)} grit ${G9.grit.toFixed(2)} \xB7 her attention ${G9.attention}
-surface ${(G9.surfT / 1e3).toFixed(0)} / ${(G9.surfLen / 1e3).toFixed(0)} s \xB7 grain ${ST4().grain > 0 ? "toward the toe" : "toward the heel"}
-` + (s ? s.names.map((z2) => {
-      const q = zoneStat(z2, s);
-      return `${z2}: dirt ${(q.dirt * 100).toFixed(0)}${leatherNow().includes(z2) ? ` shine ${(q.gloss * 100).toFixed(0)}` : ""}`;
-    }).join("  ") : "");
-  }
-}
-function down2(x, y) {
-  if (MARK2.on) {
-    markDown(x, y);
-    return;
-  }
-  if (G9.phase !== "loop" || !onShoe(x, y)) return;
-  G9.gest = { x0: x, y0: y, x, y, t0: G9.t, len: 0, rev: 0, lastA: null, lastT: performance9.now(), kind: null };
-}
-function move(x, y, e) {
-  if (MARK2.on) {
-    markMove(x, y, e.shiftKey);
-    return;
-  }
-  const g = G9.gest;
-  if (!g) return;
-  const dx = x - g.x, dy = y - g.y, d = Math9.hypot(dx, dy);
-  if (d < 0.5) return;
-  const nowp = performance9.now(), dtm = Math9.max(1, nowp - g.lastT);
-  g.lastT = nowp;
-  g.len += d;
-  const ax = x - (g.ax ?? g.x0), ay = y - (g.ay ?? g.y0);
-  if (Math9.hypot(ax, ay) >= 6) {
-    const an = Math9.atan2(ay, ax);
-    if (g.lastA !== null) {
-      let da = an - g.lastA;
-      while (da > Math9.PI) da -= 2 * Math9.PI;
-      while (da < -Math9.PI) da += 2 * Math9.PI;
-      if (Math9.abs(da) > 2.2) g.rev += 1;
-    }
-    g.lastA = an;
-    g.ax = x;
-    g.ay = y;
-  }
-  if (!g.kind && (g.len > 40 || g.rev >= 1)) g.kind = "lick";
-  const speed = d / dtm * 1e3;
-  g.speed = lerp2(g.speed ?? speed, speed, 0.2);
-  if (g.kind === "lick") {
-    const res = lickStroke(g.x, g.y, x, y, g.speed);
-    const s = surf();
-    if (res.removed > 0) G9.grit = clamp41(G9.grit + res.removed * 35e-5 * D3().grit, 0, 1);
-    G9.dry = clamp41(G9.dry + d * 11e-4 * (res.removed > 0 ? D3().dry : 0.6), 0, 1);
-    lickTick2(g.speed);
-    if (res.polished > 0) {
-      g.polish = (g.polish ?? 0) + res.polished;
-      if (Math9.random() < 0.06) SFX5.squeak();
-    }
-    if (res.withGrain) g.grainLen = (g.grainLen ?? 0) + d;
-  }
-  g.x = x;
-  g.y = y;
-}
-function up() {
-  if (MARK2.on) {
-    markUp();
-    return;
-  }
-  const g = G9.gest;
-  if (!g) return;
-  G9.gest = null;
-  lickStop2();
-  if (!g.kind && g.len < 12 && G9.t - g.t0 >= 300) {
-    SFX5.kiss();
-    G9.stats.kisses += 1;
-    G9.marks.push({ x: g.x0, y: g.y0, born: performance9.now() });
-    if (G9.kissWanted && G9.t - G9.kissWanted < 8e3) {
-      G9.kissWanted = 0;
-      if (Math9.random() < 0.5) sayL("good");
-    }
-    return;
-  }
-  if (g.kind === "lick") {
-    G9.stats.strokes += 1;
-    if ((g.grainLen ?? 0) > g.len * 0.5) G9.stats.withGrain += 1;
-    if ((g.polish ?? 0) > 0.5) G9.stats.polishStrokes += 1;
-  }
-}
-var MARK2 = { on: false, i: 0, names: [], pts: {} };
-var markDown = (_x, _y) => {
-};
-var markMove = (_x, _y, _c) => {
-};
-var markUp = () => {
-};
-var ASSETS = { her: "" };
-var SPRITE = { naturalWidth: 0, naturalHeight: 0 };
-var R9 = { run: null, lineStyle: "neutral", seg: null, running: false, plan: [], sums: {}, spits: 0, caught: 0, qualities: [], checks: 0, verdictSent: false, ox: 0, oy: 0, lastNow: 0, ended: null };
-var broken = /* @__PURE__ */ new Set();
-function planAttention() {
-  const b = beatNow3();
-  return R9.running ? R9.plan[b]?.attention ?? G9.attention : G9.attention;
-}
-function beatNow3() {
-  const seg = R9.seg;
-  if (!seg) return 0;
-  return clamp41(Math9.floor((G9.t - seg.clock0) / TUNING.physics.beatMs), 0, seg.beats - 1);
-}
-function report5(i, pointer) {
-  if (!E6 || !R9.seg || !R9.running) return;
-  E6.env.staging.input(i, { pointer });
-}
-var spitVia = "key";
-function reportSpit() {
-  if (!R9.seg || !R9.running) return;
-  R9.spits += 1;
-  report5({ beat: beatNow3(), kind: "spit" }, spitVia === "mouse");
-}
-function sumsOf(s) {
-  const zones2 = new Array(s.names.length).fill(0);
-  let total2 = 0;
-  for (let p = 0; p < s.m.length; p++) {
-    total2 += s.m[p];
-    if (s.zoneOf[p] >= 0) zones2[s.zoneOf[p]] += s.m[p];
-  }
-  return { total: total2, zones: zones2 };
-}
-function wipedNow() {
-  let amount = 0, part, best = 0;
-  for (const [key, s] of Object.entries(G9.surfaces)) {
-    if (!s || !(s.total0 > 0)) continue;
-    const now = sumsOf(s), was = R9.sums[key] ?? now;
-    const lost = was.total - now.total;
-    if (lost > 0) amount += lost / s.total0 / 4;
-    now.zones.forEach((z2, i) => {
-      const d = (was.zones[i] ?? z2) - z2;
-      if (d > best) {
-        best = d;
-        part = s.names[i];
-      }
-    });
-    R9.sums[key] = now;
-  }
-  return { amount, ...part !== void 0 ? { part } : {} };
-}
-function noteSurfaces() {
-  for (const [key, s] of Object.entries(G9.surfaces)) if (s && R9.sums[key] === void 0) R9.sums[key] = sumsOf(s);
-}
-function reportBeat4(beat) {
-  const w = wipedNow();
-  const amount = Math9.round(w.amount * 1e5) / 1e5;
-  if (amount > 0) report5({ beat, kind: "wipe", amount, ...w.part !== void 0 ? { part: w.part } : {} }, true);
-}
-function startSegment3(run, ck) {
-  const plan = run.segment.plan;
-  const phys = E6.env.registries.contactPhysics.get(run.physicsId);
-  const endMs = Number(phys?.segmentSeconds ?? 40) * 1e3;
-  const clock0 = G9.t - (ck.now - ck.startedAt);
-  const first2 = Math9.max(0, Math9.floor((G9.t - clock0) / TUNING.physics.beatMs));
-  R9.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0, beats: plan.beats.length, endMs, flushed: false, reported: Math9.min(first2, plan.beats.length) };
-  R9.plan = plan.beats;
-  R9.spits = 0;
-  wipedNow();
-}
-function refreshLines5() {
-  if (!E6) return;
-  const env = E6.env;
-  const own = (k) => [...voiceLines(env.registries, `shoe.${k}`, R9.lineStyle)];
-  LINES4 = { [S10.style]: Object.fromEntries(LINE_KINDS.map((k) => [k, own(k)])) };
-}
-function sendVerdict() {
-  if (!E6 || R9.verdictSent || !R9.run) return;
-  R9.verdictSent = true;
-  if (R9.qualities.length === 0) return;
-  const q = R9.qualities.reduce((a, b) => a + b, 0) / R9.qualities.length;
-  const v = verdictOf(q);
-  E6.env.staging.service?.(R9.run.id, v, R9.run.holderId);
-}
-function before6(now) {
-  const e = E6;
-  if (last2 > now) last2 = now;
-  if (R9.lastNow > now) R9.lastNow = now;
-  const r = e.env.root.getBoundingClientRect();
-  const w = e.env.root.clientWidth || r.width || globalThis.innerWidth || 0, h2 = e.env.root.clientHeight || r.height || globalThis.innerHeight || 0;
-  if (w !== innerWidth8 || h2 !== innerHeight8) {
-    innerWidth8 = w;
-    innerHeight8 = h2;
-  }
-  R9.ox = r.left;
-  R9.oy = r.top;
-  S10.reduced = e.env.reduced;
-  e.box.toggleAttribute("data-reduced", S10.reduced);
-  e.box.toggleAttribute("data-readable", e.env.readable);
-  if (!A7.ctx) {
-    audioInit6();
-    if (A7.ctx) loadSamples2();
-  }
-  const bg = e.env.layers.backdrop.style.backgroundImage;
-  const mine = e.els["#backdrop"];
-  if (bg !== mine.style.backgroundImage) mine.style.backgroundImage = bg;
-  if (G9.phase === "wait" && Object.values(imgs).length > 0 && Object.values(imgs).every((i) => i.naturalWidth > 0)) begin6();
-  const run = R9.run;
-  const ck = e.env.staging.clock();
-  R9.running = run !== null && run.segment.state === "running" && run.segment.plan !== void 0 && ck.startedAt !== null;
-  if ((G9.phase === "loop" || G9.phase === "inspect") && R9.running && (R9.seg === null || R9.seg.n !== run.segment.n || R9.seg.startedAt !== ck.startedAt)) startSegment3(run, ck);
-  const seg = R9.seg;
-  if (R9.running && seg && !seg.flushed) {
-    const passed = Math9.floor((G9.t - seg.clock0) / TUNING.physics.beatMs);
-    while (seg.reported < Math9.min(passed, seg.beats)) reportBeat4(seg.reported++);
-    if (G9.t - seg.clock0 >= seg.endMs - 300) {
-      seg.flushed = true;
-      if (seg.reported < seg.beats) reportBeat4(Math9.min(seg.reported, seg.beats - 1));
-      seg.reported = seg.beats;
-    }
-  }
-}
-function after8(now) {
-  if (!E6) return;
-  R9.lastNow = now;
-  noteSurfaces();
-  while (R9.checks < G9.stats.checks.length) {
-    R9.checks += 1;
-    R9.qualities.push(G9.lastQuality);
-  }
-  if (G9.phase === "done" && !R9.verdictSent && R9.ended === null) sendVerdict();
-}
-function artOf(env, run) {
-  const kind = footwearOf(env.state(), env.registries, run.holderId);
-  const close = env.art.get(run.holderId, `shoe_close.${kind}`);
-  const sole = env.art.get(run.holderId, `shoe_sole.${kind}`);
-  if (!close || !sole || broken.has(close.url) || broken.has(sole.url)) return null;
-  return { close, sole, kind };
-}
-function shoeDrawable(env, run) {
-  return artOf(env, run) !== null;
-}
-function fitFrom(key, pic) {
-  const sc = pic.sidecar;
-  if (sc.feet === "one" || sc.feet === "two") S10.feet[key] = sc.feet;
-  if (sc.shown === "left" || sc.shown === "right") S10.shown[key] = sc.shown;
-  const f = sc.fit ?? {};
-  const was = S10.fit[key];
-  S10.fit[key] = { h: f.height ?? was.h, y: f.y ?? was.y, x: f.x ?? was.x, fade: f.fade ?? was.fade, xr: f.xr ?? was.xr, xl: f.xl ?? was.xl };
-  if (sc.zones) S10.zones[key] = sc.zones;
-  else delete S10.zones[key];
-}
-function bind6(env, run, art2) {
-  const state = env.state();
-  const reg = env.registries;
-  reseed2(fnv1a3(`${state.scene?.id ?? ""}|${run.id}|shoe`));
-  S10.kind = art2.kind;
-  S10.dirt = dirtOfDay(state, reg, run.holderId);
-  const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
-  S10.style = lead.key;
-  R9.lineStyle = lead.key;
-  R9.run = run;
-  R9.seg = null;
-  R9.running = false;
-  R9.plan = [];
-  R9.sums = {};
-  R9.spits = 0;
-  R9.caught = run.tally?.cheatsCaught ?? 0;
-  R9.qualities = [];
-  R9.checks = 0;
-  R9.verdictSent = false;
-  R9.ended = null;
-  S10.feet = { boots_close: "one", boots_sole: "one", heels_close: "one", heels_sole: "one" };
-  S10.shown = { boots_close: "right", boots_sole: "right", heels_close: "right", heels_sole: "right" };
-  S10.fit = { boots_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, boots_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 }, heels_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, heels_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 } };
-  S10.zones = {};
-  fitFrom(`${art2.kind}_close`, art2.close);
-  fitFrom(`${art2.kind}_sole`, art2.sole);
-  for (const [side, pic] of [["close", art2.close], ["sole", art2.sole]]) {
-    const im = new Image();
-    im.alt = "";
-    im.onerror = () => {
-      broken.add(pic.url);
-      if (E6?.env === env) E6.box.dataset.broken = "";
-    };
-    im.src = pic.url;
-    imgs[`${art2.kind}_${side}`] = im;
-  }
-  refreshLines5();
-  const look = env.her(run.holderId);
-  E6.box.style.setProperty("--alius-her", look.accent);
-  if (look.hand !== "") E6.box.style.setProperty("--alius-font-hand", `"${look.hand}", var(--alius-font-type)`);
-  E6.box.style.setProperty("--alius-shoe-hand-scale", String(look.handScale || 1));
-}
-function build6(env) {
-  const box = globalThis.document.createElement("div");
-  box.className = "alius-shoe";
-  box.setAttribute("aria-hidden", "true");
-  const els = {};
-  const el = (id, parent, tag2 = "div") => {
-    const n = tag2 === "canvas" ? safeCanvas2() : globalThis.document.createElement(tag2);
-    n.className = `alius-shoe-${id}`;
-    els[`#${id}`] = n;
-    parent.append(n);
-    return n;
-  };
-  const world = el("world", box);
-  el("backdrop", world);
-  el("shade", box);
-  const wrap = el("shoeWrap", box);
-  const pic = el("shoe", wrap, "img");
-  pic.alt = "";
-  pic.draggable = false;
-  el("dirtC", wrap, "canvas");
-  el("glossC", wrap, "canvas");
-  el("lightC", wrap, "canvas");
-  el("markC", box, "canvas");
-  el("vig", box);
-  el("hand", box);
-  env.layers.effects.append(box);
-  return { env, box, els, frameId: null };
-}
-function listen6(env) {
-  const control2 = (t) => t instanceof Element && t.closest('button, a, [role="button"], select, [data-action]') !== null;
-  const onFrame = (t) => t instanceof Node && (t === env.layers.frame || env.layers.frame.contains(t));
-  const typing6 = (t) => t instanceof HTMLElement && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
-  const at2 = (e) => [e.clientX - R9.ox, e.clientY - R9.oy];
-  env.listen(env.root, "pointerdown", (e) => {
-    if (!onFrame(e.target)) return;
-    if (e.button === 2) {
-      e.preventDefault();
-      spitVia = "mouse";
-      spit();
-      return;
-    }
-    if (e.button !== 0) return;
-    const [x, y] = at2(e);
-    down2(x, y);
-  });
-  env.listen(globalThis.document, "pointermove", (e) => {
-    const [x, y] = at2(e);
-    move(x, y, e);
-  });
-  env.listen(globalThis.document, "pointerup", () => up());
-  env.listen(env.layers.frame, "contextmenu", (e) => e.preventDefault());
-  env.listen(globalThis.document, "keydown", (e) => {
-    if (typing6(e.target) || control2(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.key === " ") {
-      e.preventDefault();
-      if (!e.repeat) swallow();
-    }
-    if (e.key === "x" || e.key === "X") {
-      spitVia = "key";
-      spit();
-    }
-  });
-}
-function stopShoe() {
-  const e = E6;
-  if (!e) return;
-  if (e.frameId !== null) e.env.cancelRaf(e.frameId);
-  try {
-    A7.master?.disconnect();
-  } catch {
-  }
-  A7 = { ctx: null, buf: {} };
-  LICK = null;
-  e.box.remove();
-  for (const k of Object.keys(imgs)) {
-    imgs[k].onload = null;
-    imgs[k].onerror = null;
-    delete imgs[k];
-  }
-  shownSrc = null;
-  DETACHED.clear();
-  R9.run = null;
-  R9.seg = null;
-  R9.running = false;
-  R9.plan = [];
-  R9.sums = {};
-  LINES4 = { neutral: {} };
-  G9 = fresh6();
-  E6 = null;
-}
-var EXIT_MS6 = 2600;
-function startShoe(env, run) {
-  stopShoe();
-  const art2 = artOf(env, run);
-  if (!art2) throw new Error("shoe service: no pictures of her footwear");
-  E6 = build6(env);
-  {
-    const r = env.root.getBoundingClientRect();
-    innerWidth8 = env.root.clientWidth || r.width || 0;
-    innerHeight8 = env.root.clientHeight || r.height || 0;
-    R9.ox = r.left;
-    R9.oy = r.top;
-  }
-  bind6(env, run, art2);
-  listen6(env);
-  last2 = env.now();
-  R9.lastNow = last2;
-  audioInit6();
-  if (A7.ctx) loadSamples2();
-  G9 = fresh6();
-  G9.phase = "wait";
-  requestAnimationFrame7(frame6);
-  const mine = E6;
-  return {
-    update(next) {
-      if (E6 !== mine) return;
-      const prev = R9.run;
-      R9.run = next;
-      const caught = next.tally?.cheatsCaught ?? 0;
-      const resolved = prev !== null && (next.segment.n !== prev.segment.n || next.segment.state !== prev.segment.state) && prev.segment.state === "running";
-      while (R9.caught < caught) {
-        R9.caught += 1;
-        R9.spits = Math9.max(0, R9.spits - 1);
-        spitAnswer(true);
-      }
-      if (resolved && R9.spits > 0) {
-        R9.spits = 0;
-        spitAnswer(false);
-      }
-    },
-    finish(end2) {
-      if (E6 !== mine) return 0;
-      R9.ended = end2.result;
-      if (G9.phase === "done") return EXIT_MS6;
-      if (end2.result !== "checked" || G9.phase === "wait") return 0;
-      if (G9.phase === "loop" && surf()) verdict();
-      while (R9.checks < G9.stats.checks.length) {
-        R9.checks += 1;
-        R9.qualities.push(G9.lastQuality);
-      }
-      finish6("done");
-      sendVerdict();
-      return EXIT_MS6;
-    },
-    stop() {
-      if (E6 === mine) stopShoe();
-    }
-  };
-}
-function shoeMatches(run, _state, reg) {
-  return isShoeRun(run, reg) && !run.second;
-}
-registerInstrument({ id: "shoe", matches: shoeMatches, drawable: shoeDrawable, start: startShoe });
-
-// src/ui/scene/dial/points.ts
-var BASE_POINTS = {
-  standing: { torso: "upright", knees: "together", arms: "at_sides", head: "up", gaze: "straight", feet: "flat" },
-  standing_attention: { torso: "upright", knees: "together", arms: "at_sides", head: "up", gaze: "straight", feet: "flat" },
-  sitting: { torso: "upright", knees: "together", arms: "on_thighs_down", head: "up", gaze: "straight", feet: "flat" },
-  sitting_floor: { torso: "upright", knees: "together", arms: "on_thighs_down", head: "up", gaze: "straight", feet: "flat" },
-  kneeling_upright: { torso: "upright", hips: "raised", knees: "together", arms: "on_thighs_down", head: "up", gaze: "straight", feet: "flat" },
-  kneeling_sitting: { torso: "upright", hips: "on_heels", knees: "together", arms: "on_thighs_down", head: "up", gaze: "straight", feet: "flat" },
-  bowing: { torso: "bent", hips: "on_heels", knees: "together", arms: "on_floor", head: "to_floor", gaze: "down", feet: "flat" },
-  all_fours: { torso: "level", hips: "raised", knees: "together", arms: "on_floor", head: "up", gaze: "down", feet: "flat" },
-  crouching: { torso: "forward", hips: "on_heels", knees: "together", arms: "at_sides", head: "up", gaze: "straight", feet: "flat" },
-  lying_back: { torso: "upright", knees: "together", arms: "at_sides", head: "up", gaze: "straight", feet: "flat" },
-  lying_front: { torso: "upright", knees: "together", arms: "at_sides", head: "up", gaze: "down", feet: "flat" },
-  lying_side: { torso: "upright", knees: "together", arms: "at_sides", head: "up", gaze: "straight", feet: "flat" },
-  curled: { torso: "forward", knees: "together", arms: "tucked", head: "bowed", gaze: "down", feet: "flat" }
-};
-function poseOf(baseId) {
-  const points = BASE_POINTS[baseId];
-  return points ? { base: baseId, points } : null;
-}
-
-// src/ui/scene/dial/mannequin.ts
-var LIMB = { upperArm: 0.32, forearm: 0.3, thigh: 0.45, shin: 0.44 };
-var HEAD = { half: 0.115, width: 0.085 };
-var HIP_HALF = 0.1;
-var SHOULDER_HALF = 0.2;
-var SPINE = 0.46;
-var NECK_BASE = 0.03;
-var NECK = 0.07;
-var FOOT = 0.17;
-var DEG = Math.PI / 180;
-var add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
-var sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-var mul = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
-var dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-var len = (a) => Math.hypot(a[0], a[1], a[2]);
-var unit3 = (a) => {
-  const l = len(a);
-  return l < 1e-9 ? [0, 1, 0] : mul(a, 1 / l);
-};
-var lerp3 = (a, b, t) => add(a, mul(sub(b, a), t));
-function solveTwoBone(root, target, l1, l2, hint) {
-  const to = sub(target, root);
-  const reach = len(to);
-  const dir = reach < 1e-9 ? [0, -1, 0] : mul(to, 1 / reach);
-  const d = Math.min(l1 + l2 - 1e-6, Math.max(Math.abs(l1 - l2) + 1e-6, reach));
-  const a = (l1 * l1 - l2 * l2 + d * d) / (2 * d);
-  const h2 = Math.sqrt(Math.max(0, l1 * l1 - a * a));
-  let side = sub(hint, mul(dir, dot(hint, dir)));
-  if (len(side) < 1e-6) side = sub([1, 0, 0], mul(dir, dir[0]));
-  if (len(side) < 1e-6) side = sub([0, 0, 1], mul(dir, dir[2]));
-  const end2 = add(root, mul(dir, d));
-  const mid2 = add(add(root, mul(dir, a)), mul(unit3(side), h2));
-  return { mid: mid2, end: end2 };
-}
-var YAW = -38 * DEG;
-var ELEV = 14 * DEG;
-function project(v) {
-  const x1 = v[0] * Math.cos(YAW) + v[2] * Math.sin(YAW);
-  const z1 = -v[0] * Math.sin(YAW) + v[2] * Math.cos(YAW);
-  const up2 = v[1] * Math.cos(ELEV) - z1 * Math.sin(ELEV);
-  const depth = v[1] * Math.sin(ELEV) + z1 * Math.cos(ELEV);
-  return [x1 + 0, up2 + 0, depth + 0];
-}
-var SIDES = [["L", 1], ["R", -1]];
-var LYING = {
-  lying_back: ["x", -90],
-  lying_front: ["x", 90],
-  lying_side: ["z", 90]
-};
-function legsOf(base, pts, hogtie) {
-  const apart = pts.knees === "apart";
-  const toes = pts.feet === "on_toes";
-  switch (base) {
-    case "standing":
-    case "standing_attention": {
-      const lat = base === "standing_attention" ? 0.055 : apart ? 0.26 : 0.1;
-      const ay = toes ? 0.19 : 0.06;
-      const py = ay + Math.sqrt(0.885 * 0.885 - (lat - HIP_HALF) ** 2);
-      return { pelvis: [0, py, 0], ankle: [lat, ay, 0], kneeHint: [0.15, 0, 1], foot: toes ? "down" : "fwd" };
-    }
-    case "sitting":
-      return { pelvis: [0, 0.46, -0.04], ankle: [0.12, 0.05, 0.4], kneeHint: [0.1, 0, 1], foot: "fwd" };
-    case "sitting_floor":
-      return apart ? { pelvis: [0, 0.1, 0], ankle: [0.1, 0.05, 0.34], kneeHint: [1, 0.1, 0.3], foot: "fwd" } : { pelvis: [0, 0.1, 0], ankle: [0.14, 0.05, 0.6], kneeHint: [0.1, 1, 0.5], foot: "fwd" };
-    case "kneeling_upright":
-    case "kneeling_sitting":
-    case "bowing": {
-      const hips = pts.hips ?? (base === "kneeling_upright" ? "raised" : "on_heels");
-      const lat = apart ? 0.17 : 0.1;
-      const ay = toes ? 0.19 : 0.06;
-      const foot2 = toes ? "down_back" : "back";
-      const hint = apart ? [0.35, 0, 1] : [0.1, 0, 1];
-      if (hips === "raised") return { pelvis: [0, 0.5 + (ay - 0.06), 0.02], ankle: [lat, ay, -0.4], kneeHint: hint, foot: foot2 };
-      if (hips === "to_floor") return { pelvis: [0, 0.1, -0.24], ankle: [lat + 0.14, 0.05, -0.34], kneeHint: hint, foot: foot2 };
-      return { pelvis: [0, 0.22 + (ay - 0.06) * 0.8, -0.3], ankle: [lat, ay, -0.32], kneeHint: hint, foot: foot2 };
-    }
-    case "all_fours":
-      return { pelvis: [0, 0.5, -0.52], ankle: [apart ? 0.3 : 0.1, 0.06, -0.92], kneeHint: [0.1, 0, 1], foot: "back" };
-    case "crouching":
-      return pts.hips === "raised" ? { pelvis: [0, 0.46, -0.02], ankle: [0.1, 0.05, 0.42], kneeHint: [0.1, 0, 1], foot: "fwd" } : { pelvis: [0, 0.3, -0.2], ankle: [0.14, 0.05, 0.04], kneeHint: [0.1, 0.3, 1], foot: "fwd" };
-    case "curled":
-      return { pelvis: [0, 0.24, -0.3], ankle: [apart ? 0.3 : 0.09, 0.06, -0.32], kneeHint: [0.1, 0, 1], foot: "back" };
-    default: {
-      if (hogtie) return { pelvis: [0, 0.95, 0], ankle: [0.08, 0.78, -0.38], kneeHint: [0, -0.3, 1], foot: "back" };
-      if (apart && base === "lying_back") return { pelvis: [0, 0.95, 0], ankle: [0.16, 0.62, 0.12], kneeHint: [0.5, 0, 1], foot: "down" };
-      if (base === "lying_side") return { pelvis: [0, 0.95, 0], ankle: [0.1, 0.16, 0.3], ankleR: [-0.08, 0.12, 0.12], kneeHint: [0.1, 0, 1], foot: "down" };
-      return { pelvis: [0, 0.95, 0], ankle: [0.09, 0.07, 0], kneeHint: [0.1, 0, 1], foot: base === "lying_front" ? "down" : "fwd" };
-    }
-  }
-}
-function leanOf(base, torso, hogtie) {
-  if (hogtie) return -35;
-  if (torso === "bent") return base === "standing" || base === "standing_attention" ? 80 : 100;
-  if (torso === "forward") return base === "crouching" ? 35 : base === "curled" ? 96 : base === "sitting" ? 26 : 22;
-  return { upright: 0, arched: -14, level: 86 }[torso];
-}
-function armGoal(state, c) {
-  const { s, shoulder: sh, chest, pelvis, S: S12, T: T5 } = c;
-  const lat = (k) => [s * k, 0, 0];
-  switch (state) {
-    case "at_sides":
-      if (c.base === "lying_side") return s === 1 ? { target: add(lerp3(c.hip, c.knee, 0.35), [0.06, 0, 0.06]), hint: [0.05, 0, -1] } : { target: add(sh, [0, -0.08, 0.5]), hint: [-0.3, -1, 0] };
-      return { target: add(sh, [s * 0.05, -0.605, 0.02]), hint: [s * 0.3, -0.1, -1] };
-    // nearly straight, the elbow a little back
-    case "behind_back":
-      return { target: add(sub(add(pelvis, mul(S12, 0.12)), mul(T5, 0.12)), lat(0.04)), hint: [s, -0.2, -0.3] };
-    case "bound":
-      return { target: add(sub(add(pelvis, mul(S12, 0.1)), mul(T5, 0.16)), lat(0.03)), hint: [s, -0.2, -0.4] };
-    case "behind_head": {
-      const back = sub(add(c.neckTop, mul(c.headDir, 0.09)), mul(c.faceDir, 0.075));
-      return { target: add(back, lat(0.07)), hint: [s, 0.2, -0.1] };
-    }
-    case "on_thighs_down":
-      return { target: add(lerp3(c.hip, c.knee, 0.45), [0, 0.07, 0]), hint: [s, 0, -0.4] };
-    case "on_thighs_up":
-      return { target: add(lerp3(c.hip, c.knee, 0.7), [s * 0.02, 0.06, 0]), hint: [s, 0, -0.4] };
-    case "forward_palms_up":
-      return c.lying ? { target: add(add(sh, mul(S12, 0.56)), [s * 0.1, 0, 0.02]), hint: [s, 0, -0.3] } : { target: add(add(add(chest, mul(T5, 0.5)), mul(S12, -0.3)), lat(0.13)), hint: [s * 0.6, -1, -0.2] };
-    // offered: the forearms reach forward and down, palms up
-    case "out_sideways":
-      return { target: add(sh, [s * 0.56, 0.01, 0]), hint: [0, -0.5, -0.5] };
-    case "raised":
-      return { target: add(sh, [s * 0.1, 0.55, 0.05]), hint: [s, 0, -0.3] };
-    case "holding":
-      return { target: add(add(add(pelvis, mul(S12, 0.38)), mul(T5, 0.4)), lat(0.11)), hint: [s, -0.6, 0] };
-    case "lamp":
-      return { target: add(c.head, [s * 0.045, 0.36, 0.12]), hint: [s, 0, -0.2] };
-    // both hands together above the head
-    case "on_floor":
-      if (c.base === "all_fours") return { target: [sh[0], 0.03, sh[2] + 0.04], hint: [s * 0.3, 0, -1] };
-      if (c.base === "bowing") return { target: [s * 0.2, 0.03, c.head[2] + 0.04], hint: [s, 1, 0] };
-      return { target: [s * 0.08, 0.03, c.knee[2] + 0.12], hint: [s, 0.2, 0] };
-    // between the knees, in front
-    case "on_ankles":
-      return { target: add(c.ankle, [0, 0.04, -0.02]), hint: [s, 0, 0.2] };
-    case "under_knees":
-      return { target: [c.knee[0], 0.03, c.knee[2] - 0.03], hint: [s, 0.3, 0] };
-    case "crossed":
-      return { target: add(sub(add(chest, mul(T5, 0.1)), mul(S12, 0.06)), lat(-0.14)), hint: [s * 0.3, -1, 0.3] };
-    case "clasped_front":
-      return { target: add(add(add(pelvis, mul(S12, 0.16)), mul(T5, 0.2)), lat(0.025)), hint: [s, -0.5, -0.3] };
-    case "paws":
-      return { target: add(sub(add(chest, mul(T5, 0.2)), mul(S12, 0.1)), lat(0.07)), hint: [s * 0.5, -1, 0.2] };
-    // the hands in front of the chest, close together
-    case "tucked":
-      return { target: [s * 0.22, 0.04, sh[2] - 0.58], hint: [s * 0.2, 1, 0] };
-    // straight back along the body, the hands beside the feet
-    case "desk_flat":
-      return { target: [s * 0.2, 0.76, sh[2] + 0.3], hint: [s, 0.3, 0] };
-  }
-}
-var footVector = (m) => mul(unit3(m === "fwd" ? [0, -0.25, 1] : m === "back" ? [0, -0.05, -1] : m === "down" ? [0, -1, 0.2] : [0, -1, -0.15]), FOOT);
-function rotate(v, axis, deg) {
-  const c = Math.cos(deg * DEG);
-  const s = Math.sin(deg * DEG);
-  return axis === "x" ? [v[0], v[1] * c - v[2] * s, v[1] * s + v[2] * c] : [v[0] * c - v[1] * s, v[0] * s + v[1] * c, v[2]];
-}
-function pose(p) {
-  const base = BASE_POINTS[p.base] ? p.base : "standing";
-  const pts = { ...BASE_POINTS[base], ...p.points };
-  const hogtie = p.hogtie === true;
-  const legs = legsOf(base, pts, hogtie);
-  const lying = LYING[base] !== void 0;
-  const phi = leanOf(base, pts.torso ?? "upright", hogtie) * DEG;
-  const S12 = [0, Math.cos(phi), Math.sin(phi)];
-  const T5 = [0, -Math.sin(phi), Math.cos(phi)];
-  const pelvis = legs.pelvis;
-  const chest = add(pelvis, mul(S12, SPINE));
-  const neck = add(chest, mul(S12, NECK_BASE));
-  const phiN = phi * 0.55;
-  const neckTop = add(neck, mul([0, Math.cos(phiN), Math.sin(phiN)], NECK));
-  const pitch = { up: 0, bowed: 38, back: -55, to_floor: 90 }[pts.head ?? "up"];
-  let theta = phi * 0.35 + pitch * DEG;
-  if (pts.head === "back") theta = Math.min(theta, -Math.asin(0.35));
-  const headDir = [0, Math.cos(theta), Math.sin(theta)];
-  const faceDir = [0, -Math.sin(theta), Math.cos(theta)];
-  const head = add(neckTop, mul(headDir, 0.09));
-  const gazeDir = pts.gaze === "closed" ? null : pts.gaze === "down" ? unit3(add(faceDir, [0, -0.8, 0])) : pts.gaze === "at_her" ? unit3(add(faceDir, [0, 0.27, 0])) : faceDir;
-  const hip = { L: add(pelvis, [HIP_HALF, 0, 0]), R: add(pelvis, [-HIP_HALF, 0, 0]) };
-  const knee = { L: [0, 0, 0], R: [0, 0, 0] };
-  const ankle = { L: [0, 0, 0], R: [0, 0, 0] };
-  const toe = { L: [0, 0, 0], R: [0, 0, 0] };
-  for (const [side, s] of SIDES) {
-    const target = side === "R" && legs.ankleR ? legs.ankleR : [s * legs.ankle[0], legs.ankle[1], legs.ankle[2]];
-    const hint = [s * legs.kneeHint[0], legs.kneeHint[1], legs.kneeHint[2]];
-    const sol = solveTwoBone(hip[side], target, LIMB.thigh, LIMB.shin, hint);
-    knee[side] = sol.mid;
-    ankle[side] = sol.end;
-    const f = footVector(legs.foot);
-    toe[side] = add(sol.end, [s * 0.02, f[1], f[2]]);
-  }
-  const shoulder = { L: add(chest, [SHOULDER_HALF, 0, 0]), R: add(chest, [-SHOULDER_HALF, 0, 0]) };
-  const elbow = { L: [0, 0, 0], R: [0, 0, 0] };
-  const hand = { L: [0, 0, 0], R: [0, 0, 0] };
-  for (const [side, s] of SIDES) {
-    const goal = armGoal(pts.arms ?? "at_sides", {
-      base,
-      head,
-      s,
-      shoulder: shoulder[side],
-      chest,
-      pelvis,
-      S: S12,
-      T: T5,
-      hip: hip[side],
-      knee: knee[side],
-      ankle: hogtie ? lerp3(ankle.L, ankle.R, 0.5) : ankle[side],
-      neckTop,
-      headDir,
-      faceDir,
-      lying
-    });
-    const sol = solveTwoBone(shoulder[side], goal.target, LIMB.upperArm, LIMB.forearm, goal.hint);
-    elbow[side] = sol.mid;
-    hand[side] = sol.end;
-  }
-  const sk = { pelvis, chest, neck, neckTop, head, headDir, faceDir, shoulder, elbow, hand, hip, knee, ankle, toe, gazeDir };
-  const laid = LYING[base];
-  return laid ? lay(sk, laid[0], laid[1]) : sk;
-}
-function lay(sk, axis, deg) {
-  const r = (v) => rotate(v, axis, deg);
-  const pair = (o) => ({ L: r(o.L), R: r(o.R) });
-  const turned = {
-    pelvis: r(sk.pelvis),
-    chest: r(sk.chest),
-    neck: r(sk.neck),
-    neckTop: r(sk.neckTop),
-    head: r(sk.head),
-    headDir: r(sk.headDir),
-    faceDir: r(sk.faceDir),
-    shoulder: pair(sk.shoulder),
-    elbow: pair(sk.elbow),
-    hand: pair(sk.hand),
-    hip: pair(sk.hip),
-    knee: pair(sk.knee),
-    ankle: pair(sk.ankle),
-    toe: pair(sk.toe),
-    gazeDir: sk.gazeDir ? r(sk.gazeDir) : null
-  };
-  const surface2 = [[turned.pelvis, 0.11], [turned.chest, 0.12], [turned.neckTop, 0.04], [turned.head, 0.1]];
-  const RADIUS = { shoulder: 0.05, elbow: 0.045, hand: 0.035, hip: 0.065, knee: 0.05, ankle: 0.045, toe: 0.035 };
-  for (const k of Object.keys(RADIUS)) surface2.push([turned[k].L, RADIUS[k]], [turned[k].R, RADIUS[k]]);
-  const lowest = Math.min(...surface2.map(([v, rad]) => v[1] - rad));
-  const lift2 = 5e-3 - lowest;
-  const up2 = (v) => [v[0], v[1] + lift2, v[2]];
-  const upPair = (o) => ({ L: up2(o.L), R: up2(o.R) });
-  return {
-    ...turned,
-    pelvis: up2(turned.pelvis),
-    chest: up2(turned.chest),
-    neck: up2(turned.neck),
-    neckTop: up2(turned.neckTop),
-    head: up2(turned.head),
-    shoulder: upPair(turned.shoulder),
-    elbow: upPair(turned.elbow),
-    hand: upPair(turned.hand),
-    hip: upPair(turned.hip),
-    knee: upPair(turned.knee),
-    ankle: upPair(turned.ankle),
-    toe: upPair(turned.toe)
-  };
-}
-
-// src/ui/scene/dial/draw.ts
-var NS = "http://www.w3.org/2000/svg";
-var CX = 100;
-var CY = 102;
-var THICK = { torso: 0.25, pelvis: 0.22, thigh: 0.125, shin: 0.095, upperArm: 0.085, forearm: 0.07, neck: 0.07, foot: 0.07 };
-var OUTLINE = 1.6;
-var mid = (a, b, t = 0.5) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-function segmentsOf(s) {
-  const out = [
-    // two volumes along the spine, as on the spike: the pelvis low, the chest high, overlapping at the waist
-    { seg: "pelvis", a: mid(s.pelvis, s.chest, 0.03), b: mid(s.pelvis, s.chest, 0.5) },
-    { seg: "torso", a: mid(s.pelvis, s.chest, 0.42), b: mid(s.pelvis, s.chest, 0.97) },
-    { seg: "neck", a: s.neck, b: s.neckTop }
-  ];
-  for (const side of ["L", "R"]) {
-    out.push(
-      { seg: "upperArm", side, a: s.shoulder[side], b: s.elbow[side] },
-      { seg: "forearm", side, a: s.elbow[side], b: s.hand[side] },
-      { seg: "thigh", side, a: s.hip[side], b: s.knee[side] },
-      { seg: "shin", side, a: s.knee[side], b: s.ankle[side] },
-      { seg: "foot", side, a: s.ankle[side], b: s.toe[side] }
-    );
-  }
-  return out;
-}
-function jointPoints(s) {
-  const pts = [s.pelvis, s.chest, s.neckTop, s.head, [s.head[0] + s.headDir[0] * HEAD.half, s.head[1] + s.headDir[1] * HEAD.half, s.head[2] + s.headDir[2] * HEAD.half]];
-  for (const k of ["shoulder", "elbow", "hand", "hip", "knee", "ankle", "toe"]) pts.push(s[k].L, s[k].R);
-  return pts;
-}
-function figureFit(p, other) {
-  const skeletons = [pose(p), ...other ? [pose(other)] : []];
-  const flat2 = skeletons.flatMap(jointPoints).map((v) => project(v));
-  const xs = flat2.map((v) => v[0]);
-  const ys = flat2.map((v) => v[1]);
-  const w = Math.max(...xs) - Math.min(...xs);
-  const h2 = Math.max(...ys) - Math.min(...ys);
-  const scale = Math.min(96, 158 / Math.max(w, h2, 0.2), 182 / Math.max(Math.hypot(w, h2), 0.2));
-  const cx = (Math.max(...xs) + Math.min(...xs)) / 2;
-  const cy = (Math.max(...ys) + Math.min(...ys)) / 2;
-  const map = (v) => {
-    const [x, y, d] = project(v);
-    return [CX + (x - cx) * scale, CY - (y - cy) * scale, d];
-  };
-  return { scale, points: flat2.map((v) => [CX + (v[0] - cx) * scale, CY - (v[1] - cy) * scale]), map };
-}
-var svg3 = (tag2, attrs) => {
-  const el = document.createElementNS(NS, tag2);
-  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
-  return el;
-};
-var r1 = (n) => Math.round(n * 10) / 10;
-var line2 = (a, b) => `M${r1(a[0])} ${r1(a[1])}L${r1(b[0])} ${r1(b[1])}`;
-function mannequinSvg(p, opts = {}) {
-  const fit2 = figureFit(p, opts.target);
-  const { map, scale } = fit2;
-  const sk = pose(p);
-  const root = svg3("svg", { viewBox: "0 0 200 200", class: "alius-mannequin", "aria-hidden": "true", focusable: "false" });
-  if (opts.size !== void 0) {
-    root.setAttribute("width", String(opts.size));
-    root.setAttribute("height", String(opts.size));
-  }
-  const all = jointPoints(sk);
-  const fx2 = sk.pelvis[0];
-  const minX = Math.min(...all.map((v) => v[0]), fx2 - 0.32) - 0.12;
-  const maxX = Math.max(...all.map((v) => v[0]), fx2 + 0.32) + 0.12;
-  const minZ = Math.min(...all.map((v) => v[2]));
-  const maxZ = Math.max(...all.map((v) => v[2]));
-  const quad = (pts, cls, data = {}) => svg3("polygon", { class: cls, ...data, points: pts.map((v) => map(v)).map((q) => `${r1(q[0])},${r1(q[1])}`).join(" ") });
-  root.append(quad([[minX, 0, minZ - 0.16], [maxX, 0, minZ - 0.16], [maxX, 0, maxZ + 0.16], [minX, 0, maxZ + 0.16]], "alius-mq-floor"));
-  const wallTop = Math.min(1.85, Math.max(...all.map((v) => v[1])) + 0.3);
-  if (p.hint === "wall") root.append(quad([[minX, 0, minZ - 0.08], [maxX, 0, minZ - 0.08], [maxX, wallTop, minZ - 0.08], [minX, wallTop, minZ - 0.08]], "alius-mq-hint alius-mq-plane", { "data-hint": "wall" }));
-  if (p.base === "sitting") {
-    const [px, py, pz] = sk.pelvis;
-    const top = py - 0.06;
-    root.append(quad([[px - 0.24, top, pz - 0.2], [px + 0.24, top, pz - 0.2], [px + 0.24, top, pz + 0.22], [px - 0.24, top, pz + 0.22]], "alius-mq-hint alius-mq-plane", { "data-hint": "seat" }));
-    for (const dx of [-0.2, 0.2]) root.append(svg3("path", { class: "alius-mq-hint", "data-hint": "seat", d: line2(map([px + dx, top, pz + 0.18]), map([px + dx, 0, pz + 0.18])) }));
-  }
-  if (p.hint === "feet") {
-    for (const dx of [-0.09, 0.09]) root.append(quad([[fx2 + dx - 0.045, 0.01, maxZ + 0.18], [fx2 + dx + 0.045, 0.01, maxZ + 0.18], [fx2 + dx + 0.045, 0.01, maxZ + 0.44], [fx2 + dx - 0.045, 0.01, maxZ + 0.44]], "alius-mq-hint alius-mq-plane", { "data-hint": "feet" }));
-  }
-  const near = [];
-  for (const k of ["hand", "knee", "ankle", "toe", "elbow", "hip", "shoulder"]) near.push([sk[k].L, 0.07], [sk[k].R, 0.07]);
-  near.push([sk.pelvis, 0.12], [sk.chest, 0.13], [sk.head, 0.09]);
-  for (const [v, rad] of near) {
-    if (v[1] > 0.11) continue;
-    const c = map([v[0], 0, v[2]]);
-    root.append(svg3("ellipse", { class: "alius-mq-shadow", cx: r1(c[0]), cy: r1(c[1]), rx: r1(rad * scale * 1.15), ry: r1(rad * scale * 0.45) }));
-  }
-  if (opts.target) {
-    const ghost = svg3("g", { class: "alius-mq-ghost" });
-    const gs = pose(opts.target);
-    for (const s of segmentsOf(gs)) ghost.append(svg3("path", { class: "alius-mq-ghost-seg", "stroke-dasharray": "3 3", d: line2(map(s.a), map(s.b)) }));
-    const gh = map(gs.head);
-    const gTop = map([gs.head[0] + gs.headDir[0], gs.head[1] + gs.headDir[1], gs.head[2] + gs.headDir[2]]);
-    ghost.append(svg3("path", { class: "alius-mq-ghost-seg", "stroke-dasharray": "3 3", d: line2(map(gs.neckTop), [gh[0] + (gTop[0] - gh[0]) * HEAD.half, gh[1] + (gTop[1] - gh[1]) * HEAD.half, 0]) }));
-    root.append(ghost);
-  }
-  if (p.hint === "desk") {
-    const hz = Math.max(sk.hand.L[2], sk.hand.R[2]);
-    const hy = Math.min(sk.hand.L[1], sk.hand.R[1]) - 0.02;
-    const near0 = Math.min(sk.pelvis[2] + 0.12, hz - 0.3);
-    root.append(quad([[fx2 - 0.5, hy, near0], [fx2 + 0.5, hy, near0], [fx2 + 0.5, hy, hz + 0.14], [fx2 - 0.5, hy, hz + 0.14]], "alius-mq-hint alius-mq-plane", { "data-hint": "desk" }));
-  }
-  const body2 = svg3("g", { class: "alius-mq-body" });
-  const farSide = project(sk.shoulder.L)[2] < project(sk.shoulder.R)[2] ? "L" : "R";
-  const back = (v) => {
-    const spine = [sk.chest[0] - sk.pelvis[0], sk.chest[1] - sk.pelvis[1], sk.chest[2] - sk.pelvis[2]];
-    const sideways = [1, 0, 0];
-    const front = [sideways[1] * spine[2] - sideways[2] * spine[1], sideways[2] * spine[0] - sideways[0] * spine[2], sideways[0] * spine[1] - sideways[1] * spine[0]];
-    const rel = [v[0] - sk.pelvis[0], v[1] - sk.pelvis[1], v[2] - sk.pelvis[2]];
-    return rel[0] * front[0] + rel[1] * front[1] + rel[2] * front[2] < -0.06;
-  };
-  const trunk = segmentsOf(sk).filter((s) => s.seg === "torso" || s.seg === "pelvis").map((s) => (map(s.a)[2] + map(s.b)[2]) / 2);
-  const torsoDepth = Math.min(...trunk);
-  const placed = segmentsOf(sk).map((s) => {
-    const a = map(s.a);
-    const b = map(s.b);
-    let depth = (a[2] + b[2]) / 2;
-    if ((s.seg === "forearm" || s.seg === "upperArm") && back(s.b)) depth = Math.min(depth, torsoDepth - 0.02);
-    return { s, a, b, depth };
-  }).sort((u, v) => u.depth - v.depth);
-  const drawHead = () => {
-    const c = map(sk.head);
-    const top = map([sk.head[0] + sk.headDir[0], sk.head[1] + sk.headDir[1], sk.head[2] + sk.headDir[2]]);
-    const angle = Math.atan2(top[0] - c[0], -(top[1] - c[1])) * 180 / Math.PI;
-    body2.append(svg3("ellipse", {
-      class: "alius-mq-head",
-      cx: r1(c[0]),
-      cy: r1(c[1]),
-      rx: r1(HEAD.width * scale),
-      ry: r1(HEAD.half * scale),
-      transform: `rotate(${r1(angle)} ${r1(c[0])} ${r1(c[1])})`
-    }));
-    const face = map([sk.head[0] + sk.faceDir[0] * 0.075, sk.head[1] + sk.faceDir[1] * 0.075, sk.head[2] + sk.faceDir[2] * 0.075]);
-    if (face[2] > c[2]) body2.append(svg3("ellipse", { class: "alius-mq-face", cx: r1(face[0]), cy: r1(face[1]), rx: r1(0.026 * scale), ry: r1(0.026 * scale) }));
-  };
-  for (const { s, a, b, depth } of placed) {
-    const common = { "data-seg": s.seg, ...s.side ? { "data-side": s.side } : {}, d: line2(a, b) };
-    const far = s.side === farSide ? " alius-mq-far" : "";
-    const w = THICK[s.seg] * scale;
-    body2.append(
-      svg3("path", { class: `alius-mq-out${far}`, ...common, "data-depth": r1(depth * 1e3) / 1e3, "stroke-width": r1(w + OUTLINE * 2) }),
-      svg3("path", { class: `alius-mq-fill${far}`, ...common, "stroke-width": r1(w) })
-    );
-    if (s.seg === "neck") drawHead();
-  }
-  root.append(body2);
-  if (p.hint === "wall_front") root.append(quad([[minX, 0, maxZ + 0.04], [maxX, 0, maxZ + 0.04], [maxX, wallTop, maxZ + 0.04], [minX, wallTop, maxZ + 0.04]], "alius-mq-hint alius-mq-plane", { "data-hint": "wall_front" }));
-  if (p.item === "tray") {
-    const m = mid(sk.hand.L, sk.hand.R);
-    const y = m[1] + 0.02;
-    root.append(quad([[m[0] - 0.24, y, m[2] - 0.14], [m[0] + 0.24, y, m[2] - 0.14], [m[0] + 0.24, y, m[2] + 0.16], [m[0] - 0.24, y, m[2] + 0.16]], "alius-mq-item alius-mq-plane", { "data-item": "tray" }));
-  }
-  if (p.item === "lamp") {
-    const m = mid(sk.hand.L, sk.hand.R);
-    root.append(svg3("path", { class: "alius-mq-item", "data-item": "lamp", d: line2(map([m[0], m[1] + 0.02, m[2]]), map([m[0], m[1] + 0.16, m[2]])) }));
-    root.append(quad([[m[0] - 0.08, m[1] + 0.16, m[2]], [m[0] + 0.08, m[1] + 0.16, m[2]], [m[0] + 0.05, m[1] + 0.26, m[2]], [m[0] - 0.05, m[1] + 0.26, m[2]]], "alius-mq-item alius-mq-plane", { "data-item": "lamp" }));
-  }
-  if (p.item === "rope") {
-    root.append(svg3("path", { class: "alius-mq-item", "data-item": "rope", d: line2(map(mid(sk.hand.L, sk.hand.R)), map(mid(sk.ankle.L, sk.ankle.R))) }));
-  }
-  if (p.item === "mouth") {
-    const f = sk.faceDir;
-    const c = [sk.head[0] + f[0] * 0.09 - sk.headDir[0] * 0.05, sk.head[1] + f[1] * 0.09 - sk.headDir[1] * 0.05, sk.head[2] + f[2] * 0.09 - sk.headDir[2] * 0.05];
-    root.append(svg3("path", { class: "alius-mq-item", "data-item": "mouth", d: line2(map([c[0] - 0.07, c[1], c[2]]), map([c[0] + 0.07, c[1], c[2]])) }));
-  }
-  if (sk.gazeDir) {
-    const g = sk.gazeDir;
-    const atFloor = g[1] < -1e-6 ? (sk.head[1] - 5e-3) / -g[1] : Infinity;
-    const end2 = Math.min(0.46, atFloor);
-    if (end2 > 0.14) {
-      const from = map([sk.head[0] + g[0] * 0.1, sk.head[1] + g[1] * 0.1, sk.head[2] + g[2] * 0.1]);
-      const to = map([sk.head[0] + g[0] * end2, sk.head[1] + g[1] * end2, sk.head[2] + g[2] * end2]);
-      root.append(svg3("line", {
-        class: `alius-mq-gaze${opts.hot?.includes("gaze") ? " alius-mq-hot" : ""}`,
-        "stroke-dasharray": "2 3",
-        x1: r1(from[0]),
-        y1: r1(from[1]),
-        x2: r1(to[0]),
-        y2: r1(to[1])
-      }));
-    }
-  }
-  const ring = (v, r) => {
-    const c = map(v);
-    root.append(svg3("circle", { class: "alius-mq-hot", cx: r1(c[0]), cy: r1(c[1]), r }));
-  };
-  for (const j of opts.hot ?? []) {
-    if (j === "shoulders") ring(sk.shoulder.L, 4.5), ring(sk.shoulder.R, 4.5);
-    else if (j === "elbows") ring(sk.elbow.L, 4), ring(sk.elbow.R, 4);
-    else if (j === "hips") ring(sk.hip.L, 4.5), ring(sk.hip.R, 4.5);
-    else if (j === "knees") ring(sk.knee.L, 4.5), ring(sk.knee.R, 4.5);
-    else if (j === "head") ring(sk.head, HEAD.half * scale + 3);
-  }
-  return root;
-}
-
-// src/ui/scene/instruments/call/call.ts
-var CALL_SOUNDS = {
-  soft: ["assets/sounds/ha/soft1.ogg", "assets/sounds/ha/soft2.ogg"],
-  fan: "assets/sounds/ha/card_fan.ogg",
-  place: ["assets/sounds/ha/card_place1.ogg", "assets/sounds/ha/card_place2.ogg"]
-};
-var call = null;
-function currentCall() {
-  return call === null ? null : { id: call.id, done: call.done === true };
-}
-function tapTimes(windowMs) {
-  const win = windowMs;
-  const times2 = [];
-  let t = 380;
-  while (t < win) {
-    times2.push(t);
-    const k = t / win;
-    t += 700 - 480 * k * k;
-  }
-  times2.push(win);
-  return times2;
-}
-function fanPlace(i, n) {
-  const k = i - (n - 1);
-  return { x: k * 140, rot: (i - (n - 1) / 2) * 5, lift: Math.abs(i - (n - 1) / 2) * 9 };
-}
-var sfx = (o, file, gain2, pan, rate = 1) => {
-  o.samples?.play(file, { gain: gain2, pan, rate });
-};
-function build7(o) {
-  const w = h("span", { class: "alius-call-w" });
-  const dots = h("div", { class: "alius-call-dots", "aria-hidden": "true" });
-  const line3 = h("div", { class: "alius-call-line", role: "status" });
-  const fan = h("div", { class: "alius-call-fan" });
-  const root = h(
-    "div",
-    { class: "alius-call", "data-call": o.id, "data-clock": "", role: "group", "aria-label": "She calls a posture" },
-    h("div", { class: "alius-call-word" }, w, dots),
-    line3,
-    fan
-  );
-  root.style.setProperty("--alius-her", o.accent);
-  if (o.hand !== "") root.style.setProperty("--alius-font-hand", `"${o.hand}", var(--alius-font-type)`);
-  root.style.setProperty("--alius-hand-scale", String(o.handScale));
-  if (o.reduced) root.dataset.reduced = "true";
-  o.host.append(root);
-  const dim = o.dim === null ? null : o.dim.appendChild(h("div", { class: "alius-call-dim" }));
-  return { root, w, dots, line: line3, fan, dim };
-}
-function startCall(o) {
-  if (call) return;
-  const choices = o.choices;
-  const want = o.want;
-  const id = o.id;
-  call = { id, want, t0: o.now(), taps: [], timers: [], o, el: build7(o) };
-  const el0 = call.el;
-  if (el0.dim) {
-    void el0.dim.offsetWidth;
-    el0.dim.style.opacity = "0.28";
-  }
-  if (o.dial) {
-    o.dial.dataset.called = "true";
-    o.dial.style.setProperty("--alius-her", o.accent);
-  }
-  const w = el0.w;
-  w.textContent = want[1];
-  w.className = "alius-call-w";
-  void w.offsetWidth;
-  if (!o.reduced) w.classList.add("is-writing");
-  el0.dots.replaceChildren();
-  el0.line.textContent = "";
-  el0.line.style.opacity = "1";
-  const fan = el0.fan;
-  fan.replaceChildren();
-  const n = choices.length;
-  choices.forEach(([base, name], i) => {
-    const pose2 = poseOf(base);
-    const el = h(
-      "button",
-      { type: "button", class: "alius-call-card", "data-posture-choice": base, "data-call": id, "aria-label": `${name}: ${o.baseLabel(base)}`, ...o.cardAttrs ?? {} },
-      pose2 ? mannequinSvg(pose2) : null,
-      h("span", { class: "alius-call-nm" }, name),
-      h("span", { class: "alius-call-base" }, o.baseLabel(base))
-    );
-    const { x, rot, lift: lift2 } = fanPlace(i, n);
-    el.style.left = `${x}px`;
-    el.style.transform = o.reduced ? `translateY(${lift2}px) rotate(${rot}deg)` : "translateY(260px) rotate(0deg) scale(.6)";
-    el.style.opacity = o.reduced ? "1" : "0";
-    el.onmouseenter = () => {
-      if (!call?.done) el.style.transform = `translateY(${lift2 - 18}px) rotate(0deg) scale(1.04)`;
-    };
-    el.onmouseleave = () => {
-      if (!call?.done) el.style.transform = `translateY(${lift2}px) rotate(${rot}deg)`;
-    };
-    el.onclick = () => choose(base, el);
-    el.dataset.base = base;
-    fan.append(el);
-    if (!o.reduced) call.timers.push(o.schedule(() => {
-      el.style.opacity = "1";
-      el.style.transform = `translateY(${lift2}px) rotate(${rot}deg)`;
-    }, 120 + i * 55));
-  });
-  sfx(o, CALL_SOUNDS.fan, 0.3, 0.6);
-  if (o.timed) scheduleTaps();
-  return el0.root;
-}
-function scheduleTaps() {
-  const win = call.o.windowMs;
-  const times2 = tapTimes(win);
-  const span = 300;
-  times2.forEach((at2, i) => call.timers.push(call.o.schedule(() => tap2(at2 / win, i === times2.length - 1, span, i), at2)));
-}
-function tap2(k, last3, span, i) {
-  if (!call) return;
-  const o = call.o;
-  const d = h("i");
-  if (last3) d.className = "last";
-  d.style.left = `${(k - 0.5) * span}px`;
-  call.el.dots.append(d);
-  const w = call.el.w;
-  if (!o.reduced) {
-    w.classList.remove("is-bob");
-    void w.offsetWidth;
-    w.classList.add("is-bob");
-  }
-  sfx(o, CALL_SOUNDS.soft[fnv1a3(`${call.id}|${i}`) % 2], (0.22 + 0.4 * k) * (last3 ? 1.6 : 1), 0.35, 0.92 + fnv1a3(`${call.id}|${i}|rate`) % 1e3 / 1e3 * 0.1);
-  if (last3) end("slow", null);
-}
-function choose(base, el) {
-  if (!call || call.done) return;
-  sfx(call.o, CALL_SOUNDS.place[0], 0.35, 0.6);
-  end(base === call.want[0] ? "right" : "wrong", base, el);
-}
-function end(outcome, base, el) {
-  const c = call;
-  if (!c || c.done) return;
-  c.done = true;
-  for (const t of c.timers) c.o.cancel(t);
-  c.timers = [];
-  const o = c.o;
-  const fan = c.el.fan;
-  const rightEl = fan.querySelector(`[data-base="${c.want[0]}"]`);
-  c.el.root.dataset.outcome = outcome;
-  if (outcome === "right") {
-    if (!o.reduced && el) {
-      const fx2 = -parseFloat(el.style.left) - 30;
-      el.style.transition = "transform .45s cubic-bezier(.5,0,.8,.4), opacity .45s";
-      el.style.transform = `translate(${fx2}px, 230px) scale(.35)`;
-      el.style.opacity = "0";
-    }
-    for (const x of fan.children) if (x !== el) x.style.opacity = "0";
-  } else {
-    if (outcome === "wrong" && el) el.classList.add("is-wrong");
-    rightEl?.classList.add("is-right");
-    c.timers.push(o.schedule(() => {
-      for (const x of fan.children) {
-        x.style.opacity = "0";
-        if (!o.reduced) x.style.transform += " translateY(60px)";
-      }
-    }, 900));
-  }
-  const lineEl = c.el.line;
-  lineEl.textContent = o.line(outcome);
-  lineEl.className = "alius-call-line";
-  void lineEl.offsetWidth;
-  if (!o.reduced) lineEl.classList.add("is-writing");
-  o.take(base ?? void 0, outcome === "slow" || o.timed && o.now() - c.t0 > o.windowMs);
-  c.timers.push(o.schedule(() => {
-    if (c.el.dim) c.el.dim.style.opacity = "0";
-    if (o.dial) delete o.dial.dataset.called;
-    c.el.w.textContent = "";
-    c.el.dots.replaceChildren();
-  }, 1300));
-  c.timers.push(o.schedule(() => {
-    lineEl.style.opacity = "0";
-  }, 2600));
-  c.timers.push(o.schedule(() => {
-    teardown2(c);
-  }, 3300));
-}
-function teardown2(c) {
-  c.el.root.remove();
-  c.el.dim?.remove();
-  if (c.o.dial) {
-    delete c.o.dial.dataset.called;
-    c.o.dial.style.removeProperty("--alius-her");
-  }
-  if (call === c) call = null;
-  c.o.onGone?.();
-}
-function cancelCall() {
-  const c = call;
-  if (c === null) return;
-  c.done = true;
-  for (const t of c.timers) c.o.cancel(t);
-  c.timers = [];
-  teardown2(c);
-}
-
 // src/ui/scene/instruments/slap/slap.ts
 var clamp44 = (x, a, b) => Math.min(b, Math.max(a, x));
-var lerp4 = (a, b, t) => a + (b - a) * t;
-var easeOut6 = (t) => 1 - Math.pow(1 - clamp44(t, 0, 1), 3);
+var lerp3 = (a, b, t) => a + (b - a) * t;
+var easeOut5 = (t) => 1 - Math.pow(1 - clamp44(t, 0, 1), 3);
 var easeIn2 = (t) => Math.pow(clamp44(t, 0, 1), 2);
 var easeInOut = (t) => {
   t = clamp44(t, 0, 1);
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 };
-var rnd017 = () => fnv1a3(`${G10.rkey}|${G10.rn++}`) % 1e4 / 1e4;
-var pick10 = (a) => a[Math.floor(rnd017() * a.length)];
-var rand8 = (a, b) => a + rnd017() * (b - a);
+var rnd016 = () => fnv1a3(`${G9.rkey}|${G9.rn++}`) % 1e4 / 1e4;
+var pick9 = (a) => a[Math.floor(rnd016() * a.length)];
+var rand7 = (a, b) => a + rnd016() * (b - a);
 var LEAD = TUNING.practice.slap.leadMs;
 var FEINT = TUNING.practice.slap.feintMs;
 var SWING = TUNING.practice.slap.windowMs;
@@ -76384,7 +74295,7 @@ var EXPR = TUNING.practice.slap.faces;
 var CALM = ["ritual", "clinical", "regal"];
 var EXPR_SWITCH = 60;
 var EXPR_WAIT = 120;
-var SAMPLE_URLS4 = {
+var SAMPLE_URLS3 = {
   slap: "assets/sounds/slap/slap.ogg",
   swish1: "assets/sounds/slap/swish1.ogg",
   cloth1: "assets/sounds/ha/cloth1.ogg",
@@ -76403,7 +74314,7 @@ function beforeLabel(style, unann) {
 function showFace(label2) {
   curLabel = label2;
   const url = faces[label2];
-  if (url && E7 && E7.env.faceOf(E7.unitId) !== label2) E7.env.setSprite(E7.unitId, label2, url);
+  if (url && E6 && E6.env.faceOf(E6.unitId) !== label2) E6.env.setSprite(E6.unitId, label2, url);
 }
 function preload(label2) {
   const url = faces[label2];
@@ -76411,15 +74322,15 @@ function preload(label2) {
   const im = new Image();
   im.src = url;
   return Promise.race([im.decode().catch(() => {
-  }), new Promise((r) => setTimeout8(r, EXPR_WAIT))]);
+  }), new Promise((r) => setTimeout7(r, EXPR_WAIT))]);
 }
 var looking = /* @__PURE__ */ new Map();
 function lookFaces(labels) {
-  if (!E7) return;
-  const e = E7;
+  if (!E6) return;
+  const e = E6;
   for (const label2 of labels) {
     if (label2 in faces || looking.has(label2)) continue;
-    const mine = () => E7 === e;
+    const mine = () => E6 === e;
     looking.set(label2, e.env.spriteUrl(e.unitId, label2).then((u) => {
       if (mine()) faces[label2] = u;
     }, () => {
@@ -76427,7 +74338,7 @@ function lookFaces(labels) {
     }).then(() => {
       if (!mine()) return;
       looking.delete(label2);
-      if (curLabel === label2 && (G10.slap || G10.back)) showFace(label2);
+      if (curLabel === label2 && (G9.slap || G9.back)) showFace(label2);
     }));
   }
 }
@@ -76437,14 +74348,14 @@ var facesOf = (style) => {
 };
 var leftBySlap = null;
 function readFaceNow() {
-  if (!E7) return;
-  const scene = E7.env.faceOf(E7.unitId);
+  if (!E6) return;
+  const scene = E6.env.faceOf(E6.unitId);
   curLabel = leftBySlap && leftBySlap.scene === scene ? leftBySlap.label : scene;
 }
 function noteFaceLeft() {
-  if (E7) leftBySlap = { label: curLabel, scene: E7.env.faceOf(E7.unitId) };
+  if (E6) leftBySlap = { label: curLabel, scene: E6.env.faceOf(E6.unitId) };
 }
-var S11 = {
+var S10 = {
   style: "possessive",
   unann: false,
   tension: { rise: 100, peak: 80, fall: 220, thr: 0.8 },
@@ -76459,17 +74370,17 @@ var S11 = {
   zoom: 2.6,
   reduced: false
 };
-var performance10 = { now: () => E7 ? E7.env.now() : 0 };
-var innerWidth9 = 0;
-var innerHeight9 = 0;
+var performance9 = { now: () => E6 ? E6.env.now() : 0 };
+var innerWidth8 = 0;
+var innerHeight8 = 0;
 function measure() {
-  if (!E7) return;
-  const r = E7.env.root.getBoundingClientRect();
-  innerWidth9 = E7.env.root.clientWidth || r.width || (typeof window !== "undefined" ? window.innerWidth : 0);
-  innerHeight9 = E7.env.root.clientHeight || r.height || (typeof window !== "undefined" ? window.innerHeight : 0);
+  if (!E6) return;
+  const r = E6.env.root.getBoundingClientRect();
+  innerWidth8 = E6.env.root.clientWidth || r.width || (typeof window !== "undefined" ? window.innerWidth : 0);
+  innerHeight8 = E6.env.root.clientHeight || r.height || (typeof window !== "undefined" ? window.innerHeight : 0);
 }
 var timers3 = /* @__PURE__ */ new Set();
-function setTimeout8(fn, ms) {
+function setTimeout7(fn, ms) {
   const t = globalThis.setTimeout(() => {
     timers3.delete(t);
     fn();
@@ -76478,25 +74389,25 @@ function setTimeout8(fn, ms) {
   return t;
 }
 var frameId = null;
-function requestAnimationFrame8(fn) {
-  if (!E7 || frameId !== null) return;
-  const e = E7;
+function requestAnimationFrame7(fn) {
+  if (!E6 || frameId !== null) return;
+  const e = E6;
   frameId = e.env.raf((now) => {
     frameId = null;
-    if (E7 !== e) return;
-    if (!G10.slap && !G10.back && !G10.starting && G10.cheekA <= 0) {
+    if (E6 !== e) return;
+    if (!G9.slap && !G9.back && !G9.starting && G9.cheekA <= 0) {
       cam.release();
       return;
     }
     measure();
     fn(now);
-    if (cam.held && (G10.slap || G10.back) && !S11.reduced) for (const c of cam.ui) noteWrites(c, ["opacity"]);
+    if (cam.held && (G9.slap || G9.back) && !S10.reduced) for (const c of cam.ui) noteWrites(c, ["opacity"]);
   });
 }
-var E7 = null;
+var E6 = null;
 var HBLUR = "alius-slap-hblur";
-var $9 = (s) => {
-  const e = E7;
+var $8 = (s) => {
+  const e = E6;
   if (s === "#mirror") return mirror(e);
   if (s === "#reply") return e.env.reply;
   if (s === "#cmd") return e.env.input;
@@ -76536,13 +74447,13 @@ function mirror(e) {
   host.append(m);
   const color = input.style.color;
   input.style.color = "transparent";
-  setTimeout8(() => {
+  setTimeout7(() => {
     m.remove();
     input.style.color = color;
   }, 600);
   return m;
 }
-function build8(env, unitId) {
+function build6(env, unitId) {
   const box = document.createElement("div");
   box.className = "alius-slap";
   box.setAttribute("aria-hidden", "true");
@@ -76589,7 +74500,7 @@ function build8(env, unitId) {
   const art2 = env.art.get(unitId, "face_close");
   if (art2) {
     faceImg.onload = () => {
-      if (E7?.faceImg === faceImg) E7.hasFace = true;
+      if (E6?.faceImg === faceImg) E6.hasFace = true;
     };
     faceImg.src = art2.url;
   }
@@ -76612,12 +74523,12 @@ var cam = {
   backdropFilter: "",
   /** The camera leaves home: the styles it will write are saved, her face point is measured. */
   hold() {
-    if (this.held || !E7) return;
-    const e = E7;
+    if (this.held || !E6) return;
+    const e = E6;
     this.held = true;
     const { backdrop, sprites } = e.env.layers;
     const reply = e.env.reply;
-    const wrap = $9("#inputWrap");
+    const wrap = $8("#inputWrap");
     this.layer = new Map([backdrop, sprites].map((el) => [el, claimStyles(el, CAM_PROPS)]));
     this.ui = [reply, wrap].map((el) => claimStyles(el, ["opacity"]));
     this.saved = [...this.layer.values(), ...this.ui];
@@ -76637,8 +74548,8 @@ var cam = {
   },
   /** Her face point in the scene (the sprite's sidecar point on the drawn picture), measured with the camera at home. */
   measure() {
-    if (!E7 || this.base) return;
-    const e = E7;
+    if (!E6 || this.base) return;
+    const e = E6;
     const img2 = e.env.spriteOf(e.unitId);
     if (!img2 || !img2.naturalWidth || e.env.root.dataset.curtain === "open") return;
     const sprites = e.env.layers.sprites;
@@ -76647,14 +74558,14 @@ var cam = {
     const r = img2.getBoundingClientRect();
     const o = e.env.root.getBoundingClientRect();
     sprites.style.transform = now;
-    if (r.width > 0 && r.height > 0) this.base = { x: r.left - o.left + S11.face.x * r.width, y: r.top - o.top + S11.face.y * r.height };
+    if (r.width > 0 && r.height > 0) this.base = { x: r.left - o.left + S10.face.x * r.width, y: r.top - o.top + S10.face.y * r.height };
   },
   /** One frame of the camera: the world's move, its motion blur, the zoom `k` to her face, the backdrop's blur and dim, the UI stepping back. */
   draw(world, hb, k) {
-    if (!E7) return;
+    if (!E6) return;
     if (!this.held) this.hold();
-    const e = E7;
-    const W3 = innerWidth9, H = innerHeight9;
+    const e = E6;
+    const W3 = innerWidth8, H = innerHeight8;
     const O = [W3 * 0.5, H * 0.436];
     const about2 = (extra) => `translate(${O[0].toFixed(1)}px, ${O[1].toFixed(1)}px) ${world}${extra} translate(${(-O[0]).toFixed(1)}px, ${(-O[1]).toFixed(1)}px)`;
     const blur = !e.env.readable && hb > 0.3;
@@ -76663,22 +74574,22 @@ var cam = {
       return blur ? `url(#${HBLUR}-${suffix})` : "";
     };
     const { backdrop, sprites } = e.env.layers;
-    const cover = lerp4(1, 1.28, k);
+    const cover = lerp3(1, 1.28, k);
     this.put(backdrop, "transform-origin", "0 0");
     this.put(backdrop, "transform", about2(` scale(${cover.toFixed(4)})`));
-    this.put(backdrop, "filter", `${this.backdropFilter} ${hblurAt("b", cover)} ${e.env.readable ? "" : `blur(${(k * 14 / cover).toFixed(1)}px)`} brightness(${lerp4(1, 0.55, k).toFixed(3)})`.replace(/\s+/g, " ").trim());
+    this.put(backdrop, "filter", `${this.backdropFilter} ${hblurAt("b", cover)} ${e.env.readable ? "" : `blur(${(k * 14 / cover).toFixed(1)}px)`} brightness(${lerp3(1, 0.55, k).toFixed(3)})`.replace(/\s+/g, " ").trim());
     this.measure();
     let camera = "";
     let sc = 1;
     const img2 = e.env.spriteOf(e.unitId);
     if (img2 && this.base) {
       const p0 = this.base, p1 = [W3 * 0.5, H * 0.42];
-      sc = Math.pow(S11.zoom, k);
-      const px = lerp4(p0.x, p1[0], k), py = lerp4(p0.y, p1[1], k);
+      sc = Math.pow(S10.zoom, k);
+      const px = lerp3(p0.x, p1[0], k), py = lerp3(p0.y, p1[1], k);
       camera = ` translate(${(px - sc * p0.x).toFixed(1)}px, ${(py - sc * p0.y).toFixed(1)}px) scale(${sc.toFixed(4)})`;
     }
     this.put(sprites, "transform", `${about2("")}${camera}`);
-    this.put(sprites, "filter", `${hblurAt("s", sc)} brightness(${lerp4(1, 0.92, k)})`.trim());
+    this.put(sprites, "filter", `${hblurAt("s", sc)} brightness(${lerp3(1, 0.92, k)})`.trim());
     e.faceImg.style.filter = blur ? `url(#${HBLUR})` : "";
     e.faceImg.style.transform = world;
   },
@@ -76692,14 +74603,14 @@ var cam = {
     this.layer = /* @__PURE__ */ new Map();
     this.ui = [];
     this.base = null;
-    if (E7) {
-      E7.faceImg.style.opacity = "0";
-      E7.faceImg.style.transform = "";
-      E7.faceImg.style.filter = "";
+    if (E6) {
+      E6.faceImg.style.opacity = "0";
+      E6.faceImg.style.transform = "";
+      E6.faceImg.style.filter = "";
     }
   }
 };
-var A8 = { ctx: null, buf: {} };
+var A7 = { ctx: null, buf: {} };
 var made = /* @__PURE__ */ new Set();
 function recorded(c) {
   return new Proxy(c, {
@@ -76718,24 +74629,24 @@ function recorded(c) {
     }
   });
 }
-function audioInit7() {
-  if (A8.ctx || !E7) return;
-  const samples = E7.env.samples;
+function audioInit6() {
+  if (A7.ctx || !E6) return;
+  const samples = E6.env.samples;
   const raw = samples?.ctx() ?? null;
   const world = samples?.bus("world") ?? null;
   const body2 = samples?.bus("body") ?? null;
   if (!samples || !raw || !world || !body2) return;
   const ctx2 = recorded(raw);
-  A8.ctx = ctx2;
-  A8.worldLP = ctx2.createBiquadFilter();
-  A8.worldLP.type = "lowpass";
-  A8.worldLP.frequency.value = 16e3;
-  A8.worldLP.Q.value = 0.4;
-  A8.worldG = ctx2.createGain();
-  A8.worldG.gain.value = 1;
-  A8.worldLP.connect(A8.worldG);
-  A8.worldG.connect(world);
-  A8.body = body2;
+  A7.ctx = ctx2;
+  A7.worldLP = ctx2.createBiquadFilter();
+  A7.worldLP.type = "lowpass";
+  A7.worldLP.frequency.value = 16e3;
+  A7.worldLP.Q.value = 0.4;
+  A7.worldG = ctx2.createGain();
+  A7.worldG.gain.value = 1;
+  A7.worldLP.connect(A7.worldG);
+  A7.worldG.connect(world);
+  A7.body = body2;
   const b = ctx2.createBuffer(1, ctx2.sampleRate * 2, ctx2.sampleRate);
   const d = b.getChannelData(0);
   let x = 2463534242;
@@ -76745,45 +74656,45 @@ function audioInit7() {
     x ^= x << 5;
     d[i] = (x >>> 0) / 4294967296 * 2 - 1;
   }
-  A8.white = b;
-  A8.buf = new Proxy({}, { get: (_t, k) => typeof k === "string" && SAMPLE_URLS4[k] ? samples.buffer(SAMPLE_URLS4[k]) : null });
-  void samples.preload(Object.values(SAMPLE_URLS4));
+  A7.white = b;
+  A7.buf = new Proxy({}, { get: (_t, k) => typeof k === "string" && SAMPLE_URLS3[k] ? samples.buffer(SAMPLE_URLS3[k]) : null });
+  void samples.preload(Object.values(SAMPLE_URLS3));
 }
-function chain3(node, { pan = 0, lp = 0, hp = 0, dest = A8.worldLP }) {
+function chain3(node, { pan = 0, lp = 0, hp = 0, dest = A7.worldLP }) {
   let n = node;
   if (hp) {
-    const f = A8.ctx.createBiquadFilter();
+    const f = A7.ctx.createBiquadFilter();
     f.type = "highpass";
     f.frequency.value = hp;
     n.connect(f);
     n = f;
   }
   if (lp) {
-    const f = A8.ctx.createBiquadFilter();
+    const f = A7.ctx.createBiquadFilter();
     f.type = "lowpass";
     f.frequency.value = lp;
     n.connect(f);
     n = f;
   }
   if (pan) {
-    const p = A8.ctx.createStereoPanner();
+    const p = A7.ctx.createStereoPanner();
     p.pan.value = clamp44(pan, -1, 1);
     n.connect(p);
     n = p;
   }
   n.connect(dest);
 }
-function play6(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at: at2 = 0, offset = 0, dur } = {}) {
-  if (!A8.ctx || !A8.buf[id]) return null;
-  const ctx2 = A8.ctx, t = ctx2.currentTime + Math.max(0, at2);
+function play5(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at: at2 = 0, offset = 0, dur } = {}) {
+  if (!A7.ctx || !A7.buf[id]) return null;
+  const ctx2 = A7.ctx, t = ctx2.currentTime + Math.max(0, at2);
   const src = ctx2.createBufferSource();
-  src.buffer = A8.buf[id];
+  src.buffer = A7.buf[id];
   src.playbackRate.value = rate;
   const gn = ctx2.createGain();
   gn.gain.value = g;
   src.connect(gn);
-  chain3(gn, { pan, lp, hp, dest: dest ?? A8.worldLP });
-  const len2 = dur ?? A8.buf[id].duration - offset;
+  chain3(gn, { pan, lp, hp, dest: dest ?? A7.worldLP });
+  const len2 = dur ?? A7.buf[id].duration - offset;
   if (dur) {
     gn.gain.setValueAtTime(g, t + dur / rate - 0.03);
     gn.gain.linearRampToValueAtTime(1e-4, t + dur / rate);
@@ -76791,11 +74702,11 @@ function play6(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at: at2 =
   src.start(t, offset, len2 + 0.05);
   return src;
 }
-function noise9({ at: at2 = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1, gain: gain2 = 0.1, attack = 0.01, dest = A8.worldLP, pan = 0 }) {
-  if (!A8.ctx) return;
-  const ctx2 = A8.ctx, t = ctx2.currentTime + at2;
+function noise8({ at: at2 = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1, gain: gain2 = 0.1, attack = 0.01, dest = A7.worldLP, pan = 0 }) {
+  if (!A7.ctx) return;
+  const ctx2 = A7.ctx, t = ctx2.currentTime + at2;
   const src = ctx2.createBufferSource();
-  src.buffer = A8.white;
+  src.buffer = A7.white;
   src.loop = true;
   const fl = ctx2.createBiquadFilter();
   fl.type = type;
@@ -76809,12 +74720,12 @@ function noise9({ at: at2 = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1,
   src.connect(fl);
   fl.connect(g);
   chain3(g, { pan, dest });
-  src.start(t, rnd017());
+  src.start(t, rnd016());
   src.stop(t + dur + 0.05);
 }
-function thump5(at2, gain2, f0 = 55, dest = A8.body) {
-  if (!A8.ctx) return;
-  const ctx2 = A8.ctx, t = ctx2.currentTime + at2;
+function thump5(at2, gain2, f0 = 55, dest = A7.body) {
+  if (!A7.ctx) return;
+  const ctx2 = A7.ctx, t = ctx2.currentTime + at2;
   const o = ctx2.createOscillator();
   o.type = "sine";
   o.frequency.setValueAtTime(f0, t);
@@ -76828,33 +74739,33 @@ function thump5(at2, gain2, f0 = 55, dest = A8.body) {
   o.start(t);
   o.stop(t + 0.3);
 }
-var SFX6 = {
+var SFX5 = {
   pen: () => {
-    for (let i = 0; i < 3; i++) noise9({ at: i * 0.05 + rnd017() * 0.02, dur: 0.035 + rnd017() * 0.03, f: 2600 + rnd017() * 1800, q: 3, gain: 0.04 });
+    for (let i = 0; i < 3; i++) noise8({ at: i * 0.05 + rnd016() * 0.02, dur: 0.035 + rnd016() * 0.03, f: 2600 + rnd016() * 1800, q: 3, gain: 0.04 });
   },
   /* her clothes: her hand going up, a feint's twitch (panned to her hand's side) */
   cloth: (pan, g = 0.35, rate = 1) => {
-    if (!play6(pick10(["cloth1", "cloth2", "cloth3", "cloth4"]), { g, pan, rate, lp: 6e3 })) noise9({ dur: 0.3, f: 1100, f2: 1700, q: 0.7, gain: g * 0.25, attack: 0.05, pan });
+    if (!play5(pick9(["cloth1", "cloth2", "cloth3", "cloth4"]), { g, pan, rate, lp: 6e3 })) noise8({ dur: 0.3, f: 1100, f2: 1700, q: 0.7, gain: g * 0.25, attack: 0.05, pan });
   },
   /* the swish of her hand: timed so that it ends on the impact */
   swish: (atS, pan) => {
-    if (S11.swishS !== "synth" && A8.buf[S11.swishS]) {
-      const rate = 0.72, d = A8.buf[S11.swishS].duration / rate;
-      play6(S11.swishS, { g: 0.5, pan, rate, at: atS - d * 0.85, hp: 300 });
-    } else noise9({ at: atS - 0.16, dur: 0.17, f: 900, f2: 3200, q: 0.8, gain: 0.16, attack: 0.12, pan });
+    if (S10.swishS !== "synth" && A7.buf[S10.swishS]) {
+      const rate = 0.72, d = A7.buf[S10.swishS].duration / rate;
+      play5(S10.swishS, { g: 0.5, pan, rate, at: atS - d * 0.85, hp: 300 });
+    } else noise8({ at: atS - 0.16, dur: 0.17, f: 900, f2: 3200, q: 0.8, gain: 0.16, attack: 0.12, pan });
   },
   /* the slap: the recording on the body bus, panned to the cheek; a glancing one is duller and quieter */
   slap: (pan, glancing) => {
     const g = glancing ? 0.5 : 1;
-    if (!play6("slap", { g: 0.95 * S11.slapLvl * g, pan: pan * 0.55, lp: glancing ? 2200 : 0, dest: A8.body })) {
-      noise9({ dur: 0.09, type: "highpass", f: 1400, gain: 0.5 * g, attack: 2e-3, dest: A8.body, pan: pan * 0.55 });
+    if (!play5("slap", { g: 0.95 * S10.slapLvl * g, pan: pan * 0.55, lp: glancing ? 2200 : 0, dest: A7.body })) {
+      noise8({ dur: 0.09, type: "highpass", f: 1400, gain: 0.5 * g, attack: 2e-3, dest: A7.body, pan: pan * 0.55 });
     }
-    if (S11.thump) thump5(0, glancing ? 0.25 : 0.55, 70);
+    if (S10.thump) thump5(0, glancing ? 0.25 : 0.55, 70);
   },
   /* the ringing in the ears: two close sines that beat, a slow fade; the world dulls and comes back */
   ring: (sec, k = 1) => {
-    if (!A8.ctx || sec <= 0) return;
-    const ctx2 = A8.ctx, t = ctx2.currentTime;
+    if (!A7.ctx || sec <= 0) return;
+    const ctx2 = A7.ctx, t = ctx2.currentTime;
     for (const [f, gg] of [[4180, 0.035], [4207, 0.028], [8400, 6e-3]]) {
       const o = ctx2.createOscillator();
       o.frequency.value = f;
@@ -76864,28 +74775,28 @@ var SFX6 = {
       g.gain.exponentialRampToValueAtTime(gg * k, t + 0.06);
       g.gain.exponentialRampToValueAtTime(1e-4, t + sec);
       o.connect(g);
-      g.connect(A8.body);
+      g.connect(A7.body);
       o.start(t);
       o.stop(t + sec + 0.1);
     }
-    A8.worldLP.frequency.cancelScheduledValues(t);
-    A8.worldLP.frequency.setValueAtTime(lerp4(16e3, 650, k), t + 0.01);
-    A8.worldLP.frequency.exponentialRampToValueAtTime(16e3, t + Math.max(0.6, sec * 0.9));
+    A7.worldLP.frequency.cancelScheduledValues(t);
+    A7.worldLP.frequency.setValueAtTime(lerp3(16e3, 650, k), t + 0.01);
+    A7.worldLP.frequency.exponentialRampToValueAtTime(16e3, t + Math.max(0.6, sec * 0.9));
   },
   /* the commander's breath (the recording of saturation: a nose inhale and an exhale): a sharp intake on tensing, an exhale after */
   intake: () => {
-    if (!play6("breath", { g: 0.24, rate: 1.6, offset: 0.14, dur: 0.42, lp: 3200, dest: A8.body })) noise9({ dur: 0.22, f: 900, f2: 2200, q: 0.9, gain: 0.08, attack: 0.03, dest: A8.body });
+    if (!play5("breath", { g: 0.24, rate: 1.6, offset: 0.14, dur: 0.42, lp: 3200, dest: A7.body })) noise8({ dur: 0.22, f: 900, f2: 2200, q: 0.9, gain: 0.08, attack: 0.03, dest: A7.body });
   },
   exhale: (at2, g = 0.16) => {
-    play6("breath", { g, rate: 1.1, offset: 2.17, dur: 0.95, lp: 2600, dest: A8.body, at: at2 });
+    play5("breath", { g, rate: 1.1, offset: 2.17, dur: 0.95, lp: 2600, dest: A7.body, at: at2 });
   },
   heart: () => {
     thump5(0, 0.5, 52);
     thump5(0.26, 0.32, 46);
   }
 };
-var G10 = { slap: null, last: null, back: null, starting: false, k: 0, cheekA: 0, cheekDir: 1, cheekT0: 0, cheekScene: "", mouse: [], typingFocus: false, next: null, started: /* @__PURE__ */ new Set(), epoch: 0, rkey: "", rn: 0 };
-var LINES5 = {};
+var G9 = { slap: null, last: null, back: null, starting: false, k: 0, cheekA: 0, cheekDir: 1, cheekT0: 0, cheekScene: "", mouse: [], typingFocus: false, next: null, started: /* @__PURE__ */ new Set(), epoch: 0, rkey: "", rn: 0 };
+var LINES4 = {};
 function linesFor(reg, style, id) {
   const one5 = (kind) => {
     const runs = voiceLine(reg, kind, style, id, {});
@@ -76902,36 +74813,36 @@ function linesFor(reg, style, id) {
   };
 }
 function tensionAt(t) {
-  const T5 = S11.tension;
+  const T5 = S10.tension;
   if (t < 0) return 0;
-  if (t < T5.rise) return easeOut6(t / T5.rise);
+  if (t < T5.rise) return easeOut5(t / T5.rise);
   if (t < T5.rise + T5.peak) return 1;
   return clamp44(1 - (t - T5.rise - T5.peak) / T5.fall, 0, 1);
 }
 async function startSlap2(opts) {
-  if (G10.slap || G10.starting) return;
-  G10.starting = true;
-  const epoch = G10.epoch;
-  G10.started.add(opts.id);
-  G10.rkey = opts.id;
-  G10.rn = 0;
-  requestAnimationFrame8(frame7);
-  const faceBefore = beforeLabel(S11.style, opts.unannounced ?? S11.unann);
+  if (G9.slap || G9.starting) return;
+  G9.starting = true;
+  const epoch = G9.epoch;
+  G9.started.add(opts.id);
+  G9.rkey = opts.id;
+  G9.rn = 0;
+  requestAnimationFrame7(frame6);
+  const faceBefore = beforeLabel(S10.style, opts.unannounced ?? S10.unann);
   await preload(faceBefore);
-  if (G10.epoch !== epoch) return;
-  G10.starting = false;
-  if (G10.slap) return;
-  audioInit7();
+  if (G9.epoch !== epoch) return;
+  G9.starting = false;
+  if (G9.slap) return;
+  audioInit6();
   const id = opts.id;
-  const style = S11.style;
+  const style = S10.style;
   const swing = opts.windowMs;
-  const unann = opts.unannounced ?? S11.unann;
+  const unann = opts.unannounced ?? S10.unann;
   let feints = opts.feints;
   if (unann) feints = 0;
   const dir = slapSide(id);
   const lead = unann ? SNAP : opts.again ? AGAIN_LEAD : LEAD;
   const swingAt = lead + feints * FEINT;
-  const t0 = performance10.now();
+  const t0 = performance9.now();
   const s = {
     id,
     style,
@@ -76956,111 +74867,111 @@ async function startSlap2(opts) {
     doneAt: null,
     said: false,
     feintSaid: false,
-    k0: G10.k ?? 0,
+    k0: G9.k ?? 0,
     onResult: opts.onResult
   };
-  G10.slap = s;
-  G10.last = s;
-  G10.back = null;
+  G9.slap = s;
+  G9.last = s;
+  G9.back = null;
   const active = document.activeElement;
-  if (!opts.again) G10.typingFocus = active === $9("#cmd");
+  if (!opts.again) G9.typingFocus = active === $8("#cmd");
   if (active && active !== document.body) active.blur();
-  requestAnimationFrame8(frame7);
-  if (S11.reduced) {
+  requestAnimationFrame7(frame6);
+  if (S10.reduced) {
     showFace(faceBefore);
-    land(s, performance10.now());
+    land(s, performance9.now());
     return;
   }
-  SFX6.heart();
-  if (!unann) SFX6.cloth(-dir * 0.7, 0.4);
-  SFX6.swish(s.impactAt / 1e3, -dir * 0.6);
-  for (let i = 0; i < feints; i++) setTimeout8(() => {
-    if (G10.slap === s) SFX6.cloth(-dir * 0.7, 0.5, 1.25);
+  SFX5.heart();
+  if (!unann) SFX5.cloth(-dir * 0.7, 0.4);
+  SFX5.swish(s.impactAt / 1e3, -dir * 0.6);
+  for (let i = 0; i < feints; i++) setTimeout7(() => {
+    if (G9.slap === s) SFX5.cloth(-dir * 0.7, 0.5, 1.25);
   }, lead + i * FEINT);
-  const before7 = LINES5[style].before;
-  if (before7.length && !unann && !opts.again) setTimeout8(() => {
-    if (G10.slap === s && !s.result) say10(pick10(before7));
+  const before7 = LINES4[style].before;
+  if (before7.length && !unann && !opts.again) setTimeout7(() => {
+    if (G9.slap === s && !s.result) say9(pick9(before7));
   }, SNAP + 60);
-  if (opts.again && LINES5[style].again) setTimeout8(() => {
-    if (G10.slap === s && !s.result) say10(pick10(LINES5[style].again));
+  if (opts.again && LINES4[style].again) setTimeout7(() => {
+    if (G9.slap === s && !s.result) say9(pick9(LINES4[style].again));
   }, 80);
 }
 function press3(source) {
-  const s = G10.slap;
+  const s = G9.slap;
   if (!s || s.result) return;
   s.presses += 1;
   if (s.pressAt !== null) return;
-  s.pressAt = performance10.now() - s.t0;
-  SFX6.intake();
+  s.pressAt = performance9.now() - s.t0;
+  SFX5.intake();
   const onFeint = s.feints > 0 && s.pressAt >= s.lead && s.pressAt < s.swingAt;
-  if (onFeint && LINES5[s.style].feint) setTimeout8(() => {
-    if (G10.slap === s && !s.result) say10(pick10(LINES5[s.style].feint));
+  if (onFeint && LINES4[s.style].feint) setTimeout7(() => {
+    if (G9.slap === s && !s.result) say9(pick9(LINES4[s.style].feint));
   }, 120);
 }
 function onMove(e) {
-  const now = performance10.now();
-  G10.mouse.push([now, e.clientX]);
-  while (G10.mouse.length && now - G10.mouse[0][0] > 70) G10.mouse.shift();
-  const s = G10.slap;
+  const now = performance9.now();
+  G9.mouse.push([now, e.clientX]);
+  while (G9.mouse.length && now - G9.mouse[0][0] > 70) G9.mouse.shift();
+  const s = G9.slap;
   if (!s || s.result || s.turned) return;
-  if (G10.mouse.length < 2) return;
-  const [ta, xa] = G10.mouse[0], dt = (now - ta) / 1e3, dx = e.clientX - xa;
+  if (G9.mouse.length < 2) return;
+  const [ta, xa] = G9.mouse[0], dt = (now - ta) / 1e3, dx = e.clientX - xa;
   if (dt <= 0) return;
   const v = dx / dt;
-  if (Math.abs(v) >= S11.flick && Math.abs(dx) >= innerWidth9 * 0.06) {
+  if (Math.abs(v) >= S10.flick && Math.abs(dx) >= innerWidth8 * 0.06) {
     s.turned = Math.sign(dx);
     s.turnAt = now - s.t0;
-    SFX6.cloth(0, 0.25, 1.4);
+    SFX5.cloth(0, 0.25, 1.4);
   }
 }
 function land(s, now) {
   const t = now - s.t0;
   s.tensionAtImpact = s.pressAt === null ? 0 : tensionAt(t - s.pressAt);
-  s.result = s.turned ? "flinched" : s.tensionAtImpact >= S11.tension.thr ? "braced" : "none";
+  s.result = s.turned ? "flinched" : s.tensionAtImpact >= S10.tension.thr ? "braced" : "none";
   s.landedAt = t;
   s.onResult(s.result);
   const glancing = s.result === "flinched";
   const k = s.result === "braced" ? 0.65 : glancing ? 0.45 : 1;
   s.k = k;
-  SFX6.slap(-s.dir, glancing);
-  SFX6.ring(S11.ring * (s.result === "braced" ? 0.55 : glancing ? 0.4 : 1), k);
-  if (s.result === "braced") SFX6.exhale(0.45, 0.15);
-  G10.cheekA = Math.min(0.9, G10.cheekA * 0.6 + 0.8 * k);
-  G10.cheekDir = s.dir;
-  G10.cheekT0 = now;
+  SFX5.slap(-s.dir, glancing);
+  SFX5.ring(S10.ring * (s.result === "braced" ? 0.55 : glancing ? 0.4 : 1), k);
+  if (s.result === "braced") SFX5.exhale(0.45, 0.15);
+  G9.cheekA = Math.min(0.9, G9.cheekA * 0.6 + 0.8 * k);
+  G9.cheekDir = s.dir;
+  G9.cheekT0 = now;
   flash(k);
   scatter3(k);
-  const pool = LINES5[s.style][s.result] ?? [];
+  const pool = LINES4[s.style][s.result] ?? [];
   const faceAfter = EXPR[s.style].after[s.result];
   void preload(faceAfter);
-  setTimeout8(() => {
+  setTimeout7(() => {
     showFace(faceAfter);
-    if (pool.length) say10(pick10(pool));
+    if (pool.length) say9(pick9(pool));
   }, s.style === "cold" ? 0 : 380);
   const cruelAgain = s.style === "cruel" && s.result === "flinched" && !s.again;
   const hold = cruelAgain ? 700 : s.style === "cold" ? 900 : 1500;
   s.doneAt = t + hold;
-  setTimeout8(() => {
-    if (G10.slap !== s) return;
-    G10.slap = null;
-    G10.back = S11.reduced ? null : { t0: performance10.now(), from: 1 };
+  setTimeout7(() => {
+    if (G9.slap !== s) return;
+    G9.slap = null;
+    G9.back = S10.reduced ? null : { t0: performance9.now(), from: 1 };
     noteFaceLeft();
-    if (cruelAgain || G10.next) setTimeout8(() => startNext(), 120);
-    else if (G10.typingFocus) $9("#cmd").focus();
-  }, S11.reduced ? 600 : hold);
+    if (cruelAgain || G9.next) setTimeout7(() => startNext(), 120);
+    else if (G9.typingFocus) $8("#cmd").focus();
+  }, S10.reduced ? 600 : hold);
 }
 function startNext() {
-  const next = G10.next;
-  G10.next = null;
-  if (next && !G10.started.has(next.id)) {
-    LINES5 = LINES_NEXT;
-    if (E7) E7.host.dataset.slap = next.id;
+  const next = G9.next;
+  G9.next = null;
+  if (next && !G9.started.has(next.id)) {
+    LINES4 = LINES_NEXT;
+    if (E6) E6.host.dataset.slap = next.id;
     readFaceNow();
     void startSlap2(next);
-  } else if (G10.typingFocus && E7) $9("#cmd").focus();
+  } else if (G9.typingFocus && E6) $8("#cmd").focus();
 }
 function flash(k) {
-  const el = $9("#flash");
+  const el = $8("#flash");
   el.style.transition = "none";
   el.style.background = "radial-gradient(ellipse at 50% 45%, rgba(255,250,245,1), rgba(255,90,70,1) 55%, rgba(200,20,20,1))";
   el.style.opacity = String(0.75 * k);
@@ -77071,10 +74982,10 @@ function flash(k) {
   });
 }
 function scatter3(k) {
-  const spans = [...$9("#mirror").children];
+  const spans = [...$8("#mirror").children];
   for (const sp of spans) {
     sp.style.transition = "none";
-    sp.style.transform = `translate(${rand8(-14, 14) * k}px, ${rand8(-16, 16) * k}px) rotate(${rand8(-28, 28) * k}deg)`;
+    sp.style.transform = `translate(${rand7(-14, 14) * k}px, ${rand7(-16, 16) * k}px) rotate(${rand7(-28, 28) * k}deg)`;
   }
   requestTwoFrames(() => {
     for (const sp of spans) {
@@ -77084,133 +74995,133 @@ function scatter3(k) {
   });
 }
 function requestTwoFrames(fn) {
-  setTimeout8(fn, 32);
+  setTimeout7(fn, 32);
 }
-function say10(text3) {
+function say9(text3) {
   if (!text3) return;
   const el = document.createElement("div");
   el.className = "alius-her-line";
   el.textContent = text3;
-  const speed = S11.style === "cruel" || S11.style === "cold" ? 24 : S11.style === "ritual" ? 45 : 34;
+  const speed = S10.style === "cruel" || S10.style === "cold" ? 24 : S10.style === "ritual" ? 45 : 34;
   el.style.setProperty("--write", `${Math.max(140, text3.length * speed)}ms`);
   el.style.setProperty("--steps", String(Math.max(4, text3.length * 2)));
-  el.style.fontSize = `${Math.round(44 * (E7?.her.handScale ?? 1) * 100) / 100}px`;
-  const s = G10.slap ?? G10.last;
+  el.style.fontSize = `${Math.round(44 * (E6?.her.handScale ?? 1) * 100) / 100}px`;
+  const s = G9.slap ?? G9.last;
   const dir = s ? s.dir : 1;
   if (dir > 0) {
-    el.style.left = `${innerWidth9 * 0.6}px`;
+    el.style.left = `${innerWidth8 * 0.6}px`;
   } else {
     el.classList.add("right");
-    el.style.right = `${innerWidth9 * 0.6}px`;
+    el.style.right = `${innerWidth8 * 0.6}px`;
   }
-  const showing = [...$9("#hand").children].filter((c) => !c.classList.contains("gone")).length;
-  el.style.top = `${innerHeight9 * rand8(0.22, 0.26) + showing * 54}px`;
-  el.style.transform = `rotate(${rand8(-4, 3).toFixed(1)}deg)`;
-  $9("#hand").appendChild(el);
-  SFX6.pen();
-  setTimeout8(() => {
+  const showing = [...$8("#hand").children].filter((c) => !c.classList.contains("gone")).length;
+  el.style.top = `${innerHeight8 * rand7(0.22, 0.26) + showing * 54}px`;
+  el.style.transform = `rotate(${rand7(-4, 3).toFixed(1)}deg)`;
+  $8("#hand").appendChild(el);
+  SFX5.pen();
+  setTimeout7(() => {
     el.classList.add("gone");
-    setTimeout8(() => el.remove(), 600);
+    setTimeout7(() => el.remove(), 600);
   }, 2200);
 }
-function frame7(now) {
-  requestAnimationFrame8(frame7);
-  const W3 = innerWidth9, H = innerHeight9;
-  const s = G10.slap;
+function frame6(now) {
+  requestAnimationFrame7(frame6);
+  const W3 = innerWidth8, H = innerHeight8;
+  const s = G9.slap;
   let k = 0;
-  if (s && !S11.reduced) k = lerp4(s.k0, 1, easeOut6((now - s.t0) / SNAP));
-  else if (G10.back) {
-    const p = (now - G10.back.t0) / RETURN;
+  if (s && !S10.reduced) k = lerp3(s.k0, 1, easeOut5((now - s.t0) / SNAP));
+  else if (G9.back) {
+    const p = (now - G9.back.t0) / RETURN;
     k = 1 - easeInOut(p);
-    if (p >= 1) G10.back = null;
+    if (p >= 1) G9.back = null;
   }
-  G10.k = k;
+  G9.k = k;
   let lean = 0, sweep = -1, twitch = 0;
-  if (s && !S11.reduced) {
+  if (s && !S10.reduced) {
     const t = now - s.t0;
     if (!s.faceShown && t >= EXPR_SWITCH) {
       s.faceShown = true;
       showFace(s.faceBefore);
     }
-    if (!s.unann) lean = -0.4 * easeOut6((t - SNAP * 0.4) / 380) + 0.04 * Math.sin(t / 140) * (t > SNAP ? 1 : 0);
+    if (!s.unann) lean = -0.4 * easeOut5((t - SNAP * 0.4) / 380) + 0.04 * Math.sin(t / 140) * (t > SNAP ? 1 : 0);
     for (let i = 0; i < s.feints; i++) {
       const ft = t - (s.lead + i * FEINT);
       if (ft >= 0 && ft < FEINT) {
         const p = ft / FEINT;
-        twitch = p < 0.3 ? easeIn2(p / 0.3) : 1 - easeOut6((p - 0.3) / 0.45);
+        twitch = p < 0.3 ? easeIn2(p / 0.3) : 1 - easeOut5((p - 0.3) / 0.45);
         lean = -0.4 + 0.75 * twitch;
       }
     }
     if (t >= s.swingAt && !s.result) {
       const p = (t - s.swingAt) / s.swing;
-      lean = lerp4(s.unann ? 0 : -0.4, 1, easeIn2(p));
-      if (S11.sweep) sweep = clamp44(1 - (s.impactAt - t) / SWEEP, 0, 1);
+      lean = lerp3(s.unann ? 0 : -0.4, 1, easeIn2(p));
+      if (S10.sweep) sweep = clamp44(1 - (s.impactAt - t) / SWEEP, 0, 1);
     }
     if (!s.result && t >= s.impactAt) land(s, now);
     if (s.result) lean = 0;
   }
   let whipX = 0, whipR = 0, hb = 0;
-  const L5 = s && s.result ? s : G10.back && G10.last && G10.last.result ? G10.last : null;
-  if (L5 && L5.landedAt !== void 0 && !S11.reduced) {
+  const L5 = s && s.result ? s : G9.back && G9.last && G9.last.result ? G9.last : null;
+  if (L5 && L5.landedAt !== void 0 && !S10.reduced) {
     const tt = now - (L5.t0 + L5.landedAt), kk = L5.k ?? 1;
-    const env = tt < 45 ? easeOut6(tt / 45) : Math.exp(-(tt - 45) / 210) * Math.cos((tt - 45) / 520 * Math.PI * 2);
+    const env = tt < 45 ? easeOut5(tt / 45) : Math.exp(-(tt - 45) / 210) * Math.cos((tt - 45) / 520 * Math.PI * 2);
     whipX = -L5.dir * 0.075 * W3 * env * kk;
     whipR = -L5.dir * 5.5 * env * kk;
     hb = tt < 220 ? (1 - tt / 220) * 16 * kk : 0;
   }
   let turnX = 0;
-  const T5 = s ?? (G10.back ? G10.last : null);
+  const T5 = s ?? (G9.back ? G9.last : null);
   if (T5 && T5.turned) {
     const tt = now - (T5.t0 + T5.turnAt);
-    turnX = T5.turned * 0.11 * W3 * easeOut6(tt / 160) * (G10.back ? k : 1);
+    turnX = T5.turned * 0.11 * W3 * easeOut5(tt / 160) * (G9.back ? k : 1);
     hb = Math.max(hb, tt < 160 ? 10 * (1 - tt / 160) : 0);
   }
   let ten = 0, tremble = 0;
   if (s && s.pressAt !== null && !s.result) {
     const tt = now - s.t0 - s.pressAt;
     ten = tensionAt(tt);
-    if (tt > S11.tension.rise + S11.tension.peak && ten > 0.05) tremble = (1 - ten) * 1.6;
+    if (tt > S10.tension.rise + S10.tension.peak && ten > 0.05) tremble = (1 - ten) * 1.6;
   }
   const rot = -(s ? s.dir : 1) * lean * 3.4 + whipR;
-  const dx = -(s ? s.dir : 1) * lean * 0.022 * W3 + whipX + turnX + (tremble ? rand8(-tremble, tremble) : 0);
-  const dy = tremble ? rand8(-tremble, tremble) : 0;
-  const leanIn = s && !s.result && !S11.reduced ? 0.035 * clamp44((now - s.t0 - SNAP) / 500, 0, 1) : 0;
+  const dx = -(s ? s.dir : 1) * lean * 0.022 * W3 + whipX + turnX + (tremble ? rand7(-tremble, tremble) : 0);
+  const dy = tremble ? rand7(-tremble, tremble) : 0;
+  const leanIn = s && !s.result && !S10.reduced ? 0.035 * clamp44((now - s.t0 - SNAP) / 500, 0, 1) : 0;
   const world = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) rotate(${rot.toFixed(2)}deg) scale(${(1 + 0.02 * ten + leanIn + (turnX ? 0.03 : 0)).toFixed(4)})`;
-  $9("#hblurG").setAttribute("stdDeviation", `${hb.toFixed(1)} ${(hb * 0.12).toFixed(1)}`);
-  if ((s || G10.back) && !S11.reduced) cam.draw(world, hb, k);
+  $8("#hblurG").setAttribute("stdDeviation", `${hb.toFixed(1)} ${(hb * 0.12).toFixed(1)}`);
+  if ((s || G9.back) && !S10.reduced) cam.draw(world, hb, k);
   else cam.release();
-  E7.faceImg.style.opacity = E7.hasFace ? String(k) : "0";
-  $9("#dimmer").style.opacity = String(0.25 * k);
+  E6.faceImg.style.opacity = E6.hasFace ? String(k) : "0";
+  $8("#dimmer").style.opacity = String(0.25 * k);
   const dir = s ? s.dir : 1;
-  const sideA = s && !s.result && S11.sideDark ? clamp44(0.42 * easeOut6((now - s.t0 - SNAP) / 300) + 0.3 * twitch + 0.4 * Math.max(0, lean), 0, 0.85) : 0;
-  $9("#side").style.background = `linear-gradient(${dir > 0 ? 90 : 270}deg, rgba(4,2,6,.95), rgba(4,2,6,.4) 28%, rgba(4,2,6,0) 55%)`;
-  $9("#side").style.opacity = sideA.toFixed(3);
-  const sw = $9("#sweep");
+  const sideA = s && !s.result && S10.sideDark ? clamp44(0.42 * easeOut5((now - s.t0 - SNAP) / 300) + 0.3 * twitch + 0.4 * Math.max(0, lean), 0, 0.85) : 0;
+  $8("#side").style.background = `linear-gradient(${dir > 0 ? 90 : 270}deg, rgba(4,2,6,.95), rgba(4,2,6,.4) 28%, rgba(4,2,6,0) 55%)`;
+  $8("#side").style.opacity = sideA.toFixed(3);
+  const sw = $8("#sweep");
   if (sweep >= 0 && s && !s.result) {
     const x0 = dir > 0 ? -0.5 : 1.04, x1 = dir > 0 ? 0.02 : 0.52;
-    sw.style.left = `${(lerp4(x0, x1, easeIn2(sweep)) * W3).toFixed(1)}px`;
+    sw.style.left = `${(lerp3(x0, x1, easeIn2(sweep)) * W3).toFixed(1)}px`;
     sw.style.opacity = String(0.85 * Math.min(1, sweep * 2));
   } else sw.style.opacity = "0";
-  $9("#tight").style.opacity = String((0.5 * ten).toFixed(3));
-  if (A8.worldG) A8.worldG.gain.value = 1 - 0.55 * ten;
-  if (G10.cheekA > 0) {
-    const age2 = (now - G10.cheekT0) / 1e3;
-    const a = G10.cheekA * Math.exp(-age2 / 24) * (0.85 + 0.15 * Math.sin(age2 * 5.2));
-    const cx = G10.cheekDir > 0 ? "0%" : "100%";
-    $9("#cheek").style.background = `radial-gradient(ellipse 48% 62% at ${cx} 56%, rgba(210,24,20,.85), rgba(170,10,10,.35) 45%, rgba(120,0,0,0) 75%)`;
-    $9("#cheek").style.opacity = a.toFixed(3);
-    if (a < 4e-3) G10.cheekA = 0;
-  } else $9("#cheek").style.opacity = "0";
-  if ((s || G10.back) && !S11.reduced) {
-    $9("#reply").style.opacity = String(1 - 0.85 * k);
-    $9("#inputWrap").style.opacity = String(1 - 0.6 * k);
+  $8("#tight").style.opacity = String((0.5 * ten).toFixed(3));
+  if (A7.worldG) A7.worldG.gain.value = 1 - 0.55 * ten;
+  if (G9.cheekA > 0) {
+    const age2 = (now - G9.cheekT0) / 1e3;
+    const a = G9.cheekA * Math.exp(-age2 / 24) * (0.85 + 0.15 * Math.sin(age2 * 5.2));
+    const cx = G9.cheekDir > 0 ? "0%" : "100%";
+    $8("#cheek").style.background = `radial-gradient(ellipse 48% 62% at ${cx} 56%, rgba(210,24,20,.85), rgba(170,10,10,.35) 45%, rgba(120,0,0,0) 75%)`;
+    $8("#cheek").style.opacity = a.toFixed(3);
+    if (a < 4e-3) G9.cheekA = 0;
+  } else $8("#cheek").style.opacity = "0";
+  if ((s || G9.back) && !S10.reduced) {
+    $8("#reply").style.opacity = String(1 - 0.85 * k);
+    $8("#inputWrap").style.opacity = String(1 - 0.6 * k);
   }
 }
 var typing5 = (el) => el instanceof HTMLElement && (/^(input|textarea|select)$/i.test(el.tagName) || el.isContentEditable);
 function onKey(e) {
   if (typing5(e.target)) return;
   if (e.key === " ") {
-    if (!G10.slap) return;
+    if (!G9.slap) return;
     e.preventDefault();
     if (!e.repeat) press3("key");
   }
@@ -77218,23 +75129,23 @@ function onKey(e) {
 var CONTROLS2 = 'button, a, input, textarea, select, summary, label, [role="button"], [contenteditable="true"], .alius-input-line, .alius-stage-dock, .alius-chip-row, .alius-stage-dial, .alius-stage-topline, .alius-curtain';
 function onDown(e) {
   if (e.button !== 0 || e.target instanceof Element && e.target.closest(CONTROLS2)) return;
-  if (G10.slap) {
+  if (G9.slap) {
     e.preventDefault();
     press3("mouse");
   }
 }
 var holder2 = "";
-function bind7(m, unitId) {
-  if (E7 && (E7.env !== m.env || E7.sceneId !== m.sceneId || E7.unitId !== unitId || !E7.box.isConnected)) stopSlap({ keepCheek: E7.sceneId === m.sceneId });
-  if (G10.cheekScene !== m.sceneId) {
-    G10.cheekA = 0;
-    G10.cheekScene = m.sceneId;
-    G10.started.clear();
-    G10.last = null;
+function bind6(m, unitId) {
+  if (E6 && (E6.env !== m.env || E6.sceneId !== m.sceneId || E6.unitId !== unitId || !E6.box.isConnected)) stopSlap({ keepCheek: E6.sceneId === m.sceneId });
+  if (G9.cheekScene !== m.sceneId) {
+    G9.cheekA = 0;
+    G9.cheekScene = m.sceneId;
+    G9.started.clear();
+    G9.last = null;
   }
-  if (!E7) {
-    E7 = { ...build8(m.env, unitId), host: m.host, sceneId: m.sceneId };
-    const e = E7;
+  if (!E6) {
+    E6 = { ...build6(m.env, unitId), host: m.host, sceneId: m.sceneId };
+    const e = E6;
     const reading2 = () => e.env.root.dataset.curtain === "open";
     e.offs.push(m.env.listen(document, "keydown", (ev) => {
       if (!reading2()) onKey(ev);
@@ -77249,52 +75160,52 @@ function bind7(m, unitId) {
     looking.clear();
     leftBySlap = null;
   }
-  E7.host = m.host;
+  E6.host = m.host;
   holder2 = unitId;
-  S11.reduced = m.still;
-  S11.face = m.env.art.face(unitId) ?? { x: 0.47, y: 0.17 };
+  S10.reduced = m.still;
+  S10.face = m.env.art.face(unitId) ?? { x: 0.47, y: 0.17 };
   measure();
 }
 function mountSlap(m) {
   const slap = m.slap;
   if (!slap) {
     settleSlap();
-    const same = E7 !== null && E7.env === m.env && E7.sceneId === m.sceneId && E7.box.isConnected;
-    if (!same && (G10.cheekScene !== m.sceneId || G10.cheekA <= 0 || holder2 === "")) {
-      if (E7) stopSlap({ keepCheek: E7.sceneId === m.sceneId });
+    const same = E6 !== null && E6.env === m.env && E6.sceneId === m.sceneId && E6.box.isConnected;
+    if (!same && (G9.cheekScene !== m.sceneId || G9.cheekA <= 0 || holder2 === "")) {
+      if (E6) stopSlap({ keepCheek: E6.sceneId === m.sceneId });
       return;
     }
-    if (!same) bind7(m, holder2);
-    if (G10.cheekA > 0) requestAnimationFrame8(frame7);
+    if (!same) bind6(m, holder2);
+    if (G9.cheekA > 0) requestAnimationFrame7(frame6);
     return;
   }
-  bind7(m, slap.holderId);
-  S11.style = slap.style;
+  bind6(m, slap.holderId);
+  S10.style = slap.style;
   lookFaces(facesOf(slap.style));
-  if (G10.cheekA > 0) requestAnimationFrame8(frame7);
-  if (G10.started.has(slap.id)) return;
-  if (G10.slap || G10.starting) {
-    if (G10.next?.id !== slap.id) {
-      G10.next = slap;
+  if (G9.cheekA > 0) requestAnimationFrame7(frame6);
+  if (G9.started.has(slap.id)) return;
+  if (G9.slap || G9.starting) {
+    if (G9.next?.id !== slap.id) {
+      G9.next = slap;
       LINES_NEXT = { [slap.style]: linesFor(m.reg, slap.style, slap.id) };
     }
     return;
   }
-  LINES5 = { [slap.style]: linesFor(m.reg, slap.style, slap.id) };
+  LINES4 = { [slap.style]: linesFor(m.reg, slap.style, slap.id) };
   m.host.dataset.slap = slap.id;
   readFaceNow();
   void startSlap2(slap);
 }
 var LINES_NEXT = {};
 function settleSlap() {
-  G10.next = null;
-  const s = G10.slap;
-  if (s && s.result === null || G10.starting) {
-    G10.started.delete(s ? s.id : G10.rkey);
-    G10.epoch++;
-    G10.starting = false;
-    G10.slap = null;
-    G10.back = null;
+  G9.next = null;
+  const s = G9.slap;
+  if (s && s.result === null || G9.starting) {
+    G9.started.delete(s ? s.id : G9.rkey);
+    G9.epoch++;
+    G9.starting = false;
+    G9.slap = null;
+    G9.back = null;
     for (const n of made) {
       try {
         n.stop();
@@ -77304,29 +75215,29 @@ function settleSlap() {
     made.clear();
     for (const t of timers3) clearTimeout(t);
     timers3.clear();
-    if (E7) $9("#hand").replaceChildren();
-    if (G10.typingFocus && E7) $9("#cmd").focus();
+    if (E6) $8("#hand").replaceChildren();
+    if (G9.typingFocus && E6) $8("#cmd").focus();
   }
 }
 function stopSlap(opts = {}) {
-  if (G10.slap && G10.slap.result === null) G10.started.delete(G10.slap.id);
-  if (G10.starting) G10.started.delete(G10.rkey);
-  G10.epoch++;
-  G10.slap = null;
-  G10.back = null;
-  G10.starting = false;
-  G10.next = null;
-  G10.k = 0;
-  G10.mouse = [];
+  if (G9.slap && G9.slap.result === null) G9.started.delete(G9.slap.id);
+  if (G9.starting) G9.started.delete(G9.rkey);
+  G9.epoch++;
+  G9.slap = null;
+  G9.back = null;
+  G9.starting = false;
+  G9.next = null;
+  G9.k = 0;
+  G9.mouse = [];
   if (!opts.keepCheek) {
-    G10.cheekA = 0;
-    G10.cheekScene = "";
-    G10.started.clear();
-    G10.last = null;
+    G9.cheekA = 0;
+    G9.cheekScene = "";
+    G9.started.clear();
+    G9.last = null;
   }
   for (const t of timers3) clearTimeout(t);
   timers3.clear();
-  if (frameId !== null && E7) E7.env.cancelRaf(frameId);
+  if (frameId !== null && E6) E6.env.cancelRaf(frameId);
   frameId = null;
   for (const n of made) {
     try {
@@ -77340,25 +75251,25 @@ function stopSlap(opts = {}) {
   }
   made.clear();
   try {
-    A8.worldG?.disconnect();
+    A7.worldG?.disconnect();
   } catch {
   }
-  A8.ctx = null;
-  A8.buf = {};
-  delete A8.worldLP;
-  delete A8.worldG;
-  delete A8.body;
-  delete A8.white;
+  A7.ctx = null;
+  A7.buf = {};
+  delete A7.worldLP;
+  delete A7.worldG;
+  delete A7.body;
+  delete A7.white;
   cam.release();
-  if (E7) {
-    for (const off of E7.offs) off();
-    E7.box.remove();
-    const mirrors = E7.env.root.querySelectorAll(".alius-slap-mirror");
-    if (mirrors.length > 0) E7.env.input.style.removeProperty("color");
+  if (E6) {
+    for (const off of E6.offs) off();
+    E6.box.remove();
+    const mirrors = E6.env.root.querySelectorAll(".alius-slap-mirror");
+    if (mirrors.length > 0) E6.env.input.style.removeProperty("color");
     mirrors.forEach((m) => m.remove());
-    delete E7.host.dataset.slap;
+    delete E6.host.dataset.slap;
   }
-  E7 = null;
+  E6 = null;
 }
 function resetSlap() {
   stopSlap();
@@ -77672,6 +75583,2108 @@ function resetSceneStage() {
   resetInstruments();
   resetSlap();
   for (const fn of [...hooks2]) fn();
+}
+
+// src/ui/scene/instruments/shoe/shoe.ts
+var E7 = null;
+var innerWidth9 = 0;
+var innerHeight9 = 0;
+var performance10 = { now: () => E7 ? E7.env.now() : 0 };
+function setTimeout8(fn, ms) {
+  if (E7) E7.env.timeout(() => {
+    fn();
+  }, ms);
+}
+function requestAnimationFrame8(fn) {
+  if (!E7) return;
+  const e = E7;
+  e.frameId = e.env.raf((now) => {
+    e.frameId = null;
+    if (E7 !== e) return;
+    before6(now);
+    fn(now);
+    after8(now);
+  });
+}
+var seed6 = 2463534242;
+function rnd017() {
+  seed6 ^= seed6 << 13;
+  seed6 >>>= 0;
+  seed6 ^= seed6 >>> 17;
+  seed6 ^= seed6 << 5;
+  seed6 >>>= 0;
+  return seed6 / 4294967296;
+}
+var reseed2 = (n) => {
+  seed6 = n >>> 0 || 2463534242;
+};
+var Math9 = Object.create(globalThis.Math, { random: { value: rnd017 } });
+function safeCanvas2() {
+  const c = globalThis.document.createElement("canvas");
+  const real = c.getContext.bind(c);
+  let ctx2 = null;
+  c.getContext = (k) => {
+    if (ctx2) return ctx2;
+    let r = null;
+    try {
+      r = real(k);
+    } catch {
+      r = null;
+    }
+    const noop = () => {
+    };
+    ctx2 = r ?? new Proxy({ canvas: c }, { get: (t, p) => p in t ? t[p] : p === "createImageData" || p === "getImageData" ? (_a, _b, w, h2) => ({ data: new Uint8ClampedArray(Math9.max(0, (w ?? _a) * (h2 ?? _b) * 4) || 0) }) : p === "createRadialGradient" || p === "createLinearGradient" ? () => ({ addColorStop: noop }) : noop, set: () => true });
+    if (r) {
+      const gid = r.getImageData.bind(r);
+      r.getImageData = (x, y, w, h2) => {
+        try {
+          return gid(x, y, w, h2);
+        } catch {
+          return { data: new Uint8ClampedArray(w * h2 * 4) };
+        }
+      };
+    }
+    return ctx2;
+  };
+  return c;
+}
+var document3 = { createElement: (tag2) => tag2 === "canvas" ? safeCanvas2() : globalThis.document.createElement(tag2) };
+var DETACHED = /* @__PURE__ */ new Map();
+var $9 = (s) => {
+  const e = E7;
+  if (e.els[s]) return e.els[s];
+  let d = DETACHED.get(s);
+  if (!d) {
+    d = s === "#mouthGauge" ? safeCanvas2() : globalThis.document.createElement("div");
+    DETACHED.set(s, d);
+  }
+  return d;
+};
+var easeOut6 = (t) => 1 - Math9.pow(1 - clamp41(t, 0, 1), 3);
+var pick10 = (a) => a[Math9.floor(Math9.random() * a.length)];
+var rand8 = (a, b) => a + Math9.random() * (b - a);
+var CHECK_AT = TUNING.physics.tongue.checkAt / 100;
+var KINDS2 = {
+  boots: {
+    label: "combat boots",
+    gloss: 0.7,
+    // how bright a full shine is (the toe cap more)
+    close: { toe: [0.62, 0.78, 0.09, 0.06, -20], vamp: [0.5, 0.62, 0.1, 0.06, -25], laces: [0.42, 0.45, 0.06, 0.1, -15], side: [0.4, 0.72, 0.11, 0.07, -10], heel: [0.22, 0.78, 0.06, 0.08, 0], shaft: [0.33, 0.26, 0.08, 0.13, -5], welt: [0.45, 0.9, 0.16, 0.025, -12] },
+    sole: { toe_tread: [0.5, 0.2, 0.13, 0.1, 0], mid: [0.5, 0.5, 0.09, 0.12, 0], heel_tread: [0.5, 0.8, 0.11, 0.09, 0] },
+    leather: ["toe", "vamp", "side", "heel", "shaft", "welt"],
+    bright: { toe: 1.4 }
+  },
+  heels: {
+    label: "high heels",
+    gloss: 1,
+    close: { toe: [0.7, 0.72, 0.08, 0.06, -25], vamp: [0.56, 0.6, 0.09, 0.05, -30], side: [0.45, 0.63, 0.1, 0.05, -20], back: [0.28, 0.5, 0.05, 0.07, 0], heel: [0.25, 0.78, 0.025, 0.11, 5] },
+    sole: { toe_tread: [0.5, 0.22, 0.12, 0.1, 0], mid: [0.5, 0.52, 0.07, 0.12, 0], heel_tread: [0.5, 0.86, 0.04, 0.04, 0] },
+    leather: ["toe", "vamp", "side", "back", "heel"],
+    bright: {}
+  }
+};
+var FRONT = {
+  boots: { toe: [0, 0.88, 0.05, 0.035, 0], vamp: [0, 0.76, 0.045, 0.045, 0], laces: [0, 0.6, 0.03, 0.07, 0], shaft: [0, 0.4, 0.05, 0.09, 0], welt: [0, 0.94, 0.07, 0.015, 0] },
+  heels: { toe: [0, 0.9, 0.045, 0.035, 0], vamp: [0, 0.8, 0.04, 0.035, 0], side: [0.045, 0.78, 0.015, 0.05, 0] }
+};
+var SOLE_TWO = { toe_tread: [0, 0.22, 0.06, 0.08, 0], mid: [0, 0.5, 0.035, 0.09, 0], heel_tread: [0, 0.82, 0.035, 0.05, 0] };
+var ZONE_WORDS2 = new Proxy({}, { get: (_t, k) => (E7 ? voiceLines(E7.env.registries, `shoe.zone.${String(k)}`, void 0)[0] : void 0) ?? String(k) });
+var DIRTS = {
+  ash: { color: [104, 100, 96], grit: 0.6, dry: 1.6, resist: 1, blobs: [4, 0.12, 1], taste: "Ash: dry, bitter, it coats the tongue.", where: "the Ashway" },
+  mud: { color: [86, 64, 44], grit: 1, dry: 0.5, resist: 1.25, blobs: [6, 0.1, 1], taste: "Mud: gritty and cold; sand between the teeth.", where: "a wet run" },
+  oil: { color: [40, 36, 32], grit: 0.2, dry: 0.8, resist: 2, blobs: [3, 0.07, 3], taste: "Machine oil: bitter, it will not wash off the tongue.", where: "Corridor K-12" },
+  spores: { color: [104, 122, 78], grit: 0.4, dry: 0.9, resist: 1, blobs: [7, 0.06, 1], taste: "Spores: sweetish, then rotten. The Bloom.", where: "District 7" },
+  dust: { color: [168, 148, 116], grit: 0.5, dry: 1.8, resist: 0.7, blobs: [3, 0.16, 1], taste: "Parade-ground dust: chalky, it dries everything.", where: "the training yard" },
+  rain: { color: [110, 96, 80], grit: 0.3, dry: 0.4, resist: 0.6, blobs: [14, 0.035, 1], taste: "Muddy rainwater, cold and flat.", where: "the rain" }
+};
+var LINE_KINDS = ["entry", "turn", "sole", "kiss", "polish", "other", "caught", "swallowed", "good", "poor", "missed", "dull", "stamp", "end", "stop"];
+var LINES5 = { neutral: {} };
+var S11 = {
+  kind: "boots",
+  dirt: "mud",
+  style: "neutral",
+  busy: "auto",
+  sound: true,
+  vol: 0.7,
+  debug: false,
+  reduced: false,
+  feet: { boots_close: "one", boots_sole: "one", heels_close: "one", heels_sole: "one" },
+  // 'one' | 'two' per picture
+  shown: { boots_close: "right", boots_sole: "right", heels_close: "right", heels_sole: "right" },
+  // with one foot: which of hers it is
+  fit: { boots_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, boots_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 }, heels_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, heels_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 } },
+  zones: {}
+};
+var ST4 = () => STYLES[S11.style] ?? STYLES.neutral;
+var L4 = () => LINES5[S11.style] ?? LINES5.neutral;
+var D3 = () => DIRTS[S11.dirt];
+var K = () => KINDS2[S11.kind];
+var A8 = { ctx: null, buf: {} };
+var SAMPLE_URLS4 = {
+  cloth1: "assets/sounds/ha/cloth1.ogg",
+  cloth2: "assets/sounds/ha/cloth2.ogg",
+  cloth3: "assets/sounds/ha/cloth3.ogg",
+  cloth4: "assets/sounds/ha/cloth4.ogg",
+  wood1: "assets/sounds/ha/wood1.ogg",
+  wood2: "assets/sounds/ha/wood2.ogg",
+  soft1: "assets/sounds/ha/soft1.ogg",
+  soft2: "assets/sounds/ha/soft2.ogg",
+  key1: "assets/sounds/ha/key1.ogg",
+  key2: "assets/sounds/ha/key2.ogg"
+};
+var GROUPS2 = { cloth: ["cloth1", "cloth2", "cloth3", "cloth4"], wood: ["wood1", "wood2"], soft: ["soft1", "soft2"], key: ["key1", "key2"] };
+function audioInit7() {
+  if (A8.ctx) return;
+  const ctx2 = E7?.env.samples?.ctx() ?? null;
+  const out = E7?.env.samples?.bus("body") ?? null;
+  if (!ctx2 || !out) return;
+  A8.ctx = ctx2;
+  A8.master = ctx2.createGain();
+  A8.master.gain.value = S11.sound ? S11.vol : 0;
+  A8.master.connect(out);
+  A8.world = ctx2.createBiquadFilter();
+  A8.world.type = "lowpass";
+  A8.world.frequency.value = 9e3;
+  A8.world.connect(A8.master);
+  A8.body = ctx2.createGain();
+  A8.body.connect(A8.master);
+  const mk = (sec, fill7) => {
+    const b = ctx2.createBuffer(1, ctx2.sampleRate * sec, ctx2.sampleRate);
+    fill7(b.getChannelData(0));
+    return b;
+  };
+  A8.white = mk(2, (d) => {
+    for (let i = 0; i < d.length; i++) d[i] = Math9.random() * 2 - 1;
+  });
+  A8.brown = mk(4, (d) => {
+    let l = 0;
+    for (let i = 0; i < d.length; i++) {
+      l = (l + 0.02 * (Math9.random() * 2 - 1)) / 1.02;
+      d[i] = l * 3.5;
+    }
+  });
+  A8.grain = mk(2, (d) => {
+    for (let i = 0; i < d.length; i++) d[i] = Math9.random() < 4e-3 ? Math9.random() * 2 - 1 : 0;
+  });
+  const room2 = ctx2.createBufferSource();
+  room2.buffer = A8.brown;
+  room2.loop = true;
+  const rl = ctx2.createBiquadFilter();
+  rl.type = "lowpass";
+  rl.frequency.value = 650;
+  const rg = ctx2.createGain();
+  rg.gain.value = 0.05;
+  room2.connect(rl);
+  rl.connect(rg);
+  rg.connect(A8.world);
+  room2.start();
+}
+function loadSamples2() {
+  const samples = E7?.env.samples;
+  if (!samples) return;
+  A8.buf = new Proxy({}, { get: (_t, k) => typeof k === "string" && SAMPLE_URLS4[k] ? samples.buffer(SAMPLE_URLS4[k]) : null });
+  void samples.preload(Object.values(SAMPLE_URLS4));
+}
+function play6(id, { g = 0.5, pan = 0, rate = 1, lp = 0, dest, at: at2 = 0 } = {}) {
+  const key = GROUPS2[id] ? pick10(GROUPS2[id]) : id;
+  if (!A8.ctx || !A8.buf[key]) return null;
+  const ctx2 = A8.ctx, t = ctx2.currentTime + at2;
+  const src = ctx2.createBufferSource();
+  src.buffer = A8.buf[key];
+  src.playbackRate.value = rate;
+  const gn = ctx2.createGain();
+  gn.gain.value = g;
+  src.connect(gn);
+  let n = gn;
+  if (lp) {
+    const f = ctx2.createBiquadFilter();
+    f.type = "lowpass";
+    f.frequency.value = lp;
+    n.connect(f);
+    n = f;
+  }
+  if (pan) {
+    const p = ctx2.createStereoPanner();
+    p.pan.value = pan;
+    n.connect(p);
+    n = p;
+  }
+  n.connect(dest ?? A8.world);
+  src.start(t);
+  return src;
+}
+function noise9({ at: at2 = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1, gain: gain2 = 0.1, attack = 0.01, dest = A8.world, buf }) {
+  if (!A8.ctx) return;
+  const ctx2 = A8.ctx, t = ctx2.currentTime + at2;
+  const src = ctx2.createBufferSource();
+  src.buffer = buf ?? A8.white;
+  src.loop = true;
+  const fl = ctx2.createBiquadFilter();
+  fl.type = type;
+  fl.frequency.setValueAtTime(f, t);
+  fl.Q.value = q;
+  if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = ctx2.createGain();
+  g.gain.setValueAtTime(1e-4, t);
+  g.gain.exponentialRampToValueAtTime(gain2, t + attack);
+  g.gain.exponentialRampToValueAtTime(1e-4, t + dur);
+  src.connect(fl);
+  fl.connect(g);
+  g.connect(dest);
+  src.start(t, Math9.random());
+  src.stop(t + dur + 0.05);
+}
+function tone3(f0, f12, dur, gain2, { at: at2 = 0, dest = A8.body, type = "sine" } = {}) {
+  if (!A8.ctx) return;
+  const ctx2 = A8.ctx, t = ctx2.currentTime + at2;
+  const o = ctx2.createOscillator();
+  o.type = type;
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(f12, t + dur);
+  const g = ctx2.createGain();
+  g.gain.setValueAtTime(1e-4, t);
+  g.gain.exponentialRampToValueAtTime(gain2, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(1e-4, t + dur);
+  o.connect(g);
+  g.connect(dest);
+  o.start(t);
+  o.stop(t + dur + 0.05);
+}
+var SFX6 = {
+  pen: () => {
+    for (let i = 0; i < 3; i++) noise9({ at: i * 0.05 + Math9.random() * 0.02, dur: 0.035 + Math9.random() * 0.03, f: 2600 + Math9.random() * 1800, q: 3, gain: 0.04 });
+  },
+  kiss: () => {
+    noise9({ dur: 0.07, type: "lowpass", f: 900, gain: 0.08, attack: 4e-3, dest: A8.body });
+    noise9({ at: 0.05, dur: 0.03, type: "highpass", f: 2500, gain: 0.04, attack: 2e-3, dest: A8.body });
+  },
+  gulp: (g = 1) => {
+    tone3(190, 110, 0.12, 0.22 * g);
+    noise9({ at: 0.04, dur: 0.05, f: 900, q: 3, gain: 0.08 * g, dest: A8.body });
+  },
+  spit: () => {
+    noise9({ dur: 0.12, type: "bandpass", f: 2200, f2: 900, q: 0.8, gain: 0.12, attack: 5e-3, dest: A8.body });
+    noise9({ at: 0.1, dur: 0.05, type: "lowpass", f: 600, gain: 0.05, dest: A8.world });
+  },
+  stamp: () => {
+    tone3(80, 50, 0.18, 0.5, { dest: A8.world });
+    play6("wood", { g: 0.3 });
+  },
+  squeak: () => {
+    if (!A8.ctx) return;
+    const t = A8.ctx.currentTime;
+    const o = A8.ctx.createOscillator();
+    o.frequency.setValueAtTime(rand8(2600, 3600), t);
+    o.frequency.linearRampToValueAtTime(rand8(2200, 3e3), t + 0.08);
+    const lfo = A8.ctx.createOscillator();
+    lfo.frequency.value = 60;
+    const lg = A8.ctx.createGain();
+    lg.gain.value = 200;
+    lfo.connect(lg);
+    lg.connect(o.frequency);
+    const g = A8.ctx.createGain();
+    g.gain.setValueAtTime(1e-4, t);
+    g.gain.exponentialRampToValueAtTime(0.015, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(1e-4, t + 0.09);
+    o.connect(g);
+    g.connect(A8.body);
+    o.start(t);
+    lfo.start(t);
+    o.stop(t + 0.1);
+    lfo.stop(t + 0.1);
+  },
+  tap: () => play6("key", { g: 0.12, pan: 0.2, rate: rand8(0.95, 1.1) })
+};
+var LICK = null;
+function lickTick2(speed) {
+  if (!A8.ctx) return;
+  if (!LICK) {
+    const src = A8.ctx.createBufferSource();
+    src.buffer = A8.white;
+    src.loop = true;
+    const f = A8.ctx.createBiquadFilter();
+    f.type = "bandpass";
+    f.Q.value = 1.2;
+    const g = A8.ctx.createGain();
+    g.gain.value = 0;
+    src.connect(f);
+    f.connect(g);
+    g.connect(A8.body);
+    src.start();
+    const gs = A8.ctx.createBufferSource();
+    gs.buffer = A8.grain;
+    gs.loop = true;
+    const gf = A8.ctx.createBiquadFilter();
+    gf.type = "highpass";
+    gf.frequency.value = 1800;
+    const gg = A8.ctx.createGain();
+    gg.gain.value = 0;
+    gs.connect(gf);
+    gf.connect(gg);
+    gg.connect(A8.body);
+    gs.start();
+    LICK = { f, g, gg };
+  }
+  const ct = A8.ctx.currentTime;
+  LICK.f.frequency.setTargetAtTime(lerp2(1100, 3400, G10.dry), ct, 0.05);
+  LICK.g.gain.setTargetAtTime(clamp41(speed / 1800, 0, 1) * 0.07, ct, 0.04);
+  LICK.gg.gain.setTargetAtTime(clamp41(speed / 1800, 0, 1) * G10.grit * 0.5, ct, 0.04);
+}
+var lickStop2 = () => {
+  if (LICK && A8.ctx) {
+    LICK.g.gain.setTargetAtTime(0, A8.ctx.currentTime, 0.06);
+    LICK.gg.gain.setTargetAtTime(0, A8.ctx.currentTime, 0.06);
+  }
+};
+function say10(text3) {
+  if (!text3) return;
+  const el = document3.createElement("div");
+  el.className = "her-line";
+  el.textContent = text3;
+  const speed = S11.style === "cruel" || S11.style === "cold" ? 24 : S11.style === "ritual" ? 45 : 34;
+  el.style.setProperty("--write", `${Math9.max(140, text3.length * speed)}ms`);
+  el.style.setProperty("--steps", String(Math9.max(4, text3.length * 2)));
+  const showing = [...$9("#hand").querySelectorAll(".her-line:not(.gone)")].length;
+  el.style.left = `${innerWidth9 * 0.62}px`;
+  el.style.top = `${innerHeight9 * 0.12 + showing * 50}px`;
+  el.style.transform = `rotate(${rand8(-4, 3).toFixed(1)}deg)`;
+  $9("#hand").appendChild(el);
+  SFX6.pen();
+  setTimeout8(() => {
+    el.classList.add("gone");
+    setTimeout8(() => el.remove(), 600);
+  }, 2600);
+}
+function sense4(text3) {
+  const el = document3.createElement("div");
+  el.className = "sense";
+  el.textContent = text3;
+  const showing = [...$9("#hand").querySelectorAll(".sense:not(.gone)")].length;
+  el.style.left = `${innerWidth9 * 0.06}px`;
+  el.style.top = `${innerHeight9 * 0.6 - showing * 46}px`;
+  $9("#hand").appendChild(el);
+  setTimeout8(() => {
+    el.classList.add("gone");
+    setTimeout8(() => el.remove(), 900);
+  }, 3400);
+}
+var sayL = (key, z2) => {
+  const pool = L4()[key];
+  if (pool && pool.length) say10(pick10(pool).replace("%z", z2 ? ZONE_WORDS2[z2] : ""));
+};
+var G10;
+function fresh6() {
+  return {
+    phase: "idle",
+    t: 0,
+    foot: "right",
+    surface: "close",
+    surfaces: {},
+    order: [],
+    orderI: 0,
+    surfT: 0,
+    surfLen: 25e3,
+    dry: 0,
+    grit: 0,
+    gest: null,
+    want: null,
+    wantAt: 0,
+    attention: "busy",
+    attT: 0,
+    nextAtt: 2e3,
+    nextMove: 6e3,
+    fx: { dx: 0, dy: 0, s: 1, r: 0 },
+    anim: null,
+    press: 0,
+    light: -1,
+    lightT: 0,
+    marks: [],
+    toldDry: false,
+    toldPolish: false,
+    toldGrit: false,
+    toldTaste: false,
+    nextTap: 0,
+    stats: { strokes: 0, withGrain: 0, kisses: 0, swallows: 0, spits: 0, caught: 0, stamps: 0, checks: [], polishStrokes: 0 }
+  };
+}
+G10 = fresh6();
+var view = () => G10.surface === "sole" ? "sole" : "close";
+var slotKey = () => `${S11.kind}_${view()}`;
+var twoFeet = () => S11.feet[slotKey()] === "two";
+var mirrored = () => !twoFeet() && G10.foot !== S11.shown[slotKey()];
+var footX = () => S11.fit[slotKey()][G10.foot === "right" ? "xr" : "xl"];
+function zonesNow() {
+  if (twoFeet()) {
+    const own = S11.zones[slotKey()]?.[G10.foot];
+    if (own) return own;
+    const u0 = footX(), out = {}, sgn = G10.foot === "right" ? -1 : 1;
+    for (const [k, p] of Object.entries(view() === "sole" ? SOLE_TWO : FRONT[S11.kind])) out[k] = [+(u0 + p[0] * sgn).toFixed(3), p[1], p[2], p[3], p[4]];
+    return out;
+  }
+  const z2 = S11.zones[slotKey()];
+  return z2 && !z2.right ? z2 : K()[view()];
+}
+var leatherNow = () => view() === "sole" ? [] : K().leather.filter((z2) => Object.keys(zonesNow()).includes(z2));
+var surf = () => G10.surfaces[`${G10.foot}_${G10.surface}`];
+var imgs = {};
+var shownSrc = null;
+function slotImg() {
+  const i = imgs[slotKey()];
+  return i && i.naturalWidth ? i : null;
+}
+function shoeRect() {
+  const img2 = slotImg() ?? SPRITE;
+  if (!img2.naturalWidth) return null;
+  const fit2 = S11.fit[slotKey()];
+  const H = innerHeight9 * fit2.h, Wd = H * img2.naturalWidth / img2.naturalHeight;
+  const k = G10.fx.s * (1 + 0.1 * G10.press);
+  G10.camU = lerp2(G10.camU ?? (twoFeet() ? footX() : 0.5), twoFeet() ? footX() : 0.5, 0.08);
+  const cx = innerWidth9 / 2 + (fit2.x ?? 0) * innerWidth9 + G10.fx.dx - (G10.camU - 0.5) * Wd * k, cy = innerHeight9 * fit2.y + G10.fx.dy;
+  return { x: cx - Wd * k / 2, y: cy - H * k / 2, w: Wd * k, h: H * k };
+}
+function toPic(x, y) {
+  const r = shoeRect();
+  if (!r) return null;
+  let u = (x - r.x) / r.w;
+  const v = (y - r.y) / r.h;
+  if (mirrored()) u = 1 - u;
+  return [u, v, r];
+}
+function zoneRadii2(r) {
+  const z2 = Object.entries(zonesNow()), out = {};
+  for (const [k, p] of z2) {
+    let dmin = 1e9;
+    for (const [k2, q] of z2) if (k2 !== k) dmin = Math9.min(dmin, Math9.hypot((p[0] - q[0]) * r.w, (p[1] - q[1]) * r.h));
+    const auto = clamp41(dmin / 2, r.h * 0.04, r.h * 0.12);
+    out[k] = p[3] !== void 0 ? { rx: p[2] * r.h, ry: p[3] * r.h, rot: (p[4] ?? 0) * Math9.PI / 180 } : p[2] !== void 0 ? { rx: p[2] * r.h, ry: p[2] * r.h } : { rx: auto, ry: auto };
+  }
+  return out;
+}
+function inEllipse2(dx, dy, z2) {
+  const a = -(z2.rot ?? 0), c = Math9.cos(a), sn = Math9.sin(a);
+  return [(dx * c - dy * sn) / z2.rx, (dx * sn + dy * c) / z2.ry];
+}
+function zoneAtPic(u, v, r) {
+  const rad = zoneRadii2(r);
+  let best = null, bd = 1e9;
+  for (const [k, p] of Object.entries(zonesNow())) {
+    const [ex, ey] = inEllipse2((u - p[0]) * r.w, (v - p[1]) * r.h, rad[k]);
+    const d = Math9.hypot(ex, ey);
+    if (d < 1 && d < bd) {
+      bd = d;
+      best = k;
+    }
+  }
+  return best;
+}
+var onShoe = (x, y) => {
+  const q = toPic(x, y);
+  return q && q[0] > 0 && q[0] < 1 && q[1] > 0 && q[1] < 1;
+};
+function makeSurface() {
+  const img2 = slotImg() ?? SPRITE;
+  if (!img2.naturalWidth) return null;
+  const w = 140, h2 = Math9.round(140 * img2.naturalHeight / img2.naturalWidth);
+  const base = document3.createElement("canvas");
+  base.width = w;
+  base.height = h2;
+  const b = base.getContext("2d");
+  b.drawImage(img2, 0, 0, w, h2);
+  const alpha = b.getImageData(0, 0, w, h2).data;
+  const m = new Float32Array(w * h2), gl = new Float32Array(w * h2), zoneOf = new Int8Array(w * h2).fill(-1), leatherMask = new Uint8Array(w * h2);
+  const zs = Object.entries(zonesNow()), r = { w, h: h2 }, asp = img2.naturalWidth / img2.naturalHeight;
+  const rad = zoneRadii2({ w: asp, h: 1 });
+  const [n, size4, stretch] = D3().blobs, blobs = [];
+  for (const [k, p] of zs) for (let i = 0; i < n * (view() === "sole" ? 1.5 : 1); i++) blobs.push([p[0] + rand8(-0.09, 0.09), p[1] + rand8(-0.06, 0.06), rand8(size4 * 0.6, size4 * 1.4), rand8(-1, 1)]);
+  const leather = leatherNow();
+  for (let y = 0; y < h2; y++) for (let x = 0; x < w; x++) {
+    const a = alpha[(y * w + x) * 4 + 3] / 255;
+    if (a < 0.3) continue;
+    let dmin = 1e9, zi = -1;
+    zs.forEach(([k, p], i) => {
+      const [ex, ey] = inEllipse2((x / w - p[0]) * asp, y / h2 - p[1], rad[k]);
+      const d = Math9.hypot(ex, ey);
+      if (d < dmin) {
+        dmin = d;
+        zi = i;
+      }
+    });
+    const onShoeK = 1 - smooth(0.9, 1.5, dmin);
+    if (onShoeK <= 0.01) continue;
+    zoneOf[y * w + x] = dmin < 1.2 ? zi : -1;
+    if (zi >= 0 && leather.includes(zs[zi][0])) leatherMask[y * w + x] = 1;
+    let v = (S11.dirt === "rain" ? 0.05 : 0.22) + Math9.random() * 0.12;
+    for (const [bx, by, br, sk] of blobs) {
+      const dx = (x / w - bx) * asp, dy = y / h2 - by;
+      const sx = stretch > 1 ? dx + sk * dy * 0.6 : dx;
+      v += 0.55 * Math9.exp(-(sx * sx / (stretch * stretch) + dy * dy * 0.8) / (br * br));
+    }
+    m[y * w + x] = clamp41(v, 0, 1) * a * onShoeK;
+  }
+  const tex = new Float32Array(w * h2);
+  for (let i = 0; i < w * h2; i++) tex[i] = 0.7 + Math9.random() * 0.3;
+  const s = { w, h: h2, m, gl, tex, zoneOf, leatherMask, total0: m.reduce((q, v) => q + v, 0), c: document3.createElement("canvas"), cg: document3.createElement("canvas"), names: zs.map(([k]) => k) };
+  s.c.width = s.cg.width = w;
+  s.c.height = s.cg.height = h2;
+  return s;
+}
+function ensureSurface() {
+  const key = `${G10.foot}_${G10.surface}`;
+  if (!G10.surfaces[key]) G10.surfaces[key] = makeSurface();
+  return G10.surfaces[key];
+}
+var dirtLeft2 = (s = surf()) => s ? s.m.reduce((q, v) => q + v, 0) / Math9.max(1, s.total0) : 0;
+function zoneStat(zone, s = surf()) {
+  if (!s) return { dirt: 0, gloss: 1 };
+  const i = s.names.indexOf(zone);
+  if (i < 0) return { dirt: 0, gloss: 1 };
+  let d = 0, g = 0, n = 0;
+  for (let p = 0; p < s.m.length; p++) if (s.zoneOf[p] === i) {
+    d += s.m[p];
+    g += s.gl[p];
+    n++;
+  }
+  return n ? { dirt: d / n, gloss: g / n } : { dirt: 0, gloss: 1 };
+}
+function lickStroke(x0, y0, x1, y1, speed) {
+  const s = surf();
+  const a = toPic(x0, y0), b = toPic(x1, y1);
+  if (!s || !a || !b) return { removed: 0, polished: 0 };
+  const r = a[2];
+  const { w, h: h2, m, gl, leatherMask } = s;
+  const zone = zoneAtPic(b[0], b[1], r), zp = zone ? zonesNow()[zone] : null;
+  let withGrain = true;
+  if (zp) {
+    const ang = (zp[4] ?? 0) * Math9.PI / 180, major = zp[2] >= (zp[3] ?? zp[2]) ? ang : ang + Math9.PI / 2;
+    const du = (b[0] - a[0]) * r.w, dv = (b[1] - a[1]) * r.h, len2 = Math9.hypot(du, dv) || 1;
+    const along = (du * Math9.cos(major) + dv * Math9.sin(major)) / len2;
+    withGrain = Math9.abs(along) > 0.6 && Math9.sign(along) === ST4().grain;
+  }
+  const wet = (1 - G10.dry * 0.85) * (1 - G10.grit * 0.4), k = (withGrain ? 1 : 0.45) * wet * 0.5 / D3().resist;
+  const steps3 = Math9.max(1, Math9.ceil(Math9.hypot(x1 - x0, y1 - y0) / 4)), rad = 0.07 * w;
+  let removed = 0, polished = 0;
+  const slow = speed < 650;
+  for (let i = 0; i <= steps3; i++) {
+    const px = lerp2(a[0], b[0], i / steps3) * w, py = lerp2(a[1], b[1], i / steps3) * h2;
+    for (let y = Math9.max(0, Math9.floor(py - rad)); y < Math9.min(h2, Math9.ceil(py + rad)); y++) for (let x = Math9.max(0, Math9.floor(px - rad)); x < Math9.min(w, Math9.ceil(px + rad)); x++) {
+      const d = Math9.hypot(x - px, y - py) / rad;
+      if (d > 1) continue;
+      const p = y * w + x;
+      if (m[p] > 0.04) {
+        const take = m[p] * k * (1 - d) * 0.35;
+        m[p] -= take;
+        removed += take;
+      } else if (leatherMask[p]) {
+        if (slow) {
+          const add2 = (1 - gl[p]) * 0.06 * (1 - d) * wet;
+          gl[p] += add2;
+          polished += add2;
+        } else gl[p] = Math9.max(0, gl[p] - 0.01 * (1 - d));
+      }
+    }
+  }
+  return { removed, polished, withGrain, zone };
+}
+function beginSurface(surface2) {
+  G10.surface = surface2;
+  G10.surfT = 0;
+  G10.surfLen = rand8(...ST4().surface) * 1e3;
+  ensureSurface();
+  G10.want = null;
+  G10.anim = { kind: "turn", t0: G10.t };
+  play6("cloth", { g: 0.3 });
+  if (surface2 === "sole") sayL("sole");
+  nextWant();
+}
+function nextWant() {
+  const s = surf();
+  if (!s) return;
+  let best = null, bv = 0.12;
+  for (const z2 of s.names) {
+    const st3 = zoneStat(z2);
+    if (st3.dirt > bv) {
+      bv = st3.dirt;
+      best = z2;
+    }
+  }
+  if (!best && view() === "close") {
+    let gv = 0.6;
+    for (const z2 of leatherNow()) {
+      const st3 = zoneStat(z2);
+      if (st3.gloss < gv) {
+        gv = st3.gloss;
+        best = z2;
+      }
+    }
+    if (best && !G10.toldPolish) {
+      G10.toldPolish = true;
+      sayL("polish");
+    }
+  }
+  G10.want = best;
+  G10.wantAt = G10.t;
+}
+function herMove2() {
+  const mv = ST4().moves, r = Math9.random();
+  if (r < mv.stamp && G10.lastQuality !== void 0 && G10.lastQuality < 0.5) {
+    G10.anim = { kind: "stamp", t0: G10.t };
+    SFX6.stamp();
+    G10.stats.stamps += 1;
+    sayL("stamp");
+  } else if (r < mv.stamp + mv.press) {
+    G10.anim = { kind: "press", t0: G10.t };
+    play6("cloth", { g: 0.25 });
+    sense4("She presses it to your face. Leather and her day, close.");
+  } else if (r < mv.stamp + mv.press + mv.kiss) {
+    G10.kissWanted = G10.t;
+    sayL("kiss");
+  }
+  G10.nextMove = G10.t + rand8(7e3, 13e3);
+}
+function updateAttention(dt) {
+  G10.attT += dt;
+  if (G10.attT > G10.nextAtt) {
+    G10.attT = 0;
+    G10.attention = planAttention();
+    G10.nextAtt = 0;
+  }
+  if (G10.attention === "busy" && G10.t > G10.nextTap) {
+    SFX6.tap();
+    G10.nextTap = G10.t + rand8(140, 420);
+  }
+}
+function inspect() {
+  G10.phase = "inspect";
+  G10.light = 0;
+  G10.lightT = 0;
+  play6("cloth", { g: 0.3 });
+  sense4("She turns it to the light.");
+}
+function verdict() {
+  const s = surf();
+  let worst = null, wv = 0, kind = null;
+  for (const z2 of s.names) {
+    const st3 = zoneStat(z2);
+    if (st3.dirt > 0.2 && st3.dirt > wv) {
+      wv = st3.dirt;
+      worst = z2;
+      kind = "missed";
+    }
+  }
+  if (!worst && view() === "close") for (const z2 of leatherNow()) {
+    const st3 = zoneStat(z2);
+    if (st3.gloss < 0.35 && 1 - st3.gloss > wv) {
+      wv = 1 - st3.gloss;
+      worst = z2;
+      kind = "dull";
+    }
+  }
+  const q = clamp41(1 - dirtLeft2(s) * 3, 0, 1) * (view() === "close" ? 0.5 + 0.5 * meanGloss(s) : 1);
+  G10.lastQuality = q;
+  G10.stats.checks.push({ foot: G10.foot, surface: G10.surface, dirt: dirtLeft2(s), gloss: view() === "close" ? meanGloss(s) : null, worst, kind });
+  if (worst) sayL(kind, worst);
+  else sayL(q > 0.6 ? "good" : "poor");
+}
+function meanGloss(s) {
+  if (!s) return 1;
+  let g = 0, n = 0;
+  for (let p = 0; p < s.gl.length; p++) if (s.leatherMask[p]) {
+    g += s.gl[p];
+    n++;
+  }
+  return n ? g / n : 1;
+}
+function begin6() {
+  audioInit7();
+  if (A8.ctx && A8.ctx.state === "suspended") A8.ctx.resume();
+  $9("#hand").replaceChildren();
+  $9("#summary").style.display = "none";
+  G10 = fresh6();
+  G10.phase = "loop";
+  G10.order = [["right", "close"], ["right", "sole"], ["left", "close"], ["left", "sole"]];
+  $9("#reply").innerHTML = `<span class="act">She sets her ${S11.kind === "boots" ? "boot" : "shoe"} down in front of the commander, still carrying ${D3().where}.</span>`;
+  G10.foot = "right";
+  G10.surface = G10.order[0][1];
+  ensureSurface();
+  nextWant();
+  G10.surfLen = rand8(...ST4().surface) * 1e3;
+  sayL("entry");
+}
+function nextSurface() {
+  G10.orderI += 1;
+  if (G10.orderI >= G10.order.length) {
+    finish6("done");
+    return;
+  }
+  const [foot2, surface2] = G10.order[G10.orderI];
+  if (foot2 !== G10.foot) {
+    G10.foot = foot2;
+    sayL("other");
+    G10.anim = { kind: "change", t0: G10.t };
+    play6("cloth", { g: 0.35 });
+  }
+  beginSurface(surface2);
+}
+function finish6(why) {
+  if (G10.phase === "done") return;
+  G10.phase = "done";
+  lickStop2();
+  say10(why === "stop" ? pick10(L4().stop) : pick10(L4().end));
+  const s = G10.stats;
+  setTimeout8(() => {
+    $9("#sumLine").textContent = why === "stop" ? pick10(L4().stop) : L4().end[0];
+    $9("#sumFacts").innerHTML = `${K().label} \xB7 ${S11.dirt} (${D3().where})<br>strokes: ${s.strokes} (with her grain ${s.withGrain}) \xB7 polish strokes: ${s.polishStrokes}<br>kisses: ${s.kisses}<br>swallowed: ${s.swallows} \xB7 spat: ${s.spits} (caught ${s.caught})<br>stamps: ${s.stamps}<br>` + s.checks.map((c) => `${c.foot} ${c.surface}: dirt ${(c.dirt * 100).toFixed(0)} %${c.gloss !== null ? `, shine ${(c.gloss * 100).toFixed(0)} %` : ""}${c.worst ? ` \u2014 ${c.kind} ${ZONE_WORDS2[c.worst]}` : ""}`).join("<br>") + `<br>how it ended: ${why}`;
+    $9("#summary").style.display = "block";
+  }, 1e3);
+}
+function swallow() {
+  if (G10.phase !== "loop" && G10.phase !== "inspect") return;
+  SFX6.gulp(0.6 + G10.grit);
+  G10.stats.swallows += 1;
+  if (G10.grit > 0.25 && !G10.toldTaste) {
+    G10.toldTaste = true;
+    sense4(`${D3().taste} You swallow it.`);
+  }
+  G10.grit = Math9.max(0, G10.grit - 0.6);
+  G10.dry = Math9.max(0, G10.dry - 0.35);
+}
+function spit() {
+  if (G10.phase !== "loop" || G10.grit < 0.05) return;
+  SFX6.spit();
+  G10.stats.spits += 1;
+  const seen2 = G10.attention === "watching" ? 0.75 : G10.attention === "glancing" ? 0.3 : 0.06;
+  G10.grit = 0;
+  if (spitSeen(seen2)) {
+    G10.stats.caught += 1;
+    sayL("caught");
+    G10.anim = { kind: "press", t0: G10.t };
+    if (S11.style === "cruel") {
+      const s = surf();
+      if (s) {
+        for (let p = 0; p < s.m.length; p++) if (s.zoneOf[p] >= 0) s.m[p] = Math9.min(1, s.m[p] + 0.15 * Math9.random());
+      }
+    }
+  } else sense4("You spit it aside. She did not see.");
+}
+var last2 = 0;
+function frame7(now) {
+  requestAnimationFrame8(frame7);
+  const dt = Math9.min(50, now - last2);
+  last2 = now;
+  if (G10.phase === "loop" || G10.phase === "inspect") update2(dt);
+  render6(now);
+}
+function update2(dt) {
+  G10.t += dt;
+  const a = G10.anim, fx2 = { dx: 0, dy: 0, s: 1, r: 0 };
+  if (a && !S11.reduced) {
+    const u = (G10.t - a.t0) / 1e3;
+    if (a.kind === "turn") {
+      fx2.s = 1 - 0.12 * Math9.sin(Math9.min(u, 0.4) / 0.4 * Math9.PI);
+      fx2.r = 4 * Math9.sin(Math9.min(u, 0.4) / 0.4 * Math9.PI);
+    }
+    if (a.kind === "change") {
+      fx2.dx = 120 * Math9.sin(Math9.min(u, 0.6) / 0.6 * Math9.PI);
+      fx2.s = 1 - 0.15 * Math9.sin(Math9.min(u, 0.6) / 0.6 * Math9.PI);
+    }
+    if (a.kind === "press") {
+      const p = u < 0.4 ? easeOut6(u / 0.4) : u < 2 ? 1 : Math9.max(0, 1 - (u - 2) / 0.6);
+      fx2.s = 1 + 0.16 * p;
+      G10.press = p;
+    }
+    if (a.kind === "stamp") {
+      fx2.dy = 22 * Math9.max(0, 1 - u * 3) * Math9.sin(u * 40);
+    }
+    if (u > 3) {
+      G10.anim = null;
+      G10.press = 0;
+    }
+  }
+  G10.fx = fx2;
+  if (G10.phase === "inspect") {
+    G10.lightT += dt;
+    G10.light = clamp41(G10.lightT / 1700, 0, 1);
+    if (G10.lightT > 1700 && !G10.judged) {
+      G10.judged = true;
+      verdict();
+    }
+    if (G10.lightT > 3e3) {
+      G10.judged = false;
+      G10.phase = "loop";
+      G10.light = -1;
+      nextSurface();
+    }
+    return;
+  }
+  if (!surf()) {
+    ensureSurface();
+    nextWant();
+  }
+  updateAttention(dt);
+  G10.surfT += dt;
+  if (G10.grit > 0.7 && !G10.toldGrit) {
+    G10.toldGrit = true;
+    sense4("Grit fills the mouth. Swallow it, or spit while she is not looking.");
+  }
+  if (G10.dry > 0.85 && !G10.toldDry) {
+    G10.toldDry = true;
+    sense4("Your mouth is dry; the tongue drags. Swallow.");
+  }
+  if (G10.want && zoneStat(G10.want).dirt < 0.1 && (view() === "sole" || zoneStat(G10.want).gloss > 0.55 || !leatherNow().includes(G10.want))) nextWant();
+  if (G10.t > G10.nextMove) herMove2();
+  const done = dirtLeft2() <= CHECK_AT && (view() === "sole" || meanGloss(surf()) > 0.6);
+  if (done || G10.surfT > G10.surfLen) inspect();
+}
+function render6(now) {
+  const img2 = slotImg();
+  const want = img2 ? img2.src : ASSETS.her;
+  if (shownSrc !== want) {
+    shownSrc = want;
+    $9("#shoe").src = want;
+  }
+  const r = shoeRect();
+  const wrap = $9("#shoeWrap");
+  if (r) {
+    wrap.style.left = `${r.x}px`;
+    wrap.style.top = `${r.y}px`;
+    wrap.style.width = `${r.w}px`;
+    wrap.style.height = `${r.h}px`;
+    const fade2 = S11.fit[slotKey()].fade ?? 0;
+    wrap.style.webkitMaskImage = wrap.style.maskImage = fade2 > 0 ? `linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.35) ${(fade2 * 45).toFixed(1)}%, #000 ${(fade2 * 100).toFixed(1)}%)` : "none";
+    wrap.style.transform = `rotate(${(G10.fx.r + Math9.sin(now / 1900) * 0.35).toFixed(2)}deg) scaleX(${mirrored() ? -1 : 1})`;
+  }
+  $9("#vig").style.background = `radial-gradient(ellipse 64% 58% at 50% 50%, rgba(0,0,0,0) 40%, rgba(0,0,0,${(0.4 + 0.4 * G10.press).toFixed(2)}) 100%)`;
+  const s = G10.phase === "loop" || G10.phase === "inspect" ? surf() : null;
+  const dc = $9("#dirtC"), gc = $9("#glossC"), lc = $9("#lightC");
+  if (s) {
+    const col = D3().color;
+    const cx = s.c.getContext("2d"), id = cx.createImageData(s.w, s.h);
+    for (let i = 0; i < s.w * s.h; i++) {
+      const v = Math9.min(1, s.m[i] * 1.3), t = s.tex[i];
+      id.data[i * 4] = col[0] * t;
+      id.data[i * 4 + 1] = col[1] * t;
+      id.data[i * 4 + 2] = col[2] * t;
+      id.data[i * 4 + 3] = Math9.round(v * 0.88 * (0.75 + 0.25 * t) * 255);
+    }
+    cx.putImageData(id, 0, 0);
+    if (dc.width !== s.w || dc.height !== s.h) {
+      dc.width = s.w;
+      dc.height = s.h;
+    }
+    const d2 = dc.getContext("2d");
+    d2.clearRect(0, 0, s.w, s.h);
+    d2.drawImage(s.c, 0, 0);
+    const gx = s.cg.getContext("2d"), gd = gx.createImageData(s.w, s.h), bright = K().gloss;
+    for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) {
+      const i = y * s.w + x;
+      if (!s.leatherMask[i]) continue;
+      const zn = s.zoneOf[i] >= 0 ? s.names[s.zoneOf[i]] : null, zb = zn && K().bright[zn] || 1;
+      const band2 = 0.35 + 0.65 * Math9.exp(-((x / s.w - y / s.h * 0.6 - 0.12) ** 2) / 0.02);
+      const v = clamp41(s.gl[i] * band2 * bright * zb * (1 - Math9.min(1, s.m[i] * 2)), 0, 1) * 200;
+      gd.data[i * 4] = v;
+      gd.data[i * 4 + 1] = v;
+      gd.data[i * 4 + 2] = v * 1.04;
+      gd.data[i * 4 + 3] = 255;
+    }
+    gx.putImageData(gd, 0, 0);
+    if (gc.width !== s.w || gc.height !== s.h) {
+      gc.width = s.w;
+      gc.height = s.h;
+    }
+    const g2 = gc.getContext("2d");
+    g2.clearRect(0, 0, s.w, s.h);
+    g2.drawImage(s.cg, 0, 0);
+    dc.style.opacity = "1";
+    gc.style.opacity = "1";
+    if (G10.light >= 0) {
+      if (lc.width !== s.w || lc.height !== s.h) {
+        lc.width = s.w;
+        lc.height = s.h;
+      }
+      const lx = lc.getContext("2d"), ld = lx.createImageData(s.w, s.h), pos = lerp2(-0.3, 1.3, easeOut6(G10.light));
+      for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) {
+        const i = y * s.w + x;
+        if (s.zoneOf[i] < 0 && !s.leatherMask[i]) continue;
+        const bandv = Math9.exp(-((x / s.w + y / s.h * 0.3 - pos) ** 2) / 6e-3);
+        const shine = s.leatherMask[i] ? 0.15 + 0.85 * s.gl[i] : 0.25;
+        const v = bandv * shine * (1 - Math9.min(1, s.m[i] * 2.5)) * 255;
+        ld.data[i * 4] = v;
+        ld.data[i * 4 + 1] = v * 0.97;
+        ld.data[i * 4 + 2] = v * 0.9;
+        ld.data[i * 4 + 3] = 255;
+      }
+      lx.putImageData(ld, 0, 0);
+      lc.style.opacity = "1";
+    } else lc.style.opacity = "0";
+  } else {
+    dc.style.opacity = "0";
+    gc.style.opacity = "0";
+    lc.style.opacity = "0";
+  }
+  const mg = $9("#mouthGauge").getContext("2d");
+  mg.clearRect(0, 0, 260, 8);
+  if (G10.phase === "loop" && S11.debug) {
+    mg.fillStyle = "rgba(210,170,120,.8)";
+    mg.fillRect(0, 0, 260 * G10.grit, 3);
+    mg.fillStyle = "rgba(220,220,235,.6)";
+    mg.fillRect(0, 5, 260 * G10.dry, 3);
+  }
+  const mc = $9("#markC");
+  if (mc.width !== innerWidth9) {
+    mc.width = innerWidth9;
+    mc.height = innerHeight9;
+  }
+  const mx = mc.getContext("2d");
+  mx.clearRect(0, 0, mc.width, mc.height);
+  G10.marks = G10.marks.filter((q) => performance10.now() - q.born < 2200);
+  for (const q of G10.marks) {
+    const al = 1 - (performance10.now() - q.born) / 2200;
+    const g = mx.createRadialGradient(q.x, q.y, 0, q.x, q.y, 30);
+    g.addColorStop(0, `rgba(255,150,140,${(0.35 * al).toFixed(3)})`);
+    g.addColorStop(1, "rgba(255,150,140,0)");
+    mx.fillStyle = g;
+    mx.beginPath();
+    mx.arc(q.x, q.y, 30, 0, Math9.PI * 2);
+    mx.fill();
+  }
+  if (G10.phase === "idle" || G10.phase === "mark") {
+    mx.save();
+    mx.setLineDash([6, 6]);
+    mx.strokeStyle = "rgba(216,228,255,.45)";
+    mx.lineWidth = 1;
+    mx.beginPath();
+    mx.moveTo(innerWidth9 / 2 + (r ? (S11.fit[slotKey()].x ?? 0) * innerWidth9 : 0), 0);
+    mx.lineTo(innerWidth9 / 2 + (r ? (S11.fit[slotKey()].x ?? 0) * innerWidth9 : 0), innerHeight9);
+    mx.stroke();
+    mx.restore();
+    if (twoFeet()) {
+      mx.fillStyle = "rgba(216,228,255,.75)";
+      mx.font = '12px "IBM Plex Mono"';
+      mx.fillText(`framing her ${G10.foot} foot`, innerWidth9 / 2 + 8, 24);
+    }
+  }
+  if (r && (S11.debug || MARK2.on)) {
+    const rad = zoneRadii2(r), zz = MARK2.on ? MARK2.pts : zonesNow();
+    for (const [k, p] of Object.entries(zz)) {
+      const live3 = MARK2.on && MARK2.drag && k === MARK2.names[MARK2.i];
+      const ex = live3 ? Math9.max(6, MARK2.drag.rx ?? 6) : p[2] !== void 0 ? p[2] * r.h : rad[k]?.rx ?? 10, ey = live3 ? Math9.max(6, MARK2.drag.ry ?? 6) : p[3] !== void 0 ? p[3] * r.h : ex;
+      const er = (live3 ? MARK2.drag.rot ?? 0 : p[4] ?? 0) * Math9.PI / 180 * (mirrored() ? -1 : 1);
+      const cxp = r.x + (mirrored() ? 1 - p[0] : p[0]) * r.w, cyp = r.y + p[1] * r.h;
+      mx.strokeStyle = k === G10.want ? "rgba(140,255,170,.8)" : "rgba(216,228,255,.55)";
+      mx.lineWidth = k === G10.want ? 2 : 1;
+      mx.beginPath();
+      mx.ellipse(cxp, cyp, ex, ey, er, 0, Math9.PI * 2);
+      mx.stroke();
+      mx.fillStyle = "rgba(216,228,255,.8)";
+      mx.font = '12px "IBM Plex Mono"';
+      mx.fillText(k, cxp + 10, cyp + 4);
+    }
+  }
+  if (S11.debug && s) {
+    $9("#debug").textContent = `${G10.foot} ${G10.surface} \xB7 dirt ${(dirtLeft2() * 100).toFixed(0)} %${view() === "close" ? ` \xB7 shine ${(meanGloss(s) * 100).toFixed(0)} %` : ""} \xB7 she wants ${G10.want ?? "\u2014"}
+mouth: dry ${G10.dry.toFixed(2)} grit ${G10.grit.toFixed(2)} \xB7 her attention ${G10.attention}
+surface ${(G10.surfT / 1e3).toFixed(0)} / ${(G10.surfLen / 1e3).toFixed(0)} s \xB7 grain ${ST4().grain > 0 ? "toward the toe" : "toward the heel"}
+` + (s ? s.names.map((z2) => {
+      const q = zoneStat(z2, s);
+      return `${z2}: dirt ${(q.dirt * 100).toFixed(0)}${leatherNow().includes(z2) ? ` shine ${(q.gloss * 100).toFixed(0)}` : ""}`;
+    }).join("  ") : "");
+  }
+}
+function down2(x, y) {
+  if (MARK2.on) {
+    markDown(x, y);
+    return;
+  }
+  if (G10.phase !== "loop" || !onShoe(x, y)) return;
+  G10.gest = { x0: x, y0: y, x, y, t0: G10.t, len: 0, rev: 0, lastA: null, lastT: performance10.now(), kind: null };
+}
+function move(x, y, e) {
+  if (MARK2.on) {
+    markMove(x, y, e.shiftKey);
+    return;
+  }
+  const g = G10.gest;
+  if (!g) return;
+  const dx = x - g.x, dy = y - g.y, d = Math9.hypot(dx, dy);
+  if (d < 0.5) return;
+  const nowp = performance10.now(), dtm = Math9.max(1, nowp - g.lastT);
+  g.lastT = nowp;
+  g.len += d;
+  const ax = x - (g.ax ?? g.x0), ay = y - (g.ay ?? g.y0);
+  if (Math9.hypot(ax, ay) >= 6) {
+    const an = Math9.atan2(ay, ax);
+    if (g.lastA !== null) {
+      let da = an - g.lastA;
+      while (da > Math9.PI) da -= 2 * Math9.PI;
+      while (da < -Math9.PI) da += 2 * Math9.PI;
+      if (Math9.abs(da) > 2.2) g.rev += 1;
+    }
+    g.lastA = an;
+    g.ax = x;
+    g.ay = y;
+  }
+  if (!g.kind && (g.len > 40 || g.rev >= 1)) g.kind = "lick";
+  const speed = d / dtm * 1e3;
+  g.speed = lerp2(g.speed ?? speed, speed, 0.2);
+  if (g.kind === "lick") {
+    const res = lickStroke(g.x, g.y, x, y, g.speed);
+    const s = surf();
+    if (res.removed > 0) G10.grit = clamp41(G10.grit + res.removed * 35e-5 * D3().grit, 0, 1);
+    G10.dry = clamp41(G10.dry + d * 11e-4 * (res.removed > 0 ? D3().dry : 0.6), 0, 1);
+    lickTick2(g.speed);
+    if (res.polished > 0) {
+      g.polish = (g.polish ?? 0) + res.polished;
+      if (Math9.random() < 0.06) SFX6.squeak();
+    }
+    if (res.withGrain) g.grainLen = (g.grainLen ?? 0) + d;
+  }
+  g.x = x;
+  g.y = y;
+}
+function up() {
+  if (MARK2.on) {
+    markUp();
+    return;
+  }
+  const g = G10.gest;
+  if (!g) return;
+  G10.gest = null;
+  lickStop2();
+  if (!g.kind && g.len < 12 && G10.t - g.t0 >= 300) {
+    SFX6.kiss();
+    G10.stats.kisses += 1;
+    G10.marks.push({ x: g.x0, y: g.y0, born: performance10.now() });
+    if (G10.kissWanted && G10.t - G10.kissWanted < 8e3) {
+      G10.kissWanted = 0;
+      if (Math9.random() < 0.5) sayL("good");
+    }
+    return;
+  }
+  if (g.kind === "lick") {
+    G10.stats.strokes += 1;
+    if ((g.grainLen ?? 0) > g.len * 0.5) G10.stats.withGrain += 1;
+    if ((g.polish ?? 0) > 0.5) G10.stats.polishStrokes += 1;
+  }
+}
+var MARK2 = { on: false, i: 0, names: [], pts: {} };
+var markDown = (_x, _y) => {
+};
+var markMove = (_x, _y, _c) => {
+};
+var markUp = () => {
+};
+var ASSETS = { her: "" };
+var SPRITE = { naturalWidth: 0, naturalHeight: 0 };
+var R9 = { run: null, lineStyle: "neutral", seg: null, running: false, plan: [], sums: {}, qualities: [], checks: 0, verdictSent: false, ox: 0, oy: 0, lastNow: 0, ended: null };
+var broken = /* @__PURE__ */ new Set();
+onStageReset(() => broken.clear());
+function planAttention() {
+  const b = beatNow3();
+  return R9.running ? R9.plan[b]?.attention ?? G10.attention : G10.attention;
+}
+function beatNow3() {
+  const seg = R9.seg;
+  if (!seg) return 0;
+  return clamp41(Math9.floor((G10.t - seg.clock0) / TUNING.physics.beatMs), 0, seg.beats - 1);
+}
+function report5(i, pointer) {
+  if (!E7 || !R9.seg || !R9.running) return;
+  E7.env.staging.input(i, { pointer });
+}
+function spitSeen(_chance) {
+  if (!E7) return false;
+  const events = E7.env.staging.spit?.(beatNow3(), G10.attention) ?? [];
+  return events.some((e) => e.type === "physics_caught");
+}
+function sumsOf(s) {
+  const zones2 = new Array(s.names.length).fill(0);
+  let total2 = 0;
+  for (let p = 0; p < s.m.length; p++) {
+    total2 += s.m[p];
+    if (s.zoneOf[p] >= 0) zones2[s.zoneOf[p]] += s.m[p];
+  }
+  return { total: total2, zones: zones2 };
+}
+function wipedNow() {
+  let amount = 0, part, best = 0;
+  for (const [key, s] of Object.entries(G10.surfaces)) {
+    if (!s || !(s.total0 > 0)) continue;
+    const now = sumsOf(s), low = R9.sums[key] ?? now;
+    const lost = low.total - now.total;
+    if (lost > 0) amount += lost / s.total0 / 4;
+    now.zones.forEach((z2, i) => {
+      const d = (low.zones[i] ?? z2) - z2;
+      if (d > best) {
+        best = d;
+        part = s.names[i];
+      }
+    });
+    R9.sums[key] = { total: Math9.min(low.total, now.total), zones: now.zones.map((z2, i) => Math9.min(low.zones[i] ?? z2, z2)) };
+  }
+  return { amount, ...part !== void 0 ? { part } : {} };
+}
+function noteSurfaces() {
+  for (const [key, s] of Object.entries(G10.surfaces)) if (s && R9.sums[key] === void 0) R9.sums[key] = sumsOf(s);
+}
+function reportBeat4(beat) {
+  const w = wipedNow();
+  const amount = Math9.round(w.amount * 1e5) / 1e5;
+  if (amount > 0) report5({ beat, kind: "wipe", amount, ...w.part !== void 0 ? { part: w.part } : {} }, true);
+}
+function startSegment3(run, ck) {
+  const plan = run.segment.plan;
+  const phys = E7.env.registries.contactPhysics.get(run.physicsId);
+  const endMs = Number(phys?.segmentSeconds ?? 40) * 1e3;
+  const clock0 = G10.t - (ck.now - ck.startedAt);
+  const first2 = Math9.max(0, Math9.floor((G10.t - clock0) / TUNING.physics.beatMs));
+  R9.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0, beats: plan.beats.length, endMs, flushed: false, reported: Math9.min(first2, plan.beats.length) };
+  R9.plan = plan.beats;
+}
+function refreshLines5() {
+  if (!E7) return;
+  const env = E7.env;
+  const own = (k) => [...voiceLines(env.registries, `shoe.${k}`, R9.lineStyle)];
+  LINES5 = { [S11.style]: Object.fromEntries(LINE_KINDS.map((k) => [k, own(k)])) };
+}
+function sendVerdict() {
+  if (!E7 || R9.verdictSent || !R9.run) return;
+  R9.verdictSent = true;
+  if (R9.qualities.length === 0) return;
+  const q = R9.qualities.reduce((a, b) => a + b, 0) / R9.qualities.length;
+  const v = verdictOf(q);
+  E7.env.staging.service?.(R9.run.id, v);
+}
+function before6(now) {
+  const e = E7;
+  if (last2 > now) last2 = now;
+  if (R9.lastNow > now) R9.lastNow = now;
+  const r = e.env.root.getBoundingClientRect();
+  const w = e.env.root.clientWidth || r.width || globalThis.innerWidth || 0, h2 = e.env.root.clientHeight || r.height || globalThis.innerHeight || 0;
+  if (w !== innerWidth9 || h2 !== innerHeight9) {
+    innerWidth9 = w;
+    innerHeight9 = h2;
+  }
+  R9.ox = r.left;
+  R9.oy = r.top;
+  S11.reduced = e.env.reduced;
+  e.box.toggleAttribute("data-reduced", S11.reduced);
+  e.box.toggleAttribute("data-readable", e.env.readable);
+  if (!A8.ctx) {
+    audioInit7();
+    if (A8.ctx) loadSamples2();
+  }
+  const bg = e.env.layers.backdrop.style.backgroundImage;
+  const mine = e.els["#backdrop"];
+  if (bg !== mine.style.backgroundImage) mine.style.backgroundImage = bg;
+  if (G10.phase === "wait" && Object.values(imgs).length > 0 && Object.values(imgs).every((i) => i.naturalWidth > 0)) begin6();
+  const run = R9.run;
+  const ck = e.env.staging.clock();
+  R9.running = run !== null && run.segment.state === "running" && run.segment.plan !== void 0 && ck.startedAt !== null;
+  if ((G10.phase === "loop" || G10.phase === "inspect") && R9.running && (R9.seg === null || R9.seg.n !== run.segment.n || R9.seg.startedAt !== ck.startedAt)) startSegment3(run, ck);
+  const seg = R9.seg;
+  if (R9.running && seg && !seg.flushed) {
+    const passed = Math9.floor((G10.t - seg.clock0) / TUNING.physics.beatMs);
+    while (seg.reported < Math9.min(passed, seg.beats)) reportBeat4(seg.reported++);
+    if (G10.t - seg.clock0 >= seg.endMs - 300) {
+      seg.flushed = true;
+      if (seg.reported < seg.beats) reportBeat4(Math9.min(seg.reported, seg.beats - 1));
+      seg.reported = seg.beats;
+    }
+  }
+}
+function after8(now) {
+  if (!E7) return;
+  R9.lastNow = now;
+  noteSurfaces();
+  while (R9.checks < G10.stats.checks.length) {
+    R9.checks += 1;
+    R9.qualities.push(G10.lastQuality);
+  }
+  if (G10.phase === "done" && !R9.verdictSent && R9.ended === null) sendVerdict();
+}
+function artOf(env, run) {
+  const kind = footwearOf(env.state(), env.registries, run.holderId);
+  const close = env.art.get(run.holderId, `shoe_close.${kind}`);
+  const sole = env.art.get(run.holderId, `shoe_sole.${kind}`);
+  if (!close || !sole || broken.has(close.url) || broken.has(sole.url)) return null;
+  return { close, sole, kind };
+}
+function shoeDrawable(env, run) {
+  return artOf(env, run) !== null;
+}
+function fitFrom(key, pic) {
+  const sc = pic.sidecar;
+  if (sc.feet === "one" || sc.feet === "two") S11.feet[key] = sc.feet;
+  if (sc.shown === "left" || sc.shown === "right") S11.shown[key] = sc.shown;
+  const f = sc.fit ?? {};
+  const was = S11.fit[key];
+  S11.fit[key] = { h: f.height ?? was.h, y: f.y ?? was.y, x: f.x ?? was.x, fade: f.fade ?? was.fade, xr: f.xr ?? was.xr, xl: f.xl ?? was.xl };
+  if (sc.zones) S11.zones[key] = sc.zones;
+  else delete S11.zones[key];
+}
+function bind7(env, run, art2) {
+  const state = env.state();
+  const reg = env.registries;
+  reseed2(fnv1a3(`${state.scene?.id ?? ""}|${run.id}|shoe`));
+  S11.kind = art2.kind;
+  S11.dirt = dirtOfDay(state, reg, run.holderId);
+  const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
+  S11.style = lead.key;
+  R9.lineStyle = lead.key;
+  R9.run = run;
+  R9.seg = null;
+  R9.running = false;
+  R9.plan = [];
+  R9.sums = {};
+  R9.qualities = [];
+  R9.checks = 0;
+  R9.verdictSent = false;
+  R9.ended = null;
+  S11.feet = { boots_close: "one", boots_sole: "one", heels_close: "one", heels_sole: "one" };
+  S11.shown = { boots_close: "right", boots_sole: "right", heels_close: "right", heels_sole: "right" };
+  S11.fit = { boots_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, boots_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 }, heels_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, heels_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 } };
+  S11.zones = {};
+  fitFrom(`${art2.kind}_close`, art2.close);
+  fitFrom(`${art2.kind}_sole`, art2.sole);
+  for (const [side, pic] of [["close", art2.close], ["sole", art2.sole]]) {
+    const im = new Image();
+    im.alt = "";
+    im.onerror = () => {
+      broken.add(pic.url);
+      if (E7?.env === env) {
+        E7.box.dataset.broken = "";
+        env.redraw?.();
+      }
+    };
+    im.src = pic.url;
+    imgs[`${art2.kind}_${side}`] = im;
+  }
+  refreshLines5();
+  const look = env.her(run.holderId);
+  E7.box.style.setProperty("--alius-her", look.accent);
+  if (look.hand !== "") E7.box.style.setProperty("--alius-font-hand", `"${look.hand}", var(--alius-font-type)`);
+  E7.box.style.setProperty("--alius-shoe-hand-scale", String(look.handScale || 1));
+}
+function build7(env) {
+  const box = globalThis.document.createElement("div");
+  box.className = "alius-shoe";
+  box.setAttribute("aria-hidden", "true");
+  const els = {};
+  const el = (id, parent, tag2 = "div") => {
+    const n = tag2 === "canvas" ? safeCanvas2() : globalThis.document.createElement(tag2);
+    n.className = `alius-shoe-${id}`;
+    els[`#${id}`] = n;
+    parent.append(n);
+    return n;
+  };
+  const world = el("world", box);
+  el("backdrop", world);
+  el("shade", box);
+  const wrap = el("shoeWrap", box);
+  const pic = el("shoe", wrap, "img");
+  pic.alt = "";
+  pic.draggable = false;
+  el("dirtC", wrap, "canvas");
+  el("glossC", wrap, "canvas");
+  el("lightC", wrap, "canvas");
+  el("markC", box, "canvas");
+  el("vig", box);
+  el("hand", box);
+  env.layers.effects.append(box);
+  return { env, box, els, frameId: null };
+}
+function listen6(env) {
+  const control2 = (t) => t instanceof Element && t.closest('button, a, [role="button"], select, [data-action]') !== null;
+  const onFrame = (t) => t instanceof Node && (t === env.layers.frame || env.layers.frame.contains(t));
+  const typing6 = (t) => t instanceof HTMLElement && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
+  const at2 = (e) => [e.clientX - R9.ox, e.clientY - R9.oy];
+  env.listen(env.root, "pointerdown", (e) => {
+    if (!onFrame(e.target)) return;
+    if (e.button === 2) {
+      e.preventDefault();
+      spit();
+      return;
+    }
+    if (e.button !== 0) return;
+    const [x, y] = at2(e);
+    down2(x, y);
+  });
+  env.listen(globalThis.document, "pointermove", (e) => {
+    const [x, y] = at2(e);
+    move(x, y, e);
+  });
+  env.listen(globalThis.document, "pointerup", () => up());
+  env.listen(env.layers.frame, "contextmenu", (e) => e.preventDefault());
+  env.listen(globalThis.document, "keydown", (e) => {
+    if (typing6(e.target) || control2(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === " ") {
+      e.preventDefault();
+      if (!e.repeat) swallow();
+    }
+    if (e.key === "x" || e.key === "X") {
+      spit();
+    }
+  });
+}
+function stopShoe() {
+  const e = E7;
+  if (!e) return;
+  if (e.frameId !== null) e.env.cancelRaf(e.frameId);
+  try {
+    A8.master?.disconnect();
+  } catch {
+  }
+  A8 = { ctx: null, buf: {} };
+  LICK = null;
+  e.box.remove();
+  for (const k of Object.keys(imgs)) {
+    imgs[k].onload = null;
+    imgs[k].onerror = null;
+    delete imgs[k];
+  }
+  shownSrc = null;
+  DETACHED.clear();
+  R9.run = null;
+  R9.seg = null;
+  R9.running = false;
+  R9.plan = [];
+  R9.sums = {};
+  LINES5 = { neutral: {} };
+  G10 = fresh6();
+  E7 = null;
+}
+var EXIT_MS6 = 2600;
+function startShoe(env, run) {
+  stopShoe();
+  const art2 = artOf(env, run);
+  if (!art2) throw new Error("shoe service: no pictures of her footwear");
+  E7 = build7(env);
+  {
+    const r = env.root.getBoundingClientRect();
+    innerWidth9 = env.root.clientWidth || r.width || 0;
+    innerHeight9 = env.root.clientHeight || r.height || 0;
+    R9.ox = r.left;
+    R9.oy = r.top;
+  }
+  bind7(env, run, art2);
+  listen6(env);
+  last2 = env.now();
+  R9.lastNow = last2;
+  audioInit7();
+  if (A8.ctx) loadSamples2();
+  G10 = fresh6();
+  G10.phase = "wait";
+  requestAnimationFrame8(frame7);
+  const mine = E7;
+  return {
+    update(next) {
+      if (E7 !== mine) return;
+      R9.run = next;
+    },
+    finish(end2) {
+      if (E7 !== mine) return 0;
+      R9.ended = end2.result;
+      if (G10.phase === "done") return EXIT_MS6;
+      if (end2.result !== "checked" || G10.phase === "wait") return 0;
+      if ((G10.phase === "loop" || G10.phase === "inspect" && !G10.judged) && surf()) verdict();
+      while (R9.checks < G10.stats.checks.length) {
+        R9.checks += 1;
+        R9.qualities.push(G10.lastQuality);
+      }
+      finish6("done");
+      sendVerdict();
+      return EXIT_MS6;
+    },
+    stop() {
+      if (E7 === mine) stopShoe();
+    }
+  };
+}
+function shoeMatches(run, _state, reg) {
+  return isShoeRun(run, reg) && !run.second;
+}
+registerInstrument({ id: "shoe", matches: shoeMatches, drawable: shoeDrawable, start: startShoe });
+
+// src/ui/scene/dial/points.ts
+var BASE_POINTS = {
+  standing: { torso: "upright", knees: "together", arms: "at_sides", head: "up", gaze: "straight", feet: "flat" },
+  standing_attention: { torso: "upright", knees: "together", arms: "at_sides", head: "up", gaze: "straight", feet: "flat" },
+  sitting: { torso: "upright", knees: "together", arms: "on_thighs_down", head: "up", gaze: "straight", feet: "flat" },
+  sitting_floor: { torso: "upright", knees: "together", arms: "on_thighs_down", head: "up", gaze: "straight", feet: "flat" },
+  kneeling_upright: { torso: "upright", hips: "raised", knees: "together", arms: "on_thighs_down", head: "up", gaze: "straight", feet: "flat" },
+  kneeling_sitting: { torso: "upright", hips: "on_heels", knees: "together", arms: "on_thighs_down", head: "up", gaze: "straight", feet: "flat" },
+  bowing: { torso: "bent", hips: "on_heels", knees: "together", arms: "on_floor", head: "to_floor", gaze: "down", feet: "flat" },
+  all_fours: { torso: "level", hips: "raised", knees: "together", arms: "on_floor", head: "up", gaze: "down", feet: "flat" },
+  crouching: { torso: "forward", hips: "on_heels", knees: "together", arms: "at_sides", head: "up", gaze: "straight", feet: "flat" },
+  lying_back: { torso: "upright", knees: "together", arms: "at_sides", head: "up", gaze: "straight", feet: "flat" },
+  lying_front: { torso: "upright", knees: "together", arms: "at_sides", head: "up", gaze: "down", feet: "flat" },
+  lying_side: { torso: "upright", knees: "together", arms: "at_sides", head: "up", gaze: "straight", feet: "flat" },
+  curled: { torso: "forward", knees: "together", arms: "tucked", head: "bowed", gaze: "down", feet: "flat" }
+};
+function poseOf(baseId) {
+  const points = BASE_POINTS[baseId];
+  return points ? { base: baseId, points } : null;
+}
+
+// src/ui/scene/dial/mannequin.ts
+var LIMB = { upperArm: 0.32, forearm: 0.3, thigh: 0.45, shin: 0.44 };
+var HEAD = { half: 0.115, width: 0.085 };
+var HIP_HALF = 0.1;
+var SHOULDER_HALF = 0.2;
+var SPINE = 0.46;
+var NECK_BASE = 0.03;
+var NECK = 0.07;
+var FOOT = 0.17;
+var DEG = Math.PI / 180;
+var add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+var sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+var mul = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
+var dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+var len = (a) => Math.hypot(a[0], a[1], a[2]);
+var unit3 = (a) => {
+  const l = len(a);
+  return l < 1e-9 ? [0, 1, 0] : mul(a, 1 / l);
+};
+var lerp4 = (a, b, t) => add(a, mul(sub(b, a), t));
+function solveTwoBone(root, target, l1, l2, hint) {
+  const to = sub(target, root);
+  const reach = len(to);
+  const dir = reach < 1e-9 ? [0, -1, 0] : mul(to, 1 / reach);
+  const d = Math.min(l1 + l2 - 1e-6, Math.max(Math.abs(l1 - l2) + 1e-6, reach));
+  const a = (l1 * l1 - l2 * l2 + d * d) / (2 * d);
+  const h2 = Math.sqrt(Math.max(0, l1 * l1 - a * a));
+  let side = sub(hint, mul(dir, dot(hint, dir)));
+  if (len(side) < 1e-6) side = sub([1, 0, 0], mul(dir, dir[0]));
+  if (len(side) < 1e-6) side = sub([0, 0, 1], mul(dir, dir[2]));
+  const end2 = add(root, mul(dir, d));
+  const mid2 = add(add(root, mul(dir, a)), mul(unit3(side), h2));
+  return { mid: mid2, end: end2 };
+}
+var YAW = -38 * DEG;
+var ELEV = 14 * DEG;
+function project(v) {
+  const x1 = v[0] * Math.cos(YAW) + v[2] * Math.sin(YAW);
+  const z1 = -v[0] * Math.sin(YAW) + v[2] * Math.cos(YAW);
+  const up2 = v[1] * Math.cos(ELEV) - z1 * Math.sin(ELEV);
+  const depth = v[1] * Math.sin(ELEV) + z1 * Math.cos(ELEV);
+  return [x1 + 0, up2 + 0, depth + 0];
+}
+var SIDES = [["L", 1], ["R", -1]];
+var LYING = {
+  lying_back: ["x", -90],
+  lying_front: ["x", 90],
+  lying_side: ["z", 90]
+};
+function legsOf(base, pts, hogtie) {
+  const apart = pts.knees === "apart";
+  const toes = pts.feet === "on_toes";
+  switch (base) {
+    case "standing":
+    case "standing_attention": {
+      const lat = base === "standing_attention" ? 0.055 : apart ? 0.26 : 0.1;
+      const ay = toes ? 0.19 : 0.06;
+      const py = ay + Math.sqrt(0.885 * 0.885 - (lat - HIP_HALF) ** 2);
+      return { pelvis: [0, py, 0], ankle: [lat, ay, 0], kneeHint: [0.15, 0, 1], foot: toes ? "down" : "fwd" };
+    }
+    case "sitting":
+      return { pelvis: [0, 0.46, -0.04], ankle: [0.12, 0.05, 0.4], kneeHint: [0.1, 0, 1], foot: "fwd" };
+    case "sitting_floor":
+      return apart ? { pelvis: [0, 0.1, 0], ankle: [0.1, 0.05, 0.34], kneeHint: [1, 0.1, 0.3], foot: "fwd" } : { pelvis: [0, 0.1, 0], ankle: [0.14, 0.05, 0.6], kneeHint: [0.1, 1, 0.5], foot: "fwd" };
+    case "kneeling_upright":
+    case "kneeling_sitting":
+    case "bowing": {
+      const hips = pts.hips ?? (base === "kneeling_upright" ? "raised" : "on_heels");
+      const lat = apart ? 0.17 : 0.1;
+      const ay = toes ? 0.19 : 0.06;
+      const foot2 = toes ? "down_back" : "back";
+      const hint = apart ? [0.35, 0, 1] : [0.1, 0, 1];
+      if (hips === "raised") return { pelvis: [0, 0.5 + (ay - 0.06), 0.02], ankle: [lat, ay, -0.4], kneeHint: hint, foot: foot2 };
+      if (hips === "to_floor") return { pelvis: [0, 0.1, -0.24], ankle: [lat + 0.14, 0.05, -0.34], kneeHint: hint, foot: foot2 };
+      return { pelvis: [0, 0.22 + (ay - 0.06) * 0.8, -0.3], ankle: [lat, ay, -0.32], kneeHint: hint, foot: foot2 };
+    }
+    case "all_fours":
+      return { pelvis: [0, 0.5, -0.52], ankle: [apart ? 0.3 : 0.1, 0.06, -0.92], kneeHint: [0.1, 0, 1], foot: "back" };
+    case "crouching":
+      return pts.hips === "raised" ? { pelvis: [0, 0.46, -0.02], ankle: [0.1, 0.05, 0.42], kneeHint: [0.1, 0, 1], foot: "fwd" } : { pelvis: [0, 0.3, -0.2], ankle: [0.14, 0.05, 0.04], kneeHint: [0.1, 0.3, 1], foot: "fwd" };
+    case "curled":
+      return { pelvis: [0, 0.24, -0.3], ankle: [apart ? 0.3 : 0.09, 0.06, -0.32], kneeHint: [0.1, 0, 1], foot: "back" };
+    default: {
+      if (hogtie) return { pelvis: [0, 0.95, 0], ankle: [0.08, 0.78, -0.38], kneeHint: [0, -0.3, 1], foot: "back" };
+      if (apart && base === "lying_back") return { pelvis: [0, 0.95, 0], ankle: [0.16, 0.62, 0.12], kneeHint: [0.5, 0, 1], foot: "down" };
+      if (base === "lying_side") return { pelvis: [0, 0.95, 0], ankle: [0.1, 0.16, 0.3], ankleR: [-0.08, 0.12, 0.12], kneeHint: [0.1, 0, 1], foot: "down" };
+      return { pelvis: [0, 0.95, 0], ankle: [0.09, 0.07, 0], kneeHint: [0.1, 0, 1], foot: base === "lying_front" ? "down" : "fwd" };
+    }
+  }
+}
+function leanOf(base, torso, hogtie) {
+  if (hogtie) return -35;
+  if (torso === "bent") return base === "standing" || base === "standing_attention" ? 80 : 100;
+  if (torso === "forward") return base === "crouching" ? 35 : base === "curled" ? 96 : base === "sitting" ? 26 : 22;
+  return { upright: 0, arched: -14, level: 86 }[torso];
+}
+function armGoal(state, c) {
+  const { s, shoulder: sh, chest, pelvis, S: S12, T: T5 } = c;
+  const lat = (k) => [s * k, 0, 0];
+  switch (state) {
+    case "at_sides":
+      if (c.base === "lying_side") return s === 1 ? { target: add(lerp4(c.hip, c.knee, 0.35), [0.06, 0, 0.06]), hint: [0.05, 0, -1] } : { target: add(sh, [0, -0.08, 0.5]), hint: [-0.3, -1, 0] };
+      return { target: add(sh, [s * 0.05, -0.605, 0.02]), hint: [s * 0.3, -0.1, -1] };
+    // nearly straight, the elbow a little back
+    case "behind_back":
+      return { target: add(sub(add(pelvis, mul(S12, 0.12)), mul(T5, 0.12)), lat(0.04)), hint: [s, -0.2, -0.3] };
+    case "bound":
+      return { target: add(sub(add(pelvis, mul(S12, 0.1)), mul(T5, 0.16)), lat(0.03)), hint: [s, -0.2, -0.4] };
+    case "behind_head": {
+      const back = sub(add(c.neckTop, mul(c.headDir, 0.09)), mul(c.faceDir, 0.075));
+      return { target: add(back, lat(0.07)), hint: [s, 0.2, -0.1] };
+    }
+    case "on_thighs_down":
+      return { target: add(lerp4(c.hip, c.knee, 0.45), [0, 0.07, 0]), hint: [s, 0, -0.4] };
+    case "on_thighs_up":
+      return { target: add(lerp4(c.hip, c.knee, 0.7), [s * 0.02, 0.06, 0]), hint: [s, 0, -0.4] };
+    case "forward_palms_up":
+      return c.lying ? { target: add(add(sh, mul(S12, 0.56)), [s * 0.1, 0, 0.02]), hint: [s, 0, -0.3] } : { target: add(add(add(chest, mul(T5, 0.5)), mul(S12, -0.3)), lat(0.13)), hint: [s * 0.6, -1, -0.2] };
+    // offered: the forearms reach forward and down, palms up
+    case "out_sideways":
+      return { target: add(sh, [s * 0.56, 0.01, 0]), hint: [0, -0.5, -0.5] };
+    case "raised":
+      return { target: add(sh, [s * 0.1, 0.55, 0.05]), hint: [s, 0, -0.3] };
+    case "holding":
+      return { target: add(add(add(pelvis, mul(S12, 0.38)), mul(T5, 0.4)), lat(0.11)), hint: [s, -0.6, 0] };
+    case "lamp":
+      return { target: add(c.head, [s * 0.045, 0.36, 0.12]), hint: [s, 0, -0.2] };
+    // both hands together above the head
+    case "on_floor":
+      if (c.base === "all_fours") return { target: [sh[0], 0.03, sh[2] + 0.04], hint: [s * 0.3, 0, -1] };
+      if (c.base === "bowing") return { target: [s * 0.2, 0.03, c.head[2] + 0.04], hint: [s, 1, 0] };
+      return { target: [s * 0.08, 0.03, c.knee[2] + 0.12], hint: [s, 0.2, 0] };
+    // between the knees, in front
+    case "on_ankles":
+      return { target: add(c.ankle, [0, 0.04, -0.02]), hint: [s, 0, 0.2] };
+    case "under_knees":
+      return { target: [c.knee[0], 0.03, c.knee[2] - 0.03], hint: [s, 0.3, 0] };
+    case "crossed":
+      return { target: add(sub(add(chest, mul(T5, 0.1)), mul(S12, 0.06)), lat(-0.14)), hint: [s * 0.3, -1, 0.3] };
+    case "clasped_front":
+      return { target: add(add(add(pelvis, mul(S12, 0.16)), mul(T5, 0.2)), lat(0.025)), hint: [s, -0.5, -0.3] };
+    case "paws":
+      return { target: add(sub(add(chest, mul(T5, 0.2)), mul(S12, 0.1)), lat(0.07)), hint: [s * 0.5, -1, 0.2] };
+    // the hands in front of the chest, close together
+    case "tucked":
+      return { target: [s * 0.22, 0.04, sh[2] - 0.58], hint: [s * 0.2, 1, 0] };
+    // straight back along the body, the hands beside the feet
+    case "desk_flat":
+      return { target: [s * 0.2, 0.76, sh[2] + 0.3], hint: [s, 0.3, 0] };
+  }
+}
+var footVector = (m) => mul(unit3(m === "fwd" ? [0, -0.25, 1] : m === "back" ? [0, -0.05, -1] : m === "down" ? [0, -1, 0.2] : [0, -1, -0.15]), FOOT);
+function rotate(v, axis, deg) {
+  const c = Math.cos(deg * DEG);
+  const s = Math.sin(deg * DEG);
+  return axis === "x" ? [v[0], v[1] * c - v[2] * s, v[1] * s + v[2] * c] : [v[0] * c - v[1] * s, v[0] * s + v[1] * c, v[2]];
+}
+function pose(p) {
+  const base = BASE_POINTS[p.base] ? p.base : "standing";
+  const pts = { ...BASE_POINTS[base], ...p.points };
+  const hogtie = p.hogtie === true;
+  const legs = legsOf(base, pts, hogtie);
+  const lying = LYING[base] !== void 0;
+  const phi = leanOf(base, pts.torso ?? "upright", hogtie) * DEG;
+  const S12 = [0, Math.cos(phi), Math.sin(phi)];
+  const T5 = [0, -Math.sin(phi), Math.cos(phi)];
+  const pelvis = legs.pelvis;
+  const chest = add(pelvis, mul(S12, SPINE));
+  const neck = add(chest, mul(S12, NECK_BASE));
+  const phiN = phi * 0.55;
+  const neckTop = add(neck, mul([0, Math.cos(phiN), Math.sin(phiN)], NECK));
+  const pitch = { up: 0, bowed: 38, back: -55, to_floor: 90 }[pts.head ?? "up"];
+  let theta = phi * 0.35 + pitch * DEG;
+  if (pts.head === "back") theta = Math.min(theta, -Math.asin(0.35));
+  const headDir = [0, Math.cos(theta), Math.sin(theta)];
+  const faceDir = [0, -Math.sin(theta), Math.cos(theta)];
+  const head = add(neckTop, mul(headDir, 0.09));
+  const gazeDir = pts.gaze === "closed" ? null : pts.gaze === "down" ? unit3(add(faceDir, [0, -0.8, 0])) : pts.gaze === "at_her" ? unit3(add(faceDir, [0, 0.27, 0])) : faceDir;
+  const hip = { L: add(pelvis, [HIP_HALF, 0, 0]), R: add(pelvis, [-HIP_HALF, 0, 0]) };
+  const knee = { L: [0, 0, 0], R: [0, 0, 0] };
+  const ankle = { L: [0, 0, 0], R: [0, 0, 0] };
+  const toe = { L: [0, 0, 0], R: [0, 0, 0] };
+  for (const [side, s] of SIDES) {
+    const target = side === "R" && legs.ankleR ? legs.ankleR : [s * legs.ankle[0], legs.ankle[1], legs.ankle[2]];
+    const hint = [s * legs.kneeHint[0], legs.kneeHint[1], legs.kneeHint[2]];
+    const sol = solveTwoBone(hip[side], target, LIMB.thigh, LIMB.shin, hint);
+    knee[side] = sol.mid;
+    ankle[side] = sol.end;
+    const f = footVector(legs.foot);
+    toe[side] = add(sol.end, [s * 0.02, f[1], f[2]]);
+  }
+  const shoulder = { L: add(chest, [SHOULDER_HALF, 0, 0]), R: add(chest, [-SHOULDER_HALF, 0, 0]) };
+  const elbow = { L: [0, 0, 0], R: [0, 0, 0] };
+  const hand = { L: [0, 0, 0], R: [0, 0, 0] };
+  for (const [side, s] of SIDES) {
+    const goal = armGoal(pts.arms ?? "at_sides", {
+      base,
+      head,
+      s,
+      shoulder: shoulder[side],
+      chest,
+      pelvis,
+      S: S12,
+      T: T5,
+      hip: hip[side],
+      knee: knee[side],
+      ankle: hogtie ? lerp4(ankle.L, ankle.R, 0.5) : ankle[side],
+      neckTop,
+      headDir,
+      faceDir,
+      lying
+    });
+    const sol = solveTwoBone(shoulder[side], goal.target, LIMB.upperArm, LIMB.forearm, goal.hint);
+    elbow[side] = sol.mid;
+    hand[side] = sol.end;
+  }
+  const sk = { pelvis, chest, neck, neckTop, head, headDir, faceDir, shoulder, elbow, hand, hip, knee, ankle, toe, gazeDir };
+  const laid = LYING[base];
+  return laid ? lay(sk, laid[0], laid[1]) : sk;
+}
+function lay(sk, axis, deg) {
+  const r = (v) => rotate(v, axis, deg);
+  const pair = (o) => ({ L: r(o.L), R: r(o.R) });
+  const turned = {
+    pelvis: r(sk.pelvis),
+    chest: r(sk.chest),
+    neck: r(sk.neck),
+    neckTop: r(sk.neckTop),
+    head: r(sk.head),
+    headDir: r(sk.headDir),
+    faceDir: r(sk.faceDir),
+    shoulder: pair(sk.shoulder),
+    elbow: pair(sk.elbow),
+    hand: pair(sk.hand),
+    hip: pair(sk.hip),
+    knee: pair(sk.knee),
+    ankle: pair(sk.ankle),
+    toe: pair(sk.toe),
+    gazeDir: sk.gazeDir ? r(sk.gazeDir) : null
+  };
+  const surface2 = [[turned.pelvis, 0.11], [turned.chest, 0.12], [turned.neckTop, 0.04], [turned.head, 0.1]];
+  const RADIUS = { shoulder: 0.05, elbow: 0.045, hand: 0.035, hip: 0.065, knee: 0.05, ankle: 0.045, toe: 0.035 };
+  for (const k of Object.keys(RADIUS)) surface2.push([turned[k].L, RADIUS[k]], [turned[k].R, RADIUS[k]]);
+  const lowest = Math.min(...surface2.map(([v, rad]) => v[1] - rad));
+  const lift2 = 5e-3 - lowest;
+  const up2 = (v) => [v[0], v[1] + lift2, v[2]];
+  const upPair = (o) => ({ L: up2(o.L), R: up2(o.R) });
+  return {
+    ...turned,
+    pelvis: up2(turned.pelvis),
+    chest: up2(turned.chest),
+    neck: up2(turned.neck),
+    neckTop: up2(turned.neckTop),
+    head: up2(turned.head),
+    shoulder: upPair(turned.shoulder),
+    elbow: upPair(turned.elbow),
+    hand: upPair(turned.hand),
+    hip: upPair(turned.hip),
+    knee: upPair(turned.knee),
+    ankle: upPair(turned.ankle),
+    toe: upPair(turned.toe)
+  };
+}
+
+// src/ui/scene/dial/draw.ts
+var NS = "http://www.w3.org/2000/svg";
+var CX = 100;
+var CY = 102;
+var THICK = { torso: 0.25, pelvis: 0.22, thigh: 0.125, shin: 0.095, upperArm: 0.085, forearm: 0.07, neck: 0.07, foot: 0.07 };
+var OUTLINE = 1.6;
+var mid = (a, b, t = 0.5) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+function segmentsOf(s) {
+  const out = [
+    // two volumes along the spine, as on the spike: the pelvis low, the chest high, overlapping at the waist
+    { seg: "pelvis", a: mid(s.pelvis, s.chest, 0.03), b: mid(s.pelvis, s.chest, 0.5) },
+    { seg: "torso", a: mid(s.pelvis, s.chest, 0.42), b: mid(s.pelvis, s.chest, 0.97) },
+    { seg: "neck", a: s.neck, b: s.neckTop }
+  ];
+  for (const side of ["L", "R"]) {
+    out.push(
+      { seg: "upperArm", side, a: s.shoulder[side], b: s.elbow[side] },
+      { seg: "forearm", side, a: s.elbow[side], b: s.hand[side] },
+      { seg: "thigh", side, a: s.hip[side], b: s.knee[side] },
+      { seg: "shin", side, a: s.knee[side], b: s.ankle[side] },
+      { seg: "foot", side, a: s.ankle[side], b: s.toe[side] }
+    );
+  }
+  return out;
+}
+function jointPoints(s) {
+  const pts = [s.pelvis, s.chest, s.neckTop, s.head, [s.head[0] + s.headDir[0] * HEAD.half, s.head[1] + s.headDir[1] * HEAD.half, s.head[2] + s.headDir[2] * HEAD.half]];
+  for (const k of ["shoulder", "elbow", "hand", "hip", "knee", "ankle", "toe"]) pts.push(s[k].L, s[k].R);
+  return pts;
+}
+function figureFit(p, other) {
+  const skeletons = [pose(p), ...other ? [pose(other)] : []];
+  const flat2 = skeletons.flatMap(jointPoints).map((v) => project(v));
+  const xs = flat2.map((v) => v[0]);
+  const ys = flat2.map((v) => v[1]);
+  const w = Math.max(...xs) - Math.min(...xs);
+  const h2 = Math.max(...ys) - Math.min(...ys);
+  const scale = Math.min(96, 158 / Math.max(w, h2, 0.2), 182 / Math.max(Math.hypot(w, h2), 0.2));
+  const cx = (Math.max(...xs) + Math.min(...xs)) / 2;
+  const cy = (Math.max(...ys) + Math.min(...ys)) / 2;
+  const map = (v) => {
+    const [x, y, d] = project(v);
+    return [CX + (x - cx) * scale, CY - (y - cy) * scale, d];
+  };
+  return { scale, points: flat2.map((v) => [CX + (v[0] - cx) * scale, CY - (v[1] - cy) * scale]), map };
+}
+var svg3 = (tag2, attrs) => {
+  const el = document.createElementNS(NS, tag2);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
+  return el;
+};
+var r1 = (n) => Math.round(n * 10) / 10;
+var line2 = (a, b) => `M${r1(a[0])} ${r1(a[1])}L${r1(b[0])} ${r1(b[1])}`;
+function mannequinSvg(p, opts = {}) {
+  const fit2 = figureFit(p, opts.target);
+  const { map, scale } = fit2;
+  const sk = pose(p);
+  const root = svg3("svg", { viewBox: "0 0 200 200", class: "alius-mannequin", "aria-hidden": "true", focusable: "false" });
+  if (opts.size !== void 0) {
+    root.setAttribute("width", String(opts.size));
+    root.setAttribute("height", String(opts.size));
+  }
+  const all = jointPoints(sk);
+  const fx2 = sk.pelvis[0];
+  const minX = Math.min(...all.map((v) => v[0]), fx2 - 0.32) - 0.12;
+  const maxX = Math.max(...all.map((v) => v[0]), fx2 + 0.32) + 0.12;
+  const minZ = Math.min(...all.map((v) => v[2]));
+  const maxZ = Math.max(...all.map((v) => v[2]));
+  const quad = (pts, cls, data = {}) => svg3("polygon", { class: cls, ...data, points: pts.map((v) => map(v)).map((q) => `${r1(q[0])},${r1(q[1])}`).join(" ") });
+  root.append(quad([[minX, 0, minZ - 0.16], [maxX, 0, minZ - 0.16], [maxX, 0, maxZ + 0.16], [minX, 0, maxZ + 0.16]], "alius-mq-floor"));
+  const wallTop = Math.min(1.85, Math.max(...all.map((v) => v[1])) + 0.3);
+  if (p.hint === "wall") root.append(quad([[minX, 0, minZ - 0.08], [maxX, 0, minZ - 0.08], [maxX, wallTop, minZ - 0.08], [minX, wallTop, minZ - 0.08]], "alius-mq-hint alius-mq-plane", { "data-hint": "wall" }));
+  if (p.base === "sitting") {
+    const [px, py, pz] = sk.pelvis;
+    const top = py - 0.06;
+    root.append(quad([[px - 0.24, top, pz - 0.2], [px + 0.24, top, pz - 0.2], [px + 0.24, top, pz + 0.22], [px - 0.24, top, pz + 0.22]], "alius-mq-hint alius-mq-plane", { "data-hint": "seat" }));
+    for (const dx of [-0.2, 0.2]) root.append(svg3("path", { class: "alius-mq-hint", "data-hint": "seat", d: line2(map([px + dx, top, pz + 0.18]), map([px + dx, 0, pz + 0.18])) }));
+  }
+  if (p.hint === "feet") {
+    for (const dx of [-0.09, 0.09]) root.append(quad([[fx2 + dx - 0.045, 0.01, maxZ + 0.18], [fx2 + dx + 0.045, 0.01, maxZ + 0.18], [fx2 + dx + 0.045, 0.01, maxZ + 0.44], [fx2 + dx - 0.045, 0.01, maxZ + 0.44]], "alius-mq-hint alius-mq-plane", { "data-hint": "feet" }));
+  }
+  const near = [];
+  for (const k of ["hand", "knee", "ankle", "toe", "elbow", "hip", "shoulder"]) near.push([sk[k].L, 0.07], [sk[k].R, 0.07]);
+  near.push([sk.pelvis, 0.12], [sk.chest, 0.13], [sk.head, 0.09]);
+  for (const [v, rad] of near) {
+    if (v[1] > 0.11) continue;
+    const c = map([v[0], 0, v[2]]);
+    root.append(svg3("ellipse", { class: "alius-mq-shadow", cx: r1(c[0]), cy: r1(c[1]), rx: r1(rad * scale * 1.15), ry: r1(rad * scale * 0.45) }));
+  }
+  if (opts.target) {
+    const ghost = svg3("g", { class: "alius-mq-ghost" });
+    const gs = pose(opts.target);
+    for (const s of segmentsOf(gs)) ghost.append(svg3("path", { class: "alius-mq-ghost-seg", "stroke-dasharray": "3 3", d: line2(map(s.a), map(s.b)) }));
+    const gh = map(gs.head);
+    const gTop = map([gs.head[0] + gs.headDir[0], gs.head[1] + gs.headDir[1], gs.head[2] + gs.headDir[2]]);
+    ghost.append(svg3("path", { class: "alius-mq-ghost-seg", "stroke-dasharray": "3 3", d: line2(map(gs.neckTop), [gh[0] + (gTop[0] - gh[0]) * HEAD.half, gh[1] + (gTop[1] - gh[1]) * HEAD.half, 0]) }));
+    root.append(ghost);
+  }
+  if (p.hint === "desk") {
+    const hz = Math.max(sk.hand.L[2], sk.hand.R[2]);
+    const hy = Math.min(sk.hand.L[1], sk.hand.R[1]) - 0.02;
+    const near0 = Math.min(sk.pelvis[2] + 0.12, hz - 0.3);
+    root.append(quad([[fx2 - 0.5, hy, near0], [fx2 + 0.5, hy, near0], [fx2 + 0.5, hy, hz + 0.14], [fx2 - 0.5, hy, hz + 0.14]], "alius-mq-hint alius-mq-plane", { "data-hint": "desk" }));
+  }
+  const body2 = svg3("g", { class: "alius-mq-body" });
+  const farSide = project(sk.shoulder.L)[2] < project(sk.shoulder.R)[2] ? "L" : "R";
+  const back = (v) => {
+    const spine = [sk.chest[0] - sk.pelvis[0], sk.chest[1] - sk.pelvis[1], sk.chest[2] - sk.pelvis[2]];
+    const sideways = [1, 0, 0];
+    const front = [sideways[1] * spine[2] - sideways[2] * spine[1], sideways[2] * spine[0] - sideways[0] * spine[2], sideways[0] * spine[1] - sideways[1] * spine[0]];
+    const rel = [v[0] - sk.pelvis[0], v[1] - sk.pelvis[1], v[2] - sk.pelvis[2]];
+    return rel[0] * front[0] + rel[1] * front[1] + rel[2] * front[2] < -0.06;
+  };
+  const trunk = segmentsOf(sk).filter((s) => s.seg === "torso" || s.seg === "pelvis").map((s) => (map(s.a)[2] + map(s.b)[2]) / 2);
+  const torsoDepth = Math.min(...trunk);
+  const placed = segmentsOf(sk).map((s) => {
+    const a = map(s.a);
+    const b = map(s.b);
+    let depth = (a[2] + b[2]) / 2;
+    if ((s.seg === "forearm" || s.seg === "upperArm") && back(s.b)) depth = Math.min(depth, torsoDepth - 0.02);
+    return { s, a, b, depth };
+  }).sort((u, v) => u.depth - v.depth);
+  const drawHead = () => {
+    const c = map(sk.head);
+    const top = map([sk.head[0] + sk.headDir[0], sk.head[1] + sk.headDir[1], sk.head[2] + sk.headDir[2]]);
+    const angle = Math.atan2(top[0] - c[0], -(top[1] - c[1])) * 180 / Math.PI;
+    body2.append(svg3("ellipse", {
+      class: "alius-mq-head",
+      cx: r1(c[0]),
+      cy: r1(c[1]),
+      rx: r1(HEAD.width * scale),
+      ry: r1(HEAD.half * scale),
+      transform: `rotate(${r1(angle)} ${r1(c[0])} ${r1(c[1])})`
+    }));
+    const face = map([sk.head[0] + sk.faceDir[0] * 0.075, sk.head[1] + sk.faceDir[1] * 0.075, sk.head[2] + sk.faceDir[2] * 0.075]);
+    if (face[2] > c[2]) body2.append(svg3("ellipse", { class: "alius-mq-face", cx: r1(face[0]), cy: r1(face[1]), rx: r1(0.026 * scale), ry: r1(0.026 * scale) }));
+  };
+  for (const { s, a, b, depth } of placed) {
+    const common = { "data-seg": s.seg, ...s.side ? { "data-side": s.side } : {}, d: line2(a, b) };
+    const far = s.side === farSide ? " alius-mq-far" : "";
+    const w = THICK[s.seg] * scale;
+    body2.append(
+      svg3("path", { class: `alius-mq-out${far}`, ...common, "data-depth": r1(depth * 1e3) / 1e3, "stroke-width": r1(w + OUTLINE * 2) }),
+      svg3("path", { class: `alius-mq-fill${far}`, ...common, "stroke-width": r1(w) })
+    );
+    if (s.seg === "neck") drawHead();
+  }
+  root.append(body2);
+  if (p.hint === "wall_front") root.append(quad([[minX, 0, maxZ + 0.04], [maxX, 0, maxZ + 0.04], [maxX, wallTop, maxZ + 0.04], [minX, wallTop, maxZ + 0.04]], "alius-mq-hint alius-mq-plane", { "data-hint": "wall_front" }));
+  if (p.item === "tray") {
+    const m = mid(sk.hand.L, sk.hand.R);
+    const y = m[1] + 0.02;
+    root.append(quad([[m[0] - 0.24, y, m[2] - 0.14], [m[0] + 0.24, y, m[2] - 0.14], [m[0] + 0.24, y, m[2] + 0.16], [m[0] - 0.24, y, m[2] + 0.16]], "alius-mq-item alius-mq-plane", { "data-item": "tray" }));
+  }
+  if (p.item === "lamp") {
+    const m = mid(sk.hand.L, sk.hand.R);
+    root.append(svg3("path", { class: "alius-mq-item", "data-item": "lamp", d: line2(map([m[0], m[1] + 0.02, m[2]]), map([m[0], m[1] + 0.16, m[2]])) }));
+    root.append(quad([[m[0] - 0.08, m[1] + 0.16, m[2]], [m[0] + 0.08, m[1] + 0.16, m[2]], [m[0] + 0.05, m[1] + 0.26, m[2]], [m[0] - 0.05, m[1] + 0.26, m[2]]], "alius-mq-item alius-mq-plane", { "data-item": "lamp" }));
+  }
+  if (p.item === "rope") {
+    root.append(svg3("path", { class: "alius-mq-item", "data-item": "rope", d: line2(map(mid(sk.hand.L, sk.hand.R)), map(mid(sk.ankle.L, sk.ankle.R))) }));
+  }
+  if (p.item === "mouth") {
+    const f = sk.faceDir;
+    const c = [sk.head[0] + f[0] * 0.09 - sk.headDir[0] * 0.05, sk.head[1] + f[1] * 0.09 - sk.headDir[1] * 0.05, sk.head[2] + f[2] * 0.09 - sk.headDir[2] * 0.05];
+    root.append(svg3("path", { class: "alius-mq-item", "data-item": "mouth", d: line2(map([c[0] - 0.07, c[1], c[2]]), map([c[0] + 0.07, c[1], c[2]])) }));
+  }
+  if (sk.gazeDir) {
+    const g = sk.gazeDir;
+    const atFloor = g[1] < -1e-6 ? (sk.head[1] - 5e-3) / -g[1] : Infinity;
+    const end2 = Math.min(0.46, atFloor);
+    if (end2 > 0.14) {
+      const from = map([sk.head[0] + g[0] * 0.1, sk.head[1] + g[1] * 0.1, sk.head[2] + g[2] * 0.1]);
+      const to = map([sk.head[0] + g[0] * end2, sk.head[1] + g[1] * end2, sk.head[2] + g[2] * end2]);
+      root.append(svg3("line", {
+        class: `alius-mq-gaze${opts.hot?.includes("gaze") ? " alius-mq-hot" : ""}`,
+        "stroke-dasharray": "2 3",
+        x1: r1(from[0]),
+        y1: r1(from[1]),
+        x2: r1(to[0]),
+        y2: r1(to[1])
+      }));
+    }
+  }
+  const ring = (v, r) => {
+    const c = map(v);
+    root.append(svg3("circle", { class: "alius-mq-hot", cx: r1(c[0]), cy: r1(c[1]), r }));
+  };
+  for (const j of opts.hot ?? []) {
+    if (j === "shoulders") ring(sk.shoulder.L, 4.5), ring(sk.shoulder.R, 4.5);
+    else if (j === "elbows") ring(sk.elbow.L, 4), ring(sk.elbow.R, 4);
+    else if (j === "hips") ring(sk.hip.L, 4.5), ring(sk.hip.R, 4.5);
+    else if (j === "knees") ring(sk.knee.L, 4.5), ring(sk.knee.R, 4.5);
+    else if (j === "head") ring(sk.head, HEAD.half * scale + 3);
+  }
+  return root;
+}
+
+// src/ui/scene/instruments/call/call.ts
+var CALL_SOUNDS = {
+  soft: ["assets/sounds/ha/soft1.ogg", "assets/sounds/ha/soft2.ogg"],
+  fan: "assets/sounds/ha/card_fan.ogg",
+  place: ["assets/sounds/ha/card_place1.ogg", "assets/sounds/ha/card_place2.ogg"]
+};
+var call = null;
+function currentCall() {
+  return call === null ? null : { id: call.id, done: call.done === true };
+}
+function tapTimes(windowMs) {
+  const win = windowMs;
+  const times2 = [];
+  let t = 380;
+  while (t < win) {
+    times2.push(t);
+    const k = t / win;
+    t += 700 - 480 * k * k;
+  }
+  times2.push(win);
+  return times2;
+}
+function fanPlace(i, n) {
+  const k = i - (n - 1);
+  return { x: k * 140, rot: (i - (n - 1) / 2) * 5, lift: Math.abs(i - (n - 1) / 2) * 9 };
+}
+var sfx = (o, file, gain2, pan, rate = 1) => {
+  o.samples?.play(file, { gain: gain2, pan, rate });
+};
+function build8(o) {
+  const w = h("span", { class: "alius-call-w" });
+  const dots = h("div", { class: "alius-call-dots", "aria-hidden": "true" });
+  const line3 = h("div", { class: "alius-call-line", role: "status" });
+  const fan = h("div", { class: "alius-call-fan" });
+  const root = h(
+    "div",
+    { class: "alius-call", "data-call": o.id, "data-clock": "", role: "group", "aria-label": "She calls a posture" },
+    h("div", { class: "alius-call-word" }, w, dots),
+    line3,
+    fan
+  );
+  root.style.setProperty("--alius-her", o.accent);
+  if (o.hand !== "") root.style.setProperty("--alius-font-hand", `"${o.hand}", var(--alius-font-type)`);
+  root.style.setProperty("--alius-hand-scale", String(o.handScale));
+  if (o.reduced) root.dataset.reduced = "true";
+  o.host.append(root);
+  const dim = o.dim === null ? null : o.dim.appendChild(h("div", { class: "alius-call-dim" }));
+  return { root, w, dots, line: line3, fan, dim };
+}
+function startCall(o) {
+  if (call) return;
+  const choices = o.choices;
+  const want = o.want;
+  const id = o.id;
+  call = { id, want, t0: o.now(), taps: [], timers: [], o, el: build8(o) };
+  const el0 = call.el;
+  if (el0.dim) {
+    void el0.dim.offsetWidth;
+    el0.dim.style.opacity = "0.28";
+  }
+  if (o.dial) {
+    o.dial.dataset.called = "true";
+    o.dial.style.setProperty("--alius-her", o.accent);
+  }
+  const w = el0.w;
+  w.textContent = want[1];
+  w.className = "alius-call-w";
+  void w.offsetWidth;
+  if (!o.reduced) w.classList.add("is-writing");
+  el0.dots.replaceChildren();
+  el0.line.textContent = "";
+  el0.line.style.opacity = "1";
+  const fan = el0.fan;
+  fan.replaceChildren();
+  const n = choices.length;
+  choices.forEach(([base, name], i) => {
+    const pose2 = poseOf(base);
+    const el = h(
+      "button",
+      { type: "button", class: "alius-call-card", "data-posture-choice": base, "data-call": id, "aria-label": `${name}: ${o.baseLabel(base)}`, ...o.cardAttrs ?? {} },
+      pose2 ? mannequinSvg(pose2) : null,
+      h("span", { class: "alius-call-nm" }, name),
+      h("span", { class: "alius-call-base" }, o.baseLabel(base))
+    );
+    const { x, rot, lift: lift2 } = fanPlace(i, n);
+    el.style.left = `${x}px`;
+    el.style.transform = o.reduced ? `translateY(${lift2}px) rotate(${rot}deg)` : "translateY(260px) rotate(0deg) scale(.6)";
+    el.style.opacity = o.reduced ? "1" : "0";
+    el.onmouseenter = () => {
+      if (!call?.done) el.style.transform = `translateY(${lift2 - 18}px) rotate(0deg) scale(1.04)`;
+    };
+    el.onmouseleave = () => {
+      if (!call?.done) el.style.transform = `translateY(${lift2}px) rotate(${rot}deg)`;
+    };
+    el.onclick = () => choose(base, el);
+    el.dataset.base = base;
+    fan.append(el);
+    if (!o.reduced) call.timers.push(o.schedule(() => {
+      el.style.opacity = "1";
+      el.style.transform = `translateY(${lift2}px) rotate(${rot}deg)`;
+    }, 120 + i * 55));
+  });
+  sfx(o, CALL_SOUNDS.fan, 0.3, 0.6);
+  if (o.timed) scheduleTaps();
+  return el0.root;
+}
+function scheduleTaps() {
+  const win = call.o.windowMs;
+  const times2 = tapTimes(win);
+  const span = 300;
+  times2.forEach((at2, i) => call.timers.push(call.o.schedule(() => tap2(at2 / win, i === times2.length - 1, span, i), at2)));
+}
+function tap2(k, last3, span, i) {
+  if (!call) return;
+  const o = call.o;
+  const d = h("i");
+  if (last3) d.className = "last";
+  d.style.left = `${(k - 0.5) * span}px`;
+  call.el.dots.append(d);
+  const w = call.el.w;
+  if (!o.reduced) {
+    w.classList.remove("is-bob");
+    void w.offsetWidth;
+    w.classList.add("is-bob");
+  }
+  sfx(o, CALL_SOUNDS.soft[fnv1a3(`${call.id}|${i}`) % 2], (0.22 + 0.4 * k) * (last3 ? 1.6 : 1), 0.35, 0.92 + fnv1a3(`${call.id}|${i}|rate`) % 1e3 / 1e3 * 0.1);
+  if (last3) end("slow", null);
+}
+function choose(base, el) {
+  if (!call || call.done) return;
+  sfx(call.o, CALL_SOUNDS.place[0], 0.35, 0.6);
+  end(base === call.want[0] ? "right" : "wrong", base, el);
+}
+function end(outcome, base, el) {
+  const c = call;
+  if (!c || c.done) return;
+  c.done = true;
+  for (const t of c.timers) c.o.cancel(t);
+  c.timers = [];
+  const o = c.o;
+  const fan = c.el.fan;
+  const rightEl = fan.querySelector(`[data-base="${c.want[0]}"]`);
+  c.el.root.dataset.outcome = outcome;
+  if (outcome === "right") {
+    if (!o.reduced && el) {
+      const fx2 = -parseFloat(el.style.left) - 30;
+      el.style.transition = "transform .45s cubic-bezier(.5,0,.8,.4), opacity .45s";
+      el.style.transform = `translate(${fx2}px, 230px) scale(.35)`;
+      el.style.opacity = "0";
+    }
+    for (const x of fan.children) if (x !== el) x.style.opacity = "0";
+  } else {
+    if (outcome === "wrong" && el) el.classList.add("is-wrong");
+    rightEl?.classList.add("is-right");
+    c.timers.push(o.schedule(() => {
+      for (const x of fan.children) {
+        x.style.opacity = "0";
+        if (!o.reduced) x.style.transform += " translateY(60px)";
+      }
+    }, 900));
+  }
+  const lineEl = c.el.line;
+  lineEl.textContent = o.line(outcome);
+  lineEl.className = "alius-call-line";
+  void lineEl.offsetWidth;
+  if (!o.reduced) lineEl.classList.add("is-writing");
+  o.take(base ?? void 0, outcome === "slow" || o.timed && o.now() - c.t0 > o.windowMs);
+  c.timers.push(o.schedule(() => {
+    if (c.el.dim) c.el.dim.style.opacity = "0";
+    if (o.dial) delete o.dial.dataset.called;
+    c.el.w.textContent = "";
+    c.el.dots.replaceChildren();
+  }, 1300));
+  c.timers.push(o.schedule(() => {
+    lineEl.style.opacity = "0";
+  }, 2600));
+  c.timers.push(o.schedule(() => {
+    teardown2(c);
+  }, 3300));
+}
+function teardown2(c) {
+  c.el.root.remove();
+  c.el.dim?.remove();
+  if (c.o.dial) {
+    delete c.o.dial.dataset.called;
+    c.o.dial.style.removeProperty("--alius-her");
+  }
+  if (call === c) call = null;
+  c.o.onGone?.();
+}
+function cancelCall() {
+  const c = call;
+  if (c === null) return;
+  c.done = true;
+  for (const t of c.timers) c.o.cancel(t);
+  c.timers = [];
+  teardown2(c);
 }
 
 // src/ui/practice/postureCall.ts
@@ -79771,6 +79784,9 @@ function renderSceneScreen(host, ctx2) {
       say: (host2, text3, opts) => say(host2, text3, opts),
       tap: () => ctx2.physics?.onTap(),
       assetUrl: (p) => (ctx2.assetUrl ?? ((x) => x))(p),
+      redraw: () => {
+        if (!disposed) refresh2();
+      },
       timeout: (fn, ms) => {
         const t = setTimeout(fn, ms);
         return () => clearTimeout(t);

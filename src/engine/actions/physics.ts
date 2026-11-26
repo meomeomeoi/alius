@@ -6,7 +6,7 @@ import { foundPosed, frameWoke, getUp, physicsSignal, startPhysics, stopPhysics,
 import { finishCounted, startAct } from '../physics/acts';
 import { applyWay, decayStimuli } from '../physics/stimuli';
 import { registerDayEndStep } from '../calendar';
-import { frameRelief, marathonSkip, nextSegment, physicsInput, typedBeats } from '../physics/segment';
+import { frameRelief, marathonSkip, nextSegment, physicsInput, shoeSpit, typedBeats } from '../physics/segment';
 import { rateService } from '../practice/service';
 import { VERDICTS, type Verdict } from '../practice/state';
 
@@ -148,6 +148,13 @@ registerAction('physics/relief', (draft, payload, ctx) => {
   return frameRelief(draft, ctx, payload);
 });
 
+/** P10e-e Ruling AC (e10 fix I2): `physics/spit { runId, beat, attention }`: grit spat aside in shoe service, decided at once (one draw). */
+registerAction('physics/spit', (draft, payload, ctx) => {
+  live(draft, ctx.registries, 'physics/spit');
+  if (!isObj(payload)) throw new Error('physics/spit needs a payload');
+  return shoeSpit(draft, ctx, payload);
+});
+
 /** P10e-e review I7: `physics/woke { runId }`: she woke in her sleep (the third stir): her frame ends. */
 registerAction('physics/woke', (draft, payload, ctx) => {
   live(draft, ctx.registries, 'physics/woke');
@@ -161,8 +168,8 @@ registerAction('physics/woke', (draft, payload, ctx) => {
  * the session's end. Memory: none new (`service_rated` lands as P16 decided). Draws no rng.
  *
  * Task 27 (R27, R29): shoe service ends with her verdict too. An open shoe run (`isShoeRun`) is rated and ends as `checked` (her inspection of
- * the last surface is the check: the hold is credited as a finished cleaning); a shoe run the engine's own check (≤ 10) ended first is rated
- * by its id (the scene's last) and `holderId`, who must be in the scene. Nothing is stored for it.
+ * the last surface is the check: the hold is credited as a finished cleaning); a shoe run that ended `checked` (the engine's own check at ≤ 10,
+ * or her verdict) is rated by its id against the scene's `shoeDone` (the holder is the record's). A run that ended otherwise (the stop word) is refused.
  */
 registerAction('physics/service', (draft, payload, ctx) => {
   live(draft, ctx.registries, 'physics/service');
@@ -179,7 +186,7 @@ registerAction('physics/service', (draft, payload, ctx) => {
   const latest = payload.runId === `p${scene.physicsCount ?? 0}`;
   if (run !== undefined && run.id === payload.runId && run.sourceKind === 'activity') holderId = run.holderId;
   else if (run === undefined && scene.frameDone !== undefined && scene.frameDone.runId === payload.runId && latest) holderId = scene.frameDone.holderId;
-  else if (run === undefined && latest && scene.frameDone?.runId !== payload.runId && typeof payload.holderId === 'string' && scene.participants.includes(payload.holderId)) holderId = payload.holderId;
+  else if (run === undefined && latest && scene.shoeDone !== undefined && scene.shoeDone.runId === payload.runId) holderId = scene.shoeDone.holderId;
   else throw new Error('physics/service: stale physics run (her frame or her shoe service, open or just ended)');
   return rateService(draft, ctx, holderId, payload.verdict as Verdict, 'engine', scene.id);
 });

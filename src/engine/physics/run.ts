@@ -4,6 +4,7 @@
  * Importing this module registers what keeps a run in step with the blocking: it starts when a contact or an item with physics is set, ends
  * when its source goes, and ends when a switched-off category takes its source away.
  */
+import { isShoeRun } from './footwear';
 import type { Entry, Registries } from '../../content/types';
 import { blockingLive, blockingOf, COMMANDER, contactOf, contactTargetOf, hasSource, registerAfterChange, removeSource, type BlockingChange } from '../blocking';
 import { latestFor } from '../blocking/snapshots';
@@ -177,6 +178,7 @@ export function stopPhysics(draft: CampaignState, reg: Registries, result: Outco
   delete draft.scene.physics;
   if (run.sourceKind !== 'activity') removeSource(draft, run.sourceKind, run.sourceId); // R24: her activity goes on when her frame ends
   else draft.scene.frameDone = { holderId: run.holderId, activity: run.sourceId, placed: placementKey(draft), runId: run.id }; // review I1: it does not restart by itself
+  if (result === 'checked' && isShoeRun(run, reg)) draft.scene.shoeDone = { runId: run.id, holderId: run.holderId }; // e10 fix I3: her verdict may follow
   const events: EngineEvent[] = [{ type: 'physics_outcome', runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...(run.second ? { secondId: run.second.physicsId } : {}), ...(run.targetId !== undefined ? { targetId: run.targetId } : {}), ...(run.tally ? { tally: { ...run.tally } } : {}) }]; // the target was read when the run began: P15 counts the act on it (mastery)
   if (run.marathon) events.push(...finishMarathon(draft, reg, run, result));
   return events;
