@@ -166,6 +166,7 @@
       "taste_polish",
       "scent_worn"
     ],
+    "footwear": true,
     "label": "Boots",
     "description": "AUTHOR TO WRITE: Her boots, on or off, dirty after a run."
   },

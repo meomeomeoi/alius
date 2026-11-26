@@ -136,6 +136,11 @@ export const TUNING = Object.freeze({
     weight: Object.freeze({ drain: 8, shiftEvery: Object.freeze([3, 5] as const), shift: Object.freeze([15, 25] as const), relief: 15 }),
     saturation: Object.freeze({ per: 10, bandFactor: Object.freeze({ faint: 0.5, noticeable: 1, strong: 1.5, overwhelming: 2 }), mouth: 20, noticed: 0.6 }),
     tongue: Object.freeze({ start: 100, right: 15, wrong: 8, checkAt: 10, dryness: 6, parts: Object.freeze(['toes', 'arch', 'heel', 'sole'] as const) }),
+    /**
+     * P10e-e Task 27 (R30): shoe service. `wetShare`: the share of days that are wet (`wetDay`: a hash of the day; the state has no weather),
+     * whose dirt is rain when no run or drill of hers says otherwise. `AUTHOR TO TUNE`.
+     */
+    shoe: Object.freeze({ wetShare: 0.25 }),
     gulpFill: Object.freeze({ caught: 5, spill: 20 }), jawRest: 30, noiseSlip: 1,
     jaw: Object.freeze({ per: 8, degradeAt: 70 }),
     /**

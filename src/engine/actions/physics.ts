@@ -1,6 +1,8 @@
 import { blockingLive } from '../blocking';
 import { registerAction } from '../dispatch';
-import { foundPosed, frameWoke, getUp, physicsSignal, startPhysics, stopWord } from '../physics/run';
+import { creditHold } from '../physics/boundary';
+import { isShoeRun } from '../physics/footwear';
+import { foundPosed, frameWoke, getUp, physicsSignal, startPhysics, stopPhysics, stopWord } from '../physics/run';
 import { finishCounted, startAct } from '../physics/acts';
 import { applyWay, decayStimuli } from '../physics/stimuli';
 import { registerDayEndStep } from '../calendar';
@@ -157,6 +159,10 @@ registerAction('physics/woke', (draft, payload, ctx) => {
  * (`verdictOf`, the instrument's), through P16's `rateService(…, 'engine', sceneId)`: once a scene (a second is ignored, as `rateService` does).
  * The run is her frame that is open, or the one that just ended (its id is the scene's last and the frame done's): the instrument says it at
  * the session's end. Memory: none new (`service_rated` lands as P16 decided). Draws no rng.
+ *
+ * Task 27 (R27, R29): shoe service ends with her verdict too. An open shoe run (`isShoeRun`) is rated and ends as `checked` (her inspection of
+ * the last surface is the check: the hold is credited as a finished cleaning); a shoe run the engine's own check (≤ 10) ended first is rated
+ * by its id (the scene's last) and `holderId`, who must be in the scene. Nothing is stored for it.
  */
 registerAction('physics/service', (draft, payload, ctx) => {
   live(draft, ctx.registries, 'physics/service');
@@ -166,8 +172,14 @@ registerAction('physics/service', (draft, payload, ctx) => {
   const scene = draft.scene!;
   const run = scene.physics;
   let holderId: string;
+  if (run !== undefined && run.id === payload.runId && isShoeRun(run, ctx.registries)) {
+    const rated = rateService(draft, ctx, run.holderId, payload.verdict as Verdict, 'engine', scene.id);
+    return [...rated, ...creditHold(draft, ctx.registries, run), ...stopPhysics(draft, ctx.registries, 'checked')];
+  }
+  const latest = payload.runId === `p${scene.physicsCount ?? 0}`;
   if (run !== undefined && run.id === payload.runId && run.sourceKind === 'activity') holderId = run.holderId;
-  else if (run === undefined && scene.frameDone !== undefined && scene.frameDone.runId === payload.runId && payload.runId === `p${scene.physicsCount ?? 0}`) holderId = scene.frameDone.holderId;
-  else throw new Error('physics/service: stale physics run (only her frame, open or just ended)');
+  else if (run === undefined && scene.frameDone !== undefined && scene.frameDone.runId === payload.runId && latest) holderId = scene.frameDone.holderId;
+  else if (run === undefined && latest && scene.frameDone?.runId !== payload.runId && typeof payload.holderId === 'string' && scene.participants.includes(payload.holderId)) holderId = payload.holderId;
+  else throw new Error('physics/service: stale physics run (her frame or her shoe service, open or just ended)');
   return rateService(draft, ctx, holderId, payload.verdict as Verdict, 'engine', scene.id);
 });

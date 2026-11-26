@@ -8,7 +8,7 @@ import type { InputKind, SegmentInput, SegmentPlan } from './state';
 
 /** The inputs each interaction owns. A passive physics owns none. */
 export const OWNS: Record<InteractionType, readonly InputKind[]> = {
-  timing: ['breathe', 'gap_breath', 'strain'], hold: ['hold', 'shift_weight', 'uneven'], decision: ['mouth_breath', 'inhale', 'scatter'], order: ['part'], gesture: ['ask_rest', 'bite'], passive: [],
+  timing: ['breathe', 'gap_breath', 'strain'], hold: ['hold', 'shift_weight', 'uneven'], decision: ['mouth_breath', 'inhale', 'scatter'], order: ['part', 'wipe', 'spit'], gesture: ['ask_rest', 'bite'], passive: [],
 };
 
 /** The conflicts of a pair, by interaction (a pair absent from the table has none: they only share the beats). */

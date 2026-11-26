@@ -1010,6 +1010,8 @@ export const RegionSchema = BaseEntrySchema.extend({
   layers: z.tuple([int.min(3).max(5), int.min(3).max(5)]).refine(([a, b]) => a <= b, 'layers minimum must not exceed maximum'),
   nodeWeights: idKeyed,
   pointsOfInterest: z.array(z.object({ id: str, name: str, summary: str, templateId: str }).strict()),
+  /** P10e-e Task 27 (R30): the dirt a run here leaves on her footwear (shoe service's `dirtOfDay`); absent: the rest of her day decides. */
+  dirt: z.enum(['ash', 'oil', 'spores', 'mud']).optional(),
   rumors: z.array(str.refine((t) => wordCount(t) <= 40, 'a rumor line is at most 40 words')),
   knownFromStart: z.boolean().optional(),
   unlockedBy: z.object({ flag: str.optional(), clearanceMin: int.min(1).max(3).optional() }).strict().optional(),
@@ -2648,6 +2650,8 @@ export const WorshipTargetSchema = BaseEntrySchema.extend({
   zone: z.object({ front: bodyPoint.optional(), back: bodyPoint.optional() }).strict(),
   /** The stimulus kinds a contact with it exposes (`stimulusKinds` ids). */
   stimuli: z.array(str).min(1),
+  /** P10e-e Task 27: her footwear (boots or heels, `footwearOf`): a contact on it is shoe service (`isShoeRun`). */
+  footwear: z.literal(true).optional(),
   label: blockLabel,
   description: str,
 }).strict().superRefine((t, ctx) => {

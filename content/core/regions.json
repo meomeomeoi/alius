@@ -61,7 +61,8 @@
       "Someone is selling clean air filters out of Block C. The filters are not clean.",
       "The spores bloom brighter near the old seed vault. Locals avoid the east stairwell."
     ],
-    "knownFromStart": true
+    "knownFromStart": true,
+    "dirt": "spores"
   },
   {
     "id": "kestrel_corridor",
@@ -125,7 +126,8 @@
       "Kestrel-Ward is counting the corridor as lost stock on paper already.",
       "Drills keep running in the lower galleries with nobody at the controls."
     ],
-    "knownFromStart": true
+    "knownFromStart": true,
+    "dirt": "oil"
   },
   {
     "id": "ashway",
@@ -189,7 +191,8 @@
       "Packs follow the highway at dusk. They are bigger than they used to be.",
       "The marauders pay in old credit chips for anything that still runs."
     ],
-    "knownFromStart": true
+    "knownFromStart": true,
+    "dirt": "ash"
   },
   {
     "id": "drowned_market",
@@ -256,7 +259,8 @@
     ],
     "unlockedBy": {
       "clearanceMin": 1
-    }
+    },
+    "dirt": "mud"
   },
   {
     "id": "the_garden",

@@ -1158,13 +1158,14 @@ Also settled: her verdict (R27) averages only the crafts she judged (bouts in `c
   - `content/core/regions.json` and its schema (`dirt?: 'ash' | 'oil' | 'spores' | 'mud'`: ashway ash, kestrel_corridor oil, quarantine_d7 spores, drowned_market mud)
 - Test: `tests/engine/physics/shoeInputs.test.ts`, `tests/engine/physics/footwear.test.ts`
 
-- [ ] **Step 1:** Tests:
+- [x] **Step 1:** Tests:
   - `wipe moves the gauge to the mask` (a wipe of .2 at 100 → 80);
   - `the check at ≤ 10 ends the run as today`;
   - `a spit is a relief: cheatRoll decides`, and caught → `physics_caught`;
   - `footwearOf` is `boots` without heels in her tastes, `heels` with;
   - `dirtOfDay` follows her run's region today, else the training yard (dust), else rain, else dust.
-- [ ] **Steps 2–5** as Task 13 (`feat(P10e-e): shoe service's mask, her footwear, the dirt of her day`).
+- [x] **Steps 2–5** as Task 13 (`feat(P10e-e): shoe service's mask, her footwear, the dirt of her day`).
+- [x] *As built (Task 27):* `INPUT_KINDS` gains `wipe` and `spit`, both owned by `order` (`OWNS`). `resolveSegment`: an `order` segment that holds any `wipe` follows the mask: each beat's one wipe takes `100 × amount` off the dirt gauge (the instrument's `amount` is the share of the whole footwear's dirt, four surfaces of a quarter each, so the gauge is 100 × the dirt left), and its `part` inputs no longer count (no wipe: right 15 / wrong 8 as before); the check at ≤ 10 ends the run (`checked`) as today. A `spit` is a relief (`reliefInputs`), so `physicsInput`'s existing `cheatRoll` by the beat's planned attention decides at the segment's end (seen: `physics_caught`, a double slip, `tally.cheatsCaught`); no new draw path. `src/engine/physics/footwear.ts` (no draw, nothing stored): `footwearOf` (`heels` when her likes or tastes, through P14b's `likesOf` / `tastesOf`, name heels, stilettos or pumps, else `boots`); `dirtOfDay` (her run's region today, `regions[].dirt` read by field; else `dust` when she drilled today, an activity whose effects train as P15's `trains`, read from P14c's `life.busy`; else `rain` on a wet day; else `dust`); `wetDay` (`fnv1a(wet_day|<day>)` under `TUNING.physics.shoe.wetShare` 0.25, AUTHOR TO TUNE: the state has no weather); `isShoeRun` (an `order` physics on a `dirt` gauge from a contact whose target is a worship target with the new `footwear: true`, set on `boots`); `STYLES` (shoe.html's drafts of her ways, verbatim) and `shoePaceOf` (her lead style's row, neutral's for a style it lacks). `regions.json` gains `dirt` (ashway ash, kestrel_corridor oil, quarantine_d7 spores, drowned_market mud; the_garden none) and its schema `dirt?`; `worshipTargets` gains `footwear?: true`. `physics/service` (R27) also takes shoe service: an open shoe run is rated through `rateService` and ends as `checked` (her inspection of the last surface is the check; the hold is credited); a run the engine's check ended first is rated by its id (the scene's last) and `holderId`, who must be in the scene. No seeded test or golden moved. Memory (chunk e10): a spit she saw is `physics_caught` (R31, already remembered: no rule); her verdict is P16's `service_rated` through `rateService` (no rule); wipes, grit, shine and the inspection are bookkeeping; no new text reaches the journal, the chronicle or a prompt.
 
 ### Task 28: The shoe instrument
 

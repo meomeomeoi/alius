@@ -162,6 +162,11 @@ var TUNING = Object.freeze({
     weight: Object.freeze({ drain: 8, shiftEvery: Object.freeze([3, 5]), shift: Object.freeze([15, 25]), relief: 15 }),
     saturation: Object.freeze({ per: 10, bandFactor: Object.freeze({ faint: 0.5, noticeable: 1, strong: 1.5, overwhelming: 2 }), mouth: 20, noticed: 0.6 }),
     tongue: Object.freeze({ start: 100, right: 15, wrong: 8, checkAt: 10, dryness: 6, parts: Object.freeze(["toes", "arch", "heel", "sole"]) }),
+    /**
+     * P10e-e Task 27 (R30): shoe service. `wetShare`: the share of days that are wet (`wetDay`: a hash of the day; the state has no weather),
+     * whose dirt is rain when no run or drill of hers says otherwise. `AUTHOR TO TUNE`.
+     */
+    shoe: Object.freeze({ wetShare: 0.25 }),
     gulpFill: Object.freeze({ caught: 5, spill: 20 }),
     jawRest: 30,
     noiseSlip: 1,
@@ -7226,7 +7231,8 @@ var frameRank = (f) => FRAMES.indexOf(f);
 var NOTE_MAX = 120;
 
 // src/engine/physics/state.ts
-var INPUT_KINDS = ["breathe", "hold", "release", "mouth_breath", "gap_breath", "shift_weight", "part", "ask_rest", "strain", "uneven", "inhale", "scatter", "bite", "relieve", "fidget"];
+var INPUT_KINDS = ["breathe", "hold", "release", "mouth_breath", "gap_breath", "shift_weight", "part", "ask_rest", "strain", "uneven", "inhale", "scatter", "bite", "relieve", "fidget", "wipe", "spit"];
+var GAUGE_FULL = 100;
 
 // src/engine/dynamic/types.ts
 var PROFILE_STYLES = ["affectionate", "cold", "ritual", "clinical", "possessive", "playful", "cruel", "obsessive", "drill", "regal", "vindictive"];
@@ -9046,6 +9052,8 @@ var RegionSchema = BaseEntrySchema.extend({
   layers: external_exports.tuple([int.min(3).max(5), int.min(3).max(5)]).refine(([a, b]) => a <= b, "layers minimum must not exceed maximum"),
   nodeWeights: idKeyed,
   pointsOfInterest: external_exports.array(external_exports.object({ id: str, name: str, summary: str, templateId: str }).strict()),
+  /** P10e-e Task 27 (R30): the dirt a run here leaves on her footwear (shoe service's `dirtOfDay`); absent: the rest of her day decides. */
+  dirt: external_exports.enum(["ash", "oil", "spores", "mud"]).optional(),
   rumors: external_exports.array(str.refine((t) => wordCount(t) <= 40, "a rumor line is at most 40 words")),
   knownFromStart: external_exports.boolean().optional(),
   unlockedBy: external_exports.object({ flag: str.optional(), clearanceMin: int.min(1).max(3).optional() }).strict().optional()
@@ -10428,6 +10436,8 @@ var WorshipTargetSchema = BaseEntrySchema.extend({
   zone: external_exports.object({ front: bodyPoint.optional(), back: bodyPoint.optional() }).strict(),
   /** The stimulus kinds a contact with it exposes (`stimulusKinds` ids). */
   stimuli: external_exports.array(str).min(1),
+  /** P10e-e Task 27: her footwear (boots or heels, `footwearOf`): a contact on it is shoe service (`isShoeRun`). */
+  footwear: external_exports.literal(true).optional(),
   label: blockLabel,
   description: str
 }).strict().superRefine((t, ctx2) => {
@@ -39147,6 +39157,14 @@ registerAction("moment/answer", (draft, payload, ctx2) => {
   return answerMoment(draft, ctx2, momentId, key, "chip", tone3, at2 !== void 0 ? { at: at2 } : {});
 });
 
+// src/engine/physics/footwear.ts
+function isShoeRun(run, reg) {
+  const phys = reg.contactPhysics.get(run.physicsId);
+  if (phys?.interaction !== "order" || phys.gauge?.kind !== "dirt" || run.sourceKind !== "contact") return false;
+  const targets = reg.blockingContacts.get(run.sourceId)?.target ?? [];
+  return targets.some((t) => reg.worshipTargets.get(t)?.footwear === true);
+}
+
 // src/engine/physics/scent.ts
 var S = TUNING.scent;
 function scentLevel(state, _reg, unitId, part) {
@@ -39402,7 +39420,7 @@ var OWNS = {
   timing: ["breathe", "gap_breath", "strain"],
   hold: ["hold", "shift_weight", "uneven"],
   decision: ["mouth_breath", "inhale", "scatter"],
-  order: ["part"],
+  order: ["part", "wipe", "spit"],
   gesture: ["ask_rest", "bite"],
   passive: []
 };
@@ -39625,6 +39643,7 @@ function resolveSegment(run, plan, inputs, env) {
   const scale = env.scale ?? 1;
   const inhaled = env.interaction === "decision" && live3.some((i) => i.kind === "inhale");
   const word2 = cap9 / (env.head ?? headCapacity(TUNING.stimuli.startTolerance));
+  const wiped = env.interaction === "order" && live3.some((i) => i.kind === "wipe");
   for (let b = 0; b < run_; b++) {
     const beat = plan.beats[b];
     const beatStart = r.gauge;
@@ -39711,7 +39730,9 @@ function resolveSegment(run, plan, inputs, env) {
         break;
       }
       case "order": {
-        for (const g of at2(b, "part")) r.gauge -= g.part !== void 0 && g.part === beat.part && (run.dryness ?? 0) < 100 ? P2.tongue.right : P2.tongue.wrong;
+        if (wiped) for (const g of at2(b, "wipe")) r.gauge -= GAUGE_FULL * (g.amount ?? 0);
+        else for (const g of at2(b, "part")) r.gauge -= g.part !== void 0 && g.part === beat.part && (run.dryness ?? 0) < 100 ? P2.tongue.right : P2.tongue.wrong;
+        for (const g of at2(b, "spit")) relief2(g.beat, "spit");
         if (run.dryness !== void 0) r.dryness = Math.min(100, (r.dryness ?? run.dryness) + P2.tongue.dryness);
         break;
       }
@@ -40090,9 +40111,15 @@ registerAction("physics/service", (draft, payload, ctx2) => {
   const scene = draft.scene;
   const run = scene.physics;
   let holderId;
+  if (run !== void 0 && run.id === payload.runId && isShoeRun(run, ctx2.registries)) {
+    const rated = rateService(draft, ctx2, run.holderId, payload.verdict, "engine", scene.id);
+    return [...rated, ...creditHold(draft, ctx2.registries, run), ...stopPhysics(draft, ctx2.registries, "checked")];
+  }
+  const latest = payload.runId === `p${scene.physicsCount ?? 0}`;
   if (run !== void 0 && run.id === payload.runId && run.sourceKind === "activity") holderId = run.holderId;
-  else if (run === void 0 && scene.frameDone !== void 0 && scene.frameDone.runId === payload.runId && payload.runId === `p${scene.physicsCount ?? 0}`) holderId = scene.frameDone.holderId;
-  else throw new Error("physics/service: stale physics run (only her frame, open or just ended)");
+  else if (run === void 0 && scene.frameDone !== void 0 && scene.frameDone.runId === payload.runId && latest) holderId = scene.frameDone.holderId;
+  else if (run === void 0 && latest && scene.frameDone?.runId !== payload.runId && typeof payload.holderId === "string" && scene.participants.includes(payload.holderId)) holderId = payload.holderId;
+  else throw new Error("physics/service: stale physics run (her frame or her shoe service, open or just ended)");
   return rateService(draft, ctx2, holderId, payload.verdict, "engine", scene.id);
 });
 

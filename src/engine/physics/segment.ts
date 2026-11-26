@@ -21,7 +21,7 @@ import { chainRun, coreRun, stopPhysics } from './run';
 import { attentionCue, attentionPlan, cheatRoll, segmentNoise, type NoiseKind } from './gaze';
 import { addEnduranceXp, herSkillOf } from './skill';
 import {
-  INPUT_KINDS, type Attention, type JawOrder, type PhysicsRun, type PhysicsStyle, type PlannedBeat, type ScentBand, type SegmentInput, type SegmentPlan, type SegmentResult,
+  GAUGE_FULL, INPUT_KINDS, type Attention, type JawOrder, type PhysicsRun, type PhysicsStyle, type PlannedBeat, type ScentBand, type SegmentInput, type SegmentPlan, type SegmentResult,
 } from './state';
 import { blendedStyle, leadStyle, physicsStyleOf, styleRows } from './style';
 import { scentBand } from './scent';
@@ -274,6 +274,8 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
   // R18: scent's head (decision): whether the instrument reported the words breathed in, and what one word is worth of the gauge
   const inhaled = env.interaction === 'decision' && live.some((i) => i.kind === 'inhale');
   const word = cap / (env.head ?? headCapacity(TUNING.stimuli.startTolerance));
+  // R29: whether the shoe instrument reported the mask (any wipe): then the wipes, not the parts, clean
+  const wiped = env.interaction === 'order' && live.some((i) => i.kind === 'wipe');
   for (let b = 0; b < run_; b++) {
     const beat = plan.beats[b]!;
     const beatStart = r.gauge;
@@ -369,7 +371,11 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
         break;
       }
       case 'order': {
-        for (const g of at(b, 'part')) r.gauge -= g.part !== undefined && g.part === beat.part && (run.dryness ?? 0) < 100 ? P.tongue.right : P.tongue.wrong;
+        // R29: shoe service's zones are the parts: a segment the instrument reported wipes in follows the mask (100 × the dirt left)
+        if (wiped) for (const g of at(b, 'wipe')) r.gauge -= GAUGE_FULL * (g.amount ?? 0);
+        else for (const g of at(b, 'part')) r.gauge -= g.part !== undefined && g.part === beat.part && (run.dryness ?? 0) < 100 ? P.tongue.right : P.tongue.wrong;
+        // R31: grit spat aside is a relief (she may see it: `cheatRoll` below, in `physicsInput`)
+        for (const g of at(b, 'spit')) relief(g.beat, 'spit');
         if (run.dryness !== undefined) r.dryness = Math.min(100, (r.dryness ?? run.dryness) + P.tongue.dryness);
         break;
       }
