@@ -48,6 +48,8 @@ Each writes `.superpowers/prototypes/<name>.html` (ignored by git): one self-con
 
 ## `throne.html` — the throne (the weight inside her activity's frame, with the throne layer)
 
+*Ported in chunk (e), Task 24b (the throne layer on the weight core inside her frame): `src/ui/scene/instruments/activity/throne.ts`, checked by `activity/fidelity.json`.*
+
 Approved by the author on 2026-11-25 after rounds 1–2c (the defaults of the file are the approved state; the long hold's drain 0.35). Run it with `npm run proto -- throne`. **It is `her_activity.html` as approved, with the weight inside it, plus the throne layer**: search the file for `THE THRONE`. Everything outside that block and the few marked edits below is `her_activity.html` and keeps its own normative status. Where the frame and the weight are concerned, port `her_activity.html` and `weight.html`, not this copy; this section covers what the throne adds.
 
 ### Normative (port exactly)
@@ -99,6 +101,8 @@ Approved by the author on 2026-11-25 after rounds 1–2c (the defaults of the fi
 
 ## `cards.html` — her hand of cards (the dock's cards of P15a, P15 and P16) and the posture call (P16)
 
+*Ported in chunk (e), Tasks 7–10 (her cards, the collapsed edges, the posture call, arrival and sounds; her voice as data in Task 3, the hands in Task 2, the dial's circle in Task 6): `src/ui/scene/cards/`, `src/ui/scene/instruments/call/call.ts`, checked by `instruments/cards/fidelity.json` and `instruments/call/fidelity.json`.*
+
 Approved by the author on 2026-11-25 after three rounds (the defaults of the file are the approved state). Run it with `npm run proto -- cards`; it needs the hands in `fonts/hand-*.woff2` (moved there from `assets/hands/` by chunk (e)), `ha/soft1–2`, `ha/card_slide1–2`, `ha/card_place1–2`, `ha/card_fan` (`assets/LICENSES.md`) and draws the mannequins with the dial's own `mannequinSvg` at build time (`scripts/prototype-mannequins.ts`). The texts are `docs/content/card-voice.md` (approved): the tables of the file are a copy of it. **A restyle: no card's mechanics change** (the same answers, the same actions, the same `data-analyze`).
 
 ### Normative (port exactly)
@@ -141,6 +145,8 @@ Approved by the author on 2026-11-25 after three rounds (the defaults of the fil
 
 ## `gulp.html` — gulp (P15a `gulp`, timing; content `watersports`, which requires `bodily_fluids`)
 
+*Ported in chunk (e), Task 30 (its engine: Task 29): `src/ui/scene/instruments/gulp/gulp.ts`, checked by `gulp/fidelity.json`.*
+
 Approved by the author on 2026-11-25 after four rounds (the defaults of the file are the approved state). Run it with `npm run proto -- gulp`; it needs `assets/gulp/` (the chosen sounds only), `ha/cloth1–3` and `breath-in-out.mp3` (`assets/LICENSES.md`). Scheme C (author): swallowing and breathing as two resources, a signal to her, and what is spilled carried into cleaning.
 
 ### Normative (port exactly)
@@ -173,6 +179,8 @@ Approved by the author on 2026-11-25 after four rounds (the defaults of the file
 - **Memory check:** what P17b already decides for `watersports` (strong compromat; a mark seen by others); the spill and the cleaning are bookkeeping, unless her discipline remembers the slip.
 
 ## `shoe.html` — shoe service (P15a `tongue_work` on `boot_worship`)
+
+*Ported in chunk (e), Task 28 (its engine: Task 27): `src/ui/scene/instruments/shoe/shoe.ts`, checked by `shoe/fidelity.json`.*
 
 Approved by the author on 2026-11-24 after four rounds (the defaults of the file are the approved state; the author's test pictures were heels only). Run it with `npm run proto -- shoe`; it uses `assets/ha/` (cloth, wood, soft, key; `assets/LICENSES.md`). The author: all together (the dirt of her day, the shine, her inspection, her foot in use); footwear in general, combat boots and high heels first, worn anywhere by her taste (no realism asked), always dirty; for now the author's holder wears heels only, the boots stay in the design.
 
@@ -207,6 +215,8 @@ Approved by the author on 2026-11-24 after four rounds (the defaults of the file
 
 ## `jaw.html` — the jaw (P15a `jaw`, gesture)
 
+*Ported in chunk (e), Task 20 (its engine: Task 19): `src/ui/scene/instruments/jaw/`, checked by `jaw/fidelity.json`.*
+
 Approved by the author on 2026-11-24 after three rounds (the defaults of the file are the approved state). Run it with `npm run proto -- jaw`; it uses `assets/breath-in-out.mp3` and `assets/ha/cloth1–4` (`assets/LICENSES.md`). The body and the speech on one axis (author: "all together"). `oral_service` is not here: its depth and rhythm are P17b's.
 
 ### Normative (port exactly)
@@ -238,6 +248,8 @@ Approved by the author on 2026-11-24 after three rounds (the defaults of the fil
 - `ring_gag` is an item (`worn.mouth`), not a contact: the physics must start from the item being worn in a scene with her.
 
 ## `slap.html` — the slap (P16 §R.3, `practices.slap`)
+
+*Ported in chunk (e), Task 12 (its engine: Task 11): `src/ui/scene/instruments/slap/slap.ts`, checked by `slap/fidelity.json`.*
 
 Approved by the author on 2026-11-24 after the first round ("all good"; the sound: thwack bright at half the level). The defaults of the file are the approved state. Run it with `npm run proto -- slap`; it needs `assets/slap/` and the files it shares (`assets/LICENSES.md`). It replaces P16's slap overlay (the voice card with `[ BRACE ]`, the phase words and the `HER HAND` cut-in).
 
@@ -295,6 +307,8 @@ Approved by the author on 2026-11-24 after the first round ("all good"; the soun
 
 ## `her_activity.html` — her activity, the frame of her time, with stillness inside (P10e §15 "Her activity")
 
+*Ported in chunk (e), Task 24 (its engine: Tasks 21–23): `src/ui/scene/instruments/activity/frame.ts` and `acts.ts`, checked by `activity/fidelity.json`; the shared kit (`say`, `placeFree`) in Task 5.*
+
 Approved by the author on 2026-11-23, after the rounds of that day (the defaults of the file are the approved state: the stillness inside, legs `planted`, restlessness from 350 / 450 px/s, detection ×1.35). Run it with `npm run proto -- her_activity`; it needs the CC0 sounds in `assets/ha/` (`assets/LICENSES.md`). Two kinds of normative content: the **frame** (everything below but the game inside), which every long hold and every game inside it uses, and the **stillness** game.
 
 ### Normative (port exactly)
@@ -338,6 +352,8 @@ Approved by the author on 2026-11-23, after the rounds of that day (the defaults
 
 ### The game inside `service`: foot service under the desk (approved and normative, 2026-11-24)
 
+*Ported in chunk (e), Task 26 (its engine: Task 25): `src/ui/scene/instruments/activity/service.ts`, checked by `activity/fidelity.json`.*
+
 Approved by the author on 2026-11-24 after the rounds of 2026-11-23/24 (the defaults of the file are the approved state). **Port it exactly** like the other prototypes: the code of `svSignal`, `svAnswer`, `svDown` / `svMove` / `svUp` (the gesture classifier and its thresholds), `soleRect`, `zoneRadii` / `inEllipse` / `zoneAt`, `makeDirt` / `wipe` / `dirtIn`, `svLean`, `svRender`, the zone marker and the sounds, adapting only the wiring (the engine's plan of bouts, her profile, the art slots and their sidecars). Built on 2026-11-23 from P10e §15 "Foot service under the desk". Panel: the game inside → `service` (the view is `legs`); load `legs art`, `raised foot art` and `sole art` (`sole_close`; until it exists the close-up uses the raised foot art or her sprite); "mark zones" clicks toes, ball, arch, heel, edge on the sole and gives its sidecar `{ slot: 'sole_close', fit: { height, y }, zones }`; debug shows her signals, her grain, her kiss length, her tempo and the zone she wants; "bouts" makes every bout one act and the act buttons start a bout of it at once (prototype tools).
 - **A bout** (`svSignal`, `svAnswer`, `svEndBout`): between bouts the frame's stillness; her signal (`MOTIONS`: a motion of the art under the desk and its sound, `foot_raised` for the raised ones) chosen from her five pairs (`herSignals`: the three foot acts and two of closer / still / enough, hashed per session and style; which pair a bout uses is hashed with a salt per run in the prototype, the day and the scene in the engine); the first time she names it aloud ("two taps — kiss."); the answer within her patience (`SVC_STYLE[].patience`).
 - **Gestures** (`svDown`, `svMove`, `svUp`): a press held on one spot (≥ 0.3 s, under 12 px) is a kiss; cleaning is scrubbing back and forth (a reversal of direction past ~125°, after 50 px) or a straight drag (more than 120 px, turning less than 0.8 rad); a rub is a drag turning steadily one way (more than 1.2π, no reversal); the direction is read over pieces of at least 6 px so a trembling hand does not turn (fixed 2026-11-24: scrubbing up and down was read as a rub); unsure until 300 px, then by curvature. Under the desk: a press held 0.6 s on her legs is closer, the attention held 0.8 s past the edge of her foot is enough, nothing at all (no click, the mouse slower than 90 px/s) is still. A wrong gesture is a misread (her correction by presence); no answer in time is missed.
@@ -361,6 +377,8 @@ Approved by the author on 2026-11-24 after the rounds of 2026-11-23/24 (the defa
 - The memory check: a misread or a failed check her disappointment may remember; the rest is bookkeeping.
 
 ## `saturation.html` — scent (P15a `saturation` with the stimulus body layer)
+
+*Ported in chunk (e), Task 18 (its engine: Task 17): `src/ui/scene/instruments/scent/`, checked by `scent/fidelity.json`.*
 
 Approved by the author on 2026-11-23, after ten rounds (the defaults of the file are the approved state: look `motes`, the recorded breath in `natural` mode, the flesh edge light). Run it with `npm run proto -- saturation`; it needs `assets/breath-in-out.mp3` (CC0, `assets/LICENSES.md`).
 
@@ -394,6 +412,8 @@ Approved by the author on 2026-11-23, after ten rounds (the defaults of the file
 - The overflow ("lost in her") and the body's pull are new readings of the stage and tolerance.
 
 ## `breath.html` — breathing (P15a `breath`, timing)
+
+*Ported in chunk (e), Task 14 (its engine: Task 13; the dark shapes and the heart in the kit, Task 5): `src/ui/scene/instruments/breath/breath.ts`, checked by `breath/fidelity.json` and `kit/fidelity.json`.*
 
 ### Normative (port exactly)
 
@@ -432,6 +452,8 @@ Approved by the author on 2026-11-23, after ten rounds (the defaults of the file
 - With the engine's numbers even perfect play loses air (her release at the limit after about ten windows).
 
 ## `weight.html` — weight (P15a `weight`, hold)
+
+*Ported in chunk (e), Task 16 (its engine: Task 15; the spring step in the kit, Task 5): `src/ui/scene/instruments/weight/`, checked by `weight/fidelity.json`.*
 
 Approved by the author on 2026-11-23 (the face-up view as first built; the face-down view after two rounds: her legs `hang`, foot `relaxed`, shade `shadow`).
 

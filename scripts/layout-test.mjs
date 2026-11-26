@@ -13,8 +13,10 @@ const server = await serveRoot();
 const port = server.port;
 
 const SIZES = [[1920, 1080], [1280, 800], [2560, 1440]];
-const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breathhold', 'weighthold', 'scenthold', 'jawhold', 'activityhold', 'thronehold', 'servicehold', 'shoehold', 'gulphold'];
+const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weighthold', 'scenthold', 'jawhold', 'activityhold', 'thronehold', 'servicehold', 'shoehold', 'gulphold'];
 const failures = [];
+/** The fixtures with an instrument, her call or her slap drawn at the measure (Task 31). */
+const INSTRUMENT_FIXTURES = new Set(['call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weighthold', 'scenthold', 'jawhold', 'activityhold', 'thronehold', 'servicehold', 'shoehold', 'gulphold']);
 const faceOf = new Map(); // the dial's circle for `standing` (fixture `one`), per size
 const fail = (size, fixture, what) => failures.push(`${size[0]}x${size[1]} ${fixture}: ${what}`);
 const SHOTS = process.env.LAYOUT_SHOTS ? resolve(process.env.LAYOUT_SHOTS) : null;
@@ -67,6 +69,9 @@ function measure(UI) {
     stopVisible: q('[data-stop-word]') ? getComputedStyle(q('[data-stop-word]')).visibility !== 'hidden' : false,
     chipRow: chipRowMeasure(),
     callWord: r(q('.alius-call-w')), callCards: [...document.querySelectorAll('.alius-call-card')].map(r),
+    instrument: q('.alius-stage-dial')?.dataset.instrument ?? null,
+    // her lines on the frame and the instrument's own controls (kit `say`, the moment layer's buttons); a line still fading in may sit off its place
+    instrumentUi: [...document.querySelectorAll('.alius-her-lines .her-line, .alius-layer-moment button')].map((el) => ({ sel: el.className || el.tagName, ...r(el) })).filter((b) => b.w > 0 && b.h > 0),
     ui: [...document.querySelectorAll(UI)].map((el) => ({ sel: el.className || el.tagName, ...r(el) })).filter((b) => b.w > 0 && b.h > 0),
   };
 }
@@ -549,6 +554,15 @@ for (const size of SIZES) {
       else if (Math.abs(m.dial.x - still.x) > 1 || Math.abs(m.dial.y - still.y) > 1) fail(size, fixture, `a long label moved the circle: ${Math.round(m.dial.x)},${Math.round(m.dial.y)} against ${Math.round(still.x)},${Math.round(still.y)} for standing`);
       if (m.dialLabel && m.dialLabel.h < 50) fail(size, fixture, `a 30-character name over BOWING and EYES DOWN is ${Math.round(m.dialLabel.w)}x${Math.round(m.dialLabel.h)}: it did not wrap into four lines`);
       if (m.dialLabel && (m.dialLabel.b > H - 2 || m.dialLabel.r > W - 2)) fail(size, fixture, `the tallest label reaches the viewport's edge: ${JSON.stringify(m.dialLabel)}`);
+    }
+    // P10e-e Task 31: while an instrument draws (or her call, or her slap) the dial's circle stands where it does for `standing`, and the
+    // instrument's own lines and controls stay inside the viewport (the generic checks above cover the scene's UI and the head boxes)
+    if (INSTRUMENT_FIXTURES.has(fixture)) {
+      const still = faceOf.get(`${W}x${H}`);
+      if (!m.dial || !still) fail(size, fixture, 'no dial to compare');
+      else if (Math.abs(m.dial.x - still.x) > 1 || Math.abs(m.dial.y - still.y) > 1) fail(size, fixture, `the instrument moved the dial's circle: ${Math.round(m.dial.x)},${Math.round(m.dial.y)} against ${Math.round(still.x)},${Math.round(still.y)} for standing`);
+      if (!fixture.startsWith('call') && !fixture.startsWith('slap') && !m.instrument) fail(size, fixture, 'no instrument is drawing (the dial carries no data-instrument)');
+      for (const b of m.instrumentUi) if (!inside(b)) fail(size, fixture, `the instrument's ${b.sel} is outside the viewport: ${JSON.stringify(b)}`);
     }
     // P10e-e Task 9: her word and the fan stay inside the viewport and off her face
     if (fixture === 'call' || fixture === 'callhold') {
