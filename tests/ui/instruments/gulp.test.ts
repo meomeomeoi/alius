@@ -620,7 +620,20 @@ describe('the gulp instrument on the scene', () => {
     await Promise.resolve();
     expect(box.isConnected).toBe(false);
     expect(t.host.querySelector('.alius-gulp')).toBeNull();
-    if (_what === 'a new run') { expect(t.q('.alius-stage-dial')?.dataset.instrument).toBe('breath'); return; } // the next run's own instrument takes the frame
+    if (_what === 'a new run') { // the next run's own instrument (breath's) takes the frame; nothing of gulp's is dispatched afterwards
+      expect(t.q('.alius-stage-dial')?.dataset.instrument).toBe('breath');
+      const from = t.input.mock.calls.length;
+      t.key(' ');
+      t.key('Shift');
+      for (let i = 0; i < 200; i++) t.frames.frame();
+      vi.advanceTimersByTime(10000);
+      const late = t.input.mock.calls.slice(from).map((c) => c[0] as SegmentInput);
+      expect(late.filter((i) => ['swallow', 'spill', 'wipe'].includes(i.kind))).toEqual([]);
+      expect(t.onTap).not.toHaveBeenCalled();
+      expect(t.endSegment).not.toHaveBeenCalled();
+      expect(t.restart).not.toHaveBeenCalled();
+      return;
+    }
     if (_what !== 'dispose') { // a new run mounts its own instrument (breath's)
       expect(t.q('.alius-stage-dial')?.dataset.instrument).toBeUndefined();
       expect(snap()).toBe(before);

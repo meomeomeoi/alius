@@ -72553,13 +72553,14 @@ function fresh5() {
 }
 G8 = fresh5();
 var after7 = (ms, fn) => G8.timers.push({ at: G8.t + ms, fn });
+var SENSE_WAIT_MS = 3e3;
 function setStep(step) {
   G8.step = step;
 }
-function sense3(text3, where = "her", cls = "") {
+function sense3(text3, where = "her", cls = "", waited = 0) {
   if (!text3) return;
   if (!innerWidth7 || !innerHeight7) {
-    after7(100, () => sense3(text3, where, cls));
+    if (waited < SENSE_WAIT_MS) after7(100, () => sense3(text3, where, cls, waited + 100));
     return;
   }
   if ([...$7("#senses").children].some((x) => !x.dataset.gone && x.textContent === text3)) return;

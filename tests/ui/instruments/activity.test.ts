@@ -16,7 +16,7 @@ import type { SceneController } from '../../../src/scene/sceneController';
 import { DEFAULT_SETTINGS, type AliusSettings } from '../../../src/settings';
 import { FakeStAdapter } from '../../../src/st/fake';
 import { h } from '../../../src/ui/dom';
-import { _activity, frameMatches, viewOf } from '../../../src/ui/scene/instruments/activity/frame';
+import { _activity, frameMatches, SENSE_WAIT_MS, viewOf } from '../../../src/ui/scene/instruments/activity/frame';
 import { instrumentFor } from '../../../src/ui/scene/instruments/host';
 import '../../../src/ui/scene/instruments';
 import type { PhysicsPanelStaging } from '../../../src/ui/scene/physicsPanel';
@@ -267,6 +267,25 @@ describe('her lines and her questions', () => {
       const overlap = a.l < b.l + 220 && a.l + 220 > b.l && a.t < b.t + 30 && a.t + 30 > b.t;
       expect(overlap, `${i} ${j}`).toBe(false);
     }
+  });
+});
+
+describe('e8 M-R5: a sensory line waits for the scene\'s size, but not for ever', () => {
+  const lines = (t: ReturnType<typeof draw>, text: string) => [...t.host.querySelectorAll<HTMLElement>('.sense')].filter((el) => el.textContent === text);
+  afterEach(() => vi.unstubAllGlobals());
+  it.each([[2000, 1], [SENSE_WAIT_MS + 600, 0]])('the size known %i ms after the line was asked for: %i line(s) placed', (knownAt, want) => {
+    vi.stubGlobal('innerWidth', 0);
+    vi.stubGlobal('innerHeight', 0);
+    const t = draw(framed());
+    t.to(2400);
+    const text = 'a line asked for before the scene has a size';
+    _activity.sense(text, 'her');
+    expect(lines(t, text)).toHaveLength(0);
+    t.to(2400 + knownAt);
+    expect(lines(t, text)).toHaveLength(0);
+    vi.unstubAllGlobals();
+    t.to(2400 + knownAt + 400);
+    expect(lines(t, text)).toHaveLength(want);
   });
 });
 

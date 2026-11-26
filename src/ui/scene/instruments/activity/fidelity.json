@@ -957,8 +957,8 @@
     },
     {
       "fn": "sense",
-      "reason": "A `[data-line]` so every line on the scene avoids it; the kit's `placeFree` on the instrument's box; the class after layout on the mount's next frame. A line asked for before the scene's size is known waits for it (review M-R1).",
-      "diff": "@@ -2,2 +2,6 @@\n if(!text)return\n+if(!innerWidth||!innerHeight){\n+after(100,()=>sense(text,where,cls))\n+return\n+}\n if([...$(\"#senses\").children].some(x=>!x.dataset.gone&&x.textContent===text))return\n@@ -7,2 +11,3 @@\n el.textContent=text\n+el.dataset.line=\"\"\n $(\"#senses\").appendChild(el)\n@@ -12,3 +17,3 @@\n el.dataset.born=String(G.t)\n-requestAnimationFrame(()=>{\n+requestAnimationFrameOnce(()=>{\n el.classList.add(\"on\")"
+      "reason": "A `[data-line]` so every line on the scene avoids it; the kit's `placeFree` on the instrument's box; the class after layout on the mount's next frame. A line asked for before the scene's size is known waits for it (review M-R1), at most `SENSE_WAIT_MS` (3 s), then it is dropped (e8 M-R5: no re-scheduling without end while the scene has no size).",
+      "diff": "@@ -1,3 +1,7 @@\n-function sense(text,where=\"her\",cls=\"\"){\n+function sense(text,where=\"her\",cls=\"\",waited=0){\n if(!text)return\n+if(!innerWidth||!innerHeight){\n+if(waited<SENSE_WAIT_MS)after(100,()=>sense(text,where,cls,waited+100))\n+return\n+}\n if([...$(\"#senses\").children].some(x=>!x.dataset.gone&&x.textContent===text))return\n@@ -7,2 +11,3 @@\n el.textContent=text\n+el.dataset.line=\"\"\n $(\"#senses\").appendChild(el)\n@@ -12,3 +17,3 @@\n el.dataset.born=String(G.t)\n-requestAnimationFrame(()=>{\n+requestAnimationFrameOnce(()=>{\n el.classList.add(\"on\")"
     },
     {
       "fn": "wBuckle",

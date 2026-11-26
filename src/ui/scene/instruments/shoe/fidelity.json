@@ -440,7 +440,7 @@
     },
     {
       "fn": "updateAttention",
-      "reason": "Wiring (README open question: her attention's busy share is her activity's attention, P15a): her attention is the engine's plan on the beat being played (`planAttention`, P15a's attention by her activity and her style), read every frame, so what is shown is what the engine's `cheatRoll` reads for a spit on that beat; between segments it stays as it was. The prototype's own re-choice every 2.5–6 s by `STYLES[].busy` is its scheduler (prototype only). Her taps while busy are ported as they are.",
+      "reason": "Wiring (README open question: her attention's busy share is her activity's attention, P15a): her attention is the engine's plan on the beat being played (`planAttention`, P15a's attention by her activity and her style), read every frame, so what is shown is the attention `physics/spit` takes for a spit made on that beat (Ruling AC: a spit is decided when it is made, with the prototype's chance by her attention, not by `cheatRoll` at the segment's end); between segments it stays as it was. The prototype's own re-choice every 2.5–6 s by `STYLES[].busy` is its scheduler (prototype only). Her taps while busy are ported as they are.",
       "diff": "@@ -4,6 +4,4 @@\n G.attT=0\n-const busyShare=S.busy===\"always\"?1:S.busy===\"never\"?0:ST().busy\n-const r=Math.random()\n-G.attention=r<busyShare?\"busy\":r<busyShare+(1-busyShare)*0.5?\"glancing\":\"watching\"\n-G.nextAtt=rand(2500,6000)\n+G.attention=planAttention()\n+G.nextAtt=0\n }"
     },
     {
@@ -450,7 +450,7 @@
     },
     {
       "fn": "finish",
-      "reason": "Ruling Q: her line after the stop word is her voice, not code: the prototype's inline 'okay. stop. come here.' is the `cardVoice` row `shoe.stop` (verbatim; cold silent, Ruling R), read through `L().stop`. In the extension the stop word ends the run at once (the host plays no end after it), so this branch is the prototype's only. The summary card is the prototype's own page (prototype only): its writes go to detached elements.",
+      "reason": "Ruling Q: her line after the stop word is her voice, not code: the prototype's inline 'okay. stop. come here.' is the `cardVoice` row `shoe.stop` (verbatim, one row for every style: the prototype's line is the same for all, cold included; Ruling R clarified), read through `L().stop`. In the extension the stop word ends the run at once (the host plays no end after it), so this branch is the prototype's only. The summary card is the prototype's own page (prototype only): its writes go to detached elements.",
       "diff": "@@ -4,6 +4,6 @@\n lickStop()\n-say(why===\"stop\"?\"okay. stop. come here.\":pick(L().end))\n+say(why===\"stop\"?pick(L().stop):pick(L().end))\n const s=G.stats\n setTimeout(()=>{\n-$(\"#sumLine\").textContent=why===\"stop\"?\"okay. stop. come here.\":L().end[0]\n+$(\"#sumLine\").textContent=why===\"stop\"?pick(L().stop):L().end[0]\n $(\"#sumFacts\").innerHTML=`${K().label} · ${S.dirt} (${D().where})<br>strokes: ${s.strokes} (with her grain ${s.withGrain}) · polish strokes: ${s.polishStrokes}<br>kisses: ${s.kisses}<br>`+`swallowed: ${s.swallows} · spat: ${s.spits} (caught ${s.caught})<br>stamps: ${s.stamps}<br>`+s.checks.map(c=>`${c.foot} ${c.surface}: dirt ${(c.dirt*100).toFixed(0)} %${c.gloss!==null?`, shine ${(c.gloss*100).toFixed(0)} %`:\"\"}${c.worst?` — ${c.kind} ${ZONE_WORDS[c.worst]}`:\"\"}`).join(\"<br>\")+`<br>how it ended: ${why}`"
     },
     {

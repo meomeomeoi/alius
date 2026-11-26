@@ -251,14 +251,17 @@ function fresh() {
 }
 G = fresh();
 const after = (ms: number, fn: () => void) => G.timers.push({ at: G.t + ms, fn });
+/** e8 M-R5: how long a sensory line waits for the scene's size before it is dropped (the line is a moment's; a late one would be stale). */
+export const SENSE_WAIT_MS = 3000;
 
 /* her presence: the engine's reader for this phase (R25: derived, never stored, never shown) */
 function setStep(step: Presence) { G.step = step; }
 
 /* ---------- what reaches the commander: sensory lines on the side of the source, sounds panned there ---------- */
-function sense(text: string, where: Any = 'her', cls = '') {
+function sense(text: string, where: Any = 'her', cls = '', waited = 0) {
   if (!text) return;
-  if (!innerWidth || !innerHeight) { after(100, () => sense(text, where, cls)); return; } // review M-R1: placed once the scene's size is known (never over its top bar)
+  // review M-R1: placed once the scene's size is known (never over its top bar); e8 M-R5: given up after SENSE_WAIT_MS with no size
+  if (!innerWidth || !innerHeight) { if (waited < SENSE_WAIT_MS) after(100, () => sense(text, where, cls, waited + 100)); return; }
   if ([...$('#senses').children].some((x) => !(x as HTMLElement).dataset.gone && x.textContent === text)) return; // the same line is still showing
   const v = V(), p = where === 'door' ? v.door : where === 'body' ? v.body : Array.isArray(where) ? where : v.her;
   const el = document.createElement('div'); el.className = 'sense ' + cls; el.textContent = text; el.dataset.line = '';
