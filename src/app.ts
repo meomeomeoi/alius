@@ -115,6 +115,7 @@ import { registerMemoryContext } from './scene/memoryContext';
 import { registerDevelopmentContext } from './scene/developmentContext';
 import { registerBlockingContext } from './scene/blockingContext';
 import { clearBlockingDirectives, refreshBlockingDirectives } from './blocking/directives';
+import { ringHeard } from './ui/scene/instruments/jaw/jaw';
 import { applyMomentDirectives, clearMomentDirectives } from './blocking/momentDirectives';
 import { applyPhysicsDirectives, clearPhysicsDirectives, refreshPhysicsDirectives } from './blocking/physicsDirectives';
 import { createStaging } from './blocking/controller';
@@ -337,7 +338,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       refreshPersonalDirectives(context, state, registries); // P9c: courting, a claim, peeled decor and a booking
       refreshSpecialDirectives(context, state, registries); // P12: a soldier who senses static around the commander
       refreshLifeDirectives(context, state, registries); // P14c: news she has for the commander (a derived `life:` directive, gone once told)
-      refreshBlockingDirectives(context, state, registries); // P15a: the limits and the point of view of the blocking (nothing while it is not live)
+      refreshBlockingDirectives(context, state, registries, { ringHeard: ringHeard(state, registries, getSettings(st)) }); // P15a: the limits and the point of view of the blocking (nothing while it is not live)
       refreshPhysicsDirectives(context, state, registries); // P15a: her rhythm, what she expects and the last stretch of a running hold
       refreshDynamicDirectives(context, state, registries); // P15: a holder in the room and a probe of hers that waits for the commander (nothing while the dynamic is off)
       refreshPracticeDirectives(context, state, registries); // P16: the tasks a holder in the room expects (nothing while nobody holds)

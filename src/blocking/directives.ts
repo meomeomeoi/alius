@@ -1,7 +1,5 @@
 import type { Registries } from '../content/types';
 import { blockingLive, COMMANDER, personEffects, type BlockingEffect } from '../engine/blocking';
-import { sceneSettingsOf } from '../engine/moments/settings';
-import { jawSourceOf } from '../engine/physics/segment';
 import type { CampaignState } from '../engine/state/types';
 import type { ContextBuilder } from '../llm/context';
 
@@ -32,16 +30,11 @@ const MOVEMENT: Record<string, string> = {
 };
 
 /**
- * P10e-e (review M5): while a ring holds the mouth open in a real-time jaw, the jaw instrument sends the commander's line as it came out of the
- * mouth (`speech.ts`) and she understands what came out clearly (jaw.html's fair listening): the garbled limit says so, instead of "cannot be
- * understood". Worded to stay true when the card plays the jaw (the line then goes out as typed).
+ * P10e-e (review M5, re-review m3): while the jaw instrument is drawn for a ring held in the mouth, the commander's line goes out as it came out
+ * of the mouth (`speech.ts`) and she understands what came out clearly (jaw.html's fair listening): the garbled limit says so. Only then: when
+ * the card plays the jaw (the line goes out as typed), the item's own "cannot be understood" stands. The caller says whether it is drawn.
  */
 export const THROUGH_THE_RING = 'speaks through a ring that holds the mouth open: what comes out clearly can be understood, the rest comes out garbled';
-function ringSpeech(state: CampaignState, reg: Registries): boolean {
-  const run = state.scene?.physics;
-  return run !== undefined && sceneSettingsOf(state).physicsRealtime === true && reg.contactPhysics.get(run.physicsId)?.interaction === 'gesture'
-    && run.sourceKind === 'item' && jawSourceOf(run, reg) === 'ring_gag';
-}
 
 /** What one person is limited to, as the words of a sentence (empty when nothing limits her). */
 function limitWords(effects: BlockingEffect[], ring = false): string[] {
@@ -54,10 +47,10 @@ function limitWords(effects: BlockingEffect[], ring = false): string[] {
 }
 
 /** The `blocking:scene` sentences of the open scene, in participant order, then the commander. */
-export function limitSentences(state: CampaignState, reg: Registries): string[] {
+export function limitSentences(state: CampaignState, reg: Registries, ringHeard = false): string[] {
   const out: string[] = [];
   for (const id of [...(state.scene?.participants ?? []), COMMANDER]) {
-    const words = limitWords(personEffects(state, reg, id), id === COMMANDER && ringSpeech(state, reg));
+    const words = limitWords(personEffects(state, reg, id), id === COMMANDER && ringHeard);
     if (words.length === 0) continue;
     const name = id === COMMANDER ? 'The commander' : state.squad.find((u) => u.id === id)?.displayName ?? id;
     out.push(`${name} ${words.length === 1 ? words[0] : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`}.`);
@@ -68,9 +61,9 @@ export function limitSentences(state: CampaignState, reg: Registries): string[] 
 export const POV_TEXT = 'Narrate only what the commander can hear, feel and smell; do not describe how anyone looks.';
 
 /** Sets or clears the derived directives for the open scene (call with every context refresh). */
-export function refreshBlockingDirectives(builder: ContextBuilder, state: CampaignState | null, reg: Registries): void {
+export function refreshBlockingDirectives(builder: ContextBuilder, state: CampaignState | null, reg: Registries, opts: { ringHeard?: boolean } = {}): void {
   const live = state !== null && blockingLive(state, reg);
-  const sentences = live ? limitSentences(state, reg) : [];
+  const sentences = live ? limitSentences(state, reg, opts.ringHeard === true) : [];
   if (sentences.length > 0) builder.setDirective({ id: `${BLOCKING_PREFIX}scene`, text: sentences.join(' '), expiresAfter: 'manual' });
   else builder.clearDirective(`${BLOCKING_PREFIX}scene`);
   const commander = live ? personEffects(state, reg, COMMANDER) : [];

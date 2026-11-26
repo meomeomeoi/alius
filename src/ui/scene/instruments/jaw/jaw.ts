@@ -30,7 +30,8 @@ import { leadStyle, physicsStyleOf } from '../../../../engine/physics/style';
 import type { CampaignState } from '../../../../engine/state/types';
 import { TUNING } from '../../../../engine/tuning';
 import { voiceLines, type VoiceKind } from '../../cards/voice';
-import { registerInstrument } from '../host';
+import { instrumentFor, registerInstrument } from '../host';
+import type { AliusSettings } from '../../../../settings';
 import { nullContext } from '../kit/lowres';
 import { clamp, lerp, smooth } from '../kit/math';
 import { claimStyles, noteWrites, releaseClaim, writeClaimed, type StyleClaim } from '../styleClaims';
@@ -605,11 +606,16 @@ function reportBeat(beat: number, played: boolean): void {
   report({ beat, kind: 'bite', amount: Math.round(amount * 1000) / 1000 }, true);
 }
 /**
+ * Re-review m1: a rest asked this close to the segment's end is not taken (its answer, 500 ms later, would come after the engine closed the
+ * segment: the flush's 300 ms and her answer's 500 ms); it is dropped with the same cue as a second rest.
+ */
+export const REST_LATE = 300 + 500;
+/**
  * Ruling V: a rest reaches the engine once a segment (it reads the first). Another asked in the same segment, or between segments, is not
  * taken: it is dropped at once, never asked later unbidden, and the rest ring says so (it flashes `dropped`); she says nothing.
  */
 function restWaits(): boolean {
-  if (!R.running || !R.seg || R.restSeg === R.seg.n) {
+  if (!R.running || !R.seg || R.restSeg === R.seg.n || G.t - R.seg.clock0 >= R.seg.endMs - REST_LATE) {
     G.restAsked = true;
     const ring = E?.els['#restRing'];
     if (ring) { ring.classList.add('dropped'); setTimeout(() => ring.classList.remove('dropped'), 700); }
@@ -940,6 +946,16 @@ export function jawMatches(run: PhysicsRun, _state: CampaignState, reg: Registri
 }
 
 registerInstrument({ id: 'jaw', matches: jawMatches, start: startJaw });
+
+/**
+ * Review M5 (re-review m3): whether the commander's line goes out through the ring as it came out of the mouth: the jaw instrument is drawn for
+ * a ring held in the mouth (`instrumentFor`: real time in the settings and the campaign, the gesture on, this instrument matching). The scene
+ * directive then says that clear speech is understood; otherwise (the card plays the jaw: the line goes out as typed) the ring's own limit.
+ */
+export function ringHeard(state: CampaignState, reg: Registries, settings: AliusSettings): boolean {
+  const run = state.scene?.physics;
+  return run !== undefined && jawSourceOf(run, reg) === 'ring_gag' && instrumentFor(run, state, reg, settings)?.id === 'jaw';
+}
 
 /** Tests and the shots only: the prototype's state and hooks (its `window.__G`, `__S`, `__begin`, `__speak`). */
 export const _jaw = {

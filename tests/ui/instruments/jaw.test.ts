@@ -21,7 +21,7 @@ import { limitSentences, THROUGH_THE_RING } from '../../../src/blocking/directiv
 import { FakeStAdapter } from '../../../src/st/fake';
 import { h } from '../../../src/ui/dom';
 import { instrumentFor } from '../../../src/ui/scene/instruments/host';
-import { _jaw, jawContactOf, jawMatches, RELAXED, WIDE_MAX } from '../../../src/ui/scene/instruments/jaw/jaw';
+import { _jaw, jawContactOf, jawMatches, RELAXED, ringHeard, WIDE_MAX } from '../../../src/ui/scene/instruments/jaw/jaw';
 import { speakWord } from '../../../src/ui/scene/instruments/jaw/speech';
 import type { PhysicsPanelStaging } from '../../../src/ui/scene/physicsPanel';
 import { renderSceneScreen } from '../../../src/ui/scene/sceneScreen';
@@ -418,13 +418,36 @@ describe('the jaw instrument on the scene', () => {
     expect(t.q('.alius-jaw-mirror')!.textContent).toHaveLength(1);
   });
 
-  it('M5: with the ring in a real-time jaw the scene directive says what comes out clearly is understood (her fair listening), not "cannot be understood"', () => {
+  it('M5: the scene directive says clear speech through the ring is understood only while the jaw instrument is drawn; the card keeps "cannot be understood"', () => {
     const s = hold('ring');
-    const text = limitSentences(s, reg).join(' ');
-    expect(text).toContain(THROUGH_THE_RING);
-    expect(text).not.toContain('cannot be understood');
-    s.settings.physicsRealtime = false; // turn-based: the item's own limit
-    expect(limitSentences(s, reg).join(' ')).toContain('cannot be understood');
+    // drawn: the line goes out as it came out of the mouth
+    expect(ringHeard(s, reg, DEFAULT_SETTINGS)).toBe(true);
+    const drawn = limitSentences(s, reg, ringHeard(s, reg, DEFAULT_SETTINGS)).join(' ');
+    expect(drawn).toContain(THROUGH_THE_RING);
+    expect(drawn).not.toContain('cannot be understood');
+    // the card plays the jaw (the gesture switched off; real time off in the settings; or in the campaign): the line goes out as typed
+    for (const settings of [{ ...DEFAULT_SETTINGS, physicsInteractions: { ...DEFAULT_SETTINGS.physicsInteractions, gesture: false } }, { ...DEFAULT_SETTINGS, physicsRealtime: false }] as AliusSettings[]) {
+      expect(ringHeard(s, reg, settings)).toBe(false);
+      const card = limitSentences(s, reg, ringHeard(s, reg, settings)).join(' ');
+      expect(card).toContain('cannot be understood');
+      expect(card).not.toContain(THROUGH_THE_RING);
+    }
+    s.settings.physicsRealtime = false;
+    expect(ringHeard(s, reg, DEFAULT_SETTINGS)).toBe(false);
+    // her toes: no ring, no such limit
+    expect(ringHeard(hold(), reg, DEFAULT_SETTINGS)).toBe(false);
+  });
+
+  it('re-review m1: a rest asked in the segment\'s last 800 ms is dropped with the cue, never granted after the engine closed the segment', () => {
+    const t = draw(hold());
+    t.to(30_000 - 700);
+    t.pointer('pointerdown', undefined, 2);
+    t.to(30_000 - 100);
+    expect(t.q('.alius-jaw-rest')!.classList.contains('dropped')).toBe(true);
+    expect(reports(t).filter((i) => i.kind === 'ask_rest')).toHaveLength(0);
+    t.pointer('pointerup', document, 2);
+    t.to(30_000 + 600);
+    expect(_jaw.G.stats.restsGranted).toBe(0);
   });
 
   it('without the jaw the scene sends the line as it was typed', () => {
