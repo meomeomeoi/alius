@@ -1268,6 +1268,10 @@ Also settled: `scene.shoeDone { runId, holderId }` is written only when a shoe r
   - M8: the floor's segment clock starts again with the puddle (`staging.restart`, a new optional staging method; the controller resets `startedAt`), so the engine's check comes at the prototype's 40 s of cleaning.
   - **For the author (added):** M3: after a tap that releases her (a `signal` holder, a `limit` holder's second) her flow's end still says her `done` line ("all of it. good."), which reads as if she finished; gulp.html has no tap release and no `released` kind (a `gulp.released` row, or silence). M9: TDD order (as above). Still listed above: no swallow or breath while typing, `volumeMs` fixed at 35 s.
 
+**Chunk e11 closed (2026-11-26).** Tasks 29–30 by one implementer, one review of the chunk, one fix round, re-review clean. No new ruling; Rulings U, AC and AD applied. Where the prototype beat the plan: the cleaning starts after her flow ends (`endFlow`), only when more than 0.15 was spilled and her style checks by cleaning (otherwise the hold is released, affectionate wipes it herself), not at the segment's end (R32); her wander is the prototype's continuous curve.
+
+Also settled: a gulp segment the instrument reported sets no `warning` from the engine's mouth (no "close to the limit", no `physics_warning`); the card's real-time gulp keeps its beats and cues (the cut at her volume and the `surge` cue apply only once `run.gulp` exists); a spill counts once per overflow or cough (`part` `overflow` / `cough` / `more`, no new field), the digest gives the amount in mouthfuls; the floor's 40 s count from the puddle (`staging.restart()`). For the author (e12): her done line after a tap release (no `gulp.released` row in the prototype), no swallow or breath while the field has focus (the mouth overflows while a line is typed), `volumeMs` fixed at 35 s for every holder, the TDD order, the "new run" unmount test does not assert silence afterwards.
+
 ---
 
 ## Chunk e12: closing
