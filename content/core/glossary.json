@@ -3705,6 +3705,17 @@
     ]
   },
   {
+    "id": "stage_preview",
+    "term": "Check",
+    "short": "Tries the slot in its own mini-game, with the picture, the fit and the zones as they are now, saved or not.",
+    "long": "The mini-game runs on a demo scene made for it, with her sprite as the holder. Nothing in it is saved, reaches the open campaign or its chat, or calls the model; closing it, Esc or a chat switch drop it.",
+    "see": [
+      "stage_setup",
+      "stage_fit",
+      "instrument"
+    ]
+  },
+  {
     "id": "stage_zones",
     "term": "Zones",
     "short": "The parts of her foot or footwear a mini-game tells apart, marked on the picture with the mini-game's own marker.",

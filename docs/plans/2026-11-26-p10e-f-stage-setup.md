@@ -293,7 +293,7 @@ Everything is saved as files in her own expressions folder.
     - an `ArtSlots` built from the draft (the unsaved fit and zones);
     - a dispatch that runs the engine on the sandbox's own clone and never calls the app's dispatch, save or model.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - CHECK on `over` opens the weight instrument with the draft's picture;
   - the open campaign's state is deep-equal before and after;
   - `st.saveMetadata`, `generateMain` and `generateWithProfile` are never called;
@@ -301,10 +301,16 @@ Everything is saved as files in her own expressions folder.
   - a chat switch closes it at once;
   - every slot key in `SLOT_INFO` has a `demoStateFor` that is not null;
   - the layout test's fixtures still build from `demo.ts` (`npm run test:layout` unchanged).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** **If the scene screen cannot run against a sandbox** (a singleton it reaches, an app hook it needs), **stop and report** with what blocks it; do not fork the scene screen.
-- [ ] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS.
-- [ ] **Step 5: Commit** `feat(P10e-f): check a slot in its mini-game`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** **If the scene screen cannot run against a sandbox** (a singleton it reaches, an app hook it needs), **stop and report** with what blocks it; do not fork the scene screen.
+- [x] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS.
+- [x] **Step 5: Commit** `feat(P10e-f): check a slot in its mini-game`
+
+**As built (f4):**
+- `demoStateFor(instrument, unit, reg, key?)`: the optional `key` picks the view inside one instrument (the frame plays her legs seated, her feet on the floor for `feet_floor` with the commander `at_her_feet`, the throne for `legs_astride*`, the service for `sole_close`; the shoe her heels for a `.heels` key; the weight its face-up view, `boot_on_chest`, where `over` is drawn). The holder is the first of a wizard-built squad, so her id follows the wizard's rule; she is found by her card (`unit.id` is not used). The builders are exported (`demoSlap`, `demoBreath`, `demoWeight`, `demoScent`, `demoJaw`, `demoActivity`, `demoThrone`, `demoService`, `demoShoe`, `demoGulp`); `tests/layout/mkstate.ts` builds its instrument fixtures from them (the states are byte-identical to before). While a demo is built, a frame reader registered at the first build answers `play` (the demo has no dynamic of its own); it answers null at any other time.
+- `openPreview(unitId, key, draft, ctx)` (and `closePreview()`): the real `renderSceneScreen` in `.alius-stage-preview` (z 3), its own `createStaging` on the sandbox's clone with an envelope that never calls a model (every site runs its fallback) and a 250 ms clock, a `FakeStAdapter` that asks the app's adapter only for her sprite, sprite list and avatar URLs. `StageCtx` / `StageDeps` gained optional `assetUrl` and `samples` (the app passes both).
+- A partner file she does not have yet (a shoe's close-up or sole, the other file of `legs_astride` as a pair) is stood in for by the draft, said in the preview's head: otherwise the shoe would play its card and the pair its silhouettes.
+
 
 ## Chunk f5: closing
 

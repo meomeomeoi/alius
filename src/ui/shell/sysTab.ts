@@ -582,6 +582,7 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     art: ctx.stage?.art ?? (() => noArt), folders: ctx.stage?.folders ?? (() => new Map()), refresh: ctx.stage?.refresh ?? (async () => {}),
     settings: () => getSettings(st), setSetting: (patch) => { apply(patch); },
     toast: ctx.toast, modal: ctx.modal,
+    ...(ctx.stage?.assetUrl ? { assetUrl: ctx.stage.assetUrl } : {}), ...(ctx.stage?.samples ? { samples: ctx.stage.samples } : {}),
     openSheet: (unitId) => { openStageSheet(unitId, stageCtx); },
   };
   renderStageSection(stageHost, stageCtx);

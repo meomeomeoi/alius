@@ -6476,7 +6476,8 @@
 
 /*
  * P10e-f: SYS › STAGE (her list and the list of every slot) and her page (a full-screen sheet over the shell). Every z-index stays
- * below the analysis panel's 10 (the sheet is 2: above the scene's device, below the shell's modals at 3). No url().
+ * below the analysis panel's 10 (the sheet is 2: above the scene's device, below the shell's modals at 3; the preview of a slot is 3, over
+ * the sheet). No url().
  */
 #alius-shell .alius-stage-list {
   list-style: none;
@@ -6713,6 +6714,41 @@
   color: var(--alius-fg);
   font: 12px var(--alius-font);
   pointer-events: none;
+}
+
+/* CHECK: the slot's mini-game in a sandbox over the shell (z 3: above her page at 2; a modal opened later still lands above it) */
+#alius-shell .alius-stage-preview {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  background: var(--alius-bg);
+  color: var(--alius-fg);
+  border: 2px double var(--alius-fg);
+  box-sizing: border-box;
+  outline: none;
+}
+
+#alius-shell .alius-stage-preview-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 6px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--alius-fg) 30%, transparent);
+}
+
+#alius-shell .alius-stage-preview-title { flex: 1; }
+
+#alius-shell .alius-stage-preview-view {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
 }
 
 /* Personal pressure (P9c): the DEVICE block of a dossier, the SCHEDULE of bookings, the EDITED BY chip, the courtship chips and the claim card.

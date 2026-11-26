@@ -6,12 +6,13 @@ import { panelOf } from './fit';
 import type { Lookup } from './fit/panel';
 import type { StageCtx } from './section';
 import { SLOT_INFO, SLOT_STATE_WORD, slotState, visibleSlotKeys, type SlotKey } from './slots';
+import { openPreview } from './preview';
 import { markZones, stopMarking } from './zones';
 
 /**
  * P10e-f: her slots on her page. The list of her slot keys with their state, and the editor of one slot: LOAD (an image file, kept as a
- * draft until SAVE), the fit (the slot's prototype panel, ported: `fit/`), the zones (the prototypes' marker, `zones.ts`), SAVE (the picture, then its sidecar `<key>.fit.json`) and
- * REMOVE. Setup data about a card, outside any campaign: nothing here dispatches, saves a campaign or draws an rng.
+ * draft until SAVE), the fit (the slot's prototype panel, ported: `fit/`), the zones (the prototypes' marker, `zones.ts`), SAVE (the picture, then its sidecar `<key>.fit.json`),
+ * CHECK (the draft tried in its mini-game: `preview.ts`) and REMOVE. Setup data about a card, outside any campaign: nothing here dispatches, saves a campaign or draws an rng.
  */
 
 /** A slot being edited: the picture chosen (not uploaded yet), the URL drawn (the chosen file's or her folder's) and the sidecar. */
@@ -84,7 +85,7 @@ let openEditor: OpenEditor | null = null;
 
 /**
  * Draws the editor of slot `key` of her into `host` (replacing what is there). The draft is edited in place; nothing is uploaded until
- * SAVE. Task 8's CHECK button goes into `.alius-stage-slot-actions`, beside SAVE.
+ * SAVE. CHECK (beside SAVE, in `.alius-stage-slot-actions`) opens the preview with the draft as it is.
  */
 export function openSlotEditor(host: HTMLElement, unitId: string, key: SlotKey, ctx: StageCtx & SlotEditorHooks): void {
   openEditor?.drop();
@@ -152,13 +153,21 @@ export function openSlotEditor(host: HTMLElement, unitId: string, key: SlotKey, 
     if (canvas === null || draft.url === null) return;
     markZones(canvas, img, key, draft.sidecar, (zones) => { draft.sidecar = { ...draft.sidecar, zones }; edited(); });
   });
-  const actions = h('div', { class: 'alius-stage-slot-actions' }, zonesBtn, saveBtn, removeBtn, closeBtn, status);
+  // CHECK: the slot tried in its mini-game on a demo state, with the draft as it is now (nothing saved first; `preview.ts`)
+  const checkBtn = h('button', { type: 'button', class: 'alius-btn alius-option', 'data-action': 'check', ...analyzeNative('glossary:stage_preview') }, '[ CHECK ]') as HTMLButtonElement;
+  checkBtn.addEventListener('click', () => {
+    if (draft.url === null || !stillHere()) return;
+    stopMarking();
+    openPreview(unitId, key, draft, ctx);
+  });
+  const actions = h('div', { class: 'alius-stage-slot-actions' }, zonesBtn, saveBtn, checkBtn, removeBtn, closeBtn, status);
 
   const dirty = (): boolean => draft.file !== undefined || JSON.stringify(draft.sidecar) !== saved;
   const inFolder = (): boolean => avatar !== null && ctx.folders().get(avatar)?.slots.has(key) === true;
   const mark = (): void => {
     saveBtn.disabled = !dirty() || avatar === null;
     if (zonesBtn) zonesBtn.disabled = draft.url === null;
+    checkBtn.disabled = draft.url === null;
     removeBtn.disabled = !inFolder();
     status.textContent = dirty() ? 'unsaved' : '';
   };

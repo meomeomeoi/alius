@@ -19,13 +19,12 @@ import { writeFileSync } from 'node:fs';
 import { COMMANDER, registerFrameReader, setBlocking } from '../../src/engine/blocking';
 import { blankDynamic, newDynamicCampaign } from '../../src/engine/dynamic/state';
 import { fireMoment } from '../../src/engine/moments/fire';
-import { flowOf } from '../../src/engine/physics/gulp';
-import { GULP_STYLES } from '../../src/engine/tuning';
 import { blankPractices } from '../../src/engine/practice/state';
 import type { CampaignState } from '../../src/engine/state/types';
 import { enable } from '../helpers/bonds';
 import { campaign, loadCore, run, setRelation } from '../helpers/loyalty';
 import { ANN, holderBond, unitOf, withService, world } from '../engine/practice/world';
+import { demoActivity, demoBreath, demoGulp, demoJaw, demoScent, demoService, demoShoe, demoSlap, demoThrone, demoWeight } from '../../src/ui/stage/demo';
 import '../../src/engine/actions/blocking';
 import '../../src/engine/actions/physics';
 
@@ -111,222 +110,43 @@ callhold.scene!.physics.segment = { n: 1, state: 'running', plan: { beats: [{ cu
 out.callhold = callhold;
 
 /**
- * P10e-e Task 12: Ann (possessive: a 450 ms swing) slaps the commander in the commander's quarters (`slap`, the shots: the entry holds it back
- * with `&deferSlap=1`); `slaphold`: the same with a hold running, so the stop word's pill is there and must stay clickable through the slap.
+ * The instrument fixtures (P10e-e Tasks 12–30) come from the stage preview's demo states (`src/ui/stage/demo.ts`: one copy), with Ann as
+ * the holder. `slap` / `slaphold`: her slap (possessive: a 450 ms swing; the entry holds it back with `&deferSlap=1`), `slaphold` with a hold
+ * running, so the stop word's pill must stay clickable through the slap. `breath` / `breathhold`: she sits on the commander's face, her
+ * openings every second beat (the shots clear them with `&quiet=1`). `weight` (human_chair) / `weightfoot` (footrest) / `weightup`
+ * (boot_on_chest) / `weighthold`: her weight, a shift every fourth beat. `scent` / `scenthold`: her feet on the commander's face.
+ * `jaw` (her toes) / `jawring` / `jawhold` (the ring). `activity` / `activityhold`: her frame, the commander under her desk. `throne` /
+ * `thronehold`: the throne. `service` / `servicehold`: foot service in her frame. `shoe` / `shoeheels` / `shoehold`: shoe service (the page
+ * gives her two pictures). `gulp` / `gulphold`: gulp. Each `…hold`: the stop word's pill (and the input) must stay clickable and end the hold.
  */
-function slapping(): CampaignState {
-  const base = withService(world(reg, 'role'));
-  unitOf(base, ANN).bond!.practice!.style = { primary: 'possessive' };
-  setRelation(base, ANN, { stateId: 'confidant' });
-  enable(base, 'pet_play', 'restraint', 'physical_discipline_shown', 'humiliation');
-  const r = run(base, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
-  const d = r.state;
-  d.settings.physicsRealtime = true; // the campaign's mirror of real time (the instruments need it; the slap reads only reduced motion and the timing toggle)
-  d.practices = { ...(d.practices ?? blankPractices()), seq: 2, slap: { id: 'ps1', holderId: ANN, sceneId: d.scene!.id, windowMs: 450, feints: 0 } };
-  return d;
-}
-out.slap = slapping();
-const slaphold = slapping();
+const HER = { id: ANN, cardRef: 'ann.png', displayName: 'Ann' };
+const slaphold = demoSlap(reg, HER);
 setBlocking(slaphold, { registries: reg }, { person: COMMANDER, field: 'worn', value: 'ring_gag' }, { at: 1, source: 'engine' });
 if (!slaphold.scene!.physics) throw new Error('slaphold: no hold runs');
 slaphold.scene!.physics.segment = { n: 1, state: 'running', plan: { beats: [{ cue: 'warning', attention: 'watching' }, { attention: 'watching' }, { attention: 'watching' }, { attention: 'watching' }] } };
+out.slap = demoSlap(reg, HER);
 out.slaphold = slaphold;
-
-/**
- * P10e-e Task 14: Ann sits on the commander's face (`under_her_seat`: breath, her silhouette from below, and her own activity) in the commander's quarters,
- * real time mirrored, the first segment running with her openings every second beat (`breathhold`: the stop word's pill must stay clickable
- * and end the hold mid-breath; `breath`: the shots, whose page clears the plan's openings with `&quiet=1` and drives the windows itself).
- */
-function breathing(): CampaignState {
-  const s = campaign(reg, 4);
-  setRelation(s, ANN, { stateId: 'confidant' });
-  enable(s, 'objectification', 'restraint');
-  s.settings.physicsRealtime = true; // the campaign's mirror of real time (the instrument needs it)
-  const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
-  const d = r.state;
-  setBlocking(d, { registries: reg }, { person: ANN, field: 'contact', value: 'under_her_seat', with: COMMANDER }, { at: 1, source: 'engine' });
-  if (!d.scene!.physics) throw new Error('breath: no hold runs');
-  d.scene!.physics.segment = {
-    n: 1, state: 'running',
-    plan: { beats: Array.from({ length: 14 }, (_, i) => (i % 2 === 1 ? { attention: 'watching' as const, cue: 'window_open' as const, opening: { widthMs: 600 } } : { attention: 'watching' as const })) },
-  };
-  return d;
-}
-out.breath = breathing();
-out.breathhold = breathing();
-
-/**
- * P10e-e Task 16: Ann rests her weight on the commander in the commander's quarters, real time mirrored, the first segment running with a shift
- * every fourth beat: `weight` (human_chair: face down, her legs), `weightfoot` (footrest: face down, out of view), `weightup` (boot_on_chest:
- * face up, her sprite from below) for the shots, whose page clears the plan's shifts with `&quiet=1` and drives them itself; `weighthold`
- * (human_chair): the stop word's pill must stay clickable and end the hold mid-weight.
- */
-function weighting(contact: string): CampaignState {
-  const s = campaign(reg, 4);
-  setRelation(s, ANN, { stateId: 'confidant' });
-  enable(s, 'objectification', 'restraint', 'humiliation', 'pain_rough');
-  s.settings.physicsRealtime = true; // the campaign's mirror of real time (the instrument needs it)
-  const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
-  const d = r.state;
-  setBlocking(d, { registries: reg }, { person: ANN, field: 'contact', value: contact, with: COMMANDER }, { at: 1, source: 'engine' });
-  if (d.scene!.physics?.physicsId !== 'weight') throw new Error(`weight (${contact}): no weight runs`);
-  d.scene!.physics.segment = {
-    n: 1, state: 'running',
-    plan: { beats: Array.from({ length: 20 }, (_, i) => (i % 4 === 3 ? { attention: 'busy' as const, cue: 'shift' as const, shift: 20 } : { attention: 'busy' as const })) },
-  };
-  return d;
-}
-out.weight = weighting('human_chair');
-out.weightfoot = weighting('footrest');
-out.weightup = weighting('boot_on_chest');
-out.weighthold = weighting('human_chair');
-
-/**
- * P10e-e Task 18: Ann's feet on the commander's face (`feet_on_face`: saturation, the gap between her soles, with her own activity) in the
- * commander's quarters, real time mirrored, the first segment running, her attention busy: `scent` for the shots (whose page drives her
- * orders and her question itself, `&quiet=1` holding the prototype's own schedule off), `scenthold`: the stop word's pill must stay clickable
- * and end the hold mid-breath, her question's pills up.
- */
-function scenting(): CampaignState {
-  const s = campaign(reg, 4);
-  setRelation(s, ANN, { stateId: 'confidant' });
-  enable(s, 'objectification', 'restraint', 'humiliation', 'worship', 'bodily_fluids'); // her sweat (the prototype's default scent) may reach the commander
-  s.settings.physicsRealtime = true; // the campaign's mirror of real time (the instrument needs it)
-  const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
-  const d = r.state;
-  setBlocking(d, { registries: reg }, { person: ANN, field: 'contact', value: 'feet_on_face', with: COMMANDER }, { at: 1, source: 'engine' });
-  if (d.scene!.physics?.physicsId !== 'saturation') throw new Error('scent: no saturation runs');
-  d.scene!.physics.segment = { n: 1, state: 'running', plan: { beats: Array.from({ length: 20 }, () => ({ attention: 'busy' as const })) } };
-  return d;
-}
-out.scent = scenting();
-out.scenthold = scenting();
-
-/**
- * P10e-e Task 20: the jaw in the commander's quarters, real time mirrored, the first segment running (her attention on the commander): `jaw`
- * (Ann's toes in the commander's mouth, `sole_to_mouth`) and `jawring` (the commander ring-gagged before her) for the shots, whose page drives
- * her moves itself (`&quiet=1` clears the plan's); `jawhold` (the ring): the stop word's pill must stay clickable and end the hold, her band
- * up and the field speaking through the ring.
- */
-function jawing(source: 'toes' | 'ring'): CampaignState {
-  const s = campaign(reg, 4);
-  setRelation(s, ANN, { stateId: 'confidant' });
-  enable(s, 'objectification', 'restraint', 'humiliation', 'worship', 'service');
-  s.settings.physicsRealtime = true; // the campaign's mirror of real time (the instrument needs it)
-  const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
-  const d = r.state;
-  if (source === 'toes') setBlocking(d, { registries: reg }, { person: ANN, field: 'contact', value: 'sole_to_mouth', with: COMMANDER }, { at: 1, source: 'engine' });
-  else setBlocking(d, { registries: reg }, { person: COMMANDER, field: 'worn', value: 'ring_gag' }, { at: 1, source: 'engine' });
-  if (d.scene!.physics?.physicsId !== 'jaw') throw new Error(`jaw (${source}): no jaw runs`);
-  d.scene!.physics.segment = { n: 1, state: 'running', plan: { beats: Array.from({ length: 20 }, () => ({ attention: 'watching' as const })) } };
-  return d;
-}
-out.jaw = jawing('toes');
-out.jawring = jawing('ring');
-out.jawhold = jawing('ring');
-
-/**
- * P10e-e Task 24: her frame in the commander's quarters, real time mirrored: Ann reading reports, the commander placed under her desk (her
- * anchor, set in the fiction), the first segment running. `activity` for the shots; `activityhold`: the stop word's pill must stay clickable
- * and end the hold, the forgotten end included.
- */
-function framing(): CampaignState {
-  const s = campaign(reg, 4);
-  setRelation(s, ANN, { stateId: 'confidant' });
-  enable(s, 'objectification', 'worship', 'service');
-  s.settings.physicsRealtime = true;
-  s.slot = 'evening'; // the prototype's evening (18:00): the base by the hour, the lamp
-  const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
-  const d = r.state;
-  setBlocking(d, { registries: reg }, { person: ANN, field: 'activity', value: 'reading_reports' }, { at: 1, source: 'engine' });
-  setBlocking(d, { registries: reg }, { person: COMMANDER, field: 'anchor', value: 'under_desk' }, { at: 1, source: 'engine' });
-  if (d.scene!.physics?.sourceKind !== 'activity') throw new Error('activity: no frame runs');
-  d.scene!.physics.segment = { n: 1, state: 'running', plan: { beats: Array.from({ length: 20 }, () => ({ attention: 'busy' as const })) } };
-  return d;
-}
-out.activity = framing();
-out.activityhold = framing();
-
-/**
- * P10e-e Task 24b: the throne: Ann holding an audience, sitting on the commander's back (`human_chair`: the weight inside her frame). `throne`
- * for the shots; `thronehold`: the stop word's pill must stay clickable and end the hold, with her mug on the commander's back.
- */
-function throning(): CampaignState {
-  const s = campaign(reg, 4);
-  setRelation(s, ANN, { stateId: 'confidant' });
-  enable(s, 'objectification', 'worship', 'service', 'humiliation', 'restraint');
-  s.settings.physicsRealtime = true;
-  s.slot = 'evening';
-  const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
-  const d = r.state;
-  setBlocking(d, { registries: reg }, { person: ANN, field: 'activity', value: 'reading_reports' }, { at: 1, source: 'engine' });
-  setBlocking(d, { registries: reg }, { person: ANN, field: 'contact', value: 'human_chair', with: COMMANDER }, { at: 1, source: 'engine' });
-  if (d.scene!.physics?.second?.physicsId !== 'weight') throw new Error('throne: no weight inside her frame');
-  d.scene!.physics.segment = { n: 1, state: 'running', plan: { beats: Array.from({ length: 20 }, () => ({ attention: 'busy' as const })) } };
-  return d;
-}
-out.throne = throning();
-out.thronehold = throning();
-
-/**
- * P10e-e Task 26: foot service under her desk: the `activity` frame with Ann's practices live (she holds at `play`, practises service and
- * worship), so the frame plays the service. `service` for the shots; `servicehold`: the stop word's pill must stay clickable over the close-up
- * and end the hold, the close-up gone with it.
- */
-function servicing(): CampaignState {
-  const d = framing();
-  unitOf(d, ANN).bond = { leadStyle: 'dominant', attachment: 'steady', desire: 'low', caretaker: false, ownLimits: { categories: [] }, publicity: 'known',
-    practice: { categories: { service: { as: 'enjoys', witness: 'indifferent' }, worship: { as: 'enjoys', witness: 'indifferent' } }, style: { primary: 'cold' }, audience: 'indifferent', inclination: 'curious', fairness: 'fair', hintStyle: 'offers', drive: 'moderate' } } as never;
-  d.dynamic = newDynamicCampaign(7, { holders: 'any', pace: 'normal', frequency: 'normal', units: {} });
-  d.relations[ANN]!.dynamic = { ...blankDynamic(1), frame: 'play', hold: 40 };
-  return d;
-}
-out.service = servicing();
-out.servicehold = servicing();
-
-/**
- * P10e-e Task 28: shoe service: Ann's boots in the commander's quarters (`boot_worship`: tongue work on her footwear), real time mirrored, the
- * first segment running, her attention busy (her taps heard). The page gives her two pictures (the layout fixture's sprite stands for the
- * author's art, never committed). `shoe` for the shots; `shoehold`: the stop word's pill and the input must stay clickable over the
- * instrument and the pill ends the hold.
- */
-function shoeing(): CampaignState {
-  const s = campaign(reg, 4);
-  setRelation(s, ANN, { stateId: 'confidant' });
-  enable(s, 'objectification', 'worship', 'service', 'humiliation');
-  s.settings.physicsRealtime = true;
-  const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
-  const d = r.state;
-  setBlocking(d, { registries: reg }, { person: ANN, field: 'contact', value: 'boot_worship', with: COMMANDER }, { at: 1, source: 'engine' });
-  if (d.scene!.physics?.physicsId !== 'tongue_work') throw new Error('shoe: no tongue work runs');
-  d.scene!.physics.segment = { n: 1, state: 'running', plan: { beats: Array.from({ length: 27 }, () => ({ attention: 'busy' as const })) } };
-  return d;
-}
-out.shoe = shoeing();
-out.shoehold = shoeing();
-const heels = shoeing();
-unitOf(heels, ANN).likes = [...unitOf(heels, ANN).likes, 'high heels'];
-out.shoeheels = heels;
-
-/**
- * P10e-e Task 30: gulp: Ann stands over the commander in the commander's quarters, real time mirrored, the first segment running with her
- * planned flow (neutral's row, by hash: R32). No contact starts gulp (A3): the run is written as `physics/start` and the chain would leave it.
- * `gulp` for the shots; `gulphold`: the stop word's pill and the input must stay clickable over the instrument and the pill ends the hold.
- */
-function gulping(): CampaignState {
-  const s = campaign(reg, 4);
-  setRelation(s, ANN, { stateId: 'confidant' });
-  enable(s, 'bodily_fluids', 'watersports');
-  s.settings.physicsRealtime = true;
-  const d = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } }).state;
-  const flow = flowOf(d.life?.salt ?? 0, 'p1', GULP_STYLES.neutral!, 14);
-  d.scene!.physics = {
-    id: 'p1', physicsId: 'gulp', sourceKind: 'contact', sourceId: 'kneeling_between_legs', holderId: ANN, gauge: 0, capacity: 100,
-    segment: { n: 1, state: 'running', plan: { beats: flow.map((f) => ({ attention: 'watching' as const, flow: f })) } }, startedExchange: 0, taps: 0, streak: 0, extend: 0,
-  };
-  return d;
-}
-out.gulp = gulping();
-out.gulphold = gulping();
+out.breath = demoBreath(reg, HER);
+out.breathhold = demoBreath(reg, HER);
+out.weight = demoWeight(reg, HER, 'human_chair');
+out.weightfoot = demoWeight(reg, HER, 'footrest');
+out.weightup = demoWeight(reg, HER, 'boot_on_chest');
+out.weighthold = demoWeight(reg, HER, 'human_chair');
+out.scent = demoScent(reg, HER);
+out.scenthold = demoScent(reg, HER);
+out.jaw = demoJaw(reg, HER, 'toes');
+out.jawring = demoJaw(reg, HER, 'ring');
+out.jawhold = demoJaw(reg, HER, 'ring');
+out.activity = demoActivity(reg, HER);
+out.activityhold = demoActivity(reg, HER);
+out.throne = demoThrone(reg, HER);
+out.thronehold = demoThrone(reg, HER);
+out.service = demoService(reg, HER);
+out.servicehold = demoService(reg, HER);
+out.shoe = demoShoe(reg, HER);
+out.shoehold = demoShoe(reg, HER);
+out.shoeheels = demoShoe(reg, HER, 'heels');
+out.gulp = demoGulp(reg, HER);
+out.gulphold = demoGulp(reg, HER);
 
 writeFileSync(process.argv[2] ?? 'states.json', JSON.stringify(out));

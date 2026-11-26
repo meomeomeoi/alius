@@ -1867,8 +1867,8 @@ function summarizeWorldEffect(effect, reg) {
       return `${cap(humanize(String(e.event)))} (${String(e.severity)}) for ${who}`;
     }
     default: {
-      const base = cap(humanize(String(e.type ?? "effect")));
-      return isNum(e.amount) ? `${base} ${signed(e.amount)}` : base;
+      const base2 = cap(humanize(String(e.type ?? "effect")));
+      return isNum(e.amount) ? `${base2} ${signed(e.amount)}` : base2;
     }
   }
 }
@@ -2226,11 +2226,11 @@ function summarizeReputation(entry) {
 function summarizeDispositionLevel(entry) {
   const e = entry;
   const out = [];
-  const start = e.start && typeof e.start === "object" ? e.start : {};
-  if (isNum(start.trust)) {
-    if (start.trust >= 5) out.push("Starts out trusting");
-    else if (start.trust <= -25) out.push("Starts out hostile");
-    else if (start.trust <= -5) out.push("Starts out wary");
+  const start2 = e.start && typeof e.start === "object" ? e.start : {};
+  if (isNum(start2.trust)) {
+    if (start2.trust >= 5) out.push("Starts out trusting");
+    else if (start2.trust <= -25) out.push("Starts out hostile");
+    else if (start2.trust <= -5) out.push("Starts out wary");
   }
   if (isNum(e.lossMult)) out.push(...e.lossMult > 1 ? ["Slights and betrayals weigh more"] : e.lossMult < 1 ? ["Slights and betrayals weigh less"] : []);
   if (isNum(e.gainMult)) out.push(...e.gainMult > 1 ? ["Kindness earns more"] : e.gainMult < 1 ? ["Kindness earns less"] : []);
@@ -2665,9 +2665,9 @@ function upkeepNeeded(state, reg) {
 }
 function spread(total2, n, offset2) {
   if (n <= 0) return [];
-  const base = Math.floor(total2 / n);
-  const extra = total2 - base * n;
-  const out = new Array(n).fill(base);
+  const base2 = Math.floor(total2 / n);
+  const extra = total2 - base2 * n;
+  const out = new Array(n).fill(base2);
   for (let i = 0; i < extra; i++) out[((offset2 % n + n) % n + i) % n] += 1;
   return out;
 }
@@ -6558,23 +6558,23 @@ var ZodEffects = class extends ZodType {
     }
     if (effect.type === "transform") {
       if (ctx2.common.async === false) {
-        const base = this._def.schema._parseSync({
+        const base2 = this._def.schema._parseSync({
           data: ctx2.data,
           path: ctx2.path,
           parent: ctx2
         });
-        if (!isValid(base))
+        if (!isValid(base2))
           return INVALID;
-        const result = effect.transform(base.value, checkCtx);
+        const result = effect.transform(base2.value, checkCtx);
         if (result instanceof Promise) {
           throw new Error(`Asynchronous transform encountered during synchronous parse operation. Use .parseAsync instead.`);
         }
         return { status: status.value, value: result };
       } else {
-        return this._def.schema._parseAsync({ data: ctx2.data, path: ctx2.path, parent: ctx2 }).then((base) => {
-          if (!isValid(base))
+        return this._def.schema._parseAsync({ data: ctx2.data, path: ctx2.path, parent: ctx2 }).then((base2) => {
+          if (!isValid(base2))
             return INVALID;
-          return Promise.resolve(effect.transform(base.value, checkCtx)).then((result) => ({
+          return Promise.resolve(effect.transform(base2.value, checkCtx)).then((result) => ({
             status: status.value,
             value: result
           }));
@@ -11420,11 +11420,11 @@ function valuesOf(unit5) {
   }
   return out ?? unit5.values;
 }
-function listed(base, dev, field2) {
+function listed(base2, dev, field2) {
   const lost = dev?.lost?.[field2];
   const gained = dev?.gained?.[field2];
-  if (!lost?.length && !gained?.length) return base;
-  const out = base.filter((t) => !lost?.includes(t));
+  if (!lost?.length && !gained?.length) return base2;
+  const out = base2.filter((t) => !lost?.includes(t));
   for (const t of gained ?? []) if (!out.includes(t)) out.push(t);
   return out;
 }
@@ -11702,7 +11702,7 @@ function squadPower(state, reg, unitIds) {
 function enemyStats(reg, enemyId, level, affixes, difficulty) {
   const tpl = reg.enemies.get(enemyId);
   if (!tpl) throw new Error(`Unknown enemy "${enemyId}"`);
-  const { base, growth } = tpl.stats;
+  const { base: base2, growth } = tpl.stats;
   const diff = TUNING.combat.difficultyMult[difficulty];
   const pct5 = { ...ZERO };
   for (const id of affixes) {
@@ -11711,7 +11711,7 @@ function enemyStats(reg, enemyId, level, affixes, difficulty) {
   }
   const out = { ...ZERO };
   for (const k of STATS) {
-    const scaled2 = base[k] + growth[k] * (level - 1);
+    const scaled2 = base2[k] + growth[k] * (level - 1);
     const d = k === "hp" || k === "atk" || k === "def" ? diff : 1;
     out[k] = Math.max(k === "hp" || k === "atk" ? 1 : 0, Math.round(scaled2 * d * (1 + pct5[k] / 100)));
   }
@@ -11771,14 +11771,14 @@ var affinityBand = (n) => n <= -60 ? "hostile" : n <= -30 ? "cold" : n < 0 ? "co
 var attractionBand = (n) => n < 10 ? "none" : n < 25 ? "faint" : n < 50 ? "interested" : "strong";
 var stressBand = (n) => n < 25 ? "calm" : n < 50 ? "tense" : n < 80 ? "strained" : "breaking";
 var NO_SHIFT = { enter: 0, exit: 0 };
-function nextLoyaltyBand(current3, trust, shift = NO_SHIFT) {
+function nextLoyaltyBand(current4, trust, shift = NO_SHIFT) {
   const L6 = TUNING.relations.loyalty;
   const breakingEnter = L6.breakingEnter + shift.enter;
   const waveringEnter = L6.waveringEnter + shift.enter;
   const steady = L6.steady + shift.exit;
   const breakingExit = L6.breakingExit + shift.exit;
   if (trust < breakingEnter) return "breaking";
-  switch (current3) {
+  switch (current4) {
     case "steady":
       return trust < waveringEnter ? "wavering" : "steady";
     case "wavering":
@@ -12503,9 +12503,9 @@ function initiativeChance(state, reg, unitId) {
   if (!unit5 || !rel) return 0;
   const { romance, initiative } = intimacyOf(state);
   const st3 = reg.relationshipStates.get(rel.stateId);
-  const base = st3 && !(st3.romance === true && !romance) ? st3.dmChance * TUNING.comms.initiativeMult[initiative] : 0;
+  const base2 = st3 && !(st3.romance === true && !romance) ? st3.dmChance * TUNING.comms.initiativeMult[initiative] : 0;
   const bonus = unit5.defects.reduce((n, d) => n + (reg.defects.get(d.id)?.dmChanceBonus ?? 0), 0);
-  const chance = Math.min(1, Math.max(0, base + bonus));
+  const chance = Math.min(1, Math.max(0, base2 + bonus));
   const wanting = wantBandOf(state, reg, unitId) === "calm" ? chance : Math.min(1, chance * TUNING.bonds.want.initiativeMult);
   return Math.min(1, wanting * courtshipMult(state, reg, unitId));
 }
@@ -13533,10 +13533,10 @@ function cabinMap(state, reg) {
   const taken = /* @__PURE__ */ new Set();
   state.squad.filter((u) => u.kind === "named").forEach((u, k) => {
     if (!isLiving(u)) return;
-    const start = k % cabins.length;
-    let pick12 = cabins[start];
+    const start2 = k % cabins.length;
+    let pick12 = cabins[start2];
     for (let i = 0; i < cabins.length; i++) {
-      const c = cabins[(start + i) % cabins.length];
+      const c = cabins[(start2 + i) % cabins.length];
       if (!taken.has(String(c.id))) {
         pick12 = c;
         break;
@@ -13701,13 +13701,13 @@ var roomsOf = (reg) => [...reg.hubRooms.values()];
 var hostOf = (rooms, host) => rooms.find((r) => (r.hosts ?? []).includes(host));
 var isInjured = (u) => u.status === "injured" || (u.injuryDays ?? 0) > 0;
 function routineWeight(state, reg, room2, unit5) {
-  const base = (room2.weights ?? {})[state.slot] ?? 0;
-  if (base <= 0) return 0;
+  const base2 = (room2.weights ?? {})[state.slot] ?? 0;
+  if (base2 <= 0) return 0;
   const open3 = (reg.locations.get(room2.sceneLocationId)?.slots ?? []).includes(state.slot);
   if (!open3) return 0;
   if (typeof room2.facilityId === "string" && facilityLevel2(state, room2.facilityId) < 1) return 0;
   const liked = (room2.likeTags ?? []).some((t) => likesOf(unit5).some((l) => l.toLowerCase() === t.toLowerCase()));
-  return base + (liked ? 2 : 0) + hobbyWeight(state, reg, room2, unit5);
+  return base2 + (liked ? 2 : 0) + hobbyWeight(state, reg, room2, unit5);
 }
 function hobbyWeight(state, reg, room2, unit5) {
   if (!unit5.hobbies || unit5.hobbies.length === 0 || lifeMode(state) === "off") return 0;
@@ -13904,16 +13904,16 @@ function validateExpectations(raw, reg, ctx2) {
       if (raw.scent.base !== void 0) {
         if (!isObj4(raw.scent.base)) issues2.push("expectations.scent.base must be an object");
         else {
-          const base = {};
+          const base2 = {};
           for (const [id, v] of Object.entries(raw.scent.base)) {
             if (target(id) === void 0) {
               drop2("scent", id, "names unknown target");
               continue;
             }
-            if (typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 5) base[id] = v;
+            if (typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 5) base2[id] = v;
             else issues2.push(`expectations.scent.base.${id} must be 1 to 5`);
           }
-          if (Object.keys(base).length > 0) scent.base = base;
+          if (Object.keys(base2).length > 0) scent.base = base2;
         }
       }
       if (raw.scent.hygiene !== void 0) {
@@ -14276,9 +14276,9 @@ function accumulate(unit5, pushes) {
 
 // src/engine/development/misread.ts
 function misreadChance(state, unit5, subject) {
-  const base = TUNING.development.misread[unit5.insight ?? "mid"];
+  const base2 = TUNING.development.misread[unit5.insight ?? "mid"];
   const secret = subject !== "commander" && state.relations[subject]?.publicity?.level === "secret";
-  return Math.min(TUNING.development.misreadCap, secret ? base * TUNING.development.secretMult : base);
+  return Math.min(TUNING.development.misreadCap, secret ? base2 * TUNING.development.secretMult : base2);
 }
 function misreads(state, unit5, appraisalId, subject) {
   return fnv1a3(`${unit5.id}|appraisal|${appraisalId}`) / 2 ** 32 < misreadChance(state, unit5, subject);
@@ -14715,11 +14715,11 @@ function applyPunishment(draft, ctx2, p) {
     for (const fx2 of effectsOf(reg, p.measure)) {
       const kind = restrictionKind(fx2);
       if (kind) {
-        const base = { unitId: p.unitId, kind, applicationId: id };
-        if (fx2.type === "confine") base.untilDay = draft.day + (p.days ?? fx2.minDays);
-        else if (fx2.type === "no_leave") base.untilDay = draft.day + fx2.days;
-        else if (fx2.type === "duty") Object.assign(base, dutySlot(draft));
-        out.push(...addRestriction(draft, base));
+        const base2 = { unitId: p.unitId, kind, applicationId: id };
+        if (fx2.type === "confine") base2.untilDay = draft.day + (p.days ?? fx2.minDays);
+        else if (fx2.type === "no_leave") base2.untilDay = draft.day + fx2.days;
+        else if (fx2.type === "duty") Object.assign(base2, dutySlot(draft));
+        out.push(...addRestriction(draft, base2));
         extra.restrictionIds = [id];
       } else if (fx2.type === "resource") {
         const before8 = draft.resources[fx2.resource];
@@ -15653,8 +15653,8 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
 
 // src/engine/world/spine.ts
 function spineOf(state, reg) {
-  const start = state.world.startId === void 0 ? void 0 : reg.starts.get(state.world.startId);
-  return start?.spine ?? [];
+  const start2 = state.world.startId === void 0 ? void 0 : reg.starts.get(state.world.startId);
+  return start2?.spine ?? [];
 }
 function currentBeat(state, reg) {
   return spineOf(state, reg)[state.world.spineProgress] ?? null;
@@ -16489,9 +16489,9 @@ function practiceSlots(state, reg, unitId, day, cache4) {
   const places = placesOf(state, reg, unitId, day, cache4);
   for (const [i, slot2] of DAY_SLOTS.entries()) {
     const w = places[i];
-    const busy = life.busy.find((b) => b.unitId === unitId && b.slot === busySlot(day, slot2));
-    if (busy !== void 0) {
-      const did = busy.blockingActivityId;
+    const busy2 = life.busy.find((b) => b.unitId === unitId && b.slot === busySlot(day, slot2));
+    if (busy2 !== void 0) {
+      const did = busy2.blockingActivityId;
       const kept = did === void 0 ? void 0 : unit5.hobbies.filter((h2) => h2.state === "active" && (reg.hobbies.get(h2.id)?.activityIds ?? []).includes(did)).sort((a, b) => b.interest - a.interest || order.indexOf(a.id) - order.indexOf(b.id))[0];
       if (kept && !activeRestrictions({ ...state, day, slot: slot2 }, unitId).some((r) => r.kind !== "benched")) out.push({ slot: slot2, hobbyId: kept.id, roomId: w.roomId ?? "" });
       continue;
@@ -16981,8 +16981,8 @@ function coverMult(state, reg) {
   for (const u of state.squad) {
     const dyn = u.kind === "named" && isLiving(u) ? dynamicOf(state, u.id) : void 0;
     if (dyn === void 0) continue;
-    const base = coverOf(dyn.frame);
-    best = Math.max(best, styleOf(u)?.primary === "cruel" ? base * TUNING.dynamic.cover.cruelHalf : base);
+    const base2 = coverOf(dyn.frame);
+    best = Math.max(best, styleOf(u)?.primary === "cruel" ? base2 * TUNING.dynamic.cover.cruelHalf : base2);
   }
   return 1 - best;
 }
@@ -17021,9 +17021,9 @@ var takesSlots = (entry) => effectsOf2(entry).some((e) => e.type === "lose_slots
 var busyNow = (state) => state.scene !== void 0 || state.combat !== void 0 || state.expedition !== void 0 || state.calendar.pendingScene !== void 0;
 function pickPunishment(state, reg, severity) {
   const w = wardenOf(state);
-  const busy = busyNow(state);
+  const busy2 = busyNow(state);
   for (let sev = Math.min(4, Math.floor(severity)); sev >= 1; sev--) {
-    const eligible4 = entries(reg).filter((e) => e.severity === sev && !(isLeash(e) && (w?.leashLeft ?? 0) < 1) && !((isSuppress(e) || takesSlots(e)) && busy) && contentAllowed(state, reg, e, w?.unitId));
+    const eligible4 = entries(reg).filter((e) => e.severity === sev && !(isLeash(e) && (w?.leashLeft ?? 0) < 1) && !((isSuppress(e) || takesSlots(e)) && busy2) && contentAllowed(state, reg, e, w?.unitId));
     if (eligible4.length > 0) return String(eligible4[(w?.punishLog.length ?? 0) % eligible4.length].id);
   }
   return null;
@@ -17298,11 +17298,11 @@ function learnExpectation(draft, expectationId) {
 // src/engine/dynamic/command.ts
 var POSSESSIVE_KINDS = ["keep_me_close", "no_romance_with_others"];
 function holderAgenda(state, reg, unitId) {
-  const base = fallbackAgenda(state, reg, unitId).map((x) => ({ ...x, known: true }));
+  const base2 = fallbackAgenda(state, reg, unitId).map((x) => ({ ...x, known: true }));
   const primary = state.squad.find((u) => u.id === unitId)?.bond?.practice?.style.primary;
-  if (primary !== "possessive" && primary !== "obsessive") return base;
-  const top = Math.max(0, ...base.map((x) => x.weight), ...base.length === 0 ? [0.5] : []);
-  const out = base.map((x) => POSSESSIVE_KINDS.some((k) => k === x.kind) ? { ...x, weight: top } : x);
+  if (primary !== "possessive" && primary !== "obsessive") return base2;
+  const top = Math.max(0, ...base2.map((x) => x.weight), ...base2.length === 0 ? [0.5] : []);
+  const out = base2.map((x) => POSSESSIVE_KINDS.some((k) => k === x.kind) ? { ...x, weight: top } : x);
   for (const kind of POSSESSIVE_KINDS) {
     if (!out.some((x) => x.kind === kind)) out.push({ id: `x${out.length + 1}`, kind, weight: top, source: "card", known: true });
   }
@@ -17621,8 +17621,8 @@ function activeLoadout(reg, unit5) {
   return (chosen.length > 0 ? chosen : starters).slice(0, loadoutSize(reg, unit5));
 }
 function resolveSkill(reg, c, skillId) {
-  const base = skillById(reg, skillId);
-  return base ? applyUpgrades(base, c.upgrades) : void 0;
+  const base2 = skillById(reg, skillId);
+  return base2 ? applyUpgrades(base2, c.upgrades) : void 0;
 }
 function usableSkills(ctx2, cid) {
   const { cs, reg } = ctx2;
@@ -18023,9 +18023,9 @@ function effectiveStat(ctx2, cid, stat3) {
   for (const e of activePassives(ctx2, cid, "stat")) {
     if (e.stat === stat3 || e.stat === "all" && stat3 !== "crit") pct5 += e.pct + scaleValue(ctx2, cid, e.scale);
   }
-  const base = c.base[stat3];
-  if (stat3 === "crit") return Math.max(0, base + pct5);
-  return Math.max(stat3 === "def" ? 0 : 1, Math.round(base * (1 + pct5 / 100)));
+  const base2 = c.base[stat3];
+  if (stat3 === "crit") return Math.max(0, base2 + pct5);
+  return Math.max(stat3 === "def" ? 0 : 1, Math.round(base2 * (1 + pct5 / 100)));
 }
 function outgoingPct(ctx2, cid, targetCid) {
   const c = byCid(ctx2.cs, cid);
@@ -18683,9 +18683,9 @@ function regardOf(state, reg, unitId) {
 function ensureRegard(draft, reg, unitId) {
   const stored = draft.relations[unitId]?.regard;
   if (stored !== void 0) return stored;
-  const start = regardStart(draft, reg, unitId);
-  if (dynamicOn(draft, reg) && holderOf(draft, unitId) !== void 0) draft.relations[unitId].regard = start;
-  return start;
+  const start2 = regardStart(draft, reg, unitId);
+  if (dynamicOn(draft, reg) && holderOf(draft, unitId) !== void 0) draft.relations[unitId].regard = start2;
+  return start2;
 }
 function squadRegardAverage(state, reg) {
   if (!dynamicOn(state, reg)) return null;
@@ -18723,7 +18723,7 @@ function write(draft, reg, unitId, next, cause) {
   const was = regardBandOf(reg, from);
   const now = regardBandOf(reg, to);
   if (was !== now) events.push({ type: "regard_band_changed", unitId, from: was, to: now });
-  if (to < from) for (const watch3 of watchers) events.push(...watch3(draft, reg, unitId, from, to));
+  if (to < from) for (const watch4 of watchers) events.push(...watch4(draft, reg, unitId, from, to));
   return events;
 }
 function regardFall(draft, reg, unitId, humiliation, opts) {
@@ -18866,7 +18866,7 @@ function reputationDayStep(draft, ctx2) {
     delete rep.pending;
   }
   const active = rep?.active ?? [];
-  const holding2 = (id) => {
+  const holding3 = (id) => {
     const e = lookup(id);
     return e !== void 0 && patternHolds(draft, e);
   };
@@ -18877,13 +18877,13 @@ function reputationDayStep(draft, ctx2) {
     if (!sameGroup) {
       if (active.length < TUNING.reputation.maxActive) replaces = void 0;
       else {
-        const gone3 = active.find((a) => !holding2(a.id));
+        const gone3 = active.find((a) => !holding3(a.id));
         if (!gone3) continue;
         replaces = gone3.id;
       }
     } else {
       const old = lookup(sameGroup.id);
-      if (holding2(sameGroup.id) && old && patternScore(draft, c) <= patternScore(draft, old)) continue;
+      if (holding3(sameGroup.id) && old && patternScore(draft, c) <= patternScore(draft, old)) continue;
       replaces = sameGroup.id;
     }
     draft.commander.reputation = { active: rep?.active ?? [], pending: { id: String(c.id), queuedDay: draft.day, ...replaces !== void 0 ? { replaces } : {} } };
@@ -19469,11 +19469,11 @@ function answerMilestone(draft, ctx2, milestoneId, answer, via) {
   const dyn = row4 === void 0 ? void 0 : dynamicOf(draft, row4.unitId);
   if (!dynamicOn(draft, reg) || row4 === void 0 || unit5 === void 0 || m === void 0 || dyn === void 0 || !isLiving(unit5)) throw new Error("That milestone is not open.");
   draft.dynamic.open.milestones = draft.dynamic.open.milestones.filter((o) => o.id !== row4.id);
-  const base = { unitId: row4.unitId, id: row4.id, milestoneId: m.id, via };
-  if (answer === "accept") return [{ type: "milestone_accepted", ...base }, ...applyMilestone(draft, ctx2, row4.unitId, m.id)];
+  const base2 = { unitId: row4.unitId, id: row4.id, milestoneId: m.id, via };
+  if (answer === "accept") return [{ type: "milestone_accepted", ...base2 }, ...applyMilestone(draft, ctx2, row4.unitId, m.id)];
   dyn.cooldowns[m.id] = draft.day + TUNING.dynamic.milestones.refuseCooldownDays;
   return [
-    { type: "milestone_refused", ...base },
+    { type: "milestone_refused", ...base2 },
     ...addHold(draft, ctx2, row4.unitId, -TUNING.dynamic.milestones.refuseDrop, "milestone_refused"),
     ...refusalCost(draft, ctx2, row4.unitId, "milestone")
   ];
@@ -19761,18 +19761,18 @@ function compatibilityOf(state, reg, unitId) {
   }
   return Math.min(D4.max, Math.max(D4.min, value));
 }
-function addHold(draft, ctx2, unitId, base, cause, opts = {}) {
+function addHold(draft, ctx2, unitId, base2, cause, opts = {}) {
   const reg = ctx2.registries;
-  if (base === 0 || !dynamicOn(draft, reg) || draft.relations[unitId] === void 0) return [];
+  if (base2 === 0 || !dynamicOn(draft, reg) || draft.relations[unitId] === void 0) return [];
   const events = [];
   if (dynamicOf(draft, unitId) === void 0) {
-    if (base < 0 || canHold(draft, reg, unitId) !== null) return [];
+    if (base2 < 0 || canHold(draft, reg, unitId) !== null) return [];
     events.push(...ensureDynamic(draft, reg, unitId));
   }
   const dyn = dynamicOf(draft, unitId);
   if (dyn === void 0) return events;
-  const gain2 = base > 0;
-  let delta = base * TUNING.dynamic.pace[draft.dynamic.setup.pace];
+  const gain2 = base2 > 0;
+  let delta = base2 * TUNING.dynamic.pace[draft.dynamic.setup.pace];
   if (gain2) {
     delta *= compatibilityOf(draft, reg, unitId);
     if (bondTierOf(draft, reg, unitId) === "romantic") {
@@ -19824,13 +19824,13 @@ function runningStage(state, reg, unitId) {
 var hasEffect2 = (effects2, type) => effects2.some((e) => e.type === type);
 function sabotagesVotes(state, reg, unitId) {
   if (!dynamicLive(state, reg)) return false;
-  const running4 = runningStage(state, reg, unitId);
-  return running4 !== void 0 && hasEffect2(running4.stage.effects, "vote_sabotage");
+  const running5 = runningStage(state, reg, unitId);
+  return running5 !== void 0 && hasEffect2(running5.stage.effects, "vote_sabotage");
 }
 function slipsOpen(state, reg, unitId) {
-  const running4 = runningStage(state, reg, unitId);
-  const fx2 = running4?.stage.effects.find((e) => e.type === "protocol_slips");
-  return running4 !== void 0 && fx2 !== void 0 && state.day <= running4.startDay + fx2.days;
+  const running5 = runningStage(state, reg, unitId);
+  const fx2 = running5?.stage.effects.find((e) => e.type === "protocol_slips");
+  return running5 !== void 0 && fx2 !== void 0 && state.day <= running5.startDay + fx2.days;
 }
 function commandStruggleOf(state, reg) {
   if (reg !== void 0 && !dynamicLive(state, reg)) return null;
@@ -19949,15 +19949,15 @@ function answerClaim(draft, ctx2, claimId, answer) {
   if (open3 === null) throw new Error("That claim is not open.");
   const { claim: claim2, dyn } = open3;
   if (answer === "talk") return [];
-  const base = { unitId: claim2.unitId, claimId };
+  const base2 = { unitId: claim2.unitId, claimId };
   if (claim2.domainId === void 0) {
     closeClaim(draft, claimId);
     if (answer === "yield") {
       dyn.contest = [];
-      return [{ type: "domain_yielded", ...base, submit: true }];
+      return [{ type: "domain_yielded", ...base2, submit: true }];
     }
     dyn.contest = [];
-    const events = [{ type: "domain_refused", ...base, submit: true }, ...addHold(draft, ctx2, claim2.unitId, -TUNING.dynamic.milestones.refuseDrop, "refusal")];
+    const events = [{ type: "domain_refused", ...base2, submit: true }, ...addHold(draft, ctx2, claim2.unitId, -TUNING.dynamic.milestones.refuseDrop, "refusal")];
     for (const [observer, row4] of Object.entries(draft.dynamic.knowledge)) {
       if (row4[claim2.unitId]?.level === "knows_dynamic") events.push(...addRecord(draft, observer, TUNING.dynamic.contestImpunity, "dynamic_contest"));
     }
@@ -19970,28 +19970,28 @@ function answerClaim(draft, ctx2, claimId, answer) {
     const rival = holderOfDomain(draft, claim2.domainId, claim2.unitId);
     if (rival !== null) return settleDomainConflict(draft, ctx2, claim2.unitId, rival, claim2.domainId);
     dyn.domains = [...dyn.domains.filter((d) => d.id !== claim2.domainId), { id: claim2.domainId, since: draft.day }];
-    return [{ type: "domain_yielded", ...base, domainId: claim2.domainId }];
+    return [{ type: "domain_yielded", ...base2, domainId: claim2.domainId }];
   }
   dyn.domains = dyn.domains.filter((d) => d.id !== claim2.domainId);
   dyn.cooldowns[claim2.domainId] = draft.day + TUNING.dynamic.claimCooldownDays;
-  return [{ type: "domain_refused", ...base, domainId: claim2.domainId }, ...refusalCost(draft, ctx2, claim2.unitId, "claim")];
+  return [{ type: "domain_refused", ...base2, domainId: claim2.domainId }, ...refusalCost(draft, ctx2, claim2.unitId, "claim")];
 }
 function yieldPartial(draft, ctx2, claimId) {
   const open3 = openClaim(draft, ctx2.registries, claimId);
   if (open3 === null) return [];
   const { claim: claim2, dyn } = open3;
   closeClaim(draft, claimId);
-  const base = { unitId: claim2.unitId, claimId, partial: true };
+  const base2 = { unitId: claim2.unitId, claimId, partial: true };
   if (claim2.domainId === void 0) {
     dyn.contest = [];
-    return [{ type: "domain_yielded", ...base, submit: true }];
+    return [{ type: "domain_yielded", ...base2, submit: true }];
   }
   const entry = domainEntry(ctx2.registries, claim2.domainId);
   if (entry === void 0 || !meets2(ctx2.registries, dyn, entry)) return [];
   const rival = holderOfDomain(draft, claim2.domainId, claim2.unitId);
   if (rival !== null) return settleDomainConflict(draft, ctx2, claim2.unitId, rival, claim2.domainId);
   dyn.domains = [...dyn.domains.filter((d) => d.id !== claim2.domainId), { id: claim2.domainId, since: draft.day, partialUntil: draft.day + TUNING.dynamic.partialDays }];
-  return [{ type: "domain_yielded", ...base, domainId: claim2.domainId }];
+  return [{ type: "domain_yielded", ...base2, domainId: claim2.domainId }];
 }
 
 // src/engine/dynamic/aftermath.ts
@@ -22061,8 +22061,8 @@ function probeChance(state, reg, unitId) {
   const inclination = effectiveInclination(state, unitId);
   if (inclination === "none") return 0;
   if (inclination === "latent" && !latentCause(state, reg, unitId)) return 0;
-  const base = TUNING.probes.chance[inclination];
-  const p = base * TUNING.dynamic.frequency[state.dynamic.setup.frequency] * assertiveness(state, reg).demandMult;
+  const base2 = TUNING.probes.chance[inclination];
+  const p = base2 * TUNING.dynamic.frequency[state.dynamic.setup.frequency] * assertiveness(state, reg).demandMult;
   return Math.min(1, Math.max(0, p));
 }
 function pickAxis(draft, reg, unitId, tier, recent2) {
@@ -22139,8 +22139,8 @@ function answerProbe(draft, ctx2, unitId, response, tone5, weight, afterThreat =
   }
   const sensitivity = TUNING.dynamic.sensitivity[draft.dynamic.setup.units[unitId]?.sensitivity ?? "normal"];
   const cause = answerCause(draft, unitId, response);
-  const base = TUNING.dynamic.gains[cause] * sensitivity * (weight === 1 ? 1 : TUNING.dynamic.observedFactor);
-  if (!(retro && frameRank(dyn.frame) >= frameRank("play"))) events.push(...addHold(draft, ctx2, unitId, base, cause));
+  const base2 = TUNING.dynamic.gains[cause] * sensitivity * (weight === 1 ? 1 : TUNING.dynamic.observedFactor);
+  if (!(retro && frameRank(dyn.frame) >= frameRank("play"))) events.push(...addHold(draft, ctx2, unitId, base2, cause));
   if (response === "yielded" && weight === 1 && !retro) events.push(...regardRise(draft, reg, unitId, "cost"));
   const unit5 = draft.squad.find((u) => u.id === unitId);
   const alpha = TUNING.position.alpha.probe * (weight === 1 ? 1 : TUNING.dynamic.observedFactor);
@@ -23385,12 +23385,12 @@ function requestOf(state, reg, requestId) {
   const found2 = cardOf(state, requestId);
   if (found2 === void 0 || found2.status !== "offered") return void 0;
   const card2 = found2.card;
-  const base = { id: requestId, holderId: card2.holderId, kind: found2.kind, day: card2.day };
+  const base2 = { id: requestId, holderId: card2.holderId, kind: found2.kind, day: card2.day };
   if (found2.list === "punishments") {
     const p = card2;
     return {
       replaced: card2,
-      request: { ...base, seedIds: [], offence: p.offence, severity: p.severity, entryId: p.entryId, ...p.escalated === true ? { escalated: true } : {}, ...p.sealed === true ? { sealed: true } : {}, ...p.hiddenCount === true ? { noDuration: true } : {} }
+      request: { ...base2, seedIds: [], offence: p.offence, severity: p.severity, entryId: p.entryId, ...p.escalated === true ? { escalated: true } : {}, ...p.sealed === true ? { sealed: true } : {}, ...p.hiddenCount === true ? { noDuration: true } : {} }
     };
   }
   const seedId = found2.list === "tasks" ? card2.seedId : void 0;
@@ -23399,7 +23399,7 @@ function requestOf(state, reg, requestId) {
   return {
     replaced: card2,
     request: {
-      ...base,
+      ...base2,
       seedIds,
       ...t?.chainId !== void 0 ? { chainOf: t.chainId } : {},
       ...t?.targetUnitId !== void 0 ? { targetUnitId: t.targetUnitId } : {},
@@ -23437,8 +23437,8 @@ var styleOf2 = (state, reg, holderId) => practiceOf(state, reg, holderId)?.style
 function slapWindowMs(state, reg, holderId, slapId) {
   const T5 = TUNING.practice.slap;
   const style = styleOf2(state, reg, holderId);
-  const base = (style === void 0 ? void 0 : T5.windowMs[style]) ?? 500;
-  return style === "obsessive" ? Math.round(base + practiceRoll(state, holderId, `slapwin:${slapId}`) * T5.obsessiveSpread) : base;
+  const base2 = (style === void 0 ? void 0 : T5.windowMs[style]) ?? 500;
+  return style === "obsessive" ? Math.round(base2 + practiceRoll(state, holderId, `slapwin:${slapId}`) * T5.obsessiveSpread) : base2;
 }
 function slapFeints(state, holderId, slapId) {
   const T5 = TUNING.practice.slap;
@@ -23683,14 +23683,14 @@ function stageOf(slot2) {
 var roomOfLocation = (reg, locationId) => [...reg.hubRooms.values()].find((r) => r.sceneLocationId === locationId)?.id;
 function pickAudience(state, reg, holderId, slot2) {
   const audience = practiceOf(state, reg, holderId)?.audience;
-  const base = atBase(state, holderId);
+  const base2 = atBase(state, holderId);
   let pool = [];
   if (audience === "select_few") {
     const leaderId = leaderOf(state)?.id;
-    pool = base.filter((id) => id === leaderId || isClose(state, id));
+    pool = base2.filter((id) => id === leaderId || isClose(state, id));
   } else if (audience === "show_off") {
     const room2 = roomOfLocation(reg, stageOf(slot2));
-    pool = room2 === void 0 ? base : base.filter((id) => whereaboutAt(state, reg, id, state.day, slot2).roomId === room2);
+    pool = room2 === void 0 ? base2 : base2.filter((id) => whereaboutAt(state, reg, id, state.day, slot2).roomId === room2);
   }
   const max = TUNING.practice.demonstration.cardsMax;
   return { cards: pool.slice(0, max), narrated: pool.slice(max) };
@@ -23715,8 +23715,8 @@ function demonstrationGate(state, reg, holderId, card2) {
 function unfairChance(state, reg, holderId) {
   const T5 = TUNING.practice.unfairness;
   const fairness = practiceOf(state, reg, holderId)?.fairness;
-  const base = fairness === void 0 ? 0 : T5[fairness] ?? 0;
-  return Math.min(1, base * (temperamentOf(state, holderId).volatility === "moody" ? T5.moody : 1));
+  const base2 = fairness === void 0 ? 0 : T5[fairness] ?? 0;
+  return Math.min(1, base2 * (temperamentOf(state, holderId).volatility === "moody" ? T5.moody : 1));
 }
 function pendingUnfair(state, holderId, kind) {
   const rec = state.practices?.unfair?.[holderId];
@@ -23800,9 +23800,9 @@ function firstSlot(draft) {
   if (draft.slot === "night") return { day: draft.day + 1, slot: "morning" };
   return spent ? nextSlotAfter(draft.day, draft.slot) : { day: draft.day, slot: draft.slot };
 }
-function slotsOf(start, span) {
-  const left = SLOTS2.slice(SLOTS2.indexOf(start.slot));
-  return left.slice(0, span === "day" ? left.length : span).map((slot2) => ({ day: start.day, slot: slot2 }));
+function slotsOf(start2, span) {
+  const left = SLOTS2.slice(SLOTS2.indexOf(start2.slot));
+  return left.slice(0, span === "day" ? left.length : span).map((slot2) => ({ day: start2.day, slot: slot2 }));
 }
 function holdSlot(draft, ctx2, holderId, kindId, at2, practiceId, events, lapsed) {
   const rivals = holdersAtPlay(draft).filter((id) => id !== holderId);
@@ -24431,10 +24431,10 @@ var writeHold = (draft, ctx2, request, out, plain8) => {
 function taskCost(state, reg, task) {
   const takesSlot = task.kind === "hold" || task.check === "slot_with_her" || task.check === "booking_kept";
   const slots = task.slots ?? (takesSlot ? 1 : 0);
-  const start = task.kind === "hold" ? { day: state.day, slot: state.slot } : task.deadline?.slot !== void 0 ? { day: task.deadline.day, slot: task.deadline.slot } : void 0;
+  const start2 = task.kind === "hold" ? { day: state.day, slot: state.slot } : task.deadline?.slot !== void 0 ? { day: task.deadline.day, slot: task.deadline.slot } : void 0;
   const lapses = [];
-  if (slots > 0 && start !== void 0) {
-    const first2 = slotIndex(start.day, start.slot);
+  if (slots > 0 && start2 !== void 0) {
+    const first2 = slotIndex(start2.day, start2.slot);
     const span = new Set(Array.from({ length: slots }, (_, i) => first2 + i));
     for (const b of state.personal?.bookings ?? []) {
       if (b.status !== "booked" || b.unitId === task.holderId || !span.has(slotIndex(b.day, b.slot)) || !SLOT_ORDER.includes(b.slot)) continue;
@@ -24802,11 +24802,11 @@ function askPermission(draft, ctx2, holderId) {
   if (rule === void 0) throw new Error("She has no rule that asks for her permission.");
   const p = ensurePractices(draft);
   const kept = p.permission?.holderId === holderId && p.permission.ruleId === rule.id ? p.permission.asked : void 0;
-  const base = { type: "permission_answered", unitId: holderId, holderId, ruleId: rule.id };
-  if (kept !== void 0 && (kept.answer === "wait" && (kept.untilDay ?? 0) > draft.day || kept.answer === "grant" && kept.day === draft.day)) return [{ ...base, answer: kept.answer, again: true }];
+  const base2 = { type: "permission_answered", unitId: holderId, holderId, ruleId: rule.id };
+  if (kept !== void 0 && (kept.answer === "wait" && (kept.untilDay ?? 0) > draft.day || kept.answer === "grant" && kept.day === draft.day)) return [{ ...base2, answer: kept.answer, again: true }];
   const answer = permissionAnswer(draft, reg, holderId);
   p.permission = { holderId, ruleId: rule.id, asked: { day: draft.day, answer, ...answer === "wait" ? { untilDay: draft.day + 1 } : {} } };
-  const events = [{ ...base, answer }];
+  const events = [{ ...base2, answer }];
   if (answer === "deny" || answer === "wait") events.push(...relieveWant(draft, holderId, TUNING.practice.denialRelief, "denial"));
   if (answer === "earn") events.push(...requestPractice(draft, ctx2, holderId, "task", { earns: rule.id }));
   return events;
@@ -25029,7 +25029,7 @@ function kindnessesFor(draft, reg, holderId) {
 function doKindness(draft, ctx2, holderId, kind) {
   const reg = ctx2.registries;
   const p = ensurePractices(draft);
-  const base = { type: "favour_kindness", unitId: holderId, holderId, kind };
+  const base2 = { type: "favour_kindness", unitId: holderId, holderId, kind };
   switch (kind) {
     case "slot_back": {
       const next = givableBookings(draft, reg, holderId)[0];
@@ -25039,24 +25039,24 @@ function doKindness(draft, ctx2, holderId, kind) {
         t.status = "void";
         voided2.push({ type: "task_void", taskId: t.id, holderId, what: "task", reason: "gave_back" });
       }
-      return [base, ...voided2];
+      return [base2, ...voided2];
     }
     case "protocol_relaxed": {
       const rule = protocolRules(draft, reg, holderId).find((r) => r.status === "active" && r.source !== "item");
       rule.status = "suspended";
       (p.relaxed ??= []).push({ ruleId: rule.id, day: draft.day });
-      return [base];
+      return [base2];
     }
     case "want_relief":
-      return [base, ...relieveWant(draft, holderId, TUNING.practice.kindness.wantRelief, "kindness")];
+      return [base2, ...relieveWant(draft, holderId, TUNING.practice.kindness.wantRelief, "kindness")];
     case "gift": {
       const kinds2 = kindsFor(draft, reg, holderId);
       const kindId = String(kinds2[Math.min(kinds2.length - 1, Math.floor(practiceRoll(draft, holderId, "kindness:gift") * kinds2.length))].id);
-      return [base, ...giveToken(draft, ctx2, holderId, kindId).events];
+      return [base2, ...giveToken(draft, ctx2, holderId, kindId).events];
     }
     case "softer":
       (p.softer ??= {})[holderId] = true;
-      return [base];
+      return [base2];
   }
 }
 function kindnessSweep(draft, ctx2) {
@@ -26638,18 +26638,18 @@ function answerProposal(draft, reg, a) {
   if ((a.answer === "deflect" || conditioned) && !courtshipChips(draft, reg, rec)) throw new Error("proposal: that answer is only for the proposal of a unit who courts the commander");
   const condition = conditioned ? cleanCondition(a.condition) : "";
   list5.splice(idx, 1);
-  const base = { proposalId: rec.id, unitId: rec.unitId, kind: rec.kind, answer: a.answer };
+  const base2 = { proposalId: rec.id, unitId: rec.unitId, kind: rec.kind, answer: a.answer };
   const defied3 = rec.from === "unit" && commanderObeys(draft, rec.unitId);
   const overridden = () => defied3 ? overrideHer(draft, { registries: reg }, rec.unitId, "turned down her proposal on the day of obedience") : [];
-  if (a.answer === "not_now" || a.answer === "deflect") return [{ type: "proposal_answered", ...base }, ...overridden()];
+  if (a.answer === "not_now" || a.answer === "deflect") return [{ type: "proposal_answered", ...base2 }, ...overridden()];
   if (a.answer === "decline") {
     const romantic = ROMANTIC_PROPOSALS.includes(rec.kind);
     const hurt = commanderEvent(romantic ? "rejected_advance" : "dismissed", rec.unitId, "moderate", "declined her proposal");
-    return [{ type: "proposal_answered", ...base }, ...applyEventToUnit(draft, reg, rec.unitId, hurt), ...evaluateAutomatic(draft, reg, rec.unitId), ...overridden()];
+    return [{ type: "proposal_answered", ...base2 }, ...applyEventToUnit(draft, reg, rec.unitId, hurt), ...evaluateAutomatic(draft, reg, rec.unitId), ...overridden()];
   }
   const check = stateForProposal(draft, reg, rec.unitId, rec.kind);
   if ("fail" in check) {
-    return [{ type: "proposal_answered", ...base }, { type: "proposal_resolved", unitId: rec.unitId, kind: rec.kind, receptive: false, reason: check.fail }];
+    return [{ type: "proposal_answered", ...base2 }, { type: "proposal_resolved", unitId: rec.unitId, kind: rec.kind, receptive: false, reason: check.fail }];
   }
   if ((a.answer === "accept" || conditioned) && !rec.needsDisclosure && rec.kind !== "secret_affair" && reg.relationshipStates.get(check.stateId)?.romance === true && romanticPartners(draft, reg, rec.unitId).length > 0) {
     rec.needsDisclosure = true;
@@ -26662,7 +26662,7 @@ function answerProposal(draft, reg, a) {
     promised.push({ type: "proposal_conditioned", unitId: rec.unitId, promiseId: made2.id });
   }
   return [
-    { type: "proposal_answered", ...base },
+    { type: "proposal_answered", ...base2 },
     ...promised,
     ...conclude(draft, reg, rec.unitId, rec.kind, check.stateId, a.answer === "accept_secret" || rec.kind === "secret_affair")
   ];
@@ -26785,8 +26785,8 @@ function intrigueBusy(state) {
   return null;
 }
 function slotActionBusy(state, reg) {
-  const busy = intrigueBusy(state);
-  if (busy) return busy;
+  const busy2 = intrigueBusy(state);
+  if (busy2) return busy2;
   if (state.slot === "night") return "Not at night.";
   if (state.calendar.pendingScene) return "A conversation is still open; end it first.";
   if (state.dilemmas?.open?.status === "presented") return "A decision is waiting: answer it first.";
@@ -26797,8 +26797,8 @@ function spendSlot(draft, ctx2, day, slot2) {
 }
 var isAlly = (state, id) => id !== void 0 && allies(state).includes(id);
 function digProblem(state, reg, allyId) {
-  const busy = slotActionBusy(state, reg);
-  if (busy) return busy;
+  const busy2 = slotActionBusy(state, reg);
+  if (busy2) return busy2;
   if (allyId !== void 0 && !isAlly(state, allyId)) return "That unit does not stand with the commander.";
   if (allyId === void 0 && socialRank(state, "cunning") < TUNING.warden.kompromat.digCunning) return `Digging needs an ally or Cunning ${TUNING.warden.kompromat.digCunning}.`;
   return null;
@@ -26849,8 +26849,8 @@ function isTech(state, reg, unitId) {
   return reg.roles.get(u.roleId)?.tech === true || u.defects.some((d) => reg.defects.get(d.id)?.tech === true);
 }
 function hackProblem(state, reg, allyId) {
-  const busy = slotActionBusy(state, reg);
-  if (busy) return busy;
+  const busy2 = slotActionBusy(state, reg);
+  if (busy2) return busy2;
   const H = TUNING.warden.hack;
   const missing2 = [];
   for (const [id, need] of [["workshop", H.workshop], ["medbay", H.medbay]]) {
@@ -27141,12 +27141,12 @@ function leashCost(state, reg, unitId, kind) {
       failChance = Math.max(failChance, lz.failChance ?? 0);
     }
   }
-  const base = TUNING.leash[kind];
+  const base2 = TUNING.leash[kind];
   const baseAffinity = kind === "compel" ? TUNING.leash.compel.affinity : 0;
   return {
-    trust: roundAway(base.trust * mult) + crimeEffectAmount(reg, state.commander.crimeId, "leash_trust_cost"),
+    trust: roundAway(base2.trust * mult) + crimeEffectAmount(reg, state.commander.crimeId, "leash_trust_cost"),
     affinity: unit5?.kind === "grunt" ? 0 : roundAway(baseAffinity * mult),
-    stress: base.stress,
+    stress: base2.stress,
     failChance
   };
 }
@@ -27308,10 +27308,10 @@ function forgetBonds(draft, unitId) {
 }
 function terminateChance(state, reg) {
   const own = state.commander.corporationId;
-  const base = (own === null ? void 0 : reg.corporations.get(own)?.leash?.approval) ?? 0.5;
+  const base2 = (own === null ? void 0 : reg.corporations.get(own)?.leash?.approval) ?? 0.5;
   const t = TUNING.leash.terminate;
   const traits = traitEffects(state, reg, "terminate_approval").reduce((n, fx2) => n + fx2.amount, 0) + worldEffects(state, reg, "terminate_approval").reduce((n, fx2) => n + fx2.amount, 0);
-  return clamp19(base + t.approvalPerStanding * (own === null ? 0 : factionStanding(state, own)) + traits, t.approvalMin, t.approvalMax);
+  return clamp19(base2 + t.approvalPerStanding * (own === null ? 0 : factionStanding(state, own)) + traits, t.approvalMin, t.approvalMax);
 }
 function terminate(draft, ctx2, unitId) {
   const reg = ctx2.registries;
@@ -27486,7 +27486,7 @@ function allArcPaths(state, reg, unitId, defectId, written) {
   const def = reg.defects.get(defectId);
   const rel = state.relations[unitId];
   const texts = def?.arc ?? {};
-  const base = (path) => ({ path, cost: { ...TUNING.arc.cost[path] }, text: texts[path] ?? "" });
+  const base2 = (path) => ({ path, cost: { ...TUNING.arc.cost[path] }, text: texts[path] ?? "" });
   let whole = null;
   if (!unit5 || !inst || !def || !rel) whole = "This defect is not on her record.";
   else if (unit5.kind !== "named" || inst.lite === true) whole = "Only a named unit has a defect arc.";
@@ -27496,7 +27496,7 @@ function allArcPaths(state, reg, unitId, defectId, written) {
     const flag = def.arcFlag;
     if (flag !== void 0 && !rel.flags.includes(flag) && !state.world.flags.includes(flag) && !state.commander.flags.includes(flag)) whole = "She is not ready to talk about it.";
   }
-  if (whole !== null) return ARC_PATHS.map((p) => ({ ...base(p), available: false, reason: whole, wanted: false, refuses: false }));
+  if (whole !== null) return ARC_PATHS.map((p) => ({ ...base2(p), available: false, reason: whole, wanted: false, refuses: false }));
   const stages = allowedStages(state, reg, unitId);
   const cap9 = stageCap(state, reg);
   const structural = ARC_PATHS.map((path) => {
@@ -27508,10 +27508,10 @@ function allArcPaths(state, reg, unitId, defectId, written) {
   const offered2 = structural.filter((s) => s.reason === null && written.includes(s.path)).map((s) => s.path);
   const wanted2 = offered2.length > 0 ? wantedPath(unit5, offered2) : void 0;
   return structural.map(({ path, reason }) => {
-    const cost = base(path).cost;
+    const cost = base2(path).cost;
     const why = reason ?? afford(state, cost);
     return {
-      ...base(path),
+      ...base2(path),
       available: why === null,
       reason: why,
       wanted: path === wanted2,
@@ -29209,11 +29209,11 @@ function formationFor(original, ids) {
   for (const id of ids) if (!front.includes(id) && !back.includes(id)) back.push(id);
   return { front, back };
 }
-function runOrder(draft, ctx2, order, base = {}, sameAsOriginal = true) {
+function runOrder(draft, ctx2, order, base2 = {}, sameAsOriginal = true) {
   switch (order.kind) {
     case "activity": {
-      const keep2 = sameAsOriginal ? { focus: base.focus } : {};
-      const pastime = ctx2.registries.activities.get(order.activityId)?.pastime === true && typeof base.pastimeId === "string" ? { pastimeId: base.pastimeId } : {};
+      const keep2 = sameAsOriginal ? { focus: base2.focus } : {};
+      const pastime = ctx2.registries.activities.get(order.activityId)?.pastime === true && typeof base2.pastimeId === "string" ? { pastimeId: base2.pastimeId } : {};
       return runActivity(draft, ctx2, {
         ...keep2,
         ...pastime,
@@ -29227,15 +29227,15 @@ function runOrder(draft, ctx2, order, base = {}, sameAsOriginal = true) {
     case "roster":
       return runHandler("roster/set_active", draft, { activeIds: order.activeIds, wardenChecked: true }, ctx2);
     case "expedition": {
-      const events = runHandler("expedition/start", draft, { ...base, unitIds: order.unitIds, formation: formationFor(base.formation, order.unitIds), wardenChecked: true }, ctx2);
-      return sameAsOriginal ? [...events, ...carryIfRan(draft, base.voteId, events, ctx2)] : events;
+      const events = runHandler("expedition/start", draft, { ...base2, unitIds: order.unitIds, formation: formationFor(base2.formation, order.unitIds), wardenChecked: true }, ctx2);
+      return sameAsOriginal ? [...events, ...carryIfRan(draft, base2.voteId, events, ctx2)] : events;
     }
     case "dilemma": {
-      const events = chooseDilemma(draft, ctx2, base.id ?? draft.dilemmas?.open?.id, order.index, sameAsOriginal ? base.route : void 0, true);
-      return sameAsOriginal ? [...events, ...carryIfRan(draft, base.voteId, events, ctx2)] : events;
+      const events = chooseDilemma(draft, ctx2, base2.id ?? draft.dilemmas?.open?.id, order.index, sameAsOriginal ? base2.route : void 0, true);
+      return sameAsOriginal ? [...events, ...carryIfRan(draft, base2.voteId, events, ctx2)] : events;
     }
     case "combat_order":
-      return runHandler("combat/order", draft, { ...base, orderId: order.orderId, ...order.targetCid !== void 0 ? { targetCid: order.targetCid } : {}, wardenChecked: true }, ctx2);
+      return runHandler("combat/order", draft, { ...base2, orderId: order.orderId, ...order.targetCid !== void 0 ? { targetCid: order.targetCid } : {}, wardenChecked: true }, ctx2);
   }
 }
 var holderSlot = (draft) => draft.dynamic?.override ? { kind: "holder", o: draft.dynamic.override, unitId: draft.dynamic.override.unitId, w: null } : null;
@@ -29296,7 +29296,7 @@ function answerOverride(draft, ctx2, overrideId, answer) {
   if (answer !== "comply" && answer !== "argue" && answer !== "defy") throw new Error("warden/answer: the answer is comply, argue or defy.");
   if (w.compelled && answer !== "comply") throw new Error("The commander is compelled: only COMPLY is open.");
   const T5 = TUNING.warden;
-  const base = ov.payload ?? {};
+  const base2 = ov.payload ?? {};
   const done = (a) => ({ type: "override_answered", overrideId: ov.id, answer: a, context: ov.context });
   if (answer === "argue") {
     if (ov.context !== "combat") {
@@ -29306,18 +29306,18 @@ function answerOverride(draft, ctx2, overrideId, answer) {
     delete w.override;
     const won = ctx2.rng.chance(argueChance(draft, ctx2.registries));
     const events2 = [{ type: "override_argue_roll", overrideId: ov.id, won }];
-    events2.push(...won ? runOrder(draft, ctx2, ov.order, base) : ov.alternative ? runOrder(draft, ctx2, ov.alternative, base, false) : []);
+    events2.push(...won ? runOrder(draft, ctx2, ov.order, base2) : ov.alternative ? runOrder(draft, ctx2, ov.alternative, base2, false) : []);
     return [...events2, done("argue")];
   }
   delete w.override;
   if (answer === "comply") {
-    const events2 = ov.alternative ? runOrder(draft, ctx2, ov.alternative, base, false) : [];
+    const events2 = ov.alternative ? runOrder(draft, ctx2, ov.alternative, base2, false) : [];
     addTo(w, "satisfaction", T5.satisfaction.comply);
     events2.push(...addDefiance(draft, ctx2, -T5.defiance.comply));
     delete w.compelled;
     return [...events2, ...relationEvent(draft, ctx2, "warden_complied", "minor", "followed the warden's call"), done("comply")];
   }
-  const events = runOrder(draft, ctx2, ov.order, base);
+  const events = runOrder(draft, ctx2, ov.order, base2);
   addTo(w, "satisfaction", -round3(T5.override.defySatisfaction * ov.weight));
   const rose = addDefiance(draft, ctx2, round3(T5.override.defyDefiance * ov.weight));
   events.push(...rose, ...relationEvent(draft, ctx2, "warden_defied", ov.weight >= T5.override.majorAt ? "major" : "moderate", "defied the warden's call"), done("defy"));
@@ -29337,7 +29337,7 @@ function answerHolderOverride(draft, ctx2, slot2, answer) {
   const ov = slot2.o;
   const unitId = slot2.unitId;
   const T5 = TUNING.dynamic;
-  const base = ov.payload ?? {};
+  const base2 = ov.payload ?? {};
   const done = (a) => ({ type: "override_answered", overrideId: ov.id, answer: a, context: ov.context, source: "holder", unitId });
   if (answer === "argue") {
     if (ov.context !== "combat") {
@@ -29347,18 +29347,18 @@ function answerHolderOverride(draft, ctx2, slot2, answer) {
     clearSlot(draft, slot2);
     const won = ctx2.rng.chance(argueChance(draft, ctx2.registries, { unitId, satisfaction: 100 - (dynamicOf(draft, unitId)?.hold ?? 0) }));
     const events2 = [{ type: "override_argue_roll", overrideId: ov.id, won }];
-    events2.push(...won ? runOrder(draft, ctx2, ov.order, base) : ov.alternative ? runOrder(draft, ctx2, ov.alternative, base, false) : []);
+    events2.push(...won ? runOrder(draft, ctx2, ov.order, base2) : ov.alternative ? runOrder(draft, ctx2, ov.alternative, base2, false) : []);
     return [...events2, done("argue")];
   }
   clearSlot(draft, slot2);
   if (answer === "comply") {
-    const events2 = ov.alternative ? runOrder(draft, ctx2, ov.alternative, base, false) : [];
+    const events2 = ov.alternative ? runOrder(draft, ctx2, ov.alternative, base2, false) : [];
     events2.push(...addHold(draft, ctx2, unitId, T5.gains.override_comply, "override_comply"));
     addFavour(draft, unitId, T5.override.complyFavour);
     if (seenSpeakingFor(draft, ov, unitId)) countDeed(draft, "spoken_for");
     return [...events2, done("comply")];
   }
-  const events = runOrder(draft, ctx2, ov.order, base);
+  const events = runOrder(draft, ctx2, ov.order, base2);
   events.push(...overrideHer(draft, ctx2, unitId, "defied her override"));
   addFavour(draft, unitId, T5.override.defyFavour);
   events.push(...refusalCost(draft, ctx2, unitId, "defy"));
@@ -29449,12 +29449,12 @@ function askable(state, route, scope) {
   return state.squad.filter((u) => isLiving(u) && (scope.unitIds === void 0 || scope.unitIds.includes(u.id)) && (roles === void 0 || roles.includes(u.roleId))).map((u) => u.id);
 }
 function choiceOf(state, reg, route, index2, scope) {
-  const base = { route: index2, kind: route.kind };
+  const base2 = { route: index2, kind: route.kind };
   switch (route.kind) {
     case "body": {
       const have = commanderProfile(state).body[route.stat];
       return {
-        ...base,
+        ...base2,
         label: `${route.stat.toUpperCase()}: ${descriptor(route.stat, route.min)} or better`,
         disabled: have >= route.min ? null : `Needs ${route.stat} ${descriptor(route.stat, route.min)} or better; yours is ${descriptor(route.stat, have)}.`
       };
@@ -29462,7 +29462,7 @@ function choiceOf(state, reg, route, index2, scope) {
     case "social": {
       const have = socialRank(state, route.stat);
       return {
-        ...base,
+        ...base2,
         label: `${route.stat.toUpperCase()} ${route.min}`,
         disabled: have >= route.min ? null : `Needs ${route.stat} rank ${route.min}; yours is ${have}.`
       };
@@ -29470,7 +29470,7 @@ function choiceOf(state, reg, route, index2, scope) {
     case "item": {
       const name = String(reg.items.get(route.itemId)?.name ?? route.itemId);
       return {
-        ...base,
+        ...base2,
         label: `Use ${name}`,
         disabled: state.inventory.some((i) => i.itemId === route.itemId) ? null : `No ${name} in the inventory.`
       };
@@ -29478,7 +29478,7 @@ function choiceOf(state, reg, route, index2, scope) {
     case "bypass": {
       const { resource, amount } = route.cost;
       return {
-        ...base,
+        ...base2,
         label: `Pay ${amount} ${resourceWord(resource)}`,
         disabled: stockOf(state, resource) >= amount ? null : `Not enough ${resourceWord(resource)} (needs ${amount}).`
       };
@@ -29486,7 +29486,7 @@ function choiceOf(state, reg, route, index2, scope) {
     case "delegate": {
       const unitIds = askable(state, route, scope);
       return {
-        ...base,
+        ...base2,
         label: `Ask a unit (Trust: ${route.cost.trustCheck ?? DEFAULT_TRUST_CHECK})`,
         disabled: unitIds.length > 0 ? null : "No unit is available to ask.",
         unitIds
@@ -31010,8 +31010,8 @@ function validateDirectorOutput(state, reg, raw, opts) {
     else if (days !== void 0 && !(Number.isInteger(days) && days >= 1 && days <= 14)) reject("objectiveHint", "dueDays is a whole number from 1 to 14");
     else output.objectiveHint = { text: text3, ...days !== void 0 ? { dueDays: days } : {} };
   }
-  const current3 = currentBeat(state, reg)?.id;
-  const beatOpen = (id) => id === current3 && (state.world.spine?.proposed === id || proposedNow === id);
+  const current4 = currentBeat(state, reg)?.id;
+  const beatOpen = (id) => id === current4 && (state.world.spine?.proposed === id || proposedNow === id);
   if (!only) {
     list5("missionOffers").forEach((o, i) => {
       const part = `missionOffers[${i}]`;
@@ -31107,8 +31107,8 @@ function validateDirectorOutput(state, reg, raw, opts) {
       }
       update4.status = next;
     }
-    const base = isNew ? 0 : flagCount.get(u.threadId) ?? 0;
-    let have = base;
+    const base2 = isNew ? 0 : flagCount.get(u.threadId) ?? 0;
+    let have = base2;
     const flags = [];
     (Array.isArray(u.addFlags) ? u.addFlags : []).forEach((f, j) => {
       const fp = `${part}.addFlags[${j}]`;
@@ -32802,9 +32802,9 @@ function rollDemands(draft, ctx2) {
   if ((draft.discipline?.demands.length ?? 0) >= TUNING.demands.maxOpen) return [];
   const candidates3 = namedLiving6(draft).filter((u) => !hasOpen(draft, u.id) && openedThisWeek(draft, u.id) < TUNING.demands.perWeek && !inAcquaintance(draft, reg, u.id) && demandChance(draft, reg, u.id) > 0);
   if (candidates3.length === 0) return [];
-  const start = ctx2.rng.int(0, candidates3.length - 1);
+  const start2 = ctx2.rng.int(0, candidates3.length - 1);
   for (let k = 0; k < candidates3.length; k++) {
-    const u = candidates3[(start + k) % candidates3.length];
+    const u = candidates3[(start2 + k) % candidates3.length];
     if (!ctx2.rng.chance(demandChance(draft, reg, u.id))) continue;
     const opened = openDemand(draft, ctx2, u.id);
     if (opened) return opened.events;
@@ -33696,16 +33696,16 @@ function validateSetup(r, reg, opts) {
   const out = [];
   const name = typeof r.commanderName === "string" ? r.commanderName.trim() : "";
   if (name === "" || name.length > 60) out.push("Commander name must be 1 to 60 characters");
-  const start = reg.starts.get(r.startId);
-  if (!start) out.push(`Unknown start "${r.startId}"`);
+  const start2 = reg.starts.get(r.startId);
+  if (!start2) out.push(`Unknown start "${r.startId}"`);
   else {
-    const corp = reg.corporations.get(String(start.corporationId));
-    if (!corp) out.push(`Start "${r.startId}" uses unknown corporation "${String(start.corporationId)}"`);
+    const corp = reg.corporations.get(String(start2.corporationId));
+    if (!corp) out.push(`Start "${r.startId}" uses unknown corporation "${String(start2.corporationId)}"`);
     else if (corp.playable !== true) out.push(`Start "${r.startId}" uses non-playable corporation "${corp.id}"`);
   }
   if (!reg.crimes.has(r.crimeId)) out.push(`Unknown crime "${r.crimeId}"`);
   if (r.commander !== void 0) {
-    const startCorp = start ? String(start.corporationId) : null;
+    const startCorp = start2 ? String(start2.corporationId) : null;
     out.push(...validateCommanderSetup(r.commander, reg, { ...opts, corporationId: startCorp }));
   }
   if (r.world !== void 0) out.push(...validateWorldOptions(r.world.options, reg));
@@ -33750,7 +33750,7 @@ var slug2 = (name) => {
 };
 var clamp36 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var crimeEffectsOf = (crime) => [...effectsOf6(crime.perk), ...effectsOf6(crime.flaw)];
-var crimeKnownByDefault = (crime, start) => crime.knownByDefault === true || start?.crimeKnownByDefault === true;
+var crimeKnownByDefault = (crime, start2) => crime.knownByDefault === true || start2?.crimeKnownByDefault === true;
 function startingTrustAdjust(effects2, values) {
   let sum = 0;
   for (const fx2 of effects2) {
@@ -33781,9 +33781,9 @@ function initialRelation(o) {
   };
 }
 function makeNamedUnit(u, reg, usedIds, day = 1) {
-  const base = `unit_${slug2(u.displayName)}`;
-  let id = base;
-  for (let n = 2; usedIds.has(id); n++) id = `${base}_${n}`;
+  const base2 = `unit_${slug2(u.displayName)}`;
+  let id = base2;
+  for (let n = 2; usedIds.has(id); n++) id = `${base2}_${n}`;
   usedIds.add(id);
   const stats = reg.roles.get(u.roleId).baseStats;
   return {
@@ -33834,8 +33834,8 @@ function validateIncomingUnit(u, reg, opts) {
 function buildCampaign(r, reg, opts) {
   const errors = validateSetup(r, reg, opts);
   if (errors.length > 0) return { ok: false, errors };
-  const start = reg.starts.get(r.startId);
-  const corp = reg.corporations.get(String(start.corporationId));
+  const start2 = reg.starts.get(r.startId);
+  const corp = reg.corporations.get(String(start2.corporationId));
   const crime = reg.crimes.get(r.crimeId);
   const state = createCampaign({ seed: opts.seed, commanderName: r.commanderName.trim() });
   state.commander.corporationId = corp.id;
@@ -33843,7 +33843,7 @@ function buildCampaign(r, reg, opts) {
   state.commander.socialStats = { authority: 1, insight: 1, empathy: 1, cunning: 1 };
   applyCommanderSetup(state.commander, r.commander ?? defaultCommanderSetup());
   state.commander.fileReviewed = true;
-  state.world.startId = start.id;
+  state.world.startId = start2.id;
   state.world.options = { ...defaultWorldOptions(reg), ...r.world?.options ?? {} };
   state.settings = { desireBondDefects: opts.desireBondDefects, ...r.characterDevelopment !== void 0 ? { characterDevelopment: r.characterDevelopment } : {}, ...r.lifeEvents !== void 0 ? { lifeEvents: r.lifeEvents } : {} };
   if (r.lifeEvents !== void 0 && r.lifeEvents !== "off") state.life = newLife(opts.seed);
@@ -33851,8 +33851,8 @@ function buildCampaign(r, reg, opts) {
     const known3 = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
     state.content = { enabled: known3.filter((id) => r.content.enabled.includes(id)) };
   }
-  const base = start.startingResources;
-  for (const k of ["credits", "supplies", "plyx"]) state.resources[k] += base?.[k] ?? 0;
+  const base2 = start2.startingResources;
+  for (const k of ["credits", "supplies", "plyx"]) state.resources[k] += base2?.[k] ?? 0;
   const crimeEffects = crimeEffectsOf(crime);
   for (const fx2 of [...effectsOf6(corp.startingBonus), ...crimeEffects]) {
     if (fx2.type === "social_rank") {
@@ -33864,7 +33864,7 @@ function buildCampaign(r, reg, opts) {
   }
   applyStartTraitEffects(state, reg);
   syncTraitSettings(state, reg);
-  const knowsCrime = crimeKnownByDefault(crime, start);
+  const knowsCrime = crimeKnownByDefault(crime, start2);
   const used2 = /* @__PURE__ */ new Set();
   const days = headStartDays(r);
   const impressions = /* @__PURE__ */ new Map();
@@ -34668,12 +34668,12 @@ function generateGrunt(state, reg, rng) {
 }
 function gruntRelation(state, reg, grunt) {
   const crime = reg.crimes.get(state.commander.crimeId ?? "");
-  const start = reg.starts.get(state.world.startId ?? "");
+  const start2 = reg.starts.get(state.world.startId ?? "");
   const effects2 = crime ? crimeEffectsOf(crime) : [];
   const neutral = Object.fromEntries(VALUE_AXES.map((a) => [a, 0]));
   let trust = TUNING.recruit.baseTrust + startingTrustAdjust(effects2, neutral);
   if (effects2.some((fx2) => fx2.type === "grunt_starting_trust")) trust += TUNING.recruit.gruntCrimeBonus;
-  const rel = initialRelation({ trust, affinity: 0, attraction: 0, knowsCrime: crime ? crimeKnownByDefault(crime, start) : false, since: state.day });
+  const rel = initialRelation({ trust, affinity: 0, attraction: 0, knowsCrime: crime ? crimeKnownByDefault(crime, start2) : false, since: state.day });
   applyDispositionStart(state, reg, grunt, rel);
   applyFirstImpression(state, reg, grunt, rel);
   return rel;
@@ -34861,13 +34861,13 @@ registerAction("squad/add_named", (draft, payload, ctx2) => {
   const reg = ctx2.registries;
   const unit5 = makeNamedUnit(u, reg, new Set(draft.squad.map((x) => x.id)), draft.day);
   const crime = reg.crimes.get(draft.commander.crimeId ?? "");
-  const start = reg.starts.get(draft.world.startId ?? "");
+  const start2 = reg.starts.get(draft.world.startId ?? "");
   const setup = u;
   draft.relations[unit5.id] = initialRelation({
     trust: setup.baseline.trust + (crime ? startingTrustAdjust(crimeEffectsOf(crime), setup.values) : 0),
     affinity: setup.baseline.affinity,
     attraction: setup.baseline.attraction,
-    knowsCrime: crime ? crimeKnownByDefault(crime, start) : false,
+    knowsCrime: crime ? crimeKnownByDefault(crime, start2) : false,
     since: draft.day
   });
   applyDispositionStart(draft, reg, unit5, draft.relations[unit5.id]);
@@ -35746,8 +35746,8 @@ function phaseSegments(state, reg, run) {
   return phaseLength(s.marathonPace, s.physicsRealtime, Number(reg.contactPhysics.get(run.physicsId)?.segmentSeconds ?? 20));
 }
 function initMarathon(state, duration) {
-  const start = M.startClock[state.slot];
-  return { hours: duration === "unknown" ? "unknown" : duration.hours, phase: 1, phases: phasesOf(duration), segmentsDone: 0, clockMin: start, startMin: start, waiting: false };
+  const start2 = M.startClock[state.slot];
+  return { hours: duration === "unknown" ? "unknown" : duration.hours, phase: 1, phases: phasesOf(duration), segmentsDone: 0, clockMin: start2, startMin: start2, waiting: false };
 }
 function paceScale(state, reg, run) {
   const s = sceneSettingsOf(state);
@@ -35950,7 +35950,7 @@ function startPhysics(draft, ctx2, o) {
   scene.physics = run;
   return [{ type: "physics_started", runId: run.id, physicsId: run.physicsId, holderId: run.holderId, sourceKind: run.sourceKind, sourceId: run.sourceId, ...run.second ? { secondId: run.second.physicsId } : {}, ...o.duration !== void 0 ? { duration: o.duration } : {} }];
 }
-function chainRun(draft, reg, run, start) {
+function chainRun(draft, reg, run, start2) {
   const chain4 = reg.contactPhysics.get(run.physicsId)?.chains?.find((c) => c.on === "slip");
   const to = chain4 ? reg.contactPhysics.get(chain4.to) : void 0;
   if (!chain4 || !to) return [];
@@ -35958,7 +35958,7 @@ function chainRun(draft, reg, run, start) {
   const g = gaugeFor(draft, to);
   run.physicsId = chain4.to;
   run.capacity = g.capacity;
-  run.gauge = start ?? chain4.start ?? g.gauge;
+  run.gauge = start2 ?? chain4.start ?? g.gauge;
   delete run.seal;
   delete run.sealRange;
   return [{ type: "physics_started", runId: run.id, physicsId: run.physicsId, holderId: run.holderId, sourceKind: run.sourceKind, sourceId: run.sourceId, chained: true, from }];
@@ -36009,12 +36009,12 @@ function physicsSignal(draft, ctx2) {
   const run = draft.scene?.physics;
   if (!draft.scene || !run) throw new Error("physics/signal: no contact physics is running");
   const holds6 = effectiveHoldsUntil(draft, ctx2.registries, run.holderId);
-  const base = { type: "physics_signal", runId: run.id, holderId: run.holderId, holdsUntil: holds6 };
+  const base2 = { type: "physics_signal", runId: run.id, holderId: run.holderId, holdsUntil: holds6 };
   if (holds6 === "blackout" || holds6 === "limit" && run.taps === 0) {
     run.taps += 1;
-    return [{ ...base, released: false, ignored: true }];
+    return [{ ...base2, released: false, ignored: true }];
   }
-  return [{ ...base, released: true, ignored: false }, ...stopPhysics(draft, ctx2.registries, "released")];
+  return [{ ...base2, released: true, ignored: false }, ...stopPhysics(draft, ctx2.registries, "released")];
 }
 function stopWord(draft, ctx2) {
   const scene = draft.scene;
@@ -36330,8 +36330,8 @@ registerAction("scene/start", (draft, payload, ctx2) => {
   if (draft.scene) throw new Error("A scene is already open.");
   const origin = payload.origin;
   if (!ORIGINS.includes(origin)) throw new Error(`scene/start: unknown scene origin "${String(payload.origin)}"`);
-  const start = payload.startIndex;
-  if (typeof start !== "number" || !Number.isInteger(start) || start < 0) throw new Error("scene/start: startIndex must be a non-negative integer");
+  const start2 = payload.startIndex;
+  if (typeof start2 !== "number" || !Number.isInteger(start2) || start2 < 0) throw new Error("scene/start: startIndex must be a non-negative integer");
   const loc = typeof payload.locationId === "string" ? reg.locations.get(payload.locationId) : void 0;
   if (!loc) throw new Error(`scene/start: unknown location "${String(payload.locationId)}"`);
   const slots = loc.slots;
@@ -36370,8 +36370,8 @@ registerAction("scene/start", (draft, payload, ctx2) => {
     origin,
     consumesSlot: origin !== "prologue" && payload.consumesSlot !== false,
     // P11: the prologue's scenes never cost a slot
-    startIndex: start,
-    readIndex: start,
+    startIndex: start2,
+    readIndex: start2,
     exchanges: 0,
     ...typeof payload.nightEntryId === "string" ? { nightEntryId: payload.nightEntryId } : {}
   };
@@ -36774,8 +36774,8 @@ function stampBehaviours(state, reg, unitId, msg, opts = {}) {
   }
   return out;
 }
-function replyModeFor(state, reg, unitId, base) {
-  if (base !== "reply" || !namedLiving7(state, unitId)) return base;
+function replyModeFor(state, reg, unitId, base2) {
+  if (base2 !== "reply" || !namedLiving7(state, unitId)) return base2;
   return curtFor(state, reg, unitId, nextMessageId(state)) ? "curt" : "reply";
 }
 function hesitates(state, reg, unitId) {
@@ -37208,8 +37208,8 @@ function presentReport(draft, ctx2) {
   return [{ type: "dilemma_presented", id: d.open.id, templateId: String(template.id), title: d.open.title, source: "fallback" }];
 }
 function reportProblem(state, _reg) {
-  const busy = intrigueBusy(state);
-  if (busy) return busy;
+  const busy2 = intrigueBusy(state);
+  if (busy2) return busy2;
   const need = TUNING.warden.kompromat.needed;
   const have = kompromatOf(state).length;
   if (have < need) return `Oversight needs ${need} pieces of kompromat (the commander has ${have}).`;
@@ -37526,22 +37526,22 @@ registerAction("combat/act", (draft, payload, ctx2) => {
   const action = isObj19(payload) ? payload.action : void 0;
   if (!isObj19(action) || !["skill", "guard", "swap", "pass"].includes(String(action.kind))) throw new Error("combat/act needs { action }");
   const ectx = makeCtx(cs, draft, ctx2.registries, ctx2.rng);
-  const start = cs.log.length;
+  const start2 = cs.log.length;
   const cid = cs.awaitingCid;
   performAction(ectx, cid, action);
   completeAction(ectx, cid);
   runUntilInput(ectx);
-  return settle4(draft, ctx2, ectx, start);
+  return settle4(draft, ctx2, ectx, start2);
 });
 registerAction("combat/auto", (draft, payload, ctx2) => {
   const cs = open(draft, "combat/auto");
   if (!isObj19(payload) || typeof payload.on !== "boolean") throw new Error("combat/auto needs { on: boolean }");
   if (cs.phase !== "awaiting") throw new Error("combat/auto: the combat is already decided");
   const ectx = makeCtx(cs, draft, ctx2.registries, ctx2.rng);
-  const start = cs.log.length;
+  const start2 = cs.log.length;
   cs.auto = payload.on;
   if (payload.on) runUntilInput(ectx);
-  return settle4(draft, ctx2, ectx, start);
+  return settle4(draft, ctx2, ectx, start2);
 });
 registerAction("combat/order", (draft, payload, ctx2) => {
   const cs = open(draft, "combat/order");
@@ -37555,10 +37555,10 @@ registerAction("combat/order", (draft, payload, ctx2) => {
     const overridden = rollOverrides(draft, ctx2, { kind: "combat_order", orderId: payload.orderId, ...payload.targetCid !== void 0 ? { targetCid: payload.targetCid } : {} }, { payload: plainPayload(payload) });
     if (overridden) return overridden;
   }
-  const start = cs.log.length;
+  const start2 = cs.log.length;
   issueOrder(ectx, payload.orderId, payload.targetCid);
   if (draft.expedition && cs.expedition) draft.expedition.orders = (draft.expedition.orders ?? 0) + 1;
-  return settle4(draft, ctx2, ectx, start);
+  return settle4(draft, ctx2, ectx, start2);
 });
 registerAction("combat/compel", (draft, _payload, ctx2) => {
   const cs = open(draft, "combat/compel");
@@ -37583,13 +37583,13 @@ registerAction("combat/compel", (draft, _payload, ctx2) => {
   }
   const cost = leashCost(draft, ctx2.registries, unit5.id, "compel");
   const ectx = makeCtx(cs, draft, ctx2.registries, ctx2.rng);
-  const start = cs.log.length;
+  const start2 = cs.log.length;
   const forced = !(cost.failChance > 0 && ctx2.rng.chance(cost.failChance));
   (cs.compels ??= []).push(unit5.id);
   addStress(ectx, target.cid, cost.stress, "order");
   if (forced) issueOrder(ectx, refusal3.orderId, refusal3.targetCid, { free: true, compel: true });
   ectx.emit({ type: "combat_compelled", unitId: unit5.id, cid: target.cid, forced });
-  return [...asked.events, ...settle4(draft, ctx2, ectx, start)];
+  return [...asked.events, ...settle4(draft, ctx2, ectx, start2)];
 });
 registerAction("combat/presence", (draft, _payload, ctx2) => {
   const cs = open(draft, "combat/presence");
@@ -37608,11 +37608,11 @@ registerAction("combat/retreat", (draft, _payload, ctx2) => {
   const cs = open(draft, "combat/retreat");
   if (cs.phase !== "awaiting") throw new Error("combat/retreat: the combat is not running");
   const ectx = makeCtx(cs, draft, ctx2.registries, ctx2.rng);
-  const start = cs.log.length;
+  const start2 = cs.log.length;
   cs.phase = "ended";
   cs.outcome = "retreated";
   cs.awaitingCid = void 0;
-  return settle4(draft, ctx2, ectx, start);
+  return settle4(draft, ctx2, ectx, start2);
 });
 registerAction("combat/retry", (draft, _payload, ctx2) => {
   const cs = open(draft, "combat/retry");
@@ -37903,12 +37903,12 @@ registerAction("loyalty/fight", (draft, payload, ctx2) => {
   const front = strList2(f.front);
   const back = strList2(f.back);
   if (!front || !back) throw new Error("loyalty/fight needs { formation: { front, back }, coverId, allowRetry? }");
-  const start = fightPayload(draft, {
+  const start2 = fightPayload(draft, {
     formation: { front, back },
     ...typeof p.coverId === "string" ? { coverId: p.coverId } : {},
     allowRetry: p.allowRetry === true
   });
-  const events = startCombat(draft, ctx2, start);
+  const events = startCombat(draft, ctx2, start2);
   const id = events.find((e) => e.type === "combat_started")?.id;
   if (typeof id !== "string") throw new Error("The fight did not start.");
   draft.disloyalty.open.combatId = id;
@@ -39272,7 +39272,7 @@ registerAction("moment/answer", (draft, payload, ctx2) => {
 // src/engine/physics/scent.ts
 var S = TUNING.scent;
 function scentLevel(state, _reg, unitId, part) {
-  const base = S.base[part ?? ""] ?? S.base.rest;
+  const base2 = S.base[part ?? ""] ?? S.base.rest;
   const hygiene = S.hygiene.normal;
   let situation = 1;
   const run = state.lastExpedition;
@@ -39282,7 +39282,7 @@ function scentLevel(state, _reg, unitId, part) {
   }
   const slot2 = busySlot(state.day, state.slot);
   if (state.life?.busy.some((b) => b.unitId === unitId && b.slot === slot2 && b.activityId === "train")) situation *= S.afterTraining;
-  return base * hygiene * situation;
+  return base2 * hygiene * situation;
 }
 function bandOfLevel(level) {
   return level >= S.bands.overwhelming ? "overwhelming" : level >= S.bands.strong ? "strong" : level >= S.bands.noticeable ? "noticeable" : "faint";
@@ -39582,10 +39582,10 @@ function flowOf(salt, runId, row4, count2) {
     out.push(unit5(g, "pause") < row4.pause * B2 / 9e3 ? { level: 0, pause: true } : { level: round6(level) });
   }
   let next = GF.firstMs;
-  let busy = -1;
+  let busy2 = -1;
   for (let g = 0; g < count2; g++) {
     const f = out[g];
-    if (g * B2 < next || f.pause || g <= busy) continue;
+    if (g * B2 < next || f.pause || g <= busy2) continue;
     const feint = row4.feint !== void 0 && unit5(g, "feint") < row4.feint;
     const lands = row4.warn > 0 ? g + 1 : g;
     if (row4.warn > 0) f.warn = true;
@@ -39594,7 +39594,7 @@ function flowOf(salt, runId, row4, count2) {
       at2.surge = true;
       at2.level = round6(at2.level * row4.surge);
     }
-    busy = lands;
+    busy2 = lands;
     const [lo, hi] = row4.surgeEvery;
     next = g * B2 + (lo * 1e3 + h2(g, "every") % ((hi - lo) * 1e3 + 1));
   }
@@ -40150,9 +40150,9 @@ function marathonSkip(draft, ctx2, strategy) {
   if (k.caught) events.push({ type: "physics_caught", runId: run.id, holderId: run.holderId, kind: "cheat", beat: -1 });
   const hpp = hoursPerPhase(m);
   const loss = attrition(hpp, commanderLevel(draft, run.physicsId));
-  const base = run.baseCapacity ?? run.capacity;
+  const base2 = run.baseCapacity ?? run.capacity;
   const next = (cap9, gaugeKind, gauge) => {
-    const capacity2 = Math.max(Math.round(base * 0.2), cap9 - loss);
+    const capacity2 = Math.max(Math.round(base2 * 0.2), cap9 - loss);
     if (gaugeKind === "capacity") return { capacity: capacity2, gauge: Math.min(capacity2, Math.max(1, capacity2 + k.delta)) };
     if (gaugeKind === "fill") return { capacity: capacity2, gauge: Math.min(capacity2 - 1, Math.max(0, -Math.min(0, k.delta))) };
     return { capacity: capacity2, gauge };
@@ -40635,8 +40635,8 @@ function threatDayStep(draft, ctx2) {
     delete o.threat;
     return [stage("lifted", { unitId: t.unitId })];
   }
-  const busy = draft.scene?.participants.includes(t.unitId) || draft.combat?.combatants.some((c) => c.unitId === t.unitId) || draft.expedition?.party.includes(t.unitId);
-  if (busy) return [];
+  const busy2 = draft.scene?.participants.includes(t.unitId) || draft.combat?.combatants.some((c) => c.unitId === t.unitId) || draft.expedition?.party.includes(t.unitId);
+  if (busy2) return [];
   const events = removeFromService(draft, t.unitId, "reassigned", ctx2);
   delete o.threat;
   return [stage("reassigned", { unitId: t.unitId }), ...events];
@@ -40701,8 +40701,8 @@ var slowTerm = (draft, ctx2, holders2) => {
   const events = [];
   for (const id of holders2) {
     if (frameRank(dynamicOf(draft, id).frame) < frameRank("play")) continue;
-    const base = ((impunityOf(draft, ctx2.registries, id)?.value ?? 0) >= T5.impunityRoute ? T5.slow.impunity : 0) + (id === leader ? T5.slow.leader : 0);
-    if (base > 0) events.push(...addHold(draft, ctx2, id, base, "standing", { practice: false }));
+    const base2 = ((impunityOf(draft, ctx2.registries, id)?.value ?? 0) >= T5.impunityRoute ? T5.slow.impunity : 0) + (id === leader ? T5.slow.leader : 0);
+    if (base2 > 0) events.push(...addHold(draft, ctx2, id, base2, "standing", { practice: false }));
   }
   return events;
 };
@@ -41604,15 +41604,15 @@ function takePosture(draft, ctx2, callId, postureId, late2, at2) {
   if (!practiceLive(draft, reg, call2.holderId)) throw new Error("She is not holding now.");
   if (postureId !== void 0 && !(draft.practices.postures[call2.holderId] ?? []).some((p) => p.postureId === postureId)) throw new Error("That posture is not one of hers.");
   delete draft.practices.call;
-  const base = { callId, unitId: call2.holderId, holderId: call2.holderId, postureId: call2.postureId };
+  const base2 = { callId, unitId: call2.holderId, holderId: call2.holderId, postureId: call2.postureId };
   if (postureId !== call2.postureId || late2) {
-    return [{ type: "posture_slip", ...base, ...late2 ? { late: true } : {} }, ...noteOffence(draft, ctx2, call2.holderId, { kind: "posture_slip", ref: callId, stakes: "trivial", day: draft.day })];
+    return [{ type: "posture_slip", ...base2, ...late2 ? { late: true } : {} }, ...noteOffence(draft, ctx2, call2.holderId, { kind: "posture_slip", ref: callId, stakes: "trivial", day: draft.day })];
   }
   const change = { person: COMMANDER, field: "posture", value: call2.postureId };
-  if (draft.scene?.blocking?.[COMMANDER]?.posture === call2.postureId) return [{ type: "posture_called", ...base, taken: true }, ...addTrackXp(draft, reg, call2.holderId, TRACK, TUNING.practice.posture.xp)];
-  if (draft.scene === void 0 || checkChange(draft, reg, change) !== null) return [{ type: "posture_called", ...base, void: true }];
+  if (draft.scene?.blocking?.[COMMANDER]?.posture === call2.postureId) return [{ type: "posture_called", ...base2, taken: true }, ...addTrackXp(draft, reg, call2.holderId, TRACK, TUNING.practice.posture.xp)];
+  if (draft.scene === void 0 || checkChange(draft, reg, change) !== null) return [{ type: "posture_called", ...base2, void: true }];
   return [
-    { type: "posture_called", ...base, taken: true },
+    { type: "posture_called", ...base2, taken: true },
     ...setBlocking(draft, ctx2, change, { at: at2, source: "chip" }),
     ...addTrackXp(draft, reg, call2.holderId, TRACK, TUNING.practice.posture.xp)
   ];
@@ -42356,7 +42356,7 @@ function choosesAgainstHer(state, reg, context, ref, choice) {
 
 // src/loyalty/dilemmaController.ts
 function createDilemmas(deps) {
-  const running4 = /* @__PURE__ */ new Set();
+  const running5 = /* @__PURE__ */ new Set();
   const chatId = () => deps.st.getActiveChat()?.chatId;
   function answer(action, chat) {
     const events = deps.app.dispatch(action, { expectChatId: chat });
@@ -42424,8 +42424,8 @@ function createDilemmas(deps) {
     const first2 = deps.app.current().state?.dilemmas?.open;
     const chat = chatId();
     const key = `${chat ?? ""}:${first2?.id ?? ""}`;
-    if (!first2 || first2.status !== "requested" || first2.context === "scapegoat" || running4.has(key)) return;
-    running4.add(key);
+    if (!first2 || first2.status !== "requested" || first2.context === "scapegoat" || running5.has(key)) return;
+    running5.add(key);
     writing.add(first2.id);
     try {
       const fallback = (id) => void answer({ type: "dilemma/fallback", payload: { requestId: id } }, chat);
@@ -42433,7 +42433,7 @@ function createDilemmas(deps) {
       const out = await deps.generations.generate("dilemma.generate", first2.id);
       if (out.kind === "expired" && chatId() === chat && requestOf2(first2.id)?.status === "requested") fallback(first2.id);
     } finally {
-      running4.delete(key);
+      running5.delete(key);
       writing.delete(first2.id);
     }
   }
@@ -42457,7 +42457,7 @@ function createDilemmas(deps) {
     if (failed2 && failed2.message !== "Stale dilemma answer.") deps.toast("error", String(failed2.message ?? failed2.code));
     return events;
   }
-  return { onRequested, choose: choose2, busy: () => running4.size > 0 };
+  return { onRequested, choose: choose2, busy: () => running5.size > 0 };
 }
 
 // src/discipline/directives.ts
@@ -43322,8 +43322,8 @@ function journalLines(state, reg, unitId, o) {
   if (o.n <= 0) return [];
   return kept.slice(-o.n).map((h2) => {
     const phrase2 = reg.eventDeltas.get(h2.type)?.journal;
-    const base = `${typeof phrase2 === "string" && phrase2 !== "" ? phrase2 : humanize2(h2.type)} (day ${h2.day})`;
-    return o.evidence && h2.detail ? `${base}: '${h2.detail.slice(0, DETAIL_MAX)}'` : base;
+    const base2 = `${typeof phrase2 === "string" && phrase2 !== "" ? phrase2 : humanize2(h2.type)} (day ${h2.day})`;
+    return o.evidence && h2.detail ? `${base2}: '${h2.detail.slice(0, DETAIL_MAX)}'` : base2;
   });
 }
 
@@ -43398,9 +43398,9 @@ var migrations = [
   // v0 -> v1: early prototype saved only day, slot and seed.
   (v0) => {
     const seed8 = typeof v0.seed === "number" ? v0.seed : 1;
-    const base = createCampaign({ seed: seed8, commanderName: "" });
+    const base2 = createCampaign({ seed: seed8, commanderName: "" });
     return {
-      ...base,
+      ...base2,
       day: v0.day,
       slot: v0.slot
     };
@@ -44204,7 +44204,7 @@ function createHeadStart(deps) {
     const hs = s.headStart;
     if (!hs) return null;
     const reg = deps.registries();
-    const start = reg.starts.get(s.world.startId ?? "");
+    const start2 = reg.starts.get(s.world.startId ?? "");
     const crime = s.commander.crimeId ? reg.crimes.get(s.commander.crimeId) : void 0;
     const units = [];
     for (const u of hs.units) {
@@ -44222,7 +44222,7 @@ function createHeadStart(deps) {
     }
     return {
       days: hs.days,
-      premise: start ? String(start.summary) : "A penal unit.",
+      premise: start2 ? String(start2.summary) : "A penal unit.",
       crime: crime ? `${String(crime.name)}: ${String(crime.summary)}` : "unknown",
       commander: commanderLine(s),
       units,
@@ -44378,7 +44378,7 @@ function createDevelopment(deps) {
   const chatId = () => deps.st.getActiveChat()?.chatId;
   const state = () => deps.app.current().state;
   let flight = null;
-  let busy = false;
+  let busy2 = false;
   const fresh8 = /* @__PURE__ */ new Set();
   const isRedo = (s, unitId) => !fresh8.has(unitId) && !unitDue(s, unitId) && s.squad.find((u) => u.id === unitId)?.development?.lastApplied !== void 0;
   function before8(s, unitId) {
@@ -44458,17 +44458,17 @@ function createDevelopment(deps) {
   });
   async function run() {
     const s = state();
-    if (!s || busy) return;
+    if (!s || busy2) return;
     const due = reviewDue(s, deps.registries());
     if (due === null) return;
-    busy = true;
+    busy2 = true;
     fresh8.add(due);
     flight = (async () => {
       deps.app.dispatch({ type: "generation/close", payload: { siteId: SITE2, key: due, outcome: "dropped" } }, { expectChatId: chatId() });
       await deps.generations.generate(SITE2, due);
     })().finally(() => {
       flight = null;
-      busy = false;
+      busy2 = false;
       fresh8.delete(due);
     });
     await flight;
@@ -44522,8 +44522,8 @@ function styleLine(state, reg, unit5) {
   if (pair === void 0) return "";
   const label2 = (key) => clean7(String(reg.practiceStyles.get(key)?.label ?? key)).toLowerCase();
   const lead = leadingStyle(state, reg, unit5.id);
-  const base = pair.secondary === void 0 ? `Her manner is ${label2(pair.primary)}.` : `Her manner is ${label2(pair.primary)}, with a ${label2(pair.secondary)} streak.`;
-  return lead.phaseLead === "secondary" ? `${base} Her ${label2(lead.key)} side comes through now.` : base;
+  const base2 = pair.secondary === void 0 ? `Her manner is ${label2(pair.primary)}.` : `Her manner is ${label2(pair.primary)}, with a ${label2(pair.secondary)} streak.`;
+  return lead.phaseLead === "secondary" ? `${base2} Her ${label2(lead.key)} side comes through now.` : base2;
 }
 function holderDirective(state, reg, unit5) {
   const dyn = dynamicOf(state, unit5.id);
@@ -44866,9 +44866,9 @@ function practiceDirectives(state, reg, present2) {
     out.push({ id: `${PROTOCOL_PREFIX}${unit5.id}`, expiresAfter: "scene", text: plainDraft(`${unit5.displayName} holds the commander to these standing forms of address and conduct: ${forms.join("; ")}. She notices a slip and may remark on it. ${NEVER_NAME}`) });
   }
   for (const unit5 of holdersIn(state, reg, present2)) {
-    const running4 = (state.practices?.punishments ?? []).filter((x) => x.holderId === unit5.id && x.forUnitId === void 0 && x.status === "accepted" && nextCeremonyStep(x) !== void 0);
-    if (running4.length > 0) {
-      const lines4 = running4.map((x) => {
+    const running5 = (state.practices?.punishments ?? []).filter((x) => x.holderId === unit5.id && x.forUnitId === void 0 && x.status === "accepted" && nextCeremonyStep(x) !== void 0);
+    if (running5.length > 0) {
+      const lines4 = running5.map((x) => {
         const hint = String(reg.ceremonySteps.get(nextCeremonyStep(x))?.promptHint ?? "");
         return `${unit5.displayName} is carrying out the punishment she gave the commander as a ceremony, one step at a time: ${phrase(x.summary)}. The next step: ${phrase(hint)}.`;
       });
@@ -45120,15 +45120,15 @@ function createPractice(deps) {
   };
   const tried = /* @__PURE__ */ new Set();
   const triedKey = (id) => `${chatId() ?? ""}|${id}`;
-  let busy = false;
+  let busy2 = false;
   async function run() {
     const s = state();
-    if (s === null || busy || s.combat || s.expedition || s.ended) return;
+    if (s === null || busy2 || s.combat || s.expedition || s.ended) return;
     const reg = deps.registries();
     const next = (s.practices?.requests ?? []).find((r) => !tried.has(triedKey(r.id)) && practiceLive(s, reg, r.holderId));
     if (next === void 0) return;
     tried.add(triedKey(next.id));
-    busy = true;
+    busy2 = true;
     let stale = false;
     flight = (async () => {
       try {
@@ -45136,7 +45136,7 @@ function createPractice(deps) {
         if (deps.settings().practiceWording === "plain") issue(next.id);
         else stale = (await deps.generations.generate(siteOf(next.kind), next.id)).kind === "stale";
       } finally {
-        busy = false;
+        busy2 = false;
       }
     })().finally(() => {
       flight = null;
@@ -45549,7 +45549,7 @@ function createLife(deps) {
   const chatId = () => deps.st.getActiveChat()?.chatId;
   const state = () => deps.app.current().state;
   let flight = null;
-  let busy = false;
+  let busy2 = false;
   const tried = /* @__PURE__ */ new Set();
   function waiting3(s, key, channel) {
     const life = s?.life;
@@ -45665,7 +45665,7 @@ function createLife(deps) {
   }
   async function run() {
     const s = state();
-    if (!s || busy || lifeMode(s) === "off" || s.combat || s.expedition || s.ended) return;
+    if (!s || busy2 || lifeMode(s) === "off" || s.combat || s.expedition || s.ended) return;
     const next = (s.life?.outbox ?? []).find((o) => !tried.has(o.itemId));
     const form = next === void 0 ? nextForm(s) : void 0;
     if (!next && form === void 0) return;
@@ -45674,11 +45674,11 @@ function createLife(deps) {
       deps.app.dispatch({ type: "life/share_done", payload: { itemId: next.itemId, text: "" } }, { expectChatId: chatId() });
       return run();
     }
-    busy = true;
+    busy2 = true;
     const call2 = next ? (tried.add(next.itemId), deps.generations.generate(SITE_OF[next.channel], next.itemId)) : (tried.add(form), deps.generations.generate(FORM_SITE, form));
     flight = call2.then(() => void 0).finally(() => {
       flight = null;
-      busy = false;
+      busy2 = false;
     });
     await flight;
   }
@@ -45944,11 +45944,11 @@ function redacted(text3, ranges) {
   const parts2 = [];
   let cursor = 0;
   for (const [from, to] of [...ranges].sort((a, b) => a[0] - b[0])) {
-    const start = Math.max(0, from);
+    const start2 = Math.max(0, from);
     const end2 = Math.min(text3.length, to);
-    if (end2 <= start || start < cursor) continue;
-    if (start > cursor) parts2.push(text3.slice(cursor, start));
-    parts2.push(h("span", { class: "alius-redact", "aria-label": "redacted" }, "\u2588".repeat(end2 - start)));
+    if (end2 <= start2 || start2 < cursor) continue;
+    if (start2 > cursor) parts2.push(text3.slice(cursor, start2));
+    parts2.push(h("span", { class: "alius-redact", "aria-label": "redacted" }, "\u2588".repeat(end2 - start2)));
     cursor = end2;
   }
   if (cursor < text3.length) parts2.push(text3.slice(cursor));
@@ -46533,20 +46533,20 @@ function stubText(name) {
 }
 function createRouter() {
   const renderers = /* @__PURE__ */ new Map();
-  let current3 = "hub";
+  let current4 = "hub";
   return {
-    current: () => current3,
+    current: () => current4,
     go(id) {
-      current3 = id;
+      current4 = id;
     },
     register(id, render8) {
       renderers.set(id, render8);
     },
     render(host) {
       host.replaceChildren();
-      const render8 = renderers.get(current3);
-      if (render8) guarded(host, `screen ${current3}`, render8);
-      else host.append(h("pre", { class: "alius-stub" }, stubText(current3.toUpperCase())));
+      const render8 = renderers.get(current4);
+      if (render8) guarded(host, `screen ${current4}`, render8);
+      else host.append(h("pre", { class: "alius-stub" }, stubText(current4.toUpperCase())));
     }
   };
 }
@@ -46913,8 +46913,8 @@ function drawRecordChip(host, ui, state, rec, opts = {}) {
   const site = generationSite(rec.siteId);
   const label2 = site ? site.label(state, rec.key) : rec.siteId;
   const set2 = ui.settings();
-  const base = site ? Math.ceil((set2.budgets[site.callType] ?? 0) * rec.budgetMult) : 0;
-  const text3 = describeFailure({ label: label2, reason: rec.reason, budget: base > 0 ? base : void 0, timeoutMs: set2.llmTimeoutMs, expiredWhy: rec.expiredWhy });
+  const base2 = site ? Math.ceil((set2.budgets[site.callType] ?? 0) * rec.budgetMult) : 0;
+  const text3 = describeFailure({ label: label2, reason: rec.reason, budget: base2 > 0 ? base2 : void 0, timeoutMs: set2.llmTimeoutMs, expiredWhy: rec.expiredWhy });
   const held3 = site?.held === true;
   const retry = (opts2) => runPending(ui, rec.id, async () => {
     await ui.generations.retry(rec.id, opts2);
@@ -47318,14 +47318,14 @@ var fieldSchemas = {
 };
 var budgetSchema = external_exports.number().int().min(1);
 var isObj45 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-function merge(base, over2) {
+function merge(base2, over2) {
   const src = isObj45(over2) ? over2 : {};
-  const out = { ...base };
+  const out = { ...base2 };
   for (const [key, schema] of Object.entries(fieldSchemas)) {
     const parsed = schema.safeParse(src[key]);
     if (parsed.success) out[key] = parsed.data;
   }
-  const budgets = { ...base.budgets };
+  const budgets = { ...base2.budgets };
   const srcBudgets = isObj45(src.budgets) ? src.budgets : {};
   for (const id of CALL_TYPE_IDS) {
     const parsed = budgetSchema.safeParse(srcBudgets[id]);
@@ -47644,7 +47644,7 @@ function holdButton(o) {
     timer = void 0;
     button2.classList.remove("alius-signing");
   };
-  const start = () => {
+  const start2 = () => {
     if (timer !== void 0) return;
     button2.classList.add("alius-signing");
     timer = setTimeout(() => {
@@ -47653,12 +47653,12 @@ function holdButton(o) {
       o.onSign();
     }, TUNING.practice.sign.holdMs);
   };
-  button2.addEventListener("pointerdown", start);
+  button2.addEventListener("pointerdown", start2);
   for (const type of ["pointerup", "pointerleave", "pointercancel", "blur"]) button2.addEventListener(type, stop);
   button2.addEventListener("keydown", (e) => {
     if ((e.key === "Enter" || e.key === " ") && !e.repeat) {
       e.preventDefault();
-      start();
+      start2();
     }
   });
   button2.addEventListener("keyup", (e) => {
@@ -48190,9 +48190,9 @@ var TAIL_BACK = [[-6, 24], [-9, 50], [-6, 92], [0, 128], [6, 92], [9, 50], [6, 2
 var TAIL_FRONT = [[22, 24], [32, 34], [34, 56], [28, 66], [24, 48]];
 var FRINGE = [[-22, 30], [-20, 14], [-8, 8], [4, 9], [16, 13], [22, 26], [12, 20], [0, 19], [-12, 22]];
 function hairPath(hair, side) {
-  const base = catmull(HAIR2[hair], true);
-  if (hair !== "tail") return base;
-  return `${base} ${catmull(side === "back" ? TAIL_BACK : TAIL_FRONT, true)}`;
+  const base2 = catmull(HAIR2[hair], true);
+  if (hair !== "tail") return base2;
+  return `${base2} ${catmull(side === "back" ? TAIL_BACK : TAIL_FRONT, true)}`;
 }
 var fringePath = () => catmull(FRINGE, true);
 function detailPaths(build10, side) {
@@ -49796,8 +49796,8 @@ function renderInvTab(host, ctx2) {
     const slotOf = (i) => reg.items.get(i.itemId)?.slot;
     const nameOf28 = (i) => reg.items.get(i.itemId)?.name ?? `UNKNOWN ${i.itemId}`;
     const items = state.inventory.filter((i) => filter === "all" || slotOf(i) === filter);
-    const current3 = state.inventory.find((i) => i.uid === selected2) ?? null;
-    if (!current3) selected2 = null;
+    const current4 = state.inventory.find((i) => i.uid === selected2) ?? null;
+    if (!current4) selected2 = null;
     const resStat = (text3, address) => h("span", { class: "alius-stat", ...analyzeAttrs(address) }, text3);
     const res = h(
       "p",
@@ -49854,8 +49854,8 @@ function renderInvTab(host, ctx2) {
       }))));
     }
     host.append(h("section", { class: "alius-section alius-inv" }, h("h2", {}, "[ INVENTORY ]"), res, filters, list5));
-    if (current3) host.append(comparePanel(state, current3));
-    if (checkWorkshop(state) === null) host.append(workshopPanel(state, current3));
+    if (current4) host.append(comparePanel(state, current4));
+    if (checkWorkshop(state) === null) host.append(workshopPanel(state, current4));
   }
   function comparePanel(state, item) {
     const units = activeRosterUnits(state);
@@ -49989,7 +49989,7 @@ function extract(data) {
 function answerText(data) {
   return stripThinking(extract(data));
 }
-function scan(text3, start) {
+function scan(text3, start2) {
   const n = text3.length;
   const stack = [];
   let safeEnd = -1;
@@ -49998,7 +49998,7 @@ function scan(text3, start) {
     safeEnd = end2;
     open3 = stack.map((c) => c.t);
   };
-  let i = start;
+  let i = start2;
   while (i < n) {
     const c = text3[i];
     if (c === '"') {
@@ -50042,11 +50042,11 @@ function looseJson(text3) {
   for (; ; ) {
     const rel = src.slice(pos).search(/[{[]/);
     if (rel < 0) return null;
-    const start = pos + rel;
-    const r = scan(src, start);
+    const start2 = pos + rel;
+    const r = scan(src, start2);
     if (r.kind === "balanced") {
       try {
-        return JSON.parse(src.slice(start, r.end + 1));
+        return JSON.parse(src.slice(start2, r.end + 1));
       } catch {
         pos = r.end + 1;
         continue;
@@ -50055,7 +50055,7 @@ function looseJson(text3) {
     if (r.safeEnd < 0) return null;
     const closers = [...r.open].reverse().map((t) => t === "{" ? "}" : "]").join("");
     try {
-      return JSON.parse(src.slice(start, r.safeEnd) + closers);
+      return JSON.parse(src.slice(start2, r.safeEnd) + closers);
     } catch {
       return null;
     }
@@ -50068,8 +50068,8 @@ function hasCutJson(text3) {
   for (; ; ) {
     const rel = src.slice(pos).search(/[{[]/);
     if (rel < 0) return false;
-    const start = pos + rel;
-    const r = scan(src, start);
+    const start2 = pos + rel;
+    const r = scan(src, start2);
     if (r.kind === "cut") return true;
     pos = r.end + 1;
   }
@@ -50683,7 +50683,7 @@ function sanitizeStaging(raw, input) {
 }
 function readIntentOutput(raw, input, opts) {
   const ids = input.units.map((u) => u.id);
-  const base = sanitizeIntentOutput(raw, {
+  const base2 = sanitizeIntentOutput(raw, {
     participants: ids,
     squad: ids.map((id) => ({ id })),
     minConfidence: opts.minConfidence,
@@ -50701,7 +50701,7 @@ function readIntentOutput(raw, input, opts) {
     ...input.practice ? { practice: input.practice } : {},
     ...input.factTextMax !== void 0 ? { factTextMax: input.factTextMax } : {}
   });
-  return input.staging ? { ...base, staging: sanitizeStaging(isObj46(raw) ? raw.staging : void 0, input.staging) } : base;
+  return input.staging ? { ...base2, staging: sanitizeStaging(isObj46(raw) ? raw.staging : void 0, input.staging) } : base2;
 }
 
 // src/scene/comms.ts
@@ -52715,9 +52715,9 @@ function sendLine() {
 }
 function bandNow() {
   if (S2.contact === "sole_to_mouth") {
-    const base = 0.42 + G2.push;
+    const base2 = 0.42 + G2.push;
     const w = G2.order === "suck" ? st().suck : G2.order === "wide" ? 0.16 : 0.2;
-    const lo = G2.order === "wide" ? Math2.min(base + 0.14, WIDE_MAX - w) : base;
+    const lo = G2.order === "wide" ? Math2.min(base2 + 0.14, WIDE_MAX - w) : base2;
     return [clamp41(lo, 0.1, WIDE_MAX), clamp41(lo + w, 0.2, WIDE_MAX)];
   }
   if (G2.order === "wide") return [Math2.min(0.78, WIDE_MAX - 0.14), WIDE_MAX];
@@ -53264,8 +53264,8 @@ function placeMirror(e) {
 }
 var SVG_NS3 = "http://www.w3.org/2000/svg";
 function standIn(canvas) {
-  const base = nullContext(canvas);
-  return new Proxy(base, { get: (t, p) => p === "createRadialGradient" ? () => ({ addColorStop: () => void 0 }) : Reflect.get(t, p) });
+  const base2 = nullContext(canvas);
+  return new Proxy(base2, { get: (t, p) => p === "createRadialGradient" ? () => ({ addColorStop: () => void 0 }) : Reflect.get(t, p) });
 }
 function build(env) {
   const box = document.createElement("div");
@@ -53301,7 +53301,7 @@ function build(env) {
   div("hand", box);
   env.layers.effects.append(box);
   const line3 = inputLine(env);
-  const base = line3.offsetHeight;
+  const base2 = line3.offsetHeight;
   const clip = document.createElement("div");
   clip.className = "alius-jaw-clip";
   clip.setAttribute("aria-hidden", "true");
@@ -53339,7 +53339,7 @@ function build(env) {
   }
   env.input.dataset.jawLetters = "";
   const claims3 = [claimStyles(line3, ["height", "margin-top", "margin-bottom", "transform", "--ache", "border-color"]), claimStyles(env.layers.frame, ["cursor"]), claimStyles(env.reply, ["transform"])];
-  return { env, box, els, line: line3, mirror: mirror2, claims: claims3, frameId: null, base };
+  return { env, box, els, line: line3, mirror: mirror2, claims: claims3, frameId: null, base: base2 };
 }
 function bind(env, run) {
   const state = env.state();
@@ -54213,8 +54213,8 @@ function wakeCard(state, reg) {
 }
 
 // src/blocking/sync.ts
-function deviceTabLocks(state, reg, allTabs, base) {
-  return state !== null && deviceLocked(state, reg) ? new Set(allTabs) : new Set(base);
+function deviceTabLocks(state, reg, allTabs, base2) {
+  return state !== null && deviceLocked(state, reg) ? new Set(allTabs) : new Set(base2);
 }
 function muffled(state, reg) {
   return state !== null && blockingLive(state, reg) && personEffects(state, reg, COMMANDER).some((e) => e.type === "sound" && e.muffle === true);
@@ -54647,12 +54647,12 @@ ${line3}`;
   return { ok: true, value: parsed.value, attempts: 1, at: started2 };
 }
 async function callLlm(id, input, deps, opts = {}) {
-  const base = deps.settings.budgets[id];
+  const base2 = deps.settings.budgets[id];
   const maxAttempts = 1 + deps.settings.autoRetry;
   let factor = opts.budgetMult ?? 1;
   let last4;
   for (let attempt2 = 1; attempt2 <= maxAttempts; attempt2++) {
-    const r = await attemptLlm(id, input, deps, { ...opts, budget: Math.ceil(base * factor) });
+    const r = await attemptLlm(id, input, deps, { ...opts, budget: Math.ceil(base2 * factor) });
     last4 = { ...r, attempts: r.attempts === 0 ? 0 : attempt2 };
     if (r.ok) return last4;
     if (r.reason === "refused" || r.reason === "no_profile") break;
@@ -55567,8 +55567,8 @@ function createSceneController(deps) {
         return;
       }
       lastApply = null;
-      const current3 = state();
-      if (current3 !== la.after || !deps.restore(la.before, la.after)) {
+      const current4 = state();
+      if (current4 !== la.after || !deps.restore(la.before, la.after)) {
         rollbackStaging(index2);
         debug(DEBUG_NOT_ROLLED_BACK);
         return;
@@ -55727,11 +55727,11 @@ function renderCommanderFile(host, ctx2) {
       h("p", {}, "BUILD: ", h("span", { class: "alius-chip", ...analyzeAttrs("glossary:archetype") }, archetype))
     )
   );
-  const picker2 = (kind, current3) => h("div", { class: "alius-cmdr-pick" }, ...DESCRIPTORS[kind].map((word2, i) => h("button", {
+  const picker2 = (kind, current4) => h("div", { class: "alius-cmdr-pick" }, ...DESCRIPTORS[kind].map((word2, i) => h("button", {
     type: "button",
     class: "alius-btn alius-option",
     [`data-${kind}`]: String(i + 1),
-    "aria-pressed": String(current3 === i + 1),
+    "aria-pressed": String(current4 === i + 1),
     ...analyzeNative(`glossary:${kind}`),
     onclick: () => onChange({ kind, value: i + 1 })
   }, word2)));
@@ -55947,12 +55947,12 @@ function resyncSectionsOffered(registries, world, content) {
 }
 function developmentAxisKeys(registries, content) {
   const fixed = [...registries.developmentAxes.keys()].filter((k) => !k.endsWith(":.any") && axisKind(k) !== "practice" && axisKind(k) !== "expect");
-  const base = [...fixed, ...[...registries.tastes.keys()].map((t) => `taste:${t}`)];
+  const base2 = [...fixed, ...[...registries.tastes.keys()].map((t) => `taste:${t}`)];
   const on = practiceCategories(registries).filter((c) => (content ?? []).includes(c));
-  if (on.length === 0) return base;
+  if (on.length === 0) return base2;
   const holder3 = { content: { enabled: [...content ?? []] } };
   return [
-    ...base,
+    ...base2,
     "practice:style.secondary",
     "expect:holds_until",
     ...on.flatMap((c) => [`practice:${c}.as`, `practice:${c}.witness`]),
@@ -56411,8 +56411,8 @@ var Wizard = class {
   }
   /** P12: the corporation of the chosen start (null before one is chosen); a special trait may need a rival to it. */
   get corporationId() {
-    const start = this.s.startId ? this.deps.registries.starts.get(this.s.startId) : void 0;
-    return start ? String(start.corporationId) : null;
+    const start2 = this.s.startId ? this.deps.registries.starts.get(this.s.startId) : void 0;
+    return start2 ? String(start2.corporationId) : null;
   }
   get state() {
     return this.s;
@@ -56730,8 +56730,8 @@ var Wizard = class {
       }
       case "file":
       case "review": {
-        const busy = this.s.units.find((u) => u.regenerating.length > 0);
-        if (busy) return fail(`${busy.displayName} is still regenerating.`);
+        const busy2 = this.s.units.find((u) => u.regenerating.length > 0);
+        if (busy2) return fail(`${busy2.displayName} is still regenerating.`);
         const { errors } = this.build();
         return errors.length === 0 ? { ok: true } : fail(errors[0]);
       }
@@ -57109,7 +57109,7 @@ var option = (value, text3, selected2 = false) => h("option", { value, selected:
 var title = (s) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 function renderTemperamentBlock(host, ctx2) {
   const live3 = { unitId: ctx2.unit.id };
-  const { temperament: current3 } = ctx2;
+  const { temperament: current4 } = ctx2;
   host.replaceChildren(h("p", { class: "alius-stat", ...analyzeAttrs("glossary:temperament", live3) }, "TEMPERAMENT"));
   for (const field2 of TEMPERAMENT_FIELDS) {
     const locked = ctx2.locks.includes(field2);
@@ -57125,9 +57125,9 @@ function renderTemperamentBlock(host, ctx2) {
         live3,
         ctx2.editable && !locked,
         () => {
-          if (current3[field2] !== word2) ctx2.onSet(field2, word2);
+          if (current4[field2] !== word2) ctx2.onSet(field2, word2);
         },
-        current3[field2] === word2
+        current4[field2] === word2
       )),
       control(locked ? "[ LOCKED ]" : "[ LOCK ]", { "data-lock": field2 }, "glossary:temperament", live3, ctx2.editable, () => ctx2.onLock(field2, !locked), locked)
     ));
@@ -57369,13 +57369,13 @@ function renderPracticeBlock(host, ctx2) {
 var STRENGTHS2 = [1, 2, 3];
 var OFFSET_STEPS = [-0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3];
 var BUILD_STEPS = [0, 0.5, 1];
-function valueSelect(label2, attrs, address, ctx2, enabled, current3, options2, onPick) {
+function valueSelect(label2, attrs, address, ctx2, enabled, current4, options2, onPick) {
   const el = h("select", { class: "alius-input alius-option", "aria-label": label2, "aria-disabled": enabled ? null : "true", ...attrs, ...analyzeNative(address, ctx2) }, ...options2);
-  el.value = current3;
+  el.value = current4;
   el.addEventListener("change", () => {
     const value = el.value;
-    el.value = current3;
-    if (enabled && value !== current3) onPick(value);
+    el.value = current4;
+    if (enabled && value !== current4) onPick(value);
   });
   return el;
 }
@@ -57826,8 +57826,8 @@ function renderCalibration(host, ctx2) {
   const stanceIds = ctx2.world ? stanceOptionIds(reg, ctx2.world) : [];
   if (shown2.has("stances") && stanceIds.length > 0) {
     const holder4 = { world: { options: ctx2.world } };
-    const current3 = (id) => ch.worldStances?.[id] ?? { stance: "indifferent", strength: 1, reason: "" };
-    const write3 = (id, next) => onUpdate({ worldStances: { ...ch.worldStances ?? {}, [id]: { ...current3(id), ...next } } });
+    const current4 = (id) => ch.worldStances?.[id] ?? { stance: "indifferent", strength: 1, reason: "" };
+    const write3 = (id, next) => onUpdate({ worldStances: { ...ch.worldStances ?? {}, [id]: { ...current4(id), ...next } } });
     host.append(
       section(
         "stances",
@@ -57836,7 +57836,7 @@ function renderCalibration(host, ctx2) {
         ...stanceIds.map((id) => {
           const opt = reg.worldOptions.get(id);
           const choice = worldChoice(holder4, reg, id).choice;
-          const cur = current3(id);
+          const cur = current4(id);
           const imported = !manual && cand?.worldStances?.[id]?.reason ? cand.worldStances[id].reason : "";
           const chip2 = (attrs, label2, on, disabled, apply2) => h("button", {
             type: "button",
@@ -58102,7 +58102,7 @@ var TEXT = {
 };
 var DAYS = [0, 7, 14, 30];
 function renderHeadStartSection(host, wizard) {
-  const current3 = wizard.state.headStart.days;
+  const current4 = wizard.state.headStart.days;
   host.append(h(
     "section",
     { class: "alius-section alius-head-start" },
@@ -58112,7 +58112,7 @@ function renderHeadStartSection(host, wizard) {
       type: "button",
       class: "alius-card alius-option alius-head-start-choice",
       "data-days": String(d),
-      "aria-pressed": String(current3 === d),
+      "aria-pressed": String(current4 === d),
       ...analyzeNative("glossary:head_start"),
       onclick: () => wizard.setHeadStart(d)
     }, h("strong", {}, HEAD_START_LABEL[d]), h("p", {}, TEXT[d]))))
@@ -58445,13 +58445,13 @@ var TEXT2 = {
   normal: "Soldiers change slowly from what they live through."
 };
 function renderDevelopmentSection(host, wizard) {
-  const current3 = wizard.state.development;
+  const current4 = wizard.state.development;
   const select = h(
     "select",
     { name: "characterDevelopment", class: "alius-input" },
-    ...["off", "slow", "normal"].map((m) => h("option", { value: m, selected: m === current3 }, DEVELOPMENT_LABEL[m]))
+    ...["off", "slow", "normal"].map((m) => h("option", { value: m, selected: m === current4 }, DEVELOPMENT_LABEL[m]))
   );
-  select.value = current3;
+  select.value = current4;
   select.addEventListener("change", () => wizard.setDevelopment(select.value));
   host.append(h(
     "section",
@@ -58459,7 +58459,7 @@ function renderDevelopmentSection(host, wizard) {
     h("h3", {}, "CHARACTER DEVELOPMENT"),
     h("p", { class: "alius-hint" }, "Nothing is announced when a soldier changes: it shows in how she acts, and her file records it afterwards. Her card and her own limits never change."),
     h("label", { class: "alius-field alius-option", ...analyzeNative("glossary:character_development") }, h("span", { class: "alius-field-label" }, "Pace"), select),
-    h("p", { class: "alius-dim", "data-development-text": current3 }, TEXT2[current3])
+    h("p", { class: "alius-dim", "data-development-text": current4 }, TEXT2[current4])
   ));
 }
 
@@ -58472,13 +58472,13 @@ var TEXT3 = {
   often: "Something happens to a soldier twice a week, and the news comes more often."
 };
 function renderLifeSection(host, wizard) {
-  const current3 = wizard.state.lifeEvents;
+  const current4 = wizard.state.lifeEvents;
   const select = h(
     "select",
     { name: "lifeEvents", class: "alius-input" },
-    ...["off", "rare", "normal", "often"].map((m) => h("option", { value: m, selected: m === current3 }, LIFE_LABEL[m]))
+    ...["off", "rare", "normal", "often"].map((m) => h("option", { value: m, selected: m === current4 }, LIFE_LABEL[m]))
   );
-  select.value = current3;
+  select.value = current4;
   select.addEventListener("change", () => wizard.setLifeEvents(select.value));
   host.append(h(
     "section",
@@ -58486,7 +58486,7 @@ function renderLifeSection(host, wizard) {
     h("h3", {}, "LIFE EVENTS"),
     h("p", { class: "alius-hint" }, "Soldiers have days of their own: hobbies, opinions and things that happen off-screen. Nothing is announced; it reaches the commander through talk, messages and notes."),
     h("label", { class: "alius-field alius-option", ...analyzeNative("glossary:setting_life_events") }, h("span", { class: "alius-field-label" }, "How often"), select),
-    h("p", { class: "alius-dim", "data-life-text": current3 }, TEXT3[current3])
+    h("p", { class: "alius-dim", "data-life-text": current4 }, TEXT3[current4])
   ));
 }
 
@@ -58887,8 +58887,8 @@ function renderSetupScreen(host, ctx2) {
       btn2("back", "Back", () => wizard.back(), s.step === "dossier")
     ];
     if (s.step === "review") {
-      const busy = deploying.get(wizard) === true;
-      buttons.push(btn2("confirm", busy ? "DEPLOYING\u2026" : "Confirm deployment", () => void deploy(false), !adv.ok || busy));
+      const busy2 = deploying.get(wizard) === true;
+      buttons.push(btn2("confirm", busy2 ? "DEPLOYING\u2026" : "Confirm deployment", () => void deploy(false), !adv.ok || busy2));
     } else if (s.step !== "file") {
       buttons.push(btn2("next", "Next", () => wizard.next(), !adv.ok));
     }
@@ -59464,9 +59464,9 @@ function ditherBayer4(src, w, h2, levels) {
       const i = (y * w + x) * 4;
       if (src[i + 3] < 128) continue;
       const l2 = (0.2126 * src[i] + 0.7152 * src[i + 1] + 0.0722 * src[i + 2]) / 255 * 2;
-      const base = Math.min(1, Math.floor(l2));
+      const base2 = Math.min(1, Math.floor(l2));
       const threshold = (BAYER4[y % 4 * 4 + x % 4] + 0.5) / 16;
-      const [r, g, b] = levels[l2 - base > threshold ? base + 1 : base];
+      const [r, g, b] = levels[l2 - base2 > threshold ? base2 + 1 : base2];
       out[i] = r;
       out[i + 1] = g;
       out[i + 2] = b;
@@ -60378,26 +60378,26 @@ function unitBlock(unit5, ctx2, state) {
   );
 }
 function handSelect(unit5, state, ctx2) {
-  const current3 = handOf(state, ctx2.registries, unit5.id);
-  if (!ctx2.onSetHand || !current3) return null;
+  const current4 = handOf(state, ctx2.registries, unit5.id);
+  if (!ctx2.onSetHand || !current4) return null;
   const select = h("select", { class: "alius-input", "data-hand": unit5.id, "aria-label": `Handwriting of ${unit5.displayName}` }, ...[...ctx2.registries.handFonts.values()].map((e) => {
     const option2 = h("option", { value: String(e.id) }, String(e.name));
-    if (e.id === current3.id) option2.setAttribute("selected", "");
+    if (e.id === current4.id) option2.setAttribute("selected", "");
     return option2;
   }));
-  select.value = String(current3.id);
+  select.value = String(current4.id);
   select.addEventListener("change", () => ctx2.onSetHand(unit5.id, select.value));
   return h("label", { class: "alius-stat alius-hand", ...analyzeNative("glossary:handwriting", { unitId: unit5.id }) }, "HAND ", select);
 }
 function quartersSelect(unit5, state, ctx2) {
-  const current3 = quartersOf(state, ctx2.registries, unit5.id);
-  if (!ctx2.onSetQuarters || !current3) return null;
+  const current4 = quartersOf(state, ctx2.registries, unit5.id);
+  if (!ctx2.onSetQuarters || !current4) return null;
   const select = h("select", { class: "alius-input", "data-quarters": unit5.id, "aria-label": `Quarters of ${unit5.displayName}` }, ...[...ctx2.registries.quartersStyles.values()].map((e) => {
     const option2 = h("option", { value: String(e.id), title: String(e.description) }, String(e.name));
-    if (e.id === current3.id) option2.setAttribute("selected", "");
+    if (e.id === current4.id) option2.setAttribute("selected", "");
     return option2;
   }));
-  select.value = String(current3.id);
+  select.value = String(current4.id);
   select.addEventListener("change", () => ctx2.onSetQuarters(unit5.id, select.value));
   return h("label", { class: "alius-stat alius-quarters", ...analyzeNative("glossary:quarters", { unitId: unit5.id }) }, "QUARTERS ", select);
 }
@@ -62102,13 +62102,13 @@ function emergencyLights(corridors, segs, doors) {
     const horizontal = c.w > c.h;
     const n = Math.max(1, Math.floor(Math.max(c.w, c.h) / 70));
     for (let i = 0; i < n; i++) {
-      const base = horizontal ? c.x + c.w * (i + 0.5) / n : c.y + c.h * (i + 0.5) / n;
+      const base2 = horizontal ? c.x + c.w * (i + 0.5) / n : c.y + c.h * (i + 0.5) / n;
       let placed = null;
       for (const off of [0, 12, -12, 24, -24, 36, -36]) {
         const walls = horizontal ? [[c.y, 1], [c.y + c.h, -1]] : [[c.x, 1], [c.x + c.w, -1]];
-        const hit = walls.find(([at3]) => wallOk(horizontal, at3, base + off));
+        const hit = walls.find(([at3]) => wallOk(horizontal, at3, base2 + off));
         if (hit) {
-          placed = [base + off, hit[0], hit[1]];
+          placed = [base2 + off, hit[0], hit[1]];
           break;
         }
       }
@@ -62764,7 +62764,7 @@ function renderMapTab(host, ctx2) {
   const known3 = knownRegions(state, reg);
   const knownIds = new Set(known3.map((r) => String(r.id)));
   const regions = [...reg.regions.values()];
-  let current3 = selectedRegion(host, state, reg, known3);
+  let current4 = selectedRegion(host, state, reg, known3);
   const select = (id) => {
     if (!knownIds.has(id)) return;
     host.dataset.selected = id;
@@ -62790,7 +62790,7 @@ function renderMapTab(host, ctx2) {
       const poly = svg2("polygon", {
         points,
         "data-region": id,
-        class: `alius-hotspot${isKnown ? "" : " alius-nosignal"}${current3?.id === id ? " alius-selected" : ""}`,
+        class: `alius-hotspot${isKnown ? "" : " alius-nosignal"}${current4?.id === id ? " alius-selected" : ""}`,
         "aria-label": isKnown ? String(r.name) : "NO SIGNAL",
         ...isKnown ? { tabindex: "0", role: "button" } : { "aria-disabled": "true" }
       });
@@ -62820,7 +62820,7 @@ function renderMapTab(host, ctx2) {
         if (r && knownIds.has(String(r.id))) {
           cell.append(h("button", {
             type: "button",
-            class: `alius-btn alius-region-btn${current3?.id === r.id ? " alius-selected" : ""}`,
+            class: `alius-btn alius-region-btn${current4?.id === r.id ? " alius-selected" : ""}`,
             "data-region": String(r.id),
             onclick: () => select(String(r.id))
           }, String(r.name)));
@@ -62835,9 +62835,9 @@ function renderMapTab(host, ctx2) {
   }
   drawMap();
   host.append(mapBox);
-  if (current3) {
-    current3 = known3.find((r) => r.id === current3.id);
-    if (current3) host.append(regionPanel(state, current3, ctx2));
+  if (current4) {
+    current4 = known3.find((r) => r.id === current4.id);
+    if (current4) host.append(regionPanel(state, current4, ctx2));
   }
 }
 
@@ -63449,7 +63449,7 @@ function worldDirectives(builder, state, reg) {
 // src/world/directorController.ts
 var DAY_ENDED = "The day ended: the engine planned the world.";
 function createDirector(deps) {
-  const running4 = /* @__PURE__ */ new Set();
+  const running5 = /* @__PURE__ */ new Set();
   const chatId = () => deps.st.getActiveChat()?.chatId;
   function answer(action, chat) {
     const events = deps.app.dispatch(action, { expectChatId: chat });
@@ -63498,8 +63498,8 @@ function createDirector(deps) {
     const chat = chatId();
     expireStale(pending4?.id, chat);
     const key = `${chat ?? ""}:${pending4?.id ?? ""}`;
-    if (!state || !pending4 || running4.has(key)) return;
-    running4.add(key);
+    if (!state || !pending4 || running5.has(key)) return;
+    running5.add(key);
     try {
       const settings = deps.settings();
       if (!settings.directorEnabled) {
@@ -63509,7 +63509,7 @@ function createDirector(deps) {
       const out = await deps.generations.generate("director.tick", pending4.id);
       if (out.kind === "failed" && out.reason === "no_profile" && chatId() === chat) answer({ type: "director/fallback", payload: { requestId: pending4.id } }, chat);
     } finally {
-      running4.delete(key);
+      running5.delete(key);
     }
   }
   function useFallback() {
@@ -63520,7 +63520,7 @@ function createDirector(deps) {
     answer({ type: "director/fallback", payload: { requestId: pending4.id } }, chat);
     deps.app.dispatch({ type: "generation/close", payload: { siteId: "director.tick", key: pending4.id, outcome: "kept_fallback" } }, { expectChatId: chat });
   }
-  return { onRequested, useFallback, busy: () => running4.size > 0 };
+  return { onRequested, useFallback, busy: () => running5.size > 0 };
 }
 
 // src/world/expeditionController.ts
@@ -63770,13 +63770,13 @@ function roster(state, ctx2) {
 }
 var RATION_LABEL = { equal: "EQUAL", fighters_first: "FIGHTERS FIRST", commander_short: "COMMANDER SHORT" };
 function rations(state, ctx2) {
-  const current3 = rationsOf(state);
+  const current4 = rationsOf(state);
   const section = h("section", { class: "alius-section alius-rations", "data-rations": "" }, h("h2", {}, h("span", { class: "alius-stat", ...analyzeAttrs("glossary:rations") }, "RATIONS")));
   section.append(h("div", { class: "alius-rations-modes" }, ...RATION_MODES.map((mode) => h("button", {
     type: "button",
     class: "alius-btn alius-option",
     "data-rations-mode": mode,
-    "aria-pressed": String(mode === current3),
+    "aria-pressed": String(mode === current4),
     ...analyzeNative("glossary:rations", { mode }),
     onclick: () => ctx2.onSetRations?.(mode)
   }, `[ ${RATION_LABEL[mode]} ]`))));
@@ -65035,10 +65035,10 @@ function renderCommsTab(host, ctx2) {
     if (contacts.some((u) => u.id === wanted)) selected.set(host, wanted);
     wanted = void 0;
   }
-  let current3 = selected.get(host);
-  if (current3 && !contacts.some((u) => u.id === current3)) {
+  let current4 = selected.get(host);
+  if (current4 && !contacts.some((u) => u.id === current4)) {
     selected.delete(host);
-    current3 = void 0;
+    current4 = void 0;
   }
   const open3 = (id) => {
     selected.set(host, id);
@@ -65052,7 +65052,7 @@ function renderCommsTab(host, ctx2) {
     const renamed = decor !== null && decor.parts.includes("contact") ? decor : null;
     const row4 = h("button", {
       type: "button",
-      class: `alius-btn alius-contact${u.id === current3 ? " is-open" : ""}${renamed?.fadedUntil !== void 0 ? " is-faded" : ""}`,
+      class: `alius-btn alius-contact${u.id === current4 ? " is-open" : ""}${renamed?.fadedUntil !== void 0 ? " is-faded" : ""}`,
       "data-unit": u.id,
       onclick: () => open3(u.id)
     }, renamed ? renamed.contactName : u.displayName, " ", dot2);
@@ -65062,17 +65062,17 @@ function renderCommsTab(host, ctx2) {
     return row4;
   }));
   const thread = h("div", { class: "alius-thread alius-voice alius-voice-personal", "data-voice": "personal", role: "log", "aria-live": "polite" });
-  if (!current3) {
+  if (!current4) {
     thread.append(h("p", { class: "alius-dim" }, "SELECT A CONTACT"));
   } else {
-    const unit5 = contacts.find((u) => u.id === current3);
+    const unit5 = contacts.find((u) => u.id === current4);
     const decor = decorOf(state, unit5.id);
     const alias = decor !== null && decor.parts.includes("contact") ? decor.contactName : null;
     thread.append(h("h3", {}, alias !== null ? `// ${alias.toUpperCase()} [${unit5.displayName.toUpperCase()}]` : `// ${unit5.displayName.toUpperCase()}`));
     const accent = unitAccent(unit5.id);
     const played2 = revealed.get(host) ?? /* @__PURE__ */ new Set();
     revealed.set(host, played2);
-    const messages = state.dms[current3] ?? [];
+    const messages = state.dms[current4] ?? [];
     let lastMine = -1;
     messages.forEach((x, i) => {
       if (x.from === "commander") lastMine = i;
@@ -65084,24 +65084,24 @@ function renderCommsTab(host, ctx2) {
         bubble.classList.add("alius-msg", "is-commander");
         bubble.prepend(h("span", { class: "alius-msg-meta" }, stampText(m.day, m.slot)));
         thread.append(bubble);
-        const receipt = i === lastMine ? renderReceipt(state, current3, m) : null;
+        const receipt = i === lastMine ? renderReceipt(state, current4, m) : null;
         if (receipt) thread.append(receipt);
         return;
       }
-      const shown2 = renderHerMessage(state, ctx2.registries, current3, m, { revealed: played2, accent, onReveal: (id) => {
+      const shown2 = renderHerMessage(state, ctx2.registries, current4, m, { revealed: played2, accent, onReveal: (id) => {
         played2.add(id);
         renderCommsTab(host, ctx2);
       } });
       if (m.violation && m.violation.length > 0) drawViolation(shown2[shown2.length - 1], violationLabels(ctx2.registries, m.violation));
       thread.append(...shown2);
     });
-    const doorId = state.calendar.nightEvent?.unitId === current3 ? state.calendar.nightEvent.id : null;
+    const doorId = state.calendar.nightEvent?.unitId === current4 ? state.calendar.nightEvent.id : null;
     const genHost = h("div", { class: "alius-generation-chips" });
-    drawGenerationChips(genHost, ctx2.generation, state, "comms", (r) => r.key.startsWith(`${current3}:`) || r.key === doorId);
-    const her = ctx2.reply?.state(current3);
-    if (her) drawSiteReroll(genHost, ctx2.generation, "dm.reply", her.siteKey, () => ctx2.reply.run(current3), her.reroll);
+    drawGenerationChips(genHost, ctx2.generation, state, "comms", (r) => r.key.startsWith(`${current4}:`) || r.key === doorId);
+    const her = ctx2.reply?.state(current4);
+    if (her) drawSiteReroll(genHost, ctx2.generation, "dm.reply", her.siteKey, () => ctx2.reply.run(current4), her.reroll);
     if (genHost.childElementCount > 0) thread.append(genHost);
-    if (hesitates(state, ctx2.registries, current3)) {
+    if (hesitates(state, ctx2.registries, current4)) {
       const key = messages.at(-1).id;
       const motion = ctx2.motion?.() ?? true;
       const done = typingPlayed(host, key);
@@ -65111,12 +65111,12 @@ function renderCommsTab(host, ctx2) {
       thread.append(typing6);
     }
     const chips = h("div", { class: "alius-chips" });
-    drawProposalChips(chips, state, (p) => p.channel === "dm" && p.unitId === current3, ctx2.onAnswer, ctx2.registries);
+    drawProposalChips(chips, state, (p) => p.channel === "dm" && p.unitId === current4, ctx2.onAnswer, ctx2.registries);
     const disciplineChips = h("div", { class: "alius-chips alius-discipline-chips" });
-    drawDisciplineChips(disciplineChips, state, ctx2.registries, (c) => c.channel === "dm" && c.unitId === current3, (id) => ctx2.onUndoDiscipline?.(id));
+    drawDisciplineChips(disciplineChips, state, ctx2.registries, (c) => c.channel === "dm" && c.unitId === current4, (id) => ctx2.onUndoDiscipline?.(id));
     const input = h("input", { type: "text", name: "dm", class: "alius-input", autocomplete: "off", "aria-label": `Message ${unit5.displayName}` });
     const pending4 = ctx2.edit?.() ?? null;
-    const waiting3 = pending4 !== null && pending4.toUnitId === current3 ? pending4 : null;
+    const waiting3 = pending4 !== null && pending4.toUnitId === current4 ? pending4 : null;
     input.value = waiting3 ? waiting3.edited : drafts.get(host) ?? "";
     if (waiting3) input.readOnly = true;
     else input.addEventListener("input", () => drafts.set(host, input.value));
@@ -65132,39 +65132,39 @@ function renderCommsTab(host, ctx2) {
       if (e.key === "Enter") send();
     });
     const demandChips = h("div", { class: "alius-chips alius-discipline-chips" });
-    drawDemandChips(demandChips, state, ctx2.registries, (c) => c.unitId === current3, {
+    drawDemandChips(demandChips, state, ctx2.registries, (c) => c.unitId === current4, {
       grant: (id) => ctx2.onAnswerDemand?.(id, "grant"),
       refuse: (id) => ctx2.onAnswerDemand?.(id, "refuse"),
       talk: (id) => ctx2.onTalkDemand?.(id),
       generation: ctx2.generation
     });
     const milestoneCards = h("div", { class: "alius-milestone-cards" });
-    drawMilestoneCards(milestoneCards, state, ctx2.registries, (c) => c.unitId === current3, (id, answer) => ctx2.onAnswerMilestone?.(id, answer));
+    drawMilestoneCards(milestoneCards, state, ctx2.registries, (c) => c.unitId === current4, (id, answer) => ctx2.onAnswerMilestone?.(id, answer));
     const claimCards = h("div", { class: "alius-claim-cards" });
-    drawClaimCards(claimCards, state, ctx2.registries, (c) => c.unitId === current3, (id, answer) => ctx2.onAnswerClaim?.(id, answer));
+    drawClaimCards(claimCards, state, ctx2.registries, (c) => c.unitId === current4, (id, answer) => ctx2.onAnswerClaim?.(id, answer));
     const returnCards = h("div", { class: "alius-return-cards" });
-    drawReturnCards(returnCards, state, ctx2.registries, (c) => c.unitId === current3, (answer) => ctx2.onAnswerReturn?.(answer));
+    drawReturnCards(returnCards, state, ctx2.registries, (c) => c.unitId === current4, (answer) => ctx2.onAnswerReturn?.(answer));
     const taskCards = h("div", { class: "alius-task-cards" });
-    drawTaskCards(taskCards, state, ctx2.registries, (c) => c.unitId === current3, { answer: (id, answer) => ctx2.onAnswerTask?.(id, answer), sign: (id) => ctx2.onSignTask?.(id), focusInput: () => input.focus(), generation: ctx2.generation });
+    drawTaskCards(taskCards, state, ctx2.registries, (c) => c.unitId === current4, { answer: (id, answer) => ctx2.onAnswerTask?.(id, answer), sign: (id) => ctx2.onSignTask?.(id), focusInput: () => input.focus(), generation: ctx2.generation });
     const punishmentCards = h("div", { class: "alius-punishment-cards" });
-    drawPunishmentCards(punishmentCards, state, ctx2.registries, (c) => c.unitId === current3, { answer: (id, answer) => ctx2.onAnswerPunishment?.(id, answer), takeInstead: (id, answer) => ctx2.onTakeInstead?.(id, answer), undo: (id) => ctx2.onUndoPunishment?.(id), ceremony: (id, step, number) => ctx2.onCeremonyStep?.(id, step, number), generation: ctx2.generation });
+    drawPunishmentCards(punishmentCards, state, ctx2.registries, (c) => c.unitId === current4, { answer: (id, answer) => ctx2.onAnswerPunishment?.(id, answer), takeInstead: (id, answer) => ctx2.onTakeInstead?.(id, answer), undo: (id) => ctx2.onUndoPunishment?.(id), ceremony: (id, step, number) => ctx2.onCeremonyStep?.(id, step, number), generation: ctx2.generation });
     const demonstrationCards = h("div", { class: "alius-demonstration-cards" });
-    drawDemonstrationCards(demonstrationCards, state, ctx2.registries, (c) => c.unitId === current3, { answer: (id, answer) => ctx2.onAnswerDemonstration?.(id, answer), generation: ctx2.generation });
+    drawDemonstrationCards(demonstrationCards, state, ctx2.registries, (c) => c.unitId === current4, { answer: (id, answer) => ctx2.onAnswerDemonstration?.(id, answer), generation: ctx2.generation });
     const offerInner = h("div", { class: "alius-offer-chips-host" });
     const initiativeInner = h("div", { class: "alius-initiative-host" });
     const offerChips = h("div", { class: "alius-offer-surface" }, offerInner, initiativeInner);
-    if (ctx2.onOffer) drawOfferChips(offerInner, { state, reg: ctx2.registries, pick: (id) => id === current3, onOffer: ctx2.onOffer, answered: () => messages.at(-1)?.from !== "commander", memory: host });
-    if (ctx2.initiative) drawInitiativeChips(initiativeInner, { state, reg: ctx2.registries, pick: (id) => id === current3, memory: host, ...ctx2.initiative });
+    if (ctx2.onOffer) drawOfferChips(offerInner, { state, reg: ctx2.registries, pick: (id) => id === current4, onOffer: ctx2.onOffer, answered: () => messages.at(-1)?.from !== "commander", memory: host });
+    if (ctx2.initiative) drawInitiativeChips(initiativeInner, { state, reg: ctx2.registries, pick: (id) => id === current4, memory: host, ...ctx2.initiative });
     const ruleChips = h("div", { class: "alius-chips alius-discipline-chips" });
     const answers2 = { accept: (id) => ctx2.onAnswerRule?.(id, "accept"), negotiate: (id) => ctx2.onAnswerRule?.(id, "negotiate"), refuse: (id) => ctx2.onAnswerRule?.(id, "refuse"), generation: ctx2.generation };
-    for (const rule of ruleNotesFor(state, (id) => id === current3).filter((r) => r.status === "proposed")) ruleChips.append(renderRuleNote(state, ctx2.registries, rule, answers2, { motion: ctx2.motion?.() ?? true }));
+    for (const rule of ruleNotesFor(state, (id) => id === current4).filter((r) => r.status === "proposed")) ruleChips.append(renderRuleNote(state, ctx2.registries, rule, answers2, { motion: ctx2.motion?.() ?? true }));
     const personalChips = h("div", { class: "alius-chips alius-discipline-chips" });
-    if (ctx2.personal) drawPersonalChips(personalChips, state, ctx2.registries, (id) => id === current3, ctx2.personal);
+    if (ctx2.personal) drawPersonalChips(personalChips, state, ctx2.registries, (id) => id === current4, ctx2.personal);
     const editor = waiting3 ? contacts.find((u) => u.id === waiting3.editorId) : void 0;
     const editChips = waiting3 ? editChip(waiting3, editor?.displayName ?? waiting3.editorId, () => ctx2.onAnswerEdit?.(true), () => ctx2.onAnswerEdit?.(false)) : null;
     const sendButton = h("button", { type: "button", class: "alius-btn", "data-action": "send", ...waiting3 ? { "aria-disabled": "true" } : {}, onclick: send }, "[ SEND ]");
     thread.append(chips, disciplineChips, demandChips, milestoneCards, claimCards, returnCards, taskCards, punishmentCards, demonstrationCards, offerChips, ruleChips, personalChips, ...editChips ? [editChips] : [], h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "MSG>"), input, sendButton));
-    if (unreadMessages(state, current3) > 0) queueMicrotask(() => ctx2.onRead(unit5.id));
+    if (unreadMessages(state, current4) > 0) queueMicrotask(() => ctx2.onRead(unit5.id));
   }
   host.append(h("section", { class: "alius-section alius-comms" }, h("h2", {}, "[ PDA COMMS ]"), h("div", { class: "alius-comms-body" }, list5, thread)));
 }
@@ -66768,8 +66768,8 @@ var letters = {
     while (a < v.length && a < p.length && v[a] === p[a]) a++;
     let b = 0;
     while (b < v.length - a && b < p.length - a && v[v.length - 1 - b] === p[p.length - 1 - b]) b++;
-    const start = 1 - smooth(70, 10, G3.air) * 0.35;
-    const added = [...v.slice(a, v.length - b)].map((ch) => ({ ch, c: G3.phase === "loop" ? start : 1 }));
+    const start2 = 1 - smooth(70, 10, G3.air) * 0.35;
+    const added = [...v.slice(a, v.length - b)].map((ch) => ({ ch, c: G3.phase === "loop" ? start2 : 1 }));
     this.chars.splice(a, p.length - a - b, ...added);
     this.prev = v;
     this.draw();
@@ -69587,8 +69587,8 @@ function intensityAt(p) {
       zone = z2;
     }
   }
-  const base = BASE_I[S6.contact];
-  return { I: clamp41(base + best * (1.1 - base), 0, 1.1), zone };
+  const base2 = BASE_I[S6.contact];
+  return { I: clamp41(base2 + best * (1.1 - base2), 0, 1.1), zone };
 }
 var stim = () => BAND[S6.band] / 1.5;
 var tolT = () => 0.3 + S6.tol / 100 * 0.8;
@@ -70273,10 +70273,10 @@ var tint = {
       const m = v.slice(0, -1).match(/(\S+)$/);
       if (m) {
         const repl = Math5.random() < 0.35 || !G5.head.length ? S6.name : pick6(G5.head).w;
-        const start = v.length - 1 - m[1].length;
-        const nv = v.slice(0, start) + repl + " ";
+        const start2 = v.length - 1 - m[1].length;
+        const nv = v.slice(0, start2) + repl + " ";
         $4("#cmd").value = nv;
-        this.chars.splice(start, m[1].length, ...[...repl].map((ch) => ({ ch, tint: true })));
+        this.chars.splice(start2, m[1].length, ...[...repl].map((ch) => ({ ch, tint: true })));
         this.prev = nv;
       }
     }
@@ -71736,10 +71736,10 @@ function makeDirt() {
   const img2 = $6("#soleArt");
   if (!img2.naturalWidth) return;
   const w = 140, h2 = Math7.round(140 * img2.naturalHeight / img2.naturalWidth);
-  const base = document2.createElement("canvas");
-  base.width = w;
-  base.height = h2;
-  const b = base.getContext("2d");
+  const base2 = document2.createElement("canvas");
+  base2.width = w;
+  base2.height = h2;
+  const b = base2.getContext("2d");
   b.drawImage(img2, 0, 0, w, h2);
   const alpha = b.getImageData(0, 0, w, h2).data;
   const m = new Float32Array(w * h2);
@@ -74885,8 +74885,8 @@ var cam = {
     this.layer = new Map([backdrop, sprites].map((el) => [el, claimStyles(el, CAM_PROPS)]));
     this.ui = [reply, wrap].map((el) => claimStyles(el, ["opacity"]));
     this.saved = [...this.layer.values(), ...this.ui];
-    const base = typeof getComputedStyle === "function" ? getComputedStyle(backdrop).filter : "";
-    this.backdropFilter = base && base !== "none" ? base : "";
+    const base2 = typeof getComputedStyle === "function" ? getComputedStyle(backdrop).filter : "";
+    this.backdropFilter = base2 && base2 !== "none" ? base2 : "";
     for (const el of [backdrop, sprites]) this.put(el, "transition", "none");
     this.put(sprites, "transform-origin", "0 0");
     this.base = null;
@@ -76438,10 +76438,10 @@ function makeSurface() {
   const img2 = slotImg() ?? SPRITE;
   if (!img2.naturalWidth) return null;
   const w = 140, h2 = Math9.round(140 * img2.naturalHeight / img2.naturalWidth);
-  const base = document3.createElement("canvas");
-  base.width = w;
-  base.height = h2;
-  const b = base.getContext("2d");
+  const base2 = document3.createElement("canvas");
+  base2.width = w;
+  base2.height = h2;
+  const b = base2.getContext("2d");
   b.drawImage(img2, 0, 0, w, h2);
   const alpha = b.getImageData(0, 0, w, h2).data;
   const m = new Float32Array(w * h2), gl = new Float32Array(w * h2), zoneOf = new Int8Array(w * h2).fill(-1), leatherMask = new Uint8Array(w * h2);
@@ -78576,13 +78576,13 @@ var LYING = {
   lying_front: ["x", 90],
   lying_side: ["z", 90]
 };
-function legsOf(base, pts, hogtie) {
+function legsOf(base2, pts, hogtie) {
   const apart = pts.knees === "apart";
   const toes = pts.feet === "on_toes";
-  switch (base) {
+  switch (base2) {
     case "standing":
     case "standing_attention": {
-      const lat = base === "standing_attention" ? 0.055 : apart ? 0.26 : 0.1;
+      const lat = base2 === "standing_attention" ? 0.055 : apart ? 0.26 : 0.1;
       const ay = toes ? 0.19 : 0.06;
       const py = ay + Math.sqrt(0.885 * 0.885 - (lat - HIP_HALF) ** 2);
       return { pelvis: [0, py, 0], ankle: [lat, ay, 0], kneeHint: [0.15, 0, 1], foot: toes ? "down" : "fwd" };
@@ -78594,7 +78594,7 @@ function legsOf(base, pts, hogtie) {
     case "kneeling_upright":
     case "kneeling_sitting":
     case "bowing": {
-      const hips = pts.hips ?? (base === "kneeling_upright" ? "raised" : "on_heels");
+      const hips = pts.hips ?? (base2 === "kneeling_upright" ? "raised" : "on_heels");
       const lat = apart ? 0.17 : 0.1;
       const ay = toes ? 0.19 : 0.06;
       const foot2 = toes ? "down_back" : "back";
@@ -78611,16 +78611,16 @@ function legsOf(base, pts, hogtie) {
       return { pelvis: [0, 0.24, -0.3], ankle: [apart ? 0.3 : 0.09, 0.06, -0.32], kneeHint: [0.1, 0, 1], foot: "back" };
     default: {
       if (hogtie) return { pelvis: [0, 0.95, 0], ankle: [0.08, 0.78, -0.38], kneeHint: [0, -0.3, 1], foot: "back" };
-      if (apart && base === "lying_back") return { pelvis: [0, 0.95, 0], ankle: [0.16, 0.62, 0.12], kneeHint: [0.5, 0, 1], foot: "down" };
-      if (base === "lying_side") return { pelvis: [0, 0.95, 0], ankle: [0.1, 0.16, 0.3], ankleR: [-0.08, 0.12, 0.12], kneeHint: [0.1, 0, 1], foot: "down" };
-      return { pelvis: [0, 0.95, 0], ankle: [0.09, 0.07, 0], kneeHint: [0.1, 0, 1], foot: base === "lying_front" ? "down" : "fwd" };
+      if (apart && base2 === "lying_back") return { pelvis: [0, 0.95, 0], ankle: [0.16, 0.62, 0.12], kneeHint: [0.5, 0, 1], foot: "down" };
+      if (base2 === "lying_side") return { pelvis: [0, 0.95, 0], ankle: [0.1, 0.16, 0.3], ankleR: [-0.08, 0.12, 0.12], kneeHint: [0.1, 0, 1], foot: "down" };
+      return { pelvis: [0, 0.95, 0], ankle: [0.09, 0.07, 0], kneeHint: [0.1, 0, 1], foot: base2 === "lying_front" ? "down" : "fwd" };
     }
   }
 }
-function leanOf(base, torso, hogtie) {
+function leanOf(base2, torso, hogtie) {
   if (hogtie) return -35;
-  if (torso === "bent") return base === "standing" || base === "standing_attention" ? 80 : 100;
-  if (torso === "forward") return base === "crouching" ? 35 : base === "curled" ? 96 : base === "sitting" ? 26 : 22;
+  if (torso === "bent") return base2 === "standing" || base2 === "standing_attention" ? 80 : 100;
+  if (torso === "forward") return base2 === "crouching" ? 35 : base2 === "curled" ? 96 : base2 === "sitting" ? 26 : 22;
   return { upright: 0, arched: -14, level: 86 }[torso];
 }
 function armGoal(state, c) {
@@ -78685,12 +78685,12 @@ function rotate(v, axis, deg) {
   return axis === "x" ? [v[0], v[1] * c - v[2] * s, v[1] * s + v[2] * c] : [v[0] * c - v[1] * s, v[0] * s + v[1] * c, v[2]];
 }
 function pose(p) {
-  const base = BASE_POINTS[p.base] ? p.base : "standing";
-  const pts = { ...BASE_POINTS[base], ...p.points };
+  const base2 = BASE_POINTS[p.base] ? p.base : "standing";
+  const pts = { ...BASE_POINTS[base2], ...p.points };
   const hogtie = p.hogtie === true;
-  const legs = legsOf(base, pts, hogtie);
-  const lying = LYING[base] !== void 0;
-  const phi = leanOf(base, pts.torso ?? "upright", hogtie) * DEG;
+  const legs = legsOf(base2, pts, hogtie);
+  const lying = LYING[base2] !== void 0;
+  const phi = leanOf(base2, pts.torso ?? "upright", hogtie) * DEG;
   const S17 = [0, Math.cos(phi), Math.sin(phi)];
   const T5 = [0, -Math.sin(phi), Math.cos(phi)];
   const pelvis = legs.pelvis;
@@ -78723,7 +78723,7 @@ function pose(p) {
   const hand = { L: [0, 0, 0], R: [0, 0, 0] };
   for (const [side, s] of SIDES) {
     const goal = armGoal(pts.arms ?? "at_sides", {
-      base,
+      base: base2,
       head,
       s,
       shoulder: shoulder[side],
@@ -78744,7 +78744,7 @@ function pose(p) {
     hand[side] = sol.end;
   }
   const sk = { pelvis, chest, neck, neckTop, head, headDir, faceDir, shoulder, elbow, hand, hip, knee, ankle, toe, gazeDir };
-  const laid = LYING[base];
+  const laid = LYING[base2];
   return laid ? lay(sk, laid[0], laid[1]) : sk;
 }
 function lay(sk, axis, deg) {
@@ -79064,14 +79064,14 @@ function startCall(o) {
   const fan = el0.fan;
   fan.replaceChildren();
   const n = choices.length;
-  choices.forEach(([base, name], i) => {
-    const pose2 = poseOf(base);
+  choices.forEach(([base2, name], i) => {
+    const pose2 = poseOf(base2);
     const el = h(
       "button",
-      { type: "button", class: "alius-call-card", "data-posture-choice": base, "data-call": id, "aria-label": `${name}: ${o.baseLabel(base)}`, ...o.cardAttrs ?? {} },
+      { type: "button", class: "alius-call-card", "data-posture-choice": base2, "data-call": id, "aria-label": `${name}: ${o.baseLabel(base2)}`, ...o.cardAttrs ?? {} },
       pose2 ? mannequinSvg(pose2) : null,
       h("span", { class: "alius-call-nm" }, name),
-      h("span", { class: "alius-call-base" }, o.baseLabel(base))
+      h("span", { class: "alius-call-base" }, o.baseLabel(base2))
     );
     const { x, rot, lift: lift2 } = fanPlace(i, n);
     el.style.left = `${x}px`;
@@ -79083,8 +79083,8 @@ function startCall(o) {
     el.onmouseleave = () => {
       if (!call?.done) el.style.transform = `translateY(${lift2}px) rotate(${rot}deg)`;
     };
-    el.onclick = () => choose(base, el);
-    el.dataset.base = base;
+    el.onclick = () => choose(base2, el);
+    el.dataset.base = base2;
     fan.append(el);
     if (!o.reduced) call.timers.push(o.schedule(() => {
       el.style.opacity = "1";
@@ -79117,12 +79117,12 @@ function tap3(k, last4, span, i) {
   sfx(o, CALL_SOUNDS.soft[fnv1a3(`${call.id}|${i}`) % 2], (0.22 + 0.4 * k) * (last4 ? 1.6 : 1), 0.35, 0.92 + fnv1a3(`${call.id}|${i}|rate`) % 1e3 / 1e3 * 0.1);
   if (last4) end("slow", null);
 }
-function choose(base, el) {
+function choose(base2, el) {
   if (!call || call.done) return;
   sfx(call.o, CALL_SOUNDS.place[0], 0.35, 0.6);
-  end(base === call.want[0] ? "right" : "wrong", base, el);
+  end(base2 === call.want[0] ? "right" : "wrong", base2, el);
 }
-function end(outcome, base, el) {
+function end(outcome, base2, el) {
   const c = call;
   if (!c || c.done) return;
   c.done = true;
@@ -79155,7 +79155,7 @@ function end(outcome, base, el) {
   lineEl.className = "alius-call-line";
   void lineEl.offsetWidth;
   if (!o.reduced) lineEl.classList.add("is-writing");
-  o.take(base ?? void 0, outcome === "slow" || o.timed && o.now() - c.t0 > o.windowMs);
+  o.take(base2 ?? void 0, outcome === "slow" || o.timed && o.now() - c.t0 > o.windowMs);
   c.timers.push(o.schedule(() => {
     if (c.el.dim) c.el.dim.style.opacity = "0";
     if (o.dial) delete o.dial.dataset.called;
@@ -79294,7 +79294,7 @@ function drawSceneCall(host, state, reg, pick12, handlers2) {
     id: call2.id,
     want: [wanted2.postureId, name],
     choices: set2.map((p) => [p.postureId, plainDraft(p.name)]),
-    baseLabel: (base) => String(reg.blockingPostures.get(base)?.label ?? base).toLowerCase(),
+    baseLabel: (base2) => String(reg.blockingPostures.get(base2)?.label ?? base2).toLowerCase(),
     line: (outcome) => voiceLine(reg, `call.${outcome}`, style, call2.id, { posture: name }).map((r) => r.text).join(""),
     timed: handlers2.timed,
     windowMs: postureWindowMs(state, reg, unit5.id),
@@ -79308,7 +79308,7 @@ function drawSceneCall(host, state, reg, pick12, handlers2) {
     dim: handlers2.dim ?? null,
     dial: handlers2.dial ?? null,
     samples: handlers2.samples ?? null,
-    take: (base, late2) => handlers2.take(call2.id, base, late2),
+    take: (base2, late2) => handlers2.take(call2.id, base2, late2),
     ...handlers2.onGone ? { onGone: handlers2.onGone } : {},
     now: handlers2.now ?? (() => Date.now()),
     schedule: handlers2.schedule ?? ((fn, ms) => setTimeout(fn, ms)),
@@ -79469,8 +79469,8 @@ function renderPostureDial(host, ctx2) {
   const stage2 = (change) => ctx2.onStage(setBlocking2(change));
   const knowledge2 = buildKnowledge(state, ctx2.settings ?? DEFAULT_SETTINGS);
   const herName = (state.scene?.participants ?? []).map((id) => knowledge2.practice(id, reg).postures.find((p) => p.postureId === postureId)?.name).find((n) => n !== void 0);
-  const base = choices.label("blockingPostures", postureId).toUpperCase();
-  const label2 = herName !== void 0 ? herName.toUpperCase() : base;
+  const base2 = choices.label("blockingPostures", postureId).toUpperCase();
+  const label2 = herName !== void 0 ? herName.toUpperCase() : base2;
   const eyes = EYES2[pose2.points.gaze ?? "straight"];
   const units = choices.units;
   const who = units.length > 1 ? h("select", { name: "dial-with", class: "alius-select", "aria-label": "With" }, ...units.map((u) => h("option", { value: u }, choices.name(u)))) : null;
@@ -79555,7 +79555,7 @@ function renderPostureDial(host, ctx2) {
       "div",
       { class: "alius-dial-label" },
       line3("alius-dial-name", label2),
-      herName !== void 0 ? line3("alius-dial-sub", base) : null,
+      herName !== void 0 ? line3("alius-dial-sub", base2) : null,
       eyes ? line3("alius-dial-eyes", eyes) : null
     )
   ));
@@ -79687,7 +79687,7 @@ function renderPhysicsPanel(host, ctx2) {
   const phys = reg.contactPhysics.get(run.physicsId);
   const interaction = String(phys?.interaction ?? "");
   const realtime = ctx2.settings.physicsRealtime === true;
-  const running4 = run.segment.state === "running" && run.segment.plan !== void 0;
+  const running5 = run.segment.state === "running" && run.segment.plan !== void 0;
   const total2 = run.segment.plan?.beats.length ?? 0;
   const key = `${run.id}|${run.segment.n}`;
   if (pointers.get(host)?.key !== key) pointers.set(host, { key, beat: 0 });
@@ -79699,7 +79699,7 @@ function renderPhysicsPanel(host, ctx2) {
   };
   const stamp = (physics) => analyzeNative(`contactPhysics:${run.physicsId}`, { input: physics });
   const press4 = (c) => {
-    if (!running4) return;
+    if (!running5) return;
     if (realtime) {
       if (c.kind === "wait") return;
       staging.input({ beat: staging.beat(), kind: c.kind });
@@ -79714,8 +79714,8 @@ function renderPhysicsPanel(host, ctx2) {
     }
   };
   const secondPhys = run.second ? reg.contactPhysics.get(run.second.physicsId) : void 0;
-  const owned = running4 ? [...controlsOf(interaction, run), ...run.second && secondPhys ? controlsOf(String(secondPhys.interaction), { ...run, physicsId: run.second.physicsId, ...run.second.seal ? { seal: run.second.seal } : {} }) : []] : [];
-  const controls = running4 ? [...owned.filter((c, i) => owned.findIndex((o) => o.kind === c.kind && o.part === c.part) === i), { kind: "wait", text: "[ WAIT ]" }] : [];
+  const owned = running5 ? [...controlsOf(interaction, run), ...run.second && secondPhys ? controlsOf(String(secondPhys.interaction), { ...run, physicsId: run.second.physicsId, ...run.second.seal ? { seal: run.second.seal } : {} }) : []] : [];
+  const controls = running5 ? [...owned.filter((c, i) => owned.findIndex((o) => o.kind === c.kind && o.part === c.part) === i), { kind: "wait", text: "[ WAIT ]" }] : [];
   const button2 = (c) => btn(ctx2, {
     type: "button",
     class: "alius-btn alius-option alius-physics-input",
@@ -79727,9 +79727,9 @@ function renderPhysicsPanel(host, ctx2) {
   const remaining = remainingOf(reg, run);
   const reduced = motionReduced(ctx2.settings) || ctx2.settings.readableMode;
   const strain2 = 1 - remaining;
-  const tremor = running4 && strain2 >= 0.7 && !reduced;
+  const tremor = running5 && strain2 >= 0.7 && !reduced;
   const tint2 = strain2 >= 0.7 && reduced;
-  const cue = running4 ? run.segment.plan.beats[Math.min(pointer.beat, total2 - 1)]?.cue : void 0;
+  const cue = running5 ? run.segment.plan.beats[Math.min(pointer.beat, total2 - 1)]?.cue : void 0;
   const cueLine = cue !== void 0 ? staging.cue(cue, pointer.beat) : null;
   const gauge = reg.contactPhysics.get(run.physicsId)?.gauge?.kind;
   const label2 = [phys?.label ?? run.physicsId, ...secondPhys ? [secondPhys.label] : []].map((x) => String(x));
@@ -79744,7 +79744,7 @@ function renderPhysicsPanel(host, ctx2) {
   ) : null;
   const heldLine2 = run.segment.state === "held" && !run.marathon?.waiting ? h("p", { class: "alius-physics-held alius-dim", role: "status" }, "She takes her time.") : null;
   const cueEl = cueLine !== null && cueLine !== "" ? h("p", { class: "alius-physics-cue", role: "status" }, cueLine) : null;
-  const beats = running4 && !realtime ? h("div", { class: "alius-physics-beats", "aria-hidden": "true" }, ...Array.from({ length: total2 }, (_, i) => h("span", { class: i < pointer.beat ? "alius-pip alius-pip-done" : "alius-pip" }, i < pointer.beat ? "\u25CF" : "\u25CB"))) : null;
+  const beats = running5 && !realtime ? h("div", { class: "alius-physics-beats", "aria-hidden": "true" }, ...Array.from({ length: total2 }, (_, i) => h("span", { class: i < pointer.beat ? "alius-pip alius-pip-done" : "alius-pip" }, i < pointer.beat ? "\u25CF" : "\u25CB"))) : null;
   const raw = ctx2.settings.showRawValues ? h("p", { class: "alius-physics-raw alius-dim" }, `${gauge ?? "gauge"}: ${Math.round(run.gauge)} / ${run.capacity}`) : null;
   const ways = wayGroups(ctx2, exposedKinds(state, reg));
   const controlEls = [
@@ -80189,11 +80189,11 @@ function fillProse(el, text3, visible, opts = {}) {
 function sentenceRunIndex(text3, visible) {
   const runs = proseRuns(text3);
   const shown2 = runs.map((r) => r.text).join("").slice(0, Math.max(0, visible));
-  let start = 0;
-  for (const m of shown2.matchAll(/[.!?…]["”’']?\s+(?=\S)/g)) start = m.index + m[0].length;
+  let start2 = 0;
+  for (const m of shown2.matchAll(/[.!?…]["”’']?\s+(?=\S)/g)) start2 = m.index + m[0].length;
   let acc = 0;
   for (let i = 0; i < runs.length; i++) {
-    if (start < acc + runs[i].text.length) return i;
+    if (start2 < acc + runs[i].text.length) return i;
     acc += runs[i].text.length;
   }
   return Math.max(0, runs.length - 1);
@@ -82619,11 +82619,11 @@ var MODE_LABEL = { equal: "equal", fighters_first: "fighters first", commander_s
 function rationsProvider(subject, env) {
   const state = env.state;
   if (!state) return null;
-  const current3 = rationsOf(state);
-  const asked = typeof subject.data.mode === "string" && subject.data.mode in RATION_TEXT ? subject.data.mode : current3;
-  const lines3 = [`Current mode: ${MODE_LABEL[current3]}.`];
-  if (asked !== current3) lines3.push(`${MODE_LABEL[asked][0].toUpperCase()}${MODE_LABEL[asked].slice(1)}: ${RATION_TEXT[asked]}`);
-  else lines3.push(RATION_TEXT[current3]);
+  const current4 = rationsOf(state);
+  const asked = typeof subject.data.mode === "string" && subject.data.mode in RATION_TEXT ? subject.data.mode : current4;
+  const lines3 = [`Current mode: ${MODE_LABEL[current4]}.`];
+  if (asked !== current4) lines3.push(`${MODE_LABEL[asked][0].toUpperCase()}${MODE_LABEL[asked].slice(1)}: ${RATION_TEXT[asked]}`);
+  else lines3.push(RATION_TEXT[current4]);
   lines3.push(votingOn(state, env.registries) && rationsVotable(state, env.registries) ? "A shortage is on or coming: a change goes to a squad vote." : "A change takes effect at once.");
   return { lines: lines3 };
 }
@@ -82785,13 +82785,13 @@ function rawLines(effects2, k) {
 function worldOptionProvider(subject, env, k) {
   const state = env.state;
   if (!state) return null;
-  const current3 = worldChoice(state, env.registries, subject.id);
-  if (!current3) return null;
-  const lines3 = [`Now: ${String(current3.choice.label)}`];
-  const shownId = typeof subject.data.choice === "string" ? subject.data.choice : current3.choice.id;
-  const shown2 = current3.option.choices.find((c) => c.id === shownId) ?? current3.choice;
-  if (shown2.id !== current3.choice.id) lines3.push(`This choice: ${String(shown2.label)}`);
-  lines3.push(current3.option.live === true ? "Can change during the campaign." : "Locked at campaign start.");
+  const current4 = worldChoice(state, env.registries, subject.id);
+  if (!current4) return null;
+  const lines3 = [`Now: ${String(current4.choice.label)}`];
+  const shownId = typeof subject.data.choice === "string" ? subject.data.choice : current4.choice.id;
+  const shown2 = current4.option.choices.find((c) => c.id === shownId) ?? current4.choice;
+  if (shown2.id !== current4.choice.id) lines3.push(`This choice: ${String(shown2.label)}`);
+  lines3.push(current4.option.live === true ? "Can change during the campaign." : "Locked at campaign start.");
   lines3.push(...shown2.effects.map((fx2) => summarizeWorldOptionEffect(fx2, env.registries)));
   lines3.push(...rawLines(shown2.effects, k));
   return { lines: lines3 };
@@ -84749,6 +84749,949 @@ var weightPanel = {
 var PANELS = Object.fromEntries([weightPanel, activityPanel, thronePanel, shoePanel, slapPanel].map((p) => [p.prototype, p]));
 var panelOf = (key) => PANELS[SLOT_INFO[key].prototype] ?? slapPanel;
 
+// src/st/chat.ts
+var isObj51 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+function mapChatMessages(chat, from = 0) {
+  if (!Array.isArray(chat)) return [];
+  const out = [];
+  for (let index2 = Math.max(0, from); index2 < chat.length; index2++) {
+    const m = chat[index2];
+    if (!isObj51(m) || m.is_system === true) continue;
+    const avatar = typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
+    out.push({
+      index: index2,
+      isUser: m.is_user === true,
+      name: String(m.name ?? ""),
+      ...avatar ? { avatar } : {},
+      text: typeof m.mes === "string" ? m.mes : "",
+      swipeId: typeof m.swipe_id === "number" ? m.swipe_id : 0,
+      ...Array.isArray(m.swipes) && m.swipes.length > 0 ? { swipeCount: m.swipes.length } : {}
+    });
+  }
+  return out;
+}
+function lastCharacterAvatar(chat) {
+  if (!Array.isArray(chat)) return void 0;
+  for (let i = chat.length - 1; i >= 0; i--) {
+    const m = chat[i];
+    if (isObj51(m) && m.is_user !== true && m.is_system !== true) {
+      return typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
+    }
+  }
+  return void 0;
+}
+function hideRuns(length, from, to, isSystem) {
+  const runs = [];
+  let start2 = null;
+  const end2 = Math.min(to, length - 1);
+  for (let i = Math.max(0, from); i <= end2; i++) {
+    if (isSystem(i)) {
+      if (start2 !== null) runs.push([start2, i - 1]);
+      start2 = null;
+    } else if (start2 === null) start2 = i;
+  }
+  if (start2 !== null) runs.push([start2, end2]);
+  return runs;
+}
+var isIndexRun = (r) => Array.isArray(r) && r.length === 2 && Number.isSafeInteger(r[0]) && Number.isSafeInteger(r[1]) && r[0] >= 0 && r[0] <= r[1];
+var hideCommand = (unhide, run) => {
+  if (!isIndexRun(run)) throw new Error("hide: a run is two message indices in order");
+  const [a, b] = run;
+  return `/${unhide ? "unhide" : "hide"} ${a === b ? a : `${a}-${b}`}`;
+};
+function unhideRuns(ranges, length) {
+  if (!Array.isArray(ranges)) return [];
+  return ranges.filter(isIndexRun).filter(([a]) => a < length).map(([a, b]) => [a, Math.min(b, length - 1)]);
+}
+var isSystemMessage = (chat, index2) => {
+  const m = Array.isArray(chat) ? chat[index2] : void 0;
+  return !isObj51(m) || m.is_system === true;
+};
+
+// src/st/fake.ts
+var HANG = Symbol("hang");
+function abortError() {
+  return new DOMException("The operation was aborted.", "AbortError");
+}
+function blobText(blob) {
+  if (typeof blob.text === "function") return blob.text();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(blob);
+  });
+}
+var FakeStAdapter = class {
+  chat;
+  metadataByChat = /* @__PURE__ */ new Map();
+  injections = /* @__PURE__ */ new Map();
+  profiles = [];
+  members = [];
+  cards = /* @__PURE__ */ new Map();
+  personaName = "User";
+  personaDescription = "";
+  characters = [];
+  groups = /* @__PURE__ */ new Map();
+  lorebooks = /* @__PURE__ */ new Map();
+  /** key `${avatar}:${label}` → url */
+  sprites = /* @__PURE__ */ new Map();
+  /** P10e-f: her stage folder per avatar: file name (with extension) → contents. Fill by hand to mimic files dropped there. */
+  stageFiles = /* @__PURE__ */ new Map();
+  stageStamp = 0;
+  failCreateGroup = false;
+  failOpenGroup = false;
+  /** Replies of `generateMain`, consumed in order: a string, a `GenAnswer` (`queueAnswer`) or a hang (`hangNext`). */
+  mainReplies = [];
+  /** Replies of `generateWithProfile`; an `Error` makes the call throw. */
+  profileReplies = [];
+  calls = [];
+  expressions = [];
+  toasts = [];
+  settings = {};
+  metadataSaves = 0;
+  settingsSaves = 0;
+  /** The chat the scene screen reads; filled by `sendUserMessage`. */
+  chatMessages = [];
+  /** One entry per `sendUserMessage`: the replies the group gives, in order. */
+  groupReplies = [];
+  /** Consumed by `swipeLast('right')` and `regenerateLast`. */
+  swipeReplies = [];
+  failSend = false;
+  /** name or avatar → last expression label. */
+  expressionsByName = /* @__PURE__ */ new Map();
+  stopped = 0;
+  handlers = /* @__PURE__ */ new Map();
+  constructor(chat = null) {
+    this.chat = chat;
+  }
+  /** Test helper: change the open chat and fire `chat_changed`. */
+  switchChat(info) {
+    this.chat = info;
+    this.emit("chat_changed");
+  }
+  /** Test helper: fire an event to registered handlers. */
+  emit(event, ...args) {
+    for (const fn of this.handlers.get(event) ?? []) fn(...args);
+  }
+  getActiveChat() {
+    return this.chat;
+  }
+  getGroupMembers() {
+    return this.members.map((m) => ({ ...m }));
+  }
+  async setMembersActive(activeAvatars) {
+    const active = new Set(activeAvatars);
+    this.members = this.members.map((m) => ({ ...m, active: active.has(m.avatar) }));
+  }
+  meta(create) {
+    if (!this.chat) return void 0;
+    let m = this.metadataByChat.get(this.chat.chatId);
+    if (!m && create) {
+      m = {};
+      this.metadataByChat.set(this.chat.chatId, m);
+    }
+    return m;
+  }
+  readMetadata(key) {
+    return this.meta(false)?.[key];
+  }
+  writeMetadata(key, value) {
+    const m = this.meta(true);
+    if (m) m[key] = value;
+  }
+  async saveMetadata() {
+    this.metadataSaves++;
+  }
+  on(event, fn) {
+    const list5 = this.handlers.get(event) ?? [];
+    list5.push(fn);
+    this.handlers.set(event, list5);
+  }
+  setInjection(id, text3, position, depth) {
+    if (text3 === "") this.injections.delete(id);
+    else this.injections.set(id, { text: text3, position, depth });
+  }
+  /** Queues a structured answer (with a finish reason) for the main model, or for the mechanic profile when `profile` is true. */
+  queueAnswer(a, profile = false) {
+    (profile ? this.profileReplies : this.mainReplies).push(a);
+  }
+  /** Queues a call that never answers: it rejects with an `AbortError` when the call's signal fires, and hangs with no signal. */
+  hangNext(profile = false) {
+    (profile ? this.profileReplies : this.mainReplies).push(HANG);
+  }
+  settle(reply, signal) {
+    if (reply === HANG) {
+      return new Promise((_, reject) => {
+        if (signal?.aborted) return reject(abortError());
+        signal?.addEventListener("abort", () => reject(abortError()), { once: true });
+      });
+    }
+    if (reply instanceof Error) return Promise.reject(reply);
+    return Promise.resolve(typeof reply === "string" ? { text: reply } : reply);
+  }
+  async generateMain(req) {
+    this.calls.push({ kind: "main", maxTokens: req.maxTokens, system: req.systemPrompt, prompt: req.prompt });
+    const reply = this.mainReplies.shift();
+    if (reply === void 0) throw new Error("FakeStAdapter: no main reply queued");
+    return this.settle(reply, req.signal);
+  }
+  async generateWithProfile(req) {
+    this.calls.push({
+      kind: "profile",
+      maxTokens: req.maxTokens,
+      think: req.think,
+      profileId: req.profileId,
+      system: req.system,
+      prompt: req.prompt
+    });
+    if (this.profileReplies.length === 0) throw new Error("FakeStAdapter: no profile reply queued");
+    return this.settle(this.profileReplies.shift(), req.signal);
+  }
+  listConnectionProfiles() {
+    return this.profiles.map((p) => ({ ...p }));
+  }
+  getCharacterCard(avatar) {
+    return this.cards.get(avatar) ?? null;
+  }
+  getPersonaDescription() {
+    return this.personaDescription;
+  }
+  getPersonaName() {
+    return this.personaName;
+  }
+  listCharacters() {
+    return this.characters.map((c) => ({ ...c }));
+  }
+  async loadCharacterCard(avatar) {
+    return this.getCharacterCard(avatar);
+  }
+  getAvatarUrl(avatar) {
+    return `/thumbnail?type=avatar&file=${encodeURIComponent(avatar)}`;
+  }
+  async getSpriteUrl(avatar, label2) {
+    return this.sprites.get(`${avatar}:${label2}`) ?? null;
+  }
+  async listSprites(avatar) {
+    const prefix = `${avatar}:`;
+    return [...this.sprites.keys()].filter((k) => k.startsWith(prefix)).map((k) => k.slice(prefix.length));
+  }
+  async listStageFiles(avatar) {
+    const folder = this.stageFiles.get(avatar);
+    if (folder === void 0) return [];
+    const base2 = avatar.replace(/\.[^.]+$/, "");
+    return [...folder.keys()].filter((f) => /\.(png|webp|jpe?g|gif|avif)$/i.test(f)).map((f) => ({ file: f, url: `/characters/${base2}/alius/${f}?t=${this.stageStamp}` }));
+  }
+  async fetchStageJson(avatar, file) {
+    const blob = this.stageFiles.get(avatar)?.get(file);
+    if (blob === void 0) return null;
+    try {
+      return JSON.parse(await blobText(blob));
+    } catch {
+      console.warn(`[Alius] stage: ${file} of ${avatar} is not valid JSON, skipped`);
+      return null;
+    }
+  }
+  async uploadStageFile(avatar, baseName, data, ext) {
+    let folder = this.stageFiles.get(avatar);
+    if (folder === void 0) {
+      folder = /* @__PURE__ */ new Map();
+      this.stageFiles.set(avatar, folder);
+    }
+    this.dropStage(folder, baseName);
+    folder.set(`${baseName}.${ext}`, data);
+    this.stageStamp += 1;
+    return true;
+  }
+  async deleteStageFile(avatar, baseName) {
+    const folder = this.stageFiles.get(avatar);
+    if (folder !== void 0) this.dropStage(folder, baseName);
+    return true;
+  }
+  /** ST's replace rule: every file whose name without extension is `baseName`. */
+  dropStage(folder, baseName) {
+    for (const f of [...folder.keys()]) if (f.replace(/\.[^.]+$/, "") === baseName) folder.delete(f);
+  }
+  async createGroupChat(req) {
+    if (this.failCreateGroup) throw new Error("FakeStAdapter: createGroupChat failed");
+    const id = `g${this.groups.size + 1}`;
+    this.groups.set(id, { name: req.name, members: [...req.members] });
+    return id;
+  }
+  async openGroup(groupId) {
+    const group = this.groups.get(groupId);
+    if (this.failOpenGroup || !group) return false;
+    this.members = group.members.map((avatar) => ({
+      avatar,
+      name: this.characters.find((c) => c.avatar === avatar)?.name ?? avatar,
+      active: true
+    }));
+    this.switchChat({ chatId: "chat-" + groupId, isGroup: true, groupId });
+    return true;
+  }
+  async addGroupMembers(avatars) {
+    for (const avatar of avatars) {
+      if (this.members.some((m) => m.avatar === avatar)) continue;
+      const name = this.characters.find((c) => c.avatar === avatar)?.name ?? avatar;
+      this.members.push({ avatar, name, active: true });
+    }
+  }
+  listLorebooks() {
+    return [...this.lorebooks.keys()];
+  }
+  async saveLorebook(book2) {
+    this.lorebooks.set(book2.name, structuredClone(book2));
+  }
+  setChatLorebook(name) {
+    this.writeMetadata("world_info", name);
+  }
+  setExpression(avatar, label2) {
+    this.expressions.push({ avatar, label: label2 });
+  }
+  getChatMessages(from = 0) {
+    return this.chatMessages.filter((m) => m.index >= from && m.isSystem !== true).map(({ isSystem: _s, ...m }) => m);
+  }
+  async hideMessages(from, to) {
+    const runs = hideRuns(this.chatMessages.length, from, to, (i) => this.chatMessages[i]?.isSystem === true);
+    for (const [a, b] of runs) for (let i = a; i <= b; i++) this.chatMessages[i].isSystem = true;
+    return runs;
+  }
+  async unhideMessages(ranges) {
+    for (const [a, b] of unhideRuns(ranges, this.chatMessages.length)) for (let i = a; i <= b; i++) delete this.chatMessages[i].isSystem;
+  }
+  chatLength() {
+    return this.chatMessages.length;
+  }
+  /** Consumes the next scripted group reply set without a user message. */
+  async triggerReplies() {
+    if (this.failSend) throw new Error("FakeStAdapter: trigger failed");
+    for (const r of this.groupReplies.shift() ?? []) {
+      const index2 = this.chatMessages.length;
+      this.chatMessages.push({ isUser: false, name: r.name, avatar: r.avatar, text: r.text, index: index2, swipeId: 0 });
+      this.emit("message_received", this.chatMessages[index2]);
+    }
+    this.emit("group_wrapper_finished");
+  }
+  async sendUserMessage(text3) {
+    if (this.failSend) throw new Error("FakeStAdapter: send failed");
+    const push3 = (m) => {
+      const index2 = this.chatMessages.length;
+      this.chatMessages.push({ ...m, index: index2, swipeId: 0 });
+      return index2;
+    };
+    this.emit("message_sent", push3({ isUser: true, name: this.personaName, text: text3 }));
+    for (const r of this.groupReplies.shift() ?? []) {
+      this.emit("message_received", push3({ isUser: false, name: r.name, avatar: r.avatar, text: r.text }));
+    }
+    this.emit("group_wrapper_finished");
+  }
+  lastReply() {
+    return [...this.chatMessages].reverse().find((m) => !m.isUser);
+  }
+  async regenerateLast() {
+    this.doSwipe("right");
+  }
+  async swipeLast(dir) {
+    this.doSwipe(dir);
+  }
+  doSwipe(dir) {
+    const last4 = this.lastReply();
+    if (!last4) return;
+    const known3 = last4.swipeCount ?? last4.swipeId + 1;
+    if (dir === "right") {
+      const next = this.swipeReplies.shift();
+      if (!next) return;
+      last4.text = next.text;
+      last4.swipeId += 1;
+      last4.swipeCount = Math.max(known3, last4.swipeId + 1);
+    } else {
+      if (last4.swipeId === 0) return;
+      last4.swipeId -= 1;
+      last4.swipeCount = known3;
+    }
+    this.emit("message_swiped", last4.index);
+    this.emit("generation_ended");
+  }
+  stopGeneration() {
+    this.stopped++;
+  }
+  async editMessage(index2, text3) {
+    const m = this.chatMessages.find((x) => x.index === index2);
+    if (!m) throw new Error(`FakeStAdapter: no such message ${index2}`);
+    m.text = text3;
+    this.emit("message_edited", index2);
+  }
+  async getLastExpression(name) {
+    return this.expressionsByName.get(name) ?? null;
+  }
+  getSettings() {
+    return this.settings;
+  }
+  saveSettings() {
+    this.settingsSaves++;
+  }
+  toast(kind, text3) {
+    this.toasts.push({ kind, text: text3 });
+  }
+};
+
+// src/ui/stage/demo.ts
+var building = false;
+var readerOn = false;
+function withPlayFrame(fn) {
+  if (!readerOn) {
+    registerFrameReader(() => building ? "play" : null);
+    readerOn = true;
+  }
+  building = true;
+  try {
+    return fn();
+  } finally {
+    building = false;
+  }
+}
+var ZERO2 = { pragmatism: 0, autonomy: 0, ingroup: 0, mercy: 0, corporate: 0, sacrifice: 0 };
+var setupOf = (displayName, cardRef) => ({
+  cardRef,
+  displayName,
+  roleId: "assault",
+  signature: { templateId: "sig_last_stand", name: "Last Stand", description: "She holds the line." },
+  defects: [{ id: "echo_bleed", origin: "Heard things." }],
+  values: { ...ZERO2 },
+  likes: [],
+  dislikes: [],
+  triggers: [],
+  baseline: { trust: 20, affinity: 0, attraction: 0 }
+});
+var OTHERS = ["Bea", "Cat", "Dee", "Eve", "Fay", "Gia"];
+var slugOf = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+function base(reg, her, n) {
+  const others = OTHERS.filter((nm) => slugOf(nm) !== slugOf(her.displayName) && `${nm.toLowerCase()}.png` !== her.cardRef).slice(0, n - 1);
+  const r = buildCampaign(
+    { commanderName: "Vale", startId: "start_vesper", crimeId: "mutiny", units: [setupOf(her.displayName, her.cardRef), ...others.map((nm) => setupOf(nm, `${nm.toLowerCase()}.png`))] },
+    reg,
+    { desireBondDefects: false, seed: 11 }
+  );
+  if (!r.ok) throw new Error(r.errors.join("; "));
+  return r.state;
+}
+var herOf = (s) => s.squad[0];
+var confide = (s, id) => {
+  s.relations[id].stateId = "confidant";
+};
+var enable = (s, ...ids) => {
+  s.content = { enabled: [...ids] };
+};
+var start = (s, reg, participants) => {
+  const r = dispatch(s, { type: "scene/start", payload: { locationId: "quarters_commander", participants, origin: "event", consumesSlot: false, startIndex: 0 } }, reg);
+  if (r.events.some((e) => e.type === "error")) throw new Error(JSON.stringify(r.events.filter((e) => e.type === "error")));
+  return r.state;
+};
+var running3 = (d, beats) => {
+  d.scene.physics.segment = { n: 1, state: "running", plan: beats };
+};
+var busy = (n) => ({ beats: Array.from({ length: n }, () => ({ attention: "busy" })) });
+function holderBond(also = []) {
+  return {
+    leadStyle: "dominant",
+    attachment: "steady",
+    desire: "low",
+    caretaker: false,
+    ownLimits: { categories: [] },
+    publicity: "known",
+    practice: {
+      categories: Object.fromEntries(["restraint", ...also].map((c) => [c, { as: "enjoys", witness: "indifferent" }])),
+      style: { primary: "cold" },
+      audience: "indifferent",
+      inclination: "curious",
+      fairness: "fair",
+      hintStyle: "offers",
+      drive: "moderate"
+    }
+  };
+}
+function holding2(reg, her, frame9) {
+  const s = base(reg, her, 3);
+  const id = herOf(s).id;
+  herOf(s).bond = holderBond(["public_humiliation", "denial"]);
+  s.content = { enabled: ["restraint", "public_humiliation", "denial", "service"] };
+  herOf(s).bond.practice.categories.service = { as: "enjoys", witness: "indifferent" };
+  s.dynamic = newDynamicCampaign(7, { holders: "any", pace: "normal", frequency: "normal", units: {} });
+  s.day = 20;
+  s.relations[id].dynamic = { ...blankDynamic(s.day), frame: frame9, hold: frame9 === "equal" ? 10 : 30 };
+  return s;
+}
+function demoSlap(reg, her) {
+  return withPlayFrame(() => {
+    const s = holding2(reg, her, "role");
+    const id = herOf(s).id;
+    herOf(s).bond.practice.style = { primary: "possessive" };
+    confide(s, id);
+    enable(s, "pet_play", "restraint", "physical_discipline_shown", "humiliation");
+    const d = start(s, reg, [id]);
+    d.settings.physicsRealtime = true;
+    d.practices = { ...d.practices ?? blankPractices(), seq: 2, slap: { id: "ps1", holderId: id, sceneId: d.scene.id, windowMs: 450, feints: 0 } };
+    return d;
+  });
+}
+function demoBreath(reg, her) {
+  return withPlayFrame(() => {
+    const s = base(reg, her, 4);
+    const id = herOf(s).id;
+    confide(s, id);
+    enable(s, "objectification", "restraint");
+    s.settings.physicsRealtime = true;
+    const d = start(s, reg, [id]);
+    setBlocking(d, { registries: reg }, { person: id, field: "contact", value: "under_her_seat", with: COMMANDER }, { at: 1, source: "engine" });
+    if (!d.scene.physics) throw new Error("breath: no hold runs");
+    running3(d, { beats: Array.from({ length: 14 }, (_, i) => i % 2 === 1 ? { attention: "watching", cue: "window_open", opening: { widthMs: 600 } } : { attention: "watching" }) });
+    return d;
+  });
+}
+function demoWeight(reg, her, contact) {
+  return withPlayFrame(() => {
+    const s = base(reg, her, 4);
+    const id = herOf(s).id;
+    confide(s, id);
+    enable(s, "objectification", "restraint", "humiliation", "pain_rough");
+    s.settings.physicsRealtime = true;
+    const d = start(s, reg, [id]);
+    setBlocking(d, { registries: reg }, { person: id, field: "contact", value: contact, with: COMMANDER }, { at: 1, source: "engine" });
+    if (d.scene.physics?.physicsId !== "weight") throw new Error(`weight (${contact}): no weight runs`);
+    running3(d, { beats: Array.from({ length: 20 }, (_, i) => i % 4 === 3 ? { attention: "busy", cue: "shift", shift: 20 } : { attention: "busy" }) });
+    return d;
+  });
+}
+function demoScent(reg, her) {
+  return withPlayFrame(() => {
+    const s = base(reg, her, 4);
+    const id = herOf(s).id;
+    confide(s, id);
+    enable(s, "objectification", "restraint", "humiliation", "worship", "bodily_fluids");
+    s.settings.physicsRealtime = true;
+    const d = start(s, reg, [id]);
+    setBlocking(d, { registries: reg }, { person: id, field: "contact", value: "feet_on_face", with: COMMANDER }, { at: 1, source: "engine" });
+    if (d.scene.physics?.physicsId !== "saturation") throw new Error("scent: no saturation runs");
+    running3(d, busy(20));
+    return d;
+  });
+}
+function demoJaw(reg, her, source) {
+  return withPlayFrame(() => {
+    const s = base(reg, her, 4);
+    const id = herOf(s).id;
+    confide(s, id);
+    enable(s, "objectification", "restraint", "humiliation", "worship", "service");
+    s.settings.physicsRealtime = true;
+    const d = start(s, reg, [id]);
+    if (source === "toes") setBlocking(d, { registries: reg }, { person: id, field: "contact", value: "sole_to_mouth", with: COMMANDER }, { at: 1, source: "engine" });
+    else setBlocking(d, { registries: reg }, { person: COMMANDER, field: "worn", value: "ring_gag" }, { at: 1, source: "engine" });
+    if (d.scene.physics?.physicsId !== "jaw") throw new Error(`jaw (${source}): no jaw runs`);
+    running3(d, { beats: Array.from({ length: 20 }, () => ({ attention: "watching" })) });
+    return d;
+  });
+}
+function demoActivity(reg, her, anchor = "under_desk") {
+  return withPlayFrame(() => {
+    const s = base(reg, her, 4);
+    const id = herOf(s).id;
+    confide(s, id);
+    enable(s, "objectification", "worship", "service");
+    s.settings.physicsRealtime = true;
+    s.slot = "evening";
+    const d = start(s, reg, [id]);
+    setBlocking(d, { registries: reg }, { person: id, field: "activity", value: "reading_reports" }, { at: 1, source: "engine" });
+    setBlocking(d, { registries: reg }, { person: COMMANDER, field: "anchor", value: anchor }, { at: 1, source: "engine" });
+    if (d.scene.physics?.sourceKind !== "activity") throw new Error("activity: no frame runs");
+    running3(d, busy(20));
+    return d;
+  });
+}
+function demoThrone(reg, her) {
+  return withPlayFrame(() => {
+    const s = base(reg, her, 4);
+    const id = herOf(s).id;
+    confide(s, id);
+    enable(s, "objectification", "worship", "service", "humiliation", "restraint");
+    s.settings.physicsRealtime = true;
+    s.slot = "evening";
+    const d = start(s, reg, [id]);
+    setBlocking(d, { registries: reg }, { person: id, field: "activity", value: "reading_reports" }, { at: 1, source: "engine" });
+    setBlocking(d, { registries: reg }, { person: id, field: "contact", value: "human_chair", with: COMMANDER }, { at: 1, source: "engine" });
+    if (d.scene.physics?.second?.physicsId !== "weight") throw new Error("throne: no weight inside her frame");
+    running3(d, busy(20));
+    return d;
+  });
+}
+function demoService(reg, her) {
+  const d = demoActivity(reg, her);
+  const id = herOf(d).id;
+  herOf(d).bond = {
+    leadStyle: "dominant",
+    attachment: "steady",
+    desire: "low",
+    caretaker: false,
+    ownLimits: { categories: [] },
+    publicity: "known",
+    practice: { categories: { service: { as: "enjoys", witness: "indifferent" }, worship: { as: "enjoys", witness: "indifferent" } }, style: { primary: "cold" }, audience: "indifferent", inclination: "curious", fairness: "fair", hintStyle: "offers", drive: "moderate" }
+  };
+  d.dynamic = newDynamicCampaign(7, { holders: "any", pace: "normal", frequency: "normal", units: {} });
+  d.relations[id].dynamic = { ...blankDynamic(1), frame: "play", hold: 40 };
+  return d;
+}
+function demoShoe(reg, her, footwear = "boots") {
+  return withPlayFrame(() => {
+    const s = base(reg, her, 4);
+    const id = herOf(s).id;
+    confide(s, id);
+    enable(s, "objectification", "worship", "service", "humiliation");
+    s.settings.physicsRealtime = true;
+    const d = start(s, reg, [id]);
+    setBlocking(d, { registries: reg }, { person: id, field: "contact", value: "boot_worship", with: COMMANDER }, { at: 1, source: "engine" });
+    if (d.scene.physics?.physicsId !== "tongue_work") throw new Error("shoe: no tongue work runs");
+    running3(d, busy(27));
+    if (footwear === "heels") herOf(d).likes = [...herOf(d).likes, "high heels"];
+    return d;
+  });
+}
+function demoGulp(reg, her) {
+  return withPlayFrame(() => {
+    const s = base(reg, her, 4);
+    const id = herOf(s).id;
+    confide(s, id);
+    enable(s, "bodily_fluids", "watersports");
+    s.settings.physicsRealtime = true;
+    const d = start(s, reg, [id]);
+    const flow = flowOf(d.life?.salt ?? 0, "p1", GULP_STYLES.neutral, 14);
+    d.scene.physics = {
+      id: "p1",
+      physicsId: "gulp",
+      sourceKind: "contact",
+      sourceId: "kneeling_between_legs",
+      holderId: id,
+      gauge: 0,
+      capacity: 100,
+      segment: { n: 1, state: "running", plan: { beats: flow.map((f) => ({ attention: "watching", flow: f })) } },
+      startedExchange: 0,
+      taps: 0,
+      streak: 0,
+      extend: 0
+    };
+    return d;
+  });
+}
+function demoStateFor(instrument, unit5, reg, key) {
+  try {
+    switch (instrument) {
+      case "slap":
+        return demoSlap(reg, unit5);
+      case "breath":
+        return demoBreath(reg, unit5);
+      case "weight":
+        return demoWeight(reg, unit5, "boot_on_chest");
+      case "scent":
+        return demoScent(reg, unit5);
+      case "jaw":
+        return demoJaw(reg, unit5, "toes");
+      case "shoe":
+        return demoShoe(reg, unit5, key !== void 0 && key.endsWith(".heels") ? "heels" : "boots");
+      case "gulp":
+        return demoGulp(reg, unit5);
+      case "her_activity":
+        if (key === "sole_close") return demoService(reg, unit5);
+        if (key === "legs_astride" || key === "legs_astride.left" || key === "legs_astride.right") return demoThrone(reg, unit5);
+        if (key === "feet_floor") return demoActivity(reg, unit5, "at_her_feet");
+        return demoActivity(reg, unit5);
+      default:
+        return null;
+    }
+  } catch (err) {
+    console.warn(`[Alius] stage preview: no demo for ${instrument}`, err);
+    return null;
+  }
+}
+
+// src/ui/stage/preview.ts
+var TICK_MS3 = 250;
+var PREVIEW_CHAT = "alius-stage-preview";
+function offlineEnvelope(state) {
+  const sites2 = /* @__PURE__ */ new Map();
+  return {
+    bind(siteId, handlers2) {
+      sites2.set(siteId, handlers2);
+    },
+    async generate(siteId, key) {
+      const site = sites2.get(siteId);
+      if (!site) return { kind: "unbound" };
+      let input;
+      try {
+        const s = state();
+        input = s ? site.build(key) : void 0;
+      } catch {
+        input = void 0;
+      }
+      const ok = (() => {
+        try {
+          return site.fallback?.(key, input) === true;
+        } catch {
+          return false;
+        }
+      })();
+      return { kind: "failed", reason: "adapter_error", detail: "the stage preview calls no model", fallbackApplied: ok };
+    },
+    async retry() {
+      return { kind: "stale" };
+    },
+    async reroll() {
+      return { kind: "stale" };
+    },
+    rerollState: () => ({ enabled: false, reason: "The stage preview calls no model." }),
+    drop() {
+    },
+    async useFallback() {
+    },
+    takeSnapshot() {
+    },
+    clearSnapshots() {
+    }
+  };
+}
+function liveSettings(settings) {
+  return { ...settings, physicsRealtime: true, physicsInteractions: Object.fromEntries(INTERACTION_TOGGLES.map((k) => [k, true])) };
+}
+function partnerOf2(key) {
+  const shoe = /^shoe_(close|sole)\.(boots|heels)$/.exec(key);
+  if (shoe) return `shoe_${shoe[1] === "close" ? "sole" : "close"}.${shoe[2]}`;
+  if (key === "legs_astride.left") return "legs_astride.right";
+  if (key === "legs_astride.right") return "legs_astride.left";
+  return null;
+}
+function draftArt(ctx2, unitId, avatar, key, draft, sandboxKey) {
+  const info = SLOT_INFO[key];
+  const folder = ctx2.folders().get(avatar);
+  const slots = new Map(folder?.slots ?? []);
+  const pic = draft.url === null ? null : { url: draft.url, sidecar: structuredClone(draft.sidecar) };
+  if (pic === null) slots.delete(key);
+  else slots.set(key, pic);
+  const partner = partnerOf2(key);
+  const real = ctx2.art();
+  const partnerSlot = partner === null ? null : SLOT_INFO[partner].slot;
+  let stoodIn = null;
+  if (pic !== null && partner !== null && partnerSlot === info.slot && !slots.has(partner)) {
+    slots.set(partner, pic);
+    stoodIn = partner;
+  }
+  if (pic !== null && partner !== null && partnerSlot !== info.slot && partnerSlot !== null && real.get(unitId, partnerSlot) === null) stoodIn = partner;
+  const own = createArtSlots(null, (p) => p, sandboxKey, /* @__PURE__ */ new Map([[avatar, { slots, setup: folder?.setup ?? null }]]));
+  const mine = (id) => sandboxKey(id) === avatar;
+  const art2 = {
+    get: (id, slot2, gate2) => {
+      if (!mine(id)) return null;
+      if (slot2 === info.slot) return own.get(id, slot2, gate2);
+      if (stoodIn !== null && slot2 === partnerSlot && partnerSlot !== info.slot) return pic;
+      return real.get(unitId, slot2, gate2);
+    },
+    face: (id) => !mine(id) ? null : own.face(id) ?? real.face(unitId)
+  };
+  return { art: art2, stoodIn };
+}
+function sandboxSt(real) {
+  const fake = new FakeStAdapter({ chatId: PREVIEW_CHAT, isGroup: true, groupId: PREVIEW_CHAT });
+  fake.getSpriteUrl = (avatar, label2) => real.getSpriteUrl(avatar, label2);
+  fake.listSprites = (avatar) => real.listSprites(avatar);
+  fake.getAvatarUrl = (avatar) => real.getAvatarUrl(avatar);
+  return fake;
+}
+function deadController(stage2) {
+  return {
+    start: async () => false,
+    send: async () => false,
+    opening: async () => {
+    },
+    propose() {
+    },
+    follow() {
+    },
+    ask() {
+    },
+    limit() {
+    },
+    answer() {
+    },
+    end: async () => {
+    },
+    rerollLast: async () => {
+    },
+    rerollState: () => ({ enabled: false, reason: "The stage preview has no chat." }),
+    rerollSummary: async () => {
+    },
+    summaryRerollState: () => ({ enabled: false, reason: "The stage preview has no chat." }),
+    edit: async () => {
+    },
+    onEdited() {
+    },
+    stop() {
+    },
+    transcript: () => [],
+    onSwipe() {
+    },
+    stage: stage2,
+    replyPending: () => false,
+    resume() {
+    },
+    idle: async () => {
+    },
+    dispose() {
+    }
+  };
+}
+var current2 = null;
+var watched2 = /* @__PURE__ */ new WeakSet();
+function watch2(st3) {
+  if (watched2.has(st3)) return;
+  watched2.add(st3);
+  st3.on("chat_changed", () => {
+    if (current2?.st === st3) current2.close();
+  });
+}
+function openPreview(unitId, key, draft, ctx2) {
+  watch2(ctx2.st);
+  current2?.close();
+  const unit5 = ctx2.getState()?.squad.find((u) => u.id === unitId && u.kind === "named");
+  const avatar = unit5?.cardRef;
+  if (!unit5 || !avatar) {
+    ctx2.toast("warn", "She has no character card: nothing to check.");
+    return () => {
+    };
+  }
+  const reg = ctx2.getRegistries();
+  const info = SLOT_INFO[key];
+  const demo = demoStateFor(info.instrument, { id: unit5.id, cardRef: avatar, displayName: unit5.displayName }, reg, key);
+  if (demo === null) {
+    ctx2.toast("warn", `${info.label}: its mini-game cannot be shown here.`);
+    return () => {
+    };
+  }
+  let sandbox = structuredClone(demo);
+  sandbox.settings = { ...sandbox.settings, physicsRealtime: true, physicsInteractions: Object.fromEntries(INTERACTION_TOGGLES.map((k) => [k, true])) };
+  if (info.explicit === true) sandbox.content = { enabled: [.../* @__PURE__ */ new Set([...sandbox.content?.enabled ?? [], "explicit_scenes"])] };
+  const sandboxKey = (id) => sandbox.squad.find((u) => u.id === id)?.cardRef ?? null;
+  const settings = () => liveSettings(ctx2.settings());
+  let closed = false;
+  let screen = null;
+  let staging = null;
+  const run = (action) => {
+    if (closed) return [];
+    const r = dispatch(sandbox, action, reg);
+    if (!r.events.some((e) => e.type === "error")) sandbox = r.state;
+    queueMicrotask(() => {
+      if (!closed) screen?.refresh();
+    });
+    return r.events;
+  };
+  const act = (action) => {
+    const events = run(action);
+    if (!closed) staging?.onEvents(events);
+    return events;
+  };
+  staging = createStaging({
+    app: { dispatch: (a) => run(a), current: () => ({ state: closed ? null : sandbox }) },
+    registries: () => reg,
+    settings,
+    generations: offlineEnvelope(() => closed ? null : sandbox),
+    scene: { replyPending: () => false, end: async () => {
+      close();
+    } },
+    now: () => Date.now(),
+    toast: () => {
+    }
+    // the sandbox says nothing outside itself
+  });
+  const clock = setInterval(() => {
+    if (!closed) staging?.tick(Date.now());
+  }, TICK_MS3);
+  const drawn2 = draftArt(ctx2, unitId, avatar, key, draft, sandboxKey);
+  const view3 = h("div", { class: "alius-stage-preview-view" });
+  const closeBtn = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "close", ...analyzeNative("glossary:stage_preview") }, "[ CLOSE ]");
+  const overlay = h(
+    "div",
+    { class: "alius-stage-preview", role: "dialog", "aria-modal": "true", "aria-label": `Check: ${info.label}, ${unit5.displayName}`, "data-slot": key, "data-unit": unitId, tabindex: "-1" },
+    h(
+      "div",
+      { class: "alius-stage-preview-head" },
+      h("span", { class: "alius-stage-preview-title" }, `[ CHECK // ${unit5.displayName.toUpperCase()} // ${info.label} ]`),
+      h("span", { class: "alius-dim" }, drawn2.stoodIn === null ? "a demo: nothing here is saved" : `a demo: nothing here is saved; this picture also stands in for ${SLOT_INFO[drawn2.stoodIn].label}, which she does not have yet`),
+      closeBtn
+    ),
+    view3
+  );
+  function close() {
+    if (closed) return;
+    closed = true;
+    clearInterval(clock);
+    staging?.reset();
+    screen?.dispose();
+    screen = null;
+    resetSceneStage();
+    overlay.remove();
+    if (current2?.close === close) current2 = null;
+  }
+  closeBtn.addEventListener("click", close);
+  overlay.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" || e.key === "Tab" || /^[0-8]$/.test(e.key)) e.stopPropagation();
+    if (e.key === "Escape") {
+      e.preventDefault();
+      close();
+    }
+  });
+  const host = (typeof document !== "undefined" ? document.getElementById("alius-shell") : null) ?? document.body;
+  host.append(overlay);
+  current2 = { st: ctx2.st, close };
+  resetSceneStage();
+  const s = staging;
+  screen = renderSceneScreen(view3, {
+    controller: deadController(act),
+    getState: () => closed ? null : sandbox,
+    registries: reg,
+    st: sandboxSt(ctx2.st),
+    settings,
+    onEnded: close,
+    onClose: close,
+    art: drawn2.art,
+    ...ctx2.assetUrl ? { assetUrl: ctx2.assetUrl } : {},
+    ...ctx2.samples ? { samples: ctx2.samples } : {},
+    onOrder: () => false,
+    onStage: (a) => {
+      act(a);
+    },
+    onSlap: (slapId, result) => {
+      act({ type: "practice/slap_answer", payload: { slapId, result } });
+    },
+    physics: {
+      input: (i, o) => s.input(i, o),
+      endSegment: () => s.endSegment(),
+      stopWord: () => s.stopWord(),
+      skip: (x) => s.skip(x),
+      stimulus: (w, k, d) => s.stimulus(w, k, d),
+      answer: (r, l, c) => s.answer(r, l, c),
+      act: (k) => s.act(k),
+      finishCounted: (n) => s.finishCounted(n),
+      cue: (k, b) => s.cue(k, b),
+      voiced: (k, b) => s.voiced(k, b),
+      beat: () => s.beat(),
+      clock: () => s.clock(),
+      outcome: (runId) => s.outcome(runId),
+      keystroke: () => s.keystroke(),
+      typed: (chars, beat) => s.typed(chars, beat),
+      onTap: () => {
+        act({ type: "physics/signal", payload: {} });
+      }
+    }
+  });
+  overlay.focus();
+  return close;
+}
+
 // src/ui/stage/zones.ts
 function markerOf(key) {
   if (!SLOT_INFO[key].zones) return null;
@@ -84760,9 +85703,9 @@ function pictureRect(canvas, picture) {
   const k = Math.min(cw / iw, ch / ih), w = iw * k, h2 = ih * k;
   return { x: (cw - w) / 2, y: (ch - h2) / 2, w, h: h2 };
 }
-var running3 = null;
+var running4 = null;
 function markZones(canvas, picture, key, sidecar, onChange) {
-  running3?.();
+  running4?.();
   const marker = markerOf(key);
   if (marker === null) return () => {
   };
@@ -84812,7 +85755,7 @@ function markZones(canvas, picture, key, sidecar, onChange) {
     promptEl.hidden = true;
     delete canvas.dataset.marking;
     draw2();
-    if (running3 === end2) running3 = null;
+    if (running4 === end2) running4 = null;
   };
   const after9 = () => {
     draw2();
@@ -84853,11 +85796,11 @@ function markZones(canvas, picture, key, sidecar, onChange) {
   canvas.dataset.marking = "";
   marker.start(rect);
   draw2();
-  running3 = end2;
+  running4 = end2;
   return end2;
 }
 function stopMarking() {
-  running3?.();
+  running4?.();
 }
 
 // src/ui/stage/slotEditor.ts
@@ -84970,12 +85913,19 @@ function openSlotEditor(host, unitId, key, ctx2) {
       edited();
     });
   });
-  const actions = h("div", { class: "alius-stage-slot-actions" }, zonesBtn, saveBtn, removeBtn, closeBtn, status);
+  const checkBtn = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "check", ...analyzeNative("glossary:stage_preview") }, "[ CHECK ]");
+  checkBtn.addEventListener("click", () => {
+    if (draft.url === null || !stillHere()) return;
+    stopMarking();
+    openPreview(unitId, key, draft, ctx2);
+  });
+  const actions = h("div", { class: "alius-stage-slot-actions" }, zonesBtn, saveBtn, checkBtn, removeBtn, closeBtn, status);
   const dirty = () => draft.file !== void 0 || JSON.stringify(draft.sidecar) !== saved;
   const inFolder = () => avatar !== null && ctx2.folders().get(avatar)?.slots.has(key) === true;
   const mark2 = () => {
     saveBtn.disabled = !dirty() || avatar === null;
     if (zonesBtn) zonesBtn.disabled = draft.url === null;
+    checkBtn.disabled = draft.url === null;
     removeBtn.disabled = !inFolder();
     status.textContent = dirty() ? "unsaved" : "";
   };
@@ -85081,13 +86031,13 @@ function draftOf(ctx2, unitId, avatar, key) {
 function renderSlotList(host, unitId, avatar, ctx2) {
   const list5 = h("ul", { class: "alius-stage-slot-list" });
   const editHost = h("div", { class: "alius-stage-slot-edit-host" });
-  let current3 = null;
+  let current4 = null;
   const drawList = () => {
     const folder = ctx2.folders().get(avatar);
     const art2 = ctx2.art();
     list5.replaceChildren(...visibleSlotKeys(ctx2.settings().showExplicitSlots).map((key) => {
       const state = slotState(folder, art2, unitId, key);
-      const edit = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "edit", "aria-pressed": String(current3 === key), ...analyzeNative("glossary:stage_fit") }, "[ EDIT ]");
+      const edit = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "edit", "aria-pressed": String(current4 === key), ...analyzeNative("glossary:stage_fit") }, "[ EDIT ]");
       edit.addEventListener("click", () => open3(key));
       return h(
         "li",
@@ -85100,13 +86050,13 @@ function renderSlotList(host, unitId, avatar, ctx2) {
   };
   const close = () => {
     openEditor?.drop();
-    current3 = null;
+    current4 = null;
     editHost.replaceChildren();
     drawList();
     ctx2.onChange?.();
   };
   const open3 = (key) => {
-    current3 = key;
+    current4 = key;
     openSlotEditor(editHost, unitId, key, { ...ctx2, draft: draftOf(ctx2, unitId, avatar, key), onChange: ctx2.onChange, onStored: drawList, onClose: close });
     drawList();
     ctx2.onChange?.();
@@ -85114,10 +86064,10 @@ function renderSlotList(host, unitId, avatar, ctx2) {
   drawList();
   host.replaceChildren(h("section", { class: "alius-stage-block alius-stage-her-slots" }, h("h3", {}, "Her slots"), list5, editHost));
   return {
-    dirty: () => current3 !== null && openEditor?.dirty() === true,
+    dirty: () => current4 !== null && openEditor?.dirty() === true,
     drop: () => {
       openEditor?.drop();
-      current3 = null;
+      current4 = null;
       editHost.replaceChildren();
     }
   };
@@ -85150,19 +86100,19 @@ async function saveStageSetup(st3, avatar, setup, refresh2) {
   });
   return ok;
 }
-var current2 = null;
-var watched2 = /* @__PURE__ */ new WeakSet();
-function watch2(st3) {
-  if (watched2.has(st3)) return;
-  watched2.add(st3);
+var current3 = null;
+var watched3 = /* @__PURE__ */ new WeakSet();
+function watch3(st3) {
+  if (watched3.has(st3)) return;
+  watched3.add(st3);
   st3.on("chat_changed", () => {
-    if (current2?.st === st3) current2.close();
+    if (current3?.st === st3) current3.close();
   });
 }
 var same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 function openStageSheet(unitId, ctx2) {
-  watch2(ctx2.st);
-  current2?.close();
+  watch3(ctx2.st);
+  current3?.close();
   const state = ctx2.getState();
   const unit5 = state?.squad.find((u) => u.id === unitId && u.kind === "named");
   const avatar = unit5?.cardRef;
@@ -85227,7 +86177,7 @@ function openStageSheet(unitId, ctx2) {
     closed = true;
     slots?.drop();
     sheet.remove();
-    if (current2?.close === finish8) current2 = null;
+    if (current3?.close === finish8) current3 = null;
   };
   const requestClose = async () => {
     if (closed || asking) return;
@@ -85271,7 +86221,7 @@ function openStageSheet(unitId, ctx2) {
     }
   });
   host.append(sheet);
-  current2 = { st: ctx2.st, close: finish8 };
+  current3 = { st: ctx2.st, close: finish8 };
   sheet.focus();
   return () => {
     void requestClose();
@@ -85452,26 +86402,26 @@ function renderSysTab(host, ctx2) {
     if (!state || !reg || reg.worldOptions.size === 0) return [h("p", { class: "alius-dim" }, "World options are set when a campaign is started.")];
     return [...reg.worldOptions.values()].map((option2) => {
       const id = String(option2.id);
-      const current3 = worldChoice(state, reg, id).choice;
+      const current4 = worldChoice(state, reg, id).choice;
       const live3 = option2.live === true;
       let control2;
       if (live3 && ctx2.dispatch) {
         const el = h(
           "select",
           { name: `world:${id}`, class: "alius-input" },
-          ...option2.choices.map((c) => h("option", { value: c.id, selected: c.id === current3.id }, c.label))
+          ...option2.choices.map((c) => h("option", { value: c.id, selected: c.id === current4.id }, c.label))
         );
-        el.value = current3.id;
+        el.value = current4.id;
         el.addEventListener("change", () => {
           const events = ctx2.dispatch?.({ type: "world/set_option", payload: { optionId: id, choiceId: el.value } }) ?? [];
           const err = events.find((e) => e.type === "error");
           if (err) {
             ctx2.toast("warn", String(err.message ?? "The option could not be changed."));
-            el.value = ctx2.getState() ? worldChoice(ctx2.getState(), reg, id).choice.id : current3.id;
+            el.value = ctx2.getState() ? worldChoice(ctx2.getState(), reg, id).choice.id : current4.id;
           }
         });
         control2 = el;
-      } else control2 = h("span", { class: "alius-world-value" }, String(current3.label));
+      } else control2 = h("span", { class: "alius-world-value" }, String(current4.label));
       return h(
         "div",
         { class: "alius-field alius-option alius-world-row", "data-option": id, ...analyzeAttrs(`worldOptions:${id}`) },
@@ -85798,6 +86748,8 @@ ${e.parsed === void 0 ? "(none)" : JSON.stringify(e.parsed, null, 2)}`)
     },
     toast: ctx2.toast,
     modal: ctx2.modal,
+    ...ctx2.stage?.assetUrl ? { assetUrl: ctx2.stage.assetUrl } : {},
+    ...ctx2.stage?.samples ? { samples: ctx2.stage.samples } : {},
     openSheet: (unitId) => {
       openStageSheet(unitId, stageCtx);
     }
@@ -87170,12 +88122,12 @@ function createApp(st3, deps) {
     if (s && entry) {
       const drawDoor = () => {
         const now = state;
-        const current3 = now && now.slot === "night" ? now.calendar.nightEvent : void 0;
-        if (!now || !current3 || now.scene || confrontationNight(now)) return;
-        const unit5 = now.squad.find((u) => u.id === current3.unitId);
+        const current4 = now && now.slot === "night" ? now.calendar.nightEvent : void 0;
+        if (!now || !current4 || now.scene || confrontationNight(now)) return;
+        const unit5 = now.squad.find((u) => u.id === current4.unitId);
         const settings = getSettings(st3);
         renderDoor(host, {
-          entry: current3,
+          entry: current4,
           unitName: unit5?.displayName ?? "Someone",
           ...unit5 ? { silhouette: () => unitPortrait(st3, unit5, { palette: settings.palette, dither: false, size: 220 }) } : {},
           seconds: settings.doorTimer,
@@ -88137,7 +89089,7 @@ function createApp(st3, deps) {
     }
     if (sections.includes("opinions")) patch.opinions = c.opinions ?? {};
     const { practice: currentPractice, ...currentBond } = unit5.bond ?? {};
-    const current3 = {
+    const current4 = {
       ...unit5.bond !== void 0 ? { bond: currentBond } : {},
       ...currentPractice !== void 0 ? { practice: currentPractice } : {},
       ...unit5.expectations !== void 0 ? { expectations: unit5.expectations } : {},
@@ -88165,7 +89117,7 @@ function createApp(st3, deps) {
       // P14c: raw profile
     };
     const unchanged = Object.keys(patch).every(
-      (k) => JSON.stringify(patch[k]) === JSON.stringify(current3[k])
+      (k) => JSON.stringify(patch[k]) === JSON.stringify(current4[k])
     );
     if (unchanged && !resetBox.checked && !resetLifeBox.checked) return toast("info", `Nothing changed${draft.notice ? ` (${draft.notice})` : ""}.`);
     const events = api.dispatch({ type: "squad/resync", payload: { unitId, patch, ...resetBox.checked ? { resetDevelopment: true } : {}, ...resetLifeBox.checked ? { resetLife: true } : {} } }, { expectChatId: startChatId });
@@ -88488,7 +89440,7 @@ function createApp(st3, deps) {
     sound: shellSound,
     // P10e-e: its night and sensory switches reach the samples too
     generation: genUi,
-    stage: { art: () => art2, folders: () => stageFolders, refresh: () => loadStage(true) },
+    stage: { art: () => art2, folders: () => stageFolders, refresh: () => loadStage(true), ...deps.assetUrl ? { assetUrl: deps.assetUrl } : {}, samples },
     // P10e-f: SYS › STAGE
     st: st3,
     getState: () => state,
@@ -90052,8 +91004,8 @@ registerChecks("ceremonySteps", (entry, regs) => known2(regs, "blockingPostures"
 // src/content/loader.ts
 var UNSAFE_KEYS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);
 var isPlain = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-function deepMerge(base, over2) {
-  const out = { ...base };
+function deepMerge(base2, over2) {
+  const out = { ...base2 };
   for (const [k, v] of Object.entries(over2)) {
     if (UNSAFE_KEYS.has(k)) continue;
     const cur = out[k];
@@ -90165,13 +91117,13 @@ async function loadPacks(packRoots, fetchJson2, opts = {}) {
     }
     if (visiting.has(key)) return fail(`extends cycle through "${id}"`);
     visiting.add(key);
-    const base = resolve(reg, baseRef.id, baseRef.k);
+    const base2 = resolve(reg, baseRef.id, baseRef.k);
     visiting.delete(key);
-    if (base === null) {
+    if (base2 === null) {
       resolved.set(key, null);
       return null;
     }
-    const merged = deepMerge(base, rest);
+    const merged = deepMerge(base2, rest);
     merged.id = id;
     resolved.set(key, merged);
     return merged;
@@ -90237,65 +91189,6 @@ async function loadPacks(packRoots, fetchJson2, opts = {}) {
 // src/st/real.ts
 import { editGroup, openGroupById } from "../../../../group-chats.js";
 import { newWorldInfoEntryTemplate } from "../../../../world-info.js";
-
-// src/st/chat.ts
-var isObj51 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-function mapChatMessages(chat, from = 0) {
-  if (!Array.isArray(chat)) return [];
-  const out = [];
-  for (let index2 = Math.max(0, from); index2 < chat.length; index2++) {
-    const m = chat[index2];
-    if (!isObj51(m) || m.is_system === true) continue;
-    const avatar = typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
-    out.push({
-      index: index2,
-      isUser: m.is_user === true,
-      name: String(m.name ?? ""),
-      ...avatar ? { avatar } : {},
-      text: typeof m.mes === "string" ? m.mes : "",
-      swipeId: typeof m.swipe_id === "number" ? m.swipe_id : 0,
-      ...Array.isArray(m.swipes) && m.swipes.length > 0 ? { swipeCount: m.swipes.length } : {}
-    });
-  }
-  return out;
-}
-function lastCharacterAvatar(chat) {
-  if (!Array.isArray(chat)) return void 0;
-  for (let i = chat.length - 1; i >= 0; i--) {
-    const m = chat[i];
-    if (isObj51(m) && m.is_user !== true && m.is_system !== true) {
-      return typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
-    }
-  }
-  return void 0;
-}
-function hideRuns(length, from, to, isSystem) {
-  const runs = [];
-  let start = null;
-  const end2 = Math.min(to, length - 1);
-  for (let i = Math.max(0, from); i <= end2; i++) {
-    if (isSystem(i)) {
-      if (start !== null) runs.push([start, i - 1]);
-      start = null;
-    } else if (start === null) start = i;
-  }
-  if (start !== null) runs.push([start, end2]);
-  return runs;
-}
-var isIndexRun = (r) => Array.isArray(r) && r.length === 2 && Number.isSafeInteger(r[0]) && Number.isSafeInteger(r[1]) && r[0] >= 0 && r[0] <= r[1];
-var hideCommand = (unhide, run) => {
-  if (!isIndexRun(run)) throw new Error("hide: a run is two message indices in order");
-  const [a, b] = run;
-  return `/${unhide ? "unhide" : "hide"} ${a === b ? a : `${a}-${b}`}`;
-};
-function unhideRuns(ranges, length) {
-  if (!Array.isArray(ranges)) return [];
-  return ranges.filter(isIndexRun).filter(([a]) => a < length).map(([a, b]) => [a, Math.min(b, length - 1)]);
-}
-var isSystemMessage = (chat, index2) => {
-  const m = Array.isArray(chat) ? chat[index2] : void 0;
-  return !isObj51(m) || m.is_system === true;
-};
 
 // src/st/slash.ts
 var ZWSP = "\u200B";

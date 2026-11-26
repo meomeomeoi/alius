@@ -6,6 +6,7 @@ import type { StAdapter } from '../../st/adapter';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 import type { ArtSlots } from '../scene/art';
+import type { SampleSound } from '../sound/samples';
 import type { ModalOpts } from '../shell/modal';
 import type { ToastKind } from '../shell/toast';
 import type { StageFolder } from './load';
@@ -21,6 +22,10 @@ export interface StageDeps {
   art: () => ArtSlots;
   folders: () => ReadonlyMap<string, StageFolder>;
   refresh: () => Promise<void>;
+  /** Resolves an extension asset path (the preview's backdrops and the instruments' pictures); absent = the path as given. */
+  assetUrl?: (path: string) => string;
+  /** The instruments' recorded sounds (the preview plays them as play does); absent = the preview is silent. */
+  samples?: SampleSound;
 }
 
 export interface StageCtx {
@@ -40,6 +45,9 @@ export interface StageCtx {
   refresh: () => Promise<void>;
   toast: (kind: ToastKind, text: string) => void;
   modal: (opts: ModalOpts) => Promise<string | null>;
+  /** CHECK (the preview): extension asset paths and the instruments' sounds, as the scene gets them. */
+  assetUrl?: (path: string) => string;
+  samples?: SampleSound;
 }
 
 /** The women the section lists: named, living, with a card. */
