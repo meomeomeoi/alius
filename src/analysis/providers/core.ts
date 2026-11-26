@@ -368,6 +368,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'ask_her',
   // P16 (Task 39: the remaining ids)
   'protocol', 'routine', 'favour', 'denial',
+  // P10e-f (the stage setup: SYS › STAGE)
+  'stage_setup', 'stage_slot_state',
 ];
 
 let registered = false;

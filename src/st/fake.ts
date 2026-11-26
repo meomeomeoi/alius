@@ -24,6 +24,17 @@ export interface FakeCall {
 }
 
 /** In-memory StAdapter for tests and development. */
+/** A blob's text; jsdom's `Blob` has no `text()`, so a test's DOM reads it through `FileReader`. */
+function blobText(blob: Blob): Promise<string> {
+  if (typeof blob.text === 'function') return blob.text();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(blob);
+  });
+}
+
 export class FakeStAdapter implements StAdapter {
   chat: ChatInfo | null;
   metadataByChat = new Map<string, Record<string, unknown>>();
@@ -224,7 +235,7 @@ export class FakeStAdapter implements StAdapter {
   async fetchStageJson(avatar: string, file: string): Promise<unknown | null> {
     const blob = this.stageFiles.get(avatar)?.get(file);
     if (blob === undefined) return null;
-    try { return JSON.parse(await blob.text()); } catch { console.warn(`[Alius] stage: ${file} of ${avatar} is not valid JSON, skipped`); return null; }
+    try { return JSON.parse(await blobText(blob)); } catch { console.warn(`[Alius] stage: ${file} of ${avatar} is not valid JSON, skipped`); return null; }
   }
 
   async uploadStageFile(avatar: string, baseName: string, data: Blob, ext: string): Promise<boolean> {

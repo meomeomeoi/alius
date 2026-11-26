@@ -18,6 +18,7 @@ import { createRouter, type ScreenId } from './router';
 import { renderStatusHeader } from './status';
 import type { BuildStats } from '../../llm/context';
 import { renderSysTab } from './sysTab';
+import type { StageDeps } from '../stage/section';
 import { guarded } from './guard';
 import type { GenerationUi } from '../generation/surface';
 import { KEY_TABS, TAB_IDS, createTabBar, tabStub, type TabId } from './tabs';
@@ -98,6 +99,8 @@ export interface ShellDeps {
   sensory?: () => boolean;
   /** P14: what SYS › GENERATIONS needs (the envelope, the settings, the redraw); absent = no list. */
   generation?: GenerationUi;
+  /** P10e-f: what SYS › STAGE reads (the art slots, her stage folders, `refreshStage`); absent = no art. */
+  stage?: StageDeps;
 }
 
 const PANEL_ID = 'alius-panel';
@@ -234,6 +237,7 @@ export function createShell(deps: ShellDeps): ShellApi {
         lastBuild: deps.lastBuild,
         debugTools: deps.debugTools,
         generation: deps.generation,
+        stage: deps.stage,
         toast,
         modal: (o) => api.modal(o),
         onSettingsChanged: () => {

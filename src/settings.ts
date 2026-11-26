@@ -20,6 +20,8 @@ export interface AliusSettings {
   /** Allow Desire/Bond defects in import candidates and manual lists. */
   desireBondDefects: boolean;
   showRawValues: boolean;
+  /** P10e-f: SYS › STAGE lists and edits the `over_explicit` slot (off: neither listed nor editable; in play its gate is `explicitArtAllowed`). */
+  showExplicitSlots: boolean;
   spriteMode: 'native' | 'emotion_pick';
   /** A short generated vignette after a companion activity (main model, one call per activity). */
   activityFlavor: boolean;
@@ -157,6 +159,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   editLock: true,
   desireBondDefects: false,
   showRawValues: false,
+  showExplicitSlots: false,
   spriteMode: 'native',
   activityFlavor: true,
   gruntFlavor: true,
@@ -222,6 +225,7 @@ const fieldSchemas = {
   editLock: z.boolean(),
   desireBondDefects: z.boolean(),
   showRawValues: z.boolean(),
+  showExplicitSlots: z.boolean(),
   spriteMode: z.enum(['native', 'emotion_pick']),
   activityFlavor: z.boolean(),
   gruntFlavor: z.boolean(),

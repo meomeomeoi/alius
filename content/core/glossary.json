@@ -512,6 +512,12 @@
     "short": "Shows exact numbers for relationships and stress instead of bands."
   },
   {
+    "id": "setting_show_explicit_slots",
+    "term": "Show explicit slots",
+    "short": "Lists the explicit art slot in SYS › STAGE so a picture can be set for it.",
+    "long": "In play it is still shown only where the campaign's content settings allow explicit scenes for her."
+  },
+  {
     "id": "setting_sprite_mode",
     "term": "Sprite mode",
     "short": "How a character's expression is chosen: by SillyTavern's own Expressions, or by the mechanic model."
@@ -3605,5 +3611,23 @@
       "contact_physics",
       "instrument"
     ]
+  },
+  {
+    "id": "stage_setup",
+    "term": "Stage setup",
+    "short": "Each woman as the stage and the mini-games show her: her sprites, how she stands, her hand, her accent, her art slots.",
+    "see": [
+      "stage_slot_state"
+    ],
+    "long": "Saved as files in her own expressions folder (its alius subfolder), outside any campaign: every campaign with her card reads them. Nothing here changes a campaign."
+  },
+  {
+    "id": "stage_slot_state",
+    "term": "Slot state",
+    "short": "What her folder holds for an art slot: — nothing, picture (default fit), fitted (its fit set) or zoned (its zones marked too).",
+    "see": [
+      "stage_setup"
+    ],
+    "long": "With nothing, the mini-game falls back to her sprite or the plain stage. A slot without zones never reads zoned."
   }
 ]

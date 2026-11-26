@@ -18723,7 +18723,7 @@ function write(draft, reg, unitId, next, cause) {
   const was = regardBandOf(reg, from);
   const now = regardBandOf(reg, to);
   if (was !== now) events.push({ type: "regard_band_changed", unitId, from: was, to: now });
-  if (to < from) for (const watch of watchers) events.push(...watch(draft, reg, unitId, from, to));
+  if (to < from) for (const watch2 of watchers) events.push(...watch2(draft, reg, unitId, from, to));
   return events;
 }
 function regardFall(draft, reg, unitId, humiliation, opts) {
@@ -47198,6 +47198,7 @@ var DEFAULT_SETTINGS = {
   editLock: true,
   desireBondDefects: false,
   showRawValues: false,
+  showExplicitSlots: false,
   spriteMode: "native",
   activityFlavor: true,
   gruntFlavor: true,
@@ -47263,6 +47264,7 @@ var fieldSchemas = {
   editLock: external_exports.boolean(),
   desireBondDefects: external_exports.boolean(),
   showRawValues: external_exports.boolean(),
+  showExplicitSlots: external_exports.boolean(),
   spriteMode: external_exports.enum(["native", "emotion_pick"]),
   activityFlavor: external_exports.boolean(),
   gruntFlavor: external_exports.boolean(),
@@ -60224,7 +60226,7 @@ function lifeProfileBlock(unit5, ctx2, state) {
 function dynamicSection(unit5, ctx2, state) {
   if (unit5.kind !== "named") return null;
   const host = h("div", { class: "alius-dyn-section-host" });
-  const drawn = renderDynamicSection(host, {
+  const drawn2 = renderDynamicSection(host, {
     state,
     reg: ctx2.registries,
     unitId: unit5.id,
@@ -60236,7 +60238,7 @@ function dynamicSection(unit5, ctx2, state) {
     ...ctx2.onLeash !== void 0 ? { onLeash: (id) => ctx2.onLeash(id, "compel") } : {},
     ...ctx2.dynamic?.onChanged !== void 0 ? { onChanged: ctx2.dynamic.onChanged } : {}
   });
-  return drawn ? host : null;
+  return drawn2 ? host : null;
 }
 function dynamicProfileBlock(unit5, ctx2, state) {
   if (!ctx2.dynamic || unit5.kind !== "named" || ctx2.settings().editLock) return null;
@@ -83817,6 +83819,133 @@ function renderMemorySection(host, ctx2) {
   ));
 }
 
+// src/ui/stage/slots.ts
+var SLOT_INFO = {
+  over: { label: "over (from below)", prototype: "weight.html", instrument: "weight", zones: false, slot: "over" },
+  over_explicit: { label: "over, explicit", prototype: "weight.html", instrument: "gulp", zones: false, slot: "over_explicit", explicit: true },
+  face_close: { label: "face close", prototype: "slap.html", instrument: "slap", zones: false, slot: "face_close" },
+  "legs_seated.rest": { label: "legs seated, at rest", prototype: "her_activity.html", instrument: "her_activity", zones: false, slot: "legs_seated.rest" },
+  "legs_seated.foot_raised": { label: "legs seated, foot raised", prototype: "her_activity.html", instrument: "her_activity", zones: false, slot: "legs_seated.foot_raised" },
+  legs_astride: { label: "legs astride", prototype: "throne.html", instrument: "her_activity", zones: false, slot: "legs_astride", feet: true },
+  "legs_astride.left": { label: "legs astride, left", prototype: "throne.html", instrument: "her_activity", zones: false, slot: "legs_astride", feet: true },
+  "legs_astride.right": { label: "legs astride, right", prototype: "throne.html", instrument: "her_activity", zones: false, slot: "legs_astride", feet: true },
+  sole_close: { label: "sole close", prototype: "her_activity.html", instrument: "her_activity", zones: true, slot: "sole_close" },
+  feet_floor: { label: "feet on the floor", prototype: "her_activity.html", instrument: "her_activity", zones: false, slot: "feet_floor" },
+  "shoe_close.boots": { label: "boots from above", prototype: "shoe.html", instrument: "shoe", zones: true, slot: "shoe_close.boots", feet: true },
+  "shoe_close.heels": { label: "heels from above", prototype: "shoe.html", instrument: "shoe", zones: true, slot: "shoe_close.heels", feet: true },
+  "shoe_sole.boots": { label: "boot soles", prototype: "shoe.html", instrument: "shoe", zones: true, slot: "shoe_sole.boots", feet: true },
+  "shoe_sole.heels": { label: "heel soles", prototype: "shoe.html", instrument: "shoe", zones: true, slot: "shoe_sole.heels", feet: true }
+};
+var SLOT_KEYS = Object.keys(SLOT_INFO);
+var SLOT_STATE_WORD = { none: "\u2014", picture: "picture", fitted: "fitted", zoned: "zoned" };
+var visibleSlotKeys = (showExplicit) => SLOT_KEYS.filter((k) => showExplicit || SLOT_INFO[k].explicit !== true);
+var visibleSlots = (showExplicit) => ART_SLOT_IDS.filter((s) => showExplicit || SLOT_INFO[s].explicit !== true);
+function pictureOf(folder, art2, unitId, key) {
+  const own = folder?.slots.get(key);
+  if (own) return own;
+  if (key === "legs_astride.left" || key === "legs_astride.right") {
+    const got2 = art2.get(unitId, "legs_astride");
+    if (!got2?.pair) return null;
+    const { feet: _pair, ...sidecar } = got2.sidecar;
+    return { sidecar };
+  }
+  const got = art2.get(unitId, key, { explicit: true });
+  if (got === null) return null;
+  return key === "legs_astride" && got.pair ? null : got;
+}
+function slotState(folder, art2, unitId, key) {
+  const pic = pictureOf(folder, art2, unitId, key);
+  if (pic === null) return "none";
+  const info = SLOT_INFO[key];
+  const { sidecar } = pic;
+  if (info.zones && sidecar.zones !== void 0 && Object.keys(sidecar.zones).length > 0) return "zoned";
+  if (sidecar.fit !== void 0 || info.feet === true && sidecar.feet !== void 0) return "fitted";
+  return "picture";
+}
+function slotsFilled(folder, art2, unitId, showExplicit) {
+  const keys = visibleSlotKeys(showExplicit);
+  return visibleSlots(showExplicit).filter((slot2) => keys.some((k) => SLOT_INFO[k].slot === slot2 && slotState(folder, art2, unitId, k) !== "none")).length;
+}
+
+// src/ui/stage/section.ts
+var stageUnits = (state) => state.squad.filter((u) => u.kind === "named" && isLiving(u) && typeof u.cardRef === "string" && u.cardRef !== "");
+var drawn = null;
+var watched = /* @__PURE__ */ new WeakSet();
+var draws = /* @__PURE__ */ new WeakMap();
+function watch(st3) {
+  if (watched.has(st3)) return;
+  watched.add(st3);
+  st3.on("chat_changed", () => {
+    const last4 = drawn;
+    if (last4 !== null && last4.ctx.st === st3 && last4.host.isConnected) renderStageSection(last4.host, last4.ctx);
+  });
+}
+function renderStageSection(host, ctx2) {
+  watch(ctx2.st);
+  drawn = { host, ctx: ctx2 };
+  const mine = (draws.get(host) ?? 0) + 1;
+  draws.set(host, mine);
+  const settings = ctx2.settings();
+  const showExplicit = settings.showExplicitSlots;
+  const toggle = h("input", { type: "checkbox", name: "showExplicitSlots", checked: showExplicit });
+  toggle.addEventListener("change", () => {
+    if (ctx2.setSetting) ctx2.setSetting({ showExplicitSlots: toggle.checked });
+    else updateSettings(ctx2.st, { showExplicitSlots: toggle.checked });
+    renderStageSection(host, ctx2);
+  });
+  const section = h(
+    "section",
+    { class: "alius-section alius-stage-setup" },
+    h("h2", { ...analyzeAttrs("glossary:stage_setup") }, "[ STAGE ]"),
+    h("label", { class: "alius-field alius-option", ...analyzeNative("setting:showExplicitSlots") }, h("span", { class: "alius-field-label" }, "Show explicit slots"), toggle)
+  );
+  host.replaceChildren(section);
+  const state = ctx2.getState();
+  if (state === null) {
+    section.append(h("p", { class: "alius-dim alius-stage-none" }, "No campaign is open: the squad's women are listed once one is."));
+    return;
+  }
+  const units = stageUnits(state);
+  if (units.length === 0) {
+    section.append(h("p", { class: "alius-dim alius-stage-none" }, "No woman of the squad has a character card."));
+    return;
+  }
+  const art2 = ctx2.art();
+  const folders = ctx2.folders();
+  const total2 = visibleSlots(showExplicit).length;
+  const keys = visibleSlotKeys(showExplicit);
+  const list5 = h("ul", { class: "alius-stage-list" }, ...units.map((u) => {
+    const folder = folders.get(u.cardRef);
+    const sprites = h("span", { class: "alius-stage-sprites", "data-sprites": "checking" }, "sprites: checking\u2026");
+    void ctx2.st.listSprites(u.cardRef).catch(() => []).then((labels) => {
+      if (draws.get(host) !== mine) return;
+      const found2 = labels.length > 0;
+      sprites.dataset.sprites = found2 ? "found" : "missing";
+      sprites.textContent = found2 ? `sprites: found (${labels.length})` : "sprites: missing";
+    });
+    return h(
+      "li",
+      { class: "alius-stage-woman", "data-unit": u.id },
+      h("button", { type: "button", class: "alius-btn alius-option", ...analyzeNative("glossary:stage_setup"), onclick: () => ctx2.openSheet(u.id) }, `[ ${u.displayName} ]`),
+      sprites,
+      h("span", { class: "alius-stage-filled" }, `${slotsFilled(folder, art2, u.id, showExplicit)} / ${total2}`)
+    );
+  }));
+  const table = h(
+    "table",
+    { class: "alius-stage-slots" },
+    h("thead", {}, h("tr", {}, h("th", {}, ""), ...keys.map((k) => h("th", { scope: "col", "data-slot": k, title: k }, SLOT_INFO[k].label)))),
+    h("tbody", {}, ...units.map((u) => {
+      const folder = folders.get(u.cardRef);
+      return h("tr", { "data-unit": u.id }, h("th", { scope: "row" }, u.displayName), ...keys.map((k) => {
+        const s = slotState(folder, art2, u.id, k);
+        return h("td", { class: "alius-stat alius-stage-cell", "data-slot": k, "data-state": s, ...analyzeAttrs("glossary:stage_slot_state") }, SLOT_STATE_WORD[s]);
+      }));
+    }))
+  );
+  section.append(list5, h("div", { class: "alius-stage-table-wrap" }, table));
+}
+
 // src/ui/shell/sysTab.ts
 var INTERACTION_LABEL = {
   timing: "timing",
@@ -84321,7 +84450,28 @@ ${e.parsed === void 0 ? "(none)" : JSON.stringify(e.parsed, null, 2)}`)
   renderDebug();
   const generationsHost = h("div", { class: "alius-generations-host" });
   if (ctx2.generation) renderGenerationsSection(generationsHost, { state: ctx2.getState(), ui: ctx2.generation, debugLog: llmLog.entries() });
-  host.append(form, generationsHost, memoryHost, backup, debugHost);
+  const stageHost = h("div", { class: "alius-stage-host" });
+  const noArt = createArtSlots(null, (p) => p, () => null);
+  const stageCtx = {
+    st: st3,
+    getState: ctx2.getState,
+    getRegistries: ctx2.getRegistries ?? emptyRegistries,
+    art: ctx2.stage?.art ?? (() => noArt),
+    folders: ctx2.stage?.folders ?? (() => /* @__PURE__ */ new Map()),
+    refresh: ctx2.stage?.refresh ?? (async () => {
+    }),
+    settings: () => getSettings(st3),
+    setSetting: (patch) => {
+      apply2(patch);
+    },
+    toast: ctx2.toast,
+    modal: ctx2.modal,
+    openSheet: () => {
+    }
+    // her page is Task 5's
+  };
+  renderStageSection(stageHost, stageCtx);
+  host.append(form, stageHost, generationsHost, memoryHost, backup, debugHost);
 }
 
 // src/ui/shell/toast.ts
@@ -84458,6 +84608,7 @@ function createShell(deps) {
         lastBuild: deps.lastBuild,
         debugTools: deps.debugTools,
         generation: deps.generation,
+        stage: deps.stage,
         toast,
         modal: (o) => api.modal(o),
         onSettingsChanged: () => {
@@ -87005,6 +87156,8 @@ function createApp(st3, deps) {
     sound: shellSound,
     // P10e-e: its night and sensory switches reach the samples too
     generation: genUi,
+    stage: { art: () => art2, folders: () => stageFolders, refresh: () => loadStage(true) },
+    // P10e-f: SYS › STAGE
     st: st3,
     getState: () => state,
     getLoad: () => load,

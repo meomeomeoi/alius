@@ -169,16 +169,16 @@ Everything is saved as files in her own expressions folder.
   - `slotState(folder: StageFolder | undefined, art: ArtSlots, unitId: string, key: SlotKey): 'none' | 'picture' | 'fitted' | 'zoned'`: `fitted` = the sidecar has `fit` (or `feet` for the slots that need it); `zoned` = it has `zones` and `SLOT_INFO[key].zones`.
   - `renderStageSection(host: HTMLElement, ctx: StageCtx): void`, with `StageCtx = { st; getState; getRegistries; art: () => ArtSlots; folders: () => Map<string, StageFolder>; openSheet(unitId: string): void; settings }`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - the section lists each living named unit with her sprite found / missing (from `listSprites`) and `n / 12` (11 while `showExplicitSlots` is off);
   - the table has one row per woman and one column per slot key; each cell is the state's word and carries `data-analyze="glossary:stage_slot_state"`;
   - `over_explicit` appears only with the setting on;
   - with no campaign open the section says so and draws no table;
   - a chat switch while the section is drawn redraws it for the new squad.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** The words of the states: `—` · `picture` · `fitted` · `zoned`.
-- [ ] **Step 4: Run** the tests, `npm test`, the analyze coverage test → PASS.
-- [ ] **Step 5: Commit** `feat(P10e-f): SYS › STAGE, her list and every slot's state`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** The words of the states: `—` · `picture` · `fitted` · `zoned`.
+- [x] **Step 4: Run** the tests, `npm test`, the analyze coverage test → PASS.
+- [x] **Step 5: Commit** `feat(P10e-f): SYS › STAGE, her list and every slot's state`
 
 ### Task 5: Her page: sprites, stand, hand, accent
 

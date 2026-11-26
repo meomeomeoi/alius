@@ -23,6 +23,9 @@ import { FREQUENCIES, HOLDER_CAPS, MAY_HOLD, PACES, SENSITIVITIES } from '../../
 import { isLiving } from '../../engine/economy';
 import { INTERACTION_TOGGLES, type InteractionToggle } from '../../engine/moments/settings';
 import { h } from '../dom';
+import { createArtSlots } from '../scene/art';
+import { renderStageSection, type StageCtx, type StageDeps } from '../stage/section';
+import { emptyRegistries } from '../../content/types';
 import type { ModalOpts } from './modal';
 import type { ToastKind } from './toast';
 
@@ -45,6 +48,8 @@ export interface SysCtx {
   onSettingsChanged: () => void;
   /** P14: the GENERATIONS list; absent = the section is not drawn. */
   generation?: GenerationUi;
+  /** P10e-f: what SYS › STAGE reads (the art slots, her folders, the reload); absent = no art, nothing to reload. */
+  stage?: StageDeps;
 }
 
 const INTERACTION_LABEL: Record<InteractionToggle, string> = {
@@ -568,5 +573,17 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
   // --- P14: failed generations (a refresh of the shell redraws the tab, so the list follows the state)
   const generationsHost = h('div', { class: 'alius-generations-host' });
   if (ctx.generation) renderGenerationsSection(generationsHost, { state: ctx.getState(), ui: ctx.generation, debugLog: llmLog.entries() });
-  host.append(form, generationsHost, memoryHost, backup, debugHost);
+  // --- P10e-f: the stage setup (after the settings)
+  const stageHost = h('div', { class: 'alius-stage-host' });
+  const noArt = createArtSlots(null, (p) => p, () => null);
+  const stageCtx: StageCtx = {
+    st, getState: ctx.getState, getRegistries: ctx.getRegistries ?? emptyRegistries,
+    art: ctx.stage?.art ?? (() => noArt), folders: ctx.stage?.folders ?? (() => new Map()), refresh: ctx.stage?.refresh ?? (async () => {}),
+    settings: () => getSettings(st), setSetting: (patch) => { apply(patch); },
+    toast: ctx.toast, modal: ctx.modal,
+    openSheet: () => {}, // her page is Task 5's
+  };
+  renderStageSection(stageHost, stageCtx);
+
+  host.append(form, stageHost, generationsHost, memoryHost, backup, debugHost);
 }

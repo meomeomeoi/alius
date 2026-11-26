@@ -6474,6 +6474,57 @@
   white-space: nowrap;
 }
 
+/*
+ * P10e-f: SYS › STAGE (her list and the list of every slot) and her page (a full-screen sheet over the shell). Every z-index stays
+ * below the analysis panel's 10 (the sheet is 2: above the scene's device, below the shell's modals at 3). No url().
+ */
+#alius-shell .alius-stage-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+#alius-shell .alius-stage-woman {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+#alius-shell .alius-stage-sprites[data-sprites="missing"] { color: var(--alius-accent); }
+#alius-shell .alius-stage-filled { color: var(--alius-dim); }
+
+#alius-shell .alius-stage-table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+#alius-shell .alius-stage-slots {
+  border-collapse: collapse;
+  font-size: 0.86em;
+}
+
+#alius-shell .alius-stage-slots th,
+#alius-shell .alius-stage-slots td {
+  border: 1px solid color-mix(in srgb, var(--alius-fg) 25%, transparent);
+  padding: 2px 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+#alius-shell .alius-stage-slots thead th {
+  font-weight: normal;
+  color: var(--alius-dim);
+  max-width: 7em;
+  white-space: normal;
+}
+
+#alius-shell .alius-stage-slots tbody th { text-align: left; font-weight: normal; }
+#alius-shell .alius-stage-cell[data-state="none"] { color: var(--alius-dim); }
+#alius-shell .alius-stage-cell[data-state="zoned"] { color: var(--alius-accent); }
+
 /* Personal pressure (P9c): the DEVICE block of a dossier, the SCHEDULE of bookings, the EDITED BY chip, the courtship chips and the claim card.
    Palette variables only; no semantic colours (readable mode safe). */
 #alius-shell .alius-device-block,

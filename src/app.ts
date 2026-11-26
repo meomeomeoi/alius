@@ -2445,6 +2445,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const shell = (deps.shellFactory ?? createShell)({
     sound: shellSound, // P10e-e: its night and sensory switches reach the samples too
     generation: genUi,
+    stage: { art: () => art, folders: () => stageFolders, refresh: () => loadStage(true) }, // P10e-f: SYS › STAGE
     st,
     getState: () => state,
     getLoad: () => load,
