@@ -20,6 +20,8 @@ import { registerExpectation } from '../moments/answer';
 import { registerMomentTrigger } from '../moments/live';
 import type { OpenMoment } from '../moments/state';
 import { registerHoldsUntil, registerPhysicsStyle, registerRunTarget } from '../physics/style';
+import { registerPresenceTerms } from '../physics/presence';
+import { bandIndex } from './hold';
 import type { PhysicsStyle } from '../physics/state';
 import type { CampaignState } from '../state/types';
 import { registerCompromatCount, registerRegardBand } from './aftermath';
@@ -34,7 +36,7 @@ import { combatEffects, protectionFor, wantGrowthMult } from './exchange';
 import { registerCombatPassive } from '../combat/build';
 import { registerWantGrowth } from '../bonds/want';
 import { defaultExpectation, leadingStyle } from './style';
-import { dynamicOf, type DynamicRelation } from './state';
+import { dynamicHash, dynamicOf, type DynamicRelation } from './state';
 import { TUNING } from '../tuning';
 
 /** Her dynamic, only while the block exists, holders is not 0 and she is a named unit in service; `undefined` otherwise (the state-only "off" check). */
@@ -111,6 +113,12 @@ export function installDynamicHooks(): void {
   registerBlockingGate(gate);
   registerPhysicsStyle(styleReader);
   registerHoldsUntil(holdsReader);
+  // P10e-e R25: her presence in the frame of her time reads her Regard (a tone term) and her hold band by rank, and the session's hash
+  registerPresenceTerms((state, reg, unitId) => {
+    const dyn = dynamicOn(state, reg) ? liveDynamic(state, unitId) : undefined;
+    if (dyn === undefined) return null;
+    return { regardRank: regardBandRank(reg, regardOf(state, reg, unitId)), regardBands: reg.regardBands.size, holdIndex: bandIndex(reg, dyn.hold), holdBands: reg.holdBands.size, hash: (key) => dynamicHash(state, unitId, key) };
+  });
   registerRunTarget((state, reg, targetId) => (dynamicOn(state, reg) ? targetId : undefined)); // mastery counts the act on a target only while the dynamic is on (I4)
   registerExpectation(expectation as Parameters<typeof registerExpectation>[0]);
   registerMomentTrigger('compromat_hint', compromatHint); // P15 (compromat): the one source of the dynamic that is live from the start

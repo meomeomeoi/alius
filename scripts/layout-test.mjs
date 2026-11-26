@@ -13,8 +13,10 @@ const server = await serveRoot();
 const port = server.port;
 
 const SIZES = [[1920, 1080], [1280, 800], [2560, 1440]];
-const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breathhold', 'weighthold', 'scenthold', 'jawhold'];
+const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weighthold', 'scenthold', 'jawhold', 'activityhold', 'thronehold', 'servicehold', 'shoehold', 'gulphold'];
 const failures = [];
+/** The fixtures with an instrument, her call or her slap drawn at the measure (Task 31). */
+const INSTRUMENT_FIXTURES = new Set(['call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weighthold', 'scenthold', 'jawhold', 'activityhold', 'thronehold', 'servicehold', 'shoehold', 'gulphold']);
 const faceOf = new Map(); // the dial's circle for `standing` (fixture `one`), per size
 const fail = (size, fixture, what) => failures.push(`${size[0]}x${size[1]} ${fixture}: ${what}`);
 const SHOTS = process.env.LAYOUT_SHOTS ? resolve(process.env.LAYOUT_SHOTS) : null;
@@ -67,6 +69,14 @@ function measure(UI) {
     stopVisible: q('[data-stop-word]') ? getComputedStyle(q('[data-stop-word]')).visibility !== 'hidden' : false,
     chipRow: chipRowMeasure(),
     callWord: r(q('.alius-call-w')), callCards: [...document.querySelectorAll('.alius-call-card')].map(r),
+    instrument: q('.alius-stage-dial')?.dataset.instrument ?? null,
+    // her lines on the frame and the instrument's own controls (kit `say`, the moment layer's buttons); a line still fading in may sit off its place
+    instrumentUi: [...document.querySelectorAll('.alius-her-lines .her-line, .alius-layer-moment button')].map((el) => ({ sel: el.className || el.tagName, ...r(el) })).filter((b) => b.w > 0 && b.h > 0),
+    // final review I2: the instrument's controls that must never lie over the reply's prose (the weight's vial, the moment layer's buttons and
+    // marked controls: GET UP, the controls between the hours); her call's fan of cards is measured by its own checks (inside the viewport,
+    // off her face), as a rotated card's box is wider than the card
+    instrumentControls: [...document.querySelectorAll('.alius-weight-vial, .alius-layer-moment button, .alius-layer-moment [data-analyze]')].filter((el) => !el.closest('.alius-call') && !el.className?.toString().includes('alius-call') && getComputedStyle(el).visibility !== 'hidden').map((el) => ({ sel: el.className?.baseVal ?? el.className ?? el.tagName, ...r(el) })).filter((b) => b.w > 0 && b.h > 0),
+    replyText: (() => { const el = q('.alius-reply'); if (!el || !el.textContent.trim()) return null; const rg = document.createRange(); rg.selectNodeContents(el); const rs = [...rg.getClientRects()].filter((x) => x.width > 0 && x.height > 0); if (rs.length === 0) return null; const x = Math.min(...rs.map((a) => a.left)), y = Math.min(...rs.map((a) => a.top)), rr = Math.max(...rs.map((a) => a.right)), b = Math.max(...rs.map((a) => a.bottom)); return { x, y, r: rr, b, w: rr - x, h: b - y }; })(),
     ui: [...document.querySelectorAll(UI)].map((el) => ({ sel: el.className || el.tagName, ...r(el) })).filter((b) => b.w > 0 && b.h > 0),
   };
 }
@@ -247,6 +257,165 @@ for (const size of SIZES) {
       });
       for (const f of after) fail(size, fixture, f);
     }
+    // P10e-e Task 24: her frame draws under the scene's UI (the controls between phases and GET UP in the moment layer); in the play and at
+    // the forgotten end the stop word's pill and the input stay on top and clickable, the lines stay in the frame; the pill ends the hold at
+    // once: the instrument is gone, the reply and the sprites as they were
+    if (fixture === 'activityhold' || fixture === 'thronehold') {
+      await p.waitForTimeout(2600); // the entry (2.2 s)
+      await p.evaluate((f) => { const a = window.__activity; a.sense('She lays another sheet on the pile.', 'her'); a.say('who signs these.', 'self'); if (f === 'thronehold') window.__throne.throneCup(); else a.spawnUrge('itch'); }, fixture);
+      await p.mouse.move(size[0] * 0.5, size[1] * 0.45);
+      await p.waitForTimeout(300);
+      const check = (when) => p.evaluate((w) => {
+        const out = [];
+        if (!document.querySelector('.alius-layer-effects > .alius-activity')) out.push(`${w}: no frame drawn`);
+        if (document.querySelector('.alius-layer-ui .alius-activity')) out.push(`${w}: the frame is drawn over the UI`);
+        const top = (el) => { if (!el) return 'missing'; const b = el.getBoundingClientRect(); const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return hit === el || el.contains(hit) ? 'ok' : `covered by ${hit?.className ?? hit?.tagName}`; };
+        const input = top(document.querySelector('.alius-input'));
+        if (input !== 'ok') out.push(`${w}: the input: ${input}`);
+        const pill = top(document.querySelector('[data-stop-word]'));
+        if (pill !== 'ok') out.push(`${w}: the stop word: ${pill}`);
+        for (const l of document.querySelectorAll('.alius-activity .sense, .alius-activity .her-line')) {
+          const r = l.getBoundingClientRect();
+          if (r.width && (r.left < 0 || r.right > innerWidth || r.top < 0 || r.bottom > innerHeight)) out.push(`${w}: "${l.textContent}" leaves the frame: ${JSON.stringify(r)}`);
+        }
+        return out;
+      }, when);
+      for (const f of await check('playing')) fail(size, fixture, f);
+      await p.evaluate(() => { const a = window.__activity; a.G.step = 'use'; a.finish('done'); });
+      await p.waitForTimeout(6600);
+      for (const f of await check('forgotten')) fail(size, fixture, f);
+      const gu = await p.evaluate(() => getComputedStyle(document.querySelector('.alius-act-getUp')).display);
+      if (gu === 'none') fail(size, fixture, 'the forgotten end shows no GET UP');
+      await p.click('[data-stop-word]');
+      await p.waitForTimeout(200);
+      const after = await p.evaluate(() => {
+        const out = [];
+        if (document.querySelector('.alius-activity') || document.querySelector('.alius-activity-ui')) out.push('the stop word did not end the hold: the frame is still drawn');
+        const reply = document.querySelector('[role="log"]')?.getAttribute('style') ?? '';
+        if (/opacity/.test(reply)) out.push(`the reply was not put back: ${JSON.stringify(reply)}`);
+        const sprites = document.querySelector('.alius-layer-sprites')?.getAttribute('style') ?? '';
+        if (/transform|opacity/.test(sprites)) out.push(`the sprites were not put back: ${JSON.stringify(sprites)}`);
+        return out;
+      });
+      for (const f of after) fail(size, fixture, f);
+    }
+    // P10e-e Task 26: foot service under her desk: her signal raises her foot and the camera closes in on her sole; the close-up is drawn in
+    // her frame's layer under the scene's UI, the stop word's pill and the input stay on top and clickable over it; the pill ends the hold at
+    // once: the frame and its close-up are gone, the reply and the sprites as they were
+    if (fixture === 'servicehold') {
+      await p.waitForFunction(() => window.__activity.G.phase === 'loop', null, { timeout: 15000 }); // the entry (2.2 s of her clock)
+      await p.evaluate(() => { const sv = window.__service; sv.SV.forceMeaning = 'kiss'; sv.svSignal(); });
+      await p.waitForFunction(() => window.__service.SV.closeK > 0.95, null, { timeout: 15000 }).catch(() => {}); // her foot rises (650 ms), the camera eases in
+      await p.waitForTimeout(100);
+      const check = (when) => p.evaluate((w) => {
+        const out = [];
+        const close = document.querySelector('.alius-layer-effects .alius-activity > .alius-act-close');
+        if (!close) out.push(`${w}: no close-up`);
+        else if (getComputedStyle(close).display === 'none') out.push(`${w}: the close-up is not shown`);
+        if (document.querySelector('.alius-layer-ui .alius-act-close')) out.push(`${w}: the close-up is drawn over the UI`);
+        const top = (el) => { if (!el) return 'missing'; const b = el.getBoundingClientRect(); const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return hit === el || el.contains(hit) ? 'ok' : `covered by ${hit?.className ?? hit?.tagName}`; };
+        const input = top(document.querySelector('.alius-input'));
+        if (input !== 'ok') out.push(`${w}: the input: ${input}`);
+        const pill = top(document.querySelector('[data-stop-word]'));
+        if (pill !== 'ok') out.push(`${w}: the stop word: ${pill}`);
+        for (const l of document.querySelectorAll('.alius-activity .sense, .alius-activity .her-line')) {
+          const r = l.getBoundingClientRect();
+          if (r.width && (r.left < 0 || r.right > innerWidth || r.top < 0 || r.bottom > innerHeight)) out.push(`${w}: "${l.textContent}" leaves the frame: ${JSON.stringify(r)}`);
+        }
+        const img = document.querySelector('.alius-act-soleArt');
+        if (img && img.naturalWidth) { const r = img.getBoundingClientRect(); if (r.width <= 0 || r.height <= 0) out.push(`${w}: the sole has no size`); }
+        return out;
+      }, when);
+      for (const f of await check('close-up')) fail(size, fixture, f);
+      await p.click('[data-stop-word]');
+      await p.waitForTimeout(200);
+      const after = await p.evaluate(() => {
+        const out = [];
+        if (document.querySelector('.alius-activity') || document.querySelector('.alius-act-close')) out.push('the stop word did not end the hold: the close-up is still drawn');
+        const reply = document.querySelector('[role="log"]')?.getAttribute('style') ?? '';
+        if (/opacity/.test(reply)) out.push(`the reply was not put back: ${JSON.stringify(reply)}`);
+        const sprites = document.querySelector('.alius-layer-sprites')?.getAttribute('style') ?? '';
+        if (/transform|opacity/.test(sprites)) out.push(`the sprites were not put back: ${JSON.stringify(sprites)}`);
+        return out;
+      });
+      for (const f of after) fail(size, fixture, f);
+    }
+    // P10e-e Task 28: shoe service draws in the effects layer under the scene's UI: her footwear and its dirt on the frame, the stop word's
+    // pill and the input on top and clickable, her lines and the sensory lines in the frame; the pill ends the hold at once and the instrument is gone
+    // P10e-e Task 30: gulp draws in the effects layer under the scene's UI: the tide high, a sensory line and her line in the frame, the stop
+    // word's pill and the input on top and clickable; the pill ends the hold at once and the instrument is gone
+    if (fixture === 'gulphold') {
+      await p.waitForFunction(() => window.__gulp.G.phase === 'loop', null, { timeout: 15000 });
+      await p.evaluate(() => { const g = window.__gulp; g.G.fill = 0.95; g.G.tasteCd = 0; g.update(16); });
+      await p.waitForTimeout(400);
+      const mid = await p.evaluate(() => {
+        const out = [];
+        const box = document.querySelector('.alius-layer-effects > .alius-gulp');
+        if (!box) out.push('no gulp drawn');
+        if (document.querySelector('.alius-layer-moment .alius-gulp, .alius-layer-ui .alius-gulp')) out.push('the gulp is drawn over the UI');
+        const tide = document.querySelector('.alius-gulp-tide')?.getBoundingClientRect();
+        if (!tide || tide.width <= 0 || tide.height <= 0) out.push(`the tide has no size: ${JSON.stringify(tide)}`);
+        const top = (el) => { if (!el) return 'missing'; const b = el.getBoundingClientRect(); const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return hit === el || el.contains(hit) ? 'ok' : `covered by ${hit?.className ?? hit?.tagName}`; };
+        const input = top(document.querySelector('.alius-input'));
+        if (input !== 'ok') out.push(`the input: ${input}`);
+        const pill = top(document.querySelector('[data-stop-word]'));
+        if (pill !== 'ok') out.push(`the stop word: ${pill}`);
+        for (const l of document.querySelectorAll('.alius-gulp-hand .her-line, .alius-gulp-hand .sense')) {
+          const r = l.getBoundingClientRect();
+          if (r.width && (r.left < 0 || r.right > innerWidth || r.top < 0 || r.bottom > innerHeight)) out.push(`"${l.textContent}" leaves the frame: ${JSON.stringify(r)}`);
+        }
+        if (document.querySelectorAll('.alius-gulp-hand .sense').length === 0) out.push('the taste\'s sensory line is not shown');
+        if (document.querySelectorAll('.alius-gulp-hand .her-line').length === 0) out.push('her first words are not shown');
+        return out;
+      });
+      for (const f of mid) fail(size, fixture, f);
+      await p.click('[data-stop-word]');
+      await p.waitForTimeout(200);
+      const after = await p.evaluate(() => {
+        const out = [];
+        if (document.querySelector('.alius-gulp')) out.push('the stop word did not end the hold: the gulp is still drawn');
+        const reply = document.querySelector('[role="log"]')?.getAttribute('style') ?? '';
+        if (/opacity|transform/.test(reply)) out.push(`the reply was not put back: ${JSON.stringify(reply)}`);
+        return out;
+      });
+      for (const f of after) fail(size, fixture, f);
+    }
+    if (fixture === 'shoehold') {
+      await p.waitForFunction(() => window.__shoe.G.phase === 'loop', null, { timeout: 15000 });
+      await p.evaluate(() => { const s = window.__shoe; s.G.grit = 0.8; s.G.toldGrit = false; s.update(16); });
+      await p.waitForTimeout(400);
+      const mid = await p.evaluate(() => {
+        const out = [];
+        const box = document.querySelector('.alius-layer-effects > .alius-shoe');
+        if (!box) out.push('no shoe drawn');
+        if (document.querySelector('.alius-layer-moment .alius-shoe, .alius-layer-ui .alius-shoe')) out.push('the shoe is drawn over the UI');
+        const wrap = document.querySelector('.alius-shoe-shoeWrap');
+        const wr = wrap?.getBoundingClientRect();
+        if (!wr || wr.width <= 0 || wr.height <= 0) out.push(`her footwear has no size: ${JSON.stringify(wr)}`);
+        const top = (el) => { if (!el) return 'missing'; const b = el.getBoundingClientRect(); const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return hit === el || el.contains(hit) ? 'ok' : `covered by ${hit?.className ?? hit?.tagName}`; };
+        const input = top(document.querySelector('.alius-input'));
+        if (input !== 'ok') out.push(`the input: ${input}`);
+        const pill = top(document.querySelector('[data-stop-word]'));
+        if (pill !== 'ok') out.push(`the stop word: ${pill}`);
+        for (const l of document.querySelectorAll('.alius-shoe-hand .her-line, .alius-shoe-hand .sense')) {
+          const r = l.getBoundingClientRect();
+          if (r.width && (r.left < 0 || r.right > innerWidth || r.top < 0 || r.bottom > innerHeight)) out.push(`"${l.textContent}" leaves the frame: ${JSON.stringify(r)}`);
+        }
+        if (document.querySelectorAll('.alius-shoe-hand .sense').length === 0) out.push('the grit\'s sensory line is not shown');
+        return out;
+      });
+      for (const f of mid) fail(size, fixture, f);
+      await p.click('[data-stop-word]');
+      await p.waitForTimeout(200);
+      const after = await p.evaluate(() => {
+        const out = [];
+        if (document.querySelector('.alius-shoe')) out.push('the stop word did not end the hold: the shoe is still drawn');
+        const reply = document.querySelector('[role="log"]')?.getAttribute('style') ?? '';
+        if (/opacity|transform/.test(reply)) out.push(`the reply was not put back: ${JSON.stringify(reply)}`);
+        return out;
+      });
+      for (const f of after) fail(size, fixture, f);
+    }
     // P10e-e Task 20: the jaw draws under the scene's UI, its mouth the input line; wide open with her band up and a line typed through the
     // ring, the stop word's pill and the input stay on top and clickable, her lines stay in the frame, the line and its ghost frames stay in
     // the frame; the pill ends the hold at once: the instrument is gone, the line, the field and the frame's cursor are as they were
@@ -390,6 +559,17 @@ for (const size of SIZES) {
       else if (Math.abs(m.dial.x - still.x) > 1 || Math.abs(m.dial.y - still.y) > 1) fail(size, fixture, `a long label moved the circle: ${Math.round(m.dial.x)},${Math.round(m.dial.y)} against ${Math.round(still.x)},${Math.round(still.y)} for standing`);
       if (m.dialLabel && m.dialLabel.h < 50) fail(size, fixture, `a 30-character name over BOWING and EYES DOWN is ${Math.round(m.dialLabel.w)}x${Math.round(m.dialLabel.h)}: it did not wrap into four lines`);
       if (m.dialLabel && (m.dialLabel.b > H - 2 || m.dialLabel.r > W - 2)) fail(size, fixture, `the tallest label reaches the viewport's edge: ${JSON.stringify(m.dialLabel)}`);
+    }
+    // P10e-e Task 31: while an instrument draws (or her call, or her slap) the dial's circle stands where it does for `standing`, and the
+    // instrument's own lines and controls stay inside the viewport (the generic checks above cover the scene's UI and the head boxes)
+    if (INSTRUMENT_FIXTURES.has(fixture)) {
+      const still = faceOf.get(`${W}x${H}`);
+      if (!m.dial || !still) fail(size, fixture, 'no dial to compare');
+      else if (Math.abs(m.dial.x - still.x) > 1 || Math.abs(m.dial.y - still.y) > 1) fail(size, fixture, `the instrument moved the dial's circle: ${Math.round(m.dial.x)},${Math.round(m.dial.y)} against ${Math.round(still.x)},${Math.round(still.y)} for standing`);
+      if (!fixture.startsWith('call') && !fixture.startsWith('slap') && !m.instrument) fail(size, fixture, 'no instrument is drawing (the dial carries no data-instrument)');
+      for (const b of m.instrumentUi) if (!inside(b)) fail(size, fixture, `the instrument's ${b.sel} is outside the viewport: ${JSON.stringify(b)}`);
+      // final review I2: no instrument control lies over the reply's text (the scene's prose, the player must read it)
+      if (m.replyText) for (const b of m.instrumentControls) if (hit(b, m.replyText)) fail(size, fixture, `the instrument's ${b.sel} overlaps the reply's text: ${JSON.stringify(b)} over ${JSON.stringify(m.replyText)}`);
     }
     // P10e-e Task 9: her word and the fan stay inside the viewport and off her face
     if (fixture === 'call' || fixture === 'callhold') {

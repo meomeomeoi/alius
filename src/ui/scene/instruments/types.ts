@@ -83,6 +83,8 @@ export interface InstrumentEnv {
   readable: boolean;
   /** The tap (P15a's `physics/signal`, the signal inside the fiction): dead from the end of the run. Absent = no tap here. */
   tap?(): void;
+  /** P10e-e e10 M4: asks the scene to draw again now (a picture failed: the card takes the run at once). Absent = the next redraw. */
+  redraw?(): void;
   /** An extension-relative path as a URL the page can load (the scene's `assetUrl`). Absent = the path as it is. */
   assetUrl?(path: string): string;
 }
@@ -113,5 +115,10 @@ export interface InstrumentRun {
 export interface InstrumentDef {
   id: string;
   matches(run: PhysicsRun, state: CampaignState, reg: Registries): boolean;
+  /**
+   * P10e-e Task 28: whether it can draw this run on this scene (its art exists, none failed to load). Absent = yes; false = the card plays the
+   * run (asked at every redraw, so a picture that failed hands the run to the card at the next one).
+   */
+  drawable?(env: InstrumentEnv, run: PhysicsRun): boolean;
   start(env: InstrumentEnv, run: PhysicsRun): InstrumentRun;
 }

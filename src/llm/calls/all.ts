@@ -22,3 +22,4 @@ import './developmentReview'; // P14b
 import './opinionForm'; // P14c
 import './physicsCues'; // P15a
 import './practiceGenerate'; // P16
+import './activityScript'; // P10e-e R26

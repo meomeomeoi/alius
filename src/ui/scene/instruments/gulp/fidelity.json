@@ -1,0 +1,345 @@
+{
+  "prototype": "gulp",
+  "note": "Task 30 (chunk e11): gulp. The functions of gulp.html that its README calls normative: her picture (`render`, `placeSprite`: the chain `over_explicit` → `over` → her sprite from below at 1.55 H, bottom 1.42 H, rotateX 10°, a slow sway and a quicker one in a surge; the ceiling blurred 3 px and dimmed to 0.55; the floor in the cleaning); the mouth as a warm tide (`tideH`, `render`: up to 36 % of the height, its gradient, sheen, two waves, ripples, the dip on a swallow, the brim over 0.85, the overflow's drops); swallowing (`startGulp`: `GULP_MS` 700, `GULP_TAKES` 0.4, `AIR_GULP` 0.11, the reflex from the fourth in a row); breathing (`startBreath`: `BREATH_MS` 520, `BREATH_GIVES` 0.42, a cough from `COUGH_FROM` 0.55); air, the reflex, the heart and the overflow (`update`: `AIR_DRAIN` 0.045, `REFLEX_SURGE` 0.55, cooling 1/9 a second, the body breathing by itself); `cough`, `spill`, `tap`; the cleaning (`startClean`, `puddleLeft`, `puddleRect`, `wipePuddle`, the tongue `lick`: every bit licked fills the mouth again × 0.0016; done at 10 % left or after 40 s; her check a band of light of 1.7 s, `missed` over 15 % left); her hand (`say`, `sense`, `sayL`, `TASTE`); the sound (`audioInit`, `loadSamples`, `play`, `noise`, `tone`, `SFX`, `GROUPS`, the stream `streamInit` / `streamSource` / `streamSet`: soft ↔ strong by `smooth(0.25, 0.9, flow / 0.8)`, rate 0.96 + 0.08 × flow, +0.06 rising, the lowpass 1.6 → 4.2 kHz, +1.2 rising, a faint band of noise); the phases (`begin`, `endFlow`, `finish`, `fresh`, `frame`); the helpers (`clamp`, `lerp`, `smooth` from the kit, `easeOut`, `pick`, `rand`, `ST`, `L`); her ways `STYLES` (the engine's `GULP_STYLES`, R32). Lines (Rulings Q, R, Z): `LINES` are the `cardVoice` rows `gulp.<kind>` by style (a style the prototype has no row of reads neutral's; cold's own lines verbatim, silent where it has none); `surge` is the one kind with a cue kind (`surge`), so the model's word may take ritual's \"now.\"; `gulp.stop` is finish's stop line (not in `LINES`). `TASTE` stays the prototype's table (sensory lines, stand-ins for P15a's stimulus layer: no stimulus kind tastes of this yet). Prototype only, replaced by the wiring (gulp.ts header): `planFlow` (her schedule; the wiring's `planFlow` plays the engine's plan `PlannedBeat.flow`: her pauses (0), her surges (× her row's `surge` on the surge beat), a warning beat's stream rising `warn` ms before its end and an announcing row's word (ritual) `max(0, warn − 600)` ms into it, a feint the warning alone; her wander between them is the prototype's own, continuous in the run's time, `base × (1 + vary × sin(t / 1300) × sin(t / 3700 + 1))` (the engine's integral samples the same curve at each beat's middle); her answers to a tap stay the instrument's, R32), her volume (`S.len`: the engine's), the panel, the start overlay, the summary card and the debug readout (detached), the `__` hooks (`_gulp` is the tests' and the shots'). Module wiring beyond the listed functions: `performance`, `setTimeout`, `requestAnimationFrame`, `innerWidth` / `innerHeight` and `Math.random` are the module's own (the frame clock, the mount's timers and frames, the scene's size, a xorshift seeded by fnv1a of the scene and the run: no rng draw); `document.createElement('canvas')` makes a canvas whose context never fails; `$` names the instrument's elements in the effects layer (under the scene's UI: the stop word's pill and the field are never covered), and the prototype's page parts (`#reply`, `#summary`, `#sumLine`, `#sumFacts`, `#debug`) are detached (the scene's reply is the model's). Her picture: `over_explicit` only with explicit content on (`explicitArtAllowed`, the content gate), else `over` (its sidecar's `fit { height, x, sink }` is the prototype's `overH` / `overX` / `overSink`), else her scene sprite; a picture that fails falls to the next; the ceiling and the floor are the scene's P10c surfaces (`ceilingOf`, `floorOf`), each candidate in turn, else the scene's backdrop. The listeners are the mount's (`env.listen`): Space (held) swallows and Shift breathes only from outside a field or a control (typed there they are letters), T or the right button on the frame taps, a press on the frame in the cleaning starts the tongue and the pointer's moves lick; Escape and H are the scene's. Reports (R32): each beat of a running segment, as it ends, a `swallow` with the mouth its swallows took (the prototype's own step, read before `update` takes it) and a `spill` with the mouthfuls spilled, counted as the prototype counts spills (`part` `cough` or `overflow` for a beat that began one: a cough, an overflow re-armed under 0.9; `more` for an overflow running on); in the cleaning one `wipe` a beat with the share of the puddle licked up × the cleaning's start (the engine's dirt is start × the floor left), `pointer`; what is done while the run is held is carried by the next segment's first beat (Ruling AD); the segment cut short at her volume is ended when its beats are played (its last beat reported at that very end), the cleaning's when her check begins; the cleaning's segment clock starts again with the puddle (`staging.restart`). CSS (checked by the shots): the prototype's styles under `.alius-gulp` (her lines in her hand at 42 px × her hand's measured scale; the sensory lines; the tap's ring; readable mode drops the blur).",
+  "functions": [
+    {
+      "fn": "clamp",
+      "module": "src/ui/scene/instruments/kit/math.ts"
+    },
+    {
+      "fn": "lerp",
+      "module": "src/ui/scene/instruments/kit/math.ts"
+    },
+    {
+      "fn": "smooth",
+      "module": "src/ui/scene/instruments/kit/math.ts"
+    },
+    {
+      "fn": "easeOut",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "pick",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "rand",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "S",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "ST",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "L",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "audioInit",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "loadSamples",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "play",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "noise",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "tone",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "SFX",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "streamInit",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "streamSource",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "streamSet",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "say",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "sense",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "sayL",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "fresh",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "startGulp",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "startBreath",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "cough",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "spill",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "tap",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "begin",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "endFlow",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "finish",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "startClean",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "puddleLeft",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "puddleRect",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "wipePuddle",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "frame",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "update",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "tideH",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "placeSprite",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "render",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts"
+    },
+    {
+      "fn": "lick",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts",
+      "fragment": {
+        "from": "const g = G.gest; if (!g || G.phase !== 'clean') return;",
+        "to": "g.x = e.clientX; g.y = e.clientY;"
+      }
+    }
+  ],
+  "tables": [
+    {
+      "ident": "STYLES",
+      "module": "src/engine/tuning.ts",
+      "export": "GULP_STYLES"
+    },
+    {
+      "ident": "GROUPS",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts",
+      "export": "GROUPS"
+    },
+    {
+      "ident": "TASTE",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts",
+      "export": "TASTE"
+    },
+    {
+      "ident": "GULP_MS",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts",
+      "export": "GULP_MS"
+    },
+    {
+      "ident": "GULP_TAKES",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts",
+      "export": "GULP_TAKES"
+    },
+    {
+      "ident": "BREATH_MS",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts",
+      "export": "BREATH_MS"
+    },
+    {
+      "ident": "BREATH_GIVES",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts",
+      "export": "BREATH_GIVES"
+    },
+    {
+      "ident": "AIR_DRAIN",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts",
+      "export": "AIR_DRAIN"
+    },
+    {
+      "ident": "AIR_GULP",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts",
+      "export": "AIR_GULP"
+    },
+    {
+      "ident": "COUGH_FROM",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts",
+      "export": "COUGH_FROM"
+    },
+    {
+      "ident": "REFLEX_SURGE",
+      "module": "src/ui/scene/instruments/gulp/gulp.ts",
+      "export": "REFLEX_SURGE"
+    }
+  ],
+  "lines": [
+    {
+      "ident": "LINES",
+      "registry": "cardVoice",
+      "cueKinds": {
+        "neutral.entry": "gulp.entry",
+        "neutral.surge": "gulp.surge",
+        "neutral.tapped": "gulp.tapped",
+        "neutral.spill": "gulp.spill",
+        "neutral.cough": "gulp.cough",
+        "neutral.done": "gulp.done",
+        "neutral.clean": "gulp.clean",
+        "neutral.cleaned": "gulp.cleaned",
+        "neutral.missed": "gulp.missed",
+        "affectionate.entry": "gulp.entry@affectionate",
+        "affectionate.surge": "gulp.surge@affectionate",
+        "affectionate.tapped": "gulp.tapped@affectionate",
+        "affectionate.spill": "gulp.spill@affectionate",
+        "affectionate.cough": "gulp.cough@affectionate",
+        "affectionate.done": "gulp.done@affectionate",
+        "affectionate.clean": "gulp.clean@affectionate",
+        "affectionate.cleaned": "gulp.cleaned@affectionate",
+        "affectionate.missed": "gulp.missed@affectionate",
+        "ritual.entry": "gulp.entry@ritual",
+        "ritual.surge": "gulp.surge@ritual",
+        "ritual.tapped": "gulp.tapped@ritual",
+        "ritual.spill": "gulp.spill@ritual",
+        "ritual.cough": "gulp.cough@ritual",
+        "ritual.done": "gulp.done@ritual",
+        "ritual.clean": "gulp.clean@ritual",
+        "ritual.cleaned": "gulp.cleaned@ritual",
+        "ritual.missed": "gulp.missed@ritual",
+        "playful.entry": "gulp.entry@playful",
+        "playful.surge": "gulp.surge@playful",
+        "playful.tapped": "gulp.tapped@playful",
+        "playful.spill": "gulp.spill@playful",
+        "playful.cough": "gulp.cough@playful",
+        "playful.done": "gulp.done@playful",
+        "playful.clean": "gulp.clean@playful",
+        "playful.cleaned": "gulp.cleaned@playful",
+        "playful.missed": "gulp.missed@playful",
+        "cruel.entry": "gulp.entry@cruel",
+        "cruel.surge": "gulp.surge@cruel",
+        "cruel.tapped": "gulp.tapped@cruel",
+        "cruel.spill": "gulp.spill@cruel",
+        "cruel.cough": "gulp.cough@cruel",
+        "cruel.done": "gulp.done@cruel",
+        "cruel.clean": "gulp.clean@cruel",
+        "cruel.cleaned": "gulp.cleaned@cruel",
+        "cruel.missed": "gulp.missed@cruel",
+        "possessive.entry": "gulp.entry@possessive",
+        "possessive.surge": "gulp.surge@possessive",
+        "possessive.tapped": "gulp.tapped@possessive",
+        "possessive.spill": "gulp.spill@possessive",
+        "possessive.cough": "gulp.cough@possessive",
+        "possessive.done": "gulp.done@possessive",
+        "possessive.clean": "gulp.clean@possessive",
+        "possessive.cleaned": "gulp.cleaned@possessive",
+        "possessive.missed": "gulp.missed@possessive",
+        "cold.entry": "gulp.entry@cold",
+        "cold.surge": "gulp.surge@cold",
+        "cold.tapped": "gulp.tapped@cold",
+        "cold.spill": "gulp.spill@cold",
+        "cold.cough": "gulp.cough@cold",
+        "cold.done": "gulp.done@cold",
+        "cold.clean": "gulp.clean@cold",
+        "cold.cleaned": "gulp.cleaned@cold",
+        "cold.missed": "gulp.missed@cold"
+      }
+    }
+  ],
+  "differences": [
+    {
+      "fn": "S",
+      "reason": "Wiring: the still form is the scene's (`env.reduced`, `motionReduced`, read each frame by `before`), never `matchMedia` (P10). Her volume is the engine's (R32: `TUNING.physics.gulpFlow.volumeMs`; the plan's last segment is cut short there, and her flow ends when the run chains to its cleaning or is released: the wiring calls `endFlow`), so the prototype's own countdown `G.end = S.len * 1000` never runs out (`len: Infinity`). The other defaults are the prototype's; her style, the explicit switch and the over fit are set from the run and the art's sidecar at the mount (`bind`, `bindArt`).",
+      "diff": "@@ -1,3 +1,3 @@\n const S={\n-streamS:\"mug\",swallowS:\"swallows\",style:\"neutral\",explicit:false,overH:1.04,overX:0.5,overSink:0,len:35,flowK:1,sound:true,vol:0.7,debug:false,reduced:matchMedia(\"(prefers-reduced-motion: reduce)\").matches\n+streamS:\"mug\",swallowS:\"swallows\",style:\"neutral\",explicit:false,overH:1.04,overX:0.5,overSink:0,len:Infinity,flowK:1,sound:true,vol:0.7,debug:false,reduced:false\n }"
+    },
+    {
+      "fn": "audioInit",
+      "reason": "Wiring (ruling D): the context is the sample layer's (`samples.ctx()`, the mount's recorded view: the room tone's source is stopped at the unmount) and the prototype's master goes into the layer's body bus instead of the destination. No context yet (before the player's first gesture, or no sound): nothing is built, and the frame tries again.",
+      "diff": "@@ -2,3 +2,5 @@\n if(A.ctx)return\n-const ctx=new(window.AudioContext||window.webkitAudioContext)()\n+const ctx=E?.env.samples?.ctx()??null\n+const out=E?.env.samples?.bus(\"body\")??null\n+if(!ctx||!out)return\n A.ctx=ctx\n@@ -6,3 +8,3 @@\n A.master.gain.value=S.sound?S.vol:0\n-A.master.connect(ctx.destination)\n+A.master.connect(out)\n A.world=ctx.createBiquadFilter()"
+    },
+    {
+      "fn": "loadSamples",
+      "reason": "Wiring (ruling D): the recordings are the extension's own files (`SAMPLE_URLS`: `assets/sounds/gulp/mug_soft`, `mug_strong`, `swallow1–5`, `splash_10` / `splash_09` / `splash_06` as `splash1–3`, the commander's breath `assets/sounds/breath-in-out.mp3`, `ha/cloth1–3`, the prototype's), fetched and decoded once by the sample layer (`samples.preload`); `A.buf[key]` reads the layer's decoded buffer (null until decoded: the prototype's `play` then synthesises, as it does without samples). The mug's two loops join the stream once they are decoded (`before` calls `streamSource` again).",
+      "diff": "@@ -1,9 +1,8 @@\n-async function loadSamples(){\n-await Promise.all(Object.entries(SAMPLE_URLS).map(async([k,u])=>{\n-try{\n-const r=await fetch(u)\n-A.buf[k]=await A.ctx.decodeAudioData(await r.arrayBuffer())\n-}\n-catch(e){}\n-}))\n+function loadSamples(){\n+const samples=E?.env.samples\n+if(!samples)return\n+A.buf=new Proxy({},{\n+get:(_t,k)=>(typeof k===\"string\"&&SAMPLE_URLS[k]?samples.buffer(SAMPLE_URLS[k]):null)\n+})\n+void samples.preload(Object.values(SAMPLE_URLS))\n }"
+    },
+    {
+      "fn": "tap",
+      "reason": "Wiring (Ruling Q, P15a): the tap is the engine's `physics/signal` (`env.tap`). Her answer (her `tapped` line and her pause, slower, hold, faster or surge: the instrument's, R32) plays only when the engine keeps the commander (`tapReleases`: a `signal` holder lets go at once, a `limit` holder at her second tap, a `blackout` holder never); when she lets go the engine ends the hold and her flow's end plays (`finish`), never a refusal.",
+      "diff": "@@ -13,2 +13,5 @@\n },700)\n+const kept=!tapReleases()\n+E.env.tap?.()\n+if(!kept)return\n const how=ST().tap"
+    },
+    {
+      "fn": "begin",
+      "reason": "Wiring: the context may not exist yet (the sample layer has none before the player's first gesture, or the sound is off): the resume is asked only of a context that is there.",
+      "diff": "@@ -2,3 +2,3 @@\n audioInit()\n-if(A.ctx.state===\"suspended\")A.ctx.resume()\n+if(A.ctx&&A.ctx.state===\"suspended\")A.ctx.resume()\n streamInit()"
+    },
+    {
+      "fn": "endFlow",
+      "reason": "Wiring (Ruling Q: a line answering an engine decision follows the engine's answer): whether she makes the commander clean is the engine's (R32: at her flow's end the run chains to `tongue_work` when more than `cleanFrom` 0.15 was spilled and her row's `check` is `clean`; `R.chained` is that chain seen on the run), not the instrument's own count. When the engine let go (little spilled, she wipes it up herself, or a tap released it) her `clean` line and the wiping play only for a holder who wipes it herself (affectionate: \"leave it, I'll get it.\"), never a \"clean it\" the engine did not order.",
+      "diff": "@@ -5,3 +5,3 @@\n setTimeout(()=>{\n-if(G.spilled>0.15&&ST().check===\"clean\"){\n+if(R.chained){\n sayL(\"clean\")\n@@ -10,3 +10,3 @@\n else{\n-if(G.spilled>0.15){\n+if(G.spilled>0.15&&ST().check!==\"clean\"){\n sayL(\"clean\")"
+    },
+    {
+      "fn": "finish",
+      "reason": "Wiring (rulings Q and P): her line after the stop word is the `cardVoice` row `gulp.stop` (the prototype's inline \"okay. stop. here.\", verbatim) instead of a string in code. The host plays no end after the stop word (it unmounts at once), so the branch only keeps the prototype's shape; the summary card is detached (prototype only).",
+      "diff": "@@ -4,6 +4,6 @@\n streamSet(0,false)\n-if(why===\"stop\")say(\"okay. stop. here.\")\n+if(why===\"stop\")sayL(\"stop\")\n const s=G.stats\n setTimeout(()=>{\n-$(\"#sumLine\").textContent=why===\"stop\"?\"okay. stop. here.\":(L().done[0]??\"done.\")\n+$(\"#sumLine\").textContent=why===\"stop\"?(L().stop[0]??\"\"):(L().done[0]??\"done.\")\n $(\"#sumFacts\").innerHTML=`her style: ${S.style} · her volume ${S.len} s<br>swallows: ${s.gulps} · breaths: ${s.breaths} · coughs: ${s.coughs}<br>taps: ${s.taps}<br>`+`spilled: ${(s.spilled*100).toFixed(0)} % of a mouthful in all<br>`+(s.cleaned!==null?`the floor: ${(s.cleaned*100).toFixed(0)} % left · swallowed while cleaning: ${s.swallowedWhileCleaning}<br>`:\"\")+`how it ended: ${why}`"
+    },
+    {
+      "fn": "lick",
+      "reason": "No function of its own in the prototype: its `pointermove` listener licks the puddle inline; the entry is a fragment of that listener's body, the port's `lick(e)`, called by the mount's listener with the pointer relative to the scene's root.",
+      "diff": "@@ -1 +1,2 @@\n+function lick(e){\n const g=G.gest\n@@ -6 +7,2 @@\n g.y=e.clientY\n+}"
+    },
+    {
+      "fn": "startClean",
+      "reason": "Wiring (e11 review M8): the engine's floor segment (`tongue_work`, 40 s) started at the chain, 2.5 s before the puddle shows (her done and clean lines); the instrument starts its clock again as the cleaning begins (`staging.restart`), so the engine's check comes at the prototype's 40 s of cleaning (or at 10 % left, when the instrument ends the segment).",
+      "diff": "@@ -19,2 +19,3 @@\n $(\"#reply\").innerHTML=\"<span class=\\\"act\\\">Down to the floor, where it spilled.</span>\"\n+E?.env.staging.restart?.()\n }"
+    }
+  ]
+}

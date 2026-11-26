@@ -8,7 +8,7 @@ import type { Registries } from '../../content/types';
 import { blockingOf, contactTargetOf } from '../blocking';
 import { SEALS, type CueKind, type InteractionType, type Seal } from '../blocking/types';
 import { fnv1a } from '../hub';
-import { sceneSettingsOf } from '../moments/settings';
+import { LONG_HOLD, sceneSettingsOf } from '../moments/settings';
 import type { Rng } from '../rng';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
@@ -21,11 +21,14 @@ import { chainRun, coreRun, stopPhysics } from './run';
 import { attentionCue, attentionPlan, cheatRoll, segmentNoise, type NoiseKind } from './gaze';
 import { addEnduranceXp, herSkillOf } from './skill';
 import {
-  INPUT_KINDS, type Attention, type JawOrder, type PhysicsRun, type PhysicsStyle, type PlannedBeat, type ScentBand, type SegmentInput, type SegmentPlan, type SegmentResult,
+  GAUGE_FULL, INPUT_KINDS, type Attention, type JawOrder, type PhysicsRun, type PhysicsStyle, type PlannedBeat, type ScentBand, type SegmentInput, type SegmentPlan, type SegmentResult,
 } from './state';
 import { blendedStyle, leadStyle, physicsStyleOf, styleRows } from './style';
 import { scentBand } from './scent';
+import { isShoeRun } from './footwear';
 import { headCapacity, scentToleranceOf } from './stimuli';
+import { ATT_BY_STEP, frameOf, presenceOf, PRESENCE_WATCH } from './presence';
+import { floorStart, flowEnded, gulpRowOf, isGulpPhysics, isGulpRun, layFlow } from './gulp';
 
 /** The commander's stillness skill (P16b): reads 0 until it lands, so every slip is as loud as it is. */
 export const stillnessOf = (_state: CampaignState): number => 0;
@@ -46,6 +49,8 @@ export interface ResolveEnv {
   steady?: ReadonlySet<number>;
   /** A marathon's pace scale (`paceScale`): every beat's change of the gauge, and the streak xp, count this many times (1 = no scale). Applied per beat, before the clamp. */
   scale?: number;
+  /** P10e-e 24b: the long hold's drain factor of a weight inside her frame (`LONG_HOLD[longHoldStrain]`); absent outside a frame. */
+  longHold?: number;
 }
 
 const P = TUNING.physics;
@@ -82,7 +87,9 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
   const lead = leadStyle(style);
   const realtime = sceneSettingsOf(state).physicsRealtime;
   const activity = blockingOf(state.scene, run.holderId).activity;
-  const attention = attentionPlan(n, activity !== undefined ? (reg.blockingActivities.get(activity)?.attention as string | undefined) : undefined, style, rng);
+  const word = activity !== undefined ? (reg.blockingActivities.get(activity)?.attention as string | undefined) : undefined;
+  // R25: in her frame her attention mixes her activity's word with her presence (her_activity.html `attentionDraw`: 0.4 / 0.6, her style's watch); one draw a beat, as before
+  const attention = attentionPlan(n, word, style, rng, run.sourceKind === 'activity' ? frameWeights(state, reg, run, word, lead.key) : undefined);
   const beats: PlannedBeat[] = attention.map((a) => ({ attention: a }));
   const interactions = [String(phys.interaction), ...(run.second ? [String(reg.contactPhysics.get(run.second.physicsId)?.interaction)] : [])];
   if (interactions.includes('timing')) {
@@ -119,7 +126,21 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
   if (lead.cues === 'sparse') for (let i = 0; i < n; i++) if (beats[i]!.cue !== undefined && rng.chance(0.5)) delete beats[i]!.cue;
   // R22: her moves in the jaw, in real time only (the turn-based card is unchanged); by hash after every draw above, so no draw is added or moved
   if (realtime && interactions.includes('gesture') && jawSourceOf(run, reg) !== null) planJaw(beats, state, run, jawRowOf(lead));
+  // R32: her flow in gulp, in real time only (the turn-based card is unchanged); by hash after every draw above, so no draw is added or moved
+  if (realtime && isGulpPhysics(phys)) layFlow(beats, state, run, gulpRowOf(lead.key), n);
   return { beats };
+}
+
+/** R25: her attention's weights `[watching, glancing]` in her frame: `0.4 × the activity's + 0.6 × her presence's`, her style's watch bias on watching; asleep, busy. */
+function frameWeights(state: CampaignState, reg: Registries, run: PhysicsRun, word: string | undefined, key: string): [number, number] {
+  if (frameOf(reg.blockingActivities.get(run.sourceId))?.sleep) return [0, 0];
+  const [w0, g0] = P.gaze.attention[word ?? 'on_commander'] ?? P.gaze.attention.on_commander!;
+  const a = [w0!, g0!, Math.max(0, 1 - w0! - g0!)];
+  const b = ATT_BY_STEP[presenceOf(state, reg, run, run.marathon?.phase ?? 1)];
+  const p = [0, 1, 2].map((i) => 0.4 * a[i]! + 0.6 * b[i]!);
+  p[0] = clamp(p[0]! + (PRESENCE_WATCH[key as keyof typeof PRESENCE_WATCH] ?? 0), 0, 1);
+  const sum = p[0]! + p[1]! + p[2]!;
+  return [p[0]! / sum, p[1]! / sum];
 }
 
 /**
@@ -182,6 +203,7 @@ export function resolveEnvOf(state: CampaignState, reg: Registries, run: Physics
     // R19: her own band, of the part she presses (a contact's target; an item has none: the rest of her)
     band: scentBand(state, reg, run.holderId, run.sourceKind === 'contact' ? contactTargetOf(state.scene, reg, run.sourceId) ?? run.targetId : undefined),
     head: headCapacity(scentToleranceOf(state, reg, run.holderId)),
+    ...(run.sourceKind === 'activity' ? { longHold: LONG_HOLD[sceneSettingsOf(state).longHoldStrain] } : {}),
   };
 }
 
@@ -222,7 +244,7 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
   // one input of a kind counts once on a beat: a key pressed five times in a beat is not five breaths (review)
   const live = inputs.filter((i) => {
     if (lapsed.has(i.beat) || i.beat >= plan.beats.length) return false;
-    const key = `${i.beat}|${i.kind}${i.kind === 'bite' && i.part === 'teeth' ? '|teeth' : ''}`; // a touch of the teeth and the beat's cost are two inputs
+    const key = `${i.beat}|${i.kind}${i.kind === 'bite' && i.part === 'teeth' ? '|teeth' : ''}${(i.kind === 'ask_rest' || i.kind === 'spill') && i.part !== undefined ? `|${i.part}` : ''}`; // a touch of the teeth and the beat's cost are two inputs (a cough's spill and an overflow's too)
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -256,6 +278,10 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
   // R18: scent's head (decision): whether the instrument reported the words breathed in, and what one word is worth of the gauge
   const inhaled = env.interaction === 'decision' && live.some((i) => i.kind === 'inhale');
   const word = cap / (env.head ?? headCapacity(TUNING.stimuli.startTolerance));
+  // R29: whether the shoe instrument reported the mask (any wipe): then the wipes, not the parts, clean
+  const wiped = env.interaction === 'order' && live.some((i) => i.kind === 'wipe');
+  // R32: whether the gulp instrument reported the mouth (any swallow or spill): then the mouth, not the windows, is the gauge
+  const mouthed = env.interaction === 'timing' && env.gaugeKind === 'fill' && live.some((i) => i.kind === 'swallow' || i.kind === 'spill');
   for (let b = 0; b < run_; b++) {
     const beat = plan.beats[b]!;
     const beatStart = r.gauge;
@@ -299,6 +325,19 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
               r.streak = 0;
             }
           }
+        } else if (mouthed) {
+          // R32: the mouth: her flow on this beat comes in (mouths a second × the beat), the swallows and the spills go out (× the capacity);
+          // what was spilled is counted for her flow's end; a spill is a slip, counted as gulp.html counts it: an overflow (re-armed under 0.9) or
+          // a cough begins one (`part` `overflow` / `cough`; none: one), an overflow running on (`part: 'more'`) is its amount only
+          r.gauge += (beat.flow?.level ?? 0) * (P.beatMs / 1000) * cap;
+          for (const g of at(b, 'swallow')) r.gauge -= (g.amount ?? 0) * cap;
+          for (const g of at(b, 'spill')) {
+            r.gauge -= (g.amount ?? 0) * cap;
+            r.spilled = (r.spilled ?? 0) + (g.amount ?? 0);
+            if (g.part === 'more') continue;
+            r.slips += 1;
+            r.spills = (r.spills ?? 0) + 1;
+          }
         } else if (opening && !opening.false) {
           // keeping up with a flow (a gulp): a caught swallow eases the fill, a missed one spills
           if (breathed) {
@@ -313,19 +352,33 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
         break;
       }
       case 'hold': {
-        const drain = P.weight.drain * (run.pressure ?? 1) * (env.steady?.has(b) ? STEADY_DRAIN : 1);
-        r.gauge -= drain;
+        // Ruling W: the weight inside her frame. While she is up or resting (`ask_rest` `part: 'up'`) her weight is gone: no drain, no slip; the
+        // end of her rest (`part: 'rest'`) gives back its `amount`, a hard landing (`part: 'charge'`) costs its `amount` (gauge points)
+        if (env.longHold !== undefined) {
+          for (const g of at(b, 'ask_rest')) if (g.part === 'rest') r.gauge += g.amount ?? 0; else if (g.part === 'charge') r.gauge -= g.amount ?? 0;
+          if (at(b, 'ask_rest').some((g) => g.part === 'up')) break;
+        }
+        // Ruling AE: a shift she caught at once leans her in heavier for the beats after it (weight.html: 1.5 for 3 beats)
+        const leaned = live.some((i) => i.kind === 'shift_weight' && i.part === 'caught' && b > i.beat && b <= i.beat + P.weight.caughtLean.beats);
+        const drain = P.weight.drain * (leaned ? P.weight.caughtLean.pressure : run.pressure ?? 1) * (env.steady?.has(b) ? STEADY_DRAIN : 1);
+        // 24b: inside her frame the strength's drain is a long hold's (`LONG_HOLD[longHoldStrain]`, throne.html `S.frameDrain`): the beat's drain
+        // and its uneven share; a slip costs as before (the prototype's `wSlip` is not scaled). Outside a frame `longHold` is absent: as before.
+        const flow = drain * (env.longHold ?? 1);
+        r.gauge -= flow;
         if (at(b, 'hold').length === 0) {
           r.slips += 1;
           r.gauge -= drain;
         }
         // R16: held off level, the beat drains more: the mean extra factor of the beat (the instrument's), one a beat
         const uneven = at(b, 'uneven')[0];
-        if (uneven !== undefined) r.gauge -= drain * (uneven.amount ?? 0);
+        if (uneven !== undefined) r.gauge -= flow * (uneven.amount ?? 0);
         if (beat.shift !== undefined && !evenBefore(b)) r.gauge -= beat.shift;
         for (const g of at(b, 'shift_weight')) {
+          // Ruling AE: the instrument decided it at once (`physics/relief`): not caught, the relief; caught, 10 strength off (weight.html)
+          if (g.part === 'caught') { r.gauge -= P.weight.caught; r.reliefs += 1; continue; }
           r.gauge += P.weight.relief;
-          relief(g.beat, 'shift_weight');
+          if (g.part === 'free') r.reliefs += 1;
+          else relief(g.beat, 'shift_weight');
         }
         break;
       }
@@ -335,14 +388,18 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
         else r.gauge += P.saturation.per * P.saturation.bandFactor[env.band];
         for (const g of at(b, 'mouth_breath')) {
           r.gauge -= g.amount === undefined ? P.saturation.mouth : g.amount * word;
-          relief(g.beat, 'mouth_breath');
+          // Ruling AE: the instrument decided its catches at once, word by word (`physics/relief`): no roll at the segment's end
+          if (g.part === 'decided') r.reliefs += 1;
+          else relief(g.beat, 'mouth_breath');
         }
         // Ruling U: words that left the head without the mouth (a cough, the overflow, an answer): the fill follows the head down
         for (const g of at(b, 'scatter')) r.gauge -= (g.amount ?? 0) * word;
         break;
       }
       case 'order': {
-        for (const g of at(b, 'part')) r.gauge -= g.part !== undefined && g.part === beat.part && (run.dryness ?? 0) < 100 ? P.tongue.right : P.tongue.wrong;
+        // R29: shoe service's zones are the parts: a segment the instrument reported wipes in follows the mask (100 × the dirt left)
+        if (wiped) for (const g of at(b, 'wipe')) r.gauge -= GAUGE_FULL * (g.amount ?? 0);
+        else for (const g of at(b, 'part')) r.gauge -= g.part !== undefined && g.part === beat.part && (run.dryness ?? 0) < 100 ? P.tongue.right : P.tongue.wrong;
         if (run.dryness !== undefined) r.dryness = Math.min(100, (r.dryness ?? run.dryness) + P.tongue.dryness);
         break;
       }
@@ -364,6 +421,8 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
     // the pace scale is applied to the beat, then clamped, so that a phase gives the same fiction at every pace (review: it was applied after the clamp)
     if (scale !== 1) r.gauge = Math.round((beatStart + (r.gauge - beatStart) * scale) * 100) / 100;
     r.gauge = clamp(r.gauge, 0, env.gaugeKind === 'dirt' || env.gaugeKind === 'progress' ? 100 : cap);
+    // Ruling W: inside her frame the strength never ends the hold: at 0 the commander buckles and gets back to 35 (three end it, `physicsInput`)
+    if (env.longHold !== undefined && env.interaction === 'hold' && r.gauge <= 0) { r.gauge = 0.35 * cap; r.buckles = (r.buckles ?? 0) + 1; }
   }
   if (rest) {
     r.askedRest = true;
@@ -372,10 +431,14 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
     if (r.restGranted && !bitten) r.gauge = Math.max(0, r.gauge - P.jawRest);
   }
   if (run.dryness !== undefined && r.dryness === undefined) r.dryness = run.dryness;
-  r.checked = env.interaction === 'order' && r.gauge <= P.tongue.checkAt;
+  // R32: the floor after a gulp (the run carries `gulp`) is one segment: gulp.html's cleaning ends at 10 % left (the instrument ends the segment
+  // there) or after its 40 s, and her check follows either way
+  r.checked = env.interaction === 'order' && (r.gauge <= P.tongue.checkAt || run.gulp !== undefined);
   r.complete = env.interaction === 'passive' && r.gauge >= 100;
   const after = share(env.gaugeKind, r.gauge, cap);
-  r.warning = before > P.warning / 100 && after <= P.warning / 100;
+  // review I1: the engine's mouth in a segment the gulp instrument reported is not the tide shown (her answers to a tap, the entry): it sets no
+  // warning (no "close to the limit" and no `physics_warning` moment from a value the player never sees)
+  r.warning = !mouthed && before > P.warning / 100 && after <= P.warning / 100;
   r.noise = r.slips + r.gasps > 0 ? P.noiseSlip : 0;
   return r;
 }
@@ -386,6 +449,7 @@ export function nextSegment(draft: CampaignState, ctx: { registries: Registries;
   if (!run || run.id !== runId) throw new Error('Stale physics run.');
   if (run.segment.state !== 'held') throw new Error('A segment is running already.');
   if (run.marathon?.waiting) throw new Error('The phase is over: choose how to spend the stretch first.');
+  if (run.forgotten) throw new Error('She has left: the commander waits posed (get up, or wait to be found).');
   run.segment = { n: run.segment.n + 1, state: 'running', plan: planSegment(draft, ctx.registries, run, ctx.rng) };
   return [{ type: 'physics_segment', runId: run.id, n: run.segment.n, phase: 'start', beats: run.segment.plan!.beats.length }];
 }
@@ -414,13 +478,14 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   else {
     // two physics on the same beats: each input goes to its owner and the pair's conflicts apply (`combined.ts`)
     const envSecond = { ...resolveEnvOf(draft, reg, second), scale };
-    const merged = mergeInputs(envMain.interaction, envSecond.interaction, plan, inputs);
+    const merged = mergeInputs(envMain.interaction, envSecond.interaction, plan, inputs, run.sourceKind === 'activity'); // review N2: her frame's weight owns her rise, rest and landing
     const steady = new Set(merged.steady);
     const m = resolveSegment(run, plan, merged.main, envMain.interaction === 'hold' ? { ...envMain, steady } : envMain);
     const x = resolveSegment(second, plan, merged.second, envSecond.interaction === 'hold' ? { ...envSecond, steady } : envSecond);
     notices = merged.notices;
     secondBonus = x.streakBonus;
     secondPart = { gasps: x.gasps, slips: x.slips, reliefs: x.reliefs, interaction: envSecond.interaction };
+    if (x.buckles) run.second!.buckles = (run.second!.buckles ?? 0) + x.buckles; // Ruling W: three buckles end her frame (below)
     run.second!.gauge = x.gauge;
     run.second!.streak = x.streak;
     result = {
@@ -433,6 +498,9 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   }
   // Ruling U: a decision segment the scent instrument reported (its head is the gauge): a full head is recoverable (`releaseOf`)
   if (envMain.interaction === 'decision' && inputs.some((i) => (i as SegmentInput).kind === 'inhale')) run.headed = true;
+  // R32: a gulp the instrument reported (its mouth is the gauge): it carries what was spilled to her flow's end
+  if (isGulpRun(run, reg) && inputs.some((i) => (i as SegmentInput).kind === 'swallow' || (i as SegmentInput).kind === 'spill')) run.gulp ??= { spilled: 0 };
+  if (run.gulp && result.spilled !== undefined && isGulpRun(run, reg)) run.gulp.spilled = Math.round((run.gulp.spilled + result.spilled) * 1e6) / 1e6;
   const lapsed = run.segment.lapsed?.length ?? 0;
   const physicsId = run.physicsId;
   const events: EngineEvent[] = [];
@@ -469,24 +537,45 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   // R28: the tally of the run, from what this segment resolved (only what she perceived: a relief counts only once she caught it)
   addTally(run, {
     caught: result.caught, missed: result.missed, falseTaken: result.falseTaken, strains: result.strains ?? 0, noticed: result.noticed ?? 0,
-    slips: result.slips, gasps: result.gasps, cheatsCaught: events.filter((e) => e.type === 'physics_caught').length,
+    slips: result.slips - (result.spills ?? 0), gasps: result.gasps, cheatsCaught: events.filter((e) => e.type === 'physics_caught').length, spills: result.spills ?? 0,
+    spilled: result.spilled !== undefined ? Math.round(result.spilled * 100) / 100 : 0,
   });
+  // Minor 4: the reliefs she caught in this stretch, at its end and at once (Rulings Y, AC, AE), for the running directive
+  const cheats = events.filter((e) => e.type === 'physics_caught').length + (run.segment.caughtNow ?? 0);
   run.gauge = result.gauge;
   run.streak = result.streak;
   if (result.dryness !== undefined) run.dryness = result.dryness;
   run.last = {
-    caught: result.caught, missed: result.missed, falseTaken: result.falseTaken, slips: result.slips, gasps: result.gasps, reliefs: result.reliefs, noise: result.noise, cues: result.cues,
-    ...(result.warning ? { warning: true } : {}),
+    caught: result.caught, missed: result.missed, falseTaken: result.falseTaken, slips: result.slips - (result.spills ?? 0), gasps: result.gasps, reliefs: result.reliefs, noise: result.noise, cues: result.cues,
+    ...(result.warning ? { warning: true } : {}), ...(result.spills ? { spills: result.spills } : {}),
+    ...(cheats > 0 ? { cheats } : {}),
   };
   run.segment = { n: run.segment.n, state: 'held' };
   events.unshift({ type: 'physics_segment', runId, n: segment, phase: 'end', physicsId, caught: result.caught, missed: result.missed, slips: result.slips, reliefs: result.reliefs, lapsed, warning: result.warning });
   if (result.streakBonus > 0) events.push(addEnduranceXp(draft, physicsId, Math.round(TUNING.physics.endurance.streak * result.streakBonus * 100) / 100));
   if (secondBonus > 0 && run.second) events.push(addEnduranceXp(draft, run.second.physicsId, TUNING.physics.endurance.streak * secondBonus));
+  const gulped = run.gulp !== undefined && isGulpRun(run, reg);
   if (result.slips > 0) {
     events.push({ type: 'physics_slip', runId, kind: 'slip', count: result.slips, holderId: run.holderId });
-    const chained = chainRun(draft, reg, run);
-    if (chained.length > 0) events.push(...chained);
-    else run.extend += TUNING.physics.slipExtend;
+    if (!gulped) { // R32: a gulp's spills are carried to her flow's end (below), where the cleaning starts from all of them
+      const chained = chainRun(draft, reg, run);
+      if (chained.length > 0) events.push(...chained);
+      else run.extend += TUNING.physics.slipExtend;
+    }
+  }
+  // R32: her flow's end (her volume): she makes the commander clean what was spilled (her row's `check`, over `cleanFrom`) at 100 × spilled,
+  // else the hold is released (little spilled, or she wipes it up herself)
+  if (gulped && flowEnded(draft, run, beatsPerSegment(draft, Number(reg.contactPhysics.get(physicsId)?.segmentSeconds)))) {
+    const row = gulpRowOf(leadStyle(physicsStyleOf(draft, run.holderId, reg)).key);
+    if (run.gulp!.spilled > TUNING.physics.gulpFlow.cleanFrom && row.check === 'clean') events.push(...chainRun(draft, reg, run, floorStart(run.gulp!.spilled)));
+    else events.push(...creditHold(draft, reg, run), ...stopPhysics(draft, reg, 'released'));
+    events.push(...momentPass(draft, ctx, 'segment'));
+    return events;
+  }
+  // Ruling W: the third buckle under her weight ends the session (her verdict is the instrument's)
+  if (run.sourceKind === 'activity' && (run.second?.buckles ?? 0) >= 3) {
+    events.push({ type: 'physics_buckle', runId, holderId: run.holderId, count: run.second!.buckles }, ...stopPhysics(draft, reg, 'collapse'));
+    return events;
   }
   const boundary = decideBoundary(draft, ctx, run, result);
   if (boundary.move !== undefined) (events[0] as { move?: string }).move = boundary.move;
@@ -525,6 +614,11 @@ function phaseBoundary(draft: CampaignState, reg: Registries, run: PhysicsRun): 
   if (m.segmentsDone < phaseSegments(draft, reg, run)) return [];
   if (m.phase >= m.phases) {
     m.clockMin += hoursPerPhase(m) * 60;
+    // R28: in her frame, at `use` in its last phase, she forgets the commander: she leaves, the commander stays posed (the run waits, nothing drains)
+    if (run.sourceKind === 'activity' && presenceOf(draft, reg, run, m.phase) === 'use') {
+      run.forgotten = true;
+      return [{ type: 'marathon_phase', runId: run.id, phase: m.phase, over: true, last: true }, ...creditHold(draft, reg, run), { type: 'forgotten_end', runId: run.id, holderId: run.holderId }];
+    }
     return [{ type: 'marathon_phase', runId: run.id, phase: m.phase, over: true, last: true }, ...creditHold(draft, reg, run), ...stopPhysics(draft, reg, 'released')];
   }
   m.waiting = true;
@@ -572,4 +666,111 @@ export function marathonSkip(draft: CampaignState, ctx: { registries: Registries
   return events;
 }
 
+/**
+ * P10e-e Ruling AC (e10 fix I2): a spit of grit during shoe service, decided when it is made, whether a segment runs or the run is held (her
+ * answer follows at once, as the prototype's). One draw with shoe.html's chance by her attention (`TUNING.physics.shoe.spitSeen`): her
+ * planned attention on the beat while a segment runs, else the attention the instrument shows (the last planned). Seen: `physics_caught`
+ * (remembered as any caught cheat) and the tally's `cheatsCaught`. Shoe runs only.
+ */
+export function shoeSpit(draft: CampaignState, ctx: { registries: Registries; rng: Rng }, payload: Record<string, unknown>): EngineEvent[] {
+  const run = draft.scene?.physics;
+  if (!run || run.id !== payload.runId) throw new Error('Stale physics run.');
+  if (!isShoeRun(run, ctx.registries)) throw new Error('physics/spit: only in shoe service');
+  const beat = Number.isInteger(payload.beat) && (payload.beat as number) >= 0 ? (payload.beat as number) : 0;
+  const shown = typeof payload.attention === 'string' && ['watching', 'glancing', 'busy'].includes(payload.attention) ? (payload.attention as Attention) : 'busy';
+  const beats = run.segment.state === 'running' ? run.segment.plan?.beats : undefined;
+  const attention = beats && beats.length > 0 ? beats[Math.min(beat, beats.length - 1)]!.attention : shown;
+  const events: EngineEvent[] = [{ type: 'physics_cheat', runId: run.id, holderId: run.holderId, kind: 'spit', beat }];
+  if (!ctx.rng.chance(P.shoe.spitSeen[attention] ?? 0)) return events;
+  caughtAtOnce(run);
+  return [...events, { type: 'physics_caught', runId: run.id, holderId: run.holderId, kind: 'spit', beat }];
+}
+
 const commanderLevel = (state: CampaignState, physicsId: string): number => state.commander.endurance?.[physicsId]?.level ?? 0;
+
+/**
+ * P10e-e Rulings X and Y: a relief or a fidget of the commander's body in her frame, decided when it is reported (her tell and her answer follow
+ * at once, as the prototype's). One draw, the prototype's noticing: `p = 1 − (1 − p_seen)(1 − p_heard)`, with `p_heard = amount × her ears × 1.35`
+ * (`amount` = loudness × (1 − cover), the instrument's) and `p_seen = CAUGHT[her attention on this beat] × (0.6 while a call or a visitor has her
+ * eyes)` when it was visible (`part`: `seen`, `seen_shared`; `unseen` is not; `away`: she is out, nothing is noticed and nothing is drawn). A
+ * voluntary one she noticed is a caught cheat (`physics_caught`, remembered as any); an involuntary one (the body giving way) is only noticed
+ * (`physics_noticed`). Frame runs only; no draw when nothing could notice it.
+ */
+export function frameRelief(draft: CampaignState, ctx: { registries: Registries; rng: Rng }, payload: Record<string, unknown>): EngineEvent[] {
+  const run = draft.scene?.physics;
+  if (!run || run.id !== payload.runId) throw new Error('Stale physics run.');
+  if (run.sourceKind !== 'activity' || run.forgotten) throw new Error('physics/relief: only in her frame, while she is there');
+  const kind = payload.kind === 'fidget' ? 'fidget' : payload.kind === 'relieve' ? 'relieve' : null;
+  const amount = typeof payload.amount === 'number' && Number.isFinite(payload.amount) ? Math.max(0, Math.min(1, payload.amount)) : null;
+  const part = typeof payload.part === 'string' && ['seen', 'unseen', 'seen_shared', 'away'].includes(payload.part) ? payload.part : null;
+  if (kind === null || amount === null || part === null) throw new Error('physics/relief needs { runId, kind: relieve | fidget, amount 0–1, part: seen | unseen | seen_shared | away }');
+  const beat = Number.isInteger(payload.beat) ? (payload.beat as number) : 0;
+  const involuntary = payload.involuntary === true;
+  const ears = frameOf(ctx.registries.blockingActivities.get(run.sourceId))?.hear ?? 1;
+  const attention = attentionAt(run, beat, payload.attention);
+  const pHeard = part === 'away' ? 0 : Math.min(1, amount * ears * 1.35);
+  const pSeen = part === 'seen' || part === 'seen_shared' ? P.gaze.caught[attention] * (part === 'seen_shared' ? 0.6 : 1) : 0;
+  const p = 1 - (1 - pSeen) * (1 - pHeard);
+  const events: EngineEvent[] = involuntary ? [] : [{ type: 'physics_cheat', runId: run.id, holderId: run.holderId, kind, beat }];
+  if (p <= 0 || !ctx.rng.chance(p)) return events;
+  if (involuntary) {
+    addTally(run, { moved: 1 });
+    return [{ type: 'physics_noticed', runId: run.id, holderId: run.holderId, beat }];
+  }
+  caughtAtOnce(run);
+  return [...events, { type: 'physics_caught', runId: run.id, holderId: run.holderId, kind, beat }];
+}
+
+/**
+ * Her attention for a relief decided at once: her planned attention on the beat while a segment runs; between segments (the held gap, a
+ * marathon's wait: no plan) the attention the instrument shows (final review, Minor 6: never `busy` by default while she is watching), else
+ * `busy`.
+ */
+function attentionAt(run: PhysicsRun, beat: number, shown: unknown): Attention {
+  const beats = run.segment.state === 'running' ? run.segment.plan?.beats : undefined;
+  if (beats && beats.length > 0) return beats[Math.max(0, Math.min(beat, beats.length - 1))]!.attention;
+  return typeof shown === 'string' && ['watching', 'glancing', 'busy'].includes(shown) ? (shown as Attention) : 'busy';
+}
+
+/** A relief she caught at once (Rulings Y, AC, AE): the tally's `cheatsCaught`, and the stretch's count for the running directive (Minor 4). */
+function caughtAtOnce(run: PhysicsRun): void {
+  addTally(run, { cheatsCaught: 1 });
+  if (run.segment.state === 'running') run.segment.caughtNow = (run.segment.caughtNow ?? 0) + 1;
+  else if (run.last) run.last.cheats = (run.last.cheats ?? 0) + 1;
+}
+
+/**
+ * P10e-e Ruling AE (final review I1): the commander's own relief in a weight or a scent run, decided when it is made, as the prototypes do
+ * (Rulings Y, AC, AD extended). One draw, only when the commander takes it:
+ * - `shift_weight` (a hold run, main or second): weight.html's `relief`, p = `CAUGHT[her attention]` (`TUNING.physics.gaze.caught`, the same
+ *   table); `part: 'away'` (her frame, she is out: throne.html's `!G.away`) is never caught and draws nothing;
+ * - `mouth_breath` (a decision run): saturation.html's per blown word, p = `NOTICED[her attention] × amount` (the same table; `amount` the
+ *   breath's loudness, 0.25 short, 0.6 long).
+ * Caught: `physics_caught` (remembered as any caught cheat) and the tally's `cheatsCaught`. The segment input it goes with is marked (`part`
+ * `free` / `caught`, `decided`), so the segment's `cheatRoll` never rolls it again. The card and turn-based inputs are unmarked: as before.
+ */
+export function instrumentRelief(draft: CampaignState, ctx: { registries: Registries; rng: Rng }, payload: Record<string, unknown>): EngineEvent[] {
+  const run = draft.scene?.physics;
+  if (!run || run.id !== payload.runId) throw new Error('Stale physics run.');
+  const kind = payload.kind as 'shift_weight' | 'mouth_breath';
+  const interaction = kind === 'shift_weight' ? 'hold' : 'decision';
+  const owns = [run.physicsId, run.second?.physicsId].some((id) => id !== undefined && ctx.registries.contactPhysics.get(id)?.interaction === interaction);
+  if (!owns) throw new Error(`physics/relief: ${kind} only in a ${interaction} run`);
+  if (run.forgotten) throw new Error('physics/relief: she has left');
+  const amount = kind === 'mouth_breath'
+    ? (typeof payload.amount === 'number' && Number.isFinite(payload.amount) ? Math.max(0, Math.min(1, payload.amount)) : null)
+    : 1;
+  if (amount === null) throw new Error('physics/relief: a mouth breath needs its loudness (amount 0–1)');
+  const beat = Number.isInteger(payload.beat) && (payload.beat as number) >= 0 ? (payload.beat as number) : 0;
+  const attention = attentionAt(run, beat, payload.attention);
+  const p = payload.part === 'away' ? 0 : P.gaze.caught[attention] * amount;
+  const events: EngineEvent[] = [{ type: 'physics_cheat', runId: run.id, holderId: run.holderId, kind, beat }];
+  if (p <= 0 || !ctx.rng.chance(p)) return events;
+  caughtAtOnce(run);
+  return [...events, { type: 'physics_caught', runId: run.id, holderId: run.holderId, kind, beat }];
+}
+
+/** `physics/relief`: by kind, the instrument's own relief (Ruling AE) or the body in her frame (Rulings X, Y). */
+export function physicsRelief(draft: CampaignState, ctx: { registries: Registries; rng: Rng }, payload: Record<string, unknown>): EngineEvent[] {
+  return payload.kind === 'shift_weight' || payload.kind === 'mouth_breath' ? instrumentRelief(draft, ctx, payload) : frameRelief(draft, ctx, payload);
+}

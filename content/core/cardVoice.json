@@ -4519,5 +4519,3056 @@
     "kind": "jaw.entry.ring_gag",
     "style": "cold",
     "lines": []
+  },
+  {
+    "id": "activity.name",
+    "kind": "activity.name",
+    "lines": [
+      "commander"
+    ]
+  },
+  {
+    "id": "activity.noticed",
+    "kind": "activity.noticed",
+    "lines": [
+      "still.",
+      "stop fidgeting."
+    ]
+  },
+  {
+    "id": "activity.correct",
+    "kind": "activity.correct",
+    "lines": [
+      "still."
+    ]
+  },
+  {
+    "id": "activity.call",
+    "kind": "activity.call",
+    "lines": [
+      "the chair."
+    ]
+  },
+  {
+    "id": "activity.end",
+    "kind": "activity.end",
+    "lines": [
+      "done. you can get up."
+    ]
+  },
+  {
+    "id": "activity.askreply",
+    "kind": "activity.askReply",
+    "lines": [
+      "good.",
+      "mm."
+    ]
+  },
+  {
+    "id": "activity.breach",
+    "kind": "activity.breach",
+    "lines": [
+      "I wasn’t talking to you."
+    ]
+  },
+  {
+    "id": "activity.silent",
+    "kind": "activity.silent",
+    "lines": [
+      "I asked you something."
+    ]
+  },
+  {
+    "id": "activity.name.affectionate",
+    "kind": "activity.name",
+    "style": "affectionate",
+    "lines": [
+      "sweetheart"
+    ]
+  },
+  {
+    "id": "activity.noticed.affectionate",
+    "kind": "activity.noticed",
+    "style": "affectionate",
+    "lines": [
+      "shh. you’re alright.",
+      "need a moment?"
+    ]
+  },
+  {
+    "id": "activity.correct.affectionate",
+    "kind": "activity.correct",
+    "style": "affectionate",
+    "lines": [
+      "easy…"
+    ]
+  },
+  {
+    "id": "activity.call.affectionate",
+    "kind": "activity.call",
+    "style": "affectionate",
+    "lines": [
+      "the cat."
+    ]
+  },
+  {
+    "id": "activity.end.affectionate",
+    "kind": "activity.end",
+    "style": "affectionate",
+    "lines": [
+      "come here. you did so well."
+    ]
+  },
+  {
+    "id": "activity.askreply.affectionate",
+    "kind": "activity.askReply",
+    "style": "affectionate",
+    "lines": [
+      "good.",
+      "thank you."
+    ]
+  },
+  {
+    "id": "activity.breach.affectionate",
+    "kind": "activity.breach",
+    "style": "affectionate",
+    "lines": [
+      "hm? oh, not you, sweetheart."
+    ]
+  },
+  {
+    "id": "activity.silent.affectionate",
+    "kind": "activity.silent",
+    "style": "affectionate",
+    "lines": [
+      "…sweetheart?"
+    ]
+  },
+  {
+    "id": "activity.name.playful",
+    "kind": "activity.name",
+    "style": "playful",
+    "lines": [
+      "pet"
+    ]
+  },
+  {
+    "id": "activity.noticed.playful",
+    "kind": "activity.noticed",
+    "style": "playful",
+    "lines": [
+      "fidgety~",
+      "I saw that~"
+    ]
+  },
+  {
+    "id": "activity.correct.playful",
+    "kind": "activity.correct",
+    "style": "playful",
+    "lines": [
+      "tsk."
+    ]
+  },
+  {
+    "id": "activity.call.playful",
+    "kind": "activity.call",
+    "style": "playful",
+    "lines": [
+      "my footrest. it wobbles."
+    ]
+  },
+  {
+    "id": "activity.end.playful",
+    "kind": "activity.end",
+    "style": "playful",
+    "lines": [
+      "fine, fine. up you get~"
+    ]
+  },
+  {
+    "id": "activity.askreply.playful",
+    "kind": "activity.askReply",
+    "style": "playful",
+    "lines": [
+      "good pet.",
+      "cute."
+    ]
+  },
+  {
+    "id": "activity.breach.playful",
+    "kind": "activity.breach",
+    "style": "playful",
+    "lines": [
+      "who said you could talk~"
+    ]
+  },
+  {
+    "id": "activity.silent.playful",
+    "kind": "activity.silent",
+    "style": "playful",
+    "lines": [
+      "ignoring me? bold."
+    ]
+  },
+  {
+    "id": "activity.name.possessive",
+    "kind": "activity.name",
+    "style": "possessive",
+    "lines": [
+      "mine"
+    ]
+  },
+  {
+    "id": "activity.noticed.possessive",
+    "kind": "activity.noticed",
+    "style": "possessive",
+    "lines": [
+      "don’t.",
+      "you stay where I put you."
+    ]
+  },
+  {
+    "id": "activity.correct.possessive",
+    "kind": "activity.correct",
+    "style": "possessive",
+    "lines": [
+      "mine. still."
+    ]
+  },
+  {
+    "id": "activity.call.possessive",
+    "kind": "activity.call",
+    "style": "possessive",
+    "lines": [
+      "what’s mine."
+    ]
+  },
+  {
+    "id": "activity.end.possessive",
+    "kind": "activity.end",
+    "style": "possessive",
+    "lines": [
+      "up. you’re mine again tomorrow."
+    ]
+  },
+  {
+    "id": "activity.askreply.possessive",
+    "kind": "activity.askReply",
+    "style": "possessive",
+    "lines": [
+      "good.",
+      "of course."
+    ]
+  },
+  {
+    "id": "activity.breach.possessive",
+    "kind": "activity.breach",
+    "style": "possessive",
+    "lines": [
+      "did I talk to you?"
+    ]
+  },
+  {
+    "id": "activity.silent.possessive",
+    "kind": "activity.silent",
+    "style": "possessive",
+    "lines": [
+      "answer me."
+    ]
+  },
+  {
+    "id": "activity.name.cold",
+    "kind": "activity.name",
+    "style": "cold",
+    "lines": [
+      "you"
+    ]
+  },
+  {
+    "id": "activity.noticed.cold",
+    "kind": "activity.noticed",
+    "style": "cold",
+    "lines": [
+      "don’t."
+    ]
+  },
+  {
+    "id": "activity.correct.cold",
+    "kind": "activity.correct",
+    "style": "cold",
+    "lines": [
+      "…"
+    ]
+  },
+  {
+    "id": "activity.call.cold",
+    "kind": "activity.call",
+    "style": "cold",
+    "lines": [
+      "the furniture."
+    ]
+  },
+  {
+    "id": "activity.end.cold",
+    "kind": "activity.end",
+    "style": "cold",
+    "lines": [
+      "go."
+    ]
+  },
+  {
+    "id": "activity.askreply.cold",
+    "kind": "activity.askReply",
+    "style": "cold",
+    "lines": [
+      "fine."
+    ]
+  },
+  {
+    "id": "activity.breach.cold",
+    "kind": "activity.breach",
+    "style": "cold",
+    "lines": [
+      "not you."
+    ]
+  },
+  {
+    "id": "activity.silent.cold",
+    "kind": "activity.silent",
+    "style": "cold",
+    "lines": [
+      "I asked."
+    ]
+  },
+  {
+    "id": "activity.name.cruel",
+    "kind": "activity.name",
+    "style": "cruel",
+    "lines": [
+      "chair"
+    ]
+  },
+  {
+    "id": "activity.noticed.cruel",
+    "kind": "activity.noticed",
+    "style": "cruel",
+    "lines": [
+      "did I say move?",
+      "pathetic."
+    ]
+  },
+  {
+    "id": "activity.correct.cruel",
+    "kind": "activity.correct",
+    "style": "cruel",
+    "lines": [
+      "still, chair."
+    ]
+  },
+  {
+    "id": "activity.call.cruel",
+    "kind": "activity.call",
+    "style": "cruel",
+    "lines": [
+      "my chair. it creaks today."
+    ]
+  },
+  {
+    "id": "activity.end.cruel",
+    "kind": "activity.end",
+    "style": "cruel",
+    "lines": [
+      "get up. we’re not done tomorrow."
+    ]
+  },
+  {
+    "id": "activity.askreply.cruel",
+    "kind": "activity.askReply",
+    "style": "cruel",
+    "lines": [
+      "adequate."
+    ]
+  },
+  {
+    "id": "activity.breach.cruel",
+    "kind": "activity.breach",
+    "style": "cruel",
+    "lines": [
+      "chairs don’t talk."
+    ]
+  },
+  {
+    "id": "activity.silent.cruel",
+    "kind": "activity.silent",
+    "style": "cruel",
+    "lines": [
+      "chair. I asked you something."
+    ]
+  },
+  {
+    "id": "activity.name.clinical",
+    "kind": "activity.name",
+    "style": "clinical",
+    "lines": [
+      "subject"
+    ]
+  },
+  {
+    "id": "activity.noticed.clinical",
+    "kind": "activity.noticed",
+    "style": "clinical",
+    "lines": [
+      "movement. noted.",
+      "again. noted."
+    ]
+  },
+  {
+    "id": "activity.correct.clinical",
+    "kind": "activity.correct",
+    "style": "clinical",
+    "lines": [
+      "posture."
+    ]
+  },
+  {
+    "id": "activity.call.clinical",
+    "kind": "activity.call",
+    "style": "clinical",
+    "lines": [
+      "the subject."
+    ]
+  },
+  {
+    "id": "activity.end.clinical",
+    "kind": "activity.end",
+    "style": "clinical",
+    "lines": [
+      "session over. noted: everything."
+    ]
+  },
+  {
+    "id": "activity.askreply.clinical",
+    "kind": "activity.askReply",
+    "style": "clinical",
+    "lines": [
+      "noted."
+    ]
+  },
+  {
+    "id": "activity.breach.clinical",
+    "kind": "activity.breach",
+    "style": "clinical",
+    "lines": [
+      "unsolicited. noted."
+    ]
+  },
+  {
+    "id": "activity.silent.clinical",
+    "kind": "activity.silent",
+    "style": "clinical",
+    "lines": [
+      "no response. noted."
+    ]
+  },
+  {
+    "id": "activity.name.ritual",
+    "kind": "activity.name",
+    "style": "ritual",
+    "lines": [
+      "kneeler"
+    ]
+  },
+  {
+    "id": "activity.noticed.ritual",
+    "kind": "activity.noticed",
+    "style": "ritual",
+    "lines": [
+      "posture."
+    ]
+  },
+  {
+    "id": "activity.correct.ritual",
+    "kind": "activity.correct",
+    "style": "ritual",
+    "lines": [
+      "posture."
+    ]
+  },
+  {
+    "id": "activity.call.ritual",
+    "kind": "activity.call",
+    "style": "ritual",
+    "lines": [
+      "the kneeler."
+    ]
+  },
+  {
+    "id": "activity.end.ritual",
+    "kind": "activity.end",
+    "style": "ritual",
+    "lines": [
+      "released."
+    ]
+  },
+  {
+    "id": "activity.askreply.ritual",
+    "kind": "activity.askReply",
+    "style": "ritual",
+    "lines": [
+      "as it should be."
+    ]
+  },
+  {
+    "id": "activity.breach.ritual",
+    "kind": "activity.breach",
+    "style": "ritual",
+    "lines": [
+      "you were not addressed."
+    ]
+  },
+  {
+    "id": "activity.silent.ritual",
+    "kind": "activity.silent",
+    "style": "ritual",
+    "lines": [
+      "you were addressed."
+    ]
+  },
+  {
+    "id": "activity.stop",
+    "kind": "activity.stop",
+    "lines": [
+      "okay. up you get.",
+      "alright. stopping.",
+      "enough. up."
+    ]
+  },
+  {
+    "id": "activity.name.regal",
+    "kind": "activity.name",
+    "style": "regal",
+    "lines": [
+      "my seat"
+    ]
+  },
+  {
+    "id": "activity.noticed.regal",
+    "kind": "activity.noticed",
+    "style": "regal",
+    "lines": [
+      "steady.",
+      "a seat does not fidget."
+    ]
+  },
+  {
+    "id": "activity.correct.regal",
+    "kind": "activity.correct",
+    "style": "regal",
+    "lines": [
+      "steady."
+    ]
+  },
+  {
+    "id": "activity.call.regal",
+    "kind": "activity.call",
+    "style": "regal",
+    "lines": [
+      "my seat."
+    ]
+  },
+  {
+    "id": "activity.end.regal",
+    "kind": "activity.end",
+    "style": "regal",
+    "lines": [
+      "you may get up."
+    ]
+  },
+  {
+    "id": "activity.askreply.regal",
+    "kind": "activity.askReply",
+    "style": "regal",
+    "lines": [
+      "acceptable.",
+      "good."
+    ]
+  },
+  {
+    "id": "activity.breach.regal",
+    "kind": "activity.breach",
+    "style": "regal",
+    "lines": [
+      "I was not speaking to you."
+    ]
+  },
+  {
+    "id": "activity.silent.regal",
+    "kind": "activity.silent",
+    "style": "regal",
+    "lines": [
+      "I asked you a question."
+    ]
+  },
+  {
+    "id": "throne.spill",
+    "kind": "throne.spill",
+    "lines": [
+      "…look what you did."
+    ]
+  },
+  {
+    "id": "throne.spill.affectionate",
+    "kind": "throne.spill",
+    "style": "affectionate",
+    "lines": [
+      "oh — it’s alright. hold still."
+    ]
+  },
+  {
+    "id": "throne.spill.ritual",
+    "kind": "throne.spill",
+    "style": "ritual",
+    "lines": [
+      "you spilled. that is noted."
+    ]
+  },
+  {
+    "id": "throne.spill.playful",
+    "kind": "throne.spill",
+    "style": "playful",
+    "lines": [
+      "oops~ that’s on you."
+    ]
+  },
+  {
+    "id": "throne.spill.clinical",
+    "kind": "throne.spill",
+    "style": "clinical",
+    "lines": [
+      "spillage. noted."
+    ]
+  },
+  {
+    "id": "throne.spill.cruel",
+    "kind": "throne.spill",
+    "style": "cruel",
+    "lines": [
+      "you’ll lick that up later."
+    ]
+  },
+  {
+    "id": "throne.spill.possessive",
+    "kind": "throne.spill",
+    "style": "possessive",
+    "lines": [
+      "careful with my things."
+    ]
+  },
+  {
+    "id": "throne.spill.cold",
+    "kind": "throne.spill",
+    "style": "cold",
+    "lines": [
+      "clumsy."
+    ]
+  },
+  {
+    "id": "throne.spill.regal",
+    "kind": "throne.spill",
+    "style": "regal",
+    "lines": [
+      "you spilled my tea."
+    ]
+  },
+  {
+    "id": "throne.skid",
+    "kind": "throne.skid",
+    "lines": [
+      "hold still. again."
+    ]
+  },
+  {
+    "id": "throne.skid.affectionate",
+    "kind": "throne.skid",
+    "style": "affectionate",
+    "lines": [
+      "still, please. once more."
+    ]
+  },
+  {
+    "id": "throne.skid.ritual",
+    "kind": "throne.skid",
+    "style": "ritual",
+    "lines": [
+      "the signature is ruined. again."
+    ]
+  },
+  {
+    "id": "throne.skid.playful",
+    "kind": "throne.skid",
+    "style": "playful",
+    "lines": [
+      "you made me scribble~"
+    ]
+  },
+  {
+    "id": "throne.skid.clinical",
+    "kind": "throne.skid",
+    "style": "clinical",
+    "lines": [
+      "the writing surface moved."
+    ]
+  },
+  {
+    "id": "throne.skid.cruel",
+    "kind": "throne.skid",
+    "style": "cruel",
+    "lines": [
+      "a desk doesn’t move."
+    ]
+  },
+  {
+    "id": "throne.skid.possessive",
+    "kind": "throne.skid",
+    "style": "possessive",
+    "lines": [
+      "still. you’re mine to write on."
+    ]
+  },
+  {
+    "id": "throne.skid.cold",
+    "kind": "throne.skid",
+    "style": "cold",
+    "lines": [
+      "again."
+    ]
+  },
+  {
+    "id": "throne.skid.regal",
+    "kind": "throne.skid",
+    "style": "regal",
+    "lines": [
+      "a desk does not move. again."
+    ]
+  },
+  {
+    "id": "throne.thank",
+    "kind": "throne.thank",
+    "lines": [
+      "say thank you for the seat."
+    ]
+  },
+  {
+    "id": "throne.thank.affectionate",
+    "kind": "throne.thank",
+    "style": "affectionate",
+    "lines": [
+      "say thank you. for letting me sit."
+    ]
+  },
+  {
+    "id": "throne.thank.ritual",
+    "kind": "throne.thank",
+    "style": "ritual",
+    "lines": [
+      "thank me for the honor."
+    ]
+  },
+  {
+    "id": "throne.thank.playful",
+    "kind": "throne.thank",
+    "style": "playful",
+    "lines": [
+      "what do we say~?"
+    ]
+  },
+  {
+    "id": "throne.thank.clinical",
+    "kind": "throne.thank",
+    "style": "clinical",
+    "lines": [
+      "acknowledge it."
+    ]
+  },
+  {
+    "id": "throne.thank.cruel",
+    "kind": "throne.thank",
+    "style": "cruel",
+    "lines": [
+      "thank me."
+    ]
+  },
+  {
+    "id": "throne.thank.possessive",
+    "kind": "throne.thank",
+    "style": "possessive",
+    "lines": [
+      "thank me for using you."
+    ]
+  },
+  {
+    "id": "throne.thank.cold",
+    "kind": "throne.thank",
+    "style": "cold",
+    "lines": [
+      "thank me."
+    ]
+  },
+  {
+    "id": "throne.thank.regal",
+    "kind": "throne.thank",
+    "style": "regal",
+    "lines": [
+      "thank me for the honor of my weight."
+    ]
+  },
+  {
+    "id": "throne.thanked",
+    "kind": "throne.thanked",
+    "lines": [
+      "good."
+    ]
+  },
+  {
+    "id": "throne.thanked.affectionate",
+    "kind": "throne.thanked",
+    "style": "affectionate",
+    "lines": [
+      "good. up you get."
+    ]
+  },
+  {
+    "id": "throne.thanked.ritual",
+    "kind": "throne.thanked",
+    "style": "ritual",
+    "lines": [
+      "accepted."
+    ]
+  },
+  {
+    "id": "throne.thanked.playful",
+    "kind": "throne.thanked",
+    "style": "playful",
+    "lines": [
+      "cute."
+    ]
+  },
+  {
+    "id": "throne.thanked.clinical",
+    "kind": "throne.thanked",
+    "style": "clinical",
+    "lines": [
+      "noted."
+    ]
+  },
+  {
+    "id": "throne.thanked.cruel",
+    "kind": "throne.thanked",
+    "style": "cruel",
+    "lines": [
+      "…fine."
+    ]
+  },
+  {
+    "id": "throne.thanked.possessive",
+    "kind": "throne.thanked",
+    "style": "possessive",
+    "lines": [
+      "good."
+    ]
+  },
+  {
+    "id": "throne.thanked.cold",
+    "kind": "throne.thanked",
+    "style": "cold",
+    "lines": [
+      "fine."
+    ]
+  },
+  {
+    "id": "throne.thanked.regal",
+    "kind": "throne.thanked",
+    "style": "regal",
+    "lines": [
+      "you may."
+    ]
+  },
+  {
+    "id": "throne.nothanks",
+    "kind": "throne.noThanks",
+    "lines": [
+      "nothing? noted."
+    ]
+  },
+  {
+    "id": "throne.nothanks.affectionate",
+    "kind": "throne.noThanks",
+    "style": "affectionate",
+    "lines": [
+      "…next time, then."
+    ]
+  },
+  {
+    "id": "throne.nothanks.ritual",
+    "kind": "throne.noThanks",
+    "style": "ritual",
+    "lines": [
+      "the form was not kept."
+    ]
+  },
+  {
+    "id": "throne.nothanks.playful",
+    "kind": "throne.noThanks",
+    "style": "playful",
+    "lines": [
+      "rude~"
+    ]
+  },
+  {
+    "id": "throne.nothanks.clinical",
+    "kind": "throne.noThanks",
+    "style": "clinical",
+    "lines": [
+      "no response. noted."
+    ]
+  },
+  {
+    "id": "throne.nothanks.cruel",
+    "kind": "throne.noThanks",
+    "style": "cruel",
+    "lines": [
+      "you’ll learn."
+    ]
+  },
+  {
+    "id": "throne.nothanks.possessive",
+    "kind": "throne.noThanks",
+    "style": "possessive",
+    "lines": [
+      "we’ll work on that."
+    ]
+  },
+  {
+    "id": "throne.nothanks.cold",
+    "kind": "throne.noThanks",
+    "style": "cold",
+    "lines": [
+      "noted."
+    ]
+  },
+  {
+    "id": "throne.nothanks.regal",
+    "kind": "throne.noThanks",
+    "style": "regal",
+    "lines": [
+      "how ungrateful."
+    ]
+  },
+  {
+    "id": "weight.slip.regal",
+    "kind": "weight.slip",
+    "style": "regal",
+    "lines": [
+      "steady."
+    ]
+  },
+  {
+    "id": "weight.heavy.regal",
+    "kind": "weight.heavy",
+    "style": "regal",
+    "lines": [
+      "I’ll lean back."
+    ]
+  },
+  {
+    "id": "weight.fall.regal",
+    "kind": "weight.fall",
+    "style": "regal",
+    "lines": [
+      "a pity. I’ll find a sturdier seat."
+    ]
+  },
+  {
+    "id": "activity.fall",
+    "kind": "activity.fall",
+    "lines": [
+      "…really? enough."
+    ]
+  },
+  {
+    "id": "activity.fall.affectionate",
+    "kind": "activity.fall",
+    "style": "affectionate",
+    "lines": [
+      "hey, hey. that’s enough for tonight."
+    ]
+  },
+  {
+    "id": "activity.fall.ritual",
+    "kind": "activity.fall",
+    "style": "ritual",
+    "lines": [
+      "down. noted. we stop."
+    ]
+  },
+  {
+    "id": "activity.fall.playful",
+    "kind": "activity.fall",
+    "style": "playful",
+    "lines": [
+      "timber! okay, you’re done."
+    ]
+  },
+  {
+    "id": "activity.fall.clinical",
+    "kind": "activity.fall",
+    "style": "clinical",
+    "lines": [
+      "failure point reached. session over."
+    ]
+  },
+  {
+    "id": "activity.fall.cruel",
+    "kind": "activity.fall",
+    "style": "cruel",
+    "lines": [
+      "useless. get out of my sight."
+    ]
+  },
+  {
+    "id": "activity.fall.possessive",
+    "kind": "activity.fall",
+    "style": "possessive",
+    "lines": [
+      "enough. you’ll do better for me."
+    ]
+  },
+  {
+    "id": "activity.fall.cold",
+    "kind": "activity.fall",
+    "style": "cold",
+    "lines": [
+      "get up. go."
+    ]
+  },
+  {
+    "id": "activity.fall.regal",
+    "kind": "activity.fall",
+    "style": "regal",
+    "lines": [
+      "a pity. I’ll find a sturdier seat."
+    ]
+  },
+  {
+    "id": "activity.rest",
+    "kind": "activity.rest",
+    "lines": [
+      "rest. a moment."
+    ]
+  },
+  {
+    "id": "activity.rest.affectionate",
+    "kind": "activity.rest",
+    "style": "affectionate",
+    "lines": [
+      "here. rest a moment."
+    ]
+  },
+  {
+    "id": "activity.rest.ritual",
+    "kind": "activity.rest",
+    "style": "ritual",
+    "lines": [
+      "rest."
+    ]
+  },
+  {
+    "id": "activity.rest.playful",
+    "kind": "activity.rest",
+    "style": "playful",
+    "lines": [
+      "fine, a break~"
+    ]
+  },
+  {
+    "id": "activity.rest.clinical",
+    "kind": "activity.rest",
+    "style": "clinical",
+    "lines": [
+      "recovery interval."
+    ]
+  },
+  {
+    "id": "activity.rest.cruel",
+    "kind": "activity.rest",
+    "style": "cruel",
+    "lines": [
+      "…fine. a moment."
+    ]
+  },
+  {
+    "id": "activity.rest.regal",
+    "kind": "activity.rest",
+    "style": "regal",
+    "lines": [
+      "rest. briefly."
+    ]
+  },
+  {
+    "id": "activity.self.reading_book",
+    "kind": "activity.self.reading_book",
+    "lines": [
+      "hm.",
+      "no. no, no, no…",
+      "oh, come on.",
+      "there it is.",
+      "idiot.",
+      "mm.",
+      "don’t open that door…",
+      "of course she did."
+    ]
+  },
+  {
+    "id": "activity.self.reading_reports",
+    "kind": "activity.self.reading_reports",
+    "lines": [
+      "…three wounded. three.",
+      "the commander authorized the detour. hm.",
+      "that’s not what she told me.",
+      "requisition denied. again.",
+      "node four. why node four.",
+      "who signs these."
+    ]
+  },
+  {
+    "id": "activity.self.writing_report",
+    "kind": "activity.self.writing_report",
+    "lines": [
+      "…“regrettably”. no.",
+      "how do I say this without saying it.",
+      "losses: acceptable. sure.",
+      "mm. delete."
+    ]
+  },
+  {
+    "id": "activity.self.chatting_on_pda",
+    "kind": "activity.self.chatting_on_pda",
+    "lines": [
+      "ha.",
+      "no way.",
+      "she did not.",
+      "oh, you’re in trouble."
+    ]
+  },
+  {
+    "id": "activity.self.sleeping",
+    "kind": "activity.self.sleeping",
+    "lines": [
+      "…mm.",
+      "…no…",
+      "…stay…"
+    ]
+  },
+  {
+    "id": "activity.self.music",
+    "kind": "activity.self.music",
+    "lines": [
+      "~ mm-mm, mm ~",
+      "~ da, da-da ~"
+    ]
+  },
+  {
+    "id": "activity.self.cleaning_weapon",
+    "kind": "activity.self.cleaning_weapon",
+    "lines": [
+      "there you are.",
+      "filthy.",
+      "who had you last."
+    ]
+  },
+  {
+    "id": "activity.self.mending_clothes",
+    "kind": "activity.self.mending_clothes",
+    "lines": [
+      "ow.",
+      "there.",
+      "hm-mm."
+    ]
+  },
+  {
+    "id": "activity.self.drinking",
+    "kind": "activity.self.drinking",
+    "lines": [
+      "mm. better.",
+      "to me.",
+      "one more.",
+      "why is this so good."
+    ]
+  },
+  {
+    "id": "activity.self.sketching",
+    "kind": "activity.self.sketching",
+    "lines": [
+      "no. the jaw’s wrong.",
+      "hold still.",
+      "better."
+    ]
+  },
+  {
+    "id": "activity.self.holding_audience",
+    "kind": "activity.self.holding_audience",
+    "lines": [
+      "next.",
+      "who else.",
+      "they all want something.",
+      "hm. that one can wait."
+    ]
+  },
+  {
+    "id": "activity.toyou.any",
+    "kind": "activity.toYou.any",
+    "lines": [
+      "you’re quiet. good."
+    ]
+  },
+  {
+    "id": "activity.ask.any",
+    "kind": "activity.ask.any",
+    "lines": [
+      "what time is it, do you think?",
+      "still with me down there?"
+    ]
+  },
+  {
+    "id": "activity.toyou.reading_book",
+    "kind": "activity.toYou.reading_book",
+    "lines": [
+      "this one’s good. you’d hate it."
+    ]
+  },
+  {
+    "id": "activity.ask.reading_book",
+    "kind": "activity.ask.reading_book",
+    "lines": [
+      "guess who did it."
+    ]
+  },
+  {
+    "id": "activity.toyou.reading_reports",
+    "kind": "activity.toYou.reading_reports",
+    "lines": [
+      "listen: “the commander’s conduct was… adequate.” hm."
+    ]
+  },
+  {
+    "id": "activity.ask.reading_reports",
+    "kind": "activity.ask.reading_reports",
+    "lines": [
+      "did you sign the detour at node four?"
+    ]
+  },
+  {
+    "id": "activity.ask.writing_report",
+    "kind": "activity.ask.writing_report",
+    "lines": [
+      "how do you spell “negligible”?"
+    ]
+  },
+  {
+    "id": "activity.toyou.sketching",
+    "kind": "activity.toYou.sketching",
+    "lines": [
+      "don’t move. I’m doing your hands.",
+      "turn your head. no. back."
+    ]
+  },
+  {
+    "id": "activity.toyou.drinking",
+    "kind": "activity.toYou.drinking",
+    "lines": [
+      "you want some? no. you don’t."
+    ]
+  },
+  {
+    "id": "activity.ask.drinking",
+    "kind": "activity.ask.drinking",
+    "lines": [
+      "tell me something. anything."
+    ]
+  },
+  {
+    "id": "activity.ask.cleaning_weapon",
+    "kind": "activity.ask.cleaning_weapon",
+    "lines": [
+      "you ever field-strip one of these?"
+    ]
+  },
+  {
+    "id": "activity.toyou.chatting_on_pda",
+    "kind": "activity.toYou.chatting_on_pda",
+    "lines": [
+      "{Name} says hi. don’t answer."
+    ]
+  },
+  {
+    "id": "activity.woke",
+    "kind": "activity.woke",
+    "lines": [
+      "…what are you doing."
+    ]
+  },
+  {
+    "id": "activity.wokemumble",
+    "kind": "activity.wokeMumble",
+    "lines": [
+      "…"
+    ]
+  },
+  {
+    "id": "activity.comein",
+    "kind": "activity.comeIn",
+    "lines": [
+      "come in."
+    ]
+  },
+  {
+    "id": "activity.stay",
+    "kind": "activity.stay",
+    "lines": [
+      "Stay."
+    ]
+  },
+  {
+    "id": "activity.entry.floor",
+    "kind": "activity.entry.floor",
+    "lines": [
+      "Down. Eyes down."
+    ]
+  },
+  {
+    "id": "activity.ask.mending_clothes",
+    "kind": "activity.ask.mending_clothes",
+    "lines": [
+      "whose shirt is this, you think?"
+    ]
+  },
+  {
+    "id": "activity.exchange.call",
+    "kind": "activity.exchange.call",
+    "lines": [
+      "Unit status, please.|Operational. Two on light duty.",
+      "The detour at node four. Whose call?|The commander’s. I’d have made the same one.",
+      "And the requisition?|Denied. Again. Send it up.",
+      "You sound distracted.|I have my feet up on something comfortable.|long day. go on.",
+      "Understood. Anything else?|No. Out."
+    ]
+  },
+  {
+    "id": "activity.exchange.visit",
+    "kind": "activity.exchange.visit",
+    "lines": [
+      "Got a minute? The roster for tomorrow.|Leave it on the desk.",
+      "Has anyone seen the commander? Nobody can find…|closer than you think.|no idea. try the comms room.",
+      "Right. Night, then.|night."
+    ]
+  },
+  {
+    "id": "activity.exchange.cards",
+    "kind": "activity.exchange.cards",
+    "lines": [
+      "Your deal.|watch and learn.",
+      "You’re cheating.|prove it.",
+      "How’s your furniture holding up?|quiet. for once.|the chair? it’s fine.",
+      "Raise.|call.",
+      "Ugh. Again.|again."
+    ]
+  },
+  {
+    "id": "activity.exchange.heard_call",
+    "kind": "activity.exchange.heard_call",
+    "lines": [
+      "…is someone with you?|just my footrest.|no. the heater ticks."
+    ]
+  },
+  {
+    "id": "activity.exchange.heard_visit",
+    "kind": "activity.exchange.heard_visit",
+    "lines": [
+      "…what was that?|my footrest. it creaks.|the chair. it’s old."
+    ]
+  },
+  {
+    "id": "service.good",
+    "kind": "service.good",
+    "lines": [
+      "good.",
+      "mm. better."
+    ]
+  },
+  {
+    "id": "service.good.affectionate",
+    "kind": "service.good",
+    "style": "affectionate",
+    "lines": [
+      "that’s lovely.",
+      "perfect."
+    ]
+  },
+  {
+    "id": "service.good.playful",
+    "kind": "service.good",
+    "style": "playful",
+    "lines": [
+      "ooh, good pet~"
+    ]
+  },
+  {
+    "id": "service.good.possessive",
+    "kind": "service.good",
+    "style": "possessive",
+    "lines": [
+      "good. mine."
+    ]
+  },
+  {
+    "id": "service.good.cold",
+    "kind": "service.good",
+    "style": "cold",
+    "lines": [
+      "fine."
+    ]
+  },
+  {
+    "id": "service.good.cruel",
+    "kind": "service.good",
+    "style": "cruel",
+    "lines": [
+      "adequate."
+    ]
+  },
+  {
+    "id": "service.good.clinical",
+    "kind": "service.good",
+    "style": "clinical",
+    "lines": [
+      "acceptable."
+    ]
+  },
+  {
+    "id": "service.good.ritual",
+    "kind": "service.good",
+    "style": "ritual",
+    "lines": [
+      "as it should be."
+    ]
+  },
+  {
+    "id": "service.poor",
+    "kind": "service.poor",
+    "lines": [
+      "sloppy.",
+      "again, properly."
+    ]
+  },
+  {
+    "id": "service.poor.affectionate",
+    "kind": "service.poor",
+    "style": "affectionate",
+    "lines": [
+      "gentler, sweetheart."
+    ]
+  },
+  {
+    "id": "service.poor.playful",
+    "kind": "service.poor",
+    "style": "playful",
+    "lines": [
+      "you call that service?"
+    ]
+  },
+  {
+    "id": "service.poor.possessive",
+    "kind": "service.poor",
+    "style": "possessive",
+    "lines": [
+      "you’ll do it right for me."
+    ]
+  },
+  {
+    "id": "service.poor.cold",
+    "kind": "service.poor",
+    "style": "cold",
+    "lines": [
+      "no."
+    ]
+  },
+  {
+    "id": "service.poor.cruel",
+    "kind": "service.poor",
+    "style": "cruel",
+    "lines": [
+      "pathetic. again."
+    ]
+  },
+  {
+    "id": "service.poor.clinical",
+    "kind": "service.poor",
+    "style": "clinical",
+    "lines": [
+      "below standard. noted."
+    ]
+  },
+  {
+    "id": "service.poor.ritual",
+    "kind": "service.poor",
+    "style": "ritual",
+    "lines": [
+      "again."
+    ]
+  },
+  {
+    "id": "service.wrong",
+    "kind": "service.wrong",
+    "lines": [
+      "no."
+    ]
+  },
+  {
+    "id": "service.missed",
+    "kind": "service.missed",
+    "lines": [
+      "you missed it."
+    ]
+  },
+  {
+    "id": "service.wrong.affectionate",
+    "kind": "service.wrong",
+    "style": "affectionate",
+    "lines": [
+      "not that, silly."
+    ]
+  },
+  {
+    "id": "service.wrong.playful",
+    "kind": "service.wrong",
+    "style": "playful",
+    "lines": [
+      "wrong~"
+    ]
+  },
+  {
+    "id": "service.wrong.possessive",
+    "kind": "service.wrong",
+    "style": "possessive",
+    "lines": [
+      "no. listen."
+    ]
+  },
+  {
+    "id": "service.wrong.cold",
+    "kind": "service.wrong",
+    "style": "cold",
+    "lines": [
+      "wrong."
+    ]
+  },
+  {
+    "id": "service.wrong.cruel",
+    "kind": "service.wrong",
+    "style": "cruel",
+    "lines": [
+      "can’t you read?"
+    ]
+  },
+  {
+    "id": "service.wrong.clinical",
+    "kind": "service.wrong",
+    "style": "clinical",
+    "lines": [
+      "incorrect response. noted."
+    ]
+  },
+  {
+    "id": "service.wrong.ritual",
+    "kind": "service.wrong",
+    "style": "ritual",
+    "lines": [
+      "that is not what was asked."
+    ]
+  },
+  {
+    "id": "service.zone.toes",
+    "kind": "service.zone.toes",
+    "lines": [
+      "toes."
+    ]
+  },
+  {
+    "id": "service.zone.ball",
+    "kind": "service.zone.ball",
+    "lines": [
+      "the ball."
+    ]
+  },
+  {
+    "id": "service.zone.arch",
+    "kind": "service.zone.arch",
+    "lines": [
+      "the arch."
+    ]
+  },
+  {
+    "id": "service.zone.heel",
+    "kind": "service.zone.heel",
+    "lines": [
+      "heel."
+    ]
+  },
+  {
+    "id": "service.zone.edge",
+    "kind": "service.zone.edge",
+    "lines": [
+      "the edge."
+    ]
+  },
+  {
+    "id": "shoe.entry",
+    "kind": "shoe.entry",
+    "lines": [
+      "clean them."
+    ]
+  },
+  {
+    "id": "shoe.turn",
+    "kind": "shoe.turn",
+    "lines": [
+      "the other side."
+    ]
+  },
+  {
+    "id": "shoe.sole",
+    "kind": "shoe.sole",
+    "lines": [
+      "underneath."
+    ]
+  },
+  {
+    "id": "shoe.kiss",
+    "kind": "shoe.kiss",
+    "lines": [
+      "kiss it."
+    ]
+  },
+  {
+    "id": "shoe.polish",
+    "kind": "shoe.polish",
+    "lines": [
+      "now make it shine."
+    ]
+  },
+  {
+    "id": "shoe.other",
+    "kind": "shoe.other",
+    "lines": [
+      "now the other one."
+    ]
+  },
+  {
+    "id": "shoe.caught",
+    "kind": "shoe.caught",
+    "lines": [
+      "did you just spit?"
+    ]
+  },
+  {
+    "id": "shoe.swallowed",
+    "kind": "shoe.swallowed",
+    "lines": [
+      "swallow it."
+    ]
+  },
+  {
+    "id": "shoe.good",
+    "kind": "shoe.good",
+    "lines": [
+      "good."
+    ]
+  },
+  {
+    "id": "shoe.poor",
+    "kind": "shoe.poor",
+    "lines": [
+      "sloppy."
+    ]
+  },
+  {
+    "id": "shoe.missed",
+    "kind": "shoe.missed",
+    "lines": [
+      "%z. you missed it."
+    ]
+  },
+  {
+    "id": "shoe.dull",
+    "kind": "shoe.dull",
+    "lines": [
+      "%z is dull."
+    ]
+  },
+  {
+    "id": "shoe.stamp",
+    "kind": "shoe.stamp",
+    "lines": [
+      "properly."
+    ]
+  },
+  {
+    "id": "shoe.end",
+    "kind": "shoe.end",
+    "lines": [
+      "that will do."
+    ]
+  },
+  {
+    "id": "shoe.entry.affectionate",
+    "kind": "shoe.entry",
+    "style": "affectionate",
+    "lines": [
+      "would you? they’re filthy."
+    ]
+  },
+  {
+    "id": "shoe.turn.affectionate",
+    "kind": "shoe.turn",
+    "style": "affectionate",
+    "lines": [
+      "and this side, love."
+    ]
+  },
+  {
+    "id": "shoe.sole.affectionate",
+    "kind": "shoe.sole",
+    "style": "affectionate",
+    "lines": [
+      "underneath too."
+    ]
+  },
+  {
+    "id": "shoe.kiss.affectionate",
+    "kind": "shoe.kiss",
+    "style": "affectionate",
+    "lines": [
+      "kiss it for me."
+    ]
+  },
+  {
+    "id": "shoe.polish.affectionate",
+    "kind": "shoe.polish",
+    "style": "affectionate",
+    "lines": [
+      "make them pretty."
+    ]
+  },
+  {
+    "id": "shoe.other.affectionate",
+    "kind": "shoe.other",
+    "style": "affectionate",
+    "lines": [
+      "the other one, please."
+    ]
+  },
+  {
+    "id": "shoe.caught.affectionate",
+    "kind": "shoe.caught",
+    "style": "affectionate",
+    "lines": [
+      "hey. I saw that."
+    ]
+  },
+  {
+    "id": "shoe.swallowed.affectionate",
+    "kind": "shoe.swallowed",
+    "style": "affectionate",
+    "lines": [
+      "there you go."
+    ]
+  },
+  {
+    "id": "shoe.good.affectionate",
+    "kind": "shoe.good",
+    "style": "affectionate",
+    "lines": [
+      "they look lovely."
+    ]
+  },
+  {
+    "id": "shoe.poor.affectionate",
+    "kind": "shoe.poor",
+    "style": "affectionate",
+    "lines": [
+      "nearly, sweetheart."
+    ]
+  },
+  {
+    "id": "shoe.missed.affectionate",
+    "kind": "shoe.missed",
+    "style": "affectionate",
+    "lines": [
+      "you missed %z."
+    ]
+  },
+  {
+    "id": "shoe.dull.affectionate",
+    "kind": "shoe.dull",
+    "style": "affectionate",
+    "lines": [
+      "%z could shine more."
+    ]
+  },
+  {
+    "id": "shoe.stamp.affectionate",
+    "kind": "shoe.stamp",
+    "style": "affectionate",
+    "lines": []
+  },
+  {
+    "id": "shoe.end.affectionate",
+    "kind": "shoe.end",
+    "style": "affectionate",
+    "lines": [
+      "thank you. really."
+    ]
+  },
+  {
+    "id": "shoe.entry.ritual",
+    "kind": "shoe.entry",
+    "style": "ritual",
+    "lines": [
+      "begin with the toe."
+    ]
+  },
+  {
+    "id": "shoe.turn.ritual",
+    "kind": "shoe.turn",
+    "style": "ritual",
+    "lines": [
+      "the inner side."
+    ]
+  },
+  {
+    "id": "shoe.sole.ritual",
+    "kind": "shoe.sole",
+    "style": "ritual",
+    "lines": [
+      "the sole."
+    ]
+  },
+  {
+    "id": "shoe.kiss.ritual",
+    "kind": "shoe.kiss",
+    "style": "ritual",
+    "lines": [
+      "kiss the toe."
+    ]
+  },
+  {
+    "id": "shoe.polish.ritual",
+    "kind": "shoe.polish",
+    "style": "ritual",
+    "lines": [
+      "polish."
+    ]
+  },
+  {
+    "id": "shoe.other.ritual",
+    "kind": "shoe.other",
+    "style": "ritual",
+    "lines": [
+      "the left."
+    ]
+  },
+  {
+    "id": "shoe.caught.ritual",
+    "kind": "shoe.caught",
+    "style": "ritual",
+    "lines": [
+      "you spat. again."
+    ]
+  },
+  {
+    "id": "shoe.swallowed.ritual",
+    "kind": "shoe.swallowed",
+    "style": "ritual",
+    "lines": [
+      "swallow."
+    ]
+  },
+  {
+    "id": "shoe.good.ritual",
+    "kind": "shoe.good",
+    "style": "ritual",
+    "lines": [
+      "as it should be."
+    ]
+  },
+  {
+    "id": "shoe.poor.ritual",
+    "kind": "shoe.poor",
+    "style": "ritual",
+    "lines": [
+      "again."
+    ]
+  },
+  {
+    "id": "shoe.missed.ritual",
+    "kind": "shoe.missed",
+    "style": "ritual",
+    "lines": [
+      "%z."
+    ]
+  },
+  {
+    "id": "shoe.dull.ritual",
+    "kind": "shoe.dull",
+    "style": "ritual",
+    "lines": [
+      "%z. it is dull."
+    ]
+  },
+  {
+    "id": "shoe.stamp.ritual",
+    "kind": "shoe.stamp",
+    "style": "ritual",
+    "lines": [
+      "the form."
+    ]
+  },
+  {
+    "id": "shoe.end.ritual",
+    "kind": "shoe.end",
+    "style": "ritual",
+    "lines": [
+      "enough. kiss them both."
+    ]
+  },
+  {
+    "id": "shoe.entry.playful",
+    "kind": "shoe.entry",
+    "style": "playful",
+    "lines": [
+      "look what I stepped in~"
+    ]
+  },
+  {
+    "id": "shoe.turn.playful",
+    "kind": "shoe.turn",
+    "style": "playful",
+    "lines": [
+      "other side~"
+    ]
+  },
+  {
+    "id": "shoe.sole.playful",
+    "kind": "shoe.sole",
+    "style": "playful",
+    "lines": [
+      "tada~ underneath."
+    ]
+  },
+  {
+    "id": "shoe.kiss.playful",
+    "kind": "shoe.kiss",
+    "style": "playful",
+    "lines": [
+      "kiss~"
+    ]
+  },
+  {
+    "id": "shoe.polish.playful",
+    "kind": "shoe.polish",
+    "style": "playful",
+    "lines": [
+      "make them sparkle~"
+    ]
+  },
+  {
+    "id": "shoe.other.playful",
+    "kind": "shoe.other",
+    "style": "playful",
+    "lines": [
+      "and the other one~"
+    ]
+  },
+  {
+    "id": "shoe.caught.playful",
+    "kind": "shoe.caught",
+    "style": "playful",
+    "lines": [
+      "eww. spitting? naughty."
+    ]
+  },
+  {
+    "id": "shoe.swallowed.playful",
+    "kind": "shoe.swallowed",
+    "style": "playful",
+    "lines": [
+      "yummy?"
+    ]
+  },
+  {
+    "id": "shoe.good.playful",
+    "kind": "shoe.good",
+    "style": "playful",
+    "lines": [
+      "ooh, shiny."
+    ]
+  },
+  {
+    "id": "shoe.poor.playful",
+    "kind": "shoe.poor",
+    "style": "playful",
+    "lines": [
+      "hmm, meh."
+    ]
+  },
+  {
+    "id": "shoe.missed.playful",
+    "kind": "shoe.missed",
+    "style": "playful",
+    "lines": [
+      "you missed a spot~ %z."
+    ]
+  },
+  {
+    "id": "shoe.dull.playful",
+    "kind": "shoe.dull",
+    "style": "playful",
+    "lines": [
+      "%z is so dull~"
+    ]
+  },
+  {
+    "id": "shoe.stamp.playful",
+    "kind": "shoe.stamp",
+    "style": "playful",
+    "lines": [
+      "faster~"
+    ]
+  },
+  {
+    "id": "shoe.end.playful",
+    "kind": "shoe.end",
+    "style": "playful",
+    "lines": [
+      "okay okay, good pet."
+    ]
+  },
+  {
+    "id": "shoe.entry.cruel",
+    "kind": "shoe.entry",
+    "style": "cruel",
+    "lines": [
+      "clean."
+    ]
+  },
+  {
+    "id": "shoe.turn.cruel",
+    "kind": "shoe.turn",
+    "style": "cruel",
+    "lines": [
+      "other side."
+    ]
+  },
+  {
+    "id": "shoe.sole.cruel",
+    "kind": "shoe.sole",
+    "style": "cruel",
+    "lines": [
+      "the sole. all of it."
+    ]
+  },
+  {
+    "id": "shoe.kiss.cruel",
+    "kind": "shoe.kiss",
+    "style": "cruel",
+    "lines": [
+      "kiss it."
+    ]
+  },
+  {
+    "id": "shoe.polish.cruel",
+    "kind": "shoe.polish",
+    "style": "cruel",
+    "lines": [
+      "shine it."
+    ]
+  },
+  {
+    "id": "shoe.other.cruel",
+    "kind": "shoe.other",
+    "style": "cruel",
+    "lines": [
+      "other foot."
+    ]
+  },
+  {
+    "id": "shoe.caught.cruel",
+    "kind": "shoe.caught",
+    "style": "cruel",
+    "lines": [
+      "you spat it out? lick it back up."
+    ]
+  },
+  {
+    "id": "shoe.swallowed.cruel",
+    "kind": "shoe.swallowed",
+    "style": "cruel",
+    "lines": [
+      "swallow."
+    ]
+  },
+  {
+    "id": "shoe.good.cruel",
+    "kind": "shoe.good",
+    "style": "cruel",
+    "lines": [
+      "adequate."
+    ]
+  },
+  {
+    "id": "shoe.poor.cruel",
+    "kind": "shoe.poor",
+    "style": "cruel",
+    "lines": [
+      "pathetic."
+    ]
+  },
+  {
+    "id": "shoe.missed.cruel",
+    "kind": "shoe.missed",
+    "style": "cruel",
+    "lines": [
+      "%z. you call that clean?"
+    ]
+  },
+  {
+    "id": "shoe.dull.cruel",
+    "kind": "shoe.dull",
+    "style": "cruel",
+    "lines": [
+      "%z. dull. again."
+    ]
+  },
+  {
+    "id": "shoe.stamp.cruel",
+    "kind": "shoe.stamp",
+    "style": "cruel",
+    "lines": [
+      "faster."
+    ]
+  },
+  {
+    "id": "shoe.end.cruel",
+    "kind": "shoe.end",
+    "style": "cruel",
+    "lines": [
+      "get away from my feet."
+    ]
+  },
+  {
+    "id": "shoe.entry.possessive",
+    "kind": "shoe.entry",
+    "style": "possessive",
+    "lines": [
+      "my boots. clean them."
+    ]
+  },
+  {
+    "id": "shoe.turn.possessive",
+    "kind": "shoe.turn",
+    "style": "possessive",
+    "lines": [
+      "this side too."
+    ]
+  },
+  {
+    "id": "shoe.sole.possessive",
+    "kind": "shoe.sole",
+    "style": "possessive",
+    "lines": [
+      "underneath. mine all over."
+    ]
+  },
+  {
+    "id": "shoe.kiss.possessive",
+    "kind": "shoe.kiss",
+    "style": "possessive",
+    "lines": [
+      "kiss it. it’s mine."
+    ]
+  },
+  {
+    "id": "shoe.polish.possessive",
+    "kind": "shoe.polish",
+    "style": "possessive",
+    "lines": [
+      "make them shine for me."
+    ]
+  },
+  {
+    "id": "shoe.other.possessive",
+    "kind": "shoe.other",
+    "style": "possessive",
+    "lines": [
+      "now the other."
+    ]
+  },
+  {
+    "id": "shoe.caught.possessive",
+    "kind": "shoe.caught",
+    "style": "possessive",
+    "lines": [
+      "you don’t waste what’s mine."
+    ]
+  },
+  {
+    "id": "shoe.swallowed.possessive",
+    "kind": "shoe.swallowed",
+    "style": "possessive",
+    "lines": [
+      "all of it. good."
+    ]
+  },
+  {
+    "id": "shoe.good.possessive",
+    "kind": "shoe.good",
+    "style": "possessive",
+    "lines": [
+      "good. mine."
+    ]
+  },
+  {
+    "id": "shoe.poor.possessive",
+    "kind": "shoe.poor",
+    "style": "possessive",
+    "lines": [
+      "you’ll do better for me."
+    ]
+  },
+  {
+    "id": "shoe.missed.possessive",
+    "kind": "shoe.missed",
+    "style": "possessive",
+    "lines": [
+      "%z."
+    ]
+  },
+  {
+    "id": "shoe.dull.possessive",
+    "kind": "shoe.dull",
+    "style": "possessive",
+    "lines": [
+      "%z. dull."
+    ]
+  },
+  {
+    "id": "shoe.stamp.possessive",
+    "kind": "shoe.stamp",
+    "style": "possessive",
+    "lines": [
+      "for me. properly."
+    ]
+  },
+  {
+    "id": "shoe.end.possessive",
+    "kind": "shoe.end",
+    "style": "possessive",
+    "lines": [
+      "good. stay there."
+    ]
+  },
+  {
+    "id": "shoe.entry.cold",
+    "kind": "shoe.entry",
+    "style": "cold",
+    "lines": [
+      "clean them."
+    ]
+  },
+  {
+    "id": "shoe.turn.cold",
+    "kind": "shoe.turn",
+    "style": "cold",
+    "lines": [
+      "turn."
+    ]
+  },
+  {
+    "id": "shoe.sole.cold",
+    "kind": "shoe.sole",
+    "style": "cold",
+    "lines": [
+      "sole."
+    ]
+  },
+  {
+    "id": "shoe.kiss.cold",
+    "kind": "shoe.kiss",
+    "style": "cold",
+    "lines": [
+      "kiss."
+    ]
+  },
+  {
+    "id": "shoe.polish.cold",
+    "kind": "shoe.polish",
+    "style": "cold",
+    "lines": [
+      "shine."
+    ]
+  },
+  {
+    "id": "shoe.other.cold",
+    "kind": "shoe.other",
+    "style": "cold",
+    "lines": [
+      "other."
+    ]
+  },
+  {
+    "id": "shoe.caught.cold",
+    "kind": "shoe.caught",
+    "style": "cold",
+    "lines": [
+      "you spat."
+    ]
+  },
+  {
+    "id": "shoe.swallowed.cold",
+    "kind": "shoe.swallowed",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "shoe.good.cold",
+    "kind": "shoe.good",
+    "style": "cold",
+    "lines": [
+      "fine."
+    ]
+  },
+  {
+    "id": "shoe.poor.cold",
+    "kind": "shoe.poor",
+    "style": "cold",
+    "lines": [
+      "no."
+    ]
+  },
+  {
+    "id": "shoe.missed.cold",
+    "kind": "shoe.missed",
+    "style": "cold",
+    "lines": [
+      "%z."
+    ]
+  },
+  {
+    "id": "shoe.dull.cold",
+    "kind": "shoe.dull",
+    "style": "cold",
+    "lines": [
+      "%z."
+    ]
+  },
+  {
+    "id": "shoe.stamp.cold",
+    "kind": "shoe.stamp",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "shoe.end.cold",
+    "kind": "shoe.end",
+    "style": "cold",
+    "lines": [
+      "done."
+    ]
+  },
+  {
+    "id": "shoe.entry.regal",
+    "kind": "shoe.entry",
+    "style": "regal",
+    "lines": [
+      "my boots need you."
+    ]
+  },
+  {
+    "id": "shoe.turn.regal",
+    "kind": "shoe.turn",
+    "style": "regal",
+    "lines": [
+      "the other side, if you please."
+    ]
+  },
+  {
+    "id": "shoe.sole.regal",
+    "kind": "shoe.sole",
+    "style": "regal",
+    "lines": [
+      "and beneath."
+    ]
+  },
+  {
+    "id": "shoe.kiss.regal",
+    "kind": "shoe.kiss",
+    "style": "regal",
+    "lines": [
+      "kiss them. you may."
+    ]
+  },
+  {
+    "id": "shoe.polish.regal",
+    "kind": "shoe.polish",
+    "style": "regal",
+    "lines": [
+      "I want to see myself in them."
+    ]
+  },
+  {
+    "id": "shoe.other.regal",
+    "kind": "shoe.other",
+    "style": "regal",
+    "lines": [
+      "now the other."
+    ]
+  },
+  {
+    "id": "shoe.caught.regal",
+    "kind": "shoe.caught",
+    "style": "regal",
+    "lines": [
+      "you spat at my feet?"
+    ]
+  },
+  {
+    "id": "shoe.swallowed.regal",
+    "kind": "shoe.swallowed",
+    "style": "regal",
+    "lines": [
+      "swallow it. graciously."
+    ]
+  },
+  {
+    "id": "shoe.good.regal",
+    "kind": "shoe.good",
+    "style": "regal",
+    "lines": [
+      "worthy."
+    ]
+  },
+  {
+    "id": "shoe.poor.regal",
+    "kind": "shoe.poor",
+    "style": "regal",
+    "lines": [
+      "unworthy."
+    ]
+  },
+  {
+    "id": "shoe.missed.regal",
+    "kind": "shoe.missed",
+    "style": "regal",
+    "lines": [
+      "%z. look again."
+    ]
+  },
+  {
+    "id": "shoe.dull.regal",
+    "kind": "shoe.dull",
+    "style": "regal",
+    "lines": [
+      "%z does not shine."
+    ]
+  },
+  {
+    "id": "shoe.stamp.regal",
+    "kind": "shoe.stamp",
+    "style": "regal",
+    "lines": [
+      "I am waiting."
+    ]
+  },
+  {
+    "id": "shoe.end.regal",
+    "kind": "shoe.end",
+    "style": "regal",
+    "lines": [
+      "you may thank me."
+    ]
+  },
+  {
+    "id": "shoe.stop",
+    "kind": "shoe.stop",
+    "lines": [
+      "okay. stop. come here."
+    ]
+  },
+  {
+    "id": "shoe.zone.toe",
+    "kind": "shoe.zone.toe",
+    "lines": [
+      "the toe"
+    ]
+  },
+  {
+    "id": "shoe.zone.vamp",
+    "kind": "shoe.zone.vamp",
+    "lines": [
+      "the top"
+    ]
+  },
+  {
+    "id": "shoe.zone.laces",
+    "kind": "shoe.zone.laces",
+    "lines": [
+      "the laces"
+    ]
+  },
+  {
+    "id": "shoe.zone.side",
+    "kind": "shoe.zone.side",
+    "lines": [
+      "the side"
+    ]
+  },
+  {
+    "id": "shoe.zone.heel",
+    "kind": "shoe.zone.heel",
+    "lines": [
+      "the heel"
+    ]
+  },
+  {
+    "id": "shoe.zone.shaft",
+    "kind": "shoe.zone.shaft",
+    "lines": [
+      "the shaft"
+    ]
+  },
+  {
+    "id": "shoe.zone.welt",
+    "kind": "shoe.zone.welt",
+    "lines": [
+      "the welt"
+    ]
+  },
+  {
+    "id": "shoe.zone.back",
+    "kind": "shoe.zone.back",
+    "lines": [
+      "the back"
+    ]
+  },
+  {
+    "id": "shoe.zone.toe_tread",
+    "kind": "shoe.zone.toe_tread",
+    "lines": [
+      "the tread"
+    ]
+  },
+  {
+    "id": "shoe.zone.mid",
+    "kind": "shoe.zone.mid",
+    "lines": [
+      "the middle of the sole"
+    ]
+  },
+  {
+    "id": "shoe.zone.heel_tread",
+    "kind": "shoe.zone.heel_tread",
+    "lines": [
+      "the heel underneath"
+    ]
+  },
+  {
+    "id": "gulp.entry",
+    "kind": "gulp.entry",
+    "lines": [
+      "open. drink."
+    ]
+  },
+  {
+    "id": "gulp.surge",
+    "kind": "gulp.surge",
+    "lines": []
+  },
+  {
+    "id": "gulp.tapped",
+    "kind": "gulp.tapped",
+    "lines": [
+      "slower, then."
+    ]
+  },
+  {
+    "id": "gulp.spill",
+    "kind": "gulp.spill",
+    "lines": [
+      "careful."
+    ]
+  },
+  {
+    "id": "gulp.cough",
+    "kind": "gulp.cough",
+    "lines": [
+      "breathe."
+    ]
+  },
+  {
+    "id": "gulp.done",
+    "kind": "gulp.done",
+    "lines": [
+      "all of it. good."
+    ]
+  },
+  {
+    "id": "gulp.clean",
+    "kind": "gulp.clean",
+    "lines": [
+      "you spilled. clean it."
+    ]
+  },
+  {
+    "id": "gulp.cleaned",
+    "kind": "gulp.cleaned",
+    "lines": [
+      "good."
+    ]
+  },
+  {
+    "id": "gulp.missed",
+    "kind": "gulp.missed",
+    "lines": [
+      "there. you missed it."
+    ]
+  },
+  {
+    "id": "gulp.stop",
+    "kind": "gulp.stop",
+    "lines": [
+      "okay. stop. here."
+    ]
+  },
+  {
+    "id": "gulp.entry.affectionate",
+    "kind": "gulp.entry",
+    "style": "affectionate",
+    "lines": [
+      "shh. drink for me."
+    ]
+  },
+  {
+    "id": "gulp.surge.affectionate",
+    "kind": "gulp.surge",
+    "style": "affectionate",
+    "lines": []
+  },
+  {
+    "id": "gulp.tapped.affectionate",
+    "kind": "gulp.tapped",
+    "style": "affectionate",
+    "lines": [
+      "okay, okay. I’ll wait."
+    ]
+  },
+  {
+    "id": "gulp.spill.affectionate",
+    "kind": "gulp.spill",
+    "style": "affectionate",
+    "lines": [
+      "it’s alright."
+    ]
+  },
+  {
+    "id": "gulp.cough.affectionate",
+    "kind": "gulp.cough",
+    "style": "affectionate",
+    "lines": [
+      "easy. breathe."
+    ]
+  },
+  {
+    "id": "gulp.done.affectionate",
+    "kind": "gulp.done",
+    "style": "affectionate",
+    "lines": [
+      "good. so good."
+    ]
+  },
+  {
+    "id": "gulp.clean.affectionate",
+    "kind": "gulp.clean",
+    "style": "affectionate",
+    "lines": [
+      "leave it, I’ll get it."
+    ]
+  },
+  {
+    "id": "gulp.cleaned.affectionate",
+    "kind": "gulp.cleaned",
+    "style": "affectionate",
+    "lines": []
+  },
+  {
+    "id": "gulp.missed.affectionate",
+    "kind": "gulp.missed",
+    "style": "affectionate",
+    "lines": []
+  },
+  {
+    "id": "gulp.entry.ritual",
+    "kind": "gulp.entry",
+    "style": "ritual",
+    "lines": [
+      "open. drink."
+    ]
+  },
+  {
+    "id": "gulp.surge.ritual",
+    "kind": "gulp.surge",
+    "style": "ritual",
+    "lines": [
+      "now."
+    ]
+  },
+  {
+    "id": "gulp.tapped.ritual",
+    "kind": "gulp.tapped",
+    "style": "ritual",
+    "lines": [
+      "hold."
+    ]
+  },
+  {
+    "id": "gulp.spill.ritual",
+    "kind": "gulp.spill",
+    "style": "ritual",
+    "lines": [
+      "a spill."
+    ]
+  },
+  {
+    "id": "gulp.cough.ritual",
+    "kind": "gulp.cough",
+    "style": "ritual",
+    "lines": [
+      "compose yourself."
+    ]
+  },
+  {
+    "id": "gulp.done.ritual",
+    "kind": "gulp.done",
+    "style": "ritual",
+    "lines": [
+      "finished."
+    ]
+  },
+  {
+    "id": "gulp.clean.ritual",
+    "kind": "gulp.clean",
+    "style": "ritual",
+    "lines": [
+      "the floor. with your tongue."
+    ]
+  },
+  {
+    "id": "gulp.cleaned.ritual",
+    "kind": "gulp.cleaned",
+    "style": "ritual",
+    "lines": [
+      "as it should be."
+    ]
+  },
+  {
+    "id": "gulp.missed.ritual",
+    "kind": "gulp.missed",
+    "style": "ritual",
+    "lines": [
+      "there. again."
+    ]
+  },
+  {
+    "id": "gulp.entry.playful",
+    "kind": "gulp.entry",
+    "style": "playful",
+    "lines": [
+      "say ahh~"
+    ]
+  },
+  {
+    "id": "gulp.surge.playful",
+    "kind": "gulp.surge",
+    "style": "playful",
+    "lines": []
+  },
+  {
+    "id": "gulp.tapped.playful",
+    "kind": "gulp.tapped",
+    "style": "playful",
+    "lines": [
+      "slower? hmm. no~"
+    ]
+  },
+  {
+    "id": "gulp.spill.playful",
+    "kind": "gulp.spill",
+    "style": "playful",
+    "lines": [
+      "oops~"
+    ]
+  },
+  {
+    "id": "gulp.cough.playful",
+    "kind": "gulp.cough",
+    "style": "playful",
+    "lines": [
+      "too much?"
+    ]
+  },
+  {
+    "id": "gulp.done.playful",
+    "kind": "gulp.done",
+    "style": "playful",
+    "lines": [
+      "all gone~"
+    ]
+  },
+  {
+    "id": "gulp.clean.playful",
+    "kind": "gulp.clean",
+    "style": "playful",
+    "lines": [
+      "look at that mess. lick it up~"
+    ]
+  },
+  {
+    "id": "gulp.cleaned.playful",
+    "kind": "gulp.cleaned",
+    "style": "playful",
+    "lines": [
+      "shiny."
+    ]
+  },
+  {
+    "id": "gulp.missed.playful",
+    "kind": "gulp.missed",
+    "style": "playful",
+    "lines": [
+      "you missed a spot~"
+    ]
+  },
+  {
+    "id": "gulp.entry.cruel",
+    "kind": "gulp.entry",
+    "style": "cruel",
+    "lines": [
+      "drink."
+    ]
+  },
+  {
+    "id": "gulp.surge.cruel",
+    "kind": "gulp.surge",
+    "style": "cruel",
+    "lines": []
+  },
+  {
+    "id": "gulp.tapped.cruel",
+    "kind": "gulp.tapped",
+    "style": "cruel",
+    "lines": [
+      "you don’t ask."
+    ]
+  },
+  {
+    "id": "gulp.spill.cruel",
+    "kind": "gulp.spill",
+    "style": "cruel",
+    "lines": [
+      "wasteful."
+    ]
+  },
+  {
+    "id": "gulp.cough.cruel",
+    "kind": "gulp.cough",
+    "style": "cruel",
+    "lines": [
+      "pathetic."
+    ]
+  },
+  {
+    "id": "gulp.done.cruel",
+    "kind": "gulp.done",
+    "style": "cruel",
+    "lines": [
+      "all of it. good."
+    ]
+  },
+  {
+    "id": "gulp.clean.cruel",
+    "kind": "gulp.clean",
+    "style": "cruel",
+    "lines": [
+      "lick it up."
+    ]
+  },
+  {
+    "id": "gulp.cleaned.cruel",
+    "kind": "gulp.cleaned",
+    "style": "cruel",
+    "lines": [
+      "adequate."
+    ]
+  },
+  {
+    "id": "gulp.missed.cruel",
+    "kind": "gulp.missed",
+    "style": "cruel",
+    "lines": [
+      "there. all of it."
+    ]
+  },
+  {
+    "id": "gulp.entry.possessive",
+    "kind": "gulp.entry",
+    "style": "possessive",
+    "lines": [
+      "drink. all of it is yours."
+    ]
+  },
+  {
+    "id": "gulp.surge.possessive",
+    "kind": "gulp.surge",
+    "style": "possessive",
+    "lines": []
+  },
+  {
+    "id": "gulp.tapped.possessive",
+    "kind": "gulp.tapped",
+    "style": "possessive",
+    "lines": [
+      "a little slower. for you."
+    ]
+  },
+  {
+    "id": "gulp.spill.possessive",
+    "kind": "gulp.spill",
+    "style": "possessive",
+    "lines": [
+      "that was yours."
+    ]
+  },
+  {
+    "id": "gulp.cough.possessive",
+    "kind": "gulp.cough",
+    "style": "possessive",
+    "lines": [
+      "breathe. then more."
+    ]
+  },
+  {
+    "id": "gulp.done.possessive",
+    "kind": "gulp.done",
+    "style": "possessive",
+    "lines": [
+      "good. mine."
+    ]
+  },
+  {
+    "id": "gulp.clean.possessive",
+    "kind": "gulp.clean",
+    "style": "possessive",
+    "lines": [
+      "you don’t waste me. clean it."
+    ]
+  },
+  {
+    "id": "gulp.cleaned.possessive",
+    "kind": "gulp.cleaned",
+    "style": "possessive",
+    "lines": [
+      "good."
+    ]
+  },
+  {
+    "id": "gulp.missed.possessive",
+    "kind": "gulp.missed",
+    "style": "possessive",
+    "lines": [
+      "all of it."
+    ]
+  },
+  {
+    "id": "gulp.entry.cold",
+    "kind": "gulp.entry",
+    "style": "cold",
+    "lines": [
+      "drink."
+    ]
+  },
+  {
+    "id": "gulp.surge.cold",
+    "kind": "gulp.surge",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "gulp.tapped.cold",
+    "kind": "gulp.tapped",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "gulp.spill.cold",
+    "kind": "gulp.spill",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "gulp.cough.cold",
+    "kind": "gulp.cough",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "gulp.done.cold",
+    "kind": "gulp.done",
+    "style": "cold",
+    "lines": [
+      "done."
+    ]
+  },
+  {
+    "id": "gulp.clean.cold",
+    "kind": "gulp.clean",
+    "style": "cold",
+    "lines": [
+      "clean it."
+    ]
+  },
+  {
+    "id": "gulp.cleaned.cold",
+    "kind": "gulp.cleaned",
+    "style": "cold",
+    "lines": [
+      "fine."
+    ]
+  },
+  {
+    "id": "gulp.missed.cold",
+    "kind": "gulp.missed",
+    "style": "cold",
+    "lines": [
+      "there."
+    ]
   }
 ]

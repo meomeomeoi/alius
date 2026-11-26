@@ -49,6 +49,19 @@ describe('content loader', () => {
     expect(registries.skills.size).toBe(0);
   });
 
+  it('final review Minor 9: a hand without its measured scale still loads (at 1), with a warning on the list', async () => {
+    const files = {
+      'p/manifest.json': { id: 'p', name: 'P', version: '1', priority: 0, files: { handFonts: 'hands.json' } },
+      'p/hands.json': [{ id: 'my_hand', name: 'Mine', family: 'My Hand', description: 'a local hand' }, { id: 'measured', name: 'Measured', family: 'Measured', scale: 1.2, description: 'a measured hand' }],
+    };
+    const { registries, errors } = await loadPacks(['p'], memFetch(files));
+    expect(registries.handFonts.get('my_hand')?.scale).toBe(1);
+    expect(registries.handFonts.get('measured')?.scale).toBe(1.2);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({ pack: 'p', file: 'hands.json', path: '[0].scale' });
+    expect(errors[0]!.message).toMatch(/read at 1/);
+  });
+
   it('missing manifest is reported and other packs still load', async () => {
     const { registries, errors } = await loadPacks(['tests/fixtures/packs/none', `${P}/base`], fsFetch);
     expect(errors).toHaveLength(1);

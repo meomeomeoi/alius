@@ -59,6 +59,20 @@ export function instrumentFor(run: PhysicsRun, state: CampaignState, reg: Regist
   }) ?? null;
 }
 
+/**
+ * Whether a matching instrument can draw this run on this scene (`InstrumentDef.drawable`, e.g. its pictures exist and none failed): absent =
+ * yes; false (or a throw) = the card plays the run.
+ */
+function drawable(def: InstrumentDef, env: InstrumentEnv, run: PhysicsRun): boolean {
+  if (!def.drawable) return true;
+  try {
+    return def.drawable(env, run);
+  } catch (err) {
+    warnOnce(def.id, 'drawable', err);
+    return false;
+  }
+}
+
 /** What a mount undoes at its unmount. */
 interface Scope {
   /** Inputs reach the engine (dead from the end of the run). */
@@ -114,6 +128,16 @@ function scopedStaging(staging: PhysicsPanelStaging, scope: Scope): PhysicsPanel
     finishCounted: (n) => (on() ? staging.finishCounted(n) : []),
     cue: (k, b) => (on() ? staging.cue(k, b) : null),
     voiced: (k, b) => (on() ? staging.voiced?.(k, b) ?? null : null),
+    script: (p) => (on() ? staging.script?.(p) ?? null : null),
+    getUp: () => (on() ? staging.getUp?.() ?? [] : []),
+    found: (id) => (on() ? staging.found?.(id) ?? [] : []),
+    decide: (k, r) => (on() ? staging.decide?.(k, r) ?? [] : []),
+    relief: (x) => (on() ? staging.relief?.(x) ?? [] : []),
+    woke: () => (on() ? staging.woke?.() ?? [] : []),
+    // e9: her verdict is said at the session's end, when the run is already gone: alive until the unmount (never into a new scene or chat)
+    service: (id, v) => (scope.live ? staging.service?.(id, v) ?? [] : []),
+    spit: (b, a) => (on() ? staging.spit?.(b, a) ?? [] : []),
+    restart: () => { if (on()) staging.restart?.(); },
     beat: () => staging.beat(),
     clock: () => staging.clock(),
   };
@@ -240,6 +264,7 @@ function mount(env: InstrumentEnv, def: InstrumentDef, run: PhysicsRun, key: str
         return () => { clearTimeout(t); scope.timers.delete(t); };
       },
     },
+    redraw: { value: (): void => { if (scope.live) env.redraw?.(); } },
     say: {
       value: (host: HTMLElement, text: string, opts: Parameters<InstrumentEnv['say']>[2]): HTMLElement => {
         if (scope.live) scope.saidIn.add(host);
@@ -350,7 +375,8 @@ export function syncInstruments(env: InstrumentEnv, run: PhysicsRun | undefined)
     else if (current && !current.finishing) unmountInstruments();
     return false;
   }
-  const def = state ? instrumentFor(run, state, env.registries, env.settings()) : null;
+  const found = state ? instrumentFor(run, state, env.registries, env.settings()) : null;
+  const def = found && drawable(found, env, run) ? found : null;
   if (!def) {
     unmountInstruments();
     return false;

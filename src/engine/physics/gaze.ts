@@ -14,9 +14,10 @@ const G = TUNING.physics.gaze;
  * Her attention for each of `n` beats: by her activity's `attention` word (`on_commander`, `divided`, `elsewhere`, `none`; absent reads as
  * `on_commander`), and a `clinical` holder is always watching. Draws one number a beat (none for a clinical holder).
  */
-export function attentionPlan(n: number, attention: string | undefined, style: PhysicsStyle, rng: Rng): Attention[] {
-  if (leadStyle(style).key === 'clinical') return Array.from({ length: n }, () => 'watching' as const);
-  const [w, g] = G.attention[attention ?? 'on_commander'] ?? G.attention.on_commander!;
+export function attentionPlan(n: number, attention: string | undefined, style: PhysicsStyle, rng: Rng, weights?: [number, number]): Attention[] {
+  // P10e-e R25: in her frame the weights are her presence's mix (`weights`), a clinical holder included; one draw a beat as always
+  if (weights === undefined && leadStyle(style).key === 'clinical') return Array.from({ length: n }, () => 'watching' as const);
+  const [w, g] = weights ?? G.attention[attention ?? 'on_commander'] ?? G.attention.on_commander!;
   return Array.from({ length: n }, () => {
     const x = rng.float();
     return x < w! ? 'watching' : x < w! + g! ? 'glancing' : 'busy';

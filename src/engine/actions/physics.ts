@@ -1,10 +1,14 @@
 import { blockingLive } from '../blocking';
 import { registerAction } from '../dispatch';
-import { physicsSignal, startPhysics, stopWord } from '../physics/run';
+import { creditHold } from '../physics/boundary';
+import { isShoeRun } from '../physics/footwear';
+import { foundPosed, frameWoke, getUp, physicsSignal, startPhysics, stopPhysics, stopWord } from '../physics/run';
 import { finishCounted, startAct } from '../physics/acts';
 import { applyWay, decayStimuli } from '../physics/stimuli';
 import { registerDayEndStep } from '../calendar';
-import { marathonSkip, nextSegment, physicsInput, typedBeats } from '../physics/segment';
+import { physicsRelief, marathonSkip, nextSegment, physicsInput, shoeSpit, typedBeats } from '../physics/segment';
+import { rateService } from '../practice/service';
+import { VERDICTS, type Verdict } from '../practice/state';
 
 // Importing this module registers the physics actions (P15a) and, through `physics/run`, what keeps a run in step with the blocking.
 
@@ -123,4 +127,70 @@ registerAction('physics/answer', (draft, payload, ctx) => {
     { type: 'scent_answer', runId: run.id, holderId: run.holderId, right, lie, caught },
     ...(lie && caught ? [{ type: 'scent_lie_caught', holderId: run.holderId }] : []),
   ];
+});
+
+/** P10e-e R28: `physics/get_up { runId }`: the commander gets up alone after her forgotten end (her offence `hold_defied`, through her practices). */
+registerAction('physics/get_up', (draft, payload, ctx) => {
+  live(draft, ctx.registries, 'physics/get_up');
+  return getUp(draft, ctx, isObj(payload) ? payload.runId : undefined);
+});
+
+/** P10e-e R28: `physics/found { runId, finderId }`: a visitor of her frame comes in and finds the commander posed (`found_posed`). */
+registerAction('physics/found', (draft, payload, ctx) => {
+  live(draft, ctx.registries, 'physics/found');
+  return foundPosed(draft, ctx, isObj(payload) ? payload.runId : undefined, isObj(payload) ? payload.finderId : undefined);
+});
+
+/**
+ * P10e-e Rulings X, Y and AE: `physics/relief { runId, beat, kind, amount, part, attention?, involuntary? }`, decided at once (one draw): a
+ * relief of the body in her frame (`relieve`, `fidget`), or the commander's own shift of weight or mouth breath in an instrument (`shift_weight`,
+ * `mouth_breath`).
+ */
+registerAction('physics/relief', (draft, payload, ctx) => {
+  live(draft, ctx.registries, 'physics/relief');
+  if (!isObj(payload)) throw new Error('physics/relief needs a payload');
+  return physicsRelief(draft, ctx, payload);
+});
+
+/** P10e-e Ruling AC (e10 fix I2): `physics/spit { runId, beat, attention }`: grit spat aside in shoe service, decided at once (one draw). */
+registerAction('physics/spit', (draft, payload, ctx) => {
+  live(draft, ctx.registries, 'physics/spit');
+  if (!isObj(payload)) throw new Error('physics/spit needs a payload');
+  return shoeSpit(draft, ctx, payload);
+});
+
+/** P10e-e review I7: `physics/woke { runId }`: she woke in her sleep (the third stir): her frame ends. */
+registerAction('physics/woke', (draft, payload, ctx) => {
+  live(draft, ctx.registries, 'physics/woke');
+  return frameWoke(draft, ctx, isObj(payload) ? payload.runId : undefined);
+});
+
+/**
+ * P10e-e Task 25 (R27): `physics/service { runId, verdict }`: her verdict on a session of foot service in her frame, from the crafts' quality
+ * (`verdictOf`, the instrument's), through P16's `rateService(…, 'engine', sceneId)`: once a scene (a second is ignored, as `rateService` does).
+ * The run is her frame that is open, or the one that just ended (its id is the scene's last and the frame done's): the instrument says it at
+ * the session's end. Memory: none new (`service_rated` lands as P16 decided). Draws no rng.
+ *
+ * Task 27 (R27, R29): shoe service ends with her verdict too. An open shoe run (`isShoeRun`) is rated and ends as `checked` (her inspection of
+ * the last surface is the check: the hold is credited as a finished cleaning); a shoe run that ended `checked` (the engine's own check at ≤ 10,
+ * or her verdict) is rated by its id against the scene's `shoeDone` (the holder is the record's). A run that ended otherwise (the stop word) is refused.
+ */
+registerAction('physics/service', (draft, payload, ctx) => {
+  live(draft, ctx.registries, 'physics/service');
+  if (!isObj(payload) || str(payload.runId) === undefined || !(VERDICTS as readonly unknown[]).includes(payload.verdict)) {
+    throw new Error('physics/service needs { runId, verdict: pleased | adequate | displeased }');
+  }
+  const scene = draft.scene!;
+  const run = scene.physics;
+  let holderId: string;
+  if (run !== undefined && run.id === payload.runId && isShoeRun(run, ctx.registries)) {
+    const rated = rateService(draft, ctx, run.holderId, payload.verdict as Verdict, 'engine', scene.id);
+    return [...rated, ...creditHold(draft, ctx.registries, run), ...stopPhysics(draft, ctx.registries, 'checked')];
+  }
+  const latest = payload.runId === `p${scene.physicsCount ?? 0}`;
+  if (run !== undefined && run.id === payload.runId && run.sourceKind === 'activity') holderId = run.holderId;
+  else if (run === undefined && scene.frameDone !== undefined && scene.frameDone.runId === payload.runId && latest) holderId = scene.frameDone.holderId;
+  else if (run === undefined && latest && scene.shoeDone !== undefined && scene.shoeDone.runId === payload.runId) holderId = scene.shoeDone.holderId;
+  else throw new Error('physics/service: stale physics run (her frame or her shoe service, open or just ended)');
+  return rateService(draft, ctx, holderId, payload.verdict as Verdict, 'engine', scene.id);
 });

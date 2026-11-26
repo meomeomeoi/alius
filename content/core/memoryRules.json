@@ -908,7 +908,7 @@
   {
     "id": "scent_lie_caught",
     "event": "scent_lie_caught",
-    "text": "Under {name}'s scent, the commander lied about it, and a cough gave the lie away.",
+    "text": "Asked by {name} about her scent, the commander lied to {name}, and a cough gave the lie away.",
     "importance": 2,
     "about": "her",
     "audience": "her",
@@ -916,6 +916,32 @@
     "tags": [
       "physics",
       "scent_lie"
+    ]
+  },
+  {
+    "id": "forgotten_end",
+    "event": "forgotten_end",
+    "text": "{name} left the commander posed where {name} had put the commander, and forgot the commander there.",
+    "importance": 2,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "physics",
+      "forgotten_end"
+    ]
+  },
+  {
+    "id": "found_posed",
+    "event": "found_posed",
+    "text": "{finder} came in and found the commander still posed, exactly as {name} had left the commander.",
+    "importance": 3,
+    "about": "her",
+    "audience": "finder",
+    "spread": "slow",
+    "tags": [
+      "physics",
+      "found_posed"
     ]
   },
   {

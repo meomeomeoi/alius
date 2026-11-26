@@ -538,6 +538,11 @@ Her lines in her hand while she rests her weight on the commander (P10e-e Task 1
 - **entry.standing_on:** silent
 - **entry.boot_on_chest:** silent
 
+### regal
+- **slip:** `steady.`
+- **heavy:** `I’ll lean back.`
+- **fall:** `a pity. I’ll find a sturdier seat.`
+
 ## 9. Scent (saturation.html, approved by the author, 2026-11-23)
 
 Her lines in her hand while the commander breathes her in (P10e-e Task 18, ruling Q; `saturation.html`'s `LINES`, her question's words of its `STYLES[].ask` and what her rule says is missing, `judge`). **entry**: her first words as she settles, by the contact (`scent.entry.<contact>`); **here**: her named places by the contact, in order (`scent.here.<contact>`: feet_on_face toes, arch, heel, the ball; face_to_bottom the centre, her side; smothered_armpit the hollow, the edge); **deeper** / **gently** / **still**: her orders; **moved**: playful moves her mark; **good** / **bad**: an order kept or not; **mouth**: she heard a mouth breath (the engine caught it), by her style; **away**: the face turned from her while she watches; **cough**: the body revolted; **liar**: the cough gave a lie away; **caught**: she saw the commander seek her out; **lost.low** / **lost.high**: the head overflowed (by the commander's stage); **need**: the body breathes by itself; **end** / **stop**: the end, after the stop word; **ask**: her question (`{p}` is her place in her own words, lower case as she writes); **answer.ok** / **answer.bad** / **answer.empty**: her verdict, which follows the answer the engine records; **miss.***: what her rule found missing (warm; admit; bad and want; the place, the strength and the band; the intensity wrong or missing, and honest). Neutral is every style with no rows of its own; cold is silent on every kind, her first words included (Ruling R). No pronoun for the commander.
@@ -819,3 +824,501 @@ Her lines in her hand while the commander's jaw is held open (P10e-e Task 20, ru
 - **stop:** silent
 - **entry.sole_to_mouth:** silent
 - **entry.ring_gag:** silent
+
+## 11. Her activity (her_activity.html, approved by the author, 2026-11-23)
+
+Her lines in her hand in the frame of her time (P10e-e Task 24, ruling Q; `her_activity.html`'s `STYLES`). **name**: her name for the commander (the sign that a line is for the commander); **noticed**: she caught a movement (at `with`, and at `glancing` most of the time); **correct**: a correction; **call**: what she calls the commander to someone else; **end**: her end line (`with`, `glancing`); **askReply**: an answer to her question was given; **breach**: the commander answered words not meant for the commander; **silent**: her question was left unanswered; **stop**: after the stop word; **rest**: she lets the commander rest under her weight (her_activity.html `W_LINES[].rest`); **fall**: her verdict at the third buckle (`W_FALL`). Her spoken words that the prototype writes inline (final review, Minor 3; every style reads these neutral rows): **woke**, waking at `with` / `glancing` (**wokeMumble** elsewhere); **comeIn**, to a visitor's knock; **stay**, after her entry when she keeps the commander; **entry.floor**, her order in the floor view's entry (the gesture is the sensory line). Neutral is every style with no rows of its own (Ruling R); the prototype has cold's own rows. No pronoun for the commander.
+
+### neutral
+- **name:** `commander`
+- **noticed:** `still.` · `stop fidgeting.`
+- **correct:** `still.`
+- **call:** `the chair.`
+- **end:** `done. you can get up.`
+- **askReply:** `good.` · `mm.`
+- **breach:** `I wasn’t talking to you.`
+- **silent:** `I asked you something.`
+- **stop:** `okay. up you get.` · `alright. stopping.` · `enough. up.`
+- **fall:** `…really? enough.`
+- **rest:** `rest. a moment.`
+- **woke:** `…what are you doing.`
+- **wokeMumble:** `…`
+- **comeIn:** `come in.`
+- **stay:** `Stay.`
+- **entry.floor:** `Down. Eyes down.`
+
+### affectionate
+- **name:** `sweetheart`
+- **noticed:** `shh. you’re alright.` · `need a moment?`
+- **correct:** `easy…`
+- **call:** `the cat.`
+- **end:** `come here. you did so well.`
+- **askReply:** `good.` · `thank you.`
+- **breach:** `hm? oh, not you, sweetheart.`
+- **silent:** `…sweetheart?`
+- **fall:** `hey, hey. that’s enough for tonight.`
+- **rest:** `here. rest a moment.`
+
+### clinical
+- **name:** `subject`
+- **noticed:** `movement. noted.` · `again. noted.`
+- **correct:** `posture.`
+- **call:** `the subject.`
+- **end:** `session over. noted: everything.`
+- **askReply:** `noted.`
+- **breach:** `unsolicited. noted.`
+- **silent:** `no response. noted.`
+- **fall:** `failure point reached. session over.`
+- **rest:** `recovery interval.`
+
+### cold
+- **name:** `you`
+- **noticed:** `don’t.`
+- **correct:** `…`
+- **call:** `the furniture.`
+- **end:** `go.`
+- **askReply:** `fine.`
+- **breach:** `not you.`
+- **silent:** `I asked.`
+- **fall:** `get up. go.`
+
+### cruel
+- **name:** `chair`
+- **noticed:** `did I say move?` · `pathetic.`
+- **correct:** `still, chair.`
+- **call:** `my chair. it creaks today.`
+- **end:** `get up. we’re not done tomorrow.`
+- **askReply:** `adequate.`
+- **breach:** `chairs don’t talk.`
+- **silent:** `chair. I asked you something.`
+- **fall:** `useless. get out of my sight.`
+- **rest:** `…fine. a moment.`
+
+### playful
+- **name:** `pet`
+- **noticed:** `fidgety~` · `I saw that~`
+- **correct:** `tsk.`
+- **call:** `my footrest. it wobbles.`
+- **end:** `fine, fine. up you get~`
+- **askReply:** `good pet.` · `cute.`
+- **breach:** `who said you could talk~`
+- **silent:** `ignoring me? bold.`
+- **fall:** `timber! okay, you’re done.`
+- **rest:** `fine, a break~`
+
+### possessive
+- **name:** `mine`
+- **noticed:** `don’t.` · `you stay where I put you.`
+- **correct:** `mine. still.`
+- **call:** `what’s mine.`
+- **end:** `up. you’re mine again tomorrow.`
+- **askReply:** `good.` · `of course.`
+- **breach:** `did I talk to you?`
+- **silent:** `answer me.`
+- **fall:** `enough. you’ll do better for me.`
+
+### regal
+- **name:** `my seat`
+- **noticed:** `steady.` · `a seat does not fidget.`
+- **correct:** `steady.`
+- **call:** `my seat.`
+- **end:** `you may get up.`
+- **askReply:** `acceptable.` · `good.`
+- **breach:** `I was not speaking to you.`
+- **silent:** `I asked you a question.`
+- **fall:** `a pity. I’ll find a sturdier seat.`
+- **rest:** `rest. briefly.`
+
+### ritual
+- **name:** `kneeler`
+- **noticed:** `posture.`
+- **correct:** `posture.`
+- **call:** `the kneeler.`
+- **end:** `released.`
+- **askReply:** `as it should be.`
+- **breach:** `you were not addressed.`
+- **silent:** `you were addressed.`
+- **fall:** `down. noted. we stop.`
+- **rest:** `rest.`
+
+
+Her placeholder lines (Ruling Z, her_activity.html `ACTS[].self`, `TO_YOU`, `CALL`, `VISIT`, `CARDS`): her own words until the script of her hour arrives, and whenever it fails; by activity (`any` for every one); the exchanges (`exchange.call`, `exchange.visit`, `exchange.cards`) are `other|her`, a mention `other|plain|veiled`.
+
+### neutral
+- **self.reading_book:** `hm.` · `no. no, no, no…` · `oh, come on.` · `there it is.` · `idiot.` · `mm.` · `don’t open that door…` · `of course she did.`
+- **self.reading_reports:** `…three wounded. three.` · `the commander authorized the detour. hm.` · `that’s not what she told me.` · `requisition denied. again.` · `node four. why node four.` · `who signs these.`
+- **self.writing_report:** `…“regrettably”. no.` · `how do I say this without saying it.` · `losses: acceptable. sure.` · `mm. delete.`
+- **self.chatting_on_pda:** `ha.` · `no way.` · `she did not.` · `oh, you’re in trouble.`
+- **self.sleeping:** `…mm.` · `…no…` · `…stay…`
+- **self.music:** `~ mm-mm, mm ~` · `~ da, da-da ~`
+- **self.cleaning_weapon:** `there you are.` · `filthy.` · `who had you last.`
+- **self.mending_clothes:** `ow.` · `there.` · `hm-mm.`
+- **self.drinking:** `mm. better.` · `to me.` · `one more.` · `why is this so good.`
+- **self.sketching:** `no. the jaw’s wrong.` · `hold still.` · `better.`
+- **self.holding_audience:** `next.` · `who else.` · `they all want something.` · `hm. that one can wait.`
+- **toYou.any:** `you’re quiet. good.`
+- **toYou.reading_book:** `this one’s good. you’d hate it.`
+- **toYou.reading_reports:** `listen: “the commander’s conduct was… adequate.” hm.`
+- **toYou.sketching:** `don’t move. I’m doing your hands.` · `turn your head. no. back.`
+- **toYou.drinking:** `you want some? no. you don’t.`
+- **toYou.chatting_on_pda:** `{name} says hi. don’t answer.` (the prototype's placeholder friend, Vex, is a real soldier of the squad outside the scene; with none, the line is not said)
+- **ask.any:** `what time is it, do you think?` · `still with me down there?`
+- **ask.reading_book:** `guess who did it.`
+- **ask.reading_reports:** `did you sign the detour at node four?`
+- **ask.writing_report:** `how do you spell “negligible”?`
+- **ask.drinking:** `tell me something. anything.`
+- **ask.cleaning_weapon:** `you ever field-strip one of these?`
+- **ask.mending_clothes:** `whose shirt is this, you think?`
+- **exchange.call:** `Unit status, please.|Operational. Two on light duty.` · `The detour at node four. Whose call?|The commander’s. I’d have made the same one.` · `And the requisition?|Denied. Again. Send it up.` · `You sound distracted.|I have my feet up on something comfortable.|long day. go on.` · `Understood. Anything else?|No. Out.`
+- **exchange.visit:** `Got a minute? The roster for tomorrow.|Leave it on the desk.` · `Has anyone seen the commander? Nobody can find…|closer than you think.|no idea. try the comms room.` · `Right. Night, then.|night.`
+- **exchange.cards:** `Your deal.|watch and learn.` · `You’re cheating.|prove it.` · `How’s your furniture holding up?|quiet. for once.|the chair? it’s fine.` · `Raise.|call.` · `Ugh. Again.|again.`
+- **exchange.heard_call:** `…is someone with you?|just my footrest.|no. the heater ticks.`
+- **exchange.heard_visit:** `…what was that?|my footrest. it creaks.|the chair. it’s old.`
+
+## 12. The throne (throne.html, approved by the author, 2026-11-25)
+
+Her lines on the throne (P10e-e Task 24b; `throne.html`'s `T_LINES`). **spill**: her mug spilled on the commander's back; **skid**: the pen skidded while she signed; **thank**: she has the commander thank her for the seat (at `with` or `glancing`); **thanked** / **noThanks**: her answer. Neutral is every style with no rows of its own. No pronoun for the commander.
+
+### neutral
+- **spill:** `…look what you did.`
+- **skid:** `hold still. again.`
+- **thank:** `say thank you for the seat.`
+- **thanked:** `good.`
+- **noThanks:** `nothing? noted.`
+
+### affectionate
+- **spill:** `oh — it’s alright. hold still.`
+- **skid:** `still, please. once more.`
+- **thank:** `say thank you. for letting me sit.`
+- **thanked:** `good. up you get.`
+- **noThanks:** `…next time, then.`
+
+### clinical
+- **spill:** `spillage. noted.`
+- **skid:** `the writing surface moved.`
+- **thank:** `acknowledge it.`
+- **thanked:** `noted.`
+- **noThanks:** `no response. noted.`
+
+### cold
+- **spill:** `clumsy.`
+- **skid:** `again.`
+- **thank:** `thank me.`
+- **thanked:** `fine.`
+- **noThanks:** `noted.`
+
+### cruel
+- **spill:** `you’ll lick that up later.`
+- **skid:** `a desk doesn’t move.`
+- **thank:** `thank me.`
+- **thanked:** `…fine.`
+- **noThanks:** `you’ll learn.`
+
+### playful
+- **spill:** `oops~ that’s on you.`
+- **skid:** `you made me scribble~`
+- **thank:** `what do we say~?`
+- **thanked:** `cute.`
+- **noThanks:** `rude~`
+
+### possessive
+- **spill:** `careful with my things.`
+- **skid:** `still. you’re mine to write on.`
+- **thank:** `thank me for using you.`
+- **thanked:** `good.`
+- **noThanks:** `we’ll work on that.`
+
+### regal
+- **spill:** `you spilled my tea.`
+- **skid:** `a desk does not move. again.`
+- **thank:** `thank me for the honor of my weight.`
+- **thanked:** `you may.`
+- **noThanks:** `how ungrateful.`
+
+### ritual
+- **spill:** `you spilled. that is noted.`
+- **skid:** `the signature is ruined. again.`
+- **thank:** `thank me for the honor.`
+- **thanked:** `accepted.`
+- **noThanks:** `the form was not kept.`
+
+
+## 13. Foot service (her_activity.html, the game inside `service`, approved by the author, 2026-11-24)
+
+Kinds `service.good` / `service.poor` (her line at the end of a bout by its quality, `q ≥ 0.6` good) and `service.wrong` (a misread or unanswered signal), said only at `with` and `glancing`; a style not listed reads neutral's. Her words for the zones are `service.zone.<zone>` (no style, under **zones** below); her check composes "<zone>. <missed>." (`service.missed`, neutral for every style). The first time she gives a signal she names it (`<motion's words> — <meaning>.`, the prototype's `MOTIONS` / `MEANINGS`, in the instrument).
+
+### neutral
+- **good:** `good.` / `mm. better.`
+- **poor:** `sloppy.` / `again, properly.`
+- **wrong:** `no.`
+- **missed:** `you missed it.`
+
+### affectionate
+- **good:** `that’s lovely.` / `perfect.`
+- **poor:** `gentler, sweetheart.`
+- **wrong:** `not that, silly.`
+
+### playful
+- **good:** `ooh, good pet~`
+- **poor:** `you call that service?`
+- **wrong:** `wrong~`
+
+### possessive
+- **good:** `good. mine.`
+- **poor:** `you’ll do it right for me.`
+- **wrong:** `no. listen.`
+
+### cold
+- **good:** `fine.`
+- **poor:** `no.`
+- **wrong:** `wrong.`
+
+### cruel
+- **good:** `adequate.`
+- **poor:** `pathetic. again.`
+- **wrong:** `can’t you read?`
+
+### clinical
+- **good:** `acceptable.`
+- **poor:** `below standard. noted.`
+- **wrong:** `incorrect response. noted.`
+
+### ritual
+- **good:** `as it should be.`
+- **poor:** `again.`
+- **wrong:** `that is not what was asked.`
+
+### zones
+- **toes:** `toes.`
+- **ball:** `the ball.`
+- **arch:** `the arch.`
+- **heel:** `heel.`
+- **edge:** `the edge.`
+
+## 14. Shoe service (shoe.html, approved by the author, 2026-11-24)
+
+Kinds `shoe.<kind>` by her style (shoe.html `LINES`, verbatim): her first words (`entry`), turning her foot (`turn`), presenting the sole (`sole`), asking for a kiss (`kiss`), her first wish for a shine (`polish`), changing feet (`other`), a spit she saw (`caught`), a swallow (`swallowed`), her verdict on a surface (`good` / `poor`, or the worst zone: `missed` over 0.2 of dirt, `dull` under 0.35 of shine; `%z` is her word for the zone), a stamp after a poor surface (`stamp`) and her end (`end`); `stop` is her line after the stop word (the prototype's `finish('stop')`). A style not listed reads neutral's (Ruling R); cold has the prototype's own lines (silent where it has none). Her words for the zones are `shoe.zone.<zone>` (no style, under **zones** below).
+
+### neutral
+- **entry:** `clean them.`
+- **turn:** `the other side.`
+- **sole:** `underneath.`
+- **kiss:** `kiss it.`
+- **polish:** `now make it shine.`
+- **other:** `now the other one.`
+- **caught:** `did you just spit?`
+- **swallowed:** `swallow it.`
+- **good:** `good.`
+- **poor:** `sloppy.`
+- **missed:** `%z. you missed it.`
+- **dull:** `%z is dull.`
+- **stamp:** `properly.`
+- **end:** `that will do.`
+- **stop:** `okay. stop. come here.`
+
+### affectionate
+- **entry:** `would you? they’re filthy.`
+- **turn:** `and this side, love.`
+- **sole:** `underneath too.`
+- **kiss:** `kiss it for me.`
+- **polish:** `make them pretty.`
+- **other:** `the other one, please.`
+- **caught:** `hey. I saw that.`
+- **swallowed:** `there you go.`
+- **good:** `they look lovely.`
+- **poor:** `nearly, sweetheart.`
+- **missed:** `you missed %z.`
+- **dull:** `%z could shine more.`
+- **stamp:** silent
+- **end:** `thank you. really.`
+
+### ritual
+- **entry:** `begin with the toe.`
+- **turn:** `the inner side.`
+- **sole:** `the sole.`
+- **kiss:** `kiss the toe.`
+- **polish:** `polish.`
+- **other:** `the left.`
+- **caught:** `you spat. again.`
+- **swallowed:** `swallow.`
+- **good:** `as it should be.`
+- **poor:** `again.`
+- **missed:** `%z.`
+- **dull:** `%z. it is dull.`
+- **stamp:** `the form.`
+- **end:** `enough. kiss them both.`
+
+### playful
+- **entry:** `look what I stepped in~`
+- **turn:** `other side~`
+- **sole:** `tada~ underneath.`
+- **kiss:** `kiss~`
+- **polish:** `make them sparkle~`
+- **other:** `and the other one~`
+- **caught:** `eww. spitting? naughty.`
+- **swallowed:** `yummy?`
+- **good:** `ooh, shiny.`
+- **poor:** `hmm, meh.`
+- **missed:** `you missed a spot~ %z.`
+- **dull:** `%z is so dull~`
+- **stamp:** `faster~`
+- **end:** `okay okay, good pet.`
+
+### cruel
+- **entry:** `clean.`
+- **turn:** `other side.`
+- **sole:** `the sole. all of it.`
+- **kiss:** `kiss it.`
+- **polish:** `shine it.`
+- **other:** `other foot.`
+- **caught:** `you spat it out? lick it back up.`
+- **swallowed:** `swallow.`
+- **good:** `adequate.`
+- **poor:** `pathetic.`
+- **missed:** `%z. you call that clean?`
+- **dull:** `%z. dull. again.`
+- **stamp:** `faster.`
+- **end:** `get away from my feet.`
+
+### possessive
+- **entry:** `my boots. clean them.`
+- **turn:** `this side too.`
+- **sole:** `underneath. mine all over.`
+- **kiss:** `kiss it. it’s mine.`
+- **polish:** `make them shine for me.`
+- **other:** `now the other.`
+- **caught:** `you don’t waste what’s mine.`
+- **swallowed:** `all of it. good.`
+- **good:** `good. mine.`
+- **poor:** `you’ll do better for me.`
+- **missed:** `%z.`
+- **dull:** `%z. dull.`
+- **stamp:** `for me. properly.`
+- **end:** `good. stay there.`
+
+### cold
+- **entry:** `clean them.`
+- **turn:** `turn.`
+- **sole:** `sole.`
+- **kiss:** `kiss.`
+- **polish:** `shine.`
+- **other:** `other.`
+- **caught:** `you spat.`
+- **swallowed:** silent
+- **good:** `fine.`
+- **poor:** `no.`
+- **missed:** `%z.`
+- **dull:** `%z.`
+- **stamp:** silent
+- **end:** `done.`
+
+### regal
+- **entry:** `my boots need you.`
+- **turn:** `the other side, if you please.`
+- **sole:** `and beneath.`
+- **kiss:** `kiss them. you may.`
+- **polish:** `I want to see myself in them.`
+- **other:** `now the other.`
+- **caught:** `you spat at my feet?`
+- **swallowed:** `swallow it. graciously.`
+- **good:** `worthy.`
+- **poor:** `unworthy.`
+- **missed:** `%z. look again.`
+- **dull:** `%z does not shine.`
+- **stamp:** `I am waiting.`
+- **end:** `you may thank me.`
+
+### zones
+- **toe:** `the toe`
+- **vamp:** `the top`
+- **laces:** `the laces`
+- **side:** `the side`
+- **heel:** `the heel`
+- **shaft:** `the shaft`
+- **welt:** `the welt`
+- **back:** `the back`
+- **toe_tread:** `the tread`
+- **mid:** `the middle of the sole`
+- **heel_tread:** `the heel underneath`
+
+## 15. Gulp (gulp.html, approved by the author, 2026-11-25)
+
+Kinds `gulp.<kind>` by her style (gulp.html `LINES`, verbatim): her first words (`entry`), her word as a surge comes (`surge`, ritual only; the model may word its own for the cue `surge`), her answer to a tap when she keeps the commander (`tapped`), a spill (`spill`), a cough (`cough`), her flow's end (`done`), what was spilled (`clean`: she makes the commander clean it, or affectionate wipes it up herself), her check of the floor (`cleaned`, or `missed` over 15 % left); `stop` is her line after the stop word (the prototype's inline one). A style not listed reads neutral's (Ruling R); cold has the prototype's own lines (silent where it has none).
+
+### neutral
+- **entry:** `open. drink.`
+- **surge:** silent
+- **tapped:** `slower, then.`
+- **spill:** `careful.`
+- **cough:** `breathe.`
+- **done:** `all of it. good.`
+- **clean:** `you spilled. clean it.`
+- **cleaned:** `good.`
+- **missed:** `there. you missed it.`
+- **stop:** `okay. stop. here.`
+
+### affectionate
+- **entry:** `shh. drink for me.`
+- **surge:** silent
+- **tapped:** `okay, okay. I’ll wait.`
+- **spill:** `it’s alright.`
+- **cough:** `easy. breathe.`
+- **done:** `good. so good.`
+- **clean:** `leave it, I’ll get it.`
+- **cleaned:** silent
+- **missed:** silent
+
+### ritual
+- **entry:** `open. drink.`
+- **surge:** `now.`
+- **tapped:** `hold.`
+- **spill:** `a spill.`
+- **cough:** `compose yourself.`
+- **done:** `finished.`
+- **clean:** `the floor. with your tongue.`
+- **cleaned:** `as it should be.`
+- **missed:** `there. again.`
+
+### playful
+- **entry:** `say ahh~`
+- **surge:** silent
+- **tapped:** `slower? hmm. no~`
+- **spill:** `oops~`
+- **cough:** `too much?`
+- **done:** `all gone~`
+- **clean:** `look at that mess. lick it up~`
+- **cleaned:** `shiny.`
+- **missed:** `you missed a spot~`
+
+### cruel
+- **entry:** `drink.`
+- **surge:** silent
+- **tapped:** `you don’t ask.`
+- **spill:** `wasteful.`
+- **cough:** `pathetic.`
+- **done:** `all of it. good.`
+- **clean:** `lick it up.`
+- **cleaned:** `adequate.`
+- **missed:** `there. all of it.`
+
+### possessive
+- **entry:** `drink. all of it is yours.`
+- **surge:** silent
+- **tapped:** `a little slower. for you.`
+- **spill:** `that was yours.`
+- **cough:** `breathe. then more.`
+- **done:** `good. mine.`
+- **clean:** `you don’t waste me. clean it.`
+- **cleaned:** `good.`
+- **missed:** `all of it.`
+
+### cold
+- **entry:** `drink.`
+- **surge:** silent
+- **tapped:** silent
+- **spill:** silent
+- **cough:** silent
+- **done:** `done.`
+- **clean:** `clean it.`
+- **cleaned:** `fine.`
+- **missed:** `there.`

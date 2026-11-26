@@ -513,6 +513,8 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'endurance_gained', 'her_skill_gained', 'marathon_phase', 'marathon_done', 'reflex', 'stimulus_stage_changed', 'stimulus_way', 'mouth_act', 'mouth_act_done', 'mouth_act_restart', 'condition_set', 'condition_ended',
   // P10e-e (scent's question, R20)
   'scent_answer', 'scent_lie_caught',
+  // P10e-e (her frame, R28; the throne's decision, 24b)
+  'forgotten_end', 'found_posed', 'physics_got_up', 'physics_decided', 'physics_noticed', 'physics_woke', 'physics_buckle',
   // P10c
   'quarters_set',
   // P13
@@ -1008,6 +1010,8 @@ export const RegionSchema = BaseEntrySchema.extend({
   layers: z.tuple([int.min(3).max(5), int.min(3).max(5)]).refine(([a, b]) => a <= b, 'layers minimum must not exceed maximum'),
   nodeWeights: idKeyed,
   pointsOfInterest: z.array(z.object({ id: str, name: str, summary: str, templateId: str }).strict()),
+  /** P10e-e Task 27 (R30): the dirt a run here leaves on her footwear (shoe service's `dirtOfDay`); absent: the rest of her day decides. */
+  dirt: z.enum(['ash', 'oil', 'spores', 'mud']).optional(),
   rumors: z.array(str.refine((t) => wordCount(t) <= 40, 'a rumor line is at most 40 words')),
   knownFromStart: z.boolean().optional(),
   unlockedBy: z.object({ flag: str.optional(), clearanceMin: int.min(1).max(3).optional() }).strict().optional(),
@@ -2273,8 +2277,11 @@ registrySchemas.dmBehaviours = DmBehaviourSchema;
 export const HandFontSchema = BaseEntrySchema.extend({
   name: str.max(60),
   family: str.max(60).regex(/^[A-Za-z0-9 ]+$/, 'a plain CSS family name'),
-  /** P10e-e: the hand's size factor against Caveat (1), measured once by `scripts/measure-hands.mjs`; every size in her hand is multiplied by it. */
-  scale: z.number().min(0.6).max(1.7),
+  /**
+   * P10e-e: the hand's size factor against Caveat (1), measured once by `scripts/measure-hands.mjs`; every size in her hand is multiplied by it.
+   * Final review Minor 9: a (local) entry without it loads at 1 and the loader warns (`loadPacks`), so the hand is never lost silently.
+   */
+  scale: z.number().min(0.6).max(1.7).default(1),
   description: str.max(DESCRIPTION_MAX),
 }).strict();
 export type HandFontEntry = z.infer<typeof HandFontSchema>;
@@ -2646,6 +2653,8 @@ export const WorshipTargetSchema = BaseEntrySchema.extend({
   zone: z.object({ front: bodyPoint.optional(), back: bodyPoint.optional() }).strict(),
   /** The stimulus kinds a contact with it exposes (`stimulusKinds` ids). */
   stimuli: z.array(str).min(1),
+  /** P10e-e Task 27: her footwear (boots or heels, `footwearOf`): a contact on it is shoe service (`isShoeRun`). */
+  footwear: z.literal(true).optional(),
   label: blockLabel,
   description: str,
 }).strict().superRefine((t, ctx) => {
@@ -2718,6 +2727,17 @@ export const BlockingActivitySchema = BaseEntrySchema.extend({
   sources: sourceWeights.optional(),
   /** The P2 activity ids whose scene opens with this one (`scene.activityId`). */
   fromActivities: z.array(str).min(1).optional(),
+  /**
+   * P10e-e R24: the frame of her time (her_activity.html `ACTS`): how her presence drifts a phase (`absorb`), how well she hears the commander,
+   * her light, her clock (`unit`, `total`, `per` the seconds between her marks), her legs under the desk, her hours (absent: unknown) and what
+   * the activity brings (a call, a visitor, sleep, music, a drink). An activity with a frame starts `her_activity` when she placed the commander.
+   */
+  frame: z.object({
+    absorb: z.number().min(-1).max(1), hear: z.number().min(0).max(1), light: z.enum(['lamp', 'screen', 'dark']), unit: str, total: z.number().positive(),
+    per: z.tuple([z.number().positive(), z.number().positive()]), legs: z.enum(['swing', 'tap', 'still', 'asleep', 'beat']), hours: z.number().positive().optional(),
+    call: z.literal(true).optional(), visitor: z.literal(true).optional(), sleep: z.literal(true).optional(), music: z.literal(true).optional(), drink: z.literal(true).optional(),
+    audience: z.literal(true).optional(),
+  }).strict().optional(),
   label: blockLabel, description: str, promptHint: blockHint, effects: effectList,
 }).strict();
 
@@ -2750,9 +2770,10 @@ export const ContactPhysicsSchema = BaseEntrySchema.extend({
 export const PhysicsCueSchema = BaseEntrySchema.extend({
   kind: z.enum(CUE_KINDS),
   physics: z.array(str).min(1).optional(),
-  lines: z.array(str.max(160)).min(3).max(5),
+  // three to five lines; only `surge` may hold fewer (P10e-e R32, review M6: gulp.html's `surge` is ritual's "now." alone)
+  lines: z.array(str.max(160)).min(1).max(5),
   description: str,
-}).strict();
+}).strict().refine((e) => e.lines.length >= 3 || e.kind === 'surge', { message: 'a cue row has three to five lines (gulp\'s `surge` may hold fewer: gulp.html has one)', path: ['lines'] });
 
 export const StimulusKindSchema = BaseEntrySchema.extend({
   contentTags: tagList,
@@ -3122,9 +3143,26 @@ export const CARD_VOICE_KINDS = [
   // (CARD_VOICE_STATIC); `jaw.ask` lines are `question|word` (no word: any answer); `jaw.stop` is finish's line after the stop word
   'jaw.teeth', 'jaw.deeper', 'jaw.out', 'jaw.suck', 'jaw.wide', 'jaw.correct', 'jaw.restOk', 'jaw.restNo', 'jaw.ask', 'jaw.heard', 'jaw.lost', 'jaw.end',
   'jaw.slack', 'jaw.stop',
+  // P10e-e ruling Q: her frame's fixed lines (her_activity.html `STYLES`: her name for the commander, and her lines by situation); `activity.stop`
+  // is finish's line after the stop word
+  'activity.name', 'activity.noticed', 'activity.correct', 'activity.call', 'activity.end', 'activity.askReply', 'activity.breach', 'activity.silent', 'activity.stop', 'activity.rest', 'activity.fall',
+  // final review Minor 3: her spoken words the prototype writes inline (her waking words at `with` / `glancing` and elsewhere, her "come in." to a
+  // visitor, "Stay." after her entry); her spoken order in an entry is `activity.entry.<view>` (CARD_VOICE_STATIC)
+  'activity.woke', 'activity.wokeMumble', 'activity.comeIn', 'activity.stay',
+  // P10e-e 24b: the throne's lines (throne.html `T_LINES`)
+  'throne.spill', 'throne.skid', 'throne.thank', 'throne.thanked', 'throne.noThanks',
+  // P10e-e Task 26: foot service's lines (her_activity.html `SVC_LINES`); her words for the zones are `service.zone.<zone>` (CARD_VOICE_STATIC, `ZONE_WORDS`)
+  'service.good', 'service.poor', 'service.wrong', 'service.missed',
+  // P10e-e Task 28: shoe service's lines (shoe.html `LINES`, card-voice.md §14); her words for the zones are `shoe.zone.<zone>` (CARD_VOICE_STATIC,
+  // `ZONE_WORDS`); `shoe.stop` is finish's line after the stop word (the prototype's inline one)
+  'shoe.entry', 'shoe.turn', 'shoe.sole', 'shoe.kiss', 'shoe.polish', 'shoe.other', 'shoe.caught', 'shoe.swallowed', 'shoe.good', 'shoe.poor',
+  'shoe.missed', 'shoe.dull', 'shoe.stamp', 'shoe.end', 'shoe.stop',
+  // P10e-e Task 30: gulp's lines (gulp.html `LINES`, card-voice.md §15); `gulp.surge` is ritual's word (the cue `surge` may take its place);
+  // `gulp.stop` is finish's line after the stop word (the prototype's inline one)
+  'gulp.entry', 'gulp.surge', 'gulp.tapped', 'gulp.spill', 'gulp.cough', 'gulp.done', 'gulp.clean', 'gulp.cleaned', 'gulp.missed', 'gulp.stop',
 ] as const;
 /** The kinds of her static words (card-voice.md §3), keyed by a milestone id, a domain id (or `submit`) and the return's terms; her first words under a weight, by the contact (§8, `weight.entry.<contact>`); under her scent, her first words and her named places by the contact (§9); in the jaw, her first words by what holds the mouth open (§10, `jaw.entry.<contact>`). */
-export const CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+|scent\.(entry|here)\.[a-z0-9_]+|jaw\.entry\.[a-z0-9_]+)$/;
+export const CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+|scent\.(entry|here)\.[a-z0-9_]+|jaw\.entry\.[a-z0-9_]+|activity\.(self|toYou|ask|exchange|entry)\.[a-z0-9_]+|service\.zone\.[a-z0-9_]+|shoe\.zone\.[a-z0-9_]+)$/;
 
 /**
  * P10e-e R7: a table of her lines on the scene's cards (`docs/content/card-voice.md` is the readable copy, approved by the author). Read
@@ -3135,6 +3173,6 @@ export const CardVoiceSchema = BaseEntrySchema.extend({
   kind: str.refine((k) => (CARD_VOICE_KINDS as readonly string[]).includes(k) || CARD_VOICE_STATIC.test(k), 'an unknown card voice kind'),
   style: str.optional(),
   lines: z.array(str.max(160)),
-}).strict().refine((e) => e.lines.length > 0 || ((e.kind.startsWith('breath.') || e.kind.startsWith('weight.') || e.kind.startsWith('scent.') || e.kind.startsWith('jaw.')) && e.style !== undefined), 'no lines (only a style\'s own breath, weight, scent or jaw row may be empty: she is silent there)');
+}).strict().refine((e) => e.lines.length > 0 || ((e.kind.startsWith('breath.') || e.kind.startsWith('weight.') || e.kind.startsWith('scent.') || e.kind.startsWith('jaw.') || e.kind.startsWith('activity.') || e.kind.startsWith('throne.') || e.kind.startsWith('shoe.') || e.kind.startsWith('gulp.')) && e.style !== undefined) || e.kind === 'gulp.surge', 'no lines (only a style\'s own breath, weight, scent, jaw, frame, shoe or gulp row may be empty: she is silent there; gulp\'s `surge` is empty for every style but ritual\'s)');
 export type CardVoiceEntry = z.infer<typeof CardVoiceSchema>;
 registrySchemas.cardVoice = CardVoiceSchema;

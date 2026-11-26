@@ -1,5 +1,6 @@
 // P10e chunk (e): side-by-side shots of a prototype and its port (not part of `npm test`: it needs Chromium).
 //   npm run shots -- <name> [--state <fixture>] [--moment <id>] [--sprite <file>]
+// (an entry with `prototype` shoots a game inside another prototype: `service` is her_activity.html's foot service)
 // It builds the prototype (`npm run proto -- <name>`, .superpowers/prototypes/<name>.html) and the layout page (scripts/layout-page.mjs) with the
 // same fixture, drives both to each named moment of scripts/instrument-moments.mjs and writes
 //   .superpowers/shots/<name>/proto-<moment>.png, port-<moment>.png and pair-<moment>.png (the two side by side, the prototype on the left).
@@ -24,6 +25,7 @@ const only = opt('--moment');
 const moments = entry.moments.filter((m) => only === undefined || m.id === only);
 if (moments.length === 0) { console.error(`no moment "${only}" for ${name}: ${entry.moments.map((m) => m.id).join(', ')}`); process.exit(1); }
 const settle = entry.settle ?? 400;
+const proto = entry.prototype ?? name; // an entry may shoot a game inside another prototype (`service`: her_activity.html)
 
 const out = resolve(root, '.superpowers/shots', name);
 mkdirSync(out, { recursive: true });
@@ -43,7 +45,7 @@ if (!sprite && entry.rasterSprite) {
   await page.screenshot({ path: sprite, omitBackground: true });
   await page.close();
 }
-execFileSync('node', [join(root, 'scripts/prototype.mjs'), name, ...(sprite ? ['--sprite', sprite] : [])], { cwd: root, stdio: ['ignore', 'ignore', 'inherit'] });
+execFileSync('node', [join(root, 'scripts/prototype.mjs'), proto, ...(sprite ? ['--sprite', sprite] : [])], { cwd: root, stdio: ['ignore', 'ignore', 'inherit'] });
 await buildLayoutPage();
 const server = await serveRoot();
 
@@ -57,29 +59,29 @@ for (const m of moments) {
   const clip = clipOf(m.clip ?? entry.clip, size);
   const ctx = { size, wait };
   // the prototype
-  const proto = await browser.newPage({ viewport: { width: size[0], height: size[1] }, deviceScaleFactor: 1 });
+  const protoPage = await browser.newPage({ viewport: { width: size[0], height: size[1] }, deviceScaleFactor: 1 });
   const protoErrors = [];
-  proto.on('pageerror', (e) => protoErrors.push(e.message));
-  await proto.goto(`http://127.0.0.1:${server.port}/.superpowers/prototypes/${name}.html`);
-  await proto.evaluate(() => document.fonts.ready);
-  if ((entry.hide ?? []).length > 0) await proto.addStyleTag({ content: `${entry.hide.join(', ')} { visibility: hidden !important; }` });
+  protoPage.on('pageerror', (e) => protoErrors.push(e.message));
+  await protoPage.goto(`http://127.0.0.1:${server.port}/.superpowers/prototypes/${proto}.html`);
+  await protoPage.evaluate(() => document.fonts.ready);
+  if ((entry.hide ?? []).length > 0) await protoPage.addStyleTag({ content: `${entry.hide.join(', ')} { visibility: hidden !important; }` });
   // the port
   const state = opt('--state') ?? m.state ?? entry.state;
   const { page: port, errors: portErrors } = await openLayout(browser, server.port, state, size, m.query ?? '');
   await port.evaluate(() => document.fonts.ready);
   try {
-    await m.proto(proto, ctx);
-    await m.port(port, { ...ctx, proto }); // the port's step may drive the prototype too (to act on both at the same moment)
+    await m.proto(protoPage, ctx);
+    await m.port(port, { ...ctx, proto: protoPage }); // the port's step may drive the prototype too (to act on both at the same moment)
     await wait(settle);
     const files = { proto: join(out, `proto-${m.id}.png`), port: join(out, `port-${m.id}.png`) };
-    await proto.screenshot({ path: files.proto, clip });
+    await protoPage.screenshot({ path: files.proto, clip });
     await port.screenshot({ path: files.port, clip });
     // the pair: both shots side by side, labelled, in one picture
     const pair = await browser.newPage({ viewport: { width: 400, height: 300 }, deviceScaleFactor: 1 });
     const img = (f) => `data:image/png;base64,${readFileSync(f).toString('base64')}`;
     await pair.setContent(`<!doctype html><style>body{margin:0;background:#111;color:#bbb;font:13px monospace;display:flex;gap:12px;padding:12px;width:max-content}
       figure{margin:0}figcaption{padding:0 0 6px}img{display:block;outline:1px solid #333}</style>
-      <figure><figcaption>prototype · ${name} · ${m.id}</figcaption><img src="${img(files.proto)}"></figure>
+      <figure><figcaption>prototype · ${proto} · ${m.id}</figcaption><img src="${img(files.proto)}"></figure>
       <figure><figcaption>port · ${state} · ${m.id}</figcaption><img src="${img(files.port)}"></figure>`);
     await pair.evaluate(() => Promise.all([...document.images].map((i) => i.decode())));
     const box = await pair.evaluate(() => ({ width: document.body.scrollWidth, height: document.body.scrollHeight }));
@@ -92,7 +94,7 @@ for (const m of moments) {
   }
   for (const e of protoErrors) failures.push(`${m.id}: the prototype threw: ${e}`);
   for (const e of portErrors) failures.push(`${m.id}: the port threw: ${e}`);
-  await proto.close();
+  await protoPage.close();
   await port.close();
 }
 await browser.close();

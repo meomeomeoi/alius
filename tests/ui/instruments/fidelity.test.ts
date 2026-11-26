@@ -18,6 +18,14 @@ beforeAll(async () => {
 });
 
 describe('the fidelity helpers', () => {
+  it('review M-R3: a declared table addition that the prototype\'s table also has fails (it cannot hide a changed row)', async () => {
+    const spec: FidelitySpec = { prototype: 'weight', note: '', functions: [], differences: [],
+      tables: [{ ident: 'STYLES', module: 'src/ui/scene/instruments/weight/weight.ts', export: 'STYLES', additions: { regal: 'throne.html', neutral: 'hides a row' } }] };
+    const failures = await checkFidelity(spec, { registries: reg });
+    expect(failures.some((f) => f.includes('STYLES.neutral') && f.includes('prototype'))).toBe(true);
+    expect(failures.some((f) => f.includes('STYLES.regal'))).toBe(false);
+  });
+
   it('protoSource is the script of the prototype (every inline <script>, in order)', () => {
     const src = protoSource('breath');
     expect(src).toContain('function windowOpenness() {');

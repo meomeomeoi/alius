@@ -42,8 +42,16 @@ export interface FidelitySpec {
   prototype: string;
   note?: string;
   functions: Array<{ fn: string; module: string; as?: string; prototype?: string; fragment?: { from: string; to: string } }>;
-  tables: Array<{ ident: string; module: string; export: string; prototype?: string; deps?: string[] }>;
-  lines?: Array<{ ident: string; prototype?: string; registry?: 'physicsCues' | 'cardVoice'; physics?: string; cueKinds: Record<string, string> }>;
+  /** `additions`: keys the port's table adds, each from another prototype (its reason): compared without them. */
+  tables: Array<{ ident: string; module: string; export: string; prototype?: string; deps?: string[]; additions?: Record<string, string> }>;
+  /**
+   * `format` reads a table of objects as the registry's strings (her_activity's placeholders, Ruling Z): `toYou` / `ask` the `text` of the items
+   * without / with `ask`; `exchange` each `{ other, her }` as `other|her` and `{ other, mention: { plain, veiled } }` as `other|plain|veiled`;
+   * `line` a single string as a row of one line (her_activity's `ZONE_WORDS`, e9). A path `.` is the whole table. `literal` (final review
+   * Minor 3: her words that the prototype writes inline in a function): each path is the prototype's text itself, which must stand in its
+   * source as written, and the row is that one line (`ident` names nothing; `inline` by convention).
+   */
+  lines?: Array<{ ident: string; prototype?: string; registry?: 'physicsCues' | 'cardVoice'; physics?: string; format?: 'toYou' | 'ask' | 'exchange' | 'line' | 'literal'; cueKinds: Record<string, string> }>;
   differences: Array<{ fn: string; reason: string; diff: string }>;
 }
 
@@ -537,6 +545,16 @@ function declaredHunks(diff: string): string[] {
   return out.map((h) => h.trimEnd()).filter((h) => h !== '');
 }
 
+/** A table's items as the registry's strings (`lines[].format`); a value with no format is as it is. */
+function formatLines(v: unknown, format: 'toYou' | 'ask' | 'exchange' | 'line' | 'literal' | undefined): unknown {
+  if (format === 'line') return typeof v === 'string' ? [v] : v;
+  if (format === undefined || !Array.isArray(v)) return v;
+  const items = v as Array<Record<string, unknown>>;
+  if (format === 'exchange') return items.map((x) => { const m = x.mention as { plain: string; veiled: string } | undefined; return m ? `${String(x.other)}|${m.plain}|${m.veiled}` : `${String(x.other)}|${String(x.her)}`; });
+  const out = items.filter((x) => (format === 'ask') === (x.ask === true)).map((x) => String(x.text));
+  return out.length > 0 ? out : undefined;
+}
+
 function atPath(value: unknown, path: string): unknown {
   return path.split('.').reduce<unknown>((v, k) => (v !== null && typeof v === 'object' ? (v as Record<string, unknown>)[k] : undefined), value);
 }
@@ -570,8 +588,9 @@ const show = (v: unknown): string => JSON.stringify(v, (_k, x: unknown) => (type
 export async function checkFidelity(spec: FidelitySpec, opts: { registries: Registries }): Promise<string[]> {
   const failures: string[] = [];
   const named = new Set(spec.functions.map((f) => f.fn));
+  const linePaths = new Set((spec.lines ?? []).flatMap((l) => Object.keys(l.cueKinds).map((p) => `${l.ident}.${p}`)));
   for (const d of spec.differences) {
-    if (!named.has(d.fn)) failures.push(`a difference is declared for "${d.fn}", which is not a listed function`);
+    if (!named.has(d.fn) && !linePaths.has(d.fn)) failures.push(`a difference is declared for "${d.fn}", which is not a listed function or line`);
     if (d.reason.trim() === '') failures.push(`the difference of "${d.fn}" has no reason`);
   }
   for (const f of spec.functions) {
@@ -607,7 +626,15 @@ export async function checkFidelity(spec: FidelitySpec, opts: { registries: Regi
       const want = protoValue(proto, t.ident, t.deps);
       const mod = (await import(/* @vite-ignore */ join(ROOT, t.module))) as Record<string, unknown>;
       if (!(t.export in mod)) throw new Error(`${t.module} exports no "${t.export}"`);
-      const got = mod[t.export];
+      let got = mod[t.export];
+      if (t.additions && typeof got === 'object' && got !== null) {
+        for (const [k, reason] of Object.entries(t.additions)) {
+          if (reason.trim() === '') failures.push(`the addition ${t.export}.${k} has no reason`);
+          if (!(k in (got as Record<string, unknown>))) failures.push(`the addition ${t.export}.${k} is declared but not in the port`);
+          if (typeof want === 'object' && want !== null && k in (want as Record<string, unknown>)) failures.push(`the addition ${t.export}.${k} is a key of the prototype's ${t.ident} too: a changed row is a difference, not an addition`);
+        }
+        got = Object.fromEntries(Object.entries(got as Record<string, unknown>).filter(([k]) => !(k in t.additions!)));
+      }
       const fns = [...functionsIn(want, t.ident), ...functionsIn(got, t.export)];
       if (fns.length > 0) {
         failures.push(`the table ${t.ident} (${proto}.html → ${t.module}) holds functions (${fns.slice(0, 4).join(', ')}${fns.length > 4 ? ', …' : ''}): a table is compared by value, so list it under \`functions\` instead (its whole declaration is compared, as SHAPES is)`);
@@ -624,14 +651,20 @@ export async function checkFidelity(spec: FidelitySpec, opts: { registries: Regi
   for (const l of spec.lines ?? []) {
     const proto = l.prototype ?? spec.prototype;
     let table: unknown;
-    try {
-      table = protoValue(proto, l.ident);
-    } catch (err) {
-      failures.push(`the lines ${l.ident} (${proto}.html): ${(err as Error).message}`);
-      continue;
+    if (l.format !== 'literal') {
+      try {
+        table = protoValue(proto, l.ident);
+      } catch (err) {
+        failures.push(`the lines ${l.ident} (${proto}.html): ${(err as Error).message}`);
+        continue;
+      }
     }
     for (const [path, target] of Object.entries(l.cueKinds)) {
-      const want = atPath(table, path);
+      if (l.format === 'literal' && !protoSource(proto).includes(path)) {
+        failures.push(`the inline line ${JSON.stringify(path)} is not in ${proto}.html`);
+        continue;
+      }
+      const want = l.format === 'literal' ? [path] : formatLines(path === '.' ? table : atPath(table, path), l.format);
       let got: unknown;
       if ((l.registry ?? 'physicsCues') === 'cardVoice') {
         const [kind, style] = target.split('@');
@@ -640,6 +673,12 @@ export async function checkFidelity(spec: FidelitySpec, opts: { registries: Regi
       } else {
         const rows = [...opts.registries.physicsCues.values()].filter((e) => e.kind === target && (l.physics === undefined || ((e.physics ?? []) as string[]).includes(l.physics)));
         got = rows.length === 1 ? rows[0]!.lines : rows.length === 0 ? undefined : `${rows.length} rows of kind ${target}`;
+      }
+      const declared = spec.differences.find((d) => d.fn === `${l.ident}.${path}`);
+      if (declared) {
+        if (isDeepStrictEqual(want, got)) failures.push(`${l.ident}.${path}: a difference is declared, but the row equals the prototype`);
+        else if (declared.diff !== JSON.stringify(got)) failures.push(`${l.ident}.${path}: the declared row ${declared.diff} is not the port's ${JSON.stringify(got)}`);
+        continue;
       }
       if (!isDeepStrictEqual(want, got)) failures.push(`${l.ident}.${path} (${proto}.html) is not the ${l.registry ?? 'physicsCues'} row ${target}:\n  prototype: ${JSON.stringify(want)}\n  port:      ${JSON.stringify(got)}`);
     }

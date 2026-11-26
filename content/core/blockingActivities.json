@@ -35,7 +35,19 @@
     },
     "label": "Reading reports",
     "description": "AUTHOR TO WRITE: The best point for \"while she works\"; her_silence, endurance.",
-    "promptHint": "reading reports"
+    "promptHint": "reading reports",
+    "frame": {
+      "absorb": -0.2,
+      "hear": 1,
+      "light": "screen",
+      "unit": "sheets",
+      "total": 40,
+      "per": [
+        7,
+        14
+      ],
+      "legs": "swing"
+    }
   },
   {
     "id": "writing_report",
@@ -51,7 +63,19 @@
     },
     "label": "Writing report",
     "description": "AUTHOR TO WRITE: Can be distracted, she dislikes it; maybe she writes about the commander (object_at_hand).",
-    "promptHint": "writing report"
+    "promptHint": "writing report",
+    "frame": {
+      "absorb": -0.25,
+      "hear": 0.8,
+      "light": "screen",
+      "unit": "paragraphs",
+      "total": 14,
+      "per": [
+        6,
+        12
+      ],
+      "legs": "tap"
+    }
   },
   {
     "id": "on_comms",
@@ -67,7 +91,21 @@
     },
     "label": "On comms",
     "description": "AUTHOR TO WRITE: With oversight or another unit; silence required, every sound is heard on the line; remote.",
-    "promptHint": "on comms"
+    "promptHint": "on comms",
+    "frame": {
+      "absorb": 0,
+      "hear": 1,
+      "light": "screen",
+      "unit": "minutes",
+      "total": 60,
+      "per": [
+        8,
+        16
+      ],
+      "legs": "still",
+      "hours": 1,
+      "call": true
+    }
   },
   {
     "id": "leading_briefing",
@@ -91,7 +129,19 @@
     ],
     "label": "Cleaning weapon",
     "description": "AUTHOR TO WRITE: Calm; hands busy, talks readily.",
-    "promptHint": "cleaning weapon"
+    "promptHint": "cleaning weapon",
+    "frame": {
+      "absorb": 0.05,
+      "hear": 0.9,
+      "light": "lamp",
+      "unit": "parts",
+      "total": 18,
+      "per": [
+        5,
+        10
+      ],
+      "legs": "still"
+    }
   },
   {
     "id": "repairing_gear",
@@ -253,7 +303,45 @@
     ],
     "label": "Reading book",
     "description": "AUTHOR TO WRITE: What she reads is part of her; \"don't disturb\" or \"read to me\".",
-    "promptHint": "reading book"
+    "promptHint": "reading book",
+    "frame": {
+      "absorb": -0.35,
+      "hear": 0.9,
+      "light": "lamp",
+      "unit": "pages",
+      "total": 160,
+      "per": [
+        6,
+        13
+      ],
+      "legs": "swing"
+    }
+  },
+  {
+    "id": "holding_audience",
+    "scope": "dynamic",
+    "actor": "her",
+    "attention": "elsewhere",
+    "impliedPosture": "sitting",
+    "pairTags": [
+      "focused"
+    ],
+    "frame": {
+      "absorb": -0.1,
+      "hear": 1,
+      "light": "lamp",
+      "unit": "visitors",
+      "total": 6,
+      "per": [
+        8,
+        14
+      ],
+      "legs": "swing",
+      "audience": true
+    },
+    "label": "Holding audience",
+    "description": "AUTHOR TO WRITE: The throne as an audience: visitors one after another, with business; between them she reads and signs.",
+    "promptHint": "holding audience"
   },
   {
     "id": "playing_cards",
@@ -265,7 +353,20 @@
     ],
     "label": "Playing cards",
     "description": "AUTHOR TO WRITE: A friend present (aware); P9c wagers; footrest / human_chair.",
-    "promptHint": "playing cards"
+    "promptHint": "playing cards",
+    "frame": {
+      "absorb": 0.1,
+      "hear": 0.7,
+      "light": "lamp",
+      "unit": "hands",
+      "total": 12,
+      "per": [
+        5,
+        9
+      ],
+      "legs": "swing",
+      "visitor": true
+    }
   },
   {
     "id": "music",
@@ -277,7 +378,20 @@
     ],
     "label": "Music",
     "description": "AUTHOR TO WRITE: Headphones: does not hear the commander come in.",
-    "promptHint": "music"
+    "promptHint": "music",
+    "frame": {
+      "absorb": -0.15,
+      "hear": 0.06,
+      "light": "lamp",
+      "unit": "tracks",
+      "total": 14,
+      "per": [
+        7,
+        13
+      ],
+      "legs": "beat",
+      "music": true
+    }
   },
   {
     "id": "eating",
@@ -308,7 +422,20 @@
     },
     "label": "Drinking",
     "description": "AUTHOR TO WRITE: Lowers her restraint: her_weakness, her_affection more likely.",
-    "promptHint": "drinking"
+    "promptHint": "drinking",
+    "frame": {
+      "absorb": 0.35,
+      "hear": 0.8,
+      "light": "lamp",
+      "unit": "glasses",
+      "total": 6,
+      "per": [
+        8,
+        15
+      ],
+      "legs": "swing",
+      "drink": true
+    }
   },
   {
     "id": "smoking",
@@ -335,7 +462,19 @@
     },
     "label": "Chatting on pda",
     "description": "AUTHOR TO WRITE: Smiles at the screen: her_jealousy the other way between equals.",
-    "promptHint": "chatting on pda"
+    "promptHint": "chatting on pda",
+    "frame": {
+      "absorb": -0.1,
+      "hear": 0.9,
+      "light": "screen",
+      "unit": "messages",
+      "total": 40,
+      "per": [
+        5,
+        10
+      ],
+      "legs": "swing"
+    }
   },
   {
     "id": "writing_journal",
@@ -359,7 +498,19 @@
     ],
     "label": "Sketching",
     "description": "AUTHOR TO WRITE: What she draws (maybe the commander).",
-    "promptHint": "sketching"
+    "promptHint": "sketching",
+    "frame": {
+      "absorb": -0.3,
+      "hear": 0.9,
+      "light": "lamp",
+      "unit": "strokes",
+      "total": 80,
+      "per": [
+        5,
+        10
+      ],
+      "legs": "swing"
+    }
   },
   {
     "id": "mending_clothes",
@@ -371,7 +522,19 @@
     ],
     "label": "Mending clothes",
     "description": "AUTHOR TO WRITE: Needle and thread; hands busy.",
-    "promptHint": "mending clothes"
+    "promptHint": "mending clothes",
+    "frame": {
+      "absorb": -0.05,
+      "hear": 0.9,
+      "light": "lamp",
+      "unit": "stitches",
+      "total": 60,
+      "per": [
+        4,
+        9
+      ],
+      "legs": "swing"
+    }
   },
   {
     "id": "tinkering",
@@ -423,7 +586,20 @@
     },
     "label": "Sleeping",
     "description": "AUTHOR TO WRITE: The commander tethered or at her bunk; source time; her waking is a moment.",
-    "promptHint": "sleeping"
+    "promptHint": "sleeping",
+    "frame": {
+      "absorb": -0.2,
+      "hear": 0.35,
+      "light": "dark",
+      "unit": "hours",
+      "total": 100,
+      "per": [
+        9,
+        18
+      ],
+      "legs": "asleep",
+      "sleep": true
+    }
   },
   {
     "id": "dozing",
@@ -883,7 +1059,13 @@
     "judged": true,
     "label": "Facing wall",
     "description": "AUTHOR TO WRITE: Facing the wall (a corner punishment when the origin is her discipline).",
-    "promptHint": "facing wall"
+    "promptHint": "facing wall",
+    "effects": [
+      {
+        "type": "backdrop",
+        "id": "pov_corner"
+      }
+    ]
   },
   {
     "id": "c_writing_report",

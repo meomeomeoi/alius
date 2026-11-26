@@ -25,7 +25,7 @@ function parseVoiceMd(md: string): Item[] {
     if (raw.startsWith('## ')) { sec = 0; cur = null; continue; }
     const h3 = /^### (.+)$/.exec(raw);
     if (h3) { heading = h3[1]!.trim(); cur = null; continue; }
-    if (!heading || ![1, 2, 3, 5, 6, 7, 8, 9, 10].includes(sec)) continue;
+    if (!heading || ![1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].includes(sec)) continue;
     const bullet = /^- (.*)$/.exec(raw);
     if (bullet) {
       const body = bullet[1]!;
@@ -102,6 +102,15 @@ const SCENT_CONTACTS = ['feet_on_face', 'face_to_bottom', 'smothered_armpit'];
 /** §10 (P10e-e Task 20, ruling Q): the jaw's lines by her style (jaw.html `LINES`; `ask` as `question|word`); by what holds the mouth open `jaw.entry.<contact>`. */
 const JAW_KINDS = ['teeth', 'deeper', 'out', 'suck', 'wide', 'correct', 'restOk', 'restNo', 'ask', 'heard', 'lost', 'end', 'slack', 'stop'];
 const JAW_CONTACTS = ['sole_to_mouth', 'ring_gag'];
+/** §11 (P10e-e Task 24, ruling Q): her frame's lines by her style (her_activity.html `STYLES`); §12 (Task 24b): the throne's (throne.html `T_LINES`). */
+const ACTIVITY_KINDS = ['name', 'noticed', 'correct', 'call', 'end', 'askReply', 'breach', 'silent', 'stop', 'rest', 'fall', 'woke', 'wokeMumble', 'comeIn', 'stay'];
+const THRONE_KINDS = ['spill', 'skid', 'thank', 'thanked', 'noThanks'];
+/** §13 (P10e-e Task 26): foot service's lines by her style (her_activity.html `SVC_LINES`) and her words for the zones (`ZONE_WORDS`). */
+const SERVICE_KINDS = ['good', 'poor', 'wrong', 'missed'];
+/** §14 (P10e-e Task 28): shoe service's lines by her style (shoe.html `LINES`, cold silent) and her words for the zones (`ZONE_WORDS`). */
+const SHOE_KINDS = ['entry', 'turn', 'sole', 'kiss', 'polish', 'other', 'caught', 'swallowed', 'good', 'poor', 'missed', 'dull', 'stamp', 'end', 'stop'];
+/** §15 (P10e-e Task 30): gulp's lines by her style (gulp.html `LINES`, cold's own). */
+const GULP_KINDS = ['entry', 'surge', 'tapped', 'spill', 'cough', 'done', 'clean', 'cleaned', 'missed', 'stop'];
 /** §6 (P10e-e Task 11): the slap's lines by her style. */
 const SLAP_LABEL: Record<string, string> = { before: 'slap.before', feint: 'slap.feint', again: 'slap.again', none: 'slap.after.none', braced: 'slap.after.braced', flinched: 'slap.after.flinched' };
 const STYLE_LABEL: Record<string, string> = { when: 'when', cost: 'cost', who: 'who', 'only her': 'onlyMe', weight: 'weight', right: 'call.right', wrong: 'call.wrong', slow: 'call.slow' };
@@ -115,6 +124,30 @@ function expected(md: string): Map<string, string[]> {
     out.set(key, lines);
   };
   for (const it of parseVoiceMd(md)) {
+    if (it.sec === 15) {
+      if (!GULP_KINDS.includes(it.label)) throw new Error(`unmapped gulp item: ${it.heading} › ${it.label}`);
+      put(`gulp.${it.label}`, it.heading === 'neutral' ? undefined : it.heading, it.lines);
+      continue;
+    }
+    if (it.sec === 14) {
+      if (it.heading === 'zones') { put(`shoe.zone.${it.label}`, undefined, it.lines); continue; }
+      if (!SHOE_KINDS.includes(it.label)) throw new Error(`unmapped shoe item: ${it.heading} › ${it.label}`);
+      put(`shoe.${it.label}`, it.heading === 'neutral' ? undefined : it.heading, it.lines);
+      continue;
+    }
+    if (it.sec === 13) {
+      if (it.heading === 'zones') { put(`service.zone.${it.label}`, undefined, it.lines); continue; }
+      if (!SERVICE_KINDS.includes(it.label)) throw new Error(`unmapped service item: ${it.heading} › ${it.label}`);
+      put(`service.${it.label}`, it.heading === 'neutral' ? undefined : it.heading, it.lines);
+      continue;
+    }
+    if (it.sec === 11 || it.sec === 12) {
+      const kinds = it.sec === 11 ? ACTIVITY_KINDS : THRONE_KINDS;
+      if (it.sec === 11 && /^(self|toYou|ask|exchange|entry)\.[a-z0-9_]+$/.test(it.label)) { put(`activity.${it.label}`, it.heading === 'neutral' ? undefined : it.heading, it.lines); continue; } // Ruling Z: the placeholders
+      if (!kinds.includes(it.label)) throw new Error(`unmapped ${it.sec === 11 ? 'activity' : 'throne'} item: ${it.heading} › ${it.label}`);
+      put(`${it.sec === 11 ? 'activity' : 'throne'}.${it.label}`, it.heading === 'neutral' ? undefined : it.heading, it.lines);
+      continue;
+    }
     if (it.sec === 10) {
       if (it.heading === 'entry') { put(`jaw.entry.${it.label}`, undefined, it.lines); continue; }
       if (it.label.startsWith('entry.')) { put(`jaw.${it.label}`, it.heading, it.lines); continue; } // a style's own first words (cold: silent)

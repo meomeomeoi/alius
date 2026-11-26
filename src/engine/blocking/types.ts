@@ -32,9 +32,9 @@ export type InteractionType = (typeof INTERACTIONS)[number];
 /** The kinds of line in a physics' cue pool; `watch` and `look_away` are the signs of her attention (plan R12, R13). */
 /**
  * Her cue kinds. `greedy` (P10e-e): she notices the commander holding on to the air past her opening. `deeper`, `suck`, `wider`, `pull_back`
- * (P10e-e R22): her orders in the jaw.
+ * (P10e-e R22): her orders in the jaw. `surge` (P10e-e R32): she announces a surge of her flow in gulp (ritual: "now.").
  */
-export const CUE_KINDS = ['window_open', 'window_false', 'shift', 'press', 'lift', 'count', 'warning', 'watch', 'look_away', 'greedy', 'deeper', 'suck', 'wider', 'pull_back'] as const;
+export const CUE_KINDS = ['window_open', 'window_false', 'shift', 'press', 'lift', 'count', 'warning', 'watch', 'look_away', 'greedy', 'deeper', 'suck', 'wider', 'pull_back', 'surge'] as const;
 export type CueKind = (typeof CUE_KINDS)[number];
 
 /** What an answer to a moment is, whatever its words (spec §7). */
@@ -125,6 +125,24 @@ export interface ItemEntry extends Described {
   promptHint: string;
   effects?: BlockingEffect[];
 }
+/** P10e-e R24: the frame of her time on an activity (her_activity.html `ACTS`, read by field). */
+export interface ActivityFrame {
+  absorb: number;
+  hear: number;
+  light: 'lamp' | 'screen' | 'dark';
+  unit: string;
+  total: number;
+  per: [number, number];
+  legs: 'swing' | 'tap' | 'still' | 'asleep' | 'beat';
+  hours?: number;
+  call?: true;
+  visitor?: true;
+  sleep?: true;
+  music?: true;
+  drink?: true;
+  /** The throne (24b): visitors one after another, her folder, her signature, her mug. */
+  audience?: true;
+}
 export interface BlockingActivityEntry extends Described {
   scope: Scope;
   contentTags?: string[];
@@ -138,6 +156,8 @@ export interface BlockingActivityEntry extends Described {
   judged?: true;
   sources?: Record<string, number>;
   fromActivities?: string[];
+  /** P10e-e R24: the frame of her time (see the schema). */
+  frame?: ActivityFrame;
   promptHint: string;
   effects?: BlockingEffect[];
 }

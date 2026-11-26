@@ -353,6 +353,7 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     field('Real-time contact', checkbox('physicsRealtime', settings.physicsRealtime), 'physicsRealtime'),
     ...INTERACTION_TOGGLES.map((k) => field(`Contact: ${INTERACTION_LABEL[k]}`, interactionToggle(k, settings.physicsInteractions[k]), 'physicsInteractions')),
     field('Marathon pace', select('marathonPace', [['short', 'short'], ['normal', 'normal'], ['long', 'long']], settings.marathonPace), 'marathonPace'),
+    field('Long holds', select('longHoldStrain', [['light', 'light'], ['normal', 'normal'], ['heavy', 'heavy'], ['raw', 'raw (as a short hold)']], settings.longHoldStrain), 'longHoldStrain'),
     h('h3', {}, 'Combat'),
     field('Easy retry (rewind a lost combat)', checkbox('easyRetry', settings.easyRetry), 'easyRetry'),
     field('Generated names for affixed enemies', checkbox('enemyFlavor', settings.enemyFlavor), 'enemyFlavor'),

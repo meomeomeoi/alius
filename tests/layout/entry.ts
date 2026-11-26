@@ -1,6 +1,6 @@
 /**
  * P10e: the browser entry of the layout test (`npm run test:layout`): renders the real scene screen into the page for one named
- * fixture (`?fixture=one|two|three|four|curtain|long|physics|chips|chipsmany|dialname|dialwide|call|callhold|slap|slaphold|breath|breathhold|weight|weightfoot|weightup|weighthold|scent|scenthold|jaw|jawring|jawhold`). A knee-length placeholder sprite (tests/fixtures/layout/sprite.svg), never the
+ * fixture (`?fixture=one|two|three|four|curtain|long|physics|chips|chipsmany|dialname|dialwide|call|callhold|slap|slaphold|breath|breathhold|weight|weightfoot|weightup|weighthold|scent|scenthold|jaw|jawring|jawhold|activity|activityhold|throne|thronehold|service|servicehold|shoe|shoeheels|shoehold|gulp|gulphold`). A knee-length placeholder sprite (tests/fixtures/layout/sprite.svg), never the
  * author's art; the content and the campaign states are fetched (the script serves the repo root); the model is never called.
  */
 import { loadPacks } from '../../src/content/loader';
@@ -10,6 +10,12 @@ import { _breath } from '../../src/ui/scene/instruments/breath/breath';
 import { _weight } from '../../src/ui/scene/instruments/weight/weight';
 import { _scent } from '../../src/ui/scene/instruments/scent/scent';
 import { _jaw } from '../../src/ui/scene/instruments/jaw/jaw';
+import { _activity } from '../../src/ui/scene/instruments/activity/frame';
+import * as throneHooks from '../../src/ui/scene/instruments/activity/throne';
+import { _service } from '../../src/ui/scene/instruments/activity/service';
+import { _shoe } from '../../src/ui/scene/instruments/shoe/shoe';
+import { _gulp } from '../../src/ui/scene/instruments/gulp/gulp';
+import type { ArtSlots } from '../../src/ui/scene/art';
 import { DEFAULT_SETTINGS } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';
 import type { ChatMessage } from '../../src/st/adapter';
@@ -20,7 +26,7 @@ const params = new URLSearchParams(location.search);
 const fixture = params.get('fixture') ?? 'one';
 const states = (await (await fetch('/.superpowers/layout/states.json')).json()) as Record<string, never>;
 const loaded = await loadPacks(['content/core'], (p: string) => fetch('/' + p).then((r) => r.json()));
-const state = states[['two', 'three', 'four', 'physics', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weightfoot', 'weightup', 'weighthold', 'scent', 'scenthold', 'jaw', 'jawring', 'jawhold'].includes(fixture) ? fixture : 'one'];
+const state = states[['two', 'three', 'four', 'physics', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weightfoot', 'weightup', 'weighthold', 'scent', 'scenthold', 'jaw', 'jawring', 'jawhold', 'activity', 'activityhold', 'throne', 'thronehold', 'service', 'servicehold', 'shoe', 'shoeheels', 'shoehold', 'gulp', 'gulphold'].includes(fixture) ? fixture : 'one'];
 // the breath instrument (P10e-e Task 14): `&style=<key>` is her physics style; `&quiet=1` clears the plan's openings (the shots open the windows
 // themselves through `window.__breath`, as the prototype's through its hooks); the segment started as the page loaded; the stop word ends the hold (the run goes, the scene redraws), as the engine's does
 // the weight instrument (P10e-e Task 16): the same, `&quiet=1` clearing the plan's shifts (the shots shift her through `window.__weight`)
@@ -29,10 +35,18 @@ const weighing = fixture.startsWith('weight');
 const scenting = fixture.startsWith('scent');
 // the jaw instrument (P10e-e Task 20): the same; `&quiet=1` clears her planned moves (the shots move her through `window.__jaw`)
 const jawing = fixture.startsWith('jaw');
-const breathing = fixture === 'breath' || fixture === 'breathhold' || weighing || scenting || jawing;
+// her frame (P10e-e Task 24): the shots drive her and the commander's attention through `window.__activity`
+const framing = fixture.startsWith('activity') || fixture.startsWith('throne') || fixture.startsWith('service');
+// shoe service (P10e-e Task 28): the layout fixture's sprite stands for her two pictures of her footwear (the author's art is never committed),
+// one foot each, the prototype's default fit; the shots drive it through `window.__shoe`
+const shoeing = fixture.startsWith('shoe');
+// gulp (P10e-e Task 30): her sprite from below by default; `&art=<picture>` gives her the `over` slot (the layout fixture's sprite stands for the
+// author's art); `&explicit=1` the `over_explicit` slot instead; the shots drive it through `window.__gulp`
+const gulping = fixture.startsWith('gulp');
+const breathing = fixture === 'breath' || fixture === 'breathhold' || weighing || scenting || jawing || framing || shoeing || gulping;
 if (breathing && params.get('style')) registerPhysicsStyle(() => ({ primary: params.get('style') as never }));
 const run = (state as { scene?: { physics?: { segment: { plan?: { beats: Array<{ opening?: unknown; cue?: unknown; shift?: unknown; order?: unknown; orderMs?: unknown; ask?: unknown }> } } } } }).scene?.physics;
-if (breathing && params.get('quiet') === '1') for (const b of run?.segment.plan?.beats ?? []) { delete b.opening; delete b.cue; delete b.shift; delete b.order; delete b.orderMs; delete b.ask; }
+if (breathing && params.get('quiet') === '1') for (const b of (run?.segment.plan?.beats ?? []) as Array<Record<string, unknown>>) { delete b.opening; delete b.cue; delete b.shift; delete b.order; delete b.orderMs; delete b.ask; if (b.flow) b.flow = { level: (b.flow as { level: number }).level }; }
 const startedAt = Date.now();
 
 
@@ -54,10 +68,20 @@ root.dataset.screen = 'scene';
 root.innerHTML = '<div class="alius-frame"><div class="alius-view"></div></div>';
 document.body.append(root);
 const view = root.querySelector('.alius-view') as HTMLElement;
+const SPRITE = params.get('art') ?? '/tests/fixtures/layout/sprite.svg';
+const art: ArtSlots | undefined = shoeing ? {
+  get: (_unitId, slot) => (/^shoe_(close|sole)\./.test(slot) ? { url: SPRITE, sidecar: { feet: 'one', shown: 'right' } } : null),
+  face: () => null,
+} : gulping && params.get('art') ? {
+  get: (_unitId, slot, gate) => (slot === 'over' || (slot === 'over_explicit' && gate?.explicit === true && params.get('explicit') === '1') ? { url: SPRITE, sidecar: {} } : null),
+  face: () => null,
+} : undefined;
+if (gulping && params.get('explicit') === '1') { const c = (state as { content?: { enabled: string[] } }).content; if (c) c.enabled = [...c.enabled, 'explicit_scenes']; }
 const noop = (): [] => [];
 const screen = renderSceneScreen(view, {
   controller: controller as never, getState: () => state, registries: loaded.registries, st: st as never,
   settings: () => ({ ...DEFAULT_SETTINGS, typingSpeed: 0 }), onEnded() {}, onClose() {}, assetUrl: (p: string) => '/' + p, onOrder: () => false,
+  ...(art ? { art } : {}),
   onSlap() {}, // P10e-e Task 12: the slap draws (its answer is not applied: the page's state is static)
   physics: {
     input: noop, endSegment: noop, skip: noop, stimulus: noop, act: noop, finishCounted: noop, beat: () => 0, keystroke() {}, typed: () => null, onTap() {},
@@ -94,6 +118,9 @@ if (params.get('deferSlap') === '1' && sp?.slap) {
 }
 if (scenting) (window as unknown as { __scent: typeof _scent }).__scent = _scent;
 if (jawing) (window as unknown as { __jaw: typeof _jaw }).__jaw = _jaw;
-if (breathing && !weighing && !scenting && !jawing) (window as unknown as { __breath: typeof _breath }).__breath = _breath;
+if (shoeing) (window as unknown as { __shoe: typeof _shoe }).__shoe = _shoe;
+if (gulping) (window as unknown as { __gulp: typeof _gulp }).__gulp = _gulp;
+if (framing) Object.assign(window as unknown as Record<string, unknown>, { __activity: _activity, __throne: throneHooks, __weight: _weight, __service: _service });
+if (breathing && !weighing && !scenting && !jawing && !framing && !shoeing && !gulping) (window as unknown as { __breath: typeof _breath }).__breath = _breath;
 if (weighing) (window as unknown as { __weight: typeof _weight }).__weight = _weight;
 document.body.dataset.ready = 'true';

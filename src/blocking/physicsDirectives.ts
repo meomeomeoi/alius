@@ -20,7 +20,7 @@ export function physicsDirective(event: EngineEvent, state: CampaignState, _reg:
   }
   if (event.type !== 'physics_outcome') return null;
   if (event.result === 'stopped') return { id: `${BLOCKING_PREFIX}stop`, text: STOP_TEXT, expiresAfter: 'next_reply' };
-  const text = OUTCOME[String(event.result)];
+  const text = event.sourceKind === 'activity' && event.result === 'released' ? FRAME_END : OUTCOME[String(event.result)];
   if (text === undefined) return null;
   const her = state.squad.find((u) => u.id === event.holderId)?.displayName;
   const said = her ? text.replace('She ', `${her} `).replace('she ', `${her} `) : text;
@@ -39,6 +39,8 @@ const TALLY_WORDS: Record<string, Partial<Record<string, (n: number) => string>>
   hold: { slips: (n) => `the hold broke ${times(n)}` },
   order: { slips: (n) => `${n} ${n === 1 ? 'slip' : 'slips'} of the tongue` },
   gesture: { slips: (n) => `the teeth touched her ${times(n)}` },
+  // R28: her frame (the stillness inside): only a relief or a fidget she caught is said
+  passive: { cheatsCaught: (n) => `she noticed the commander move ${times(n)}`, moved: (n) => `the commander's body gave way ${times(n)}, and she noticed` },
 };
 const times = (n: number): string => (n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`);
 const GENERIC: Record<string, (n: number) => string> = {
@@ -49,9 +51,14 @@ const GENERIC: Record<string, (n: number) => string> = {
   slips: (n) => `${n} ${n === 1 ? 'slip' : 'slips'}`,
   gasps: (n) => `${n} ${n === 1 ? 'gasp' : 'gasps'}`,
   cheatsCaught: (n) => `she caught ${n} ${n === 1 ? 'cheat' : 'cheats'}`,
+  moved: (n) => `she noticed the body give way ${times(n)}`,
+  // R32: a gulp's spills (an overflow, a cough), said as spills whatever the run became (its cleaning)
+  spills: (n) => `spilled ${times(n)}`,
 };
+/** P10e-e R32: the amount a gulp spilled over the hold, as gulp.html's digest says it (`spilled: N % of a mouthful in all`). */
+const spilledWords = (n: number): string => `${Math.round(n * 100)} % of a mouthful in all`;
 /** `strains` is never said: an over-hold she did not notice (amount 0.5) is not hers to tell; only `noticed` is. */
-const ORDER = ['caught', 'missed', 'falseTaken', 'noticed', 'slips', 'gasps', 'cheatsCaught'];
+const ORDER = ['caught', 'missed', 'falseTaken', 'noticed', 'slips', 'spills', 'gasps', 'cheatsCaught', 'moved'];
 
 /** The tally of a run in one sentence (`''` when nothing was counted). */
 export function tallySentence(tally: Record<string, number>, phys: Entry | undefined): string {
@@ -60,7 +67,7 @@ export function tallySentence(tally: Record<string, number>, phys: Entry | undef
   for (const k of ORDER) {
     const n = tally[k] ?? 0;
     if (n <= 0) continue;
-    parts.push((own[k] ?? GENERIC[k]!)(n));
+    parts.push((own[k] ?? GENERIC[k]!)(n) + (k === 'spills' && (tally.spilled ?? 0) > 0 ? `, ${spilledWords(tally.spilled!)}` : ''));
   }
   return parts.length === 0 ? '' : `Over the whole hold: ${parts.join(', ')}.`;
 }
@@ -109,7 +116,7 @@ export function physicsLines(state: CampaignState, reg: Registries): Directive |
   if (!state.scene || !run) return null;
   const name = state.squad.find((u) => u.id === run.holderId)?.displayName ?? run.holderId;
   const style = leadStyle(physicsStyleOf(state, run.holderId, reg)).key;
-  const source = run.sourceKind === 'contact' ? reg.blockingContacts.get(run.sourceId) : reg.blockingItems.get(run.sourceId);
+  const source = run.sourceKind === 'contact' ? reg.blockingContacts.get(run.sourceId) : run.sourceKind === 'item' ? reg.blockingItems.get(run.sourceId) : reg.blockingActivities.get(run.sourceId);
   const what = String(source?.label ?? run.sourceId).toLowerCase();
   const also = run.second ? ` and ${String(reg.contactPhysics.get(run.second.physicsId)?.label ?? run.second.physicsId).toLowerCase()} at once` : '';
   const parts = [`${name} has the commander in a hold (${what}${also}); her rhythm is ${RHYTHM[style] ?? RHYTHM.neutral}.`, EXPECTS[effectiveHoldsUntil(state, reg, run.holderId)]];
@@ -121,8 +128,10 @@ export function physicsLines(state: CampaignState, reg: Registries): Directive |
     if (last.missed > 0) said.push(`${last.missed} missed`);
     if (last.falseTaken > 0) said.push('a false opening taken');
     if (last.slips > 0) said.push(count(last.slips, 'a slip', 'slips'));
+    if ((last.spills ?? 0) > 0) said.push(`spilled ${times(last.spills!)}`); // P10e-e R32: a gulp's spills, as spills
     if (last.gasps > 0) said.push('a gasp');
-    if (last.reliefs > 0) said.push('a relief taken');
+    // R28 (e10 M2, final review Minor 4): in every run a relief is said only once she caught it (at the segment's end or at once)
+    if ((last.cheats ?? 0) > 0) said.push('a relief taken');
     if (last.noise > 0) said.push('some noise');
     if (last.warning) said.push('close to the limit');
     if (said.length > 0) parts.push(`Last stretch: ${said.join(', ')}.`);
@@ -131,6 +140,8 @@ export function physicsLines(state: CampaignState, reg: Registries): Directive |
   return { id: `${PHYSICS_PREFIX}${run.physicsId}`, text: parts.join(' '), expiresAfter: 'manual' };
 }
 
+/** R28: her frame ends: she is done with her own time (whether she forgot the commander is her memory's, not this directive's). */
+const FRAME_END = 'She is done with her own time, and the hold is over.';
 const OUTCOME: Record<string, string> = {
   released: 'She lets go.', checked: 'She checks the work and is done.', collapse: 'The commander gives out and she lets go.',
   limit_broken: 'The commander is pushed past the limit before she lets go.', blackout: 'The commander blacks out.',

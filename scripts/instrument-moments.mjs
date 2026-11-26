@@ -25,6 +25,11 @@ export const MOMENTS = {
   weight: weightMoments(),
   saturation: scentMoments(),
   jaw: jawMoments(),
+  her_activity: activityMoments(),
+  throne: throneMoments(),
+  service: serviceMoments(),
+  shoe: shoeMoments(),
+  gulp: gulpMoments(),
   cards: {
     state: 'one',
     clip: dialCorner,
@@ -415,6 +420,292 @@ function jawMoments() {
       moment('rest', 'sole_to_mouth', 0.62, 800, rest, 1200),
       moment('toes-resting-1280', 'sole_to_mouth', 0.49, 2000, none, 0, [1280, 800]),
       moment('ring-line-1280', 'ring_gag', 0.94, 1000, typed, 300, [1280, 800]),
+    ],
+  };
+}
+
+/**
+ * her_activity.html: her activity, the frame of her time, with stillness inside (Task 24). The port is the `activity` fixture (Ann reading
+ * reports, the commander under her desk, the commander's quarters); the prototype is set to the same (`S.act`, `S.view`, `S.inner`
+ * stillness, legs `planted`). Both pages run on Playwright's fake clock, paused: each moment begins at the same paused instant (`begin`), the
+ * view is set on both (`S.view`), the clock is run past the entry (2.2 s), and a peak, the hours between phases or the forgotten end are made
+ * by the same hooks (the prototype's globals `incomingCall`, `startSkip`, `finish`, `G`; the port's `window.__activity`). The room and the floor
+ * are the prototype's stand-ins and the scene's own (the same art); without the author's legs art both draw the silhouettes.
+ * Moments: the four views, a call (her foot on the shoulder), the hours between phases, the forgotten end; under the desk again at 1280x800.
+ */
+function activityMoments() {
+  const LOOP = 2600;
+  const start = (view) => ({
+    proto: async (p) => {
+      await fakeClock(p, () => document.fonts.ready);
+      await p.addStyleTag({ content: '#panel, #debug, #summary, #start { visibility: hidden !important; }' });
+      await p.evaluate((v) => { Object.assign(window.__S, { act: 'reading_reports', view: v, inner: 'stillness', legVar: 'planted', style: 'neutral', sound: false, reduced: false }); }, view);
+      await p.evaluate(() => { document.querySelector('#start').style.display = 'none'; begin(); });
+    },
+    port: async (p) => {
+      await fakeClock(p, async () => { while (document.body.dataset.ready !== 'true') await new Promise((r) => setTimeout(r, 50)); });
+      await p.evaluate((v) => { const a = window.__activity; a.S.view = v; a.S.inner = 'stillness'; a.resetClock(); a.begin(); }, view);
+    },
+  });
+  const moment = (id, view, before, proto, port, after, size) => {
+    const s = start(view);
+    const busy = (p) => p.evaluate(() => { G.att = 'busy'; });
+    return {
+      id, state: 'activity', query: '&style=neutral', ...(size ? { size } : {}),
+      proto: async (p) => { await s.proto(p); await p.clock.runFor(before); await busy(p); await p.evaluate(proto); await p.clock.runFor(after); },
+      port: async (p) => { await s.port(p); await p.clock.runFor(before); await p.evaluate(port); await p.clock.runFor(after); },
+    };
+  };
+  const none = () => {};
+  return {
+    state: 'activity',
+    rasterSprite: true,
+    hide: ['#panel', '#debug', '#summary', '#start'],
+    settle: 60,
+    moments: [
+      moment('view-legs', 'legs', LOOP, none, none, 800),
+      moment('view-her', 'her', LOOP, none, none, 800),
+      moment('view-floor', 'floor', LOOP, none, none, 800),
+      moment('view-wall', 'wall', LOOP, none, none, 800),
+      moment('call', 'legs', LOOP, () => incomingCall(), () => window.__activity.incomingCall(), 2400),
+      moment('skip', 'legs', LOOP, () => startSkip(), () => window.__activity.startSkip(), 4600),
+      moment('forgotten', 'legs', LOOP, () => { G.step = 'use'; finish('done'); }, () => { const a = window.__activity; a.G.step = 'use'; a.finish('done'); }, 6600),
+      moment('view-legs-1280', 'legs', LOOP, none, none, 800, [1280, 800]),
+    ],
+  };
+}
+
+/**
+ * throne.html: the throne (Task 24b). The port is the `throne` fixture (Ann reading reports, sitting on the commander's back: `human_chair`,
+ * the weight inside her frame); the prototype is set to the same (`S.act`, `S.contact`, the throne layer on, its own props held off). Both
+ * pages run on Playwright's fake clock, paused: each moment begins at the same instant (`begin`), the clock is run past the entry, and her mug,
+ * her signing, her rising, a visitor and the thanks are made by the same hooks (the prototype's globals `throneCup`, `throneSign`,
+ * `throneRise`, `throneVisitor`, `throneThank`; the port's `window.__throne`). Her legs are the silhouettes (no art is committed).
+ */
+function throneMoments() {
+  const LOOP = 2600;
+  const start = {
+    proto: async (p) => {
+      await fakeClock(p, () => document.fonts.ready);
+      await p.addStyleTag({ content: '#panel, #debug, #summary, #start { visibility: hidden !important; }' });
+      await p.evaluate(() => { Object.assign(window.__S, { act: 'reading_reports', inner: 'weight', throne: true, contact: 'human_chair', props: false, style: 'neutral', sound: false, reduced: false }); });
+      await p.evaluate(() => { document.querySelector('#start').style.display = 'none'; begin(); HOLD.on = true; });
+    },
+    port: async (p) => {
+      await fakeClock(p, async () => { while (document.body.dataset.ready !== 'true') await new Promise((r) => setTimeout(r, 50)); });
+      await p.evaluate(() => { const a = window.__activity; a.resetClock(); a.begin(); window.__weight.HOLD.on = true; });
+    },
+  };
+  const moment = (id, proto, port, after, size) => ({
+    id, state: 'throne', query: '&style=neutral', ...(size ? { size } : {}),
+    proto: async (p) => { await start.proto(p); await p.clock.runFor(LOOP); await p.evaluate(() => { G.att = 'busy'; }); await p.evaluate(proto); await p.clock.runFor(after); },
+    port: async (p) => { await start.port(p); await p.clock.runFor(LOOP); await p.evaluate(port); await p.clock.runFor(after); },
+  });
+  const none = () => {};
+  return {
+    state: 'throne',
+    rasterSprite: true,
+    hide: ['#panel', '#debug', '#summary', '#start'],
+    settle: 60,
+    moments: [
+      moment('human-chair', none, none, 800),
+      moment('mug', () => throneCup(), () => window.__throne.throneCup(), 900),
+      moment('signing', () => throneSign(), () => window.__throne.throneSign(), 900),
+      moment('rising', () => throneRise(), () => window.__throne.throneRise(), 900),
+      moment('visitor', () => throneVisitor('business'), () => window.__throne.throneVisitor('business'), 5200),
+      moment('thanks', () => { G.step = 'with'; throneThank(); }, () => { window.__activity.G.step = 'with'; window.__throne.throneThank(); }, 900),
+      moment('human-chair-1280', none, none, 800, [1280, 800]),
+    ],
+  };
+}
+
+/**
+ * her_activity.html, the game inside `service`: foot service under her desk (Task 26). The port is the `service` fixture (the `activity`
+ * frame with Ann's practices live, so the frame plays the service); the prototype is set to the same (`S.inner` service, `S.view` legs,
+ * `S.act` reading_reports). Both pages run on Playwright's fake clock, paused; each moment begins at the same instant, runs past the entry,
+ * and her signal is forced to the same meaning on both (`SV.forceMeaning`, then `svSignal`); the gestures are the same calls on both
+ * (`svDown` / `svMove` / `svUp` at the centre of the same zone of the close-up, the clock run between them). The close-up's picture is her
+ * sprite on both (no `sole_close` is committed: the prototype's and the port's stand-in). Moments: her signal, the close-up, a kiss and its
+ * mark, cleaning with the dirt layer, a rub, her verdict at `with`; the close-up again at 1280x800.
+ */
+function serviceMoments() {
+  const LOOP = 2600;
+  const PROTO = { sv: '', SV: 'SV', G: 'G' };
+  const PORT = { sv: 'window.__service.', SV: 'window.__service.SV', G: 'window.__activity.G' };
+  const centre = (k, z) => `(() => { const r = ${k.sv}soleRect(); const p = { toes: [0.5, 0.14], ball: [0.5, 0.33], arch: [0.47, 0.56], heel: [0.5, 0.84], edge: [0.28, 0.55] }[${z}]; return [r.x + p[0] * r.w, r.y + p[1] * r.h]; })()`;
+  const signal = async (p, k, meaning, ms) => { await p.evaluate(`${k.SV}.forceMeaning = '${meaning}'; ${k.sv}svSignal();`); await p.clock.runFor(ms); };
+  /** A press held `ms` at the centre of a zone (`'want'`: the zone she wants). */
+  const press = async (p, k, zone, ms) => {
+    const z = zone === 'want' ? `(${k.SV}.want ?? 'ball')` : `'${zone}'`;
+    await p.evaluate(`{ const [x, y] = ${centre(k, z)}; ${k.sv}svDown(x, y); }`); await p.clock.runFor(ms); await p.evaluate(`${k.sv}svUp()`);
+  };
+  /** A drag: back and forth (`scrub`) or a circle (`circle`) around the centre of a zone, a point every 30 ms. */
+  const drag = async (p, k, zone, how, n) => {
+    await p.evaluate(`{ const [x, y] = ${centre(k, `'${zone}'`)}; window.__drag = [x, y]; ${k.sv}svDown(x + (${how === 'circle' ? 40 : 0}), y); }`);
+    for (let i = 1; i <= n; i++) {
+      await p.clock.runFor(30);
+      const pt = how === 'circle' ? `[x + 40 * Math.cos(${i} / 14 * Math.PI * 2), y + 40 * Math.sin(${i} / 14 * Math.PI * 2)]` : `[x + (${i} % 2 ? 70 : -10), y + ${i} * 3]`;
+      await p.evaluate(`{ const [x, y] = window.__drag; const q = ${pt}; ${k.sv}svMove(q[0], q[1]); }`);
+    }
+  };
+  const start = {
+    proto: async (p) => {
+      await fakeClock(p, () => document.fonts.ready);
+      await p.addStyleTag({ content: '#panel, #debug, #summary, #start { visibility: hidden !important; }' });
+      await p.evaluate(() => { Object.assign(window.__S, { act: 'reading_reports', view: 'legs', inner: 'service', legVar: 'planted', style: 'neutral', sound: false, reduced: false }); });
+      await p.evaluate(() => { document.querySelector('#start').style.display = 'none'; begin(); });
+    },
+    port: async (p) => {
+      await fakeClock(p, async () => { while (document.body.dataset.ready !== 'true') await new Promise((r) => setTimeout(r, 50)); });
+      await p.evaluate(() => { const a = window.__activity; a.S.view = 'legs'; a.S.inner = 'service'; a.resetClock(); a.begin(); });
+    },
+  };
+  const moment = (id, play, size) => ({
+    id, state: 'service', query: '&style=neutral', ...(size ? { size } : {}),
+    proto: async (p) => { await start.proto(p); await p.clock.runFor(LOOP); await p.evaluate(() => { G.att = 'busy'; G.step = 'own'; }); await play(p, PROTO); },
+    port: async (p) => { await start.port(p); await p.clock.runFor(LOOP); await p.evaluate(() => { window.__activity.G.step = 'own'; }); await play(p, PORT); },
+  });
+  return {
+    prototype: 'her_activity',
+    state: 'service',
+    rasterSprite: true,
+    hide: ['#panel', '#debug', '#summary', '#start'],
+    settle: 60,
+    moments: [
+      moment('signal', (p, k) => signal(p, k, 'kiss', 420)),
+      moment('close-up', (p, k) => signal(p, k, 'kiss', 1200)),
+      moment('kiss', async (p, k) => { await signal(p, k, 'kiss', 1200); await press(p, k, 'ball', 400); await p.clock.runFor(300); await press(p, k, 'want', 1000); await p.clock.runFor(250); }),
+      moment('clean', async (p, k) => { await signal(p, k, 'clean', 1200); await drag(p, k, 'heel', 'scrub', 24); await p.clock.runFor(100); }),
+      moment('rub', async (p, k) => { await signal(p, k, 'rub', 1200); await drag(p, k, 'arch', 'circle', 30); await p.clock.runFor(100); }),
+      moment('verdict', async (p, k) => { await signal(p, k, 'kiss', 1200); await p.evaluate(`${k.G}.step = 'with'; Object.assign(${k.SV}, { phase: 'craft', act: 'kiss', acts: 1, quality: 1 }); ${k.sv}svEndBout(true);`); await p.clock.runFor(1100); }),
+      moment('close-up-1280', (p, k) => signal(p, k, 'kiss', 1200), [1280, 800]),
+    ],
+  };
+}
+
+/**
+ * shoe.html: shoe service (Task 28). The port is the `shoe` fixture (Ann's boots, `boot_worship`, her attention busy) or `shoeheels` (her
+ * likes name heels); its two pictures are the prototype's stand-in, the layout fixture's sprite drawn as a PNG (`&art=`, as the prototype's
+ * `SPRITE`: no art is committed). Both pages run on Playwright's fake clock, paused; each moment begins on both at the same instant (`begin`),
+ * her foot's own moves held off (`G.nextMove`), and the same calls drive both: the tongue through `down` / `move` / `up` at the same zone, a
+ * spit while she is busy on her device (the prototype's chance answers at once; the port's is the engine's, also
+ * decided at once as the prototype's: both are given the same answer, not seen), the shine on clean leather by slow strokes, her
+ * inspection. Moments: boots from above, heels with the sole presented, grit, a spit while she taps, shine, the inspection's band and her
+ * verdict; boots from above at 1280x800.
+ */
+function shoeMoments() {
+  const ART = '/.superpowers/shots/shoe/sprite.png';
+  const start = (kind, dirt) => ({
+    proto: async (p) => {
+      await fakeClock(p, () => document.fonts.ready);
+      await p.addStyleTag({ content: '#panel, #debug, #summary, #start { visibility: hidden !important; }' });
+      await p.evaluate(([k, d]) => { Object.assign(window.__S, { kind: k, dirt: d, style: 'neutral', busy: 'always', sound: false, reduced: false }); }, [kind, dirt]);
+      await p.evaluate(() => { document.querySelector('#start').style.display = 'none'; begin(); G.nextMove = 1e12; });
+    },
+    port: async (p) => {
+      await fakeClock(p, async () => { while (document.body.dataset.ready !== 'true' || window.__shoe.G.phase !== 'loop') await new Promise((r) => setTimeout(r, 50)); });
+      await p.evaluate((d) => { const s = window.__shoe; s.S.dirt = d; s.resetClock(); s.begin(); s.G.nextMove = 1e12; }, dirt);
+    },
+  });
+  const K = { proto: '', port: 'window.__shoe.' };
+  /** The screen point of a zone's centre on the picture now. */
+  const zone = (k, z) => `(() => { const r = ${k}shoeRect(); const p = ${k}zonesNow()['${z}']; const u = ${k}mirrored() ? 1 - p[0] : p[0]; return [r.x + u * r.w, r.y + p[1] * r.h]; })()`;
+  /** Strokes across a zone: `n` moves of `dx` px, every `ms` of the clock (slow ones polish). */
+  const strokes = async (p, k, z, n, dx, ms) => {
+    await p.evaluate(`{ const [x, y] = ${zone(k, z)}; window.__z = [x, y]; ${k}down(x, y); }`);
+    for (let i = 1; i <= n; i++) {
+      await p.clock.runFor(ms);
+      await p.evaluate(`{ const [x, y] = window.__z; ${k}move(x + (${i} % 2 ? ${dx} : -${dx}), y + (${i} % 5) * 3, {}); }`);
+    }
+    await p.evaluate(`${k}up()`);
+  };
+  const side = (k) => (k === K.proto ? 'proto' : 'port');
+  const moment = (id, kind, dirt, play, size) => {
+    const s = start(kind, dirt);
+    return {
+      id, state: kind === 'heels' ? 'shoeheels' : 'shoe', query: `&style=neutral&art=${ART}`, ...(size ? { size } : {}),
+      proto: async (p) => { await s.proto(p); await p.clock.runFor(600); await play(p, K.proto); },
+      port: async (p) => { await s.port(p); await p.clock.runFor(600); await play(p, K.port); },
+    };
+  };
+  void side;
+  return {
+    state: 'shoe',
+    rasterSprite: true,
+    hide: ['#panel', '#debug', '#summary', '#start', '#markPrompt'],
+    settle: 60,
+    moments: [
+      moment('boots-above', 'boots', 'mud', (p) => p.clock.runFor(800)),
+      moment('heels-sole', 'heels', 'dust', async (p, k) => { await p.evaluate(`${k === K.proto ? '' : 'window.__shoe.'}nextSurface()`); await p.clock.runFor(900); }),
+      moment('grit', 'boots', 'mud', async (p, k) => { await strokes(p, k, 'toe', 24, 40, 30); await p.evaluate(`${k === K.proto ? 'G' : 'window.__shoe.G'}.grit = 0.8`); await p.clock.runFor(500); }),
+      moment('spit-busy', 'boots', 'ash', async (p, k) => {
+        const G = k === K.proto ? 'G' : 'window.__shoe.G';
+        await p.evaluate(`${G}.grit = 0.6; ${G}.attention = 'busy';`);
+        if (k === K.proto) await p.evaluate(() => { const m = Math.random; Math.random = () => 0.5; spit(); Math.random = m; });
+        else await p.evaluate(() => { window.__shoe.spit(); }); // the layout page's staging decides nothing: not seen, as the prototype's draw here
+        await p.clock.runFor(700);
+      }),
+      moment('shine', 'boots', 'mud', async (p, k) => {
+        await p.evaluate(`${k === K.proto ? 'surf()' : 'window.__shoe.ensureSurface()'}.m.fill(0)`);
+        await strokes(p, k, 'vamp', 40, 12, 40);
+        await strokes(p, k, 'toe', 40, 12, 40);
+        await p.clock.runFor(200);
+      }),
+      // e10 M9: the band of light half way across (about 500 ms of its 1.7 s), and her verdict naming the worst zone (after 1.7 s)
+      moment('inspection', 'boots', 'mud', async (p, k) => { await strokes(p, k, 'toe', 24, 40, 30); await p.evaluate(`${k}inspect()`); await p.clock.runFor(500); }),
+      moment('inspection-verdict', 'boots', 'mud', async (p, k) => { await strokes(p, k, 'toe', 24, 40, 30); await p.evaluate(`${k}inspect()`); await p.clock.runFor(1800); }),
+      moment('boots-above-1280', 'boots', 'mud', (p) => p.clock.runFor(800), [1280, 800]),
+    ],
+  };
+}
+
+/**
+ * gulp.html: gulp (Task 30). The port is the `gulp` fixture (Ann over the commander in the commander's quarters, her planned flow, neutral's
+ * row), her style from `&style=`; the prototype is set to the same (`S.style`). Both pages run on Playwright's fake clock, paused; each moment
+ * begins on both at the same instant (`begin`), runs into the loop, and the same hooks drive both (the prototype's globals `G`, `cough`,
+ * `startClean`, `sayL`; the port's `window.__gulp`): the mouth's fill, a surge's warning (ritual: her word), a cough, an overflow, the
+ * cleaning, her check. The prototype's own surges are held off (`G.nextSurge`); her picture is her sprite from below on both (no art slot:
+ * the layout fixture's sprite, drawn as a PNG for the prototype). The prototype's ceiling and floor are its stand-ins; the port's are the scene's.
+ * Moments: the tide low and high, a surge with its warning, a cough, overflow, the cleaning, her check; the tide high again at 1280x800.
+ */
+function gulpMoments() {
+  const LOOP = 1600; // the entry is 1400 ms: the loop has begun
+  const start = (style) => ({
+    proto: async (p) => {
+      await fakeClock(p, () => document.fonts.ready);
+      await p.addStyleTag({ content: '#panel, #debug, #summary, #start { visibility: hidden !important; }' });
+      await p.evaluate((st) => { Object.assign(window.__S, { style: st, sound: false, reduced: false }); }, style);
+      await p.evaluate(() => { document.querySelector('#start').style.display = 'none'; begin(); G.nextSurge = 1e12; });
+    },
+    port: async (p) => {
+      await fakeClock(p, async () => { while (document.body.dataset.ready !== 'true' || !window.__gulp) await new Promise((r) => setTimeout(r, 50)); });
+      await p.evaluate(() => { const g = window.__gulp; g.resetClock(); g.begin(); });
+    },
+  });
+  const moment = (id, style, drive, after, size) => {
+    const s = start(style);
+    return {
+      id, query: `&style=${style}`, ...(size ? { size } : {}),
+      proto: async (p) => { await s.proto(p); await p.clock.runFor(LOOP); await p.evaluate(drive, 'G'); await p.clock.runFor(after); },
+      port: async (p) => { await s.port(p); await p.clock.runFor(LOOP); await p.evaluate(drive, 'window.__gulp.G'); await p.clock.runFor(after); },
+    };
+  };
+  /** A drive written once for both: `k` names the side's state (`G` or `window.__gulp.G`); `f` its functions (globals, or the port's hooks). */
+  const both = (body) => new Function('k', `const ev = globalThis.eval; const G = ev(k); const f = k === 'G' ? { sayL: ev('sayL'), cough: ev('cough'), startClean: ev('startClean') } : window.__gulp; ${body}`);
+  return {
+    state: 'gulp',
+    rasterSprite: true,
+    hide: ['#panel', '#debug', '#summary', '#start'],
+    settle: 60,
+    moments: [
+      moment('tide-low', 'neutral', both('G.fill = 0.25;'), 400),
+      moment('tide-high', 'neutral', both('G.fill = 0.8;'), 400),
+      moment('surge-warning', 'ritual', both("G.surge = { t0: G.t, warn: 900, len: 1800, feint: false }; f.sayL('surge');"), 450),
+      moment('cough', 'neutral', both("G.fill = 0.8; f.cough('breath');"), 300),
+      moment('overflow', 'neutral', both('G.fill = 1.1;'), 250),
+      moment('cleaning', 'neutral', both('G.spilled = 0.6; f.startClean();'), 600),
+      moment('check', 'neutral', both('G.spilled = 0.6; f.startClean(); G.puddle.m.forEach((v, i) => { G.puddle.m[i] = v * 0.08; });'), 900),
+      moment('tide-high-1280', 'neutral', both('G.fill = 0.8;'), 400, [1280, 800]),
     ],
   };
 }

@@ -4,16 +4,25 @@ import type { CueKind } from '../engine/blocking/types';
 import type { Action, EngineEvent } from '../engine/dispatch';
 import { temperamentOf } from '../engine/life/state';
 import { leadStyle, physicsStyleOf } from '../engine/physics/style';
-import type { SegmentInput } from '../engine/physics/state';
+import type { ReliefReport, SegmentInput } from '../engine/physics/state';
 import type { CampaignState } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
 import type { Envelope } from '../llm/envelope';
 import { completeCues, pickCue, sanitizeCues, type CuePool, type PhysicsCuesInput } from '../llm/calls/physicsCues';
+import { sanitizeScript, type ActivityScriptInput, type ScriptLine } from '../llm/calls/activityScript';
+import { buildKnowledge } from '../analysis/knowledge';
+import { frameOf } from '../engine/physics/presence';
+import { listenerKnows } from '../engine/physics/mention';
+import { phaseSegments } from '../engine/physics/marathon';
 import { CUE_KINDS } from '../engine/blocking/types';
 import type { ContextBuilder } from '../llm/context';
 import type { AliusSettings } from '../settings';
 
 const CUES_SITE = 'physics.cues';
+/** P10e-e R26: her hour's script, one call per phase of her frame. */
+const SCRIPT_SITE = 'physics.script';
+/** How many of the facts she knows go into the script's input. */
+const KNOWN_MAX = 6;
 /** Her card, cut for the cue call. */
 const CARD_MAX = 600;
 /** Inputs that need steady hands: they lapse while keys are typed (real time). */
@@ -67,8 +76,33 @@ export interface StagingController {
   answer(right: boolean, lie: boolean, caught: boolean): EngineEvent[];
   /** A marathon between two phases: how the commander spends the stretch (`physics/skip`). */
   skip(strategy: string): EngineEvent[];
+  /** P10e-e R28: after her forgotten end the commander gets up alone (`physics/get_up`), or a visitor of the frame comes in (`physics/found`). */
+  getUp(): EngineEvent[];
+  found(finderId: string): EngineEvent[];
+  /**
+   * P10e-e Rulings X, Y and AE: a relief decided at once (`physics/relief`): the body in her frame (`relieve`, `fidget`), or the commander's own
+   * shift of weight or mouth breath in an instrument (`shift_weight`, `mouth_breath` with its loudness). `attention` is hers as shown, read
+   * only between segments (Minor 6).
+   */
+  relief(r: ReliefReport): EngineEvent[];
+  /** P10e-e review I7: she woke (the third stir in her sleep): her frame ends (`physics/woke`). */
+  woke(): EngineEvent[];
+  /** P10e-e 24b: a decision of her hour's script (`physics/decide`, through her command capability; refused without it). */
+  decide(kind: string, ref?: string): EngineEvent[];
+  /** P10e-e Task 26: her verdict on a session of foot service in her frame (`physics/service`), its run open or just ended; Task 28: or of shoe service. */
+  service(runId: string, verdict: 'pleased' | 'adequate' | 'displeased'): EngineEvent[];
+  /** P10e-e Ruling AC: grit spat aside in shoe service, decided at once (`physics/spit`), whether a segment runs or the run is held. */
+  spit(beat: number, attention: string): EngineEvent[];
+  /** P10e-e e11 review M8: the running segment's clock starts again now (gulp's floor: its 40 s count from the puddle shown). */
+  restart(): void;
   /** Drives the clock: ends a real-time segment on time and starts the next one when nothing is pending. */
   tick(nowMs: number): void;
+  /**
+   * P10e-e Ruling AF (final review I3): the page was hidden or shown again (the app's `visibilitychange`). While it is hidden and real time is
+   * on, the clock pauses: no segment ends or starts (the instruments' frames are frozen too, as the prototypes freeze); shown again, the running
+   * segment resumes where it left off (its start moves by the hidden time). Nothing is synthesised. Turn-based play is not paused.
+   */
+  visibility(hidden: boolean, nowMs: number): void;
   /** One of her cue lines of a kind for a beat of the running segment, or `null`. */
   cue(kind: CueKind, beat: number): string | null;
   /**
@@ -76,6 +110,11 @@ export interface StagingController {
    * registry's fallback narration; `null` otherwise. An instrument writes this in her hand in place of its own line.
    */
   voiced(kind: CueKind, beat: number): string | null;
+  /**
+   * P10e-e R26: the script of the running frame's phase (her hour's lines from the model, validated), or `null` until it arrives and when the
+   * call failed (her placeholder lines play then). Kept in memory by `sceneId|runId|phase`, dropped on a chat switch.
+   */
+  script(phase?: number): ScriptLine[] | null;
   /** A chat switch: the clock stops, the inputs and the pool go, nothing more is dispatched until `resume`. */
   reset(): void;
   /** A campaign was opened: an open run is driven again. */
@@ -96,6 +135,8 @@ export function createStaging(deps: StagingDeps): StagingController {
   let collected: SegmentInput[] = [];
   let startedAt: number | null = null;
   let lapseUntil = 0;
+  /** Ruling AF: when the page was hidden (null while it is shown). */
+  let hiddenAt: number | null = null;
   const pools = new Map<string, ReturnType<typeof completeCues>>();
   /** The model's own lines per run (only the kinds it worded): ruling Q. */
   const voicedPools = new Map<string, CuePool>();
@@ -103,6 +144,8 @@ export function createStaging(deps: StagingDeps): StagingController {
   const ended = new Set<string>();
   /** P10e-e: the outcomes seen, by scene and run (an instrument plays the end of its run). */
   const outcomes = new Map<string, { runId: string; physicsId: string; result: string; tally?: Record<string, number> }>();
+  /** P10e-e R26: her hour's scripts, by `sceneId|runId|phase`. */
+  const scripts = new Map<string, ScriptLine[]>();
   const work = new Set<Promise<unknown>>();
 
   const state = (): CampaignState | null => deps.app.current().state;
@@ -134,6 +177,57 @@ export function createStaging(deps: StagingDeps): StagingController {
     };
   }
 
+  const scriptKey = (s: CampaignState | null | undefined, phase: number): string | null => { const k = runKey(s); return k === null ? null : `${k}|${phase}`; };
+
+  /** R26: the script call's input, built through `Knowledge` (what the commander may know too); her presence is never sent. */
+  function scriptInput(s: CampaignState, key: string): ActivityScriptInput | { expired: string } {
+    const r = s.scene?.physics;
+    const phase = Number(key.split('|')[2]);
+    if (!r || r.sourceKind !== 'activity' || scriptKey(s, phase) !== key) return { expired: 'The hold is over.' };
+    const reg = deps.registries();
+    const unit = s.squad.find((u) => u.id === r.holderId);
+    const entry = reg.blockingActivities.get(r.sourceId);
+    const frame = frameOf(entry);
+    const knowledge = buildKnowledge(s, deps.settings());
+    const known = knowledge.facts().filter((f) => f.about.includes(r.holderId) || f.knownBy?.includes(r.holderId) === true).slice(-KNOWN_MAX).map((f) => f.text);
+    for (const u of s.squad) if (u.status === 'injured' && u.kind === 'named') known.push(`${u.displayName} is injured.`);
+    const listeners: ActivityScriptInput['listeners'] = [];
+    if (frame?.call) listeners.push({ id: 'oversight', name: 'Oversight', knows: 'none' });
+    if (frame?.visitor || frame?.audience) {
+      const other = s.squad.find((u) => u.kind === 'named' && u.id !== r.holderId && u.status === 'active' && !(s.scene?.participants ?? []).includes(u.id));
+      if (other) listeners.push({ id: other.id, name: other.displayName, knows: listenerKnows(s, r.holderId, other.id) });
+    }
+    return {
+      unitId: r.holderId, name: unit?.displayName ?? r.holderId, card: String((unit as { card?: unknown } | undefined)?.card ?? '').slice(0, CARD_MAX),
+      activity: String(entry?.label ?? r.sourceId), phase, seconds: phaseSegments(s, reg, r) * Number(reg.contactPhysics.get(r.physicsId)?.segmentSeconds ?? 30),
+      hours: r.marathon?.hours ?? 'unknown', style: leadStyle(physicsStyleOf(s, r.holderId, reg)).key, known: known.slice(-KNOWN_MAX - 2), listeners,
+      ...(frame?.audience ? { throne: true as const } : {}),
+    };
+  }
+
+  deps.generations.bind<ActivityScriptInput, ScriptLine[]>(SCRIPT_SITE, {
+    build: (key) => { const s = state(); return s ? scriptInput(s, key) : { expired: 'No campaign is open.' }; },
+    parse: (raw, input) => sanitizeScript(raw, input),
+    apply(key, value) {
+      const s = state();
+      if (!active || scriptKey(s, Number(key.split('|')[2])) !== key) return { stale: true };
+      scripts.set(key, value);
+      return 'ok';
+    },
+    // without the call her placeholder lines play (the cue pool and her voice): nothing to store
+    fallback: (key) => active && scriptKey(state(), Number(key.split('|')[2])) === key,
+  });
+
+  /** R26: asks for the script of a phase of the running frame, once. */
+  function askScript(phase: number): void {
+    const s = state();
+    if (s?.scene?.physics?.sourceKind !== 'activity') return;
+    const key = scriptKey(s, phase);
+    if (key === null || asked.has(key)) return;
+    asked.add(key);
+    track(deps.generations.generate(SCRIPT_SITE, key).catch(() => {}));
+  }
+
   deps.generations.bind<PhysicsCuesInput, CuePool>(CUES_SITE, {
     build: (key) => { const s = state(); return s ? cuesInput(s, key) : { expired: 'No campaign is open.' }; },
     parse: (raw) => sanitizeCues(raw),
@@ -163,7 +257,10 @@ export function createStaging(deps: StagingDeps): StagingController {
           track(deps.generations.generate(CUES_SITE, id).then(() => { void mine; }).catch(() => {}));
         }
         startedAt = null;
+        if (e.sourceKind === 'activity') askScript(1);
       }
+      // R26: a new phase of her frame (the stretch between phases was resolved): its script
+      if (e.type === 'marathon_phase' && e.over !== true && typeof e.phase === 'number') askScript(e.phase);
       if (e.type === 'physics_outcome') {
         const tally = e.tally as Record<string, number> | undefined;
         outcomes.set(keyOf(state()?.scene?.id ?? '', String(e.runId)), { runId: String(e.runId), physicsId: String(e.physicsId), result: String(e.result), ...(tally ? { tally: { ...tally } } : {}) });
@@ -194,6 +291,7 @@ export function createStaging(deps: StagingDeps): StagingController {
     const s = state();
     const r = s?.scene?.physics;
     if (!s || !r) return;
+    if (hiddenAt !== null && s.settings.physicsRealtime === true) return; // Ruling AF: the page is hidden, the clock is paused
     if (!blockingLive(s, deps.registries())) {
       // the bond fell below close with a hold running: the layer is gone, so every segment action would fail; the hold ends here, once, through the stop word (it has no live guard)
       dispatch({ type: 'physics/stop_word', payload: {} });
@@ -208,7 +306,7 @@ export function createStaging(deps: StagingDeps): StagingController {
       return;
     }
     // held: nothing drains; a marathon between two phases waits for the player's strategy; otherwise the next segment starts when no reply is on its way (a silent holder never waits)
-    if (r.marathon?.waiting) return;
+    if (r.marathon?.waiting || r.forgotten) return; // R28: after her forgotten end nothing is planned: the commander waits posed
     if (!deps.scene.replyPending() || silent(s, r.holderId)) {
       const events = dispatch({ type: 'physics/next_segment', payload: { runId: r.id } });
       if (!events.some((e) => e.type === 'error')) {
@@ -275,8 +373,48 @@ export function createStaging(deps: StagingDeps): StagingController {
     skip(strategy) {
       return active && run() ? dispatch({ type: 'physics/skip', payload: { strategy } }) : [];
     },
+    getUp() {
+      const r = run();
+      return active && r?.forgotten ? dispatch({ type: 'physics/get_up', payload: { runId: r.id } }) : [];
+    },
+    found(finderId) {
+      const r = run();
+      return active && r?.forgotten ? dispatch({ type: 'physics/found', payload: { runId: r.id, finderId } }) : [];
+    },
+    relief(x) {
+      const r = run();
+      return active && r ? dispatch({ type: 'physics/relief', payload: { runId: r.id, beat: this.beat(), ...x, ...(x.involuntary ? { involuntary: true } : {}) } }) : [];
+    },
+    woke() {
+      const r = run();
+      return active && r ? dispatch({ type: 'physics/woke', payload: { runId: r.id } }) : [];
+    },
+    decide(kind, ref) {
+      const r = run();
+      return active && r ? dispatch({ type: 'physics/decide', payload: { runId: r.id, kind, ...(ref !== undefined ? { ref } : {}) } }) : [];
+    },
+    service(runId, verdict) {
+      return active ? dispatch({ type: 'physics/service', payload: { runId, verdict } }) : [];
+    },
+    restart() {
+      const r = run();
+      if (active && r?.segment.state === 'running' && startedAt !== null) startedAt = deps.now();
+    },
+    spit(beat, attention) {
+      const r = run();
+      return active && r ? dispatch({ type: 'physics/spit', payload: { runId: r.id, beat, attention } }) : [];
+    },
     tick(nowMs) {
       if (active) advance(nowMs);
+    },
+    visibility(hidden, nowMs) {
+      if (hidden) {
+        hiddenAt ??= nowMs;
+        return;
+      }
+      if (hiddenAt === null) return;
+      if (startedAt !== null) startedAt += Math.max(0, nowMs - hiddenAt); // the running segment resumes where it left off
+      hiddenAt = null;
     },
     cue(kind, beat) {
       const r = run();
@@ -290,8 +428,15 @@ export function createStaging(deps: StagingDeps): StagingController {
       const lines = voicedPools.get(runKey(state()) ?? '')?.[kind];
       return lines && lines.length > 0 ? pickCue({ [kind]: lines } as Record<CueKind, string[]>, kind, `${r.id}|${r.segment.n}|${beat}`) : null;
     },
+    script(phase) {
+      const r = run();
+      if (!active || !r || r.sourceKind !== 'activity') return null;
+      const key = scriptKey(state(), phase ?? r.marathon?.phase ?? 1);
+      return key !== null ? scripts.get(key) ?? null : null;
+    },
     reset() {
       active = false;
+      scripts.clear();
       generation += 1;
       collected = [];
       startedAt = null;

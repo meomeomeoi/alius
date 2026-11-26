@@ -166,6 +166,30 @@ describe('the instrument host', () => {
     expect(instrumentFor(s.scene!.physics!, s, reg, DEFAULT_SETTINGS)?.id).toBe('b');
   });
 
+  it('Task 28: an instrument that matches but cannot draw (drawable false, or a throw) leaves the run to the card; once it can, it mounts', () => {
+    let can = false;
+    const { def, calls } = testDef({ drawable: () => can });
+    registerInstrument(def);
+    const s = hold();
+    const t = draw(s);
+    expect(t.q('.alius-physics[data-run="p1"]')).not.toBeNull();
+    expect(calls.start).toEqual([]);
+    can = true;
+    t.screen.refresh();
+    expect(calls.start).toEqual(['p1']);
+    expect(t.q('.alius-physics[data-run="p1"]')).toBeNull();
+    can = false; // a picture failed: the card takes the run at the next redraw, the instrument is stopped
+    t.screen.refresh();
+    expect(calls.stop).toBe(1);
+    expect(t.q('.alius-physics[data-run="p1"]')).not.toBeNull();
+    _resetInstrumentDefs();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    registerInstrument(testDef({ id: 'thrower', drawable: () => { throw new Error('drawable'); } }).def);
+    t.screen.refresh();
+    expect(t.q('.alius-physics[data-run="p1"]')).not.toBeNull();
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
   it('real time mounts once per run: a redraw updates, a new run stops the old one, no run stops it', async () => {
     const { def, calls } = testDef();
     registerInstrument(def);

@@ -1,0 +1,462 @@
+{
+  "prototype": "shoe",
+  "note": "Task 28 (chunk e10): shoe service. The functions of shoe.html that its README calls normative: foot service's craft carried over (`zoneRadii`, `inEllipse`, `zoneAtPic`, `onShoe`, the gesture classifier in `down` / `move` / `up` with the kiss as a press held ≥ 0.3 s under 12 px, the lick sound `lickTick` / `lickStop`); the pictures and the camera (`shoeRect` with `camU` eased by 0.08 a frame, `toPic`, `twoFeet`, `mirrored`, `footX`, `zonesNow`, `leatherNow`, `slotKey`, `view`, `slotImg`, `surf`); the zones (`KINDS`, `FRONT`, `SOLE_TWO`); the surfaces and their order (`fresh`, `begin`, `beginSurface`, `nextSurface`); the dirt of her day (`DIRTS`, `makeSurface`, `ensureSurface`, `dirtLeft`, `zoneStat`); the tongue and the shine (`lickStroke`); the mouth (`swallow`, `spit`); her attention (`updateAttention`); her foot (`herMove`, `update`'s `anim`); her want (`nextWant`); the inspection (`inspect`, `verdict`, `meanGloss`, `render`'s light canvas); the drawing (`render`: the dirt in its own colour with a fixed grain, the gloss screen-blended, the light band, the kisses' marks, the vignette); the loop (`frame`, `update`); her hand (`say`, `sense`, `sayL`); the sound (`audioInit`, `loadSamples`, `play`, `noise`, `tone`, `SFX`, `GROUPS`); the helpers (`clamp`, `lerp`, `smooth` from the kit, `easeOut`, `pick`, `rand`, `ST`, `L`, `D`, `K`); the engine's `CHECK_AT` (TUNING `tongue.checkAt` / 100) and her ways `STYLES` (the prototype's drafts, verbatim in the engine's `physics/footwear.ts`, read by her lead style). Lines (Rulings Q, R, Z): `LINES` are the `cardVoice` rows `shoe.<kind>` by style (a style the prototype has no row of reads neutral's; cold's own lines verbatim), `ZONE_WORDS` the rows `shoe.zone.<zone>`; no kind of hers has a cue kind, so no model cue replaces a line. Module wiring beyond the listed functions (shoe.ts header): `performance`, `setTimeout`, `requestAnimationFrame`, `innerWidth` / `innerHeight` and `Math.random` are the module's own (the scene's frame clock, the mount's timers and frames, the scene's size, a xorshift seeded by fnv1a of the scene and the run: no rng draw); `document.createElement('canvas')` makes a canvas whose context never fails (a page with no canvas draws nothing); `$` names the instrument's elements in the effects layer (under the scene's UI: the stop word's pill and the field are never covered), and the prototype's own page parts (`#reply`, `#summary`, `#sumLine`, `#sumFacts`, `#debug`, `#mouthGauge`) are detached elements. `MARK` is the zone marker's state, off (the marker is chunk f's: `markDown` / `markMove` / `markUp` do nothing); `ASSETS.her` and `SPRITE` (her sprite as a stand-in) are empty: without both pictures of her footwear (`shoe_close.<kind>`, `shoe_sole.<kind>`, their sidecars `{ feet, shown, fit: { height, y, x, fade, xr, xl }, zones }`) or when one fails to load the card plays the hold (`drawable`, README: no stand-in sprite). The prototype's top-level listeners are the mount's (`env.listen`): the left button on the frame is `down` (relative to the scene's root), the pointer's moves and its release over the document `move` / `up`, the right button on the frame spits; Space swallows and X spits only from outside a field or a control (typed there they are letters: ruling O); Escape and H are the scene's (the stop word is its pill). Reports (R29, R31, R27): each beat of a running segment, as it ends (the last 300 ms before the segment's end), one `wipe` with the zone wiped most and the share of the whole footwear's dirt taken off in the beat (each of the four surfaces a quarter: the engine's gauge is 100 × the dirt left), `pointer`; a spit at once (`spit`); her verdict at the session's end, or when the engine's check ended the run first (`physics/service`, `verdictOf` of the mean quality of the surfaces she judged). Not ported (README: prototype only): the panel, the start overlay and its set up, the summary card, the debug readout, the `__` hooks (`_shoe` is the tests' and the shots' hook), the zone marker and `copyFit`, the prototype's texts as code (her lines are `cardVoice`). The dirt's `taste` and `where` texts stay in `DIRTS` (sensory lines, not her voice). CSS (checked by the shots): the prototype's styles under `.alius-shoe` (her lines in her hand at 42 px × her hand's measured scale; the sensory lines; the room's backdrop blurred 16 px and dimmed to 0.45, the shade and the vignette).",
+  "functions": [
+    {
+      "fn": "clamp",
+      "module": "src/ui/scene/instruments/kit/math.ts"
+    },
+    {
+      "fn": "lerp",
+      "module": "src/ui/scene/instruments/kit/math.ts"
+    },
+    {
+      "fn": "smooth",
+      "module": "src/ui/scene/instruments/kit/math.ts"
+    },
+    {
+      "fn": "easeOut",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "pick",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "rand",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "S",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "ST",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "L",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "D",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "K",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "audioInit",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "loadSamples",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "play",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "noise",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "tone",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "SFX",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "lickTick",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "lickStop",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "say",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "sense",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "sayL",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "fresh",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "view",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "slotKey",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "twoFeet",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "mirrored",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "footX",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "zonesNow",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "leatherNow",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "surf",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "slotImg",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "shoeRect",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "toPic",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "zoneRadii",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "inEllipse",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "zoneAtPic",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "onShoe",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "makeSurface",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "ensureSurface",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "dirtLeft",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "zoneStat",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "lickStroke",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "beginSurface",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "nextWant",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "herMove",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "updateAttention",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "inspect",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "verdict",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "meanGloss",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "begin",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "nextSurface",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "finish",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "swallow",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "spit",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "frame",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "update",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "render",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "down",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "move",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    },
+    {
+      "fn": "up",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts"
+    }
+  ],
+  "tables": [
+    {
+      "ident": "KINDS",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts",
+      "export": "KINDS"
+    },
+    {
+      "ident": "FRONT",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts",
+      "export": "FRONT"
+    },
+    {
+      "ident": "SOLE_TWO",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts",
+      "export": "SOLE_TWO"
+    },
+    {
+      "ident": "DIRTS",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts",
+      "export": "DIRTS"
+    },
+    {
+      "ident": "GROUPS",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts",
+      "export": "GROUPS"
+    },
+    {
+      "ident": "CHECK_AT",
+      "module": "src/ui/scene/instruments/shoe/shoe.ts",
+      "export": "CHECK_AT"
+    },
+    {
+      "ident": "STYLES",
+      "module": "src/engine/physics/footwear.ts",
+      "export": "STYLES"
+    }
+  ],
+  "lines": [
+    {
+      "ident": "LINES",
+      "registry": "cardVoice",
+      "cueKinds": {
+        "neutral.entry": "shoe.entry",
+        "neutral.turn": "shoe.turn",
+        "neutral.sole": "shoe.sole",
+        "neutral.kiss": "shoe.kiss",
+        "neutral.polish": "shoe.polish",
+        "neutral.other": "shoe.other",
+        "neutral.caught": "shoe.caught",
+        "neutral.swallowed": "shoe.swallowed",
+        "neutral.good": "shoe.good",
+        "neutral.poor": "shoe.poor",
+        "neutral.missed": "shoe.missed",
+        "neutral.dull": "shoe.dull",
+        "neutral.stamp": "shoe.stamp",
+        "neutral.end": "shoe.end",
+        "affectionate.entry": "shoe.entry@affectionate",
+        "affectionate.turn": "shoe.turn@affectionate",
+        "affectionate.sole": "shoe.sole@affectionate",
+        "affectionate.kiss": "shoe.kiss@affectionate",
+        "affectionate.polish": "shoe.polish@affectionate",
+        "affectionate.other": "shoe.other@affectionate",
+        "affectionate.caught": "shoe.caught@affectionate",
+        "affectionate.swallowed": "shoe.swallowed@affectionate",
+        "affectionate.good": "shoe.good@affectionate",
+        "affectionate.poor": "shoe.poor@affectionate",
+        "affectionate.missed": "shoe.missed@affectionate",
+        "affectionate.dull": "shoe.dull@affectionate",
+        "affectionate.stamp": "shoe.stamp@affectionate",
+        "affectionate.end": "shoe.end@affectionate",
+        "ritual.entry": "shoe.entry@ritual",
+        "ritual.turn": "shoe.turn@ritual",
+        "ritual.sole": "shoe.sole@ritual",
+        "ritual.kiss": "shoe.kiss@ritual",
+        "ritual.polish": "shoe.polish@ritual",
+        "ritual.other": "shoe.other@ritual",
+        "ritual.caught": "shoe.caught@ritual",
+        "ritual.swallowed": "shoe.swallowed@ritual",
+        "ritual.good": "shoe.good@ritual",
+        "ritual.poor": "shoe.poor@ritual",
+        "ritual.missed": "shoe.missed@ritual",
+        "ritual.dull": "shoe.dull@ritual",
+        "ritual.stamp": "shoe.stamp@ritual",
+        "ritual.end": "shoe.end@ritual",
+        "playful.entry": "shoe.entry@playful",
+        "playful.turn": "shoe.turn@playful",
+        "playful.sole": "shoe.sole@playful",
+        "playful.kiss": "shoe.kiss@playful",
+        "playful.polish": "shoe.polish@playful",
+        "playful.other": "shoe.other@playful",
+        "playful.caught": "shoe.caught@playful",
+        "playful.swallowed": "shoe.swallowed@playful",
+        "playful.good": "shoe.good@playful",
+        "playful.poor": "shoe.poor@playful",
+        "playful.missed": "shoe.missed@playful",
+        "playful.dull": "shoe.dull@playful",
+        "playful.stamp": "shoe.stamp@playful",
+        "playful.end": "shoe.end@playful",
+        "cruel.entry": "shoe.entry@cruel",
+        "cruel.turn": "shoe.turn@cruel",
+        "cruel.sole": "shoe.sole@cruel",
+        "cruel.kiss": "shoe.kiss@cruel",
+        "cruel.polish": "shoe.polish@cruel",
+        "cruel.other": "shoe.other@cruel",
+        "cruel.caught": "shoe.caught@cruel",
+        "cruel.swallowed": "shoe.swallowed@cruel",
+        "cruel.good": "shoe.good@cruel",
+        "cruel.poor": "shoe.poor@cruel",
+        "cruel.missed": "shoe.missed@cruel",
+        "cruel.dull": "shoe.dull@cruel",
+        "cruel.stamp": "shoe.stamp@cruel",
+        "cruel.end": "shoe.end@cruel",
+        "possessive.entry": "shoe.entry@possessive",
+        "possessive.turn": "shoe.turn@possessive",
+        "possessive.sole": "shoe.sole@possessive",
+        "possessive.kiss": "shoe.kiss@possessive",
+        "possessive.polish": "shoe.polish@possessive",
+        "possessive.other": "shoe.other@possessive",
+        "possessive.caught": "shoe.caught@possessive",
+        "possessive.swallowed": "shoe.swallowed@possessive",
+        "possessive.good": "shoe.good@possessive",
+        "possessive.poor": "shoe.poor@possessive",
+        "possessive.missed": "shoe.missed@possessive",
+        "possessive.dull": "shoe.dull@possessive",
+        "possessive.stamp": "shoe.stamp@possessive",
+        "possessive.end": "shoe.end@possessive",
+        "cold.entry": "shoe.entry@cold",
+        "cold.turn": "shoe.turn@cold",
+        "cold.sole": "shoe.sole@cold",
+        "cold.kiss": "shoe.kiss@cold",
+        "cold.polish": "shoe.polish@cold",
+        "cold.other": "shoe.other@cold",
+        "cold.caught": "shoe.caught@cold",
+        "cold.swallowed": "shoe.swallowed@cold",
+        "cold.good": "shoe.good@cold",
+        "cold.poor": "shoe.poor@cold",
+        "cold.missed": "shoe.missed@cold",
+        "cold.dull": "shoe.dull@cold",
+        "cold.stamp": "shoe.stamp@cold",
+        "cold.end": "shoe.end@cold",
+        "regal.entry": "shoe.entry@regal",
+        "regal.turn": "shoe.turn@regal",
+        "regal.sole": "shoe.sole@regal",
+        "regal.kiss": "shoe.kiss@regal",
+        "regal.polish": "shoe.polish@regal",
+        "regal.other": "shoe.other@regal",
+        "regal.caught": "shoe.caught@regal",
+        "regal.swallowed": "shoe.swallowed@regal",
+        "regal.good": "shoe.good@regal",
+        "regal.poor": "shoe.poor@regal",
+        "regal.missed": "shoe.missed@regal",
+        "regal.dull": "shoe.dull@regal",
+        "regal.stamp": "shoe.stamp@regal",
+        "regal.end": "shoe.end@regal"
+      }
+    },
+    {
+      "ident": "ZONE_WORDS",
+      "registry": "cardVoice",
+      "format": "line",
+      "cueKinds": {
+        "toe": "shoe.zone.toe",
+        "vamp": "shoe.zone.vamp",
+        "laces": "shoe.zone.laces",
+        "side": "shoe.zone.side",
+        "heel": "shoe.zone.heel",
+        "shaft": "shoe.zone.shaft",
+        "welt": "shoe.zone.welt",
+        "back": "shoe.zone.back",
+        "toe_tread": "shoe.zone.toe_tread",
+        "mid": "shoe.zone.mid",
+        "heel_tread": "shoe.zone.heel_tread"
+      }
+    }
+  ],
+  "differences": [
+    {
+      "fn": "S",
+      "reason": "Wiring: the still form is the scene's (`env.reduced`, `motionReduced`, read each frame by `before`), never `matchMedia` (P10). The other defaults are the prototype's; her footwear, the dirt, her style and each picture's feet, foot shown, fit and zones are set from the run and the art's sidecars at the mount (`bind`, `fitFrom`).",
+      "diff": "@@ -1,3 +1,3 @@\n const S={\n-kind:\"boots\",dirt:\"mud\",style:\"neutral\",busy:\"auto\",sound:true,vol:0.7,debug:false,reduced:matchMedia(\"(prefers-reduced-motion: reduce)\").matches,feet:{\n+kind:\"boots\",dirt:\"mud\",style:\"neutral\",busy:\"auto\",sound:true,vol:0.7,debug:false,reduced:false,feet:{\n boots_close:\"one\",boots_sole:\"one\",heels_close:\"one\",heels_sole:\"one\""
+    },
+    {
+      "fn": "audioInit",
+      "reason": "Wiring (ruling D): the context is the sample layer's (`samples.ctx()`, the mount's recorded view: the room tone's source is stopped at the unmount) and the prototype's master goes into the layer's body bus instead of the destination. No context yet (before the player's first gesture, or no sound): nothing is built, and the frame tries again.",
+      "diff": "@@ -2,3 +2,5 @@\n if(A.ctx)return\n-const ctx=new(window.AudioContext||window.webkitAudioContext)()\n+const ctx=E?.env.samples?.ctx()??null\n+const out=E?.env.samples?.bus(\"body\")??null\n+if(!ctx||!out)return\n A.ctx=ctx\n@@ -6,3 +8,3 @@\n A.master.gain.value=S.sound?S.vol:0\n-A.master.connect(ctx.destination)\n+A.master.connect(out)\n A.world=ctx.createBiquadFilter()"
+    },
+    {
+      "fn": "loadSamples",
+      "reason": "Wiring (ruling D): the recordings are the extension's own CC0 files (`SAMPLE_URLS`: `assets/sounds/ha/cloth1–4`, `wood1–2`, `soft1–2`, `key1–2`, the prototype's), fetched and decoded once by the sample layer (`samples.preload`); `A.buf[key]` reads the layer's decoded buffer (null until decoded: the prototype's `play` then plays nothing, as it does without samples).",
+      "diff": "@@ -1,9 +1,8 @@\n-async function loadSamples(){\n-await Promise.all(Object.entries(SAMPLE_URLS).map(async([k,u])=>{\n-try{\n-const r=await fetch(u)\n-A.buf[k]=await A.ctx.decodeAudioData(await r.arrayBuffer())\n-}\n-catch(e){}\n-}))\n+function loadSamples(){\n+const samples=E?.env.samples\n+if(!samples)return\n+A.buf=new Proxy({},{\n+get:(_t,k)=>(typeof k===\"string\"&&SAMPLE_URLS[k]?samples.buffer(SAMPLE_URLS[k]):null)\n+})\n+void samples.preload(Object.values(SAMPLE_URLS))\n }"
+    },
+    {
+      "fn": "updateAttention",
+      "reason": "Wiring (README open question: her attention's busy share is her activity's attention, P15a): her attention is the engine's plan on the beat being played (`planAttention`, P15a's attention by her activity and her style), read every frame, so what is shown is the attention `physics/spit` takes for a spit made on that beat (Ruling AC: a spit is decided when it is made, with the prototype's chance by her attention, not by `cheatRoll` at the segment's end); between segments it stays as it was. The prototype's own re-choice every 2.5–6 s by `STYLES[].busy` is its scheduler (prototype only). Her taps while busy are ported as they are.",
+      "diff": "@@ -4,6 +4,4 @@\n G.attT=0\n-const busyShare=S.busy===\"always\"?1:S.busy===\"never\"?0:ST().busy\n-const r=Math.random()\n-G.attention=r<busyShare?\"busy\":r<busyShare+(1-busyShare)*0.5?\"glancing\":\"watching\"\n-G.nextAtt=rand(2500,6000)\n+G.attention=planAttention()\n+G.nextAtt=0\n }"
+    },
+    {
+      "fn": "begin",
+      "reason": "Wiring: the context may not exist yet (the sample layer gives one only after the player's first gesture, or never with the sound off): the resume is skipped then. `begin` runs once both pictures have loaded (`before`); the prototype's `#reply` line is its own page's (the scene's reply block is the model's), so its write goes to a detached element.",
+      "diff": "@@ -2,3 +2,3 @@\n audioInit()\n-if(A.ctx.state===\"suspended\")A.ctx.resume()\n+if(A.ctx&&A.ctx.state===\"suspended\")A.ctx.resume()\n $(\"#hand\").replaceChildren()"
+    },
+    {
+      "fn": "finish",
+      "reason": "Ruling Q: her line after the stop word is her voice, not code: the prototype's inline 'okay. stop. come here.' is the `cardVoice` row `shoe.stop` (verbatim, one row for every style: the prototype's line is the same for all, cold included; Ruling R clarified), read through `L().stop`. In the extension the stop word ends the run at once (the host plays no end after it), so this branch is the prototype's only. The summary card is the prototype's own page (prototype only): its writes go to detached elements.",
+      "diff": "@@ -4,6 +4,6 @@\n lickStop()\n-say(why===\"stop\"?\"okay. stop. come here.\":pick(L().end))\n+say(why===\"stop\"?pick(L().stop):pick(L().end))\n const s=G.stats\n setTimeout(()=>{\n-$(\"#sumLine\").textContent=why===\"stop\"?\"okay. stop. come here.\":L().end[0]\n+$(\"#sumLine\").textContent=why===\"stop\"?pick(L().stop):L().end[0]\n $(\"#sumFacts\").innerHTML=`${K().label} · ${S.dirt} (${D().where})<br>strokes: ${s.strokes} (with her grain ${s.withGrain}) · polish strokes: ${s.polishStrokes}<br>kisses: ${s.kisses}<br>`+`swallowed: ${s.swallows} · spat: ${s.spits} (caught ${s.caught})<br>stamps: ${s.stamps}<br>`+s.checks.map(c=>`${c.foot} ${c.surface}: dirt ${(c.dirt*100).toFixed(0)} %${c.gloss!==null?`, shine ${(c.gloss*100).toFixed(0)} %`:\"\"}${c.worst?` — ${c.kind} ${ZONE_WORDS[c.worst]}`:\"\"}`).join(\"<br>\")+`<br>how it ended: ${why}`"
+    },
+    {
+      "fn": "spit",
+      "reason": "Ruling AC (e10 fix I2): whether she saw the spit is decided by the engine when the spit is made (`physics/spit`: one draw on the engine's rng, with the prototype's chance by her attention, 0.75 / 0.3 / 0.06, `TUNING.physics.shoe.spitSeen`; while a segment runs her planned attention on the beat, else the attention shown), so a caught spit is `physics_caught` and in the tally. `spitSeen(seen)` asks it and answers at once; the prototype's two branches are unchanged.",
+      "diff": "@@ -6,3 +6,3 @@\n G.grit=0\n-if(Math.random()<seen){\n+if(spitSeen(seen)){\n G.stats.caught+=1"
+    }
+  ]
+}

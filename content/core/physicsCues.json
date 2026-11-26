@@ -154,5 +154,16 @@
       "back."
     ],
     "description": "P10e-e: her order in the jaw, she pulls back a little (jaw.html's `out`: the lines of the styles that fit any holder; the model words her own)."
+  },
+  {
+    "id": "cue_surge",
+    "kind": "surge",
+    "physics": [
+      "gulp"
+    ],
+    "lines": [
+      "now."
+    ],
+    "description": "P10e-e R32: her word as a surge of her flow comes in gulp (gulp.html's `surge`: only ritual announces it, \"now.\"; the model words her own)."
   }
 ]

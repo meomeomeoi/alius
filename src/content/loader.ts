@@ -189,6 +189,10 @@ export async function loadPacks(
         }
         continue;
       }
+      // final review Minor 9: a hand without its measured `scale` loads at 1, with a warning (the SYS › debug list and the console)
+      if (reg === 'handFonts' && (entry as { scale?: unknown }).scale === undefined) {
+        errors.push({ pack: origin.pack, file: origin.file, path: fmtPath(['scale'], origin.index), message: 'no `scale`: the hand is read at 1 (measure it with scripts/measure-hands.mjs)' });
+      }
       registries[reg].set(id, parsed.data as Entry);
       finalOrigin.set(`${reg}\0${id}`, origin);
     }

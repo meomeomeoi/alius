@@ -102,11 +102,11 @@ describe('contactPhysics (P15a)', () => {
 });
 
 describe('physicsCues (P15a)', () => {
-  it('one row per cue kind with 3 to 5 lines each', () => {
+  it('one row per cue kind with 3 to 5 lines each (P10e-e R32: a row of one physics holds as many as its prototype has, gulp\'s `surge` one)', () => {
     const rows = [...reg.physicsCues.values()];
     expect(rows.map((r) => r.kind).sort()).toEqual([...CUE_KINDS].sort());
     for (const r of rows) {
-      expect((r.lines as string[]).length, String(r.id)).toBeGreaterThanOrEqual(3);
+      expect((r.lines as string[]).length, String(r.id)).toBeGreaterThanOrEqual(r.kind === 'surge' ? 1 : 3);
       expect((r.lines as string[]).length, String(r.id)).toBeLessThanOrEqual(5);
     }
   });

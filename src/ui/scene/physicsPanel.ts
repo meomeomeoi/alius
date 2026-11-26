@@ -1,9 +1,10 @@
+import type { ScriptLine } from '../../llm/calls/activityScript';
 import type { Registries } from '../../content/types';
 import { blockingLive, blockingOf, COMMANDER, contactOf } from '../../engine/blocking';
 import type { CueKind } from '../../engine/blocking/types';
 import type { EngineEvent } from '../../engine/dispatch';
 import { remainingOf } from '../../engine/physics/run';
-import type { InputKind, PhysicsRun, SegmentInput } from '../../engine/physics/state';
+import type { InputKind, PhysicsRun, ReliefReport, SegmentInput } from '../../engine/physics/state';
 import type { CampaignState } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import type { AliusSettings } from '../../settings';
@@ -40,6 +41,26 @@ export interface PhysicsPanelStaging {
    * none runs), the length of a beat and the controller's now (the same clock).
    */
   clock(): { startedAt: number | null; beatMs: number; now: number };
+  /** P10e-e R26: her hour's script for a phase of her frame (the model's, validated), or null. Absent = never. */
+  script?(phase?: number): ScriptLine[] | null;
+  /** P10e-e R28: after her forgotten end, the commander gets up alone, or a visitor of the frame finds the commander. Absent = never. */
+  getUp?(): EngineEvent[];
+  found?(finderId: string): EngineEvent[];
+  /** P10e-e Rulings X, Y and AE: a relief decided at once (`physics/relief`; `ReliefReport`). Absent = never. */
+  relief?(r: ReliefReport): EngineEvent[];
+  /** P10e-e review I7: she woke: her frame ends (`physics/woke`). Absent = never. */
+  woke?(): EngineEvent[];
+  /** P10e-e Task 26: her verdict on a session of foot service in her frame, or of shoe service (Task 28) (`physics/service`), at the session's end (alive until the unmount). Absent = never. */
+  service?(runId: string, verdict: 'pleased' | 'adequate' | 'displeased'): EngineEvent[];
+  /** P10e-e Ruling AC: grit spat aside in shoe service, decided at once (`physics/spit`; `attention` is hers as shown, read while the run is held). Absent = never. */
+  spit?(beat: number, attention: string): EngineEvent[];
+  /**
+   * P10e-e e11 review M8: the running segment's clock starts again now (its inputs so far are kept): gulp's floor begins to be cleaned a
+   * little after its segment started, and the prototype's 40 s count from the puddle. Absent = never.
+   */
+  restart?(): void;
+  /** P10e-e 24b: a decision of her script through her command capability (`physics/decide`). Absent = never. */
+  decide?(kind: string, ref?: string): EngineEvent[];
   /** P10e-e: how a run of the open scene ended (its `physics_outcome`), or null when none is known. Absent = never known. */
   outcome?(runId: string): { runId: string; physicsId: string; result: string; tally?: Record<string, number> } | null;
 }

@@ -208,6 +208,10 @@ export function offencesFromEvents(draft: CampaignState, ctx: EngineCtx, events:
       case 'rule_broken':
         note(unitId, 'rule_broken', str(e.ruleId), 'minor');
         break;
+      case 'physics_got_up':
+        // P10e-e R28: the commander got up alone after her forgotten end, though she had said stay (major, as a defied hold)
+        if (e.stayed === true) note(str(e.holderId), 'hold_defied', str(e.runId), 'major');
+        break;
       default:
         break;
     }
@@ -215,4 +219,4 @@ export function offencesFromEvents(draft: CampaignState, ctx: EngineCtx, events:
   return out;
 }
 
-const OFFENCE_SOURCES: readonly string[] = ['refusal_noted', 'milestone_refused', 'override_answered', 'physics_slip', 'physics_caught', 'rule_broken'];
+const OFFENCE_SOURCES: readonly string[] = ['refusal_noted', 'milestone_refused', 'override_answered', 'physics_slip', 'physics_caught', 'rule_broken', 'physics_got_up'];

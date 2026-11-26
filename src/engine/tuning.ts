@@ -3,6 +3,26 @@ import type { ProfileStyle } from './dynamic/types';
 /** P10e-e (R13): her face before a slap and after it, by her style (the 28 expression labels of the sprites). */
 export interface SlapFace { readonly before: string; readonly keep: readonly string[]; readonly after: Readonly<Record<'none' | 'braced' | 'flinched', string>> }
 
+/**
+ * P10e-e R32: her flow in gulp by style (gulp.html `STYLES`, verbatim): her base in mouths a second, its slow wander (`vary`), how often she
+ * pauses (`pause`), her surges (every `surgeEvery` seconds, `surge` times her flow, after a warning of `warn` ms; `announce`: she says it,
+ * `feint`: the share of warnings with no surge after them), her answer to a tap (`tap`, the instrument's) and who cleans what was spilled
+ * (`check`: `clean` the commander, `herself` she wipes it up). A style the table has no row of reads neutral's.
+ */
+export interface GulpRow {
+  readonly base: number; readonly vary: number; readonly pause: number; readonly surgeEvery: readonly [number, number]; readonly surge: number; readonly warn: number;
+  readonly tap: string; readonly check: string; readonly announce?: boolean; readonly feint?: number;
+}
+export const GULP_STYLES: Readonly<Record<string, GulpRow>> = Object.freeze({
+  neutral:      Object.freeze({ base: 0.2, vary: 0.25, pause: 0.25, surgeEvery: Object.freeze([7, 12] as const), surge: 1.6, warn: 700, tap: 'slower', check: 'clean' }),
+  affectionate: Object.freeze({ base: 0.15, vary: 0.2, pause: 0.4, surgeEvery: Object.freeze([12, 20] as const), surge: 1.3, warn: 1100, tap: 'pause', check: 'herself' }),
+  ritual:       Object.freeze({ base: 0.19, vary: 0.05, pause: 0.15, surgeEvery: Object.freeze([8, 8] as const), surge: 1.5, warn: 900, tap: 'hold', check: 'clean', announce: true }),
+  playful:      Object.freeze({ base: 0.19, vary: 0.45, pause: 0.35, surgeEvery: Object.freeze([5, 9] as const), surge: 1.8, warn: 500, tap: 'faster', check: 'clean', feint: 0.4 }),
+  cruel:        Object.freeze({ base: 0.26, vary: 0.35, pause: 0.1, surgeEvery: Object.freeze([4, 7] as const), surge: 2.1, warn: 0, tap: 'surge', check: 'clean' }),
+  possessive:   Object.freeze({ base: 0.22, vary: 0.2, pause: 0.15, surgeEvery: Object.freeze([6, 10] as const), surge: 1.7, warn: 600, tap: 'slower', check: 'clean' }),
+  cold:         Object.freeze({ base: 0.21, vary: 0.1, pause: 0.1, surgeEvery: Object.freeze([9, 14] as const), surge: 1.4, warn: 400, tap: 'none', check: 'clean' }),
+});
+
 /** Rule constants of the P2 economy and calendar (draft balance values). Content-like data lives in JSON. */
 export const TUNING = Object.freeze({
   /** P7: the commander's body, presence and traits (draft balance values). */
@@ -133,9 +153,20 @@ export const TUNING = Object.freeze({
       drain: 14, caught: 30, missed: 8, cruelMissed: 4, windowEvery: Object.freeze([2, 4] as const), seal: Object.freeze({ leaky: 4, firm: 1, tight: 0 }), gapRelief: 5,
       overDelay: Object.freeze({ cruel: 2, affectionate: 0, other: 1 } as Readonly<Record<string, number>>), wmul: 2,
     }),
-    weight: Object.freeze({ drain: 8, shiftEvery: Object.freeze([3, 5] as const), shift: Object.freeze([15, 25] as const), relief: 15 }),
+    weight: Object.freeze({ drain: 8, shiftEvery: Object.freeze([3, 5] as const), shift: Object.freeze([15, 25] as const), relief: 15,
+      /** P10e-e Ruling AE (weight.html `relief`): a shift she caught at once costs 10 and leans her in heavier, 1.5 for 3 beats. */
+      caught: 10, caughtLean: Object.freeze({ pressure: 1.5, beats: 3 }) }),
     saturation: Object.freeze({ per: 10, bandFactor: Object.freeze({ faint: 0.5, noticeable: 1, strong: 1.5, overwhelming: 2 }), mouth: 20, noticed: 0.6 }),
     tongue: Object.freeze({ start: 100, right: 15, wrong: 8, checkAt: 10, dryness: 6, parts: Object.freeze(['toes', 'arch', 'heel', 'sole'] as const) }),
+    /**
+     * P10e-e Task 27 (R30): shoe service. `wetShare`: the share of days that are wet (`wetDay`: a hash of the day; the state has no weather),
+     * whose dirt is rain when no run or drill of hers says otherwise. `AUTHOR TO TUNE`.
+     */
+    shoe: Object.freeze({
+      wetShare: 0.25,
+      /** Ruling AC (e10 fix I2): her chance to see a spit, by her attention (shoe.html `spit`'s 0.75 / 0.3 / 0.06), one draw when it is made. */
+      spitSeen: Object.freeze({ watching: 0.75, glancing: 0.3, busy: 0.06 } as Record<string, number>),
+    }),
     gulpFill: Object.freeze({ caught: 5, spill: 20 }), jawRest: 30, noiseSlip: 1,
     jaw: Object.freeze({ per: 8, degradeAt: 70 }),
     /**
@@ -156,8 +187,34 @@ export const TUNING = Object.freeze({
       } as Record<string, { readonly every: readonly [number, number]; readonly ask: number }>),
     }),
     gulp: Object.freeze({ swallows: Object.freeze([4, 8] as const), spillDirt: 60 }), progressPerBeat: 5,
+    /**
+     * P10e-e R32 (gulp.html): her flow in real time, planned by hash from her style's row (`styles`): the first warning `firstMs` in (the
+     * prototype's `nextSurge`), a pause per beat at `pause × beatMs / 9000` (its per-millisecond chance), the surge one beat long (inside its
+     * 1.2–2.2 s). Her volume (`volumeMs`, the prototype's default 35 s) ends the flow; what was spilled is cleaned from `cleanFrom` mouthfuls.
+     */
+    gulpFlow: Object.freeze({ styles: GULP_STYLES, firstMs: 6000, volumeMs: 35000, cleanFrom: 0.15 }),
     asleep: Object.freeze({ perBeat: 0.08, exchanges: Object.freeze([1, 3] as const) }),
     forget: Object.freeze({ base: 0.10, cruel: 0.15, perImpunity: 0.002, from: 50 }), slipExtend: 1,
+    /**
+     * P10e-e Task 25 (P16b §8, her_activity.html `MOTIONS` / `MEANINGS` / `herSignals`): her foot language. A holder has five pairs (P16b: 4–6;
+     * the prototype's five): the three foot acts and `deskCount` of the desk meanings, each on a motion of hers, shuffled by `fnv1a` of her id.
+     */
+    footSignals: Object.freeze({
+      motions: Object.freeze(['tap2', 'sole', 'push', 'hook', 'point', 'stamp', 'nudge'] as const),
+      foot: Object.freeze(['kiss', 'clean', 'rub'] as const),
+      desk: Object.freeze(['closer', 'still', 'enough'] as const),
+      deskCount: 2,
+    }),
+    /**
+     * P10e-e Task 25: her foot service (her_activity.html `SVC_STYLE`, the drafts of her profile, read by style). `patience` bounds her patience
+     * (the plan: 3–5 s, cruel shorter: cruel keeps the prototype's 2.5). `verdict`: a session's mean quality at `pleased` or more pleases her (the
+     * prototype's good line, `q ≥ 0.6`), under `adequate` (the prototype's half-done stroke, 0.3) displeases her. Her own words of how she likes
+     * her feet (P15 `how` of the targets at her feet: a body-map zone at `footZoneY` or lower) tilt it: `slow` / `quick` scale her kiss and tempo.
+     */
+    footService: Object.freeze({
+      patience: Object.freeze([3, 5] as const), verdict: Object.freeze({ pleased: 0.6, adequate: 0.3 }), footZoneY: 90,
+      slow: Object.freeze({ kiss: 1.25, tempo: 0.8 }), quick: Object.freeze({ kiss: 0.75, tempo: 1.25 }),
+    }),
     blackout: Object.freeze({ slots: 1, stress: 5 }),
     endurance: Object.freeze({ hold: 10, streakFrom: 3, streak: 2, training: 15, thresholds: Object.freeze([30, 80, 150, 250, 400] as const), capacityPerLevel: 0.1 }),
     herSkill: Object.freeze({ practices: 8, cap: 5, mult: Object.freeze({ drill: 1.5, clinical: 1.5, affectionate: 0.7 } as Record<string, number>) }),
