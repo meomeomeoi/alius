@@ -1,0 +1,422 @@
+{
+  "prototype": "jaw",
+  "note": "Task 20 (chunk e7): the jaw. The functions of jaw.html that its README calls normative: the jaw (`update`: the spring toward `target − pull`, the twitches, the tremor, the ring as the floor; the fatigue by the cost of the opening over the endurance skill; the teeth; an order not kept), the mouth (`render`: its height, the hinges' burn, her band's ghost frames, the rest ring, the letters smearing from fatigue 50, the frame's jolt, vignette, ache and saturation, the strain hum; her sprite from below, the foot art; the drool, `spawnDrop`), her moves (`bandNow`, `herMove`), the rest (`askRest`), speech through the opening (speech.ts `speak` with `LABIAL`, `DENTAL`, `VELAR`, `OPEN_*`, `DEGRADE_AT`; `renderMirror`, `onType`, `sendLine`), her hand (`say`), the phases (`begin`, `finish`, `frame`), the state (`fresh`, `st`, `L`, `C`, `pick`, `rand`, `H0`), the sound (`audioInit`, `loadSamples`, `play`, `noise`, `tone`, `SFX`, `strainInit`) and the tables (`STYLES`, `CONTACTS`, the instrument's numbers `MOUTH_H` … `ORDER_GRACE`, the engine's `BEAT`, `JAW_PER`, `JAW_REST`, `REST_MS` = TUNING `jawRestMs`, `REST_DENIED`), and its `LINES` (checked by `lines`: `cardVoice` `jaw.*` by style; her question's pairs are `jaw.ask` rows `question|word` and the stop line `jaw.stop`, both checked word for word by tests/content/cardVoice.test.ts). Module wiring beyond the listed functions (jaw.ts header): `performance`, `setTimeout`, `requestAnimationFrame`, `innerWidth` / `innerHeight` and `Math.random` are the module's own (the scene's frame clock, the mount's timers and frames, the scene's size, the xorshift of speech.ts seeded by fnv1a of the scene and the run: no rng draw; a frame's time earlier than the clock the mount read is never a negative step); `$` names the instrument's elements in the effects layer (under the scene's UI: the stop word's pill is never covered), the scene's input line as `#mouth` and `#inputWrap` (its height, transform, `--ache` and border written through a claim, styleClaims.ts, with its margins keeping its centre), the field as `#cmd`, and the letters, the hinges and the rest ring on the line; her band's ghost frames lie beside the line in its parent. The prototype's top-level listeners are the mount's (`env.listen`): the mouse's height over the document is the jaw (`G.target`, relative to the scene's root); keys typed into the field go through `onType` before the scene's own handler (capture on the root), paste and drop into the field are refused (only typed letters come out of the mouth); Shift asks for a rest only from outside a field or a control (typed into the field it is a capital: ruling O), the right button on the frame or the line always (preventDefault: the field keeps its focus), the left button on the frame focuses the field; Escape and H are the scene's (the stop word is its pill). `LINES` is the prototype's shape filled from `cardVoice` by her lead style (`refreshLines`; a style with no rows of its own takes neutral's, cold is silent and its question has no words: Ruling R); a model-worded cue `deeper` / `suck` / `wider` / `pull_back` for the beat of her move takes that line's place (ruling Q). `S` is the approved defaults (the ring 0.55: no item carries a size) with the run's: the contact by field (`jawContactOf`: an item worn in the mouth is the ring, a contact on her toes her toes), her style's row (`ROW_BY_CUES` for a style the prototype has no row of), the commander's jaw endurance level as the skill, the still form (`env.reduced`, `env.readable`: readable drops every blur). The foot art has no art slot yet (ArtSlotId names none for the jaw): `footLoaded` stays false and her sprite from below stands in, as the README's fallback; the foot's code is ported. Reports (R21–R23): each beat of a running segment, as it ends (the last 300 ms before the segment's end), `bite` with the mean cost of the opening over its frames (a rest's frames cost 0; a beat before the mount the flat 1), `pointer`; a touch of the teeth at once as `bite` with `part: 'teeth'`; a rest as `ask_rest` (one a segment, `restWaits`). The fatigue is the engine's gauge at each segment's start. The line sent is the heard line (`heardLine`); the clear share is the instrument's summary only (`digest()`, UI). Not ported (README: prototype only): the panel, the start overlay, the summary card, the debug readout, the `__` hooks (`_jaw` is the tests' and the shots' hook), `setReply` and the act lines, her schedule (`STYLES[].every`, `.ask`: the engine's `jawOrders`), the session length, her release at the limit (the engine's boundary). CSS (checked by the shots): the prototype's styles under `.alius-jaw` and on the line (her lines in her hand at 44 px × her hand's measured scale, wrapping inside the frame at 40 %; the mouth is the scene's line, its width and its glass; the letters in the scene's font at its size).",
+  "functions": [
+    {
+      "fn": "pick",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "rand",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "st",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "L",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "C",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "audioInit",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "loadSamples",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "play",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "noise",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "tone",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "SFX",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "strainInit",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "fresh",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "say",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "renderMirror",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "onType",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "sendLine",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "bandNow",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "herMove",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "askRest",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "begin",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "finish",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "frame",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "update",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "spawnDrop",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "render",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "H0",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts"
+    },
+    {
+      "fn": "speak",
+      "module": "src/ui/scene/instruments/jaw/speech.ts"
+    }
+  ],
+  "tables": [
+    {
+      "ident": "STYLES",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts",
+      "export": "STYLES"
+    },
+    {
+      "ident": "CONTACTS",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts",
+      "export": "CONTACTS"
+    },
+    {
+      "ident": "MOUTH_H",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts",
+      "export": "MOUTH_H"
+    },
+    {
+      "ident": "WIDE_COST",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts",
+      "export": "WIDE_COST"
+    },
+    {
+      "ident": "RELAXED",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts",
+      "export": "RELAXED"
+    },
+    {
+      "ident": "RELAX_ZONE",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts",
+      "export": "RELAX_ZONE"
+    },
+    {
+      "ident": "SKILL_CAP",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts",
+      "export": "SKILL_CAP"
+    },
+    {
+      "ident": "TEETH_GAP",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts",
+      "export": "TEETH_GAP"
+    },
+    {
+      "ident": "TEETH_CD",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts",
+      "export": "TEETH_CD"
+    },
+    {
+      "ident": "TEETH_SAY",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts",
+      "export": "TEETH_SAY"
+    },
+    {
+      "ident": "WIDE_MAX",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts",
+      "export": "WIDE_MAX"
+    },
+    {
+      "ident": "REST_HOLD",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts",
+      "export": "REST_HOLD"
+    },
+    {
+      "ident": "REST_MS",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts",
+      "export": "REST_MS"
+    },
+    {
+      "ident": "ORDER_GRACE",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts",
+      "export": "ORDER_GRACE"
+    },
+    {
+      "ident": "BEAT",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts",
+      "export": "BEAT"
+    },
+    {
+      "ident": "JAW_PER",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts",
+      "export": "JAW_PER"
+    },
+    {
+      "ident": "JAW_REST",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts",
+      "export": "JAW_REST"
+    },
+    {
+      "ident": "REST_DENIED",
+      "module": "src/ui/scene/instruments/jaw/jaw.ts",
+      "export": "REST_DENIED"
+    },
+    {
+      "ident": "DEGRADE_AT",
+      "module": "src/ui/scene/instruments/jaw/speech.ts",
+      "export": "DEGRADE_AT"
+    },
+    {
+      "ident": "LABIAL",
+      "module": "src/ui/scene/instruments/jaw/speech.ts",
+      "export": "LABIAL"
+    },
+    {
+      "ident": "DENTAL",
+      "module": "src/ui/scene/instruments/jaw/speech.ts",
+      "export": "DENTAL"
+    },
+    {
+      "ident": "VELAR",
+      "module": "src/ui/scene/instruments/jaw/speech.ts",
+      "export": "VELAR"
+    },
+    {
+      "ident": "OPEN_LIPS",
+      "module": "src/ui/scene/instruments/jaw/speech.ts",
+      "export": "OPEN_LIPS"
+    },
+    {
+      "ident": "OPEN_TIP",
+      "module": "src/ui/scene/instruments/jaw/speech.ts",
+      "export": "OPEN_TIP"
+    },
+    {
+      "ident": "OPEN_BACK",
+      "module": "src/ui/scene/instruments/jaw/speech.ts",
+      "export": "OPEN_BACK"
+    },
+    {
+      "ident": "OPEN_VOWEL",
+      "module": "src/ui/scene/instruments/jaw/speech.ts",
+      "export": "OPEN_VOWEL"
+    }
+  ],
+  "lines": [
+    {
+      "ident": "LINES",
+      "registry": "cardVoice",
+      "cueKinds": {
+        "neutral.teeth": "jaw.teeth",
+        "neutral.deeper": "jaw.deeper",
+        "neutral.out": "jaw.out",
+        "neutral.suck": "jaw.suck",
+        "neutral.wide": "jaw.wide",
+        "neutral.correct": "jaw.correct",
+        "neutral.restOk": "jaw.restOk",
+        "neutral.restNo": "jaw.restNo",
+        "neutral.heard": "jaw.heard",
+        "neutral.lost": "jaw.lost",
+        "neutral.end": "jaw.end",
+        "neutral.slack": "jaw.slack",
+        "neutral.entry.sole_to_mouth": "jaw.entry.sole_to_mouth",
+        "neutral.entry.ring_gag": "jaw.entry.ring_gag",
+        "affectionate.teeth": "jaw.teeth@affectionate",
+        "affectionate.deeper": "jaw.deeper@affectionate",
+        "affectionate.out": "jaw.out@affectionate",
+        "affectionate.suck": "jaw.suck@affectionate",
+        "affectionate.wide": "jaw.wide@affectionate",
+        "affectionate.correct": "jaw.correct@affectionate",
+        "affectionate.restOk": "jaw.restOk@affectionate",
+        "affectionate.restNo": "jaw.restNo@affectionate",
+        "affectionate.heard": "jaw.heard@affectionate",
+        "affectionate.lost": "jaw.lost@affectionate",
+        "affectionate.end": "jaw.end@affectionate",
+        "affectionate.slack": "jaw.slack@affectionate",
+        "affectionate.entry.sole_to_mouth": "jaw.entry.sole_to_mouth@affectionate",
+        "affectionate.entry.ring_gag": "jaw.entry.ring_gag@affectionate",
+        "ritual.teeth": "jaw.teeth@ritual",
+        "ritual.deeper": "jaw.deeper@ritual",
+        "ritual.out": "jaw.out@ritual",
+        "ritual.suck": "jaw.suck@ritual",
+        "ritual.wide": "jaw.wide@ritual",
+        "ritual.correct": "jaw.correct@ritual",
+        "ritual.restOk": "jaw.restOk@ritual",
+        "ritual.restNo": "jaw.restNo@ritual",
+        "ritual.heard": "jaw.heard@ritual",
+        "ritual.lost": "jaw.lost@ritual",
+        "ritual.end": "jaw.end@ritual",
+        "ritual.slack": "jaw.slack@ritual",
+        "ritual.entry.sole_to_mouth": "jaw.entry.sole_to_mouth@ritual",
+        "ritual.entry.ring_gag": "jaw.entry.ring_gag@ritual",
+        "playful.teeth": "jaw.teeth@playful",
+        "playful.deeper": "jaw.deeper@playful",
+        "playful.out": "jaw.out@playful",
+        "playful.suck": "jaw.suck@playful",
+        "playful.wide": "jaw.wide@playful",
+        "playful.correct": "jaw.correct@playful",
+        "playful.restOk": "jaw.restOk@playful",
+        "playful.restNo": "jaw.restNo@playful",
+        "playful.heard": "jaw.heard@playful",
+        "playful.lost": "jaw.lost@playful",
+        "playful.end": "jaw.end@playful",
+        "playful.slack": "jaw.slack@playful",
+        "playful.entry.sole_to_mouth": "jaw.entry.sole_to_mouth@playful",
+        "playful.entry.ring_gag": "jaw.entry.ring_gag@playful",
+        "cruel.teeth": "jaw.teeth@cruel",
+        "cruel.deeper": "jaw.deeper@cruel",
+        "cruel.out": "jaw.out@cruel",
+        "cruel.suck": "jaw.suck@cruel",
+        "cruel.wide": "jaw.wide@cruel",
+        "cruel.correct": "jaw.correct@cruel",
+        "cruel.restOk": "jaw.restOk@cruel",
+        "cruel.restNo": "jaw.restNo@cruel",
+        "cruel.heard": "jaw.heard@cruel",
+        "cruel.lost": "jaw.lost@cruel",
+        "cruel.end": "jaw.end@cruel",
+        "cruel.slack": "jaw.slack@cruel",
+        "cruel.entry.sole_to_mouth": "jaw.entry.sole_to_mouth@cruel",
+        "cruel.entry.ring_gag": "jaw.entry.ring_gag@cruel",
+        "possessive.teeth": "jaw.teeth@possessive",
+        "possessive.deeper": "jaw.deeper@possessive",
+        "possessive.out": "jaw.out@possessive",
+        "possessive.suck": "jaw.suck@possessive",
+        "possessive.wide": "jaw.wide@possessive",
+        "possessive.correct": "jaw.correct@possessive",
+        "possessive.restOk": "jaw.restOk@possessive",
+        "possessive.restNo": "jaw.restNo@possessive",
+        "possessive.heard": "jaw.heard@possessive",
+        "possessive.lost": "jaw.lost@possessive",
+        "possessive.end": "jaw.end@possessive",
+        "possessive.slack": "jaw.slack@possessive",
+        "possessive.entry.sole_to_mouth": "jaw.entry.sole_to_mouth@possessive",
+        "possessive.entry.ring_gag": "jaw.entry.ring_gag@possessive",
+        "vindictive.teeth": "jaw.teeth@vindictive",
+        "vindictive.deeper": "jaw.deeper@vindictive",
+        "vindictive.out": "jaw.out@vindictive",
+        "vindictive.suck": "jaw.suck@vindictive",
+        "vindictive.wide": "jaw.wide@vindictive",
+        "vindictive.correct": "jaw.correct@vindictive",
+        "vindictive.restOk": "jaw.restOk@vindictive",
+        "vindictive.restNo": "jaw.restNo@vindictive",
+        "vindictive.heard": "jaw.heard@vindictive",
+        "vindictive.lost": "jaw.lost@vindictive",
+        "vindictive.end": "jaw.end@vindictive",
+        "vindictive.slack": "jaw.slack@vindictive",
+        "vindictive.entry.sole_to_mouth": "jaw.entry.sole_to_mouth@vindictive",
+        "vindictive.entry.ring_gag": "jaw.entry.ring_gag@vindictive",
+        "clinical.teeth": "jaw.teeth@clinical",
+        "clinical.deeper": "jaw.deeper@clinical",
+        "clinical.out": "jaw.out@clinical",
+        "clinical.suck": "jaw.suck@clinical",
+        "clinical.wide": "jaw.wide@clinical",
+        "clinical.correct": "jaw.correct@clinical",
+        "clinical.restOk": "jaw.restOk@clinical",
+        "clinical.restNo": "jaw.restNo@clinical",
+        "clinical.heard": "jaw.heard@clinical",
+        "clinical.lost": "jaw.lost@clinical",
+        "clinical.end": "jaw.end@clinical",
+        "clinical.slack": "jaw.slack@clinical",
+        "clinical.entry.sole_to_mouth": "jaw.entry.sole_to_mouth@clinical",
+        "clinical.entry.ring_gag": "jaw.entry.ring_gag@clinical"
+      }
+    }
+  ],
+  "differences": [
+    {
+      "fn": "audioInit",
+      "reason": "Wiring (ruling D): the context is the sample layer's (`samples.ctx()`, the mount's recorded view: the room tone's source is stopped at the unmount) and the prototype's master goes into the layer's body bus instead of the destination (the player's level is the layer's). No context yet (before the player's first gesture, or no sound): nothing is built, and the frame tries again.",
+      "diff": "@@ -2,3 +2,5 @@\n if(A.ctx)return\n-const ctx=new(window.AudioContext||window.webkitAudioContext)()\n+const ctx=E?.env.samples?.ctx()??null\n+const out=E?.env.samples?.bus(\"body\")??null\n+if(!ctx||!out)return\n A.ctx=ctx\n@@ -6,3 +8,3 @@\n A.master.gain.value=S.sound?S.vol:0\n-A.master.connect(ctx.destination)\n+A.master.connect(out)\n A.world=ctx.createBiquadFilter()"
+    },
+    {
+      "fn": "loadSamples",
+      "reason": "Wiring (ruling D): the recordings are the extension's own files (`SAMPLE_URLS`: `assets/sounds/breath-in-out.mp3` and `assets/sounds/ha/cloth1–4.ogg`, CC0, the prototype's), fetched and decoded once by the sample layer (`samples.preload`); `A.buf[key]` reads the layer's decoded buffer (null until it is decoded: the prototype's synthesised fallback plays meanwhile, as its `play` returns null).",
+      "diff": "@@ -1,9 +1,8 @@\n-async function loadSamples(){\n-await Promise.all(Object.entries(SAMPLE_URLS).map(async([k,u])=>{\n-try{\n-const r=await fetch(u)\n-A.buf[k]=await A.ctx.decodeAudioData(await r.arrayBuffer())\n-}\n-catch(e){}\n-}))\n+function loadSamples(){\n+const samples=E?.env.samples\n+if(!samples)return\n+A.buf=new Proxy({},{\n+get:(_t,k)=>(typeof k===\"string\"&&SAMPLE_URLS[k]?samples.buffer(SAMPLE_URLS[k]):null)\n+})\n+void samples.preload(Object.values(SAMPLE_URLS))\n }"
+    },
+    {
+      "fn": "sendLine",
+      "reason": "Wiring (R23): the line sent is the heard one. The prototype writes it into its own `#reply` (with `meant:` under it, README: the port's call); here the scene's reply block is the model's, so `heardLine` puts what came out into the field just before the scene's own Enter sends it (a swipe or a regenerate never distorts it again), and keeps the share of clear letters in the instrument's summary only (`R.kept`, never a number for the model or the transcript). The commander knows what was meant: it is not shown.",
+      "diff": "@@ -6,3 +6,3 @@\n const letters=spoken.filter(s=>/[a-z]/i.test(s.meant));\n-  const kept = letters.filter((s) => s.out.toLowerCase() === ideal(s.meant).toLowerCase()).length / Math.max(1,letters.length);spoken.length=0;renderMirror();G.stats.said+=1;setReply(`<span class=\"heard\">“${heard.replace(/[<&]/g, '')}”</span><br><span class=\"meant\">(meant: ${meant.replace(/[<&]/g, '')})</span>`);if(!C().speech){\n+    const kept = letters.filter((s) => s.out.toLowerCase() === ideal(s.meant).toLowerCase()).length / Math.max(1,letters.length);spoken.length=0;renderMirror();G.stats.said+=1;heardLine(heard,meant,kept);if(!C().speech){\n setTimeout(()=>say(pick(L().slack)),500)"
+    },
+    {
+      "fn": "herMove",
+      "reason": "Wiring (R22, README: her schedule is prototype only): her move is the engine's plan, played as its beat begins (`R.move`: `order` / `orderMs` / `ask`, planned by hash). `moveR` gives the prototype's draw the value of the planned move (her toes: deeper 0, back 0.4, suck 0.6, wider 0.9; the ring: her question 0, wider 1), so every branch runs as written; an order lasts the plan's `orderMs` (`orderLen`, the prototype's own span without one); the next move is the plan's, not `nextMove`. Her 40 % chance to speak as she pulls back and her 45 % question 1.6 s into \"wide.\" stay hers (the module's xorshift: no rng draw).",
+      "diff": "@@ -2,3 +2,3 @@\n const s=st(),c=S.contact\n-const r=Math.random()\n+const r=moveR()\n if(c===\"sole_to_mouth\"){\n@@ -20,3 +20,3 @@\n G.orderT=0\n-G.orderLen=rand(4000,7000)\n+G.orderLen=orderLen(4000,7000)\n say(pick(L().suck))\n@@ -26,3 +26,3 @@\n G.orderT=0\n-G.orderLen=rand(3000,5000)\n+G.orderLen=orderLen(3000,5000)\n say(pick(L().wide))\n@@ -43,3 +43,3 @@\n G.orderT=0\n-G.orderLen=rand(3000,5000)\n+G.orderLen=orderLen(3000,5000)\n say(pick(L().wide))\n@@ -58,3 +58,3 @@\n }\n-G.nextMove=rand(...s.every)*1000+(G.order?G.orderLen:0)\n+R.move=null\n }"
+    },
+    {
+      "fn": "askRest",
+      "reason": "Wiring: the engine reads one rest a segment (the first `ask_rest`; it also ends that segment's beats), so `restWaits` reports the rest asked (`ask_rest` on this beat, `pointer` when the right button asked, ruling O) and lets one through a segment; another asked in the same segment, or between segments, waits for the next one and is asked as it begins. So her answer, granted unless cruel or vindictive (the prototype's `REST_DENIED`, the engine's rule), is always the engine's.",
+      "diff": "@@ -1,2 +1,3 @@\n function askRest(){\n+if(restWaits())return\n G.stats.restsAsked+=1"
+    },
+    {
+      "fn": "begin",
+      "reason": "Wiring: no context yet (before the player's first gesture, or no sound) leaves `A.ctx` null (the prototype makes its own). The summary card is prototype only (README). The act line in `#reply` is not drawn: the scene's reply block is the model's, and the scene itself says what holds the mouth open (the blocking strip).",
+      "diff": "@@ -2,3 +2,3 @@\n audioInit()\n-if(A.ctx.state===\"suspended\")A.ctx.resume()\n+if(A.ctx&&A.ctx.state===\"suspended\")void A.ctx.resume()\n strainInit()\n@@ -10,5 +10,3 @@\n G.pushTarget=0\n-$(\"#summary\").style.display=\"none\"\n $(\"#foot\").style.display=S.contact===\"sole_to_mouth\"&&footLoaded?\"block\":\"none\"\n-setReply(S.contact===\"sole_to_mouth\"?\"<span class=\\\"act\\\">She lifts her foot to the commander’s lips and waits.</span>\":\"<span class=\\\"act\\\">The ring is buckled behind the head; the jaw cannot close around it.</span>\")\n say(pick(L().entry[S.contact]))"
+    },
+    {
+      "fn": "finish",
+      "reason": "Wiring: her line after the stop word is `cardVoice` `jaw.stop` (her words are content, never inline; the host ends a hold stopped by the stop word at once, so it plays only if a stopped outcome ever reaches `finish`). The summary card is prototype only (README); the digest is `digest()` (UI only: held time, fatigue, teeth, corrections, rests, said / understood / lost, twitches, how it ended).",
+      "diff": "@@ -3,11 +3,5 @@\n G.phase=\"done\"\n-const line=why===\"stop\"?\"okay. it’s out. I’m here.\":pick(L().end)\n+const line=why===\"stop\"?pick(L().stop):pick(L().end)\n say(line)\n if(SFX.strain)SFX.strain.g.gain.value=0\n-const s=G.stats\n-setTimeout(()=>{\n-$(\"#sumLine\").textContent=line\n-$(\"#sumFacts\").innerHTML=`held ${(G.t/1000).toFixed(0)} s · fatigue ${G.f.toFixed(0)}<br>teeth: ${s.teeth} · corrections: ${s.corrections}<br>rests asked: ${s.restsAsked} (granted ${s.restsGranted})<br>`+(C().speech?`said: ${s.said} · understood: ${s.heard} · lost: ${s.lost}<br>`:\"\")+`twitches: ${s.twitches}<br>how it ended: ${why}`\n-$(\"#summary\").style.display=\"block\"\n-},900)\n }"
+    },
+    {
+      "fn": "update",
+      "reason": "Wiring: the engine ends the hold, not the instrument: her release at her limit (the prototype's 600 ms / 6 s at fatigue 100) and the session's length (`S.len`, prototype only) are the engine's boundary (the fatigue stays at 100 until it decides, as breath's air stays at 0). Her move is the plan's (`R.move`, queued while she rests, as the prototype's `nextMove` runs out during a rest and fires after it).",
+      "diff": "@@ -69,6 +69,2 @@\n }\n-if(G.f>=100){\n-G.limitT+=dt\n-if(G.limitT>(REST_DENIED.includes(S.style)?6000:600))finish(\"her limit\")\n-}\n if(G.restKey&&G.resting<=0&&!G.restAsked){\n@@ -81,4 +77,3 @@\n }\n-G.nextMove-=dt\n-if(G.nextMove<=0&&G.resting<=0)herMove()\n+if(R.move&&G.resting<=0)herMove()\n if(G.ask){\n@@ -101,3 +96,2 @@\n }\n-if(G.t/1000>S.len)finish(\"her time\")\n }"
+    },
+    {
+      "fn": "spawnDrop",
+      "reason": "Wiring: the drops are drawn in the instrument's canvas, which covers the scene's frame, not the window: the mouth's rect is taken relative to the scene's root (`R.ox`, `R.oy`).",
+      "diff": "@@ -3,3 +3,3 @@\n G.drops.push({\n-x:r.left+r.width*rand(0.3,0.7),y:r.bottom-2,r:0,grow:rand(1.2,2.2),v:0,falling:false,life:1\n+x:r.left-R.ox+r.width*rand(0.3,0.7),y:r.bottom-R.oy-2,r:0,grow:rand(1.2,2.2),v:0,falling:false,life:1\n })"
+    },
+    {
+      "fn": "render",
+      "reason": "Wiring: the mouth is the scene's own input line, in the scene's column: it opens around its centre where it stands (its height as the prototype's, its centre kept by its margins in `after`), and it is lifted (`R.lift`) only as far as puts its centre `MOUTH_BOTTOM` (the prototype's 96 px) above the frame's bottom, so the mouth wide open and her band stay in the frame as in the prototype; its transform is that lift and the tremble (not the prototype's centring `translate(-50%, 50%)`). Her band's ghost frames are as wide as the line plus 20 px (the prototype's 720 + 20) and centred on it (`R.mouthW`, `R.mouthY`). The debug readout is prototype only (README).",
+      "diff": "@@ -10,3 +10,3 @@\n m.style.height=`${h.toFixed(1)}px`\n-m.style.transform=`translate(-50%, 50%) translate(${tremble.toFixed(1)}px, 0)`\n+m.style.transform=`translate(${tremble.toFixed(1)}px, ${(-R.lift).toFixed(1)}px)`\n const burn=clamp(0.15+0.85*smooth(10,95,G.f),0,1)*clamp(((G.cost??RELAXED)-0.2)/1.2,0.12,1)*(0.9+0.1*Math.sin(now/140))\n@@ -23,5 +23,5 @@\n const bh=lerp(MOUTH_H[0],MOUTH_H[1],v)\n-el.style.width=\"740px\"\n+el.style.width=`${R.mouthW+20}px`\n el.style.height=`${bh.toFixed(1)}px`\n-el.style.bottom=\"96px\"\n+el.style.top=`${R.mouthY-R.lift}px`\n el.style.opacity=id===\"#bandLo\"?\"0.9\":\"0.45\"\n@@ -89,5 +89,2 @@\n G.drops=G.drops.filter(d=>d.life>0&&d.y<H+20)\n-if(S.debug){\n-$(\"#debug\").textContent=`jaw ${G.jaw.toFixed(2)}  target ${G.target.toFixed(2)}  fatigue ${G.f.toFixed(1)}\\nband ${G.band?G.band.map((x)=>x.toFixed(2)).join(\"–\"):\"—\"}  order ${G.order??\"—\"}  push ${G.push.toFixed(2)}\\n`+`resting ${Math.max(0,G.resting).toFixed(0)}  ask ${G.ask?G.ask.word||\"(any)\":\"—\"}  next move ${(G.nextMove/1000).toFixed(1)} s\\n`+`cost ×${(G.cost??0).toFixed(2)}  skill ${S.skill}\\n`+`teeth ${G.stats.teeth}  corrections ${G.stats.corrections}  twitches ${G.stats.twitches}`\n }\n-}"
+    }
+  ]
+}

@@ -3419,5 +3419,1105 @@
     "kind": "scent.here.smothered_armpit",
     "style": "cold",
     "lines": []
+  },
+  {
+    "id": "jaw.entry.sole_to_mouth",
+    "kind": "jaw.entry.sole_to_mouth",
+    "lines": [
+      "open."
+    ]
+  },
+  {
+    "id": "jaw.entry.ring_gag",
+    "kind": "jaw.entry.ring_gag",
+    "lines": [
+      "there. keep it open."
+    ]
+  },
+  {
+    "id": "jaw.teeth",
+    "kind": "jaw.teeth",
+    "lines": [
+      "teeth.",
+      "careful."
+    ]
+  },
+  {
+    "id": "jaw.deeper",
+    "kind": "jaw.deeper",
+    "lines": [
+      "deeper."
+    ]
+  },
+  {
+    "id": "jaw.out",
+    "kind": "jaw.out",
+    "lines": [
+      "easy."
+    ]
+  },
+  {
+    "id": "jaw.suck",
+    "kind": "jaw.suck",
+    "lines": [
+      "suck."
+    ]
+  },
+  {
+    "id": "jaw.wide",
+    "kind": "jaw.wide",
+    "lines": [
+      "wider. show me."
+    ]
+  },
+  {
+    "id": "jaw.correct",
+    "kind": "jaw.correct",
+    "lines": [
+      "I said wider.",
+      "keep it there."
+    ]
+  },
+  {
+    "id": "jaw.rest_ok",
+    "kind": "jaw.restOk",
+    "lines": [
+      "fine. rest."
+    ]
+  },
+  {
+    "id": "jaw.rest_no",
+    "kind": "jaw.restNo",
+    "lines": [
+      "not yet."
+    ]
+  },
+  {
+    "id": "jaw.ask",
+    "kind": "jaw.ask",
+    "lines": [
+      "anything to say?"
+    ]
+  },
+  {
+    "id": "jaw.heard",
+    "kind": "jaw.heard",
+    "lines": [
+      "good."
+    ]
+  },
+  {
+    "id": "jaw.lost",
+    "kind": "jaw.lost",
+    "lines": [
+      "what was that?"
+    ]
+  },
+  {
+    "id": "jaw.end",
+    "kind": "jaw.end",
+    "lines": [
+      "that’s enough."
+    ]
+  },
+  {
+    "id": "jaw.slack",
+    "kind": "jaw.slack",
+    "lines": [
+      "don’t let it close."
+    ]
+  },
+  {
+    "id": "jaw.stop",
+    "kind": "jaw.stop",
+    "lines": [
+      "okay. it’s out. I’m here."
+    ]
+  },
+  {
+    "id": "jaw.entry.sole_to_mouth.affectionate",
+    "kind": "jaw.entry.sole_to_mouth",
+    "style": "affectionate",
+    "lines": [
+      "open for me."
+    ]
+  },
+  {
+    "id": "jaw.entry.ring_gag.affectionate",
+    "kind": "jaw.entry.ring_gag",
+    "style": "affectionate",
+    "lines": [
+      "shh. just keep it open for me."
+    ]
+  },
+  {
+    "id": "jaw.teeth.affectionate",
+    "kind": "jaw.teeth",
+    "style": "affectionate",
+    "lines": [
+      "ow — gently."
+    ]
+  },
+  {
+    "id": "jaw.deeper.affectionate",
+    "kind": "jaw.deeper",
+    "style": "affectionate",
+    "lines": [
+      "a little more."
+    ]
+  },
+  {
+    "id": "jaw.out.affectionate",
+    "kind": "jaw.out",
+    "style": "affectionate",
+    "lines": [
+      "there."
+    ]
+  },
+  {
+    "id": "jaw.suck.affectionate",
+    "kind": "jaw.suck",
+    "style": "affectionate",
+    "lines": [
+      "gently. suck."
+    ]
+  },
+  {
+    "id": "jaw.wide.affectionate",
+    "kind": "jaw.wide",
+    "style": "affectionate",
+    "lines": [
+      "wider, love."
+    ]
+  },
+  {
+    "id": "jaw.correct.affectionate",
+    "kind": "jaw.correct",
+    "style": "affectionate",
+    "lines": [
+      "a little wider."
+    ]
+  },
+  {
+    "id": "jaw.rest_ok.affectionate",
+    "kind": "jaw.restOk",
+    "style": "affectionate",
+    "lines": [
+      "rest. I’ve got you."
+    ]
+  },
+  {
+    "id": "jaw.rest_no.affectionate",
+    "kind": "jaw.restNo",
+    "style": "affectionate",
+    "lines": []
+  },
+  {
+    "id": "jaw.ask.affectionate",
+    "kind": "jaw.ask",
+    "style": "affectionate",
+    "lines": [
+      "tell me how it feels.",
+      "say yes.|yes"
+    ]
+  },
+  {
+    "id": "jaw.heard.affectionate",
+    "kind": "jaw.heard",
+    "style": "affectionate",
+    "lines": [
+      "I know.",
+      "good."
+    ]
+  },
+  {
+    "id": "jaw.lost.affectionate",
+    "kind": "jaw.lost",
+    "style": "affectionate",
+    "lines": [
+      "shh, I can’t tell."
+    ]
+  },
+  {
+    "id": "jaw.end.affectionate",
+    "kind": "jaw.end",
+    "style": "affectionate",
+    "lines": [
+      "all done. close."
+    ]
+  },
+  {
+    "id": "jaw.slack.affectionate",
+    "kind": "jaw.slack",
+    "style": "affectionate",
+    "lines": [
+      "stay open for me."
+    ]
+  },
+  {
+    "id": "jaw.stop.affectionate",
+    "kind": "jaw.stop",
+    "style": "affectionate",
+    "lines": [
+      "okay. it’s out. I’m here."
+    ]
+  },
+  {
+    "id": "jaw.entry.sole_to_mouth.ritual",
+    "kind": "jaw.entry.sole_to_mouth",
+    "style": "ritual",
+    "lines": [
+      "open."
+    ]
+  },
+  {
+    "id": "jaw.entry.ring_gag.ritual",
+    "kind": "jaw.entry.ring_gag",
+    "style": "ritual",
+    "lines": [
+      "open. hold."
+    ]
+  },
+  {
+    "id": "jaw.teeth.ritual",
+    "kind": "jaw.teeth",
+    "style": "ritual",
+    "lines": [
+      "teeth. again."
+    ]
+  },
+  {
+    "id": "jaw.deeper.ritual",
+    "kind": "jaw.deeper",
+    "style": "ritual",
+    "lines": [
+      "deeper."
+    ]
+  },
+  {
+    "id": "jaw.out.ritual",
+    "kind": "jaw.out",
+    "style": "ritual",
+    "lines": [
+      "back."
+    ]
+  },
+  {
+    "id": "jaw.suck.ritual",
+    "kind": "jaw.suck",
+    "style": "ritual",
+    "lines": [
+      "suck."
+    ]
+  },
+  {
+    "id": "jaw.wide.ritual",
+    "kind": "jaw.wide",
+    "style": "ritual",
+    "lines": [
+      "wide."
+    ]
+  },
+  {
+    "id": "jaw.correct.ritual",
+    "kind": "jaw.correct",
+    "style": "ritual",
+    "lines": [
+      "the form."
+    ]
+  },
+  {
+    "id": "jaw.rest_ok.ritual",
+    "kind": "jaw.restOk",
+    "style": "ritual",
+    "lines": [
+      "rest. count of four."
+    ]
+  },
+  {
+    "id": "jaw.rest_no.ritual",
+    "kind": "jaw.restNo",
+    "style": "ritual",
+    "lines": []
+  },
+  {
+    "id": "jaw.ask.ritual",
+    "kind": "jaw.ask",
+    "style": "ritual",
+    "lines": [
+      "repeat: yes.|yes"
+    ]
+  },
+  {
+    "id": "jaw.heard.ritual",
+    "kind": "jaw.heard",
+    "style": "ritual",
+    "lines": [
+      "correct."
+    ]
+  },
+  {
+    "id": "jaw.lost.ritual",
+    "kind": "jaw.lost",
+    "style": "ritual",
+    "lines": [
+      "again. clearly."
+    ]
+  },
+  {
+    "id": "jaw.end.ritual",
+    "kind": "jaw.end",
+    "style": "ritual",
+    "lines": [
+      "close."
+    ]
+  },
+  {
+    "id": "jaw.slack.ritual",
+    "kind": "jaw.slack",
+    "style": "ritual",
+    "lines": [
+      "the form."
+    ]
+  },
+  {
+    "id": "jaw.stop.ritual",
+    "kind": "jaw.stop",
+    "style": "ritual",
+    "lines": [
+      "okay. it’s out. I’m here."
+    ]
+  },
+  {
+    "id": "jaw.entry.sole_to_mouth.playful",
+    "kind": "jaw.entry.sole_to_mouth",
+    "style": "playful",
+    "lines": [
+      "say aah~"
+    ]
+  },
+  {
+    "id": "jaw.entry.ring_gag.playful",
+    "kind": "jaw.entry.ring_gag",
+    "style": "playful",
+    "lines": [
+      "cute. now talk to me~"
+    ]
+  },
+  {
+    "id": "jaw.teeth.playful",
+    "kind": "jaw.teeth",
+    "style": "playful",
+    "lines": [
+      "hey! no biting~"
+    ]
+  },
+  {
+    "id": "jaw.deeper.playful",
+    "kind": "jaw.deeper",
+    "style": "playful",
+    "lines": [
+      "more~"
+    ]
+  },
+  {
+    "id": "jaw.out.playful",
+    "kind": "jaw.out",
+    "style": "playful",
+    "lines": [
+      "aww."
+    ]
+  },
+  {
+    "id": "jaw.suck.playful",
+    "kind": "jaw.suck",
+    "style": "playful",
+    "lines": [
+      "suck~"
+    ]
+  },
+  {
+    "id": "jaw.wide.playful",
+    "kind": "jaw.wide",
+    "style": "playful",
+    "lines": [
+      "wiiider~"
+    ]
+  },
+  {
+    "id": "jaw.correct.playful",
+    "kind": "jaw.correct",
+    "style": "playful",
+    "lines": [
+      "wider, I said~"
+    ]
+  },
+  {
+    "id": "jaw.rest_ok.playful",
+    "kind": "jaw.restOk",
+    "style": "playful",
+    "lines": [
+      "fine, fine."
+    ]
+  },
+  {
+    "id": "jaw.rest_no.playful",
+    "kind": "jaw.restNo",
+    "style": "playful",
+    "lines": []
+  },
+  {
+    "id": "jaw.ask.playful",
+    "kind": "jaw.ask",
+    "style": "playful",
+    "lines": [
+      "say please~|please",
+      "say my name~"
+    ]
+  },
+  {
+    "id": "jaw.heard.playful",
+    "kind": "jaw.heard",
+    "style": "playful",
+    "lines": [
+      "ha, close enough."
+    ]
+  },
+  {
+    "id": "jaw.lost.playful",
+    "kind": "jaw.lost",
+    "style": "playful",
+    "lines": [
+      "what? I can’t understand you~"
+    ]
+  },
+  {
+    "id": "jaw.end.playful",
+    "kind": "jaw.end",
+    "style": "playful",
+    "lines": [
+      "okay, you can close~"
+    ]
+  },
+  {
+    "id": "jaw.slack.playful",
+    "kind": "jaw.slack",
+    "style": "playful",
+    "lines": [
+      "nope, keep it open~"
+    ]
+  },
+  {
+    "id": "jaw.stop.playful",
+    "kind": "jaw.stop",
+    "style": "playful",
+    "lines": [
+      "okay. it’s out. I’m here."
+    ]
+  },
+  {
+    "id": "jaw.entry.sole_to_mouth.cruel",
+    "kind": "jaw.entry.sole_to_mouth",
+    "style": "cruel",
+    "lines": [
+      "open."
+    ]
+  },
+  {
+    "id": "jaw.entry.ring_gag.cruel",
+    "kind": "jaw.entry.ring_gag",
+    "style": "cruel",
+    "lines": [
+      "now you can’t close it."
+    ]
+  },
+  {
+    "id": "jaw.teeth.cruel",
+    "kind": "jaw.teeth",
+    "style": "cruel",
+    "lines": [
+      "teeth? really?",
+      "teeth."
+    ]
+  },
+  {
+    "id": "jaw.deeper.cruel",
+    "kind": "jaw.deeper",
+    "style": "cruel",
+    "lines": [
+      "deeper."
+    ]
+  },
+  {
+    "id": "jaw.out.cruel",
+    "kind": "jaw.out",
+    "style": "cruel",
+    "lines": [
+      "hm."
+    ]
+  },
+  {
+    "id": "jaw.suck.cruel",
+    "kind": "jaw.suck",
+    "style": "cruel",
+    "lines": [
+      "suck."
+    ]
+  },
+  {
+    "id": "jaw.wide.cruel",
+    "kind": "jaw.wide",
+    "style": "cruel",
+    "lines": [
+      "wide."
+    ]
+  },
+  {
+    "id": "jaw.correct.cruel",
+    "kind": "jaw.correct",
+    "style": "cruel",
+    "lines": [
+      "wider."
+    ]
+  },
+  {
+    "id": "jaw.rest_ok.cruel",
+    "kind": "jaw.restOk",
+    "style": "cruel",
+    "lines": []
+  },
+  {
+    "id": "jaw.rest_no.cruel",
+    "kind": "jaw.restNo",
+    "style": "cruel",
+    "lines": [
+      "no.",
+      "earn it."
+    ]
+  },
+  {
+    "id": "jaw.ask.cruel",
+    "kind": "jaw.ask",
+    "style": "cruel",
+    "lines": [
+      "say please.|please",
+      "beg.|please"
+    ]
+  },
+  {
+    "id": "jaw.heard.cruel",
+    "kind": "jaw.heard",
+    "style": "cruel",
+    "lines": [
+      "pathetic."
+    ]
+  },
+  {
+    "id": "jaw.lost.cruel",
+    "kind": "jaw.lost",
+    "style": "cruel",
+    "lines": [
+      "speak properly.",
+      "I can’t hear you."
+    ]
+  },
+  {
+    "id": "jaw.end.cruel",
+    "kind": "jaw.end",
+    "style": "cruel",
+    "lines": [
+      "you may close it."
+    ]
+  },
+  {
+    "id": "jaw.slack.cruel",
+    "kind": "jaw.slack",
+    "style": "cruel",
+    "lines": [
+      "open."
+    ]
+  },
+  {
+    "id": "jaw.stop.cruel",
+    "kind": "jaw.stop",
+    "style": "cruel",
+    "lines": [
+      "okay. it’s out. I’m here."
+    ]
+  },
+  {
+    "id": "jaw.entry.sole_to_mouth.possessive",
+    "kind": "jaw.entry.sole_to_mouth",
+    "style": "possessive",
+    "lines": [
+      "open. it’s mine."
+    ]
+  },
+  {
+    "id": "jaw.entry.ring_gag.possessive",
+    "kind": "jaw.entry.ring_gag",
+    "style": "possessive",
+    "lines": [
+      "your mouth is mine now."
+    ]
+  },
+  {
+    "id": "jaw.teeth.possessive",
+    "kind": "jaw.teeth",
+    "style": "possessive",
+    "lines": [
+      "careful with what’s mine."
+    ]
+  },
+  {
+    "id": "jaw.deeper.possessive",
+    "kind": "jaw.deeper",
+    "style": "possessive",
+    "lines": [
+      "all of it."
+    ]
+  },
+  {
+    "id": "jaw.out.possessive",
+    "kind": "jaw.out",
+    "style": "possessive",
+    "lines": [
+      "there."
+    ]
+  },
+  {
+    "id": "jaw.suck.possessive",
+    "kind": "jaw.suck",
+    "style": "possessive",
+    "lines": [
+      "suck."
+    ]
+  },
+  {
+    "id": "jaw.wide.possessive",
+    "kind": "jaw.wide",
+    "style": "possessive",
+    "lines": [
+      "wider for me."
+    ]
+  },
+  {
+    "id": "jaw.correct.possessive",
+    "kind": "jaw.correct",
+    "style": "possessive",
+    "lines": [
+      "for me. wider."
+    ]
+  },
+  {
+    "id": "jaw.rest_ok.possessive",
+    "kind": "jaw.restOk",
+    "style": "possessive",
+    "lines": [
+      "rest. then again."
+    ]
+  },
+  {
+    "id": "jaw.rest_no.possessive",
+    "kind": "jaw.restNo",
+    "style": "possessive",
+    "lines": []
+  },
+  {
+    "id": "jaw.ask.possessive",
+    "kind": "jaw.ask",
+    "style": "possessive",
+    "lines": [
+      "whose mouth is it?|yours",
+      "say mine.|yours"
+    ]
+  },
+  {
+    "id": "jaw.heard.possessive",
+    "kind": "jaw.heard",
+    "style": "possessive",
+    "lines": [
+      "good. mine."
+    ]
+  },
+  {
+    "id": "jaw.lost.possessive",
+    "kind": "jaw.lost",
+    "style": "possessive",
+    "lines": [
+      "again. I want to hear it."
+    ]
+  },
+  {
+    "id": "jaw.end.possessive",
+    "kind": "jaw.end",
+    "style": "possessive",
+    "lines": [
+      "close. good."
+    ]
+  },
+  {
+    "id": "jaw.slack.possessive",
+    "kind": "jaw.slack",
+    "style": "possessive",
+    "lines": [
+      "mine stays open."
+    ]
+  },
+  {
+    "id": "jaw.stop.possessive",
+    "kind": "jaw.stop",
+    "style": "possessive",
+    "lines": [
+      "okay. it’s out. I’m here."
+    ]
+  },
+  {
+    "id": "jaw.entry.sole_to_mouth.vindictive",
+    "kind": "jaw.entry.sole_to_mouth",
+    "style": "vindictive",
+    "lines": [
+      "open."
+    ]
+  },
+  {
+    "id": "jaw.entry.ring_gag.vindictive",
+    "kind": "jaw.entry.ring_gag",
+    "style": "vindictive",
+    "lines": [
+      "keep it open. you owe me that."
+    ]
+  },
+  {
+    "id": "jaw.teeth.vindictive",
+    "kind": "jaw.teeth",
+    "style": "vindictive",
+    "lines": [
+      "that’s added."
+    ]
+  },
+  {
+    "id": "jaw.deeper.vindictive",
+    "kind": "jaw.deeper",
+    "style": "vindictive",
+    "lines": [
+      "deeper."
+    ]
+  },
+  {
+    "id": "jaw.out.vindictive",
+    "kind": "jaw.out",
+    "style": "vindictive",
+    "lines": [
+      "hm."
+    ]
+  },
+  {
+    "id": "jaw.suck.vindictive",
+    "kind": "jaw.suck",
+    "style": "vindictive",
+    "lines": [
+      "suck."
+    ]
+  },
+  {
+    "id": "jaw.wide.vindictive",
+    "kind": "jaw.wide",
+    "style": "vindictive",
+    "lines": [
+      "wide."
+    ]
+  },
+  {
+    "id": "jaw.correct.vindictive",
+    "kind": "jaw.correct",
+    "style": "vindictive",
+    "lines": [
+      "wider. that’s added."
+    ]
+  },
+  {
+    "id": "jaw.rest_ok.vindictive",
+    "kind": "jaw.restOk",
+    "style": "vindictive",
+    "lines": []
+  },
+  {
+    "id": "jaw.rest_no.vindictive",
+    "kind": "jaw.restNo",
+    "style": "vindictive",
+    "lines": [
+      "no rest owed."
+    ]
+  },
+  {
+    "id": "jaw.ask.vindictive",
+    "kind": "jaw.ask",
+    "style": "vindictive",
+    "lines": [
+      "say sorry.|sorry"
+    ]
+  },
+  {
+    "id": "jaw.heard.vindictive",
+    "kind": "jaw.heard",
+    "style": "vindictive",
+    "lines": [
+      "not enough."
+    ]
+  },
+  {
+    "id": "jaw.lost.vindictive",
+    "kind": "jaw.lost",
+    "style": "vindictive",
+    "lines": [
+      "that’s added."
+    ]
+  },
+  {
+    "id": "jaw.end.vindictive",
+    "kind": "jaw.end",
+    "style": "vindictive",
+    "lines": [
+      "close it."
+    ]
+  },
+  {
+    "id": "jaw.slack.vindictive",
+    "kind": "jaw.slack",
+    "style": "vindictive",
+    "lines": [
+      "open."
+    ]
+  },
+  {
+    "id": "jaw.stop.vindictive",
+    "kind": "jaw.stop",
+    "style": "vindictive",
+    "lines": [
+      "okay. it’s out. I’m here."
+    ]
+  },
+  {
+    "id": "jaw.entry.sole_to_mouth.clinical",
+    "kind": "jaw.entry.sole_to_mouth",
+    "style": "clinical",
+    "lines": [
+      "open."
+    ]
+  },
+  {
+    "id": "jaw.entry.ring_gag.clinical",
+    "kind": "jaw.entry.ring_gag",
+    "style": "clinical",
+    "lines": [
+      "ring fitted. hold."
+    ]
+  },
+  {
+    "id": "jaw.teeth.clinical",
+    "kind": "jaw.teeth",
+    "style": "clinical",
+    "lines": [
+      "teeth contact. noted."
+    ]
+  },
+  {
+    "id": "jaw.deeper.clinical",
+    "kind": "jaw.deeper",
+    "style": "clinical",
+    "lines": [
+      "deeper."
+    ]
+  },
+  {
+    "id": "jaw.out.clinical",
+    "kind": "jaw.out",
+    "style": "clinical",
+    "lines": [
+      "back."
+    ]
+  },
+  {
+    "id": "jaw.suck.clinical",
+    "kind": "jaw.suck",
+    "style": "clinical",
+    "lines": [
+      "suck. lighter."
+    ]
+  },
+  {
+    "id": "jaw.wide.clinical",
+    "kind": "jaw.wide",
+    "style": "clinical",
+    "lines": [
+      "maximum."
+    ]
+  },
+  {
+    "id": "jaw.correct.clinical",
+    "kind": "jaw.correct",
+    "style": "clinical",
+    "lines": [
+      "the angle."
+    ]
+  },
+  {
+    "id": "jaw.rest_ok.clinical",
+    "kind": "jaw.restOk",
+    "style": "clinical",
+    "lines": [
+      "four seconds."
+    ]
+  },
+  {
+    "id": "jaw.rest_no.clinical",
+    "kind": "jaw.restNo",
+    "style": "clinical",
+    "lines": []
+  },
+  {
+    "id": "jaw.ask.clinical",
+    "kind": "jaw.ask",
+    "style": "clinical",
+    "lines": [
+      "count to three.|three"
+    ]
+  },
+  {
+    "id": "jaw.heard.clinical",
+    "kind": "jaw.heard",
+    "style": "clinical",
+    "lines": [
+      "legible."
+    ]
+  },
+  {
+    "id": "jaw.lost.clinical",
+    "kind": "jaw.lost",
+    "style": "clinical",
+    "lines": [
+      "illegible. again."
+    ]
+  },
+  {
+    "id": "jaw.end.clinical",
+    "kind": "jaw.end",
+    "style": "clinical",
+    "lines": [
+      "done."
+    ]
+  },
+  {
+    "id": "jaw.slack.clinical",
+    "kind": "jaw.slack",
+    "style": "clinical",
+    "lines": [
+      "maintain."
+    ]
+  },
+  {
+    "id": "jaw.stop.clinical",
+    "kind": "jaw.stop",
+    "style": "clinical",
+    "lines": [
+      "okay. it’s out. I’m here."
+    ]
+  },
+  {
+    "id": "jaw.teeth.cold",
+    "kind": "jaw.teeth",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "jaw.deeper.cold",
+    "kind": "jaw.deeper",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "jaw.out.cold",
+    "kind": "jaw.out",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "jaw.suck.cold",
+    "kind": "jaw.suck",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "jaw.wide.cold",
+    "kind": "jaw.wide",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "jaw.correct.cold",
+    "kind": "jaw.correct",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "jaw.rest_ok.cold",
+    "kind": "jaw.restOk",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "jaw.rest_no.cold",
+    "kind": "jaw.restNo",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "jaw.ask.cold",
+    "kind": "jaw.ask",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "jaw.heard.cold",
+    "kind": "jaw.heard",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "jaw.lost.cold",
+    "kind": "jaw.lost",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "jaw.end.cold",
+    "kind": "jaw.end",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "jaw.slack.cold",
+    "kind": "jaw.slack",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "jaw.stop.cold",
+    "kind": "jaw.stop",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "jaw.entry.sole_to_mouth.cold",
+    "kind": "jaw.entry.sole_to_mouth",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "jaw.entry.ring_gag.cold",
+    "kind": "jaw.entry.ring_gag",
+    "style": "cold",
+    "lines": []
   }
 ]

@@ -25,7 +25,7 @@ function parseVoiceMd(md: string): Item[] {
     if (raw.startsWith('## ')) { sec = 0; cur = null; continue; }
     const h3 = /^### (.+)$/.exec(raw);
     if (h3) { heading = h3[1]!.trim(); cur = null; continue; }
-    if (!heading || ![1, 2, 3, 5, 6, 7, 8, 9].includes(sec)) continue;
+    if (!heading || ![1, 2, 3, 5, 6, 7, 8, 9, 10].includes(sec)) continue;
     const bullet = /^- (.*)$/.exec(raw);
     if (bullet) {
       const body = bullet[1]!;
@@ -99,6 +99,9 @@ const SCENT_KINDS = [
   'miss.warm', 'miss.admit', 'miss.bad', 'miss.want', 'miss.place', 'miss.strength', 'miss.band', 'miss.intensity_wrong', 'miss.intensity_missing', 'miss.honest',
 ];
 const SCENT_CONTACTS = ['feet_on_face', 'face_to_bottom', 'smothered_armpit'];
+/** §10 (P10e-e Task 20, ruling Q): the jaw's lines by her style (jaw.html `LINES`; `ask` as `question|word`); by what holds the mouth open `jaw.entry.<contact>`. */
+const JAW_KINDS = ['teeth', 'deeper', 'out', 'suck', 'wide', 'correct', 'restOk', 'restNo', 'ask', 'heard', 'lost', 'end', 'slack', 'stop'];
+const JAW_CONTACTS = ['sole_to_mouth', 'ring_gag'];
 /** §6 (P10e-e Task 11): the slap's lines by her style. */
 const SLAP_LABEL: Record<string, string> = { before: 'slap.before', feint: 'slap.feint', again: 'slap.again', none: 'slap.after.none', braced: 'slap.after.braced', flinched: 'slap.after.flinched' };
 const STYLE_LABEL: Record<string, string> = { when: 'when', cost: 'cost', who: 'who', 'only her': 'onlyMe', weight: 'weight', right: 'call.right', wrong: 'call.wrong', slow: 'call.slow' };
@@ -112,6 +115,13 @@ function expected(md: string): Map<string, string[]> {
     out.set(key, lines);
   };
   for (const it of parseVoiceMd(md)) {
+    if (it.sec === 10) {
+      if (it.heading === 'entry') { put(`jaw.entry.${it.label}`, undefined, it.lines); continue; }
+      if (it.label.startsWith('entry.')) { put(`jaw.${it.label}`, it.heading, it.lines); continue; } // a style's own first words (cold: silent)
+      if (!JAW_KINDS.includes(it.label)) throw new Error(`unmapped jaw item: ${it.heading} › ${it.label}`);
+      put(`jaw.${it.label}`, it.heading === 'neutral' ? undefined : it.heading, it.lines);
+      continue;
+    }
     if (it.sec === 9) {
       if (it.heading === 'entry' || it.heading === 'here') { put(`scent.${it.heading}.${it.label}`, undefined, it.lines); continue; }
       if (/^(entry|here)\./.test(it.label)) { put(`scent.${it.label}`, it.heading, it.lines); continue; } // a style's own (cold: silent)
@@ -250,6 +260,27 @@ describe('cardVoice registry (P10e-e R7)', () => {
     const misses = [...judge.matchAll(/'([^']+)'/g)].map((m) => m[1]!).filter((t) => /[ .?~]/.test(t) && !t.includes(':') || /^intensity: /.test(t));
     const got = rows.filter((e) => String(e.kind).startsWith('scent.miss.') && e.style === undefined).flatMap((e) => e.lines as string[]);
     expect([...got].sort()).toEqual([...new Set(misses)].sort());
+  });
+
+  it('the jaw\'s lines (ruling Q): every kind of jaw.html for its eight styles, word for word; her first words by her toes and the ring; cold silent; no pronoun for the commander', () => {
+    const rows = [...reg.cardVoice.values()].filter((e) => String(e.kind).startsWith('jaw.'));
+    const src = readFileSync('docs/prototypes/jaw.html', 'utf8');
+    const LINES = new Function(`${src.slice(src.indexOf('const LINES = {'), src.indexOf('/* ---------- settings'))}; return LINES;`)() as Record<string, Record<string, unknown>>;
+    const row = (kind: string, style: string): string[] | undefined => (rows.find((e) => e.kind === kind && e.style === (style === 'neutral' ? undefined : style))?.lines as string[] | undefined);
+    for (const [style, L] of Object.entries(LINES)) {
+      for (const c of JAW_CONTACTS) expect(row(`jaw.entry.${c}`, style), `entry.${c}@${style}`).toEqual((L.entry as Record<string, string[]>)[c]);
+      for (const k of JAW_KINDS.filter((x) => x !== 'stop' && x !== 'ask')) expect(row(`jaw.${k}`, style), `${k}@${style}`).toEqual(L[k]);
+      // her question and the word she wants: `question|word` (no word: any answer)
+      expect(row('jaw.ask', style)!.map((l) => l.split('|')).map(([q, w]) => [q, w ?? '']), `ask@${style}`).toEqual(L.ask);
+      // finish's line after the stop word (one for every style in the prototype)
+      expect(row('jaw.stop', style), `stop@${style}`).toEqual(['okay. it’s out. I’m here.']);
+    }
+    const cold = rows.filter((e) => e.style === 'cold');
+    expect(cold).toHaveLength(JAW_KINDS.length + JAW_CONTACTS.length);
+    expect(cold.every((e) => (e.lines as string[]).length === 0)).toBe(true);
+    expect(reg.blockingContacts.get('sole_to_mouth')?.physics).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'jaw' })]));
+    expect(reg.blockingItems.get('ring_gag')?.physics).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'jaw' })]));
+    for (const e of rows) for (const l of e.lines as string[]) expect(l, String(e.id)).not.toMatch(/\b(he|him|his|himself|he's)\b/i);
   });
 
   it('a value that opens a sentence is capitalised (her name for a posture is kept as she says it)', () => {

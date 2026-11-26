@@ -3118,9 +3118,13 @@ export const CARD_VOICE_KINDS = [
   'scent.need', 'scent.end', 'scent.stop', 'scent.lost.low', 'scent.lost.high', 'scent.mouth', 'scent.answer.ok', 'scent.answer.bad', 'scent.answer.empty', 'scent.ask',
   'scent.miss.warm', 'scent.miss.admit', 'scent.miss.bad', 'scent.miss.want', 'scent.miss.place', 'scent.miss.strength', 'scent.miss.band',
   'scent.miss.intensity_wrong', 'scent.miss.intensity_missing', 'scent.miss.honest',
+  // P10e-e ruling Q: the jaw's lines (jaw.html `LINES`, card-voice.md §10); her first words by what holds the mouth open are `jaw.entry.<contact>`
+  // (CARD_VOICE_STATIC); `jaw.ask` lines are `question|word` (no word: any answer); `jaw.stop` is finish's line after the stop word
+  'jaw.teeth', 'jaw.deeper', 'jaw.out', 'jaw.suck', 'jaw.wide', 'jaw.correct', 'jaw.restOk', 'jaw.restNo', 'jaw.ask', 'jaw.heard', 'jaw.lost', 'jaw.end',
+  'jaw.slack', 'jaw.stop',
 ] as const;
-/** The kinds of her static words (card-voice.md §3), keyed by a milestone id, a domain id (or `submit`) and the return's terms; her first words under a weight, by the contact (§8, `weight.entry.<contact>`); and under her scent, her first words and her named places by the contact (§9). */
-export const CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+|scent\.(entry|here)\.[a-z0-9_]+)$/;
+/** The kinds of her static words (card-voice.md §3), keyed by a milestone id, a domain id (or `submit`) and the return's terms; her first words under a weight, by the contact (§8, `weight.entry.<contact>`); under her scent, her first words and her named places by the contact (§9); in the jaw, her first words by what holds the mouth open (§10, `jaw.entry.<contact>`). */
+export const CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+|scent\.(entry|here)\.[a-z0-9_]+|jaw\.entry\.[a-z0-9_]+)$/;
 
 /**
  * P10e-e R7: a table of her lines on the scene's cards (`docs/content/card-voice.md` is the readable copy, approved by the author). Read
@@ -3131,6 +3135,6 @@ export const CardVoiceSchema = BaseEntrySchema.extend({
   kind: str.refine((k) => (CARD_VOICE_KINDS as readonly string[]).includes(k) || CARD_VOICE_STATIC.test(k), 'an unknown card voice kind'),
   style: str.optional(),
   lines: z.array(str.max(160)),
-}).strict().refine((e) => e.lines.length > 0 || ((e.kind.startsWith('breath.') || e.kind.startsWith('weight.') || e.kind.startsWith('scent.')) && e.style !== undefined), 'no lines (only a style\'s own breath, weight or scent row may be empty: she is silent there)');
+}).strict().refine((e) => e.lines.length > 0 || ((e.kind.startsWith('breath.') || e.kind.startsWith('weight.') || e.kind.startsWith('scent.') || e.kind.startsWith('jaw.')) && e.style !== undefined), 'no lines (only a style\'s own breath, weight, scent or jaw row may be empty: she is silent there)');
 export type CardVoiceEntry = z.infer<typeof CardVoiceSchema>;
 registrySchemas.cardVoice = CardVoiceSchema;

@@ -10,6 +10,7 @@
  * `breath` / `breathhold`: the breath instrument (P10e-e Task 14), see below.
  * `weight` / `weightfoot` / `weightup` / `weighthold`: the weight instrument (P10e-e Task 16), see below.
  * `scent` / `scenthold`: the scent instrument (P10e-e Task 18), see below.
+ * `jaw` / `jawring` / `jawhold`: the jaw instrument (P10e-e Task 20), see below.
  */
 import { writeFileSync } from 'node:fs';
 import { COMMANDER, registerFrameReader, setBlocking } from '../../src/engine/blocking';
@@ -195,5 +196,28 @@ function scenting(): CampaignState {
 }
 out.scent = scenting();
 out.scenthold = scenting();
+
+/**
+ * P10e-e Task 20: the jaw in the commander's quarters, real time mirrored, the first segment running (her attention on the commander): `jaw`
+ * (Ann's toes in the commander's mouth, `sole_to_mouth`) and `jawring` (the commander ring-gagged before her) for the shots, whose page drives
+ * her moves itself (`&quiet=1` clears the plan's); `jawhold` (the ring): the stop word's pill must stay clickable and end the hold, her band
+ * up and the field speaking through the ring.
+ */
+function jawing(source: 'toes' | 'ring'): CampaignState {
+  const s = campaign(reg, 4);
+  setRelation(s, ANN, { stateId: 'confidant' });
+  enable(s, 'objectification', 'restraint', 'humiliation', 'worship', 'service');
+  s.settings.physicsRealtime = true; // the campaign's mirror of real time (the instrument needs it)
+  const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
+  const d = r.state;
+  if (source === 'toes') setBlocking(d, { registries: reg }, { person: ANN, field: 'contact', value: 'sole_to_mouth', with: COMMANDER }, { at: 1, source: 'engine' });
+  else setBlocking(d, { registries: reg }, { person: COMMANDER, field: 'worn', value: 'ring_gag' }, { at: 1, source: 'engine' });
+  if (d.scene!.physics?.physicsId !== 'jaw') throw new Error(`jaw (${source}): no jaw runs`);
+  d.scene!.physics.segment = { n: 1, state: 'running', plan: { beats: Array.from({ length: 20 }, () => ({ attention: 'watching' as const })) } };
+  return d;
+}
+out.jaw = jawing('toes');
+out.jawring = jawing('ring');
+out.jawhold = jawing('ring');
 
 writeFileSync(process.argv[2] ?? 'states.json', JSON.stringify(out));

@@ -651,3 +651,171 @@ Her lines in her hand while the commander breathes her in (P10e-e Task 18, rulin
 - **here.face_to_bottom:** silent
 - **entry.smothered_armpit:** silent
 - **here.smothered_armpit:** silent
+
+## 10. Jaw (jaw.html, approved by the author, 2026-11-24)
+
+Her lines in her hand while the commander's jaw is held open (P10e-e Task 20, ruling Q; `jaw.html`'s `LINES`). **entry**: her first words, by what holds the mouth open (`jaw.entry.<contact>`: her toes, `sole_to_mouth`; the ring, `ring_gag`, which any item worn in the mouth reads as); **teeth**: the teeth touched her; **deeper** / **suck** / **wide** / **out**: her orders and her pulling back (the cue kinds `deeper`, `suck`, `wider`, `pull_back`: a line the model words for that moment takes their place); **correct**: an order not kept; **restOk** / **restNo**: her answer to a rest asked for, which follows the engine's (granted unless cruel or vindictive); **ask**: her question through the ring, `question|word` when she wants a word said (no word: any answer); **heard** / **lost**: she understood the line or not; **end**: the end; **slack**: the rest is over, or a line said with her toes in the mouth; **stop**: after the stop word. Neutral is every style with no rows of its own; cold is silent on every kind, her first words included (Ruling R). No pronoun for the commander.
+
+### entry
+- **sole_to_mouth:** `open.`
+- **ring_gag:** `there. keep it open.`
+
+### neutral
+- **teeth:** `teeth.` · `careful.`
+- **deeper:** `deeper.`
+- **out:** `easy.`
+- **suck:** `suck.`
+- **wide:** `wider. show me.`
+- **correct:** `I said wider.` · `keep it there.`
+- **restOk:** `fine. rest.`
+- **restNo:** `not yet.`
+- **ask:** `anything to say?`
+- **heard:** `good.`
+- **lost:** `what was that?`
+- **end:** `that’s enough.`
+- **slack:** `don’t let it close.`
+- **stop:** `okay. it’s out. I’m here.`
+
+### affectionate
+- **entry.sole_to_mouth:** `open for me.`
+- **entry.ring_gag:** `shh. just keep it open for me.`
+- **teeth:** `ow — gently.`
+- **deeper:** `a little more.`
+- **out:** `there.`
+- **suck:** `gently. suck.`
+- **wide:** `wider, love.`
+- **correct:** `a little wider.`
+- **restOk:** `rest. I’ve got you.`
+- **restNo:** silent
+- **ask:** `tell me how it feels.` · `say yes.|yes`
+- **heard:** `I know.` · `good.`
+- **lost:** `shh, I can’t tell.`
+- **end:** `all done. close.`
+- **slack:** `stay open for me.`
+- **stop:** `okay. it’s out. I’m here.`
+
+### ritual
+- **entry.sole_to_mouth:** `open.`
+- **entry.ring_gag:** `open. hold.`
+- **teeth:** `teeth. again.`
+- **deeper:** `deeper.`
+- **out:** `back.`
+- **suck:** `suck.`
+- **wide:** `wide.`
+- **correct:** `the form.`
+- **restOk:** `rest. count of four.`
+- **restNo:** silent
+- **ask:** `repeat: yes.|yes`
+- **heard:** `correct.`
+- **lost:** `again. clearly.`
+- **end:** `close.`
+- **slack:** `the form.`
+- **stop:** `okay. it’s out. I’m here.`
+
+### playful
+- **entry.sole_to_mouth:** `say aah~`
+- **entry.ring_gag:** `cute. now talk to me~`
+- **teeth:** `hey! no biting~`
+- **deeper:** `more~`
+- **out:** `aww.`
+- **suck:** `suck~`
+- **wide:** `wiiider~`
+- **correct:** `wider, I said~`
+- **restOk:** `fine, fine.`
+- **restNo:** silent
+- **ask:** `say please~|please` · `say my name~`
+- **heard:** `ha, close enough.`
+- **lost:** `what? I can’t understand you~`
+- **end:** `okay, you can close~`
+- **slack:** `nope, keep it open~`
+- **stop:** `okay. it’s out. I’m here.`
+
+### cruel
+- **entry.sole_to_mouth:** `open.`
+- **entry.ring_gag:** `now you can’t close it.`
+- **teeth:** `teeth? really?` · `teeth.`
+- **deeper:** `deeper.`
+- **out:** `hm.`
+- **suck:** `suck.`
+- **wide:** `wide.`
+- **correct:** `wider.`
+- **restOk:** silent
+- **restNo:** `no.` · `earn it.`
+- **ask:** `say please.|please` · `beg.|please`
+- **heard:** `pathetic.`
+- **lost:** `speak properly.` · `I can’t hear you.`
+- **end:** `you may close it.`
+- **slack:** `open.`
+- **stop:** `okay. it’s out. I’m here.`
+
+### possessive
+- **entry.sole_to_mouth:** `open. it’s mine.`
+- **entry.ring_gag:** `your mouth is mine now.`
+- **teeth:** `careful with what’s mine.`
+- **deeper:** `all of it.`
+- **out:** `there.`
+- **suck:** `suck.`
+- **wide:** `wider for me.`
+- **correct:** `for me. wider.`
+- **restOk:** `rest. then again.`
+- **restNo:** silent
+- **ask:** `whose mouth is it?|yours` · `say mine.|yours`
+- **heard:** `good. mine.`
+- **lost:** `again. I want to hear it.`
+- **end:** `close. good.`
+- **slack:** `mine stays open.`
+- **stop:** `okay. it’s out. I’m here.`
+
+### vindictive
+- **entry.sole_to_mouth:** `open.`
+- **entry.ring_gag:** `keep it open. you owe me that.`
+- **teeth:** `that’s added.`
+- **deeper:** `deeper.`
+- **out:** `hm.`
+- **suck:** `suck.`
+- **wide:** `wide.`
+- **correct:** `wider. that’s added.`
+- **restOk:** silent
+- **restNo:** `no rest owed.`
+- **ask:** `say sorry.|sorry`
+- **heard:** `not enough.`
+- **lost:** `that’s added.`
+- **end:** `close it.`
+- **slack:** `open.`
+- **stop:** `okay. it’s out. I’m here.`
+
+### clinical
+- **entry.sole_to_mouth:** `open.`
+- **entry.ring_gag:** `ring fitted. hold.`
+- **teeth:** `teeth contact. noted.`
+- **deeper:** `deeper.`
+- **out:** `back.`
+- **suck:** `suck. lighter.`
+- **wide:** `maximum.`
+- **correct:** `the angle.`
+- **restOk:** `four seconds.`
+- **restNo:** silent
+- **ask:** `count to three.|three`
+- **heard:** `legible.`
+- **lost:** `illegible. again.`
+- **end:** `done.`
+- **slack:** `maintain.`
+- **stop:** `okay. it’s out. I’m here.`
+
+### cold
+- **teeth:** silent
+- **deeper:** silent
+- **out:** silent
+- **suck:** silent
+- **wide:** silent
+- **correct:** silent
+- **restOk:** silent
+- **restNo:** silent
+- **ask:** silent
+- **heard:** silent
+- **lost:** silent
+- **end:** silent
+- **slack:** silent
+- **stop:** silent
+- **entry.sole_to_mouth:** silent
+- **entry.ring_gag:** silent

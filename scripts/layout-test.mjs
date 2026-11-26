@@ -13,7 +13,7 @@ const server = await serveRoot();
 const port = server.port;
 
 const SIZES = [[1920, 1080], [1280, 800], [2560, 1440]];
-const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breathhold', 'weighthold', 'scenthold'];
+const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breathhold', 'weighthold', 'scenthold', 'jawhold'];
 const failures = [];
 const faceOf = new Map(); // the dial's circle for `standing` (fixture `one`), per size
 const fail = (size, fixture, what) => failures.push(`${size[0]}x${size[1]} ${fixture}: ${what}`);
@@ -241,6 +241,51 @@ for (const size of SIZES) {
         if (document.querySelector('.alius-scent-mirror') || document.querySelector('.alius-input[data-scent-letters]')) out.push('the input still carries the letters');
         const reply = document.querySelector('[role="log"]')?.getAttribute('style') ?? '';
         if (/opacity/.test(reply)) out.push(`the reply was not put back: ${JSON.stringify(reply)}`);
+        const frame = document.querySelector('.alius-layer-frame')?.getAttribute('style') ?? '';
+        if (/cursor/.test(frame)) out.push(`the frame's cursor was not put back: ${JSON.stringify(frame)}`);
+        return out;
+      });
+      for (const f of after) fail(size, fixture, f);
+    }
+    // P10e-e Task 20: the jaw draws under the scene's UI, its mouth the input line; wide open with her band up and a line typed through the
+    // ring, the stop word's pill and the input stay on top and clickable, her lines stay in the frame, the line and its ghost frames stay in
+    // the frame; the pill ends the hold at once: the instrument is gone, the line, the field and the frame's cursor are as they were
+    if (fixture === 'jawhold') {
+      await p.waitForTimeout(300);
+      await p.evaluate(() => { const j = window.__jaw; j.aim(1.2); j.move({ order: 'wider', orderMs: 6000 }); });
+      await p.mouse.move(size[0] * 0.5, size[1] * 0.9);
+      await p.focus('.alius-input');
+      await p.keyboard.type('please');
+      await p.waitForTimeout(900);
+      const mid = await p.evaluate(() => {
+        const out = [];
+        if (!document.querySelector('.alius-layer-effects > .alius-jaw')) out.push('no jaw drawn');
+        if (document.querySelector('.alius-layer-moment .alius-jaw, .alius-layer-ui .alius-jaw')) out.push('the jaw is drawn over the UI');
+        const top = (el) => { if (!el) return 'missing'; const b = el.getBoundingClientRect(); const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return hit === el || el.contains(hit) ? 'ok' : `covered by ${hit?.className ?? hit?.tagName}`; };
+        const input = top(document.querySelector('.alius-input'));
+        if (input !== 'ok') out.push(`the input, wide open: ${input}`);
+        const pill = top(document.querySelector('[data-stop-word]'));
+        if (pill !== 'ok') out.push(`the stop word, wide open: ${pill}`);
+        const line = document.querySelector('.alius-input-line');
+        if (!line || parseFloat(line.style.height) < 120) out.push(`the mouth did not open: ${line?.getAttribute('style')}`);
+        if ((document.querySelector('.alius-jaw-mirror')?.textContent ?? '') === '') out.push('the letters typed through the ring are not drawn');
+        for (const l of document.querySelectorAll('.alius-jaw-hand .her-line, .alius-input-line, .alius-jaw-band')) {
+          const r = l.getBoundingClientRect();
+          if (r.width === 0) continue;
+          if (r.left < 0 || r.right > innerWidth || r.top < 0 || r.bottom > innerHeight) out.push(`"${l.className}" leaves the frame: ${JSON.stringify(r)}`);
+        }
+        if ([...document.querySelectorAll('.alius-jaw-band')].every((b) => getComputedStyle(b).opacity === '0')) out.push('her band is not shown');
+        return out;
+      });
+      for (const f of mid) fail(size, fixture, f);
+      await p.click('[data-stop-word]');
+      await p.waitForTimeout(200);
+      const after = await p.evaluate((before) => {
+        const out = [];
+        if (document.querySelector('.alius-jaw')) out.push('the stop word did not end the hold: the jaw is still drawn');
+        if (document.querySelector('.alius-jaw-mirror, .alius-jaw-band, .alius-jaw-clip, .alius-jaw-rest') || document.querySelector('.alius-input[data-jaw-letters]')) out.push('the mouth still carries the jaw');
+        const line = document.querySelector('.alius-input-line')?.getAttribute('style') ?? '';
+        if (/height|margin|transform|--ache|border-color/.test(line)) out.push(`the line was not put back: ${JSON.stringify(line)}`);
         const frame = document.querySelector('.alius-layer-frame')?.getAttribute('style') ?? '';
         if (/cursor/.test(frame)) out.push(`the frame's cursor was not put back: ${JSON.stringify(frame)}`);
         return out;

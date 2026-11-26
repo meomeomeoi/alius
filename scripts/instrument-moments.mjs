@@ -24,6 +24,7 @@ export const MOMENTS = {
   breath: breathMoments(),
   weight: weightMoments(),
   saturation: scentMoments(),
+  jaw: jawMoments(),
   cards: {
     state: 'one',
     clip: dialCorner,
@@ -350,6 +351,70 @@ function scentMoments() {
       moment('entry-1280', 'neutral', 900, none, none, 0, [1280, 800]),
       moment('question-1280', 'neutral', LOOP, ask.proto, ask.port, 700, [1280, 800]),
       moment('full-head-1280', 'neutral', LOOP, full.proto, full.port, 1200, [1280, 800]),
+    ],
+  };
+}
+
+/**
+ * jaw.html: the jaw (Task 20). The port is the `jaw` fixture (Ann's toes in the commander's mouth, `sole_to_mouth`, the commander's quarters)
+ * or `jawring` (the commander ring-gagged before her), her planned moves cleared (`&quiet=1`); the prototype is set to the same (`S.contact`,
+ * `S.style`). Both pages run on Playwright's fake clock, paused: each moment begins the instrument at the same paused instant on both
+ * (`begin`), her own schedule is held off in the prototype (`G.nextMove`; the port's plan is quiet), the jaw is aimed at the same opening
+ * (`G.target`, the port's `__jaw.aim`), the clock is run, and her moves, the fatigue and the rest are made by the same hooks (the prototype's
+ * globals `herMove` (its draw stubbed to the planned move's value), `askRest` and `G`; the port's `window.__jaw`). A line is typed through the
+ * ring with the keyboard on both. The jitter of the tremble and the twitches differs (each page draws its own); the look is what is compared.
+ * The prototype's backdrop is its stand-in (`quarters_1`); the port's is the scene's. The port's mouth is the scene's input line (its width,
+ * its place in the column, lifted to the prototype's height).
+ * Moments: her toes resting, a dip (the teeth), "suck."; the ring wide (her band), a line typed through it; fatigue 70; a rest; her toes
+ * resting and the ring's line again at 1280x800.
+ */
+function jawMoments() {
+  const start = (contact, style) => ({
+    proto: async (p) => {
+      await fakeClock(p, () => document.fonts.ready);
+      await p.addStyleTag({ content: '#panel, #debug, #summary, #start { visibility: hidden !important; }' });
+      await p.evaluate(([c, st]) => { Object.assign(window.__S, { contact: c, style: st, sound: false, reduced: false }); }, [contact, style]);
+      await p.evaluate(() => { document.querySelector('#start').style.display = 'none'; begin(); G.nextMove = 1e12; });
+    },
+    port: async (p) => {
+      await fakeClock(p, async () => { while (document.body.dataset.ready !== 'true') await new Promise((r) => setTimeout(r, 50)); });
+      await p.evaluate(() => { window.__jaw.resetClock(); window.__jaw.begin(); });
+    },
+  });
+  /** A moment: begin on both, aim the jaw, run `before`, drive each (`proto` / `port` in the page, with `arg`), run `after`. */
+  const moment = (id, contact, aim, before, drive, after, size) => {
+    const s = start(contact, 'neutral');
+    return {
+      id, state: contact === 'ring_gag' ? 'jawring' : 'jaw', query: '&quiet=1&style=neutral', ...(size ? { size } : {}),
+      proto: async (p) => { await s.proto(p); await p.evaluate((a) => { G.target = a; }, aim); await p.clock.runFor(before); await drive.proto(p); await p.clock.runFor(after); },
+      port: async (p) => { await s.port(p); await p.evaluate((a) => window.__jaw.aim(a), aim); await p.clock.runFor(before); await drive.port(p); await p.clock.runFor(after); },
+    };
+  };
+  const none = { proto: async () => {}, port: async () => {} };
+  /** Her move on both: the prototype's draw stubbed to the planned move's value (`r` and the order's span), the port's planned move. */
+  const herMove = (r, order, orderMs) => ({
+    proto: (p) => p.evaluate(([rr]) => { const m = Math.random; Math.random = () => rr; herMove(); Math.random = m; }, [r]),
+    port: (p) => p.evaluate(([o, ms]) => window.__jaw.move({ order: o, orderMs: ms }), [order, orderMs]),
+  });
+  const dip = { proto: (p) => p.evaluate(() => { G.target = 0.22; }), port: (p) => p.evaluate(() => window.__jaw.aim(0.22)) };
+  const typed = { proto: async (p) => { await p.focus('#cmd'); await p.keyboard.type('please'); }, port: async (p) => { await p.focus('.alius-input'); await p.keyboard.type('please'); } };
+  const tired = { proto: (p) => p.evaluate(() => { G.f = 70; }), port: (p) => p.evaluate(() => { window.__jaw.G.f = 70; }) };
+  const rest = { proto: (p) => p.evaluate(() => askRest()), port: (p) => p.evaluate(() => window.__jaw.askRest()) };
+  return {
+    state: 'jaw',
+    rasterSprite: true, // the prototype sizes its <img> by its natural size: the fixture's SVG is drawn as a PNG at run time (scripts/instrument-shots.mjs)
+    hide: ['#panel', '#debug', '#summary', '#start'],
+    settle: 60,
+    moments: [
+      moment('toes-resting', 'sole_to_mouth', 0.49, 2000, none, 0),
+      moment('toes-dip', 'sole_to_mouth', 0.49, 1500, dip, 700),
+      moment('toes-suck', 'sole_to_mouth', 0.49, 1000, herMove(0.6, 'suck', 5800), 900),
+      moment('ring-wide', 'ring_gag', 0.7, 1000, herMove(0.95, 'wider', 4900), 1200),
+      moment('ring-line', 'ring_gag', 0.94, 1000, typed, 300),
+      moment('fatigue-70', 'sole_to_mouth', 0.62, 800, tired, 1200),
+      moment('rest', 'sole_to_mouth', 0.62, 800, rest, 1200),
+      moment('toes-resting-1280', 'sole_to_mouth', 0.49, 2000, none, 0, [1280, 800]),
+      moment('ring-line-1280', 'ring_gag', 0.94, 1000, typed, 300, [1280, 800]),
     ],
   };
 }

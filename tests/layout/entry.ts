@@ -1,6 +1,6 @@
 /**
  * P10e: the browser entry of the layout test (`npm run test:layout`): renders the real scene screen into the page for one named
- * fixture (`?fixture=one|two|three|four|curtain|long|physics|chips|chipsmany|dialname|dialwide|call|callhold|slap|slaphold|breath|breathhold|weight|weightfoot|weightup|weighthold|scent|scenthold`). A knee-length placeholder sprite (tests/fixtures/layout/sprite.svg), never the
+ * fixture (`?fixture=one|two|three|four|curtain|long|physics|chips|chipsmany|dialname|dialwide|call|callhold|slap|slaphold|breath|breathhold|weight|weightfoot|weightup|weighthold|scent|scenthold|jaw|jawring|jawhold`). A knee-length placeholder sprite (tests/fixtures/layout/sprite.svg), never the
  * author's art; the content and the campaign states are fetched (the script serves the repo root); the model is never called.
  */
 import { loadPacks } from '../../src/content/loader';
@@ -9,6 +9,7 @@ import { registerPhysicsStyle } from '../../src/engine/physics/style';
 import { _breath } from '../../src/ui/scene/instruments/breath/breath';
 import { _weight } from '../../src/ui/scene/instruments/weight/weight';
 import { _scent } from '../../src/ui/scene/instruments/scent/scent';
+import { _jaw } from '../../src/ui/scene/instruments/jaw/jaw';
 import { DEFAULT_SETTINGS } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';
 import type { ChatMessage } from '../../src/st/adapter';
@@ -19,17 +20,19 @@ const params = new URLSearchParams(location.search);
 const fixture = params.get('fixture') ?? 'one';
 const states = (await (await fetch('/.superpowers/layout/states.json')).json()) as Record<string, never>;
 const loaded = await loadPacks(['content/core'], (p: string) => fetch('/' + p).then((r) => r.json()));
-const state = states[['two', 'three', 'four', 'physics', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weightfoot', 'weightup', 'weighthold', 'scent', 'scenthold'].includes(fixture) ? fixture : 'one'];
+const state = states[['two', 'three', 'four', 'physics', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weightfoot', 'weightup', 'weighthold', 'scent', 'scenthold', 'jaw', 'jawring', 'jawhold'].includes(fixture) ? fixture : 'one'];
 // the breath instrument (P10e-e Task 14): `&style=<key>` is her physics style; `&quiet=1` clears the plan's openings (the shots open the windows
 // themselves through `window.__breath`, as the prototype's through its hooks); the segment started as the page loaded; the stop word ends the hold (the run goes, the scene redraws), as the engine's does
 // the weight instrument (P10e-e Task 16): the same, `&quiet=1` clearing the plan's shifts (the shots shift her through `window.__weight`)
 const weighing = fixture.startsWith('weight');
 // the scent instrument (P10e-e Task 18): the same; the shots drive her orders and her question through `window.__scent`
 const scenting = fixture.startsWith('scent');
-const breathing = fixture === 'breath' || fixture === 'breathhold' || weighing || scenting;
+// the jaw instrument (P10e-e Task 20): the same; `&quiet=1` clears her planned moves (the shots move her through `window.__jaw`)
+const jawing = fixture.startsWith('jaw');
+const breathing = fixture === 'breath' || fixture === 'breathhold' || weighing || scenting || jawing;
 if (breathing && params.get('style')) registerPhysicsStyle(() => ({ primary: params.get('style') as never }));
-const run = (state as { scene?: { physics?: { segment: { plan?: { beats: Array<{ opening?: unknown; cue?: unknown; shift?: unknown }> } } } } }).scene?.physics;
-if (breathing && params.get('quiet') === '1') for (const b of run?.segment.plan?.beats ?? []) { delete b.opening; delete b.cue; delete b.shift; }
+const run = (state as { scene?: { physics?: { segment: { plan?: { beats: Array<{ opening?: unknown; cue?: unknown; shift?: unknown; order?: unknown; orderMs?: unknown; ask?: unknown }> } } } } }).scene?.physics;
+if (breathing && params.get('quiet') === '1') for (const b of run?.segment.plan?.beats ?? []) { delete b.opening; delete b.cue; delete b.shift; delete b.order; delete b.orderMs; delete b.ask; }
 const startedAt = Date.now();
 
 
@@ -90,6 +93,7 @@ if (params.get('deferSlap') === '1' && sp?.slap) {
   (window as unknown as { __slapNow: () => void }).__slapNow = () => { sp.slap = held; screen.refresh(); };
 }
 if (scenting) (window as unknown as { __scent: typeof _scent }).__scent = _scent;
-if (breathing && !weighing && !scenting) (window as unknown as { __breath: typeof _breath }).__breath = _breath;
+if (jawing) (window as unknown as { __jaw: typeof _jaw }).__jaw = _jaw;
+if (breathing && !weighing && !scenting && !jawing) (window as unknown as { __breath: typeof _breath }).__breath = _breath;
 if (weighing) (window as unknown as { __weight: typeof _weight }).__weight = _weight;
 document.body.dataset.ready = 'true';

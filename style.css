@@ -5871,6 +5871,161 @@
   gap: 12px;
 }
 
+/*
+ * P10e-e Task 20: the jaw (docs/prototypes/jaw.html, normative). The instrument's own layer sits in the effects layer, under the scene's UI:
+ * the stop word's pill and every control stay above it. Here are the prototype's `#world` (`#backdrop`, `#cam` > `#her`, `#foot`), `#vig`,
+ * `#ache`, `#drool` and `#hand` with her lines, in its order. The mouth is the scene's own input line (the prototype's `#mouth` / `#inputWrap`):
+ * its height and its border are written by the instrument through claims; on it lie the hinges (`#inputWrap::before/::after`, here two
+ * children of a clip that keeps the line's rounding), the letters (`#mirror`) and the rest ring (`#restRing`); her band's ghost frames
+ * (`.band`) lie beside it, centred on it. Nothing of the instrument takes the pointer. Her lines are in her hand at the prototype's size × her
+ * hand's measured scale and wrap inside the frame; readable mode writes them in the type font with no write-on (and the instrument drops
+ * every blur); reduced motion has no write-on. Every z-index stays below 10.
+ */
+#alius-shell .alius-jaw {
+  position: absolute;
+  inset: 0;
+  z-index: 1; /* over the effects layer's own gradient */
+  overflow: hidden;
+  pointer-events: none;
+  background: #000;
+  color: #ece8f2;
+  --alius-jaw-hand-scale: 1;
+}
+
+#alius-shell .alius-jaw > *,
+#alius-shell .alius-jaw-world > * {
+  position: absolute;
+  pointer-events: none;
+}
+
+#alius-shell .alius-jaw-world { inset: -6%; will-change: transform, filter; transform-origin: 50% 60%; }
+#alius-shell .alius-jaw-backdrop { inset: 0; background-size: cover; background-position: center; will-change: filter, transform; }
+#alius-shell .alius-jaw-cam { inset: 0; perspective: 1100px; overflow: hidden; }
+#alius-shell .alius-jaw-her {
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: none;
+  transform-origin: 0 0;
+  will-change: transform, filter;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+#alius-shell .alius-jaw-foot {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  max-width: none;
+  transform-origin: 50% 100%;
+  will-change: transform, filter;
+  user-select: none;
+  display: none;
+}
+#alius-shell .alius-jaw-vig,
+#alius-shell .alius-jaw-ache,
+#alius-shell .alius-jaw-hand { inset: 0; }
+#alius-shell .alius-jaw-ache { opacity: 0; }
+#alius-shell .alius-jaw-drool { inset: 0; width: 100%; height: 100%; }
+
+/* her hand */
+#alius-shell .alius-jaw-hand .her-line {
+  position: absolute;
+  font-family: var(--alius-font-hand, "Caveat"), cursive;
+  color: var(--alius-her, #8cc8f0);
+  white-space: normal; /* the prototype's lines are short; a longer one wraps inside the frame (ruling Q) */
+  max-width: 40%;
+  width: max-content;
+  line-height: 1;
+  font-size: calc(44px * var(--alius-jaw-hand-scale));
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9), 0 0 14px rgba(0, 0, 0, 0.85), 0 0 28px rgba(0, 0, 0, 0.6);
+  animation: alius-jaw-write var(--write, 600ms) steps(var(--steps, 12), end) both;
+  transition: opacity 0.5s;
+}
+#alius-shell .alius-jaw-hand .her-line.gone { opacity: 0; }
+
+@keyframes alius-jaw-write {
+  from { clip-path: inset(-30% 100% -30% -8%); }
+  to { clip-path: inset(-30% -8% -30% -8%); }
+}
+
+/* the still form and readable mode */
+#alius-shell .alius-jaw[data-reduced] .her-line { animation: none; }
+#alius-shell .alius-jaw[data-readable] .her-line {
+  animation: none;
+  font-family: var(--alius-font-type);
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9);
+}
+
+/* the mouth: the hinges ache, a warm glow at both ends of the line (by `--ache`, which the instrument sets on the line) */
+#alius-shell .alius-input-line > .alius-jaw-clip {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+#alius-shell .alius-jaw-clip > .alius-jaw-hinge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 120px;
+  pointer-events: none;
+  opacity: var(--ache, 0);
+  background: radial-gradient(ellipse 100% 70% at var(--hx) 50%, rgba(255, 80, 50, 0.75), rgba(255, 60, 40, 0) 70%);
+}
+#alius-shell .alius-jaw-clip > .alius-jaw-hinge.l { left: 0; --hx: 0%; }
+#alius-shell .alius-jaw-clip > .alius-jaw-hinge.r { right: 0; --hx: 100%; }
+
+/* the letters: drawn over the field (its own text and caret go transparent), a lost letter warm */
+#alius-shell .alius-input[data-jaw-letters] {
+  color: transparent;
+  caret-color: transparent;
+}
+#alius-shell .alius-input-line > .alius-jaw-mirror {
+  position: absolute;
+  pointer-events: none;
+  overflow: hidden;
+  white-space: pre;
+  font-family: var(--alius-font-sans);
+  font-size: 15px;
+  line-height: normal;
+  display: flex;
+  align-items: center;
+  padding: 1px 2px;
+  color: var(--alius-fg, #ece8f2);
+}
+#alius-shell .alius-input-line > .alius-jaw-mirror > span { display: inline-block; white-space: pre; }
+#alius-shell .alius-input-line > .alius-jaw-mirror > span.lost { color: rgba(255, 190, 170, 0.9); }
+
+/* the rest ring at the mouth's right end */
+#alius-shell .alius-input-line > .alius-jaw-rest {
+  position: absolute;
+  right: -44px;
+  top: 50%;
+  width: 30px;
+  height: 30px;
+  margin-top: -15px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+/* her band as ghost frames on the mouth, centred on it (the instrument sets the width, the height and the centre) */
+#alius-shell .alius-jaw-band {
+  position: absolute;
+  left: 50%;
+  border: 1px dashed rgba(255, 214, 170, 0.55);
+  border-radius: 30px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s, border-color 0.2s;
+  box-shadow: 0 0 14px rgba(255, 160, 110, 0.18);
+  z-index: 1;
+}
+#alius-shell .alius-jaw-band.hot { border-color: rgba(255, 120, 90, 0.95); }
+#alius-shell.alius-reduced-motion .alius-jaw-band { transition: none; }
+
 /* Bonds (P9d): the content violation mark. Palette variables only; semantic colours are not used (readable mode safe). */
 #alius-shell .alius-violation {
   display: inline-flex;
