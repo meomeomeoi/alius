@@ -158,6 +158,26 @@ export const TUNING = Object.freeze({
     gulp: Object.freeze({ swallows: Object.freeze([4, 8] as const), spillDirt: 60 }), progressPerBeat: 5,
     asleep: Object.freeze({ perBeat: 0.08, exchanges: Object.freeze([1, 3] as const) }),
     forget: Object.freeze({ base: 0.10, cruel: 0.15, perImpunity: 0.002, from: 50 }), slipExtend: 1,
+    /**
+     * P10e-e Task 25 (P16b §8, her_activity.html `MOTIONS` / `MEANINGS` / `herSignals`): her foot language. A holder has five pairs (P16b: 4–6;
+     * the prototype's five): the three foot acts and `deskCount` of the desk meanings, each on a motion of hers, shuffled by `fnv1a` of her id.
+     */
+    footSignals: Object.freeze({
+      motions: Object.freeze(['tap2', 'sole', 'push', 'hook', 'point', 'stamp', 'nudge'] as const),
+      foot: Object.freeze(['kiss', 'clean', 'rub'] as const),
+      desk: Object.freeze(['closer', 'still', 'enough'] as const),
+      deskCount: 2,
+    }),
+    /**
+     * P10e-e Task 25: her foot service (her_activity.html `SVC_STYLE`, the drafts of her profile, read by style). `patience` bounds her patience
+     * (the plan: 3–5 s, cruel shorter: cruel keeps the prototype's 2.5). `verdict`: a session's mean quality at `pleased` or more pleases her (the
+     * prototype's good line, `q ≥ 0.6`), under `adequate` (the prototype's half-done stroke, 0.3) displeases her. Her own words of how she likes
+     * her feet (P15 `how` of the targets at her feet: a body-map zone at `footZoneY` or lower) tilt it: `slow` / `quick` scale her kiss and tempo.
+     */
+    footService: Object.freeze({
+      patience: Object.freeze([3, 5] as const), verdict: Object.freeze({ pleased: 0.6, adequate: 0.3 }), footZoneY: 90,
+      slow: Object.freeze({ kiss: 1.25, tempo: 0.8 }), quick: Object.freeze({ kiss: 0.75, tempo: 1.25 }),
+    }),
     blackout: Object.freeze({ slots: 1, stress: 5 }),
     endurance: Object.freeze({ hold: 10, streakFrom: 3, streak: 2, training: 15, thresholds: Object.freeze([30, 80, 150, 250, 400] as const), capacityPerLevel: 0.1 }),
     herSkill: Object.freeze({ practices: 8, cap: 5, mult: Object.freeze({ drill: 1.5, clinical: 1.5, affectionate: 0.7 } as Record<string, number>) }),

@@ -1103,11 +1103,12 @@ Also settled: an ended frame does not restart until her activity or the commande
   - `src/engine/actions/physics.ts` (`physics/service { runId, verdict }` → `rateService(…, 'engine', sceneId)`)
 - Test: `tests/engine/physics/service.test.ts`
 
-- [ ] **Step 1:** Tests:
+- [x] **Step 1:** Tests:
   - `her signals are hers and stable` (the same holder, the same pairs; 4–6 pairs);
   - `physics/service rates once a scene` (a second call is ignored, as `rateService` does);
   - `no rng`.
-- [ ] **Steps 2–5** as Task 13 (`feat(P10e-e): her foot signals and her verdict`).
+- [x] **Steps 2–5** as Task 13 (`feat(P10e-e): her foot signals and her verdict`).
+- [x] *As built (Task 25):* `TUNING.physics.footSignals` (the motions `tap2` `sole` `push` `hook` `point` `stamp` `nudge`, the foot acts `kiss` `clean` `rub`, the desk meanings `closer` `still` `enough`, `deskCount` 2) and `TUNING.physics.footService` (`patience` [3, 5], `verdict` { pleased .6, adequate .3 }, `footZoneY` 90, `slow` / `quick` tilts). `src/engine/physics/service.ts`: `shuffleBy` (the prototype's, an LCG on a hash), `signalsOf(state, holderId)` = the prototype's `herSignals` hashed by `fnv1a(<holder>|foot_signals)` instead of the session and the style (her signals are hers, so they can be learnt): **five pairs** (the prototype's three foot acts and two of the desk meanings; P16b's 4–6 and its pool of `kneel` / `go` / `look at me` are not used: the instrument has no gesture for them); `servicePaceOf(state, reg, holderId)` (her patience, kiss length, tempo, how often, grain and order of zones: `SVC_STYLE` of her lead style, the prototype's table, her patience bounded to 3–5 s except cruel's 2.5, her grain and order hashed per her as the prototype's `herGrain` / `herOrder`; her own words of how she likes her feet, P15 `how` of the worship targets at her feet read by the body map's zone, tilt it: `slow` longer kisses and a slower rub, `quick` / `fast` / `brisk` the other way, the zones she names first, heel before toe is heel to toes); `verdictOf(quality)`: the prototype's `q ≥ 0.6` (her good line) is `pleased`, below 0.3 (the prototype's half-done stroke) `displeased`, `adequate` between (the prototype has only good / poor: the second threshold is this plan's, for the author). `physics/service { runId, verdict }` (`actions/physics.ts`) lands through `rateService(…, 'engine', sceneId)` (once a scene, as P16), for her frame that is open or the one that just ended (its id is `p<physicsCount>` and `frameDone` is hers: the instrument says it at the session's end, after the engine closed the run). Draws no rng (`tests/engine/physics/service.test.ts`). Memory: none new, `service_rated` lands as P16 decided; signals, kisses and strokes are bookkeeping.
 
 ### Task 26: The foot service instrument
 

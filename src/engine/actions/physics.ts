@@ -5,6 +5,8 @@ import { finishCounted, startAct } from '../physics/acts';
 import { applyWay, decayStimuli } from '../physics/stimuli';
 import { registerDayEndStep } from '../calendar';
 import { frameRelief, marathonSkip, nextSegment, physicsInput, typedBeats } from '../physics/segment';
+import { rateService } from '../practice/service';
+import { VERDICTS, type Verdict } from '../practice/state';
 
 // Importing this module registers the physics actions (P15a) and, through `physics/run`, what keeps a run in step with the blocking.
 
@@ -148,4 +150,24 @@ registerAction('physics/relief', (draft, payload, ctx) => {
 registerAction('physics/woke', (draft, payload, ctx) => {
   live(draft, ctx.registries, 'physics/woke');
   return frameWoke(draft, ctx, isObj(payload) ? payload.runId : undefined);
+});
+
+/**
+ * P10e-e Task 25 (R27): `physics/service { runId, verdict }`: her verdict on a session of foot service in her frame, from the crafts' quality
+ * (`verdictOf`, the instrument's), through P16's `rateService(…, 'engine', sceneId)`: once a scene (a second is ignored, as `rateService` does).
+ * The run is her frame that is open, or the one that just ended (its id is the scene's last, the frame done is hers): the instrument says it at
+ * the session's end. Memory: none new (`service_rated` lands as P16 decided). Draws no rng.
+ */
+registerAction('physics/service', (draft, payload, ctx) => {
+  live(draft, ctx.registries, 'physics/service');
+  if (!isObj(payload) || str(payload.runId) === undefined || !(VERDICTS as readonly unknown[]).includes(payload.verdict)) {
+    throw new Error('physics/service needs { runId, verdict: pleased | adequate | displeased }');
+  }
+  const scene = draft.scene!;
+  const run = scene.physics;
+  let holderId: string;
+  if (run !== undefined && run.id === payload.runId && run.sourceKind === 'activity') holderId = run.holderId;
+  else if (run === undefined && payload.runId === `p${scene.physicsCount ?? 0}` && scene.frameDone !== undefined) holderId = scene.frameDone.holderId;
+  else throw new Error('physics/service: stale physics run (only her frame, open or just ended)');
+  return rateService(draft, ctx, holderId, payload.verdict as Verdict, 'engine', scene.id);
 });

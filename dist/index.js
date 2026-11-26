@@ -195,6 +195,29 @@ var TUNING = Object.freeze({
     asleep: Object.freeze({ perBeat: 0.08, exchanges: Object.freeze([1, 3]) }),
     forget: Object.freeze({ base: 0.1, cruel: 0.15, perImpunity: 2e-3, from: 50 }),
     slipExtend: 1,
+    /**
+     * P10e-e Task 25 (P16b §8, her_activity.html `MOTIONS` / `MEANINGS` / `herSignals`): her foot language. A holder has five pairs (P16b: 4–6;
+     * the prototype's five): the three foot acts and `deskCount` of the desk meanings, each on a motion of hers, shuffled by `fnv1a` of her id.
+     */
+    footSignals: Object.freeze({
+      motions: Object.freeze(["tap2", "sole", "push", "hook", "point", "stamp", "nudge"]),
+      foot: Object.freeze(["kiss", "clean", "rub"]),
+      desk: Object.freeze(["closer", "still", "enough"]),
+      deskCount: 2
+    }),
+    /**
+     * P10e-e Task 25: her foot service (her_activity.html `SVC_STYLE`, the drafts of her profile, read by style). `patience` bounds her patience
+     * (the plan: 3–5 s, cruel shorter: cruel keeps the prototype's 2.5). `verdict`: a session's mean quality at `pleased` or more pleases her (the
+     * prototype's good line, `q ≥ 0.6`), under `adequate` (the prototype's half-done stroke, 0.3) displeases her. Her own words of how she likes
+     * her feet (P15 `how` of the targets at her feet: a body-map zone at `footZoneY` or lower) tilt it: `slow` / `quick` scale her kiss and tempo.
+     */
+    footService: Object.freeze({
+      patience: Object.freeze([3, 5]),
+      verdict: Object.freeze({ pleased: 0.6, adequate: 0.3 }),
+      footZoneY: 90,
+      slow: Object.freeze({ kiss: 1.25, tempo: 0.8 }),
+      quick: Object.freeze({ kiss: 0.75, tempo: 1.25 })
+    }),
     blackout: Object.freeze({ slots: 1, stress: 5 }),
     endurance: Object.freeze({ hold: 10, streakFrom: 3, streak: 2, training: 15, thresholds: Object.freeze([30, 80, 150, 250, 400]), capacityPerLevel: 0.1 }),
     herSkill: Object.freeze({ practices: 8, cap: 5, mult: Object.freeze({ drill: 1.5, clinical: 1.5, affectionate: 0.7 }) }),
@@ -40054,6 +40077,19 @@ registerAction("physics/relief", (draft, payload, ctx2) => {
 registerAction("physics/woke", (draft, payload, ctx2) => {
   live2(draft, ctx2.registries, "physics/woke");
   return frameWoke(draft, ctx2, isObj39(payload) ? payload.runId : void 0);
+});
+registerAction("physics/service", (draft, payload, ctx2) => {
+  live2(draft, ctx2.registries, "physics/service");
+  if (!isObj39(payload) || str7(payload.runId) === void 0 || !VERDICTS.includes(payload.verdict)) {
+    throw new Error("physics/service needs { runId, verdict: pleased | adequate | displeased }");
+  }
+  const scene = draft.scene;
+  const run = scene.physics;
+  let holderId;
+  if (run !== void 0 && run.id === payload.runId && run.sourceKind === "activity") holderId = run.holderId;
+  else if (run === void 0 && payload.runId === `p${scene.physicsCount ?? 0}` && scene.frameDone !== void 0) holderId = scene.frameDone.holderId;
+  else throw new Error("physics/service: stale physics run (only her frame, open or just ended)");
+  return rateService(draft, ctx2, holderId, payload.verdict, "engine", scene.id);
 });
 
 // src/engine/actions/life.ts
