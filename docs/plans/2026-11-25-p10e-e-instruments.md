@@ -910,6 +910,12 @@ For the author (e12): Ruling T; the fallback scents; her profile has no scent wo
 
 **For the author (e12, chunk e7):** the jaw's foot art has no art slot (`sole_close` is a candidate; her sprite from below stands in); the ring's size is the prototype's 0.55 (no item field); Ruling V (the rest in real time) replaces R23's truncation for instrument segments; cold's silent question still counts as asked (UI only); her spacing restarts at each segment (the first move 3 s in); the digest (`digest()`) is shown nowhere yet.
 
+
+**Chunk e7 closed (2026-11-26).** Tasks 19–20 by one implementer, one review of the chunk, two fix rounds, re-review clean. Rulings:
+- **V:** in an instrument segment (one that reported a `bite`) `ask_rest` does not cut the segment short: a granted rest takes the prototype's 30 off at its beat, a refused one changes nothing, a second rest in the segment or one asked in its last 800 ms is dropped with a visible cue and never asked later; turn-based play and the real-time card keep R23.
+
+Also settled: the reply block is lifted clear of the open mouth through a claim (layout-checked at rest and wide open); text already in the field, IME text and text at Enter go through the mouth; her moves are planned only for her toes and the ring (`jawSourceOf`); the ring's directive says clear speech is understood only while the jaw is drawn, and "cannot be understood" on every card path; where the prototype beat the plan: `jawOrders` is `jaw.html`'s own schedule, `RELAXED` is 0.35.
+
 ---
 
 ## Chunk e8: her activity, the frame of her time, with stillness (`her_activity.html`)
