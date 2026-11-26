@@ -570,7 +570,8 @@ function inhaleEnd(forced = false) {
 function reflex() {
   G.inhaling = false; breathStop(); G.counts.coughs! += 1; G.reflexCd = 1400; G.shake = 1.4; G.sinceBreath = 0;
   SFX.cough(); burst(); scatter(2); // a cough throws words out of the head
-  if (!G.forcedDeep) deepInhale(G.depth, true);
+  const forced = G.forcedDeep; G.forcedDeep = false;
+  if (!forced) deepInhale(G.depth, true);
   if (G.lie > 0) { say(pick(LINES.liar)); G.lie = 0; answered(true); G.counts.liesFound! += 1; press(); setTimeout(press, 400); } else say(pick(LINES.cough));
   if (G.order && G.order.k !== 'ask' && G.order.k !== 'still') orderDone(false);
   const v = ($('#cmd') as HTMLInputElement).value; if (v) { ($('#cmd') as HTMLInputElement).value = v.slice(0, Math.max(0, v.length - randInt(3, 8))); tint.sync(true); }

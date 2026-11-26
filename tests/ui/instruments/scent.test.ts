@@ -633,4 +633,19 @@ describe('fix round 1', () => {
     draw(s).to(2000);
     expect(_scent.capacity()).toBe(headCapacity(scentToleranceOf(s, reg, ANN)));
   });
+
+  it('fix round 2, N1: a cough on the body\'s own breath clears it, so the next deep breath the commander chooses is reported', () => {
+    const t = draw(hold());
+    t.to(2000);
+    // the overflow's forced breath, coughed on
+    _scent.G.inhaling = true; _scent.G.depth = 0.6; _scent.G.forcedDeep = true;
+    _scent.reflex();
+    expect(t.stimulus).not.toHaveBeenCalled();
+    expect(_scent.G.forcedDeep).toBe(false);
+    // the commander's own deep breath after it
+    _scent.G.reflexCd = 0;
+    _scent.G.inhaling = true; _scent.G.depth = 0.9;
+    _scent.inhaleEnd();
+    expect(t.stimulus).toHaveBeenCalledTimes(1);
+  });
 });

@@ -35717,13 +35717,14 @@ var coreRun = (run, which) => which === "main" ? run : run.second ? withoutLeak(
 function withoutLeak(view, second) {
   if (second.seal === void 0) delete view.seal;
   if (second.pressure === void 0) delete view.pressure;
+  delete view.headed;
   delete view.second;
   return view;
 }
 function releaseOf(state, reg, run) {
+  if (run.headed) return "continue";
   const left = remainingOf(reg, run);
   const holds6 = effectiveHoldsUntil(state, reg, run.holderId);
-  if (left <= 0 && run.headed) return "release";
   if (left <= 0) return holds6 === "blackout" && isAir(reg, run.physicsId) ? "blackout" : holds6 === "signal" ? "collapse" : "limit_broken";
   if (holds6 === "signal" && left <= TUNING.physics.releaseAt.signal) return "release";
   if (holds6 === "limit" && left <= TUNING.physics.releaseAt.limit) return "release";
@@ -67521,7 +67522,9 @@ function reflex() {
   SFX3.cough();
   burst();
   scatter2(2);
-  if (!G4.forcedDeep) deepInhale(G4.depth, true);
+  const forced = G4.forcedDeep;
+  G4.forcedDeep = false;
+  if (!forced) deepInhale(G4.depth, true);
   if (G4.lie > 0) {
     say4(pick5(LINES2.liar));
     G4.lie = 0;
