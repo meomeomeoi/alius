@@ -120,6 +120,8 @@ function scopedStaging(staging: PhysicsPanelStaging, scope: Scope): PhysicsPanel
     decide: (k, r) => (on() ? staging.decide?.(k, r) ?? [] : []),
     relief: (x) => (on() ? staging.relief?.(x) ?? [] : []),
     woke: () => (on() ? staging.woke?.() ?? [] : []),
+    // e9: her verdict is said at the session's end, when the run is already gone: alive until the unmount (never into a new scene or chat)
+    service: (id, v) => (scope.live ? staging.service?.(id, v) ?? [] : []),
     beat: () => staging.beat(),
     clock: () => staging.clock(),
   };

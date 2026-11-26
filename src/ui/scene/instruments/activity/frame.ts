@@ -33,6 +33,7 @@ import { mentionText } from '../../../../engine/physics/mention';
 import { phaseSegments } from '../../../../engine/physics/marathon';
 import type { PhysicsRun } from '../../../../engine/physics/state';
 import { leadStyle, physicsStyleOf } from '../../../../engine/physics/style';
+import { servicePaceOf } from '../../../../engine/physics/service';
 import type { CampaignState } from '../../../../engine/state/types';
 import type { ActivityFrame } from '../../../../engine/blocking/types';
 import type { ScriptLine } from '../../../../llm/calls/activityScript';
@@ -48,6 +49,7 @@ import { ACTS, BASE_EVENTS, GROUPS, QUIET_ACT, SAMPLE_URLS, VIEWS, type Act, typ
 import { attachThrone, detachThrone, throneBody, throneCanvases, throneCup, throneFlinch, throneLegs, throneOn, throneRise, throneSign, throneThank, throneThanked, throneUpdate, throneVisitor, tMouse } from './throne';
 import { herLegsOf } from '../../../../engine/physics/occlusion';
 import { temperamentOf } from '../../../../engine/life/state';
+import { attachService, detachService, serviceMatches, serviceSize, SV, svBegin, svcOn, svDown, svFinish, svMove, svRender, svUp, svUpdate } from './service';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Any = any;
@@ -109,8 +111,6 @@ const V = (): View => VIEWS[S.inner === 'weight' ? 'footrest' : S.view]!, ACT = 
 const ST = (): Any => new Proxy({}, { get: (_t, k: string) => (k === 'name' ? voiceLines(E!.env.registries, 'activity.name' as VoiceKind, S.style)[0] ?? 'commander' : [...voiceLines(E!.env.registries, `activity.${k}` as VoiceKind, S.style)]) });
 /* the phase plays a third of its fiction hour; the rest passes between phases, in the dark */
 const PLAYED_SHARE = 1 / 3;
-const svcOn = () => false; // the game inside `service` is chunk e9's
-const SV: Any = null;
 
 /* ---------- the run as the engine has it (the wiring) ---------- */
 interface Wiring {
@@ -727,6 +727,7 @@ function updateLoop(dt: number) {
   }
   if (ACT().sleep) { G.asleepDepth = 0.5 + 0.5 * Math.sin(G.t / 9000); if (!G.nextBreath || G.t >= G.nextBreath) { sleepBreath(); G.nextBreath = G.t + rand(4800, 6200); } }
   if (weightOn()) throneUpdate(dt); else updateUrges(dt);
+  if (svcOn()) svUpdate(dt);
   // an unanswered question
   if (G.ask && G.t > G.ask.until) { G.ask = null; G.stats.missed += 1; if (G.step === 'with') say(pick(ST().silent), 'commander'); else { G.press = 0.8; G.footUpUntil = G.t + 2000; sense('Silence above you. A long one.', 'her'); } }
   baseTick();
@@ -790,6 +791,7 @@ function finish(how: string) {
   const act = ACT(), st = ST(), dp = V().doorPan;
   G.phase = 'ending'; G.stats.ended = how; MUSIC.on = false; G.ask = null; G.urges = []; G.cramp = null; G.timers = [];
   $('#skip').style.display = 'none';
+  svFinish(how);
   if (how === 'stop') { say(pick(st.stop.length ? st.stop : ['…']), 'commander', { big: true }); return; }
   if (how === 'woke') { E!.env.staging.woke?.(); return; } // review I7: her waking ends the session (`physics/woke`)
   if (how === 'failed') { W_SFX.rustle(0.14, 0); sense(throneOn() && S.contact === 'human_chair' ? 'She gets off your back.' : 'She takes her feet off your back.', 'body'); setTimeout(() => say(pick(W_L().fall.length ? W_L().fall : ['…']), 'commander', { big: true }), 900); return; }
@@ -1001,7 +1003,8 @@ function render(now: number, dt: number) {
     : `translate(${((Math.random() * 2 - 1) * amp - hx).toFixed(1)}px, ${((Math.random() * 2 - 1) * amp + G.shake * 10 - hy).toFixed(1)}px)`;
   setStyle('#vignette', 'background', low < 0.05 ? 'none' : `radial-gradient(ellipse 75% 70% at 50% 50%, rgba(0,0,0,0) ${(72 - low * 28).toFixed(0)}%, rgba(26,6,4,${(0.2 + low * 0.5).toFixed(2)}) 100%)`);
   const dusk = smooth(18 * 60 + 30, 20 * 60, G.clockMin), dark = G.lightsOff ? 0.35 : 1;
-  setStyle('#world', 'filter', `saturate(${(wr ? 1 - wr.strF * 0.45 : 1 - low * 0.4).toFixed(2)}) brightness(${((1 - dusk * 0.25) * dark).toFixed(2)})`);
+  const ck = SV ? SV.closeK : 0;
+  setStyle('#world', 'filter', `saturate(${(wr ? 1 - wr.strF * 0.45 : 1 - low * 0.4).toFixed(2)}) brightness(${((1 - dusk * 0.25) * dark * (1 - ck * 0.4)).toFixed(2)}) blur(${(S.readable ? 0 : ck * 6).toFixed(1)}px)`);
   // her view is the scene itself: its room dims with the evening and goes dark when she turns the light off, as the prototype's room does
   E!.env.layers.backdrop.style.filter = view === 'her' ? `brightness(${((1 - dusk * 0.25) * dark * 0.62).toFixed(2)})` : '';
   // her view: her sprite (the scene's), the lamp or the screen on her; she leans a little toward the commander when she looks
@@ -1043,7 +1046,7 @@ function frame(now: number) {
   const dt = Math.min(120, now - (frame.last ?? now)); frame.last = now;
   if (G.phase !== 'idle' && G.phase !== 'done') G.t += dt;
   // the timers of the body and of her bouts wait outside the played phase (the fix of 2026-11-24)
-  if (G.phase === 'entry' || G.phase === 'skip' || G.phase === 'ending') { G.nextItch += dt; G.nextSwallow += dt; G.nextCramp += dt; }
+  if (G.phase === 'entry' || G.phase === 'skip' || G.phase === 'ending') { G.nextItch += dt; G.nextSwallow += dt; G.nextCramp += dt; if (SV) SV.next += dt; }
   for (let i = G.timers.length - 1; i >= 0; i--) if (G.t >= G.timers[i].at) { const x = G.timers[i]; G.timers.splice(i, 1); x.fn(); }
   switch (G.phase) {
     case 'entry': G.entryT += dt; if (G.entryT > 2200) beginPhase(0); break;
@@ -1052,6 +1055,7 @@ function frame(now: number) {
     case 'empty': updateUrges(dt * 0.6); G.clockMin += (G.clockRate * dt) / 1000; if (G.t >= G.foundAt) found(); break;
   }
   musicTick();
+  svRender(performance.now());
   if (A.ctx) {
     A.master.gain.setTargetAtTime(S.sound ? S.vol : 0, A.ctx.currentTime, 0.05);
     // listening to her makes her sounds clearer; the rest of the time the world is a little dull
@@ -1081,7 +1085,7 @@ function before(): void {
   const w = e.env.root.clientWidth || r.width || globalThis.innerWidth || 0, h = e.env.root.clientHeight || r.height || globalThis.innerHeight || 0;
   if (w !== innerWidth || h !== innerHeight) {
     const first = innerWidth === 0;
-    innerWidth = w; innerHeight = h; size();
+    innerWidth = w; innerHeight = h; size(); serviceSize(w, h);
     if (!pins.length) pins = Array.from({ length: 220 }, () => ({ x: Math.random(), y: Math.random(), s: Math.random() }));
     // the prototype's start: the mouse at the middle, the attention a little above it
     if (first) { MOUSE.x = innerWidth / 2; MOUSE.y = innerHeight / 2; ATT.x = innerWidth / 2; ATT.y = innerHeight * 0.4; }
@@ -1189,7 +1193,7 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S.style = lead.key; R.lineStyle = lead.key;
   const v = viewOf(state, reg, run);
-  S.view = v.view === 'footrest' ? 'legs' : v.view; S.inner = v.view === 'footrest' ? 'weight' : 'stillness'; S.blind = v.blind;
+  S.view = v.view === 'footrest' ? 'legs' : v.view; S.inner = v.view === 'footrest' ? 'weight' : serviceMatches(state, reg, run, v.view) ? 'service' : 'stillness'; S.blind = v.blind;
   S.phases = run.marathon?.phases ?? 3;
   S.phaseLen = (phaseSegments(state, reg, run) * Number(reg.contactPhysics.get(run.physicsId)?.segmentSeconds ?? 30));
   S.start = run.marathon?.clockMin ?? 1080; S.seed = fnv1a(`${state.scene?.id ?? ''}|${run.id}`) % 100;
@@ -1244,20 +1248,21 @@ function listen(env: InstrumentEnv): void {
   const typing = (t: EventTarget | null) => t instanceof HTMLElement && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
   const onFrame = (t: EventTarget | null): boolean => t instanceof Node && (t === env.layers.frame || env.layers.frame.contains(t));
   const local = (e: MouseEvent): [number, number] => { const r = env.root.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
-  env.listen(document, 'mousemove', ((e: MouseEvent) => { [MOUSE.x, MOUSE.y] = local(e); E?.core?.balance(innerWidth > 0 ? MOUSE.x / innerWidth : 0.5); tMouse(e); }) as EventListener);
+  env.listen(document, 'mousemove', ((e: MouseEvent) => { [MOUSE.x, MOUSE.y] = local(e); E?.core?.balance(innerWidth > 0 ? MOUSE.x / innerWidth : 0.5); tMouse(e); if (SV && SV.gest) svMove(MOUSE.x, MOUSE.y); }) as EventListener);
   env.listen(document, 'keydown', ((e: KeyboardEvent) => {
     if (typing(e.target)) { G.lastTyped = G.t; return; } // Space and Shift typed into the field never act
     if (e.key === ' ') { e.preventDefault(); G.spaceHeld = true; E?.core?.hold(true, 'key'); }
     else if (e.key === 'Shift' && weightOn()) E?.core?.shift('key');
   }) as EventListener);
   env.listen(document, 'keyup', ((e: KeyboardEvent) => { if (e.key === ' ') { G.spaceHeld = false; if (!G.mouseHold) E?.core?.hold(false, 'key'); } }) as EventListener);
-  env.listen(document, 'mouseup', ((e: MouseEvent) => { if (e.button === 0) { G.mouseHold = false; if (!G.spaceHeld) E?.core?.hold(false, 'mouse'); } }) as EventListener);
+  env.listen(document, 'mouseup', ((e: MouseEvent) => { if (e.button === 0 && SV) svUp(); if (e.button === 0) { G.mouseHold = false; if (!G.spaceHeld) E?.core?.hold(false, 'mouse'); } }) as EventListener);
   env.listen(env.root, 'mousedown', ((e: MouseEvent) => {
     if (!onFrame(e.target)) return; // only the frame: never a control of the scene's UI
     e.preventDefault(); // the field keeps the focus: the mouse acts while typing
     const [x, y] = local(e);
     if (weightOn()) { if (e.button === 0) { G.mouseHold = true; E?.core?.hold(true, 'mouse'); } else if (e.button === 2) E?.core?.shift('mouse'); return; }
     if (e.button === 0) G.mouseHold = true;
+    if (svcOn() && SV && e.button === 0 && svDown(x, y)) return;
     if (e.button === 0) relieveAt(x, y);
   }) as EventListener);
   env.listen(env.layers.frame, 'contextmenu', ((e: Event) => e.preventDefault()) as EventListener);
@@ -1277,7 +1282,7 @@ function listen(env: InstrumentEnv): void {
 /* ---------- phases ---------- */
 function begin() {
   for (const k of Object.keys(LOOPS)) loopOff(k);
-  G = fresh(); setStep(presenceOf(E!.env.state(), E!.env.registries, R.run!, R.run!.marathon?.phase ?? 1));
+  G = fresh(); svBegin(); setStep(presenceOf(E!.env.state(), E!.env.registries, R.run!, R.run!.marathon?.phase ?? 1));
   G.clockMin = S.start; G.startMin = S.start; G.phaseIdx = (R.run!.marathon?.phase ?? 1) - 1;
   G.phase = 'entry'; G.entryT = 0;
   // her first gesture (the prototype writes it into its reply; the scene's reply is the transcript: a sensory line at the commander's place)
@@ -1291,6 +1296,7 @@ function stopFrame(): void {
   if (e.frameId !== null) e.env.cancelRaf(e.frameId);
   e.core?.stop();
   detachThrone();
+  detachService();
   THRONE.speaks = () => true; THRONE.slipped = () => {}; THRONE.limit = () => {}; THRONE.buckle = () => {};
   for (const n of A.nodes ?? []) { try { n.stop(); } catch { /* stopped */ } }
   for (const k of Object.keys(LOOPS)) { try { LOOPS[k].src.stop(); } catch { /* stopped */ } delete LOOPS[k]; }
@@ -1330,6 +1336,8 @@ export function startFrame(env: InstrumentEnv, run: PhysicsRun): InstrumentRun {
     THRONE.limit = () => { if (G.phase === 'loop') wLimit(); };
     THRONE.buckle = () => { if (G.phase === 'loop' && !W.over) wBuckle(); };
   }
+  // e9: foot service under the desk (her foot within reach), its close-up over the world
+  if (S.inner === 'service') attachService({ env, holderId: run.holderId, runId: run.id, pace: servicePaceOf(env.state(), env.registries, run.holderId), G: () => G, S, A: () => A, ACT, MOUSE, ATT, after, sense, say, play, noise, coverNow, callHeard, visitorHeard, clockText, pick, rand, random: () => Math.random(), now: () => performance.now(), setStyle, els: E.els });
   listen(env);
   frame.last = undefined;
   begin();

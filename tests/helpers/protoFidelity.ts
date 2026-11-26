@@ -46,10 +46,10 @@ export interface FidelitySpec {
   tables: Array<{ ident: string; module: string; export: string; prototype?: string; deps?: string[]; additions?: Record<string, string> }>;
   /**
    * `format` reads a table of objects as the registry's strings (her_activity's placeholders, Ruling Z): `toYou` / `ask` the `text` of the items
-   * without / with `ask`; `exchange` each `{ other, her }` as `other|her` and `{ other, mention: { plain, veiled } }` as `other|plain|veiled`.
-   * A path `.` is the whole table.
+   * without / with `ask`; `exchange` each `{ other, her }` as `other|her` and `{ other, mention: { plain, veiled } }` as `other|plain|veiled`;
+   * `line` a single string as a row of one line (her_activity's `ZONE_WORDS`, e9). A path `.` is the whole table.
    */
-  lines?: Array<{ ident: string; prototype?: string; registry?: 'physicsCues' | 'cardVoice'; physics?: string; format?: 'toYou' | 'ask' | 'exchange'; cueKinds: Record<string, string> }>;
+  lines?: Array<{ ident: string; prototype?: string; registry?: 'physicsCues' | 'cardVoice'; physics?: string; format?: 'toYou' | 'ask' | 'exchange' | 'line'; cueKinds: Record<string, string> }>;
   differences: Array<{ fn: string; reason: string; diff: string }>;
 }
 
@@ -544,7 +544,8 @@ function declaredHunks(diff: string): string[] {
 }
 
 /** A table's items as the registry's strings (`lines[].format`); a value with no format is as it is. */
-function formatLines(v: unknown, format: 'toYou' | 'ask' | 'exchange' | undefined): unknown {
+function formatLines(v: unknown, format: 'toYou' | 'ask' | 'exchange' | 'line' | undefined): unknown {
+  if (format === 'line') return typeof v === 'string' ? [v] : v;
   if (format === undefined || !Array.isArray(v)) return v;
   const items = v as Array<Record<string, unknown>>;
   if (format === 'exchange') return items.map((x) => { const m = x.mention as { plain: string; veiled: string } | undefined; return m ? `${String(x.other)}|${m.plain}|${m.veiled}` : `${String(x.other)}|${String(x.her)}`; });

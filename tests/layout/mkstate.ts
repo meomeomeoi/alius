@@ -264,4 +264,20 @@ function throning(): CampaignState {
 out.throne = throning();
 out.thronehold = throning();
 
+/**
+ * P10e-e Task 26: foot service under her desk: the `activity` frame with Ann's practices live (she holds at `play`, practises service and
+ * worship), so the frame plays the service. `service` for the shots; `servicehold`: the stop word's pill must stay clickable over the close-up
+ * and end the hold, the close-up gone with it.
+ */
+function servicing(): CampaignState {
+  const d = framing();
+  unitOf(d, ANN).bond = { leadStyle: 'dominant', attachment: 'steady', desire: 'low', caretaker: false, ownLimits: { categories: [] }, publicity: 'known',
+    practice: { categories: { service: { as: 'enjoys', witness: 'indifferent' }, worship: { as: 'enjoys', witness: 'indifferent' } }, style: { primary: 'cold' }, audience: 'indifferent', inclination: 'curious', fairness: 'fair', hintStyle: 'offers', drive: 'moderate' } } as never;
+  d.dynamic = newDynamicCampaign(7, { holders: 'any', pace: 'normal', frequency: 'normal', units: {} });
+  d.relations[ANN]!.dynamic = { ...blankDynamic(1), frame: 'play', hold: 40 };
+  return d;
+}
+out.service = servicing();
+out.servicehold = servicing();
+
 writeFileSync(process.argv[2] ?? 'states.json', JSON.stringify(out));

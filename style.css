@@ -6181,6 +6181,22 @@
   text-decoration: underline;
 }
 
+/*
+ * P10e-e Task 26: foot service under the desk (docs/prototypes/her_activity.html, the game inside `service`, normative). The close-up sits in
+ * her frame's layer (`.alius-activity`, the effects layer, under the scene's UI), over the world and under the grain, the urges and the lines,
+ * as the prototype's `#close` does: the dark shade under the desk, her sole, the dirt drawn multiplied over it, the warm marks of kisses. It
+ * takes no pointer (the frame's own listeners read the gestures). Readable mode drops the dirt's blur (the world's blur is the frame's, off
+ * too). Every z-index stays below 10.
+ */
+#alius-shell .alius-activity > .alius-act-close { inset: 0; pointer-events: none; }
+#alius-shell .alius-act-closeShade { position: absolute; inset: 0; background: radial-gradient(ellipse 60% 70% at 50% 48%, rgba(20,14,16,.55) 0%, rgba(4,3,5,.92) 70%); }
+#alius-shell .alius-act-soleArt,
+#alius-shell .alius-act-dirtC { position: absolute; max-width: none; transform-origin: 50% 70%; }
+#alius-shell .alius-act-soleArt { filter: brightness(.8) saturate(.92); user-select: none; -webkit-user-drag: none; }
+#alius-shell .alius-act-dirtC { mix-blend-mode: multiply; filter: blur(1.5px); }
+#alius-shell .alius-act-markC { position: absolute; inset: 0; width: 100%; height: 100%; }
+#alius-shell .alius-activity[data-readable] .alius-act-dirtC { filter: none; }
+
 /* Squad power (P9b): the VOTE panel and the RATIONS row. Palette variables only; no semantic colours (readable mode safe). */
 #alius-shell .alius-ballots {
   list-style: none;

@@ -5861,5 +5861,232 @@
     "lines": [
       "…what was that?|my footrest. it creaks.|the chair. it’s old."
     ]
+  },
+  {
+    "id": "service.good",
+    "kind": "service.good",
+    "lines": [
+      "good.",
+      "mm. better."
+    ]
+  },
+  {
+    "id": "service.good.affectionate",
+    "kind": "service.good",
+    "style": "affectionate",
+    "lines": [
+      "that’s lovely.",
+      "perfect."
+    ]
+  },
+  {
+    "id": "service.good.playful",
+    "kind": "service.good",
+    "style": "playful",
+    "lines": [
+      "ooh, good pet~"
+    ]
+  },
+  {
+    "id": "service.good.possessive",
+    "kind": "service.good",
+    "style": "possessive",
+    "lines": [
+      "good. mine."
+    ]
+  },
+  {
+    "id": "service.good.cold",
+    "kind": "service.good",
+    "style": "cold",
+    "lines": [
+      "fine."
+    ]
+  },
+  {
+    "id": "service.good.cruel",
+    "kind": "service.good",
+    "style": "cruel",
+    "lines": [
+      "adequate."
+    ]
+  },
+  {
+    "id": "service.good.clinical",
+    "kind": "service.good",
+    "style": "clinical",
+    "lines": [
+      "acceptable."
+    ]
+  },
+  {
+    "id": "service.good.ritual",
+    "kind": "service.good",
+    "style": "ritual",
+    "lines": [
+      "as it should be."
+    ]
+  },
+  {
+    "id": "service.poor",
+    "kind": "service.poor",
+    "lines": [
+      "sloppy.",
+      "again, properly."
+    ]
+  },
+  {
+    "id": "service.poor.affectionate",
+    "kind": "service.poor",
+    "style": "affectionate",
+    "lines": [
+      "gentler, sweetheart."
+    ]
+  },
+  {
+    "id": "service.poor.playful",
+    "kind": "service.poor",
+    "style": "playful",
+    "lines": [
+      "you call that service?"
+    ]
+  },
+  {
+    "id": "service.poor.possessive",
+    "kind": "service.poor",
+    "style": "possessive",
+    "lines": [
+      "you’ll do it right for me."
+    ]
+  },
+  {
+    "id": "service.poor.cold",
+    "kind": "service.poor",
+    "style": "cold",
+    "lines": [
+      "no."
+    ]
+  },
+  {
+    "id": "service.poor.cruel",
+    "kind": "service.poor",
+    "style": "cruel",
+    "lines": [
+      "pathetic. again."
+    ]
+  },
+  {
+    "id": "service.poor.clinical",
+    "kind": "service.poor",
+    "style": "clinical",
+    "lines": [
+      "below standard. noted."
+    ]
+  },
+  {
+    "id": "service.poor.ritual",
+    "kind": "service.poor",
+    "style": "ritual",
+    "lines": [
+      "again."
+    ]
+  },
+  {
+    "id": "service.wrong",
+    "kind": "service.wrong",
+    "lines": [
+      "no."
+    ]
+  },
+  {
+    "id": "service.wrong.affectionate",
+    "kind": "service.wrong",
+    "style": "affectionate",
+    "lines": [
+      "not that, silly."
+    ]
+  },
+  {
+    "id": "service.wrong.playful",
+    "kind": "service.wrong",
+    "style": "playful",
+    "lines": [
+      "wrong~"
+    ]
+  },
+  {
+    "id": "service.wrong.possessive",
+    "kind": "service.wrong",
+    "style": "possessive",
+    "lines": [
+      "no. listen."
+    ]
+  },
+  {
+    "id": "service.wrong.cold",
+    "kind": "service.wrong",
+    "style": "cold",
+    "lines": [
+      "wrong."
+    ]
+  },
+  {
+    "id": "service.wrong.cruel",
+    "kind": "service.wrong",
+    "style": "cruel",
+    "lines": [
+      "can’t you read?"
+    ]
+  },
+  {
+    "id": "service.wrong.clinical",
+    "kind": "service.wrong",
+    "style": "clinical",
+    "lines": [
+      "incorrect response. noted."
+    ]
+  },
+  {
+    "id": "service.wrong.ritual",
+    "kind": "service.wrong",
+    "style": "ritual",
+    "lines": [
+      "that is not what was asked."
+    ]
+  },
+  {
+    "id": "service.zone.toes",
+    "kind": "service.zone.toes",
+    "lines": [
+      "toes."
+    ]
+  },
+  {
+    "id": "service.zone.ball",
+    "kind": "service.zone.ball",
+    "lines": [
+      "the ball."
+    ]
+  },
+  {
+    "id": "service.zone.arch",
+    "kind": "service.zone.arch",
+    "lines": [
+      "the arch."
+    ]
+  },
+  {
+    "id": "service.zone.heel",
+    "kind": "service.zone.heel",
+    "lines": [
+      "heel."
+    ]
+  },
+  {
+    "id": "service.zone.edge",
+    "kind": "service.zone.edge",
+    "lines": [
+      "the edge."
+    ]
   }
 ]

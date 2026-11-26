@@ -1037,3 +1037,54 @@ Her lines on the throne (P10e-e Task 24b; `throne.html`'s `T_LINES`). **spill**:
 - **thanked:** `accepted.`
 - **noThanks:** `the form was not kept.`
 
+
+## 13. Foot service (her_activity.html, the game inside `service`, approved by the author, 2026-11-24)
+
+Kinds `service.good` / `service.poor` (her line at the end of a bout by its quality, `q ≥ 0.6` good) and `service.wrong` (a misread or unanswered signal), said only at `with` and `glancing`; a style not listed reads neutral's. Her words for the zones are `service.zone.<zone>` (no style, under **zones** below); her check composes "<zone>. you missed it.". The first time she gives a signal she names it (`<motion's words> — <meaning>.`, the prototype's `MOTIONS` / `MEANINGS`, in the instrument).
+
+### neutral
+- **good:** `good.` / `mm. better.`
+- **poor:** `sloppy.` / `again, properly.`
+- **wrong:** `no.`
+
+### affectionate
+- **good:** `that’s lovely.` / `perfect.`
+- **poor:** `gentler, sweetheart.`
+- **wrong:** `not that, silly.`
+
+### playful
+- **good:** `ooh, good pet~`
+- **poor:** `you call that service?`
+- **wrong:** `wrong~`
+
+### possessive
+- **good:** `good. mine.`
+- **poor:** `you’ll do it right for me.`
+- **wrong:** `no. listen.`
+
+### cold
+- **good:** `fine.`
+- **poor:** `no.`
+- **wrong:** `wrong.`
+
+### cruel
+- **good:** `adequate.`
+- **poor:** `pathetic. again.`
+- **wrong:** `can’t you read?`
+
+### clinical
+- **good:** `acceptable.`
+- **poor:** `below standard. noted.`
+- **wrong:** `incorrect response. noted.`
+
+### ritual
+- **good:** `as it should be.`
+- **poor:** `again.`
+- **wrong:** `that is not what was asked.`
+
+### zones
+- **toes:** `toes.`
+- **ball:** `the ball.`
+- **arch:** `the arch.`
+- **heel:** `heel.`
+- **edge:** `the edge.`

@@ -27,6 +27,7 @@ export const MOMENTS = {
   jaw: jawMoments(),
   her_activity: activityMoments(),
   throne: throneMoments(),
+  service: serviceMoments(),
   cards: {
     state: 'one',
     clip: dialCorner,
@@ -512,6 +513,70 @@ function throneMoments() {
       moment('visitor', () => throneVisitor('business'), () => window.__throne.throneVisitor('business'), 5200),
       moment('thanks', () => { G.step = 'with'; throneThank(); }, () => { window.__activity.G.step = 'with'; window.__throne.throneThank(); }, 900),
       moment('human-chair-1280', none, none, 800, [1280, 800]),
+    ],
+  };
+}
+
+/**
+ * her_activity.html, the game inside `service`: foot service under her desk (Task 26). The port is the `service` fixture (the `activity`
+ * frame with Ann's practices live, so the frame plays the service); the prototype is set to the same (`S.inner` service, `S.view` legs,
+ * `S.act` reading_reports). Both pages run on Playwright's fake clock, paused; each moment begins at the same instant, runs past the entry,
+ * and her signal is forced to the same meaning on both (`SV.forceMeaning`, then `svSignal`); the gestures are the same calls on both
+ * (`svDown` / `svMove` / `svUp` at the centre of the same zone of the close-up, the clock run between them). The close-up's picture is her
+ * sprite on both (no `sole_close` is committed: the prototype's and the port's stand-in). Moments: her signal, the close-up, a kiss and its
+ * mark, cleaning with the dirt layer, a rub, her verdict at `with`; the close-up again at 1280x800.
+ */
+function serviceMoments() {
+  const LOOP = 2600;
+  const PROTO = { sv: '', SV: 'SV', G: 'G' };
+  const PORT = { sv: 'window.__service.', SV: 'window.__service.SV', G: 'window.__activity.G' };
+  const centre = (k, z) => `(() => { const r = ${k.sv}soleRect(); const p = { toes: [0.5, 0.14], ball: [0.5, 0.33], arch: [0.47, 0.56], heel: [0.5, 0.84], edge: [0.28, 0.55] }[${z}]; return [r.x + p[0] * r.w, r.y + p[1] * r.h]; })()`;
+  const signal = async (p, k, meaning, ms) => { await p.evaluate(`${k.SV}.forceMeaning = '${meaning}'; ${k.sv}svSignal();`); await p.clock.runFor(ms); };
+  /** A press held `ms` at the centre of a zone (`'want'`: the zone she wants). */
+  const press = async (p, k, zone, ms) => {
+    const z = zone === 'want' ? `(${k.SV}.want ?? 'ball')` : `'${zone}'`;
+    await p.evaluate(`{ const [x, y] = ${centre(k, z)}; ${k.sv}svDown(x, y); }`); await p.clock.runFor(ms); await p.evaluate(`${k.sv}svUp()`);
+  };
+  /** A drag: back and forth (`scrub`) or a circle (`circle`) around the centre of a zone, a point every 30 ms. */
+  const drag = async (p, k, zone, how, n) => {
+    await p.evaluate(`{ const [x, y] = ${centre(k, `'${zone}'`)}; window.__drag = [x, y]; ${k.sv}svDown(x + (${how === 'circle' ? 40 : 0}), y); }`);
+    for (let i = 1; i <= n; i++) {
+      await p.clock.runFor(30);
+      const pt = how === 'circle' ? `[x + 40 * Math.cos(${i} / 14 * Math.PI * 2), y + 40 * Math.sin(${i} / 14 * Math.PI * 2)]` : `[x + (${i} % 2 ? 70 : -10), y + ${i} * 3]`;
+      await p.evaluate(`{ const [x, y] = window.__drag; const q = ${pt}; ${k.sv}svMove(q[0], q[1]); }`);
+    }
+  };
+  const start = {
+    proto: async (p) => {
+      await fakeClock(p, () => document.fonts.ready);
+      await p.addStyleTag({ content: '#panel, #debug, #summary, #start { visibility: hidden !important; }' });
+      await p.evaluate(() => { Object.assign(window.__S, { act: 'reading_reports', view: 'legs', inner: 'service', legVar: 'planted', style: 'neutral', sound: false, reduced: false }); });
+      await p.evaluate(() => { document.querySelector('#start').style.display = 'none'; begin(); });
+    },
+    port: async (p) => {
+      await fakeClock(p, async () => { while (document.body.dataset.ready !== 'true') await new Promise((r) => setTimeout(r, 50)); });
+      await p.evaluate(() => { const a = window.__activity; a.S.view = 'legs'; a.S.inner = 'service'; a.resetClock(); a.begin(); });
+    },
+  };
+  const moment = (id, play, size) => ({
+    id, state: 'service', query: '&style=neutral', ...(size ? { size } : {}),
+    proto: async (p) => { await start.proto(p); await p.clock.runFor(LOOP); await p.evaluate(() => { G.att = 'busy'; G.step = 'own'; }); await play(p, PROTO); },
+    port: async (p) => { await start.port(p); await p.clock.runFor(LOOP); await p.evaluate(() => { window.__activity.G.step = 'own'; }); await play(p, PORT); },
+  });
+  return {
+    prototype: 'her_activity',
+    state: 'service',
+    rasterSprite: true,
+    hide: ['#panel', '#debug', '#summary', '#start'],
+    settle: 60,
+    moments: [
+      moment('signal', (p, k) => signal(p, k, 'kiss', 420)),
+      moment('close-up', (p, k) => signal(p, k, 'kiss', 1200)),
+      moment('kiss', async (p, k) => { await signal(p, k, 'kiss', 1200); await press(p, k, 'ball', 400); await p.clock.runFor(300); await press(p, k, 'want', 1000); await p.clock.runFor(250); }),
+      moment('clean', async (p, k) => { await signal(p, k, 'clean', 1200); await drag(p, k, 'heel', 'scrub', 24); await p.clock.runFor(100); }),
+      moment('rub', async (p, k) => { await signal(p, k, 'rub', 1200); await drag(p, k, 'arch', 'circle', 30); await p.clock.runFor(100); }),
+      moment('verdict', async (p, k) => { await signal(p, k, 'kiss', 1200); await p.evaluate(`${k.G}.step = 'with'; Object.assign(${k.SV}, { phase: 'craft', act: 'kiss', acts: 1, quality: 1 }); ${k.sv}svEndBout(true);`); await p.clock.runFor(1100); }),
+      moment('close-up-1280', (p, k) => signal(p, k, 'kiss', 1200), [1280, 800]),
     ],
   };
 }
