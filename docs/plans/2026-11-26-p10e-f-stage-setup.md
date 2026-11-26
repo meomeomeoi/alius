@@ -84,7 +84,7 @@ Everything is saved as files in her own expressions folder.
     - `listSprites(avatar: string): Promise<string[]>`: her root folder's labels, for the sprite check.
   - `FakeStAdapter` keeps an in-memory folder per avatar with ST's replace rule (same name without extension), so tests can upload and read back.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `stageFolder('Vex.png', 'Vex', [])` → `'Vex/alius'`;
   - with an override `{ name: 'Vex', path: 'Vex/casual' }` → `'Vex/alius'`;
   - with an override `{ name: 'Vex', path: 'Other' }` → `'Other/alius'`.
@@ -95,10 +95,10 @@ Everything is saved as files in her own expressions folder.
     - `over.png` then `over.webp` leaves only `over.webp`;
     - `over.fit` (json) beside `over.webp` survives an upload of `over`;
     - an unknown avatar lists `[]`.
-- [ ] **Step 2: Run** `npx vitest run tests/st/stageFolder.test.ts` → FAIL.
-- [ ] **Step 3: Implement** the five methods in `real.ts`. They resolve the folder like `getSpriteUrl`, then call `stageFolder`; on any failure they return `[]`, `null` or `false`, never throw.
-- [ ] **Step 4: Run** the test and `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P10e-f): her stage folder in the ST adapter`
+- [x] **Step 2: Run** `npx vitest run tests/st/stageFolder.test.ts` → FAIL.
+- [x] **Step 3: Implement** the five methods in `real.ts`. They resolve the folder like `getSpriteUrl`, then call `stageFolder`; on any failure they return `[]`, `null` or `false`, never throw.
+- [x] **Step 4: Run** the test and `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P10e-f): her stage folder in the ST adapter`
 
 ### Task 2: Loading her folder into the art slots
 

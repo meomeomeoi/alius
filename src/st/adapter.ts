@@ -69,6 +69,22 @@ export interface StAdapter {
   loadCharacterCard(avatar: string): Promise<CardInfo | null>;
   getAvatarUrl(avatar: string): string;
   getSpriteUrl(avatar: string, label: string): Promise<string | null>;
+  /** Her root sprite folder's expression labels (the Expressions override folder), for the STAGE sprite check; `[]` on any failure. */
+  listSprites(avatar: string): Promise<string[]>;
+  /**
+   * P10e-f: the images of her stage folder (`characters/<folder>/alius/`, `stageFolder`): `file` is the name with extension,
+   * `url` the served path as ST gives it (with its `?t=`). `[]` for no folder, an unknown avatar or a failed request.
+   */
+  listStageFiles(avatar: string): Promise<Array<{ file: string; url: string }>>;
+  /** A JSON file of her stage folder (`stage.json`, `<slot>.fit.json`); null on a 404, a failure or a parse error (a parse error warns once). */
+  fetchStageJson(avatar: string, file: string): Promise<unknown | null>;
+  /**
+   * Writes `<baseName>.<ext>` into her stage folder (creating it). ST first deletes every file there whose name without
+   * extension equals `baseName`. False on any failure.
+   */
+  uploadStageFile(avatar: string, baseName: string, data: Blob, ext: string): Promise<boolean>;
+  /** Deletes every file of her stage folder whose name without extension is `baseName`. False on any failure. */
+  deleteStageFile(avatar: string, baseName: string): Promise<boolean>;
   /** Creates a group chat; resolves with the new group id. Rejects on failure. */
   createGroupChat(req: { name: string; members: string[] }): Promise<string>;
   /** Opens the group's current chat; resolves false if ST refused. */

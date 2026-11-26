@@ -16,3 +16,18 @@ export function pickSprite(list: unknown, label: string): string | null {
   }
   return null;
 }
+
+/**
+ * P10e-f: her stage folder, `<first segment of her sprite folder>/alius`. ST accepts one level of subfolder only, so an
+ * Expressions override that already names a subfolder (`Vex/casual`) still maps to the character's folder (`Vex/alius`).
+ */
+export function stageFolder(avatar: string, name: string, overrides: unknown): string {
+  const first = spriteFolder(avatar, name, overrides).split('/')[0];
+  return `${first}/alius`;
+}
+
+/** The file name (with extension) at the end of a served path, without its `?t=` query. */
+export function fileOfPath(path: string): string {
+  const last = path.split('?')[0].split('/').pop() ?? '';
+  try { return decodeURIComponent(last); } catch { return last; }
+}

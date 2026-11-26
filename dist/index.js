@@ -88727,6 +88727,18 @@ function pickSprite(list5, label2) {
   }
   return null;
 }
+function stageFolder(avatar, name, overrides) {
+  const first2 = spriteFolder(avatar, name, overrides).split("/")[0];
+  return `${first2}/alius`;
+}
+function fileOfPath(path) {
+  const last4 = path.split("?")[0].split("/").pop() ?? "";
+  try {
+    return decodeURIComponent(last4);
+  } catch {
+    return last4;
+  }
+}
 
 // src/st/profiles.ts
 function connectionProfiles(extensionSettings, requestServiceAvailable) {
@@ -88902,6 +88914,88 @@ var RealStAdapter = class {
       return pickSprite(await res.json(), label2);
     } catch {
       return null;
+    }
+  }
+  /** Her sprite folder (the Expressions override or her name), or null for an unknown avatar. */
+  spriteFolderOf(c, avatar) {
+    const ch = c.characters.find((x) => x.avatar === avatar);
+    return ch ? spriteFolder(avatar, String(ch.name ?? ""), c.extensionSettings.expressionOverrides) : null;
+  }
+  stageFolderOf(c, avatar) {
+    const ch = c.characters.find((x) => x.avatar === avatar);
+    return ch ? stageFolder(avatar, String(ch.name ?? ""), c.extensionSettings.expressionOverrides) : null;
+  }
+  async spriteList(c, folder) {
+    try {
+      const res = await fetch(`/api/sprites/get?name=${encodeURIComponent(folder)}`, { headers: c.getRequestHeaders() });
+      if (!res.ok) return [];
+      const list5 = await res.json();
+      if (!Array.isArray(list5)) return [];
+      return list5.filter((x) => typeof x === "object" && x !== null && typeof x.label === "string" && typeof x.path === "string");
+    } catch {
+      return [];
+    }
+  }
+  async listSprites(avatar) {
+    const c = ctx();
+    const folder = this.spriteFolderOf(c, avatar);
+    return folder === null ? [] : (await this.spriteList(c, folder)).map((x) => x.label);
+  }
+  async listStageFiles(avatar) {
+    const c = ctx();
+    const folder = this.stageFolderOf(c, avatar);
+    if (folder === null) return [];
+    return (await this.spriteList(c, folder)).map((x) => ({ file: fileOfPath(x.path), url: x.path })).filter((x) => x.file !== "");
+  }
+  async fetchStageJson(avatar, file) {
+    const c = ctx();
+    const folder = this.stageFolderOf(c, avatar);
+    if (folder === null) return null;
+    const path = `/characters/${[...folder.split("/"), file].map(encodeURIComponent).join("/")}`;
+    try {
+      const res = await fetch(path, { headers: c.getRequestHeaders(), cache: "no-cache" });
+      if (!res.ok) return null;
+      const text3 = await res.text();
+      try {
+        return JSON.parse(text3);
+      } catch {
+        console.warn(`[Alius] stage: ${folder}/${file} is not valid JSON, skipped`);
+        return null;
+      }
+    } catch {
+      return null;
+    }
+  }
+  async uploadStageFile(avatar, baseName, data, ext) {
+    const c = ctx();
+    const folder = this.stageFolderOf(c, avatar);
+    if (folder === null) return false;
+    const body2 = new FormData();
+    body2.append("name", folder);
+    body2.append("label", baseName);
+    body2.append("spriteName", baseName);
+    body2.append("avatar", new File([data], `${baseName}.${ext}`, { type: data.type }));
+    const headers = Object.fromEntries(Object.entries(c.getRequestHeaders()).filter(([k]) => k.toLowerCase() !== "content-type"));
+    try {
+      const res = await fetch("/api/sprites/upload", { method: "POST", headers, body: body2 });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+  async deleteStageFile(avatar, baseName) {
+    const c = ctx();
+    const folder = this.stageFolderOf(c, avatar);
+    if (folder === null) return false;
+    try {
+      const res = await fetch("/api/sprites/delete", {
+        method: "POST",
+        headers: c.getRequestHeaders(),
+        body: JSON.stringify({ name: folder, label: baseName, spriteName: baseName })
+      });
+      return res.ok;
+    } catch {
+      return false;
     }
   }
   async createGroupChat(req) {

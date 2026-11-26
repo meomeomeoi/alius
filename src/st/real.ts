@@ -8,7 +8,7 @@ import type {
 import { hideCommand, hideRuns, isSystemMessage, lastCharacterAvatar, mapChatMessages, unhideRuns } from './chat';
 import { sendCommand, slashArg } from './slash';
 import { toStLorebook } from './lorebook';
-import { pickSprite, spriteFolder } from './sprites';
+import { fileOfPath, pickSprite, spriteFolder, stageFolder } from './sprites';
 import { connectionProfiles } from './profiles';
 import { reasoningPayload } from './reasoning';
 import { showToastr } from './toastr';
@@ -235,6 +235,97 @@ export class RealStAdapter implements StAdapter {
       return pickSprite(await res.json(), label);
     } catch {
       return null;
+    }
+  }
+
+  /** Her sprite folder (the Expressions override or her name), or null for an unknown avatar. */
+  private spriteFolderOf(c: StContext, avatar: string): string | null {
+    const ch = c.characters.find((x) => x.avatar === avatar);
+    return ch ? spriteFolder(avatar, String(ch.name ?? ''), c.extensionSettings.expressionOverrides) : null;
+  }
+
+  private stageFolderOf(c: StContext, avatar: string): string | null {
+    const ch = c.characters.find((x) => x.avatar === avatar);
+    return ch ? stageFolder(avatar, String(ch.name ?? ''), c.extensionSettings.expressionOverrides) : null;
+  }
+
+  private async spriteList(c: StContext, folder: string): Promise<Array<{ label: string; path: string }>> {
+    try {
+      const res = await fetch(`/api/sprites/get?name=${encodeURIComponent(folder)}`, { headers: c.getRequestHeaders() });
+      if (!res.ok) return [];
+      const list: unknown = await res.json();
+      if (!Array.isArray(list)) return [];
+      return list.filter((x): x is { label: string; path: string } => typeof x === 'object' && x !== null && typeof x.label === 'string' && typeof x.path === 'string');
+    } catch {
+      return [];
+    }
+  }
+
+  async listSprites(avatar: string): Promise<string[]> {
+    const c = ctx();
+    const folder = this.spriteFolderOf(c, avatar);
+    return folder === null ? [] : (await this.spriteList(c, folder)).map((x) => x.label);
+  }
+
+  async listStageFiles(avatar: string): Promise<Array<{ file: string; url: string }>> {
+    const c = ctx();
+    const folder = this.stageFolderOf(c, avatar);
+    if (folder === null) return [];
+    return (await this.spriteList(c, folder)).map((x) => ({ file: fileOfPath(x.path), url: x.path })).filter((x) => x.file !== '');
+  }
+
+  async fetchStageJson(avatar: string, file: string): Promise<unknown | null> {
+    const c = ctx();
+    const folder = this.stageFolderOf(c, avatar);
+    if (folder === null) return null;
+    const path = `/characters/${[...folder.split('/'), file].map(encodeURIComponent).join('/')}`;
+    try {
+      const res = await fetch(path, { headers: c.getRequestHeaders(), cache: 'no-cache' });
+      if (!res.ok) return null;
+      const text = await res.text();
+      try {
+        return JSON.parse(text);
+      } catch {
+        console.warn(`[Alius] stage: ${folder}/${file} is not valid JSON, skipped`); // a hand-edited file; a 404 stays silent
+        return null;
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  async uploadStageFile(avatar: string, baseName: string, data: Blob, ext: string): Promise<boolean> {
+    const c = ctx();
+    const folder = this.stageFolderOf(c, avatar);
+    if (folder === null) return false;
+    const body = new FormData();
+    body.append('name', folder);
+    body.append('label', baseName);
+    body.append('spriteName', baseName);
+    body.append('avatar', new File([data], `${baseName}.${ext}`, { type: data.type }));
+    // multipart: the browser writes the Content-Type with its boundary, so ST's JSON one is dropped
+    const headers = Object.fromEntries(Object.entries(c.getRequestHeaders()).filter(([k]) => k.toLowerCase() !== 'content-type'));
+    try {
+      const res = await fetch('/api/sprites/upload', { method: 'POST', headers, body });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  async deleteStageFile(avatar: string, baseName: string): Promise<boolean> {
+    const c = ctx();
+    const folder = this.stageFolderOf(c, avatar);
+    if (folder === null) return false;
+    try {
+      const res = await fetch('/api/sprites/delete', {
+        method: 'POST',
+        headers: c.getRequestHeaders(),
+        body: JSON.stringify({ name: folder, label: baseName, spriteName: baseName }),
+      });
+      return res.ok;
+    } catch {
+      return false;
     }
   }
 

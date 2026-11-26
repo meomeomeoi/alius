@@ -38,6 +38,9 @@ export class FakeStAdapter implements StAdapter {
   lorebooks = new Map<string, Lorebook>();
   /** key `${avatar}:${label}` → url */
   sprites = new Map<string, string>();
+  /** P10e-f: her stage folder per avatar: file name (with extension) → contents. Fill by hand to mimic files dropped there. */
+  stageFiles = new Map<string, Map<string, Blob>>();
+  private stageStamp = 0;
   failCreateGroup = false;
   failOpenGroup = false;
   /** Replies of `generateMain`, consumed in order: a string, a `GenAnswer` (`queueAnswer`) or a hang (`hangNext`). */
@@ -202,6 +205,46 @@ export class FakeStAdapter implements StAdapter {
 
   async getSpriteUrl(avatar: string, label: string): Promise<string | null> {
     return this.sprites.get(`${avatar}:${label}`) ?? null;
+  }
+
+  async listSprites(avatar: string): Promise<string[]> {
+    const prefix = `${avatar}:`;
+    return [...this.sprites.keys()].filter((k) => k.startsWith(prefix)).map((k) => k.slice(prefix.length));
+  }
+
+  async listStageFiles(avatar: string): Promise<Array<{ file: string; url: string }>> {
+    const folder = this.stageFiles.get(avatar);
+    if (folder === undefined) return [];
+    const base = avatar.replace(/\.[^.]+$/, '');
+    return [...folder.keys()]
+      .filter((f) => /\.(png|webp|jpe?g|gif|avif)$/i.test(f)) // ST lists images only
+      .map((f) => ({ file: f, url: `/characters/${base}/alius/${f}?t=${this.stageStamp}` }));
+  }
+
+  async fetchStageJson(avatar: string, file: string): Promise<unknown | null> {
+    const blob = this.stageFiles.get(avatar)?.get(file);
+    if (blob === undefined) return null;
+    try { return JSON.parse(await blob.text()); } catch { console.warn(`[Alius] stage: ${file} of ${avatar} is not valid JSON, skipped`); return null; }
+  }
+
+  async uploadStageFile(avatar: string, baseName: string, data: Blob, ext: string): Promise<boolean> {
+    let folder = this.stageFiles.get(avatar);
+    if (folder === undefined) { folder = new Map(); this.stageFiles.set(avatar, folder); }
+    this.dropStage(folder, baseName);
+    folder.set(`${baseName}.${ext}`, data);
+    this.stageStamp += 1;
+    return true;
+  }
+
+  async deleteStageFile(avatar: string, baseName: string): Promise<boolean> {
+    const folder = this.stageFiles.get(avatar);
+    if (folder !== undefined) this.dropStage(folder, baseName);
+    return true;
+  }
+
+  /** ST's replace rule: every file whose name without extension is `baseName`. */
+  private dropStage(folder: Map<string, Blob>, baseName: string): void {
+    for (const f of [...folder.keys()]) if (f.replace(/\.[^.]+$/, '') === baseName) folder.delete(f);
   }
 
   async createGroupChat(req: { name: string; members: string[] }): Promise<string> {
