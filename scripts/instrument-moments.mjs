@@ -29,6 +29,7 @@ export const MOMENTS = {
   throne: throneMoments(),
   service: serviceMoments(),
   shoe: shoeMoments(),
+  gulp: gulpMoments(),
   cards: {
     state: 'one',
     clip: dialCorner,
@@ -654,6 +655,57 @@ function shoeMoments() {
       moment('inspection', 'boots', 'mud', async (p, k) => { await strokes(p, k, 'toe', 24, 40, 30); await p.evaluate(`${k}inspect()`); await p.clock.runFor(500); }),
       moment('inspection-verdict', 'boots', 'mud', async (p, k) => { await strokes(p, k, 'toe', 24, 40, 30); await p.evaluate(`${k}inspect()`); await p.clock.runFor(1800); }),
       moment('boots-above-1280', 'boots', 'mud', (p) => p.clock.runFor(800), [1280, 800]),
+    ],
+  };
+}
+
+/**
+ * gulp.html: gulp (Task 30). The port is the `gulp` fixture (Ann over the commander in the commander's quarters, her planned flow, neutral's
+ * row), her style from `&style=`; the prototype is set to the same (`S.style`). Both pages run on Playwright's fake clock, paused; each moment
+ * begins on both at the same instant (`begin`), runs into the loop, and the same hooks drive both (the prototype's globals `G`, `cough`,
+ * `startClean`, `sayL`; the port's `window.__gulp`): the mouth's fill, a surge's warning (ritual: her word), a cough, an overflow, the
+ * cleaning, her check. The prototype's own surges are held off (`G.nextSurge`); her picture is her sprite from below on both (no art slot:
+ * the layout fixture's sprite, drawn as a PNG for the prototype). The prototype's ceiling and floor are its stand-ins; the port's are the scene's.
+ * Moments: the tide low and high, a surge with its warning, a cough, overflow, the cleaning, her check; the tide high again at 1280x800.
+ */
+function gulpMoments() {
+  const LOOP = 1600; // the entry is 1400 ms: the loop has begun
+  const start = (style) => ({
+    proto: async (p) => {
+      await fakeClock(p, () => document.fonts.ready);
+      await p.addStyleTag({ content: '#panel, #debug, #summary, #start { visibility: hidden !important; }' });
+      await p.evaluate((st) => { Object.assign(window.__S, { style: st, sound: false, reduced: false }); }, style);
+      await p.evaluate(() => { document.querySelector('#start').style.display = 'none'; begin(); G.nextSurge = 1e12; });
+    },
+    port: async (p) => {
+      await fakeClock(p, async () => { while (document.body.dataset.ready !== 'true' || !window.__gulp) await new Promise((r) => setTimeout(r, 50)); });
+      await p.evaluate(() => { const g = window.__gulp; g.resetClock(); g.begin(); });
+    },
+  });
+  const moment = (id, style, drive, after, size) => {
+    const s = start(style);
+    return {
+      id, query: `&style=${style}`, ...(size ? { size } : {}),
+      proto: async (p) => { await s.proto(p); await p.clock.runFor(LOOP); await p.evaluate(drive, 'G'); await p.clock.runFor(after); },
+      port: async (p) => { await s.port(p); await p.clock.runFor(LOOP); await p.evaluate(drive, 'window.__gulp.G'); await p.clock.runFor(after); },
+    };
+  };
+  /** A drive written once for both: `k` names the side's state (`G` or `window.__gulp.G`); `f` its functions (globals, or the port's hooks). */
+  const both = (body) => new Function('k', `const ev = globalThis.eval; const G = ev(k); const f = k === 'G' ? { sayL: ev('sayL'), cough: ev('cough'), startClean: ev('startClean') } : window.__gulp; ${body}`);
+  return {
+    state: 'gulp',
+    rasterSprite: true,
+    hide: ['#panel', '#debug', '#summary', '#start'],
+    settle: 60,
+    moments: [
+      moment('tide-low', 'neutral', both('G.fill = 0.25;'), 400),
+      moment('tide-high', 'neutral', both('G.fill = 0.8;'), 400),
+      moment('surge-warning', 'ritual', both("G.surge = { t0: G.t, warn: 900, len: 1800, feint: false }; f.sayL('surge');"), 450),
+      moment('cough', 'neutral', both("G.fill = 0.8; f.cough('breath');"), 300),
+      moment('overflow', 'neutral', both('G.fill = 1.1;'), 250),
+      moment('cleaning', 'neutral', both('G.spilled = 0.6; f.startClean();'), 600),
+      moment('check', 'neutral', both('G.spilled = 0.6; f.startClean(); G.puddle.m.forEach((v, i) => { G.puddle.m[i] = v * 0.08; });'), 900),
+      moment('tide-high-1280', 'neutral', both('G.fill = 0.8;'), 400, [1280, 800]),
     ],
   };
 }

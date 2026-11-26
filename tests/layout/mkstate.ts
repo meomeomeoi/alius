@@ -12,12 +12,15 @@
  * `scent` / `scenthold`: the scent instrument (P10e-e Task 18), see below.
  * `jaw` / `jawring` / `jawhold`: the jaw instrument (P10e-e Task 20), see below.
  * `shoe` / `shoeheels` / `shoehold`: shoe service (P10e-e Task 28), see below.
+ * `gulp` / `gulphold`: gulp (P10e-e Task 30), see below.
  * `activity` / `activityhold`: her frame (P10e-e Task 24), see below.
  */
 import { writeFileSync } from 'node:fs';
 import { COMMANDER, registerFrameReader, setBlocking } from '../../src/engine/blocking';
 import { blankDynamic, newDynamicCampaign } from '../../src/engine/dynamic/state';
 import { fireMoment } from '../../src/engine/moments/fire';
+import { flowOf } from '../../src/engine/physics/gulp';
+import { GULP_STYLES } from '../../src/engine/tuning';
 import { blankPractices } from '../../src/engine/practice/state';
 import type { CampaignState } from '../../src/engine/state/types';
 import { enable } from '../helpers/bonds';
@@ -304,5 +307,26 @@ out.shoehold = shoeing();
 const heels = shoeing();
 unitOf(heels, ANN).likes = [...unitOf(heels, ANN).likes, 'high heels'];
 out.shoeheels = heels;
+
+/**
+ * P10e-e Task 30: gulp: Ann stands over the commander in the commander's quarters, real time mirrored, the first segment running with her
+ * planned flow (neutral's row, by hash: R32). No contact starts gulp (A3): the run is written as `physics/start` and the chain would leave it.
+ * `gulp` for the shots; `gulphold`: the stop word's pill and the input must stay clickable over the instrument and the pill ends the hold.
+ */
+function gulping(): CampaignState {
+  const s = campaign(reg, 4);
+  setRelation(s, ANN, { stateId: 'confidant' });
+  enable(s, 'bodily_fluids', 'watersports');
+  s.settings.physicsRealtime = true;
+  const d = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } }).state;
+  const flow = flowOf(d.life?.salt ?? 0, 'p1', GULP_STYLES.neutral!, 14);
+  d.scene!.physics = {
+    id: 'p1', physicsId: 'gulp', sourceKind: 'contact', sourceId: 'kneeling_between_legs', holderId: ANN, gauge: 0, capacity: 100,
+    segment: { n: 1, state: 'running', plan: { beats: flow.map((f) => ({ attention: 'watching' as const, flow: f })) } }, startedExchange: 0, taps: 0, streak: 0, extend: 0,
+  };
+  return d;
+}
+out.gulp = gulping();
+out.gulphold = gulping();
 
 writeFileSync(process.argv[2] ?? 'states.json', JSON.stringify(out));

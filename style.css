@@ -6270,6 +6270,92 @@
 }
 #alius-shell .alius-shoe[data-broken] { display: none; } /* a picture failed: the scene shows through until the card takes the run */
 
+/*
+ * P10e-e Task 30: gulp (docs/prototypes/gulp.html, normative). The instrument lies in the effects layer (`.alius-gulp`, under the scene's UI:
+ * the reply, the field and the stop word's pill stay on top) and takes no pointer (the frame's own listeners read the tap and the tongue).
+ * The prototype's `#world` (the ceiling, the floor, `#cam` > `#her` / `#over`, the puddle), the tide, the vignette (the air), the tap's ring
+ * and her hand, in its order. Her lines are in her hand at 42 px × her hand's measured scale. Readable mode drops every blur and the write-on;
+ * the still form drops the write-on (the shake is the code's). Every z-index stays below 10.
+ */
+#alius-shell .alius-gulp {
+  position: absolute;
+  inset: 0;
+  z-index: 1; /* over the effects layer's own gradient */
+  overflow: hidden;
+  pointer-events: none;
+  background: #000;
+  color: #ece8f2;
+  font-family: Inter, var(--alius-font-sans), system-ui, sans-serif;
+  font-weight: 300;
+}
+#alius-shell .alius-gulp > *,
+#alius-shell .alius-gulp-world > *,
+#alius-shell .alius-gulp-cam > * { position: absolute; pointer-events: none; }
+#alius-shell .alius-gulp-world { inset: -4%; will-change: transform, filter; }
+#alius-shell .alius-gulp-ceiling,
+#alius-shell .alius-gulp-floor { inset: 0; background-size: cover; background-position: center; will-change: transform, filter; }
+#alius-shell .alius-gulp-floor { opacity: 0; }
+#alius-shell .alius-gulp-cam { inset: 0; perspective: 1100px; overflow: hidden; }
+#alius-shell .alius-gulp-her,
+#alius-shell .alius-gulp-over { left: 0; top: 0; max-width: none; transform-origin: 0 0; will-change: transform; user-select: none; -webkit-user-drag: none; }
+#alius-shell .alius-gulp-over { display: none; }
+#alius-shell .alius-gulp-puddleC { left: 0; top: 0; opacity: 0; }
+#alius-shell .alius-gulp-tide,
+#alius-shell .alius-gulp-markC { inset: 0; width: 100%; height: 100%; }
+#alius-shell .alius-gulp-vig,
+#alius-shell .alius-gulp-hand { inset: 0; }
+#alius-shell .alius-gulp-tap {
+  left: 50%;
+  top: 58%;
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 214, 170, .7);
+  opacity: 0;
+  transition: opacity .4s;
+}
+#alius-shell .alius-gulp-tap.knock { animation: alius-gulp-knock .35s; }
+@keyframes alius-gulp-knock { 30% { transform: scale(.7); } }
+
+/* her hand and the sensory lines */
+#alius-shell .alius-gulp-hand .her-line {
+  position: absolute;
+  font-family: var(--alius-font-hand, "Caveat"), cursive;
+  color: var(--alius-her, #8cc8f0);
+  white-space: nowrap;
+  line-height: 1;
+  font-size: calc(42px * var(--alius-gulp-hand-scale, 1));
+  text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.85), 0 0 28px rgba(0,0,0,.6);
+  animation: alius-gulp-write var(--write, 600ms) steps(var(--steps, 12), end) both;
+  transition: opacity .5s;
+}
+#alius-shell .alius-gulp-hand .her-line.gone,
+#alius-shell .alius-gulp-hand .sense.gone { opacity: 0; }
+@keyframes alius-gulp-write {
+  from { clip-path: inset(-30% 100% -30% -8%); }
+  to { clip-path: inset(-30% -8% -30% -8%); }
+}
+#alius-shell .alius-gulp-hand .sense {
+  position: absolute;
+  font: italic 300 16px/1.4 Inter, var(--alius-font-sans), sans-serif;
+  color: rgba(236,232,242,.62);
+  text-shadow: 0 1px 2px #000, 0 0 10px rgba(0,0,0,.8);
+  transition: opacity .8s;
+  max-width: 380px;
+}
+
+/* the still form and readable mode */
+#alius-shell .alius-gulp[data-reduced] .her-line,
+#alius-shell .alius-gulp[data-reduced] .alius-gulp-tap.knock { animation: none; }
+#alius-shell .alius-gulp[data-readable] .alius-gulp-ceiling { filter: brightness(.55) !important; }
+#alius-shell .alius-gulp[data-readable] .alius-gulp-floor { filter: brightness(.6) saturate(.85) !important; }
+#alius-shell .alius-gulp[data-readable] .her-line {
+  animation: none;
+  font-family: var(--alius-font-type);
+  text-shadow: 0 0 2px rgba(0,0,0,.9);
+}
+
 /* Squad power (P9b): the VOTE panel and the RATIONS row. Palette variables only; no semantic colours (readable mode safe). */
 #alius-shell .alius-ballots {
   list-style: none;

@@ -25,7 +25,7 @@ function parseVoiceMd(md: string): Item[] {
     if (raw.startsWith('## ')) { sec = 0; cur = null; continue; }
     const h3 = /^### (.+)$/.exec(raw);
     if (h3) { heading = h3[1]!.trim(); cur = null; continue; }
-    if (!heading || ![1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].includes(sec)) continue;
+    if (!heading || ![1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].includes(sec)) continue;
     const bullet = /^- (.*)$/.exec(raw);
     if (bullet) {
       const body = bullet[1]!;
@@ -109,6 +109,8 @@ const THRONE_KINDS = ['spill', 'skid', 'thank', 'thanked', 'noThanks'];
 const SERVICE_KINDS = ['good', 'poor', 'wrong'];
 /** §14 (P10e-e Task 28): shoe service's lines by her style (shoe.html `LINES`, cold silent) and her words for the zones (`ZONE_WORDS`). */
 const SHOE_KINDS = ['entry', 'turn', 'sole', 'kiss', 'polish', 'other', 'caught', 'swallowed', 'good', 'poor', 'missed', 'dull', 'stamp', 'end', 'stop'];
+/** §15 (P10e-e Task 30): gulp's lines by her style (gulp.html `LINES`, cold's own). */
+const GULP_KINDS = ['entry', 'surge', 'tapped', 'spill', 'cough', 'done', 'clean', 'cleaned', 'missed', 'stop'];
 /** §6 (P10e-e Task 11): the slap's lines by her style. */
 const SLAP_LABEL: Record<string, string> = { before: 'slap.before', feint: 'slap.feint', again: 'slap.again', none: 'slap.after.none', braced: 'slap.after.braced', flinched: 'slap.after.flinched' };
 const STYLE_LABEL: Record<string, string> = { when: 'when', cost: 'cost', who: 'who', 'only her': 'onlyMe', weight: 'weight', right: 'call.right', wrong: 'call.wrong', slow: 'call.slow' };
@@ -122,6 +124,11 @@ function expected(md: string): Map<string, string[]> {
     out.set(key, lines);
   };
   for (const it of parseVoiceMd(md)) {
+    if (it.sec === 15) {
+      if (!GULP_KINDS.includes(it.label)) throw new Error(`unmapped gulp item: ${it.heading} › ${it.label}`);
+      put(`gulp.${it.label}`, it.heading === 'neutral' ? undefined : it.heading, it.lines);
+      continue;
+    }
     if (it.sec === 14) {
       if (it.heading === 'zones') { put(`shoe.zone.${it.label}`, undefined, it.lines); continue; }
       if (!SHOE_KINDS.includes(it.label)) throw new Error(`unmapped shoe item: ${it.heading} › ${it.label}`);

@@ -7048,5 +7048,485 @@
     "lines": [
       "the heel underneath"
     ]
+  },
+  {
+    "id": "gulp.entry",
+    "kind": "gulp.entry",
+    "lines": [
+      "open. drink."
+    ]
+  },
+  {
+    "id": "gulp.surge",
+    "kind": "gulp.surge",
+    "lines": []
+  },
+  {
+    "id": "gulp.tapped",
+    "kind": "gulp.tapped",
+    "lines": [
+      "slower, then."
+    ]
+  },
+  {
+    "id": "gulp.spill",
+    "kind": "gulp.spill",
+    "lines": [
+      "careful."
+    ]
+  },
+  {
+    "id": "gulp.cough",
+    "kind": "gulp.cough",
+    "lines": [
+      "breathe."
+    ]
+  },
+  {
+    "id": "gulp.done",
+    "kind": "gulp.done",
+    "lines": [
+      "all of it. good."
+    ]
+  },
+  {
+    "id": "gulp.clean",
+    "kind": "gulp.clean",
+    "lines": [
+      "you spilled. clean it."
+    ]
+  },
+  {
+    "id": "gulp.cleaned",
+    "kind": "gulp.cleaned",
+    "lines": [
+      "good."
+    ]
+  },
+  {
+    "id": "gulp.missed",
+    "kind": "gulp.missed",
+    "lines": [
+      "there. you missed it."
+    ]
+  },
+  {
+    "id": "gulp.stop",
+    "kind": "gulp.stop",
+    "lines": [
+      "okay. stop. here."
+    ]
+  },
+  {
+    "id": "gulp.entry.affectionate",
+    "kind": "gulp.entry",
+    "style": "affectionate",
+    "lines": [
+      "shh. drink for me."
+    ]
+  },
+  {
+    "id": "gulp.surge.affectionate",
+    "kind": "gulp.surge",
+    "style": "affectionate",
+    "lines": []
+  },
+  {
+    "id": "gulp.tapped.affectionate",
+    "kind": "gulp.tapped",
+    "style": "affectionate",
+    "lines": [
+      "okay, okay. I’ll wait."
+    ]
+  },
+  {
+    "id": "gulp.spill.affectionate",
+    "kind": "gulp.spill",
+    "style": "affectionate",
+    "lines": [
+      "it’s alright."
+    ]
+  },
+  {
+    "id": "gulp.cough.affectionate",
+    "kind": "gulp.cough",
+    "style": "affectionate",
+    "lines": [
+      "easy. breathe."
+    ]
+  },
+  {
+    "id": "gulp.done.affectionate",
+    "kind": "gulp.done",
+    "style": "affectionate",
+    "lines": [
+      "good. so good."
+    ]
+  },
+  {
+    "id": "gulp.clean.affectionate",
+    "kind": "gulp.clean",
+    "style": "affectionate",
+    "lines": [
+      "leave it, I’ll get it."
+    ]
+  },
+  {
+    "id": "gulp.cleaned.affectionate",
+    "kind": "gulp.cleaned",
+    "style": "affectionate",
+    "lines": []
+  },
+  {
+    "id": "gulp.missed.affectionate",
+    "kind": "gulp.missed",
+    "style": "affectionate",
+    "lines": []
+  },
+  {
+    "id": "gulp.entry.ritual",
+    "kind": "gulp.entry",
+    "style": "ritual",
+    "lines": [
+      "open. drink."
+    ]
+  },
+  {
+    "id": "gulp.surge.ritual",
+    "kind": "gulp.surge",
+    "style": "ritual",
+    "lines": [
+      "now."
+    ]
+  },
+  {
+    "id": "gulp.tapped.ritual",
+    "kind": "gulp.tapped",
+    "style": "ritual",
+    "lines": [
+      "hold."
+    ]
+  },
+  {
+    "id": "gulp.spill.ritual",
+    "kind": "gulp.spill",
+    "style": "ritual",
+    "lines": [
+      "a spill."
+    ]
+  },
+  {
+    "id": "gulp.cough.ritual",
+    "kind": "gulp.cough",
+    "style": "ritual",
+    "lines": [
+      "compose yourself."
+    ]
+  },
+  {
+    "id": "gulp.done.ritual",
+    "kind": "gulp.done",
+    "style": "ritual",
+    "lines": [
+      "finished."
+    ]
+  },
+  {
+    "id": "gulp.clean.ritual",
+    "kind": "gulp.clean",
+    "style": "ritual",
+    "lines": [
+      "the floor. with your tongue."
+    ]
+  },
+  {
+    "id": "gulp.cleaned.ritual",
+    "kind": "gulp.cleaned",
+    "style": "ritual",
+    "lines": [
+      "as it should be."
+    ]
+  },
+  {
+    "id": "gulp.missed.ritual",
+    "kind": "gulp.missed",
+    "style": "ritual",
+    "lines": [
+      "there. again."
+    ]
+  },
+  {
+    "id": "gulp.entry.playful",
+    "kind": "gulp.entry",
+    "style": "playful",
+    "lines": [
+      "say ahh~"
+    ]
+  },
+  {
+    "id": "gulp.surge.playful",
+    "kind": "gulp.surge",
+    "style": "playful",
+    "lines": []
+  },
+  {
+    "id": "gulp.tapped.playful",
+    "kind": "gulp.tapped",
+    "style": "playful",
+    "lines": [
+      "slower? hmm. no~"
+    ]
+  },
+  {
+    "id": "gulp.spill.playful",
+    "kind": "gulp.spill",
+    "style": "playful",
+    "lines": [
+      "oops~"
+    ]
+  },
+  {
+    "id": "gulp.cough.playful",
+    "kind": "gulp.cough",
+    "style": "playful",
+    "lines": [
+      "too much?"
+    ]
+  },
+  {
+    "id": "gulp.done.playful",
+    "kind": "gulp.done",
+    "style": "playful",
+    "lines": [
+      "all gone~"
+    ]
+  },
+  {
+    "id": "gulp.clean.playful",
+    "kind": "gulp.clean",
+    "style": "playful",
+    "lines": [
+      "look at that mess. lick it up~"
+    ]
+  },
+  {
+    "id": "gulp.cleaned.playful",
+    "kind": "gulp.cleaned",
+    "style": "playful",
+    "lines": [
+      "shiny."
+    ]
+  },
+  {
+    "id": "gulp.missed.playful",
+    "kind": "gulp.missed",
+    "style": "playful",
+    "lines": [
+      "you missed a spot~"
+    ]
+  },
+  {
+    "id": "gulp.entry.cruel",
+    "kind": "gulp.entry",
+    "style": "cruel",
+    "lines": [
+      "drink."
+    ]
+  },
+  {
+    "id": "gulp.surge.cruel",
+    "kind": "gulp.surge",
+    "style": "cruel",
+    "lines": []
+  },
+  {
+    "id": "gulp.tapped.cruel",
+    "kind": "gulp.tapped",
+    "style": "cruel",
+    "lines": [
+      "you don’t ask."
+    ]
+  },
+  {
+    "id": "gulp.spill.cruel",
+    "kind": "gulp.spill",
+    "style": "cruel",
+    "lines": [
+      "wasteful."
+    ]
+  },
+  {
+    "id": "gulp.cough.cruel",
+    "kind": "gulp.cough",
+    "style": "cruel",
+    "lines": [
+      "pathetic."
+    ]
+  },
+  {
+    "id": "gulp.done.cruel",
+    "kind": "gulp.done",
+    "style": "cruel",
+    "lines": [
+      "all of it. good."
+    ]
+  },
+  {
+    "id": "gulp.clean.cruel",
+    "kind": "gulp.clean",
+    "style": "cruel",
+    "lines": [
+      "lick it up."
+    ]
+  },
+  {
+    "id": "gulp.cleaned.cruel",
+    "kind": "gulp.cleaned",
+    "style": "cruel",
+    "lines": [
+      "adequate."
+    ]
+  },
+  {
+    "id": "gulp.missed.cruel",
+    "kind": "gulp.missed",
+    "style": "cruel",
+    "lines": [
+      "there. all of it."
+    ]
+  },
+  {
+    "id": "gulp.entry.possessive",
+    "kind": "gulp.entry",
+    "style": "possessive",
+    "lines": [
+      "drink. all of it is yours."
+    ]
+  },
+  {
+    "id": "gulp.surge.possessive",
+    "kind": "gulp.surge",
+    "style": "possessive",
+    "lines": []
+  },
+  {
+    "id": "gulp.tapped.possessive",
+    "kind": "gulp.tapped",
+    "style": "possessive",
+    "lines": [
+      "a little slower. for you."
+    ]
+  },
+  {
+    "id": "gulp.spill.possessive",
+    "kind": "gulp.spill",
+    "style": "possessive",
+    "lines": [
+      "that was yours."
+    ]
+  },
+  {
+    "id": "gulp.cough.possessive",
+    "kind": "gulp.cough",
+    "style": "possessive",
+    "lines": [
+      "breathe. then more."
+    ]
+  },
+  {
+    "id": "gulp.done.possessive",
+    "kind": "gulp.done",
+    "style": "possessive",
+    "lines": [
+      "good. mine."
+    ]
+  },
+  {
+    "id": "gulp.clean.possessive",
+    "kind": "gulp.clean",
+    "style": "possessive",
+    "lines": [
+      "you don’t waste me. clean it."
+    ]
+  },
+  {
+    "id": "gulp.cleaned.possessive",
+    "kind": "gulp.cleaned",
+    "style": "possessive",
+    "lines": [
+      "good."
+    ]
+  },
+  {
+    "id": "gulp.missed.possessive",
+    "kind": "gulp.missed",
+    "style": "possessive",
+    "lines": [
+      "all of it."
+    ]
+  },
+  {
+    "id": "gulp.entry.cold",
+    "kind": "gulp.entry",
+    "style": "cold",
+    "lines": [
+      "drink."
+    ]
+  },
+  {
+    "id": "gulp.surge.cold",
+    "kind": "gulp.surge",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "gulp.tapped.cold",
+    "kind": "gulp.tapped",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "gulp.spill.cold",
+    "kind": "gulp.spill",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "gulp.cough.cold",
+    "kind": "gulp.cough",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "gulp.done.cold",
+    "kind": "gulp.done",
+    "style": "cold",
+    "lines": [
+      "done."
+    ]
+  },
+  {
+    "id": "gulp.clean.cold",
+    "kind": "gulp.clean",
+    "style": "cold",
+    "lines": [
+      "clean it."
+    ]
+  },
+  {
+    "id": "gulp.cleaned.cold",
+    "kind": "gulp.cleaned",
+    "style": "cold",
+    "lines": [
+      "fine."
+    ]
+  },
+  {
+    "id": "gulp.missed.cold",
+    "kind": "gulp.missed",
+    "style": "cold",
+    "lines": [
+      "there."
+    ]
   }
 ]

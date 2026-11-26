@@ -1234,3 +1234,85 @@ Kinds `shoe.<kind>` by her style (shoe.html `LINES`, verbatim): her first words 
 - **toe_tread:** `the tread`
 - **mid:** `the middle of the sole`
 - **heel_tread:** `the heel underneath`
+
+## 15. Gulp (gulp.html, approved by the author, 2026-11-25)
+
+Kinds `gulp.<kind>` by her style (gulp.html `LINES`, verbatim): her first words (`entry`), her word as a surge comes (`surge`, ritual only; the model may word its own for the cue `surge`), her answer to a tap when she keeps the commander (`tapped`), a spill (`spill`), a cough (`cough`), her flow's end (`done`), what was spilled (`clean`: she makes the commander clean it, or affectionate wipes it up herself), her check of the floor (`cleaned`, or `missed` over 15 % left); `stop` is her line after the stop word (the prototype's inline one). A style not listed reads neutral's (Ruling R); cold has the prototype's own lines (silent where it has none).
+
+### neutral
+- **entry:** `open. drink.`
+- **surge:** silent
+- **tapped:** `slower, then.`
+- **spill:** `careful.`
+- **cough:** `breathe.`
+- **done:** `all of it. good.`
+- **clean:** `you spilled. clean it.`
+- **cleaned:** `good.`
+- **missed:** `there. you missed it.`
+- **stop:** `okay. stop. here.`
+
+### affectionate
+- **entry:** `shh. drink for me.`
+- **surge:** silent
+- **tapped:** `okay, okay. I’ll wait.`
+- **spill:** `it’s alright.`
+- **cough:** `easy. breathe.`
+- **done:** `good. so good.`
+- **clean:** `leave it, I’ll get it.`
+- **cleaned:** silent
+- **missed:** silent
+
+### ritual
+- **entry:** `open. drink.`
+- **surge:** `now.`
+- **tapped:** `hold.`
+- **spill:** `a spill.`
+- **cough:** `compose yourself.`
+- **done:** `finished.`
+- **clean:** `the floor. with your tongue.`
+- **cleaned:** `as it should be.`
+- **missed:** `there. again.`
+
+### playful
+- **entry:** `say ahh~`
+- **surge:** silent
+- **tapped:** `slower? hmm. no~`
+- **spill:** `oops~`
+- **cough:** `too much?`
+- **done:** `all gone~`
+- **clean:** `look at that mess. lick it up~`
+- **cleaned:** `shiny.`
+- **missed:** `you missed a spot~`
+
+### cruel
+- **entry:** `drink.`
+- **surge:** silent
+- **tapped:** `you don’t ask.`
+- **spill:** `wasteful.`
+- **cough:** `pathetic.`
+- **done:** `all of it. good.`
+- **clean:** `lick it up.`
+- **cleaned:** `adequate.`
+- **missed:** `there. all of it.`
+
+### possessive
+- **entry:** `drink. all of it is yours.`
+- **surge:** silent
+- **tapped:** `a little slower. for you.`
+- **spill:** `that was yours.`
+- **cough:** `breathe. then more.`
+- **done:** `good. mine.`
+- **clean:** `you don’t waste me. clean it.`
+- **cleaned:** `good.`
+- **missed:** `all of it.`
+
+### cold
+- **entry:** `drink.`
+- **surge:** silent
+- **tapped:** silent
+- **spill:** silent
+- **cough:** silent
+- **done:** `done.`
+- **clean:** `clean it.`
+- **cleaned:** `fine.`
+- **missed:** `there.`
