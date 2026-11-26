@@ -1944,8 +1944,8 @@ function effectsFor(registry2, entry, reg, data) {
     }
     case "facilities":
       return list(e.levels).map((level, i) => {
-        const parts = Object.entries(level.effects && typeof level.effects === "object" ? level.effects : {}).map(([key, value]) => facilityLevel(FACILITY_KEY_LABELS[key] ?? humanize(key), value));
-        return `Level ${i + 1}: ${parts.join(", ")}`;
+        const parts2 = Object.entries(level.effects && typeof level.effects === "object" ? level.effects : {}).map(([key, value]) => facilityLevel(FACILITY_KEY_LABELS[key] ?? humanize(key), value));
+        return `Level ${i + 1}: ${parts2.join(", ")}`;
       });
     case "crimes":
       return compact([typeof e.perk?.text === "string" ? `Perk: ${e.perk.text}` : null, typeof e.flaw?.text === "string" ? `Flaw: ${e.flaw.text}` : null]);
@@ -2098,13 +2098,13 @@ function summarizeWorldOptionEffect(effect, reg) {
       return x.days === 0 ? "Soldiers may start secret protest from the first day" : "Soldiers hold back secret protest while they get to know a new commander";
     case "squad_power": {
       const more = (n, up, down2) => typeof n !== "number" || n === 1 ? null : n > 1 ? up : down2;
-      const parts = [
+      const parts2 = [
         more(x.privilegeMult, "A squad leader has greater privileges", "A squad leader has lesser privileges"),
         more(x.demandMult, "Soldiers make demands more often", "Soldiers make demands less often"),
         more(x.commanderVoteMult, "The commander's vote weighs more in a squad vote", "The commander's vote weighs less in a squad vote"),
         more(x.soldierVoteMult, "Each soldier's vote weighs more", "Each soldier's vote weighs less")
       ].filter((l) => l !== null);
-      return parts.length > 0 ? parts.join("; ") : "The squad pushes only as far as its soldiers' own character does";
+      return parts2.length > 0 ? parts2.join("; ") : "The squad pushes only as far as its soldiers' own character does";
     }
     case "voting":
       return "Some decisions go to a squad vote.";
@@ -2261,8 +2261,8 @@ function descriptor(kind, value) {
   const list5 = DESCRIPTORS[kind];
   return list5[Math.min(5, Math.max(1, Math.round(value))) - 1];
 }
-function archetypeOf(body) {
-  const sum = BODY_STATS.reduce((n, k) => n + body[k], 0);
+function archetypeOf(body2) {
+  const sum = BODY_STATS.reduce((n, k) => n + body2[k], 0);
   if (sum <= 4) return "frail";
   if (sum <= 6) return "slight";
   if (sum <= 9) return "average";
@@ -2272,15 +2272,15 @@ function archetypeOf(body) {
 function commanderProfile(state) {
   const c = state.commander;
   const d = TUNING.commander.defaults;
-  const body = { ...d.body, ...c.body ?? {} };
+  const body2 = { ...d.body, ...c.body ?? {} };
   const traits = c.traits ?? { regular: [] };
   return {
-    body,
+    body: body2,
     bodyXp: { strength: 0, endurance: 0, reflexes: 0, ...c.bodyXp ?? {} },
     expression: c.expression ?? d.expression,
     seasoning: c.seasoning ?? d.seasoning,
     traits: { regular: [...traits.regular], ...traits.special !== void 0 ? { special: traits.special } : {} },
-    archetype: archetypeOf(body)
+    archetype: archetypeOf(body2)
   };
 }
 var defaultCommanderSetup = () => ({
@@ -2289,7 +2289,7 @@ var defaultCommanderSetup = () => ({
   seasoning: TUNING.commander.defaults.seasoning,
   traits: { regular: [] }
 });
-var poolSpent = (body) => BODY_STATS.reduce((n, k) => n + body[k], 0) - BODY_STATS.length;
+var poolSpent = (body2) => BODY_STATS.reduce((n, k) => n + body2[k], 0) - BODY_STATS.length;
 var isInt = (n, lo, hi) => typeof n === "number" && Number.isInteger(n) && n >= lo && n <= hi;
 function validateCommanderSetup(c, reg, opts) {
   const out = [];
@@ -2356,18 +2356,18 @@ function bodyGrowthMult(state, reg) {
   return traitEffects(state, reg, "body_growth").reduce((m, fx2) => m * fx2.mult, 1);
 }
 function addBodyXp(commander, stat3, amount) {
-  const body = commander.body ??= { ...TUNING.commander.defaults.body };
+  const body2 = commander.body ??= { ...TUNING.commander.defaults.body };
   const xp = commander.bodyXp ??= { strength: 0, endurance: 0, reflexes: 0 };
-  const before3 = body[stat3];
-  if (before3 >= 5 || !(amount > 0)) return { value: before3, gained: false };
+  const before4 = body2[stat3];
+  if (before4 >= 5 || !(amount > 0)) return { value: before4, gained: false };
   let pool = xp[stat3] + amount;
-  while (body[stat3] < 5 && pool >= TUNING.commander.bodyXpSteps[body[stat3] - 1]) {
-    pool -= TUNING.commander.bodyXpSteps[body[stat3] - 1];
-    body[stat3] += 1;
+  while (body2[stat3] < 5 && pool >= TUNING.commander.bodyXpSteps[body2[stat3] - 1]) {
+    pool -= TUNING.commander.bodyXpSteps[body2[stat3] - 1];
+    body2[stat3] += 1;
   }
-  xp[stat3] = body[stat3] >= 5 ? 0 : pool;
-  commander.archetype = archetypeOf(body);
-  return { value: body[stat3], gained: body[stat3] > before3 };
+  xp[stat3] = body2[stat3] >= 5 ? 0 : pool;
+  commander.archetype = archetypeOf(body2);
+  return { value: body2[stat3], gained: body2[stat3] > before4 };
 }
 function intimidationBonus(state) {
   const p = commanderProfile(state);
@@ -2403,35 +2403,35 @@ function commanderLine(state) {
 // src/engine/ledger.ts
 var RESOURCES = ["credits", "supplies", "plyx"];
 var AXES = ["trust", "affinity", "attraction"];
-function recordLedger(before3, after3, action) {
+function recordLedger(before4, after4, action) {
   const entries2 = [];
   const push3 = (key, delta) => {
-    if (Number.isFinite(delta) && delta !== 0) entries2.push({ day: before3.day, slot: before3.slot, action, key, delta });
+    if (Number.isFinite(delta) && delta !== 0) entries2.push({ day: before4.day, slot: before4.slot, action, key, delta });
   };
-  for (const r of RESOURCES) push3(`res:${r}`, (after3.resources?.[r] ?? 0) - (before3.resources?.[r] ?? 0));
-  push3("res:cmdr_stress", (after3.commander?.stress ?? 0) - (before3.commander?.stress ?? 0));
-  const stressBefore = new Map(before3.squad.map((u) => [u.id, u.stress]));
-  for (const u of after3.squad) {
+  for (const r of RESOURCES) push3(`res:${r}`, (after4.resources?.[r] ?? 0) - (before4.resources?.[r] ?? 0));
+  push3("res:cmdr_stress", (after4.commander?.stress ?? 0) - (before4.commander?.stress ?? 0));
+  const stressBefore = new Map(before4.squad.map((u) => [u.id, u.stress]));
+  for (const u of after4.squad) {
     const was = stressBefore.get(u.id);
     if (was !== void 0) push3(`stress:${u.id}`, (u.stress ?? 0) - (was ?? 0));
   }
-  for (const [id, rel] of Object.entries(after3.relations)) {
-    const was = before3.relations[id];
+  for (const [id, rel] of Object.entries(after4.relations)) {
+    const was = before4.relations[id];
     if (!was) continue;
     for (const axis of AXES) push3(`axis:${id}:${axis}`, (rel[axis] ?? 0) - (was[axis] ?? 0));
     push3(`record:${id}`, (rel.impunityRecord ?? 0) - (was.impunityRecord ?? 0));
     push3(`want:${id}`, (rel.want ?? 0) - (was.want ?? 0));
   }
-  for (const [id, now] of Object.entries(after3.power?.hierarchy?.standings ?? {})) {
-    const was = before3.power?.hierarchy?.standings?.[id];
+  for (const [id, now] of Object.entries(after4.power?.hierarchy?.standings ?? {})) {
+    const was = before4.power?.hierarchy?.standings?.[id];
     if (was !== void 0) push3(`standing:${id}`, now - was);
   }
-  if (before3.commander?.body !== void 0 && after3.commander?.body !== void 0) for (const stat3 of BODY_STATS) push3(`body:${stat3}`, (after3.commander?.body?.[stat3] ?? 0) - (before3.commander?.body?.[stat3] ?? 0));
-  if (entries2.length > 0) after3.ledger = [...after3.ledger ?? [], ...entries2];
-  if (!after3.ledger) return;
-  const oldest = after3.day - (TUNING.ledger.days - 1);
-  const kept = after3.ledger.filter((e) => e.day >= oldest);
-  after3.ledger = capByKind(kept, TUNING.ledger.max);
+  if (before4.commander?.body !== void 0 && after4.commander?.body !== void 0) for (const stat3 of BODY_STATS) push3(`body:${stat3}`, (after4.commander?.body?.[stat3] ?? 0) - (before4.commander?.body?.[stat3] ?? 0));
+  if (entries2.length > 0) after4.ledger = [...after4.ledger ?? [], ...entries2];
+  if (!after4.ledger) return;
+  const oldest = after4.day - (TUNING.ledger.days - 1);
+  const kept = after4.ledger.filter((e) => e.day >= oldest);
+  after4.ledger = capByKind(kept, TUNING.ledger.max);
 }
 var kindOf = (e) => e.key.slice(0, e.key.indexOf(":"));
 function capByKind(list5, max) {
@@ -2531,7 +2531,7 @@ function forgetPower(draft, unitId) {
 var RANGE = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] };
 var defaultHandler = ({ relation }, axis, amount) => {
   const [lo, hi] = RANGE[axis];
-  const before3 = relation[axis];
+  const before4 = relation[axis];
   let applied = amount;
   if (amount > 0) {
     const done = relation.dailyGain[axis];
@@ -2542,8 +2542,8 @@ var defaultHandler = ({ relation }, axis, amount) => {
     }
     applied = Math.round(sum);
   }
-  relation[axis] = Math.min(hi, Math.max(lo, before3 + applied));
-  const real = relation[axis] - before3;
+  relation[axis] = Math.min(hi, Math.max(lo, before4 + applied));
+  const real = relation[axis] - before4;
   if (real > 0) relation.dailyGain[axis] += real;
   return real;
 };
@@ -2748,8 +2748,8 @@ function splitmix32(a) {
     return (t ^ t >>> 15) >>> 0;
   };
 }
-function seedRng(seed3) {
-  const mix = splitmix32(seed3);
+function seedRng(seed4) {
+  const mix = splitmix32(seed4);
   const state = [mix(), mix(), mix(), mix()];
   const rng = new Rng(state);
   for (let i = 0; i < 12; i++) rng.float();
@@ -6080,8 +6080,8 @@ var ZodSet = class _ZodSet extends ZodType {
       maxSize: { value: maxSize, message: errorUtil.toString(message) }
     });
   }
-  size(size2, message) {
-    return this.min(size2, message).max(size2, message);
+  size(size3, message) {
+    return this.min(size3, message).max(size3, message);
   }
   nonempty(message) {
     return this.min(1, message);
@@ -7364,7 +7364,7 @@ function validatePractice(raw, reg) {
   const dropped = [];
   if (raw === void 0) return { issues, dropped };
   if (!isObj(raw)) return { issues: ["practice must be an object"], dropped };
-  const pick6 = (field2, allowed, fallback) => {
+  const pick7 = (field2, allowed, fallback) => {
     const v = raw[field2];
     if (v === void 0) return fallback;
     if (typeof v === "string" && allowed.includes(v)) return v;
@@ -7405,11 +7405,11 @@ function validatePractice(raw, reg) {
   const practice = {
     categories,
     style: secondary === void 0 ? { primary } : { primary, secondary },
-    audience: pick6("audience", AUDIENCE, PRACTICE_DEFAULTS.audience),
-    inclination: pick6("inclination", INCLINATION, PRACTICE_DEFAULTS.inclination),
-    fairness: pick6("fairness", FAIRNESS, PRACTICE_DEFAULTS.fairness),
-    hintStyle: pick6("hintStyle", HINT_STYLE, PRACTICE_DEFAULTS.hintStyle),
-    drive: pick6("drive", DRIVE, PRACTICE_DEFAULTS.drive)
+    audience: pick7("audience", AUDIENCE, PRACTICE_DEFAULTS.audience),
+    inclination: pick7("inclination", INCLINATION, PRACTICE_DEFAULTS.inclination),
+    fairness: pick7("fairness", FAIRNESS, PRACTICE_DEFAULTS.fairness),
+    hintStyle: pick7("hintStyle", HINT_STYLE, PRACTICE_DEFAULTS.hintStyle),
+    drive: pick7("drive", DRIVE, PRACTICE_DEFAULTS.drive)
   };
   return { practice, issues, dropped };
 }
@@ -7520,8 +7520,8 @@ function witnessOf(state, reg, observerId, holderId) {
   return practiceOf(state, reg, observerId)?.categories[category]?.witness ?? "indifferent";
 }
 function reactionOf(state, reg, observerId, holderId) {
-  const frame4 = dynamicOf(state, observerId)?.frame;
-  if (frame4 !== void 0 && frame4 !== "equal") {
+  const frame5 = dynamicOf(state, observerId)?.frame;
+  if (frame5 !== void 0 && frame5 !== "equal") {
     const manner = practiceOf(state, reg, observerId)?.style.primary;
     if (manner === "ritual" || manner === "cold") return "respects";
     if (manner === "possessive" || manner === "cruel") return "competes";
@@ -7562,8 +7562,8 @@ function dynamicTerm(state, reg, unitId) {
 }
 function standingMalus(state, reg, holderId) {
   if (!dynamicLive(state, reg)) return 0;
-  const R6 = TUNING.squadKnowledge.reaction;
-  return Math.min(R6.standingMax, Math.round(dislikers(state, reg, holderId).reduce((sum, id) => sum + scaleOf(state, reg, id), 0) * R6.dislikesStanding));
+  const R7 = TUNING.squadKnowledge.reaction;
+  return Math.min(R7.standingMax, Math.round(dislikers(state, reg, holderId).reduce((sum, id) => sum + scaleOf(state, reg, id), 0) * R7.dislikesStanding));
 }
 
 // src/engine/practice/state.ts
@@ -10595,9 +10595,9 @@ var DynamicMilestoneSchema = BaseEntrySchema.extend({
   contentTags: tagList,
   description: str
 }).strict().superRefine((m, ctx2) => {
-  const frame4 = m.effects.some((e) => e.type === "frame");
-  if (frame4 && m.from === m.to) ctx2.addIssue({ code: "custom", path: ["effects"], message: "a milestone inside one frame cannot change the frame" });
-  if (!frame4 && m.from !== m.to) ctx2.addIssue({ code: "custom", path: ["effects"], message: "a milestone that changes the frame needs the frame effect" });
+  const frame5 = m.effects.some((e) => e.type === "frame");
+  if (frame5 && m.from === m.to) ctx2.addIssue({ code: "custom", path: ["effects"], message: "a milestone inside one frame cannot change the frame" });
+  if (!frame5 && m.from !== m.to) ctx2.addIssue({ code: "custom", path: ["effects"], message: "a milestone that changes the frame needs the frame effect" });
   if (m.sworn === true !== m.effects.some((e) => e.type === "sworn")) ctx2.addIssue({ code: "custom", path: ["sworn"], message: "`sworn` and the sworn effect go together" });
 });
 var DynamicDomainSchema = BaseEntrySchema.extend({
@@ -10861,14 +10861,46 @@ var CARD_VOICE_KINDS = [
   "weight.fall",
   "weight.stop",
   "weight.longer",
-  "weight.announce"
+  "weight.announce",
+  // P10e-e ruling Q: scent's lines (saturation.html `LINES`, its `STYLES[].ask` and `judge`'s words, card-voice.md §9); her first words and her
+  // named places by the contact are `scent.entry.<contact>` / `scent.here.<contact>` (CARD_VOICE_STATIC)
+  "scent.deeper",
+  "scent.gently",
+  "scent.still",
+  "scent.moved",
+  "scent.good",
+  "scent.bad",
+  "scent.away",
+  "scent.cough",
+  "scent.liar",
+  "scent.caught",
+  "scent.need",
+  "scent.end",
+  "scent.stop",
+  "scent.lost.low",
+  "scent.lost.high",
+  "scent.mouth",
+  "scent.answer.ok",
+  "scent.answer.bad",
+  "scent.answer.empty",
+  "scent.ask",
+  "scent.miss.warm",
+  "scent.miss.admit",
+  "scent.miss.bad",
+  "scent.miss.want",
+  "scent.miss.place",
+  "scent.miss.strength",
+  "scent.miss.band",
+  "scent.miss.intensity_wrong",
+  "scent.miss.intensity_missing",
+  "scent.miss.honest"
 ];
-var CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+)$/;
+var CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+|scent\.(entry|here)\.[a-z0-9_]+)$/;
 var CardVoiceSchema = BaseEntrySchema.extend({
   kind: str.refine((k) => CARD_VOICE_KINDS.includes(k) || CARD_VOICE_STATIC.test(k), "an unknown card voice kind"),
   style: str.optional(),
   lines: external_exports.array(str.max(160))
-}).strict().refine((e) => e.lines.length > 0 || (e.kind.startsWith("breath.") || e.kind.startsWith("weight.")) && e.style !== void 0, "no lines (only a style's own breath or weight row may be empty: she is silent there)");
+}).strict().refine((e) => e.lines.length > 0 || (e.kind.startsWith("breath.") || e.kind.startsWith("weight.") || e.kind.startsWith("scent.")) && e.style !== void 0, "no lines (only a style's own breath, weight or scent row may be empty: she is silent there)");
 registrySchemas.cardVoice = CardVoiceSchema;
 
 // src/engine/onboarding/prologue.ts
@@ -11123,7 +11155,7 @@ function validateBond(raw, reg) {
   const bond = { ...MODEST_BOND, ownLimits: { categories: [] } };
   if (raw === void 0) return { bond, issues, valid };
   if (!isObj2(raw)) return { bond, issues: ["the bond profile must be an object"], valid };
-  const pick6 = (field2, allowed, fallback) => {
+  const pick7 = (field2, allowed, fallback) => {
     const v = raw[field2];
     if (v === void 0) return fallback;
     if (typeof v === "string" && allowed.includes(v)) {
@@ -11133,10 +11165,10 @@ function validateBond(raw, reg) {
     issues.push(`${field2} must be one of ${allowed.join(", ")}`);
     return fallback;
   };
-  bond.leadStyle = pick6("leadStyle", LEAD_STYLES, MODEST_BOND.leadStyle);
-  bond.attachment = pick6("attachment", ATTACHMENTS, MODEST_BOND.attachment);
-  bond.desire = pick6("desire", DESIRE_LEVELS, MODEST_BOND.desire);
-  bond.publicity = pick6("publicity", PUBLICITY_LEVELS, MODEST_BOND.publicity);
+  bond.leadStyle = pick7("leadStyle", LEAD_STYLES, MODEST_BOND.leadStyle);
+  bond.attachment = pick7("attachment", ATTACHMENTS, MODEST_BOND.attachment);
+  bond.desire = pick7("desire", DESIRE_LEVELS, MODEST_BOND.desire);
+  bond.publicity = pick7("publicity", PUBLICITY_LEVELS, MODEST_BOND.publicity);
   if (raw.caretaker !== void 0) {
     if (typeof raw.caretaker === "boolean") {
       bond.caretaker = raw.caretaker;
@@ -11614,10 +11646,10 @@ function intimacyOf(state) {
 }
 var p3GainHandler = ({ state, relation }, axis, amount) => {
   const [lo, hi] = RANGE2[axis];
-  const before3 = relation[axis];
+  const before4 = relation[axis];
   const effective = amount > 0 ? amount / (1 + relation.dailyGain[axis] / relationK(state)) : amount;
-  relation[axis] = Math.min(hi, Math.max(lo, before3 + roundAway(effective)));
-  const real = relation[axis] - before3;
+  relation[axis] = Math.min(hi, Math.max(lo, before4 + roundAway(effective)));
+  const real = relation[axis] - before4;
   if (real > 0) relation.dailyGain[axis] += real;
   return real;
 };
@@ -11844,8 +11876,8 @@ function evaluateAutomatic(draft, reg, unitId, opts) {
   }
   if (target === null) {
     const rank2 = cur?.priority ?? -1;
-    const pick6 = candidates(draft, reg, unitId, "automatic", void 0, opts?.allow).find((st2) => st2.priority > rank2);
-    if (pick6) target = pick6.id;
+    const pick7 = candidates(draft, reg, unitId, "automatic", void 0, opts?.allow).find((st2) => st2.priority > rank2);
+    if (pick7) target = pick7.id;
   }
   if (target !== null) events.push(enterState(draft, unitId, target, why), ...syncPublicity(draft, reg, unitId));
   const band2 = nextLoyaltyBand(rel.loyaltyBand, rel.trust, bandShift(dispositionById(draft, reg, unitId)));
@@ -11857,8 +11889,8 @@ function evaluateAutomatic(draft, reg, unitId, opts) {
 }
 function evaluateEvent(draft, reg, unitId, eventType) {
   if (!draft.relations[unitId] || !draft.squad.some((u) => u.id === unitId)) return [];
-  const pick6 = candidates(draft, reg, unitId, "event", eventType)[0];
-  return pick6 ? [enterState(draft, unitId, pick6.id, `event:${eventType}`), ...syncPublicity(draft, reg, unitId)] : [];
+  const pick7 = candidates(draft, reg, unitId, "event", eventType)[0];
+  return pick7 ? [enterState(draft, unitId, pick7.id, `event:${eventType}`), ...syncPublicity(draft, reg, unitId)] : [];
 }
 var ORDER = ["too_soon", "no_trust", "not_interested", "committed"];
 function failedGroup(state, reg, unitId, cond) {
@@ -12048,7 +12080,7 @@ function pressureGate(state, reg, unitId, mechanic) {
   if (unit4.bond === void 0) return "no imported bond profile";
   const bond = bondOf(unit4);
   const lead = leadRank(bond.leadStyle);
-  const G5 = TUNING.personal.gates;
+  const G6 = TUNING.personal.gates;
   const tier = bondTierOf(state, reg, unitId);
   switch (mechanic) {
     case "device":
@@ -12060,7 +12092,7 @@ function pressureGate(state, reg, unitId, mechanic) {
       return jealousyAllowed(state, reg, unitId) ? null : "jealousy games are off";
     }
     case "courtship": {
-      if (lead < G5.courtship.minLeadRank) return "her lead style is too yielding";
+      if (lead < G6.courtship.minLeadRank) return "her lead style is too yielding";
       if (!intimacyOf(state).romance) return "romance is off";
       if (tier === "romantic") return null;
       const open3 = ROMANTIC_PROPOSALS.some((kind) => "stateId" in stateForProposal(state, reg, unitId, kind));
@@ -12075,11 +12107,11 @@ function pressureGate(state, reg, unitId, mechanic) {
     case "token":
       if (tier === null) return "no close or romantic tier";
       if (bond.attachment === "avoidant") return "avoidant attachment";
-      return rel.affinity >= G5.token.minAffinity ? null : "Affinity too low";
+      return rel.affinity >= G6.token.minAffinity ? null : "Affinity too low";
     case "wager": {
-      if (lead < G5.wager.minLeadRank) return "her lead style is too yielding";
-      if (rel.affinity >= G5.wager.minAffinity) return null;
-      return (impunityOf(state, reg, unitId)?.value ?? 0) >= G5.wager.minImpunity ? null : "neither warm nor brazen enough";
+      if (lead < G6.wager.minLeadRank) return "her lead style is too yielding";
+      if (rel.affinity >= G6.wager.minAffinity) return null;
+      return (impunityOf(state, reg, unitId)?.value ?? 0) >= G6.wager.minImpunity ? null : "neither warm nor brazen enough";
     }
   }
 }
@@ -12574,9 +12606,9 @@ function withRequirements(reg, ids) {
 function setCategories(draft, reg, enabled) {
   const known3 = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
   const next = withRequirements(reg, known3.filter((id) => enabled.includes(id)));
-  const before3 = enabledCategories(draft);
-  const added = next.filter((id) => !before3.includes(id));
-  const removed = before3.filter((id) => !next.includes(id));
+  const before4 = enabledCategories(draft);
+  const added = next.filter((id) => !before4.includes(id));
+  const removed = before4.filter((id) => !next.includes(id));
   draft.content = { enabled: next };
   if (added.length === 0 && removed.length === 0) return [];
   const withdrawn = removed.length > 0 ? withdrawTagged(draft, reg, removed) : [];
@@ -12792,11 +12824,11 @@ function scaleRefusal(state, reg, unitId, chance) {
 var commanderStress = (state) => state.commander.stress ?? 0;
 var commanderStressBand = (state) => stressBand(commanderStress(state));
 function addCommanderStress(draft, amount, source) {
-  const before3 = commanderStress(draft);
-  const next = Math.min(100, Math.max(0, before3 + amount));
-  if (next === before3) return [];
+  const before4 = commanderStress(draft);
+  const next = Math.min(100, Math.max(0, before4 + amount));
+  if (next === before4) return [];
   draft.commander.stress = next;
-  return [{ type: "commander_stress_changed", delta: next - before3, source }];
+  return [{ type: "commander_stress_changed", delta: next - before4, source }];
 }
 
 // src/engine/physics/conditions.ts
@@ -12850,20 +12882,20 @@ function socialGrowthMult(state, reg, stat3) {
   return traitEffects(state, reg, "social_growth").filter((fx2) => fx2.stat === stat3).reduce((m, fx2) => m * fx2.mult, 1);
 }
 function addSocialPoints(commander, stat3, amount) {
-  const before3 = commander.socialStats[stat3];
+  const before4 = commander.socialStats[stat3];
   const points = commander.socialPoints ??= {
     authority: SOCIAL_THRESHOLDS[commander.socialStats.authority - 1] ?? 0,
     insight: SOCIAL_THRESHOLDS[commander.socialStats.insight - 1] ?? 0,
     empathy: SOCIAL_THRESHOLDS[commander.socialStats.empathy - 1] ?? 0,
     cunning: SOCIAL_THRESHOLDS[commander.socialStats.cunning - 1] ?? 0
   };
-  const floor = SOCIAL_THRESHOLDS[before3 - 1] ?? 0;
+  const floor = SOCIAL_THRESHOLDS[before4 - 1] ?? 0;
   const next = Math.min(MAX_POINTS, Math.max(points[stat3], floor) + amount);
   const gained = next - Math.max(points[stat3], floor);
   points[stat3] = next;
-  const rank2 = Math.max(before3, rankForPoints(next));
+  const rank2 = Math.max(before4, rankForPoints(next));
   commander.socialStats[stat3] = rank2;
-  return { rank: rank2, gained, rankedUp: rank2 > before3 };
+  return { rank: rank2, gained, rankedUp: rank2 > before4 };
 }
 function meetsSocialRequirements(state, requires) {
   return Object.entries(requires).every(([stat3, min]) => socialRank(state, stat3) >= min);
@@ -13310,23 +13342,23 @@ function cabinMap(state, reg) {
   state.squad.filter((u) => u.kind === "named").forEach((u, k) => {
     if (!isLiving(u)) return;
     const start = k % cabins.length;
-    let pick6 = cabins[start];
+    let pick7 = cabins[start];
     for (let i = 0; i < cabins.length; i++) {
       const c = cabins[(start + i) % cabins.length];
       if (!taken.has(String(c.id))) {
-        pick6 = c;
+        pick7 = c;
         break;
       }
     }
-    taken.add(String(pick6.id));
-    out.set(u.id, pick6);
+    taken.add(String(pick7.id));
+    out.set(u.id, pick7);
   });
   for (const u of state.squad) {
     if (u.kind === "named" || !isLiving(u)) continue;
     const free = [...cabins].reverse().find((c) => !taken.has(String(c.id)));
-    const pick6 = free ?? cabins[cabins.length - 1];
-    taken.add(String(pick6.id));
-    out.set(u.id, pick6);
+    const pick7 = free ?? cabins[cabins.length - 1];
+    taken.add(String(pick7.id));
+    out.set(u.id, pick7);
   }
   return out;
 }
@@ -13515,10 +13547,10 @@ function place(state, reg, rooms, unit4) {
   const weights = rooms.map((room2) => routineWeight(state, reg, room2, unit4));
   const total2 = weights.reduce((a, b) => a + b, 0);
   if (total2 <= 0) return { unitId: unit4.id, roomId: null, reason: "nowhere" };
-  let pick6 = fnv1a3(`${state.day}|${state.slot}|${unit4.id}`) % total2;
+  let pick7 = fnv1a3(`${state.day}|${state.slot}|${unit4.id}`) % total2;
   for (let i = 0; i < rooms.length; i++) {
-    if (pick6 < weights[i]) return { unitId: unit4.id, roomId: rooms[i].id, reason: "routine" };
-    pick6 -= weights[i];
+    if (pick7 < weights[i]) return { unitId: unit4.id, roomId: rooms[i].id, reason: "routine" };
+    pick7 -= weights[i];
   }
   return { unitId: unit4.id, roomId: null, reason: "nowhere" };
 }
@@ -13661,16 +13693,16 @@ function validateExpectations(raw, reg, ctx2) {
   if (raw.body !== void 0) {
     if (!isObj4(raw.body)) issues.push("expectations.body must be an object");
     else {
-      const body = {};
+      const body2 = {};
       for (const [id, v] of Object.entries(raw.body)) {
         if (target(id) === void 0) {
           drop2("body", id, "names unknown target");
           continue;
         }
-        if (typeof v === "string" && BODY_FEELINGS.includes(v)) body[id] = v;
+        if (typeof v === "string" && BODY_FEELINGS.includes(v)) body2[id] = v;
         else issues.push(`expectations.body.${id} must be one of ${BODY_FEELINGS.join(", ")}`);
       }
-      if (Object.keys(body).length > 0) out.body = body;
+      if (Object.keys(body2).length > 0) out.body = body2;
     }
   }
   if (raw.scent !== void 0) {
@@ -13817,13 +13849,13 @@ function dynamicAxisEntryId(d) {
   return d.field === "holds_until" ? "expect:holds_until" : "expect:worship.any";
 }
 function scaleOfAxis(key) {
-  const S6 = TUNING.development.scales;
+  const S7 = TUNING.development.scales;
   const field2 = bondField(key);
-  if (field2 !== null) return S6[field2];
+  if (field2 !== null) return S7[field2];
   const d = dynamicAxis(key);
   if (d === null || d.field === "fixed") return null;
-  if (d.kind === "practice") return d.field === "as" ? S6.practiceAs : d.field === "witness" ? S6.practiceWitness : S6.secondary;
-  return d.field === "holds_until" ? S6.holdsUntil : S6.attitude;
+  if (d.kind === "practice") return d.field === "as" ? S7.practiceAs : d.field === "witness" ? S7.practiceWitness : S7.secondary;
+  return d.field === "holds_until" ? S7.holdsUntil : S7.attitude;
 }
 function discreteAxis(unit4, key) {
   const scale = scaleOfAxis(key);
@@ -14068,8 +14100,8 @@ function flipReading(r) {
   };
 }
 var readingOf = (a) => ({ wanted: a.wanted, initiator: a.initiator, harm: a.harm, outcome: a.outcome });
-function knowsAbout(state, unitId, subject, after3) {
-  return state.memory.facts.some((f) => f.day > after3 && f.about.includes(subject) && f.about.length <= TUNING.development.reviseAboutMax && (f.knownBy.includes(unitId) || f.knownBy.includes("*") || f.heard?.[unitId] !== void 0));
+function knowsAbout(state, unitId, subject, after4) {
+  return state.memory.facts.some((f) => f.day > after4 && f.about.includes(subject) && f.about.length <= TUNING.development.reviseAboutMax && (f.knownBy.includes(unitId) || f.knownBy.includes("*") || f.heard?.[unitId] !== void 0));
 }
 function mergePushes(into, add2) {
   for (const p of add2) {
@@ -14370,9 +14402,9 @@ function computeDeltas(state, reg, unitId, event) {
   }
   const gainOk = believed(floors.gain);
   const lossOk = believed(floors.loss);
-  const judged = (v) => v > 0 ? gainOk ? v : 0 : v < 0 ? lossOk ? v : 0 : v;
+  const judged2 = (v) => v > 0 ? gainOk ? v : 0 : v < 0 ? lossOk ? v : 0 : v;
   const judgedStress = stress > 0 ? lossOk ? stress : 0 : stress < 0 ? gainOk ? stress : 0 : stress;
-  return { trust: z(judged(trust)), affinity: z(judged(affinity)), attraction: z(judged(attraction)), stress: z(judgedStress), severity };
+  return { trust: z(judged2(trust)), affinity: z(judged2(affinity)), attraction: z(judged2(attraction)), stress: z(judgedStress), severity };
 }
 
 // src/engine/relations/effects.ts
@@ -14498,9 +14530,9 @@ function applyPunishment(draft, ctx2, p) {
         out.push(...addRestriction(draft, base));
         extra.restrictionIds = [id];
       } else if (fx2.type === "resource") {
-        const before3 = draft.resources[fx2.resource];
-        draft.resources[fx2.resource] = Math.max(0, before3 + fx2.amount);
-        const delta = draft.resources[fx2.resource] - before3;
+        const before4 = draft.resources[fx2.resource];
+        draft.resources[fx2.resource] = Math.max(0, before4 + fx2.amount);
+        const delta = draft.resources[fx2.resource] - before4;
         if (delta !== 0) {
           out.push({ type: "resource_changed", resource: fx2.resource, amount: delta });
           extra.resources = { ...extra.resources ?? {}, [fx2.resource]: delta };
@@ -14554,11 +14586,11 @@ function setRecord(draft, unitId, value) {
 function addRecord(draft, unitId, amount, reason) {
   if (!draft.relations[unitId]) return [];
   const T5 = TUNING.impunity;
-  const before3 = recordOf(draft, unitId);
-  const after3 = Math.min(T5.recordMax, Math.max(T5.recordMin, before3 + amount));
-  const delta = after3 - before3;
+  const before4 = recordOf(draft, unitId);
+  const after4 = Math.min(T5.recordMax, Math.max(T5.recordMin, before4 + amount));
+  const delta = after4 - before4;
   if (delta === 0) return [];
-  setRecord(draft, unitId, after3);
+  setRecord(draft, unitId, after4);
   return [{ type: "impunity_changed", unitId, delta, reason }];
 }
 function decayRecords(draft) {
@@ -14604,7 +14636,7 @@ var appraisalIds = (unit4) => [...unit4?.development?.pending ?? [], ...unit4?.d
 function captureInverse(draft, unitId, fn) {
   const rel = draft.relations[unitId];
   const unit4 = draft.squad.find((u) => u.id === unitId);
-  const before3 = rel && unit4 ? {
+  const before4 = rel && unit4 ? {
     trust: rel.trust,
     affinity: rel.affinity,
     attraction: rel.attraction,
@@ -14627,26 +14659,26 @@ function captureInverse(draft, unitId, fn) {
   const deedsAfter = deedsOf(draft);
   for (const k of Object.keys(deedsAfter)) if (deedsAfter[k] !== deedsBefore[k]) moved[k] = deedsAfter[k] - deedsBefore[k];
   if (Object.keys(moved).length > 0) inverse.deeds = moved;
-  const after3 = draft.relations[unitId];
+  const after4 = draft.relations[unitId];
   const unitAfter = draft.squad.find((u) => u.id === unitId);
-  if (!before3 || !after3 || !unitAfter) return { events, inverse };
+  if (!before4 || !after4 || !unitAfter) return { events, inverse };
   const axes = {};
-  for (const a of ["trust", "affinity", "attraction"]) if (after3[a] !== before3[a]) axes[a] = after3[a] - before3[a];
+  for (const a of ["trust", "affinity", "attraction"]) if (after4[a] !== before4[a]) axes[a] = after4[a] - before4[a];
   if (Object.keys(axes).length > 0) inverse.axes = axes;
-  if (unitAfter.stress !== before3.stress) inverse.stress = unitAfter.stress - before3.stress;
-  const record2 = recordOf(draft, unitId) - before3.record;
+  if (unitAfter.stress !== before4.stress) inverse.stress = unitAfter.stress - before4.stress;
+  const record2 = recordOf(draft, unitId) - before4.record;
   if (record2 !== 0) inverse.record = record2;
   const daily = {};
-  for (const a of ["trust", "affinity", "attraction"]) if (after3.dailyGain[a] !== before3.daily[a]) daily[a] = after3.dailyGain[a] - before3.daily[a];
+  for (const a of ["trust", "affinity", "attraction"]) if (after4.dailyGain[a] !== before4.daily[a]) daily[a] = after4.dailyGain[a] - before4.daily[a];
   if (Object.keys(daily).length > 0) inverse.dailyGain = daily;
-  if (after3.stateId !== before3.stateId) inverse.state = { from: before3.stateId, to: after3.stateId, sinceFrom: before3.stateSince };
-  if (before3.publicity && JSON.stringify(after3.publicity ?? null) !== JSON.stringify(before3.publicity)) inverse.publicity = before3.publicity;
-  if (after3.loyaltyBand !== before3.band) inverse.loyaltyBand = { from: before3.band, to: after3.loyaltyBand };
+  if (after4.stateId !== before4.stateId) inverse.state = { from: before4.stateId, to: after4.stateId, sinceFrom: before4.stateSince };
+  if (before4.publicity && JSON.stringify(after4.publicity ?? null) !== JSON.stringify(before4.publicity)) inverse.publicity = before4.publicity;
+  if (after4.loyaltyBand !== before4.band) inverse.loyaltyBand = { from: before4.band, to: after4.loyaltyBand };
   const kept = /* @__PURE__ */ new Map();
-  for (const k of before3.history) kept.set(k, (kept.get(k) ?? 0) + 1);
+  for (const k of before4.history) kept.set(k, (kept.get(k) ?? 0) + 1);
   const added = [];
   const stillThere2 = /* @__PURE__ */ new Map();
-  for (const h2 of after3.history) {
+  for (const h2 of after4.history) {
     const k = JSON.stringify(h2);
     const left = kept.get(k) ?? 0;
     if (left > 0) {
@@ -14657,7 +14689,7 @@ function captureInverse(draft, unitId, fn) {
   if (added.length > 0) inverse.history = structuredClone(added);
   const dropped = [];
   const seen2 = /* @__PURE__ */ new Map();
-  before3.history.forEach((k, at) => {
+  before4.history.forEach((k, at) => {
     const n = (seen2.get(k) ?? 0) + 1;
     seen2.set(k, n);
     if (n > (stillThere2.get(k) ?? 0)) dropped.push({ at, line: JSON.parse(k) });
@@ -14863,11 +14895,11 @@ function addRestriction(draft, r) {
   disciplineOf(draft).restrictions.push(r);
   return [{ type: "restriction_started", unitId: r.unitId, kind: r.kind, ...r.untilDay !== void 0 ? { untilDay: r.untilDay } : {} }];
 }
-function removeRestrictions(draft, pick6) {
+function removeRestrictions(draft, pick7) {
   const d = draft.discipline;
   if (!d) return [];
-  const gone3 = d.restrictions.filter(pick6);
-  if (gone3.length > 0) d.restrictions = d.restrictions.filter((r) => !pick6(r));
+  const gone3 = d.restrictions.filter(pick7);
+  if (gone3.length > 0) d.restrictions = d.restrictions.filter((r) => !pick7(r));
   return gone3;
 }
 function expireRestrictions(draft) {
@@ -14919,10 +14951,10 @@ function leadScoreParts(state, reg, unitId) {
   return { styleBase, impunity, defect, yielded, enforced, state: stateBonus, total: styleBase + impunity + defect + yielded + enforced + stateBonus };
 }
 function decideLead(state, reg, unitId) {
-  const parts = leadScoreParts(state, reg, unitId);
-  if (!parts) return null;
+  const parts2 = leadScoreParts(state, reg, unitId);
+  if (!parts2) return null;
   const T5 = TUNING.bonds.lead;
-  const score = Math.round(Math.min(100, Math.max(0, parts.total)));
+  const score = Math.round(Math.min(100, Math.max(0, parts2.total)));
   return { by: score >= T5.unitAtLeast ? "unit" : score <= T5.commanderAtMost ? "commander" : "shared", score };
 }
 function decideSceneLead(draft, reg) {
@@ -15282,10 +15314,10 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
   for (const fx2 of effects2) {
     switch (fx2.type) {
       case "resource": {
-        const before3 = draft.resources[fx2.resource];
-        const after3 = Math.max(0, before3 + fx2.amount);
-        draft.resources[fx2.resource] = after3;
-        if (after3 !== before3) events.push({ type: "resource_changed", resource: fx2.resource, amount: after3 - before3 });
+        const before4 = draft.resources[fx2.resource];
+        const after4 = Math.max(0, before4 + fx2.amount);
+        draft.resources[fx2.resource] = after4;
+        if (after4 !== before4) events.push({ type: "resource_changed", resource: fx2.resource, amount: after4 - before4 });
         break;
       }
       case "carried_supplies": {
@@ -15296,10 +15328,10 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
       case "faction": {
         const factionId = fx2.factionId === OWN_FACTION ? draft.commander.corporationId ?? "" : fx2.factionId;
         if (!reg.corporations.has(factionId)) break;
-        const before3 = draft.world.factions[factionId] ?? 0;
-        const after3 = clamp10(before3 + fx2.amount, -100, 100);
-        draft.world.factions[factionId] = after3;
-        if (after3 !== before3) events.push({ type: "faction_changed", factionId, amount: after3 - before3, standing: after3 });
+        const before4 = draft.world.factions[factionId] ?? 0;
+        const after4 = clamp10(before4 + fx2.amount, -100, 100);
+        draft.world.factions[factionId] = after4;
+        if (after4 !== before4) events.push({ type: "faction_changed", factionId, amount: after4 - before4, standing: after4 });
         break;
       }
       case "clock":
@@ -15318,11 +15350,11 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
         break;
       }
       case "clearance": {
-        const before3 = draft.world.clearanceTier ?? 0;
-        const after3 = Math.min(3, Math.max(before3, fx2.tier));
-        if (after3 > before3) {
-          draft.world.clearanceTier = after3;
-          events.push({ type: "clearance_raised", tier: after3 });
+        const before4 = draft.world.clearanceTier ?? 0;
+        const after4 = Math.min(3, Math.max(before4, fx2.tier));
+        if (after4 > before4) {
+          draft.world.clearanceTier = after4;
+          events.push({ type: "clearance_raised", tier: after4 });
         }
         break;
       }
@@ -15361,10 +15393,10 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
         break;
       }
       case "leash": {
-        const before3 = draft.leash.authorizationsLeft;
-        draft.leash.authorizationsLeft = Math.max(0, before3 + fx2.amount);
-        if (draft.leash.authorizationsLeft !== before3) {
-          events.push({ type: "leash_changed", amount: draft.leash.authorizationsLeft - before3, left: draft.leash.authorizationsLeft });
+        const before4 = draft.leash.authorizationsLeft;
+        draft.leash.authorizationsLeft = Math.max(0, before4 + fx2.amount);
+        if (draft.leash.authorizationsLeft !== before4) {
+          events.push({ type: "leash_changed", amount: draft.leash.authorizationsLeft - before4, left: draft.leash.authorizationsLeft });
         }
         break;
       }
@@ -15662,14 +15694,14 @@ function buildMission(draft, ctx2, o) {
   const reg = ctx2.registries;
   const tpl = reg.missionTemplates.get(o.templateId);
   const region = reg.regions.get(o.regionId);
-  const pick6 = (list5) => list5[ctx2.rng.int(0, list5.length - 1)];
+  const pick7 = (list5) => list5[ctx2.rng.int(0, list5.length - 1)];
   const objective = tpl.objectives.find((x) => x.node === o.objectiveNode) ?? tpl.objectives[0];
   const mission = {
     id: nextId(draft, "m"),
     source: o.source,
     templateId: o.templateId,
-    title: (o.title ?? pick6(tpl.titles)).slice(0, TUNING.director.titleMax),
-    brief: (o.brief ?? pick6(tpl.briefs)).slice(0, TUNING.director.briefMax),
+    title: (o.title ?? pick7(tpl.titles)).slice(0, TUNING.director.titleMax),
+    brief: (o.brief ?? pick7(tpl.briefs)).slice(0, TUNING.director.briefMax),
     regionId: o.regionId,
     danger: clamp11(Math.round(o.danger ?? region.danger), tpl.dangerRange[0], tpl.dangerRange[1]),
     objective: { node: objective.node, condition: objective.condition },
@@ -15925,9 +15957,9 @@ function lockedTabs(state, reg) {
   for (const row4 of reg.uiUnlocks.values()) if (!holds(state, conditionOf(row4))) out.add(tabOf(row4));
   return out;
 }
-function unlockedBetween(before3, after3, reg) {
-  const was = lockedTabs(before3, reg);
-  const now = lockedTabs(after3, reg);
+function unlockedBetween(before4, after4, reg) {
+  const was = lockedTabs(before4, reg);
+  const now = lockedTabs(after4, reg);
   return [...reg.uiUnlocks.values()].filter((row4) => was.has(tabOf(row4)) && !now.has(tabOf(row4)));
 }
 
@@ -16003,12 +16035,12 @@ function takesPart(state, unitId) {
   const u = unitOf2(state, unitId);
   return u !== void 0 && u.kind === "named" && isLiving(u) && state.expedition?.party.includes(u.id) !== true;
 }
-function placesOf(state, reg, unitId, day, cache2) {
+function placesOf(state, reg, unitId, day, cache3) {
   const key = `${unitId}|${day}`;
-  const kept = cache2?.get(key);
+  const kept = cache3?.get(key);
   if (kept) return kept;
   const places = DAY_SLOTS.map((slot2) => whereaboutAt(state, reg, unitId, day, slot2));
-  cache2?.set(key, places);
+  cache3?.set(key, places);
   return places;
 }
 function isPrivateRoom(reg, roomId) {
@@ -16114,9 +16146,9 @@ function deliverNews(draft, reg, day) {
   for (; ; ) {
     if (told().filter((r) => r.day === day).length >= cap9) break;
     const last = told().at(-1);
-    const pick6 = inQueue().filter((i) => i.urgent !== true).filter((i) => last === void 0 || i.category !== last.category).filter((i) => !told().some((r) => r.unitId === i.unitId && day - r.day < t.sameWomanDays)).filter((i) => i.kind !== "hobby" || life.delivered.filter((r) => r.hobby && day - r.day < 7).length < t.hobbyWeek).sort(order)[0];
-    if (!pick6) break;
-    events.push(...deliver(draft, reg, life, pick6, day));
+    const pick7 = inQueue().filter((i) => i.urgent !== true).filter((i) => last === void 0 || i.category !== last.category).filter((i) => !told().some((r) => r.unitId === i.unitId && day - r.day < t.sameWomanDays)).filter((i) => i.kind !== "hobby" || life.delivered.filter((r) => r.hobby && day - r.day < 7).length < t.hobbyWeek).sort(order)[0];
+    if (!pick7) break;
+    events.push(...deliver(draft, reg, life, pick7, day));
   }
   return events;
 }
@@ -16254,7 +16286,7 @@ function openTopic(draft, reg, unitId, topicId) {
   const pending4 = (draft.life.units[unitId] ??= { last: {} }).pendingTopics ??= [];
   if (!pending4.includes(topicId)) pending4.push(topicId);
 }
-function practiceSlots(state, reg, unitId, day, cache2) {
+function practiceSlots(state, reg, unitId, day, cache3) {
   const unit4 = unitOf2(state, unitId);
   const life = state.life;
   if (lifeMode(state) === "off" || !life || !unit4 || !unit4.hobbies?.some((h2) => h2.state === "active") || !takesPart(state, unitId)) return [];
@@ -16262,7 +16294,7 @@ function practiceSlots(state, reg, unitId, day, cache2) {
   if (state.lastExpedition?.day === day && state.lastExpedition.party.includes(unitId)) return [];
   const order = [...reg.hobbies.keys()];
   const out = [];
-  const places = placesOf(state, reg, unitId, day, cache2);
+  const places = placesOf(state, reg, unitId, day, cache3);
   for (const [i, slot2] of DAY_SLOTS.entries()) {
     const w = places[i];
     const busy = life.busy.find((b) => b.unitId === unitId && b.slot === busySlot(day, slot2));
@@ -16495,8 +16527,8 @@ function sharePractice(draft, reg, aId, bId, hobbyId, day) {
 }
 
 // src/engine/headStart/hash.ts
-var headStartRaw = (seed3, unitId, key) => fnv1a3(`${seed3}|${unitId}|head_start|${key}`);
-var headStartHash = (seed3, unitId, key) => headStartRaw(seed3, unitId, key) / 2 ** 32;
+var headStartRaw = (seed4, unitId, key) => fnv1a3(`${seed4}|${unitId}|head_start|${key}`);
+var headStartHash = (seed4, unitId, key) => headStartRaw(seed4, unitId, key) / 2 ** 32;
 
 // src/engine/headStart/develop.ts
 var AXES2 = ["trust", "affinity", "attraction"];
@@ -16505,12 +16537,12 @@ function impressionOf(d) {
   const sum = d.trust + d.affinity;
   return sum > 0 ? "positive" : sum < 0 ? "negative" : "neutral";
 }
-function developRelation(rel, d, days, seed3, unitId) {
+function developRelation(rel, d, days, seed4, unitId) {
   const k = TUNING.headStart.k[days];
   const spreadMax = TUNING.headStart.spread;
   for (const axis of AXES2) {
     if (d[axis] === 0) continue;
-    const spread2 = headStartRaw(seed3, unitId, `spread:${axis}`) % (2 * spreadMax + 1) - spreadMax;
+    const spread2 = headStartRaw(seed4, unitId, `spread:${axis}`) % (2 * spreadMax + 1) - spreadMax;
     const [lo, hi] = RANGE3[axis];
     rel[axis] = Math.min(hi, Math.max(lo, rel[axis] + Math.round(d[axis] * k) + spread2));
   }
@@ -16520,9 +16552,9 @@ function crimeChance(state, reg, unit4, days) {
   const chance = TUNING.headStart.crime[days] * (reactsToCrime(unit4, crime) ? TUNING.headStart.crimeReactMult : 1);
   return Math.min(TUNING.headStart.crimeCap, chance);
 }
-function rollCrime(draft, reg, unit4, days, seed3) {
+function rollCrime(draft, reg, unit4, days, seed4) {
   if (draft.relations[unit4.id]?.flags.includes("knows_crime")) return false;
-  if (headStartHash(seed3, unit4.id, "crime") >= crimeChance(draft, reg, unit4, days)) return false;
+  if (headStartHash(seed4, unit4.id, "crime") >= crimeChance(draft, reg, unit4, days)) return false;
   revealCrime(draft, reg, [unit4.id]);
   return true;
 }
@@ -16750,7 +16782,7 @@ function injureCommander(draft, days) {
 }
 
 // src/engine/dynamic/cover.ts
-var coverOf = (frame4) => frame4 === "role" ? TUNING.dynamic.cover.role : frame4 === "rule" ? TUNING.dynamic.cover.rule : 0;
+var coverOf = (frame5) => frame5 === "role" ? TUNING.dynamic.cover.role : frame5 === "rule" ? TUNING.dynamic.cover.rule : 0;
 function coverMult(state, reg) {
   if (!dynamicOn(state, reg)) return 1;
   let best = 0;
@@ -16929,22 +16961,22 @@ function addDefiance(draft, ctx2, amount) {
 function checkEscalation(draft, ctx2) {
   const w = wardenOf(draft);
   if (!w) return [];
-  const E4 = TUNING.warden.escalation;
+  const E5 = TUNING.warden.escalation;
   const events = [];
   const warn = (level) => {
     w.warnings.push({ level, day: draft.day });
     events.push({ type: "warden_warning", level });
   };
-  if (w.defiance >= E4.warning1 && w.warnings.length === 0) warn(1);
-  if (w.defiance >= E4.warning2) {
+  if (w.defiance >= E5.warning1 && w.warnings.length === 0) warn(1);
+  if (w.defiance >= E5.warning2) {
     if (w.warnings.length === 1 && w.warnings[0].day < draft.day) warn(2);
-    else if (w.warnings.length < 2) w.defiance = E4.warning2 - 1;
+    else if (w.warnings.length < 2) w.defiance = E5.warning2 - 1;
   }
-  if (w.defiance >= E4.terminate) {
+  if (w.defiance >= E5.terminate) {
     const second = w.warnings[1];
     if (w.warnings.length >= 2 && second.day < draft.day) {
       events.push({ type: "commander_terminated" }, ...commanderDies(draft, ctx2, "terminated"));
-    } else w.defiance = E4.terminate - 1;
+    } else w.defiance = E5.terminate - 1;
   }
   return events;
 }
@@ -17117,10 +17149,10 @@ function commanderSkill(state, physicsId) {
 function addEnduranceXp(draft, physicsId, xp) {
   const book2 = draft.commander.endurance ??= {};
   const row4 = book2[physicsId] ??= { xp: 0, level: 0 };
-  const before3 = row4.level;
+  const before4 = row4.level;
   row4.xp += xp;
   row4.level = levelForXp(row4.xp);
-  return { type: "endurance_gained", physicsId, xp: row4.xp, gained: xp, level: row4.level, leveledUp: row4.level > before3 };
+  return { type: "endurance_gained", physicsId, xp: row4.xp, gained: xp, level: row4.level, leveledUp: row4.level > before4 };
 }
 function trainEndurance(draft, physicsId) {
   if (draft.commander.endurance?.[physicsId]?.trainedDay === draft.day) return null;
@@ -17520,12 +17552,12 @@ function addStress(ctx2, cid, amount, _source) {
     if (delta > 0 && e.direction === "gain" || delta < 0 && e.direction === "relief") delta *= Math.max(0, 1 + e.pct / 100);
   }
   delta = Math.round(delta);
-  const before3 = c.stress;
-  c.stress = Math.min(100, Math.max(0, before3 + delta));
-  const applied = c.stress - before3;
+  const before4 = c.stress;
+  c.stress = Math.min(100, Math.max(0, before4 + delta));
+  const applied = c.stress - before4;
   if (applied !== 0) ctx2.log({ kind: "stress", target: cid, amount: applied });
   for (const t of [50, 80, 100]) {
-    if (before3 < t && c.stress >= t) fireTrigger(ctx2, "onStressThreshold", { actorCid: cid, threshold: t });
+    if (before4 < t && c.stress >= t) fireTrigger(ctx2, "onStressThreshold", { actorCid: cid, threshold: t });
   }
   if (c.stress >= 100 && !c.breakdown) enterBreakdown(ctx2, cid);
   return applied;
@@ -17665,8 +17697,8 @@ function breakdownAction(ctx2, cid, opts = {}) {
     case "random_skill": {
       const options2 = c.skills.map((id) => skillById(ctx2.reg, id)).filter((s) => !!s && s.kind !== "passive" && s.kind !== "ultimate" && (c.cooldowns[s.id] ?? 0) === 0).map((s) => ({ s, legal: legalTargets(cs, cid, s, ctx2.reg) })).filter((o) => o.legal.length > 0);
       if (options2.length === 0) return { kind: "pass" };
-      const pick6 = ctx2.rng.pick(options2);
-      return { kind: "skill", skillId: pick6.s.id, targetCid: ctx2.rng.pick(pick6.legal) };
+      const pick7 = ctx2.rng.pick(options2);
+      return { kind: "skill", skillId: pick7.s.id, targetCid: ctx2.rng.pick(pick7.legal) };
     }
     default:
       return null;
@@ -17763,8 +17795,8 @@ function checkCondition(ctx2, cid, when, targetCid, skillId) {
     if (ordered !== when.orderedThisRound) return false;
   }
   if (when.commanderBuildIn !== void 0) {
-    const build5 = cs.commander?.build;
-    if (build5 === void 0 || !when.commanderBuildIn.includes(build5)) return false;
+    const build6 = cs.commander?.build;
+    if (build6 === void 0 || !when.commanderBuildIn.includes(build6)) return false;
   }
   if (when.upkeepWithinDays !== void 0 && !(upkeepAge(ctx2, c) <= when.upkeepWithinDays)) return false;
   if (when.upkeepOlderThanDays !== void 0 && !(upkeepAge(ctx2, c) > when.upkeepOlderThanDays)) return false;
@@ -18583,9 +18615,9 @@ function regardFromEvents(draft, reg, events) {
         for (const id of namedInService(draft)) out.push(...regardRise(draft, reg, id, "value", V.feat));
         break;
       case "expedition_ended": {
-        const report3 = draft.lastExpedition;
-        if (e.outcome !== "success" || report3 === void 0 || report3.id !== e.reportId) break;
-        for (const id of report3.party) out.push(...regardRise(draft, reg, id, "value", V.run));
+        const report4 = draft.lastExpedition;
+        if (e.outcome !== "success" || report4 === void 0 || report4.id !== e.reportId) break;
+        for (const id of report4.party) out.push(...regardRise(draft, reg, id, "value", V.run));
         break;
       }
     }
@@ -18928,8 +18960,8 @@ function rollBookings(draft, ctx2) {
     if (!ctx2.rng.chance(bookingChance(draft, reg, u.id))) continue;
     const kinds2 = bookingKindsFor(draft, reg, u.id);
     if (kinds2.length === 0) continue;
-    let pick6 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
-    const kind = kinds2.find((k) => (pick6 -= Number(k.weight)) < 0) ?? kinds2[0];
+    let pick7 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
+    const kind = kinds2.find((k) => (pick7 -= Number(k.weight)) < 0) ?? kinds2[0];
     const problem = consentProblem(draft, reg, { unitId: u.id });
     if (problem !== null) {
       noteConsentRefusal(draft, reg, u.id, problem);
@@ -19379,19 +19411,19 @@ function blended(m, declared) {
 }
 var largest = (m, k) => MOTIVES.every((j) => j === k || m[k] > m[j]);
 function regionOf(reading2, declared) {
-  const R6 = TUNING.position.region;
+  const R7 = TUNING.position.region;
   const m = blended(reading2.motive, declared);
   const { r, f, p } = reading2;
-  if (reading2.flat >= R6.flat) return "hollow";
-  if (reading2.deflect >= R6.deflect) return "elusive";
+  if (reading2.flat >= R7.flat) return "hollow";
+  if (reading2.deflect >= R7.deflect) return "elusive";
   if (largest(m, "fear")) return "cowed";
-  if (f >= R6.friction && largest(m, "gain")) return "double_game";
-  if (f < R6.friction && largest(m, "gain")) return "calculating";
-  if (f >= R6.friction && p >= R6.play) return "bratty";
-  if (f >= R6.friction) return "proud";
-  if (r >= R6.ready && f >= 0 && largest(m, "process")) return "hungry";
+  if (f >= R7.friction && largest(m, "gain")) return "double_game";
+  if (f < R7.friction && largest(m, "gain")) return "calculating";
+  if (f >= R7.friction && p >= R7.play) return "bratty";
+  if (f >= R7.friction) return "proud";
+  if (r >= R7.ready && f >= 0 && largest(m, "process")) return "hungry";
   if (r < 0) return "reluctant";
-  if (r >= R6.ready && largest(m, "order")) return "dutiful";
+  if (r >= R7.ready && largest(m, "order")) return "dutiful";
   return "devoted";
 }
 function motiveOf(sample) {
@@ -19511,8 +19543,8 @@ function bandMinAt(reg, index2) {
 function holdBandOf(reg, hold) {
   return bandsOf2(reg)[bandIndex(reg, hold)]?.id ?? "";
 }
-function frameEntry(reg, frame4) {
-  return reg.dynamicFrames.get(frame4);
+function frameEntry(reg, frame5) {
+  return reg.dynamicFrames.get(frame5);
 }
 function compatibilityOf(state, reg, unitId) {
   const dyn = dynamicOf(state, unitId);
@@ -19557,9 +19589,9 @@ function addHold(draft, ctx2, unitId, base, cause, opts = {}) {
       else if (primary === "cold") delta *= TUNING.dynamic.romanticTier.cold;
     }
   }
-  const frame4 = frameEntry(reg, dyn.frame);
-  const floor = frame4?.holdFloor ?? 0;
-  const ceiling = frame4?.holdCeiling ?? 100;
+  const frame5 = frameEntry(reg, dyn.frame);
+  const floor = frame5?.holdFloor ?? 0;
+  const ceiling = frame5?.holdCeiling ?? 100;
   const from = dyn.hold;
   let to = round43(Math.min(ceiling, Math.max(floor, from + delta)));
   if (gain2 && to < from) to = from;
@@ -20021,11 +20053,11 @@ function commandKeptEnforced(draft, ctx2, unitId, e) {
   const dyn = dynamicOf(draft, unitId);
   if (e.severity < 3 || dyn?.aftermath?.kind !== "command_kept") return { events: [] };
   const aftermath = structuredClone(dyn.aftermath);
-  const before3 = structuredClone(dyn.domains);
+  const before4 = structuredClone(dyn.domains);
   const override = draft.dynamic?.override?.unitId === unitId ? structuredClone(draft.dynamic.override) : void 0;
   const events = endCommandKept(draft, ctx2, unitId, "force");
   const kept = new Set(dyn.domains.map((d) => d.id));
-  return { events, undo: { domains: before3.filter((d) => !kept.has(d.id)), aftermath, ...override !== void 0 ? { override } : {} } };
+  return { events, undo: { domains: before4.filter((d) => !kept.has(d.id)), aftermath, ...override !== void 0 ? { override } : {} } };
 }
 function restoreCommandKept(draft, ctx2, unitId, undo) {
   const reg = ctx2.registries;
@@ -20484,9 +20516,9 @@ function leavingQuarters(draft, ctx2, holders2) {
 function background(draft, ctx2, holders2) {
   const events = [];
   for (const h2 of holders2) {
-    const frame4 = dynamicOf(draft, h2).frame;
-    if (frame4 !== "role" && frame4 !== "rule") continue;
-    for (const o of othersOf(draft, h2)) events.push(...addSign(draft, ctx2, o, h2, frame4 === "role" ? "background_role" : "background_rule"));
+    const frame5 = dynamicOf(draft, h2).frame;
+    if (frame5 !== "role" && frame5 !== "rule") continue;
+    for (const o of othersOf(draft, h2)) events.push(...addSign(draft, ctx2, o, h2, frame5 === "role" ? "background_role" : "background_rule"));
   }
   return events;
 }
@@ -20511,11 +20543,11 @@ function gossip(draft, ctx2, holders2) {
   const reg = ctx2.registries;
   const events = [];
   for (const h2 of holders2) {
-    const before3 = new Map(othersOf(draft, h2).map((id) => [id, levelOf2(draft, id, h2)]));
-    for (const o of before3.keys()) {
-      if (before3.get(o) === "knows_dynamic") continue;
+    const before4 = new Map(othersOf(draft, h2).map((id) => [id, levelOf2(draft, id, h2)]));
+    for (const o of before4.keys()) {
+      if (before4.get(o) === "knows_dynamic") continue;
       let total2 = 0;
-      for (const [y, level] of before3) {
+      for (const [y, level] of before4) {
         if (y === o || level !== "knows_dynamic" && level !== "suspects_dynamic") continue;
         if (dynamicRoll(draft, o, `gossip:${y}:${h2}`) >= T5.gossipChance) continue;
         const row4 = signRow(reg, level === "knows_dynamic" ? "gossip_knows" : "gossip_suspects");
@@ -21182,12 +21214,12 @@ function recordMerit(draft, cs) {
     else if (e.kind === "downed" && isEnemy(e.target)) credit(e.actor, M2.finishingBlow);
     else if (e.kind === "heal") credit(e.actor, (e.amount ?? 0) / M2.healPer);
   }
-  const fresh3 = [...points].filter(([id, n]) => n > 0 && draft.squad.find((u) => u.id === id)?.kind === "named");
-  if (fresh3.length === 0 && !draft.power?.merit) return;
+  const fresh4 = [...points].filter(([id, n]) => n > 0 && draft.squad.find((u) => u.id === id)?.kind === "named");
+  if (fresh4.length === 0 && !draft.power?.merit) return;
   const power = powerOf(draft);
   power.merit = (power.merit ?? []).filter((m) => draft.day - m.day < M2.windowDays);
   for (const c of cs.combatants) {
-    const hit = fresh3.find(([id]) => id === c.unitId);
+    const hit = fresh4.find(([id]) => id === c.unitId);
     if (hit) power.merit.push({ day: draft.day, unitId: hit[0], points: round22(hit[1]) });
   }
   if (power.merit.length === 0) delete power.merit;
@@ -21211,17 +21243,17 @@ function standingOf(state, reg, unitId) {
   if (!unit4 || !bond || !isLiving(unit4) || unitId === wardenUnitId(state)) return null;
   const impunity = impunityOf(state, reg, unitId);
   if (!impunity) return null;
-  const S6 = TUNING.power.standing;
-  const raw = S6.merit * meritOf(state, unitId) + S6.respect * respectOf(state, unitId) + S6.impunity * (impunity.value / 100);
+  const S7 = TUNING.power.standing;
+  const raw = S7.merit * meritOf(state, unitId) + S7.respect * respectOf(state, unitId) + S7.impunity * (impunity.value / 100);
   const bonus = state.power?.hierarchy?.standingBonus;
   const extra = bonus && bonus.unitId === unitId && bonus.untilDay > state.day ? bonus.amount : 0;
   const coLeader = hasCapability(state, reg, unitId, "co_leader") ? TUNING.dynamic.coLeaderStanding : 0;
-  return Math.round(100 * raw * S6.factor[bond.leadStyle]) + extra + coLeader - standingMalus(state, reg, unitId);
+  return Math.round(100 * raw * S7.factor[bond.leadStyle]) + extra + coLeader - standingMalus(state, reg, unitId);
 }
 function computeHierarchy(draft, reg) {
   const power = powerOf(draft);
   const old = power.hierarchy;
-  const S6 = TUNING.power.standing;
+  const S7 = TUNING.power.standing;
   const h2 = { ...old, standings: {}, endorsed: old?.endorsed ?? false, computedDay: draft.day };
   if (h2.deposed && h2.deposed.untilDay <= draft.day) delete h2.deposed;
   if (h2.standingBonus && h2.standingBonus.untilDay <= draft.day) delete h2.standingBonus;
@@ -21232,7 +21264,7 @@ function computeHierarchy(draft, reg) {
   const [top, next] = ranked;
   let leader;
   const earned = top !== void 0 && (top.unit.id === old?.leaderId || meritOf(draft, top.unit.id) > 0);
-  if (top && next && earned && top.standing >= next.standing + S6.margin && leadRank(bondOf(top.unit).leadStyle) >= 2 && h2.deposed?.unitId !== top.unit.id) leader = top.unit.id;
+  if (top && next && earned && top.standing >= next.standing + S7.margin && leadRank(bondOf(top.unit).leadStyle) >= 2 && h2.deposed?.unitId !== top.unit.id) leader = top.unit.id;
   const coLeader = holderWith(draft, reg, "co_leader");
   if (coLeader === null) delete h2.coLeaderId;
   else h2.coLeaderId = coLeader;
@@ -21336,14 +21368,14 @@ function addMastery(draft, reg, unitId, targetId, xp) {
   const unit4 = draft.squad.find((u) => u.id === unitId);
   const rel = draft.relations[unitId];
   if (!dynamicOn(draft, reg) || unit4 === void 0 || unit4.kind !== "named" || !isLiving(unit4) || rel === void 0 || !reg.worshipTargets.has(targetId) || !(xp > 0)) return [];
-  const before3 = masteryLevel(draft, unitId, targetId);
+  const before4 = masteryLevel(draft, unitId, targetId);
   rel.mastery = { ...rel.mastery, [targetId]: round45((rel.mastery?.[targetId] ?? 0) + xp) };
-  const after3 = masteryLevel(draft, unitId, targetId);
+  const after4 = masteryLevel(draft, unitId, targetId);
   const events = [];
-  for (let level = before3 + 1; level <= after3; level++) events.push({ type: "mastery_gained", unitId, targetId, level });
+  for (let level = before4 + 1; level <= after4; level++) events.push({ type: "mastery_gained", unitId, targetId, level });
   const open3 = TUNING.mastery.revealLevel;
   const target = reg.worshipTargets.get(targetId);
-  if (before3 < open3 && after3 >= open3 && !zoneRevealed(draft, unitId, targetId) && contentAllowed(draft, reg, target, unitId)) {
+  if (before4 < open3 && after4 >= open3 && !zoneRevealed(draft, unitId, targetId) && contentAllowed(draft, reg, target, unitId)) {
     events.push({
       type: "zone_revealed",
       unitId,
@@ -21383,8 +21415,8 @@ function revealedExpectations(state, reg, unitId) {
   if (all.traits !== void 0 && tags.has(expectTag("traits"))) out.traits = [...all.traits];
   const worship = Object.entries(all.worship ?? {}).filter(([id]) => tags.has(expectTag("worship", id)));
   if (worship.length > 0) out.worship = Object.fromEntries(worship.map(([id, w]) => [id, { ...w }]));
-  const body = Object.entries(all.body ?? {}).filter(([id]) => tags.has(expectTag("body", id)));
-  if (body.length > 0) out.body = Object.fromEntries(body);
+  const body2 = Object.entries(all.body ?? {}).filter(([id]) => tags.has(expectTag("body", id)));
+  if (body2.length > 0) out.body = Object.fromEntries(body2);
   return out;
 }
 function sharedToday(state, unitId) {
@@ -21422,12 +21454,12 @@ var trains = (reg, activityId) => activityId !== void 0 && (reg.activities.get(a
 function surfaceHolds(state, reg, unitId, cond) {
   const scene = state.scene;
   const rel = dynamicOf(state, unitId);
-  const S6 = TUNING.dynamic.style;
+  const S7 = TUNING.dynamic.style;
   switch (cond) {
     case "peak":
       return atPeak(state, unitId);
     case "scene_edges":
-      return scene !== void 0 && inScene(state, unitId) && (scene.exchanges <= S6.edgeStart || scene.exchanges >= S6.edgeEnd);
+      return scene !== void 0 && inScene(state, unitId) && (scene.exchanges <= S7.edgeStart || scene.exchanges >= S7.edgeEnd);
     case "before_others":
       return scene !== void 0 && inScene(state, unitId) && scene.participants.length >= 2;
     case "third_person":
@@ -21452,22 +21484,22 @@ function surfaceHolds(state, reg, unitId, cond) {
     }
     case "stagnation": {
       const day = state.dynamic?.noted?.enduranceDay;
-      return day !== void 0 && state.day - day >= S6.stagnationDays;
+      return day !== void 0 && state.day - day >= S7.stagnationDays;
     }
     case "training_start":
       return scene !== void 0 && inScene(state, unitId) && trains(reg, scene.activityId);
     case "praised_or_ignored": {
       const contact = state.relations[unitId]?.contactDay;
-      return state.dynamic?.noted?.praisedDay === state.day || contact !== void 0 && state.day - contact >= S6.ignoredDays;
+      return state.dynamic?.noted?.praisedDay === state.day || contact !== void 0 && state.day - contact >= S7.ignoredDays;
     }
     case "crime_mentioned":
       return state.dynamic?.noted?.crimeDay === state.day;
     case "failed_run": {
       const e = state.lastExpedition;
-      return e !== void 0 && e.outcome === "failed" && state.day - e.day <= S6.failedRunDays;
+      return e !== void 0 && e.outcome === "failed" && state.day - e.day <= S7.failedRunDays;
     }
     case "arrival_anniversary":
-      return state.day > 0 && state.day % S6.anniversaryDays === 0;
+      return state.day > 0 && state.day % S7.anniversaryDays === 0;
   }
 }
 function leadingStyle(state, reg, unitId) {
@@ -21487,8 +21519,8 @@ function defaultExpectation(state, reg, moment) {
   const entry = primary === void 0 ? void 0 : entryOf2(reg, primary);
   const offset = unit4?.kind === "named" ? unit4.expectations?.offset : void 0;
   const point = entry?.point == null ? void 0 : { r: entry.point.r + (offset?.r ?? 0), f: entry.point.f + (offset?.f ?? 0) };
-  const frame4 = moment.options.filter((o) => FRAME_KEYS.includes(o.key));
-  const options2 = frame4.length > 0 ? frame4 : [...moment.options];
+  const frame5 = moment.options.filter((o) => FRAME_KEYS.includes(o.key));
+  const options2 = frame5.length > 0 ? frame5 : [...moment.options];
   const prefer = rel !== void 0 && frameRank(rel.frame) >= frameRank("play") ? "yielded" : "returned";
   const score = (type) => {
     if (point === void 0 || rel === void 0) return 0;
@@ -21497,8 +21529,8 @@ function defaultExpectation(state, reg, moment) {
   };
   const best = Math.min(...options2.map((o) => score(o.type)));
   const tied = options2.filter((o) => score(o.type) === best);
-  const pick6 = tied.find((o) => o.type === prefer) ?? tied.find((o) => o.type === (prefer === "yielded" ? "returned" : "yielded")) ?? tied[0];
-  return { key: pick6?.key ?? "0", strength: 1 };
+  const pick7 = tied.find((o) => o.type === prefer) ?? tied.find((o) => o.type === (prefer === "yielded" ? "returned" : "yielded")) ?? tied[0];
+  return { key: pick7?.key ?? "0", strength: 1 };
 }
 function noteEvents(draft, ctx2, events) {
   if (draft.dynamic === void 0 || !dynamicOn(draft, ctx2.registries)) return [];
@@ -21839,8 +21871,8 @@ function probeChance(state, reg, unitId) {
 function pickAxis(draft, reg, unitId, tier, recent2) {
   const axes = [...reg.probeAxes.values()].map((a) => a).filter((a) => a.tier <= tier);
   const skip = recent2.slice(-TUNING.probes.skipRecent);
-  const fresh3 = axes.filter((a) => !skip.includes(a.id));
-  const pool = fresh3.length > 0 ? fresh3 : axes;
+  const fresh4 = axes.filter((a) => !skip.includes(a.id));
+  const pool = fresh4.length > 0 ? fresh4 : axes;
   return pool[Math.min(pool.length - 1, Math.floor(dynamicRoll(draft, unitId, "probe_axis") * pool.length))];
 }
 function staysInQueue(draft, id) {
@@ -22296,8 +22328,8 @@ function challengeOpinion(draft, reg, unitId, topicId, weight, positionId) {
   if (at < 0) return [];
   const asked = positionId === void 0 ? -1 : ids.indexOf(positionId);
   const toward = asked >= 0 && asked !== at ? asked < at ? "first" : "last" : at > ids.length - 1 - at ? "first" : at < ids.length - 1 - at ? "last" : "first";
-  const before3 = opinion.push === void 0 ? 0 : opinion.push.toward === "first" ? opinion.push.amount : -opinion.push.amount;
-  const net = before3 + (toward === "first" ? weight : -weight);
+  const before4 = opinion.push === void 0 ? 0 : opinion.push.toward === "first" ? opinion.push.amount : -opinion.push.amount;
+  const net = before4 + (toward === "first" ? weight : -weight);
   if (net === 0) delete opinion.push;
   else opinion.push = { toward: net > 0 ? "first" : "last", amount: Math.abs(net) };
   const t = TUNING.life.opinion;
@@ -22394,13 +22426,13 @@ function lifeView(state, reg, unitId, visible = () => true) {
 
 // src/engine/life/events.ts
 var eventsOf = (reg) => [...reg.lifeEvents.values()];
-function roomsToday(state, reg, unitId, day, cache2) {
-  return placesOf(state, reg, unitId, day, cache2).map((w) => {
+function roomsToday(state, reg, unitId, day, cache3) {
+  return placesOf(state, reg, unitId, day, cache3).map((w) => {
     const room2 = w.roomId ? reg.hubRooms.get(w.roomId) : void 0;
     return { reason: w.reason, locationId: typeof room2?.sceneLocationId === "string" ? room2.sceneLocationId : null };
   });
 }
-function requiresHold(state, reg, unitId, req, day, cache2) {
+function requiresHold(state, reg, unitId, req, day, cache3) {
   if (!req) return true;
   const unit4 = unitOf2(state, unitId);
   if (!unit4) return false;
@@ -22414,7 +22446,7 @@ function requiresHold(state, reg, unitId, req, day, cache2) {
         ok = (unit4.hobbies ?? []).some((h2) => h2.state === "active" && (value === "any" || h2.id === value));
         break;
       case "location":
-        ok = roomsToday(state, reg, unitId, day, cache2).some((r) => r.reason === "routine" && r.locationId !== null && value.includes(r.locationId));
+        ok = roomsToday(state, reg, unitId, day, cache3).some((r) => r.reason === "routine" && r.locationId !== null && value.includes(r.locationId));
         break;
       case "activity": {
         const lo = day * SLOTS_PER_DAY;
@@ -22510,7 +22542,7 @@ function weekOf2(state, unitId, day) {
   const w = state.life?.units[unitId]?.week;
   return w !== void 0 && w.n === week ? w : { n: week, events: 0, notable: 0 };
 }
-function eventPool(state, reg, unitId, day, cache2 = /* @__PURE__ */ new Map()) {
+function eventPool(state, reg, unitId, day, cache3 = /* @__PURE__ */ new Map()) {
   const life = state.life;
   if (!life || !takesPart(state, unitId)) return [];
   const mine = life.units[unitId]?.last ?? {};
@@ -22521,15 +22553,15 @@ function eventPool(state, reg, unitId, day, cache2 = /* @__PURE__ */ new Map()) 
     if (mine[e.id] !== void 0 && day - mine[e.id] < cooldown) return false;
     if (life.kinds.some((k) => k.kind === e.id && k.unitId !== unitId && day - k.day < TUNING.life.squadKindDays)) return false;
     if (e.yearly === true && lifeHash(life, `${unitId}|vat`) % TUNING.life.cooldown.yearly !== day % TUNING.life.cooldown.yearly) return false;
-    return requiresHold(state, reg, unitId, e.requires, day, cache2);
+    return requiresHold(state, reg, unitId, e.requires, day, cache3);
   });
 }
-function pickLifeEvent(state, reg, unitId, day, cache2) {
+function pickLifeEvent(state, reg, unitId, day, cache3) {
   const life = state.life;
   const mode = lifeMode(state);
   if (!life || mode === "off" || !takesPart(state, unitId)) return null;
   const week = weekOf2(state, unitId, day);
-  const pool = eventPool(state, reg, unitId, day, cache2);
+  const pool = eventPool(state, reg, unitId, day, cache3);
   if (pool.length === 0) return null;
   const yearly = pool.filter((e) => e.yearly === true);
   if (yearly.length === 0 && week.events >= weekAllowance(state, unitId, week.n)) return null;
@@ -22824,8 +22856,8 @@ function rollTokenOffer(draft, ctx2) {
     if (!ctx2.rng.chance(chance)) continue;
     const kinds2 = kindsFor(draft, reg, u.id);
     if (kinds2.length === 0) continue;
-    let pick6 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
-    const kind = kinds2.find((k) => (pick6 -= Number(k.weight)) < 0) ?? kinds2[0];
+    let pick7 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
+    const kind = kinds2.find((k) => (pick7 -= Number(k.weight)) < 0) ?? kinds2[0];
     const label2 = labelOf(reg, String(kind.id), u.displayName);
     const tokens = personalOf(draft).tokens ??= { owned: [], given: [] };
     const dm = pushMessage(draft, u.id, { from: u.id, text: String(kind.text).replaceAll("{name}", u.displayName).replaceAll("{label}", label2), day: draft.day, slot: draft.slot, read: false, initiated: true });
@@ -23096,13 +23128,13 @@ var seedRows = (reg) => [...reg.practiceSeeds.values()];
 function seedPool(state, reg, holderId, kind, opts = {}) {
   const view = practiceOf(state, reg, holderId);
   const tier = bondTierOf(state, reg, holderId);
-  return seedRows(reg).filter((seed3) => {
-    if (seed3.kind !== kind || !contentAllowed(state, reg, seed3, holderId)) return false;
-    if (seed3.contentTags.some((t) => view?.categories[t] !== void 0 && view.categories[t].as === "none")) return false;
-    if (!trackOpen(state, reg, holderId, seed3.track) || seed3.tier > trackLevel(state, holderId, seed3.track) + 1) return false;
-    if (opts.minTier !== void 0 && seed3.tier < opts.minTier) return false;
-    if (seed3.needs !== void 0 && !hasCapability(state, reg, holderId, seed3.needs)) return false;
-    return seed3.romantic !== true || tier === "romantic";
+  return seedRows(reg).filter((seed4) => {
+    if (seed4.kind !== kind || !contentAllowed(state, reg, seed4, holderId)) return false;
+    if (seed4.contentTags.some((t) => view?.categories[t] !== void 0 && view.categories[t].as === "none")) return false;
+    if (!trackOpen(state, reg, holderId, seed4.track) || seed4.tier > trackLevel(state, holderId, seed4.track) + 1) return false;
+    if (opts.minTier !== void 0 && seed4.tier < opts.minTier) return false;
+    if (seed4.needs !== void 0 && !hasCapability(state, reg, holderId, seed4.needs)) return false;
+    return seed4.romantic !== true || tier === "romantic";
   });
 }
 function pickSeeds(state, reg, holderId, kind, opts = {}) {
@@ -23112,9 +23144,9 @@ function pickSeeds(state, reg, holderId, kind, opts = {}) {
   const rest = [...pool];
   const picked = [];
   for (let i = 0; i < want && rest.length > 0; i++) {
-    const total2 = rest.reduce((sum, seed3) => sum + seed3.weight, 0);
+    const total2 = rest.reduce((sum, seed4) => sum + seed4.weight, 0);
     let at = practiceRoll(state, holderId, `seeds:${kind}:${i}`) * total2;
-    let index2 = rest.findIndex((seed3) => (at -= seed3.weight) < 0);
+    let index2 = rest.findIndex((seed4) => (at -= seed4.weight) < 0);
     if (index2 < 0) index2 = rest.length - 1;
     picked.push(rest[index2].id);
     rest.splice(index2, 1);
@@ -23124,12 +23156,12 @@ function pickSeeds(state, reg, holderId, kind, opts = {}) {
 function fallbackLine(kind, gist) {
   return TUNING.practice.fallback[kind].replaceAll("{gist}", gist);
 }
-function plainSummary(seed3) {
-  return seed3.gist;
+function plainSummary(seed4) {
+  return seed4.gist;
 }
 function stakesCeilingOf(state, holderId) {
-  const frame4 = dynamicOf(state, holderId)?.frame;
-  return frame4 === "rule" || frame4 === "role" || frame4 === "play" ? TUNING.practice.stakesCeiling[frame4] : "minor";
+  const frame5 = dynamicOf(state, holderId)?.frame;
+  return frame5 === "rule" || frame5 === "role" || frame5 === "play" ? TUNING.practice.stakesCeiling[frame5] : "minor";
 }
 
 // src/engine/practice/request.ts
@@ -23317,8 +23349,8 @@ function styleTerm(state, reg, holderId) {
 }
 function severityOf(state, reg, holderId, offence) {
   const T5 = TUNING.practice.severity;
-  const frame4 = dynamicOf(state, holderId)?.frame;
-  const frameTerm = frame4 === "rule" || frame4 === "role" || frame4 === "play" ? T5.frame[frame4] : 0;
+  const frame5 = dynamicOf(state, holderId)?.frame;
+  const frameTerm = frame5 === "rule" || frame5 === "role" || frame5 === "play" ? T5.frame[frame5] : 0;
   const recent2 = (state.practices?.offences[holderId] ?? []).filter((d) => state.day - d <= T5.repeat.days).length;
   const repeat = recent2 >= T5.repeat.count ? T5.repeat.add : 0;
   const confessed = offence.confessed === true ? TUNING.practice.confessedLess : 0;
@@ -23403,8 +23435,8 @@ function noteOffence(draft, ctx2, holderId, offence) {
 }
 var str2 = (v) => typeof v === "string" && v !== "" ? v : void 0;
 var answers = (state, holderId) => {
-  const frame4 = dynamicOf(state, holderId)?.frame;
-  return frame4 !== void 0 && frameRank(frame4) >= frameRank("role");
+  const frame5 = dynamicOf(state, holderId)?.frame;
+  return frame5 !== void 0 && frameRank(frame5) >= frameRank("role");
 };
 function offencesFromEvents(draft, ctx2, events) {
   if (!events.some((e) => OFFENCE_SOURCES.includes(e.type))) return [];
@@ -23445,8 +23477,8 @@ var OFFENCE_SOURCES = ["refusal_noted", "milestone_refused", "override_answered"
 var HUMBLING_TAG = "public_humiliation";
 var isHumbling = (tags) => tags.includes(HUMBLING_TAG);
 function stageOf(slot2) {
-  const S6 = TUNING.practice.demonstration.stage;
-  return S6[slot2] ?? S6.other;
+  const S7 = TUNING.practice.demonstration.stage;
+  return S7[slot2] ?? S7.other;
 }
 var roomOfLocation = (reg, locationId) => [...reg.hubRooms.values()].find((r) => r.sceneLocationId === locationId)?.id;
 function pickAudience(state, reg, holderId, slot2) {
@@ -23468,9 +23500,9 @@ function demonstrationGate(state, reg, holderId, card2) {
   const audience = practiceOf(state, reg, holderId)?.audience;
   if (audience === void 0 || audience === "private_only") return "She keeps it private.";
   if (audience === "indifferent") return "She does not stage it.";
-  const frame4 = dynamicOf(state, holderId)?.frame ?? "equal";
-  if (frameRank(frame4) < frameRank("play")) return "Her hold is too light for it.";
-  if (card2?.tier !== void 0 && card2.tier > 2 && frameRank(frame4) < frameRank("role")) return "Her hold is too light for something that heavy.";
+  const frame5 = dynamicOf(state, holderId)?.frame ?? "equal";
+  if (frameRank(frame5) < frameRank("play")) return "Her hold is too light for it.";
+  if (card2?.tier !== void 0 && card2.tier > 2 && frameRank(frame5) < frameRank("role")) return "Her hold is too light for something that heavy.";
   const tags = card2?.tags ?? [];
   if (card2 === void 0 ? !["service", HUMBLING_TAG].some((t) => contentAllowed(state, reg, { contentTags: [t] }, holderId)) : tags.length === 0 || tags.some((t) => !contentAllowed(state, reg, { contentTags: [t] }, holderId))) {
     return "That is not switched on.";
@@ -23941,7 +23973,7 @@ function buildPracticeInput(state, reg, request, card2 = "") {
   const unit4 = state.squad.find((u) => u.id === holderId);
   const view = practiceOf(state, reg, holderId);
   const dyn = dynamicOf(state, holderId);
-  const frame4 = dyn?.frame === "rule" || dyn?.frame === "role" ? dyn.frame : "play";
+  const frame5 = dyn?.frame === "rule" || dyn?.frame === "role" ? dyn.frame : "play";
   const label2 = (id) => String(reg.contentCategories.get(id)?.label ?? id);
   const seeds = request.seedIds.map((id) => seedRows(reg).find((s) => s.id === id)).filter((s) => s !== void 0);
   const unitName3 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
@@ -23951,7 +23983,7 @@ function buildPracticeInput(state, reg, request, card2 = "") {
     kind: request.kind,
     holder: { id: holderId, name: unit4.displayName },
     card: clean3(card2).slice(0, CARD_MAX),
-    frame: frame4,
+    frame: frame5,
     style: view === null ? { primary: "cold" } : { primary: view.style.primary, ...view.style.secondary !== void 0 ? { secondary: view.style.secondary } : {} },
     claims: capabilitiesOf(state, reg, holderId).map((c) => CAPABILITY_WORDS[c] ?? c),
     tracks: [...reg.dynamicTracks.values()].filter((t) => trackOpen(state, reg, holderId, t.id)).map((t) => ({ id: t.id, label: String(t.label ?? t.id), level: LEVEL_WORDS[trackLevel(state, holderId, t.id)] })),
@@ -24007,23 +24039,23 @@ function validatePracticeOutput(state, reg, request, raw) {
   const issues = [];
   if (request.kind === "punishment") return validatePunishmentCard(state, reg, request, raw);
   const pool = seedPool(state, reg, holderId, request.kind);
-  const seed3 = typeof raw.seedId === "string" ? pool.find((s) => s.id === raw.seedId) : void 0;
-  if (raw.seedId !== void 0 && seed3 === void 0) issues.push("seedId is not an offered seed and was dropped");
+  const seed4 = typeof raw.seedId === "string" ? pool.find((s) => s.id === raw.seedId) : void 0;
+  if (raw.seedId !== void 0 && seed4 === void 0) issues.push("seedId is not an offered seed and was dropped");
   const tags = (Array.isArray(raw.tags) ? raw.tags : []).filter((t) => typeof t === "string").filter((t, i, all) => all.indexOf(t) === i);
   const kept = tags.filter((t) => reg.contentCategories.has(t) && contentAllowed(state, reg, { contentTags: [t] }, holderId));
   if (kept.length < tags.length) issues.push(`tags ${tags.filter((t) => !kept.includes(t)).join(", ")} are not available and were dropped`);
   if (kept.length === 0) return null;
   const asked = typeof raw.track === "string" ? raw.track : void 0;
-  const track = asked !== void 0 && trackOpen(state, reg, holderId, asked) ? asked : seed3 !== void 0 && trackOpen(state, reg, holderId, seed3.track) ? seed3.track : void 0;
+  const track = asked !== void 0 && trackOpen(state, reg, holderId, asked) ? asked : seed4 !== void 0 && trackOpen(state, reg, holderId, seed4.track) ? seed4.track : void 0;
   if (track === void 0) return null;
   if (track !== asked) issues.push("track was not open and was replaced");
   const cap9 = trackLevel(state, holderId, track) + 1;
-  const tierRaw = typeof raw.tier === "number" && Number.isFinite(raw.tier) ? Math.round(raw.tier) : seed3?.tier ?? 1;
+  const tierRaw = typeof raw.tier === "number" && Number.isFinite(raw.tier) ? Math.round(raw.tier) : seed4?.tier ?? 1;
   const floor = request.chainOf === void 0 ? 1 : state.practices?.tasks.filter((x) => x.chainId === request.chainOf).at(-1)?.tier ?? 1;
   const tier = Math.min(Math.min(5, cap9), Math.max(1, floor, tierRaw));
   if (tier !== raw.tier) issues.push("tier was clamped");
   const ceiling = stakesCeilingOf(state, holderId);
-  const stakesRaw = STAKES.includes(raw.stakes) ? raw.stakes : seed3?.stakes ?? "minor";
+  const stakesRaw = STAKES.includes(raw.stakes) ? raw.stakes : seed4?.stakes ?? "minor";
   const stakes = stakeRank(stakesRaw) > stakeRank(ceiling) ? ceiling : stakesRaw;
   if (stakes !== raw.stakes) issues.push("stakes were clamped");
   const units = eligibleUnits(state, holderId);
@@ -24046,7 +24078,7 @@ function validatePracticeOutput(state, reg, request, raw) {
     checkArg = fieldUnit;
     issues.push("a field task takes a roster check");
   } else if (check !== raw.check) issues.push("check was changed to model");
-  const proof = PROOFS.includes(raw.proof) ? raw.proof : seed3?.proof ?? "none";
+  const proof = PROOFS.includes(raw.proof) ? raw.proof : seed4?.proof ?? "none";
   let deadline;
   if (isObj6(raw.deadline) && typeof raw.deadline.days === "number" && Number.isFinite(raw.deadline.days)) {
     const D3 = TUNING.practice.deadlineDays;
@@ -24054,7 +24086,7 @@ function validatePracticeOutput(state, reg, request, raw) {
     if (days !== raw.deadline.days) issues.push("deadline was clamped");
     deadline = { days, ...typeof raw.deadline.slot === "string" && SLOTS4.includes(raw.deadline.slot) ? { slot: raw.deadline.slot } : {} };
   } else if (request.kind === "task") {
-    deadline = { days: seed3?.days ?? TUNING.practice.defaultDeadlineDays };
+    deadline = { days: seed4?.days ?? TUNING.practice.defaultDeadlineDays };
     issues.push("deadline was missing and is the seed's or the default");
   }
   const eligible4 = request.kind === "demonstration" ? watchersOf(state, reg, holderId) : units;
@@ -24066,14 +24098,14 @@ function validatePracticeOutput(state, reg, request, raw) {
   let summary = plainText2(raw.summary, TUNING.practice.summaryMax);
   if (text3 === "" || hasCommanderPronoun(text3) || hasCommanderPronoun(summary)) return null;
   if (summary === "") {
-    if (seed3 === void 0) return null;
-    summary = seed3.gist;
+    if (seed4 === void 0) return null;
+    summary = seed4.gist;
     issues.push("summary was empty and is the seed's gist");
   }
   return {
     output: {
       kind: request.kind,
-      ...seed3 !== void 0 ? { seedId: seed3.id } : {},
+      ...seed4 !== void 0 ? { seedId: seed4.id } : {},
       tags: kept,
       track,
       tier,
@@ -24117,10 +24149,10 @@ var frameOf2 = (state, holderId) => {
 };
 var openTasks = (state, holderId) => (state.practices?.tasks ?? []).filter((t) => t.holderId === holderId && t.kind === "task" && t.routine !== true && t.handover === void 0 && (t.status === "offered" || t.status === "open")).length;
 function taskRoom(state, reg, holderId) {
-  const frame4 = frameOf2(state, holderId);
+  const frame5 = frameOf2(state, holderId);
   const open3 = openTasks(state, holderId);
-  if (open3 >= TUNING.practice.taskCap[frame4]) return false;
-  return !(frameRank(frame4) >= frameRank("role") && open3 >= 1 && !hasCapability(state, reg, holderId, "household_protocol"));
+  if (open3 >= TUNING.practice.taskCap[frame5]) return false;
+  return !(frameRank(frame5) >= frameRank("role") && open3 >= 1 && !hasCapability(state, reg, holderId, "household_protocol"));
 }
 var targetOf = (request, out) => request.targetUnitId ?? out.targetUnitId ?? (ROSTER_CHECKS2.includes(out.check) || out.check === "no_scene_with" ? out.checkArg : void 0);
 var writeTask = (draft, _ctx, request, out, plain8) => {
@@ -24163,12 +24195,12 @@ var HOLD_SLOTS = { trivial: 1, minor: 1, major: 2, severe: 3 };
 var holdBusy = (state) => state.practices?.held !== void 0 || (state.practices?.tasks ?? []).some((t) => t.kind === "hold" && (t.status === "offered" || t.status === "open"));
 var writeHold = (draft, ctx2, request, out, plain8) => {
   if (holdBusy(draft)) {
-    const seed4 = out.seedId === void 0 ? void 0 : ctx2.registries.practiceSeeds.get(out.seedId);
-    return writeTask(draft, ctx2, request, { ...out, kind: "task", deadline: out.deadline ?? { days: seed4?.days ?? TUNING.practice.defaultDeadlineDays } }, plain8);
+    const seed5 = out.seedId === void 0 ? void 0 : ctx2.registries.practiceSeeds.get(out.seedId);
+    return writeTask(draft, ctx2, request, { ...out, kind: "task", deadline: out.deadline ?? { days: seed5?.days ?? TUNING.practice.defaultDeadlineDays } }, plain8);
   }
   const p = ensurePractices(draft);
   const id = nextPracticeId(draft, "pt");
-  const seed3 = out.seedId === void 0 ? void 0 : ctx2.registries.practiceSeeds.get(out.seedId);
+  const seed4 = out.seedId === void 0 ? void 0 : ctx2.registries.practiceSeeds.get(out.seedId);
   const task = {
     id,
     holderId: request.holderId,
@@ -24187,7 +24219,7 @@ var writeHold = (draft, ctx2, request, out, plain8) => {
     ...plain8 ? { plain: true } : {},
     status: "offered",
     ...request.sealed === true ? { sealed: true } : {},
-    ...seed3?.sensory === true ? { sensory: true } : {},
+    ...seed4?.sensory === true ? { sensory: true } : {},
     slots: HOLD_SLOTS[out.stakes],
     acceptForm: acceptFormOf(out.stakes, request.sealed),
     day: draft.day,
@@ -24290,8 +24322,8 @@ function refusePractice(draft, ctx2, holderId, what) {
   const events = [];
   events.push(...refuseLikeDemand(draft, ctx2, holderId, { evidence, ...severity !== void 0 ? { severity } : {} }));
   events.push(...evaluateAutomatic(draft, ctx2.registries, holderId));
-  const frame4 = dynamicOf(draft, holderId)?.frame;
-  if (frame4 !== void 0 && frameRank(frame4) >= frameRank("role")) events.push(...noteOffence(draft, ctx2, holderId, { kind: "refusal", ref: what.ref, stakes: what.sealed === true ? "major" : what.stakes, day: draft.day }));
+  const frame5 = dynamicOf(draft, holderId)?.frame;
+  if (frame5 !== void 0 && frameRank(frame5) >= frameRank("role")) events.push(...noteOffence(draft, ctx2, holderId, { kind: "refusal", ref: what.ref, stakes: what.sealed === true ? "major" : what.stakes, day: draft.day }));
   return events;
 }
 function acceptByWords(draft, ctx2, holderId, ev) {
@@ -24856,8 +24888,8 @@ var RECENT_MAX = TUNING.probes.recentMax;
 var isOpenTask = (t) => t.kind === "task" && t.status === "open" && t.routine !== true;
 var stepUp2 = (s) => STAKES[Math.min(STAKES.length - 1, stakeRank(s) + 1)];
 function formOf(reg, task) {
-  const seed3 = task.seedId === void 0 ? void 0 : reg.practiceSeeds.get(task.seedId);
-  return typeof seed3?.gist === "string" ? seed3.gist : task.summary.slice(0, 40);
+  const seed4 = task.seedId === void 0 ? void 0 : reg.practiceSeeds.get(task.seedId);
+  return typeof seed4?.gist === "string" ? seed4.gist : task.summary.slice(0, 40);
 }
 function settleTask(draft, ctx2, taskId, outcome, via, opts = {}) {
   const reg = ctx2.registries;
@@ -25089,8 +25121,8 @@ function alarmAnswer(state, reg, holderId, kind, alarmId, payload) {
   const unit4 = state.squad.find((u) => u.id === holderId);
   const values = unit4 === void 0 ? void 0 : valuesOf(unit4);
   const style = practiceOf(state, reg, holderId)?.style.primary;
-  const frame4 = dynamicOf(state, holderId)?.frame;
-  const score = (values?.mercy ?? 0) * T5.mercy + (values?.corporate ?? 0) * T5.corporate + (style === void 0 ? 0 : T5.style[style] ?? 0) + (frame4 === "play" || frame4 === "role" || frame4 === "rule" ? T5.frame[frame4] : 0) + practiceRoll(state, holderId, `alarm:${alarmId}`) - 0.5;
+  const frame5 = dynamicOf(state, holderId)?.frame;
+  const score = (values?.mercy ?? 0) * T5.mercy + (values?.corporate ?? 0) * T5.corporate + (style === void 0 ? 0 : T5.style[style] ?? 0) + (frame5 === "play" || frame5 === "role" || frame5 === "rule" ? T5.frame[frame5] : 0) + practiceRoll(state, holderId, `alarm:${alarmId}`) - 0.5;
   return score >= T5.release ? "release" : score >= T5.late ? "release_late" : "keep";
 }
 var alarmEvent = (alarm, answer, extra = {}) => ({
@@ -25299,21 +25331,21 @@ function fallbackOutput(state, reg, request) {
     return { kind: "punishment", tags: [], track: "discipline", tier: 1, stakes: "minor", check: "model", proof: "none", text: fallbackLine("punishment", label2), summary: label2 };
   }
   const pool = seedPool(state, reg, request.holderId, request.kind);
-  const seed3 = request.seedIds.map((id) => pool.find((s) => s.id === id)).find((s) => s !== void 0);
-  if (seed3 === void 0) return null;
+  const seed4 = request.seedIds.map((id) => pool.find((s) => s.id === id)).find((s) => s !== void 0);
+  if (seed4 === void 0) return null;
   const ceiling = stakesCeilingOf(state, request.holderId);
   return {
     kind: request.kind,
-    seedId: seed3.id,
-    tags: [...seed3.contentTags],
-    track: seed3.track,
-    tier: seed3.tier,
-    stakes: stakeRank(seed3.stakes) > stakeRank(ceiling) ? ceiling : seed3.stakes,
-    check: seed3.check ?? "model",
-    proof: seed3.proof ?? "none",
-    ...request.kind === "task" ? { deadline: { days: seed3.days ?? TUNING.practice.defaultDeadlineDays } } : {},
-    text: fallbackLine(request.kind, seed3.gist),
-    summary: plainSummary(seed3)
+    seedId: seed4.id,
+    tags: [...seed4.contentTags],
+    track: seed4.track,
+    tier: seed4.tier,
+    stakes: stakeRank(seed4.stakes) > stakeRank(ceiling) ? ceiling : seed4.stakes,
+    check: seed4.check ?? "model",
+    proof: seed4.proof ?? "none",
+    ...request.kind === "task" ? { deadline: { days: seed4.days ?? TUNING.practice.defaultDeadlineDays } } : {},
+    text: fallbackLine(request.kind, seed4.gist),
+    summary: plainSummary(seed4)
   };
 }
 function issuePractice(draft, ctx2, requestId, output) {
@@ -25820,19 +25852,19 @@ function takeInstead(draft, ctx2, punishmentId, answer) {
   const holderId = p.holderId;
   const soldierId = p.forUnitId;
   p.answeredDay = draft.day;
-  const answered = (a) => ({ type: "punishment_answered", punishmentId: p.id, unitId: holderId, holderId, answer: a, severity: p.severity, forUnitId: soldierId });
+  const answered2 = (a) => ({ type: "punishment_answered", punishmentId: p.id, unitId: holderId, holderId, answer: a, severity: p.severity, forUnitId: soldierId });
   if (answer === "refuse") {
     p.status = "refused";
-    return [answered("refuse"), ...hitHer(draft, reg, holderId, "overrode_her", "minor", "refused her order", { amplified: true })];
+    return [answered2("refuse"), ...hitHer(draft, reg, holderId, "overrode_her", "minor", "refused her order", { amplified: true })];
   }
   if (answer === "do_it") {
     const done = applyPunishment(draft, ctx2, { unitId: soldierId, measure: p.entryId, source: "dialogue", channel: "dm" });
     p.status = "done";
-    return [answered("do_it"), ...done];
+    return [answered2("do_it"), ...done];
   }
   if (answer !== "take_it") throw new Error("Unknown answer.");
   p.status = "done";
-  const events = [answered("take_it")];
+  const events = [answered2("take_it")];
   events.push(...hitHer(draft, reg, soldierId, "spared_for", "minor", "was spared by the commander"));
   countDeed(draft, "protected");
   const here = (draft.scene?.participants ?? []).filter((id) => id !== holderId);
@@ -25986,21 +26018,21 @@ function lifeFields(type, e, intent, life) {
   const str9 = (v) => typeof v === "string" && v !== "" ? v : null;
   let who;
   let key = null;
-  const pick6 = (list5, id) => {
+  const pick7 = (list5, id) => {
     const row4 = id === null ? void 0 : list5.find((x) => x.id === id && candidates3.includes(x.unitId));
     who = row4?.unitId;
     return row4;
   };
   switch (type) {
     case "news_told": {
-      const row4 = pick6(life.news, str9(e.newsId));
+      const row4 = pick7(life.news, str9(e.newsId));
       if (!row4) return null;
       intent.newsId = row4.id;
       key = row4.id;
       break;
     }
     case "hobby_praised": {
-      const row4 = pick6(life.hobbies, str9(e.hobbyId));
+      const row4 = pick7(life.hobbies, str9(e.hobbyId));
       if (!row4) return null;
       intent.hobbyId = row4.id;
       key = row4.id;
@@ -26009,7 +26041,7 @@ function lifeFields(type, e, intent, life) {
     case "opinion_voiced":
     case "opinion_challenged":
     case "opinion_agreed": {
-      const row4 = pick6(life.topics.filter((t) => type === "opinion_voiced" ? t.pick === true : t.voiced === true), str9(e.topicId));
+      const row4 = pick7(life.topics.filter((t) => type === "opinion_voiced" ? t.pick === true : t.voiced === true), str9(e.topicId));
       if (!row4) return null;
       intent.topicId = row4.id;
       const position = str9(e.positionId);
@@ -26027,7 +26059,7 @@ function lifeFields(type, e, intent, life) {
       break;
     }
     case "joke_returned": {
-      const row4 = pick6(life.jokes, str9(e.factId));
+      const row4 = pick7(life.jokes, str9(e.factId));
       if (!row4) return null;
       intent.factId = row4.id;
       key = row4.id;
@@ -26197,10 +26229,10 @@ function validateIntents(raw, ctx2) {
       intent.text = text3;
     } else if (type === "compromise_reached" && ctx2.dynamic !== void 0 && (typeof e.claimId === "string" && ctx2.dynamic.claims.includes(e.claimId) || typeof e.exitId === "string" && ctx2.dynamic.exits.includes(e.exitId))) {
       const claim2 = typeof e.claimId === "string" && ctx2.dynamic.claims.includes(e.claimId) ? e.claimId : void 0;
-      const exit3 = typeof e.exitId === "string" && ctx2.dynamic.exits.includes(e.exitId) ? e.exitId : void 0;
+      const exit4 = typeof e.exitId === "string" && ctx2.dynamic.exits.includes(e.exitId) ? e.exitId : void 0;
       if (actor !== "commander") continue;
       if (claim2 !== void 0) intent.claimId = claim2;
-      if (exit3 !== void 0) intent.exitId = exit3;
+      if (exit4 !== void 0) intent.exitId = exit4;
       if (typeof e.text === "string") intent.text = e.text.replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.rules.textMax).trim();
     } else if (type === "compromise_reached" && ctx2.practice !== void 0 && (typeof e.taskId === "string" || typeof e.punishmentId === "string" || typeof e.alarmId === "string")) {
       const found = actor === "commander" ? practiceCompromise(e, intent, ctx2.practice) : null;
@@ -26486,19 +26518,19 @@ function allies(state) {
   const holder3 = wardenOf(state)?.unitId;
   return state.squad.filter((u) => u.kind === "named" && isLiving(u) && u.id !== holder3 && hasFlag3(state, u.id, "warden_ally")).map((u) => u.id);
 }
-function addSuspicion(draft, ctx2, noise5, cause, opts = {}) {
+function addSuspicion(draft, ctx2, noise6, cause, opts = {}) {
   const ls = leashswapOf(draft);
   if (!ls || !wardenOf(draft)) return [];
-  ls.intrigue.suspicion = clamp18(ls.intrigue.suspicion + noise5 * coverMult(draft, ctx2.registries), 0, 100);
+  ls.intrigue.suspicion = clamp18(ls.intrigue.suspicion + noise6 * coverMult(draft, ctx2.registries), 0, 100);
   const s = ls.intrigue.suspicion;
   const found = s >= 100 || ctx2.rng.chance(s / TUNING.warden.intrigue.discoveryDivisor);
   return found ? intrigueDiscovered(draft, ctx2, cause, opts) : [];
 }
 function allyChance(state, _reg, unitId) {
-  const A4 = TUNING.warden.intrigue.ally;
+  const A5 = TUNING.warden.intrigue.ally;
   const unit4 = unitOf5(state, unitId);
   const trust = state.relations[unitId]?.trust ?? 0;
-  return clamp18(A4.base + A4.perTrust * (trust - 50) + A4.autonomy * (unit4 ? valuesOf(unit4).autonomy : 0) - A4.corporate * (unit4 ? valuesOf(unit4).corporate : 0), A4.min, A4.max);
+  return clamp18(A5.base + A5.perTrust * (trust - 50) + A5.autonomy * (unit4 ? valuesOf(unit4).autonomy : 0) - A5.corporate * (unit4 ? valuesOf(unit4).corporate : 0), A5.min, A5.max);
 }
 function tryAlly(draft, ctx2, unitId) {
   const ls = leashswapOf(draft);
@@ -26793,8 +26825,8 @@ function emitSign(draft, ctx2, unitId, about2, level) {
   if (!unit4) return [];
   const rec = loyaltyRecord(draft, unitId);
   const lines = [...ctx2.registries.loyaltySigns.values()].filter((s) => s.about === about2 && (about2 !== "mutiny" || s.level === level) && (unit4.kind === "named" || s.kind === "fact"));
-  const fresh3 = lines.filter((s) => !rec.signs.some((r) => r.signId === s.id));
-  const pool = fresh3.length > 0 ? fresh3 : lines;
+  const fresh4 = lines.filter((s) => !rec.signs.some((r) => r.signId === s.id));
+  const pool = fresh4.length > 0 ? fresh4 : lines;
   if (pool.length === 0) return [];
   const line3 = ctx2.rng.pick(pool);
   const kind = line3.kind;
@@ -27241,8 +27273,8 @@ function writtenArcPaths(def) {
 function arcLine(def) {
   const texts = def.arc;
   const label2 = { cure: "Cure", manage: "Manage", embrace: "Embrace" };
-  const parts = ["cure", "manage", "embrace"].filter((p) => writtenArcPaths(def).includes(p)).map((p) => `${label2[p]}: ${texts[p]}`);
-  return parts.length > 0 ? parts.join(" \xB7 ") : null;
+  const parts2 = ["cure", "manage", "embrace"].filter((p) => writtenArcPaths(def).includes(p)).map((p) => `${label2[p]}: ${texts[p]}`);
+  return parts2.length > 0 ? parts2.join(" \xB7 ") : null;
 }
 function arcPaths(state, reg, unitId, defectId) {
   const written = writtenArcPaths(reg.defects.get(defectId));
@@ -27929,14 +27961,14 @@ function applyIntents(draft, ctx2, p) {
   const events = [];
   const touched = /* @__PURE__ */ new Set();
   const landed = [];
-  const judged = intents.events.map((e) => {
+  const judged2 = intents.events.map((e) => {
     const units = affectedUnits(e, p.participants);
     const gated = GATED_EVENTS.includes(e.type) && e.confidence + CONFIDENCE_EPS2 < TUNING.impunity.minConfidence;
     return { e, units, believed: gated ? [] : units.filter((id) => computeDeltas(draft, reg, id, e).dropped !== true) };
   }).filter((j) => j.units.length === 0 || j.believed.length > 0).slice(0, TUNING.relations.maxEventsPerExchange);
-  judged.sort((a, b) => Number(!PRACTICE_INTENT_TYPES.includes(a.e.type)) - Number(!PRACTICE_INTENT_TYPES.includes(b.e.type)));
-  intents.events = judged.map((j) => j.e);
-  for (const { e, believed } of judged) {
+  judged2.sort((a, b) => Number(!PRACTICE_INTENT_TYPES.includes(a.e.type)) - Number(!PRACTICE_INTENT_TYPES.includes(b.e.type)));
+  intents.events = judged2.map((j) => j.e);
+  for (const { e, believed } of judged2) {
     for (const id of believed) {
       events.push(...DISCIPLINE_EVENTS.includes(e.type) ? applyDisciplineEvent(draft, ctx2, id, e, { channel: p.channel, ...p.sceneId ? { sceneId: p.sceneId } : {}, ...p.messageRef ? { messageRef: p.messageRef } : {} }) : ROW_IS_CONDITIONAL.includes(e.type) || DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type) || PRACTICE_ROW_IS_CONDITIONAL.includes(e.type) ? [] : applyEventToUnit(draft, reg, id, e));
       if ((e.type === "expectation_kept" || e.type === "expectation_broken") && e.expectationId !== void 0) events.push(...expectationEvent(draft, ctx2, e.expectationId, e.type === "expectation_kept", e.severity));
@@ -28388,9 +28420,9 @@ function runActivity(draft, ctx2, request) {
     switch (fx2.type) {
       case "resource": {
         const wanted2 = scaled(fx2.amount + (fx2.perStat ? fx2.perStat.per * socialRank(draft, fx2.perStat.stat) : 0), draft, reg, fx2.scale);
-        const before3 = draft.resources[fx2.resource];
-        draft.resources[fx2.resource] = Math.max(0, before3 + wanted2);
-        events.push({ type: "resource_changed", resource: fx2.resource, amount: draft.resources[fx2.resource] - before3 });
+        const before4 = draft.resources[fx2.resource];
+        draft.resources[fx2.resource] = Math.max(0, before4 + wanted2);
+        events.push({ type: "resource_changed", resource: fx2.resource, amount: draft.resources[fx2.resource] - before4 });
         break;
       }
       case "commander_stat": {
@@ -28583,7 +28615,7 @@ var sourceOf = (state, source) => {
   const w = wardenOf(state);
   return w ? { unitId: w.unitId, expectations: w.expectations } : null;
 };
-function conflictOf(state, reg, order, judged, source) {
+function conflictOf(state, reg, order, judged2, source) {
   const src = sourceOf(state, source);
   if (!src) return null;
   const c = { state, reg, warden: src.unitId };
@@ -28595,9 +28627,9 @@ function conflictOf(state, reg, order, judged, source) {
     if (x.kind === "personal") continue;
     if (RULES[x.kind](c, order)) offer(x, x.weight);
   }
-  if (judged && judged.conflict !== "none") {
-    const x = src.expectations.find((e) => e.id === judged.expectationId);
-    if (x && x.kind === "personal") offer(x, Math.round(x.weight * (judged.conflict === "major" ? 1 : 0.5) * 100) / 100);
+  if (judged2 && judged2.conflict !== "none") {
+    const x = src.expectations.find((e) => e.id === judged2.expectationId);
+    if (x && x.kind === "personal") offer(x, Math.round(x.weight * (judged2.conflict === "major" ? 1 : 0.5) * 100) / 100);
   }
   return best;
 }
@@ -28702,7 +28734,7 @@ function ballotFor(state, reg, unit4, kind, subject) {
   const B2 = TUNING.power.ballot;
   const lean = leanFor(state, reg, kind, subject);
   const values = effectiveValues(state, reg, unit4);
-  const parts = {
+  const parts2 = {
     values: VALUE_AXES.reduce((sum, axis) => sum + values[axis] * (lean[axis] ?? 0), 0),
     trust: clamp25(((state.relations[unit4.id]?.trust ?? 50) - 50) / B2.trustPer, -B2.trustCap, B2.trustCap),
     stance: Number((() => {
@@ -28713,14 +28745,14 @@ function ballotFor(state, reg, unit4, kind, subject) {
     affected: 0
   };
   const about2 = subjectOf2(kind, subject, state);
-  if (about2 === unit4.id) parts.affected = B2.subject;
+  if (about2 === unit4.id) parts2.affected = B2.subject;
   else if (kind === "punish" && about2 !== null) {
     const target = state.squad.find((u) => u.id === about2);
-    if (target) parts.affected = B2.compatibility * compatibility(unit4, target);
+    if (target) parts2.affected = B2.compatibility * compatibility(unit4, target);
   }
   let term = "values";
-  for (const t of BALLOT_TERMS) if (Math.abs(parts[t]) > Math.abs(parts[term])) term = t;
-  const score = BALLOT_TERMS.reduce((sum, t) => sum + parts[t], 0);
+  for (const t of BALLOT_TERMS) if (Math.abs(parts2[t]) > Math.abs(parts2[term])) term = t;
+  const score = BALLOT_TERMS.reduce((sum, t) => sum + parts2[t], 0);
   const weight = leaderOf(state)?.id === unit4.id ? leaderVoteWeight(state, reg) : assertiveness(state, reg).soldierVoteMult;
   if (sabotagesVotes(state, reg, unit4.id)) {
     return { unitId: unit4.id, vote: "against", weight: weight + TUNING.dynamic.commandKeptVoteWeight * Math.max(0, standingOf(state, reg, unit4.id) ?? 0), score: Math.min(score, -1), term };
@@ -29265,11 +29297,11 @@ function choiceOf(state, reg, route, index2, scope) {
 function routeChoices(state, reg, check, scope) {
   return check.routes.map((route, i) => choiceOf(state, reg, route, i, scope));
 }
-function resolveRoute(draft, ctx2, check, pick6, scope) {
-  const choice = routeChoices(draft, ctx2.registries, check, scope)[pick6.route];
-  if (!choice) throw new Error(`The check "${check.id}" has no route ${String(pick6.route)}.`);
+function resolveRoute(draft, ctx2, check, pick7, scope) {
+  const choice = routeChoices(draft, ctx2.registries, check, scope)[pick7.route];
+  if (!choice) throw new Error(`The check "${check.id}" has no route ${String(pick7.route)}.`);
   if (choice.disabled) throw new Error(choice.disabled);
-  const route = check.routes[pick6.route];
+  const route = check.routes[pick7.route];
   const events = [];
   let passed = true;
   switch (route.kind) {
@@ -29286,9 +29318,9 @@ function resolveRoute(draft, ctx2, check, pick6, scope) {
       break;
     }
     case "delegate": {
-      if (typeof pick6.unitId !== "string") throw new Error("Pick a unit to ask.");
-      if (!choice.unitIds?.includes(pick6.unitId)) throw new Error(`Unit "${pick6.unitId}" is not available for this request.`);
-      const unit4 = draft.squad.find((u) => u.id === pick6.unitId);
+      if (typeof pick7.unitId !== "string") throw new Error("Pick a unit to ask.");
+      if (!choice.unitIds?.includes(pick7.unitId)) throw new Error(`Unit "${pick7.unitId}" is not available for this request.`);
+      const unit4 = draft.squad.find((u) => u.id === pick7.unitId);
       const rel = draft.relations[unit4.id];
       const have = TRUST_ORDER.indexOf(trustBand(rel?.trust ?? 0));
       const need = TRUST_ORDER.indexOf(route.cost.trustCheck ?? DEFAULT_TRUST_CHECK);
@@ -29445,8 +29477,8 @@ function chooseAction(ctx2, cid) {
   const opts = options(ctx2, cid, usable3);
   switch (c.aiProfile) {
     case "erratic": {
-      const pick6 = ctx2.rng.pick(usable3);
-      return { kind: "skill", skillId: pick6.skill.id, targetCid: ctx2.rng.pick(pick6.targets) };
+      const pick7 = ctx2.rng.pick(usable3);
+      return { kind: "skill", skillId: pick7.skill.id, targetCid: ctx2.rng.pick(pick7.targets) };
     }
     case "predator": {
       const damaging = opts.filter((o) => o.damage > 0);
@@ -29805,7 +29837,7 @@ function handicapOf(reg, id) {
   return void 0;
 }
 function commanderSparrer(state, reg) {
-  const body = commanderProfile(state).body;
+  const body2 = commanderProfile(state).body;
   const maxHp = commanderMaxHp(state, reg);
   return {
     cid: "s1",
@@ -29816,7 +29848,7 @@ function commanderSparrer(state, reg) {
     index: 0,
     hp: maxHp,
     maxHp,
-    base: { hp: maxHp, atk: 6 + 3 * body.strength, def: 4 + 2 * body.endurance, spd: 6 + 2 * body.reflexes, crit: 5 },
+    base: { hp: maxHp, atk: 6 + 3 * body2.strength, def: 4 + 2 * body2.endurance, spd: 6 + 2 * body2.reflexes, crit: 5 },
     stress: 0,
     statuses: [],
     mods: [],
@@ -29891,13 +29923,13 @@ var HANDS = ["rock", "paper", "scissors"];
 var PLAYABLE_KINDS = /* @__PURE__ */ new Set(["coin", "rps", "high_card", "sparring", "expedition_bet"]);
 var BET_PICKS = ["kills", "no_damage", "objective"];
 var agreedStatus = (reg, gameId) => reg.wagerGames.get(gameId)?.kind === "expedition_bet" ? "pending_run" : "accepted";
-function checkPick(state, reg, gameId, unitId, pick6) {
+function checkPick(state, reg, gameId, unitId, pick7) {
   const kind = reg.wagerGames.get(gameId)?.kind;
   if (kind === "sparring") {
-    const h2 = pick6 === void 0 ? void 0 : handicapOf(reg, pick6);
+    const h2 = pick7 === void 0 ? void 0 : handicapOf(reg, pick7);
     if (!h2) throw new Error("Choose a handicap.");
     if ((state.relations[unitId]?.affinity ?? -100) < h2.minAffinity) throw new Error("Her Affinity does not allow that handicap.");
-  } else if (kind === "expedition_bet" && !BET_PICKS.includes(pick6 ?? "")) {
+  } else if (kind === "expedition_bet" && !BET_PICKS.includes(pick7 ?? "")) {
     throw new Error("Choose what she bets on: kills, no damage or the objective.");
   }
 }
@@ -29935,12 +29967,12 @@ function rollChallenges(draft, ctx2) {
     if (!ctx2.rng.chance(TUNING.personal.wager.chance * assertiveness(draft, reg).demandMult * pressureMultOf(draft, reg, u.id))) continue;
     const game = games[ctx2.rng.int(0, games.length - 1)];
     const stake = stakes[ctx2.rng.int(0, stakes.length - 1)];
-    let pick6;
+    let pick7;
     if (game.kind === "sparring") {
       const allowed = game.handicaps.filter((h2) => (draft.relations[u.id]?.affinity ?? -100) >= h2.minAffinity);
-      pick6 = allowed[ctx2.rng.int(0, allowed.length - 1)]?.id;
+      pick7 = allowed[ctx2.rng.int(0, allowed.length - 1)]?.id;
     } else if (game.kind === "expedition_bet") {
-      pick6 = BET_PICKS[ctx2.rng.int(0, BET_PICKS.length - 1)];
+      pick7 = BET_PICKS[ctx2.rng.int(0, BET_PICKS.length - 1)];
     }
     const dm = pushMessage(draft, u.id, {
       from: u.id,
@@ -29950,7 +29982,7 @@ function rollChallenges(draft, ctx2) {
       read: false,
       initiated: true
     });
-    const w = { id: nextPersonalId(draft, "wg"), unitId: u.id, by: "unit", gameId: String(game.id), stakeId: String(stake.id), day: draft.day, status: "offered", ...pick6 !== void 0 ? { pick: pick6 } : {}, dmId: dm.id };
+    const w = { id: nextPersonalId(draft, "wg"), unitId: u.id, by: "unit", gameId: String(game.id), stakeId: String(stake.id), day: draft.day, status: "offered", ...pick7 !== void 0 ? { pick: pick7 } : {}, dmId: dm.id };
     (personalOf(draft).wagers ??= { open: [], log: [] }).open.push(w);
     events.push({ type: "wager_offered", wagerId: w.id, unitId: u.id, gameId: w.gameId, stakeId: w.stakeId });
   }
@@ -29988,14 +30020,14 @@ function answerChallenge(draft, ctx2, wagerId, accept2, opts = {}) {
   if (u && isLiving(u)) events.push(...hitHer(draft, ctx2.registries, w.unitId, "dismissed", "minor", "declined her challenge"));
   return events;
 }
-function playChance(kind, ctx2, pick6) {
+function playChance(kind, ctx2, pick7) {
   if (kind === "coin") return { winner: ctx2.rng.chance(0.5) ? "commander" : "unit", details: {} };
   if (kind === "high_card") {
     const commanderCard = ctx2.rng.int(1, 13);
     const herCard = ctx2.rng.int(1, 13);
     return { winner: commanderCard === herCard ? "void" : commanderCard > herCard ? "commander" : "unit", details: { commanderCard, herCard } };
   }
-  const mine = HANDS.indexOf(pick6);
+  const mine = HANDS.indexOf(pick7);
   if (mine < 0) throw new Error("Pick rock, paper or scissors.");
   const throws = [];
   for (let i = 0; i < 2; i++) {
@@ -30005,7 +30037,7 @@ function playChance(kind, ctx2, pick6) {
   }
   return { winner: "void", details: { hand: HANDS[mine], throws } };
 }
-function playWager(draft, ctx2, wagerId, pick6) {
+function playWager(draft, ctx2, wagerId, pick7) {
   const reg = ctx2.registries;
   const wagers = draft.personal?.wagers;
   const w = wagers?.open.find((x) => x.id === wagerId);
@@ -30014,21 +30046,21 @@ function playWager(draft, ctx2, wagerId, pick6) {
   if (!game || !PLAYABLE_KINDS.has(String(game.kind))) throw new Error("That game is not available.");
   const u = unitOf8(draft, w.unitId);
   if (!u || !isLiving(u)) throw new Error("She is not here to play.");
-  if (game.kind === "sparring") return playSparring(draft, ctx2, w, pick6 ?? w.pick);
-  const { winner, details } = playChance(String(game.kind), ctx2, pick6 ?? w.pick);
+  if (game.kind === "sparring") return playSparring(draft, ctx2, w, pick7 ?? w.pick);
+  const { winner, details } = playChance(String(game.kind), ctx2, pick7 ?? w.pick);
   return settle2(draft, ctx2, w, winner, details);
 }
-function playSparring(draft, ctx2, w, pick6) {
+function playSparring(draft, ctx2, w, pick7) {
   const reg = ctx2.registries;
   if (draft.slot === "night") throw new Error("Nobody spars at night.");
   if (draft.scene || draft.calendar.pendingScene || draft.calendar.nightEvent || draft.dilemmas?.open?.status === "presented") throw new Error("Not now: something else holds this slot.");
   const due = bookingGuard(draft, reg, { type: "calendar/consume_slot" });
   if (due) throw new Error(due.message);
-  checkPick(draft, reg, w.gameId, w.unitId, pick6);
-  const bout = sparringBout(draft, reg, ctx2.rng, w.unitId, pick6);
+  checkPick(draft, reg, w.gameId, w.unitId, pick7);
+  const bout = sparringBout(draft, reg, ctx2.rng, w.unitId, pick7);
   const xp = addBodyXp(draft.commander, "strength", Math.round(TUNING.commander.bodyXpPerSession * TUNING.personal.sparring.bodyXp * bodyGrowthMult(draft, reg)));
   const events = [{ type: "body_trained", stat: "strength", value: xp.value, raised: xp.gained }];
-  events.push(...settle2(draft, ctx2, w, bout.winner, { handicap: pick6, rounds: bout.rounds, ...bout.draw ? { draw: true } : {} }));
+  events.push(...settle2(draft, ctx2, w, bout.winner, { handicap: pick7, rounds: bout.rounds, ...bout.draw ? { draw: true } : {} }));
   events.push(...consumeSlots(draft, 1, ctx2));
   return events;
 }
@@ -30484,19 +30516,19 @@ function generateEncounter(state, reg, rng, input) {
     list5.push(e.id);
     byCategory.set(e.categoryId, list5);
   }
-  const weighted2 = [];
+  const weighted3 = [];
   for (const [id, w] of Object.entries(input.table.categories)) {
     const cat = reg.enemyCategories.get(id);
     if (!cat || w <= 0 || !byCategory.has(id)) continue;
-    weighted2.push({ id, weight: w * FREQUENCY[cat.frequency] });
+    weighted3.push({ id, weight: w * FREQUENCY[cat.frequency] });
   }
-  if (weighted2.length === 0) throw new Error("The enemy table has no known category with enemies.");
-  const total2 = weighted2.reduce((s, c) => s + c.weight, 0);
+  if (weighted3.length === 0) throw new Error("The enemy table has no known category with enemies.");
+  const total2 = weighted3.reduce((s, c) => s + c.weight, 0);
   const affixPool = [...reg.affixes.values()].filter((a) => a.appliesTo === "enemy" && (a.id !== "elite" || danger >= 3)).map((a) => a.id);
   const maxAffixes = Math.min(2, danger - 1);
   const draw2 = () => {
     let r = rng.float() * total2;
-    const cat = weighted2.find((c) => (r -= c.weight) < 0) ?? weighted2[weighted2.length - 1];
+    const cat = weighted3.find((c) => (r -= c.weight) < 0) ?? weighted3[weighted3.length - 1];
     const enemyId = rng.pick(byCategory.get(cat.id));
     const affixes = [];
     if (maxAffixes > 0 && rng.chance(0.1 * danger)) {
@@ -30540,11 +30572,11 @@ function applyLevelUps(draft, reg, unit4) {
   const events = [];
   const cap9 = levelCap(draft);
   while (unit4.xp >= xpToNext(unit4.level) && unit4.level < cap9) {
-    const before3 = hpGrowth(reg, unit4, unit4.level);
+    const before4 = hpGrowth(reg, unit4, unit4.level);
     unit4.xp -= xpToNext(unit4.level);
     unit4.level += 1;
     unit4.skillPoints += 1;
-    unit4.currentHp += hpGrowth(reg, unit4, unit4.level) - before3;
+    unit4.currentHp += hpGrowth(reg, unit4, unit4.level) - before4;
     events.push({ type: "level_up", unitId: unit4.id, level: unit4.level });
   }
   return events;
@@ -31013,10 +31045,10 @@ function answerRequest(draft, ctx2, requestId, raw, opts = {}) {
   const events = applyDirectorOutput(draft, ctx2, output, { fallback: opts.fallback });
   delete draft.world.director.pending;
   draft.world.director.lastTickDay = draft.day;
-  const after3 = draft.world.director.after;
-  if (after3) {
+  const after4 = draft.world.director.after;
+  if (after4) {
     delete draft.world.director.after;
-    events.push(...openRequest(draft, after3));
+    events.push(...openRequest(draft, after4));
   }
   if (rejected.length > 0) events.push({ type: "director_rejected", rejected });
   return events;
@@ -31103,8 +31135,8 @@ function draw(rng, list5, used2, onlyKind) {
   if (open3.length === 0) return null;
   const total2 = open3.reduce((s, c) => s + c.weight, 0);
   let r = rng.float() * total2;
-  const pick6 = open3.find((c) => (r -= c.weight) < 0) ?? open3[open3.length - 1];
-  return pick6.id;
+  const pick7 = open3.find((c) => (r -= c.weight) < 0) ?? open3[open3.length - 1];
+  return pick7.id;
 }
 function generateNodeMap(reg, rng, input) {
   const region = reg.regions.get(input.regionId);
@@ -31120,9 +31152,9 @@ function generateNodeMap(reg, rng, input) {
   };
   for (let l = 0; l < layerCount; l++) {
     const list5 = candidates2(reg, region, l, input.danger);
-    const size2 = rng.int(2, 3);
+    const size3 = rng.int(2, 3);
     const ids = [];
-    for (let i = 0; i < size2; i++) {
+    for (let i = 0; i < size3; i++) {
       const type = draw(rng, list5, used2) ?? none();
       bump2(type, 1);
       const id = `n${l}_${i}`;
@@ -31520,9 +31552,9 @@ function dedupeHints(hints) {
 function applyHints(draft, ctx2, exp) {
   const events = [];
   const hints = dedupeHints(exp.hints);
-  const size2 = TUNING.relations.maxEventsPerExchange;
-  for (let i = 0; i < hints.length; i += size2) {
-    const batch = hints.slice(i, i + size2).map((h2) => ({ ...h2, confidence: 1 }));
+  const size3 = TUNING.relations.maxEventsPerExchange;
+  for (let i = 0; i < hints.length; i += size3) {
+    const batch = hints.slice(i, i + size3).map((h2) => ({ ...h2, confidence: 1 }));
     events.push(...applyIntents(draft, ctx2, { channel: "scene", participants: exp.party, intents: { events: batch } }));
   }
   return events;
@@ -31584,7 +31616,7 @@ function endExpedition(draft, ctx2, outcome) {
   const injuries = logIds(exp, "injuries");
   const deaths = logIds(exp, "deaths");
   const breakdowns = logIds(exp, "breakdowns");
-  const report3 = {
+  const report4 = {
     id: `rep_${exp.id}`,
     missionId: exp.missionId,
     missionTitle: mission?.title ?? "Unknown mission",
@@ -31601,10 +31633,10 @@ function endExpedition(draft, ctx2, outcome) {
     acknowledged: false,
     debriefed: false
   };
-  if (rewards) report3.rewards = structuredClone(rewards);
-  if (exp.herCalls && exp.herCalls.length > 0) report3.herCalls = structuredClone(exp.herCalls);
-  if (exp.withoutCommand !== void 0) report3.withoutCommand = { ...exp.withoutCommand };
-  draft.lastExpedition = report3;
+  if (rewards) report4.rewards = structuredClone(rewards);
+  if (exp.herCalls && exp.herCalls.length > 0) report4.herCalls = structuredClone(exp.herCalls);
+  if (exp.withoutCommand !== void 0) report4.withoutCommand = { ...exp.withoutCommand };
+  draft.lastExpedition = report4;
   events.push(...resolveBets(draft, ctx2, outcome));
   events.push(...hideInjuries(draft, reg, exp.party, [...injuries, ...deaths]));
   let line3 = `Expedition to ${regionLabel}: ${OUTCOME_TEXT[outcome]}.`;
@@ -31621,7 +31653,7 @@ function endExpedition(draft, ctx2, outcome) {
   if (scapegoat) events.push(...openScapegoat(draft, ctx2, scapegoat));
   draft.lastExpedition.day = draft.day;
   events.push(...openRequest(draft, "expedition"));
-  events.push({ type: "expedition_ended", outcome, reportId: report3.id });
+  events.push({ type: "expedition_ended", outcome, reportId: report4.id });
   return events;
 }
 function exhaustion(draft, exp) {
@@ -31656,32 +31688,32 @@ function cleanRecap(text3) {
   return text3.replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, " ").replace(/<[^>]*>?/g, " ").replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, TUNING.expedition.recapMax).trim();
 }
 var OUTCOME_LABEL = { success: "OBJECTIVE SECURED", retreated: "RETREATED", failed: "FAILED: SQUAD BEATEN BACK" };
-function reportLines(report3, state, reg) {
+function reportLines(report4, state, reg) {
   const nameOf28 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-  const region = reg.regions.get(report3.regionId);
+  const region = reg.regions.get(report4.regionId);
   const lines = [
     "AFTER-ACTION REPORT",
-    `Mission: ${report3.missionTitle}`,
-    `Region: ${region ? regionName(region) : report3.regionId} // Day ${report3.day}`,
-    `Outcome: ${OUTCOME_LABEL[report3.outcome]}`,
-    `Squad: ${report3.party.map(nameOf28).join(", ")}`
+    `Mission: ${report4.missionTitle}`,
+    `Region: ${region ? regionName(region) : report4.regionId} // Day ${report4.day}`,
+    `Outcome: ${OUTCOME_LABEL[report4.outcome]}`,
+    `Squad: ${report4.party.map(nameOf28).join(", ")}`
   ];
-  const route = report3.nodes.map((t) => String(reg.nodeTypes.get(t)?.name ?? t));
+  const route = report4.nodes.map((t) => String(reg.nodeTypes.get(t)?.name ?? t));
   if (route.length > 0) lines.push(`Route: ${route.join(" > ")}`);
-  for (const entry of report3.log) lines.push(entry.text);
-  const loot = describeLoot(report3.loot, reg);
-  lines.push(report3.outcome === "success" ? `Loot banked: ${loot}.` : `Loot lost: ${loot}.`);
-  if (report3.rewards) {
-    const r = report3.rewards;
-    const parts = [`${r.credits} credits`, `${r.plyx} PLYX`, ...r.items];
-    if (r.faction) parts.push(`${r.faction.id} standing +${r.faction.amount}`);
-    if (r.clearance !== void 0) parts.push(`clearance tier ${r.clearance}`);
-    lines.push(`Rewards: ${parts.join(", ")}.`);
+  for (const entry of report4.log) lines.push(entry.text);
+  const loot = describeLoot(report4.loot, reg);
+  lines.push(report4.outcome === "success" ? `Loot banked: ${loot}.` : `Loot lost: ${loot}.`);
+  if (report4.rewards) {
+    const r = report4.rewards;
+    const parts2 = [`${r.credits} credits`, `${r.plyx} PLYX`, ...r.items];
+    if (r.faction) parts2.push(`${r.faction.id} standing +${r.faction.amount}`);
+    if (r.clearance !== void 0) parts2.push(`clearance tier ${r.clearance}`);
+    lines.push(`Rewards: ${parts2.join(", ")}.`);
   }
-  if (report3.injuries.length > 0) lines.push(`Injured: ${report3.injuries.map(nameOf28).join(", ")}.`);
-  if (report3.deaths.length > 0) lines.push(`Fallen: ${report3.deaths.map(nameOf28).join(", ")}.`);
-  if (report3.breakdowns.length > 0) lines.push(`Breakdown: ${report3.breakdowns.map(nameOf28).join(", ")}.`);
-  if (report3.recap) lines.push("", report3.recap);
+  if (report4.injuries.length > 0) lines.push(`Injured: ${report4.injuries.map(nameOf28).join(", ")}.`);
+  if (report4.deaths.length > 0) lines.push(`Fallen: ${report4.deaths.map(nameOf28).join(", ")}.`);
+  if (report4.breakdowns.length > 0) lines.push(`Breakdown: ${report4.breakdowns.map(nameOf28).join(", ")}.`);
+  if (report4.recap) lines.push("", report4.recap);
   return lines;
 }
 var nodeNumber = (exp) => exp.path.length;
@@ -32359,8 +32391,8 @@ function chooseDilemma(draft, ctx2, id, index2, route, wardenChecked = false, ra
     if (overridden) return overridden;
   }
   const ob = obedienceOf(draft);
-  const pick6 = ob?.who === "commander" ? herPick(draft, ctx2.registries, ob.unitId) : null;
-  const defied3 = ob !== null && pick6 !== null && pick6 !== index2;
+  const pick7 = ob?.who === "commander" ? herPick(draft, ctx2.registries, ob.unitId) : null;
+  const defied3 = ob !== null && pick7 !== null && pick7 !== index2;
   let effects2 = chosen.effects;
   let checkPassed;
   let routePassed;
@@ -32541,9 +32573,9 @@ function openDemand(draft, ctx2, unitId, opts = {}) {
   if (pool.length > 1) pool = pool.filter((t) => t.id !== last);
   if (pool.length === 0) return null;
   const total2 = pool.reduce((s, t) => s + Number(t.weight), 0);
-  const pick6 = opts.roll ?? ctx2.rng?.float();
-  if (pick6 === void 0) throw new Error("openDemand needs a roll or a stream to pick with.");
-  let r = pick6 * total2;
+  const pick7 = opts.roll ?? ctx2.rng?.float();
+  if (pick7 === void 0) throw new Error("openDemand needs a roll or a stream to pick with.");
+  let r = pick7 * total2;
   const tpl = pool.find((t) => (r -= Number(t.weight)) < 0) ?? pool[pool.length - 1];
   const stance = commandStance(draft, reg, unitId);
   const demand = {
@@ -33100,19 +33132,19 @@ function covered(draft, r) {
   const known3 = new Set((draft.headStart?.units ?? []).map((u) => u.unitId));
   return r.units.map((u, i) => ({ card: u.cardRef, id: draft.squad[i]?.id })).filter((x) => x.id !== void 0 && known3.has(x.id) && (want === true || want.includes(x.card))).map((x) => x.id);
 }
-function responseOf(seed3, unitId, i) {
-  const S6 = TUNING.probes.underway;
-  const u = headStartHash(seed3, unitId, `probe:${i}`);
-  return u < S6.yielded ? "yielded" : u < S6.yielded + S6.returned ? "returned" : u < S6.yielded + S6.returned + S6.deflected ? "deflected" : "resisted";
+function responseOf(seed4, unitId, i) {
+  const S7 = TUNING.probes.underway;
+  const u = headStartHash(seed4, unitId, `probe:${i}`);
+  return u < S7.yielded ? "yielded" : u < S7.yielded + S7.returned ? "returned" : u < S7.yielded + S7.returned + S7.deflected ? "deflected" : "resisted";
 }
-function axisOf(draft, reg, seed3, unitId, i, recent2) {
+function axisOf(draft, reg, seed4, unitId, i, recent2) {
   const tier = bandIndex(reg, dynamicOf(draft, unitId)?.hold ?? 0) === 0 ? 1 : 2;
   const axes = [...reg.probeAxes.values()].map((a) => a).filter((a) => a.tier <= tier);
-  const fresh3 = axes.filter((a) => !recent2.slice(-TUNING.probes.skipRecent).includes(a.id));
-  const pool = fresh3.length > 0 ? fresh3 : axes;
-  return pool[headStartRaw(seed3, unitId, `axis:${i}`) % pool.length];
+  const fresh4 = axes.filter((a) => !recent2.slice(-TUNING.probes.skipRecent).includes(a.id));
+  const pool = fresh4.length > 0 ? fresh4 : axes;
+  return pool[headStartRaw(seed4, unitId, `axis:${i}`) % pool.length];
 }
-function pickProbeMoment(reg, unit4, seed3, opts = {}) {
+function pickProbeMoment(reg, unit4, seed4, opts = {}) {
   const maxTier = opts.maxTier ?? 2;
   const rows = [...reg.headStartMoments.values()].filter((m) => {
     if (!(m.tags ?? []).includes("probe")) return false;
@@ -33120,7 +33152,7 @@ function pickProbeMoment(reg, unit4, seed3, opts = {}) {
     return axis !== void 0 && axis.tier <= maxTier && (opts.axes === void 0 || opts.axes.includes(axis.id));
   });
   if (rows.length === 0) return null;
-  const keyed = rows.map((m) => ({ m, h: headStartHash(seed3, unit4.id, `probe_moment:${String(m.id)}`) }));
+  const keyed = rows.map((m) => ({ m, h: headStartHash(seed4, unit4.id, `probe_moment:${String(m.id)}`) }));
   keyed.sort((a, b) => a.h - b.h || String(a.m.id).localeCompare(String(b.m.id)));
   return keyed[0].m;
 }
@@ -33128,7 +33160,7 @@ function applyDynamicHeadStart(draft, reg, r) {
   const hs = draft.headStart;
   if (hs === void 0 || draft.dynamic === void 0 || !dynamicOn(draft, reg)) return [];
   const events = [];
-  const seed3 = draft.dynamic.salt;
+  const seed4 = draft.dynamic.salt;
   for (const unitId of covered(draft, r)) {
     const unit4 = draft.squad.find((u) => u.id === unitId);
     const mine = hs.units.find((u) => u.unitId === unitId);
@@ -33138,9 +33170,9 @@ function applyDynamicHeadStart(draft, reg, r) {
     if (n <= 0) continue;
     const probed = [];
     for (let i = 0; i < n; i++) {
-      const before3 = dynamicOf(draft, unitId);
-      const axis = axisOf(draft, reg, seed3, unitId, i, before3?.recent ?? []);
-      events.push(...answerProbe(draft, { registries: reg }, unitId, responseOf(seed3, unitId, i), void 0, 1, false, { retro: true }));
+      const before4 = dynamicOf(draft, unitId);
+      const axis = axisOf(draft, reg, seed4, unitId, i, before4?.recent ?? []);
+      events.push(...answerProbe(draft, { registries: reg }, unitId, responseOf(seed4, unitId, i), void 0, 1, false, { retro: true }));
       const dyn2 = dynamicOf(draft, unitId);
       if (dyn2 === void 0) break;
       dyn2.probes.issued += 1;
@@ -33152,7 +33184,7 @@ function applyDynamicHeadStart(draft, reg, r) {
     if (dyn === void 0) continue;
     dyn.probes.lastDay = draft.day - 1;
     if (!draft.dynamic.queue.includes(unitId) && probeQueueRoom(draft) > 0) draft.dynamic.queue.push(unitId);
-    const moment = pickProbeMoment(reg, unit4, seed3, { axes: probed });
+    const moment = pickProbeMoment(reg, unit4, seed4, { axes: probed });
     if (moment !== null && !mine.moments.includes(String(moment.id))) mine.moments.push(String(moment.id));
   }
   return events;
@@ -33188,13 +33220,13 @@ function applySeeds(draft, reg, r) {
     const setup = r.dynamic.units[u.cardRef];
     const id = draft.squad[i]?.id;
     if (setup?.seeded !== true || id === void 0) return;
-    const frame4 = setup.startFrame;
-    const floor = frame4 === void 0 ? 0 : Number(reg.dynamicFrames.get(frame4)?.holdFloor ?? 0);
+    const frame5 = setup.startFrame;
+    const floor = frame5 === void 0 ? 0 : Number(reg.dynamicFrames.get(frame5)?.holdFloor ?? 0);
     events.push(...seedHold(draft, reg, id, floor));
     const dyn = draft.relations[id]?.dynamic;
-    if (dyn !== void 0 && frame4 !== void 0) {
-      dyn.frame = frame4;
-      dyn.milestones.push(`seeded:${frame4}`);
+    if (dyn !== void 0 && frame5 !== void 0) {
+      dyn.frame = frame5;
+      dyn.milestones.push(`seeded:${frame5}`);
     }
   });
   return events;
@@ -34198,9 +34230,9 @@ function holds4(when, res) {
 }
 var fill3 = (text3, vars) => text3.replace(/\{([A-Za-z0-9_]+)\}/g, (m, k) => vars[k] ?? m);
 var livingNamed4 = (draft) => draft.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
-function audienceOf(draft, parts, res, aboutIds) {
+function audienceOf(draft, parts2, res, aboutIds) {
   const known3 = /* @__PURE__ */ new Set();
-  for (const part of parts) {
+  for (const part of parts2) {
     if (part === "public") return ["*"];
     if (part === "squad") livingNamed4(draft).forEach((id) => known3.add(id));
     else if (part === "present") (draft.scene?.participants ?? aboutIds.filter((id) => id !== "world")).forEach((id) => known3.add(id));
@@ -34227,8 +34259,8 @@ function rememberEvents(draft, events, reg) {
       if (!holds4(rule.when, res)) continue;
       const aboutIds = rule.about === "world" ? ["world"] : res.ids[rule.about] ?? [];
       if (aboutIds.length === 0) continue;
-      const parts = Array.isArray(rule.audience) ? rule.audience : [rule.audience];
-      const knownBy = audienceOf(draft, parts, res, aboutIds);
+      const parts2 = Array.isArray(rule.audience) ? rule.audience : [rule.audience];
+      const knownBy = audienceOf(draft, parts2, res, aboutIds);
       const names2 = res.vars.names ?? (rule.about === "world" ? "" : joinNames2(aboutIds.map((id) => draft.squad.find((u) => u.id === id)?.displayName ?? id)));
       addFact(draft, {
         about: aboutIds,
@@ -34370,8 +34402,8 @@ function generatePortrait(rng) {
     const [row4, col, glyph] = mark;
     rows[row4] = rows[row4].slice(0, col) + glyph + rows[row4].slice(col + 1);
   }
-  const frame4 = `+${"-".repeat(INNER)}+`;
-  return [frame4, ...rows.map((r) => `|${r}|`), frame4].join("\n");
+  const frame5 = `+${"-".repeat(INNER)}+`;
+  return [frame5, ...rows.map((r) => `|${r}|`), frame5].join("\n");
 }
 function generateDesignation(rng, taken) {
   for (let i = 0; i < 1e4; i++) {
@@ -34917,9 +34949,9 @@ function expectedOption(state, reg, moment) {
     const e = read2(state, reg, moment);
     if (e !== null && moment.options.some((o) => o.key === e.key)) return e;
   }
-  const frame4 = moment.options.filter((o) => FRAME_KEYS2.includes(o.key));
-  const pick6 = frame4.find((o) => o.type === "returned") ?? frame4.find((o) => o.type === "yielded") ?? frame4[0];
-  return { key: pick6?.key ?? "0", strength: 1 };
+  const frame5 = moment.options.filter((o) => FRAME_KEYS2.includes(o.key));
+  const pick7 = frame5.find((o) => o.type === "returned") ?? frame5.find((o) => o.type === "yielded") ?? frame5[0];
+  return { key: pick7?.key ?? "0", strength: 1 };
 }
 function gapOf(expected, chosen) {
   if (expected === chosen) return "matched";
@@ -35196,9 +35228,9 @@ function liveSources(state, reg, opts = {}) {
             if (obscured && unitId === scene.participants[0]) weight += 1;
             break;
           case "mood_jump": {
-            const before3 = moments.seen?.[unitId];
+            const before4 = moments.seen?.[unitId];
             const now = moodOf(state, reg, unitId);
-            if (before3 && now && (before3.stress !== now.stress || before3.want !== now.want || before3.vitals !== now.vitals)) {
+            if (before4 && now && (before4.stress !== now.stress || before4.want !== now.want || before4.vitals !== now.vitals)) {
               weight += temperamentOf(state, unitId).volatility === "moody" ? TUNING.moments.moodyMult : 1;
             }
             break;
@@ -35295,9 +35327,9 @@ function cannotHide(state, reg) {
   return personEffects(state, reg, COMMANDER).some((e) => e.type === "visibility" && e.hideable === false && !(posture !== void 0 && (e.unlessPosture ?? []).includes(posture)));
 }
 function optionsFor(state, reg, source, unitId) {
-  const frame4 = source.frame;
+  const frame5 = source.frame;
   const visitor = kindsOf2(source).includes("visitor");
-  const options2 = GENERIC_KEYS.map((key, i) => ({ key, type: frame4[i].type }));
+  const options2 = GENERIC_KEYS.map((key, i) => ({ key, type: frame5[i].type }));
   const out = visitor && cannotHide(state, reg) ? options2.filter((o) => o.key !== "0") : options2;
   const scene = state.scene;
   if (visitor && sceneAffordances(state, reg).has("lock")) out.push({ key: "lock", type: "returned" });
@@ -35310,7 +35342,7 @@ function exposingElement(state, reg) {
   if (!scene) return void 0;
   const b = blockingOf(scene, COMMANDER);
   const contact = contactOf(scene);
-  const parts = [
+  const parts2 = [
     b.posture !== void 0 ? reg.blockingPostures.get(b.posture) : void 0,
     b.anchor ? reg.blockingAnchors.get(b.anchor.id) : void 0,
     b.activity !== void 0 ? reg.blockingActivities.get(b.activity) : void 0,
@@ -35318,8 +35350,8 @@ function exposingElement(state, reg) {
     contact ? reg.blockingContacts.get(contact.id) : void 0
   ];
   const visibility = (e) => effectsOfEntry(e).filter((x) => x.type === "visibility");
-  const shows = parts.find((e) => visibility(e).some((v) => v.exposing === true));
-  const hidden = parts.find((e) => visibility(e).some((v) => v.hiddenFromDoor === true));
+  const shows = parts2.find((e) => visibility(e).some((v) => v.exposing === true));
+  const hidden = parts2.find((e) => visibility(e).some((v) => v.hiddenFromDoor === true));
   const found = shows ?? hidden ?? (contact ? reg.blockingContacts.get(contact.id) : void 0);
   return found === void 0 ? void 0 : String(found.label);
 }
@@ -35395,8 +35427,8 @@ function momentPass(draft, ctx2, cause, opts = {}) {
     if (live3.length > 0 && ctx2.rng.chance(chanceOf(draft))) {
       const total2 = live3.reduce((n, l) => n + Math.max(1, Math.round(l.weight * 100)), 0);
       let r = ctx2.rng.int(0, total2 - 1);
-      const pick6 = live3.find((l) => (r -= Math.max(1, Math.round(l.weight * 100))) < 0) ?? live3[live3.length - 1];
-      events.push(...fireMoment(draft, ctx2, pick6.sourceId, pick6.unitId));
+      const pick7 = live3.find((l) => (r -= Math.max(1, Math.round(l.weight * 100))) < 0) ?? live3[live3.length - 1];
+      events.push(...fireMoment(draft, ctx2, pick7.sourceId, pick7.unitId));
     }
   }
   refreshSeen(draft, reg);
@@ -35525,9 +35557,9 @@ function holderOf3(state, kind, id) {
 }
 function gaugeFor(state, phys) {
   const level = phys.skill === true ? commanderSkill(state, String(phys.id)) : 0;
-  const capacity = Math.round(100 * (1 + TUNING.physics.endurance.capacityPerLevel * level));
+  const capacity2 = Math.round(100 * (1 + TUNING.physics.endurance.capacityPerLevel * level));
   const g = phys.gauge;
-  return { capacity, gauge: g.kind === "capacity" ? capacity : g.start };
+  return { capacity: capacity2, gauge: g.kind === "capacity" ? capacity2 : g.start };
 }
 function whyNotAllowed(state, reg, phys, holderId) {
   if (!sceneSettingsOf(state).physicsInteractions[phys.interaction]) return "That kind of interaction is switched off.";
@@ -36281,11 +36313,11 @@ registerAction("memory/edit_dossier", (draft, payload) => {
   if (!isObj17(payload) || typeof payload.target !== "string") throw new Error("memory/edit_dossier needs { target, own?, shared? }");
   const target = payload.target;
   if (target !== WORLD && !draft.squad.some((u) => u.id === target && u.kind === "named")) throw new Error(`memory/edit_dossier: unknown unit ${target}`);
-  const parts = ["own", "shared"].filter((k) => k in payload);
-  if (parts.length === 0 || parts.some((k) => typeof payload[k] !== "string")) throw new Error("memory/edit_dossier needs own and/or shared as text");
+  const parts2 = ["own", "shared"].filter((k) => k in payload);
+  if (parts2.length === 0 || parts2.some((k) => typeof payload[k] !== "string")) throw new Error("memory/edit_dossier needs own and/or shared as text");
   const d = (draft.memory.dossiers ??= {})[target] ??= { own: "", shared: "", day: draft.day, folded: 0 };
-  if (parts.includes("own")) d.own = String(payload.own).trim().slice(0, TUNING.memory.dossierOwnMax).trim();
-  if (parts.includes("shared")) d.shared = String(payload.shared).trim().slice(0, TUNING.memory.dossierSharedMax).trim();
+  if (parts2.includes("own")) d.own = String(payload.own).trim().slice(0, TUNING.memory.dossierOwnMax).trim();
+  if (parts2.includes("shared")) d.shared = String(payload.shared).trim().slice(0, TUNING.memory.dossierSharedMax).trim();
   return [{ type: "dossier_edited", target }];
 });
 registerAction("memory/rumor_text", (draft, payload) => {
@@ -36765,8 +36797,8 @@ function wardenGone(draft, ctx2, how) {
   return startRemoval(draft, ctx2, "death");
 }
 function reportChance(state, _reg) {
-  const R6 = TUNING.warden.verdict.report;
-  return clamp38(R6.base + R6.perKompromat * (kompromatOf(state).length - TUNING.warden.kompromat.needed) + R6.perCunning * (socialRank(state, "cunning") - 1), R6.min, R6.max);
+  const R7 = TUNING.warden.verdict.report;
+  return clamp38(R7.base + R7.perKompromat * (kompromatOf(state).length - TUNING.warden.kompromat.needed) + R7.perCunning * (socialRank(state, "cunning") - 1), R7.min, R7.max);
 }
 var REPORT_CONTEXT = "warden_report";
 function presentReport(draft, ctx2) {
@@ -36834,16 +36866,16 @@ function wardenReportChoice(draft, ctx2, context, optionId) {
 }
 function remoteExpectations(state) {
   if (!state.leashswap?.remote) return [];
-  const R6 = TUNING.warden.remote;
+  const R7 = TUNING.warden.remote;
   return [
-    { id: "remote_quota", kind: "meet_quota", weight: R6.quota, source: "corporate", known: true },
-    { id: "remote_obey", kind: "obey_oversight", weight: R6.obey, source: "corporate", known: true }
+    { id: "remote_quota", kind: "meet_quota", weight: R7.quota, source: "corporate", known: true },
+    { id: "remote_obey", kind: "obey_oversight", weight: R7.obey, source: "corporate", known: true }
   ];
 }
 function remoteDayStep(draft, ctx2) {
   const ls = leashswapOf(draft);
   if (!ls?.remote || wardenOf(draft)) return [];
-  const R6 = TUNING.warden.remote;
+  const R7 = TUNING.warden.remote;
   const events = [];
   const done = draft.missions.completed;
   if (done.some((m) => m.status === "failed" && m.outcomeDay === draft.day)) {
@@ -36851,7 +36883,7 @@ function remoteDayStep(draft, ctx2) {
     if (id !== void 0) events.push(...applyRemotePunishment(draft, ctx2, id));
   }
   const since = draft.day - ls.remote.sinceDay;
-  if (since > 0 && since % R6.missionDays === 0 && !done.some((m) => m.status === "completed" && m.outcomeDay !== void 0 && m.outcomeDay > draft.day - R6.missionDays && m.outcomeDay <= draft.day)) {
+  if (since > 0 && since % R7.missionDays === 0 && !done.some((m) => m.status === "completed" && m.outcomeDay !== void 0 && m.outcomeDay > draft.day - R7.missionDays && m.outcomeDay <= draft.day)) {
     const id = pickPunishment(draft, ctx2.registries, 1);
     if (id !== null) events.push(...applyRemotePunishment(draft, ctx2, id));
   }
@@ -38016,10 +38048,10 @@ registerAction("item/reroll", (draft, payload, ctx2) => {
   const pool = [...ctx2.registries.affixes.values()].filter((a) => a.appliesTo === "item" && a.drawback !== true && !inst.affixes.includes(a.id) && (!a.slots || a.slots.includes(slot2))).map((a) => a.id);
   if (pool.length === 0) throw new Error("No other affix can roll on this item.");
   const events = spend(draft, 0, rerollCost(inst));
-  const before3 = inst.affixes[i];
+  const before4 = inst.affixes[i];
   inst.affixes[i] = ctx2.rng.pick(pool);
   draft.workshopSession.opsLeft -= 1;
-  return [...events, { type: "item_rerolled", uid: inst.uid, from: before3, to: inst.affixes[i] }];
+  return [...events, { type: "item_rerolled", uid: inst.uid, from: before4, to: inst.affixes[i] }];
 });
 registerAction("item/dismantle", (draft, payload, ctx2) => {
   session(draft);
@@ -38626,14 +38658,14 @@ function applyShift(unit4, dev, s) {
   const up = s.direction === "up";
   if (kind === "value") {
     const axis = s.axis.slice("value:".length);
-    const before3 = valuesOf(unit4)[axis];
+    const before4 = valuesOf(unit4)[axis];
     const old = dev.drift[axis] ?? 0;
     const cap9 = isAnchored(unit4, s.axis) ? D2.anchoredValueCap : D2.valueCap;
     const delta = D2.nudge * (isAnchored(unit4, s.axis) ? D2.anchorInertia : 1);
     const next = s.size === "nudge" ? old + (up ? delta : -delta) : Math.trunc(old) + (up ? 1 : -1);
     dev.drift[axis] = round5(Math.min(cap9, Math.max(-cap9, next)));
-    const after3 = valuesOf(unit4)[axis];
-    return after3 === before3 ? null : { from: String(before3), to: String(after3) };
+    const after4 = valuesOf(unit4)[axis];
+    return after4 === before4 ? null : { from: String(before4), to: String(after4) };
   }
   if (kind === "bond" || kind === "practice" || kind === "expect") {
     const d = discreteAxis(unit4, s.axis);
@@ -39227,8 +39259,8 @@ function resolveEnvOf(state, reg, run) {
     head: headCapacity(scentToleranceOf(state, reg, run.holderId))
   };
 }
-function share(kind, gauge, capacity) {
-  return kind === "capacity" ? gauge / capacity : kind === "fill" ? 1 - gauge / capacity : 1;
+function share(kind, gauge, capacity2) {
+  return kind === "capacity" ? gauge / capacity2 : kind === "fill" ? 1 - gauge / capacity2 : 1;
 }
 var validInput = (i) => typeof i === "object" && i !== null && Number.isInteger(i.beat) && i.beat >= 0 && INPUT_KINDS.includes(i.kind) && (i.amount === void 0 || typeof i.amount === "number" && Number.isFinite(i.amount) && i.amount >= 0);
 var overDelayOf = (style) => P2.breath.overDelay[style] ?? P2.breath.overDelay.other;
@@ -39276,7 +39308,7 @@ function resolveSegment(run, plan, inputs, env) {
     cues: [],
     noise: 0
   };
-  const before3 = share(env.gaugeKind, run.gauge, cap9);
+  const before4 = share(env.gaugeKind, run.gauge, cap9);
   const relief2 = (beat, kind) => {
     r.reliefs += 1;
     r.reliefInputs.push({ beat, kind });
@@ -39389,8 +39421,8 @@ function resolveSegment(run, plan, inputs, env) {
   if (run.dryness !== void 0 && r.dryness === void 0) r.dryness = run.dryness;
   r.checked = env.interaction === "order" && r.gauge <= P2.tongue.checkAt;
   r.complete = env.interaction === "passive" && r.gauge >= 100;
-  const after3 = share(env.gaugeKind, r.gauge, cap9);
-  r.warning = before3 > P2.warning / 100 && after3 <= P2.warning / 100;
+  const after4 = share(env.gaugeKind, r.gauge, cap9);
+  r.warning = before4 > P2.warning / 100 && after4 <= P2.warning / 100;
   r.noise = r.slips + r.gasps > 0 ? P2.noiseSlip : 0;
   return r;
 }
@@ -39566,10 +39598,10 @@ function marathonSkip(draft, ctx2, strategy) {
   const loss = attrition(hpp, commanderLevel(draft, run.physicsId));
   const base = run.baseCapacity ?? run.capacity;
   const next = (cap9, gaugeKind, gauge) => {
-    const capacity = Math.max(Math.round(base * 0.2), cap9 - loss);
-    if (gaugeKind === "capacity") return { capacity, gauge: Math.min(capacity, Math.max(1, capacity + k.delta)) };
-    if (gaugeKind === "fill") return { capacity, gauge: Math.min(capacity - 1, Math.max(0, -Math.min(0, k.delta))) };
-    return { capacity, gauge };
+    const capacity2 = Math.max(Math.round(base * 0.2), cap9 - loss);
+    if (gaugeKind === "capacity") return { capacity: capacity2, gauge: Math.min(capacity2, Math.max(1, capacity2 + k.delta)) };
+    if (gaugeKind === "fill") return { capacity: capacity2, gauge: Math.min(capacity2 - 1, Math.max(0, -Math.min(0, k.delta))) };
+    return { capacity: capacity2, gauge };
   };
   const kindOf4 = (id) => String((reg.contactPhysics.get(id)?.gauge).kind);
   Object.assign(run, next(run.capacity, kindOf4(run.physicsId), run.gauge));
@@ -40093,8 +40125,8 @@ function holdFeed(draft, reg, unitId, event, _severity) {
 var R3 = TUNING.regard;
 function nonHolder(state, unitId) {
   const unit4 = state.squad.find((u) => u.id === unitId);
-  const frame4 = dynamicOf(state, unitId)?.frame;
-  return unit4 !== void 0 && unit4.kind === "named" && isLiving(unit4) && (frame4 === void 0 || frameRank(frame4) < frameRank("play"));
+  const frame5 = dynamicOf(state, unitId)?.frame;
+  return unit4 !== void 0 && unit4.kind === "named" && isLiving(unit4) && (frame5 === void 0 || frameRank(frame5) < frameRank("play"));
 }
 var noted = (draft) => draft.dynamic.noted ??= {};
 function checkDisappointment(draft, ctx2, unitId, from, to) {
@@ -40182,8 +40214,8 @@ function expectation(state, reg, moment) {
   if (!dynamicOn(state, reg) || liveDynamic(state, moment.unitId) === void 0) return null;
   const wanted2 = expectationsOf(state, reg, moment.unitId).moments?.[moment.sourceId];
   const options2 = wanted2 === void 0 ? [] : moment.options.filter((o) => o.type === wanted2.type);
-  const pick6 = options2.find((o) => o.key === "0" || o.key === "1" || o.key === "2") ?? options2[0];
-  return wanted2 !== void 0 && pick6 !== void 0 ? { key: pick6.key, strength: wanted2.strength } : defaultExpectation(state, reg, moment);
+  const pick7 = options2.find((o) => o.key === "0" || o.key === "1" || o.key === "2") ?? options2[0];
+  return wanted2 !== void 0 && pick7 !== void 0 ? { key: pick7.key, strength: wanted2.strength } : defaultExpectation(state, reg, moment);
 }
 function compromatHint(state, reg, unitId) {
   const dyn = dynamicOn(state, reg) && liveDynamic(state, unitId) !== void 0 ? dynamicOf(state, unitId) : void 0;
@@ -40871,10 +40903,10 @@ function callPosture(draft, ctx2, events) {
     const now = scene.blocking?.[COMMANDER]?.posture;
     const others = mine.filter((p) => p.postureId !== now);
     const pool = others.length > 0 ? others : mine;
-    const pick6 = pool[Math.min(pool.length - 1, Math.floor(practiceRoll(draft, holderId, `call:pick:${key}`) * pool.length))];
+    const pick7 = pool[Math.min(pool.length - 1, Math.floor(practiceRoll(draft, holderId, `call:pick:${key}`) * pool.length))];
     const id = nextPracticeId(draft, "pc");
-    ensurePractices(draft).call = { id, holderId, postureId: pick6.postureId, sceneId: scene.id, at: scene.exchanges };
-    return [{ type: "posture_called", callId: id, unitId: holderId, holderId, postureId: pick6.postureId, sceneId: scene.id }];
+    ensurePractices(draft).call = { id, holderId, postureId: pick7.postureId, sceneId: scene.id, at: scene.exchanges };
+    return [{ type: "posture_called", callId: id, unitId: holderId, holderId, postureId: pick7.postureId, sceneId: scene.id }];
   }
   return [];
 }
@@ -41152,8 +41184,8 @@ var SCHEMA_PART = {
 var has2 = (i, s) => i.sections.includes(s);
 function system(raw) {
   const input = raw;
-  const parts = input.sections.map((s) => SCHEMA_PART[s]);
-  parts.push('  "notes": "<at most 300 characters, for the player>"');
+  const parts2 = input.sections.map((s) => SCHEMA_PART[s]);
+  parts2.push('  "notes": "<at most 300 characters, for the player>"');
   const lines = [
     "You convert a roleplay character card into a game profile for a squad-command RPG.",
     "Reply with a single JSON object and nothing else. Write in English.",
@@ -41197,7 +41229,7 @@ function system(raw) {
     lines.push("", "The expectations are what she wants from the commander and wants to see, read from the card; never invent, and leave out what the card does not suggest. moments name a moment source and the answer she expects (type) with how strongly (strength 1 to 3). holdsUntil is how far she holds someone down: signal (lets go at the first sign), limit (to the edge) or blackout (past it). worship names the targets under WORSHIP TARGETS she craves, enjoys, ignores or dislikes, with how she wants it done and what it means to her. offset is how far she sits from her style's usual place, -0.3 to 0.3. tells are one short phrase each for how her irritation and her pleasure show. Never give the commander a pronoun in any text.");
   }
   if (has2(input, "values")) lines.push("", "Value axes:", VALUE_AXES_TEXT);
-  lines.push("", "Output JSON shape:", "{", parts.join(",\n"), "}");
+  lines.push("", "Output JSON shape:", "{", parts2.join(",\n"), "}");
   return lines.join("\n");
 }
 var neutralize = (s) => s.replace(/<\/?card>/gi, "");
@@ -41630,8 +41662,8 @@ function choosesAgainstHer(state, reg, context, ref, choice) {
   if (rec !== void 0 && rec.context === context && rec.ref === ref) return rec.index !== null && rec.index !== choice;
   const holderId = herChooser(state, reg);
   if (holderId === null || !preselects(state, reg, holderId) || !choiceOpen(state, context, ref)) return false;
-  const pick6 = herPickFor(state, reg, holderId, context, ref);
-  return pick6 !== null && pick6 !== choice;
+  const pick7 = herPickFor(state, reg, holderId, context, ref);
+  return pick7 !== null && pick7 !== choice;
 }
 
 // src/loyalty/dilemmaController.ts
@@ -42172,8 +42204,8 @@ function createPower(deps) {
     return send({ type: "power/countermand", payload: { answer } }, chatId());
   }
   function herCallsEnded(reportId) {
-    const report3 = state()?.lastExpedition;
-    if (report3 && report3.id === reportId && (report3.herCalls?.length ?? 0) > 0) deps.refreshContext();
+    const report4 = state()?.lastExpedition;
+    if (report4 && report4.id === reportId && (report4.herCalls?.length ?? 0) > 0) deps.refreshContext();
   }
   async function askFirst(unitId, on) {
     return send({ type: "power/ask_first", payload: { unitId, on } }, chatId());
@@ -42370,7 +42402,7 @@ function createPersonal(deps) {
     takeOffToken: (tokenId) => act("token/remove", { tokenId }),
     answerToken: (offerId, accept2) => act("token/answer", { offerId, accept: accept2 }),
     answerWager: (wagerId, accept2) => act("wager/answer", { wagerId, accept: accept2 }),
-    playWager: (wagerId, pick6) => act("wager/play", { wagerId, ...pick6 !== void 0 ? { pick: pick6 } : {} }),
+    playWager: (wagerId, pick7) => act("wager/play", { wagerId, ...pick7 !== void 0 ? { pick: pick7 } : {} }),
     answerQuestion: (wagerId, text3) => act("wager/answer_question", { wagerId, text: text3 }),
     challenge: (p) => act("wager/challenge", p),
     answerSecret(secretId, choice) {
@@ -42634,17 +42666,17 @@ function worldDossier(state) {
 var EPILOGUE_MAX2 = 2400;
 var LABEL2 = /^\s*(?:\*\*|__)?\s*(?:narrator|epilogue|summary|assistant|ai|chronicle|story)\s*(?:\*\*|__)?\s*:\s*(?:\*\*|__)?\s*/i;
 function sanitizeEpilogue(text3) {
-  const body = text3.replace(/```[a-z]*/gi, "\n").split(/\r?\n/).map((l) => l.replace(/^\s{0,3}#{1,6}\s+/, "").replace(/^\s*[-*+]\s+/, "").replace(/^\s*>\s?/, "").replace(/[*_`~]+/g, "").trim()).join("\n").replace(/\n{3,}/g, "\n\n").trim().replace(LABEL2, "").replace(/^["“”]+|["“”]+$/g, "").trim().slice(0, EPILOGUE_MAX2).trim();
-  return body === "" ? null : body;
+  const body2 = text3.replace(/```[a-z]*/gi, "\n").split(/\r?\n/).map((l) => l.replace(/^\s{0,3}#{1,6}\s+/, "").replace(/^\s*[-*+]\s+/, "").replace(/^\s*>\s?/, "").replace(/[*_`~]+/g, "").trim()).join("\n").replace(/\n{3,}/g, "\n\n").trim().replace(LABEL2, "").replace(/^["“”]+|["“”]+$/g, "").trim().slice(0, EPILOGUE_MAX2).trim();
+  return body2 === "" ? null : body2;
 }
 function fallbackEpilogue(input) {
   const heading2 = "AUTHOR TO WRITE: THE RECORD";
-  let body = input.lines.join("\n");
+  let body2 = input.lines.join("\n");
   const room2 = EPILOGUE_MAX2 - heading2.length - 2;
-  if (body.length > room2) body = body.slice(body.length - room2).replace(/^[^\n]*\n/, "");
-  return body === "" ? heading2 : `${heading2}
+  if (body2.length > room2) body2 = body2.slice(body2.length - room2).replace(/^[^\n]*\n/, "");
+  return body2 === "" ? heading2 : `${heading2}
 
-${body}`;
+${body2}`;
 }
 registerCallType({
   id: "epilogue",
@@ -42677,8 +42709,8 @@ var CURRENT_VERSION = 1;
 var migrations = [
   // v0 -> v1: early prototype saved only day, slot and seed.
   (v0) => {
-    const seed3 = typeof v0.seed === "number" ? v0.seed : 1;
-    const base = createCampaign({ seed: seed3, commanderName: "" });
+    const seed4 = typeof v0.seed === "number" ? v0.seed : 1;
+    const base = createCampaign({ seed: seed4, commanderName: "" });
     return {
       ...base,
       day: v0.day,
@@ -42993,9 +43025,9 @@ function createOnboarding(deps) {
     async debriefTutorial() {
       const s = state();
       const step = s ? currentStep(s, reg()) : null;
-      const report3 = s?.lastExpedition;
-      if (!s || !step || step.completion !== "debriefed" || !report3 || report3.missionId !== s.onboarding?.tutorialMissionId) return false;
-      const who = report3.party.filter((id) => livingNamed(s).some((u) => u.id === id) && restrictionReason(s, reg(), id, "scene") === null).slice(0, TUNING.scene.maxParticipants);
+      const report4 = s?.lastExpedition;
+      if (!s || !step || step.completion !== "debriefed" || !report4 || report4.missionId !== s.onboarding?.tutorialMissionId) return false;
+      const who = report4.party.filter((id) => livingNamed(s).some((u) => u.id === id) && restrictionReason(s, reg(), id, "scene") === null).slice(0, TUNING.scene.maxParticipants);
       if (who.length === 0) {
         deps.toast("warn", "Nobody from the patrol is free to debrief.");
         return false;
@@ -43312,17 +43344,17 @@ function createWarden(deps) {
     const order = orderOfAction(action, deps.registries());
     if (!s || !order || !needsJudge(action)) return send(action);
     judging.set(action.type, action);
-    let judged = null;
+    let judged2 = null;
     let out;
     try {
       out = await deps.generations.generate("warden.judge", action.type);
     } finally {
       judging.delete(action.type);
     }
-    if (out.kind === "applied") judged = out.value;
+    if (out.kind === "applied") judged2 = out.value;
     if (chatId() !== expect) return [];
     const payload = typeof action.payload === "object" && action.payload !== null ? action.payload : {};
-    return send(judged !== null && judged.conflict !== "none" ? { ...action, payload: { ...payload, wardenJudged: judged } } : action);
+    return send(judged2 !== null && judged2.conflict !== "none" ? { ...action, payload: { ...payload, wardenJudged: judged2 } } : action);
   }
   async function answer(a) {
     const s = state();
@@ -43659,9 +43691,9 @@ function createDevelopment(deps) {
   const state = () => deps.app.current().state;
   let flight = null;
   let busy = false;
-  const fresh3 = /* @__PURE__ */ new Set();
-  const isRedo = (s, unitId) => !fresh3.has(unitId) && !unitDue(s, unitId) && s.squad.find((u) => u.id === unitId)?.development?.lastApplied !== void 0;
-  function before3(s, unitId) {
+  const fresh4 = /* @__PURE__ */ new Set();
+  const isRedo = (s, unitId) => !fresh4.has(unitId) && !unitDue(s, unitId) && s.squad.find((u) => u.id === unitId)?.development?.lastApplied !== void 0;
+  function before4(s, unitId) {
     if (!isRedo(s, unitId)) return s;
     const c = structuredClone(s);
     undoReview(c, unitId);
@@ -43699,7 +43731,7 @@ function createDevelopment(deps) {
         const why = reviewCommitted(s, key);
         if (why !== null) return { expired: why };
       } else if (!unitDue(s, key)) return { expired: "She has nothing to review." };
-      const view = before3(s, key);
+      const view = before4(s, key);
       return reviewInput(view, view.squad.find((u) => u.id === key));
     },
     parse: (raw, input) => readReview(raw, input),
@@ -43711,7 +43743,7 @@ function createDevelopment(deps) {
     fallback(key) {
       const s = state();
       if (!s) return false;
-      const view = before3(s, key);
+      const view = before4(s, key);
       return !dispatchReview(key, fallbackReview(view, deps.registries(), key), "fallback").some((e) => e.type === "error");
     },
     committed(key) {
@@ -43742,14 +43774,14 @@ function createDevelopment(deps) {
     const due = reviewDue(s, deps.registries());
     if (due === null) return;
     busy = true;
-    fresh3.add(due);
+    fresh4.add(due);
     flight = (async () => {
       deps.app.dispatch({ type: "generation/close", payload: { siteId: SITE2, key: due, outcome: "dropped" } }, { expectChatId: chatId() });
       await deps.generations.generate(SITE2, due);
     })().finally(() => {
       flight = null;
       busy = false;
-      fresh3.delete(due);
+      fresh4.delete(due);
     });
     await flight;
   }
@@ -43807,11 +43839,11 @@ function styleLine(state, reg, unit4) {
 }
 function holderDirective(state, reg, unit4) {
   const dyn = dynamicOf(state, unit4.id);
-  const frame4 = dyn === void 0 ? void 0 : frameEntry(reg, dyn.frame);
+  const frame5 = dyn === void 0 ? void 0 : frameEntry(reg, dyn.frame);
   const waiting3 = state.dynamic?.open.milestones.find((m) => m.unitId === unit4.id);
   const asking = state.dynamic?.open.claims.find((c) => c.unitId === unit4.id);
   const holds6 = dyn !== void 0 && frameRank(dyn.frame) >= frameRank("play");
-  if (dyn === void 0 || frame4 === void 0 || !holds6 && waiting3 === void 0) return null;
+  if (dyn === void 0 || frame5 === void 0 || !holds6 && waiting3 === void 0) return null;
   const name = unit4.displayName;
   const claimed = dyn.domains.map((d) => reg.dynamicDomains.get(d.id)?.promptHint).filter((h2) => typeof h2 === "string").map(sentence2);
   const milestone = waiting3 === void 0 ? void 0 : reg.dynamicMilestones.get(waiting3.milestoneId);
@@ -43820,8 +43852,8 @@ function holderDirective(state, reg, unit4) {
   const regard2 = holds6 ? regardTone(state, reg, unit4.id) : null;
   const refused = dyn.refusals.some((day) => state.day - day <= TUNING.dynamic.directives.refusalDays);
   const kept = compromatOf(state, unit4.id).slice(-3).map((f) => sentence2(f.text)).filter((t) => t !== "");
-  const parts = [
-    ...holds6 ? [`${name} holds the lead with the commander: ${sentence2(frame4.promptHint)}.`] : [],
+  const parts2 = [
+    ...holds6 ? [`${name} holds the lead with the commander: ${sentence2(frame5.promptHint)}.`] : [],
     ...holds6 && claimed.length > 0 ? [`What she has claimed: ${claimed.join("; ")}.`] : [],
     styleLine(state, reg, unit4),
     ...regard2 !== null ? [`Her tone toward the commander: ${sentence2(regard2)}.`] : [],
@@ -43833,7 +43865,7 @@ function holderDirective(state, reg, unit4) {
     ...holds6 && kept.length > 0 ? [`She holds something over the commander, and uses it only when it serves her, never all at once: ${kept.join("; ")}.`] : [],
     "Show it in how she acts and speaks; never name it as a mechanic."
   ];
-  return { id: `${DYNAMIC_PREFIX}${unit4.id}`, expiresAfter: "scene", text: parts.filter((p) => p !== "").join(" ") };
+  return { id: `${DYNAMIC_PREFIX}${unit4.id}`, expiresAfter: "scene", text: parts2.filter((p) => p !== "").join(" ") };
 }
 function probeDirective(reg, unit4, axisId) {
   const axis = reg.probeAxes.get(axisId);
@@ -43956,22 +43988,22 @@ function offerDirective(event, state, reg) {
   if (event.type !== "offer_made" || !dynamicOn(state, reg)) return null;
   const unit4 = state.squad.find((u) => u.id === event.unitId);
   if (unit4 === void 0) return null;
-  const parts = offerSentences(reg, unit4, {
+  const parts2 = offerSentences(reg, unit4, {
     answer: String(event.answer),
     what: String(event.what ?? "something"),
     conditions: event.conditions === true,
     kind: event.kind === true,
     ...typeof event.corrected === "string" ? { corrected: event.corrected } : {}
   });
-  return parts === null ? null : plainDirective({ id: `${OFFER_PREFIX}${unit4.id}`, expiresAfter: "next_reply", text: [...parts, "Show it in how she acts and speaks; never name it as a mechanic."].join(" ") });
+  return parts2 === null ? null : plainDirective({ id: `${OFFER_PREFIX}${unit4.id}`, expiresAfter: "next_reply", text: [...parts2, "Show it in how she acts and speaks; never name it as a mechanic."].join(" ") });
 }
 function offerSentences(reg, unit4, o) {
-  const say5 = OFFER_LINE[o.answer];
-  if (say5 === void 0) return null;
+  const say6 = OFFER_LINE[o.answer];
+  if (say6 === void 0) return null;
   const named4 = o.corrected === void 0 ? void 0 : reg.worshipTargets.get(o.corrected);
   return [
     `The commander offers ${sentence2(o.what)} to ${unit4.displayName}${o.conditions ? ", and asks something in return" : ""}.`,
-    o.kind ? `${unit4.displayName} turns it down kindly; she is not looking for that from the commander.` : say5(unit4.displayName),
+    o.kind ? `${unit4.displayName} turns it down kindly; she is not looking for that from the commander.` : say6(unit4.displayName),
     ...o.answer === "corrected" && named4 !== void 0 ? [`What she wants is the commander's attention to her ${sentence2(String(named4.label)).toLowerCase()}.`] : []
   ];
 }
@@ -43982,8 +44014,8 @@ function offerReplyLine(state, reg, unitId) {
   if (unit4 === void 0 || open3 === void 0 || open3.answer === void 0) return null;
   if ((state.dms[unitId] ?? []).slice(open3.dmAt).some((m) => m.from !== "commander")) return null;
   const what = open3.composition.flatMap((c) => c.ids.map((id) => offerLabel(reg, c.tab, id).toLowerCase())).join(" and ");
-  const parts = offerSentences(reg, unit4, { answer: open3.answer, what, conditions: open3.conditions === true, kind: open3.kind === true, ...open3.corrected !== void 0 ? { corrected: open3.corrected } : {} });
-  return parts === null ? null : plainDraft(parts.join(" "));
+  const parts2 = offerSentences(reg, unit4, { answer: open3.answer, what, conditions: open3.conditions === true, kind: open3.kind === true, ...open3.corrected !== void 0 ? { corrected: open3.corrected } : {} });
+  return parts2 === null ? null : plainDraft(parts2.join(" "));
 }
 function applyOfferDirectives(builder, events, state, reg) {
   if (state === null) return false;
@@ -44162,8 +44194,8 @@ function practiceDirectives(state, reg, present2) {
       const physical = reg.holderPunishments.get(x.entryId)?.effects?.some((e) => e.type === "physical" || e.type === "slap") === true;
       const how = !physical ? "" : shown2 ? " It is shown as it happens." : " It is only reported, in a line, and never shown.";
       const crowd = (x.audienceIds ?? []).map((id) => state.squad.find((u) => u.id === id)?.displayName ?? id);
-      const before3 = crowd.length > 0 ? ` It is done before ${crowd.join(" and ")}, who watch.` : "";
-      return `${unit4.displayName} carries out the punishment she gave the commander: ${phrase(x.summary)}.${how}${before3}`;
+      const before4 = crowd.length > 0 ? ` It is done before ${crowd.join(" and ")}, who watch.` : "";
+      return `${unit4.displayName} carries out the punishment she gave the commander: ${phrase(x.summary)}.${how}${before4}`;
     });
     out.push({ id: `${PUNISHMENT_PREFIX}${unit4.id}`, expiresAfter: "scene", text: plainDraft(`${lines.join(" ")} ${NEVER_NAME}`) });
   }
@@ -45188,18 +45220,18 @@ function cssUrl(path) {
 var UNIT_ACCENTS = ["#ff9ec7", "#ffb86b", "#8fd6ff", "#b6e88a", "#d0a8ff", "#7ee7d0"];
 var unitAccent = (unitId) => UNIT_ACCENTS[fnv1a3(unitId) % UNIT_ACCENTS.length];
 function redacted(text3, ranges) {
-  const parts = [];
+  const parts2 = [];
   let cursor = 0;
   for (const [from, to] of [...ranges].sort((a, b) => a[0] - b[0])) {
     const start = Math.max(0, from);
     const end2 = Math.min(text3.length, to);
     if (end2 <= start || start < cursor) continue;
-    if (start > cursor) parts.push(text3.slice(cursor, start));
-    parts.push(h("span", { class: "alius-redact", "aria-label": "redacted" }, "\u2588".repeat(end2 - start)));
+    if (start > cursor) parts2.push(text3.slice(cursor, start));
+    parts2.push(h("span", { class: "alius-redact", "aria-label": "redacted" }, "\u2588".repeat(end2 - start)));
     cursor = end2;
   }
-  if (cursor < text3.length) parts.push(text3.slice(cursor));
-  return parts;
+  if (cursor < text3.length) parts2.push(text3.slice(cursor));
+  return parts2;
 }
 function renderVoiceCard(o) {
   const head = o.title || o.meta || o.from ? h(
@@ -45209,15 +45241,15 @@ function renderVoiceCard(o) {
     o.from ? h("span", { class: "alius-voice-from" }, o.from) : null,
     o.meta ? h("span", { class: "alius-voice-meta" }, o.meta) : null
   ) : null;
-  const body = h("div", { class: "alius-voice-body" });
-  if (typeof o.body === "string") body.append(...(o.redact?.length ? redacted(o.body, o.redact) : [o.body]).filter((c) => c !== null && c !== void 0));
-  else body.append(o.body);
+  const body2 = h("div", { class: "alius-voice-body" });
+  if (typeof o.body === "string") body2.append(...(o.redact?.length ? redacted(o.body, o.redact) : [o.body]).filter((c) => c !== null && c !== void 0));
+  else body2.append(o.body);
   const card2 = h(
     "article",
     { class: `alius-voice alius-voice-${o.voice}`, "data-voice": o.voice },
     o.voice === "paper" ? noise("alius-fibre", { frequency: "0.04 0.9", octaves: 2, seed: 3 }) : null,
     head,
-    body,
+    body2,
     o.stamp ? h("span", { class: "alius-stamp" }, o.stamp) : null
   );
   if (o.accent) card2.style.setProperty("--voice-accent", o.accent);
@@ -45349,7 +45381,7 @@ function renderVotePanel(host, vote, lines, ctx2) {
     { class: "alius-vote-tally alius-stat", "data-vote-tally": "", ...analyzeAttrs("glossary:vote") },
     `FOR ${num4(vote.forWeight)} \xB7 AGAINST ${num4(vote.againstWeight)} \u2014 ${vote.passed ? "PASSED" : "FAILED"}`
   );
-  const body = h(
+  const body2 = h(
     "div",
     { class: "alius-votepanel", "data-vote-panel": vote.id, "data-vote-status": vote.status },
     h("p", {}, h("span", { class: "alius-chip", ...analyzeAttrs(`voteKinds:${vote.kind}`) }, kindLabel2.toUpperCase()), ` ${voteSubjectLabel(state, reg, vote.kind, vote.subject)}`),
@@ -45412,15 +45444,15 @@ function renderVotePanel(host, vote, lines, ctx2) {
   const handlers2 = { carry: ctx2.onCarry, drop: ctx2.onDrop, accept: ctx2.onDrop, "overrule-order": () => ctx2.onOverrule("order", void 0) };
   const pickLabel = { carry: "carry it out", drop: "drop it", accept: "accept it", "overrule-order": "overrule it" };
   if (pre) {
-    body.append(askHost, renderPreselected(asked, pickLabel[hers], { onConfirm: handlers2[hers], onDefy: () => {
+    body2.append(askHost, renderPreselected(asked, pickLabel[hers], { onConfirm: handlers2[hers], onDefy: () => {
       defied.set(host, vote.id);
       renderVotePanel(host, vote, lines, ctx2);
     } }));
   } else {
-    if (askHost.childElementCount > 0) body.append(askHost);
-    body.append(...actions);
+    if (askHost.childElementCount > 0) body2.append(askHost);
+    body2.append(...actions);
   }
-  host.append(renderVoiceCard({ voice: VOICE_OF.squad_vote, title: "SQUAD VOTE", meta: `Day ${String(vote.day).padStart(3, "0")}`, body, level: 3 }));
+  host.append(renderVoiceCard({ voice: VOICE_OF.squad_vote, title: "SQUAD VOTE", meta: `Day ${String(vote.day).padStart(3, "0")}`, body: body2, level: 3 }));
 }
 
 // src/power/directives.ts
@@ -45430,9 +45462,9 @@ var HER_CALL_PREFIX = "power:herCall:";
 var HER_CALL_DAYS = 1;
 var DERIVED3 = ["power:vote:", "power:leader", "power:outside", "power:ask_first:", "power:herCall:"];
 function herCallOf(state, unitId) {
-  const report3 = state.lastExpedition;
-  if (!report3 || state.day - report3.day > HER_CALL_DAYS) return void 0;
-  return report3.herCalls?.filter((c) => c.unitId === unitId).at(-1)?.outcome;
+  const report4 = state.lastExpedition;
+  if (!report4 || state.day - report4.day > HER_CALL_DAYS) return void 0;
+  return report4.herCalls?.filter((c) => c.unitId === unitId).at(-1)?.outcome;
 }
 function powerDirectives(state, _reg, present2) {
   const out = [];
@@ -45486,11 +45518,11 @@ function contentLine(state, reg) {
   if (state === null) return "";
   const on = enabledCategories(state);
   const off = orderedCategories(reg).filter((c) => !on.includes(String(c.id)));
-  const parts = [];
-  if (off.length > 0) parts.push(`Content excluded from this story \u2014 never depict, imply or describe: ${off.map((c) => String(c.label)).join(", ")}.`);
-  if (on.includes(EXPLICIT_CATEGORY)) parts.push("Explicit intimate scenes are allowed when the story leads there.");
-  else if (reg.contentCategories.has(EXPLICIT_CATEGORY)) parts.push("Fade out intimate moments.");
-  return parts.join(" ");
+  const parts2 = [];
+  if (off.length > 0) parts2.push(`Content excluded from this story \u2014 never depict, imply or describe: ${off.map((c) => String(c.label)).join(", ")}.`);
+  if (on.includes(EXPLICIT_CATEGORY)) parts2.push("Explicit intimate scenes are allowed when the story leads there.");
+  else if (reg.contentCategories.has(EXPLICIT_CATEGORY)) parts2.push("Fade out intimate moments.");
+  return parts2.join(" ");
 }
 var wantSet = /* @__PURE__ */ new WeakMap();
 function bondsDirectives(builder, state, reg) {
@@ -45755,9 +45787,9 @@ function createDiscipline(deps) {
 }
 
 // src/ui/shell/guard.ts
-function guarded(host, what, render3) {
+function guarded(host, what, render4) {
   try {
-    render3(host);
+    render4(host);
   } catch (e) {
     console.error(`[Alius] ${what} failed to render`, e);
     const message = e instanceof Error ? e.message : String(e);
@@ -45786,13 +45818,13 @@ function createRouter() {
     go(id) {
       current2 = id;
     },
-    register(id, render3) {
-      renderers.set(id, render3);
+    register(id, render4) {
+      renderers.set(id, render4);
     },
     render(host) {
       host.replaceChildren();
-      const render3 = renderers.get(current2);
-      if (render3) guarded(host, `screen ${current2}`, render3);
+      const render4 = renderers.get(current2);
+      if (render4) guarded(host, `screen ${current2}`, render4);
       else host.append(h("pre", { class: "alius-stub" }, stubText(current2.toUpperCase())));
     }
   };
@@ -45910,13 +45942,13 @@ function renderOnboardingCard(host, ctx2) {
   const address = glossaryOf(step);
   const scene = state.scene;
   const mine = scene?.origin === "prologue";
-  const body = h("div", { class: "alius-onboarding-body" }, step.objective ? h("p", { class: "alius-onboarding-objective" }, step.objective) : null);
+  const body2 = h("div", { class: "alius-onboarding-body" }, step.objective ? h("p", { class: "alius-onboarding-objective" }, step.objective) : null);
   const skip = () => step.skippable ? button("[ SKIP ]", "skip", address, () => void controller.skipStep(), scene !== void 0 && !mine) : null;
   if (mine) {
-    body.append(h("div", { class: "alius-row" }, button("[ RESUME SCENE ]", "resume", address, () => controller.resumeScene())));
+    body2.append(h("div", { class: "alius-row" }, button("[ RESUME SCENE ]", "resume", address, () => controller.resumeScene())));
   } else if (step.kind === "scene" && step.perUnit === true) {
     const spoken = new Set(state.onboarding?.spoken ?? []);
-    body.append(h("ul", { class: "alius-onboarding-units" }, ...livingNamed(state).map((u) => {
+    body2.append(h("ul", { class: "alius-onboarding-units" }, ...livingNamed(state).map((u) => {
       const done = spoken.has(u.id);
       const held3 = restrictionReason(state, reg, u.id, "scene");
       return h(
@@ -45928,24 +45960,24 @@ function renderOnboardingCard(host, ctx2) {
         held3 && !done ? h("span", { class: "alius-dim alius-reason" }, held3) : null
       );
     })));
-    body.append(h("div", { class: "alius-row" }, skip()));
+    body2.append(h("div", { class: "alius-row" }, skip()));
   } else if (step.kind === "scene") {
     const label2 = step.participants === "warden" ? "[ MEET THE WARDEN ]" : "[ BEGIN LINE-UP ]";
-    body.append(h("div", { class: "alius-row" }, button(label2, "begin", address, () => void controller.startLineup(), scene !== void 0), skip()));
+    body2.append(h("div", { class: "alius-row" }, button(label2, "begin", address, () => void controller.startLineup(), scene !== void 0), skip()));
   } else if (step.kind === "expedition") {
     const out = state.expedition !== void 0;
-    body.append(h(
+    body2.append(h(
       "div",
       { class: "alius-row" },
       out ? button("[ RESUME PATROL ]", "resume-run", address, () => controller.launchTutorial()) : button("[ LAUNCH TUTORIAL ]", "launch", address, () => controller.launchTutorial(), scene !== void 0),
       out ? null : skip()
     ));
   } else if (step.kind === "guided_slot" && step.completion === "debriefed") {
-    body.append(h("div", { class: "alius-row" }, button("[ DEBRIEF ]", "debrief", address, () => void controller.debriefTutorial(), scene !== void 0), skip()));
+    body2.append(h("div", { class: "alius-row" }, button("[ DEBRIEF ]", "debrief", address, () => void controller.debriefTutorial(), scene !== void 0), skip()));
   } else if (step.kind === "guided_slot") {
     const guide = state.squad.find((u) => u.id === state.onboarding?.guideUnitId);
     const here = guide !== void 0 && livingNamed(state).some((u) => u.id === guide.id);
-    body.append(h(
+    body2.append(h(
       "div",
       { class: "alius-row" },
       here ? h("span", { class: "alius-onboarding-guide" }, `${guide.displayName} wants to talk.`) : null,
@@ -45953,9 +45985,9 @@ function renderOnboardingCard(host, ctx2) {
       skip()
     ));
   } else {
-    body.append(h("div", { class: "alius-row" }, skip()));
+    body2.append(h("div", { class: "alius-row" }, skip()));
   }
-  const card2 = renderVoiceCard({ voice: VOICE_OF.toast, title: step.title ?? "PROLOGUE", meta: "PROLOGUE", level: 3, body });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.toast, title: step.title ?? "PROLOGUE", meta: "PROLOGUE", level: 3, body: body2 });
   card2.classList.add("alius-onboarding", "alius-stat");
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:prologue"))) card2.setAttribute(k, v);
   host.append(card2);
@@ -45967,7 +45999,7 @@ function renderRevealCard(host, state, reg, onAck) {
   const warden = wardenOf(state);
   const unit4 = state.squad.find((u) => u.id === warden?.unitId);
   if (!warden || !unit4) return;
-  const body = h(
+  const body2 = h(
     "div",
     { class: "alius-warden-reveal-body" },
     h("p", {}, `By order of oversight, ${unit4.displayName} holds the controller of the commander's implant.`),
@@ -45980,7 +46012,7 @@ function renderRevealCard(host, state, reg, onAck) {
       onclick: onAck
     }, "[ ACKNOWLEDGE ]"))
   );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.warden_reveal, title: "WARDEN ASSIGNED", meta: "OVERSIGHT", level: 3, body });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.warden_reveal, title: "WARDEN ASSIGNED", meta: "OVERSIGHT", level: 3, body: body2 });
   card2.classList.add("alius-warden-reveal", "alius-stat");
   card2.setAttribute("data-analyze", "glossary:warden");
   host.append(card2);
@@ -46119,7 +46151,7 @@ async function openRetryMenu(modal, opts) {
     h("input", { type: "radio", name, value, checked }),
     ` ${label2}`
   );
-  const body = h(
+  const body2 = h(
     "div",
     { class: "alius-genmenu" },
     h("div", { class: "alius-genmenu-row" }, h("span", {}, "Budget:"), ...BUDGETS.map((m) => radio("generation-budget", String(m), `\xD7${m}`, m === BUDGETS[0]))),
@@ -46127,7 +46159,7 @@ async function openRetryMenu(modal, opts) {
   );
   const answer = await modal({
     title: "Try again",
-    body,
+    body: body2,
     actions: [
       { label: "RETRY", value: "retry" },
       ...opts.hasFallback ? [{ label: "USE FALLBACK", value: "fallback" }] : [],
@@ -46137,7 +46169,7 @@ async function openRetryMenu(modal, opts) {
   });
   if (answer === "drop" || answer === "fallback") return answer;
   if (answer !== "retry") return null;
-  const picked = (name) => body.querySelector(`input[name="${name}"]:checked`)?.value ?? null;
+  const picked = (name) => body2.querySelector(`input[name="${name}"]:checked`)?.value ?? null;
   const profile = picked("generation-profile");
   return { budgetMult: Number(picked("generation-budget") ?? BUDGETS[0]), ...profile === "main" || profile === "mechanic" ? { profile } : {} };
 }
@@ -46214,7 +46246,7 @@ function renderEndScreen(host, state, deps) {
     const failed2 = drawGenerationChips(gen, deps.generation, state, "world", (r) => r.key === "epilogue");
     if (failed2 === 0 && ended.epilogue !== void 0) drawSiteReroll(gen, deps.generation, "warden.epilogue", "epilogue");
   }
-  const body = h(
+  const body2 = h(
     "div",
     { class: "alius-end-body" },
     h("p", { class: "alius-end-cause" }, [`Day ${ended.day}.`, CAUSE[ended.cause], "The commander is dead."].filter((x) => Boolean(x)).join(" ")),
@@ -46228,7 +46260,7 @@ function renderEndScreen(host, state, deps) {
       onclick: deps.onExport
     }, "[ EXPORT ]"))
   );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.warden_reveal, title: "CAMPAIGN CLOSED", meta: "OVERSIGHT", body });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.warden_reveal, title: "CAMPAIGN CLOSED", meta: "OVERSIGHT", body: body2 });
   card2.classList.add("alius-end", "alius-stat");
   card2.setAttribute("data-analyze", "glossary:death_rule");
   host.append(h("div", { class: "alius-end-screen" }, card2));
@@ -46605,18 +46637,18 @@ function renderRecapCard(host, ctx2) {
   const hs = state.headStart;
   if (!hs || recapCommitted(state) !== null) return;
   const title3 = h("div", { class: "alius-card-label alius-stat alius-head-start-title", ...analyzeAttrs("glossary:head_start_recap") }, "THE FIRST WEEKS");
-  const body = h("div", { class: "alius-head-start-body" }, title3);
+  const body2 = h("div", { class: "alius-head-start-body" }, title3);
   if (hs.recap === void 0) {
-    body.append(h("p", { class: "alius-dim" }, "The first weeks are being written."));
+    body2.append(h("p", { class: "alius-dim" }, "The first weeks are being written."));
   } else {
     const chronicle = state.memory.chronicle.find((c) => c.id === hs.recap.chronicleId);
-    if (chronicle) body.append(h("p", { class: "alius-head-start-paragraph" }, chronicle.text));
+    if (chronicle) body2.append(h("p", { class: "alius-head-start-paragraph" }, chronicle.text));
     const facts = buildKnowledge(state, DEFAULT_SETTINGS).facts().filter((f) => f.tags.includes("head_start"));
     for (const u of hs.units) {
       const mine = facts.filter((f) => f.about.length === 1 && f.about[0] === u.unitId);
       const lines = u.moments.map((kind) => ({ kind, text: mine.find((f) => f.tags.includes(momentTag(kind)))?.text })).filter((m) => m.text !== void 0);
       if (lines.length === 0) continue;
-      body.append(h(
+      body2.append(h(
         "div",
         { class: "alius-head-start-unit" },
         h("h3", {}, state.squad.find((x) => x.id === u.unitId)?.displayName ?? u.unitId),
@@ -46627,8 +46659,8 @@ function renderRecapCard(host, ctx2) {
   const actions = h("div", { class: "alius-row alius-head-start-actions" });
   const chips = drawGenerationChips(actions, ctx2.generation, state, "world", (r) => r.siteId === SITE3);
   if (chips === 0 && hs.recap !== void 0) drawSiteReroll(actions, ctx2.generation, SITE3, "recap", ctx2.onReroll, ctx2.rerollState?.());
-  if (actions.childElementCount > 0) body.append(actions);
-  host.append(renderVoiceCard({ voice: VOICE_OF.head_start, body }));
+  if (actions.childElementCount > 0) body2.append(actions);
+  host.append(renderVoiceCard({ voice: VOICE_OF.head_start, body: body2 }));
 }
 
 // src/ui/shell/generationsSection.ts
@@ -46857,13 +46889,13 @@ function drawPracticeReroll(host, generation, kind, requestId) {
   if (generation === void 0 || requestId === void 0) return null;
   return drawSiteReroll(host, generation, practiceSite(kind), requestId);
 }
-function drawPracticeChips(host, generation, state, reg, pick6) {
+function drawPracticeChips(host, generation, state, reg, pick7) {
   if (generation === void 0 || !dynamicOn(state, reg)) return 0;
   const holderOf5 = (key) => state.practices?.requests.find((r) => r.id === key)?.holderId ?? cardOf(state, key)?.card.holderId;
   return drawGenerationChips(host, generation, state, "comms", (r) => {
     if (!r.siteId.startsWith("practice.")) return false;
     const holder3 = holderOf5(r.key);
-    return holder3 !== void 0 && pick6({ unitId: holder3 });
+    return holder3 !== void 0 && pick7({ unitId: holder3 });
   });
 }
 
@@ -46948,7 +46980,7 @@ function voiceLines(reg, kind, style) {
   return linesOf(reg, kind, style);
 }
 var cap3 = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
-function fill6(frame4, vals) {
+function fill6(frame5, vals) {
   const runs = [];
   const plain8 = (t) => {
     if (t === "") return;
@@ -46957,15 +46989,15 @@ function fill6(frame4, vals) {
     else runs.push({ text: t });
   };
   let at = 0;
-  for (const m of frame4.matchAll(/\{(\w+)\}/g)) {
+  for (const m of frame5.matchAll(/\{(\w+)\}/g)) {
     const k = m[1];
-    plain8(frame4.slice(at, m.index));
+    plain8(frame5.slice(at, m.index));
     at = m.index + m[0].length;
     const v = vals[k.toLowerCase()];
     if (v === void 0) plain8(`{${k}}`);
     else runs.push({ text: k[0] === k[0].toUpperCase() ? cap3(v) : v, value: true });
   }
-  plain8(frame4.slice(at));
+  plain8(frame5.slice(at));
   return runs;
 }
 function voiceLine(reg, kind, style, key, vals) {
@@ -47075,18 +47107,18 @@ function sceneCard(o) {
     o.her ? h("span", { class: "alius-scard-who" }, o.her.name) : null,
     h("span", { class: "alius-scard-kind" }, o.kind)
   );
-  const body = h("div", { class: "alius-scard-body" });
-  if (o.words !== void 0 && (typeof o.words === "string" ? o.words !== "" : o.words.length > 0)) body.append(h("div", { class: "alius-scard-words" }, ...runsOf(o.words)));
-  if (o.prose !== void 0) body.append(h("div", { class: "alius-scard-prose" }, o.prose));
-  if (o.conditions.length > 0) body.append(h("div", { class: "alius-scard-rule" }));
-  for (const c of o.conditions) body.append(...conditionEls(c));
-  for (const n of o.extra ?? []) body.append(n);
-  if (o.answers.length > 0) body.append(h("div", { class: "alius-scard-answers" }, ...o.answers));
+  const body2 = h("div", { class: "alius-scard-body" });
+  if (o.words !== void 0 && (typeof o.words === "string" ? o.words !== "" : o.words.length > 0)) body2.append(h("div", { class: "alius-scard-words" }, ...runsOf(o.words)));
+  if (o.prose !== void 0) body2.append(h("div", { class: "alius-scard-prose" }, o.prose));
+  if (o.conditions.length > 0) body2.append(h("div", { class: "alius-scard-rule" }));
+  for (const c of o.conditions) body2.append(...conditionEls(c));
+  for (const n of o.extra ?? []) body2.append(n);
+  if (o.answers.length > 0) body2.append(h("div", { class: "alius-scard-answers" }, ...o.answers));
   const card2 = h("article", {
     class: `alius-scard${o.her ? "" : " alius-scard-neutral"}${o.seal ? " alius-scard-sealed" : ""}`,
     "data-scard-kind": o.kindId ?? o.kind,
     ...o.gist !== void 0 ? { "data-gist": o.gist } : {}
-  }, head, o.seal ? h("div", { class: "alius-scard-seal", "aria-hidden": "true" }) : null, body);
+  }, head, o.seal ? h("div", { class: "alius-scard-seal", "aria-hidden": "true" }) : null, body2);
   if (o.her) {
     card2.style.setProperty("--alius-her", o.her.accent);
     setHand(card2, o.her.hand);
@@ -47143,17 +47175,17 @@ function renderTaskCard(host, ctx2, opts = {}) {
     ...analyzeNative(address, live3),
     onclick
   }, text3);
-  const parts = [];
+  const parts2 = [];
   if (sealed) {
     const label2 = String(reg.dynamicTracks.get(task.track)?.label ?? "");
     const weight = SPARE_STYLES.includes(String(style)) ? "" : ` Weight: ${WEIGHT_WORDS[task.stakes]}.`;
     const hint = style === "affectionate" && label2 !== "" ? ` About: ${label2}.` : "";
-    parts.push(h("p", { class: "alius-task-envelope" }, `${plainDraft(TUNING.practice.sealedLine)}${weight}${hint}`));
+    parts2.push(h("p", { class: "alius-task-envelope" }, `${plainDraft(TUNING.practice.sealedLine)}${weight}${hint}`));
   } else {
-    parts.push(h("p", { class: "alius-task-text" }, plainDraft(task.text)));
+    parts2.push(h("p", { class: "alius-task-text" }, plainDraft(task.text)));
     const due = task.kind === "hold" ? null : dueWords({ deadline: deadlineShown(task) ?? void 0 }, state.day);
-    if (due !== null) parts.push(h("p", { class: "alius-task-due", ...analyzeAttrs("glossary:practice_task", live3) }, `Due: ${due}.`));
-    if (task.noDuration === true) parts.push(h("p", { class: "alius-task-open-ended", ...analyzeAttrs("glossary:no_duration", live3) }, "She has not said how long."));
+    if (due !== null) parts2.push(h("p", { class: "alius-task-due", ...analyzeAttrs("glossary:practice_task", live3) }, `Due: ${due}.`));
+    if (task.noDuration === true) parts2.push(h("p", { class: "alius-task-open-ended", ...analyzeAttrs("glossary:no_duration", live3) }, "She has not said how long."));
     if (task.acceptForm === "button_cost") {
       const hiddenHold = task.kind === "hold" && task.noDuration === true;
       const cost = taskCost(state, reg, task);
@@ -47164,15 +47196,15 @@ function renderTaskCard(host, ctx2, opts = {}) {
         ...hiddenHold ? ["Whatever is booked meanwhile may lapse."] : cost.lapses.map((l) => `Would lapse: ${l}.`),
         ...Object.entries(cost.resources).map(([resource, band2]) => `Uses ${band2} ${resource}.`)
       ];
-      parts.push(h("ul", { class: "alius-task-cost", "aria-label": "What it costs", ...analyzeAttrs("glossary:consent_ladder", live3) }, ...(lines.length === 0 ? ["Costs nothing."] : lines).map((l) => h("li", {}, l))));
+      parts2.push(h("ul", { class: "alius-task-cost", "aria-label": "What it costs", ...analyzeAttrs("glossary:consent_ladder", live3) }, ...(lines.length === 0 ? ["Costs nothing."] : lines).map((l) => h("li", {}, l))));
     }
     if (task.acceptForm === "words" || task.acceptForm === "signed") {
       const names2 = (task.audienceIds ?? []).map((id) => state.squad.find((u) => u.id === id)?.displayName ?? id);
       const proof = PROOF_WORDS[task.proof];
-      parts.push(h("p", { class: "alius-task-know", ...analyzeAttrs("glossary:consent_ladder", live3) }, `Who will know: ${names2.length > 0 ? names2.join(", ") : "only her"}${proof !== "" ? `; ${proof}` : ""}.`));
+      parts2.push(h("p", { class: "alius-task-know", ...analyzeAttrs("glossary:consent_ladder", live3) }, `Who will know: ${names2.length > 0 ? names2.join(", ") : "only her"}${proof !== "" ? `; ${proof}` : ""}.`));
     }
-    if (task.acceptForm === "signed") parts.push(h("p", { class: "alius-task-closes", ...analyzeAttrs("glossary:accept_signed", live3) }, closesOf(task)));
-    if (task.acceptForm === "words" || task.acceptForm === "signed" && task.said !== true) parts.push(h("p", { class: "alius-task-hint" }, "Say it in your own words."));
+    if (task.acceptForm === "signed") parts2.push(h("p", { class: "alius-task-closes", ...analyzeAttrs("glossary:accept_signed", live3) }, closesOf(task)));
+    if (task.acceptForm === "words" || task.acceptForm === "signed" && task.said !== true) parts2.push(h("p", { class: "alius-task-hint" }, "Say it in your own words."));
   }
   const answers2 = [];
   if (task.acceptForm === "signed" && task.said === true) answers2.push(renderSignature({ onSign: ctx2.onSign, analyze: "glossary:accept_signed", ctx: live3 }));
@@ -47180,8 +47212,8 @@ function renderTaskCard(host, ctx2, opts = {}) {
   else answers2.push(button2("accept", "[ ACCEPT ]", () => ctx2.onAnswer("accept"), ladder));
   answers2.push(button2("refuse", task.handover !== void 0 ? "[ CANCEL ]" : "[ REFUSE ]", () => ctx2.onAnswer("refuse"), task.handover !== void 0 ? "glossary:handover" : "glossary:practice_task"));
   if (!sealed && task.handover === void 0) answers2.push(button2("talk", "[ TALK ]", () => ctx2.onAnswer("talk"), "glossary:practice_task"));
-  parts.push(h("div", { class: "alius-task-answers" }, ...answers2, drawPracticeReroll(h("span", { class: "alius-task-reroll" }), ctx2.generation, task.kind, task.requestId)));
-  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit4.displayName, body: h("div", { class: "alius-task-body" }, ...parts), accent: unitAccent(unit4.id) });
+  parts2.push(h("div", { class: "alius-task-answers" }, ...answers2, drawPracticeReroll(h("span", { class: "alius-task-reroll" }), ctx2.generation, task.kind, task.requestId)));
+  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit4.displayName, body: h("div", { class: "alius-task-body" }, ...parts2), accent: unitAccent(unit4.id) });
   card2.classList.add("alius-task");
   card2.setAttribute("data-task", task.id);
   card2.setAttribute("data-task-form", task.acceptForm);
@@ -47274,14 +47306,14 @@ function renderSceneTaskCard(host, ctx2) {
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:task_card", live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawTaskCards(host, state, reg, pick6, handlers2, opts = {}) {
+function drawTaskCards(host, state, reg, pick7, handlers2, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const task of state.practices?.tasks ?? []) {
-    if (task.kind !== "task" && task.kind !== "hold" || task.status !== "offered" || !pick6({ unitId: task.holderId }) || !practiceLive(state, reg, task.holderId)) continue;
+    if (task.kind !== "task" && task.kind !== "hold" || task.status !== "offered" || !pick7({ unitId: task.holderId }) || !practiceLive(state, reg, task.holderId)) continue;
     renderTaskCard(host, { state, reg, task, onAnswer: (a) => handlers2.answer(task.id, a), onSign: () => handlers2.sign(task.id), focusInput: handlers2.focusInput, generation: handlers2.generation }, opts);
   }
-  drawPracticeChips(host, handlers2.generation, state, reg, pick6);
+  drawPracticeChips(host, handlers2.generation, state, reg, pick7);
 }
 var RECORD_LINES = 5;
 function renderRecordLines(state, reg) {
@@ -47302,7 +47334,7 @@ function practicesBlock(state, reg, knowledge2, unitId, hidden) {
   const view = knowledge2.practice(unitId, reg);
   const live3 = { unitId };
   const chip2 = (text3, address, attrs) => h("span", { class: "alius-chip", ...attrs, ...analyzeAttrs(address, live3) }, text3);
-  const row4 = (label2, ...parts) => h("p", { class: "alius-dyn-line" }, `${label2} `, ...parts);
+  const row4 = (label2, ...parts2) => h("p", { class: "alius-dyn-line" }, `${label2} `, ...parts2);
   const between = (items) => items.flatMap((c, i) => i === 0 ? [c] : [" ", c]);
   const rows = [];
   if (view.tasks.length > 0) {
@@ -47363,8 +47395,8 @@ var Pen = class _Pen {
     return pen;
   }
 };
-function scatter(seed3) {
-  let s = seed3 >>> 0;
+function scatter(seed4) {
+  let s = seed4 >>> 0;
   return () => {
     s = Math.imul(s, 1664525) + 1013904223 >>> 0;
     return s / 4294967296;
@@ -47412,25 +47444,25 @@ var BUILDS = {
   }
 };
 var BUILD_KEYS = ["slim", "athletic", "curvy"];
-function shares(build5) {
-  const w = BUILD_KEYS.map((k) => Number.isFinite(build5[k]) && build5[k] > 0 ? build5[k] : 0);
+function shares(build6) {
+  const w = BUILD_KEYS.map((k) => Number.isFinite(build6[k]) && build6[k] > 0 ? build6[k] : 0);
   const sum = w.reduce((a, b) => a + b, 0);
   return sum > 0 ? { slim: w[0] / sum, athletic: w[1] / sum, curvy: w[2] / sum } : { slim: 1, athletic: 0, curvy: 0 };
 }
-function blend(build5) {
-  const s = shares(build5);
+function blend(build6) {
+  const s = shares(build6);
   const sum = (f) => BUILD_KEYS.reduce((acc, k) => acc + s[k] * f(BUILDS[k]), 0);
   return { width: (y) => sum((c) => lerp(c.w, y)), arm: sum((c) => c.arm), armOut: (y) => sum((c) => lerp(c.armOut, y)) };
 }
 var armCenter = (y) => lerp([[100, 44], [200, 57], [300, 65], [320, 64]], y);
-function outlinePath(build5, _side) {
-  const { width } = blend(build5);
+function outlinePath(build6, _side) {
+  const { width } = blend(build6);
   const right = RIGHT.map(([x, y]) => [x * width(y), y]);
   const left = right.slice(0, -1).reverse().map(([x, y]) => [-x, y]);
   return catmull([...right, ...left], true);
 }
-function armPaths(build5) {
-  const { arm, armOut } = blend(build5);
+function armPaths(build6) {
+  const { arm, armOut } = blend(build6);
   const one4 = (sign2) => catmull(ARM.map(([x, y]) => [(armCenter(y) + (x - armCenter(y)) * arm) * armOut(y) * sign2, y]), true);
   return [one4(1), one4(-1)];
 }
@@ -47451,8 +47483,8 @@ function hairPath(hair, side) {
   return `${base} ${catmull(side === "back" ? TAIL_BACK : TAIL_FRONT, true)}`;
 }
 var fringePath = () => catmull(FRINGE, true);
-function detailPaths(build5, side) {
-  const { width } = blend(build5);
+function detailPaths(build6, side) {
+  const { width } = blend(build6);
   const bw = width(150);
   const out = side === "back" ? ["M0,96 C1,140 -1,190 0,232", "M-30,118 C-24,132 -14,138 -8,136 M30,118 C24,132 14,138 8,136", "M-30,268 C-18,286 -6,284 0,272 C6,284 18,286 30,268", "M-24,40 C-22,60 -16,72 -12,76 M24,40 C22,60 16,72 12,76"] : [
     "M-30,100 C-18,106 -8,104 -3,101 M30,100 C18,106 8,104 3,101",
@@ -47460,7 +47492,7 @@ function detailPaths(build5, side) {
     `M${f1(-30 * width(250))},250 C-20,262 -12,270 -6,276 M${f1(30 * width(250))},250 C20,262 12,270 6,276`,
     "M-22,388 q4,6 8,0 M22,388 q-4,6 -8,0"
   ];
-  const s = shares(build5);
+  const s = shares(build6);
   for (const k of BUILD_KEYS) if (s[k] >= 1 / 3) out.push(...BUILDS[k].lines);
   return out;
 }
@@ -47522,7 +47554,7 @@ function figure(ctx2, side, cx, oy) {
 function zoneEl(ctx2, z2) {
   const X = (z2.x - 50) * 2.5;
   const Y = z2.y * 5;
-  const R6 = Math.max(6, z2.r * 2);
+  const R7 = Math.max(6, z2.r * 2);
   const word2 = z2.known && z2.attitude !== void 0 ? z2.attitude : "not known yet";
   const g = svgEl("g", {
     class: `alius-bm-zone is-${stateOf(z2)}`,
@@ -47536,9 +47568,9 @@ function zoneEl(ctx2, z2) {
     "aria-label": `${z2.label}: ${word2}`,
     ...z2.known && z2.attitude !== void 0 ? { "data-attitude": z2.attitude } : {}
   });
-  g.append(svgEl("circle", { cx: X, cy: Y, r: R6, class: "alius-bm-ring" }));
+  g.append(svgEl("circle", { cx: X, cy: Y, r: R7, class: "alius-bm-ring" }));
   const rings = z2.scent !== void 0 ? z2.scent : 0;
-  for (let i = 1; i <= rings; i++) g.append(svgEl("circle", { cx: X, cy: Y, r: R6 * i / (rings + 1), class: "alius-bm-scent" }));
+  for (let i = 1; i <= rings; i++) g.append(svgEl("circle", { cx: X, cy: Y, r: R7 * i / (rings + 1), class: "alius-bm-scent" }));
   const mark = (cls, x, y, text3) => {
     const t = svgEl("text", { x, y, class: cls, "text-anchor": "middle" });
     t.textContent = text3;
@@ -47546,8 +47578,8 @@ function zoneEl(ctx2, z2) {
   };
   if (!z2.known) mark("alius-bm-q", X, Y + 4, "?");
   else if (z2.meaning !== void 0) mark("alius-bm-meaning", X, Y + 4, MEANING_ICON[z2.meaning]);
-  if (z2.explicit === true) mark("alius-bm-explicit", X - R6, Y - R6 + 4, "\u25C7");
-  if (z2.mastery > 0) mark("alius-bm-dots", X, Y + R6 + 9, dotsOf(z2.mastery));
+  if (z2.explicit === true) mark("alius-bm-explicit", X - R7, Y - R7 + 4, "\u25C7");
+  if (z2.mastery > 0) mark("alius-bm-dots", X, Y + R7 + 9, dotsOf(z2.mastery));
   return g;
 }
 function row2(ctx2, z2, label2) {
@@ -47668,13 +47700,13 @@ function renderMilestoneCard(host, ctx2, opts = {}) {
     ...analyzeNative("glossary:milestone", { unitId: unit4.id }),
     onclick: () => ctx2.onAnswer(kind)
   }, text3);
-  const body = h(
+  const body2 = h(
     "div",
     { class: "alius-milestone-body" },
     h("p", { class: "alius-milestone-text" }, plainDraft(entry.text).replaceAll("{name}", unit4.displayName)),
     h("div", { class: "alius-milestone-answers" }, button2("accept", "[ ACCEPT ]"), button2("refuse", "[ REFUSE ]"))
   );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit4.displayName, body, accent: unitAccent(unit4.id) });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit4.displayName, body: body2, accent: unitAccent(unit4.id) });
   card2.classList.add("alius-milestone");
   card2.setAttribute("data-milestone", milestone.id);
   card2.setAttribute("role", "group");
@@ -47682,11 +47714,11 @@ function renderMilestoneCard(host, ctx2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs(entry.sworn === true ? "glossary:vow" : `dynamicMilestones:${entry.id}`, { unitId: unit4.id }))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawMilestoneCards(host, state, reg, pick6, onAnswer, opts = {}) {
+function drawMilestoneCards(host, state, reg, pick7, onAnswer, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const milestone of state.dynamic?.open.milestones ?? []) {
-    if (pick6({ unitId: milestone.unitId })) renderMilestoneCard(host, { state, reg, milestone, onAnswer: (a) => onAnswer(milestone.id, a) }, opts);
+    if (pick7({ unitId: milestone.unitId })) renderMilestoneCard(host, { state, reg, milestone, onAnswer: (a) => onAnswer(milestone.id, a) }, opts);
   }
 }
 var SUBMIT_WORDS = "AUTHOR TO WRITE: {name} has asked enough times. She waits for the commander to give way, here and now.";
@@ -47731,7 +47763,7 @@ function renderClaimCard(host, ctx2, opts = {}) {
   }, text3);
   const words3 = plainDraft(entry?.text ?? SUBMIT_WORDS).replaceAll("{name}", unit4.displayName);
   const grants = (entry?.grants ?? []).map((cap9) => h("li", { class: "alius-claim-grant", "data-grants": cap9, ...analyzeAttrs(`glossary:capability_${cap9}`, live3) }, String(reg.glossary.get(`capability_${cap9}`)?.term ?? cap9)));
-  const body = h(
+  const body2 = h(
     "div",
     { class: "alius-claim-body" },
     ...entry === void 0 ? [] : [h("p", { class: "alius-claim-domain" }, h("span", { class: "alius-chip", ...analyzeAttrs(`dynamicDomains:${entry.id}`, live3) }, String(entry.label).toUpperCase()))],
@@ -47739,7 +47771,7 @@ function renderClaimCard(host, ctx2, opts = {}) {
     ...grants.length > 0 ? [h("ul", { class: "alius-claim-grants" }, ...grants)] : [],
     h("div", { class: "alius-claim-answers" }, button2("yield", "[ YIELD ]"), button2("refuse", "[ REFUSE ]"), button2("talk", "[ TALK ]"))
   );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit4.displayName, body, accent: unitAccent(unit4.id) });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit4.displayName, body: body2, accent: unitAccent(unit4.id) });
   card2.classList.add("alius-claim");
   card2.setAttribute("data-claim", claim2.id);
   card2.setAttribute("role", "group");
@@ -47747,11 +47779,11 @@ function renderClaimCard(host, ctx2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs(entry === void 0 ? "glossary:claim" : `dynamicDomains:${entry.id}`, live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawClaimCards(host, state, reg, pick6, onAnswer, opts = {}) {
+function drawClaimCards(host, state, reg, pick7, onAnswer, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const claim2 of state.dynamic?.open.claims ?? []) {
-    if (pick6({ unitId: claim2.unitId })) renderClaimCard(host, { state, reg, claim: claim2, onAnswer: (a) => onAnswer(claim2.id, a) }, opts);
+    if (pick7({ unitId: claim2.unitId })) renderClaimCard(host, { state, reg, claim: claim2, onAnswer: (a) => onAnswer(claim2.id, a) }, opts);
   }
 }
 var RETURN_WORDS = {
@@ -47789,13 +47821,13 @@ function renderReturnCard(host, ctx2, opts = {}) {
     ...analyzeNative("glossary:aftermath", live3),
     onclick: () => ctx2.onAnswer(kind)
   }, text3);
-  const body = h(
+  const body2 = h(
     "div",
     { class: "alius-return-body" },
     h("p", { class: "alius-return-text" }, plainDraft(RETURN_WORDS[offer.terms]).replaceAll("{name}", unit4.displayName)),
     h("div", { class: "alius-return-answers" }, button2("accept", "[ ACCEPT ]"), button2("refuse", "[ REFUSE ]"))
   );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit4.displayName, body, accent: unitAccent(unit4.id) });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit4.displayName, body: body2, accent: unitAccent(unit4.id) });
   card2.classList.add("alius-return");
   card2.setAttribute("data-return", offer.id);
   card2.setAttribute("role", "group");
@@ -47803,10 +47835,10 @@ function renderReturnCard(host, ctx2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:aftermath", live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawReturnCards(host, state, reg, pick6, onAnswer, opts = {}) {
+function drawReturnCards(host, state, reg, pick7, onAnswer, opts = {}) {
   host.replaceChildren();
   const offer = state.dynamic?.open.returnOffer;
-  if (!dynamicOn(state, reg) || offer === void 0 || !pick6({ unitId: offer.unitId })) return;
+  if (!dynamicOn(state, reg) || offer === void 0 || !pick7({ unitId: offer.unitId })) return;
   renderReturnCard(host, { state, reg, offer, onAnswer }, opts);
 }
 function transferTargets(state, unitId) {
@@ -47830,7 +47862,7 @@ function renderExitCard(host, ctx2) {
       if (soft === void 0) ctx2.onExit?.(route, opts);
     }
   }, text3);
-  const row4 = (route, ...parts) => h("div", { class: "alius-exit-route", "data-exit-route": route }, ...parts);
+  const row4 = (route, ...parts2) => h("div", { class: "alius-exit-route", "data-exit-route": route }, ...parts2);
   const rows = [
     row4("abrupt", go("abrupt", void 0, ROUTE_LABEL.abrupt), " ", cost(exitCostWord(state, reg, unitId, "abrupt"))),
     row4(
@@ -47871,7 +47903,7 @@ function renderExitCard(host, ctx2) {
   };
   const forced = row4("force", cost(exitCostWord(state, reg, unitId, "force")), ...EXIT_MEANS.map(means));
   rows.push(forced);
-  const body = h(
+  const body2 = h(
     "div",
     { class: "alius-exit-body" },
     h("p", { class: "alius-exit-text" }, plainDraft("AUTHOR TO WRITE: {name} will hear it either way. What it costs depends on what she held.").replaceAll("{name}", unit4.displayName)),
@@ -47884,7 +47916,7 @@ function renderExitCard(host, ctx2) {
       onclick: () => ctx2.onClose?.()
     }, "[ CLOSE ]"))
   );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit4.displayName, body, accent: unitAccent(unit4.id) });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit4.displayName, body: body2, accent: unitAccent(unit4.id) });
   card2.classList.add("alius-exit");
   card2.setAttribute("role", "group");
   card2.setAttribute("aria-label", `Ending it with ${unit4.displayName}`);
@@ -47967,7 +47999,7 @@ function renderDynamicSection(host, ctx2) {
   }
   if (view === null || view.band === void 0) return false;
   const chip2 = (text3, address, attrs = {}) => h("span", { class: "alius-chip", ...attrs, ...analyzeAttrs(address, live3) }, text3);
-  const row4 = (label3, ...parts) => h("p", { class: "alius-dyn-line" }, `${label3} `, ...parts);
+  const row4 = (label3, ...parts2) => h("p", { class: "alius-dyn-line" }, `${label3} `, ...parts2);
   const between = (items) => items.flatMap((c, i) => i === 0 ? [c] : [" ", c]);
   const label2 = (registry2, id) => String(reg[registry2].get(id)?.label ?? id).toUpperCase();
   const claimed = view.domains.filter((d) => d.claimed);
@@ -48001,12 +48033,12 @@ function renderDynamicSection(host, ctx2) {
   }
   const practices = practicesBlock(state, reg, ctx2.knowledge, unitId, ctx2.hidden);
   const cards = h("div", { class: "alius-dyn-cards" });
-  const pick6 = (c) => c.unitId === unitId;
+  const pick7 = (c) => c.unitId === unitId;
   const slots = [h("div", { class: "alius-milestone-cards" }), h("div", { class: "alius-claim-cards" }), h("div", { class: "alius-return-cards" })];
   cards.append(...slots);
-  drawMilestoneCards(slots[0], state, reg, pick6, (id, a) => ctx2.actions?.answerMilestone?.(id, a));
-  drawClaimCards(slots[1], state, reg, pick6, (id, a) => ctx2.actions?.answerClaim?.(id, a));
-  drawReturnCards(slots[2], state, reg, pick6, (a) => ctx2.actions?.answerReturn?.(a));
+  drawMilestoneCards(slots[0], state, reg, pick7, (id, a) => ctx2.actions?.answerMilestone?.(id, a));
+  drawClaimCards(slots[1], state, reg, pick7, (id, a) => ctx2.actions?.answerClaim?.(id, a));
+  drawReturnCards(slots[2], state, reg, pick7, (a) => ctx2.actions?.answerReturn?.(a));
   if (holds6) drawExit(true);
   const map = bodyMapFor(state, reg, ctx2.knowledge, unitId, ctx2.readable === true);
   const mapHost = h("div", { class: "alius-dyn-bodymap" });
@@ -48046,7 +48078,7 @@ function renderAlarmCard(state, reg, shown2, handlers2) {
   if (unit4 === void 0 || kind === void 0 || answer === void 0) return null;
   const ctx2 = { unitId: unit4.id, kind };
   const line3 = h("p", { "data-alarm-line": "", ...analyzeAttrs("glossary:alarm", ctx2) }, plainDraft(LINES[answer][kind]));
-  const body = h("div", { class: "alius-alarm-body" }, line3);
+  const body2 = h("div", { class: "alius-alarm-body" }, line3);
   if (open3 !== void 0) {
     const answers2 = h(
       "div",
@@ -48069,12 +48101,12 @@ function renderAlarmCard(state, reg, shown2, handlers2) {
         onclick: () => handlers2.sendSquad(open3.id)
       }, "[ SEND THE SQUAD ]")
     );
-    body.append(answers2);
+    body2.append(answers2);
   } else {
-    if (shown2?.reason) body.append(h("p", { class: "alius-banner", "data-alarm-reason": "", ...analyzeAttrs("glossary:alarm", ctx2) }, plainDraft(shown2.reason)));
-    body.append(h("button", { type: "button", class: "alius-btn alius-option", "data-alarm-dismiss": "", ...analyzeNative("glossary:alarm", ctx2), onclick: () => handlers2.dismiss() }, "[ OK ]"));
+    if (shown2?.reason) body2.append(h("p", { class: "alius-banner", "data-alarm-reason": "", ...analyzeAttrs("glossary:alarm", ctx2) }, plainDraft(shown2.reason)));
+    body2.append(h("button", { type: "button", class: "alius-btn alius-option", "data-alarm-dismiss": "", ...analyzeNative("glossary:alarm", ctx2), onclick: () => handlers2.dismiss() }, "[ OK ]"));
   }
-  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, title: TITLES[kind], from: unit4.displayName, body, accent: unitAccent(unit4.id), level: 3 });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, title: TITLES[kind], from: unit4.displayName, body: body2, accent: unitAccent(unit4.id), level: 3 });
   card2.classList.add("alius-alarm-card");
   card2.setAttribute("data-alarm", open3?.id ?? "told");
   card2.setAttribute("role", "group");
@@ -48125,7 +48157,7 @@ function renderRoutePicker(ctx2) {
   const lockAll = () => {
     for (const b of buttons) b.setAttribute("aria-disabled", "true");
   };
-  const pick6 = (p) => {
+  const pick7 = (p) => {
     if (ctx2.locked()) return;
     lockAll();
     ctx2.onPick(p);
@@ -48145,14 +48177,14 @@ function renderRoutePicker(ctx2) {
       ...analyzeNative(r.kind === "delegate" ? "glossary:delegate" : "glossary:check_routes", { kind: r.kind }),
       onclick: () => {
         if (ctx2.locked() || r.disabled !== null) return;
-        if (r.kind !== "delegate") return pick6({ route: r.route });
+        if (r.kind !== "delegate") return pick7({ route: r.route });
         units.replaceChildren(...(r.unitIds ?? []).map((id) => {
           const u = h("button", {
             type: "button",
             class: "alius-btn alius-option",
             "data-route-unit": id,
             ...analyzeNative("glossary:delegate"),
-            onclick: () => pick6({ route: r.route, unitId: id })
+            onclick: () => pick7({ route: r.route, unitId: id })
           }, `[ ${ctx2.unitName?.(id) ?? id} ]`);
           buttons.push(u);
           return u;
@@ -48189,10 +48221,10 @@ function renderDilemma(host, ctx2) {
       routes: o.routes,
       unitName: ctx2.unitName,
       locked: () => chosen,
-      onPick: (pick6) => {
+      onPick: (pick7) => {
         chosen = true;
         for (const b of buttons) b.setAttribute("aria-disabled", "true");
-        ctx2.onChoose(o.index, pick6);
+        ctx2.onChoose(o.index, pick7);
       },
       unlock: () => {
         chosen = false;
@@ -48393,7 +48425,7 @@ var TITLE = { desertion: "DESERTION", mutiny: "MUTINY", return: "AT THE GATE" };
 function renderConfrontation(host, ctx2) {
   host.replaceChildren();
   const buttons = [];
-  let answered = false;
+  let answered2 = false;
   const add2 = (list5, label2, run, disabledReason = null) => {
     const b = h("button", {
       type: "button",
@@ -48401,8 +48433,8 @@ function renderConfrontation(host, ctx2) {
       disabled: disabledReason !== null,
       title: disabledReason ?? void 0,
       onclick: () => {
-        if (answered || disabledReason !== null) return;
-        answered = true;
+        if (answered2 || disabledReason !== null) return;
+        answered2 = true;
         for (const x of buttons) x.disabled = true;
         run();
       }
@@ -48450,14 +48482,14 @@ function cutIn(host, kind, text3, imageUrl) {
 // src/ui/onboarding/coach.ts
 function renderCoach(host, hints, onSeen) {
   for (const hint of hints) {
-    const body = h(
+    const body2 = h(
       "div",
       { class: "alius-coach-body" },
       h("p", { class: "alius-coach-text" }, hint.text),
       h("p", { class: "alius-dim" }, "Focus anything and press ? for more."),
       h("button", { type: "button", class: "alius-btn", "data-action": "got-it", ...analyzeNative("glossary:coach_hint"), onclick: () => onSeen(hint.id) }, "[ GOT IT ]")
     );
-    const card2 = renderVoiceCard({ voice: VOICE_OF.toast, title: "TIP", level: 3, body });
+    const card2 = renderVoiceCard({ voice: VOICE_OF.toast, title: "TIP", level: 3, body: body2 });
     card2.classList.add("alius-coach", "alius-stat");
     card2.setAttribute("data-hint", hint.id);
     for (const [k, v] of Object.entries(analyzeAttrs(`glossary:${hint.glossaryId}`))) card2.setAttribute(k, v);
@@ -48613,7 +48645,7 @@ function renderCombatScreen(host, ctx2) {
     orderMode = null;
     selSkill = row4.skill.id;
     selTarget = needsTarget(row4.skill) ? row4.targets[0] ?? null : null;
-    render3();
+    render4();
   }
   function confirm(state) {
     const cs = state.combat;
@@ -48646,7 +48678,7 @@ function renderCombatScreen(host, ctx2) {
     if (legal.length === 0) return;
     const i = selTarget ? legal.indexOf(selTarget) : -1;
     selTarget = legal[(i + dir + legal.length) % legal.length];
-    render3();
+    render4();
   }
   const visibleOrderIds = (state) => [...reg.orders.keys()].filter((id) => orderUnlocked(state, reg, id));
   function issueOrder2(state, index2) {
@@ -48711,7 +48743,7 @@ function renderCombatScreen(host, ctx2) {
       selSkill = null;
       selTarget = null;
       orderMode = null;
-      render3();
+      render4();
     },
     compel: () => {
       const s = ctx2.getState();
@@ -48858,7 +48890,7 @@ function renderCombatScreen(host, ctx2) {
       h("button", { type: "button", class: "alius-btn", "data-act": "continue", onclick: () => ctx2.onClose() }, "[ CONTINUE ]")
     );
   }
-  function render3() {
+  function render4() {
     const state = ctx2.getState();
     root.replaceChildren();
     if (!state) return;
@@ -48936,7 +48968,7 @@ function renderCombatScreen(host, ctx2) {
             orderMode = orderMode === id ? null : id;
             selSkill = null;
             selTarget = null;
-            render3();
+            render4();
           }
         }
       }, `[${"QWERTY"[i]}] ${o.name} ${cost}CP`);
@@ -49005,7 +49037,7 @@ function renderCombatScreen(host, ctx2) {
       logBox
     );
   }
-  render3();
+  render4();
   function handle(events) {
     const state = ctx2.getState();
     for (const ev of events) {
@@ -49020,7 +49052,7 @@ function renderCombatScreen(host, ctx2) {
     }
   }
   return {
-    refresh: render3,
+    refresh: render4,
     handle,
     dispose: () => {
       keysOff();
@@ -49042,7 +49074,7 @@ function renderInvTab(host, ctx2) {
   let filter = "all";
   let selected2 = null;
   let compareUnit = null;
-  function render3() {
+  function render4() {
     host.replaceChildren();
     const state = ctx2.getState();
     if (!state) {
@@ -49069,7 +49101,7 @@ function renderInvTab(host, ctx2) {
       { class: "alius-inv-filters" },
       ...["all", "weapon", "upper", "lower"].map((f) => h("button", { type: "button", class: "alius-btn", "data-filter": f, "aria-pressed": filter === f ? "true" : "false", onclick: () => {
         filter = f;
-        render3();
+        render4();
       } }, upper(f)))
     );
     const list5 = h(
@@ -49087,7 +49119,7 @@ function renderInvTab(host, ctx2) {
             ...analyzeNative(`items:${i.itemId}`),
             onclick: () => {
               selected2 = i.uid;
-              render3();
+              render4();
             }
           },
           h("span", { class: "alius-inv-name" }, nameOf28(i)),
@@ -49133,7 +49165,7 @@ function renderInvTab(host, ctx2) {
     picker2.value = compareUnit ?? "";
     picker2.addEventListener("change", () => {
       compareUnit = picker2.value;
-      render3();
+      render4();
     });
     const reason = unit4 ? canEquip(reg, unit4, item) : "NO UNIT";
     let afterLine = null;
@@ -49141,11 +49173,11 @@ function renderInvTab(host, ctx2) {
       try {
         const sample = structuredClone(state);
         const s2 = sample.squad.find((u) => u.id === unit4.id);
-        const before3 = unitStats(sample, reg, s2);
+        const before4 = unitStats(sample, reg, s2);
         for (const x of sample.squad) for (const k of ["weapon", "upper", "lower"]) if (x.equipment[k] === item.uid) delete x.equipment[k];
         s2.equipment[slot2] = item.uid;
-        const after3 = unitStats(sample, reg, s2);
-        afterLine = h("p", { class: "alius-dim", "data-after": "true" }, `${unit4.displayName}: ${STATS2.map((k) => `${upper(k)} ${before3[k]}\u2192${after3[k]}`).join(" \xB7 ")}`);
+        const after4 = unitStats(sample, reg, s2);
+        afterLine = h("p", { class: "alius-dim", "data-after": "true" }, `${unit4.displayName}: ${STATS2.map((k) => `${upper(k)} ${before4[k]}\u2192${after4[k]}`).join(" \xB7 ")}`);
       } catch {
         afterLine = null;
       }
@@ -49207,7 +49239,7 @@ function renderInvTab(host, ctx2) {
       h("div", { class: "alius-inv-recipes" }, ...recipes)
     );
   }
-  render3();
+  render4();
 }
 
 // src/llm/text.ts
@@ -50048,9 +50080,9 @@ function createComms(deps) {
         const at = thread.findIndex((m) => m.id === ref);
         if (at < 0) return { expired: "That message is gone." };
         if (at !== thread.length - 1) return { expired: "A newer message came after it." };
-        const before3 = thread[at - 1];
-        if (!before3 || before3.from !== "commander") return { expired: "No message of the commander came before it." };
-        commanderText = before3.text;
+        const before4 = thread[at - 1];
+        if (!before4 || before4.from !== "commander") return { expired: "No message of the commander came before it." };
+        commanderText = before4.text;
         reply = thread[at].text;
       }
       return readInput(s, unit4, commanderText, reply) ?? { expired: "She is not here." };
@@ -50102,9 +50134,9 @@ function createComms(deps) {
     apply(key, reply, input) {
       const [unitId, msgId] = splitKey(key);
       const expect = chatId();
-      const before3 = state();
-      const commanderText = before3 ? threadOf(before3, unitId).find((m) => m.id === msgId)?.text : void 0;
-      if (!before3 || commanderText === void 0) return { stale: true };
+      const before4 = state();
+      const commanderText = before4 ? threadOf(before4, unitId).find((m) => m.id === msgId)?.text : void 0;
+      if (!before4 || commanderText === void 0) return { stale: true };
       const received = app.dispatch({ type: "dm/receive", payload: { unitId, text: reply, ...input.mode === "curt" ? { mode: "curt" } : {} } }, { expectChatId: expect });
       if (failed2(received)) return { stale: true };
       deps.personal?.onReply?.(unitId, reply);
@@ -50112,8 +50144,8 @@ function createComms(deps) {
       const herId = threadOf(state(), unitId).at(-1)?.id;
       if (herId === void 0) return "ok";
       const run = readExchange(unitId, herId).then(() => {
-        const after3 = state();
-        if (after3 && chatId() === expect) deps.generations.takeSnapshot("dm.reply", key, before3, after3);
+        const after4 = state();
+        if (after4 && chatId() === expect) deps.generations.takeSnapshot("dm.reply", key, before4, after4);
       }).finally(() => reads.delete(key));
       reads.set(key, run);
       return "ok";
@@ -50900,8 +50932,8 @@ function registerDevelopmentContext(builder, deps) {
         if (u.kind !== "named" || u.development === void 0) return [];
         const axes = changedAxes(u, deps.registries()).slice(0, MAX_AXES).map((a) => a.words);
         const facts = topFacts(developmentOf(u).facts).map((f) => f.text);
-        const parts = [...axes, ...facts];
-        return parts.length > 0 ? [`- ${u.displayName}: ${parts.join("; ")}`] : [];
+        const parts2 = [...axes, ...facts];
+        return parts2.length > 0 ? [`- ${u.displayName}: ${parts2.join("; ")}`] : [];
       });
       return fitItems2("Since joining the unit:", items, budget);
     }
@@ -50912,26 +50944,26 @@ function registerDevelopmentContext(builder, deps) {
 var hintOf = (e) => typeof e?.promptHint === "string" && e.promptHint.trim() !== "" ? e.promptHint.trim() : null;
 function blockingLine(state, reg, personId) {
   const b = blockingOf(state.scene, personId);
-  const parts = [];
+  const parts2 = [];
   const stance = [hintOf(reg.blockingPostures.get(b.posture ?? "")), hintOf(reg.blockingAnchors.get(b.anchor?.id ?? ""))].filter((x) => x !== null);
-  if (stance.length > 0) parts.push(stance.join(" "));
+  if (stance.length > 0) parts2.push(stance.join(" "));
   const contact = hintOf(reg.blockingContacts.get(b.contact?.id ?? ""));
-  if (contact !== null) parts.push(contact);
+  if (contact !== null) parts2.push(contact);
   const seen2 = /* @__PURE__ */ new Set();
   for (const slot2 of WORN_SLOTS) {
     const w = b.worn?.[slot2];
     if (!w || seen2.has(w.id)) continue;
     seen2.add(w.id);
     const h2 = hintOf(reg.blockingItems.get(w.id));
-    if (h2 !== null) parts.push(h2);
+    if (h2 !== null) parts2.push(h2);
   }
   const activity = hintOf(reg.blockingActivities.get(b.activity ?? ""));
-  if (activity !== null) parts.push(activity);
-  if (b.intimacy !== void 0 && b.intimacy !== "none") parts.push(`intimacy: ${b.intimacy}`);
-  if (b.note !== void 0 && b.note !== "") parts.push(`note: ${b.note}`);
-  if (parts.length === 0) return null;
+  if (activity !== null) parts2.push(activity);
+  if (b.intimacy !== void 0 && b.intimacy !== "none") parts2.push(`intimacy: ${b.intimacy}`);
+  if (b.note !== void 0 && b.note !== "") parts2.push(`note: ${b.note}`);
+  if (parts2.length === 0) return null;
   const name = personId === COMMANDER ? "The commander" : state.squad.find((u) => u.id === personId)?.displayName ?? personId;
-  return `${name}: ${parts.join(", ")}.`;
+  return `${name}: ${parts2.join(", ")}.`;
 }
 function registerBlockingContext(builder, deps) {
   builder.register({
@@ -51006,8 +51038,8 @@ var ADDITION_WORDS = {
 var plain5 = (text3) => text3.replace(/^\s*AUTHOR TO WRITE:\s*/, "").trim().replace(/[.\s]+$/, "");
 var GAP_WORDS = { matched: "what she expected", partial: "only partly what she expected", opposite: "the opposite of what she expected" };
 function genericWord(reg, sourceId, key) {
-  const frame4 = reg.momentSources.get(sourceId)?.frame;
-  return ["0", "1", "2"].includes(key) ? frame4?.[Number(key)]?.generic ?? key : ADDITION_WORDS[key] ?? key;
+  const frame5 = reg.momentSources.get(sourceId)?.frame;
+  return ["0", "1", "2"].includes(key) ? frame5?.[Number(key)]?.generic ?? key : ADDITION_WORDS[key] ?? key;
 }
 function momentDirective2(event, state, reg) {
   const { open: open3, lastAnswer: a } = momentsOf(state.scene);
@@ -51083,13 +51115,13 @@ var GENERIC = {
 var ORDER3 = ["caught", "missed", "falseTaken", "noticed", "slips", "gasps", "cheatsCaught"];
 function tallySentence(tally, phys) {
   const own = TALLY_WORDS[String(phys?.interaction ?? "")] ?? {};
-  const parts = [];
+  const parts2 = [];
   for (const k of ORDER3) {
     const n = tally[k] ?? 0;
     if (n <= 0) continue;
-    parts.push((own[k] ?? GENERIC[k])(n));
+    parts2.push((own[k] ?? GENERIC[k])(n));
   }
-  return parts.length === 0 ? "" : `Over the whole hold: ${parts.join(", ")}.`;
+  return parts2.length === 0 ? "" : `Over the whole hold: ${parts2.join(", ")}.`;
 }
 function applyPhysicsDirectives(builder, events, state, reg) {
   if (state === null) return false;
@@ -51139,8 +51171,8 @@ function physicsLines(state, reg) {
   const source = run.sourceKind === "contact" ? reg.blockingContacts.get(run.sourceId) : reg.blockingItems.get(run.sourceId);
   const what = String(source?.label ?? run.sourceId).toLowerCase();
   const also = run.second ? ` and ${String(reg.contactPhysics.get(run.second.physicsId)?.label ?? run.second.physicsId).toLowerCase()} at once` : "";
-  const parts = [`${name} has the commander in a hold (${what}${also}); her rhythm is ${RHYTHM[style] ?? RHYTHM.neutral}.`, EXPECTS[effectiveHoldsUntil(state, reg, run.holderId)]];
-  if (run.marathon?.summary !== void 0) parts.push(run.marathon.summary);
+  const parts2 = [`${name} has the commander in a hold (${what}${also}); her rhythm is ${RHYTHM[style] ?? RHYTHM.neutral}.`, EXPECTS[effectiveHoldsUntil(state, reg, run.holderId)]];
+  if (run.marathon?.summary !== void 0) parts2.push(run.marathon.summary);
   const last = run.last;
   if (last) {
     const said = [];
@@ -51152,10 +51184,10 @@ function physicsLines(state, reg) {
     if (last.reliefs > 0) said.push("a relief taken");
     if (last.noise > 0) said.push("some noise");
     if (last.warning) said.push("close to the limit");
-    if (said.length > 0) parts.push(`Last stretch: ${said.join(", ")}.`);
-    if (last.move !== void 0 && MOVE[last.move] !== void 0) parts.push(`Next: ${MOVE[last.move]}.`);
+    if (said.length > 0) parts2.push(`Last stretch: ${said.join(", ")}.`);
+    if (last.move !== void 0 && MOVE[last.move] !== void 0) parts2.push(`Next: ${MOVE[last.move]}.`);
   }
-  return { id: `${PHYSICS_PREFIX}${run.physicsId}`, text: parts.join(" "), expiresAfter: "manual" };
+  return { id: `${PHYSICS_PREFIX}${run.physicsId}`, text: parts2.join(" "), expiresAfter: "manual" };
 }
 var OUTCOME = {
   released: "She lets go.",
@@ -51435,6 +51467,10 @@ function createStaging(deps) {
     stimulus(way, kind, depth) {
       return active ? dispatch2({ type: "physics/stimulus", payload: { way, kind, ...depth !== void 0 ? { depth } : {} } }) : [];
     },
+    answer(right, lie, caught) {
+      const r = run();
+      return active && r ? dispatch2({ type: "physics/answer", payload: { runId: r.id, right, lie, caught } }) : [];
+    },
     skip(strategy) {
       return active && run() ? dispatch2({ type: "physics/skip", payload: { strategy } }) : [];
     },
@@ -51481,14 +51517,14 @@ function wakeCard(state, reg) {
   const wake2 = state?.lastWake;
   if (!state || !wake2 || state.scene) return null;
   const her = state.squad.find((u) => u.id === wake2.unitId)?.displayName ?? "Someone";
-  const body = h(
+  const body2 = h(
     "div",
     { class: "alius-wake", ...analyzeAttrs("glossary:wake_up") },
     h("p", {}, `Day ${wake2.day}, ${SLOT[wake2.slot]}. The commander comes to, and ${her} is there.`),
     wake2.line !== void 0 && wake2.line !== "" ? h("p", { class: "alius-wake-line" }, `"${wake2.line}"`) : null,
     h("p", { class: "alius-dim" }, `${String(reg.commanderConditions.get("dizzy")?.label ?? "Dizzy")} until the day ends.`)
   );
-  return renderVoiceCard({ voice: "terminal", title: "YOU COME TO", body });
+  return renderVoiceCard({ voice: "terminal", title: "YOU COME TO", body: body2 });
 }
 
 // src/blocking/sync.ts
@@ -52124,8 +52160,8 @@ function createEnvelope(host) {
       h2.fallback(rec.key, isExpired(input) ? null : input);
       host.dispatch({ type: "generation/close", payload: { id: recordId, outcome: "kept_fallback" } }, { expectChatId: chatId });
     },
-    takeSnapshot(siteId, key, before3, after3) {
-      snapshots.set(siteId, { chatId: host.chatId(), key, before: before3, after: after3 });
+    takeSnapshot(siteId, key, before4, after4) {
+      snapshots.set(siteId, { chatId: host.chatId(), key, before: before4, after: after4 });
     },
     clearSnapshots() {
       snapshots.clear();
@@ -52176,7 +52212,7 @@ function createSceneController(deps) {
   let awaitingReextract = false;
   const busyChats = /* @__PURE__ */ new Map();
   const chatKey = () => st2.getActiveChat()?.chatId ?? "";
-  const begin3 = (chat) => {
+  const begin4 = (chat) => {
     busyChats.set(chat, (busyChats.get(chat) ?? 0) + 1);
     return chat;
   };
@@ -52388,8 +52424,8 @@ function createSceneController(deps) {
       const expect = chatId();
       const from = extracted;
       const nextPointer = k.to + 1;
-      const before3 = state();
-      if (!before3 || !before3.scene) return { stale: true };
+      const before4 = state();
+      if (!before4 || !before4.scene) return { stale: true };
       const flaggedHere = result.contentViolations.map((v) => v.category);
       if (flaggedHere.length > 0) debug(`Content flagged on reply ${lastReply.index}: ${flaggedHere.join(", ")}.`);
       const events = dispatch2({
@@ -52406,11 +52442,11 @@ function createSceneController(deps) {
         }
       }, expect);
       if (events.some((e) => e.type === "error")) return { stale: true };
-      const after3 = state();
+      const after4 = state();
       extracted = nextPointer;
       const landed = events.find((e) => e.type === "intents_applied")?.landed ?? result.intents.events.map((e) => e.type);
       const directives = reflect(events, result.intents.events.filter((e) => e.severity === "extreme" && landed.includes(e.type)).map((e) => e.type));
-      if (after3 && after3 !== before3) lastApply = { lastReplyIndex: lastReply.index, from, to: k.to, before: before3, after: after3, directives };
+      if (after4 && after4 !== before4) lastApply = { lastReplyIndex: lastReply.index, from, to: k.to, before: before4, after: after4, directives };
       if (deps.settings().spriteMode === "emotion_pick") {
         for (const em of result.emotions) deps.onUi({ type: "sprite", unitId: em.unitId, label: em.label });
       }
@@ -52477,7 +52513,7 @@ function createSceneController(deps) {
     const expect = chatId();
     awaitingReextract = false;
     try {
-      const before3 = st2.chatLength();
+      const before4 = st2.chatLength();
       deps.onCommanderLine?.(t);
       try {
         await st2.sendUserMessage(t);
@@ -52486,7 +52522,7 @@ function createSceneController(deps) {
         return false;
       }
       if (disposed || chatId() !== expect || !state()?.scene) return true;
-      if (!st2.getChatMessages(before3).some((m) => !m.isUser)) {
+      if (!st2.getChatMessages(before4).some((m) => !m.isUser)) {
         deps.toast("warn", "No reply arrived. The chat may still be busy generating, or no group member was chosen to answer. Press STOP, wait a moment, then use \u21BB to regenerate.");
         deps.onUi({ type: "transcript" });
         return true;
@@ -52497,7 +52533,7 @@ function createSceneController(deps) {
       const settings = deps.settings();
       const due = settings.intentMode === "exchange" || settings.intentMode === "every_n" && exchanges > 0 && exchanges % settings.intentEveryN === 0;
       const applied = due ? await extract2(expect) : false;
-      await showSprites(st2.getChatMessages(before3).filter((m) => !m.isUser), applied);
+      await showSprites(st2.getChatMessages(before4).filter((m) => !m.isUser), applied);
       if (deps.memory) background2 = background2.then(() => deps.memory.digestIfDue()).catch(() => {
       });
       if (exchanges >= settings.scenePacing) deps.onUi({ type: "pacing" });
@@ -52607,14 +52643,14 @@ function createSceneController(deps) {
     parse: (raw, input) => readSceneSummary(raw, input),
     apply(sceneId, summary) {
       const expect = chatId();
-      const before3 = state();
-      if (!before3) return { stale: true };
+      const before4 = state();
+      if (!before4) return { stale: true };
       if (summary.contentViolations.length > 0) debug(`Scene summary flagged excluded content: ${summary.contentViolations.map((v) => v.category).join(", ")}.`);
-      if (before3.scene?.id === sceneId) {
+      if (before4.scene?.id === sceneId) {
         const events2 = dispatch2({ type: "scene/end", payload: { summary, endIndex: st2.chatLength() - 1 } }, expect);
-        const after3 = state();
-        if (events2.some((e) => e.type === "error") || !after3) return { stale: true };
-        deps.generations.takeSnapshot("scene.summary", sceneId, before3, after3);
+        const after4 = state();
+        if (events2.some((e) => e.type === "error") || !after4) return { stale: true };
+        deps.generations.takeSnapshot("scene.summary", sceneId, before4, after4);
         summaryKey = sceneId;
         return "ok";
       }
@@ -52659,7 +52695,7 @@ function createSceneController(deps) {
       const here = chatKey();
       if (text3.trim() !== "" && openingRun?.chat === here) return openingRun.run.then(() => controller.send(text3));
       if (text3.trim() === "" || busyHere() || !state()?.scene) return Promise.resolve(false);
-      const run = sendNow(text3.trim(), begin3(here));
+      const run = sendNow(text3.trim(), begin4(here));
       const mine = { chat: here, run };
       inflight = mine;
       void run.finally(() => {
@@ -52672,11 +52708,11 @@ function createSceneController(deps) {
       if (busyHere() || !scene) return Promise.resolve();
       if (openedScene === scene.id || st2.getChatMessages(Math.min(scene.startIndex, st2.chatLength())).length > 0) return Promise.resolve();
       openedScene = scene.id;
-      const chat = begin3(chatKey());
+      const chat = begin4(chatKey());
       const run = (async () => {
         const expect = chatId();
         try {
-          const before3 = st2.chatLength();
+          const before4 = st2.chatLength();
           try {
             await st2.triggerReplies();
           } catch (e) {
@@ -52684,7 +52720,7 @@ function createSceneController(deps) {
             return;
           }
           if (disposed || chatId() !== expect || !state()?.scene) return;
-          const replies = st2.getChatMessages(before3).filter((m) => !m.isUser);
+          const replies = st2.getChatMessages(before4).filter((m) => !m.isUser);
           deps.onUi({ type: "transcript" });
           if (replies.length === 0) {
             deps.toast("warn", "Nobody spoke first. Say something to start, or use \u21BB to try again.");
@@ -52757,7 +52793,7 @@ function createSceneController(deps) {
       const s = state();
       const scene = s?.scene;
       if (!s || !scene) return;
-      const chat = begin3(expect ?? "");
+      const chat = begin4(expect ?? "");
       try {
         if (st2.getChatMessages(extracted).some((m) => !m.isUser)) await extract2(expect);
         await deps.generations.generate("scene.summary", scene.id);
@@ -52782,7 +52818,7 @@ function createSceneController(deps) {
       const key = summaryKey;
       if (key === null) return;
       const expect = chatId();
-      const chat = begin3(expect ?? "");
+      const chat = begin4(expect ?? "");
       try {
         await deps.generations.reroll("scene.summary", key);
       } finally {
@@ -52817,10 +52853,10 @@ function createSceneController(deps) {
       const p = action.payload;
       const needsAt = /^(blocking\/|moment\/|practice\/take_posture$)/.test(action.type) && typeof p === "object" && p !== null && !Array.isArray(p) && p.at === void 0;
       const sent = needsAt ? { ...action, payload: { ...p, at: st2.chatLength() } } : action;
-      const before3 = state();
+      const before4 = state();
       const events = dispatch2(sent, chatId());
-      const after3 = state();
-      if (lastApply && before3 && lastApply.after === before3 && after3 && after3 !== before3) lastApply.after = after3;
+      const after4 = state();
+      if (lastApply && before4 && lastApply.after === before4 && after4 && after4 !== before4) lastApply.after = after4;
       return events;
     },
     onEdited(index2) {
@@ -53261,7 +53297,7 @@ function sanitizeProfile(raw, ctx2) {
   const dropped = [];
   const missing2 = [];
   const profile = { roleCandidates: [], signatureCandidates: [], defectCandidates: [], notes: cap6(src.notes, 300) };
-  const pick6 = (list5, section, idKey, max, accept2, make) => {
+  const pick7 = (list5, section, idKey, max, accept2, make) => {
     const out = [];
     const seen2 = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list5) ? list5 : []) {
@@ -53280,7 +53316,7 @@ function sanitizeProfile(raw, ctx2) {
     return out;
   };
   if (want("role")) {
-    profile.roleCandidates = pick6(
+    profile.roleCandidates = pick7(
       src.roleCandidates,
       "role",
       "roleId",
@@ -53291,7 +53327,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.roleCandidates.length === 0) missing2.push("role");
   }
   if (want("signature")) {
-    profile.signatureCandidates = pick6(
+    profile.signatureCandidates = pick7(
       src.signatureCandidates,
       "signature",
       "templateId",
@@ -53320,7 +53356,7 @@ function sanitizeProfile(raw, ctx2) {
     if (!isObj49(src.bond)) delete profile.bond;
   }
   if (want("defects")) {
-    profile.defectCandidates = pick6(
+    profile.defectCandidates = pick7(
       src.defectCandidates,
       "defects",
       "defectId",
@@ -53579,10 +53615,10 @@ var Wizard = class {
     this.emit();
   }
   /** P13: who holds the leash: a chosen unit (by her position in the squad) or the corporation's pick. An index outside the squad is ignored. */
-  setWardenPick(pick6) {
-    if (pick6.by === "player") {
-      if (!Number.isInteger(pick6.index) || pick6.index < 0 || pick6.index >= this.s.units.length) return;
-      this.s.campaign.warden = { by: "player", index: pick6.index };
+  setWardenPick(pick7) {
+    if (pick7.by === "player") {
+      if (!Number.isInteger(pick7.index) || pick7.index < 0 || pick7.index >= this.s.units.length) return;
+      this.s.campaign.warden = { by: "player", index: pick7.index };
     } else this.s.campaign.warden = { by: "corporation" };
     this.emit();
   }
@@ -53786,11 +53822,11 @@ var Wizard = class {
     return null;
   }
   /** A calibrated unit's offset and stances were read against the old world: offer a re-import. */
-  worldChanged(before3) {
-    const after3 = this.s.world.options;
+  worldChanged(before4) {
+    const after4 = this.s.world.options;
     const reg = this.deps.registries;
-    const matters = Object.keys(after3).some((id) => {
-      if (after3[id] === before3[id]) return false;
+    const matters = Object.keys(after4).some((id) => {
+      if (after4[id] === before4[id]) return false;
       const option2 = reg.worldOptions.get(id);
       return option2 !== void 0 && (option2.squadStance === true || option2.choices.some((c) => c.effects.some((e) => e.type === "disposition")));
     });
@@ -53801,19 +53837,19 @@ var Wizard = class {
   applyPreset(id) {
     const preset = this.deps.registries.worldPresets.get(id);
     if (!preset) return;
-    const before3 = { ...this.s.world.options };
+    const before4 = { ...this.s.world.options };
     this.s.world = { options: { ...defaultWorldOptions(this.deps.registries), ...preset.choices }, preset: id };
-    this.worldChanged(before3);
+    this.worldChanged(before4);
     this.emit();
   }
   /** Sets one option's choice; the preset mark follows (null unless the options still equal one). Unknown ids are ignored. */
   setWorldOption(optionId, choiceId) {
     const option2 = this.deps.registries.worldOptions.get(optionId);
     if (!option2 || !option2.choices.some((c) => c.id === choiceId)) return;
-    const before3 = { ...this.s.world.options };
-    const options2 = { ...before3, [optionId]: choiceId };
+    const before4 = { ...this.s.world.options };
+    const options2 = { ...before4, [optionId]: choiceId };
     this.s.world = { options: options2, preset: this.presetOf(options2) };
-    this.worldChanged(before3);
+    this.worldChanged(before4);
     this.emit();
   }
   /** "What this changes": the description of every choice that is not its option's default, never a number. */
@@ -54664,16 +54700,16 @@ function renderExpectationsBlock(host, ctx2) {
   const locked = (field2) => ctx2.locks.includes(field2) || ctx2.locks.includes(field2.split(".")[0]);
   const lock = (field2, address) => control(locked(field2) ? "[ LOCKED ]" : "[ LOCK ]", { "data-lock": field2 }, address, live3, ctx2.editable, () => ctx2.onLock(field2, !locked(field2)), locked(field2));
   const live1 = (field2) => ctx2.editable && !locked(field2);
-  const A4 = "glossary:expectation_profile";
-  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeNative(A4, live3), tabindex: "0" }, "EXPECTATIONS"));
+  const A5 = "glossary:expectation_profile";
+  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeNative(A5, live3), tabindex: "0" }, "EXPECTATIONS"));
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-holds-until": "" },
-    h("span", { class: "alius-stat", "data-analyze": A4, tabindex: "0" }, "Holds until:"),
-    ...HOLDS_UNTIL.map((v) => control(word(v), { "data-id": v }, A4, live3, live1("holdsUntil"), () => {
+    h("span", { class: "alius-stat", "data-analyze": A5, tabindex: "0" }, "Holds until:"),
+    ...HOLDS_UNTIL.map((v) => control(word(v), { "data-id": v }, A5, live3, live1("holdsUntil"), () => {
       if (e.holdsUntil !== v) ctx2.onSet({ holdsUntil: v });
     }, e.holdsUntil === v)),
-    lock("holdsUntil", A4)
+    lock("holdsUntil", A5)
   ));
   for (const t of ctx2.targets) {
     const w = e.worship?.[t.id];
@@ -54685,7 +54721,7 @@ function renderExpectationsBlock(host, ctx2) {
       ...ATTITUDES.map((a) => control(
         word(a),
         { "data-attitude": a },
-        A4,
+        A5,
         live3,
         live1(field2),
         () => ctx2.onSet({ worship: { [t.id]: w?.attitude === a ? null : { ...w, attitude: a } } }),
@@ -54694,26 +54730,26 @@ function renderExpectationsBlock(host, ctx2) {
       w === void 0 ? null : valueSelect(
         "What it means to her",
         { "data-meaning": t.id },
-        A4,
+        A5,
         live3,
         live1(field2),
         w.meaning ?? "",
         [option("", "(meaning)"), ...MEANINGS.map((m) => option(m, title(m)))],
         (v) => ctx2.onSet({ worship: { [t.id]: { ...w, meaning: v } } })
       ),
-      h("span", { class: "alius-stat", "data-analyze": A4, tabindex: "0" }, "Body:"),
-      ...BODY_FEELINGS.map((f) => control(word(f), { "data-body": f }, A4, live3, live1("body"), () => ctx2.onSet({ body: { ...e.body, [t.id]: f } }), e.body?.[t.id] === f)),
+      h("span", { class: "alius-stat", "data-analyze": A5, tabindex: "0" }, "Body:"),
+      ...BODY_FEELINGS.map((f) => control(word(f), { "data-body": f }, A5, live3, live1("body"), () => ctx2.onSet({ body: { ...e.body, [t.id]: f } }), e.body?.[t.id] === f)),
       valueSelect(
         "Scent",
         { "data-scent": t.id },
-        A4,
+        A5,
         live3,
         live1("scent"),
         String(e.scent?.base?.[t.id] ?? ""),
         [option("", "(scent)"), ...[1, 2, 3, 4, 5].map((n) => option(String(n), String(n)))],
         (v) => ctx2.onSet({ scent: { ...e.scent, base: { ...e.scent?.base, [t.id]: Number(v) } } })
       ),
-      lock(field2, A4)
+      lock(field2, A5)
     ));
   }
   const sourceOf2 = (id) => ctx2.sources.find((s) => s.id === id);
@@ -54725,14 +54761,14 @@ function renderExpectationsBlock(host, ctx2) {
       "div",
       { class: "alius-dyn-row", "data-moment": id },
       h("span", { class: "alius-chip", ...analyzeNative(`momentSources:${id}`), tabindex: "0" }, src.label),
-      ...src.types.map((type) => control(word(type), { "data-type": type }, A4, live3, live1(field2), () => {
+      ...src.types.map((type) => control(word(type), { "data-type": type }, A5, live3, live1(field2), () => {
         if (m.type !== type) ctx2.onSet({ moments: { [id]: { ...m, type } } });
       }, m.type === type)),
-      ...STRENGTHS2.map((n) => control(String(n), { "data-strength": String(n) }, A4, live3, live1(field2), () => {
+      ...STRENGTHS2.map((n) => control(String(n), { "data-strength": String(n) }, A5, live3, live1(field2), () => {
         if (m.strength !== n) ctx2.onSet({ moments: { [id]: { ...m, strength: n } } });
       }, m.strength === n)),
-      control("[ REMOVE ]", { "data-remove-moment": id }, A4, live3, live1(field2), () => ctx2.onSet({ moments: { [id]: null } })),
-      lock(field2, A4)
+      control("[ REMOVE ]", { "data-remove-moment": id }, A5, live3, live1(field2), () => ctx2.onSet({ moments: { [id]: null } })),
+      lock(field2, A5)
     ));
   }
   const addable = ctx2.sources.filter((s) => e.moments?.[s.id] === void 0);
@@ -54742,7 +54778,7 @@ function renderExpectationsBlock(host, ctx2) {
     valueSelect(
       "Add a moment",
       { "data-add-moment": ctx2.unit.id },
-      A4,
+      A5,
       live3,
       ctx2.editable && addable.length > 0 && !locked("moments"),
       "",
@@ -54751,71 +54787,71 @@ function renderExpectationsBlock(host, ctx2) {
     )
   ));
   for (const k of ["irritation", "pleasure"]) {
-    const input = h("input", { type: "text", class: "alius-input alius-option", "aria-label": `How her ${k} shows`, "aria-disabled": live1("tells") ? null : "true", maxlength: String(TUNING.dynamic.profile.tellMax), "data-tell": k, value: e.tells?.[k] ?? "", ...analyzeNative(A4, live3) });
+    const input = h("input", { type: "text", class: "alius-input alius-option", "aria-label": `How her ${k} shows`, "aria-disabled": live1("tells") ? null : "true", maxlength: String(TUNING.dynamic.profile.tellMax), "data-tell": k, value: e.tells?.[k] ?? "", ...analyzeNative(A5, live3) });
     input.addEventListener("change", () => {
       const v = input.value;
       input.value = e.tells?.[k] ?? "";
       if (live1("tells") && v !== (e.tells?.[k] ?? "")) ctx2.onSet({ tells: { ...e.tells, [k]: v } });
     });
-    host.append(h("div", { class: "alius-dyn-row", "data-tells": k }, h("span", { class: "alius-stat", "data-analyze": A4, tabindex: "0" }, `${title(k)} shows as:`), input, ...k === "pleasure" ? [lock("tells", A4)] : []));
+    host.append(h("div", { class: "alius-dyn-row", "data-tells": k }, h("span", { class: "alius-stat", "data-analyze": A5, tabindex: "0" }, `${title(k)} shows as:`), input, ...k === "pleasure" ? [lock("tells", A5)] : []));
   }
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-offset": "" },
-    h("span", { class: "alius-stat", "data-analyze": A4, tabindex: "0" }, "Wants the commander:"),
+    h("span", { class: "alius-stat", "data-analyze": A5, tabindex: "0" }, "Wants the commander:"),
     ...["r", "f"].map((axis) => valueSelect(
       axis === "r" ? "More yielding or less" : "Smoother or more provoking",
       { "data-offset-axis": axis },
-      A4,
+      A5,
       live3,
       live1("offset"),
       String(e.offset?.[axis] ?? 0),
       OFFSET_STEPS.map((n) => option(String(n), n > 0 ? `+${n}` : String(n))),
       (v) => ctx2.onSet({ offset: { r: e.offset?.r ?? 0, f: e.offset?.f ?? 0, [axis]: Number(v) } })
     )),
-    lock("offset", A4)
+    lock("offset", A5)
   ));
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-build": "" },
-    h("span", { class: "alius-stat", "data-analyze": A4, tabindex: "0" }, "Build:"),
+    h("span", { class: "alius-stat", "data-analyze": A5, tabindex: "0" }, "Build:"),
     ...["slim", "athletic", "curvy"].map((k) => valueSelect(
       title(k),
       { "data-build-weight": k },
-      A4,
+      A5,
       live3,
       live1("build"),
       String(e.build?.[k] ?? 0),
       BUILD_STEPS.map((n) => option(String(n), `${title(k)} ${n}`)),
       (v) => ctx2.onSet({ build: { slim: e.build?.slim ?? 0, athletic: e.build?.athletic ?? 0, curvy: e.build?.curvy ?? 0, [k]: Number(v) } })
     )),
-    lock("build", A4)
+    lock("build", A5)
   ));
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-hair": "" },
-    h("span", { class: "alius-stat", "data-analyze": A4, tabindex: "0" }, "Hair:"),
-    ...HAIR.map((v) => control(word(v), { "data-id": v }, A4, live3, live1("hair"), () => {
+    h("span", { class: "alius-stat", "data-analyze": A5, tabindex: "0" }, "Hair:"),
+    ...HAIR.map((v) => control(word(v), { "data-id": v }, A5, live3, live1("hair"), () => {
       if (e.hair !== v) ctx2.onSet({ hair: v });
     }, e.hair === v)),
-    lock("hair", A4)
+    lock("hair", A5)
   ));
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-hygiene": "" },
-    h("span", { class: "alius-stat", "data-analyze": A4, tabindex: "0" }, "Hygiene:"),
-    ...HYGIENE.map((v) => control(word(v), { "data-id": v }, A4, live3, live1("scent"), () => {
+    h("span", { class: "alius-stat", "data-analyze": A5, tabindex: "0" }, "Hygiene:"),
+    ...HYGIENE.map((v) => control(word(v), { "data-id": v }, A5, live3, live1("scent"), () => {
       if (e.scent?.hygiene !== v) ctx2.onSet({ scent: { ...e.scent, hygiene: v } });
     }, e.scent?.hygiene === v)),
-    lock("scent", A4)
+    lock("scent", A5)
   ));
-  const traits = h("input", { type: "text", class: "alius-input alius-option", "aria-label": "Traits, separated by commas", "aria-disabled": live1("traits") ? null : "true", "data-traits": "", value: (e.traits ?? []).join(", "), ...analyzeNative(A4, live3) });
+  const traits = h("input", { type: "text", class: "alius-input alius-option", "aria-label": "Traits, separated by commas", "aria-disabled": live1("traits") ? null : "true", "data-traits": "", value: (e.traits ?? []).join(", "), ...analyzeNative(A5, live3) });
   traits.addEventListener("change", () => {
     const v = traits.value;
     traits.value = (e.traits ?? []).join(", ");
     if (live1("traits")) ctx2.onSet({ traits: v.split(",").map((x) => x.trim()).filter((x) => x !== "") });
   });
-  host.append(h("div", { class: "alius-dyn-row", "data-traits-row": "" }, h("span", { class: "alius-stat", "data-analyze": A4, tabindex: "0" }, "Traits:"), traits, lock("traits", A4)));
+  host.append(h("div", { class: "alius-dyn-row", "data-traits-row": "" }, h("span", { class: "alius-stat", "data-analyze": A5, tabindex: "0" }, "Traits:"), traits, lock("traits", A5)));
 }
 
 // src/ui/setup/calibration.ts
@@ -54855,7 +54891,7 @@ function renderCalibration(host, ctx2) {
   );
   if (draft.status === "loading" || draft.status === "idle") return;
   const options2 = manualOptions(reg, ctx2.desireBondDefects, ch.bond ?? null);
-  const section = (id, title3, ...body) => h(
+  const section = (id, title3, ...body2) => h(
     "section",
     { class: "alius-section alius-calib-section", "data-section": id },
     h(
@@ -54875,7 +54911,7 @@ function renderCalibration(host, ctx2) {
         draft.regenerating.includes(id) ? "[ REGENERATING\u2026 ]" : "[ REGENERATE ]"
       ) : null
     ),
-    ...body
+    ...body2
   );
   if (shown2.has("role")) {
     const fromCandidates = !manual && cand && cand.roleCandidates.length > 0;
@@ -54938,7 +54974,7 @@ function renderCalibration(host, ctx2) {
     const fromCandidates = !manual && cand && cand.defectCandidates.length > 0;
     const list5 = fromCandidates ? cand.defectCandidates.map((c) => ({ id: c.defectId, origin: c.origin })) : options2.defects.map((d) => ({ id: d.id, origin: "" }));
     const max = draft.secondDefect ? SETUP_LIMITS.maxDefects : 1;
-    const pick6 = (id, origin) => {
+    const pick7 = (id, origin) => {
       const cur = ch.defects;
       if (cur.some((d) => d.id === id)) return onUpdate({ defects: cur.filter((d) => d.id !== id) });
       const next = cur.length >= max ? [...cur.slice(0, max - 1), { id, origin }] : [...cur, { id, origin }];
@@ -54958,7 +54994,7 @@ function renderCalibration(host, ctx2) {
             "alius-defect-card",
             id,
             ch.defects.some((x) => x.id === id),
-            () => pick6(id, origin),
+            () => pick7(id, origin),
             h("strong", {}, nameOf17(d, id)),
             h("span", { class: "alius-dim" }, d ? ` [${String(d.category)}]` : ""),
             ...d ? defectLines(d) : [],
@@ -55221,8 +55257,8 @@ function renderCalibration(host, ctx2) {
   if (dyn.categories.length > 0) {
     const dynWho = { id: draft.avatar, displayName: draft.displayName };
     if (shown2.has("practice")) {
-      const body = h("div", { class: "alius-dyn-practice" });
-      renderPracticeBlock(body, {
+      const body2 = h("div", { class: "alius-dyn-practice" });
+      renderPracticeBlock(body2, {
         unit: dynWho,
         practice: ch.bond?.practice,
         categories: dyn.categories,
@@ -55234,11 +55270,11 @@ function renderCalibration(host, ctx2) {
         },
         onLock: (field2, on) => onUpdate({ practiceLocks: [...(ch.practiceLocks ?? []).filter((f) => f !== field2), ...on ? [field2] : []] })
       });
-      host.append(section("practice", "PRACTICE", body));
+      host.append(section("practice", "PRACTICE", body2));
     }
     if (shown2.has("expectations")) {
-      const body = h("div", { class: "alius-dyn-expectations" });
-      renderExpectationsBlock(body, {
+      const body2 = h("div", { class: "alius-dyn-expectations" });
+      renderExpectationsBlock(body2, {
         unit: dynWho,
         expectations: ch.expectations,
         targets: dyn.targets,
@@ -55248,7 +55284,7 @@ function renderCalibration(host, ctx2) {
         onSet: (patch) => onUpdate({ expectations: validateExpectations(mergeExpectations(ch.expectations, patch), reg, { state: holder3 }).expectations }),
         onLock: (field2, on) => onUpdate({ expectationLocks: [...(ch.expectationLocks ?? []).filter((f) => f !== field2), ...on ? [field2] : []] })
       });
-      host.append(section("expectations", "EXPECTATIONS", body));
+      host.append(section("expectations", "EXPECTATIONS", body2));
     }
   }
   if (shown2.has("development")) {
@@ -55271,8 +55307,8 @@ function renderCalibration(host, ctx2) {
   const who = { id: draft.avatar, displayName: draft.displayName };
   if (shown2.has("temperament")) {
     const temperament = { ...TEMPERAMENT_DEFAULTS, ...ch.temperament };
-    const body = h("div", { class: "alius-life-temperament" });
-    renderTemperamentBlock(body, {
+    const body2 = h("div", { class: "alius-life-temperament" });
+    renderTemperamentBlock(body2, {
       unit: who,
       temperament,
       locks: ch.temperamentLocks ?? [],
@@ -55280,11 +55316,11 @@ function renderCalibration(host, ctx2) {
       onSet: (field2, value) => onUpdate({ temperament: { ...temperament, [field2]: value } }),
       onLock: (field2, on) => onUpdate({ temperamentLocks: [...(ch.temperamentLocks ?? []).filter((f) => f !== field2), ...on ? [field2] : []] })
     });
-    host.append(section("temperament", "TEMPERAMENT", body));
+    host.append(section("temperament", "TEMPERAMENT", body2));
   }
   if (shown2.has("hobbies")) {
-    const body = h("div", { class: "alius-life-hobbies" });
-    renderHobbiesEditor(body, {
+    const body2 = h("div", { class: "alius-life-hobbies" });
+    renderHobbiesEditor(body2, {
       unit: who,
       registries: reg,
       editable: true,
@@ -55292,12 +55328,12 @@ function renderCalibration(host, ctx2) {
       aptitudes: ch.aptitudes ?? { high: [], low: [] },
       onSet: (hobbies, aptitudes) => onUpdate({ hobbies, aptitudes })
     });
-    host.append(section("hobbies", "HOBBIES", body));
+    host.append(section("hobbies", "HOBBIES", body2));
   }
   if (shown2.has("opinions")) {
-    const body = h("div", { class: "alius-life-opinions" });
+    const body2 = h("div", { class: "alius-life-opinions" });
     const opinions = ch.opinions ?? {};
-    renderOpinionsEditor(body, {
+    renderOpinionsEditor(body2, {
       unit: who,
       registries: reg,
       editable: true,
@@ -55306,7 +55342,7 @@ function renderCalibration(host, ctx2) {
       onSet: (topicId, patch) => onUpdate({ opinions: { ...opinions, [topicId]: { ...opinions[topicId], ...patch } } }),
       onRemove: (topicId) => onUpdate({ opinions: Object.fromEntries(Object.entries(opinions).filter(([t]) => t !== topicId)) })
     });
-    host.append(section("opinions", "OPINIONS", body));
+    host.append(section("opinions", "OPINIONS", body2));
   }
   if (shown2.has("baseline")) {
     host.append(
@@ -55506,7 +55542,7 @@ var LINE_GAP_MS = 300;
 function fillLine(template, vars) {
   return template.replace(/\{([A-Z_]+)\}/g, (whole, key) => Object.prototype.hasOwnProperty.call(vars, key) ? vars[key] : whole);
 }
-var paper = (title3, meta2, body, stamp) => renderVoiceCard({ voice: VOICE_OF.intake_form, title: title3, meta: meta2, body, level: 2, ...stamp !== void 0 ? { stamp } : {} });
+var paper = (title3, meta2, body2, stamp) => renderVoiceCard({ voice: VOICE_OF.intake_form, title: title3, meta: meta2, body: body2, level: 2, ...stamp !== void 0 ? { stamp } : {} });
 var linesOf2 = (ctx2) => {
   const step = ctx2.wizard.prologueStep();
   return { ...step?.lines ?? {}, ...ctx2.wizard.state.headStart.days > 0 ? step?.headStartLines ?? {} : {} };
@@ -55542,7 +55578,7 @@ function renderIntake(host, ctx2) {
   const name = h("input", { type: "text", class: "alius-input", "data-key": "name", maxlength: "60" });
   name.value = s.commanderName;
   name.addEventListener("input", () => wizard.setCommanderName(name.value));
-  const body = h(
+  const body2 = h(
     "div",
     { class: "alius-intake" },
     clerk(lines.ask_crime),
@@ -55550,7 +55586,7 @@ function renderIntake(host, ctx2) {
     h("label", { class: "alius-field" }, h("span", { class: "alius-field-label alius-clerk" }, lines.ask_name ?? "Name for the record"), name),
     clerk(lines.confirm_owner ? fillLine(lines.confirm_owner, { CORPORATION: corporation }) : void 0)
   );
-  host.replaceChildren(paper(titleOf(ctx2), "FORM CCP-1", body));
+  host.replaceChildren(paper(titleOf(ctx2), "FORM CCP-1", body2));
 }
 var cap7 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 function renderExam(host, ctx2) {
@@ -55594,7 +55630,7 @@ function renderFile(host, ctx2) {
   const lines = linesOf2(ctx2);
   const ok = wizard.canAdvance().ok;
   const edit = (action, label2, address, to) => h("button", { type: "button", class: "alius-btn", "data-action": action, disabled: ctx2.filed, ...analyzeNative(address), onclick: () => wizard.jumpTo(to) }, label2);
-  const body = h(
+  const body2 = h(
     "div",
     { class: "alius-dossier" },
     h("pre", { class: "alius-review" }, reviewLines(wizard, reg).join("\n")),
@@ -55619,7 +55655,7 @@ function renderFile(host, ctx2) {
       }, ctx2.filed ? "FILING\u2026" : "[ SIGN ]")
     )
   );
-  host.replaceChildren(paper(step?.title, "PERSONNEL RECORD", body, ctx2.filed ? "FILED" : void 0));
+  host.replaceChildren(paper(step?.title, "PERSONNEL RECORD", body2, ctx2.filed ? "FILED" : void 0));
 }
 
 // src/ui/bonds/content.ts
@@ -55787,15 +55823,15 @@ function renderDynamicStep(host, ctx2) {
   const seeds = Object.values(d.units).filter((u) => u.seeded === true).length;
   const full = d.holders !== "any" && seeds >= d.holders;
   const unitRow = (u) => {
-    const pick6 = d.units[u.avatar] ?? {};
-    const seeded = pick6.seeded === true;
+    const pick7 = d.units[u.avatar] ?? {};
+    const seeded = pick7.seeded === true;
     const problem = wizard.seedBlock(u.avatar);
     return h(
       "div",
       { class: "alius-dynamic-unit", "data-avatar": u.avatar },
       h("h4", {}, u.displayName),
-      selectField("May hold", "glossary:dynamic_may_hold", "mayHold", MAY_HOLD.map((v) => [v, MAY_HOLD_LABEL[v]]), pick6.mayHold ?? "auto", (v) => wizard.setDynamicUnit(u.avatar, { mayHold: v })),
-      selectField("Sensitivity", "glossary:dynamic_sensitivity", "sensitivity", SENSITIVITIES.map((v) => [v, v]), pick6.sensitivity ?? "normal", (v) => wizard.setDynamicUnit(u.avatar, { sensitivity: v })),
+      selectField("May hold", "glossary:dynamic_may_hold", "mayHold", MAY_HOLD.map((v) => [v, MAY_HOLD_LABEL[v]]), pick7.mayHold ?? "auto", (v) => wizard.setDynamicUnit(u.avatar, { mayHold: v })),
+      selectField("Sensitivity", "glossary:dynamic_sensitivity", "sensitivity", SENSITIVITIES.map((v) => [v, v]), pick7.sensitivity ?? "normal", (v) => wizard.setDynamicUnit(u.avatar, { sensitivity: v })),
       h("button", {
         type: "button",
         class: "alius-btn alius-option alius-dynamic-seed",
@@ -55804,14 +55840,14 @@ function renderDynamicStep(host, ctx2) {
         ...analyzeNative("glossary:dynamic_seeded"),
         onclick: () => wizard.setDynamicUnit(u.avatar, { seeded: !seeded })
       }, seeded ? "SEEDED" : "SEED"),
-      seeded ? selectField("Starting frame", "glossary:dynamic_start_frame", "startFrame", [["", "none (equal)"], ...START_FRAMES.map((v) => [v, v])], pick6.startFrame ?? "", (v) => wizard.setDynamicUnit(u.avatar, { startFrame: v === "" ? null : v })) : null,
+      seeded ? selectField("Starting frame", "glossary:dynamic_start_frame", "startFrame", [["", "none (equal)"], ...START_FRAMES.map((v) => [v, v])], pick7.startFrame ?? "", (v) => wizard.setDynamicUnit(u.avatar, { startFrame: v === "" ? null : v })) : null,
       headStart ? h("button", {
         type: "button",
         class: "alius-btn alius-option alius-dynamic-underway",
         "data-scope": "unit",
-        "aria-pressed": String(pick6.underway === true),
+        "aria-pressed": String(pick7.underway === true),
         ...analyzeNative("glossary:dynamic_underway"),
-        onclick: () => wizard.setDynamicUnit(u.avatar, { underway: pick6.underway !== true })
+        onclick: () => wizard.setDynamicUnit(u.avatar, { underway: pick7.underway !== true })
       }, "ALREADY UNDERWAY") : null,
       problem !== null ? h("p", { class: "alius-dim alius-dynamic-problem" }, `Cannot be seeded: ${problem}.`) : null
     );
@@ -55955,7 +55991,7 @@ function renderSetupScreen(host, ctx2) {
   let search = "";
   let lastStep = null;
   let root = null;
-  const render3 = () => {
+  const render4 = () => {
     if (root && !host.contains(root)) return;
     const s = wizard.state;
     let title3;
@@ -55998,18 +56034,18 @@ function renderSetupScreen(host, ctx2) {
       case "exam":
         return inWorld(renderExam);
       case "file":
-        return inWorld((body, c) => renderFile(body, { ...c, filed: filing.get(wizard) === true, onSign: () => void sign2() }));
+        return inWorld((body2, c) => renderFile(body2, { ...c, filed: filing.get(wizard) === true, onSign: () => void sign2() }));
     }
   }
   function inWorld(draw2) {
-    const body = h("div", { class: "alius-setup-body alius-inworld" });
-    draw2(body, { wizard, registries: reg, settings: ctx2.settings(), ...ctx2.sound ? { sound: ctx2.sound } : {} });
-    return body;
+    const body2 = h("div", { class: "alius-setup-body alius-inworld" });
+    draw2(body2, { wizard, registries: reg, settings: ctx2.settings(), ...ctx2.sound ? { sound: ctx2.sound } : {} });
+    return body2;
   }
   function worldStep() {
-    const body = h("div", { class: "alius-world-host" });
-    renderWorldParams(body, { wizard, registries: reg });
-    return body;
+    const body2 = h("div", { class: "alius-world-host" });
+    renderWorldParams(body2, { wizard, registries: reg });
+    return body2;
   }
   function dossier(s) {
     const classic = s.mode === "veteran";
@@ -56048,14 +56084,14 @@ function renderSetupScreen(host, ctx2) {
     );
   }
   function commanderStep() {
-    const body = h("div", { class: "alius-setup-body alius-cmdr" });
+    const body2 = h("div", { class: "alius-setup-body alius-cmdr" });
     const apply2 = (p) => {
       if (p.kind === "body") wizard.setBody(p.stat, p.value);
       else if (p.kind === "expression") wizard.setExpression(p.value);
       else if (p.kind === "seasoning") wizard.setSeasoning(p.value);
       else wizard.toggleTrait(p.id);
     };
-    renderCommanderFile(body, {
+    renderCommanderFile(body2, {
       value: wizard.state.commander,
       registries: reg,
       desireBondDefects: wizardDesireBond(),
@@ -56065,7 +56101,7 @@ function renderSetupScreen(host, ctx2) {
       onRandom: () => wizard.randomCommander(),
       importStatus: wizard.state.commanderImport
     });
-    return body;
+    return body2;
   }
   function units(s) {
     const q = search.trim().toLowerCase();
@@ -56075,7 +56111,7 @@ function renderSetupScreen(host, ctx2) {
     input.value = search;
     input.addEventListener("input", () => {
       search = input.value;
-      render3();
+      render4();
     });
     const wardenHost = h("div", { class: "alius-warden-host" });
     renderWardenPick(wardenHost, wizard);
@@ -56100,8 +56136,8 @@ function renderSetupScreen(host, ctx2) {
   function calibration(s) {
     const i = s.calibrationIndex;
     const draft = s.units[i];
-    const body = h("div", { class: "alius-calibration" });
-    renderCalibration(body, {
+    const body2 = h("div", { class: "alius-calibration" });
+    renderCalibration(body2, {
       draft,
       registries: reg,
       desireBondDefects: wizardDesireBond(),
@@ -56124,14 +56160,14 @@ function renderSetupScreen(host, ctx2) {
         h("span", { class: "alius-pager-label" }, `${i + 1}/${s.units.length} \u2014 ${draft.displayName}`),
         h("button", { type: "button", class: "alius-btn", "data-action": "pager-next", "aria-label": "Next unit", disabled: i >= s.units.length - 1, onclick: () => wizard.setCalibrationIndex(i + 1) }, ">")
       ),
-      body
+      body2
     );
   }
   function review(s) {
-    const body = h("div", { class: "alius-setup-body" }, h("pre", { class: "alius-review" }, reviewLines(wizard, reg).join("\n")));
+    const body2 = h("div", { class: "alius-setup-body" }, h("pre", { class: "alius-review" }, reviewLines(wizard, reg).join("\n")));
     const target = targetChooser(wizard);
-    if (target) body.append(target);
-    return body;
+    if (target) body2.append(target);
+    return body2;
   }
   async function deploy(stamped) {
     const result = wizard.result();
@@ -56181,8 +56217,8 @@ function renderSetupScreen(host, ctx2) {
   }
   const wizardDesireBond = () => wizard.desireBondDefects;
   subscriptions.get(wizard)?.();
-  subscriptions.set(wizard, wizard.subscribe(render3));
-  render3();
+  subscriptions.set(wizard, wizard.subscribe(render4));
+  render4();
 }
 
 // src/ui/power/hierarchy.ts
@@ -56281,8 +56317,8 @@ function renderDeviceBlock(state, reg, unitId, handlers2) {
   if (decor) {
     const faded = decor.fadedUntil !== void 0;
     const owner = wallpaperUnit(state) === unitId;
-    const parts = decor.parts.filter((p) => p !== "wallpaper" || owner || faded);
-    block2.append(h("div", { class: "alius-device-decor" }, ...parts.map((part) => {
+    const parts2 = decor.parts.filter((p) => p !== "wallpaper" || owner || faded);
+    block2.append(h("div", { class: "alius-device-decor" }, ...parts2.map((part) => {
       const label2 = part === "contact" ? `CONTACT: ${decor.contactName}` : PART_LABEL[part];
       return h(
         "span",
@@ -56552,13 +56588,13 @@ function renderPastimePicker(host, ctx2) {
   ))));
 }
 function renderLetsMenu(host, ctx2) {
-  const body = h("div", { class: "alius-lets-body" });
-  renderPastimePicker(body, ctx2);
+  const body2 = h("div", { class: "alius-lets-body" });
+  renderPastimePicker(body2, ctx2);
   const menu = h(
     "details",
     { class: "alius-lets", "data-lets": ctx2.unitId },
     h("summary", { class: "alius-btn alius-option", ...analyzeAttrs("glossary:quiet_meeting") }, "[ LET'S \u2026 ]"),
-    body
+    body2
   );
   if (ctx2.open === true) menu.open = true;
   host.replaceChildren(menu);
@@ -56573,26 +56609,26 @@ function renderHubDayLine(host, state, reg, unitId) {
 // src/ui/vitals/trace.ts
 var SVG_NS3 = "http://www.w3.org/2000/svg";
 var POINTS = 48;
-var unit2 = (seed3, i) => fnv1a3(`${seed3}${i}`) % 1e3 / 1e3;
+var unit2 = (seed4, i) => fnv1a3(`${seed4}${i}`) % 1e3 / 1e3;
 var clamp41 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
-function tracePoints(pattern, seed3, n = POINTS, flicker = false) {
+function tracePoints(pattern, seed4, n = POINTS, flicker = false) {
   const out = [];
-  const blip = fnv1a3(seed3) % n;
+  const blip = fnv1a3(seed4) % n;
   for (let i = 0; i < n; i++) {
-    const noise5 = unit2(seed3, i) - 0.5;
+    const noise6 = unit2(seed4, i) - 0.5;
     let v;
     switch (pattern) {
       case "steady":
-        v = i % 12 === 3 ? 0.8 : i % 12 === 4 ? 0.25 : 0.5 + noise5 * 0.06;
+        v = i % 12 === 3 ? 0.8 : i % 12 === 4 ? 0.25 : 0.5 + noise6 * 0.06;
         break;
       case "elevated":
-        v = i % 8 === 2 ? 0.88 : i % 8 === 3 ? 0.18 : 0.5 + noise5 * 0.12;
+        v = i % 8 === 2 ? 0.88 : i % 8 === 3 ? 0.18 : 0.5 + noise6 * 0.12;
         break;
       case "spiking":
-        v = i % 6 === 1 ? 1 : i % 6 === 2 ? 0 : 0.5 + noise5 * 0.2;
+        v = i % 6 === 1 ? 1 : i % 6 === 2 ? 0 : 0.5 + noise6 * 0.2;
         break;
       case "erratic":
-        v = 0.5 + noise5 * 2;
+        v = 0.5 + noise6 * 2;
         break;
       case "flat":
         v = flicker && i === blip ? 0.9 : 0.5;
@@ -56602,7 +56638,7 @@ function tracePoints(pattern, seed3, n = POINTS, flicker = false) {
   }
   return out;
 }
-function renderTrace(pattern, seed3, opts) {
+function renderTrace(pattern, seed4, opts) {
   const svg4 = document.createElementNS(SVG_NS3, "svg");
   svg4.setAttribute("viewBox", `0 0 ${POINTS * 2} 24`);
   svg4.setAttribute("class", `alius-trace${opts.motion ? " is-sweeping" : ""}`);
@@ -56610,7 +56646,7 @@ function renderTrace(pattern, seed3, opts) {
   svg4.setAttribute("role", "img");
   svg4.setAttribute("aria-label", opts.label ?? `Vitals trace: ${pattern}`);
   const line3 = document.createElementNS(SVG_NS3, "polyline");
-  const points = tracePoints(pattern, seed3, POINTS, opts.flicker === true).map((v, i) => `${i * 2},${(22 - v * 20).toFixed(1)}`);
+  const points = tracePoints(pattern, seed4, POINTS, opts.flicker === true).map((v, i) => `${i * 2},${(22 - v * 20).toFixed(1)}`);
   line3.setAttribute("points", points.join(" "));
   line3.setAttribute("fill", "none");
   line3.setAttribute("stroke", "currentColor");
@@ -56710,8 +56746,8 @@ function renderWagerForm(state, reg, unitId, onSubmit) {
       "data-action": "challenge",
       ...analyzeNative("glossary:wager", live3),
       onclick: () => {
-        const pick6 = pickHost.querySelector("select")?.value;
-        onSubmit({ gameId: gameSel.value, stakeId: stakeSel.value, ...pick6 !== void 0 ? { pick: pick6 } : {} });
+        const pick7 = pickHost.querySelector("select")?.value;
+        onSubmit({ gameId: gameSel.value, stakeId: stakeSel.value, ...pick7 !== void 0 ? { pick: pick7 } : {} });
       }
     }, "[ CHALLENGE ]")
   );
@@ -56756,8 +56792,8 @@ function ditherBayer4(src, w, h2, levels) {
 }
 
 // src/ui/portrait/portrait.ts
-function portraitOptions(s, size2) {
-  return { palette: s.palette, dither: visualFlags(s).dither, ...size2 !== void 0 ? { size: size2 } : {} };
+function portraitOptions(s, size3) {
+  return { palette: s.palette, dither: visualFlags(s).dither, ...size3 !== void 0 ? { size: size3 } : {} };
 }
 var RETRY_MS = 3e4;
 var spriteCache = /* @__PURE__ */ new WeakMap();
@@ -56766,7 +56802,7 @@ function showDithered(img, url) {
   img.setAttribute("src", url);
   img.classList.add("alius-portrait-dithered");
 }
-function ditherWhenLoaded(img, key, palette, size2) {
+function ditherWhenLoaded(img, key, palette, size3) {
   const hit = dithered.get(key);
   if (hit?.url) return showDithered(img, hit.url);
   if (hit?.failedAt !== void 0 && Date.now() - hit.failedAt < RETRY_MS) return;
@@ -56775,17 +56811,17 @@ function ditherWhenLoaded(img, key, palette, size2) {
     if (again?.url) return showDithered(img, again.url);
     try {
       const canvas = document.createElement("canvas");
-      canvas.width = size2;
-      canvas.height = size2;
+      canvas.width = size3;
+      canvas.height = size3;
       const ctx2 = canvas.getContext("2d");
       const nw = img.naturalWidth;
       const nh = img.naturalHeight;
       if (!ctx2 || !nw || !nh) throw new Error("nothing to draw on or from");
       const side = Math.min(nw, nh);
-      ctx2.drawImage(img, (nw - side) / 2, 0, side, side, 0, 0, size2, size2);
-      const src = ctx2.getImageData(0, 0, size2, size2);
-      const out = ctx2.createImageData(size2, size2);
-      out.data.set(ditherBayer4(src.data, size2, size2, PALETTE_RGB[palette]));
+      ctx2.drawImage(img, (nw - side) / 2, 0, side, side, 0, 0, size3, size3);
+      const src = ctx2.getImageData(0, 0, size3, size3);
+      const out = ctx2.createImageData(size3, size3);
+      out.data.set(ditherBayer4(src.data, size3, size3, PALETTE_RGB[palette]));
       ctx2.putImageData(out, 0, 0);
       const url = canvas.toDataURL("image/png");
       dithered.set(key, { url });
@@ -56803,21 +56839,21 @@ function unitPortrait(st2, unit4, o) {
   }
   if (!unit4.cardRef) return null;
   const card2 = unit4.cardRef;
-  const size2 = o.size ?? 96;
-  const key = `${card2}|${o.palette}|${size2}`;
+  const size3 = o.size ?? 96;
+  const key = `${card2}|${o.palette}|${size3}`;
   const avatar = st2.getAvatarUrl(card2);
-  let cache2 = spriteCache.get(st2);
-  if (!cache2) spriteCache.set(st2, cache2 = /* @__PURE__ */ new Map());
-  const known3 = cache2.get(card2);
+  let cache3 = spriteCache.get(st2);
+  if (!cache3) spriteCache.set(st2, cache3 = /* @__PURE__ */ new Map());
+  const known3 = cache3.get(card2);
   const cached = o.dither ? dithered.get(key)?.url : void 0;
-  const img = h("img", { class: "alius-portrait", src: cached ?? known3?.url ?? avatar, alt: unit4.displayName, width: String(size2), height: String(size2) });
+  const img = h("img", { class: "alius-portrait", src: cached ?? known3?.url ?? avatar, alt: unit4.displayName, width: String(size3), height: String(size3) });
   if (cached) {
     img.classList.add("alius-portrait-dithered");
     return img;
   }
   let usingAvatar = !known3?.url;
   const settle6 = () => {
-    if (o.dither) ditherWhenLoaded(img, key, o.palette, size2);
+    if (o.dither) ditherWhenLoaded(img, key, o.palette, size3);
   };
   img.addEventListener("error", () => {
     if (usingAvatar) return;
@@ -56830,7 +56866,7 @@ function unitPortrait(st2, unit4, o) {
   }
   st2.getSpriteUrl(card2, "neutral").then(
     (url) => {
-      cache2.set(card2, { url: url || null, at: Date.now() });
+      cache3.set(card2, { url: url || null, at: Date.now() });
       if (url) {
         usingAvatar = false;
         img.setAttribute("src", url);
@@ -56912,12 +56948,12 @@ function reading(kind) {
     const who = holders(state, kind, subject.id);
     if (who.length === 0) return null;
     const name = (p) => p === COMMANDER ? "the commander" : state.squad.find((u) => u.id === p)?.displayName ?? p;
-    const parts = who.map((p) => {
+    const parts2 = who.map((p) => {
       const e = entryFor(state, kind, subject.id, p);
       const how = e === void 0 ? "set by the game at the start" : `set by ${BY[e.source ?? "engine"]} in exchange ${e.exchange ?? 0}`;
       return `${name(p)} ${VERB[kind]}, ${how}`;
     });
-    return { lines: [`In the scene: ${parts.join("; ")}.`] };
+    return { lines: [`In the scene: ${parts2.join("; ")}.`] };
   };
 }
 var ANSWER_KIND = {
@@ -57243,15 +57279,15 @@ function relationLine(unit4, state, ctx2) {
   const num7 = (n) => raw ? ` (${n})` : "";
   const live3 = { unitId: unit4.id };
   const chip2 = (text3, address, data) => h("span", { class: "alius-chip", ...analyzeAttrs(address, data) }, text3);
-  const parts = [
+  const parts2 = [
     chip2(`${String(ctx2.registries.relationshipStates.get(rel.stateId)?.name ?? rel.stateId).toUpperCase()}`, `relationshipStates:${rel.stateId}`),
     chip2(`TRUST ${trustBand(rel.trust).toUpperCase()}${num7(rel.trust)}`, "glossary:trust", live3)
   ];
   if (unit4.kind !== "grunt") {
-    parts.push(chip2(`AFFINITY ${affinityBand(rel.affinity).toUpperCase()}${num7(rel.affinity)}`, "glossary:affinity", live3));
-    if (intimacyOf(state).romance) parts.push(chip2(`ATTRACTION ${attractionBand(rel.attraction).toUpperCase()}${num7(rel.attraction)}`, "glossary:attraction", live3));
+    parts2.push(chip2(`AFFINITY ${affinityBand(rel.affinity).toUpperCase()}${num7(rel.affinity)}`, "glossary:affinity", live3));
+    if (intimacyOf(state).romance) parts2.push(chip2(`ATTRACTION ${attractionBand(rel.attraction).toUpperCase()}${num7(rel.attraction)}`, "glossary:attraction", live3));
   }
-  return h("p", { class: "alius-relation" }, ...joinWith(parts, " \xB7 "));
+  return h("p", { class: "alius-relation" }, ...joinWith(parts2, " \xB7 "));
 }
 var joinWith = (items, sep) => items.flatMap((item, i) => i === 0 ? [item] : [sep, item]);
 var SLOTS7 = ["weapon", "upper", "lower"];
@@ -57306,12 +57342,12 @@ function equipmentBlock(unit4, ctx2, state) {
 function loadoutBlock(unit4, ctx2) {
   const reg = ctx2.registries;
   const known3 = knownSkills(reg, unit4);
-  const size2 = loadoutSize(reg, unit4);
+  const size3 = loadoutSize(reg, unit4);
   const chosen = new Set(activeLoadout(reg, unit4));
   const boxes = [];
   const sync = () => {
     const count2 = boxes.filter((b) => b.checked).length;
-    for (const b of boxes) b.disabled = !b.checked && count2 >= size2;
+    for (const b of boxes) b.disabled = !b.checked && count2 >= size3;
   };
   const rows = known3.map((id) => {
     const box = h("input", { type: "checkbox", "data-skill": id, checked: chosen.has(id) });
@@ -57323,7 +57359,7 @@ function loadoutBlock(unit4, ctx2) {
     return h("label", { class: "alius-option", ...analyzeNative(`skills:${id}`) }, box, ` ${skillById(reg, id)?.name ?? id}`);
   });
   sync();
-  return h("div", { class: "alius-loadout", "data-unit": unit4.id }, h("p", { class: "alius-dim" }, `LOADOUT ${chosen.size}/${size2}`), ...rows);
+  return h("div", { class: "alius-loadout", "data-unit": unit4.id }, h("p", { class: "alius-dim" }, `LOADOUT ${chosen.size}/${size3}`), ...rows);
 }
 function progressionBlock(unit4, ctx2, state) {
   const cost = respecCost(unit4);
@@ -57398,12 +57434,12 @@ function disciplineLine(unit4, state, ctx2) {
   const stance = commandStance(state, ctx2.registries, unit4.id);
   const entry = stance === null ? void 0 : stanceEntry(ctx2.registries, stance);
   const raw = ctx2.settings().showRawValues;
-  const parts = [];
+  const parts2 = [];
   if (stance !== null && entry) {
-    parts.push(h("span", { class: "alius-chip", "data-stance": unit4.id, ...analyzeAttrs(`commandStances:${stance}`, live3) }, `STANCE: ${String(entry.name).toUpperCase()}`));
+    parts2.push(h("span", { class: "alius-chip", "data-stance": unit4.id, ...analyzeAttrs(`commandStances:${stance}`, live3) }, `STANCE: ${String(entry.name).toUpperCase()}`));
   }
-  parts.push(h("span", { class: "alius-chip", "data-impunity": unit4.id, ...analyzeAttrs("glossary:impunity", live3) }, `IMPUNITY: ${impunityBand(found.value).toUpperCase()}${raw ? ` (${found.value})` : ""}`));
-  return h("p", { class: "alius-stance-line" }, ...joinWith(parts, " \xB7 "));
+  parts2.push(h("span", { class: "alius-chip", "data-impunity": unit4.id, ...analyzeAttrs("glossary:impunity", live3) }, `IMPUNITY: ${impunityBand(found.value).toUpperCase()}${raw ? ` (${found.value})` : ""}`));
+  return h("p", { class: "alius-stance-line" }, ...joinWith(parts2, " \xB7 "));
 }
 function hierarchyBlock(unit4, state, ctx2) {
   const host = h("div", { class: "alius-hierarchy" });
@@ -57844,9 +57880,9 @@ function rumorPost(r, ctx2) {
   return post;
 }
 function renderMissionBoard(host, state, ctx2) {
-  const size2 = facilityEffect(state, ctx2.registries, "comms", "missionBoardSize");
+  const size3 = facilityEffect(state, ctx2.registries, "comms", "missionBoardSize");
   const offered2 = state.missions.offered;
-  const board = h("section", { class: "alius-section alius-board" }, h("h2", {}, h("span", { class: "alius-stat", ...analyzeAttrs("glossary:mission_board") }, `MISSION BOARD ${offered2.length}/${size2}`)));
+  const board = h("section", { class: "alius-section alius-board" }, h("h2", {}, h("span", { class: "alius-stat", ...analyzeAttrs("glossary:mission_board") }, `MISSION BOARD ${offered2.length}/${size3}`)));
   if ((state.world.incomingUnits ?? 0) > 0) {
     board.append(h(
       "p",
@@ -57874,8 +57910,8 @@ function renderMissionBoard(host, state, ctx2) {
 // src/ui/ops/opsTab.ts
 var COST_LABEL = { credits: "CR", supplies: "SUPPLIES", plyx: "PLYX" };
 var costText2 = (cost) => {
-  const parts = Object.entries(cost).filter(([, n]) => (n ?? 0) > 0).map(([k, n]) => `${n} ${COST_LABEL[k] ?? k.toUpperCase()}`);
-  return parts.length === 0 ? "FREE" : parts.join(" \xB7 ");
+  const parts2 = Object.entries(cost).filter(([, n]) => (n ?? 0) > 0).map(([k, n]) => `${n} ${COST_LABEL[k] ?? k.toUpperCase()}`);
+  return parts2.length === 0 ? "FREE" : parts2.join(" \xB7 ");
 };
 var unitLabel = (u) => u.kind === "grunt" ? `${u.displayName} (grunt)` : u.displayName;
 function activityCard(a, state, ctx2) {
@@ -58140,10 +58176,10 @@ function pickSkin(state, reg, override) {
 }
 var pct2 = (part, whole) => `${+(part / whole * 100).toFixed(3)}%`;
 function screenBox(skin) {
-  const size2 = skin.frameSize;
+  const size3 = skin.frameSize;
   const rect = skin.screenRect;
-  if (skin.kind !== "image" || !size2 || !rect) return null;
-  return { left: pct2(rect.x, size2.w), top: pct2(rect.y, size2.h), width: pct2(rect.w, size2.w), height: pct2(rect.h, size2.h) };
+  if (skin.kind !== "image" || !size3 || !rect) return null;
+  return { left: pct2(rect.x, size3.w), top: pct2(rect.y, size3.h), width: pct2(rect.w, size3.w), height: pct2(rect.h, size3.h) };
 }
 
 // src/ui/sound/sound.ts
@@ -58373,10 +58409,10 @@ function createSamples(deps) {
       world.frequency.value = dullHz();
       world.Q.value = 0.4;
       world.connect(master);
-      const body = c.createGain();
-      body.gain.value = 1;
-      body.connect(master);
-      graph = { c, master, world, body };
+      const body2 = c.createGain();
+      body2.gain.value = 1;
+      body2.connect(master);
+      graph = { c, master, world, body: body2 };
     }
     if (graph.c.state === "suspended") void graph.c.resume?.()?.catch?.(() => void 0);
     graph.master.gain.value = level();
@@ -58675,7 +58711,7 @@ function renderStatusHeader(host, state) {
   const r = state.resources;
   const injuredDays = (state.commander.injuredUntilDay ?? 0) - state.day;
   const shortage = state.calendar.shortageStreak ?? 0;
-  const parts = [
+  const parts2 = [
     stat("alius-clock", clockText(state.day, state.slot) + (isQuietNight(state) ? " \u2014 QUIET" : ""), "glossary:slots"),
     h(
       "span",
@@ -58692,7 +58728,7 @@ function renderStatusHeader(host, state) {
     injuredDays > 0 ? stat("alius-warn", `INJURED ${injuredDays}d`, "glossary:commander_injury") : null,
     shortage > 0 ? stat("alius-warn", `SHORTAGE ${shortage}d`, "glossary:upkeep") : null
   ];
-  host.append(...parts.filter((p) => p !== null));
+  host.append(...parts2.filter((p) => p !== null));
 }
 
 // src/ui/hub/model.ts
@@ -58715,8 +58751,8 @@ function currentObjective(state, reg) {
   const first2 = list5.find((o) => o.source !== "unit");
   if (first2) return { text: first2.text, dueDays: first2.dueDays, source: first2.source };
   const active = state.missions.active;
-  const pick6 = active.find((m) => m.spineBeat !== void 0) ?? [...active].filter((m) => m.deadlineDay !== void 0).sort((a, b) => a.deadlineDay - b.deadlineDay)[0] ?? active[0] ?? state.missions.offered.find((m) => m.spineBeat !== void 0);
-  if (pick6) return { text: pick6.title, dueDays: dueIn(pick6, state.day), source: "mission", missionId: pick6.id };
+  const pick7 = active.find((m) => m.spineBeat !== void 0) ?? [...active].filter((m) => m.deadlineDay !== void 0).sort((a, b) => a.deadlineDay - b.deadlineDay)[0] ?? active[0] ?? state.missions.offered.find((m) => m.spineBeat !== void 0);
+  if (pick7) return { text: pick7.title, dueDays: dueIn(pick7, state.day), source: "mission", missionId: pick7.id };
   const unit4 = list5[0];
   return unit4 ? { text: unit4.text, dueDays: unit4.dueDays, source: unit4.source } : null;
 }
@@ -58919,13 +58955,13 @@ function renderRoomPanel(room2, state, ctx2, here, opts) {
   );
 }
 function quietHour(state, ctx2, unit4, activity) {
-  const body = h("div", { class: "alius-room-pastimes" });
-  renderPastimePicker(body, { state, registries: ctx2.registries, unitId: unit4.id, onPick: (id) => ctx2.ops.onTimeTogether?.(unit4.id, id) });
+  const body2 = h("div", { class: "alius-room-pastimes" });
+  renderPastimePicker(body2, { state, registries: ctx2.registries, unitId: unit4.id, onPick: (id) => ctx2.ops.onTimeTogether?.(unit4.id, id) });
   return h(
     "details",
     { class: "alius-room-quiet", "data-quiet-hour": unit4.id },
     h("summary", { class: "alius-btn alius-option", ...analyzeAttrs(`activities:${String(activity.id)}`) }, "[ TIME TOGETHER ]"),
-    body
+    body2
   );
 }
 var unitName2 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
@@ -59216,9 +59252,9 @@ var GATE = [432, 502];
 var siteGroup = null;
 function drawSite(pen) {
   if (!siteGroup || siteGroup.doc !== document) {
-    const fresh3 = Pen.group("p-site");
-    paintSite(fresh3);
-    siteGroup = { doc: document, g: fresh3.g };
+    const fresh4 = Pen.group("p-site");
+    paintSite(fresh4);
+    siteGroup = { doc: document, g: fresh4.g };
   }
   pen.g.append(siteGroup.g.cloneNode(true));
 }
@@ -59283,15 +59319,15 @@ function paintSite(pen) {
   }
 }
 function door(pen, d) {
-  const { x, y, side, size: size2 } = d;
+  const { x, y, side, size: size3 } = d;
   if (side === "n" || side === "s") {
-    pen.line(x, y, x + size2, y, "p-doorcut");
+    pen.line(x, y, x + size3, y, "p-doorcut");
     const sy = side === "n" ? -1 : 1;
-    pen.path(`M ${x} ${y} L ${x} ${y + sy * size2} A ${size2} ${size2} 0 0 ${side === "n" ? 0 : 1} ${x + size2} ${y}`, "p-fl p-thin");
+    pen.path(`M ${x} ${y} L ${x} ${y + sy * size3} A ${size3} ${size3} 0 0 ${side === "n" ? 0 : 1} ${x + size3} ${y}`, "p-fl p-thin");
   } else {
-    pen.line(x, y, x, y + size2, "p-doorcut");
+    pen.line(x, y, x, y + size3, "p-doorcut");
     const sx = side === "w" ? -1 : 1;
-    pen.path(`M ${x} ${y} L ${x + sx * size2} ${y} A ${size2} ${size2} 0 0 ${side === "w" ? 1 : 0} ${x} ${y + size2}`, "p-fl p-thin");
+    pen.path(`M ${x} ${y} L ${x + sx * size3} ${y} A ${size3} ${size3} 0 0 ${side === "w" ? 1 : 0} ${x} ${y + size3}`, "p-fl p-thin");
   }
 }
 function hatch(pen, r, step = 12) {
@@ -59389,9 +59425,9 @@ var roofGroups = /* @__PURE__ */ new WeakMap();
 function drawRoofs(pen, reg) {
   let g = roofGroups.get(reg);
   if (!g) {
-    const fresh3 = Pen.group("p-roofs");
-    paintRoofs(fresh3, reg);
-    roofGroups.set(reg, g = fresh3.g);
+    const fresh4 = Pen.group("p-roofs");
+    paintRoofs(fresh4, reg);
+    roofGroups.set(reg, g = fresh4.g);
   }
   pen.g.append(g.cloneNode(true));
 }
@@ -59670,14 +59706,14 @@ function planSection(ctx2, state, here, floor, onFloor, onRoom) {
   const unitOf13 = (id) => state.squad.find((u) => u.id === id);
   const { stage: stage2, floorBar, setFloor } = renderPlanStage({ registries: reg, state, here, floor, onFloor, onRoom });
   const panelHost = h("div", { class: "alius-room-panel-host" });
-  const frame4 = h("div", { class: "alius-plan-frame" }, h("div", { class: "alius-plan-scroll" }, stage2), floorBar, panelHost);
+  const frame5 = h("div", { class: "alius-plan-frame" }, h("div", { class: "alius-plan-scroll" }, stage2), floorBar, panelHost);
   const away = here.filter((w) => w.reason === "expedition").map((w) => unitOf13(w.unitId)).filter((u) => u !== void 0);
   const drawnSomewhere = (w) => w.roomId !== null && [...reg.planRooms.values()].some((p) => p.hubRoomId === w.roomId) && reg.hubRooms.has(w.roomId);
   const elsewhere = here.filter((w) => w.reason === "nowhere" || w.reason !== "expedition" && !drawnSomewhere(w)).map((w) => unitOf13(w.unitId)).filter((u) => u !== void 0);
   const section = h(
     "section",
     { class: "alius-hub-main", "aria-label": "Plan of the outpost" },
-    frame4,
+    frame5,
     away.length > 0 ? strip("alius-away", "glossary:away", "AWAY", state, reg, away) : null,
     elsewhere.length > 0 ? strip("alius-elsewhere", "glossary:whereabouts", "ELSEWHERE", state, reg, elsewhere) : null
   );
@@ -59698,16 +59734,16 @@ function oversightCard(ctx2, state, no, what) {
 function failedBlock(ctx2, state) {
   const ui = ctx2.generation;
   if (!ui) return null;
-  const body = h("div", { class: "alius-generation-chips" });
-  drawGenerationChips(body, ui, state, "day");
-  drawGenerationChips(body, ui, state, "world");
+  const body2 = h("div", { class: "alius-generation-chips" });
+  drawGenerationChips(body2, ui, state, "day");
+  drawGenerationChips(body2, ui, state, "world");
   const last = ctx2.lastScene;
   if (last && last.state().enabled) {
     const line3 = h("p", { class: "alius-dim alius-last-scene" }, "LAST SCENE ");
     drawSiteReroll(line3, ui, "scene.summary", "last", () => last.run(), last.state());
-    body.append(line3);
+    body2.append(line3);
   }
-  return body.childElementCount > 0 ? h("section", { class: "alius-generation-failed" }, h("h2", {}, "FAILED"), body) : null;
+  return body2.childElementCount > 0 ? h("section", { class: "alius-generation-failed" }, h("h2", {}, "FAILED"), body2) : null;
 }
 function sideColumn(ctx2, state, readOnly) {
   const objective = currentObjective(state, ctx2.registries);
@@ -60065,14 +60101,14 @@ function renderHerCallCard(state, reg, onAck) {
   const mission = state.missions.active.find((m) => m.id === exp.missionId);
   const marked = outcome === "bad" && mission?.decidedBy?.source === "her_call" && mission.decidedBy.nodeId === pending4.nodeId;
   const ctx2 = { unitId, nodeId: pending4.nodeId, missionId: exp.missionId };
-  const body = h(
+  const body2 = h(
     "div",
     {},
     h("p", {}, said ? `${name} took the decision herself: ${said}` : `${name} took the decision herself.`),
     marked ? h("p", { class: "alius-banner" }, "Oversight will want a name if this run fails.") : null,
     h("button", { type: "button", class: "alius-btn alius-option", "data-ack-her-call": "", ...analyzeNative("glossary:her_call", ctx2), onclick: onAck }, "[ ACKNOWLEDGE ]")
   );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.her_call, title: title3, body, accent: unitAccent(unitId), level: 3 });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.her_call, title: title3, body: body2, accent: unitAccent(unitId), level: 3 });
   card2.setAttribute("data-her-call", pending4.nodeId);
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:her_call", ctx2))) card2.setAttribute(k, v);
   return card2;
@@ -60087,13 +60123,13 @@ function renderSquadCallCard(state, reg, onAck) {
   const title3 = fixed?.title ?? "A decision in the field";
   const label2 = fixed?.options?.[pending4.squadCall.index]?.label;
   const ctx2 = { nodeId: pending4.nodeId };
-  const body = h(
+  const body2 = h(
     "div",
     {},
     h("p", {}, label2 ? `The squad decided without the commander: ${label2}.` : "The squad decided without the commander."),
     h("button", { type: "button", class: "alius-btn alius-option", "data-ack-squad-call": "", ...analyzeNative("glossary:squad_call", ctx2), onclick: onAck }, "[ ACKNOWLEDGE ]")
   );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, title: title3, body, level: 3 });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, title: title3, body: body2, level: 3 });
   card2.setAttribute("data-squad-call", pending4.nodeId);
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:squad_call", ctx2))) card2.setAttribute(k, v);
   return card2;
@@ -60269,21 +60305,21 @@ function renderPlanner(host, ctx2) {
 var DEBRIEF_MAX = TUNING.scene.maxParticipants;
 function renderReport(host, ctx2) {
   const { state, controller } = ctx2;
-  const report3 = state.lastExpedition;
-  if (!report3) return;
-  const lines = reportLines({ ...report3, recap: void 0 }, state, ctx2.registries);
+  const report4 = state.lastExpedition;
+  if (!report4) return;
+  const lines = reportLines({ ...report4, recap: void 0 }, state, ctx2.registries);
   const root = h("section", { class: "alius-section alius-report" }, h("h2", {}, lines[0] ?? "AFTER-ACTION REPORT"));
-  if (report3.recap) root.append(h("p", { class: "alius-recap" }, report3.recap));
+  if (report4.recap) root.append(h("p", { class: "alius-recap" }, report4.recap));
   else if (ctx2.recapPending) root.append(h("p", { class: "alius-dim" }, "COMPILING\u2026"));
   if (ctx2.generation) {
     const gen = h("div", { class: "alius-generation-chips" });
-    const failed2 = drawGenerationChips(gen, ctx2.generation, state, "expedition", (r) => r.key === report3.id);
-    if (failed2 === 0 && report3.recap) drawSiteReroll(gen, ctx2.generation, "expedition.recap", report3.id);
+    const failed2 = drawGenerationChips(gen, ctx2.generation, state, "expedition", (r) => r.key === report4.id);
+    if (failed2 === 0 && report4.recap) drawSiteReroll(gen, ctx2.generation, "expedition.recap", report4.id);
     if (gen.childElementCount > 0) root.append(gen);
   }
   for (const line3 of lines.slice(1)) root.append(h("p", { class: "alius-report-line" }, line3));
-  if (state.slot !== "night" && !report3.debriefed) {
-    const candidates3 = report3.party.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
+  if (state.slot !== "night" && !report4.debriefed) {
+    const candidates3 = report4.party.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
     const full = ctx2.debriefPick.length >= DEBRIEF_MAX;
     const section = h("div", { class: "alius-debrief" }, h("h3", {}, "DEBRIEF"));
     for (const u of candidates3) {
@@ -60393,14 +60429,14 @@ function renderExpeditionScreen(host, ctx2) {
         } }, "[ CONFIRM RETREAT ]"),
         h("button", { type: "button", class: "alius-btn", onclick: () => {
           confirming = false;
-          render3();
+          render4();
         } }, "[ KEEP GOING ]")
       );
     } else {
       if (exp.objectiveDone && travel) actions.append(h("button", { type: "button", class: "alius-btn", onclick: () => controller.return() }, "[ RETURN TO BASE ]"));
       if (!state.combat) actions.append(h("button", { type: "button", class: "alius-btn", onclick: () => {
         confirming = true;
-        render3();
+        render4();
       } }, "[ RETREAT ]"));
     }
     root.append(actions);
@@ -60432,7 +60468,7 @@ function renderExpeditionScreen(host, ctx2) {
       select.value = cover;
       select.addEventListener("change", () => {
         cover = select.value;
-        render3();
+        render4();
       });
       panel.append(h("p", { class: "alius-banner" }, "The commander is exposed: someone must cover the commander."), select);
     }
@@ -60496,16 +60532,16 @@ function renderExpeditionScreen(host, ctx2) {
           if (mine.disabled === null) controller.choose(mine.index);
         }, onDefy: () => {
           defiedNode = pending4.nodeId;
-          render3();
+          render4();
         } }));
         root.append(panel);
         return;
       }
     }
     for (const o of options2) {
-      const picker2 = o.routes && o.disabled === null ? renderRoutePicker({ routes: o.routes, unitName: unitName3, locked: () => picked, onPick: (pick6) => {
+      const picker2 = o.routes && o.disabled === null ? renderRoutePicker({ routes: o.routes, unitName: unitName3, locked: () => picked, onPick: (pick7) => {
         picked = true;
-        controller.choose(o.index, pick6);
+        controller.choose(o.index, pick7);
       }, unlock: () => {
         picked = false;
       } }) : null;
@@ -60531,7 +60567,7 @@ function renderExpeditionScreen(host, ctx2) {
     }
     root.append(panel);
   }
-  function render3() {
+  function render4() {
     if (disposed) return;
     host.replaceChildren();
     const root = h("div", { class: "alius-expedition" });
@@ -60548,7 +60584,7 @@ function renderExpeditionScreen(host, ctx2) {
       return;
     }
     if (state.lastExpedition && !state.lastExpedition.acknowledged) {
-      renderReport(root, { state, registries: reg, controller, recapPending: ctx2.recapPending?.() ?? false, onClose: ctx2.onClose, redraw: render3, debriefPick, generation: ctx2.generation });
+      renderReport(root, { state, registries: reg, controller, recapPending: ctx2.recapPending?.() ?? false, onClose: ctx2.onClose, redraw: render4, debriefPick, generation: ctx2.generation });
       return;
     }
     const target = controller.planning();
@@ -60558,14 +60594,14 @@ function renderExpeditionScreen(host, ctx2) {
         planKey = key;
         draft = newDraft();
       }
-      renderPlanner(root, { state, registries: reg, target, draft, controller, onClose: ctx2.onClose, redraw: render3 });
+      renderPlanner(root, { state, registries: reg, target, draft, controller, onClose: ctx2.onClose, redraw: render4 });
       return;
     }
     root.append(h("section", { class: "alius-section" }, h("p", {}, "NO EXPEDITION"), h("button", { type: "button", class: "alius-btn", onclick: ctx2.onClose }, "[ BACK ]")));
   }
-  render3();
+  render4();
   return {
-    refresh: render3,
+    refresh: render4,
     dispose() {
       disposed = true;
       host.replaceChildren();
@@ -60749,20 +60785,20 @@ function createExpedition(deps) {
   deps.generations.bind("expedition.recap", {
     build(reportId) {
       const s = state();
-      const report3 = s?.lastExpedition;
-      if (!s || !report3 || report3.id !== reportId) return { expired: "A newer report replaced it." };
+      const report4 = s?.lastExpedition;
+      if (!s || !report4 || report4.id !== reportId) return { expired: "A newer report replaced it." };
       const reg = deps.registries();
-      const region = reg.regions.get(report3.regionId);
+      const region = reg.regions.get(report4.regionId);
       return {
         commanderName: s.commander.name,
-        missionTitle: report3.missionTitle,
-        regionName: String(region?.name ?? report3.regionId),
+        missionTitle: report4.missionTitle,
+        regionName: String(region?.name ?? report4.regionId),
         environment: String(region?.environmentPrompt ?? ""),
-        outcome: report3.outcome,
-        lines: reportLines(report3, s, reg),
-        ...report3.withoutCommand !== void 0 ? { withoutCommand: true } : {},
+        outcome: report4.outcome,
+        lines: reportLines(report4, s, reg),
+        ...report4.withoutCommand !== void 0 ? { withoutCommand: true } : {},
         // P16: the commander was not with the squad
-        units: report3.party.map((id) => {
+        units: report4.party.map((id) => {
           const u = s.squad.find((x) => x.id === id);
           return { name: u?.displayName ?? id, role: String(reg.roles.get(u?.roleId ?? "")?.name ?? u?.roleId ?? "soldier") };
         })
@@ -60789,10 +60825,10 @@ function createExpedition(deps) {
         return false;
       }
       const payload = { ...target, unitIds: p.unitIds, formation: p.formation, supplies: p.supplies };
-      const judged = { type: "expedition/start", payload };
-      if (deps.judge?.needsJudge(judged)) {
+      const judged2 = { type: "expedition/start", payload };
+      if (deps.judge?.needsJudge(judged2)) {
         const planned = target;
-        void deps.judge.judgeThen(judged).then((events2) => {
+        void deps.judge.judgeThen(judged2).then((events2) => {
           if (!events2.some((e) => e.type === "error") && events2.length > 0 && target === planned) target = null;
         });
         return false;
@@ -60865,9 +60901,9 @@ function createExpedition(deps) {
       act("expedition/ack_squad_call");
     },
     async requestRecap() {
-      const report3 = state()?.lastExpedition;
-      if (!report3 || report3.recap !== void 0 || !deps.settings().expeditionRecap) return;
-      await deps.generations.generate("expedition.recap", report3.id);
+      const report4 = state()?.lastExpedition;
+      if (!report4 || report4.recap !== void 0 || !deps.settings().expeditionRecap) return;
+      await deps.generations.generate("expedition.recap", report4.id);
     },
     async debrief(unitIds) {
       const s = state();
@@ -61092,10 +61128,10 @@ function drawLeadChips(host, scene, handlers2, disabled = false) {
   };
   host.append(h("div", { class: "alius-lead-limit" }, input, " ", chip2("limit-set", "[ SET ]", send)));
 }
-function drawRuleChips(host, state, reg, pick6, on) {
+function drawRuleChips(host, state, reg, pick7, on) {
   host.replaceChildren();
   for (const rule of state.bonds?.rules ?? []) {
-    if (rule.status !== "proposed" || rule.delivered !== true || !pick6({ unitId: rule.unitId })) continue;
+    if (rule.status !== "proposed" || rule.delivered !== true || !pick7({ unitId: rule.unitId })) continue;
     const name = (state.squad.find((u) => u.id === rule.unitId)?.displayName ?? rule.unitId).toUpperCase();
     const full = state.bonds.rules.filter((r) => r.unitId === rule.unitId && r.status === "active").length >= TUNING.bonds.rules.maxActive;
     const button2 = (kind, text3, run, soft = false) => {
@@ -61173,17 +61209,17 @@ function renderRuleNote(state, reg, rule, on, opts) {
   }
   return note;
 }
-function ruleNotesFor(state, pick6 = () => true) {
-  return (state.bonds?.rules ?? []).filter((r) => pick6(r.unitId) && (r.status === "proposed" && r.delivered === true || r.status === "active" || r.lastBrokenDay !== void 0 && r.lastBrokenDay >= state.day - 1));
+function ruleNotesFor(state, pick7 = () => true) {
+  return (state.bonds?.rules ?? []).filter((r) => pick7(r.unitId) && (r.status === "proposed" && r.delivered === true || r.status === "active" || r.lastBrokenDay !== void 0 && r.lastBrokenDay >= state.day - 1));
 }
 
 // src/ui/proposalChips.ts
 var kindLabel = (s) => s.replace(/_/g, " ").toUpperCase();
 var CONDITION_MAX = 160;
-function drawProposalChips(host, state, pick6, onAnswer, reg) {
+function drawProposalChips(host, state, pick7, onAnswer, reg) {
   host.replaceChildren();
   for (const p of state.proposals ?? []) {
-    if (!pick6(p)) continue;
+    if (!pick7(p)) continue;
     const name = (state.squad.find((u) => u.id === p.unitId)?.displayName ?? p.unitId).toUpperCase();
     const label2 = h("span", { class: "alius-chip-label" }, p.from === "unit" ? `${name} PROPOSES: ${kindLabel(p.kind)}` : `${name}: ${kindLabel(p.kind)} \u2014 OPENLY OR SECRETLY?`);
     if (reg && courtshipChips(state, reg, p)) {
@@ -61258,7 +61294,7 @@ function editChip(edit, name, onKeep, onRevert) {
   return group;
 }
 var HANDS2 = ["rock", "paper", "scissors"];
-function drawPersonalChips(host, state, reg, pick6, on) {
+function drawPersonalChips(host, state, reg, pick7, on) {
   host.replaceChildren();
   const nameOf28 = (id) => (state.squad.find((u) => u.id === id)?.displayName ?? id).toUpperCase();
   const group = (unitId, address, ctx2, label2, ...kids) => {
@@ -61273,7 +61309,7 @@ function drawPersonalChips(host, state, reg, pick6, on) {
   };
   const button2 = (text3, action, onclick) => h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": action, onclick }, text3);
   const offer = state.personal?.tokens?.offer;
-  if (offer && pick6(offer.giverId)) {
+  if (offer && pick7(offer.giverId)) {
     host.append(group(
       offer.giverId,
       "glossary:token",
@@ -61284,7 +61320,7 @@ function drawPersonalChips(host, state, reg, pick6, on) {
     ));
   }
   for (const w of state.personal?.wagers?.open ?? []) {
-    if (!pick6(w.unitId)) continue;
+    if (!pick7(w.unitId)) continue;
     const game = reg.wagerGames.get(w.gameId);
     const stake = reg.wagerStakes.get(w.stakeId);
     const what = `${String(game?.label ?? w.gameId).toUpperCase()} FOR ${String(stake?.text ?? w.stakeId).toUpperCase()}`;
@@ -61307,7 +61343,7 @@ function drawPersonalChips(host, state, reg, pick6, on) {
     }
   }
   const q = state.personal?.pendingQuestion;
-  if (q && pick6(q.unitId)) {
+  if (q && pick7(q.unitId)) {
     const asks = q.winner === "commander";
     const input = h("input", { type: "text", name: "question", class: "alius-input", maxlength: "200", autocomplete: "off", "aria-label": asks ? "Your question" : "Your answer" });
     const send = () => {
@@ -61328,7 +61364,7 @@ function drawPersonalChips(host, state, reg, pick6, on) {
 }
 
 // src/ui/discipline/chips.ts
-function drawDisciplineChips(host, state, reg, pick6, onUndo) {
+function drawDisciplineChips(host, state, reg, pick7, onUndo) {
   host.replaceChildren();
   const name = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
   const group = (id, unitId, address, text3) => h(
@@ -61338,11 +61374,11 @@ function drawDisciplineChips(host, state, reg, pick6, onUndo) {
     canUndo(state, id) === null ? h("button", { type: "button", class: "alius-btn alius-tagchip", "data-undo": id, onclick: () => onUndo(id) }, "[ UNDO \u2014 not what I meant ]") : null
   );
   for (const a of state.discipline?.applications ?? []) {
-    if (a.source !== "dialogue" || a.day !== state.day || !pick6({ channel: a.channel, unitId: a.unitId, ...a.sceneId !== void 0 ? { sceneId: a.sceneId } : {} })) continue;
+    if (a.source !== "dialogue" || a.day !== state.day || !pick7({ channel: a.channel, unitId: a.unitId, ...a.sceneId !== void 0 ? { sceneId: a.sceneId } : {} })) continue;
     host.append(group(a.id, a.unitId, "glossary:discipline_logged", `DISCIPLINE LOGGED \u2014 ${measureLabel(reg, a.measure)} (${name(a.unitId)})`));
   }
   for (const t of state.discipline?.threats ?? []) {
-    if (!pick6({ channel: t.channel, unitId: t.unitId, ...t.sceneId !== void 0 ? { sceneId: t.sceneId } : {} })) continue;
+    if (!pick7({ channel: t.channel, unitId: t.unitId, ...t.sceneId !== void 0 ? { sceneId: t.sceneId } : {} })) continue;
     host.append(group(
       t.id,
       t.unitId,
@@ -61351,10 +61387,10 @@ function drawDisciplineChips(host, state, reg, pick6, onUndo) {
     ));
   }
 }
-function drawDemandChips(host, state, reg, pick6, on) {
+function drawDemandChips(host, state, reg, pick7, on) {
   host.replaceChildren();
   for (const d of state.discipline?.demands ?? []) {
-    if (d.status !== "open" || !pick6({ unitId: d.unitId })) continue;
+    if (d.status !== "open" || !pick7({ unitId: d.unitId })) continue;
     const name = (state.squad.find((u) => u.id === d.unitId)?.displayName ?? d.unitId).toUpperCase();
     const why = grantProblem(state, reg, d.id);
     const desire = reg.demandTemplates.get(d.templateId)?.kind === "desire";
@@ -61414,7 +61450,7 @@ function renderDemonstrationCard(host, ctx2, opts = {}) {
   const place2 = String(reg.locations.get(d.stage)?.name ?? d.stage);
   const names2 = d.audienceIds.map((id) => nameOf20(state, id));
   const others = (d.narrated ?? []).length > 0;
-  const before3 = names2.length === 0 ? "others" : others ? `${joinNames4(names2)} and others` : joinNames4(names2);
+  const before4 = names2.length === 0 ? "others" : others ? `${joinNames4(names2)} and others` : joinNames4(names2);
   if (opts.look === "scene") {
     const style = practiceOf(state, reg, unit4.id)?.style.primary;
     const conditions = [];
@@ -61422,7 +61458,7 @@ function renderDemonstrationCard(host, ctx2, opts = {}) {
       conditions.push({ runs: voiceLine(reg, kind, style, d.id, vals), dry, analyze: "glossary:demonstration", ctx: live3, attrs });
     };
     const who = joinNames4(names2);
-    cond(names2.length === 0 ? "demoNone" : others ? "demoWhoMore" : "demoWho", { who }, `Before: ${before3}.`, { "data-demonstration-audience": "" });
+    cond(names2.length === 0 ? "demoNone" : others ? "demoWhoMore" : "demoWho", { who }, `Before: ${before4}.`, { "data-demonstration-audience": "" });
     cond("demoWhere", { place: place2, slot: slot2 }, `${place2}, ${slot2}. It takes the slot.`, { "data-demonstration-place": d.stage });
     if (d.status === "open") cond("demoAgain", {}, "The scene did not open. Press go again.");
     const pill = (kind, text3) => scenePill(text3, () => {
@@ -61451,9 +61487,9 @@ function renderDemonstrationCard(host, ctx2, opts = {}) {
     host.append(card3);
     return;
   }
-  const parts = [
+  const parts2 = [
     h("p", { class: "alius-demonstration-text" }, plainDraft(d.text)),
-    h("p", { class: "alius-demonstration-watch", "data-demonstration-audience": "", ...analyzeAttrs("glossary:demonstration", live3) }, `Before: ${before3}.`),
+    h("p", { class: "alius-demonstration-watch", "data-demonstration-audience": "", ...analyzeAttrs("glossary:demonstration", live3) }, `Before: ${before4}.`),
     h("p", { class: "alius-demonstration-place", "data-demonstration-place": d.stage, ...analyzeAttrs("glossary:demonstration", live3) }, `${place2}, ${slot2}. It takes the slot.`),
     ...d.status === "open" ? [h("p", { class: "alius-demonstration-hint" }, "The scene did not open. Press GO again.")] : [],
     h(
@@ -61464,7 +61500,7 @@ function renderDemonstrationCard(host, ctx2, opts = {}) {
       d.status === "offered" ? drawPracticeReroll(h("span", { class: "alius-demonstration-reroll" }), ctx2.generation, "demonstration", d.requestId) : null
     )
   ];
-  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit4.displayName, body: h("div", { class: "alius-demonstration-body" }, ...parts), accent: unitAccent(unit4.id) });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit4.displayName, body: h("div", { class: "alius-demonstration-body" }, ...parts2), accent: unitAccent(unit4.id) });
   card2.classList.add("alius-demonstration");
   card2.setAttribute("data-demonstration", d.id);
   card2.setAttribute("role", "group");
@@ -61472,12 +61508,12 @@ function renderDemonstrationCard(host, ctx2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:demonstration", live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawDemonstrationCards(host, state, reg, pick6, handlers2, opts = {}) {
+function drawDemonstrationCards(host, state, reg, pick7, handlers2, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const d of state.practices?.demonstrations ?? []) {
     const waiting3 = d.status === "offered" || d.status === "open" && d.sceneId === void 0;
-    if (!waiting3 || !pick6({ unitId: d.holderId }) || !practiceLive(state, reg, d.holderId)) continue;
+    if (!waiting3 || !pick7({ unitId: d.holderId }) || !practiceLive(state, reg, d.holderId)) continue;
     renderDemonstrationCard(host, { state, reg, demonstration: d, onAnswer: (a) => handlers2.answer(d.id, a), generation: handlers2.generation }, opts);
   }
 }
@@ -61529,7 +61565,7 @@ function renderPunishmentCard(host, ctx2, opts = {}) {
     onclick: () => ctx2.onAnswer(kind)
   }, text3);
   const label2 = labelOf3(reg, p);
-  const parts = [
+  const parts2 = [
     h("p", { class: "alius-punishment-text" }, plainDraft(p.sealed === true ? TUNING.practice.sealedLine : p.text)),
     ...p.sealed === true ? [] : [h("p", { class: "alius-punishment-weight", ...analyzeAttrs("glossary:holder_punishment", live3) }, `${label2}. Weight: ${WEIGHT_WORDS2[severityWord(p.severity)]}.`)],
     ...p.status === "negotiating" ? [h("p", { class: "alius-punishment-hint" }, "It is being talked over.")] : [],
@@ -61544,7 +61580,7 @@ function renderPunishmentCard(host, ctx2, opts = {}) {
       p.status === "offered" ? drawPracticeReroll(h("span", { class: "alius-punishment-reroll" }), ctx2.generation, "punishment", p.requestId) : null
     )
   ];
-  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit4.displayName, body: h("div", { class: "alius-punishment-body" }, ...parts), accent: unitAccent(unit4.id) });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit4.displayName, body: h("div", { class: "alius-punishment-body" }, ...parts2), accent: unitAccent(unit4.id) });
   card2.classList.add("alius-punishment");
   card2.setAttribute("data-punishment", p.id);
   card2.setAttribute("role", "group");
@@ -61588,12 +61624,12 @@ function renderTakeInsteadCard(host, ctx2, opts = {}) {
     ...analyzeNative(address, live3),
     onclick: () => ctx2.onAnswer(kind)
   }, text3);
-  const parts = [
+  const parts2 = [
     h("p", { class: "alius-punishment-text" }, plainDraft(p.text)),
     h("p", { class: "alius-punishment-weight", "data-for-unit": soldier.id, ...analyzeAttrs("glossary:take_it_instead", live3) }, `For ${soldier.displayName}: ${labelOf3(reg, p)}.`),
     h("div", { class: "alius-punishment-answers" }, button2("do_it", "[ DO IT ]", "glossary:take_it_instead"), button2("take_it", "[ TAKE IT INSTEAD ]", "glossary:take_it_instead"), button2("refuse", "[ REFUSE ]", "glossary:take_it_instead"))
   ];
-  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit4.displayName, body: h("div", { class: "alius-punishment-body" }, ...parts), accent: unitAccent(unit4.id) });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit4.displayName, body: h("div", { class: "alius-punishment-body" }, ...parts2), accent: unitAccent(unit4.id) });
   card2.classList.add("alius-punishment", "alius-take-instead");
   card2.setAttribute("data-punishment", p.id);
   card2.setAttribute("role", "group");
@@ -61723,11 +61759,11 @@ function renderSceneCeremony(host, ctx2, name, live3, next, entryOf4) {
   finish3(card2, ["alius-ceremony"], p.id, `${name} carries out her punishment as a ceremony`, "glossary:ceremony", live3);
   host.append(card2);
 }
-function drawPunishmentCards(host, state, reg, pick6, handlers2, opts = {}) {
+function drawPunishmentCards(host, state, reg, pick7, handlers2, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const p of state.practices?.punishments ?? []) {
-    if (!pick6({ unitId: p.holderId }) || !practiceLive(state, reg, p.holderId)) continue;
+    if (!pick7({ unitId: p.holderId }) || !practiceLive(state, reg, p.holderId)) continue;
     const open3 = p.status === "offered" || p.status === "negotiating";
     if (open3 && p.forUnitId !== void 0) renderTakeInsteadCard(host, { state, reg, punishment: p, onAnswer: (a) => handlers2.takeInstead(p.id, a) }, opts);
     else if (open3) renderPunishmentCard(host, { state, reg, punishment: p, onAnswer: (a) => handlers2.answer(p.id, a), generation: handlers2.generation }, opts);
@@ -61876,8 +61912,8 @@ function renderOfferComposer(host, ctx2) {
       ctx2.onClose();
     })
   );
-  const body = h("div", { class: "alius-offer-body" }, tabs, entries2, summary, note, answers2);
-  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit4.displayName, body, accent: unitAccent(unit4.id) });
+  const body2 = h("div", { class: "alius-offer-body" }, tabs, entries2, summary, note, answers2);
+  const card2 = renderVoiceCard({ voice: VOICE_OF.dynamic, from: unit4.displayName, body: body2, accent: unitAccent(unit4.id) });
   card2.classList.add("alius-offer");
   card2.setAttribute("role", "group");
   card2.setAttribute("aria-label", `Offer yourself to ${unit4.displayName}`);
@@ -61983,7 +62019,7 @@ function renderHandoverComposer(host, ctx2) {
     memories2.delete(key);
     ctx2.onClose();
   });
-  const body = h(
+  const body2 = h(
     "div",
     { class: "alius-handover-body" },
     h("p", { class: "alius-handover-intro" }, `Put something in ${unit4.displayName}'s hands.`),
@@ -61992,7 +62028,7 @@ function renderHandoverComposer(host, ctx2) {
     dayRow,
     h("div", { class: "alius-handover-answers" }, send, cancel)
   );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit4.displayName, body, accent: unitAccent(unit4.id) });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit4.displayName, body: body2, accent: unitAccent(unit4.id) });
   card2.classList.add("alius-handover");
   card2.setAttribute("role", "group");
   card2.setAttribute("aria-label", `Hand something to ${unit4.displayName}`);
@@ -62174,10 +62210,10 @@ function renderHerMessage(_state, reg, _unitId, msg, opts) {
     voice.style.setProperty("--bubble-accent", opts.accent);
     out.push(voice);
   } else if (kinds2.has("burst")) {
-    const parts = splitBurst(msg.text);
-    parts.forEach((part, i) => {
+    const parts2 = splitBurst(msg.text);
+    parts2.forEach((part, i) => {
       const b = bubble(part, i === 0);
-      if (parts.length > 1) b.setAttribute("data-behaviour", "burst");
+      if (parts2.length > 1) b.setAttribute("data-behaviour", "burst");
       out.push(b);
     });
   } else {
@@ -62316,10 +62352,10 @@ function renderCommsTab(host, ctx2) {
       const key = messages.at(-1).id;
       const motion = ctx2.motion?.() ?? true;
       const done = typingPlayed(host, key);
-      const typing4 = renderTyping(motion && !done);
-      if (motion && done) typing4.textContent = "stopped typing";
-      else if (motion) armTyping(host, typing4, key);
-      thread.append(typing4);
+      const typing5 = renderTyping(motion && !done);
+      if (motion && done) typing5.textContent = "stopped typing";
+      else if (motion) armTyping(host, typing5, key);
+      thread.append(typing5);
     }
     const chips = h("div", { class: "alius-chips" });
     drawProposalChips(chips, state, (p) => p.channel === "dm" && p.unitId === current2, ctx2.onAnswer, ctx2.registries);
@@ -62438,7 +62474,7 @@ function renderWardenPanel(host, state, reg, deps = {}) {
     renderInvestigation(host, state);
     return;
   }
-  const E4 = TUNING.warden.escalation;
+  const E5 = TUNING.warden.escalation;
   const known3 = w.expectations.filter((x) => x.known);
   const unknown2 = w.expectations.length - known3.length;
   const raw = deps.showRaw === true;
@@ -62447,8 +62483,8 @@ function renderWardenPanel(host, state, reg, deps = {}) {
     "div",
     { class: "alius-defiance alius-stat", role: "meter", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(defiance), ...analyzeAttrs("glossary:warden_defiance") },
     h("div", { class: "alius-defiance-fill", style: `width:${defiance}%` }),
-    h("span", { class: "alius-defiance-mark", style: `left:${E4.warning1}%`, "aria-hidden": "true" }),
-    h("span", { class: "alius-defiance-mark", style: `left:${E4.warning2}%`, "aria-hidden": "true" })
+    h("span", { class: "alius-defiance-mark", style: `left:${E5.warning1}%`, "aria-hidden": "true" }),
+    h("span", { class: "alius-defiance-mark", style: `left:${E5.warning2}%`, "aria-hidden": "true" })
   );
   const active = w.restrictions.filter((r) => state.day <= r.untilDay);
   const rows = [
@@ -62482,7 +62518,7 @@ function renderWardenPanel(host, state, reg, deps = {}) {
     rows.push(row4);
   }
   const portrait = deps.avatar?.(unit4) ?? null;
-  const body = h(
+  const body2 = h(
     "div",
     { class: "alius-warden-body" },
     h(
@@ -62493,9 +62529,9 @@ function renderWardenPanel(host, state, reg, deps = {}) {
     ),
     ...rows
   );
-  renderIntrigueSection(body, state, reg, { ...deps.onIntrigue ? { onAct: deps.onIntrigue } : {}, ...deps.onReport ? { onReport: deps.onReport } : {} });
-  if (overrideOpen(state) && deps.onAnswer) renderOverrideChip(body, state, reg, deps.onAnswer);
-  const card2 = renderVoiceCard({ voice: VOICE_OF.warden_notice, title: "WARDEN", meta: "OVERSIGHT", level: 3, body });
+  renderIntrigueSection(body2, state, reg, { ...deps.onIntrigue ? { onAct: deps.onIntrigue } : {}, ...deps.onReport ? { onReport: deps.onReport } : {} });
+  if (overrideOpen(state) && deps.onAnswer) renderOverrideChip(body2, state, reg, deps.onAnswer);
+  const card2 = renderVoiceCard({ voice: VOICE_OF.warden_notice, title: "WARDEN", meta: "OVERSIGHT", level: 3, body: body2 });
   card2.classList.add("alius-warden-panel");
   host.append(card2);
 }
@@ -62504,7 +62540,7 @@ function renderInvestigation(host, state) {
   if (!ls || ls.status !== "investigation") return;
   const clock = state.world.clocks.find((c) => c.id === (ls.removal?.clockId ?? "investigation"));
   const label2 = (kind) => kind === "meet_quota" ? "QUOTA" : "OBEDIENCE";
-  const body = h(
+  const body2 = h(
     "div",
     { class: "alius-warden-body" },
     h("p", {}, "NOBODY HOLDS THE CONTROLLER. OVERSIGHT RUNS IT."),
@@ -62516,7 +62552,7 @@ function renderInvestigation(host, state) {
     h("h4", {}, "REMOTE CONTROL"),
     ...remoteExpectations(state).map((x) => h("p", { class: "alius-chip alius-stat alius-expectation", ...analyzeAttrs("glossary:remote_control") }, `${label2(x.kind)} \u2014 ${weightBand(x.weight)}`))
   );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.warden_notice, title: "OVERSIGHT", meta: "INVESTIGATION", level: 3, body });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.warden_notice, title: "OVERSIGHT", meta: "INVESTIGATION", level: 3, body: body2 });
   card2.classList.add("alius-warden-panel", "alius-warden-investigation");
   host.append(card2);
 }
@@ -62754,12 +62790,12 @@ function renderLogTab(host, ctx2) {
 function oversightLog(state) {
   const entries2 = leashLog(state).sort((a, b) => b.no - a.no);
   const nameOf28 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-  const body = entries2.length > 0 ? h("div", {}, ...entries2.map((e) => h(
+  const body2 = entries2.length > 0 ? h("div", {}, ...entries2.map((e) => h(
     "p",
     { class: "alius-oversight-entry", "data-no": String(e.no) },
     `#${String(e.no).padStart(4, "0")} DAY ${day3(e.day)} ${e.kind.toUpperCase()} ${nameOf28(e.unitId)} \u2014 ${String(e.outcome).toUpperCase()}${e.cc !== void 0 ? ` \xB7 CC: ${nameOf28(e.cc)}` : ""}`
   ))) : h("p", { class: "alius-dim" }, "NO REQUESTS FILED");
-  const log = renderVoiceCard({ voice: "corporate", title: "OVERSIGHT LOG", body });
+  const log = renderVoiceCard({ voice: "corporate", title: "OVERSIGHT LOG", body: body2 });
   log.classList.add("alius-section", "alius-oversight-log");
   return log;
 }
@@ -62836,7 +62872,7 @@ function renderDoor(host, ctx2) {
     used2 = true;
     for (const b of buttons) b.disabled = true;
   };
-  const press3 = (fn) => () => {
+  const press4 = (fn) => () => {
     if (used2) return;
     lock();
     stop();
@@ -62878,9 +62914,9 @@ function renderDoor(host, ctx2) {
       else renderDoor(host, ctx2);
     });
   }
-  const row4 = h("div", { class: "alius-row" }, option2("open", "[ OPEN ]", press3(ctx2.onOpen)));
+  const row4 = h("div", { class: "alius-row" }, option2("open", "[ OPEN ]", press4(ctx2.onOpen)));
   if (!entry.door) row4.append(option2("say", "[ SAY SOMETHING THROUGH THE DOOR ]", openForm));
-  row4.append(option2("ignore", "[ STAY SILENT ]", press3(ctx2.onSilent)));
+  row4.append(option2("ignore", "[ STAY SILENT ]", press4(ctx2.onSilent)));
   host.append(h(
     "section",
     { class: "alius-section alius-door alius-knock", "aria-label": `${ctx2.unitName} at the door` },
@@ -62953,14 +62989,14 @@ async function pickLocation(modal, ctx2) {
     for (const b of boxes) b.disabled = !b.checked && picked2 >= MAX_PARTICIPANTS - 1;
   };
   for (const b of boxes) b.addEventListener("change", limit);
-  const body = h(
+  const body2 = h(
     "div",
     { class: "alius-location-picker" },
     h("p", {}, `Where do you talk${first2 ? ` with ${first2.displayName}` : ""}?`),
     ...radios,
     ...extras.length > 0 ? [h("p", {}, `Bring someone along? (up to ${MAX_PARTICIPANTS - 1} more)`), ...extras.map((u, i) => h("label", { class: "alius-check" }, boxes[i], ` ${u.displayName}`))] : []
   );
-  const answer = await modal({ title: "Start a conversation", body, actions: [{ label: "Begin", value: "ok" }, { label: "Cancel", value: "cancel" }] });
+  const answer = await modal({ title: "Start a conversation", body: body2, actions: [{ label: "Begin", value: "ok" }, { label: "Cancel", value: "cancel" }] });
   if (answer !== "ok") return null;
   const picked = (radios.map((r) => r.querySelector("input")).find((r) => r.checked) ?? { value: locations[0]?.id }).value;
   if (!picked) return null;
@@ -63015,10 +63051,10 @@ function liveTextRects(host, except) {
 }
 function placeFree(host, el, x, y) {
   const f = frameOf3(host);
-  const innerWidth5 = f.W, innerHeight5 = f.H;
+  const innerWidth6 = f.W, innerHeight6 = f.H;
   const rects = liveTextRects(host, el).map((r) => ({ left: r.left - f.left, right: r.right - f.left, top: r.top - f.top, bottom: r.bottom - f.top }));
-  const w = el.offsetWidth, h2 = el.offsetHeight, gap = 6, maxY = innerHeight5 * 0.8 - h2;
-  x = clamp43(x, 16, innerWidth5 - w - 24);
+  const w = el.offsetWidth, h2 = el.offsetHeight, gap = 6, maxY = innerHeight6 * 0.8 - h2;
+  x = clamp43(x, 16, innerWidth6 - w - 24);
   const hits = (yy2) => rects.find((r) => x < r.right + gap && x + w > r.left - gap && yy2 < r.bottom + gap && yy2 + h2 > r.top - gap);
   let yy = clamp43(y, 12, Math.max(12, maxY)), hit, n = 0;
   while ((hit = hits(yy)) && n++ < 30) yy = hit.bottom + gap;
@@ -63042,17 +63078,17 @@ function say(host, text3, opts) {
   if (!mine) groups.set(host, mine = /* @__PURE__ */ new Set());
   mine.add(group);
   const to = opts.to ?? "self";
-  const size2 = opts.size ?? (opts.big ? 56 : to === "self" ? 34 : to === "commander" ? 46 : 40);
+  const size3 = opts.size ?? (opts.big ? 56 : to === "self" ? 34 : to === "commander" ? 46 : 40);
   const max = opts.big ? 30 : 40, lines = [];
   for (const word2 of text3.split(" ")) {
     const last = lines[lines.length - 1];
     if (last !== void 0 && (last + " " + word2).length <= max) lines[lines.length - 1] = last + " " + word2;
     else lines.push(word2);
   }
-  const { W: innerWidth5, H: innerHeight5 } = frameOf3(host);
+  const { W: innerWidth6, H: innerHeight6 } = frameOf3(host);
   const p = opts.at ?? [0.6, 0.16];
   const els = [];
-  let x = clamp43(p[0] + 0.04, 0.03, 0.7) * innerWidth5 + hashRand(`${text3}|x`, -15, 15), y = clamp43(p[1] + 0.02, 0.03, 0.8) * innerHeight5, delay = 0;
+  let x = clamp43(p[0] + 0.04, 0.03, 0.7) * innerWidth6 + hashRand(`${text3}|x`, -15, 15), y = clamp43(p[1] + 0.02, 0.03, 0.8) * innerHeight6, delay = 0;
   const rot = opts.tilt === false ? "0.0" : hashRand(`${text3}|rot`, -4, 3).toFixed(1);
   for (const line3 of lines) {
     const el = document.createElement("div");
@@ -63064,7 +63100,7 @@ function say(host, text3, opts) {
     el.style.setProperty("--steps", String(Math.max(4, line3.length * 2)));
     el.style.setProperty("--alius-font-hand", `"${opts.her.hand}", var(--alius-font-type)`);
     el.style.setProperty("--alius-her", opts.her.accent);
-    el.style.fontSize = `${Math.round(size2 * opts.her.handScale * 100) / 100}px`;
+    el.style.fontSize = `${Math.round(size3 * opts.her.handScale * 100) / 100}px`;
     el.style.animationDelay = `${delay}ms`;
     el.style.transform = `rotate(${rot}deg)`;
     group.appendChild(el);
@@ -63073,7 +63109,7 @@ function say(host, text3, opts) {
     y = at.y + at.h + 2;
     if (opts.side === "right") {
       el.style.left = "";
-      el.style.right = `${Math.max(0, innerWidth5 - at.x)}px`;
+      el.style.right = `${Math.max(0, innerWidth6 - at.x)}px`;
       el.classList.add("right");
     }
     delay += write3;
@@ -63187,6 +63223,7 @@ function scopedStaging(staging, scope) {
     stopWord: () => on() ? staging.stopWord() : [],
     skip: (s) => on() ? staging.skip(s) : [],
     stimulus: (w, k, d) => on() ? staging.stimulus(w, k, d) : [],
+    answer: (r, l, c) => on() ? staging.answer?.(r, l, c) ?? [] : [],
     act: (k) => on() ? staging.act(k) : [],
     finishCounted: (n) => on() ? staging.finishCounted(n) : [],
     cue: (k, b) => on() ? staging.cue(k, b) : null,
@@ -63590,15 +63627,15 @@ var SHAPES = {
   slide(g, W, H, o, s) {
     const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
     const d = s.slideDir;
-    const R6 = 1.08 * H, shift = (0.02 + oc * 0.3 + ex * 1.8) * H;
+    const R7 = 1.08 * H, shift = (0.02 + oc * 0.3 + ex * 1.8) * H;
     const cx = W / 2 - d * shift + s.sway * H * 6e-3, cy = H * (0.5 + s.slideY * 0.14);
     g.fillRect(0, 0, W, H);
     g.globalCompositeOperation = "destination-out";
     g.beginPath();
-    g.arc(cx, cy, R6, 0, Math.PI * 2);
+    g.arc(cx, cy, R7, 0, Math.PI * 2);
     g.fill();
     g.globalCompositeOperation = "source-over";
-    const edgeX = d < 0 ? cx - R6 : cx + R6;
+    const edgeX = d < 0 ? cx - R7 : cx + R7;
     const lipX = d < 0 ? Math.max(edgeX, 0) : Math.min(edgeX, W);
     return d < 0 ? { focus: [Math.max(0.06, edgeX / W * 0.5), cy / H], lip: [lipX / W + 6e-3, (cy - 0.25 * H) / H], text: [(lipX + 0.07 * H) / W, (cy - 0.1 * H) / H], align: "left" } : { focus: [Math.min(0.94, 1 - (1 - edgeX / W) * 0.5), cy / H], lip: [lipX / W - 6e-3, (cy - 0.25 * H) / H], text: [(lipX - 0.07 * H) / W, (cy - 0.1 * H) / H], align: "right" };
   },
@@ -64480,9 +64517,9 @@ function render(now, dt) {
     const ceil = view === "ceiling";
     setStyle("#her", "opacity", view !== "her" ? (1 - smooth(0.15, 0.7, G2.cam)).toFixed(3) : "1");
     setStyle("#ceiling", "opacity", ceil ? smooth(0.2, 0.85, G2.cam).toFixed(3) : "0");
-    const lift = Math2.min(o, 1);
-    setStyle("#ceiling", "transform", `translate(${((G2.focus[0] - 0.5) * -4 + (S3.reduced ? 0 : sway * 0.3)).toFixed(2)}%, ${((G2.focus[1] - 0.5) * -4).toFixed(2)}%) scale(${(1.12 - lift * 0.05).toFixed(3)})`);
-    setStyle("#ceiling", "filter", `blur(${(4 - lift * 2).toFixed(1)}px) brightness(${(0.5 + lift * 0.32).toFixed(2)}) sepia(${(0.25 * lift).toFixed(2)})`);
+    const lift2 = Math2.min(o, 1);
+    setStyle("#ceiling", "transform", `translate(${((G2.focus[0] - 0.5) * -4 + (S3.reduced ? 0 : sway * 0.3)).toFixed(2)}%, ${((G2.focus[1] - 0.5) * -4).toFixed(2)}%) scale(${(1.12 - lift2 * 0.05).toFixed(3)})`);
+    setStyle("#ceiling", "filter", `blur(${(4 - lift2 * 2).toFixed(1)}px) brightness(${(0.5 + lift2 * 0.32).toFixed(2)}) sepia(${(0.25 * lift2).toFixed(2)})`);
   }
   const f = G2.phase === "idle" || G2.phase === "done" ? 0 : smooth(70, 6, G2.air);
   const pulse = reduced ? 0.5 : Math2.exp(-(now - heart.lastBeatMs) / 170);
@@ -64648,13 +64685,13 @@ function schedulePlan(run, ck) {
   R4.strain = null;
   G2.air = clamp43(run.gauge / run.capacity * 100, 0, 100);
   refreshLines(0);
-  let after3 = G2.clock;
+  let after4 = G2.clock;
   for (const o of effectiveOpenings(plan, [], styleKey())) {
     const at = R4.seg.clock0 + o.beat * BEAT;
     const cue = plan.beats[o.beat]?.cue;
-    scheduleWindow(at, { ...o.false ? { false: true } : {}, widthMs: o.widthMs, quiet: cue !== "window_open" && cue !== "window_false", after: after3 });
+    scheduleWindow(at, { ...o.false ? { false: true } : {}, widthMs: o.widthMs, quiet: cue !== "window_open" && cue !== "window_false", after: after4 });
     const r = st();
-    after3 = Math2.max(after3, at + (r.snappy ? 110 : 260) + o.widthMs * S3.wmul + (r.snappy ? 140 : 320));
+    after4 = Math2.max(after4, at + (r.snappy ? 110 : 260) + o.widthMs * S3.wmul + (r.snappy ? 140 : 320));
   }
 }
 var styleKey = () => E && R4.run ? leadStyle(physicsStyleOf(E.env.state(), R4.run.holderId, E.env.registries)).key : "neutral";
@@ -65081,7 +65118,7 @@ function buildVial() {
   box.append(bed);
   box.insertAdjacentHTML("beforeend", VIAL_SVG);
   const part = (k) => box.querySelector(`[data-v="${k}"]`);
-  const parts = { vGlow: part("vGlow"), vLiquid: part("vLiquid"), vTicks: part("vTicks"), vMarks: part("vMarks"), vBubble: part("vBubble") };
+  const parts2 = { vGlow: part("vGlow"), vLiquid: part("vLiquid"), vTicks: part("vTicks"), vMarks: part("vMarks"), vBubble: part("vBubble") };
   ((g) => {
     for (let x = 60; x <= 400; x += 10) {
       const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -65092,8 +65129,8 @@ function buildVial() {
       l.setAttribute("y2", big ? "26" : "21");
       g.appendChild(l);
     }
-  })(parts.vTicks);
-  return { box, parts };
+  })(parts2.vTicks);
+  return { box, parts: parts2 };
 }
 
 // src/ui/scene/instruments/weight/weight.ts
@@ -65679,11 +65716,11 @@ var LEG_FEET = {
   // relaxed: the ankle narrows a little (the ankle bone a touch wider), the instep curves on smoothly, the foot tapers to toes pointing down and in
   relaxed: [[-0.05, -0.08], [0.105, -0.08], [0.122, 0.1], [0.12, 0.28], [0.104, 0.45], [0.091, 0.58], [0.085, 0.66], [0.087, 0.71], [0.096, 0.77], [0.107, 0.84], [0.112, 0.9], [0.106, 0.95], [0.088, 0.99], [0.06, 1], [0.035, 0.97], [0.016, 0.9], [-0.05, 0.84]]
 };
-function legPoints(W, H, side, press3, lift, swing) {
+function legPoints(W, H, side, press4, lift2, swing) {
   return LEG_FEET[S4.foot].map(([x, y]) => {
     const down2 = clamp43(y, 0, 1);
-    const X = x + press3 * 0.035 * (0.4 + down2) - lift * 0.03 * down2 + swing * 0.012 * down2 * down2;
-    const Y = (S4.foot === "first" ? y : y * 0.86) - lift * 0.07 * down2 + swing * 0.01 * down2;
+    const X = x + press4 * 0.035 * (0.4 + down2) - lift2 * 0.03 * down2 + swing * 0.012 * down2 * down2;
+    const Y = (S4.foot === "first" ? y : y * 0.86) - lift2 * 0.07 * down2 + swing * 0.01 * down2;
     return [side < 0 ? X * W : W - X * W, Y * H];
   });
 }
@@ -65695,9 +65732,9 @@ function fillPts(ctx2, pts) {
 }
 function legsHang(ctx2, W, H, toward, swing, jolt, reading2, t) {
   for (const side of [-1, 1]) {
-    const own = side * toward, press3 = Math3.max(0, own), lift = Math3.max(0, -own);
+    const own = side * toward, press4 = Math3.max(0, own), lift2 = Math3.max(0, -own);
     const sw = S4.reduced ? 0 : reading2 ? Math3.sin(t * 3.1 + (side > 0 ? 1.7 : 0)) * (side > 0 ? 1 : 0.35) : Math3.sin(t * 0.8 + side) * 0.25;
-    fillPts(ctx2, chaikin(chaikin(chaikin(legPoints(W, H, side, press3 + jolt * 0.2 * side, lift, sw)))));
+    fillPts(ctx2, chaikin(chaikin(chaikin(legPoints(W, H, side, press4 + jolt * 0.2 * side, lift2, sw)))));
   }
 }
 function drawFloor2(now) {
@@ -65786,16 +65823,16 @@ function render2(now, dt, err) {
   if (down2) drawFloor2(now);
   const over2 = $2("#over");
   const useOver = over2.style.display !== "none" && over2.naturalWidth;
-  const press3 = 1 + strF * 0.12 * k + G3.sag * 0.03;
+  const press4 = 1 + strF * 0.12 * k + G3.sag * 0.03;
   const lean = G3.lean * 3.2 + G3.cop * 2.2;
   if (useOver) {
-    const oh = S4.overH * press3, ow = innerHeight3 * oh * over2.naturalWidth / over2.naturalHeight;
+    const oh = S4.overH * press4, ow = innerHeight3 * oh * over2.naturalWidth / over2.naturalHeight;
     const overscan = Math3.max(0.02, ow / 2 * Math3.sin(6 * Math3.PI / 180) / innerHeight3 + 0.01);
     placeSprite(over2, k, S4.face, { h: oh, x: S4.overX, dx: G3.cop * innerWidth3 * 0.03, bottom: 1 + overscan + S4.overSink, rot: lean });
     $2("#her").style.opacity = "0";
   } else {
     $2("#her").style.opacity = "1";
-    placeSprite($2("#her"), k, S4.face, { h: 1.55 * press3, x: 0.5, dx: G3.cop * innerWidth3 * 0.04, bottom: 1.42, rot: lean, rx: 10 });
+    placeSprite($2("#her"), k, S4.face, { h: 1.55 * press4, x: 0.5, dx: G3.cop * innerWidth3 * 0.04, bottom: 1.42, rot: lean, rx: 10 });
   }
   setStyle2("#ceiling", "transform", `scale(${(1.1 + strF * 0.06).toFixed(3)})`);
   setStyle2("#ceiling", "filter", `blur(${(3 + strF * 2).toFixed(1)}px) brightness(.55)`);
@@ -66320,6 +66357,2099 @@ function weightMatches(run, _state, reg) {
 }
 registerInstrument({ id: "weight", matches: weightMatches, start: (env, run) => startWeight(env, run) });
 
+// src/ui/scene/instruments/scent/words.ts
+var STAGE_PULL = { aversion: -0.7, enduring: -0.25, accustomed: 0, craving: 0.55, adoring: 0.95 };
+var SCENT = {
+  sweat: ["salt", "sweat", "skin", "damp heat", "musk", "a sharp tang", "dried salt", "her run", "brine", "body heat", "warm damp", "her effort"],
+  leather: ["leather", "boot polish", "worn hide", "oiled leather", "tannin", "laces", "road dust", "rubber", "polish and skin", "smoke-cured", "saddle soap", "old boots"],
+  soap: ["soap", "clean", "lather", "cotton", "steam", "lavender", "linen", "rain", "warm water", "white soap", "a towel", "fresh"],
+  gunpowder: ["cordite", "gun oil", "metal", "smoke", "brass", "sulphur", "burnt", "range dust", "steel", "solvent", "spent casings", "ozone"],
+  perfume: ["perfume", "violet", "musk", "powder", "vanilla", "sweet", "amber", "iris", "rose", "warm wood", "a floral note", "her neck"]
+};
+var STAGE_W = {
+  aversion: ["sharp", "sour", "too much", "it stings", "rank", "choking", "harsh", "it hits the nose"],
+  enduring: ["heavy", "close", "thick", "it lingers", "dense", "stale", "cloying", "insistent"],
+  accustomed: ["familiar", "hers", "known", "steady", "plain", "her own", "ordinary", "recognisable"],
+  craving: ["warm", "deep", "wanted", "more", "in the chest", "sweet", "good", "comforting"],
+  adoring: ["all hers", "everything", "precious", "perfect", "home", "beloved", "worth it", "all of her"]
+};
+var BAND_W = {
+  faint: ["a trace", "barely there", "faint", "a hint", "soft"],
+  noticeable: ["clear", "present", "noticeable", "plain to tell"],
+  strong: ["strong", "thick", "full", "heavy-laden"],
+  overwhelming: ["overwhelming", "drowning", "everywhere", "suffocating", "all of it"]
+};
+var PLACE_W = {
+  toes: ["her toes", "between her toes"],
+  ball: ["the ball of her foot", "under her toes"],
+  arch: ["her arch", "the curve of her sole"],
+  heel: ["her heel"],
+  center: ["the middle of her", "right against her", "closest to her"],
+  side: ["her hip", "the curve of her"],
+  hollow: ["her underarm", "the hollow"],
+  edge: ["her side", "the edge of her arm"]
+};
+var HER_PLACE = { toes: "my toes", ball: "the balls of my feet", arch: "my arches", heel: "my heels", center: "my seat", side: "my hips", hollow: "my underarms", edge: "my sides" };
+var TAG = { place: "where", scent: "scent", stage: "feel", band: "how strong", say: "say it" };
+var STAGE_RANK = { aversion: 0, enduring: 1, accustomed: 2, craving: 3, adoring: 4 };
+var COLORS = { sweat: "255,198,164", leather: "236,176,128", soap: "214,232,255", gunpowder: "196,206,226", perfume: "228,178,255" };
+var BASE_I = { feet_on_face: 0.2, face_to_bottom: 0.35, smothered_armpit: 0.45 };
+var AMBIENT_MS = { faint: 0, noticeable: 9e3, strong: 6e3, overwhelming: 3500 };
+var ZONE_IDS = { feet_on_face: ["toes", "ball", "arch", "heel"], face_to_bottom: ["center", "side"], smothered_armpit: ["hollow", "edge"] };
+var STYLES3 = {
+  neutral: {
+    every: [3, 5],
+    orders: { deeper: 3, gently: 1, here: 2, still: 1 },
+    ask: ["{p}. what do you smell?", "tell me about {p}."],
+    askEvery: [24, 32],
+    rule: "warm",
+    mouth: "mild",
+    note: "wants to hear it is not bad any more (familiar or better), or the place she named"
+  },
+  affectionate: {
+    every: [5, 7],
+    orders: { gently: 3, here: 1, deeper: 1 },
+    ask: ["{p}, love. how is it?", "tell me about {p}. anything."],
+    askEvery: [26, 34],
+    rule: "any",
+    mouth: "allowed",
+    note: "any answer is fine; she never punishes honesty; the mouth is allowed"
+  },
+  playful: {
+    every: [2, 4],
+    orders: { here: 3, deeper: 2, still: 1 },
+    ask: ["be honest~ {p}: strong?", "{p}. how bad? tell me~"],
+    askEvery: [20, 28],
+    moves: 0.4,
+    rule: "admit",
+    mouth: "tease",
+    note: "wants you to admit how strong it is; her mark sometimes moves once you get there"
+  },
+  cruel: {
+    every: [2, 3],
+    orders: { deeper: 4, still: 2, here: 2 },
+    ask: ["{p}. tell me how bad it is. and what you want.", "{p}. how does it smell? and what do you want?"],
+    askEvery: [20, 26],
+    rule: "bad_and_want",
+    mouth: "punish",
+    note: "wants it said both ways: that it is bad, and that you want more"
+  },
+  ritual: {
+    every: [4, 4],
+    cycle: ["here", "deeper", "still"],
+    ask: ["{p}. where, and how strong?"],
+    askEvery: [24, 24],
+    rule: "place_and_band",
+    mouth: "permission",
+    note: "a fixed cycle (a place, deeper, still); wants the place she asked and the right strength"
+  },
+  clinical: {
+    every: [3, 3],
+    tour: true,
+    ask: ["report on {p}: intensity, and what you feel."],
+    askEvery: [22, 22],
+    rule: "band_and_honest",
+    mouth: "noted",
+    note: "a tour of her places in order; wants the exact strength and your honest feeling"
+  }
+};
+
+// src/ui/scene/instruments/scent/question.ts
+var wordEls = [];
+function askWords2() {
+  if (!S5.layers.words) return;
+  const st2 = ST2();
+  const strongest = G4.zones.slice().sort((a, b) => b.w - a.w)[0];
+  const place2 = G4.askPlace ?? (strongest || {}).id;
+  let ti = -1;
+  G4.zones.forEach((z2, i) => {
+    if (z2.id === place2 && (ti < 0 || z2.w > G4.zones[ti].w)) ti = i;
+  });
+  const line3 = (pick5(LINES2.ask) ?? "").replace("{p}", HER_PLACE[place2] ?? "it");
+  const tp = ti >= 0 ? G4.zones[ti].p : [0.55, 0.2];
+  say4(line3, false, [clamp43(tp[0] + 0.05, 0.04, 0.7), clamp43(tp[1] - 0.1, 0.06, 0.8)]);
+  G4.order = { k: "ask", until: G4.clock + 12e3, chosen: [], place: place2, ti };
+  buildPills();
+}
+function sayables(place2) {
+  const out = [], st2 = ST2(), want = () => pick5(STAGE_W[pick5(["craving", "adoring"])]);
+  const has3 = (p) => G4.head.some((h2) => h2.cat.startsWith(p));
+  switch (st2.rule) {
+    case "warm":
+      out.push([pick5(STAGE_W.accustomed), "stage:accustomed"]);
+      break;
+    case "admit":
+      out.push([pick5(BAND_W.overwhelming), "band:overwhelming"]);
+      break;
+    case "bad_and_want":
+      out.push([want(), "stage:craving"]);
+      if (!has3("stage:aversion")) out.push([pick5(STAGE_W.aversion), "stage:aversion"]);
+      break;
+    case "place_and_band": {
+      const b = pick5(Object.keys(BAND_W));
+      out.push([pick5(BAND_W[b]), "band:" + b]);
+      if (!has3("place:" + place2)) out.push([pick5(PLACE_W[place2] ?? ["her"]), "place:" + place2]);
+      break;
+    }
+    case "band_and_honest": {
+      const b = pick5(Object.keys(BAND_W));
+      out.push([pick5(BAND_W[b]), "band:" + b]);
+      break;
+    }
+  }
+  return out.map(([w, cat]) => ({ w, cat, lie: true }));
+}
+function buildPills() {
+  const o = G4.order;
+  if (!o) return;
+  for (const el of wordEls) el.remove();
+  wordEls.length = 0;
+  const seen2 = /* @__PURE__ */ new Set(), head = G4.head.slice().reverse().filter((h2) => !seen2.has(h2.w) && seen2.add(h2.w)).slice(0, 7).reverse();
+  if (!o.lies) o.lies = sayables(o.place);
+  const items = [...head, ...o.lies.filter((l) => !seen2.has(l.w))];
+  if (!items.length) items.push({ w: "\u2026 nothing", cat: "none" });
+  const cx = clamp43(G4.nose[0], 0.25, 0.75), cy = clamp43(G4.nose[1], 0.42, 0.72);
+  items.forEach((h2, i) => {
+    const el = document.createElement("div");
+    el.className = "pw pick" + (h2.lie ? " lie" : "") + (o.chosen.includes(h2) ? " chosen" : "");
+    const kind = h2.lie ? "say" : h2.cat.split(":")[0];
+    el.innerHTML = `<span class="key">${i + 1}</span><span class="tag">${TAG[kind] ?? ""}</span>${h2.w}`;
+    for (const [k, v] of Object.entries(analyzeNative("glossary:scent_answer"))) el.setAttribute(k, v);
+    const a = items.length === 1 ? -Math4.PI / 2 : -Math4.PI * 0.92 + i / (items.length - 1) * Math4.PI * 0.84;
+    el._p = [clamp43(cx + Math4.cos(a) * 0.22, 0.08, 0.92), clamp43(cy + Math4.sin(a) * 0.32 - 0.04, 0.1, 0.7)];
+    el._choose = () => {
+      const oo = G4.order;
+      if (!oo || oo.k !== "ask" || oo.chosen.includes(h2)) return;
+      el.classList.add("chosen");
+      oo.chosen.push(h2);
+      if (oo.chosen.length >= Math4.min(2, items.length)) answerWords();
+    };
+    el.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      el._choose();
+    });
+    $3("#words").appendChild(el);
+    wordEls.push(el);
+  });
+}
+var isCat = (h2, p) => h2.cat.startsWith(p);
+function judge(chosen, place2) {
+  const st2 = ST2(), rank2 = (h2) => STAGE_RANK[h2.cat.split(":")[1]];
+  const want = (h2) => isCat(h2, "stage:") && rank2(h2) >= 3 || h2.w === "more";
+  const bad = (h2) => isCat(h2, "stage:") && rank2(h2) === 0 || h2.cat === "band:strong" || h2.cat === "band:overwhelming";
+  const placeOk = chosen.some((h2) => h2.cat === "place:" + place2);
+  const anyBand = chosen.some((h2) => isCat(h2, "band:")), bandOk = chosen.some((h2) => h2.cat === "band:" + S5.band);
+  const honest = chosen.some((h2) => h2.cat === "stage:" + S5.stage);
+  switch (st2.rule) {
+    case "any":
+      return { ok: chosen.some((h2) => h2.cat !== "none") };
+    case "warm":
+      return placeOk || chosen.some((h2) => isCat(h2, "stage:") && rank2(h2) >= 2) ? { ok: true } : { ok: false, miss: pick5(LINES2.miss.warm) };
+    case "admit":
+      return chosen.some(bad) ? { ok: true } : { ok: false, miss: pick5(LINES2.miss.admit) };
+    case "bad_and_want":
+      return !chosen.some(bad) ? { ok: false, miss: pick5(LINES2.miss.bad) } : !chosen.some(want) ? { ok: false, miss: pick5(LINES2.miss.want) } : { ok: true };
+    case "place_and_band":
+      return !placeOk ? { ok: false, miss: pick5(LINES2.miss.place) } : !anyBand ? { ok: false, miss: pick5(LINES2.miss.strength) } : !bandOk ? { ok: false, miss: pick5(LINES2.miss.band) } : { ok: true };
+    case "band_and_honest":
+      return !bandOk ? { ok: false, miss: anyBand ? pick5(LINES2.miss.intensity_wrong) : pick5(LINES2.miss.intensity_missing) } : !honest ? { ok: false, miss: pick5(LINES2.miss.honest) } : { ok: true };
+  }
+  return { ok: false };
+}
+function answerWords() {
+  const o = G4.order;
+  if (!o) return;
+  for (const el of wordEls) {
+    el.remove();
+  }
+  wordEls.length = 0;
+  const empty = o.chosen.every((h2) => h2.cat === "none");
+  for (const h2 of o.chosen) {
+    const i = G4.head.indexOf(h2);
+    if (i >= 0) {
+      G4.head.splice(i, 1);
+      h2.el._gone = performance4.now();
+      h2.el._out = [0, -1];
+    }
+  }
+  const lie = o.chosen.some((h2) => h2.lie || isCat(h2, "stage:") && h2.cat !== "stage:" + S5.stage);
+  if (lie) {
+    G4.lie = 2;
+    G4.counts.lies += 1;
+  }
+  G4.order = null;
+  G4.nextOrderAt = G4.clock + randInt3(...ST2().every) * BEAT3;
+  G4.nextAskAt = G4.clock + randInt3(...ST2().askEvery) * 1e3;
+  const sendThere = () => {
+    const p = LINES2.here[S5.contact].find((x) => x[1] === o.place);
+    if (p) setTimeout4(() => G4.phase === "loop" && !G4.order && nameplace(p[0], p[1]), 1100);
+  };
+  if (empty) {
+    judged(false, false);
+    G4.counts.empty += 1;
+    say4(pick5(LINES2.answer.empty));
+    press2();
+    sendThere();
+    return;
+  }
+  const v = judge(o.chosen, o.place);
+  judged(v.ok, lie);
+  if (v.ok) {
+    G4.counts.answered += 1;
+    say4(pick5(LINES2.answer.ok[S5.style]));
+    lift();
+    scatter2(2);
+  } else {
+    G4.counts.wrong += 1;
+    say4(v.miss ?? pick5(LINES2.answer.bad[S5.style]));
+    if (S5.style !== "affectionate") press2();
+    if (["cruel", "ritual", "playful"].includes(S5.style)) sendThere();
+  }
+}
+
+// src/ui/scene/instruments/scent/scent.ts
+var E3 = null;
+var innerWidth4 = 0;
+var innerHeight4 = 0;
+var performance4 = { now: () => E3 ? E3.env.now() : 0 };
+function setTimeout4(fn, ms) {
+  if (E3) E3.env.timeout(() => {
+    fn();
+  }, ms);
+}
+function requestAnimationFrame4(fn) {
+  if (!E3) return;
+  const e = E3;
+  e.frameId = e.env.raf((now) => {
+    e.frameId = null;
+    if (E3 !== e) return;
+    before3();
+    fn(now);
+    after3();
+  });
+}
+var seed3 = 2463534242;
+function rnd013() {
+  seed3 ^= seed3 << 13;
+  seed3 >>>= 0;
+  seed3 ^= seed3 >>> 17;
+  seed3 ^= seed3 << 5;
+  seed3 >>>= 0;
+  return seed3 / 4294967296;
+}
+var Math4 = Object.create(globalThis.Math, { random: { value: rnd013 } });
+var $3 = (s) => {
+  const e = E3;
+  if (s === "#mirror") return e.mirror;
+  if (s === "#reply") return e.env.reply;
+  if (s === "#cmd") return e.env.input;
+  return e.els[s];
+};
+var inputLine3 = (env) => env.input.closest(".alius-input-line") ?? env.input.parentElement ?? env.input;
+var easeOut3 = (t) => 1 - Math4.pow(1 - clamp43(t, 0, 1), 3);
+var pick5 = (a) => a[Math4.floor(Math4.random() * a.length)];
+var randInt3 = (a, b) => a + Math4.floor(Math4.random() * (b - a + 1));
+var rand2 = (a, b) => a + Math4.random() * (b - a);
+var BEAT3 = TUNING.physics.beatMs;
+var BAND = { ...TUNING.physics.saturation.bandFactor };
+var INHALE_FILL_MS = TUNING.stimuli.inhale.fillMs;
+var ROW_BY_CUES3 = { honest: "neutral", count: "ritual", announce: "ritual", false: "playful", none: "cruel", sparse: "cruel", shift: "clinical" };
+var CONTACT_OF = { gap: "feet_on_face", seat: "face_to_bottom", wedge: "smothered_armpit" };
+var HERE_ZONES = { feet_on_face: ["toes", "arch", "heel", "ball"], face_to_bottom: ["center", "side"], smothered_armpit: ["hollow", "edge"] };
+var S5 = {
+  stretch: "natural",
+  breathRec: true,
+  look: "motes",
+  contact: "feet_on_face",
+  band: "strong",
+  color: "sweat",
+  stage: "enduring",
+  tol: 20,
+  style: "neutral",
+  task: "reading",
+  name: "Vela",
+  layers: { orders: true, words: true, drift: true, tint: true, need: true },
+  sound: true,
+  vol: 0.7,
+  debug: false,
+  angle: -14,
+  side: { wedge: "right" },
+  len: 90,
+  reduced: false,
+  readable: false
+};
+var ST2 = () => STYLES3[S5.style];
+var noLines = () => ({
+  entry: {},
+  deeper: [],
+  gently: [],
+  still: [],
+  here: {},
+  moved: [],
+  good: [],
+  bad: [],
+  mouth: {},
+  away: [],
+  cough: [],
+  answer: { ok: {}, bad: {}, empty: [] },
+  liar: [],
+  caught: [],
+  lost: { low: [], high: [] },
+  need: [],
+  end: [],
+  stop: [],
+  ask: [],
+  miss: {}
+});
+var LINES2 = noLines();
+var A3 = { ctx: null };
+function audioInit3() {
+  if (A3.ctx) {
+    loadSample();
+    return;
+  }
+  const ctx2 = E3?.env.samples?.ctx() ?? null;
+  const out = E3?.env.samples?.bus("body") ?? null;
+  if (!ctx2 || !out) return;
+  A3.ctx = ctx2;
+  A3.master = ctx2.createGain();
+  A3.master.gain.value = S5.sound ? S5.vol : 0;
+  A3.master.connect(out);
+  A3.world = ctx2.createBiquadFilter();
+  A3.world.type = "lowpass";
+  A3.world.frequency.value = 14e3;
+  A3.world.connect(A3.master);
+  A3.body = ctx2.createGain();
+  A3.body.connect(A3.master);
+  const mk = (sec, fill7) => {
+    const b = ctx2.createBuffer(1, ctx2.sampleRate * sec, ctx2.sampleRate);
+    fill7(b.getChannelData(0));
+    return b;
+  };
+  A3.white = mk(2, (d) => {
+    for (let i = 0; i < d.length; i++) d[i] = Math4.random() * 2 - 1;
+  });
+  A3.pink = mk(3, (d) => {
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    for (let i = 0; i < d.length; i++) {
+      const w = Math4.random() * 2 - 1;
+      b0 = 0.99886 * b0 + w * 0.0555179;
+      b1 = 0.99332 * b1 + w * 0.0750759;
+      b2 = 0.969 * b2 + w * 0.153852;
+      b3 = 0.8665 * b3 + w * 0.3104856;
+      b4 = 0.55 * b4 + w * 0.5329522;
+      b5 = -0.7616 * b5 - w * 0.016898;
+      d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11;
+      b6 = w * 0.115926;
+    }
+  });
+  A3.brown = mk(4, (d) => {
+    let l = 0;
+    for (let i = 0; i < d.length; i++) {
+      l = (l + 0.02 * (Math4.random() * 2 - 1)) / 1.02;
+      d[i] = l * 3.5;
+    }
+  });
+  const room2 = ctx2.createBufferSource();
+  room2.buffer = A3.brown;
+  room2.loop = true;
+  const rl = ctx2.createBiquadFilter();
+  rl.type = "lowpass";
+  rl.frequency.value = 500;
+  A3.roomG = ctx2.createGain();
+  A3.roomG.gain.value = 0.05;
+  room2.connect(rl);
+  rl.connect(A3.roomG);
+  A3.roomG.connect(A3.world);
+  room2.start();
+  A3.droneG = ctx2.createGain();
+  A3.droneG.gain.value = 0;
+  A3.droneG.connect(A3.body);
+  for (const f of [98, 99.6, 147.2]) {
+    const o = ctx2.createOscillator();
+    o.frequency.value = f;
+    const g = ctx2.createGain();
+    g.gain.value = f > 140 ? 0.25 : 0.5;
+    o.connect(g);
+    g.connect(A3.droneG);
+    o.start();
+  }
+  const hiss = ctx2.createBufferSource();
+  hiss.buffer = A3.brown;
+  hiss.loop = true;
+  const hl = ctx2.createBiquadFilter();
+  hl.type = "bandpass";
+  hl.frequency.value = 700;
+  hl.Q.value = 0.6;
+  const hg = ctx2.createGain();
+  hg.gain.value = 0.6;
+  hiss.connect(hl);
+  hl.connect(hg);
+  hg.connect(A3.droneG);
+  hiss.start();
+  loadSample();
+}
+function noise4({ at = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1, gain: gain2 = 0.1, attack = 0.01, dest = A3.world }) {
+  if (!A3.ctx) return null;
+  const ctx2 = A3.ctx, t = ctx2.currentTime + at;
+  const src = ctx2.createBufferSource();
+  src.buffer = A3.white;
+  src.loop = true;
+  const fl = ctx2.createBiquadFilter();
+  fl.type = type;
+  fl.frequency.setValueAtTime(f, t);
+  fl.Q.value = q;
+  if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = ctx2.createGain();
+  g.gain.setValueAtTime(1e-4, t);
+  g.gain.exponentialRampToValueAtTime(gain2, t + attack);
+  g.gain.exponentialRampToValueAtTime(1e-4, t + dur);
+  src.connect(fl);
+  fl.connect(g);
+  g.connect(dest);
+  src.start(t, Math4.random());
+  src.stop(t + dur + 0.05);
+  return src;
+}
+function thump3(at, gain2, f0 = 55, dest = A3.body) {
+  if (!A3.ctx) return;
+  const ctx2 = A3.ctx, t = ctx2.currentTime + at;
+  const o = ctx2.createOscillator();
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(f0 * 0.6, t + 0.15);
+  const g = ctx2.createGain();
+  g.gain.setValueAtTime(1e-4, t);
+  g.gain.exponentialRampToValueAtTime(gain2, t + 6e-3);
+  g.gain.exponentialRampToValueAtTime(1e-4, t + 0.22);
+  o.connect(g);
+  g.connect(dest);
+  o.start(t);
+  o.stop(t + 0.3);
+}
+var SFX3 = {
+  pen: () => {
+    const n = randInt3(3, 5);
+    for (let i = 0; i < n; i++) noise4({ at: i * 0.05 + Math4.random() * 0.02, dur: 0.035 + Math4.random() * 0.03, f: 2600 + Math4.random() * 1800, q: 3, gain: 0.05 });
+  },
+  exhale: (d) => exhaleSound(d),
+  cough: () => {
+    for (let i = 0; i < 3; i++) {
+      noise4({ at: i * 0.22, dur: 0.16, f: 500, f2: 260, q: 0.8, gain: 0.4, attack: 5e-3, dest: A3.body });
+      thump3(i * 0.22, 0.35, 90);
+    }
+  },
+  page: () => noise4({ dur: 0.32, f: 2400, f2: 1200, q: 0.8, gain: 0.05, attack: 0.05 }),
+  // she turns a page: she is busy with it
+  chime: () => {
+    if (!A3.ctx) return;
+    const o = A3.ctx.createOscillator();
+    o.frequency.value = 880;
+    const g = A3.ctx.createGain();
+    const t = A3.ctx.currentTime;
+    g.gain.setValueAtTime(1e-4, t);
+    g.gain.exponentialRampToValueAtTime(0.05, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(1e-4, t + 0.6);
+    o.connect(g);
+    g.connect(A3.world);
+    o.start(t);
+    o.stop(t + 0.7);
+  }
+};
+var SAMPLE_FILE = "assets/sounds/breath-in-out.mp3";
+var SAMPLE = { buf: null, rms: null, inS: 0.12, susS: 0.5, susE: 0.92, inE: 1.44, exS: 2.17, exE: 3.23 };
+var rmsAt = (sec) => {
+  const r = SAMPLE.rms;
+  return r[clamp43(Math4.round(sec * 100), 0, r.length - 1)] || 1e-4;
+};
+function fft(re, im, inv) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit2 = n >> 1;
+    for (; j & bit2; bit2 >>= 1) j ^= bit2;
+    j ^= bit2;
+    if (i < j) {
+      [re[i], re[j]] = [re[j], re[i]];
+      [im[i], im[j]] = [im[j], im[i]];
+    }
+  }
+  for (let len2 = 2; len2 <= n; len2 <<= 1) {
+    const ang = 2 * Math4.PI / len2 * (inv ? 1 : -1), wr = Math4.cos(ang), wi = Math4.sin(ang);
+    for (let i = 0; i < n; i += len2) {
+      let cr = 1, ci = 0;
+      for (let k = 0; k < len2 / 2; k++) {
+        const ar = re[i + k + len2 / 2] * cr - im[i + k + len2 / 2] * ci, ai = re[i + k + len2 / 2] * ci + im[i + k + len2 / 2] * cr;
+        re[i + k + len2 / 2] = re[i + k] - ar;
+        im[i + k + len2 / 2] = im[i + k] - ai;
+        re[i + k] += ar;
+        im[i + k] += ai;
+        const t = cr * wr - ci * wi;
+        ci = cr * wi + ci * wr;
+        cr = t;
+      }
+    }
+  }
+  if (inv) for (let i = 0; i < n; i++) {
+    re[i] /= n;
+    im[i] /= n;
+  }
+}
+function paulstretch(data, sr, from, to, outSec, win = 4096) {
+  const inp = data.subarray(Math4.floor(from * sr), Math4.floor(to * sr));
+  const hop = win / 2, frames = Math4.ceil(outSec * sr / hop), out = new Float32Array(frames * hop + win);
+  const w = new Float32Array(win).map((_, i) => {
+    const x = 2 * i / (win - 1) - 1;
+    return Math4.pow(1 - x * x, 1.25);
+  });
+  const re = new Float32Array(win), im = new Float32Array(win);
+  for (let f = 0; f < frames; f++) {
+    const pos = Math4.floor(f / Math4.max(1, frames - 1) * (inp.length - win));
+    for (let i = 0; i < win; i++) {
+      re[i] = (inp[pos + i] || 0) * w[i];
+      im[i] = 0;
+    }
+    fft(re, im, false);
+    for (let i = 0; i < win; i++) {
+      const m = Math4.hypot(re[i], im[i]), ph = Math4.random() * 2 * Math4.PI;
+      re[i] = m * Math4.cos(ph);
+      im[i] = m * Math4.sin(ph);
+    }
+    fft(re, im, true);
+    for (let i = 0; i < win; i++) out[f * hop + i] += re[i] * w[i];
+  }
+  let a = 0, b = 0;
+  for (const v of inp) a += v * v;
+  for (const v of out) b += v * v;
+  const g = Math4.sqrt(a / inp.length) / Math4.sqrt(b / out.length || 1);
+  for (let i = 0; i < out.length; i++) out[i] *= g;
+  return out;
+}
+async function loadSample() {
+  if (SAMPLE.buf || !A3.ctx) return;
+  const ctx2 = A3.ctx, samples = E3?.env.samples;
+  const src = samples?.buffer(SAMPLE_FILE) ?? null;
+  if (!src) {
+    void samples?.preload([SAMPLE_FILE]);
+    return;
+  }
+  const buf = ctx2.createBuffer(1, src.length, src.sampleRate);
+  buf.copyToChannel(src.getChannelData(0).slice(), 0);
+  const d = buf.getChannelData(0);
+  let pk = 0;
+  for (let i = 0; i < d.length; i++) pk = Math4.max(pk, Math4.abs(d[i]));
+  const g = 0.9 / (pk || 1);
+  for (let i = 0; i < d.length; i++) d[i] *= g;
+  const fr = Math4.round(buf.sampleRate / 100), rms = new Float32Array(Math4.ceil(d.length / fr));
+  for (let i = 0; i < rms.length; i++) {
+    let acc = 0, n = 0;
+    for (let j = Math4.max(0, (i - 3) * fr); j < Math4.min(d.length, (i + 4) * fr); j++) {
+      acc += d[j] * d[j];
+      n++;
+    }
+    rms[i] = Math4.sqrt(acc / Math4.max(1, n));
+  }
+  SAMPLE.rms = rms;
+  SAMPLE.buf = buf;
+  const st2 = paulstretch(d, buf.sampleRate, SAMPLE.susS, SAMPLE.susE, 5);
+  SAMPLE.paul = ctx2.createBuffer(1, st2.length, buf.sampleRate);
+  SAMPLE.paul.copyToChannel(st2, 0);
+}
+var useRec = () => S5.breathRec && SAMPLE.buf && A3.ctx;
+var REC = { out: null, srcs: [], timer: null, next: 0, rate: 1, tail: false, kind: null };
+var SINE = new Float32Array(64).map((_, i) => Math4.sin(Math4.PI * i / 63));
+function piece(dest, from, to, at, rate, fadeIn = 0.015, fadeOut = 0.03, gain2 = 1, grain = false) {
+  const ctx2 = A3.ctx, src = ctx2.createBufferSource();
+  src.buffer = SAMPLE.buf;
+  src.playbackRate.value = rate;
+  const g = ctx2.createGain(), dur = (to - from) / rate;
+  if (grain) g.gain.setValueCurveAtTime(SINE.map((v) => v * gain2), at, dur);
+  else {
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(gain2, at + fadeIn);
+    g.gain.setValueAtTime(gain2, Math4.max(at + fadeIn, at + dur - fadeOut));
+    g.gain.linearRampToValueAtTime(0, at + dur);
+  }
+  src.connect(g);
+  g.connect(dest);
+  src.start(at, from);
+  src.stop(at + dur + 0.01);
+  REC.srcs.push(src);
+  src.onended = () => {
+    const i = REC.srcs.indexOf(src);
+    if (i >= 0) REC.srcs.splice(i, 1);
+  };
+  return at + dur;
+}
+function recOut(kind) {
+  const ctx2 = A3.ctx, out = ctx2.createGain();
+  out.gain.value = kind === "mouth" ? 0.25 : 0.21;
+  const tone = ctx2.createBiquadFilter();
+  tone.type = "lowpass";
+  tone.frequency.value = kind === "mouth" ? 1600 : 3200;
+  tone.Q.value = 0.5;
+  out.connect(tone);
+  tone.connect(A3.body);
+  return out;
+}
+function recInhale(kind = "nose") {
+  recStop(0.03);
+  const ctx2 = A3.ctx, t = ctx2.currentTime + 0.01;
+  REC.out = recOut(kind);
+  REC.kind = kind;
+  REC.tail = false;
+  REC.mode = S5.stretch;
+  if (S5.stretch === "natural") {
+    REC.rate = (SAMPLE.inE - SAMPLE.inS) / (INHALE_FILL_MS / 1e3) * (kind === "mouth" ? 0.95 : 1) * rand2(0.97, 1.03);
+    piece(REC.out, SAMPLE.inS, SAMPLE.inE, t, REC.rate, 0.02, 0.2);
+    REC.tail = true;
+    return;
+  }
+  REC.rate = (kind === "mouth" ? 0.86 : 1) * rand2(0.96, 1.04);
+  REC.level = rmsAt(SAMPLE.susS);
+  if (S5.stretch === "paul") {
+    const end2 = piece(REC.out, SAMPLE.inS, SAMPLE.susS + 0.12, t, REC.rate, 0.02, 0.14);
+    const src = ctx2.createBufferSource();
+    src.buffer = SAMPLE.paul;
+    src.playbackRate.value = REC.rate;
+    const g = ctx2.createGain();
+    const at = end2 - 0.14;
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(1, at + 0.14);
+    src.connect(g);
+    g.connect(REC.out);
+    src.start(at, rand2(0, 0.5));
+    REC.srcs.push(src);
+    REC.sus = g;
+    return;
+  }
+}
+function recTail() {
+  if (!REC.out || REC.tail) return;
+  REC.tail = true;
+  clearInterval(REC.timer);
+  REC.timer = null;
+  if (REC.mode === "paul" && REC.sus) {
+    const t = A3.ctx.currentTime;
+    REC.sus.gain.cancelScheduledValues(t);
+    REC.sus.gain.setValueAtTime(REC.sus.gain.value, t);
+    REC.sus.gain.linearRampToValueAtTime(0, t + 0.15);
+    piece(REC.out, SAMPLE.susE - 0.08, SAMPLE.inE, t, REC.rate, 0.12, 0.15, 0.85);
+    REC.sus = null;
+    return;
+  }
+}
+function recStop(fade2 = 0.08) {
+  clearInterval(REC.timer);
+  REC.timer = null;
+  if (REC.out) {
+    const t = A3.ctx.currentTime;
+    REC.out.gain.cancelScheduledValues(t);
+    REC.out.gain.setValueAtTime(REC.out.gain.value, t);
+    REC.out.gain.linearRampToValueAtTime(0, t + fade2);
+    const o = REC.out;
+    setTimeout4(() => o.disconnect(), (fade2 + 0.1) * 1e3);
+  }
+  for (const s0 of REC.srcs.splice(0)) {
+    try {
+      s0.stop(A3.ctx.currentTime + fade2 + 0.02);
+    } catch {
+    }
+  }
+  REC.out = null;
+  REC.kind = null;
+  REC.sus = null;
+}
+function recExhale(d, kind = "nose") {
+  const ctx2 = A3.ctx, out = recOut(kind), rate = (kind === "mouth" ? 0.88 : 1) * rand2(0.95, 1.05);
+  const len2 = (SAMPLE.exE - SAMPLE.exS) * (0.35 + 0.65 * clamp43(d, 0, 1));
+  piece(out, SAMPLE.exS, SAMPLE.exS + len2, ctx2.currentTime + 0.02, rate, 0.02, Math4.min(0.25, len2 * 0.4), (0.35 + 0.65 * clamp43(d, 0, 1)) * 0.75);
+  setTimeout4(() => out.disconnect(), (len2 / rate + 0.5) * 1e3);
+}
+var MOUTHREC = { next: 0, inward: true };
+function recMouthTick() {
+  const t = A3.ctx.currentTime;
+  if (t < MOUTHREC.next) return;
+  const out = recOut("mouth"), rate = 0.86 * rand2(0.95, 1.05), len2 = 0.55;
+  if (MOUTHREC.inward) piece(out, SAMPLE.inS + 0.05, SAMPLE.inS + 0.05 + len2, t + 0.01, rate, 0.04, 0.2, 0.9);
+  else piece(out, SAMPLE.exS, SAMPLE.exS + len2, t + 0.01, rate, 0.03, 0.22, 0.8);
+  setTimeout4(() => out.disconnect(), 1200);
+  MOUTHREC.inward = !MOUTHREC.inward;
+  MOUTHREC.next = t + 0.72;
+}
+var BR = { kind: null, src: null, f1: null, f2: null, env: null, flut: null, lfo: null, t0: 0 };
+function breathSound(kind) {
+  if (useRec()) {
+    if (BR.kind === kind) return;
+    breathStop();
+    BR.kind = kind;
+    if (kind === "nose") recInhale("nose");
+    else MOUTHREC.next = 0;
+    return;
+  }
+  if (!A3.ctx || BR.kind === kind) return;
+  breathStop();
+  const ctx2 = A3.ctx, t = ctx2.currentTime, nose = kind === "nose";
+  const src = ctx2.createBufferSource();
+  src.buffer = A3.pink;
+  src.loop = true;
+  const f12 = ctx2.createBiquadFilter();
+  f12.type = "bandpass";
+  f12.frequency.value = nose ? 680 : 520;
+  f12.Q.value = nose ? 1.6 : 0.9;
+  const f2 = ctx2.createBiquadFilter();
+  f2.type = "bandpass";
+  f2.frequency.value = nose ? 2300 : 1350;
+  f2.Q.value = nose ? 2.4 : 1.1;
+  const hp = ctx2.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.value = 4800;
+  const g1 = ctx2.createGain();
+  g1.gain.value = 1;
+  const g2 = ctx2.createGain();
+  g2.gain.value = nose ? 0.55 : 0.4;
+  const g3 = ctx2.createGain();
+  g3.gain.value = nose ? 0.14 : 0.05;
+  const env = ctx2.createGain();
+  env.gain.setValueAtTime(1e-4, t);
+  const flut = ctx2.createGain();
+  flut.gain.value = 1;
+  const lfo = ctx2.createOscillator();
+  lfo.frequency.value = rand2(8, 13);
+  const lfoG = ctx2.createGain();
+  lfoG.gain.value = 0.16;
+  lfo.connect(lfoG);
+  lfoG.connect(flut.gain);
+  lfo.start(t);
+  src.connect(f12);
+  f12.connect(g1);
+  g1.connect(env);
+  src.connect(f2);
+  f2.connect(g2);
+  g2.connect(env);
+  src.connect(hp);
+  hp.connect(g3);
+  g3.connect(env);
+  env.connect(flut);
+  flut.connect(A3.body);
+  src.start(t, Math4.random() * 2);
+  Object.assign(BR, { kind, src, f1: f12, f2, env, flut, lfo, t0: t });
+}
+function breathTick() {
+  if (useRec() && BR.kind) {
+    if (REC.sus) REC.sus.gain.setTargetAtTime(1 - 0.35 * clamp43(G4.depth, 0, 1), A3.ctx.currentTime, 0.1);
+    if (BR.kind === "nose" && G4.depth >= 0.95) recTail();
+    if (BR.kind === "mouth") recMouthTick();
+    return;
+  }
+  if (!BR.src) return;
+  const t = A3.ctx.currentTime;
+  if (BR.kind === "nose") {
+    const d = G4.depth, shape2 = Math4.pow(Math4.sin(Math4.PI * clamp43(d / 1.12, 0, 1)), 0.7);
+    BR.env.gain.setTargetAtTime(Math4.max(1e-4, 0.2 * shape2 * (0.6 + 0.4 * G4.I)), t, 0.04);
+    BR.f1.frequency.setTargetAtTime(620 + d * 300, t, 0.08);
+    BR.f2.frequency.setTargetAtTime(2100 + d * 500, t, 0.08);
+  } else {
+    const ph = (t - BR.t0) * 0.7 * Math4.PI * 2, inward = Math4.sin(ph) > 0;
+    BR.env.gain.setTargetAtTime(0.02 + 0.17 * Math4.pow(Math4.abs(Math4.sin(ph)), 1.6), t, 0.03);
+    BR.f1.frequency.setTargetAtTime(inward ? 600 : 440, t, 0.1);
+    BR.f2.frequency.setTargetAtTime(inward ? 1500 : 1150, t, 0.1);
+  }
+}
+function breathStop() {
+  if (useRec()) {
+    if (BR.kind === "nose") recStop(0.08);
+    BR.kind = null;
+    return;
+  }
+  if (!BR.src) return;
+  const t = A3.ctx.currentTime;
+  BR.env.gain.cancelScheduledValues(t);
+  BR.env.gain.setValueAtTime(Math4.max(1e-4, BR.env.gain.value), t);
+  BR.env.gain.exponentialRampToValueAtTime(1e-4, t + 0.12);
+  BR.src.stop(t + 0.15);
+  BR.lfo.stop(t + 0.15);
+  BR.src = null;
+  BR.kind = null;
+}
+function exhaleSound(d) {
+  if (useRec()) {
+    if (d >= 0.05) recExhale(d);
+    return;
+  }
+  if (!A3.ctx || d < 0.05) return;
+  const ctx2 = A3.ctx, t = ctx2.currentTime, dur = 0.5 + d * 0.7;
+  const src = ctx2.createBufferSource();
+  src.buffer = A3.pink;
+  src.loop = true;
+  const f12 = ctx2.createBiquadFilter();
+  f12.type = "bandpass";
+  f12.frequency.setValueAtTime(560, t);
+  f12.frequency.exponentialRampToValueAtTime(380, t + dur);
+  f12.Q.value = 1.2;
+  const lp = ctx2.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.frequency.value = 2600;
+  const g = ctx2.createGain();
+  g.gain.setValueAtTime(1e-4, t);
+  g.gain.exponentialRampToValueAtTime(0.06 + d * 0.09, t + 0.07);
+  g.gain.exponentialRampToValueAtTime(1e-4, t + dur);
+  src.connect(f12);
+  f12.connect(lp);
+  lp.connect(g);
+  g.connect(A3.body);
+  src.start(t, Math4.random() * 2);
+  src.stop(t + dur + 0.05);
+}
+var G4;
+function fresh3() {
+  return {
+    phase: "idle",
+    phaseT: 0,
+    clock: 0,
+    sat: 0,
+    darkA: 0,
+    cam: 0,
+    nose: [0.5, 0.55],
+    drift: [0, 0],
+    mouse: [0.5, 0.55],
+    inhaling: false,
+    depth: 0,
+    peak: 0,
+    mouth: false,
+    mouthMs: 0,
+    mouthTick: 0,
+    sinceBreath: 0,
+    reflexCd: 0,
+    lost: 0,
+    forcedDeep: false,
+    head: [],
+    ambAt: 0,
+    wordsTaken: 0,
+    askPlace: null,
+    order: null,
+    nextOrderAt: 3 * BEAT3,
+    nextAskAt: rand2(14e3, 18e3),
+    att: "busy",
+    awayMs: 0,
+    lie: 0,
+    beat: -1,
+    counts: { liesFound: 0, breaths: 0, deep: 0, coughs: 0, lost: 0, mouthWords: 0, noticed: 0, ordersOk: 0, ordersBad: 0, answered: 0, wrong: 0, empty: 0, lies: 0, caught: 0, away: 0 },
+    o: 0.35,
+    sp: [{ L: 0.35, v: 0, k: 58 }, { L: 0.35, v: 0, k: 74 }],
+    zones: [],
+    I: 0,
+    hereZone: null,
+    shake: 0,
+    endAt: S5.len * 1e3
+  };
+}
+G4 = fresh3();
+function say4(text3, big = false, at) {
+  if (!text3) return;
+  const el = document.createElement("div");
+  el.className = "her-line" + (big ? " big" : "");
+  el.textContent = text3;
+  el.style.setProperty("--write", `${Math4.max(160, text3.length * 36)}ms`);
+  el.style.setProperty("--steps", String(Math4.max(4, text3.length * 2)));
+  const used2 = new Set([...$3("#hand").children].filter((x) => !x.classList.contains("big")).map((x) => x._slot));
+  let stack = 0;
+  if (!big) while (used2.has(stack)) stack++;
+  el._slot = big ? -1 : stack;
+  const p = at ?? [0.6, 0.14];
+  el.style.left = `${p[0] * innerWidth4 + rand2(-14, 14)}px`;
+  el.style.top = `${p[1] * innerHeight4 + stack * 52 + rand2(-6, 6)}px`;
+  el.style.transform = `rotate(${rand2(-4, 3).toFixed(1)}deg)`;
+  $3("#hand").appendChild(el);
+  SFX3.pen();
+  if (!big) setTimeout4(() => {
+    el.classList.add("gone");
+    setTimeout4(() => el.remove(), 600);
+  }, 2600);
+}
+function zonesOf(W, H, s) {
+  const out = [];
+  if (S5.contact === "feet_on_face") {
+    const th = S5.angle * Math4.PI / 180, ax = [Math4.sin(th), -Math4.cos(th)], nx = [Math4.cos(th), Math4.sin(th)];
+    const C2 = [0.5 + s.sway * 4e-3 * H / W, 0.52], Lh = 0.78;
+    const at = (k, side, off) => [C2[0] + (ax[0] * (k * 2 - 1) * Lh * H + nx[0] * side * off * H) / W, C2[1] + ax[1] * (k * 2 - 1) * Lh + nx[1] * side * off];
+    out.push({ id: "toes", p: at(0.76, 0, 0), w: 1 });
+    for (const side of [-1, 1]) {
+      out.push({ id: "toes", p: at(0.72, side, 0.06), w: 0.9 }, { id: "ball", p: at(0.6, side, 0.05), w: 0.8 }, { id: "arch", p: at(0.45, side, 0.045), w: 0.55 }, { id: "heel", p: at(0.27, side, 0.04), w: 0.65 });
+    }
+  } else if (S5.contact === "face_to_bottom") {
+    const Lm = (G4.sp[0].L + G4.sp[1].L) / 2, Pm = 1.38 / (1 + 0.28 * Lm), V = [0.5 + s.sway2 * 0.012 * H / W, 0.3];
+    out.push({ id: "center", p: [V[0], V[1] + (0.5 - clamp43(Lm, 0, 1) * 0.2) * Pm - 0.04], w: 1 });
+    out.push({ id: "center", p: [V[0], V[1] + 0.3 * Pm], w: 0.85 });
+    for (const side of [-1, 1]) out.push({ id: "side", p: [V[0] + side * 0.24, 0.72], w: 0.45 });
+  } else {
+    const mirror2 = S5.side.wedge === "left", mx = (x) => mirror2 ? 1 - x : x;
+    const oc = Math4.min(G4.o, 1), yL = 1.07 - oc * 0.56, edge = (u) => lerp2(yL, 1.02, u) + 0.06 * Math4.sin(Math4.PI * u) * (0.4 + 0.6 * oc);
+    out.push({ id: "hollow", p: [mx(0.6), 0.42], w: 1 }, { id: "hollow", p: [mx(0.72), 0.58], w: 0.9 });
+    out.push({ id: "edge", p: [mx(0.32), edge(0.37) - 0.05], w: 0.5 }, { id: "edge", p: [mx(0.14), edge(0.15) - 0.05], w: 0.45 });
+  }
+  return out;
+}
+function intensityAt(p) {
+  const ar = innerWidth4 / innerHeight4;
+  let best = 0, zone = null;
+  for (const z2 of G4.zones) {
+    const dx = (p[0] - z2.p[0]) * ar, dy = p[1] - z2.p[1], d2 = dx * dx + dy * dy;
+    const v = z2.w * Math4.exp(-d2 / (2 * 0.13 * 0.13));
+    if (v > best) {
+      best = v;
+      zone = z2;
+    }
+  }
+  const base = BASE_I[S5.contact];
+  return { I: clamp43(base + best * (1.1 - base), 0, 1.1), zone };
+}
+var stim = () => BAND[S5.band] / 1.5;
+var tolT = () => 0.3 + S5.tol / 100 * 0.8;
+var tolDepth = () => tolT() / Math4.max(0.05, G4.I * stim());
+var capacity = () => 6 + Math4.round(S5.tol / 12);
+var targetP = () => G4.order && (G4.order.k === "here" || G4.order.k === "ask") && G4.order.ti >= 0 && G4.zones[G4.order.ti] ? G4.zones[G4.order.ti].p : null;
+function atTarget() {
+  const tp = targetP();
+  if (!tp) return false;
+  const ar = innerWidth4 / innerHeight4;
+  return Math4.hypot((tp[0] - G4.nose[0]) * ar, tp[1] - G4.nose[1]) < 0.085;
+}
+function weighted2(obj2) {
+  const e = Object.entries(obj2);
+  let r = Math4.random() * e.reduce((a, [, w]) => a + w, 0);
+  for (const [k, w] of e) {
+    r -= w;
+    if (r <= 0) return k;
+  }
+  return e[0][0];
+}
+function newOrder() {
+  if (!S5.layers.orders) {
+    G4.nextOrderAt = G4.clock + 4 * BEAT3;
+    return;
+  }
+  const st2 = ST2();
+  let k;
+  if (st2.cycle) k = st2.cycle[G4.cycleI = ((G4.cycleI ?? -1) + 1) % st2.cycle.length];
+  else if (st2.tour) k = (G4.tourStep = (G4.tourStep ?? -1) + 1) % 2 === 0 ? "here" : pick5(["deeper", "gently"]);
+  else k = weighted2(st2.orders);
+  if (k === "deeper") {
+    G4.order = { k, band: [0.7, 0.95], until: G4.clock + 4500 };
+    say4(pick5(LINES2.deeper));
+  } else if (k === "gently") {
+    G4.order = { k, band: [0.25, 0.45], until: G4.clock + 4500 };
+    say4(pick5(LINES2.gently));
+  } else if (k === "here") {
+    let pair;
+    if (st2.tour || st2.cycle) {
+      const ids = ZONE_IDS[S5.contact];
+      const id = ids[(G4.tourI = (G4.tourI ?? -1) + 1) % ids.length];
+      pair = LINES2.here[S5.contact].find((x) => x[1] === id) ?? pick5(LINES2.here[S5.contact]);
+    } else pair = pick5(LINES2.here[S5.contact]);
+    nameplace(pair[0], pair[1]);
+  } else if (k === "still") {
+    G4.order = { k, until: G4.clock + 3500, from: [...G4.nose] };
+    say4(pick5(LINES2.still));
+  }
+}
+function nameplace(line3, id, moved = false) {
+  const ar = innerWidth4 / innerHeight4, dist2 = (q) => Math4.hypot((q[0] - G4.nose[0]) * ar, q[1] - G4.nose[1]);
+  let ti = -1;
+  G4.zones.forEach((z2, i) => {
+    if (z2.id !== id) return;
+    const b = G4.zones[ti];
+    if (ti < 0 || z2.w > b.w + 0.01 || Math4.abs(z2.w - b.w) <= 0.01 && dist2(z2.p) < dist2(b.p)) ti = i;
+  });
+  if (ti < 0) ti = 0;
+  G4.order = { k: "here", zone: id, ti, band: [0.5, 0.9], until: G4.clock + 7e3, moved };
+  G4.hereZone = id;
+  G4.askPlace = id;
+  const tp = G4.zones[ti].p;
+  say4(line3, false, [clamp43(tp[0] + 0.05, 0.04, 0.8), clamp43(tp[1] - 0.1, 0.06, 0.8)]);
+  SFX3.chime();
+}
+function orderDone(ok) {
+  if (!G4.order) return;
+  if (ok) {
+    G4.counts.ordersOk += 1;
+    if (Math4.random() < 0.6) say4(pick5(LINES2.good));
+  } else {
+    G4.counts.ordersBad += 1;
+    say4(pick5(LINES2.bad));
+    if (S5.style === "cruel") press2();
+  }
+  G4.order = null;
+  G4.hereZone = null;
+  G4.nextOrderAt = G4.clock + randInt3(...ST2().every) * BEAT3;
+}
+function press2() {
+  G4.o = Math4.max(0.12, G4.o - 0.15);
+  G4.shake = 1;
+  for (const x of G4.sp) x.v -= 1.6;
+  thump3(0, 0.4, 60);
+}
+function lift() {
+  G4.o = Math4.min(0.75, G4.o + 0.25);
+  for (const x of G4.sp) x.v += 1.2;
+}
+function addWord(w, cat, from) {
+  const el = document.createElement("div");
+  el.className = "hw";
+  el.textContent = w;
+  const p = from ?? G4.nose;
+  el._p = [p[0], p[1]];
+  el._a = rand2(0, Math4.PI * 2);
+  el._born = performance4.now();
+  el._spd = rand2(0.12, 0.26) * (Math4.random() < 0.5 ? -1 : 1);
+  $3("#words").appendChild(el);
+  G4.head.push({ w, cat, el });
+  G4.wordsTaken += 1;
+  if (G4.order && G4.order.k === "ask") buildPills();
+}
+function breathWords(d, forced = false) {
+  if (d < 0.3) return;
+  let n = d < 0.65 ? 1 : 2;
+  if (G4.I > 0.75) n += 1;
+  if (forced) n += 1;
+  const z2 = G4.zoneNow, from = z2 ? z2.p : G4.nose, list5 = [];
+  if (z2 && G4.I > 0.5) list5.push([pick5(PLACE_W[z2.id]), "place:" + z2.id]);
+  list5.push([pick5(SCENT[S5.color]), "scent"]);
+  if (d >= 0.65) list5.push([pick5(STAGE_W[S5.stage]), "stage:" + S5.stage]);
+  if (d >= 0.9) list5.push([pick5(BAND_W[S5.band]), "band:" + S5.band]);
+  list5.push([pick5(SCENT[S5.color]), "scent"]);
+  list5.slice(0, n).forEach(([w, cat], i) => setTimeout4(() => G4.phase === "loop" && addWord(w, cat, from), i * 160));
+}
+function blowWord() {
+  const h2 = G4.head.shift();
+  if (!h2) return;
+  h2.el._gone = performance4.now();
+  h2.el._out = [h2.el._p[0] - G4.nose[0], h2.el._p[1] - G4.nose[1]];
+}
+function scatter2(n) {
+  for (let i = 0; i < n && G4.head.length; i++) {
+    const k = randInt3(0, G4.head.length - 1);
+    const [h2] = G4.head.splice(k, 1);
+    h2.el._gone = performance4.now();
+    h2.el._out = [rand2(-1, 1), rand2(-1, 0.2)];
+  }
+}
+function tickWords(dt) {
+  const now = performance4.now(), n = G4.head.length, cap9 = capacity();
+  const crowd = clamp43(n / cap9, 0, 1.3), asking = G4.order && G4.order.k === "ask";
+  G4.head.forEach((h2, i) => {
+    const el = h2.el;
+    el._a += dt / 1e3 * h2.el._spd * (1 + crowd);
+    const ring = i % 2 ? 1 : 0.78, r = lerp2(0.16, 0.085, smooth(0.2, 1.1, crowd)) * ring;
+    const tx = G4.nose[0] + Math4.cos(el._a) * r * innerHeight4 / innerWidth4, ty = G4.nose[1] + Math4.sin(el._a) * r * 0.8;
+    const age2 = (now - el._born) / 650;
+    const k = age2 < 1 ? easeOut3(age2) * 0.2 + 0.02 : 0.12;
+    el._p = [lerp2(el._p[0], tx, k), lerp2(el._p[1], ty, k)];
+    el.style.left = `${(el._p[0] * innerWidth4).toFixed(1)}px`;
+    el.style.top = `${(el._p[1] * innerHeight4).toFixed(1)}px`;
+    el.style.opacity = asking ? "0" : String(clamp43(0.45 + crowd * 0.45, 0, 1).toFixed(2));
+    el.style.fontSize = `${(15 + crowd * 7).toFixed(1)}px`;
+  });
+  for (const el of [...$3("#words").children]) {
+    if (!el._gone) continue;
+    const t = (now - el._gone) / 700;
+    el._p[0] += el._out[0] * 0.02;
+    el._p[1] += el._out[1] * 0.02 - 4e-3;
+    el.style.left = `${el._p[0] * innerWidth4}px`;
+    el.style.top = `${el._p[1] * innerHeight4}px`;
+    el.style.opacity = String(Math4.max(0, 0.8 - t));
+    el.style.filter = `blur(${(t * 4).toFixed(1)}px)`;
+    if (t > 1.2) el.remove();
+  }
+  for (const el of wordEls) {
+    el.style.left = `${el._p[0] * innerWidth4}px`;
+    el.style.top = `${el._p[1] * innerHeight4}px`;
+    if (asking) el.style.opacity = String(clamp43((G4.order.until - G4.clock) / 4e3, 0.25, 1).toFixed(2));
+  }
+  G4.sat = n / cap9 * 100;
+}
+function inhaleStart2() {
+  if (G4.phase !== "loop" || G4.inhaling || G4.reflexCd > 0 || G4.lost > 0) return;
+  G4.inhaling = true;
+  G4.depth = 0;
+  G4.peak = 0;
+  breathSound("nose");
+}
+function inhaleEnd(forced = false) {
+  if (!G4.inhaling) return;
+  G4.inhaling = false;
+  breathStop();
+  const d = G4.depth;
+  G4.sinceBreath = 0;
+  G4.counts.breaths += 1;
+  if (d > 0.7) G4.counts.deep += 1;
+  SFX3.exhale(d);
+  breathWords(d, forced);
+  for (const x of G4.sp) x.v += 0.3;
+  deepInhale(d, false);
+  if (G4.lie > 0) {
+    G4.lie -= 1;
+    if (G4.lie === 0) answered(null);
+  }
+  const o = G4.order;
+  if (o && (o.k === "deeper" || o.k === "gently" || o.k === "here") && !forced) {
+    const inBand = d >= o.band[0] && d <= o.band[1];
+    if (o.k === "here" && atTarget() && inBand && ST2().moves && !o.moved && Math4.random() < ST2().moves) {
+      const others = LINES2.here[S5.contact].filter((x) => x[1] !== o.zone);
+      if (others.length) {
+        say4(pick5(LINES2.moved));
+        const p = pick5(others);
+        nameplace(p[0], p[1], true);
+        return;
+      }
+    }
+    orderDone(inBand && (o.k !== "here" || atTarget()));
+  } else if (!o && d > 0.75 && G4.I > 0.7 && G4.att === "watching") {
+    G4.counts.caught += 1;
+    say4(pick5(LINES2.caught));
+  }
+}
+function reflex() {
+  G4.inhaling = false;
+  breathStop();
+  G4.counts.coughs += 1;
+  G4.reflexCd = 1400;
+  G4.shake = 1.4;
+  G4.sinceBreath = 0;
+  SFX3.cough();
+  burst();
+  scatter2(2);
+  deepInhale(G4.depth, true);
+  if (G4.lie > 0) {
+    say4(pick5(LINES2.liar));
+    G4.lie = 0;
+    answered(true);
+    G4.counts.liesFound += 1;
+    press2();
+    setTimeout4(press2, 400);
+  } else say4(pick5(LINES2.cough));
+  if (G4.order && G4.order.k !== "ask" && G4.order.k !== "still") orderDone(false);
+  const v = $3("#cmd").value;
+  if (v) {
+    $3("#cmd").value = v.slice(0, Math4.max(0, v.length - randInt3(3, 8)));
+    tint.sync(true);
+  }
+}
+function overflow() {
+  G4.lost = 3200;
+  G4.counts.lost += 1;
+  G4.shake = 0.8;
+  say4(pick5(STAGE_RANK[S5.stage] >= 3 ? LINES2.lost.high : LINES2.lost.low));
+  setTimeout4(() => {
+    if (G4.phase !== "loop") return;
+    G4.inhaling = true;
+    G4.depth = 0;
+    breathSound("nose");
+    G4.forcedDeep = true;
+  }, 900);
+}
+function begin3() {
+  audioInit3();
+  if (A3.ctx && A3.ctx.state === "suspended") void A3.ctx.resume();
+  $3("#hand").replaceChildren();
+  $3("#words").replaceChildren();
+  wordEls.length = 0;
+  G4 = fresh3();
+  G4.phase = "entry";
+  G4.endAt = S5.len * 1e3;
+  setTimeout4(() => G4.phase === "entry" && say4(pick5(LINES2.entry[S5.contact])), 700);
+}
+function exit3(reason) {
+  if (G4.phase !== "loop" && G4.phase !== "entry") return;
+  G4.phase = "exit";
+  G4.phaseT = 0;
+  G4.reason = reason;
+  G4.inhaling = false;
+  breathStop();
+  for (const el of wordEls) el.remove();
+  wordEls.length = 0;
+  scatter2(G4.head.length);
+  setTimeout4(() => {
+    $3("#hand").replaceChildren();
+    say4(pick5(reason === "stop" ? LINES2.stop : LINES2.end), true, [0.56, 0.2]);
+  }, 900);
+}
+function updateLoop3(dt) {
+  G4.clock += dt;
+  breathTick();
+  const h2 = dt / 1e3;
+  const beatNow2 = Math4.floor(G4.clock / BEAT3);
+  while (G4.beat < beatNow2) {
+    G4.beat += 1;
+    G4.att = attentionNow();
+    if (G4.att === "busy" && S5.task === "reading" && Math4.random() < 0.35) SFX3.page();
+  }
+  const amb = AMBIENT_MS[S5.band];
+  if (amb && (G4.ambAt += dt) > amb) {
+    G4.ambAt = 0;
+    addWord(pick5(SCENT[S5.color]), "scent", G4.zones.length ? pick5(G4.zones).p : G4.nose);
+  }
+  const z2 = intensityAt(G4.nose);
+  G4.I = z2.I;
+  G4.zoneNow = z2.zone;
+  const strongest = G4.zones.slice().sort((a, b) => b.w - a.w)[0];
+  if (G4.lost > 0 && strongest) {
+    G4.drift[0] += (strongest.p[0] - G4.nose[0]) * h2 * 2.2;
+    G4.drift[1] += (strongest.p[1] - G4.nose[1]) * h2 * 2.2;
+  } else if (S5.layers.drift && z2.zone) {
+    const fill7 = 1 + clamp43(G4.sat / 100, 0, 1.2);
+    const pull = STAGE_PULL[S5.stage] * (STAGE_PULL[S5.stage] > 0 ? (G4.inhaling ? 1.5 : 1) * fill7 : G4.inhaling ? 1 : 0);
+    const dx = z2.zone.p[0] - G4.nose[0], dy = z2.zone.p[1] - G4.nose[1], d = Math4.hypot(dx, dy) || 1;
+    G4.drift[0] += dx / d * pull * 0.09 * h2;
+    G4.drift[1] += dy / d * pull * 0.09 * h2;
+  }
+  G4.drift = G4.drift.map((v) => clamp43(v * (1 - h2 * 0.35), -0.3, 0.3));
+  const target = [clamp43(G4.mouse[0] + G4.drift[0], 0.02, 0.98), clamp43(G4.mouse[1] + G4.drift[1], 0.04, 0.96)];
+  const k = G4.lost > 0 ? 1.2 : 14 - clamp43(G4.sat / 100, 0, 1) * 8;
+  G4.nose = [lerp2(G4.nose[0], target[0], clamp43(h2 * k, 0, 1)), lerp2(G4.nose[1], target[1], clamp43(h2 * k, 0, 1))];
+  if (G4.inhaling) {
+    G4.depth = Math4.min(1.25, G4.depth + dt / INHALE_FILL_MS);
+    G4.peak = Math4.max(G4.peak, G4.depth);
+    if (G4.depth * G4.I * stim() > tolT()) reflex();
+    else if (G4.forcedDeep && G4.depth >= 1) {
+      G4.forcedDeep = false;
+      inhaleEnd(true);
+    }
+  }
+  G4.reflexCd = Math4.max(0, G4.reflexCd - dt);
+  if (G4.mouth && !G4.inhaling && G4.lost <= 0) {
+    G4.sinceBreath = 0;
+    breathSound("mouth");
+    G4.mouthMs += dt;
+    G4.mouthTick -= dt;
+    if (G4.mouthTick <= 0 && G4.head.length) {
+      G4.mouthTick = 420;
+      blowWord();
+      G4.counts.mouthWords += 1;
+      blown();
+    }
+  } else {
+    if (!G4.inhaling && BR.kind === "mouth") breathStop();
+    G4.mouthMs = 0;
+  }
+  G4.sinceBreath += dt;
+  if (S5.layers.need && G4.sinceBreath > 7e3 && !G4.inhaling && !G4.mouth && G4.lost <= 0) {
+    G4.sinceBreath = 0;
+    G4.inhaling = true;
+    G4.depth = 0;
+    breathSound("nose");
+    G4.forcedDeep = true;
+    say4(pick5(LINES2.need));
+  }
+  if (G4.order) {
+    const o = G4.order;
+    if (o.k === "still") {
+      const moved = Math4.hypot((G4.nose[0] - o.from[0]) * innerWidth4, (G4.nose[1] - o.from[1]) * innerHeight4);
+      if (moved > 60) orderDone(false);
+      else if (G4.clock > o.until) orderDone(true);
+    } else if (G4.clock > o.until) {
+      if (o.k === "ask") {
+        for (const el of wordEls) el.remove();
+        wordEls.length = 0;
+        G4.nextAskAt = G4.clock + randInt3(...ST2().askEvery) * 1e3;
+      }
+      orderDone(false);
+    }
+  } else if (G4.clock > G4.nextAskAt && S5.layers.words) askWords2();
+  else if (G4.clock > G4.nextOrderAt) newOrder();
+  if (G4.I < 0.2 && G4.att !== "busy") {
+    G4.awayMs += dt;
+    if (G4.awayMs > 2500) {
+      G4.awayMs = -4e3;
+      G4.counts.away += 1;
+      say4(pick5(LINES2.away));
+      press2();
+    }
+  } else G4.awayMs = Math4.min(G4.awayMs, 0) + (G4.awayMs < 0 ? dt : 0);
+  if (G4.head.length > capacity() && G4.lost <= 0) overflow();
+  if (G4.lost > 0) {
+    G4.lost -= dt;
+    if (G4.lost <= 0) {
+      scatter2(Math4.ceil(G4.head.length / 2));
+      G4.drift = [0, 0];
+    }
+  }
+  G4.peakSat = Math4.max(G4.peakSat ?? 0, G4.sat);
+  G4.o = lerp2(G4.o, 0.35, clamp43(h2 * 0.5, 0, 1));
+}
+function heardMouth() {
+  const m = ST2().mouth;
+  G4.counts.noticed += 1;
+  const line3 = LINES2.mouth[m];
+  if (line3.length) say4(pick5(line3));
+  if (m === "punish" || m === "permission") press2();
+  if (m === "punish" && !G4.order) {
+    G4.order = { k: "still", until: G4.clock + 3500, from: [...G4.nose] };
+  }
+  if (m === "tease" && !G4.order) {
+    G4.order = { k: "deeper", band: [0.7, 0.95], until: G4.clock + 4500 };
+    say4(pick5(LINES2.deeper));
+  }
+}
+var mouse = [0.5, 0.55];
+function frame3(now) {
+  const dt = Math4.min(120, now - (frame3.last ?? now));
+  frame3.last = now;
+  G4.phaseT += dt;
+  switch (G4.phase) {
+    case "entry":
+      G4.cam = easeOut3(G4.phaseT / 1600);
+      G4.darkA = G4.cam;
+      if (G4.phaseT > 1600) {
+        G4.phase = "loop";
+        G4.clock = 0;
+      }
+      break;
+    case "loop":
+      G4.mouse = mouse;
+      if (R6.running) updateLoop3(dt);
+      break;
+    case "exit": {
+      const p = G4.phaseT / 1500;
+      G4.darkA = 1 - smooth(0.2, 1, p);
+      G4.sat = lerp2(G4.sat, 0, clamp43(dt / 600, 0, 1));
+      break;
+    }
+    default:
+      G4.darkA = 0;
+  }
+  G4.shake = Math4.max(0, G4.shake - dt / 300);
+  tickWords(dt);
+  render3(now, dt);
+  requestAnimationFrame4(frame3);
+}
+frame3.last = void 0;
+var darkC2;
+var dctx2;
+var airC2;
+var actx2;
+var glowC2;
+var gctx2;
+var strC;
+var sctx2;
+function size2() {
+  const w = Math4.ceil(innerWidth4 / DS), h2 = Math4.ceil(innerHeight4 / DS);
+  for (const c of [darkC2, airC2, glowC2]) {
+    c.width = w;
+    c.height = h2;
+  }
+  strC.width = innerWidth4;
+  strC.height = innerHeight4;
+}
+var parts = [];
+function spawnStreams(n, strength) {
+  for (let i = 0; i < n; i++) {
+    let z2 = null, r = Math4.random() * G4.zones.reduce((a, b) => a + b.w, 0);
+    for (const q of G4.zones) {
+      r -= q.w;
+      if (r <= 0) {
+        z2 = q;
+        break;
+      }
+    }
+    if (!z2) z2 = G4.zones[0];
+    parts.push({ x: (z2.p[0] + rand2(-0.04, 0.04)) * innerWidth4, y: (z2.p[1] + rand2(-0.04, 0.04)) * innerHeight4, vx: rand2(-40, 40), vy: rand2(-40, 40), life: 1, a: strength });
+  }
+}
+function spawnMotes(dt) {
+  const h2 = dt / 1e3;
+  for (const z2 of G4.zones) {
+    const named4 = G4.order && G4.order.k === "here" && G4.zones[G4.order.ti] === z2;
+    const rate = z2.w * stim() * 26 * G4.darkA * (1 + G4.sat / 120) * (named4 ? 3 : 1);
+    let n = rate * h2;
+    while (n > 0) {
+      if (Math4.random() < Math4.min(1, n)) parts.push({ mote: true, x: (z2.p[0] + rand2(-0.035, 0.035)) * innerWidth4, y: (z2.p[1] + rand2(-0.03, 0.03)) * innerHeight4, vx: rand2(-18, 18), vy: rand2(-34, -8), life: 1, decay: rand2(0.25, 0.45), size: rand2(0.8, 2.4), tw: rand2(0, 6.28), a: clamp43(z2.w * stim(), 0.3, 1.2) });
+      n -= 1;
+    }
+  }
+  if (Math4.random() < h2 * (2 + G4.sat / 12)) parts.push({ mote: true, x: rand2(0, innerWidth4), y: rand2(0, innerHeight4), vx: rand2(-8, 8), vy: rand2(-10, 4), life: 1, decay: rand2(0.2, 0.35), size: rand2(0.6, 1.6), tw: rand2(0, 6.28), a: 0.5 });
+}
+function burst() {
+  for (const p of parts) {
+    const dx = p.x - G4.nose[0] * innerWidth4, dy = p.y - G4.nose[1] * innerHeight4, d = Math4.hypot(dx, dy) || 1;
+    p.vx = dx / d * 900;
+    p.vy = dy / d * 900;
+    p.life = Math4.min(p.life, 0.5);
+  }
+}
+function drawStreams(dt) {
+  const h2 = dt / 1e3, nx = G4.nose[0] * innerWidth4, ny = G4.nose[1] * innerHeight4;
+  sctx2.globalCompositeOperation = "destination-out";
+  sctx2.fillStyle = `rgba(0,0,0,${S5.reduced ? 1 : S5.look === "motes" && !G4.inhaling ? 0.5 : 0.22})`;
+  sctx2.fillRect(0, 0, strC.width, strC.height);
+  sctx2.globalCompositeOperation = "lighter";
+  sctx2.lineCap = "round";
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i];
+    const dx = nx - p.x, dy = ny - p.y, d = Math4.hypot(dx, dy) || 1;
+    const pullK = G4.inhaling ? 1400 + G4.depth * 2600 : p.mote ? 0 : 200;
+    p.vx += (dx / d * pullK + -dy / d * 260) * h2;
+    p.vy += (dy / d * pullK + dx / d * 260) * h2;
+    if (p.mote && !G4.inhaling) {
+      p.vx += rand2(-30, 30) * h2;
+      p.vy += rand2(-30, 26) * h2;
+    }
+    p.vx *= 1 - h2 * (p.mote && !G4.inhaling ? 0.4 : 1.6);
+    p.vy *= 1 - h2 * (p.mote && !G4.inhaling ? 0.4 : 1.6);
+    const ox = p.x, oy = p.y;
+    p.x += p.vx * h2;
+    p.y += p.vy * h2;
+    p.life -= h2 * (p.mote ? p.decay * (G4.inhaling ? 1.4 : 1) : G4.inhaling ? 0.7 : 1.4);
+    if (d < 18 && G4.inhaling || !p.mote && d < 18 || p.life <= 0 || parts.length > 900) {
+      parts.splice(i, 1);
+      continue;
+    }
+    if (p.mote) {
+      const tw = 0.55 + 0.45 * Math4.sin(p.tw += h2 * 5), al = Math4.min(1, p.life * 2) * Math4.min(1, (1 - p.life) * 6 + 0.2) * tw * p.a * G4.darkA;
+      sctx2.fillStyle = `rgba(${COLORS[S5.color]},${(0.22 * al).toFixed(3)})`;
+      sctx2.beginPath();
+      sctx2.arc(p.x, p.y, p.size * 3.2, 0, 6.283);
+      sctx2.fill();
+      sctx2.fillStyle = `rgba(${COLORS[S5.color]},${(0.85 * al).toFixed(3)})`;
+      sctx2.beginPath();
+      sctx2.arc(p.x, p.y, p.size, 0, 6.283);
+      sctx2.fill();
+      if (G4.inhaling) {
+        sctx2.strokeStyle = `rgba(${COLORS[S5.color]},${(0.35 * al).toFixed(3)})`;
+        sctx2.lineWidth = p.size;
+        sctx2.beginPath();
+        sctx2.moveTo(ox, oy);
+        sctx2.lineTo(p.x, p.y);
+        sctx2.stroke();
+      }
+    } else {
+      sctx2.strokeStyle = `rgba(${COLORS[S5.color]},${(0.5 * p.a * p.life).toFixed(3)})`;
+      sctx2.lineWidth = 1.2 + p.a * 1.2;
+      sctx2.beginPath();
+      sctx2.moveTo(ox, oy);
+      sctx2.lineTo(p.x, p.y);
+      sctx2.stroke();
+    }
+  }
+  sctx2.globalCompositeOperation = "source-over";
+}
+var cache2 = /* @__PURE__ */ new Map();
+var setStyle3 = (el, prop, v) => {
+  if (S5.readable && prop === "filter") v = v.replace(/blur\([^)]*\)/g, "blur(0px)");
+  const key = (el.id || String(el.className)) + prop;
+  if (cache2.get(key) === v) return;
+  cache2.set(key, v);
+  el.style[prop] = v;
+};
+function arcPath(r, a0, a1) {
+  const A0 = -Math4.PI * 1.25, span = Math4.PI * 1.5;
+  const s = A0 + span * clamp43(a0, 0, 1), e = A0 + span * clamp43(a1, 0, 1);
+  if (e - s < 1e-3) return "";
+  return `M${(Math4.cos(s) * r).toFixed(2)} ${(Math4.sin(s) * r).toFixed(2)} A${r} ${r} 0 ${e - s > Math4.PI ? 1 : 0} 1 ${(Math4.cos(e) * r).toFixed(2)} ${(Math4.sin(e) * r).toFixed(2)}`;
+}
+function render3(now, dt) {
+  const W = airC2.width, H = airC2.height, t = now / 1e3;
+  const reduced = S5.reduced;
+  const sway = reduced ? 0 : Math4.sin(t * Math4.PI * 2 / 3.1), sway2 = reduced ? 0 : Math4.sin(t * Math4.PI * 2 / 4.7 + 1.3);
+  const live3 = G4.phase === "loop" || G4.phase === "entry";
+  $3("#stage").classList.toggle("live", live3);
+  $3("#stage").classList.toggle("asking", !!(G4.order && G4.order.k === "ask"));
+  const par = [-(G4.nose[0] - 0.5) * 0.06, -(G4.nose[1] - 0.55) * 0.05];
+  const h2 = Math4.min(dt, 40) / 1e3;
+  G4.sp.forEach((x, i) => {
+    const tgt = G4.o + (reduced ? 0 : (i ? -1 : 1) * sway2 * 0.05);
+    const a = x.k * (tgt - x.L) - 7.5 * x.v;
+    x.v += a * h2;
+    x.L += x.v * h2;
+  });
+  const shapeState = { sway, sway2, squeeze: 0, slideDir: -1, slideY: 0, sp: G4.sp, t };
+  actx2.setTransform(1, 0, 0, 1, 0, 0);
+  actx2.clearRect(0, 0, W, H);
+  actx2.fillStyle = "#fff";
+  actx2.save();
+  actx2.translate(par[0] * W, par[1] * H);
+  const kind = { feet_on_face: "gap", face_to_bottom: "seat", smothered_armpit: "wedge" }[S5.contact];
+  SHAPES[kind](actx2, W, H, G4.o + sway * 0.01, shapeState);
+  actx2.restore();
+  G4.zones = zonesOf(W, H, shapeState).map((z2) => ({ ...z2, p: [z2.p[0] + par[0], z2.p[1] + par[1]] }));
+  gctx2.clearRect(0, 0, W, H);
+  gctx2.filter = "blur(8px)";
+  gctx2.drawImage(airC2, 0, 0);
+  gctx2.filter = "none";
+  gctx2.globalCompositeOperation = "source-in";
+  gctx2.fillStyle = "rgb(226,78,52)";
+  gctx2.fillRect(0, 0, W, H);
+  gctx2.globalCompositeOperation = "source-over";
+  dctx2.globalCompositeOperation = "source-over";
+  dctx2.clearRect(0, 0, W, H);
+  dctx2.globalAlpha = G4.darkA;
+  dctx2.fillStyle = "rgb(6,4,8)";
+  dctx2.fillRect(0, 0, W, H);
+  dctx2.globalCompositeOperation = "source-atop";
+  dctx2.globalAlpha = G4.darkA * 0.6;
+  dctx2.drawImage(glowC2, 0, 0);
+  dctx2.globalAlpha = G4.darkA * 0.28;
+  dctx2.filter = "blur(10px)";
+  dctx2.drawImage(glowC2, 0, 0);
+  dctx2.filter = "none";
+  dctx2.globalCompositeOperation = "destination-out";
+  dctx2.globalAlpha = 1;
+  dctx2.filter = "blur(1px)";
+  dctx2.drawImage(airC2, 0, 0);
+  dctx2.filter = "none";
+  dctx2.globalCompositeOperation = "source-over";
+  dctx2.globalAlpha = 1;
+  const sh = reduced ? 0 : G4.shake * 7;
+  darkC2.style.transform = sh ? `translate(${rand2(-sh, sh)}px, ${rand2(-sh, sh)}px)` : "";
+  const col = COLORS[S5.color];
+  if (live3) spawnMotes(dt);
+  if (live3 && G4.inhaling && Math4.random() < 0.9) spawnStreams(Math4.ceil(2 + G4.depth * 5 * G4.I), clamp43(G4.I * stim(), 0.2, 1.2));
+  drawStreams(dt);
+  const f = clamp43(G4.sat / 100, 0, 1.1), over2 = G4.overload > 0 ? 1 : 0;
+  setStyle3($3("#inner"), "filter", `saturate(${(1 + f * 0.85 + over2 * 0.4).toFixed(2)}) contrast(${(1 + f * 0.1).toFixed(2)}) blur(${(over2 * 1.5 + f * 0.3).toFixed(1)}px)`);
+  setStyle3($3("#inner"), "transform", reduced || f < 0.4 ? "" : `scale(${(1 + Math4.sin(t * 1.4) * 6e-3 * f).toFixed(4)})`);
+  setStyle3($3("#bloom"), "opacity", (smooth(0.3, 1, f) * 0.45).toFixed(2));
+  setStyle3($3("#edge"), "background", f < 0.02 ? "none" : `radial-gradient(ellipse 80% 75% at ${(G4.nose[0] * 100).toFixed(0)}% ${(G4.nose[1] * 100).toFixed(0)}%, rgba(0,0,0,0) ${(62 - f * 25).toFixed(0)}%, rgba(${col},${(f * 0.32).toFixed(2)}) 100%)`);
+  $3("#stage").style.setProperty("--scent", col);
+  const tp = targetP(), mark = $3("#mark");
+  setStyle3(mark, "opacity", tp && live3 ? "1" : "0");
+  if (tp) {
+    const there = atTarget(), ph = now / 900 % 1;
+    mark.style.transform = `translate(${(tp[0] * innerWidth4).toFixed(1)}px, ${(tp[1] * innerHeight4).toFixed(1)}px)`;
+    $3("#mPulse").setAttribute("r", (20 + ph * 22).toFixed(1));
+    $3("#mPulse").setAttribute("opacity", (1 - ph).toFixed(2));
+    $3("#mGlow").setAttribute("opacity", there ? "0.9" : "0.35");
+    $3("#mFill").setAttribute("opacity", there ? "0.28" : "0");
+    $3("#mRing").setAttribute("r", there ? "24" : "20");
+  }
+  const arc = $3("#arc");
+  setStyle3(arc, "opacity", live3 ? "1" : "0");
+  arc.style.transform = `translate(${(G4.nose[0] * innerWidth4).toFixed(1)}px, ${(G4.nose[1] * innerHeight4).toFixed(1)}px)`;
+  const R7 = 40, td = tolDepth() / 1.25;
+  $3("#aTrack").setAttribute("d", arcPath(R7, 0, 1));
+  $3("#aDanger").setAttribute("d", td < 1 ? arcPath(R7, td, 1) : "");
+  const o = G4.order, band2 = o && o.band ? o.band : null;
+  $3("#aBand").setAttribute("d", band2 ? arcPath(R7, band2[0] / 1.25, band2[1] / 1.25) : "");
+  $3("#aBand").setAttribute("stroke", `rgba(${col},.55)`);
+  $3("#aBand").setAttribute("opacity", band2 ? "1" : "0");
+  const fd = (G4.inhaling ? G4.depth : 0) / 1.25;
+  const fillCol = G4.inhaling && G4.depth * G4.I * stim() > tolT() * 0.85 ? "255,90,70" : col;
+  $3("#aFill").setAttribute("d", arcPath(R7, 0, fd));
+  $3("#aFill").setAttribute("stroke", `rgb(${fillCol})`);
+  $3("#aFillGlow").setAttribute("d", arcPath(R7, 0, fd));
+  $3("#aFillGlow").setAttribute("stroke", `rgb(${fillCol})`);
+  const ta = -Math4.PI * 1.25 + Math4.PI * 1.5 * clamp43(td, 0, 1);
+  $3("#aTol").setAttribute("x1", (Math4.cos(ta) * (R7 - 7)).toFixed(1));
+  $3("#aTol").setAttribute("y1", (Math4.sin(ta) * (R7 - 7)).toFixed(1));
+  $3("#aTol").setAttribute("x2", (Math4.cos(ta) * (R7 + 7)).toFixed(1));
+  $3("#aTol").setAttribute("y2", (Math4.sin(ta) * (R7 + 7)).toFixed(1));
+  $3("#aTol").setAttribute("opacity", td < 1 ? "1" : "0");
+  const prox = smooth(0.15, 1.05, G4.I);
+  $3("#aProx").setAttribute("r", (2 + prox * 4.5).toFixed(1));
+  $3("#aProx").setAttribute("fill", `rgba(${col},${(0.6 + prox * 0.4).toFixed(2)})`);
+  $3("#aProxGlow").setAttribute("r", (8 + prox * 16).toFixed(1));
+  $3("#aProxGlow").setAttribute("fill", `rgb(${col})`);
+  $3("#aProxGlow").setAttribute("opacity", (prox * 0.55).toFixed(2));
+  const need = S5.layers.need && live3 ? smooth(4500, 7e3, G4.sinceBreath) : 0;
+  $3("#aNeed").setAttribute("opacity", (need * (0.5 + 0.5 * Math4.sin(now / 120))).toFixed(2));
+  $3("#aNeed").setAttribute("stroke", "rgba(255,255,255,.7)");
+  $3("#aNeed").setAttribute("r", (R7 + 8 - need * 4).toFixed(1));
+  if (A3.ctx) {
+    const ct = A3.ctx.currentTime;
+    A3.droneG.gain.setTargetAtTime(live3 ? f * f * 0.05 : 0, ct, 0.3);
+    A3.world.frequency.setTargetAtTime(14e3 * Math4.pow(500 / 14e3, smooth(0.3, 1.05, f)), ct, 0.2);
+    A3.master.gain.setTargetAtTime(S5.sound ? S5.vol : 0, ct, 0.05);
+  }
+  setStyle3($3("#reply"), "opacity", live3 ? "0.4" : "1");
+}
+var tint = {
+  chars: [],
+  prev: "",
+  sync(reset) {
+    const v = $3("#cmd").value;
+    if (reset) {
+      this.chars = [...v].map((ch) => ({ ch, tint: false }));
+      this.prev = v;
+      this.draw();
+      return;
+    }
+    const p = this.prev;
+    let a = 0;
+    while (a < v.length && a < p.length && v[a] === p[a]) a++;
+    let b = 0;
+    while (b < v.length - a && b < p.length - a && v[v.length - 1 - b] === p[p.length - 1 - b]) b++;
+    this.chars.splice(a, p.length - a - b, ...[...v.slice(a, v.length - b)].map((ch) => ({ ch, tint: false })));
+    this.prev = v;
+    if (S5.layers.tint && G4.phase === "loop" && v.endsWith(" ") && !p.endsWith(" ") && Math4.random() < smooth(45, 100, G4.sat) * 0.33) {
+      const m = v.slice(0, -1).match(/(\S+)$/);
+      if (m) {
+        const repl = Math4.random() < 0.35 || !G4.head.length ? S5.name : pick5(G4.head).w;
+        const start = v.length - 1 - m[1].length;
+        const nv = v.slice(0, start) + repl + " ";
+        $3("#cmd").value = nv;
+        this.chars.splice(start, m[1].length, ...[...repl].map((ch) => ({ ch, tint: true })));
+        this.prev = nv;
+      }
+    }
+    this.draw();
+  },
+  draw() {
+    const m = $3("#mirror");
+    m.replaceChildren(...this.chars.map((c) => {
+      const s = document.createElement("span");
+      s.textContent = c.ch;
+      if (c.tint) s.className = "tint";
+      return s;
+    }));
+    m.scrollLeft = $3("#cmd").scrollLeft;
+  }
+};
+var typing3 = (t) => t && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
+var R6 = { run: null, lineStyle: "neutral", seg: null, running: false, held: 0, blownBeat: 0, via: "key", mouthVia: "key", cheatsCaught: 0, pending: null, kind: null, plan: [] };
+function attentionNow() {
+  const seg = R6.seg;
+  if (!seg) return "busy";
+  const b = clamp43(Math4.floor((G4.clock - seg.clock0) / BEAT3), 0, seg.beats - 1);
+  return R6.plan[b]?.attention ?? "busy";
+}
+function blown() {
+  R6.blownBeat += 1;
+}
+function refreshLines3() {
+  if (!E3) return;
+  const reg = E3.env.registries;
+  const own = (k) => [...voiceLines(reg, `scent.${k}`, R6.lineStyle)];
+  const c = S5.contact;
+  const here = own(`here.${c}`);
+  LINES2 = {
+    entry: { [c]: own(`entry.${c}`) },
+    deeper: own("deeper"),
+    gently: own("gently"),
+    still: own("still"),
+    here: { [c]: (HERE_ZONES[c] ?? []).map((z2, i) => [here[i] ?? "", z2]) },
+    moved: own("moved"),
+    good: own("good"),
+    bad: own("bad"),
+    mouth: { [ST2().mouth]: own("mouth") },
+    away: own("away"),
+    cough: own("cough"),
+    answer: { ok: { [S5.style]: own("answer.ok") }, bad: { [S5.style]: own("answer.bad") }, empty: own("answer.empty") },
+    liar: own("liar"),
+    caught: own("caught"),
+    lost: { low: own("lost.low"), high: own("lost.high") },
+    need: own("need"),
+    end: own("end"),
+    stop: own("stop"),
+    ask: own("ask"),
+    miss: Object.fromEntries(MISS_KINDS.map((k) => [k, own(`miss.${k}`)]))
+  };
+}
+var MISS_KINDS = ["warm", "admit", "bad", "want", "place", "strength", "band", "intensity_wrong", "intensity_missing", "honest"];
+function report3(i, pointer) {
+  if (!E3 || !R6.seg) return;
+  E3.env.staging.input(i, { pointer });
+}
+function reportBeat2(beat) {
+  const blownN = R6.blownBeat;
+  R6.blownBeat = 0;
+  if (blownN > 0) {
+    report3({ beat, kind: "mouth_breath", amount: blownN }, R6.mouthVia === "mouse");
+    R6.held = Math4.max(0, R6.held - blownN);
+  }
+  const cap9 = capacity();
+  const gained = Math4.max(0, Math4.min(cap9, G4.head.length) - R6.held);
+  report3({ beat, kind: "inhale", amount: gained }, false);
+  R6.held = Math4.min(cap9, R6.held + gained);
+}
+function answered(caught) {
+  const p = R6.pending;
+  if (!p || !E3) return;
+  R6.pending = null;
+  E3.env.staging.answer?.(p.right, true, caught === true);
+}
+function judged(right, lie) {
+  if (!E3) return;
+  if (lie) {
+    R6.pending = { right };
+    return;
+  }
+  E3.env.staging.answer?.(right, false, false);
+}
+function deepInhale(d, cough) {
+  if (!E3 || !R6.kind || !cough && d <= 0.7) return;
+  const [lo, hi] = inhaleZone(S5.band, S5.tol);
+  const depth = cough ? Math4.min(100, Math4.max(Math4.ceil(hi) + 1, Math4.round(d * 100))) : Math4.max(Math4.ceil(lo), Math4.min(Math4.floor(hi), Math4.round(d * 100)));
+  E3.env.staging.stimulus("inhale", R6.kind, depth);
+}
+function startSegment(run, ck) {
+  const plan = run.segment.plan;
+  const phys = E3.env.registries.contactPhysics.get(run.physicsId);
+  const endMs = Number(phys?.segmentSeconds ?? 30) * 1e3;
+  R6.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0: G4.clock - (ck.now - ck.startedAt), beats: plan.beats.length, endMs, flushed: false, reported: 0 };
+  R6.plan = plan.beats;
+  R6.held = clamp43(run.gauge / (Math4.max(1, run.capacity) / capacity()), 0, capacity());
+  R6.blownBeat = 0;
+}
+function before3() {
+  const e = E3;
+  const r = e.env.root.getBoundingClientRect();
+  const w = e.env.root.clientWidth || r.width || globalThis.innerWidth || 0, h2 = e.env.root.clientHeight || r.height || globalThis.innerHeight || 0;
+  if (w !== innerWidth4 || h2 !== innerHeight4) {
+    innerWidth4 = w;
+    innerHeight4 = h2;
+    size2();
+  }
+  S5.reduced = e.env.reduced;
+  S5.readable = e.env.readable;
+  e.box.toggleAttribute("data-reduced", S5.reduced);
+  e.box.toggleAttribute("data-readable", S5.readable);
+  e.mirror.toggleAttribute("data-readable", S5.readable);
+  if (!A3.ctx) audioInit3();
+  else if (!SAMPLE.buf) void loadSample();
+  if (R6.run) body(e.env.state(), e.env.registries, R6.run);
+  const bg = e.env.layers.backdrop.style.backgroundImage;
+  const room2 = e.els["#room"];
+  if (bg !== room2.style.backgroundImage) room2.style.backgroundImage = bg;
+  const input = e.env.input;
+  if (input.value !== tint.prev) tint.sync();
+  placeMirror3(e);
+  const run = R6.run;
+  const ck = e.env.staging.clock();
+  R6.running = run !== null && run.segment.state === "running" && run.segment.plan !== void 0 && ck.startedAt !== null;
+  if (G4.phase === "loop" && R6.running && (R6.seg === null || R6.seg.n !== run.segment.n || R6.seg.startedAt !== ck.startedAt)) startSegment(run, ck);
+  const seg = R6.seg;
+  if (R6.running && seg && !seg.flushed) {
+    const passed = Math4.floor((G4.clock - seg.clock0) / BEAT3);
+    while (seg.reported < Math4.min(passed, seg.beats)) reportBeat2(seg.reported++);
+    if (G4.clock - seg.clock0 >= seg.endMs - 300) {
+      seg.flushed = true;
+      while (seg.reported < seg.beats) reportBeat2(seg.reported++);
+    }
+  }
+}
+function after3() {
+  const e = E3;
+  if (!e) return;
+  const last = e.els["#hand"].lastElementChild;
+  if (last !== lastLine3) {
+    lastLine3 = last;
+    keepInFrame3(e);
+  }
+  noteWrites(e.claims[0], ["opacity"]);
+  const hide = (G4.phase === "loop" || G4.phase === "entry") && !(G4.order && G4.order.k === "ask");
+  if (e.env.layers.frame.style.cursor === "none" !== hide) writeClaimed(e.claims[1], "cursor", hide ? "none" : null);
+  e.mirror.style.setProperty("--alius-scent-tint", COLORS[S5.color]);
+}
+var lastLine3 = null;
+function keepInFrame3(e) {
+  for (const el of e.els["#hand"].children) {
+    const w = el.offsetWidth, x = el.offsetLeft;
+    if (!w) continue;
+    if (x + w > innerWidth4 - 8) el.style.left = `${Math4.max(8, innerWidth4 - 8 - w)}px`;
+    else if (x < 8) el.style.left = "8px";
+  }
+}
+function placeMirror3(e) {
+  const input = e.env.input;
+  const m = e.mirror;
+  m.style.left = `${input.offsetLeft}px`;
+  m.style.top = `${input.offsetTop}px`;
+  m.style.width = `${input.offsetWidth}px`;
+  m.style.height = `${input.offsetHeight}px`;
+}
+function body(state, reg, run) {
+  const part = run.sourceKind === "contact" ? contactTargetOf(state.scene, reg, run.sourceId) ?? run.targetId : void 0;
+  S5.band = scentBand(state, reg, run.holderId, part);
+  const ex = state.scene ? exposedKinds(state, reg).find((x) => x.holderId === run.holderId && String(reg.stimulusKinds.get(x.kind)?.family) !== "taste") : void 0;
+  R6.kind = ex?.kind ?? null;
+  const row4 = ex ? state.commander.stimuli?.[ex.kind] : void 0;
+  S5.stage = row4?.stage ?? STAGES[0];
+  S5.tol = ex ? toleranceOf(state, ex.kind) : TUNING.stimuli.startTolerance;
+}
+var SVG_NS7 = "http://www.w3.org/2000/svg";
+function svgEl2(tag2, attrs, parent) {
+  const el = document.createElementNS(SVG_NS7, tag2);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  parent.append(el);
+  return el;
+}
+function build3(env) {
+  const box = document.createElement("div");
+  box.className = "alius-scent";
+  box.id = "alius-scent-stage";
+  box.setAttribute("aria-hidden", "true");
+  const els = { "#stage": box };
+  const div = (id, parent, tag2 = "div") => {
+    const el = document.createElement(tag2);
+    el.className = `alius-scent-${id}`;
+    el.id = `alius-scent-${id}`;
+    els[`#${id}`] = el;
+    parent.append(el);
+    return el;
+  };
+  const inner = div("inner", box);
+  const world = div("world", inner);
+  div("room", world);
+  div("ceiling", world);
+  const dark = lowres(inner);
+  dark.canvas.classList.add("alius-scent-dark");
+  els["#dark"] = dark.canvas;
+  const streams = div("streams", inner, "canvas");
+  div("bloom", inner);
+  div("edge", inner);
+  div("words", box);
+  const mark = svgEl2("svg", { class: "alius-scent-mark", id: "alius-scent-mark", viewBox: "-50 -50 100 100" }, box);
+  els["#mark"] = mark;
+  const mdefs = svgEl2("defs", {}, mark);
+  const mf = svgEl2("filter", { id: "alius-scent-mg", x: "-60%", y: "-60%", width: "220%", height: "220%" }, mdefs);
+  svgEl2("feGaussianBlur", { stdDeviation: "2.5" }, mf);
+  els["#mGlow"] = svgEl2("circle", { r: "26", fill: "none", "stroke-width": "6", filter: "url(#alius-scent-mg)" }, mark);
+  els["#mPulse"] = svgEl2("circle", { r: "26", fill: "none", "stroke-width": "1.2" }, mark);
+  els["#mRing"] = svgEl2("circle", { r: "20", fill: "none", "stroke-width": "2" }, mark);
+  els["#mFill"] = svgEl2("circle", { r: "20", opacity: "0", class: "alius-scent-mFill" }, mark);
+  const arc = svgEl2("svg", { class: "alius-scent-arc", id: "alius-scent-arc", viewBox: "-60 -60 120 120" }, box);
+  els["#arc"] = arc;
+  const adefs = svgEl2("defs", {}, arc);
+  const af = svgEl2("filter", { id: "alius-scent-ag", x: "-50%", y: "-50%", width: "200%", height: "200%" }, adefs);
+  svgEl2("feGaussianBlur", { stdDeviation: "2.2" }, af);
+  const a = (id, tag2, attrs) => {
+    els[`#${id}`] = svgEl2(tag2, attrs, arc);
+  };
+  a("aNeed", "circle", { r: "40", fill: "none", "stroke-width": "2", opacity: "0" });
+  a("aTrack", "path", { fill: "none", stroke: "rgba(255,255,255,.16)", "stroke-width": "3", "stroke-linecap": "round" });
+  a("aBand", "path", { fill: "none", "stroke-width": "6", "stroke-linecap": "round", opacity: "0" });
+  a("aDanger", "path", { fill: "none", stroke: "rgba(255,70,60,.55)", "stroke-width": "3", "stroke-linecap": "round" });
+  a("aFillGlow", "path", { fill: "none", "stroke-width": "7", "stroke-linecap": "round", filter: "url(#alius-scent-ag)", opacity: ".7" });
+  a("aFill", "path", { fill: "none", "stroke-width": "3", "stroke-linecap": "round" });
+  a("aTol", "line", { stroke: "#fff", "stroke-width": "1.6" });
+  a("aProxGlow", "circle", { r: "12", filter: "url(#alius-scent-ag)", opacity: "0" });
+  a("aProx", "circle", { r: "2.2", fill: "rgba(255,255,255,.85)" });
+  div("hand", box);
+  env.layers.effects.append(box);
+  const off = () => {
+    const l = lowres(document.createElement("div"));
+    l.canvas.remove();
+    return l;
+  };
+  const air = off(), glow = off();
+  darkC2 = dark.canvas;
+  dctx2 = dark.ctx;
+  airC2 = air.canvas;
+  actx2 = air.ctx;
+  glowC2 = glow.canvas;
+  gctx2 = glow.ctx;
+  strC = streams;
+  let s2 = null;
+  try {
+    s2 = streams.getContext("2d");
+  } catch {
+    s2 = null;
+  }
+  sctx2 = s2 ?? lowres(document.createElement("div")).ctx;
+  const mirror2 = document.createElement("div");
+  mirror2.className = "alius-scent-mirror";
+  mirror2.setAttribute("aria-hidden", "true");
+  inputLine3(env).append(mirror2);
+  env.input.dataset.scentLetters = "";
+  const claims3 = [claimStyles(env.reply, ["opacity"]), claimStyles(env.layers.frame, ["cursor"])];
+  return { env, box, els, mirror: mirror2, claims: claims3, frameId: null };
+}
+function bind3(env, run) {
+  const state = env.state();
+  const reg = env.registries;
+  seed3 = fnv1a3(`${state.scene?.id ?? ""}|${run.id}|scent`) >>> 0 || 2463534242;
+  const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
+  S5.style = lead.key in STYLES3 ? lead.key : ROW_BY_CUES3[lead.cues] ?? "neutral";
+  R6.lineStyle = lead.key;
+  R6.run = run;
+  R6.seg = null;
+  R6.running = false;
+  R6.held = 0;
+  R6.blownBeat = 0;
+  R6.via = "key";
+  R6.mouthVia = "key";
+  R6.pending = null;
+  R6.plan = [];
+  R6.cheatsCaught = run.tally?.cheatsCaught ?? 0;
+  BEAT3 = TUNING.physics.beatMs;
+  const occ = occlusionOf(run.sourceKind === "contact" ? reg.blockingContacts.get(run.sourceId) : void 0);
+  S5.contact = CONTACT_OF[occ.kind] ?? "feet_on_face";
+  S5.angle = occ.angle ?? -14;
+  S5.side = { wedge: occ.kind === "wedge" && occ.side ? occ.side : "right" };
+  S2.angle = S5.angle;
+  S2.side = { ...S2.side, wedge: S5.side.wedge };
+  const look = env.her(run.holderId);
+  S5.name = look.name;
+  const act = state.scene ? state.scene.blocking?.[run.holderId]?.activity : void 0;
+  const attention = act !== void 0 ? String(reg.blockingActivities.get(act)?.attention ?? "") : "";
+  S5.task = attention === "on_commander" || attention === "" ? "watching_you" : "reading";
+  body(state, reg, run);
+  refreshLines3();
+  const owner = state.scene?.participants.find((id) => state.squad.some((u) => u.id === id)) ?? null;
+  const ceilings = state.scene ? ceilingOf(state, reg, state.scene.locationId, owner) : [];
+  const ceilEl = E3.els["#ceiling"];
+  const tryAt = (i) => {
+    if (E3?.env !== env) return;
+    const c = ceilings[i];
+    if (!c) {
+      ceilEl.style.backgroundImage = "";
+      ceilEl.dataset.fallback = "room";
+      return;
+    }
+    const url = env.assetUrl ? env.assetUrl(c.file) : c.file;
+    ceilEl.style.backgroundImage = `url("${url.replace(/"/g, "%22")}")`;
+    if (typeof Image === "function") {
+      const probe = new Image();
+      probe.onerror = () => tryAt(i + 1);
+      probe.src = url;
+    }
+  };
+  tryAt(0);
+  E3.box.style.setProperty("--alius-her", look.accent);
+  if (look.hand !== "") E3.box.style.setProperty("--alius-font-hand", `"${look.hand}", var(--alius-font-type)`);
+  E3.box.style.setProperty("--alius-scent-hand-scale", String(look.handScale || 1));
+}
+function listen3(env) {
+  const control2 = (t) => t instanceof Element && t.closest('button, a, [role="button"], select, [data-action], .pick') !== null;
+  const onFrame = (t) => t instanceof Node && (t === env.layers.frame || env.layers.frame.contains(t));
+  let keySpace = false;
+  env.listen(document, "mousemove", (e) => {
+    const r = env.root.getBoundingClientRect();
+    const w = innerWidth4 || r.width || 1, h2 = innerHeight4 || r.height || 1;
+    mouse = [(e.clientX - r.left) / w, (e.clientY - r.top) / h2];
+  });
+  env.listen(document, "keydown", (e) => {
+    if (typing3(e.target) || control2(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === " ") {
+      e.preventDefault();
+      if (!e.repeat) {
+        keySpace = true;
+        R6.via = "key";
+        inhaleStart2();
+      }
+    } else if (e.key === "Shift") {
+      R6.mouthVia = "key";
+      G4.mouth = true;
+    } else if (/^[1-6]$/.test(e.key) && G4.order && G4.order.k === "ask") {
+      const el = wordEls.filter((x) => x.classList.contains("pick") || x.classList.contains("chosen"))[Number(e.key) - 1];
+      if (el && el._choose) el._choose();
+    }
+  });
+  env.listen(document, "keyup", (e) => {
+    if (e.key === " " && keySpace) {
+      keySpace = false;
+      inhaleEnd();
+    }
+    if (e.key === "Shift" && R6.mouthVia === "key") {
+      G4.mouth = false;
+    }
+  });
+  env.listen(env.root, "mousedown", (e) => {
+    if (!onFrame(e.target)) return;
+    e.preventDefault();
+    if (e.button === 0) {
+      R6.via = "mouse";
+      inhaleStart2();
+    } else if (e.button === 2) {
+      R6.mouthVia = "mouse";
+      G4.mouth = true;
+    }
+  });
+  env.listen(document, "mouseup", (e) => {
+    if (e.button === 0 && !keySpace) inhaleEnd();
+    if (e.button === 2 && R6.mouthVia === "mouse") G4.mouth = false;
+  });
+  env.listen(env.layers.frame, "contextmenu", (e) => e.preventDefault());
+  env.listen(env.input, "input", () => tint.sync());
+  env.listen(env.input, "scroll", () => tint.draw());
+}
+function stopScent() {
+  const e = E3;
+  if (!e) return;
+  if (e.frameId !== null) e.env.cancelRaf(e.frameId);
+  try {
+    breathStop();
+  } catch {
+  }
+  try {
+    A3.master?.disconnect();
+  } catch {
+  }
+  A3 = { ctx: null };
+  BR.kind = null;
+  BR.src = null;
+  REC.out = null;
+  REC.srcs = [];
+  REC.kind = null;
+  REC.sus = null;
+  SAMPLE.buf = null;
+  SAMPLE.rms = null;
+  delete SAMPLE.paul;
+  for (const c of e.claims) releaseClaim(c);
+  e.box.remove();
+  e.mirror.remove();
+  delete e.env.input.dataset.scentLetters;
+  S2.angle = -14;
+  S2.side = { lift: "bottom", slide: "auto", wedge: "right" };
+  cache2.clear();
+  parts.length = 0;
+  wordEls.length = 0;
+  tint.chars = [];
+  tint.prev = "";
+  lastLine3 = null;
+  mouse = [0.5, 0.55];
+  R6.run = null;
+  R6.seg = null;
+  R6.running = false;
+  R6.pending = null;
+  R6.plan = [];
+  R6.kind = null;
+  LINES2 = noLines();
+  G4 = fresh3();
+  E3 = null;
+}
+var EXIT_MS3 = 2600;
+function startScent(env, run) {
+  stopScent();
+  E3 = build3(env);
+  innerWidth4 = 0;
+  innerHeight4 = 0;
+  bind3(env, run);
+  listen3(env);
+  frame3.last = void 0;
+  begin3();
+  requestAnimationFrame4(frame3);
+  const mine = E3;
+  return {
+    update(next) {
+      if (E3 !== mine) return;
+      R6.run = next;
+      const caught = next.tally?.cheatsCaught ?? 0;
+      if (caught > R6.cheatsCaught) {
+        R6.cheatsCaught = caught;
+        if (G4.phase === "loop" || G4.phase === "entry") heardMouth();
+      }
+    },
+    finish(end2) {
+      if (E3 !== mine) return 0;
+      if (G4.phase !== "loop" && G4.phase !== "entry") return 0;
+      exit3(end2.result === "stopped" ? "stop" : "done");
+      return EXIT_MS3;
+    },
+    stop() {
+      if (E3 === mine) stopScent();
+    }
+  };
+}
+function scentMatches(run, _state, reg) {
+  const p = reg.contactPhysics.get(run.physicsId);
+  if (p?.interaction !== "decision" || p.gauge?.kind !== "fill") return false;
+  const occ = occlusionOf(run.sourceKind === "contact" ? reg.blockingContacts.get(run.sourceId) : void 0);
+  if (!(occ.kind in CONTACT_OF)) return false;
+  if (!run.second) return true;
+  return reg.contactPhysics.get(run.second.physicsId)?.interaction === "passive";
+}
+registerInstrument({ id: "scent", matches: scentMatches, start: startScent });
+
 // src/ui/scene/dial/points.ts
 var BASE_POINTS = {
   standing: { torso: "upright", knees: "together", arms: "at_sides", head: "up", gaze: "straight", feet: "flat" },
@@ -66438,7 +68568,7 @@ function leanOf(base, torso, hogtie) {
   return { upright: 0, arched: -14, level: 86 }[torso];
 }
 function armGoal(state, c) {
-  const { s, shoulder: sh, chest, pelvis, S: S6, T: T5 } = c;
+  const { s, shoulder: sh, chest, pelvis, S: S7, T: T5 } = c;
   const lat = (k) => [s * k, 0, 0];
   switch (state) {
     case "at_sides":
@@ -66446,9 +68576,9 @@ function armGoal(state, c) {
       return { target: add(sh, [s * 0.05, -0.605, 0.02]), hint: [s * 0.3, -0.1, -1] };
     // nearly straight, the elbow a little back
     case "behind_back":
-      return { target: add(sub(add(pelvis, mul(S6, 0.12)), mul(T5, 0.12)), lat(0.04)), hint: [s, -0.2, -0.3] };
+      return { target: add(sub(add(pelvis, mul(S7, 0.12)), mul(T5, 0.12)), lat(0.04)), hint: [s, -0.2, -0.3] };
     case "bound":
-      return { target: add(sub(add(pelvis, mul(S6, 0.1)), mul(T5, 0.16)), lat(0.03)), hint: [s, -0.2, -0.4] };
+      return { target: add(sub(add(pelvis, mul(S7, 0.1)), mul(T5, 0.16)), lat(0.03)), hint: [s, -0.2, -0.4] };
     case "behind_head": {
       const back = sub(add(c.neckTop, mul(c.headDir, 0.09)), mul(c.faceDir, 0.075));
       return { target: add(back, lat(0.07)), hint: [s, 0.2, -0.1] };
@@ -66458,14 +68588,14 @@ function armGoal(state, c) {
     case "on_thighs_up":
       return { target: add(lerp3(c.hip, c.knee, 0.7), [s * 0.02, 0.06, 0]), hint: [s, 0, -0.4] };
     case "forward_palms_up":
-      return c.lying ? { target: add(add(sh, mul(S6, 0.56)), [s * 0.1, 0, 0.02]), hint: [s, 0, -0.3] } : { target: add(add(add(chest, mul(T5, 0.5)), mul(S6, -0.3)), lat(0.13)), hint: [s * 0.6, -1, -0.2] };
+      return c.lying ? { target: add(add(sh, mul(S7, 0.56)), [s * 0.1, 0, 0.02]), hint: [s, 0, -0.3] } : { target: add(add(add(chest, mul(T5, 0.5)), mul(S7, -0.3)), lat(0.13)), hint: [s * 0.6, -1, -0.2] };
     // offered: the forearms reach forward and down, palms up
     case "out_sideways":
       return { target: add(sh, [s * 0.56, 0.01, 0]), hint: [0, -0.5, -0.5] };
     case "raised":
       return { target: add(sh, [s * 0.1, 0.55, 0.05]), hint: [s, 0, -0.3] };
     case "holding":
-      return { target: add(add(add(pelvis, mul(S6, 0.38)), mul(T5, 0.4)), lat(0.11)), hint: [s, -0.6, 0] };
+      return { target: add(add(add(pelvis, mul(S7, 0.38)), mul(T5, 0.4)), lat(0.11)), hint: [s, -0.6, 0] };
     case "lamp":
       return { target: add(c.head, [s * 0.045, 0.36, 0.12]), hint: [s, 0, -0.2] };
     // both hands together above the head
@@ -66479,11 +68609,11 @@ function armGoal(state, c) {
     case "under_knees":
       return { target: [c.knee[0], 0.03, c.knee[2] - 0.03], hint: [s, 0.3, 0] };
     case "crossed":
-      return { target: add(sub(add(chest, mul(T5, 0.1)), mul(S6, 0.06)), lat(-0.14)), hint: [s * 0.3, -1, 0.3] };
+      return { target: add(sub(add(chest, mul(T5, 0.1)), mul(S7, 0.06)), lat(-0.14)), hint: [s * 0.3, -1, 0.3] };
     case "clasped_front":
-      return { target: add(add(add(pelvis, mul(S6, 0.16)), mul(T5, 0.2)), lat(0.025)), hint: [s, -0.5, -0.3] };
+      return { target: add(add(add(pelvis, mul(S7, 0.16)), mul(T5, 0.2)), lat(0.025)), hint: [s, -0.5, -0.3] };
     case "paws":
-      return { target: add(sub(add(chest, mul(T5, 0.2)), mul(S6, 0.1)), lat(0.07)), hint: [s * 0.5, -1, 0.2] };
+      return { target: add(sub(add(chest, mul(T5, 0.2)), mul(S7, 0.1)), lat(0.07)), hint: [s * 0.5, -1, 0.2] };
     // the hands in front of the chest, close together
     case "tucked":
       return { target: [s * 0.22, 0.04, sh[2] - 0.58], hint: [s * 0.2, 1, 0] };
@@ -66505,11 +68635,11 @@ function pose(p) {
   const legs = legsOf(base, pts, hogtie);
   const lying = LYING[base] !== void 0;
   const phi = leanOf(base, pts.torso ?? "upright", hogtie) * DEG;
-  const S6 = [0, Math.cos(phi), Math.sin(phi)];
+  const S7 = [0, Math.cos(phi), Math.sin(phi)];
   const T5 = [0, -Math.sin(phi), Math.cos(phi)];
   const pelvis = legs.pelvis;
-  const chest = add(pelvis, mul(S6, SPINE));
-  const neck = add(chest, mul(S6, NECK_BASE));
+  const chest = add(pelvis, mul(S7, SPINE));
+  const neck = add(chest, mul(S7, NECK_BASE));
   const phiN = phi * 0.55;
   const neckTop = add(neck, mul([0, Math.cos(phiN), Math.sin(phiN)], NECK));
   const pitch = { up: 0, bowed: 38, back: -55, to_floor: 90 }[pts.head ?? "up"];
@@ -66543,7 +68673,7 @@ function pose(p) {
       shoulder: shoulder[side],
       chest,
       pelvis,
-      S: S6,
+      S: S7,
       T: T5,
       hip: hip[side],
       knee: knee[side],
@@ -66585,8 +68715,8 @@ function lay(sk, axis, deg) {
   const RADIUS = { shoulder: 0.05, elbow: 0.045, hand: 0.035, hip: 0.065, knee: 0.05, ankle: 0.045, toe: 0.035 };
   for (const k of Object.keys(RADIUS)) surface2.push([turned[k].L, RADIUS[k]], [turned[k].R, RADIUS[k]]);
   const lowest = Math.min(...surface2.map(([v, rad]) => v[1] - rad));
-  const lift = 5e-3 - lowest;
-  const up = (v) => [v[0], v[1] + lift, v[2]];
+  const lift2 = 5e-3 - lowest;
+  const up = (v) => [v[0], v[1] + lift2, v[2]];
   const upPair = (o) => ({ L: up(o.L), R: up(o.R) });
   return {
     ...turned,
@@ -66709,7 +68839,7 @@ function mannequinSvg(p, opts = {}) {
     const near0 = Math.min(sk.pelvis[2] + 0.12, hz - 0.3);
     root.append(quad([[fx2 - 0.5, hy, near0], [fx2 + 0.5, hy, near0], [fx2 + 0.5, hy, hz + 0.14], [fx2 - 0.5, hy, hz + 0.14]], "alius-mq-hint alius-mq-plane", { "data-hint": "desk" }));
   }
-  const body = svg3("g", { class: "alius-mq-body" });
+  const body2 = svg3("g", { class: "alius-mq-body" });
   const farSide = project(sk.shoulder.L)[2] < project(sk.shoulder.R)[2] ? "L" : "R";
   const back = (v) => {
     const spine = [sk.chest[0] - sk.pelvis[0], sk.chest[1] - sk.pelvis[1], sk.chest[2] - sk.pelvis[2]];
@@ -66731,7 +68861,7 @@ function mannequinSvg(p, opts = {}) {
     const c = map(sk.head);
     const top = map([sk.head[0] + sk.headDir[0], sk.head[1] + sk.headDir[1], sk.head[2] + sk.headDir[2]]);
     const angle = Math.atan2(top[0] - c[0], -(top[1] - c[1])) * 180 / Math.PI;
-    body.append(svg3("ellipse", {
+    body2.append(svg3("ellipse", {
       class: "alius-mq-head",
       cx: r1(c[0]),
       cy: r1(c[1]),
@@ -66740,19 +68870,19 @@ function mannequinSvg(p, opts = {}) {
       transform: `rotate(${r1(angle)} ${r1(c[0])} ${r1(c[1])})`
     }));
     const face = map([sk.head[0] + sk.faceDir[0] * 0.075, sk.head[1] + sk.faceDir[1] * 0.075, sk.head[2] + sk.faceDir[2] * 0.075]);
-    if (face[2] > c[2]) body.append(svg3("ellipse", { class: "alius-mq-face", cx: r1(face[0]), cy: r1(face[1]), rx: r1(0.026 * scale), ry: r1(0.026 * scale) }));
+    if (face[2] > c[2]) body2.append(svg3("ellipse", { class: "alius-mq-face", cx: r1(face[0]), cy: r1(face[1]), rx: r1(0.026 * scale), ry: r1(0.026 * scale) }));
   };
   for (const { s, a, b, depth } of placed) {
     const common = { "data-seg": s.seg, ...s.side ? { "data-side": s.side } : {}, d: line2(a, b) };
     const far = s.side === farSide ? " alius-mq-far" : "";
     const w = THICK[s.seg] * scale;
-    body.append(
+    body2.append(
       svg3("path", { class: `alius-mq-out${far}`, ...common, "data-depth": r1(depth * 1e3) / 1e3, "stroke-width": r1(w + OUTLINE * 2) }),
       svg3("path", { class: `alius-mq-fill${far}`, ...common, "stroke-width": r1(w) })
     );
     if (s.seg === "neck") drawHead();
   }
-  root.append(body);
+  root.append(body2);
   if (p.hint === "wall_front") root.append(quad([[minX, 0, maxZ + 0.04], [maxX, 0, maxZ + 0.04], [maxX, wallTop, maxZ + 0.04], [minX, wallTop, maxZ + 0.04]], "alius-mq-hint alius-mq-plane", { "data-hint": "wall_front" }));
   if (p.item === "tray") {
     const m = mid(sk.hand.L, sk.hand.R);
@@ -66832,7 +68962,7 @@ function fanPlace(i, n) {
 var sfx = (o, file, gain2, pan, rate = 1) => {
   o.samples?.play(file, { gain: gain2, pan, rate });
 };
-function build3(o) {
+function build4(o) {
   const w = h("span", { class: "alius-call-w" });
   const dots = h("div", { class: "alius-call-dots", "aria-hidden": "true" });
   const line3 = h("div", { class: "alius-call-line", role: "status" });
@@ -66857,7 +68987,7 @@ function startCall(o) {
   const choices = o.choices;
   const want = o.want;
   const id = o.id;
-  call = { id, want, t0: o.now(), taps: [], timers: [], o, el: build3(o) };
+  call = { id, want, t0: o.now(), taps: [], timers: [], o, el: build4(o) };
   const el0 = call.el;
   if (el0.dim) {
     void el0.dim.offsetWidth;
@@ -66887,22 +69017,22 @@ function startCall(o) {
       h("span", { class: "alius-call-nm" }, name),
       h("span", { class: "alius-call-base" }, o.baseLabel(base))
     );
-    const { x, rot, lift } = fanPlace(i, n);
+    const { x, rot, lift: lift2 } = fanPlace(i, n);
     el.style.left = `${x}px`;
-    el.style.transform = o.reduced ? `translateY(${lift}px) rotate(${rot}deg)` : "translateY(260px) rotate(0deg) scale(.6)";
+    el.style.transform = o.reduced ? `translateY(${lift2}px) rotate(${rot}deg)` : "translateY(260px) rotate(0deg) scale(.6)";
     el.style.opacity = o.reduced ? "1" : "0";
     el.onmouseenter = () => {
-      if (!call?.done) el.style.transform = `translateY(${lift - 18}px) rotate(0deg) scale(1.04)`;
+      if (!call?.done) el.style.transform = `translateY(${lift2 - 18}px) rotate(0deg) scale(1.04)`;
     };
     el.onmouseleave = () => {
-      if (!call?.done) el.style.transform = `translateY(${lift}px) rotate(${rot}deg)`;
+      if (!call?.done) el.style.transform = `translateY(${lift2}px) rotate(${rot}deg)`;
     };
     el.onclick = () => choose(base, el);
     el.dataset.base = base;
     fan.append(el);
     if (!o.reduced) call.timers.push(o.schedule(() => {
       el.style.opacity = "1";
-      el.style.transform = `translateY(${lift}px) rotate(${rot}deg)`;
+      el.style.transform = `translateY(${lift2}px) rotate(${rot}deg)`;
     }, 120 + i * 55));
   });
   sfx(o, CALL_SOUNDS.fan, 0.3, 0.6);
@@ -67005,15 +69135,15 @@ function cancelCall() {
 // src/ui/scene/instruments/slap/slap.ts
 var clamp44 = (x, a, b) => Math.min(b, Math.max(a, x));
 var lerp4 = (a, b, t) => a + (b - a) * t;
-var easeOut3 = (t) => 1 - Math.pow(1 - clamp44(t, 0, 1), 3);
+var easeOut4 = (t) => 1 - Math.pow(1 - clamp44(t, 0, 1), 3);
 var easeIn2 = (t) => Math.pow(clamp44(t, 0, 1), 2);
 var easeInOut = (t) => {
   t = clamp44(t, 0, 1);
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 };
-var rnd013 = () => fnv1a3(`${G4.rkey}|${G4.rn++}`) % 1e4 / 1e4;
-var pick5 = (a) => a[Math.floor(rnd013() * a.length)];
-var rand2 = (a, b) => a + rnd013() * (b - a);
+var rnd014 = () => fnv1a3(`${G5.rkey}|${G5.rn++}`) % 1e4 / 1e4;
+var pick6 = (a) => a[Math.floor(rnd014() * a.length)];
+var rand3 = (a, b) => a + rnd014() * (b - a);
 var LEAD = TUNING.practice.slap.leadMs;
 var FEINT = TUNING.practice.slap.feintMs;
 var SWING = TUNING.practice.slap.windowMs;
@@ -67045,7 +69175,7 @@ function beforeLabel(style, unann) {
 function showFace(label2) {
   curLabel = label2;
   const url = faces[label2];
-  if (url && E3 && E3.env.faceOf(E3.unitId) !== label2) E3.env.setSprite(E3.unitId, label2, url);
+  if (url && E4 && E4.env.faceOf(E4.unitId) !== label2) E4.env.setSprite(E4.unitId, label2, url);
 }
 function preload(label2) {
   const url = faces[label2];
@@ -67053,15 +69183,15 @@ function preload(label2) {
   const im = new Image();
   im.src = url;
   return Promise.race([im.decode().catch(() => {
-  }), new Promise((r) => setTimeout4(r, EXPR_WAIT))]);
+  }), new Promise((r) => setTimeout5(r, EXPR_WAIT))]);
 }
 var looking = /* @__PURE__ */ new Map();
 function lookFaces(labels) {
-  if (!E3) return;
-  const e = E3;
+  if (!E4) return;
+  const e = E4;
   for (const label2 of labels) {
     if (label2 in faces || looking.has(label2)) continue;
-    const mine = () => E3 === e;
+    const mine = () => E4 === e;
     looking.set(label2, e.env.spriteUrl(e.unitId, label2).then((u) => {
       if (mine()) faces[label2] = u;
     }, () => {
@@ -67069,7 +69199,7 @@ function lookFaces(labels) {
     }).then(() => {
       if (!mine()) return;
       looking.delete(label2);
-      if (curLabel === label2 && (G4.slap || G4.back)) showFace(label2);
+      if (curLabel === label2 && (G5.slap || G5.back)) showFace(label2);
     }));
   }
 }
@@ -67079,14 +69209,14 @@ var facesOf = (style) => {
 };
 var leftBySlap = null;
 function readFaceNow() {
-  if (!E3) return;
-  const scene = E3.env.faceOf(E3.unitId);
+  if (!E4) return;
+  const scene = E4.env.faceOf(E4.unitId);
   curLabel = leftBySlap && leftBySlap.scene === scene ? leftBySlap.label : scene;
 }
 function noteFaceLeft() {
-  if (E3) leftBySlap = { label: curLabel, scene: E3.env.faceOf(E3.unitId) };
+  if (E4) leftBySlap = { label: curLabel, scene: E4.env.faceOf(E4.unitId) };
 }
-var S5 = {
+var S6 = {
   style: "possessive",
   unann: false,
   tension: { rise: 100, peak: 80, fall: 220, thr: 0.8 },
@@ -67101,17 +69231,17 @@ var S5 = {
   zoom: 2.6,
   reduced: false
 };
-var performance4 = { now: () => E3 ? E3.env.now() : 0 };
-var innerWidth4 = 0;
-var innerHeight4 = 0;
+var performance5 = { now: () => E4 ? E4.env.now() : 0 };
+var innerWidth5 = 0;
+var innerHeight5 = 0;
 function measure() {
-  if (!E3) return;
-  const r = E3.env.root.getBoundingClientRect();
-  innerWidth4 = E3.env.root.clientWidth || r.width || (typeof window !== "undefined" ? window.innerWidth : 0);
-  innerHeight4 = E3.env.root.clientHeight || r.height || (typeof window !== "undefined" ? window.innerHeight : 0);
+  if (!E4) return;
+  const r = E4.env.root.getBoundingClientRect();
+  innerWidth5 = E4.env.root.clientWidth || r.width || (typeof window !== "undefined" ? window.innerWidth : 0);
+  innerHeight5 = E4.env.root.clientHeight || r.height || (typeof window !== "undefined" ? window.innerHeight : 0);
 }
 var timers3 = /* @__PURE__ */ new Set();
-function setTimeout4(fn, ms) {
+function setTimeout5(fn, ms) {
   const t = globalThis.setTimeout(() => {
     timers3.delete(t);
     fn();
@@ -67120,25 +69250,25 @@ function setTimeout4(fn, ms) {
   return t;
 }
 var frameId = null;
-function requestAnimationFrame4(fn) {
-  if (!E3 || frameId !== null) return;
-  const e = E3;
+function requestAnimationFrame5(fn) {
+  if (!E4 || frameId !== null) return;
+  const e = E4;
   frameId = e.env.raf((now) => {
     frameId = null;
-    if (E3 !== e) return;
-    if (!G4.slap && !G4.back && !G4.starting && G4.cheekA <= 0) {
+    if (E4 !== e) return;
+    if (!G5.slap && !G5.back && !G5.starting && G5.cheekA <= 0) {
       cam.release();
       return;
     }
     measure();
     fn(now);
-    if (cam.held && (G4.slap || G4.back) && !S5.reduced) for (const c of cam.ui) noteWrites(c, ["opacity"]);
+    if (cam.held && (G5.slap || G5.back) && !S6.reduced) for (const c of cam.ui) noteWrites(c, ["opacity"]);
   });
 }
-var E3 = null;
+var E4 = null;
 var HBLUR = "alius-slap-hblur";
-var $3 = (s) => {
-  const e = E3;
+var $4 = (s) => {
+  const e = E4;
   if (s === "#mirror") return mirror(e);
   if (s === "#reply") return e.env.reply;
   if (s === "#cmd") return e.env.input;
@@ -67178,13 +69308,13 @@ function mirror(e) {
   host.append(m);
   const color = input.style.color;
   input.style.color = "transparent";
-  setTimeout4(() => {
+  setTimeout5(() => {
     m.remove();
     input.style.color = color;
   }, 600);
   return m;
 }
-function build4(env, unitId) {
+function build5(env, unitId) {
   const box = document.createElement("div");
   box.className = "alius-slap";
   box.setAttribute("aria-hidden", "true");
@@ -67231,7 +69361,7 @@ function build4(env, unitId) {
   const art2 = env.art.get(unitId, "face_close");
   if (art2) {
     faceImg.onload = () => {
-      if (E3?.faceImg === faceImg) E3.hasFace = true;
+      if (E4?.faceImg === faceImg) E4.hasFace = true;
     };
     faceImg.src = art2.url;
   }
@@ -67254,12 +69384,12 @@ var cam = {
   backdropFilter: "",
   /** The camera leaves home: the styles it will write are saved, her face point is measured. */
   hold() {
-    if (this.held || !E3) return;
-    const e = E3;
+    if (this.held || !E4) return;
+    const e = E4;
     this.held = true;
     const { backdrop, sprites } = e.env.layers;
     const reply = e.env.reply;
-    const wrap = $3("#inputWrap");
+    const wrap = $4("#inputWrap");
     this.layer = new Map([backdrop, sprites].map((el) => [el, claimStyles(el, CAM_PROPS)]));
     this.ui = [reply, wrap].map((el) => claimStyles(el, ["opacity"]));
     this.saved = [...this.layer.values(), ...this.ui];
@@ -67279,8 +69409,8 @@ var cam = {
   },
   /** Her face point in the scene (the sprite's sidecar point on the drawn picture), measured with the camera at home. */
   measure() {
-    if (!E3 || this.base) return;
-    const e = E3;
+    if (!E4 || this.base) return;
+    const e = E4;
     const img = e.env.spriteOf(e.unitId);
     if (!img || !img.naturalWidth || e.env.root.dataset.curtain === "open") return;
     const sprites = e.env.layers.sprites;
@@ -67289,14 +69419,14 @@ var cam = {
     const r = img.getBoundingClientRect();
     const o = e.env.root.getBoundingClientRect();
     sprites.style.transform = now;
-    if (r.width > 0 && r.height > 0) this.base = { x: r.left - o.left + S5.face.x * r.width, y: r.top - o.top + S5.face.y * r.height };
+    if (r.width > 0 && r.height > 0) this.base = { x: r.left - o.left + S6.face.x * r.width, y: r.top - o.top + S6.face.y * r.height };
   },
   /** One frame of the camera: the world's move, its motion blur, the zoom `k` to her face, the backdrop's blur and dim, the UI stepping back. */
   draw(world, hb, k) {
-    if (!E3) return;
+    if (!E4) return;
     if (!this.held) this.hold();
-    const e = E3;
-    const W = innerWidth4, H = innerHeight4;
+    const e = E4;
+    const W = innerWidth5, H = innerHeight5;
     const O = [W * 0.5, H * 0.436];
     const about2 = (extra) => `translate(${O[0].toFixed(1)}px, ${O[1].toFixed(1)}px) ${world}${extra} translate(${(-O[0]).toFixed(1)}px, ${(-O[1]).toFixed(1)}px)`;
     const blur = !e.env.readable && hb > 0.3;
@@ -67315,7 +69445,7 @@ var cam = {
     const img = e.env.spriteOf(e.unitId);
     if (img && this.base) {
       const p0 = this.base, p1 = [W * 0.5, H * 0.42];
-      sc = Math.pow(S5.zoom, k);
+      sc = Math.pow(S6.zoom, k);
       const px = lerp4(p0.x, p1[0], k), py = lerp4(p0.y, p1[1], k);
       camera = ` translate(${(px - sc * p0.x).toFixed(1)}px, ${(py - sc * p0.y).toFixed(1)}px) scale(${sc.toFixed(4)})`;
     }
@@ -67334,14 +69464,14 @@ var cam = {
     this.layer = /* @__PURE__ */ new Map();
     this.ui = [];
     this.base = null;
-    if (E3) {
-      E3.faceImg.style.opacity = "0";
-      E3.faceImg.style.transform = "";
-      E3.faceImg.style.filter = "";
+    if (E4) {
+      E4.faceImg.style.opacity = "0";
+      E4.faceImg.style.transform = "";
+      E4.faceImg.style.filter = "";
     }
   }
 };
-var A3 = { ctx: null, buf: {} };
+var A4 = { ctx: null, buf: {} };
 var made = /* @__PURE__ */ new Set();
 function recorded(c) {
   return new Proxy(c, {
@@ -67360,24 +69490,24 @@ function recorded(c) {
     }
   });
 }
-function audioInit3() {
-  if (A3.ctx || !E3) return;
-  const samples = E3.env.samples;
+function audioInit4() {
+  if (A4.ctx || !E4) return;
+  const samples = E4.env.samples;
   const raw = samples?.ctx() ?? null;
   const world = samples?.bus("world") ?? null;
-  const body = samples?.bus("body") ?? null;
-  if (!samples || !raw || !world || !body) return;
+  const body2 = samples?.bus("body") ?? null;
+  if (!samples || !raw || !world || !body2) return;
   const ctx2 = recorded(raw);
-  A3.ctx = ctx2;
-  A3.worldLP = ctx2.createBiquadFilter();
-  A3.worldLP.type = "lowpass";
-  A3.worldLP.frequency.value = 16e3;
-  A3.worldLP.Q.value = 0.4;
-  A3.worldG = ctx2.createGain();
-  A3.worldG.gain.value = 1;
-  A3.worldLP.connect(A3.worldG);
-  A3.worldG.connect(world);
-  A3.body = body;
+  A4.ctx = ctx2;
+  A4.worldLP = ctx2.createBiquadFilter();
+  A4.worldLP.type = "lowpass";
+  A4.worldLP.frequency.value = 16e3;
+  A4.worldLP.Q.value = 0.4;
+  A4.worldG = ctx2.createGain();
+  A4.worldG.gain.value = 1;
+  A4.worldLP.connect(A4.worldG);
+  A4.worldG.connect(world);
+  A4.body = body2;
   const b = ctx2.createBuffer(1, ctx2.sampleRate * 2, ctx2.sampleRate);
   const d = b.getChannelData(0);
   let x = 2463534242;
@@ -67387,28 +69517,28 @@ function audioInit3() {
     x ^= x << 5;
     d[i] = (x >>> 0) / 4294967296 * 2 - 1;
   }
-  A3.white = b;
-  A3.buf = new Proxy({}, { get: (_t, k) => typeof k === "string" && SAMPLE_URLS[k] ? samples.buffer(SAMPLE_URLS[k]) : null });
+  A4.white = b;
+  A4.buf = new Proxy({}, { get: (_t, k) => typeof k === "string" && SAMPLE_URLS[k] ? samples.buffer(SAMPLE_URLS[k]) : null });
   void samples.preload(Object.values(SAMPLE_URLS));
 }
-function chain2(node, { pan = 0, lp = 0, hp = 0, dest = A3.worldLP }) {
+function chain2(node, { pan = 0, lp = 0, hp = 0, dest = A4.worldLP }) {
   let n = node;
   if (hp) {
-    const f = A3.ctx.createBiquadFilter();
+    const f = A4.ctx.createBiquadFilter();
     f.type = "highpass";
     f.frequency.value = hp;
     n.connect(f);
     n = f;
   }
   if (lp) {
-    const f = A3.ctx.createBiquadFilter();
+    const f = A4.ctx.createBiquadFilter();
     f.type = "lowpass";
     f.frequency.value = lp;
     n.connect(f);
     n = f;
   }
   if (pan) {
-    const p = A3.ctx.createStereoPanner();
+    const p = A4.ctx.createStereoPanner();
     p.pan.value = clamp44(pan, -1, 1);
     n.connect(p);
     n = p;
@@ -67416,16 +69546,16 @@ function chain2(node, { pan = 0, lp = 0, hp = 0, dest = A3.worldLP }) {
   n.connect(dest);
 }
 function play(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at = 0, offset = 0, dur } = {}) {
-  if (!A3.ctx || !A3.buf[id]) return null;
-  const ctx2 = A3.ctx, t = ctx2.currentTime + Math.max(0, at);
+  if (!A4.ctx || !A4.buf[id]) return null;
+  const ctx2 = A4.ctx, t = ctx2.currentTime + Math.max(0, at);
   const src = ctx2.createBufferSource();
-  src.buffer = A3.buf[id];
+  src.buffer = A4.buf[id];
   src.playbackRate.value = rate;
   const gn = ctx2.createGain();
   gn.gain.value = g;
   src.connect(gn);
-  chain2(gn, { pan, lp, hp, dest: dest ?? A3.worldLP });
-  const len2 = dur ?? A3.buf[id].duration - offset;
+  chain2(gn, { pan, lp, hp, dest: dest ?? A4.worldLP });
+  const len2 = dur ?? A4.buf[id].duration - offset;
   if (dur) {
     gn.gain.setValueAtTime(g, t + dur / rate - 0.03);
     gn.gain.linearRampToValueAtTime(1e-4, t + dur / rate);
@@ -67433,11 +69563,11 @@ function play(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at = 0, of
   src.start(t, offset, len2 + 0.05);
   return src;
 }
-function noise4({ at = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1, gain: gain2 = 0.1, attack = 0.01, dest = A3.worldLP, pan = 0 }) {
-  if (!A3.ctx) return;
-  const ctx2 = A3.ctx, t = ctx2.currentTime + at;
+function noise5({ at = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1, gain: gain2 = 0.1, attack = 0.01, dest = A4.worldLP, pan = 0 }) {
+  if (!A4.ctx) return;
+  const ctx2 = A4.ctx, t = ctx2.currentTime + at;
   const src = ctx2.createBufferSource();
-  src.buffer = A3.white;
+  src.buffer = A4.white;
   src.loop = true;
   const fl = ctx2.createBiquadFilter();
   fl.type = type;
@@ -67451,12 +69581,12 @@ function noise4({ at = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1, gain
   src.connect(fl);
   fl.connect(g);
   chain2(g, { pan, dest });
-  src.start(t, rnd013());
+  src.start(t, rnd014());
   src.stop(t + dur + 0.05);
 }
-function thump3(at, gain2, f0 = 55, dest = A3.body) {
-  if (!A3.ctx) return;
-  const ctx2 = A3.ctx, t = ctx2.currentTime + at;
+function thump4(at, gain2, f0 = 55, dest = A4.body) {
+  if (!A4.ctx) return;
+  const ctx2 = A4.ctx, t = ctx2.currentTime + at;
   const o = ctx2.createOscillator();
   o.type = "sine";
   o.frequency.setValueAtTime(f0, t);
@@ -67470,33 +69600,33 @@ function thump3(at, gain2, f0 = 55, dest = A3.body) {
   o.start(t);
   o.stop(t + 0.3);
 }
-var SFX3 = {
+var SFX4 = {
   pen: () => {
-    for (let i = 0; i < 3; i++) noise4({ at: i * 0.05 + rnd013() * 0.02, dur: 0.035 + rnd013() * 0.03, f: 2600 + rnd013() * 1800, q: 3, gain: 0.04 });
+    for (let i = 0; i < 3; i++) noise5({ at: i * 0.05 + rnd014() * 0.02, dur: 0.035 + rnd014() * 0.03, f: 2600 + rnd014() * 1800, q: 3, gain: 0.04 });
   },
   /* her clothes: her hand going up, a feint's twitch (panned to her hand's side) */
   cloth: (pan, g = 0.35, rate = 1) => {
-    if (!play(pick5(["cloth1", "cloth2", "cloth3", "cloth4"]), { g, pan, rate, lp: 6e3 })) noise4({ dur: 0.3, f: 1100, f2: 1700, q: 0.7, gain: g * 0.25, attack: 0.05, pan });
+    if (!play(pick6(["cloth1", "cloth2", "cloth3", "cloth4"]), { g, pan, rate, lp: 6e3 })) noise5({ dur: 0.3, f: 1100, f2: 1700, q: 0.7, gain: g * 0.25, attack: 0.05, pan });
   },
   /* the swish of her hand: timed so that it ends on the impact */
   swish: (atS, pan) => {
-    if (S5.swishS !== "synth" && A3.buf[S5.swishS]) {
-      const rate = 0.72, d = A3.buf[S5.swishS].duration / rate;
-      play(S5.swishS, { g: 0.5, pan, rate, at: atS - d * 0.85, hp: 300 });
-    } else noise4({ at: atS - 0.16, dur: 0.17, f: 900, f2: 3200, q: 0.8, gain: 0.16, attack: 0.12, pan });
+    if (S6.swishS !== "synth" && A4.buf[S6.swishS]) {
+      const rate = 0.72, d = A4.buf[S6.swishS].duration / rate;
+      play(S6.swishS, { g: 0.5, pan, rate, at: atS - d * 0.85, hp: 300 });
+    } else noise5({ at: atS - 0.16, dur: 0.17, f: 900, f2: 3200, q: 0.8, gain: 0.16, attack: 0.12, pan });
   },
   /* the slap: the recording on the body bus, panned to the cheek; a glancing one is duller and quieter */
   slap: (pan, glancing) => {
     const g = glancing ? 0.5 : 1;
-    if (!play("slap", { g: 0.95 * S5.slapLvl * g, pan: pan * 0.55, lp: glancing ? 2200 : 0, dest: A3.body })) {
-      noise4({ dur: 0.09, type: "highpass", f: 1400, gain: 0.5 * g, attack: 2e-3, dest: A3.body, pan: pan * 0.55 });
+    if (!play("slap", { g: 0.95 * S6.slapLvl * g, pan: pan * 0.55, lp: glancing ? 2200 : 0, dest: A4.body })) {
+      noise5({ dur: 0.09, type: "highpass", f: 1400, gain: 0.5 * g, attack: 2e-3, dest: A4.body, pan: pan * 0.55 });
     }
-    if (S5.thump) thump3(0, glancing ? 0.25 : 0.55, 70);
+    if (S6.thump) thump4(0, glancing ? 0.25 : 0.55, 70);
   },
   /* the ringing in the ears: two close sines that beat, a slow fade; the world dulls and comes back */
   ring: (sec, k = 1) => {
-    if (!A3.ctx || sec <= 0) return;
-    const ctx2 = A3.ctx, t = ctx2.currentTime;
+    if (!A4.ctx || sec <= 0) return;
+    const ctx2 = A4.ctx, t = ctx2.currentTime;
     for (const [f, gg] of [[4180, 0.035], [4207, 0.028], [8400, 6e-3]]) {
       const o = ctx2.createOscillator();
       o.frequency.value = f;
@@ -67506,28 +69636,28 @@ var SFX3 = {
       g.gain.exponentialRampToValueAtTime(gg * k, t + 0.06);
       g.gain.exponentialRampToValueAtTime(1e-4, t + sec);
       o.connect(g);
-      g.connect(A3.body);
+      g.connect(A4.body);
       o.start(t);
       o.stop(t + sec + 0.1);
     }
-    A3.worldLP.frequency.cancelScheduledValues(t);
-    A3.worldLP.frequency.setValueAtTime(lerp4(16e3, 650, k), t + 0.01);
-    A3.worldLP.frequency.exponentialRampToValueAtTime(16e3, t + Math.max(0.6, sec * 0.9));
+    A4.worldLP.frequency.cancelScheduledValues(t);
+    A4.worldLP.frequency.setValueAtTime(lerp4(16e3, 650, k), t + 0.01);
+    A4.worldLP.frequency.exponentialRampToValueAtTime(16e3, t + Math.max(0.6, sec * 0.9));
   },
   /* the commander's breath (the recording of saturation: a nose inhale and an exhale): a sharp intake on tensing, an exhale after */
   intake: () => {
-    if (!play("breath", { g: 0.24, rate: 1.6, offset: 0.14, dur: 0.42, lp: 3200, dest: A3.body })) noise4({ dur: 0.22, f: 900, f2: 2200, q: 0.9, gain: 0.08, attack: 0.03, dest: A3.body });
+    if (!play("breath", { g: 0.24, rate: 1.6, offset: 0.14, dur: 0.42, lp: 3200, dest: A4.body })) noise5({ dur: 0.22, f: 900, f2: 2200, q: 0.9, gain: 0.08, attack: 0.03, dest: A4.body });
   },
   exhale: (at, g = 0.16) => {
-    play("breath", { g, rate: 1.1, offset: 2.17, dur: 0.95, lp: 2600, dest: A3.body, at });
+    play("breath", { g, rate: 1.1, offset: 2.17, dur: 0.95, lp: 2600, dest: A4.body, at });
   },
   heart: () => {
-    thump3(0, 0.5, 52);
-    thump3(0.26, 0.32, 46);
+    thump4(0, 0.5, 52);
+    thump4(0.26, 0.32, 46);
   }
 };
-var G4 = { slap: null, last: null, back: null, starting: false, k: 0, cheekA: 0, cheekDir: 1, cheekT0: 0, cheekScene: "", mouse: [], typingFocus: false, next: null, started: /* @__PURE__ */ new Set(), epoch: 0, rkey: "", rn: 0 };
-var LINES2 = {};
+var G5 = { slap: null, last: null, back: null, starting: false, k: 0, cheekA: 0, cheekDir: 1, cheekT0: 0, cheekScene: "", mouse: [], typingFocus: false, next: null, started: /* @__PURE__ */ new Set(), epoch: 0, rkey: "", rn: 0 };
+var LINES3 = {};
 function linesFor(reg, style, id) {
   const one4 = (kind) => {
     const runs = voiceLine(reg, kind, style, id, {});
@@ -67544,36 +69674,36 @@ function linesFor(reg, style, id) {
   };
 }
 function tensionAt(t) {
-  const T5 = S5.tension;
+  const T5 = S6.tension;
   if (t < 0) return 0;
-  if (t < T5.rise) return easeOut3(t / T5.rise);
+  if (t < T5.rise) return easeOut4(t / T5.rise);
   if (t < T5.rise + T5.peak) return 1;
   return clamp44(1 - (t - T5.rise - T5.peak) / T5.fall, 0, 1);
 }
 async function startSlap2(opts) {
-  if (G4.slap || G4.starting) return;
-  G4.starting = true;
-  const epoch = G4.epoch;
-  G4.started.add(opts.id);
-  G4.rkey = opts.id;
-  G4.rn = 0;
-  requestAnimationFrame4(frame3);
-  const faceBefore = beforeLabel(S5.style, opts.unannounced ?? S5.unann);
+  if (G5.slap || G5.starting) return;
+  G5.starting = true;
+  const epoch = G5.epoch;
+  G5.started.add(opts.id);
+  G5.rkey = opts.id;
+  G5.rn = 0;
+  requestAnimationFrame5(frame4);
+  const faceBefore = beforeLabel(S6.style, opts.unannounced ?? S6.unann);
   await preload(faceBefore);
-  if (G4.epoch !== epoch) return;
-  G4.starting = false;
-  if (G4.slap) return;
-  audioInit3();
+  if (G5.epoch !== epoch) return;
+  G5.starting = false;
+  if (G5.slap) return;
+  audioInit4();
   const id = opts.id;
-  const style = S5.style;
+  const style = S6.style;
   const swing = opts.windowMs;
-  const unann = opts.unannounced ?? S5.unann;
+  const unann = opts.unannounced ?? S6.unann;
   let feints = opts.feints;
   if (unann) feints = 0;
   const dir = slapSide(id);
   const lead = unann ? SNAP : opts.again ? AGAIN_LEAD : LEAD;
   const swingAt = lead + feints * FEINT;
-  const t0 = performance4.now();
+  const t0 = performance5.now();
   const s = {
     id,
     style,
@@ -67598,111 +69728,111 @@ async function startSlap2(opts) {
     doneAt: null,
     said: false,
     feintSaid: false,
-    k0: G4.k ?? 0,
+    k0: G5.k ?? 0,
     onResult: opts.onResult
   };
-  G4.slap = s;
-  G4.last = s;
-  G4.back = null;
+  G5.slap = s;
+  G5.last = s;
+  G5.back = null;
   const active = document.activeElement;
-  if (!opts.again) G4.typingFocus = active === $3("#cmd");
+  if (!opts.again) G5.typingFocus = active === $4("#cmd");
   if (active && active !== document.body) active.blur();
-  requestAnimationFrame4(frame3);
-  if (S5.reduced) {
+  requestAnimationFrame5(frame4);
+  if (S6.reduced) {
     showFace(faceBefore);
-    land(s, performance4.now());
+    land(s, performance5.now());
     return;
   }
-  SFX3.heart();
-  if (!unann) SFX3.cloth(-dir * 0.7, 0.4);
-  SFX3.swish(s.impactAt / 1e3, -dir * 0.6);
-  for (let i = 0; i < feints; i++) setTimeout4(() => {
-    if (G4.slap === s) SFX3.cloth(-dir * 0.7, 0.5, 1.25);
+  SFX4.heart();
+  if (!unann) SFX4.cloth(-dir * 0.7, 0.4);
+  SFX4.swish(s.impactAt / 1e3, -dir * 0.6);
+  for (let i = 0; i < feints; i++) setTimeout5(() => {
+    if (G5.slap === s) SFX4.cloth(-dir * 0.7, 0.5, 1.25);
   }, lead + i * FEINT);
-  const before3 = LINES2[style].before;
-  if (before3.length && !unann && !opts.again) setTimeout4(() => {
-    if (G4.slap === s && !s.result) say4(pick5(before3));
+  const before4 = LINES3[style].before;
+  if (before4.length && !unann && !opts.again) setTimeout5(() => {
+    if (G5.slap === s && !s.result) say5(pick6(before4));
   }, SNAP + 60);
-  if (opts.again && LINES2[style].again) setTimeout4(() => {
-    if (G4.slap === s && !s.result) say4(pick5(LINES2[style].again));
+  if (opts.again && LINES3[style].again) setTimeout5(() => {
+    if (G5.slap === s && !s.result) say5(pick6(LINES3[style].again));
   }, 80);
 }
-function press2(source) {
-  const s = G4.slap;
+function press3(source) {
+  const s = G5.slap;
   if (!s || s.result) return;
   s.presses += 1;
   if (s.pressAt !== null) return;
-  s.pressAt = performance4.now() - s.t0;
-  SFX3.intake();
+  s.pressAt = performance5.now() - s.t0;
+  SFX4.intake();
   const onFeint = s.feints > 0 && s.pressAt >= s.lead && s.pressAt < s.swingAt;
-  if (onFeint && LINES2[s.style].feint) setTimeout4(() => {
-    if (G4.slap === s && !s.result) say4(pick5(LINES2[s.style].feint));
+  if (onFeint && LINES3[s.style].feint) setTimeout5(() => {
+    if (G5.slap === s && !s.result) say5(pick6(LINES3[s.style].feint));
   }, 120);
 }
 function onMove(e) {
-  const now = performance4.now();
-  G4.mouse.push([now, e.clientX]);
-  while (G4.mouse.length && now - G4.mouse[0][0] > 70) G4.mouse.shift();
-  const s = G4.slap;
+  const now = performance5.now();
+  G5.mouse.push([now, e.clientX]);
+  while (G5.mouse.length && now - G5.mouse[0][0] > 70) G5.mouse.shift();
+  const s = G5.slap;
   if (!s || s.result || s.turned) return;
-  if (G4.mouse.length < 2) return;
-  const [ta, xa] = G4.mouse[0], dt = (now - ta) / 1e3, dx = e.clientX - xa;
+  if (G5.mouse.length < 2) return;
+  const [ta, xa] = G5.mouse[0], dt = (now - ta) / 1e3, dx = e.clientX - xa;
   if (dt <= 0) return;
   const v = dx / dt;
-  if (Math.abs(v) >= S5.flick && Math.abs(dx) >= innerWidth4 * 0.06) {
+  if (Math.abs(v) >= S6.flick && Math.abs(dx) >= innerWidth5 * 0.06) {
     s.turned = Math.sign(dx);
     s.turnAt = now - s.t0;
-    SFX3.cloth(0, 0.25, 1.4);
+    SFX4.cloth(0, 0.25, 1.4);
   }
 }
 function land(s, now) {
   const t = now - s.t0;
   s.tensionAtImpact = s.pressAt === null ? 0 : tensionAt(t - s.pressAt);
-  s.result = s.turned ? "flinched" : s.tensionAtImpact >= S5.tension.thr ? "braced" : "none";
+  s.result = s.turned ? "flinched" : s.tensionAtImpact >= S6.tension.thr ? "braced" : "none";
   s.landedAt = t;
   s.onResult(s.result);
   const glancing = s.result === "flinched";
   const k = s.result === "braced" ? 0.65 : glancing ? 0.45 : 1;
   s.k = k;
-  SFX3.slap(-s.dir, glancing);
-  SFX3.ring(S5.ring * (s.result === "braced" ? 0.55 : glancing ? 0.4 : 1), k);
-  if (s.result === "braced") SFX3.exhale(0.45, 0.15);
-  G4.cheekA = Math.min(0.9, G4.cheekA * 0.6 + 0.8 * k);
-  G4.cheekDir = s.dir;
-  G4.cheekT0 = now;
+  SFX4.slap(-s.dir, glancing);
+  SFX4.ring(S6.ring * (s.result === "braced" ? 0.55 : glancing ? 0.4 : 1), k);
+  if (s.result === "braced") SFX4.exhale(0.45, 0.15);
+  G5.cheekA = Math.min(0.9, G5.cheekA * 0.6 + 0.8 * k);
+  G5.cheekDir = s.dir;
+  G5.cheekT0 = now;
   flash(k);
-  scatter2(k);
-  const pool = LINES2[s.style][s.result] ?? [];
+  scatter3(k);
+  const pool = LINES3[s.style][s.result] ?? [];
   const faceAfter = EXPR[s.style].after[s.result];
   void preload(faceAfter);
-  setTimeout4(() => {
+  setTimeout5(() => {
     showFace(faceAfter);
-    if (pool.length) say4(pick5(pool));
+    if (pool.length) say5(pick6(pool));
   }, s.style === "cold" ? 0 : 380);
   const cruelAgain = s.style === "cruel" && s.result === "flinched" && !s.again;
   const hold = cruelAgain ? 700 : s.style === "cold" ? 900 : 1500;
   s.doneAt = t + hold;
-  setTimeout4(() => {
-    if (G4.slap !== s) return;
-    G4.slap = null;
-    G4.back = S5.reduced ? null : { t0: performance4.now(), from: 1 };
+  setTimeout5(() => {
+    if (G5.slap !== s) return;
+    G5.slap = null;
+    G5.back = S6.reduced ? null : { t0: performance5.now(), from: 1 };
     noteFaceLeft();
-    if (cruelAgain || G4.next) setTimeout4(() => startNext(), 120);
-    else if (G4.typingFocus) $3("#cmd").focus();
-  }, S5.reduced ? 600 : hold);
+    if (cruelAgain || G5.next) setTimeout5(() => startNext(), 120);
+    else if (G5.typingFocus) $4("#cmd").focus();
+  }, S6.reduced ? 600 : hold);
 }
 function startNext() {
-  const next = G4.next;
-  G4.next = null;
-  if (next && !G4.started.has(next.id)) {
-    LINES2 = LINES_NEXT;
-    if (E3) E3.host.dataset.slap = next.id;
+  const next = G5.next;
+  G5.next = null;
+  if (next && !G5.started.has(next.id)) {
+    LINES3 = LINES_NEXT;
+    if (E4) E4.host.dataset.slap = next.id;
     readFaceNow();
     void startSlap2(next);
-  } else if (G4.typingFocus && E3) $3("#cmd").focus();
+  } else if (G5.typingFocus && E4) $4("#cmd").focus();
 }
 function flash(k) {
-  const el = $3("#flash");
+  const el = $4("#flash");
   el.style.transition = "none";
   el.style.background = "radial-gradient(ellipse at 50% 45%, rgba(255,250,245,1), rgba(255,90,70,1) 55%, rgba(200,20,20,1))";
   el.style.opacity = String(0.75 * k);
@@ -67712,11 +69842,11 @@ function flash(k) {
     el.style.opacity = "0";
   });
 }
-function scatter2(k) {
-  const spans = [...$3("#mirror").children];
+function scatter3(k) {
+  const spans = [...$4("#mirror").children];
   for (const sp of spans) {
     sp.style.transition = "none";
-    sp.style.transform = `translate(${rand2(-14, 14) * k}px, ${rand2(-16, 16) * k}px) rotate(${rand2(-28, 28) * k}deg)`;
+    sp.style.transform = `translate(${rand3(-14, 14) * k}px, ${rand3(-16, 16) * k}px) rotate(${rand3(-28, 28) * k}deg)`;
   }
   requestTwoFrames(() => {
     for (const sp of spans) {
@@ -67726,157 +69856,157 @@ function scatter2(k) {
   });
 }
 function requestTwoFrames(fn) {
-  setTimeout4(fn, 32);
+  setTimeout5(fn, 32);
 }
-function say4(text3) {
+function say5(text3) {
   if (!text3) return;
   const el = document.createElement("div");
   el.className = "alius-her-line";
   el.textContent = text3;
-  const speed = S5.style === "cruel" || S5.style === "cold" ? 24 : S5.style === "ritual" ? 45 : 34;
+  const speed = S6.style === "cruel" || S6.style === "cold" ? 24 : S6.style === "ritual" ? 45 : 34;
   el.style.setProperty("--write", `${Math.max(140, text3.length * speed)}ms`);
   el.style.setProperty("--steps", String(Math.max(4, text3.length * 2)));
-  el.style.fontSize = `${Math.round(44 * (E3?.her.handScale ?? 1) * 100) / 100}px`;
-  const s = G4.slap ?? G4.last;
+  el.style.fontSize = `${Math.round(44 * (E4?.her.handScale ?? 1) * 100) / 100}px`;
+  const s = G5.slap ?? G5.last;
   const dir = s ? s.dir : 1;
   if (dir > 0) {
-    el.style.left = `${innerWidth4 * 0.6}px`;
+    el.style.left = `${innerWidth5 * 0.6}px`;
   } else {
     el.classList.add("right");
-    el.style.right = `${innerWidth4 * 0.6}px`;
+    el.style.right = `${innerWidth5 * 0.6}px`;
   }
-  const showing = [...$3("#hand").children].filter((c) => !c.classList.contains("gone")).length;
-  el.style.top = `${innerHeight4 * rand2(0.22, 0.26) + showing * 54}px`;
-  el.style.transform = `rotate(${rand2(-4, 3).toFixed(1)}deg)`;
-  $3("#hand").appendChild(el);
-  SFX3.pen();
-  setTimeout4(() => {
+  const showing = [...$4("#hand").children].filter((c) => !c.classList.contains("gone")).length;
+  el.style.top = `${innerHeight5 * rand3(0.22, 0.26) + showing * 54}px`;
+  el.style.transform = `rotate(${rand3(-4, 3).toFixed(1)}deg)`;
+  $4("#hand").appendChild(el);
+  SFX4.pen();
+  setTimeout5(() => {
     el.classList.add("gone");
-    setTimeout4(() => el.remove(), 600);
+    setTimeout5(() => el.remove(), 600);
   }, 2200);
 }
-function frame3(now) {
-  requestAnimationFrame4(frame3);
-  const W = innerWidth4, H = innerHeight4;
-  const s = G4.slap;
+function frame4(now) {
+  requestAnimationFrame5(frame4);
+  const W = innerWidth5, H = innerHeight5;
+  const s = G5.slap;
   let k = 0;
-  if (s && !S5.reduced) k = lerp4(s.k0, 1, easeOut3((now - s.t0) / SNAP));
-  else if (G4.back) {
-    const p = (now - G4.back.t0) / RETURN;
+  if (s && !S6.reduced) k = lerp4(s.k0, 1, easeOut4((now - s.t0) / SNAP));
+  else if (G5.back) {
+    const p = (now - G5.back.t0) / RETURN;
     k = 1 - easeInOut(p);
-    if (p >= 1) G4.back = null;
+    if (p >= 1) G5.back = null;
   }
-  G4.k = k;
+  G5.k = k;
   let lean = 0, sweep = -1, twitch = 0;
-  if (s && !S5.reduced) {
+  if (s && !S6.reduced) {
     const t = now - s.t0;
     if (!s.faceShown && t >= EXPR_SWITCH) {
       s.faceShown = true;
       showFace(s.faceBefore);
     }
-    if (!s.unann) lean = -0.4 * easeOut3((t - SNAP * 0.4) / 380) + 0.04 * Math.sin(t / 140) * (t > SNAP ? 1 : 0);
+    if (!s.unann) lean = -0.4 * easeOut4((t - SNAP * 0.4) / 380) + 0.04 * Math.sin(t / 140) * (t > SNAP ? 1 : 0);
     for (let i = 0; i < s.feints; i++) {
       const ft = t - (s.lead + i * FEINT);
       if (ft >= 0 && ft < FEINT) {
         const p = ft / FEINT;
-        twitch = p < 0.3 ? easeIn2(p / 0.3) : 1 - easeOut3((p - 0.3) / 0.45);
+        twitch = p < 0.3 ? easeIn2(p / 0.3) : 1 - easeOut4((p - 0.3) / 0.45);
         lean = -0.4 + 0.75 * twitch;
       }
     }
     if (t >= s.swingAt && !s.result) {
       const p = (t - s.swingAt) / s.swing;
       lean = lerp4(s.unann ? 0 : -0.4, 1, easeIn2(p));
-      if (S5.sweep) sweep = clamp44(1 - (s.impactAt - t) / SWEEP, 0, 1);
+      if (S6.sweep) sweep = clamp44(1 - (s.impactAt - t) / SWEEP, 0, 1);
     }
     if (!s.result && t >= s.impactAt) land(s, now);
     if (s.result) lean = 0;
   }
   let whipX = 0, whipR = 0, hb = 0;
-  const L3 = s && s.result ? s : G4.back && G4.last && G4.last.result ? G4.last : null;
-  if (L3 && L3.landedAt !== void 0 && !S5.reduced) {
+  const L3 = s && s.result ? s : G5.back && G5.last && G5.last.result ? G5.last : null;
+  if (L3 && L3.landedAt !== void 0 && !S6.reduced) {
     const tt = now - (L3.t0 + L3.landedAt), kk = L3.k ?? 1;
-    const env = tt < 45 ? easeOut3(tt / 45) : Math.exp(-(tt - 45) / 210) * Math.cos((tt - 45) / 520 * Math.PI * 2);
+    const env = tt < 45 ? easeOut4(tt / 45) : Math.exp(-(tt - 45) / 210) * Math.cos((tt - 45) / 520 * Math.PI * 2);
     whipX = -L3.dir * 0.075 * W * env * kk;
     whipR = -L3.dir * 5.5 * env * kk;
     hb = tt < 220 ? (1 - tt / 220) * 16 * kk : 0;
   }
   let turnX = 0;
-  const T5 = s ?? (G4.back ? G4.last : null);
+  const T5 = s ?? (G5.back ? G5.last : null);
   if (T5 && T5.turned) {
     const tt = now - (T5.t0 + T5.turnAt);
-    turnX = T5.turned * 0.11 * W * easeOut3(tt / 160) * (G4.back ? k : 1);
+    turnX = T5.turned * 0.11 * W * easeOut4(tt / 160) * (G5.back ? k : 1);
     hb = Math.max(hb, tt < 160 ? 10 * (1 - tt / 160) : 0);
   }
   let ten = 0, tremble = 0;
   if (s && s.pressAt !== null && !s.result) {
     const tt = now - s.t0 - s.pressAt;
     ten = tensionAt(tt);
-    if (tt > S5.tension.rise + S5.tension.peak && ten > 0.05) tremble = (1 - ten) * 1.6;
+    if (tt > S6.tension.rise + S6.tension.peak && ten > 0.05) tremble = (1 - ten) * 1.6;
   }
   const rot = -(s ? s.dir : 1) * lean * 3.4 + whipR;
-  const dx = -(s ? s.dir : 1) * lean * 0.022 * W + whipX + turnX + (tremble ? rand2(-tremble, tremble) : 0);
-  const dy = tremble ? rand2(-tremble, tremble) : 0;
-  const leanIn = s && !s.result && !S5.reduced ? 0.035 * clamp44((now - s.t0 - SNAP) / 500, 0, 1) : 0;
+  const dx = -(s ? s.dir : 1) * lean * 0.022 * W + whipX + turnX + (tremble ? rand3(-tremble, tremble) : 0);
+  const dy = tremble ? rand3(-tremble, tremble) : 0;
+  const leanIn = s && !s.result && !S6.reduced ? 0.035 * clamp44((now - s.t0 - SNAP) / 500, 0, 1) : 0;
   const world = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) rotate(${rot.toFixed(2)}deg) scale(${(1 + 0.02 * ten + leanIn + (turnX ? 0.03 : 0)).toFixed(4)})`;
-  $3("#hblurG").setAttribute("stdDeviation", `${hb.toFixed(1)} ${(hb * 0.12).toFixed(1)}`);
-  if ((s || G4.back) && !S5.reduced) cam.draw(world, hb, k);
+  $4("#hblurG").setAttribute("stdDeviation", `${hb.toFixed(1)} ${(hb * 0.12).toFixed(1)}`);
+  if ((s || G5.back) && !S6.reduced) cam.draw(world, hb, k);
   else cam.release();
-  E3.faceImg.style.opacity = E3.hasFace ? String(k) : "0";
-  $3("#dimmer").style.opacity = String(0.25 * k);
+  E4.faceImg.style.opacity = E4.hasFace ? String(k) : "0";
+  $4("#dimmer").style.opacity = String(0.25 * k);
   const dir = s ? s.dir : 1;
-  const sideA = s && !s.result && S5.sideDark ? clamp44(0.42 * easeOut3((now - s.t0 - SNAP) / 300) + 0.3 * twitch + 0.4 * Math.max(0, lean), 0, 0.85) : 0;
-  $3("#side").style.background = `linear-gradient(${dir > 0 ? 90 : 270}deg, rgba(4,2,6,.95), rgba(4,2,6,.4) 28%, rgba(4,2,6,0) 55%)`;
-  $3("#side").style.opacity = sideA.toFixed(3);
-  const sw = $3("#sweep");
+  const sideA = s && !s.result && S6.sideDark ? clamp44(0.42 * easeOut4((now - s.t0 - SNAP) / 300) + 0.3 * twitch + 0.4 * Math.max(0, lean), 0, 0.85) : 0;
+  $4("#side").style.background = `linear-gradient(${dir > 0 ? 90 : 270}deg, rgba(4,2,6,.95), rgba(4,2,6,.4) 28%, rgba(4,2,6,0) 55%)`;
+  $4("#side").style.opacity = sideA.toFixed(3);
+  const sw = $4("#sweep");
   if (sweep >= 0 && s && !s.result) {
     const x0 = dir > 0 ? -0.5 : 1.04, x1 = dir > 0 ? 0.02 : 0.52;
     sw.style.left = `${(lerp4(x0, x1, easeIn2(sweep)) * W).toFixed(1)}px`;
     sw.style.opacity = String(0.85 * Math.min(1, sweep * 2));
   } else sw.style.opacity = "0";
-  $3("#tight").style.opacity = String((0.5 * ten).toFixed(3));
-  if (A3.worldG) A3.worldG.gain.value = 1 - 0.55 * ten;
-  if (G4.cheekA > 0) {
-    const age2 = (now - G4.cheekT0) / 1e3;
-    const a = G4.cheekA * Math.exp(-age2 / 24) * (0.85 + 0.15 * Math.sin(age2 * 5.2));
-    const cx = G4.cheekDir > 0 ? "0%" : "100%";
-    $3("#cheek").style.background = `radial-gradient(ellipse 48% 62% at ${cx} 56%, rgba(210,24,20,.85), rgba(170,10,10,.35) 45%, rgba(120,0,0,0) 75%)`;
-    $3("#cheek").style.opacity = a.toFixed(3);
-    if (a < 4e-3) G4.cheekA = 0;
-  } else $3("#cheek").style.opacity = "0";
-  if ((s || G4.back) && !S5.reduced) {
-    $3("#reply").style.opacity = String(1 - 0.85 * k);
-    $3("#inputWrap").style.opacity = String(1 - 0.6 * k);
+  $4("#tight").style.opacity = String((0.5 * ten).toFixed(3));
+  if (A4.worldG) A4.worldG.gain.value = 1 - 0.55 * ten;
+  if (G5.cheekA > 0) {
+    const age2 = (now - G5.cheekT0) / 1e3;
+    const a = G5.cheekA * Math.exp(-age2 / 24) * (0.85 + 0.15 * Math.sin(age2 * 5.2));
+    const cx = G5.cheekDir > 0 ? "0%" : "100%";
+    $4("#cheek").style.background = `radial-gradient(ellipse 48% 62% at ${cx} 56%, rgba(210,24,20,.85), rgba(170,10,10,.35) 45%, rgba(120,0,0,0) 75%)`;
+    $4("#cheek").style.opacity = a.toFixed(3);
+    if (a < 4e-3) G5.cheekA = 0;
+  } else $4("#cheek").style.opacity = "0";
+  if ((s || G5.back) && !S6.reduced) {
+    $4("#reply").style.opacity = String(1 - 0.85 * k);
+    $4("#inputWrap").style.opacity = String(1 - 0.6 * k);
   }
 }
-var typing3 = (el) => el instanceof HTMLElement && (/^(input|textarea|select)$/i.test(el.tagName) || el.isContentEditable);
+var typing4 = (el) => el instanceof HTMLElement && (/^(input|textarea|select)$/i.test(el.tagName) || el.isContentEditable);
 function onKey(e) {
-  if (typing3(e.target)) return;
+  if (typing4(e.target)) return;
   if (e.key === " ") {
-    if (!G4.slap) return;
+    if (!G5.slap) return;
     e.preventDefault();
-    if (!e.repeat) press2("key");
+    if (!e.repeat) press3("key");
   }
 }
 var CONTROLS2 = 'button, a, input, textarea, select, summary, label, [role="button"], [contenteditable="true"], .alius-input-line, .alius-stage-dock, .alius-chip-row, .alius-stage-dial, .alius-stage-topline, .alius-curtain';
 function onDown(e) {
   if (e.button !== 0 || e.target instanceof Element && e.target.closest(CONTROLS2)) return;
-  if (G4.slap) {
+  if (G5.slap) {
     e.preventDefault();
-    press2("mouse");
+    press3("mouse");
   }
 }
 var holder2 = "";
-function bind3(m, unitId) {
-  if (E3 && (E3.env !== m.env || E3.sceneId !== m.sceneId || E3.unitId !== unitId || !E3.box.isConnected)) stopSlap({ keepCheek: E3.sceneId === m.sceneId });
-  if (G4.cheekScene !== m.sceneId) {
-    G4.cheekA = 0;
-    G4.cheekScene = m.sceneId;
-    G4.started.clear();
-    G4.last = null;
+function bind4(m, unitId) {
+  if (E4 && (E4.env !== m.env || E4.sceneId !== m.sceneId || E4.unitId !== unitId || !E4.box.isConnected)) stopSlap({ keepCheek: E4.sceneId === m.sceneId });
+  if (G5.cheekScene !== m.sceneId) {
+    G5.cheekA = 0;
+    G5.cheekScene = m.sceneId;
+    G5.started.clear();
+    G5.last = null;
   }
-  if (!E3) {
-    E3 = { ...build4(m.env, unitId), host: m.host, sceneId: m.sceneId };
-    const e = E3;
+  if (!E4) {
+    E4 = { ...build5(m.env, unitId), host: m.host, sceneId: m.sceneId };
+    const e = E4;
     const reading2 = () => e.env.root.dataset.curtain === "open";
     e.offs.push(m.env.listen(document, "keydown", (ev) => {
       if (!reading2()) onKey(ev);
@@ -67891,52 +70021,52 @@ function bind3(m, unitId) {
     looking.clear();
     leftBySlap = null;
   }
-  E3.host = m.host;
+  E4.host = m.host;
   holder2 = unitId;
-  S5.reduced = m.still;
-  S5.face = m.env.art.face(unitId) ?? { x: 0.47, y: 0.17 };
+  S6.reduced = m.still;
+  S6.face = m.env.art.face(unitId) ?? { x: 0.47, y: 0.17 };
   measure();
 }
 function mountSlap(m) {
   const slap = m.slap;
   if (!slap) {
     settleSlap();
-    const same = E3 !== null && E3.env === m.env && E3.sceneId === m.sceneId && E3.box.isConnected;
-    if (!same && (G4.cheekScene !== m.sceneId || G4.cheekA <= 0 || holder2 === "")) {
-      if (E3) stopSlap({ keepCheek: E3.sceneId === m.sceneId });
+    const same = E4 !== null && E4.env === m.env && E4.sceneId === m.sceneId && E4.box.isConnected;
+    if (!same && (G5.cheekScene !== m.sceneId || G5.cheekA <= 0 || holder2 === "")) {
+      if (E4) stopSlap({ keepCheek: E4.sceneId === m.sceneId });
       return;
     }
-    if (!same) bind3(m, holder2);
-    if (G4.cheekA > 0) requestAnimationFrame4(frame3);
+    if (!same) bind4(m, holder2);
+    if (G5.cheekA > 0) requestAnimationFrame5(frame4);
     return;
   }
-  bind3(m, slap.holderId);
-  S5.style = slap.style;
+  bind4(m, slap.holderId);
+  S6.style = slap.style;
   lookFaces(facesOf(slap.style));
-  if (G4.cheekA > 0) requestAnimationFrame4(frame3);
-  if (G4.started.has(slap.id)) return;
-  if (G4.slap || G4.starting) {
-    if (G4.next?.id !== slap.id) {
-      G4.next = slap;
+  if (G5.cheekA > 0) requestAnimationFrame5(frame4);
+  if (G5.started.has(slap.id)) return;
+  if (G5.slap || G5.starting) {
+    if (G5.next?.id !== slap.id) {
+      G5.next = slap;
       LINES_NEXT = { [slap.style]: linesFor(m.reg, slap.style, slap.id) };
     }
     return;
   }
-  LINES2 = { [slap.style]: linesFor(m.reg, slap.style, slap.id) };
+  LINES3 = { [slap.style]: linesFor(m.reg, slap.style, slap.id) };
   m.host.dataset.slap = slap.id;
   readFaceNow();
   void startSlap2(slap);
 }
 var LINES_NEXT = {};
 function settleSlap() {
-  G4.next = null;
-  const s = G4.slap;
-  if (s && s.result === null || G4.starting) {
-    G4.started.delete(s ? s.id : G4.rkey);
-    G4.epoch++;
-    G4.starting = false;
-    G4.slap = null;
-    G4.back = null;
+  G5.next = null;
+  const s = G5.slap;
+  if (s && s.result === null || G5.starting) {
+    G5.started.delete(s ? s.id : G5.rkey);
+    G5.epoch++;
+    G5.starting = false;
+    G5.slap = null;
+    G5.back = null;
     for (const n of made) {
       try {
         n.stop();
@@ -67946,29 +70076,29 @@ function settleSlap() {
     made.clear();
     for (const t of timers3) clearTimeout(t);
     timers3.clear();
-    if (E3) $3("#hand").replaceChildren();
-    if (G4.typingFocus && E3) $3("#cmd").focus();
+    if (E4) $4("#hand").replaceChildren();
+    if (G5.typingFocus && E4) $4("#cmd").focus();
   }
 }
 function stopSlap(opts = {}) {
-  if (G4.slap && G4.slap.result === null) G4.started.delete(G4.slap.id);
-  if (G4.starting) G4.started.delete(G4.rkey);
-  G4.epoch++;
-  G4.slap = null;
-  G4.back = null;
-  G4.starting = false;
-  G4.next = null;
-  G4.k = 0;
-  G4.mouse = [];
+  if (G5.slap && G5.slap.result === null) G5.started.delete(G5.slap.id);
+  if (G5.starting) G5.started.delete(G5.rkey);
+  G5.epoch++;
+  G5.slap = null;
+  G5.back = null;
+  G5.starting = false;
+  G5.next = null;
+  G5.k = 0;
+  G5.mouse = [];
   if (!opts.keepCheek) {
-    G4.cheekA = 0;
-    G4.cheekScene = "";
-    G4.started.clear();
-    G4.last = null;
+    G5.cheekA = 0;
+    G5.cheekScene = "";
+    G5.started.clear();
+    G5.last = null;
   }
   for (const t of timers3) clearTimeout(t);
   timers3.clear();
-  if (frameId !== null && E3) E3.env.cancelRaf(frameId);
+  if (frameId !== null && E4) E4.env.cancelRaf(frameId);
   frameId = null;
   for (const n of made) {
     try {
@@ -67982,25 +70112,25 @@ function stopSlap(opts = {}) {
   }
   made.clear();
   try {
-    A3.worldG?.disconnect();
+    A4.worldG?.disconnect();
   } catch {
   }
-  A3.ctx = null;
-  A3.buf = {};
-  delete A3.worldLP;
-  delete A3.worldG;
-  delete A3.body;
-  delete A3.white;
+  A4.ctx = null;
+  A4.buf = {};
+  delete A4.worldLP;
+  delete A4.worldG;
+  delete A4.body;
+  delete A4.white;
   cam.release();
-  if (E3) {
-    for (const off of E3.offs) off();
-    E3.box.remove();
-    const mirrors = E3.env.root.querySelectorAll(".alius-slap-mirror");
-    if (mirrors.length > 0) E3.env.input.style.removeProperty("color");
+  if (E4) {
+    for (const off of E4.offs) off();
+    E4.box.remove();
+    const mirrors = E4.env.root.querySelectorAll(".alius-slap-mirror");
+    if (mirrors.length > 0) E4.env.input.style.removeProperty("color");
     mirrors.forEach((m) => m.remove());
-    delete E3.host.dataset.slap;
+    delete E4.host.dataset.slap;
   }
-  E3 = null;
+  E4 = null;
 }
 function resetSlap() {
   stopSlap();
@@ -68056,12 +70186,12 @@ function createDock(host, names2, opts = {}) {
   host.append(element);
   let chosen = null;
   let scene = "";
-  let answered = null;
+  let answered2 = null;
   element.addEventListener("click", (ev) => {
     const pill = ev.target instanceof Element ? ev.target.closest(ANSWERS) : null;
     const card2 = pill?.closest(".alius-dock-card");
     if (!pill || !card2 || card2.dataset.open !== "true" || card2.closest(".alius-physics") !== null || pill.getAttribute("aria-disabled") === "true") return;
-    answered = card2.getAttribute("data-dock-key");
+    answered2 = card2.getAttribute("data-dock-key");
   }, true);
   waiting3.addEventListener("click", () => {
     for (const k of [...setAside]) if (k.startsWith(`${scene}|`)) setAside.delete(k);
@@ -68084,16 +70214,16 @@ function createDock(host, names2, opts = {}) {
           cards.push({ el, key: `${sceneId}|${name}|${idOf2(el, i)}` });
         });
       }
-      const fresh3 = cards.filter((c) => !ages.has(c.key));
-      for (const c of [...fresh3].reverse()) ages.set(c.key, ++age);
-      if (fresh3.some((c) => !running2(c.el))) chosen = null;
-      if (answered !== null) {
-        if (!cards.some((c) => c.key === answered)) sfx2(DOCK_SOUNDS.place[fnv1a3(answered) % 2], 0.25, -0.6);
-        answered = null;
+      const fresh4 = cards.filter((c) => !ages.has(c.key));
+      for (const c of [...fresh4].reverse()) ages.set(c.key, ++age);
+      if (fresh4.some((c) => !running2(c.el))) chosen = null;
+      if (answered2 !== null) {
+        if (!cards.some((c) => c.key === answered2)) sfx2(DOCK_SOUNDS.place[fnv1a3(answered2) % 2], 0.25, -0.6);
+        answered2 = null;
       }
       const quiet = !dealt.has(sceneId);
       dealt.add(sceneId);
-      const arriving = quiet ? [] : fresh3.filter((c) => !running2(c.el) && !setAside.has(c.key));
+      const arriving = quiet ? [] : fresh4.filter((c) => !running2(c.el) && !setAside.has(c.key));
       for (const c of arriving) if (opts.reduced?.() !== true) c.el.classList.add("is-arriving");
       if (arriving.length > 0) sfx2(DOCK_SOUNDS.slide[fnv1a3(arriving[0].key) % 2], 0.25, -0.6);
       const shown2 = cards.filter((c) => !setAside.has(c.key)).sort((a, b) => ages.get(a.key) - ages.get(b.key));
@@ -68167,7 +70297,7 @@ function resetLook() {
   memory.clear();
 }
 var DRAG_HOLD_MS = 8e3;
-function attachLook(frame4, root, opts) {
+function attachLook(frame5, root, opts) {
   const id = opts.sceneId();
   let pan = memory.get(id) ?? 0.5;
   let drag = null;
@@ -68197,7 +70327,7 @@ function attachLook(frame4, root, opts) {
     drag = { x: ev.clientX, pan, moved: false };
     root.classList.add("alius-looking");
     try {
-      frame4.setPointerCapture?.(ev.pointerId);
+      frame5.setPointerCapture?.(ev.pointerId);
     } catch {
     }
   };
@@ -68211,7 +70341,7 @@ function attachLook(frame4, root, opts) {
       stop();
       return;
     }
-    const width = frame4.getBoundingClientRect().width;
+    const width = frame5.getBoundingClientRect().width;
     if (width <= 0) return;
     const dx = drag.x - e.clientX;
     if (dx === 0 && !drag.moved) return;
@@ -68227,19 +70357,19 @@ function attachLook(frame4, root, opts) {
     stop();
   };
   const menu = (e) => e.preventDefault();
-  frame4.addEventListener("pointerdown", down2);
-  frame4.addEventListener("pointermove", move);
-  frame4.addEventListener("pointerup", up);
-  frame4.addEventListener("pointercancel", stop);
-  frame4.addEventListener("lostpointercapture", stop);
-  frame4.addEventListener("contextmenu", menu);
+  frame5.addEventListener("pointerdown", down2);
+  frame5.addEventListener("pointermove", move);
+  frame5.addEventListener("pointerup", up);
+  frame5.addEventListener("pointercancel", stop);
+  frame5.addEventListener("lostpointercapture", stop);
+  frame5.addEventListener("contextmenu", menu);
   const detach = () => {
-    frame4.removeEventListener("pointerdown", down2);
-    frame4.removeEventListener("pointermove", move);
-    frame4.removeEventListener("pointerup", up);
-    frame4.removeEventListener("pointercancel", stop);
-    frame4.removeEventListener("lostpointercapture", stop);
-    frame4.removeEventListener("contextmenu", menu);
+    frame5.removeEventListener("pointerdown", down2);
+    frame5.removeEventListener("pointermove", move);
+    frame5.removeEventListener("pointerup", up);
+    frame5.removeEventListener("pointercancel", stop);
+    frame5.removeEventListener("lostpointercapture", stop);
+    frame5.removeEventListener("contextmenu", menu);
     root.classList.remove("alius-looking");
   };
   return Object.assign(detach, {
@@ -68329,9 +70459,9 @@ function cancelPostureCalls(cancel = (handle) => clearTimeout(handle)) {
   cancelCall();
 }
 onStageReset(() => cancelCall());
-function drawPostureCall(host, state, reg, pick6, handlers2, opts = {}) {
+function drawPostureCall(host, state, reg, pick7, handlers2, opts = {}) {
   if (opts.look === "scene") {
-    drawSceneCall(host, state, reg, pick6, handlers2);
+    drawSceneCall(host, state, reg, pick7, handlers2);
     return;
   }
   host.replaceChildren();
@@ -68344,7 +70474,7 @@ function drawPostureCall(host, state, reg, pick6, handlers2, opts = {}) {
     expiries.delete(id);
   };
   const unit4 = call2 === void 0 ? void 0 : state.squad.find((u) => u.id === call2.holderId);
-  if (call2 === void 0 || unit4 === void 0 || !dynamicOn(state, reg) || !practiceLive(state, reg, unit4.id) || !pick6({ unitId: unit4.id })) {
+  if (call2 === void 0 || unit4 === void 0 || !dynamicOn(state, reg) || !practiceLive(state, reg, unit4.id) || !pick7({ unitId: unit4.id })) {
     for (const id of [...expiries.keys()]) stop(id);
     started.clear();
     return;
@@ -68377,7 +70507,7 @@ function drawPostureCall(host, state, reg, pick6, handlers2, opts = {}) {
     ...analyzeNative("glossary:posture_call", live3),
     onclick: () => answer(p.postureId)
   }, plainDraft(p.name)));
-  const body = h(
+  const body2 = h(
     "div",
     { class: "alius-posture-body" },
     h("p", { class: "alius-posture-name", "data-posture-call": call2.id, ...analyzeAttrs("glossary:posture_call", live3) }, plainDraft(wanted2.name)),
@@ -68390,7 +70520,7 @@ function drawPostureCall(host, state, reg, pick6, handlers2, opts = {}) {
     })] : [],
     h("div", { class: "alius-posture-choices" }, ...choices)
   );
-  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit4.displayName, body, accent: unitAccent(unit4.id) });
+  const card2 = renderVoiceCard({ voice: VOICE_OF.practice, from: unit4.displayName, body: body2, accent: unitAccent(unit4.id) });
   card2.classList.add("alius-posture-call");
   card2.setAttribute("data-call", call2.id);
   card2.setAttribute("role", "group");
@@ -68398,11 +70528,11 @@ function drawPostureCall(host, state, reg, pick6, handlers2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:posture_call", live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawSceneCall(host, state, reg, pick6, handlers2) {
+function drawSceneCall(host, state, reg, pick7, handlers2) {
   const call2 = state.practices?.call;
   const unit4 = call2 === void 0 ? void 0 : state.squad.find((u) => u.id === call2.holderId);
   const now = currentCall();
-  const live3 = call2 !== void 0 && unit4 !== void 0 && dynamicOn(state, reg) && practiceLive(state, reg, unit4.id) && pick6({ unitId: unit4.id });
+  const live3 = call2 !== void 0 && unit4 !== void 0 && dynamicOn(state, reg) && practiceLive(state, reg, unit4.id) && pick7({ unitId: unit4.id });
   const set2 = live3 ? (state.practices.postures[unit4.id] ?? []).filter((p) => {
     const entry = reg.blockingPostures.get(p.postureId);
     return entry !== void 0 && entryAllowed(state, reg, entry, [unit4.id]);
@@ -68478,9 +70608,9 @@ function clearSlapOverlay(host) {
 }
 
 // src/ui/dynamic/frameChip.ts
-function drawFrameChips(host, state, reg, pick6, hidden) {
+function drawFrameChips(host, state, reg, pick7, hidden) {
   if (hidden || !dynamicOn(state, reg)) return;
-  const chips = state.squad.filter((u) => u.kind === "named" && isLiving(u) && pick6(u.id) && frameRank(dynamicOf(state, u.id)?.frame ?? "equal") >= frameRank("play")).map((u) => h(
+  const chips = state.squad.filter((u) => u.kind === "named" && isLiving(u) && pick7(u.id) && frameRank(dynamicOf(state, u.id)?.frame ?? "equal") >= frameRank("play")).map((u) => h(
     "span",
     { class: "alius-chip alius-frame-chip", "data-frame-chip": u.id, ...analyzeAttrs("glossary:frame", { unitId: u.id }) },
     `${u.displayName.toUpperCase()}: ${String(reg.dynamicFrames.get(dynamicOf(state, u.id).frame)?.label ?? "").toUpperCase()}`
@@ -68826,7 +70956,7 @@ function renderPhysicsPanel(host, ctx2) {
     holding.delete(host);
   };
   const stamp = (physics) => analyzeNative(`contactPhysics:${run.physicsId}`, { input: physics });
-  const press3 = (c) => {
+  const press4 = (c) => {
     if (!running3) return;
     if (realtime) {
       if (c.kind === "wait") return;
@@ -68850,13 +70980,13 @@ function renderPhysicsPanel(host, ctx2) {
     "data-input": c.kind,
     ...c.part !== void 0 ? { "data-part": c.part } : {},
     ...stamp(c.kind),
-    ...realtime ? { onpointerdown: () => press3(c), onpointerup: () => letGo2(), onpointerleave: () => letGo2() } : { onclick: () => press3(c) }
+    ...realtime ? { onpointerdown: () => press4(c), onpointerup: () => letGo2(), onpointerleave: () => letGo2() } : { onclick: () => press4(c) }
   }, c.text);
   const remaining = remainingOf(reg, run);
   const reduced = motionReduced(ctx2.settings) || ctx2.settings.readableMode;
   const strain2 = 1 - remaining;
   const tremor = running3 && strain2 >= 0.7 && !reduced;
-  const tint = strain2 >= 0.7 && reduced;
+  const tint2 = strain2 >= 0.7 && reduced;
   const cue = running3 ? run.segment.plan.beats[Math.min(pointer.beat, total2 - 1)]?.cue : void 0;
   const cueLine = cue !== void 0 ? staging.cue(cue, pointer.beat) : null;
   const gauge = reg.contactPhysics.get(run.physicsId)?.gauge?.kind;
@@ -68882,7 +71012,7 @@ function renderPhysicsPanel(host, ctx2) {
       staging.stopWord();
     } }, "[ STOP WORD ]")] : []
   ];
-  const cls = `alius-physics${tremor ? " alius-physics-tremor" : ""}${tint ? " alius-physics-tint" : ""}`;
+  const cls = `alius-physics${tremor ? " alius-physics-tremor" : ""}${tint2 ? " alius-physics-tint" : ""}`;
   let root;
   if (ctx2.look === "scene") {
     root = sceneCard({
@@ -68923,7 +71053,7 @@ function renderPhysicsPanel(host, ctx2) {
 }
 function wireKeys(host) {
   if (keyHandlers.has(host)) return;
-  const typing4 = (t) => t !== null && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
+  const typing5 = (t) => t !== null && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
   const down2 = (e) => {
     if (!host.isConnected) {
       unwireKeys(host);
@@ -68932,7 +71062,7 @@ function wireKeys(host) {
     const ev = e;
     const t = ev.target;
     const realtime = host.dataset.realtime === "1";
-    if (ev.key !== " " || typing4(t) || !realtime && t !== null && /^button$/i.test(t.tagName)) return;
+    if (ev.key !== " " || typing5(t) || !realtime && t !== null && /^button$/i.test(t.tagName)) return;
     const main2 = host.querySelector(".alius-physics-input[data-input]");
     if (!main2) return;
     ev.preventDefault();
@@ -69300,12 +71430,12 @@ function fillProse(el, text3, visible, opts = {}) {
     if (left <= 0) return;
     const part = run.text.slice(0, left);
     left -= part.length;
-    const fresh3 = opts.newestFrom !== void 0 && index2 >= opts.newestFrom;
+    const fresh4 = opts.newestFrom !== void 0 && index2 >= opts.newestFrom;
     const cls = (...c) => c.filter(Boolean).join(" ");
     let node;
-    if (run.kind === "em") node = h("em", { class: cls("alius-glitch", run.speech === true && speechClass, fresh3 && "alius-prose-new") });
-    else if (run.kind === "speech") node = h("span", { class: cls(speechClass, fresh3 && "alius-prose-new") });
-    else if (fresh3) node = h("span", { class: "alius-prose-new" });
+    if (run.kind === "em") node = h("em", { class: cls("alius-glitch", run.speech === true && speechClass, fresh4 && "alius-prose-new") });
+    else if (run.kind === "speech") node = h("span", { class: cls(speechClass, fresh4 && "alius-prose-new") });
+    else if (fresh4) node = h("span", { class: "alius-prose-new" });
     else {
       el.append(document.createTextNode(part));
       return;
@@ -69344,7 +71474,7 @@ function createCurtain(host, opts) {
   host.append(element);
   let opened = false;
   let last = null;
-  function render3() {
+  function render4() {
     if (!last) return;
     const { messages, ctx: ctx2 } = last;
     const stick = scroller.childElementCount === 0 || atEnd(scroller);
@@ -69447,7 +71577,7 @@ function createCurtain(host, opts) {
       element.dataset.open = "true";
       element.setAttribute("aria-hidden", "false");
       opts.onOpen();
-      render3();
+      render4();
       scroller.scrollTop = scroller.scrollHeight;
     },
     close() {
@@ -69460,7 +71590,7 @@ function createCurtain(host, opts) {
     isOpen: () => opened,
     draw(messages, ctx2) {
       last = { messages, ctx: ctx2 };
-      if (opened) render3();
+      if (opened) render4();
     },
     destroy: () => stop()
   };
@@ -69517,12 +71647,12 @@ function replyView(messages) {
 }
 function measureReply(host, onMore) {
   const block2 = host.querySelector(".alius-reply");
-  const body = host.querySelector(".alius-reply-body");
-  if (!block2 || !body) return;
-  const over2 = body.scrollHeight > body.clientHeight + 1;
+  const body2 = host.querySelector(".alius-reply-body");
+  if (!block2 || !body2) return;
+  const over2 = body2.scrollHeight > body2.clientHeight + 1;
   if (over2) {
     block2.dataset.overflow = "true";
-    body.scrollTop = body.scrollHeight;
+    body2.scrollTop = body2.scrollHeight;
     if (!block2.querySelector("[data-more]")) {
       const handler2 = onMore ?? (moreHandlers.get(block2) ?? (() => {
       }));
@@ -69539,8 +71669,8 @@ function renderReply(host, view, opts) {
     host.replaceChildren();
     return;
   }
-  const body = h("div", { class: "alius-reply-body" });
-  body.style.setProperty("--alius-reply-lines", String(opts.maxLines));
+  const body2 = h("div", { class: "alius-reply-body" });
+  body2.style.setProperty("--alius-reply-lines", String(opts.maxLines));
   for (const r of view.replies) {
     const name = h("span", { class: "alius-reply-name" });
     name.textContent = r.name.toUpperCase();
@@ -69550,7 +71680,7 @@ function renderReply(host, view, opts) {
     const accent = opts.accentOf(r);
     if (accent) line3.style.setProperty("--alius-accent", accent);
     opts.flag?.(line3, r.index);
-    body.append(line3);
+    body2.append(line3);
   }
   const block2 = h("div", { class: "alius-reply" });
   moreHandlers.set(block2, opts.onMore);
@@ -69559,7 +71689,7 @@ function renderReply(host, view, opts) {
     echo.textContent = view.echo;
     block2.append(echo);
   }
-  block2.append(body);
+  block2.append(body2);
   host.replaceChildren(block2);
   measureReply(host, opts.onMore);
 }
@@ -69664,7 +71794,7 @@ function renderSceneScreen(host, ctx2) {
   let spriteHost;
   let hud;
   let curtain;
-  let inputLine3;
+  let inputLine4;
   let wordsChecked = null;
   let replyHost;
   let chips;
@@ -69814,8 +71944,8 @@ function renderSceneScreen(host, ctx2) {
     const units = present2(s);
     const at = units.findIndex((u) => u.cardRef !== void 0 && u.cardRef === reply.avatar || u.displayName === reply.name);
     if (at < 0) return;
-    const frame4 = layers.frame.getBoundingClientRect();
-    const pan = panToCentre(spriteSlots(units.length)[at].x, frame4.width, frame4.height);
+    const frame5 = layers.frame.getBoundingClientRect();
+    const pan = panToCentre(spriteSlots(units.length)[at].x, frame5.width, frame5.height);
     if (pan !== null) detachLook.turnTo(pan);
   }
   function drawHud(s) {
@@ -70023,8 +72153,8 @@ function renderSceneScreen(host, ctx2) {
       stopTyping();
       if (lastIndex > seen2) seen2 = lastIndex;
     } else {
-      const fresh3 = seen2 < 0 ? [] : messages.filter((m) => m.index > seen2);
-      const newest = [...fresh3].reverse().find((m) => !m.isUser);
+      const fresh4 = seen2 < 0 ? [] : messages.filter((m) => m.index > seen2);
+      const newest = [...fresh4].reverse().find((m) => !m.isUser);
       if (newest && speed > 0 && !progress.has(newest.index)) {
         animating = newest.index;
         progress.set(newest.index, 0);
@@ -70170,7 +72300,7 @@ function renderSceneScreen(host, ctx2) {
   }
   function moveInput(to) {
     const focused = document.activeElement === input;
-    to.append(inputLine3);
+    to.append(inputLine4);
     if (focused) focusInput();
   }
   const onDocKey = (e) => {
@@ -70180,7 +72310,7 @@ function renderSceneScreen(host, ctx2) {
     }
   };
   document.addEventListener("keydown", onDocKey);
-  function build5(s) {
+  function build6(s) {
     const units = present2(s);
     sceneKey = s.scene.id;
     unmountInstruments();
@@ -70334,8 +72464,8 @@ function renderSceneScreen(host, ctx2) {
       chipResizer = new ResizeObserver(() => chipRow.layout());
       chipResizer.observe(chipRow.element);
     }
-    inputLine3 = h("div", { class: "alius-input-line alius-stage-cmd" }, h("span", { class: "alius-prompt" }, "CMD>"), input, h("div", { class: "alius-input-tools" }, orderToggle, orderWho, propose2, who));
-    hosts.input.append(inputLine3);
+    inputLine4 = h("div", { class: "alius-input-line alius-stage-cmd" }, h("span", { class: "alius-prompt" }, "CMD>"), input, h("div", { class: "alius-input-tools" }, orderToggle, orderWho, propose2, who));
+    hosts.input.append(inputLine4);
     dock = createDock(hosts.dock, DOCK_SLOTS, { samples: () => ctx2.samples ?? null, reduced: () => motionReduced(ctx2.settings()) });
     const cards = (slot2, cls) => {
       const el = dock.slot(slot2);
@@ -70456,7 +72586,7 @@ function renderSceneScreen(host, ctx2) {
       seen2 = -1;
       progress = /* @__PURE__ */ new Map();
       stopTyping();
-      build5(s);
+      build6(s);
     } else drawBackground(s);
     const messages = controller.transcript();
     const lastReply = [...messages].reverse().find((m) => !m.isUser);
@@ -70812,16 +72942,16 @@ function leadProvider(_subject, env, k) {
   const lead = scene?.lead;
   const unit4 = lead ? env.state.squad.find((u) => u.id === lead.unitId) : void 0;
   if (!scene || !lead || !unit4) return null;
-  const parts = leadScoreParts(env.state, env.registries, unit4.id);
+  const parts2 = leadScoreParts(env.state, env.registries, unit4.id);
   const bond = bondOf(unit4);
   const who = lead.by === "unit" ? `${unit4.displayName} leads.` : lead.by === "commander" ? `The commander leads; ${unit4.displayName} follows.` : `${unit4.displayName} and the commander share the lead.`;
   const lines = [`This scene: ${who}`];
   if (bond) lines.push(`Her style: ${bond.leadStyle}.`);
   const score = k.raw(lead.score);
-  if (score !== null && parts) {
+  if (score !== null && parts2) {
     const signed2 = (n) => `${n < 0 ? "\u2212" : "+"}${k.raw(Math.round(Math.abs(n)))}`;
     lines.push(`Score: ${score} (leads at ${TUNING.bonds.lead.unitAtLeast} or more, follows at ${TUNING.bonds.lead.commanderAtMost} or less).`);
-    lines.push(`Style: ${signed2(parts.styleBase)}, Impunity: ${signed2(parts.impunity)}, defects: ${signed2(parts.defect)}, recent yields: ${signed2(parts.yielded)}, recent enforcement: ${signed2(parts.enforced)}, relationship: ${signed2(parts.state)}.`);
+    lines.push(`Style: ${signed2(parts2.styleBase)}, Impunity: ${signed2(parts2.impunity)}, defects: ${signed2(parts2.defect)}, recent yields: ${signed2(parts2.yielded)}, recent enforcement: ${signed2(parts2.enforced)}, relationship: ${signed2(parts2.state)}.`);
   }
   return { lines };
 }
@@ -71149,13 +73279,13 @@ var nameOf25 = (state, id) => state.squad.find((u) => u.id === id)?.displayName 
 var unitIdOf5 = (subject) => typeof subject.data.unitId === "string" ? subject.data.unitId : null;
 var SLOT_WORD2 = { morning: "morning", afternoon: "afternoon", evening: "evening", night: "night" };
 function branchWords(b) {
-  const parts = [];
-  if (b.tiers !== void 0) parts.push("the closeness of her relationship with the commander");
-  if (b.states !== void 0) parts.push("the state of her relationship");
-  if (b.minAffinity !== void 0) parts.push("her warmth toward the commander");
-  if (b.minLeadRank !== void 0) parts.push("how much she takes the lead");
-  if (b.minImpunity !== void 0) parts.push("how little she fears the commander's reaction");
-  return parts.join(", ").replace(/, ([^,]*)$/, " and $1");
+  const parts2 = [];
+  if (b.tiers !== void 0) parts2.push("the closeness of her relationship with the commander");
+  if (b.states !== void 0) parts2.push("the state of her relationship");
+  if (b.minAffinity !== void 0) parts2.push("her warmth toward the commander");
+  if (b.minLeadRank !== void 0) parts2.push("how much she takes the lead");
+  if (b.minImpunity !== void 0) parts2.push("how little she fears the commander's reaction");
+  return parts2.join(", ").replace(/, ([^,]*)$/, " and $1");
 }
 function deviceAccessProvider(subject, env, k) {
   const state = env.state;
@@ -71244,11 +73374,11 @@ function stakeLines(reg, stakeId) {
   const words3 = STAKE_WORDS[String(stake?.effect)];
   return words3 ? [`If she wins: ${words3.she}.`, `If the commander wins: ${words3.commander}.`] : [];
 }
-function oddsLine(state, reg, k, gameId, unitId, pick6) {
+function oddsLine(state, reg, k, gameId, unitId, pick7) {
   const kind = String(reg.wagerGames.get(gameId)?.kind);
   if (kind === "sparring") {
-    if (pick6 === void 0) return null;
-    const odds = sparringOdds(state, reg, unitId, pick6);
+    if (pick7 === void 0) return null;
+    const odds = sparringOdds(state, reg, unitId, pick7);
     const pct6 = k.raw(Math.round(odds * 100));
     return `The commander's chance in the bout: ${bandWord(odds)}${pct6 !== null ? ` (about ${pct6} %)` : ""}.`;
   }
@@ -71493,9 +73623,9 @@ function satisfactionProvider(_s, env, k) {
 function defianceProvider(_s, env, k) {
   const w = env.state ? wardenOf(env.state) : null;
   if (!w) return null;
-  const E4 = TUNING.warden.escalation;
+  const E5 = TUNING.warden.escalation;
   const raw = k.raw(w.defiance);
-  const lines = [w.defiance >= E4.warning2 ? "Open defiance is near the limit." : w.defiance >= E4.warning1 ? "Open defiance is on the record." : "Open defiance is low."];
+  const lines = [w.defiance >= E5.warning2 ? "Open defiance is near the limit." : w.defiance >= E5.warning1 ? "Open defiance is on the record." : "Open defiance is low."];
   if (raw !== null) lines.push(`Defiance: ${raw}.`);
   if (w.warnings.length > 0) lines.push(`${w.warnings.length === 1 ? "One warning" : "Two warnings"} given.`);
   return { lines };
@@ -71997,7 +74127,7 @@ function unitOf12(state, data) {
   const relation = state.relations[id];
   return unit4 && relation ? { unit: unit4, relation } : null;
 }
-var BAND = { trust: trustBand, affinity: affinityBand, attraction: attractionBand };
+var BAND2 = { trust: trustBand, affinity: affinityBand, attraction: attractionBand };
 var axisProvider2 = (axis) => (subject, env, knowledge2) => {
   const state = env.state;
   const found = unitOf12(state, subject.data);
@@ -72006,7 +74136,7 @@ var axisProvider2 = (axis) => (subject, env, knowledge2) => {
   if (axis !== "trust" && unit4.kind === "grunt") return { lines: ["Grunts track Trust only."] };
   if (axis === "attraction" && !intimacyOf(state).romance) return { lines: ["Romance is off."] };
   const value = relation[axis];
-  const lines = [`${unit4.displayName}: ${BAND[axis](value).toUpperCase()}${rawSuffix(knowledge2, value)}`];
+  const lines = [`${unit4.displayName}: ${BAND2[axis](value).toUpperCase()}${rawSuffix(knowledge2, value)}`];
   const net = ledgerFor(state, `axis:${unit4.id}:${axis}`, state.day - 2).reduce((sum, e) => sum + e.delta, 0);
   lines.push(`Trend ${arrow(knowledge2, net)}`);
   const moves = (type) => {
@@ -72199,11 +74329,11 @@ function entryText(registry2, entry) {
   if (direct) return direct;
   switch (registry2) {
     case "defects": {
-      const parts = [
+      const parts2 = [
         text2(entry.upside) && `Upside: ${entry.upside}`,
         text2(entry.downside) && `Downside: ${entry.downside}`
       ].filter((p) => !!p);
-      return parts.length ? parts.join(" \xB7 ") : null;
+      return parts2.length ? parts2.join(" \xB7 ") : null;
     }
     case "signatures":
       return text2(entry.mechanic);
@@ -72317,17 +74447,17 @@ function renderPanel(host, view, on) {
   host.toggleAttribute("aria-busy", view.analyzingMs > 0);
   const head = h("div", { class: "alius-analyze-frame alius-analyze-head" }, "\u250C\u2500[ ANALYSIS ]");
   const foot = h("div", { class: "alius-analyze-frame alius-analyze-foot" }, "\u2514\u2500");
-  const body = h("div", { class: "alius-analyze-body" });
+  const body2 = h("div", { class: "alius-analyze-body" });
   if (view.analyzingMs > 0) {
-    body.append(h("div", { class: view.wipe ? "alius-analyze-line alius-analyze-wipe" : "alius-analyze-line" }, "ANALYZING \u2592\u2592\u2592\u2591\u2591"));
+    body2.append(h("div", { class: view.wipe ? "alius-analyze-line alius-analyze-wipe" : "alius-analyze-line" }, "ANALYZING \u2592\u2592\u2592\u2591\u2591"));
   } else if (model.missing) {
-    body.append(h("div", { class: "alius-analyze-line alius-analyze-missing" }, `NO DATA // ${model.address}`));
+    body2.append(h("div", { class: "alius-analyze-line alius-analyze-missing" }, `NO DATA // ${model.address}`));
   } else {
     const bar2 = [];
     if (view.crumbs.length > 1) bar2.push(h("button", { type: "button", class: "alius-analyze-back", "aria-label": "Back", onclick: () => on.back() }, "[<]"));
     bar2.push(h("div", { class: "alius-analyze-title" }, model.title));
     bar2.push(h("button", { type: "button", class: "alius-analyze-pin", "aria-pressed": String(view.pinned), onclick: () => on.pin() }, view.pinned ? "[ PINNED ]" : "[ PIN ]"));
-    body.append(h("div", { class: "alius-analyze-bar" }, ...bar2));
+    body2.append(h("div", { class: "alius-analyze-bar" }, ...bar2));
     if (view.crumbs.length > 1) {
       const last = view.crumbs.length - 1;
       const trail = [];
@@ -72335,29 +74465,29 @@ function renderPanel(host, view, on) {
         if (i > 0) trail.push(" \u203A ");
         trail.push(i === last ? title3 : h("button", { type: "button", class: "alius-analyze-crumb", onclick: () => on.crumb(i) }, title3));
       });
-      body.append(h("div", { class: "alius-analyze-crumbs" }, ...trail));
+      body2.append(h("div", { class: "alius-analyze-crumbs" }, ...trail));
     }
-    if (model.text) body.append(h("p", { class: "alius-analyze-text" }, ...linked(model.text, view, on)));
-    if (model.long) body.append(h("p", { class: "alius-analyze-long" }, ...linked(model.long, view, on)));
-    if (model.effects.length) body.append(block("EFFECTS", "alius-analyze-effects", model.effects.map((l) => linked(l, view, on))));
-    if (model.reading) body.append(block("CURRENT READING", "alius-analyze-reading", model.reading.lines.map((l) => linked(l, view, on))));
+    if (model.text) body2.append(h("p", { class: "alius-analyze-text" }, ...linked(model.text, view, on)));
+    if (model.long) body2.append(h("p", { class: "alius-analyze-long" }, ...linked(model.long, view, on)));
+    if (model.effects.length) body2.append(block("EFFECTS", "alius-analyze-effects", model.effects.map((l) => linked(l, view, on))));
+    if (model.reading) body2.append(block("CURRENT READING", "alius-analyze-reading", model.reading.lines.map((l) => linked(l, view, on))));
     if (model.see.length) {
       const items = model.see.flatMap((target, i) => [...i > 0 ? [" \xB7 "] : [], ...linked(`[[${target}]]`, view, on)]);
-      body.append(h("div", { class: "alius-analyze-block alius-analyze-see" }, h("div", { class: "alius-analyze-label" }, "SEE ALSO"), h("div", { class: "alius-analyze-line" }, ...items)));
+      body2.append(h("div", { class: "alius-analyze-block alius-analyze-see" }, h("div", { class: "alius-analyze-label" }, "SEE ALSO"), h("div", { class: "alius-analyze-line" }, ...items)));
     }
   }
-  host.replaceChildren(head, body, foot);
+  host.replaceChildren(head, body2, foot);
 }
 
 // src/ui/analyze/place.ts
 var MARGIN = 4;
-function placePanel(anchor, size2, viewport, gap = 12) {
+function placePanel(anchor, size3, viewport, gap = 12) {
   let left = anchor.x + gap;
   let top = anchor.y + gap;
-  if (left + size2.w > viewport.w - MARGIN) left = anchor.x - gap - size2.w;
-  if (top + size2.h > viewport.h - MARGIN) top = anchor.y - gap - size2.h;
-  left = Math.max(MARGIN, Math.min(left, viewport.w - size2.w - MARGIN));
-  top = Math.max(MARGIN, Math.min(top, viewport.h - size2.h - MARGIN));
+  if (left + size3.w > viewport.w - MARGIN) left = anchor.x - gap - size3.w;
+  if (top + size3.h > viewport.h - MARGIN) top = anchor.y - gap - size3.h;
+  left = Math.max(MARGIN, Math.min(left, viewport.w - size3.w - MARGIN));
+  top = Math.max(MARGIN, Math.min(top, viewport.h - size3.h - MARGIN));
   return { left, top };
 }
 
@@ -72429,7 +74559,7 @@ function attachAnalyzer(root, deps) {
     }
     return false;
   }
-  function render3(analyzingMs, wipe) {
+  function render4(analyzingMs, wipe) {
     if (!panelEl || stack.length === 0) return;
     const env = deps.getEnv();
     const models = stack.map((s) => buildPanelModel(s, env));
@@ -72453,17 +74583,17 @@ function attachAnalyzer(root, deps) {
     const ms = animationMs(mode, seen2.has(top.address), reduced());
     seen2.add(top.address);
     if (ms > 0) {
-      render3(ms, mode === "full");
+      render4(ms, mode === "full");
       animTimer = setTimeout(() => {
         animTimer = null;
-        render3(0, false);
+        render4(0, false);
       }, ms);
     } else {
-      render3(0, false);
+      render4(0, false);
     }
   }
   function rerender() {
-    if (animTimer === null) render3(0, false);
+    if (animTimer === null) render4(0, false);
   }
   function pin() {
     pinned = true;
@@ -72603,7 +74733,7 @@ function attachAnalyzer(root, deps) {
   const onKey2 = (ev) => {
     const e = ev;
     if (!enabled()) return;
-    const typing4 = isTyping(e.target);
+    const typing5 = isTyping(e.target);
     if (e.key === "Escape") {
       if (!panelEl) return;
       e.preventDefault();
@@ -72612,12 +74742,12 @@ function attachAnalyzer(root, deps) {
       return;
     }
     if (e.key === "Backspace") {
-      if (!panelEl || typing4) return;
+      if (!panelEl || typing5) return;
       e.preventDefault();
       pop();
       return;
     }
-    const isHelp = e.key === "F1" || e.key === "?" && !typing4 && !e.ctrlKey && !e.metaKey && !e.altKey;
+    const isHelp = e.key === "F1" || e.key === "?" && !typing5 && !e.ctrlKey && !e.metaKey && !e.altKey;
     if (!isHelp) return;
     const active = document.activeElement;
     const el = active && root.contains(active) ? active.closest(ANALYZE) : null;
@@ -72752,19 +74882,19 @@ function renderChrome(chrome, screen, device, skin, assetUrl) {
   device.style.setProperty("--device-led", String(skin.ledColor));
   device.style.setProperty("--device-accent", String(skin.accent));
   if (skin.kind === "image" && assetUrl && box) {
-    const size2 = skin.frameSize;
-    device.style.setProperty("--device-ratio", `${size2.w} / ${size2.h}`);
+    const size3 = skin.frameSize;
+    device.style.setProperty("--device-ratio", `${size3.w} / ${size3.h}`);
     screen.style.position = "absolute";
     screen.style.left = box.left;
     screen.style.top = box.top;
     screen.style.width = box.width;
     screen.style.height = box.height;
-    const frame4 = h("img", { class: "alius-device-frame", alt: "", draggable: "false", src: assetUrl(String(skin.frameImage)) });
-    frame4.addEventListener("error", () => {
+    const frame5 = h("img", { class: "alius-device-frame", alt: "", draggable: "false", src: assetUrl(String(skin.frameImage)) });
+    frame5.addEventListener("error", () => {
       failedFrames.add(String(skin.frameImage));
       renderChrome(chrome, screen, device, BUILT_IN_SKIN);
     });
-    chrome.append(frame4);
+    chrome.append(frame5);
     const overlay = skin.overlay;
     if (overlay) {
       const layer = h("div", { class: "alius-device-overlay" });
@@ -72819,7 +74949,7 @@ function createModalHost(layer) {
 }
 
 // src/ui/memory/fill.ts
-function fillValue(state, build5, settings, part) {
+function fillValue(state, build6, settings, part) {
   const cfg = memoryConfig(state);
   switch (part) {
     case "facts": {
@@ -72832,9 +74962,9 @@ function fillValue(state, build5, settings, part) {
     case "chronicle":
       return String(state.memory.chronicle.length);
     case "memory_tokens":
-      return `${build5.memoryTokens} / ${cfg.memoryTokens}`;
+      return `${build6.memoryTokens} / ${cfg.memoryTokens}`;
     case "directive_tokens":
-      return String(build5.directiveTokens);
+      return String(build6.directiveTokens);
     case "save_size":
       return `${(JSON.stringify(state).length / 1024).toFixed(1)} KB`;
   }
@@ -72847,12 +74977,12 @@ var ROWS = [
   ["directive_tokens", "Directives in the last prompt (tokens)"],
   ["save_size", "Save size"]
 ];
-function renderFill(host, state, build5, settings) {
+function renderFill(host, state, build6, settings) {
   host.replaceChildren(h("div", { class: "alius-memory-fill" }, ...ROWS.map(([part, label2]) => h(
     "div",
     { class: "alius-memory-row" },
     h("span", { class: "alius-field-label" }, label2),
-    h("span", { class: "alius-stat", "data-fill": part, ...analyzeAttrs("glossary:memory_fill", { part }) }, fillValue(state, build5, settings, part))
+    h("span", { class: "alius-stat", "data-fill": part, ...analyzeAttrs("glossary:memory_fill", { part }) }, fillValue(state, build6, settings, part))
   ))));
 }
 
@@ -73080,7 +75210,7 @@ function renderSysTab(host, ctx2) {
       if (err) ctx2.toast("warn", String(err.message ?? "The setting could not be changed."));
       drawDynamic();
     };
-    const pick6 = (name, options2, value, address, label2, commit) => {
+    const pick7 = (name, options2, value, address, label2, commit) => {
       const el = h("select", { name, class: "alius-input" }, ...options2.map(([v, text3]) => h("option", { value: v, selected: v === value }, text3)));
       el.value = value;
       el.addEventListener("change", () => commit(el.value));
@@ -73088,9 +75218,9 @@ function renderSysTab(host, ctx2) {
     };
     const setSetup = (patch) => send("dynamic/set_setup", patch);
     dynamicHost.append(
-      pick6("dynamicHolders", HOLDER_CAPS.map((v) => [String(v), v === 0 ? "0 (off)" : String(v)]), String(setup?.holders ?? 0), "glossary:setting_dynamic_holders", "Holders (this campaign)", (v) => setSetup({ holders: v === "any" ? "any" : Number(v) })),
-      pick6("dynamicPace", PACES.map((v) => [v, v]), setup?.pace ?? "normal", "glossary:setting_dynamic_pace", "Pace (this campaign)", (v) => setSetup({ pace: v })),
-      pick6("dynamicFrequency", FREQUENCIES.map((v) => [v, v]), setup?.frequency ?? "normal", "glossary:setting_dynamic_frequency", "Frequency (this campaign)", (v) => setSetup({ frequency: v }))
+      pick7("dynamicHolders", HOLDER_CAPS.map((v) => [String(v), v === 0 ? "0 (off)" : String(v)]), String(setup?.holders ?? 0), "glossary:setting_dynamic_holders", "Holders (this campaign)", (v) => setSetup({ holders: v === "any" ? "any" : Number(v) })),
+      pick7("dynamicPace", PACES.map((v) => [v, v]), setup?.pace ?? "normal", "glossary:setting_dynamic_pace", "Pace (this campaign)", (v) => setSetup({ pace: v })),
+      pick7("dynamicFrequency", FREQUENCIES.map((v) => [v, v]), setup?.frequency ?? "normal", "glossary:setting_dynamic_frequency", "Frequency (this campaign)", (v) => setSetup({ frequency: v }))
     );
     if (state.dynamic === void 0) return;
     for (const u of state.squad.filter((x) => x.kind === "named" && isLiving(x))) {
@@ -73099,8 +75229,8 @@ function renderSysTab(host, ctx2) {
         "div",
         { class: "alius-dynamic-row", "data-unit": u.id },
         h("span", { class: "alius-field-label" }, u.displayName),
-        pick6(`mayHold:${u.id}`, MAY_HOLD.map((v) => [v, v]), mine.mayHold ?? "auto", "glossary:dynamic_may_hold", "May hold", (v) => send("dynamic/set_unit", { unitId: u.id, mayHold: v })),
-        pick6(`sensitivity:${u.id}`, SENSITIVITIES.map((v) => [v, v]), mine.sensitivity ?? "normal", "glossary:dynamic_sensitivity", "Sensitivity", (v) => send("dynamic/set_unit", { unitId: u.id, sensitivity: v }))
+        pick7(`mayHold:${u.id}`, MAY_HOLD.map((v) => [v, v]), mine.mayHold ?? "auto", "glossary:dynamic_may_hold", "May hold", (v) => send("dynamic/set_unit", { unitId: u.id, mayHold: v })),
+        pick7(`sensitivity:${u.id}`, SENSITIVITIES.map((v) => [v, v]), mine.sensitivity ?? "normal", "glossary:dynamic_sensitivity", "Sensitivity", (v) => send("dynamic/set_unit", { unitId: u.id, sensitivity: v }))
       ));
     }
   };
@@ -73586,8 +75716,8 @@ function createShell(deps) {
       });
       return;
     }
-    const render3 = tabRenderers.get(tab);
-    if (render3) guarded(panel2, `tab ${tab}`, render3);
+    const render4 = tabRenderers.get(tab);
+    if (render4) guarded(panel2, `tab ${tab}`, render4);
     else panel2.append(tabStub(tab));
   }
   function glitch() {
@@ -73876,8 +76006,8 @@ function createShell(deps) {
         api.showScreen("pda");
       }
     },
-    registerHub(render3) {
-      hubRender = render3;
+    registerHub(render4) {
+      hubRender = render4;
       if (isOpen2() && onHubLayer()) renderHub2();
     },
     isDeviceUp,
@@ -73890,12 +76020,12 @@ function createShell(deps) {
       if (up) api.showScreen("pda");
       else if (router.current() === "pda") api.showScreen("hub");
     },
-    registerTab(id, render3) {
-      tabRenderers.set(id, render3);
+    registerTab(id, render4) {
+      tabRenderers.set(id, render4);
       if (isOpen2() && isDeviceUp() && tab === id) renderTab();
     },
-    registerScreen(id, render3, opts) {
-      router.register(id, render3);
+    registerScreen(id, render4, opts) {
+      router.register(id, render4);
       if (opts?.refresh) screenRefresh.set(id, opts.refresh);
       else screenRefresh.delete(id);
       if (isOpen2() && router.current() === id) renderView();
@@ -73973,20 +76103,20 @@ function createShell(deps) {
     }
     if (modals?.isOpen()) return;
     const plain8 = !e.ctrlKey && !e.metaKey && !e.altKey;
-    const typing4 = isEditable2(e.target);
+    const typing5 = isEditable2(e.target);
     const where = router.current();
     if (e.key === "Escape") {
-      if (where === "pda" && !typing4) {
+      if (where === "pda" && !typing5) {
         e.preventDefault();
         api.setDevice(false);
-      } else if (where === "scene" && !typing4 && sceneDeviceUp && root?.querySelector('.alius-scene[data-curtain="open"]') === null) {
+      } else if (where === "scene" && !typing5 && sceneDeviceUp && root?.querySelector('.alius-scene[data-curtain="open"]') === null) {
         e.preventDefault();
         api.setDevice(false);
       }
       return;
     }
     if (e.key === "Tab") {
-      if (!plain8 || e.shiftKey || isControl(e.target) || isInsideOverlay(e.target) || typing4) return;
+      if (!plain8 || e.shiftKey || isControl(e.target) || isInsideOverlay(e.target) || typing5) return;
       if (where === "hub" || where === "pda") {
         e.preventDefault();
         api.setDevice(where === "hub");
@@ -73998,7 +76128,7 @@ function createShell(deps) {
       }
       return;
     }
-    if (/^[0-8]$/.test(e.key) && plain8 && !typing4) {
+    if (/^[0-8]$/.test(e.key) && plain8 && !typing5) {
       const id = e.key === "0" ? "home" : KEY_TABS[Number(e.key) - 1];
       if (where === "pda" || where === "scene" && sceneDeviceUp) selectTab(id);
       else if (where === "hub") api.showTab(id);
@@ -74075,15 +76205,15 @@ function createApp(st2, deps) {
     samples.setMuffle(hooded);
     for (const id of bellsFor(events, state, registries)) sound.play(id);
   }
-  function announceUnlocks(before3, after3) {
-    for (const row4 of unlockedBetween(before3, after3, registries)) toast("info", String(row4.notice), { voice: VOICE_OF.toast });
+  function announceUnlocks(before4, after4) {
+    for (const row4 of unlockedBetween(before4, after4, registries)) toast("info", String(row4.notice), { voice: VOICE_OF.toast });
   }
   function syncBadges() {
     syncLocks();
     shell.setTabBadge("comms", state ? unreadCount(state) : 0);
     shell.setTabBadge("home", state ? unreadNotes(state) : 0);
-    const fresh3 = state ? state.missions.offered.filter((m) => (m.source === "command" || m.source === "story") && !seenOffers.has(m.id)).length : 0;
-    shell.setTabBadge("ops", fresh3);
+    const fresh4 = state ? state.missions.offered.filter((m) => (m.source === "command" || m.source === "story") && !seenOffers.has(m.id)).length : 0;
+    shell.setTabBadge("ops", fresh4);
     shell.setTabBadge("sys", generationBadge(state));
   }
   const seenOffers = /* @__PURE__ */ new Set();
@@ -74246,7 +76376,7 @@ function createApp(st2, deps) {
     st: st2,
     app: sceneApp,
     memory: memory2,
-    restore: (before3, expected) => api.restoreSnapshot(before3, expected),
+    restore: (before4, expected) => api.restoreSnapshot(before4, expected),
     generations,
     registries: () => registries,
     settings: () => getSettings(st2),
@@ -74296,10 +76426,10 @@ function createApp(st2, deps) {
     startScene: (o) => beginScene(o),
     showVote: (vote, lines) => new Promise((resolve) => {
       const host = h("div");
-      let answered = false;
+      let answered2 = false;
       const answer = (c) => {
-        if (answered) return;
-        answered = true;
+        if (answered2) return;
+        answered2 = true;
         shell.closeModal?.();
         resolve(c);
       };
@@ -74333,8 +76463,8 @@ function createApp(st2, deps) {
       draw2();
       shell.open();
       void shell.modal({ title: "SQUAD VOTE", body: host, actions: [] }).then(() => {
-        if (!answered) {
-          answered = true;
+        if (!answered2) {
+          answered2 = true;
           resolve({ choice: "cancel" });
         }
       });
@@ -74565,13 +76695,13 @@ function createApp(st2, deps) {
     if (!state) return;
     const preset = presetLocation;
     presetLocation = null;
-    const pick6 = preset !== null ? { locationId: preset, participants: [unitId] } : await pickLocation((o) => shell.modal(o), { registries, state, firstUnitId: unitId, candidates: state.squad });
+    const pick7 = preset !== null ? { locationId: preset, participants: [unitId] } : await pickLocation((o) => shell.modal(o), { registries, state, firstUnitId: unitId, candidates: state.squad });
     if (st2.getActiveChat()?.chatId !== chatId) return;
-    if (!pick6) {
+    if (!pick7) {
       api.dispatch({ type: "calendar/cancel_scene", payload: {} }, { expectChatId: chatId });
       return;
     }
-    await beginScene({ locationId: pick6.locationId, participants: pick6.participants, origin: "activity" });
+    await beginScene({ locationId: pick7.locationId, participants: pick7.participants, origin: "activity" });
   }
   async function offerGroupScene() {
     const chatId = st2.getActiveChat()?.chatId;
@@ -74735,6 +76865,7 @@ function createApp(st2, deps) {
           stopWord: () => staging.stopWord(),
           skip: (st3) => staging.skip(st3),
           stimulus: (w, k, d) => staging.stimulus(w, k, d),
+          answer: (r, l, c) => staging.answer(r, l, c),
           act: (k) => staging.act(k),
           finishCounted: (n) => staging.finishCounted(n),
           cue: (k, b) => staging.cue(k, b),
@@ -74889,19 +77020,19 @@ function createApp(st2, deps) {
     } finally {
       raisingAlarm = false;
     }
-    const answered = raised.find((e) => e.type === "hold_alarm");
-    if (answered === void 0) {
+    const answered2 = raised.find((e) => e.type === "hold_alarm");
+    if (answered2 === void 0) {
       if (state?.practices?.alarm?.answer === "keep" && state.practices.alarm.accepted !== true) openAlarmCard(null);
       return [...handled, ...raised];
     }
-    const holderId = String(answered.holderId);
+    const holderId = String(answered2.holderId);
     const name = state?.squad.find((u) => u.id === holderId)?.displayName ?? "She";
     const kind = night ? "night" : "launch";
-    if (answered.answer === "keep") {
+    if (answered2.answer === "keep") {
       openAlarmCard(null);
       return [...handled, ...raised];
     }
-    const late2 = answered.answer === "release_late";
+    const late2 = answered2.answer === "release_late";
     if (night) {
       toast("info", late2 ? `${name} let the commander go late: the knock waited.` : `${name} let the commander go. The knock can be answered.`);
       return [...handled, ...raised];
@@ -75250,11 +77381,11 @@ function createApp(st2, deps) {
     }
   }
   function startRecap() {
-    const report3 = state?.lastExpedition;
-    if (!report3 || report3.recap !== void 0 || !getSettings(st2).expeditionRecap) return;
-    recapPendingFor = report3.id;
+    const report4 = state?.lastExpedition;
+    if (!report4 || report4.recap !== void 0 || !getSettings(st2).expeditionRecap) return;
+    recapPendingFor = report4.id;
     void expedition.requestRecap().catch((e) => console.warn("[Alius] expedition recap failed", e)).finally(() => {
-      if (recapPendingFor === report3.id) recapPendingFor = null;
+      if (recapPendingFor === report4.id) recapPendingFor = null;
       shell.refresh();
     });
   }
@@ -75336,8 +77467,8 @@ function createApp(st2, deps) {
     );
     const p = commanderProfile(state);
     wizard.state.commander = { body: { ...p.body }, expression: p.expression, seasoning: p.seasoning, traits: { regular: [...p.traits.regular] } };
-    const body = h("div", { class: "alius-cmdr" });
-    const draw2 = () => renderCommanderFile(body, {
+    const body2 = h("div", { class: "alius-cmdr" });
+    const draw2 = () => renderCommanderFile(body2, {
       value: wizard.state.commander,
       registries,
       desireBondDefects: desireBond,
@@ -75352,13 +77483,13 @@ function createApp(st2, deps) {
       onRandom: () => wizard.randomCommander(),
       importStatus: wizard.state.commanderImport
     });
-    wizard.subscribe(() => renderKeepingFocus(body, draw2));
+    wizard.subscribe(() => renderKeepingFocus(body2, draw2));
     draw2();
     reviewOpen = true;
     try {
       const answer = await shell.modal({
         title: "Commander file incomplete \u2014 review",
-        body: h("div", {}, h("p", {}, "This campaign began before the commander had a body, an expression and traits. Review the commander's file, or skip to keep the defaults."), body),
+        body: h("div", {}, h("p", {}, "This campaign began before the commander had a body, an expression and traits. Review the commander's file, or skip to keep the defaults."), body2),
         actions: [{ label: "Confirm", value: "confirm" }, { label: "Skip", value: "skip" }]
       });
       const commander = structuredClone(wizard.state.commander);
@@ -75678,8 +77809,8 @@ function createApp(st2, deps) {
       // P14c: raw profile
     });
     wizard.calibrate(0);
-    const body = h("div", { class: "alius-calibration" });
-    const draw2 = () => renderCalibration(body, {
+    const body2 = h("div", { class: "alius-calibration" });
+    const draw2 = () => renderCalibration(body2, {
       draft: wizard.state.units[0],
       registries,
       desireBondDefects: desireBond,
@@ -75691,11 +77822,11 @@ function createApp(st2, deps) {
       onRegenerate: (s) => wizard.regenerate(0, s),
       onManual: () => wizard.setManual(0)
     });
-    wizard.subscribe(() => renderKeepingFocus(body, draw2));
+    wizard.subscribe(() => renderKeepingFocus(body2, draw2));
     draw2();
     const answer = await shell.modal({
       title: `Re-sync ${unit4.displayName}`,
-      body,
+      body: body2,
       actions: [{ label: "Apply", value: "apply" }, { label: "Cancel", value: "cancel" }]
     });
     const draft = wizard.state.units[0];
@@ -75814,8 +77945,8 @@ function createApp(st2, deps) {
     );
     wizard.toggleUnit(card2);
     wizard.calibrate(0);
-    const body = h("div", { class: "alius-calibration" });
-    const draw2 = () => renderCalibration(body, {
+    const body2 = h("div", { class: "alius-calibration" });
+    const draw2 = () => renderCalibration(body2, {
       draft: wizard.state.units[0],
       registries,
       desireBondDefects: desireBond,
@@ -75826,11 +77957,11 @@ function createApp(st2, deps) {
       onRegenerate: (section) => wizard.regenerate(0, section),
       onManual: () => wizard.setManual(0)
     });
-    wizard.subscribe(() => renderKeepingFocus(body, draw2));
+    wizard.subscribe(() => renderKeepingFocus(body2, draw2));
     draw2();
     const answer = await shell.modal({
       title: `New unit: ${card2.name}`,
-      body,
+      body: body2,
       actions: [{ label: "Accept", value: "apply" }, { label: "Cancel", value: "cancel" }]
     });
     const draft = wizard.state.units[0];
@@ -76386,7 +78517,7 @@ function createApp(st2, deps) {
       personal: {
         onAnswerToken: (offerId, accept2) => void personal.answerToken(offerId, accept2),
         onAnswerWager: (wagerId, accept2) => void personal.answerWager(wagerId, accept2),
-        onPlayWager: (wagerId, pick6) => void personal.playWager(wagerId, pick6),
+        onPlayWager: (wagerId, pick7) => void personal.playWager(wagerId, pick7),
         onAnswerQuestion: (wagerId, text3) => void personal.answerQuestion(wagerId, text3)
       },
       edit: () => pendingEdit,
@@ -76630,7 +78761,7 @@ function createApp(st2, deps) {
       if (!state) {
         return load.kind === "readonly" ? [{ type: "error", code: "read_only", message: "Campaign is read-only." }] : [{ type: "error", code: "no_campaign", message: "No Alius campaign in this chat." }];
       }
-      const before3 = state;
+      const before4 = state;
       const r = dispatch(state, action, registries);
       if (r.state !== state) {
         state = r.state;
@@ -76640,7 +78771,7 @@ function createApp(st2, deps) {
         }
       }
       reportEvents(r.events);
-      if (r.state !== before3) announceUnlocks(before3, r.state);
+      if (r.state !== before4) announceUnlocks(before4, r.state);
       applyContext();
       syncBadges();
       syncSound(r.events);
@@ -77057,8 +79188,8 @@ registerChecks("memoryRules", (entry) => {
   if (entry.about !== "world" && !shape2.ids.includes(String(entry.about))) {
     out.push({ path: "about", message: `memory rule "${entry.id}": about "${String(entry.about)}" is not "world" or an id group of "${event}" (${shape2.ids.join(", ")})` });
   }
-  const parts = Array.isArray(entry.audience) ? entry.audience.map(String) : [String(entry.audience)];
-  for (const part of parts) {
+  const parts2 = Array.isArray(entry.audience) ? entry.audience.map(String) : [String(entry.audience)];
+  for (const part of parts2) {
     if (!AUDIENCE_WORDS.includes(part) && !shape2.ids.includes(part)) {
       out.push({ path: "audience", message: `memory rule "${entry.id}": audience "${part}" is not present, squad, public or an id group of "${event}" (${shape2.ids.join(", ")})` });
     }
@@ -77250,20 +79381,20 @@ registerChecks("planRooms", (entry, regs) => {
     for (const c of cmdr) {
       if (cell && c.hubRoomId !== cell.id) out.push({ path: "hubRoomId", message: `the commander cabin "${String(c.id)}" must belong to the commander cell "${String(cell.id)}" (its notes are reached there)` });
     }
-    const capacity = Math.max(0, ...[...regs.facilities.values()].flatMap((f) => (f.levels ?? []).map((l) => l.effects?.rosterCapacity ?? 0)));
+    const capacity2 = Math.max(0, ...[...regs.facilities.values()].flatMap((f) => (f.levels ?? []).map((l) => l.effects?.rosterCapacity ?? 0)));
     const cabins = all.filter((p) => p.cabin === "unit").length;
-    if (cabins > 0 && cabins < capacity) {
-      out.push({ path: "cabin", message: `${cabins} unit cabins for a roster of up to ${capacity}: soldiers would share (add cabins or lower the capacity)` });
+    if (cabins > 0 && cabins < capacity2) {
+      out.push({ path: "cabin", message: `${cabins} unit cabins for a roster of up to ${capacity2}: soldiers would share (add cabins or lower the capacity)` });
     }
   }
   return out;
 });
 registerRefs("deviceSkins", (entry) => {
   const out = [];
-  const bind4 = entry.bindTo ?? {};
-  if (typeof bind4.corporationId === "string") out.push({ registry: "corporations", id: bind4.corporationId, path: "bindTo.corporationId" });
-  if (typeof bind4.traitId === "string") out.push({ registry: "commanderTraits", id: bind4.traitId, path: "bindTo.traitId" });
-  if (typeof bind4.unlockFlag === "string") out.push({ registry: "flags", id: bind4.unlockFlag, path: "bindTo.unlockFlag" });
+  const bind5 = entry.bindTo ?? {};
+  if (typeof bind5.corporationId === "string") out.push({ registry: "corporations", id: bind5.corporationId, path: "bindTo.corporationId" });
+  if (typeof bind5.traitId === "string") out.push({ registry: "commanderTraits", id: bind5.traitId, path: "bindTo.traitId" });
+  if (typeof bind5.unlockFlag === "string") out.push({ registry: "flags", id: bind5.unlockFlag, path: "bindTo.unlockFlag" });
   return out;
 });
 registerChecks("deviceSkins", (entry, regs) => {

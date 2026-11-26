@@ -23,6 +23,7 @@ export const MOMENTS = {
   slap: slapMoments(),
   breath: breathMoments(),
   weight: weightMoments(),
+  saturation: scentMoments(),
   cards: {
     state: 'one',
     clip: dialCorner,
@@ -284,6 +285,71 @@ function weightMoments() {
       moment('down-legs-1280', 'weight', 'human_chair', 'neutral', LOOP, none, none, 600, [1280, 800]),
       moment('up-sprite-1280', 'weightup', 'boot_on_chest', 'neutral', LOOP, none, none, 600, [1280, 800]),
       moment('low-strength-1280', 'weight', 'human_chair', 'neutral', LOOP, () => { G.str = 24; }, () => { window.__weight.G.str = 24; }, 900, [1280, 800]),
+    ],
+  };
+}
+
+/**
+ * saturation.html: scent (Task 18). The port is the `scent` fixture (Ann's feet on the commander's face in the commander's quarters: the gap,
+ * her band strong, the commander's stage aversion and tolerance 20, her attention busy); the prototype is set to the same (`S.contact`,
+ * `S.band`, `S.stage`, `S.tol`, `S.style`, her attention held busy). Both pages run on Playwright's fake clock, paused: each moment begins the
+ * instrument at the same paused instant on both (`begin`), her own orders and question are held off (both schedules pushed far away), the face
+ * is put at the same place (`__mouse`), the clock is run into the loop, and a breath, a full head, her named place, her question or the
+ * overflow are made by the same hooks (the prototype's globals `addWord`, `nameplace`, `askWords`, `LINES`, `G` and `__inhale`; the port's
+ * `window.__scent`). The words picked differ (each page draws its own); the look is what is compared. The prototype's ceiling is its
+ * stand-in (the same art); the port's is the scene's.
+ * Moments: the entry, motes and threads on a breath, a full head (the picture saturated), her named place, her question with its pills, lost
+ * in her; the entry, the question and the full head again at 1280x800.
+ */
+function scentMoments() {
+  const LOOP = 1900; // the entry is 1600 ms: the loop has begun
+  const WORDS = ['salt', 'sweat', 'skin', 'damp heat', 'musk', 'a sharp tang', 'dried salt', 'her run', 'brine'];
+  const start = (style) => ({
+    proto: async (p) => {
+      await fakeClock(p, () => document.fonts.ready);
+      await p.addStyleTag({ content: '#panel, #debug, #summary, #start { visibility: hidden !important; }' });
+      await p.evaluate((st) => {
+        Object.assign(window.__S, { contact: 'feet_on_face', band: 'strong', color: 'sweat', stage: 'aversion', tol: 20, style: st, sound: false, reduced: false, task: 'busy' });
+        ATTENTION.busy = [0, 0, 1];
+      }, style);
+      await p.evaluate(() => { document.querySelector('#start').style.display = 'none'; begin(); G.nextOrderAt = 1e9; G.nextAskAt = 1e9; window.__mouse(0.5, 0.42); });
+    },
+    port: async (p) => {
+      await fakeClock(p, async () => { while (document.body.dataset.ready !== 'true') await new Promise((r) => setTimeout(r, 50)); });
+      await p.evaluate(() => { const s = window.__scent; s.begin(); s.G.nextOrderAt = 1e9; s.G.nextAskAt = 1e9; s.mouse(0.5, 0.42); });
+    },
+  });
+  const moment = (id, style, before, proto, port, after, size) => {
+    const s = start(style);
+    return {
+      id, query: `&quiet=1&style=${style}`, ...(size ? { size } : {}),
+      proto: async (p) => { await s.proto(p); await p.clock.runFor(before); await p.evaluate(proto, WORDS); await p.clock.runFor(after); },
+      port: async (p) => { await s.port(p); await p.clock.runFor(before); await p.evaluate(port, WORDS); await p.clock.runFor(after); },
+    };
+  };
+  const none = () => {};
+  const breathe = { proto: () => { window.__mouse(0.5, 0.3); window.__inhale(true); }, port: () => { window.__scent.mouse(0.5, 0.3); window.__scent.inhale(true); } };
+  const full = { proto: (w) => { for (const x of w.slice(0, 8)) addWord(x, 'scent'); }, port: (w) => { for (const x of w.slice(0, 8)) window.__scent.addWord(x, 'scent'); } };
+  const named = { proto: () => nameplace(LINES.here.feet_on_face[0][0], 'toes'), port: () => window.__scent.here(0) };
+  const ask = {
+    proto: (w) => { addWord('her toes', 'place:toes'); for (const x of w.slice(0, 3)) addWord(x, 'scent'); askWords(); },
+    port: (w) => { const s = window.__scent; s.addWord('her toes', 'place:toes'); for (const x of w.slice(0, 3)) s.addWord(x, 'scent'); s.ask(); },
+  };
+  const lost = { proto: (w) => { for (const x of w) addWord(x, 'scent'); }, port: (w) => { for (const x of w) window.__scent.addWord(x, 'scent'); } };
+  return {
+    state: 'scent',
+    hide: ['#panel', '#debug', '#summary', '#start'],
+    settle: 60,
+    moments: [
+      moment('entry', 'neutral', 900, none, none, 0),
+      moment('breath', 'neutral', LOOP, breathe.proto, breathe.port, 900),
+      moment('full-head', 'neutral', LOOP, full.proto, full.port, 1200),
+      moment('named-place', 'neutral', LOOP, named.proto, named.port, 700),
+      moment('question', 'neutral', LOOP, ask.proto, ask.port, 700),
+      moment('lost', 'neutral', LOOP, lost.proto, lost.port, 1400),
+      moment('entry-1280', 'neutral', 900, none, none, 0, [1280, 800]),
+      moment('question-1280', 'neutral', LOOP, ask.proto, ask.port, 700, [1280, 800]),
+      moment('full-head-1280', 'neutral', LOOP, full.proto, full.port, 1200, [1280, 800]),
     ],
   };
 }

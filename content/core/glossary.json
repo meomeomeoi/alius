@@ -2643,6 +2643,18 @@
     ]
   },
   {
+    "id": "scent_answer",
+    "term": "Her question (what is in the head)",
+    "short": "Under her scent she sometimes asks what you smell. Pick two words from the head, or what she would like to hear: a lie the body may give away.",
+    "long": "AUTHOR TO WRITE: Her question comes rarely and names one of her places. The pills are the words circling the face, tagged where, scent, feel and how strong, beside the dashed 'say it' words she wants to hear. Two picked, within twelve seconds; her rule by style decides whether it was right, and a lie found out by a cough is remembered.",
+    "see": [
+      "gap_breath",
+      "contact_physics",
+      "instrument",
+      "stimulus"
+    ]
+  },
+  {
     "id": "stop_word",
     "term": "Stop word",
     "short": "Your own signal, outside the story. It always ends the hold and takes away the contact or item, whatever she holds to.",

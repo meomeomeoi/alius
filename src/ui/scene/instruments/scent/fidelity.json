@@ -1,0 +1,531 @@
+{
+  "prototype": "saturation",
+  "note": "Task 18 (chunk e6): scent. The functions of saturation.html that its README calls normative: the view (the kit's `SHAPES.gap / seat / wedge`, `squashOf`, `SEAT_BODY`, `chaikin`, equal to breath.html's; `render` with the three low-resolution canvases, the flesh edge light, her shape's parallax, the mark, the arc `#arc` and saturation as the picture; `size`, `setStyle`, `arcPath`), her places (`zonesOf`, `intensityAt`, `BASE_I`), the face (`updateLoop` with `STAGE_PULL` and its smoothing), the breath in and the reflex (`inhaleStart`, `inhaleEnd`, `reflex`, `stim`, `tolT`, `tolDepth`), the head (`addWord`, `breathWords`, `blowWord`, `scatter`, `tickWords`, `capacity`, `overflow`, `AMBIENT_MS`), the mouth (420 ms a word) and the need to breathe (7 s) in `updateLoop`, her orders (`newOrder`, `nameplace`, `orderDone`, `weighted`, `targetP`, `atTarget`, `press`, `lift`, `heardMouth`), her question (question.ts: `askWords`, `sayables`, `buildPills`, `isCat`, `judge`, `answerWords`), the look of her scent (`spawnMotes`, `spawnStreams`, `burst`, `drawStreams`, `COLORS`), the input taking her in (`tint`, `typing`), the sound (`audioInit`, `noise`, `thump`, `SFX`, the recorded breath `SAMPLE` with `rmsAt`, `fft`, `paulstretch`, `loadSample`, `useRec`, `SINE`, `piece`, `recOut`, `recInhale`, `recTail`, `recStop`, `recExhale`, `recMouthTick`, and the synthesised fallback `breathSound`, `breathTick`, `breathStop`, `exhaleSound`), her hand's `say`, the phases (`begin`, `exit`, `frame`), the state (`fresh`, `ST`, `easeOut`, `pick`, `randInt`, `rand`), the vocabulary and tables of words.ts (`SCENT`, `STAGE_W`, `BAND_W`, `PLACE_W`, `HER_PLACE`, `TAG`, `STAGE_RANK`, `COLORS`, `BASE_I`, `AMBIENT_MS`, `STAGE_PULL`, `ZONE_IDS`, `STYLES`) and its `LINES` (checked by `lines`: `cardVoice` `scent.*`, by style for `mouth` (by her style's mouth), `answer.ok` / `answer.bad` and `ask` (`STYLES[].ask`); her first words `scent.entry.<contact>`; her named places `scent.here.<contact>` and what `judge` finds missing `scent.miss.*` are checked word for word by tests/content/cardVoice.test.ts, since `here`'s rows are pairs of a line and a place). Module wiring beyond the listed functions (scent.ts header): `performance`, `setTimeout`, `requestAnimationFrame`, `innerWidth` / `innerHeight` and `Math.random` are the module's own (the scene's frame clock, the mount's timers and frames, the scene's size, a xorshift seeded by fnv1a of the scene and the run: no rng draw); `$` names the instrument's elements in the effects layer (under the scene's UI: the stop word's pill is never covered; `#stage` is the instrument's box), the scene's reply and input, and the letters laid over the input (`#mirror`); the reply's opacity and the frame's cursor (the prototype's `#stage.live { cursor: none }`) are written through claims (styleClaims.ts). The prototype's top-level listeners are the mount's (`env.listen`): Space, Shift and the keys 1–6 never from a field or a control (typing: Space is a space, Shift a capital), the left button breathes in and the right one through the mouth only on the scene's frame (preventDefault, so the field keeps its focus: only the mouse breathes while typing), the face follows the mouse over the document, the context menu is kept off the frame; Escape and H are the scene's (the stop word is its pill). `LINES` is the prototype's shape filled from `cardVoice` by her style (`refreshLines`; a style with no rows of its own takes neutral's, cold is silent); `S` is the approved defaults (`natural` breath, `motes`, every layer on) with the run's: the contact by the shape of the dark (`occlusionOf`: gap → feet_on_face, seat → face_to_bottom, wedge → smothered_armpit; the kit's `S` is set the same), her band (`scentBand` of the part she presses, R19), the commander's stage and tolerance for her scent (`stimuli.ts`), her style's row (`ROW_BY_CUES` for a style the prototype has no row of), her name, her activity (reading or watching) and the still form (`env.reduced`, `env.readable`). Her scent's colour and words are the stand-in `sweat` (README: each woman's own scent is P17d; her profile has none yet). The engine's numbers are TUNING (`BAND` = saturation.bandFactor, `INHALE_FILL_MS` = stimuli.inhale.fillMs, `BEAT` = physics.beatMs); `NOTICED`, `SAT_PER`, `MOUTH` and `ATTENTION` are the engine's own (`cheatRoll`, the plan). Her orders and her question keep the prototype's own timing on the module's xorshift (the engine plans none for a decision physics). Reports (R18): each beat of a running segment, as it ends (the last 300 ms before the segment's end), `inhale` with the words the head gained over what the engine holds (the engine's gauge at the segment's start over one word; a word scattered by a cough, the overflow or an answer is made up by the next breaths, never given back) and `mouth_breath` with the words blown out in it (a relief: the engine's `cheatRoll`; `pointer` when the right button breathed); P15a's `physics/stimulus` for a deep breath (> 0.7) and a cough, its depth placed in `inhaleZone` as the body answered; `physics/answer` (R20) as `answerWords` judged it. Not ported (README: prototype only or rejected): the panel, the presets, the start overlay, the summary card (`showSummary`), the debug readout, the `__` hooks (`_scent` is the tests' and the shots' hook), the prototype's order and attention schedule's `attentionDraw`, the looks `haze` (`noiseTile`, `TILES`, `hazeC`, `maskC`) and `ribbons` (`drawRibbons`), the stretch `grains`, `setReply`. CSS (checked by the shots): the prototype's styles under `.alius-scent` (her lines in her hand at its sizes × her hand's measured scale, R10; they wrap inside the frame, max 40 %, `keepInFrame`); readable mode drops every blur.",
+  "functions": [
+    {
+      "fn": "easeOut",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "pick",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "randInt",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "rand",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "ST",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "audioInit",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "noise",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "thump",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "SFX",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "rmsAt",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "fft",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "paulstretch",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "loadSample",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "useRec",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "SINE",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "piece",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "recOut",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "recInhale",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "recTail",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "recStop",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "recExhale",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "recMouthTick",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "breathSound",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "breathTick",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "breathStop",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "exhaleSound",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "fresh",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "say",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "zonesOf",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "intensityAt",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "stim",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "tolT",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "tolDepth",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "capacity",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "targetP",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "atTarget",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "weighted",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "newOrder",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "nameplace",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "orderDone",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "press",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "lift",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "addWord",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "breathWords",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "blowWord",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "scatter",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "tickWords",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "inhaleStart",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "inhaleEnd",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "reflex",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "overflow",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "begin",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "exit",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "updateLoop",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "heardMouth",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "frame",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "size",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "spawnStreams",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "spawnMotes",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "burst",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "drawStreams",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "setStyle",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "arcPath",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "render",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "tint",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "typing",
+      "module": "src/ui/scene/instruments/scent/scent.ts"
+    },
+    {
+      "fn": "askWords",
+      "module": "src/ui/scene/instruments/scent/question.ts"
+    },
+    {
+      "fn": "sayables",
+      "module": "src/ui/scene/instruments/scent/question.ts"
+    },
+    {
+      "fn": "buildPills",
+      "module": "src/ui/scene/instruments/scent/question.ts"
+    },
+    {
+      "fn": "isCat",
+      "module": "src/ui/scene/instruments/scent/question.ts"
+    },
+    {
+      "fn": "judge",
+      "module": "src/ui/scene/instruments/scent/question.ts"
+    },
+    {
+      "fn": "answerWords",
+      "module": "src/ui/scene/instruments/scent/question.ts"
+    },
+    {
+      "fn": "squashOf",
+      "module": "src/ui/scene/instruments/kit/dark.ts"
+    },
+    {
+      "fn": "SEAT_BODY",
+      "module": "src/ui/scene/instruments/kit/dark.ts"
+    },
+    {
+      "fn": "SHAPES",
+      "module": "src/ui/scene/instruments/kit/dark.ts"
+    },
+    {
+      "fn": "chaikin",
+      "module": "src/ui/scene/instruments/kit/chaikin.ts"
+    }
+  ],
+  "tables": [
+    {
+      "ident": "SCENT",
+      "module": "src/ui/scene/instruments/scent/words.ts",
+      "export": "SCENT"
+    },
+    {
+      "ident": "STAGE_W",
+      "module": "src/ui/scene/instruments/scent/words.ts",
+      "export": "STAGE_W"
+    },
+    {
+      "ident": "BAND_W",
+      "module": "src/ui/scene/instruments/scent/words.ts",
+      "export": "BAND_W"
+    },
+    {
+      "ident": "PLACE_W",
+      "module": "src/ui/scene/instruments/scent/words.ts",
+      "export": "PLACE_W"
+    },
+    {
+      "ident": "HER_PLACE",
+      "module": "src/ui/scene/instruments/scent/words.ts",
+      "export": "HER_PLACE"
+    },
+    {
+      "ident": "TAG",
+      "module": "src/ui/scene/instruments/scent/words.ts",
+      "export": "TAG"
+    },
+    {
+      "ident": "STAGE_RANK",
+      "module": "src/ui/scene/instruments/scent/words.ts",
+      "export": "STAGE_RANK"
+    },
+    {
+      "ident": "COLORS",
+      "module": "src/ui/scene/instruments/scent/words.ts",
+      "export": "COLORS"
+    },
+    {
+      "ident": "BASE_I",
+      "module": "src/ui/scene/instruments/scent/words.ts",
+      "export": "BASE_I"
+    },
+    {
+      "ident": "AMBIENT_MS",
+      "module": "src/ui/scene/instruments/scent/words.ts",
+      "export": "AMBIENT_MS"
+    },
+    {
+      "ident": "STAGE_PULL",
+      "module": "src/ui/scene/instruments/scent/words.ts",
+      "export": "STAGE_PULL"
+    },
+    {
+      "ident": "ZONE_IDS",
+      "module": "src/ui/scene/instruments/scent/words.ts",
+      "export": "ZONE_IDS"
+    },
+    {
+      "ident": "STYLES",
+      "module": "src/ui/scene/instruments/scent/words.ts",
+      "export": "STYLES"
+    }
+  ],
+  "lines": [
+    {
+      "ident": "LINES",
+      "registry": "cardVoice",
+      "cueKinds": {
+        "deeper": "scent.deeper",
+        "gently": "scent.gently",
+        "still": "scent.still",
+        "moved": "scent.moved",
+        "good": "scent.good",
+        "bad": "scent.bad",
+        "away": "scent.away",
+        "cough": "scent.cough",
+        "liar": "scent.liar",
+        "caught": "scent.caught",
+        "need": "scent.need",
+        "end": "scent.end",
+        "stop": "scent.stop",
+        "lost.low": "scent.lost.low",
+        "lost.high": "scent.lost.high",
+        "answer.empty": "scent.answer.empty",
+        "entry.feet_on_face": "scent.entry.feet_on_face",
+        "entry.face_to_bottom": "scent.entry.face_to_bottom",
+        "entry.smothered_armpit": "scent.entry.smothered_armpit",
+        "mouth.mild": "scent.mouth",
+        "mouth.allowed": "scent.mouth@affectionate",
+        "mouth.tease": "scent.mouth@playful",
+        "mouth.punish": "scent.mouth@cruel",
+        "mouth.permission": "scent.mouth@ritual",
+        "mouth.noted": "scent.mouth@clinical",
+        "answer.ok.neutral": "scent.answer.ok",
+        "answer.ok.affectionate": "scent.answer.ok@affectionate",
+        "answer.ok.playful": "scent.answer.ok@playful",
+        "answer.ok.cruel": "scent.answer.ok@cruel",
+        "answer.ok.ritual": "scent.answer.ok@ritual",
+        "answer.ok.clinical": "scent.answer.ok@clinical",
+        "answer.bad.neutral": "scent.answer.bad",
+        "answer.bad.affectionate": "scent.answer.bad@affectionate",
+        "answer.bad.playful": "scent.answer.bad@playful",
+        "answer.bad.cruel": "scent.answer.bad@cruel",
+        "answer.bad.ritual": "scent.answer.bad@ritual",
+        "answer.bad.clinical": "scent.answer.bad@clinical"
+      }
+    },
+    {
+      "ident": "STYLES",
+      "registry": "cardVoice",
+      "cueKinds": {
+        "neutral.ask": "scent.ask",
+        "affectionate.ask": "scent.ask@affectionate",
+        "playful.ask": "scent.ask@playful",
+        "cruel.ask": "scent.ask@cruel",
+        "ritual.ask": "scent.ask@ritual",
+        "clinical.ask": "scent.ask@clinical"
+      }
+    }
+  ],
+  "differences": [
+    {
+      "fn": "audioInit",
+      "reason": "Wiring (ruling D): the context is the sample layer's (`samples.ctx()`, the mount's recorded view) and the prototype's master goes into the layer's body bus instead of the destination (the player's level is the layer's). No context yet (before the player's first gesture, or no sound): nothing is built, and the frame asks again.",
+      "diff": "@@ -5,3 +5,5 @@\n }\n-const ctx=new(window.AudioContext||window.webkitAudioContext)()\n+const ctx=E?.env.samples?.ctx()??null\n+const out=E?.env.samples?.bus(\"body\")??null\n+if(!ctx||!out)return\n A.ctx=ctx\n@@ -9,3 +11,3 @@\n A.master.gain.value=S.sound?S.vol:0\n-A.master.connect(ctx.destination)\n+A.master.connect(out)\n A.world=ctx.createBiquadFilter()"
+    },
+    {
+      "fn": "loadSample",
+      "reason": "Wiring (ruling D): the recording is the extension's own file (`assets/sounds/breath-in-out.mp3`, CC0) decoded by the sample layer (`samples.buffer` after `samples.preload`; until it is decoded the synthesised breath plays, the prototype's fallback), not a data URL. It is copied before it is brought to full scale, because the layer's buffer is shared (the slap plays it as it is). The rest (the peak, the rms, the paulstretch of the middle) is the prototype's.",
+      "diff": "@@ -2,5 +2,10 @@\n if(SAMPLE.buf||!A.ctx)return\n-const bin=atob(ASSETS.breath.split(\",\")[1]),u8=new Uint8Array(bin.length)\n-for(const i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i)\n-const buf=await A.ctx.decodeAudioData(u8.buffer)\n+const ctx=A.ctx,samples=E?.env.samples\n+const src=samples?.buffer(SAMPLE_FILE)??null\n+if(!src){\n+void samples?.preload([SAMPLE_FILE])\n+return\n+}\n+const buf=ctx.createBuffer(1,src.length,src.sampleRate)\n+buf.copyToChannel(src.getChannelData(0).slice(),0)\n const d=buf.getChannelData(0)\n@@ -22,3 +27,3 @@\n const st=paulstretch(d,buf.sampleRate,SAMPLE.susS,SAMPLE.susE,5)\n-SAMPLE.paul=A.ctx.createBuffer(1,st.length,buf.sampleRate)\n+SAMPLE.paul=ctx.createBuffer(1,st.length,buf.sampleRate)\n SAMPLE.paul.copyToChannel(st,0)"
+    },
+    {
+      "fn": "recInhale",
+      "reason": "Rejected (README: the stretch `grains` was rejected): its branch (the grains' interval timer) is not ported; `natural` (the approved default) and `paul` are.",
+      "diff": "@@ -31,26 +31,2 @@\n }\n-const end=piece(REC.out,SAMPLE.inS,SAMPLE.susS+0.1,t,REC.rate,0.02,0.1)\n-REC.next=end-0.1\n-REC.pos=SAMPLE.susS\n-REC.dir=1\n-REC.timer=setInterval(()=>{\n-if(REC.tail||!REC.out)return\n-const len=0.2,hop=len/4/REC.rate\n-while(REC.next<A.ctx.currentTime+0.2){\n-const from=clamp(REC.pos+rand(-0.012,0.012),SAMPLE.susS,SAMPLE.susE-len)\n-const target=REC.level*(1-0.35*clamp(G.depth,0,1))\n-const g=clamp(target/rmsAt(from+len/2),0.6,1.6)\n-piece(REC.out,from,from+len,REC.next,REC.rate,0,0,g*Math.SQRT1_2,true)\n-REC.next+=hop\n-REC.pos+=REC.dir*0.25*hop\n-if(REC.pos>SAMPLE.susE-len){\n-REC.pos=SAMPLE.susE-len\n-REC.dir=-1\n }\n-else if(REC.pos<SAMPLE.susS){\n-REC.pos=SAMPLE.susS\n-REC.dir=1\n-}\n-}\n-},25)\n-}"
+    },
+    {
+      "fn": "recTail",
+      "reason": "Rejected (README: the stretch `grains`): the grains' tail is not ported; `paul`'s is.",
+      "diff": "@@ -14,4 +14,2 @@\n }\n-const g=clamp(REC.level*0.65/rmsAt(SAMPLE.susE),0.6,1.6)\n-piece(REC.out,SAMPLE.susE-0.1,SAMPLE.inE,Math.max(REC.next,A.ctx.currentTime+0.01),REC.rate,0.1,0.15,g)\n }"
+    },
+    {
+      "fn": "inhaleEnd",
+      "reason": "Wiring: a breath deeper than 0.7 is P15a's deep inhale (`deepInhale` → `physics/stimulus`, as the card's), its depth landing in the engine's zone the body's answer names; a lie the body kept through two breaths is sent as kept (`answered(null)` → `physics/answer` with `caught: false`, R20).",
+      "diff": "@@ -11,3 +11,7 @@\n for(const x of G.sp)x.v+=0.3\n-if(G.lie>0)G.lie-=1\n+deepInhale(d,false)\n+if(G.lie>0){\n+G.lie-=1\n+if(G.lie===0)answered(null)\n+}\n const o=G.order"
+    },
+    {
+      "fn": "reflex",
+      "reason": "Wiring: the cough is P15a's deep inhale past the engine's zone (`deepInhale(.., true)` → `physics/stimulus`, so the engine's reflex is the one on the screen); a lie it gave away is sent as caught (`answered(true)` → `physics/answer`, R20: `scent_lie_caught`, remembered by her) as her 'liar.' is written.",
+      "diff": "@@ -10,2 +10,3 @@\n scatter(2)\n+deepInhale(G.depth,true)\n if(G.lie>0){\n@@ -13,2 +14,3 @@\n G.lie=0\n+answered(true)\n G.counts.liesFound+=1"
+    },
+    {
+      "fn": "begin",
+      "reason": "Prototype only (README: the summary card) and the scene's own prose: the summary is not ported and the prototype's stand-in narration (`setReply`) is not written (the reply is the scene's subtitles, never the instrument's words); the context may not exist yet (before the player's first gesture), so its state is asked only when there is one.",
+      "diff": "@@ -2,3 +2,3 @@\n audioInit()\n-if(A.ctx.state===\"suspended\")A.ctx.resume()\n+if(A.ctx&&A.ctx.state===\"suspended\")void A.ctx.resume()\n $(\"#hand\").replaceChildren()\n@@ -9,4 +9,2 @@\n G.endAt=S.len*1000\n-$(\"#summary\").style.display=\"none\"\n-setReply(`<span class=\"act\">She settles where she wants you, and the air changes.</span>`,0.4)\n setTimeout(()=>G.phase===\"entry\"&&say(pick(LINES.entry[S.contact])),700)"
+    },
+    {
+      "fn": "exit",
+      "reason": "Prototype only (README: the summary card): `showSummary` is not ported; the host keeps the end drawn for `EXIT_MS` (the prototype's 2.3 s) and unmounts.",
+      "diff": "@@ -14,3 +14,2 @@\n },900)\n-setTimeout(showSummary,2300)\n }"
+    },
+    {
+      "fn": "updateLoop",
+      "reason": "Prototype only (README: her attention schedule is the engine's plan): her attention is the plan's beat of the running segment (`attentionNow`). Whether she heard a mouth breath is the engine's (`cheatRoll` on the `mouth_breath` relief at the segment's end): the word blown is counted for the beat's report (`blown`) and her answer (`heardMouth`) follows the engine's catch (`run.tally.cheatsCaught`, in `update`). The end is the engine's (`finish`): the prototype's own length (`S.len`) never ends it.",
+      "diff": "@@ -7,3 +7,3 @@\n G.beat+=1\n-G.att=attentionDraw()\n+G.att=attentionNow()\n if(G.att===\"busy\"&&S.task===\"reading\"&&Math.random()<0.35)SFX.page()\n@@ -53,4 +53,3 @@\n G.counts.mouthWords+=1\n-const loud=G.mouthMs<900?0.25:0.6\n-if(Math.random()<NOTICED[G.att]*loud)heardMouth()\n+blown()\n }\n@@ -108,3 +107,2 @@\n G.o=lerp(G.o,0.35,clamp(h*0.5,0,1))\n-if(G.clock>G.endAt)exit(\"done\")\n }"
+    },
+    {
+      "fn": "frame",
+      "reason": "Wiring: nothing fills or is breathed between two segments (the engine's run is held there), as breath's: the loop runs while a segment runs.",
+      "diff": "@@ -13,3 +13,3 @@\n case\"loop\":G.mouse=mouse\n-updateLoop(dt)\n+if(R.running)updateLoop(dt)\n break"
+    },
+    {
+      "fn": "size",
+      "reason": "Rejected (README: the look `haze`): its canvases (`hazeC`, `maskC`) are not ported; the dark, the air, the glow and the streams are sized as the prototype's.",
+      "diff": "@@ -6,4 +6,2 @@\n }\n-hazeC.width=maskC.width=Math.ceil(innerWidth/3)\n-hazeC.height=maskC.height=Math.ceil(innerHeight/3)\n strC.width=innerWidth"
+    },
+    {
+      "fn": "setStyle",
+      "reason": "Readable mode (P10: no blur): a filter's blur is written as 0 px. The cache's key is the element's id, else its class (the scene's reply has no id of the instrument's).",
+      "diff": "@@ -1,6 +1,3 @@\n const setStyle=(el,prop,v)=>{\n-const key=el.id+prop\n-if(cache.get(key)===v)return\n-cache.set(key,v)\n-el.style[prop]=v\n-}\n+if(S.readable&&prop===\"filter\")v=v.replace(/blur\\([^)]*\\)/g, 'blur(0px)'); const key = (el.id || String(el.className)) + prop; if (cache.get(key) === v)\n+    return; cache.set(key, v); el.style[prop] = v; };"
+    },
+    {
+      "fn": "render",
+      "reason": "Rejected and not chosen (README: the look `haze` is rejected, `ribbons` not chosen): the approved `motes` is drawn, the other looks' branch is not ported. The scent's colour is set on the instrument's box, not on the page's root (`--scent`). The prototype's stop pill and debug readout are prototype only: the scene's stop word pill is never the instrument's.",
+      "diff": "@@ -60,45 +60,4 @@\n darkC.style.transform=sh?`translate(${rand(-sh,sh)}px, ${rand(-sh,sh)}px)`:\"\"\n-const HW=hazeC.width,HH=hazeC.height,col=COLORS[S.color]\n-if(S.look!==\"haze\"){\n-hctx.clearRect(0,0,HW,HH)\n-if(S.look===\"ribbons\")drawRibbons(t,HW,HH,col)\n-else if(live)spawnMotes(dt)\n-}\n-else{\n-mctx.globalCompositeOperation=\"source-over\"\n-mctx.clearRect(0,0,HW,HH)\n-mctx.fillStyle=`rgba(255,255,255,${((0.012+G.sat*0.0032)*G.darkA).toFixed(3)})`\n-mctx.fillRect(0,0,HW,HH)\n-for(const z of G.zones){\n-const flare=G.hereZone===z.id?1.6:1\n-const gr=mctx.createRadialGradient(z.p[0]*HW,z.p[1]*HH,0,z.p[0]*HW,z.p[1]*HH,HH*0.2*flare)\n-gr.addColorStop(0,`rgba(255,255,255,${(0.3*z.w*stim()*flare*G.darkA).toFixed(3)})`)\n-gr.addColorStop(1,\"rgba(255,255,255,0)\")\n-mctx.fillStyle=gr\n-mctx.fillRect(0,0,HW,HH)\n-}\n-if(G.inhaling){\n-const gr=mctx.createRadialGradient(G.nose[0]*HW,G.nose[1]*HH,0,G.nose[0]*HW,G.nose[1]*HH,HH*0.22)\n-gr.addColorStop(0,`rgba(255,255,255,${(0.5*G.depth).toFixed(3)})`)\n-gr.addColorStop(1,\"rgba(255,255,255,0)\")\n-mctx.fillStyle=gr\n-mctx.fillRect(0,0,HW,HH)\n-}\n-hctx.globalCompositeOperation=\"source-over\"\n-hctx.clearRect(0,0,HW,HH)\n-const flow=G.inhaling?1+G.depth*3:1\n-for(const i=0;i<2;i++){\n-const tile=TILES[i],sc=HH*(i?1.1:0.7)/tile.height\n-const ox=(t*(i?-9:13)*flow+G.nose[0]*30)%(tile.width*sc),oy=(t*(i?6:-11)*flow)%(tile.height*sc)\n-hctx.globalAlpha=i?0.6:0.9\n-for(const x=-tile.width*sc+ox;x<HW;x+=tile.width*sc)for(const y=-tile.height*sc+oy;y<HH;y+=tile.height*sc)hctx.drawImage(tile,x,y,tile.width*sc,tile.height*sc)\n-}\n-hctx.globalAlpha=1\n-hctx.globalCompositeOperation=\"destination-in\"\n-hctx.drawImage(maskC,0,0)\n-hctx.globalCompositeOperation=\"source-in\"\n-hctx.fillStyle=`rgb(${col})`\n-hctx.fillRect(0,0,HW,HH)\n-hctx.globalCompositeOperation=\"source-over\"\n-}\n+const col=COLORS[S.color]\n+if(live)spawnMotes(dt)\n if(live&&G.inhaling&&Math.random()<0.9)spawnStreams(Math.ceil(2+G.depth*5*G.I),clamp(G.I*stim(),0.2,1.2))\n@@ -110,3 +69,3 @@\n setStyle($(\"#edge\"),\"background\",f<0.02?\"none\":`radial-gradient(ellipse 80% 75% at ${(G.nose[0]*100).toFixed(0)}% ${(G.nose[1]*100).toFixed(0)}%, rgba(0,0,0,0) ${(62-f*25).toFixed(0)}%, rgba(${col},${(f*0.32).toFixed(2)}) 100%)`)\n-document.documentElement.style.setProperty(\"--scent\",col)\n+$(\"#stage\").style.setProperty(\"--scent\",col)\n const tp=targetP(),mark=$(\"#mark\")\n@@ -160,5 +119,3 @@\n }\n-setStyle($(\"#stopPill\"),\"opacity\",live?\"1\":\"0\")\n setStyle($(\"#reply\"),\"opacity\",live?\"0.4\":\"1\")\n-if(S.debug)$(\"#debug\").textContent=`sat ${G.sat.toFixed(0)}  I ${G.I.toFixed(2)}  zone ${G.zoneNow?.id??\"-\"}  depth ${G.depth.toFixed(2)}  tolDepth ${tolDepth().toFixed(2)}  att ${G.att}  drift ${G.drift.map((v)=>v.toFixed(2))}\\norder ${G.order?G.order.k+(G.order.zone?\":\"+G.order.zone:\"\"):\"-\"}  since breath ${(G.sinceBreath/1000).toFixed(1)}s  lie ${G.lie}  overload ${Math.max(0,G.overload).toFixed(0)}  t ${(G.clock/1000).toFixed(0)}/${S.len}`\n }"
+    },
+    {
+      "fn": "tint",
+      "reason": "The scene sends the line (its own Enter): the prototype's `send` (its stand-in reply) is not ported; what the input took of her stays in the field as typed.",
+      "diff": "@@ -43,9 +43,3 @@\n m.scrollLeft=$(\"#cmd\").scrollLeft\n-},send(){\n-if(!this.chars.length)return\n-const html=this.chars.map(c=>{\n-const e=c.ch.replace(/[<&]/g, (q) => (q === '<' ? '&lt;' : '&amp;')); return c.tint ? `<span class=\"tint\">${e}</span>` : e; }).join('');\n-    setReply(`<span class=\"you\">“${html}”</span>`, 0.4);\n-    $('#cmd').value = ''; this.chars = []; this.prev = ''; this.draw();\n-  },\n-};\n+}\n+}"
+    },
+    {
+      "fn": "askWords",
+      "reason": "Ruling Q: her question's words are `cardVoice` `scent.ask` by her style (the table `STYLES[].ask` is checked by `lines`); a silent style (cold) asks with no words, her mark still names the place.",
+      "diff": "@@ -9,3 +9,3 @@\n })\n-const line=pick(st.ask).replace(\"{p}\",HER_PLACE[place]??\"it\")\n+const line=(pick(LINES.ask)??\"\").replace(\"{p}\",HER_PLACE[place]??\"it\")\n const tp=ti>=0?G.zones[ti].p:[0.55,0.2]"
+    },
+    {
+      "fn": "buildPills",
+      "reason": "Ruling K: each pill is a discrete control of her question and carries `analyzeNative('glossary:scent_answer')`.",
+      "diff": "@@ -17,2 +17,3 @@\n el.innerHTML=`<span class=\"key\">${i+1}</span><span class=\"tag\">${TAG[kind]??\"\"}</span>${h.w}`\n+for(const[k,v]of Object.entries(analyzeNative(\"glossary:scent_answer\")))el.setAttribute(k,v)\n const a=items.length===1?-Math.PI/2:-Math.PI*0.92+(i/(items.length-1))*Math.PI*0.84"
+    },
+    {
+      "fn": "judge",
+      "reason": "Ruling Q: what her rule finds missing is her line, `cardVoice` `scent.miss.*` (the prototype's words, checked word for word by tests/content/cardVoice.test.ts); a silent style says nothing.",
+      "diff": "@@ -14,3 +14,3 @@\n }:{\n-ok:false,miss:\"you didn’t say where. or how it is now.\"\n+ok:false,miss:pick(LINES.miss.warm)\n }\n@@ -19,8 +19,8 @@\n }:{\n-ok:false,miss:\"liar~ it’s strong. say it.\"\n+ok:false,miss:pick(LINES.miss.admit)\n }\n case\"bad_and_want\":return!chosen.some(bad)?{\n-ok:false,miss:\"say how bad it is.\"\n+ok:false,miss:pick(LINES.miss.bad)\n }:!chosen.some(want)?{\n-ok:false,miss:\"and you want it. say it.\"\n+ok:false,miss:pick(LINES.miss.want)\n }:{\n@@ -29,7 +29,7 @@\n case\"place_and_band\":return!placeOk?{\n-ok:false,miss:\"where? the place.\"\n+ok:false,miss:pick(LINES.miss.place)\n }:!anyBand?{\n-ok:false,miss:\"how strong? say it.\"\n+ok:false,miss:pick(LINES.miss.strength)\n }:!bandOk?{\n-ok:false,miss:\"that’s not how strong it is.\"\n+ok:false,miss:pick(LINES.miss.band)\n }:{\n@@ -38,5 +38,5 @@\n case\"band_and_honest\":return!bandOk?{\n-ok:false,miss:anyBand?\"intensity: wrong.\":\"intensity: missing.\"\n+ok:false,miss:anyBand?pick(LINES.miss.intensity_wrong):pick(LINES.miss.intensity_missing)\n }:!honest?{\n-ok:false,miss:\"and what you feel. honestly.\"\n+ok:false,miss:pick(LINES.miss.honest)\n }:{"
+    },
+    {
+      "fn": "answerWords",
+      "reason": "Wiring (R20): her verdict is recorded as the engine's `physics/answer`: at once with no lie in it (`judged`), and for a lie once the body has given it away or kept it (`answered`, in `reflex` and `inhaleEnd`). The verdict she writes is the one sent.",
+      "diff": "@@ -16,3 +16,4 @@\n }\n-if(o.chosen.some(h=>h.lie||(isCat(h,\"stage:\")&&h.cat!==\"stage:\"+S.stage))){\n+const lie=o.chosen.some(h=>h.lie||(isCat(h,\"stage:\")&&h.cat!==\"stage:\"+S.stage))\n+if(lie){\n G.lie=2\n@@ -28,2 +29,3 @@\n if(empty){\n+judged(false,false)\n G.counts.empty+=1\n@@ -35,2 +37,3 @@\n const v=judge(o.chosen,o.place)\n+judged(v.ok,lie)\n if(v.ok){"
+    },
+    {
+      "fn": "SHAPES",
+      "reason": "The kit's shapes (kit/fidelity.json checks them against breath.html): saturation.html copies `gap`, `seat` and `wedge` from breath.html, and they are equal here token for token; the kit's other shapes (`slit`, `lift`, `slide`, `squeeze`) are breath's, not drawn by scent.",
+      "diff": "@@ -1,4 +1,16 @@\n const SHAPES={\n-gap(g,W,H,o,s){\n+slit(g,W,H,o,s){\n const ex=Math.max(0,o-1),oc=Math.min(o,1)\n+const cx=W*0.5,cy=H*(0.42+s.sway*0.004)\n+const hh=(0.003+oc*0.055+ex*ex*1.2)*H,hw=(0.16+oc*0.09+ex*1.4)*H\n+g.beginPath()\n+g.moveTo(cx-hw,cy)\n+g.quadraticCurveTo(cx,cy-2*hh,cx+hw,cy)\n+g.quadraticCurveTo(cx,cy+2*hh,cx-hw,cy)\n+g.fill()\n+return{\n+focus:[0.5,0.42],lip:[(cx+hw*0.62)/W,(cy-hh*0.7)/H],text:[(cx+hw+0.03*H)/W,(cy-0.08*H)/H]\n+}\n+},gap(g,W,H,o,s){\n+const ex=Math.max(0,o-1),oc=Math.min(o,1)\n const th=(S.angle*Math.PI)/180\n@@ -29,2 +41,43 @@\n }\n+},lift(g,W,H,o,s){\n+const ex=Math.max(0,o-1),oc=Math.min(o,1)\n+const fr=sideFrame(g,W,H,S.side.lift)\n+const{\n+Wc,Hc\n+}=fr\n+const tilt=clamp(S.angle/30,-1.3,1.3)\n+const edge=u=>Hc*(1.03-oc*0.4-ex*1.6+s.sway*0.004)-tilt*(u-0.5)*Hc*0.28*Math.max(oc,0.15)+Hc*0.07*(1-(2*u-1)**2)*(0.4+0.6*oc)\n+g.beginPath()\n+g.moveTo(-4,Hc+4)\n+for(const i=0;i<=30;i++){\n+const u=i/30\n+g.lineTo(u*Wc,edge(u))\n+}\n+g.lineTo(Wc+4,Hc+4)\n+g.closePath()\n+g.fill()\n+const uLip=tilt>=0?0.28:0.72\n+const out={\n+focus:fr.map([Wc*0.5,(edge(0.5)+Hc)/2]),lip:fr.map([Wc*uLip,edge(uLip)-0.01*Hc]),text:fr.map([Wc*0.6,edge(0.6)-0.16*Hc])\n+}\n+fr.done()\n+return out\n+},slide(g,W,H,o,s){\n+const ex=Math.max(0,o-1),oc=Math.min(o,1)\n+const d=s.slideDir\n+const R=1.08*H,shift=(0.02+oc*0.3+ex*1.8)*H\n+const cx=W/2-d*shift+s.sway*H*0.006,cy=H*(0.5+s.slideY*0.14)\n+g.fillRect(0,0,W,H)\n+g.globalCompositeOperation=\"destination-out\"\n+g.beginPath()\n+g.arc(cx,cy,R,0,Math.PI*2)\n+g.fill()\n+g.globalCompositeOperation=\"source-over\"\n+const edgeX=d<0?cx-R:cx+R\n+const lipX=d<0?Math.max(edgeX,0):Math.min(edgeX,W)\n+return d<0?{\n+focus:[Math.max(0.06,(edgeX/W)*0.5),cy/H],lip:[lipX/W+0.006,(cy-0.25*H)/H],text:[(lipX+0.07*H)/W,(cy-0.1*H)/H],align:\"left\"\n+}:{\n+focus:[Math.min(0.94,1-(1-edgeX/W)*0.5),cy/H],lip:[lipX/W-0.006,(cy-0.25*H)/H],text:[(lipX-0.07*H)/W,(cy-0.1*H)/H],align:\"right\"\n+}\n },seat(g,W,H,o,s){\n@@ -68,2 +121,19 @@\n }\n+},squeeze(g,W,H,o,s){\n+const ex=Math.max(0,o-1),oc=Math.min(o,1)\n+const rx=0.62*H,ry=1.8*H\n+const gap=(-0.035+oc*0.09-s.squeeze*0.07+ex*1.6+s.sway*0.003)*H\n+const lcx=W/2-gap-rx,rcx=W/2+gap+rx\n+g.fillRect(0,0,W,H)\n+g.globalCompositeOperation=\"destination-out\"\n+g.beginPath()\n+g.ellipse(lcx,H*0.5,rx,ry,0,0,Math.PI*2)\n+g.fill()\n+g.beginPath()\n+g.ellipse(rcx,H*0.5,rx,ry,0,0,Math.PI*2)\n+g.fill()\n+g.globalCompositeOperation=\"source-over\"\n+return{\n+focus:[0.5,0.45],lip:[(W/2+Math.max(gap,0)+0.012*H)/W,0.6],text:[(W/2+Math.max(gap,0)+0.08*H)/W,0.3]\n+}\n },wedge(g,W,H,o,s){"
+    }
+  ]
+}

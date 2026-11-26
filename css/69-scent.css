@@ -1,0 +1,165 @@
+/*
+ * P10e-e Task 18: scent (docs/prototypes/saturation.html, normative). The instrument's own layer sits in the effects layer, under the scene's
+ * UI: the stop word's pill and every control stay above it. Here are the prototype's `#inner` (`#world` with the room and `#ceiling`, `#dark`,
+ * `#streams`, `#bloom`, `#edge`), `#words` (the head and her question's pills), `#mark`, `#arc` and `#hand` with her lines, in its order, and the
+ * letters laid over the input (`#mirror`, the input taking her in). Only her question's pills take the pointer. Her lines are in her hand at the
+ * prototype's sizes × her hand's measured scale; readable mode writes them in the type font with no write-on and drops every blur; reduced
+ * motion has no write-on. The scent's colour is `--scent` (r,g,b), set each frame. Every z-index stays below 10.
+ */
+#alius-shell .alius-scent {
+  position: absolute;
+  inset: 0;
+  z-index: 1; /* over the effects layer's own gradient */
+  overflow: hidden;
+  pointer-events: none;
+  background: #000;
+  color: #ece8f2;
+  font-family: var(--alius-font-sans), sans-serif;
+  font-weight: 300;
+  --scent: 255, 176, 96;
+  --alius-scent-hand-scale: 1;
+}
+
+#alius-shell .alius-scent > *,
+#alius-shell .alius-scent-inner > * {
+  position: absolute;
+  pointer-events: none;
+}
+
+#alius-shell .alius-scent-inner { inset: 0; will-change: filter, transform; }
+#alius-shell .alius-scent-world { inset: -4%; }
+#alius-shell .alius-scent-world > * { position: absolute; }
+#alius-shell .alius-scent-room { inset: -4%; background-size: cover; background-position: center; filter: blur(4px) brightness(0.55); }
+#alius-shell .alius-scent-ceiling { inset: -8%; background-size: cover; background-position: center; filter: blur(4px) brightness(0.55); }
+#alius-shell .alius-scent-dark,
+#alius-shell .alius-scent-streams { inset: 0; width: 100%; height: 100%; }
+#alius-shell .alius-scent-streams { mix-blend-mode: screen; }
+#alius-shell .alius-scent-bloom {
+  inset: 0;
+  backdrop-filter: blur(14px) brightness(1.35) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) brightness(1.35) saturate(1.4);
+  mix-blend-mode: screen;
+  opacity: 0;
+}
+#alius-shell .alius-scent-edge { inset: 0; }
+
+/* the head: the words circling the face; her question's pills */
+#alius-shell .alius-scent-words { inset: 0; }
+#alius-shell .alius-scent .hw {
+  position: absolute;
+  font: italic 300 16px var(--alius-font-sans), sans-serif;
+  letter-spacing: 0.1em;
+  color: rgba(var(--scent), 0.95);
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  text-shadow: 0 0 10px rgba(var(--scent), 0.6), 0 0 2px rgba(0, 0, 0, 0.7);
+}
+#alius-shell .alius-scent .pw {
+  position: absolute;
+  font: italic 300 22px var(--alius-font-sans), sans-serif;
+  letter-spacing: 0.14em;
+  color: rgba(var(--scent), 0.9);
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  text-shadow: 0 0 10px rgba(var(--scent), 0.55), 0 0 2px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+#alius-shell .alius-scent .pw.pick {
+  pointer-events: auto;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(var(--scent), 0.45);
+  background: rgba(20, 10, 6, 0.35);
+  backdrop-filter: blur(4px);
+  font-size: 24px;
+}
+#alius-shell .alius-scent .pw.pick:hover { border-color: rgba(var(--scent), 0.95); box-shadow: 0 0 14px rgba(var(--scent), 0.5); }
+#alius-shell .alius-scent .pw.chosen { border-color: #fff; color: #fff; background: rgba(var(--scent), 0.25); }
+#alius-shell .alius-scent .pw .tag {
+  display: block;
+  font: 10px var(--alius-font);
+  font-style: normal;
+  letter-spacing: 0.12em;
+  font-variant: small-caps;
+  opacity: 0.55;
+  margin: -2px 0 2px;
+  text-align: center;
+}
+#alius-shell .alius-scent .pw.lie { border-style: dashed; color: rgba(var(--scent), 0.6); background: rgba(10, 6, 12, 0.35); }
+#alius-shell .alius-scent .pw .key { display: inline-block; margin-right: 10px; font: 12px var(--alius-font); font-style: normal; letter-spacing: 0; opacity: 0.6; }
+
+/* her mark on the place she names; the arc at the face (hidden while she asks) */
+#alius-shell .alius-scent-mark {
+  left: 0;
+  top: 0;
+  width: 100px;
+  height: 100px;
+  margin: -50px 0 0 -50px;
+  overflow: visible;
+  opacity: 0;
+  transition: opacity 0.4s;
+  color: var(--alius-her, #8cc8f0);
+}
+#alius-shell .alius-scent-mark circle { stroke: currentColor; }
+#alius-shell .alius-scent-mark .alius-scent-mFill { fill: currentColor; }
+#alius-shell .alius-scent-arc { left: 0; top: 0; width: 120px; height: 120px; margin: -60px 0 0 -60px; overflow: visible; }
+#alius-shell .alius-scent.asking .alius-scent-arc { opacity: 0 !important; }
+
+/* her hand */
+#alius-shell .alius-scent-hand { inset: 0; }
+#alius-shell .alius-scent-hand .her-line {
+  position: absolute;
+  font-family: var(--alius-font-hand, "Caveat"), cursive;
+  color: var(--alius-her, #8cc8f0);
+  white-space: normal; /* the prototype's lines are short; a longer one wraps inside the frame (ruling Q) */
+  max-width: 40%;
+  width: max-content;
+  line-height: 1;
+  font-size: calc(42px * var(--alius-scent-hand-scale));
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9), 0 0 14px rgba(0, 0, 0, 0.85), 0 0 28px rgba(0, 0, 0, 0.6);
+  animation: alius-scent-write var(--write, 600ms) steps(var(--steps, 12), end) both;
+  transition: opacity 0.5s;
+}
+#alius-shell .alius-scent-hand .her-line.big { font-size: calc(58px * var(--alius-scent-hand-scale)); }
+#alius-shell .alius-scent-hand .her-line.gone { opacity: 0; }
+
+@keyframes alius-scent-write {
+  from { clip-path: inset(-30% 100% -30% -8%); }
+  to { clip-path: inset(-30% -8% -30% -8%); }
+}
+
+/* the still form and readable mode */
+#alius-shell .alius-scent[data-reduced] .her-line { animation: none; }
+#alius-shell .alius-scent[data-readable] .her-line {
+  animation: none;
+  font-family: var(--alius-font-type);
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9);
+}
+#alius-shell .alius-scent[data-readable] .alius-scent-room,
+#alius-shell .alius-scent[data-readable] .alius-scent-ceiling { filter: brightness(0.55); }
+#alius-shell .alius-scent[data-readable] .alius-scent-bloom { backdrop-filter: brightness(1.35) saturate(1.4); -webkit-backdrop-filter: brightness(1.35) saturate(1.4); }
+#alius-shell .alius-scent[data-readable] .pw.pick { backdrop-filter: none; }
+#alius-shell .alius-scent[data-readable] .hw { filter: none !important; }
+
+/* the input takes her in: its letters are drawn over it, a word of hers in her scent's colour (the field's own text goes transparent) */
+#alius-shell .alius-input[data-scent-letters] {
+  color: transparent;
+  caret-color: var(--alius-fg, #ece8f2);
+}
+#alius-shell .alius-input-line > .alius-scent-mirror {
+  position: absolute;
+  pointer-events: none;
+  overflow: hidden;
+  white-space: pre;
+  font-family: var(--alius-font-sans);
+  font-size: 15px;
+  line-height: normal;
+  display: flex;
+  align-items: center;
+  padding: 1px 2px;
+  color: rgba(236, 232, 242, 0.95);
+}
+#alius-shell .alius-input-line > .alius-scent-mirror > span { display: inline-block; white-space: pre; }
+#alius-shell .alius-input-line > .alius-scent-mirror > .tint { color: rgb(var(--alius-scent-tint, 255, 198, 164)); font-style: italic; text-shadow: 0 0 8px rgba(var(--alius-scent-tint, 255, 198, 164), 0.6); }

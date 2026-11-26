@@ -537,3 +537,117 @@ Her lines in her hand while she rests her weight on the commander (P10e-e Task 1
 - **entry.straddled:** silent
 - **entry.standing_on:** silent
 - **entry.boot_on_chest:** silent
+
+## 9. Scent (saturation.html, approved by the author, 2026-11-23)
+
+Her lines in her hand while the commander breathes her in (P10e-e Task 18, ruling Q; `saturation.html`'s `LINES`, her question's words of its `STYLES[].ask` and what her rule says is missing, `judge`). **entry**: her first words as she settles, by the contact (`scent.entry.<contact>`); **here**: her named places by the contact, in order (`scent.here.<contact>`: feet_on_face toes, arch, heel, the ball; face_to_bottom the centre, her side; smothered_armpit the hollow, the edge); **deeper** / **gently** / **still**: her orders; **moved**: playful moves her mark; **good** / **bad**: an order kept or not; **mouth**: she heard a mouth breath (the engine caught it), by her style; **away**: the face turned from her while she watches; **cough**: the body revolted; **liar**: the cough gave a lie away; **caught**: she saw the commander seek her out; **lost.low** / **lost.high**: the head overflowed (by the commander's stage); **need**: the body breathes by itself; **end** / **stop**: the end, after the stop word; **ask**: her question (`{p}` is her place in her own words, lower case as she writes); **answer.ok** / **answer.bad** / **answer.empty**: her verdict, which follows the answer the engine records; **miss.***: what her rule found missing (warm; admit; bad and want; the place, the strength and the band; the intensity wrong or missing, and honest). Neutral is every style with no rows of its own; cold is silent on every kind, her first words included (Ruling R). No pronoun for the commander.
+
+### entry
+- **feet_on_face:** `breathe me in.`
+- **face_to_bottom:** `stay right there. breathe.`
+- **smothered_armpit:** `nose in. all the way.`
+
+### here
+- **feet_on_face:** `between my toes.` · `the arch.` · `the heel.` · `under my toes.`
+- **face_to_bottom:** `closer.` · `my hip.`
+- **smothered_armpit:** `deeper in.` · `my side.`
+
+### neutral
+- **deeper:** `deeper.` · `more than that.` · `all of it.`
+- **gently:** `slowly.` · `gently.`
+- **still:** `don’t move.` · `stay still.`
+- **moved:** `no, here.` · `over here now~`
+- **good:** `good.` · `mm. like that.`
+- **bad:** `I said deeper.` · `that’s not what I asked.`
+- **away:** `don’t you dare turn away.`
+- **cough:** `too much for you?` · `breathe it, don’t fight it.`
+- **liar:** `liar.`
+- **caught:** `you like that, don’t you.`
+- **need:** `breathe.`
+- **end:** `enough. for now.`
+- **stop:** `okay. come up.`
+- **lost.low:** `too much?`
+- **lost.high:** `good. stay there.`
+- **answer.empty:** `nothing? then smell it properly.`
+- **miss.warm:** `you didn’t say where. or how it is now.`
+- **miss.admit:** `liar~ it’s strong. say it.`
+- **miss.bad:** `say how bad it is.`
+- **miss.want:** `and you want it. say it.`
+- **miss.place:** `where? the place.`
+- **miss.strength:** `how strong? say it.`
+- **miss.band:** `that’s not how strong it is.`
+- **miss.intensity_wrong:** `intensity: wrong.`
+- **miss.intensity_missing:** `intensity: missing.`
+- **miss.honest:** `and what you feel. honestly.`
+- **mouth:** `through your nose.`
+- **answer.ok:** `good answer.`
+- **answer.bad:** `that’s not what I asked.`
+- **ask:** `{p}. what do you smell?` · `tell me about {p}.`
+
+### affectionate
+- **mouth:** silent
+- **answer.ok:** `thank you for telling me.`
+- **answer.bad:** `it’s okay. breathe.`
+- **ask:** `{p}, love. how is it?` · `tell me about {p}. anything.`
+
+### playful
+- **mouth:** `caught you~`
+- **answer.ok:** `ha. honest.`
+- **answer.bad:** `liar~ prove it.`
+- **ask:** `be honest~ {p}: strong?` · `{p}. how bad? tell me~`
+
+### cruel
+- **mouth:** `did I say you could?`
+- **answer.ok:** `good. remember that.`
+- **answer.bad:** `wrong. smell it properly.`
+- **ask:** `{p}. tell me how bad it is. and what you want.` · `{p}. how does it smell? and what do you want?`
+
+### ritual
+- **mouth:** `not without permission.`
+- **answer.ok:** `correct.`
+- **answer.bad:** `incorrect. again.`
+- **ask:** `{p}. where, and how strong?`
+
+### clinical
+- **mouth:** `mouth breathing. noted.`
+- **answer.ok:** `accurate.`
+- **answer.bad:** `imprecise.`
+- **ask:** `report on {p}: intensity, and what you feel.`
+
+### cold
+- **deeper:** silent
+- **gently:** silent
+- **still:** silent
+- **moved:** silent
+- **good:** silent
+- **bad:** silent
+- **away:** silent
+- **cough:** silent
+- **liar:** silent
+- **caught:** silent
+- **need:** silent
+- **end:** silent
+- **stop:** silent
+- **lost.low:** silent
+- **lost.high:** silent
+- **answer.empty:** silent
+- **miss.warm:** silent
+- **miss.admit:** silent
+- **miss.bad:** silent
+- **miss.want:** silent
+- **miss.place:** silent
+- **miss.strength:** silent
+- **miss.band:** silent
+- **miss.intensity_wrong:** silent
+- **miss.intensity_missing:** silent
+- **miss.honest:** silent
+- **mouth:** silent
+- **answer.ok:** silent
+- **answer.bad:** silent
+- **ask:** silent
+- **entry.feet_on_face:** silent
+- **here.feet_on_face:** silent
+- **entry.face_to_bottom:** silent
+- **here.face_to_bottom:** silent
+- **entry.smothered_armpit:** silent
+- **here.smothered_armpit:** silent

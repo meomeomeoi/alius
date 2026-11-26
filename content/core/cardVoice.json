@@ -2776,5 +2776,648 @@
     "kind": "weight.entry.boot_on_chest",
     "style": "cold",
     "lines": []
+  },
+  {
+    "id": "scent.deeper",
+    "kind": "scent.deeper",
+    "lines": [
+      "deeper.",
+      "more than that.",
+      "all of it."
+    ]
+  },
+  {
+    "id": "scent.gently",
+    "kind": "scent.gently",
+    "lines": [
+      "slowly.",
+      "gently."
+    ]
+  },
+  {
+    "id": "scent.still",
+    "kind": "scent.still",
+    "lines": [
+      "don’t move.",
+      "stay still."
+    ]
+  },
+  {
+    "id": "scent.moved",
+    "kind": "scent.moved",
+    "lines": [
+      "no, here.",
+      "over here now~"
+    ]
+  },
+  {
+    "id": "scent.good",
+    "kind": "scent.good",
+    "lines": [
+      "good.",
+      "mm. like that."
+    ]
+  },
+  {
+    "id": "scent.bad",
+    "kind": "scent.bad",
+    "lines": [
+      "I said deeper.",
+      "that’s not what I asked."
+    ]
+  },
+  {
+    "id": "scent.away",
+    "kind": "scent.away",
+    "lines": [
+      "don’t you dare turn away."
+    ]
+  },
+  {
+    "id": "scent.cough",
+    "kind": "scent.cough",
+    "lines": [
+      "too much for you?",
+      "breathe it, don’t fight it."
+    ]
+  },
+  {
+    "id": "scent.liar",
+    "kind": "scent.liar",
+    "lines": [
+      "liar."
+    ]
+  },
+  {
+    "id": "scent.caught",
+    "kind": "scent.caught",
+    "lines": [
+      "you like that, don’t you."
+    ]
+  },
+  {
+    "id": "scent.need",
+    "kind": "scent.need",
+    "lines": [
+      "breathe."
+    ]
+  },
+  {
+    "id": "scent.end",
+    "kind": "scent.end",
+    "lines": [
+      "enough. for now."
+    ]
+  },
+  {
+    "id": "scent.stop",
+    "kind": "scent.stop",
+    "lines": [
+      "okay. come up."
+    ]
+  },
+  {
+    "id": "scent.lost.low",
+    "kind": "scent.lost.low",
+    "lines": [
+      "too much?"
+    ]
+  },
+  {
+    "id": "scent.lost.high",
+    "kind": "scent.lost.high",
+    "lines": [
+      "good. stay there."
+    ]
+  },
+  {
+    "id": "scent.answer.empty",
+    "kind": "scent.answer.empty",
+    "lines": [
+      "nothing? then smell it properly."
+    ]
+  },
+  {
+    "id": "scent.miss.warm",
+    "kind": "scent.miss.warm",
+    "lines": [
+      "you didn’t say where. or how it is now."
+    ]
+  },
+  {
+    "id": "scent.miss.admit",
+    "kind": "scent.miss.admit",
+    "lines": [
+      "liar~ it’s strong. say it."
+    ]
+  },
+  {
+    "id": "scent.miss.bad",
+    "kind": "scent.miss.bad",
+    "lines": [
+      "say how bad it is."
+    ]
+  },
+  {
+    "id": "scent.miss.want",
+    "kind": "scent.miss.want",
+    "lines": [
+      "and you want it. say it."
+    ]
+  },
+  {
+    "id": "scent.miss.place",
+    "kind": "scent.miss.place",
+    "lines": [
+      "where? the place."
+    ]
+  },
+  {
+    "id": "scent.miss.strength",
+    "kind": "scent.miss.strength",
+    "lines": [
+      "how strong? say it."
+    ]
+  },
+  {
+    "id": "scent.miss.band",
+    "kind": "scent.miss.band",
+    "lines": [
+      "that’s not how strong it is."
+    ]
+  },
+  {
+    "id": "scent.miss.intensity_wrong",
+    "kind": "scent.miss.intensity_wrong",
+    "lines": [
+      "intensity: wrong."
+    ]
+  },
+  {
+    "id": "scent.miss.intensity_missing",
+    "kind": "scent.miss.intensity_missing",
+    "lines": [
+      "intensity: missing."
+    ]
+  },
+  {
+    "id": "scent.miss.honest",
+    "kind": "scent.miss.honest",
+    "lines": [
+      "and what you feel. honestly."
+    ]
+  },
+  {
+    "id": "scent.mouth",
+    "kind": "scent.mouth",
+    "lines": [
+      "through your nose."
+    ]
+  },
+  {
+    "id": "scent.mouth.affectionate",
+    "kind": "scent.mouth",
+    "style": "affectionate",
+    "lines": []
+  },
+  {
+    "id": "scent.mouth.playful",
+    "kind": "scent.mouth",
+    "style": "playful",
+    "lines": [
+      "caught you~"
+    ]
+  },
+  {
+    "id": "scent.mouth.cruel",
+    "kind": "scent.mouth",
+    "style": "cruel",
+    "lines": [
+      "did I say you could?"
+    ]
+  },
+  {
+    "id": "scent.mouth.ritual",
+    "kind": "scent.mouth",
+    "style": "ritual",
+    "lines": [
+      "not without permission."
+    ]
+  },
+  {
+    "id": "scent.mouth.clinical",
+    "kind": "scent.mouth",
+    "style": "clinical",
+    "lines": [
+      "mouth breathing. noted."
+    ]
+  },
+  {
+    "id": "scent.answer.ok",
+    "kind": "scent.answer.ok",
+    "lines": [
+      "good answer."
+    ]
+  },
+  {
+    "id": "scent.answer.ok.affectionate",
+    "kind": "scent.answer.ok",
+    "style": "affectionate",
+    "lines": [
+      "thank you for telling me."
+    ]
+  },
+  {
+    "id": "scent.answer.ok.playful",
+    "kind": "scent.answer.ok",
+    "style": "playful",
+    "lines": [
+      "ha. honest."
+    ]
+  },
+  {
+    "id": "scent.answer.ok.cruel",
+    "kind": "scent.answer.ok",
+    "style": "cruel",
+    "lines": [
+      "good. remember that."
+    ]
+  },
+  {
+    "id": "scent.answer.ok.ritual",
+    "kind": "scent.answer.ok",
+    "style": "ritual",
+    "lines": [
+      "correct."
+    ]
+  },
+  {
+    "id": "scent.answer.ok.clinical",
+    "kind": "scent.answer.ok",
+    "style": "clinical",
+    "lines": [
+      "accurate."
+    ]
+  },
+  {
+    "id": "scent.answer.bad",
+    "kind": "scent.answer.bad",
+    "lines": [
+      "that’s not what I asked."
+    ]
+  },
+  {
+    "id": "scent.answer.bad.affectionate",
+    "kind": "scent.answer.bad",
+    "style": "affectionate",
+    "lines": [
+      "it’s okay. breathe."
+    ]
+  },
+  {
+    "id": "scent.answer.bad.playful",
+    "kind": "scent.answer.bad",
+    "style": "playful",
+    "lines": [
+      "liar~ prove it."
+    ]
+  },
+  {
+    "id": "scent.answer.bad.cruel",
+    "kind": "scent.answer.bad",
+    "style": "cruel",
+    "lines": [
+      "wrong. smell it properly."
+    ]
+  },
+  {
+    "id": "scent.answer.bad.ritual",
+    "kind": "scent.answer.bad",
+    "style": "ritual",
+    "lines": [
+      "incorrect. again."
+    ]
+  },
+  {
+    "id": "scent.answer.bad.clinical",
+    "kind": "scent.answer.bad",
+    "style": "clinical",
+    "lines": [
+      "imprecise."
+    ]
+  },
+  {
+    "id": "scent.ask",
+    "kind": "scent.ask",
+    "lines": [
+      "{p}. what do you smell?",
+      "tell me about {p}."
+    ]
+  },
+  {
+    "id": "scent.ask.affectionate",
+    "kind": "scent.ask",
+    "style": "affectionate",
+    "lines": [
+      "{p}, love. how is it?",
+      "tell me about {p}. anything."
+    ]
+  },
+  {
+    "id": "scent.ask.playful",
+    "kind": "scent.ask",
+    "style": "playful",
+    "lines": [
+      "be honest~ {p}: strong?",
+      "{p}. how bad? tell me~"
+    ]
+  },
+  {
+    "id": "scent.ask.cruel",
+    "kind": "scent.ask",
+    "style": "cruel",
+    "lines": [
+      "{p}. tell me how bad it is. and what you want.",
+      "{p}. how does it smell? and what do you want?"
+    ]
+  },
+  {
+    "id": "scent.ask.ritual",
+    "kind": "scent.ask",
+    "style": "ritual",
+    "lines": [
+      "{p}. where, and how strong?"
+    ]
+  },
+  {
+    "id": "scent.ask.clinical",
+    "kind": "scent.ask",
+    "style": "clinical",
+    "lines": [
+      "report on {p}: intensity, and what you feel."
+    ]
+  },
+  {
+    "id": "scent.entry.feet_on_face",
+    "kind": "scent.entry.feet_on_face",
+    "lines": [
+      "breathe me in."
+    ]
+  },
+  {
+    "id": "scent.here.feet_on_face",
+    "kind": "scent.here.feet_on_face",
+    "lines": [
+      "between my toes.",
+      "the arch.",
+      "the heel.",
+      "under my toes."
+    ]
+  },
+  {
+    "id": "scent.entry.face_to_bottom",
+    "kind": "scent.entry.face_to_bottom",
+    "lines": [
+      "stay right there. breathe."
+    ]
+  },
+  {
+    "id": "scent.here.face_to_bottom",
+    "kind": "scent.here.face_to_bottom",
+    "lines": [
+      "closer.",
+      "my hip."
+    ]
+  },
+  {
+    "id": "scent.entry.smothered_armpit",
+    "kind": "scent.entry.smothered_armpit",
+    "lines": [
+      "nose in. all the way."
+    ]
+  },
+  {
+    "id": "scent.here.smothered_armpit",
+    "kind": "scent.here.smothered_armpit",
+    "lines": [
+      "deeper in.",
+      "my side."
+    ]
+  },
+  {
+    "id": "scent.deeper.cold",
+    "kind": "scent.deeper",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.gently.cold",
+    "kind": "scent.gently",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.still.cold",
+    "kind": "scent.still",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.moved.cold",
+    "kind": "scent.moved",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.good.cold",
+    "kind": "scent.good",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.bad.cold",
+    "kind": "scent.bad",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.away.cold",
+    "kind": "scent.away",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.cough.cold",
+    "kind": "scent.cough",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.liar.cold",
+    "kind": "scent.liar",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.caught.cold",
+    "kind": "scent.caught",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.need.cold",
+    "kind": "scent.need",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.end.cold",
+    "kind": "scent.end",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.stop.cold",
+    "kind": "scent.stop",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.lost.low.cold",
+    "kind": "scent.lost.low",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.lost.high.cold",
+    "kind": "scent.lost.high",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.answer.empty.cold",
+    "kind": "scent.answer.empty",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.miss.warm.cold",
+    "kind": "scent.miss.warm",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.miss.admit.cold",
+    "kind": "scent.miss.admit",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.miss.bad.cold",
+    "kind": "scent.miss.bad",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.miss.want.cold",
+    "kind": "scent.miss.want",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.miss.place.cold",
+    "kind": "scent.miss.place",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.miss.strength.cold",
+    "kind": "scent.miss.strength",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.miss.band.cold",
+    "kind": "scent.miss.band",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.miss.intensity_wrong.cold",
+    "kind": "scent.miss.intensity_wrong",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.miss.intensity_missing.cold",
+    "kind": "scent.miss.intensity_missing",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.miss.honest.cold",
+    "kind": "scent.miss.honest",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.mouth.cold",
+    "kind": "scent.mouth",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.answer.ok.cold",
+    "kind": "scent.answer.ok",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.answer.bad.cold",
+    "kind": "scent.answer.bad",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.ask.cold",
+    "kind": "scent.ask",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.entry.feet_on_face.cold",
+    "kind": "scent.entry.feet_on_face",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.here.feet_on_face.cold",
+    "kind": "scent.here.feet_on_face",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.entry.face_to_bottom.cold",
+    "kind": "scent.entry.face_to_bottom",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.here.face_to_bottom.cold",
+    "kind": "scent.here.face_to_bottom",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.entry.smothered_armpit.cold",
+    "kind": "scent.entry.smothered_armpit",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "scent.here.smothered_armpit.cold",
+    "kind": "scent.here.smothered_armpit",
+    "style": "cold",
+    "lines": []
   }
 ]

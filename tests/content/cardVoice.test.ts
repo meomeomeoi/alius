@@ -25,7 +25,7 @@ function parseVoiceMd(md: string): Item[] {
     if (raw.startsWith('## ')) { sec = 0; cur = null; continue; }
     const h3 = /^### (.+)$/.exec(raw);
     if (h3) { heading = h3[1]!.trim(); cur = null; continue; }
-    if (!heading || ![1, 2, 3, 5, 6, 7, 8].includes(sec)) continue;
+    if (!heading || ![1, 2, 3, 5, 6, 7, 8, 9].includes(sec)) continue;
     const bullet = /^- (.*)$/.exec(raw);
     if (bullet) {
       const body = bullet[1]!;
@@ -93,6 +93,12 @@ const NEUTRAL_MAP: Record<string, Record<string, (l: string[]) => Out>> = {
 const BREATH_KINDS = ['greedy', 'entry', 'now', 'hold', 'early', 'tap', 'low', 'good', 'poor', 'released', 'stop', 'wake', 'fake', 'again'];
 /** §8 (P10e-e Task 16, ruling Q): weight's lines by her style (weight.html `LINES`); her first words by the contact (`weight.entry.<contact>`). */
 const WEIGHT_KINDS = ['released', 'slip', 'caught', 'heavy', 'good', 'poor', 'fall', 'stop', 'longer', 'announce'];
+/** §9 (P10e-e Task 18, ruling Q): scent's lines by her style (saturation.html `LINES`, `STYLES[].ask`, `judge`'s words); by the contact `scent.entry.<contact>` / `scent.here.<contact>`. */
+const SCENT_KINDS = [
+  'deeper', 'gently', 'still', 'moved', 'good', 'bad', 'away', 'cough', 'liar', 'caught', 'need', 'end', 'stop', 'lost.low', 'lost.high', 'mouth', 'answer.ok', 'answer.bad', 'answer.empty', 'ask',
+  'miss.warm', 'miss.admit', 'miss.bad', 'miss.want', 'miss.place', 'miss.strength', 'miss.band', 'miss.intensity_wrong', 'miss.intensity_missing', 'miss.honest',
+];
+const SCENT_CONTACTS = ['feet_on_face', 'face_to_bottom', 'smothered_armpit'];
 /** §6 (P10e-e Task 11): the slap's lines by her style. */
 const SLAP_LABEL: Record<string, string> = { before: 'slap.before', feint: 'slap.feint', again: 'slap.again', none: 'slap.after.none', braced: 'slap.after.braced', flinched: 'slap.after.flinched' };
 const STYLE_LABEL: Record<string, string> = { when: 'when', cost: 'cost', who: 'who', 'only her': 'onlyMe', weight: 'weight', right: 'call.right', wrong: 'call.wrong', slow: 'call.slow' };
@@ -106,6 +112,13 @@ function expected(md: string): Map<string, string[]> {
     out.set(key, lines);
   };
   for (const it of parseVoiceMd(md)) {
+    if (it.sec === 9) {
+      if (it.heading === 'entry' || it.heading === 'here') { put(`scent.${it.heading}.${it.label}`, undefined, it.lines); continue; }
+      if (/^(entry|here)\./.test(it.label)) { put(`scent.${it.label}`, it.heading, it.lines); continue; } // a style's own (cold: silent)
+      if (!SCENT_KINDS.includes(it.label)) throw new Error(`unmapped scent item: ${it.heading} › ${it.label}`);
+      put(`scent.${it.label}`, it.heading === 'neutral' ? undefined : it.heading, it.lines);
+      continue;
+    }
     if (it.sec === 8) {
       if (it.heading === 'entry') { put(`weight.entry.${it.label}`, undefined, it.lines); continue; }
       if (it.label.startsWith('entry.')) { put(`weight.${it.label}`, it.heading, it.lines); continue; } // a style's own first words (cold: silent)
@@ -214,11 +227,37 @@ describe('cardVoice registry (P10e-e R7)', () => {
     for (const e of rows) for (const l of e.lines as string[]) expect(l, String(e.id)).not.toMatch(/\b(he|him|his|himself|he's|she's the commander)\b/i);
   });
 
+  it('scent\'s lines (ruling Q): every kind of saturation.html for its six styles, her first words and her places by a real contact, cold silent, no pronoun for the commander', async () => {
+    const rows = [...reg.cardVoice.values()].filter((e) => String(e.kind).startsWith('scent.'));
+    for (const k of SCENT_KINDS) expect(rows.some((e) => e.kind === `scent.${k}` && e.style === undefined), k).toBe(true);
+    for (const style of ['affectionate', 'playful', 'cruel', 'ritual', 'clinical']) for (const k of ['mouth', 'answer.ok', 'answer.bad', 'ask']) expect(rows.some((e) => e.kind === `scent.${k}` && e.style === style), `${k}@${style}`).toBe(true);
+    for (const c of SCENT_CONTACTS) {
+      expect(reg.blockingContacts.get(c)?.physics, c).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'saturation' })]));
+      for (const k of ['entry', 'here']) expect(rows.some((e) => e.kind === `scent.${k}.${c}` && e.style === undefined), `${k}.${c}`).toBe(true);
+    }
+    const cold = rows.filter((e) => e.style === 'cold');
+    expect(cold).toHaveLength(SCENT_KINDS.length + 2 * SCENT_CONTACTS.length);
+    expect(cold.every((e) => (e.lines as string[]).length === 0)).toBe(true);
+    for (const e of rows) for (const l of e.lines as string[]) expect(l, String(e.id)).not.toMatch(/\b(he|him|his|himself|he's)\b/i);
+    // the prototype's named places in order, and what its rule finds missing, word for word
+    const src = readFileSync('docs/prototypes/saturation.html', 'utf8');
+    const lines = src.slice(src.indexOf('const LINES = {'), src.indexOf('\n};', src.indexOf('const LINES = {')));
+    for (const c of SCENT_CONTACTS) {
+      const want = [...new RegExp(`${c}: \\[(.*?)\\]\\]`).exec(lines.slice(lines.indexOf('here:')))![1]!.matchAll(/\['([^']+)', '([a-z]+)'/g)].map((m) => m[1]);
+      expect(rows.find((e) => e.kind === `scent.here.${c}` && e.style === undefined)?.lines, c).toEqual(want);
+    }
+    const judge = src.slice(src.indexOf('function judge('), src.indexOf('\nfunction answerWords'));
+    const misses = [...judge.matchAll(/'([^']+)'/g)].map((m) => m[1]!).filter((t) => /[ .?~]/.test(t) && !t.includes(':') || /^intensity: /.test(t));
+    const got = rows.filter((e) => String(e.kind).startsWith('scent.miss.') && e.style === undefined).flatMap((e) => e.lines as string[]);
+    expect([...got].sort()).toEqual([...new Set(misses)].sort());
+  });
+
   it('a value that opens a sentence is capitalised (her name for a posture is kept as she says it)', () => {
     for (const e of reg.cardVoice.values()) {
       for (const line of e.lines as string[]) {
         for (const m of line.matchAll(/(^|[.?!~]\s+)\{(\w+)\}/g)) {
           if (m[2]!.toLowerCase() === 'posture') continue;
+          if (m[2] === 'p' && String(e.kind) === 'scent.ask') continue; // her place in her own words: scent's hand writes in lower case (saturation.html)
           expect(m[2]![0], `${e.id}: ${line}`).toBe(m[2]![0]!.toUpperCase());
         }
       }

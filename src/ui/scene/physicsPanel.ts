@@ -27,6 +27,8 @@ export interface PhysicsPanelStaging {
   stopWord(): EngineEvent[];
   skip(strategy: string): EngineEvent[];
   stimulus(way: string, kind: string, depth?: number | string): EngineEvent[];
+  /** P10e-e R20: the commander's answer to her question under scent, as the instrument judged it (`physics/answer`). Absent = never. */
+  answer?(right: boolean, lie: boolean, caught: boolean): EngineEvent[];
   act(kind: string): EngineEvent[];
   finishCounted(typed: number): EngineEvent[];
   cue(kind: CueKind, beat: number): string | null;

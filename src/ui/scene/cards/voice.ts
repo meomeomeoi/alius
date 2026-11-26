@@ -13,7 +13,9 @@ export type VoiceKind =
   | `static.milestone.${string}`
   | `static.claim.${string}`
   | `static.return.${string}`
-  | `weight.entry.${string}`;
+  | `weight.entry.${string}`
+  | `scent.entry.${string}`
+  | `scent.here.${string}`;
 
 /** A run of a filled line: her frame, or the engine's value (`value: true`, drawn in her stronger ink). */
 export interface VoiceRun { text: string; value?: true }

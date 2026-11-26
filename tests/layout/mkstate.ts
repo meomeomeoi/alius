@@ -9,6 +9,7 @@
  * hold running (the stop word's pill must stay clickable over the fan). `slap` / `slaphold`: her slap (P10e-e Task 12), see below.
  * `breath` / `breathhold`: the breath instrument (P10e-e Task 14), see below.
  * `weight` / `weightfoot` / `weightup` / `weighthold`: the weight instrument (P10e-e Task 16), see below.
+ * `scent` / `scenthold`: the scent instrument (P10e-e Task 18), see below.
  */
 import { writeFileSync } from 'node:fs';
 import { COMMANDER, registerFrameReader, setBlocking } from '../../src/engine/blocking';
@@ -173,5 +174,26 @@ out.weight = weighting('human_chair');
 out.weightfoot = weighting('footrest');
 out.weightup = weighting('boot_on_chest');
 out.weighthold = weighting('human_chair');
+
+/**
+ * P10e-e Task 18: Ann's feet on the commander's face (`feet_on_face`: saturation, the gap between her soles, with her own activity) in the
+ * commander's quarters, real time mirrored, the first segment running, her attention busy: `scent` for the shots (whose page drives her
+ * orders and her question itself, `&quiet=1` holding the prototype's own schedule off), `scenthold`: the stop word's pill must stay clickable
+ * and end the hold mid-breath, her question's pills up.
+ */
+function scenting(): CampaignState {
+  const s = campaign(reg, 4);
+  setRelation(s, ANN, { stateId: 'confidant' });
+  enable(s, 'objectification', 'restraint', 'humiliation', 'worship');
+  s.settings.physicsRealtime = true; // the campaign's mirror of real time (the instrument needs it)
+  const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
+  const d = r.state;
+  setBlocking(d, { registries: reg }, { person: ANN, field: 'contact', value: 'feet_on_face', with: COMMANDER }, { at: 1, source: 'engine' });
+  if (d.scene!.physics?.physicsId !== 'saturation') throw new Error('scent: no saturation runs');
+  d.scene!.physics.segment = { n: 1, state: 'running', plan: { beats: Array.from({ length: 20 }, () => ({ attention: 'busy' as const })) } };
+  return d;
+}
+out.scent = scenting();
+out.scenthold = scenting();
 
 writeFileSync(process.argv[2] ?? 'states.json', JSON.stringify(out));

@@ -63,6 +63,8 @@ export interface StagingController {
   finishCounted(typed: number): EngineEvent[];
   /** The commander's way with a stimulus (`physics/stimulus`). */
   stimulus(way: string, kind: string, depth?: number | string): EngineEvent[];
+  /** P10e-e R20: the commander's answer to her question under scent (`physics/answer` of the open run). */
+  answer(right: boolean, lie: boolean, caught: boolean): EngineEvent[];
   /** A marathon between two phases: how the commander spends the stretch (`physics/skip`). */
   skip(strategy: string): EngineEvent[];
   /** Drives the clock: ends a real-time segment on time and starts the next one when nothing is pending. */
@@ -265,6 +267,10 @@ export function createStaging(deps: StagingDeps): StagingController {
     },
     stimulus(way, kind, depth) {
       return active ? dispatch({ type: 'physics/stimulus', payload: { way, kind, ...(depth !== undefined ? { depth } : {}) } }) : [];
+    },
+    answer(right, lie, caught) {
+      const r = run();
+      return active && r ? dispatch({ type: 'physics/answer', payload: { runId: r.id, right, lie, caught } }) : [];
     },
     skip(strategy) {
       return active && run() ? dispatch({ type: 'physics/skip', payload: { strategy } }) : [];

@@ -109,6 +109,7 @@ function scopedStaging(staging: PhysicsPanelStaging, scope: Scope): PhysicsPanel
     stopWord: () => (on() ? staging.stopWord() : []),
     skip: (s) => (on() ? staging.skip(s) : []),
     stimulus: (w, k, d) => (on() ? staging.stimulus(w, k, d) : []),
+    answer: (r, l, c) => (on() ? staging.answer?.(r, l, c) ?? [] : []),
     act: (k) => (on() ? staging.act(k) : []),
     finishCounted: (n) => (on() ? staging.finishCounted(n) : []),
     cue: (k, b) => (on() ? staging.cue(k, b) : null),
