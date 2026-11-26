@@ -118,8 +118,24 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
   if (lead.cues === 'count') for (let i = 0; i < n; i++) if (beats[i]!.cue === undefined) beats[i] = { ...beats[i]!, cue: 'count' };
   if (lead.cues === 'sparse') for (let i = 0; i < n; i++) if (beats[i]!.cue !== undefined && rng.chance(0.5)) delete beats[i]!.cue;
   // R22: her moves in the jaw, in real time only (the turn-based card is unchanged); by hash after every draw above, so no draw is added or moved
-  if (realtime && interactions.includes('gesture')) planJaw(beats, state, run, lead.key);
+  if (realtime && interactions.includes('gesture') && jawSourceOf(run, reg) !== null) planJaw(beats, state, run, jawRowOf(lead));
   return { beats };
+}
+
+/**
+ * P10e-e R22: what holds the mouth open in a jaw run, read by field: an item worn in the mouth is the ring (`ring_gag`), a contact on her toes
+ * is her toes (`sole_to_mouth`); anything else (`oral_service`: P17b's) is neither, and gets no moves of hers. The jaw instrument reads the same.
+ */
+export function jawSourceOf(run: Pick<PhysicsRun, 'sourceKind' | 'sourceId'>, reg: Registries): 'sole_to_mouth' | 'ring_gag' | null {
+  if (run.sourceKind === 'item') return ((reg.blockingItems.get(run.sourceId)?.slots as string[] | undefined) ?? []).includes('mouth') ? 'ring_gag' : null;
+  const target = (reg.blockingContacts.get(run.sourceId)?.target as string[] | undefined) ?? [];
+  return target.includes('toes') ? 'sole_to_mouth' : null;
+}
+/** jaw.html's styles by the cues of a style it has no row of (Ruling R); a silent or sparse one is neutral's, so only cruel and vindictive refuse a rest. */
+const JAW_ROW_BY_CUES: Readonly<Record<string, string>> = { count: 'ritual', announce: 'ritual', false: 'playful', shift: 'clinical' };
+/** The jaw.html row of a holder's lead style: her own when the prototype has it, else by her cues, else neutral (the engine and the instrument agree). */
+export function jawRowOf(lead: { key: string; cues: string }): string {
+  return lead.key !== 'other' && lead.key in P.jawOrders.styles ? lead.key : JAW_ROW_BY_CUES[lead.cues] ?? 'neutral';
 }
 
 /**
@@ -128,9 +144,9 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
  * `deeper`, `pull_back`, ask her to `suck` or want it `wider`; the ring (an item) asks her question or wants it `wider`. An order's cue is its
  * own kind and replaces whatever cue the beat had; a question has none.
  */
-function planJaw(beats: PlannedBeat[], state: CampaignState, run: PhysicsRun, styleKey: string): void {
+function planJaw(beats: PlannedBeat[], state: CampaignState, run: PhysicsRun, row: string): void {
   const J = P.jawOrders;
-  const st = J.styles[styleKey] ?? J.styles.other!;
+  const st = J.styles[row] ?? J.styles.other!;
   const h = (b: number, key: string): number => fnv1a(`${state.life?.salt ?? 0}|${run.id}|${run.segment.n}|${b}|jaw|${key}`);
   const unit = (b: number, key: string): number => (h(b, key) % 10000) / 10000;
   const span = (b: number, key: string, [lo, hi]: readonly [number, number]): number => lo + (h(b, key) % (hi - lo + 1));
@@ -213,7 +229,11 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
   });
   const at = (beat: number, kind: SegmentInput['kind']): SegmentInput[] => live.filter((i) => i.beat === beat && i.kind === kind);
   const rest = env.interaction === 'gesture' ? live.find((i) => i.kind === 'ask_rest') : undefined;
-  const run_ = rest ? Math.min(plan.beats.length, rest.beat + 1) : plan.beats.length;
+  // R21: the jaw's cost of the opening: a segment the instrument reported (any bite but the teeth) costs per × amount a beat instead of per
+  const bitten = env.interaction === 'gesture' && live.some((i) => i.kind === 'bite' && i.part !== 'teeth');
+  // Ruling V: a rest in an instrument segment does not cut it short (the instrument charges nothing over the rest itself); turn-based, as before
+  const run_ = rest && !bitten ? Math.min(plan.beats.length, rest.beat + 1) : plan.beats.length;
+  const restGranted = rest !== undefined && !['cruel', 'vindictive'].includes(leadStyle(env.style).key);
   const cap = run.capacity;
   const cruel = leadStyle(env.style).key === 'cruel';
   const r: SegmentResult = {
@@ -236,8 +256,6 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
   // R18: scent's head (decision): whether the instrument reported the words breathed in, and what one word is worth of the gauge
   const inhaled = env.interaction === 'decision' && live.some((i) => i.kind === 'inhale');
   const word = cap / (env.head ?? headCapacity(TUNING.stimuli.startTolerance));
-  // R21: the jaw's cost of the opening: a segment the instrument reported (any bite but the teeth) costs per × amount a beat instead of per
-  const bitten = env.interaction === 'gesture' && live.some((i) => i.kind === 'bite' && i.part !== 'teeth');
   for (let b = 0; b < run_; b++) {
     const beat = plan.beats[b]!;
     const beatStart = r.gauge;
@@ -334,8 +352,11 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
       case 'gesture': {
         const bites = at(b, 'bite');
         const cost = bites.find((i) => i.part !== 'teeth');
-        r.gauge += bitten ? P.jaw.per * (cost === undefined ? 0 : cost.amount ?? 1) : P.jaw.per;
+        r.gauge += bitten ? P.jaw.per * (cost?.amount ?? 1) : P.jaw.per; // a beat the instrument did not report (a hidden tab) costs the flat rate
         if (bites.some((i) => i.part === 'teeth')) r.slips += 1; // R22: the teeth touched her: a slip (bookkeeping)
+        // Ruling V: in an instrument segment a granted rest takes the prototype's rest off where it was asked (the fatigue never below 0 there, as on
+        // the screen): `jawRest` as a share of the gauge (the instrument's fatigue is gauge / capacity × 100)
+        if (bitten && rest !== undefined && rest.beat === b && restGranted) r.gauge = Math.max(0, r.gauge - (P.jawRest * cap) / 100);
         if (r.gauge >= P.jaw.degradeAt) r.degraded = true;
         break;
       }
@@ -346,8 +367,9 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
   }
   if (rest) {
     r.askedRest = true;
-    r.restGranted = !['cruel', 'vindictive'].includes(leadStyle(env.style).key);
-    if (r.restGranted) r.gauge = Math.max(0, r.gauge - P.jawRest);
+    r.restGranted = restGranted;
+    // turn-based, `jawRest` gauge points at the segment's end as before (an instrument segment took its rest where it was asked)
+    if (r.restGranted && !bitten) r.gauge = Math.max(0, r.gauge - P.jawRest);
   }
   if (run.dryness !== undefined && r.dryness === undefined) r.dryness = run.dryness;
   r.checked = env.interaction === 'order' && r.gauge <= P.tongue.checkAt;

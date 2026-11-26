@@ -252,11 +252,19 @@ for (const size of SIZES) {
     // the frame; the pill ends the hold at once: the instrument is gone, the line, the field and the frame's cursor are as they were
     if (fixture === 'jawhold') {
       await p.waitForTimeout(300);
+      // review I1: the reply never under the mouth, resting (the ring's floor) and wide open
+      const clear = (when) => p.evaluate((w) => {
+        const a = document.querySelector('[role="log"]')?.getBoundingClientRect(), b = document.querySelector('.alius-input-line')?.getBoundingClientRect();
+        if (!a || !b || a.height === 0) return [`${w}: no reply or line to compare`];
+        return a.bottom > b.top && a.top < b.bottom && a.right > b.left && a.left < b.right ? [`${w}: the reply (bottom ${a.bottom.toFixed(1)}) runs under the mouth (top ${b.top.toFixed(1)})`] : [];
+      }, when);
+      for (const f of await clear('resting')) fail(size, fixture, f);
       await p.evaluate(() => { const j = window.__jaw; j.aim(1.2); j.move({ order: 'wider', orderMs: 6000 }); });
       await p.mouse.move(size[0] * 0.5, size[1] * 0.9);
       await p.focus('.alius-input');
       await p.keyboard.type('please');
       await p.waitForTimeout(900);
+      for (const f of await clear('wide open')) fail(size, fixture, f);
       const mid = await p.evaluate(() => {
         const out = [];
         if (!document.querySelector('.alius-layer-effects > .alius-jaw')) out.push('no jaw drawn');

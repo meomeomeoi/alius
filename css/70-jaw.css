@@ -152,3 +152,7 @@
 }
 #alius-shell .alius-jaw-band.hot { border-color: rgba(255, 120, 90, 0.95); }
 #alius-shell.alius-reduced-motion .alius-jaw-band { transition: none; }
+
+/* Ruling V: a rest asked again in the same segment is not taken: the ring flashes warm and fades (she says nothing) */
+#alius-shell .alius-input-line > .alius-jaw-rest.dropped { opacity: 1 !important; }
+#alius-shell .alius-input-line > .alius-jaw-rest.dropped circle { stroke: rgba(255, 120, 90, 0.75); }

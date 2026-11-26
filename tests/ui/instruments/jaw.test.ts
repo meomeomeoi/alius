@@ -13,9 +13,11 @@ import type { Registries } from '../../../src/content/types';
 import { COMMANDER, registerFrameReader, resetBlockingHooks, setBlocking } from '../../../src/engine/blocking';
 import { registerPhysicsStyle, resetPhysicsHooks } from '../../../src/engine/physics/style';
 import type { PhysicsRun, SegmentInput, SegmentPlan } from '../../../src/engine/physics/state';
+import { resolveEnvOf, resolveSegment } from '../../../src/engine/physics/segment';
 import type { CampaignState } from '../../../src/engine/state/types';
 import type { SceneController } from '../../../src/scene/sceneController';
 import { DEFAULT_SETTINGS, type AliusSettings } from '../../../src/settings';
+import { limitSentences, THROUGH_THE_RING } from '../../../src/blocking/directives';
 import { FakeStAdapter } from '../../../src/st/fake';
 import { h } from '../../../src/ui/dom';
 import { instrumentFor } from '../../../src/ui/scene/instruments/host';
@@ -305,13 +307,19 @@ describe('the jaw instrument on the scene', () => {
     t.to(2300);
     expect(_jaw.G.resting).toBeGreaterThan(0);
     expect(handText(t)).toContain('fine. rest.');
-    // a second rest in the same segment waits for the next one (the engine reads the first)
+    // Ruling V: a second rest in the same segment is dropped at once with a visible cue (the ring flashes `dropped`), never asked later
     t.to(7000);
     t.pointer('pointerdown', undefined, 2);
     t.to(7700);
+    expect(t.q('.alius-jaw-rest')!.classList.contains('dropped')).toBe(true);
     t.pointer('pointerup', document, 2);
     expect(asks()).toHaveLength(1);
-    expect(_jaw.R.restQueued).toBe(true);
+    expect(_jaw.G.resting).toBeLessThanOrEqual(0);
+    t.to(8600);
+    expect(t.q('.alius-jaw-rest')!.classList.contains('dropped')).toBe(false);
+    _jaw.R.seg!.startedAt = -1; // a new segment begins (its clock moved): the dropped rest is not asked unbidden
+    t.to(9000);
+    expect(asks()).toHaveLength(1);
     // cruel: refused
     resetSceneStage();
     registerPhysicsStyle(() => ({ primary: 'cruel' }));
@@ -322,6 +330,48 @@ describe('the jaw instrument on the scene', () => {
     expect(reports(c).filter((i) => i.kind === 'ask_rest')).toHaveLength(1);
     expect(_jaw.G.resting).toBe(0);
     expect(handText(c)).toMatch(/no\.|earn it\./);
+  });
+
+  it('Ruling V: after a granted rest the fatigue on screen and the engine\'s gauge agree at the segment\'s end (no jump at the next)', () => {
+    const s = hold();
+    const t = draw(s);
+    _jaw.aim(0.5); // resting on her toes: the gauge stays well under the capacity (neither side clamps)
+    t.to(4000);
+    t.pointer('pointerdown', undefined, 2);
+    t.to(4700);
+    t.pointer('pointerup', document, 2);
+    t.to(30_000 - 290); // the last beats flushed
+    const p = s.scene!.physics!;
+    const gauge = resolveSegment(p, p.segment.plan!, reports(t), resolveEnvOf(s, reg, p)).gauge;
+        expect(_jaw.G.stats.restsGranted).toBe(1);
+    expect(Math.abs((100 * gauge) / p.capacity - _jaw.G.f)).toBeLessThan(1.5);
+  });
+
+  it('M1: text already in the field at the mount, and an input method\'s text, come out of the mouth too', async () => {
+    const s = hold('ring');
+    const t = draw(s, { settings: { reducedMotion: true } });
+    t.to(300);
+    // an input method writes into the field (no key of its own reaches onType)
+    _jaw.G.jaw = 0.9; _jaw.G.target = 0.94; _jaw.G.v = 0;
+    t.field.value = 'please';
+    t.field.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(t.field.value).toBe('');
+    expect(t.q('.alius-jaw-mirror')!.textContent).toBe('haaaha');
+    t.key('keydown', 'Enter', t.field);
+    expect(t.send).toHaveBeenCalledWith('haaaha');
+    // a line left in the field before the jaw: spoken through the opening as the jaw mounts
+    const held = s.scene!.physics!;
+    delete s.scene!.physics;
+    t.screen.refresh();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(t.q('.alius-jaw')).toBeNull();
+    t.field.value = 'please';
+    s.scene!.physics = held;
+    t.screen.refresh();
+    expect(t.q('.alius-jaw')).not.toBeNull();
+    expect(t.field.value).toBe('');
+    expect(t.q('.alius-jaw-mirror')!.textContent).toHaveLength(6);
   });
 
   it('keys: Space and Shift typed into the field never act (a space and a capital); only the right button asks while it has the focus', () => {
@@ -366,6 +416,15 @@ describe('the jaw instrument on the scene', () => {
     t.type('ab');
     t.key('keydown', 'Backspace', t.field);
     expect(t.q('.alius-jaw-mirror')!.textContent).toHaveLength(1);
+  });
+
+  it('M5: with the ring in a real-time jaw the scene directive says what comes out clearly is understood (her fair listening), not "cannot be understood"', () => {
+    const s = hold('ring');
+    const text = limitSentences(s, reg).join(' ');
+    expect(text).toContain(THROUGH_THE_RING);
+    expect(text).not.toContain('cannot be understood');
+    s.settings.physicsRealtime = false; // turn-based: the item's own limit
+    expect(limitSentences(s, reg).join(' ')).toContain('cannot be understood');
   });
 
   it('without the jaw the scene sends the line as it was typed', () => {

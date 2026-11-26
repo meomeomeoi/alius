@@ -25,6 +25,7 @@ import type { Registries } from '../../../../content/types';
 import type { CueKind } from '../../../../engine/blocking/types';
 import { fnv1a } from '../../../../engine/hub';
 import type { PhysicsRun, PlannedBeat, SegmentInput } from '../../../../engine/physics/state';
+import { jawRowOf, jawSourceOf } from '../../../../engine/physics/segment';
 import { leadStyle, physicsStyleOf } from '../../../../engine/physics/style';
 import type { CampaignState } from '../../../../engine/state/types';
 import { TUNING } from '../../../../engine/tuning';
@@ -525,9 +526,8 @@ interface Wiring {
   accMs: number;
   /** The touches of the teeth already reported. */
   teeth: number;
-  /** The segment whose rest reached the engine (one a segment), and a rest asked since, waiting for the next segment. */
+  /** The segment whose rest reached the engine (the engine reads one a segment). */
   restSeg: number | null;
-  restQueued: boolean;
   restVia: 'mouse' | 'key';
   /**
    * The scene root's offset on the page, the mouth's width and its centre in its parent (the ghost frames), and how far the mouth is lifted so
@@ -536,19 +536,22 @@ interface Wiring {
   ox: number; oy: number; mouthW: number; mouthY: number; lift: number;
   /** The share of clear letters of each line sent (the instrument's summary only: UI, never the model's). */
   kept: number[];
+  /** The heard line the field holds (written by `heardLine`), and the reply block's lift (it clears the mouth's widest reach: review I1). */
+  heard: string | null;
+  replyLift: number;
+  /** The shots only: her picture instead of the scene's (a raster of the layout fixture's sprite, as the prototype's). */
+  spriteSrc: string | null;
   lastNow: number;
   ended: string | null;
 }
 const R: Wiring = {
-  run: null, lineStyle: 'neutral', seg: null, running: false, plan: [], move: null, acc: 0, accMs: 0, teeth: 0, restSeg: null, restQueued: false, restVia: 'key',
-  ox: 0, oy: 0, mouthW: 720, mouthY: 0, lift: 0, kept: [], lastNow: 0, ended: null,
+  run: null, lineStyle: 'neutral', seg: null, running: false, plan: [], move: null, acc: 0, accMs: 0, teeth: 0, restSeg: null, restVia: 'key',
+  ox: 0, oy: 0, mouthW: 720, mouthY: 0, lift: 0, kept: [], heard: null, replyLift: 0, spriteSrc: null, lastNow: 0, ended: null,
 };
 
 /** The source by field: an item worn in the mouth is the ring (`ring_gag`); a contact on her toes is her toes (`sole_to_mouth`); anything else none. */
 export function jawContactOf(run: Pick<PhysicsRun, 'sourceKind' | 'sourceId'>, reg: Registries): 'sole_to_mouth' | 'ring_gag' | null {
-  if (run.sourceKind === 'item') return ((reg.blockingItems.get(run.sourceId)?.slots as string[] | undefined) ?? []).includes('mouth') ? 'ring_gag' : null;
-  const target = (reg.blockingContacts.get(run.sourceId)?.target as string[] | undefined) ?? [];
-  return target.includes('toes') ? 'sole_to_mouth' : null;
+  return jawSourceOf(run, reg); // the engine's reader: her moves are planned for the same sources only
 }
 /** The prototype's draw for her move, from the plan's move (her toes: deeper < 0.32, back < 0.5, suck < 0.75, else wider; the ring: her question first, else wider). */
 const R_OF: Record<string, Record<string, number>> = { sole_to_mouth: { deeper: 0, pull_back: 0.4, suck: 0.6, wider: 0.9 }, ring_gag: { ask: 0, wider: 1 } };
@@ -566,6 +569,7 @@ function heardLine(heard: string, _meant: string, kept: number): void {
   if (!E) return;
   R.kept.push(kept);
   (E.env.input as HTMLInputElement).value = heard;
+  R.heard = heard; // a line that did not go out stays in the field as it came out: it is not spoken through the mouth again
 }
 /** Her lines (cardVoice `jaw.*`) in the prototype's `LINES` shape, by her style; a model-worded cue of an order takes its place for that beat. */
 function refreshLines(beat: number): void {
@@ -600,9 +604,17 @@ function reportBeat(beat: number, played: boolean): void {
   R.acc = 0; R.accMs = 0;
   report({ beat, kind: 'bite', amount: Math.round(amount * 1000) / 1000 }, true);
 }
-/** A rest reaches the engine once a segment (it reads the first): another asked in the same segment, or between segments, waits for the next. */
+/**
+ * Ruling V: a rest reaches the engine once a segment (it reads the first). Another asked in the same segment, or between segments, is not
+ * taken: it is dropped at once, never asked later unbidden, and the rest ring says so (it flashes `dropped`); she says nothing.
+ */
 function restWaits(): boolean {
-  if (!R.running || !R.seg || R.restSeg === R.seg.n) { R.restQueued = true; G.restAsked = true; return true; }
+  if (!R.running || !R.seg || R.restSeg === R.seg.n) {
+    G.restAsked = true;
+    const ring = E?.els['#restRing'];
+    if (ring) { ring.classList.add('dropped'); setTimeout(() => ring.classList.remove('dropped'), 700); }
+    return true;
+  }
   report({ beat: beatNow(), kind: 'ask_rest' }, R.restVia === 'mouse');
   R.restSeg = R.seg.n;
   return false;
@@ -617,9 +629,22 @@ function startSegment(run: PhysicsRun, ck: { startedAt: number | null; now: numb
   R.seg = { n: run.segment.n, startedAt: ck.startedAt!, clock0, beats: plan.beats.length, endMs, flushed: false, reported: 0, entered: first };
   R.plan = plan.beats;
   R.acc = 0; R.accMs = 0;
-  G.f = clamp((100 * run.gauge) / Math.max(1, run.capacity), 0, 100);
+  // the engine's gauge, plus what a rest still falling here has yet to take off (the engine took all of it off at the segment's end: Ruling V)
+  G.f = clamp((100 * run.gauge) / Math.max(1, run.capacity) + (G.resting > 0 ? (JAW_REST / REST_MS) * G.resting : 0), 0, 100);
   for (let b = 0; b < Math.min(first, plan.beats.length); b++) reportBeat(R.seg.reported++, false); // beats before the mount: the flat cost
-  if (R.restQueued && G.resting <= 0) { R.restQueued = false; G.restAsked = false; askRest(); }
+}
+/**
+ * Text that reached the field without a key of `onType` (already there at the mount, or written by an input method): it comes out of the
+ * mouth too, letter by letter through the opening now, as typed letters do; the field itself stays empty (review M1).
+ */
+function absorb(): void {
+  if (!E) return;
+  const input = E.env.input as HTMLInputElement;
+  const v = input.value;
+  if (v === '' || G.phase !== 'loop' || v === R.heard) return;
+  input.value = '';
+  R.heard = null;
+  for (const ch of v) onType({ key: ch, ctrlKey: false, metaKey: false, preventDefault: () => undefined } as unknown as KeyboardEvent);
 }
 /** Her planned move on a beat that begins: queued for `herMove` (her lines of that beat first, so a model-worded order is hers). */
 function enterBeat(b: number): void {
@@ -646,7 +671,7 @@ function before(now: number): void {
   if (!A.ctx) { audioInit(); if (A.ctx) { loadSamples(); strainInit(); } }
   // her sprite: the scene's picture, drawn from below by the instrument (the scene's own <img> is never moved)
   const scene = R.run ? e.env.spriteOf(R.run.holderId) : null;
-  const src = scene?.getAttribute('src') ?? '';
+  const src = R.spriteSrc ?? scene?.getAttribute('src') ?? '';
   if (src !== '' && img.getAttribute('src') !== src) img.setAttribute('src', src);
   if (img.naturalWidth && img.style.width !== `${img.naturalWidth}px`) { img.style.width = `${img.naturalWidth}px`; img.style.height = `${img.naturalHeight}px`; }
   const bg = e.env.layers.backdrop.style.backgroundImage;
@@ -692,11 +717,26 @@ function after(now: number): void {
   const hgt = parseFloat(e.line.style.height) || e.base;
   const margin = `${(-(hgt - e.base) / 2).toFixed(1)}px`;
   if (e.line.style.marginTop !== margin) { writeClaimed(e.claims[0]!, 'margin-top', margin); writeClaimed(e.claims[0]!, 'margin-bottom', margin); }
+  // the reply clears the mouth at its widest (the prototype's `#reply` stands at 230 px, over the mouth's reach of 96 + 85): lifted by a claim
+  liftReply(e);
   const cursor = G.phase === 'loop' ? 'ns-resize' : null;
   if ((e.env.layers.frame.style.cursor || null) !== cursor) writeClaimed(e.claims[1]!, 'cursor', cursor);
   if (S.readable) for (const el of [img, e.els['#backdrop']!, e.mirror]) if (/blur\((?!0)/.test(el.style.filter)) el.style.filter = el.style.filter.replace(/blur\([^)]*\)/g, 'blur(0px)');
   const lastEl = e.els['#hand']!.lastElementChild;
   if (lastEl !== lastLine) { lastLine = lastEl; keepInFrame(e); }
+}
+/** Review I1: the reply block, as laid out, against the mouth's widest reach (its centre less half of `MOUTH_H[1]`, and a gap): lifted clear of it. */
+export const REPLY_GAP = 12;
+function liftReply(e: JawEls): void {
+  const reply = e.env.reply;
+  const rr = reply.getBoundingClientRect(), lr = e.line.getBoundingClientRect();
+  if (rr.height <= 0 || lr.height <= 0) return;
+  const centre = lr.top + lr.height / 2; // as drawn: the lift is in it
+  const laidBottom = rr.bottom + R.replyLift;
+  const lift = Math.max(0, Math.ceil(laidBottom - (centre - MOUTH_H[1]! / 2 - REPLY_GAP)));
+  if (lift === R.replyLift) return;
+  R.replyLift = lift;
+  writeClaimed(e.claims[2]!, 'transform', lift > 0 ? `translateY(${-lift}px)` : null);
 }
 let lastLine: Element | null = null;
 /** Her lines stay inside the frame (ruling Q): a line that would run past an edge is moved back in (one wider than 40 % wraps, by its CSS). */
@@ -769,7 +809,7 @@ function build(env: InstrumentEnv): JawEls {
   const holder = line.parentElement ?? line;
   for (const id of ['bandLo', 'bandHi']) { const b = document.createElement('div'); b.className = 'alius-jaw-band'; b.setAttribute('aria-hidden', 'true'); els[`#${id}`] = b; holder.append(b); }
   env.input.dataset.jawLetters = '';
-  const claims = [claimStyles(line, ['height', 'margin-top', 'margin-bottom', 'transform', '--ache', 'border-color']), claimStyles(env.layers.frame, ['cursor'])];
+  const claims = [claimStyles(line, ['height', 'margin-top', 'margin-bottom', 'transform', '--ache', 'border-color']), claimStyles(env.layers.frame, ['cursor']), claimStyles(env.reply, ['transform'])];
   return { env, box, els, line, mirror, claims, frameId: null, base };
 }
 
@@ -779,10 +819,10 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   const reg: Registries = env.registries;
   reseed(fnv1a(`${state.scene?.id ?? ''}|${run.id}|jaw`));
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
-  S.style = lead.key in STYLES ? lead.key : ROW_BY_CUES[lead.cues] ?? 'neutral';
+  S.style = jawRowOf(lead); // the engine's row (Ruling R): her spacing, her rest rule and the push for the teeth agree with the engine's
   R.lineStyle = lead.key;
   R.run = run;
-  R.seg = null; R.running = false; R.plan = []; R.move = null; R.acc = 0; R.accMs = 0; R.teeth = 0; R.restSeg = null; R.restQueued = false; R.restVia = 'key'; R.kept = []; R.ended = null;
+  R.seg = null; R.running = false; R.plan = []; R.move = null; R.acc = 0; R.accMs = 0; R.teeth = 0; R.restSeg = null; R.restVia = 'key'; R.kept = []; R.heard = null; R.replyLift = 0; R.ended = null;
   S.contact = jawContactOf(run, reg) ?? 'sole_to_mouth';
   S.skill = state.commander.endurance?.[run.physicsId]?.level ?? 0;
   refreshLines(0);
@@ -791,8 +831,6 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   if (look.hand !== '') E!.box.style.setProperty('--alius-font-hand', `"${look.hand}", var(--alius-font-type)`);
   E!.box.style.setProperty('--alius-jaw-hand-scale', String(look.handScale || 1));
 }
-/** The prototype's row for a style it has no row of: by how she gives her cues (`TUNING.physics.style[].cues`); her lines still fall to neutral's. */
-const ROW_BY_CUES: Record<string, string> = { honest: 'neutral', count: 'ritual', announce: 'ritual', false: 'playful', none: 'cruel', sparse: 'vindictive', shift: 'clinical' };
 
 /**
  * The listeners of the prototype's page, on the scene: the mouse's height is the jaw; keys typed into the field are spoken through the
@@ -808,7 +846,10 @@ function listen(env: InstrumentEnv): void {
     G.target = clamp((e.clientY - r.top - H0()) / ((innerHeight || r.height || 1) * 0.48), 0, 1.6);
   }) as EventListener);
   // the field is the mouth: its keys are spoken through the opening, before the scene's own handler (which sends the heard line on Enter)
-  env.listen(env.root, 'keydown', ((e: KeyboardEvent) => { if (e.target === env.input) onType(e); }) as EventListener, true);
+  env.listen(env.root, 'keydown', ((e: KeyboardEvent) => { if (e.target !== env.input || e.isComposing) return; if (e.key === 'Enter') absorb(); onType(e); }) as EventListener, true);
+  // an input method's text (written after its composition) comes out of the mouth as typed letters do
+  env.listen(env.input, 'input', ((e: Event) => { if (!(e as InputEvent).isComposing) absorb(); }) as EventListener);
+  env.listen(env.input, 'compositionend', (() => absorb()) as EventListener);
   for (const type of ['paste', 'drop']) env.listen(env.input, type, ((e: Event) => e.preventDefault()) as EventListener); // only typed letters come out of the mouth
   env.listen(document, 'keydown', ((e: KeyboardEvent) => {
     if (typing(e.target) || control(e.target) || e.ctrlKey || e.metaKey || e.altKey) return; // while typing, Shift is a capital: only the right button asks
@@ -839,7 +880,7 @@ function stopJaw(): void {
   spoken.length = 0;
   lastLine = null;
   footLoaded = false;
-  R.run = null; R.seg = null; R.running = false; R.plan = []; R.move = null; R.restQueued = false;
+  R.run = null; R.seg = null; R.running = false; R.plan = []; R.move = null; R.spriteSrc = null; R.replyLift = 0; R.heard = null;
   LINES = { neutral: noLines() };
   G = fresh();
   E = null;
@@ -864,6 +905,7 @@ export function startJaw(env: InstrumentEnv, run: PhysicsRun): InstrumentRun {
   audioInit();
   if (A.ctx) loadSamples();
   begin();
+  absorb(); // a line already in the field comes out of the mouth
   requestAnimationFrame(frame);
   const mine = E;
   return {
@@ -913,6 +955,8 @@ export const _jaw = {
   resetClock(): void { last = E ? E.env.now() : 0; R.lastNow = last; },
   /** The shots and the tests: her move now, as the plan would give it. */
   move(m: { order?: string; orderMs?: number; ask?: true }): void { refreshLines(beatNow()); R.move = m; herMove(); },
+  /** The shots: her picture (the prototype's raster of the fixture), instead of the scene's. */
+  sprite(url: string | null): void { R.spriteSrc = url; },
   /** The prototype's `G.target`: where the mouse holds the jaw (0 shut, 1 wide open). */
   aim(t: number): void { G.target = t; },
 };

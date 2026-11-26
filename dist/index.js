@@ -18198,10 +18198,10 @@ function shiftToProtectors(ctx2, targetCid, amount) {
   }
   return { rest, shifts };
 }
-function loseHp(ctx2, targetCid, amount, absorb) {
+function loseHp(ctx2, targetCid, amount, absorb2) {
   const t = byCid(ctx2.cs, targetCid);
   let left = amount;
-  if (absorb) {
+  if (absorb2) {
     for (const s of t.statuses) {
       const flags = ctx2.reg.statuses.get(s.id)?.flags ?? [];
       if (!flags.includes("absorb") || !s.value) continue;
@@ -39283,12 +39283,21 @@ function planSegment(state, reg, run, rng) {
   if (lead.cues === "sparse") {
     for (let i = 0; i < n; i++) if (beats[i].cue !== void 0 && rng.chance(0.5)) delete beats[i].cue;
   }
-  if (realtime && interactions.includes("gesture")) planJaw(beats, state, run, lead.key);
+  if (realtime && interactions.includes("gesture") && jawSourceOf(run, reg) !== null) planJaw(beats, state, run, jawRowOf(lead));
   return { beats };
 }
-function planJaw(beats, state, run, styleKey2) {
+function jawSourceOf(run, reg) {
+  if (run.sourceKind === "item") return (reg.blockingItems.get(run.sourceId)?.slots ?? []).includes("mouth") ? "ring_gag" : null;
+  const target = reg.blockingContacts.get(run.sourceId)?.target ?? [];
+  return target.includes("toes") ? "sole_to_mouth" : null;
+}
+var JAW_ROW_BY_CUES = { count: "ritual", announce: "ritual", false: "playful", shift: "clinical" };
+function jawRowOf(lead) {
+  return lead.key !== "other" && lead.key in P2.jawOrders.styles ? lead.key : JAW_ROW_BY_CUES[lead.cues] ?? "neutral";
+}
+function planJaw(beats, state, run, row4) {
   const J = P2.jawOrders;
-  const st3 = J.styles[styleKey2] ?? J.styles.other;
+  const st3 = J.styles[row4] ?? J.styles.other;
   const h2 = (b, key) => fnv1a3(`${state.life?.salt ?? 0}|${run.id}|${run.segment.n}|${b}|jaw|${key}`);
   const unit4 = (b, key) => h2(b, key) % 1e4 / 1e4;
   const span = (b, key, [lo, hi]) => lo + h2(b, key) % (hi - lo + 1);
@@ -39349,7 +39358,9 @@ function resolveSegment(run, plan, inputs, env) {
   });
   const at = (beat, kind) => live3.filter((i) => i.beat === beat && i.kind === kind);
   const rest = env.interaction === "gesture" ? live3.find((i) => i.kind === "ask_rest") : void 0;
-  const run_ = rest ? Math.min(plan.beats.length, rest.beat + 1) : plan.beats.length;
+  const bitten = env.interaction === "gesture" && live3.some((i) => i.kind === "bite" && i.part !== "teeth");
+  const run_ = rest && !bitten ? Math.min(plan.beats.length, rest.beat + 1) : plan.beats.length;
+  const restGranted = rest !== void 0 && !["cruel", "vindictive"].includes(leadStyle(env.style).key);
   const cap9 = run.capacity;
   const cruel = leadStyle(env.style).key === "cruel";
   const r = {
@@ -39384,7 +39395,6 @@ function resolveSegment(run, plan, inputs, env) {
   const scale = env.scale ?? 1;
   const inhaled = env.interaction === "decision" && live3.some((i) => i.kind === "inhale");
   const word2 = cap9 / (env.head ?? headCapacity(TUNING.stimuli.startTolerance));
-  const bitten = env.interaction === "gesture" && live3.some((i) => i.kind === "bite" && i.part !== "teeth");
   for (let b = 0; b < run_; b++) {
     const beat = plan.beats[b];
     const beatStart = r.gauge;
@@ -39475,8 +39485,9 @@ function resolveSegment(run, plan, inputs, env) {
       case "gesture": {
         const bites = at(b, "bite");
         const cost = bites.find((i) => i.part !== "teeth");
-        r.gauge += bitten ? P2.jaw.per * (cost === void 0 ? 0 : cost.amount ?? 1) : P2.jaw.per;
+        r.gauge += bitten ? P2.jaw.per * (cost?.amount ?? 1) : P2.jaw.per;
         if (bites.some((i) => i.part === "teeth")) r.slips += 1;
+        if (bitten && rest !== void 0 && rest.beat === b && restGranted) r.gauge = Math.max(0, r.gauge - P2.jawRest * cap9 / 100);
         if (r.gauge >= P2.jaw.degradeAt) r.degraded = true;
         break;
       }
@@ -39486,8 +39497,8 @@ function resolveSegment(run, plan, inputs, env) {
   }
   if (rest) {
     r.askedRest = true;
-    r.restGranted = !["cruel", "vindictive"].includes(leadStyle(env.style).key);
-    if (r.restGranted) r.gauge = Math.max(0, r.gauge - P2.jawRest);
+    r.restGranted = restGranted;
+    if (r.restGranted && !bitten) r.gauge = Math.max(0, r.gauge - P2.jawRest);
   }
   if (run.dryness !== void 0 && r.dryness === void 0) r.dryness = run.dryness;
   r.checked = env.interaction === "order" && r.gauge <= P2.tongue.checkAt;
@@ -51067,10 +51078,15 @@ var MOVEMENT = {
   crawl: "can only crawl",
   follows: "can only stay at her side, led"
 };
-function limitWords(effects2) {
+var THROUGH_THE_RING = "speaks through a ring that holds the mouth open: what comes out clearly can be understood, the rest comes out garbled";
+function ringSpeech(state, reg) {
+  const run = state.scene?.physics;
+  return run !== void 0 && sceneSettingsOf(state).physicsRealtime === true && reg.contactPhysics.get(run.physicsId)?.interaction === "gesture" && run.sourceKind === "item" && jawSourceOf(run, reg) === "ring_gag";
+}
+function limitWords(effects2, ring = false) {
   const out = [];
   for (const e of effects2) {
-    if (e.type === "input") out.push(e.limit === "garbled" ? garbled(e.strength) : SPEECH[e.limit] ?? "");
+    if (e.type === "input") out.push(e.limit === "garbled" ? ring ? THROUGH_THE_RING : garbled(e.strength) : SPEECH[e.limit] ?? "");
     else if (e.type === "mobility") out.push(MOVEMENT[e.level] ?? "");
   }
   return [...new Set(out.filter((w) => w !== ""))];
@@ -51078,7 +51094,7 @@ function limitWords(effects2) {
 function limitSentences(state, reg) {
   const out = [];
   for (const id of [...state.scene?.participants ?? [], COMMANDER]) {
-    const words3 = limitWords(personEffects(state, reg, id));
+    const words3 = limitWords(personEffects(state, reg, id), id === COMMANDER && ringSpeech(state, reg));
     if (words3.length === 0) continue;
     const name = id === COMMANDER ? "The commander" : state.squad.find((u) => u.id === id)?.displayName ?? id;
     out.push(`${name} ${words3.length === 1 ? words3[0] : `${words3.slice(0, -1).join(", ")} and ${words3[words3.length - 1]}`}.`);
@@ -69234,7 +69250,6 @@ var R7 = {
   accMs: 0,
   teeth: 0,
   restSeg: null,
-  restQueued: false,
   restVia: "key",
   ox: 0,
   oy: 0,
@@ -69242,13 +69257,14 @@ var R7 = {
   mouthY: 0,
   lift: 0,
   kept: [],
+  heard: null,
+  replyLift: 0,
+  spriteSrc: null,
   lastNow: 0,
   ended: null
 };
 function jawContactOf(run, reg) {
-  if (run.sourceKind === "item") return (reg.blockingItems.get(run.sourceId)?.slots ?? []).includes("mouth") ? "ring_gag" : null;
-  const target = reg.blockingContacts.get(run.sourceId)?.target ?? [];
-  return target.includes("toes") ? "sole_to_mouth" : null;
+  return jawSourceOf(run, reg);
 }
 var R_OF = { sole_to_mouth: { deeper: 0, pull_back: 0.4, suck: 0.6, wider: 0.9 }, ring_gag: { ask: 0, wider: 1 } };
 function moveR() {
@@ -69263,6 +69279,7 @@ function heardLine(heard, _meant, kept) {
   if (!E4) return;
   R7.kept.push(kept);
   E4.env.input.value = heard;
+  R7.heard = heard;
 }
 function refreshLines4(beat) {
   if (!E4) return;
@@ -69314,8 +69331,12 @@ function reportBeat3(beat, played2) {
 }
 function restWaits() {
   if (!R7.running || !R7.seg || R7.restSeg === R7.seg.n) {
-    R7.restQueued = true;
     G5.restAsked = true;
+    const ring = E4?.els["#restRing"];
+    if (ring) {
+      ring.classList.add("dropped");
+      setTimeout5(() => ring.classList.remove("dropped"), 700);
+    }
     return true;
   }
   report4({ beat: beatNow2(), kind: "ask_rest" }, R7.restVia === "mouse");
@@ -69332,13 +69353,17 @@ function startSegment2(run, ck) {
   R7.plan = plan.beats;
   R7.acc = 0;
   R7.accMs = 0;
-  G5.f = clamp43(100 * run.gauge / Math5.max(1, run.capacity), 0, 100);
+  G5.f = clamp43(100 * run.gauge / Math5.max(1, run.capacity) + (G5.resting > 0 ? JAW_REST / REST_MS * G5.resting : 0), 0, 100);
   for (let b = 0; b < Math5.min(first2, plan.beats.length); b++) reportBeat3(R7.seg.reported++, false);
-  if (R7.restQueued && G5.resting <= 0) {
-    R7.restQueued = false;
-    G5.restAsked = false;
-    askRest();
-  }
+}
+function absorb() {
+  if (!E4) return;
+  const input = E4.env.input;
+  const v = input.value;
+  if (v === "" || G5.phase !== "loop" || v === R7.heard) return;
+  input.value = "";
+  R7.heard = null;
+  for (const ch of v) onType({ key: ch, ctrlKey: false, metaKey: false, preventDefault: () => void 0 });
 }
 function enterBeat(b) {
   const pb = R7.plan[b];
@@ -69371,7 +69396,7 @@ function before4(now) {
     }
   }
   const scene = R7.run ? e.env.spriteOf(R7.run.holderId) : null;
-  const src = scene?.getAttribute("src") ?? "";
+  const src = R7.spriteSrc ?? scene?.getAttribute("src") ?? "";
   if (src !== "" && img.getAttribute("src") !== src) img.setAttribute("src", src);
   if (img.naturalWidth && img.style.width !== `${img.naturalWidth}px`) {
     img.style.width = `${img.naturalWidth}px`;
@@ -69423,6 +69448,7 @@ function after4(now) {
     writeClaimed(e.claims[0], "margin-top", margin);
     writeClaimed(e.claims[0], "margin-bottom", margin);
   }
+  liftReply(e);
   const cursor = G5.phase === "loop" ? "ns-resize" : null;
   if ((e.env.layers.frame.style.cursor || null) !== cursor) writeClaimed(e.claims[1], "cursor", cursor);
   if (S6.readable) {
@@ -69433,6 +69459,18 @@ function after4(now) {
     lastLine4 = lastEl;
     keepInFrame4(e);
   }
+}
+var REPLY_GAP = 12;
+function liftReply(e) {
+  const reply = e.env.reply;
+  const rr = reply.getBoundingClientRect(), lr = e.line.getBoundingClientRect();
+  if (rr.height <= 0 || lr.height <= 0) return;
+  const centre2 = lr.top + lr.height / 2;
+  const laidBottom = rr.bottom + R7.replyLift;
+  const lift2 = Math5.max(0, Math5.ceil(laidBottom - (centre2 - MOUTH_H[1] / 2 - REPLY_GAP)));
+  if (lift2 === R7.replyLift) return;
+  R7.replyLift = lift2;
+  writeClaimed(e.claims[2], "transform", lift2 > 0 ? `translateY(${-lift2}px)` : null);
 }
 var lastLine4 = null;
 function keepInFrame4(e) {
@@ -69527,7 +69565,7 @@ function build4(env) {
     holder3.append(b);
   }
   env.input.dataset.jawLetters = "";
-  const claims3 = [claimStyles(line3, ["height", "margin-top", "margin-bottom", "transform", "--ache", "border-color"]), claimStyles(env.layers.frame, ["cursor"])];
+  const claims3 = [claimStyles(line3, ["height", "margin-top", "margin-bottom", "transform", "--ache", "border-color"]), claimStyles(env.layers.frame, ["cursor"]), claimStyles(env.reply, ["transform"])];
   return { env, box, els, line: line3, mirror: mirror2, claims: claims3, frameId: null, base };
 }
 function bind4(env, run) {
@@ -69535,7 +69573,7 @@ function bind4(env, run) {
   const reg = env.registries;
   reseed(fnv1a3(`${state.scene?.id ?? ""}|${run.id}|jaw`));
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
-  S6.style = lead.key in STYLES4 ? lead.key : ROW_BY_CUES4[lead.cues] ?? "neutral";
+  S6.style = jawRowOf(lead);
   R7.lineStyle = lead.key;
   R7.run = run;
   R7.seg = null;
@@ -69546,9 +69584,10 @@ function bind4(env, run) {
   R7.accMs = 0;
   R7.teeth = 0;
   R7.restSeg = null;
-  R7.restQueued = false;
   R7.restVia = "key";
   R7.kept = [];
+  R7.heard = null;
+  R7.replyLift = 0;
   R7.ended = null;
   S6.contact = jawContactOf(run, reg) ?? "sole_to_mouth";
   S6.skill = state.commander.endurance?.[run.physicsId]?.level ?? 0;
@@ -69558,7 +69597,6 @@ function bind4(env, run) {
   if (look.hand !== "") E4.box.style.setProperty("--alius-font-hand", `"${look.hand}", var(--alius-font-type)`);
   E4.box.style.setProperty("--alius-jaw-hand-scale", String(look.handScale || 1));
 }
-var ROW_BY_CUES4 = { honest: "neutral", count: "ritual", announce: "ritual", false: "playful", none: "cruel", sparse: "vindictive", shift: "clinical" };
 function listen4(env) {
   const control2 = (t) => t instanceof Element && t.closest('button, a, [role="button"], select, [data-action]') !== null;
   const onFrame = (t) => t instanceof Node && (t === env.layers.frame || env.layers.frame.contains(t));
@@ -69568,8 +69606,14 @@ function listen4(env) {
     G5.target = clamp43((e.clientY - r.top - H0()) / ((innerHeight5 || r.height || 1) * 0.48), 0, 1.6);
   });
   env.listen(env.root, "keydown", (e) => {
-    if (e.target === env.input) onType(e);
+    if (e.target !== env.input || e.isComposing) return;
+    if (e.key === "Enter") absorb();
+    onType(e);
   }, true);
+  env.listen(env.input, "input", (e) => {
+    if (!e.isComposing) absorb();
+  });
+  env.listen(env.input, "compositionend", () => absorb());
   for (const type of ["paste", "drop"]) env.listen(env.input, type, (e) => e.preventDefault());
   env.listen(document, "keydown", (e) => {
     if (typing4(e.target) || control2(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -69622,7 +69666,9 @@ function stopJaw() {
   R7.running = false;
   R7.plan = [];
   R7.move = null;
-  R7.restQueued = false;
+  R7.spriteSrc = null;
+  R7.replyLift = 0;
+  R7.heard = null;
   LINES3 = { neutral: noLines2() };
   G5 = fresh4();
   E4 = null;
@@ -69643,6 +69689,7 @@ function startJaw(env, run) {
   audioInit4();
   if (A4.ctx) loadSamples();
   begin4();
+  absorb();
   requestAnimationFrame5(frame4);
   const mine = E4;
   return {

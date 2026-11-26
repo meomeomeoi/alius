@@ -363,7 +363,7 @@ function scentMoments() {
  * (`G.target`, the port's `__jaw.aim`), the clock is run, and her moves, the fatigue and the rest are made by the same hooks (the prototype's
  * globals `herMove` (its draw stubbed to the planned move's value), `askRest` and `G`; the port's `window.__jaw`). A line is typed through the
  * ring with the keyboard on both. The jitter of the tremble and the twitches differs (each page draws its own); the look is what is compared.
- * The prototype's backdrop is its stand-in (`quarters_1`); the port's is the scene's. The port's mouth is the scene's input line (its width,
+ * Both draw the fixture's sprite as the same PNG (the port through `__jaw.sprite`). The prototype's backdrop is its stand-in (`quarters_1`); the port's is the scene's. The port's mouth is the scene's input line (its width,
  * its place in the column, lifted to the prototype's height).
  * Moments: her toes resting, a dip (the teeth), "suck."; the ring wide (her band), a line typed through it; fatigue 70; a rest; her toes
  * resting and the ring's line again at 1280x800.
@@ -378,7 +378,7 @@ function jawMoments() {
     },
     port: async (p) => {
       await fakeClock(p, async () => { while (document.body.dataset.ready !== 'true') await new Promise((r) => setTimeout(r, 50)); });
-      await p.evaluate(() => { window.__jaw.resetClock(); window.__jaw.begin(); });
+      await p.evaluate(() => { window.__jaw.sprite('/.superpowers/shots/jaw/sprite.png'); window.__jaw.resetClock(); window.__jaw.begin(); }); // review M7: the prototype's raster of the fixture
     },
   });
   /** A moment: begin on both, aim the jaw, run `before`, drive each (`proto` / `port` in the page, with `arg`), run `after`. */

@@ -1,5 +1,7 @@
 import type { Registries } from '../content/types';
 import { blockingLive, COMMANDER, personEffects, type BlockingEffect } from '../engine/blocking';
+import { sceneSettingsOf } from '../engine/moments/settings';
+import { jawSourceOf } from '../engine/physics/segment';
 import type { CampaignState } from '../engine/state/types';
 import type { ContextBuilder } from '../llm/context';
 
@@ -29,11 +31,23 @@ const MOVEMENT: Record<string, string> = {
   follows: 'can only stay at her side, led',
 };
 
+/**
+ * P10e-e (review M5): while a ring holds the mouth open in a real-time jaw, the jaw instrument sends the commander's line as it came out of the
+ * mouth (`speech.ts`) and she understands what came out clearly (jaw.html's fair listening): the garbled limit says so, instead of "cannot be
+ * understood". Worded to stay true when the card plays the jaw (the line then goes out as typed).
+ */
+export const THROUGH_THE_RING = 'speaks through a ring that holds the mouth open: what comes out clearly can be understood, the rest comes out garbled';
+function ringSpeech(state: CampaignState, reg: Registries): boolean {
+  const run = state.scene?.physics;
+  return run !== undefined && sceneSettingsOf(state).physicsRealtime === true && reg.contactPhysics.get(run.physicsId)?.interaction === 'gesture'
+    && run.sourceKind === 'item' && jawSourceOf(run, reg) === 'ring_gag';
+}
+
 /** What one person is limited to, as the words of a sentence (empty when nothing limits her). */
-function limitWords(effects: BlockingEffect[]): string[] {
+function limitWords(effects: BlockingEffect[], ring = false): string[] {
   const out: string[] = [];
   for (const e of effects) {
-    if (e.type === 'input') out.push(e.limit === 'garbled' ? garbled(e.strength) : SPEECH[e.limit] ?? '');
+    if (e.type === 'input') out.push(e.limit === 'garbled' ? (ring ? THROUGH_THE_RING : garbled(e.strength)) : SPEECH[e.limit] ?? '');
     else if (e.type === 'mobility') out.push(MOVEMENT[e.level] ?? '');
   }
   return [...new Set(out.filter((w) => w !== ''))];
@@ -43,7 +57,7 @@ function limitWords(effects: BlockingEffect[]): string[] {
 export function limitSentences(state: CampaignState, reg: Registries): string[] {
   const out: string[] = [];
   for (const id of [...(state.scene?.participants ?? []), COMMANDER]) {
-    const words = limitWords(personEffects(state, reg, id));
+    const words = limitWords(personEffects(state, reg, id), id === COMMANDER && ringSpeech(state, reg));
     if (words.length === 0) continue;
     const name = id === COMMANDER ? 'The commander' : state.squad.find((u) => u.id === id)?.displayName ?? id;
     out.push(`${name} ${words.length === 1 ? words[0] : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`}.`);

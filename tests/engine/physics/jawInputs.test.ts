@@ -10,7 +10,7 @@ import type { Registries } from '../../../src/content/types';
 import { CUE_KINDS } from '../../../src/engine/blocking/types';
 import { OWNS } from '../../../src/engine/physics/combined';
 import { Rng, seedRng } from '../../../src/engine/rng';
-import { planSegment, resolveSegment, validInput, type ResolveEnv } from '../../../src/engine/physics/segment';
+import { jawRowOf, jawSourceOf, planSegment, resolveSegment, validInput, type ResolveEnv } from '../../../src/engine/physics/segment';
 import { registerPhysicsStyle, resetPhysicsHooks } from '../../../src/engine/physics/style';
 import { INPUT_KINDS, JAW_ORDERS, type PhysicsRun, type SegmentInput, type SegmentPlan } from '../../../src/engine/physics/state';
 import type { CampaignState } from '../../../src/engine/state/types';
@@ -42,9 +42,10 @@ describe('the cost of the opening (R21)', () => {
     expect(r.slips).toBe(0);
   });
 
-  it('a segment the instrument reported costs only what it reported: a beat with no bite costs nothing; one bite a beat counts', () => {
-    expect(resolveSegment(mk(), quiet(4), [input(0, 'bite', { amount: 0.5 })], env()).gauge).toBeCloseTo(PER * 0.5, 10);
-    expect(resolveSegment(mk(), quiet(2), [input(0, 'bite', { amount: 2 }), input(0, 'bite', { amount: 2 })], env()).gauge).toBeCloseTo(PER * 2, 10);
+  it('a segment the instrument reported costs what it reported; a beat it did not report (a hidden tab) costs the flat rate; one bite a beat counts', () => {
+    expect(resolveSegment(mk(), quiet(4), [input(0, 'bite', { amount: 0.5 })], env()).gauge).toBeCloseTo(PER * 0.5 + PER * 3, 10);
+    expect(resolveSegment(mk(), quiet(2), [input(0, 'bite', { amount: 0.5 }), input(1, 'bite', { amount: 0 })], env()).gauge).toBeCloseTo(PER * 0.5, 10); // a rest's beat: 0
+    expect(resolveSegment(mk(), quiet(2), [input(0, 'bite', { amount: 2 }), input(0, 'bite', { amount: 2 })], env()).gauge).toBeCloseTo(PER * 2 + PER, 10);
     // the wide-open cost may pass 1 (WIDE_COST grows past the costly zone); the gauge is clamped to the capacity
     expect(resolveSegment(mk({ gauge: 95 }), quiet(2), [input(0, 'bite', { amount: 3 })], env()).gauge).toBe(100);
     // from 70 the input degrades, as before
@@ -62,13 +63,34 @@ describe('the cost of the opening (R21)', () => {
     expect(resolveSegment(mk(), quiet(2), [input(1, 'bite', { part: 'teeth' }), input(1, 'bite', { part: 'teeth' })], env()).slips).toBe(1);
   });
 
-  it('no bite: +8 a beat as today; a rest still takes 30 off for a neutral holder and nothing for a cruel one', () => {
+  it('no bite: +8 a beat as today; turn-based a rest still cuts the segment and takes 30 off (neutral), and cuts it with nothing off (cruel)', () => {
     expect(resolveSegment(mk(), quiet(4), [], env()).gauge).toBe(PER * 4);
-    const rest = resolveSegment(mk({ gauge: 40 }), quiet(4), [input(1, 'bite', { amount: 1 }), input(1, 'ask_rest')], env());
-    expect(rest).toMatchObject({ askedRest: true, restGranted: true });
-    expect(rest.gauge).toBeCloseTo(40 + PER * 1 - TUNING.physics.jawRest, 10);
-    const cruel = resolveSegment(mk({ gauge: 40 }), quiet(4), [input(0, 'bite', { amount: 1 }), input(1, 'ask_rest')], env({ style: { primary: 'cruel' } }));
-    expect(cruel).toMatchObject({ askedRest: true, restGranted: false, gauge: 40 + PER });
+    const rest = resolveSegment(mk({ gauge: 40 }), quiet(4), [input(1, 'ask_rest')], env());
+    expect(rest).toMatchObject({ askedRest: true, restGranted: true, beatsRun: 2, gauge: 40 + PER * 2 - TUNING.physics.jawRest });
+    const cruel = resolveSegment(mk({ gauge: 40 }), quiet(4), [input(1, 'ask_rest')], env({ style: { primary: 'cruel' } }));
+    expect(cruel).toMatchObject({ askedRest: true, restGranted: false, beatsRun: 2, gauge: 40 + PER * 2 });
+  });
+
+  it('Ruling V: in an instrument segment a granted rest takes the prototype\'s rest off (jawRest as a share of the gauge) and cuts nothing', () => {
+    const bites = (amounts: number[]) => amounts.map((a, b) => input(b, 'bite', { amount: a }));
+    const r = resolveSegment(mk({ gauge: 40, capacity: 120 }), quiet(4), [...bites([1, 0, 0, 1]), input(1, 'ask_rest')], env());
+    expect(r).toMatchObject({ askedRest: true, restGranted: true, beatsRun: 4 });
+    expect(r.gauge).toBeCloseTo(40 + PER * 2 - (TUNING.physics.jawRest * 120) / 100, 10);
+  });
+
+  it('Ruling V: a refused rest (cruel) changes nothing: every beat is charged as reported', () => {
+    const bites = [1, 1, 1, 1].map((a, b) => input(b, 'bite', { amount: a }));
+    const r = resolveSegment(mk({ gauge: 40 }), quiet(4), [...bites, input(1, 'ask_rest')], env({ style: { primary: 'cruel' } }));
+    expect(r).toMatchObject({ askedRest: true, restGranted: false, beatsRun: 4, gauge: 40 + PER * 4 });
+    expect(resolveSegment(mk({ gauge: 40 }), quiet(4), bites, env({ style: { primary: 'cruel' } })).gauge).toBe(r.gauge);
+  });
+
+  it('Ruling V: a second rest in the same segment is not read (one a segment); the first counts once', () => {
+    const bites = [1, 0, 0, 0].map((a, b) => input(b, 'bite', { amount: a }));
+    const one = resolveSegment(mk({ gauge: 60 }), quiet(4), [...bites, input(1, 'ask_rest')], env());
+    const two = resolveSegment(mk({ gauge: 60 }), quiet(4), [...bites, input(1, 'ask_rest'), input(3, 'ask_rest')], env());
+    expect(two.gauge).toBe(one.gauge);
+    expect(two.gauge).toBeCloseTo(60 + PER - TUNING.physics.jawRest, 10);
   });
 
   it('it is the gesture\'s: the wire takes it, the gesture owns it, and a hold ignores it', () => {
@@ -158,6 +180,21 @@ describe('her orders, planned by hash (R22, R3)', () => {
     // the first move comes 3 s in (the prototype's first `nextMove`)
     const first = planSegment(s, reg, mk(), new Rng(seedRng(1))).beats.findIndex((b) => b.order !== undefined || b.ask);
     expect(first).toBe(Math.floor(3000 / TUNING.physics.beatMs));
+  });
+
+  it('M3: a jaw held open by anything but her toes or the ring (oral_service) gets no moves of hers; the rows by cues agree with the instrument (Ruling R)', () => {
+    const s = base();
+    expect(jawSourceOf({ sourceKind: 'contact', sourceId: 'oral_service' }, reg)).toBeNull();
+    expect(jawSourceOf({ sourceKind: 'contact', sourceId: 'sole_to_mouth' }, reg)).toBe('sole_to_mouth');
+    expect(jawSourceOf({ sourceKind: 'item', sourceId: 'ring_gag' }, reg)).toBe('ring_gag');
+    for (let n = 1; n <= 10; n++) {
+      const p = planSegment(s, reg, mk({ sourceId: 'oral_service', segment: { n, state: 'running' } }), new Rng(seedRng(n)));
+      expect(p.beats.every((b) => b.order === undefined && !b.ask)).toBe(true);
+    }
+    expect(jawRowOf({ key: 'cruel', cues: 'none' })).toBe('cruel');
+    expect(jawRowOf({ key: 'drill', cues: 'count' })).toBe('ritual');
+    expect(jawRowOf({ key: 'cold', cues: 'honest' })).toBe('neutral');
+    expect(jawRowOf({ key: 'someone', cues: 'none' })).toBe('neutral'); // only cruel and vindictive themselves refuse a rest
   });
 
   it('turn-based, or for another interaction, nothing of hers is planned', () => {
