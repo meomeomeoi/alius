@@ -62,16 +62,25 @@ describe('physics/decide (24b)', () => {
     const other = s.squad.find((u) => u.id !== ANN && s.roster.activeIds.includes(u.id))!.id;
     const r = run(s, reg, { type: 'physics/decide', payload: { runId: s.scene!.physics!.id, kind: 'roster', ref: other } });
     expect(errors(r.events)).toEqual([]);
-    expect(ofType(r.events, 'physics_decided')).toEqual([{ type: 'physics_decided', runId: s.scene!.physics!.id, holderId: ANN, kind: 'roster', ref: other }]);
-    expect(r.state.roster.activeIds).not.toContain(other);
+    const decided = ofType(r.events, 'physics_decided')[0] as unknown as { ref: string };
+    expect(decided).toMatchObject({ type: 'physics_decided', runId: s.scene!.physics!.id, holderId: ANN, kind: 'roster' });
+    // the engine picks the soldier (a stable hash), never the model's ref
+    expect(s.roster.activeIds).toContain(decided.ref);
+    expect(decided.ref).not.toBe(ANN);
+    expect(r.state.roster.activeIds).not.toContain(decided.ref);
+    expect(run(s, reg, { type: 'physics/decide', payload: { runId: s.scene!.physics!.id, kind: 'roster' } }).events).toEqual(r.events); // stable
+    void other;
     expect(ofType(r.events, 'roster_changed')).toHaveLength(1);
     expect(r.state.rng).toEqual(s.rng);
   });
 
-  it('refuses a stale run, an unknown kind and a roster ref that is no unit', () => {
+  it('refuses a stale run, a requisition, a punishment and an unknown kind (only roster decisions are applied)', () => {
     const s = throne(true);
-    expect(errors(run(s, reg, { type: 'physics/decide', payload: { runId: 'p9', kind: 'roster', ref: 'x' } }).events).length).toBeGreaterThan(0);
-    expect(errors(run(s, reg, { type: 'physics/decide', payload: { runId: s.scene!.physics!.id, kind: 'promotion' } }).events).length).toBeGreaterThan(0);
-    expect(errors(run(s, reg, { type: 'physics/decide', payload: { runId: s.scene!.physics!.id, kind: 'roster', ref: 'nobody' } }).events).length).toBeGreaterThan(0);
+    expect(errors(run(s, reg, { type: 'physics/decide', payload: { runId: 'p9', kind: 'roster' } }).events).length).toBeGreaterThan(0);
+    for (const kind of ['requisition', 'punishment', 'promotion']) {
+      const r = run(s, reg, { type: 'physics/decide', payload: { runId: s.scene!.physics!.id, kind } });
+      expect(errors(r.events).length, kind).toBeGreaterThan(0);
+      expect(ofType(r.events, 'physics_decided')).toEqual([]);
+    }
   });
 });

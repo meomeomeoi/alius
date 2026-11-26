@@ -10,7 +10,6 @@ import type { Registries } from '../../../src/content/types';
 import { COMMANDER, registerFrameReader, resetBlockingHooks, setBlocking } from '../../../src/engine/blocking';
 import { resetPresenceHooks } from '../../../src/engine/physics/presence';
 import { resetPhysicsHooks } from '../../../src/engine/physics/style';
-import type { SegmentInput } from '../../../src/engine/physics/state';
 import type { CampaignState } from '../../../src/engine/state/types';
 import type { SceneController } from '../../../src/scene/sceneController';
 import { DEFAULT_SETTINGS } from '../../../src/settings';
@@ -79,14 +78,15 @@ function draw(state: CampaignState, art?: ArtSlots) {
   const input = vi.fn();
   const f = frames();
   const noop = (): [] => [];
+  const relief = vi.fn(() => []);
   const screen = renderSceneScreen(host, {
     controller, getState: () => state, registries: reg, st: new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' }),
     settings: () => ({ ...DEFAULT_SETTINGS, typingSpeed: 0 }), onEnded: vi.fn(),
-    physics: { input, endSegment: noop, stopWord: vi.fn(() => []), skip: noop, stimulus: noop, act: noop, finishCounted: noop, cue: () => null, beat: () => 0, clock: () => ({ startedAt: 0, beatMs: 1500, now: f.now() }), keystroke: vi.fn(), typed: vi.fn(), onTap: vi.fn(), decide: vi.fn(() => []) } as never,
+    physics: { input, endSegment: noop, stopWord: vi.fn(() => []), skip: noop, stimulus: noop, act: noop, finishCounted: noop, cue: () => null, beat: () => 0, clock: () => ({ startedAt: 0, beatMs: 1500, now: f.now() }), keystroke: vi.fn(), typed: vi.fn(), onTap: vi.fn(), decide: vi.fn(() => []), relief } as never,
     frames: f, assetUrl: (p: string) => `/x/${p}`, ...(art ? { art } : {}),
   });
   const to = (ms: number) => { while (f.now() < ms) f.frame(); };
-  return { host, screen, input, frames: f, to };
+  return { host, screen, input, relief, frames: f, to };
 }
 const W = () => weightCore.G as unknown as Record<string, number & Record<string, unknown>>;
 
@@ -135,7 +135,7 @@ describe('the throne (24b)', () => {
     _activity.G.t += 900;
     throneUpdate(16);
     expect(_activity.G.stats.flinches).toBe(1);
-    expect(t.input.mock.calls.map((c) => c[0] as SegmentInput).some((i) => i.kind === 'relieve' && i.amount === 0.4)).toBe(true);
+    expect((t.relief.mock.calls as unknown as Array<[{ amount: number; involuntary?: boolean }]>).some(([i]) => i.amount === 0.4 && i.involuntary === true)).toBe(true); // a flinch is the body, not a cheat (Ruling X)
   });
 
   it('a skid needs 160 ms above 140 px/s', () => {

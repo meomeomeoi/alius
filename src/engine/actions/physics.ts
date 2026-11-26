@@ -1,10 +1,10 @@
 import { blockingLive } from '../blocking';
 import { registerAction } from '../dispatch';
-import { foundPosed, getUp, physicsSignal, startPhysics, stopWord } from '../physics/run';
+import { foundPosed, frameWoke, getUp, physicsSignal, startPhysics, stopWord } from '../physics/run';
 import { finishCounted, startAct } from '../physics/acts';
 import { applyWay, decayStimuli } from '../physics/stimuli';
 import { registerDayEndStep } from '../calendar';
-import { marathonSkip, nextSegment, physicsInput, typedBeats } from '../physics/segment';
+import { frameRelief, marathonSkip, nextSegment, physicsInput, typedBeats } from '../physics/segment';
 
 // Importing this module registers the physics actions (P15a) and, through `physics/run`, what keeps a run in step with the blocking.
 
@@ -135,4 +135,17 @@ registerAction('physics/get_up', (draft, payload, ctx) => {
 registerAction('physics/found', (draft, payload, ctx) => {
   live(draft, ctx.registries, 'physics/found');
   return foundPosed(draft, ctx, isObj(payload) ? payload.runId : undefined, isObj(payload) ? payload.finderId : undefined);
+});
+
+/** P10e-e Rulings X and Y: `physics/relief { runId, beat, kind, amount, part, involuntary? }`: a relief of the body in her frame, decided at once (one draw). */
+registerAction('physics/relief', (draft, payload, ctx) => {
+  live(draft, ctx.registries, 'physics/relief');
+  if (!isObj(payload)) throw new Error('physics/relief needs a payload');
+  return frameRelief(draft, ctx, payload);
+});
+
+/** P10e-e review I7: `physics/woke { runId }`: she woke in her sleep (the third stir): her frame ends. */
+registerAction('physics/woke', (draft, payload, ctx) => {
+  live(draft, ctx.registries, 'physics/woke');
+  return frameWoke(draft, ctx, isObj(payload) ? payload.runId : undefined);
 });

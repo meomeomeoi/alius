@@ -28,12 +28,10 @@ export type InputKind = (typeof INPUT_KINDS)[number];
  * head without the mouth (a cough, the overflow's recovery, an answer's spent words): the fill falls by as many words; no relief, nothing else.
  * `bite` (R21: the jaw), the beat's mean cost factor of the opening (jaw.html's `G.cost`: about ⅓ resting on her toes or the ring, 1 at her
  * band's top, more wide open); a gesture segment that holds any costs `jaw.per × amount` a beat instead of the flat `jaw.per`. With
- * `part: 'teeth'` (R22) it is a touch of the teeth on her: a slip, never a cost. `relieve` and `fidget` (R27: the stillness inside her
- * frame), a relief of the body with `amount` its loudness (a fidget 0.28): P15a's relief (`cheatRoll` decides whether she noticed), and a noise of
- * `amount × her ears × (1 − cover)`, where `cover` (0–0.92, the instrument's `coverNow`: her speech, a voice in the room, the mess, the rain) is
- * what covered it; absent: 0.
+ * `part: 'teeth'` (R22) it is a touch of the teeth on her: a slip, never a cost. `relieve` and `fidget` (R27, Rulings X and Y) are not
+ * segment inputs: her frame reports them through `physics/relief` (`amount` loudness × (1 − cover), `part` its visibility), decided at once.
  */
-export interface SegmentInput { beat: number; kind: InputKind; atMs?: number; part?: string; amount?: number; cover?: number }
+export interface SegmentInput { beat: number; kind: InputKind; atMs?: number; part?: string; amount?: number }
 
 /** P10e-e R22: her orders in the jaw (her toes: `deeper`, `pull_back`, `suck`, `wider`; the ring: `wider`). Each is a cue kind of the same name. */
 export const JAW_ORDERS = ['deeper', 'suck', 'wider', 'pull_back'] as const;
@@ -111,14 +109,15 @@ export interface SegmentResult {
   /** P10e-e R15: strains resolved (each drained its beat twice) and those she noticed (absent when none). */
   strains?: number;
   noticed?: number;
-  /** P10e-e R27: the noise of the frame's reliefs and fidgets (`amount × hear × (1 − cover)`, summed; absent when none) and how many there were. */
-  frameNoise?: number;
-  frameReliefs?: number;
+  /** Ruling W: buckles of a weight inside her frame (the strength back to 35 each). */
+  buckles?: number;
 }
 
 /** The state of the second physics of a hold (plan R13): its own gauge, seal and streak, on the same beats as the first. */
 export interface PhysicsCore {
   physicsId: string;
+  /** Ruling W: buckles of the weight inside her frame (three end it). */
+  buckles?: number;
   gauge: number;
   capacity: number;
   sealRange?: Seal[];

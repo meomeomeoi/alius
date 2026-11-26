@@ -120,10 +120,13 @@ describe('the controller asks at each phase boundary', () => {
     expect(staging.script(2)).toBeNull();
   });
 
-  it('a failed call leaves no script (her placeholder lines play); a chat switch drops the scripts', async () => {
+  it('a failed call leaves no script, so her placeholder lines play (Ruling Z: the cardVoice rows the frame plays); a chat switch drops the scripts', async () => {
     const { staging } = await world(['nonsense']);
     await staging.idle();
     expect(staging.script()).toBeNull();
+    // what the frame plays then: her own placeholder lines for this activity, and the questions and lines to the commander for any
+    expect((reg.cardVoice.get('activity.self.reading_reports')!.lines as string[]).length).toBeGreaterThan(0);
+    expect((reg.cardVoice.get('activity.ask.any')!.lines as string[])).toContain('still with me down there?');
     resetBlockingHooks();
     const ok = await world([JSON.stringify({ lines: [{ at: 3, who: 'her', to: 'self', text: 'mm.', covers: true }] })]);
     await ok.staging.idle();

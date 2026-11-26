@@ -921,7 +921,7 @@
   {
     "id": "forgotten_end",
     "event": "forgotten_end",
-    "text": "{name} left the commander posed in her quarters and forgot the commander there.",
+    "text": "{name} left the commander posed where {name} had put the commander, and forgot the commander there.",
     "importance": 2,
     "about": "her",
     "audience": "her",
@@ -934,7 +934,7 @@
   {
     "id": "found_posed",
     "event": "found_posed",
-    "text": "{finder} came into {name}'s quarters and found the commander still posed, exactly as {name} had left the commander.",
+    "text": "{finder} came in and found the commander still posed, exactly as {name} had left the commander.",
     "importance": 3,
     "about": "her",
     "audience": "finder",

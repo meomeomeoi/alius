@@ -43,10 +43,11 @@ import { placeFree as kitPlaceFree } from '../kit/hand';
 import { clamp, lerp, smooth } from '../kit/math';
 import { claimStyles, noteWrites, releaseClaim, type StyleClaim } from '../styleClaims';
 import type { InstrumentEnv, InstrumentRun, PhysicsEnd } from '../types';
-import { startWeight, weightFrame, weightMatches, type WeightCoreRun } from '../weight/weight';
+import { startWeight, THRONE, weightCore, weightFrame, weightMatches, type WeightCoreRun } from '../weight/weight';
 import { ACTS, BASE_EVENTS, GROUPS, QUIET_ACT, SAMPLE_URLS, VIEWS, type Act, type Mark, type View } from './acts';
 import { attachThrone, detachThrone, throneBody, throneCanvases, throneCup, throneFlinch, throneLegs, throneOn, throneRise, throneSign, throneThank, throneThanked, throneUpdate, throneVisitor, tMouse } from './throne';
 import { herLegsOf } from '../../../../engine/physics/occlusion';
+import { temperamentOf } from '../../../../engine/life/state';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Any = any;
@@ -103,7 +104,7 @@ const CAUGHT: Record<string, number> = { watching: 0.6, glancing: 0.25, busy: 0.
 const S: Any = { inner: 'stillness', view: 'legs', blind: false, act: 'reading_reports', legVar: 'planted', style: 'neutral', phases: 3, phaseLen: 90, start: 1080, level: 1, rain: true, stay: true,
   legsW: 0.62, legsB: 0.9, feetW: 0.56, feetB: 0.86, feetTilt: 6, raisedW: 0.62, raisedB: 0.9, floorShade: 0.55, knows: false, reckless: false,
   sound: true, murmur: true, vol: 0.7, debug: false, reduced: false, readable: false };
-const V = (): View => VIEWS[S.inner === 'weight' ? 'footrest' : S.view]!, ACT = (): Act & ActivityFrame => ({ ...(ACTS[S.act] ?? QUIET_ACT), ...R.frame });
+const V = (): View => VIEWS[S.inner === 'weight' ? 'footrest' : S.view]!, ACT = (): Act & ActivityFrame & { self: string[] } => ({ ...(ACTS[S.act] ?? QUIET_ACT), ...R.frame, self: [...voiceLines(E!.env.registries, `activity.self.${S.act}` as VoiceKind, S.style)] });
 /** Her lines by situation (her_activity.html `STYLES`): `cardVoice` `activity.*` by her style (neutral's for a style the prototype has no row of). */
 const ST = (): Any => new Proxy({}, { get: (_t, k: string) => (k === 'name' ? voiceLines(E!.env.registries, 'activity.name' as VoiceKind, S.style)[0] ?? 'commander' : [...voiceLines(E!.env.registries, `activity.${k}` as VoiceKind, S.style)]) });
 /* the phase plays a third of its fiction hour; the rest passes between phases, in the dark */
@@ -339,29 +340,26 @@ const BODY_SFX: Record<string, () => void> = {
   speak: () => {},
   fidget: () => { play('cloth', { g: 0.22, dest: A.body }); SYN.joint!({ g: 0.3 }); },
 };
-function bodyNoise(kind: string, loud: number, visible: boolean, gross = false) {
+/** The body giving way on its own (not a cheat: never a `physics_caught`, Ruling X). */
+const INVOLUNTARY = new Set(['slump', 'jerk', 'gulp']);
+function bodyNoise(kind: string, loud: number, visible: boolean, gross = false, involuntary = INVOLUNTARY.has(kind)) {
   BODY_SFX[kind]?.();
   G.faultsRecent = G.faultsRecent.filter((x: number) => G.t - x < 40000);
   const cover = coverNow();
-  // the engine decides whether she noticed (R27: a relief, `cheatRoll` at the segment's end); her tell and answer follow its catch
-  if (kind !== 'speak') report(kind === 'fidget' ? 'fidget' : 'relieve', loud, cover);
-  if (gross) G.grossPending = true;
+  // Rulings X and Y: whether she heard or saw it is the engine's one draw, at once: loud × (1 − cover) and its visibility go with it
+  const events = kind === 'speak' ? [] : E!.env.staging.relief?.({ kind: kind === 'fidget' ? 'fidget' : 'relieve', amount: Math.round(loud * (1 - cover) * 1000) / 1000, part: G.away ? 'away' : !visible ? 'unseen' : G.call || G.visitor ? 'seen_shared' : 'seen', ...(involuntary ? { involuntary: true } : {}) }) ?? [];
+  const noticed = events.some((e) => e.type === 'physics_caught' || e.type === 'physics_noticed');
   // on a call, while she listens and not speaks, the line hears what the room hears
   if (G.call && G.t >= G.herSpeakingUntil && loud * (1 - cover) > 0.28 && !G.call.heard) { G.call.heard = true; G.stats.heardOnLine += 1; callHeard(); }
   if (G.visitor && !G.visitor.knows && loud * (1 - cover) > 0.3 && !G.visitor.heard) { G.visitor.heard = true; G.stats.heardByVisitor += 1; visitorHeard(); }
-  G.stats.unnoticed += 1; // until the engine says she caught it (the digest moves it to noticed then)
-  void visible;
-  return false;
-}
-/** She caught a relief (the engine's tally grew): the tell, at every presence, then her answer by presence. */
-function herCaught(gross: boolean) {
-  G.stats.unnoticed = Math.max(0, G.stats.unnoticed - 1);
-  G.stats.noticed.push({ kind: 'a movement', step: G.step, how: 'noticed', fiction: clockText(G.clockMin) });
+  if (!noticed) { G.stats.unnoticed += 1; return false; }
+  G.stats.noticed.push({ kind, step: G.step, how: visible ? 'seen' : 'heard', fiction: clockText(G.clockMin) });
   G.faultsRecent.push(G.t);
   // the tell, at every presence: her sounds stop and her legs go still while she listens (the silence says she heard), then go on
   const pause = rand(2200, 3800); G.pauseUntil = G.t + pause; G.att = 'glancing'; G.attHold = pause; G.nextMark = Math.max(G.nextMark, G.t + pause + 400);
   if (!G.toldPause) { G.toldPause = true; after(700, () => sense(V().sight && !S.blind ? 'She stops. She is listening.' : 'Above you, her sounds stop. She is listening.', 'her')); }
   react(gross);
+  return true;
 }
 /* a fault she perceives for certain (her feet on the commander's back): the tell and her answer, as a noticed noise */
 function herFeels(kind: string, gross: boolean) {
@@ -374,7 +372,7 @@ function herFeels(kind: string, gross: boolean) {
 function react(gross: boolean) {
   const act = ACT();
   if (act.sleep) { G.stirs += 1; play('cloth', { g: 0.35, pan: V().herPan }); sense(G.stirs >= 3 ? 'She wakes.' : 'She stirs, turns over, and settles again.', 'her');
-    if (G.stirs >= 3) { G.stats.woke = true; after(1200, () => say(G.step === 'with' || G.step === 'glancing' ? '…what are you doing.' : '…', 'commander')); } return; }
+    if (G.stirs >= 3) { G.stats.woke = true; after(1200, () => say(G.step === 'with' || G.step === 'glancing' ? '…what are you doing.' : '…', 'commander')); after(3500, () => finish('woke')); } return; }
   const step = G.step, st = ST();
   const body = () => {
     G.press = 1; G.footUpUntil = G.t + 2600; play('soft', { g: 0.35, pan: V().herPan * 0.5 });
@@ -386,11 +384,40 @@ function react(gross: boolean) {
   // use: nothing, unless it was gross or the third in a short while
   if (gross || G.faultsRecent.length >= 3) { body(); G.faultsRecent = []; }
 }
-/** Reports a relief or a fidget of the running segment (R27): the mouse made it (ruling O: never lapsed by typing). */
-function report(kind: 'relieve' | 'fidget', amount: number, cover: number) {
-  const st = E!.env.staging;
-  st.input({ beat: st.beat(), kind, amount: Math.round(amount * 1000) / 1000, cover: Math.round(cover * 1000) / 1000 }, { pointer: true });
-  G.stats.reliefs += 1;
+/* ---------- the weight inside her frame (Ruling W: her_activity.html's wiring of the game inside, throne.html's wording): her lines through her
+   presence, every slip felt through her feet, her rests by presence and style, three buckles end the session. `W` is the weight core's state. ---------- */
+const W: Any = new Proxy({}, { get: (_t, k) => (weightCore.G as Any)[k as string], set: (_t, k, v) => { (weightCore.G as Any)[k as string] = v; return true; } });
+const W_SFX: Any = new Proxy({}, { get: (_t, k) => (weightCore.SFX() as Any)[k as string] });
+const crack = (k: number) => weightCore.crack(k);
+const W_RESTS: Record<string, number> = { affectionate: 2, cruel: 0 };
+const W_L = (): Any => new Proxy({}, { get: (_t, k: string) => [...voiceLines(E!.env.registries, `activity.${k}` as VoiceKind, S.style)] });
+/* her lines in weight go through her presence: only `with` and `glancing` speak to the commander */
+const wSay = (lines: string[]) => { if ((G.step === 'with' || G.step === 'glancing') && lines.length) say(pick(lines), 'commander'); };
+/* a slip: she feels it through her feet whatever her presence (she perceives it); not more than every 4 s; three in 6 s are gross */
+function wSlipFelt() {
+  W.slipAt = (W.slipAt ?? []).filter((x: number) => G.t - x < 6000); W.slipAt.push(G.t);
+  W.lastSlipBeat = W.beat;
+  const gross = W.slipAt.length >= 3;
+  if (gross || G.t - (W.feltAt ?? -1e9) > 4000) { W.feltAt = G.t; herFeels('a slip under her feet', gross); if (gross) { W.slipAt = []; W.pressure = 1.6; W.pressureUntil = W.clock + 3 * 1500; } }
+}
+/* the limit: by her presence she lets the commander rest a moment (lifting her feet), or, in use, does not notice until the commander buckles */
+function wLimit() {
+  if (W.resting) return;
+  if (G.step === 'use') return;
+  if (W.beat - (W.lastSlipBeat ?? -99) <= 3) return; // she rests only a commander who was bearing her
+  if ((W.restsPhase ?? 0) >= (W_RESTS[S.style] ?? 1)) return;
+  W.restsPhase = (W.restsPhase ?? 0) + 1;
+  W.resting = true; W.rests = (W.rests ?? 0) + 1; W_SFX.rustle(0.12, 0); wSay(W_L().rest);
+  const hcR = throneOn() && S.contact === 'human_chair';
+  if (G.step === 'own') sense(hcR ? 'She shifts her weight off your back for a moment. Not a word.' : 'She lifts her feet off your back for a moment. Not a word.', 'body');
+  after(rand(3500, 5000), () => { W.resting = false; W.str = Math.min(100, W.str + 30); weightCore.report('rest', 30); W_SFX.press(0.35); sense(hcR ? 'Her weight settles back.' : 'Her feet come back down.', 'body'); });
+}
+function wBuckle() {
+  W.buckles = (W.buckles ?? 0) + 1; W_SFX.fall(); W.jolt = 1.5; W.sag = 1; crack(1.2);
+  sense('Your arms give. You go down under her feet.', 'body', 'body');
+  bodyNoise('slump', 1, true, true);
+  W.str = 35;
+  if (W.buckles >= 3) { W.over = true; after(1200, () => finish('failed')); }
 }
 
 /* ---------- the urges: the cursor is the commander's attention ---------- */
@@ -465,7 +492,7 @@ function updateUrges(dt: number) {
       if (serving) u.v -= s * 0.08; // serving her takes the whole attention: the itch fades
       else u.v += s * (0.026 * (1 + low) + (focus ? 0.2 : 0) - (lis && !focus && u.v < 0.85 ? 0.1 : 0));
       if (u.v <= 0) { u.dead = true; G.stats.endured += 1; }
-      if (u.v >= 1) { u.dead = true; G.stats.involuntary += 1; G.ease -= 8; sense('The itch wins: your hand moves before you decide.', 'body', 'body'); bodyNoise('scratch', 0.55, true); }
+      if (u.v >= 1) { u.dead = true; G.stats.involuntary += 1; G.ease -= 8; sense('The itch wins: your hand moves before you decide.', 'body', 'body'); bodyNoise('scratch', 0.55, true, false, true); }
     } else if (u.kind === 'swallow') {
       u.v += s * (0.03 * (1 + low * 0.5) + (focus ? 0.06 : 0));
       if (u.v > 0.7 && !u.warned) { u.warned = true; sense('You will have to swallow soon. Better while she is talking.', [0.4, 0.72], 'body'); }
@@ -514,6 +541,44 @@ function relieveAt(x: number, y: number) {
 }
 
 /* ---------- the script of a phase (the model's, R26: `{ at, who, to, text, covers, ask?, mention? }`) ---------- */
+/* ---------- Ruling Z: her placeholder lines (`cardVoice`, the prototype's `TO_YOU`, `ACTS[].self`, `CALL`, `VISIT`, `CARDS`), until the script of her
+   hour arrives and whenever it fails; the model's script replaces them where it has a line ---------- */
+type Exchange = { other: string; her?: string; mention?: { plain: string; veiled: string } };
+const lines = (kind: string): string[] => [...voiceLines(E!.env.registries, kind as VoiceKind, S.style)];
+const TO_YOU: Any = new Proxy({}, { get: (_t, k: string) => { const a = [...lines(`activity.toYou.${k}`).map((text) => ({ text })), ...lines(`activity.ask.${k}`).map((text) => ({ text, ask: true }))]; return a.length ? a : undefined; } });
+const exchange = (k: string): Exchange[] => lines(`activity.exchange.${k}`).map((l) => { const [other, a, b] = l.split('|'); return b !== undefined ? { other: other!, mention: { plain: a!, veiled: b } } : { other: other!, her: a! }; });
+const CALL: Any = new Proxy([], { get: (_t, k) => (exchange('call') as Any)[k] });
+const VISIT: Any = new Proxy([], { get: (_t, k) => (exchange('visit') as Any)[k] });
+const CARDS: Any = new Proxy([], { get: (_t, k) => (exchange('cards') as Any)[k] });
+function planScript(i: number) {
+  const act = ACT(), len = S.phaseLen, out: Any[] = [];
+  const talkK = ({ silent: 0.4, terse: 1, talkative: 1.6 } as Record<string, number>)[S.talk]!;
+  const nTo = Math.round(({ with: 3, glancing: 1, own: 0, use: 0 } as Record<string, number>)[G.step]! * talkK * (act.sleep || act.call ? 0 : 1));
+  const nSelf = Math.round(({ with: 3, glancing: 3, own: 3, use: 2 } as Record<string, number>)[G.step]! * talkK * (act.call ? 0 : 1));
+  const pool = (TO_YOU[S.act] ?? []).concat(TO_YOU.any ?? []);
+  for (let k = 0; k < nTo && pool.length; k++) { const l = pick(pool) as Any; out.push({ at: rand(0.12, 0.9) * len, who: 'her', to: 'commander', text: l.text, covers: true, ask: !!l.ask }); }
+  for (let k = 0; k < nSelf && act.self.length; k++) out.push({ at: rand(0.08, 0.95) * len, who: 'her', to: 'self', text: pick(act.self), covers: true });
+  void i;
+  return out.sort((a, b) => a.at - b.at);
+}
+/* an exchange with someone else, as a script (both sides, or her side and the earpiece) */
+function exchangeScript(lines: Exchange[], t0: number, gap = [5.5, 8]) {
+  const out: Any[] = []; let t = t0;
+  for (const l of lines) {
+    out.push({ at: t, who: 'other', to: 'her', text: l.other, covers: false }); t += rand(2.2, 3.4);
+    if (l.her) out.push({ at: t, who: 'her', to: 'other', text: l.her, covers: true });
+    else if (l.mention) out.push({ at: t, who: 'her', to: 'other', text: null, mention: l.mention, covers: true });
+    t += rand(gap[0]!, gap[1]!);
+  }
+  return out;
+}
+/** Runs a script; a placeholder one's lines are tagged (`her`, `other`) so the model's script, once here, replaces what it has lines for. */
+function runPlaceholder(entries: Any[], kind = 'call') {
+  const from = G.timers.length;
+  runScript(entries, kind);
+  for (let i = from; i < G.timers.length; i++) G.timers[i].ph = entries.some((e) => e.who === 'other') ? 'other' : 'her';
+}
+
 function runScript(entries: ScriptLine[], kind = 'call') {
   for (const e of entries) after(e.at * 1000, () => {
     if (G.phase !== 'loop') return;
@@ -534,19 +599,21 @@ function runScript(entries: ScriptLine[], kind = 'call') {
   });
 }
 
-/** 24b: a business visitor's decision is the engine's (`physics/decide`, through her command capability): the dim line only when it was applied. */
+/** 24b (review I6): a business visitor's decision is the engine's (`physics/decide`: a roster change through her command capability); the dim
+    line is drawn only for a change that was applied. A requisition or a punishment is not decided (author list). */
 function decided(d: { kind: string; ref?: string }) {
-  const events = E!.env.staging.decide?.(d.kind, d.ref) ?? [];
-  if (!events.some((x) => x.type === 'physics_decided')) return; // she does not hold the command: her business stays talk
+  if (d.kind !== 'roster') return;
+  const events = E!.env.staging.decide?.(d.kind) ?? [];
+  if (!events.some((x) => x.type === 'roster_changed')) return; // she does not hold the command: her business stays talk
   G.stats.decisions = (G.stats.decisions ?? 0) + 1;
-  sense(({ roster: 'The commander’s roster has just been changed over the commander’s head.', requisition: 'The commander’s requisition is denied.', punishment: 'Something has just been decided about the commander, over the commander’s head.' } as Record<string, string>)[d.kind] ?? '', 'her');
+  sense('The commander’s roster has just been changed over the commander’s head.', 'her');
 }
 
 /* ---------- peaks of a phase: a call, a visitor, steps at the door, she leaves (in use) ---------- */
 function planPeaks(i: number) {
   const act = ACT(), len = S.phaseLen * 1000, last = i === S.phases - 1, h = fnv(`${S.seed}:${i}:${S.act}`) % 100;
-  if (act.call) { G.call = { name: 'Oversight', heard: false }; }
-  if (act.visitor && R.listener) { G.visitor = { name: R.listener.name, heard: S.knows, knows: S.knows }; }
+  if (act.call) { G.call = { name: 'Oversight', heard: false }; runPlaceholder(exchangeScript(CALL.concat(CALL.slice(0, 3)), 2, [4, 7]), 'call'); }
+  if (act.visitor && R.listener) { G.visitor = { name: R.listener.name, heard: S.knows, knows: S.knows }; runPlaceholder(exchangeScript(CARDS.concat(CARDS), 3, [4, 7]), 'room'); }
   if (act.audience && throneOn()) { after(len * 0.06, () => throneVisitor('business')); after(len * 0.5, () => throneVisitor(S.visitorKind === 'business' ? 'aware' : S.visitorKind)); }
   if (throneOn() && S.props) {
     if (i === 0) after(len * rand(0.3, 0.4), () => throneVisitor());
@@ -574,10 +641,14 @@ function incomingCall() {
   play('pda_call', { g: 0.4, pan: V().herPan }); after(700, () => play('pda_call', { g: 0.4, pan: V().herPan }));
   G.call = { name: 'Oversight', heard: false };
   after(1500, () => { sense(V().sight && !S.blind ? 'She taps her earpiece and answers.' : 'A chime; she answers. Her voice changes: the voice for oversight.', 'her'); if (S.view === 'legs') { G.legsRest = 1; sense('Her foot comes to rest on your shoulder, and stays there.', 'body'); } });
-  after(3500 + 5 * 9000, () => { if (!G.call) return; play('pda_ok', { g: 0.3, pan: V().herPan }); sense('The call ends.', 'her'); G.call = null; G.legsRest = 0; });
+  runPlaceholder(exchangeScript(CALL, 3.5, [3.5, 6]), 'call');
+  after(3500 + CALL.length * 9000, () => { if (!G.call) return; play('pda_ok', { g: 0.3, pan: V().herPan }); sense('The call ends.', 'her'); G.call = null; G.legsRest = 0; });
 }
 function callHeard() {
-  after(600, () => { otherSay('…is someone with you?', 'call', G.call?.name ?? ''); });
+  const x = exchange('heard_call')[0];
+  if (!x) return;
+  after(600, () => { otherSay(x.other, 'call', G.call?.name ?? ''); });
+  after(2600, () => { const t = x.mention ? mentionTextOf(x.mention) : x.her ?? null; if (t) say(t, 'other'); });
 }
 function visitorPeak() {
   if (throneOn()) { throneVisitor(); return; }
@@ -587,10 +658,14 @@ function visitorPeak() {
   after(2300, () => { play('knock', { g: 0.5, pan: dp }); after(260, () => play('knock', { g: 0.45, pan: dp })); });
   after(3300, () => say('come in.', 'other'));
   after(4600, () => { play('door_open', { g: 0.5, pan: dp }); G.visitor = { name: R.listener!.name, heard: S.knows, knows: S.knows }; sense(V().sight && !S.blind ? `${R.listener!.name} leans in the doorway.` : 'The door opens. Someone in the doorway: a voice you know.', 'door', 'base'); });
-  after(6000 + 3 * 8500, () => { if (!G.visitor) return; play('door_close', { g: 0.5, pan: dp }); sense('The door shuts behind her visitor.', 'door', 'base'); G.visitor = null; });
+  runPlaceholder(exchangeScript(VISIT, 6, [4, 6]), 'room');
+  after(6000 + VISIT.length * 8500, () => { if (!G.visitor) return; play('door_close', { g: 0.5, pan: dp }); sense('The door shuts behind her visitor.', 'door', 'base'); G.visitor = null; });
 }
 function visitorHeard() {
-  after(500, () => otherSay('…what was that?', 'room', G.visitor?.name ?? ''));
+  const x = exchange('heard_visit')[0];
+  if (!x) return;
+  after(500, () => otherSay(x.other, 'room', G.visitor?.name ?? ''));
+  after(2300, () => { const t = x.mention ? mentionTextOf(x.mention) : x.her ?? null; if (t) say(t, 'other'); });
 }
 /* in use, late: she gets up and goes out, without a word; the room is empty; she comes back unannounced */
 function leaveRoom() {
@@ -627,10 +702,13 @@ function baseEvent(e: Any, quick: boolean) {
 /* ---------- the loop ---------- */
 const clockText = (m: number) => { const x = ((Math.round(m) % 1440) + 1440) % 1440; return `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`; };
 function beginPhase(i: number) {
+  if (weightOn()) W.restsPhase = 0;
   G.phase = 'loop'; G.phaseIdx = i; G.phaseT = 0;
   G.clockRate = (60 * PLAYED_SHARE) / S.phaseLen; // fiction minutes per real second while a phase plays
   setStep(presenceOf(E!.env.state(), E!.env.registries, R.run!, i + 1));
   R.scriptPhase = i + 1; R.script = null;
+  const sc = E!.env.staging.script?.(i + 1) ?? null;
+  if (sc) { R.script = sc; runScript(sc); } else runPlaceholder(planScript(i)); // Ruling Z: her placeholder lines until the model's arrive
   planPeaks(i);
   if (ACT().music) MUSIC.on = true;
 }
@@ -641,7 +719,7 @@ function updateLoop(dt: number) {
   G.beatAcc += dt;
   if (G.beatAcc >= 1500) { G.beatAcc = 0; if (G.attHold > 0) G.attHold -= 1500; else G.att = plannedAttention(); }
   // the script of this phase, once it is here (the call answers at the phase boundary, never waited for)
-  if (R.script === null && R.scriptPhase > 0) { const sc = E!.env.staging.script?.(R.scriptPhase) ?? null; if (sc) { R.script = sc; runScript(sc.filter((l: ScriptLine) => l.at * 1000 >= G.phaseT).map((l: ScriptLine) => ({ ...l, at: l.at - G.phaseT / 1000 }))); } }
+  if (R.script === null && R.scriptPhase > 0) { const sc = E!.env.staging.script?.(R.scriptPhase) ?? null; if (sc) { R.script = sc; const hasHer = sc.some((l: ScriptLine) => l.who === 'her'), hasOther = sc.some((l: ScriptLine) => l.who === 'other'); G.timers = G.timers.filter((x: Any) => !(x.ph === 'her' && hasHer) && !(x.ph === 'other' && hasOther)); runScript(sc.filter((l: ScriptLine) => l.at * 1000 >= G.phaseT).map((l: ScriptLine) => ({ ...l, at: l.at - G.phaseT / 1000 }))); } }
   // her activity's marks: only while she is busy with it (when she looks up, the sounds stop: the tell)
   if (!G.away && G.t >= G.nextMark) {
     if (G.att === 'busy' && G.t >= (G.pauseUntil ?? 0) && !(G.call && G.t < G.herSpeakingUntil)) mark(wpick(ACT().marks));
@@ -713,8 +791,8 @@ function finish(how: string) {
   G.phase = 'ending'; G.stats.ended = how; MUSIC.on = false; G.ask = null; G.urges = []; G.cramp = null; G.timers = [];
   $('#skip').style.display = 'none';
   if (how === 'stop') { say(pick(st.stop.length ? st.stop : ['…']), 'commander', { big: true }); return; }
-  if (how === 'woke') { return; }
-  if (how === 'failed') { sense(throneOn() && S.contact === 'human_chair' ? 'She gets off your back.' : 'She takes her feet off your back.', 'body'); return; }
+  if (how === 'woke') { E!.env.staging.woke?.(); return; } // review I7: her waking ends the session (`physics/woke`)
+  if (how === 'failed') { W_SFX.rustle(0.14, 0); sense(throneOn() && S.contact === 'human_chair' ? 'She gets off your back.' : 'She takes her feet off your back.', 'body'); setTimeout(() => say(pick(W_L().fall.length ? W_L().fall : ['…']), 'commander', { big: true }), 900); return; }
   // she is out already (she left in use): she simply does not come back
   if (G.away) { G.stats.aloneFor += (G.t - G.awayFrom) / 1000; setTimeout(() => { sense(`She has not come back. ${S.stay ? 'She did not say you could get up.' : ''}`, 'door', 'base'); G.phase = 'empty'; G.emptyAt = G.t; $('#getUp').style.display = 'block'; G.foundAt = G.t + rand(25000, 40000); }, 1500); return; }
   play(act.end.sfx, { g: 0.5, pan: V().herPan }); sense(V().sight && !S.blind ? act.end.seen : act.end.heard, 'her');
@@ -734,6 +812,7 @@ function getUp() {
   E!.env.staging.getUp?.();
 }
 function found() {
+  if (!R.listener) { G.foundAt = Infinity; return; } // review I7: nobody to find the commander: GET UP stays (or the stop word)
   G.stats.found = true; G.stats.aloneFor += (G.t - G.emptyAt) / 1000; $('#getUp').style.display = 'none';
   const dp = V().doorPan; steps(5, -dp * 0.3, dp, 0.1, 0.4, 0.42); setTimeout(() => play('door_open', { g: 0.45, pan: dp }), 2200);
   setTimeout(() => otherSay(S.view === 'legs' ? '…commander? What are you doing under there?' : '…commander? Why are you kneeling there?', 'room', R.listener?.name ?? ''), 3200);
@@ -923,6 +1002,8 @@ function render(now: number, dt: number) {
   setStyle('#vignette', 'background', low < 0.05 ? 'none' : `radial-gradient(ellipse 75% 70% at 50% 50%, rgba(0,0,0,0) ${(72 - low * 28).toFixed(0)}%, rgba(26,6,4,${(0.2 + low * 0.5).toFixed(2)}) 100%)`);
   const dusk = smooth(18 * 60 + 30, 20 * 60, G.clockMin), dark = G.lightsOff ? 0.35 : 1;
   setStyle('#world', 'filter', `saturate(${(wr ? 1 - wr.strF * 0.45 : 1 - low * 0.4).toFixed(2)}) brightness(${((1 - dusk * 0.25) * dark).toFixed(2)})`);
+  // her view is the scene itself: its room dims with the evening and goes dark when she turns the light off, as the prototype's room does
+  E!.env.layers.backdrop.style.filter = view === 'her' ? `brightness(${((1 - dusk * 0.25) * dark * 0.62).toFixed(2)})` : '';
   // her view: her sprite (the scene's), the lamp or the screen on her; she leans a little toward the commander when she looks
   if (view === 'her') {
     const look = G.att === 'watching' ? 1 : G.att === 'glancing' ? 0.4 : 0;
@@ -1023,6 +1104,7 @@ function afterFrame(): void {
   if (!e) return;
   noteWrites(e.claims[0]!, ['opacity']);
   noteWrites(e.claims[1]!, ['opacity', 'transform']);
+  noteWrites(e.claims[2]!, ['filter']);
 }
 
 function build(env: InstrumentEnv): FrameEls {
@@ -1071,7 +1153,7 @@ function build(env: InstrumentEnv): FrameEls {
   lights = { deskLight: els['#deskLight'] as HTMLCanvasElement, floorLight: els['#floorLight'] as HTMLCanvasElement, wallLight: els['#wallLight'] as HTMLCanvasElement };
   const off = (): [HTMLCanvasElement, CanvasRenderingContext2D] => { const c = document.createElement('canvas'); return [c, c.getContext('2d') ?? nullCtx(c)]; };
   [legC, lctx] = off(); [compC, cctx] = off(); [rimC, rctx] = off(); [outC, octx] = off();
-  const claims = [claimStyles(env.reply, ['opacity']), claimStyles(env.layers.sprites, ['opacity', 'transform'])];
+  const claims = [claimStyles(env.reply, ['opacity']), claimStyles(env.layers.sprites, ['opacity', 'transform']), claimStyles(env.layers.backdrop, ['filter'])];
   return { env, box, ui, els, claims, frameId: null, core: null };
 }
 /** A context that draws nothing (jsdom has no canvas; the instrument still runs). */
@@ -1111,6 +1193,7 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   S.phases = run.marathon?.phases ?? 3;
   S.phaseLen = (phaseSegments(state, reg, run) * Number(reg.contactPhysics.get(run.physicsId)?.segmentSeconds ?? 30));
   S.start = run.marathon?.clockMin ?? 1080; S.seed = fnv1a(`${state.scene?.id ?? ''}|${run.id}`) % 100;
+  S.talk = temperamentOf(state, run.holderId).talkativeness;
   S.mood = (state.squad.find((u) => u.id === run.holderId)?.stress ?? 0) >= 50 ? 'irritated' : 'calm';
   R.caught = run.tally?.cheatsCaught ?? 0;
   const other = state.squad.find((u) => u.kind === 'named' && u.id !== run.holderId && u.status === 'active' && !(state.scene?.participants ?? []).includes(u.id));
@@ -1197,6 +1280,9 @@ function begin() {
   G = fresh(); setStep(presenceOf(E!.env.state(), E!.env.registries, R.run!, R.run!.marathon?.phase ?? 1));
   G.clockMin = S.start; G.startMin = S.start; G.phaseIdx = (R.run!.marathon?.phase ?? 1) - 1;
   G.phase = 'entry'; G.entryT = 0;
+  // her first gesture (the prototype writes it into its reply; the scene's reply is the transcript: a sensory line at the commander's place)
+  const entry = weightOn() && throneOn() && S.contact === 'human_chair' ? 'She points at the floor. When you are down on all fours she lowers herself onto your back, without a word, and opens her folder.' : weightOn() ? 'She points at the floor before her chair, and when you are down on all fours she settles her feet on your back and leans back.' : ({ her: 'She points at the floor beside her chair without looking up.', legs: 'She pushes her chair back, points under the desk, and pulls the chair in again once you are there.', floor: 'She points at the floor by her bunk. "Down. Eyes down."', wall: 'She turns you to face the wall by the shoulder, and goes back to her chair.' } as Record<string, string>)[S.view];
+  if (entry) after(60, () => sense(`${entry}${S.stay ? ' “Stay.”' : ''}`, 'body')); // on the first frames: the scene's size is known then
 }
 
 function stopFrame(): void {
@@ -1205,6 +1291,7 @@ function stopFrame(): void {
   if (e.frameId !== null) e.env.cancelRaf(e.frameId);
   e.core?.stop();
   detachThrone();
+  THRONE.speaks = () => true; THRONE.slipped = () => {}; THRONE.limit = () => {}; THRONE.buckle = () => {};
   for (const n of A.nodes ?? []) { try { n.stop(); } catch { /* stopped */ } }
   for (const k of Object.keys(LOOPS)) { try { LOOPS[k].src.stop(); } catch { /* stopped */ } delete LOOPS[k]; }
   try { A.master?.disconnect(); } catch { /* not connected */ }
@@ -1237,6 +1324,11 @@ export function startFrame(env: InstrumentEnv, run: PhysicsRun): InstrumentRun {
     const sh = E.els['#wShadow'] as HTMLCanvasElement;
     attachThrone({ env, G: () => G, S, after, sense, say, play, herFeels, bodyNoise, visitorHeard, steps, V, rand, random: () => Math.random(), now: () => performance.now(), els: E.els, shadow: { canvas: sh, ctx: sh.getContext('2d') ?? nullCtx(sh) }, inner: () => [innerWidth, innerHeight] });
     throneCanvases(() => { const c = document.createElement('canvas'); return [c, c.getContext('2d') ?? nullCtx(c)]; });
+    // Ruling W: the frame's wiring of the weight inside
+    THRONE.speaks = () => G.step === 'with' || G.step === 'glancing';
+    THRONE.slipped = () => wSlipFelt();
+    THRONE.limit = () => { if (G.phase === 'loop') wLimit(); };
+    THRONE.buckle = () => { if (G.phase === 'loop' && !W.over) wBuckle(); };
   }
   listen(env);
   frame.last = undefined;
@@ -1248,8 +1340,6 @@ export function startFrame(env: InstrumentEnv, run: PhysicsRun): InstrumentRun {
       if (E !== mine) return;
       R.run = next;
       if (next.second) E.core?.update(coreRun(next, 'second')!);
-      const caught = next.tally?.cheatsCaught ?? 0;
-      while (caught > R.caught) { R.caught += 1; herCaught(G.grossPending === true); G.grossPending = false; }
       if (next.marathon) S.phases = next.marathon.phases;
     },
     finish(end: PhysicsEnd): number {
@@ -1287,5 +1377,5 @@ export const _activity = {
   seed(n: number): void { seed = n >>> 0 || 1; },
   resetClock(): void { frame.last = undefined; },
   mouse(x: number, y: number): void { MOUSE.x = x; MOUSE.y = y; },
-  begin, incomingCall, visitorPeak, falseAlarm, fresh, sense, say, mark, coverNow, herEars, bodyNoise, react, moveAttention, updateUrges, spawnUrge, relieveAt, runScript, planPeaks, startSkip, resolveSkip, finish, getUp, found, beginPhase, endPhase, herCaught, placeFree,
+  planScript, exchangeScript, begin, incomingCall, visitorPeak, falseAlarm, fresh, sense, say, mark, coverNow, herEars, bodyNoise, react, moveAttention, updateUrges, spawnUrge, relieveAt, runScript, planPeaks, startSkip, resolveSkip, finish, getUp, found, beginPhase, endPhase, placeFree,
 };

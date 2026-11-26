@@ -514,7 +514,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   // P10e-e (scent's question, R20)
   'scent_answer', 'scent_lie_caught',
   // P10e-e (her frame, R28; the throne's decision, 24b)
-  'forgotten_end', 'found_posed', 'physics_got_up', 'physics_decided',
+  'forgotten_end', 'found_posed', 'physics_got_up', 'physics_decided', 'physics_noticed', 'physics_woke', 'physics_buckle',
   // P10c
   'quarters_set',
   // P13
@@ -3137,12 +3137,12 @@ export const CARD_VOICE_KINDS = [
   'jaw.slack', 'jaw.stop',
   // P10e-e ruling Q: her frame's fixed lines (her_activity.html `STYLES`: her name for the commander, and her lines by situation); `activity.stop`
   // is finish's line after the stop word
-  'activity.name', 'activity.noticed', 'activity.correct', 'activity.call', 'activity.end', 'activity.askReply', 'activity.breach', 'activity.silent', 'activity.stop',
+  'activity.name', 'activity.noticed', 'activity.correct', 'activity.call', 'activity.end', 'activity.askReply', 'activity.breach', 'activity.silent', 'activity.stop', 'activity.rest', 'activity.fall',
   // P10e-e 24b: the throne's lines (throne.html `T_LINES`)
   'throne.spill', 'throne.skid', 'throne.thank', 'throne.thanked', 'throne.noThanks',
 ] as const;
 /** The kinds of her static words (card-voice.md §3), keyed by a milestone id, a domain id (or `submit`) and the return's terms; her first words under a weight, by the contact (§8, `weight.entry.<contact>`); under her scent, her first words and her named places by the contact (§9); in the jaw, her first words by what holds the mouth open (§10, `jaw.entry.<contact>`). */
-export const CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+|scent\.(entry|here)\.[a-z0-9_]+|jaw\.entry\.[a-z0-9_]+)$/;
+export const CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+|scent\.(entry|here)\.[a-z0-9_]+|jaw\.entry\.[a-z0-9_]+|activity\.(self|toYou|ask|exchange)\.[a-z0-9_]+)$/;
 
 /**
  * P10e-e R7: a table of her lines on the scene's cards (`docs/content/card-voice.md` is the readable copy, approved by the author). Read

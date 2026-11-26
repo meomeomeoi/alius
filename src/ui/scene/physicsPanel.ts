@@ -46,6 +46,10 @@ export interface PhysicsPanelStaging {
   /** P10e-e R28: after her forgotten end, the commander gets up alone, or a visitor of the frame finds the commander. Absent = never. */
   getUp?(): EngineEvent[];
   found?(finderId: string): EngineEvent[];
+  /** P10e-e Rulings X and Y: a relief of the body in her frame, decided at once (`physics/relief`). Absent = never. */
+  relief?(r: { kind: 'relieve' | 'fidget'; amount: number; part: string; involuntary?: boolean }): EngineEvent[];
+  /** P10e-e review I7: she woke: her frame ends (`physics/woke`). Absent = never. */
+  woke?(): EngineEvent[];
   /** P10e-e 24b: a decision of her script through her command capability (`physics/decide`). Absent = never. */
   decide?(kind: string, ref?: string): EngineEvent[];
   /** P10e-e: how a run of the open scene ended (its `physics_outcome`), or null when none is known. Absent = never known. */

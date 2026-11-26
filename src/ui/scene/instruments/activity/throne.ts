@@ -206,7 +206,7 @@ export function throneRise() {
     W.resting = false; G.risen = null; G.stats.landings = (G.stats.landings ?? 0) + 1;
     const bad = !HOLD.on || Math.abs(W.cop - W.ctl) > WT.tol;
     W_SFX.press(0.75); W.jolt = 1.2;
-    if (bad) { W.str -= 18 * WT.weight; W.hardShifts += 1; crack(1); W_SFX.grunt(); G.stats.hardLandings = (G.stats.hardLandings ?? 0) + 1; herFeels('the commander giving under her as she sat', false); }
+    if (bad) { W.str -= 18 * WT.weight; weightCore.report('charge', 18 * WT.weight); W.hardShifts += 1; crack(1); W_SFX.grunt(); G.stats.hardLandings = (G.stats.hardLandings ?? 0) + 1; herFeels('the commander giving under her as she sat', false); }
     sense(hc ? 'She sits back down, all at once.' : 'Her feet come back down, hard.', 'body');
   });
 }
@@ -231,6 +231,7 @@ export function throneCupEnd(spilled: boolean) {
     play('pour', { g: 0.25, dur: 0.9 }); play('mug', { g: 0.4 }); W.jolt = 0.8;
     sense('The mug tips. It runs down your side, hot.', 'body', 'body');
     herFeels('her mug spilling on the commander', true);
+    X?.env.staging.relief?.({ kind: 'relieve', amount: 1, part: 'seen', involuntary: true }); // Ruling W: the spill reaches the engine (the body, not a cheat)
   } else { play('mug', { g: 0.35 }); sense('She takes her mug back.', 'body'); }
 }
 /* she signs something on the commander's back: the pen's strokes are felt; the mouse (the balance) must stay still while she writes */

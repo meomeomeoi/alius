@@ -47,8 +47,6 @@ export interface ResolveEnv {
   steady?: ReadonlySet<number>;
   /** A marathon's pace scale (`paceScale`): every beat's change of the gauge, and the streak xp, count this many times (1 = no scale). Applied per beat, before the clamp. */
   scale?: number;
-  /** P10e-e R27: how well she hears the commander in her frame (her activity's `frame.hear`); absent outside a frame. */
-  hear?: number;
   /** P10e-e 24b: the long hold's drain factor of a weight inside her frame (`LONG_HOLD[longHoldStrain]`); absent outside a frame. */
   longHold?: number;
 }
@@ -201,7 +199,7 @@ export function resolveEnvOf(state: CampaignState, reg: Registries, run: Physics
     // R19: her own band, of the part she presses (a contact's target; an item has none: the rest of her)
     band: scentBand(state, reg, run.holderId, run.sourceKind === 'contact' ? contactTargetOf(state.scene, reg, run.sourceId) ?? run.targetId : undefined),
     head: headCapacity(scentToleranceOf(state, reg, run.holderId)),
-    ...(run.sourceKind === 'activity' ? { hear: frameOf(reg.blockingActivities.get(run.sourceId))?.hear ?? 1, longHold: LONG_HOLD[sceneSettingsOf(state).longHoldStrain] } : {}),
+    ...(run.sourceKind === 'activity' ? { longHold: LONG_HOLD[sceneSettingsOf(state).longHoldStrain] } : {}),
   };
 }
 
@@ -213,8 +211,7 @@ function share(kind: GaugeKind, gauge: number, capacity: number): number {
 /** Whether `kind` is a valid input of the wire format. */
 export const validInput = (i: unknown): i is SegmentInput =>
   typeof i === 'object' && i !== null && Number.isInteger((i as SegmentInput).beat) && (i as SegmentInput).beat >= 0 && (INPUT_KINDS as readonly string[]).includes((i as SegmentInput).kind)
-  && ((i as SegmentInput).amount === undefined || (typeof (i as SegmentInput).amount === 'number' && Number.isFinite((i as SegmentInput).amount) && (i as SegmentInput).amount! >= 0))
-  && ((i as SegmentInput).cover === undefined || (typeof (i as SegmentInput).cover === 'number' && (i as SegmentInput).cover! >= 0 && (i as SegmentInput).cover! <= 1));
+  && ((i as SegmentInput).amount === undefined || (typeof (i as SegmentInput).amount === 'number' && Number.isFinite((i as SegmentInput).amount) && (i as SegmentInput).amount! >= 0));
 
 /** P10e-e R15: how many beats her openings move later when she notices a strain, by her lead style. */
 export const overDelayOf = (style: string): number => P.breath.overDelay[style] ?? P.breath.overDelay.other!;
@@ -243,7 +240,7 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
   // one input of a kind counts once on a beat: a key pressed five times in a beat is not five breaths (review)
   const live = inputs.filter((i) => {
     if (lapsed.has(i.beat) || i.beat >= plan.beats.length) return false;
-    const key = `${i.beat}|${i.kind}${i.kind === 'bite' && i.part === 'teeth' ? '|teeth' : ''}`; // a touch of the teeth and the beat's cost are two inputs
+    const key = `${i.beat}|${i.kind}${i.kind === 'bite' && i.part === 'teeth' ? '|teeth' : ''}${i.kind === 'ask_rest' && i.part !== undefined ? `|${i.part}` : ''}`; // a touch of the teeth and the beat's cost are two inputs
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -334,6 +331,12 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
         break;
       }
       case 'hold': {
+        // Ruling W: the weight inside her frame. While she is up or resting (`ask_rest` `part: 'up'`) her weight is gone: no drain, no slip; the
+        // end of her rest (`part: 'rest'`) gives back its `amount`, a hard landing (`part: 'charge'`) costs its `amount` (gauge points)
+        if (env.longHold !== undefined) {
+          for (const g of at(b, 'ask_rest')) if (g.part === 'rest') r.gauge += g.amount ?? 0; else if (g.part === 'charge') r.gauge -= g.amount ?? 0;
+          if (at(b, 'ask_rest').some((g) => g.part === 'up')) break;
+        }
         const drain = P.weight.drain * (run.pressure ?? 1) * (env.steady?.has(b) ? STEADY_DRAIN : 1);
         // 24b: inside her frame the strength's drain is a long hold's (`LONG_HOLD[longHoldStrain]`, throne.html `S.frameDrain`): the beat's drain
         // and its uneven share; a slip costs as before (the prototype's `wSlip` is not scaled). Outside a frame `longHold` is absent: as before.
@@ -372,12 +375,6 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
       }
       case 'passive':
         r.gauge += P.progressPerBeat;
-        // R27: the stillness inside her frame: a relief or a fidget is P15a's relief, and a noise of loudness × her ears × (1 − cover)
-        for (const g of [...at(b, 'relieve'), ...at(b, 'fidget')]) {
-          relief(g.beat, g.kind);
-          r.frameReliefs = (r.frameReliefs ?? 0) + 1;
-          r.frameNoise = (r.frameNoise ?? 0) + (g.amount ?? 0) * (env.hear ?? 1) * (1 - clamp(g.cover ?? 0, 0, 0.92));
-        }
         break;
       case 'gesture': {
         const bites = at(b, 'bite');
@@ -394,6 +391,8 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
     // the pace scale is applied to the beat, then clamped, so that a phase gives the same fiction at every pace (review: it was applied after the clamp)
     if (scale !== 1) r.gauge = Math.round((beatStart + (r.gauge - beatStart) * scale) * 100) / 100;
     r.gauge = clamp(r.gauge, 0, env.gaugeKind === 'dirt' || env.gaugeKind === 'progress' ? 100 : cap);
+    // Ruling W: inside her frame the strength never ends the hold: at 0 the commander buckles and gets back to 35 (three end it, `physicsInput`)
+    if (env.longHold !== undefined && env.interaction === 'hold' && r.gauge <= 0) { r.gauge = 0.35 * cap; r.buckles = (r.buckles ?? 0) + 1; }
   }
   if (rest) {
     r.askedRest = true;
@@ -452,6 +451,7 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
     notices = merged.notices;
     secondBonus = x.streakBonus;
     secondPart = { gasps: x.gasps, slips: x.slips, reliefs: x.reliefs, interaction: envSecond.interaction };
+    if (x.buckles) run.second!.buckles = (run.second!.buckles ?? 0) + x.buckles; // Ruling W: three buckles end her frame (below)
     run.second!.gauge = x.gauge;
     run.second!.streak = x.streak;
     result = {
@@ -486,15 +486,8 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
     }
   }
   // every slip is a sound, by the physics it came from (the extra slips of a catch are the first one's)
-  const mainPart = { gasps: result.gasps - (secondPart?.gasps ?? 0), slips: result.slips - (secondPart?.slips ?? 0), reliefs: result.reliefs - (secondPart?.reliefs ?? 0) - (result.frameReliefs ?? 0) };
+  const mainPart = { gasps: result.gasps - (secondPart?.gasps ?? 0), slips: result.slips - (secondPart?.slips ?? 0), reliefs: result.reliefs - (secondPart?.reliefs ?? 0) };
   sounds = segmentNoise(mainPart, envMain.interaction, stillnessOf(draft));
-  // R27: the frame's reliefs and fidgets are as loud as she could hear them (a sound under `frameQuiet` is no noise: her speech covered it)
-  const frameNoise = (result.frameNoise ?? 0) * (1 - stillnessOf(draft));
-  if (frameNoise >= P.frameQuiet) {
-    const have = sounds.find((y) => y.kind === 'rustle');
-    if (have) have.loudness += frameNoise;
-    else sounds.push({ kind: 'rustle', loudness: Math.round(frameNoise * 1000) / 1000 });
-  }
   if (secondPart) {
     for (const x of segmentNoise(secondPart, secondPart.interaction, stillnessOf(draft))) {
       const have = sounds.find((y) => y.kind === x.kind);
@@ -525,6 +518,11 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
     const chained = chainRun(draft, reg, run);
     if (chained.length > 0) events.push(...chained);
     else run.extend += TUNING.physics.slipExtend;
+  }
+  // Ruling W: the third buckle under her weight ends the session (her verdict is the instrument's)
+  if (run.sourceKind === 'activity' && (run.second?.buckles ?? 0) >= 3) {
+    events.push({ type: 'physics_buckle', runId, holderId: run.holderId, count: run.second!.buckles }, ...stopPhysics(draft, reg, 'collapse'));
+    return events;
   }
   const boundary = decideBoundary(draft, ctx, run, result);
   if (boundary.move !== undefined) (events[0] as { move?: string }).move = boundary.move;
@@ -616,3 +614,36 @@ export function marathonSkip(draft: CampaignState, ctx: { registries: Registries
 }
 
 const commanderLevel = (state: CampaignState, physicsId: string): number => state.commander.endurance?.[physicsId]?.level ?? 0;
+
+/**
+ * P10e-e Rulings X and Y: a relief or a fidget of the commander's body in her frame, decided when it is reported (her tell and her answer follow
+ * at once, as the prototype's). One draw, the prototype's noticing: `p = 1 − (1 − p_seen)(1 − p_heard)`, with `p_heard = amount × her ears × 1.35`
+ * (`amount` = loudness × (1 − cover), the instrument's) and `p_seen = CAUGHT[her attention on this beat] × (0.6 while a call or a visitor has her
+ * eyes)` when it was visible (`part`: `seen`, `seen_shared`; `unseen` is not; `away`: she is out, nothing is noticed and nothing is drawn). A
+ * voluntary one she noticed is a caught cheat (`physics_caught`, remembered as any); an involuntary one (the body giving way) is only noticed
+ * (`physics_noticed`). Frame runs only; no draw when nothing could notice it.
+ */
+export function frameRelief(draft: CampaignState, ctx: { registries: Registries; rng: Rng }, payload: Record<string, unknown>): EngineEvent[] {
+  const run = draft.scene?.physics;
+  if (!run || run.id !== payload.runId) throw new Error('Stale physics run.');
+  if (run.sourceKind !== 'activity' || run.forgotten) throw new Error('physics/relief: only in her frame, while she is there');
+  const kind = payload.kind === 'fidget' ? 'fidget' : payload.kind === 'relieve' ? 'relieve' : null;
+  const amount = typeof payload.amount === 'number' && Number.isFinite(payload.amount) ? Math.max(0, Math.min(1, payload.amount)) : null;
+  const part = typeof payload.part === 'string' && ['seen', 'unseen', 'seen_shared', 'away'].includes(payload.part) ? payload.part : null;
+  if (kind === null || amount === null || part === null) throw new Error('physics/relief needs { runId, kind: relieve | fidget, amount 0–1, part: seen | unseen | seen_shared | away }');
+  const beat = Number.isInteger(payload.beat) ? (payload.beat as number) : 0;
+  const involuntary = payload.involuntary === true;
+  const ears = frameOf(ctx.registries.blockingActivities.get(run.sourceId))?.hear ?? 1;
+  const attention = run.segment.plan?.beats[Math.max(0, Math.min(beat, (run.segment.plan?.beats.length ?? 1) - 1))]?.attention ?? 'busy';
+  const pHeard = part === 'away' ? 0 : Math.min(1, amount * ears * 1.35);
+  const pSeen = part === 'seen' || part === 'seen_shared' ? P.gaze.caught[attention] * (part === 'seen_shared' ? 0.6 : 1) : 0;
+  const p = 1 - (1 - pSeen) * (1 - pHeard);
+  const events: EngineEvent[] = involuntary ? [] : [{ type: 'physics_cheat', runId: run.id, holderId: run.holderId, kind, beat }];
+  if (p <= 0 || !ctx.rng.chance(p)) return events;
+  if (involuntary) {
+    addTally(run, { moved: 1 });
+    return [{ type: 'physics_noticed', runId: run.id, holderId: run.holderId, beat }];
+  }
+  addTally(run, { cheatsCaught: 1 });
+  return [...events, { type: 'physics_caught', runId: run.id, holderId: run.holderId, kind, beat }];
+}

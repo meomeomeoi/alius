@@ -119,6 +119,8 @@ export const STYLES: Record<string, StyleRow> = {
   playful:      { tele: [500, 750], feint: 0.35, heavy: 0.15, mag: [0.35, 0.8], watchBias: 0,    note: 'feints: her shadow leans and comes back' },
   clinical:     { tele: [150, 1100], feint: 0,   heavy: 0.1,  mag: [0.3, 0.9],  watchBias: 0.1,  note: 'the warning time changes every shift: she measures how fast you learn' },
   cruel:        { tele: [0, 0], feint: 0,        heavy: 0.35, mag: [0.6, 1.0],  watchBias: 0.2,  note: 'no warning; big shifts; often leans in heavier; watches more' },
+  // 24b (throne.html W_STYLES.regal, I5): a long, measured warning; moderate shifts
+  regal:        { tele: [900, 1200], feint: 0,   heavy: 0.25, mag: [0.3, 0.6],  watchBias: 0.1,  note: 'throne.html: a long, measured warning; moderate shifts' },
 };
 /** The prototype's row for a style it has no row of: by how she gives her cues (`TUNING.physics.style[].cues`). */
 const ROW_BY_CUES: Record<string, string> = { honest: 'neutral', count: 'ritual', announce: 'ritual', false: 'playful', none: 'cruel', shift: 'clinical' };
@@ -238,6 +240,9 @@ interface Glob {
   beat: number; slipThisBeat: boolean; nextShiftBeat: number; shift: Shift | null; pressure: number; pressureUntil: number; att: string; attPlan: string[]; held: boolean[]; even: boolean[];
   slips: number; hardShifts: number; shifts: number; cleanShifts: number; reliefs: number; caughtN: number; reliefCd: number; lowest: number; jolt: number; sag: number; end: number; reason: string;
   tapCd: number; hissCd: number; saidLow: boolean;
+  /** Ruling W: her weight is gone (she rose, or she lets the commander rest): no drain, no slip. Only her frame sets it. */
+  resting?: boolean;
+  over?: boolean;
 }
 let G: Glob;
 function fresh(): Glob {
@@ -249,7 +254,7 @@ G = fresh();
 
 /* ---------- her hand ---------- */
 function say(text: string | undefined, big = false, at: [number, number] = [0.6, 0.16]) {
-  if (!text) return;
+  if (!text || !THRONE.speaks()) return;
   const el = document.createElement('div');
   el.className = 'her-line' + (big ? ' big' : '');
   el.textContent = text;
@@ -347,7 +352,8 @@ function landShift() {
 function onBeat() {
   G.beat += 1;
   const grace = graceOf(G.beat - 1);
-  if (!grace && !HOLD.on && !G.slipThisBeat) slip(); // the hold broke in the beat's last frame: the slip is that beat's
+  if (!grace && !HOLD.on && !G.slipThisBeat && !G.resting) slip(); // the hold broke in the beat's last frame: the slip is that beat's
+  if (G.resting && G.beat >= 1) report({ beat: G.beat - 1, kind: 'ask_rest', part: 'up' }); // Ruling W: her weight was off the commander this beat
   const evenNow = grace || (HOLD.on && !G.slipThisBeat && Math.abs(G.cop - G.ctl) <= S.tol);
   G.held.push(grace || (HOLD.on && !G.slipThisBeat)); G.even.push(evenNow);
   if (G.held.length > 8) { G.held.shift(); G.even.shift(); }
@@ -359,6 +365,7 @@ function slip() { // a beat in which the hold broke is a slip (the engine drains
     G.slipThisBeat = true; G.slips += 1; G.str -= W_DRAIN * C().weight * G.pressure; G.jolt = 1; G.sag = 1; crack(0.8); SFX.creak(0.5, 0.22);
     if (G.slips === 1 || Math.random() < 0.5) say(pick(L().slip));
     R.segSlips += 1; if (R.segSlips === 1) setTimeout(() => say(pick(L().longer)), 900); // the P15a chain: a slip in weight makes the hold last longer
+    THRONE.slipped();
   }
 }
 function relief() {
@@ -390,6 +397,7 @@ function updateLoop(dt: number) {
   G.clock += dt;
   const beatNow = Math.floor((G.clock - R.seg!.clock0) / BEAT);
   while (G.beat < beatNow) { onBeat(); planBeat(); }
+  if (G.resting) { G.str = Math.min(100, G.str + dt * 0.004); return; } // Ruling W: her weight is off the commander (her frame's rest, her rising)
   if (!HOLD.on && !G.slipThisBeat && G.clock > BEAT && !R.seg!.flushed) slip(); // the first beat is grace: time to take the weight
   if (G.pressureUntil < G.clock) G.pressure = R.pressure;
   const c = C();
@@ -404,7 +412,8 @@ function updateLoop(dt: number) {
   G.hissCd -= dt; if (G.str < 45 && G.hissCd <= 0) { SFX.hiss(lerp(0.02, 0.12, smooth(45, 5, G.str))); G.hissCd = lerp(2200, 900, smooth(45, 5, G.str)); }
   G.lowest = Math.min(G.lowest, G.str);
   if (G.str < 30 && !G.saidLow) { G.saidLow = true; }
-  if (G.str <= 0) { G.str = 0; }
+  if (G.str <= (S.style === 'cruel' ? 5 : 15)) THRONE.limit(); // Ruling W: her frame may let the commander rest at the limit
+  if (G.str <= 0) { G.str = 0; THRONE.buckle(); } // Ruling W: in her frame the commander buckles (back to 35; three end it)
 }
 
 let mouseX = 0.5;
@@ -630,7 +639,7 @@ function planBeat(): void {
 /** Sends an input of this segment to the engine (once per beat and kind), exempt from the typing lapse when the mouse made it (ruling O). */
 function report(i: SegmentInput): void {
   if (!E || !R.seg || i.beat < 0 || i.beat >= R.seg.beats) return;
-  const key = `${i.beat}|${i.kind}`;
+  const key = `${i.beat}|${i.kind}${i.kind === 'ask_rest' && i.part !== undefined ? `|${i.part}` : ''}`;
   if (R.sent.has(key)) return;
   R.sent.add(key);
   R.inputs.push(i);
@@ -1073,7 +1082,17 @@ registerInstrument({ id: 'weight', matches: weightMatches, start: (env, run) => 
  * P10e-e 24b (throne.html's marked edit of `wPlanShift`): the throne layer of her frame tells the core how careful she is (her mug on the
  * commander's back: her shifts at 0.35 of their size, telegraphed 1.5× slower). 1 everywhere else; the frame sets it and puts it back.
  */
-export const THRONE = { careful: (): number => 1 };
+export const THRONE = {
+  careful: (): number => 1,
+  /** Ruling W: her weight lines only at `with` / `glancing` in her frame; always elsewhere. */
+  speaks: (): boolean => true,
+  /** Ruling W: a slip under her feet, which she feels in her frame (`herFeels`, at most every 4 s). */
+  slipped: (): void => {},
+  /** Ruling W: at the limit, a rest by her presence and style (her frame's `wLimit`). */
+  limit: (): void => {},
+  /** Ruling W: the strength at 0 in her frame (her frame's `wBuckle`). */
+  buckle: (): void => {},
+};
 /** 24b: the core's state the throne layer moves (the prototype's `W`, `HOLD`, `W_SFX`, `WT.tol`), for the frame's throne only. */
 export const weightCore = {
   get G(): Glob { return G; },
@@ -1084,6 +1103,14 @@ export const weightCore = {
   weight: (): number => C().weight,
   shift: (): number => C().shift,
   crack: (k: number): void => crack(k),
+  /**
+   * Ruling W: an engine charge of the weight inside her frame on this beat (`ask_rest`): `rest` gives back strength, `charge` costs it (a hard
+   * landing); `amount` is in strength points (0–100), sent in gauge points of the run.
+   */
+  report(part: 'rest' | 'charge', strength: number): void {
+    if (!R.running) return;
+    report({ beat: segBeat(), kind: 'ask_rest', part, amount: Math.round((strength * (R.run?.capacity ?? 100)) / 100 * 1000) / 1000 });
+  },
 };
 
 /** Tests and the shots only: the prototype's state and hooks (its `window.__G`, `__S`, `__begin`, `__mouse`). */

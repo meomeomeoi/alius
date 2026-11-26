@@ -11,7 +11,6 @@ import type { Registries } from '../../../src/content/types';
 import { COMMANDER, registerFrameReader, resetBlockingHooks, setBlocking } from '../../../src/engine/blocking';
 import { resetPresenceHooks } from '../../../src/engine/physics/presence';
 import { resetPhysicsHooks } from '../../../src/engine/physics/style';
-import type { SegmentInput } from '../../../src/engine/physics/state';
 import type { CampaignState } from '../../../src/engine/state/types';
 import type { SceneController } from '../../../src/scene/sceneController';
 import { DEFAULT_SETTINGS, type AliusSettings } from '../../../src/settings';
@@ -94,7 +93,7 @@ function draw(state: CampaignState, over: { settings?: Partial<AliusSettings>; s
   const noop = (): [] => [];
   const staging = {
     input, endSegment: noop, stopWord: vi.fn(() => []), skip: vi.fn(() => []), stimulus: noop, act: noop, finishCounted: noop, cue: (k: string) => `her ${k}`, beat: () => 0,
-    clock: () => ({ startedAt: 0, beatMs: 1500, now: f.now() }), getUp: vi.fn(() => []), found: vi.fn(() => []), script: () => null, ...over.staging,
+    clock: () => ({ startedAt: 0, beatMs: 1500, now: f.now() }), getUp: vi.fn(() => []), found: vi.fn(() => []), script: () => null, relief: vi.fn(() => []), woke: vi.fn(() => []), ...over.staging,
   };
   const screen = renderSceneScreen(host, {
     controller, getState: () => state, registries: reg, st: new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' }),
@@ -108,7 +107,7 @@ function draw(state: CampaignState, over: { settings?: Partial<AliusSettings>; s
   const move = (x: number, y: number) => document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: x, clientY: y }));
   return { host, screen, input, frames: f, q, to, frame, move, staging };
 }
-const reports = (t: ReturnType<typeof draw>): SegmentInput[] => t.input.mock.calls.map((c) => c[0] as SegmentInput);
+const reports = (t: ReturnType<typeof draw>): Array<{ kind: string; amount: number; part: string; involuntary?: boolean }> => (t.staging.relief as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
 
 describe('her frame on the scene', () => {
   it('matches her frame (a passive physics with a progress gauge, from a framed activity), read by field; the view follows the blocking', () => {
@@ -175,14 +174,26 @@ describe('stillness: the commander\'s attention and the urges', () => {
     expect(fidgets[0]!.amount).toBe(0.28);
   });
 
-  it('a click on an urge relieves it: a relieve reported with its loudness and the cover now (the mouse made it: ruling O)', () => {
+  it('a click on an urge relieves it: reported at once (physics/relief) with loud × (1 − cover) and its visibility (Rulings X and Y)', () => {
     const t = draw(framed());
     t.to(2400);
     _activity.G.urges = [{ kind: 'itch', x: 300, y: 300, v: 0.5, born: 0, seed: 0 }];
     _activity.relieveAt(300, 300);
-    const r = reports(t).find((x) => x.kind === 'relieve')!;
-    expect(r).toMatchObject({ kind: 'relieve', amount: 0.35, cover: 0 });
-    expect(t.input.mock.calls.find((c) => (c[0] as SegmentInput).kind === 'relieve')![1]).toEqual({ pointer: true });
+    expect(reports(t).find((x) => x.kind === 'relieve')).toEqual({ kind: 'relieve', amount: 0.35, part: 'seen' });
+    // her speech covers it: the amount carries the cover; a swallow is unseen
+    _activity.G.herSpeakingUntil = _activity.G.t + 5000;
+    _activity.G.urges = [{ kind: 'swallow', x: 300, y: 300, v: 0.5, born: 0, seed: 0 }];
+    _activity.relieveAt(300, 300);
+    expect(reports(t).at(-1)).toEqual({ kind: 'relieve', amount: 0.038, part: 'unseen' });
+  });
+
+  it('the engine\'s catch plays her tell at once; the body giving way is reported as involuntary', () => {
+    const t = draw(framed(), { staging: { relief: vi.fn(() => [{ type: 'physics_caught' }]) as never } });
+    t.to(2400);
+    expect(_activity.bodyNoise('scratch', 0.35, true)).toBe(true);
+    expect(_activity.G.pauseUntil).toBeGreaterThan(_activity.G.t);
+    _activity.bodyNoise('slump', 1, true, true);
+    expect(reports(t).at(-1)).toMatchObject({ involuntary: true });
   });
 
   it('Space typed into the field never acts; only the mouse acts while it has the focus', () => {
@@ -209,6 +220,19 @@ describe('stillness: the commander\'s attention and the urges', () => {
 });
 
 describe('her lines and her questions', () => {
+  it('Ruling Z: with no script of her hour, her placeholder lines play (cardVoice, verbatim); the model\'s script replaces them', () => {
+    const t = draw(framed());
+    t.to(2400);
+    const self = reg.cardVoice.get('activity.self.reading_reports')!.lines as string[];
+    const planned = _activity.planScript(0) as Array<{ to: string; text: string }>;
+    expect(planned.filter((l) => l.to === 'self').length).toBeGreaterThan(0);
+    for (const l of planned.filter((x) => x.to === 'self')) expect(self).toContain(l.text);
+    expect(_activity.G.timers.some((x: { ph?: string }) => x.ph === 'her')).toBe(true); // scheduled for this phase
+    const call = _activity.exchangeScript([{ other: 'You sound distracted.', mention: { plain: 'p', veiled: 'v' } }], 0) as Array<{ who: string; mention?: unknown }>;
+    expect(call.map((l) => l.who)).toEqual(['other', 'her']);
+  });
+
+
   it('answering her self-talk is a breach; silence to a question to the commander is missed', () => {
     const t = draw(framed());
     t.to(2400);
@@ -235,7 +259,7 @@ describe('her lines and her questions', () => {
       return { left: l, top: tp, right: l + 220, bottom: tp + 30, width: 220, height: 30, x: l, y: tp, toJSON() {} } as DOMRect;
     });
     for (let i = 0; i < 6; i++) _activity.sense(`a sensory line ${i}`, 'her');
-    const rects = [...box.querySelectorAll<HTMLElement>('.sense')].map((el) => ({ l: parseFloat(el.style.left), t: parseFloat(el.style.top) }));
+    const rects = [...box.querySelectorAll<HTMLElement>('.sense')].filter((el) => el.textContent!.startsWith('a sensory line')).map((el) => ({ l: parseFloat(el.style.left), t: parseFloat(el.style.top) }));
     expect(rects).toHaveLength(6);
     for (const r of rects) { expect(r.l).toBeGreaterThanOrEqual(16); expect(r.l + 220).toBeLessThanOrEqual(1280 - 24); }
     for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {

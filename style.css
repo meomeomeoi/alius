@@ -6057,7 +6057,7 @@
 #alius-shell .alius-act-bg { inset: 0; background-size: cover; background-position: center; will-change: transform, filter; }
 #alius-shell .alius-act-herGlow { inset: 0; mix-blend-mode: screen; }
 #alius-shell .alius-act-legsView { background: #0b090a; }
-#alius-shell .alius-act-deskUnder { filter: blur(6px) brightness(.95) saturate(.85); transform: translateY(9%) scale(1.12); }
+#alius-shell .alius-act-deskUnder { filter: blur(6px) brightness(.5) saturate(.85); transform: translateY(9%) scale(1.12); } /* the scene's room is lit; the prototype's under-the-desk room is its dark quarters (×.95): .5 reads the same */
 #alius-shell .alius-act-deskFrame { left: 50%; top: -4%; width: 132%; max-width: none; transform: translateX(-50%); filter: brightness(.55) saturate(.9); }
 #alius-shell .alius-act-legs { inset: 0; width: 100%; height: 100%; }
 #alius-shell .alius-act-legsArt { max-width: none; transform-origin: 50% 100%; filter: blur(1.2px) brightness(.62) saturate(.85); opacity: 0; transition: opacity .28s ease; }

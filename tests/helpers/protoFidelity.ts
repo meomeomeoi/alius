@@ -42,7 +42,8 @@ export interface FidelitySpec {
   prototype: string;
   note?: string;
   functions: Array<{ fn: string; module: string; as?: string; prototype?: string; fragment?: { from: string; to: string } }>;
-  tables: Array<{ ident: string; module: string; export: string; prototype?: string; deps?: string[] }>;
+  /** `additions`: keys the port's table adds, each from another prototype (its reason): compared without them. */
+  tables: Array<{ ident: string; module: string; export: string; prototype?: string; deps?: string[]; additions?: Record<string, string> }>;
   lines?: Array<{ ident: string; prototype?: string; registry?: 'physicsCues' | 'cardVoice'; physics?: string; cueKinds: Record<string, string> }>;
   differences: Array<{ fn: string; reason: string; diff: string }>;
 }
@@ -570,8 +571,9 @@ const show = (v: unknown): string => JSON.stringify(v, (_k, x: unknown) => (type
 export async function checkFidelity(spec: FidelitySpec, opts: { registries: Registries }): Promise<string[]> {
   const failures: string[] = [];
   const named = new Set(spec.functions.map((f) => f.fn));
+  const linePaths = new Set((spec.lines ?? []).flatMap((l) => Object.keys(l.cueKinds).map((p) => `${l.ident}.${p}`)));
   for (const d of spec.differences) {
-    if (!named.has(d.fn)) failures.push(`a difference is declared for "${d.fn}", which is not a listed function`);
+    if (!named.has(d.fn) && !linePaths.has(d.fn)) failures.push(`a difference is declared for "${d.fn}", which is not a listed function or line`);
     if (d.reason.trim() === '') failures.push(`the difference of "${d.fn}" has no reason`);
   }
   for (const f of spec.functions) {
@@ -607,7 +609,14 @@ export async function checkFidelity(spec: FidelitySpec, opts: { registries: Regi
       const want = protoValue(proto, t.ident, t.deps);
       const mod = (await import(/* @vite-ignore */ join(ROOT, t.module))) as Record<string, unknown>;
       if (!(t.export in mod)) throw new Error(`${t.module} exports no "${t.export}"`);
-      const got = mod[t.export];
+      let got = mod[t.export];
+      if (t.additions && typeof got === 'object' && got !== null) {
+        for (const [k, reason] of Object.entries(t.additions)) {
+          if (reason.trim() === '') failures.push(`the addition ${t.export}.${k} has no reason`);
+          if (!(k in (got as Record<string, unknown>))) failures.push(`the addition ${t.export}.${k} is declared but not in the port`);
+        }
+        got = Object.fromEntries(Object.entries(got as Record<string, unknown>).filter(([k]) => !(k in t.additions!)));
+      }
       const fns = [...functionsIn(want, t.ident), ...functionsIn(got, t.export)];
       if (fns.length > 0) {
         failures.push(`the table ${t.ident} (${proto}.html → ${t.module}) holds functions (${fns.slice(0, 4).join(', ')}${fns.length > 4 ? ', …' : ''}): a table is compared by value, so list it under \`functions\` instead (its whole declaration is compared, as SHAPES is)`);
@@ -640,6 +649,12 @@ export async function checkFidelity(spec: FidelitySpec, opts: { registries: Regi
       } else {
         const rows = [...opts.registries.physicsCues.values()].filter((e) => e.kind === target && (l.physics === undefined || ((e.physics ?? []) as string[]).includes(l.physics)));
         got = rows.length === 1 ? rows[0]!.lines : rows.length === 0 ? undefined : `${rows.length} rows of kind ${target}`;
+      }
+      const declared = spec.differences.find((d) => d.fn === `${l.ident}.${path}`);
+      if (declared) {
+        if (isDeepStrictEqual(want, got)) failures.push(`${l.ident}.${path}: a difference is declared, but the row equals the prototype`);
+        else if (declared.diff !== JSON.stringify(got)) failures.push(`${l.ident}.${path}: the declared row ${declared.diff} is not the port's ${JSON.stringify(got)}`);
+        continue;
       }
       if (!isDeepStrictEqual(want, got)) failures.push(`${l.ident}.${path} (${proto}.html) is not the ${l.registry ?? 'physicsCues'} row ${target}:\n  prototype: ${JSON.stringify(want)}\n  port:      ${JSON.stringify(got)}`);
     }

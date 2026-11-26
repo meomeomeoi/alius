@@ -5,10 +5,8 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import { COMMANDER, registerFrameReader, resetBlockingHooks, setBlocking, type BlockingChange } from '../../../src/engine/blocking';
-import { resolveEnvOf, resolveSegment } from '../../../src/engine/physics/segment';
 import { resetPhysicsHooks } from '../../../src/engine/physics/style';
 import { frameOf } from '../../../src/engine/physics/presence';
-import type { PhysicsRun, SegmentPlan } from '../../../src/engine/physics/state';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { enable } from '../../helpers/bonds';
 import { campaign, errors, loadCore, ofType, run, setRelation } from '../../helpers/loyalty';
@@ -97,6 +95,16 @@ describe('her frame starts from the blocking (R24)', () => {
     expect(state.scene!.blocking![ANN]!.activity).toBe('idle');
   });
 
+  it('review I1: after the stop word her posture change does not start the frame again; a new placement does', () => {
+    const framed = put(put(scene(), READING).state, BESIDE).state;
+    const stopped = run(framed, reg, { type: 'physics/stop_word', payload: {} }).state;
+    const moved = put(stopped, { person: ANN, field: 'posture', value: 'kneeling_upright' }, 'reading');
+    expect(ofType(moved.events, 'physics_started')).toEqual([]);
+    expect(moved.state.scene!.physics).toBeUndefined();
+    const replaced = put(moved.state, { person: COMMANDER, field: 'posture', value: 'kneeling_upright' }, 'reading');
+    expect(ofType(replaced.events, 'physics_started')[0]).toMatchObject({ sourceKind: 'activity' });
+  });
+
   it('the stop word ends the frame and leaves her at her activity', () => {
     const framed = put(put(scene(), READING).state, BESIDE).state;
     const r = run(framed, reg, { type: 'physics/stop_word', payload: {} });
@@ -106,42 +114,35 @@ describe('her frame starts from the blocking (R24)', () => {
   });
 });
 
-describe('the stillness inside: relieve and fidget (R27)', () => {
-  const four = (): SegmentPlan => ({ beats: [0, 1, 2, 3].map(() => ({ attention: 'busy' as const })) });
-  function framedRun(): { s: CampaignState; p: PhysicsRun } {
-    const s = put(put(scene(), READING).state, BESIDE).state;
-    return { s, p: s.scene!.physics! };
-  }
+describe('the stillness inside: a relief decided at once (R27, Rulings X and Y)', () => {
+  const framedRun = () => run(put(put(scene(), READING).state, BESIDE).state, reg, { type: 'physics/next_segment', payload: { runId: 'p1' } }).state;
+  const relief = (s: CampaignState, p: Record<string, unknown>) => run(s, reg, { type: 'physics/relief', payload: { runId: 'p1', beat: 0, kind: 'relieve', ...p } });
 
-  it('a relief and a fidget are P15a reliefs (cheatRoll decides), and a noise of loudness × her ears × (1 − cover)', () => {
-    const { s, p } = framedRun();
-    const env = resolveEnvOf(s, reg, p);
-    expect(env.hear).toBe(0.9);
-    const r = resolveSegment(p, four(), [{ beat: 1, kind: 'relieve', amount: 0.7 }, { beat: 2, kind: 'fidget', amount: 0.28 }], env);
-    expect(r.reliefs).toBe(2);
-    expect(r.reliefInputs).toEqual([{ beat: 1, kind: 'relieve' }, { beat: 2, kind: 'fidget' }]);
-    expect(r.frameNoise).toBeCloseTo(0.7 * 0.9 + 0.28 * 0.9, 6);
-    expect(r.gauge).toBe(20); // her clock runs on as before
+  it('a loud relief she can hear is caught at once (p_heard = loud × ears × 1.35): physics_caught and the tally', () => {
+    const r = relief(framedRun(), { amount: 1, part: 'unseen' });
+    expect(errors(r.events)).toEqual([]);
+    expect(ofType(r.events, 'physics_caught')[0]).toMatchObject({ kind: 'relieve' });
+    expect(r.state.scene!.physics!.tally).toMatchObject({ cheatsCaught: 1 });
   });
 
-  it('a loud relief is noise; one covered by her speech is not', () => {
-    const { s, p } = framedRun();
-    const go = (cover: number) => {
-      const started = run(s, reg, { type: 'physics/next_segment', payload: { runId: p.id } }).state;
-      const beats = started.scene!.physics!.segment.plan!.beats.length;
-      const r = run(started, reg, { type: 'physics/segment_end', payload: { runId: p.id, segment: 1, inputs: [{ beat: Math.min(1, beats - 1), kind: 'relieve', amount: 0.7, cover }] } });
+  it('nothing heard and nothing seen (or she is out): no draw, not caught', () => {
+    const s = framedRun();
+    for (const p of [{ amount: 0, part: 'unseen' }, { amount: 1, part: 'away' }]) {
+      const r = relief(s, p);
       expect(errors(r.events)).toEqual([]);
-      return ofType(r.events, 'physics_noise');
-    };
-    expect(go(0)[0]).toMatchObject({ kind: 'rustle' });
-    expect((go(0)[0] as unknown as { loudness: number }).loudness).toBeCloseTo(0.63, 6);
-    expect(go(0.75)).toEqual([]); // 0.7 × 0.9 × 0.25 = 0.16, under TUNING.physics.frameQuiet (0.2): her speech covered it
+      expect(ofType(r.events, 'physics_caught')).toEqual([]);
+      expect(r.state.rng).toEqual(s.rng);
+    }
   });
 
-  it('old inputs resolve as before: a passive segment without relieve or fidget has no frame noise', () => {
-    const { s, p } = framedRun();
-    const r = resolveSegment(p, four(), [], resolveEnvOf(s, reg, p));
-    expect(r.frameNoise).toBeUndefined();
-    expect(r.reliefs).toBe(0);
+  it('the body giving way on its own is only noticed (physics_noticed), never a caught cheat', () => {
+    const r = relief(framedRun(), { amount: 1, part: 'seen', involuntary: true });
+    expect(ofType(r.events, 'physics_noticed')).toHaveLength(1);
+    expect(ofType(r.events, 'physics_caught')).toEqual([]);
+    expect(ofType(r.events, 'physics_cheat')).toEqual([]);
+  });
+
+  it('is refused outside a frame and with a bad payload', () => {
+    expect(errors(relief(framedRun(), { amount: 'x', part: 'seen' }).events).length).toBeGreaterThan(0);
   });
 });

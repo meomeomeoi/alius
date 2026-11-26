@@ -176,6 +176,7 @@ export function stopPhysics(draft: CampaignState, reg: Registries, result: Outco
   if (!draft.scene || !run) return [];
   delete draft.scene.physics;
   if (run.sourceKind !== 'activity') removeSource(draft, run.sourceKind, run.sourceId); // R24: her activity goes on when her frame ends
+  else draft.scene.frameDone = { holderId: run.holderId, activity: run.sourceId, placed: placementKey(draft) }; // review I1: it does not restart by itself
   const events: EngineEvent[] = [{ type: 'physics_outcome', runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...(run.second ? { secondId: run.second.physicsId } : {}), ...(run.targetId !== undefined ? { targetId: run.targetId } : {}), ...(run.tally ? { tally: { ...run.tally } } : {}) }]; // the target was read when the run began: P15 counts the act on it (mastery)
   if (run.marathon) events.push(...finishMarathon(draft, reg, run, result));
   return events;
@@ -207,6 +208,13 @@ export function getUp(draft: CampaignState, ctx: { registries: Registries }, run
   if (!run || run.id !== runId) throw new Error('physics/get_up: stale physics run');
   if (!run.forgotten) throw new Error('physics/get_up: she has not left the commander');
   return [{ type: 'physics_got_up', runId: run.id, holderId: run.holderId, stayed: true }, ...stopPhysics(draft, ctx.registries, 'released')];
+}
+
+/** P10e-e review I7: she woke in her sleep (the third stir): her frame ends (released), as the prototype's `finish('woke')`. */
+export function frameWoke(draft: CampaignState, ctx: { registries: Registries }, runId: unknown): EngineEvent[] {
+  const run = draft.scene?.physics;
+  if (!run || run.id !== runId || run.sourceKind !== 'activity') throw new Error('physics/woke: stale physics run');
+  return [{ type: 'physics_woke', runId: run.id, holderId: run.holderId }, ...stopPhysics(draft, ctx.registries, 'released')];
 }
 
 /** P10e-e R28: a visitor of her frame comes in and finds the commander posed after her forgotten end (`found_posed`); the frame ends. */
@@ -307,7 +315,8 @@ function releaseOf(state: CampaignState, reg: Registries, run: PhysicsRun): Rele
  */
 export function releaseCheck(state: CampaignState, reg: Registries, run: PhysicsRun): Release {
   const second = coreRun(run, 'second');
-  const all = [releaseOf(state, reg, run), ...(second ? [releaseOf(state, reg, second)] : [])];
+  // Ruling W: the weight inside her frame never releases it (buckles do: `physicsInput`)
+  const all = [releaseOf(state, reg, run), ...(second && run.sourceKind !== 'activity' ? [releaseOf(state, reg, second)] : [])];
   return all.reduce((w, r) => (WORST.indexOf(r) > WORST.indexOf(w) ? r : w), 'continue' as Release);
 }
 
@@ -340,6 +349,13 @@ export function placedBy(state: CampaignState, holderId: string): boolean {
   });
 }
 
+/** Review I1: the commander's placement as a key (anchor, posture, contact): a frame that ended starts again only once it changes. */
+function placementKey(state: CampaignState): string {
+  const b = blockingOf(state.scene, COMMANDER);
+  const contact = state.scene ? contactOf(state.scene) : undefined;
+  return `${b.anchor?.id ?? ''}@${b.anchor?.relTo ?? ''}|${b.posture ?? ''}|${contact?.id ?? ''}`;
+}
+
 /**
  * P10e-e R24: the frame of her time starts when her blocking activity has a `frame` and the commander is placed by her, with or without a
  * contact (a contact with a hold physics runs as its second: the weight inside), as a marathon of her activity's hours (`unknown` without
@@ -353,6 +369,9 @@ function startFrame(draft: CampaignState, reg: Registries): EngineEvent[] {
     const activity = blockingOf(scene, holderId).activity;
     const frame = activity !== undefined ? frameOf(reg.blockingActivities.get(activity)) : null;
     if (activity === undefined || frame === null || !placedBy(draft, holderId)) continue;
+    // review I1: the frame that ended here does not start again until her activity or the commander's placement changes
+    const done = scene.frameDone;
+    if (done && done.holderId === holderId && done.activity === activity && done.placed === placementKey(draft)) continue;
     // a contact whose own physics is not a hold runs as a contact run, as before (the frame does not take it)
     const contact = contactOf(scene);
     if (contact && physicsOf(reg.blockingContacts.get(contact.id)).some((p) => reg.contactPhysics.get(p.id)?.interaction !== 'hold')) continue;

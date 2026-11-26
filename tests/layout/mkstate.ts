@@ -231,6 +231,7 @@ function framing(): CampaignState {
   setRelation(s, ANN, { stateId: 'confidant' });
   enable(s, 'objectification', 'worship', 'service');
   s.settings.physicsRealtime = true;
+  s.slot = 'evening'; // the prototype's evening (18:00): the base by the hour, the lamp
   const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
   const d = r.state;
   setBlocking(d, { registries: reg }, { person: ANN, field: 'activity', value: 'reading_reports' }, { at: 1, source: 'engine' });
@@ -251,6 +252,7 @@ function throning(): CampaignState {
   setRelation(s, ANN, { stateId: 'confidant' });
   enable(s, 'objectification', 'worship', 'service', 'humiliation', 'restraint');
   s.settings.physicsRealtime = true;
+  s.slot = 'evening';
   const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
   const d = r.state;
   setBlocking(d, { registries: reg }, { person: ANN, field: 'activity', value: 'reading_reports' }, { at: 1, source: 'engine' });

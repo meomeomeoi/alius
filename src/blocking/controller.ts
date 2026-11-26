@@ -79,6 +79,10 @@ export interface StagingController {
   /** P10e-e R28: after her forgotten end the commander gets up alone (`physics/get_up`), or a visitor of the frame comes in (`physics/found`). */
   getUp(): EngineEvent[];
   found(finderId: string): EngineEvent[];
+  /** P10e-e Rulings X and Y: a relief of the body in her frame (`physics/relief`), decided at once. */
+  relief(r: { kind: 'relieve' | 'fidget'; amount: number; part: string; involuntary?: boolean }): EngineEvent[];
+  /** P10e-e review I7: she woke (the third stir in her sleep): her frame ends (`physics/woke`). */
+  woke(): EngineEvent[];
   /** P10e-e 24b: a decision of her hour's script (`physics/decide`, through her command capability; refused without it). */
   decide(kind: string, ref?: string): EngineEvent[];
   /** Drives the clock: ends a real-time segment on time and starts the next one when nothing is pending. */
@@ -357,6 +361,14 @@ export function createStaging(deps: StagingDeps): StagingController {
     found(finderId) {
       const r = run();
       return active && r?.forgotten ? dispatch({ type: 'physics/found', payload: { runId: r.id, finderId } }) : [];
+    },
+    relief(x) {
+      const r = run();
+      return active && r ? dispatch({ type: 'physics/relief', payload: { runId: r.id, beat: this.beat(), ...x, ...(x.involuntary ? { involuntary: true } : {}) } }) : [];
+    },
+    woke() {
+      const r = run();
+      return active && r ? dispatch({ type: 'physics/woke', payload: { runId: r.id } }) : [];
     },
     decide(kind, ref) {
       const r = run();

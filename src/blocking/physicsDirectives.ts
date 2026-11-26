@@ -40,7 +40,7 @@ const TALLY_WORDS: Record<string, Partial<Record<string, (n: number) => string>>
   order: { slips: (n) => `${n} ${n === 1 ? 'slip' : 'slips'} of the tongue` },
   gesture: { slips: (n) => `the teeth touched her ${times(n)}` },
   // R28: her frame (the stillness inside): only a relief or a fidget she caught is said
-  passive: { cheatsCaught: (n) => `she noticed the commander move ${times(n)}` },
+  passive: { cheatsCaught: (n) => `she noticed the commander move ${times(n)}`, moved: (n) => `the commander's body gave way ${times(n)}, and she noticed` },
 };
 const times = (n: number): string => (n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`);
 const GENERIC: Record<string, (n: number) => string> = {
@@ -51,9 +51,10 @@ const GENERIC: Record<string, (n: number) => string> = {
   slips: (n) => `${n} ${n === 1 ? 'slip' : 'slips'}`,
   gasps: (n) => `${n} ${n === 1 ? 'gasp' : 'gasps'}`,
   cheatsCaught: (n) => `she caught ${n} ${n === 1 ? 'cheat' : 'cheats'}`,
+  moved: (n) => `she noticed the body give way ${times(n)}`,
 };
 /** `strains` is never said: an over-hold she did not notice (amount 0.5) is not hers to tell; only `noticed` is. */
-const ORDER = ['caught', 'missed', 'falseTaken', 'noticed', 'slips', 'gasps', 'cheatsCaught'];
+const ORDER = ['caught', 'missed', 'falseTaken', 'noticed', 'slips', 'gasps', 'cheatsCaught', 'moved'];
 
 /** The tally of a run in one sentence (`''` when nothing was counted). */
 export function tallySentence(tally: Record<string, number>, phys: Entry | undefined): string {

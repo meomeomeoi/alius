@@ -243,7 +243,7 @@ Service entries carry `fits` (her activity tags), `presence` (`unnoticed` ↔ `f
 | `tasting_first` | eating | tasting her food first (P17b) |
 | `standing_by` | any | by the wall until called; doing nothing is service too; `strain stillness` |
 | `waiting` | any | waiting where she said |
-| `facing_wall` | any | facing the wall (a corner punishment when the origin is her discipline) |
+| `facing_wall` | any | facing the wall (a corner punishment when the origin is her discipline); effect `backdrop: pov_corner` (P10e-e Task 24: her frame reads a `place` backdrop of the commander's activity as the wall view) |
 | `writing_report` | — | the commander's own work |
 | `on_comms` | — | the commander's own comms session (`duty_call`, `remote`) |
 | `eating` | — | eating |

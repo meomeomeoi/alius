@@ -827,7 +827,7 @@ Her lines in her hand while the commander's jaw is held open (P10e-e Task 20, ru
 
 ## 11. Her activity (her_activity.html, approved by the author, 2026-11-23)
 
-Her lines in her hand in the frame of her time (P10e-e Task 24, ruling Q; `her_activity.html`'s `STYLES`). **name**: her name for the commander (the sign that a line is for the commander); **noticed**: she caught a movement (at `with`, and at `glancing` most of the time); **correct**: a correction; **call**: what she calls the commander to someone else; **end**: her end line (`with`, `glancing`); **askReply**: an answer to her question was given; **breach**: the commander answered words not meant for the commander; **silent**: her question was left unanswered; **stop**: after the stop word. Neutral is every style with no rows of its own (Ruling R); the prototype has cold's own rows. No pronoun for the commander.
+Her lines in her hand in the frame of her time (P10e-e Task 24, ruling Q; `her_activity.html`'s `STYLES`). **name**: her name for the commander (the sign that a line is for the commander); **noticed**: she caught a movement (at `with`, and at `glancing` most of the time); **correct**: a correction; **call**: what she calls the commander to someone else; **end**: her end line (`with`, `glancing`); **askReply**: an answer to her question was given; **breach**: the commander answered words not meant for the commander; **silent**: her question was left unanswered; **stop**: after the stop word; **rest**: she lets the commander rest under her weight (her_activity.html `W_LINES[].rest`); **fall**: her verdict at the third buckle (`W_FALL`). Neutral is every style with no rows of its own (Ruling R); the prototype has cold's own rows. No pronoun for the commander.
 
 ### neutral
 - **name:** `commander`
@@ -839,6 +839,8 @@ Her lines in her hand in the frame of her time (P10e-e Task 24, ruling Q; `her_a
 - **breach:** `I wasn’t talking to you.`
 - **silent:** `I asked you something.`
 - **stop:** `okay. up you get.` · `alright. stopping.` · `enough. up.`
+- **fall:** `…really? enough.`
+- **rest:** `rest. a moment.`
 
 ### affectionate
 - **name:** `sweetheart`
@@ -849,6 +851,8 @@ Her lines in her hand in the frame of her time (P10e-e Task 24, ruling Q; `her_a
 - **askReply:** `good.` · `thank you.`
 - **breach:** `hm? oh, not you, sweetheart.`
 - **silent:** `…sweetheart?`
+- **fall:** `hey, hey. that’s enough for tonight.`
+- **rest:** `here. rest a moment.`
 
 ### clinical
 - **name:** `subject`
@@ -859,6 +863,8 @@ Her lines in her hand in the frame of her time (P10e-e Task 24, ruling Q; `her_a
 - **askReply:** `noted.`
 - **breach:** `unsolicited. noted.`
 - **silent:** `no response. noted.`
+- **fall:** `failure point reached. session over.`
+- **rest:** `recovery interval.`
 
 ### cold
 - **name:** `you`
@@ -869,6 +875,7 @@ Her lines in her hand in the frame of her time (P10e-e Task 24, ruling Q; `her_a
 - **askReply:** `fine.`
 - **breach:** `not you.`
 - **silent:** `I asked.`
+- **fall:** `get up. go.`
 
 ### cruel
 - **name:** `chair`
@@ -879,6 +886,8 @@ Her lines in her hand in the frame of her time (P10e-e Task 24, ruling Q; `her_a
 - **askReply:** `adequate.`
 - **breach:** `chairs don’t talk.`
 - **silent:** `chair. I asked you something.`
+- **fall:** `useless. get out of my sight.`
+- **rest:** `…fine. a moment.`
 
 ### playful
 - **name:** `pet`
@@ -889,6 +898,8 @@ Her lines in her hand in the frame of her time (P10e-e Task 24, ruling Q; `her_a
 - **askReply:** `good pet.` · `cute.`
 - **breach:** `who said you could talk~`
 - **silent:** `ignoring me? bold.`
+- **fall:** `timber! okay, you’re done.`
+- **rest:** `fine, a break~`
 
 ### possessive
 - **name:** `mine`
@@ -899,6 +910,7 @@ Her lines in her hand in the frame of her time (P10e-e Task 24, ruling Q; `her_a
 - **askReply:** `good.` · `of course.`
 - **breach:** `did I talk to you?`
 - **silent:** `answer me.`
+- **fall:** `enough. you’ll do better for me.`
 
 ### regal
 - **name:** `my seat`
@@ -909,6 +921,8 @@ Her lines in her hand in the frame of her time (P10e-e Task 24, ruling Q; `her_a
 - **askReply:** `acceptable.` · `good.`
 - **breach:** `I was not speaking to you.`
 - **silent:** `I asked you a question.`
+- **fall:** `a pity. I’ll find a sturdier seat.`
+- **rest:** `rest. briefly.`
 
 ### ritual
 - **name:** `kneeler`
@@ -919,6 +933,42 @@ Her lines in her hand in the frame of her time (P10e-e Task 24, ruling Q; `her_a
 - **askReply:** `as it should be.`
 - **breach:** `you were not addressed.`
 - **silent:** `you were addressed.`
+- **fall:** `down. noted. we stop.`
+- **rest:** `rest.`
+
+
+Her placeholder lines (Ruling Z, her_activity.html `ACTS[].self`, `TO_YOU`, `CALL`, `VISIT`, `CARDS`): her own words until the script of her hour arrives, and whenever it fails; by activity (`any` for every one); the exchanges (`exchange.call`, `exchange.visit`, `exchange.cards`) are `other|her`, a mention `other|plain|veiled`.
+
+### neutral
+- **self.reading_book:** `hm.` · `no. no, no, no…` · `oh, come on.` · `there it is.` · `idiot.` · `mm.` · `don’t open that door…` · `of course she did.`
+- **self.reading_reports:** `…three wounded. three.` · `the commander authorized the detour. hm.` · `that’s not what she told me.` · `requisition denied. again.` · `node four. why node four.` · `who signs these.`
+- **self.writing_report:** `…“regrettably”. no.` · `how do I say this without saying it.` · `losses: acceptable. sure.` · `mm. delete.`
+- **self.chatting_on_pda:** `ha.` · `no way.` · `she did not.` · `oh, you’re in trouble.`
+- **self.sleeping:** `…mm.` · `…no…` · `…stay…`
+- **self.music:** `~ mm-mm, mm ~` · `~ da, da-da ~`
+- **self.cleaning_weapon:** `there you are.` · `filthy.` · `who had you last.`
+- **self.mending_clothes:** `ow.` · `there.` · `hm-mm.`
+- **self.drinking:** `mm. better.` · `to me.` · `one more.` · `why is this so good.`
+- **self.sketching:** `no. the jaw’s wrong.` · `hold still.` · `better.`
+- **self.holding_audience:** `next.` · `who else.` · `they all want something.` · `hm. that one can wait.`
+- **toYou.any:** `you’re quiet. good.`
+- **toYou.reading_book:** `this one’s good. you’d hate it.`
+- **toYou.reading_reports:** `listen: “the commander’s conduct was… adequate.” hm.`
+- **toYou.sketching:** `don’t move. I’m doing your hands.` · `turn your head. no. back.`
+- **toYou.drinking:** `you want some? no. you don’t.`
+- **toYou.chatting_on_pda:** `Vex says hi. don’t answer.`
+- **ask.any:** `what time is it, do you think?` · `still with me down there?`
+- **ask.reading_book:** `guess who did it.`
+- **ask.reading_reports:** `did you sign the detour at node four?`
+- **ask.writing_report:** `how do you spell “negligible”?`
+- **ask.drinking:** `tell me something. anything.`
+- **ask.cleaning_weapon:** `you ever field-strip one of these?`
+- **ask.mending_clothes:** `whose shirt is this, you think?`
+- **exchange.call:** `Unit status, please.|Operational. Two on light duty.` · `The detour at node four. Whose call?|The commander’s. I’d have made the same one.` · `And the requisition?|Denied. Again. Send it up.` · `You sound distracted.|I have my feet up on something comfortable.|long day. go on.` · `Understood. Anything else?|No. Out.`
+- **exchange.visit:** `Got a minute? The roster for tomorrow.|Leave it on the desk.` · `Has anyone seen the commander? Nobody can find…|closer than you think.|no idea. try the comms room.` · `Right. Night, then.|night.`
+- **exchange.cards:** `Your deal.|watch and learn.` · `You’re cheating.|prove it.` · `How’s your furniture holding up?|quiet. for once.|the chair? it’s fine.` · `Raise.|call.` · `Ugh. Again.|again.`
+- **exchange.heard_call:** `…is someone with you?|just my footrest.|no. the heater ticks.`
+- **exchange.heard_visit:** `…what was that?|my footrest. it creaks.|the chair. it’s old.`
 
 ## 12. The throne (throne.html, approved by the author, 2026-11-25)
 

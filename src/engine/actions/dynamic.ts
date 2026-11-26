@@ -407,5 +407,5 @@ registerAfterAction((draft, _ctx, events) => {
 /** P10e-e 24b: `physics/decide { runId, kind, ref? }`: a decision of her hour's script, applied through her command capability (refused without it). */
 registerAction('physics/decide', (draft, payload, ctx) => {
   if (typeof payload !== 'object' || payload === null) throw new Error('physics/decide needs a payload');
-  return decideOverHead(draft, ctx.registries, payload as Record<string, unknown>);
+  return decideOverHead(draft, ctx, payload as Record<string, unknown>);
 });

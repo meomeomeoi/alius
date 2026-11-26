@@ -5487,5 +5487,379 @@
     "lines": [
       "a pity. I’ll find a sturdier seat."
     ]
+  },
+  {
+    "id": "activity.fall",
+    "kind": "activity.fall",
+    "lines": [
+      "…really? enough."
+    ]
+  },
+  {
+    "id": "activity.fall.affectionate",
+    "kind": "activity.fall",
+    "style": "affectionate",
+    "lines": [
+      "hey, hey. that’s enough for tonight."
+    ]
+  },
+  {
+    "id": "activity.fall.ritual",
+    "kind": "activity.fall",
+    "style": "ritual",
+    "lines": [
+      "down. noted. we stop."
+    ]
+  },
+  {
+    "id": "activity.fall.playful",
+    "kind": "activity.fall",
+    "style": "playful",
+    "lines": [
+      "timber! okay, you’re done."
+    ]
+  },
+  {
+    "id": "activity.fall.clinical",
+    "kind": "activity.fall",
+    "style": "clinical",
+    "lines": [
+      "failure point reached. session over."
+    ]
+  },
+  {
+    "id": "activity.fall.cruel",
+    "kind": "activity.fall",
+    "style": "cruel",
+    "lines": [
+      "useless. get out of my sight."
+    ]
+  },
+  {
+    "id": "activity.fall.possessive",
+    "kind": "activity.fall",
+    "style": "possessive",
+    "lines": [
+      "enough. you’ll do better for me."
+    ]
+  },
+  {
+    "id": "activity.fall.cold",
+    "kind": "activity.fall",
+    "style": "cold",
+    "lines": [
+      "get up. go."
+    ]
+  },
+  {
+    "id": "activity.fall.regal",
+    "kind": "activity.fall",
+    "style": "regal",
+    "lines": [
+      "a pity. I’ll find a sturdier seat."
+    ]
+  },
+  {
+    "id": "activity.rest",
+    "kind": "activity.rest",
+    "lines": [
+      "rest. a moment."
+    ]
+  },
+  {
+    "id": "activity.rest.affectionate",
+    "kind": "activity.rest",
+    "style": "affectionate",
+    "lines": [
+      "here. rest a moment."
+    ]
+  },
+  {
+    "id": "activity.rest.ritual",
+    "kind": "activity.rest",
+    "style": "ritual",
+    "lines": [
+      "rest."
+    ]
+  },
+  {
+    "id": "activity.rest.playful",
+    "kind": "activity.rest",
+    "style": "playful",
+    "lines": [
+      "fine, a break~"
+    ]
+  },
+  {
+    "id": "activity.rest.clinical",
+    "kind": "activity.rest",
+    "style": "clinical",
+    "lines": [
+      "recovery interval."
+    ]
+  },
+  {
+    "id": "activity.rest.cruel",
+    "kind": "activity.rest",
+    "style": "cruel",
+    "lines": [
+      "…fine. a moment."
+    ]
+  },
+  {
+    "id": "activity.rest.regal",
+    "kind": "activity.rest",
+    "style": "regal",
+    "lines": [
+      "rest. briefly."
+    ]
+  },
+  {
+    "id": "activity.self.reading_book",
+    "kind": "activity.self.reading_book",
+    "lines": [
+      "hm.",
+      "no. no, no, no…",
+      "oh, come on.",
+      "there it is.",
+      "idiot.",
+      "mm.",
+      "don’t open that door…",
+      "of course she did."
+    ]
+  },
+  {
+    "id": "activity.self.reading_reports",
+    "kind": "activity.self.reading_reports",
+    "lines": [
+      "…three wounded. three.",
+      "the commander authorized the detour. hm.",
+      "that’s not what she told me.",
+      "requisition denied. again.",
+      "node four. why node four.",
+      "who signs these."
+    ]
+  },
+  {
+    "id": "activity.self.writing_report",
+    "kind": "activity.self.writing_report",
+    "lines": [
+      "…“regrettably”. no.",
+      "how do I say this without saying it.",
+      "losses: acceptable. sure.",
+      "mm. delete."
+    ]
+  },
+  {
+    "id": "activity.self.chatting_on_pda",
+    "kind": "activity.self.chatting_on_pda",
+    "lines": [
+      "ha.",
+      "no way.",
+      "she did not.",
+      "oh, you’re in trouble."
+    ]
+  },
+  {
+    "id": "activity.self.sleeping",
+    "kind": "activity.self.sleeping",
+    "lines": [
+      "…mm.",
+      "…no…",
+      "…stay…"
+    ]
+  },
+  {
+    "id": "activity.self.music",
+    "kind": "activity.self.music",
+    "lines": [
+      "~ mm-mm, mm ~",
+      "~ da, da-da ~"
+    ]
+  },
+  {
+    "id": "activity.self.cleaning_weapon",
+    "kind": "activity.self.cleaning_weapon",
+    "lines": [
+      "there you are.",
+      "filthy.",
+      "who had you last."
+    ]
+  },
+  {
+    "id": "activity.self.mending_clothes",
+    "kind": "activity.self.mending_clothes",
+    "lines": [
+      "ow.",
+      "there.",
+      "hm-mm."
+    ]
+  },
+  {
+    "id": "activity.self.drinking",
+    "kind": "activity.self.drinking",
+    "lines": [
+      "mm. better.",
+      "to me.",
+      "one more.",
+      "why is this so good."
+    ]
+  },
+  {
+    "id": "activity.self.sketching",
+    "kind": "activity.self.sketching",
+    "lines": [
+      "no. the jaw’s wrong.",
+      "hold still.",
+      "better."
+    ]
+  },
+  {
+    "id": "activity.self.holding_audience",
+    "kind": "activity.self.holding_audience",
+    "lines": [
+      "next.",
+      "who else.",
+      "they all want something.",
+      "hm. that one can wait."
+    ]
+  },
+  {
+    "id": "activity.toyou.any",
+    "kind": "activity.toYou.any",
+    "lines": [
+      "you’re quiet. good."
+    ]
+  },
+  {
+    "id": "activity.ask.any",
+    "kind": "activity.ask.any",
+    "lines": [
+      "what time is it, do you think?",
+      "still with me down there?"
+    ]
+  },
+  {
+    "id": "activity.toyou.reading_book",
+    "kind": "activity.toYou.reading_book",
+    "lines": [
+      "this one’s good. you’d hate it."
+    ]
+  },
+  {
+    "id": "activity.ask.reading_book",
+    "kind": "activity.ask.reading_book",
+    "lines": [
+      "guess who did it."
+    ]
+  },
+  {
+    "id": "activity.toyou.reading_reports",
+    "kind": "activity.toYou.reading_reports",
+    "lines": [
+      "listen: “the commander’s conduct was… adequate.” hm."
+    ]
+  },
+  {
+    "id": "activity.ask.reading_reports",
+    "kind": "activity.ask.reading_reports",
+    "lines": [
+      "did you sign the detour at node four?"
+    ]
+  },
+  {
+    "id": "activity.ask.writing_report",
+    "kind": "activity.ask.writing_report",
+    "lines": [
+      "how do you spell “negligible”?"
+    ]
+  },
+  {
+    "id": "activity.toyou.sketching",
+    "kind": "activity.toYou.sketching",
+    "lines": [
+      "don’t move. I’m doing your hands.",
+      "turn your head. no. back."
+    ]
+  },
+  {
+    "id": "activity.toyou.drinking",
+    "kind": "activity.toYou.drinking",
+    "lines": [
+      "you want some? no. you don’t."
+    ]
+  },
+  {
+    "id": "activity.ask.drinking",
+    "kind": "activity.ask.drinking",
+    "lines": [
+      "tell me something. anything."
+    ]
+  },
+  {
+    "id": "activity.ask.cleaning_weapon",
+    "kind": "activity.ask.cleaning_weapon",
+    "lines": [
+      "you ever field-strip one of these?"
+    ]
+  },
+  {
+    "id": "activity.toyou.chatting_on_pda",
+    "kind": "activity.toYou.chatting_on_pda",
+    "lines": [
+      "Vex says hi. don’t answer."
+    ]
+  },
+  {
+    "id": "activity.ask.mending_clothes",
+    "kind": "activity.ask.mending_clothes",
+    "lines": [
+      "whose shirt is this, you think?"
+    ]
+  },
+  {
+    "id": "activity.exchange.call",
+    "kind": "activity.exchange.call",
+    "lines": [
+      "Unit status, please.|Operational. Two on light duty.",
+      "The detour at node four. Whose call?|The commander’s. I’d have made the same one.",
+      "And the requisition?|Denied. Again. Send it up.",
+      "You sound distracted.|I have my feet up on something comfortable.|long day. go on.",
+      "Understood. Anything else?|No. Out."
+    ]
+  },
+  {
+    "id": "activity.exchange.visit",
+    "kind": "activity.exchange.visit",
+    "lines": [
+      "Got a minute? The roster for tomorrow.|Leave it on the desk.",
+      "Has anyone seen the commander? Nobody can find…|closer than you think.|no idea. try the comms room.",
+      "Right. Night, then.|night."
+    ]
+  },
+  {
+    "id": "activity.exchange.cards",
+    "kind": "activity.exchange.cards",
+    "lines": [
+      "Your deal.|watch and learn.",
+      "You’re cheating.|prove it.",
+      "How’s your furniture holding up?|quiet. for once.|the chair? it’s fine.",
+      "Raise.|call.",
+      "Ugh. Again.|again."
+    ]
+  },
+  {
+    "id": "activity.exchange.heard_call",
+    "kind": "activity.exchange.heard_call",
+    "lines": [
+      "…is someone with you?|just my footrest.|no. the heater ticks."
+    ]
+  },
+  {
+    "id": "activity.exchange.heard_visit",
+    "kind": "activity.exchange.heard_visit",
+    "lines": [
+      "…what was that?|my footrest. it creaks.|the chair. it’s old."
+    ]
   }
 ]
