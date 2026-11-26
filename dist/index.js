@@ -85554,7 +85554,17 @@ function watch2(st3) {
     if (current2?.st === st3) current2.close();
   });
 }
+var SCENE_OPEN_REFUSAL = "Close the scene to check it in the game.";
+function previewRefusal(ctx2) {
+  return ctx2.getState()?.scene ? SCENE_OPEN_REFUSAL : null;
+}
 function openPreview(unitId, key, draft, ctx2) {
+  const refused = previewRefusal(ctx2);
+  if (refused !== null) {
+    ctx2.toast("warn", refused);
+    return () => {
+    };
+  }
   watch2(ctx2.st);
   current2?.close();
   const unit5 = ctx2.getState()?.squad.find((u) => u.id === unitId && u.kind === "named");
@@ -85925,6 +85935,12 @@ function openSlotEditor(host, unitId, key, ctx2) {
   const checkBtn = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "check", ...analyzeNative("glossary:stage_preview") }, "[ CHECK ]");
   checkBtn.addEventListener("click", () => {
     if (draft.url === null || !stillHere()) return;
+    const refused = previewRefusal(ctx2);
+    if (refused !== null) {
+      ctx2.toast("warn", refused);
+      mark2();
+      return;
+    }
     stopMarking();
     openPreview(unitId, key, draft, ctx2);
   });
@@ -85935,6 +85951,14 @@ function openSlotEditor(host, unitId, key, ctx2) {
     saveBtn.disabled = !dirty() || avatar === null;
     if (zonesBtn) zonesBtn.disabled = draft.url === null;
     checkBtn.disabled = draft.url === null;
+    const refused = previewRefusal(ctx2);
+    if (refused !== null) {
+      checkBtn.setAttribute("aria-disabled", "true");
+      checkBtn.title = refused;
+    } else {
+      checkBtn.removeAttribute("aria-disabled");
+      checkBtn.removeAttribute("title");
+    }
     removeBtn.disabled = !inFolder();
     status.textContent = dirty() ? "unsaved" : "";
   };

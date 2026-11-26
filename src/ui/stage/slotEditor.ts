@@ -6,7 +6,7 @@ import { panelOf } from './fit';
 import type { Lookup } from './fit/panel';
 import type { StageCtx } from './section';
 import { SLOT_INFO, SLOT_STATE_WORD, slotState, visibleSlotKeys, type SlotKey } from './slots';
-import { openPreview } from './preview';
+import { openPreview, previewRefusal } from './preview';
 import { markZones, stopMarking } from './zones';
 
 /**
@@ -157,6 +157,9 @@ export function openSlotEditor(host: HTMLElement, unitId: string, key: SlotKey, 
   const checkBtn = h('button', { type: 'button', class: 'alius-btn alius-option', 'data-action': 'check', ...analyzeNative('glossary:stage_preview') }, '[ CHECK ]') as HTMLButtonElement;
   checkBtn.addEventListener('click', () => {
     if (draft.url === null || !stillHere()) return;
+    // the open campaign has a scene: refused with its reason (the button shows it soft-disabled)
+    const refused = previewRefusal(ctx);
+    if (refused !== null) { ctx.toast('warn', refused); mark(); return; }
     stopMarking();
     openPreview(unitId, key, draft, ctx);
   });
@@ -168,6 +171,9 @@ export function openSlotEditor(host: HTMLElement, unitId: string, key: SlotKey, 
     saveBtn.disabled = !dirty() || avatar === null;
     if (zonesBtn) zonesBtn.disabled = draft.url === null;
     checkBtn.disabled = draft.url === null;
+    const refused = previewRefusal(ctx); // soft-disabled (`aria-disabled`, still analyzable) with the reason as its title
+    if (refused !== null) { checkBtn.setAttribute('aria-disabled', 'true'); checkBtn.title = refused; }
+    else { checkBtn.removeAttribute('aria-disabled'); checkBtn.removeAttribute('title'); }
     removeBtn.disabled = !inFolder();
     status.textContent = dirty() ? 'unsaved' : '';
   };

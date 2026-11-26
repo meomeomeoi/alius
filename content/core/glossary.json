@@ -3708,7 +3708,7 @@
     "id": "stage_preview",
     "term": "Check",
     "short": "Tries the slot in its own mini-game, with the picture, the fit and the zones as they are now, saved or not.",
-    "long": "The mini-game runs on a demo scene made for it, with her sprite as the holder. Nothing in it is saved, reaches the open campaign or its chat, or calls the model; closing it, Esc or a chat switch drop it.",
+    "long": "The mini-game runs on a demo scene made for it, with her sprite as the holder. Nothing in it is saved, reaches the open campaign or its chat, or calls the model; closing it, Esc or a chat switch drop it. While the open campaign has a scene, CHECK is refused (the scene's stage would be shared): close the scene first.",
     "see": [
       "stage_setup",
       "stage_fit",

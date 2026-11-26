@@ -233,6 +233,37 @@ describe('the preview in the mini-game (P10e-f Task 8)', () => {
     expect(unreachable(head)).toEqual([]);
   });
 
+  it('CHECK is refused while the open campaign has a scene: shown disabled with the reason, a toast, no preview', async () => {
+    const { ctx, her, s } = setup();
+    s.scene = { id: 'sc1', day: s.day, slot: 'morning', locationId: 'loc', participants: [her.id], mode: 'private', origin: 'free', consumesSlot: false, startIndex: 0, exchanges: 0 } as unknown as NonNullable<CampaignState['scene']>;
+    const reset = vi.fn();
+    const off = onStageReset(reset);
+    try {
+      const check = editorWithCheck(ctx, her.id, 'over', { url: 'blob:test/over', sidecar: {} })!;
+      expect(check.getAttribute('aria-disabled')).toBe('true');
+      expect(check.title).toBe('Close the scene to check it in the game.');
+      expect(check.dataset.analyze).toBe('glossary:stage_preview');
+      check.click();
+      await flush();
+      expect(overlay()).toBeNull();
+      expect(ctx.toast).toHaveBeenCalledWith('warn', 'Close the scene to check it in the game.');
+      expect(reset).not.toHaveBeenCalled(); // the real scene's stage is left alone
+      // openPreview itself refuses too (a caller that skips the button)
+      (ctx.toast as ReturnType<typeof vi.fn>).mockClear();
+      openPreview(her.id, 'over', { url: 'blob:test/over', sidecar: {} }, ctx);
+      expect(overlay()).toBeNull();
+      expect(ctx.toast).toHaveBeenCalledWith('warn', 'Close the scene to check it in the game.');
+      expect(reset).not.toHaveBeenCalled();
+      // the scene ends: CHECK is back
+      delete s.scene;
+      const again = editorWithCheck(ctx, her.id, 'over', { url: 'blob:test/over', sidecar: {} })!;
+      expect(again.hasAttribute('aria-disabled')).toBe(false);
+      expect(again.title).toBe('');
+    } finally {
+      off();
+    }
+  });
+
   it('CHECK is disabled while the slot has no picture', () => {
     const { ctx, her } = setup();
     const check = editorWithCheck(ctx, her.id, 'over', { url: null, sidecar: {} });

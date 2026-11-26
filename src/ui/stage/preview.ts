@@ -152,11 +152,23 @@ export function closePreview(): void {
   current?.close();
 }
 
+/** Why CHECK is refused now (null = it can open): the open campaign has a scene, whose stage and instrument host the preview would share. */
+export const SCENE_OPEN_REFUSAL = 'Close the scene to check it in the game.';
+export function previewRefusal(ctx: Pick<StageCtx, 'getState'>): string | null {
+  return ctx.getState()?.scene ? SCENE_OPEN_REFUSAL : null;
+}
+
 /**
  * Opens the preview of her slot `key` with the unsaved `draft` (its picture and sidecar). Returns its close. Refused with a toast when
- * she has no card or the slot's instrument has no demo state.
+ * she has no card, the slot's instrument has no demo state or the open campaign has a scene (the scene stage and the instrument host are
+ * one per page: resetting them or starting the demo's instrument would stop the real scene's; `previewRefusal`).
  */
 export function openPreview(unitId: string, key: SlotKey, draft: SlotDraft, ctx: StageCtx): () => void {
+  const refused = previewRefusal(ctx);
+  if (refused !== null) {
+    ctx.toast('warn', refused);
+    return () => {};
+  }
   watch(ctx.st);
   current?.close();
   const unit = ctx.getState()?.squad.find((u) => u.id === unitId && u.kind === 'named');
