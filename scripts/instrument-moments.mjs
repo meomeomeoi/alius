@@ -28,6 +28,7 @@ export const MOMENTS = {
   her_activity: activityMoments(),
   throne: throneMoments(),
   service: serviceMoments(),
+  shoe: shoeMoments(),
   cards: {
     state: 'one',
     clip: dialCorner,
@@ -577,6 +578,79 @@ function serviceMoments() {
       moment('rub', async (p, k) => { await signal(p, k, 'rub', 1200); await drag(p, k, 'arch', 'circle', 30); await p.clock.runFor(100); }),
       moment('verdict', async (p, k) => { await signal(p, k, 'kiss', 1200); await p.evaluate(`${k.G}.step = 'with'; Object.assign(${k.SV}, { phase: 'craft', act: 'kiss', acts: 1, quality: 1 }); ${k.sv}svEndBout(true);`); await p.clock.runFor(1100); }),
       moment('close-up-1280', (p, k) => signal(p, k, 'kiss', 1200), [1280, 800]),
+    ],
+  };
+}
+
+/**
+ * shoe.html: shoe service (Task 28). The port is the `shoe` fixture (Ann's boots, `boot_worship`, her attention busy) or `shoeheels` (her
+ * likes name heels); its two pictures are the prototype's stand-in, the layout fixture's sprite drawn as a PNG (`&art=`, as the prototype's
+ * `SPRITE`: no art is committed). Both pages run on Playwright's fake clock, paused; each moment begins on both at the same instant (`begin`),
+ * her foot's own moves held off (`G.nextMove`), and the same calls drive both: the tongue through `down` / `move` / `up` at the same zone, a
+ * spit while she is busy on her device (the prototype's own chance answers at once; the port's answer is the engine's at the segment's end,
+ * shown here with `spitAnswer(false)`), the shine on clean leather by slow strokes, her inspection. Moments: boots from above, heels with the
+ * sole presented, grit, a spit while she taps, shine, the inspection; boots from above at 1280x800.
+ */
+function shoeMoments() {
+  const ART = '/.superpowers/shots/shoe/sprite.png';
+  const start = (kind, dirt) => ({
+    proto: async (p) => {
+      await fakeClock(p, () => document.fonts.ready);
+      await p.addStyleTag({ content: '#panel, #debug, #summary, #start { visibility: hidden !important; }' });
+      await p.evaluate(([k, d]) => { Object.assign(window.__S, { kind: k, dirt: d, style: 'neutral', busy: 'always', sound: false, reduced: false }); }, [kind, dirt]);
+      await p.evaluate(() => { document.querySelector('#start').style.display = 'none'; begin(); G.nextMove = 1e12; });
+    },
+    port: async (p) => {
+      await fakeClock(p, async () => { while (document.body.dataset.ready !== 'true' || window.__shoe.G.phase !== 'loop') await new Promise((r) => setTimeout(r, 50)); });
+      await p.evaluate((d) => { const s = window.__shoe; s.S.dirt = d; s.resetClock(); s.begin(); s.G.nextMove = 1e12; }, dirt);
+    },
+  });
+  const K = { proto: '', port: 'window.__shoe.' };
+  /** The screen point of a zone's centre on the picture now. */
+  const zone = (k, z) => `(() => { const r = ${k}shoeRect(); const p = ${k}zonesNow()['${z}']; const u = ${k}mirrored() ? 1 - p[0] : p[0]; return [r.x + u * r.w, r.y + p[1] * r.h]; })()`;
+  /** Strokes across a zone: `n` moves of `dx` px, every `ms` of the clock (slow ones polish). */
+  const strokes = async (p, k, z, n, dx, ms) => {
+    await p.evaluate(`{ const [x, y] = ${zone(k, z)}; window.__z = [x, y]; ${k}down(x, y); }`);
+    for (let i = 1; i <= n; i++) {
+      await p.clock.runFor(ms);
+      await p.evaluate(`{ const [x, y] = window.__z; ${k}move(x + (${i} % 2 ? ${dx} : -${dx}), y + (${i} % 5) * 3, {}); }`);
+    }
+    await p.evaluate(`${k}up()`);
+  };
+  const side = (k) => (k === K.proto ? 'proto' : 'port');
+  const moment = (id, kind, dirt, play, size) => {
+    const s = start(kind, dirt);
+    return {
+      id, state: kind === 'heels' ? 'shoeheels' : 'shoe', query: `&style=neutral&art=${ART}`, ...(size ? { size } : {}),
+      proto: async (p) => { await s.proto(p); await p.clock.runFor(600); await play(p, K.proto); },
+      port: async (p) => { await s.port(p); await p.clock.runFor(600); await play(p, K.port); },
+    };
+  };
+  void side;
+  return {
+    state: 'shoe',
+    rasterSprite: true,
+    hide: ['#panel', '#debug', '#summary', '#start', '#markPrompt'],
+    settle: 60,
+    moments: [
+      moment('boots-above', 'boots', 'mud', (p) => p.clock.runFor(800)),
+      moment('heels-sole', 'heels', 'dust', async (p, k) => { await p.evaluate(`${k === K.proto ? '' : 'window.__shoe.'}nextSurface()`); await p.clock.runFor(900); }),
+      moment('grit', 'boots', 'mud', async (p, k) => { await strokes(p, k, 'toe', 24, 40, 30); await p.evaluate(`${k === K.proto ? 'G' : 'window.__shoe.G'}.grit = 0.8`); await p.clock.runFor(500); }),
+      moment('spit-busy', 'boots', 'ash', async (p, k) => {
+        const G = k === K.proto ? 'G' : 'window.__shoe.G';
+        await p.evaluate(`${G}.grit = 0.6; ${G}.attention = 'busy';`);
+        if (k === K.proto) await p.evaluate(() => { const m = Math.random; Math.random = () => 0.5; spit(); Math.random = m; });
+        else await p.evaluate(() => { window.__shoe.spit(); window.__shoe.spitAnswer(false); });
+        await p.clock.runFor(700);
+      }),
+      moment('shine', 'boots', 'mud', async (p, k) => {
+        await p.evaluate(`${k === K.proto ? 'surf()' : 'window.__shoe.ensureSurface()'}.m.fill(0)`);
+        await strokes(p, k, 'vamp', 40, 12, 40);
+        await strokes(p, k, 'toe', 40, 12, 40);
+        await p.clock.runFor(200);
+      }),
+      moment('inspection', 'boots', 'mud', async (p, k) => { await strokes(p, k, 'toe', 24, 40, 30); await p.evaluate(`${k}inspect()`); await p.clock.runFor(900); }),
+      moment('boots-above-1280', 'boots', 'mud', (p) => p.clock.runFor(800), [1280, 800]),
     ],
   };
 }

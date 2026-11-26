@@ -3146,9 +3146,13 @@ export const CARD_VOICE_KINDS = [
   'throne.spill', 'throne.skid', 'throne.thank', 'throne.thanked', 'throne.noThanks',
   // P10e-e Task 26: foot service's lines (her_activity.html `SVC_LINES`); her words for the zones are `service.zone.<zone>` (CARD_VOICE_STATIC, `ZONE_WORDS`)
   'service.good', 'service.poor', 'service.wrong',
+  // P10e-e Task 28: shoe service's lines (shoe.html `LINES`, card-voice.md §14); her words for the zones are `shoe.zone.<zone>` (CARD_VOICE_STATIC,
+  // `ZONE_WORDS`); `shoe.stop` is finish's line after the stop word (the prototype's inline one)
+  'shoe.entry', 'shoe.turn', 'shoe.sole', 'shoe.kiss', 'shoe.polish', 'shoe.other', 'shoe.caught', 'shoe.swallowed', 'shoe.good', 'shoe.poor',
+  'shoe.missed', 'shoe.dull', 'shoe.stamp', 'shoe.end', 'shoe.stop',
 ] as const;
 /** The kinds of her static words (card-voice.md §3), keyed by a milestone id, a domain id (or `submit`) and the return's terms; her first words under a weight, by the contact (§8, `weight.entry.<contact>`); under her scent, her first words and her named places by the contact (§9); in the jaw, her first words by what holds the mouth open (§10, `jaw.entry.<contact>`). */
-export const CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+|scent\.(entry|here)\.[a-z0-9_]+|jaw\.entry\.[a-z0-9_]+|activity\.(self|toYou|ask|exchange)\.[a-z0-9_]+|service\.zone\.[a-z0-9_]+)$/;
+export const CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+|scent\.(entry|here)\.[a-z0-9_]+|jaw\.entry\.[a-z0-9_]+|activity\.(self|toYou|ask|exchange)\.[a-z0-9_]+|service\.zone\.[a-z0-9_]+|shoe\.zone\.[a-z0-9_]+)$/;
 
 /**
  * P10e-e R7: a table of her lines on the scene's cards (`docs/content/card-voice.md` is the readable copy, approved by the author). Read
@@ -3159,6 +3163,6 @@ export const CardVoiceSchema = BaseEntrySchema.extend({
   kind: str.refine((k) => (CARD_VOICE_KINDS as readonly string[]).includes(k) || CARD_VOICE_STATIC.test(k), 'an unknown card voice kind'),
   style: str.optional(),
   lines: z.array(str.max(160)),
-}).strict().refine((e) => e.lines.length > 0 || ((e.kind.startsWith('breath.') || e.kind.startsWith('weight.') || e.kind.startsWith('scent.') || e.kind.startsWith('jaw.') || e.kind.startsWith('activity.') || e.kind.startsWith('throne.')) && e.style !== undefined), 'no lines (only a style\'s own breath, weight, scent or jaw row may be empty: she is silent there)');
+}).strict().refine((e) => e.lines.length > 0 || ((e.kind.startsWith('breath.') || e.kind.startsWith('weight.') || e.kind.startsWith('scent.') || e.kind.startsWith('jaw.') || e.kind.startsWith('activity.') || e.kind.startsWith('throne.') || e.kind.startsWith('shoe.')) && e.style !== undefined), 'no lines (only a style\'s own breath, weight, scent, jaw, frame or shoe row may be empty: she is silent there)');
 export type CardVoiceEntry = z.infer<typeof CardVoiceSchema>;
 registrySchemas.cardVoice = CardVoiceSchema;

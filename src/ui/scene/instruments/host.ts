@@ -59,6 +59,20 @@ export function instrumentFor(run: PhysicsRun, state: CampaignState, reg: Regist
   }) ?? null;
 }
 
+/**
+ * Whether a matching instrument can draw this run on this scene (`InstrumentDef.drawable`, e.g. its pictures exist and none failed): absent =
+ * yes; false (or a throw) = the card plays the run.
+ */
+function drawable(def: InstrumentDef, env: InstrumentEnv, run: PhysicsRun): boolean {
+  if (!def.drawable) return true;
+  try {
+    return def.drawable(env, run);
+  } catch (err) {
+    warnOnce(def.id, 'drawable', err);
+    return false;
+  }
+}
+
 /** What a mount undoes at its unmount. */
 interface Scope {
   /** Inputs reach the engine (dead from the end of the run). */
@@ -121,7 +135,7 @@ function scopedStaging(staging: PhysicsPanelStaging, scope: Scope): PhysicsPanel
     relief: (x) => (on() ? staging.relief?.(x) ?? [] : []),
     woke: () => (on() ? staging.woke?.() ?? [] : []),
     // e9: her verdict is said at the session's end, when the run is already gone: alive until the unmount (never into a new scene or chat)
-    service: (id, v) => (scope.live ? staging.service?.(id, v) ?? [] : []),
+    service: (id, v, holder) => (scope.live ? (holder !== undefined ? staging.service?.(id, v, holder) : staging.service?.(id, v)) ?? [] : []),
     beat: () => staging.beat(),
     clock: () => staging.clock(),
   };
@@ -358,7 +372,8 @@ export function syncInstruments(env: InstrumentEnv, run: PhysicsRun | undefined)
     else if (current && !current.finishing) unmountInstruments();
     return false;
   }
-  const def = state ? instrumentFor(run, state, env.registries, env.settings()) : null;
+  const found = state ? instrumentFor(run, state, env.registries, env.settings()) : null;
+  const def = found && drawable(found, env, run) ? found : null;
   if (!def) {
     unmountInstruments();
     return false;

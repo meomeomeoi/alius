@@ -1,0 +1,72 @@
+/*
+ * P10e-e Task 28: shoe service (docs/prototypes/shoe.html, normative). The instrument lies in the effects layer (`.alius-shoe`, under the
+ * scene's UI: the reply, the field and the stop word's pill stay on top) and takes no pointer (the frame's own listeners read the gestures).
+ * The world behind is the room's backdrop blurred 16 px, dimmed to 0.45, a dark vignette; her footwear's picture with the dirt laid over it in
+ * its own colour, the gloss and the inspection's light screen-blended; the kisses' marks; her hand and the sensory lines. Readable mode drops
+ * every blur and the write-on; the still form drops the write-on. Every z-index stays below 10.
+ */
+#alius-shell .alius-shoe {
+  position: absolute;
+  inset: 0;
+  z-index: 1; /* over the effects layer's own gradient */
+  overflow: hidden;
+  pointer-events: none;
+  background: #000;
+  color: #ece8f2;
+  font-family: Inter, var(--alius-font-sans), system-ui, sans-serif;
+  font-weight: 300;
+}
+#alius-shell .alius-shoe > *,
+#alius-shell .alius-shoe-world > *,
+#alius-shell .alius-shoe-shoeWrap > * { position: absolute; pointer-events: none; }
+#alius-shell .alius-shoe-world { inset: -5%; will-change: transform; }
+#alius-shell .alius-shoe-backdrop { inset: 0; background-size: cover; background-position: center 80%; filter: blur(16px) brightness(.45) saturate(.85); }
+#alius-shell .alius-shoe-shade { inset: 0; background: radial-gradient(ellipse 70% 60% at 50% 55%, rgba(0,0,0,0) 30%, rgba(0,0,0,.7) 100%); }
+#alius-shell .alius-shoe-shoeWrap { left: 0; top: 0; transform-origin: 50% 50%; will-change: transform; }
+#alius-shell .alius-shoe-shoe,
+#alius-shell .alius-shoe-dirtC,
+#alius-shell .alius-shoe-glossC,
+#alius-shell .alius-shoe-lightC { left: 0; top: 0; width: 100%; height: 100%; max-width: none; user-select: none; -webkit-user-drag: none; }
+#alius-shell .alius-shoe-dirtC { image-rendering: auto; } /* drawn over (not multiplied): dust and ash must show light on black leather */
+#alius-shell .alius-shoe-glossC { mix-blend-mode: screen; }
+#alius-shell .alius-shoe-lightC { mix-blend-mode: screen; }
+#alius-shell .alius-shoe-markC { inset: 0; width: 100%; height: 100%; }
+#alius-shell .alius-shoe-vig,
+#alius-shell .alius-shoe-hand { inset: 0; }
+
+/* her hand and the sensory lines */
+#alius-shell .alius-shoe-hand .her-line {
+  position: absolute;
+  font-family: var(--alius-font-hand, "Caveat"), cursive;
+  color: var(--alius-her, #8cc8f0);
+  white-space: nowrap;
+  line-height: 1;
+  font-size: calc(42px * var(--alius-shoe-hand-scale, 1));
+  text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.85), 0 0 28px rgba(0,0,0,.6);
+  animation: alius-shoe-write var(--write, 600ms) steps(var(--steps, 12), end) both;
+  transition: opacity .5s;
+}
+#alius-shell .alius-shoe-hand .her-line.gone,
+#alius-shell .alius-shoe-hand .sense.gone { opacity: 0; }
+@keyframes alius-shoe-write {
+  from { clip-path: inset(-30% 100% -30% -8%); }
+  to { clip-path: inset(-30% -8% -30% -8%); }
+}
+#alius-shell .alius-shoe-hand .sense {
+  position: absolute;
+  font: italic 300 16px/1.4 Inter, var(--alius-font-sans), sans-serif;
+  color: rgba(236,232,242,.62);
+  text-shadow: 0 1px 2px #000, 0 0 10px rgba(0,0,0,.8);
+  transition: opacity .8s;
+  max-width: 380px;
+}
+
+/* the still form and readable mode */
+#alius-shell .alius-shoe[data-reduced] .her-line { animation: none; }
+#alius-shell .alius-shoe[data-readable] .alius-shoe-backdrop { filter: brightness(.45) saturate(.85); }
+#alius-shell .alius-shoe[data-readable] .her-line {
+  animation: none;
+  font-family: var(--alius-font-type);
+  text-shadow: 0 0 2px rgba(0,0,0,.9);
+}
+#alius-shell .alius-shoe[data-broken] { display: none; } /* a picture failed: the scene shows through until the card takes the run */

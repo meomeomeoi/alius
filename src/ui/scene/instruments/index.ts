@@ -8,4 +8,5 @@ import './weight/weight';
 import './scent/scent';
 import './jaw/jaw';
 import './activity/frame';
+import './shoe/shoe';
 export type { HerLook, InstrumentDef, InstrumentEnv, InstrumentRun } from './types';

@@ -1088,3 +1088,150 @@ Kinds `service.good` / `service.poor` (her line at the end of a bout by its qual
 - **arch:** `the arch.`
 - **heel:** `heel.`
 - **edge:** `the edge.`
+
+## 14. Shoe service (shoe.html, approved by the author, 2026-11-24)
+
+Kinds `shoe.<kind>` by her style (shoe.html `LINES`, verbatim): her first words (`entry`), turning her foot (`turn`), presenting the sole (`sole`), asking for a kiss (`kiss`), her first wish for a shine (`polish`), changing feet (`other`), a spit she saw (`caught`), a swallow (`swallowed`), her verdict on a surface (`good` / `poor`, or the worst zone: `missed` over 0.2 of dirt, `dull` under 0.35 of shine; `%z` is her word for the zone), a stamp after a poor surface (`stamp`) and her end (`end`); `stop` is her line after the stop word (the prototype's `finish('stop')`). A style not listed reads neutral's; cold is silent (Ruling R), her first words included. Her words for the zones are `shoe.zone.<zone>` (no style, under **zones** below).
+
+### neutral
+- **entry:** `clean them.`
+- **turn:** `the other side.`
+- **sole:** `underneath.`
+- **kiss:** `kiss it.`
+- **polish:** `now make it shine.`
+- **other:** `now the other one.`
+- **caught:** `did you just spit?`
+- **swallowed:** `swallow it.`
+- **good:** `good.`
+- **poor:** `sloppy.`
+- **missed:** `%z. you missed it.`
+- **dull:** `%z is dull.`
+- **stamp:** `properly.`
+- **end:** `that will do.`
+- **stop:** `okay. stop. come here.`
+
+### affectionate
+- **entry:** `would you? they’re filthy.`
+- **turn:** `and this side, love.`
+- **sole:** `underneath too.`
+- **kiss:** `kiss it for me.`
+- **polish:** `make them pretty.`
+- **other:** `the other one, please.`
+- **caught:** `hey. I saw that.`
+- **swallowed:** `there you go.`
+- **good:** `they look lovely.`
+- **poor:** `nearly, sweetheart.`
+- **missed:** `you missed %z.`
+- **dull:** `%z could shine more.`
+- **stamp:** silent
+- **end:** `thank you. really.`
+
+### ritual
+- **entry:** `begin with the toe.`
+- **turn:** `the inner side.`
+- **sole:** `the sole.`
+- **kiss:** `kiss the toe.`
+- **polish:** `polish.`
+- **other:** `the left.`
+- **caught:** `you spat. again.`
+- **swallowed:** `swallow.`
+- **good:** `as it should be.`
+- **poor:** `again.`
+- **missed:** `%z.`
+- **dull:** `%z. it is dull.`
+- **stamp:** `the form.`
+- **end:** `enough. kiss them both.`
+
+### playful
+- **entry:** `look what I stepped in~`
+- **turn:** `other side~`
+- **sole:** `tada~ underneath.`
+- **kiss:** `kiss~`
+- **polish:** `make them sparkle~`
+- **other:** `and the other one~`
+- **caught:** `eww. spitting? naughty.`
+- **swallowed:** `yummy?`
+- **good:** `ooh, shiny.`
+- **poor:** `hmm, meh.`
+- **missed:** `you missed a spot~ %z.`
+- **dull:** `%z is so dull~`
+- **stamp:** `faster~`
+- **end:** `okay okay, good pet.`
+
+### cruel
+- **entry:** `clean.`
+- **turn:** `other side.`
+- **sole:** `the sole. all of it.`
+- **kiss:** `kiss it.`
+- **polish:** `shine it.`
+- **other:** `other foot.`
+- **caught:** `you spat it out? lick it back up.`
+- **swallowed:** `swallow.`
+- **good:** `adequate.`
+- **poor:** `pathetic.`
+- **missed:** `%z. you call that clean?`
+- **dull:** `%z. dull. again.`
+- **stamp:** `faster.`
+- **end:** `get away from my feet.`
+
+### possessive
+- **entry:** `my boots. clean them.`
+- **turn:** `this side too.`
+- **sole:** `underneath. mine all over.`
+- **kiss:** `kiss it. it’s mine.`
+- **polish:** `make them shine for me.`
+- **other:** `now the other.`
+- **caught:** `you don’t waste what’s mine.`
+- **swallowed:** `all of it. good.`
+- **good:** `good. mine.`
+- **poor:** `you’ll do better for me.`
+- **missed:** `%z.`
+- **dull:** `%z. dull.`
+- **stamp:** `for me. properly.`
+- **end:** `good. stay there.`
+
+### cold
+- **entry:** silent
+- **turn:** silent
+- **sole:** silent
+- **kiss:** silent
+- **polish:** silent
+- **other:** silent
+- **caught:** silent
+- **swallowed:** silent
+- **good:** silent
+- **poor:** silent
+- **missed:** silent
+- **dull:** silent
+- **stamp:** silent
+- **end:** silent
+- **stop:** silent
+
+### regal
+- **entry:** `my boots need you.`
+- **turn:** `the other side, if you please.`
+- **sole:** `and beneath.`
+- **kiss:** `kiss them. you may.`
+- **polish:** `I want to see myself in them.`
+- **other:** `now the other.`
+- **caught:** `you spat at my feet?`
+- **swallowed:** `swallow it. graciously.`
+- **good:** `worthy.`
+- **poor:** `unworthy.`
+- **missed:** `%z. look again.`
+- **dull:** `%z does not shine.`
+- **stamp:** `I am waiting.`
+- **end:** `you may thank me.`
+
+### zones
+- **toe:** `the toe`
+- **vamp:** `the top`
+- **laces:** `the laces`
+- **side:** `the side`
+- **heel:** `the heel`
+- **shaft:** `the shaft`
+- **welt:** `the welt`
+- **back:** `the back`
+- **toe_tread:** `the tread`
+- **mid:** `the middle of the sole`
+- **heel_tread:** `the heel underneath`

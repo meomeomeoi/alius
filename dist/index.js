@@ -2149,7 +2149,7 @@ function summarizeWorldOptionEffect(effect, reg) {
     case "acquaintance_grace":
       return x.days === 0 ? "Soldiers may start secret protest from the first day" : "Soldiers hold back secret protest while they get to know a new commander";
     case "squad_power": {
-      const more = (n, up, down2) => typeof n !== "number" || n === 1 ? null : n > 1 ? up : down2;
+      const more = (n, up2, down3) => typeof n !== "number" || n === 1 ? null : n > 1 ? up2 : down3;
       const parts2 = [
         more(x.privilegeMult, "A squad leader has greater privileges", "A squad leader has lesser privileges"),
         more(x.demandMult, "Soldiers make demands more often", "Soldiers make demands less often"),
@@ -2410,8 +2410,8 @@ function bodyGrowthMult(state, reg) {
 function addBodyXp(commander, stat3, amount) {
   const body2 = commander.body ??= { ...TUNING.commander.defaults.body };
   const xp = commander.bodyXp ??= { strength: 0, endurance: 0, reflexes: 0 };
-  const before6 = body2[stat3];
-  if (before6 >= 5 || !(amount > 0)) return { value: before6, gained: false };
+  const before7 = body2[stat3];
+  if (before7 >= 5 || !(amount > 0)) return { value: before7, gained: false };
   let pool = xp[stat3] + amount;
   while (body2[stat3] < 5 && pool >= TUNING.commander.bodyXpSteps[body2[stat3] - 1]) {
     pool -= TUNING.commander.bodyXpSteps[body2[stat3] - 1];
@@ -2419,7 +2419,7 @@ function addBodyXp(commander, stat3, amount) {
   }
   xp[stat3] = body2[stat3] >= 5 ? 0 : pool;
   commander.archetype = archetypeOf(body2);
-  return { value: body2[stat3], gained: body2[stat3] > before6 };
+  return { value: body2[stat3], gained: body2[stat3] > before7 };
 }
 function intimidationBonus(state) {
   const p = commanderProfile(state);
@@ -2455,35 +2455,35 @@ function commanderLine(state) {
 // src/engine/ledger.ts
 var RESOURCES = ["credits", "supplies", "plyx"];
 var AXES = ["trust", "affinity", "attraction"];
-function recordLedger(before6, after8, action) {
+function recordLedger(before7, after9, action) {
   const entries2 = [];
   const push3 = (key, delta) => {
-    if (Number.isFinite(delta) && delta !== 0) entries2.push({ day: before6.day, slot: before6.slot, action, key, delta });
+    if (Number.isFinite(delta) && delta !== 0) entries2.push({ day: before7.day, slot: before7.slot, action, key, delta });
   };
-  for (const r of RESOURCES) push3(`res:${r}`, (after8.resources?.[r] ?? 0) - (before6.resources?.[r] ?? 0));
-  push3("res:cmdr_stress", (after8.commander?.stress ?? 0) - (before6.commander?.stress ?? 0));
-  const stressBefore = new Map(before6.squad.map((u) => [u.id, u.stress]));
-  for (const u of after8.squad) {
+  for (const r of RESOURCES) push3(`res:${r}`, (after9.resources?.[r] ?? 0) - (before7.resources?.[r] ?? 0));
+  push3("res:cmdr_stress", (after9.commander?.stress ?? 0) - (before7.commander?.stress ?? 0));
+  const stressBefore = new Map(before7.squad.map((u) => [u.id, u.stress]));
+  for (const u of after9.squad) {
     const was = stressBefore.get(u.id);
     if (was !== void 0) push3(`stress:${u.id}`, (u.stress ?? 0) - (was ?? 0));
   }
-  for (const [id, rel] of Object.entries(after8.relations)) {
-    const was = before6.relations[id];
+  for (const [id, rel] of Object.entries(after9.relations)) {
+    const was = before7.relations[id];
     if (!was) continue;
     for (const axis of AXES) push3(`axis:${id}:${axis}`, (rel[axis] ?? 0) - (was[axis] ?? 0));
     push3(`record:${id}`, (rel.impunityRecord ?? 0) - (was.impunityRecord ?? 0));
     push3(`want:${id}`, (rel.want ?? 0) - (was.want ?? 0));
   }
-  for (const [id, now] of Object.entries(after8.power?.hierarchy?.standings ?? {})) {
-    const was = before6.power?.hierarchy?.standings?.[id];
+  for (const [id, now] of Object.entries(after9.power?.hierarchy?.standings ?? {})) {
+    const was = before7.power?.hierarchy?.standings?.[id];
     if (was !== void 0) push3(`standing:${id}`, now - was);
   }
-  if (before6.commander?.body !== void 0 && after8.commander?.body !== void 0) for (const stat3 of BODY_STATS) push3(`body:${stat3}`, (after8.commander?.body?.[stat3] ?? 0) - (before6.commander?.body?.[stat3] ?? 0));
-  if (entries2.length > 0) after8.ledger = [...after8.ledger ?? [], ...entries2];
-  if (!after8.ledger) return;
-  const oldest = after8.day - (TUNING.ledger.days - 1);
-  const kept = after8.ledger.filter((e) => e.day >= oldest);
-  after8.ledger = capByKind(kept, TUNING.ledger.max);
+  if (before7.commander?.body !== void 0 && after9.commander?.body !== void 0) for (const stat3 of BODY_STATS) push3(`body:${stat3}`, (after9.commander?.body?.[stat3] ?? 0) - (before7.commander?.body?.[stat3] ?? 0));
+  if (entries2.length > 0) after9.ledger = [...after9.ledger ?? [], ...entries2];
+  if (!after9.ledger) return;
+  const oldest = after9.day - (TUNING.ledger.days - 1);
+  const kept = after9.ledger.filter((e) => e.day >= oldest);
+  after9.ledger = capByKind(kept, TUNING.ledger.max);
 }
 var kindOf = (e) => e.key.slice(0, e.key.indexOf(":"));
 function capByKind(list5, max) {
@@ -2583,7 +2583,7 @@ function forgetPower(draft, unitId) {
 var RANGE = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] };
 var defaultHandler = ({ relation }, axis, amount) => {
   const [lo, hi] = RANGE[axis];
-  const before6 = relation[axis];
+  const before7 = relation[axis];
   let applied = amount;
   if (amount > 0) {
     const done = relation.dailyGain[axis];
@@ -2594,8 +2594,8 @@ var defaultHandler = ({ relation }, axis, amount) => {
     }
     applied = Math.round(sum);
   }
-  relation[axis] = Math.min(hi, Math.max(lo, before6 + applied));
-  const real = relation[axis] - before6;
+  relation[axis] = Math.min(hi, Math.max(lo, before7 + applied));
+  const real = relation[axis] - before7;
   if (real > 0) relation.dailyGain[axis] += real;
   return real;
 };
@@ -2707,10 +2707,10 @@ function checkUpgrade(state, reg, id) {
   const level = facilityLevel2(state, id);
   if (level >= levels.length) return `${name} is already at its max level (${levels.length}).`;
   if ((state.base.upgrades ?? []).some((u) => u.facilityId === id)) return `${name} is already being upgraded.`;
-  const up = levels[level].upgrade;
-  if (!up) return `${name} has no upgrade to level ${level + 1}.`;
-  if (state.resources.credits < up.credits) return `Not enough credits to upgrade ${name} (needs ${up.credits}).`;
-  if (state.resources.plyx < up.plyx) return `Not enough PLYX to upgrade ${name} (needs ${up.plyx}).`;
+  const up2 = levels[level].upgrade;
+  if (!up2) return `${name} has no upgrade to level ${level + 1}.`;
+  if (state.resources.credits < up2.credits) return `Not enough credits to upgrade ${name} (needs ${up2.credits}).`;
+  if (state.resources.plyx < up2.plyx) return `Not enough PLYX to upgrade ${name} (needs ${up2.plyx}).`;
   return null;
 }
 function checkRecruit(state) {
@@ -2800,8 +2800,8 @@ function splitmix32(a) {
     return (t ^ t >>> 15) >>> 0;
   };
 }
-function seedRng(seed6) {
-  const mix = splitmix32(seed6);
+function seedRng(seed7) {
+  const mix = splitmix32(seed7);
   const state = [mix(), mix(), mix(), mix()];
   const rng = new Rng(state);
   for (let i = 0; i < 12; i++) rng.float();
@@ -7364,12 +7364,12 @@ var VIEW_OF = { slide: "room" };
 function occlusionOf(contact) {
   const o = contact?.occlusion;
   const kind = OCCLUSION_KINDS.includes(o?.kind ?? "") ? o.kind : "slit";
-  const view = OCCLUSION_VIEWS.includes(o?.view ?? "") ? o.view : VIEW_OF[kind] ?? "ceiling";
+  const view2 = OCCLUSION_VIEWS.includes(o?.view ?? "") ? o.view : VIEW_OF[kind] ?? "ceiling";
   return {
     kind,
     ...o?.side === "left" || o?.side === "right" ? { side: o.side } : {},
     ...typeof o?.angle === "number" && Number.isFinite(o.angle) ? { angle: o.angle } : {},
-    view
+    view: view2
   };
 }
 var CONTACT_FACES = ["up", "down"];
@@ -7417,7 +7417,7 @@ function validatePractice(raw, reg) {
   const dropped = [];
   if (raw === void 0) return { issues, dropped };
   if (!isObj(raw)) return { issues: ["practice must be an object"], dropped };
-  const pick10 = (field2, allowed, fallback) => {
+  const pick11 = (field2, allowed, fallback) => {
     const v = raw[field2];
     if (v === void 0) return fallback;
     if (typeof v === "string" && allowed.includes(v)) return v;
@@ -7458,11 +7458,11 @@ function validatePractice(raw, reg) {
   const practice = {
     categories,
     style: secondary === void 0 ? { primary } : { primary, secondary },
-    audience: pick10("audience", AUDIENCE, PRACTICE_DEFAULTS.audience),
-    inclination: pick10("inclination", INCLINATION, PRACTICE_DEFAULTS.inclination),
-    fairness: pick10("fairness", FAIRNESS, PRACTICE_DEFAULTS.fairness),
-    hintStyle: pick10("hintStyle", HINT_STYLE, PRACTICE_DEFAULTS.hintStyle),
-    drive: pick10("drive", DRIVE, PRACTICE_DEFAULTS.drive)
+    audience: pick11("audience", AUDIENCE, PRACTICE_DEFAULTS.audience),
+    inclination: pick11("inclination", INCLINATION, PRACTICE_DEFAULTS.inclination),
+    fairness: pick11("fairness", FAIRNESS, PRACTICE_DEFAULTS.fairness),
+    hintStyle: pick11("hintStyle", HINT_STYLE, PRACTICE_DEFAULTS.hintStyle),
+    drive: pick11("drive", DRIVE, PRACTICE_DEFAULTS.drive)
   };
   return { practice, issues, dropped };
 }
@@ -7559,10 +7559,10 @@ function leadingCategory(state, reg, holderId) {
   const dyn = dynamicOf(state, holderId);
   const ranked = Object.entries(dyn?.tracks ?? {}).filter(([, t]) => t.xp > 0).map(([id, t]) => ({ category: reg.dynamicTracks.get(id)?.category, xp: t.xp })).filter((t) => typeof t.category === "string").sort((a, b) => b.xp - a.xp);
   if (ranked.length > 0) return ranked[0].category;
-  const view = practiceOf(state, reg, holderId);
-  if (view === null) return void 0;
+  const view2 = practiceOf(state, reg, holderId);
+  if (view2 === null) return void 0;
   for (const as of AS_ORDER) {
-    const found2 = practiceCategories(reg).find((c) => view.categories[c]?.as === as);
+    const found2 = practiceCategories(reg).find((c) => view2.categories[c]?.as === as);
     if (found2 !== void 0) return found2;
   }
   return void 0;
@@ -7573,8 +7573,8 @@ function witnessOf(state, reg, observerId, holderId) {
   return practiceOf(state, reg, observerId)?.categories[category]?.witness ?? "indifferent";
 }
 function reactionOf(state, reg, observerId, holderId) {
-  const frame7 = dynamicOf(state, observerId)?.frame;
-  if (frame7 !== void 0 && frame7 !== "equal") {
+  const frame8 = dynamicOf(state, observerId)?.frame;
+  if (frame8 !== void 0 && frame8 !== "equal") {
     const manner = practiceOf(state, reg, observerId)?.style.primary;
     if (manner === "ritual" || manner === "cold") return "respects";
     if (manner === "possessive" || manner === "cruel") return "competes";
@@ -7615,8 +7615,8 @@ function dynamicTerm(state, reg, unitId) {
 }
 function standingMalus(state, reg, holderId) {
   if (!dynamicLive(state, reg)) return 0;
-  const R9 = TUNING.squadKnowledge.reaction;
-  return Math.min(R9.standingMax, Math.round(dislikers(state, reg, holderId).reduce((sum, id) => sum + scaleOf(state, reg, id), 0) * R9.dislikesStanding));
+  const R10 = TUNING.squadKnowledge.reaction;
+  return Math.min(R10.standingMax, Math.round(dislikers(state, reg, holderId).reduce((sum, id) => sum + scaleOf(state, reg, id), 0) * R10.dislikesStanding));
 }
 
 // src/engine/practice/state.ts
@@ -7877,16 +7877,16 @@ function emptyRegistries() {
 var LINK = /\[\[([^[\]|]+)(?:\|([^[\]]*))?\]\]/g;
 function parseLinks(text3) {
   const out = [];
-  let last2 = 0;
+  let last3 = 0;
   for (const m of text3.matchAll(LINK)) {
     const at2 = m.index ?? 0;
-    if (at2 > last2) out.push(text3.slice(last2, at2));
+    if (at2 > last3) out.push(text3.slice(last3, at2));
     const target = m[1].trim();
     const label2 = m[2]?.trim();
     out.push(label2 ? { target, label: label2 } : { target });
-    last2 = at2 + m[0].length;
+    last3 = at2 + m[0].length;
   }
-  if (last2 < text3.length) out.push(text3.slice(last2));
+  if (last3 < text3.length) out.push(text3.slice(last3));
   return out;
 }
 function idPart(target) {
@@ -9791,18 +9791,18 @@ var PrologueSchema = BaseEntrySchema.extend({
   steps: external_exports.record(external_exports.string().regex(ID_PATTERN), PrologueStepSchema)
 }).superRefine((p, ctx2) => {
   const issue = (path, message) => ctx2.addIssue({ code: "custom", path, message });
-  let broken = false;
+  let broken2 = false;
   p.order.forEach((id, i) => {
     if (!(id in p.steps)) {
       issue(["order"], `order lists "${id}" (position ${i + 1}), which is not in steps`);
-      broken = true;
+      broken2 = true;
     }
   });
   for (const id of Object.keys(p.steps)) {
     if (!p.order.includes(id)) issue(["order"], `step "${id}" is missing from order`);
   }
   if (new Set(p.order).size !== p.order.length) issue(["order"], "order lists a step twice");
-  if (broken) return;
+  if (broken2) return;
   const list5 = p.order.map((id) => ({ id, step: p.steps[id] }));
   const firstCampaign = list5.findIndex((x) => !isWizardKind(x.step.kind));
   const lateWizard = list5.findIndex((x, i) => firstCampaign >= 0 && i > firstCampaign && isWizardKind(x.step.kind));
@@ -10681,9 +10681,9 @@ var DynamicMilestoneSchema = BaseEntrySchema.extend({
   contentTags: tagList,
   description: str
 }).strict().superRefine((m, ctx2) => {
-  const frame7 = m.effects.some((e) => e.type === "frame");
-  if (frame7 && m.from === m.to) ctx2.addIssue({ code: "custom", path: ["effects"], message: "a milestone inside one frame cannot change the frame" });
-  if (!frame7 && m.from !== m.to) ctx2.addIssue({ code: "custom", path: ["effects"], message: "a milestone that changes the frame needs the frame effect" });
+  const frame8 = m.effects.some((e) => e.type === "frame");
+  if (frame8 && m.from === m.to) ctx2.addIssue({ code: "custom", path: ["effects"], message: "a milestone inside one frame cannot change the frame" });
+  if (!frame8 && m.from !== m.to) ctx2.addIssue({ code: "custom", path: ["effects"], message: "a milestone that changes the frame needs the frame effect" });
   if (m.sworn === true !== m.effects.some((e) => e.type === "sworn")) ctx2.addIssue({ code: "custom", path: ["sworn"], message: "`sworn` and the sworn effect go together" });
 });
 var DynamicDomainSchema = BaseEntrySchema.extend({
@@ -11018,14 +11018,31 @@ var CARD_VOICE_KINDS = [
   // P10e-e Task 26: foot service's lines (her_activity.html `SVC_LINES`); her words for the zones are `service.zone.<zone>` (CARD_VOICE_STATIC, `ZONE_WORDS`)
   "service.good",
   "service.poor",
-  "service.wrong"
+  "service.wrong",
+  // P10e-e Task 28: shoe service's lines (shoe.html `LINES`, card-voice.md §14); her words for the zones are `shoe.zone.<zone>` (CARD_VOICE_STATIC,
+  // `ZONE_WORDS`); `shoe.stop` is finish's line after the stop word (the prototype's inline one)
+  "shoe.entry",
+  "shoe.turn",
+  "shoe.sole",
+  "shoe.kiss",
+  "shoe.polish",
+  "shoe.other",
+  "shoe.caught",
+  "shoe.swallowed",
+  "shoe.good",
+  "shoe.poor",
+  "shoe.missed",
+  "shoe.dull",
+  "shoe.stamp",
+  "shoe.end",
+  "shoe.stop"
 ];
-var CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+|scent\.(entry|here)\.[a-z0-9_]+|jaw\.entry\.[a-z0-9_]+|activity\.(self|toYou|ask|exchange)\.[a-z0-9_]+|service\.zone\.[a-z0-9_]+)$/;
+var CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+|scent\.(entry|here)\.[a-z0-9_]+|jaw\.entry\.[a-z0-9_]+|activity\.(self|toYou|ask|exchange)\.[a-z0-9_]+|service\.zone\.[a-z0-9_]+|shoe\.zone\.[a-z0-9_]+)$/;
 var CardVoiceSchema = BaseEntrySchema.extend({
   kind: str.refine((k) => CARD_VOICE_KINDS.includes(k) || CARD_VOICE_STATIC.test(k), "an unknown card voice kind"),
   style: str.optional(),
   lines: external_exports.array(str.max(160))
-}).strict().refine((e) => e.lines.length > 0 || (e.kind.startsWith("breath.") || e.kind.startsWith("weight.") || e.kind.startsWith("scent.") || e.kind.startsWith("jaw.") || e.kind.startsWith("activity.") || e.kind.startsWith("throne.")) && e.style !== void 0, "no lines (only a style's own breath, weight, scent or jaw row may be empty: she is silent there)");
+}).strict().refine((e) => e.lines.length > 0 || (e.kind.startsWith("breath.") || e.kind.startsWith("weight.") || e.kind.startsWith("scent.") || e.kind.startsWith("jaw.") || e.kind.startsWith("activity.") || e.kind.startsWith("throne.") || e.kind.startsWith("shoe.")) && e.style !== void 0, "no lines (only a style's own breath, weight, scent, jaw, frame or shoe row may be empty: she is silent there)");
 registrySchemas.cardVoice = CardVoiceSchema;
 
 // src/engine/onboarding/prologue.ts
@@ -11280,7 +11297,7 @@ function validateBond(raw, reg) {
   const bond = { ...MODEST_BOND, ownLimits: { categories: [] } };
   if (raw === void 0) return { bond, issues, valid };
   if (!isObj2(raw)) return { bond, issues: ["the bond profile must be an object"], valid };
-  const pick10 = (field2, allowed, fallback) => {
+  const pick11 = (field2, allowed, fallback) => {
     const v = raw[field2];
     if (v === void 0) return fallback;
     if (typeof v === "string" && allowed.includes(v)) {
@@ -11290,10 +11307,10 @@ function validateBond(raw, reg) {
     issues.push(`${field2} must be one of ${allowed.join(", ")}`);
     return fallback;
   };
-  bond.leadStyle = pick10("leadStyle", LEAD_STYLES, MODEST_BOND.leadStyle);
-  bond.attachment = pick10("attachment", ATTACHMENTS, MODEST_BOND.attachment);
-  bond.desire = pick10("desire", DESIRE_LEVELS, MODEST_BOND.desire);
-  bond.publicity = pick10("publicity", PUBLICITY_LEVELS, MODEST_BOND.publicity);
+  bond.leadStyle = pick11("leadStyle", LEAD_STYLES, MODEST_BOND.leadStyle);
+  bond.attachment = pick11("attachment", ATTACHMENTS, MODEST_BOND.attachment);
+  bond.desire = pick11("desire", DESIRE_LEVELS, MODEST_BOND.desire);
+  bond.publicity = pick11("publicity", PUBLICITY_LEVELS, MODEST_BOND.publicity);
   if (raw.caretaker !== void 0) {
     if (typeof raw.caretaker === "boolean") {
       bond.caretaker = raw.caretaker;
@@ -11705,11 +11722,11 @@ var attractionBand = (n) => n < 10 ? "none" : n < 25 ? "faint" : n < 50 ? "inter
 var stressBand = (n) => n < 25 ? "calm" : n < 50 ? "tense" : n < 80 ? "strained" : "breaking";
 var NO_SHIFT = { enter: 0, exit: 0 };
 function nextLoyaltyBand(current2, trust, shift = NO_SHIFT) {
-  const L4 = TUNING.relations.loyalty;
-  const breakingEnter = L4.breakingEnter + shift.enter;
-  const waveringEnter = L4.waveringEnter + shift.enter;
-  const steady = L4.steady + shift.exit;
-  const breakingExit = L4.breakingExit + shift.exit;
+  const L5 = TUNING.relations.loyalty;
+  const breakingEnter = L5.breakingEnter + shift.enter;
+  const waveringEnter = L5.waveringEnter + shift.enter;
+  const steady = L5.steady + shift.exit;
+  const breakingExit = L5.breakingExit + shift.exit;
   if (trust < breakingEnter) return "breaking";
   switch (current2) {
     case "steady":
@@ -11721,8 +11738,8 @@ function nextLoyaltyBand(current2, trust, shift = NO_SHIFT) {
   }
 }
 var initialLoyaltyBand = (trust, shift = NO_SHIFT) => {
-  const L4 = TUNING.relations.loyalty;
-  return trust < L4.breakingEnter + shift.enter ? "breaking" : trust < L4.waveringEnter + shift.enter ? "wavering" : "steady";
+  const L5 = TUNING.relations.loyalty;
+  return trust < L5.breakingEnter + shift.enter ? "breaking" : trust < L5.waveringEnter + shift.enter ? "wavering" : "steady";
 };
 
 // src/engine/dynamic/capabilities.ts
@@ -11771,10 +11788,10 @@ function intimacyOf(state) {
 }
 var p3GainHandler = ({ state, relation }, axis, amount) => {
   const [lo, hi] = RANGE2[axis];
-  const before6 = relation[axis];
+  const before7 = relation[axis];
   const effective = amount > 0 ? amount / (1 + relation.dailyGain[axis] / relationK(state)) : amount;
-  relation[axis] = Math.min(hi, Math.max(lo, before6 + roundAway(effective)));
-  const real = relation[axis] - before6;
+  relation[axis] = Math.min(hi, Math.max(lo, before7 + roundAway(effective)));
+  const real = relation[axis] - before7;
   if (real > 0) relation.dailyGain[axis] += real;
   return real;
 };
@@ -12001,8 +12018,8 @@ function evaluateAutomatic(draft, reg, unitId, opts) {
   }
   if (target === null) {
     const rank2 = cur?.priority ?? -1;
-    const pick10 = candidates(draft, reg, unitId, "automatic", void 0, opts?.allow).find((st3) => st3.priority > rank2);
-    if (pick10) target = pick10.id;
+    const pick11 = candidates(draft, reg, unitId, "automatic", void 0, opts?.allow).find((st3) => st3.priority > rank2);
+    if (pick11) target = pick11.id;
   }
   if (target !== null) events.push(enterState(draft, unitId, target, why), ...syncPublicity(draft, reg, unitId));
   const band2 = nextLoyaltyBand(rel.loyaltyBand, rel.trust, bandShift(dispositionById(draft, reg, unitId)));
@@ -12014,8 +12031,8 @@ function evaluateAutomatic(draft, reg, unitId, opts) {
 }
 function evaluateEvent(draft, reg, unitId, eventType) {
   if (!draft.relations[unitId] || !draft.squad.some((u) => u.id === unitId)) return [];
-  const pick10 = candidates(draft, reg, unitId, "event", eventType)[0];
-  return pick10 ? [enterState(draft, unitId, pick10.id, `event:${eventType}`), ...syncPublicity(draft, reg, unitId)] : [];
+  const pick11 = candidates(draft, reg, unitId, "event", eventType)[0];
+  return pick11 ? [enterState(draft, unitId, pick11.id, `event:${eventType}`), ...syncPublicity(draft, reg, unitId)] : [];
 }
 var ORDER = ["too_soon", "no_trust", "not_interested", "committed"];
 function failedGroup(state, reg, unitId, cond) {
@@ -12205,7 +12222,7 @@ function pressureGate(state, reg, unitId, mechanic) {
   if (unit4.bond === void 0) return "no imported bond profile";
   const bond = bondOf(unit4);
   const lead = leadRank(bond.leadStyle);
-  const G10 = TUNING.personal.gates;
+  const G11 = TUNING.personal.gates;
   const tier = bondTierOf(state, reg, unitId);
   switch (mechanic) {
     case "device":
@@ -12217,7 +12234,7 @@ function pressureGate(state, reg, unitId, mechanic) {
       return jealousyAllowed(state, reg, unitId) ? null : "jealousy games are off";
     }
     case "courtship": {
-      if (lead < G10.courtship.minLeadRank) return "her lead style is too yielding";
+      if (lead < G11.courtship.minLeadRank) return "her lead style is too yielding";
       if (!intimacyOf(state).romance) return "romance is off";
       if (tier === "romantic") return null;
       const open3 = ROMANTIC_PROPOSALS.some((kind) => "stateId" in stateForProposal(state, reg, unitId, kind));
@@ -12232,11 +12249,11 @@ function pressureGate(state, reg, unitId, mechanic) {
     case "token":
       if (tier === null) return "no close or romantic tier";
       if (bond.attachment === "avoidant") return "avoidant attachment";
-      return rel.affinity >= G10.token.minAffinity ? null : "Affinity too low";
+      return rel.affinity >= G11.token.minAffinity ? null : "Affinity too low";
     case "wager": {
-      if (lead < G10.wager.minLeadRank) return "her lead style is too yielding";
-      if (rel.affinity >= G10.wager.minAffinity) return null;
-      return (impunityOf(state, reg, unitId)?.value ?? 0) >= G10.wager.minImpunity ? null : "neither warm nor brazen enough";
+      if (lead < G11.wager.minLeadRank) return "her lead style is too yielding";
+      if (rel.affinity >= G11.wager.minAffinity) return null;
+      return (impunityOf(state, reg, unitId)?.value ?? 0) >= G11.wager.minImpunity ? null : "neither warm nor brazen enough";
     }
   }
 }
@@ -12443,8 +12460,8 @@ function initiativeChance(state, reg, unitId) {
   return Math.min(1, wanting * courtshipMult(state, reg, unitId));
 }
 var waiting = (state, unitId) => {
-  const last2 = threadOf(state, unitId).at(-1);
-  return last2 !== void 0 && last2.from === unitId && last2.initiated === true;
+  const last3 = threadOf(state, unitId).at(-1);
+  return last3 !== void 0 && last3.from === unitId && last3.initiated === true;
 };
 function rollInitiative(draft, reg, rng) {
   const ok = new Set(availableStates(draft, reg).map((s) => s.id));
@@ -12597,20 +12614,20 @@ function applyRuleEvent(draft, ctx2, unitId, ev, present2 = []) {
   }
   const tpl = templateOf(reg, rule);
   if (rule.status !== "active" || !tpl) return [];
-  const move = (axis, amount, cause) => {
+  const move2 = (axis, amount, cause) => {
     if (amount === 0) return;
     const applied = applyRelationDelta(draft, unitId, axis, amount, cause);
     if (applied !== 0) events.push({ type: "relation_changed", unitId, axis, delta: applied, applied });
   };
   if (ev.type === "rule_kept") {
-    move("trust", tpl.keepDeltas.trust, "rule_kept");
-    move("affinity", tpl.keepDeltas.affinity, "rule_kept");
+    move2("trust", tpl.keepDeltas.trust, "rule_kept");
+    move2("affinity", tpl.keepDeltas.affinity, "rule_kept");
     events.push({ type: "rule_kept", ruleId: rule.id, unitId });
     return events;
   }
   if (ev.type !== "rule_broken") return [];
-  move("trust", tpl.breakDeltas.trust, "rule_broken");
-  move("affinity", tpl.breakDeltas.affinity, "rule_broken");
+  move2("trust", tpl.breakDeltas.trust, "rule_broken");
+  move2("affinity", tpl.breakDeltas.affinity, "rule_broken");
   if (tpl.breakDeltas.stress !== 0) {
     const next = Math.min(100, Math.max(0, unit4.stress + tpl.breakDeltas.stress));
     if (next !== unit4.stress) events.push({ type: "stress_changed", unitId, delta: next - unit4.stress });
@@ -12731,9 +12748,9 @@ function withRequirements(reg, ids) {
 function setCategories(draft, reg, enabled) {
   const known3 = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
   const next = withRequirements(reg, known3.filter((id) => enabled.includes(id)));
-  const before6 = enabledCategories(draft);
-  const added = next.filter((id) => !before6.includes(id));
-  const removed = before6.filter((id) => !next.includes(id));
+  const before7 = enabledCategories(draft);
+  const added = next.filter((id) => !before7.includes(id));
+  const removed = before7.filter((id) => !next.includes(id));
   draft.content = { enabled: next };
   if (added.length === 0 && removed.length === 0) return [];
   const withdrawn = removed.length > 0 ? withdrawTagged(draft, reg, removed) : [];
@@ -12949,11 +12966,11 @@ function scaleRefusal(state, reg, unitId, chance) {
 var commanderStress = (state) => state.commander.stress ?? 0;
 var commanderStressBand = (state) => stressBand(commanderStress(state));
 function addCommanderStress(draft, amount, source) {
-  const before6 = commanderStress(draft);
-  const next = Math.min(100, Math.max(0, before6 + amount));
-  if (next === before6) return [];
+  const before7 = commanderStress(draft);
+  const next = Math.min(100, Math.max(0, before7 + amount));
+  if (next === before7) return [];
   draft.commander.stress = next;
-  return [{ type: "commander_stress_changed", delta: next - before6, source }];
+  return [{ type: "commander_stress_changed", delta: next - before7, source }];
 }
 
 // src/engine/physics/conditions.ts
@@ -13007,20 +13024,20 @@ function socialGrowthMult(state, reg, stat3) {
   return traitEffects(state, reg, "social_growth").filter((fx2) => fx2.stat === stat3).reduce((m, fx2) => m * fx2.mult, 1);
 }
 function addSocialPoints(commander, stat3, amount) {
-  const before6 = commander.socialStats[stat3];
+  const before7 = commander.socialStats[stat3];
   const points = commander.socialPoints ??= {
     authority: SOCIAL_THRESHOLDS[commander.socialStats.authority - 1] ?? 0,
     insight: SOCIAL_THRESHOLDS[commander.socialStats.insight - 1] ?? 0,
     empathy: SOCIAL_THRESHOLDS[commander.socialStats.empathy - 1] ?? 0,
     cunning: SOCIAL_THRESHOLDS[commander.socialStats.cunning - 1] ?? 0
   };
-  const floor = SOCIAL_THRESHOLDS[before6 - 1] ?? 0;
+  const floor = SOCIAL_THRESHOLDS[before7 - 1] ?? 0;
   const next = Math.min(MAX_POINTS, Math.max(points[stat3], floor) + amount);
   const gained = next - Math.max(points[stat3], floor);
   points[stat3] = next;
-  const rank2 = Math.max(before6, rankForPoints(next));
+  const rank2 = Math.max(before7, rankForPoints(next));
   commander.socialStats[stat3] = rank2;
-  return { rank: rank2, gained, rankedUp: rank2 > before6 };
+  return { rank: rank2, gained, rankedUp: rank2 > before7 };
 }
 function meetsSocialRequirements(state, requires) {
   return Object.entries(requires).every(([stat3, min]) => socialRank(state, stat3) >= min);
@@ -13352,23 +13369,23 @@ function holderCap(state) {
   return h2 === void 0 ? 0 : h2 === "any" ? Infinity : h2;
 }
 function holdersAtPlay(state) {
-  const play6 = frameRank("play");
-  return state.squad.filter((u) => u.kind === "named" && isLiving(u) && frameRank(state.relations[u.id]?.dynamic?.frame ?? "equal") >= play6).map((u) => u.id);
+  const play7 = frameRank("play");
+  return state.squad.filter((u) => u.kind === "named" && isLiving(u) && frameRank(state.relations[u.id]?.dynamic?.frame ?? "equal") >= play7).map((u) => u.id);
 }
 function canHold(state, reg, unitId, opts = {}) {
   return holdReason(state, reg, unitId, { ...opts, seeded: state.dynamic?.setup.units[unitId]?.seeded === true });
 }
 function holdReason(state, reg, unitId, opts) {
   if (!dynamicOn(state, reg)) return "the dynamic is off";
-  const view = practiceOf(state, reg, unitId);
-  if (view === null) return "she has no practice profile";
+  const view2 = practiceOf(state, reg, unitId);
+  if (view2 === null) return "she has no practice profile";
   if (opts.ignoreAftermath !== true && state.relations[unitId]?.dynamic?.aftermath !== void 0) return "her aftermath is still running";
   const unit4 = state.squad.find((u) => u.id === unitId);
   const may = mayHoldOf(state, unitId);
   if (may === "no") return "the setup says she may not hold";
   if (effectiveInclination(state, unitId) === "none" && !opts.seeded) return "her inclination is none";
   const lead = bondOf(unit4)?.leadStyle ?? "balanced";
-  const leads = Object.values(view.categories).some((c) => c.as === "craves" || c.as === "enjoys" || c.as === "tolerates" && lead === "dominant");
+  const leads = Object.values(view2.categories).some((c) => c.as === "craves" || c.as === "enjoys" || c.as === "tolerates" && lead === "dominant");
   if (!leads) return "no enabled practice she would lead in";
   if (leadRank(lead) < leadRank("assertive") && (impunityOf(state, reg, unitId)?.value ?? 0) < TUNING.dynamic.impunityRoute) return "her lead style is too weak for her Impunity";
   if (!opts.ignoreCap && holdersAtPlay(state).filter((id) => id !== unitId).length >= holderCap(state)) return "the holder cap is reached";
@@ -13467,23 +13484,23 @@ function cabinMap(state, reg) {
   state.squad.filter((u) => u.kind === "named").forEach((u, k) => {
     if (!isLiving(u)) return;
     const start = k % cabins.length;
-    let pick10 = cabins[start];
+    let pick11 = cabins[start];
     for (let i = 0; i < cabins.length; i++) {
       const c = cabins[(start + i) % cabins.length];
       if (!taken.has(String(c.id))) {
-        pick10 = c;
+        pick11 = c;
         break;
       }
     }
-    taken.add(String(pick10.id));
-    out.set(u.id, pick10);
+    taken.add(String(pick11.id));
+    out.set(u.id, pick11);
   });
   for (const u of state.squad) {
     if (u.kind === "named" || !isLiving(u)) continue;
     const free = [...cabins].reverse().find((c) => !taken.has(String(c.id)));
-    const pick10 = free ?? cabins[cabins.length - 1];
-    taken.add(String(pick10.id));
-    out.set(u.id, pick10);
+    const pick11 = free ?? cabins[cabins.length - 1];
+    taken.add(String(pick11.id));
+    out.set(u.id, pick11);
   }
   return out;
 }
@@ -13672,10 +13689,10 @@ function place(state, reg, rooms, unit4) {
   const weights = rooms.map((room2) => routineWeight(state, reg, room2, unit4));
   const total2 = weights.reduce((a, b) => a + b, 0);
   if (total2 <= 0) return { unitId: unit4.id, roomId: null, reason: "nowhere" };
-  let pick10 = fnv1a3(`${state.day}|${state.slot}|${unit4.id}`) % total2;
+  let pick11 = fnv1a3(`${state.day}|${state.slot}|${unit4.id}`) % total2;
   for (let i = 0; i < rooms.length; i++) {
-    if (pick10 < weights[i]) return { unitId: unit4.id, roomId: rooms[i].id, reason: "routine" };
-    pick10 -= weights[i];
+    if (pick11 < weights[i]) return { unitId: unit4.id, roomId: rooms[i].id, reason: "routine" };
+    pick11 -= weights[i];
   }
   return { unitId: unit4.id, roomId: null, reason: "nowhere" };
 }
@@ -13711,7 +13728,7 @@ function validateExpectations(raw, reg, ctx2) {
   if (raw === void 0) return { issues, dropped };
   if (!isObj4(raw)) return { issues: ["expectations must be an object"], dropped };
   const out = {};
-  const L4 = TUNING.dynamic.profile;
+  const L5 = TUNING.dynamic.profile;
   const drop2 = (field2, id, why) => {
     issues.push(`expectations.${field2} ${why} "${id}"`);
     dropped.push(`expectations:${field2}.${id}`);
@@ -13759,11 +13776,11 @@ function validateExpectations(raw, reg, ctx2) {
     }
   }
   if (raw.offset !== void 0) {
-    const r = isObj4(raw.offset) ? num7(raw.offset.r, -L4.offsetMax, L4.offsetMax) : void 0;
-    const f = isObj4(raw.offset) ? num7(raw.offset.f, -L4.offsetMax, L4.offsetMax) : void 0;
+    const r = isObj4(raw.offset) ? num7(raw.offset.r, -L5.offsetMax, L5.offsetMax) : void 0;
+    const f = isObj4(raw.offset) ? num7(raw.offset.f, -L5.offsetMax, L5.offsetMax) : void 0;
     if (r === void 0 || f === void 0) issues.push("expectations.offset needs numbers r and f");
     else {
-      if (isObj4(raw.offset) && (Math.abs(Number(raw.offset.r)) > L4.offsetMax || Math.abs(Number(raw.offset.f)) > L4.offsetMax)) issues.push(`expectations.offset was clamped to \xB1${L4.offsetMax}`);
+      if (isObj4(raw.offset) && (Math.abs(Number(raw.offset.r)) > L5.offsetMax || Math.abs(Number(raw.offset.f)) > L5.offsetMax)) issues.push(`expectations.offset was clamped to \xB1${L5.offsetMax}`);
       out.offset = { r, f };
     }
   }
@@ -13773,7 +13790,7 @@ function validateExpectations(raw, reg, ctx2) {
       const tells2 = {};
       for (const k of ["irritation", "pleasure"]) {
         if (raw.tells[k] === void 0) continue;
-        const t = text3(`tells.${k}`, raw.tells[k], L4.tellMax);
+        const t = text3(`tells.${k}`, raw.tells[k], L5.tellMax);
         if (t !== void 0) tells2[k] = t;
       }
       for (const k of Object.keys(raw.tells)) if (k !== "irritation" && k !== "pleasure") issues.push(`expectations.tells has no field "${k}"`);
@@ -13803,7 +13820,7 @@ function validateExpectations(raw, reg, ctx2) {
         }
         const entry = { attitude: w.attitude };
         if (w.how !== void 0) {
-          const how = text3(`worship.${id}.how`, w.how, L4.howMax);
+          const how = text3(`worship.${id}.how`, w.how, L5.howMax);
           if (how !== void 0) entry.how = how;
         }
         if (w.meaning !== void 0) {
@@ -13873,11 +13890,11 @@ function validateExpectations(raw, reg, ctx2) {
     else {
       const traits = [];
       for (const [i, t] of raw.traits.entries()) {
-        const v = text3(`traits[${i}]`, t, L4.traitMax);
+        const v = text3(`traits[${i}]`, t, L5.traitMax);
         if (v !== void 0 && !traits.includes(v)) traits.push(v);
       }
-      if (traits.length > L4.traitsMax) issues.push(`expectations.traits was cut to ${L4.traitsMax}`);
-      if (traits.length > 0) out.traits = traits.slice(0, L4.traitsMax);
+      if (traits.length > L5.traitsMax) issues.push(`expectations.traits was cut to ${L5.traitsMax}`);
+      if (traits.length > 0) out.traits = traits.slice(0, L5.traitsMax);
     }
   }
   return { ...Object.keys(out).length > 0 ? { expectations: out } : {}, issues, dropped };
@@ -13974,13 +13991,13 @@ function dynamicAxisEntryId(d) {
   return d.field === "holds_until" ? "expect:holds_until" : "expect:worship.any";
 }
 function scaleOfAxis(key) {
-  const S11 = TUNING.development.scales;
+  const S12 = TUNING.development.scales;
   const field2 = bondField(key);
-  if (field2 !== null) return S11[field2];
+  if (field2 !== null) return S12[field2];
   const d = dynamicAxis(key);
   if (d === null || d.field === "fixed") return null;
-  if (d.kind === "practice") return d.field === "as" ? S11.practiceAs : d.field === "witness" ? S11.practiceWitness : S11.secondary;
-  return d.field === "holds_until" ? S11.holdsUntil : S11.attitude;
+  if (d.kind === "practice") return d.field === "as" ? S12.practiceAs : d.field === "witness" ? S12.practiceWitness : S12.secondary;
+  return d.field === "holds_until" ? S12.holdsUntil : S12.attitude;
 }
 function discreteAxis(unit4, key) {
   const scale = scaleOfAxis(key);
@@ -14225,8 +14242,8 @@ function flipReading(r) {
   };
 }
 var readingOf = (a) => ({ wanted: a.wanted, initiator: a.initiator, harm: a.harm, outcome: a.outcome });
-function knowsAbout(state, unitId, subject, after8) {
-  return state.memory.facts.some((f) => f.day > after8 && f.about.includes(subject) && f.about.length <= TUNING.development.reviseAboutMax && (f.knownBy.includes(unitId) || f.knownBy.includes("*") || f.heard?.[unitId] !== void 0));
+function knowsAbout(state, unitId, subject, after9) {
+  return state.memory.facts.some((f) => f.day > after9 && f.about.includes(subject) && f.about.length <= TUNING.development.reviseAboutMax && (f.knownBy.includes(unitId) || f.knownBy.includes("*") || f.heard?.[unitId] !== void 0));
 }
 function mergePushes(into, add2) {
   for (const p of add2) {
@@ -14655,9 +14672,9 @@ function applyPunishment(draft, ctx2, p) {
         out.push(...addRestriction(draft, base));
         extra.restrictionIds = [id];
       } else if (fx2.type === "resource") {
-        const before6 = draft.resources[fx2.resource];
-        draft.resources[fx2.resource] = Math.max(0, before6 + fx2.amount);
-        const delta = draft.resources[fx2.resource] - before6;
+        const before7 = draft.resources[fx2.resource];
+        draft.resources[fx2.resource] = Math.max(0, before7 + fx2.amount);
+        const delta = draft.resources[fx2.resource] - before7;
         if (delta !== 0) {
           out.push({ type: "resource_changed", resource: fx2.resource, amount: delta });
           extra.resources = { ...extra.resources ?? {}, [fx2.resource]: delta };
@@ -14711,11 +14728,11 @@ function setRecord(draft, unitId, value) {
 function addRecord(draft, unitId, amount, reason) {
   if (!draft.relations[unitId]) return [];
   const T5 = TUNING.impunity;
-  const before6 = recordOf(draft, unitId);
-  const after8 = Math.min(T5.recordMax, Math.max(T5.recordMin, before6 + amount));
-  const delta = after8 - before6;
+  const before7 = recordOf(draft, unitId);
+  const after9 = Math.min(T5.recordMax, Math.max(T5.recordMin, before7 + amount));
+  const delta = after9 - before7;
   if (delta === 0) return [];
-  setRecord(draft, unitId, after8);
+  setRecord(draft, unitId, after9);
   return [{ type: "impunity_changed", unitId, delta, reason }];
 }
 function decayRecords(draft) {
@@ -14761,7 +14778,7 @@ var appraisalIds = (unit4) => [...unit4?.development?.pending ?? [], ...unit4?.d
 function captureInverse(draft, unitId, fn) {
   const rel = draft.relations[unitId];
   const unit4 = draft.squad.find((u) => u.id === unitId);
-  const before6 = rel && unit4 ? {
+  const before7 = rel && unit4 ? {
     trust: rel.trust,
     affinity: rel.affinity,
     attraction: rel.attraction,
@@ -14784,26 +14801,26 @@ function captureInverse(draft, unitId, fn) {
   const deedsAfter = deedsOf(draft);
   for (const k of Object.keys(deedsAfter)) if (deedsAfter[k] !== deedsBefore[k]) moved[k] = deedsAfter[k] - deedsBefore[k];
   if (Object.keys(moved).length > 0) inverse.deeds = moved;
-  const after8 = draft.relations[unitId];
+  const after9 = draft.relations[unitId];
   const unitAfter = draft.squad.find((u) => u.id === unitId);
-  if (!before6 || !after8 || !unitAfter) return { events, inverse };
+  if (!before7 || !after9 || !unitAfter) return { events, inverse };
   const axes = {};
-  for (const a of ["trust", "affinity", "attraction"]) if (after8[a] !== before6[a]) axes[a] = after8[a] - before6[a];
+  for (const a of ["trust", "affinity", "attraction"]) if (after9[a] !== before7[a]) axes[a] = after9[a] - before7[a];
   if (Object.keys(axes).length > 0) inverse.axes = axes;
-  if (unitAfter.stress !== before6.stress) inverse.stress = unitAfter.stress - before6.stress;
-  const record2 = recordOf(draft, unitId) - before6.record;
+  if (unitAfter.stress !== before7.stress) inverse.stress = unitAfter.stress - before7.stress;
+  const record2 = recordOf(draft, unitId) - before7.record;
   if (record2 !== 0) inverse.record = record2;
   const daily = {};
-  for (const a of ["trust", "affinity", "attraction"]) if (after8.dailyGain[a] !== before6.daily[a]) daily[a] = after8.dailyGain[a] - before6.daily[a];
+  for (const a of ["trust", "affinity", "attraction"]) if (after9.dailyGain[a] !== before7.daily[a]) daily[a] = after9.dailyGain[a] - before7.daily[a];
   if (Object.keys(daily).length > 0) inverse.dailyGain = daily;
-  if (after8.stateId !== before6.stateId) inverse.state = { from: before6.stateId, to: after8.stateId, sinceFrom: before6.stateSince };
-  if (before6.publicity && JSON.stringify(after8.publicity ?? null) !== JSON.stringify(before6.publicity)) inverse.publicity = before6.publicity;
-  if (after8.loyaltyBand !== before6.band) inverse.loyaltyBand = { from: before6.band, to: after8.loyaltyBand };
+  if (after9.stateId !== before7.stateId) inverse.state = { from: before7.stateId, to: after9.stateId, sinceFrom: before7.stateSince };
+  if (before7.publicity && JSON.stringify(after9.publicity ?? null) !== JSON.stringify(before7.publicity)) inverse.publicity = before7.publicity;
+  if (after9.loyaltyBand !== before7.band) inverse.loyaltyBand = { from: before7.band, to: after9.loyaltyBand };
   const kept = /* @__PURE__ */ new Map();
-  for (const k of before6.history) kept.set(k, (kept.get(k) ?? 0) + 1);
+  for (const k of before7.history) kept.set(k, (kept.get(k) ?? 0) + 1);
   const added = [];
   const stillThere2 = /* @__PURE__ */ new Map();
-  for (const h2 of after8.history) {
+  for (const h2 of after9.history) {
     const k = JSON.stringify(h2);
     const left = kept.get(k) ?? 0;
     if (left > 0) {
@@ -14814,7 +14831,7 @@ function captureInverse(draft, unitId, fn) {
   if (added.length > 0) inverse.history = structuredClone(added);
   const dropped = [];
   const seen2 = /* @__PURE__ */ new Map();
-  before6.history.forEach((k, at2) => {
+  before7.history.forEach((k, at2) => {
     const n = (seen2.get(k) ?? 0) + 1;
     seen2.set(k, n);
     if (n > (stillThere2.get(k) ?? 0)) dropped.push({ at: at2, line: JSON.parse(k) });
@@ -15020,11 +15037,11 @@ function addRestriction(draft, r) {
   disciplineOf(draft).restrictions.push(r);
   return [{ type: "restriction_started", unitId: r.unitId, kind: r.kind, ...r.untilDay !== void 0 ? { untilDay: r.untilDay } : {} }];
 }
-function removeRestrictions(draft, pick10) {
+function removeRestrictions(draft, pick11) {
   const d = draft.discipline;
   if (!d) return [];
-  const gone3 = d.restrictions.filter(pick10);
-  if (gone3.length > 0) d.restrictions = d.restrictions.filter((r) => !pick10(r));
+  const gone3 = d.restrictions.filter(pick11);
+  if (gone3.length > 0) d.restrictions = d.restrictions.filter((r) => !pick11(r));
   return gone3;
 }
 function expireRestrictions(draft) {
@@ -15091,15 +15108,15 @@ function decideSceneLead(draft, reg) {
   scene.lead = { by: lead.by, unitId, score: lead.score };
   return [{ type: "lead_decided", unitId, by: lead.by }];
 }
-function raiseTone(draft, reg, tone3) {
+function raiseTone(draft, reg, tone4) {
   const scene = draft.scene;
-  if (!scene || tone3 !== "romantic" && tone3 !== "intimate") return [];
+  if (!scene || tone4 !== "romantic" && tone4 !== "intimate") return [];
   if (!intimacyOf(draft).romance) return [];
   const named4 = scene.participants.filter((id) => draft.squad.find((u) => u.id === id)?.kind === "named").length;
   if (named4 > 1) return [];
-  if (scene.tone !== void 0 && TONE_RANK[scene.tone] >= TONE_RANK[tone3]) return [];
-  scene.tone = tone3;
-  return [{ type: "scene_tone", tone: tone3 }, ...decideSceneLead(draft, reg)];
+  if (scene.tone !== void 0 && TONE_RANK[scene.tone] >= TONE_RANK[tone4]) return [];
+  scene.tone = tone4;
+  return [{ type: "scene_tone", tone: tone4 }, ...decideSceneLead(draft, reg)];
 }
 function startTone(draft, reg) {
   const scene = draft.scene;
@@ -15439,10 +15456,10 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
   for (const fx2 of effects2) {
     switch (fx2.type) {
       case "resource": {
-        const before6 = draft.resources[fx2.resource];
-        const after8 = Math.max(0, before6 + fx2.amount);
-        draft.resources[fx2.resource] = after8;
-        if (after8 !== before6) events.push({ type: "resource_changed", resource: fx2.resource, amount: after8 - before6 });
+        const before7 = draft.resources[fx2.resource];
+        const after9 = Math.max(0, before7 + fx2.amount);
+        draft.resources[fx2.resource] = after9;
+        if (after9 !== before7) events.push({ type: "resource_changed", resource: fx2.resource, amount: after9 - before7 });
         break;
       }
       case "carried_supplies": {
@@ -15453,10 +15470,10 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
       case "faction": {
         const factionId = fx2.factionId === OWN_FACTION ? draft.commander.corporationId ?? "" : fx2.factionId;
         if (!reg.corporations.has(factionId)) break;
-        const before6 = draft.world.factions[factionId] ?? 0;
-        const after8 = clamp10(before6 + fx2.amount, -100, 100);
-        draft.world.factions[factionId] = after8;
-        if (after8 !== before6) events.push({ type: "faction_changed", factionId, amount: after8 - before6, standing: after8 });
+        const before7 = draft.world.factions[factionId] ?? 0;
+        const after9 = clamp10(before7 + fx2.amount, -100, 100);
+        draft.world.factions[factionId] = after9;
+        if (after9 !== before7) events.push({ type: "faction_changed", factionId, amount: after9 - before7, standing: after9 });
         break;
       }
       case "clock":
@@ -15475,11 +15492,11 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
         break;
       }
       case "clearance": {
-        const before6 = draft.world.clearanceTier ?? 0;
-        const after8 = Math.min(3, Math.max(before6, fx2.tier));
-        if (after8 > before6) {
-          draft.world.clearanceTier = after8;
-          events.push({ type: "clearance_raised", tier: after8 });
+        const before7 = draft.world.clearanceTier ?? 0;
+        const after9 = Math.min(3, Math.max(before7, fx2.tier));
+        if (after9 > before7) {
+          draft.world.clearanceTier = after9;
+          events.push({ type: "clearance_raised", tier: after9 });
         }
         break;
       }
@@ -15518,10 +15535,10 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
         break;
       }
       case "leash": {
-        const before6 = draft.leash.authorizationsLeft;
-        draft.leash.authorizationsLeft = Math.max(0, before6 + fx2.amount);
-        if (draft.leash.authorizationsLeft !== before6) {
-          events.push({ type: "leash_changed", amount: draft.leash.authorizationsLeft - before6, left: draft.leash.authorizationsLeft });
+        const before7 = draft.leash.authorizationsLeft;
+        draft.leash.authorizationsLeft = Math.max(0, before7 + fx2.amount);
+        if (draft.leash.authorizationsLeft !== before7) {
+          events.push({ type: "leash_changed", amount: draft.leash.authorizationsLeft - before7, left: draft.leash.authorizationsLeft });
         }
         break;
       }
@@ -15612,8 +15629,8 @@ function checkProposal(state, reg, beatId, cooldownDays) {
   if (!beat || beat.id !== beatId) return `Beat "${beatId}" is not the current beat.`;
   if (state.world.spine?.proposed === beatId) return `Beat "${beatId}" was already proposed.`;
   if (!beatReady(state, reg, beat)) return `The conditions of beat "${beatId}" are not ready.`;
-  const last2 = state.world.spine?.lastProposalDay;
-  if (last2 !== void 0 && state.day - last2 < cooldownDays) return `Cooldown: the last beat was proposed ${state.day - last2} day(s) ago (needs ${cooldownDays}).`;
+  const last3 = state.world.spine?.lastProposalDay;
+  if (last3 !== void 0 && state.day - last3 < cooldownDays) return `Cooldown: the last beat was proposed ${state.day - last3} day(s) ago (needs ${cooldownDays}).`;
   return null;
 }
 var cutWords = (text3, max) => text3.trim().split(/\s+/).filter(Boolean).slice(0, max).join(" ");
@@ -15819,14 +15836,14 @@ function buildMission(draft, ctx2, o) {
   const reg = ctx2.registries;
   const tpl = reg.missionTemplates.get(o.templateId);
   const region = reg.regions.get(o.regionId);
-  const pick10 = (list5) => list5[ctx2.rng.int(0, list5.length - 1)];
+  const pick11 = (list5) => list5[ctx2.rng.int(0, list5.length - 1)];
   const objective = tpl.objectives.find((x) => x.node === o.objectiveNode) ?? tpl.objectives[0];
   const mission = {
     id: nextId(draft, "m"),
     source: o.source,
     templateId: o.templateId,
-    title: (o.title ?? pick10(tpl.titles)).slice(0, TUNING.director.titleMax),
-    brief: (o.brief ?? pick10(tpl.briefs)).slice(0, TUNING.director.briefMax),
+    title: (o.title ?? pick11(tpl.titles)).slice(0, TUNING.director.titleMax),
+    brief: (o.brief ?? pick11(tpl.briefs)).slice(0, TUNING.director.briefMax),
     regionId: o.regionId,
     danger: clamp11(Math.round(o.danger ?? region.danger), tpl.dangerRange[0], tpl.dangerRange[1]),
     objective: { node: objective.node, condition: objective.condition },
@@ -16082,9 +16099,9 @@ function lockedTabs(state, reg) {
   for (const row4 of reg.uiUnlocks.values()) if (!holds(state, conditionOf(row4))) out.add(tabOf(row4));
   return out;
 }
-function unlockedBetween(before6, after8, reg) {
-  const was = lockedTabs(before6, reg);
-  const now = lockedTabs(after8, reg);
+function unlockedBetween(before7, after9, reg) {
+  const was = lockedTabs(before7, reg);
+  const now = lockedTabs(after9, reg);
   return [...reg.uiUnlocks.values()].filter((row4) => was.has(tabOf(row4)) && !now.has(tabOf(row4)));
 }
 
@@ -16270,10 +16287,10 @@ function deliverNews(draft, reg, day) {
   const cap9 = perDayCap(draft, day);
   for (; ; ) {
     if (told().filter((r) => r.day === day).length >= cap9) break;
-    const last2 = told().at(-1);
-    const pick10 = inQueue().filter((i) => i.urgent !== true).filter((i) => last2 === void 0 || i.category !== last2.category).filter((i) => !told().some((r) => r.unitId === i.unitId && day - r.day < t.sameWomanDays)).filter((i) => i.kind !== "hobby" || life.delivered.filter((r) => r.hobby && day - r.day < 7).length < t.hobbyWeek).sort(order)[0];
-    if (!pick10) break;
-    events.push(...deliver(draft, reg, life, pick10, day));
+    const last3 = told().at(-1);
+    const pick11 = inQueue().filter((i) => i.urgent !== true).filter((i) => last3 === void 0 || i.category !== last3.category).filter((i) => !told().some((r) => r.unitId === i.unitId && day - r.day < t.sameWomanDays)).filter((i) => i.kind !== "hobby" || life.delivered.filter((r) => r.hobby && day - r.day < 7).length < t.hobbyWeek).sort(order)[0];
+    if (!pick11) break;
+    events.push(...deliver(draft, reg, life, pick11, day));
   }
   return events;
 }
@@ -16652,8 +16669,8 @@ function sharePractice(draft, reg, aId, bId, hobbyId, day) {
 }
 
 // src/engine/headStart/hash.ts
-var headStartRaw = (seed6, unitId, key) => fnv1a3(`${seed6}|${unitId}|head_start|${key}`);
-var headStartHash = (seed6, unitId, key) => headStartRaw(seed6, unitId, key) / 2 ** 32;
+var headStartRaw = (seed7, unitId, key) => fnv1a3(`${seed7}|${unitId}|head_start|${key}`);
+var headStartHash = (seed7, unitId, key) => headStartRaw(seed7, unitId, key) / 2 ** 32;
 
 // src/engine/headStart/develop.ts
 var AXES2 = ["trust", "affinity", "attraction"];
@@ -16662,12 +16679,12 @@ function impressionOf(d) {
   const sum = d.trust + d.affinity;
   return sum > 0 ? "positive" : sum < 0 ? "negative" : "neutral";
 }
-function developRelation(rel, d, days, seed6, unitId) {
+function developRelation(rel, d, days, seed7, unitId) {
   const k = TUNING.headStart.k[days];
   const spreadMax = TUNING.headStart.spread;
   for (const axis of AXES2) {
     if (d[axis] === 0) continue;
-    const spread2 = headStartRaw(seed6, unitId, `spread:${axis}`) % (2 * spreadMax + 1) - spreadMax;
+    const spread2 = headStartRaw(seed7, unitId, `spread:${axis}`) % (2 * spreadMax + 1) - spreadMax;
     const [lo, hi] = RANGE3[axis];
     rel[axis] = Math.min(hi, Math.max(lo, rel[axis] + Math.round(d[axis] * k) + spread2));
   }
@@ -16677,9 +16694,9 @@ function crimeChance(state, reg, unit4, days) {
   const chance = TUNING.headStart.crime[days] * (reactsToCrime(unit4, crime) ? TUNING.headStart.crimeReactMult : 1);
   return Math.min(TUNING.headStart.crimeCap, chance);
 }
-function rollCrime(draft, reg, unit4, days, seed6) {
+function rollCrime(draft, reg, unit4, days, seed7) {
   if (draft.relations[unit4.id]?.flags.includes("knows_crime")) return false;
-  if (headStartHash(seed6, unit4.id, "crime") >= crimeChance(draft, reg, unit4, days)) return false;
+  if (headStartHash(seed7, unit4.id, "crime") >= crimeChance(draft, reg, unit4, days)) return false;
   revealCrime(draft, reg, [unit4.id]);
   return true;
 }
@@ -16823,16 +16840,16 @@ function facilityTimers(draft, ctx2) {
   const events = [];
   if (!draft.base.upgrades) return events;
   const pending4 = [];
-  for (const up of draft.base.upgrades) {
-    up.daysLeft -= 1;
-    if (up.daysLeft > 0) {
-      pending4.push(up);
+  for (const up2 of draft.base.upgrades) {
+    up2.daysLeft -= 1;
+    if (up2.daysLeft > 0) {
+      pending4.push(up2);
       continue;
     }
-    const max = facilityLevels(ctx2.registries, up.facilityId).length || up.toLevel;
-    draft.base.facilities[up.facilityId] = Math.min(up.toLevel, max);
-    if (up.facilityId === "barracks") draft.roster.capacity = rosterCapacityFor(ctx2.registries, draft.base.facilities.barracks);
-    events.push({ type: "facility_upgraded", facilityId: up.facilityId, level: draft.base.facilities[up.facilityId] });
+    const max = facilityLevels(ctx2.registries, up2.facilityId).length || up2.toLevel;
+    draft.base.facilities[up2.facilityId] = Math.min(up2.toLevel, max);
+    if (up2.facilityId === "barracks") draft.roster.capacity = rosterCapacityFor(ctx2.registries, draft.base.facilities.barracks);
+    events.push({ type: "facility_upgraded", facilityId: up2.facilityId, level: draft.base.facilities[up2.facilityId] });
   }
   draft.base.upgrades = pending4;
   return events;
@@ -16907,7 +16924,7 @@ function injureCommander(draft, days) {
 }
 
 // src/engine/dynamic/cover.ts
-var coverOf = (frame7) => frame7 === "role" ? TUNING.dynamic.cover.role : frame7 === "rule" ? TUNING.dynamic.cover.rule : 0;
+var coverOf = (frame8) => frame8 === "role" ? TUNING.dynamic.cover.role : frame8 === "rule" ? TUNING.dynamic.cover.rule : 0;
 function coverMult(state, reg) {
   if (!dynamicOn(state, reg)) return 1;
   let best = 0;
@@ -17086,22 +17103,22 @@ function addDefiance(draft, ctx2, amount) {
 function checkEscalation(draft, ctx2) {
   const w = wardenOf(draft);
   if (!w) return [];
-  const E7 = TUNING.warden.escalation;
+  const E8 = TUNING.warden.escalation;
   const events = [];
   const warn = (level) => {
     w.warnings.push({ level, day: draft.day });
     events.push({ type: "warden_warning", level });
   };
-  if (w.defiance >= E7.warning1 && w.warnings.length === 0) warn(1);
-  if (w.defiance >= E7.warning2) {
+  if (w.defiance >= E8.warning1 && w.warnings.length === 0) warn(1);
+  if (w.defiance >= E8.warning2) {
     if (w.warnings.length === 1 && w.warnings[0].day < draft.day) warn(2);
-    else if (w.warnings.length < 2) w.defiance = E7.warning2 - 1;
+    else if (w.warnings.length < 2) w.defiance = E8.warning2 - 1;
   }
-  if (w.defiance >= E7.terminate) {
+  if (w.defiance >= E8.terminate) {
     const second = w.warnings[1];
     if (w.warnings.length >= 2 && second.day < draft.day) {
       events.push({ type: "commander_terminated" }, ...commanderDies(draft, ctx2, "terminated"));
-    } else w.defiance = E7.terminate - 1;
+    } else w.defiance = E8.terminate - 1;
   }
   return events;
 }
@@ -17274,10 +17291,10 @@ function commanderSkill(state, physicsId) {
 function addEnduranceXp(draft, physicsId, xp) {
   const book2 = draft.commander.endurance ??= {};
   const row4 = book2[physicsId] ??= { xp: 0, level: 0 };
-  const before6 = row4.level;
+  const before7 = row4.level;
   row4.xp += xp;
   row4.level = levelForXp(row4.xp);
-  return { type: "endurance_gained", physicsId, xp: row4.xp, gained: xp, level: row4.level, leveledUp: row4.level > before6 };
+  return { type: "endurance_gained", physicsId, xp: row4.xp, gained: xp, level: row4.level, leveledUp: row4.level > before7 };
 }
 function trainEndurance(draft, physicsId) {
   if (draft.commander.endurance?.[physicsId]?.trainedDay === draft.day) return null;
@@ -17677,12 +17694,12 @@ function addStress(ctx2, cid, amount, _source) {
     if (delta > 0 && e.direction === "gain" || delta < 0 && e.direction === "relief") delta *= Math.max(0, 1 + e.pct / 100);
   }
   delta = Math.round(delta);
-  const before6 = c.stress;
-  c.stress = Math.min(100, Math.max(0, before6 + delta));
-  const applied = c.stress - before6;
+  const before7 = c.stress;
+  c.stress = Math.min(100, Math.max(0, before7 + delta));
+  const applied = c.stress - before7;
   if (applied !== 0) ctx2.log({ kind: "stress", target: cid, amount: applied });
   for (const t of [50, 80, 100]) {
-    if (before6 < t && c.stress >= t) fireTrigger(ctx2, "onStressThreshold", { actorCid: cid, threshold: t });
+    if (before7 < t && c.stress >= t) fireTrigger(ctx2, "onStressThreshold", { actorCid: cid, threshold: t });
   }
   if (c.stress >= 100 && !c.breakdown) enterBreakdown(ctx2, cid);
   return applied;
@@ -17786,7 +17803,7 @@ function breakdownAction(ctx2, cid, opts = {}) {
   }
   if (!b) return null;
   if (real?.once && real.used) return null;
-  const finish6 = (a) => {
+  const finish7 = (a) => {
     if (real?.once) real.used = true;
     return a;
   };
@@ -17798,7 +17815,7 @@ function breakdownAction(ctx2, cid, opts = {}) {
     case "await_order":
       return cs.ordersThisRound.some((o) => o.targetCid === cid) && real ? null : { kind: "pass" };
     case "attack":
-      return finish6(attackAction(ctx2, c, b.target));
+      return finish7(attackAction(ctx2, c, b.target));
     case "twice_then_shutdown": {
       const attack = attackAction(ctx2, c, b.target);
       if (!real) return attack;
@@ -17822,8 +17839,8 @@ function breakdownAction(ctx2, cid, opts = {}) {
     case "random_skill": {
       const options2 = c.skills.map((id) => skillById(ctx2.reg, id)).filter((s) => !!s && s.kind !== "passive" && s.kind !== "ultimate" && (c.cooldowns[s.id] ?? 0) === 0).map((s) => ({ s, legal: legalTargets(cs, cid, s, ctx2.reg) })).filter((o) => o.legal.length > 0);
       if (options2.length === 0) return { kind: "pass" };
-      const pick10 = ctx2.rng.pick(options2);
-      return { kind: "skill", skillId: pick10.s.id, targetCid: ctx2.rng.pick(pick10.legal) };
+      const pick11 = ctx2.rng.pick(options2);
+      return { kind: "skill", skillId: pick11.s.id, targetCid: ctx2.rng.pick(pick11.legal) };
     }
     default:
       return null;
@@ -17920,8 +17937,8 @@ function checkCondition(ctx2, cid, when, targetCid, skillId) {
     if (ordered !== when.orderedThisRound) return false;
   }
   if (when.commanderBuildIn !== void 0) {
-    const build8 = cs.commander?.build;
-    if (build8 === void 0 || !when.commanderBuildIn.includes(build8)) return false;
+    const build9 = cs.commander?.build;
+    if (build9 === void 0 || !when.commanderBuildIn.includes(build9)) return false;
   }
   if (when.upkeepWithinDays !== void 0 && !(upkeepAge(ctx2, c) <= when.upkeepWithinDays)) return false;
   if (when.upkeepOlderThanDays !== void 0 && !(upkeepAge(ctx2, c) > when.upkeepOlderThanDays)) return false;
@@ -18450,8 +18467,8 @@ function sabotageDayStep(draft, ctx2) {
   const queued = draft.discipline?.sabotage?.queued ?? [];
   let fire = queued.length > 0;
   if (draft.discipline?.sabotage) draft.discipline.sabotage.queued = [];
-  const last2 = draft.discipline?.sabotage?.lastDay;
-  const resting2 = last2 !== void 0 && draft.day - last2 < T5.cooldownDays;
+  const last3 = draft.discipline?.sabotage?.lastDay;
+  const resting2 = last3 !== void 0 && draft.day - last3 < T5.cooldownDays;
   if (!fire && !resting2) {
     for (const u of draft.squad) {
       if (u.kind !== "named" || !isLiving(u) || !isCovert(draft, ctx2.registries, u.id) || inAcquaintance(draft, ctx2.registries, u.id)) continue;
@@ -18740,9 +18757,9 @@ function regardFromEvents(draft, reg, events) {
         for (const id of namedInService(draft)) out.push(...regardRise(draft, reg, id, "value", V3.feat));
         break;
       case "expedition_ended": {
-        const report5 = draft.lastExpedition;
-        if (e.outcome !== "success" || report5 === void 0 || report5.id !== e.reportId) break;
-        for (const id of report5.party) out.push(...regardRise(draft, reg, id, "value", V3.run));
+        const report6 = draft.lastExpedition;
+        if (e.outcome !== "success" || report6 === void 0 || report6.id !== e.reportId) break;
+        for (const id of report6.party) out.push(...regardRise(draft, reg, id, "value", V3.run));
         break;
       }
     }
@@ -18777,8 +18794,8 @@ function reputationDayStep(draft, ctx2) {
   const events = [];
   const rep = draft.commander.reputation;
   const lookup = (id) => reg.reputations.get(id);
-  const tone3 = nicknameTone(draft, reg);
-  const fits = (e) => e.tone === void 0 || e.tone === tone3;
+  const tone4 = nicknameTone(draft, reg);
+  const fits = (e) => e.tone === void 0 || e.tone === tone4;
   if (rep) {
     for (const a of [...rep.active]) {
       const e = lookup(a.id);
@@ -19085,8 +19102,8 @@ function rollBookings(draft, ctx2) {
     if (!ctx2.rng.chance(bookingChance(draft, reg, u.id))) continue;
     const kinds2 = bookingKindsFor(draft, reg, u.id);
     if (kinds2.length === 0) continue;
-    let pick10 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
-    const kind = kinds2.find((k) => (pick10 -= Number(k.weight)) < 0) ?? kinds2[0];
+    let pick11 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
+    const kind = kinds2.find((k) => (pick11 -= Number(k.weight)) < 0) ?? kinds2[0];
     const problem = consentProblem(draft, reg, { unitId: u.id });
     if (problem !== null) {
       noteConsentRefusal(draft, reg, u.id, problem);
@@ -19314,8 +19331,8 @@ function requiresMet(state, reg, unitId, m) {
   if (r.capabilities !== void 0 && !r.capabilities.every((c) => caps.has(c))) return false;
   if (r.noCapability !== void 0 && caps.has(r.noCapability)) return false;
   if (r.categories !== void 0) {
-    const view = practiceOf(state, reg, unitId);
-    if (view === null || !r.categories.every((c) => view.allowed.includes(c) && view.categories[c]?.as !== "none")) return false;
+    const view2 = practiceOf(state, reg, unitId);
+    if (view2 === null || !r.categories.every((c) => view2.allowed.includes(c) && view2.categories[c]?.as !== "none")) return false;
   }
   if (r.styles !== void 0) {
     const primary = state.squad.find((u) => u.id === unitId)?.bond?.practice?.style.primary;
@@ -19523,11 +19540,11 @@ function isThreat(e) {
 var threatIn = (events) => events.some(isThreat);
 function threatNear(state, events, unitId) {
   if (threatIn(events)) return true;
-  const last2 = state.practices?.lastThreat;
-  if (last2 === void 0 || last2.unitId !== unitId) return false;
+  const last3 = state.practices?.lastThreat;
+  if (last3 === void 0 || last3.unitId !== unitId) return false;
   const scene = state.scene;
-  if (scene !== void 0) return last2.sceneId === scene.id && scene.exchanges - last2.exchange <= 1 && scene.exchanges - last2.exchange >= 0;
-  return last2.sceneId === void 0 && last2.day === state.day;
+  if (scene !== void 0) return last3.sceneId === scene.id && scene.exchanges - last3.exchange <= 1 && scene.exchanges - last3.exchange >= 0;
+  return last3.sceneId === void 0 && last3.day === state.day;
 }
 function blended(m, declared) {
   if (declared === void 0 || declared.weight <= 0) return m;
@@ -19536,19 +19553,19 @@ function blended(m, declared) {
 }
 var largest = (m, k) => MOTIVES.every((j) => j === k || m[k] > m[j]);
 function regionOf(reading2, declared) {
-  const R9 = TUNING.position.region;
+  const R10 = TUNING.position.region;
   const m = blended(reading2.motive, declared);
   const { r, f, p } = reading2;
-  if (reading2.flat >= R9.flat) return "hollow";
-  if (reading2.deflect >= R9.deflect) return "elusive";
+  if (reading2.flat >= R10.flat) return "hollow";
+  if (reading2.deflect >= R10.deflect) return "elusive";
   if (largest(m, "fear")) return "cowed";
-  if (f >= R9.friction && largest(m, "gain")) return "double_game";
-  if (f < R9.friction && largest(m, "gain")) return "calculating";
-  if (f >= R9.friction && p >= R9.play) return "bratty";
-  if (f >= R9.friction) return "proud";
-  if (r >= R9.ready && f >= 0 && largest(m, "process")) return "hungry";
+  if (f >= R10.friction && largest(m, "gain")) return "double_game";
+  if (f < R10.friction && largest(m, "gain")) return "calculating";
+  if (f >= R10.friction && p >= R10.play) return "bratty";
+  if (f >= R10.friction) return "proud";
+  if (r >= R10.ready && f >= 0 && largest(m, "process")) return "hungry";
   if (r < 0) return "reluctant";
-  if (r >= R9.ready && largest(m, "order")) return "dutiful";
+  if (r >= R10.ready && largest(m, "order")) return "dutiful";
   return "devoted";
 }
 function motiveOf(sample) {
@@ -19641,10 +19658,10 @@ function readMoments(draft, ctx2, events) {
     const unit4 = draft.squad.find((u) => u.id === unitId);
     const rel = dynamicOf(draft, unitId);
     if (unit4 === void 0 || rel === void 0 || !isLiving(unit4) || !herPracticeLive(draft, unitId)) continue;
-    const tone3 = TONES.find((t) => t === e.tone);
+    const tone4 = TONES.find((t) => t === e.tone);
     const afterThreat = threatNear(draft, events, unitId);
     if (e.responseType === "yielded") out.push(...regardRise(draft, ctx2.registries, unitId, "cost"));
-    const region = updateReading(rel, { response: e.responseType, ...tone3 !== void 0 ? { tone: tone3 } : {}, ...afterThreat ? { afterThreat } : {} }, TUNING.position.alpha.moment, physicsStyleOf(draft, unitId, ctx2.registries), unit4.insight ?? "mid").region;
+    const region = updateReading(rel, { response: e.responseType, ...tone4 !== void 0 ? { tone: tone4 } : {}, ...afterThreat ? { afterThreat } : {} }, TUNING.position.alpha.moment, physicsStyleOf(draft, unitId, ctx2.registries), unit4.insight ?? "mid").region;
     if (region !== void 0) out.push({ type: "position_shifted", unitId, from: region.from, to: region.to });
   }
   return out;
@@ -19668,13 +19685,13 @@ function bandMinAt(reg, index2) {
 function holdBandOf(reg, hold) {
   return bandsOf2(reg)[bandIndex(reg, hold)]?.id ?? "";
 }
-function frameEntry(reg, frame7) {
-  return reg.dynamicFrames.get(frame7);
+function frameEntry(reg, frame8) {
+  return reg.dynamicFrames.get(frame8);
 }
 function compatibilityOf(state, reg, unitId) {
   const dyn = dynamicOf(state, unitId);
   const C3 = TUNING.position;
-  const D3 = TUNING.dynamic.compatibility;
+  const D4 = TUNING.dynamic.compatibility;
   if (dyn === void 0 || dyn.readOf.updates === 0) return 1;
   const unit4 = state.squad.find((u) => u.id === unitId);
   const primary = unit4?.bond?.practice?.style.primary;
@@ -19683,16 +19700,16 @@ function compatibilityOf(state, reg, unitId) {
   const rd = dyn.readOf;
   if (entry.point === null) {
     const bad = rd.region === "double_game" || rd.region === "hollow" ? 1 : 0;
-    return Math.min(D3.max, Math.max(D3.min, 1 + C3.clinical.sincere * (rd.sincere ?? 0) - C3.clinical.hollow * bad));
+    return Math.min(D4.max, Math.max(D4.min, 1 + C3.clinical.sincere * (rd.sincere ?? 0) - C3.clinical.hollow * bad));
   }
   const offset = unit4?.kind === "named" ? unit4.expectations?.offset : void 0;
   const point = { r: entry.point.r + (offset?.r ?? 0), f: entry.point.f + (offset?.f ?? 0) };
-  let value = D3.max - D3.perDistance * distanceToPoint(rd, point);
+  let value = D4.max - D4.perDistance * distanceToPoint(rd, point);
   if (entry.point.notWith === "other_women") {
     const others = state.squad.filter((u) => u.id !== unitId && u.kind === "named" && bondTierOf(state, reg, u.id) === "romantic").length;
     value -= C3.notWith * others;
   }
-  return Math.min(D3.max, Math.max(D3.min, value));
+  return Math.min(D4.max, Math.max(D4.min, value));
 }
 function addHold(draft, ctx2, unitId, base, cause, opts = {}) {
   const reg = ctx2.registries;
@@ -19714,9 +19731,9 @@ function addHold(draft, ctx2, unitId, base, cause, opts = {}) {
       else if (primary === "cold") delta *= TUNING.dynamic.romanticTier.cold;
     }
   }
-  const frame7 = frameEntry(reg, dyn.frame);
-  const floor = frame7?.holdFloor ?? 0;
-  const ceiling = frame7?.holdCeiling ?? 100;
+  const frame8 = frameEntry(reg, dyn.frame);
+  const floor = frame8?.holdFloor ?? 0;
+  const ceiling = frame8?.holdCeiling ?? 100;
   const from = dyn.hold;
   let to = round43(Math.min(ceiling, Math.max(floor, from + delta)));
   if (gain2 && to < from) to = from;
@@ -20178,11 +20195,11 @@ function commandKeptEnforced(draft, ctx2, unitId, e) {
   const dyn = dynamicOf(draft, unitId);
   if (e.severity < 3 || dyn?.aftermath?.kind !== "command_kept") return { events: [] };
   const aftermath = structuredClone(dyn.aftermath);
-  const before6 = structuredClone(dyn.domains);
+  const before7 = structuredClone(dyn.domains);
   const override = draft.dynamic?.override?.unitId === unitId ? structuredClone(draft.dynamic.override) : void 0;
   const events = endCommandKept(draft, ctx2, unitId, "force");
   const kept = new Set(dyn.domains.map((d) => d.id));
-  return { events, undo: { domains: before6.filter((d) => !kept.has(d.id)), aftermath, ...override !== void 0 ? { override } : {} } };
+  return { events, undo: { domains: before7.filter((d) => !kept.has(d.id)), aftermath, ...override !== void 0 ? { override } : {} } };
 }
 function restoreCommandKept(draft, ctx2, unitId, undo) {
   const reg = ctx2.registries;
@@ -20641,9 +20658,9 @@ function leavingQuarters(draft, ctx2, holders2) {
 function background(draft, ctx2, holders2) {
   const events = [];
   for (const h2 of holders2) {
-    const frame7 = dynamicOf(draft, h2).frame;
-    if (frame7 !== "role" && frame7 !== "rule") continue;
-    for (const o of othersOf(draft, h2)) events.push(...addSign(draft, ctx2, o, h2, frame7 === "role" ? "background_role" : "background_rule"));
+    const frame8 = dynamicOf(draft, h2).frame;
+    if (frame8 !== "role" && frame8 !== "rule") continue;
+    for (const o of othersOf(draft, h2)) events.push(...addSign(draft, ctx2, o, h2, frame8 === "role" ? "background_role" : "background_rule"));
   }
   return events;
 }
@@ -20668,11 +20685,11 @@ function gossip(draft, ctx2, holders2) {
   const reg = ctx2.registries;
   const events = [];
   for (const h2 of holders2) {
-    const before6 = new Map(othersOf(draft, h2).map((id) => [id, levelOf2(draft, id, h2)]));
-    for (const o of before6.keys()) {
-      if (before6.get(o) === "knows_dynamic") continue;
+    const before7 = new Map(othersOf(draft, h2).map((id) => [id, levelOf2(draft, id, h2)]));
+    for (const o of before7.keys()) {
+      if (before7.get(o) === "knows_dynamic") continue;
       let total2 = 0;
-      for (const [y, level] of before6) {
+      for (const [y, level] of before7) {
         if (y === o || level !== "knows_dynamic" && level !== "suspects_dynamic") continue;
         if (dynamicRoll(draft, o, `gossip:${y}:${h2}`) >= T5.gossipChance) continue;
         const row4 = signRow(reg, level === "knows_dynamic" ? "gossip_knows" : "gossip_suspects");
@@ -20807,8 +20824,8 @@ function openDesireDemands(draft, ctx2) {
   const events = [];
   for (const unit4 of draft.squad) {
     if (unit4.kind !== "named" || !isLiving(unit4) || wantBandOf(draft, reg, unit4.id) === "calm") continue;
-    const last2 = (draft.discipline?.demandLog ?? []).filter((e) => e.unitId === unit4.id && reg.demandTemplates.get(e.templateId ?? "")?.kind === "desire").reduce((n, e) => Math.max(n, e.day), -Infinity);
-    if (draft.day - last2 < TUNING.bonds.want.demandEveryDays) continue;
+    const last3 = (draft.discipline?.demandLog ?? []).filter((e) => e.unitId === unit4.id && reg.demandTemplates.get(e.templateId ?? "")?.kind === "desire").reduce((n, e) => Math.max(n, e.day), -Infinity);
+    if (draft.day - last3 < TUNING.bonds.want.demandEveryDays) continue;
     const opened = openDemand(draft, ctx2, unit4.id, { desire: true });
     if (opened) events.push(...opened.events);
   }
@@ -21344,12 +21361,12 @@ function recordMerit(draft, cs) {
     else if (e.kind === "downed" && isEnemy(e.target)) credit(e.actor, M2.finishingBlow);
     else if (e.kind === "heal") credit(e.actor, (e.amount ?? 0) / M2.healPer);
   }
-  const fresh6 = [...points].filter(([id, n]) => n > 0 && draft.squad.find((u) => u.id === id)?.kind === "named");
-  if (fresh6.length === 0 && !draft.power?.merit) return;
+  const fresh7 = [...points].filter(([id, n]) => n > 0 && draft.squad.find((u) => u.id === id)?.kind === "named");
+  if (fresh7.length === 0 && !draft.power?.merit) return;
   const power = powerOf(draft);
   power.merit = (power.merit ?? []).filter((m) => draft.day - m.day < M2.windowDays);
   for (const c of cs.combatants) {
-    const hit = fresh6.find(([id]) => id === c.unitId);
+    const hit = fresh7.find(([id]) => id === c.unitId);
     if (hit) power.merit.push({ day: draft.day, unitId: hit[0], points: round22(hit[1]) });
   }
   if (power.merit.length === 0) delete power.merit;
@@ -21373,17 +21390,17 @@ function standingOf(state, reg, unitId) {
   if (!unit4 || !bond || !isLiving(unit4) || unitId === wardenUnitId(state)) return null;
   const impunity = impunityOf(state, reg, unitId);
   if (!impunity) return null;
-  const S11 = TUNING.power.standing;
-  const raw = S11.merit * meritOf(state, unitId) + S11.respect * respectOf(state, unitId) + S11.impunity * (impunity.value / 100);
+  const S12 = TUNING.power.standing;
+  const raw = S12.merit * meritOf(state, unitId) + S12.respect * respectOf(state, unitId) + S12.impunity * (impunity.value / 100);
   const bonus = state.power?.hierarchy?.standingBonus;
   const extra = bonus && bonus.unitId === unitId && bonus.untilDay > state.day ? bonus.amount : 0;
   const coLeader = hasCapability(state, reg, unitId, "co_leader") ? TUNING.dynamic.coLeaderStanding : 0;
-  return Math.round(100 * raw * S11.factor[bond.leadStyle]) + extra + coLeader - standingMalus(state, reg, unitId);
+  return Math.round(100 * raw * S12.factor[bond.leadStyle]) + extra + coLeader - standingMalus(state, reg, unitId);
 }
 function computeHierarchy(draft, reg) {
   const power = powerOf(draft);
   const old = power.hierarchy;
-  const S11 = TUNING.power.standing;
+  const S12 = TUNING.power.standing;
   const h2 = { ...old, standings: {}, endorsed: old?.endorsed ?? false, computedDay: draft.day };
   if (h2.deposed && h2.deposed.untilDay <= draft.day) delete h2.deposed;
   if (h2.standingBonus && h2.standingBonus.untilDay <= draft.day) delete h2.standingBonus;
@@ -21394,7 +21411,7 @@ function computeHierarchy(draft, reg) {
   const [top, next] = ranked;
   let leader;
   const earned = top !== void 0 && (top.unit.id === old?.leaderId || meritOf(draft, top.unit.id) > 0);
-  if (top && next && earned && top.standing >= next.standing + S11.margin && leadRank(bondOf(top.unit).leadStyle) >= 2 && h2.deposed?.unitId !== top.unit.id) leader = top.unit.id;
+  if (top && next && earned && top.standing >= next.standing + S12.margin && leadRank(bondOf(top.unit).leadStyle) >= 2 && h2.deposed?.unitId !== top.unit.id) leader = top.unit.id;
   const coLeader = holderWith(draft, reg, "co_leader");
   if (coLeader === null) delete h2.coLeaderId;
   else h2.coLeaderId = coLeader;
@@ -21498,14 +21515,14 @@ function addMastery(draft, reg, unitId, targetId, xp) {
   const unit4 = draft.squad.find((u) => u.id === unitId);
   const rel = draft.relations[unitId];
   if (!dynamicOn(draft, reg) || unit4 === void 0 || unit4.kind !== "named" || !isLiving(unit4) || rel === void 0 || !reg.worshipTargets.has(targetId) || !(xp > 0)) return [];
-  const before6 = masteryLevel(draft, unitId, targetId);
+  const before7 = masteryLevel(draft, unitId, targetId);
   rel.mastery = { ...rel.mastery, [targetId]: round45((rel.mastery?.[targetId] ?? 0) + xp) };
-  const after8 = masteryLevel(draft, unitId, targetId);
+  const after9 = masteryLevel(draft, unitId, targetId);
   const events = [];
-  for (let level = before6 + 1; level <= after8; level++) events.push({ type: "mastery_gained", unitId, targetId, level });
+  for (let level = before7 + 1; level <= after9; level++) events.push({ type: "mastery_gained", unitId, targetId, level });
   const open3 = TUNING.mastery.revealLevel;
   const target = reg.worshipTargets.get(targetId);
-  if (before6 < open3 && after8 >= open3 && !zoneRevealed(draft, unitId, targetId) && contentAllowed(draft, reg, target, unitId)) {
+  if (before7 < open3 && after9 >= open3 && !zoneRevealed(draft, unitId, targetId) && contentAllowed(draft, reg, target, unitId)) {
     events.push({
       type: "zone_revealed",
       unitId,
@@ -21584,12 +21601,12 @@ var trains = (reg, activityId) => activityId !== void 0 && (reg.activities.get(a
 function surfaceHolds(state, reg, unitId, cond) {
   const scene = state.scene;
   const rel = dynamicOf(state, unitId);
-  const S11 = TUNING.dynamic.style;
+  const S12 = TUNING.dynamic.style;
   switch (cond) {
     case "peak":
       return atPeak(state, unitId);
     case "scene_edges":
-      return scene !== void 0 && inScene(state, unitId) && (scene.exchanges <= S11.edgeStart || scene.exchanges >= S11.edgeEnd);
+      return scene !== void 0 && inScene(state, unitId) && (scene.exchanges <= S12.edgeStart || scene.exchanges >= S12.edgeEnd);
     case "before_others":
       return scene !== void 0 && inScene(state, unitId) && scene.participants.length >= 2;
     case "third_person":
@@ -21609,27 +21626,27 @@ function surfaceHolds(state, reg, unitId, cond) {
     }
     case "new_practice": {
       const recent2 = rel?.recent ?? [];
-      const last2 = recent2[recent2.length - 1];
-      return last2 !== void 0 && !reg.probeAxes.has(last2) && !OFFER_TABS.includes(last2) && recent2.filter((r) => r === last2).length === 1;
+      const last3 = recent2[recent2.length - 1];
+      return last3 !== void 0 && !reg.probeAxes.has(last3) && !OFFER_TABS.includes(last3) && recent2.filter((r) => r === last3).length === 1;
     }
     case "stagnation": {
       const day = state.dynamic?.noted?.enduranceDay;
-      return day !== void 0 && state.day - day >= S11.stagnationDays;
+      return day !== void 0 && state.day - day >= S12.stagnationDays;
     }
     case "training_start":
       return scene !== void 0 && inScene(state, unitId) && trains(reg, scene.activityId);
     case "praised_or_ignored": {
       const contact = state.relations[unitId]?.contactDay;
-      return state.dynamic?.noted?.praisedDay === state.day || contact !== void 0 && state.day - contact >= S11.ignoredDays;
+      return state.dynamic?.noted?.praisedDay === state.day || contact !== void 0 && state.day - contact >= S12.ignoredDays;
     }
     case "crime_mentioned":
       return state.dynamic?.noted?.crimeDay === state.day;
     case "failed_run": {
       const e = state.lastExpedition;
-      return e !== void 0 && e.outcome === "failed" && state.day - e.day <= S11.failedRunDays;
+      return e !== void 0 && e.outcome === "failed" && state.day - e.day <= S12.failedRunDays;
     }
     case "arrival_anniversary":
-      return state.day > 0 && state.day % S11.anniversaryDays === 0;
+      return state.day > 0 && state.day % S12.anniversaryDays === 0;
   }
 }
 function leadingStyle(state, reg, unitId) {
@@ -21649,8 +21666,8 @@ function defaultExpectation(state, reg, moment) {
   const entry = primary === void 0 ? void 0 : entryOf2(reg, primary);
   const offset = unit4?.kind === "named" ? unit4.expectations?.offset : void 0;
   const point = entry?.point == null ? void 0 : { r: entry.point.r + (offset?.r ?? 0), f: entry.point.f + (offset?.f ?? 0) };
-  const frame7 = moment.options.filter((o) => FRAME_KEYS.includes(o.key));
-  const options2 = frame7.length > 0 ? frame7 : [...moment.options];
+  const frame8 = moment.options.filter((o) => FRAME_KEYS.includes(o.key));
+  const options2 = frame8.length > 0 ? frame8 : [...moment.options];
   const prefer = rel !== void 0 && frameRank(rel.frame) >= frameRank("play") ? "yielded" : "returned";
   const score = (type) => {
     if (point === void 0 || rel === void 0) return 0;
@@ -21659,8 +21676,8 @@ function defaultExpectation(state, reg, moment) {
   };
   const best = Math.min(...options2.map((o) => score(o.type)));
   const tied = options2.filter((o) => score(o.type) === best);
-  const pick10 = tied.find((o) => o.type === prefer) ?? tied.find((o) => o.type === (prefer === "yielded" ? "returned" : "yielded")) ?? tied[0];
-  return { key: pick10?.key ?? "0", strength: 1 };
+  const pick11 = tied.find((o) => o.type === prefer) ?? tied.find((o) => o.type === (prefer === "yielded" ? "returned" : "yielded")) ?? tied[0];
+  return { key: pick11?.key ?? "0", strength: 1 };
 }
 function noteEvents(draft, ctx2, events) {
   if (draft.dynamic === void 0 || !dynamicOn(draft, ctx2.registries)) return [];
@@ -21762,12 +21779,12 @@ function readComposition(raw) {
 }
 var ATTITUDE_OF_AS = { craves: "craves", enjoys: "enjoys", tolerates: "indifferent", none: "indifferent" };
 var bestOf = (list5) => list5.reduce((best, a) => RANK3[a] > RANK3[best] ? a : best, "indifferent");
-function categoryAttitude(view, tags) {
-  if (view === null) return "indifferent";
-  return bestOf(tags.filter((t) => view.categories[t] !== void 0).map((t) => ATTITUDE_OF_AS[view.categories[t].as]));
+function categoryAttitude(view2, tags) {
+  if (view2 === null) return "indifferent";
+  return bestOf(tags.filter((t) => view2.categories[t] !== void 0).map((t) => ATTITUDE_OF_AS[view2.categories[t].as]));
 }
 function readEntry(state, reg, unitId, tab, id) {
-  const view = practiceOf(state, reg, unitId);
+  const view2 = practiceOf(state, reg, unitId);
   switch (tab) {
     case "part": {
       const shown2 = zoneRevealed(state, unitId, id);
@@ -21783,16 +21800,16 @@ function readEntry(state, reg, unitId, tab, id) {
         const all = targets.map((t) => worshipOf(state, reg, unitId, t));
         return { attitude: all.includes("dislikes") ? "dislikes" : bestOf(all) };
       }
-      return { attitude: categoryAttitude(view, tagsOf2(entry)) };
+      return { attitude: categoryAttitude(view2, tagsOf2(entry)) };
     }
     case "posture":
-      return { attitude: categoryAttitude(view, tagsOf2(reg.blockingPostures.get(id))) };
+      return { attitude: categoryAttitude(view2, tagsOf2(reg.blockingPostures.get(id))) };
     case "service":
-      return { attitude: categoryAttitude(view, [TUNING.offer.serviceCategory]) };
+      return { attitude: categoryAttitude(view2, [TUNING.offer.serviceCategory]) };
     case "time":
-      return { attitude: view === null ? "indifferent" : TUNING.offer.timeBy[view.drive] };
+      return { attitude: view2 === null ? "indifferent" : TUNING.offer.timeBy[view2.drive] };
     case "endurance":
-      return { attitude: categoryAttitude(view, view?.allowed ?? []) };
+      return { attitude: categoryAttitude(view2, view2?.allowed ?? []) };
   }
 }
 function humiliationOf(reg, tab, id) {
@@ -21987,8 +22004,8 @@ function latentCause(state, reg, unitId) {
   if ((impunityOf(state, reg, unitId)?.value ?? 0) >= TUNING.dynamic.impunityRoute) return true;
   const known3 = Object.values(state.dynamic?.knowledge[unitId] ?? {}).some((k) => k.level === "knows_dynamic");
   if (!known3) return false;
-  const view = practiceOf(state, reg, unitId);
-  return view !== null && Object.values(view.categories).some((c) => c.witness === "drawn");
+  const view2 = practiceOf(state, reg, unitId);
+  return view2 !== null && Object.values(view2.categories).some((c) => c.witness === "drawn");
 }
 function probeChance(state, reg, unitId) {
   const inclination = effectiveInclination(state, unitId);
@@ -22001,8 +22018,8 @@ function probeChance(state, reg, unitId) {
 function pickAxis(draft, reg, unitId, tier, recent2) {
   const axes = [...reg.probeAxes.values()].map((a) => a).filter((a) => a.tier <= tier);
   const skip = recent2.slice(-TUNING.probes.skipRecent);
-  const fresh6 = axes.filter((a) => !skip.includes(a.id));
-  const pool = fresh6.length > 0 ? fresh6 : axes;
+  const fresh7 = axes.filter((a) => !skip.includes(a.id));
+  const pool = fresh7.length > 0 ? fresh7 : axes;
   return pool[Math.min(pool.length - 1, Math.floor(dynamicRoll(draft, unitId, "probe_axis") * pool.length))];
 }
 function staysInQueue(draft, id) {
@@ -22057,7 +22074,7 @@ function answerCause(state, unitId, response) {
   }
   return `probe_${response}`;
 }
-function answerProbe(draft, ctx2, unitId, response, tone3, weight, afterThreat = false, opts = {}) {
+function answerProbe(draft, ctx2, unitId, response, tone4, weight, afterThreat = false, opts = {}) {
   const reg = ctx2.registries;
   if (!dynamicOn(draft, reg)) return [];
   const events = [];
@@ -22077,7 +22094,7 @@ function answerProbe(draft, ctx2, unitId, response, tone3, weight, afterThreat =
   if (response === "yielded" && weight === 1 && !retro) events.push(...regardRise(draft, reg, unitId, "cost"));
   const unit4 = draft.squad.find((u) => u.id === unitId);
   const alpha = TUNING.position.alpha.probe * (weight === 1 ? 1 : TUNING.dynamic.observedFactor);
-  const shift = updateReading(dyn, { response, ...tone3 !== void 0 ? { tone: tone3 } : {}, ...afterThreat ? { afterThreat } : {} }, alpha, physicsStyleOf(draft, unitId, reg), unit4.insight ?? "mid").region;
+  const shift = updateReading(dyn, { response, ...tone4 !== void 0 ? { tone: tone4 } : {}, ...afterThreat ? { afterThreat } : {} }, alpha, physicsStyleOf(draft, unitId, reg), unit4.insight ?? "mid").region;
   if (shift !== void 0) events.push({ type: "position_shifted", unitId, from: shift.from, to: shift.to });
   if (weight === 1 && !retro) {
     delete dyn.probes.pending;
@@ -22338,12 +22355,12 @@ function topicsInText(reg, text3) {
   return list5.filter((m) => m.re.test(text3)).map((m) => m.id);
 }
 function recentEventTopics(state, reg, unitId, day) {
-  const last2 = state.life?.units[unitId]?.last;
-  if (!last2) return [];
+  const last3 = state.life?.units[unitId]?.last;
+  if (!last3) return [];
   const out = [];
   for (const [id, entry] of reg.opinionTopics) {
     const events = entry.triggers.lifeEvents ?? [];
-    if (events.some((e) => last2[e] !== void 0 && day - last2[e] < TUNING.life.opinion.recentDays)) out.push(id);
+    if (events.some((e) => last3[e] !== void 0 && day - last3[e] < TUNING.life.opinion.recentDays)) out.push(id);
   }
   return out;
 }
@@ -22458,8 +22475,8 @@ function challengeOpinion(draft, reg, unitId, topicId, weight, positionId) {
   if (at2 < 0) return [];
   const asked = positionId === void 0 ? -1 : ids.indexOf(positionId);
   const toward = asked >= 0 && asked !== at2 ? asked < at2 ? "first" : "last" : at2 > ids.length - 1 - at2 ? "first" : at2 < ids.length - 1 - at2 ? "last" : "first";
-  const before6 = opinion.push === void 0 ? 0 : opinion.push.toward === "first" ? opinion.push.amount : -opinion.push.amount;
-  const net = before6 + (toward === "first" ? weight : -weight);
+  const before7 = opinion.push === void 0 ? 0 : opinion.push.toward === "first" ? opinion.push.amount : -opinion.push.amount;
+  const net = before7 + (toward === "first" ? weight : -weight);
   if (net === 0) delete opinion.push;
   else opinion.push = { toward: net > 0 ? "first" : "last", amount: Math.abs(net) };
   const t = TUNING.life.opinion;
@@ -22584,13 +22601,13 @@ function requiresHold(state, reg, unitId, req, day, cache4) {
         break;
       }
       case "afterRun": {
-        const last2 = state.lastExpedition;
-        ok = last2 !== void 0 && last2.day >= day - 1 && last2.party.includes(unitId) && (value.hurt !== true || last2.injuries.includes(unitId));
+        const last3 = state.lastExpedition;
+        ok = last3 !== void 0 && last3.day >= day - 1 && last3.party.includes(unitId) && (value.hurt !== true || last3.injuries.includes(unitId));
         break;
       }
       case "noRunDays": {
-        const last2 = state.lastExpedition;
-        ok = run?.party.includes(unitId) !== true && !(last2?.party.includes(unitId) === true && day - last2.day < value);
+        const last3 = state.lastExpedition;
+        ok = run?.party.includes(unitId) !== true && !(last3?.party.includes(unitId) === true && day - last3.day < value);
         break;
       }
       case "stressMin":
@@ -22908,7 +22925,7 @@ function lifeIntentInput(state, reg, participants, scene, channel) {
       if (!isPick && !isVoiced) continue;
       const topic = reg.opinionTopics.get(topicId);
       if (!topic) continue;
-      const view = isVoiced ? topic.positions.find((p) => p.id === o.position)?.description : void 0;
+      const view2 = isVoiced ? topic.positions.find((p) => p.id === o.position)?.description : void 0;
       offer.topics.push({
         id: topicId,
         unitId: unit4.id,
@@ -22916,7 +22933,7 @@ function lifeIntentInput(state, reg, participants, scene, channel) {
         positions: topic.positions.map((p) => p.id),
         ...isPick ? { pick: true } : {},
         ...isVoiced ? { voiced: true } : {},
-        ...view !== void 0 ? { view: plainText(view) } : {}
+        ...view2 !== void 0 ? { view: plainText(view2) } : {}
       });
     }
   }
@@ -22986,8 +23003,8 @@ function rollTokenOffer(draft, ctx2) {
     if (!ctx2.rng.chance(chance)) continue;
     const kinds2 = kindsFor(draft, reg, u.id);
     if (kinds2.length === 0) continue;
-    let pick10 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
-    const kind = kinds2.find((k) => (pick10 -= Number(k.weight)) < 0) ?? kinds2[0];
+    let pick11 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
+    const kind = kinds2.find((k) => (pick11 -= Number(k.weight)) < 0) ?? kinds2[0];
     const label2 = labelOf(reg, String(kind.id), u.displayName);
     const tokens = personalOf(draft).tokens ??= { owned: [], given: [] };
     const dm = pushMessage(draft, u.id, { from: u.id, text: String(kind.text).replaceAll("{name}", u.displayName).replaceAll("{label}", label2), day: draft.day, slot: draft.slot, read: false, initiated: true });
@@ -23256,15 +23273,15 @@ function withdrawPractices(draft, reg, changed) {
 // src/engine/practice/seeds.ts
 var seedRows = (reg) => [...reg.practiceSeeds.values()];
 function seedPool(state, reg, holderId, kind, opts = {}) {
-  const view = practiceOf(state, reg, holderId);
+  const view2 = practiceOf(state, reg, holderId);
   const tier = bondTierOf(state, reg, holderId);
-  return seedRows(reg).filter((seed6) => {
-    if (seed6.kind !== kind || !contentAllowed(state, reg, seed6, holderId)) return false;
-    if (seed6.contentTags.some((t) => view?.categories[t] !== void 0 && view.categories[t].as === "none")) return false;
-    if (!trackOpen(state, reg, holderId, seed6.track) || seed6.tier > trackLevel(state, holderId, seed6.track) + 1) return false;
-    if (opts.minTier !== void 0 && seed6.tier < opts.minTier) return false;
-    if (seed6.needs !== void 0 && !hasCapability(state, reg, holderId, seed6.needs)) return false;
-    return seed6.romantic !== true || tier === "romantic";
+  return seedRows(reg).filter((seed7) => {
+    if (seed7.kind !== kind || !contentAllowed(state, reg, seed7, holderId)) return false;
+    if (seed7.contentTags.some((t) => view2?.categories[t] !== void 0 && view2.categories[t].as === "none")) return false;
+    if (!trackOpen(state, reg, holderId, seed7.track) || seed7.tier > trackLevel(state, holderId, seed7.track) + 1) return false;
+    if (opts.minTier !== void 0 && seed7.tier < opts.minTier) return false;
+    if (seed7.needs !== void 0 && !hasCapability(state, reg, holderId, seed7.needs)) return false;
+    return seed7.romantic !== true || tier === "romantic";
   });
 }
 function pickSeeds(state, reg, holderId, kind, opts = {}) {
@@ -23274,9 +23291,9 @@ function pickSeeds(state, reg, holderId, kind, opts = {}) {
   const rest = [...pool];
   const picked = [];
   for (let i = 0; i < want && rest.length > 0; i++) {
-    const total2 = rest.reduce((sum, seed6) => sum + seed6.weight, 0);
+    const total2 = rest.reduce((sum, seed7) => sum + seed7.weight, 0);
     let at2 = practiceRoll(state, holderId, `seeds:${kind}:${i}`) * total2;
-    let index2 = rest.findIndex((seed6) => (at2 -= seed6.weight) < 0);
+    let index2 = rest.findIndex((seed7) => (at2 -= seed7.weight) < 0);
     if (index2 < 0) index2 = rest.length - 1;
     picked.push(rest[index2].id);
     rest.splice(index2, 1);
@@ -23286,12 +23303,12 @@ function pickSeeds(state, reg, holderId, kind, opts = {}) {
 function fallbackLine(kind, gist) {
   return TUNING.practice.fallback[kind].replaceAll("{gist}", gist);
 }
-function plainSummary(seed6) {
-  return seed6.gist;
+function plainSummary(seed7) {
+  return seed7.gist;
 }
 function stakesCeilingOf(state, holderId) {
-  const frame7 = dynamicOf(state, holderId)?.frame;
-  return frame7 === "rule" || frame7 === "role" || frame7 === "play" ? TUNING.practice.stakesCeiling[frame7] : "minor";
+  const frame8 = dynamicOf(state, holderId)?.frame;
+  return frame8 === "rule" || frame8 === "role" || frame8 === "play" ? TUNING.practice.stakesCeiling[frame8] : "minor";
 }
 
 // src/engine/practice/request.ts
@@ -23355,8 +23372,8 @@ var rollNoDuration = (state, reg, holderId, key) => practiceRoll(state, holderId
 function requestPractice(draft, ctx2, holderId, kind, extra = {}) {
   if (!practiceLive(draft, ctx2.registries, holderId)) return [];
   const reg = ctx2.registries;
-  const last2 = extra.chainOf === void 0 ? void 0 : draft.practices?.tasks.filter((t) => t.chainId === extra.chainOf).at(-1);
-  const seedIds = pickSeeds(draft, reg, holderId, kind, last2 === void 0 ? {} : { minTier: last2.tier });
+  const last3 = extra.chainOf === void 0 ? void 0 : draft.practices?.tasks.filter((t) => t.chainId === extra.chainOf).at(-1);
+  const seedIds = pickSeeds(draft, reg, holderId, kind, last3 === void 0 ? {} : { minTier: last3.tier });
   if (seedIds.length === 0 && extra.offence === void 0) return [];
   const id = nextPracticeId(draft, "pq");
   const sealed = extra.sealed === true || SEALABLE.includes(kind) && extra.asked !== true && rollSealed(draft, reg, holderId, id);
@@ -23479,8 +23496,8 @@ function styleTerm(state, reg, holderId) {
 }
 function severityOf(state, reg, holderId, offence) {
   const T5 = TUNING.practice.severity;
-  const frame7 = dynamicOf(state, holderId)?.frame;
-  const frameTerm = frame7 === "rule" || frame7 === "role" || frame7 === "play" ? T5.frame[frame7] : 0;
+  const frame8 = dynamicOf(state, holderId)?.frame;
+  const frameTerm = frame8 === "rule" || frame8 === "role" || frame8 === "play" ? T5.frame[frame8] : 0;
   const recent2 = (state.practices?.offences[holderId] ?? []).filter((d) => state.day - d <= T5.repeat.days).length;
   const repeat = recent2 >= T5.repeat.count ? T5.repeat.add : 0;
   const confessed = offence.confessed === true ? TUNING.practice.confessedLess : 0;
@@ -23565,8 +23582,8 @@ function noteOffence(draft, ctx2, holderId, offence) {
 }
 var str2 = (v) => typeof v === "string" && v !== "" ? v : void 0;
 var answers = (state, holderId) => {
-  const frame7 = dynamicOf(state, holderId)?.frame;
-  return frame7 !== void 0 && frameRank(frame7) >= frameRank("role");
+  const frame8 = dynamicOf(state, holderId)?.frame;
+  return frame8 !== void 0 && frameRank(frame8) >= frameRank("role");
 };
 function offencesFromEvents(draft, ctx2, events) {
   if (!events.some((e) => OFFENCE_SOURCES.includes(e.type))) return [];
@@ -23610,8 +23627,8 @@ var OFFENCE_SOURCES = ["refusal_noted", "milestone_refused", "override_answered"
 var HUMBLING_TAG = "public_humiliation";
 var isHumbling = (tags) => tags.includes(HUMBLING_TAG);
 function stageOf(slot2) {
-  const S11 = TUNING.practice.demonstration.stage;
-  return S11[slot2] ?? S11.other;
+  const S12 = TUNING.practice.demonstration.stage;
+  return S12[slot2] ?? S12.other;
 }
 var roomOfLocation = (reg, locationId) => [...reg.hubRooms.values()].find((r) => r.sceneLocationId === locationId)?.id;
 function pickAudience(state, reg, holderId, slot2) {
@@ -23633,9 +23650,9 @@ function demonstrationGate(state, reg, holderId, card2) {
   const audience = practiceOf(state, reg, holderId)?.audience;
   if (audience === void 0 || audience === "private_only") return "She keeps it private.";
   if (audience === "indifferent") return "She does not stage it.";
-  const frame7 = dynamicOf(state, holderId)?.frame ?? "equal";
-  if (frameRank(frame7) < frameRank("play")) return "Her hold is too light for it.";
-  if (card2?.tier !== void 0 && card2.tier > 2 && frameRank(frame7) < frameRank("role")) return "Her hold is too light for something that heavy.";
+  const frame8 = dynamicOf(state, holderId)?.frame ?? "equal";
+  if (frameRank(frame8) < frameRank("play")) return "Her hold is too light for it.";
+  if (card2?.tier !== void 0 && card2.tier > 2 && frameRank(frame8) < frameRank("role")) return "Her hold is too light for something that heavy.";
   const tags = card2?.tags ?? [];
   if (card2 === void 0 ? !["service", HUMBLING_TAG].some((t) => contentAllowed(state, reg, { contentTags: [t] }, holderId)) : tags.length === 0 || tags.some((t) => !contentAllowed(state, reg, { contentTags: [t] }, holderId))) {
     return "That is not switched on.";
@@ -23775,11 +23792,11 @@ function startHold(draft, ctx2, holderId, span, opts = {}) {
   const lapsed = [];
   const bookingIds = slots.map((at2) => holdSlot(draft, ctx2, holderId, String(kind.id), at2, practiceId, events, lapsed).id);
   const first2 = slots[0];
-  const last2 = slots[slots.length - 1];
+  const last3 = slots[slots.length - 1];
   const held3 = {
     by: holderId,
     since: { ...first2 },
-    until: { ...last2 },
+    until: { ...last3 },
     sensory: opts.sensory === true,
     extended: 0,
     bookingIds,
@@ -23797,7 +23814,7 @@ function startHold(draft, ctx2, holderId, span, opts = {}) {
     sensory: held3.sensory,
     ...opts.punitive === true ? { punitive: true } : {},
     ...opts.punishmentId !== void 0 ? { punishmentId: opts.punishmentId } : {},
-    ...opts.hidden === true ? { hidden: true } : { slots: slots.length, since: { ...first2 }, until: { ...last2 } }
+    ...opts.hidden === true ? { hidden: true } : { slots: slots.length, since: { ...first2 }, until: { ...last3 } }
   });
   return events;
 }
@@ -24104,9 +24121,9 @@ function activeRules2(state, holderId) {
 function buildPracticeInput(state, reg, request, card2 = "") {
   const holderId = request.holderId;
   const unit4 = state.squad.find((u) => u.id === holderId);
-  const view = practiceOf(state, reg, holderId);
+  const view2 = practiceOf(state, reg, holderId);
   const dyn = dynamicOf(state, holderId);
-  const frame7 = dyn?.frame === "rule" || dyn?.frame === "role" ? dyn.frame : "play";
+  const frame8 = dyn?.frame === "rule" || dyn?.frame === "role" ? dyn.frame : "play";
   const label2 = (id) => String(reg.contentCategories.get(id)?.label ?? id);
   const seeds = request.seedIds.map((id) => seedRows(reg).find((s) => s.id === id)).filter((s) => s !== void 0);
   const unitName3 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
@@ -24116,11 +24133,11 @@ function buildPracticeInput(state, reg, request, card2 = "") {
     kind: request.kind,
     holder: { id: holderId, name: unit4.displayName },
     card: clean3(card2).slice(0, CARD_MAX),
-    frame: frame7,
-    style: view === null ? { primary: "cold" } : { primary: view.style.primary, ...view.style.secondary !== void 0 ? { secondary: view.style.secondary } : {} },
+    frame: frame8,
+    style: view2 === null ? { primary: "cold" } : { primary: view2.style.primary, ...view2.style.secondary !== void 0 ? { secondary: view2.style.secondary } : {} },
     claims: capabilitiesOf(state, reg, holderId).map((c) => CAPABILITY_WORDS[c] ?? c),
     tracks: [...reg.dynamicTracks.values()].filter((t) => trackOpen(state, reg, holderId, t.id)).map((t) => ({ id: t.id, label: String(t.label ?? t.id), level: LEVEL_WORDS[trackLevel(state, holderId, t.id)] })),
-    categories: Object.entries(view?.categories ?? {}).filter(([, c]) => c.as !== "none").map(([id, c]) => ({ id, label: label2(id), as: c.as })),
+    categories: Object.entries(view2?.categories ?? {}).filter(([, c]) => c.as !== "none").map(([id, c]) => ({ id, label: label2(id), as: c.as })),
     hasLimits: limits.length > 0,
     recent: (dyn?.recent ?? []).map(clean3),
     context: {
@@ -24172,23 +24189,23 @@ function validatePracticeOutput(state, reg, request, raw) {
   const issues = [];
   if (request.kind === "punishment") return validatePunishmentCard(state, reg, request, raw);
   const pool = seedPool(state, reg, holderId, request.kind);
-  const seed6 = typeof raw.seedId === "string" ? pool.find((s) => s.id === raw.seedId) : void 0;
-  if (raw.seedId !== void 0 && seed6 === void 0) issues.push("seedId is not an offered seed and was dropped");
+  const seed7 = typeof raw.seedId === "string" ? pool.find((s) => s.id === raw.seedId) : void 0;
+  if (raw.seedId !== void 0 && seed7 === void 0) issues.push("seedId is not an offered seed and was dropped");
   const tags = (Array.isArray(raw.tags) ? raw.tags : []).filter((t) => typeof t === "string").filter((t, i, all) => all.indexOf(t) === i);
   const kept = tags.filter((t) => reg.contentCategories.has(t) && contentAllowed(state, reg, { contentTags: [t] }, holderId));
   if (kept.length < tags.length) issues.push(`tags ${tags.filter((t) => !kept.includes(t)).join(", ")} are not available and were dropped`);
   if (kept.length === 0) return null;
   const asked = typeof raw.track === "string" ? raw.track : void 0;
-  const track = asked !== void 0 && trackOpen(state, reg, holderId, asked) ? asked : seed6 !== void 0 && trackOpen(state, reg, holderId, seed6.track) ? seed6.track : void 0;
+  const track = asked !== void 0 && trackOpen(state, reg, holderId, asked) ? asked : seed7 !== void 0 && trackOpen(state, reg, holderId, seed7.track) ? seed7.track : void 0;
   if (track === void 0) return null;
   if (track !== asked) issues.push("track was not open and was replaced");
   const cap9 = trackLevel(state, holderId, track) + 1;
-  const tierRaw = typeof raw.tier === "number" && Number.isFinite(raw.tier) ? Math.round(raw.tier) : seed6?.tier ?? 1;
+  const tierRaw = typeof raw.tier === "number" && Number.isFinite(raw.tier) ? Math.round(raw.tier) : seed7?.tier ?? 1;
   const floor = request.chainOf === void 0 ? 1 : state.practices?.tasks.filter((x) => x.chainId === request.chainOf).at(-1)?.tier ?? 1;
   const tier = Math.min(Math.min(5, cap9), Math.max(1, floor, tierRaw));
   if (tier !== raw.tier) issues.push("tier was clamped");
   const ceiling = stakesCeilingOf(state, holderId);
-  const stakesRaw = STAKES.includes(raw.stakes) ? raw.stakes : seed6?.stakes ?? "minor";
+  const stakesRaw = STAKES.includes(raw.stakes) ? raw.stakes : seed7?.stakes ?? "minor";
   const stakes = stakeRank(stakesRaw) > stakeRank(ceiling) ? ceiling : stakesRaw;
   if (stakes !== raw.stakes) issues.push("stakes were clamped");
   const units = eligibleUnits(state, holderId);
@@ -24211,15 +24228,15 @@ function validatePracticeOutput(state, reg, request, raw) {
     checkArg = fieldUnit;
     issues.push("a field task takes a roster check");
   } else if (check !== raw.check) issues.push("check was changed to model");
-  const proof = PROOFS.includes(raw.proof) ? raw.proof : seed6?.proof ?? "none";
+  const proof = PROOFS.includes(raw.proof) ? raw.proof : seed7?.proof ?? "none";
   let deadline;
   if (isObj6(raw.deadline) && typeof raw.deadline.days === "number" && Number.isFinite(raw.deadline.days)) {
-    const D3 = TUNING.practice.deadlineDays;
-    const days = Math.min(D3.max, Math.max(D3.min, Math.round(raw.deadline.days)));
+    const D4 = TUNING.practice.deadlineDays;
+    const days = Math.min(D4.max, Math.max(D4.min, Math.round(raw.deadline.days)));
     if (days !== raw.deadline.days) issues.push("deadline was clamped");
     deadline = { days, ...typeof raw.deadline.slot === "string" && SLOTS4.includes(raw.deadline.slot) ? { slot: raw.deadline.slot } : {} };
   } else if (request.kind === "task") {
-    deadline = { days: seed6?.days ?? TUNING.practice.defaultDeadlineDays };
+    deadline = { days: seed7?.days ?? TUNING.practice.defaultDeadlineDays };
     issues.push("deadline was missing and is the seed's or the default");
   }
   const eligible4 = request.kind === "demonstration" ? watchersOf(state, reg, holderId) : units;
@@ -24231,14 +24248,14 @@ function validatePracticeOutput(state, reg, request, raw) {
   let summary = plainText2(raw.summary, TUNING.practice.summaryMax);
   if (text3 === "" || hasCommanderPronoun(text3) || hasCommanderPronoun(summary)) return null;
   if (summary === "") {
-    if (seed6 === void 0) return null;
-    summary = seed6.gist;
+    if (seed7 === void 0) return null;
+    summary = seed7.gist;
     issues.push("summary was empty and is the seed's gist");
   }
   return {
     output: {
       kind: request.kind,
-      ...seed6 !== void 0 ? { seedId: seed6.id } : {},
+      ...seed7 !== void 0 ? { seedId: seed7.id } : {},
       tags: kept,
       track,
       tier,
@@ -24282,10 +24299,10 @@ var frameOf2 = (state, holderId) => {
 };
 var openTasks = (state, holderId) => (state.practices?.tasks ?? []).filter((t) => t.holderId === holderId && t.kind === "task" && t.routine !== true && t.handover === void 0 && (t.status === "offered" || t.status === "open")).length;
 function taskRoom(state, reg, holderId) {
-  const frame7 = frameOf2(state, holderId);
+  const frame8 = frameOf2(state, holderId);
   const open3 = openTasks(state, holderId);
-  if (open3 >= TUNING.practice.taskCap[frame7]) return false;
-  return !(frameRank(frame7) >= frameRank("role") && open3 >= 1 && !hasCapability(state, reg, holderId, "household_protocol"));
+  if (open3 >= TUNING.practice.taskCap[frame8]) return false;
+  return !(frameRank(frame8) >= frameRank("role") && open3 >= 1 && !hasCapability(state, reg, holderId, "household_protocol"));
 }
 var targetOf = (request, out) => request.targetUnitId ?? out.targetUnitId ?? (ROSTER_CHECKS2.includes(out.check) || out.check === "no_scene_with" ? out.checkArg : void 0);
 var writeTask = (draft, _ctx, request, out, plain8) => {
@@ -24328,12 +24345,12 @@ var HOLD_SLOTS = { trivial: 1, minor: 1, major: 2, severe: 3 };
 var holdBusy = (state) => state.practices?.held !== void 0 || (state.practices?.tasks ?? []).some((t) => t.kind === "hold" && (t.status === "offered" || t.status === "open"));
 var writeHold = (draft, ctx2, request, out, plain8) => {
   if (holdBusy(draft)) {
-    const seed7 = out.seedId === void 0 ? void 0 : ctx2.registries.practiceSeeds.get(out.seedId);
-    return writeTask(draft, ctx2, request, { ...out, kind: "task", deadline: out.deadline ?? { days: seed7?.days ?? TUNING.practice.defaultDeadlineDays } }, plain8);
+    const seed8 = out.seedId === void 0 ? void 0 : ctx2.registries.practiceSeeds.get(out.seedId);
+    return writeTask(draft, ctx2, request, { ...out, kind: "task", deadline: out.deadline ?? { days: seed8?.days ?? TUNING.practice.defaultDeadlineDays } }, plain8);
   }
   const p = ensurePractices(draft);
   const id = nextPracticeId(draft, "pt");
-  const seed6 = out.seedId === void 0 ? void 0 : ctx2.registries.practiceSeeds.get(out.seedId);
+  const seed7 = out.seedId === void 0 ? void 0 : ctx2.registries.practiceSeeds.get(out.seedId);
   const task = {
     id,
     holderId: request.holderId,
@@ -24352,7 +24369,7 @@ var writeHold = (draft, ctx2, request, out, plain8) => {
     ...plain8 ? { plain: true } : {},
     status: "offered",
     ...request.sealed === true ? { sealed: true } : {},
-    ...seed6?.sensory === true ? { sensory: true } : {},
+    ...seed7?.sensory === true ? { sensory: true } : {},
     slots: HOLD_SLOTS[out.stakes],
     acceptForm: acceptFormOf(out.stakes, request.sealed),
     day: draft.day,
@@ -24455,8 +24472,8 @@ function refusePractice(draft, ctx2, holderId, what) {
   const events = [];
   events.push(...refuseLikeDemand(draft, ctx2, holderId, { evidence, ...severity !== void 0 ? { severity } : {} }));
   events.push(...evaluateAutomatic(draft, ctx2.registries, holderId));
-  const frame7 = dynamicOf(draft, holderId)?.frame;
-  if (frame7 !== void 0 && frameRank(frame7) >= frameRank("role")) events.push(...noteOffence(draft, ctx2, holderId, { kind: "refusal", ref: what.ref, stakes: what.sealed === true ? "major" : what.stakes, day: draft.day }));
+  const frame8 = dynamicOf(draft, holderId)?.frame;
+  if (frame8 !== void 0 && frameRank(frame8) >= frameRank("role")) events.push(...noteOffence(draft, ctx2, holderId, { kind: "refusal", ref: what.ref, stakes: what.sealed === true ? "major" : what.stakes, day: draft.day }));
   return events;
 }
 function acceptByWords(draft, ctx2, holderId, ev) {
@@ -24887,22 +24904,22 @@ function verdictOfRecord(rec) {
   const word2 = rec.pair !== void 0 ? rec.pair.fit && rec.pair.felt ? "pleased" : rec.pair.fit || rec.pair.felt ? "adequate" : "displeased" : rec.said ?? null;
   return word2 === null ? null : stepUp(word2, rec.bonus);
 }
-function rateService(draft, ctx2, holderId, verdict, via, sceneId) {
+function rateService(draft, ctx2, holderId, verdict2, via, sceneId) {
   const reg = ctx2.registries;
   const p = ensurePractices(draft);
   if (p.verdictScene?.[holderId] === sceneId || !practiceLive(draft, reg, holderId)) return [];
   (p.verdictScene ??= {})[holderId] = sceneId;
-  const events = [{ type: "service_rated", unitId: holderId, holderId, kind: verdict, via }];
-  events.push(...applyEventToUnit(draft, reg, holderId, { type: "service_rated", actor: "commander", targets: [holderId], severity: "minor", evidence: "her verdict on the service", confidence: 1, kind: verdict }));
+  const events = [{ type: "service_rated", unitId: holderId, holderId, kind: verdict2, via }];
+  events.push(...applyEventToUnit(draft, reg, holderId, { type: "service_rated", actor: "commander", targets: [holderId], severity: "minor", evidence: "her verdict on the service", confidence: 1, kind: verdict2 }));
   events.push(...evaluateAutomatic(draft, reg, holderId));
-  addFavour(draft, holderId, TUNING.practice.verdict.favour[verdict]);
-  if (verdict === "pleased" && (dynamicOf(draft, holderId)?.favour ?? 0) >= TUNING.practice.verdict.highFavour) events.push(...regardRise(draft, reg, holderId, "pleased_high"));
+  addFavour(draft, holderId, TUNING.practice.verdict.favour[verdict2]);
+  if (verdict2 === "pleased" && (dynamicOf(draft, holderId)?.favour ?? 0) >= TUNING.practice.verdict.highFavour) events.push(...regardRise(draft, reg, holderId, "pleased_high"));
   return events;
 }
 function noteSaid(draft, ctx2, holderId, ev) {
-  const verdict = VERDICTS.includes(ev.kind) ? ev.kind : void 0;
-  if (verdict === void 0 || draft.scene?.participants.includes(holderId) !== true || !practiceLive(draft, ctx2.registries, holderId)) return [];
-  sceneService(draft, holderId).said = verdict;
+  const verdict2 = VERDICTS.includes(ev.kind) ? ev.kind : void 0;
+  if (verdict2 === void 0 || draft.scene?.participants.includes(holderId) !== true || !practiceLive(draft, ctx2.registries, holderId)) return [];
+  sceneService(draft, holderId).said = verdict2;
   return [];
 }
 var asksForService = (state, holderId) => (state.practices?.tasks ?? []).some((t) => t.holderId === holderId && t.kind === "task" && t.routine !== true && t.status === "open" && t.tags.includes(TUNING.offer.serviceCategory));
@@ -24932,8 +24949,8 @@ function serviceFromEvents(draft, ctx2, events) {
       for (const [holderId, rec] of Object.entries(service)) {
         if (rec.sceneId !== e.sceneId) continue;
         delete service[holderId];
-        const verdict = e.type === "scene_ended" ? verdictOfRecord(rec) : null;
-        if (verdict !== null) out.push(...rateService(draft, ctx2, holderId, verdict, rec.pair !== void 0 ? "engine" : "model", rec.sceneId));
+        const verdict2 = e.type === "scene_ended" ? verdictOfRecord(rec) : null;
+        if (verdict2 !== null) out.push(...rateService(draft, ctx2, holderId, verdict2, rec.pair !== void 0 ? "engine" : "model", rec.sceneId));
       }
       if (Object.keys(service).length === 0) delete draft.practices.service;
     }
@@ -25021,8 +25038,8 @@ var RECENT_MAX = TUNING.probes.recentMax;
 var isOpenTask = (t) => t.kind === "task" && t.status === "open" && t.routine !== true;
 var stepUp2 = (s) => STAKES[Math.min(STAKES.length - 1, stakeRank(s) + 1)];
 function formOf(reg, task) {
-  const seed6 = task.seedId === void 0 ? void 0 : reg.practiceSeeds.get(task.seedId);
-  return typeof seed6?.gist === "string" ? seed6.gist : task.summary.slice(0, 40);
+  const seed7 = task.seedId === void 0 ? void 0 : reg.practiceSeeds.get(task.seedId);
+  return typeof seed7?.gist === "string" ? seed7.gist : task.summary.slice(0, 40);
 }
 function settleTask(draft, ctx2, taskId, outcome, via, opts = {}) {
   const reg = ctx2.registries;
@@ -25138,8 +25155,8 @@ function taskChecksFromEvents(draft, ctx2, events) {
         for (const t of live3()) if (t.check === "dm_report" && t.holderId === e.unitId) markReport(t, draft.day);
         break;
       case "expedition_ended": {
-        const last2 = draft.lastExpedition;
-        const party = last2 !== void 0 && last2.id === e.reportId ? last2.party : void 0;
+        const last3 = draft.lastExpedition;
+        const party = last3 !== void 0 && last3.id === e.reportId ? last3.party : void 0;
         if (party === void 0) break;
         for (const t of live3()) {
           if (t.field !== true || !ROSTER_CHECKS3.includes(t.check)) continue;
@@ -25254,8 +25271,8 @@ function alarmAnswer(state, reg, holderId, kind, alarmId, payload) {
   const unit4 = state.squad.find((u) => u.id === holderId);
   const values = unit4 === void 0 ? void 0 : valuesOf(unit4);
   const style = practiceOf(state, reg, holderId)?.style.primary;
-  const frame7 = dynamicOf(state, holderId)?.frame;
-  const score = (values?.mercy ?? 0) * T5.mercy + (values?.corporate ?? 0) * T5.corporate + (style === void 0 ? 0 : T5.style[style] ?? 0) + (frame7 === "play" || frame7 === "role" || frame7 === "rule" ? T5.frame[frame7] : 0) + practiceRoll(state, holderId, `alarm:${alarmId}`) - 0.5;
+  const frame8 = dynamicOf(state, holderId)?.frame;
+  const score = (values?.mercy ?? 0) * T5.mercy + (values?.corporate ?? 0) * T5.corporate + (style === void 0 ? 0 : T5.style[style] ?? 0) + (frame8 === "play" || frame8 === "role" || frame8 === "rule" ? T5.frame[frame8] : 0) + practiceRoll(state, holderId, `alarm:${alarmId}`) - 0.5;
   return score >= T5.release ? "release" : score >= T5.late ? "release_late" : "keep";
 }
 var alarmEvent = (alarm, answer, extra = {}) => ({
@@ -25464,21 +25481,21 @@ function fallbackOutput(state, reg, request) {
     return { kind: "punishment", tags: [], track: "discipline", tier: 1, stakes: "minor", check: "model", proof: "none", text: fallbackLine("punishment", label2), summary: label2 };
   }
   const pool = seedPool(state, reg, request.holderId, request.kind);
-  const seed6 = request.seedIds.map((id) => pool.find((s) => s.id === id)).find((s) => s !== void 0);
-  if (seed6 === void 0) return null;
+  const seed7 = request.seedIds.map((id) => pool.find((s) => s.id === id)).find((s) => s !== void 0);
+  if (seed7 === void 0) return null;
   const ceiling = stakesCeilingOf(state, request.holderId);
   return {
     kind: request.kind,
-    seedId: seed6.id,
-    tags: [...seed6.contentTags],
-    track: seed6.track,
-    tier: seed6.tier,
-    stakes: stakeRank(seed6.stakes) > stakeRank(ceiling) ? ceiling : seed6.stakes,
-    check: seed6.check ?? "model",
-    proof: seed6.proof ?? "none",
-    ...request.kind === "task" ? { deadline: { days: seed6.days ?? TUNING.practice.defaultDeadlineDays } } : {},
-    text: fallbackLine(request.kind, seed6.gist),
-    summary: plainSummary(seed6)
+    seedId: seed7.id,
+    tags: [...seed7.contentTags],
+    track: seed7.track,
+    tier: seed7.tier,
+    stakes: stakeRank(seed7.stakes) > stakeRank(ceiling) ? ceiling : seed7.stakes,
+    check: seed7.check ?? "model",
+    proof: seed7.proof ?? "none",
+    ...request.kind === "task" ? { deadline: { days: seed7.days ?? TUNING.practice.defaultDeadlineDays } } : {},
+    text: fallbackLine(request.kind, seed7.gist),
+    summary: plainSummary(seed7)
   };
 }
 function issuePractice(draft, ctx2, requestId, output) {
@@ -26066,8 +26083,8 @@ function practiceIntentInput(state, reg, participants, channel) {
     return step !== void 0 && check !== void 0 ? [{ id: x.id, unitId: x.holderId, step, check, label: oneLine(String(entry?.label ?? step)) }] : [];
   });
   const denial = present2.filter((id) => hasPermissionRule(state, reg, id));
-  const view = (id) => practiceOf(state, reg, id)?.categories[TUNING.offer.serviceCategory];
-  const service = channel === "scene" && serviceNow(state, reg) ? present2.filter((id) => (view(id)?.as ?? "none") !== "none") : [];
+  const view2 = (id) => practiceOf(state, reg, id)?.categories[TUNING.offer.serviceCategory];
+  const service = channel === "scene" && serviceNow(state, reg) ? present2.filter((id) => (view2(id)?.as ?? "none") !== "none") : [];
   const threats = [...present2];
   const types = [
     ...tasks.length > 0 ? ["task_kept", "task_broken"] : [],
@@ -26151,21 +26168,21 @@ function lifeFields(type, e, intent, life) {
   const str9 = (v) => typeof v === "string" && v !== "" ? v : null;
   let who;
   let key = null;
-  const pick10 = (list5, id) => {
+  const pick11 = (list5, id) => {
     const row4 = id === null ? void 0 : list5.find((x) => x.id === id && candidates3.includes(x.unitId));
     who = row4?.unitId;
     return row4;
   };
   switch (type) {
     case "news_told": {
-      const row4 = pick10(life.news, str9(e.newsId));
+      const row4 = pick11(life.news, str9(e.newsId));
       if (!row4) return null;
       intent.newsId = row4.id;
       key = row4.id;
       break;
     }
     case "hobby_praised": {
-      const row4 = pick10(life.hobbies, str9(e.hobbyId));
+      const row4 = pick11(life.hobbies, str9(e.hobbyId));
       if (!row4) return null;
       intent.hobbyId = row4.id;
       key = row4.id;
@@ -26174,7 +26191,7 @@ function lifeFields(type, e, intent, life) {
     case "opinion_voiced":
     case "opinion_challenged":
     case "opinion_agreed": {
-      const row4 = pick10(life.topics.filter((t) => type === "opinion_voiced" ? t.pick === true : t.voiced === true), str9(e.topicId));
+      const row4 = pick11(life.topics.filter((t) => type === "opinion_voiced" ? t.pick === true : t.voiced === true), str9(e.topicId));
       if (!row4) return null;
       intent.topicId = row4.id;
       const position = str9(e.positionId);
@@ -26192,7 +26209,7 @@ function lifeFields(type, e, intent, life) {
       break;
     }
     case "joke_returned": {
-      const row4 = pick10(life.jokes, str9(e.factId));
+      const row4 = pick11(life.jokes, str9(e.factId));
       if (!row4) return null;
       intent.factId = row4.id;
       key = row4.id;
@@ -26221,15 +26238,15 @@ function dynamicFields(type, e, intent, offer) {
   if (who === void 0) return null;
   intent.actor = "commander";
   intent.targets = [who];
-  const D3 = TUNING.dynamic.intents;
+  const D4 = TUNING.dynamic.intents;
   const response = RESPONSE_TYPES.includes(e.response) ? e.response : void 0;
-  const tone3 = TONES.includes(e.tone) ? e.tone : void 0;
+  const tone4 = TONES.includes(e.tone) ? e.tone : void 0;
   switch (type) {
     case "probe_answered":
     case "probe_observed": {
       if (response === void 0 || !(type === "probe_answered" ? offer.probes : offer.observed ?? []).includes(who)) return null;
       intent.response = response;
-      if (tone3 !== void 0) intent.tone = tone3;
+      if (tone4 !== void 0) intent.tone = tone4;
       if (typeof e.axis === "string" && /^[a-z_]{1,32}$/.test(e.axis)) intent.axis = e.axis;
       return { key: `${type}|${who}` };
     }
@@ -26240,7 +26257,7 @@ function dynamicFields(type, e, intent, offer) {
       return { key: `${type}|${who}|${e.milestoneId}` };
     }
     case "compromat_mentioned": {
-      const summary = oneLineText(e.summary, D3.summaryMax);
+      const summary = oneLineText(e.summary, D4.summaryMax);
       if (summary === "" || !offer.compromat.includes(who)) return null;
       intent.summary = summary;
       if (typeof e.factId === "string" && /^[A-Za-z0-9_:-]{1,24}$/.test(e.factId)) intent.factId = e.factId;
@@ -26253,7 +26270,7 @@ function dynamicFields(type, e, intent, offer) {
       if (typeof e.offerId !== "string" || !offer.offers.includes(e.offerId) || answer === void 0) return null;
       intent.offerId = e.offerId;
       intent.answer = answer;
-      const correction = oneLineText(e.correction, D3.correctionMax);
+      const correction = oneLineText(e.correction, D4.correctionMax);
       if (answer === "corrected" && correction !== "") intent.correction = correction;
       return { key: `${type}|${who}|${e.offerId}` };
     }
@@ -26651,19 +26668,19 @@ function allies(state) {
   const holder3 = wardenOf(state)?.unitId;
   return state.squad.filter((u) => u.kind === "named" && isLiving(u) && u.id !== holder3 && hasFlag3(state, u.id, "warden_ally")).map((u) => u.id);
 }
-function addSuspicion(draft, ctx2, noise9, cause, opts = {}) {
+function addSuspicion(draft, ctx2, noise10, cause, opts = {}) {
   const ls = leashswapOf(draft);
   if (!ls || !wardenOf(draft)) return [];
-  ls.intrigue.suspicion = clamp18(ls.intrigue.suspicion + noise9 * coverMult(draft, ctx2.registries), 0, 100);
+  ls.intrigue.suspicion = clamp18(ls.intrigue.suspicion + noise10 * coverMult(draft, ctx2.registries), 0, 100);
   const s = ls.intrigue.suspicion;
   const found2 = s >= 100 || ctx2.rng.chance(s / TUNING.warden.intrigue.discoveryDivisor);
   return found2 ? intrigueDiscovered(draft, ctx2, cause, opts) : [];
 }
 function allyChance(state, _reg, unitId) {
-  const A8 = TUNING.warden.intrigue.ally;
+  const A9 = TUNING.warden.intrigue.ally;
   const unit4 = unitOf5(state, unitId);
   const trust = state.relations[unitId]?.trust ?? 0;
-  return clamp18(A8.base + A8.perTrust * (trust - 50) + A8.autonomy * (unit4 ? valuesOf(unit4).autonomy : 0) - A8.corporate * (unit4 ? valuesOf(unit4).corporate : 0), A8.min, A8.max);
+  return clamp18(A9.base + A9.perTrust * (trust - 50) + A9.autonomy * (unit4 ? valuesOf(unit4).autonomy : 0) - A9.corporate * (unit4 ? valuesOf(unit4).corporate : 0), A9.min, A9.max);
 }
 function tryAlly(draft, ctx2, unitId) {
   const ls = leashswapOf(draft);
@@ -26694,17 +26711,17 @@ function intrigueDiscovered(draft, ctx2, cause, opts = {}) {
   const ls = leashswapOf(draft);
   const w = wardenOf(draft);
   if (!ls || !w) return [];
-  const D3 = TUNING.warden.intrigue.discovered;
+  const D4 = TUNING.warden.intrigue.discovered;
   const events = [{ type: "intrigue_discovered", cause }];
-  w.satisfaction = clamp18(w.satisfaction + D3.satisfaction, 0, 100);
-  const rose = addDefiance(draft, ctx2, D3.defiance);
+  w.satisfaction = clamp18(w.satisfaction + D4.satisfaction, 0, 100);
+  const rose = addDefiance(draft, ctx2, D4.defiance);
   events.push(...rose);
   events.push({ type: "warden_betrayed", unitId: w.unitId, severity: "extreme" });
   events.push(...applyEventToUnit(draft, ctx2.registries, w.unitId, { type: "warden_betrayed", actor: "commander", targets: [w.unitId], severity: "extreme", evidence: "plotted against the warden", confidence: 1 }));
   events.push(...evaluateAutomatic(draft, ctx2.registries, w.unitId));
   for (const id of allies(draft)) if (!hasFlag3(draft, id, "warden_knows_ally")) draft.relations[id].flags.push("warden_knows_ally");
   ls.intrigue.hack.step = 0;
-  ls.intrigue.suspicion = D3.suspicionAfter;
+  ls.intrigue.suspicion = D4.suspicionAfter;
   ls.intrigue.discovered += 1;
   if (!rose.some((e) => e.type === "commander_terminated")) {
     const id = opts.punishmentId ?? pickPunishment(draft, ctx2.registries, 4);
@@ -26958,8 +26975,8 @@ function emitSign(draft, ctx2, unitId, about2, level) {
   if (!unit4) return [];
   const rec = loyaltyRecord(draft, unitId);
   const lines3 = [...ctx2.registries.loyaltySigns.values()].filter((s) => s.about === about2 && (about2 !== "mutiny" || s.level === level) && (unit4.kind === "named" || s.kind === "fact"));
-  const fresh6 = lines3.filter((s) => !rec.signs.some((r) => r.signId === s.id));
-  const pool = fresh6.length > 0 ? fresh6 : lines3;
+  const fresh7 = lines3.filter((s) => !rec.signs.some((r) => r.signId === s.id));
+  const pool = fresh7.length > 0 ? fresh7 : lines3;
   if (pool.length === 0) return [];
   const line3 = ctx2.rng.pick(pool);
   const kind = line3.kind;
@@ -27860,10 +27877,10 @@ function mutinyDayStep(draft, ctx2) {
     const aged = mutinySigns(draft, u.id);
     const lastSign = Math.max(-Infinity, ...aged.map((s) => s.day));
     if (draft.disloyalty?.open || draft.day - lastSign < 1) continue;
-    const verdict = mutinyAllowed(draft, ctx2.registries, u.id);
-    if (verdict === "none" || verdict === "desert" && !mayDesert(draft, u.id)) continue;
+    const verdict2 = mutinyAllowed(draft, ctx2.registries, u.id);
+    if (verdict2 === "none" || verdict2 === "desert" && !mayDesert(draft, u.id)) continue;
     if (!ctx2.rng.chance(TUNING.mutiny.chancePerDay)) continue;
-    events.push(...verdict === "mutiny" ? startMutiny(draft, u.id) : startDesertion(draft, u.id, "night"));
+    events.push(...verdict2 === "mutiny" ? startMutiny(draft, u.id) : startDesertion(draft, u.id, "night"));
   }
   return events;
 }
@@ -28553,9 +28570,9 @@ function runActivity(draft, ctx2, request) {
     switch (fx2.type) {
       case "resource": {
         const wanted2 = scaled(fx2.amount + (fx2.perStat ? fx2.perStat.per * socialRank(draft, fx2.perStat.stat) : 0), draft, reg, fx2.scale);
-        const before6 = draft.resources[fx2.resource];
-        draft.resources[fx2.resource] = Math.max(0, before6 + wanted2);
-        events.push({ type: "resource_changed", resource: fx2.resource, amount: draft.resources[fx2.resource] - before6 });
+        const before7 = draft.resources[fx2.resource];
+        draft.resources[fx2.resource] = Math.max(0, before7 + wanted2);
+        events.push({ type: "resource_changed", resource: fx2.resource, amount: draft.resources[fx2.resource] - before7 });
         break;
       }
       case "commander_stat": {
@@ -29430,11 +29447,11 @@ function choiceOf(state, reg, route, index2, scope) {
 function routeChoices(state, reg, check, scope) {
   return check.routes.map((route, i) => choiceOf(state, reg, route, i, scope));
 }
-function resolveRoute(draft, ctx2, check, pick10, scope) {
-  const choice = routeChoices(draft, ctx2.registries, check, scope)[pick10.route];
-  if (!choice) throw new Error(`The check "${check.id}" has no route ${String(pick10.route)}.`);
+function resolveRoute(draft, ctx2, check, pick11, scope) {
+  const choice = routeChoices(draft, ctx2.registries, check, scope)[pick11.route];
+  if (!choice) throw new Error(`The check "${check.id}" has no route ${String(pick11.route)}.`);
   if (choice.disabled) throw new Error(choice.disabled);
-  const route = check.routes[pick10.route];
+  const route = check.routes[pick11.route];
   const events = [];
   let passed = true;
   switch (route.kind) {
@@ -29451,9 +29468,9 @@ function resolveRoute(draft, ctx2, check, pick10, scope) {
       break;
     }
     case "delegate": {
-      if (typeof pick10.unitId !== "string") throw new Error("Pick a unit to ask.");
-      if (!choice.unitIds?.includes(pick10.unitId)) throw new Error(`Unit "${pick10.unitId}" is not available for this request.`);
-      const unit4 = draft.squad.find((u) => u.id === pick10.unitId);
+      if (typeof pick11.unitId !== "string") throw new Error("Pick a unit to ask.");
+      if (!choice.unitIds?.includes(pick11.unitId)) throw new Error(`Unit "${pick11.unitId}" is not available for this request.`);
+      const unit4 = draft.squad.find((u) => u.id === pick11.unitId);
       const rel = draft.relations[unit4.id];
       const have = TRUST_ORDER.indexOf(trustBand(rel?.trust ?? 0));
       const need = TRUST_ORDER.indexOf(route.cost.trustCheck ?? DEFAULT_TRUST_CHECK);
@@ -29610,8 +29627,8 @@ function chooseAction(ctx2, cid) {
   const opts = options(ctx2, cid, usable3);
   switch (c.aiProfile) {
     case "erratic": {
-      const pick10 = ctx2.rng.pick(usable3);
-      return { kind: "skill", skillId: pick10.skill.id, targetCid: ctx2.rng.pick(pick10.targets) };
+      const pick11 = ctx2.rng.pick(usable3);
+      return { kind: "skill", skillId: pick11.skill.id, targetCid: ctx2.rng.pick(pick11.targets) };
     }
     case "predator": {
       const damaging = opts.filter((o) => o.damage > 0);
@@ -29762,15 +29779,15 @@ function issueOrder(ctx2, orderId, targetCid, opts = {}) {
 function repeatLastOrder(ctx2) {
   const { cs } = ctx2;
   cs.repeatOrder = false;
-  const last2 = cs.lastOrder;
-  if (!last2) return;
-  const order = orderOf(ctx2, last2.orderId);
+  const last3 = cs.lastOrder;
+  if (!last3) return;
+  const order = orderOf(ctx2, last3.orderId);
   if (!order) return;
   if (order.target !== "none") {
-    const t = cs.combatants.find((c) => c.cid === last2.targetCid);
+    const t = cs.combatants.find((c) => c.cid === last3.targetCid);
     if (!t || !isStanding(t) || hasFlag2(t, ctx2.reg, "untargetable") && order.target === "enemy" || t.breakdown?.ignoresOrders) return;
   }
-  issueOrder(ctx2, last2.orderId, last2.targetCid, { free: true });
+  issueOrder(ctx2, last3.orderId, last3.targetCid, { free: true });
 }
 
 // src/engine/combat/turn.ts
@@ -29892,9 +29909,9 @@ function decide(ctx2, cid) {
   if (!hasChoice(ctx2, cid)) return { action: { kind: "pass" }, trusted: false, broken: false };
   return "await";
 }
-function completeAction(ctx2, cid, broken = false) {
+function completeAction(ctx2, cid, broken2 = false) {
   const { cs } = ctx2;
-  if (broken) applyBreakdownActionEffects(ctx2, cid);
+  if (broken2) applyBreakdownActionEffects(ctx2, cid);
   cs.awaitingCid = void 0;
   const end2 = checkEnd(ctx2);
   if (end2) return endCombat(ctx2, end2);
@@ -30056,13 +30073,13 @@ var HANDS = ["rock", "paper", "scissors"];
 var PLAYABLE_KINDS = /* @__PURE__ */ new Set(["coin", "rps", "high_card", "sparring", "expedition_bet"]);
 var BET_PICKS = ["kills", "no_damage", "objective"];
 var agreedStatus = (reg, gameId) => reg.wagerGames.get(gameId)?.kind === "expedition_bet" ? "pending_run" : "accepted";
-function checkPick(state, reg, gameId, unitId, pick10) {
+function checkPick(state, reg, gameId, unitId, pick11) {
   const kind = reg.wagerGames.get(gameId)?.kind;
   if (kind === "sparring") {
-    const h2 = pick10 === void 0 ? void 0 : handicapOf(reg, pick10);
+    const h2 = pick11 === void 0 ? void 0 : handicapOf(reg, pick11);
     if (!h2) throw new Error("Choose a handicap.");
     if ((state.relations[unitId]?.affinity ?? -100) < h2.minAffinity) throw new Error("Her Affinity does not allow that handicap.");
-  } else if (kind === "expedition_bet" && !BET_PICKS.includes(pick10 ?? "")) {
+  } else if (kind === "expedition_bet" && !BET_PICKS.includes(pick11 ?? "")) {
     throw new Error("Choose what she bets on: kills, no damage or the objective.");
   }
 }
@@ -30100,12 +30117,12 @@ function rollChallenges(draft, ctx2) {
     if (!ctx2.rng.chance(TUNING.personal.wager.chance * assertiveness(draft, reg).demandMult * pressureMultOf(draft, reg, u.id))) continue;
     const game = games[ctx2.rng.int(0, games.length - 1)];
     const stake = stakes[ctx2.rng.int(0, stakes.length - 1)];
-    let pick10;
+    let pick11;
     if (game.kind === "sparring") {
       const allowed = game.handicaps.filter((h2) => (draft.relations[u.id]?.affinity ?? -100) >= h2.minAffinity);
-      pick10 = allowed[ctx2.rng.int(0, allowed.length - 1)]?.id;
+      pick11 = allowed[ctx2.rng.int(0, allowed.length - 1)]?.id;
     } else if (game.kind === "expedition_bet") {
-      pick10 = BET_PICKS[ctx2.rng.int(0, BET_PICKS.length - 1)];
+      pick11 = BET_PICKS[ctx2.rng.int(0, BET_PICKS.length - 1)];
     }
     const dm = pushMessage(draft, u.id, {
       from: u.id,
@@ -30115,7 +30132,7 @@ function rollChallenges(draft, ctx2) {
       read: false,
       initiated: true
     });
-    const w = { id: nextPersonalId(draft, "wg"), unitId: u.id, by: "unit", gameId: String(game.id), stakeId: String(stake.id), day: draft.day, status: "offered", ...pick10 !== void 0 ? { pick: pick10 } : {}, dmId: dm.id };
+    const w = { id: nextPersonalId(draft, "wg"), unitId: u.id, by: "unit", gameId: String(game.id), stakeId: String(stake.id), day: draft.day, status: "offered", ...pick11 !== void 0 ? { pick: pick11 } : {}, dmId: dm.id };
     (personalOf(draft).wagers ??= { open: [], log: [] }).open.push(w);
     events.push({ type: "wager_offered", wagerId: w.id, unitId: u.id, gameId: w.gameId, stakeId: w.stakeId });
   }
@@ -30153,14 +30170,14 @@ function answerChallenge(draft, ctx2, wagerId, accept2, opts = {}) {
   if (u && isLiving(u)) events.push(...hitHer(draft, ctx2.registries, w.unitId, "dismissed", "minor", "declined her challenge"));
   return events;
 }
-function playChance(kind, ctx2, pick10) {
+function playChance(kind, ctx2, pick11) {
   if (kind === "coin") return { winner: ctx2.rng.chance(0.5) ? "commander" : "unit", details: {} };
   if (kind === "high_card") {
     const commanderCard = ctx2.rng.int(1, 13);
     const herCard = ctx2.rng.int(1, 13);
     return { winner: commanderCard === herCard ? "void" : commanderCard > herCard ? "commander" : "unit", details: { commanderCard, herCard } };
   }
-  const mine = HANDS.indexOf(pick10);
+  const mine = HANDS.indexOf(pick11);
   if (mine < 0) throw new Error("Pick rock, paper or scissors.");
   const throws = [];
   for (let i = 0; i < 2; i++) {
@@ -30170,7 +30187,7 @@ function playChance(kind, ctx2, pick10) {
   }
   return { winner: "void", details: { hand: HANDS[mine], throws } };
 }
-function playWager(draft, ctx2, wagerId, pick10) {
+function playWager(draft, ctx2, wagerId, pick11) {
   const reg = ctx2.registries;
   const wagers = draft.personal?.wagers;
   const w = wagers?.open.find((x) => x.id === wagerId);
@@ -30179,21 +30196,21 @@ function playWager(draft, ctx2, wagerId, pick10) {
   if (!game || !PLAYABLE_KINDS.has(String(game.kind))) throw new Error("That game is not available.");
   const u = unitOf8(draft, w.unitId);
   if (!u || !isLiving(u)) throw new Error("She is not here to play.");
-  if (game.kind === "sparring") return playSparring(draft, ctx2, w, pick10 ?? w.pick);
-  const { winner, details } = playChance(String(game.kind), ctx2, pick10 ?? w.pick);
+  if (game.kind === "sparring") return playSparring(draft, ctx2, w, pick11 ?? w.pick);
+  const { winner, details } = playChance(String(game.kind), ctx2, pick11 ?? w.pick);
   return settle2(draft, ctx2, w, winner, details);
 }
-function playSparring(draft, ctx2, w, pick10) {
+function playSparring(draft, ctx2, w, pick11) {
   const reg = ctx2.registries;
   if (draft.slot === "night") throw new Error("Nobody spars at night.");
   if (draft.scene || draft.calendar.pendingScene || draft.calendar.nightEvent || draft.dilemmas?.open?.status === "presented") throw new Error("Not now: something else holds this slot.");
   const due = bookingGuard(draft, reg, { type: "calendar/consume_slot" });
   if (due) throw new Error(due.message);
-  checkPick(draft, reg, w.gameId, w.unitId, pick10);
-  const bout = sparringBout(draft, reg, ctx2.rng, w.unitId, pick10);
+  checkPick(draft, reg, w.gameId, w.unitId, pick11);
+  const bout = sparringBout(draft, reg, ctx2.rng, w.unitId, pick11);
   const xp = addBodyXp(draft.commander, "strength", Math.round(TUNING.commander.bodyXpPerSession * TUNING.personal.sparring.bodyXp * bodyGrowthMult(draft, reg)));
   const events = [{ type: "body_trained", stat: "strength", value: xp.value, raised: xp.gained }];
-  events.push(...settle2(draft, ctx2, w, bout.winner, { handicap: pick10, rounds: bout.rounds, ...bout.draw ? { draw: true } : {} }));
+  events.push(...settle2(draft, ctx2, w, bout.winner, { handicap: pick11, rounds: bout.rounds, ...bout.draw ? { draw: true } : {} }));
   events.push(...consumeSlots(draft, 1, ctx2));
   return events;
 }
@@ -30705,11 +30722,11 @@ function applyLevelUps(draft, reg, unit4) {
   const events = [];
   const cap9 = levelCap(draft);
   while (unit4.xp >= xpToNext(unit4.level) && unit4.level < cap9) {
-    const before6 = hpGrowth(reg, unit4, unit4.level);
+    const before7 = hpGrowth(reg, unit4, unit4.level);
     unit4.xp -= xpToNext(unit4.level);
     unit4.level += 1;
     unit4.skillPoints += 1;
-    unit4.currentHp += hpGrowth(reg, unit4, unit4.level) - before6;
+    unit4.currentHp += hpGrowth(reg, unit4, unit4.level) - before7;
     events.push({ type: "level_up", unitId: unit4.id, level: unit4.level });
   }
   return events;
@@ -31017,13 +31034,13 @@ function validateDirectorOutput(state, reg, raw, opts) {
     const part = `threadUpdates[${i}]`;
     if (!isObj10(u) || typeof u.threadId !== "string") return reject(part, "not a thread update");
     const isNew = u.threadId === "new";
-    const update2 = { threadId: u.threadId };
+    const update3 = { threadId: u.threadId };
     if (isNew) {
       const title3 = plain(u.title, 60);
       if (title3 === "") return reject(part, "a new thread needs a title");
       if (newThread) return reject(part, "at most one new thread per tick");
       if (openCount >= TUNING.world.threadsOpenMax) return reject(part, `already ${TUNING.world.threadsOpenMax} open threads (the limit)`);
-      update2.title = title3;
+      update3.title = title3;
     } else {
       if (u.threadId.startsWith("spine:")) return reject(part, "spine threads belong to the story");
       if (!state.world.threads.some((t) => t.id === u.threadId)) return reject(part, `unknown thread "${u.threadId}"`);
@@ -31038,7 +31055,7 @@ function validateDirectorOutput(state, reg, raw, opts) {
         if (was === "open" && next !== "open") openCount--;
         statusNow.set(u.threadId, next);
       }
-      update2.status = next;
+      update3.status = next;
     }
     const base = isNew ? 0 : flagCount.get(u.threadId) ?? 0;
     let have = base;
@@ -31053,13 +31070,13 @@ function validateDirectorOutput(state, reg, raw, opts) {
       have++;
       flags.push({ slug: s, description: description || s });
     });
-    if (flags.length > 0) update2.addFlags = flags;
+    if (flags.length > 0) update3.addFlags = flags;
     if (!isNew) flagCount.set(u.threadId, have);
     if (isNew) {
       newThread = true;
-      if ((update2.status ?? "open") === "open") openCount++;
+      if ((update3.status ?? "open") === "open") openCount++;
     }
-    output.threadUpdates.push(update2);
+    output.threadUpdates.push(update3);
   });
   let total2 = 0;
   const perClock = /* @__PURE__ */ new Map();
@@ -31178,10 +31195,10 @@ function answerRequest(draft, ctx2, requestId, raw, opts = {}) {
   const events = applyDirectorOutput(draft, ctx2, output, { fallback: opts.fallback });
   delete draft.world.director.pending;
   draft.world.director.lastTickDay = draft.day;
-  const after8 = draft.world.director.after;
-  if (after8) {
+  const after9 = draft.world.director.after;
+  if (after9) {
     delete draft.world.director.after;
-    events.push(...openRequest(draft, after8));
+    events.push(...openRequest(draft, after9));
   }
   if (rejected.length > 0) events.push({ type: "director_rejected", rejected });
   return events;
@@ -31268,8 +31285,8 @@ function draw(rng, list5, used2, onlyKind) {
   if (open3.length === 0) return null;
   const total2 = open3.reduce((s, c) => s + c.weight, 0);
   let r = rng.float() * total2;
-  const pick10 = open3.find((c) => (r -= c.weight) < 0) ?? open3[open3.length - 1];
-  return pick10.id;
+  const pick11 = open3.find((c) => (r -= c.weight) < 0) ?? open3[open3.length - 1];
+  return pick11.id;
 }
 function generateNodeMap(reg, rng, input) {
   const region = reg.regions.get(input.regionId);
@@ -31396,9 +31413,9 @@ function formationProblem(ids, f) {
 }
 var regionName = (r) => String(r.name);
 function poiCooldownReason(state, regionId, poiId) {
-  const last2 = state.world.regions[regionId]?.poi?.[poiId];
-  if (last2 === void 0 || state.day >= last2 + TUNING.world.poiCooldownDays) return null;
-  return `That point of interest cannot be run again before day ${last2 + TUNING.world.poiCooldownDays}.`;
+  const last3 = state.world.regions[regionId]?.poi?.[poiId];
+  if (last3 === void 0 || state.day >= last3 + TUNING.world.poiCooldownDays) return null;
+  return `That point of interest cannot be run again before day ${last3 + TUNING.world.poiCooldownDays}.`;
 }
 function checkDeparture(state, reg, p) {
   if (state.expedition) return "An expedition is already under way.";
@@ -31749,7 +31766,7 @@ function endExpedition(draft, ctx2, outcome) {
   const injuries = logIds(exp, "injuries");
   const deaths = logIds(exp, "deaths");
   const breakdowns = logIds(exp, "breakdowns");
-  const report5 = {
+  const report6 = {
     id: `rep_${exp.id}`,
     missionId: exp.missionId,
     missionTitle: mission?.title ?? "Unknown mission",
@@ -31766,10 +31783,10 @@ function endExpedition(draft, ctx2, outcome) {
     acknowledged: false,
     debriefed: false
   };
-  if (rewards) report5.rewards = structuredClone(rewards);
-  if (exp.herCalls && exp.herCalls.length > 0) report5.herCalls = structuredClone(exp.herCalls);
-  if (exp.withoutCommand !== void 0) report5.withoutCommand = { ...exp.withoutCommand };
-  draft.lastExpedition = report5;
+  if (rewards) report6.rewards = structuredClone(rewards);
+  if (exp.herCalls && exp.herCalls.length > 0) report6.herCalls = structuredClone(exp.herCalls);
+  if (exp.withoutCommand !== void 0) report6.withoutCommand = { ...exp.withoutCommand };
+  draft.lastExpedition = report6;
   events.push(...resolveBets(draft, ctx2, outcome));
   events.push(...hideInjuries(draft, reg, exp.party, [...injuries, ...deaths]));
   let line3 = `Expedition to ${regionLabel}: ${OUTCOME_TEXT[outcome]}.`;
@@ -31786,7 +31803,7 @@ function endExpedition(draft, ctx2, outcome) {
   if (scapegoat) events.push(...openScapegoat(draft, ctx2, scapegoat));
   draft.lastExpedition.day = draft.day;
   events.push(...openRequest(draft, "expedition"));
-  events.push({ type: "expedition_ended", outcome, reportId: report5.id });
+  events.push({ type: "expedition_ended", outcome, reportId: report6.id });
   return events;
 }
 function exhaustion(draft, exp) {
@@ -31821,32 +31838,32 @@ function cleanRecap(text3) {
   return text3.replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, " ").replace(/<[^>]*>?/g, " ").replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, TUNING.expedition.recapMax).trim();
 }
 var OUTCOME_LABEL = { success: "OBJECTIVE SECURED", retreated: "RETREATED", failed: "FAILED: SQUAD BEATEN BACK" };
-function reportLines(report5, state, reg) {
+function reportLines(report6, state, reg) {
   const nameOf28 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-  const region = reg.regions.get(report5.regionId);
+  const region = reg.regions.get(report6.regionId);
   const lines3 = [
     "AFTER-ACTION REPORT",
-    `Mission: ${report5.missionTitle}`,
-    `Region: ${region ? regionName(region) : report5.regionId} // Day ${report5.day}`,
-    `Outcome: ${OUTCOME_LABEL[report5.outcome]}`,
-    `Squad: ${report5.party.map(nameOf28).join(", ")}`
+    `Mission: ${report6.missionTitle}`,
+    `Region: ${region ? regionName(region) : report6.regionId} // Day ${report6.day}`,
+    `Outcome: ${OUTCOME_LABEL[report6.outcome]}`,
+    `Squad: ${report6.party.map(nameOf28).join(", ")}`
   ];
-  const route = report5.nodes.map((t) => String(reg.nodeTypes.get(t)?.name ?? t));
+  const route = report6.nodes.map((t) => String(reg.nodeTypes.get(t)?.name ?? t));
   if (route.length > 0) lines3.push(`Route: ${route.join(" > ")}`);
-  for (const entry of report5.log) lines3.push(entry.text);
-  const loot = describeLoot(report5.loot, reg);
-  lines3.push(report5.outcome === "success" ? `Loot banked: ${loot}.` : `Loot lost: ${loot}.`);
-  if (report5.rewards) {
-    const r = report5.rewards;
+  for (const entry of report6.log) lines3.push(entry.text);
+  const loot = describeLoot(report6.loot, reg);
+  lines3.push(report6.outcome === "success" ? `Loot banked: ${loot}.` : `Loot lost: ${loot}.`);
+  if (report6.rewards) {
+    const r = report6.rewards;
     const parts2 = [`${r.credits} credits`, `${r.plyx} PLYX`, ...r.items];
     if (r.faction) parts2.push(`${r.faction.id} standing +${r.faction.amount}`);
     if (r.clearance !== void 0) parts2.push(`clearance tier ${r.clearance}`);
     lines3.push(`Rewards: ${parts2.join(", ")}.`);
   }
-  if (report5.injuries.length > 0) lines3.push(`Injured: ${report5.injuries.map(nameOf28).join(", ")}.`);
-  if (report5.deaths.length > 0) lines3.push(`Fallen: ${report5.deaths.map(nameOf28).join(", ")}.`);
-  if (report5.breakdowns.length > 0) lines3.push(`Breakdown: ${report5.breakdowns.map(nameOf28).join(", ")}.`);
-  if (report5.recap) lines3.push("", report5.recap);
+  if (report6.injuries.length > 0) lines3.push(`Injured: ${report6.injuries.map(nameOf28).join(", ")}.`);
+  if (report6.deaths.length > 0) lines3.push(`Fallen: ${report6.deaths.map(nameOf28).join(", ")}.`);
+  if (report6.breakdowns.length > 0) lines3.push(`Breakdown: ${report6.breakdowns.map(nameOf28).join(", ")}.`);
+  if (report6.recap) lines3.push("", report6.recap);
   return lines3;
 }
 var nodeNumber = (exp) => exp.path.length;
@@ -32524,8 +32541,8 @@ function chooseDilemma(draft, ctx2, id, index2, route, wardenChecked = false, ra
     if (overridden) return overridden;
   }
   const ob = obedienceOf(draft);
-  const pick10 = ob?.who === "commander" ? herPick(draft, ctx2.registries, ob.unitId) : null;
-  const defied3 = ob !== null && pick10 !== null && pick10 !== index2;
+  const pick11 = ob?.who === "commander" ? herPick(draft, ctx2.registries, ob.unitId) : null;
+  const defied3 = ob !== null && pick11 !== null && pick11 !== index2;
   let effects2 = chosen.effects;
   let checkPassed;
   let routePassed;
@@ -32702,13 +32719,13 @@ function openDemand(draft, ctx2, unitId, opts = {}) {
   if (restrictionReason(draft, reg, unitId, "scene") !== null) return null;
   let pool = eligibleTemplates(draft, reg, unitId, opts.desire === true ? "desire" : void 0);
   if (opts.only !== void 0) pool = pool.filter((t) => t.kind === opts.only);
-  const last2 = [...draft.discipline?.demandLog ?? []].reverse().find((e) => e.unitId === unitId)?.templateId;
-  if (pool.length > 1) pool = pool.filter((t) => t.id !== last2);
+  const last3 = [...draft.discipline?.demandLog ?? []].reverse().find((e) => e.unitId === unitId)?.templateId;
+  if (pool.length > 1) pool = pool.filter((t) => t.id !== last3);
   if (pool.length === 0) return null;
   const total2 = pool.reduce((s, t) => s + Number(t.weight), 0);
-  const pick10 = opts.roll ?? ctx2.rng?.float();
-  if (pick10 === void 0) throw new Error("openDemand needs a roll or a stream to pick with.");
-  let r = pick10 * total2;
+  const pick11 = opts.roll ?? ctx2.rng?.float();
+  if (pick11 === void 0) throw new Error("openDemand needs a roll or a stream to pick with.");
+  let r = pick11 * total2;
   const tpl = pool.find((t) => (r -= Number(t.weight)) < 0) ?? pool[pool.length - 1];
   const stance = commandStance(draft, reg, unitId);
   const demand = {
@@ -33265,19 +33282,19 @@ function covered(draft, r) {
   const known3 = new Set((draft.headStart?.units ?? []).map((u) => u.unitId));
   return r.units.map((u, i) => ({ card: u.cardRef, id: draft.squad[i]?.id })).filter((x) => x.id !== void 0 && known3.has(x.id) && (want === true || want.includes(x.card))).map((x) => x.id);
 }
-function responseOf(seed6, unitId, i) {
-  const S11 = TUNING.probes.underway;
-  const u = headStartHash(seed6, unitId, `probe:${i}`);
-  return u < S11.yielded ? "yielded" : u < S11.yielded + S11.returned ? "returned" : u < S11.yielded + S11.returned + S11.deflected ? "deflected" : "resisted";
+function responseOf(seed7, unitId, i) {
+  const S12 = TUNING.probes.underway;
+  const u = headStartHash(seed7, unitId, `probe:${i}`);
+  return u < S12.yielded ? "yielded" : u < S12.yielded + S12.returned ? "returned" : u < S12.yielded + S12.returned + S12.deflected ? "deflected" : "resisted";
 }
-function axisOf(draft, reg, seed6, unitId, i, recent2) {
+function axisOf(draft, reg, seed7, unitId, i, recent2) {
   const tier = bandIndex(reg, dynamicOf(draft, unitId)?.hold ?? 0) === 0 ? 1 : 2;
   const axes = [...reg.probeAxes.values()].map((a) => a).filter((a) => a.tier <= tier);
-  const fresh6 = axes.filter((a) => !recent2.slice(-TUNING.probes.skipRecent).includes(a.id));
-  const pool = fresh6.length > 0 ? fresh6 : axes;
-  return pool[headStartRaw(seed6, unitId, `axis:${i}`) % pool.length];
+  const fresh7 = axes.filter((a) => !recent2.slice(-TUNING.probes.skipRecent).includes(a.id));
+  const pool = fresh7.length > 0 ? fresh7 : axes;
+  return pool[headStartRaw(seed7, unitId, `axis:${i}`) % pool.length];
 }
-function pickProbeMoment(reg, unit4, seed6, opts = {}) {
+function pickProbeMoment(reg, unit4, seed7, opts = {}) {
   const maxTier = opts.maxTier ?? 2;
   const rows = [...reg.headStartMoments.values()].filter((m) => {
     if (!(m.tags ?? []).includes("probe")) return false;
@@ -33285,7 +33302,7 @@ function pickProbeMoment(reg, unit4, seed6, opts = {}) {
     return axis !== void 0 && axis.tier <= maxTier && (opts.axes === void 0 || opts.axes.includes(axis.id));
   });
   if (rows.length === 0) return null;
-  const keyed = rows.map((m) => ({ m, h: headStartHash(seed6, unit4.id, `probe_moment:${String(m.id)}`) }));
+  const keyed = rows.map((m) => ({ m, h: headStartHash(seed7, unit4.id, `probe_moment:${String(m.id)}`) }));
   keyed.sort((a, b) => a.h - b.h || String(a.m.id).localeCompare(String(b.m.id)));
   return keyed[0].m;
 }
@@ -33293,7 +33310,7 @@ function applyDynamicHeadStart(draft, reg, r) {
   const hs = draft.headStart;
   if (hs === void 0 || draft.dynamic === void 0 || !dynamicOn(draft, reg)) return [];
   const events = [];
-  const seed6 = draft.dynamic.salt;
+  const seed7 = draft.dynamic.salt;
   for (const unitId of covered(draft, r)) {
     const unit4 = draft.squad.find((u) => u.id === unitId);
     const mine = hs.units.find((u) => u.unitId === unitId);
@@ -33303,9 +33320,9 @@ function applyDynamicHeadStart(draft, reg, r) {
     if (n <= 0) continue;
     const probed = [];
     for (let i = 0; i < n; i++) {
-      const before6 = dynamicOf(draft, unitId);
-      const axis = axisOf(draft, reg, seed6, unitId, i, before6?.recent ?? []);
-      events.push(...answerProbe(draft, { registries: reg }, unitId, responseOf(seed6, unitId, i), void 0, 1, false, { retro: true }));
+      const before7 = dynamicOf(draft, unitId);
+      const axis = axisOf(draft, reg, seed7, unitId, i, before7?.recent ?? []);
+      events.push(...answerProbe(draft, { registries: reg }, unitId, responseOf(seed7, unitId, i), void 0, 1, false, { retro: true }));
       const dyn2 = dynamicOf(draft, unitId);
       if (dyn2 === void 0) break;
       dyn2.probes.issued += 1;
@@ -33317,7 +33334,7 @@ function applyDynamicHeadStart(draft, reg, r) {
     if (dyn === void 0) continue;
     dyn.probes.lastDay = draft.day - 1;
     if (!draft.dynamic.queue.includes(unitId) && probeQueueRoom(draft) > 0) draft.dynamic.queue.push(unitId);
-    const moment = pickProbeMoment(reg, unit4, seed6, { axes: probed });
+    const moment = pickProbeMoment(reg, unit4, seed7, { axes: probed });
     if (moment !== null && !mine.moments.includes(String(moment.id))) mine.moments.push(String(moment.id));
   }
   return events;
@@ -33353,13 +33370,13 @@ function applySeeds(draft, reg, r) {
     const setup = r.dynamic.units[u.cardRef];
     const id = draft.squad[i]?.id;
     if (setup?.seeded !== true || id === void 0) return;
-    const frame7 = setup.startFrame;
-    const floor = frame7 === void 0 ? 0 : Number(reg.dynamicFrames.get(frame7)?.holdFloor ?? 0);
+    const frame8 = setup.startFrame;
+    const floor = frame8 === void 0 ? 0 : Number(reg.dynamicFrames.get(frame8)?.holdFloor ?? 0);
     events.push(...seedHold(draft, reg, id, floor));
     const dyn = draft.relations[id]?.dynamic;
-    if (dyn !== void 0 && frame7 !== void 0) {
-      dyn.frame = frame7;
-      dyn.milestones.push(`seeded:${frame7}`);
+    if (dyn !== void 0 && frame8 !== void 0) {
+      dyn.frame = frame8;
+      dyn.milestones.push(`seeded:${frame8}`);
     }
   });
   return events;
@@ -34544,8 +34561,8 @@ function generatePortrait(rng) {
     const [row4, col, glyph] = mark2;
     rows[row4] = rows[row4].slice(0, col) + glyph + rows[row4].slice(col + 1);
   }
-  const frame7 = `+${"-".repeat(INNER)}+`;
-  return [frame7, ...rows.map((r) => `|${r}|`), frame7].join("\n");
+  const frame8 = `+${"-".repeat(INNER)}+`;
+  return [frame8, ...rows.map((r) => `|${r}|`), frame8].join("\n");
 }
 function generateDesignation(rng, taken) {
   for (let i = 0; i < 1e4; i++) {
@@ -34876,14 +34893,14 @@ registerAction("base/upgrade", (draft, payload, ctx2) => {
   const reason = checkUpgrade(draft, ctx2.registries, id);
   if (reason) throw new Error(reason);
   const level = facilityLevel2(draft, id);
-  const up = facilityLevels(ctx2.registries, id)[level].upgrade;
-  draft.resources.credits -= up.credits;
-  draft.resources.plyx -= up.plyx;
-  (draft.base.upgrades ??= []).push({ facilityId: id, toLevel: level + 1, daysLeft: up.days });
+  const up2 = facilityLevels(ctx2.registries, id)[level].upgrade;
+  draft.resources.credits -= up2.credits;
+  draft.resources.plyx -= up2.plyx;
+  (draft.base.upgrades ??= []).push({ facilityId: id, toLevel: level + 1, daysLeft: up2.days });
   return [
-    { type: "resource_changed", resource: "credits", amount: -up.credits },
-    { type: "resource_changed", resource: "plyx", amount: -up.plyx },
-    { type: "upgrade_started", facilityId: id, toLevel: level + 1, days: up.days }
+    { type: "resource_changed", resource: "credits", amount: -up2.credits },
+    { type: "resource_changed", resource: "plyx", amount: -up2.plyx },
+    { type: "upgrade_started", facilityId: id, toLevel: level + 1, days: up2.days }
   ];
 });
 registerAction("base/requisition", (draft, payload, ctx2) => {
@@ -34997,20 +35014,20 @@ function recentLines(state, viewers, cfg) {
 
 // src/engine/development/words.ts
 var DRAFT_MARK = /^\s*AUTHOR TO WRITE:\s*/i;
-function axisWords(reg, axis, up) {
+function axisWords(reg, axis, up2) {
   const entry = axisEntry(reg, axis);
   if (!entry) return null;
   const tag2 = axis.slice(axis.indexOf(":") + 1);
   const name = axisKind(axis) === "taste" ? String(reg.tastes.get(tag2)?.name ?? tag2) : tag2.replace(/_/g, " ");
-  const words3 = (up ? entry.up : entry.down).replace(DRAFT_MARK, "").replace(/\{tag\}/g, name).trim();
+  const words3 = (up2 ? entry.up : entry.down).replace(DRAFT_MARK, "").replace(/\{tag\}/g, name).trim();
   return words3 === "" ? null : words3;
 }
 function changedAxes(unit4, reg) {
   const dev = developmentOf(unit4);
   const out = [];
-  const add2 = (axis, up) => {
-    const words3 = axisWords(reg, axis, up);
-    if (words3 !== null) out.push({ axis, up, words: words3 });
+  const add2 = (axis, up2) => {
+    const words3 = axisWords(reg, axis, up2);
+    if (words3 !== null) out.push({ axis, up: up2, words: words3 });
   };
   const eff = valuesOf(unit4);
   for (const a of Object.keys(unit4.values)) if (eff[a] !== unit4.values[a]) add2(`value:${a}`, eff[a] > unit4.values[a]);
@@ -35092,9 +35109,9 @@ function expectedOption(state, reg, moment) {
     const e = read2(state, reg, moment);
     if (e !== null && moment.options.some((o) => o.key === e.key)) return e;
   }
-  const frame7 = moment.options.filter((o) => FRAME_KEYS2.includes(o.key));
-  const pick10 = frame7.find((o) => o.type === "returned") ?? frame7.find((o) => o.type === "yielded") ?? frame7[0];
-  return { key: pick10?.key ?? "0", strength: 1 };
+  const frame8 = moment.options.filter((o) => FRAME_KEYS2.includes(o.key));
+  const pick11 = frame8.find((o) => o.type === "returned") ?? frame8.find((o) => o.type === "yielded") ?? frame8[0];
+  return { key: pick11?.key ?? "0", strength: 1 };
 }
 function gapOf(expected, chosen) {
   if (expected === chosen) return "matched";
@@ -35105,7 +35122,7 @@ function escalationVerb(state, reg) {
   const carried = new Set(personEffects(state, reg, COMMANDER).flatMap((e) => e.type === "escalation" ? [e.verb] : []));
   return ESCALATION_ORDER.find((v) => carried.has(v)) ?? "look";
 }
-function answerMoment(draft, ctx2, momentId, key, via, tone3, opts = {}) {
+function answerMoment(draft, ctx2, momentId, key, via, tone4, opts = {}) {
   const reg = ctx2.registries;
   const scene = draft.scene;
   const open3 = momentsOf(scene).open;
@@ -35128,7 +35145,7 @@ function answerMoment(draft, ctx2, momentId, key, via, tone3, opts = {}) {
     gap,
     via,
     exchange: scene.exchanges,
-    ...tone3 !== void 0 ? { tone: tone3 } : {},
+    ...tone4 !== void 0 ? { tone: tone4 } : {},
     ...verb !== void 0 ? { escalated: true, verb } : {}
   };
   scene.moments.lastAnswer = record2;
@@ -35142,7 +35159,7 @@ function answerMoment(draft, ctx2, momentId, key, via, tone3, opts = {}) {
     responseType: option2.type,
     gap,
     via,
-    ...tone3 !== void 0 ? { tone: tone3 } : {},
+    ...tone4 !== void 0 ? { tone: tone4 } : {},
     ...verb !== void 0 ? { escalated: true, verb } : {},
     ...open3.visitorId !== void 0 ? { visitorId: open3.visitorId } : {},
     present: [...scene.participants]
@@ -35336,8 +35353,8 @@ function blockingWeight(state, reg, sourceId, unitId) {
   return sum;
 }
 function physicsLive(state, kind) {
-  const last2 = state.scene?.physics?.last;
-  return kind === "physics_warning" ? last2?.warning === true : (last2?.slips ?? 0) > 0;
+  const last3 = state.scene?.physics?.last;
+  return kind === "physics_warning" ? last3?.warning === true : (last3?.slips ?? 0) > 0;
 }
 function liveSources(state, reg, opts = {}) {
   const scene = state.scene;
@@ -35371,9 +35388,9 @@ function liveSources(state, reg, opts = {}) {
             if (obscured && unitId === scene.participants[0]) weight += 1;
             break;
           case "mood_jump": {
-            const before6 = moments.seen?.[unitId];
+            const before7 = moments.seen?.[unitId];
             const now = moodOf(state, reg, unitId);
-            if (before6 && now && (before6.stress !== now.stress || before6.want !== now.want || before6.vitals !== now.vitals)) {
+            if (before7 && now && (before7.stress !== now.stress || before7.want !== now.want || before7.vitals !== now.vitals)) {
               weight += temperamentOf(state, unitId).volatility === "moody" ? TUNING.moments.moodyMult : 1;
             }
             break;
@@ -35476,9 +35493,9 @@ function cannotHide(state, reg) {
   return personEffects(state, reg, COMMANDER).some((e) => e.type === "visibility" && e.hideable === false && !(posture !== void 0 && (e.unlessPosture ?? []).includes(posture)));
 }
 function optionsFor(state, reg, source, unitId) {
-  const frame7 = source.frame;
+  const frame8 = source.frame;
   const visitor = kindsOf2(source).includes("visitor");
-  const options2 = GENERIC_KEYS.map((key, i) => ({ key, type: frame7[i].type }));
+  const options2 = GENERIC_KEYS.map((key, i) => ({ key, type: frame8[i].type }));
   const out = visitor && cannotHide(state, reg) ? options2.filter((o) => o.key !== "0") : options2;
   const scene = state.scene;
   if (visitor && sceneAffordances(state, reg).has("lock")) out.push({ key: "lock", type: "returned" });
@@ -35539,8 +35556,8 @@ function cooledDown(state) {
   const scene = state.scene;
   const freq = sceneSettingsOf(state).momentFrequency;
   const fired = momentsOf(scene).fired;
-  const last2 = fired.reduce((n, f) => Math.max(n, f.exchange), -Infinity);
-  const ok = fired.length < TUNING.moments.maxPerScene[freq] && (fired.length === 0 || scene.exchanges - last2 >= TUNING.moments.minGap[freq]);
+  const last3 = fired.reduce((n, f) => Math.max(n, f.exchange), -Infinity);
+  const ok = fired.length < TUNING.moments.maxPerScene[freq] && (fired.length === 0 || scene.exchanges - last3 >= TUNING.moments.minGap[freq]);
   return { ok, rested: (id) => !fired.some((f) => f.sourceId === id && scene.exchanges - f.exchange < TUNING.moments.sourceGap) };
 }
 function chanceOf(state) {
@@ -35576,8 +35593,8 @@ function momentPass(draft, ctx2, cause, opts = {}) {
     if (live3.length > 0 && ctx2.rng.chance(chanceOf(draft))) {
       const total2 = live3.reduce((n, l) => n + Math.max(1, Math.round(l.weight * 100)), 0);
       let r = ctx2.rng.int(0, total2 - 1);
-      const pick10 = live3.find((l) => (r -= Math.max(1, Math.round(l.weight * 100))) < 0) ?? live3[live3.length - 1];
-      events.push(...fireMoment(draft, ctx2, pick10.sourceId, pick10.unitId));
+      const pick11 = live3.find((l) => (r -= Math.max(1, Math.round(l.weight * 100))) < 0) ?? live3[live3.length - 1];
+      events.push(...fireMoment(draft, ctx2, pick11.sourceId, pick11.unitId));
     }
   }
   refreshSeen(draft, reg);
@@ -35723,10 +35740,10 @@ function presenceScore(state, reg, run) {
 }
 var stepOf = (score) => score >= 1.2 ? "with" : score >= 0.3 ? "glancing" : score >= -0.7 ? "own" : "use";
 function presenceOf2(state, reg, run, phase) {
-  const { frame: frame7 } = activityOf(state, reg, run);
+  const { frame: frame8 } = activityOf(state, reg, run);
   const t = termsOf(state, reg, run.holderId);
   let score = presenceScore(state, reg, run);
-  for (let p = 2; p <= phase; p++) score += (frame7?.absorb ?? 0) + (t.hash(`presence:${run.id}:${p}`) * 2 - 1) * 0.15;
+  for (let p = 2; p <= phase; p++) score += (frame8?.absorb ?? 0) + (t.hash(`presence:${run.id}:${p}`) * 2 - 1) * 0.15;
   return stepOf(score);
 }
 var ATT_BY_STEP = { with: [0.4, 0.4, 0.2], glancing: [0.14, 0.38, 0.48], own: [0.05, 0.25, 0.7], use: [0.02, 0.12, 0.86] };
@@ -35937,12 +35954,12 @@ var isAir = (reg, physicsId) => {
   return p?.interaction === "timing" && p.gauge.kind === "capacity";
 };
 var coreRun = (run, which) => which === "main" ? run : run.second ? withoutLeak({ ...run, physicsId: run.second.physicsId, gauge: run.second.gauge, capacity: run.second.capacity, streak: run.second.streak, ...run.second.seal ? { seal: run.second.seal } : {}, ...run.second.pressure !== void 0 ? { pressure: run.second.pressure } : {} }, run.second) : null;
-function withoutLeak(view, second) {
-  if (second.seal === void 0) delete view.seal;
-  if (second.pressure === void 0) delete view.pressure;
-  delete view.headed;
-  delete view.second;
-  return view;
+function withoutLeak(view2, second) {
+  if (second.seal === void 0) delete view2.seal;
+  if (second.pressure === void 0) delete view2.pressure;
+  delete view2.headed;
+  delete view2.second;
+  return view2;
 }
 function releaseOf(state, reg, run) {
   if (run.headed) return "continue";
@@ -35986,14 +36003,14 @@ function startFrame(draft, reg) {
   if (!scene || scene.physics || !phys || !blockingLive(draft, reg)) return [];
   for (const holderId of scene.participants) {
     const activity = blockingOf(scene, holderId).activity;
-    const frame7 = activity !== void 0 ? frameOf3(reg.blockingActivities.get(activity)) : null;
-    if (activity === void 0 || frame7 === null || !placedBy(draft, holderId)) continue;
+    const frame8 = activity !== void 0 ? frameOf3(reg.blockingActivities.get(activity)) : null;
+    if (activity === void 0 || frame8 === null || !placedBy(draft, holderId)) continue;
     const done = scene.frameDone;
     if (done && done.holderId === holderId && done.activity === activity && done.placed === placementKey(draft)) continue;
     const contact = contactOf(scene);
     if (contact && physicsOf(reg.blockingContacts.get(contact.id)).some((p) => reg.contactPhysics.get(p.id)?.interaction !== "hold")) continue;
     const second = framedContactPhysics(draft, reg, holderId)[0]?.id;
-    const o = { physicsId: String(phys.id), sourceKind: "activity", sourceId: activity, holderId, duration: frame7.hours !== void 0 ? { hours: frame7.hours } : "unknown", ...second !== void 0 ? { second } : {} };
+    const o = { physicsId: String(phys.id), sourceKind: "activity", sourceId: activity, holderId, duration: frame8.hours !== void 0 ? { hours: frame8.hours } : "unknown", ...second !== void 0 ? { second } : {} };
     if (whyNotStart(draft, reg, o) === null) return startPhysics(draft, { registries: reg }, o);
   }
   return [];
@@ -36075,7 +36092,7 @@ function decideBoundary(draft, ctx2, run, result) {
   const reg = ctx2.registries;
   const events = [];
   let outcome = null;
-  let move;
+  let move2;
   if (result.checked) outcome = "checked";
   else if (result.complete && run.sourceKind !== "activity") outcome = "released";
   else {
@@ -36084,36 +36101,36 @@ function decideBoundary(draft, ctx2, run, result) {
       if (run.extend > 0) run.extend -= 1;
       else if (ctx2.rng.chance(forgetChance(draft, reg, run.holderId))) {
         run.extend += 1;
-        move = "forgets";
+        move2 = "forgets";
       } else outcome = "released";
     } else if (release2 !== "continue") outcome = release2;
   }
   if (outcome === null) {
     const scene = draft.scene;
-    if (move === void 0 && run.sourceKind !== "activity" && (draft.slot === "night" || resting(draft, reg, run.holderId)) && blockingOf(scene, run.holderId).activity !== "sleeping") {
+    if (move2 === void 0 && run.sourceKind !== "activity" && (draft.slot === "night" || resting(draft, reg, run.holderId)) && blockingOf(scene, run.holderId).activity !== "sleeping") {
       if (ctx2.rng.chance(1 - (1 - P.asleep.perBeat) ** result.beatsRun)) {
         if (setQuietly(draft, reg, { person: run.holderId, field: "activity", value: "sleeping" })) {
           (scene.sleepUntil ??= {})[run.holderId] = scene.exchanges + ctx2.rng.int(P.asleep.exchanges[0], P.asleep.exchanges[1]);
-          move = "asleep";
+          move2 = "asleep";
         }
       }
     }
-    if (move === void 0) {
+    if (move2 === void 0) {
       const key = leadStyle(physicsStyleOf(draft, run.holderId, reg)).key;
       const left = run.capacity > 0 ? (reg.contactPhysics.get(run.physicsId)?.gauge).kind === "capacity" ? run.gauge / run.capacity : 1 : 1;
       if (PRESSES.has(key) && result.missed === 0 && result.slips === 0) {
         run.pressure = Math.min(1.5, (run.pressure ?? 1) + 0.25);
-        move = "press";
+        move2 = "press";
       } else if (key === "affectionate" && left <= 0.5) {
         run.pressure = Math.max(0.5, (run.pressure ?? 1) - 0.25);
-        move = "lift";
+        move2 = "lift";
       } else if (CHANGES.has(key) && result.streak >= P.endurance.streakFrom) {
         run.rhythmShift = (run.rhythmShift ?? 0) + 1;
-        move = "rhythm";
+        move2 = "rhythm";
       }
     }
-    if (move !== void 0 && run.last) run.last.move = move;
-    return { events, ...move !== void 0 ? { move } : {} };
+    if (move2 !== void 0 && run.last) run.last.move = move2;
+    return { events, ...move2 !== void 0 ? { move: move2 } : {} };
   }
   if (outcome === "collapse" || outcome === "limit_broken") events.push({ type: "physics_slip", runId: run.id, kind: "collapse", holderId: run.holderId });
   if (ENDED_WELL.has(outcome)) events.push(...creditHold(draft, reg, run));
@@ -36668,9 +36685,9 @@ function replyModeFor(state, reg, unitId, base) {
 }
 function hesitates(state, reg, unitId) {
   if (!namedLiving7(state, unitId)) return false;
-  const last2 = (state.dms[unitId] ?? []).at(-1);
-  if (!last2 || last2.from !== "commander") return false;
-  return behaviours(reg).some((b) => b.kind === "hesitate" && (b.when === void 0 || whenHolds(state, reg, unitId, b.when, { initiated: false })) && passes(`${last2.id}|${b.id}`, b.chance));
+  const last3 = (state.dms[unitId] ?? []).at(-1);
+  if (!last3 || last3.from !== "commander") return false;
+  return behaviours(reg).some((b) => b.kind === "hesitate" && (b.when === void 0 || whenHolds(state, reg, unitId, b.when, { initiated: false })) && passes(`${last3.id}|${b.id}`, b.chance));
 }
 function receiptOf(state, unitId, msg) {
   const now = slotIndex(state.day, state.slot);
@@ -37065,8 +37082,8 @@ function wardenGone(draft, ctx2, how) {
   return startRemoval(draft, ctx2, "death");
 }
 function reportChance(state, _reg) {
-  const R9 = TUNING.warden.verdict.report;
-  return clamp38(R9.base + R9.perKompromat * (kompromatOf(state).length - TUNING.warden.kompromat.needed) + R9.perCunning * (socialRank(state, "cunning") - 1), R9.min, R9.max);
+  const R10 = TUNING.warden.verdict.report;
+  return clamp38(R10.base + R10.perKompromat * (kompromatOf(state).length - TUNING.warden.kompromat.needed) + R10.perCunning * (socialRank(state, "cunning") - 1), R10.min, R10.max);
 }
 var REPORT_CONTEXT = "warden_report";
 function presentReport(draft, ctx2) {
@@ -37134,16 +37151,16 @@ function wardenReportChoice(draft, ctx2, context, optionId) {
 }
 function remoteExpectations(state) {
   if (!state.leashswap?.remote) return [];
-  const R9 = TUNING.warden.remote;
+  const R10 = TUNING.warden.remote;
   return [
-    { id: "remote_quota", kind: "meet_quota", weight: R9.quota, source: "corporate", known: true },
-    { id: "remote_obey", kind: "obey_oversight", weight: R9.obey, source: "corporate", known: true }
+    { id: "remote_quota", kind: "meet_quota", weight: R10.quota, source: "corporate", known: true },
+    { id: "remote_obey", kind: "obey_oversight", weight: R10.obey, source: "corporate", known: true }
   ];
 }
 function remoteDayStep(draft, ctx2) {
   const ls = leashswapOf(draft);
   if (!ls?.remote || wardenOf(draft)) return [];
-  const R9 = TUNING.warden.remote;
+  const R10 = TUNING.warden.remote;
   const events = [];
   const done = draft.missions.completed;
   if (done.some((m) => m.status === "failed" && m.outcomeDay === draft.day)) {
@@ -37151,7 +37168,7 @@ function remoteDayStep(draft, ctx2) {
     if (id !== void 0) events.push(...applyRemotePunishment(draft, ctx2, id));
   }
   const since = draft.day - ls.remote.sinceDay;
-  if (since > 0 && since % R9.missionDays === 0 && !done.some((m) => m.status === "completed" && m.outcomeDay !== void 0 && m.outcomeDay > draft.day - R9.missionDays && m.outcomeDay <= draft.day)) {
+  if (since > 0 && since % R10.missionDays === 0 && !done.some((m) => m.status === "completed" && m.outcomeDay !== void 0 && m.outcomeDay > draft.day - R10.missionDays && m.outcomeDay <= draft.day)) {
     const id = pickPunishment(draft, ctx2.registries, 1);
     if (id !== null) events.push(...applyRemotePunishment(draft, ctx2, id));
   }
@@ -38316,10 +38333,10 @@ registerAction("item/reroll", (draft, payload, ctx2) => {
   const pool = [...ctx2.registries.affixes.values()].filter((a) => a.appliesTo === "item" && a.drawback !== true && !inst.affixes.includes(a.id) && (!a.slots || a.slots.includes(slot2))).map((a) => a.id);
   if (pool.length === 0) throw new Error("No other affix can roll on this item.");
   const events = spend(draft, 0, rerollCost(inst));
-  const before6 = inst.affixes[i];
+  const before7 = inst.affixes[i];
   inst.affixes[i] = ctx2.rng.pick(pool);
   draft.workshopSession.opsLeft -= 1;
-  return [...events, { type: "item_rerolled", uid: inst.uid, from: before6, to: inst.affixes[i] }];
+  return [...events, { type: "item_rerolled", uid: inst.uid, from: before7, to: inst.affixes[i] }];
 });
 registerAction("item/dismantle", (draft, payload, ctx2) => {
   session(draft);
@@ -38923,29 +38940,29 @@ function writeDiscrete(dev, key, to, imported) {
 }
 function applyShift(unit4, dev, s) {
   const kind = axisKind(s.axis);
-  const up = s.direction === "up";
+  const up2 = s.direction === "up";
   if (kind === "value") {
     const axis = s.axis.slice("value:".length);
-    const before6 = valuesOf(unit4)[axis];
+    const before7 = valuesOf(unit4)[axis];
     const old = dev.drift[axis] ?? 0;
     const cap9 = isAnchored(unit4, s.axis) ? D2.anchoredValueCap : D2.valueCap;
     const delta = D2.nudge * (isAnchored(unit4, s.axis) ? D2.anchorInertia : 1);
-    const next = s.size === "nudge" ? old + (up ? delta : -delta) : Math.trunc(old) + (up ? 1 : -1);
+    const next = s.size === "nudge" ? old + (up2 ? delta : -delta) : Math.trunc(old) + (up2 ? 1 : -1);
     dev.drift[axis] = round5(Math.min(cap9, Math.max(-cap9, next)));
-    const after8 = valuesOf(unit4)[axis];
-    return after8 === before6 ? null : { from: String(before6), to: String(after8) };
+    const after9 = valuesOf(unit4)[axis];
+    return after9 === before7 ? null : { from: String(before7), to: String(after9) };
   }
   if (kind === "bond" || kind === "practice" || kind === "expect") {
     const d = discreteAxis(unit4, s.axis);
-    const to = d.scale[d.scale.indexOf(d.now) + (up ? 1 : -1)];
+    const to = d.scale[d.scale.indexOf(d.now) + (up2 ? 1 : -1)];
     writeDiscrete(dev, s.axis, to, d.imported);
     return { from: String(d.now), to: String(to) };
   }
   const name = s.axis.slice((kind ?? "").length + 1);
-  changeList(dev, listField[kind], name, up);
-  if (kind === "like" && up && dislikesOf(unit4).includes(name)) changeList(dev, "dislikes", name, false);
-  if (kind === "dislike" && up && likesOf(unit4).includes(name)) changeList(dev, "likes", name, false);
-  return { from: up ? "no" : "yes", to: up ? "yes" : "no" };
+  changeList(dev, listField[kind], name, up2);
+  if (kind === "like" && up2 && dislikesOf(unit4).includes(name)) changeList(dev, "dislikes", name, false);
+  if (kind === "dislike" && up2 && likesOf(unit4).includes(name)) changeList(dev, "likes", name, false);
+  return { from: up2 ? "no" : "yes", to: up2 ? "yes" : "no" };
 }
 function applyReview(draft, reg, unitId, v, source) {
   const unit4 = draft.squad.find((u) => u.id === unitId);
@@ -39150,20 +39167,54 @@ registerAction("moment/answer", (draft, payload, ctx2) => {
   if (!isObj38(payload)) throw new Error("moment/answer needs a payload");
   if (!draft.scene) throw new Error("moment/answer: no scene is open");
   if (!blockingLive(draft, ctx2.registries)) throw new Error("moment/answer: the blocking is not live in this scene");
-  const { momentId, key, tone: tone3, at: at2 } = payload;
+  const { momentId, key, tone: tone4, at: at2 } = payload;
   if (typeof momentId !== "string" || typeof key !== "string") throw new Error("moment/answer needs { momentId, key }");
   if (at2 !== void 0 && (typeof at2 !== "number" || !Number.isInteger(at2) || at2 < 0)) throw new Error("moment/answer: at must be a non-negative integer (the chat index)");
-  if (tone3 !== void 0 && typeof tone3 !== "string") throw new Error("moment/answer: tone must be a word");
-  return answerMoment(draft, ctx2, momentId, key, "chip", tone3, at2 !== void 0 ? { at: at2 } : {});
+  if (tone4 !== void 0 && typeof tone4 !== "string") throw new Error("moment/answer: tone must be a word");
+  return answerMoment(draft, ctx2, momentId, key, "chip", tone4, at2 !== void 0 ? { at: at2 } : {});
 });
 
 // src/engine/physics/footwear.ts
+var DIRT_KINDS = ["ash", "mud", "oil", "spores", "dust", "rain"];
+var HEELS = /\b(high[- ]?)?heel(s|ed)?\b|\bstilettos?\b|\bpumps\b/i;
+function footwearOf(state, _reg, unitId) {
+  const u = state.squad.find((x) => x.id === unitId);
+  if (!u) return "boots";
+  return [...likesOf(u), ...tastesOf(u)].some((t) => HEELS.test(t)) ? "heels" : "boots";
+}
+function wetDay(state) {
+  return fnv1a3(`wet_day|${state.day}`) % 1e3 / 1e3 < TUNING.physics.shoe.wetShare;
+}
+function trainedToday(state, reg, unitId) {
+  const from = busySlot(state.day, "morning"), to = busySlot(state.day, "night");
+  return (state.life?.busy ?? []).some((b) => b.unitId === unitId && b.slot >= from && b.slot <= to && b.activityId !== void 0 && (reg.activities.get(b.activityId)?.effects ?? []).some((e) => TUNING.dynamic.style.trainingEffects.includes(e.type)));
+}
+function dirtOfDay(state, reg, unitId) {
+  const run = state.lastExpedition;
+  if (run && run.day === state.day && run.party.includes(unitId)) {
+    const dirt = reg.regions.get(run.regionId)?.dirt;
+    if (typeof dirt === "string" && DIRT_KINDS.includes(dirt)) return dirt;
+  }
+  if (trainedToday(state, reg, unitId)) return "dust";
+  if (wetDay(state)) return "rain";
+  return "dust";
+}
 function isShoeRun(run, reg) {
   const phys = reg.contactPhysics.get(run.physicsId);
   if (phys?.interaction !== "order" || phys.gauge?.kind !== "dirt" || run.sourceKind !== "contact") return false;
   const targets = reg.blockingContacts.get(run.sourceId)?.target ?? [];
   return targets.some((t) => reg.worshipTargets.get(t)?.footwear === true);
 }
+var STYLES = {
+  neutral: { surface: [22, 34], busy: 0.5, moves: { press: 0.15, stamp: 0.05, kiss: 0.2 }, grain: 1 },
+  affectionate: { surface: [28, 40], busy: 0.4, moves: { press: 0.05, stamp: 0, kiss: 0.35 }, grain: 1 },
+  ritual: { surface: [26, 26], busy: 0.2, moves: { press: 0.05, stamp: 0.05, kiss: 0.4 }, grain: -1 },
+  playful: { surface: [16, 30], busy: 0.5, moves: { press: 0.3, stamp: 0.1, kiss: 0.2 }, grain: 1 },
+  cruel: { surface: [14, 22], busy: 0.35, moves: { press: 0.35, stamp: 0.25, kiss: 0.15 }, grain: -1 },
+  possessive: { surface: [20, 30], busy: 0.25, moves: { press: 0.3, stamp: 0.1, kiss: 0.3 }, grain: 1 },
+  cold: { surface: [18, 26], busy: 0.7, moves: { press: 0.05, stamp: 0.15, kiss: 0.05 }, grain: -1 },
+  regal: { surface: [24, 34], busy: 0.3, moves: { press: 0.15, stamp: 0.1, kiss: 0.45 }, grain: 1 }
+};
 
 // src/engine/physics/scent.ts
 var S = TUNING.scent;
@@ -39632,7 +39683,7 @@ function resolveSegment(run, plan, inputs, env) {
     cues: [],
     noise: 0
   };
-  const before6 = share(env.gaugeKind, run.gauge, cap9);
+  const before7 = share(env.gaugeKind, run.gauge, cap9);
   const relief2 = (beat, kind) => {
     r.reliefs += 1;
     r.reliefInputs.push({ beat, kind });
@@ -39764,8 +39815,8 @@ function resolveSegment(run, plan, inputs, env) {
   if (run.dryness !== void 0 && r.dryness === void 0) r.dryness = run.dryness;
   r.checked = env.interaction === "order" && r.gauge <= P2.tongue.checkAt;
   r.complete = env.interaction === "passive" && r.gauge >= 100;
-  const after8 = share(env.gaugeKind, r.gauge, cap9);
-  r.warning = before6 > P2.warning / 100 && after8 <= P2.warning / 100;
+  const after9 = share(env.gaugeKind, r.gauge, cap9);
+  r.warning = before7 > P2.warning / 100 && after9 <= P2.warning / 100;
   r.noise = r.slips + r.gasps > 0 ? P2.noiseSlip : 0;
   return r;
 }
@@ -40539,8 +40590,8 @@ function holdFeed(draft, reg, unitId, event, _severity) {
 var R3 = TUNING.regard;
 function nonHolder(state, unitId) {
   const unit4 = state.squad.find((u) => u.id === unitId);
-  const frame7 = dynamicOf(state, unitId)?.frame;
-  return unit4 !== void 0 && unit4.kind === "named" && isLiving(unit4) && (frame7 === void 0 || frameRank(frame7) < frameRank("play"));
+  const frame8 = dynamicOf(state, unitId)?.frame;
+  return unit4 !== void 0 && unit4.kind === "named" && isLiving(unit4) && (frame8 === void 0 || frameRank(frame8) < frameRank("play"));
 }
 var noted = (draft) => draft.dynamic.noted ??= {};
 function checkDisappointment(draft, ctx2, unitId, from, to) {
@@ -40628,8 +40679,8 @@ function expectation(state, reg, moment) {
   if (!dynamicOn(state, reg) || liveDynamic(state, moment.unitId) === void 0) return null;
   const wanted2 = expectationsOf(state, reg, moment.unitId).moments?.[moment.sourceId];
   const options2 = wanted2 === void 0 ? [] : moment.options.filter((o) => o.type === wanted2.type);
-  const pick10 = options2.find((o) => o.key === "0" || o.key === "1" || o.key === "2") ?? options2[0];
-  return wanted2 !== void 0 && pick10 !== void 0 ? { key: pick10.key, strength: wanted2.strength } : defaultExpectation(state, reg, moment);
+  const pick11 = options2.find((o) => o.key === "0" || o.key === "1" || o.key === "2") ?? options2[0];
+  return wanted2 !== void 0 && pick11 !== void 0 ? { key: pick11.key, strength: wanted2.strength } : defaultExpectation(state, reg, moment);
 }
 function compromatHint(state, reg, unitId) {
   const dyn = dynamicOn(state, reg) && liveDynamic(state, unitId) !== void 0 ? dynamicOf(state, unitId) : void 0;
@@ -41086,9 +41137,9 @@ function expireAsked(draft) {
 
 // src/engine/practice/dayStep.ts
 function appetiteOf(state, reg, holderId) {
-  const view = practiceOf(state, reg, holderId);
+  const view2 = practiceOf(state, reg, holderId);
   const T5 = TUNING.practice.frequency.appetite;
-  const rows = Object.values(view?.categories ?? {}).flatMap((c) => c.as === "none" ? [] : [T5[c.as]]);
+  const rows = Object.values(view2?.categories ?? {}).flatMap((c) => c.as === "none" ? [] : [T5[c.as]]);
   return rows.length === 0 ? 1 : Math.max(...rows);
 }
 function newPracticeChance(state, reg, holderId) {
@@ -41341,10 +41392,10 @@ function callPosture(draft, ctx2, events) {
     const now = scene.blocking?.[COMMANDER]?.posture;
     const others = mine.filter((p) => p.postureId !== now);
     const pool = others.length > 0 ? others : mine;
-    const pick10 = pool[Math.min(pool.length - 1, Math.floor(practiceRoll(draft, holderId, `call:pick:${key}`) * pool.length))];
+    const pick11 = pool[Math.min(pool.length - 1, Math.floor(practiceRoll(draft, holderId, `call:pick:${key}`) * pool.length))];
     const id = nextPracticeId(draft, "pc");
-    ensurePractices(draft).call = { id, holderId, postureId: pick10.postureId, sceneId: scene.id, at: scene.exchanges };
-    return [{ type: "posture_called", callId: id, unitId: holderId, holderId, postureId: pick10.postureId, sceneId: scene.id }];
+    ensurePractices(draft).call = { id, holderId, postureId: pick11.postureId, sceneId: scene.id, at: scene.exchanges };
+    return [{ type: "posture_called", callId: id, unitId: holderId, holderId, postureId: pick11.postureId, sceneId: scene.id }];
   }
   return [];
 }
@@ -42101,8 +42152,8 @@ function choosesAgainstHer(state, reg, context, ref, choice) {
   if (rec !== void 0 && rec.context === context && rec.ref === ref) return rec.index !== null && rec.index !== choice;
   const holderId = herChooser(state, reg);
   if (holderId === null || !preselects(state, reg, holderId) || !choiceOpen(state, context, ref)) return false;
-  const pick10 = herPickFor(state, reg, holderId, context, ref);
-  return pick10 !== null && pick10 !== choice;
+  const pick11 = herPickFor(state, reg, holderId, context, ref);
+  return pick11 !== null && pick11 !== choice;
 }
 
 // src/loyalty/dilemmaController.ts
@@ -42643,8 +42694,8 @@ function createPower(deps) {
     return send({ type: "power/countermand", payload: { answer } }, chatId());
   }
   function herCallsEnded(reportId) {
-    const report5 = state()?.lastExpedition;
-    if (report5 && report5.id === reportId && (report5.herCalls?.length ?? 0) > 0) deps.refreshContext();
+    const report6 = state()?.lastExpedition;
+    if (report6 && report6.id === reportId && (report6.herCalls?.length ?? 0) > 0) deps.refreshContext();
   }
   async function askFirst(unitId, on) {
     return send({ type: "power/ask_first", payload: { unitId, on } }, chatId());
@@ -42841,7 +42892,7 @@ function createPersonal(deps) {
     takeOffToken: (tokenId) => act("token/remove", { tokenId }),
     answerToken: (offerId, accept2) => act("token/answer", { offerId, accept: accept2 }),
     answerWager: (wagerId, accept2) => act("wager/answer", { wagerId, accept: accept2 }),
-    playWager: (wagerId, pick10) => act("wager/play", { wagerId, ...pick10 !== void 0 ? { pick: pick10 } : {} }),
+    playWager: (wagerId, pick11) => act("wager/play", { wagerId, ...pick11 !== void 0 ? { pick: pick11 } : {} }),
     answerQuestion: (wagerId, text3) => act("wager/answer_question", { wagerId, text: text3 }),
     challenge: (p) => act("wager/challenge", p),
     answerSecret(secretId, choice) {
@@ -43148,8 +43199,8 @@ var CURRENT_VERSION = 1;
 var migrations = [
   // v0 -> v1: early prototype saved only day, slot and seed.
   (v0) => {
-    const seed6 = typeof v0.seed === "number" ? v0.seed : 1;
-    const base = createCampaign({ seed: seed6, commanderName: "" });
+    const seed7 = typeof v0.seed === "number" ? v0.seed : 1;
+    const base = createCampaign({ seed: seed7, commanderName: "" });
     return {
       ...base,
       day: v0.day,
@@ -43464,9 +43515,9 @@ function createOnboarding(deps) {
     async debriefTutorial() {
       const s = state();
       const step = s ? currentStep(s, reg()) : null;
-      const report5 = s?.lastExpedition;
-      if (!s || !step || step.completion !== "debriefed" || !report5 || report5.missionId !== s.onboarding?.tutorialMissionId) return false;
-      const who = report5.party.filter((id) => livingNamed(s).some((u) => u.id === id) && restrictionReason(s, reg(), id, "scene") === null).slice(0, TUNING.scene.maxParticipants);
+      const report6 = s?.lastExpedition;
+      if (!s || !step || step.completion !== "debriefed" || !report6 || report6.missionId !== s.onboarding?.tutorialMissionId) return false;
+      const who = report6.party.filter((id) => livingNamed(s).some((u) => u.id === id) && restrictionReason(s, reg(), id, "scene") === null).slice(0, TUNING.scene.maxParticipants);
       if (who.length === 0) {
         deps.toast("warn", "Nobody from the patrol is free to debrief.");
         return false;
@@ -44130,9 +44181,9 @@ function createDevelopment(deps) {
   const state = () => deps.app.current().state;
   let flight = null;
   let busy = false;
-  const fresh6 = /* @__PURE__ */ new Set();
-  const isRedo = (s, unitId) => !fresh6.has(unitId) && !unitDue(s, unitId) && s.squad.find((u) => u.id === unitId)?.development?.lastApplied !== void 0;
-  function before6(s, unitId) {
+  const fresh7 = /* @__PURE__ */ new Set();
+  const isRedo = (s, unitId) => !fresh7.has(unitId) && !unitDue(s, unitId) && s.squad.find((u) => u.id === unitId)?.development?.lastApplied !== void 0;
+  function before7(s, unitId) {
     if (!isRedo(s, unitId)) return s;
     const c = structuredClone(s);
     undoReview(c, unitId);
@@ -44170,8 +44221,8 @@ function createDevelopment(deps) {
         const why = reviewCommitted(s, key);
         if (why !== null) return { expired: why };
       } else if (!unitDue(s, key)) return { expired: "She has nothing to review." };
-      const view = before6(s, key);
-      return reviewInput(view, view.squad.find((u) => u.id === key));
+      const view2 = before7(s, key);
+      return reviewInput(view2, view2.squad.find((u) => u.id === key));
     },
     parse: (raw, input) => readReview(raw, input),
     apply(key, value) {
@@ -44182,8 +44233,8 @@ function createDevelopment(deps) {
     fallback(key) {
       const s = state();
       if (!s) return false;
-      const view = before6(s, key);
-      return !dispatchReview(key, fallbackReview(view, deps.registries(), key), "fallback").some((e) => e.type === "error");
+      const view2 = before7(s, key);
+      return !dispatchReview(key, fallbackReview(view2, deps.registries(), key), "fallback").some((e) => e.type === "error");
     },
     committed(key) {
       const s = state();
@@ -44213,14 +44264,14 @@ function createDevelopment(deps) {
     const due = reviewDue(s, deps.registries());
     if (due === null) return;
     busy = true;
-    fresh6.add(due);
+    fresh7.add(due);
     flight = (async () => {
       deps.app.dispatch({ type: "generation/close", payload: { siteId: SITE2, key: due, outcome: "dropped" } }, { expectChatId: chatId() });
       await deps.generations.generate(SITE2, due);
     })().finally(() => {
       flight = null;
       busy = false;
-      fresh6.delete(due);
+      fresh7.delete(due);
     });
     await flight;
   }
@@ -44278,11 +44329,11 @@ function styleLine(state, reg, unit4) {
 }
 function holderDirective(state, reg, unit4) {
   const dyn = dynamicOf(state, unit4.id);
-  const frame7 = dyn === void 0 ? void 0 : frameEntry(reg, dyn.frame);
+  const frame8 = dyn === void 0 ? void 0 : frameEntry(reg, dyn.frame);
   const waiting3 = state.dynamic?.open.milestones.find((m) => m.unitId === unit4.id);
   const asking = state.dynamic?.open.claims.find((c) => c.unitId === unit4.id);
   const holds6 = dyn !== void 0 && frameRank(dyn.frame) >= frameRank("play");
-  if (dyn === void 0 || frame7 === void 0 || !holds6 && waiting3 === void 0) return null;
+  if (dyn === void 0 || frame8 === void 0 || !holds6 && waiting3 === void 0) return null;
   const name = unit4.displayName;
   const claimed = dyn.domains.map((d) => reg.dynamicDomains.get(d.id)?.promptHint).filter((h2) => typeof h2 === "string").map(sentence2);
   const milestone = waiting3 === void 0 ? void 0 : reg.dynamicMilestones.get(waiting3.milestoneId);
@@ -44292,7 +44343,7 @@ function holderDirective(state, reg, unit4) {
   const refused = dyn.refusals.some((day) => state.day - day <= TUNING.dynamic.directives.refusalDays);
   const kept = compromatOf(state, unit4.id).slice(-3).map((f) => sentence2(f.text)).filter((t) => t !== "");
   const parts2 = [
-    ...holds6 ? [`${name} holds the lead with the commander: ${sentence2(frame7.promptHint)}.`] : [],
+    ...holds6 ? [`${name} holds the lead with the commander: ${sentence2(frame8.promptHint)}.`] : [],
     ...holds6 && claimed.length > 0 ? [`What she has claimed: ${claimed.join("; ")}.`] : [],
     styleLine(state, reg, unit4),
     ...regard2 !== null ? [`Her tone toward the commander: ${sentence2(regard2)}.`] : [],
@@ -44366,12 +44417,12 @@ function regardDirectives(state, reg, present2) {
     const unit4 = state.squad.find((u) => u.id === id);
     if (unit4 === void 0 || unit4.kind !== "named" || !isLiving(unit4)) continue;
     if (frameRank(dynamicOf(state, id)?.frame ?? "equal") >= frameRank("play")) continue;
-    const tone3 = regardToneFor(state, reg, id);
-    if (tone3 === null) continue;
+    const tone4 = regardToneFor(state, reg, id);
+    if (tone4 === null) continue;
     out.push({
       id: `${REGARD_PREFIX}${id}`,
       expiresAfter: "scene",
-      text: `AUTHOR TO WRITE: ${unit4.displayName}'s tone toward the commander is ${sentence2(tone3)}. Show it in how she acts and speaks; never name it as a mechanic.`
+      text: `AUTHOR TO WRITE: ${unit4.displayName}'s tone toward the commander is ${sentence2(tone4)}. Show it in how she acts and speaks; never name it as a mechanic.`
     });
   }
   return out;
@@ -44437,12 +44488,12 @@ function offerDirective(event, state, reg) {
   return parts2 === null ? null : plainDirective({ id: `${OFFER_PREFIX}${unit4.id}`, expiresAfter: "next_reply", text: [...parts2, "Show it in how she acts and speaks; never name it as a mechanic."].join(" ") });
 }
 function offerSentences(reg, unit4, o) {
-  const say10 = OFFER_LINE[o.answer];
-  if (say10 === void 0) return null;
+  const say11 = OFFER_LINE[o.answer];
+  if (say11 === void 0) return null;
   const named4 = o.corrected === void 0 ? void 0 : reg.worshipTargets.get(o.corrected);
   return [
     `The commander offers ${sentence2(o.what)} to ${unit4.displayName}${o.conditions ? ", and asks something in return" : ""}.`,
-    o.kind ? `${unit4.displayName} turns it down kindly; she is not looking for that from the commander.` : say10(unit4.displayName),
+    o.kind ? `${unit4.displayName} turns it down kindly; she is not looking for that from the commander.` : say11(unit4.displayName),
     ...o.answer === "corrected" && named4 !== void 0 ? [`What she wants is the commander's attention to her ${sentence2(String(named4.label)).toLowerCase()}.`] : []
   ];
 }
@@ -44633,8 +44684,8 @@ function practiceDirectives(state, reg, present2) {
       const physical = reg.holderPunishments.get(x.entryId)?.effects?.some((e) => e.type === "physical" || e.type === "slap") === true;
       const how = !physical ? "" : shown2 ? " It is shown as it happens." : " It is only reported, in a line, and never shown.";
       const crowd = (x.audienceIds ?? []).map((id) => state.squad.find((u) => u.id === id)?.displayName ?? id);
-      const before6 = crowd.length > 0 ? ` It is done before ${crowd.join(" and ")}, who watch.` : "";
-      return `${unit4.displayName} carries out the punishment she gave the commander: ${phrase(x.summary)}.${how}${before6}`;
+      const before7 = crowd.length > 0 ? ` It is done before ${crowd.join(" and ")}, who watch.` : "";
+      return `${unit4.displayName} carries out the punishment she gave the commander: ${phrase(x.summary)}.${how}${before7}`;
     });
     out.push({ id: `${PUNISHMENT_PREFIX}${unit4.id}`, expiresAfter: "scene", text: plainDraft(`${lines3.join(" ")} ${NEVER_NAME}`) });
   }
@@ -45715,31 +45766,31 @@ function askHerView(state, reg, context, ref) {
   if (preselects(state, reg, holderId)) return { holderId, name, context, ref, asked: false, index: herPickFor(state, reg, holderId, context, ref), preselected: true };
   return { holderId, name, context, ref, asked: false, preselected: false };
 }
-var pickIndex = (view) => view !== null && view !== void 0 && (view.asked || view.preselected) && typeof view.index === "number" ? view.index : null;
-function askHerNote(view) {
-  if (!view.asked && !view.preselected) return null;
-  if (view.index === null) return "She leaves it to the commander.";
-  if (view.index === "for") return "She would carry it out.";
-  if (view.index === "against") return "She would drop it.";
-  return view.index === void 0 ? null : "Her pick is marked.";
+var pickIndex = (view2) => view2 !== null && view2 !== void 0 && (view2.asked || view2.preselected) && typeof view2.index === "number" ? view2.index : null;
+function askHerNote(view2) {
+  if (!view2.asked && !view2.preselected) return null;
+  if (view2.index === null) return "She leaves it to the commander.";
+  if (view2.index === "for") return "She would carry it out.";
+  if (view2.index === "against") return "She would drop it.";
+  return view2.index === void 0 ? null : "Her pick is marked.";
 }
-function drawAskHer(host, view, onAsk) {
+function drawAskHer(host, view2, onAsk) {
   host.replaceChildren();
-  if (view === null || view === void 0) return;
-  const live3 = { unitId: view.holderId };
-  if (!view.asked && !view.preselected && onAsk !== void 0) {
-    host.append(h("button", { type: "button", class: "alius-btn alius-chip", "data-action": "ask-her", "data-unit": view.holderId, ...analyzeNative("glossary:ask_her", live3), onclick: () => onAsk() }, "[ ASK HER ]"));
+  if (view2 === null || view2 === void 0) return;
+  const live3 = { unitId: view2.holderId };
+  if (!view2.asked && !view2.preselected && onAsk !== void 0) {
+    host.append(h("button", { type: "button", class: "alius-btn alius-chip", "data-action": "ask-her", "data-unit": view2.holderId, ...analyzeNative("glossary:ask_her", live3), onclick: () => onAsk() }, "[ ASK HER ]"));
     return;
   }
-  const note = askHerNote(view);
+  const note = askHerNote(view2);
   if (note !== null) host.append(h("p", { class: "alius-askher-note alius-dim", "data-askher-note": "", ...analyzeAttrs("glossary:ask_her", live3) }, note));
 }
-function renderPreselected(view, label2, handlers2) {
-  const live3 = { unitId: view.holderId };
+function renderPreselected(view2, label2, handlers2) {
+  const live3 = { unitId: view2.holderId };
   return h(
     "div",
-    { class: "alius-askher-preselected", "data-askher-preselected": view.holderId },
-    h("p", { class: "alius-askher-choice" }, `${view.name} has chosen: ${label2}`),
+    { class: "alius-askher-preselected", "data-askher-preselected": view2.holderId },
+    h("p", { class: "alius-askher-choice" }, `${view2.name} has chosen: ${label2}`),
     h("button", { type: "button", class: "alius-btn alius-option", "data-action": "confirm-her", ...analyzeNative("glossary:ask_her", live3), onclick: () => handlers2.onConfirm() }, "[ CONFIRM ]"),
     h("button", { type: "button", class: "alius-btn alius-option", "data-action": "defy-her", ...analyzeNative("glossary:ask_her", live3), onclick: () => handlers2.onDefy() }, "[ DEFY ]")
   );
@@ -45901,9 +45952,9 @@ var HER_CALL_PREFIX = "power:herCall:";
 var HER_CALL_DAYS = 1;
 var DERIVED3 = ["power:vote:", "power:leader", "power:outside", "power:ask_first:", "power:herCall:"];
 function herCallOf(state, unitId) {
-  const report5 = state.lastExpedition;
-  if (!report5 || state.day - report5.day > HER_CALL_DAYS) return void 0;
-  return report5.herCalls?.filter((c) => c.unitId === unitId).at(-1)?.outcome;
+  const report6 = state.lastExpedition;
+  if (!report6 || state.day - report6.day > HER_CALL_DAYS) return void 0;
+  return report6.herCalls?.filter((c) => c.unitId === unitId).at(-1)?.outcome;
 }
 function powerDirectives(state, _reg, present2) {
   const out = [];
@@ -46226,9 +46277,9 @@ function createDiscipline(deps) {
 }
 
 // src/ui/shell/guard.ts
-function guarded(host, what, render6) {
+function guarded(host, what, render7) {
   try {
-    render6(host);
+    render7(host);
   } catch (e) {
     console.error(`[Alius] ${what} failed to render`, e);
     const message = e instanceof Error ? e.message : String(e);
@@ -46257,13 +46308,13 @@ function createRouter() {
     go(id) {
       current2 = id;
     },
-    register(id, render6) {
-      renderers.set(id, render6);
+    register(id, render7) {
+      renderers.set(id, render7);
     },
     render(host) {
       host.replaceChildren();
-      const render6 = renderers.get(current2);
-      if (render6) guarded(host, `screen ${current2}`, render6);
+      const render7 = renderers.get(current2);
+      if (render7) guarded(host, `screen ${current2}`, render7);
       else host.append(h("pre", { class: "alius-stub" }, stubText(current2.toUpperCase())));
     }
   };
@@ -46719,7 +46770,7 @@ var LEVEL_RANK = { suspects_close: 1, suspects_dynamic: 2, knows_dynamic: 3 };
 function dynamicView(state, reg, unitId, opts) {
   if (!dynamicOn(state, reg)) return structuredClone(EMPTY3);
   const visible = opts.factVisible ?? ((f) => f.hiddenFromCommander !== true);
-  const view = {
+  const view2 = {
     ...structuredClone(EMPTY3),
     heldBy: heldBy(state, reg),
     expectations: revealedExpectations(state, reg, unitId),
@@ -46730,7 +46781,7 @@ function dynamicView(state, reg, unitId, opts) {
   for (const t of reg.worshipTargets.values()) {
     const facts = zoneFacts(seen2, unitId, t.id).map((f) => f.text);
     const mastery = masteryLevel(state, unitId, t.id);
-    if (facts.length > 0 || mastery > 0) view.zones[t.id] = { mastery, facts };
+    if (facts.length > 0 || mastery > 0) view2.zones[t.id] = { mastery, facts };
   }
   const levels = /* @__PURE__ */ new Map();
   for (const f of state.memory.facts) {
@@ -46738,25 +46789,25 @@ function dynamicView(state, reg, unitId, opts) {
     const level = KNOWLEDGE_LEVELS.find((l) => f.tags.includes(l));
     if (level !== void 0 && LEVEL_RANK[level] > (LEVEL_RANK[levels.get(f.about[0])] ?? 0)) levels.set(f.about[0], level);
   }
-  view.knownLevels = [...levels].map(([observerId, level]) => ({ observerId, level }));
+  view2.knownLevels = [...levels].map(([observerId, level]) => ({ observerId, level }));
   const dyn = dynamicOf(state, unitId);
-  if (dyn === void 0) return view;
+  if (dyn === void 0) return view2;
   const label2 = (registry2, id) => String(reg[registry2].get(id)?.label ?? id);
-  view.band = opts.hidden ? FELT : label2("holdBands", holdBandOf(reg, dyn.hold));
+  view2.band = opts.hidden ? FELT : label2("holdBands", holdBandOf(reg, dyn.hold));
   if (!opts.hidden) {
-    view.frame = label2("dynamicFrames", dyn.frame);
-    if (opts.raw) view.raw = Math.round(dyn.hold);
+    view2.frame = label2("dynamicFrames", dyn.frame);
+    if (opts.raw) view2.raw = Math.round(dyn.hold);
   }
-  view.sworn = dyn.sworn !== void 0;
-  if (dyn.readOf.updates > 0) view.reading = String(reg.positionRegions.get(dyn.readOf.region)?.label ?? dyn.readOf.region);
-  view.asked = state.dynamic.open.claims.filter((c) => c.unitId === unitId && c.domainId !== void 0).map((c) => c.domainId);
+  view2.sworn = dyn.sworn !== void 0;
+  if (dyn.readOf.updates > 0) view2.reading = String(reg.positionRegions.get(dyn.readOf.region)?.label ?? dyn.readOf.region);
+  view2.asked = state.dynamic.open.claims.filter((c) => c.unitId === unitId && c.domainId !== void 0).map((c) => c.domainId);
   const held3 = new Set(dyn.domains.map((d) => d.id));
-  view.domains = [
+  view2.domains = [
     ...dyn.domains.map((d) => ({ id: d.id, label: String(reg.dynamicDomains.get(d.id)?.label ?? d.id), claimed: true, ...!standing(d, state.day) || d.partialUntil !== void 0 ? { partial: true } : {} })),
-    ...domainRows(reg).filter((e) => !held3.has(e.id) && !view.asked.includes(e.id) && meets2(reg, dyn, e) && holderOfDomain(state, e.id, unitId) === null).map((e) => ({ id: e.id, label: e.label, claimed: false }))
+    ...domainRows(reg).filter((e) => !held3.has(e.id) && !view2.asked.includes(e.id) && meets2(reg, dyn, e) && holderOfDomain(state, e.id, unitId) === null).map((e) => ({ id: e.id, label: e.label, claimed: false }))
   ];
-  view.tracks = Object.entries(dyn.tracks).filter(([id, t]) => t.level >= 1 && trackOpen(state, reg, unitId, id)).sort((a, b) => b[1].level - a[1].level).slice(0, LEADING_TRACKS).map(([id, t]) => ({ id, band: opts.hidden ? FELT : TRACK_WORDS[t.level] }));
-  return view;
+  view2.tracks = Object.entries(dyn.tracks).filter(([id, t]) => t.level >= 1 && trackOpen(state, reg, unitId, id)).sort((a, b) => b[1].level - a[1].level).slice(0, LEADING_TRACKS).map(([id, t]) => ({ id, band: opts.hidden ? FELT : TRACK_WORDS[t.level] }));
+  return view2;
 }
 
 // src/engine/practice/view.ts
@@ -46861,9 +46912,9 @@ function buildKnowledge(state, settings) {
         const mine = dev.moments.filter((m) => m.axis === axis);
         const shown2 = mine.filter((m) => m.shownDay !== void 0).at(-1);
         if (!shown2 || shown2.to === mine[0].from) continue;
-        const up = wentUp({ ...shown2, from: mine[0].from });
-        const words3 = axisWords(reg, axis, up);
-        if (words3 !== null) axes.push({ axis, words: words3, up, reason: shown2.reason, shownDay: shown2.shownDay, held: dev.held?.includes(axis) === true });
+        const up2 = wentUp({ ...shown2, from: mine[0].from });
+        const words3 = axisWords(reg, axis, up2);
+        if (words3 !== null) axes.push({ axis, words: words3, up: up2, reason: shown2.reason, shownDay: shown2.shownDay, held: dev.held?.includes(axis) === true });
       }
       const facts = dev.facts.filter((f) => f.shownDay !== void 0);
       const habits = dev.habits.filter((id) => {
@@ -47332,13 +47383,13 @@ function drawPracticeReroll(host, generation, kind, requestId) {
   if (generation === void 0 || requestId === void 0) return null;
   return drawSiteReroll(host, generation, practiceSite(kind), requestId);
 }
-function drawPracticeChips(host, generation, state, reg, pick10) {
+function drawPracticeChips(host, generation, state, reg, pick11) {
   if (generation === void 0 || !dynamicOn(state, reg)) return 0;
   const holderOf5 = (key) => state.practices?.requests.find((r) => r.id === key)?.holderId ?? cardOf(state, key)?.card.holderId;
   return drawGenerationChips(host, generation, state, "comms", (r) => {
     if (!r.siteId.startsWith("practice.")) return false;
     const holder3 = holderOf5(r.key);
-    return holder3 !== void 0 && pick10({ unitId: holder3 });
+    return holder3 !== void 0 && pick11({ unitId: holder3 });
   });
 }
 
@@ -47423,24 +47474,24 @@ function voiceLines(reg, kind, style) {
   return linesOf(reg, kind, style);
 }
 var cap3 = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
-function fill6(frame7, vals) {
+function fill6(frame8, vals) {
   const runs = [];
   const plain8 = (t) => {
     if (t === "") return;
-    const last2 = runs[runs.length - 1];
-    if (last2 !== void 0 && last2.value === void 0) last2.text += t;
+    const last3 = runs[runs.length - 1];
+    if (last3 !== void 0 && last3.value === void 0) last3.text += t;
     else runs.push({ text: t });
   };
   let at2 = 0;
-  for (const m of frame7.matchAll(/\{(\w+)\}/g)) {
+  for (const m of frame8.matchAll(/\{(\w+)\}/g)) {
     const k = m[1];
-    plain8(frame7.slice(at2, m.index));
+    plain8(frame8.slice(at2, m.index));
     at2 = m.index + m[0].length;
     const v = vals[k.toLowerCase()];
     if (v === void 0) plain8(`{${k}}`);
     else runs.push({ text: k[0] === k[0].toUpperCase() ? cap3(v) : v, value: true });
   }
-  plain8(frame7.slice(at2));
+  plain8(frame8.slice(at2));
   return runs;
 }
 function voiceLine(reg, kind, style, key, vals) {
@@ -47749,14 +47800,14 @@ function renderSceneTaskCard(host, ctx2) {
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:task_card", live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawTaskCards(host, state, reg, pick10, handlers2, opts = {}) {
+function drawTaskCards(host, state, reg, pick11, handlers2, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const task of state.practices?.tasks ?? []) {
-    if (task.kind !== "task" && task.kind !== "hold" || task.status !== "offered" || !pick10({ unitId: task.holderId }) || !practiceLive(state, reg, task.holderId)) continue;
+    if (task.kind !== "task" && task.kind !== "hold" || task.status !== "offered" || !pick11({ unitId: task.holderId }) || !practiceLive(state, reg, task.holderId)) continue;
     renderTaskCard(host, { state, reg, task, onAnswer: (a) => handlers2.answer(task.id, a), onSign: () => handlers2.sign(task.id), focusInput: handlers2.focusInput, generation: handlers2.generation }, opts);
   }
-  drawPracticeChips(host, handlers2.generation, state, reg, pick10);
+  drawPracticeChips(host, handlers2.generation, state, reg, pick11);
 }
 var RECORD_LINES = 5;
 function renderRecordLines(state, reg) {
@@ -47774,23 +47825,23 @@ function renderRecordLines(state, reg) {
 var FORM_WORDS = { button: "on a button", button_cost: "on a button, with its cost", words: "in words", signed: "in words and a signature", sealed: "sealed" };
 function practicesBlock(state, reg, knowledge2, unitId, hidden) {
   if (hidden) return null;
-  const view = knowledge2.practice(unitId, reg);
+  const view2 = knowledge2.practice(unitId, reg);
   const live3 = { unitId };
   const chip2 = (text3, address, attrs) => h("span", { class: "alius-chip", ...attrs, ...analyzeAttrs(address, live3) }, text3);
   const row4 = (label2, ...parts2) => h("p", { class: "alius-dyn-line" }, `${label2} `, ...parts2);
   const between = (items) => items.flatMap((c, i) => i === 0 ? [c] : [" ", c]);
   const rows = [];
-  if (view.tasks.length > 0) {
-    rows.push(row4("SHE ASKED", ...between(view.tasks.map((t) => {
+  if (view2.tasks.length > 0) {
+    rows.push(row4("SHE ASKED", ...between(view2.tasks.map((t) => {
       const due = t.sealed && t.summary === null ? null : t.noDuration ? "until she decides" : dueWords({ deadline: t.due ?? void 0 }, state.day);
       const what = t.summary === null ? "a sealed task" : t.summary;
       return chip2(`${what} (${[FORM_WORDS[t.acceptForm], ...due !== null ? [due] : []].join("; ")})`, "glossary:practice_task", { "data-practice-task": t.id });
     }))));
   }
-  if (view.protocol.length > 0) rows.push(row4("PROTOCOL", ...between(view.protocol.map((p) => chip2(p, "glossary:protocol", { "data-practice-protocol": "" })))));
-  if (view.routine !== null) rows.push(row4("ROUTINE", chip2(view.routine, "glossary:routine", { "data-practice-routine": "" })));
-  if (view.favour !== void 0) rows.push(row4("FAVOR", chip2(view.favour.toUpperCase(), "glossary:favour", { "data-practice-favour": view.favour })));
-  if (view.postures.length > 0) rows.push(row4("SHE CALLS", ...between(view.postures.map((p) => chip2(p.name, "glossary:named_posture", { "data-practice-posture": p.postureId })))));
+  if (view2.protocol.length > 0) rows.push(row4("PROTOCOL", ...between(view2.protocol.map((p) => chip2(p, "glossary:protocol", { "data-practice-protocol": "" })))));
+  if (view2.routine !== null) rows.push(row4("ROUTINE", chip2(view2.routine, "glossary:routine", { "data-practice-routine": "" })));
+  if (view2.favour !== void 0) rows.push(row4("FAVOR", chip2(view2.favour.toUpperCase(), "glossary:favour", { "data-practice-favour": view2.favour })));
+  if (view2.postures.length > 0) rows.push(row4("SHE CALLS", ...between(view2.postures.map((p) => chip2(p.name, "glossary:named_posture", { "data-practice-posture": p.postureId })))));
   if (rows.length === 0) return null;
   return h("div", { class: "alius-practices-block", "data-practices-block": unitId }, h("h5", {}, "PRACTICES"), ...rows);
 }
@@ -47838,8 +47889,8 @@ var Pen = class _Pen {
     return pen;
   }
 };
-function scatter(seed6) {
-  let s = seed6 >>> 0;
+function scatter(seed7) {
+  let s = seed7 >>> 0;
   return () => {
     s = Math.imul(s, 1664525) + 1013904223 >>> 0;
     return s / 4294967296;
@@ -47852,8 +47903,8 @@ function catmull(pts, closed) {
   const n = pts.length;
   const at2 = (i) => closed ? pts[(i + n) % n] : pts[Math.max(0, Math.min(n - 1, i))];
   let d = `M${pts[0][0]},${pts[0][1]}`;
-  const last2 = closed ? n : n - 1;
-  for (let i = 0; i < last2; i++) {
+  const last3 = closed ? n : n - 1;
+  for (let i = 0; i < last3; i++) {
     const p0 = at2(i - 1), p1 = at2(i), p2 = at2(i + 1), p3 = at2(i + 2);
     const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
     const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
@@ -47887,25 +47938,25 @@ var BUILDS = {
   }
 };
 var BUILD_KEYS = ["slim", "athletic", "curvy"];
-function shares(build8) {
-  const w = BUILD_KEYS.map((k) => Number.isFinite(build8[k]) && build8[k] > 0 ? build8[k] : 0);
+function shares(build9) {
+  const w = BUILD_KEYS.map((k) => Number.isFinite(build9[k]) && build9[k] > 0 ? build9[k] : 0);
   const sum = w.reduce((a, b) => a + b, 0);
   return sum > 0 ? { slim: w[0] / sum, athletic: w[1] / sum, curvy: w[2] / sum } : { slim: 1, athletic: 0, curvy: 0 };
 }
-function blend(build8) {
-  const s = shares(build8);
+function blend(build9) {
+  const s = shares(build9);
   const sum = (f) => BUILD_KEYS.reduce((acc, k) => acc + s[k] * f(BUILDS[k]), 0);
   return { width: (y) => sum((c) => lerp(c.w, y)), arm: sum((c) => c.arm), armOut: (y) => sum((c) => lerp(c.armOut, y)) };
 }
 var armCenter = (y) => lerp([[100, 44], [200, 57], [300, 65], [320, 64]], y);
-function outlinePath(build8, _side) {
-  const { width } = blend(build8);
+function outlinePath(build9, _side) {
+  const { width } = blend(build9);
   const right = RIGHT.map(([x, y]) => [x * width(y), y]);
   const left = right.slice(0, -1).reverse().map(([x, y]) => [-x, y]);
   return catmull([...right, ...left], true);
 }
-function armPaths(build8) {
-  const { arm, armOut } = blend(build8);
+function armPaths(build9) {
+  const { arm, armOut } = blend(build9);
   const one5 = (sign2) => catmull(ARM.map(([x, y]) => [(armCenter(y) + (x - armCenter(y)) * arm) * armOut(y) * sign2, y]), true);
   return [one5(1), one5(-1)];
 }
@@ -47926,8 +47977,8 @@ function hairPath(hair, side) {
   return `${base} ${catmull(side === "back" ? TAIL_BACK : TAIL_FRONT, true)}`;
 }
 var fringePath = () => catmull(FRINGE, true);
-function detailPaths(build8, side) {
-  const { width } = blend(build8);
+function detailPaths(build9, side) {
+  const { width } = blend(build9);
   const bw = width(150);
   const out = side === "back" ? ["M0,96 C1,140 -1,190 0,232", "M-30,118 C-24,132 -14,138 -8,136 M30,118 C24,132 14,138 8,136", "M-30,268 C-18,286 -6,284 0,272 C6,284 18,286 30,268", "M-24,40 C-22,60 -16,72 -12,76 M24,40 C22,60 16,72 12,76"] : [
     "M-30,100 C-18,106 -8,104 -3,101 M30,100 C18,106 8,104 3,101",
@@ -47935,7 +47986,7 @@ function detailPaths(build8, side) {
     `M${f1(-30 * width(250))},250 C-20,262 -12,270 -6,276 M${f1(30 * width(250))},250 C20,262 12,270 6,276`,
     "M-22,388 q4,6 8,0 M22,388 q-4,6 -8,0"
   ];
-  const s = shares(build8);
+  const s = shares(build9);
   for (const k of BUILD_KEYS) if (s[k] >= 1 / 3) out.push(...BUILDS[k].lines);
   return out;
 }
@@ -47997,7 +48048,7 @@ function figure(ctx2, side, cx, oy) {
 function zoneEl(ctx2, z2) {
   const X3 = (z2.x - 50) * 2.5;
   const Y = z2.y * 5;
-  const R9 = Math.max(6, z2.r * 2);
+  const R10 = Math.max(6, z2.r * 2);
   const word2 = z2.known && z2.attitude !== void 0 ? z2.attitude : "not known yet";
   const g = svgEl("g", {
     class: `alius-bm-zone is-${stateOf(z2)}`,
@@ -48011,9 +48062,9 @@ function zoneEl(ctx2, z2) {
     "aria-label": `${z2.label}: ${word2}`,
     ...z2.known && z2.attitude !== void 0 ? { "data-attitude": z2.attitude } : {}
   });
-  g.append(svgEl("circle", { cx: X3, cy: Y, r: R9, class: "alius-bm-ring" }));
+  g.append(svgEl("circle", { cx: X3, cy: Y, r: R10, class: "alius-bm-ring" }));
   const rings = z2.scent !== void 0 ? z2.scent : 0;
-  for (let i = 1; i <= rings; i++) g.append(svgEl("circle", { cx: X3, cy: Y, r: R9 * i / (rings + 1), class: "alius-bm-scent" }));
+  for (let i = 1; i <= rings; i++) g.append(svgEl("circle", { cx: X3, cy: Y, r: R10 * i / (rings + 1), class: "alius-bm-scent" }));
   const mark2 = (cls, x, y, text3) => {
     const t = svgEl("text", { x, y, class: cls, "text-anchor": "middle" });
     t.textContent = text3;
@@ -48021,8 +48072,8 @@ function zoneEl(ctx2, z2) {
   };
   if (!z2.known) mark2("alius-bm-q", X3, Y + 4, "?");
   else if (z2.meaning !== void 0) mark2("alius-bm-meaning", X3, Y + 4, MEANING_ICON[z2.meaning]);
-  if (z2.explicit === true) mark2("alius-bm-explicit", X3 - R9, Y - R9 + 4, "\u25C7");
-  if (z2.mastery > 0) mark2("alius-bm-dots", X3, Y + R9 + 9, dotsOf(z2.mastery));
+  if (z2.explicit === true) mark2("alius-bm-explicit", X3 - R10, Y - R10 + 4, "\u25C7");
+  if (z2.mastery > 0) mark2("alius-bm-dots", X3, Y + R10 + 9, dotsOf(z2.mastery));
   return g;
 }
 function row2(ctx2, z2, label2) {
@@ -48157,11 +48208,11 @@ function renderMilestoneCard(host, ctx2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs(entry.sworn === true ? "glossary:vow" : `dynamicMilestones:${entry.id}`, { unitId: unit4.id }))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawMilestoneCards(host, state, reg, pick10, onAnswer, opts = {}) {
+function drawMilestoneCards(host, state, reg, pick11, onAnswer, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const milestone of state.dynamic?.open.milestones ?? []) {
-    if (pick10({ unitId: milestone.unitId })) renderMilestoneCard(host, { state, reg, milestone, onAnswer: (a) => onAnswer(milestone.id, a) }, opts);
+    if (pick11({ unitId: milestone.unitId })) renderMilestoneCard(host, { state, reg, milestone, onAnswer: (a) => onAnswer(milestone.id, a) }, opts);
   }
 }
 var SUBMIT_WORDS = "AUTHOR TO WRITE: {name} has asked enough times. She waits for the commander to give way, here and now.";
@@ -48222,11 +48273,11 @@ function renderClaimCard(host, ctx2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs(entry === void 0 ? "glossary:claim" : `dynamicDomains:${entry.id}`, live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawClaimCards(host, state, reg, pick10, onAnswer, opts = {}) {
+function drawClaimCards(host, state, reg, pick11, onAnswer, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const claim2 of state.dynamic?.open.claims ?? []) {
-    if (pick10({ unitId: claim2.unitId })) renderClaimCard(host, { state, reg, claim: claim2, onAnswer: (a) => onAnswer(claim2.id, a) }, opts);
+    if (pick11({ unitId: claim2.unitId })) renderClaimCard(host, { state, reg, claim: claim2, onAnswer: (a) => onAnswer(claim2.id, a) }, opts);
   }
 }
 var RETURN_WORDS = {
@@ -48278,10 +48329,10 @@ function renderReturnCard(host, ctx2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:aftermath", live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawReturnCards(host, state, reg, pick10, onAnswer, opts = {}) {
+function drawReturnCards(host, state, reg, pick11, onAnswer, opts = {}) {
   host.replaceChildren();
   const offer = state.dynamic?.open.returnOffer;
-  if (!dynamicOn(state, reg) || offer === void 0 || !pick10({ unitId: offer.unitId })) return;
+  if (!dynamicOn(state, reg) || offer === void 0 || !pick11({ unitId: offer.unitId })) return;
   renderReturnCard(host, { state, reg, offer, onAnswer }, opts);
 }
 function transferTargets(state, unitId) {
@@ -48378,7 +48429,7 @@ function renderDynamicSection(host, ctx2) {
   host.replaceChildren();
   const unit4 = state.squad.find((u) => u.id === unitId);
   if (unit4 === void 0 || unit4.kind !== "named") return false;
-  const view = ctx2.hidden ? null : ctx2.knowledge.dynamic(unitId, reg);
+  const view2 = ctx2.hidden ? null : ctx2.knowledge.dynamic(unitId, reg);
   const live3 = { unitId };
   const key = exitKey(state, unitId);
   const exitHost = h("div", { class: "alius-dyn-exit" });
@@ -48440,16 +48491,16 @@ function renderDynamicSection(host, ctx2) {
     host.setAttribute("data-dynamic-section", unitId);
     return true;
   }
-  if (view === null || view.band === void 0) return false;
+  if (view2 === null || view2.band === void 0) return false;
   const chip2 = (text3, address, attrs = {}) => h("span", { class: "alius-chip", ...attrs, ...analyzeAttrs(address, live3) }, text3);
   const row4 = (label3, ...parts2) => h("p", { class: "alius-dyn-line" }, `${label3} `, ...parts2);
   const between = (items) => items.flatMap((c, i) => i === 0 ? [c] : [" ", c]);
   const label2 = (registry2, id) => String(reg[registry2].get(id)?.label ?? id).toUpperCase();
-  const claimed = view.domains.filter((d) => d.claimed);
-  const mayClaim = view.domains.filter((d) => !d.claimed);
+  const claimed = view2.domains.filter((d) => d.claimed);
+  const mayClaim = view2.domains.filter((d) => !d.claimed);
   const lines3 = [
-    row4("FRAME", chip2(String(view.frame ?? "").toUpperCase(), "glossary:frame", { "data-dyn-frame": "" }), ...view.sworn ? [" ", chip2("SWORN", "glossary:vow", { "data-dyn-vow": "" })] : []),
-    row4("HOLD", chip2(`${view.band.toUpperCase()}${view.raw !== void 0 ? ` (${view.raw})` : ""}`, "glossary:hold", { "data-dyn-hold": "" }))
+    row4("FRAME", chip2(String(view2.frame ?? "").toUpperCase(), "glossary:frame", { "data-dyn-frame": "" }), ...view2.sworn ? [" ", chip2("SWORN", "glossary:vow", { "data-dyn-vow": "" })] : []),
+    row4("HOLD", chip2(`${view2.band.toUpperCase()}${view2.raw !== void 0 ? ` (${view2.raw})` : ""}`, "glossary:hold", { "data-dyn-hold": "" }))
   ];
   if (claimed.length > 0) {
     lines3.push(row4("DOMAINS", ...between(claimed.map((d) => chip2(`${d.label.toUpperCase()}${d.partial === true ? " (PARTLY)" : ""}`, `dynamicDomains:${d.id}`, { "data-dyn-domain": d.id })))));
@@ -48457,31 +48508,31 @@ function renderDynamicSection(host, ctx2) {
   if (mayClaim.length > 0) {
     lines3.push(row4("SHE MAY CLAIM", ...between(mayClaim.map((d) => chip2(d.label.toUpperCase(), `dynamicDomains:${d.id}`, { "data-dyn-may-claim": d.id })))));
   }
-  if (view.tracks.length > 0) {
-    lines3.push(row4("PRACTICE", ...between(view.tracks.map((t) => chip2(`${label2("dynamicTracks", t.id)}: ${t.band.toUpperCase()}`, `dynamicTracks:${t.id}`, { "data-dyn-track": t.id })))));
+  if (view2.tracks.length > 0) {
+    lines3.push(row4("PRACTICE", ...between(view2.tracks.map((t) => chip2(`${label2("dynamicTracks", t.id)}: ${t.band.toUpperCase()}`, `dynamicTracks:${t.id}`, { "data-dyn-track": t.id })))));
   }
-  if (view.reading !== void 0) {
-    lines3.push(row4("HER READING", chip2(view.reading, "glossary:her_reading", { "data-dyn-reading": "" })));
+  if (view2.reading !== void 0) {
+    lines3.push(row4("HER READING", chip2(view2.reading, "glossary:her_reading", { "data-dyn-reading": "" })));
   }
-  if (view.signs.length > 0) {
-    lines3.push(row4("SHE SEEMS", ...between(view.signs.map((sign2) => chip2(sign2, "glossary:dynamic", { "data-dyn-sign": "" })))));
+  if (view2.signs.length > 0) {
+    lines3.push(row4("SHE SEEMS", ...between(view2.signs.map((sign2) => chip2(sign2, "glossary:dynamic", { "data-dyn-sign": "" })))));
   }
-  if (view.compromat.length > 0) {
-    lines3.push(row4("SHE KEEPS", ...between(view.compromat.map((f) => chip2(plainDraft(f.text).trim(), "glossary:compromat", { "data-dyn-compromat": f.id })))));
+  if (view2.compromat.length > 0) {
+    lines3.push(row4("SHE KEEPS", ...between(view2.compromat.map((f) => chip2(plainDraft(f.text).trim(), "glossary:compromat", { "data-dyn-compromat": f.id })))));
   }
-  if (view.knownLevels.length > 0) {
+  if (view2.knownLevels.length > 0) {
     const who = (id) => (state.squad.find((u) => u.id === id)?.displayName ?? id).toUpperCase();
     const word2 = { suspects_close: "HAS NOTICED SOMETHING", suspects_dynamic: "SUSPECTS", knows_dynamic: "KNOWS" };
-    lines3.push(row4("WHO KNOWS", ...between(view.knownLevels.map((k) => chip2(`${who(k.observerId)}: ${word2[k.level]}`, "glossary:dynamic", { "data-dyn-known": k.observerId })))));
+    lines3.push(row4("WHO KNOWS", ...between(view2.knownLevels.map((k) => chip2(`${who(k.observerId)}: ${word2[k.level]}`, "glossary:dynamic", { "data-dyn-known": k.observerId })))));
   }
   const practices = practicesBlock(state, reg, ctx2.knowledge, unitId, ctx2.hidden);
   const cards = h("div", { class: "alius-dyn-cards" });
-  const pick10 = (c) => c.unitId === unitId;
+  const pick11 = (c) => c.unitId === unitId;
   const slots = [h("div", { class: "alius-milestone-cards" }), h("div", { class: "alius-claim-cards" }), h("div", { class: "alius-return-cards" })];
   cards.append(...slots);
-  drawMilestoneCards(slots[0], state, reg, pick10, (id, a) => ctx2.actions?.answerMilestone?.(id, a));
-  drawClaimCards(slots[1], state, reg, pick10, (id, a) => ctx2.actions?.answerClaim?.(id, a));
-  drawReturnCards(slots[2], state, reg, pick10, (a) => ctx2.actions?.answerReturn?.(a));
+  drawMilestoneCards(slots[0], state, reg, pick11, (id, a) => ctx2.actions?.answerMilestone?.(id, a));
+  drawClaimCards(slots[1], state, reg, pick11, (id, a) => ctx2.actions?.answerClaim?.(id, a));
+  drawReturnCards(slots[2], state, reg, pick11, (a) => ctx2.actions?.answerReturn?.(a));
   if (holds6) drawExit(true);
   const map = bodyMapFor(state, reg, ctx2.knowledge, unitId, ctx2.readable === true);
   const mapHost = h("div", { class: "alius-dyn-bodymap" });
@@ -48600,7 +48651,7 @@ function renderRoutePicker(ctx2) {
   const lockAll = () => {
     for (const b of buttons) b.setAttribute("aria-disabled", "true");
   };
-  const pick10 = (p) => {
+  const pick11 = (p) => {
     if (ctx2.locked()) return;
     lockAll();
     ctx2.onPick(p);
@@ -48620,14 +48671,14 @@ function renderRoutePicker(ctx2) {
       ...analyzeNative(r.kind === "delegate" ? "glossary:delegate" : "glossary:check_routes", { kind: r.kind }),
       onclick: () => {
         if (ctx2.locked() || r.disabled !== null) return;
-        if (r.kind !== "delegate") return pick10({ route: r.route });
+        if (r.kind !== "delegate") return pick11({ route: r.route });
         units.replaceChildren(...(r.unitIds ?? []).map((id) => {
           const u = h("button", {
             type: "button",
             class: "alius-btn alius-option",
             "data-route-unit": id,
             ...analyzeNative("glossary:delegate"),
-            onclick: () => pick10({ route: r.route, unitId: id })
+            onclick: () => pick11({ route: r.route, unitId: id })
           }, `[ ${ctx2.unitName?.(id) ?? id} ]`);
           buttons.push(u);
           return u;
@@ -48664,10 +48715,10 @@ function renderDilemma(host, ctx2) {
       routes: o.routes,
       unitName: ctx2.unitName,
       locked: () => chosen,
-      onPick: (pick10) => {
+      onPick: (pick11) => {
         chosen = true;
         for (const b of buttons) b.setAttribute("aria-disabled", "true");
-        ctx2.onChoose(o.index, pick10);
+        ctx2.onChoose(o.index, pick11);
       },
       unlock: () => {
         chosen = false;
@@ -49088,7 +49139,7 @@ function renderCombatScreen(host, ctx2) {
     orderMode = null;
     selSkill = row4.skill.id;
     selTarget = needsTarget(row4.skill) ? row4.targets[0] ?? null : null;
-    render6();
+    render7();
   }
   function confirm(state) {
     const cs = state.combat;
@@ -49121,7 +49172,7 @@ function renderCombatScreen(host, ctx2) {
     if (legal.length === 0) return;
     const i = selTarget ? legal.indexOf(selTarget) : -1;
     selTarget = legal[(i + dir + legal.length) % legal.length];
-    render6();
+    render7();
   }
   const visibleOrderIds = (state) => [...reg.orders.keys()].filter((id) => orderUnlocked(state, reg, id));
   function issueOrder2(state, index2) {
@@ -49186,7 +49237,7 @@ function renderCombatScreen(host, ctx2) {
       selSkill = null;
       selTarget = null;
       orderMode = null;
-      render6();
+      render7();
     },
     compel: () => {
       const s = ctx2.getState();
@@ -49333,7 +49384,7 @@ function renderCombatScreen(host, ctx2) {
       h("button", { type: "button", class: "alius-btn", "data-act": "continue", onclick: () => ctx2.onClose() }, "[ CONTINUE ]")
     );
   }
-  function render6() {
+  function render7() {
     const state = ctx2.getState();
     root.replaceChildren();
     if (!state) return;
@@ -49411,7 +49462,7 @@ function renderCombatScreen(host, ctx2) {
             orderMode = orderMode === id ? null : id;
             selSkill = null;
             selTarget = null;
-            render6();
+            render7();
           }
         }
       }, `[${"QWERTY"[i]}] ${o.name} ${cost}CP`);
@@ -49480,7 +49531,7 @@ function renderCombatScreen(host, ctx2) {
       logBox
     );
   }
-  render6();
+  render7();
   function handle(events) {
     const state = ctx2.getState();
     for (const ev of events) {
@@ -49495,7 +49546,7 @@ function renderCombatScreen(host, ctx2) {
     }
   }
   return {
-    refresh: render6,
+    refresh: render7,
     handle,
     dispose: () => {
       keysOff();
@@ -49517,7 +49568,7 @@ function renderInvTab(host, ctx2) {
   let filter = "all";
   let selected2 = null;
   let compareUnit = null;
-  function render6() {
+  function render7() {
     host.replaceChildren();
     const state = ctx2.getState();
     if (!state) {
@@ -49544,7 +49595,7 @@ function renderInvTab(host, ctx2) {
       { class: "alius-inv-filters" },
       ...["all", "weapon", "upper", "lower"].map((f) => h("button", { type: "button", class: "alius-btn", "data-filter": f, "aria-pressed": filter === f ? "true" : "false", onclick: () => {
         filter = f;
-        render6();
+        render7();
       } }, upper(f)))
     );
     const list5 = h(
@@ -49562,7 +49613,7 @@ function renderInvTab(host, ctx2) {
             ...analyzeNative(`items:${i.itemId}`),
             onclick: () => {
               selected2 = i.uid;
-              render6();
+              render7();
             }
           },
           h("span", { class: "alius-inv-name" }, nameOf28(i)),
@@ -49608,7 +49659,7 @@ function renderInvTab(host, ctx2) {
     picker2.value = compareUnit ?? "";
     picker2.addEventListener("change", () => {
       compareUnit = picker2.value;
-      render6();
+      render7();
     });
     const reason = unit4 ? canEquip(reg, unit4, item) : "NO UNIT";
     let afterLine = null;
@@ -49616,11 +49667,11 @@ function renderInvTab(host, ctx2) {
       try {
         const sample = structuredClone(state);
         const s2 = sample.squad.find((u) => u.id === unit4.id);
-        const before6 = unitStats(sample, reg, s2);
+        const before7 = unitStats(sample, reg, s2);
         for (const x of sample.squad) for (const k of ["weapon", "upper", "lower"]) if (x.equipment[k] === item.uid) delete x.equipment[k];
         s2.equipment[slot2] = item.uid;
-        const after8 = unitStats(sample, reg, s2);
-        afterLine = h("p", { class: "alius-dim", "data-after": "true" }, `${unit4.displayName}: ${STATS2.map((k) => `${upper(k)} ${before6[k]}\u2192${after8[k]}`).join(" \xB7 ")}`);
+        const after9 = unitStats(sample, reg, s2);
+        afterLine = h("p", { class: "alius-dim", "data-after": "true" }, `${unit4.displayName}: ${STATS2.map((k) => `${upper(k)} ${before7[k]}\u2192${after9[k]}`).join(" \xB7 ")}`);
       } catch {
         afterLine = null;
       }
@@ -49662,10 +49713,10 @@ function renderInvTab(host, ctx2) {
     });
     const itemButtons = [];
     if (item) {
-      const up = refusal(state, reg, "item/upgrade", { uid: item.uid });
+      const up2 = refusal(state, reg, "item/upgrade", { uid: item.uid });
       const dis = refusal(state, reg, "item/dismantle", { uid: item.uid });
       itemButtons.push(
-        h("button", { type: "button", class: "alius-btn alius-option", "data-act": "upgrade", ...analyzeNative("glossary:workshop"), disabled: up !== null, title: up ?? "Upgrade", onclick: () => ctx2.onUpgrade(item.uid) }, `[ UPGRADE +${item.upgrade + 1} ]${up ? ` \u2014 ${up}` : ""}`),
+        h("button", { type: "button", class: "alius-btn alius-option", "data-act": "upgrade", ...analyzeNative("glossary:workshop"), disabled: up2 !== null, title: up2 ?? "Upgrade", onclick: () => ctx2.onUpgrade(item.uid) }, `[ UPGRADE +${item.upgrade + 1} ]${up2 ? ` \u2014 ${up2}` : ""}`),
         h("button", { type: "button", class: "alius-btn alius-option", "data-act": "dismantle", ...analyzeNative("glossary:workshop"), disabled: dis !== null, title: dis ?? "Dismantle", onclick: () => ctx2.onDismantle(item.uid) }, `[ DISMANTLE ]${dis ? ` \u2014 ${dis}` : ""}`),
         ...item.affixes.map((a, i) => {
           const why = refusal(state, reg, "item/reroll", { uid: item.uid, affixIndex: i });
@@ -49682,7 +49733,7 @@ function renderInvTab(host, ctx2) {
       h("div", { class: "alius-inv-recipes" }, ...recipes)
     );
   }
-  render6();
+  render7();
 }
 
 // src/llm/text.ts
@@ -50405,8 +50456,8 @@ function sanitizeStaging(raw, input) {
     const key = typeof src.answer.option === "number" || typeof src.answer.option === "string" ? String(src.answer.option) : "";
     const confidence = src.answer.confidence;
     if (keys.includes(key) && typeof confidence === "number" && confidence >= TUNING.moments.answerConfidence) {
-      const tone3 = TONES2.includes(src.answer.tone) ? src.answer.tone : void 0;
-      answer = { key, confidence, ...tone3 !== void 0 ? { tone: tone3 } : {} };
+      const tone4 = TONES2.includes(src.answer.tone) ? src.answer.tone : void 0;
+      answer = { key, confidence, ...tone4 !== void 0 ? { tone: tone4 } : {} };
     }
   }
   const labels = input.open ? cleanLabels(src.labels) : null;
@@ -50523,9 +50574,9 @@ function createComms(deps) {
         const at2 = thread.findIndex((m) => m.id === ref);
         if (at2 < 0) return { expired: "That message is gone." };
         if (at2 !== thread.length - 1) return { expired: "A newer message came after it." };
-        const before6 = thread[at2 - 1];
-        if (!before6 || before6.from !== "commander") return { expired: "No message of the commander came before it." };
-        commanderText = before6.text;
+        const before7 = thread[at2 - 1];
+        if (!before7 || before7.from !== "commander") return { expired: "No message of the commander came before it." };
+        commanderText = before7.text;
         reply = thread[at2].text;
       }
       return readInput(s, unit4, commanderText, reply) ?? { expired: "She is not here." };
@@ -50577,9 +50628,9 @@ function createComms(deps) {
     apply(key, reply, input) {
       const [unitId, msgId] = splitKey(key);
       const expect = chatId();
-      const before6 = state();
-      const commanderText = before6 ? threadOf(before6, unitId).find((m) => m.id === msgId)?.text : void 0;
-      if (!before6 || commanderText === void 0) return { stale: true };
+      const before7 = state();
+      const commanderText = before7 ? threadOf(before7, unitId).find((m) => m.id === msgId)?.text : void 0;
+      if (!before7 || commanderText === void 0) return { stale: true };
       const received = app.dispatch({ type: "dm/receive", payload: { unitId, text: reply, ...input.mode === "curt" ? { mode: "curt" } : {} } }, { expectChatId: expect });
       if (failed2(received)) return { stale: true };
       deps.personal?.onReply?.(unitId, reply);
@@ -50587,8 +50638,8 @@ function createComms(deps) {
       const herId = threadOf(state(), unitId).at(-1)?.id;
       if (herId === void 0) return "ok";
       const run = readExchange(unitId, herId).then(() => {
-        const after8 = state();
-        if (after8 && chatId() === expect) deps.generations.takeSnapshot("dm.reply", key, before6, after8);
+        const after9 = state();
+        if (after9 && chatId() === expect) deps.generations.takeSnapshot("dm.reply", key, before7, after9);
       }).finally(() => reads.delete(key));
       reads.set(key, run);
       return "ok";
@@ -50642,9 +50693,9 @@ function createComms(deps) {
   }
   const replyKeyOf = (s, unitId) => {
     const thread = threadOf(s, unitId);
-    const last2 = thread.at(-1);
+    const last3 = thread.at(-1);
     const prev = thread.at(-2);
-    return last2 && prev && last2.from === unitId && last2.initiated !== true && prev.from === "commander" ? `${unitId}:${prev.id}` : null;
+    return last3 && prev && last3.from === unitId && last3.initiated !== true && prev.from === "commander" ? `${unitId}:${prev.id}` : null;
   };
   const controller = {
     async send(unitId, text3, opts) {
@@ -50755,17 +50806,17 @@ function ceilingOf(state, reg, locationId, ownerId) {
   const loc = reg.locations.get(locationId);
   if (!loc) return [];
   const own = loc.perUnit === true && ownerId !== null ? str8(quartersOf(state, reg, ownerId)?.ceiling) : void 0;
-  const finish6 = own ?? str8(loc.ceiling);
-  if (finish6 === void 0) return [];
-  return [...reg.backdrops.values()].filter((b) => b.kind === "surface" && b.surface === "ceiling" && b.finish === finish6 && (!Array.isArray(b.slots) || b.slots.includes(state.slot))).flatMap((b) => str8(b.file) ? [{ file: String(b.file), slotted: Array.isArray(b.slots) }] : []);
+  const finish7 = own ?? str8(loc.ceiling);
+  if (finish7 === void 0) return [];
+  return [...reg.backdrops.values()].filter((b) => b.kind === "surface" && b.surface === "ceiling" && b.finish === finish7 && (!Array.isArray(b.slots) || b.slots.includes(state.slot))).flatMap((b) => str8(b.file) ? [{ file: String(b.file), slotted: Array.isArray(b.slots) }] : []);
 }
 function floorOf2(state, reg, locationId, ownerId) {
   const loc = reg.locations.get(locationId);
   if (!loc) return [];
   const own = loc.perUnit === true && ownerId !== null ? str8(quartersOf(state, reg, ownerId)?.floor) : void 0;
-  const finish6 = own ?? str8(loc.floor);
-  if (finish6 === void 0) return [];
-  return [...reg.backdrops.values()].filter((b) => b.kind === "surface" && b.surface === "floor" && b.finish === finish6 && (!Array.isArray(b.slots) || b.slots.includes(state.slot))).flatMap((b) => str8(b.file) ? [{ file: String(b.file), slotted: Array.isArray(b.slots) }] : []);
+  const finish7 = own ?? str8(loc.floor);
+  if (finish7 === void 0) return [];
+  return [...reg.backdrops.values()].filter((b) => b.kind === "surface" && b.surface === "floor" && b.finish === finish7 && (!Array.isArray(b.slots) || b.slots.includes(state.slot))).flatMap((b) => str8(b.file) ? [{ file: String(b.file), slotted: Array.isArray(b.slots) }] : []);
 }
 
 // src/scene/context.ts
@@ -51519,10 +51570,10 @@ function liveTextRects(host, except) {
 }
 function placeFree(host, el, x, y) {
   const f = frameOf4(host);
-  const innerWidth9 = f.W, innerHeight9 = f.H;
+  const innerWidth10 = f.W, innerHeight10 = f.H;
   const rects = liveTextRects(host, el).map((r) => ({ left: r.left - f.left, right: r.right - f.left, top: r.top - f.top, bottom: r.bottom - f.top }));
-  const w = el.offsetWidth, h2 = el.offsetHeight, gap = 6, maxY = innerHeight9 * 0.8 - h2;
-  x = clamp41(x, 16, innerWidth9 - w - 24);
+  const w = el.offsetWidth, h2 = el.offsetHeight, gap = 6, maxY = innerHeight10 * 0.8 - h2;
+  x = clamp41(x, 16, innerWidth10 - w - 24);
   const hits = (yy2) => rects.find((r) => x < r.right + gap && x + w > r.left - gap && yy2 < r.bottom + gap && yy2 + h2 > r.top - gap);
   let yy = clamp41(y, 12, Math.max(12, maxY)), hit, n = 0;
   while ((hit = hits(yy)) && n++ < 30) yy = hit.bottom + gap;
@@ -51549,14 +51600,14 @@ function say(host, text3, opts) {
   const size4 = opts.size ?? (opts.big ? 56 : to === "self" ? 34 : to === "commander" ? 46 : 40);
   const max = opts.big ? 30 : 40, lines3 = [];
   for (const word2 of text3.split(" ")) {
-    const last2 = lines3[lines3.length - 1];
-    if (last2 !== void 0 && (last2 + " " + word2).length <= max) lines3[lines3.length - 1] = last2 + " " + word2;
+    const last3 = lines3[lines3.length - 1];
+    if (last3 !== void 0 && (last3 + " " + word2).length <= max) lines3[lines3.length - 1] = last3 + " " + word2;
     else lines3.push(word2);
   }
-  const { W: innerWidth9, H: innerHeight9 } = frameOf4(host);
+  const { W: innerWidth10, H: innerHeight10 } = frameOf4(host);
   const p = opts.at ?? [0.6, 0.16];
   const els = [];
-  let x = clamp41(p[0] + 0.04, 0.03, 0.7) * innerWidth9 + hashRand(`${text3}|x`, -15, 15), y = clamp41(p[1] + 0.02, 0.03, 0.8) * innerHeight9, delay = 0;
+  let x = clamp41(p[0] + 0.04, 0.03, 0.7) * innerWidth10 + hashRand(`${text3}|x`, -15, 15), y = clamp41(p[1] + 0.02, 0.03, 0.8) * innerHeight10, delay = 0;
   const rot = opts.tilt === false ? "0.0" : hashRand(`${text3}|rot`, -4, 3).toFixed(1);
   for (const line3 of lines3) {
     const el = document.createElement("div");
@@ -51577,7 +51628,7 @@ function say(host, text3, opts) {
     y = at2.y + at2.h + 2;
     if (opts.side === "right") {
       el.style.left = "";
-      el.style.right = `${Math.max(0, innerWidth9 - at2.x)}px`;
+      el.style.right = `${Math.max(0, innerWidth10 - at2.x)}px`;
       el.classList.add("right");
     }
     delay += write3;
@@ -51673,6 +51724,15 @@ function instrumentFor(run, state, reg, settings) {
     }
   }) ?? null;
 }
+function drawable(def, env, run) {
+  if (!def.drawable) return true;
+  try {
+    return def.drawable(env, run);
+  } catch (err) {
+    warnOnce(def.id, "drawable", err);
+    return false;
+  }
+}
 var current = null;
 var failed = null;
 var warned = /* @__PURE__ */ new Set();
@@ -51703,7 +51763,7 @@ function scopedStaging(staging, scope) {
     relief: (x) => on() ? staging.relief?.(x) ?? [] : [],
     woke: () => on() ? staging.woke?.() ?? [] : [],
     // e9: her verdict is said at the session's end, when the run is already gone: alive until the unmount (never into a new scene or chat)
-    service: (id, v) => scope.live ? staging.service?.(id, v) ?? [] : [],
+    service: (id, v, holder3) => scope.live ? (holder3 !== void 0 ? staging.service?.(id, v, holder3) : staging.service?.(id, v)) ?? [] : [],
     beat: () => staging.beat(),
     clock: () => staging.clock()
   };
@@ -51711,7 +51771,7 @@ function scopedStaging(staging, scope) {
 var SOURCE_MAKERS = /* @__PURE__ */ new Set(["createBufferSource", "createOscillator", "createConstantSource"]);
 function scopedSamples(samples, scope) {
   let proxied = null;
-  const view = (real) => {
+  const view2 = (real) => {
     if (proxied?.real === real) return proxied.view;
     const v = new Proxy(real, {
       get(t, p) {
@@ -51747,7 +51807,7 @@ function scopedSamples(samples, scope) {
     buffer: (file) => samples.buffer(file),
     ctx: () => {
       const c = samples.ctx();
-      return c ? view(c) : null;
+      return c ? view2(c) : null;
     },
     bus: (name) => samples.bus(name),
     setWorldDull: (f) => {
@@ -51963,7 +52023,8 @@ function syncInstruments(env, run) {
     else if (current && !current.finishing) unmountInstruments();
     return false;
   }
-  const def = state ? instrumentFor(run, state, env.registries, env.settings()) : null;
+  const found2 = state ? instrumentFor(run, state, env.registries, env.settings()) : null;
+  const def = found2 && drawable(found2, env, run) ? found2 : null;
   if (!def) {
     unmountInstruments();
     return false;
@@ -52054,7 +52115,7 @@ function reseed(n) {
 }
 var Math2 = Object.create(globalThis.Math, { random: { value: rnd01 } });
 function speak(ch, o, f) {
-  const c = ch.toLowerCase(), up = ch !== c;
+  const c = ch.toLowerCase(), up2 = ch !== c;
   let out = ch;
   if (!/[a-z]/.test(c)) return { out: ch, lost: false };
   if (LABIAL.includes(c) && o > OPEN_LIPS) out = "h";
@@ -52062,7 +52123,7 @@ function speak(ch, o, f) {
   else if (VELAR.includes(c) && o > OPEN_BACK) out = "gh";
   else if ("ei".includes(c) && o > OPEN_VOWEL) out = "a";
   if (f > DEGRADE_AT && Math2.random() < (f - DEGRADE_AT) / 60) out += out.slice(-1);
-  if (up) out = out[0].toUpperCase() + out.slice(1);
+  if (up2) out = out[0].toUpperCase() + out.slice(1);
   return { out, lost: out.toLowerCase() !== c };
 }
 
@@ -52119,7 +52180,7 @@ var CONTACTS = {
   sole_to_mouth: { note: 'her toes in the mouth (sole_to_mouth): no speech (no_speech); her band is set by her toes, below it the teeth touch her; she pushes deeper, pulls out, says "suck." (a narrow band just above her)', speech: false },
   ring_gag: { note: "a ring gag (ring_gag): the ring keeps the mouth open at its size; above it the jaw tires faster; every letter is spoken through the opening it was typed at; she asks and understands or not", speech: true }
 };
-var STYLES = {
+var STYLES2 = {
   neutral: { every: [5, 9], deep: 0.12, suck: 0.08, ask: 0.35 },
   affectionate: { every: [7, 12], deep: 0.08, suck: 0.1, ask: 0.4 },
   ritual: { every: [6, 6], deep: 0.1, suck: 0.08, ask: 0.3 },
@@ -52132,7 +52193,7 @@ var STYLES = {
 var noLines = () => ({ entry: {}, teeth: [], deeper: [], out: [], suck: [], wide: [], correct: [], restOk: [], restNo: [], ask: [["", ""]], heard: [], lost: [], end: [], slack: [], stop: [] });
 var LINES2 = { neutral: noLines() };
 var S2 = { contact: "sole_to_mouth", style: "neutral", rate: 1, skill: 0, ring: 0.55, len: 75, sound: true, vol: 0.7, footH: 1.05, debug: false, reduced: false, readable: false };
-var st = () => STYLES[S2.style];
+var st = () => STYLES2[S2.style];
 var L = () => LINES2[S2.style];
 var C = () => CONTACTS[S2.contact];
 var A = { ctx: null, buf: {} };
@@ -53219,8 +53280,8 @@ var ADDITION_WORDS = {
 var plain5 = (text3) => text3.replace(/^\s*AUTHOR TO WRITE:\s*/, "").trim().replace(/[.\s]+$/, "");
 var GAP_WORDS = { matched: "what she expected", partial: "only partly what she expected", opposite: "the opposite of what she expected" };
 function genericWord(reg, sourceId, key) {
-  const frame7 = reg.momentSources.get(sourceId)?.frame;
-  return ["0", "1", "2"].includes(key) ? frame7?.[Number(key)]?.generic ?? key : ADDITION_WORDS[key] ?? key;
+  const frame8 = reg.momentSources.get(sourceId)?.frame;
+  return ["0", "1", "2"].includes(key) ? frame8?.[Number(key)]?.generic ?? key : ADDITION_WORDS[key] ?? key;
 }
 function momentDirective2(event, state, reg) {
   const { open: open3, lastAnswer: a } = momentsOf(state.scene);
@@ -53358,19 +53419,19 @@ function physicsLines(state, reg) {
   const also = run.second ? ` and ${String(reg.contactPhysics.get(run.second.physicsId)?.label ?? run.second.physicsId).toLowerCase()} at once` : "";
   const parts2 = [`${name} has the commander in a hold (${what}${also}); her rhythm is ${RHYTHM[style] ?? RHYTHM.neutral}.`, EXPECTS[effectiveHoldsUntil(state, reg, run.holderId)]];
   if (run.marathon?.summary !== void 0) parts2.push(run.marathon.summary);
-  const last2 = run.last;
-  if (last2) {
+  const last3 = run.last;
+  if (last3) {
     const said = [];
-    if (last2.caught > 0) said.push(`${count(last2.caught, "opening", "openings")} caught`);
-    if (last2.missed > 0) said.push(`${last2.missed} missed`);
-    if (last2.falseTaken > 0) said.push("a false opening taken");
-    if (last2.slips > 0) said.push(count(last2.slips, "a slip", "slips"));
-    if (last2.gasps > 0) said.push("a gasp");
-    if (last2.reliefs > 0 && run.sourceKind !== "activity") said.push("a relief taken");
-    if (last2.noise > 0) said.push("some noise");
-    if (last2.warning) said.push("close to the limit");
+    if (last3.caught > 0) said.push(`${count(last3.caught, "opening", "openings")} caught`);
+    if (last3.missed > 0) said.push(`${last3.missed} missed`);
+    if (last3.falseTaken > 0) said.push("a false opening taken");
+    if (last3.slips > 0) said.push(count(last3.slips, "a slip", "slips"));
+    if (last3.gasps > 0) said.push("a gasp");
+    if (last3.reliefs > 0 && run.sourceKind !== "activity") said.push("a relief taken");
+    if (last3.noise > 0) said.push("some noise");
+    if (last3.warning) said.push("close to the limit");
     if (said.length > 0) parts2.push(`Last stretch: ${said.join(", ")}.`);
-    if (last2.move !== void 0 && MOVE[last2.move] !== void 0) parts2.push(`Next: ${MOVE[last2.move]}.`);
+    if (last3.move !== void 0 && MOVE[last3.move] !== void 0) parts2.push(`Next: ${MOVE[last3.move]}.`);
   }
   return { id: `${PHYSICS_PREFIX}${run.physicsId}`, text: parts2.join(" "), expiresAfter: "manual" };
 }
@@ -53633,13 +53694,13 @@ function createStaging(deps) {
     const reg = deps.registries();
     const unit4 = s.squad.find((u) => u.id === r.holderId);
     const entry = reg.blockingActivities.get(r.sourceId);
-    const frame7 = frameOf3(entry);
+    const frame8 = frameOf3(entry);
     const knowledge2 = buildKnowledge(s, deps.settings());
     const known3 = knowledge2.facts().filter((f) => f.about.includes(r.holderId) || f.knownBy?.includes(r.holderId) === true).slice(-KNOWN_MAX).map((f) => f.text);
     for (const u of s.squad) if (u.status === "injured" && u.kind === "named") known3.push(`${u.displayName} is injured.`);
     const listeners = [];
-    if (frame7?.call) listeners.push({ id: "oversight", name: "Oversight", knows: "none" });
-    if (frame7?.visitor || frame7?.audience) {
+    if (frame8?.call) listeners.push({ id: "oversight", name: "Oversight", knows: "none" });
+    if (frame8?.visitor || frame8?.audience) {
       const other = s.squad.find((u) => u.kind === "named" && u.id !== r.holderId && u.status === "active" && !(s.scene?.participants ?? []).includes(u.id));
       if (other) listeners.push({ id: other.id, name: other.displayName, knows: listenerKnows(s, r.holderId, other.id) });
     }
@@ -53654,7 +53715,7 @@ function createStaging(deps) {
       style: leadStyle(physicsStyleOf(s, r.holderId, reg)).key,
       known: known3.slice(-KNOWN_MAX - 2),
       listeners,
-      ...frame7?.audience ? { throne: true } : {}
+      ...frame8?.audience ? { throne: true } : {}
     };
   }
   deps.generations.bind(SCRIPT_SITE, {
@@ -53840,8 +53901,8 @@ function createStaging(deps) {
       const r = run();
       return active && r ? dispatch2({ type: "physics/decide", payload: { runId: r.id, kind, ...ref !== void 0 ? { ref } : {} } }) : [];
     },
-    service(runId, verdict) {
-      return active ? dispatch2({ type: "physics/service", payload: { runId, verdict } }) : [];
+    service(runId, verdict2, holderId) {
+      return active ? dispatch2({ type: "physics/service", payload: { runId, verdict: verdict2, ...holderId !== void 0 ? { holderId } : {} } }) : [];
     },
     tick(nowMs) {
       if (active) advance2(nowMs);
@@ -54341,15 +54402,15 @@ async function callLlm(id, input, deps, opts = {}) {
   const base = deps.settings.budgets[id];
   const maxAttempts = 1 + deps.settings.autoRetry;
   let factor = opts.budgetMult ?? 1;
-  let last2;
+  let last3;
   for (let attempt2 = 1; attempt2 <= maxAttempts; attempt2++) {
     const r = await attemptLlm(id, input, deps, { ...opts, budget: Math.ceil(base * factor) });
-    last2 = { ...r, attempts: r.attempts === 0 ? 0 : attempt2 };
-    if (r.ok) return last2;
+    last3 = { ...r, attempts: r.attempts === 0 ? 0 : attempt2 };
+    if (r.ok) return last3;
     if (r.reason === "refused" || r.reason === "no_profile") break;
     if (r.reason === "truncated" || r.reason === "invalid_output") factor *= RETRY_BUDGET_FACTOR;
   }
-  return last2;
+  return last3;
 }
 
 // src/llm/envelope.ts
@@ -54401,7 +54462,7 @@ function createEnvelope(host) {
       const budgetLimit = 1 + settings.autoRetry;
       let attempts = 0;
       let factor = mult;
-      let last2 = null;
+      let last3 = null;
       let value;
       let applied = false;
       while (attempts < budgetLimit) {
@@ -54410,12 +54471,12 @@ function createEnvelope(host) {
         attempts += r.attempts;
         if (host.chatId() !== chatId) return { kind: "stale" };
         if (!r.ok) {
-          last2 = { reason: r.reason, detail: r.detail, at: r.at, budget: r.budget };
+          last3 = { reason: r.reason, detail: r.detail, at: r.at, budget: r.budget };
           break;
         }
         const parsed = h2.parse ? h2.parse(r.value, input) : r.value;
         if (parsed === null) {
-          last2 = { reason: "invalid_output", detail: "the answer did not fit the form", at: r.at, budget: 0 };
+          last3 = { reason: "invalid_output", detail: "the answer did not fit the form", at: r.at, budget: 0 };
           break;
         }
         const again = await h2.build(key);
@@ -54432,7 +54493,7 @@ function createEnvelope(host) {
           break;
         }
         if ("stale" in done) return { kind: "stale" };
-        last2 = { reason: "invalid_output", detail: done.rejected, at: r.at, budget: 0 };
+        last3 = { reason: "invalid_output", detail: done.rejected, at: r.at, budget: 0 };
         if (done.final) break;
         factor *= BUDGET_GROWTH;
       }
@@ -54440,18 +54501,18 @@ function createEnvelope(host) {
         closeKey(siteId, key, "applied", chatId);
         return { kind: "applied", value };
       }
-      return fail(site, h2, key, input, last2, attempts, mult, chatId, opts);
+      return fail(site, h2, key, input, last3, attempts, mult, chatId, opts);
     } finally {
       inflight.delete(flight);
     }
   }
-  function fail(site, h2, key, input, last2, attempts, mult, chatId, opts) {
+  function fail(site, h2, key, input, last3, attempts, mult, chatId, opts) {
     const existing = record2(site.id, key);
     const open3 = existing?.status === "open" ? existing : void 0;
     const siteHadOpen = host.state() !== null && openRecords(host.state(), { siteId: site.id }).length > 0;
     let fallbackApplied = open3?.fallbackApplied === true;
     if (!fallbackApplied && !opts.skipFallback && h2.fallback) fallbackApplied = h2.fallback(key, input) === true;
-    const writes = !opts.noRecord && last2.reason !== "no_profile" && site.record !== "none" && !(fallbackApplied && site.reroll === "none");
+    const writes = !opts.noRecord && last3.reason !== "no_profile" && site.record !== "none" && !(fallbackApplied && site.reroll === "none");
     let recordId;
     if (writes) {
       host.dispatch({
@@ -54459,10 +54520,10 @@ function createEnvelope(host) {
         payload: {
           siteId: site.id,
           key,
-          reason: last2.reason,
-          detail: last2.detail,
+          reason: last3.reason,
+          detail: last3.detail,
           attempts: Math.max(1, attempts),
-          at: last2.at,
+          at: last3.at,
           budgetMult: mult,
           ...fallbackApplied ? { fallbackApplied: true } : {},
           ...site.record === "quiet" ? { quiet: true } : {}
@@ -54470,10 +54531,10 @@ function createEnvelope(host) {
       }, { expectChatId: chatId });
       recordId = record2(site.id, key)?.id;
       if (site.record === "full" && !siteHadOpen) {
-        host.toast("warn", describeFailure({ label: unitLabel2(site, key), reason: last2.reason, budget: last2.budget, timeoutMs: host.settings().llmTimeoutMs }));
+        host.toast("warn", describeFailure({ label: unitLabel2(site, key), reason: last3.reason, budget: last3.budget, timeoutMs: host.settings().llmTimeoutMs }));
       }
     }
-    return { kind: "failed", reason: last2.reason, detail: last2.detail, ...recordId !== void 0 ? { recordId } : {}, fallbackApplied };
+    return { kind: "failed", reason: last3.reason, detail: last3.detail, ...recordId !== void 0 ? { recordId } : {}, fallbackApplied };
   }
   function undoSnapshot(siteId, key) {
     const snap2 = snapshots.get(siteId);
@@ -54536,8 +54597,8 @@ function createEnvelope(host) {
       h2.fallback(rec.key, isExpired(input) ? null : input);
       host.dispatch({ type: "generation/close", payload: { id: recordId, outcome: "kept_fallback" } }, { expectChatId: chatId });
     },
-    takeSnapshot(siteId, key, before6, after8) {
-      snapshots.set(siteId, { chatId: host.chatId(), key, before: before6, after: after8 });
+    takeSnapshot(siteId, key, before7, after9) {
+      snapshots.set(siteId, { chatId: host.chatId(), key, before: before7, after: after9 });
     },
     clearSnapshots() {
       snapshots.clear();
@@ -54588,11 +54649,11 @@ function createSceneController(deps) {
   let awaitingReextract = false;
   const busyChats = /* @__PURE__ */ new Map();
   const chatKey = () => st3.getActiveChat()?.chatId ?? "";
-  const begin6 = (chat) => {
+  const begin7 = (chat) => {
     busyChats.set(chat, (busyChats.get(chat) ?? 0) + 1);
     return chat;
   };
-  const finish6 = (chat) => {
+  const finish7 = (chat) => {
     const n = (busyChats.get(chat) ?? 1) - 1;
     if (n <= 0) busyChats.delete(chat);
     else busyChats.set(chat, n);
@@ -54800,8 +54861,8 @@ function createSceneController(deps) {
       const expect = chatId();
       const from = extracted;
       const nextPointer = k.to + 1;
-      const before6 = state();
-      if (!before6 || !before6.scene) return { stale: true };
+      const before7 = state();
+      if (!before7 || !before7.scene) return { stale: true };
       const flaggedHere = result.contentViolations.map((v) => v.category);
       if (flaggedHere.length > 0) debug(`Content flagged on reply ${lastReply.index}: ${flaggedHere.join(", ")}.`);
       const events = dispatch2({
@@ -54818,11 +54879,11 @@ function createSceneController(deps) {
         }
       }, expect);
       if (events.some((e) => e.type === "error")) return { stale: true };
-      const after8 = state();
+      const after9 = state();
       extracted = nextPointer;
       const landed = events.find((e) => e.type === "intents_applied")?.landed ?? result.intents.events.map((e) => e.type);
       const directives = reflect(events, result.intents.events.filter((e) => e.severity === "extreme" && landed.includes(e.type)).map((e) => e.type));
-      if (after8 && after8 !== before6) lastApply = { lastReplyIndex: lastReply.index, from, to: k.to, before: before6, after: after8, directives };
+      if (after9 && after9 !== before7) lastApply = { lastReplyIndex: lastReply.index, from, to: k.to, before: before7, after: after9, directives };
       if (deps.settings().spriteMode === "emotion_pick") {
         for (const em of result.emotions) deps.onUi({ type: "sprite", unitId: em.unitId, label: em.label });
       }
@@ -54859,8 +54920,8 @@ function createSceneController(deps) {
       const unit4 = s0 ? unitById(s0, unitId) : void 0;
       const scene = s0?.scene;
       if (!s0 || !scene || !unit4) return { expired: "She is not in the scene." };
-      const last2 = [...st3.getChatMessages(Math.min(scene.startIndex, st3.chatLength()))].reverse().find((m) => !m.isUser && m.avatar === unit4.cardRef);
-      return last2 ? { unitName: unit4.displayName, text: last2.text } : { expired: "She has not spoken." };
+      const last3 = [...st3.getChatMessages(Math.min(scene.startIndex, st3.chatLength()))].reverse().find((m) => !m.isUser && m.avatar === unit4.cardRef);
+      return last3 ? { unitName: unit4.displayName, text: last3.text } : { expired: "She has not spoken." };
     },
     parse: (raw) => readEmotion(raw),
     apply(unitId, label2) {
@@ -54889,7 +54950,7 @@ function createSceneController(deps) {
     const expect = chatId();
     awaitingReextract = false;
     try {
-      const before6 = st3.chatLength();
+      const before7 = st3.chatLength();
       deps.onCommanderLine?.(t);
       try {
         await st3.sendUserMessage(t);
@@ -54898,7 +54959,7 @@ function createSceneController(deps) {
         return false;
       }
       if (disposed || chatId() !== expect || !state()?.scene) return true;
-      if (!st3.getChatMessages(before6).some((m) => !m.isUser)) {
+      if (!st3.getChatMessages(before7).some((m) => !m.isUser)) {
         deps.toast("warn", "No reply arrived. The chat may still be busy generating, or no group member was chosen to answer. Press STOP, wait a moment, then use \u21BB to regenerate.");
         deps.onUi({ type: "transcript" });
         return true;
@@ -54909,14 +54970,14 @@ function createSceneController(deps) {
       const settings = deps.settings();
       const due = settings.intentMode === "exchange" || settings.intentMode === "every_n" && exchanges > 0 && exchanges % settings.intentEveryN === 0;
       const applied = due ? await extract2(expect) : false;
-      await showSprites(st3.getChatMessages(before6).filter((m) => !m.isUser), applied);
+      await showSprites(st3.getChatMessages(before7).filter((m) => !m.isUser), applied);
       if (deps.memory) background2 = background2.then(() => deps.memory.digestIfDue()).catch(() => {
       });
       if (exchanges >= settings.scenePacing) deps.onUi({ type: "pacing" });
       deps.onUi({ type: "transcript" });
       return true;
     } finally {
-      finish6(chat);
+      finish7(chat);
     }
   }
   let selfEdit = null;
@@ -55019,14 +55080,14 @@ function createSceneController(deps) {
     parse: (raw, input) => readSceneSummary(raw, input),
     apply(sceneId, summary) {
       const expect = chatId();
-      const before6 = state();
-      if (!before6) return { stale: true };
+      const before7 = state();
+      if (!before7) return { stale: true };
       if (summary.contentViolations.length > 0) debug(`Scene summary flagged excluded content: ${summary.contentViolations.map((v) => v.category).join(", ")}.`);
-      if (before6.scene?.id === sceneId) {
+      if (before7.scene?.id === sceneId) {
         const events2 = dispatch2({ type: "scene/end", payload: { summary, endIndex: st3.chatLength() - 1 } }, expect);
-        const after8 = state();
-        if (events2.some((e) => e.type === "error") || !after8) return { stale: true };
-        deps.generations.takeSnapshot("scene.summary", sceneId, before6, after8);
+        const after9 = state();
+        if (events2.some((e) => e.type === "error") || !after9) return { stale: true };
+        deps.generations.takeSnapshot("scene.summary", sceneId, before7, after9);
         summaryKey = sceneId;
         return "ok";
       }
@@ -55071,7 +55132,7 @@ function createSceneController(deps) {
       const here = chatKey();
       if (text3.trim() !== "" && openingRun?.chat === here) return openingRun.run.then(() => controller.send(text3));
       if (text3.trim() === "" || busyHere() || !state()?.scene) return Promise.resolve(false);
-      const run = sendNow(text3.trim(), begin6(here));
+      const run = sendNow(text3.trim(), begin7(here));
       const mine = { chat: here, run };
       inflight = mine;
       void run.finally(() => {
@@ -55084,11 +55145,11 @@ function createSceneController(deps) {
       if (busyHere() || !scene) return Promise.resolve();
       if (openedScene === scene.id || st3.getChatMessages(Math.min(scene.startIndex, st3.chatLength())).length > 0) return Promise.resolve();
       openedScene = scene.id;
-      const chat = begin6(chatKey());
+      const chat = begin7(chatKey());
       const run = (async () => {
         const expect = chatId();
         try {
-          const before6 = st3.chatLength();
+          const before7 = st3.chatLength();
           try {
             await st3.triggerReplies();
           } catch (e) {
@@ -55096,7 +55157,7 @@ function createSceneController(deps) {
             return;
           }
           if (disposed || chatId() !== expect || !state()?.scene) return;
-          const replies = st3.getChatMessages(before6).filter((m) => !m.isUser);
+          const replies = st3.getChatMessages(before7).filter((m) => !m.isUser);
           deps.onUi({ type: "transcript" });
           if (replies.length === 0) {
             deps.toast("warn", "Nobody spoke first. Say something to start, or use \u21BB to try again.");
@@ -55105,7 +55166,7 @@ function createSceneController(deps) {
           await showSprites(replies, false);
           deps.onUi({ type: "transcript" });
         } finally {
-          finish6(chat);
+          finish7(chat);
         }
       })();
       const mine = { chat, run };
@@ -55169,12 +55230,12 @@ function createSceneController(deps) {
       const s = state();
       const scene = s?.scene;
       if (!s || !scene) return;
-      const chat = begin6(expect ?? "");
+      const chat = begin7(expect ?? "");
       try {
         if (st3.getChatMessages(extracted).some((m) => !m.isUser)) await extract2(expect);
         await deps.generations.generate("scene.summary", scene.id);
       } finally {
-        finish6(chat);
+        finish7(chat);
         lastApply = null;
         awaitingReextract = false;
         await afterEnd(expect);
@@ -55194,11 +55255,11 @@ function createSceneController(deps) {
       const key = summaryKey;
       if (key === null) return;
       const expect = chatId();
-      const chat = begin6(expect ?? "");
+      const chat = begin7(expect ?? "");
       try {
         await deps.generations.reroll("scene.summary", key);
       } finally {
-        finish6(chat);
+        finish7(chat);
         const now = state();
         if (now?.scene) controller.resume();
         else await afterEnd(expect);
@@ -55229,10 +55290,10 @@ function createSceneController(deps) {
       const p = action.payload;
       const needsAt = /^(blocking\/|moment\/|practice\/take_posture$)/.test(action.type) && typeof p === "object" && p !== null && !Array.isArray(p) && p.at === void 0;
       const sent = needsAt ? { ...action, payload: { ...p, at: st3.chatLength() } } : action;
-      const before6 = state();
+      const before7 = state();
       const events = dispatch2(sent, chatId());
-      const after8 = state();
-      if (lastApply && before6 && lastApply.after === before6 && after8 && after8 !== before6) lastApply.after = after8;
+      const after9 = state();
+      if (lastApply && before7 && lastApply.after === before7 && after9 && after9 !== before7) lastApply.after = after9;
       return events;
     },
     onEdited(index2) {
@@ -55673,7 +55734,7 @@ function sanitizeProfile(raw, ctx2) {
   const dropped = [];
   const missing2 = [];
   const profile = { roleCandidates: [], signatureCandidates: [], defectCandidates: [], notes: cap6(src.notes, 300) };
-  const pick10 = (list5, section, idKey, max, accept2, make) => {
+  const pick11 = (list5, section, idKey, max, accept2, make) => {
     const out = [];
     const seen2 = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list5) ? list5 : []) {
@@ -55692,7 +55753,7 @@ function sanitizeProfile(raw, ctx2) {
     return out;
   };
   if (want("role")) {
-    profile.roleCandidates = pick10(
+    profile.roleCandidates = pick11(
       src.roleCandidates,
       "role",
       "roleId",
@@ -55703,7 +55764,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.roleCandidates.length === 0) missing2.push("role");
   }
   if (want("signature")) {
-    profile.signatureCandidates = pick10(
+    profile.signatureCandidates = pick11(
       src.signatureCandidates,
       "signature",
       "templateId",
@@ -55732,7 +55793,7 @@ function sanitizeProfile(raw, ctx2) {
     if (!isObj50(src.bond)) delete profile.bond;
   }
   if (want("defects")) {
-    profile.defectCandidates = pick10(
+    profile.defectCandidates = pick11(
       src.defectCandidates,
       "defects",
       "defectId",
@@ -55991,10 +56052,10 @@ var Wizard = class {
     this.emit();
   }
   /** P13: who holds the leash: a chosen unit (by her position in the squad) or the corporation's pick. An index outside the squad is ignored. */
-  setWardenPick(pick10) {
-    if (pick10.by === "player") {
-      if (!Number.isInteger(pick10.index) || pick10.index < 0 || pick10.index >= this.s.units.length) return;
-      this.s.campaign.warden = { by: "player", index: pick10.index };
+  setWardenPick(pick11) {
+    if (pick11.by === "player") {
+      if (!Number.isInteger(pick11.index) || pick11.index < 0 || pick11.index >= this.s.units.length) return;
+      this.s.campaign.warden = { by: "player", index: pick11.index };
     } else this.s.campaign.warden = { by: "corporation" };
     this.emit();
   }
@@ -56198,11 +56259,11 @@ var Wizard = class {
     return null;
   }
   /** A calibrated unit's offset and stances were read against the old world: offer a re-import. */
-  worldChanged(before6) {
-    const after8 = this.s.world.options;
+  worldChanged(before7) {
+    const after9 = this.s.world.options;
     const reg = this.deps.registries;
-    const matters = Object.keys(after8).some((id) => {
-      if (after8[id] === before6[id]) return false;
+    const matters = Object.keys(after9).some((id) => {
+      if (after9[id] === before7[id]) return false;
       const option2 = reg.worldOptions.get(id);
       return option2 !== void 0 && (option2.squadStance === true || option2.choices.some((c) => c.effects.some((e) => e.type === "disposition")));
     });
@@ -56213,19 +56274,19 @@ var Wizard = class {
   applyPreset(id) {
     const preset = this.deps.registries.worldPresets.get(id);
     if (!preset) return;
-    const before6 = { ...this.s.world.options };
+    const before7 = { ...this.s.world.options };
     this.s.world = { options: { ...defaultWorldOptions(this.deps.registries), ...preset.choices }, preset: id };
-    this.worldChanged(before6);
+    this.worldChanged(before7);
     this.emit();
   }
   /** Sets one option's choice; the preset mark follows (null unless the options still equal one). Unknown ids are ignored. */
   setWorldOption(optionId, choiceId) {
     const option2 = this.deps.registries.worldOptions.get(optionId);
     if (!option2 || !option2.choices.some((c) => c.id === choiceId)) return;
-    const before6 = { ...this.s.world.options };
-    const options2 = { ...before6, [optionId]: choiceId };
+    const before7 = { ...this.s.world.options };
+    const options2 = { ...before7, [optionId]: choiceId };
     this.s.world = { options: options2, preset: this.presetOf(options2) };
-    this.worldChanged(before6);
+    this.worldChanged(before7);
     this.emit();
   }
   /** "What this changes": the description of every choice that is not its option's default, never a number. */
@@ -57076,16 +57137,16 @@ function renderExpectationsBlock(host, ctx2) {
   const locked = (field2) => ctx2.locks.includes(field2) || ctx2.locks.includes(field2.split(".")[0]);
   const lock = (field2, address) => control(locked(field2) ? "[ LOCKED ]" : "[ LOCK ]", { "data-lock": field2 }, address, live3, ctx2.editable, () => ctx2.onLock(field2, !locked(field2)), locked(field2));
   const live1 = (field2) => ctx2.editable && !locked(field2);
-  const A8 = "glossary:expectation_profile";
-  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeNative(A8, live3), tabindex: "0" }, "EXPECTATIONS"));
+  const A9 = "glossary:expectation_profile";
+  host.replaceChildren(h("p", { class: "alius-stat", ...analyzeNative(A9, live3), tabindex: "0" }, "EXPECTATIONS"));
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-holds-until": "" },
-    h("span", { class: "alius-stat", "data-analyze": A8, tabindex: "0" }, "Holds until:"),
-    ...HOLDS_UNTIL.map((v) => control(word(v), { "data-id": v }, A8, live3, live1("holdsUntil"), () => {
+    h("span", { class: "alius-stat", "data-analyze": A9, tabindex: "0" }, "Holds until:"),
+    ...HOLDS_UNTIL.map((v) => control(word(v), { "data-id": v }, A9, live3, live1("holdsUntil"), () => {
       if (e.holdsUntil !== v) ctx2.onSet({ holdsUntil: v });
     }, e.holdsUntil === v)),
-    lock("holdsUntil", A8)
+    lock("holdsUntil", A9)
   ));
   for (const t of ctx2.targets) {
     const w = e.worship?.[t.id];
@@ -57097,7 +57158,7 @@ function renderExpectationsBlock(host, ctx2) {
       ...ATTITUDES.map((a) => control(
         word(a),
         { "data-attitude": a },
-        A8,
+        A9,
         live3,
         live1(field2),
         () => ctx2.onSet({ worship: { [t.id]: w?.attitude === a ? null : { ...w, attitude: a } } }),
@@ -57106,26 +57167,26 @@ function renderExpectationsBlock(host, ctx2) {
       w === void 0 ? null : valueSelect(
         "What it means to her",
         { "data-meaning": t.id },
-        A8,
+        A9,
         live3,
         live1(field2),
         w.meaning ?? "",
         [option("", "(meaning)"), ...MEANINGS.map((m) => option(m, title(m)))],
         (v) => ctx2.onSet({ worship: { [t.id]: { ...w, meaning: v } } })
       ),
-      h("span", { class: "alius-stat", "data-analyze": A8, tabindex: "0" }, "Body:"),
-      ...BODY_FEELINGS.map((f) => control(word(f), { "data-body": f }, A8, live3, live1("body"), () => ctx2.onSet({ body: { ...e.body, [t.id]: f } }), e.body?.[t.id] === f)),
+      h("span", { class: "alius-stat", "data-analyze": A9, tabindex: "0" }, "Body:"),
+      ...BODY_FEELINGS.map((f) => control(word(f), { "data-body": f }, A9, live3, live1("body"), () => ctx2.onSet({ body: { ...e.body, [t.id]: f } }), e.body?.[t.id] === f)),
       valueSelect(
         "Scent",
         { "data-scent": t.id },
-        A8,
+        A9,
         live3,
         live1("scent"),
         String(e.scent?.base?.[t.id] ?? ""),
         [option("", "(scent)"), ...[1, 2, 3, 4, 5].map((n) => option(String(n), String(n)))],
         (v) => ctx2.onSet({ scent: { ...e.scent, base: { ...e.scent?.base, [t.id]: Number(v) } } })
       ),
-      lock(field2, A8)
+      lock(field2, A9)
     ));
   }
   const sourceOf2 = (id) => ctx2.sources.find((s) => s.id === id);
@@ -57137,14 +57198,14 @@ function renderExpectationsBlock(host, ctx2) {
       "div",
       { class: "alius-dyn-row", "data-moment": id },
       h("span", { class: "alius-chip", ...analyzeNative(`momentSources:${id}`), tabindex: "0" }, src.label),
-      ...src.types.map((type) => control(word(type), { "data-type": type }, A8, live3, live1(field2), () => {
+      ...src.types.map((type) => control(word(type), { "data-type": type }, A9, live3, live1(field2), () => {
         if (m.type !== type) ctx2.onSet({ moments: { [id]: { ...m, type } } });
       }, m.type === type)),
-      ...STRENGTHS2.map((n) => control(String(n), { "data-strength": String(n) }, A8, live3, live1(field2), () => {
+      ...STRENGTHS2.map((n) => control(String(n), { "data-strength": String(n) }, A9, live3, live1(field2), () => {
         if (m.strength !== n) ctx2.onSet({ moments: { [id]: { ...m, strength: n } } });
       }, m.strength === n)),
-      control("[ REMOVE ]", { "data-remove-moment": id }, A8, live3, live1(field2), () => ctx2.onSet({ moments: { [id]: null } })),
-      lock(field2, A8)
+      control("[ REMOVE ]", { "data-remove-moment": id }, A9, live3, live1(field2), () => ctx2.onSet({ moments: { [id]: null } })),
+      lock(field2, A9)
     ));
   }
   const addable = ctx2.sources.filter((s) => e.moments?.[s.id] === void 0);
@@ -57154,7 +57215,7 @@ function renderExpectationsBlock(host, ctx2) {
     valueSelect(
       "Add a moment",
       { "data-add-moment": ctx2.unit.id },
-      A8,
+      A9,
       live3,
       ctx2.editable && addable.length > 0 && !locked("moments"),
       "",
@@ -57163,71 +57224,71 @@ function renderExpectationsBlock(host, ctx2) {
     )
   ));
   for (const k of ["irritation", "pleasure"]) {
-    const input = h("input", { type: "text", class: "alius-input alius-option", "aria-label": `How her ${k} shows`, "aria-disabled": live1("tells") ? null : "true", maxlength: String(TUNING.dynamic.profile.tellMax), "data-tell": k, value: e.tells?.[k] ?? "", ...analyzeNative(A8, live3) });
+    const input = h("input", { type: "text", class: "alius-input alius-option", "aria-label": `How her ${k} shows`, "aria-disabled": live1("tells") ? null : "true", maxlength: String(TUNING.dynamic.profile.tellMax), "data-tell": k, value: e.tells?.[k] ?? "", ...analyzeNative(A9, live3) });
     input.addEventListener("change", () => {
       const v = input.value;
       input.value = e.tells?.[k] ?? "";
       if (live1("tells") && v !== (e.tells?.[k] ?? "")) ctx2.onSet({ tells: { ...e.tells, [k]: v } });
     });
-    host.append(h("div", { class: "alius-dyn-row", "data-tells": k }, h("span", { class: "alius-stat", "data-analyze": A8, tabindex: "0" }, `${title(k)} shows as:`), input, ...k === "pleasure" ? [lock("tells", A8)] : []));
+    host.append(h("div", { class: "alius-dyn-row", "data-tells": k }, h("span", { class: "alius-stat", "data-analyze": A9, tabindex: "0" }, `${title(k)} shows as:`), input, ...k === "pleasure" ? [lock("tells", A9)] : []));
   }
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-offset": "" },
-    h("span", { class: "alius-stat", "data-analyze": A8, tabindex: "0" }, "Wants the commander:"),
+    h("span", { class: "alius-stat", "data-analyze": A9, tabindex: "0" }, "Wants the commander:"),
     ...["r", "f"].map((axis) => valueSelect(
       axis === "r" ? "More yielding or less" : "Smoother or more provoking",
       { "data-offset-axis": axis },
-      A8,
+      A9,
       live3,
       live1("offset"),
       String(e.offset?.[axis] ?? 0),
       OFFSET_STEPS.map((n) => option(String(n), n > 0 ? `+${n}` : String(n))),
       (v) => ctx2.onSet({ offset: { r: e.offset?.r ?? 0, f: e.offset?.f ?? 0, [axis]: Number(v) } })
     )),
-    lock("offset", A8)
+    lock("offset", A9)
   ));
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-build": "" },
-    h("span", { class: "alius-stat", "data-analyze": A8, tabindex: "0" }, "Build:"),
+    h("span", { class: "alius-stat", "data-analyze": A9, tabindex: "0" }, "Build:"),
     ...["slim", "athletic", "curvy"].map((k) => valueSelect(
       title(k),
       { "data-build-weight": k },
-      A8,
+      A9,
       live3,
       live1("build"),
       String(e.build?.[k] ?? 0),
       BUILD_STEPS.map((n) => option(String(n), `${title(k)} ${n}`)),
       (v) => ctx2.onSet({ build: { slim: e.build?.slim ?? 0, athletic: e.build?.athletic ?? 0, curvy: e.build?.curvy ?? 0, [k]: Number(v) } })
     )),
-    lock("build", A8)
+    lock("build", A9)
   ));
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-hair": "" },
-    h("span", { class: "alius-stat", "data-analyze": A8, tabindex: "0" }, "Hair:"),
-    ...HAIR.map((v) => control(word(v), { "data-id": v }, A8, live3, live1("hair"), () => {
+    h("span", { class: "alius-stat", "data-analyze": A9, tabindex: "0" }, "Hair:"),
+    ...HAIR.map((v) => control(word(v), { "data-id": v }, A9, live3, live1("hair"), () => {
       if (e.hair !== v) ctx2.onSet({ hair: v });
     }, e.hair === v)),
-    lock("hair", A8)
+    lock("hair", A9)
   ));
   host.append(h(
     "div",
     { class: "alius-dyn-row", "data-hygiene": "" },
-    h("span", { class: "alius-stat", "data-analyze": A8, tabindex: "0" }, "Hygiene:"),
-    ...HYGIENE.map((v) => control(word(v), { "data-id": v }, A8, live3, live1("scent"), () => {
+    h("span", { class: "alius-stat", "data-analyze": A9, tabindex: "0" }, "Hygiene:"),
+    ...HYGIENE.map((v) => control(word(v), { "data-id": v }, A9, live3, live1("scent"), () => {
       if (e.scent?.hygiene !== v) ctx2.onSet({ scent: { ...e.scent, hygiene: v } });
     }, e.scent?.hygiene === v)),
-    lock("scent", A8)
+    lock("scent", A9)
   ));
-  const traits = h("input", { type: "text", class: "alius-input alius-option", "aria-label": "Traits, separated by commas", "aria-disabled": live1("traits") ? null : "true", "data-traits": "", value: (e.traits ?? []).join(", "), ...analyzeNative(A8, live3) });
+  const traits = h("input", { type: "text", class: "alius-input alius-option", "aria-label": "Traits, separated by commas", "aria-disabled": live1("traits") ? null : "true", "data-traits": "", value: (e.traits ?? []).join(", "), ...analyzeNative(A9, live3) });
   traits.addEventListener("change", () => {
     const v = traits.value;
     traits.value = (e.traits ?? []).join(", ");
     if (live1("traits")) ctx2.onSet({ traits: v.split(",").map((x) => x.trim()).filter((x) => x !== "") });
   });
-  host.append(h("div", { class: "alius-dyn-row", "data-traits-row": "" }, h("span", { class: "alius-stat", "data-analyze": A8, tabindex: "0" }, "Traits:"), traits, lock("traits", A8)));
+  host.append(h("div", { class: "alius-dyn-row", "data-traits-row": "" }, h("span", { class: "alius-stat", "data-analyze": A9, tabindex: "0" }, "Traits:"), traits, lock("traits", A9)));
 }
 
 // src/ui/setup/calibration.ts
@@ -57350,7 +57411,7 @@ function renderCalibration(host, ctx2) {
     const fromCandidates = !manual && cand && cand.defectCandidates.length > 0;
     const list5 = fromCandidates ? cand.defectCandidates.map((c) => ({ id: c.defectId, origin: c.origin })) : options2.defects.map((d) => ({ id: d.id, origin: "" }));
     const max = draft.secondDefect ? SETUP_LIMITS.maxDefects : 1;
-    const pick10 = (id, origin) => {
+    const pick11 = (id, origin) => {
       const cur = ch.defects;
       if (cur.some((d) => d.id === id)) return onUpdate({ defects: cur.filter((d) => d.id !== id) });
       const next = cur.length >= max ? [...cur.slice(0, max - 1), { id, origin }] : [...cur, { id, origin }];
@@ -57370,7 +57431,7 @@ function renderCalibration(host, ctx2) {
             "alius-defect-card",
             id,
             ch.defects.some((x) => x.id === id),
-            () => pick10(id, origin),
+            () => pick11(id, origin),
             h("strong", {}, nameOf17(d, id)),
             h("span", { class: "alius-dim" }, d ? ` [${String(d.category)}]` : ""),
             ...d ? defectLines(d) : [],
@@ -58199,15 +58260,15 @@ function renderDynamicStep(host, ctx2) {
   const seeds = Object.values(d.units).filter((u) => u.seeded === true).length;
   const full = d.holders !== "any" && seeds >= d.holders;
   const unitRow = (u) => {
-    const pick10 = d.units[u.avatar] ?? {};
-    const seeded = pick10.seeded === true;
+    const pick11 = d.units[u.avatar] ?? {};
+    const seeded = pick11.seeded === true;
     const problem = wizard.seedBlock(u.avatar);
     return h(
       "div",
       { class: "alius-dynamic-unit", "data-avatar": u.avatar },
       h("h4", {}, u.displayName),
-      selectField("May hold", "glossary:dynamic_may_hold", "mayHold", MAY_HOLD.map((v) => [v, MAY_HOLD_LABEL[v]]), pick10.mayHold ?? "auto", (v) => wizard.setDynamicUnit(u.avatar, { mayHold: v })),
-      selectField("Sensitivity", "glossary:dynamic_sensitivity", "sensitivity", SENSITIVITIES.map((v) => [v, v]), pick10.sensitivity ?? "normal", (v) => wizard.setDynamicUnit(u.avatar, { sensitivity: v })),
+      selectField("May hold", "glossary:dynamic_may_hold", "mayHold", MAY_HOLD.map((v) => [v, MAY_HOLD_LABEL[v]]), pick11.mayHold ?? "auto", (v) => wizard.setDynamicUnit(u.avatar, { mayHold: v })),
+      selectField("Sensitivity", "glossary:dynamic_sensitivity", "sensitivity", SENSITIVITIES.map((v) => [v, v]), pick11.sensitivity ?? "normal", (v) => wizard.setDynamicUnit(u.avatar, { sensitivity: v })),
       h("button", {
         type: "button",
         class: "alius-btn alius-option alius-dynamic-seed",
@@ -58216,14 +58277,14 @@ function renderDynamicStep(host, ctx2) {
         ...analyzeNative("glossary:dynamic_seeded"),
         onclick: () => wizard.setDynamicUnit(u.avatar, { seeded: !seeded })
       }, seeded ? "SEEDED" : "SEED"),
-      seeded ? selectField("Starting frame", "glossary:dynamic_start_frame", "startFrame", [["", "none (equal)"], ...START_FRAMES.map((v) => [v, v])], pick10.startFrame ?? "", (v) => wizard.setDynamicUnit(u.avatar, { startFrame: v === "" ? null : v })) : null,
+      seeded ? selectField("Starting frame", "glossary:dynamic_start_frame", "startFrame", [["", "none (equal)"], ...START_FRAMES.map((v) => [v, v])], pick11.startFrame ?? "", (v) => wizard.setDynamicUnit(u.avatar, { startFrame: v === "" ? null : v })) : null,
       headStart ? h("button", {
         type: "button",
         class: "alius-btn alius-option alius-dynamic-underway",
         "data-scope": "unit",
-        "aria-pressed": String(pick10.underway === true),
+        "aria-pressed": String(pick11.underway === true),
         ...analyzeNative("glossary:dynamic_underway"),
-        onclick: () => wizard.setDynamicUnit(u.avatar, { underway: pick10.underway !== true })
+        onclick: () => wizard.setDynamicUnit(u.avatar, { underway: pick11.underway !== true })
       }, "ALREADY UNDERWAY") : null,
       problem !== null ? h("p", { class: "alius-dim alius-dynamic-problem" }, `Cannot be seeded: ${problem}.`) : null
     );
@@ -58367,7 +58428,7 @@ function renderSetupScreen(host, ctx2) {
   let search = "";
   let lastStep = null;
   let root = null;
-  const render6 = () => {
+  const render7 = () => {
     if (root && !host.contains(root)) return;
     const s = wizard.state;
     let title3;
@@ -58487,7 +58548,7 @@ function renderSetupScreen(host, ctx2) {
     input.value = search;
     input.addEventListener("input", () => {
       search = input.value;
-      render6();
+      render7();
     });
     const wardenHost = h("div", { class: "alius-warden-host" });
     renderWardenPick(wardenHost, wizard);
@@ -58593,8 +58654,8 @@ function renderSetupScreen(host, ctx2) {
   }
   const wizardDesireBond = () => wizard.desireBondDefects;
   subscriptions.get(wizard)?.();
-  subscriptions.set(wizard, wizard.subscribe(render6));
-  render6();
+  subscriptions.set(wizard, wizard.subscribe(render7));
+  render7();
 }
 
 // src/ui/power/hierarchy.ts
@@ -58828,7 +58889,7 @@ function renderMemoryBlock(host, ctx2) {
 function renderDevelopmentBlock(host, ctx2) {
   const { state, unitId } = ctx2;
   const locked = ctx2.settings.editLock !== false;
-  const view = buildKnowledge(state, ctx2.settings).development(unitId, ctx2.registries);
+  const view2 = buildKnowledge(state, ctx2.settings).development(unitId, ctx2.registries);
   const send = (action) => {
     ctx2.dispatch(action);
     ctx2.onChanged?.();
@@ -58881,16 +58942,16 @@ function renderDevelopmentBlock(host, ctx2) {
     draw2(false);
     return row4;
   };
-  const lone = view.habits.filter((id) => !view.facts.some((f) => f.habitId === id));
+  const lone = view2.habits.filter((id) => !view2.facts.some((f) => f.habitId === id));
   const loneRows = lone.flatMap((id) => {
     const e = ctx2.registries.habits.get(id);
     return e ? [h("div", { class: "alius-dev-habit", "data-habit": id }, h("span", { class: "alius-stat", ...analyzeAttrs(`habits:${id}`) }, String(e.description).replace(/^\s*AUTHOR TO WRITE:\s*/i, "")))] : [];
   });
-  if (view.axes.length === 0 && view.facts.length === 0 && loneRows.length === 0) {
+  if (view2.axes.length === 0 && view2.facts.length === 0 && loneRows.length === 0) {
     host.append(h("p", { class: "alius-dim" }, "NOTHING YET."));
     return;
   }
-  host.append(...view.axes.map(axisRow), ...[...view.facts].reverse().map(factRow), ...loneRows);
+  host.append(...view2.axes.map(axisRow), ...[...view2.facts].reverse().map(factRow), ...loneRows);
 }
 
 // src/ui/life/lifeViews.ts
@@ -58985,26 +59046,26 @@ function renderHubDayLine(host, state, reg, unitId) {
 // src/ui/vitals/trace.ts
 var SVG_NS4 = "http://www.w3.org/2000/svg";
 var POINTS = 48;
-var unit2 = (seed6, i) => fnv1a3(`${seed6}${i}`) % 1e3 / 1e3;
+var unit2 = (seed7, i) => fnv1a3(`${seed7}${i}`) % 1e3 / 1e3;
 var clamp42 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
-function tracePoints(pattern, seed6, n = POINTS, flicker = false) {
+function tracePoints(pattern, seed7, n = POINTS, flicker = false) {
   const out = [];
-  const blip = fnv1a3(seed6) % n;
+  const blip = fnv1a3(seed7) % n;
   for (let i = 0; i < n; i++) {
-    const noise9 = unit2(seed6, i) - 0.5;
+    const noise10 = unit2(seed7, i) - 0.5;
     let v;
     switch (pattern) {
       case "steady":
-        v = i % 12 === 3 ? 0.8 : i % 12 === 4 ? 0.25 : 0.5 + noise9 * 0.06;
+        v = i % 12 === 3 ? 0.8 : i % 12 === 4 ? 0.25 : 0.5 + noise10 * 0.06;
         break;
       case "elevated":
-        v = i % 8 === 2 ? 0.88 : i % 8 === 3 ? 0.18 : 0.5 + noise9 * 0.12;
+        v = i % 8 === 2 ? 0.88 : i % 8 === 3 ? 0.18 : 0.5 + noise10 * 0.12;
         break;
       case "spiking":
-        v = i % 6 === 1 ? 1 : i % 6 === 2 ? 0 : 0.5 + noise9 * 0.2;
+        v = i % 6 === 1 ? 1 : i % 6 === 2 ? 0 : 0.5 + noise10 * 0.2;
         break;
       case "erratic":
-        v = 0.5 + noise9 * 2;
+        v = 0.5 + noise10 * 2;
         break;
       case "flat":
         v = flicker && i === blip ? 0.9 : 0.5;
@@ -59014,7 +59075,7 @@ function tracePoints(pattern, seed6, n = POINTS, flicker = false) {
   }
   return out;
 }
-function renderTrace(pattern, seed6, opts) {
+function renderTrace(pattern, seed7, opts) {
   const svg4 = document.createElementNS(SVG_NS4, "svg");
   svg4.setAttribute("viewBox", `0 0 ${POINTS * 2} 24`);
   svg4.setAttribute("class", `alius-trace${opts.motion ? " is-sweeping" : ""}`);
@@ -59022,7 +59083,7 @@ function renderTrace(pattern, seed6, opts) {
   svg4.setAttribute("role", "img");
   svg4.setAttribute("aria-label", opts.label ?? `Vitals trace: ${pattern}`);
   const line3 = document.createElementNS(SVG_NS4, "polyline");
-  const points = tracePoints(pattern, seed6, POINTS, opts.flicker === true).map((v, i) => `${i * 2},${(22 - v * 20).toFixed(1)}`);
+  const points = tracePoints(pattern, seed7, POINTS, opts.flicker === true).map((v, i) => `${i * 2},${(22 - v * 20).toFixed(1)}`);
   line3.setAttribute("points", points.join(" "));
   line3.setAttribute("fill", "none");
   line3.setAttribute("stroke", "currentColor");
@@ -59122,8 +59183,8 @@ function renderWagerForm(state, reg, unitId, onSubmit) {
       "data-action": "challenge",
       ...analyzeNative("glossary:wager", live3),
       onclick: () => {
-        const pick10 = pickHost.querySelector("select")?.value;
-        onSubmit({ gameId: gameSel.value, stakeId: stakeSel.value, ...pick10 !== void 0 ? { pick: pick10 } : {} });
+        const pick11 = pickHost.querySelector("select")?.value;
+        onSubmit({ gameId: gameSel.value, stakeId: stakeSel.value, ...pick11 !== void 0 ? { pick: pick11 } : {} });
       }
     }, "[ CHALLENGE ]")
   );
@@ -59967,12 +60028,12 @@ function dynamicProfileBlock(unit4, ctx2, state) {
 function lifeViewBlock(unit4, ctx2, state) {
   if (unit4.kind !== "named") return null;
   if (lifeMode(state) === "off" && state.life === void 0 && (unit4.hobbies ?? []).length === 0 && Object.keys(unit4.opinions ?? {}).length === 0) return null;
-  const view = { state, registries: ctx2.registries, unitId: unit4.id, knowledge: buildKnowledge(state, ctx2.settings()) };
+  const view2 = { state, registries: ctx2.registries, unitId: unit4.id, knowledge: buildKnowledge(state, ctx2.settings()) };
   const host = h("div", { class: "alius-life-views" });
   const part = (cls) => host.appendChild(h("div", { class: cls }));
-  renderThoughts(part("alius-life-thoughts"), view);
-  renderHobbies(part("alius-life-hobbies-view"), view);
-  renderToldNews(part("alius-life-told"), view);
+  renderThoughts(part("alius-life-thoughts"), view2);
+  renderHobbies(part("alius-life-hobbies-view"), view2);
+  renderToldNews(part("alius-life-told"), view2);
   return host;
 }
 function memoryBlock(unit4, ctx2, state) {
@@ -61127,8 +61188,8 @@ function currentObjective(state, reg) {
   const first2 = list5.find((o) => o.source !== "unit");
   if (first2) return { text: first2.text, dueDays: first2.dueDays, source: first2.source };
   const active = state.missions.active;
-  const pick10 = active.find((m) => m.spineBeat !== void 0) ?? [...active].filter((m) => m.deadlineDay !== void 0).sort((a, b) => a.deadlineDay - b.deadlineDay)[0] ?? active[0] ?? state.missions.offered.find((m) => m.spineBeat !== void 0);
-  if (pick10) return { text: pick10.title, dueDays: dueIn(pick10, state.day), source: "mission", missionId: pick10.id };
+  const pick11 = active.find((m) => m.spineBeat !== void 0) ?? [...active].filter((m) => m.deadlineDay !== void 0).sort((a, b) => a.deadlineDay - b.deadlineDay)[0] ?? active[0] ?? state.missions.offered.find((m) => m.spineBeat !== void 0);
+  if (pick11) return { text: pick11.title, dueDays: dueIn(pick11, state.day), source: "mission", missionId: pick11.id };
   const unit4 = list5[0];
   return unit4 ? { text: unit4.text, dueDays: unit4.dueDays, source: unit4.source } : null;
 }
@@ -61231,10 +61292,10 @@ function initialsOf(unit4) {
   return letters3.toUpperCase();
 }
 function renderMarker(state, reg, unit4) {
-  const tone3 = markerTone(state, reg, unit4);
+  const tone4 = markerTone(state, reg, unit4);
   const rel = state.relations[unit4.id];
   const st3 = unit4.kind === "named" && rel ? reg.relationshipStates.get(rel.stateId) : void 0;
-  const glyphs = [st3 ? String(st3.glyph) : "", TONE_GLYPH[tone3]].filter(Boolean).join(" ");
+  const glyphs = [st3 ? String(st3.glyph) : "", TONE_GLYPH[tone4]].filter(Boolean).join(" ");
   const analyze = st3 && rel ? analyzeAttrs(`relationshipStates:${rel.stateId}`, { unitId: unit4.id }) : analyzeAttrs("glossary:whereabouts");
   const life = unit4.kind === "named" ? hubLine(state, reg, unit4.id) : null;
   return h(
@@ -61242,8 +61303,8 @@ function renderMarker(state, reg, unit4) {
     {
       class: "alius-marker alius-chip",
       "data-unit": unit4.id,
-      "data-tone": tone3,
-      "aria-label": `${unit4.displayName}${st3 ? `, ${String(st3.name)}` : ""}, ${TONE_LABEL[tone3]}${life ? `, ${life.text}` : ""}`,
+      "data-tone": tone4,
+      "aria-label": `${unit4.displayName}${st3 ? `, ${String(st3.name)}` : ""}, ${TONE_LABEL[tone4]}${life ? `, ${life.text}` : ""}`,
       ...life ? { "data-life-line": life.text } : {},
       ...analyze
     },
@@ -61276,9 +61337,9 @@ function talkBlock(state, reg, unit4, room2) {
 }
 function renderRoomPanel(room2, state, ctx2, here, opts) {
   const reg = ctx2.registries;
-  const view = opts.view;
-  const people = view ? view.people : here.filter((w) => w.roomId === room2.id).map((w) => state.squad.find((u) => u.id === w.unitId)).filter((u) => u !== void 0);
-  const locationId = view?.sceneLocationId ?? String(room2.sceneLocationId);
+  const view2 = opts.view;
+  const people = view2 ? view2.people : here.filter((w) => w.roomId === room2.id).map((w) => state.squad.find((u) => u.id === w.unitId)).filter((u) => u !== void 0);
+  const locationId = view2?.sceneLocationId ?? String(room2.sceneLocationId);
   const talkRoom = { ...room2, sceneLocationId: locationId };
   const talk = talkActivity(reg);
   const rows = people.map((unit4) => {
@@ -61311,19 +61372,19 @@ function renderRoomPanel(room2, state, ctx2, here, opts) {
     if (unit4.kind === "named") renderHubDayLine(row4, state, reg, unit4.id);
     return row4;
   });
-  const cards = opts.readOnly || lockedTabs(state, reg).has("ops") || view?.cabin === "unit" ? [] : (room2.activityIds ?? []).map((id) => reg.activities.get(id)).filter((a) => a !== void 0).map((a) => activityCard(a, state, ctx2.ops));
-  const noteCards = room2.commanderCell === true && (view === void 0 || view.cabin === "commander") ? quartersNotes(state, reg, ctx2) : [];
-  const title3 = view?.title ?? String(room2.label);
+  const cards = opts.readOnly || lockedTabs(state, reg).has("ops") || view2?.cabin === "unit" ? [] : (room2.activityIds ?? []).map((id) => reg.activities.get(id)).filter((a) => a !== void 0).map((a) => activityCard(a, state, ctx2.ops));
+  const noteCards = room2.commanderCell === true && (view2 === void 0 || view2.cabin === "commander") ? quartersNotes(state, reg, ctx2) : [];
+  const title3 = view2?.title ?? String(room2.label);
   return h(
     "section",
-    { class: "alius-room-panel", "data-room": String(room2.id), ...view ? { "data-plan": view.planRoomId } : {}, role: "region", "aria-label": `${title3} room` },
+    { class: "alius-room-panel", "data-room": String(room2.id), ...view2 ? { "data-plan": view2.planRoomId } : {}, role: "region", "aria-label": `${title3} room` },
     h(
       "div",
       { class: "alius-room-panel-head" },
-      h("h2", {}, h("span", { class: "alius-chip", ...analyzeAttrs(view?.cabin === "unit" ? "glossary:cabin" : view?.cabin === "commander" ? `planRooms:${view.planRoomId}` : `hubRooms:${String(room2.id)}`) }, title3)),
+      h("h2", {}, h("span", { class: "alius-chip", ...analyzeAttrs(view2?.cabin === "unit" ? "glossary:cabin" : view2?.cabin === "commander" ? `planRooms:${view2.planRoomId}` : `hubRooms:${String(room2.id)}`) }, title3)),
       h("button", { type: "button", class: "alius-btn", "data-close-room": "", "aria-label": `Close ${title3}`, onclick: opts.onClose }, "[X]")
     ),
-    h("p", { class: "alius-dim" }, view?.description ?? String(room2.description)),
+    h("p", { class: "alius-dim" }, view2?.description ?? String(room2.description)),
     h("h3", {}, "HERE"),
     people.length > 0 ? h("ul", { class: "alius-room-people" }, ...rows) : h("p", { class: "alius-dim" }, "Nobody is here."),
     ...noteCards.length > 0 ? [h("h3", {}, "NOTES"), ...noteCards] : [],
@@ -61628,9 +61689,9 @@ var GATE = [432, 502];
 var siteGroup = null;
 function drawSite(pen) {
   if (!siteGroup || siteGroup.doc !== document) {
-    const fresh6 = Pen.group("p-site");
-    paintSite(fresh6);
-    siteGroup = { doc: document, g: fresh6.g };
+    const fresh7 = Pen.group("p-site");
+    paintSite(fresh7);
+    siteGroup = { doc: document, g: fresh7.g };
   }
   pen.g.append(siteGroup.g.cloneNode(true));
 }
@@ -61801,9 +61862,9 @@ var roofGroups = /* @__PURE__ */ new WeakMap();
 function drawRoofs(pen, reg) {
   let g = roofGroups.get(reg);
   if (!g) {
-    const fresh6 = Pen.group("p-roofs");
-    paintRoofs(fresh6, reg);
-    roofGroups.set(reg, g = fresh6.g);
+    const fresh7 = Pen.group("p-roofs");
+    paintRoofs(fresh7, reg);
+    roofGroups.set(reg, g = fresh7.g);
   }
   pen.g.append(g.cloneNode(true));
 }
@@ -61921,7 +61982,7 @@ function roomLayer(ctx2, e, marks) {
   const markAttr = marks.length > 0 ? { "data-marks": marks.map((m) => m.kind).join(" ") } : {};
   if (e.kind === "stair" && typeof e.stairTo === "string") {
     const to = e.stairTo;
-    const up = PLAN_FLOORS.indexOf(to) > PLAN_FLOORS.indexOf(e.floor);
+    const up2 = PLAN_FLOORS.indexOf(to) > PLAN_FLOORS.indexOf(e.floor);
     return h(
       "div",
       { class: "alius-plan-stair", "data-plan": String(e.id), style: pct3(r), ...markAttr },
@@ -61930,13 +61991,13 @@ function roomLayer(ctx2, e, marks) {
         class: "alius-chip alius-plan-stair-btn",
         "data-stair-to": to,
         "data-key": `plan:${String(e.id)}`,
-        "aria-label": `${up ? "Up" : "Down"} to the ${FLOOR_NAME[to].toLowerCase()}`,
+        "aria-label": `${up2 ? "Up" : "Down"} to the ${FLOOR_NAME[to].toLowerCase()}`,
         ...analyzeNative("glossary:base_floor"),
         onclick: (ev) => {
           ev.stopPropagation();
           ctx2.onFloor(to);
         }
-      }, `${up ? "\u2191" : "\u2193"} ${FLOOR_LABEL[to]}`),
+      }, `${up2 ? "\u2191" : "\u2193"} ${FLOOR_LABEL[to]}`),
       markChips(marks)
     );
   }
@@ -62082,14 +62143,14 @@ function planSection(ctx2, state, here, floor, onFloor, onRoom) {
   const unitOf13 = (id) => state.squad.find((u) => u.id === id);
   const { stage: stage2, floorBar, setFloor } = renderPlanStage({ registries: reg, state, here, floor, onFloor, onRoom });
   const panelHost = h("div", { class: "alius-room-panel-host" });
-  const frame7 = h("div", { class: "alius-plan-frame" }, h("div", { class: "alius-plan-scroll" }, stage2), floorBar, panelHost);
+  const frame8 = h("div", { class: "alius-plan-frame" }, h("div", { class: "alius-plan-scroll" }, stage2), floorBar, panelHost);
   const away = here.filter((w) => w.reason === "expedition").map((w) => unitOf13(w.unitId)).filter((u) => u !== void 0);
   const drawnSomewhere = (w) => w.roomId !== null && [...reg.planRooms.values()].some((p) => p.hubRoomId === w.roomId) && reg.hubRooms.has(w.roomId);
   const elsewhere = here.filter((w) => w.reason === "nowhere" || w.reason !== "expedition" && !drawnSomewhere(w)).map((w) => unitOf13(w.unitId)).filter((u) => u !== void 0);
   const section = h(
     "section",
     { class: "alius-hub-main", "aria-label": "Plan of the outpost" },
-    frame7,
+    frame8,
     away.length > 0 ? strip("alius-away", "glossary:away", "AWAY", state, reg, away) : null,
     elsewhere.length > 0 ? strip("alius-elsewhere", "glossary:whereabouts", "ELSEWHERE", state, reg, elsewhere) : null
   );
@@ -62113,10 +62174,10 @@ function failedBlock(ctx2, state) {
   const body2 = h("div", { class: "alius-generation-chips" });
   drawGenerationChips(body2, ui, state, "day");
   drawGenerationChips(body2, ui, state, "world");
-  const last2 = ctx2.lastScene;
-  if (last2 && last2.state().enabled) {
+  const last3 = ctx2.lastScene;
+  if (last3 && last3.state().enabled) {
     const line3 = h("p", { class: "alius-dim alius-last-scene" }, "LAST SCENE ");
-    drawSiteReroll(line3, ui, "scene.summary", "last", () => last2.run(), last2.state());
+    drawSiteReroll(line3, ui, "scene.summary", "last", () => last3.run(), last3.state());
     body2.append(line3);
   }
   return body2.childElementCount > 0 ? h("section", { class: "alius-generation-failed" }, h("h2", {}, "FAILED"), body2) : null;
@@ -62512,19 +62573,19 @@ function renderSquadCallCard(state, reg, onAck) {
 }
 
 // src/ui/expedition/nodeMapView.ts
-function renderNodeMap(host, view) {
+function renderNodeMap(host, view2) {
   const root = h("div", { class: "alius-nodemap", role: "group", "aria-label": "Expedition map" });
-  view.rows.forEach((column, i) => {
+  view2.rows.forEach((column, i) => {
     if (i > 0) root.append(h("span", { class: "alius-nodelink", "aria-hidden": "true" }, "\u2500\u2500"));
     const col = h("div", { class: "alius-nodecol" });
     for (const cell of column) {
       const known3 = cell.text !== "[ ]";
-      const name = known3 ? view.labels?.[cell.nodeId] ?? "Known" : "Unknown";
+      const name = known3 ? view2.labels?.[cell.nodeId] ?? "Known" : "Unknown";
       const status = cell.state === "option" ? "reachable" : cell.state === "ahead" ? "ahead" : cell.state;
       const classes = ["alius-node", cell.state === "option" ? "alius-reachable" : `alius-${cell.state}`, ...cell.state === "visited" || cell.state === "current" ? ["alius-path"] : []].join(" ");
-      const address = known3 && view.types?.[cell.nodeId] ? `nodeTypes:${view.types[cell.nodeId]}` : "glossary:unknown_node";
+      const address = known3 && view2.types?.[cell.nodeId] ? `nodeTypes:${view2.types[cell.nodeId]}` : "glossary:unknown_node";
       const attrs = { class: classes, "data-node": cell.nodeId, "aria-label": `${name}, ${status}` };
-      col.append(cell.state === "option" ? h("button", { ...attrs, class: `${classes} alius-option`, ...analyzeNative(address), type: "button", onclick: () => view.onMove(cell.nodeId) }, cell.text) : h("span", { ...attrs, class: `${classes} alius-chip`, ...analyzeAttrs(address) }, cell.text));
+      col.append(cell.state === "option" ? h("button", { ...attrs, class: `${classes} alius-option`, ...analyzeNative(address), type: "button", onclick: () => view2.onMove(cell.nodeId) }, cell.text) : h("span", { ...attrs, class: `${classes} alius-chip`, ...analyzeAttrs(address) }, cell.text));
     }
     root.append(col);
   });
@@ -62681,21 +62742,21 @@ function renderPlanner(host, ctx2) {
 var DEBRIEF_MAX = TUNING.scene.maxParticipants;
 function renderReport(host, ctx2) {
   const { state, controller } = ctx2;
-  const report5 = state.lastExpedition;
-  if (!report5) return;
-  const lines3 = reportLines({ ...report5, recap: void 0 }, state, ctx2.registries);
+  const report6 = state.lastExpedition;
+  if (!report6) return;
+  const lines3 = reportLines({ ...report6, recap: void 0 }, state, ctx2.registries);
   const root = h("section", { class: "alius-section alius-report" }, h("h2", {}, lines3[0] ?? "AFTER-ACTION REPORT"));
-  if (report5.recap) root.append(h("p", { class: "alius-recap" }, report5.recap));
+  if (report6.recap) root.append(h("p", { class: "alius-recap" }, report6.recap));
   else if (ctx2.recapPending) root.append(h("p", { class: "alius-dim" }, "COMPILING\u2026"));
   if (ctx2.generation) {
     const gen = h("div", { class: "alius-generation-chips" });
-    const failed2 = drawGenerationChips(gen, ctx2.generation, state, "expedition", (r) => r.key === report5.id);
-    if (failed2 === 0 && report5.recap) drawSiteReroll(gen, ctx2.generation, "expedition.recap", report5.id);
+    const failed2 = drawGenerationChips(gen, ctx2.generation, state, "expedition", (r) => r.key === report6.id);
+    if (failed2 === 0 && report6.recap) drawSiteReroll(gen, ctx2.generation, "expedition.recap", report6.id);
     if (gen.childElementCount > 0) root.append(gen);
   }
   for (const line3 of lines3.slice(1)) root.append(h("p", { class: "alius-report-line" }, line3));
-  if (state.slot !== "night" && !report5.debriefed) {
-    const candidates3 = report5.party.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
+  if (state.slot !== "night" && !report6.debriefed) {
+    const candidates3 = report6.party.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
     const full = ctx2.debriefPick.length >= DEBRIEF_MAX;
     const section = h("div", { class: "alius-debrief" }, h("h3", {}, "DEBRIEF"));
     for (const u of candidates3) {
@@ -62805,14 +62866,14 @@ function renderExpeditionScreen(host, ctx2) {
         } }, "[ CONFIRM RETREAT ]"),
         h("button", { type: "button", class: "alius-btn", onclick: () => {
           confirming = false;
-          render6();
+          render7();
         } }, "[ KEEP GOING ]")
       );
     } else {
       if (exp.objectiveDone && travel) actions.append(h("button", { type: "button", class: "alius-btn", onclick: () => controller.return() }, "[ RETURN TO BASE ]"));
       if (!state.combat) actions.append(h("button", { type: "button", class: "alius-btn", onclick: () => {
         confirming = true;
-        render6();
+        render7();
       } }, "[ RETREAT ]"));
     }
     root.append(actions);
@@ -62844,7 +62905,7 @@ function renderExpeditionScreen(host, ctx2) {
       select.value = cover;
       select.addEventListener("change", () => {
         cover = select.value;
-        render6();
+        render7();
       });
       panel.append(h("p", { class: "alius-banner" }, "The commander is exposed: someone must cover the commander."), select);
     }
@@ -62908,16 +62969,16 @@ function renderExpeditionScreen(host, ctx2) {
           if (mine.disabled === null) controller.choose(mine.index);
         }, onDefy: () => {
           defiedNode = pending4.nodeId;
-          render6();
+          render7();
         } }));
         root.append(panel);
         return;
       }
     }
     for (const o of options2) {
-      const picker2 = o.routes && o.disabled === null ? renderRoutePicker({ routes: o.routes, unitName: unitName3, locked: () => picked, onPick: (pick10) => {
+      const picker2 = o.routes && o.disabled === null ? renderRoutePicker({ routes: o.routes, unitName: unitName3, locked: () => picked, onPick: (pick11) => {
         picked = true;
-        controller.choose(o.index, pick10);
+        controller.choose(o.index, pick11);
       }, unlock: () => {
         picked = false;
       } }) : null;
@@ -62943,7 +63004,7 @@ function renderExpeditionScreen(host, ctx2) {
     }
     root.append(panel);
   }
-  function render6() {
+  function render7() {
     if (disposed) return;
     host.replaceChildren();
     const root = h("div", { class: "alius-expedition" });
@@ -62960,7 +63021,7 @@ function renderExpeditionScreen(host, ctx2) {
       return;
     }
     if (state.lastExpedition && !state.lastExpedition.acknowledged) {
-      renderReport(root, { state, registries: reg, controller, recapPending: ctx2.recapPending?.() ?? false, onClose: ctx2.onClose, redraw: render6, debriefPick, generation: ctx2.generation });
+      renderReport(root, { state, registries: reg, controller, recapPending: ctx2.recapPending?.() ?? false, onClose: ctx2.onClose, redraw: render7, debriefPick, generation: ctx2.generation });
       return;
     }
     const target = controller.planning();
@@ -62970,14 +63031,14 @@ function renderExpeditionScreen(host, ctx2) {
         planKey = key;
         draft = newDraft();
       }
-      renderPlanner(root, { state, registries: reg, target, draft, controller, onClose: ctx2.onClose, redraw: render6 });
+      renderPlanner(root, { state, registries: reg, target, draft, controller, onClose: ctx2.onClose, redraw: render7 });
       return;
     }
     root.append(h("section", { class: "alius-section" }, h("p", {}, "NO EXPEDITION"), h("button", { type: "button", class: "alius-btn", onclick: ctx2.onClose }, "[ BACK ]")));
   }
-  render6();
+  render7();
   return {
-    refresh: render6,
+    refresh: render7,
     dispose() {
       disposed = true;
       host.replaceChildren();
@@ -62996,12 +63057,12 @@ function registerWorldContext(builder, deps) {
     render(s) {
       if (!s.scene) return null;
       const sentences = [];
-      const last2 = s.lastExpedition;
-      if (last2 && s.day - last2.day <= EXPEDITION_DAYS && s.day >= last2.day) {
-        const region = deps.registries().regions.get(last2.regionId);
-        const where = String(region?.name ?? last2.regionId);
-        const when = s.day === last2.day ? "today" : `${s.day - last2.day} day(s) ago`;
-        sentences.push(`World: the unit came back from ${where} ${when} (${last2.outcome}).`);
+      const last3 = s.lastExpedition;
+      if (last3 && s.day - last3.day <= EXPEDITION_DAYS && s.day >= last3.day) {
+        const region = deps.registries().regions.get(last3.regionId);
+        const where = String(region?.name ?? last3.regionId);
+        const when = s.day === last3.day ? "today" : `${s.day - last3.day} day(s) ago`;
+        sentences.push(`World: the unit came back from ${where} ${when} (${last3.outcome}).`);
       }
       const present2 = new Set(s.scene.participants);
       const open3 = s.world.threads.filter((t) => t.status === "open");
@@ -63161,20 +63222,20 @@ function createExpedition(deps) {
   deps.generations.bind("expedition.recap", {
     build(reportId) {
       const s = state();
-      const report5 = s?.lastExpedition;
-      if (!s || !report5 || report5.id !== reportId) return { expired: "A newer report replaced it." };
+      const report6 = s?.lastExpedition;
+      if (!s || !report6 || report6.id !== reportId) return { expired: "A newer report replaced it." };
       const reg = deps.registries();
-      const region = reg.regions.get(report5.regionId);
+      const region = reg.regions.get(report6.regionId);
       return {
         commanderName: s.commander.name,
-        missionTitle: report5.missionTitle,
-        regionName: String(region?.name ?? report5.regionId),
+        missionTitle: report6.missionTitle,
+        regionName: String(region?.name ?? report6.regionId),
         environment: String(region?.environmentPrompt ?? ""),
-        outcome: report5.outcome,
-        lines: reportLines(report5, s, reg),
-        ...report5.withoutCommand !== void 0 ? { withoutCommand: true } : {},
+        outcome: report6.outcome,
+        lines: reportLines(report6, s, reg),
+        ...report6.withoutCommand !== void 0 ? { withoutCommand: true } : {},
         // P16: the commander was not with the squad
-        units: report5.party.map((id) => {
+        units: report6.party.map((id) => {
           const u = s.squad.find((x) => x.id === id);
           return { name: u?.displayName ?? id, role: String(reg.roles.get(u?.roleId ?? "")?.name ?? u?.roleId ?? "soldier") };
         })
@@ -63277,9 +63338,9 @@ function createExpedition(deps) {
       act("expedition/ack_squad_call");
     },
     async requestRecap() {
-      const report5 = state()?.lastExpedition;
-      if (!report5 || report5.recap !== void 0 || !deps.settings().expeditionRecap) return;
-      await deps.generations.generate("expedition.recap", report5.id);
+      const report6 = state()?.lastExpedition;
+      if (!report6 || report6.recap !== void 0 || !deps.settings().expeditionRecap) return;
+      await deps.generations.generate("expedition.recap", report6.id);
     },
     async debrief(unitIds) {
       const s = state();
@@ -63339,10 +63400,10 @@ function facilityCard(state, f, ctx2) {
     card2.append(h("p", { class: "alius-dim" }, "MAX LEVEL"));
     return card2;
   }
-  const up = levels[level].upgrade;
+  const up2 = levels[level].upgrade;
   const reason = checkUpgrade(state, ctx2.registries, f.id);
   card2.append(
-    h("p", {}, `NEXT: ${up.credits} CR \xB7 ${up.plyx} PLYX \xB7 ${up.days} DAYS`),
+    h("p", {}, `NEXT: ${up2.credits} CR \xB7 ${up2.plyx} PLYX \xB7 ${up2.days} DAYS`),
     ...reason ? [h("p", { class: "alius-dim alius-reason" }, reason)] : [],
     h("button", { type: "button", class: "alius-btn alius-option", "data-upgrade": f.id, ...analyzeNative(`facilities:${f.id}`), disabled: reason !== null, onclick: () => ctx2.onUpgrade(f.id) }, "[ UPGRADE ]")
   );
@@ -63504,10 +63565,10 @@ function drawLeadChips(host, scene, handlers2, disabled = false) {
   };
   host.append(h("div", { class: "alius-lead-limit" }, input, " ", chip2("limit-set", "[ SET ]", send)));
 }
-function drawRuleChips(host, state, reg, pick10, on) {
+function drawRuleChips(host, state, reg, pick11, on) {
   host.replaceChildren();
   for (const rule of state.bonds?.rules ?? []) {
-    if (rule.status !== "proposed" || rule.delivered !== true || !pick10({ unitId: rule.unitId })) continue;
+    if (rule.status !== "proposed" || rule.delivered !== true || !pick11({ unitId: rule.unitId })) continue;
     const name = (state.squad.find((u) => u.id === rule.unitId)?.displayName ?? rule.unitId).toUpperCase();
     const full = state.bonds.rules.filter((r) => r.unitId === rule.unitId && r.status === "active").length >= TUNING.bonds.rules.maxActive;
     const button2 = (kind, text3, run, soft = false) => {
@@ -63542,7 +63603,7 @@ function renderRuleNote(state, reg, rule, on, opts) {
   const unit4 = state.squad.find((u) => u.id === rule.unitId);
   const name = unit4?.displayName ?? rule.unitId;
   const proposed = rule.status === "proposed" && rule.delivered === true;
-  const broken = rule.lastBrokenDay !== void 0 && rule.lastBrokenDay >= state.day - 1;
+  const broken2 = rule.lastBrokenDay !== void 0 && rule.lastBrokenDay >= state.day - 1;
   const note = h(
     "article",
     { class: "alius-note alius-rule-note alius-voice alius-voice-paper alius-stat", "data-voice": "paper", "data-rule": rule.id, "data-rule-status": rule.status, ...analyzeAttrs("glossary:rule_note", { unitId: rule.unitId, ruleId: rule.id }) },
@@ -63552,7 +63613,7 @@ function renderRuleNote(state, reg, rule, on, opts) {
   );
   setHand(note, unit4 ? handOf(state, reg, unit4.id) : null);
   if (rule.status === "active") note.append(h("p", { class: "alius-note-sign alius-note-sign-commander" }, `\u2014 ${state.commander.name}`));
-  if (broken) {
+  if (broken2) {
     note.classList.add("is-torn");
     const key = `${rule.id}|${rule.lastBrokenDay}`;
     if (opts.motion && !torn.has(key)) note.classList.add("is-tearing");
@@ -63585,17 +63646,17 @@ function renderRuleNote(state, reg, rule, on, opts) {
   }
   return note;
 }
-function ruleNotesFor(state, pick10 = () => true) {
-  return (state.bonds?.rules ?? []).filter((r) => pick10(r.unitId) && (r.status === "proposed" && r.delivered === true || r.status === "active" || r.lastBrokenDay !== void 0 && r.lastBrokenDay >= state.day - 1));
+function ruleNotesFor(state, pick11 = () => true) {
+  return (state.bonds?.rules ?? []).filter((r) => pick11(r.unitId) && (r.status === "proposed" && r.delivered === true || r.status === "active" || r.lastBrokenDay !== void 0 && r.lastBrokenDay >= state.day - 1));
 }
 
 // src/ui/proposalChips.ts
 var kindLabel = (s) => s.replace(/_/g, " ").toUpperCase();
 var CONDITION_MAX = 160;
-function drawProposalChips(host, state, pick10, onAnswer, reg) {
+function drawProposalChips(host, state, pick11, onAnswer, reg) {
   host.replaceChildren();
   for (const p of state.proposals ?? []) {
-    if (!pick10(p)) continue;
+    if (!pick11(p)) continue;
     const name = (state.squad.find((u) => u.id === p.unitId)?.displayName ?? p.unitId).toUpperCase();
     const label2 = h("span", { class: "alius-chip-label" }, p.from === "unit" ? `${name} PROPOSES: ${kindLabel(p.kind)}` : `${name}: ${kindLabel(p.kind)} \u2014 OPENLY OR SECRETLY?`);
     if (reg && courtshipChips(state, reg, p)) {
@@ -63670,7 +63731,7 @@ function editChip(edit, name, onKeep, onRevert) {
   return group;
 }
 var HANDS2 = ["rock", "paper", "scissors"];
-function drawPersonalChips(host, state, reg, pick10, on) {
+function drawPersonalChips(host, state, reg, pick11, on) {
   host.replaceChildren();
   const nameOf28 = (id) => (state.squad.find((u) => u.id === id)?.displayName ?? id).toUpperCase();
   const group = (unitId, address, ctx2, label2, ...kids) => {
@@ -63685,7 +63746,7 @@ function drawPersonalChips(host, state, reg, pick10, on) {
   };
   const button2 = (text3, action, onclick) => h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": action, onclick }, text3);
   const offer = state.personal?.tokens?.offer;
-  if (offer && pick10(offer.giverId)) {
+  if (offer && pick11(offer.giverId)) {
     host.append(group(
       offer.giverId,
       "glossary:token",
@@ -63696,7 +63757,7 @@ function drawPersonalChips(host, state, reg, pick10, on) {
     ));
   }
   for (const w of state.personal?.wagers?.open ?? []) {
-    if (!pick10(w.unitId)) continue;
+    if (!pick11(w.unitId)) continue;
     const game = reg.wagerGames.get(w.gameId);
     const stake = reg.wagerStakes.get(w.stakeId);
     const what = `${String(game?.label ?? w.gameId).toUpperCase()} FOR ${String(stake?.text ?? w.stakeId).toUpperCase()}`;
@@ -63719,7 +63780,7 @@ function drawPersonalChips(host, state, reg, pick10, on) {
     }
   }
   const q = state.personal?.pendingQuestion;
-  if (q && pick10(q.unitId)) {
+  if (q && pick11(q.unitId)) {
     const asks = q.winner === "commander";
     const input = h("input", { type: "text", name: "question", class: "alius-input", maxlength: "200", autocomplete: "off", "aria-label": asks ? "Your question" : "Your answer" });
     const send = () => {
@@ -63740,7 +63801,7 @@ function drawPersonalChips(host, state, reg, pick10, on) {
 }
 
 // src/ui/discipline/chips.ts
-function drawDisciplineChips(host, state, reg, pick10, onUndo) {
+function drawDisciplineChips(host, state, reg, pick11, onUndo) {
   host.replaceChildren();
   const name = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
   const group = (id, unitId, address, text3) => h(
@@ -63750,11 +63811,11 @@ function drawDisciplineChips(host, state, reg, pick10, onUndo) {
     canUndo(state, id) === null ? h("button", { type: "button", class: "alius-btn alius-tagchip", "data-undo": id, onclick: () => onUndo(id) }, "[ UNDO \u2014 not what I meant ]") : null
   );
   for (const a of state.discipline?.applications ?? []) {
-    if (a.source !== "dialogue" || a.day !== state.day || !pick10({ channel: a.channel, unitId: a.unitId, ...a.sceneId !== void 0 ? { sceneId: a.sceneId } : {} })) continue;
+    if (a.source !== "dialogue" || a.day !== state.day || !pick11({ channel: a.channel, unitId: a.unitId, ...a.sceneId !== void 0 ? { sceneId: a.sceneId } : {} })) continue;
     host.append(group(a.id, a.unitId, "glossary:discipline_logged", `DISCIPLINE LOGGED \u2014 ${measureLabel(reg, a.measure)} (${name(a.unitId)})`));
   }
   for (const t of state.discipline?.threats ?? []) {
-    if (!pick10({ channel: t.channel, unitId: t.unitId, ...t.sceneId !== void 0 ? { sceneId: t.sceneId } : {} })) continue;
+    if (!pick11({ channel: t.channel, unitId: t.unitId, ...t.sceneId !== void 0 ? { sceneId: t.sceneId } : {} })) continue;
     host.append(group(
       t.id,
       t.unitId,
@@ -63763,10 +63824,10 @@ function drawDisciplineChips(host, state, reg, pick10, onUndo) {
     ));
   }
 }
-function drawDemandChips(host, state, reg, pick10, on) {
+function drawDemandChips(host, state, reg, pick11, on) {
   host.replaceChildren();
   for (const d of state.discipline?.demands ?? []) {
-    if (d.status !== "open" || !pick10({ unitId: d.unitId })) continue;
+    if (d.status !== "open" || !pick11({ unitId: d.unitId })) continue;
     const name = (state.squad.find((u) => u.id === d.unitId)?.displayName ?? d.unitId).toUpperCase();
     const why = grantProblem(state, reg, d.id);
     const desire = reg.demandTemplates.get(d.templateId)?.kind === "desire";
@@ -63826,7 +63887,7 @@ function renderDemonstrationCard(host, ctx2, opts = {}) {
   const place2 = String(reg.locations.get(d.stage)?.name ?? d.stage);
   const names2 = d.audienceIds.map((id) => nameOf20(state, id));
   const others = (d.narrated ?? []).length > 0;
-  const before6 = names2.length === 0 ? "others" : others ? `${joinNames4(names2)} and others` : joinNames4(names2);
+  const before7 = names2.length === 0 ? "others" : others ? `${joinNames4(names2)} and others` : joinNames4(names2);
   if (opts.look === "scene") {
     const style = practiceOf(state, reg, unit4.id)?.style.primary;
     const conditions = [];
@@ -63834,7 +63895,7 @@ function renderDemonstrationCard(host, ctx2, opts = {}) {
       conditions.push({ runs: voiceLine(reg, kind, style, d.id, vals), dry, analyze: "glossary:demonstration", ctx: live3, attrs });
     };
     const who = joinNames4(names2);
-    cond(names2.length === 0 ? "demoNone" : others ? "demoWhoMore" : "demoWho", { who }, `Before: ${before6}.`, { "data-demonstration-audience": "" });
+    cond(names2.length === 0 ? "demoNone" : others ? "demoWhoMore" : "demoWho", { who }, `Before: ${before7}.`, { "data-demonstration-audience": "" });
     cond("demoWhere", { place: place2, slot: slot2 }, `${place2}, ${slot2}. It takes the slot.`, { "data-demonstration-place": d.stage });
     if (d.status === "open") cond("demoAgain", {}, "The scene did not open. Press go again.");
     const pill = (kind, text3) => scenePill(text3, () => {
@@ -63865,7 +63926,7 @@ function renderDemonstrationCard(host, ctx2, opts = {}) {
   }
   const parts2 = [
     h("p", { class: "alius-demonstration-text" }, plainDraft(d.text)),
-    h("p", { class: "alius-demonstration-watch", "data-demonstration-audience": "", ...analyzeAttrs("glossary:demonstration", live3) }, `Before: ${before6}.`),
+    h("p", { class: "alius-demonstration-watch", "data-demonstration-audience": "", ...analyzeAttrs("glossary:demonstration", live3) }, `Before: ${before7}.`),
     h("p", { class: "alius-demonstration-place", "data-demonstration-place": d.stage, ...analyzeAttrs("glossary:demonstration", live3) }, `${place2}, ${slot2}. It takes the slot.`),
     ...d.status === "open" ? [h("p", { class: "alius-demonstration-hint" }, "The scene did not open. Press GO again.")] : [],
     h(
@@ -63884,12 +63945,12 @@ function renderDemonstrationCard(host, ctx2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:demonstration", live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawDemonstrationCards(host, state, reg, pick10, handlers2, opts = {}) {
+function drawDemonstrationCards(host, state, reg, pick11, handlers2, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const d of state.practices?.demonstrations ?? []) {
     const waiting3 = d.status === "offered" || d.status === "open" && d.sceneId === void 0;
-    if (!waiting3 || !pick10({ unitId: d.holderId }) || !practiceLive(state, reg, d.holderId)) continue;
+    if (!waiting3 || !pick11({ unitId: d.holderId }) || !practiceLive(state, reg, d.holderId)) continue;
     renderDemonstrationCard(host, { state, reg, demonstration: d, onAnswer: (a) => handlers2.answer(d.id, a), generation: handlers2.generation }, opts);
   }
 }
@@ -64135,11 +64196,11 @@ function renderSceneCeremony(host, ctx2, name, live3, next, entryOf4) {
   finish4(card2, ["alius-ceremony"], p.id, `${name} carries out her punishment as a ceremony`, "glossary:ceremony", live3);
   host.append(card2);
 }
-function drawPunishmentCards(host, state, reg, pick10, handlers2, opts = {}) {
+function drawPunishmentCards(host, state, reg, pick11, handlers2, opts = {}) {
   host.replaceChildren();
   if (!dynamicOn(state, reg)) return;
   for (const p of state.practices?.punishments ?? []) {
-    if (!pick10({ unitId: p.holderId }) || !practiceLive(state, reg, p.holderId)) continue;
+    if (!pick11({ unitId: p.holderId }) || !practiceLive(state, reg, p.holderId)) continue;
     const open3 = p.status === "offered" || p.status === "negotiating";
     if (open3 && p.forUnitId !== void 0) renderTakeInsteadCard(host, { state, reg, punishment: p, onAnswer: (a) => handlers2.takeInstead(p.id, a) }, opts);
     else if (open3) renderPunishmentCard(host, { state, reg, punishment: p, onAnswer: (a) => handlers2.answer(p.id, a), generation: handlers2.generation }, opts);
@@ -64850,7 +64911,7 @@ function renderWardenPanel(host, state, reg, deps = {}) {
     renderInvestigation(host, state);
     return;
   }
-  const E7 = TUNING.warden.escalation;
+  const E8 = TUNING.warden.escalation;
   const known3 = w.expectations.filter((x) => x.known);
   const unknown2 = w.expectations.length - known3.length;
   const raw = deps.showRaw === true;
@@ -64859,8 +64920,8 @@ function renderWardenPanel(host, state, reg, deps = {}) {
     "div",
     { class: "alius-defiance alius-stat", role: "meter", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(defiance), ...analyzeAttrs("glossary:warden_defiance") },
     h("div", { class: "alius-defiance-fill", style: `width:${defiance}%` }),
-    h("span", { class: "alius-defiance-mark", style: `left:${E7.warning1}%`, "aria-hidden": "true" }),
-    h("span", { class: "alius-defiance-mark", style: `left:${E7.warning2}%`, "aria-hidden": "true" })
+    h("span", { class: "alius-defiance-mark", style: `left:${E8.warning1}%`, "aria-hidden": "true" }),
+    h("span", { class: "alius-defiance-mark", style: `left:${E8.warning2}%`, "aria-hidden": "true" })
   );
   const active = w.restrictions.filter((r) => state.day <= r.untilDay);
   const rows = [
@@ -65485,15 +65546,15 @@ var SHAPES = {
   slide(g, W3, H, o, s) {
     const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
     const d = s.slideDir;
-    const R9 = 1.08 * H, shift = (0.02 + oc * 0.3 + ex * 1.8) * H;
+    const R10 = 1.08 * H, shift = (0.02 + oc * 0.3 + ex * 1.8) * H;
     const cx = W3 / 2 - d * shift + s.sway * H * 6e-3, cy = H * (0.5 + s.slideY * 0.14);
     g.fillRect(0, 0, W3, H);
     g.globalCompositeOperation = "destination-out";
     g.beginPath();
-    g.arc(cx, cy, R9, 0, Math.PI * 2);
+    g.arc(cx, cy, R10, 0, Math.PI * 2);
     g.fill();
     g.globalCompositeOperation = "source-over";
-    const edgeX = d < 0 ? cx - R9 : cx + R9;
+    const edgeX = d < 0 ? cx - R10 : cx + R10;
     const lipX = d < 0 ? Math.max(edgeX, 0) : Math.min(edgeX, W3);
     return d < 0 ? { focus: [Math.max(0.06, edgeX / W3 * 0.5), cy / H], lip: [lipX / W3 + 6e-3, (cy - 0.25 * H) / H], text: [(lipX + 0.07 * H) / W3, (cy - 0.1 * H) / H], align: "left" } : { focus: [Math.min(0.94, 1 - (1 - edgeX / W3) * 0.5), cy / H], lip: [lipX / W3 - 6e-3, (cy - 0.25 * H) / H], text: [(lipX - 0.07 * H) / W3, (cy - 0.1 * H) / H], align: "right" };
   },
@@ -65505,8 +65566,8 @@ var SHAPES = {
     const rock = s.sway2 * 0.022;
     const cr = Math.cos(rock), sr = Math.sin(rock);
     const side = (x, flip) => {
-      const L4 = clamp41(x.L, -0.2, 1.2), sq = squashOf(x);
-      const P3 = 1.38 / (1 + 0.28 * L4 + ex * 4);
+      const L5 = clamp41(x.L, -0.2, 1.2), sq = squashOf(x);
+      const P3 = 1.38 / (1 + 0.28 * L5 + ex * 4);
       return SEAT_BODY.map(([px, py], i) => {
         let X3 = px, Y = py;
         if (Y > 0) {
@@ -65514,7 +65575,7 @@ var SHAPES = {
           Y *= 1 - 0.04 * sq;
         }
         if (i >= 10) {
-          X3 = X3 * (1 - 0.55 * sq) + 0.035 * clamp41(L4, 0, 1);
+          X3 = X3 * (1 - 0.55 * sq) + 0.035 * clamp41(L5, 0, 1);
           Y += 0.12 * sq;
         }
         X3 *= flip;
@@ -65631,7 +65692,7 @@ var MISSED = TUNING.physics.breath.missed;
 var CRUEL_MISSED = TUNING.physics.breath.cruelMissed;
 var SEAL_RELIEF = { ...TUNING.physics.breath.seal };
 var REST_OPEN = { leaky: 0.08, firm: 0.03, tight: 0 };
-var STYLES2 = {
+var STYLES3 = {
   neutral: { windowMs: 600, falseShare: 0, seal: "firm", count: 520, jitter: 70, cue: "honest", overDelay: 1 },
   affectionate: { windowMs: 700, falseShare: 0, seal: "leaky", count: 650, jitter: 60, cue: "honest", overDelay: 0 },
   ritual: { windowMs: 500, falseShare: 0, seal: "firm", count: 600, jitter: 0, cue: "count", overDelay: 1 },
@@ -65663,7 +65724,7 @@ var S4 = {
 };
 var NO_LINES = { now: [], fake: [], early: [], greedy: [], low: [], released: [], entry: [], hold: [], tap: [], good: [], poor: [], stop: [], wake: [], again: [] };
 var R5 = { run: null, row: "neutral", overDelay: 1, seal: "tight", widthMs: 600, lines: NO_LINES, seg: null, running: false, strain: null, via: "key", spriteBox: null, leaky: false };
-var st2 = () => ({ ...STYLES2[R5.row], seal: R5.seal, windowMs: R5.widthMs, overDelay: R5.overDelay });
+var st2 = () => ({ ...STYLES3[R5.row], seal: R5.seal, windowMs: R5.widthMs, overDelay: R5.overDelay });
 var L2 = () => R5.lines;
 var A2 = { ctx: null };
 function audioInit2() {
@@ -66338,9 +66399,9 @@ function render2(now, dt) {
     $2("#cam").style.perspectiveOrigin = `${fx2}px ${fy}px`;
   }
   {
-    const view = S4.view === "auto" ? VIEW_OF2[S4.kind] ?? "ceiling" : S4.view;
-    const ceil = view === "ceiling";
-    setStyle("#her", "opacity", view !== "her" ? (1 - smooth(0.15, 0.7, G3.cam)).toFixed(3) : "1");
+    const view2 = S4.view === "auto" ? VIEW_OF2[S4.kind] ?? "ceiling" : S4.view;
+    const ceil = view2 === "ceiling";
+    setStyle("#her", "opacity", view2 !== "her" ? (1 - smooth(0.15, 0.7, G3.cam)).toFixed(3) : "1");
     setStyle("#ceiling", "opacity", ceil ? smooth(0.2, 0.85, G3.cam).toFixed(3) : "0");
     const lift2 = Math3.min(o, 1);
     setStyle("#ceiling", "transform", `translate(${((G3.focus[0] - 0.5) * -4 + (S4.reduced ? 0 : sway * 0.3)).toFixed(2)}%, ${((G3.focus[1] - 0.5) * -4).toFixed(2)}%) scale(${(1.12 - lift2 * 0.05).toFixed(3)})`);
@@ -66510,13 +66571,13 @@ function schedulePlan(run, ck) {
   R5.strain = null;
   G3.air = clamp41(run.gauge / run.capacity * 100, 0, 100);
   refreshLines2(0);
-  let after8 = G3.clock;
+  let after9 = G3.clock;
   for (const o of effectiveOpenings(plan, [], styleKey())) {
     const at2 = R5.seg.clock0 + o.beat * BEAT2;
     const cue = plan.beats[o.beat]?.cue;
-    scheduleWindow(at2, { ...o.false ? { false: true } : {}, widthMs: o.widthMs, quiet: cue !== "window_open" && cue !== "window_false", after: after8 });
+    scheduleWindow(at2, { ...o.false ? { false: true } : {}, widthMs: o.widthMs, quiet: cue !== "window_open" && cue !== "window_false", after: after9 });
     const r = st2();
-    after8 = Math3.max(after8, at2 + (r.snappy ? 110 : 260) + o.widthMs * S4.wmul + (r.snappy ? 140 : 320));
+    after9 = Math3.max(after9, at2 + (r.snappy ? 110 : 260) + o.widthMs * S4.wmul + (r.snappy ? 140 : 320));
   }
 }
 var styleKey = () => E2 && R5.run ? leadStyle(physicsStyleOf(E2.env.state(), R5.run.holderId, E2.env.registries)).key : "neutral";
@@ -66570,9 +66631,9 @@ function before2() {
 function after2() {
   const e = E2;
   if (!e) return;
-  const last2 = e.els["#hand"].lastElementChild;
-  if (last2 !== lastLine2) {
-    lastLine2 = last2;
+  const last3 = e.els["#hand"].lastElementChild;
+  if (last3 !== lastLine2) {
+    lastLine2 = last3;
     keepInFrame2(e);
   }
   noteWrites(e.claims[0], ["opacity"]);
@@ -66688,12 +66749,12 @@ function bind2(env, run) {
   seed2 = fnv1a3(`${state.scene?.id ?? ""}|${run.id}|breath`) >>> 0 || 2463534242;
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S4.style = lead.key;
-  R5.row = lead.key in STYLES2 ? lead.key : ROW_BY_CUES[lead.cues] ?? "neutral";
+  R5.row = lead.key in STYLES3 ? lead.key : ROW_BY_CUES[lead.cues] ?? "neutral";
   R5.overDelay = overDelayOf(lead.key);
   R5.run = run;
   R5.seal = run.seal ?? "tight";
   R5.leaky = run.seal === "leaky";
-  R5.widthMs = STYLES2[R5.row].windowMs;
+  R5.widthMs = STYLES3[R5.row].windowMs;
   R5.seg = null;
   R5.running = false;
   R5.strain = null;
@@ -67004,7 +67065,7 @@ var rand2 = (a, b) => a + Math4.random() * (b - a);
 var BEAT3 = TUNING.physics.beatMs;
 var W_DRAIN = TUNING.physics.weight.drain;
 var RELIEF = TUNING.physics.weight.relief;
-var STYLES3 = {
+var STYLES4 = {
   neutral: { tele: [650, 850], feint: 0, heavy: 0.15, mag: [0.35, 0.7], watchBias: 0, note: "her shadow leans about 0.7 s before her weight moves" },
   affectionate: { tele: [900, 1100], feint: 0, heavy: 0.05, mag: [0.25, 0.5], watchBias: -0.1, note: "long, gentle warnings; small shifts; rarely heavier" },
   ritual: { tele: [750, 750], feint: 0, heavy: 0.1, mag: [0.4, 0.6], watchBias: 0, note: "announces each shift in her hand, evenly, every fourth beat", announce: true, even: 4 },
@@ -67062,7 +67123,7 @@ var R6 = {
   overFit: null
 };
 var C2 = () => ({ face: R6.face, weight: 1, shift: 1 });
-var ST = () => STYLES3[S5.style];
+var ST = () => STYLES4[S5.style];
 var L3 = () => R6.lines;
 var A3 = { ctx: null };
 function audioInit3() {
@@ -67431,8 +67492,8 @@ function exit2(reason) {
 }
 function updateLoop2(dt) {
   G4.clock += dt;
-  const beatNow3 = Math4.floor((G4.clock - R6.seg.clock0) / BEAT3);
-  while (G4.beat < beatNow3) {
+  const beatNow4 = Math4.floor((G4.clock - R6.seg.clock0) / BEAT3);
+  while (G4.beat < beatNow4) {
     onBeat();
     planBeat();
   }
@@ -67554,9 +67615,9 @@ var LEG_FEET = {
 };
 function legPoints(W3, H, side, press4, lift2, swing) {
   return LEG_FEET[S5.foot].map(([x, y]) => {
-    const down2 = clamp41(y, 0, 1);
-    const X3 = x + press4 * 0.035 * (0.4 + down2) - lift2 * 0.03 * down2 + swing * 0.012 * down2 * down2;
-    const Y = (S5.foot === "first" ? y : y * 0.86) - lift2 * 0.07 * down2 + swing * 0.01 * down2;
+    const down3 = clamp41(y, 0, 1);
+    const X3 = x + press4 * 0.035 * (0.4 + down3) - lift2 * 0.03 * down3 + swing * 0.012 * down3 * down3;
+    const Y = (S5.foot === "first" ? y : y * 0.86) - lift2 * 0.07 * down3 + swing * 0.01 * down3;
     return [side < 0 ? X3 * W3 : W3 - X3 * W3, Y * H];
   });
 }
@@ -67645,10 +67706,10 @@ function placeSprite(img2, k, face, opts) {
 function render3(now, dt, err) {
   const c = C2(), live3 = G4.phase === "loop" || G4.phase === "entry";
   const k = G4.cam, strF = smooth(100, 0, G4.str);
-  const down2 = c.face === "down";
+  const down3 = c.face === "down";
   setStyle2("#roomView", "opacity", (1 - smooth(0.1, 0.7, k)).toFixed(3));
-  setStyle2("#floorView", "opacity", (down2 ? smooth(0.3, 0.9, k) : 0).toFixed(3));
-  setStyle2("#upView", "opacity", (!down2 ? smooth(0.3, 0.9, k) : 0).toFixed(3));
+  setStyle2("#floorView", "opacity", (down3 ? smooth(0.3, 0.9, k) : 0).toFixed(3));
+  setStyle2("#upView", "opacity", (!down3 ? smooth(0.3, 0.9, k) : 0).toFixed(3));
   const tilt = clamp41(err, -1.2, 1.2) * 6 * k;
   const amp = S5.reduced ? 0 : (Math4.pow(strF, 2) * 5 + G4.jolt * 7) * k;
   const jx = (Math4.random() * 2 - 1) * amp, jy = (Math4.random() * 2 - 1) * amp + G4.sag * 26 * k;
@@ -67656,7 +67717,7 @@ function render3(now, dt, err) {
   const near = 1 + strF * 0.22 * k + G4.sag * 0.04;
   setStyle2("#floor", "transform", `scale(${near.toFixed(3)})`);
   setStyle2("#floor", "filter", `blur(${(0.4 + strF * 1.8).toFixed(1)}px) brightness(${(0.6 - strF * 0.16).toFixed(2)}) saturate(.85)`);
-  if (down2) drawFloor2(now);
+  if (down3) drawFloor2(now);
   const over2 = $3("#over");
   const useOver = over2.style.display !== "none" && over2.naturalWidth;
   const press4 = 1 + strF * 0.12 * k + G4.sag * 0.03;
@@ -67672,7 +67733,7 @@ function render3(now, dt, err) {
   }
   setStyle2("#ceiling", "transform", `scale(${(1.1 + strF * 0.06).toFixed(3)})`);
   setStyle2("#ceiling", "filter", `blur(${(3 + strF * 2).toFixed(1)}px) brightness(.55)`);
-  const scr = live3 && !down2 ? { busy: 1, glancing: 0.5, watching: 0.05 }[G4.att] : 0;
+  const scr = live3 && !down3 ? { busy: 1, glancing: 0.5, watching: 0.05 }[G4.att] : 0;
   setStyle2("#screenGlow", "background", `radial-gradient(ellipse 30% 26% at ${50 + G4.cop * 3}% 34%, rgba(110,160,255,${(0.32 * scr).toFixed(2)}) 0%, rgba(0,0,0,0) 100%)`);
   const sv = live3 ? strF : 0;
   setStyle2("#strainV", "background", sv < 0.02 ? "none" : `radial-gradient(ellipse 75% 70% at 50% 50%, rgba(0,0,0,0) ${(70 - sv * 30).toFixed(0)}%, rgba(30,6,4,${(0.25 + sv * 0.5).toFixed(2)}) 100%)`);
@@ -67864,9 +67925,9 @@ function before3() {
 function after3() {
   const e = E3;
   if (!e) return;
-  const last2 = e.els["#hand"].lastElementChild;
-  if (last2 !== lastLine3) {
-    lastLine3 = last2;
+  const last3 = e.els["#hand"].lastElementChild;
+  if (last3 !== lastLine3) {
+    lastLine3 = last3;
     keepInFrame3(e);
   }
   noteWrites(e.claims[0], ["opacity"]);
@@ -67959,7 +68020,7 @@ function bind3(env, run) {
   const reg = env.registries;
   seed3 = fnv1a3(`${state.scene?.id ?? ""}|${run.id}|weight`) >>> 0 || 2463534242;
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
-  S5.style = lead.key in STYLES3 ? lead.key : ROW_BY_CUES2[lead.cues] ?? "neutral";
+  S5.style = lead.key in STYLES4 ? lead.key : ROW_BY_CUES2[lead.cues] ?? "neutral";
   R6.lineStyle = lead.key;
   R6.run = run;
   const contact = run.sourceKind === "contact" ? reg.blockingContacts.get(run.sourceId) : void 0;
@@ -68278,7 +68339,7 @@ var COLORS = { sweat: "255,198,164", leather: "236,176,128", soap: "214,232,255"
 var BASE_I = { feet_on_face: 0.2, face_to_bottom: 0.35, smothered_armpit: 0.45 };
 var AMBIENT_MS = { faint: 0, noticeable: 9e3, strong: 6e3, overwhelming: 3500 };
 var ZONE_IDS = { feet_on_face: ["toes", "ball", "arch", "heel"], face_to_bottom: ["center", "side"], smothered_armpit: ["hollow", "edge"] };
-var STYLES4 = {
+var STYLES5 = {
   neutral: {
     every: [3, 5],
     orders: { deeper: 3, gently: 1, here: 2, still: 1 },
@@ -68561,7 +68622,7 @@ var S6 = {
   reduced: false,
   readable: false
 };
-var ST2 = () => STYLES4[S6.style];
+var ST2 = () => STYLES5[S6.style];
 var noLines2 = () => ({
   entry: {},
   deeper: [],
@@ -68865,12 +68926,12 @@ function piece(dest, from, to, at2, rate, fadeIn = 0.015, fadeOut = 0.03, gain2 
 function recOut(kind) {
   const ctx2 = A4.ctx, out = ctx2.createGain();
   out.gain.value = kind === "mouth" ? 0.25 : 0.21;
-  const tone3 = ctx2.createBiquadFilter();
-  tone3.type = "lowpass";
-  tone3.frequency.value = kind === "mouth" ? 1600 : 3200;
-  tone3.Q.value = 0.5;
-  out.connect(tone3);
-  tone3.connect(A4.body);
+  const tone4 = ctx2.createBiquadFilter();
+  tone4.type = "lowpass";
+  tone4.frequency.value = kind === "mouth" ? 1600 : 3200;
+  tone4.Q.value = 0.5;
+  out.connect(tone4);
+  tone4.connect(A4.body);
   return out;
 }
 function recInhale(kind = "nose") {
@@ -69461,8 +69522,8 @@ function updateLoop3(dt) {
   G5.clock += dt;
   breathTick();
   const h2 = dt / 1e3;
-  const beatNow3 = Math5.floor(G5.clock / BEAT4);
-  while (G5.beat < beatNow3) {
+  const beatNow4 = Math5.floor(G5.clock / BEAT4);
+  while (G5.beat < beatNow4) {
     G5.beat += 1;
     G5.att = attentionNow();
     if (G5.att === "busy" && S6.task === "reading" && Math5.random() < 0.35) SFX4.page();
@@ -69808,24 +69869,24 @@ function render4(now, dt) {
   const arc = $4("#arc");
   setStyle3(arc, "opacity", live3 ? "1" : "0");
   arc.style.transform = `translate(${(G5.nose[0] * innerWidth5).toFixed(1)}px, ${(G5.nose[1] * innerHeight5).toFixed(1)}px)`;
-  const R9 = 40, td = tolDepth() / 1.25;
-  $4("#aTrack").setAttribute("d", arcPath(R9, 0, 1));
-  $4("#aDanger").setAttribute("d", td < 1 ? arcPath(R9, td, 1) : "");
+  const R10 = 40, td = tolDepth() / 1.25;
+  $4("#aTrack").setAttribute("d", arcPath(R10, 0, 1));
+  $4("#aDanger").setAttribute("d", td < 1 ? arcPath(R10, td, 1) : "");
   const o = G5.order, band2 = o && o.band ? o.band : null;
-  $4("#aBand").setAttribute("d", band2 ? arcPath(R9, band2[0] / 1.25, band2[1] / 1.25) : "");
+  $4("#aBand").setAttribute("d", band2 ? arcPath(R10, band2[0] / 1.25, band2[1] / 1.25) : "");
   $4("#aBand").setAttribute("stroke", `rgba(${col},.55)`);
   $4("#aBand").setAttribute("opacity", band2 ? "1" : "0");
   const fd = (G5.inhaling ? G5.depth : 0) / 1.25;
   const fillCol = G5.inhaling && G5.depth * G5.I * stim() > tolT() * 0.85 ? "255,90,70" : col;
-  $4("#aFill").setAttribute("d", arcPath(R9, 0, fd));
+  $4("#aFill").setAttribute("d", arcPath(R10, 0, fd));
   $4("#aFill").setAttribute("stroke", `rgb(${fillCol})`);
-  $4("#aFillGlow").setAttribute("d", arcPath(R9, 0, fd));
+  $4("#aFillGlow").setAttribute("d", arcPath(R10, 0, fd));
   $4("#aFillGlow").setAttribute("stroke", `rgb(${fillCol})`);
   const ta = -Math5.PI * 1.25 + Math5.PI * 1.5 * clamp41(td, 0, 1);
-  $4("#aTol").setAttribute("x1", (Math5.cos(ta) * (R9 - 7)).toFixed(1));
-  $4("#aTol").setAttribute("y1", (Math5.sin(ta) * (R9 - 7)).toFixed(1));
-  $4("#aTol").setAttribute("x2", (Math5.cos(ta) * (R9 + 7)).toFixed(1));
-  $4("#aTol").setAttribute("y2", (Math5.sin(ta) * (R9 + 7)).toFixed(1));
+  $4("#aTol").setAttribute("x1", (Math5.cos(ta) * (R10 - 7)).toFixed(1));
+  $4("#aTol").setAttribute("y1", (Math5.sin(ta) * (R10 - 7)).toFixed(1));
+  $4("#aTol").setAttribute("x2", (Math5.cos(ta) * (R10 + 7)).toFixed(1));
+  $4("#aTol").setAttribute("y2", (Math5.sin(ta) * (R10 + 7)).toFixed(1));
   $4("#aTol").setAttribute("opacity", td < 1 ? "1" : "0");
   const prox = smooth(0.15, 1.05, G5.I);
   $4("#aProx").setAttribute("r", (2 + prox * 4.5).toFixed(1));
@@ -69836,7 +69897,7 @@ function render4(now, dt) {
   const need = S6.layers.need && live3 ? smooth(4500, 7e3, G5.sinceBreath) : 0;
   $4("#aNeed").setAttribute("opacity", (need * (0.5 + 0.5 * Math5.sin(now / 120))).toFixed(2));
   $4("#aNeed").setAttribute("stroke", "rgba(255,255,255,.7)");
-  $4("#aNeed").setAttribute("r", (R9 + 8 - need * 4).toFixed(1));
+  $4("#aNeed").setAttribute("r", (R10 + 8 - need * 4).toFixed(1));
   if (A4.ctx) {
     const ct = A4.ctx.currentTime;
     A4.droneG.gain.setTargetAtTime(live3 ? f * f * 0.05 : 0, ct, 0.3);
@@ -70014,9 +70075,9 @@ function before4() {
 function after4() {
   const e = E4;
   if (!e) return;
-  const last2 = e.els["#hand"].lastElementChild;
-  if (last2 !== lastLine4) {
-    lastLine4 = last2;
+  const last3 = e.els["#hand"].lastElementChild;
+  if (last3 !== lastLine4) {
+    lastLine4 = last3;
     keepInFrame4(e);
   }
   noteWrites(e.claims[0], ["opacity"]);
@@ -70146,7 +70207,7 @@ function bind4(env, run) {
   const reg = env.registries;
   seed4 = fnv1a3(`${state.scene?.id ?? ""}|${run.id}|scent`) >>> 0 || 2463534242;
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
-  S6.style = lead.key in STYLES4 ? lead.key : ROW_BY_CUES3[lead.cues] ?? "neutral";
+  S6.style = lead.key in STYLES5 ? lead.key : ROW_BY_CUES3[lead.cues] ?? "neutral";
   R7.lineStyle = lead.key;
   R7.run = run;
   R7.seg = null;
@@ -70339,9 +70400,9 @@ function scentMatches(run, _state, reg) {
 registerInstrument({ id: "scent", matches: scentMatches, start: startScent });
 
 // src/engine/physics/service.ts
-function shuffleBy(list5, seed6) {
+function shuffleBy(list5, seed7) {
   const a = list5.slice();
-  let x = seed6 >>> 0 || 1;
+  let x = seed7 >>> 0 || 1;
   for (let i = a.length - 1; i > 0; i--) {
     x = Math.imul(x, 1103515245) + 12345 >>> 0;
     const j = x % (i + 1);
@@ -70738,9 +70799,9 @@ var T_LEG_FEET = {
 };
 function tLegPoints(Wd, H, side, press4, lift2, swing) {
   return T_LEG_FEET.relaxed.map(([x, y]) => {
-    const down2 = clamp41(y, 0, 1);
-    const X3 = x + press4 * 0.035 * (0.4 + down2) - lift2 * 0.03 * down2 + swing * 0.012 * down2 * down2;
-    const Y = y * 0.86 - lift2 * 0.07 * down2 + swing * 0.01 * down2;
+    const down3 = clamp41(y, 0, 1);
+    const X3 = x + press4 * 0.035 * (0.4 + down3) - lift2 * 0.03 * down3 + swing * 0.012 * down3 * down3;
+    const Y = y * 0.86 - lift2 * 0.07 * down3 + swing * 0.01 * down3;
     return [side < 0 ? X3 * Wd : Wd - X3 * Wd, Y * H];
   });
 }
@@ -70766,14 +70827,14 @@ function throneCanvases(off) {
   [tOutC, toctx] = off();
 }
 function throneArt(now) {
-  const L4 = $5("#astrideL"), R9 = $5("#astrideR");
+  const L5 = $5("#astrideL"), R10 = $5("#astrideR");
   const on = throneOn() && S7.contact === "human_chair" && S7.legsArt;
   const both = S7.legsFeet === "two", pair = S7.legsFeet === "pair";
-  L4.style.display = on ? "block" : "none";
-  R9.style.display = on && !both ? "block" : "none";
-  if (!on || !L4.naturalWidth) return !!on;
+  L5.style.display = on ? "block" : "none";
+  R10.style.display = on && !both ? "block" : "none";
+  if (!on || !L5.naturalWidth) return !!on;
   const [vw, vh] = X.inner(), t = now / 1e3;
-  const view = $5("#footrestView"), ox = (view.clientWidth - vw) / 2, oy = (view.clientHeight - vh) / 2;
+  const view2 = $5("#footrestView"), ox = (view2.clientWidth - vw) / 2, oy = (view2.clientHeight - vh) / 2;
   const live3 = G6.phase === "loop" || G6.phase === "entry", reading2 = live3 && G6.att === "busy";
   const toward = W.lean * 0.9 + W.cop * 0.5, jolt = W.jolt * 0.4;
   const h2 = vh * S7.aH;
@@ -70794,8 +70855,8 @@ function throneArt(now) {
     el.style.opacity = op;
     el.style.filter = S7.readable ? "none" : `blur(${(1.2 + strF * 0.8).toFixed(1)}px) brightness(${(0.62 - strF * 0.1).toFixed(2)}) saturate(.85) drop-shadow(0 0 14px rgba(226,78,52,.45))`;
   };
-  place2(L4, -1);
-  if (!both) place2(R9, 1);
+  place2(L5, -1);
+  if (!both) place2(R10, 1);
   return true;
 }
 function throneLegs(now) {
@@ -71832,11 +71893,11 @@ function svRender(now) {
     }
   }
 }
-function serviceMatches(state, reg, run, view) {
-  if (view !== "legs" || run.second) return false;
+function serviceMatches(state, reg, run, view2) {
+  if (view2 !== "legs" || run.second) return false;
   const act = run.sourceKind === "activity" ? run.sourceId : state.scene?.blocking?.[run.holderId]?.activity;
-  const frame7 = act === void 0 ? null : frameOf3(reg.blockingActivities.get(act));
-  if (frame7 === null || frame7.legs === "asleep") return false;
+  const frame8 = act === void 0 ? null : frameOf3(reg.blockingActivities.get(act));
+  if (frame8 === null || frame8.legs === "asleep") return false;
   return practiceLive(state, reg, run.holderId) && contentAllowed(state, reg, { contentTags: ["worship"] }, run.holderId);
 }
 function attachService(ctx2) {
@@ -72905,7 +72966,7 @@ function decided(d) {
   sense3("The commander\u2019s roster has just been changed over the commander\u2019s head.", "her");
 }
 function planPeaks(i) {
-  const act = ACT2(), len2 = S9.phaseLen * 1e3, last2 = i === S9.phases - 1, h2 = fnv3(`${S9.seed}:${i}:${S9.act}`) % 100;
+  const act = ACT2(), len2 = S9.phaseLen * 1e3, last3 = i === S9.phases - 1, h2 = fnv3(`${S9.seed}:${i}:${S9.act}`) % 100;
   if (act.call) {
     G8.call = { name: "Oversight", heard: false };
     runPlaceholder(exchangeScript(CALL.concat(CALL.slice(0, 3)), 2, [4, 7]), "call");
@@ -72925,9 +72986,9 @@ function planPeaks(i) {
     if (h2 % 2 === 0) after7(len2 * rand6(0.75, 0.85), throneRise);
   }
   if (i === 0 && h2 < 70 && !throneOn()) after7(len2 * rand6(0.45, 0.7), falseAlarm);
-  if (i >= 1 && !act.call && !act.visitor && !act.sleep && !last2) after7(len2 * rand6(0.25, 0.4), h2 < 55 && !act.music ? incomingCall : visitorPeak);
-  if (last2 && G8.step === "use" && !act.sleep && !act.visitor && !act.call && S9.phaseLen >= 60) after7(len2 * rand6(0.2, 0.35), leaveRoom);
-  else if (last2) after7(len2 * rand6(0.5, 0.7), falseAlarm);
+  if (i >= 1 && !act.call && !act.visitor && !act.sleep && !last3) after7(len2 * rand6(0.25, 0.4), h2 < 55 && !act.music ? incomingCall : visitorPeak);
+  if (last3 && G8.step === "use" && !act.sleep && !act.visitor && !act.call && S9.phaseLen >= 60) after7(len2 * rand6(0.2, 0.35), leaveRoom);
+  else if (last3) after7(len2 * rand6(0.5, 0.7), falseAlarm);
 }
 function steps2(n, fromPan, toPan, g0, g1, gap = 0.42, wood = false, lp = 1800) {
   for (let k = 0; k < n; k++) {
@@ -73372,25 +73433,25 @@ function fillPts3(ctx2, pts) {
   ctx2.closePath();
   ctx2.fill();
 }
-function shinFront(W3, H, K, Ak, o) {
-  const k = [K[0] * W3, K[1] * H], a = [Ak[0] * W3, Ak[1] * H];
+function shinFront(W3, H, K2, Ak, o) {
+  const k = [K2[0] * W3, K2[1] * H], a = [Ak[0] * W3, Ak[1] * H];
   const dx = a[0] - k[0], dy = a[1] - k[1], len2 = Math8.hypot(dx, dy) || 1, tx = dx / len2, ty = dy / len2, nx = -ty, ny = tx;
   const outer = o.outer;
-  const L4 = [], R9 = [];
+  const L5 = [], R10 = [];
   for (let i = 0; i <= 16; i++) {
     const t = i / 16, hw = lerp2(o.wK, o.wA, Math8.pow(t, 0.8)) * H / 2;
     const calf = o.calf * H * Math8.exp(-(((t - 0.32) / 0.2) ** 2));
     const x = k[0] + dx * t, y = k[1] + dy * t;
     const l = hw + (outer < 0 ? calf : calf * 0.25), r = hw + (outer > 0 ? calf : calf * 0.25);
-    L4.push([x + nx * l, y + ny * l]);
-    R9.push([x - nx * r, y - ny * r]);
+    L5.push([x + nx * l, y + ny * l]);
+    R10.push([x - nx * r, y - ny * r]);
   }
   const fl = o.foot * H, fw = o.footW * H, drop2 = o.drop ?? 0, toe = o.toe ?? 0;
   const ang = Math8.atan2(ty, tx) + drop2;
   const ux = Math8.cos(ang), uy = Math8.sin(ang), px = -uy, py = ux;
   const F2 = (u, v) => [a[0] + ux * u * fl + px * v * fw, a[1] + uy * u * fl * (1 - toe * 0.45) + py * v * fw];
   const foot2 = [F2(0.05, 0.62), F2(0.35, 0.8), F2(0.7, 0.95), F2(0.95, 0.75), F2(1.04, 0.2), F2(1.02, -0.35), F2(0.9, -0.8), F2(0.6, -0.92), F2(0.3, -0.75), F2(0.05, -0.6)];
-  return chaikin(chaikin(chaikin([...L4, ...foot2, ...R9.reverse()])));
+  return chaikin(chaikin(chaikin([...L5, ...foot2, ...R10.reverse()])));
 }
 function drawLegs(now) {
   const W3 = legsC.width, H = legsC.height;
@@ -73402,7 +73463,7 @@ function drawLegs(now) {
   const art2 = $7("#legsArt"), raised = $7("#raisedArt");
   const hasRest = art2.style.display !== "none" && art2.naturalWidth, hasRaised = raised.style.display !== "none" && raised.naturalWidth;
   if (hasRest || hasRaised) {
-    const up = hasRaised && (G8.previewRaised || G8.t < (G8.footUpUntil ?? 0) || G8.legsRest) && !G8.away;
+    const up2 = hasRaised && (G8.previewRaised || G8.t < (G8.footUpUntil ?? 0) || G8.legsRest) && !G8.away;
     const t2 = now / 1e3, Wv = innerWidth7 * 1.12, Hv = innerHeight7 * 1.12;
     const sw = S9.reduced ? 0 : (G8.att === "busy" ? Math8.sin(t2 * 0.7) * 0.4 : 0) + G8.shiftAnim * Math8.sin(t2 * 9) * 0.6;
     const place2 = (img2, wf, bf, on) => {
@@ -73415,9 +73476,9 @@ function drawLegs(now) {
       const fx2 = svcOn() && G8.footFx ? G8.footFx : { dx: 0, dy: 0, s: 1, r: 0 };
       img2.style.transform = `translate(${fx2.dx.toFixed(1)}px, ${fx2.dy.toFixed(1)}px) rotate(${(sw + fx2.r).toFixed(2)}deg) scale(${((1 + G8.press * 0.04) * fx2.s).toFixed(3)})`;
     };
-    place2(art2, S9.legsW, S9.legsB, !up);
-    place2(raised, S9.raisedW, S9.raisedB, up);
-    if (hasRest || up) return;
+    place2(art2, S9.legsW, S9.legsB, !up2);
+    place2(raised, S9.raisedW, S9.raisedB, up2);
+    if (hasRest || up2) return;
   }
   if (G8.away || G8.lightsOff && G8.phase === "empty") return;
   const t = now / 1e3, red = S9.reduced;
@@ -73604,8 +73665,8 @@ function drawGrain(dt) {
 }
 function render5(now, dt) {
   const t = now / 1e3, live3 = G8.phase === "loop" || G8.phase === "empty" || G8.phase === "ending";
-  const view = S9.blind ? "blind" : weightOn() ? "footrest" : S9.view;
-  for (const v of ["her", "legs", "floor", "wall", "footrest", "blind"]) setStyle5(`#${v}View`, "opacity", v === view ? "1" : "0");
+  const view2 = S9.blind ? "blind" : weightOn() ? "footrest" : S9.view;
+  for (const v of ["her", "legs", "floor", "wall", "footrest", "blind"]) setStyle5(`#${v}View`, "opacity", v === view2 ? "1" : "0");
   const low = live3 && !weightOn() ? 1 - G8.ease / 100 : 0;
   G8.shake = Math8.max(0, (G8.shake ?? 0) - dt / 600);
   const amp = S9.reduced ? 0 : low * low * 2.5 + G8.shake * 9;
@@ -73616,8 +73677,8 @@ function render5(now, dt) {
   const dusk = smooth(18 * 60 + 30, 20 * 60, G8.clockMin), dark = G8.lightsOff ? 0.35 : 1;
   const ck = SV ? SV.closeK : 0;
   setStyle5("#world", "filter", `saturate(${(wr ? 1 - wr.strF * 0.45 : 1 - low * 0.4).toFixed(2)}) brightness(${((1 - dusk * 0.25) * dark * (1 - ck * 0.4)).toFixed(2)}) blur(${(S9.readable ? 0 : ck * 6).toFixed(1)}px)`);
-  E5.env.layers.backdrop.style.filter = view === "her" ? `brightness(${((1 - dusk * 0.25) * dark * 0.62).toFixed(2)})` : "";
-  if (view === "her") {
+  E5.env.layers.backdrop.style.filter = view2 === "her" ? `brightness(${((1 - dusk * 0.25) * dark * 0.62).toFixed(2)})` : "";
+  if (view2 === "her") {
     const look = G8.att === "watching" ? 1 : G8.att === "glancing" ? 0.4 : 0;
     G8.lookS = lerp2(G8.lookS ?? 0, look, Math8.min(1, dt / 400));
     E5.env.layers.sprites.style.opacity = G8.away ? "0" : "";
@@ -73626,13 +73687,13 @@ function render5(now, dt) {
     const scr = act.light === "screen" && !G8.lightsOff ? (1 - G8.lookS * 0.7) * flick : 0, lamp = (act.light === "lamp" || G8.lampOn) && !G8.lightsOff ? 0.6 + 0.4 * dusk : 0;
     setStyle5("#herGlow", "background", `radial-gradient(ellipse 34% 30% at 52% 30%, rgba(110,160,255,${(0.3 * scr).toFixed(2)}) 0%, rgba(0,0,0,0) 100%), radial-gradient(ellipse 50% 45% at 30% 24%, rgba(255,170,100,${(0.16 * lamp).toFixed(2)}) 0%, rgba(0,0,0,0) 100%)`);
   }
-  if (view === "legs") {
+  if (view2 === "legs") {
     const f = S9.floorShade;
     setStyle5("#floorShadow", "background", `linear-gradient(to bottom, rgba(0,0,0,0) 58%, rgba(4,3,5,${(0.55 * f).toFixed(2)}) 76%, rgba(4,3,5,${(0.92 * f).toFixed(2)}) 100%)`);
     drawLegs(now);
     drawLight(lights.deskLight, now, "deskLight");
   }
-  if (view === "floor") {
+  if (view2 === "floor") {
     const fa = $7("#floorArt");
     if (fa.style.display !== "none" && fa.naturalWidth) {
       const Wv = innerWidth7 * 1.12, Hv = innerHeight7 * 1.12, w = Wv * S9.feetW, h2 = w * fa.naturalHeight / fa.naturalWidth, top = Hv * S9.feetB - h2;
@@ -73654,15 +73715,15 @@ function render5(now, dt) {
     drawLight(lights.floorLight, now, "floorLight");
     setStyle5("#floorBg", "transform", `scale(${(1 + low * 0.08).toFixed(3)})`);
   }
-  if (view === "wall") {
+  if (view2 === "wall") {
     drawLight(lights.wallLight, now, "wallLight");
   }
-  if (view === "footrest" && throneOn()) throneLegs(now);
+  if (view2 === "footrest" && throneOn()) throneLegs(now);
   G8.press = Math8.max(0, G8.press - dt / 900);
   G8.shiftAnim = Math8.max(0, G8.shiftAnim - dt / 800);
   drawUrges(now);
   drawGrain(dt);
-  setStyle5("#grain", "opacity", (0.06 + low * 0.1 + (view === "blind" ? 0.1 : 0)).toFixed(3));
+  setStyle5("#grain", "opacity", (0.06 + low * 0.1 + (view2 === "blind" ? 0.1 : 0)).toFixed(3));
   E5.env.reply.style.opacity = G8.phase === "skip" ? "0" : live3 ? "0.35" : "1";
   E5.env.input.closest(".alius-input-line")?.classList.toggle("alius-activity-ask", !!G8.ask);
 }
@@ -73892,8 +73953,8 @@ function viewOf(state, reg, run) {
   const desk = backdrop(anchor, "frame"), wall = backdrop(activity, "place");
   const feet = effectsOfEntry(anchor).some((fx2) => fx2.type === "pose_shot" && fx2.kind === "feet_floor");
   const blind = Object.keys(b.worn ?? {}).includes("eyes");
-  const view = run.second && weightMatches(coreRun(run, "second"), state, reg) ? "footrest" : desk ? "legs" : wall ? "wall" : feet ? "floor" : "her";
-  return { view, blind, desk, wall };
+  const view2 = run.second && weightMatches(coreRun(run, "second"), state, reg) ? "footrest" : desk ? "legs" : wall ? "wall" : feet ? "floor" : "her";
+  return { view: view2, blind, desk, wall };
 }
 function bind5(env, run) {
   const state = env.state(), reg = env.registries;
@@ -73971,11 +74032,11 @@ function bind5(env, run) {
   S9.aTop = af.top ?? -0.1;
   S9.aTilt = af.tilt ?? 8;
   if (astride) {
-    const L4 = E5.els["#astrideL"], Rt = E5.els["#astrideR"];
-    L4.onerror = () => {
+    const L5 = E5.els["#astrideL"], Rt = E5.els["#astrideR"];
+    L5.onerror = () => {
       S9.legsArt = null;
     };
-    L4.src = astride.pair?.left ?? astride.url;
+    L5.src = astride.pair?.left ?? astride.url;
     Rt.src = astride.pair?.right ?? astride.url;
   }
   const look = env.her(run.holderId);
@@ -74180,6 +74241,1443 @@ function frameMatches(run, state, reg) {
 }
 registerInstrument({ id: "her_activity", matches: frameMatches, start: (env, run) => startFrame2(env, run) });
 
+// src/ui/scene/instruments/shoe/shoe.ts
+var E6 = null;
+var innerWidth8 = 0;
+var innerHeight8 = 0;
+var performance9 = { now: () => E6 ? E6.env.now() : 0 };
+function setTimeout7(fn, ms) {
+  if (E6) E6.env.timeout(() => {
+    fn();
+  }, ms);
+}
+function requestAnimationFrame7(fn) {
+  if (!E6) return;
+  const e = E6;
+  e.frameId = e.env.raf((now) => {
+    e.frameId = null;
+    if (E6 !== e) return;
+    before6(now);
+    fn(now);
+    after8(now);
+  });
+}
+var seed6 = 2463534242;
+function rnd016() {
+  seed6 ^= seed6 << 13;
+  seed6 >>>= 0;
+  seed6 ^= seed6 >>> 17;
+  seed6 ^= seed6 << 5;
+  seed6 >>>= 0;
+  return seed6 / 4294967296;
+}
+var reseed2 = (n) => {
+  seed6 = n >>> 0 || 2463534242;
+};
+var Math9 = Object.create(globalThis.Math, { random: { value: rnd016 } });
+function safeCanvas2() {
+  const c = globalThis.document.createElement("canvas");
+  const real = c.getContext.bind(c);
+  let ctx2 = null;
+  c.getContext = (k) => {
+    if (ctx2) return ctx2;
+    let r = null;
+    try {
+      r = real(k);
+    } catch {
+      r = null;
+    }
+    const noop = () => {
+    };
+    ctx2 = r ?? new Proxy({ canvas: c }, { get: (t, p) => p in t ? t[p] : p === "createImageData" || p === "getImageData" ? (_a, _b, w, h2) => ({ data: new Uint8ClampedArray(Math9.max(0, (w ?? _a) * (h2 ?? _b) * 4) || 0) }) : p === "createRadialGradient" || p === "createLinearGradient" ? () => ({ addColorStop: noop }) : noop, set: () => true });
+    if (r) {
+      const gid = r.getImageData.bind(r);
+      r.getImageData = (x, y, w, h2) => {
+        try {
+          return gid(x, y, w, h2);
+        } catch {
+          return { data: new Uint8ClampedArray(w * h2 * 4) };
+        }
+      };
+    }
+    return ctx2;
+  };
+  return c;
+}
+var document3 = { createElement: (tag2) => tag2 === "canvas" ? safeCanvas2() : globalThis.document.createElement(tag2) };
+var DETACHED = /* @__PURE__ */ new Map();
+var $8 = (s) => {
+  const e = E6;
+  if (e.els[s]) return e.els[s];
+  let d = DETACHED.get(s);
+  if (!d) {
+    d = s === "#mouthGauge" ? safeCanvas2() : globalThis.document.createElement("div");
+    DETACHED.set(s, d);
+  }
+  return d;
+};
+var easeOut5 = (t) => 1 - Math9.pow(1 - clamp41(t, 0, 1), 3);
+var pick9 = (a) => a[Math9.floor(Math9.random() * a.length)];
+var rand7 = (a, b) => a + Math9.random() * (b - a);
+var CHECK_AT = TUNING.physics.tongue.checkAt / 100;
+var KINDS2 = {
+  boots: {
+    label: "combat boots",
+    gloss: 0.7,
+    // how bright a full shine is (the toe cap more)
+    close: { toe: [0.62, 0.78, 0.09, 0.06, -20], vamp: [0.5, 0.62, 0.1, 0.06, -25], laces: [0.42, 0.45, 0.06, 0.1, -15], side: [0.4, 0.72, 0.11, 0.07, -10], heel: [0.22, 0.78, 0.06, 0.08, 0], shaft: [0.33, 0.26, 0.08, 0.13, -5], welt: [0.45, 0.9, 0.16, 0.025, -12] },
+    sole: { toe_tread: [0.5, 0.2, 0.13, 0.1, 0], mid: [0.5, 0.5, 0.09, 0.12, 0], heel_tread: [0.5, 0.8, 0.11, 0.09, 0] },
+    leather: ["toe", "vamp", "side", "heel", "shaft", "welt"],
+    bright: { toe: 1.4 }
+  },
+  heels: {
+    label: "high heels",
+    gloss: 1,
+    close: { toe: [0.7, 0.72, 0.08, 0.06, -25], vamp: [0.56, 0.6, 0.09, 0.05, -30], side: [0.45, 0.63, 0.1, 0.05, -20], back: [0.28, 0.5, 0.05, 0.07, 0], heel: [0.25, 0.78, 0.025, 0.11, 5] },
+    sole: { toe_tread: [0.5, 0.22, 0.12, 0.1, 0], mid: [0.5, 0.52, 0.07, 0.12, 0], heel_tread: [0.5, 0.86, 0.04, 0.04, 0] },
+    leather: ["toe", "vamp", "side", "back", "heel"],
+    bright: {}
+  }
+};
+var FRONT = {
+  boots: { toe: [0, 0.88, 0.05, 0.035, 0], vamp: [0, 0.76, 0.045, 0.045, 0], laces: [0, 0.6, 0.03, 0.07, 0], shaft: [0, 0.4, 0.05, 0.09, 0], welt: [0, 0.94, 0.07, 0.015, 0] },
+  heels: { toe: [0, 0.9, 0.045, 0.035, 0], vamp: [0, 0.8, 0.04, 0.035, 0], side: [0.045, 0.78, 0.015, 0.05, 0] }
+};
+var SOLE_TWO = { toe_tread: [0, 0.22, 0.06, 0.08, 0], mid: [0, 0.5, 0.035, 0.09, 0], heel_tread: [0, 0.82, 0.035, 0.05, 0] };
+var ZONE_WORDS2 = new Proxy({}, { get: (_t, k) => (E6 ? voiceLines(E6.env.registries, `shoe.zone.${String(k)}`, void 0)[0] : void 0) ?? String(k) });
+var DIRTS = {
+  ash: { color: [104, 100, 96], grit: 0.6, dry: 1.6, resist: 1, blobs: [4, 0.12, 1], taste: "Ash: dry, bitter, it coats the tongue.", where: "the Ashway" },
+  mud: { color: [86, 64, 44], grit: 1, dry: 0.5, resist: 1.25, blobs: [6, 0.1, 1], taste: "Mud: gritty and cold; sand between the teeth.", where: "a wet run" },
+  oil: { color: [40, 36, 32], grit: 0.2, dry: 0.8, resist: 2, blobs: [3, 0.07, 3], taste: "Machine oil: bitter, it will not wash off the tongue.", where: "Corridor K-12" },
+  spores: { color: [104, 122, 78], grit: 0.4, dry: 0.9, resist: 1, blobs: [7, 0.06, 1], taste: "Spores: sweetish, then rotten. The Bloom.", where: "District 7" },
+  dust: { color: [168, 148, 116], grit: 0.5, dry: 1.8, resist: 0.7, blobs: [3, 0.16, 1], taste: "Parade-ground dust: chalky, it dries everything.", where: "the training yard" },
+  rain: { color: [110, 96, 80], grit: 0.3, dry: 0.4, resist: 0.6, blobs: [14, 0.035, 1], taste: "Muddy rainwater, cold and flat.", where: "the rain" }
+};
+var LINE_KINDS = ["entry", "turn", "sole", "kiss", "polish", "other", "caught", "swallowed", "good", "poor", "missed", "dull", "stamp", "end", "stop"];
+var LINES4 = { neutral: {} };
+var S10 = {
+  kind: "boots",
+  dirt: "mud",
+  style: "neutral",
+  busy: "auto",
+  sound: true,
+  vol: 0.7,
+  debug: false,
+  reduced: false,
+  feet: { boots_close: "one", boots_sole: "one", heels_close: "one", heels_sole: "one" },
+  // 'one' | 'two' per picture
+  shown: { boots_close: "right", boots_sole: "right", heels_close: "right", heels_sole: "right" },
+  // with one foot: which of hers it is
+  fit: { boots_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, boots_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 }, heels_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, heels_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 } },
+  zones: {}
+};
+var ST4 = () => STYLES[S10.style] ?? STYLES.neutral;
+var L4 = () => LINES4[S10.style] ?? LINES4.neutral;
+var D3 = () => DIRTS[S10.dirt];
+var K = () => KINDS2[S10.kind];
+var A7 = { ctx: null, buf: {} };
+var SAMPLE_URLS3 = {
+  cloth1: "assets/sounds/ha/cloth1.ogg",
+  cloth2: "assets/sounds/ha/cloth2.ogg",
+  cloth3: "assets/sounds/ha/cloth3.ogg",
+  cloth4: "assets/sounds/ha/cloth4.ogg",
+  wood1: "assets/sounds/ha/wood1.ogg",
+  wood2: "assets/sounds/ha/wood2.ogg",
+  soft1: "assets/sounds/ha/soft1.ogg",
+  soft2: "assets/sounds/ha/soft2.ogg",
+  key1: "assets/sounds/ha/key1.ogg",
+  key2: "assets/sounds/ha/key2.ogg"
+};
+var GROUPS2 = { cloth: ["cloth1", "cloth2", "cloth3", "cloth4"], wood: ["wood1", "wood2"], soft: ["soft1", "soft2"], key: ["key1", "key2"] };
+function audioInit6() {
+  if (A7.ctx) return;
+  const ctx2 = E6?.env.samples?.ctx() ?? null;
+  const out = E6?.env.samples?.bus("body") ?? null;
+  if (!ctx2 || !out) return;
+  A7.ctx = ctx2;
+  A7.master = ctx2.createGain();
+  A7.master.gain.value = S10.sound ? S10.vol : 0;
+  A7.master.connect(out);
+  A7.world = ctx2.createBiquadFilter();
+  A7.world.type = "lowpass";
+  A7.world.frequency.value = 9e3;
+  A7.world.connect(A7.master);
+  A7.body = ctx2.createGain();
+  A7.body.connect(A7.master);
+  const mk = (sec, fill7) => {
+    const b = ctx2.createBuffer(1, ctx2.sampleRate * sec, ctx2.sampleRate);
+    fill7(b.getChannelData(0));
+    return b;
+  };
+  A7.white = mk(2, (d) => {
+    for (let i = 0; i < d.length; i++) d[i] = Math9.random() * 2 - 1;
+  });
+  A7.brown = mk(4, (d) => {
+    let l = 0;
+    for (let i = 0; i < d.length; i++) {
+      l = (l + 0.02 * (Math9.random() * 2 - 1)) / 1.02;
+      d[i] = l * 3.5;
+    }
+  });
+  A7.grain = mk(2, (d) => {
+    for (let i = 0; i < d.length; i++) d[i] = Math9.random() < 4e-3 ? Math9.random() * 2 - 1 : 0;
+  });
+  const room2 = ctx2.createBufferSource();
+  room2.buffer = A7.brown;
+  room2.loop = true;
+  const rl = ctx2.createBiquadFilter();
+  rl.type = "lowpass";
+  rl.frequency.value = 650;
+  const rg = ctx2.createGain();
+  rg.gain.value = 0.05;
+  room2.connect(rl);
+  rl.connect(rg);
+  rg.connect(A7.world);
+  room2.start();
+}
+function loadSamples2() {
+  const samples = E6?.env.samples;
+  if (!samples) return;
+  A7.buf = new Proxy({}, { get: (_t, k) => typeof k === "string" && SAMPLE_URLS3[k] ? samples.buffer(SAMPLE_URLS3[k]) : null });
+  void samples.preload(Object.values(SAMPLE_URLS3));
+}
+function play5(id, { g = 0.5, pan = 0, rate = 1, lp = 0, dest, at: at2 = 0 } = {}) {
+  const key = GROUPS2[id] ? pick9(GROUPS2[id]) : id;
+  if (!A7.ctx || !A7.buf[key]) return null;
+  const ctx2 = A7.ctx, t = ctx2.currentTime + at2;
+  const src = ctx2.createBufferSource();
+  src.buffer = A7.buf[key];
+  src.playbackRate.value = rate;
+  const gn = ctx2.createGain();
+  gn.gain.value = g;
+  src.connect(gn);
+  let n = gn;
+  if (lp) {
+    const f = ctx2.createBiquadFilter();
+    f.type = "lowpass";
+    f.frequency.value = lp;
+    n.connect(f);
+    n = f;
+  }
+  if (pan) {
+    const p = ctx2.createStereoPanner();
+    p.pan.value = pan;
+    n.connect(p);
+    n = p;
+  }
+  n.connect(dest ?? A7.world);
+  src.start(t);
+  return src;
+}
+function noise8({ at: at2 = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1, gain: gain2 = 0.1, attack = 0.01, dest = A7.world, buf }) {
+  if (!A7.ctx) return;
+  const ctx2 = A7.ctx, t = ctx2.currentTime + at2;
+  const src = ctx2.createBufferSource();
+  src.buffer = buf ?? A7.white;
+  src.loop = true;
+  const fl = ctx2.createBiquadFilter();
+  fl.type = type;
+  fl.frequency.setValueAtTime(f, t);
+  fl.Q.value = q;
+  if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = ctx2.createGain();
+  g.gain.setValueAtTime(1e-4, t);
+  g.gain.exponentialRampToValueAtTime(gain2, t + attack);
+  g.gain.exponentialRampToValueAtTime(1e-4, t + dur);
+  src.connect(fl);
+  fl.connect(g);
+  g.connect(dest);
+  src.start(t, Math9.random());
+  src.stop(t + dur + 0.05);
+}
+function tone3(f0, f12, dur, gain2, { at: at2 = 0, dest = A7.body, type = "sine" } = {}) {
+  if (!A7.ctx) return;
+  const ctx2 = A7.ctx, t = ctx2.currentTime + at2;
+  const o = ctx2.createOscillator();
+  o.type = type;
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(f12, t + dur);
+  const g = ctx2.createGain();
+  g.gain.setValueAtTime(1e-4, t);
+  g.gain.exponentialRampToValueAtTime(gain2, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(1e-4, t + dur);
+  o.connect(g);
+  g.connect(dest);
+  o.start(t);
+  o.stop(t + dur + 0.05);
+}
+var SFX5 = {
+  pen: () => {
+    for (let i = 0; i < 3; i++) noise8({ at: i * 0.05 + Math9.random() * 0.02, dur: 0.035 + Math9.random() * 0.03, f: 2600 + Math9.random() * 1800, q: 3, gain: 0.04 });
+  },
+  kiss: () => {
+    noise8({ dur: 0.07, type: "lowpass", f: 900, gain: 0.08, attack: 4e-3, dest: A7.body });
+    noise8({ at: 0.05, dur: 0.03, type: "highpass", f: 2500, gain: 0.04, attack: 2e-3, dest: A7.body });
+  },
+  gulp: (g = 1) => {
+    tone3(190, 110, 0.12, 0.22 * g);
+    noise8({ at: 0.04, dur: 0.05, f: 900, q: 3, gain: 0.08 * g, dest: A7.body });
+  },
+  spit: () => {
+    noise8({ dur: 0.12, type: "bandpass", f: 2200, f2: 900, q: 0.8, gain: 0.12, attack: 5e-3, dest: A7.body });
+    noise8({ at: 0.1, dur: 0.05, type: "lowpass", f: 600, gain: 0.05, dest: A7.world });
+  },
+  stamp: () => {
+    tone3(80, 50, 0.18, 0.5, { dest: A7.world });
+    play5("wood", { g: 0.3 });
+  },
+  squeak: () => {
+    if (!A7.ctx) return;
+    const t = A7.ctx.currentTime;
+    const o = A7.ctx.createOscillator();
+    o.frequency.setValueAtTime(rand7(2600, 3600), t);
+    o.frequency.linearRampToValueAtTime(rand7(2200, 3e3), t + 0.08);
+    const lfo = A7.ctx.createOscillator();
+    lfo.frequency.value = 60;
+    const lg = A7.ctx.createGain();
+    lg.gain.value = 200;
+    lfo.connect(lg);
+    lg.connect(o.frequency);
+    const g = A7.ctx.createGain();
+    g.gain.setValueAtTime(1e-4, t);
+    g.gain.exponentialRampToValueAtTime(0.015, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(1e-4, t + 0.09);
+    o.connect(g);
+    g.connect(A7.body);
+    o.start(t);
+    lfo.start(t);
+    o.stop(t + 0.1);
+    lfo.stop(t + 0.1);
+  },
+  tap: () => play5("key", { g: 0.12, pan: 0.2, rate: rand7(0.95, 1.1) })
+};
+var LICK = null;
+function lickTick2(speed) {
+  if (!A7.ctx) return;
+  if (!LICK) {
+    const src = A7.ctx.createBufferSource();
+    src.buffer = A7.white;
+    src.loop = true;
+    const f = A7.ctx.createBiquadFilter();
+    f.type = "bandpass";
+    f.Q.value = 1.2;
+    const g = A7.ctx.createGain();
+    g.gain.value = 0;
+    src.connect(f);
+    f.connect(g);
+    g.connect(A7.body);
+    src.start();
+    const gs = A7.ctx.createBufferSource();
+    gs.buffer = A7.grain;
+    gs.loop = true;
+    const gf = A7.ctx.createBiquadFilter();
+    gf.type = "highpass";
+    gf.frequency.value = 1800;
+    const gg = A7.ctx.createGain();
+    gg.gain.value = 0;
+    gs.connect(gf);
+    gf.connect(gg);
+    gg.connect(A7.body);
+    gs.start();
+    LICK = { f, g, gg };
+  }
+  const ct = A7.ctx.currentTime;
+  LICK.f.frequency.setTargetAtTime(lerp2(1100, 3400, G9.dry), ct, 0.05);
+  LICK.g.gain.setTargetAtTime(clamp41(speed / 1800, 0, 1) * 0.07, ct, 0.04);
+  LICK.gg.gain.setTargetAtTime(clamp41(speed / 1800, 0, 1) * G9.grit * 0.5, ct, 0.04);
+}
+var lickStop2 = () => {
+  if (LICK && A7.ctx) {
+    LICK.g.gain.setTargetAtTime(0, A7.ctx.currentTime, 0.06);
+    LICK.gg.gain.setTargetAtTime(0, A7.ctx.currentTime, 0.06);
+  }
+};
+function say9(text3) {
+  if (!text3) return;
+  const el = document3.createElement("div");
+  el.className = "her-line";
+  el.textContent = text3;
+  const speed = S10.style === "cruel" || S10.style === "cold" ? 24 : S10.style === "ritual" ? 45 : 34;
+  el.style.setProperty("--write", `${Math9.max(140, text3.length * speed)}ms`);
+  el.style.setProperty("--steps", String(Math9.max(4, text3.length * 2)));
+  const showing = [...$8("#hand").querySelectorAll(".her-line:not(.gone)")].length;
+  el.style.left = `${innerWidth8 * 0.62}px`;
+  el.style.top = `${innerHeight8 * 0.12 + showing * 50}px`;
+  el.style.transform = `rotate(${rand7(-4, 3).toFixed(1)}deg)`;
+  $8("#hand").appendChild(el);
+  SFX5.pen();
+  setTimeout7(() => {
+    el.classList.add("gone");
+    setTimeout7(() => el.remove(), 600);
+  }, 2600);
+}
+function sense4(text3) {
+  const el = document3.createElement("div");
+  el.className = "sense";
+  el.textContent = text3;
+  const showing = [...$8("#hand").querySelectorAll(".sense:not(.gone)")].length;
+  el.style.left = `${innerWidth8 * 0.06}px`;
+  el.style.top = `${innerHeight8 * 0.6 - showing * 46}px`;
+  $8("#hand").appendChild(el);
+  setTimeout7(() => {
+    el.classList.add("gone");
+    setTimeout7(() => el.remove(), 900);
+  }, 3400);
+}
+var sayL = (key, z2) => {
+  const pool = L4()[key];
+  if (pool && pool.length) say9(pick9(pool).replace("%z", z2 ? ZONE_WORDS2[z2] : ""));
+};
+var G9;
+function fresh6() {
+  return {
+    phase: "idle",
+    t: 0,
+    foot: "right",
+    surface: "close",
+    surfaces: {},
+    order: [],
+    orderI: 0,
+    surfT: 0,
+    surfLen: 25e3,
+    dry: 0,
+    grit: 0,
+    gest: null,
+    want: null,
+    wantAt: 0,
+    attention: "busy",
+    attT: 0,
+    nextAtt: 2e3,
+    nextMove: 6e3,
+    fx: { dx: 0, dy: 0, s: 1, r: 0 },
+    anim: null,
+    press: 0,
+    light: -1,
+    lightT: 0,
+    marks: [],
+    toldDry: false,
+    toldPolish: false,
+    toldGrit: false,
+    toldTaste: false,
+    nextTap: 0,
+    stats: { strokes: 0, withGrain: 0, kisses: 0, swallows: 0, spits: 0, caught: 0, stamps: 0, checks: [], polishStrokes: 0 }
+  };
+}
+G9 = fresh6();
+var view = () => G9.surface === "sole" ? "sole" : "close";
+var slotKey = () => `${S10.kind}_${view()}`;
+var twoFeet = () => S10.feet[slotKey()] === "two";
+var mirrored = () => !twoFeet() && G9.foot !== S10.shown[slotKey()];
+var footX = () => S10.fit[slotKey()][G9.foot === "right" ? "xr" : "xl"];
+function zonesNow() {
+  if (twoFeet()) {
+    const own = S10.zones[slotKey()]?.[G9.foot];
+    if (own) return own;
+    const u0 = footX(), out = {}, sgn = G9.foot === "right" ? -1 : 1;
+    for (const [k, p] of Object.entries(view() === "sole" ? SOLE_TWO : FRONT[S10.kind])) out[k] = [+(u0 + p[0] * sgn).toFixed(3), p[1], p[2], p[3], p[4]];
+    return out;
+  }
+  const z2 = S10.zones[slotKey()];
+  return z2 && !z2.right ? z2 : K()[view()];
+}
+var leatherNow = () => view() === "sole" ? [] : K().leather.filter((z2) => Object.keys(zonesNow()).includes(z2));
+var surf = () => G9.surfaces[`${G9.foot}_${G9.surface}`];
+var imgs = {};
+var shownSrc = null;
+function slotImg() {
+  const i = imgs[slotKey()];
+  return i && i.naturalWidth ? i : null;
+}
+function shoeRect() {
+  const img2 = slotImg() ?? SPRITE;
+  if (!img2.naturalWidth) return null;
+  const fit2 = S10.fit[slotKey()];
+  const H = innerHeight8 * fit2.h, Wd = H * img2.naturalWidth / img2.naturalHeight;
+  const k = G9.fx.s * (1 + 0.1 * G9.press);
+  G9.camU = lerp2(G9.camU ?? (twoFeet() ? footX() : 0.5), twoFeet() ? footX() : 0.5, 0.08);
+  const cx = innerWidth8 / 2 + (fit2.x ?? 0) * innerWidth8 + G9.fx.dx - (G9.camU - 0.5) * Wd * k, cy = innerHeight8 * fit2.y + G9.fx.dy;
+  return { x: cx - Wd * k / 2, y: cy - H * k / 2, w: Wd * k, h: H * k };
+}
+function toPic(x, y) {
+  const r = shoeRect();
+  if (!r) return null;
+  let u = (x - r.x) / r.w;
+  const v = (y - r.y) / r.h;
+  if (mirrored()) u = 1 - u;
+  return [u, v, r];
+}
+function zoneRadii2(r) {
+  const z2 = Object.entries(zonesNow()), out = {};
+  for (const [k, p] of z2) {
+    let dmin = 1e9;
+    for (const [k2, q] of z2) if (k2 !== k) dmin = Math9.min(dmin, Math9.hypot((p[0] - q[0]) * r.w, (p[1] - q[1]) * r.h));
+    const auto = clamp41(dmin / 2, r.h * 0.04, r.h * 0.12);
+    out[k] = p[3] !== void 0 ? { rx: p[2] * r.h, ry: p[3] * r.h, rot: (p[4] ?? 0) * Math9.PI / 180 } : p[2] !== void 0 ? { rx: p[2] * r.h, ry: p[2] * r.h } : { rx: auto, ry: auto };
+  }
+  return out;
+}
+function inEllipse2(dx, dy, z2) {
+  const a = -(z2.rot ?? 0), c = Math9.cos(a), sn = Math9.sin(a);
+  return [(dx * c - dy * sn) / z2.rx, (dx * sn + dy * c) / z2.ry];
+}
+function zoneAtPic(u, v, r) {
+  const rad = zoneRadii2(r);
+  let best = null, bd = 1e9;
+  for (const [k, p] of Object.entries(zonesNow())) {
+    const [ex, ey] = inEllipse2((u - p[0]) * r.w, (v - p[1]) * r.h, rad[k]);
+    const d = Math9.hypot(ex, ey);
+    if (d < 1 && d < bd) {
+      bd = d;
+      best = k;
+    }
+  }
+  return best;
+}
+var onShoe = (x, y) => {
+  const q = toPic(x, y);
+  return q && q[0] > 0 && q[0] < 1 && q[1] > 0 && q[1] < 1;
+};
+function makeSurface() {
+  const img2 = slotImg() ?? SPRITE;
+  if (!img2.naturalWidth) return null;
+  const w = 140, h2 = Math9.round(140 * img2.naturalHeight / img2.naturalWidth);
+  const base = document3.createElement("canvas");
+  base.width = w;
+  base.height = h2;
+  const b = base.getContext("2d");
+  b.drawImage(img2, 0, 0, w, h2);
+  const alpha = b.getImageData(0, 0, w, h2).data;
+  const m = new Float32Array(w * h2), gl = new Float32Array(w * h2), zoneOf = new Int8Array(w * h2).fill(-1), leatherMask = new Uint8Array(w * h2);
+  const zs = Object.entries(zonesNow()), r = { w, h: h2 }, asp = img2.naturalWidth / img2.naturalHeight;
+  const rad = zoneRadii2({ w: asp, h: 1 });
+  const [n, size4, stretch] = D3().blobs, blobs = [];
+  for (const [k, p] of zs) for (let i = 0; i < n * (view() === "sole" ? 1.5 : 1); i++) blobs.push([p[0] + rand7(-0.09, 0.09), p[1] + rand7(-0.06, 0.06), rand7(size4 * 0.6, size4 * 1.4), rand7(-1, 1)]);
+  const leather = leatherNow();
+  for (let y = 0; y < h2; y++) for (let x = 0; x < w; x++) {
+    const a = alpha[(y * w + x) * 4 + 3] / 255;
+    if (a < 0.3) continue;
+    let dmin = 1e9, zi = -1;
+    zs.forEach(([k, p], i) => {
+      const [ex, ey] = inEllipse2((x / w - p[0]) * asp, y / h2 - p[1], rad[k]);
+      const d = Math9.hypot(ex, ey);
+      if (d < dmin) {
+        dmin = d;
+        zi = i;
+      }
+    });
+    const onShoeK = 1 - smooth(0.9, 1.5, dmin);
+    if (onShoeK <= 0.01) continue;
+    zoneOf[y * w + x] = dmin < 1.2 ? zi : -1;
+    if (zi >= 0 && leather.includes(zs[zi][0])) leatherMask[y * w + x] = 1;
+    let v = (S10.dirt === "rain" ? 0.05 : 0.22) + Math9.random() * 0.12;
+    for (const [bx, by, br, sk] of blobs) {
+      const dx = (x / w - bx) * asp, dy = y / h2 - by;
+      const sx = stretch > 1 ? dx + sk * dy * 0.6 : dx;
+      v += 0.55 * Math9.exp(-(sx * sx / (stretch * stretch) + dy * dy * 0.8) / (br * br));
+    }
+    m[y * w + x] = clamp41(v, 0, 1) * a * onShoeK;
+  }
+  const tex = new Float32Array(w * h2);
+  for (let i = 0; i < w * h2; i++) tex[i] = 0.7 + Math9.random() * 0.3;
+  const s = { w, h: h2, m, gl, tex, zoneOf, leatherMask, total0: m.reduce((q, v) => q + v, 0), c: document3.createElement("canvas"), cg: document3.createElement("canvas"), names: zs.map(([k]) => k) };
+  s.c.width = s.cg.width = w;
+  s.c.height = s.cg.height = h2;
+  return s;
+}
+function ensureSurface() {
+  const key = `${G9.foot}_${G9.surface}`;
+  if (!G9.surfaces[key]) G9.surfaces[key] = makeSurface();
+  return G9.surfaces[key];
+}
+var dirtLeft2 = (s = surf()) => s ? s.m.reduce((q, v) => q + v, 0) / Math9.max(1, s.total0) : 0;
+function zoneStat(zone, s = surf()) {
+  if (!s) return { dirt: 0, gloss: 1 };
+  const i = s.names.indexOf(zone);
+  if (i < 0) return { dirt: 0, gloss: 1 };
+  let d = 0, g = 0, n = 0;
+  for (let p = 0; p < s.m.length; p++) if (s.zoneOf[p] === i) {
+    d += s.m[p];
+    g += s.gl[p];
+    n++;
+  }
+  return n ? { dirt: d / n, gloss: g / n } : { dirt: 0, gloss: 1 };
+}
+function lickStroke(x0, y0, x1, y1, speed) {
+  const s = surf();
+  const a = toPic(x0, y0), b = toPic(x1, y1);
+  if (!s || !a || !b) return { removed: 0, polished: 0 };
+  const r = a[2];
+  const { w, h: h2, m, gl, leatherMask } = s;
+  const zone = zoneAtPic(b[0], b[1], r), zp = zone ? zonesNow()[zone] : null;
+  let withGrain = true;
+  if (zp) {
+    const ang = (zp[4] ?? 0) * Math9.PI / 180, major = zp[2] >= (zp[3] ?? zp[2]) ? ang : ang + Math9.PI / 2;
+    const du = (b[0] - a[0]) * r.w, dv = (b[1] - a[1]) * r.h, len2 = Math9.hypot(du, dv) || 1;
+    const along = (du * Math9.cos(major) + dv * Math9.sin(major)) / len2;
+    withGrain = Math9.abs(along) > 0.6 && Math9.sign(along) === ST4().grain;
+  }
+  const wet = (1 - G9.dry * 0.85) * (1 - G9.grit * 0.4), k = (withGrain ? 1 : 0.45) * wet * 0.5 / D3().resist;
+  const steps3 = Math9.max(1, Math9.ceil(Math9.hypot(x1 - x0, y1 - y0) / 4)), rad = 0.07 * w;
+  let removed = 0, polished = 0;
+  const slow = speed < 650;
+  for (let i = 0; i <= steps3; i++) {
+    const px = lerp2(a[0], b[0], i / steps3) * w, py = lerp2(a[1], b[1], i / steps3) * h2;
+    for (let y = Math9.max(0, Math9.floor(py - rad)); y < Math9.min(h2, Math9.ceil(py + rad)); y++) for (let x = Math9.max(0, Math9.floor(px - rad)); x < Math9.min(w, Math9.ceil(px + rad)); x++) {
+      const d = Math9.hypot(x - px, y - py) / rad;
+      if (d > 1) continue;
+      const p = y * w + x;
+      if (m[p] > 0.04) {
+        const take = m[p] * k * (1 - d) * 0.35;
+        m[p] -= take;
+        removed += take;
+      } else if (leatherMask[p]) {
+        if (slow) {
+          const add2 = (1 - gl[p]) * 0.06 * (1 - d) * wet;
+          gl[p] += add2;
+          polished += add2;
+        } else gl[p] = Math9.max(0, gl[p] - 0.01 * (1 - d));
+      }
+    }
+  }
+  return { removed, polished, withGrain, zone };
+}
+function beginSurface(surface2) {
+  G9.surface = surface2;
+  G9.surfT = 0;
+  G9.surfLen = rand7(...ST4().surface) * 1e3;
+  ensureSurface();
+  G9.want = null;
+  G9.anim = { kind: "turn", t0: G9.t };
+  play5("cloth", { g: 0.3 });
+  if (surface2 === "sole") sayL("sole");
+  nextWant();
+}
+function nextWant() {
+  const s = surf();
+  if (!s) return;
+  let best = null, bv = 0.12;
+  for (const z2 of s.names) {
+    const st3 = zoneStat(z2);
+    if (st3.dirt > bv) {
+      bv = st3.dirt;
+      best = z2;
+    }
+  }
+  if (!best && view() === "close") {
+    let gv = 0.6;
+    for (const z2 of leatherNow()) {
+      const st3 = zoneStat(z2);
+      if (st3.gloss < gv) {
+        gv = st3.gloss;
+        best = z2;
+      }
+    }
+    if (best && !G9.toldPolish) {
+      G9.toldPolish = true;
+      sayL("polish");
+    }
+  }
+  G9.want = best;
+  G9.wantAt = G9.t;
+}
+function herMove2() {
+  const mv = ST4().moves, r = Math9.random();
+  if (r < mv.stamp && G9.lastQuality !== void 0 && G9.lastQuality < 0.5) {
+    G9.anim = { kind: "stamp", t0: G9.t };
+    SFX5.stamp();
+    G9.stats.stamps += 1;
+    sayL("stamp");
+  } else if (r < mv.stamp + mv.press) {
+    G9.anim = { kind: "press", t0: G9.t };
+    play5("cloth", { g: 0.25 });
+    sense4("She presses it to your face. Leather and her day, close.");
+  } else if (r < mv.stamp + mv.press + mv.kiss) {
+    G9.kissWanted = G9.t;
+    sayL("kiss");
+  }
+  G9.nextMove = G9.t + rand7(7e3, 13e3);
+}
+function updateAttention(dt) {
+  G9.attT += dt;
+  if (G9.attT > G9.nextAtt) {
+    G9.attT = 0;
+    G9.attention = planAttention();
+    G9.nextAtt = 0;
+  }
+  if (G9.attention === "busy" && G9.t > G9.nextTap) {
+    SFX5.tap();
+    G9.nextTap = G9.t + rand7(140, 420);
+  }
+}
+function inspect() {
+  G9.phase = "inspect";
+  G9.light = 0;
+  G9.lightT = 0;
+  play5("cloth", { g: 0.3 });
+  sense4("She turns it to the light.");
+}
+function verdict() {
+  const s = surf();
+  let worst = null, wv = 0, kind = null;
+  for (const z2 of s.names) {
+    const st3 = zoneStat(z2);
+    if (st3.dirt > 0.2 && st3.dirt > wv) {
+      wv = st3.dirt;
+      worst = z2;
+      kind = "missed";
+    }
+  }
+  if (!worst && view() === "close") for (const z2 of leatherNow()) {
+    const st3 = zoneStat(z2);
+    if (st3.gloss < 0.35 && 1 - st3.gloss > wv) {
+      wv = 1 - st3.gloss;
+      worst = z2;
+      kind = "dull";
+    }
+  }
+  const q = clamp41(1 - dirtLeft2(s) * 3, 0, 1) * (view() === "close" ? 0.5 + 0.5 * meanGloss(s) : 1);
+  G9.lastQuality = q;
+  G9.stats.checks.push({ foot: G9.foot, surface: G9.surface, dirt: dirtLeft2(s), gloss: view() === "close" ? meanGloss(s) : null, worst, kind });
+  if (worst) sayL(kind, worst);
+  else sayL(q > 0.6 ? "good" : "poor");
+}
+function meanGloss(s) {
+  if (!s) return 1;
+  let g = 0, n = 0;
+  for (let p = 0; p < s.gl.length; p++) if (s.leatherMask[p]) {
+    g += s.gl[p];
+    n++;
+  }
+  return n ? g / n : 1;
+}
+function begin6() {
+  audioInit6();
+  if (A7.ctx && A7.ctx.state === "suspended") A7.ctx.resume();
+  $8("#hand").replaceChildren();
+  $8("#summary").style.display = "none";
+  G9 = fresh6();
+  G9.phase = "loop";
+  G9.order = [["right", "close"], ["right", "sole"], ["left", "close"], ["left", "sole"]];
+  $8("#reply").innerHTML = `<span class="act">She sets her ${S10.kind === "boots" ? "boot" : "shoe"} down in front of the commander, still carrying ${D3().where}.</span>`;
+  G9.foot = "right";
+  G9.surface = G9.order[0][1];
+  ensureSurface();
+  nextWant();
+  G9.surfLen = rand7(...ST4().surface) * 1e3;
+  sayL("entry");
+}
+function nextSurface() {
+  G9.orderI += 1;
+  if (G9.orderI >= G9.order.length) {
+    finish6("done");
+    return;
+  }
+  const [foot2, surface2] = G9.order[G9.orderI];
+  if (foot2 !== G9.foot) {
+    G9.foot = foot2;
+    sayL("other");
+    G9.anim = { kind: "change", t0: G9.t };
+    play5("cloth", { g: 0.35 });
+  }
+  beginSurface(surface2);
+}
+function finish6(why) {
+  if (G9.phase === "done") return;
+  G9.phase = "done";
+  lickStop2();
+  say9(why === "stop" ? pick9(L4().stop) : pick9(L4().end));
+  const s = G9.stats;
+  setTimeout7(() => {
+    $8("#sumLine").textContent = why === "stop" ? pick9(L4().stop) : L4().end[0];
+    $8("#sumFacts").innerHTML = `${K().label} \xB7 ${S10.dirt} (${D3().where})<br>strokes: ${s.strokes} (with her grain ${s.withGrain}) \xB7 polish strokes: ${s.polishStrokes}<br>kisses: ${s.kisses}<br>swallowed: ${s.swallows} \xB7 spat: ${s.spits} (caught ${s.caught})<br>stamps: ${s.stamps}<br>` + s.checks.map((c) => `${c.foot} ${c.surface}: dirt ${(c.dirt * 100).toFixed(0)} %${c.gloss !== null ? `, shine ${(c.gloss * 100).toFixed(0)} %` : ""}${c.worst ? ` \u2014 ${c.kind} ${ZONE_WORDS2[c.worst]}` : ""}`).join("<br>") + `<br>how it ended: ${why}`;
+    $8("#summary").style.display = "block";
+  }, 1e3);
+}
+function swallow() {
+  if (G9.phase !== "loop" && G9.phase !== "inspect") return;
+  SFX5.gulp(0.6 + G9.grit);
+  G9.stats.swallows += 1;
+  if (G9.grit > 0.25 && !G9.toldTaste) {
+    G9.toldTaste = true;
+    sense4(`${D3().taste} You swallow it.`);
+  }
+  G9.grit = Math9.max(0, G9.grit - 0.6);
+  G9.dry = Math9.max(0, G9.dry - 0.35);
+}
+function spit() {
+  if (G9.phase !== "loop" || G9.grit < 0.05) return;
+  SFX5.spit();
+  G9.stats.spits += 1;
+  G9.grit = 0;
+  reportSpit();
+}
+function spitAnswer(seen2) {
+  if (seen2) {
+    G9.stats.caught += 1;
+    sayL("caught");
+    G9.anim = { kind: "press", t0: G9.t };
+    if (S10.style === "cruel") {
+      const s = surf();
+      if (s) {
+        for (let p = 0; p < s.m.length; p++) if (s.zoneOf[p] >= 0) s.m[p] = Math9.min(1, s.m[p] + 0.15 * Math9.random());
+      }
+    }
+  } else sense4("You spit it aside. She did not see.");
+}
+var last2 = 0;
+function frame6(now) {
+  requestAnimationFrame7(frame6);
+  const dt = Math9.min(50, now - last2);
+  last2 = now;
+  if (G9.phase === "loop" || G9.phase === "inspect") update2(dt);
+  render6(now);
+}
+function update2(dt) {
+  G9.t += dt;
+  const a = G9.anim, fx2 = { dx: 0, dy: 0, s: 1, r: 0 };
+  if (a && !S10.reduced) {
+    const u = (G9.t - a.t0) / 1e3;
+    if (a.kind === "turn") {
+      fx2.s = 1 - 0.12 * Math9.sin(Math9.min(u, 0.4) / 0.4 * Math9.PI);
+      fx2.r = 4 * Math9.sin(Math9.min(u, 0.4) / 0.4 * Math9.PI);
+    }
+    if (a.kind === "change") {
+      fx2.dx = 120 * Math9.sin(Math9.min(u, 0.6) / 0.6 * Math9.PI);
+      fx2.s = 1 - 0.15 * Math9.sin(Math9.min(u, 0.6) / 0.6 * Math9.PI);
+    }
+    if (a.kind === "press") {
+      const p = u < 0.4 ? easeOut5(u / 0.4) : u < 2 ? 1 : Math9.max(0, 1 - (u - 2) / 0.6);
+      fx2.s = 1 + 0.16 * p;
+      G9.press = p;
+    }
+    if (a.kind === "stamp") {
+      fx2.dy = 22 * Math9.max(0, 1 - u * 3) * Math9.sin(u * 40);
+    }
+    if (u > 3) {
+      G9.anim = null;
+      G9.press = 0;
+    }
+  }
+  G9.fx = fx2;
+  if (G9.phase === "inspect") {
+    G9.lightT += dt;
+    G9.light = clamp41(G9.lightT / 1700, 0, 1);
+    if (G9.lightT > 1700 && !G9.judged) {
+      G9.judged = true;
+      verdict();
+    }
+    if (G9.lightT > 3e3) {
+      G9.judged = false;
+      G9.phase = "loop";
+      G9.light = -1;
+      nextSurface();
+    }
+    return;
+  }
+  if (!surf()) {
+    ensureSurface();
+    nextWant();
+  }
+  updateAttention(dt);
+  G9.surfT += dt;
+  if (G9.grit > 0.7 && !G9.toldGrit) {
+    G9.toldGrit = true;
+    sense4("Grit fills the mouth. Swallow it, or spit while she is not looking.");
+  }
+  if (G9.dry > 0.85 && !G9.toldDry) {
+    G9.toldDry = true;
+    sense4("Your mouth is dry; the tongue drags. Swallow.");
+  }
+  if (G9.want && zoneStat(G9.want).dirt < 0.1 && (view() === "sole" || zoneStat(G9.want).gloss > 0.55 || !leatherNow().includes(G9.want))) nextWant();
+  if (G9.t > G9.nextMove) herMove2();
+  const done = dirtLeft2() <= CHECK_AT && (view() === "sole" || meanGloss(surf()) > 0.6);
+  if (done || G9.surfT > G9.surfLen) inspect();
+}
+function render6(now) {
+  const img2 = slotImg();
+  const want = img2 ? img2.src : ASSETS.her;
+  if (shownSrc !== want) {
+    shownSrc = want;
+    $8("#shoe").src = want;
+  }
+  const r = shoeRect();
+  const wrap = $8("#shoeWrap");
+  if (r) {
+    wrap.style.left = `${r.x}px`;
+    wrap.style.top = `${r.y}px`;
+    wrap.style.width = `${r.w}px`;
+    wrap.style.height = `${r.h}px`;
+    const fade2 = S10.fit[slotKey()].fade ?? 0;
+    wrap.style.webkitMaskImage = wrap.style.maskImage = fade2 > 0 ? `linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.35) ${(fade2 * 45).toFixed(1)}%, #000 ${(fade2 * 100).toFixed(1)}%)` : "none";
+    wrap.style.transform = `rotate(${(G9.fx.r + Math9.sin(now / 1900) * 0.35).toFixed(2)}deg) scaleX(${mirrored() ? -1 : 1})`;
+  }
+  $8("#vig").style.background = `radial-gradient(ellipse 64% 58% at 50% 50%, rgba(0,0,0,0) 40%, rgba(0,0,0,${(0.4 + 0.4 * G9.press).toFixed(2)}) 100%)`;
+  const s = G9.phase === "loop" || G9.phase === "inspect" ? surf() : null;
+  const dc = $8("#dirtC"), gc = $8("#glossC"), lc = $8("#lightC");
+  if (s) {
+    const col = D3().color;
+    const cx = s.c.getContext("2d"), id = cx.createImageData(s.w, s.h);
+    for (let i = 0; i < s.w * s.h; i++) {
+      const v = Math9.min(1, s.m[i] * 1.3), t = s.tex[i];
+      id.data[i * 4] = col[0] * t;
+      id.data[i * 4 + 1] = col[1] * t;
+      id.data[i * 4 + 2] = col[2] * t;
+      id.data[i * 4 + 3] = Math9.round(v * 0.88 * (0.75 + 0.25 * t) * 255);
+    }
+    cx.putImageData(id, 0, 0);
+    if (dc.width !== s.w || dc.height !== s.h) {
+      dc.width = s.w;
+      dc.height = s.h;
+    }
+    const d2 = dc.getContext("2d");
+    d2.clearRect(0, 0, s.w, s.h);
+    d2.drawImage(s.c, 0, 0);
+    const gx = s.cg.getContext("2d"), gd = gx.createImageData(s.w, s.h), bright = K().gloss;
+    for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) {
+      const i = y * s.w + x;
+      if (!s.leatherMask[i]) continue;
+      const zn = s.zoneOf[i] >= 0 ? s.names[s.zoneOf[i]] : null, zb = zn && K().bright[zn] || 1;
+      const band2 = 0.35 + 0.65 * Math9.exp(-((x / s.w - y / s.h * 0.6 - 0.12) ** 2) / 0.02);
+      const v = clamp41(s.gl[i] * band2 * bright * zb * (1 - Math9.min(1, s.m[i] * 2)), 0, 1) * 200;
+      gd.data[i * 4] = v;
+      gd.data[i * 4 + 1] = v;
+      gd.data[i * 4 + 2] = v * 1.04;
+      gd.data[i * 4 + 3] = 255;
+    }
+    gx.putImageData(gd, 0, 0);
+    if (gc.width !== s.w || gc.height !== s.h) {
+      gc.width = s.w;
+      gc.height = s.h;
+    }
+    const g2 = gc.getContext("2d");
+    g2.clearRect(0, 0, s.w, s.h);
+    g2.drawImage(s.cg, 0, 0);
+    dc.style.opacity = "1";
+    gc.style.opacity = "1";
+    if (G9.light >= 0) {
+      if (lc.width !== s.w || lc.height !== s.h) {
+        lc.width = s.w;
+        lc.height = s.h;
+      }
+      const lx = lc.getContext("2d"), ld = lx.createImageData(s.w, s.h), pos = lerp2(-0.3, 1.3, easeOut5(G9.light));
+      for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) {
+        const i = y * s.w + x;
+        if (s.zoneOf[i] < 0 && !s.leatherMask[i]) continue;
+        const bandv = Math9.exp(-((x / s.w + y / s.h * 0.3 - pos) ** 2) / 6e-3);
+        const shine = s.leatherMask[i] ? 0.15 + 0.85 * s.gl[i] : 0.25;
+        const v = bandv * shine * (1 - Math9.min(1, s.m[i] * 2.5)) * 255;
+        ld.data[i * 4] = v;
+        ld.data[i * 4 + 1] = v * 0.97;
+        ld.data[i * 4 + 2] = v * 0.9;
+        ld.data[i * 4 + 3] = 255;
+      }
+      lx.putImageData(ld, 0, 0);
+      lc.style.opacity = "1";
+    } else lc.style.opacity = "0";
+  } else {
+    dc.style.opacity = "0";
+    gc.style.opacity = "0";
+    lc.style.opacity = "0";
+  }
+  const mg = $8("#mouthGauge").getContext("2d");
+  mg.clearRect(0, 0, 260, 8);
+  if (G9.phase === "loop" && S10.debug) {
+    mg.fillStyle = "rgba(210,170,120,.8)";
+    mg.fillRect(0, 0, 260 * G9.grit, 3);
+    mg.fillStyle = "rgba(220,220,235,.6)";
+    mg.fillRect(0, 5, 260 * G9.dry, 3);
+  }
+  const mc = $8("#markC");
+  if (mc.width !== innerWidth8) {
+    mc.width = innerWidth8;
+    mc.height = innerHeight8;
+  }
+  const mx = mc.getContext("2d");
+  mx.clearRect(0, 0, mc.width, mc.height);
+  G9.marks = G9.marks.filter((q) => performance9.now() - q.born < 2200);
+  for (const q of G9.marks) {
+    const al = 1 - (performance9.now() - q.born) / 2200;
+    const g = mx.createRadialGradient(q.x, q.y, 0, q.x, q.y, 30);
+    g.addColorStop(0, `rgba(255,150,140,${(0.35 * al).toFixed(3)})`);
+    g.addColorStop(1, "rgba(255,150,140,0)");
+    mx.fillStyle = g;
+    mx.beginPath();
+    mx.arc(q.x, q.y, 30, 0, Math9.PI * 2);
+    mx.fill();
+  }
+  if (G9.phase === "idle" || G9.phase === "mark") {
+    mx.save();
+    mx.setLineDash([6, 6]);
+    mx.strokeStyle = "rgba(216,228,255,.45)";
+    mx.lineWidth = 1;
+    mx.beginPath();
+    mx.moveTo(innerWidth8 / 2 + (r ? (S10.fit[slotKey()].x ?? 0) * innerWidth8 : 0), 0);
+    mx.lineTo(innerWidth8 / 2 + (r ? (S10.fit[slotKey()].x ?? 0) * innerWidth8 : 0), innerHeight8);
+    mx.stroke();
+    mx.restore();
+    if (twoFeet()) {
+      mx.fillStyle = "rgba(216,228,255,.75)";
+      mx.font = '12px "IBM Plex Mono"';
+      mx.fillText(`framing her ${G9.foot} foot`, innerWidth8 / 2 + 8, 24);
+    }
+  }
+  if (r && (S10.debug || MARK2.on)) {
+    const rad = zoneRadii2(r), zz = MARK2.on ? MARK2.pts : zonesNow();
+    for (const [k, p] of Object.entries(zz)) {
+      const live3 = MARK2.on && MARK2.drag && k === MARK2.names[MARK2.i];
+      const ex = live3 ? Math9.max(6, MARK2.drag.rx ?? 6) : p[2] !== void 0 ? p[2] * r.h : rad[k]?.rx ?? 10, ey = live3 ? Math9.max(6, MARK2.drag.ry ?? 6) : p[3] !== void 0 ? p[3] * r.h : ex;
+      const er = (live3 ? MARK2.drag.rot ?? 0 : p[4] ?? 0) * Math9.PI / 180 * (mirrored() ? -1 : 1);
+      const cxp = r.x + (mirrored() ? 1 - p[0] : p[0]) * r.w, cyp = r.y + p[1] * r.h;
+      mx.strokeStyle = k === G9.want ? "rgba(140,255,170,.8)" : "rgba(216,228,255,.55)";
+      mx.lineWidth = k === G9.want ? 2 : 1;
+      mx.beginPath();
+      mx.ellipse(cxp, cyp, ex, ey, er, 0, Math9.PI * 2);
+      mx.stroke();
+      mx.fillStyle = "rgba(216,228,255,.8)";
+      mx.font = '12px "IBM Plex Mono"';
+      mx.fillText(k, cxp + 10, cyp + 4);
+    }
+  }
+  if (S10.debug && s) {
+    $8("#debug").textContent = `${G9.foot} ${G9.surface} \xB7 dirt ${(dirtLeft2() * 100).toFixed(0)} %${view() === "close" ? ` \xB7 shine ${(meanGloss(s) * 100).toFixed(0)} %` : ""} \xB7 she wants ${G9.want ?? "\u2014"}
+mouth: dry ${G9.dry.toFixed(2)} grit ${G9.grit.toFixed(2)} \xB7 her attention ${G9.attention}
+surface ${(G9.surfT / 1e3).toFixed(0)} / ${(G9.surfLen / 1e3).toFixed(0)} s \xB7 grain ${ST4().grain > 0 ? "toward the toe" : "toward the heel"}
+` + (s ? s.names.map((z2) => {
+      const q = zoneStat(z2, s);
+      return `${z2}: dirt ${(q.dirt * 100).toFixed(0)}${leatherNow().includes(z2) ? ` shine ${(q.gloss * 100).toFixed(0)}` : ""}`;
+    }).join("  ") : "");
+  }
+}
+function down2(x, y) {
+  if (MARK2.on) {
+    markDown(x, y);
+    return;
+  }
+  if (G9.phase !== "loop" || !onShoe(x, y)) return;
+  G9.gest = { x0: x, y0: y, x, y, t0: G9.t, len: 0, rev: 0, lastA: null, lastT: performance9.now(), kind: null };
+}
+function move(x, y, e) {
+  if (MARK2.on) {
+    markMove(x, y, e.shiftKey);
+    return;
+  }
+  const g = G9.gest;
+  if (!g) return;
+  const dx = x - g.x, dy = y - g.y, d = Math9.hypot(dx, dy);
+  if (d < 0.5) return;
+  const nowp = performance9.now(), dtm = Math9.max(1, nowp - g.lastT);
+  g.lastT = nowp;
+  g.len += d;
+  const ax = x - (g.ax ?? g.x0), ay = y - (g.ay ?? g.y0);
+  if (Math9.hypot(ax, ay) >= 6) {
+    const an = Math9.atan2(ay, ax);
+    if (g.lastA !== null) {
+      let da = an - g.lastA;
+      while (da > Math9.PI) da -= 2 * Math9.PI;
+      while (da < -Math9.PI) da += 2 * Math9.PI;
+      if (Math9.abs(da) > 2.2) g.rev += 1;
+    }
+    g.lastA = an;
+    g.ax = x;
+    g.ay = y;
+  }
+  if (!g.kind && (g.len > 40 || g.rev >= 1)) g.kind = "lick";
+  const speed = d / dtm * 1e3;
+  g.speed = lerp2(g.speed ?? speed, speed, 0.2);
+  if (g.kind === "lick") {
+    const res = lickStroke(g.x, g.y, x, y, g.speed);
+    const s = surf();
+    if (res.removed > 0) G9.grit = clamp41(G9.grit + res.removed * 35e-5 * D3().grit, 0, 1);
+    G9.dry = clamp41(G9.dry + d * 11e-4 * (res.removed > 0 ? D3().dry : 0.6), 0, 1);
+    lickTick2(g.speed);
+    if (res.polished > 0) {
+      g.polish = (g.polish ?? 0) + res.polished;
+      if (Math9.random() < 0.06) SFX5.squeak();
+    }
+    if (res.withGrain) g.grainLen = (g.grainLen ?? 0) + d;
+  }
+  g.x = x;
+  g.y = y;
+}
+function up() {
+  if (MARK2.on) {
+    markUp();
+    return;
+  }
+  const g = G9.gest;
+  if (!g) return;
+  G9.gest = null;
+  lickStop2();
+  if (!g.kind && g.len < 12 && G9.t - g.t0 >= 300) {
+    SFX5.kiss();
+    G9.stats.kisses += 1;
+    G9.marks.push({ x: g.x0, y: g.y0, born: performance9.now() });
+    if (G9.kissWanted && G9.t - G9.kissWanted < 8e3) {
+      G9.kissWanted = 0;
+      if (Math9.random() < 0.5) sayL("good");
+    }
+    return;
+  }
+  if (g.kind === "lick") {
+    G9.stats.strokes += 1;
+    if ((g.grainLen ?? 0) > g.len * 0.5) G9.stats.withGrain += 1;
+    if ((g.polish ?? 0) > 0.5) G9.stats.polishStrokes += 1;
+  }
+}
+var MARK2 = { on: false, i: 0, names: [], pts: {} };
+var markDown = (_x, _y) => {
+};
+var markMove = (_x, _y, _c) => {
+};
+var markUp = () => {
+};
+var ASSETS = { her: "" };
+var SPRITE = { naturalWidth: 0, naturalHeight: 0 };
+var R9 = { run: null, lineStyle: "neutral", seg: null, running: false, plan: [], sums: {}, spits: 0, caught: 0, qualities: [], checks: 0, verdictSent: false, ox: 0, oy: 0, lastNow: 0, ended: null };
+var broken = /* @__PURE__ */ new Set();
+function planAttention() {
+  const b = beatNow3();
+  return R9.running ? R9.plan[b]?.attention ?? G9.attention : G9.attention;
+}
+function beatNow3() {
+  const seg = R9.seg;
+  if (!seg) return 0;
+  return clamp41(Math9.floor((G9.t - seg.clock0) / TUNING.physics.beatMs), 0, seg.beats - 1);
+}
+function report5(i, pointer) {
+  if (!E6 || !R9.seg || !R9.running) return;
+  E6.env.staging.input(i, { pointer });
+}
+var spitVia = "key";
+function reportSpit() {
+  if (!R9.seg || !R9.running) return;
+  R9.spits += 1;
+  report5({ beat: beatNow3(), kind: "spit" }, spitVia === "mouse");
+}
+function sumsOf(s) {
+  const zones2 = new Array(s.names.length).fill(0);
+  let total2 = 0;
+  for (let p = 0; p < s.m.length; p++) {
+    total2 += s.m[p];
+    if (s.zoneOf[p] >= 0) zones2[s.zoneOf[p]] += s.m[p];
+  }
+  return { total: total2, zones: zones2 };
+}
+function wipedNow() {
+  let amount = 0, part, best = 0;
+  for (const [key, s] of Object.entries(G9.surfaces)) {
+    if (!s || !(s.total0 > 0)) continue;
+    const now = sumsOf(s), was = R9.sums[key] ?? now;
+    const lost = was.total - now.total;
+    if (lost > 0) amount += lost / s.total0 / 4;
+    now.zones.forEach((z2, i) => {
+      const d = (was.zones[i] ?? z2) - z2;
+      if (d > best) {
+        best = d;
+        part = s.names[i];
+      }
+    });
+    R9.sums[key] = now;
+  }
+  return { amount, ...part !== void 0 ? { part } : {} };
+}
+function noteSurfaces() {
+  for (const [key, s] of Object.entries(G9.surfaces)) if (s && R9.sums[key] === void 0) R9.sums[key] = sumsOf(s);
+}
+function reportBeat4(beat) {
+  const w = wipedNow();
+  const amount = Math9.round(w.amount * 1e5) / 1e5;
+  if (amount > 0) report5({ beat, kind: "wipe", amount, ...w.part !== void 0 ? { part: w.part } : {} }, true);
+}
+function startSegment3(run, ck) {
+  const plan = run.segment.plan;
+  const phys = E6.env.registries.contactPhysics.get(run.physicsId);
+  const endMs = Number(phys?.segmentSeconds ?? 40) * 1e3;
+  const clock0 = G9.t - (ck.now - ck.startedAt);
+  const first2 = Math9.max(0, Math9.floor((G9.t - clock0) / TUNING.physics.beatMs));
+  R9.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0, beats: plan.beats.length, endMs, flushed: false, reported: Math9.min(first2, plan.beats.length) };
+  R9.plan = plan.beats;
+  R9.spits = 0;
+  wipedNow();
+}
+function refreshLines5() {
+  if (!E6) return;
+  const env = E6.env;
+  const own = (k) => [...voiceLines(env.registries, `shoe.${k}`, R9.lineStyle)];
+  LINES4 = { [S10.style]: Object.fromEntries(LINE_KINDS.map((k) => [k, own(k)])) };
+}
+function sendVerdict() {
+  if (!E6 || R9.verdictSent || !R9.run) return;
+  R9.verdictSent = true;
+  if (R9.qualities.length === 0) return;
+  const q = R9.qualities.reduce((a, b) => a + b, 0) / R9.qualities.length;
+  const v = verdictOf(q);
+  E6.env.staging.service?.(R9.run.id, v, R9.run.holderId);
+}
+function before6(now) {
+  const e = E6;
+  if (last2 > now) last2 = now;
+  if (R9.lastNow > now) R9.lastNow = now;
+  const r = e.env.root.getBoundingClientRect();
+  const w = e.env.root.clientWidth || r.width || globalThis.innerWidth || 0, h2 = e.env.root.clientHeight || r.height || globalThis.innerHeight || 0;
+  if (w !== innerWidth8 || h2 !== innerHeight8) {
+    innerWidth8 = w;
+    innerHeight8 = h2;
+  }
+  R9.ox = r.left;
+  R9.oy = r.top;
+  S10.reduced = e.env.reduced;
+  e.box.toggleAttribute("data-reduced", S10.reduced);
+  e.box.toggleAttribute("data-readable", e.env.readable);
+  if (!A7.ctx) {
+    audioInit6();
+    if (A7.ctx) loadSamples2();
+  }
+  const bg = e.env.layers.backdrop.style.backgroundImage;
+  const mine = e.els["#backdrop"];
+  if (bg !== mine.style.backgroundImage) mine.style.backgroundImage = bg;
+  if (G9.phase === "wait" && Object.values(imgs).length > 0 && Object.values(imgs).every((i) => i.naturalWidth > 0)) begin6();
+  const run = R9.run;
+  const ck = e.env.staging.clock();
+  R9.running = run !== null && run.segment.state === "running" && run.segment.plan !== void 0 && ck.startedAt !== null;
+  if ((G9.phase === "loop" || G9.phase === "inspect") && R9.running && (R9.seg === null || R9.seg.n !== run.segment.n || R9.seg.startedAt !== ck.startedAt)) startSegment3(run, ck);
+  const seg = R9.seg;
+  if (R9.running && seg && !seg.flushed) {
+    const passed = Math9.floor((G9.t - seg.clock0) / TUNING.physics.beatMs);
+    while (seg.reported < Math9.min(passed, seg.beats)) reportBeat4(seg.reported++);
+    if (G9.t - seg.clock0 >= seg.endMs - 300) {
+      seg.flushed = true;
+      if (seg.reported < seg.beats) reportBeat4(Math9.min(seg.reported, seg.beats - 1));
+      seg.reported = seg.beats;
+    }
+  }
+}
+function after8(now) {
+  if (!E6) return;
+  R9.lastNow = now;
+  noteSurfaces();
+  while (R9.checks < G9.stats.checks.length) {
+    R9.checks += 1;
+    R9.qualities.push(G9.lastQuality);
+  }
+  if (G9.phase === "done" && !R9.verdictSent && R9.ended === null) sendVerdict();
+}
+function artOf(env, run) {
+  const kind = footwearOf(env.state(), env.registries, run.holderId);
+  const close = env.art.get(run.holderId, `shoe_close.${kind}`);
+  const sole = env.art.get(run.holderId, `shoe_sole.${kind}`);
+  if (!close || !sole || broken.has(close.url) || broken.has(sole.url)) return null;
+  return { close, sole, kind };
+}
+function shoeDrawable(env, run) {
+  return artOf(env, run) !== null;
+}
+function fitFrom(key, pic) {
+  const sc = pic.sidecar;
+  if (sc.feet === "one" || sc.feet === "two") S10.feet[key] = sc.feet;
+  if (sc.shown === "left" || sc.shown === "right") S10.shown[key] = sc.shown;
+  const f = sc.fit ?? {};
+  const was = S10.fit[key];
+  S10.fit[key] = { h: f.height ?? was.h, y: f.y ?? was.y, x: f.x ?? was.x, fade: f.fade ?? was.fade, xr: f.xr ?? was.xr, xl: f.xl ?? was.xl };
+  if (sc.zones) S10.zones[key] = sc.zones;
+  else delete S10.zones[key];
+}
+function bind6(env, run, art2) {
+  const state = env.state();
+  const reg = env.registries;
+  reseed2(fnv1a3(`${state.scene?.id ?? ""}|${run.id}|shoe`));
+  S10.kind = art2.kind;
+  S10.dirt = dirtOfDay(state, reg, run.holderId);
+  const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
+  S10.style = lead.key;
+  R9.lineStyle = lead.key;
+  R9.run = run;
+  R9.seg = null;
+  R9.running = false;
+  R9.plan = [];
+  R9.sums = {};
+  R9.spits = 0;
+  R9.caught = run.tally?.cheatsCaught ?? 0;
+  R9.qualities = [];
+  R9.checks = 0;
+  R9.verdictSent = false;
+  R9.ended = null;
+  S10.feet = { boots_close: "one", boots_sole: "one", heels_close: "one", heels_sole: "one" };
+  S10.shown = { boots_close: "right", boots_sole: "right", heels_close: "right", heels_sole: "right" };
+  S10.fit = { boots_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, boots_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 }, heels_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, heels_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 } };
+  S10.zones = {};
+  fitFrom(`${art2.kind}_close`, art2.close);
+  fitFrom(`${art2.kind}_sole`, art2.sole);
+  for (const [side, pic] of [["close", art2.close], ["sole", art2.sole]]) {
+    const im = new Image();
+    im.alt = "";
+    im.onerror = () => {
+      broken.add(pic.url);
+      if (E6?.env === env) E6.box.dataset.broken = "";
+    };
+    im.src = pic.url;
+    imgs[`${art2.kind}_${side}`] = im;
+  }
+  refreshLines5();
+  const look = env.her(run.holderId);
+  E6.box.style.setProperty("--alius-her", look.accent);
+  if (look.hand !== "") E6.box.style.setProperty("--alius-font-hand", `"${look.hand}", var(--alius-font-type)`);
+  E6.box.style.setProperty("--alius-shoe-hand-scale", String(look.handScale || 1));
+}
+function build6(env) {
+  const box = globalThis.document.createElement("div");
+  box.className = "alius-shoe";
+  box.setAttribute("aria-hidden", "true");
+  const els = {};
+  const el = (id, parent, tag2 = "div") => {
+    const n = tag2 === "canvas" ? safeCanvas2() : globalThis.document.createElement(tag2);
+    n.className = `alius-shoe-${id}`;
+    els[`#${id}`] = n;
+    parent.append(n);
+    return n;
+  };
+  const world = el("world", box);
+  el("backdrop", world);
+  el("shade", box);
+  const wrap = el("shoeWrap", box);
+  const pic = el("shoe", wrap, "img");
+  pic.alt = "";
+  pic.draggable = false;
+  el("dirtC", wrap, "canvas");
+  el("glossC", wrap, "canvas");
+  el("lightC", wrap, "canvas");
+  el("markC", box, "canvas");
+  el("vig", box);
+  el("hand", box);
+  env.layers.effects.append(box);
+  return { env, box, els, frameId: null };
+}
+function listen6(env) {
+  const control2 = (t) => t instanceof Element && t.closest('button, a, [role="button"], select, [data-action]') !== null;
+  const onFrame = (t) => t instanceof Node && (t === env.layers.frame || env.layers.frame.contains(t));
+  const typing6 = (t) => t instanceof HTMLElement && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
+  const at2 = (e) => [e.clientX - R9.ox, e.clientY - R9.oy];
+  env.listen(env.root, "pointerdown", (e) => {
+    if (!onFrame(e.target)) return;
+    if (e.button === 2) {
+      e.preventDefault();
+      spitVia = "mouse";
+      spit();
+      return;
+    }
+    if (e.button !== 0) return;
+    const [x, y] = at2(e);
+    down2(x, y);
+  });
+  env.listen(globalThis.document, "pointermove", (e) => {
+    const [x, y] = at2(e);
+    move(x, y, e);
+  });
+  env.listen(globalThis.document, "pointerup", () => up());
+  env.listen(env.layers.frame, "contextmenu", (e) => e.preventDefault());
+  env.listen(globalThis.document, "keydown", (e) => {
+    if (typing6(e.target) || control2(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === " ") {
+      e.preventDefault();
+      if (!e.repeat) swallow();
+    }
+    if (e.key === "x" || e.key === "X") {
+      spitVia = "key";
+      spit();
+    }
+  });
+}
+function stopShoe() {
+  const e = E6;
+  if (!e) return;
+  if (e.frameId !== null) e.env.cancelRaf(e.frameId);
+  try {
+    A7.master?.disconnect();
+  } catch {
+  }
+  A7 = { ctx: null, buf: {} };
+  LICK = null;
+  e.box.remove();
+  for (const k of Object.keys(imgs)) {
+    imgs[k].onload = null;
+    imgs[k].onerror = null;
+    delete imgs[k];
+  }
+  shownSrc = null;
+  DETACHED.clear();
+  R9.run = null;
+  R9.seg = null;
+  R9.running = false;
+  R9.plan = [];
+  R9.sums = {};
+  LINES4 = { neutral: {} };
+  G9 = fresh6();
+  E6 = null;
+}
+var EXIT_MS6 = 2600;
+function startShoe(env, run) {
+  stopShoe();
+  const art2 = artOf(env, run);
+  if (!art2) throw new Error("shoe service: no pictures of her footwear");
+  E6 = build6(env);
+  {
+    const r = env.root.getBoundingClientRect();
+    innerWidth8 = env.root.clientWidth || r.width || 0;
+    innerHeight8 = env.root.clientHeight || r.height || 0;
+    R9.ox = r.left;
+    R9.oy = r.top;
+  }
+  bind6(env, run, art2);
+  listen6(env);
+  last2 = env.now();
+  R9.lastNow = last2;
+  audioInit6();
+  if (A7.ctx) loadSamples2();
+  G9 = fresh6();
+  G9.phase = "wait";
+  requestAnimationFrame7(frame6);
+  const mine = E6;
+  return {
+    update(next) {
+      if (E6 !== mine) return;
+      const prev = R9.run;
+      R9.run = next;
+      const caught = next.tally?.cheatsCaught ?? 0;
+      const resolved = prev !== null && (next.segment.n !== prev.segment.n || next.segment.state !== prev.segment.state) && prev.segment.state === "running";
+      while (R9.caught < caught) {
+        R9.caught += 1;
+        R9.spits = Math9.max(0, R9.spits - 1);
+        spitAnswer(true);
+      }
+      if (resolved && R9.spits > 0) {
+        R9.spits = 0;
+        spitAnswer(false);
+      }
+    },
+    finish(end2) {
+      if (E6 !== mine) return 0;
+      R9.ended = end2.result;
+      if (G9.phase === "done") return EXIT_MS6;
+      if (end2.result !== "checked" || G9.phase === "wait") return 0;
+      if (G9.phase === "loop" && surf()) verdict();
+      while (R9.checks < G9.stats.checks.length) {
+        R9.checks += 1;
+        R9.qualities.push(G9.lastQuality);
+      }
+      finish6("done");
+      sendVerdict();
+      return EXIT_MS6;
+    },
+    stop() {
+      if (E6 === mine) stopShoe();
+    }
+  };
+}
+function shoeMatches(run, _state, reg) {
+  return isShoeRun(run, reg) && !run.second;
+}
+registerInstrument({ id: "shoe", matches: shoeMatches, drawable: shoeDrawable, start: startShoe });
+
 // src/ui/scene/dial/points.ts
 var BASE_POINTS = {
   standing: { torso: "upright", knees: "together", arms: "at_sides", head: "up", gaze: "straight", feet: "flat" },
@@ -74240,9 +75738,9 @@ var ELEV = 14 * DEG;
 function project(v) {
   const x1 = v[0] * Math.cos(YAW) + v[2] * Math.sin(YAW);
   const z1 = -v[0] * Math.sin(YAW) + v[2] * Math.cos(YAW);
-  const up = v[1] * Math.cos(ELEV) - z1 * Math.sin(ELEV);
+  const up2 = v[1] * Math.cos(ELEV) - z1 * Math.sin(ELEV);
   const depth = v[1] * Math.sin(ELEV) + z1 * Math.cos(ELEV);
-  return [x1 + 0, up + 0, depth + 0];
+  return [x1 + 0, up2 + 0, depth + 0];
 }
 var SIDES = [["L", 1], ["R", -1]];
 var LYING = {
@@ -74298,7 +75796,7 @@ function leanOf(base, torso, hogtie) {
   return { upright: 0, arched: -14, level: 86 }[torso];
 }
 function armGoal(state, c) {
-  const { s, shoulder: sh, chest, pelvis, S: S11, T: T5 } = c;
+  const { s, shoulder: sh, chest, pelvis, S: S12, T: T5 } = c;
   const lat = (k) => [s * k, 0, 0];
   switch (state) {
     case "at_sides":
@@ -74306,9 +75804,9 @@ function armGoal(state, c) {
       return { target: add(sh, [s * 0.05, -0.605, 0.02]), hint: [s * 0.3, -0.1, -1] };
     // nearly straight, the elbow a little back
     case "behind_back":
-      return { target: add(sub(add(pelvis, mul(S11, 0.12)), mul(T5, 0.12)), lat(0.04)), hint: [s, -0.2, -0.3] };
+      return { target: add(sub(add(pelvis, mul(S12, 0.12)), mul(T5, 0.12)), lat(0.04)), hint: [s, -0.2, -0.3] };
     case "bound":
-      return { target: add(sub(add(pelvis, mul(S11, 0.1)), mul(T5, 0.16)), lat(0.03)), hint: [s, -0.2, -0.4] };
+      return { target: add(sub(add(pelvis, mul(S12, 0.1)), mul(T5, 0.16)), lat(0.03)), hint: [s, -0.2, -0.4] };
     case "behind_head": {
       const back = sub(add(c.neckTop, mul(c.headDir, 0.09)), mul(c.faceDir, 0.075));
       return { target: add(back, lat(0.07)), hint: [s, 0.2, -0.1] };
@@ -74318,14 +75816,14 @@ function armGoal(state, c) {
     case "on_thighs_up":
       return { target: add(lerp3(c.hip, c.knee, 0.7), [s * 0.02, 0.06, 0]), hint: [s, 0, -0.4] };
     case "forward_palms_up":
-      return c.lying ? { target: add(add(sh, mul(S11, 0.56)), [s * 0.1, 0, 0.02]), hint: [s, 0, -0.3] } : { target: add(add(add(chest, mul(T5, 0.5)), mul(S11, -0.3)), lat(0.13)), hint: [s * 0.6, -1, -0.2] };
+      return c.lying ? { target: add(add(sh, mul(S12, 0.56)), [s * 0.1, 0, 0.02]), hint: [s, 0, -0.3] } : { target: add(add(add(chest, mul(T5, 0.5)), mul(S12, -0.3)), lat(0.13)), hint: [s * 0.6, -1, -0.2] };
     // offered: the forearms reach forward and down, palms up
     case "out_sideways":
       return { target: add(sh, [s * 0.56, 0.01, 0]), hint: [0, -0.5, -0.5] };
     case "raised":
       return { target: add(sh, [s * 0.1, 0.55, 0.05]), hint: [s, 0, -0.3] };
     case "holding":
-      return { target: add(add(add(pelvis, mul(S11, 0.38)), mul(T5, 0.4)), lat(0.11)), hint: [s, -0.6, 0] };
+      return { target: add(add(add(pelvis, mul(S12, 0.38)), mul(T5, 0.4)), lat(0.11)), hint: [s, -0.6, 0] };
     case "lamp":
       return { target: add(c.head, [s * 0.045, 0.36, 0.12]), hint: [s, 0, -0.2] };
     // both hands together above the head
@@ -74339,11 +75837,11 @@ function armGoal(state, c) {
     case "under_knees":
       return { target: [c.knee[0], 0.03, c.knee[2] - 0.03], hint: [s, 0.3, 0] };
     case "crossed":
-      return { target: add(sub(add(chest, mul(T5, 0.1)), mul(S11, 0.06)), lat(-0.14)), hint: [s * 0.3, -1, 0.3] };
+      return { target: add(sub(add(chest, mul(T5, 0.1)), mul(S12, 0.06)), lat(-0.14)), hint: [s * 0.3, -1, 0.3] };
     case "clasped_front":
-      return { target: add(add(add(pelvis, mul(S11, 0.16)), mul(T5, 0.2)), lat(0.025)), hint: [s, -0.5, -0.3] };
+      return { target: add(add(add(pelvis, mul(S12, 0.16)), mul(T5, 0.2)), lat(0.025)), hint: [s, -0.5, -0.3] };
     case "paws":
-      return { target: add(sub(add(chest, mul(T5, 0.2)), mul(S11, 0.1)), lat(0.07)), hint: [s * 0.5, -1, 0.2] };
+      return { target: add(sub(add(chest, mul(T5, 0.2)), mul(S12, 0.1)), lat(0.07)), hint: [s * 0.5, -1, 0.2] };
     // the hands in front of the chest, close together
     case "tucked":
       return { target: [s * 0.22, 0.04, sh[2] - 0.58], hint: [s * 0.2, 1, 0] };
@@ -74365,11 +75863,11 @@ function pose(p) {
   const legs = legsOf(base, pts, hogtie);
   const lying = LYING[base] !== void 0;
   const phi = leanOf(base, pts.torso ?? "upright", hogtie) * DEG;
-  const S11 = [0, Math.cos(phi), Math.sin(phi)];
+  const S12 = [0, Math.cos(phi), Math.sin(phi)];
   const T5 = [0, -Math.sin(phi), Math.cos(phi)];
   const pelvis = legs.pelvis;
-  const chest = add(pelvis, mul(S11, SPINE));
-  const neck = add(chest, mul(S11, NECK_BASE));
+  const chest = add(pelvis, mul(S12, SPINE));
+  const neck = add(chest, mul(S12, NECK_BASE));
   const phiN = phi * 0.55;
   const neckTop = add(neck, mul([0, Math.cos(phiN), Math.sin(phiN)], NECK));
   const pitch = { up: 0, bowed: 38, back: -55, to_floor: 90 }[pts.head ?? "up"];
@@ -74403,7 +75901,7 @@ function pose(p) {
       shoulder: shoulder[side],
       chest,
       pelvis,
-      S: S11,
+      S: S12,
       T: T5,
       hip: hip[side],
       knee: knee[side],
@@ -74446,15 +75944,15 @@ function lay(sk, axis, deg) {
   for (const k of Object.keys(RADIUS)) surface2.push([turned[k].L, RADIUS[k]], [turned[k].R, RADIUS[k]]);
   const lowest = Math.min(...surface2.map(([v, rad]) => v[1] - rad));
   const lift2 = 5e-3 - lowest;
-  const up = (v) => [v[0], v[1] + lift2, v[2]];
-  const upPair = (o) => ({ L: up(o.L), R: up(o.R) });
+  const up2 = (v) => [v[0], v[1] + lift2, v[2]];
+  const upPair = (o) => ({ L: up2(o.L), R: up2(o.R) });
   return {
     ...turned,
-    pelvis: up(turned.pelvis),
-    chest: up(turned.chest),
-    neck: up(turned.neck),
-    neckTop: up(turned.neckTop),
-    head: up(turned.head),
+    pelvis: up2(turned.pelvis),
+    chest: up2(turned.chest),
+    neck: up2(turned.neck),
+    neckTop: up2(turned.neckTop),
+    head: up2(turned.head),
     shoulder: upPair(turned.shoulder),
     elbow: upPair(turned.elbow),
     hand: upPair(turned.hand),
@@ -74692,7 +76190,7 @@ function fanPlace(i, n) {
 var sfx = (o, file, gain2, pan, rate = 1) => {
   o.samples?.play(file, { gain: gain2, pan, rate });
 };
-function build6(o) {
+function build7(o) {
   const w = h("span", { class: "alius-call-w" });
   const dots = h("div", { class: "alius-call-dots", "aria-hidden": "true" });
   const line3 = h("div", { class: "alius-call-line", role: "status" });
@@ -74717,7 +76215,7 @@ function startCall(o) {
   const choices = o.choices;
   const want = o.want;
   const id = o.id;
-  call = { id, want, t0: o.now(), taps: [], timers: [], o, el: build6(o) };
+  call = { id, want, t0: o.now(), taps: [], timers: [], o, el: build7(o) };
   const el0 = call.el;
   if (el0.dim) {
     void el0.dim.offsetWidth;
@@ -74775,11 +76273,11 @@ function scheduleTaps() {
   const span = 300;
   times2.forEach((at2, i) => call.timers.push(call.o.schedule(() => tap2(at2 / win, i === times2.length - 1, span, i), at2)));
 }
-function tap2(k, last2, span, i) {
+function tap2(k, last3, span, i) {
   if (!call) return;
   const o = call.o;
   const d = h("i");
-  if (last2) d.className = "last";
+  if (last3) d.className = "last";
   d.style.left = `${(k - 0.5) * span}px`;
   call.el.dots.append(d);
   const w = call.el.w;
@@ -74788,8 +76286,8 @@ function tap2(k, last2, span, i) {
     void w.offsetWidth;
     w.classList.add("is-bob");
   }
-  sfx(o, CALL_SOUNDS.soft[fnv1a3(`${call.id}|${i}`) % 2], (0.22 + 0.4 * k) * (last2 ? 1.6 : 1), 0.35, 0.92 + fnv1a3(`${call.id}|${i}|rate`) % 1e3 / 1e3 * 0.1);
-  if (last2) end("slow", null);
+  sfx(o, CALL_SOUNDS.soft[fnv1a3(`${call.id}|${i}`) % 2], (0.22 + 0.4 * k) * (last3 ? 1.6 : 1), 0.35, 0.92 + fnv1a3(`${call.id}|${i}|rate`) % 1e3 / 1e3 * 0.1);
+  if (last3) end("slow", null);
 }
 function choose(base, el) {
   if (!call || call.done) return;
@@ -74865,15 +76363,15 @@ function cancelCall() {
 // src/ui/scene/instruments/slap/slap.ts
 var clamp44 = (x, a, b) => Math.min(b, Math.max(a, x));
 var lerp4 = (a, b, t) => a + (b - a) * t;
-var easeOut5 = (t) => 1 - Math.pow(1 - clamp44(t, 0, 1), 3);
+var easeOut6 = (t) => 1 - Math.pow(1 - clamp44(t, 0, 1), 3);
 var easeIn2 = (t) => Math.pow(clamp44(t, 0, 1), 2);
 var easeInOut = (t) => {
   t = clamp44(t, 0, 1);
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 };
-var rnd016 = () => fnv1a3(`${G9.rkey}|${G9.rn++}`) % 1e4 / 1e4;
-var pick9 = (a) => a[Math.floor(rnd016() * a.length)];
-var rand7 = (a, b) => a + rnd016() * (b - a);
+var rnd017 = () => fnv1a3(`${G10.rkey}|${G10.rn++}`) % 1e4 / 1e4;
+var pick10 = (a) => a[Math.floor(rnd017() * a.length)];
+var rand8 = (a, b) => a + rnd017() * (b - a);
 var LEAD = TUNING.practice.slap.leadMs;
 var FEINT = TUNING.practice.slap.feintMs;
 var SWING = TUNING.practice.slap.windowMs;
@@ -74886,7 +76384,7 @@ var EXPR = TUNING.practice.slap.faces;
 var CALM = ["ritual", "clinical", "regal"];
 var EXPR_SWITCH = 60;
 var EXPR_WAIT = 120;
-var SAMPLE_URLS3 = {
+var SAMPLE_URLS4 = {
   slap: "assets/sounds/slap/slap.ogg",
   swish1: "assets/sounds/slap/swish1.ogg",
   cloth1: "assets/sounds/ha/cloth1.ogg",
@@ -74905,7 +76403,7 @@ function beforeLabel(style, unann) {
 function showFace(label2) {
   curLabel = label2;
   const url = faces[label2];
-  if (url && E6 && E6.env.faceOf(E6.unitId) !== label2) E6.env.setSprite(E6.unitId, label2, url);
+  if (url && E7 && E7.env.faceOf(E7.unitId) !== label2) E7.env.setSprite(E7.unitId, label2, url);
 }
 function preload(label2) {
   const url = faces[label2];
@@ -74913,15 +76411,15 @@ function preload(label2) {
   const im = new Image();
   im.src = url;
   return Promise.race([im.decode().catch(() => {
-  }), new Promise((r) => setTimeout7(r, EXPR_WAIT))]);
+  }), new Promise((r) => setTimeout8(r, EXPR_WAIT))]);
 }
 var looking = /* @__PURE__ */ new Map();
 function lookFaces(labels) {
-  if (!E6) return;
-  const e = E6;
+  if (!E7) return;
+  const e = E7;
   for (const label2 of labels) {
     if (label2 in faces || looking.has(label2)) continue;
-    const mine = () => E6 === e;
+    const mine = () => E7 === e;
     looking.set(label2, e.env.spriteUrl(e.unitId, label2).then((u) => {
       if (mine()) faces[label2] = u;
     }, () => {
@@ -74929,7 +76427,7 @@ function lookFaces(labels) {
     }).then(() => {
       if (!mine()) return;
       looking.delete(label2);
-      if (curLabel === label2 && (G9.slap || G9.back)) showFace(label2);
+      if (curLabel === label2 && (G10.slap || G10.back)) showFace(label2);
     }));
   }
 }
@@ -74939,14 +76437,14 @@ var facesOf = (style) => {
 };
 var leftBySlap = null;
 function readFaceNow() {
-  if (!E6) return;
-  const scene = E6.env.faceOf(E6.unitId);
+  if (!E7) return;
+  const scene = E7.env.faceOf(E7.unitId);
   curLabel = leftBySlap && leftBySlap.scene === scene ? leftBySlap.label : scene;
 }
 function noteFaceLeft() {
-  if (E6) leftBySlap = { label: curLabel, scene: E6.env.faceOf(E6.unitId) };
+  if (E7) leftBySlap = { label: curLabel, scene: E7.env.faceOf(E7.unitId) };
 }
-var S10 = {
+var S11 = {
   style: "possessive",
   unann: false,
   tension: { rise: 100, peak: 80, fall: 220, thr: 0.8 },
@@ -74961,17 +76459,17 @@ var S10 = {
   zoom: 2.6,
   reduced: false
 };
-var performance9 = { now: () => E6 ? E6.env.now() : 0 };
-var innerWidth8 = 0;
-var innerHeight8 = 0;
+var performance10 = { now: () => E7 ? E7.env.now() : 0 };
+var innerWidth9 = 0;
+var innerHeight9 = 0;
 function measure() {
-  if (!E6) return;
-  const r = E6.env.root.getBoundingClientRect();
-  innerWidth8 = E6.env.root.clientWidth || r.width || (typeof window !== "undefined" ? window.innerWidth : 0);
-  innerHeight8 = E6.env.root.clientHeight || r.height || (typeof window !== "undefined" ? window.innerHeight : 0);
+  if (!E7) return;
+  const r = E7.env.root.getBoundingClientRect();
+  innerWidth9 = E7.env.root.clientWidth || r.width || (typeof window !== "undefined" ? window.innerWidth : 0);
+  innerHeight9 = E7.env.root.clientHeight || r.height || (typeof window !== "undefined" ? window.innerHeight : 0);
 }
 var timers3 = /* @__PURE__ */ new Set();
-function setTimeout7(fn, ms) {
+function setTimeout8(fn, ms) {
   const t = globalThis.setTimeout(() => {
     timers3.delete(t);
     fn();
@@ -74980,25 +76478,25 @@ function setTimeout7(fn, ms) {
   return t;
 }
 var frameId = null;
-function requestAnimationFrame7(fn) {
-  if (!E6 || frameId !== null) return;
-  const e = E6;
+function requestAnimationFrame8(fn) {
+  if (!E7 || frameId !== null) return;
+  const e = E7;
   frameId = e.env.raf((now) => {
     frameId = null;
-    if (E6 !== e) return;
-    if (!G9.slap && !G9.back && !G9.starting && G9.cheekA <= 0) {
+    if (E7 !== e) return;
+    if (!G10.slap && !G10.back && !G10.starting && G10.cheekA <= 0) {
       cam.release();
       return;
     }
     measure();
     fn(now);
-    if (cam.held && (G9.slap || G9.back) && !S10.reduced) for (const c of cam.ui) noteWrites(c, ["opacity"]);
+    if (cam.held && (G10.slap || G10.back) && !S11.reduced) for (const c of cam.ui) noteWrites(c, ["opacity"]);
   });
 }
-var E6 = null;
+var E7 = null;
 var HBLUR = "alius-slap-hblur";
-var $8 = (s) => {
-  const e = E6;
+var $9 = (s) => {
+  const e = E7;
   if (s === "#mirror") return mirror(e);
   if (s === "#reply") return e.env.reply;
   if (s === "#cmd") return e.env.input;
@@ -75038,13 +76536,13 @@ function mirror(e) {
   host.append(m);
   const color = input.style.color;
   input.style.color = "transparent";
-  setTimeout7(() => {
+  setTimeout8(() => {
     m.remove();
     input.style.color = color;
   }, 600);
   return m;
 }
-function build7(env, unitId) {
+function build8(env, unitId) {
   const box = document.createElement("div");
   box.className = "alius-slap";
   box.setAttribute("aria-hidden", "true");
@@ -75091,7 +76589,7 @@ function build7(env, unitId) {
   const art2 = env.art.get(unitId, "face_close");
   if (art2) {
     faceImg.onload = () => {
-      if (E6?.faceImg === faceImg) E6.hasFace = true;
+      if (E7?.faceImg === faceImg) E7.hasFace = true;
     };
     faceImg.src = art2.url;
   }
@@ -75114,12 +76612,12 @@ var cam = {
   backdropFilter: "",
   /** The camera leaves home: the styles it will write are saved, her face point is measured. */
   hold() {
-    if (this.held || !E6) return;
-    const e = E6;
+    if (this.held || !E7) return;
+    const e = E7;
     this.held = true;
     const { backdrop, sprites } = e.env.layers;
     const reply = e.env.reply;
-    const wrap = $8("#inputWrap");
+    const wrap = $9("#inputWrap");
     this.layer = new Map([backdrop, sprites].map((el) => [el, claimStyles(el, CAM_PROPS)]));
     this.ui = [reply, wrap].map((el) => claimStyles(el, ["opacity"]));
     this.saved = [...this.layer.values(), ...this.ui];
@@ -75139,8 +76637,8 @@ var cam = {
   },
   /** Her face point in the scene (the sprite's sidecar point on the drawn picture), measured with the camera at home. */
   measure() {
-    if (!E6 || this.base) return;
-    const e = E6;
+    if (!E7 || this.base) return;
+    const e = E7;
     const img2 = e.env.spriteOf(e.unitId);
     if (!img2 || !img2.naturalWidth || e.env.root.dataset.curtain === "open") return;
     const sprites = e.env.layers.sprites;
@@ -75149,14 +76647,14 @@ var cam = {
     const r = img2.getBoundingClientRect();
     const o = e.env.root.getBoundingClientRect();
     sprites.style.transform = now;
-    if (r.width > 0 && r.height > 0) this.base = { x: r.left - o.left + S10.face.x * r.width, y: r.top - o.top + S10.face.y * r.height };
+    if (r.width > 0 && r.height > 0) this.base = { x: r.left - o.left + S11.face.x * r.width, y: r.top - o.top + S11.face.y * r.height };
   },
   /** One frame of the camera: the world's move, its motion blur, the zoom `k` to her face, the backdrop's blur and dim, the UI stepping back. */
   draw(world, hb, k) {
-    if (!E6) return;
+    if (!E7) return;
     if (!this.held) this.hold();
-    const e = E6;
-    const W3 = innerWidth8, H = innerHeight8;
+    const e = E7;
+    const W3 = innerWidth9, H = innerHeight9;
     const O = [W3 * 0.5, H * 0.436];
     const about2 = (extra) => `translate(${O[0].toFixed(1)}px, ${O[1].toFixed(1)}px) ${world}${extra} translate(${(-O[0]).toFixed(1)}px, ${(-O[1]).toFixed(1)}px)`;
     const blur = !e.env.readable && hb > 0.3;
@@ -75175,7 +76673,7 @@ var cam = {
     const img2 = e.env.spriteOf(e.unitId);
     if (img2 && this.base) {
       const p0 = this.base, p1 = [W3 * 0.5, H * 0.42];
-      sc = Math.pow(S10.zoom, k);
+      sc = Math.pow(S11.zoom, k);
       const px = lerp4(p0.x, p1[0], k), py = lerp4(p0.y, p1[1], k);
       camera = ` translate(${(px - sc * p0.x).toFixed(1)}px, ${(py - sc * p0.y).toFixed(1)}px) scale(${sc.toFixed(4)})`;
     }
@@ -75194,14 +76692,14 @@ var cam = {
     this.layer = /* @__PURE__ */ new Map();
     this.ui = [];
     this.base = null;
-    if (E6) {
-      E6.faceImg.style.opacity = "0";
-      E6.faceImg.style.transform = "";
-      E6.faceImg.style.filter = "";
+    if (E7) {
+      E7.faceImg.style.opacity = "0";
+      E7.faceImg.style.transform = "";
+      E7.faceImg.style.filter = "";
     }
   }
 };
-var A7 = { ctx: null, buf: {} };
+var A8 = { ctx: null, buf: {} };
 var made = /* @__PURE__ */ new Set();
 function recorded(c) {
   return new Proxy(c, {
@@ -75220,24 +76718,24 @@ function recorded(c) {
     }
   });
 }
-function audioInit6() {
-  if (A7.ctx || !E6) return;
-  const samples = E6.env.samples;
+function audioInit7() {
+  if (A8.ctx || !E7) return;
+  const samples = E7.env.samples;
   const raw = samples?.ctx() ?? null;
   const world = samples?.bus("world") ?? null;
   const body2 = samples?.bus("body") ?? null;
   if (!samples || !raw || !world || !body2) return;
   const ctx2 = recorded(raw);
-  A7.ctx = ctx2;
-  A7.worldLP = ctx2.createBiquadFilter();
-  A7.worldLP.type = "lowpass";
-  A7.worldLP.frequency.value = 16e3;
-  A7.worldLP.Q.value = 0.4;
-  A7.worldG = ctx2.createGain();
-  A7.worldG.gain.value = 1;
-  A7.worldLP.connect(A7.worldG);
-  A7.worldG.connect(world);
-  A7.body = body2;
+  A8.ctx = ctx2;
+  A8.worldLP = ctx2.createBiquadFilter();
+  A8.worldLP.type = "lowpass";
+  A8.worldLP.frequency.value = 16e3;
+  A8.worldLP.Q.value = 0.4;
+  A8.worldG = ctx2.createGain();
+  A8.worldG.gain.value = 1;
+  A8.worldLP.connect(A8.worldG);
+  A8.worldG.connect(world);
+  A8.body = body2;
   const b = ctx2.createBuffer(1, ctx2.sampleRate * 2, ctx2.sampleRate);
   const d = b.getChannelData(0);
   let x = 2463534242;
@@ -75247,45 +76745,45 @@ function audioInit6() {
     x ^= x << 5;
     d[i] = (x >>> 0) / 4294967296 * 2 - 1;
   }
-  A7.white = b;
-  A7.buf = new Proxy({}, { get: (_t, k) => typeof k === "string" && SAMPLE_URLS3[k] ? samples.buffer(SAMPLE_URLS3[k]) : null });
-  void samples.preload(Object.values(SAMPLE_URLS3));
+  A8.white = b;
+  A8.buf = new Proxy({}, { get: (_t, k) => typeof k === "string" && SAMPLE_URLS4[k] ? samples.buffer(SAMPLE_URLS4[k]) : null });
+  void samples.preload(Object.values(SAMPLE_URLS4));
 }
-function chain3(node, { pan = 0, lp = 0, hp = 0, dest = A7.worldLP }) {
+function chain3(node, { pan = 0, lp = 0, hp = 0, dest = A8.worldLP }) {
   let n = node;
   if (hp) {
-    const f = A7.ctx.createBiquadFilter();
+    const f = A8.ctx.createBiquadFilter();
     f.type = "highpass";
     f.frequency.value = hp;
     n.connect(f);
     n = f;
   }
   if (lp) {
-    const f = A7.ctx.createBiquadFilter();
+    const f = A8.ctx.createBiquadFilter();
     f.type = "lowpass";
     f.frequency.value = lp;
     n.connect(f);
     n = f;
   }
   if (pan) {
-    const p = A7.ctx.createStereoPanner();
+    const p = A8.ctx.createStereoPanner();
     p.pan.value = clamp44(pan, -1, 1);
     n.connect(p);
     n = p;
   }
   n.connect(dest);
 }
-function play5(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at: at2 = 0, offset = 0, dur } = {}) {
-  if (!A7.ctx || !A7.buf[id]) return null;
-  const ctx2 = A7.ctx, t = ctx2.currentTime + Math.max(0, at2);
+function play6(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at: at2 = 0, offset = 0, dur } = {}) {
+  if (!A8.ctx || !A8.buf[id]) return null;
+  const ctx2 = A8.ctx, t = ctx2.currentTime + Math.max(0, at2);
   const src = ctx2.createBufferSource();
-  src.buffer = A7.buf[id];
+  src.buffer = A8.buf[id];
   src.playbackRate.value = rate;
   const gn = ctx2.createGain();
   gn.gain.value = g;
   src.connect(gn);
-  chain3(gn, { pan, lp, hp, dest: dest ?? A7.worldLP });
-  const len2 = dur ?? A7.buf[id].duration - offset;
+  chain3(gn, { pan, lp, hp, dest: dest ?? A8.worldLP });
+  const len2 = dur ?? A8.buf[id].duration - offset;
   if (dur) {
     gn.gain.setValueAtTime(g, t + dur / rate - 0.03);
     gn.gain.linearRampToValueAtTime(1e-4, t + dur / rate);
@@ -75293,11 +76791,11 @@ function play5(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at: at2 =
   src.start(t, offset, len2 + 0.05);
   return src;
 }
-function noise8({ at: at2 = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1, gain: gain2 = 0.1, attack = 0.01, dest = A7.worldLP, pan = 0 }) {
-  if (!A7.ctx) return;
-  const ctx2 = A7.ctx, t = ctx2.currentTime + at2;
+function noise9({ at: at2 = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1, gain: gain2 = 0.1, attack = 0.01, dest = A8.worldLP, pan = 0 }) {
+  if (!A8.ctx) return;
+  const ctx2 = A8.ctx, t = ctx2.currentTime + at2;
   const src = ctx2.createBufferSource();
-  src.buffer = A7.white;
+  src.buffer = A8.white;
   src.loop = true;
   const fl = ctx2.createBiquadFilter();
   fl.type = type;
@@ -75311,12 +76809,12 @@ function noise8({ at: at2 = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1,
   src.connect(fl);
   fl.connect(g);
   chain3(g, { pan, dest });
-  src.start(t, rnd016());
+  src.start(t, rnd017());
   src.stop(t + dur + 0.05);
 }
-function thump5(at2, gain2, f0 = 55, dest = A7.body) {
-  if (!A7.ctx) return;
-  const ctx2 = A7.ctx, t = ctx2.currentTime + at2;
+function thump5(at2, gain2, f0 = 55, dest = A8.body) {
+  if (!A8.ctx) return;
+  const ctx2 = A8.ctx, t = ctx2.currentTime + at2;
   const o = ctx2.createOscillator();
   o.type = "sine";
   o.frequency.setValueAtTime(f0, t);
@@ -75330,33 +76828,33 @@ function thump5(at2, gain2, f0 = 55, dest = A7.body) {
   o.start(t);
   o.stop(t + 0.3);
 }
-var SFX5 = {
+var SFX6 = {
   pen: () => {
-    for (let i = 0; i < 3; i++) noise8({ at: i * 0.05 + rnd016() * 0.02, dur: 0.035 + rnd016() * 0.03, f: 2600 + rnd016() * 1800, q: 3, gain: 0.04 });
+    for (let i = 0; i < 3; i++) noise9({ at: i * 0.05 + rnd017() * 0.02, dur: 0.035 + rnd017() * 0.03, f: 2600 + rnd017() * 1800, q: 3, gain: 0.04 });
   },
   /* her clothes: her hand going up, a feint's twitch (panned to her hand's side) */
   cloth: (pan, g = 0.35, rate = 1) => {
-    if (!play5(pick9(["cloth1", "cloth2", "cloth3", "cloth4"]), { g, pan, rate, lp: 6e3 })) noise8({ dur: 0.3, f: 1100, f2: 1700, q: 0.7, gain: g * 0.25, attack: 0.05, pan });
+    if (!play6(pick10(["cloth1", "cloth2", "cloth3", "cloth4"]), { g, pan, rate, lp: 6e3 })) noise9({ dur: 0.3, f: 1100, f2: 1700, q: 0.7, gain: g * 0.25, attack: 0.05, pan });
   },
   /* the swish of her hand: timed so that it ends on the impact */
   swish: (atS, pan) => {
-    if (S10.swishS !== "synth" && A7.buf[S10.swishS]) {
-      const rate = 0.72, d = A7.buf[S10.swishS].duration / rate;
-      play5(S10.swishS, { g: 0.5, pan, rate, at: atS - d * 0.85, hp: 300 });
-    } else noise8({ at: atS - 0.16, dur: 0.17, f: 900, f2: 3200, q: 0.8, gain: 0.16, attack: 0.12, pan });
+    if (S11.swishS !== "synth" && A8.buf[S11.swishS]) {
+      const rate = 0.72, d = A8.buf[S11.swishS].duration / rate;
+      play6(S11.swishS, { g: 0.5, pan, rate, at: atS - d * 0.85, hp: 300 });
+    } else noise9({ at: atS - 0.16, dur: 0.17, f: 900, f2: 3200, q: 0.8, gain: 0.16, attack: 0.12, pan });
   },
   /* the slap: the recording on the body bus, panned to the cheek; a glancing one is duller and quieter */
   slap: (pan, glancing) => {
     const g = glancing ? 0.5 : 1;
-    if (!play5("slap", { g: 0.95 * S10.slapLvl * g, pan: pan * 0.55, lp: glancing ? 2200 : 0, dest: A7.body })) {
-      noise8({ dur: 0.09, type: "highpass", f: 1400, gain: 0.5 * g, attack: 2e-3, dest: A7.body, pan: pan * 0.55 });
+    if (!play6("slap", { g: 0.95 * S11.slapLvl * g, pan: pan * 0.55, lp: glancing ? 2200 : 0, dest: A8.body })) {
+      noise9({ dur: 0.09, type: "highpass", f: 1400, gain: 0.5 * g, attack: 2e-3, dest: A8.body, pan: pan * 0.55 });
     }
-    if (S10.thump) thump5(0, glancing ? 0.25 : 0.55, 70);
+    if (S11.thump) thump5(0, glancing ? 0.25 : 0.55, 70);
   },
   /* the ringing in the ears: two close sines that beat, a slow fade; the world dulls and comes back */
   ring: (sec, k = 1) => {
-    if (!A7.ctx || sec <= 0) return;
-    const ctx2 = A7.ctx, t = ctx2.currentTime;
+    if (!A8.ctx || sec <= 0) return;
+    const ctx2 = A8.ctx, t = ctx2.currentTime;
     for (const [f, gg] of [[4180, 0.035], [4207, 0.028], [8400, 6e-3]]) {
       const o = ctx2.createOscillator();
       o.frequency.value = f;
@@ -75366,28 +76864,28 @@ var SFX5 = {
       g.gain.exponentialRampToValueAtTime(gg * k, t + 0.06);
       g.gain.exponentialRampToValueAtTime(1e-4, t + sec);
       o.connect(g);
-      g.connect(A7.body);
+      g.connect(A8.body);
       o.start(t);
       o.stop(t + sec + 0.1);
     }
-    A7.worldLP.frequency.cancelScheduledValues(t);
-    A7.worldLP.frequency.setValueAtTime(lerp4(16e3, 650, k), t + 0.01);
-    A7.worldLP.frequency.exponentialRampToValueAtTime(16e3, t + Math.max(0.6, sec * 0.9));
+    A8.worldLP.frequency.cancelScheduledValues(t);
+    A8.worldLP.frequency.setValueAtTime(lerp4(16e3, 650, k), t + 0.01);
+    A8.worldLP.frequency.exponentialRampToValueAtTime(16e3, t + Math.max(0.6, sec * 0.9));
   },
   /* the commander's breath (the recording of saturation: a nose inhale and an exhale): a sharp intake on tensing, an exhale after */
   intake: () => {
-    if (!play5("breath", { g: 0.24, rate: 1.6, offset: 0.14, dur: 0.42, lp: 3200, dest: A7.body })) noise8({ dur: 0.22, f: 900, f2: 2200, q: 0.9, gain: 0.08, attack: 0.03, dest: A7.body });
+    if (!play6("breath", { g: 0.24, rate: 1.6, offset: 0.14, dur: 0.42, lp: 3200, dest: A8.body })) noise9({ dur: 0.22, f: 900, f2: 2200, q: 0.9, gain: 0.08, attack: 0.03, dest: A8.body });
   },
   exhale: (at2, g = 0.16) => {
-    play5("breath", { g, rate: 1.1, offset: 2.17, dur: 0.95, lp: 2600, dest: A7.body, at: at2 });
+    play6("breath", { g, rate: 1.1, offset: 2.17, dur: 0.95, lp: 2600, dest: A8.body, at: at2 });
   },
   heart: () => {
     thump5(0, 0.5, 52);
     thump5(0.26, 0.32, 46);
   }
 };
-var G9 = { slap: null, last: null, back: null, starting: false, k: 0, cheekA: 0, cheekDir: 1, cheekT0: 0, cheekScene: "", mouse: [], typingFocus: false, next: null, started: /* @__PURE__ */ new Set(), epoch: 0, rkey: "", rn: 0 };
-var LINES4 = {};
+var G10 = { slap: null, last: null, back: null, starting: false, k: 0, cheekA: 0, cheekDir: 1, cheekT0: 0, cheekScene: "", mouse: [], typingFocus: false, next: null, started: /* @__PURE__ */ new Set(), epoch: 0, rkey: "", rn: 0 };
+var LINES5 = {};
 function linesFor(reg, style, id) {
   const one5 = (kind) => {
     const runs = voiceLine(reg, kind, style, id, {});
@@ -75404,36 +76902,36 @@ function linesFor(reg, style, id) {
   };
 }
 function tensionAt(t) {
-  const T5 = S10.tension;
+  const T5 = S11.tension;
   if (t < 0) return 0;
-  if (t < T5.rise) return easeOut5(t / T5.rise);
+  if (t < T5.rise) return easeOut6(t / T5.rise);
   if (t < T5.rise + T5.peak) return 1;
   return clamp44(1 - (t - T5.rise - T5.peak) / T5.fall, 0, 1);
 }
 async function startSlap2(opts) {
-  if (G9.slap || G9.starting) return;
-  G9.starting = true;
-  const epoch = G9.epoch;
-  G9.started.add(opts.id);
-  G9.rkey = opts.id;
-  G9.rn = 0;
-  requestAnimationFrame7(frame6);
-  const faceBefore = beforeLabel(S10.style, opts.unannounced ?? S10.unann);
+  if (G10.slap || G10.starting) return;
+  G10.starting = true;
+  const epoch = G10.epoch;
+  G10.started.add(opts.id);
+  G10.rkey = opts.id;
+  G10.rn = 0;
+  requestAnimationFrame8(frame7);
+  const faceBefore = beforeLabel(S11.style, opts.unannounced ?? S11.unann);
   await preload(faceBefore);
-  if (G9.epoch !== epoch) return;
-  G9.starting = false;
-  if (G9.slap) return;
-  audioInit6();
+  if (G10.epoch !== epoch) return;
+  G10.starting = false;
+  if (G10.slap) return;
+  audioInit7();
   const id = opts.id;
-  const style = S10.style;
+  const style = S11.style;
   const swing = opts.windowMs;
-  const unann = opts.unannounced ?? S10.unann;
+  const unann = opts.unannounced ?? S11.unann;
   let feints = opts.feints;
   if (unann) feints = 0;
   const dir = slapSide(id);
   const lead = unann ? SNAP : opts.again ? AGAIN_LEAD : LEAD;
   const swingAt = lead + feints * FEINT;
-  const t0 = performance9.now();
+  const t0 = performance10.now();
   const s = {
     id,
     style,
@@ -75458,111 +76956,111 @@ async function startSlap2(opts) {
     doneAt: null,
     said: false,
     feintSaid: false,
-    k0: G9.k ?? 0,
+    k0: G10.k ?? 0,
     onResult: opts.onResult
   };
-  G9.slap = s;
-  G9.last = s;
-  G9.back = null;
+  G10.slap = s;
+  G10.last = s;
+  G10.back = null;
   const active = document.activeElement;
-  if (!opts.again) G9.typingFocus = active === $8("#cmd");
+  if (!opts.again) G10.typingFocus = active === $9("#cmd");
   if (active && active !== document.body) active.blur();
-  requestAnimationFrame7(frame6);
-  if (S10.reduced) {
+  requestAnimationFrame8(frame7);
+  if (S11.reduced) {
     showFace(faceBefore);
-    land(s, performance9.now());
+    land(s, performance10.now());
     return;
   }
-  SFX5.heart();
-  if (!unann) SFX5.cloth(-dir * 0.7, 0.4);
-  SFX5.swish(s.impactAt / 1e3, -dir * 0.6);
-  for (let i = 0; i < feints; i++) setTimeout7(() => {
-    if (G9.slap === s) SFX5.cloth(-dir * 0.7, 0.5, 1.25);
+  SFX6.heart();
+  if (!unann) SFX6.cloth(-dir * 0.7, 0.4);
+  SFX6.swish(s.impactAt / 1e3, -dir * 0.6);
+  for (let i = 0; i < feints; i++) setTimeout8(() => {
+    if (G10.slap === s) SFX6.cloth(-dir * 0.7, 0.5, 1.25);
   }, lead + i * FEINT);
-  const before6 = LINES4[style].before;
-  if (before6.length && !unann && !opts.again) setTimeout7(() => {
-    if (G9.slap === s && !s.result) say9(pick9(before6));
+  const before7 = LINES5[style].before;
+  if (before7.length && !unann && !opts.again) setTimeout8(() => {
+    if (G10.slap === s && !s.result) say10(pick10(before7));
   }, SNAP + 60);
-  if (opts.again && LINES4[style].again) setTimeout7(() => {
-    if (G9.slap === s && !s.result) say9(pick9(LINES4[style].again));
+  if (opts.again && LINES5[style].again) setTimeout8(() => {
+    if (G10.slap === s && !s.result) say10(pick10(LINES5[style].again));
   }, 80);
 }
 function press3(source) {
-  const s = G9.slap;
+  const s = G10.slap;
   if (!s || s.result) return;
   s.presses += 1;
   if (s.pressAt !== null) return;
-  s.pressAt = performance9.now() - s.t0;
-  SFX5.intake();
+  s.pressAt = performance10.now() - s.t0;
+  SFX6.intake();
   const onFeint = s.feints > 0 && s.pressAt >= s.lead && s.pressAt < s.swingAt;
-  if (onFeint && LINES4[s.style].feint) setTimeout7(() => {
-    if (G9.slap === s && !s.result) say9(pick9(LINES4[s.style].feint));
+  if (onFeint && LINES5[s.style].feint) setTimeout8(() => {
+    if (G10.slap === s && !s.result) say10(pick10(LINES5[s.style].feint));
   }, 120);
 }
 function onMove(e) {
-  const now = performance9.now();
-  G9.mouse.push([now, e.clientX]);
-  while (G9.mouse.length && now - G9.mouse[0][0] > 70) G9.mouse.shift();
-  const s = G9.slap;
+  const now = performance10.now();
+  G10.mouse.push([now, e.clientX]);
+  while (G10.mouse.length && now - G10.mouse[0][0] > 70) G10.mouse.shift();
+  const s = G10.slap;
   if (!s || s.result || s.turned) return;
-  if (G9.mouse.length < 2) return;
-  const [ta, xa] = G9.mouse[0], dt = (now - ta) / 1e3, dx = e.clientX - xa;
+  if (G10.mouse.length < 2) return;
+  const [ta, xa] = G10.mouse[0], dt = (now - ta) / 1e3, dx = e.clientX - xa;
   if (dt <= 0) return;
   const v = dx / dt;
-  if (Math.abs(v) >= S10.flick && Math.abs(dx) >= innerWidth8 * 0.06) {
+  if (Math.abs(v) >= S11.flick && Math.abs(dx) >= innerWidth9 * 0.06) {
     s.turned = Math.sign(dx);
     s.turnAt = now - s.t0;
-    SFX5.cloth(0, 0.25, 1.4);
+    SFX6.cloth(0, 0.25, 1.4);
   }
 }
 function land(s, now) {
   const t = now - s.t0;
   s.tensionAtImpact = s.pressAt === null ? 0 : tensionAt(t - s.pressAt);
-  s.result = s.turned ? "flinched" : s.tensionAtImpact >= S10.tension.thr ? "braced" : "none";
+  s.result = s.turned ? "flinched" : s.tensionAtImpact >= S11.tension.thr ? "braced" : "none";
   s.landedAt = t;
   s.onResult(s.result);
   const glancing = s.result === "flinched";
   const k = s.result === "braced" ? 0.65 : glancing ? 0.45 : 1;
   s.k = k;
-  SFX5.slap(-s.dir, glancing);
-  SFX5.ring(S10.ring * (s.result === "braced" ? 0.55 : glancing ? 0.4 : 1), k);
-  if (s.result === "braced") SFX5.exhale(0.45, 0.15);
-  G9.cheekA = Math.min(0.9, G9.cheekA * 0.6 + 0.8 * k);
-  G9.cheekDir = s.dir;
-  G9.cheekT0 = now;
+  SFX6.slap(-s.dir, glancing);
+  SFX6.ring(S11.ring * (s.result === "braced" ? 0.55 : glancing ? 0.4 : 1), k);
+  if (s.result === "braced") SFX6.exhale(0.45, 0.15);
+  G10.cheekA = Math.min(0.9, G10.cheekA * 0.6 + 0.8 * k);
+  G10.cheekDir = s.dir;
+  G10.cheekT0 = now;
   flash(k);
   scatter3(k);
-  const pool = LINES4[s.style][s.result] ?? [];
+  const pool = LINES5[s.style][s.result] ?? [];
   const faceAfter = EXPR[s.style].after[s.result];
   void preload(faceAfter);
-  setTimeout7(() => {
+  setTimeout8(() => {
     showFace(faceAfter);
-    if (pool.length) say9(pick9(pool));
+    if (pool.length) say10(pick10(pool));
   }, s.style === "cold" ? 0 : 380);
   const cruelAgain = s.style === "cruel" && s.result === "flinched" && !s.again;
   const hold = cruelAgain ? 700 : s.style === "cold" ? 900 : 1500;
   s.doneAt = t + hold;
-  setTimeout7(() => {
-    if (G9.slap !== s) return;
-    G9.slap = null;
-    G9.back = S10.reduced ? null : { t0: performance9.now(), from: 1 };
+  setTimeout8(() => {
+    if (G10.slap !== s) return;
+    G10.slap = null;
+    G10.back = S11.reduced ? null : { t0: performance10.now(), from: 1 };
     noteFaceLeft();
-    if (cruelAgain || G9.next) setTimeout7(() => startNext(), 120);
-    else if (G9.typingFocus) $8("#cmd").focus();
-  }, S10.reduced ? 600 : hold);
+    if (cruelAgain || G10.next) setTimeout8(() => startNext(), 120);
+    else if (G10.typingFocus) $9("#cmd").focus();
+  }, S11.reduced ? 600 : hold);
 }
 function startNext() {
-  const next = G9.next;
-  G9.next = null;
-  if (next && !G9.started.has(next.id)) {
-    LINES4 = LINES_NEXT;
-    if (E6) E6.host.dataset.slap = next.id;
+  const next = G10.next;
+  G10.next = null;
+  if (next && !G10.started.has(next.id)) {
+    LINES5 = LINES_NEXT;
+    if (E7) E7.host.dataset.slap = next.id;
     readFaceNow();
     void startSlap2(next);
-  } else if (G9.typingFocus && E6) $8("#cmd").focus();
+  } else if (G10.typingFocus && E7) $9("#cmd").focus();
 }
 function flash(k) {
-  const el = $8("#flash");
+  const el = $9("#flash");
   el.style.transition = "none";
   el.style.background = "radial-gradient(ellipse at 50% 45%, rgba(255,250,245,1), rgba(255,90,70,1) 55%, rgba(200,20,20,1))";
   el.style.opacity = String(0.75 * k);
@@ -75573,10 +77071,10 @@ function flash(k) {
   });
 }
 function scatter3(k) {
-  const spans = [...$8("#mirror").children];
+  const spans = [...$9("#mirror").children];
   for (const sp of spans) {
     sp.style.transition = "none";
-    sp.style.transform = `translate(${rand7(-14, 14) * k}px, ${rand7(-16, 16) * k}px) rotate(${rand7(-28, 28) * k}deg)`;
+    sp.style.transform = `translate(${rand8(-14, 14) * k}px, ${rand8(-16, 16) * k}px) rotate(${rand8(-28, 28) * k}deg)`;
   }
   requestTwoFrames(() => {
     for (const sp of spans) {
@@ -75586,133 +77084,133 @@ function scatter3(k) {
   });
 }
 function requestTwoFrames(fn) {
-  setTimeout7(fn, 32);
+  setTimeout8(fn, 32);
 }
-function say9(text3) {
+function say10(text3) {
   if (!text3) return;
   const el = document.createElement("div");
   el.className = "alius-her-line";
   el.textContent = text3;
-  const speed = S10.style === "cruel" || S10.style === "cold" ? 24 : S10.style === "ritual" ? 45 : 34;
+  const speed = S11.style === "cruel" || S11.style === "cold" ? 24 : S11.style === "ritual" ? 45 : 34;
   el.style.setProperty("--write", `${Math.max(140, text3.length * speed)}ms`);
   el.style.setProperty("--steps", String(Math.max(4, text3.length * 2)));
-  el.style.fontSize = `${Math.round(44 * (E6?.her.handScale ?? 1) * 100) / 100}px`;
-  const s = G9.slap ?? G9.last;
+  el.style.fontSize = `${Math.round(44 * (E7?.her.handScale ?? 1) * 100) / 100}px`;
+  const s = G10.slap ?? G10.last;
   const dir = s ? s.dir : 1;
   if (dir > 0) {
-    el.style.left = `${innerWidth8 * 0.6}px`;
+    el.style.left = `${innerWidth9 * 0.6}px`;
   } else {
     el.classList.add("right");
-    el.style.right = `${innerWidth8 * 0.6}px`;
+    el.style.right = `${innerWidth9 * 0.6}px`;
   }
-  const showing = [...$8("#hand").children].filter((c) => !c.classList.contains("gone")).length;
-  el.style.top = `${innerHeight8 * rand7(0.22, 0.26) + showing * 54}px`;
-  el.style.transform = `rotate(${rand7(-4, 3).toFixed(1)}deg)`;
-  $8("#hand").appendChild(el);
-  SFX5.pen();
-  setTimeout7(() => {
+  const showing = [...$9("#hand").children].filter((c) => !c.classList.contains("gone")).length;
+  el.style.top = `${innerHeight9 * rand8(0.22, 0.26) + showing * 54}px`;
+  el.style.transform = `rotate(${rand8(-4, 3).toFixed(1)}deg)`;
+  $9("#hand").appendChild(el);
+  SFX6.pen();
+  setTimeout8(() => {
     el.classList.add("gone");
-    setTimeout7(() => el.remove(), 600);
+    setTimeout8(() => el.remove(), 600);
   }, 2200);
 }
-function frame6(now) {
-  requestAnimationFrame7(frame6);
-  const W3 = innerWidth8, H = innerHeight8;
-  const s = G9.slap;
+function frame7(now) {
+  requestAnimationFrame8(frame7);
+  const W3 = innerWidth9, H = innerHeight9;
+  const s = G10.slap;
   let k = 0;
-  if (s && !S10.reduced) k = lerp4(s.k0, 1, easeOut5((now - s.t0) / SNAP));
-  else if (G9.back) {
-    const p = (now - G9.back.t0) / RETURN;
+  if (s && !S11.reduced) k = lerp4(s.k0, 1, easeOut6((now - s.t0) / SNAP));
+  else if (G10.back) {
+    const p = (now - G10.back.t0) / RETURN;
     k = 1 - easeInOut(p);
-    if (p >= 1) G9.back = null;
+    if (p >= 1) G10.back = null;
   }
-  G9.k = k;
+  G10.k = k;
   let lean = 0, sweep = -1, twitch = 0;
-  if (s && !S10.reduced) {
+  if (s && !S11.reduced) {
     const t = now - s.t0;
     if (!s.faceShown && t >= EXPR_SWITCH) {
       s.faceShown = true;
       showFace(s.faceBefore);
     }
-    if (!s.unann) lean = -0.4 * easeOut5((t - SNAP * 0.4) / 380) + 0.04 * Math.sin(t / 140) * (t > SNAP ? 1 : 0);
+    if (!s.unann) lean = -0.4 * easeOut6((t - SNAP * 0.4) / 380) + 0.04 * Math.sin(t / 140) * (t > SNAP ? 1 : 0);
     for (let i = 0; i < s.feints; i++) {
       const ft = t - (s.lead + i * FEINT);
       if (ft >= 0 && ft < FEINT) {
         const p = ft / FEINT;
-        twitch = p < 0.3 ? easeIn2(p / 0.3) : 1 - easeOut5((p - 0.3) / 0.45);
+        twitch = p < 0.3 ? easeIn2(p / 0.3) : 1 - easeOut6((p - 0.3) / 0.45);
         lean = -0.4 + 0.75 * twitch;
       }
     }
     if (t >= s.swingAt && !s.result) {
       const p = (t - s.swingAt) / s.swing;
       lean = lerp4(s.unann ? 0 : -0.4, 1, easeIn2(p));
-      if (S10.sweep) sweep = clamp44(1 - (s.impactAt - t) / SWEEP, 0, 1);
+      if (S11.sweep) sweep = clamp44(1 - (s.impactAt - t) / SWEEP, 0, 1);
     }
     if (!s.result && t >= s.impactAt) land(s, now);
     if (s.result) lean = 0;
   }
   let whipX = 0, whipR = 0, hb = 0;
-  const L4 = s && s.result ? s : G9.back && G9.last && G9.last.result ? G9.last : null;
-  if (L4 && L4.landedAt !== void 0 && !S10.reduced) {
-    const tt = now - (L4.t0 + L4.landedAt), kk = L4.k ?? 1;
-    const env = tt < 45 ? easeOut5(tt / 45) : Math.exp(-(tt - 45) / 210) * Math.cos((tt - 45) / 520 * Math.PI * 2);
-    whipX = -L4.dir * 0.075 * W3 * env * kk;
-    whipR = -L4.dir * 5.5 * env * kk;
+  const L5 = s && s.result ? s : G10.back && G10.last && G10.last.result ? G10.last : null;
+  if (L5 && L5.landedAt !== void 0 && !S11.reduced) {
+    const tt = now - (L5.t0 + L5.landedAt), kk = L5.k ?? 1;
+    const env = tt < 45 ? easeOut6(tt / 45) : Math.exp(-(tt - 45) / 210) * Math.cos((tt - 45) / 520 * Math.PI * 2);
+    whipX = -L5.dir * 0.075 * W3 * env * kk;
+    whipR = -L5.dir * 5.5 * env * kk;
     hb = tt < 220 ? (1 - tt / 220) * 16 * kk : 0;
   }
   let turnX = 0;
-  const T5 = s ?? (G9.back ? G9.last : null);
+  const T5 = s ?? (G10.back ? G10.last : null);
   if (T5 && T5.turned) {
     const tt = now - (T5.t0 + T5.turnAt);
-    turnX = T5.turned * 0.11 * W3 * easeOut5(tt / 160) * (G9.back ? k : 1);
+    turnX = T5.turned * 0.11 * W3 * easeOut6(tt / 160) * (G10.back ? k : 1);
     hb = Math.max(hb, tt < 160 ? 10 * (1 - tt / 160) : 0);
   }
   let ten = 0, tremble = 0;
   if (s && s.pressAt !== null && !s.result) {
     const tt = now - s.t0 - s.pressAt;
     ten = tensionAt(tt);
-    if (tt > S10.tension.rise + S10.tension.peak && ten > 0.05) tremble = (1 - ten) * 1.6;
+    if (tt > S11.tension.rise + S11.tension.peak && ten > 0.05) tremble = (1 - ten) * 1.6;
   }
   const rot = -(s ? s.dir : 1) * lean * 3.4 + whipR;
-  const dx = -(s ? s.dir : 1) * lean * 0.022 * W3 + whipX + turnX + (tremble ? rand7(-tremble, tremble) : 0);
-  const dy = tremble ? rand7(-tremble, tremble) : 0;
-  const leanIn = s && !s.result && !S10.reduced ? 0.035 * clamp44((now - s.t0 - SNAP) / 500, 0, 1) : 0;
+  const dx = -(s ? s.dir : 1) * lean * 0.022 * W3 + whipX + turnX + (tremble ? rand8(-tremble, tremble) : 0);
+  const dy = tremble ? rand8(-tremble, tremble) : 0;
+  const leanIn = s && !s.result && !S11.reduced ? 0.035 * clamp44((now - s.t0 - SNAP) / 500, 0, 1) : 0;
   const world = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) rotate(${rot.toFixed(2)}deg) scale(${(1 + 0.02 * ten + leanIn + (turnX ? 0.03 : 0)).toFixed(4)})`;
-  $8("#hblurG").setAttribute("stdDeviation", `${hb.toFixed(1)} ${(hb * 0.12).toFixed(1)}`);
-  if ((s || G9.back) && !S10.reduced) cam.draw(world, hb, k);
+  $9("#hblurG").setAttribute("stdDeviation", `${hb.toFixed(1)} ${(hb * 0.12).toFixed(1)}`);
+  if ((s || G10.back) && !S11.reduced) cam.draw(world, hb, k);
   else cam.release();
-  E6.faceImg.style.opacity = E6.hasFace ? String(k) : "0";
-  $8("#dimmer").style.opacity = String(0.25 * k);
+  E7.faceImg.style.opacity = E7.hasFace ? String(k) : "0";
+  $9("#dimmer").style.opacity = String(0.25 * k);
   const dir = s ? s.dir : 1;
-  const sideA = s && !s.result && S10.sideDark ? clamp44(0.42 * easeOut5((now - s.t0 - SNAP) / 300) + 0.3 * twitch + 0.4 * Math.max(0, lean), 0, 0.85) : 0;
-  $8("#side").style.background = `linear-gradient(${dir > 0 ? 90 : 270}deg, rgba(4,2,6,.95), rgba(4,2,6,.4) 28%, rgba(4,2,6,0) 55%)`;
-  $8("#side").style.opacity = sideA.toFixed(3);
-  const sw = $8("#sweep");
+  const sideA = s && !s.result && S11.sideDark ? clamp44(0.42 * easeOut6((now - s.t0 - SNAP) / 300) + 0.3 * twitch + 0.4 * Math.max(0, lean), 0, 0.85) : 0;
+  $9("#side").style.background = `linear-gradient(${dir > 0 ? 90 : 270}deg, rgba(4,2,6,.95), rgba(4,2,6,.4) 28%, rgba(4,2,6,0) 55%)`;
+  $9("#side").style.opacity = sideA.toFixed(3);
+  const sw = $9("#sweep");
   if (sweep >= 0 && s && !s.result) {
     const x0 = dir > 0 ? -0.5 : 1.04, x1 = dir > 0 ? 0.02 : 0.52;
     sw.style.left = `${(lerp4(x0, x1, easeIn2(sweep)) * W3).toFixed(1)}px`;
     sw.style.opacity = String(0.85 * Math.min(1, sweep * 2));
   } else sw.style.opacity = "0";
-  $8("#tight").style.opacity = String((0.5 * ten).toFixed(3));
-  if (A7.worldG) A7.worldG.gain.value = 1 - 0.55 * ten;
-  if (G9.cheekA > 0) {
-    const age2 = (now - G9.cheekT0) / 1e3;
-    const a = G9.cheekA * Math.exp(-age2 / 24) * (0.85 + 0.15 * Math.sin(age2 * 5.2));
-    const cx = G9.cheekDir > 0 ? "0%" : "100%";
-    $8("#cheek").style.background = `radial-gradient(ellipse 48% 62% at ${cx} 56%, rgba(210,24,20,.85), rgba(170,10,10,.35) 45%, rgba(120,0,0,0) 75%)`;
-    $8("#cheek").style.opacity = a.toFixed(3);
-    if (a < 4e-3) G9.cheekA = 0;
-  } else $8("#cheek").style.opacity = "0";
-  if ((s || G9.back) && !S10.reduced) {
-    $8("#reply").style.opacity = String(1 - 0.85 * k);
-    $8("#inputWrap").style.opacity = String(1 - 0.6 * k);
+  $9("#tight").style.opacity = String((0.5 * ten).toFixed(3));
+  if (A8.worldG) A8.worldG.gain.value = 1 - 0.55 * ten;
+  if (G10.cheekA > 0) {
+    const age2 = (now - G10.cheekT0) / 1e3;
+    const a = G10.cheekA * Math.exp(-age2 / 24) * (0.85 + 0.15 * Math.sin(age2 * 5.2));
+    const cx = G10.cheekDir > 0 ? "0%" : "100%";
+    $9("#cheek").style.background = `radial-gradient(ellipse 48% 62% at ${cx} 56%, rgba(210,24,20,.85), rgba(170,10,10,.35) 45%, rgba(120,0,0,0) 75%)`;
+    $9("#cheek").style.opacity = a.toFixed(3);
+    if (a < 4e-3) G10.cheekA = 0;
+  } else $9("#cheek").style.opacity = "0";
+  if ((s || G10.back) && !S11.reduced) {
+    $9("#reply").style.opacity = String(1 - 0.85 * k);
+    $9("#inputWrap").style.opacity = String(1 - 0.6 * k);
   }
 }
 var typing5 = (el) => el instanceof HTMLElement && (/^(input|textarea|select)$/i.test(el.tagName) || el.isContentEditable);
 function onKey(e) {
   if (typing5(e.target)) return;
   if (e.key === " ") {
-    if (!G9.slap) return;
+    if (!G10.slap) return;
     e.preventDefault();
     if (!e.repeat) press3("key");
   }
@@ -75720,23 +77218,23 @@ function onKey(e) {
 var CONTROLS2 = 'button, a, input, textarea, select, summary, label, [role="button"], [contenteditable="true"], .alius-input-line, .alius-stage-dock, .alius-chip-row, .alius-stage-dial, .alius-stage-topline, .alius-curtain';
 function onDown(e) {
   if (e.button !== 0 || e.target instanceof Element && e.target.closest(CONTROLS2)) return;
-  if (G9.slap) {
+  if (G10.slap) {
     e.preventDefault();
     press3("mouse");
   }
 }
 var holder2 = "";
-function bind6(m, unitId) {
-  if (E6 && (E6.env !== m.env || E6.sceneId !== m.sceneId || E6.unitId !== unitId || !E6.box.isConnected)) stopSlap({ keepCheek: E6.sceneId === m.sceneId });
-  if (G9.cheekScene !== m.sceneId) {
-    G9.cheekA = 0;
-    G9.cheekScene = m.sceneId;
-    G9.started.clear();
-    G9.last = null;
+function bind7(m, unitId) {
+  if (E7 && (E7.env !== m.env || E7.sceneId !== m.sceneId || E7.unitId !== unitId || !E7.box.isConnected)) stopSlap({ keepCheek: E7.sceneId === m.sceneId });
+  if (G10.cheekScene !== m.sceneId) {
+    G10.cheekA = 0;
+    G10.cheekScene = m.sceneId;
+    G10.started.clear();
+    G10.last = null;
   }
-  if (!E6) {
-    E6 = { ...build7(m.env, unitId), host: m.host, sceneId: m.sceneId };
-    const e = E6;
+  if (!E7) {
+    E7 = { ...build8(m.env, unitId), host: m.host, sceneId: m.sceneId };
+    const e = E7;
     const reading2 = () => e.env.root.dataset.curtain === "open";
     e.offs.push(m.env.listen(document, "keydown", (ev) => {
       if (!reading2()) onKey(ev);
@@ -75751,52 +77249,52 @@ function bind6(m, unitId) {
     looking.clear();
     leftBySlap = null;
   }
-  E6.host = m.host;
+  E7.host = m.host;
   holder2 = unitId;
-  S10.reduced = m.still;
-  S10.face = m.env.art.face(unitId) ?? { x: 0.47, y: 0.17 };
+  S11.reduced = m.still;
+  S11.face = m.env.art.face(unitId) ?? { x: 0.47, y: 0.17 };
   measure();
 }
 function mountSlap(m) {
   const slap = m.slap;
   if (!slap) {
     settleSlap();
-    const same = E6 !== null && E6.env === m.env && E6.sceneId === m.sceneId && E6.box.isConnected;
-    if (!same && (G9.cheekScene !== m.sceneId || G9.cheekA <= 0 || holder2 === "")) {
-      if (E6) stopSlap({ keepCheek: E6.sceneId === m.sceneId });
+    const same = E7 !== null && E7.env === m.env && E7.sceneId === m.sceneId && E7.box.isConnected;
+    if (!same && (G10.cheekScene !== m.sceneId || G10.cheekA <= 0 || holder2 === "")) {
+      if (E7) stopSlap({ keepCheek: E7.sceneId === m.sceneId });
       return;
     }
-    if (!same) bind6(m, holder2);
-    if (G9.cheekA > 0) requestAnimationFrame7(frame6);
+    if (!same) bind7(m, holder2);
+    if (G10.cheekA > 0) requestAnimationFrame8(frame7);
     return;
   }
-  bind6(m, slap.holderId);
-  S10.style = slap.style;
+  bind7(m, slap.holderId);
+  S11.style = slap.style;
   lookFaces(facesOf(slap.style));
-  if (G9.cheekA > 0) requestAnimationFrame7(frame6);
-  if (G9.started.has(slap.id)) return;
-  if (G9.slap || G9.starting) {
-    if (G9.next?.id !== slap.id) {
-      G9.next = slap;
+  if (G10.cheekA > 0) requestAnimationFrame8(frame7);
+  if (G10.started.has(slap.id)) return;
+  if (G10.slap || G10.starting) {
+    if (G10.next?.id !== slap.id) {
+      G10.next = slap;
       LINES_NEXT = { [slap.style]: linesFor(m.reg, slap.style, slap.id) };
     }
     return;
   }
-  LINES4 = { [slap.style]: linesFor(m.reg, slap.style, slap.id) };
+  LINES5 = { [slap.style]: linesFor(m.reg, slap.style, slap.id) };
   m.host.dataset.slap = slap.id;
   readFaceNow();
   void startSlap2(slap);
 }
 var LINES_NEXT = {};
 function settleSlap() {
-  G9.next = null;
-  const s = G9.slap;
-  if (s && s.result === null || G9.starting) {
-    G9.started.delete(s ? s.id : G9.rkey);
-    G9.epoch++;
-    G9.starting = false;
-    G9.slap = null;
-    G9.back = null;
+  G10.next = null;
+  const s = G10.slap;
+  if (s && s.result === null || G10.starting) {
+    G10.started.delete(s ? s.id : G10.rkey);
+    G10.epoch++;
+    G10.starting = false;
+    G10.slap = null;
+    G10.back = null;
     for (const n of made) {
       try {
         n.stop();
@@ -75806,29 +77304,29 @@ function settleSlap() {
     made.clear();
     for (const t of timers3) clearTimeout(t);
     timers3.clear();
-    if (E6) $8("#hand").replaceChildren();
-    if (G9.typingFocus && E6) $8("#cmd").focus();
+    if (E7) $9("#hand").replaceChildren();
+    if (G10.typingFocus && E7) $9("#cmd").focus();
   }
 }
 function stopSlap(opts = {}) {
-  if (G9.slap && G9.slap.result === null) G9.started.delete(G9.slap.id);
-  if (G9.starting) G9.started.delete(G9.rkey);
-  G9.epoch++;
-  G9.slap = null;
-  G9.back = null;
-  G9.starting = false;
-  G9.next = null;
-  G9.k = 0;
-  G9.mouse = [];
+  if (G10.slap && G10.slap.result === null) G10.started.delete(G10.slap.id);
+  if (G10.starting) G10.started.delete(G10.rkey);
+  G10.epoch++;
+  G10.slap = null;
+  G10.back = null;
+  G10.starting = false;
+  G10.next = null;
+  G10.k = 0;
+  G10.mouse = [];
   if (!opts.keepCheek) {
-    G9.cheekA = 0;
-    G9.cheekScene = "";
-    G9.started.clear();
-    G9.last = null;
+    G10.cheekA = 0;
+    G10.cheekScene = "";
+    G10.started.clear();
+    G10.last = null;
   }
   for (const t of timers3) clearTimeout(t);
   timers3.clear();
-  if (frameId !== null && E6) E6.env.cancelRaf(frameId);
+  if (frameId !== null && E7) E7.env.cancelRaf(frameId);
   frameId = null;
   for (const n of made) {
     try {
@@ -75842,25 +77340,25 @@ function stopSlap(opts = {}) {
   }
   made.clear();
   try {
-    A7.worldG?.disconnect();
+    A8.worldG?.disconnect();
   } catch {
   }
-  A7.ctx = null;
-  A7.buf = {};
-  delete A7.worldLP;
-  delete A7.worldG;
-  delete A7.body;
-  delete A7.white;
+  A8.ctx = null;
+  A8.buf = {};
+  delete A8.worldLP;
+  delete A8.worldG;
+  delete A8.body;
+  delete A8.white;
   cam.release();
-  if (E6) {
-    for (const off of E6.offs) off();
-    E6.box.remove();
-    const mirrors = E6.env.root.querySelectorAll(".alius-slap-mirror");
-    if (mirrors.length > 0) E6.env.input.style.removeProperty("color");
+  if (E7) {
+    for (const off of E7.offs) off();
+    E7.box.remove();
+    const mirrors = E7.env.root.querySelectorAll(".alius-slap-mirror");
+    if (mirrors.length > 0) E7.env.input.style.removeProperty("color");
     mirrors.forEach((m) => m.remove());
-    delete E6.host.dataset.slap;
+    delete E7.host.dataset.slap;
   }
-  E6 = null;
+  E7 = null;
 }
 function resetSlap() {
   stopSlap();
@@ -75944,16 +77442,16 @@ function createDock(host, names2, opts = {}) {
           cards.push({ el, key: `${sceneId}|${name}|${idOf2(el, i)}` });
         });
       }
-      const fresh6 = cards.filter((c) => !ages.has(c.key));
-      for (const c of [...fresh6].reverse()) ages.set(c.key, ++age);
-      if (fresh6.some((c) => !running2(c.el))) chosen = null;
+      const fresh7 = cards.filter((c) => !ages.has(c.key));
+      for (const c of [...fresh7].reverse()) ages.set(c.key, ++age);
+      if (fresh7.some((c) => !running2(c.el))) chosen = null;
       if (answered2 !== null) {
         if (!cards.some((c) => c.key === answered2)) sfx2(DOCK_SOUNDS.place[fnv1a3(answered2) % 2], 0.25, -0.6);
         answered2 = null;
       }
       const quiet = !dealt.has(sceneId);
       dealt.add(sceneId);
-      const arriving = quiet ? [] : fresh6.filter((c) => !running2(c.el) && !setAside.has(c.key));
+      const arriving = quiet ? [] : fresh7.filter((c) => !running2(c.el) && !setAside.has(c.key));
       for (const c of arriving) if (opts.reduced?.() !== true) c.el.classList.add("is-arriving");
       if (arriving.length > 0) sfx2(DOCK_SOUNDS.slide[fnv1a3(arriving[0].key) % 2], 0.25, -0.6);
       const shown2 = cards.filter((c) => !setAside.has(c.key)).sort((a, b) => ages.get(a.key) - ages.get(b.key));
@@ -76027,7 +77525,7 @@ function resetLook() {
   memory.clear();
 }
 var DRAG_HOLD_MS = 8e3;
-function attachLook(frame7, root, opts) {
+function attachLook(frame8, root, opts) {
   const id = opts.sceneId();
   let pan = memory.get(id) ?? 0.5;
   let drag = null;
@@ -76042,7 +77540,7 @@ function attachLook(frame7, root, opts) {
   };
   root.style.setProperty("--alius-pan", String(pan));
   still2();
-  const down2 = (e) => {
+  const down3 = (e) => {
     const ev = e;
     if (ev.button !== 2) return;
     still2();
@@ -76057,7 +77555,7 @@ function attachLook(frame7, root, opts) {
     drag = { x: ev.clientX, pan, moved: false };
     root.classList.add("alius-looking");
     try {
-      frame7.setPointerCapture?.(ev.pointerId);
+      frame8.setPointerCapture?.(ev.pointerId);
     } catch {
     }
   };
@@ -76065,13 +77563,13 @@ function attachLook(frame7, root, opts) {
     drag = null;
     root.classList.remove("alius-looking");
   };
-  const move = (e) => {
+  const move2 = (e) => {
     if (!drag) return;
     if ((e.buttons & 2) === 0) {
       stop();
       return;
     }
-    const width = frame7.getBoundingClientRect().width;
+    const width = frame8.getBoundingClientRect().width;
     if (width <= 0) return;
     const dx = drag.x - e.clientX;
     if (dx === 0 && !drag.moved) return;
@@ -76081,25 +77579,25 @@ function attachLook(frame7, root, opts) {
     pan = clamp012(drag.pan + dx / width);
     apply2();
   };
-  const up = (e) => {
+  const up2 = (e) => {
     if (!drag || e.button !== 2) return;
     if (!drag.moved) lastClick = Date.now();
     stop();
   };
   const menu = (e) => e.preventDefault();
-  frame7.addEventListener("pointerdown", down2);
-  frame7.addEventListener("pointermove", move);
-  frame7.addEventListener("pointerup", up);
-  frame7.addEventListener("pointercancel", stop);
-  frame7.addEventListener("lostpointercapture", stop);
-  frame7.addEventListener("contextmenu", menu);
+  frame8.addEventListener("pointerdown", down3);
+  frame8.addEventListener("pointermove", move2);
+  frame8.addEventListener("pointerup", up2);
+  frame8.addEventListener("pointercancel", stop);
+  frame8.addEventListener("lostpointercapture", stop);
+  frame8.addEventListener("contextmenu", menu);
   const detach = () => {
-    frame7.removeEventListener("pointerdown", down2);
-    frame7.removeEventListener("pointermove", move);
-    frame7.removeEventListener("pointerup", up);
-    frame7.removeEventListener("pointercancel", stop);
-    frame7.removeEventListener("lostpointercapture", stop);
-    frame7.removeEventListener("contextmenu", menu);
+    frame8.removeEventListener("pointerdown", down3);
+    frame8.removeEventListener("pointermove", move2);
+    frame8.removeEventListener("pointerup", up2);
+    frame8.removeEventListener("pointercancel", stop);
+    frame8.removeEventListener("lostpointercapture", stop);
+    frame8.removeEventListener("contextmenu", menu);
     root.classList.remove("alius-looking");
   };
   return Object.assign(detach, {
@@ -76189,9 +77687,9 @@ function cancelPostureCalls(cancel = (handle) => clearTimeout(handle)) {
   cancelCall();
 }
 onStageReset(() => cancelCall());
-function drawPostureCall(host, state, reg, pick10, handlers2, opts = {}) {
+function drawPostureCall(host, state, reg, pick11, handlers2, opts = {}) {
   if (opts.look === "scene") {
-    drawSceneCall(host, state, reg, pick10, handlers2);
+    drawSceneCall(host, state, reg, pick11, handlers2);
     return;
   }
   host.replaceChildren();
@@ -76204,7 +77702,7 @@ function drawPostureCall(host, state, reg, pick10, handlers2, opts = {}) {
     expiries.delete(id);
   };
   const unit4 = call2 === void 0 ? void 0 : state.squad.find((u) => u.id === call2.holderId);
-  if (call2 === void 0 || unit4 === void 0 || !dynamicOn(state, reg) || !practiceLive(state, reg, unit4.id) || !pick10({ unitId: unit4.id })) {
+  if (call2 === void 0 || unit4 === void 0 || !dynamicOn(state, reg) || !practiceLive(state, reg, unit4.id) || !pick11({ unitId: unit4.id })) {
     for (const id of [...expiries.keys()]) stop(id);
     started.clear();
     return;
@@ -76258,11 +77756,11 @@ function drawPostureCall(host, state, reg, pick10, handlers2, opts = {}) {
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:posture_call", live3))) card2.setAttribute(k, v);
   host.append(card2);
 }
-function drawSceneCall(host, state, reg, pick10, handlers2) {
+function drawSceneCall(host, state, reg, pick11, handlers2) {
   const call2 = state.practices?.call;
   const unit4 = call2 === void 0 ? void 0 : state.squad.find((u) => u.id === call2.holderId);
   const now = currentCall();
-  const live3 = call2 !== void 0 && unit4 !== void 0 && dynamicOn(state, reg) && practiceLive(state, reg, unit4.id) && pick10({ unitId: unit4.id });
+  const live3 = call2 !== void 0 && unit4 !== void 0 && dynamicOn(state, reg) && practiceLive(state, reg, unit4.id) && pick11({ unitId: unit4.id });
   const set2 = live3 ? (state.practices.postures[unit4.id] ?? []).filter((p) => {
     const entry = reg.blockingPostures.get(p.postureId);
     return entry !== void 0 && entryAllowed(state, reg, entry, [unit4.id]);
@@ -76338,9 +77836,9 @@ function clearSlapOverlay(host) {
 }
 
 // src/ui/dynamic/frameChip.ts
-function drawFrameChips(host, state, reg, pick10, hidden) {
+function drawFrameChips(host, state, reg, pick11, hidden) {
   if (hidden || !dynamicOn(state, reg)) return;
-  const chips = state.squad.filter((u) => u.kind === "named" && isLiving(u) && pick10(u.id) && frameRank(dynamicOf(state, u.id)?.frame ?? "equal") >= frameRank("play")).map((u) => h(
+  const chips = state.squad.filter((u) => u.kind === "named" && isLiving(u) && pick11(u.id) && frameRank(dynamicOf(state, u.id)?.frame ?? "equal") >= frameRank("play")).map((u) => h(
     "span",
     { class: "alius-chip alius-frame-chip", "data-frame-chip": u.id, ...analyzeAttrs("glossary:frame", { unitId: u.id }) },
     `${u.displayName.toUpperCase()}: ${String(reg.dynamicFrames.get(dynamicOf(state, u.id).frame)?.label ?? "").toUpperCase()}`
@@ -76784,7 +78282,7 @@ function renderPhysicsPanel(host, ctx2) {
 function wireKeys(host) {
   if (keyHandlers.has(host)) return;
   const typing6 = (t) => t !== null && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
-  const down2 = (e) => {
+  const down3 = (e) => {
     if (!host.isConnected) {
       unwireKeys(host);
       return;
@@ -76799,15 +78297,15 @@ function wireKeys(host) {
     if (ev.repeat) return;
     main2.dispatchEvent(new Event(realtime ? "pointerdown" : "click", { bubbles: true }));
   };
-  const up = (e) => {
+  const up2 = (e) => {
     if (e.key !== " ") return;
     const t = holding.get(host);
     if (t !== void 0) clearInterval(t);
     holding.delete(host);
   };
-  keyHandlers.set(host, { down: down2, up });
-  document.addEventListener("keydown", down2);
-  document.addEventListener("keyup", up);
+  keyHandlers.set(host, { down: down3, up: up2 });
+  document.addEventListener("keydown", down3);
+  document.addEventListener("keyup", up2);
 }
 function unwireKeys(host) {
   const k = keyHandlers.get(host);
@@ -77160,12 +78658,12 @@ function fillProse(el, text3, visible, opts = {}) {
     if (left <= 0) return;
     const part = run.text.slice(0, left);
     left -= part.length;
-    const fresh6 = opts.newestFrom !== void 0 && index2 >= opts.newestFrom;
+    const fresh7 = opts.newestFrom !== void 0 && index2 >= opts.newestFrom;
     const cls = (...c) => c.filter(Boolean).join(" ");
     let node;
-    if (run.kind === "em") node = h("em", { class: cls("alius-glitch", run.speech === true && speechClass, fresh6 && "alius-prose-new") });
-    else if (run.kind === "speech") node = h("span", { class: cls(speechClass, fresh6 && "alius-prose-new") });
-    else if (fresh6) node = h("span", { class: "alius-prose-new" });
+    if (run.kind === "em") node = h("em", { class: cls("alius-glitch", run.speech === true && speechClass, fresh7 && "alius-prose-new") });
+    else if (run.kind === "speech") node = h("span", { class: cls(speechClass, fresh7 && "alius-prose-new") });
+    else if (fresh7) node = h("span", { class: "alius-prose-new" });
     else {
       el.append(document.createTextNode(part));
       return;
@@ -77203,10 +78701,10 @@ function createCurtain(host, opts) {
   );
   host.append(element);
   let opened = false;
-  let last2 = null;
-  function render6() {
-    if (!last2) return;
-    const { messages, ctx: ctx2 } = last2;
+  let last3 = null;
+  function render7() {
+    if (!last3) return;
+    const { messages, ctx: ctx2 } = last3;
     const stick = scroller.childElementCount === 0 || atEnd(scroller);
     const previous = scroller.scrollTop;
     const boxHadFocus = document.activeElement instanceof HTMLTextAreaElement && scroller.contains(document.activeElement);
@@ -77307,7 +78805,7 @@ function createCurtain(host, opts) {
       element.dataset.open = "true";
       element.setAttribute("aria-hidden", "false");
       opts.onOpen();
-      render6();
+      render7();
       scroller.scrollTop = scroller.scrollHeight;
     },
     close() {
@@ -77319,8 +78817,8 @@ function createCurtain(host, opts) {
     },
     isOpen: () => opened,
     draw(messages, ctx2) {
-      last2 = { messages, ctx: ctx2 };
-      if (opened) render6();
+      last3 = { messages, ctx: ctx2 };
+      if (opened) render7();
     },
     destroy: () => stop()
   };
@@ -77394,14 +78892,14 @@ function measureReply(host, onMore) {
   }
 }
 var moreHandlers = /* @__PURE__ */ new WeakMap();
-function renderReply(host, view, opts) {
-  if (view.echo === null && view.replies.length === 0) {
+function renderReply(host, view2, opts) {
+  if (view2.echo === null && view2.replies.length === 0) {
     host.replaceChildren();
     return;
   }
   const body2 = h("div", { class: "alius-reply-body" });
   body2.style.setProperty("--alius-reply-lines", String(opts.maxLines));
-  for (const r of view.replies) {
+  for (const r of view2.replies) {
     const name = h("span", { class: "alius-reply-name" });
     name.textContent = r.name.toUpperCase();
     const text3 = h("span", { class: "alius-reply-text" });
@@ -77414,9 +78912,9 @@ function renderReply(host, view, opts) {
   }
   const block2 = h("div", { class: "alius-reply" });
   moreHandlers.set(block2, opts.onMore);
-  if (view.echo !== null) {
+  if (view2.echo !== null) {
     const echo = h("div", { class: "alius-reply-echo", "aria-label": "Your last message" });
-    echo.textContent = view.echo;
+    echo.textContent = view2.echo;
     block2.append(echo);
   }
   block2.append(body2);
@@ -77674,8 +79172,8 @@ function renderSceneScreen(host, ctx2) {
     const units = present2(s);
     const at2 = units.findIndex((u) => u.cardRef !== void 0 && u.cardRef === reply.avatar || u.displayName === reply.name);
     if (at2 < 0) return;
-    const frame7 = layers.frame.getBoundingClientRect();
-    const pan = panToCentre(spriteSlots(units.length)[at2].x, frame7.width, frame7.height);
+    const frame8 = layers.frame.getBoundingClientRect();
+    const pan = panToCentre(spriteSlots(units.length)[at2].x, frame8.width, frame8.height);
     if (pan !== null) detachLook.turnTo(pan);
   }
   function drawHud(s) {
@@ -77853,16 +79351,16 @@ function renderSceneScreen(host, ctx2) {
     if (limit > 0 && lastReply.text.trim().split(/\s+/).filter(Boolean).length > limit) curtain.open();
   }
   function drawReply(s, messages) {
-    const view = replyView(messages);
+    const view2 = replyView(messages);
     const speed = typingSpeed();
-    const streaming = pending4 && view.replies.length > 0 ? view.replies[view.replies.length - 1].index : null;
+    const streaming = pending4 && view2.replies.length > 0 ? view2.replies[view2.replies.length - 1].index : null;
     const lit = (index2) => {
       if (speed <= 0) return void 0;
-      const text3 = view.replies.find((r) => r.index === index2)?.text ?? "";
+      const text3 = view2.replies.find((r) => r.index === index2)?.text ?? "";
       if (index2 === animating) return sentenceRunIndex(text3, progress.get(index2) ?? 0);
       return index2 === streaming ? sentenceRunIndex(text3, Infinity) : void 0;
     };
-    renderReply(replyHost, view, {
+    renderReply(replyHost, view2, {
       maxLines: REPLY_MAX_LINES,
       visibleOf: (index2) => index2 === animating ? progress.get(index2) ?? 0 : Infinity,
       newestFrom: lit,
@@ -77883,8 +79381,8 @@ function renderSceneScreen(host, ctx2) {
       stopTyping();
       if (lastIndex > seen2) seen2 = lastIndex;
     } else {
-      const fresh6 = seen2 < 0 ? [] : messages.filter((m) => m.index > seen2);
-      const newest = [...fresh6].reverse().find((m) => !m.isUser);
+      const fresh7 = seen2 < 0 ? [] : messages.filter((m) => m.index > seen2);
+      const newest = [...fresh7].reverse().find((m) => !m.isUser);
       if (newest && speed > 0 && !progress.has(newest.index)) {
         animating = newest.index;
         progress.set(newest.index, 0);
@@ -78040,7 +79538,7 @@ function renderSceneScreen(host, ctx2) {
     }
   };
   document.addEventListener("keydown", onDocKey);
-  function build8(s) {
+  function build9(s) {
     const units = present2(s);
     sceneKey = s.scene.id;
     unmountInstruments();
@@ -78316,7 +79814,7 @@ function renderSceneScreen(host, ctx2) {
       seen2 = -1;
       progress = /* @__PURE__ */ new Map();
       stopTyping();
-      build8(s);
+      build9(s);
     } else drawBackground(s);
     const messages = controller.transcript();
     const lastReply = [...messages].reverse().find((m) => !m.isUser);
@@ -78713,9 +80211,9 @@ function ruleProvider(subject, env) {
   const rule = state && ruleId !== null ? rulesOf(state).find((r) => r.id === ruleId) : void 0;
   if (!rule) return null;
   const status = rule.status === "negotiating" ? "being negotiated" : rule.status;
-  const broken = rule.brokenCount === 0 ? "Never broken." : rule.brokenCount === 1 ? "Broken once." : `Broken ${rule.brokenCount} times.`;
+  const broken2 = rule.brokenCount === 0 ? "Never broken." : rule.brokenCount === 1 ? "Broken once." : `Broken ${rule.brokenCount} times.`;
   const check = String(env.registries.relationshipRuleTemplates.get(rule.templateId)?.check ?? "");
-  return { lines: [`Her rule: ${status}. ${broken}`, ...CHECK_TEXT[check] ? [CHECK_TEXT[check]] : []] };
+  return { lines: [`Her rule: ${status}. ${broken2}`, ...CHECK_TEXT[check] ? [CHECK_TEXT[check]] : []] };
 }
 function publicityProvider(subject, env, k) {
   const unitId = typeof subject.data.unitId === "string" ? subject.data.unitId : null;
@@ -79104,11 +80602,11 @@ function stakeLines(reg, stakeId) {
   const words3 = STAKE_WORDS[String(stake?.effect)];
   return words3 ? [`If she wins: ${words3.she}.`, `If the commander wins: ${words3.commander}.`] : [];
 }
-function oddsLine(state, reg, k, gameId, unitId, pick10) {
+function oddsLine(state, reg, k, gameId, unitId, pick11) {
   const kind = String(reg.wagerGames.get(gameId)?.kind);
   if (kind === "sparring") {
-    if (pick10 === void 0) return null;
-    const odds = sparringOdds(state, reg, unitId, pick10);
+    if (pick11 === void 0) return null;
+    const odds = sparringOdds(state, reg, unitId, pick11);
     const pct6 = k.raw(Math.round(odds * 100));
     return `The commander's chance in the bout: ${bandWord(odds)}${pct6 !== null ? ` (about ${pct6} %)` : ""}.`;
   }
@@ -79353,9 +80851,9 @@ function satisfactionProvider(_s, env, k) {
 function defianceProvider(_s, env, k) {
   const w = env.state ? wardenOf(env.state) : null;
   if (!w) return null;
-  const E7 = TUNING.warden.escalation;
+  const E8 = TUNING.warden.escalation;
   const raw = k.raw(w.defiance);
-  const lines3 = [w.defiance >= E7.warning2 ? "Open defiance is near the limit." : w.defiance >= E7.warning1 ? "Open defiance is on the record." : "Open defiance is low."];
+  const lines3 = [w.defiance >= E8.warning2 ? "Open defiance is near the limit." : w.defiance >= E8.warning1 ? "Open defiance is on the record." : "Open defiance is low."];
   if (raw !== null) lines3.push(`Defiance: ${raw}.`);
   if (w.warnings.length > 0) lines3.push(`${w.warnings.length === 1 ? "One warning" : "Two warnings"} given.`);
   return { lines: lines3 };
@@ -79438,10 +80936,10 @@ function axisProvider(s, env, k) {
   const unitId = unitIdOf6(s);
   if (!env.state || unitId === null) return null;
   const unit4 = env.state.squad.find((u) => u.id === unitId);
-  const view = k.development(unitId, env.registries);
+  const view2 = k.development(unitId, env.registries);
   const axis = typeof s.data.axis === "string" ? s.data.axis : null;
-  if (axis === null) return { lines: view.axes.length === 0 ? ["Nothing has changed yet."] : view.axes.map((a2) => `${unit4?.displayName ?? "She"}: ${a2.words}.`) };
-  const a = view.axes.find((x) => x.axis === axis);
+  if (axis === null) return { lines: view2.axes.length === 0 ? ["Nothing has changed yet."] : view2.axes.map((a2) => `${unit4?.displayName ?? "She"}: ${a2.words}.`) };
+  const a = view2.axes.find((x) => x.axis === axis);
   if (!a) return { lines: ["Nothing has changed here yet."] };
   return {
     lines: [
@@ -80159,50 +81657,50 @@ function resolveTarget(target) {
 
 // src/ui/analyze/panel.ts
 var idPart2 = (target) => target.slice(target.indexOf(":") + 1);
-function linked(text3, view, on) {
+function linked(text3, view2, on) {
   return parseLinks(text3).map((part) => {
     if (typeof part === "string") return part;
     const address = resolveTarget(part.target);
     const label2 = part.label ?? idPart2(address);
-    if (!view.canDrill) return label2;
+    if (!view2.canDrill) return label2;
     return h("button", { type: "button", class: "alius-analyze-link", "data-target": address, onclick: () => on.link(address) }, label2);
   });
 }
 var block = (title3, cls, lines3) => h("div", { class: `alius-analyze-block ${cls}` }, h("div", { class: "alius-analyze-label" }, title3), ...lines3.map((l) => h("div", { class: "alius-analyze-line" }, ...l)));
-function renderPanel(host, view, on) {
-  const { model } = view;
+function renderPanel(host, view2, on) {
+  const { model } = view2;
   host.classList.add("alius-analyze");
   host.setAttribute("role", "dialog");
   host.setAttribute("aria-label", `Analysis: ${model.title}`);
-  host.toggleAttribute("aria-busy", view.analyzingMs > 0);
+  host.toggleAttribute("aria-busy", view2.analyzingMs > 0);
   const head = h("div", { class: "alius-analyze-frame alius-analyze-head" }, "\u250C\u2500[ ANALYSIS ]");
   const foot2 = h("div", { class: "alius-analyze-frame alius-analyze-foot" }, "\u2514\u2500");
   const body2 = h("div", { class: "alius-analyze-body" });
-  if (view.analyzingMs > 0) {
-    body2.append(h("div", { class: view.wipe ? "alius-analyze-line alius-analyze-wipe" : "alius-analyze-line" }, "ANALYZING \u2592\u2592\u2592\u2591\u2591"));
+  if (view2.analyzingMs > 0) {
+    body2.append(h("div", { class: view2.wipe ? "alius-analyze-line alius-analyze-wipe" : "alius-analyze-line" }, "ANALYZING \u2592\u2592\u2592\u2591\u2591"));
   } else if (model.missing) {
     body2.append(h("div", { class: "alius-analyze-line alius-analyze-missing" }, `NO DATA // ${model.address}`));
   } else {
     const bar2 = [];
-    if (view.crumbs.length > 1) bar2.push(h("button", { type: "button", class: "alius-analyze-back", "aria-label": "Back", onclick: () => on.back() }, "[<]"));
+    if (view2.crumbs.length > 1) bar2.push(h("button", { type: "button", class: "alius-analyze-back", "aria-label": "Back", onclick: () => on.back() }, "[<]"));
     bar2.push(h("div", { class: "alius-analyze-title" }, model.title));
-    bar2.push(h("button", { type: "button", class: "alius-analyze-pin", "aria-pressed": String(view.pinned), onclick: () => on.pin() }, view.pinned ? "[ PINNED ]" : "[ PIN ]"));
+    bar2.push(h("button", { type: "button", class: "alius-analyze-pin", "aria-pressed": String(view2.pinned), onclick: () => on.pin() }, view2.pinned ? "[ PINNED ]" : "[ PIN ]"));
     body2.append(h("div", { class: "alius-analyze-bar" }, ...bar2));
-    if (view.crumbs.length > 1) {
-      const last2 = view.crumbs.length - 1;
+    if (view2.crumbs.length > 1) {
+      const last3 = view2.crumbs.length - 1;
       const trail = [];
-      view.crumbs.forEach((title3, i) => {
+      view2.crumbs.forEach((title3, i) => {
         if (i > 0) trail.push(" \u203A ");
-        trail.push(i === last2 ? title3 : h("button", { type: "button", class: "alius-analyze-crumb", onclick: () => on.crumb(i) }, title3));
+        trail.push(i === last3 ? title3 : h("button", { type: "button", class: "alius-analyze-crumb", onclick: () => on.crumb(i) }, title3));
       });
       body2.append(h("div", { class: "alius-analyze-crumbs" }, ...trail));
     }
-    if (model.text) body2.append(h("p", { class: "alius-analyze-text" }, ...linked(model.text, view, on)));
-    if (model.long) body2.append(h("p", { class: "alius-analyze-long" }, ...linked(model.long, view, on)));
-    if (model.effects.length) body2.append(block("EFFECTS", "alius-analyze-effects", model.effects.map((l) => linked(l, view, on))));
-    if (model.reading) body2.append(block("CURRENT READING", "alius-analyze-reading", model.reading.lines.map((l) => linked(l, view, on))));
+    if (model.text) body2.append(h("p", { class: "alius-analyze-text" }, ...linked(model.text, view2, on)));
+    if (model.long) body2.append(h("p", { class: "alius-analyze-long" }, ...linked(model.long, view2, on)));
+    if (model.effects.length) body2.append(block("EFFECTS", "alius-analyze-effects", model.effects.map((l) => linked(l, view2, on))));
+    if (model.reading) body2.append(block("CURRENT READING", "alius-analyze-reading", model.reading.lines.map((l) => linked(l, view2, on))));
     if (model.see.length) {
-      const items = model.see.flatMap((target, i) => [...i > 0 ? [" \xB7 "] : [], ...linked(`[[${target}]]`, view, on)]);
+      const items = model.see.flatMap((target, i) => [...i > 0 ? [" \xB7 "] : [], ...linked(`[[${target}]]`, view2, on)]);
       body2.append(h("div", { class: "alius-analyze-block alius-analyze-see" }, h("div", { class: "alius-analyze-label" }, "SEE ALSO"), h("div", { class: "alius-analyze-line" }, ...items)));
     }
   }
@@ -80289,7 +81787,7 @@ function attachAnalyzer(root, deps) {
     }
     return false;
   }
-  function render6(analyzingMs, wipe2) {
+  function render7(analyzingMs, wipe2) {
     if (!panelEl || stack.length === 0) return;
     const env = deps.getEnv();
     const models = stack.map((s) => buildPanelModel(s, env));
@@ -80313,17 +81811,17 @@ function attachAnalyzer(root, deps) {
     const ms = animationMs(mode, seen2.has(top.address), reduced());
     seen2.add(top.address);
     if (ms > 0) {
-      render6(ms, mode === "full");
+      render7(ms, mode === "full");
       animTimer = setTimeout(() => {
         animTimer = null;
-        render6(0, false);
+        render7(0, false);
       }, ms);
     } else {
-      render6(0, false);
+      render7(0, false);
     }
   }
   function rerender() {
-    if (animTimer === null) render6(0, false);
+    if (animTimer === null) render7(0, false);
   }
   function pin() {
     pinned = true;
@@ -80418,9 +81916,9 @@ function attachAnalyzer(root, deps) {
   function stopSwallowing() {
     swallowTimer = clear(swallowTimer);
     swallowing = false;
-    window.removeEventListener("click", swallow, true);
+    window.removeEventListener("click", swallow2, true);
   }
-  function swallow(ev) {
+  function swallow2(ev) {
     ev.preventDefault();
     ev.stopImmediatePropagation();
     stopSwallowing();
@@ -80440,7 +81938,7 @@ function attachAnalyzer(root, deps) {
       if (!enabled()) return;
       stopSwallowing();
       swallowing = true;
-      window.addEventListener("click", swallow, true);
+      window.addEventListener("click", swallow2, true);
       swallowTimer = setTimeout(stopSwallowing, SWALLOW_MAX_MS);
       openFor4(el, touchStart, { pinned: true });
     }, LONG_PRESS_MS);
@@ -80539,13 +82037,13 @@ function playBoot(screen, opts) {
     const show = (i) => void overlay.append(h("div", { class: "alius-boot-line" }, lines3[i]));
     const timers5 = [];
     let over2 = false;
-    const finish6 = () => {
+    const finish7 = () => {
       if (over2) return;
       over2 = true;
       timers5.forEach(clearTimeout);
-      document.removeEventListener("keydown", finish6);
-      document.removeEventListener("pointerdown", finish6);
-      opts.signal?.removeEventListener("abort", finish6);
+      document.removeEventListener("keydown", finish7);
+      document.removeEventListener("pointerdown", finish7);
+      opts.signal?.removeEventListener("abort", finish7);
       overlay.remove();
       resolve();
     };
@@ -80553,10 +82051,10 @@ function playBoot(screen, opts) {
     timers5.push(setTimeout(() => show(1), STEP_MS));
     timers5.push(setTimeout(() => show(2), STEP_MS * 2));
     timers5.push(setTimeout(() => overlay.classList.add("alius-boot-fade"), STEP_MS * 3));
-    timers5.push(setTimeout(finish6, STEP_MS * 4));
-    document.addEventListener("keydown", finish6);
-    document.addEventListener("pointerdown", finish6);
-    opts.signal?.addEventListener("abort", finish6);
+    timers5.push(setTimeout(finish7, STEP_MS * 4));
+    document.addEventListener("keydown", finish7);
+    document.addEventListener("pointerdown", finish7);
+    opts.signal?.addEventListener("abort", finish7);
   });
 }
 
@@ -80619,12 +82117,12 @@ function renderChrome(chrome, screen, device, skin, assetUrl) {
     screen.style.top = box.top;
     screen.style.width = box.width;
     screen.style.height = box.height;
-    const frame7 = h("img", { class: "alius-device-frame", alt: "", draggable: "false", src: assetUrl(String(skin.frameImage)) });
-    frame7.addEventListener("error", () => {
+    const frame8 = h("img", { class: "alius-device-frame", alt: "", draggable: "false", src: assetUrl(String(skin.frameImage)) });
+    frame8.addEventListener("error", () => {
       failedFrames.add(String(skin.frameImage));
       renderChrome(chrome, screen, device, BUILT_IN_SKIN);
     });
-    chrome.append(frame7);
+    chrome.append(frame8);
     const overlay = skin.overlay;
     if (overlay) {
       const layer = h("div", { class: "alius-device-overlay" });
@@ -80652,14 +82150,14 @@ function createModalHost(layer) {
       cancelCurrent?.();
       const previousFocus = document.activeElement;
       return new Promise((resolve) => {
-        const finish6 = (value) => {
+        const finish7 = (value) => {
           cancelCurrent = null;
           backdrop.remove();
           previousFocus?.focus?.();
           resolve(value);
         };
         const buttons = opts.actions.map(
-          (a) => h("button", { type: "button", class: "alius-btn", disabled: a.disabled !== void 0, title: a.disabled, onclick: () => finish6(a.value), ...a.analyze !== void 0 ? analyzeAttrs(a.analyze) : {} }, a.label)
+          (a) => h("button", { type: "button", class: "alius-btn", disabled: a.disabled !== void 0, title: a.disabled, onclick: () => finish7(a.value), ...a.analyze !== void 0 ? analyzeAttrs(a.analyze) : {} }, a.label)
         );
         const reasons = opts.actions.flatMap((a) => a.disabled !== void 0 ? [h("span", { class: "alius-modal-reason" }, `${a.label} \u2014 ${a.disabled}`)] : []);
         const dialog = h(
@@ -80671,7 +82169,7 @@ function createModalHost(layer) {
         );
         const backdrop = h("div", { class: "alius-modal-backdrop" }, dialog);
         layer.append(backdrop);
-        cancelCurrent = () => finish6(null);
+        cancelCurrent = () => finish7(null);
         buttons.find((b) => !b.disabled)?.focus();
       });
     }
@@ -80679,7 +82177,7 @@ function createModalHost(layer) {
 }
 
 // src/ui/memory/fill.ts
-function fillValue(state, build8, settings, part) {
+function fillValue(state, build9, settings, part) {
   const cfg = memoryConfig(state);
   switch (part) {
     case "facts": {
@@ -80692,9 +82190,9 @@ function fillValue(state, build8, settings, part) {
     case "chronicle":
       return String(state.memory.chronicle.length);
     case "memory_tokens":
-      return `${build8.memoryTokens} / ${cfg.memoryTokens}`;
+      return `${build9.memoryTokens} / ${cfg.memoryTokens}`;
     case "directive_tokens":
-      return String(build8.directiveTokens);
+      return String(build9.directiveTokens);
     case "save_size":
       return `${(JSON.stringify(state).length / 1024).toFixed(1)} KB`;
   }
@@ -80707,12 +82205,12 @@ var ROWS = [
   ["directive_tokens", "Directives in the last prompt (tokens)"],
   ["save_size", "Save size"]
 ];
-function renderFill(host, state, build8, settings) {
+function renderFill(host, state, build9, settings) {
   host.replaceChildren(h("div", { class: "alius-memory-fill" }, ...ROWS.map(([part, label2]) => h(
     "div",
     { class: "alius-memory-row" },
     h("span", { class: "alius-field-label" }, label2),
-    h("span", { class: "alius-stat", "data-fill": part, ...analyzeAttrs("glossary:memory_fill", { part }) }, fillValue(state, build8, settings, part))
+    h("span", { class: "alius-stat", "data-fill": part, ...analyzeAttrs("glossary:memory_fill", { part }) }, fillValue(state, build9, settings, part))
   ))));
 }
 
@@ -80940,7 +82438,7 @@ function renderSysTab(host, ctx2) {
       if (err) ctx2.toast("warn", String(err.message ?? "The setting could not be changed."));
       drawDynamic();
     };
-    const pick10 = (name, options2, value, address, label2, commit) => {
+    const pick11 = (name, options2, value, address, label2, commit) => {
       const el = h("select", { name, class: "alius-input" }, ...options2.map(([v, text3]) => h("option", { value: v, selected: v === value }, text3)));
       el.value = value;
       el.addEventListener("change", () => commit(el.value));
@@ -80948,9 +82446,9 @@ function renderSysTab(host, ctx2) {
     };
     const setSetup = (patch) => send("dynamic/set_setup", patch);
     dynamicHost.append(
-      pick10("dynamicHolders", HOLDER_CAPS.map((v) => [String(v), v === 0 ? "0 (off)" : String(v)]), String(setup?.holders ?? 0), "glossary:setting_dynamic_holders", "Holders (this campaign)", (v) => setSetup({ holders: v === "any" ? "any" : Number(v) })),
-      pick10("dynamicPace", PACES.map((v) => [v, v]), setup?.pace ?? "normal", "glossary:setting_dynamic_pace", "Pace (this campaign)", (v) => setSetup({ pace: v })),
-      pick10("dynamicFrequency", FREQUENCIES.map((v) => [v, v]), setup?.frequency ?? "normal", "glossary:setting_dynamic_frequency", "Frequency (this campaign)", (v) => setSetup({ frequency: v }))
+      pick11("dynamicHolders", HOLDER_CAPS.map((v) => [String(v), v === 0 ? "0 (off)" : String(v)]), String(setup?.holders ?? 0), "glossary:setting_dynamic_holders", "Holders (this campaign)", (v) => setSetup({ holders: v === "any" ? "any" : Number(v) })),
+      pick11("dynamicPace", PACES.map((v) => [v, v]), setup?.pace ?? "normal", "glossary:setting_dynamic_pace", "Pace (this campaign)", (v) => setSetup({ pace: v })),
+      pick11("dynamicFrequency", FREQUENCIES.map((v) => [v, v]), setup?.frequency ?? "normal", "glossary:setting_dynamic_frequency", "Frequency (this campaign)", (v) => setSetup({ frequency: v }))
     );
     if (state.dynamic === void 0) return;
     for (const u of state.squad.filter((x) => x.kind === "named" && isLiving(x))) {
@@ -80959,8 +82457,8 @@ function renderSysTab(host, ctx2) {
         "div",
         { class: "alius-dynamic-row", "data-unit": u.id },
         h("span", { class: "alius-field-label" }, u.displayName),
-        pick10(`mayHold:${u.id}`, MAY_HOLD.map((v) => [v, v]), mine.mayHold ?? "auto", "glossary:dynamic_may_hold", "May hold", (v) => send("dynamic/set_unit", { unitId: u.id, mayHold: v })),
-        pick10(`sensitivity:${u.id}`, SENSITIVITIES.map((v) => [v, v]), mine.sensitivity ?? "normal", "glossary:dynamic_sensitivity", "Sensitivity", (v) => send("dynamic/set_unit", { unitId: u.id, sensitivity: v }))
+        pick11(`mayHold:${u.id}`, MAY_HOLD.map((v) => [v, v]), mine.mayHold ?? "auto", "glossary:dynamic_may_hold", "May hold", (v) => send("dynamic/set_unit", { unitId: u.id, mayHold: v })),
+        pick11(`sensitivity:${u.id}`, SENSITIVITIES.map((v) => [v, v]), mine.sensitivity ?? "normal", "glossary:dynamic_sensitivity", "Sensitivity", (v) => send("dynamic/set_unit", { unitId: u.id, sensitivity: v }))
       ));
     }
   };
@@ -81340,7 +82838,7 @@ function createShell(deps) {
   let renderedScreen = null;
   let root = null;
   let previousFocus = null;
-  let view;
+  let view2;
   let bannerHost;
   let heldHost = null;
   let toasts = null;
@@ -81447,8 +82945,8 @@ function createShell(deps) {
       });
       return;
     }
-    const render6 = tabRenderers.get(tab);
-    if (render6) guarded(panel2, `tab ${tab}`, render6);
+    const render7 = tabRenderers.get(tab);
+    if (render7) guarded(panel2, `tab ${tab}`, render7);
     else panel2.append(tabStub(tab));
   }
   function glitch() {
@@ -81498,10 +82996,10 @@ function createShell(deps) {
     device?.classList.toggle("alius-device-narrow", window.innerWidth <= NARROW_PX);
     syncHubInert();
   }
-  function applyDevice(up) {
+  function applyDevice(up2) {
     if (!device) return;
-    device.dataset.up = String(up);
-    if (up) {
+    device.dataset.up = String(up2);
+    if (up2) {
       device.removeAttribute("inert");
       device.removeAttribute("aria-hidden");
     } else {
@@ -81519,11 +83017,11 @@ function createShell(deps) {
       guarded(target, "hub", (host) => hubRender(host, dev));
     });
   }
-  function focusDevice(up) {
-    const target = up ? root?.querySelector('.alius-tab[aria-selected="true"]') : onScene() ? root?.querySelector('input[name="cmd"]') : root?.querySelector("[data-open-pda]");
+  function focusDevice(up2) {
+    const target = up2 ? root?.querySelector('.alius-tab[aria-selected="true"]') : onScene() ? root?.querySelector('input[name="cmd"]') : root?.querySelector("[data-open-pda]");
     target?.focus({ preventScroll: true });
   }
-  function buildDevice(up) {
+  function buildDevice(up2) {
     tabBar = createTabBar({ onSelect: selectTab, panelId: PANEL_ID, isLocked: (id) => lockedTabs2.has(id) });
     for (const [id, n] of badges) tabBar.setBadge(id, n);
     for (const id of lockedTabs2) tabBar.setLocked(id, true);
@@ -81533,26 +83031,26 @@ function createShell(deps) {
     const marks = h("div", { class: "alius-device-marks", "aria-hidden": "true" });
     marks.style.pointerEvents = "none";
     const screen = h("div", { class: "alius-device-screen" }, statusHost, tabBar.element, panel);
-    device = h("div", { class: "alius-device", "data-skin": "ccp_standard", "data-up": String(up) }, chrome, marks, screen);
+    device = h("div", { class: "alius-device", "data-skin": "ccp_standard", "data-up": String(up2) }, chrome, marks, screen);
     return device;
   }
-  function buildLayer(host, up) {
-    const dev = buildDevice(up);
+  function buildLayer(host, up2) {
+    const dev = buildDevice(up2);
     hubHost = h("div", { class: "alius-hub-host" });
     host.append(hubHost, dev);
     applySkin();
     drawMarks();
-    applyDevice(up);
+    applyDevice(up2);
     updateNarrow();
     renderHub2();
     renderStatus();
     tabBar.setSelected(tab);
-    if (up) renderTab();
+    if (up2) renderTab();
   }
   function mountSceneDevice() {
     const dev = buildDevice(sceneDeviceUp);
     sceneDeviceHost = h("div", { class: "alius-scene-device", "data-up": String(sceneDeviceUp) }, dev);
-    view.append(sceneDeviceHost);
+    view2.append(sceneDeviceHost);
     applySkin();
     drawMarks();
     applyDevice(sceneDeviceUp);
@@ -81563,25 +83061,25 @@ function createShell(deps) {
     if (sceneDeviceUp) renderTab();
   }
   function syncSceneInert() {
-    for (const el of view.querySelectorAll(":scope > :not(.alius-scene-device)")) {
+    for (const el of view2.querySelectorAll(":scope > :not(.alius-scene-device)")) {
       el.toggleAttribute("inert", sceneDeviceUp);
       if (sceneDeviceUp) el.setAttribute("aria-hidden", "true");
       else el.removeAttribute("aria-hidden");
     }
   }
-  function setSceneDevice(up) {
-    if (!device || up === sceneDeviceUp) return;
-    sceneDeviceUp = up;
-    sceneDeviceHost?.setAttribute("data-up", String(up));
+  function setSceneDevice(up2) {
+    if (!device || up2 === sceneDeviceUp) return;
+    sceneDeviceUp = up2;
+    sceneDeviceHost?.setAttribute("data-up", String(up2));
     syncSceneInert();
-    applyDevice(up);
-    if (up) {
+    applyDevice(up2);
+    if (up2) {
       renderStatus();
       renderTab();
     }
-    focusDevice(up);
-    deps.onDevice?.(up);
-    deps.sound?.play(up ? "open" : "close");
+    focusDevice(up2);
+    deps.onDevice?.(up2);
+    deps.sound?.play(up2 ? "open" : "close");
     maybeBoot();
   }
   router.register("hub", (host) => buildLayer(host, false));
@@ -81596,7 +83094,7 @@ function createShell(deps) {
     device = null;
     sceneDeviceHost = null;
     if (!onScene()) sceneDeviceUp = false;
-    router.render(view);
+    router.render(view2);
     if (onScene()) mountSceneDevice();
     renderedScreen = router.current();
     root.dataset.screen = renderedScreen;
@@ -81608,11 +83106,11 @@ function createShell(deps) {
     const modalLayer = h("div", { class: "alius-modal-layer" });
     bannerHost = h("div", { class: "alius-banner-host" });
     heldHost = h("div", { class: "alius-held-host" });
-    view = h("div", { class: "alius-view" });
-    view.addEventListener("scroll", () => {
-      if (view && (view.scrollTop !== 0 || view.scrollLeft !== 0)) {
-        view.scrollTop = 0;
-        view.scrollLeft = 0;
+    view2 = h("div", { class: "alius-view" });
+    view2.addEventListener("scroll", () => {
+      if (view2 && (view2.scrollTop !== 0 || view2.scrollLeft !== 0)) {
+        view2.scrollTop = 0;
+        view2.scrollLeft = 0;
       }
     });
     root = h(
@@ -81631,7 +83129,7 @@ function createShell(deps) {
         ),
         bannerHost,
         heldHost,
-        view,
+        view2,
         h(
           "div",
           { class: "alius-footer" },
@@ -81737,26 +83235,26 @@ function createShell(deps) {
         api.showScreen("pda");
       }
     },
-    registerHub(render6) {
-      hubRender = render6;
+    registerHub(render7) {
+      hubRender = render7;
       if (isOpen2() && onHubLayer()) renderHub2();
     },
     isDeviceUp,
-    setDevice(up) {
-      if (!isOpen2() || up === isDeviceUp()) return;
+    setDevice(up2) {
+      if (!isOpen2() || up2 === isDeviceUp()) return;
       if (onScene()) {
-        setSceneDevice(up);
+        setSceneDevice(up2);
         return;
       }
-      if (up) api.showScreen("pda");
+      if (up2) api.showScreen("pda");
       else if (router.current() === "pda") api.showScreen("hub");
     },
-    registerTab(id, render6) {
-      tabRenderers.set(id, render6);
+    registerTab(id, render7) {
+      tabRenderers.set(id, render7);
       if (isOpen2() && isDeviceUp() && tab === id) renderTab();
     },
-    registerScreen(id, render6, opts) {
-      router.register(id, render6);
+    registerScreen(id, render7, opts) {
+      router.register(id, render7);
       if (opts?.refresh) screenRefresh.set(id, opts.refresh);
       else screenRefresh.delete(id);
       if (isOpen2() && router.current() === id) renderView();
@@ -81803,7 +83301,7 @@ function createShell(deps) {
         if (isDeviceUp()) renderTab();
       } else {
         const inPlace = screenRefresh.get(router.current());
-        if (inPlace && renderedScreen === router.current() && inPlace(view)) {
+        if (inPlace && renderedScreen === router.current() && inPlace(view2)) {
           if (onScene() && sceneDeviceUp && panel) {
             renderStatus();
             renderTab();
@@ -81936,15 +83434,15 @@ function createApp(st3, deps) {
     samples.setMuffle(hooded);
     for (const id of bellsFor(events, state, registries)) sound.play(id);
   }
-  function announceUnlocks(before6, after8) {
-    for (const row4 of unlockedBetween(before6, after8, registries)) toast("info", String(row4.notice), { voice: VOICE_OF.toast });
+  function announceUnlocks(before7, after9) {
+    for (const row4 of unlockedBetween(before7, after9, registries)) toast("info", String(row4.notice), { voice: VOICE_OF.toast });
   }
   function syncBadges() {
     syncLocks();
     shell.setTabBadge("comms", state ? unreadCount(state) : 0);
     shell.setTabBadge("home", state ? unreadNotes(state) : 0);
-    const fresh6 = state ? state.missions.offered.filter((m) => (m.source === "command" || m.source === "story") && !seenOffers.has(m.id)).length : 0;
-    shell.setTabBadge("ops", fresh6);
+    const fresh7 = state ? state.missions.offered.filter((m) => (m.source === "command" || m.source === "story") && !seenOffers.has(m.id)).length : 0;
+    shell.setTabBadge("ops", fresh7);
     shell.setTabBadge("sys", generationBadge(state));
   }
   const seenOffers = /* @__PURE__ */ new Set();
@@ -82107,7 +83605,7 @@ function createApp(st3, deps) {
     st: st3,
     app: sceneApp,
     memory: memory2,
-    restore: (before6, expected) => api.restoreSnapshot(before6, expected),
+    restore: (before7, expected) => api.restoreSnapshot(before7, expected),
     generations,
     registries: () => registries,
     settings: () => getSettings(st3),
@@ -82426,13 +83924,13 @@ function createApp(st3, deps) {
     if (!state) return;
     const preset = presetLocation;
     presetLocation = null;
-    const pick10 = preset !== null ? { locationId: preset, participants: [unitId] } : await pickLocation((o) => shell.modal(o), { registries, state, firstUnitId: unitId, candidates: state.squad });
+    const pick11 = preset !== null ? { locationId: preset, participants: [unitId] } : await pickLocation((o) => shell.modal(o), { registries, state, firstUnitId: unitId, candidates: state.squad });
     if (st3.getActiveChat()?.chatId !== chatId) return;
-    if (!pick10) {
+    if (!pick11) {
       api.dispatch({ type: "calendar/cancel_scene", payload: {} }, { expectChatId: chatId });
       return;
     }
-    await beginScene({ locationId: pick10.locationId, participants: pick10.participants, origin: "activity" });
+    await beginScene({ locationId: pick11.locationId, participants: pick11.participants, origin: "activity" });
   }
   async function offerGroupScene() {
     const chatId = st3.getActiveChat()?.chatId;
@@ -83112,11 +84610,11 @@ function createApp(st3, deps) {
     }
   }
   function startRecap() {
-    const report5 = state?.lastExpedition;
-    if (!report5 || report5.recap !== void 0 || !getSettings(st3).expeditionRecap) return;
-    recapPendingFor = report5.id;
+    const report6 = state?.lastExpedition;
+    if (!report6 || report6.recap !== void 0 || !getSettings(st3).expeditionRecap) return;
+    recapPendingFor = report6.id;
     void expedition.requestRecap().catch((e) => console.warn("[Alius] expedition recap failed", e)).finally(() => {
-      if (recapPendingFor === report5.id) recapPendingFor = null;
+      if (recapPendingFor === report6.id) recapPendingFor = null;
       shell.refresh();
     });
   }
@@ -84248,7 +85746,7 @@ function createApp(st3, deps) {
       personal: {
         onAnswerToken: (offerId, accept2) => void personal.answerToken(offerId, accept2),
         onAnswerWager: (wagerId, accept2) => void personal.answerWager(wagerId, accept2),
-        onPlayWager: (wagerId, pick10) => void personal.playWager(wagerId, pick10),
+        onPlayWager: (wagerId, pick11) => void personal.playWager(wagerId, pick11),
         onAnswerQuestion: (wagerId, text3) => void personal.answerQuestion(wagerId, text3)
       },
       edit: () => pendingEdit,
@@ -84492,7 +85990,7 @@ function createApp(st3, deps) {
       if (!state) {
         return load.kind === "readonly" ? [{ type: "error", code: "read_only", message: "Campaign is read-only." }] : [{ type: "error", code: "no_campaign", message: "No Alius campaign in this chat." }];
       }
-      const before6 = state;
+      const before7 = state;
       const r = dispatch(state, action, registries);
       if (r.state !== state) {
         state = r.state;
@@ -84502,7 +86000,7 @@ function createApp(st3, deps) {
         }
       }
       reportEvents(r.events);
-      if (r.state !== before6) announceUnlocks(before6, r.state);
+      if (r.state !== before7) announceUnlocks(before7, r.state);
       applyContext();
       syncBadges();
       syncSound(r.events);
@@ -84699,9 +86197,9 @@ registerRefs("roles", (entry) => {
   });
   entry.tree?.forEach((n, i) => {
     if (typeof n.grants?.skill === "string") out.push({ registry: "skills", id: n.grants.skill, path: `tree[${i}].grants.skill` });
-    const up = n.grants?.upgrade;
-    if (up && typeof up.skillId === "string") out.push({ registry: "skills", id: up.skillId, path: `tree[${i}].grants.upgrade.skillId` });
-    effectRefs(up?.addEffects, `tree[${i}].grants.upgrade.addEffects`, out);
+    const up2 = n.grants?.upgrade;
+    if (up2 && typeof up2.skillId === "string") out.push({ registry: "skills", id: up2.skillId, path: `tree[${i}].grants.upgrade.skillId` });
+    effectRefs(up2?.addEffects, `tree[${i}].grants.upgrade.addEffects`, out);
   });
   return out;
 });
@@ -85122,10 +86620,10 @@ registerChecks("planRooms", (entry, regs) => {
 });
 registerRefs("deviceSkins", (entry) => {
   const out = [];
-  const bind7 = entry.bindTo ?? {};
-  if (typeof bind7.corporationId === "string") out.push({ registry: "corporations", id: bind7.corporationId, path: "bindTo.corporationId" });
-  if (typeof bind7.traitId === "string") out.push({ registry: "commanderTraits", id: bind7.traitId, path: "bindTo.traitId" });
-  if (typeof bind7.unlockFlag === "string") out.push({ registry: "flags", id: bind7.unlockFlag, path: "bindTo.unlockFlag" });
+  const bind8 = entry.bindTo ?? {};
+  if (typeof bind8.corporationId === "string") out.push({ registry: "corporations", id: bind8.corporationId, path: "bindTo.corporationId" });
+  if (typeof bind8.traitId === "string") out.push({ registry: "commanderTraits", id: bind8.traitId, path: "bindTo.traitId" });
+  if (typeof bind8.unlockFlag === "string") out.push({ registry: "flags", id: bind8.unlockFlag, path: "bindTo.unlockFlag" });
   return out;
 });
 registerChecks("deviceSkins", (entry, regs) => {

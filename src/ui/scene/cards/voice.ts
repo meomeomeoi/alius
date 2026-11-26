@@ -16,7 +16,8 @@ export type VoiceKind =
   | `weight.entry.${string}`
   | `scent.entry.${string}`
   | `scent.here.${string}`
-  | `jaw.entry.${string}`;
+  | `jaw.entry.${string}`
+  | `shoe.zone.${string}`;
 
 /** A run of a filled line: her frame, or the engine's value (`value: true`, drawn in her stronger ink). */
 export interface VoiceRun { text: string; value?: true }

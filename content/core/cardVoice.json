@@ -6088,5 +6088,947 @@
     "lines": [
       "the edge."
     ]
+  },
+  {
+    "id": "shoe.entry",
+    "kind": "shoe.entry",
+    "lines": [
+      "clean them."
+    ]
+  },
+  {
+    "id": "shoe.turn",
+    "kind": "shoe.turn",
+    "lines": [
+      "the other side."
+    ]
+  },
+  {
+    "id": "shoe.sole",
+    "kind": "shoe.sole",
+    "lines": [
+      "underneath."
+    ]
+  },
+  {
+    "id": "shoe.kiss",
+    "kind": "shoe.kiss",
+    "lines": [
+      "kiss it."
+    ]
+  },
+  {
+    "id": "shoe.polish",
+    "kind": "shoe.polish",
+    "lines": [
+      "now make it shine."
+    ]
+  },
+  {
+    "id": "shoe.other",
+    "kind": "shoe.other",
+    "lines": [
+      "now the other one."
+    ]
+  },
+  {
+    "id": "shoe.caught",
+    "kind": "shoe.caught",
+    "lines": [
+      "did you just spit?"
+    ]
+  },
+  {
+    "id": "shoe.swallowed",
+    "kind": "shoe.swallowed",
+    "lines": [
+      "swallow it."
+    ]
+  },
+  {
+    "id": "shoe.good",
+    "kind": "shoe.good",
+    "lines": [
+      "good."
+    ]
+  },
+  {
+    "id": "shoe.poor",
+    "kind": "shoe.poor",
+    "lines": [
+      "sloppy."
+    ]
+  },
+  {
+    "id": "shoe.missed",
+    "kind": "shoe.missed",
+    "lines": [
+      "%z. you missed it."
+    ]
+  },
+  {
+    "id": "shoe.dull",
+    "kind": "shoe.dull",
+    "lines": [
+      "%z is dull."
+    ]
+  },
+  {
+    "id": "shoe.stamp",
+    "kind": "shoe.stamp",
+    "lines": [
+      "properly."
+    ]
+  },
+  {
+    "id": "shoe.end",
+    "kind": "shoe.end",
+    "lines": [
+      "that will do."
+    ]
+  },
+  {
+    "id": "shoe.entry.affectionate",
+    "kind": "shoe.entry",
+    "style": "affectionate",
+    "lines": [
+      "would you? they’re filthy."
+    ]
+  },
+  {
+    "id": "shoe.turn.affectionate",
+    "kind": "shoe.turn",
+    "style": "affectionate",
+    "lines": [
+      "and this side, love."
+    ]
+  },
+  {
+    "id": "shoe.sole.affectionate",
+    "kind": "shoe.sole",
+    "style": "affectionate",
+    "lines": [
+      "underneath too."
+    ]
+  },
+  {
+    "id": "shoe.kiss.affectionate",
+    "kind": "shoe.kiss",
+    "style": "affectionate",
+    "lines": [
+      "kiss it for me."
+    ]
+  },
+  {
+    "id": "shoe.polish.affectionate",
+    "kind": "shoe.polish",
+    "style": "affectionate",
+    "lines": [
+      "make them pretty."
+    ]
+  },
+  {
+    "id": "shoe.other.affectionate",
+    "kind": "shoe.other",
+    "style": "affectionate",
+    "lines": [
+      "the other one, please."
+    ]
+  },
+  {
+    "id": "shoe.caught.affectionate",
+    "kind": "shoe.caught",
+    "style": "affectionate",
+    "lines": [
+      "hey. I saw that."
+    ]
+  },
+  {
+    "id": "shoe.swallowed.affectionate",
+    "kind": "shoe.swallowed",
+    "style": "affectionate",
+    "lines": [
+      "there you go."
+    ]
+  },
+  {
+    "id": "shoe.good.affectionate",
+    "kind": "shoe.good",
+    "style": "affectionate",
+    "lines": [
+      "they look lovely."
+    ]
+  },
+  {
+    "id": "shoe.poor.affectionate",
+    "kind": "shoe.poor",
+    "style": "affectionate",
+    "lines": [
+      "nearly, sweetheart."
+    ]
+  },
+  {
+    "id": "shoe.missed.affectionate",
+    "kind": "shoe.missed",
+    "style": "affectionate",
+    "lines": [
+      "you missed %z."
+    ]
+  },
+  {
+    "id": "shoe.dull.affectionate",
+    "kind": "shoe.dull",
+    "style": "affectionate",
+    "lines": [
+      "%z could shine more."
+    ]
+  },
+  {
+    "id": "shoe.stamp.affectionate",
+    "kind": "shoe.stamp",
+    "style": "affectionate",
+    "lines": []
+  },
+  {
+    "id": "shoe.end.affectionate",
+    "kind": "shoe.end",
+    "style": "affectionate",
+    "lines": [
+      "thank you. really."
+    ]
+  },
+  {
+    "id": "shoe.entry.ritual",
+    "kind": "shoe.entry",
+    "style": "ritual",
+    "lines": [
+      "begin with the toe."
+    ]
+  },
+  {
+    "id": "shoe.turn.ritual",
+    "kind": "shoe.turn",
+    "style": "ritual",
+    "lines": [
+      "the inner side."
+    ]
+  },
+  {
+    "id": "shoe.sole.ritual",
+    "kind": "shoe.sole",
+    "style": "ritual",
+    "lines": [
+      "the sole."
+    ]
+  },
+  {
+    "id": "shoe.kiss.ritual",
+    "kind": "shoe.kiss",
+    "style": "ritual",
+    "lines": [
+      "kiss the toe."
+    ]
+  },
+  {
+    "id": "shoe.polish.ritual",
+    "kind": "shoe.polish",
+    "style": "ritual",
+    "lines": [
+      "polish."
+    ]
+  },
+  {
+    "id": "shoe.other.ritual",
+    "kind": "shoe.other",
+    "style": "ritual",
+    "lines": [
+      "the left."
+    ]
+  },
+  {
+    "id": "shoe.caught.ritual",
+    "kind": "shoe.caught",
+    "style": "ritual",
+    "lines": [
+      "you spat. again."
+    ]
+  },
+  {
+    "id": "shoe.swallowed.ritual",
+    "kind": "shoe.swallowed",
+    "style": "ritual",
+    "lines": [
+      "swallow."
+    ]
+  },
+  {
+    "id": "shoe.good.ritual",
+    "kind": "shoe.good",
+    "style": "ritual",
+    "lines": [
+      "as it should be."
+    ]
+  },
+  {
+    "id": "shoe.poor.ritual",
+    "kind": "shoe.poor",
+    "style": "ritual",
+    "lines": [
+      "again."
+    ]
+  },
+  {
+    "id": "shoe.missed.ritual",
+    "kind": "shoe.missed",
+    "style": "ritual",
+    "lines": [
+      "%z."
+    ]
+  },
+  {
+    "id": "shoe.dull.ritual",
+    "kind": "shoe.dull",
+    "style": "ritual",
+    "lines": [
+      "%z. it is dull."
+    ]
+  },
+  {
+    "id": "shoe.stamp.ritual",
+    "kind": "shoe.stamp",
+    "style": "ritual",
+    "lines": [
+      "the form."
+    ]
+  },
+  {
+    "id": "shoe.end.ritual",
+    "kind": "shoe.end",
+    "style": "ritual",
+    "lines": [
+      "enough. kiss them both."
+    ]
+  },
+  {
+    "id": "shoe.entry.playful",
+    "kind": "shoe.entry",
+    "style": "playful",
+    "lines": [
+      "look what I stepped in~"
+    ]
+  },
+  {
+    "id": "shoe.turn.playful",
+    "kind": "shoe.turn",
+    "style": "playful",
+    "lines": [
+      "other side~"
+    ]
+  },
+  {
+    "id": "shoe.sole.playful",
+    "kind": "shoe.sole",
+    "style": "playful",
+    "lines": [
+      "tada~ underneath."
+    ]
+  },
+  {
+    "id": "shoe.kiss.playful",
+    "kind": "shoe.kiss",
+    "style": "playful",
+    "lines": [
+      "kiss~"
+    ]
+  },
+  {
+    "id": "shoe.polish.playful",
+    "kind": "shoe.polish",
+    "style": "playful",
+    "lines": [
+      "make them sparkle~"
+    ]
+  },
+  {
+    "id": "shoe.other.playful",
+    "kind": "shoe.other",
+    "style": "playful",
+    "lines": [
+      "and the other one~"
+    ]
+  },
+  {
+    "id": "shoe.caught.playful",
+    "kind": "shoe.caught",
+    "style": "playful",
+    "lines": [
+      "eww. spitting? naughty."
+    ]
+  },
+  {
+    "id": "shoe.swallowed.playful",
+    "kind": "shoe.swallowed",
+    "style": "playful",
+    "lines": [
+      "yummy?"
+    ]
+  },
+  {
+    "id": "shoe.good.playful",
+    "kind": "shoe.good",
+    "style": "playful",
+    "lines": [
+      "ooh, shiny."
+    ]
+  },
+  {
+    "id": "shoe.poor.playful",
+    "kind": "shoe.poor",
+    "style": "playful",
+    "lines": [
+      "hmm, meh."
+    ]
+  },
+  {
+    "id": "shoe.missed.playful",
+    "kind": "shoe.missed",
+    "style": "playful",
+    "lines": [
+      "you missed a spot~ %z."
+    ]
+  },
+  {
+    "id": "shoe.dull.playful",
+    "kind": "shoe.dull",
+    "style": "playful",
+    "lines": [
+      "%z is so dull~"
+    ]
+  },
+  {
+    "id": "shoe.stamp.playful",
+    "kind": "shoe.stamp",
+    "style": "playful",
+    "lines": [
+      "faster~"
+    ]
+  },
+  {
+    "id": "shoe.end.playful",
+    "kind": "shoe.end",
+    "style": "playful",
+    "lines": [
+      "okay okay, good pet."
+    ]
+  },
+  {
+    "id": "shoe.entry.cruel",
+    "kind": "shoe.entry",
+    "style": "cruel",
+    "lines": [
+      "clean."
+    ]
+  },
+  {
+    "id": "shoe.turn.cruel",
+    "kind": "shoe.turn",
+    "style": "cruel",
+    "lines": [
+      "other side."
+    ]
+  },
+  {
+    "id": "shoe.sole.cruel",
+    "kind": "shoe.sole",
+    "style": "cruel",
+    "lines": [
+      "the sole. all of it."
+    ]
+  },
+  {
+    "id": "shoe.kiss.cruel",
+    "kind": "shoe.kiss",
+    "style": "cruel",
+    "lines": [
+      "kiss it."
+    ]
+  },
+  {
+    "id": "shoe.polish.cruel",
+    "kind": "shoe.polish",
+    "style": "cruel",
+    "lines": [
+      "shine it."
+    ]
+  },
+  {
+    "id": "shoe.other.cruel",
+    "kind": "shoe.other",
+    "style": "cruel",
+    "lines": [
+      "other foot."
+    ]
+  },
+  {
+    "id": "shoe.caught.cruel",
+    "kind": "shoe.caught",
+    "style": "cruel",
+    "lines": [
+      "you spat it out? lick it back up."
+    ]
+  },
+  {
+    "id": "shoe.swallowed.cruel",
+    "kind": "shoe.swallowed",
+    "style": "cruel",
+    "lines": [
+      "swallow."
+    ]
+  },
+  {
+    "id": "shoe.good.cruel",
+    "kind": "shoe.good",
+    "style": "cruel",
+    "lines": [
+      "adequate."
+    ]
+  },
+  {
+    "id": "shoe.poor.cruel",
+    "kind": "shoe.poor",
+    "style": "cruel",
+    "lines": [
+      "pathetic."
+    ]
+  },
+  {
+    "id": "shoe.missed.cruel",
+    "kind": "shoe.missed",
+    "style": "cruel",
+    "lines": [
+      "%z. you call that clean?"
+    ]
+  },
+  {
+    "id": "shoe.dull.cruel",
+    "kind": "shoe.dull",
+    "style": "cruel",
+    "lines": [
+      "%z. dull. again."
+    ]
+  },
+  {
+    "id": "shoe.stamp.cruel",
+    "kind": "shoe.stamp",
+    "style": "cruel",
+    "lines": [
+      "faster."
+    ]
+  },
+  {
+    "id": "shoe.end.cruel",
+    "kind": "shoe.end",
+    "style": "cruel",
+    "lines": [
+      "get away from my feet."
+    ]
+  },
+  {
+    "id": "shoe.entry.possessive",
+    "kind": "shoe.entry",
+    "style": "possessive",
+    "lines": [
+      "my boots. clean them."
+    ]
+  },
+  {
+    "id": "shoe.turn.possessive",
+    "kind": "shoe.turn",
+    "style": "possessive",
+    "lines": [
+      "this side too."
+    ]
+  },
+  {
+    "id": "shoe.sole.possessive",
+    "kind": "shoe.sole",
+    "style": "possessive",
+    "lines": [
+      "underneath. mine all over."
+    ]
+  },
+  {
+    "id": "shoe.kiss.possessive",
+    "kind": "shoe.kiss",
+    "style": "possessive",
+    "lines": [
+      "kiss it. it’s mine."
+    ]
+  },
+  {
+    "id": "shoe.polish.possessive",
+    "kind": "shoe.polish",
+    "style": "possessive",
+    "lines": [
+      "make them shine for me."
+    ]
+  },
+  {
+    "id": "shoe.other.possessive",
+    "kind": "shoe.other",
+    "style": "possessive",
+    "lines": [
+      "now the other."
+    ]
+  },
+  {
+    "id": "shoe.caught.possessive",
+    "kind": "shoe.caught",
+    "style": "possessive",
+    "lines": [
+      "you don’t waste what’s mine."
+    ]
+  },
+  {
+    "id": "shoe.swallowed.possessive",
+    "kind": "shoe.swallowed",
+    "style": "possessive",
+    "lines": [
+      "all of it. good."
+    ]
+  },
+  {
+    "id": "shoe.good.possessive",
+    "kind": "shoe.good",
+    "style": "possessive",
+    "lines": [
+      "good. mine."
+    ]
+  },
+  {
+    "id": "shoe.poor.possessive",
+    "kind": "shoe.poor",
+    "style": "possessive",
+    "lines": [
+      "you’ll do better for me."
+    ]
+  },
+  {
+    "id": "shoe.missed.possessive",
+    "kind": "shoe.missed",
+    "style": "possessive",
+    "lines": [
+      "%z."
+    ]
+  },
+  {
+    "id": "shoe.dull.possessive",
+    "kind": "shoe.dull",
+    "style": "possessive",
+    "lines": [
+      "%z. dull."
+    ]
+  },
+  {
+    "id": "shoe.stamp.possessive",
+    "kind": "shoe.stamp",
+    "style": "possessive",
+    "lines": [
+      "for me. properly."
+    ]
+  },
+  {
+    "id": "shoe.end.possessive",
+    "kind": "shoe.end",
+    "style": "possessive",
+    "lines": [
+      "good. stay there."
+    ]
+  },
+  {
+    "id": "shoe.entry.cold",
+    "kind": "shoe.entry",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "shoe.turn.cold",
+    "kind": "shoe.turn",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "shoe.sole.cold",
+    "kind": "shoe.sole",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "shoe.kiss.cold",
+    "kind": "shoe.kiss",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "shoe.polish.cold",
+    "kind": "shoe.polish",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "shoe.other.cold",
+    "kind": "shoe.other",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "shoe.caught.cold",
+    "kind": "shoe.caught",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "shoe.swallowed.cold",
+    "kind": "shoe.swallowed",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "shoe.good.cold",
+    "kind": "shoe.good",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "shoe.poor.cold",
+    "kind": "shoe.poor",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "shoe.missed.cold",
+    "kind": "shoe.missed",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "shoe.dull.cold",
+    "kind": "shoe.dull",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "shoe.stamp.cold",
+    "kind": "shoe.stamp",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "shoe.end.cold",
+    "kind": "shoe.end",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "shoe.entry.regal",
+    "kind": "shoe.entry",
+    "style": "regal",
+    "lines": [
+      "my boots need you."
+    ]
+  },
+  {
+    "id": "shoe.turn.regal",
+    "kind": "shoe.turn",
+    "style": "regal",
+    "lines": [
+      "the other side, if you please."
+    ]
+  },
+  {
+    "id": "shoe.sole.regal",
+    "kind": "shoe.sole",
+    "style": "regal",
+    "lines": [
+      "and beneath."
+    ]
+  },
+  {
+    "id": "shoe.kiss.regal",
+    "kind": "shoe.kiss",
+    "style": "regal",
+    "lines": [
+      "kiss them. you may."
+    ]
+  },
+  {
+    "id": "shoe.polish.regal",
+    "kind": "shoe.polish",
+    "style": "regal",
+    "lines": [
+      "I want to see myself in them."
+    ]
+  },
+  {
+    "id": "shoe.other.regal",
+    "kind": "shoe.other",
+    "style": "regal",
+    "lines": [
+      "now the other."
+    ]
+  },
+  {
+    "id": "shoe.caught.regal",
+    "kind": "shoe.caught",
+    "style": "regal",
+    "lines": [
+      "you spat at my feet?"
+    ]
+  },
+  {
+    "id": "shoe.swallowed.regal",
+    "kind": "shoe.swallowed",
+    "style": "regal",
+    "lines": [
+      "swallow it. graciously."
+    ]
+  },
+  {
+    "id": "shoe.good.regal",
+    "kind": "shoe.good",
+    "style": "regal",
+    "lines": [
+      "worthy."
+    ]
+  },
+  {
+    "id": "shoe.poor.regal",
+    "kind": "shoe.poor",
+    "style": "regal",
+    "lines": [
+      "unworthy."
+    ]
+  },
+  {
+    "id": "shoe.missed.regal",
+    "kind": "shoe.missed",
+    "style": "regal",
+    "lines": [
+      "%z. look again."
+    ]
+  },
+  {
+    "id": "shoe.dull.regal",
+    "kind": "shoe.dull",
+    "style": "regal",
+    "lines": [
+      "%z does not shine."
+    ]
+  },
+  {
+    "id": "shoe.stamp.regal",
+    "kind": "shoe.stamp",
+    "style": "regal",
+    "lines": [
+      "I am waiting."
+    ]
+  },
+  {
+    "id": "shoe.end.regal",
+    "kind": "shoe.end",
+    "style": "regal",
+    "lines": [
+      "you may thank me."
+    ]
+  },
+  {
+    "id": "shoe.stop",
+    "kind": "shoe.stop",
+    "lines": [
+      "okay. stop. come here."
+    ]
+  },
+  {
+    "id": "shoe.stop.cold",
+    "kind": "shoe.stop",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "shoe.zone.toe",
+    "kind": "shoe.zone.toe",
+    "lines": [
+      "the toe"
+    ]
+  },
+  {
+    "id": "shoe.zone.vamp",
+    "kind": "shoe.zone.vamp",
+    "lines": [
+      "the top"
+    ]
+  },
+  {
+    "id": "shoe.zone.laces",
+    "kind": "shoe.zone.laces",
+    "lines": [
+      "the laces"
+    ]
+  },
+  {
+    "id": "shoe.zone.side",
+    "kind": "shoe.zone.side",
+    "lines": [
+      "the side"
+    ]
+  },
+  {
+    "id": "shoe.zone.heel",
+    "kind": "shoe.zone.heel",
+    "lines": [
+      "the heel"
+    ]
+  },
+  {
+    "id": "shoe.zone.shaft",
+    "kind": "shoe.zone.shaft",
+    "lines": [
+      "the shaft"
+    ]
+  },
+  {
+    "id": "shoe.zone.welt",
+    "kind": "shoe.zone.welt",
+    "lines": [
+      "the welt"
+    ]
+  },
+  {
+    "id": "shoe.zone.back",
+    "kind": "shoe.zone.back",
+    "lines": [
+      "the back"
+    ]
+  },
+  {
+    "id": "shoe.zone.toe_tread",
+    "kind": "shoe.zone.toe_tread",
+    "lines": [
+      "the tread"
+    ]
+  },
+  {
+    "id": "shoe.zone.mid",
+    "kind": "shoe.zone.mid",
+    "lines": [
+      "the middle of the sole"
+    ]
+  },
+  {
+    "id": "shoe.zone.heel_tread",
+    "kind": "shoe.zone.heel_tread",
+    "lines": [
+      "the heel underneath"
+    ]
   }
 ]

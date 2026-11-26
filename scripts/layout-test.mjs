@@ -13,7 +13,7 @@ const server = await serveRoot();
 const port = server.port;
 
 const SIZES = [[1920, 1080], [1280, 800], [2560, 1440]];
-const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breathhold', 'weighthold', 'scenthold', 'jawhold', 'activityhold', 'thronehold', 'servicehold'];
+const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breathhold', 'weighthold', 'scenthold', 'jawhold', 'activityhold', 'thronehold', 'servicehold', 'shoehold'];
 const failures = [];
 const faceOf = new Map(); // the dial's circle for `standing` (fixture `one`), per size
 const fail = (size, fixture, what) => failures.push(`${size[0]}x${size[1]} ${fixture}: ${what}`);
@@ -326,6 +326,44 @@ for (const size of SIZES) {
         if (/opacity/.test(reply)) out.push(`the reply was not put back: ${JSON.stringify(reply)}`);
         const sprites = document.querySelector('.alius-layer-sprites')?.getAttribute('style') ?? '';
         if (/transform|opacity/.test(sprites)) out.push(`the sprites were not put back: ${JSON.stringify(sprites)}`);
+        return out;
+      });
+      for (const f of after) fail(size, fixture, f);
+    }
+    // P10e-e Task 28: shoe service draws in the effects layer under the scene's UI: her footwear and its dirt on the frame, the stop word's
+    // pill and the input on top and clickable, her lines and the sensory lines in the frame; the pill ends the hold at once and the instrument is gone
+    if (fixture === 'shoehold') {
+      await p.waitForFunction(() => window.__shoe.G.phase === 'loop', null, { timeout: 15000 });
+      await p.evaluate(() => { const s = window.__shoe; s.G.grit = 0.8; s.G.toldGrit = false; s.update(16); });
+      await p.waitForTimeout(400);
+      const mid = await p.evaluate(() => {
+        const out = [];
+        const box = document.querySelector('.alius-layer-effects > .alius-shoe');
+        if (!box) out.push('no shoe drawn');
+        if (document.querySelector('.alius-layer-moment .alius-shoe, .alius-layer-ui .alius-shoe')) out.push('the shoe is drawn over the UI');
+        const wrap = document.querySelector('.alius-shoe-shoeWrap');
+        const wr = wrap?.getBoundingClientRect();
+        if (!wr || wr.width <= 0 || wr.height <= 0) out.push(`her footwear has no size: ${JSON.stringify(wr)}`);
+        const top = (el) => { if (!el) return 'missing'; const b = el.getBoundingClientRect(); const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return hit === el || el.contains(hit) ? 'ok' : `covered by ${hit?.className ?? hit?.tagName}`; };
+        const input = top(document.querySelector('.alius-input'));
+        if (input !== 'ok') out.push(`the input: ${input}`);
+        const pill = top(document.querySelector('[data-stop-word]'));
+        if (pill !== 'ok') out.push(`the stop word: ${pill}`);
+        for (const l of document.querySelectorAll('.alius-shoe-hand .her-line, .alius-shoe-hand .sense')) {
+          const r = l.getBoundingClientRect();
+          if (r.width && (r.left < 0 || r.right > innerWidth || r.top < 0 || r.bottom > innerHeight)) out.push(`"${l.textContent}" leaves the frame: ${JSON.stringify(r)}`);
+        }
+        if (document.querySelectorAll('.alius-shoe-hand .sense').length === 0) out.push('the grit\'s sensory line is not shown');
+        return out;
+      });
+      for (const f of mid) fail(size, fixture, f);
+      await p.click('[data-stop-word]');
+      await p.waitForTimeout(200);
+      const after = await p.evaluate(() => {
+        const out = [];
+        if (document.querySelector('.alius-shoe')) out.push('the stop word did not end the hold: the shoe is still drawn');
+        const reply = document.querySelector('[role="log"]')?.getAttribute('style') ?? '';
+        if (/opacity|transform/.test(reply)) out.push(`the reply was not put back: ${JSON.stringify(reply)}`);
         return out;
       });
       for (const f of after) fail(size, fixture, f);

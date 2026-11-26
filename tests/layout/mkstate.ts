@@ -11,6 +11,7 @@
  * `weight` / `weightfoot` / `weightup` / `weighthold`: the weight instrument (P10e-e Task 16), see below.
  * `scent` / `scenthold`: the scent instrument (P10e-e Task 18), see below.
  * `jaw` / `jawring` / `jawhold`: the jaw instrument (P10e-e Task 20), see below.
+ * `shoe` / `shoeheels` / `shoehold`: shoe service (P10e-e Task 28), see below.
  * `activity` / `activityhold`: her frame (P10e-e Task 24), see below.
  */
 import { writeFileSync } from 'node:fs';
@@ -279,5 +280,29 @@ function servicing(): CampaignState {
 }
 out.service = servicing();
 out.servicehold = servicing();
+
+/**
+ * P10e-e Task 28: shoe service: Ann's boots in the commander's quarters (`boot_worship`: tongue work on her footwear), real time mirrored, the
+ * first segment running, her attention busy (her taps heard). The page gives her two pictures (the layout fixture's sprite stands for the
+ * author's art, never committed). `shoe` for the shots; `shoehold`: the stop word's pill and the input must stay clickable over the
+ * instrument and the pill ends the hold.
+ */
+function shoeing(): CampaignState {
+  const s = campaign(reg, 4);
+  setRelation(s, ANN, { stateId: 'confidant' });
+  enable(s, 'objectification', 'worship', 'service', 'humiliation');
+  s.settings.physicsRealtime = true;
+  const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
+  const d = r.state;
+  setBlocking(d, { registries: reg }, { person: ANN, field: 'contact', value: 'boot_worship', with: COMMANDER }, { at: 1, source: 'engine' });
+  if (d.scene!.physics?.physicsId !== 'tongue_work') throw new Error('shoe: no tongue work runs');
+  d.scene!.physics.segment = { n: 1, state: 'running', plan: { beats: Array.from({ length: 27 }, () => ({ attention: 'busy' as const })) } };
+  return d;
+}
+out.shoe = shoeing();
+out.shoehold = shoeing();
+const heels = shoeing();
+unitOf(heels, ANN).likes = [...unitOf(heels, ANN).likes, 'high heels'];
+out.shoeheels = heels;
 
 writeFileSync(process.argv[2] ?? 'states.json', JSON.stringify(out));

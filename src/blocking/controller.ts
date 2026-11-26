@@ -85,8 +85,8 @@ export interface StagingController {
   woke(): EngineEvent[];
   /** P10e-e 24b: a decision of her hour's script (`physics/decide`, through her command capability; refused without it). */
   decide(kind: string, ref?: string): EngineEvent[];
-  /** P10e-e Task 26: her verdict on a session of foot service in her frame (`physics/service`), its run open or just ended. */
-  service(runId: string, verdict: 'pleased' | 'adequate' | 'displeased'): EngineEvent[];
+  /** P10e-e Task 26: her verdict on a session of foot service in her frame (`physics/service`), its run open or just ended; Task 28: or of shoe service (`holderId`: hers, for a run that just ended). */
+  service(runId: string, verdict: 'pleased' | 'adequate' | 'displeased', holderId?: string): EngineEvent[];
   /** Drives the clock: ends a real-time segment on time and starts the next one when nothing is pending. */
   tick(nowMs: number): void;
   /** One of her cue lines of a kind for a beat of the running segment, or `null`. */
@@ -376,8 +376,8 @@ export function createStaging(deps: StagingDeps): StagingController {
       const r = run();
       return active && r ? dispatch({ type: 'physics/decide', payload: { runId: r.id, kind, ...(ref !== undefined ? { ref } : {}) } }) : [];
     },
-    service(runId, verdict) {
-      return active ? dispatch({ type: 'physics/service', payload: { runId, verdict } }) : [];
+    service(runId, verdict, holderId) {
+      return active ? dispatch({ type: 'physics/service', payload: { runId, verdict, ...(holderId !== undefined ? { holderId } : {}) } }) : [];
     },
     tick(nowMs) {
       if (active) advance(nowMs);

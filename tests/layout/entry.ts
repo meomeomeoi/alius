@@ -1,6 +1,6 @@
 /**
  * P10e: the browser entry of the layout test (`npm run test:layout`): renders the real scene screen into the page for one named
- * fixture (`?fixture=one|two|three|four|curtain|long|physics|chips|chipsmany|dialname|dialwide|call|callhold|slap|slaphold|breath|breathhold|weight|weightfoot|weightup|weighthold|scent|scenthold|jaw|jawring|jawhold|activity|activityhold|throne|thronehold|service|servicehold`). A knee-length placeholder sprite (tests/fixtures/layout/sprite.svg), never the
+ * fixture (`?fixture=one|two|three|four|curtain|long|physics|chips|chipsmany|dialname|dialwide|call|callhold|slap|slaphold|breath|breathhold|weight|weightfoot|weightup|weighthold|scent|scenthold|jaw|jawring|jawhold|activity|activityhold|throne|thronehold|service|servicehold|shoe|shoeheels|shoehold`). A knee-length placeholder sprite (tests/fixtures/layout/sprite.svg), never the
  * author's art; the content and the campaign states are fetched (the script serves the repo root); the model is never called.
  */
 import { loadPacks } from '../../src/content/loader';
@@ -13,6 +13,8 @@ import { _jaw } from '../../src/ui/scene/instruments/jaw/jaw';
 import { _activity } from '../../src/ui/scene/instruments/activity/frame';
 import * as throneHooks from '../../src/ui/scene/instruments/activity/throne';
 import { _service } from '../../src/ui/scene/instruments/activity/service';
+import { _shoe } from '../../src/ui/scene/instruments/shoe/shoe';
+import type { ArtSlots } from '../../src/ui/scene/art';
 import { DEFAULT_SETTINGS } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';
 import type { ChatMessage } from '../../src/st/adapter';
@@ -23,7 +25,7 @@ const params = new URLSearchParams(location.search);
 const fixture = params.get('fixture') ?? 'one';
 const states = (await (await fetch('/.superpowers/layout/states.json')).json()) as Record<string, never>;
 const loaded = await loadPacks(['content/core'], (p: string) => fetch('/' + p).then((r) => r.json()));
-const state = states[['two', 'three', 'four', 'physics', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weightfoot', 'weightup', 'weighthold', 'scent', 'scenthold', 'jaw', 'jawring', 'jawhold', 'activity', 'activityhold', 'throne', 'thronehold', 'service', 'servicehold'].includes(fixture) ? fixture : 'one'];
+const state = states[['two', 'three', 'four', 'physics', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weightfoot', 'weightup', 'weighthold', 'scent', 'scenthold', 'jaw', 'jawring', 'jawhold', 'activity', 'activityhold', 'throne', 'thronehold', 'service', 'servicehold', 'shoe', 'shoeheels', 'shoehold'].includes(fixture) ? fixture : 'one'];
 // the breath instrument (P10e-e Task 14): `&style=<key>` is her physics style; `&quiet=1` clears the plan's openings (the shots open the windows
 // themselves through `window.__breath`, as the prototype's through its hooks); the segment started as the page loaded; the stop word ends the hold (the run goes, the scene redraws), as the engine's does
 // the weight instrument (P10e-e Task 16): the same, `&quiet=1` clearing the plan's shifts (the shots shift her through `window.__weight`)
@@ -34,7 +36,10 @@ const scenting = fixture.startsWith('scent');
 const jawing = fixture.startsWith('jaw');
 // her frame (P10e-e Task 24): the shots drive her and the commander's attention through `window.__activity`
 const framing = fixture.startsWith('activity') || fixture.startsWith('throne') || fixture.startsWith('service');
-const breathing = fixture === 'breath' || fixture === 'breathhold' || weighing || scenting || jawing || framing;
+// shoe service (P10e-e Task 28): the layout fixture's sprite stands for her two pictures of her footwear (the author's art is never committed),
+// one foot each, the prototype's default fit; the shots drive it through `window.__shoe`
+const shoeing = fixture.startsWith('shoe');
+const breathing = fixture === 'breath' || fixture === 'breathhold' || weighing || scenting || jawing || framing || shoeing;
 if (breathing && params.get('style')) registerPhysicsStyle(() => ({ primary: params.get('style') as never }));
 const run = (state as { scene?: { physics?: { segment: { plan?: { beats: Array<{ opening?: unknown; cue?: unknown; shift?: unknown; order?: unknown; orderMs?: unknown; ask?: unknown }> } } } } }).scene?.physics;
 if (breathing && params.get('quiet') === '1') for (const b of run?.segment.plan?.beats ?? []) { delete b.opening; delete b.cue; delete b.shift; delete b.order; delete b.orderMs; delete b.ask; }
@@ -59,10 +64,16 @@ root.dataset.screen = 'scene';
 root.innerHTML = '<div class="alius-frame"><div class="alius-view"></div></div>';
 document.body.append(root);
 const view = root.querySelector('.alius-view') as HTMLElement;
+const SPRITE = params.get('art') ?? '/tests/fixtures/layout/sprite.svg';
+const art: ArtSlots | undefined = shoeing ? {
+  get: (_unitId, slot) => (/^shoe_(close|sole)\./.test(slot) ? { url: SPRITE, sidecar: { feet: 'one', shown: 'right' } } : null),
+  face: () => null,
+} : undefined;
 const noop = (): [] => [];
 const screen = renderSceneScreen(view, {
   controller: controller as never, getState: () => state, registries: loaded.registries, st: st as never,
   settings: () => ({ ...DEFAULT_SETTINGS, typingSpeed: 0 }), onEnded() {}, onClose() {}, assetUrl: (p: string) => '/' + p, onOrder: () => false,
+  ...(art ? { art } : {}),
   onSlap() {}, // P10e-e Task 12: the slap draws (its answer is not applied: the page's state is static)
   physics: {
     input: noop, endSegment: noop, skip: noop, stimulus: noop, act: noop, finishCounted: noop, beat: () => 0, keystroke() {}, typed: () => null, onTap() {},
@@ -99,7 +110,8 @@ if (params.get('deferSlap') === '1' && sp?.slap) {
 }
 if (scenting) (window as unknown as { __scent: typeof _scent }).__scent = _scent;
 if (jawing) (window as unknown as { __jaw: typeof _jaw }).__jaw = _jaw;
+if (shoeing) (window as unknown as { __shoe: typeof _shoe }).__shoe = _shoe;
 if (framing) Object.assign(window as unknown as Record<string, unknown>, { __activity: _activity, __throne: throneHooks, __weight: _weight, __service: _service });
-if (breathing && !weighing && !scenting && !jawing && !framing) (window as unknown as { __breath: typeof _breath }).__breath = _breath;
+if (breathing && !weighing && !scenting && !jawing && !framing && !shoeing) (window as unknown as { __breath: typeof _breath }).__breath = _breath;
 if (weighing) (window as unknown as { __weight: typeof _weight }).__weight = _weight;
 document.body.dataset.ready = 'true';

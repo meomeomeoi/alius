@@ -113,5 +113,10 @@ export interface InstrumentRun {
 export interface InstrumentDef {
   id: string;
   matches(run: PhysicsRun, state: CampaignState, reg: Registries): boolean;
+  /**
+   * P10e-e Task 28: whether it can draw this run on this scene (its art exists, none failed to load). Absent = yes; false = the card plays the
+   * run (asked at every redraw, so a picture that failed hands the run to the card at the next one).
+   */
+  drawable?(env: InstrumentEnv, run: PhysicsRun): boolean;
   start(env: InstrumentEnv, run: PhysicsRun): InstrumentRun;
 }
