@@ -827,7 +827,7 @@ Her lines in her hand while the commander's jaw is held open (P10e-e Task 20, ru
 
 ## 11. Her activity (her_activity.html, approved by the author, 2026-11-23)
 
-Her lines in her hand in the frame of her time (P10e-e Task 24, ruling Q; `her_activity.html`'s `STYLES`). **name**: her name for the commander (the sign that a line is for the commander); **noticed**: she caught a movement (at `with`, and at `glancing` most of the time); **correct**: a correction; **call**: what she calls the commander to someone else; **end**: her end line (`with`, `glancing`); **askReply**: an answer to her question was given; **breach**: the commander answered words not meant for the commander; **silent**: her question was left unanswered; **stop**: after the stop word; **rest**: she lets the commander rest under her weight (her_activity.html `W_LINES[].rest`); **fall**: her verdict at the third buckle (`W_FALL`). Neutral is every style with no rows of its own (Ruling R); the prototype has cold's own rows. No pronoun for the commander.
+Her lines in her hand in the frame of her time (P10e-e Task 24, ruling Q; `her_activity.html`'s `STYLES`). **name**: her name for the commander (the sign that a line is for the commander); **noticed**: she caught a movement (at `with`, and at `glancing` most of the time); **correct**: a correction; **call**: what she calls the commander to someone else; **end**: her end line (`with`, `glancing`); **askReply**: an answer to her question was given; **breach**: the commander answered words not meant for the commander; **silent**: her question was left unanswered; **stop**: after the stop word; **rest**: she lets the commander rest under her weight (her_activity.html `W_LINES[].rest`); **fall**: her verdict at the third buckle (`W_FALL`). Her spoken words that the prototype writes inline (final review, Minor 3; every style reads these neutral rows): **woke**, waking at `with` / `glancing` (**wokeMumble** elsewhere); **comeIn**, to a visitor's knock; **stay**, after her entry when she keeps the commander; **entry.floor**, her order in the floor view's entry (the gesture is the sensory line). Neutral is every style with no rows of its own (Ruling R); the prototype has cold's own rows. No pronoun for the commander.
 
 ### neutral
 - **name:** `commander`
@@ -841,6 +841,11 @@ Her lines in her hand in the frame of her time (P10e-e Task 24, ruling Q; `her_a
 - **stop:** `okay. up you get.` · `alright. stopping.` · `enough. up.`
 - **fall:** `…really? enough.`
 - **rest:** `rest. a moment.`
+- **woke:** `…what are you doing.`
+- **wokeMumble:** `…`
+- **comeIn:** `come in.`
+- **stay:** `Stay.`
+- **entry.floor:** `Down. Eyes down.`
 
 ### affectionate
 - **name:** `sweetheart`
@@ -956,7 +961,7 @@ Her placeholder lines (Ruling Z, her_activity.html `ACTS[].self`, `TO_YOU`, `CAL
 - **toYou.reading_reports:** `listen: “the commander’s conduct was… adequate.” hm.`
 - **toYou.sketching:** `don’t move. I’m doing your hands.` · `turn your head. no. back.`
 - **toYou.drinking:** `you want some? no. you don’t.`
-- **toYou.chatting_on_pda:** `Vex says hi. don’t answer.`
+- **toYou.chatting_on_pda:** `{name} says hi. don’t answer.` (the prototype's placeholder friend, Vex, is a real soldier of the squad outside the scene; with none, the line is not said)
 - **ask.any:** `what time is it, do you think?` · `still with me down there?`
 - **ask.reading_book:** `guess who did it.`
 - **ask.reading_reports:** `did you sign the detour at node four?`
@@ -1040,12 +1045,13 @@ Her lines on the throne (P10e-e Task 24b; `throne.html`'s `T_LINES`). **spill**:
 
 ## 13. Foot service (her_activity.html, the game inside `service`, approved by the author, 2026-11-24)
 
-Kinds `service.good` / `service.poor` (her line at the end of a bout by its quality, `q ≥ 0.6` good) and `service.wrong` (a misread or unanswered signal), said only at `with` and `glancing`; a style not listed reads neutral's. Her words for the zones are `service.zone.<zone>` (no style, under **zones** below); her check composes "<zone>. you missed it.". The first time she gives a signal she names it (`<motion's words> — <meaning>.`, the prototype's `MOTIONS` / `MEANINGS`, in the instrument).
+Kinds `service.good` / `service.poor` (her line at the end of a bout by its quality, `q ≥ 0.6` good) and `service.wrong` (a misread or unanswered signal), said only at `with` and `glancing`; a style not listed reads neutral's. Her words for the zones are `service.zone.<zone>` (no style, under **zones** below); her check composes "<zone>. <missed>." (`service.missed`, neutral for every style). The first time she gives a signal she names it (`<motion's words> — <meaning>.`, the prototype's `MOTIONS` / `MEANINGS`, in the instrument).
 
 ### neutral
 - **good:** `good.` / `mm. better.`
 - **poor:** `sloppy.` / `again, properly.`
 - **wrong:** `no.`
+- **missed:** `you missed it.`
 
 ### affectionate
 - **good:** `that’s lovely.` / `perfect.`
