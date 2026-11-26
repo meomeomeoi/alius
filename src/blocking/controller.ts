@@ -89,6 +89,8 @@ export interface StagingController {
   service(runId: string, verdict: 'pleased' | 'adequate' | 'displeased'): EngineEvent[];
   /** P10e-e Ruling AC: grit spat aside in shoe service, decided at once (`physics/spit`), whether a segment runs or the run is held. */
   spit(beat: number, attention: string): EngineEvent[];
+  /** P10e-e e11 review M8: the running segment's clock starts again now (gulp's floor: its 40 s count from the puddle shown). */
+  restart(): void;
   /** Drives the clock: ends a real-time segment on time and starts the next one when nothing is pending. */
   tick(nowMs: number): void;
   /** One of her cue lines of a kind for a beat of the running segment, or `null`. */
@@ -380,6 +382,10 @@ export function createStaging(deps: StagingDeps): StagingController {
     },
     service(runId, verdict) {
       return active ? dispatch({ type: 'physics/service', payload: { runId, verdict } }) : [];
+    },
+    restart() {
+      const r = run();
+      if (active && r?.segment.state === 'running' && startedAt !== null) startedAt = deps.now();
     },
     spit(beat, attention) {
       const r = run();

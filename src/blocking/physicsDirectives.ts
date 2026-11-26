@@ -55,6 +55,8 @@ const GENERIC: Record<string, (n: number) => string> = {
   // R32: a gulp's spills (an overflow, a cough), said as spills whatever the run became (its cleaning)
   spills: (n) => `spilled ${times(n)}`,
 };
+/** P10e-e R32: the amount a gulp spilled over the hold, as gulp.html's digest says it (`spilled: N % of a mouthful in all`). */
+const spilledWords = (n: number): string => `${Math.round(n * 100)} % of a mouthful in all`;
 /** `strains` is never said: an over-hold she did not notice (amount 0.5) is not hers to tell; only `noticed` is. */
 const ORDER = ['caught', 'missed', 'falseTaken', 'noticed', 'slips', 'spills', 'gasps', 'cheatsCaught', 'moved'];
 
@@ -65,7 +67,7 @@ export function tallySentence(tally: Record<string, number>, phys: Entry | undef
   for (const k of ORDER) {
     const n = tally[k] ?? 0;
     if (n <= 0) continue;
-    parts.push((own[k] ?? GENERIC[k]!)(n));
+    parts.push((own[k] ?? GENERIC[k]!)(n) + (k === 'spills' && (tally.spilled ?? 0) > 0 ? `, ${spilledWords(tally.spilled!)}` : ''));
   }
   return parts.length === 0 ? '' : `Over the whole hold: ${parts.join(', ')}.`;
 }
@@ -126,6 +128,7 @@ export function physicsLines(state: CampaignState, reg: Registries): Directive |
     if (last.missed > 0) said.push(`${last.missed} missed`);
     if (last.falseTaken > 0) said.push('a false opening taken');
     if (last.slips > 0) said.push(count(last.slips, 'a slip', 'slips'));
+    if ((last.spills ?? 0) > 0) said.push(`spilled ${times(last.spills!)}`); // P10e-e R32: a gulp's spills, as spills
     if (last.gasps > 0) said.push('a gasp');
     // R28: in her frame and in an order run (shoe service's spit, e10 M2) a relief is said only once she caught it (the tally)
     if (last.reliefs > 0 && run.sourceKind !== 'activity' && reg.contactPhysics.get(run.physicsId)?.interaction !== 'order') said.push('a relief taken');

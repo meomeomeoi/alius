@@ -71,20 +71,24 @@ const round = (x: number): number => Math.round(x * 1e4) / 1e4;
 
 /**
  * Lays her flow on a segment's beats (in real time, a gulp run): the run's beats so far are `done` segments of `full` beats; a segment that
- * reaches her volume is cut short there (the beats past it are dropped, after every draw of the plan). Her ritual warning carries the `surge`
- * cue (it replaces the beat's own). Returns the beats (the same array, maybe shorter).
+ * reaches her volume is cut short there (the beats past it are dropped, after every draw of the plan) and her ritual warning carries the `surge`
+ * cue (it replaces the beat's own), once the instrument plays the run (`run.gulp`); the first segment, and the card's, keep their beats and cues. Returns the beats (the same array, maybe shorter).
  */
 export function layFlow(beats: PlannedBeat[], state: CampaignState, run: PhysicsRun, row: GulpRow, full: number): PlannedBeat[] {
   const total = flowBeats();
   const g0 = run.segment.n * full;
   if (g0 >= total) return beats;
   const flow = flowOf(state.life?.salt ?? 0, run.id, row, total);
-  const n = Math.min(beats.length, total - g0);
+  // review M1: only a gulp the instrument plays (it reported a swallow or a spill: `run.gulp`) is cut at her volume and announces her surges;
+  // the card's gulp keeps its beats and its cues as before (the levels it never reads ride along)
+  const played = run.gulp !== undefined;
+  const n = played ? Math.min(beats.length, total - g0) : beats.length;
   beats.length = n;
   for (let b = 0; b < n; b++) {
-    const f = flow[g0 + b]!;
+    const f = flow[g0 + b];
+    if (!f) continue;
     beats[b] = { ...beats[b]!, flow: { ...f } };
-    if (f.warn && row.announce === true) beats[b]!.cue = 'surge';
+    if (played && f.warn && row.announce === true) beats[b]!.cue = 'surge';
   }
   return beats;
 }

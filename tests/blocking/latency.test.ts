@@ -159,6 +159,24 @@ describe('the latency rule', () => {
     expect(run(w)?.segment.state ?? 'ended').not.toBe('running'); // the segment ended on the clock, never waiting for anyone
     expect(w.h.actions.filter((a) => a === 'physics/segment_end')).toHaveLength(2);
   });
+  it('e11 review M8: restart starts the running segment\'s clock again (the inputs so far are kept); held, it does nothing', async () => {
+    const w = await world({ settings: { }, contact: 'footrest' });
+    const s = structuredClone(w.h.state());
+    s.settings.physicsRealtime = true;
+    w.h.set(s);
+    play(w);
+    tick(w, 1000);
+    w.staging.input({ beat: 0, kind: 'hold' });
+    tick(w, 20_000);
+    const before = w.staging.clock().startedAt;
+    w.staging.restart();
+    expect(w.staging.clock().startedAt).toBe(w.clock.now);
+    expect(w.staging.clock().startedAt).not.toBe(before);
+    tick(w, 25_000);
+    expect(run(w)!.segment.state).toBe('running'); // 30 s count from the restart
+    tick(w, 6000);
+    expect(w.h.actions.filter((a) => a === 'physics/segment_end')).toHaveLength(2);
+  });
 });
 
 describe('the two ends', () => {

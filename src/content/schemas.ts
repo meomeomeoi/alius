@@ -2767,10 +2767,10 @@ export const ContactPhysicsSchema = BaseEntrySchema.extend({
 export const PhysicsCueSchema = BaseEntrySchema.extend({
   kind: z.enum(CUE_KINDS),
   physics: z.array(str).min(1).optional(),
-  // three to five lines; a row of one physics may hold fewer when its prototype has fewer (P10e-e R32: gulp's `surge` is ritual's "now." alone)
+  // three to five lines; only `surge` may hold fewer (P10e-e R32, review M6: gulp.html's `surge` is ritual's "now." alone)
   lines: z.array(str.max(160)).min(1).max(5),
   description: str,
-}).strict().refine((e) => e.lines.length >= 3 || (e.physics?.length ?? 0) > 0, { message: 'a cue row for every physics has three to five lines', path: ['lines'] });
+}).strict().refine((e) => e.lines.length >= 3 || e.kind === 'surge', { message: 'a cue row has three to five lines (gulp\'s `surge` may hold fewer: gulp.html has one)', path: ['lines'] });
 
 export const StimulusKindSchema = BaseEntrySchema.extend({
   contentTags: tagList,

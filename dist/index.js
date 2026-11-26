@@ -10594,10 +10594,10 @@ var ContactPhysicsSchema = BaseEntrySchema.extend({
 var PhysicsCueSchema = BaseEntrySchema.extend({
   kind: external_exports.enum(CUE_KINDS),
   physics: external_exports.array(str).min(1).optional(),
-  // three to five lines; a row of one physics may hold fewer when its prototype has fewer (P10e-e R32: gulp's `surge` is ritual's "now." alone)
+  // three to five lines; only `surge` may hold fewer (P10e-e R32, review M6: gulp.html's `surge` is ritual's "now." alone)
   lines: external_exports.array(str.max(160)).min(1).max(5),
   description: str
-}).strict().refine((e) => e.lines.length >= 3 || (e.physics?.length ?? 0) > 0, { message: "a cue row for every physics has three to five lines", path: ["lines"] });
+}).strict().refine((e) => e.lines.length >= 3 || e.kind === "surge", { message: "a cue row has three to five lines (gulp's `surge` may hold fewer: gulp.html has one)", path: ["lines"] });
 var StimulusKindSchema = BaseEntrySchema.extend({
   contentTags: tagList,
   family: external_exports.enum(STIMULUS_FAMILIES),
@@ -35386,7 +35386,7 @@ function blockingWeight(state, reg, sourceId, unitId) {
 }
 function physicsLive(state, kind) {
   const last4 = state.scene?.physics?.last;
-  return kind === "physics_warning" ? last4?.warning === true : (last4?.slips ?? 0) > 0;
+  return kind === "physics_warning" ? last4?.warning === true : (last4?.slips ?? 0) + (last4?.spills ?? 0) > 0;
 }
 function liveSources(state, reg, opts = {}) {
   const scene = state.scene;
@@ -39588,12 +39588,14 @@ function layFlow(beats, state, run, row4, full) {
   const g0 = run.segment.n * full;
   if (g0 >= total2) return beats;
   const flow = flowOf(state.life?.salt ?? 0, run.id, row4, total2);
-  const n = Math.min(beats.length, total2 - g0);
+  const played2 = run.gulp !== void 0;
+  const n = played2 ? Math.min(beats.length, total2 - g0) : beats.length;
   beats.length = n;
   for (let b = 0; b < n; b++) {
     const f = flow[g0 + b];
+    if (!f) continue;
     beats[b] = { ...beats[b], flow: { ...f } };
-    if (f.warn && row4.announce === true) beats[b].cue = "surge";
+    if (played2 && f.warn && row4.announce === true) beats[b].cue = "surge";
   }
   return beats;
 }
@@ -39744,7 +39746,7 @@ function resolveSegment(run, plan, inputs, env) {
   const seen2 = /* @__PURE__ */ new Set();
   const live3 = inputs.filter((i) => {
     if (lapsed.has(i.beat) || i.beat >= plan.beats.length) return false;
-    const key = `${i.beat}|${i.kind}${i.kind === "bite" && i.part === "teeth" ? "|teeth" : ""}${i.kind === "ask_rest" && i.part !== void 0 ? `|${i.part}` : ""}`;
+    const key = `${i.beat}|${i.kind}${i.kind === "bite" && i.part === "teeth" ? "|teeth" : ""}${(i.kind === "ask_rest" || i.kind === "spill") && i.part !== void 0 ? `|${i.part}` : ""}`;
     if (seen2.has(key)) return false;
     seen2.add(key);
     return true;
@@ -39836,9 +39838,10 @@ function resolveSegment(run, plan, inputs, env) {
           for (const g of at2(b, "swallow")) r.gauge -= (g.amount ?? 0) * cap9;
           for (const g of at2(b, "spill")) {
             r.gauge -= (g.amount ?? 0) * cap9;
+            r.spilled = (r.spilled ?? 0) + (g.amount ?? 0);
+            if (g.part === "more") continue;
             r.slips += 1;
             r.spills = (r.spills ?? 0) + 1;
-            r.spilled = (r.spilled ?? 0) + (g.amount ?? 0);
           }
         } else if (opening && !opening.false) {
           if (breathed) {
@@ -39919,7 +39922,7 @@ function resolveSegment(run, plan, inputs, env) {
   r.checked = env.interaction === "order" && (r.gauge <= P3.tongue.checkAt || run.gulp !== void 0);
   r.complete = env.interaction === "passive" && r.gauge >= 100;
   const after9 = share(env.gaugeKind, r.gauge, cap9);
-  r.warning = before8 > P3.warning / 100 && after9 <= P3.warning / 100;
+  r.warning = !mouthed && before8 > P3.warning / 100 && after9 <= P3.warning / 100;
   r.noise = r.slips + r.gasps > 0 ? P3.noiseSlip : 0;
   return r;
 }
@@ -40021,7 +40024,8 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
     slips: result.slips - (result.spills ?? 0),
     gasps: result.gasps,
     cheatsCaught: events.filter((e) => e.type === "physics_caught").length,
-    spills: result.spills ?? 0
+    spills: result.spills ?? 0,
+    spilled: result.spilled !== void 0 ? Math.round(result.spilled * 100) / 100 : 0
   });
   run.gauge = result.gauge;
   run.streak = result.streak;
@@ -40030,12 +40034,13 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
     caught: result.caught,
     missed: result.missed,
     falseTaken: result.falseTaken,
-    slips: result.slips,
+    slips: result.slips - (result.spills ?? 0),
     gasps: result.gasps,
     reliefs: result.reliefs,
     noise: result.noise,
     cues: result.cues,
-    ...result.warning ? { warning: true } : {}
+    ...result.warning ? { warning: true } : {},
+    ...result.spills ? { spills: result.spills } : {}
   };
   run.segment = { n: run.segment.n, state: "held" };
   events.unshift({ type: "physics_segment", runId, n: segment, phase: "end", physicsId, caught: result.caught, missed: result.missed, slips: result.slips, reliefs: result.reliefs, lapsed, warning: result.warning });
@@ -51899,6 +51904,9 @@ function scopedStaging(staging, scope) {
     // e9: her verdict is said at the session's end, when the run is already gone: alive until the unmount (never into a new scene or chat)
     service: (id, v) => scope.live ? staging.service?.(id, v) ?? [] : [],
     spit: (b, a) => on() ? staging.spit?.(b, a) ?? [] : [],
+    restart: () => {
+      if (on()) staging.restart?.();
+    },
     beat: () => staging.beat(),
     clock: () => staging.clock()
   };
@@ -53498,6 +53506,7 @@ var GENERIC = {
   // R32: a gulp's spills (an overflow, a cough), said as spills whatever the run became (its cleaning)
   spills: (n) => `spilled ${times(n)}`
 };
+var spilledWords = (n) => `${Math.round(n * 100)} % of a mouthful in all`;
 var ORDER3 = ["caught", "missed", "falseTaken", "noticed", "slips", "spills", "gasps", "cheatsCaught", "moved"];
 function tallySentence(tally, phys) {
   const own = TALLY_WORDS[String(phys?.interaction ?? "")] ?? {};
@@ -53505,7 +53514,7 @@ function tallySentence(tally, phys) {
   for (const k of ORDER3) {
     const n = tally[k] ?? 0;
     if (n <= 0) continue;
-    parts2.push((own[k] ?? GENERIC[k])(n));
+    parts2.push((own[k] ?? GENERIC[k])(n) + (k === "spills" && (tally.spilled ?? 0) > 0 ? `, ${spilledWords(tally.spilled)}` : ""));
   }
   return parts2.length === 0 ? "" : `Over the whole hold: ${parts2.join(", ")}.`;
 }
@@ -53566,6 +53575,7 @@ function physicsLines(state, reg) {
     if (last4.missed > 0) said.push(`${last4.missed} missed`);
     if (last4.falseTaken > 0) said.push("a false opening taken");
     if (last4.slips > 0) said.push(count(last4.slips, "a slip", "slips"));
+    if ((last4.spills ?? 0) > 0) said.push(`spilled ${times(last4.spills)}`);
     if (last4.gasps > 0) said.push("a gasp");
     if (last4.reliefs > 0 && run.sourceKind !== "activity" && reg.contactPhysics.get(run.physicsId)?.interaction !== "order") said.push("a relief taken");
     if (last4.noise > 0) said.push("some noise");
@@ -54043,6 +54053,10 @@ function createStaging(deps) {
     },
     service(runId, verdict2) {
       return active ? dispatch2({ type: "physics/service", payload: { runId, verdict: verdict2 } }) : [];
+    },
+    restart() {
+      const r = run();
+      if (active && r?.segment.state === "running" && startedAt !== null) startedAt = deps.now();
     },
     spit(beat, attention) {
       const r = run();
@@ -77661,6 +77675,7 @@ function startClean() {
   G11.fill = Math10.min(G11.fill, 0.15);
   G11.light = -1;
   $10("#reply").innerHTML = '<span class="act">Down to the floor, where it spilled.</span>';
+  E8?.env.staging.restart?.();
 }
 var puddleLeft = () => G11.puddle ? G11.puddle.m.reduce((a, b) => a + b, 0) / Math10.max(1, G11.puddle.total0) : 0;
 function puddleRect() {
@@ -77894,7 +77909,7 @@ function lick(e) {
   g.x = e.clientX;
   g.y = e.clientY;
 }
-var R10 = { run: null, lineStyle: "neutral", seg: null, running: false, plan: [], chained: false, took: 0, spilledAt: 0, puddleLow: null, floor0: 0, surgeAt: "", ox: 0, oy: 0, ended: null };
+var R10 = { run: null, lineStyle: "neutral", seg: null, running: false, plan: [], chained: false, took: 0, spilledAt: 0, coughsAt: 0, overflowsAt: 0, puddleLow: null, floor0: 0, surgeAt: "", ox: 0, oy: 0, ended: null };
 var BEAT5 = () => TUNING.physics.beatMs;
 function beatNow4() {
   const seg = R10.seg;
@@ -77903,8 +77918,12 @@ function beatNow4() {
 }
 function flowNow() {
   if (!R10.running || !R10.seg) return 0;
-  if (G11.t - R10.seg.clock0 >= R10.seg.beats * BEAT5()) return 0;
-  return R10.plan[beatNow4()]?.flow?.level ?? 0;
+  const elapsed = G11.t - R10.seg.clock0;
+  if (elapsed >= R10.seg.beats * BEAT5()) return 0;
+  const f = R10.plan[beatNow4()]?.flow;
+  if (!f || f.pause) return 0;
+  const s = ST5(), t = (R10.seg.n - 1) * R10.seg.full * BEAT5() + elapsed;
+  return s.base * (1 + s.vary * Math10.sin(t / 1300) * Math10.sin(t / 3700 + 1)) * (f.surge ? s.surge : 1);
 }
 function planSurge() {
   if (!R10.running || !R10.seg) return;
@@ -77915,7 +77934,7 @@ function planSurge() {
   if (beat.flow.warn && R10.surgeAt !== `w${key}` && into >= B2 - s.warn) {
     R10.surgeAt = `w${key}`;
     G11.surge = { t0: G11.t, warn: s.warn, len: B2, feint: b + 1 < R10.plan.length && R10.plan[b + 1]?.flow?.surge !== true, plan: true };
-    if (beat.cue === "surge") {
+    if (s.announce) {
       refreshLines6(b);
       setTimeout9(() => G11.phase === "loop" && sayL2("surge"), Math10.max(0, s.warn - 600));
     }
@@ -77937,9 +77956,16 @@ function reportBeat5(beat) {
   if (isGulpPhysics(R10.run ? E8?.env.registries.contactPhysics.get(R10.run.physicsId) : void 0)) {
     const took = Math10.round(R10.took * 1e5) / 1e5, spilled = Math10.round((G11.spilled - R10.spilledAt) * 1e5) / 1e5;
     if (took > 0) report6({ beat, kind: "swallow", amount: took }, false);
-    if (spilled > 0) report6({ beat, kind: "spill", amount: spilled }, false);
+    const coughed = G11.stats.coughs > R10.coughsAt, overflowed = G11.stats.overflows > R10.overflowsAt;
+    if (spilled > 0) {
+      if (coughed) report6({ beat, kind: "spill", part: "cough", amount: spilled }, false);
+      if (overflowed) report6({ beat, kind: "spill", part: "overflow", amount: coughed ? 0 : spilled }, false);
+      if (!coughed && !overflowed) report6({ beat, kind: "spill", part: "more", amount: spilled }, false);
+    }
     R10.took = 0;
     R10.spilledAt = G11.spilled;
+    R10.coughsAt = G11.stats.coughs;
+    R10.overflowsAt = G11.stats.overflows;
     return;
   }
   if (!G11.puddle) return;
@@ -77955,7 +77981,7 @@ function startSegment4(run, ck) {
   const endMs = Number(phys?.segmentSeconds ?? 20) * 1e3;
   const clock0 = G11.t - (ck.now - ck.startedAt);
   const first2 = Math10.max(0, Math10.floor((G11.t - clock0) / BEAT5()));
-  R10.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0, beats: plan.beats.length, endMs, reported: Math10.min(first2, plan.beats.length), ended: false };
+  R10.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0, beats: plan.beats.length, endMs, reported: Math10.min(first2, plan.beats.length), ended: false, full: Math10.max(1, Math10.ceil(endMs / BEAT5())) };
   R10.plan = plan.beats;
 }
 function refreshLines6(beat = 0) {
@@ -78012,10 +78038,10 @@ function before7(now) {
     while (seg.reported < Math10.min(passed, seg.beats)) reportBeat5(seg.reported++);
     const cut5 = seg.beats * BEAT5() < seg.endMs;
     const checking = G11.phase === "clean" && G11.light >= 0;
-    if (elapsed >= Math10.min(seg.endMs, seg.beats * BEAT5()) - 300 || checking) {
+    if ((cut5 ? elapsed >= seg.beats * BEAT5() : elapsed >= seg.endMs - 300) || checking) {
       if (seg.reported < seg.beats) reportBeat5(Math10.min(seg.reported, seg.beats - 1));
       seg.reported = seg.beats;
-      if (cut5 && elapsed >= seg.beats * BEAT5() || checking) {
+      if (cut5 || checking) {
         seg.ended = true;
         e.env.staging.endSegment();
       }
@@ -78080,6 +78106,8 @@ function bind8(env, run) {
   R10.chained = false;
   R10.took = 0;
   R10.spilledAt = 0;
+  R10.coughsAt = 0;
+  R10.overflowsAt = 0;
   R10.puddleLow = null;
   R10.floor0 = 0;
   R10.surgeAt = "";

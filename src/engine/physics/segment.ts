@@ -244,7 +244,7 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
   // one input of a kind counts once on a beat: a key pressed five times in a beat is not five breaths (review)
   const live = inputs.filter((i) => {
     if (lapsed.has(i.beat) || i.beat >= plan.beats.length) return false;
-    const key = `${i.beat}|${i.kind}${i.kind === 'bite' && i.part === 'teeth' ? '|teeth' : ''}${i.kind === 'ask_rest' && i.part !== undefined ? `|${i.part}` : ''}`; // a touch of the teeth and the beat's cost are two inputs
+    const key = `${i.beat}|${i.kind}${i.kind === 'bite' && i.part === 'teeth' ? '|teeth' : ''}${(i.kind === 'ask_rest' || i.kind === 'spill') && i.part !== undefined ? `|${i.part}` : ''}`; // a touch of the teeth and the beat's cost are two inputs (a cough's spill and an overflow's too)
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -327,14 +327,16 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
           }
         } else if (mouthed) {
           // R32: the mouth: her flow on this beat comes in (mouths a second × the beat), the swallows and the spills go out (× the capacity);
-          // a spill is a slip, and what was spilled is counted for her flow's end
+          // what was spilled is counted for her flow's end; a spill is a slip, counted as gulp.html counts it: an overflow (re-armed under 0.9) or
+          // a cough begins one (`part` `overflow` / `cough`; none: one), an overflow running on (`part: 'more'`) is its amount only
           r.gauge += (beat.flow?.level ?? 0) * (P.beatMs / 1000) * cap;
           for (const g of at(b, 'swallow')) r.gauge -= (g.amount ?? 0) * cap;
           for (const g of at(b, 'spill')) {
             r.gauge -= (g.amount ?? 0) * cap;
+            r.spilled = (r.spilled ?? 0) + (g.amount ?? 0);
+            if (g.part === 'more') continue;
             r.slips += 1;
             r.spills = (r.spills ?? 0) + 1;
-            r.spilled = (r.spilled ?? 0) + (g.amount ?? 0);
           }
         } else if (opening && !opening.false) {
           // keeping up with a flow (a gulp): a caught swallow eases the fill, a missed one spills
@@ -427,7 +429,9 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
   r.checked = env.interaction === 'order' && (r.gauge <= P.tongue.checkAt || run.gulp !== undefined);
   r.complete = env.interaction === 'passive' && r.gauge >= 100;
   const after = share(env.gaugeKind, r.gauge, cap);
-  r.warning = before > P.warning / 100 && after <= P.warning / 100;
+  // review I1: the engine's mouth in a segment the gulp instrument reported is not the tide shown (her answers to a tap, the entry): it sets no
+  // warning (no "close to the limit" and no `physics_warning` moment from a value the player never sees)
+  r.warning = !mouthed && before > P.warning / 100 && after <= P.warning / 100;
   r.noise = r.slips + r.gasps > 0 ? P.noiseSlip : 0;
   return r;
 }
@@ -527,13 +531,14 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   addTally(run, {
     caught: result.caught, missed: result.missed, falseTaken: result.falseTaken, strains: result.strains ?? 0, noticed: result.noticed ?? 0,
     slips: result.slips - (result.spills ?? 0), gasps: result.gasps, cheatsCaught: events.filter((e) => e.type === 'physics_caught').length, spills: result.spills ?? 0,
+    spilled: result.spilled !== undefined ? Math.round(result.spilled * 100) / 100 : 0,
   });
   run.gauge = result.gauge;
   run.streak = result.streak;
   if (result.dryness !== undefined) run.dryness = result.dryness;
   run.last = {
-    caught: result.caught, missed: result.missed, falseTaken: result.falseTaken, slips: result.slips, gasps: result.gasps, reliefs: result.reliefs, noise: result.noise, cues: result.cues,
-    ...(result.warning ? { warning: true } : {}),
+    caught: result.caught, missed: result.missed, falseTaken: result.falseTaken, slips: result.slips - (result.spills ?? 0), gasps: result.gasps, reliefs: result.reliefs, noise: result.noise, cues: result.cues,
+    ...(result.warning ? { warning: true } : {}), ...(result.spills ? { spills: result.spills } : {}),
   };
   run.segment = { n: run.segment.n, state: 'held' };
   events.unshift({ type: 'physics_segment', runId, n: segment, phase: 'end', physicsId, caught: result.caught, missed: result.missed, slips: result.slips, reliefs: result.reliefs, lapsed, warning: result.warning });

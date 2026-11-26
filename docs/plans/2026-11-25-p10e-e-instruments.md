@@ -1257,6 +1257,16 @@ Also settled: `scene.shoeDone { runId, holderId }` is written only when a shoe r
   - the taste lines are the prototype's `TASTE` in code (sensory, not her voice): no stimulus kind tastes of this yet (P17b);
   - a surge and a pause are one beat each (1.5 s, inside the prototype's 1.2–2.2 s and 0.7–1.8 s);
   - TDD order in Task 30 (the port was written before its tests; the RED was captured by setting the port aside).
+- [x] *Fix round 1 (chunk e11 review):*
+  - I1: the engine's mouth in a segment the instrument reported sets no `warning` (`resolveSegment`: `!mouthed`), so neither the running directive's "close to the limit" nor the `physics_warning` moment comes from a value the player never sees; a test pins both (`physicsLive` is exported for it).
+  - M1: her volume cuts a segment short and ritual's warning takes the `surge` cue only once the instrument plays the run (`run.gulp`); the card's real-time gulp keeps its beats and cues (a test against the flowless plan). The instrument announces by her row (`announce`), not by the cue.
+  - M2: spills are counted as gulp.html counts them: a `spill` with `part` `overflow` (re-armed under 0.9) or `cough` begins one, `more` is an overflow running on (its amount only; the input's dedupe key carries the part). `run.last.spills` and the running directive say "spilled N times" (not slips; the `physics_slip` moment still hears them), the digest adds the amount ("spilled twice, 47 % of a mouthful in all": the tally's `spilled`).
+  - M4: her wander is the prototype's, continuous in the run's time; the plan gives her pauses and surges (the engine's integral samples the curve at each beat's middle).
+  - M5: the segment cut at her volume reports its last beat at its very end, just before `endSegment` (no 300 ms gap), so `run.gulp.spilled` is what was drawn.
+  - M6: only `surge` may hold fewer than three cue lines.
+  - M7: the unmount is tested for the stop word, a new run, a stage reset and dispose apart, with the scene's root, layers and field restored; a `limit` holder's first tap is kept and her second released.
+  - M8: the floor's segment clock starts again with the puddle (`staging.restart`, a new optional staging method; the controller resets `startedAt`), so the engine's check comes at the prototype's 40 s of cleaning.
+  - **For the author (added):** M3: after a tap that releases her (a `signal` holder, a `limit` holder's second) her flow's end still says her `done` line ("all of it. good."), which reads as if she finished; gulp.html has no tap release and no `released` kind (a `gulp.released` row, or silence). M9: TDD order (as above). Still listed above: no swallow or breath while typing, `volumeMs` fixed at 35 s.
 
 ---
 

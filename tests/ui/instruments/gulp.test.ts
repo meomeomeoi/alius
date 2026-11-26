@@ -59,7 +59,10 @@ afterEach(() => {
 const ANN = 'unit_ann';
 const BEAT = 1500;
 const flowPlan = (n = 14, level = 0.2, extra: (b: number) => Partial<PlannedBeat> = () => ({})): { beats: PlannedBeat[] } =>
-  ({ beats: Array.from({ length: n }, (_, b) => ({ attention: 'busy' as const, flow: { level }, ...extra(b) })) });
+  ({ beats: Array.from({ length: n }, (_, b) => ({ attention: 'busy' as const, flow: level === 0 ? { level: 0, pause: true as const } : { level }, ...extra(b) })) });
+/** Her wander (gulp.html, neutral's row unless given) at the run's time `t`, × her surge on a surge beat. */
+const wander = (t: number, row = { base: 0.2, vary: 0.25 }, k = 1): number => row.base * (1 + row.vary * Math.sin(t / 1300) * Math.sin(t / 3700 + 1)) * k;
+const runTime = (): number => _gulp.G.t - _gulp.R.seg!.clock0;
 
 /** Ann stands over the commander: a gulp run in real time, its first segment running (no contact starts gulp: A3). */
 function hold(plan = flowPlan(), content: string[] = ['bodily_fluids', 'watersports']): CampaignState {
@@ -115,10 +118,11 @@ function draw(state: CampaignState, over: { settings?: Partial<AliusSettings>; s
   const input = vi.fn();
   const endSegment = vi.fn(() => []);
   const onTap = vi.fn();
+  const restart = vi.fn();
   const f = frames();
   const noop = (): [] => [];
   const staging = {
-    input, endSegment, stopWord: vi.fn(() => []), skip: noop, act: noop, finishCounted: noop, stimulus: noop, cue: (k: string) => `her ${k}`, beat: () => 0,
+    input, endSegment, restart, stopWord: vi.fn(() => []), skip: noop, act: noop, finishCounted: noop, stimulus: noop, cue: (k: string) => `her ${k}`, beat: () => 0,
     clock: () => ({ startedAt: 0, beatMs: BEAT, now: f.now() }), ...over.staging,
   };
   const screen = renderSceneScreen(host, {
@@ -141,7 +145,7 @@ function draw(state: CampaignState, over: { settings?: Partial<AliusSettings>; s
     target.dispatchEvent(e);
     return e;
   };
-  return { host, screen, input, endSegment, onTap, frames: f, q, to, pointer, key, field };
+  return { host, screen, input, endSegment, onTap, restart, frames: f, q, to, pointer, key, field };
 }
 const reports = (t: ReturnType<typeof draw>): SegmentInput[] => t.input.mock.calls.map((c) => c[0] as SegmentInput);
 const handText = (t: ReturnType<typeof draw>) => [...t.host.querySelectorAll('.alius-gulp-hand .her-line')].map((e) => e.textContent).join(' | ');
@@ -313,7 +317,7 @@ describe('the gulp instrument on the scene', () => {
     const t = draw(s);
     inLoop(t);
     t.to(1700);
-    expect(_gulp.G.flowTarget).toBeCloseTo(0.3, 6);
+    expect(_gulp.G.flowTarget).toBeCloseTo(wander(runTime()), 6); // her level is the prototype's wander (review M4); a pause is the plan's
     s.scene!.physics = { ...s.scene!.physics!, segment: { n: 1, state: 'held' } };
     t.screen.refresh();
     t.to(1800);
@@ -329,7 +333,7 @@ describe('the gulp instrument on the scene', () => {
     t.to(1000 + 2 * BEAT - 900 + 400);
     expect(handText(t)).toContain('now.');
     t.to(1000 + 2 * BEAT + 100);
-    expect(_gulp.G.flowTarget).toBeCloseTo(0.3, 6); // the plan's level carries the surge: never multiplied again
+    expect(_gulp.G.flowTarget).toBeCloseTo(wander(runTime(), { base: 0.19, vary: 0.05 }, 1.5), 6); // her surge, once (never multiplied again by the warning)
   });
 
   it('inputs: per beat a `swallow` with the mouth its swallows took and a `spill` with the mouthfuls spilled; none for a quiet beat', () => {
@@ -347,11 +351,47 @@ describe('the gulp instrument on the scene', () => {
     expect(sw[0]!.beat).toBe(1);
     expect(sw[0]!.amount!).toBeCloseTo(GULP_TAKES, 2);
     G.fill = 0.8;
-    _gulp.spill(0.3, true);
+    _gulp.cough('breath'); // spills 0.25 + 0.2 × 0.8
     t.to(3 * BEAT + 30);
-    expect(reports(t).filter((i) => i.kind === 'spill')).toEqual([{ beat: 2, kind: 'spill', amount: 0.3 }]);
+    const sp = reports(t).filter((i) => i.kind === 'spill');
+    expect(sp).toHaveLength(1);
+    expect(sp[0]).toMatchObject({ beat: 2, part: 'cough' });
+    expect(sp[0]!.amount!).toBeCloseTo(0.41, 4);
     t.to(5 * BEAT + 30);
     expect(reports(t)).toHaveLength(2);
+  });
+
+  it('review M2: an overflow begins a spill (`part: overflow`), its running on is its amount only (`more`); one re-armed under 0.9 begins another', () => {
+    const t = draw(hold(flowPlan(14, 0)));
+    inLoop(t);
+    const G = _gulp.G;
+    t.to(2 * BEAT + 50);
+    G.fill = 1.02; // over the brim: one overflow (0.06 spilled: 0.94 left, still brimming)
+    t.to(3 * BEAT + 50);
+    G.fill = 1.02; // still brimming: no new overflow
+    t.to(4 * BEAT + 50);
+    G.fill = 0.5; // re-armed under 0.9
+    t.to(4 * BEAT + 100);
+    G.fill = 1.02;
+    t.to(5 * BEAT + 50);
+    const sp = reports(t).filter((i) => i.kind === 'spill').map((i) => [i.beat, i.part]);
+    expect(sp).toEqual([[2, 'overflow'], [3, 'more'], [4, 'overflow']]);
+    expect(G.stats.overflows).toBe(2);
+  });
+
+  it('review M4: her wander is the prototype\'s, continuous in the run\'s time; a pause is 0, a surge beat × her surge', () => {
+    const plan = flowPlan(14, 0.2, (b) => (b === 3 ? { flow: { level: 0, pause: true } } : b === 5 ? { flow: { level: 0.32, surge: true } } : {}));
+    const t = draw(hold(plan));
+    inLoop(t);
+    const row = { base: 0.2, vary: 0.25, surge: 1.6 };
+    const want = (tm: number, k = 1) => row.base * (1 + row.vary * Math.sin(tm / 1300) * Math.sin(tm / 3700 + 1)) * k;
+    for (const tm of [2000, 2600, 4000, 6000, 7600, 8200]) {
+      t.to(tm);
+      const b = Math.floor(runTime() / BEAT);
+      const k = b === 3 ? 0 : b === 5 ? row.surge : 1;
+      _gulp.planFlow(0);
+      expect(_gulp.G.flowTarget).toBeCloseTo(want(runTime(), k), 6);
+    }
   });
 
   it('Ruling AD: what is swallowed or spilled while the run is held reaches the next segment\'s first beat', () => {
@@ -364,8 +404,7 @@ describe('the gulp instrument on the scene', () => {
     s.scene!.physics = { ...s.scene!.physics!, segment: { n: 1, state: 'held' } };
     t.screen.refresh();
     t.to(1600);
-    _gulp.G.fill = 0.9;
-    _gulp.spill(0.2, false);
+    _gulp.G.fill = 1.16; // an overflow while held: 0.16 + 0.04 spilled
     t.to(4 * BEAT);
     expect(reports(t)).toEqual([]);
     const now = t.frames.now();
@@ -373,7 +412,7 @@ describe('the gulp instrument on the scene', () => {
     started = now;
     t.screen.refresh();
     t.to(now + BEAT + 50);
-    expect(reports(t)).toEqual([{ beat: 0, kind: 'spill', amount: 0.2 }]);
+    expect(reports(t)).toEqual([{ beat: 0, kind: 'spill', part: 'overflow', amount: 0.2 }]);
   });
 
   it('the segment cut short at her volume is ended when its beats are played', () => {
@@ -388,6 +427,22 @@ describe('the gulp instrument on the scene', () => {
     expect(t.endSegment).toHaveBeenCalledTimes(1);
   });
 
+  it('review M5: what is spilled in the last 300 ms of the cut segment is reported before it ends (the engine\'s spilled is what was drawn)', () => {
+    const s = hold(flowPlan(3, 0));
+    s.scene!.physics!.segment.n = 2;
+    const t = draw(s);
+    inLoop(t);
+    t.to(3 * BEAT - 150);
+    _gulp.G.fill = 0.8;
+    _gulp.cough('breath');
+    expect(t.endSegment).not.toHaveBeenCalled();
+    t.to(3 * BEAT + 40);
+    expect(t.endSegment).toHaveBeenCalledTimes(1);
+    const sp = reports(t).filter((i) => i.kind === 'spill');
+    expect(sp).toHaveLength(1);
+    expect(sp[0]!.amount!).toBeCloseTo(_gulp.G.spilled, 6);
+  });
+
   it('the chain to the cleaning: her done line, then her clean line, then the floor; the wipes reported × the cleaning\'s start', () => {
     const s = hold(flowPlan(14, 0));
     const t = draw(s);
@@ -400,8 +455,10 @@ describe('the gulp instrument on the scene', () => {
     expect(handText(t)).toContain('all of it. good.');
     t.to(t.frames.now() + 1300);
     expect(handText(t)).toContain('you spilled. clean it.');
+    expect(t.restart).not.toHaveBeenCalled();
     t.to(t.frames.now() + 1400);
     expect(_gulp.G.phase).toBe('clean');
+    expect(t.restart).toHaveBeenCalledTimes(1); // review M8: the floor's 40 s count from the puddle shown
     // the floor's segment runs: a lick is reported as the share of the puddle × the start (50)
     const now = t.frames.now();
     s.scene!.physics = { ...s.scene!.physics!, segment: { n: 4, state: 'running', plan: { beats: Array.from({ length: 27 }, () => ({ attention: 'busy' as const })) } } };
@@ -473,6 +530,25 @@ describe('the gulp instrument on the scene', () => {
     expect(_gulp.S._slow).toBe(1);
   });
 
+  it('review M7: a limit holder: her first tap is kept (her answer), her second is released (no answer)', () => {
+    registerHoldsUntil(() => 'limit');
+    const s = hold(flowPlan(14, 0.2));
+    const t = draw(s);
+    inLoop(t);
+    t.key('t');
+    expect(t.onTap).toHaveBeenCalledTimes(1);
+    t.to(t.frames.now() + 450);
+    expect(handText(t)).toContain('slower, then.');
+    s.scene!.physics = { ...s.scene!.physics!, taps: 1 }; // the engine ignored the first (physicsSignal)
+    t.screen.refresh();
+    t.to(t.frames.now() + 2600); // her cooldown
+    const slow = _gulp.S._slow;
+    t.key('t');
+    expect(t.onTap).toHaveBeenCalledTimes(2);
+    t.to(t.frames.now() + 450);
+    expect(_gulp.S._slow).toBe(slow); // released: no answer of hers
+  });
+
   it('keys: Space and Shift typed into the field never act; Space elsewhere swallows (held: gulp after gulp), Shift breathes', () => {
     const t = draw(hold(flowPlan(14, 0)));
     inLoop(t);
@@ -521,24 +597,43 @@ describe('the gulp instrument on the scene', () => {
     expect(t.q('.alius-gulp-world')!.style.transform).toBe('translate(0.0px, 0.0px)');
   });
 
-  it('unmount: the stop word leaves no frame, timer or listener; restores the frame; dispatches nothing afterwards', () => {
+  const ends: Array<[string, (t: ReturnType<typeof draw>, s: CampaignState) => void]> = [
+    ['the stop word (the run gone, stopped)', (t, s) => { delete s.scene!.physics; t.screen.refresh(); }],
+    ['a new run', (t, s) => { s.scene!.physics = { ...s.scene!.physics!, id: 'p2', physicsId: 'breath' }; t.screen.refresh(); }],
+    ['a stage reset (a chat switch)', () => resetSceneStage()],
+    ['dispose', (t) => t.screen.dispose()],
+  ];
+  it.each(ends)('review M7: unmount (%s): no frame, timer or listener is left, the frame is restored, nothing is dispatched afterwards', async (_what, end) => {
     const s = hold(flowPlan(14, 0.2));
-    const t = draw(s);
+    const t = draw(s, { staging: { outcome: () => ({ runId: 'p1', physicsId: 'gulp', result: 'stopped' }) } });
+    const root = t.q('.alius-scene')!;
+    const snap = (): string => JSON.stringify([root.getAttribute('style'), { ...root.dataset }, [...root.querySelectorAll<HTMLElement>('[class^="alius-layer"]')].map((l) => [l.className, l.getAttribute('style'), { ...l.dataset }]), t.field.getAttribute('style')]);
+    const before = snap();
     inLoop(t);
+    const box = t.q('.alius-gulp')!;
+    expect(box).not.toBeNull();
+    expect(t.q('.alius-stage-dial')?.dataset.instrument).toBe('gulp');
     _gulp.G.fill = 1;
     t.key(' ');
-    expect(t.frames.pending()).toBeGreaterThan(0);
-    delete s.scene!.physics; // the stop word: the run is gone (stopped: no end is played)
-    t.screen.refresh();
-    resetSceneStage();
-    expect(t.q('.alius-gulp')).toBeNull();
+    end(t, s);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(box.isConnected).toBe(false);
+    expect(t.host.querySelector('.alius-gulp')).toBeNull();
+    if (_what === 'a new run') { expect(t.q('.alius-stage-dial')?.dataset.instrument).toBe('breath'); return; } // the next run's own instrument takes the frame
+    if (_what !== 'dispose') { // a new run mounts its own instrument (breath's)
+      expect(t.q('.alius-stage-dial')?.dataset.instrument).toBeUndefined();
+      expect(snap()).toBe(before);
+    }
     const calls = t.input.mock.calls.length;
     t.key(' ');
-    t.pointer('pointerdown', undefined, 2);
+    t.key('Shift');
+    t.pointer('pointerdown', document.body, 2);
     for (let i = 0; i < 200; i++) t.frames.frame();
     vi.advanceTimersByTime(10000);
     expect(t.input.mock.calls.length).toBe(calls);
     expect(t.onTap).not.toHaveBeenCalled();
+    expect(t.endSegment).not.toHaveBeenCalled();
     expect(t.frames.pending()).toBe(0);
   });
 });

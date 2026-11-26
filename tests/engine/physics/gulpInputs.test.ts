@@ -17,7 +17,8 @@ import { INPUT_KINDS, type PhysicsRun, type SegmentInput, type SegmentPlan } fro
 import { Rng, seedRng } from '../../../src/engine/rng';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { GULP_STYLES, TUNING } from '../../../src/engine/tuning';
-import { tallySentence } from '../../../src/blocking/physicsDirectives';
+import { physicsLines, tallySentence } from '../../../src/blocking/physicsDirectives';
+import { physicsLive } from '../../../src/engine/moments/live';
 import { campaign, loadCore, run as dispatch } from '../../helpers/loyalty';
 import '../../../src/engine/actions/physics';
 
@@ -106,8 +107,20 @@ describe('her flow, planned by hash (R32, R3)', () => {
     const s = base();
     const full = Math.ceil(20000 / B);
     const total = Math.ceil(P.gulpFlow.volumeMs / B);
-    expect(planSegment(s, reg, mk(), new Rng(seedRng(1))).beats).toHaveLength(full);
-    expect(planSegment(s, reg, mk({ segment: { n: 1, state: 'held' } }), new Rng(seedRng(1))).beats).toHaveLength(total - full);
+    const played = { gulp: { spilled: 0 } };
+    expect(planSegment(s, reg, mk(played), new Rng(seedRng(1))).beats).toHaveLength(full);
+    expect(planSegment(s, reg, mk({ ...played, segment: { n: 1, state: 'held' } }), new Rng(seedRng(1))).beats).toHaveLength(total - full);
+  });
+
+  it('review M1: the card\'s gulp (the instrument never reported: no `gulp`) keeps its beats and its cues as before', () => {
+    registerPhysicsStyle(() => ({ primary: 'ritual' }));
+    const s = base();
+    for (const n of [0, 1, 2]) {
+      const a = planSegment(s, reg, mk({ segment: { n, state: 'held' } }), new Rng(seedRng(n + 3)));
+      const b = planSegment(s, withoutGulp(), mk({ segment: { n, state: 'held' } }), new Rng(seedRng(n + 3)));
+      expect(a.beats.map((x) => [x.opening, x.cue, x.attention])).toEqual(b.beats.map((x) => [x.opening, x.cue, x.attention]));
+    }
+    expect(planSegment(s, reg, mk({ segment: { n: 1, state: 'held' } }), new Rng(seedRng(1))).beats.some((x) => x.cue === 'surge')).toBe(false);
   });
 
   it('ritual warns in words, cruel never, playful feints 40 % (over 200 hashed warnings, within ±8 %)', () => {
@@ -116,7 +129,7 @@ describe('her flow, planned by hash (R32, R3)', () => {
       for (let i = 0; out.length < 200 && i < 2000; i++) {
         registerPhysicsStyle(() => ({ primary: style as never }));
         const s = base();
-        const beats = [0, 1].flatMap((n) => planSegment(s, reg, mk({ id: `p${i}`, segment: { n, state: 'held' } }), new Rng(seedRng(i))).beats);
+        const beats = [0, 1].flatMap((n) => planSegment(s, reg, mk({ id: `p${i}`, gulp: { spilled: 0 }, segment: { n, state: 'held' } }), new Rng(seedRng(i))).beats);
         beats.forEach((b, g) => {
           if (!b.flow?.warn || g + 1 >= beats.length || beats[g + 1]!.flow?.pause) return;
           out.push({ cue: b.cue === 'surge', feint: beats[g + 1]!.flow?.surge !== true });
@@ -167,6 +180,25 @@ describe('the mouth: swallows and spills (R32)', () => {
     expect(r.gauge).toBeCloseTo(40, 6);
   });
 
+  it('review M2: spills are counted as gulp.html counts them: an overflow or a cough begins one, an overflow running on is its amount only', () => {
+    const r = resolveSegment(mk({ gauge: 100 }), flowPlan([0, 0, 0, 0]), [
+      input(0, 'spill', { part: 'overflow', amount: 0.05 }), input(1, 'spill', { part: 'more', amount: 0.06 }), input(2, 'spill', { part: 'more', amount: 0.04 }),
+      input(3, 'spill', { part: 'more', amount: 0.02 }), input(3, 'spill', { part: 'cough', amount: 0.3 }),
+    ], env());
+    expect([r.spills, r.slips]).toEqual([2, 2]);
+    expect(r.spilled).toBeCloseTo(0.47, 10);
+  });
+
+  it('review I1: the engine\'s mouth sets no warning in a segment the instrument reported (no "close to the limit", no physics_warning moment)', () => {
+    // the mouth crosses 70 % full on the plan's flow alone: no warning
+    const r = resolveSegment(mk({ gauge: 60 }), flowPlan([0.4, 0.4]), [input(0, 'swallow', { amount: 0 })], env());
+    expect(r.gauge).toBeGreaterThan(100 - P.warning);
+    expect(r.warning).toBe(false);
+    // the windows (no swallow) warn as before
+    const plan: SegmentPlan = { beats: [{ attention: 'busy', opening: { widthMs: 600 } }] };
+    expect(resolveSegment(mk({ gauge: 60 }), plan, [], env()).warning).toBe(true);
+  });
+
   it('no swallow input: the windows as today (a caught swallow −5, a missed one +20 and a slip)', () => {
     const plan: SegmentPlan = { beats: [{ attention: 'busy', opening: { widthMs: 600 }, flow: { level: 0.3 } }, { attention: 'busy', flow: { level: 0.3 } }, { attention: 'busy', opening: { widthMs: 600 }, flow: { level: 0.3 } }] };
     const r = resolveSegment(mk({ gauge: 50 }), plan, [input(0, 'breathe')], env());
@@ -197,6 +229,9 @@ describe('the spill chains to the cleaning at her flow\'s end (R32)', () => {
     expect(ev.find((e) => e.type === 'physics_slip')).toMatchObject({ count: 1 });
     expect(ev.some((e) => e.type === 'physics_started')).toBe(false);
     expect(s.scene!.physics).toMatchObject({ physicsId: 'gulp', gulp: { spilled: 0.25 } });
+    expect(s.scene!.physics!.last).toMatchObject({ slips: 0, spills: 1 });
+    expect(physicsLines(s, reg)!.text).toContain('spilled once');
+    expect(physicsLive(s, 'physics_slip')).toBe(true); // a spill is a slip for the moment layer
     expect(s.scene!.physics!.tally).toMatchObject({ spills: 1 });
     expect(s.scene!.physics!.tally?.slips).toBeUndefined();
     // her flow's last segment: the cleaning starts at 100 × all that was spilled
@@ -215,9 +250,13 @@ describe('the spill chains to the cleaning at her flow\'s end (R32)', () => {
 
   it('a mouthed gulp never ends by its fill; at her flow\'s end she releases when little was spilled or she wipes it herself', () => {
     const full = open(1);
-    full.scene!.physics!.gauge = 99;
+    full.scene!.physics!.gauge = 60;
     physicsInput(full, ctx(), 'p1', 1, [input(0, 'swallow', { amount: 0 })]);
     expect(full.scene!.physics).toMatchObject({ physicsId: 'gulp', gauge: 100 });
+    // review I1: the mouth crossed 70 % without anything shown: neither the running directive nor the moment layer hears a warning
+    expect(full.scene!.physics!.last?.warning).toBeUndefined();
+    expect(physicsLines(full, reg)!.text).not.toContain('close to the limit');
+    expect(physicsLive(full, 'physics_warning')).toBe(false);
     const little = open(2);
     const a = physicsInput(little, ctx(), 'p1', 2, [input(0, 'spill', { amount: 0.1 })]);
     expect(a.find((e) => e.type === 'physics_outcome')).toMatchObject({ result: 'released', physicsId: 'gulp' });
@@ -253,6 +292,7 @@ describe('the spill chains to the cleaning at her flow\'s end (R32)', () => {
 
   it('the digest names the spills, never as slips of the tongue', () => {
     expect(tallySentence({ spills: 2 }, reg.contactPhysics.get('tongue_work'))).toBe('Over the whole hold: spilled twice.');
+    expect(tallySentence({ spills: 2, spilled: 0.47 }, reg.contactPhysics.get('tongue_work'))).toBe('Over the whole hold: spilled twice, 47 % of a mouthful in all.');
     expect(tallySentence({ spills: 1, slips: 1 }, reg.contactPhysics.get('tongue_work'))).toBe('Over the whole hold: 1 slip of the tongue, spilled once.');
   });
 });

@@ -35,7 +35,8 @@ export type InputKind = (typeof INPUT_KINDS)[number];
  * segment input: the instrument reports it through `physics/spit`, decided at once (one draw, shoe.html's chances; seen, `physics_caught`).
  * `swallow` (R32: gulp) carries the mouth the beat's swallows took (`amount`, in mouthfuls: a full mouth is 1) and `spill` the mouthfuls
  * spilled (an overflow, a cough); a segment that holds either follows the mouth (the plan's `flow` in, the swallows and spills out, × the
- * capacity) instead of the windows. A spill is a slip; what was spilled is carried on the run (`gulp`) to her flow's end.
+ * capacity) instead of the windows. A spill is a slip, counted as gulp.html counts it: `part` `overflow` or `cough` begins one (absent:
+ * one too), `part: 'more'` is an overflow running on (its amount only); what was spilled is carried on the run (`gulp`) to her flow's end.
  */
 export interface SegmentInput { beat: number; kind: InputKind; atMs?: number; part?: string; amount?: number }
 
@@ -89,6 +90,8 @@ export interface SegmentSummary {
   move?: string;
   /** The gauge crossed `TUNING.physics.warning`. */
   warning?: boolean;
+  /** P10e-e R32: a gulp's spills (each a slip, counted apart from `slips`: the overflows and the coughs). */
+  spills?: number;
 }
 
 /** The scent bands (plan R13); the saturation physics reads them. */

@@ -7,11 +7,11 @@
  * cleans it with the tongue on the floor art, and every bit licked fills the mouth again; her check is a band of light over the floor.
  *
  * The functions are the prototype's, copied (types added). The wiring, declared in `fidelity.json`:
- * - her flow is the engine's plan (`PlannedBeat.flow`, R32: her level per beat with its surges, their warnings, playful's feints, her pauses,
- *   placed in wall time through `staging.clock()`): `planFlow` (the prototype's scheduler) reads it; her volume is the engine's (the flow ends
+ * - her flow is the engine's plan (`PlannedBeat.flow`, R32: her surges, their warnings, playful's feints, her pauses, placed in wall time
+ *   through `staging.clock()`; her wander between them is the prototype's own, continuous): `planFlow` (the prototype's scheduler) reads it; her volume is the engine's (the flow ends
  *   when the run chains to its cleaning or is released: `endFlow`, as the engine answered); her answers to a tap stay the instrument's (R32);
  * - each beat of a running segment is reported once, as it ends: `swallow` with the mouth its swallows took, `spill` with the mouthfuls spilled
- *   (an overflow, a cough); in the cleaning one `wipe` a beat with the share of the puddle licked up (× the cleaning's start); what is done
+ *   (`part` `cough` / `overflow` for a beat that began one, `more` for an overflow running on: the prototype's count of spills); in the cleaning one `wipe` a beat with the share of the puddle licked up (× the cleaning's start); what is done
  *   while the run is held is carried by the next segment's first beat (Ruling AD); the segment the engine cut short at her volume is ended when
  *   its beats are played, the cleaning's when her check begins (at 10 % left or after 40 s);
  * - the tap is P15a's `physics/signal`; her answer (her line and her pause, slower, hold, faster or surge) plays only when the engine keeps
@@ -367,6 +367,7 @@ function startClean() {
   G.puddle = { w, h, m, total0: m.reduce((a, b) => a + b, 0), c: document.createElement('canvas') }; G.puddle.c.width = w; G.puddle.c.height = h;
   G.fill = Math.min(G.fill, 0.15); G.light = -1;
   $('#reply').innerHTML = '<span class="act">Down to the floor, where it spilled.</span>';
+  E?.env.staging.restart?.();
 }
 const puddleLeft = () => (G.puddle ? G.puddle.m.reduce((a: number, b: number) => a + b, 0) / Math.max(1, G.puddle.total0) : 0);
 function puddleRect() { const W = innerWidth, H = innerHeight; return { x: W * 0.1, y: H * 0.22, w: W * 0.8, h: H * 0.62 }; }
@@ -520,7 +521,7 @@ function lick(e: { clientX: number; clientY: number }) {
  * The wiring (no prototype code below): the run, the plan's flow, the reports, the tap's answer, the lines, the art, the mount and its end.
  * ===================================================================================================================================== */
 
-interface Seg { n: number; startedAt: number; clock0: number; beats: number; endMs: number; reported: number; ended: boolean }
+interface Seg { n: number; startedAt: number; clock0: number; beats: number; endMs: number; reported: number; ended: boolean; /** A full segment's beats (the earlier segments of her flow). */ full: number }
 interface Wiring {
   run: PhysicsRun | null;
   lineStyle: string;
@@ -532,6 +533,9 @@ interface Wiring {
   /** What the swallows took and what was spilled since the last beat reported (carried across a held run: Ruling AD). */
   took: number;
   spilledAt: number;
+  /** The coughs and the overflows at the last beat reported (a new one begins a spill: review M2). */
+  coughsAt: number;
+  overflowsAt: number;
   /** The puddle at the last wipe reported (its lowest), and the cleaning's start on the engine's dirt gauge. */
   puddleLow: number | null;
   floor0: number;
@@ -540,7 +544,7 @@ interface Wiring {
   ox: number; oy: number;
   ended: string | null;
 }
-const R: Wiring = { run: null, lineStyle: 'neutral', seg: null, running: false, plan: [], chained: false, took: 0, spilledAt: 0, puddleLow: null, floor0: 0, surgeAt: '', ox: 0, oy: 0, ended: null };
+const R: Wiring = { run: null, lineStyle: 'neutral', seg: null, running: false, plan: [], chained: false, took: 0, spilledAt: 0, coughsAt: 0, overflowsAt: 0, puddleLow: null, floor0: 0, surgeAt: '', ox: 0, oy: 0, ended: null };
 const BEAT = (): number => TUNING.physics.beatMs;
 
 /** The beat of the running segment at the loop's clock. */
@@ -552,8 +556,14 @@ function beatNow(): number {
 /** Her flow now: the plan's level on the beat being played (mouths a second); 0 while the run is held between segments. */
 function flowNow(): number {
   if (!R.running || !R.seg) return 0;
-  if (G.t - R.seg.clock0 >= R.seg.beats * BEAT()) return 0; // her volume reached: the stream stops with the plan
-  return R.plan[beatNow()]?.flow?.level ?? 0;
+  const elapsed = G.t - R.seg.clock0;
+  if (elapsed >= R.seg.beats * BEAT()) return 0; // her volume reached: the stream stops with the plan
+  const f = R.plan[beatNow()]?.flow;
+  if (!f || f.pause) return 0;
+  // review M4: her wander is the prototype's, continuous in the run's time (`base × (1 + vary × sin(t / 1300) × sin(t / 3700 + 1))`); the plan
+  // gives her pauses and her surges (and the engine's integral samples the same curve at each beat's middle)
+  const s = ST(), t = (R.seg.n - 1) * R.seg.full * BEAT() + elapsed;
+  return s.base * (1 + s.vary * Math.sin(t / 1300) * Math.sin(t / 3700 + 1)) * (f.surge ? s.surge : 1);
 }
 /**
  * Her surges as the plan places them: a warning beat starts the stream rising her row's `warn` ms before its end (a ritual holder says her
@@ -569,7 +579,7 @@ function planSurge(): void {
   if (beat.flow.warn && R.surgeAt !== `w${key}` && into >= B - s.warn) {
     R.surgeAt = `w${key}`;
     G.surge = { t0: G.t, warn: s.warn, len: B, feint: b + 1 < R.plan.length && R.plan[b + 1]?.flow?.surge !== true, plan: true };
-    if (beat.cue === 'surge') { refreshLines(b); setTimeout(() => G.phase === 'loop' && sayL('surge'), Math.max(0, s.warn - 600)); }
+    if (s.announce) { refreshLines(b); setTimeout(() => G.phase === 'loop' && sayL('surge'), Math.max(0, s.warn - 600)); } // her row announces (ritual); the plan's cue is the card's
   } else if (beat.flow.surge && !G.surge && R.surgeAt !== `s${key}`) {
     R.surgeAt = `s${key}`;
     G.surge = { t0: G.t, warn: 0, len: B, feint: false, plan: true };
@@ -593,8 +603,14 @@ function reportBeat(beat: number): void {
   if (isGulpPhysics(R.run ? E?.env.registries.contactPhysics.get(R.run.physicsId) : undefined)) {
     const took = Math.round(R.took * 1e5) / 1e5, spilled = Math.round((G.spilled - R.spilledAt) * 1e5) / 1e5;
     if (took > 0) report({ beat, kind: 'swallow', amount: took }, false);
-    if (spilled > 0) report({ beat, kind: 'spill', amount: spilled }, false);
-    R.took = 0; R.spilledAt = G.spilled;
+    // review M2: a spill is counted as gulp.html counts it (its overflows, re-armed under 0.9, and its coughs); what runs on is its amount only
+    const coughed = G.stats.coughs > R.coughsAt, overflowed = G.stats.overflows > R.overflowsAt;
+    if (spilled > 0) {
+      if (coughed) report({ beat, kind: 'spill', part: 'cough', amount: spilled }, false);
+      if (overflowed) report({ beat, kind: 'spill', part: 'overflow', amount: coughed ? 0 : spilled }, false);
+      if (!coughed && !overflowed) report({ beat, kind: 'spill', part: 'more', amount: spilled }, false);
+    }
+    R.took = 0; R.spilledAt = G.spilled; R.coughsAt = G.stats.coughs; R.overflowsAt = G.stats.overflows;
     return;
   }
   if (!G.puddle) return;
@@ -611,7 +627,7 @@ function startSegment(run: PhysicsRun, ck: { startedAt: number | null; now: numb
   const endMs = Number(phys?.segmentSeconds ?? 20) * 1000;
   const clock0 = G.t - (ck.now - ck.startedAt!);
   const first = Math.max(0, Math.floor((G.t - clock0) / BEAT()));
-  R.seg = { n: run.segment.n, startedAt: ck.startedAt!, clock0, beats: plan.beats.length, endMs, reported: Math.min(first, plan.beats.length), ended: false };
+  R.seg = { n: run.segment.n, startedAt: ck.startedAt!, clock0, beats: plan.beats.length, endMs, reported: Math.min(first, plan.beats.length), ended: false, full: Math.max(1, Math.ceil(endMs / BEAT())) };
   R.plan = plan.beats;
   // Ruling AD: what was swallowed, spilled or licked while the run was held is not lost: the first beat reported carries it
 }
@@ -662,12 +678,12 @@ function before(now: number): void {
     const elapsed = G.t - seg.clock0;
     const passed = Math.floor(elapsed / BEAT());
     while (seg.reported < Math.min(passed, seg.beats)) reportBeat(seg.reported++);
-    const cut = seg.beats * BEAT() < seg.endMs; // her volume cut it short
+    const cut = seg.beats * BEAT() < seg.endMs; // her volume cut it short: the instrument ends it, so its last beat is reported at its very end (review M5)
     const checking = G.phase === 'clean' && G.light >= 0;
-    if (elapsed >= Math.min(seg.endMs, seg.beats * BEAT()) - 300 || checking) {
+    if ((cut ? elapsed >= seg.beats * BEAT() : elapsed >= seg.endMs - 300) || checking) {
       if (seg.reported < seg.beats) reportBeat(Math.min(seg.reported, seg.beats - 1));
       seg.reported = seg.beats;
-      if ((cut && elapsed >= seg.beats * BEAT()) || checking) { seg.ended = true; e.env.staging.endSegment(); }
+      if (cut || checking) { seg.ended = true; e.env.staging.endSegment(); }
     }
   }
 }
@@ -715,7 +731,7 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   S.style = lead.key in STYLES ? lead.key : 'neutral'; // gulp.html's row (a style it lacks reads neutral's)
   R.lineStyle = lead.key;
   R.run = run;
-  R.seg = null; R.running = false; R.plan = []; R.chained = false; R.took = 0; R.spilledAt = 0; R.puddleLow = null; R.floor0 = 0; R.surgeAt = ''; R.ended = null;
+  R.seg = null; R.running = false; R.plan = []; R.chained = false; R.took = 0; R.spilledAt = 0; R.coughsAt = 0; R.overflowsAt = 0; R.puddleLow = null; R.floor0 = 0; R.surgeAt = ''; R.ended = null;
   bindArt(env, run);
   const owner = state.scene?.participants.find((id) => state.squad.some((u) => u.id === id)) ?? null;
   const loc = state.scene?.locationId ?? '';

@@ -119,9 +119,9 @@ function blockingWeight(state: CampaignState, reg: Registries, sourceId: string,
 }
 
 /** The last segment of a running hold: it crossed the warning gauge (`physics_warning`), or it slipped (`physics_slip`). */
-function physicsLive(state: CampaignState, kind: 'physics_warning' | 'physics_slip'): boolean {
+export function physicsLive(state: CampaignState, kind: 'physics_warning' | 'physics_slip'): boolean {
   const last = state.scene?.physics?.last;
-  return kind === 'physics_warning' ? last?.warning === true : (last?.slips ?? 0) > 0;
+  return kind === 'physics_warning' ? last?.warning === true : (last?.slips ?? 0) + (last?.spills ?? 0) > 0; // P10e-e R32: a gulp's spill is a slip
 }
 
 /**

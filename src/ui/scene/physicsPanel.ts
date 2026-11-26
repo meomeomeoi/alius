@@ -54,6 +54,11 @@ export interface PhysicsPanelStaging {
   service?(runId: string, verdict: 'pleased' | 'adequate' | 'displeased'): EngineEvent[];
   /** P10e-e Ruling AC: grit spat aside in shoe service, decided at once (`physics/spit`; `attention` is hers as shown, read while the run is held). Absent = never. */
   spit?(beat: number, attention: string): EngineEvent[];
+  /**
+   * P10e-e e11 review M8: the running segment's clock starts again now (its inputs so far are kept): gulp's floor begins to be cleaned a
+   * little after its segment started, and the prototype's 40 s count from the puddle. Absent = never.
+   */
+  restart?(): void;
   /** P10e-e 24b: a decision of her script through her command capability (`physics/decide`). Absent = never. */
   decide?(kind: string, ref?: string): EngineEvent[];
   /** P10e-e: how a run of the open scene ended (its `physics_outcome`), or null when none is known. Absent = never known. */
