@@ -226,7 +226,7 @@ Everything is saved as files in her own expressions folder.
   - `removeSlot(st, avatar, key)`: deletes `<key>` and `<key>.fit`.
 - **The fit controls** are each prototype's panel controls for that slot (sliders, the feet and shown pickers, `floorShade` on `legs_seated.rest`, the open item of chunk (e)), ported with their ranges, steps and defaults. The sidecar shape is the one the prototype's "copy the fit" writes and `art.ts`'s schema reads. Each ported function is declared in `src/ui/stage/fidelity.json` with its prototype.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - **LOAD:**
     - a 1 MB png is accepted and drawn in the slot's preview frame;
     - a 21 MB file or a non-image is refused with a toast, and no upload is called;
@@ -241,10 +241,10 @@ Everything is saved as files in her own expressions folder.
     - after `over.png` was saved, loading and saving `over.webp` leaves the sidecar (fake folder);
   - **REMOVE** deletes both;
   - the fidelity test passes with the new file and fails if a ported function is edited.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Port** each panel's code from its prototype (open the file, copy, type, wire). Do not redraw.
-- [ ] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS.
-- [ ] **Step 5: Commit** `feat(P10e-f): load, fit and remove her slots`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Port** each panel's code from its prototype (open the file, copy, type, wire). Do not redraw.
+- [x] **Step 4: Run** the tests, `npm test`, `npm run test:layout` → PASS.
+- [x] **Step 5: Commit** `feat(P10e-f): load, fit and remove her slots`
 
 ### Task 7: The zone marker
 

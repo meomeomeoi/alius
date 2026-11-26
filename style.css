@@ -6639,6 +6639,56 @@
   background: var(--alius-stage-swatch);
 }
 
+/* her slots: the list (state and EDIT), the editor of one slot below it */
+#alius-shell .alius-stage-slot-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 2px 16px;
+}
+
+#alius-shell .alius-stage-slot-list li { display: flex; gap: 8px; align-items: center; }
+#alius-shell .alius-stage-slot-label { flex: 1; }
+#alius-shell .alius-stage-slot-state { min-width: 5em; color: var(--alius-dim); }
+#alius-shell .alius-stage-slot-state[data-state="zoned"] { color: var(--alius-accent); }
+#alius-shell .alius-stage-slot-list [aria-pressed="true"] { outline: 2px solid var(--alius-accent); outline-offset: 1px; }
+
+#alius-shell .alius-stage-slot-editor {
+  border-top: 1px solid color-mix(in srgb, var(--alius-fg) 25%, transparent);
+  padding-top: 10px;
+}
+
+#alius-shell .alius-stage-slot-row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+#alius-shell .alius-stage-slot-side { display: grid; gap: 6px; min-width: 300px; flex: 1; }
+#alius-shell .alius-stage-fit { display: grid; gap: 6px; }
+#alius-shell .alius-stage-fit select { max-width: 100%; }
+
+/* the slot's preview frame: the picture whole (16:10, the stage's shape); the zone marker's canvas lies over it */
+#alius-shell .alius-stage-slot-frame {
+  position: relative;
+  width: min(480px, 100%);
+  aspect-ratio: 16 / 10;
+  border: 1px solid color-mix(in srgb, var(--alius-fg) 35%, transparent);
+  background: color-mix(in srgb, var(--alius-fg) 6%, var(--alius-bg));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#alius-shell .alius-stage-slot-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+#alius-shell .alius-stage-slot-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+
 /* Personal pressure (P9c): the DEVICE block of a dossier, the SCHEDULE of bookings, the EDITED BY chip, the courtship chips and the claim card.
    Palette variables only; no semantic colours (readable mode safe). */
 #alius-shell .alius-device-block,

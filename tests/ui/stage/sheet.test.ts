@@ -199,7 +199,7 @@ describe('her page: sprites, stand, hand, accent (P10e-f)', () => {
     expect(unresolved(sheet, { registries: reg, state: s, settings: DEFAULT_SETTINGS })).toEqual([]);
     expect(unreachable(sheet)).toEqual([]);
     expect(markerCount(sheet)).toBeGreaterThan(48);
-    expect(sheet.querySelector('.alius-stage-slots-host')!.children).toHaveLength(0); // her slots are Task 6's
+    expect(sheet.querySelectorAll('.alius-stage-slots-host li[data-slot]').length).toBeGreaterThan(0); // her slots (Task 6)
   });
 });
 

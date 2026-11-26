@@ -7391,12 +7391,12 @@ var VIEW_OF = { slide: "room" };
 function occlusionOf(contact) {
   const o = contact?.occlusion;
   const kind = OCCLUSION_KINDS.includes(o?.kind ?? "") ? o.kind : "slit";
-  const view2 = OCCLUSION_VIEWS.includes(o?.view ?? "") ? o.view : VIEW_OF[kind] ?? "ceiling";
+  const view3 = OCCLUSION_VIEWS.includes(o?.view ?? "") ? o.view : VIEW_OF[kind] ?? "ceiling";
   return {
     kind,
     ...o?.side === "left" || o?.side === "right" ? { side: o.side } : {},
     ...typeof o?.angle === "number" && Number.isFinite(o.angle) ? { angle: o.angle } : {},
-    view: view2
+    view: view3
   };
 }
 var CONTACT_FACES = ["up", "down"];
@@ -7586,10 +7586,10 @@ function leadingCategory(state, reg, holderId) {
   const dyn = dynamicOf(state, holderId);
   const ranked = Object.entries(dyn?.tracks ?? {}).filter(([, t]) => t.xp > 0).map(([id, t]) => ({ category: reg.dynamicTracks.get(id)?.category, xp: t.xp })).filter((t) => typeof t.category === "string").sort((a, b) => b.xp - a.xp);
   if (ranked.length > 0) return ranked[0].category;
-  const view2 = practiceOf(state, reg, holderId);
-  if (view2 === null) return void 0;
+  const view3 = practiceOf(state, reg, holderId);
+  if (view3 === null) return void 0;
   for (const as of AS_ORDER) {
-    const found2 = practiceCategories(reg).find((c) => view2.categories[c]?.as === as);
+    const found2 = practiceCategories(reg).find((c) => view3.categories[c]?.as === as);
     if (found2 !== void 0) return found2;
   }
   return void 0;
@@ -12272,7 +12272,7 @@ function pressureGate(state, reg, unitId, mechanic) {
   if (unit5.bond === void 0) return "no imported bond profile";
   const bond = bondOf(unit5);
   const lead = leadRank(bond.leadStyle);
-  const G12 = TUNING.personal.gates;
+  const G13 = TUNING.personal.gates;
   const tier = bondTierOf(state, reg, unitId);
   switch (mechanic) {
     case "device":
@@ -12284,7 +12284,7 @@ function pressureGate(state, reg, unitId, mechanic) {
       return jealousyAllowed(state, reg, unitId) ? null : "jealousy games are off";
     }
     case "courtship": {
-      if (lead < G12.courtship.minLeadRank) return "her lead style is too yielding";
+      if (lead < G13.courtship.minLeadRank) return "her lead style is too yielding";
       if (!intimacyOf(state).romance) return "romance is off";
       if (tier === "romantic") return null;
       const open3 = ROMANTIC_PROPOSALS.some((kind) => "stateId" in stateForProposal(state, reg, unitId, kind));
@@ -12299,11 +12299,11 @@ function pressureGate(state, reg, unitId, mechanic) {
     case "token":
       if (tier === null) return "no close or romantic tier";
       if (bond.attachment === "avoidant") return "avoidant attachment";
-      return rel.affinity >= G12.token.minAffinity ? null : "Affinity too low";
+      return rel.affinity >= G13.token.minAffinity ? null : "Affinity too low";
     case "wager": {
-      if (lead < G12.wager.minLeadRank) return "her lead style is too yielding";
-      if (rel.affinity >= G12.wager.minAffinity) return null;
-      return (impunityOf(state, reg, unitId)?.value ?? 0) >= G12.wager.minImpunity ? null : "neither warm nor brazen enough";
+      if (lead < G13.wager.minLeadRank) return "her lead style is too yielding";
+      if (rel.affinity >= G13.wager.minAffinity) return null;
+      return (impunityOf(state, reg, unitId)?.value ?? 0) >= G13.wager.minImpunity ? null : "neither warm nor brazen enough";
     }
   }
 }
@@ -13427,15 +13427,15 @@ function canHold(state, reg, unitId, opts = {}) {
 }
 function holdReason(state, reg, unitId, opts) {
   if (!dynamicOn(state, reg)) return "the dynamic is off";
-  const view2 = practiceOf(state, reg, unitId);
-  if (view2 === null) return "she has no practice profile";
+  const view3 = practiceOf(state, reg, unitId);
+  if (view3 === null) return "she has no practice profile";
   if (opts.ignoreAftermath !== true && state.relations[unitId]?.dynamic?.aftermath !== void 0) return "her aftermath is still running";
   const unit5 = state.squad.find((u) => u.id === unitId);
   const may = mayHoldOf(state, unitId);
   if (may === "no") return "the setup says she may not hold";
   if (effectiveInclination(state, unitId) === "none" && !opts.seeded) return "her inclination is none";
   const lead = bondOf(unit5)?.leadStyle ?? "balanced";
-  const leads = Object.values(view2.categories).some((c) => c.as === "craves" || c.as === "enjoys" || c.as === "tolerates" && lead === "dominant");
+  const leads = Object.values(view3.categories).some((c) => c.as === "craves" || c.as === "enjoys" || c.as === "tolerates" && lead === "dominant");
   if (!leads) return "no enabled practice she would lead in";
   if (leadRank(lead) < leadRank("assertive") && (impunityOf(state, reg, unitId)?.value ?? 0) < TUNING.dynamic.impunityRoute) return "her lead style is too weak for her Impunity";
   if (!opts.ignoreCap && holdersAtPlay(state).filter((id) => id !== unitId).length >= holderCap(state)) return "the holder cap is reached";
@@ -14041,13 +14041,13 @@ function dynamicAxisEntryId(d) {
   return d.field === "holds_until" ? "expect:holds_until" : "expect:worship.any";
 }
 function scaleOfAxis(key) {
-  const S13 = TUNING.development.scales;
+  const S17 = TUNING.development.scales;
   const field2 = bondField(key);
-  if (field2 !== null) return S13[field2];
+  if (field2 !== null) return S17[field2];
   const d = dynamicAxis(key);
   if (d === null || d.field === "fixed") return null;
-  if (d.kind === "practice") return d.field === "as" ? S13.practiceAs : d.field === "witness" ? S13.practiceWitness : S13.secondary;
-  return d.field === "holds_until" ? S13.holdsUntil : S13.attitude;
+  if (d.kind === "practice") return d.field === "as" ? S17.practiceAs : d.field === "witness" ? S17.practiceWitness : S17.secondary;
+  return d.field === "holds_until" ? S17.holdsUntil : S17.attitude;
 }
 function discreteAxis(unit5, key) {
   const scale = scaleOfAxis(key);
@@ -19381,8 +19381,8 @@ function requiresMet(state, reg, unitId, m) {
   if (r.capabilities !== void 0 && !r.capabilities.every((c) => caps.has(c))) return false;
   if (r.noCapability !== void 0 && caps.has(r.noCapability)) return false;
   if (r.categories !== void 0) {
-    const view2 = practiceOf(state, reg, unitId);
-    if (view2 === null || !r.categories.every((c) => view2.allowed.includes(c) && view2.categories[c]?.as !== "none")) return false;
+    const view3 = practiceOf(state, reg, unitId);
+    if (view3 === null || !r.categories.every((c) => view3.allowed.includes(c) && view3.categories[c]?.as !== "none")) return false;
   }
   if (r.styles !== void 0) {
     const primary = state.squad.find((u) => u.id === unitId)?.bond?.practice?.style.primary;
@@ -21440,17 +21440,17 @@ function standingOf(state, reg, unitId) {
   if (!unit5 || !bond || !isLiving(unit5) || unitId === wardenUnitId(state)) return null;
   const impunity = impunityOf(state, reg, unitId);
   if (!impunity) return null;
-  const S13 = TUNING.power.standing;
-  const raw = S13.merit * meritOf(state, unitId) + S13.respect * respectOf(state, unitId) + S13.impunity * (impunity.value / 100);
+  const S17 = TUNING.power.standing;
+  const raw = S17.merit * meritOf(state, unitId) + S17.respect * respectOf(state, unitId) + S17.impunity * (impunity.value / 100);
   const bonus = state.power?.hierarchy?.standingBonus;
   const extra = bonus && bonus.unitId === unitId && bonus.untilDay > state.day ? bonus.amount : 0;
   const coLeader = hasCapability(state, reg, unitId, "co_leader") ? TUNING.dynamic.coLeaderStanding : 0;
-  return Math.round(100 * raw * S13.factor[bond.leadStyle]) + extra + coLeader - standingMalus(state, reg, unitId);
+  return Math.round(100 * raw * S17.factor[bond.leadStyle]) + extra + coLeader - standingMalus(state, reg, unitId);
 }
 function computeHierarchy(draft, reg) {
   const power = powerOf(draft);
   const old = power.hierarchy;
-  const S13 = TUNING.power.standing;
+  const S17 = TUNING.power.standing;
   const h2 = { ...old, standings: {}, endorsed: old?.endorsed ?? false, computedDay: draft.day };
   if (h2.deposed && h2.deposed.untilDay <= draft.day) delete h2.deposed;
   if (h2.standingBonus && h2.standingBonus.untilDay <= draft.day) delete h2.standingBonus;
@@ -21461,7 +21461,7 @@ function computeHierarchy(draft, reg) {
   const [top, next] = ranked;
   let leader;
   const earned = top !== void 0 && (top.unit.id === old?.leaderId || meritOf(draft, top.unit.id) > 0);
-  if (top && next && earned && top.standing >= next.standing + S13.margin && leadRank(bondOf(top.unit).leadStyle) >= 2 && h2.deposed?.unitId !== top.unit.id) leader = top.unit.id;
+  if (top && next && earned && top.standing >= next.standing + S17.margin && leadRank(bondOf(top.unit).leadStyle) >= 2 && h2.deposed?.unitId !== top.unit.id) leader = top.unit.id;
   const coLeader = holderWith(draft, reg, "co_leader");
   if (coLeader === null) delete h2.coLeaderId;
   else h2.coLeaderId = coLeader;
@@ -21651,12 +21651,12 @@ var trains = (reg, activityId) => activityId !== void 0 && (reg.activities.get(a
 function surfaceHolds(state, reg, unitId, cond) {
   const scene = state.scene;
   const rel = dynamicOf(state, unitId);
-  const S13 = TUNING.dynamic.style;
+  const S17 = TUNING.dynamic.style;
   switch (cond) {
     case "peak":
       return atPeak(state, unitId);
     case "scene_edges":
-      return scene !== void 0 && inScene(state, unitId) && (scene.exchanges <= S13.edgeStart || scene.exchanges >= S13.edgeEnd);
+      return scene !== void 0 && inScene(state, unitId) && (scene.exchanges <= S17.edgeStart || scene.exchanges >= S17.edgeEnd);
     case "before_others":
       return scene !== void 0 && inScene(state, unitId) && scene.participants.length >= 2;
     case "third_person":
@@ -21681,22 +21681,22 @@ function surfaceHolds(state, reg, unitId, cond) {
     }
     case "stagnation": {
       const day = state.dynamic?.noted?.enduranceDay;
-      return day !== void 0 && state.day - day >= S13.stagnationDays;
+      return day !== void 0 && state.day - day >= S17.stagnationDays;
     }
     case "training_start":
       return scene !== void 0 && inScene(state, unitId) && trains(reg, scene.activityId);
     case "praised_or_ignored": {
       const contact = state.relations[unitId]?.contactDay;
-      return state.dynamic?.noted?.praisedDay === state.day || contact !== void 0 && state.day - contact >= S13.ignoredDays;
+      return state.dynamic?.noted?.praisedDay === state.day || contact !== void 0 && state.day - contact >= S17.ignoredDays;
     }
     case "crime_mentioned":
       return state.dynamic?.noted?.crimeDay === state.day;
     case "failed_run": {
       const e = state.lastExpedition;
-      return e !== void 0 && e.outcome === "failed" && state.day - e.day <= S13.failedRunDays;
+      return e !== void 0 && e.outcome === "failed" && state.day - e.day <= S17.failedRunDays;
     }
     case "arrival_anniversary":
-      return state.day > 0 && state.day % S13.anniversaryDays === 0;
+      return state.day > 0 && state.day % S17.anniversaryDays === 0;
   }
 }
 function leadingStyle(state, reg, unitId) {
@@ -21829,12 +21829,12 @@ function readComposition(raw) {
 }
 var ATTITUDE_OF_AS = { craves: "craves", enjoys: "enjoys", tolerates: "indifferent", none: "indifferent" };
 var bestOf = (list5) => list5.reduce((best, a) => RANK3[a] > RANK3[best] ? a : best, "indifferent");
-function categoryAttitude(view2, tags) {
-  if (view2 === null) return "indifferent";
-  return bestOf(tags.filter((t) => view2.categories[t] !== void 0).map((t) => ATTITUDE_OF_AS[view2.categories[t].as]));
+function categoryAttitude(view3, tags) {
+  if (view3 === null) return "indifferent";
+  return bestOf(tags.filter((t) => view3.categories[t] !== void 0).map((t) => ATTITUDE_OF_AS[view3.categories[t].as]));
 }
 function readEntry(state, reg, unitId, tab, id) {
-  const view2 = practiceOf(state, reg, unitId);
+  const view3 = practiceOf(state, reg, unitId);
   switch (tab) {
     case "part": {
       const shown2 = zoneRevealed(state, unitId, id);
@@ -21850,16 +21850,16 @@ function readEntry(state, reg, unitId, tab, id) {
         const all = targets.map((t) => worshipOf(state, reg, unitId, t));
         return { attitude: all.includes("dislikes") ? "dislikes" : bestOf(all) };
       }
-      return { attitude: categoryAttitude(view2, tagsOf2(entry)) };
+      return { attitude: categoryAttitude(view3, tagsOf2(entry)) };
     }
     case "posture":
-      return { attitude: categoryAttitude(view2, tagsOf2(reg.blockingPostures.get(id))) };
+      return { attitude: categoryAttitude(view3, tagsOf2(reg.blockingPostures.get(id))) };
     case "service":
-      return { attitude: categoryAttitude(view2, [TUNING.offer.serviceCategory]) };
+      return { attitude: categoryAttitude(view3, [TUNING.offer.serviceCategory]) };
     case "time":
-      return { attitude: view2 === null ? "indifferent" : TUNING.offer.timeBy[view2.drive] };
+      return { attitude: view3 === null ? "indifferent" : TUNING.offer.timeBy[view3.drive] };
     case "endurance":
-      return { attitude: categoryAttitude(view2, view2?.allowed ?? []) };
+      return { attitude: categoryAttitude(view3, view3?.allowed ?? []) };
   }
 }
 function humiliationOf(reg, tab, id) {
@@ -22054,8 +22054,8 @@ function latentCause(state, reg, unitId) {
   if ((impunityOf(state, reg, unitId)?.value ?? 0) >= TUNING.dynamic.impunityRoute) return true;
   const known3 = Object.values(state.dynamic?.knowledge[unitId] ?? {}).some((k) => k.level === "knows_dynamic");
   if (!known3) return false;
-  const view2 = practiceOf(state, reg, unitId);
-  return view2 !== null && Object.values(view2.categories).some((c) => c.witness === "drawn");
+  const view3 = practiceOf(state, reg, unitId);
+  return view3 !== null && Object.values(view3.categories).some((c) => c.witness === "drawn");
 }
 function probeChance(state, reg, unitId) {
   const inclination = effectiveInclination(state, unitId);
@@ -22975,7 +22975,7 @@ function lifeIntentInput(state, reg, participants, scene, channel) {
       if (!isPick && !isVoiced) continue;
       const topic = reg.opinionTopics.get(topicId);
       if (!topic) continue;
-      const view2 = isVoiced ? topic.positions.find((p) => p.id === o.position)?.description : void 0;
+      const view3 = isVoiced ? topic.positions.find((p) => p.id === o.position)?.description : void 0;
       offer.topics.push({
         id: topicId,
         unitId: unit5.id,
@@ -22983,7 +22983,7 @@ function lifeIntentInput(state, reg, participants, scene, channel) {
         positions: topic.positions.map((p) => p.id),
         ...isPick ? { pick: true } : {},
         ...isVoiced ? { voiced: true } : {},
-        ...view2 !== void 0 ? { view: plainText(view2) } : {}
+        ...view3 !== void 0 ? { view: plainText(view3) } : {}
       });
     }
   }
@@ -23323,11 +23323,11 @@ function withdrawPractices(draft, reg, changed) {
 // src/engine/practice/seeds.ts
 var seedRows = (reg) => [...reg.practiceSeeds.values()];
 function seedPool(state, reg, holderId, kind, opts = {}) {
-  const view2 = practiceOf(state, reg, holderId);
+  const view3 = practiceOf(state, reg, holderId);
   const tier = bondTierOf(state, reg, holderId);
   return seedRows(reg).filter((seed8) => {
     if (seed8.kind !== kind || !contentAllowed(state, reg, seed8, holderId)) return false;
-    if (seed8.contentTags.some((t) => view2?.categories[t] !== void 0 && view2.categories[t].as === "none")) return false;
+    if (seed8.contentTags.some((t) => view3?.categories[t] !== void 0 && view3.categories[t].as === "none")) return false;
     if (!trackOpen(state, reg, holderId, seed8.track) || seed8.tier > trackLevel(state, holderId, seed8.track) + 1) return false;
     if (opts.minTier !== void 0 && seed8.tier < opts.minTier) return false;
     if (seed8.needs !== void 0 && !hasCapability(state, reg, holderId, seed8.needs)) return false;
@@ -23677,8 +23677,8 @@ var OFFENCE_SOURCES = ["refusal_noted", "milestone_refused", "override_answered"
 var HUMBLING_TAG = "public_humiliation";
 var isHumbling = (tags) => tags.includes(HUMBLING_TAG);
 function stageOf(slot2) {
-  const S13 = TUNING.practice.demonstration.stage;
-  return S13[slot2] ?? S13.other;
+  const S17 = TUNING.practice.demonstration.stage;
+  return S17[slot2] ?? S17.other;
 }
 var roomOfLocation = (reg, locationId) => [...reg.hubRooms.values()].find((r) => r.sceneLocationId === locationId)?.id;
 function pickAudience(state, reg, holderId, slot2) {
@@ -24171,7 +24171,7 @@ function activeRules2(state, holderId) {
 function buildPracticeInput(state, reg, request, card2 = "") {
   const holderId = request.holderId;
   const unit5 = state.squad.find((u) => u.id === holderId);
-  const view2 = practiceOf(state, reg, holderId);
+  const view3 = practiceOf(state, reg, holderId);
   const dyn = dynamicOf(state, holderId);
   const frame9 = dyn?.frame === "rule" || dyn?.frame === "role" ? dyn.frame : "play";
   const label2 = (id) => String(reg.contentCategories.get(id)?.label ?? id);
@@ -24184,10 +24184,10 @@ function buildPracticeInput(state, reg, request, card2 = "") {
     holder: { id: holderId, name: unit5.displayName },
     card: clean3(card2).slice(0, CARD_MAX),
     frame: frame9,
-    style: view2 === null ? { primary: "cold" } : { primary: view2.style.primary, ...view2.style.secondary !== void 0 ? { secondary: view2.style.secondary } : {} },
+    style: view3 === null ? { primary: "cold" } : { primary: view3.style.primary, ...view3.style.secondary !== void 0 ? { secondary: view3.style.secondary } : {} },
     claims: capabilitiesOf(state, reg, holderId).map((c) => CAPABILITY_WORDS[c] ?? c),
     tracks: [...reg.dynamicTracks.values()].filter((t) => trackOpen(state, reg, holderId, t.id)).map((t) => ({ id: t.id, label: String(t.label ?? t.id), level: LEVEL_WORDS[trackLevel(state, holderId, t.id)] })),
-    categories: Object.entries(view2?.categories ?? {}).filter(([, c]) => c.as !== "none").map(([id, c]) => ({ id, label: label2(id), as: c.as })),
+    categories: Object.entries(view3?.categories ?? {}).filter(([, c]) => c.as !== "none").map(([id, c]) => ({ id, label: label2(id), as: c.as })),
     hasLimits: limits.length > 0,
     recent: (dyn?.recent ?? []).map(clean3),
     context: {
@@ -26133,8 +26133,8 @@ function practiceIntentInput(state, reg, participants, channel) {
     return step !== void 0 && check !== void 0 ? [{ id: x.id, unitId: x.holderId, step, check, label: oneLine(String(entry?.label ?? step)) }] : [];
   });
   const denial = present2.filter((id) => hasPermissionRule(state, reg, id));
-  const view2 = (id) => practiceOf(state, reg, id)?.categories[TUNING.offer.serviceCategory];
-  const service = channel === "scene" && serviceNow(state, reg) ? present2.filter((id) => (view2(id)?.as ?? "none") !== "none") : [];
+  const view3 = (id) => practiceOf(state, reg, id)?.categories[TUNING.offer.serviceCategory];
+  const service = channel === "scene" && serviceNow(state, reg) ? present2.filter((id) => (view3(id)?.as ?? "none") !== "none") : [];
   const threats = [...present2];
   const types = [
     ...tasks.length > 0 ? ["task_kept", "task_broken"] : [],
@@ -33333,9 +33333,9 @@ function covered(draft, r) {
   return r.units.map((u, i) => ({ card: u.cardRef, id: draft.squad[i]?.id })).filter((x) => x.id !== void 0 && known3.has(x.id) && (want === true || want.includes(x.card))).map((x) => x.id);
 }
 function responseOf(seed8, unitId, i) {
-  const S13 = TUNING.probes.underway;
+  const S17 = TUNING.probes.underway;
   const u = headStartHash(seed8, unitId, `probe:${i}`);
-  return u < S13.yielded ? "yielded" : u < S13.yielded + S13.returned ? "returned" : u < S13.yielded + S13.returned + S13.deflected ? "deflected" : "resisted";
+  return u < S17.yielded ? "yielded" : u < S17.yielded + S17.returned ? "returned" : u < S17.yielded + S17.returned + S17.deflected ? "deflected" : "resisted";
 }
 function axisOf(draft, reg, seed8, unitId, i, recent2) {
   const tier = bandIndex(reg, dynamicOf(draft, unitId)?.hold ?? 0) === 0 ? 1 : 2;
@@ -36047,13 +36047,13 @@ var isAir = (reg, physicsId) => {
   return p?.interaction === "timing" && p.gauge.kind === "capacity";
 };
 var coreRun = (run, which) => which === "main" ? run : run.second ? withoutLeak({ ...run, physicsId: run.second.physicsId, gauge: run.second.gauge, capacity: run.second.capacity, streak: run.second.streak, ...run.second.seal ? { seal: run.second.seal } : {}, ...run.second.pressure !== void 0 ? { pressure: run.second.pressure } : {} }, run.second) : null;
-function withoutLeak(view2, second) {
-  if (second.seal === void 0) delete view2.seal;
-  if (second.pressure === void 0) delete view2.pressure;
-  delete view2.headed;
-  delete view2.gulp;
-  delete view2.second;
-  return view2;
+function withoutLeak(view3, second) {
+  if (second.seal === void 0) delete view3.seal;
+  if (second.pressure === void 0) delete view3.pressure;
+  delete view3.headed;
+  delete view3.gulp;
+  delete view3.second;
+  return view3;
 }
 function releaseOf(state, reg, run) {
   if (run.headed) return "continue";
@@ -37564,21 +37564,21 @@ registerAction("combat/compel", (draft, _payload, ctx2) => {
   const cs = open(draft, "combat/compel");
   if (cs.phase !== "awaiting") throw new Error("combat/compel: the combat is not running");
   if (cs.noCommand === true) throw new Error("The commander is not with the squad.");
-  const refusal2 = cs.lastRefusal;
-  if (!refusal2) throw new Error("No order was refused: there is nothing to compel.");
-  const target = cs.combatants.find((c) => c.cid === refusal2.targetCid);
+  const refusal3 = cs.lastRefusal;
+  if (!refusal3) throw new Error("No order was refused: there is nothing to compel.");
+  const target = cs.combatants.find((c) => c.cid === refusal3.targetCid);
   const unit5 = target?.unitId ? draft.squad.find((u) => u.id === target.unitId) : void 0;
   if (!target || !unit5 || !isStanding(target) || !isLiving(unit5)) throw new Error("The unit that refused is no longer standing.");
   if (draft.leash.authorizationsLeft - (cs.compels?.length ?? 0) < 1) throw new Error("No Leash authorization is left this week.");
-  if (refusal2.cosignDenied) throw new Error("The request was already denied.");
+  if (refusal3.cosignDenied) throw new Error("The request was already denied.");
   const asked = rollCosign(draft, ctx2, unit5.id, "compel");
   if (!asked.ok) {
-    cs.lastRefusal = { ...refusal2, cosignDenied: true };
+    cs.lastRefusal = { ...refusal3, cosignDenied: true };
     return [...asked.events, ...logCosignDenied(draft, ctx2, unit5.id, "compel", "combat")];
   }
   const held3 = rollBlock(draft, ctx2, unit5.id, "compel");
   if (!held3.ok) {
-    cs.lastRefusal = { ...refusal2, cosignDenied: true };
+    cs.lastRefusal = { ...refusal3, cosignDenied: true };
     return [...asked.events, ...held3.events, ...logCosignDenied(draft, ctx2, unit5.id, "compel", "combat", held3.holderId)];
   }
   const cost = leashCost(draft, ctx2.registries, unit5.id, "compel");
@@ -37587,7 +37587,7 @@ registerAction("combat/compel", (draft, _payload, ctx2) => {
   const forced = !(cost.failChance > 0 && ctx2.rng.chance(cost.failChance));
   (cs.compels ??= []).push(unit5.id);
   addStress(ectx, target.cid, cost.stress, "order");
-  if (forced) issueOrder(ectx, refusal2.orderId, refusal2.targetCid, { free: true, compel: true });
+  if (forced) issueOrder(ectx, refusal3.orderId, refusal3.targetCid, { free: true, compel: true });
   ectx.emit({ type: "combat_compelled", unitId: unit5.id, cid: target.cid, forced });
   return [...asked.events, ...settle4(draft, ctx2, ectx, start)];
 });
@@ -37853,8 +37853,8 @@ function askCosigners(draft, ctx2, unitId, kind, context) {
 }
 registerAction("leash/compel", (draft, payload, ctx2) => {
   const unitId = unitIdOf(payload, "leash/compel");
-  const refusal2 = draft.scene?.refusals?.find((r) => r.unitId === unitId);
-  if (!draft.scene?.participants.includes(unitId) || !refusal2) throw new Error("She has not refused an order in this scene: there is nothing to compel.");
+  const refusal3 = draft.scene?.refusals?.find((r) => r.unitId === unitId);
+  if (!draft.scene?.participants.includes(unitId) || !refusal3) throw new Error("She has not refused an order in this scene: there is nothing to compel.");
   const asked = askCosigners(draft, ctx2, unitId, "compel", "scene");
   if (asked.denied) return asked.events;
   const { forced, events } = compel(draft, ctx2, { unitId, context: "scene" });
@@ -40923,11 +40923,11 @@ function bypassAllies(state, reg, opts = {}) {
 function bypassRoutes(state, reg) {
   const terminal = terminalActivity(reg);
   const closed = state.scene !== void 0 ? "LEAVE THE SCENE FIRST" : terminal === null ? "NO TERMINAL" : checkActivity(state, reg, { activityId: terminal.activityId, focus: terminal.focus });
-  const reset = bypassAllies(state, reg, { tech: true });
+  const reset2 = bypassAllies(state, reg, { tech: true });
   const ally = bypassAllies(state, reg);
   return {
     comms: closed ? { disabled: closed.toUpperCase() } : {},
-    reset: { allies: reset, ...reset.length === 0 ? { disabled: "NO ONE WHO KNOWS THE DEVICE" } : {} },
+    reset: { allies: reset2, ...reset2.length === 0 ? { disabled: "NO ONE WHO KNOWS THE DEVICE" } : {} },
     ally: { allies: ally, ...ally.length === 0 ? { disabled: "NO ONE TRUSTS THE COMMANDER ENOUGH" } : {} }
   };
 }
@@ -41335,9 +41335,9 @@ function expireAsked(draft) {
 
 // src/engine/practice/dayStep.ts
 function appetiteOf(state, reg, holderId) {
-  const view2 = practiceOf(state, reg, holderId);
+  const view3 = practiceOf(state, reg, holderId);
   const T5 = TUNING.practice.frequency.appetite;
-  const rows = Object.values(view2?.categories ?? {}).flatMap((c) => c.as === "none" ? [] : [T5[c.as]]);
+  const rows = Object.values(view3?.categories ?? {}).flatMap((c) => c.as === "none" ? [] : [T5[c.as]]);
   return rows.length === 0 ? 1 : Math.max(...rows);
 }
 function newPracticeChance(state, reg, holderId) {
@@ -44419,8 +44419,8 @@ function createDevelopment(deps) {
         const why = reviewCommitted(s, key);
         if (why !== null) return { expired: why };
       } else if (!unitDue(s, key)) return { expired: "She has nothing to review." };
-      const view2 = before8(s, key);
-      return reviewInput(view2, view2.squad.find((u) => u.id === key));
+      const view3 = before8(s, key);
+      return reviewInput(view3, view3.squad.find((u) => u.id === key));
     },
     parse: (raw, input) => readReview(raw, input),
     apply(key, value) {
@@ -44431,8 +44431,8 @@ function createDevelopment(deps) {
     fallback(key) {
       const s = state();
       if (!s) return false;
-      const view2 = before8(s, key);
-      return !dispatchReview(key, fallbackReview(view2, deps.registries(), key), "fallback").some((e) => e.type === "error");
+      const view3 = before8(s, key);
+      return !dispatchReview(key, fallbackReview(view3, deps.registries(), key), "fallback").some((e) => e.type === "error");
     },
     committed(key) {
       const s = state();
@@ -45997,31 +45997,31 @@ function askHerView(state, reg, context, ref) {
   if (preselects(state, reg, holderId)) return { holderId, name, context, ref, asked: false, index: herPickFor(state, reg, holderId, context, ref), preselected: true };
   return { holderId, name, context, ref, asked: false, preselected: false };
 }
-var pickIndex = (view2) => view2 !== null && view2 !== void 0 && (view2.asked || view2.preselected) && typeof view2.index === "number" ? view2.index : null;
-function askHerNote(view2) {
-  if (!view2.asked && !view2.preselected) return null;
-  if (view2.index === null) return "She leaves it to the commander.";
-  if (view2.index === "for") return "She would carry it out.";
-  if (view2.index === "against") return "She would drop it.";
-  return view2.index === void 0 ? null : "Her pick is marked.";
+var pickIndex = (view3) => view3 !== null && view3 !== void 0 && (view3.asked || view3.preselected) && typeof view3.index === "number" ? view3.index : null;
+function askHerNote(view3) {
+  if (!view3.asked && !view3.preselected) return null;
+  if (view3.index === null) return "She leaves it to the commander.";
+  if (view3.index === "for") return "She would carry it out.";
+  if (view3.index === "against") return "She would drop it.";
+  return view3.index === void 0 ? null : "Her pick is marked.";
 }
-function drawAskHer(host, view2, onAsk) {
+function drawAskHer(host, view3, onAsk) {
   host.replaceChildren();
-  if (view2 === null || view2 === void 0) return;
-  const live3 = { unitId: view2.holderId };
-  if (!view2.asked && !view2.preselected && onAsk !== void 0) {
-    host.append(h("button", { type: "button", class: "alius-btn alius-chip", "data-action": "ask-her", "data-unit": view2.holderId, ...analyzeNative("glossary:ask_her", live3), onclick: () => onAsk() }, "[ ASK HER ]"));
+  if (view3 === null || view3 === void 0) return;
+  const live3 = { unitId: view3.holderId };
+  if (!view3.asked && !view3.preselected && onAsk !== void 0) {
+    host.append(h("button", { type: "button", class: "alius-btn alius-chip", "data-action": "ask-her", "data-unit": view3.holderId, ...analyzeNative("glossary:ask_her", live3), onclick: () => onAsk() }, "[ ASK HER ]"));
     return;
   }
-  const note = askHerNote(view2);
+  const note = askHerNote(view3);
   if (note !== null) host.append(h("p", { class: "alius-askher-note alius-dim", "data-askher-note": "", ...analyzeAttrs("glossary:ask_her", live3) }, note));
 }
-function renderPreselected(view2, label2, handlers2) {
-  const live3 = { unitId: view2.holderId };
+function renderPreselected(view3, label2, handlers2) {
+  const live3 = { unitId: view3.holderId };
   return h(
     "div",
-    { class: "alius-askher-preselected", "data-askher-preselected": view2.holderId },
-    h("p", { class: "alius-askher-choice" }, `${view2.name} has chosen: ${label2}`),
+    { class: "alius-askher-preselected", "data-askher-preselected": view3.holderId },
+    h("p", { class: "alius-askher-choice" }, `${view3.name} has chosen: ${label2}`),
     h("button", { type: "button", class: "alius-btn alius-option", "data-action": "confirm-her", ...analyzeNative("glossary:ask_her", live3), onclick: () => handlers2.onConfirm() }, "[ CONFIRM ]"),
     h("button", { type: "button", class: "alius-btn alius-option", "data-action": "defy-her", ...analyzeNative("glossary:ask_her", live3), onclick: () => handlers2.onDefy() }, "[ DEFY ]")
   );
@@ -47001,7 +47001,7 @@ var LEVEL_RANK = { suspects_close: 1, suspects_dynamic: 2, knows_dynamic: 3 };
 function dynamicView(state, reg, unitId, opts) {
   if (!dynamicOn(state, reg)) return structuredClone(EMPTY3);
   const visible = opts.factVisible ?? ((f) => f.hiddenFromCommander !== true);
-  const view2 = {
+  const view3 = {
     ...structuredClone(EMPTY3),
     heldBy: heldBy(state, reg),
     expectations: revealedExpectations(state, reg, unitId),
@@ -47012,7 +47012,7 @@ function dynamicView(state, reg, unitId, opts) {
   for (const t of reg.worshipTargets.values()) {
     const facts = zoneFacts(seen2, unitId, t.id).map((f) => f.text);
     const mastery = masteryLevel(state, unitId, t.id);
-    if (facts.length > 0 || mastery > 0) view2.zones[t.id] = { mastery, facts };
+    if (facts.length > 0 || mastery > 0) view3.zones[t.id] = { mastery, facts };
   }
   const levels = /* @__PURE__ */ new Map();
   for (const f of state.memory.facts) {
@@ -47020,25 +47020,25 @@ function dynamicView(state, reg, unitId, opts) {
     const level = KNOWLEDGE_LEVELS.find((l) => f.tags.includes(l));
     if (level !== void 0 && LEVEL_RANK[level] > (LEVEL_RANK[levels.get(f.about[0])] ?? 0)) levels.set(f.about[0], level);
   }
-  view2.knownLevels = [...levels].map(([observerId, level]) => ({ observerId, level }));
+  view3.knownLevels = [...levels].map(([observerId, level]) => ({ observerId, level }));
   const dyn = dynamicOf(state, unitId);
-  if (dyn === void 0) return view2;
+  if (dyn === void 0) return view3;
   const label2 = (registry2, id) => String(reg[registry2].get(id)?.label ?? id);
-  view2.band = opts.hidden ? FELT : label2("holdBands", holdBandOf(reg, dyn.hold));
+  view3.band = opts.hidden ? FELT : label2("holdBands", holdBandOf(reg, dyn.hold));
   if (!opts.hidden) {
-    view2.frame = label2("dynamicFrames", dyn.frame);
-    if (opts.raw) view2.raw = Math.round(dyn.hold);
+    view3.frame = label2("dynamicFrames", dyn.frame);
+    if (opts.raw) view3.raw = Math.round(dyn.hold);
   }
-  view2.sworn = dyn.sworn !== void 0;
-  if (dyn.readOf.updates > 0) view2.reading = String(reg.positionRegions.get(dyn.readOf.region)?.label ?? dyn.readOf.region);
-  view2.asked = state.dynamic.open.claims.filter((c) => c.unitId === unitId && c.domainId !== void 0).map((c) => c.domainId);
+  view3.sworn = dyn.sworn !== void 0;
+  if (dyn.readOf.updates > 0) view3.reading = String(reg.positionRegions.get(dyn.readOf.region)?.label ?? dyn.readOf.region);
+  view3.asked = state.dynamic.open.claims.filter((c) => c.unitId === unitId && c.domainId !== void 0).map((c) => c.domainId);
   const held3 = new Set(dyn.domains.map((d) => d.id));
-  view2.domains = [
+  view3.domains = [
     ...dyn.domains.map((d) => ({ id: d.id, label: String(reg.dynamicDomains.get(d.id)?.label ?? d.id), claimed: true, ...!standing(d, state.day) || d.partialUntil !== void 0 ? { partial: true } : {} })),
-    ...domainRows(reg).filter((e) => !held3.has(e.id) && !view2.asked.includes(e.id) && meets2(reg, dyn, e) && holderOfDomain(state, e.id, unitId) === null).map((e) => ({ id: e.id, label: e.label, claimed: false }))
+    ...domainRows(reg).filter((e) => !held3.has(e.id) && !view3.asked.includes(e.id) && meets2(reg, dyn, e) && holderOfDomain(state, e.id, unitId) === null).map((e) => ({ id: e.id, label: e.label, claimed: false }))
   ];
-  view2.tracks = Object.entries(dyn.tracks).filter(([id, t]) => t.level >= 1 && trackOpen(state, reg, unitId, id)).sort((a, b) => b[1].level - a[1].level).slice(0, LEADING_TRACKS).map(([id, t]) => ({ id, band: opts.hidden ? FELT : TRACK_WORDS[t.level] }));
-  return view2;
+  view3.tracks = Object.entries(dyn.tracks).filter(([id, t]) => t.level >= 1 && trackOpen(state, reg, unitId, id)).sort((a, b) => b[1].level - a[1].level).slice(0, LEADING_TRACKS).map(([id, t]) => ({ id, band: opts.hidden ? FELT : TRACK_WORDS[t.level] }));
+  return view3;
 }
 
 // src/engine/practice/view.ts
@@ -48043,23 +48043,23 @@ function renderRecordLines(state, reg) {
 var FORM_WORDS = { button: "on a button", button_cost: "on a button, with its cost", words: "in words", signed: "in words and a signature", sealed: "sealed" };
 function practicesBlock(state, reg, knowledge2, unitId, hidden) {
   if (hidden) return null;
-  const view2 = knowledge2.practice(unitId, reg);
+  const view3 = knowledge2.practice(unitId, reg);
   const live3 = { unitId };
   const chip2 = (text3, address, attrs) => h("span", { class: "alius-chip", ...attrs, ...analyzeAttrs(address, live3) }, text3);
   const row4 = (label2, ...parts2) => h("p", { class: "alius-dyn-line" }, `${label2} `, ...parts2);
   const between = (items) => items.flatMap((c, i) => i === 0 ? [c] : [" ", c]);
   const rows = [];
-  if (view2.tasks.length > 0) {
-    rows.push(row4("SHE ASKED", ...between(view2.tasks.map((t) => {
+  if (view3.tasks.length > 0) {
+    rows.push(row4("SHE ASKED", ...between(view3.tasks.map((t) => {
       const due = t.sealed && t.summary === null ? null : t.noDuration ? "until she decides" : dueWords({ deadline: t.due ?? void 0 }, state.day);
       const what = t.summary === null ? "a sealed task" : t.summary;
       return chip2(`${what} (${[FORM_WORDS[t.acceptForm], ...due !== null ? [due] : []].join("; ")})`, "glossary:practice_task", { "data-practice-task": t.id });
     }))));
   }
-  if (view2.protocol.length > 0) rows.push(row4("PROTOCOL", ...between(view2.protocol.map((p) => chip2(p, "glossary:protocol", { "data-practice-protocol": "" })))));
-  if (view2.routine !== null) rows.push(row4("ROUTINE", chip2(view2.routine, "glossary:routine", { "data-practice-routine": "" })));
-  if (view2.favour !== void 0) rows.push(row4("FAVOR", chip2(view2.favour.toUpperCase(), "glossary:favour", { "data-practice-favour": view2.favour })));
-  if (view2.postures.length > 0) rows.push(row4("SHE CALLS", ...between(view2.postures.map((p) => chip2(p.name, "glossary:named_posture", { "data-practice-posture": p.postureId })))));
+  if (view3.protocol.length > 0) rows.push(row4("PROTOCOL", ...between(view3.protocol.map((p) => chip2(p, "glossary:protocol", { "data-practice-protocol": "" })))));
+  if (view3.routine !== null) rows.push(row4("ROUTINE", chip2(view3.routine, "glossary:routine", { "data-practice-routine": "" })));
+  if (view3.favour !== void 0) rows.push(row4("FAVOR", chip2(view3.favour.toUpperCase(), "glossary:favour", { "data-practice-favour": view3.favour })));
+  if (view3.postures.length > 0) rows.push(row4("SHE CALLS", ...between(view3.postures.map((p) => chip2(p.name, "glossary:named_posture", { "data-practice-posture": p.postureId })))));
   if (rows.length === 0) return null;
   return h("div", { class: "alius-practices-block", "data-practices-block": unitId }, h("h5", {}, "PRACTICES"), ...rows);
 }
@@ -48647,7 +48647,7 @@ function renderDynamicSection(host, ctx2) {
   host.replaceChildren();
   const unit5 = state.squad.find((u) => u.id === unitId);
   if (unit5 === void 0 || unit5.kind !== "named") return false;
-  const view2 = ctx2.hidden ? null : ctx2.knowledge.dynamic(unitId, reg);
+  const view3 = ctx2.hidden ? null : ctx2.knowledge.dynamic(unitId, reg);
   const live3 = { unitId };
   const key = exitKey(state, unitId);
   const exitHost = h("div", { class: "alius-dyn-exit" });
@@ -48709,16 +48709,16 @@ function renderDynamicSection(host, ctx2) {
     host.setAttribute("data-dynamic-section", unitId);
     return true;
   }
-  if (view2 === null || view2.band === void 0) return false;
+  if (view3 === null || view3.band === void 0) return false;
   const chip2 = (text3, address, attrs = {}) => h("span", { class: "alius-chip", ...attrs, ...analyzeAttrs(address, live3) }, text3);
   const row4 = (label3, ...parts2) => h("p", { class: "alius-dyn-line" }, `${label3} `, ...parts2);
   const between = (items) => items.flatMap((c, i) => i === 0 ? [c] : [" ", c]);
   const label2 = (registry2, id) => String(reg[registry2].get(id)?.label ?? id).toUpperCase();
-  const claimed = view2.domains.filter((d) => d.claimed);
-  const mayClaim = view2.domains.filter((d) => !d.claimed);
+  const claimed = view3.domains.filter((d) => d.claimed);
+  const mayClaim = view3.domains.filter((d) => !d.claimed);
   const lines3 = [
-    row4("FRAME", chip2(String(view2.frame ?? "").toUpperCase(), "glossary:frame", { "data-dyn-frame": "" }), ...view2.sworn ? [" ", chip2("SWORN", "glossary:vow", { "data-dyn-vow": "" })] : []),
-    row4("HOLD", chip2(`${view2.band.toUpperCase()}${view2.raw !== void 0 ? ` (${view2.raw})` : ""}`, "glossary:hold", { "data-dyn-hold": "" }))
+    row4("FRAME", chip2(String(view3.frame ?? "").toUpperCase(), "glossary:frame", { "data-dyn-frame": "" }), ...view3.sworn ? [" ", chip2("SWORN", "glossary:vow", { "data-dyn-vow": "" })] : []),
+    row4("HOLD", chip2(`${view3.band.toUpperCase()}${view3.raw !== void 0 ? ` (${view3.raw})` : ""}`, "glossary:hold", { "data-dyn-hold": "" }))
   ];
   if (claimed.length > 0) {
     lines3.push(row4("DOMAINS", ...between(claimed.map((d) => chip2(`${d.label.toUpperCase()}${d.partial === true ? " (PARTLY)" : ""}`, `dynamicDomains:${d.id}`, { "data-dyn-domain": d.id })))));
@@ -48726,22 +48726,22 @@ function renderDynamicSection(host, ctx2) {
   if (mayClaim.length > 0) {
     lines3.push(row4("SHE MAY CLAIM", ...between(mayClaim.map((d) => chip2(d.label.toUpperCase(), `dynamicDomains:${d.id}`, { "data-dyn-may-claim": d.id })))));
   }
-  if (view2.tracks.length > 0) {
-    lines3.push(row4("PRACTICE", ...between(view2.tracks.map((t) => chip2(`${label2("dynamicTracks", t.id)}: ${t.band.toUpperCase()}`, `dynamicTracks:${t.id}`, { "data-dyn-track": t.id })))));
+  if (view3.tracks.length > 0) {
+    lines3.push(row4("PRACTICE", ...between(view3.tracks.map((t) => chip2(`${label2("dynamicTracks", t.id)}: ${t.band.toUpperCase()}`, `dynamicTracks:${t.id}`, { "data-dyn-track": t.id })))));
   }
-  if (view2.reading !== void 0) {
-    lines3.push(row4("HER READING", chip2(view2.reading, "glossary:her_reading", { "data-dyn-reading": "" })));
+  if (view3.reading !== void 0) {
+    lines3.push(row4("HER READING", chip2(view3.reading, "glossary:her_reading", { "data-dyn-reading": "" })));
   }
-  if (view2.signs.length > 0) {
-    lines3.push(row4("SHE SEEMS", ...between(view2.signs.map((sign2) => chip2(sign2, "glossary:dynamic", { "data-dyn-sign": "" })))));
+  if (view3.signs.length > 0) {
+    lines3.push(row4("SHE SEEMS", ...between(view3.signs.map((sign2) => chip2(sign2, "glossary:dynamic", { "data-dyn-sign": "" })))));
   }
-  if (view2.compromat.length > 0) {
-    lines3.push(row4("SHE KEEPS", ...between(view2.compromat.map((f) => chip2(plainDraft(f.text).trim(), "glossary:compromat", { "data-dyn-compromat": f.id })))));
+  if (view3.compromat.length > 0) {
+    lines3.push(row4("SHE KEEPS", ...between(view3.compromat.map((f) => chip2(plainDraft(f.text).trim(), "glossary:compromat", { "data-dyn-compromat": f.id })))));
   }
-  if (view2.knownLevels.length > 0) {
+  if (view3.knownLevels.length > 0) {
     const who = (id) => (state.squad.find((u) => u.id === id)?.displayName ?? id).toUpperCase();
     const word2 = { suspects_close: "HAS NOTICED SOMETHING", suspects_dynamic: "SUSPECTS", knows_dynamic: "KNOWS" };
-    lines3.push(row4("WHO KNOWS", ...between(view2.knownLevels.map((k) => chip2(`${who(k.observerId)}: ${word2[k.level]}`, "glossary:dynamic", { "data-dyn-known": k.observerId })))));
+    lines3.push(row4("WHO KNOWS", ...between(view3.knownLevels.map((k) => chip2(`${who(k.observerId)}: ${word2[k.level]}`, "glossary:dynamic", { "data-dyn-known": k.observerId })))));
   }
   const practices = practicesBlock(state, reg, ctx2.knowledge, unitId, ctx2.hidden);
   const cards = h("div", { class: "alius-dyn-cards" });
@@ -51993,7 +51993,7 @@ function scopedStaging(staging, scope) {
 var SOURCE_MAKERS = /* @__PURE__ */ new Set(["createBufferSource", "createOscillator", "createConstantSource"]);
 function scopedSamples(samples, scope) {
   let proxied = null;
-  const view2 = (real) => {
+  const view3 = (real) => {
     if (proxied?.real === real) return proxied.view;
     const v = new Proxy(real, {
       get(t, p) {
@@ -52029,7 +52029,7 @@ function scopedSamples(samples, scope) {
     buffer: (file) => samples.buffer(file),
     ctx: () => {
       const c = samples.ctx();
-      return c ? view2(c) : null;
+      return c ? view3(c) : null;
     },
     bus: (name) => samples.bus(name),
     setWorldDull: (f) => {
@@ -54897,7 +54897,7 @@ function createSceneController(deps) {
   let awaitingReextract = false;
   const busyChats = /* @__PURE__ */ new Map();
   const chatKey = () => st3.getActiveChat()?.chatId ?? "";
-  const begin8 = (chat) => {
+  const begin9 = (chat) => {
     busyChats.set(chat, (busyChats.get(chat) ?? 0) + 1);
     return chat;
   };
@@ -55380,7 +55380,7 @@ function createSceneController(deps) {
       const here = chatKey();
       if (text3.trim() !== "" && openingRun?.chat === here) return openingRun.run.then(() => controller.send(text3));
       if (text3.trim() === "" || busyHere() || !state()?.scene) return Promise.resolve(false);
-      const run = sendNow(text3.trim(), begin8(here));
+      const run = sendNow(text3.trim(), begin9(here));
       const mine = { chat: here, run };
       inflight = mine;
       void run.finally(() => {
@@ -55393,7 +55393,7 @@ function createSceneController(deps) {
       if (busyHere() || !scene) return Promise.resolve();
       if (openedScene === scene.id || st3.getChatMessages(Math.min(scene.startIndex, st3.chatLength())).length > 0) return Promise.resolve();
       openedScene = scene.id;
-      const chat = begin8(chatKey());
+      const chat = begin9(chatKey());
       const run = (async () => {
         const expect = chatId();
         try {
@@ -55478,7 +55478,7 @@ function createSceneController(deps) {
       const s = state();
       const scene = s?.scene;
       if (!s || !scene) return;
-      const chat = begin8(expect ?? "");
+      const chat = begin9(expect ?? "");
       try {
         if (st3.getChatMessages(extracted).some((m) => !m.isUser)) await extract2(expect);
         await deps.generations.generate("scene.summary", scene.id);
@@ -55503,7 +55503,7 @@ function createSceneController(deps) {
       const key = summaryKey;
       if (key === null) return;
       const expect = chatId();
-      const chat = begin8(expect ?? "");
+      const chat = begin9(expect ?? "");
       try {
         await deps.generations.reroll("scene.summary", key);
       } finally {
@@ -59137,7 +59137,7 @@ function renderMemoryBlock(host, ctx2) {
 function renderDevelopmentBlock(host, ctx2) {
   const { state, unitId } = ctx2;
   const locked = ctx2.settings.editLock !== false;
-  const view2 = buildKnowledge(state, ctx2.settings).development(unitId, ctx2.registries);
+  const view3 = buildKnowledge(state, ctx2.settings).development(unitId, ctx2.registries);
   const send = (action) => {
     ctx2.dispatch(action);
     ctx2.onChanged?.();
@@ -59190,16 +59190,16 @@ function renderDevelopmentBlock(host, ctx2) {
     draw2(false);
     return row4;
   };
-  const lone = view2.habits.filter((id) => !view2.facts.some((f) => f.habitId === id));
+  const lone = view3.habits.filter((id) => !view3.facts.some((f) => f.habitId === id));
   const loneRows = lone.flatMap((id) => {
     const e = ctx2.registries.habits.get(id);
     return e ? [h("div", { class: "alius-dev-habit", "data-habit": id }, h("span", { class: "alius-stat", ...analyzeAttrs(`habits:${id}`) }, String(e.description).replace(/^\s*AUTHOR TO WRITE:\s*/i, "")))] : [];
   });
-  if (view2.axes.length === 0 && view2.facts.length === 0 && loneRows.length === 0) {
+  if (view3.axes.length === 0 && view3.facts.length === 0 && loneRows.length === 0) {
     host.append(h("p", { class: "alius-dim" }, "NOTHING YET."));
     return;
   }
-  host.append(...view2.axes.map(axisRow), ...[...view2.facts].reverse().map(factRow), ...loneRows);
+  host.append(...view3.axes.map(axisRow), ...[...view3.facts].reverse().map(factRow), ...loneRows);
 }
 
 // src/ui/life/lifeViews.ts
@@ -60276,12 +60276,12 @@ function dynamicProfileBlock(unit5, ctx2, state) {
 function lifeViewBlock(unit5, ctx2, state) {
   if (unit5.kind !== "named") return null;
   if (lifeMode(state) === "off" && state.life === void 0 && (unit5.hobbies ?? []).length === 0 && Object.keys(unit5.opinions ?? {}).length === 0) return null;
-  const view2 = { state, registries: ctx2.registries, unitId: unit5.id, knowledge: buildKnowledge(state, ctx2.settings()) };
+  const view3 = { state, registries: ctx2.registries, unitId: unit5.id, knowledge: buildKnowledge(state, ctx2.settings()) };
   const host = h("div", { class: "alius-life-views" });
   const part = (cls) => host.appendChild(h("div", { class: cls }));
-  renderThoughts(part("alius-life-thoughts"), view2);
-  renderHobbies(part("alius-life-hobbies-view"), view2);
-  renderToldNews(part("alius-life-told"), view2);
+  renderThoughts(part("alius-life-thoughts"), view3);
+  renderHobbies(part("alius-life-hobbies-view"), view3);
+  renderToldNews(part("alius-life-told"), view3);
   return host;
 }
 function memoryBlock(unit5, ctx2, state) {
@@ -61410,7 +61410,7 @@ var stageSetupSchema = external_exports.object({
 });
 var STAGE_IMAGE_EXT = /\.(png|webp|jpe?g|gif|avif)$/i;
 var STAGE_FILE = "stage.json";
-var sidecarFile = (slotKey2) => `${slotKey2}.fit.json`;
+var sidecarFile = (slotKey3) => `${slotKey3}.fit.json`;
 var issues = (e) => e.issues.map((i) => `${i.path.join(".") || "(file)"} ${i.message}`).join("; ");
 async function loadStageFolders(st3, units) {
   const out = /* @__PURE__ */ new Map();
@@ -61653,9 +61653,9 @@ function talkBlock(state, reg, unit5, room2) {
 }
 function renderRoomPanel(room2, state, ctx2, here, opts) {
   const reg = ctx2.registries;
-  const view2 = opts.view;
-  const people = view2 ? view2.people : here.filter((w) => w.roomId === room2.id).map((w) => state.squad.find((u) => u.id === w.unitId)).filter((u) => u !== void 0);
-  const locationId = view2?.sceneLocationId ?? String(room2.sceneLocationId);
+  const view3 = opts.view;
+  const people = view3 ? view3.people : here.filter((w) => w.roomId === room2.id).map((w) => state.squad.find((u) => u.id === w.unitId)).filter((u) => u !== void 0);
+  const locationId = view3?.sceneLocationId ?? String(room2.sceneLocationId);
   const talkRoom = { ...room2, sceneLocationId: locationId };
   const talk = talkActivity(reg);
   const rows = people.map((unit5) => {
@@ -61688,19 +61688,19 @@ function renderRoomPanel(room2, state, ctx2, here, opts) {
     if (unit5.kind === "named") renderHubDayLine(row4, state, reg, unit5.id);
     return row4;
   });
-  const cards = opts.readOnly || lockedTabs(state, reg).has("ops") || view2?.cabin === "unit" ? [] : (room2.activityIds ?? []).map((id) => reg.activities.get(id)).filter((a) => a !== void 0).map((a) => activityCard(a, state, ctx2.ops));
-  const noteCards = room2.commanderCell === true && (view2 === void 0 || view2.cabin === "commander") ? quartersNotes(state, reg, ctx2) : [];
-  const title3 = view2?.title ?? String(room2.label);
+  const cards = opts.readOnly || lockedTabs(state, reg).has("ops") || view3?.cabin === "unit" ? [] : (room2.activityIds ?? []).map((id) => reg.activities.get(id)).filter((a) => a !== void 0).map((a) => activityCard(a, state, ctx2.ops));
+  const noteCards = room2.commanderCell === true && (view3 === void 0 || view3.cabin === "commander") ? quartersNotes(state, reg, ctx2) : [];
+  const title3 = view3?.title ?? String(room2.label);
   return h(
     "section",
-    { class: "alius-room-panel", "data-room": String(room2.id), ...view2 ? { "data-plan": view2.planRoomId } : {}, role: "region", "aria-label": `${title3} room` },
+    { class: "alius-room-panel", "data-room": String(room2.id), ...view3 ? { "data-plan": view3.planRoomId } : {}, role: "region", "aria-label": `${title3} room` },
     h(
       "div",
       { class: "alius-room-panel-head" },
-      h("h2", {}, h("span", { class: "alius-chip", ...analyzeAttrs(view2?.cabin === "unit" ? "glossary:cabin" : view2?.cabin === "commander" ? `planRooms:${view2.planRoomId}` : `hubRooms:${String(room2.id)}`) }, title3)),
+      h("h2", {}, h("span", { class: "alius-chip", ...analyzeAttrs(view3?.cabin === "unit" ? "glossary:cabin" : view3?.cabin === "commander" ? `planRooms:${view3.planRoomId}` : `hubRooms:${String(room2.id)}`) }, title3)),
       h("button", { type: "button", class: "alius-btn", "data-close-room": "", "aria-label": `Close ${title3}`, onclick: opts.onClose }, "[X]")
     ),
-    h("p", { class: "alius-dim" }, view2?.description ?? String(room2.description)),
+    h("p", { class: "alius-dim" }, view3?.description ?? String(room2.description)),
     h("h3", {}, "HERE"),
     people.length > 0 ? h("ul", { class: "alius-room-people" }, ...rows) : h("p", { class: "alius-dim" }, "Nobody is here."),
     ...noteCards.length > 0 ? [h("h3", {}, "NOTES"), ...noteCards] : [],
@@ -62889,19 +62889,19 @@ function renderSquadCallCard(state, reg, onAck) {
 }
 
 // src/ui/expedition/nodeMapView.ts
-function renderNodeMap(host, view2) {
+function renderNodeMap(host, view3) {
   const root = h("div", { class: "alius-nodemap", role: "group", "aria-label": "Expedition map" });
-  view2.rows.forEach((column, i) => {
+  view3.rows.forEach((column, i) => {
     if (i > 0) root.append(h("span", { class: "alius-nodelink", "aria-hidden": "true" }, "\u2500\u2500"));
     const col = h("div", { class: "alius-nodecol" });
     for (const cell of column) {
       const known3 = cell.text !== "[ ]";
-      const name = known3 ? view2.labels?.[cell.nodeId] ?? "Known" : "Unknown";
+      const name = known3 ? view3.labels?.[cell.nodeId] ?? "Known" : "Unknown";
       const status = cell.state === "option" ? "reachable" : cell.state === "ahead" ? "ahead" : cell.state;
       const classes = ["alius-node", cell.state === "option" ? "alius-reachable" : `alius-${cell.state}`, ...cell.state === "visited" || cell.state === "current" ? ["alius-path"] : []].join(" ");
-      const address = known3 && view2.types?.[cell.nodeId] ? `nodeTypes:${view2.types[cell.nodeId]}` : "glossary:unknown_node";
+      const address = known3 && view3.types?.[cell.nodeId] ? `nodeTypes:${view3.types[cell.nodeId]}` : "glossary:unknown_node";
       const attrs = { class: classes, "data-node": cell.nodeId, "aria-label": `${name}, ${status}` };
-      col.append(cell.state === "option" ? h("button", { ...attrs, class: `${classes} alius-option`, ...analyzeNative(address), type: "button", onclick: () => view2.onMove(cell.nodeId) }, cell.text) : h("span", { ...attrs, class: `${classes} alius-chip`, ...analyzeAttrs(address) }, cell.text));
+      col.append(cell.state === "option" ? h("button", { ...attrs, class: `${classes} alius-option`, ...analyzeNative(address), type: "button", onclick: () => view3.onMove(cell.nodeId) }, cell.text) : h("span", { ...attrs, class: `${classes} alius-chip`, ...analyzeAttrs(address) }, cell.text));
     }
     root.append(col);
   });
@@ -62976,8 +62976,8 @@ function renderPlanner(host, ctx2) {
   const living2 = state.squad.filter(isLiving);
   draft.picked = draft.picked.filter((id) => living2.some((u) => u.id === id));
   const full = draft.picked.length >= TUNING.expedition.partyMax;
-  const defaults = defaultFormation(state, reg, draft.picked);
-  const rowOf3 = (id) => draft.rows[id] ?? (defaults.front.includes(id) ? "front" : "back");
+  const defaults2 = defaultFormation(state, reg, draft.picked);
+  const rowOf3 = (id) => draft.rows[id] ?? (defaults2.front.includes(id) ? "front" : "back");
   root.append(h("h3", {}, "SQUAD"));
   for (const u of living2) {
     const reason2 = u.id === keeper ? "Keeps the commander" : unitReason(state, u);
@@ -66715,9 +66715,9 @@ function render2(now, dt) {
     $2("#cam").style.perspectiveOrigin = `${fx2}px ${fy}px`;
   }
   {
-    const view2 = S4.view === "auto" ? VIEW_OF2[S4.kind] ?? "ceiling" : S4.view;
-    const ceil = view2 === "ceiling";
-    setStyle("#her", "opacity", view2 !== "her" ? (1 - smooth(0.15, 0.7, G3.cam)).toFixed(3) : "1");
+    const view3 = S4.view === "auto" ? VIEW_OF2[S4.kind] ?? "ceiling" : S4.view;
+    const ceil = view3 === "ceiling";
+    setStyle("#her", "opacity", view3 !== "her" ? (1 - smooth(0.15, 0.7, G3.cam)).toFixed(3) : "1");
     setStyle("#ceiling", "opacity", ceil ? smooth(0.2, 0.85, G3.cam).toFixed(3) : "0");
     const lift2 = Math3.min(o, 1);
     setStyle("#ceiling", "transform", `translate(${((G3.focus[0] - 0.5) * -4 + (S4.reduced ? 0 : sway * 0.3)).toFixed(2)}%, ${((G3.focus[1] - 0.5) * -4).toFixed(2)}%) scale(${(1.12 - lift2 * 0.05).toFixed(3)})`);
@@ -70254,9 +70254,9 @@ function render4(now, dt) {
 var tint = {
   chars: [],
   prev: "",
-  sync(reset) {
+  sync(reset2) {
     const v = $4("#cmd").value;
-    if (reset) {
+    if (reset2) {
       this.chars = [...v].map((ch) => ({ ch, tint: false }));
       this.prev = v;
       this.draw();
@@ -71176,7 +71176,7 @@ function throneArt(now) {
   R11.style.display = on && !both ? "block" : "none";
   if (!on || !L6.naturalWidth) return !!on;
   const [vw, vh] = X.inner(), t = now / 1e3;
-  const view2 = $5("#footrestView"), ox = (view2.clientWidth - vw) / 2, oy = (view2.clientHeight - vh) / 2;
+  const view3 = $5("#footrestView"), ox = (view3.clientWidth - vw) / 2, oy = (view3.clientHeight - vh) / 2;
   const live3 = G6.phase === "loop" || G6.phase === "entry", reading2 = live3 && G6.att === "busy";
   const toward = W.lean * 0.9 + W.cop * 0.5, jolt = W.jolt * 0.4;
   const h2 = vh * S7.aH;
@@ -72235,8 +72235,8 @@ function svRender(now) {
     }
   }
 }
-function serviceMatches(state, reg, run, view2) {
-  if (view2 !== "legs" || run.second) return false;
+function serviceMatches(state, reg, run, view3) {
+  if (view3 !== "legs" || run.second) return false;
   const act = run.sourceKind === "activity" ? run.sourceId : state.scene?.blocking?.[run.holderId]?.activity;
   const frame9 = act === void 0 ? null : frameOf3(reg.blockingActivities.get(act));
   if (frame9 === null || frame9.legs === "asleep") return false;
@@ -74013,8 +74013,8 @@ function drawGrain(dt) {
 }
 function render5(now, dt) {
   const t = now / 1e3, live3 = G8.phase === "loop" || G8.phase === "empty" || G8.phase === "ending";
-  const view2 = S9.blind ? "blind" : weightOn() ? "footrest" : S9.view;
-  for (const v of ["her", "legs", "floor", "wall", "footrest", "blind"]) setStyle5(`#${v}View`, "opacity", v === view2 ? "1" : "0");
+  const view3 = S9.blind ? "blind" : weightOn() ? "footrest" : S9.view;
+  for (const v of ["her", "legs", "floor", "wall", "footrest", "blind"]) setStyle5(`#${v}View`, "opacity", v === view3 ? "1" : "0");
   const low = live3 && !weightOn() ? 1 - G8.ease / 100 : 0;
   G8.shake = Math8.max(0, (G8.shake ?? 0) - dt / 600);
   const amp = S9.reduced ? 0 : low * low * 2.5 + G8.shake * 9;
@@ -74025,8 +74025,8 @@ function render5(now, dt) {
   const dusk = smooth(18 * 60 + 30, 20 * 60, G8.clockMin), dark = G8.lightsOff ? 0.35 : 1;
   const ck = SV ? SV.closeK : 0;
   setStyle5("#world", "filter", `saturate(${(wr ? 1 - wr.strF * 0.45 : 1 - low * 0.4).toFixed(2)}) brightness(${((1 - dusk * 0.25) * dark * (1 - ck * 0.4)).toFixed(2)}) blur(${(S9.readable ? 0 : ck * 6).toFixed(1)}px)`);
-  E5.env.layers.backdrop.style.filter = view2 === "her" ? `${S9.readable ? "" : "blur(1.5px) "}brightness(${((1 - dusk * 0.25) * dark * 0.62 * nightRoom(E5.env.layers.backdrop.style.backgroundImage)).toFixed(2)})` : "";
-  if (view2 === "her") {
+  E5.env.layers.backdrop.style.filter = view3 === "her" ? `${S9.readable ? "" : "blur(1.5px) "}brightness(${((1 - dusk * 0.25) * dark * 0.62 * nightRoom(E5.env.layers.backdrop.style.backgroundImage)).toFixed(2)})` : "";
+  if (view3 === "her") {
     const look = G8.att === "watching" ? 1 : G8.att === "glancing" ? 0.4 : 0;
     G8.lookS = lerp2(G8.lookS ?? 0, look, Math8.min(1, dt / 400));
     E5.env.layers.sprites.style.opacity = G8.away ? "0" : "";
@@ -74035,13 +74035,13 @@ function render5(now, dt) {
     const scr = act.light === "screen" && !G8.lightsOff ? (1 - G8.lookS * 0.7) * flick : 0, lamp = (act.light === "lamp" || G8.lampOn) && !G8.lightsOff ? 0.6 + 0.4 * dusk : 0;
     setStyle5("#herGlow", "background", `radial-gradient(ellipse 34% 30% at 52% 30%, rgba(110,160,255,${(0.3 * scr).toFixed(2)}) 0%, rgba(0,0,0,0) 100%), radial-gradient(ellipse 50% 45% at 30% 24%, rgba(255,170,100,${(0.16 * lamp).toFixed(2)}) 0%, rgba(0,0,0,0) 100%)`);
   }
-  if (view2 === "legs") {
+  if (view3 === "legs") {
     const f = S9.floorShade;
     setStyle5("#floorShadow", "background", `linear-gradient(to bottom, rgba(0,0,0,0) 58%, rgba(4,3,5,${(0.55 * f).toFixed(2)}) 76%, rgba(4,3,5,${(0.92 * f).toFixed(2)}) 100%)`);
     drawLegs(now);
     drawLight(lights.deskLight, now, "deskLight");
   }
-  if (view2 === "floor") {
+  if (view3 === "floor") {
     const fa = $7("#floorArt");
     if (fa.style.display !== "none" && fa.naturalWidth) {
       const Wv = innerWidth7 * 1.12, Hv = innerHeight7 * 1.12, w = Wv * S9.feetW, h2 = w * fa.naturalHeight / fa.naturalWidth, top = Hv * S9.feetB - h2;
@@ -74063,15 +74063,15 @@ function render5(now, dt) {
     drawLight(lights.floorLight, now, "floorLight");
     setStyle5("#floorBg", "transform", `scale(${(1 + low * 0.08).toFixed(3)})`);
   }
-  if (view2 === "wall") {
+  if (view3 === "wall") {
     drawLight(lights.wallLight, now, "wallLight");
   }
-  if (view2 === "footrest" && throneOn()) throneLegs(now);
+  if (view3 === "footrest" && throneOn()) throneLegs(now);
   G8.press = Math8.max(0, G8.press - dt / 900);
   G8.shiftAnim = Math8.max(0, G8.shiftAnim - dt / 800);
   drawUrges(now);
   drawGrain(dt);
-  setStyle5("#grain", "opacity", (0.06 + low * 0.1 + (view2 === "blind" ? 0.1 : 0)).toFixed(3));
+  setStyle5("#grain", "opacity", (0.06 + low * 0.1 + (view3 === "blind" ? 0.1 : 0)).toFixed(3));
   E5.env.reply.style.opacity = G8.phase === "skip" ? "0" : live3 ? "0.35" : "1";
   E5.env.input.closest(".alius-input-line")?.classList.toggle("alius-activity-ask", !!G8.ask);
 }
@@ -74301,8 +74301,8 @@ function viewOf(state, reg, run) {
   const desk = backdrop(anchor, "frame"), wall = backdrop(activity, "place");
   const feet = effectsOfEntry(anchor).some((fx2) => fx2.type === "pose_shot" && fx2.kind === "feet_floor");
   const blind = Object.keys(b.worn ?? {}).includes("eyes");
-  const view2 = run.second && weightMatches(coreRun(run, "second"), state, reg) ? "footrest" : desk ? "legs" : wall ? "wall" : feet ? "floor" : "her";
-  return { view: view2, blind, desk, wall };
+  const view3 = run.second && weightMatches(coreRun(run, "second"), state, reg) ? "footrest" : desk ? "legs" : wall ? "wall" : feet ? "floor" : "her";
+  return { view: view3, blind, desk, wall };
 }
 function bind5(env, run) {
   const state = env.state(), reg = env.registries;
@@ -78624,7 +78624,7 @@ function leanOf(base, torso, hogtie) {
   return { upright: 0, arched: -14, level: 86 }[torso];
 }
 function armGoal(state, c) {
-  const { s, shoulder: sh, chest, pelvis, S: S13, T: T5 } = c;
+  const { s, shoulder: sh, chest, pelvis, S: S17, T: T5 } = c;
   const lat = (k) => [s * k, 0, 0];
   switch (state) {
     case "at_sides":
@@ -78632,9 +78632,9 @@ function armGoal(state, c) {
       return { target: add(sh, [s * 0.05, -0.605, 0.02]), hint: [s * 0.3, -0.1, -1] };
     // nearly straight, the elbow a little back
     case "behind_back":
-      return { target: add(sub(add(pelvis, mul(S13, 0.12)), mul(T5, 0.12)), lat(0.04)), hint: [s, -0.2, -0.3] };
+      return { target: add(sub(add(pelvis, mul(S17, 0.12)), mul(T5, 0.12)), lat(0.04)), hint: [s, -0.2, -0.3] };
     case "bound":
-      return { target: add(sub(add(pelvis, mul(S13, 0.1)), mul(T5, 0.16)), lat(0.03)), hint: [s, -0.2, -0.4] };
+      return { target: add(sub(add(pelvis, mul(S17, 0.1)), mul(T5, 0.16)), lat(0.03)), hint: [s, -0.2, -0.4] };
     case "behind_head": {
       const back = sub(add(c.neckTop, mul(c.headDir, 0.09)), mul(c.faceDir, 0.075));
       return { target: add(back, lat(0.07)), hint: [s, 0.2, -0.1] };
@@ -78644,14 +78644,14 @@ function armGoal(state, c) {
     case "on_thighs_up":
       return { target: add(lerp4(c.hip, c.knee, 0.7), [s * 0.02, 0.06, 0]), hint: [s, 0, -0.4] };
     case "forward_palms_up":
-      return c.lying ? { target: add(add(sh, mul(S13, 0.56)), [s * 0.1, 0, 0.02]), hint: [s, 0, -0.3] } : { target: add(add(add(chest, mul(T5, 0.5)), mul(S13, -0.3)), lat(0.13)), hint: [s * 0.6, -1, -0.2] };
+      return c.lying ? { target: add(add(sh, mul(S17, 0.56)), [s * 0.1, 0, 0.02]), hint: [s, 0, -0.3] } : { target: add(add(add(chest, mul(T5, 0.5)), mul(S17, -0.3)), lat(0.13)), hint: [s * 0.6, -1, -0.2] };
     // offered: the forearms reach forward and down, palms up
     case "out_sideways":
       return { target: add(sh, [s * 0.56, 0.01, 0]), hint: [0, -0.5, -0.5] };
     case "raised":
       return { target: add(sh, [s * 0.1, 0.55, 0.05]), hint: [s, 0, -0.3] };
     case "holding":
-      return { target: add(add(add(pelvis, mul(S13, 0.38)), mul(T5, 0.4)), lat(0.11)), hint: [s, -0.6, 0] };
+      return { target: add(add(add(pelvis, mul(S17, 0.38)), mul(T5, 0.4)), lat(0.11)), hint: [s, -0.6, 0] };
     case "lamp":
       return { target: add(c.head, [s * 0.045, 0.36, 0.12]), hint: [s, 0, -0.2] };
     // both hands together above the head
@@ -78665,11 +78665,11 @@ function armGoal(state, c) {
     case "under_knees":
       return { target: [c.knee[0], 0.03, c.knee[2] - 0.03], hint: [s, 0.3, 0] };
     case "crossed":
-      return { target: add(sub(add(chest, mul(T5, 0.1)), mul(S13, 0.06)), lat(-0.14)), hint: [s * 0.3, -1, 0.3] };
+      return { target: add(sub(add(chest, mul(T5, 0.1)), mul(S17, 0.06)), lat(-0.14)), hint: [s * 0.3, -1, 0.3] };
     case "clasped_front":
-      return { target: add(add(add(pelvis, mul(S13, 0.16)), mul(T5, 0.2)), lat(0.025)), hint: [s, -0.5, -0.3] };
+      return { target: add(add(add(pelvis, mul(S17, 0.16)), mul(T5, 0.2)), lat(0.025)), hint: [s, -0.5, -0.3] };
     case "paws":
-      return { target: add(sub(add(chest, mul(T5, 0.2)), mul(S13, 0.1)), lat(0.07)), hint: [s * 0.5, -1, 0.2] };
+      return { target: add(sub(add(chest, mul(T5, 0.2)), mul(S17, 0.1)), lat(0.07)), hint: [s * 0.5, -1, 0.2] };
     // the hands in front of the chest, close together
     case "tucked":
       return { target: [s * 0.22, 0.04, sh[2] - 0.58], hint: [s * 0.2, 1, 0] };
@@ -78691,11 +78691,11 @@ function pose(p) {
   const legs = legsOf(base, pts, hogtie);
   const lying = LYING[base] !== void 0;
   const phi = leanOf(base, pts.torso ?? "upright", hogtie) * DEG;
-  const S13 = [0, Math.cos(phi), Math.sin(phi)];
+  const S17 = [0, Math.cos(phi), Math.sin(phi)];
   const T5 = [0, -Math.sin(phi), Math.cos(phi)];
   const pelvis = legs.pelvis;
-  const chest = add(pelvis, mul(S13, SPINE));
-  const neck = add(chest, mul(S13, NECK_BASE));
+  const chest = add(pelvis, mul(S17, SPINE));
+  const neck = add(chest, mul(S17, NECK_BASE));
   const phiN = phi * 0.55;
   const neckTop = add(neck, mul([0, Math.cos(phiN), Math.sin(phiN)], NECK));
   const pitch = { up: 0, bowed: 38, back: -55, to_floor: 90 }[pts.head ?? "up"];
@@ -78729,7 +78729,7 @@ function pose(p) {
       shoulder: shoulder[side],
       chest,
       pelvis,
-      S: S13,
+      S: S17,
       T: T5,
       hip: hip[side],
       knee: knee[side],
@@ -80406,14 +80406,14 @@ function measureReply(host, onMore) {
   }
 }
 var moreHandlers = /* @__PURE__ */ new WeakMap();
-function renderReply(host, view2, opts) {
-  if (view2.echo === null && view2.replies.length === 0) {
+function renderReply(host, view3, opts) {
+  if (view3.echo === null && view3.replies.length === 0) {
     host.replaceChildren();
     return;
   }
   const body2 = h("div", { class: "alius-reply-body" });
   body2.style.setProperty("--alius-reply-lines", String(opts.maxLines));
-  for (const r of view2.replies) {
+  for (const r of view3.replies) {
     const name = h("span", { class: "alius-reply-name" });
     name.textContent = r.name.toUpperCase();
     const text3 = h("span", { class: "alius-reply-text" });
@@ -80426,9 +80426,9 @@ function renderReply(host, view2, opts) {
   }
   const block2 = h("div", { class: "alius-reply" });
   moreHandlers.set(block2, opts.onMore);
-  if (view2.echo !== null) {
+  if (view3.echo !== null) {
     const echo = h("div", { class: "alius-reply-echo", "aria-label": "Your last message" });
-    echo.textContent = view2.echo;
+    echo.textContent = view3.echo;
     block2.append(echo);
   }
   block2.append(body2);
@@ -80872,16 +80872,16 @@ function renderSceneScreen(host, ctx2) {
     if (limit > 0 && lastReply.text.trim().split(/\s+/).filter(Boolean).length > limit) curtain.open();
   }
   function drawReply(s, messages) {
-    const view2 = replyView(messages);
+    const view3 = replyView(messages);
     const speed = typingSpeed();
-    const streaming = pending4 && view2.replies.length > 0 ? view2.replies[view2.replies.length - 1].index : null;
+    const streaming = pending4 && view3.replies.length > 0 ? view3.replies[view3.replies.length - 1].index : null;
     const lit = (index2) => {
       if (speed <= 0) return void 0;
-      const text3 = view2.replies.find((r) => r.index === index2)?.text ?? "";
+      const text3 = view3.replies.find((r) => r.index === index2)?.text ?? "";
       if (index2 === animating) return sentenceRunIndex(text3, progress.get(index2) ?? 0);
       return index2 === streaming ? sentenceRunIndex(text3, Infinity) : void 0;
     };
-    renderReply(replyHost, view2, {
+    renderReply(replyHost, view3, {
       maxLines: REPLY_MAX_LINES,
       visibleOf: (index2) => index2 === animating ? progress.get(index2) ?? 0 : Infinity,
       newestFrom: lit,
@@ -82460,10 +82460,10 @@ function axisProvider(s, env, k) {
   const unitId = unitIdOf6(s);
   if (!env.state || unitId === null) return null;
   const unit5 = env.state.squad.find((u) => u.id === unitId);
-  const view2 = k.development(unitId, env.registries);
+  const view3 = k.development(unitId, env.registries);
   const axis = typeof s.data.axis === "string" ? s.data.axis : null;
-  if (axis === null) return { lines: view2.axes.length === 0 ? ["Nothing has changed yet."] : view2.axes.map((a2) => `${unit5?.displayName ?? "She"}: ${a2.words}.`) };
-  const a = view2.axes.find((x) => x.axis === axis);
+  if (axis === null) return { lines: view3.axes.length === 0 ? ["Nothing has changed yet."] : view3.axes.map((a2) => `${unit5?.displayName ?? "She"}: ${a2.words}.`) };
+  const a = view3.axes.find((x) => x.axis === axis);
   if (!a) return { lines: ["Nothing has changed here yet."] };
   return {
     lines: [
@@ -83181,50 +83181,50 @@ function resolveTarget(target) {
 
 // src/ui/analyze/panel.ts
 var idPart2 = (target) => target.slice(target.indexOf(":") + 1);
-function linked(text3, view2, on) {
+function linked(text3, view3, on) {
   return parseLinks(text3).map((part) => {
     if (typeof part === "string") return part;
     const address = resolveTarget(part.target);
     const label2 = part.label ?? idPart2(address);
-    if (!view2.canDrill) return label2;
+    if (!view3.canDrill) return label2;
     return h("button", { type: "button", class: "alius-analyze-link", "data-target": address, onclick: () => on.link(address) }, label2);
   });
 }
 var block = (title3, cls, lines3) => h("div", { class: `alius-analyze-block ${cls}` }, h("div", { class: "alius-analyze-label" }, title3), ...lines3.map((l) => h("div", { class: "alius-analyze-line" }, ...l)));
-function renderPanel(host, view2, on) {
-  const { model } = view2;
+function renderPanel(host, view3, on) {
+  const { model } = view3;
   host.classList.add("alius-analyze");
   host.setAttribute("role", "dialog");
   host.setAttribute("aria-label", `Analysis: ${model.title}`);
-  host.toggleAttribute("aria-busy", view2.analyzingMs > 0);
+  host.toggleAttribute("aria-busy", view3.analyzingMs > 0);
   const head = h("div", { class: "alius-analyze-frame alius-analyze-head" }, "\u250C\u2500[ ANALYSIS ]");
   const foot2 = h("div", { class: "alius-analyze-frame alius-analyze-foot" }, "\u2514\u2500");
   const body2 = h("div", { class: "alius-analyze-body" });
-  if (view2.analyzingMs > 0) {
-    body2.append(h("div", { class: view2.wipe ? "alius-analyze-line alius-analyze-wipe" : "alius-analyze-line" }, "ANALYZING \u2592\u2592\u2592\u2591\u2591"));
+  if (view3.analyzingMs > 0) {
+    body2.append(h("div", { class: view3.wipe ? "alius-analyze-line alius-analyze-wipe" : "alius-analyze-line" }, "ANALYZING \u2592\u2592\u2592\u2591\u2591"));
   } else if (model.missing) {
     body2.append(h("div", { class: "alius-analyze-line alius-analyze-missing" }, `NO DATA // ${model.address}`));
   } else {
     const bar2 = [];
-    if (view2.crumbs.length > 1) bar2.push(h("button", { type: "button", class: "alius-analyze-back", "aria-label": "Back", onclick: () => on.back() }, "[<]"));
+    if (view3.crumbs.length > 1) bar2.push(h("button", { type: "button", class: "alius-analyze-back", "aria-label": "Back", onclick: () => on.back() }, "[<]"));
     bar2.push(h("div", { class: "alius-analyze-title" }, model.title));
-    bar2.push(h("button", { type: "button", class: "alius-analyze-pin", "aria-pressed": String(view2.pinned), onclick: () => on.pin() }, view2.pinned ? "[ PINNED ]" : "[ PIN ]"));
+    bar2.push(h("button", { type: "button", class: "alius-analyze-pin", "aria-pressed": String(view3.pinned), onclick: () => on.pin() }, view3.pinned ? "[ PINNED ]" : "[ PIN ]"));
     body2.append(h("div", { class: "alius-analyze-bar" }, ...bar2));
-    if (view2.crumbs.length > 1) {
-      const last4 = view2.crumbs.length - 1;
+    if (view3.crumbs.length > 1) {
+      const last4 = view3.crumbs.length - 1;
       const trail = [];
-      view2.crumbs.forEach((title3, i) => {
+      view3.crumbs.forEach((title3, i) => {
         if (i > 0) trail.push(" \u203A ");
         trail.push(i === last4 ? title3 : h("button", { type: "button", class: "alius-analyze-crumb", onclick: () => on.crumb(i) }, title3));
       });
       body2.append(h("div", { class: "alius-analyze-crumbs" }, ...trail));
     }
-    if (model.text) body2.append(h("p", { class: "alius-analyze-text" }, ...linked(model.text, view2, on)));
-    if (model.long) body2.append(h("p", { class: "alius-analyze-long" }, ...linked(model.long, view2, on)));
-    if (model.effects.length) body2.append(block("EFFECTS", "alius-analyze-effects", model.effects.map((l) => linked(l, view2, on))));
-    if (model.reading) body2.append(block("CURRENT READING", "alius-analyze-reading", model.reading.lines.map((l) => linked(l, view2, on))));
+    if (model.text) body2.append(h("p", { class: "alius-analyze-text" }, ...linked(model.text, view3, on)));
+    if (model.long) body2.append(h("p", { class: "alius-analyze-long" }, ...linked(model.long, view3, on)));
+    if (model.effects.length) body2.append(block("EFFECTS", "alius-analyze-effects", model.effects.map((l) => linked(l, view3, on))));
+    if (model.reading) body2.append(block("CURRENT READING", "alius-analyze-reading", model.reading.lines.map((l) => linked(l, view3, on))));
     if (model.see.length) {
-      const items = model.see.flatMap((target, i) => [...i > 0 ? [" \xB7 "] : [], ...linked(`[[${target}]]`, view2, on)]);
+      const items = model.see.flatMap((target, i) => [...i > 0 ? [" \xB7 "] : [], ...linked(`[[${target}]]`, view3, on)]);
       body2.append(h("div", { class: "alius-analyze-block alius-analyze-see" }, h("div", { class: "alius-analyze-label" }, "SEE ALSO"), h("div", { class: "alius-analyze-line" }, ...items)));
     }
   }
@@ -83959,7 +83959,7 @@ function renderLookEditor(host, draft, opts) {
   const dot2 = h("span", { class: "alius-stage-face-dot", "aria-hidden": "true" });
   const figure2 = h("span", { class: "alius-sprite-img alius-stage-figure", role: "button", "aria-label": "Set her face point", ...analyzeAttrs("glossary:stage_face") }, img2, dot2);
   const sprite = h("div", { class: "alius-sprite pos-center alius-has-stand" }, figure2);
-  const view2 = h("div", { class: "alius-stage-preview", "data-sprite": opts.spriteUrl === null ? "none" : "found" }, sprite);
+  const view3 = h("div", { class: "alius-stage-preview", "data-sprite": opts.spriteUrl === null ? "none" : "found" }, sprite);
   const placeDot = () => {
     const f = draft.face;
     dot2.hidden = f === void 0;
@@ -84005,7 +84005,7 @@ function renderLookEditor(host, draft, opts) {
     { class: "alius-stage-block alius-stage-stand" },
     h("h3", {}, "How she stands"),
     h("p", { class: "alius-dim" }, "One set for every expression. A click on her face sets the point the slap's camera goes to."),
-    h("div", { class: "alius-stage-stand-row" }, view2, h("div", { class: "alius-stage-sliders" }, ...sliders))
+    h("div", { class: "alius-stage-stand-row" }, view3, h("div", { class: "alius-stage-sliders" }, ...sliders))
   );
   const handButtons = opts.hands.map((entry) => {
     const b = h("button", { type: "button", class: "alius-btn alius-option alius-stage-hand", "data-hand": entry.id, title: String(entry.name ?? entry.id), ...analyzeNative("glossary:stage_hand") }, SAMPLE_TEXT);
@@ -84071,6 +84071,643 @@ function renderLookEditor(host, draft, opts) {
   host.replaceChildren(stand, hand, accent);
 }
 
+// src/ui/stage/fit/activity.ts
+var ACTIVITY_CONTROLS = {
+  closeH: { label: "close-up height", type: "range", min: 0.35, max: 1, step: 0.01, value: 0.62 },
+  closeY: { label: "close-up y", type: "range", min: 0.3, max: 0.7, step: 0.01, value: 0.47 },
+  legsW: { label: "art width", type: "range", min: 0.3, max: 1.1, step: 0.01, value: 0.62 },
+  legsB: { label: "art bottom", type: "range", min: 0.6, max: 1.2, step: 0.01, value: 0.9 },
+  raisedW: { label: "raised width", type: "range", min: 0.3, max: 1.1, step: 0.01, value: 0.62 },
+  raisedB: { label: "raised bottom", type: "range", min: 0.6, max: 1.2, step: 0.01, value: 0.9 },
+  floorShade: { label: "floor shadow", type: "range", min: 0, max: 1, step: 0.05, value: 0.55 },
+  feetW: { label: "feet width", type: "range", min: 0.2, max: 1.1, step: 0.01, value: 0.56 },
+  feetB: { label: "feet bottom", type: "range", min: 0.6, max: 1.2, step: 0.01, value: 0.86 },
+  feetTilt: { label: "tilt (\xB0)", type: "range", min: 0, max: 25, step: 1, value: 6 }
+};
+var $11 = () => null;
+var defaults = () => Object.fromEntries(Object.entries(ACTIVITY_CONTROLS).map(([k, c]) => [k, c.value]));
+var S13 = { ...defaults(), zones: null };
+var updatePresenceNote = () => {
+};
+var bindRange = (id, key) => {
+  const el = $11(`#${id}`);
+  const sync = () => {
+    S13[key] = Number(el.value);
+    const v = $11(`#${id}V`);
+    if (v) v.textContent = String(S13[key]);
+    updatePresenceNote();
+  };
+  el.oninput = sync;
+  sync();
+};
+function bindFit() {
+  bindRange("seed", "seed");
+  bindRange("closeH", "closeH");
+  bindRange("closeY", "closeY");
+  bindRange("legsW", "legsW");
+  bindRange("legsB", "legsB");
+  bindRange("floorShade", "floorShade");
+  bindRange("raisedW", "raisedW");
+  bindRange("feetW", "feetW");
+  bindRange("feetB", "feetB");
+  bindRange("feetTilt", "feetTilt");
+  bindRange("raisedB", "raisedB");
+  bindRange("phases", "phases");
+  bindRange("phaseLen", "phaseLen");
+  bindRange("level", "level");
+  bindRange("vol", "vol");
+}
+function copyLegs() {
+  const j = JSON.stringify({ slot: "legs_seated", states: { rest: { width: S13.legsW, bottom: S13.legsB }, foot_raised: { width: S13.raisedW, bottom: S13.raisedB } }, floorShade: S13.floorShade, feet_floor: { width: S13.feetW, bottom: S13.feetB, tilt: S13.feetTilt } });
+  return j;
+}
+function copySole() {
+  const j = JSON.stringify({ slot: "sole_close", fit: { height: S13.closeH, y: S13.closeY }, zones: S13.zones });
+  return j;
+}
+var IDS = {
+  "legs_seated.rest": ["legsW", "legsB", "floorShade"],
+  "legs_seated.foot_raised": ["raisedW", "raisedB"],
+  feet_floor: ["feetW", "feetB", "feetTilt"],
+  sole_close: ["closeH", "closeY"]
+};
+var activityPanel = {
+  prototype: "her_activity.html",
+  ids: (key) => IDS[key] ?? [],
+  controls: ACTIVITY_CONTROLS,
+  writes: {
+    closeH: ["fit.height"],
+    closeY: ["fit.y"],
+    legsW: ["fit.width"],
+    legsB: ["fit.bottom"],
+    raisedW: ["fit.width"],
+    raisedB: ["fit.bottom"],
+    floorShade: ["fit.floorShade"],
+    feetW: ["fit.width"],
+    feetB: ["fit.bottom"],
+    feetTilt: ["fit.tilt"]
+  },
+  note: () => null,
+  load(key, sc) {
+    Object.assign(S13, defaults(), { zones: null });
+    const f = sc.fit ?? {};
+    if (key === "legs_seated.rest") {
+      S13.legsW = f.width ?? S13.legsW;
+      S13.legsB = f.bottom ?? S13.legsB;
+      S13.floorShade = f.floorShade ?? S13.floorShade;
+    }
+    if (key === "legs_seated.foot_raised") {
+      S13.raisedW = f.width ?? S13.raisedW;
+      S13.raisedB = f.bottom ?? S13.raisedB;
+    }
+    if (key === "feet_floor") {
+      S13.feetW = f.width ?? S13.feetW;
+      S13.feetB = f.bottom ?? S13.feetB;
+      S13.feetTilt = f.tilt ?? S13.feetTilt;
+    }
+    if (key === "sole_close") {
+      S13.closeH = f.height ?? S13.closeH;
+      S13.closeY = f.y ?? S13.closeY;
+      S13.zones = sc.zones && !("right" in sc.zones) && Object.keys(sc.zones).length ? structuredClone(sc.zones) : null;
+    }
+  },
+  value: (id) => S13[id],
+  bind(lookup) {
+    $11 = lookup;
+    bindFit();
+  },
+  copy(key) {
+    if (key === "sole_close") return JSON.parse(copySole());
+    const j = JSON.parse(copyLegs());
+    if (key === "legs_seated.rest") return { fit: { ...j.states.rest, floorShade: j.floorShade } };
+    if (key === "legs_seated.foot_raised") return { fit: j.states.foot_raised };
+    return { fit: j.feet_floor };
+  }
+};
+
+// src/ui/stage/fit/shoe.ts
+var SHOE_CONTROLS = {
+  feetSel: { label: "feet in this picture", type: "select", options: [["one", "one"], ["two", "two"]], value: "one" },
+  shownSel: { label: "the foot shown (one)", type: "select", options: [["right", "her right"], ["left", "her left"]], value: "right" },
+  xr: { label: "her right foot x", type: "range", min: 0.1, max: 0.9, step: 0.01, value: 0.38 },
+  xl: { label: "her left foot x", type: "range", min: 0.1, max: 0.9, step: 0.01, value: 0.62 },
+  fitH: { label: "height", type: "range", min: 0.4, max: 3, step: 0.01, value: 0.68 },
+  fitX: { label: "x", type: "range", min: -0.5, max: 0.5, step: 0.01, value: 0 },
+  fitF: { label: "top fade", type: "range", min: 0, max: 0.8, step: 0.01, value: 0.25 },
+  fitY: { label: "y", type: "range", min: -0.6, max: 0.9, step: 0.01, value: 0.48 }
+};
+var $12 = () => null;
+var S14 = { kind: "boots", feet: {}, shown: {}, fit: {}, zones: {} };
+var G12 = { phase: "idle", surface: "close", foot: "right", camU: void 0, surfaces: {} };
+var begin8 = () => {
+};
+var ensureSurface2 = () => {
+};
+var nextWant2 = () => {
+};
+function reset() {
+  S14.feet = { boots_close: "one", boots_sole: "one", heels_close: "one", heels_sole: "one" };
+  S14.shown = { boots_close: "right", boots_sole: "right", heels_close: "right", heels_sole: "right" };
+  S14.fit = { boots_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, boots_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 }, heels_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, heels_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 } };
+  S14.zones = {};
+}
+var view2 = () => G12.surface === "sole" ? "sole" : "close";
+var slotKey2 = () => `${S14.kind}_${view2()}`;
+var twoFeet2 = () => S14.feet[slotKey2()] === "two";
+function bindShoeFeet() {
+  $12("#feetSel").onchange = () => {
+    S14.feet[slotKey2()] = $12("#feetSel").value;
+    delete S14.zones[slotKey2()];
+    G12.surfaces = {};
+    G12.camU = void 0;
+    if (G12.phase === "loop") begin8();
+  };
+  $12("#shownSel").onchange = () => {
+    S14.shown[slotKey2()] = $12("#shownSel").value;
+    G12.surfaces = {};
+  };
+  for (const id of ["xr", "xl"]) $12(`#${id}`).oninput = () => {
+    const f = S14.fit[slotKey2()];
+    f[id] = Number($12(`#${id}`).value);
+    $12(`#${id}V`).textContent = f[id].toFixed(2);
+    G12.surfaces = {};
+    if (G12.phase === "loop") ensureSurface2();
+  };
+  $12("#footSel").onchange = () => {
+    G12.foot = $12("#footSel").value;
+    G12.camU = void 0;
+    if (G12.phase === "loop") {
+      ensureSurface2();
+      nextWant2();
+    }
+  };
+  $12("#viewSel").onchange = () => {
+    const v = $12("#viewSel").value;
+    G12.surface = v;
+    G12.camU = void 0;
+    syncFit();
+    if (G12.phase === "loop") {
+      ensureSurface2();
+      nextWant2();
+    }
+  };
+}
+function syncFit() {
+  const f = S14.fit[slotKey2()];
+  $12("#feetSel").value = S14.feet[slotKey2()];
+  $12("#shownSel").value = S14.shown[slotKey2()];
+  $12("#fitX").value = f.x ?? 0;
+  $12("#fitXV").textContent = (f.x ?? 0).toFixed(2);
+  $12("#fitF").value = f.fade ?? 0;
+  $12("#fitFV").textContent = (f.fade ?? 0).toFixed(2);
+  const cf = S14.fit[slotKey2()];
+  $12("#xr").value = cf.xr;
+  $12("#xrV").textContent = cf.xr.toFixed(2);
+  $12("#xl").value = cf.xl;
+  $12("#xlV").textContent = cf.xl.toFixed(2);
+  $12("#fitH").value = f.h;
+  $12("#fitHV").textContent = f.h.toFixed(2);
+  $12("#fitY").value = f.y;
+  $12("#fitYV").textContent = f.y.toFixed(2);
+}
+function bindShoeFit() {
+  $12("#fitH").oninput = () => {
+    S14.fit[slotKey2()].h = Number($12("#fitH").value);
+    $12("#fitHV").textContent = S14.fit[slotKey2()].h.toFixed(2);
+  };
+  $12("#fitX").oninput = () => {
+    S14.fit[slotKey2()].x = Number($12("#fitX").value);
+    $12("#fitXV").textContent = S14.fit[slotKey2()].x.toFixed(2);
+  };
+  $12("#fitF").oninput = () => {
+    S14.fit[slotKey2()].fade = Number($12("#fitF").value);
+    $12("#fitFV").textContent = S14.fit[slotKey2()].fade.toFixed(2);
+  };
+  $12("#fitY").oninput = () => {
+    S14.fit[slotKey2()].y = Number($12("#fitY").value);
+    $12("#fitYV").textContent = S14.fit[slotKey2()].y.toFixed(2);
+  };
+}
+function copyFit() {
+  const f = S14.fit[slotKey2()];
+  const j = JSON.stringify({ slot: `shoe_${view2() === "sole" ? "sole" : "close"}`, kind: S14.kind, feet: S14.feet[slotKey2()], ...twoFeet2() ? {} : { shown: S14.shown[slotKey2()] }, fit: { height: f.h, y: f.y, x: f.x ?? 0, fade: f.fade ?? 0, ...twoFeet2() ? { xr: f.xr, xl: f.xl } : {} }, zones: S14.zones[slotKey2()] });
+  $12("#sideNote").textContent = j;
+  return j;
+}
+function selectSlot(key) {
+  const [slot2, kind] = key.split(".");
+  S14.kind = kind;
+  G12.surface = slot2 === "shoe_sole" ? "sole" : "close";
+  G12.camU = void 0;
+  G12.surfaces = {};
+}
+var shoePanel = {
+  prototype: "shoe.html",
+  ids: () => ["feetSel", "shownSel", "xr", "xl", "fitH", "fitX", "fitF", "fitY"],
+  controls: SHOE_CONTROLS,
+  writes: { feetSel: ["feet"], shownSel: ["shown"], xr: ["fit.xr"], xl: ["fit.xl"], fitH: ["fit.height"], fitX: ["fit.x"], fitF: ["fit.fade"], fitY: ["fit.y"] },
+  note: () => null,
+  load(key, sc) {
+    reset();
+    selectSlot(key);
+    const k = slotKey2();
+    if (sc.feet === "one" || sc.feet === "two") S14.feet[k] = sc.feet;
+    if (sc.shown === "left" || sc.shown === "right") S14.shown[k] = sc.shown;
+    const f = sc.fit ?? {}, was = S14.fit[k];
+    S14.fit[k] = { h: f.height ?? was.h, y: f.y ?? was.y, x: f.x ?? was.x, fade: f.fade ?? was.fade, xr: f.xr ?? was.xr, xl: f.xl ?? was.xl };
+    if (sc.zones) S14.zones[k] = structuredClone(sc.zones);
+  },
+  value(id) {
+    const k = slotKey2(), f = S14.fit[k];
+    return { feetSel: S14.feet[k], shownSel: S14.shown[k], xr: f.xr, xl: f.xl, fitH: f.h, fitX: f.x, fitF: f.fade, fitY: f.y }[id];
+  },
+  bind(lookup) {
+    $12 = lookup;
+    bindShoeFeet();
+    bindShoeFit();
+    syncFit();
+  },
+  copy: () => JSON.parse(copyFit())
+};
+
+// src/ui/stage/fit/slap.ts
+var slapPanel = {
+  prototype: "slap.html",
+  ids: () => [],
+  controls: {},
+  writes: {},
+  note: () => "Her face close, filling the frame. Nothing to fit: the slap's camera covers the frame with it.",
+  load: () => {
+  },
+  value: () => 0,
+  bind: () => {
+  },
+  copy: () => ({})
+};
+
+// src/ui/stage/fit/throne.ts
+var THRONE_CONTROLS = {
+  astrideFeet: {
+    label: "the picture is",
+    type: "select",
+    value: "left",
+    options: [
+      ["left", "her left leg (the one on the left of the screen; mirrored for the right)"],
+      ["right", "her right leg (the one on the right of the screen; mirrored for the left)"],
+      ["pair", "two pictures: left and right (no mirror)"],
+      ["two", "both legs in one picture"]
+    ]
+  },
+  aH: { label: "art height", type: "range", min: 0.4, max: 1.6, step: 0.01, value: 1 },
+  aX: { label: "art x (the leg's centre)", type: "range", min: -0.1, max: 0.4, step: 5e-3, value: 0.08 },
+  aTop: { label: "art top", type: "range", min: -0.6, max: 0.4, step: 0.01, value: -0.1 },
+  aTilt: { label: "art tilt \xB0", type: "range", min: -30, max: 30, step: 1, value: 8 }
+};
+var $13 = () => null;
+var S15 = { legsArt: null, legsArtR: null, legsFeet: "left", aH: 1, aX: 0.08, aTop: -0.1, aTilt: 8 };
+var updatePresenceNote2 = () => {
+};
+var bindRange2 = (id, key) => {
+  const el = $13(`#${id}`);
+  const sync = () => {
+    S15[key] = Number(el.value);
+    const v = $13(`#${id}V`);
+    if (v) v.textContent = String(S15[key]);
+    updatePresenceNote2();
+  };
+  el.oninput = sync;
+  sync();
+};
+function bindThrone() {
+  bindRange2("frameDrain", "frameDrain");
+  bindRange2("aH", "aH");
+  bindRange2("aX", "aX");
+  bindRange2("aTop", "aTop");
+  bindRange2("aTilt", "aTilt");
+  $13("#astrideFeet").onchange = (e) => {
+    S15.legsFeet = e.target.value;
+    $13("#astrideR").src = S15.legsFeet === "pair" && S15.legsArtR ? S15.legsArtR : S15.legsArt ?? "";
+  };
+}
+function astrideFit() {
+  const j = JSON.stringify({ slot: "legs_astride", feet: S15.legsFeet === "two" ? "two" : S15.legsFeet === "pair" ? "pair" : "one", ...S15.legsFeet === "left" || S15.legsFeet === "right" ? { shown: S15.legsFeet } : {}, fit: { height: S15.aH, x: S15.aX, top: S15.aTop, tilt: S15.aTilt } });
+  return j;
+}
+var thronePanel = {
+  prototype: "throne.html",
+  ids: (key) => key === "legs_astride.right" ? [] : ["astrideFeet", "aH", "aX", "aTop", "aTilt"],
+  controls: THRONE_CONTROLS,
+  writes: { astrideFeet: ["feet", "shown"], aH: ["fit.height"], aX: ["fit.x"], aTop: ["fit.top"], aTilt: ["fit.tilt"] },
+  note: (key) => key === "legs_astride.right" ? "The fit of the two pictures is the left one's." : null,
+  load(key, sc) {
+    S15.legsFeet = sc.feet === "pair" || sc.feet === void 0 && key === "legs_astride.left" ? "pair" : sc.feet === "two" ? "two" : sc.shown === "right" ? "right" : "left";
+    const f = sc.fit ?? {};
+    S15.aH = f.height ?? THRONE_CONTROLS.aH.value;
+    S15.aX = f.x ?? THRONE_CONTROLS.aX.value;
+    S15.aTop = f.top ?? THRONE_CONTROLS.aTop.value;
+    S15.aTilt = f.tilt ?? THRONE_CONTROLS.aTilt.value;
+  },
+  value: (id) => id === "astrideFeet" ? S15.legsFeet : S15[id],
+  bind(lookup) {
+    $13 = lookup;
+    bindThrone();
+  },
+  copy: () => JSON.parse(astrideFit())
+};
+
+// src/ui/stage/fit/weight.ts
+var WEIGHT_CONTROLS = {
+  overH: { label: "over height", type: "range", min: 0.6, max: 1.8, step: 0.01, value: 1.04 },
+  overX: { label: "over x", type: "range", min: 0.3, max: 0.7, step: 0.01, value: 0.5 },
+  overSink: { label: "over sink", type: "range", min: 0, max: 0.3, step: 0.01, value: 0 }
+};
+var $14 = () => null;
+var S16 = { overH: WEIGHT_CONTROLS.overH.value, overX: WEIGHT_CONTROLS.overX.value, overSink: WEIGHT_CONTROLS.overSink.value };
+function bindOver() {
+  for (const [id, key] of [["overH", "overH"], ["overX", "overX"], ["overSink", "overSink"]]) {
+    const el = $14(`#${id}`);
+    el.oninput = () => {
+      S16[key] = Number(el.value);
+      $14(`#${id}V`).textContent = el.value;
+    };
+  }
+}
+function copyOver() {
+  const j = JSON.stringify({ slot: "over", fit: { height: S16.overH, x: S16.overX, sink: S16.overSink } });
+  return j;
+}
+var weightPanel = {
+  prototype: "weight.html",
+  ids: () => ["overH", "overX", "overSink"],
+  controls: WEIGHT_CONTROLS,
+  writes: { overH: ["fit.height"], overX: ["fit.x"], overSink: ["fit.sink"] },
+  note: () => null,
+  load(_key, sc) {
+    const f = sc.fit ?? {};
+    S16.overH = f.height ?? WEIGHT_CONTROLS.overH.value;
+    S16.overX = f.x ?? WEIGHT_CONTROLS.overX.value;
+    S16.overSink = f.sink ?? WEIGHT_CONTROLS.overSink.value;
+  },
+  value: (id) => S16[id],
+  bind(lookup) {
+    $14 = lookup;
+    bindOver();
+  },
+  copy: () => JSON.parse(copyOver())
+};
+
+// src/ui/stage/slotEditor.ts
+var MAX_PICTURE_BYTES = 20 * 1024 * 1024;
+var MIME_EXT = { "image/png": "png", "image/webp": "webp", "image/jpeg": "jpg", "image/gif": "gif", "image/avif": "avif" };
+function imageExt(file) {
+  const own = /\.(png|webp|jpe?g|gif|avif)$/i.exec(file.name)?.[1];
+  return own !== void 0 ? own.toLowerCase() : MIME_EXT[file.type] ?? null;
+}
+function refusal2(file) {
+  if (!file.type.startsWith("image/")) return "Not a picture: only image files can be loaded.";
+  if (file.size > MAX_PICTURE_BYTES) return "The picture is larger than 20 MB.";
+  if (imageExt(file) === null) return "That picture type is not listed by SillyTavern: use png, webp, jpg, gif or avif.";
+  return null;
+}
+var PANELS = Object.fromEntries([weightPanel, activityPanel, thronePanel, shoePanel, slapPanel].map((p) => [p.prototype, p]));
+var panelOf = (key) => PANELS[SLOT_INFO[key].prototype] ?? slapPanel;
+function toSidecar(raw) {
+  const clean13 = Object.fromEntries(Object.entries(raw ?? {}).filter(([, v]) => v !== null && v !== void 0));
+  return sidecarSchema.parse(clean13);
+}
+async function saveSlot(st3, avatar, key, draft, refresh2) {
+  if (draft.file !== void 0) {
+    const ext = imageExt(draft.file);
+    if (ext === null) return false;
+    const ok2 = await st3.uploadStageFile(avatar, key, draft.file, ext).catch(() => false);
+    if (!ok2) return false;
+  }
+  const blob = new Blob([JSON.stringify(draft.sidecar, null, 2)], { type: "application/json" });
+  const ok = await st3.uploadStageFile(avatar, `${key}.fit`, blob, "json").catch(() => false);
+  if (ok && refresh2) await refresh2().catch(() => {
+  });
+  return ok;
+}
+async function removeSlot(st3, avatar, key, refresh2) {
+  const a = await st3.deleteStageFile(avatar, key).catch(() => false);
+  const b = await st3.deleteStageFile(avatar, `${key}.fit`).catch(() => false);
+  if (refresh2) await refresh2().catch(() => {
+  });
+  return a && b;
+}
+var openEditor = null;
+function openSlotEditor(host, unitId, key, ctx2) {
+  openEditor?.drop();
+  const { draft } = ctx2;
+  const info = SLOT_INFO[key];
+  const avatar = ctx2.getState()?.squad.find((u) => u.id === unitId)?.cardRef ?? null;
+  const chatId = ctx2.st.getActiveChat()?.chatId ?? null;
+  const panel = panelOf(key);
+  let saved = JSON.stringify(draft.sidecar);
+  let ownUrl = null;
+  let dropped = false;
+  const img2 = h("img", { class: "alius-stage-slot-img", alt: info.label, draggable: "false" });
+  const empty = h("span", { class: "alius-dim alius-stage-slot-empty" }, "no picture");
+  const drawPicture = () => {
+    if (draft.url === null) {
+      img2.removeAttribute("src");
+      img2.hidden = true;
+      empty.hidden = false;
+      return;
+    }
+    img2.src = draft.url;
+    img2.hidden = false;
+    empty.hidden = true;
+  };
+  const frame9 = h("div", { class: "alius-stage-slot-frame", "data-slot": key }, img2, empty);
+  drawPicture();
+  const file = h("input", { type: "file", name: "load", accept: "image/*" });
+  const load = h("label", { class: "alius-field alius-option alius-stage-load", ...analyzeNative("glossary:stage_load") }, h("span", { class: "alius-field-label" }, "[ LOAD ] a picture"), file);
+  panel.load(key, draft.sidecar);
+  const ids = panel.ids(key);
+  const rows = ids.map((id) => {
+    const c = panel.controls[id];
+    const value = String(panel.value(id));
+    const writes = (panel.writes[id] ?? []).join(" ");
+    const field2 = c.type === "range" ? h("input", { type: "range", "data-proto": id, "data-fit": writes, name: id, min: String(c.min), max: String(c.max), step: String(c.step), value }) : h("select", { "data-proto": id, "data-fit": writes, name: id }, ...c.options.map(([v, t]) => h("option", { value: v }, t)));
+    field2.value = value;
+    return h(
+      "label",
+      { class: "alius-field alius-option", ...analyzeNative("glossary:stage_fit") },
+      h("span", { class: "alius-field-label" }, c.label),
+      field2,
+      c.type === "range" ? h("span", { class: "alius-stage-value", "data-proto": `${id}V` }, value) : null
+    );
+  });
+  const note = panel.note(key);
+  const fit2 = h("div", { class: "alius-stage-fit", "data-prototype": panel.prototype }, ...rows, note === null ? null : h("p", { class: "alius-dim" }, note));
+  const detached = /* @__PURE__ */ new Map();
+  const $15 = (selector) => {
+    const id = selector.replace(/^#/, "");
+    const own = fit2.querySelector(`[data-proto="${id}"]`);
+    if (own) return own;
+    let el = detached.get(id);
+    if (!el) {
+      el = document.createElement("input");
+      el.value = id in panel.controls ? String(panel.value(id)) : "";
+      detached.set(id, el);
+    }
+    return el;
+  };
+  if (ids.length > 0) panel.bind($15);
+  const status = h("span", { class: "alius-stage-status", role: "status" });
+  const saveBtn = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "save", ...analyzeNative("glossary:stage_fit") }, "[ SAVE ]");
+  const removeBtn = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "remove", ...analyzeNative("glossary:stage_remove") }, "[ REMOVE ]");
+  const closeBtn = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "close", ...analyzeNative("glossary:stage_setup") }, "[ CLOSE ]");
+  const actions = h("div", { class: "alius-stage-slot-actions" }, saveBtn, removeBtn, closeBtn, status);
+  const dirty = () => draft.file !== void 0 || JSON.stringify(draft.sidecar) !== saved;
+  const inFolder = () => avatar !== null && ctx2.folders().get(avatar)?.slots.has(key) === true;
+  const mark2 = () => {
+    saveBtn.disabled = !dirty() || avatar === null;
+    removeBtn.disabled = !inFolder();
+    status.textContent = dirty() ? "unsaved" : "";
+  };
+  const edited = () => {
+    mark2();
+    ctx2.onChange?.();
+  };
+  const stillHere = () => !dropped && (ctx2.st.getActiveChat()?.chatId ?? null) === chatId;
+  const refit = (e) => {
+    if (!(e.target instanceof HTMLElement) || e.target.dataset.proto === void 0) return;
+    draft.sidecar = toSidecar(panel.copy(key));
+    edited();
+  };
+  fit2.addEventListener("input", refit);
+  fit2.addEventListener("change", refit);
+  file.addEventListener("change", () => {
+    const chosen = file.files?.[0];
+    file.value = "";
+    if (!chosen) return;
+    const why = refusal2(chosen);
+    if (why !== null) {
+      ctx2.toast("warn", why);
+      return;
+    }
+    if (ownUrl !== null) URL.revokeObjectURL(ownUrl);
+    ownUrl = URL.createObjectURL(chosen);
+    draft.file = chosen;
+    draft.url = ownUrl;
+    drawPicture();
+    edited();
+  });
+  saveBtn.addEventListener("click", async () => {
+    if (!dirty() || avatar === null) return;
+    saveBtn.disabled = true;
+    const ok = await saveSlot(ctx2.st, avatar, key, draft, ctx2.refresh);
+    if (!stillHere()) return;
+    if (ok) {
+      delete draft.file;
+      saved = JSON.stringify(draft.sidecar);
+      ctx2.toast("info", `Saved: ${info.label}.`);
+      ctx2.onStored?.();
+    } else ctx2.toast("warn", `${info.label} could not be saved (the server refused the file).`);
+    mark2();
+  });
+  removeBtn.addEventListener("click", async () => {
+    if (avatar === null || !inFolder()) return;
+    const answer = await ctx2.modal({
+      title: "REMOVE THIS SLOT",
+      body: `Delete the picture of ${info.label} and its fit from her folder?`,
+      actions: [{ label: "[ REMOVE ]", value: "remove", analyze: "glossary:stage_remove" }, { label: "[ KEEP ]", value: "keep", analyze: "glossary:stage_remove" }]
+    });
+    if (answer !== "remove" || !stillHere()) return;
+    const ok = await removeSlot(ctx2.st, avatar, key, ctx2.refresh);
+    if (!stillHere()) return;
+    if (!ok) ctx2.toast("warn", `${info.label} could not be removed.`);
+    if (ownUrl !== null) {
+      URL.revokeObjectURL(ownUrl);
+      ownUrl = null;
+    }
+    delete draft.file;
+    draft.url = null;
+    draft.sidecar = {};
+    saved = JSON.stringify(draft.sidecar);
+    drawPicture();
+    mark2();
+    ctx2.onStored?.();
+  });
+  closeBtn.addEventListener("click", () => {
+    ctx2.onClose?.();
+  });
+  const root = h(
+    "section",
+    { class: "alius-stage-slot-editor", "data-slot": key, ...analyzeAttrs("glossary:stage_fit") },
+    h("h3", {}, info.label),
+    h("div", { class: "alius-stage-slot-row" }, frame9, h("div", { class: "alius-stage-slot-side" }, load, fit2)),
+    actions
+  );
+  mark2();
+  host.replaceChildren(root);
+  const self = {
+    key,
+    dirty,
+    drop: () => {
+      if (dropped) return;
+      dropped = true;
+      if (ownUrl !== null) URL.revokeObjectURL(ownUrl);
+      ownUrl = null;
+      if (openEditor === self) openEditor = null;
+    }
+  };
+  openEditor = self;
+}
+function draftOf(ctx2, unitId, avatar, key) {
+  const own = ctx2.folders().get(avatar)?.slots.get(key);
+  if (own) return { url: own.url, sidecar: structuredClone(own.sidecar) };
+  const info = SLOT_INFO[key];
+  const art2 = key === info.slot ? ctx2.art().get(unitId, info.slot, { explicit: true }) : null;
+  return art2 && !art2.pair ? { url: art2.url, sidecar: structuredClone(art2.sidecar) } : { url: null, sidecar: {} };
+}
+function renderSlotList(host, unitId, avatar, ctx2) {
+  const list5 = h("ul", { class: "alius-stage-slot-list" });
+  const editHost = h("div", { class: "alius-stage-slot-edit-host" });
+  let current3 = null;
+  const drawList = () => {
+    const folder = ctx2.folders().get(avatar);
+    const art2 = ctx2.art();
+    list5.replaceChildren(...visibleSlotKeys(ctx2.settings().showExplicitSlots).map((key) => {
+      const state = slotState(folder, art2, unitId, key);
+      const edit = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "edit", "aria-pressed": String(current3 === key), ...analyzeNative("glossary:stage_fit") }, "[ EDIT ]");
+      edit.addEventListener("click", () => open3(key));
+      return h(
+        "li",
+        { "data-slot": key },
+        h("span", { class: "alius-stage-slot-label" }, SLOT_INFO[key].label),
+        h("span", { class: "alius-stage-slot-state", "data-state": state, ...analyzeAttrs("glossary:stage_slot_state") }, SLOT_STATE_WORD[state]),
+        edit
+      );
+    }));
+  };
+  const close = () => {
+    openEditor?.drop();
+    current3 = null;
+    editHost.replaceChildren();
+    drawList();
+    ctx2.onChange?.();
+  };
+  const open3 = (key) => {
+    current3 = key;
+    openSlotEditor(editHost, unitId, key, { ...ctx2, draft: draftOf(ctx2, unitId, avatar, key), onChange: ctx2.onChange, onStored: drawList, onClose: close });
+    drawList();
+    ctx2.onChange?.();
+  };
+  drawList();
+  host.replaceChildren(h("section", { class: "alius-stage-block alius-stage-her-slots" }, h("h3", {}, "Her slots"), list5, editHost));
+  return {
+    dirty: () => current3 !== null && openEditor?.dirty() === true,
+    drop: () => {
+      openEditor?.drop();
+      current3 = null;
+      editHost.replaceChildren();
+    }
+  };
+}
+
 // src/ui/stage/sheet.ts
 var DEFAULT_FACE = "neutral";
 function facesWanted(_reg) {
@@ -84128,6 +84765,7 @@ function openStageSheet(unitId, ctx2) {
   const status = h("span", { class: "alius-stage-status", role: "status" });
   const saveBtn = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "save", ...analyzeNative("glossary:stage_setup") }, "[ SAVE ]");
   const closeBtn = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "close", ...analyzeNative("glossary:stage_setup") }, "[ CLOSE ]");
+  let slots = null;
   const markDirty = () => {
     const dirty = !same(draft, saved);
     saveBtn.disabled = !dirty;
@@ -84148,6 +84786,7 @@ function openStageSheet(unitId, ctx2) {
   };
   drawLook(null);
   markDirty();
+  slots = renderSlotList(slotsHost, unitId, avatar, ctx2);
   void ctx2.st.listSprites(avatar).catch(() => []).then(async (labels) => {
     if (closed) return;
     const found2 = new Set(labels);
@@ -84171,19 +84810,21 @@ function openStageSheet(unitId, ctx2) {
   const finish8 = () => {
     if (closed) return;
     closed = true;
+    slots?.drop();
     sheet.remove();
     if (current2?.close === finish8) current2 = null;
   };
   const requestClose = async () => {
     if (closed || asking) return;
-    if (same(draft, saved)) {
+    const slotDirty = slots?.dirty() === true;
+    if (same(draft, saved) && !slotDirty) {
       finish8();
       return;
     }
     asking = true;
     const answer = await ctx2.modal({
       title: "UNSAVED CHANGES",
-      body: `Her look has changes that are not saved. Close and drop them?`,
+      body: `${same(draft, saved) ? "A slot has" : slotDirty ? "Her look and a slot have" : "Her look has"} changes that are not saved. Close and drop them?`,
       actions: [{ label: "[ DROP THEM ]", value: "drop", analyze: "glossary:stage_setup" }, { label: "[ KEEP EDITING ]", value: "keep", analyze: "glossary:stage_setup" }]
     });
     asking = false;
@@ -84786,7 +85427,7 @@ function createShell(deps) {
   let renderedScreen = null;
   let root = null;
   let previousFocus = null;
-  let view2;
+  let view3;
   let bannerHost;
   let heldHost = null;
   let toasts = null;
@@ -84999,7 +85640,7 @@ function createShell(deps) {
   function mountSceneDevice() {
     const dev = buildDevice(sceneDeviceUp);
     sceneDeviceHost = h("div", { class: "alius-scene-device", "data-up": String(sceneDeviceUp) }, dev);
-    view2.append(sceneDeviceHost);
+    view3.append(sceneDeviceHost);
     applySkin();
     drawMarks();
     applyDevice(sceneDeviceUp);
@@ -85010,7 +85651,7 @@ function createShell(deps) {
     if (sceneDeviceUp) renderTab();
   }
   function syncSceneInert() {
-    for (const el of view2.querySelectorAll(":scope > :not(.alius-scene-device)")) {
+    for (const el of view3.querySelectorAll(":scope > :not(.alius-scene-device)")) {
       el.toggleAttribute("inert", sceneDeviceUp);
       if (sceneDeviceUp) el.setAttribute("aria-hidden", "true");
       else el.removeAttribute("aria-hidden");
@@ -85043,7 +85684,7 @@ function createShell(deps) {
     device = null;
     sceneDeviceHost = null;
     if (!onScene()) sceneDeviceUp = false;
-    router.render(view2);
+    router.render(view3);
     if (onScene()) mountSceneDevice();
     renderedScreen = router.current();
     root.dataset.screen = renderedScreen;
@@ -85055,11 +85696,11 @@ function createShell(deps) {
     const modalLayer = h("div", { class: "alius-modal-layer" });
     bannerHost = h("div", { class: "alius-banner-host" });
     heldHost = h("div", { class: "alius-held-host" });
-    view2 = h("div", { class: "alius-view" });
-    view2.addEventListener("scroll", () => {
-      if (view2 && (view2.scrollTop !== 0 || view2.scrollLeft !== 0)) {
-        view2.scrollTop = 0;
-        view2.scrollLeft = 0;
+    view3 = h("div", { class: "alius-view" });
+    view3.addEventListener("scroll", () => {
+      if (view3 && (view3.scrollTop !== 0 || view3.scrollLeft !== 0)) {
+        view3.scrollTop = 0;
+        view3.scrollLeft = 0;
       }
     });
     root = h(
@@ -85078,7 +85719,7 @@ function createShell(deps) {
         ),
         bannerHost,
         heldHost,
-        view2,
+        view3,
         h(
           "div",
           { class: "alius-footer" },
@@ -85250,7 +85891,7 @@ function createShell(deps) {
         if (isDeviceUp()) renderTab();
       } else {
         const inPlace = screenRefresh.get(router.current());
-        if (inPlace && renderedScreen === router.current() && inPlace(view2)) {
+        if (inPlace && renderedScreen === router.current() && inPlace(view3)) {
           if (onScene() && sceneDeviceUp && panel) {
             renderStatus();
             renderTab();

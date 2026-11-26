@@ -8,7 +8,7 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../../src/content/types';
-import { checkFidelity, findDeclaration, normalize, portFunction, protoFragment, protoFunction, protoSource, protoValue, type FidelitySpec } from '../../helpers/protoFidelity';
+import { checkFidelity, findDeclaration, normalize, portFunction, protoControl, protoFragment, protoFunction, protoSource, protoValue, type FidelitySpec } from '../../helpers/protoFidelity';
 import { loadCore } from '../../helpers/loyalty';
 
 const ROOT = resolve(__dirname, '../../..');
@@ -104,6 +104,26 @@ describe('the fidelity helpers', () => {
   });
 });
 
+describe('the panel controls (P10e-f: the stage setup ports the prototypes\' fit controls)', () => {
+  it('protoControl reads a range input of the prototype\'s panel: its label, range, step and default', () => {
+    expect(protoControl('weight', 'overH')).toEqual({ label: 'over height', type: 'range', min: 0.6, max: 1.8, step: 0.01, value: 1.04 });
+    expect(protoControl('throne', 'aTilt')).toEqual({ label: 'art tilt °', type: 'range', min: -30, max: 30, step: 1, value: 8 });
+  });
+  it('protoControl reads a select: its option values and texts, the selected one or the first', () => {
+    expect(protoControl('shoe', 'feetSel')).toEqual({ label: 'feet in this picture', type: 'select', options: [['one', 'one'], ['two', 'two']], value: 'one' });
+    expect(() => protoControl('weight', 'noSuchControl')).toThrow(/noSuchControl/);
+  });
+  it('a port\'s control table must equal the prototype\'s inputs; a declared row must be the port\'s', async () => {
+    const spec: FidelitySpec = { prototype: 'weight', functions: [], tables: [], differences: [], controls: [{ module: 'tests/fixtures/fidelity/controls.ts', export: 'OVER' }] };
+    const failures = await checkFidelity(spec, { registries: reg });
+    expect(failures).toHaveLength(1);
+    expect(failures[0]).toMatch(/OVER\.overX/);
+    expect(failures[0]).toContain('"step":0.02');
+    const declared = { ...spec, differences: [{ fn: 'OVER.overX', reason: 'a fixture', diff: JSON.stringify({ label: 'over x', type: 'range', min: 0.3, max: 0.7, step: 0.02, value: 0.5 }) }] };
+    expect(await checkFidelity(declared, { registries: reg })).toEqual([]);
+  });
+});
+
 describe('the fidelity check', () => {
   it('a fidelity.json with an undeclared difference fails with the diff in the message', async () => {
     const spec = JSON.parse(readFileSync(join(ROOT, 'tests/fixtures/fidelity/undeclared.json'), 'utf8')) as FidelitySpec;
@@ -157,5 +177,25 @@ describe('the ports match their prototypes', () => {
     const spec = JSON.parse(readFileSync(join(DIR, name, 'fidelity.json'), 'utf8')) as FidelitySpec;
     const failures = await checkFidelity(spec, { registries: reg });
     expect(failures.join('\n\n')).toBe('');
+  });
+});
+
+/** P10e-f: the stage setup's ports (the fit controls and the zone marker of the prototypes' panels). */
+const STAGE = join(ROOT, 'src/ui/stage/fidelity.json');
+describe('the stage setup\'s ports match their prototypes (P10e-f)', () => {
+  it('src/ui/stage/fidelity.json', async () => {
+    const spec = JSON.parse(readFileSync(STAGE, 'utf8')) as FidelitySpec;
+    expect(spec.controls?.length ?? 0).toBeGreaterThan(0);
+    const failures = await checkFidelity(spec, { registries: reg });
+    expect(failures.join('\n\n')).toBe('');
+  });
+  it('an edited port fails: a "copy the fit" with a changed key, a control with a changed range', async () => {
+    const spec = JSON.parse(readFileSync(STAGE, 'utf8')) as FidelitySpec;
+    const fn = spec.functions.find((f) => f.fn === 'copyOver')!;
+    const edited: FidelitySpec = { ...spec, functions: [{ ...fn, module: 'tests/fixtures/fidelity/stagePort.ts' }], tables: [], controls: [], differences: spec.differences.filter((d) => d.fn === 'copyOver') };
+    expect((await checkFidelity(edited, { registries: reg })).join('\n')).toMatch(/copyOver.*undeclared/s);
+    const ctl = spec.controls!.find((c) => c.export === 'WEIGHT_CONTROLS')!;
+    const range: FidelitySpec = { ...spec, functions: [], tables: [], controls: [{ ...ctl, module: 'tests/fixtures/fidelity/stagePort.ts' }], differences: [] };
+    expect((await checkFidelity(range, { registries: reg })).join('\n')).toMatch(/WEIGHT_CONTROLS\.overSink/);
   });
 });

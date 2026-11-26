@@ -15,6 +15,8 @@
  *   the text of a string, a template or a regex is never touched (a template's `${…}` is normalized on one line).
  * - `protoValue(name, ident, deps?)`: a top-level table of the prototype, evaluated in a sandbox (`new Function` over its declaration and the
  *   declarations of `deps` alone).
+ * - `protoControl(name, id)`: one control of the prototype's panel (its HTML, outside the scripts): a range input's label, range, step
+ *   and default, or a select's options and the one selected (P10e-f: the stage setup ports the panels' fit controls).
  * - `checkFidelity(spec, { registries })`: the gate, see `FidelitySpec`.
  */
 import { readFileSync } from 'node:fs';
@@ -52,8 +54,18 @@ export interface FidelitySpec {
    * source as written, and the row is that one line (`ident` names nothing; `inline` by convention).
    */
   lines?: Array<{ ident: string; prototype?: string; registry?: 'physicsCues' | 'cardVoice'; physics?: string; format?: 'toYou' | 'ask' | 'exchange' | 'line' | 'literal'; cueKinds: Record<string, string> }>;
+  /**
+   * P10e-f: `controls` — the export `export` of `module` is a table keyed by the prototype's control ids; each row must equal
+   * `protoControl(prototype, id)`. A row that differs is declared in `differences` as `<export>.<id>` with the port's row as JSON.
+   */
+  controls?: Array<{ module: string; export: string; prototype?: string }>;
   differences: Array<{ fn: string; reason: string; diff: string }>;
 }
+
+/** A control of a prototype's panel, as `protoControl` reads it from the HTML. */
+export type ProtoControl =
+  | { label: string; type: 'range'; min: number; max: number; step: number; value: number }
+  | { label: string; type: 'select'; options: Array<[string, string]>; value: string };
 
 // ---------------------------------------------------------------------------------------------------------------------------------------
 // the scanner: a copy of the source with the inside of every string, template, comment and regex blanked (same length, newlines kept)
@@ -288,6 +300,30 @@ export function protoFragment(name: string, from: string, to: string): string {
     }
   }
   return src.slice(start, end);
+}
+
+const attr = (tag: string, name: string): string | undefined => new RegExp(`\\b${name}="([^"]*)"`).exec(tag)?.[1];
+const textOf = (html: string): string => html.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
+
+/** One control of the prototype's panel by its id: a range input or a select, with the text of its `<label>` before it. */
+export function protoControl(name: string, id: string): ProtoControl {
+  const html = readFileSync(join(ROOT, 'docs/prototypes', `${name}.html`), 'utf8').replace(/<script(\s[^>]*)?>[\s\S]*?<\/script>/g, (m) => ' '.repeat(m.length));
+  const re = new RegExp(`<(input|select)\\b[^>]*\\bid="${id.replace(/[$]/g, '\\$&')}"[^>]*>`, 'g');
+  const found = [...html.matchAll(re)];
+  if (found.length !== 1) throw new Error(`${found.length === 0 ? 'no' : 'more than one'} control "${id}" in ${name}.html`);
+  const m = found[0]!;
+  const at = m.index!;
+  const open = html.lastIndexOf('<label', at);
+  const label = open >= 0 && html.lastIndexOf('</label>', at) < open ? textOf(html.slice(html.indexOf('>', open) + 1, at)) : '';
+  if (m[1] === 'select') {
+    const body = html.slice(at + m[0].length, html.indexOf('</select>', at));
+    const options = [...body.matchAll(/<option\b([^>]*)>([\s\S]*?)<\/option>/g)].map((o) => ({ value: attr(o[1]!, 'value') ?? textOf(o[2]!), text: textOf(o[2]!), selected: /\bselected\b/.test(o[1]!) }));
+    return { label, type: 'select', options: options.map((o) => [o.value, o.text]), value: (options.find((o) => o.selected) ?? options[0])?.value ?? '' };
+  }
+  const type = attr(m[0], 'type');
+  if (type !== 'range') throw new Error(`the control "${id}" of ${name}.html is a ${type ?? 'text'} input (only ranges and selects are read)`);
+  const n = (k: string): number => Number(attr(m[0], k));
+  return { label, type: 'range', min: n('min'), max: n('max'), step: n('step'), value: n('value') };
 }
 
 const typeStripped = new Map<string, string>();
@@ -589,8 +625,9 @@ export async function checkFidelity(spec: FidelitySpec, opts: { registries: Regi
   const failures: string[] = [];
   const named = new Set(spec.functions.map((f) => f.fn));
   const linePaths = new Set((spec.lines ?? []).flatMap((l) => Object.keys(l.cueKinds).map((p) => `${l.ident}.${p}`)));
+  const controlTables = new Set((spec.controls ?? []).map((c) => c.export));
   for (const d of spec.differences) {
-    if (!named.has(d.fn) && !linePaths.has(d.fn)) failures.push(`a difference is declared for "${d.fn}", which is not a listed function or line`);
+    if (!named.has(d.fn) && !linePaths.has(d.fn) && !controlTables.has(d.fn.split('.')[0]!)) failures.push(`a difference is declared for "${d.fn}", which is not a listed function or line`);
     if (d.reason.trim() === '') failures.push(`the difference of "${d.fn}" has no reason`);
   }
   for (const f of spec.functions) {
@@ -647,6 +684,36 @@ export async function checkFidelity(spec: FidelitySpec, opts: { registries: Regi
     } catch (err) {
       failures.push(`the table ${t.ident} (${proto}.html → ${t.module}): ${(err as Error).message}`);
     }
+  }
+  for (const c of spec.controls ?? []) {
+    const proto = c.prototype ?? spec.prototype;
+    let rows: Record<string, unknown>;
+    try {
+      const mod = (await import(/* @vite-ignore */ join(ROOT, c.module))) as Record<string, unknown>;
+      if (!(c.export in mod)) throw new Error(`${c.module} exports no "${c.export}"`);
+      rows = mod[c.export] as Record<string, unknown>;
+    } catch (err) {
+      failures.push(`the controls ${c.export} (${proto}.html → ${c.module}): ${(err as Error).message}`);
+      continue;
+    }
+    for (const [id, got] of Object.entries(rows)) {
+      const path = `${c.export}.${id}`;
+      let want: ProtoControl;
+      try {
+        want = protoControl(proto, id);
+      } catch (err) {
+        failures.push(`${path}: ${(err as Error).message}`);
+        continue;
+      }
+      const declared = spec.differences.find((d) => d.fn === path);
+      if (declared) {
+        if (isDeepStrictEqual(want, got)) failures.push(`${path}: a difference is declared, but the row equals the prototype`);
+        else if (declared.diff !== JSON.stringify(got)) failures.push(`${path}: the declared row ${declared.diff} is not the port's ${JSON.stringify(got)}`);
+        continue;
+      }
+      if (!isDeepStrictEqual(want, got)) failures.push(`${path} (${proto}.html) is not the prototype's control:\n  prototype: ${JSON.stringify(want)}\n  port:      ${JSON.stringify(got)}`);
+    }
+    for (const d of spec.differences) if (d.fn.startsWith(`${c.export}.`) && !(d.fn.slice(c.export.length + 1) in rows)) failures.push(`a difference is declared for "${d.fn}", which is not a row of ${c.export}`);
   }
   for (const l of spec.lines ?? []) {
     const proto = l.prototype ?? spec.prototype;

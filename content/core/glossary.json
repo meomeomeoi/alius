@@ -3674,5 +3674,34 @@
     "see": [
       "stage_setup"
     ]
+  },
+  {
+    "id": "stage_load",
+    "term": "Load a picture",
+    "short": "Choose an image file for this slot: png, webp, jpg, gif or avif, up to 20 MB. It is uploaded only on SAVE.",
+    "long": "The picture goes into her expressions folder, in its alius subfolder, named by the slot. A new picture of another type replaces the old one and keeps its fit.",
+    "see": [
+      "stage_setup",
+      "stage_fit"
+    ]
+  },
+  {
+    "id": "stage_fit",
+    "term": "Fit",
+    "short": "How the slot's picture is placed in its mini-game: the controls of the mini-game's own prototype panel, with their ranges and defaults.",
+    "long": "SAVE writes the picture (if a new one was loaded) and its fit, a small file beside it (its name plus .fit.json). A slot with a fit counts as fitted.",
+    "see": [
+      "stage_setup",
+      "stage_slot_state"
+    ]
+  },
+  {
+    "id": "stage_remove",
+    "term": "Remove",
+    "short": "Deletes the slot's picture and its fit from her folder, after asking.",
+    "long": "The mini-game then falls back as it does without art (her sprite, the automatic zones or the text of the scene).",
+    "see": [
+      "stage_setup"
+    ]
   }
 ]

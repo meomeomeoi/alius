@@ -1,0 +1,228 @@
+{
+  "prototype": "weight",
+  "note": "P10e-f chunk f3: the stage setup's ports of the prototypes' panels (src/ui/stage/fit/). Each slot's fit controls are its prototype's panel inputs (`controls`: label, range, step and default, or a select's options), bound by the prototype's own handlers (run over the editor's elements through a `$` that finds `[data-proto=<id>]`; the prototype's page parts the editor does not show are detached stand-ins), and its \"copy the fit\" gives the sidecar (unknown keys such as `slot`, `kind`, `states` are dropped by `sidecarSchema`). Not ported (prototype only): the game, its loaders, the clipboard. Module wiring beyond the listed functions: each panel's `load` (the sidecar into the prototype's `S`, as the slot's instrument reads it), `value`, `ids`, `writes`, and her_activity's split of its one legs JSON into the three pictures' sidecars as `frame.ts` reads them.",
+  "functions": [
+    {
+      "fn": "bindOver",
+      "module": "src/ui/stage/fit/weight.ts",
+      "fragment": {
+        "from": "for (const [id, key] of [['overH', 'overH']",
+        "to": "for (const [id, key] of [['overH', 'overH']"
+      }
+    },
+    {
+      "fn": "copyOver",
+      "module": "src/ui/stage/fit/weight.ts",
+      "fragment": {
+        "from": "$('#copyOver').onclick",
+        "to": "$('#copyOver').onclick"
+      }
+    },
+    {
+      "fn": "bindRange",
+      "module": "src/ui/stage/fit/activity.ts",
+      "prototype": "her_activity"
+    },
+    {
+      "fn": "bindFit",
+      "module": "src/ui/stage/fit/activity.ts",
+      "prototype": "her_activity",
+      "fragment": {
+        "from": "bindRange('seed', 'seed');",
+        "to": "bindRange('seed', 'seed');"
+      }
+    },
+    {
+      "fn": "copyLegs",
+      "module": "src/ui/stage/fit/activity.ts",
+      "prototype": "her_activity",
+      "fragment": {
+        "from": "$('#copyFit').onclick",
+        "to": "$('#copyFit').onclick"
+      }
+    },
+    {
+      "fn": "copySole",
+      "module": "src/ui/stage/fit/activity.ts",
+      "prototype": "her_activity",
+      "fragment": {
+        "from": "const j = JSON.stringify({ slot: 'sole_close'",
+        "to": "const j = JSON.stringify({ slot: 'sole_close'"
+      }
+    },
+    {
+      "fn": "bindRange",
+      "module": "src/ui/stage/fit/throne.ts",
+      "prototype": "throne"
+    },
+    {
+      "fn": "bindThrone",
+      "module": "src/ui/stage/fit/throne.ts",
+      "prototype": "throne",
+      "fragment": {
+        "from": "bindRange('frameDrain', 'frameDrain');",
+        "to": "$('#astrideFeet').onchange"
+      }
+    },
+    {
+      "fn": "astrideFit",
+      "module": "src/ui/stage/fit/throne.ts",
+      "prototype": "throne",
+      "fragment": {
+        "from": "$('#astrideFit').onclick",
+        "to": "$('#astrideFit').onclick"
+      }
+    },
+    {
+      "fn": "reset",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe",
+      "fragment": {
+        "from": "  feet: { boots_close: 'one'",
+        "to": "  fit: { boots_close:"
+      }
+    },
+    {
+      "fn": "K",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    },
+    {
+      "fn": "view",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    },
+    {
+      "fn": "slotKey",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    },
+    {
+      "fn": "twoFeet",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    },
+    {
+      "fn": "mirrored",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    },
+    {
+      "fn": "footX",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    },
+    {
+      "fn": "zonesNow",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    },
+    {
+      "fn": "bindShoeFeet",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe",
+      "fragment": {
+        "from": "$('#feetSel').onchange",
+        "to": "$('#viewSel').onchange"
+      }
+    },
+    {
+      "fn": "syncFit",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    },
+    {
+      "fn": "bindShoeFit",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe",
+      "fragment": {
+        "from": "$('#fitH').oninput",
+        "to": "$('#fitY').oninput"
+      }
+    },
+    {
+      "fn": "copyFit",
+      "module": "src/ui/stage/fit/shoe.ts",
+      "prototype": "shoe"
+    }
+  ],
+  "tables": [],
+  "controls": [
+    {
+      "module": "src/ui/stage/fit/weight.ts",
+      "export": "WEIGHT_CONTROLS"
+    },
+    {
+      "module": "src/ui/stage/fit/activity.ts",
+      "export": "ACTIVITY_CONTROLS",
+      "prototype": "her_activity"
+    },
+    {
+      "module": "src/ui/stage/fit/throne.ts",
+      "export": "THRONE_CONTROLS",
+      "prototype": "throne"
+    },
+    {
+      "module": "src/ui/stage/fit/shoe.ts",
+      "export": "SHOE_CONTROLS",
+      "prototype": "shoe"
+    }
+  ],
+  "differences": [
+    {
+      "fn": "bindOver",
+      "reason": "The prototype keeps this inline in its panel script; the port wraps it in a function the editor calls (no other change).",
+      "diff": "@@ -1 +1,2 @@\n+function bindOver(){\n for(const[id,key]of[[\"overH\",\"overH\"],[\"overX\",\"overX\"],[\"overSink\",\"overSink\"]]){\n@@ -7 +8,2 @@\n }\n+}"
+    },
+    {
+      "fn": "copyOver",
+      "reason": "The prototype's button writes the clipboard and a note; the editor never touches the clipboard: the function returns the JSON, which becomes the draft's sidecar.",
+      "diff": "@@ -1,2 +1,2 @@\n-$(\"#copyOver\").onclick=()=>{\n+function copyOver(){\n const j=JSON.stringify({\n@@ -6,4 +6,3 @@\n })\n-navigator.clipboard?.writeText(j).catch(()=>{})\n-$(\"#overNote\").textContent=j\n+return j\n }"
+    },
+    {
+      "fn": "bindFit",
+      "reason": "The prototype keeps this inline in its panel script; the port wraps it in a function the editor calls (no other change).",
+      "diff": "@@ -1 +1,2 @@\n+function bindFit(){\n bindRange(\"seed\",\"seed\")\n@@ -15 +16,2 @@\n bindRange(\"vol\",\"vol\")\n+}"
+    },
+    {
+      "fn": "copyLegs",
+      "reason": "The prototype's button writes the clipboard and a note; the editor never touches the clipboard: the function returns the JSON, which becomes the draft's sidecar.",
+      "diff": "@@ -1,2 +1,2 @@\n-$(\"#copyFit\").onclick=()=>{\n+function copyLegs(){\n const j=JSON.stringify({\n@@ -12,4 +12,3 @@\n })\n-navigator.clipboard?.writeText(j).catch(()=>{})\n-$(\"#fitNote\").textContent=j\n+return j\n }"
+    },
+    {
+      "fn": "copySole",
+      "reason": "The prototype's button writes the clipboard and a note; the editor never touches the clipboard: the function returns the JSON, which becomes the draft's sidecar.",
+      "diff": "@@ -1 +1,2 @@\n+function copySole(){\n const j=JSON.stringify({\n@@ -5,3 +6,3 @@\n })\n-navigator.clipboard?.writeText(j).catch(()=>{})\n-$(\"#soleNote\").textContent=j\n+return j\n+}"
+    },
+    {
+      "fn": "bindThrone",
+      "reason": "The prototype keeps this inline in its panel script; the port wraps it in a function the editor calls (no other change).",
+      "diff": "@@ -1 +1,2 @@\n+function bindThrone(){\n bindRange(\"frameDrain\",\"frameDrain\")\n@@ -9 +10,2 @@\n }\n+}"
+    },
+    {
+      "fn": "astrideFit",
+      "reason": "The prototype's button writes the clipboard and a note; the editor never touches the clipboard: the function returns the JSON, which becomes the draft's sidecar.",
+      "diff": "@@ -1,2 +1,2 @@\n-$(\"#astrideFit\").onclick=()=>{\n+function astrideFit(){\n const j=JSON.stringify({\n@@ -8,4 +8,3 @@\n })\n-navigator.clipboard?.writeText(j).catch(()=>{})\n-$(\"#astrideNote\").textContent=j\n+return j\n }"
+    },
+    {
+      "fn": "reset",
+      "reason": "The prototype's initial `S` (its picture tables, per kind and view: the sole has its own height, y and fade); the port writes the same tables into its `S` each time a slot is opened.",
+      "diff": "@@ -1,6 +1,9 @@\n-feet:{\n+function reset(){\n+S.feet={\n boots_close:\"one\",boots_sole:\"one\",heels_close:\"one\",heels_sole:\"one\"\n-},shown:{\n+}\n+S.shown={\n boots_close:\"right\",boots_sole:\"right\",heels_close:\"right\",heels_sole:\"right\"\n-},fit:{\n+}\n+S.fit={\n boots_close:{\n@@ -14,3 +17,4 @@\n }\n-},zones:{}\n }\n+S.zones={}\n+}"
+    },
+    {
+      "fn": "bindShoeFeet",
+      "reason": "The prototype keeps this inline in its panel script; the port wraps it in a function the editor calls (no other change).",
+      "diff": "@@ -1 +1,2 @@\n+function bindShoeFeet(){\n $(\"#feetSel\").onchange=()=>{\n@@ -36 +37,2 @@\n }\n+}"
+    },
+    {
+      "fn": "bindShoeFit",
+      "reason": "The prototype keeps this inline in its panel script; the port wraps it in a function the editor calls (no other change).",
+      "diff": "@@ -1 +1,2 @@\n+function bindShoeFit(){\n $(\"#fitH\").oninput=()=>{\n@@ -16 +17,2 @@\n }\n+}"
+    },
+    {
+      "fn": "copyFit",
+      "reason": "Two changes: no clipboard (the function returns the JSON, which becomes the draft's sidecar), and the zones written are only those marked: the prototype writes the automatic zones (`zonesNow()`) when none are marked, and the instrument reads those itself when a sidecar has none (shoe.ts `fitFrom`), so play is the same while the slot list can tell a marked slot (`zoned`) from a fitted one.",
+      "diff": "@@ -9,6 +9,6 @@\n }:{})\n-},zones:S.zones[slotKey()]??zonesNow()\n+},zones:S.zones[slotKey()]\n })\n-navigator.clipboard?.writeText(j).catch(()=>{})\n $(\"#sideNote\").textContent=j\n+return j\n }"
+    }
+  ]
+}

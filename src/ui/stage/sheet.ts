@@ -6,12 +6,13 @@ import { h } from '../dom';
 import { stageSetupSchema, type StageSetup } from './load';
 import { renderLookEditor } from './lookEditor';
 import type { StageCtx } from './section';
+import { renderSlotList } from './slotEditor';
 
 /**
  * P10e-f: her page, a full-screen sheet over the shell (z 2: above the scene's device, below the shell's modals and the analysis
- * panel). Her sprites, how she stands and her face point, her hand, her accent; her slots are Task 6's (`.alius-stage-slots-host`).
- * The edits are a draft: SAVE writes `stage.json`, closing with unsaved edits asks once, a chat switch closes it at once and saves
- * nothing. Setup data about a card, outside any campaign: nothing here dispatches, saves a campaign or draws an rng.
+ * panel). Her sprites, how she stands and her face point, her hand, her accent; her slots (`renderSlotList`, in `.alius-stage-slots-host`).
+ * The edits are a draft: SAVE writes `stage.json` (a slot saves itself), closing with unsaved edits asks once, a chat switch closes it at
+ * once and saves nothing. Setup data about a card, outside any campaign: nothing here dispatches, saves a campaign or draws an rng.
  */
 
 /** The label her scene sprite shows when nothing else is asked (the scene's `faceOf` default). */
@@ -90,6 +91,7 @@ export function openStageSheet(unitId: string, ctx: StageCtx): () => void {
   const status = h('span', { class: 'alius-stage-status', role: 'status' });
   const saveBtn = h('button', { type: 'button', class: 'alius-btn alius-option', 'data-action': 'save', ...analyzeNative('glossary:stage_setup') }, '[ SAVE ]') as HTMLButtonElement;
   const closeBtn = h('button', { type: 'button', class: 'alius-btn alius-option', 'data-action': 'close', ...analyzeNative('glossary:stage_setup') }, '[ CLOSE ]');
+  let slots: { dirty(): boolean; drop(): void } | null = null;
   const markDirty = (): void => {
     const dirty = !same(draft, saved);
     saveBtn.disabled = !dirty;
@@ -98,7 +100,7 @@ export function openStageSheet(unitId: string, ctx: StageCtx): () => void {
 
   const spritesBlock = h('section', { class: 'alius-stage-block alius-stage-sprites-block', ...analyzeAttrs('glossary:stage_sprites') }, h('h3', {}, 'Her sprites'), h('p', { class: 'alius-dim' }, 'checking…'));
   const lookHost = h('div', { class: 'alius-stage-look' });
-  const slotsHost = h('div', { class: 'alius-stage-slots-host', 'data-unit': unitId }); // her slots: Task 6
+  const slotsHost = h('div', { class: 'alius-stage-slots-host', 'data-unit': unitId });
   const sheet = h(
     'div',
     { class: 'alius-stage-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': `Stage setup: ${unit.displayName}`, 'data-unit': unitId, tabindex: '-1' },
@@ -112,6 +114,7 @@ export function openStageSheet(unitId: string, ctx: StageCtx): () => void {
   };
   drawLook(null);
   markDirty();
+  slots = renderSlotList(slotsHost, unitId, avatar, ctx);
 
   // her sprites: the labels found, the ones the instruments ask for and what stands in for a missing one
   void ctx.st.listSprites(avatar).catch(() => [] as string[]).then(async (labels) => {
@@ -140,16 +143,18 @@ export function openStageSheet(unitId: string, ctx: StageCtx): () => void {
   const finish = (): void => {
     if (closed) return;
     closed = true;
+    slots?.drop(); // a slot's draft is dropped, nothing is saved
     sheet.remove();
     if (current?.close === finish) current = null;
   };
   const requestClose = async (): Promise<void> => {
     if (closed || asking) return;
-    if (same(draft, saved)) { finish(); return; }
+    const slotDirty = slots?.dirty() === true;
+    if (same(draft, saved) && !slotDirty) { finish(); return; }
     asking = true;
     const answer = await ctx.modal({
       title: 'UNSAVED CHANGES',
-      body: `Her look has changes that are not saved. Close and drop them?`,
+      body: `${same(draft, saved) ? 'A slot has' : slotDirty ? 'Her look and a slot have' : 'Her look has'} changes that are not saved. Close and drop them?`,
       actions: [{ label: '[ DROP THEM ]', value: 'drop', analyze: 'glossary:stage_setup' }, { label: '[ KEEP EDITING ]', value: 'keep', analyze: 'glossary:stage_setup' }],
     });
     asking = false;
