@@ -21,7 +21,7 @@ import { chainRun, coreRun, stopPhysics } from './run';
 import { attentionCue, attentionPlan, cheatRoll, segmentNoise, type NoiseKind } from './gaze';
 import { addEnduranceXp, herSkillOf } from './skill';
 import {
-  INPUT_KINDS, type Attention, type PhysicsRun, type PhysicsStyle, type PlannedBeat, type ScentBand, type SegmentInput, type SegmentPlan, type SegmentResult,
+  INPUT_KINDS, type Attention, type JawOrder, type PhysicsRun, type PhysicsStyle, type PlannedBeat, type ScentBand, type SegmentInput, type SegmentPlan, type SegmentResult,
 } from './state';
 import { blendedStyle, leadStyle, physicsStyleOf, styleRows } from './style';
 import { scentBand } from './scent';
@@ -117,7 +117,38 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
   }
   if (lead.cues === 'count') for (let i = 0; i < n; i++) if (beats[i]!.cue === undefined) beats[i] = { ...beats[i]!, cue: 'count' };
   if (lead.cues === 'sparse') for (let i = 0; i < n; i++) if (beats[i]!.cue !== undefined && rng.chance(0.5)) delete beats[i]!.cue;
+  // R22: her moves in the jaw, in real time only (the turn-based card is unchanged); by hash after every draw above, so no draw is added or moved
+  if (realtime && interactions.includes('gesture')) planJaw(beats, state, run, lead.key);
   return { beats };
+}
+
+/**
+ * P10e-e R22 (R3): her moves in a jaw segment, by hash (`fnv1a(<salt>|<runId>|<segment>|<beat>|jaw|<key>)`), never by rng. As jaw.html's
+ * `herMove`: the first `firstMs` in, the next after her style's `every` seconds plus the order's own length. Her toes (a contact) push
+ * `deeper`, `pull_back`, ask her to `suck` or want it `wider`; the ring (an item) asks her question or wants it `wider`. An order's cue is its
+ * own kind and replaces whatever cue the beat had; a question has none.
+ */
+function planJaw(beats: PlannedBeat[], state: CampaignState, run: PhysicsRun, styleKey: string): void {
+  const J = P.jawOrders;
+  const st = J.styles[styleKey] ?? J.styles.other!;
+  const h = (b: number, key: string): number => fnv1a(`${state.life?.salt ?? 0}|${run.id}|${run.segment.n}|${b}|jaw|${key}`);
+  const unit = (b: number, key: string): number => (h(b, key) % 10000) / 10000;
+  const span = (b: number, key: string, [lo, hi]: readonly [number, number]): number => lo + (h(b, key) % (hi - lo + 1));
+  let t = J.firstMs;
+  for (let b = Math.floor(t / P.beatMs); b < beats.length; b = Math.floor(t / P.beatMs)) {
+    const r = unit(b, 'move');
+    let order: JawOrder | undefined;
+    if (run.sourceKind === 'item') {
+      if (r < 0.4 + st.ask * 0.5) beats[b] = { ...beats[b]!, ask: true };
+      else order = 'wider';
+    } else order = r < J.toes[0] ? 'deeper' : r < J.toes[1] ? 'pull_back' : r < J.toes[2] ? 'suck' : 'wider';
+    let ms = 0;
+    if (order !== undefined) {
+      ms = order === 'suck' ? span(b, 'len', J.suckMs) : order === 'wider' ? span(b, 'len', J.wideMs) : 0;
+      beats[b] = { ...beats[b]!, order, cue: order, ...(ms > 0 ? { orderMs: ms } : {}) };
+    }
+    t += span(b, 'every', [st.every[0] * 1000, st.every[1] * 1000]) + ms;
+  }
 }
 
 /** The seal she is using this segment: the run's, tightened one step per 2 levels of her `seal` skill. */
@@ -175,7 +206,7 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
   // one input of a kind counts once on a beat: a key pressed five times in a beat is not five breaths (review)
   const live = inputs.filter((i) => {
     if (lapsed.has(i.beat) || i.beat >= plan.beats.length) return false;
-    const key = `${i.beat}|${i.kind}`;
+    const key = `${i.beat}|${i.kind}${i.kind === 'bite' && i.part === 'teeth' ? '|teeth' : ''}`; // a touch of the teeth and the beat's cost are two inputs
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -205,6 +236,8 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
   // R18: scent's head (decision): whether the instrument reported the words breathed in, and what one word is worth of the gauge
   const inhaled = env.interaction === 'decision' && live.some((i) => i.kind === 'inhale');
   const word = cap / (env.head ?? headCapacity(TUNING.stimuli.startTolerance));
+  // R21: the jaw's cost of the opening: a segment the instrument reported (any bite but the teeth) costs per × amount a beat instead of per
+  const bitten = env.interaction === 'gesture' && live.some((i) => i.kind === 'bite' && i.part !== 'teeth');
   for (let b = 0; b < run_; b++) {
     const beat = plan.beats[b]!;
     const beatStart = r.gauge;
@@ -298,10 +331,14 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
       case 'passive':
         r.gauge += P.progressPerBeat;
         break;
-      case 'gesture':
-        r.gauge += P.jaw.per;
+      case 'gesture': {
+        const bites = at(b, 'bite');
+        const cost = bites.find((i) => i.part !== 'teeth');
+        r.gauge += bitten ? P.jaw.per * (cost === undefined ? 0 : cost.amount ?? 1) : P.jaw.per;
+        if (bites.some((i) => i.part === 'teeth')) r.slips += 1; // R22: the teeth touched her: a slip (bookkeeping)
         if (r.gauge >= P.jaw.degradeAt) r.degraded = true;
         break;
+      }
     }
     // the pace scale is applied to the beat, then clamped, so that a phase gives the same fiction at every pace (review: it was applied after the clamp)
     if (scale !== 1) r.gauge = Math.round((beatStart + (r.gauge - beatStart) * scale) * 100) / 100;

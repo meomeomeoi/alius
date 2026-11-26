@@ -879,12 +879,13 @@ For the author (e12): Ruling T; the fallback scents; her profile has no scent wo
   - `src/engine/tuning.ts` (`physics.jawRestMs` = `jaw.html`'s `REST_MS`; `physics.jawOrders`: the share of beats with an order, by style, from the prototype)
 - Test: `tests/engine/physics/jawInputs.test.ts`
 
-- [ ] **Step 1:** Tests:
+- [x] **Step 1:** Tests:
   - `bite replaces the flat cost`: amounts .33 and 1 over two beats cost `8 × 1.33`;
   - `a teeth bite is a slip`;
   - `orders are planned by hash`: the same run and segment give the same orders; `state.rng` is unchanged by planning a jaw segment (compare before/after);
   - `no bite: +8 a beat as today`.
-- [ ] **Steps 2–5** as Task 13 (`feat(P10e-e): the jaw's cost and her orders`).
+- [x] **Steps 2–5** as Task 13 (`feat(P10e-e): the jaw's cost and her orders`).
+  - *As built:* `bite` joins `INPUT_KINDS` and the gesture's `OWNS`. A gesture segment that holds any `bite` but the teeth costs `jaw.per × amount` on each beat (a beat with none costs nothing: the instrument reports one a beat; absent amount: 1); a `bite` with `part: 'teeth'` is a slip and no cost (deduplicated apart from the beat's cost: two inputs on one beat). The tally names gesture slips as `the teeth touched her N times`. Her moves are planned in real time only (the turn-based card is unchanged) by `fnv1a(<salt>|<runId>|<segment>|<beat>|jaw|<key>)`, after every draw of `planSegment` (no draw added or moved; a clinical holder's jaw segment draws nothing at all). **The prototype wins over "the share of beats":** `TUNING.physics.jawOrders` holds the prototype's schedule (`firstMs` 3000, `STYLES[].every` and `.ask` by style, `other` = neutral's, the toes' 32 / 18 / 25 / 25 %, `suck` 4–7 s, `wider` 3–5 s): a move, then the next after her `every` seconds plus the order's length, as `herMove`'s `nextMove`. `PlannedBeat` carries `order` (cue of the same kind), `orderMs` (the length of a `suck` / `wider`) and `ask` (her question through the ring: no cue; ring = an item source, read by `sourceKind`). New cue kinds `deeper`, `suck`, `wider`, `pull_back` with `physicsCues` rows limited to the jaw (the prototype's lines that fit any holder), and the cue call words them as spoken orders. `jawRestMs` 4200. No seeded test or golden moved. Memory: nothing (a teeth slip is `physics_slip`, bookkeeping).
 
 ### Task 20: The jaw instrument
 

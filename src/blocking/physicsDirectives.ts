@@ -38,6 +38,7 @@ const TALLY_WORDS: Record<string, Partial<Record<string, (n: number) => string>>
   timing: { caught: (n) => `${n} ${n === 1 ? 'opening' : 'openings'} caught`, falseTaken: (n) => `${n} false ${n === 1 ? 'opening' : 'openings'} taken` },
   hold: { slips: (n) => `the hold broke ${times(n)}` },
   order: { slips: (n) => `${n} ${n === 1 ? 'slip' : 'slips'} of the tongue` },
+  gesture: { slips: (n) => `the teeth touched her ${times(n)}` },
 };
 const times = (n: number): string => (n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`);
 const GENERIC: Record<string, (n: number) => string> = {

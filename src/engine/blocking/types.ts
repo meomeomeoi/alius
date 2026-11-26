@@ -30,8 +30,11 @@ export const INTERACTIONS = ['timing', 'hold', 'decision', 'order', 'passive', '
 export type InteractionType = (typeof INTERACTIONS)[number];
 
 /** The kinds of line in a physics' cue pool; `watch` and `look_away` are the signs of her attention (plan R12, R13). */
-/** Her cue kinds. `greedy` (P10e-e): she notices the commander holding on to the air past her opening. */
-export const CUE_KINDS = ['window_open', 'window_false', 'shift', 'press', 'lift', 'count', 'warning', 'watch', 'look_away', 'greedy'] as const;
+/**
+ * Her cue kinds. `greedy` (P10e-e): she notices the commander holding on to the air past her opening. `deeper`, `suck`, `wider`, `pull_back`
+ * (P10e-e R22): her orders in the jaw.
+ */
+export const CUE_KINDS = ['window_open', 'window_false', 'shift', 'press', 'lift', 'count', 'warning', 'watch', 'look_away', 'greedy', 'deeper', 'suck', 'wider', 'pull_back'] as const;
 export type CueKind = (typeof CUE_KINDS)[number];
 
 /** What an answer to a moment is, whatever its words (spec §7). */

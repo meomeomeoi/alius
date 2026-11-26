@@ -15,7 +15,7 @@ export type HoldsUntil = 'signal' | 'limit' | 'blackout';
 export type Attention = 'watching' | 'glancing' | 'busy';
 
 /** What the player does in a beat (`SegmentInput.kind`). */
-export const INPUT_KINDS = ['breathe', 'hold', 'release', 'mouth_breath', 'gap_breath', 'shift_weight', 'part', 'ask_rest', 'strain', 'uneven', 'inhale', 'scatter'] as const;
+export const INPUT_KINDS = ['breathe', 'hold', 'release', 'mouth_breath', 'gap_breath', 'shift_weight', 'part', 'ask_rest', 'strain', 'uneven', 'inhale', 'scatter', 'bite'] as const;
 export type InputKind = (typeof INPUT_KINDS)[number];
 /**
  * One input of a beat. `amount` (P10e-e R1, ≥ 0) is absent for every input of the turn-based card and means, per kind: `breathe`, the share of
@@ -26,8 +26,15 @@ export type InputKind = (typeof INPUT_KINDS)[number];
  * head), the words a breath left in the head this beat, each worth the gauge's capacity over the head's (`headCapacity`); a segment that holds
  * any `inhale` fills by them alone. `mouth_breath` with `amount` (R18), the words blown out of the head (absent: the card's flat cost). `scatter` (Ruling U), the words that left the
  * head without the mouth (a cough, the overflow's recovery, an answer's spent words): the fill falls by as many words; no relief, nothing else.
+ * `bite` (R21: the jaw), the beat's mean cost factor of the opening (jaw.html's `G.cost`: about ⅓ resting on her toes or the ring, 1 at her
+ * band's top, more wide open); a gesture segment that holds any costs `jaw.per × amount` a beat instead of the flat `jaw.per`. With
+ * `part: 'teeth'` (R22) it is a touch of the teeth on her: a slip, never a cost.
  */
 export interface SegmentInput { beat: number; kind: InputKind; atMs?: number; part?: string; amount?: number }
+
+/** P10e-e R22: her orders in the jaw (her toes: `deeper`, `pull_back`, `suck`, `wider`; the ring: `wider`). Each is a cue kind of the same name. */
+export const JAW_ORDERS = ['deeper', 'suck', 'wider', 'pull_back'] as const;
+export type JawOrder = (typeof JAW_ORDERS)[number];
 
 export interface PlannedBeat {
   /** An opening of her rhythm (the chance to breathe): how wide it is, and whether it is false (open and shut at once). */
@@ -37,6 +44,14 @@ export interface PlannedBeat {
   part?: string;
   /** A shift of her weight: how much it costs when the hold was uneven. */
   shift?: number;
+  /**
+   * P10e-e R22 (the jaw, real time): her move on this beat, planned by hash (R3), spaced as jaw.html's `STYLES[].every`. `order` is her order
+   * (its cue is the same kind); `orderMs` how long a `suck` or a `wider` lasts (the prototype's 4–7 s and 3–5 s; absent for an instant one);
+   * `ask` her question through the ring (no cue: her words and the word she wants are the instrument's, from her voice).
+   */
+  order?: JawOrder;
+  orderMs?: number;
+  ask?: true;
   attention: Attention;
 }
 /** The plan of one segment, drawn once at its start and stored in the run; the UI plays it and a reading never shows it. */

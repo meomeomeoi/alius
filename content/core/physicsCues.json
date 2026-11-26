@@ -102,5 +102,57 @@
       "release."
     ],
     "description": "P10e-e: her line when she notices the commander straining for air past her opening (breath.html's `greedy`: the neutral, affectionate and ritual lines, which fit any holder; the model words her own)."
+  },
+  {
+    "id": "cue_deeper",
+    "kind": "deeper",
+    "physics": [
+      "jaw"
+    ],
+    "lines": [
+      "deeper.",
+      "a little more.",
+      "all of it."
+    ],
+    "description": "P10e-e: her order in the jaw, she pushes deeper (jaw.html's `deeper`: the lines of the styles that fit any holder; the model words her own)."
+  },
+  {
+    "id": "cue_suck",
+    "kind": "suck",
+    "physics": [
+      "jaw"
+    ],
+    "lines": [
+      "suck.",
+      "gently. suck.",
+      "suck. lighter."
+    ],
+    "description": "P10e-e: her order in the jaw, she wants to be sucked (jaw.html's `suck`: the lines of the styles that fit any holder; the model words her own)."
+  },
+  {
+    "id": "cue_wider",
+    "kind": "wider",
+    "physics": [
+      "jaw"
+    ],
+    "lines": [
+      "wider. show me.",
+      "wide.",
+      "wider for me."
+    ],
+    "description": "P10e-e: her order in the jaw, she wants the mouth wider (jaw.html's `wide`: the lines of the styles that fit any holder; the model words her own)."
+  },
+  {
+    "id": "cue_pull_back",
+    "kind": "pull_back",
+    "physics": [
+      "jaw"
+    ],
+    "lines": [
+      "easy.",
+      "there.",
+      "back."
+    ],
+    "description": "P10e-e: her order in the jaw, she pulls back a little (jaw.html's `out`: the lines of the styles that fit any holder; the model words her own)."
   }
 ]

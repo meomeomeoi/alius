@@ -137,7 +137,25 @@ export const TUNING = Object.freeze({
     saturation: Object.freeze({ per: 10, bandFactor: Object.freeze({ faint: 0.5, noticeable: 1, strong: 1.5, overwhelming: 2 }), mouth: 20, noticed: 0.6 }),
     tongue: Object.freeze({ start: 100, right: 15, wrong: 8, checkAt: 10, dryness: 6, parts: Object.freeze(['toes', 'arch', 'heel', 'sole'] as const) }),
     gulpFill: Object.freeze({ caught: 5, spill: 20 }), jawRest: 30, noiseSlip: 1,
-    jaw: Object.freeze({ per: 8, degradeAt: 70 }), gulp: Object.freeze({ swallows: Object.freeze([4, 8] as const), spillDirt: 60 }), progressPerBeat: 5,
+    jaw: Object.freeze({ per: 8, degradeAt: 70 }),
+    /**
+     * P10e-e R23: how long a granted rest lasts in real time (jaw.html's `REST_MS`). R22: her moves in the jaw (real time), from jaw.html: the
+     * first `firstMs` in, then every `every` seconds by her lead style (`STYLES[].every`; a style the prototype lacks takes `other`, neutral's)
+     * plus the length of an order; her toes choose `deeper` / `pull_back` / `suck` / `wider` by `toes` (32 / 18 / 25 / 25 %), the ring asks
+     * on `0.4 + ask / 2` of her moves (`STYLES[].ask`) and else wants it `wider`; a `suck` lasts `suckMs`, a `wider` `wideMs`.
+     */
+    jawRestMs: 4200,
+    jawOrders: Object.freeze({
+      firstMs: 3000, toes: Object.freeze([0.32, 0.5, 0.75] as const), suckMs: Object.freeze([4000, 7000] as const), wideMs: Object.freeze([3000, 5000] as const),
+      styles: Object.freeze({
+        neutral: Object.freeze({ every: Object.freeze([5, 9] as const), ask: 0.35 }), affectionate: Object.freeze({ every: Object.freeze([7, 12] as const), ask: 0.4 }),
+        ritual: Object.freeze({ every: Object.freeze([6, 6] as const), ask: 0.3 }), playful: Object.freeze({ every: Object.freeze([4, 8] as const), ask: 0.45 }),
+        cruel: Object.freeze({ every: Object.freeze([3, 6] as const), ask: 0.5 }), possessive: Object.freeze({ every: Object.freeze([4, 8] as const), ask: 0.35 }),
+        vindictive: Object.freeze({ every: Object.freeze([4, 7] as const), ask: 0.4 }), clinical: Object.freeze({ every: Object.freeze([5, 9] as const), ask: 0.3 }),
+        other: Object.freeze({ every: Object.freeze([5, 9] as const), ask: 0.35 }),
+      } as Record<string, { readonly every: readonly [number, number]; readonly ask: number }>),
+    }),
+    gulp: Object.freeze({ swallows: Object.freeze([4, 8] as const), spillDirt: 60 }), progressPerBeat: 5,
     asleep: Object.freeze({ perBeat: 0.08, exchanges: Object.freeze([1, 3] as const) }),
     forget: Object.freeze({ base: 0.10, cruel: 0.15, perImpunity: 0.002, from: 50 }), slipExtend: 1,
     blackout: Object.freeze({ slots: 1, stress: 5 }),
