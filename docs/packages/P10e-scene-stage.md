@@ -1,6 +1,6 @@
 # P10e — The scene stage: full frame, prose subtitles, the history curtain, the posture dial
 
-**Status: chunks (a–d) implemented** (2026-11-22; plan `docs/plans/2026-11-22-p10e-scene-stage.md`; manual test `docs/MANUAL_TEST_P10e.md`). **Chunk (e), the mini-game instruments, her cards and the posture call: implemented** (2026-11-26; §15; plan `docs/plans/2026-11-25-p10e-e-instruments.md`; manual test `docs/MANUAL_TEST_P10e-e.md`; see **Implemented as: chunk (e)** at the end). **Chunk (f), the stage setup: to design** (§15). **Depends on:** P10 (shell, `motionReduced` / `visualFlags`, `unitAccent`), P10b, P10c (full-bleed backdrop, light, knee-length sprites), P14 (generation chips), P15a (blocking, moments, physics), P15, P16. **Prepares:** the mini-games design session (next), P16b, P17, P17c (camera, POV views, pose shots, frames).
+**Status: chunks (a–d) implemented** (2026-11-22; plan `docs/plans/2026-11-22-p10e-scene-stage.md`; manual test `docs/MANUAL_TEST_P10e.md`). **Chunk (e), the mini-game instruments, her cards and the posture call: implemented** (2026-11-26; §15; plan `docs/plans/2026-11-25-p10e-e-instruments.md`; manual test `docs/MANUAL_TEST_P10e-e.md`; see **Implemented as: chunk (e)** at the end). **Chunk (f), the stage setup: designed** (2026-11-26; §16; plan `docs/plans/2026-11-26-p10e-f-stage-setup.md`). **Depends on:** P10 (shell, `motionReduced` / `visualFlags`, `unitAccent`), P10b, P10c (full-bleed backdrop, light, knee-length sprites), P14 (generation chips), P15a (blocking, moments, physics), P15, P16. **Prepares:** the mini-games design session (next), P16b, P17, P17c (camera, POV views, pose shots, frames).
 
 **Analysis tool (P7a)** rules apply: every chip, option, card and the dial carry `data-analyze`.
 
@@ -396,6 +396,35 @@ Smaller ones: the deep inhale (in scent), `pet` (breath's kin), the long kiss (w
 3. ~~**Restyle the dock's cards to the scene's language**~~ (done 2026-11-25: "Her cards" above).
 3a. **Decided on 2026-11-25 (author):** the dock's cards in her voice (variant B3, texts in `docs/content/card-voice.md`, approved); collapsed cards are the edges of her hand (variant V: her name, the kind, the engine's gist and the most urgent condition); the posture call is a full-frame moment (variant D) in `docs/prototypes/cards.html` (rounds in progress); **every hand of the gallery goes into the game** (the six of P10b, 36 candidates of every kind and six strict print hands; now `fonts/hand-*-400.woff2` and `content/core/handFonts.json`, each with its size factor measured against Caveat); **the stage setup is chunk (f) of P10e**, designed after (e)'s plan: per woman (are her sprites found, how she stands on the stage, her hand and her accent as data), per art slot (load, fit, zones with the prototypes' marker, a preview in its mini-game, the sidecar saved beside the picture) and a list of every slot with its state; chunk (e) ports the games with their fallbacks (her sprite, automatic zones). The real dial's corner shifts its circle with a wide label (`.alius-stage-dial`): fixed in (e) as `cards.html` does.
 4. ~~Write the design into this spec~~ (done 2026-11-25), then the **plan of chunk (e)** (`docs/plans/2026-11-25-p10e-e-instruments.md`), then build with the usual scheme: one Sonnet high agent, one Opus review, fast tests, `npm run test:layout`. The plan's tasks port the prototypes in `docs/prototypes/` exactly (code, not prose; author, 2026-11-24: a port that drifts means doing the rounds again), and its review compares the game against them side by side (screenshots at the same settings).
+
+## 16. Chunk (f): the stage setup (design session 2026-11-26)
+
+**Status:** designed with the author on 2026-11-26; planned in `docs/plans/2026-11-26-p10e-f-stage-setup.md`. It builds the screen §15 "Decided on 2026-11-25" names: per woman (her sprites, how she stands, her hand and her accent as data), per art slot (load, fit, zones with the prototypes' marker, a preview in its mini-game, the sidecar beside the picture) and the list of every slot with its state.
+
+### 16.1 Where her art lives (author, 2026-11-26)
+- **In her expressions folder, in a subfolder `alius/`:** `characters/<her sprite folder>/alius/` (the folder is `spriteFolder(avatar, name, expressionOverrides)`, its **first segment** only, so an override that already names a subfolder still maps to the character's folder). SillyTavern's Expressions lists only the folder's root, so nothing of this enters the expression picker.
+- **Files:** a picture per slot named by the slot id (`over.png`, `legs_astride.left.webp`, `shoe_close.boots.jpg`; any image type ST lists); beside it its sidecar **`<slot>.fit.json`** (never `<slot>.json`: ST's upload deletes every file whose name without extension equals the uploaded one); and **`stage.json`** for her: how she stands, her face point, her hand, her accent.
+- **Hand-placed files work:** the author may drop files there by hand; the screen only adds, replaces and removes them.
+- **The old `content/local/art/art.json`** stays a read-only second source (a slot found in her folder wins).
+- **ST APIs** (checked against SillyTavern `release`, `src/endpoints/sprites.js` and `src/users.js`): `GET /api/sprites/get?name=<folder>/alius` lists the images (label, path `/characters/<folder>/alius/<file>?t=<mtime>`); `GET /characters/<folder>/alius/<file>` serves any file (a sidecar's 404 = none); `POST /api/sprites/upload` (multipart: the file in field `avatar`, `name` = `<folder>/alius`, `label`, `spriteName` = the file's name without extension) creates the folder and replaces a file of the same name; `POST /api/sprites/delete` (`name`, `label`, `spriteName`). Everything goes through `src/st/` with `getRequestHeaders()`.
+
+### 16.2 SYS › STAGE (author: in SYS)
+- **The section** (in SYS, after the settings): a list of the squad's women, each with her sprite found / missing and her slots filled (n / 12); **the list of every slot**: women × slots, each cell's state (`none` · `picture` · `fitted` · `zoned`; a slot without zones skips `zoned`); a toggle **"Show explicit slots"** (setting `showExplicitSlots`, default off: until it is on, `over_explicit` is neither listed nor editable; in play it is still opened only by her campaign's `explicit_scenes` gate).
+- **Her page** (a full-screen sheet over the shell):
+  - **Her sprites:** which expression labels her folder has, which the instruments' faces ask for (the slap's table `TUNING.practice.slap.faces`, the frame's) and what stands in for a missing one.
+  - **How she stands:** scale, vertical and horizontal offset of her scene sprite (one set for every expression), and her face point (the slap's; it replaces the manifest's sidecar-only `sprite.face`), with a live view of her on the stage.
+  - **Her hand:** the 48 hands, each shown as a written sample at its measured size.
+  - **Her accent:** the existing palette (`UNIT_ACCENTS`) or a colour of the author's.
+  - **Her slots:** each with its state; **load** (an image file, uploaded), **fit** (the slot's prototype panel's fit controls, ported), **zones** (the prototypes' zone marker, ported exactly: a plain click places a point zone; a press and a drag an ellipse, the wheel turns it, 5° a notch, 1° with Shift; with Shift a circle), **check in the mini-game** (§16.3), remove.
+- **Precedence of her hand and her accent** (author): the campaign's own choice (`unit.hand`), then her `stage.json`, then the hash.
+
+### 16.3 The preview in the mini-game
+The slot's instrument runs on a demo run in a sandbox over the shell: a throwaway campaign state built for that instrument (as the layout fixtures build theirs), her real sprite and the slot's unsaved fit and zones. Nothing reaches the open campaign, the save, the chat or the model; closing it drops the sandbox.
+
+### 16.4 Rules
+- Rendering and setup only: no engine state, event, action, rng draw or memory fact (bookkeeping: nothing is remembered; no journal, chronicle or prompt line).
+- No art = today's game, byte for byte (the instruments fall back as they do).
+- Every control carries `data-analyze`; no text gives the commander a pronoun; nothing loads from outside the ST server.
 
 ## Implemented as
 
