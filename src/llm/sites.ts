@@ -91,6 +91,8 @@ declare('development.review', 'development_review', 'world', 'before_commit', 'q
 declare('opinion.form', 'opinion_form', 'scene', 'none', 'quiet', 'Her opinion');
 // P15a: her cue lines are display text, asked for once when a hold starts (the registry stands in); nothing is worth a reroll
 declare('physics.cues', 'physics_cues', 'scene', 'none', 'quiet', 'Her cues');
+// P10e-e R26: her hour's script, one call per phase of her frame
+declare('physics.script', 'activity_script', 'scene', 'none', 'quiet', 'Her hour');
 // P16: what a holder asks of the commander, one site per kind (key = the request id): a card can be reworded until the commander has answered it
 for (const kind of PRACTICE_KINDS) declare(`practice.${kind}`, 'practice_generate', 'comms', 'before_commit', 'full', 'Her practice');
 // P16: her name for a posture she has the commander take, asked for once when it is first set (the label stands in); nothing is worth a reroll

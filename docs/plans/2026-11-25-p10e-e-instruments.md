@@ -967,13 +967,14 @@ Also settled: the reply block is lifted clear of the open mouth through a claim 
   - the call's input `{ unitId, name, card ≤ 600 chars, activity, phase, hours, presence: never sent, style, known: string[] (through Knowledge: the real reports, the last run, a unit's wound, the commander's decision), listeners: Array<{ id, name, knows: 'none' | 'suspects' | 'knows' }> }`;
   - the validated output `Array<{ at: number; who: 'her' | 'other'; to: 'self' | 'other' | 'commander'; text: string ≤ 160; covers: boolean; ask?: true; mention?: { to: string; plain: string; veiled: string } }>`;
   - `mentionText(state, reg, holderId, listenerId, mention, tactic?: 'reckless'): string | null` (plain if the listener knows or the relation is public enough, P9d; plain anyway with `reckless`; veiled or `null` otherwise).
-- [ ] **Step 1:** Tests:
+- [x] **Step 1:** Tests:
   - the sanitizer drops a line with a pronoun for the commander;
   - `at` is clamped to the phase;
   - a mention to a listener who knows is plain, to one who does not is veiled, unsaid without a veiled form;
   - the call is made through `app.generations` only (the architecture test);
   - a failed call leaves the cue pool's placeholder lines.
-- [ ] **Steps 2–5** as Task 13 (`feat(P10e-e): her hour's script`).
+- [x] **Steps 2–5** as Task 13 (`feat(P10e-e): her hour's script`).
+  - *As built:* `activity_script` (mechanic, JSON, budget 900) at the quiet scene site `physics.script` ("Her hour", not rerollable). The staging controller binds it and asks once per phase of a frame run: on its `physics_started` (phase 1) and on each `marathon_phase` that starts a phase; the validated script is kept by `sceneId|runId|phase` and read through `staging.script(phase?)`; a failed call stores nothing (her placeholder lines play), and `reset` (chat switch) drops every script. The input is built through `Knowledge` (the facts the commander may know that are about her or known by her, the six newest, and who is injured), her presence is never in it; listeners: `oversight` on a call, the first active named unit outside the scene for a visitor (what each knows by `listenerKnows`). `sanitizeScript`: the shape `{ at, who, to, text, covers, ask?, mention? }` (and 24b's fields, validated here already), `at` clamped to the phase, text cleaned and cut at 160, a line that says "he" of anyone or an `about` line with any third-person pronoun dropped (her words about other women keep theirs), a mention only to a listener of the phase, at most 24 lines, sorted. `src/engine/physics/mention.ts`: `listenerKnows` (P15's `state.dynamic.knowledge` levels, read from the state) and `mentionText` (plain when the listener knows or her relation is `public`, plain anyway with `reckless`, the veiled form, else `null`).
 
 ### Task 23: The forgotten end, being found, the digest
 
