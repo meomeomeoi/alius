@@ -30,6 +30,6 @@ export function bellsFor(events: readonly EngineEvent[], state: CampaignState | 
 export function sceneSettingsPatch(state: CampaignState, settings: SceneSettings): SceneSettings | null {
   const mine = sceneSettingsOf(state);
   const same = mine.momentFrequency === settings.momentFrequency && mine.momentExplicit === settings.momentExplicit && mine.physicsRealtime === settings.physicsRealtime
-    && mine.marathonPace === settings.marathonPace && INTERACTION_TOGGLES.every((k) => mine.physicsInteractions[k] === settings.physicsInteractions[k]);
+    && mine.marathonPace === settings.marathonPace && mine.longHoldStrain === settings.longHoldStrain && INTERACTION_TOGGLES.every((k) => mine.physicsInteractions[k] === settings.physicsInteractions[k]);
   return same ? null : { ...settings, physicsInteractions: { ...settings.physicsInteractions } };
 }

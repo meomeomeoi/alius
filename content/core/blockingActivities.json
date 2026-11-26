@@ -318,6 +318,32 @@
     }
   },
   {
+    "id": "holding_audience",
+    "scope": "dynamic",
+    "actor": "her",
+    "attention": "elsewhere",
+    "impliedPosture": "sitting",
+    "pairTags": [
+      "focused"
+    ],
+    "frame": {
+      "absorb": -0.1,
+      "hear": 1,
+      "light": "lamp",
+      "unit": "visitors",
+      "total": 6,
+      "per": [
+        8,
+        14
+      ],
+      "legs": "swing",
+      "audience": true
+    },
+    "label": "Holding audience",
+    "description": "AUTHOR TO WRITE: The throne as an audience: visitors one after another, with business; between them she reads and signs.",
+    "promptHint": "holding audience"
+  },
+  {
     "id": "playing_cards",
     "scope": "any",
     "actor": "her",

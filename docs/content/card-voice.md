@@ -538,6 +538,11 @@ Her lines in her hand while she rests her weight on the commander (P10e-e Task 1
 - **entry.standing_on:** silent
 - **entry.boot_on_chest:** silent
 
+### regal
+- **slip:** `steady.`
+- **heavy:** `I’ll lean back.`
+- **fall:** `a pity. I’ll find a sturdier seat.`
+
 ## 9. Scent (saturation.html, approved by the author, 2026-11-23)
 
 Her lines in her hand while the commander breathes her in (P10e-e Task 18, ruling Q; `saturation.html`'s `LINES`, her question's words of its `STYLES[].ask` and what her rule says is missing, `judge`). **entry**: her first words as she settles, by the contact (`scent.entry.<contact>`); **here**: her named places by the contact, in order (`scent.here.<contact>`: feet_on_face toes, arch, heel, the ball; face_to_bottom the centre, her side; smothered_armpit the hollow, the edge); **deeper** / **gently** / **still**: her orders; **moved**: playful moves her mark; **good** / **bad**: an order kept or not; **mouth**: she heard a mouth breath (the engine caught it), by her style; **away**: the face turned from her while she watches; **cough**: the body revolted; **liar**: the cough gave a lie away; **caught**: she saw the commander seek her out; **lost.low** / **lost.high**: the head overflowed (by the commander's stage); **need**: the body breathes by itself; **end** / **stop**: the end, after the stop word; **ask**: her question (`{p}` is her place in her own words, lower case as she writes); **answer.ok** / **answer.bad** / **answer.empty**: her verdict, which follows the answer the engine records; **miss.***: what her rule found missing (warm; admit; bad and want; the place, the strength and the band; the intensity wrong or missing, and honest). Neutral is every style with no rows of its own; cold is silent on every kind, her first words included (Ruling R). No pronoun for the commander.

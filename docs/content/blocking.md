@@ -221,6 +221,7 @@ Fields per entry: `attention` (`on_commander` / `divided` / `elsewhere` / `none`
 | `writing_task` | elsewhere | focused | writing a task by hand (P10b); the commander waits |
 | `choosing_equipment` | elsewhere | focused | choosing what to put on the commander; the commander waits and sees the choice |
 | `ignoring` | elsewhere (deliberately) | — | P17b object time; busy with anything, pointedly |
+| `holding_audience` | elsewhere (her visitors) | focused | the throne (P10e-e 24b): visitors one after another, her folder, her signature, her mug; the commander as her seat |
 
 ## 5. The commander's activities (`actor: commander`, no touch)
 

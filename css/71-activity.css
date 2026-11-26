@@ -94,3 +94,10 @@
 #alius-shell .alius-activity[data-reduced] .sense { transition: opacity 1.1s ease; transform: none !important; }
 #alius-shell .alius-activity[data-reduced] .alius-act-skip,
 #alius-shell .alius-activity[data-reduced] .alius-act-gestures { transition: none; }
+
+/* 24b, the throne: her legs astride as a picture (art slot legs_astride), near and out of focus, lit at the edge like the silhouettes; the
+   silhouettes are drawn on the footrest view's own canvas */
+#alius-shell .alius-act-wShadow { inset: 0; width: 100%; height: 100%; }
+#alius-shell .alius-act-astride { top: 0; left: 0; max-width: none; transform-origin: 50% 0%; display: none; will-change: transform, opacity;
+  filter: blur(1.2px) brightness(.62) saturate(.85) drop-shadow(0 0 14px rgba(226,78,52,.45)); transition: opacity .35s ease; }
+#alius-shell .alius-activity[data-readable] .alius-act-astride { filter: none !important; }

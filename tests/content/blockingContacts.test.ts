@@ -34,16 +34,16 @@ describe('ids match blocking.md (P15a)', () => {
     expect(docIds('### 3.6')).toContain('taken_all_fours');
   });
 
-  it('activities: §4 (57) as is, §5 (19) with c_ on the four that share an id with hers', () => {
+  it('activities: §4 (58, with the throne\'s holding_audience) as is, §5 (19) with c_ on the four that share an id with hers', () => {
     const her = docIds('## 4.');
     const own = docIds('## 5.');
-    expect(her).toHaveLength(57);
+    expect(her).toHaveLength(58);
     expect(own).toHaveLength(19);
     const shared = own.filter((id) => her.includes(id));
     expect(shared.sort()).toEqual(['eating', 'idle', 'on_comms', 'writing_report']);
     const expected = [...her, ...own.map((id) => (shared.includes(id) ? `c_${id}` : id))];
     expect([...reg.blockingActivities.keys()].sort()).toEqual(expected.sort());
-    expect(reg.blockingActivities.size).toBe(76);
+    expect(reg.blockingActivities.size).toBe(77);
     for (const id of her) expect(activity(id).actor, id).toBe('her');
     for (const id of own) expect(activity(shared.includes(id) ? `c_${id}` : id).actor, id).toBe('commander');
   });
@@ -63,12 +63,12 @@ describe('scope by section', () => {
   });
 
   it('the activities inside a dynamic and every commander service activity are dynamic; her own and the commander\'s own work are any', () => {
-    for (const id of ['ignoring', 'inspecting', 'writing_task', 'choosing_equipment']) expect(activity(id).scope, id).toBe('dynamic');
+    for (const id of ['ignoring', 'inspecting', 'writing_task', 'choosing_equipment', 'holding_audience']) expect(activity(id).scope, id).toBe('dynamic');
     const service = activities().filter((a) => a.actor === 'commander' && !a.id.startsWith('c_'));
     expect(service).toHaveLength(15);
     for (const a of service) expect(a.scope, a.id).toBe('dynamic');
     for (const id of ['c_writing_report', 'c_on_comms', 'c_eating', 'c_idle']) expect(activity(id).scope, id).toBe('any');
-    expect(activities().filter((a) => a.actor === 'her' && a.scope === 'dynamic')).toHaveLength(4);
+    expect(activities().filter((a) => a.actor === 'her' && a.scope === 'dynamic')).toHaveLength(5);
   });
 });
 

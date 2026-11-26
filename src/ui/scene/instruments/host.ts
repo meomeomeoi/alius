@@ -117,6 +117,7 @@ function scopedStaging(staging: PhysicsPanelStaging, scope: Scope): PhysicsPanel
     script: (p) => (on() ? staging.script?.(p) ?? null : null),
     getUp: () => (on() ? staging.getUp?.() ?? [] : []),
     found: (id) => (on() ? staging.found?.(id) ?? [] : []),
+    decide: (k, r) => (on() ? staging.decide?.(k, r) ?? [] : []),
     beat: () => staging.beat(),
     clock: () => staging.clock(),
   };

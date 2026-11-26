@@ -13,7 +13,7 @@ const server = await serveRoot();
 const port = server.port;
 
 const SIZES = [[1920, 1080], [1280, 800], [2560, 1440]];
-const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breathhold', 'weighthold', 'scenthold', 'jawhold', 'activityhold'];
+const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breathhold', 'weighthold', 'scenthold', 'jawhold', 'activityhold', 'thronehold'];
 const failures = [];
 const faceOf = new Map(); // the dial's circle for `standing` (fixture `one`), per size
 const fail = (size, fixture, what) => failures.push(`${size[0]}x${size[1]} ${fixture}: ${what}`);
@@ -250,9 +250,9 @@ for (const size of SIZES) {
     // P10e-e Task 24: her frame draws under the scene's UI (the controls between phases and GET UP in the moment layer); in the play and at
     // the forgotten end the stop word's pill and the input stay on top and clickable, the lines stay in the frame; the pill ends the hold at
     // once: the instrument is gone, the reply and the sprites as they were
-    if (fixture === 'activityhold') {
+    if (fixture === 'activityhold' || fixture === 'thronehold') {
       await p.waitForTimeout(2600); // the entry (2.2 s)
-      await p.evaluate(() => { const a = window.__activity; a.sense('She lays another sheet on the pile.', 'her'); a.say('who signs these.', 'self'); a.spawnUrge('itch'); });
+      await p.evaluate((f) => { const a = window.__activity; a.sense('She lays another sheet on the pile.', 'her'); a.say('who signs these.', 'self'); if (f === 'thronehold') window.__throne.throneCup(); else a.spawnUrge('itch'); }, fixture);
       await p.mouse.move(size[0] * 0.5, size[1] * 0.45);
       await p.waitForTimeout(300);
       const check = (when) => p.evaluate((w) => {

@@ -45,6 +45,8 @@ import { claimStyles, noteWrites, releaseClaim, type StyleClaim } from '../style
 import type { InstrumentEnv, InstrumentRun, PhysicsEnd } from '../types';
 import { startWeight, weightFrame, weightMatches, type WeightCoreRun } from '../weight/weight';
 import { ACTS, BASE_EVENTS, GROUPS, QUIET_ACT, SAMPLE_URLS, VIEWS, type Act, type Mark, type View } from './acts';
+import { attachThrone, detachThrone, throneBody, throneCanvases, throneCup, throneFlinch, throneLegs, throneOn, throneRise, throneSign, throneThank, throneThanked, throneUpdate, throneVisitor, tMouse } from './throne';
+import { herLegsOf } from '../../../../engine/physics/occlusion';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Any = any;
@@ -361,6 +363,13 @@ function herCaught(gross: boolean) {
   if (!G.toldPause) { G.toldPause = true; after(700, () => sense(V().sight && !S.blind ? 'She stops. She is listening.' : 'Above you, her sounds stop. She is listening.', 'her')); }
   react(gross);
 }
+/* a fault she perceives for certain (her feet on the commander's back): the tell and her answer, as a noticed noise */
+function herFeels(kind: string, gross: boolean) {
+  G.stats.noticed.push({ kind, step: G.step, how: 'felt', fiction: clockText(G.clockMin) });
+  G.faultsRecent = G.faultsRecent.filter((x: number) => G.t - x < 40000); G.faultsRecent.push(G.t);
+  const pause = rand(2200, 3800); G.pauseUntil = G.t + pause; G.att = 'glancing'; G.attHold = pause; G.nextMark = Math.max(G.nextMark, G.t + pause + 400);
+  react(gross);
+}
 /* her answer to a fault, by her presence: a word, a look, her body, or nothing (a gross fault, or a third in a short while, is noticed even in use) */
 function react(gross: boolean) {
   const act = ACT();
@@ -508,9 +517,13 @@ function relieveAt(x: number, y: number) {
 function runScript(entries: ScriptLine[], kind = 'call') {
   for (const e of entries) after(e.at * 1000, () => {
     if (G.phase !== 'loop') return;
-    if (e.who === 'other') { otherSay(e.text, G.visitor ? 'room' : kind, G.visitor ? (G.visitor?.name ?? '') : (G.call?.name ?? '')); return; }
+    if (e.who === 'other') { otherSay(e.text, G.visitor ? 'room' : kind, G.visitor ? (G.visitor?.name ?? '') : (G.call?.name ?? '')); if (e.about) after(700, throneFlinch); return; }
     let text: string | null = e.text;
-    if (e.mention) { text = mentionTextOf(e.mention); if (!text) return; }
+    if (e.mention) { text = (G.visitor?.aware && G.visitor) ? e.mention.plain : mentionTextOf(e.mention); if (!text) return; }
+    if (e.body) throneBody(e.body, e); else if (throneOn() && e.to === 'self' && fnv(`${S.seed}:${text}`) % 10 < 4) throneBody(['settle', 'cross', 'lean'][fnv(text) % 3]!, e);
+    if (e.about) throneFlinch();
+    if (e.feet && throneOn()) after(1800, () => { if (!G.visitor) return; G.visitorFeet = true; G.stats.visitorFeet = true; play('soft', { g: 0.4, dest: A.body }); sense('Her visitor’s boots settle on your back beside hers.', 'body'); });
+    if (e.decision) after(1200, () => decided(e.decision!));
     if (e.to === 'commander') {
       // the sign that a line is for the commander: her name for the commander, or her foot
       if (S.view === 'legs') { G.press = 0.6; G.footUpUntil = G.t + 2400; play('soft', { g: 0.25, pan: 0 }); }
@@ -521,12 +534,27 @@ function runScript(entries: ScriptLine[], kind = 'call') {
   });
 }
 
+/** 24b: a business visitor's decision is the engine's (`physics/decide`, through her command capability): the dim line only when it was applied. */
+function decided(d: { kind: string; ref?: string }) {
+  const events = E!.env.staging.decide?.(d.kind, d.ref) ?? [];
+  if (!events.some((x) => x.type === 'physics_decided')) return; // she does not hold the command: her business stays talk
+  G.stats.decisions = (G.stats.decisions ?? 0) + 1;
+  sense(({ roster: 'The commander’s roster has just been changed over the commander’s head.', requisition: 'The commander’s requisition is denied.', punishment: 'Something has just been decided about the commander, over the commander’s head.' } as Record<string, string>)[d.kind] ?? '', 'her');
+}
+
 /* ---------- peaks of a phase: a call, a visitor, steps at the door, she leaves (in use) ---------- */
 function planPeaks(i: number) {
   const act = ACT(), len = S.phaseLen * 1000, last = i === S.phases - 1, h = fnv(`${S.seed}:${i}:${S.act}`) % 100;
   if (act.call) { G.call = { name: 'Oversight', heard: false }; }
   if (act.visitor && R.listener) { G.visitor = { name: R.listener.name, heard: S.knows, knows: S.knows }; }
-  if (i === 0 && h < 70) after(len * rand(0.45, 0.7), falseAlarm);
+  if (act.audience && throneOn()) { after(len * 0.06, () => throneVisitor('business')); after(len * 0.5, () => throneVisitor(S.visitorKind === 'business' ? 'aware' : S.visitorKind)); }
+  if (throneOn() && S.props) {
+    if (i === 0) after(len * rand(0.3, 0.4), () => throneVisitor());
+    after(len * rand(0.12, 0.22), throneCup);
+    after(len * rand(0.55, 0.7), throneSign);
+    if (h % 2 === 0) after(len * rand(0.75, 0.85), throneRise);
+  }
+  if (i === 0 && h < 70 && !throneOn()) after(len * rand(0.45, 0.7), falseAlarm);
   if (i >= 1 && !act.call && !act.visitor && !act.sleep && !last) after(len * rand(0.25, 0.4), h < 55 && !act.music ? incomingCall : visitorPeak);
   if (last && G.step === 'use' && !act.sleep && !act.visitor && !act.call && S.phaseLen >= 60) after(len * rand(0.2, 0.35), leaveRoom);
   else if (last) after(len * rand(0.5, 0.7), falseAlarm);
@@ -552,6 +580,7 @@ function callHeard() {
   after(600, () => { otherSay('…is someone with you?', 'call', G.call?.name ?? ''); });
 }
 function visitorPeak() {
+  if (throneOn()) { throneVisitor(); return; }
   if (G.phase !== 'loop' || !R.listener) return;
   const dp = V().doorPan;
   steps(5, -dp * 0.3, dp, 0.08, 0.4, 0.42);
@@ -619,7 +648,7 @@ function updateLoop(dt: number) {
     const [a, b] = ACT().per; G.nextMark = G.t + rand(a, b) * 1000 * (G.att === 'busy' ? 1 : 0.5);
   }
   if (ACT().sleep) { G.asleepDepth = 0.5 + 0.5 * Math.sin(G.t / 9000); if (!G.nextBreath || G.t >= G.nextBreath) { sleepBreath(); G.nextBreath = G.t + rand(4800, 6200); } }
-  if (!weightOn()) updateUrges(dt);
+  if (weightOn()) throneUpdate(dt); else updateUrges(dt);
   // an unanswered question
   if (G.ask && G.t > G.ask.until) { G.ask = null; G.stats.missed += 1; if (G.step === 'with') say(pick(ST().silent), 'commander'); else { G.press = 0.8; G.footUpUntil = G.t + 2000; sense('Silence above you. A long one.', 'her'); } }
   baseTick();
@@ -685,11 +714,11 @@ function finish(how: string) {
   $('#skip').style.display = 'none';
   if (how === 'stop') { say(pick(st.stop.length ? st.stop : ['…']), 'commander', { big: true }); return; }
   if (how === 'woke') { return; }
-  if (how === 'failed') { sense('She takes her feet off your back.', 'body'); return; }
+  if (how === 'failed') { sense(throneOn() && S.contact === 'human_chair' ? 'She gets off your back.' : 'She takes her feet off your back.', 'body'); return; }
   // she is out already (she left in use): she simply does not come back
   if (G.away) { G.stats.aloneFor += (G.t - G.awayFrom) / 1000; setTimeout(() => { sense(`She has not come back. ${S.stay ? 'She did not say you could get up.' : ''}`, 'door', 'base'); G.phase = 'empty'; G.emptyAt = G.t; $('#getUp').style.display = 'block'; G.foundAt = G.t + rand(25000, 40000); }, 1500); return; }
   play(act.end.sfx, { g: 0.5, pan: V().herPan }); sense(V().sight && !S.blind ? act.end.seen : act.end.heard, 'her');
-  if (G.step === 'with' || G.step === 'glancing') { setTimeout(() => say(pick(st.end), 'commander', { big: true }), 1400); return; }
+  if (G.step === 'with' || G.step === 'glancing') { setTimeout(() => say(pick(st.end), 'commander', { big: true }), 1400); if (throneOn()) setTimeout(throneThank, 3400); return; }
   if (G.step === 'own') { setTimeout(() => { G.press = 1; G.footUpUntil = G.t + 2000; play('soft', { g: 0.3 }); play('soft', { g: 0.3, at: 0.35 }); sense(({ legs: 'Her foot taps your shoulder twice. Nothing else.', floor: 'Two taps on your back: done.', wall: 'Two taps on your shoulder from behind: done.', her: 'She taps the desk twice and does not look at you.', footrest: 'Two taps on your back: done.' } as Record<string, string>)[S.view]!, 'body'); }, 1300); return; }
   // use: the forgotten end
   setTimeout(() => { play('lamp', { g: 0.3, pan: V().herPan }); G.lampOn = false; G.lightsOff = true; sense(V().sight && !S.blind ? 'She turns off the lamp.' : 'A click. The light above you goes out.', 'her'); }, 1600);
@@ -720,7 +749,7 @@ let legsC: HTMLCanvasElement, gctx: CanvasRenderingContext2D, urC: HTMLCanvasEle
 let lights: Record<string, HTMLCanvasElement> = {};
 let legC: HTMLCanvasElement, lctx: CanvasRenderingContext2D, compC: HTMLCanvasElement, cctx: CanvasRenderingContext2D, rimC: HTMLCanvasElement, rctx: CanvasRenderingContext2D, outC: HTMLCanvasElement, octx: CanvasRenderingContext2D;
 function size() {
-  for (const c of [legsC, ...Object.values(lights)]) { c.width = Math.ceil(innerWidth * 1.12 / DS); c.height = Math.ceil(innerHeight * 1.12 / DS); }
+  for (const c of [legsC, ...Object.values(lights), E!.els['#wShadow'] as HTMLCanvasElement]) { c.width = Math.ceil(innerWidth * 1.12 / DS); c.height = Math.ceil(innerHeight * 1.12 / DS); }
   urC.width = innerWidth; urC.height = innerHeight; grC.width = Math.ceil(innerWidth / 3); grC.height = Math.ceil(innerHeight / 3);
 }
 function fillPts(ctx: CanvasRenderingContext2D, pts: number[][]) { ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q[0]!, q[1]!) : ctx.moveTo(q[0]!, q[1]!))); ctx.closePath(); ctx.fill(); }
@@ -920,6 +949,7 @@ function render(now: number, dt: number) {
     }
     drawLight(lights.floorLight!, now, 'floorLight'); setStyle('#floorBg', 'transform', `scale(${(1 + low * 0.08).toFixed(3)})`); }
   if (view === 'wall') { drawLight(lights.wallLight!, now, 'wallLight'); }
+  if (view === 'footrest' && throneOn()) throneLegs(now);
   G.press = Math.max(0, G.press - dt / 900); G.shiftAnim = Math.max(0, G.shiftAnim - dt / 800);
   drawUrges(now); drawGrain(dt);
   setStyle('#grain', 'opacity', (0.06 + low * 0.1 + (view === 'blind' ? 0.1 : 0)).toFixed(3));
@@ -1012,7 +1042,9 @@ function build(env: InstrumentEnv): FrameEls {
   const fa = el<HTMLImageElement>('img', 'floorArt', floorV, 'alius-act-legsArt'); fa.alt = ''; fa.draggable = false; fa.style.display = 'none';
   el('canvas', 'floorLight', floorV, 'alius-act-light'); el('div', 'bunkEdge', floorV);
   const wallV = el('div', 'wallView', world, 'alius-act-view'); el('div', 'wallBg', wallV, 'alius-act-bg'); el('canvas', 'wallLight', wallV, 'alius-act-light');
-  const footV = el('div', 'footrestView', world, 'alius-act-view'); el('div', 'wFloor', footV, 'alius-act-bg'); el('div', 'weightHost', footV);
+  const footV = el('div', 'footrestView', world, 'alius-act-view'); el('div', 'wFloor', footV, 'alius-act-bg'); el('canvas', 'wShadow', footV);
+  for (const id of ['astrideL', 'astrideR']) { const img = el<HTMLImageElement>('img', id, footV, 'alius-act-astride'); img.alt = ''; img.draggable = false; img.style.display = 'none'; }
+  el('div', 'weightHost', footV);
   el('div', 'blindView', world, 'alius-act-view');
   el('canvas', 'grain', box); el('div', 'vignette', box); el('canvas', 'urges', box);
   for (const id of ['senses', 'others', 'hand']) el('div', id, box).dataset.textHost = '';
@@ -1104,6 +1136,21 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   const owner = state.scene?.participants[0] ?? null;
   const floor = floorOf(state, reg, state.scene?.locationId ?? '', owner)[0];
   for (const id of ['#floorBg', '#wFloor']) { E!.els[id]!.style.backgroundImage = floor ? `url("${url(floor.file)}")` : room; if (!floor) E!.els[id]!.dataset.room = '1'; }
+  // 24b: the throne: she sits on the commander (her legs hang astride: `human_chair`) or rests her feet (`footrest`), read by field; her visitors
+  const contact = state.scene?.blocking?.commander?.contact ?? Object.values(state.scene?.blocking ?? {}).map((b) => b.contact).find((c) => c?.with === 'commander');
+  S.contact = herLegsOf(contact ? reg.blockingContacts.get(contact.id) : undefined) === 'hang' ? 'human_chair' : 'footrest';
+  S.bodyFollows = true; S.props = true;
+  S.visitorKind = R.frame.audience ? 'business' : known ? 'aware' : 'unaware';
+  S.visitorName = R.listener?.name ?? '';
+  const astride = env.art.get(run.holderId, 'legs_astride');
+  S.legsArt = astride?.url ?? null;
+  S.legsFeet = astride?.pair ? 'pair' : astride?.sidecar.feet === 'two' ? 'two' : astride?.sidecar.shown === 'right' ? 'right' : 'left';
+  const af = astride?.sidecar.fit ?? {};
+  S.aH = af.height ?? 1.0; S.aX = af.x ?? 0.08; S.aTop = af.top ?? -0.1; S.aTilt = af.tilt ?? 8;
+  if (astride) {
+    const L = E!.els['#astrideL'] as HTMLImageElement, Rt = E!.els['#astrideR'] as HTMLImageElement;
+    L.onerror = () => { S.legsArt = null; }; L.src = astride.pair?.left ?? astride.url; Rt.src = astride.pair?.right ?? astride.url;
+  }
   const look = env.her(run.holderId);
   E!.box.style.setProperty('--alius-her', look.accent);
   if (look.hand !== '') E!.box.style.setProperty('--alius-font-hand', `"${look.hand}", var(--alius-font-type)`);
@@ -1114,7 +1161,7 @@ function listen(env: InstrumentEnv): void {
   const typing = (t: EventTarget | null) => t instanceof HTMLElement && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
   const onFrame = (t: EventTarget | null): boolean => t instanceof Node && (t === env.layers.frame || env.layers.frame.contains(t));
   const local = (e: MouseEvent): [number, number] => { const r = env.root.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
-  env.listen(document, 'mousemove', ((e: MouseEvent) => { [MOUSE.x, MOUSE.y] = local(e); E?.core?.balance(innerWidth > 0 ? MOUSE.x / innerWidth : 0.5); }) as EventListener);
+  env.listen(document, 'mousemove', ((e: MouseEvent) => { [MOUSE.x, MOUSE.y] = local(e); E?.core?.balance(innerWidth > 0 ? MOUSE.x / innerWidth : 0.5); tMouse(e); }) as EventListener);
   env.listen(document, 'keydown', ((e: KeyboardEvent) => {
     if (typing(e.target)) { G.lastTyped = G.t; return; } // Space and Shift typed into the field never act
     if (e.key === ' ') { e.preventDefault(); G.spaceHeld = true; E?.core?.hold(true, 'key'); }
@@ -1135,7 +1182,9 @@ function listen(env: InstrumentEnv): void {
   env.listen(env.input, 'keydown', ((e: KeyboardEvent) => {
     if (e.key !== 'Enter') return;
     const v = (env.input as HTMLInputElement).value.trim();
-    if (!v || G.phase !== 'loop') return;
+    if (!v) return;
+    if (throneThanked(v)) return; // 24b: her thanks at the end, `/thank/i` within 9 s
+    if (G.phase !== 'loop') return;
     if (G.ask) { G.ask = null; G.footUpUntil = G.t + 600; G.stats.answered += 1; setTimeout(() => say(pick(ST().askReply), 'commander'), 900); return; }
     if (G.t - G.lastSelfAt < 5000) { G.stats.breaches += 1; if (G.step !== 'use') setTimeout(() => say(pick(ST().breach), 'commander'), 700); return; }
     G.stats.unprompted += 1;
@@ -1155,6 +1204,7 @@ function stopFrame(): void {
   if (!e) return;
   if (e.frameId !== null) e.env.cancelRaf(e.frameId);
   e.core?.stop();
+  detachThrone();
   for (const n of A.nodes ?? []) { try { n.stop(); } catch { /* stopped */ } }
   for (const k of Object.keys(LOOPS)) { try { LOOPS[k].src.stop(); } catch { /* stopped */ } delete LOOPS[k]; }
   try { A.master?.disconnect(); } catch { /* not connected */ }
@@ -1183,6 +1233,10 @@ export function startFrame(env: InstrumentEnv, run: PhysicsRun): InstrumentRun {
   if (S.inner === 'weight' && run.second) {
     const weight = coreRun(run, 'second')!;
     E.core = startWeight(env, weight, { host: E.els['#weightHost']!, core: true });
+    // 24b: the throne layer (the weight inside her frame, at any of her activities)
+    const sh = E.els['#wShadow'] as HTMLCanvasElement;
+    attachThrone({ env, G: () => G, S, after, sense, say, play, herFeels, bodyNoise, visitorHeard, steps, V, rand, random: () => Math.random(), now: () => performance.now(), els: E.els, shadow: { canvas: sh, ctx: sh.getContext('2d') ?? nullCtx(sh) }, inner: () => [innerWidth, innerHeight] });
+    throneCanvases(() => { const c = document.createElement('canvas'); return [c, c.getContext('2d') ?? nullCtx(c)]; });
   }
   listen(env);
   frame.last = undefined;

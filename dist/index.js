@@ -2429,35 +2429,35 @@ function commanderLine(state) {
 // src/engine/ledger.ts
 var RESOURCES = ["credits", "supplies", "plyx"];
 var AXES = ["trust", "affinity", "attraction"];
-function recordLedger(before6, after6, action) {
+function recordLedger(before6, after7, action) {
   const entries2 = [];
   const push3 = (key, delta) => {
     if (Number.isFinite(delta) && delta !== 0) entries2.push({ day: before6.day, slot: before6.slot, action, key, delta });
   };
-  for (const r of RESOURCES) push3(`res:${r}`, (after6.resources?.[r] ?? 0) - (before6.resources?.[r] ?? 0));
-  push3("res:cmdr_stress", (after6.commander?.stress ?? 0) - (before6.commander?.stress ?? 0));
+  for (const r of RESOURCES) push3(`res:${r}`, (after7.resources?.[r] ?? 0) - (before6.resources?.[r] ?? 0));
+  push3("res:cmdr_stress", (after7.commander?.stress ?? 0) - (before6.commander?.stress ?? 0));
   const stressBefore = new Map(before6.squad.map((u) => [u.id, u.stress]));
-  for (const u of after6.squad) {
+  for (const u of after7.squad) {
     const was = stressBefore.get(u.id);
     if (was !== void 0) push3(`stress:${u.id}`, (u.stress ?? 0) - (was ?? 0));
   }
-  for (const [id, rel] of Object.entries(after6.relations)) {
+  for (const [id, rel] of Object.entries(after7.relations)) {
     const was = before6.relations[id];
     if (!was) continue;
     for (const axis of AXES) push3(`axis:${id}:${axis}`, (rel[axis] ?? 0) - (was[axis] ?? 0));
     push3(`record:${id}`, (rel.impunityRecord ?? 0) - (was.impunityRecord ?? 0));
     push3(`want:${id}`, (rel.want ?? 0) - (was.want ?? 0));
   }
-  for (const [id, now] of Object.entries(after6.power?.hierarchy?.standings ?? {})) {
+  for (const [id, now] of Object.entries(after7.power?.hierarchy?.standings ?? {})) {
     const was = before6.power?.hierarchy?.standings?.[id];
     if (was !== void 0) push3(`standing:${id}`, now - was);
   }
-  if (before6.commander?.body !== void 0 && after6.commander?.body !== void 0) for (const stat3 of BODY_STATS) push3(`body:${stat3}`, (after6.commander?.body?.[stat3] ?? 0) - (before6.commander?.body?.[stat3] ?? 0));
-  if (entries2.length > 0) after6.ledger = [...after6.ledger ?? [], ...entries2];
-  if (!after6.ledger) return;
-  const oldest = after6.day - (TUNING.ledger.days - 1);
-  const kept = after6.ledger.filter((e) => e.day >= oldest);
-  after6.ledger = capByKind(kept, TUNING.ledger.max);
+  if (before6.commander?.body !== void 0 && after7.commander?.body !== void 0) for (const stat3 of BODY_STATS) push3(`body:${stat3}`, (after7.commander?.body?.[stat3] ?? 0) - (before6.commander?.body?.[stat3] ?? 0));
+  if (entries2.length > 0) after7.ledger = [...after7.ledger ?? [], ...entries2];
+  if (!after7.ledger) return;
+  const oldest = after7.day - (TUNING.ledger.days - 1);
+  const kept = after7.ledger.filter((e) => e.day >= oldest);
+  after7.ledger = capByKind(kept, TUNING.ledger.max);
 }
 var kindOf = (e) => e.key.slice(0, e.key.indexOf(":"));
 function capByKind(list5, max) {
@@ -10999,8 +10999,8 @@ function prologueFor(reg, startId, mode) {
   return plain8;
 }
 function stepsOf(entry) {
-  const steps2 = entry.steps ?? {};
-  return (entry.order ?? []).filter((id) => id in steps2).map((id) => ({ ...steps2[id], id }));
+  const steps3 = entry.steps ?? {};
+  return (entry.order ?? []).filter((id) => id in steps3).map((id) => ({ ...steps3[id], id }));
 }
 var isWizardStep = (step) => WIZARD_KINDS.includes(step.kind);
 
@@ -11043,9 +11043,9 @@ function completionReason(state, reg, step) {
 function initialOnboarding(reg, prologueId, opts) {
   const entry = reg.prologues.get(prologueId);
   if (!entry) throw new Error(`Unknown prologue "${prologueId}".`);
-  const steps2 = stepsOf(entry);
-  const wizard = steps2.filter(isWizardStep).map((s) => s.id);
-  const first2 = steps2.find((s) => !isWizardStep(s));
+  const steps3 = stepsOf(entry);
+  const wizard = steps3.filter(isWizardStep).map((s) => s.id);
+  const first2 = steps3.find((s) => !isWizardStep(s));
   if (!first2) throw new Error(`Prologue "${prologueId}" has no campaign step.`);
   return {
     prologueId,
@@ -11065,11 +11065,11 @@ function enterStep(draft, ctx2, index2, afterSkippedExpedition = false) {
   if (!o) return [];
   const entry = ctx2.registries.prologues.get(o.prologueId);
   if (!entry) throw new Error(`Unknown prologue "${o.prologueId}".`);
-  const steps2 = stepsOf(entry);
+  const steps3 = stepsOf(entry);
   const events = [];
   let skipDebrief = afterSkippedExpedition;
-  for (let i = index2; i < steps2.length; i++) {
-    const step = steps2[i];
+  for (let i = index2; i < steps3.length; i++) {
+    const step = steps3[i];
     if (step.kind === "free") {
       o.stepId = step.id;
       o.stepDay = draft.day;
@@ -11536,13 +11536,13 @@ function unitStatSteps(state, reg, unit4, stat3) {
   const role = reg.roles.get(unit4.roleId);
   if (!role) throw new Error(`Unknown role "${unit4.roleId}" (unit ${unit4.id})`);
   const growth = role.growth ?? ZERO;
-  const steps2 = [];
+  const steps3 = [];
   let total2 = unit4.baseStats[stat3];
-  steps2.push({ source: "role", label: "Role base", total: total2 });
+  steps3.push({ source: "role", label: "Role base", total: total2 });
   const grown = Math.floor(growth[stat3] * (unit4.level - 1));
   if (grown !== 0) {
     total2 += grown;
-    steps2.push({ source: "level", label: `Level ${unit4.level}`, total: total2 });
+    steps3.push({ source: "level", label: `Level ${unit4.level}`, total: total2 });
   }
   let pct5 = 0;
   for (const { inst } of wornItems(state, reg, unit4)) {
@@ -11551,20 +11551,20 @@ function unitStatSteps(state, reg, unit4, stat3) {
     const flat2 = it.stats[stat3] ?? 0;
     if (flat2 !== 0) {
       total2 += flat2;
-      steps2.push({ source: "gear", label: `[[items:${inst.itemId}]]`, total: total2 });
+      steps3.push({ source: "gear", label: `[[items:${inst.itemId}]]`, total: total2 });
     }
     pct5 += it.statPct[stat3] ?? 0;
   }
   const scaled2 = Math.round(total2 * (1 + pct5 / 100));
   if (scaled2 !== total2) {
     total2 = scaled2;
-    steps2.push({ source: "gear", label: "Gear bonuses", total: total2 });
+    steps3.push({ source: "gear", label: "Gear bonuses", total: total2 });
   }
   if (stat3 === "spd") {
     const penalty = armorSpdPenalty(state, reg, unit4);
     if (penalty !== 0) {
       total2 += penalty;
-      steps2.push({ source: "armor", label: "Armor weight", total: total2 });
+      steps3.push({ source: "armor", label: "Armor weight", total: total2 });
     }
   }
   const stacks = Math.min(unit4.injuries.length, TUNING.combat.injuryMaxStacks);
@@ -11572,14 +11572,14 @@ function unitStatSteps(state, reg, unit4, stat3) {
   const injured = Math.round(total2 * factor);
   if (stacks > 0 && injured !== total2) {
     total2 = injured;
-    steps2.push({ source: "injury", label: `Injuries \xD7${stacks}`, total: total2 });
+    steps3.push({ source: "injury", label: `Injuries \xD7${stacks}`, total: total2 });
   }
   const floor = stat3 === "crit" ? 0 : 1;
   if (total2 < floor) {
     total2 = floor;
-    steps2.push({ source: "floor", label: "Minimum", total: total2 });
+    steps3.push({ source: "floor", label: "Minimum", total: total2 });
   }
-  return steps2;
+  return steps3;
 }
 function statPower(s) {
   return (s.hp * 0.2 + s.atk * 2 + s.def + s.spd * 1.5) * (1 + s.crit / 200);
@@ -12165,7 +12165,7 @@ function pressureGate(state, reg, unitId, mechanic) {
   if (unit4.bond === void 0) return "no imported bond profile";
   const bond = bondOf(unit4);
   const lead = leadRank(bond.leadStyle);
-  const G8 = TUNING.personal.gates;
+  const G9 = TUNING.personal.gates;
   const tier = bondTierOf(state, reg, unitId);
   switch (mechanic) {
     case "device":
@@ -12177,7 +12177,7 @@ function pressureGate(state, reg, unitId, mechanic) {
       return jealousyAllowed(state, reg, unitId) ? null : "jealousy games are off";
     }
     case "courtship": {
-      if (lead < G8.courtship.minLeadRank) return "her lead style is too yielding";
+      if (lead < G9.courtship.minLeadRank) return "her lead style is too yielding";
       if (!intimacyOf(state).romance) return "romance is off";
       if (tier === "romantic") return null;
       const open3 = ROMANTIC_PROPOSALS.some((kind) => "stateId" in stateForProposal(state, reg, unitId, kind));
@@ -12192,11 +12192,11 @@ function pressureGate(state, reg, unitId, mechanic) {
     case "token":
       if (tier === null) return "no close or romantic tier";
       if (bond.attachment === "avoidant") return "avoidant attachment";
-      return rel.affinity >= G8.token.minAffinity ? null : "Affinity too low";
+      return rel.affinity >= G9.token.minAffinity ? null : "Affinity too low";
     case "wager": {
-      if (lead < G8.wager.minLeadRank) return "her lead style is too yielding";
-      if (rel.affinity >= G8.wager.minAffinity) return null;
-      return (impunityOf(state, reg, unitId)?.value ?? 0) >= G8.wager.minImpunity ? null : "neither warm nor brazen enough";
+      if (lead < G9.wager.minLeadRank) return "her lead style is too yielding";
+      if (rel.affinity >= G9.wager.minAffinity) return null;
+      return (impunityOf(state, reg, unitId)?.value ?? 0) >= G9.wager.minImpunity ? null : "neither warm nor brazen enough";
     }
   }
 }
@@ -12877,9 +12877,9 @@ function applyDispositionStart(state, reg, unit4, rel) {
   let trust = level.start.trust;
   let affinity = level.start.affinity;
   for (const fx2 of stanceEffects(state, reg, unit4, "start_offset")) {
-    const steps2 = fx2.perNormStep === true ? distance : 1;
-    trust += (fx2.trust ?? 0) * steps2;
-    affinity += (fx2.affinity ?? 0) * steps2;
+    const steps3 = fx2.perNormStep === true ? distance : 1;
+    trust += (fx2.trust ?? 0) * steps3;
+    affinity += (fx2.affinity ?? 0) * steps3;
   }
   for (const fx2 of stanceEffects(state, reg, unit4, "distance_bonus")) {
     if (distance >= fx2.minSteps) affinity += fx2.affinity;
@@ -13312,8 +13312,8 @@ function holderCap(state) {
   return h2 === void 0 ? 0 : h2 === "any" ? Infinity : h2;
 }
 function holdersAtPlay(state) {
-  const play4 = frameRank("play");
-  return state.squad.filter((u) => u.kind === "named" && isLiving(u) && frameRank(state.relations[u.id]?.dynamic?.frame ?? "equal") >= play4).map((u) => u.id);
+  const play5 = frameRank("play");
+  return state.squad.filter((u) => u.kind === "named" && isLiving(u) && frameRank(state.relations[u.id]?.dynamic?.frame ?? "equal") >= play5).map((u) => u.id);
 }
 function canHold(state, reg, unitId, opts = {}) {
   return holdReason(state, reg, unitId, { ...opts, seeded: state.dynamic?.setup.units[unitId]?.seeded === true });
@@ -13934,13 +13934,13 @@ function dynamicAxisEntryId(d) {
   return d.field === "holds_until" ? "expect:holds_until" : "expect:worship.any";
 }
 function scaleOfAxis(key) {
-  const S9 = TUNING.development.scales;
+  const S10 = TUNING.development.scales;
   const field2 = bondField(key);
-  if (field2 !== null) return S9[field2];
+  if (field2 !== null) return S10[field2];
   const d = dynamicAxis(key);
   if (d === null || d.field === "fixed") return null;
-  if (d.kind === "practice") return d.field === "as" ? S9.practiceAs : d.field === "witness" ? S9.practiceWitness : S9.secondary;
-  return d.field === "holds_until" ? S9.holdsUntil : S9.attitude;
+  if (d.kind === "practice") return d.field === "as" ? S10.practiceAs : d.field === "witness" ? S10.practiceWitness : S10.secondary;
+  return d.field === "holds_until" ? S10.holdsUntil : S10.attitude;
 }
 function discreteAxis(unit4, key) {
   const scale = scaleOfAxis(key);
@@ -14185,8 +14185,8 @@ function flipReading(r) {
   };
 }
 var readingOf = (a) => ({ wanted: a.wanted, initiator: a.initiator, harm: a.harm, outcome: a.outcome });
-function knowsAbout(state, unitId, subject, after6) {
-  return state.memory.facts.some((f) => f.day > after6 && f.about.includes(subject) && f.about.length <= TUNING.development.reviseAboutMax && (f.knownBy.includes(unitId) || f.knownBy.includes("*") || f.heard?.[unitId] !== void 0));
+function knowsAbout(state, unitId, subject, after7) {
+  return state.memory.facts.some((f) => f.day > after7 && f.about.includes(subject) && f.about.length <= TUNING.development.reviseAboutMax && (f.knownBy.includes(unitId) || f.knownBy.includes("*") || f.heard?.[unitId] !== void 0));
 }
 function mergePushes(into, add2) {
   for (const p of add2) {
@@ -14672,10 +14672,10 @@ function addRecord(draft, unitId, amount, reason) {
   if (!draft.relations[unitId]) return [];
   const T5 = TUNING.impunity;
   const before6 = recordOf(draft, unitId);
-  const after6 = Math.min(T5.recordMax, Math.max(T5.recordMin, before6 + amount));
-  const delta = after6 - before6;
+  const after7 = Math.min(T5.recordMax, Math.max(T5.recordMin, before6 + amount));
+  const delta = after7 - before6;
   if (delta === 0) return [];
-  setRecord(draft, unitId, after6);
+  setRecord(draft, unitId, after7);
   return [{ type: "impunity_changed", unitId, delta, reason }];
 }
 function decayRecords(draft) {
@@ -14744,26 +14744,26 @@ function captureInverse(draft, unitId, fn) {
   const deedsAfter = deedsOf(draft);
   for (const k of Object.keys(deedsAfter)) if (deedsAfter[k] !== deedsBefore[k]) moved[k] = deedsAfter[k] - deedsBefore[k];
   if (Object.keys(moved).length > 0) inverse.deeds = moved;
-  const after6 = draft.relations[unitId];
+  const after7 = draft.relations[unitId];
   const unitAfter = draft.squad.find((u) => u.id === unitId);
-  if (!before6 || !after6 || !unitAfter) return { events, inverse };
+  if (!before6 || !after7 || !unitAfter) return { events, inverse };
   const axes = {};
-  for (const a of ["trust", "affinity", "attraction"]) if (after6[a] !== before6[a]) axes[a] = after6[a] - before6[a];
+  for (const a of ["trust", "affinity", "attraction"]) if (after7[a] !== before6[a]) axes[a] = after7[a] - before6[a];
   if (Object.keys(axes).length > 0) inverse.axes = axes;
   if (unitAfter.stress !== before6.stress) inverse.stress = unitAfter.stress - before6.stress;
   const record2 = recordOf(draft, unitId) - before6.record;
   if (record2 !== 0) inverse.record = record2;
   const daily = {};
-  for (const a of ["trust", "affinity", "attraction"]) if (after6.dailyGain[a] !== before6.daily[a]) daily[a] = after6.dailyGain[a] - before6.daily[a];
+  for (const a of ["trust", "affinity", "attraction"]) if (after7.dailyGain[a] !== before6.daily[a]) daily[a] = after7.dailyGain[a] - before6.daily[a];
   if (Object.keys(daily).length > 0) inverse.dailyGain = daily;
-  if (after6.stateId !== before6.stateId) inverse.state = { from: before6.stateId, to: after6.stateId, sinceFrom: before6.stateSince };
-  if (before6.publicity && JSON.stringify(after6.publicity ?? null) !== JSON.stringify(before6.publicity)) inverse.publicity = before6.publicity;
-  if (after6.loyaltyBand !== before6.band) inverse.loyaltyBand = { from: before6.band, to: after6.loyaltyBand };
+  if (after7.stateId !== before6.stateId) inverse.state = { from: before6.stateId, to: after7.stateId, sinceFrom: before6.stateSince };
+  if (before6.publicity && JSON.stringify(after7.publicity ?? null) !== JSON.stringify(before6.publicity)) inverse.publicity = before6.publicity;
+  if (after7.loyaltyBand !== before6.band) inverse.loyaltyBand = { from: before6.band, to: after7.loyaltyBand };
   const kept = /* @__PURE__ */ new Map();
   for (const k of before6.history) kept.set(k, (kept.get(k) ?? 0) + 1);
   const added = [];
   const stillThere2 = /* @__PURE__ */ new Map();
-  for (const h2 of after6.history) {
+  for (const h2 of after7.history) {
     const k = JSON.stringify(h2);
     const left = kept.get(k) ?? 0;
     if (left > 0) {
@@ -15400,9 +15400,9 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
     switch (fx2.type) {
       case "resource": {
         const before6 = draft.resources[fx2.resource];
-        const after6 = Math.max(0, before6 + fx2.amount);
-        draft.resources[fx2.resource] = after6;
-        if (after6 !== before6) events.push({ type: "resource_changed", resource: fx2.resource, amount: after6 - before6 });
+        const after7 = Math.max(0, before6 + fx2.amount);
+        draft.resources[fx2.resource] = after7;
+        if (after7 !== before6) events.push({ type: "resource_changed", resource: fx2.resource, amount: after7 - before6 });
         break;
       }
       case "carried_supplies": {
@@ -15414,9 +15414,9 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
         const factionId = fx2.factionId === OWN_FACTION ? draft.commander.corporationId ?? "" : fx2.factionId;
         if (!reg.corporations.has(factionId)) break;
         const before6 = draft.world.factions[factionId] ?? 0;
-        const after6 = clamp10(before6 + fx2.amount, -100, 100);
-        draft.world.factions[factionId] = after6;
-        if (after6 !== before6) events.push({ type: "faction_changed", factionId, amount: after6 - before6, standing: after6 });
+        const after7 = clamp10(before6 + fx2.amount, -100, 100);
+        draft.world.factions[factionId] = after7;
+        if (after7 !== before6) events.push({ type: "faction_changed", factionId, amount: after7 - before6, standing: after7 });
         break;
       }
       case "clock":
@@ -15436,10 +15436,10 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
       }
       case "clearance": {
         const before6 = draft.world.clearanceTier ?? 0;
-        const after6 = Math.min(3, Math.max(before6, fx2.tier));
-        if (after6 > before6) {
-          draft.world.clearanceTier = after6;
-          events.push({ type: "clearance_raised", tier: after6 });
+        const after7 = Math.min(3, Math.max(before6, fx2.tier));
+        if (after7 > before6) {
+          draft.world.clearanceTier = after7;
+          events.push({ type: "clearance_raised", tier: after7 });
         }
         break;
       }
@@ -16042,9 +16042,9 @@ function lockedTabs(state, reg) {
   for (const row4 of reg.uiUnlocks.values()) if (!holds(state, conditionOf(row4))) out.add(tabOf(row4));
   return out;
 }
-function unlockedBetween(before6, after6, reg) {
+function unlockedBetween(before6, after7, reg) {
   const was = lockedTabs(before6, reg);
-  const now = lockedTabs(after6, reg);
+  const now = lockedTabs(after7, reg);
   return [...reg.uiUnlocks.values()].filter((row4) => was.has(tabOf(row4)) && !now.has(tabOf(row4)));
 }
 
@@ -18634,8 +18634,8 @@ function regardRise(draft, reg, unitId, kind, amount) {
     const r = dynamicOf(draft, unitId)?.readOf.r;
     if (r === void 0 || r > 0) return [];
   }
-  const V2 = R2.value;
-  let gain2 = kind === "value" ? clamp14(amount ?? V2.min, V2.min, V2.max) : amount ?? R2.rise[kind];
+  const V3 = R2.value;
+  let gain2 = kind === "value" ? clamp14(amount ?? V3.min, V3.min, V3.max) : amount ?? R2.rise[kind];
   const key = styleRow(draft, reg, unit4).key;
   if (R2.mastery.includes(kind) && key !== void 0 && R2.drill.styles.includes(key)) gain2 *= R2.drill.mult;
   if (!(gain2 > 0)) return [];
@@ -18667,7 +18667,7 @@ var namedInService = (state) => state.squad.filter((u) => u.kind === "named" && 
 var idOf = (v) => typeof v === "string" ? v : void 0;
 function regardFromEvents(draft, reg, events) {
   if (!dynamicOn(draft, reg)) return [];
-  const V2 = R2.value;
+  const V3 = R2.value;
   const out = [];
   const noted2 = () => draft.dynamic.noted ??= {};
   for (const e of events) {
@@ -18697,12 +18697,12 @@ function regardFromEvents(draft, reg, events) {
         break;
       }
       case "outside_feat":
-        for (const id of namedInService(draft)) out.push(...regardRise(draft, reg, id, "value", V2.feat));
+        for (const id of namedInService(draft)) out.push(...regardRise(draft, reg, id, "value", V3.feat));
         break;
       case "expedition_ended": {
         const report6 = draft.lastExpedition;
         if (e.outcome !== "success" || report6 === void 0 || report6.id !== e.reportId) break;
-        for (const id of report6.party) out.push(...regardRise(draft, reg, id, "value", V2.run));
+        for (const id of report6.party) out.push(...regardRise(draft, reg, id, "value", V3.run));
         break;
       }
     }
@@ -20283,12 +20283,12 @@ function exitSeverity(state, _reg, unitId, route, clean13 = false) {
   const T5 = TUNING.dynamic.exit;
   if (dyn === void 0) return "minor";
   const domains = dyn.domains.filter((d) => standing(d, state.day)).length;
-  let steps2 = Math.max(0, frameRank(dyn.frame) - frameRank("play")) + Math.floor(domains / T5.domainsPerStep);
-  if (steps2 === 0 && dyn.hold >= T5.freeHold) steps2 = 1;
-  if (dyn.sworn !== void 0) steps2 = SEVERITIES.length - 1;
-  if (route === "force") steps2 += T5.forceSteps;
-  if (clean13) steps2 -= T5.cleanSteps;
-  return SEVERITIES[clampSteps(steps2)];
+  let steps3 = Math.max(0, frameRank(dyn.frame) - frameRank("play")) + Math.floor(domains / T5.domainsPerStep);
+  if (steps3 === 0 && dyn.hold >= T5.freeHold) steps3 = 1;
+  if (dyn.sworn !== void 0) steps3 = SEVERITIES.length - 1;
+  if (route === "force") steps3 += T5.forceSteps;
+  if (clean13) steps3 -= T5.cleanSteps;
+  return SEVERITIES[clampSteps(steps3)];
 }
 function exitCostWord(state, reg, unitId, route, clean13 = false) {
   const dyn = dynamicOf(state, unitId);
@@ -21333,17 +21333,17 @@ function standingOf(state, reg, unitId) {
   if (!unit4 || !bond || !isLiving(unit4) || unitId === wardenUnitId(state)) return null;
   const impunity = impunityOf(state, reg, unitId);
   if (!impunity) return null;
-  const S9 = TUNING.power.standing;
-  const raw = S9.merit * meritOf(state, unitId) + S9.respect * respectOf(state, unitId) + S9.impunity * (impunity.value / 100);
+  const S10 = TUNING.power.standing;
+  const raw = S10.merit * meritOf(state, unitId) + S10.respect * respectOf(state, unitId) + S10.impunity * (impunity.value / 100);
   const bonus = state.power?.hierarchy?.standingBonus;
   const extra = bonus && bonus.unitId === unitId && bonus.untilDay > state.day ? bonus.amount : 0;
   const coLeader = hasCapability(state, reg, unitId, "co_leader") ? TUNING.dynamic.coLeaderStanding : 0;
-  return Math.round(100 * raw * S9.factor[bond.leadStyle]) + extra + coLeader - standingMalus(state, reg, unitId);
+  return Math.round(100 * raw * S10.factor[bond.leadStyle]) + extra + coLeader - standingMalus(state, reg, unitId);
 }
 function computeHierarchy(draft, reg) {
   const power = powerOf(draft);
   const old = power.hierarchy;
-  const S9 = TUNING.power.standing;
+  const S10 = TUNING.power.standing;
   const h2 = { ...old, standings: {}, endorsed: old?.endorsed ?? false, computedDay: draft.day };
   if (h2.deposed && h2.deposed.untilDay <= draft.day) delete h2.deposed;
   if (h2.standingBonus && h2.standingBonus.untilDay <= draft.day) delete h2.standingBonus;
@@ -21354,7 +21354,7 @@ function computeHierarchy(draft, reg) {
   const [top, next] = ranked;
   let leader;
   const earned = top !== void 0 && (top.unit.id === old?.leaderId || meritOf(draft, top.unit.id) > 0);
-  if (top && next && earned && top.standing >= next.standing + S9.margin && leadRank(bondOf(top.unit).leadStyle) >= 2 && h2.deposed?.unitId !== top.unit.id) leader = top.unit.id;
+  if (top && next && earned && top.standing >= next.standing + S10.margin && leadRank(bondOf(top.unit).leadStyle) >= 2 && h2.deposed?.unitId !== top.unit.id) leader = top.unit.id;
   const coLeader = holderWith(draft, reg, "co_leader");
   if (coLeader === null) delete h2.coLeaderId;
   else h2.coLeaderId = coLeader;
@@ -21460,12 +21460,12 @@ function addMastery(draft, reg, unitId, targetId, xp) {
   if (!dynamicOn(draft, reg) || unit4 === void 0 || unit4.kind !== "named" || !isLiving(unit4) || rel === void 0 || !reg.worshipTargets.has(targetId) || !(xp > 0)) return [];
   const before6 = masteryLevel(draft, unitId, targetId);
   rel.mastery = { ...rel.mastery, [targetId]: round45((rel.mastery?.[targetId] ?? 0) + xp) };
-  const after6 = masteryLevel(draft, unitId, targetId);
+  const after7 = masteryLevel(draft, unitId, targetId);
   const events = [];
-  for (let level = before6 + 1; level <= after6; level++) events.push({ type: "mastery_gained", unitId, targetId, level });
+  for (let level = before6 + 1; level <= after7; level++) events.push({ type: "mastery_gained", unitId, targetId, level });
   const open3 = TUNING.mastery.revealLevel;
   const target = reg.worshipTargets.get(targetId);
-  if (before6 < open3 && after6 >= open3 && !zoneRevealed(draft, unitId, targetId) && contentAllowed(draft, reg, target, unitId)) {
+  if (before6 < open3 && after7 >= open3 && !zoneRevealed(draft, unitId, targetId) && contentAllowed(draft, reg, target, unitId)) {
     events.push({
       type: "zone_revealed",
       unitId,
@@ -21544,12 +21544,12 @@ var trains = (reg, activityId) => activityId !== void 0 && (reg.activities.get(a
 function surfaceHolds(state, reg, unitId, cond) {
   const scene = state.scene;
   const rel = dynamicOf(state, unitId);
-  const S9 = TUNING.dynamic.style;
+  const S10 = TUNING.dynamic.style;
   switch (cond) {
     case "peak":
       return atPeak(state, unitId);
     case "scene_edges":
-      return scene !== void 0 && inScene(state, unitId) && (scene.exchanges <= S9.edgeStart || scene.exchanges >= S9.edgeEnd);
+      return scene !== void 0 && inScene(state, unitId) && (scene.exchanges <= S10.edgeStart || scene.exchanges >= S10.edgeEnd);
     case "before_others":
       return scene !== void 0 && inScene(state, unitId) && scene.participants.length >= 2;
     case "third_person":
@@ -21574,22 +21574,22 @@ function surfaceHolds(state, reg, unitId, cond) {
     }
     case "stagnation": {
       const day = state.dynamic?.noted?.enduranceDay;
-      return day !== void 0 && state.day - day >= S9.stagnationDays;
+      return day !== void 0 && state.day - day >= S10.stagnationDays;
     }
     case "training_start":
       return scene !== void 0 && inScene(state, unitId) && trains(reg, scene.activityId);
     case "praised_or_ignored": {
       const contact = state.relations[unitId]?.contactDay;
-      return state.dynamic?.noted?.praisedDay === state.day || contact !== void 0 && state.day - contact >= S9.ignoredDays;
+      return state.dynamic?.noted?.praisedDay === state.day || contact !== void 0 && state.day - contact >= S10.ignoredDays;
     }
     case "crime_mentioned":
       return state.dynamic?.noted?.crimeDay === state.day;
     case "failed_run": {
       const e = state.lastExpedition;
-      return e !== void 0 && e.outcome === "failed" && state.day - e.day <= S9.failedRunDays;
+      return e !== void 0 && e.outcome === "failed" && state.day - e.day <= S10.failedRunDays;
     }
     case "arrival_anniversary":
-      return state.day > 0 && state.day % S9.anniversaryDays === 0;
+      return state.day > 0 && state.day % S10.anniversaryDays === 0;
   }
 }
 function leadingStyle(state, reg, unitId) {
@@ -23570,8 +23570,8 @@ var OFFENCE_SOURCES = ["refusal_noted", "milestone_refused", "override_answered"
 var HUMBLING_TAG = "public_humiliation";
 var isHumbling = (tags) => tags.includes(HUMBLING_TAG);
 function stageOf(slot2) {
-  const S9 = TUNING.practice.demonstration.stage;
-  return S9[slot2] ?? S9.other;
+  const S10 = TUNING.practice.demonstration.stage;
+  return S10[slot2] ?? S10.other;
 }
 var roomOfLocation = (reg, locationId) => [...reg.hubRooms.values()].find((r) => r.sceneLocationId === locationId)?.id;
 function pickAudience(state, reg, holderId, slot2) {
@@ -24842,7 +24842,7 @@ function sceneService(draft, holderId) {
   const rec = p.service[holderId];
   return rec !== void 0 && rec.sceneId === draft.scene?.id ? rec : p.service[holderId] = { sceneId: draft.scene?.id ?? "", bonus: 0 };
 }
-var stepUp = (v, steps2) => VERDICTS[Math.max(0, VERDICTS.indexOf(v) - steps2)];
+var stepUp = (v, steps3) => VERDICTS[Math.max(0, VERDICTS.indexOf(v) - steps3)];
 function verdictOfRecord(rec) {
   const word2 = rec.pair !== void 0 ? rec.pair.fit && rec.pair.felt ? "pleased" : rec.pair.fit || rec.pair.felt ? "adequate" : "displeased" : rec.said ?? null;
   return word2 === null ? null : stepUp(word2, rec.bonus);
@@ -25600,9 +25600,9 @@ function accept(draft, ctx2, p) {
     ensurePractices(draft).records.push({ day: draft.day, holderId, line: recordLine({ summary: p.summary, sealed: true, answeredDay: draft.day, day: p.day }) });
     events.push({ type: "practice_opened", punishmentId: p.id, holderId }, { type: "practice_signed", punishmentId: p.id, unitId: holderId, holderId, summary: p.summary, sealed: true });
   }
-  const steps2 = p.forUnitId === void 0 ? ceremonyOf(draft, reg, holderId, p.severity) : null;
-  if (steps2 !== null) {
-    p.ceremony = { steps: steps2, done: [] };
+  const steps3 = p.forUnitId === void 0 ? ceremonyOf(draft, reg, holderId, p.severity) : null;
+  if (steps3 !== null) {
+    p.ceremony = { steps: steps3, done: [] };
     events[0].ceremony = true;
     return events;
   }
@@ -27456,10 +27456,10 @@ var arcActivityHook = (draft, ctx2, done) => {
   if (!unit4 || !isLiving(unit4)) return [];
   const inst = unit4.defects.find((d) => d.arc !== void 0 && d.arcSteps !== void 0 && d.arcSteps.done < d.arcSteps.needed);
   if (!inst || inst.arcSteps.lastDay === draft.day) return [];
-  const steps2 = inst.arcSteps;
-  steps2.done += 1;
-  steps2.lastDay = draft.day;
-  if (steps2.done < steps2.needed) return [{ type: "arc_step", unitId: unit4.id, defectId: inst.id, done: steps2.done, needed: steps2.needed }];
+  const steps3 = inst.arcSteps;
+  steps3.done += 1;
+  steps3.lastDay = draft.day;
+  if (steps3.done < steps3.needed) return [{ type: "arc_step", unitId: unit4.id, defectId: inst.id, done: steps3.done, needed: steps3.needed }];
   const events = [{ type: "arc_completed", unitId: unit4.id, defectId: inst.id, path: inst.arc }];
   if (inst.arc === "cure") {
     unit4.defects = unit4.defects.filter((d) => d !== inst);
@@ -28814,8 +28814,8 @@ function subjectOf2(kind, subject, state) {
   return null;
 }
 function commanderVoteWeight(state, reg) {
-  const V2 = TUNING.power.vote;
-  return (V2.commanderBase + V2.commanderPerRank * (socialRank(state, "authority") - 1)) * assertiveness(state, reg).commanderVoteMult;
+  const V3 = TUNING.power.vote;
+  return (V3.commanderBase + V3.commanderPerRank * (socialRank(state, "authority") - 1)) * assertiveness(state, reg).commanderVoteMult;
 }
 function ballotFor(state, reg, unit4, kind, subject) {
   if (unit4.kind !== "named") {
@@ -28968,7 +28968,7 @@ function overruleVote(draft, ctx2, voteId, means, punish) {
   if (means === "punish") {
     if (!punish || !dissent.some((b) => b.unitId === punish.unitId)) throw new Error("A punishment must name one of the soldiers who voted against.");
   }
-  const V2 = TUNING.power.vote;
+  const V3 = TUNING.power.vote;
   const events = [];
   const grudges = powerOf(draft).grudges ??= {};
   for (const b of dissent) {
@@ -28977,12 +28977,12 @@ function overruleVote(draft, ctx2, voteId, means, punish) {
       type: "decision_violated",
       actor: "commander",
       targets: [b.unitId],
-      severity: V2.overruleSeverity,
+      severity: V3.overruleSeverity,
       evidence: "overruled a squad vote",
       confidence: 1,
       valueAxes: againstHerValues(draft, reg, unit4)
     }));
-    events.push(...addRecord(draft, b.unitId, V2.overruleRecord, "vote_overruled"));
+    events.push(...addRecord(draft, b.unitId, V3.overruleRecord, "vote_overruled"));
     grudges[b.unitId] = draft.day;
   }
   for (const b of dissent) events.push(...evaluateAutomatic(draft, reg, b.unitId));
@@ -31138,10 +31138,10 @@ function answerRequest(draft, ctx2, requestId, raw, opts = {}) {
   const events = applyDirectorOutput(draft, ctx2, output, { fallback: opts.fallback });
   delete draft.world.director.pending;
   draft.world.director.lastTickDay = draft.day;
-  const after6 = draft.world.director.after;
-  if (after6) {
+  const after7 = draft.world.director.after;
+  if (after7) {
     delete draft.world.director.after;
-    events.push(...openRequest(draft, after6));
+    events.push(...openRequest(draft, after7));
   }
   if (rejected.length > 0) events.push({ type: "director_rejected", rejected });
   return events;
@@ -33226,9 +33226,9 @@ function covered(draft, r) {
   return r.units.map((u, i) => ({ card: u.cardRef, id: draft.squad[i]?.id })).filter((x) => x.id !== void 0 && known3.has(x.id) && (want === true || want.includes(x.card))).map((x) => x.id);
 }
 function responseOf(seed6, unitId, i) {
-  const S9 = TUNING.probes.underway;
+  const S10 = TUNING.probes.underway;
   const u = headStartHash(seed6, unitId, `probe:${i}`);
-  return u < S9.yielded ? "yielded" : u < S9.yielded + S9.returned ? "returned" : u < S9.yielded + S9.returned + S9.deflected ? "deflected" : "resisted";
+  return u < S10.yielded ? "yielded" : u < S10.yielded + S10.returned ? "returned" : u < S10.yielded + S10.returned + S10.deflected ? "deflected" : "resisted";
 }
 function axisOf(draft, reg, seed6, unitId, i, recent2) {
   const tier = bandIndex(reg, dynamicOf(draft, unitId)?.hold ?? 0) === 0 ? 1 : 2;
@@ -35378,13 +35378,16 @@ function liveSources(state, reg, opts = {}) {
 var MOMENT_FREQUENCIES = ["rare", "normal", "often"];
 var MOMENT_EXPLICIT = ["rarer", "same", "off"];
 var MARATHON_PACES = ["short", "normal", "long"];
+var LONG_HOLD_STRAINS = ["light", "normal", "heavy", "raw"];
+var LONG_HOLD = Object.freeze({ light: 0.25, normal: 0.35, heavy: 0.6, raw: 1 });
 var INTERACTION_TOGGLES = [...INTERACTIONS, "inhale"];
 var DEFAULT_SCENE_SETTINGS = Object.freeze({
   momentFrequency: "normal",
   momentExplicit: "rarer",
   physicsRealtime: false,
   physicsInteractions: Object.freeze(Object.fromEntries(INTERACTION_TOGGLES.map((k) => [k, true]))),
-  marathonPace: "normal"
+  marathonPace: "normal",
+  longHoldStrain: "normal"
 });
 var pick2 = (list5, v, fallback) => typeof v === "string" && list5.includes(v) ? v : fallback;
 function sceneSettingsOf(state) {
@@ -35395,7 +35398,8 @@ function sceneSettingsOf(state) {
     momentExplicit: pick2(MOMENT_EXPLICIT, s.momentExplicit, DEFAULT_SCENE_SETTINGS.momentExplicit),
     physicsRealtime: typeof s.physicsRealtime === "boolean" ? s.physicsRealtime : DEFAULT_SCENE_SETTINGS.physicsRealtime,
     physicsInteractions: Object.fromEntries(INTERACTION_TOGGLES.map((k) => [k, typeof stored[k] === "boolean" ? stored[k] : true])),
-    marathonPace: pick2(MARATHON_PACES, s.marathonPace, DEFAULT_SCENE_SETTINGS.marathonPace)
+    marathonPace: pick2(MARATHON_PACES, s.marathonPace, DEFAULT_SCENE_SETTINGS.marathonPace),
+    longHoldStrain: pick2(LONG_HOLD_STRAINS, s.longHoldStrain, DEFAULT_SCENE_SETTINGS.longHoldStrain)
   };
 }
 function parseSceneSettings(p) {
@@ -35403,6 +35407,7 @@ function parseSceneSettings(p) {
   if (!MOMENT_EXPLICIT.includes(p.momentExplicit)) return "momentExplicit is rarer, same or off";
   if (typeof p.physicsRealtime !== "boolean") return "physicsRealtime must be a boolean";
   if (!MARATHON_PACES.includes(p.marathonPace)) return "marathonPace is short, normal or long";
+  if (p.longHoldStrain !== void 0 && !LONG_HOLD_STRAINS.includes(p.longHoldStrain)) return "longHoldStrain is light, normal, heavy or raw";
   const i = p.physicsInteractions;
   if (typeof i !== "object" || i === null || Array.isArray(i) || INTERACTION_TOGGLES.some((k) => typeof i[k] !== "boolean")) {
     return `physicsInteractions needs a boolean for each of ${INTERACTION_TOGGLES.join(", ")}`;
@@ -35412,7 +35417,8 @@ function parseSceneSettings(p) {
     momentExplicit: p.momentExplicit,
     physicsRealtime: p.physicsRealtime,
     physicsInteractions: Object.fromEntries(INTERACTION_TOGGLES.map((k) => [k, i[k]])),
-    marathonPace: p.marathonPace
+    marathonPace: p.marathonPace,
+    longHoldStrain: p.longHoldStrain ?? DEFAULT_SCENE_SETTINGS.longHoldStrain
   };
 }
 
@@ -37099,10 +37105,10 @@ function remoteDayStep(draft, ctx2) {
 }
 function verdictChance(state, _reg) {
   const ls = leashswapOf(state);
-  const V2 = TUNING.warden.verdict;
+  const V3 = TUNING.warden.verdict;
   const route = ls?.removal?.route ?? "death";
   const discovered = (ls?.intrigue.discovered ?? 0) > 0 ? 1 : 0;
-  return clamp38(V2.base[route] + V2.perCunning * (socialRank(state, "cunning") - 1) - V2.discovered * discovered + V2.perAlly * allies(state).length, V2.min, V2.max);
+  return clamp38(V3.base[route] + V3.perCunning * (socialRank(state, "cunning") - 1) - V3.discovered * discovered + V3.perAlly * allies(state).length, V3.min, V3.max);
 }
 function rollVerdict(draft, ctx2) {
   const ls = leashswapOf(draft);
@@ -38872,8 +38878,8 @@ function applyShift(unit4, dev, s) {
     const delta = D2.nudge * (isAnchored(unit4, s.axis) ? D2.anchorInertia : 1);
     const next = s.size === "nudge" ? old + (up ? delta : -delta) : Math.trunc(old) + (up ? 1 : -1);
     dev.drift[axis] = round5(Math.min(cap9, Math.max(-cap9, next)));
-    const after6 = valuesOf(unit4)[axis];
-    return after6 === before6 ? null : { from: String(before6), to: String(after6) };
+    const after7 = valuesOf(unit4)[axis];
+    return after7 === before6 ? null : { from: String(before6), to: String(after7) };
   }
   if (kind === "bond" || kind === "practice" || kind === "expect") {
     const d = discreteAxis(unit4, s.axis);
@@ -39508,7 +39514,7 @@ function resolveEnvOf(state, reg, run) {
     // R19: her own band, of the part she presses (a contact's target; an item has none: the rest of her)
     band: scentBand(state, reg, run.holderId, run.sourceKind === "contact" ? contactTargetOf(state.scene, reg, run.sourceId) ?? run.targetId : void 0),
     head: headCapacity(scentToleranceOf(state, reg, run.holderId)),
-    ...run.sourceKind === "activity" ? { hear: frameOf3(reg.blockingActivities.get(run.sourceId))?.hear ?? 1 } : {}
+    ...run.sourceKind === "activity" ? { hear: frameOf3(reg.blockingActivities.get(run.sourceId))?.hear ?? 1, longHold: LONG_HOLD[sceneSettingsOf(state).longHoldStrain] } : {}
   };
 }
 function share(kind, gauge, capacity2) {
@@ -39628,13 +39634,14 @@ function resolveSegment(run, plan, inputs, env) {
       }
       case "hold": {
         const drain = P2.weight.drain * (run.pressure ?? 1) * (env.steady?.has(b) ? STEADY_DRAIN : 1);
-        r.gauge -= drain;
+        const flow = drain * (env.longHold ?? 1);
+        r.gauge -= flow;
         if (at2(b, "hold").length === 0) {
           r.slips += 1;
           r.gauge -= drain;
         }
         const uneven = at2(b, "uneven")[0];
-        if (uneven !== void 0) r.gauge -= drain * (uneven.amount ?? 0);
+        if (uneven !== void 0) r.gauge -= flow * (uneven.amount ?? 0);
         if (beat.shift !== void 0 && !evenBefore(b)) r.gauge -= beat.shift;
         for (const g of at2(b, "shift_weight")) {
           r.gauge += P2.weight.relief;
@@ -39686,8 +39693,8 @@ function resolveSegment(run, plan, inputs, env) {
   if (run.dryness !== void 0 && r.dryness === void 0) r.dryness = run.dryness;
   r.checked = env.interaction === "order" && r.gauge <= P2.tongue.checkAt;
   r.complete = env.interaction === "passive" && r.gauge >= 100;
-  const after6 = share(env.gaugeKind, r.gauge, cap9);
-  r.warning = before6 > P2.warning / 100 && after6 <= P2.warning / 100;
+  const after7 = share(env.gaugeKind, r.gauge, cap9);
+  r.warning = before6 > P2.warning / 100 && after7 <= P2.warning / 100;
   r.noise = r.slips + r.gasps > 0 ? P2.noiseSlip : 0;
   return r;
 }
@@ -40604,6 +40611,30 @@ function bypassLeash(draft, ctx2, p) {
   return events;
 }
 
+// src/engine/dynamic/decide.ts
+var DECISION_KINDS = ["roster", "requisition", "punishment"];
+function decideOverHead(draft, reg, payload) {
+  const run = draft.scene?.physics;
+  if (!run || run.id !== payload.runId) throw new Error("physics/decide: stale physics run");
+  if (run.sourceKind !== "activity") throw new Error("physics/decide: only in her frame");
+  if (typeof payload.kind !== "string" || !DECISION_KINDS.includes(payload.kind)) throw new Error("physics/decide: kind is roster, requisition or punishment");
+  if (!hasCapability(draft, reg, run.holderId, "countermand")) throw new Error("physics/decide: she does not hold the command");
+  const kind = payload.kind;
+  const ref = typeof payload.ref === "string" && payload.ref !== "" ? payload.ref : void 0;
+  const events = [];
+  if (kind === "roster") {
+    const unit4 = draft.squad.find((u) => u.id === ref);
+    if (!unit4 || !isLiving(unit4) || unit4.id === run.holderId) throw new Error("physics/decide: a roster decision names another living soldier");
+    const active = draft.roster.activeIds.includes(unit4.id);
+    const next = active ? draft.roster.activeIds.filter((id) => id !== unit4.id) : [...draft.roster.activeIds, unit4.id];
+    if (next.length === 0 || next.length > TUNING.rosterActiveMax) throw new Error("physics/decide: the roster cannot take that");
+    unit4.status = active ? "reserve" : unit4.status === "reserve" ? "active" : unit4.status;
+    draft.roster.activeIds = next;
+    events.push({ type: "roster_changed", activeIds: [...next], by: run.holderId });
+  }
+  return [{ type: "physics_decided", runId: run.id, holderId: run.holderId, kind, ...ref !== void 0 ? { ref } : {} }, ...events];
+}
+
 // src/engine/actions/dynamic.ts
 function namedUnit3(draft, id, action) {
   const unit4 = typeof id === "string" ? draft.squad.find((u) => u.id === id) : void 0;
@@ -40839,6 +40870,10 @@ registerAfterAction((draft, _ctx, events) => {
   if (x === void 0 || x.open.offers.length === 0) return [];
   for (const e of events) if (e.type === "scene_ended" || e.type === "scene_aborted") x.open.offers = x.open.offers.filter((o) => o.sceneId !== e.sceneId);
   return [];
+});
+registerAction("physics/decide", (draft, payload, ctx2) => {
+  if (typeof payload !== "object" || payload === null) throw new Error("physics/decide needs a payload");
+  return decideOverHead(draft, ctx2.registries, payload);
 });
 
 // src/engine/practice/askHer.ts
@@ -41125,11 +41160,11 @@ function ask(draft, ctx2, unitId, what) {
   return events;
 }
 function askWords(event) {
-  const W = TUNING.practice.ask.words;
-  if (event.answer === "accepted") return W.accepted;
-  if (event.answer === "mocked") return W.mocked;
+  const W2 = TUNING.practice.ask.words;
+  if (event.answer === "accepted") return W2.accepted;
+  if (event.answer === "mocked") return W2.mocked;
   if (event.answer !== "refused") return void 0;
-  return event.kind === true ? W.kind : event.opening === true ? W.opening : W.refused;
+  return event.kind === true ? W2.kind : event.opening === true ? W2.opening : W2.refused;
 }
 
 // src/engine/practice/postures.ts
@@ -44289,12 +44324,12 @@ function offerDirective(event, state, reg) {
   return parts2 === null ? null : plainDirective({ id: `${OFFER_PREFIX}${unit4.id}`, expiresAfter: "next_reply", text: [...parts2, "Show it in how she acts and speaks; never name it as a mechanic."].join(" ") });
 }
 function offerSentences(reg, unit4, o) {
-  const say8 = OFFER_LINE[o.answer];
-  if (say8 === void 0) return null;
+  const say9 = OFFER_LINE[o.answer];
+  if (say9 === void 0) return null;
   const named4 = o.corrected === void 0 ? void 0 : reg.worshipTargets.get(o.corrected);
   return [
     `The commander offers ${sentence2(o.what)} to ${unit4.displayName}${o.conditions ? ", and asks something in return" : ""}.`,
-    o.kind ? `${unit4.displayName} turns it down kindly; she is not looking for that from the commander.` : say8(unit4.displayName),
+    o.kind ? `${unit4.displayName} turns it down kindly; she is not looking for that from the commander.` : say9(unit4.displayName),
     ...o.answer === "corrected" && named4 !== void 0 ? [`What she wants is the commander's attention to her ${sentence2(String(named4.label)).toLowerCase()}.`] : []
   ];
 }
@@ -46817,7 +46852,8 @@ var DEFAULT_SETTINGS = {
   physicsRealtime: true,
   // P10e-e: the instruments play in real time (the engine's mirror default stays false: a campaign that never mirrored it resolves as before)
   physicsInteractions: { ...DEFAULT_SCENE_SETTINGS.physicsInteractions },
-  marathonPace: "normal"
+  marathonPace: "normal",
+  longHoldStrain: "normal"
 };
 var fieldSchemas = {
   mechanicProfileId: external_exports.string(),
@@ -46880,7 +46916,8 @@ var fieldSchemas = {
   momentChips: external_exports.enum(["chips", "immersive"]),
   physicsRealtime: external_exports.boolean(),
   physicsInteractions: external_exports.object(Object.fromEntries(INTERACTION_TOGGLES.map((k) => [k, external_exports.boolean().default(true)]))),
-  marathonPace: external_exports.enum(MARATHON_PACES)
+  marathonPace: external_exports.enum(MARATHON_PACES),
+  longHoldStrain: external_exports.enum(LONG_HOLD_STRAINS)
 };
 var budgetSchema = external_exports.number().int().min(1);
 var isObj45 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -47845,7 +47882,7 @@ function figure(ctx2, side, cx, oy) {
   return g;
 }
 function zoneEl(ctx2, z2) {
-  const X = (z2.x - 50) * 2.5;
+  const X2 = (z2.x - 50) * 2.5;
   const Y = z2.y * 5;
   const R9 = Math.max(6, z2.r * 2);
   const word2 = z2.known && z2.attitude !== void 0 ? z2.attitude : "not known yet";
@@ -47861,18 +47898,18 @@ function zoneEl(ctx2, z2) {
     "aria-label": `${z2.label}: ${word2}`,
     ...z2.known && z2.attitude !== void 0 ? { "data-attitude": z2.attitude } : {}
   });
-  g.append(svgEl("circle", { cx: X, cy: Y, r: R9, class: "alius-bm-ring" }));
+  g.append(svgEl("circle", { cx: X2, cy: Y, r: R9, class: "alius-bm-ring" }));
   const rings = z2.scent !== void 0 ? z2.scent : 0;
-  for (let i = 1; i <= rings; i++) g.append(svgEl("circle", { cx: X, cy: Y, r: R9 * i / (rings + 1), class: "alius-bm-scent" }));
+  for (let i = 1; i <= rings; i++) g.append(svgEl("circle", { cx: X2, cy: Y, r: R9 * i / (rings + 1), class: "alius-bm-scent" }));
   const mark2 = (cls, x, y, text3) => {
     const t = svgEl("text", { x, y, class: cls, "text-anchor": "middle" });
     t.textContent = text3;
     g.append(t);
   };
-  if (!z2.known) mark2("alius-bm-q", X, Y + 4, "?");
-  else if (z2.meaning !== void 0) mark2("alius-bm-meaning", X, Y + 4, MEANING_ICON[z2.meaning]);
-  if (z2.explicit === true) mark2("alius-bm-explicit", X - R9, Y - R9 + 4, "\u25C7");
-  if (z2.mastery > 0) mark2("alius-bm-dots", X, Y + R9 + 9, dotsOf(z2.mastery));
+  if (!z2.known) mark2("alius-bm-q", X2, Y + 4, "?");
+  else if (z2.meaning !== void 0) mark2("alius-bm-meaning", X2, Y + 4, MEANING_ICON[z2.meaning]);
+  if (z2.explicit === true) mark2("alius-bm-explicit", X2 - R9, Y - R9 + 4, "\u25C7");
+  if (z2.mastery > 0) mark2("alius-bm-dots", X2, Y + R9 + 9, dotsOf(z2.mastery));
   return g;
 }
 function row2(ctx2, z2, label2) {
@@ -49469,8 +49506,8 @@ function renderInvTab(host, ctx2) {
         const before6 = unitStats(sample, reg, s2);
         for (const x of sample.squad) for (const k of ["weapon", "upper", "lower"]) if (x.equipment[k] === item.uid) delete x.equipment[k];
         s2.equipment[slot2] = item.uid;
-        const after6 = unitStats(sample, reg, s2);
-        afterLine = h("p", { class: "alius-dim", "data-after": "true" }, `${unit4.displayName}: ${STATS2.map((k) => `${upper(k)} ${before6[k]}\u2192${after6[k]}`).join(" \xB7 ")}`);
+        const after7 = unitStats(sample, reg, s2);
+        afterLine = h("p", { class: "alius-dim", "data-after": "true" }, `${unit4.displayName}: ${STATS2.map((k) => `${upper(k)} ${before6[k]}\u2192${after7[k]}`).join(" \xB7 ")}`);
       } catch {
         afterLine = null;
       }
@@ -50437,8 +50474,8 @@ function createComms(deps) {
       const herId = threadOf(state(), unitId).at(-1)?.id;
       if (herId === void 0) return "ok";
       const run = readExchange(unitId, herId).then(() => {
-        const after6 = state();
-        if (after6 && chatId() === expect) deps.generations.takeSnapshot("dm.reply", key, before6, after6);
+        const after7 = state();
+        if (after7 && chatId() === expect) deps.generations.takeSnapshot("dm.reply", key, before6, after7);
       }).finally(() => reads.delete(key));
       reads.set(key, run);
       return "ok";
@@ -51350,9 +51387,9 @@ function unsay(host) {
 }
 function frameOf4(host) {
   const r = host.getBoundingClientRect();
-  const W = host.clientWidth || r.width || (typeof innerWidth === "number" ? innerWidth : 0);
+  const W2 = host.clientWidth || r.width || (typeof innerWidth === "number" ? innerWidth : 0);
   const H = host.clientHeight || r.height || (typeof innerHeight === "number" ? innerHeight : 0);
-  return { W, H, left: r.left, top: r.top };
+  return { W: W2, H, left: r.left, top: r.top };
 }
 function hashRand(key, a, b) {
   return a + fnv1a3(key) % 1e4 / 1e4 * (b - a);
@@ -51549,6 +51586,7 @@ function scopedStaging(staging, scope) {
     script: (p) => on() ? staging.script?.(p) ?? null : null,
     getUp: () => on() ? staging.getUp?.() ?? [] : [],
     found: (id) => on() ? staging.found?.(id) ?? [] : [],
+    decide: (k, r) => on() ? staging.decide?.(k, r) ?? [] : [],
     beat: () => staging.beat(),
     clock: () => staging.clock()
   };
@@ -52480,9 +52518,9 @@ function spawnDrop() {
   G2.drops.push({ x: r.left - R4.ox + r.width * rand(0.3, 0.7), y: r.bottom - R4.oy - 2, r: 0, grow: rand(1.2, 2.2), v: 0, falling: false, life: 1 });
 }
 function render(now, dt) {
-  const W = innerWidth2, H = innerHeight2, f01 = G2.f / 100;
-  if (drool.width !== W) {
-    drool.width = W;
+  const W2 = innerWidth2, H = innerHeight2, f01 = G2.f / 100;
+  if (drool.width !== W2) {
+    drool.width = W2;
     drool.height = H;
   }
   const h2 = lerp2(MOUTH_H[0], MOUTH_H[1], G2.jaw);
@@ -52527,7 +52565,7 @@ function render(now, dt) {
     const Hs = H * (sole ? 1.5 : 1.3), sc = Hs / nh, Ws = nw * sc;
     const bottom = H * (sole ? 1.28 : 1.16) + (sole ? G2.push * H * 0.25 : 0);
     const breathe = 1 + 6e-3 * Math2.sin(now / 900);
-    img.style.transform = `translate(${(W / 2 - Ws / 2).toFixed(1)}px, ${(bottom - Hs).toFixed(1)}px) translate(${Ws / 2}px, ${Hs}px) rotateX(${sole ? 12 : 8}deg) scale(${breathe}) translate(${-Ws / 2}px, ${-Hs}px) scale(${sc.toFixed(4)})`;
+    img.style.transform = `translate(${(W2 / 2 - Ws / 2).toFixed(1)}px, ${(bottom - Hs).toFixed(1)}px) translate(${Ws / 2}px, ${Hs}px) rotateX(${sole ? 12 : 8}deg) scale(${breathe}) translate(${-Ws / 2}px, ${-Hs}px) scale(${sc.toFixed(4)})`;
     img.style.filter = `blur(${sole && footLoaded ? 2.5 : 0}px) brightness(${sole ? 0.8 : 0.92})`;
   }
   if (footLoaded && S2.contact === "sole_to_mouth") {
@@ -52536,7 +52574,7 @@ function render(now, dt) {
     foot.style.transform = `translate(-50%, ${(H * 0.18 - G2.push * H * 0.2).toFixed(1)}px) rotate(${wig.toFixed(2)}deg)`;
   }
   $("#backdrop").style.filter = `blur(${S2.contact === "sole_to_mouth" ? 6 : 2}px) brightness(.7)`;
-  dctx.clearRect(0, 0, W, H);
+  dctx.clearRect(0, 0, W2, H);
   for (const d of G2.drops) {
     if (!d.falling) {
       d.r += d.grow * dt / 1e3 * 3;
@@ -53325,7 +53363,7 @@ registerCallType({
 var SCRIPT_TEXT_MAX = 160;
 var SCRIPT_LINES_MAX = 24;
 var BODY_CUES = ["lean", "press", "laugh", "cross", "settle", "rise"];
-var DECISION_KINDS = ["roster", "requisition", "punishment"];
+var DECISION_KINDS2 = ["roster", "requisition", "punishment"];
 var COMMANDER_PRONOUN8 = /\b(he|him|his|himself|he's|she|her|hers|herself|she's)\b/i;
 var HE = /\b(he|him|his|himself|he's)\b/i;
 var isObj48 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -53364,7 +53402,7 @@ function sanitizeScript(raw, input) {
       ...typeof l.body === "string" && BODY_CUES.includes(l.body) && who === "her" ? { body: l.body } : {},
       ...about2 ? { about: true } : {},
       ...l.feet === true && who === "other" ? { feet: true } : {},
-      ...isObj48(l.decision) && typeof l.decision.kind === "string" && DECISION_KINDS.includes(l.decision.kind) ? { decision: { kind: l.decision.kind, ...typeof l.decision.ref === "string" && l.decision.ref.length <= 60 ? { ref: clean12(l.decision.ref) } : {} } } : {}
+      ...isObj48(l.decision) && typeof l.decision.kind === "string" && DECISION_KINDS2.includes(l.decision.kind) ? { decision: { kind: l.decision.kind, ...typeof l.decision.ref === "string" && /^[A-Za-z0-9_.:-]{1,60}$/.test(l.decision.ref) ? { ref: l.decision.ref } : {} } } : {}
     };
     out.push(line3);
     if (out.length >= SCRIPT_LINES_MAX) break;
@@ -53672,6 +53710,10 @@ function createStaging(deps) {
       const r = run();
       return active && r?.forgotten ? dispatch2({ type: "physics/found", payload: { runId: r.id, finderId } }) : [];
     },
+    decide(kind, ref) {
+      const r = run();
+      return active && r ? dispatch2({ type: "physics/decide", payload: { runId: r.id, kind, ...ref !== void 0 ? { ref } : {} } }) : [];
+    },
     tick(nowMs) {
       if (active) advance2(nowMs);
     },
@@ -53751,7 +53793,7 @@ function bellsFor(events, state, reg) {
 }
 function sceneSettingsPatch(state, settings) {
   const mine = sceneSettingsOf(state);
-  const same = mine.momentFrequency === settings.momentFrequency && mine.momentExplicit === settings.momentExplicit && mine.physicsRealtime === settings.physicsRealtime && mine.marathonPace === settings.marathonPace && INTERACTION_TOGGLES.every((k) => mine.physicsInteractions[k] === settings.physicsInteractions[k]);
+  const same = mine.momentFrequency === settings.momentFrequency && mine.momentExplicit === settings.momentExplicit && mine.physicsRealtime === settings.physicsRealtime && mine.marathonPace === settings.marathonPace && mine.longHoldStrain === settings.longHoldStrain && INTERACTION_TOGGLES.every((k) => mine.physicsInteractions[k] === settings.physicsInteractions[k]);
   return same ? null : { ...settings, physicsInteractions: { ...settings.physicsInteractions } };
 }
 
@@ -54365,8 +54407,8 @@ function createEnvelope(host) {
       h2.fallback(rec.key, isExpired(input) ? null : input);
       host.dispatch({ type: "generation/close", payload: { id: recordId, outcome: "kept_fallback" } }, { expectChatId: chatId });
     },
-    takeSnapshot(siteId, key, before6, after6) {
-      snapshots.set(siteId, { chatId: host.chatId(), key, before: before6, after: after6 });
+    takeSnapshot(siteId, key, before6, after7) {
+      snapshots.set(siteId, { chatId: host.chatId(), key, before: before6, after: after7 });
     },
     clearSnapshots() {
       snapshots.clear();
@@ -54647,11 +54689,11 @@ function createSceneController(deps) {
         }
       }, expect);
       if (events.some((e) => e.type === "error")) return { stale: true };
-      const after6 = state();
+      const after7 = state();
       extracted = nextPointer;
       const landed = events.find((e) => e.type === "intents_applied")?.landed ?? result.intents.events.map((e) => e.type);
       const directives = reflect(events, result.intents.events.filter((e) => e.severity === "extreme" && landed.includes(e.type)).map((e) => e.type));
-      if (after6 && after6 !== before6) lastApply = { lastReplyIndex: lastReply.index, from, to: k.to, before: before6, after: after6, directives };
+      if (after7 && after7 !== before6) lastApply = { lastReplyIndex: lastReply.index, from, to: k.to, before: before6, after: after7, directives };
       if (deps.settings().spriteMode === "emotion_pick") {
         for (const em of result.emotions) deps.onUi({ type: "sprite", unitId: em.unitId, label: em.label });
       }
@@ -54853,9 +54895,9 @@ function createSceneController(deps) {
       if (summary.contentViolations.length > 0) debug(`Scene summary flagged excluded content: ${summary.contentViolations.map((v) => v.category).join(", ")}.`);
       if (before6.scene?.id === sceneId) {
         const events2 = dispatch2({ type: "scene/end", payload: { summary, endIndex: st3.chatLength() - 1 } }, expect);
-        const after6 = state();
-        if (events2.some((e) => e.type === "error") || !after6) return { stale: true };
-        deps.generations.takeSnapshot("scene.summary", sceneId, before6, after6);
+        const after7 = state();
+        if (events2.some((e) => e.type === "error") || !after7) return { stale: true };
+        deps.generations.takeSnapshot("scene.summary", sceneId, before6, after7);
         summaryKey = sceneId;
         return "ok";
       }
@@ -55060,8 +55102,8 @@ function createSceneController(deps) {
       const sent = needsAt ? { ...action, payload: { ...p, at: st3.chatLength() } } : action;
       const before6 = state();
       const events = dispatch2(sent, chatId());
-      const after6 = state();
-      if (lastApply && before6 && lastApply.after === before6 && after6 && after6 !== before6) lastApply.after = after6;
+      const after7 = state();
+      if (lastApply && before6 && lastApply.after === before6 && after7 && after7 !== before6) lastApply.after = after7;
       return events;
     },
     onEdited(index2) {
@@ -55993,17 +56035,17 @@ var Wizard = class {
   prologueStep() {
     const entry = this.s.mode === "prologue" ? this.prologue() : null;
     if (!entry) return null;
-    const steps2 = stepsOf(entry);
+    const steps3 = stepsOf(entry);
     const has3 = (st3, ...fields) => (st3.fields ?? []).some((f) => fields.includes(f));
     switch (this.s.step) {
       case "cold_open":
-        return steps2.find((st3) => st3.kind === "paper_form" && (st3.fields ?? []).length === 0) ?? null;
+        return steps3.find((st3) => st3.kind === "paper_form" && (st3.fields ?? []).length === 0) ?? null;
       case "intake":
-        return steps2.find((st3) => has3(st3, "crime", "name")) ?? null;
+        return steps3.find((st3) => has3(st3, "crime", "name")) ?? null;
       case "exam":
-        return steps2.find((st3) => has3(st3, "body", "expression", "seasoning", "traits")) ?? null;
+        return steps3.find((st3) => has3(st3, "body", "expression", "seasoning", "traits")) ?? null;
       case "file":
-        return steps2.find((st3) => st3.kind === "dossier") ?? null;
+        return steps3.find((st3) => st3.kind === "dossier") ?? null;
       default:
         return null;
     }
@@ -56028,10 +56070,10 @@ var Wizard = class {
   }
   /** A calibrated unit's offset and stances were read against the old world: offer a re-import. */
   worldChanged(before6) {
-    const after6 = this.s.world.options;
+    const after7 = this.s.world.options;
     const reg = this.deps.registries;
-    const matters = Object.keys(after6).some((id) => {
-      if (after6[id] === before6[id]) return false;
+    const matters = Object.keys(after7).some((id) => {
+      if (after7[id] === before6[id]) return false;
       const option2 = reg.worldOptions.get(id);
       return option2 !== void 0 && (option2.squadStance === true || option2.choices.some((c) => c.effects.some((e) => e.type === "disposition")));
     });
@@ -62655,8 +62697,8 @@ function renderExpeditionScreen(host, ctx2) {
       panel.append(h("p", {}, "FIGHT IN PROGRESS"));
       return;
     }
-    const decided = state.lastCombat !== void 0 && state.lastCombat.id !== exp.pending.prevCombatId;
-    if (decided) {
+    const decided2 = state.lastCombat !== void 0 && state.lastCombat.id !== exp.pending.prevCombatId;
+    if (decided2) {
       panel.append(h("p", {}, "FIGHT DECIDED"), h("button", { type: "button", class: "alius-btn", onclick: () => controller.afterCombat() }, "[ CONTINUE ]"));
       return;
     }
@@ -63919,7 +63961,7 @@ function renderSceneCeremony(host, ctx2, name, live3, next, entryOf4) {
   const ceremony = p.ceremony;
   const style = styleOf4(state, reg, p.holderId);
   const label2 = labelOf3(reg, p);
-  const steps2 = ceremony.steps.map((id) => {
+  const steps3 = ceremony.steps.map((id) => {
     const e = entryOf4(id);
     const mode = ceremony.done.includes(id) ? "done" : id === next ? "next" : "later";
     return h(
@@ -63929,7 +63971,7 @@ function renderSceneCeremony(host, ctx2, name, live3, next, entryOf4) {
       h("span", { class: "alius-ceremony-label" }, e.label)
     );
   });
-  const extra = [h("ol", { class: "alius-scard-steps" }, ...steps2)];
+  const extra = [h("ol", { class: "alius-scard-steps" }, ...steps3)];
   const answers2 = [];
   if (next !== void 0) {
     const e = entryOf4(next);
@@ -64629,7 +64671,7 @@ function renderIntrigueSection(host, state, reg, deps = {}) {
   const nameOf28 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
   const kompromat = kompromatOf(state).length;
   const need = TUNING.warden.kompromat.needed;
-  const steps2 = TUNING.warden.hack.steps;
+  const steps3 = TUNING.warden.hack.steps;
   const digAlly = allyIds[0];
   const hackAlly = allyIds.find((id) => hackProblem(state, reg, id) === null) ?? allyIds[0];
   const digWhy = digProblem(state, reg, digAlly);
@@ -64657,7 +64699,7 @@ function renderIntrigueSection(host, state, reg, deps = {}) {
     h("h4", {}, "INTRIGUE"),
     h("p", {}, h("span", { class: "alius-chip alius-stat", ...analyzeAttrs("glossary:intrigue") }, `ALLIES: ${allyIds.length === 0 ? "NONE" : allyIds.map(nameOf28).join(", ").toUpperCase()}`)),
     h("p", {}, h("span", { class: "alius-chip alius-stat", "data-stat": "kompromat", ...analyzeAttrs("glossary:kompromat") }, `KOMPROMAT: ${kompromat} / ${need}`)),
-    h("p", {}, h("span", { class: "alius-chip alius-stat", "data-stat": "hack", ...analyzeAttrs("glossary:implant_hack") }, `IMPLANT HACK: STEP ${ls.intrigue.hack.step} / ${steps2}`)),
+    h("p", {}, h("span", { class: "alius-chip alius-stat", "data-stat": "hack", ...analyzeAttrs("glossary:implant_hack") }, `IMPLANT HACK: STEP ${ls.intrigue.hack.step} / ${steps3}`)),
     h(
       "div",
       { class: "alius-row" },
@@ -65221,17 +65263,17 @@ function chaikin(pts) {
 
 // src/ui/scene/instruments/kit/dark.ts
 var S3 = { angle: -14, side: { lift: "bottom", slide: "auto", wedge: "right" } };
-function sideFrame(g, W, H, side) {
+function sideFrame(g, W2, H, side) {
   const rot = { bottom: 0, top: Math.PI, left: Math.PI / 2, right: -Math.PI / 2 }[side] ?? 0;
   const swap = side === "left" || side === "right";
-  const Wc = swap ? H : W, Hc = swap ? W : H;
+  const Wc = swap ? H : W2, Hc = swap ? W2 : H;
   g.save();
-  g.translate(W / 2, H / 2);
+  g.translate(W2 / 2, H / 2);
   g.rotate(rot);
   g.translate(-Wc / 2, -Hc / 2);
   const map = ([x, y]) => {
     const dx = x - Wc / 2, dy = y - Hc / 2;
-    return [(W / 2 + dx * Math.cos(rot) - dy * Math.sin(rot)) / W, (H / 2 + dx * Math.sin(rot) + dy * Math.cos(rot)) / H];
+    return [(W2 / 2 + dx * Math.cos(rot) - dy * Math.sin(rot)) / W2, (H / 2 + dx * Math.sin(rot) + dy * Math.cos(rot)) / H];
   };
   return { Wc, Hc, map, done: () => g.restore() };
 }
@@ -65253,22 +65295,22 @@ var SEAT_BODY = [
   [0.05, 0.56]
 ];
 var SHAPES = {
-  slit(g, W, H, o, s) {
+  slit(g, W2, H, o, s) {
     const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
-    const cx = W * 0.5, cy = H * (0.42 + s.sway * 4e-3);
+    const cx = W2 * 0.5, cy = H * (0.42 + s.sway * 4e-3);
     const hh = (3e-3 + oc * 0.055 + ex * ex * 1.2) * H, hw = (0.16 + oc * 0.09 + ex * 1.4) * H;
     g.beginPath();
     g.moveTo(cx - hw, cy);
     g.quadraticCurveTo(cx, cy - 2 * hh, cx + hw, cy);
     g.quadraticCurveTo(cx, cy + 2 * hh, cx - hw, cy);
     g.fill();
-    return { focus: [0.5, 0.42], lip: [(cx + hw * 0.62) / W, (cy - hh * 0.7) / H], text: [(cx + hw + 0.03 * H) / W, (cy - 0.08 * H) / H] };
+    return { focus: [0.5, 0.42], lip: [(cx + hw * 0.62) / W2, (cy - hh * 0.7) / H], text: [(cx + hw + 0.03 * H) / W2, (cy - 0.08 * H) / H] };
   },
-  gap(g, W, H, o, s) {
+  gap(g, W2, H, o, s) {
     const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
     const th = S3.angle * Math.PI / 180;
     const ax = [Math.sin(th), -Math.cos(th)], nx = [Math.cos(th), Math.sin(th)];
-    const C3 = [W * 0.5 + s.sway * H * 4e-3, H * 0.52];
+    const C3 = [W2 * 0.5 + s.sway * H * 4e-3, H * 0.52];
     const Lh = 0.78 * H;
     const toe = (6e-3 + oc * 0.085 + s.sway * 3e-3 + ex * ex * 1.4) * H, heel = (oc * 0.016 + ex * ex * 1.4) * H;
     const left = [], right = [];
@@ -65289,11 +65331,11 @@ var SHAPES = {
     g.fill();
     const at2 = (k) => [C3[0] + ax[0] * (k * 2 - 1) * Lh, C3[1] + ax[1] * (k * 2 - 1) * Lh];
     const tip = at2(0.78), mid2 = at2(0.64);
-    return { focus: [mid2[0] / W, mid2[1] / H], lip: [(tip[0] + nx[0] * (toe * 0.9 + 0.012 * H)) / W, (tip[1] + nx[1] * toe) / H], text: [(tip[0] + 0.1 * H) / W, (tip[1] + 0.03 * H) / H] };
+    return { focus: [mid2[0] / W2, mid2[1] / H], lip: [(tip[0] + nx[0] * (toe * 0.9 + 0.012 * H)) / W2, (tip[1] + nx[1] * toe) / H], text: [(tip[0] + 0.1 * H) / W2, (tip[1] + 0.03 * H) / H] };
   },
-  lift(g, W, H, o, s) {
+  lift(g, W2, H, o, s) {
     const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
-    const fr = sideFrame(g, W, H, S3.side.lift);
+    const fr = sideFrame(g, W2, H, S3.side.lift);
     const { Wc, Hc } = fr;
     const tilt = clamp41(S3.angle / 30, -1.3, 1.3);
     const edge = (u) => Hc * (1.03 - oc * 0.4 - ex * 1.6 + s.sway * 4e-3) - tilt * (u - 0.5) * Hc * 0.28 * Math.max(oc, 0.15) + Hc * 0.07 * (1 - (2 * u - 1) ** 2) * (0.4 + 0.6 * oc);
@@ -65311,65 +65353,65 @@ var SHAPES = {
     fr.done();
     return out;
   },
-  slide(g, W, H, o, s) {
+  slide(g, W2, H, o, s) {
     const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
     const d = s.slideDir;
     const R9 = 1.08 * H, shift = (0.02 + oc * 0.3 + ex * 1.8) * H;
-    const cx = W / 2 - d * shift + s.sway * H * 6e-3, cy = H * (0.5 + s.slideY * 0.14);
-    g.fillRect(0, 0, W, H);
+    const cx = W2 / 2 - d * shift + s.sway * H * 6e-3, cy = H * (0.5 + s.slideY * 0.14);
+    g.fillRect(0, 0, W2, H);
     g.globalCompositeOperation = "destination-out";
     g.beginPath();
     g.arc(cx, cy, R9, 0, Math.PI * 2);
     g.fill();
     g.globalCompositeOperation = "source-over";
     const edgeX = d < 0 ? cx - R9 : cx + R9;
-    const lipX = d < 0 ? Math.max(edgeX, 0) : Math.min(edgeX, W);
-    return d < 0 ? { focus: [Math.max(0.06, edgeX / W * 0.5), cy / H], lip: [lipX / W + 6e-3, (cy - 0.25 * H) / H], text: [(lipX + 0.07 * H) / W, (cy - 0.1 * H) / H], align: "left" } : { focus: [Math.min(0.94, 1 - (1 - edgeX / W) * 0.5), cy / H], lip: [lipX / W - 6e-3, (cy - 0.25 * H) / H], text: [(lipX - 0.07 * H) / W, (cy - 0.1 * H) / H], align: "right" };
+    const lipX = d < 0 ? Math.max(edgeX, 0) : Math.min(edgeX, W2);
+    return d < 0 ? { focus: [Math.max(0.06, edgeX / W2 * 0.5), cy / H], lip: [lipX / W2 + 6e-3, (cy - 0.25 * H) / H], text: [(lipX + 0.07 * H) / W2, (cy - 0.1 * H) / H], align: "left" } : { focus: [Math.min(0.94, 1 - (1 - edgeX / W2) * 0.5), cy / H], lip: [lipX / W2 - 6e-3, (cy - 0.25 * H) / H], text: [(lipX - 0.07 * H) / W2, (cy - 0.1 * H) / H], align: "right" };
   },
-  seat(g, W, H, o, s) {
+  seat(g, W2, H, o, s) {
     const ex = Math.max(0, o - 1);
     const [a, b] = s.sp;
     const Lm = clamp41((a.L + b.L) / 2, -0.2, 1.2);
-    const V2 = [W / 2 + s.sway2 * H * 0.012, H * 0.3];
+    const V3 = [W2 / 2 + s.sway2 * H * 0.012, H * 0.3];
     const rock = s.sway2 * 0.022;
     const cr = Math.cos(rock), sr = Math.sin(rock);
     const side = (x, flip) => {
       const L4 = clamp41(x.L, -0.2, 1.2), sq = squashOf(x);
       const P3 = 1.38 / (1 + 0.28 * L4 + ex * 4);
       return SEAT_BODY.map(([px, py], i) => {
-        let X = px, Y = py;
+        let X2 = px, Y = py;
         if (Y > 0) {
-          X *= 1 + 0.05 * sq;
+          X2 *= 1 + 0.05 * sq;
           Y *= 1 - 0.04 * sq;
         }
         if (i >= 10) {
-          X = X * (1 - 0.55 * sq) + 0.035 * clamp41(L4, 0, 1);
+          X2 = X2 * (1 - 0.55 * sq) + 0.035 * clamp41(L4, 0, 1);
           Y += 0.12 * sq;
         }
-        X *= flip;
-        return [V2[0] + (X * cr - Y * sr) * H * P3, V2[1] + (X * sr + Y * cr) * H * P3];
+        X2 *= flip;
+        return [V3[0] + (X2 * cr - Y * sr) * H * P3, V3[1] + (X2 * sr + Y * cr) * H * P3];
       });
     };
     const right = side(b, 1), left = side(a, -1);
     const open3 = clamp41(Lm, 0, 1), Pm = 1.38 / (1 + 0.28 * Lm + ex * 4);
-    const apexY = V2[1] + (0.5 - open3 * 0.2) * H * Pm, seamW = (2e-3 + open3 * 8e-3) * H * Pm;
-    const pts = [...right, [V2[0] + seamW, apexY], [V2[0] - seamW, apexY], ...left.reverse()];
+    const apexY = V3[1] + (0.5 - open3 * 0.2) * H * Pm, seamW = (2e-3 + open3 * 8e-3) * H * Pm;
+    const pts = [...right, [V3[0] + seamW, apexY], [V3[0] - seamW, apexY], ...left.reverse()];
     const sm = chaikin(chaikin(chaikin(pts)));
-    g.fillRect(0, 0, W, H);
+    g.fillRect(0, 0, W2, H);
     g.globalCompositeOperation = "destination-out";
     g.beginPath();
     sm.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]));
     g.closePath();
     g.fill();
     g.globalCompositeOperation = "source-over";
-    return { focus: [V2[0] / W, clamp41((V2[1] + 0.85 * H * Pm) / H, 0.5, 0.92)], lip: [(V2[0] + 0.02 * H) / W, clamp41((apexY + 0.12 * H) / H, 0.3, 0.94)], text: [(V2[0] + 0.32 * H * Pm) / W, (V2[1] - 0.12 * H * Pm) / H] };
+    return { focus: [V3[0] / W2, clamp41((V3[1] + 0.85 * H * Pm) / H, 0.5, 0.92)], lip: [(V3[0] + 0.02 * H) / W2, clamp41((apexY + 0.12 * H) / H, 0.3, 0.94)], text: [(V3[0] + 0.32 * H * Pm) / W2, (V3[1] - 0.12 * H * Pm) / H] };
   },
-  squeeze(g, W, H, o, s) {
+  squeeze(g, W2, H, o, s) {
     const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
     const rx = 0.62 * H, ry = 1.8 * H;
     const gap = (-0.035 + oc * 0.09 - s.squeeze * 0.07 + ex * 1.6 + s.sway * 3e-3) * H;
-    const lcx = W / 2 - gap - rx, rcx = W / 2 + gap + rx;
-    g.fillRect(0, 0, W, H);
+    const lcx = W2 / 2 - gap - rx, rcx = W2 / 2 + gap + rx;
+    g.fillRect(0, 0, W2, H);
     g.globalCompositeOperation = "destination-out";
     g.beginPath();
     g.ellipse(lcx, H * 0.5, rx, ry, 0, 0, Math.PI * 2);
@@ -65378,17 +65420,17 @@ var SHAPES = {
     g.ellipse(rcx, H * 0.5, rx, ry, 0, 0, Math.PI * 2);
     g.fill();
     g.globalCompositeOperation = "source-over";
-    return { focus: [0.5, 0.45], lip: [(W / 2 + Math.max(gap, 0) + 0.012 * H) / W, 0.6], text: [(W / 2 + Math.max(gap, 0) + 0.08 * H) / W, 0.3] };
+    return { focus: [0.5, 0.45], lip: [(W2 / 2 + Math.max(gap, 0) + 0.012 * H) / W2, 0.6], text: [(W2 / 2 + Math.max(gap, 0) + 0.08 * H) / W2, 0.3] };
   },
-  wedge(g, W, H, o, s) {
+  wedge(g, W2, H, o, s) {
     const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
     const mirror2 = S3.side.wedge === "left";
     g.save();
     if (mirror2) {
-      g.translate(W, 0);
+      g.translate(W2, 0);
       g.scale(-1, 1);
     }
-    const piv = [W * (0.9 + ex * 0.6), H * 1.02];
+    const piv = [W2 * (0.9 + ex * 0.6), H * 1.02];
     const yL = H * (1.07 - oc * 0.56 - ex * 2.6 + s.sway * 6e-3);
     const edge = (u) => lerp2(yL, piv[1], u) + 0.06 * H * Math.sin(Math.PI * u) * (0.4 + 0.6 * oc);
     g.beginPath();
@@ -65404,7 +65446,7 @@ var SHAPES = {
     g.restore();
     const mx = (x) => mirror2 ? 1 - x : x;
     const u1 = 0.25, u2 = 0.12;
-    return { focus: [mx(0.22), clamp41((edge(0.22) + H) / 2 / H, 0.5, 0.95)], lip: [mx(u1 * piv[0] / W), (edge(u1) - 0.012 * H) / H], text: [mx(u2 * piv[0] / W), (edge(u2) - 0.17 * H) / H], align: mirror2 ? "right" : "left" };
+    return { focus: [mx(0.22), clamp41((edge(0.22) + H) / 2 / H, 0.5, 0.95)], lip: [mx(u1 * piv[0] / W2), (edge(u1) - 0.012 * H) / H], text: [mx(u2 * piv[0] / W2), (edge(u2) - 0.17 * H) / H], align: mirror2 ? "right" : "left" };
   }
 };
 
@@ -66087,7 +66129,7 @@ function setStyle(sel, prop, v) {
   $2(sel).style[prop] = v;
 }
 function render2(now, dt) {
-  const W = airC.width, H = airC.height, t = now / 1e3;
+  const W2 = airC.width, H = airC.height, t = now / 1e3;
   const s = st2();
   const reduced = S4.reduced;
   const sway = reduced ? 0 : Math3.sin(t * Math3.PI * 2 / 3.1);
@@ -66111,24 +66153,24 @@ function render2(now, dt) {
   });
   const shapeState = { sway, sway2, squeeze: G3.squeeze, slideDir: G3.slideDir, slideY: G3.slideY, sp: G3.sp, t };
   actx.setTransform(1, 0, 0, 1, 0, 0);
-  actx.clearRect(0, 0, W, H);
+  actx.clearRect(0, 0, W2, H);
   actx.fillStyle = "#fff";
-  const out = SHAPES[S4.kind](actx, W, H, o, shapeState);
+  const out = SHAPES[S4.kind](actx, W2, H, o, shapeState);
   const pinkish = G3.win?.false ? 1 : 0;
   const flesh = S4.edge === "flesh";
-  gctx.clearRect(0, 0, W, H);
+  gctx.clearRect(0, 0, W2, H);
   gctx.filter = `blur(${Math3.round((flesh ? 5 : 3) + Math3.min(o, 1.5) * (flesh ? 8 : 5))}px)`;
   gctx.drawImage(airC, 0, 0);
   gctx.filter = "none";
   gctx.globalCompositeOperation = "source-in";
   gctx.fillStyle = pinkish ? "rgb(255,110,170)" : flesh ? "rgb(226,78,52)" : "rgb(255,168,104)";
-  gctx.fillRect(0, 0, W, H);
+  gctx.fillRect(0, 0, W2, H);
   gctx.globalCompositeOperation = "source-over";
   dctx2.globalCompositeOperation = "source-over";
-  dctx2.clearRect(0, 0, W, H);
+  dctx2.clearRect(0, 0, W2, H);
   dctx2.globalAlpha = G3.darkA;
   dctx2.fillStyle = "rgb(6,4,8)";
-  dctx2.fillRect(0, 0, W, H);
+  dctx2.fillRect(0, 0, W2, H);
   dctx2.globalCompositeOperation = "source-atop";
   dctx2.globalAlpha = G3.darkA * clamp41(0.18 + Math3.min(o, 1) * 0.75, 0, 0.95);
   dctx2.drawImage(glowC, 0, 0);
@@ -66339,13 +66381,13 @@ function schedulePlan(run, ck) {
   R5.strain = null;
   G3.air = clamp41(run.gauge / run.capacity * 100, 0, 100);
   refreshLines2(0);
-  let after6 = G3.clock;
+  let after7 = G3.clock;
   for (const o of effectiveOpenings(plan, [], styleKey())) {
     const at2 = R5.seg.clock0 + o.beat * BEAT2;
     const cue = plan.beats[o.beat]?.cue;
-    scheduleWindow(at2, { ...o.false ? { false: true } : {}, widthMs: o.widthMs, quiet: cue !== "window_open" && cue !== "window_false", after: after6 });
+    scheduleWindow(at2, { ...o.false ? { false: true } : {}, widthMs: o.widthMs, quiet: cue !== "window_open" && cue !== "window_false", after: after7 });
     const r = st2();
-    after6 = Math3.max(after6, at2 + (r.snappy ? 110 : 260) + o.widthMs * S4.wmul + (r.snappy ? 140 : 320));
+    after7 = Math3.max(after7, at2 + (r.snappy ? 110 : 260) + o.widthMs * S4.wmul + (r.snappy ? 140 : 320));
   }
 }
 var styleKey = () => E2 && R5.run ? leadStyle(physicsStyleOf(E2.env.state(), R5.run.holderId, E2.env.registries)).key : "neutral";
@@ -67090,19 +67132,19 @@ function say4(text3, big = false, at2 = [0.6, 0.16]) {
 }
 var cracks = [];
 function crack(strength = 1) {
-  const W = innerWidth4, H = innerHeight4;
+  const W2 = innerWidth4, H = innerHeight4;
   const side = randInt2(0, 3);
-  const p0 = side === 0 ? [rand2(0.1, 0.9) * W, 0] : side === 1 ? [W, rand2(0.1, 0.9) * H] : side === 2 ? [rand2(0.1, 0.9) * W, H] : [0, rand2(0.1, 0.9) * H];
+  const p0 = side === 0 ? [rand2(0.1, 0.9) * W2, 0] : side === 1 ? [W2, rand2(0.1, 0.9) * H] : side === 2 ? [rand2(0.1, 0.9) * W2, H] : [0, rand2(0.1, 0.9) * H];
   const inward = side === 0 ? [0, 1] : side === 1 ? [-1, 0] : side === 2 ? [0, -1] : [1, 0];
   const segs = [];
   const grow = (p, dir, len2, depth) => {
     let q = p, d = dir;
-    const steps2 = randInt2(4, 8);
+    const steps3 = randInt2(4, 8);
     const pts = [q];
-    for (let i = 0; i < steps2; i++) {
+    for (let i = 0; i < steps3; i++) {
       const a = Math4.atan2(d[1], d[0]) + rand2(-0.55, 0.55);
       d = [Math4.cos(a), Math4.sin(a)];
-      const l = len2 / steps2 * rand2(0.6, 1.4);
+      const l = len2 / steps3 * rand2(0.6, 1.4);
       q = [q[0] + d[0] * l, q[1] + d[1] * l];
       pts.push(q);
       if (depth < 2 && Math4.random() < 0.28) grow(q, [Math4.cos(a + rand2(-1.2, 1.2)), Math4.sin(a + rand2(-1.2, 1.2))], len2 * 0.45, depth + 1);
@@ -67147,8 +67189,9 @@ function planShift(opts) {
   const st3 = ST(), c = C2();
   const isFeint = opts.feint;
   const dir = Math4.random() < 0.5 ? -1 : 1;
-  const target = isFeint ? G4.copTarget : clamp41(G4.copTarget * 0.25 + dir * rand2(st3.mag[0], st3.mag[1]) * c.shift, -1, 1);
-  const tele = opts.tele;
+  const careful = THRONE.careful();
+  const target = isFeint ? G4.copTarget : clamp41(G4.copTarget * 0.25 + dir * rand2(st3.mag[0], st3.mag[1]) * c.shift * careful, -1, 1);
+  const tele = opts.tele * (careful < 1 ? 1.5 : 1);
   G4.shift = { landAt: G4.clock + Math4.max(tele, 0) + 30, teleAt: G4.clock, tele, target, feint: isFeint, dir: Math4.sign(target - G4.cop) || dir, landed: false, cost: opts.cost };
   if (st3.announce) say4(pick5(L3().announce.slice(0, 1).concat(target < G4.cop ? L3().announce.slice(1, 2) : L3().announce.slice(2, 3))));
   if (tele > 0) {
@@ -67370,12 +67413,12 @@ var LEG_FEET = {
   // relaxed: the ankle narrows a little (the ankle bone a touch wider), the instep curves on smoothly, the foot tapers to toes pointing down and in
   relaxed: [[-0.05, -0.08], [0.105, -0.08], [0.122, 0.1], [0.12, 0.28], [0.104, 0.45], [0.091, 0.58], [0.085, 0.66], [0.087, 0.71], [0.096, 0.77], [0.107, 0.84], [0.112, 0.9], [0.106, 0.95], [0.088, 0.99], [0.06, 1], [0.035, 0.97], [0.016, 0.9], [-0.05, 0.84]]
 };
-function legPoints(W, H, side, press4, lift2, swing) {
+function legPoints(W2, H, side, press4, lift2, swing) {
   return LEG_FEET[S5.foot].map(([x, y]) => {
     const down2 = clamp41(y, 0, 1);
-    const X = x + press4 * 0.035 * (0.4 + down2) - lift2 * 0.03 * down2 + swing * 0.012 * down2 * down2;
+    const X2 = x + press4 * 0.035 * (0.4 + down2) - lift2 * 0.03 * down2 + swing * 0.012 * down2 * down2;
     const Y = (S5.foot === "first" ? y : y * 0.86) - lift2 * 0.07 * down2 + swing * 0.01 * down2;
-    return [side < 0 ? X * W : W - X * W, Y * H];
+    return [side < 0 ? X2 * W2 : W2 - X2 * W2, Y * H];
   });
 }
 function fillPts(ctx2, pts) {
@@ -67384,29 +67427,29 @@ function fillPts(ctx2, pts) {
   ctx2.closePath();
   ctx2.fill();
 }
-function legsHang(ctx2, W, H, toward, swing, jolt, reading2, t) {
+function legsHang(ctx2, W2, H, toward, swing, jolt, reading2, t) {
   for (const side of [-1, 1]) {
     const own = side * toward, press4 = Math4.max(0, own), lift2 = Math4.max(0, -own);
     const sw = S5.reduced ? 0 : reading2 ? Math4.sin(t * 3.1 + (side > 0 ? 1.7 : 0)) * (side > 0 ? 1 : 0.35) : Math4.sin(t * 0.8 + side) * 0.25;
-    fillPts(ctx2, chaikin(chaikin(chaikin(legPoints(W, H, side, press4 + jolt * 0.2 * side, lift2, sw)))));
+    fillPts(ctx2, chaikin(chaikin(chaikin(legPoints(W2, H, side, press4 + jolt * 0.2 * side, lift2, sw)))));
   }
 }
 function drawFloor2(now) {
-  const W = shC.width, H = shC.height;
-  for (const c of [legC, compC, rimC, outC]) if (c.width !== W || c.height !== H) {
-    c.width = W;
+  const W2 = shC.width, H = shC.height;
+  for (const c of [legC, compC, rimC, outC]) if (c.width !== W2 || c.height !== H) {
+    c.width = W2;
     c.height = H;
   }
-  sctx.clearRect(0, 0, W, H);
+  sctx.clearRect(0, 0, W2, H);
   const live3 = G4.phase === "loop" || G4.phase === "entry";
   const att = live3 ? { busy: 1, glancing: 0.45 + 0.25 * Math4.sin(now / 90), watching: 0.05 }[G4.att] : 0;
   const flick = 0.85 + 0.15 * Math4.sin(now / 130) * Math4.sin(now / 47);
-  const px = W * (0.5 + G4.cop * 0.1 + G4.lean * 0.16), py = H * (!R6.legs ? 0.24 : 0.3);
+  const px = W2 * (0.5 + G4.cop * 0.1 + G4.lean * 0.16), py = H * (!R6.legs ? 0.24 : 0.3);
   sctx.filter = `blur(${Math4.round(H * 0.07)}px)`;
   sctx.globalCompositeOperation = "lighter";
   sctx.fillStyle = `rgba(120,170,255,${(0.34 * att * flick * G4.cam).toFixed(3)})`;
   sctx.beginPath();
-  sctx.ellipse(px, py, W * 0.15, H * 0.1, 0, 0, Math4.PI * 2);
+  sctx.ellipse(px, py, W2 * 0.15, H * 0.1, 0, 0, Math4.PI * 2);
   sctx.fill();
   sctx.globalCompositeOperation = "source-over";
   sctx.filter = "none";
@@ -67414,35 +67457,35 @@ function drawFloor2(now) {
   if (!R6.legs) return;
   const t = now / 1e3;
   const reading2 = live3 && G4.att === "busy";
-  lctx.clearRect(0, 0, W, H);
+  lctx.clearRect(0, 0, W2, H);
   lctx.fillStyle = "#fff";
   const toward = G4.lean * 0.9 + G4.cop * 0.5;
   const swing = S5.reduced ? 0 : reading2 ? Math4.sin(t * 3.1) : Math4.sin(t * 0.8) * 0.25;
   const jolt = G4.jolt * 0.4;
-  legsHang(lctx, W, H, toward, swing, jolt, reading2, t);
+  legsHang(lctx, W2, H, toward, swing, jolt, reading2, t);
   cctx.globalCompositeOperation = "source-over";
-  cctx.clearRect(0, 0, W, H);
+  cctx.clearRect(0, 0, W2, H);
   cctx.fillStyle = "#fff";
-  cctx.fillRect(0, 0, W, H);
+  cctx.fillRect(0, 0, W2, H);
   cctx.globalCompositeOperation = "destination-out";
   cctx.drawImage(legC, 0, 0);
   cctx.globalCompositeOperation = "source-over";
-  rctx.clearRect(0, 0, W, H);
+  rctx.clearRect(0, 0, W2, H);
   rctx.filter = `blur(${Math4.round(H * 0.022)}px)`;
   rctx.drawImage(compC, 0, 0);
   rctx.filter = "none";
   rctx.globalCompositeOperation = "source-in";
   rctx.fillStyle = "rgb(226,78,52)";
-  rctx.fillRect(0, 0, W, H);
+  rctx.fillRect(0, 0, W2, H);
   rctx.globalCompositeOperation = "source-over";
   octx.globalCompositeOperation = "source-over";
-  octx.clearRect(0, 0, W, H);
+  octx.clearRect(0, 0, W2, H);
   octx.filter = `blur(${Math4.round(H * (S5.legs === "forward" ? 0.016 : 0.012))}px)`;
   octx.drawImage(legC, 0, 0);
   octx.filter = "none";
   octx.globalCompositeOperation = "source-in";
   octx.fillStyle = S5.legShade === "black" ? "rgb(8,5,9)" : "rgb(34,22,22)";
-  octx.fillRect(0, 0, W, H);
+  octx.fillRect(0, 0, W2, H);
   octx.globalCompositeOperation = "source-atop";
   octx.globalAlpha = 0.55;
   octx.drawImage(rimC, 0, 0);
@@ -67800,6 +67843,7 @@ function bind3(env, run) {
   BEAT3 = TUNING.physics.beatMs;
   W_DRAIN = TUNING.physics.weight.drain * k;
   RELIEF = TUNING.physics.weight.relief * k;
+  S5.drain = run.sourceKind === "activity" ? LONG_HOLD[sceneSettingsOf(state).longHoldStrain] : 1;
   S5.face = env.art.face(run.holderId) ?? { x: 0.5, y: 0.21 };
   const over2 = E3.core ? null : env.art.get(run.holderId, "over");
   const fit2 = over2?.sidecar.fit;
@@ -68015,6 +68059,25 @@ function weightMatches(run, _state, reg) {
   return reg.contactPhysics.get(run.second.physicsId)?.interaction === "passive";
 }
 registerInstrument({ id: "weight", matches: weightMatches, start: (env, run) => startWeight(env, run) });
+var THRONE = { careful: () => 1 };
+var weightCore = {
+  get G() {
+    return G4;
+  },
+  get HOLD() {
+    return HOLD2;
+  },
+  SFX: () => SFX3,
+  get tol() {
+    return S5.tol;
+  },
+  set tol(v) {
+    S5.tol = v;
+  },
+  weight: () => C2().weight,
+  shift: () => C2().shift,
+  crack: (k) => crack(k)
+};
 
 // src/ui/scene/instruments/scent/words.ts
 var STAGE_PULL = { aversion: -0.7, enduring: -0.25, accustomed: 0, craving: 0.55, adoring: 0.95 };
@@ -68925,21 +68988,21 @@ function say5(text3, big = false, at2) {
     setTimeout5(() => el.remove(), 600);
   }, 2600);
 }
-function zonesOf(W, H, s) {
+function zonesOf(W2, H, s) {
   const out = [];
   if (S6.contact === "feet_on_face") {
     const th = S6.angle * Math5.PI / 180, ax = [Math5.sin(th), -Math5.cos(th)], nx = [Math5.cos(th), Math5.sin(th)];
-    const C3 = [0.5 + s.sway * 4e-3 * H / W, 0.52], Lh = 0.78;
-    const at2 = (k, side, off) => [C3[0] + (ax[0] * (k * 2 - 1) * Lh * H + nx[0] * side * off * H) / W, C3[1] + ax[1] * (k * 2 - 1) * Lh + nx[1] * side * off];
+    const C3 = [0.5 + s.sway * 4e-3 * H / W2, 0.52], Lh = 0.78;
+    const at2 = (k, side, off) => [C3[0] + (ax[0] * (k * 2 - 1) * Lh * H + nx[0] * side * off * H) / W2, C3[1] + ax[1] * (k * 2 - 1) * Lh + nx[1] * side * off];
     out.push({ id: "toes", p: at2(0.76, 0, 0), w: 1 });
     for (const side of [-1, 1]) {
       out.push({ id: "toes", p: at2(0.72, side, 0.06), w: 0.9 }, { id: "ball", p: at2(0.6, side, 0.05), w: 0.8 }, { id: "arch", p: at2(0.45, side, 0.045), w: 0.55 }, { id: "heel", p: at2(0.27, side, 0.04), w: 0.65 });
     }
   } else if (S6.contact === "face_to_bottom") {
-    const Lm = (G5.sp[0].L + G5.sp[1].L) / 2, Pm = 1.38 / (1 + 0.28 * Lm), V2 = [0.5 + s.sway2 * 0.012 * H / W, 0.3];
-    out.push({ id: "center", p: [V2[0], V2[1] + (0.5 - clamp41(Lm, 0, 1) * 0.2) * Pm - 0.04], w: 1 });
-    out.push({ id: "center", p: [V2[0], V2[1] + 0.3 * Pm], w: 0.85 });
-    for (const side of [-1, 1]) out.push({ id: "side", p: [V2[0] + side * 0.24, 0.72], w: 0.45 });
+    const Lm = (G5.sp[0].L + G5.sp[1].L) / 2, Pm = 1.38 / (1 + 0.28 * Lm), V3 = [0.5 + s.sway2 * 0.012 * H / W2, 0.3];
+    out.push({ id: "center", p: [V3[0], V3[1] + (0.5 - clamp41(Lm, 0, 1) * 0.2) * Pm - 0.04], w: 1 });
+    out.push({ id: "center", p: [V3[0], V3[1] + 0.3 * Pm], w: 0.85 });
+    for (const side of [-1, 1]) out.push({ id: "side", p: [V3[0] + side * 0.24, 0.72], w: 0.45 });
   } else {
     const mirror2 = S6.side.wedge === "left", mx = (x) => mirror2 ? 1 - x : x;
     const oc = Math5.min(G5.o, 1), yL = 1.07 - oc * 0.56, edge = (u) => lerp2(yL, 1.02, u) + 0.06 * Math5.sin(Math5.PI * u) * (0.4 + 0.6 * oc);
@@ -69508,7 +69571,7 @@ function arcPath(r, a0, a1) {
   return `M${(Math5.cos(s) * r).toFixed(2)} ${(Math5.sin(s) * r).toFixed(2)} A${r} ${r} 0 ${e - s > Math5.PI ? 1 : 0} 1 ${(Math5.cos(e) * r).toFixed(2)} ${(Math5.sin(e) * r).toFixed(2)}`;
 }
 function render4(now, dt) {
-  const W = airC2.width, H = airC2.height, t = now / 1e3;
+  const W2 = airC2.width, H = airC2.height, t = now / 1e3;
   const reduced = S6.reduced;
   const sway = reduced ? 0 : Math5.sin(t * Math5.PI * 2 / 3.1), sway2 = reduced ? 0 : Math5.sin(t * Math5.PI * 2 / 4.7 + 1.3);
   const live3 = G5.phase === "loop" || G5.phase === "entry";
@@ -69524,27 +69587,27 @@ function render4(now, dt) {
   });
   const shapeState = { sway, sway2, squeeze: 0, slideDir: -1, slideY: 0, sp: G5.sp, t };
   actx2.setTransform(1, 0, 0, 1, 0, 0);
-  actx2.clearRect(0, 0, W, H);
+  actx2.clearRect(0, 0, W2, H);
   actx2.fillStyle = "#fff";
   actx2.save();
-  actx2.translate(par[0] * W, par[1] * H);
+  actx2.translate(par[0] * W2, par[1] * H);
   const kind = { feet_on_face: "gap", face_to_bottom: "seat", smothered_armpit: "wedge" }[S6.contact];
-  SHAPES[kind](actx2, W, H, G5.o + sway * 0.01, shapeState);
+  SHAPES[kind](actx2, W2, H, G5.o + sway * 0.01, shapeState);
   actx2.restore();
-  G5.zones = zonesOf(W, H, shapeState).map((z2) => ({ ...z2, p: [z2.p[0] + par[0], z2.p[1] + par[1]] }));
-  gctx2.clearRect(0, 0, W, H);
+  G5.zones = zonesOf(W2, H, shapeState).map((z2) => ({ ...z2, p: [z2.p[0] + par[0], z2.p[1] + par[1]] }));
+  gctx2.clearRect(0, 0, W2, H);
   gctx2.filter = "blur(8px)";
   gctx2.drawImage(airC2, 0, 0);
   gctx2.filter = "none";
   gctx2.globalCompositeOperation = "source-in";
   gctx2.fillStyle = "rgb(226,78,52)";
-  gctx2.fillRect(0, 0, W, H);
+  gctx2.fillRect(0, 0, W2, H);
   gctx2.globalCompositeOperation = "source-over";
   dctx3.globalCompositeOperation = "source-over";
-  dctx3.clearRect(0, 0, W, H);
+  dctx3.clearRect(0, 0, W2, H);
   dctx3.globalAlpha = G5.darkA;
   dctx3.fillStyle = "rgb(6,4,8)";
-  dctx3.fillRect(0, 0, W, H);
+  dctx3.fillRect(0, 0, W2, H);
   dctx3.globalCompositeOperation = "source-atop";
   dctx3.globalAlpha = G5.darkA * 0.6;
   dctx3.drawImage(glowC2, 0, 0);
@@ -70180,6 +70243,15 @@ var ACTS = {
     ],
     end: { sfx: "book_close", seen: "She closes the book on a finger, then lets it shut.", heard: "The book shuts." }
   },
+  holding_audience: {
+    label: "holding audience",
+    marks: [
+      { w: 4, sfx: "sheet", g: 0.5, prog: 1, seen: "She turns a page of the folder.", heard: "Paper turned, above you." },
+      { w: 2, sfx: "pencil_write", g: 0.35, seen: "She signs something.", heard: "A pen: a quick signature." },
+      { w: 1, sfx: "mug", g: 0.4, seen: "She drinks.", heard: "A sip; the mug goes down." }
+    ],
+    end: { sfx: "book_place", seen: "She closes the folder.", heard: "A folder shut, pushed aside." }
+  },
   reading_reports: {
     label: "reading reports",
     marks: [
@@ -70380,11 +70452,436 @@ var GROUPS = {
   soft: ["soft1", "soft2"]
 };
 
+// src/ui/scene/instruments/activity/throne.ts
+var X = null;
+function attachThrone(ctx2) {
+  X = ctx2;
+  THRONE.careful = () => throneOn() && G6.cup ? 0.35 : 1;
+}
+function detachThrone() {
+  X = null;
+  THRONE.careful = () => 1;
+  T_MOUSE.x = 0;
+  T_MOUSE.y = 0;
+  T_MOUSE.t = 0;
+  T_MOUSE.speed = 0;
+}
+var G6 = new Proxy({}, { get: (_t, k) => X?.G()[k], set: (_t, k, v) => {
+  if (X) X.G()[k] = v;
+  return true;
+} });
+var S7 = new Proxy({}, { get: (_t, k) => X?.S[k], set: (_t, k, v) => {
+  if (X) X.S[k] = v;
+  return true;
+} });
+var W = new Proxy({}, { get: (_t, k) => weightCore.G[k], set: (_t, k, v) => {
+  weightCore.G[k] = v;
+  return true;
+} });
+var HOLD3 = { get on() {
+  return weightCore.HOLD.on;
+} };
+var WT = { get tol() {
+  return weightCore.tol;
+}, set tol(v) {
+  weightCore.tol = v;
+}, get weight() {
+  return S7.contact === "human_chair" ? 1 : 0.6;
+}, get shift() {
+  return S7.contact === "human_chair" ? 1 : 0.7;
+}, BEAT: 1500 };
+var W_SFX = new Proxy({}, { get: (_t, k) => weightCore.SFX()[k] });
+var after5 = (ms, fn) => X?.after(ms, fn);
+var sense = (text3, where, cls) => X?.sense(text3, where, cls);
+var say6 = (text3, to, opts) => X?.say(text3, to, opts);
+var play2 = (id, opts) => X?.play(id, opts);
+var herFeels = (kind, gross) => X?.herFeels(kind, gross);
+var bodyNoise = (kind, loud, visible, gross = false) => X?.bodyNoise(kind, loud, visible, gross);
+var visitorHeard = () => X?.visitorHeard();
+var steps = (n, fromPan, toPan, g0, g1, gap = 0.42, wood = false, lp = 1800) => X?.steps(n, fromPan, toPan, g0, g1, gap, wood, lp);
+var V = () => X.V();
+var rand4 = (a, b) => X.rand(a, b);
+var fnv = (s) => fnv1a3(s);
+var crack2 = (k) => weightCore.crack(k);
+var performance6 = { now: () => X ? X.now() : 0 };
+var $5 = (s) => X.els[s];
+var fillPts2 = (ctx2, pts) => {
+  ctx2.beginPath();
+  pts.forEach((q, i) => i ? ctx2.lineTo(q[0], q[1]) : ctx2.moveTo(q[0], q[1]));
+  ctx2.closePath();
+  ctx2.fill();
+};
+var Math6 = Object.create(globalThis.Math, { random: { value: () => X ? X.random() : 0.5 } });
+var throneOn = () => !!X && S7.inner === "weight";
+var T_LEG_FEET = {
+  relaxed: [[-0.05, -0.08], [0.105, -0.08], [0.122, 0.1], [0.12, 0.28], [0.104, 0.45], [0.091, 0.58], [0.085, 0.66], [0.087, 0.71], [0.096, 0.77], [0.107, 0.84], [0.112, 0.9], [0.106, 0.95], [0.088, 0.99], [0.06, 1], [0.035, 0.97], [0.016, 0.9], [-0.05, 0.84]]
+};
+function tLegPoints(Wd, H, side, press4, lift2, swing) {
+  return T_LEG_FEET.relaxed.map(([x, y]) => {
+    const down2 = clamp41(y, 0, 1);
+    const X2 = x + press4 * 0.035 * (0.4 + down2) - lift2 * 0.03 * down2 + swing * 0.012 * down2 * down2;
+    const Y = y * 0.86 - lift2 * 0.07 * down2 + swing * 0.01 * down2;
+    return [side < 0 ? X2 * Wd : Wd - X2 * Wd, Y * H];
+  });
+}
+function tLegsHang(ctx2, Wd, H, toward, swing, jolt, reading2, t) {
+  for (const side of [-1, 1]) {
+    const own = side * toward, press4 = Math6.max(0, own), lift2 = Math6.max(0, -own);
+    const sw = S7.reduced ? 0 : reading2 ? Math6.sin(t * 3.1 + (side > 0 ? 1.7 : 0)) * (side > 0 ? 1 : 0.35) : Math6.sin(t * 0.8 + side) * 0.25;
+    fillPts2(ctx2, chaikin(chaikin(chaikin(tLegPoints(Wd, H, side, press4 + jolt * 0.2 * side, lift2, sw)))));
+  }
+}
+var tLegC;
+var tlctx;
+var tCompC;
+var tcctx;
+var tRimC;
+var trctx;
+var tOutC;
+var toctx;
+function throneCanvases(off) {
+  [tLegC, tlctx] = off();
+  [tCompC, tcctx] = off();
+  [tRimC, trctx] = off();
+  [tOutC, toctx] = off();
+}
+function throneArt(now) {
+  const L4 = $5("#astrideL"), R9 = $5("#astrideR");
+  const on = throneOn() && S7.contact === "human_chair" && S7.legsArt;
+  const both = S7.legsFeet === "two", pair = S7.legsFeet === "pair";
+  L4.style.display = on ? "block" : "none";
+  R9.style.display = on && !both ? "block" : "none";
+  if (!on || !L4.naturalWidth) return !!on;
+  const [vw, vh] = X.inner(), t = now / 1e3;
+  const view = $5("#footrestView"), ox = (view.clientWidth - vw) / 2, oy = (view.clientHeight - vh) / 2;
+  const live3 = G6.phase === "loop" || G6.phase === "entry", reading2 = live3 && G6.att === "busy";
+  const toward = W.lean * 0.9 + W.cop * 0.5, jolt = W.jolt * 0.4;
+  const h2 = vh * S7.aH;
+  const strF = smooth(100, 0, W.str);
+  const op = G6.risen ? "0" : "1";
+  const place2 = (el, side) => {
+    const own = side * toward, press4 = Math6.max(0, own), lift2 = Math6.max(0, -own);
+    const sw = S7.reduced ? 0 : reading2 ? Math6.sin(t * 3.1 + (side > 0 ? 1.7 : 0)) * (side > 0 ? 1 : 0.35) : Math6.sin(t * 0.8 + side) * 0.25;
+    const w = h2 * (el.naturalWidth || 1) / (el.naturalHeight || 1);
+    const cx = both ? vw / 2 : side < 0 ? S7.aX * vw : vw - S7.aX * vw;
+    const dx = both ? toward * 0.02 * vw : -side * (press4 * 0.035 - lift2 * 0.03) * vw;
+    const dy = (-lift2 * 0.07 + jolt * 0.02) * vh;
+    const rot = (both ? toward * 2 : -side * S7.aTilt) + sw * 2.2;
+    const flip = S7.legsFeet === "left" && side > 0 || S7.legsFeet === "right" && side < 0 ? " scaleX(-1)" : "";
+    el.style.width = `${w}px`;
+    el.style.height = `${h2}px`;
+    el.style.transform = `translate(${(ox + cx - w / 2 + dx).toFixed(1)}px, ${(oy + S7.aTop * vh + dy).toFixed(1)}px) rotate(${rot.toFixed(2)}deg)${flip}`;
+    el.style.opacity = op;
+    el.style.filter = S7.readable ? "none" : `blur(${(1.2 + strF * 0.8).toFixed(1)}px) brightness(${(0.62 - strF * 0.1).toFixed(2)}) saturate(.85) drop-shadow(0 0 14px rgba(226,78,52,.45))`;
+  };
+  place2(L4, -1);
+  if (!both) place2(R9, 1);
+  return true;
+}
+function throneLegs(now) {
+  if (throneArt(now)) return;
+  if (S7.contact !== "human_chair") return;
+  const wShC = X.shadow.canvas, wsctx = X.shadow.ctx;
+  const Wd = wShC.width, H = wShC.height;
+  for (const c of [tLegC, tCompC, tRimC, tOutC]) if (c.width !== Wd || c.height !== H) {
+    c.width = Wd;
+    c.height = H;
+  }
+  const live3 = G6.phase === "loop" || G6.phase === "entry";
+  const t = now / 1e3, reading2 = live3 && G6.att === "busy";
+  const risen = G6.risen ? 1 : 0;
+  tlctx.clearRect(0, 0, Wd, H);
+  tlctx.fillStyle = "#fff";
+  if (!risen) {
+    const toward = W.lean * 0.9 + W.cop * 0.5;
+    const swing = S7.reduced ? 0 : reading2 ? Math6.sin(t * 3.1) : Math6.sin(t * 0.8) * 0.25;
+    tLegsHang(tlctx, Wd, H, toward, swing, W.jolt * 0.4, reading2, t);
+  }
+  tcctx.globalCompositeOperation = "source-over";
+  tcctx.clearRect(0, 0, Wd, H);
+  tcctx.fillStyle = "#fff";
+  tcctx.fillRect(0, 0, Wd, H);
+  tcctx.globalCompositeOperation = "destination-out";
+  tcctx.drawImage(tLegC, 0, 0);
+  tcctx.globalCompositeOperation = "source-over";
+  trctx.clearRect(0, 0, Wd, H);
+  trctx.filter = `blur(${Math6.round(H * 0.022)}px)`;
+  trctx.drawImage(tCompC, 0, 0);
+  trctx.filter = "none";
+  trctx.globalCompositeOperation = "source-in";
+  trctx.fillStyle = "rgb(226,78,52)";
+  trctx.fillRect(0, 0, Wd, H);
+  trctx.globalCompositeOperation = "source-over";
+  toctx.globalCompositeOperation = "source-over";
+  toctx.clearRect(0, 0, Wd, H);
+  toctx.filter = `blur(${Math6.round(H * 0.012)}px)`;
+  toctx.drawImage(tLegC, 0, 0);
+  toctx.filter = "none";
+  toctx.globalCompositeOperation = "source-in";
+  toctx.fillStyle = "rgb(34,22,22)";
+  toctx.fillRect(0, 0, Wd, H);
+  toctx.globalCompositeOperation = "source-atop";
+  toctx.globalAlpha = 0.55;
+  toctx.drawImage(tRimC, 0, 0);
+  toctx.globalAlpha = 1;
+  toctx.globalCompositeOperation = "source-over";
+  wsctx.clearRect(0, 0, Wd, H);
+  wsctx.drawImage(tOutC, 0, 0);
+}
+var T_TELE = { neutral: [600, 900], affectionate: [900, 1200], ritual: [700, 800], playful: [450, 800], clinical: [200, 1100], cruel: [150, 350], possessive: [450, 700], cold: [500, 700], regal: [900, 1200] };
+function wCueShift(dir, mag, tele) {
+  if (!W || W.over || W.resting) return;
+  const target = clamp41(W.copTarget * 0.25 + dir * mag * WT.shift, -1, 1);
+  W.shift = { landAt: W.clock + tele + 30, teleAt: W.clock, tele, target, feint: false, dir, landed: false, cost: 0 };
+  W.leanTarget = dir * 0.9;
+  W_SFX.rustle(0.08, dir * 0.85);
+  W_SFX.creak(0.22, 0.1, dir * 0.85);
+  W.nextShiftBeat = Math6.max(W.nextShiftBeat, W.beat + 3);
+}
+function throneBody(kind, e) {
+  if (!throneOn() || !S7.bodyFollows || G6.phase !== "loop" || G6.risen) return;
+  if (G6.cup && (kind === "laugh" || kind === "rise")) return;
+  const tele = rand4(...T_TELE[S7.style] ?? T_TELE.neutral) * (G6.cup ? 1.4 : 1);
+  const side = fnv(`${S7.seed}:${e?.text ?? kind}:${G6.phaseIdx}`) % 2 ? 1 : -1;
+  G6.stats.bodyCues = (G6.stats.bodyCues ?? 0) + 1;
+  switch (kind) {
+    case "lean":
+      wCueShift(side, rand4(0.45, 0.75) * (G6.cup ? 0.35 : 1), tele);
+      break;
+    // she leans to the desk, to the visitor: her weight goes forward and to a side
+    case "press":
+      after5(tele, () => {
+        if (!W || G6.risen) return;
+        W.pressure = Math6.max(W.pressure, 1.5);
+        W.pressureUntil = W.clock + 2 * WT.BEAT;
+        W_SFX.press(0.4);
+        W.jolt = Math6.max(W.jolt, 0.6);
+      });
+      break;
+    case "laugh":
+      for (let k = 0; k < 3; k++) after5(tele * 0.4 + k * 170, () => {
+        if (!W || G6.risen) return;
+        W.jolt = Math6.max(W.jolt, 0.45);
+        W.cop += (k % 2 ? -1 : 1) * 0.09;
+        W_SFX.press(0.18);
+      });
+      break;
+    case "cross":
+      after5(tele, () => {
+        if (!W || G6.risen) return;
+        W.copTarget = clamp41(side * 0.45, -1, 1);
+        W_SFX.rustle(0.08, side * 0.7);
+        if (!G6.toldCross) {
+          G6.toldCross = true;
+          sense(S7.contact === "human_chair" ? "She crosses her legs. Her weight slides to one side and stays there." : "She crosses her ankles on your back; the weight goes to one side.", "body");
+        }
+      });
+      break;
+    case "settle":
+      after5(tele, () => {
+        if (!W || G6.risen) return;
+        W.copTarget = 0;
+        W_SFX.rustle(0.05, 0);
+      });
+      break;
+    case "rise":
+      throneRise();
+      break;
+  }
+}
+function throneRise() {
+  if (!throneOn() || G6.risen || G6.phase !== "loop" || G6.cup) return;
+  const hc = S7.contact === "human_chair";
+  G6.risen = { until: G6.t + rand4(3e3, 6e3) };
+  W.resting = true;
+  W.shift = null;
+  W_SFX.creak(0.3, 0.14);
+  sense(hc ? "She gets up. The weight is gone; your back does not believe it." : "She takes her feet off your back and stands.", "body");
+  after5(G6.risen.until - G6.t, () => {
+    if (!W || W.over) {
+      G6.risen = null;
+      return;
+    }
+    W.resting = false;
+    G6.risen = null;
+    G6.stats.landings = (G6.stats.landings ?? 0) + 1;
+    const bad = !HOLD3.on || Math6.abs(W.cop - W.ctl) > WT.tol;
+    W_SFX.press(0.75);
+    W.jolt = 1.2;
+    if (bad) {
+      W.str -= 18 * WT.weight;
+      W.hardShifts += 1;
+      crack2(1);
+      W_SFX.grunt();
+      G6.stats.hardLandings = (G6.stats.hardLandings ?? 0) + 1;
+      herFeels("the commander giving under her as she sat", false);
+    }
+    sense(hc ? "She sits back down, all at once." : "Her feet come back down, hard.", "body");
+  });
+}
+function throneFlinch() {
+  if (!throneOn() || !W || W.over || G6.risen) return;
+  W.ctlV += (Math6.random() < 0.5 ? -1 : 1) * 2.4;
+  G6.flinch = { until: G6.t + 800, bad: false };
+}
+function throneCup() {
+  if (!throneOn() || G6.phase !== "loop" || G6.cup || G6.risen) return;
+  G6.cup = { over: 0, until: G6.t + rand4(2e4, 35e3), grace: G6.t + 1500 };
+  WT.tol = 0.12;
+  if (W.shift && !W.shift.landed) W.shift = null;
+  W.nextShiftBeat = Math6.max(W.nextShiftBeat, W.beat + 2);
+  play2("mug", { g: 0.45, pan: 0 });
+  sense("She sets her mug down on your back. Warm through the shirt.", "body");
+}
+function throneCupEnd(spilled) {
+  if (!G6.cup) return;
+  G6.cup = null;
+  WT.tol = 0.18;
+  if (spilled) {
+    G6.stats.spills = (G6.stats.spills ?? 0) + 1;
+    play2("pour", { g: 0.25, dur: 0.9 });
+    play2("mug", { g: 0.4 });
+    W.jolt = 0.8;
+    sense("The mug tips. It runs down your side, hot.", "body", "body");
+    herFeels("her mug spilling on the commander", true);
+  } else {
+    play2("mug", { g: 0.35 });
+    sense("She takes her mug back.", "body");
+  }
+}
+function throneSign() {
+  if (!throneOn() || G6.phase !== "loop" || G6.sign || G6.risen) return;
+  G6.sign = { t: 0, dur: 3800, skid: 0, redo: false };
+  play2("sheet", { g: 0.35 });
+  sense("She lays a sheet on your back. The pen.", "body");
+  for (let k = 0; k < 3; k++) after5(300 + k * 1200, () => {
+    if (G6.sign) play2("pencil_write", { g: 0.32 });
+  });
+}
+var T_MOUSE = { x: 0, y: 0, t: 0, speed: 0 };
+function tMouse(e) {
+  const now = performance6.now(), dt = Math6.max(1, now - T_MOUSE.t);
+  const v = Math6.hypot(e.clientX - T_MOUSE.x, e.clientY - T_MOUSE.y) / dt * 1e3;
+  T_MOUSE.speed = T_MOUSE.speed * 0.7 + v * 0.3;
+  T_MOUSE.x = e.clientX;
+  T_MOUSE.y = e.clientY;
+  T_MOUSE.t = now;
+}
+var tLine = (kind) => {
+  const l = voiceLines(X.env.registries, `throne.${kind}`, S7.style);
+  return l[Math6.floor(Math6.random() * l.length)] ?? "";
+};
+function throneUpdate(dt) {
+  if (!throneOn() || !W) return;
+  const err = Math6.abs(W.cop - W.ctl);
+  if (G6.flinch) {
+    if (err > WT.tol * 1.6 || !HOLD3.on) G6.flinch.bad = true;
+    if (G6.t > G6.flinch.until) {
+      if (G6.flinch.bad) {
+        G6.stats.flinches = (G6.stats.flinches ?? 0) + 1;
+        bodyNoise("jerk", 0.4, true);
+        if (G6.visitor && !G6.visitor.aware && !G6.visitor.heard && Math6.random() < 0.35) {
+          G6.visitor.heard = true;
+          G6.stats.heardByVisitor += 1;
+          visitorHeard();
+        }
+      } else G6.stats.flinchesHeld = (G6.stats.flinchesHeld ?? 0) + 1;
+      G6.flinch = null;
+    }
+  }
+  if (G6.cup) {
+    if (G6.t < G6.cup.grace) G6.cup.over = 0;
+    else if (err > WT.tol) G6.cup.over += dt;
+    else G6.cup.over = Math6.max(0, G6.cup.over - dt * 0.5);
+    if (G6.cup.over > 500) {
+      throneCupEnd(true);
+      if (G6.step === "with" || G6.step === "glancing") after5(600, () => say6(tLine("spill"), "commander"));
+    } else if (G6.t > G6.cup.until) throneCupEnd(false);
+  }
+  if (G6.sign) {
+    G6.sign.t += dt;
+    W.nextShiftBeat = Math6.max(W.nextShiftBeat, W.beat + 2);
+    if (T_MOUSE.speed > 140 && performance6.now() - T_MOUSE.t < 120) G6.sign.skid += dt;
+    else G6.sign.skid = Math6.max(0, G6.sign.skid - dt);
+    if (G6.sign.skid > 160) {
+      G6.stats.skids = (G6.stats.skids ?? 0) + 1;
+      play2("pencil_erase", { g: 0.3 });
+      sense("The pen skids across the page.", "body");
+      herFeels("the pen skidding on the commander\u2019s back", false);
+      if (G6.step !== "use") after5(500, () => say6(tLine("skid"), "commander"));
+      if (!G6.sign.redo) {
+        G6.sign.redo = true;
+        G6.sign.t = 0;
+        G6.sign.skid = 0;
+        after5(900, () => {
+          if (G6.sign) play2("pencil_write", { g: 0.32 });
+        });
+      } else G6.sign = null;
+    } else if (G6.sign.t > G6.sign.dur) {
+      G6.stats.signed = (G6.stats.signed ?? 0) + 1;
+      play2("sheet", { g: 0.3 });
+      sense("A last stroke. She lifts the sheet away.", "body");
+      G6.sign = null;
+    }
+  }
+  if (G6.visitorFeet && G6.visitor) {
+    W.pressure = Math6.max(W.pressure, 1.35);
+    W.pressureUntil = W.clock + 600;
+  } else if (G6.visitorFeet && !G6.visitor) {
+    G6.visitorFeet = false;
+    sense("Her visitor\u2019s boots leave your back.", "body");
+  }
+}
+function throneVisitor(kind) {
+  if (G6.phase !== "loop" || G6.visitor) return;
+  kind = kind ?? S7.visitorKind;
+  const dp = V().doorPan, name = S7.visitorName ?? "";
+  steps(5, -dp * 0.3, dp, 0.08, 0.4, 0.42);
+  after5(2300, () => {
+    play2("knock", { g: 0.5, pan: dp });
+    after5(260, () => play2("knock", { g: 0.45, pan: dp }));
+  });
+  after5(3300, () => say6("come in.", "other"));
+  after5(4600, () => {
+    play2("door_open", { g: 0.5, pan: dp });
+    G6.visitor = { name, heard: kind !== "unaware", aware: kind !== "unaware", knows: kind !== "unaware", kind };
+    G6.stats.visitors = (G6.stats.visitors ?? 0) + 1;
+    sense(kind === "unaware" ? `The door opens. ${name}, in the doorway: she does not look down.` : kind === "aware" ? `${name} comes in and looks down at you first, then at her.` : `${name} comes in with a folder, all business.`, "door", "base");
+  });
+  after5(6e3 + 3 * 8500, () => {
+    if (!G6.visitor) return;
+    play2("door_close", { g: 0.5, pan: dp });
+    sense("The door shuts behind her visitor.", "door", "base");
+    G6.visitor = null;
+  });
+}
+function throneThank() {
+  if (!throneOn()) return;
+  say6(tLine("thank"), "commander");
+  G6.thank = { until: G6.t + 9e3 };
+  G6.stats.thankAsked = true;
+  after5(9e3, () => {
+    if (G6.thank) {
+      G6.thank = null;
+      say6(tLine("noThanks"), "commander");
+      G6.stats.thanked = false;
+    }
+  });
+}
+function throneThanked(v) {
+  if (!G6.thank) return false;
+  const ok = /thank/i.test(v);
+  G6.thank = null;
+  G6.stats.thanked = ok;
+  after5(700, () => say6(tLine(ok ? "thanked" : "noThanks"), "commander"));
+  return true;
+}
+
 // src/ui/scene/instruments/activity/frame.ts
 var E5 = null;
 var innerWidth6 = 0;
 var innerHeight6 = 0;
-var performance6 = { now: () => E5 ? E5.env.now() : 0 };
+var performance7 = { now: () => E5 ? E5.env.now() : 0 };
 function setTimeout6(fn, ms) {
   if (E5) E5.env.timeout(() => {
     fn();
@@ -70410,27 +70907,27 @@ function rnd015() {
   seed5 >>>= 0;
   return seed5 / 4294967296;
 }
-var Math6 = Object.create(globalThis.Math, { random: { value: rnd015 } });
-var $5 = (s) => {
+var Math7 = Object.create(globalThis.Math, { random: { value: rnd015 } });
+var $6 = (s) => {
   const e = E5;
   if (s === "#reply") return e.env.reply;
   if (s === "#cmd") return e.env.input;
   return e.els[s] ?? e.els["#void"];
 };
-var pick7 = (a) => a[Math6.floor(Math6.random() * a.length)];
-var randInt4 = (a, b) => a + Math6.floor(Math6.random() * (b - a + 1));
-var rand4 = (a, b) => a + Math6.random() * (b - a);
+var pick7 = (a) => a[Math7.floor(Math7.random() * a.length)];
+var randInt4 = (a, b) => a + Math7.floor(Math7.random() * (b - a + 1));
+var rand5 = (a, b) => a + Math7.random() * (b - a);
 var wpick = (items) => {
   const sum = items.reduce((s, x) => s + (x.w ?? 1), 0);
-  let r = Math6.random() * sum;
+  let r = Math7.random() * sum;
   for (const x of items) {
     r -= x.w ?? 1;
     if (r <= 0) return x;
   }
   return items[items.length - 1];
 };
-var fnv = (s) => fnv1a3(s);
-var S7 = {
+var fnv2 = (s) => fnv1a3(s);
+var S8 = {
   inner: "stillness",
   view: "legs",
   blind: false,
@@ -70460,9 +70957,9 @@ var S7 = {
   reduced: false,
   readable: false
 };
-var V = () => VIEWS[S7.inner === "weight" ? "footrest" : S7.view];
-var ACT = () => ({ ...ACTS[S7.act] ?? QUIET_ACT, ...R8.frame });
-var ST3 = () => new Proxy({}, { get: (_t, k) => k === "name" ? voiceLines(E5.env.registries, "activity.name", S7.style)[0] ?? "commander" : [...voiceLines(E5.env.registries, `activity.${k}`, S7.style)] });
+var V2 = () => VIEWS[S8.inner === "weight" ? "footrest" : S8.view];
+var ACT = () => ({ ...ACTS[S8.act] ?? QUIET_ACT, ...R8.frame });
+var ST3 = () => new Proxy({}, { get: (_t, k) => k === "name" ? voiceLines(E5.env.registries, "activity.name", S8.style)[0] ?? "commander" : [...voiceLines(E5.env.registries, `activity.${k}`, S8.style)] });
 var PLAYED_SHARE = 1 / 3;
 var svcOn = () => false;
 var SV = null;
@@ -70477,7 +70974,7 @@ function audioInit5() {
   A5.buf = new Proxy({}, { get: (_t, k) => typeof k === "string" && SAMPLE_URLS2[k] ? samples.buffer(SAMPLE_URLS2[k]) : null });
   void samples.preload(Object.values(SAMPLE_URLS2));
   A5.master = ctx2.createGain();
-  A5.master.gain.value = S7.sound ? S7.vol : 0;
+  A5.master.gain.value = S8.sound ? S8.vol : 0;
   A5.master.connect(out);
   A5.world = ctx2.createBiquadFilter();
   A5.world.type = "lowpass";
@@ -70491,12 +70988,12 @@ function audioInit5() {
     return b;
   };
   A5.white = mk(2, (d) => {
-    for (let i = 0; i < d.length; i++) d[i] = Math6.random() * 2 - 1;
+    for (let i = 0; i < d.length; i++) d[i] = Math7.random() * 2 - 1;
   });
   A5.brown = mk(4, (d) => {
     let l = 0;
     for (let i = 0; i < d.length; i++) {
-      l = (l + 0.02 * (Math6.random() * 2 - 1)) / 1.02;
+      l = (l + 0.02 * (Math7.random() * 2 - 1)) / 1.02;
       d[i] = l * 3.5;
     }
   });
@@ -70549,7 +71046,7 @@ function chain2(node, { pan = 0, lp = 0, dest = A5.world, hp = 0 }) {
   }
   n.connect(dest);
 }
-function play2(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at: at2 = 0, offset = 0, dur, loop = false } = {}) {
+function play3(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at: at2 = 0, offset = 0, dur, loop = false } = {}) {
   if (!A5.ctx) return null;
   const key = GROUPS[id] ? pick7(GROUPS[id]) : id;
   const b = A5.buf[key];
@@ -70561,11 +71058,11 @@ function play2(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at: at2 =
   const src = ctx2.createBufferSource();
   src.buffer = b;
   src.loop = loop;
-  src.playbackRate.value = rate * rand4(0.97, 1.03);
+  src.playbackRate.value = rate * rand5(0.97, 1.03);
   const gn = ctx2.createGain();
   gn.gain.setValueAtTime(g, t);
   if (dur) {
-    gn.gain.setValueAtTime(g, t + Math6.max(0.01, dur - 0.12));
+    gn.gain.setValueAtTime(g, t + Math7.max(0.01, dur - 0.12));
     gn.gain.linearRampToValueAtTime(1e-4, t + dur);
   }
   src.connect(gn);
@@ -70592,7 +71089,7 @@ function noise6({ at: at2 = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1,
   src.connect(fl);
   fl.connect(g);
   chain2(g, { pan, dest: dest ?? A5.world });
-  src.start(t, Math6.random());
+  src.start(t, Math7.random());
   src.stop(t + dur + 0.05);
 }
 function tone2(f0, f12, dur, gain2, { type = "sine", dest, pan = 0, at: at2 = 0, attack = 0.01 } = {}) {
@@ -70601,7 +71098,7 @@ function tone2(f0, f12, dur, gain2, { type = "sine", dest, pan = 0, at: at2 = 0,
   const o = ctx2.createOscillator();
   o.type = type;
   o.frequency.setValueAtTime(f0, t);
-  o.frequency.exponentialRampToValueAtTime(Math6.max(20, f12), t + dur);
+  o.frequency.exponentialRampToValueAtTime(Math7.max(20, f12), t + dur);
   const g = ctx2.createGain();
   g.gain.setValueAtTime(1e-4, t);
   g.gain.exponentialRampToValueAtTime(gain2, t + attack);
@@ -70620,19 +71117,19 @@ function babble(sec, { f0 = 200, gain: gain2 = 0.05, pan = 0, tinny = false, lp 
   out.gain.value = gain2;
   chain2(out, { pan, lp: tinny ? 2600 : lp, hp: tinny ? 900 : 0, dest: dest ?? A5.world });
   while (t < end2) {
-    const d = rand4(0.07, 0.16), gap = Math6.random() < 0.12 ? rand4(0.15, 0.35) : rand4(0.01, 0.05);
+    const d = rand5(0.07, 0.16), gap = Math7.random() < 0.12 ? rand5(0.15, 0.35) : rand5(0.01, 0.05);
     const o = ctx2.createOscillator();
     o.type = "sawtooth";
-    const p = f0 * rand4(0.85, 1.2);
+    const p = f0 * rand5(0.85, 1.2);
     o.frequency.setValueAtTime(p, t);
-    o.frequency.linearRampToValueAtTime(p * rand4(0.9, 1.1), t + d);
+    o.frequency.linearRampToValueAtTime(p * rand5(0.9, 1.1), t + d);
     const f12 = ctx2.createBiquadFilter();
     f12.type = "bandpass";
-    f12.frequency.value = rand4(320, 820);
+    f12.frequency.value = rand5(320, 820);
     f12.Q.value = 6;
     const f2 = ctx2.createBiquadFilter();
     f2.type = "bandpass";
-    f2.frequency.value = rand4(1e3, 2300);
+    f2.frequency.value = rand5(1e3, 2300);
     f2.Q.value = 8;
     const g = ctx2.createGain();
     g.gain.setValueAtTime(1e-4, t);
@@ -70651,7 +71148,7 @@ function babble(sec, { f0 = 200, gain: gain2 = 0.05, pan = 0, tinny = false, lp 
 var SYN = {
   tapping: ({ g = 0.3, pan = 0 } = {}) => {
     const n = randInt4(5, 12);
-    for (let i = 0; i < n; i++) noise6({ at: i * rand4(0.08, 0.16), dur: 0.014, type: "highpass", f: 3400, gain: 0.04 * g * 3, attack: 1e-3, pan });
+    for (let i = 0; i < n; i++) noise6({ at: i * rand5(0.08, 0.16), dur: 0.014, type: "highpass", f: 3400, gain: 0.04 * g * 3, attack: 1e-3, pan });
   },
   thread: ({ g = 0.4, pan = 0 } = {}) => noise6({ dur: 0.5, f: 2200, f2: 3600, q: 2.5, gain: 0.05 * g * 2, attack: 0.12, pan }),
   snip: ({ g = 0.5, pan = 0 } = {}) => {
@@ -70670,12 +71167,12 @@ var SYN = {
   sheet: (o) => SYN.page(o),
   cloth: (o) => noise6({ dur: 0.42, f: 1100, f2: 1600, q: 0.7, gain: 0.08 * (o?.g ?? 0.5), attack: 0.1, pan: o?.pan }),
   creak: (o = {}) => {
-    const len2 = 0.35, n = Math6.floor(len2 * rand4(40, 70));
-    for (let i = 0; i < n; i++) noise6({ at: i / n * len2 + Math6.random() * 4e-3, dur: 0.012, f: rand4(420, 780), q: 9, gain: 0.16 * (o.g ?? 0.5) * (0.5 + Math6.random() * 0.5), attack: 1e-3, pan: o.pan });
+    const len2 = 0.35, n = Math7.floor(len2 * rand5(40, 70));
+    for (let i = 0; i < n; i++) noise6({ at: i / n * len2 + Math7.random() * 4e-3, dur: 0.012, f: rand5(420, 780), q: 9, gain: 0.16 * (o.g ?? 0.5) * (0.5 + Math7.random() * 0.5), attack: 1e-3, pan: o.pan });
   },
   pen: () => {
     const n = randInt4(3, 5);
-    for (let i = 0; i < n; i++) noise6({ at: i * 0.05 + Math6.random() * 0.02, dur: 0.035 + Math6.random() * 0.03, f: 2600 + Math6.random() * 1800, q: 3, gain: 0.035 });
+    for (let i = 0; i < n; i++) noise6({ at: i * 0.05 + Math7.random() * 0.02, dur: 0.035 + Math7.random() * 0.03, f: 2600 + Math7.random() * 1800, q: 3, gain: 0.035 });
   },
   horn: () => {
     for (const f of [146, 220]) tone2(f, f * 0.98, 2.6, 0.03, { type: "sawtooth", attack: 0.5 });
@@ -70687,17 +71184,17 @@ function musicTick() {
   const now = A5.ctx.currentTime;
   if (MUSIC.next < now) MUSIC.next = now + 0.05;
   while (MUSIC.next < now + 0.3) {
-    const t = MUSIC.next - now, beat = 60 / MUSIC.bpm, pan = V().herPan;
+    const t = MUSIC.next - now, beat = 60 / MUSIC.bpm, pan = V2().herPan;
     noise6({ at: t, dur: 0.05, type: "highpass", f: 5e3, gain: 0.02, attack: 2e-3, pan });
     noise6({ at: t + beat / 2, dur: 0.03, type: "highpass", f: 7e3, gain: 0.012, attack: 2e-3, pan });
-    tone2(rand4(400, 700), 300, 0.12, 6e-3, { type: "square", at: t, pan });
+    tone2(rand5(400, 700), 300, 0.12, 6e-3, { type: "square", at: t, pan });
     MUSIC.next += beat;
   }
 }
 var LOOPS = {};
 function loopOn(id, g, opts = {}) {
   if (!A5.ctx || LOOPS[id]) return;
-  const h2 = play2(id, { g: 1e-4, loop: true, ...opts });
+  const h2 = play3(id, { g: 1e-4, loop: true, ...opts });
   if (h2) {
     h2.gain.gain.cancelScheduledValues(A5.ctx.currentTime);
     h2.gain.gain.setTargetAtTime(g, A5.ctx.currentTime, 1.2);
@@ -70719,7 +71216,7 @@ function loopOff(id) {
 function sleepBreath() {
   const b = A5.buf.breath;
   if (!b) {
-    noise6({ dur: 2, f: 700, q: 0.6, gain: 0.02, attack: 0.9, pan: V().herPan });
+    noise6({ dur: 2, f: 700, q: 0.6, gain: 0.02, attack: 0.9, pan: V2().herPan });
     return;
   }
   const ctx2 = A5.ctx, t = ctx2.currentTime, src = ctx2.createBufferSource();
@@ -70728,19 +71225,19 @@ function sleepBreath() {
   const g = ctx2.createGain();
   g.gain.value = 0.07;
   src.connect(g);
-  chain2(g, { pan: V().herPan, lp: 1400 });
+  chain2(g, { pan: V2().herPan, lp: 1400 });
   src.start(t, 0.1);
   src.stop(t + 4.2);
 }
-var G6;
+var G7;
 function fresh5() {
   return {
     phase: "idle",
     t: 0,
     phaseIdx: 0,
     phaseT: 0,
-    clockMin: S7.start,
-    startMin: S7.start,
+    clockMin: S8.start,
+    startMin: S8.start,
     progress: 0,
     lampOn: false,
     score: 0,
@@ -70803,24 +71300,24 @@ function fresh5() {
     }
   };
 }
-G6 = fresh5();
-var after5 = (ms, fn) => G6.timers.push({ at: G6.t + ms, fn });
+G7 = fresh5();
+var after6 = (ms, fn) => G7.timers.push({ at: G7.t + ms, fn });
 function setStep(step) {
-  G6.step = step;
+  G7.step = step;
 }
-function sense(text3, where = "her", cls = "") {
+function sense2(text3, where = "her", cls = "") {
   if (!text3) return;
-  if ([...$5("#senses").children].some((x) => !x.dataset.gone && x.textContent === text3)) return;
-  const v = V(), p = where === "door" ? v.door : where === "body" ? v.body : Array.isArray(where) ? where : v.her;
+  if ([...$6("#senses").children].some((x) => !x.dataset.gone && x.textContent === text3)) return;
+  const v = V2(), p = where === "door" ? v.door : where === "body" ? v.body : Array.isArray(where) ? where : v.her;
   const el = document.createElement("div");
   el.className = "sense " + cls;
   el.textContent = text3;
   el.dataset.line = "";
-  $5("#senses").appendChild(el);
-  const at2 = placeFree2(el, clamp41(p[0] + rand4(-0.04, 0.04), 0.04, 0.78) * innerWidth6, clamp41(p[1] + rand4(-0.01, 0.01), 0.04, 0.84) * innerHeight6);
+  $6("#senses").appendChild(el);
+  const at2 = placeFree2(el, clamp41(p[0] + rand5(-0.04, 0.04), 0.04, 0.78) * innerWidth6, clamp41(p[1] + rand5(-0.01, 0.01), 0.04, 0.84) * innerHeight6);
   el.dataset.x = String(at2.x);
   el.dataset.y = String(at2.y);
-  el.dataset.born = String(G6.t);
+  el.dataset.born = String(G7.t);
   requestAnimationFrameOnce(() => {
     el.classList.add("on");
     el.style.transform = "translateY(-14px)";
@@ -70832,31 +71329,31 @@ function sense(text3, where = "her", cls = "") {
   }, 5600);
 }
 function mark(m) {
-  const v = V(), sees = v.sight && !S7.blind;
-  if (m.sfx) play2(m.sfx, { g: m.g ?? 0.4, pan: v.herPan, lp: S7.view === "wall" ? 5e3 : 0, dur: m.len ? rand4(m.len[0], m.len[1]) : void 0, offset: m.len ? rand4(0, 1.5) : 0 });
-  if (m.then) after5(rand4(380, 700), () => play2(m.then, { g: 0.3, pan: v.herPan }));
-  if (m.legs === "shift") G6.shiftAnim = 1;
-  sense(sees ? m.seen : m.heard, "her");
-  if (m.prog) G6.progress = Math6.min(ACT().total, G6.progress + m.prog);
+  const v = V2(), sees = v.sight && !S8.blind;
+  if (m.sfx) play3(m.sfx, { g: m.g ?? 0.4, pan: v.herPan, lp: S8.view === "wall" ? 5e3 : 0, dur: m.len ? rand5(m.len[0], m.len[1]) : void 0, offset: m.len ? rand5(0, 1.5) : 0 });
+  if (m.then) after6(rand5(380, 700), () => play3(m.then, { g: 0.3, pan: v.herPan }));
+  if (m.legs === "shift") G7.shiftAnim = 1;
+  sense2(sees ? m.seen : m.heard, "her");
+  if (m.prog) G7.progress = Math7.min(ACT().total, G7.progress + m.prog);
 }
 function placeFree2(el, x, y) {
   return placeFree(E5.box, el, x, y);
 }
-function say6(text3, to = "self", opts = {}) {
+function say7(text3, to = "self", opts = {}) {
   if (!text3) return;
-  const v = V(), p = opts.at ?? v.her;
-  E5.env.say($5("#hand"), text3, { her: E5.env.her(R8.run.holderId), at: [clamp41(p[0] + 0.04, 0.03, 0.7), clamp41(p[1] + 0.02, 0.03, 0.8)], to: to === "self" || to === "commander" ? to : "other", ...opts.big ? { big: true } : {} });
+  const v = V2(), p = opts.at ?? v.her;
+  E5.env.say($6("#hand"), text3, { her: E5.env.her(R8.run.holderId), at: [clamp41(p[0] + 0.04, 0.03, 0.7), clamp41(p[1] + 0.02, 0.03, 0.8)], to: to === "self" || to === "commander" ? to : "other", ...opts.big ? { big: true } : {} });
   SYN.pen();
   const spoken2 = to !== "written";
   const dur = 700 + text3.length * 70;
   if (spoken2) {
-    G6.herSpeakingUntil = Math6.max(G6.herSpeakingUntil, G6.t + dur);
-    if (S7.murmur && !opts.silent) babble(dur / 1e3, { f0: 215, gain: to === "self" ? 0.025 : 0.04, pan: v.herPan, lp: S7.view === "wall" ? 2200 : 3200 });
+    G7.herSpeakingUntil = Math7.max(G7.herSpeakingUntil, G7.t + dur);
+    if (S8.murmur && !opts.silent) babble(dur / 1e3, { f0: 215, gain: to === "self" ? 0.025 : 0.04, pan: v.herPan, lp: S8.view === "wall" ? 2200 : 3200 });
   }
-  if (to === "self") G6.lastSelfAt = G6.t;
+  if (to === "self") G7.lastSelfAt = G7.t;
 }
 function otherSay(text3, kind = "call", who = "") {
-  const v = V();
+  const v = V2();
   const el = document.createElement("div");
   el.className = "other-line" + (kind === "room" ? " room" : "");
   el.dataset.line = "";
@@ -70865,11 +71362,11 @@ function otherSay(text3, kind = "call", who = "") {
   w.textContent = who;
   el.append(w, document.createTextNode(text3));
   const p = kind === "room" ? v.door : [v.her[0] + 0.2, v.her[1] + 0.08];
-  $5("#others").appendChild(el);
+  $6("#others").appendChild(el);
   placeFree2(el, clamp41(p[0] - (kind === "room" ? 0.2 : 0), 0.03, 0.72) * innerWidth6, clamp41(p[1], 0.04, 0.8) * innerHeight6);
   requestAnimationFrameOnce(() => el.classList.add("on"));
   const dur = 900 + text3.length * 65;
-  G6.otherSpeakingUntil = Math6.max(G6.otherSpeakingUntil, G6.t + dur);
+  G7.otherSpeakingUntil = Math7.max(G7.otherSpeakingUntil, G7.t + dur);
   babble(dur / 1e3, kind === "room" ? { f0: 180, gain: 0.05, pan: v.doorPan * 0.6 } : { f0: 150, gain: 0.03, pan: v.herPan, tinny: true });
   setTimeout6(() => {
     el.classList.remove("on");
@@ -70880,113 +71377,124 @@ function mentionTextOf(m) {
   const e = E5, run = R8.run;
   const to = m.to ?? R8.listener?.id ?? "";
   const t = mentionText(e.env.state(), e.env.registries, run.holderId, to, m);
-  G6.stats.mentions.push(t === null ? "left unsaid" : t === m.plain ? "plain" : "veiled");
+  G7.stats.mentions.push(t === null ? "left unsaid" : t === m.plain ? "plain" : "veiled");
   return t;
 }
 function coverNow() {
   let c = 0;
-  if (G6.t < G6.herSpeakingUntil) c = Math6.max(c, 0.75);
-  if (G6.visitor && G6.t < G6.otherSpeakingUntil) c = Math6.max(c, 0.5);
-  if (G6.mess) c += 0.12;
+  if (G7.t < G7.herSpeakingUntil) c = Math7.max(c, 0.75);
+  if (G7.visitor && G7.t < G7.otherSpeakingUntil) c = Math7.max(c, 0.5);
+  if (G7.mess) c += 0.12;
   if (LOOPS.rain) c += 0.12;
-  return clamp41(c + G6.coverExtra, 0, 0.92);
+  return clamp41(c + G7.coverExtra, 0, 0.92);
 }
 var BODY_SFX = {
   scratch: () => {
     SYN.scratch({ g: 0.6 });
-    play2("cloth", { g: 0.18, dest: A5.body });
+    play3("cloth", { g: 0.18, dest: A5.body });
   },
   shift: () => {
-    play2("creak", { g: 0.3, dest: A5.body, rate: 0.9 });
-    play2("cloth", { g: 0.3, dest: A5.body });
+    play3("creak", { g: 0.3, dest: A5.body, rate: 0.9 });
+    play3("cloth", { g: 0.3, dest: A5.body });
     SYN.joint({ g: 0.5 });
   },
   swallow: () => SYN.gulp({ g: 0.5 }),
   gulp: () => SYN.gulp({ g: 1 }),
   stretch: () => {
-    play2("cloth", { g: 0.4, dest: A5.body });
-    play2("creak", { g: 0.35, dest: A5.body });
+    play3("cloth", { g: 0.4, dest: A5.body });
+    play3("creak", { g: 0.35, dest: A5.body });
     SYN.joint({ g: 0.8 });
   },
   jerk: () => {
-    play2("soft", { g: 0.6, dest: A5.body });
-    play2("cloth", { g: 0.5, dest: A5.body });
+    play3("soft", { g: 0.6, dest: A5.body });
+    play3("cloth", { g: 0.5, dest: A5.body });
     SYN.joint({ g: 1 });
   },
   slump: () => {
-    play2("soft2", { g: 0.8, dest: A5.body });
-    play2("creak", { g: 0.4, dest: A5.body });
+    play3("soft2", { g: 0.8, dest: A5.body });
+    play3("creak", { g: 0.4, dest: A5.body });
   },
   speak: () => {
   },
   fidget: () => {
-    play2("cloth", { g: 0.22, dest: A5.body });
+    play3("cloth", { g: 0.22, dest: A5.body });
     SYN.joint({ g: 0.3 });
   }
 };
-function bodyNoise(kind, loud, visible, gross = false) {
+function bodyNoise2(kind, loud, visible, gross = false) {
   BODY_SFX[kind]?.();
-  G6.faultsRecent = G6.faultsRecent.filter((x) => G6.t - x < 4e4);
+  G7.faultsRecent = G7.faultsRecent.filter((x) => G7.t - x < 4e4);
   const cover = coverNow();
   if (kind !== "speak") report5(kind === "fidget" ? "fidget" : "relieve", loud, cover);
-  if (gross) G6.grossPending = true;
-  if (G6.call && G6.t >= G6.herSpeakingUntil && loud * (1 - cover) > 0.28 && !G6.call.heard) {
-    G6.call.heard = true;
-    G6.stats.heardOnLine += 1;
+  if (gross) G7.grossPending = true;
+  if (G7.call && G7.t >= G7.herSpeakingUntil && loud * (1 - cover) > 0.28 && !G7.call.heard) {
+    G7.call.heard = true;
+    G7.stats.heardOnLine += 1;
     callHeard();
   }
-  if (G6.visitor && !G6.visitor.knows && loud * (1 - cover) > 0.3 && !G6.visitor.heard) {
-    G6.visitor.heard = true;
-    G6.stats.heardByVisitor += 1;
-    visitorHeard();
+  if (G7.visitor && !G7.visitor.knows && loud * (1 - cover) > 0.3 && !G7.visitor.heard) {
+    G7.visitor.heard = true;
+    G7.stats.heardByVisitor += 1;
+    visitorHeard2();
   }
-  G6.stats.unnoticed += 1;
+  G7.stats.unnoticed += 1;
   return false;
 }
 function herCaught(gross) {
-  G6.stats.unnoticed = Math6.max(0, G6.stats.unnoticed - 1);
-  G6.stats.noticed.push({ kind: "a movement", step: G6.step, how: "noticed", fiction: clockText3(G6.clockMin) });
-  G6.faultsRecent.push(G6.t);
-  const pause = rand4(2200, 3800);
-  G6.pauseUntil = G6.t + pause;
-  G6.att = "glancing";
-  G6.attHold = pause;
-  G6.nextMark = Math6.max(G6.nextMark, G6.t + pause + 400);
-  if (!G6.toldPause) {
-    G6.toldPause = true;
-    after5(700, () => sense(V().sight && !S7.blind ? "She stops. She is listening." : "Above you, her sounds stop. She is listening.", "her"));
+  G7.stats.unnoticed = Math7.max(0, G7.stats.unnoticed - 1);
+  G7.stats.noticed.push({ kind: "a movement", step: G7.step, how: "noticed", fiction: clockText3(G7.clockMin) });
+  G7.faultsRecent.push(G7.t);
+  const pause = rand5(2200, 3800);
+  G7.pauseUntil = G7.t + pause;
+  G7.att = "glancing";
+  G7.attHold = pause;
+  G7.nextMark = Math7.max(G7.nextMark, G7.t + pause + 400);
+  if (!G7.toldPause) {
+    G7.toldPause = true;
+    after6(700, () => sense2(V2().sight && !S8.blind ? "She stops. She is listening." : "Above you, her sounds stop. She is listening.", "her"));
   }
+  react(gross);
+}
+function herFeels2(kind, gross) {
+  G7.stats.noticed.push({ kind, step: G7.step, how: "felt", fiction: clockText3(G7.clockMin) });
+  G7.faultsRecent = G7.faultsRecent.filter((x) => G7.t - x < 4e4);
+  G7.faultsRecent.push(G7.t);
+  const pause = rand5(2200, 3800);
+  G7.pauseUntil = G7.t + pause;
+  G7.att = "glancing";
+  G7.attHold = pause;
+  G7.nextMark = Math7.max(G7.nextMark, G7.t + pause + 400);
   react(gross);
 }
 function react(gross) {
   const act = ACT();
   if (act.sleep) {
-    G6.stirs += 1;
-    play2("cloth", { g: 0.35, pan: V().herPan });
-    sense(G6.stirs >= 3 ? "She wakes." : "She stirs, turns over, and settles again.", "her");
-    if (G6.stirs >= 3) {
-      G6.stats.woke = true;
-      after5(1200, () => say6(G6.step === "with" || G6.step === "glancing" ? "\u2026what are you doing." : "\u2026", "commander"));
+    G7.stirs += 1;
+    play3("cloth", { g: 0.35, pan: V2().herPan });
+    sense2(G7.stirs >= 3 ? "She wakes." : "She stirs, turns over, and settles again.", "her");
+    if (G7.stirs >= 3) {
+      G7.stats.woke = true;
+      after6(1200, () => say7(G7.step === "with" || G7.step === "glancing" ? "\u2026what are you doing." : "\u2026", "commander"));
     }
     return;
   }
-  const step = G6.step, st3 = ST3();
+  const step = G7.step, st3 = ST3();
   const body2 = () => {
-    G6.press = 1;
-    G6.footUpUntil = G6.t + 2600;
-    play2("soft", { g: 0.35, pan: V().herPan * 0.5 });
-    sense({ legs: "Her foot presses into your shoulder, once, without a word.", floor: "Her foot finds your back and presses down, once.", wall: "A nudge from behind: her foot, once.", her: "She looks at you until you are still. Not a word." }[S7.view] ?? "", "body");
+    G7.press = 1;
+    G7.footUpUntil = G7.t + 2600;
+    play3("soft", { g: 0.35, pan: V2().herPan * 0.5 });
+    sense2({ legs: "Her foot presses into your shoulder, once, without a word.", floor: "Her foot finds your back and presses down, once.", wall: "A nudge from behind: her foot, once.", her: "She looks at you until you are still. Not a word." }[S8.view] ?? "", "body");
   };
   if (step === "with") {
-    say6(pick7(st3.noticed), "commander");
+    say7(pick7(st3.noticed), "commander");
     return;
   }
   if (step === "glancing") {
-    if (Math6.random() < 0.6 || gross) say6(pick7(st3.noticed), "commander");
+    if (Math7.random() < 0.6 || gross) say7(pick7(st3.noticed), "commander");
     else {
-      G6.att = "watching";
-      G6.attHold = 3e3;
-      sense(V().sight && !S7.blind ? "She looks down at you. Then back to her work." : "Her sounds stop for a moment. Then go on.", "her");
+      G7.att = "watching";
+      G7.attHold = 3e3;
+      sense2(V2().sight && !S8.blind ? "She looks down at you. Then back to her work." : "Her sounds stop for a moment. Then go on.", "her");
     }
     return;
   }
@@ -70994,424 +71502,456 @@ function react(gross) {
     body2();
     return;
   }
-  if (gross || G6.faultsRecent.length >= 3) {
+  if (gross || G7.faultsRecent.length >= 3) {
     body2();
-    G6.faultsRecent = [];
+    G7.faultsRecent = [];
   }
 }
 function report5(kind, amount, cover) {
   const st3 = E5.env.staging;
-  st3.input({ beat: st3.beat(), kind, amount: Math6.round(amount * 1e3) / 1e3, cover: Math6.round(cover * 1e3) / 1e3 }, { pointer: true });
-  G6.stats.reliefs += 1;
+  st3.input({ beat: st3.beat(), kind, amount: Math7.round(amount * 1e3) / 1e3, cover: Math7.round(cover * 1e3) / 1e3 }, { pointer: true });
+  G7.stats.reliefs += 1;
 }
 var MOUSE = { x: 0, y: 0, down: false };
 function anchors() {
-  const v = V(), W = innerWidth6, H = innerHeight6, list5 = [];
-  if (!G6.away) {
-    const at2 = { legs: [0.5, 0.45], her: [0.5, 0.33], floor: [$5("#floorArt").naturalWidth && $5("#floorArt").style.display !== "none" ? 0.5 : v.her[0], $5("#floorArt").naturalWidth && $5("#floorArt").style.display !== "none" ? 0.62 : v.her[1] + 0.06], wall: [v.her[0], v.her[1]], footrest: [v.her[0], v.her[1]] }[S7.view];
-    list5.push({ x: at2[0] * W, y: at2[1] * H, r: 0.14 * H, her: true });
+  const v = V2(), W2 = innerWidth6, H = innerHeight6, list5 = [];
+  if (!G7.away) {
+    const at2 = { legs: [0.5, 0.45], her: [0.5, 0.33], floor: [$6("#floorArt").naturalWidth && $6("#floorArt").style.display !== "none" ? 0.5 : v.her[0], $6("#floorArt").naturalWidth && $6("#floorArt").style.display !== "none" ? 0.62 : v.her[1] + 0.06], wall: [v.her[0], v.her[1]], footrest: [v.her[0], v.her[1]] }[S8.view];
+    list5.push({ x: at2[0] * W2, y: at2[1] * H, r: 0.14 * H, her: true });
   }
-  list5.push({ x: v.door[0] * W, y: v.door[1] * H, r: 0.09 * H });
+  list5.push({ x: v.door[0] * W2, y: v.door[1] * H, r: 0.09 * H });
   const box = E5.box.getBoundingClientRect();
-  for (const el of $5("#senses").children) if (!el.dataset.gone && G6.t - Number(el.dataset.born) < 4500) list5.push({ x: Number(el.dataset.x) + 110, y: Number(el.dataset.y) + 10, r: 110 });
-  for (const el of $5("#hand").querySelectorAll("[data-line]")) if (!el.classList.contains("gone")) {
+  for (const el of $6("#senses").children) if (!el.dataset.gone && G7.t - Number(el.dataset.born) < 4500) list5.push({ x: Number(el.dataset.x) + 110, y: Number(el.dataset.y) + 10, r: 110 });
+  for (const el of $6("#hand").querySelectorAll("[data-line]")) if (!el.classList.contains("gone")) {
     const r = el.getBoundingClientRect();
-    list5.push({ x: r.left - box.left + r.width / 2, y: r.top - box.top + r.height / 2, r: Math6.max(90, r.width / 2 + 20) });
+    list5.push({ x: r.left - box.left + r.width / 2, y: r.top - box.top + r.height / 2, r: Math7.max(90, r.width / 2 + 20) });
   }
   return list5;
 }
 var ATT2 = { x: 0, y: 0, vx: 0, vy: 0 };
-var onAnchor = () => anchors().some((a) => Math6.hypot(ATT2.x - a.x, ATT2.y - a.y) < a.r);
+var onAnchor = () => anchors().some((a) => Math7.hypot(ATT2.x - a.x, ATT2.y - a.y) < a.r);
 var RIPPLES = [];
 function moveAttention(dt) {
-  const s = Math6.min(0.05, dt / 1e3), low = 1 - G6.ease / 100;
+  const s = Math7.min(0.05, dt / 1e3), low = 1 - G7.ease / 100;
   let fx2 = 60 * (MOUSE.x - ATT2.x), fy = 60 * (MOUSE.y - ATT2.y);
   const pull = (x, y, k) => {
-    const dx = x - ATT2.x, dy = y - ATT2.y, d = Math6.hypot(dx, dy) || 1;
-    const f = k * (1 + low) * Math6.min(1, 380 / d);
+    const dx = x - ATT2.x, dy = y - ATT2.y, d = Math7.hypot(dx, dy) || 1;
+    const f = k * (1 + low) * Math7.min(1, 380 / d);
     fx2 += dx / d * f;
     fy += dy / d * f;
   };
   if (!(svcOn() && SV && SV.closeK > 0.3)) {
-    for (const u of G6.urges) if (u.v > 0.3) pull(u.x, u.y, (u.v - 0.3) * (u.kind === "itch" ? 5200 : 2600));
+    for (const u of G7.urges) if (u.v > 0.3) pull(u.x, u.y, (u.v - 0.3) * (u.kind === "itch" ? 5200 : 2600));
   }
-  if (G6.cramp) pull(G6.cramp.side < 0 ? 0.1 * innerWidth6 : 0.9 * innerWidth6, 0.7 * innerHeight6, 4200);
+  if (G7.cramp) pull(G7.cramp.side < 0 ? 0.1 * innerWidth6 : 0.9 * innerWidth6, 0.7 * innerHeight6, 4200);
   ATT2.vx += (fx2 - 13 * ATT2.vx) * s;
   ATT2.vy += (fy - 13 * ATT2.vy) * s;
-  const mx = MOUSE.x - (G6.lastMX ?? MOUSE.x), my = MOUSE.y - (G6.lastMY ?? MOUSE.y);
-  G6.lastMX = MOUSE.x;
-  G6.lastMY = MOUSE.y;
-  const spd = Math6.hypot(mx, my) / Math6.max(8e-3, dt / 1e3);
-  G6.speed = lerp2(G6.speed ?? 0, spd, Math6.min(1, dt / 120));
-  G6.headX = lerp2(G6.headX ?? 0, clamp41(mx / Math6.max(1, dt) * 6, -14, 14), Math6.min(1, dt / 200));
-  G6.headY = lerp2(G6.headY ?? 0, clamp41(my / Math6.max(1, dt) * 6, -10, 10), Math6.min(1, dt / 200));
+  const mx = MOUSE.x - (G7.lastMX ?? MOUSE.x), my = MOUSE.y - (G7.lastMY ?? MOUSE.y);
+  G7.lastMX = MOUSE.x;
+  G7.lastMY = MOUSE.y;
+  const spd = Math7.hypot(mx, my) / Math7.max(8e-3, dt / 1e3);
+  G7.speed = lerp2(G7.speed ?? 0, spd, Math7.min(1, dt / 120));
+  G7.headX = lerp2(G7.headX ?? 0, clamp41(mx / Math7.max(1, dt) * 6, -14, 14), Math7.min(1, dt / 200));
+  G7.headY = lerp2(G7.headY ?? 0, clamp41(my / Math7.max(1, dt) * 6, -10, 10), Math7.min(1, dt / 200));
   const craft = svcOn() && SV && SV.closeK > 0.3;
-  if (craft) G6.fidget = 0;
-  if (!craft && G6.speed > 350 && (G6.rippleCd = (G6.rippleCd ?? 0) - dt) <= 0) {
-    RIPPLES.push({ x: ATT2.x, y: ATT2.y, born: performance6.now(), k: clamp41(G6.speed / 1250, 0.3, 1) });
-    G6.rippleCd = lerp2(260, 90, clamp41((G6.speed - 350) / 1250, 0, 1));
+  if (craft) G7.fidget = 0;
+  if (!craft && G7.speed > 350 && (G7.rippleCd = (G7.rippleCd ?? 0) - dt) <= 0) {
+    RIPPLES.push({ x: ATT2.x, y: ATT2.y, born: performance7.now(), k: clamp41(G7.speed / 1250, 0.3, 1) });
+    G7.rippleCd = lerp2(260, 90, clamp41((G7.speed - 350) / 1250, 0, 1));
   }
-  if (!craft) G6.fidget = Math6.max(0, (G6.fidget ?? 0) + (G6.speed > 450 ? clamp41((G6.speed - 450) / 1e3, 0, 1.6) : -0.35) * dt / 1e3);
-  if (G6.fidget >= 1 && G6.t >= (G6.fidgetCd ?? 0) && (G6.phase === "loop" || G6.phase === "empty")) {
-    G6.fidget = 0;
-    G6.fidgetCd = G6.t + 1500;
-    G6.stats.fidgets = (G6.stats.fidgets ?? 0) + 1;
-    if (!G6.toldFidget) {
-      G6.toldFidget = true;
-      sense("You shift where you kneel; your eyes will not keep still.", "body", "body");
+  if (!craft) G7.fidget = Math7.max(0, (G7.fidget ?? 0) + (G7.speed > 450 ? clamp41((G7.speed - 450) / 1e3, 0, 1.6) : -0.35) * dt / 1e3);
+  if (G7.fidget >= 1 && G7.t >= (G7.fidgetCd ?? 0) && (G7.phase === "loop" || G7.phase === "empty")) {
+    G7.fidget = 0;
+    G7.fidgetCd = G7.t + 1500;
+    G7.stats.fidgets = (G7.stats.fidgets ?? 0) + 1;
+    if (!G7.toldFidget) {
+      G7.toldFidget = true;
+      sense2("You shift where you kneel; your eyes will not keep still.", "body", "body");
     }
-    bodyNoise("fidget", 0.28, true);
+    bodyNoise2("fidget", 0.28, true);
   }
   ATT2.x += ATT2.vx * s;
   ATT2.y += ATT2.vy * s;
-  G6.lisT = onAnchor() ? (G6.lisT ?? 0) + dt : 0;
-  return G6.lisT >= 500;
+  G7.lisT = onAnchor() ? (G7.lisT ?? 0) + dt : 0;
+  return G7.lisT >= 500;
 }
 function spawnUrge(kind) {
-  const W = innerWidth6, H = innerHeight6;
+  const W2 = innerWidth6, H = innerHeight6;
   if (kind === "itch") {
     let x = 0, y = 0, tries = 0;
     do {
-      x = rand4(0.08, 0.92) * W;
-      y = rand4(0.12, 0.7) * H;
+      x = rand5(0.08, 0.92) * W2;
+      y = rand5(0.12, 0.7) * H;
       tries++;
-    } while (tries < 20 && anchors().some((a) => Math6.hypot(x - a.x, y - a.y) < a.r + 60));
-    G6.urges.push({ kind, x, y, v: 0.12, born: G6.t, seed: Math6.random() * 10 });
+    } while (tries < 20 && anchors().some((a) => Math7.hypot(x - a.x, y - a.y) < a.r + 60));
+    G7.urges.push({ kind, x, y, v: 0.12, born: G7.t, seed: Math7.random() * 10 });
   } else if (kind === "swallow") {
-    G6.urges.push({ kind, x: W / 2, y: H - 150, v: 0.1, born: G6.t, seed: 0 });
-    if (!G6.saidSwallow) {
-      G6.saidSwallow = true;
-      sense("Your mouth fills. Sooner or later you will have to swallow.", [0.42, 0.74], "body");
+    G7.urges.push({ kind, x: W2 / 2, y: H - 150, v: 0.1, born: G7.t, seed: 0 });
+    if (!G7.saidSwallow) {
+      G7.saidSwallow = true;
+      sense2("Your mouth fills. Sooner or later you will have to swallow.", [0.42, 0.74], "body");
     }
   } else if (kind === "cramp") {
-    const side = Math6.random() < 0.5 ? -1 : 1;
-    G6.cramp = { side, v: 0.75, born: G6.t, held: 0 };
-    play2("soft", { g: 0.15, dest: A5.body });
-    sense(pick7(["A cramp seizes your calf.", "Your foot cramps, hard.", "The thigh knots up."]), "body", "body");
+    const side = Math7.random() < 0.5 ? -1 : 1;
+    G7.cramp = { side, v: 0.75, born: G7.t, held: 0 };
+    play3("soft", { g: 0.15, dest: A5.body });
+    sense2(pick7(["A cramp seizes your calf.", "Your foot cramps, hard.", "The thigh knots up."]), "body", "body");
   }
 }
 function updateUrges(dt) {
-  const s = dt / 1e3, low = 1 - G6.ease / 100, lis = moveAttention(dt);
-  G6.listening = lis;
-  G6.feeding = false;
-  for (const u of G6.urges) {
+  const s = dt / 1e3, low = 1 - G7.ease / 100, lis = moveAttention(dt);
+  G7.listening = lis;
+  G7.feeding = false;
+  for (const u of G7.urges) {
     const serving = svcOn() && SV && SV.closeK > 0.3;
-    const focus = !serving && Math6.hypot(ATT2.x - u.x, ATT2.y - u.y) < 40 + u.v * 70;
+    const focus = !serving && Math7.hypot(ATT2.x - u.x, ATT2.y - u.y) < 40 + u.v * 70;
     u.focus = focus;
-    if (focus) G6.feeding = true;
+    if (focus) G7.feeding = true;
     if (u.kind === "itch") {
       if (serving) u.v -= s * 0.08;
       else u.v += s * (0.026 * (1 + low) + (focus ? 0.2 : 0) - (lis && !focus && u.v < 0.85 ? 0.1 : 0));
       if (u.v <= 0) {
         u.dead = true;
-        G6.stats.endured += 1;
+        G7.stats.endured += 1;
       }
       if (u.v >= 1) {
         u.dead = true;
-        G6.stats.involuntary += 1;
-        G6.ease -= 8;
-        sense("The itch wins: your hand moves before you decide.", "body", "body");
-        bodyNoise("scratch", 0.55, true);
+        G7.stats.involuntary += 1;
+        G7.ease -= 8;
+        sense2("The itch wins: your hand moves before you decide.", "body", "body");
+        bodyNoise2("scratch", 0.55, true);
       }
     } else if (u.kind === "swallow") {
       u.v += s * (0.03 * (1 + low * 0.5) + (focus ? 0.06 : 0));
       if (u.v > 0.7 && !u.warned) {
         u.warned = true;
-        sense("You will have to swallow soon. Better while she is talking.", [0.4, 0.72], "body");
+        sense2("You will have to swallow soon. Better while she is talking.", [0.4, 0.72], "body");
       }
       if (u.v >= 1) {
         u.dead = true;
-        G6.stats.involuntary += 1;
-        sense("You swallow, loudly.", "body", "body");
-        bodyNoise("gulp", 0.45, false);
+        G7.stats.involuntary += 1;
+        sense2("You swallow, loudly.", "body", "body");
+        bodyNoise2("gulp", 0.45, false);
       }
     }
   }
-  G6.urges = G6.urges.filter((u) => !u.dead);
-  const hours = (G6.clockMin - G6.startMin) / 60;
-  G6.numb += s * 0.011 * (1 + hours * 0.25) * (1 - S7.level * 0.08) * (1 + low * 0.5);
-  if (G6.numb >= 1) {
-    G6.numb = 0.3;
-    G6.ease -= 15;
-    G6.stats.involuntary += 1;
-    G6.stats.gross += 1;
-    sense("Your leg gives under you.", "body", "body");
-    G6.shake = 1;
-    bodyNoise("slump", 0.9, true, true);
+  G7.urges = G7.urges.filter((u) => !u.dead);
+  const hours = (G7.clockMin - G7.startMin) / 60;
+  G7.numb += s * 0.011 * (1 + hours * 0.25) * (1 - S8.level * 0.08) * (1 + low * 0.5);
+  if (G7.numb >= 1) {
+    G7.numb = 0.3;
+    G7.ease -= 15;
+    G7.stats.involuntary += 1;
+    G7.stats.gross += 1;
+    sense2("Your leg gives under you.", "body", "body");
+    G7.shake = 1;
+    bodyNoise2("slump", 0.9, true, true);
   }
-  if (G6.cramp) {
-    const c = G6.cramp;
-    if (G6.spaceHeld) c.held += dt;
-    c.v = 0.75 + 0.25 * Math6.sin((G6.t - c.born) / 90) * (1 - c.held / 2600);
+  if (G7.cramp) {
+    const c = G7.cramp;
+    if (G7.spaceHeld) c.held += dt;
+    c.v = 0.75 + 0.25 * Math7.sin((G7.t - c.born) / 90) * (1 - c.held / 2600);
     if (c.held >= 2600) {
-      G6.cramp = null;
-      G6.ease -= 4;
-      G6.stats.endured += 1;
-      sense("It passes. You did not move.", "body", "body");
-    } else if (G6.t - c.born > 3600) {
-      G6.cramp = null;
-      G6.ease -= 12;
-      G6.stats.involuntary += 1;
-      G6.stats.gross += 1;
-      G6.shake = 1;
-      sense("The cramp jerks your leg out.", "body", "body");
-      bodyNoise("jerk", 1, true, true);
+      G7.cramp = null;
+      G7.ease -= 4;
+      G7.stats.endured += 1;
+      sense2("It passes. You did not move.", "body", "body");
+    } else if (G7.t - c.born > 3600) {
+      G7.cramp = null;
+      G7.ease -= 12;
+      G7.stats.involuntary += 1;
+      G7.stats.gross += 1;
+      G7.shake = 1;
+      sense2("The cramp jerks your leg out.", "body", "body");
+      bodyNoise2("jerk", 1, true, true);
     }
   }
   const k = lerp2(1, 0.5, low);
   const closeUp = svcOn() && SV && SV.closeK > 0.3;
   if (closeUp) {
-    G6.nextItch += dt;
-    G6.nextCramp += dt;
+    G7.nextItch += dt;
+    G7.nextCramp += dt;
   }
-  if (G6.t >= G6.nextItch) {
+  if (G7.t >= G7.nextItch) {
     spawnUrge("itch");
-    G6.nextItch = G6.t + rand4(7e3, 14e3) * k;
+    G7.nextItch = G7.t + rand5(7e3, 14e3) * k;
   }
-  if (G6.t >= G6.nextSwallow) {
-    if (!G6.urges.some((u) => u.kind === "swallow")) spawnUrge("swallow");
-    G6.nextSwallow = G6.t + rand4(15e3, 26e3);
+  if (G7.t >= G7.nextSwallow) {
+    if (!G7.urges.some((u) => u.kind === "swallow")) spawnUrge("swallow");
+    G7.nextSwallow = G7.t + rand5(15e3, 26e3);
   }
-  if (G6.t >= G6.nextCramp && !G6.cramp && (G6.phaseIdx >= 1 || hours > 0.6)) {
+  if (G7.t >= G7.nextCramp && !G7.cramp && (G7.phaseIdx >= 1 || hours > 0.6)) {
     spawnUrge("cramp");
-    G6.nextCramp = G6.t + rand4(35e3, 65e3) * k;
+    G7.nextCramp = G7.t + rand5(35e3, 65e3) * k;
   }
-  G6.ease -= Math6.max(0, 5 - 2 * S7.level) / 60 * (G6.clockRate ?? 0) * dt / 1e3 * 4;
-  for (const u of G6.urges) if (u.v > 0.7) G6.ease -= s * 0.35;
-  if (G6.numb > 0.75) G6.ease -= s * 0.3;
-  G6.ease = clamp41(G6.ease, 0, 100);
-  if (G6.ease <= 0) {
-    G6.ease = 30;
-    G6.stats.gross += 1;
-    G6.stats.involuntary += 1;
-    G6.shake = 1.4;
-    sense("The body gives up the posture on its own.", "body", "body");
-    bodyNoise("slump", 1, true, true);
+  G7.ease -= Math7.max(0, 5 - 2 * S8.level) / 60 * (G7.clockRate ?? 0) * dt / 1e3 * 4;
+  for (const u of G7.urges) if (u.v > 0.7) G7.ease -= s * 0.35;
+  if (G7.numb > 0.75) G7.ease -= s * 0.3;
+  G7.ease = clamp41(G7.ease, 0, 100);
+  if (G7.ease <= 0) {
+    G7.ease = 30;
+    G7.stats.gross += 1;
+    G7.stats.involuntary += 1;
+    G7.shake = 1.4;
+    sense2("The body gives up the posture on its own.", "body", "body");
+    bodyNoise2("slump", 1, true, true);
   }
 }
 function relieveAt(x, y) {
-  if (G6.phase !== "loop" && G6.phase !== "empty") return;
-  if (G6.cramp) {
-    const cx = G6.cramp.side < 0 ? 0.12 * innerWidth6 : 0.88 * innerWidth6;
-    if (Math6.abs(x - cx) < 0.2 * innerWidth6 && y > 0.5 * innerHeight6) {
-      G6.cramp = null;
-      G6.ease += 6;
-      G6.stats.reliefs += 1;
-      sense("You stretch the cramp out.", "body", "body");
-      bodyNoise("stretch", 0.7, true);
+  if (G7.phase !== "loop" && G7.phase !== "empty") return;
+  if (G7.cramp) {
+    const cx = G7.cramp.side < 0 ? 0.12 * innerWidth6 : 0.88 * innerWidth6;
+    if (Math7.abs(x - cx) < 0.2 * innerWidth6 && y > 0.5 * innerHeight6) {
+      G7.cramp = null;
+      G7.ease += 6;
+      G7.stats.reliefs += 1;
+      sense2("You stretch the cramp out.", "body", "body");
+      bodyNoise2("stretch", 0.7, true);
       return;
     }
   }
-  const u = G6.urges.find((q) => Math6.hypot(x - q.x, y - q.y) < 46 + q.v * 70);
+  const u = G7.urges.find((q) => Math7.hypot(x - q.x, y - q.y) < 46 + q.v * 70);
   if (u) {
     u.dead = true;
-    G6.stats.reliefs += 1;
+    G7.stats.reliefs += 1;
     if (u.kind === "itch") {
-      G6.ease += 3;
-      bodyNoise("scratch", 0.35, true);
+      G7.ease += 3;
+      bodyNoise2("scratch", 0.35, true);
     } else {
-      if (SV) SV.dry = Math6.max(0, SV.dry - 0.6);
-      bodyNoise("swallow", 0.15, false);
+      if (SV) SV.dry = Math7.max(0, SV.dry - 0.6);
+      bodyNoise2("swallow", 0.15, false);
     }
     return;
   }
-  if (y > innerHeight6 * 0.84 && G6.numb > 0.15) {
-    G6.numb = Math6.max(0, G6.numb - 0.6);
-    G6.ease += 9;
-    G6.stats.reliefs += 1;
-    bodyNoise("shift", 0.6, true);
+  if (y > innerHeight6 * 0.84 && G7.numb > 0.15) {
+    G7.numb = Math7.max(0, G7.numb - 0.6);
+    G7.ease += 9;
+    G7.stats.reliefs += 1;
+    bodyNoise2("shift", 0.6, true);
   }
 }
 function runScript(entries2, kind = "call") {
-  for (const e of entries2) after5(e.at * 1e3, () => {
-    if (G6.phase !== "loop") return;
+  for (const e of entries2) after6(e.at * 1e3, () => {
+    if (G7.phase !== "loop") return;
     if (e.who === "other") {
-      otherSay(e.text, G6.visitor ? "room" : kind, G6.visitor ? G6.visitor?.name ?? "" : G6.call?.name ?? "");
+      otherSay(e.text, G7.visitor ? "room" : kind, G7.visitor ? G7.visitor?.name ?? "" : G7.call?.name ?? "");
+      if (e.about) after6(700, throneFlinch);
       return;
     }
     let text3 = e.text;
     if (e.mention) {
-      text3 = mentionTextOf(e.mention);
+      text3 = G7.visitor?.aware && G7.visitor ? e.mention.plain : mentionTextOf(e.mention);
       if (!text3) return;
     }
+    if (e.body) throneBody(e.body, e);
+    else if (throneOn() && e.to === "self" && fnv2(`${S8.seed}:${text3}`) % 10 < 4) throneBody(["settle", "cross", "lean"][fnv2(text3) % 3], e);
+    if (e.about) throneFlinch();
+    if (e.feet && throneOn()) after6(1800, () => {
+      if (!G7.visitor) return;
+      G7.visitorFeet = true;
+      G7.stats.visitorFeet = true;
+      play3("soft", { g: 0.4, dest: A5.body });
+      sense2("Her visitor\u2019s boots settle on your back beside hers.", "body");
+    });
+    if (e.decision) after6(1200, () => decided(e.decision));
     if (e.to === "commander") {
-      if (S7.view === "legs") {
-        G6.press = 0.6;
-        G6.footUpUntil = G6.t + 2400;
-        play2("soft", { g: 0.25, pan: 0 });
+      if (S8.view === "legs") {
+        G7.press = 0.6;
+        G7.footUpUntil = G7.t + 2400;
+        play3("soft", { g: 0.25, pan: 0 });
       }
       text3 = `${ST3().name}, ${text3}`;
       if (e.ask) {
-        G6.ask = { until: G6.t + 7e3 + text3.length * 40 };
-        G6.stats.asked += 1;
-        G6.footUpUntil = G6.ask.until;
+        G7.ask = { until: G7.t + 7e3 + text3.length * 40 };
+        G7.stats.asked += 1;
+        G7.footUpUntil = G7.ask.until;
       }
     }
-    say6(text3, e.to);
+    say7(text3, e.to);
   });
 }
+function decided(d) {
+  const events = E5.env.staging.decide?.(d.kind, d.ref) ?? [];
+  if (!events.some((x) => x.type === "physics_decided")) return;
+  G7.stats.decisions = (G7.stats.decisions ?? 0) + 1;
+  sense2({ roster: "The commander\u2019s roster has just been changed over the commander\u2019s head.", requisition: "The commander\u2019s requisition is denied.", punishment: "Something has just been decided about the commander, over the commander\u2019s head." }[d.kind] ?? "", "her");
+}
 function planPeaks(i) {
-  const act = ACT(), len2 = S7.phaseLen * 1e3, last2 = i === S7.phases - 1, h2 = fnv(`${S7.seed}:${i}:${S7.act}`) % 100;
+  const act = ACT(), len2 = S8.phaseLen * 1e3, last2 = i === S8.phases - 1, h2 = fnv2(`${S8.seed}:${i}:${S8.act}`) % 100;
   if (act.call) {
-    G6.call = { name: "Oversight", heard: false };
+    G7.call = { name: "Oversight", heard: false };
   }
   if (act.visitor && R8.listener) {
-    G6.visitor = { name: R8.listener.name, heard: S7.knows, knows: S7.knows };
+    G7.visitor = { name: R8.listener.name, heard: S8.knows, knows: S8.knows };
   }
-  if (i === 0 && h2 < 70) after5(len2 * rand4(0.45, 0.7), falseAlarm);
-  if (i >= 1 && !act.call && !act.visitor && !act.sleep && !last2) after5(len2 * rand4(0.25, 0.4), h2 < 55 && !act.music ? incomingCall : visitorPeak);
-  if (last2 && G6.step === "use" && !act.sleep && !act.visitor && !act.call && S7.phaseLen >= 60) after5(len2 * rand4(0.2, 0.35), leaveRoom);
-  else if (last2) after5(len2 * rand4(0.5, 0.7), falseAlarm);
+  if (act.audience && throneOn()) {
+    after6(len2 * 0.06, () => throneVisitor("business"));
+    after6(len2 * 0.5, () => throneVisitor(S8.visitorKind === "business" ? "aware" : S8.visitorKind));
+  }
+  if (throneOn() && S8.props) {
+    if (i === 0) after6(len2 * rand5(0.3, 0.4), () => throneVisitor());
+    after6(len2 * rand5(0.12, 0.22), throneCup);
+    after6(len2 * rand5(0.55, 0.7), throneSign);
+    if (h2 % 2 === 0) after6(len2 * rand5(0.75, 0.85), throneRise);
+  }
+  if (i === 0 && h2 < 70 && !throneOn()) after6(len2 * rand5(0.45, 0.7), falseAlarm);
+  if (i >= 1 && !act.call && !act.visitor && !act.sleep && !last2) after6(len2 * rand5(0.25, 0.4), h2 < 55 && !act.music ? incomingCall : visitorPeak);
+  if (last2 && G7.step === "use" && !act.sleep && !act.visitor && !act.call && S8.phaseLen >= 60) after6(len2 * rand5(0.2, 0.35), leaveRoom);
+  else if (last2) after6(len2 * rand5(0.5, 0.7), falseAlarm);
 }
-function steps(n, fromPan, toPan, g0, g1, gap = 0.42, wood = false, lp = 1800) {
+function steps2(n, fromPan, toPan, g0, g1, gap = 0.42, wood = false, lp = 1800) {
   for (let k = 0; k < n; k++) {
-    const f = k / Math6.max(1, n - 1);
-    play2(wood ? "step_w" : "step", { g: lerp2(g0, g1, f), pan: lerp2(fromPan, toPan, f), lp, at: k * gap * rand4(0.92, 1.08) });
+    const f = k / Math7.max(1, n - 1);
+    play3(wood ? "step_w" : "step", { g: lerp2(g0, g1, f), pan: lerp2(fromPan, toPan, f), lp, at: k * gap * rand5(0.92, 1.08) });
   }
 }
 function falseAlarm() {
-  if (G6.phase !== "loop") return;
-  const dp = V().doorPan;
-  steps(7, -dp * 0.2, dp, 0.08, 0.5, 0.45);
-  after5(3300, () => {
-    sense("Steps stop outside the door.", "door", "base");
-    G6.coverExtra = -0.1;
+  if (G7.phase !== "loop") return;
+  const dp = V2().doorPan;
+  steps2(7, -dp * 0.2, dp, 0.08, 0.5, 0.45);
+  after6(3300, () => {
+    sense2("Steps stop outside the door.", "door", "base");
+    G7.coverExtra = -0.1;
   });
-  after5(6200, () => {
-    steps(6, dp, dp * 0.1 - 0.6 * Math6.sign(dp), 0.5, 0.06, 0.45);
-    G6.coverExtra = 0;
-    sense("\u2026and go on past.", "door", "base");
+  after6(6200, () => {
+    steps2(6, dp, dp * 0.1 - 0.6 * Math7.sign(dp), 0.5, 0.06, 0.45);
+    G7.coverExtra = 0;
+    sense2("\u2026and go on past.", "door", "base");
   });
 }
 function incomingCall() {
-  if (G6.phase !== "loop") return;
-  play2("pda_call", { g: 0.4, pan: V().herPan });
-  after5(700, () => play2("pda_call", { g: 0.4, pan: V().herPan }));
-  G6.call = { name: "Oversight", heard: false };
-  after5(1500, () => {
-    sense(V().sight && !S7.blind ? "She taps her earpiece and answers." : "A chime; she answers. Her voice changes: the voice for oversight.", "her");
-    if (S7.view === "legs") {
-      G6.legsRest = 1;
-      sense("Her foot comes to rest on your shoulder, and stays there.", "body");
+  if (G7.phase !== "loop") return;
+  play3("pda_call", { g: 0.4, pan: V2().herPan });
+  after6(700, () => play3("pda_call", { g: 0.4, pan: V2().herPan }));
+  G7.call = { name: "Oversight", heard: false };
+  after6(1500, () => {
+    sense2(V2().sight && !S8.blind ? "She taps her earpiece and answers." : "A chime; she answers. Her voice changes: the voice for oversight.", "her");
+    if (S8.view === "legs") {
+      G7.legsRest = 1;
+      sense2("Her foot comes to rest on your shoulder, and stays there.", "body");
     }
   });
-  after5(3500 + 5 * 9e3, () => {
-    if (!G6.call) return;
-    play2("pda_ok", { g: 0.3, pan: V().herPan });
-    sense("The call ends.", "her");
-    G6.call = null;
-    G6.legsRest = 0;
+  after6(3500 + 5 * 9e3, () => {
+    if (!G7.call) return;
+    play3("pda_ok", { g: 0.3, pan: V2().herPan });
+    sense2("The call ends.", "her");
+    G7.call = null;
+    G7.legsRest = 0;
   });
 }
 function callHeard() {
-  after5(600, () => {
-    otherSay("\u2026is someone with you?", "call", G6.call?.name ?? "");
+  after6(600, () => {
+    otherSay("\u2026is someone with you?", "call", G7.call?.name ?? "");
   });
 }
 function visitorPeak() {
-  if (G6.phase !== "loop" || !R8.listener) return;
-  const dp = V().doorPan;
-  steps(5, -dp * 0.3, dp, 0.08, 0.4, 0.42);
-  after5(2300, () => {
-    play2("knock", { g: 0.5, pan: dp });
-    after5(260, () => play2("knock", { g: 0.45, pan: dp }));
+  if (throneOn()) {
+    throneVisitor();
+    return;
+  }
+  if (G7.phase !== "loop" || !R8.listener) return;
+  const dp = V2().doorPan;
+  steps2(5, -dp * 0.3, dp, 0.08, 0.4, 0.42);
+  after6(2300, () => {
+    play3("knock", { g: 0.5, pan: dp });
+    after6(260, () => play3("knock", { g: 0.45, pan: dp }));
   });
-  after5(3300, () => say6("come in.", "other"));
-  after5(4600, () => {
-    play2("door_open", { g: 0.5, pan: dp });
-    G6.visitor = { name: R8.listener.name, heard: S7.knows, knows: S7.knows };
-    sense(V().sight && !S7.blind ? `${R8.listener.name} leans in the doorway.` : "The door opens. Someone in the doorway: a voice you know.", "door", "base");
+  after6(3300, () => say7("come in.", "other"));
+  after6(4600, () => {
+    play3("door_open", { g: 0.5, pan: dp });
+    G7.visitor = { name: R8.listener.name, heard: S8.knows, knows: S8.knows };
+    sense2(V2().sight && !S8.blind ? `${R8.listener.name} leans in the doorway.` : "The door opens. Someone in the doorway: a voice you know.", "door", "base");
   });
-  after5(6e3 + 3 * 8500, () => {
-    if (!G6.visitor) return;
-    play2("door_close", { g: 0.5, pan: dp });
-    sense("The door shuts behind her visitor.", "door", "base");
-    G6.visitor = null;
+  after6(6e3 + 3 * 8500, () => {
+    if (!G7.visitor) return;
+    play3("door_close", { g: 0.5, pan: dp });
+    sense2("The door shuts behind her visitor.", "door", "base");
+    G7.visitor = null;
   });
 }
-function visitorHeard() {
-  after5(500, () => otherSay("\u2026what was that?", "room", G6.visitor?.name ?? ""));
+function visitorHeard2() {
+  after6(500, () => otherSay("\u2026what was that?", "room", G7.visitor?.name ?? ""));
 }
 function leaveRoom() {
-  if (G6.phase !== "loop") return;
-  const dp = V().doorPan;
-  play2("creak", { g: 0.4, pan: V().herPan });
-  after5(500, () => steps(4, V().herPan, dp, 0.35, 0.3, 0.5, true));
-  after5(2600, () => {
-    play2("door_open", { g: 0.4, pan: dp });
-    after5(900, () => play2("door_close", { g: 0.4, pan: dp }));
-    G6.away = true;
-    G6.stats.left = true;
-    G6.awayFrom = G6.t;
-    sense("She goes out. Not a word. The door shuts.", "door", "base");
+  if (G7.phase !== "loop") return;
+  const dp = V2().doorPan;
+  play3("creak", { g: 0.4, pan: V2().herPan });
+  after6(500, () => steps2(4, V2().herPan, dp, 0.35, 0.3, 0.5, true));
+  after6(2600, () => {
+    play3("door_open", { g: 0.4, pan: dp });
+    after6(900, () => play3("door_close", { g: 0.4, pan: dp }));
+    G7.away = true;
+    G7.stats.left = true;
+    G7.awayFrom = G7.t;
+    sense2("She goes out. Not a word. The door shuts.", "door", "base");
   });
-  const back = 2600 + rand4(16e3, 26e3);
-  after5(back, () => {
-    play2("door_open", { g: 0.18, pan: dp, lp: 1500 });
-    G6.away = false;
-    G6.stats.cameBack = true;
-    G6.stats.aloneFor += (G6.t - G6.awayFrom) / 1e3;
-    G6.att = "watching";
-    G6.attHold = 2500;
-    G6.returnedAt = G6.t;
+  const back = 2600 + rand5(16e3, 26e3);
+  after6(back, () => {
+    play3("door_open", { g: 0.18, pan: dp, lp: 1500 });
+    G7.away = false;
+    G7.stats.cameBack = true;
+    G7.stats.aloneFor += (G7.t - G7.awayFrom) / 1e3;
+    G7.att = "watching";
+    G7.attHold = 2500;
+    G7.returnedAt = G7.t;
   });
-  after5(back + 900, () => {
-    steps(4, dp, V().herPan, 0.25, 0.35, 0.5, true);
-    sense("She is back. You did not hear the door until it was open.", "door", "base");
+  after6(back + 900, () => {
+    steps2(4, dp, V2().herPan, 0.25, 0.35, 0.5, true);
+    sense2("She is back. You did not hear the door until it was open.", "door", "base");
   });
 }
 function baseTick() {
   for (const e of BASE_EVENTS) {
-    if (G6.baseDone.has(e.at) || G6.clockMin < e.at || G6.startMin > e.at) continue;
-    G6.baseDone.add(e.at);
-    baseEvent(e, G6.phase === "skip");
+    if (G7.baseDone.has(e.at) || G7.clockMin < e.at || G7.startMin > e.at) continue;
+    G7.baseDone.add(e.at);
+    baseEvent(e, G7.phase === "skip");
   }
-  if (S7.rain && !LOOPS.rain && G6.clockMin - G6.startMin > 75) {
+  if (S8.rain && !LOOPS.rain && G7.clockMin - G7.startMin > 75) {
     loopOn("rain", 0.05, { lp: 2200 });
-    sense("Rain starts against the window.", "base", "base");
+    sense2("Rain starts against the window.", "base", "base");
   }
 }
 function baseEvent(e, quick) {
-  const dp = V().doorPan;
+  const dp = V2().doorPan;
   switch (e.id) {
     case "mess":
-      play2("bell", { g: 0.18, lp: 900, pan: dp * 0.5 });
+      play3("bell", { g: 0.18, lp: 900, pan: dp * 0.5 });
       if (!quick) {
         loopOn("crowd", 0.035, { lp: 420, pan: dp * 0.3 });
-        G6.mess = true;
+        G7.mess = true;
       }
       break;
     case "mess_end":
       loopOff("crowd");
-      G6.mess = false;
+      G7.mess = false;
       break;
     case "dusk":
       if (ACT().light === "lamp" || ACT().light === "screen") {
-        play2("lamp", { g: 0.3, pan: V().herPan });
-        G6.lampOn = true;
-        sense(V().sight && !S7.blind ? "She reaches out and turns on the lamp." : "A click above you; warm light spills down.", "her");
+        play3("lamp", { g: 0.3, pan: V2().herPan });
+        G7.lampOn = true;
+        sense2(V2().sight && !S8.blind ? "She reaches out and turns on the lamp." : "A click above you; warm light spills down.", "her");
       }
       return;
     case "patrol":
-      steps(12, -0.9, 0.9, 0.05, 0.05, 0.5, false, 1200);
+      steps2(12, -0.9, 0.9, 0.05, 0.05, 0.5, false, 1200);
       break;
     case "lights_out":
       SYN.horn();
       if (A5.ctx) A5.humG.gain.setTargetAtTime(6e-3, A5.ctx.currentTime, 2);
       break;
   }
-  if (e.sense && !quick) sense(e.sense, "door", "base");
-  if (quick && e.sense) G6.skipHeard.push(e.sense);
+  if (e.sense && !quick) sense2(e.sense, "door", "base");
+  if (quick && e.sense) G7.skipHeard.push(e.sense);
 }
 var clockText3 = (m) => {
-  const x = (Math6.round(m) % 1440 + 1440) % 1440;
-  return `${String(Math6.floor(x / 60)).padStart(2, "0")}:${String(x % 60).padStart(2, "0")}`;
+  const x = (Math7.round(m) % 1440 + 1440) % 1440;
+  return `${String(Math7.floor(x / 60)).padStart(2, "0")}:${String(x % 60).padStart(2, "0")}`;
 };
 function beginPhase(i) {
-  G6.phase = "loop";
-  G6.phaseIdx = i;
-  G6.phaseT = 0;
-  G6.clockRate = 60 * PLAYED_SHARE / S7.phaseLen;
+  G7.phase = "loop";
+  G7.phaseIdx = i;
+  G7.phaseT = 0;
+  G7.clockRate = 60 * PLAYED_SHARE / S8.phaseLen;
   setStep(presenceOf2(E5.env.state(), E5.env.registries, R8.run, i + 1));
   R8.scriptPhase = i + 1;
   R8.script = null;
@@ -71419,42 +71959,43 @@ function beginPhase(i) {
   if (ACT().music) MUSIC.on = true;
 }
 function updateLoop4(dt) {
-  G6.phaseT += dt;
-  G6.clockMin += G6.clockRate * dt / 1e3;
-  G6.beatAcc += dt;
-  if (G6.beatAcc >= 1500) {
-    G6.beatAcc = 0;
-    if (G6.attHold > 0) G6.attHold -= 1500;
-    else G6.att = plannedAttention();
+  G7.phaseT += dt;
+  G7.clockMin += G7.clockRate * dt / 1e3;
+  G7.beatAcc += dt;
+  if (G7.beatAcc >= 1500) {
+    G7.beatAcc = 0;
+    if (G7.attHold > 0) G7.attHold -= 1500;
+    else G7.att = plannedAttention();
   }
   if (R8.script === null && R8.scriptPhase > 0) {
     const sc = E5.env.staging.script?.(R8.scriptPhase) ?? null;
     if (sc) {
       R8.script = sc;
-      runScript(sc.filter((l) => l.at * 1e3 >= G6.phaseT).map((l) => ({ ...l, at: l.at - G6.phaseT / 1e3 })));
+      runScript(sc.filter((l) => l.at * 1e3 >= G7.phaseT).map((l) => ({ ...l, at: l.at - G7.phaseT / 1e3 })));
     }
   }
-  if (!G6.away && G6.t >= G6.nextMark) {
-    if (G6.att === "busy" && G6.t >= (G6.pauseUntil ?? 0) && !(G6.call && G6.t < G6.herSpeakingUntil)) mark(wpick(ACT().marks));
+  if (!G7.away && G7.t >= G7.nextMark) {
+    if (G7.att === "busy" && G7.t >= (G7.pauseUntil ?? 0) && !(G7.call && G7.t < G7.herSpeakingUntil)) mark(wpick(ACT().marks));
     const [a, b] = ACT().per;
-    G6.nextMark = G6.t + rand4(a, b) * 1e3 * (G6.att === "busy" ? 1 : 0.5);
+    G7.nextMark = G7.t + rand5(a, b) * 1e3 * (G7.att === "busy" ? 1 : 0.5);
   }
   if (ACT().sleep) {
-    G6.asleepDepth = 0.5 + 0.5 * Math6.sin(G6.t / 9e3);
-    if (!G6.nextBreath || G6.t >= G6.nextBreath) {
+    G7.asleepDepth = 0.5 + 0.5 * Math7.sin(G7.t / 9e3);
+    if (!G7.nextBreath || G7.t >= G7.nextBreath) {
       sleepBreath();
-      G6.nextBreath = G6.t + rand4(4800, 6200);
+      G7.nextBreath = G7.t + rand5(4800, 6200);
     }
   }
-  if (!weightOn()) updateUrges(dt);
-  if (G6.ask && G6.t > G6.ask.until) {
-    G6.ask = null;
-    G6.stats.missed += 1;
-    if (G6.step === "with") say6(pick7(ST3().silent), "commander");
+  if (weightOn()) throneUpdate(dt);
+  else updateUrges(dt);
+  if (G7.ask && G7.t > G7.ask.until) {
+    G7.ask = null;
+    G7.stats.missed += 1;
+    if (G7.step === "with") say7(pick7(ST3().silent), "commander");
     else {
-      G6.press = 0.8;
-      G6.footUpUntil = G6.t + 2e3;
-      sense("Silence above you. A long one.", "her");
+      G7.press = 0.8;
+      G7.footUpUntil = G7.t + 2e3;
+      sense2("Silence above you. A long one.", "her");
     }
   }
   baseTick();
@@ -71462,169 +72003,170 @@ function updateLoop4(dt) {
 function plannedAttention() {
   const run = R8.run, ck = E5.env.staging.clock();
   const plan = run?.segment.plan;
-  if (!plan || ck.startedAt === null) return G6.att;
-  const b = clamp41(Math6.floor((ck.now - ck.startedAt) / ck.beatMs), 0, plan.beats.length - 1);
-  return plan.beats[b]?.attention ?? G6.att;
+  if (!plan || ck.startedAt === null) return G7.att;
+  const b = clamp41(Math7.floor((ck.now - ck.startedAt) / ck.beatMs), 0, plan.beats.length - 1);
+  return plan.beats[b]?.attention ?? G7.att;
 }
 function endPhase() {
-  G6.timers = G6.timers.filter((x) => x.keep);
-  G6.ask = null;
-  if (G6.call && !ACT().call) {
-    G6.call = null;
-    G6.legsRest = 0;
+  G7.timers = G7.timers.filter((x) => x.keep);
+  G7.ask = null;
+  if (G7.call && !ACT().call) {
+    G7.call = null;
+    G7.legsRest = 0;
   }
-  if (G6.visitor && !ACT().visitor) {
-    G6.visitor = null;
+  if (G7.visitor && !ACT().visitor) {
+    G7.visitor = null;
   }
-  if (ACT().call) G6.call = null;
-  if (ACT().visitor) G6.visitor = null;
+  if (ACT().call) G7.call = null;
+  if (ACT().visitor) G7.visitor = null;
   startSkip();
 }
 function startSkip() {
-  G6.phase = "skip";
-  G6.skipT = 0;
-  G6.skipResolved = false;
-  G6.skipHeard = [];
+  G7.phase = "skip";
+  G7.skipT = 0;
+  G7.skipResolved = false;
+  G7.skipHeard = [];
   MUSIC.on = false;
-  const from = G6.clockMin, to = G6.startMin + (G6.phaseIdx + 1) * 60;
-  G6.skipFrom = from;
-  G6.skipTo = to;
-  $5("#skip").style.display = "flex";
-  requestAnimationFrameOnce(() => $5("#skip").classList.add("on"));
-  $5("#gestures").classList.remove("on");
-  $5("#skipNote").textContent = "";
+  const from = G7.clockMin, to = G7.startMin + (G7.phaseIdx + 1) * 60;
+  G7.skipFrom = from;
+  G7.skipTo = to;
+  $6("#skip").style.display = "flex";
+  requestAnimationFrameOnce(() => $6("#skip").classList.add("on"));
+  $6("#gestures").classList.remove("on");
+  $6("#skipNote").textContent = "";
   const marks = ACT().marks.filter((m) => m.sfx);
   for (let k = 0; k < 9 && marks.length; k++) {
     const m = pick7(marks);
-    after5(1200 + k * 320, () => play2(m.sfx, { g: (m.g ?? 0.4) * lerp2(0.9, 0.25, k / 8), pan: V().herPan, lp: 3e3, dur: m.len ? 0.5 : void 0 }));
+    after6(1200 + k * 320, () => play3(m.sfx, { g: (m.g ?? 0.4) * lerp2(0.9, 0.25, k / 8), pan: V2().herPan, lp: 3e3, dur: m.len ? 0.5 : void 0 }));
   }
 }
 function updateSkip(dt) {
-  G6.skipT += dt;
-  const f = smooth(1200, 4200, G6.skipT);
-  G6.clockMin = lerp2(G6.skipFrom, G6.skipTo, f);
-  $5("#skipClock").textContent = clockText3(G6.clockMin);
+  G7.skipT += dt;
+  const f = smooth(1200, 4200, G7.skipT);
+  G7.clockMin = lerp2(G7.skipFrom, G7.skipTo, f);
+  $6("#skipClock").textContent = clockText3(G7.clockMin);
   baseTick();
-  if (G6.skipT > 4300 && !G6.skipShown) {
-    G6.skipShown = true;
-    $5("#gestures").classList.add("on");
-    $5("#skipNote").textContent = G6.skipHeard.length ? G6.skipHeard.join(" ") : "The hours go by under her.";
+  if (G7.skipT > 4300 && !G7.skipShown) {
+    G7.skipShown = true;
+    $6("#gestures").classList.add("on");
+    $6("#skipNote").textContent = G7.skipHeard.length ? G7.skipHeard.join(" ") : "The hours go by under her.";
   }
 }
 function resolveSkip2(strategy) {
-  if (G6.phase !== "skip" || !G6.skipShown || G6.skipResolved) return;
-  G6.skipResolved = true;
+  if (G7.phase !== "skip" || !G7.skipShown || G7.skipResolved) return;
+  G7.skipResolved = true;
   E5.env.staging.skip(strategy);
   const run = E5.env.state().scene?.physics;
   const text3 = run?.marathon?.summary ?? "";
-  if (strategy === "endure") G6.numb = Math6.min(0.9, G6.numb + 0.3);
-  else if (strategy === "spare") G6.numb = Math6.min(0.9, G6.numb + 0.12);
-  else if (strategy === "rest") G6.numb = 0;
-  G6.stats.skips.push({ strategy, held: true, text: text3, at: clockText3(G6.clockMin) });
-  $5("#gestures").classList.remove("on");
-  $5("#skipNote").textContent = text3;
+  if (strategy === "endure") G7.numb = Math7.min(0.9, G7.numb + 0.3);
+  else if (strategy === "spare") G7.numb = Math7.min(0.9, G7.numb + 0.12);
+  else if (strategy === "rest") G7.numb = 0;
+  G7.stats.skips.push({ strategy, held: true, text: text3, at: clockText3(G7.clockMin) });
+  $6("#gestures").classList.remove("on");
+  $6("#skipNote").textContent = text3;
   setTimeout6(() => {
-    $5("#skip").classList.remove("on");
+    $6("#skip").classList.remove("on");
     setTimeout6(() => {
-      $5("#skip").style.display = "none";
-      G6.skipShown = false;
-      if (G6.phase === "skip") beginPhase(G6.phaseIdx + 1);
+      $6("#skip").style.display = "none";
+      G7.skipShown = false;
+      if (G7.phase === "skip") beginPhase(G7.phaseIdx + 1);
     }, 1100);
   }, 2600);
 }
 function finish5(how) {
-  if (G6.phase === "ending" || G6.phase === "done" || G6.phase === "empty") return;
-  const act = ACT(), st3 = ST3(), dp = V().doorPan;
-  G6.phase = "ending";
-  G6.stats.ended = how;
+  if (G7.phase === "ending" || G7.phase === "done" || G7.phase === "empty") return;
+  const act = ACT(), st3 = ST3(), dp = V2().doorPan;
+  G7.phase = "ending";
+  G7.stats.ended = how;
   MUSIC.on = false;
-  G6.ask = null;
-  G6.urges = [];
-  G6.cramp = null;
-  G6.timers = [];
-  $5("#skip").style.display = "none";
+  G7.ask = null;
+  G7.urges = [];
+  G7.cramp = null;
+  G7.timers = [];
+  $6("#skip").style.display = "none";
   if (how === "stop") {
-    say6(pick7(st3.stop.length ? st3.stop : ["\u2026"]), "commander", { big: true });
+    say7(pick7(st3.stop.length ? st3.stop : ["\u2026"]), "commander", { big: true });
     return;
   }
   if (how === "woke") {
     return;
   }
   if (how === "failed") {
-    sense("She takes her feet off your back.", "body");
+    sense2(throneOn() && S8.contact === "human_chair" ? "She gets off your back." : "She takes her feet off your back.", "body");
     return;
   }
-  if (G6.away) {
-    G6.stats.aloneFor += (G6.t - G6.awayFrom) / 1e3;
+  if (G7.away) {
+    G7.stats.aloneFor += (G7.t - G7.awayFrom) / 1e3;
     setTimeout6(() => {
-      sense(`She has not come back. ${S7.stay ? "She did not say you could get up." : ""}`, "door", "base");
-      G6.phase = "empty";
-      G6.emptyAt = G6.t;
-      $5("#getUp").style.display = "block";
-      G6.foundAt = G6.t + rand4(25e3, 4e4);
+      sense2(`She has not come back. ${S8.stay ? "She did not say you could get up." : ""}`, "door", "base");
+      G7.phase = "empty";
+      G7.emptyAt = G7.t;
+      $6("#getUp").style.display = "block";
+      G7.foundAt = G7.t + rand5(25e3, 4e4);
     }, 1500);
     return;
   }
-  play2(act.end.sfx, { g: 0.5, pan: V().herPan });
-  sense(V().sight && !S7.blind ? act.end.seen : act.end.heard, "her");
-  if (G6.step === "with" || G6.step === "glancing") {
-    setTimeout6(() => say6(pick7(st3.end), "commander", { big: true }), 1400);
+  play3(act.end.sfx, { g: 0.5, pan: V2().herPan });
+  sense2(V2().sight && !S8.blind ? act.end.seen : act.end.heard, "her");
+  if (G7.step === "with" || G7.step === "glancing") {
+    setTimeout6(() => say7(pick7(st3.end), "commander", { big: true }), 1400);
+    if (throneOn()) setTimeout6(throneThank, 3400);
     return;
   }
-  if (G6.step === "own") {
+  if (G7.step === "own") {
     setTimeout6(() => {
-      G6.press = 1;
-      G6.footUpUntil = G6.t + 2e3;
-      play2("soft", { g: 0.3 });
-      play2("soft", { g: 0.3, at: 0.35 });
-      sense({ legs: "Her foot taps your shoulder twice. Nothing else.", floor: "Two taps on your back: done.", wall: "Two taps on your shoulder from behind: done.", her: "She taps the desk twice and does not look at you.", footrest: "Two taps on your back: done." }[S7.view], "body");
+      G7.press = 1;
+      G7.footUpUntil = G7.t + 2e3;
+      play3("soft", { g: 0.3 });
+      play3("soft", { g: 0.3, at: 0.35 });
+      sense2({ legs: "Her foot taps your shoulder twice. Nothing else.", floor: "Two taps on your back: done.", wall: "Two taps on your shoulder from behind: done.", her: "She taps the desk twice and does not look at you.", footrest: "Two taps on your back: done." }[S8.view], "body");
     }, 1300);
     return;
   }
   setTimeout6(() => {
-    play2("lamp", { g: 0.3, pan: V().herPan });
-    G6.lampOn = false;
-    G6.lightsOff = true;
-    sense(V().sight && !S7.blind ? "She turns off the lamp." : "A click. The light above you goes out.", "her");
+    play3("lamp", { g: 0.3, pan: V2().herPan });
+    G7.lampOn = false;
+    G7.lightsOff = true;
+    sense2(V2().sight && !S8.blind ? "She turns off the lamp." : "A click. The light above you goes out.", "her");
   }, 1600);
   setTimeout6(() => {
-    play2("creak", { g: 0.4, pan: V().herPan });
-    steps(4, V().herPan, dp, 0.35, 0.3, 0.5, true);
+    play3("creak", { g: 0.4, pan: V2().herPan });
+    steps2(4, V2().herPan, dp, 0.35, 0.3, 0.5, true);
   }, 2800);
   setTimeout6(() => {
-    play2("door_open", { g: 0.4, pan: dp });
+    play3("door_open", { g: 0.4, pan: dp });
   }, 5e3);
   setTimeout6(() => {
-    play2("door_close", { g: 0.45, pan: dp });
-    sense(`She is gone. ${S7.stay ? "She did not say you could get up." : "She said nothing at all."}`, "door", "base");
-    G6.phase = "empty";
-    G6.emptyAt = G6.t;
-    G6.away = true;
-    G6.lastUrgeK = 1;
-    $5("#getUp").style.display = "block";
-    G6.foundAt = G6.t + rand4(25e3, 4e4);
+    play3("door_close", { g: 0.45, pan: dp });
+    sense2(`She is gone. ${S8.stay ? "She did not say you could get up." : "She said nothing at all."}`, "door", "base");
+    G7.phase = "empty";
+    G7.emptyAt = G7.t;
+    G7.away = true;
+    G7.lastUrgeK = 1;
+    $6("#getUp").style.display = "block";
+    G7.foundAt = G7.t + rand5(25e3, 4e4);
   }, 6e3);
 }
 function getUp2() {
-  if (G6.phase !== "empty") return;
-  G6.stats.gotUp = true;
-  G6.stats.aloneFor += (G6.t - G6.emptyAt) / 1e3;
-  $5("#getUp").style.display = "none";
-  play2("cloth", { g: 0.4, dest: A5.body });
+  if (G7.phase !== "empty") return;
+  G7.stats.gotUp = true;
+  G7.stats.aloneFor += (G7.t - G7.emptyAt) / 1e3;
+  $6("#getUp").style.display = "none";
+  play3("cloth", { g: 0.4, dest: A5.body });
   SYN.joint({ g: 1 });
-  sense("You get up. Your knees take a while.", "body", "body");
-  G6.phase = "ending";
+  sense2("You get up. Your knees take a while.", "body", "body");
+  G7.phase = "ending";
   E5.env.staging.getUp?.();
 }
 function found() {
-  G6.stats.found = true;
-  G6.stats.aloneFor += (G6.t - G6.emptyAt) / 1e3;
-  $5("#getUp").style.display = "none";
-  const dp = V().doorPan;
-  steps(5, -dp * 0.3, dp, 0.1, 0.4, 0.42);
-  setTimeout6(() => play2("door_open", { g: 0.45, pan: dp }), 2200);
-  setTimeout6(() => otherSay(S7.view === "legs" ? "\u2026commander? What are you doing under there?" : "\u2026commander? Why are you kneeling there?", "room", R8.listener?.name ?? ""), 3200);
-  G6.phase = "ending";
+  G7.stats.found = true;
+  G7.stats.aloneFor += (G7.t - G7.emptyAt) / 1e3;
+  $6("#getUp").style.display = "none";
+  const dp = V2().doorPan;
+  steps2(5, -dp * 0.3, dp, 0.1, 0.4, 0.42);
+  setTimeout6(() => play3("door_open", { g: 0.45, pan: dp }), 2200);
+  setTimeout6(() => otherSay(S8.view === "legs" ? "\u2026commander? What are you doing under there?" : "\u2026commander? Why are you kneeling there?", "room", R8.listener?.name ?? ""), 3200);
+  G7.phase = "ending";
   if (R8.listener) {
     const id = R8.listener.id;
     setTimeout6(() => E5?.env.staging.found?.(id), 3200);
@@ -71636,7 +72178,7 @@ var setStyle4 = (sel, prop, v) => {
   const key = sel + prop;
   if (cache3.get(key) === v) return;
   cache3.set(key, v);
-  $5(sel).style[prop] = v;
+  $6(sel).style[prop] = v;
 };
 var legsC;
 var gctx3;
@@ -71654,104 +72196,104 @@ var rctx2;
 var outC2;
 var octx2;
 function size3() {
-  for (const c of [legsC, ...Object.values(lights)]) {
-    c.width = Math6.ceil(innerWidth6 * 1.12 / DS2);
-    c.height = Math6.ceil(innerHeight6 * 1.12 / DS2);
+  for (const c of [legsC, ...Object.values(lights), E5.els["#wShadow"]]) {
+    c.width = Math7.ceil(innerWidth6 * 1.12 / DS2);
+    c.height = Math7.ceil(innerHeight6 * 1.12 / DS2);
   }
   urC.width = innerWidth6;
   urC.height = innerHeight6;
-  grC.width = Math6.ceil(innerWidth6 / 3);
-  grC.height = Math6.ceil(innerHeight6 / 3);
+  grC.width = Math7.ceil(innerWidth6 / 3);
+  grC.height = Math7.ceil(innerHeight6 / 3);
 }
-function fillPts2(ctx2, pts) {
+function fillPts3(ctx2, pts) {
   ctx2.beginPath();
   pts.forEach((q, i) => i ? ctx2.lineTo(q[0], q[1]) : ctx2.moveTo(q[0], q[1]));
   ctx2.closePath();
   ctx2.fill();
 }
-function shinFront(W, H, K, Ak, o) {
-  const k = [K[0] * W, K[1] * H], a = [Ak[0] * W, Ak[1] * H];
-  const dx = a[0] - k[0], dy = a[1] - k[1], len2 = Math6.hypot(dx, dy) || 1, tx = dx / len2, ty = dy / len2, nx = -ty, ny = tx;
+function shinFront(W2, H, K, Ak, o) {
+  const k = [K[0] * W2, K[1] * H], a = [Ak[0] * W2, Ak[1] * H];
+  const dx = a[0] - k[0], dy = a[1] - k[1], len2 = Math7.hypot(dx, dy) || 1, tx = dx / len2, ty = dy / len2, nx = -ty, ny = tx;
   const outer = o.outer;
   const L4 = [], R9 = [];
   for (let i = 0; i <= 16; i++) {
-    const t = i / 16, hw = lerp2(o.wK, o.wA, Math6.pow(t, 0.8)) * H / 2;
-    const calf = o.calf * H * Math6.exp(-(((t - 0.32) / 0.2) ** 2));
+    const t = i / 16, hw = lerp2(o.wK, o.wA, Math7.pow(t, 0.8)) * H / 2;
+    const calf = o.calf * H * Math7.exp(-(((t - 0.32) / 0.2) ** 2));
     const x = k[0] + dx * t, y = k[1] + dy * t;
     const l = hw + (outer < 0 ? calf : calf * 0.25), r = hw + (outer > 0 ? calf : calf * 0.25);
     L4.push([x + nx * l, y + ny * l]);
     R9.push([x - nx * r, y - ny * r]);
   }
   const fl = o.foot * H, fw = o.footW * H, drop2 = o.drop ?? 0, toe = o.toe ?? 0;
-  const ang = Math6.atan2(ty, tx) + drop2;
-  const ux = Math6.cos(ang), uy = Math6.sin(ang), px = -uy, py = ux;
+  const ang = Math7.atan2(ty, tx) + drop2;
+  const ux = Math7.cos(ang), uy = Math7.sin(ang), px = -uy, py = ux;
   const F2 = (u, v) => [a[0] + ux * u * fl + px * v * fw, a[1] + uy * u * fl * (1 - toe * 0.45) + py * v * fw];
   const foot2 = [F2(0.05, 0.62), F2(0.35, 0.8), F2(0.7, 0.95), F2(0.95, 0.75), F2(1.04, 0.2), F2(1.02, -0.35), F2(0.9, -0.8), F2(0.6, -0.92), F2(0.3, -0.75), F2(0.05, -0.6)];
   return chaikin(chaikin(chaikin([...L4, ...foot2, ...R9.reverse()])));
 }
 function drawLegs(now) {
-  const W = legsC.width, H = legsC.height;
-  for (const c of [legC2, compC2, rimC2, outC2]) if (c.width !== W || c.height !== H) {
-    c.width = W;
+  const W2 = legsC.width, H = legsC.height;
+  for (const c of [legC2, compC2, rimC2, outC2]) if (c.width !== W2 || c.height !== H) {
+    c.width = W2;
     c.height = H;
   }
-  gctx3.clearRect(0, 0, W, H);
-  const art2 = $5("#legsArt"), raised = $5("#raisedArt");
+  gctx3.clearRect(0, 0, W2, H);
+  const art2 = $6("#legsArt"), raised = $6("#raisedArt");
   const hasRest = art2.style.display !== "none" && art2.naturalWidth, hasRaised = raised.style.display !== "none" && raised.naturalWidth;
   if (hasRest || hasRaised) {
-    const up = hasRaised && (G6.previewRaised || G6.t < (G6.footUpUntil ?? 0) || G6.legsRest) && !G6.away;
+    const up = hasRaised && (G7.previewRaised || G7.t < (G7.footUpUntil ?? 0) || G7.legsRest) && !G7.away;
     const t2 = now / 1e3, Wv = innerWidth6 * 1.12, Hv = innerHeight6 * 1.12;
-    const sw = S7.reduced ? 0 : (G6.att === "busy" ? Math6.sin(t2 * 0.7) * 0.4 : 0) + G6.shiftAnim * Math6.sin(t2 * 9) * 0.6;
+    const sw = S8.reduced ? 0 : (G7.att === "busy" ? Math7.sin(t2 * 0.7) * 0.4 : 0) + G7.shiftAnim * Math7.sin(t2 * 9) * 0.6;
     const place2 = (img2, wf, bf, on) => {
       if (!img2.naturalWidth) return;
       const w = Wv * wf, h2 = w * img2.naturalHeight / img2.naturalWidth;
       img2.style.width = `${w}px`;
       img2.style.left = `${(Wv - w) / 2}px`;
       img2.style.top = `${Hv * bf - h2}px`;
-      img2.style.opacity = on && !G6.away ? "1" : "0";
-      const fx2 = svcOn() && G6.footFx ? G6.footFx : { dx: 0, dy: 0, s: 1, r: 0 };
-      img2.style.transform = `translate(${fx2.dx.toFixed(1)}px, ${fx2.dy.toFixed(1)}px) rotate(${(sw + fx2.r).toFixed(2)}deg) scale(${((1 + G6.press * 0.04) * fx2.s).toFixed(3)})`;
+      img2.style.opacity = on && !G7.away ? "1" : "0";
+      const fx2 = svcOn() && G7.footFx ? G7.footFx : { dx: 0, dy: 0, s: 1, r: 0 };
+      img2.style.transform = `translate(${fx2.dx.toFixed(1)}px, ${fx2.dy.toFixed(1)}px) rotate(${(sw + fx2.r).toFixed(2)}deg) scale(${((1 + G7.press * 0.04) * fx2.s).toFixed(3)})`;
     };
-    place2(art2, S7.legsW, S7.legsB, !up);
-    place2(raised, S7.raisedW, S7.raisedB, up);
+    place2(art2, S8.legsW, S8.legsB, !up);
+    place2(raised, S8.raisedW, S8.raisedB, up);
     if (hasRest || up) return;
   }
-  if (G6.away || G6.lightsOff && G6.phase === "empty") return;
-  const t = now / 1e3, red = S7.reduced;
-  const mode = G6.legsRest ? "rest" : G6.att === "busy" && G6.t >= (G6.pauseUntil ?? 0) ? S7.mood === "irritated" ? "tap" : ACT().legs : "still";
-  const press4 = G6.press, shift = G6.shiftAnim;
-  lctx2.clearRect(0, 0, W, H);
+  if (G7.away || G7.lightsOff && G7.phase === "empty") return;
+  const t = now / 1e3, red = S8.reduced;
+  const mode = G7.legsRest ? "rest" : G7.att === "busy" && G7.t >= (G7.pauseUntil ?? 0) ? S8.mood === "irritated" ? "tap" : ACT().legs : "still";
+  const press4 = G7.press, shift = G7.shiftAnim;
+  lctx2.clearRect(0, 0, W2, H);
   lctx2.fillStyle = "#fff";
-  const sway = red ? 0 : Math6.sin(t * 0.7) * 4e-3 + shift * Math6.sin(t * 9) * 6e-3;
+  const sway = red ? 0 : Math7.sin(t * 0.7) * 4e-3 + shift * Math7.sin(t * 9) * 6e-3;
   {
-    const bob = mode === "swing" || mode === "beat" ? red ? 0 : Math6.max(0, Math6.sin(t * (mode === "beat" ? Math6.PI * MUSIC.bpm / 60 : 2.6))) : mode === "tap" ? red ? 0 : Math6.max(0, Math6.sin(t * 7)) : 0;
-    fillPts2(lctx2, shinFront(W, H, [0.4 + sway, 0.18], [0.405 + sway, 0.6], { wK: 0.25, wA: 0.095, calf: 0.05, outer: -1, foot: 0.21 + press4 * 0.03, footW: 0.095, toe: 0 }));
-    fillPts2(lctx2, shinFront(W, H, [0.6 + sway, 0.18], [0.595 + sway, 0.6 - bob * 0.03], { wK: 0.25, wA: 0.095, calf: 0.05, outer: 1, foot: 0.21 + press4 * 0.05, footW: 0.095, toe: bob * 0.9 }));
+    const bob = mode === "swing" || mode === "beat" ? red ? 0 : Math7.max(0, Math7.sin(t * (mode === "beat" ? Math7.PI * MUSIC.bpm / 60 : 2.6))) : mode === "tap" ? red ? 0 : Math7.max(0, Math7.sin(t * 7)) : 0;
+    fillPts3(lctx2, shinFront(W2, H, [0.4 + sway, 0.18], [0.405 + sway, 0.6], { wK: 0.25, wA: 0.095, calf: 0.05, outer: -1, foot: 0.21 + press4 * 0.03, footW: 0.095, toe: 0 }));
+    fillPts3(lctx2, shinFront(W2, H, [0.6 + sway, 0.18], [0.595 + sway, 0.6 - bob * 0.03], { wK: 0.25, wA: 0.095, calf: 0.05, outer: 1, foot: 0.21 + press4 * 0.05, footW: 0.095, toe: bob * 0.9 }));
   }
   cctx2.globalCompositeOperation = "source-over";
-  cctx2.clearRect(0, 0, W, H);
+  cctx2.clearRect(0, 0, W2, H);
   cctx2.fillStyle = "#fff";
-  cctx2.fillRect(0, 0, W, H);
+  cctx2.fillRect(0, 0, W2, H);
   cctx2.globalCompositeOperation = "destination-out";
   cctx2.drawImage(legC2, 0, 0);
   cctx2.globalCompositeOperation = "source-over";
-  rctx2.clearRect(0, 0, W, H);
-  rctx2.filter = `blur(${Math6.round(H * 0.022)}px)`;
+  rctx2.clearRect(0, 0, W2, H);
+  rctx2.filter = `blur(${Math7.round(H * 0.022)}px)`;
   rctx2.drawImage(compC2, 0, 0);
   rctx2.filter = "none";
-  const warm = G6.lampOn || ACT().light === "lamp";
+  const warm = G7.lampOn || ACT().light === "lamp";
   rctx2.globalCompositeOperation = "source-in";
   rctx2.fillStyle = warm ? "rgb(226,78,52)" : "rgb(150,120,170)";
-  rctx2.fillRect(0, 0, W, H);
+  rctx2.fillRect(0, 0, W2, H);
   rctx2.globalCompositeOperation = "source-over";
   octx2.globalCompositeOperation = "source-over";
-  octx2.clearRect(0, 0, W, H);
-  octx2.filter = `blur(${Math6.round(H * 0.011)}px)`;
+  octx2.clearRect(0, 0, W2, H);
+  octx2.filter = `blur(${Math7.round(H * 0.011)}px)`;
   octx2.drawImage(legC2, 0, 0);
   octx2.filter = "none";
   octx2.globalCompositeOperation = "source-in";
   octx2.fillStyle = "rgb(22,15,16)";
-  octx2.fillRect(0, 0, W, H);
+  octx2.fillRect(0, 0, W2, H);
   octx2.globalCompositeOperation = "source-atop";
   octx2.globalAlpha = 0.4;
   octx2.drawImage(rimC2, 0, 0);
@@ -71760,26 +72302,26 @@ function drawLegs(now) {
   gctx3.drawImage(outC2, 0, 0);
 }
 function drawLight(c, now, where) {
-  const ctx2 = c.getContext("2d") ?? nullCtx(c), W = c.width, H = c.height;
-  ctx2.clearRect(0, 0, W, H);
-  if (G6.away && G6.phase === "empty" && G6.lightsOff) return;
-  const act = ACT(), flick = 0.85 + 0.15 * Math6.sin(now / 130) * Math6.sin(now / 47);
-  const screen = act.light === "screen" && !G6.lightsOff, lamp = (act.light === "lamp" || G6.lampOn) && !G6.lightsOff;
-  const att = G6.att === "busy" ? 1 : G6.att === "glancing" ? 0.55 + 0.25 * Math6.sin(now / 90) : 0.2;
-  const dusk = smooth(18 * 60 + 30, 20 * 60, G6.clockMin);
+  const ctx2 = c.getContext("2d") ?? nullCtx(c), W2 = c.width, H = c.height;
+  ctx2.clearRect(0, 0, W2, H);
+  if (G7.away && G7.phase === "empty" && G7.lightsOff) return;
+  const act = ACT(), flick = 0.85 + 0.15 * Math7.sin(now / 130) * Math7.sin(now / 47);
+  const screen = act.light === "screen" && !G7.lightsOff, lamp = (act.light === "lamp" || G7.lampOn) && !G7.lightsOff;
+  const att = G7.att === "busy" ? 1 : G7.att === "glancing" ? 0.55 + 0.25 * Math7.sin(now / 90) : 0.2;
+  const dusk = smooth(18 * 60 + 30, 20 * 60, G7.clockMin);
   ctx2.globalCompositeOperation = "lighter";
-  ctx2.filter = `blur(${Math6.round(H * 0.08)}px)`;
+  ctx2.filter = `blur(${Math7.round(H * 0.08)}px)`;
   const P3 = { deskLight: [0.5, 0.05, 0.5, 0.3], floorLight: [0.28, 0.12, 0.3, 0.32], wallLight: [0.36, 0.2, 0.42, 0.5] }[where];
   if (lamp) {
     ctx2.fillStyle = `rgba(255,180,110,${(0.28 * (0.4 + 0.6 * dusk)).toFixed(3)})`;
     ctx2.beginPath();
-    ctx2.ellipse(P3[0] * W, P3[1] * H, P3[2] * W, P3[3] * H, 0, 0, Math6.PI * 2);
+    ctx2.ellipse(P3[0] * W2, P3[1] * H, P3[2] * W2, P3[3] * H, 0, 0, Math7.PI * 2);
     ctx2.fill();
   }
   if (screen) {
     ctx2.fillStyle = `rgba(120,170,255,${(0.3 * att * flick).toFixed(3)})`;
     ctx2.beginPath();
-    ctx2.ellipse((P3[0] + 0.05) * W, (P3[1] + 0.04) * H, P3[2] * 0.7 * W, P3[3] * 0.7 * H, 0, 0, Math6.PI * 2);
+    ctx2.ellipse((P3[0] + 0.05) * W2, (P3[1] + 0.04) * H, P3[2] * 0.7 * W2, P3[3] * 0.7 * H, 0, 0, Math7.PI * 2);
     ctx2.fill();
   }
   ctx2.filter = "none";
@@ -71787,12 +72329,12 @@ function drawLight(c, now, where) {
 }
 var pins = [];
 function drawUrges(now) {
-  const W = urC.width, H = urC.height, t = now / 1e3;
-  uctx.clearRect(0, 0, W, H);
-  const live3 = G6.phase === "loop" || G6.phase === "empty";
+  const W2 = urC.width, H = urC.height, t = now / 1e3;
+  uctx.clearRect(0, 0, W2, H);
+  const live3 = G7.phase === "loop" || G7.phase === "empty";
   if (!live3 || weightOn()) return;
-  for (const u of G6.urges) {
-    const pulse = 0.75 + 0.25 * Math6.sin(t * (4 + u.v * 5) + u.seed);
+  for (const u of G7.urges) {
+    const pulse = 0.75 + 0.25 * Math7.sin(t * (4 + u.v * 5) + u.seed);
     if (u.kind === "itch") {
       const r = 18 + u.v * 62;
       const g = uctx.createRadialGradient(u.x, u.y, 0, u.x, u.y, r * 1.6);
@@ -71802,55 +72344,55 @@ function drawUrges(now) {
       g.addColorStop(1, "rgba(255,80,40,0)");
       uctx.fillStyle = g;
       uctx.beginPath();
-      uctx.arc(u.x, u.y, r * 1.6, 0, Math6.PI * 2);
+      uctx.arc(u.x, u.y, r * 1.6, 0, Math7.PI * 2);
       uctx.fill();
       uctx.strokeStyle = `rgba(255,210,170,${(0.35 * u.v * pulse).toFixed(3)})`;
       uctx.lineWidth = 1;
       for (let k = 0; k < 7; k++) {
-        const a2 = u.seed + k * 0.9 + t * 0.6, r12 = r * (0.55 + 0.3 * Math6.sin(t * 7 + k)), r2 = r12 + 4 + u.v * 7;
+        const a2 = u.seed + k * 0.9 + t * 0.6, r12 = r * (0.55 + 0.3 * Math7.sin(t * 7 + k)), r2 = r12 + 4 + u.v * 7;
         uctx.beginPath();
-        uctx.moveTo(u.x + Math6.cos(a2) * r12, u.y + Math6.sin(a2) * r12);
-        uctx.lineTo(u.x + Math6.cos(a2) * r2, u.y + Math6.sin(a2) * r2);
+        uctx.moveTo(u.x + Math7.cos(a2) * r12, u.y + Math7.sin(a2) * r12);
+        uctx.lineTo(u.x + Math7.cos(a2) * r2, u.y + Math7.sin(a2) * r2);
         uctx.stroke();
       }
     } else if (u.kind === "swallow") {
       const h2 = H * (0.08 + 0.2 * u.v), a = (0.1 + 0.42 * u.v) * pulse * (u.focus ? 1.25 : 1);
-      const g = uctx.createRadialGradient(W / 2, H + h2 * 0.25, 0, W / 2, H + h2 * 0.25, h2 * 1.5);
+      const g = uctx.createRadialGradient(W2 / 2, H + h2 * 0.25, 0, W2 / 2, H + h2 * 0.25, h2 * 1.5);
       g.addColorStop(0, `rgba(255,170,170,${a.toFixed(3)})`);
       g.addColorStop(0.55, `rgba(200,90,110,${(a * 0.45).toFixed(3)})`);
       g.addColorStop(1, "rgba(120,40,60,0)");
       uctx.fillStyle = g;
-      uctx.fillRect(W / 2 - h2 * 1.6, H - h2 * 1.4, h2 * 3.2, h2 * 1.4);
+      uctx.fillRect(W2 / 2 - h2 * 1.6, H - h2 * 1.4, h2 * 3.2, h2 * 1.4);
     }
   }
-  const nowP = performance6.now();
+  const nowP = performance7.now();
   for (let i = RIPPLES.length - 1; i >= 0; i--) {
     const r = RIPPLES[i], age2 = (nowP - r.born) / 900;
-    if (age2 >= 1 || S7.reduced) {
+    if (age2 >= 1 || S8.reduced) {
       RIPPLES.splice(i, 1);
       continue;
     }
     uctx.strokeStyle = `rgba(216,228,255,${(0.28 * r.k * (1 - age2)).toFixed(3)})`;
     uctx.lineWidth = 1.5 * (1 - age2) + 0.4;
     uctx.beginPath();
-    uctx.arc(r.x, r.y, 18 + age2 * 160 * r.k, 0, Math6.PI * 2);
+    uctx.arc(r.x, r.y, 18 + age2 * 160 * r.k, 0, Math7.PI * 2);
     uctx.stroke();
   }
-  if (G6.numb > 0.05) {
-    const top = H * (1 - G6.numb * 0.42);
+  if (G7.numb > 0.05) {
+    const top = H * (1 - G7.numb * 0.42);
     const g = uctx.createLinearGradient(0, H, 0, top);
-    g.addColorStop(0, `rgba(170,190,230,${(0.16 * G6.numb).toFixed(3)})`);
+    g.addColorStop(0, `rgba(170,190,230,${(0.16 * G7.numb).toFixed(3)})`);
     g.addColorStop(1, "rgba(170,190,230,0)");
     uctx.fillStyle = g;
-    uctx.fillRect(0, top, W, H - top);
+    uctx.fillRect(0, top, W2, H - top);
     for (const p of pins) {
-      const y = H - p.y * G6.numb * 0.42 * H, tw = 0.5 + 0.5 * Math6.sin(t * (6 + p.s * 8) + p.s * 20);
-      uctx.fillStyle = `rgba(225,235,255,${(0.55 * tw * G6.numb * (1 - p.y * 0.6)).toFixed(3)})`;
-      uctx.fillRect(p.x * W, y, 1.6, 1.6);
+      const y = H - p.y * G7.numb * 0.42 * H, tw = 0.5 + 0.5 * Math7.sin(t * (6 + p.s * 8) + p.s * 20);
+      uctx.fillStyle = `rgba(225,235,255,${(0.55 * tw * G7.numb * (1 - p.y * 0.6)).toFixed(3)})`;
+      uctx.fillRect(p.x * W2, y, 1.6, 1.6);
     }
   }
-  if (G6.cramp) {
-    const c = G6.cramp, x0 = c.side < 0 ? 0 : W, dir = c.side < 0 ? 1 : -1, fl = 0.6 + 0.4 * Math6.sin(t * 40);
+  if (G7.cramp) {
+    const c = G7.cramp, x0 = c.side < 0 ? 0 : W2, dir = c.side < 0 ? 1 : -1, fl = 0.6 + 0.4 * Math7.sin(t * 40);
     uctx.strokeStyle = `rgba(255,70,60,${(0.85 * fl * (1 - c.held / 2600)).toFixed(3)})`;
     uctx.lineWidth = 3;
     uctx.shadowColor = "rgba(255,40,30,.9)";
@@ -71859,15 +72401,15 @@ function drawUrges(now) {
     let x = x0, y = H * 0.62;
     uctx.moveTo(x, y);
     for (let k = 0; k < 9; k++) {
-      x += dir * rand4(14, 30);
-      y += rand4(-22, 30);
+      x += dir * rand5(14, 30);
+      y += rand5(-22, 30);
       uctx.lineTo(x, y);
     }
     uctx.stroke();
     uctx.shadowBlur = 0;
   }
   {
-    const lis = G6.listening, feed = G6.feeding, r = 20 + (lis ? 6 + Math6.sin(t * 1.6) * 3 : 0) + (feed ? 4 : 0);
+    const lis = G7.listening, feed = G7.feeding, r = 20 + (lis ? 6 + Math7.sin(t * 1.6) * 3 : 0) + (feed ? 4 : 0);
     const col = feed ? "rgba(255,170,120," : "rgba(216,228,255,", a = feed ? 0.55 : lis ? 0.55 : 0.2;
     const g = uctx.createRadialGradient(ATT2.x, ATT2.y, r * 0.4, ATT2.x, ATT2.y, r * 1.8);
     g.addColorStop(0, `${col}0)`);
@@ -71875,12 +72417,12 @@ function drawUrges(now) {
     g.addColorStop(1, `${col}0)`);
     uctx.fillStyle = g;
     uctx.beginPath();
-    uctx.arc(ATT2.x, ATT2.y, r * 1.8, 0, Math6.PI * 2);
+    uctx.arc(ATT2.x, ATT2.y, r * 1.8, 0, Math7.PI * 2);
     uctx.fill();
     uctx.strokeStyle = `${col}${a.toFixed(2)})`;
     uctx.lineWidth = 1.3;
     uctx.beginPath();
-    uctx.arc(ATT2.x, ATT2.y, r, 0, Math6.PI * 2);
+    uctx.arc(ATT2.x, ATT2.y, r, 0, Math7.PI * 2);
     uctx.stroke();
   }
 }
@@ -71889,62 +72431,62 @@ function drawGrain(dt) {
   grainAcc += dt;
   if (grainAcc < 80) return;
   grainAcc = 0;
-  const W = grC.width, H = grC.height;
-  if (!W || !H) return;
-  const img2 = grctx.createImageData(W, H), d = img2.data;
+  const W2 = grC.width, H = grC.height;
+  if (!W2 || !H) return;
+  const img2 = grctx.createImageData(W2, H), d = img2.data;
   for (let i = 0; i < d.length; i += 4) {
-    const v = Math6.random() * 255;
+    const v = Math7.random() * 255;
     d[i] = d[i + 1] = d[i + 2] = v;
     d[i + 3] = 255;
   }
   grctx.putImageData(img2, 0, 0);
 }
 function render5(now, dt) {
-  const t = now / 1e3, live3 = G6.phase === "loop" || G6.phase === "empty" || G6.phase === "ending";
-  const view = S7.blind ? "blind" : weightOn() ? "footrest" : S7.view;
+  const t = now / 1e3, live3 = G7.phase === "loop" || G7.phase === "empty" || G7.phase === "ending";
+  const view = S8.blind ? "blind" : weightOn() ? "footrest" : S8.view;
   for (const v of ["her", "legs", "floor", "wall", "footrest", "blind"]) setStyle4(`#${v}View`, "opacity", v === view ? "1" : "0");
-  const low = live3 && !weightOn() ? 1 - G6.ease / 100 : 0;
-  G6.shake = Math6.max(0, (G6.shake ?? 0) - dt / 600);
-  const amp = S7.reduced ? 0 : low * low * 2.5 + G6.shake * 9;
-  const hx = S7.reduced ? 0 : G6.headX ?? 0, hy = S7.reduced ? 0 : G6.headY ?? 0;
+  const low = live3 && !weightOn() ? 1 - G7.ease / 100 : 0;
+  G7.shake = Math7.max(0, (G7.shake ?? 0) - dt / 600);
+  const amp = S8.reduced ? 0 : low * low * 2.5 + G7.shake * 9;
+  const hx = S8.reduced ? 0 : G7.headX ?? 0, hy = S8.reduced ? 0 : G7.headY ?? 0;
   const wr = weightOn() ? weightFrame() : null;
-  $5("#world").style.transform = wr ? `translate(${((Math6.random() * 2 - 1) * (wr.tremble + G6.shake * 9)).toFixed(1)}px, ${((Math6.random() * 2 - 1) * wr.tremble + wr.sag + G6.shake * 10).toFixed(1)}px) rotate(${wr.tilt.toFixed(2)}deg)` : `translate(${((Math6.random() * 2 - 1) * amp - hx).toFixed(1)}px, ${((Math6.random() * 2 - 1) * amp + G6.shake * 10 - hy).toFixed(1)}px)`;
+  $6("#world").style.transform = wr ? `translate(${((Math7.random() * 2 - 1) * (wr.tremble + G7.shake * 9)).toFixed(1)}px, ${((Math7.random() * 2 - 1) * wr.tremble + wr.sag + G7.shake * 10).toFixed(1)}px) rotate(${wr.tilt.toFixed(2)}deg)` : `translate(${((Math7.random() * 2 - 1) * amp - hx).toFixed(1)}px, ${((Math7.random() * 2 - 1) * amp + G7.shake * 10 - hy).toFixed(1)}px)`;
   setStyle4("#vignette", "background", low < 0.05 ? "none" : `radial-gradient(ellipse 75% 70% at 50% 50%, rgba(0,0,0,0) ${(72 - low * 28).toFixed(0)}%, rgba(26,6,4,${(0.2 + low * 0.5).toFixed(2)}) 100%)`);
-  const dusk = smooth(18 * 60 + 30, 20 * 60, G6.clockMin), dark = G6.lightsOff ? 0.35 : 1;
+  const dusk = smooth(18 * 60 + 30, 20 * 60, G7.clockMin), dark = G7.lightsOff ? 0.35 : 1;
   setStyle4("#world", "filter", `saturate(${(wr ? 1 - wr.strF * 0.45 : 1 - low * 0.4).toFixed(2)}) brightness(${((1 - dusk * 0.25) * dark).toFixed(2)})`);
   if (view === "her") {
-    const look = G6.att === "watching" ? 1 : G6.att === "glancing" ? 0.4 : 0;
-    G6.lookS = lerp2(G6.lookS ?? 0, look, Math6.min(1, dt / 400));
-    E5.env.layers.sprites.style.opacity = G6.away ? "0" : "";
-    E5.env.layers.sprites.style.transform = S7.reduced ? "" : `scale(${(1 + G6.lookS * 0.025).toFixed(4)}) rotate(${(Math6.sin(t * 0.5) * 0.2).toFixed(2)}deg)`;
-    const act = ACT(), flick = 0.85 + 0.15 * Math6.sin(now / 130) * Math6.sin(now / 47);
-    const scr = act.light === "screen" && !G6.lightsOff ? (1 - G6.lookS * 0.7) * flick : 0, lamp = (act.light === "lamp" || G6.lampOn) && !G6.lightsOff ? 0.6 + 0.4 * dusk : 0;
+    const look = G7.att === "watching" ? 1 : G7.att === "glancing" ? 0.4 : 0;
+    G7.lookS = lerp2(G7.lookS ?? 0, look, Math7.min(1, dt / 400));
+    E5.env.layers.sprites.style.opacity = G7.away ? "0" : "";
+    E5.env.layers.sprites.style.transform = S8.reduced ? "" : `scale(${(1 + G7.lookS * 0.025).toFixed(4)}) rotate(${(Math7.sin(t * 0.5) * 0.2).toFixed(2)}deg)`;
+    const act = ACT(), flick = 0.85 + 0.15 * Math7.sin(now / 130) * Math7.sin(now / 47);
+    const scr = act.light === "screen" && !G7.lightsOff ? (1 - G7.lookS * 0.7) * flick : 0, lamp = (act.light === "lamp" || G7.lampOn) && !G7.lightsOff ? 0.6 + 0.4 * dusk : 0;
     setStyle4("#herGlow", "background", `radial-gradient(ellipse 34% 30% at 52% 30%, rgba(110,160,255,${(0.3 * scr).toFixed(2)}) 0%, rgba(0,0,0,0) 100%), radial-gradient(ellipse 50% 45% at 30% 24%, rgba(255,170,100,${(0.16 * lamp).toFixed(2)}) 0%, rgba(0,0,0,0) 100%)`);
   }
   if (view === "legs") {
-    const f = S7.floorShade;
+    const f = S8.floorShade;
     setStyle4("#floorShadow", "background", `linear-gradient(to bottom, rgba(0,0,0,0) 58%, rgba(4,3,5,${(0.55 * f).toFixed(2)}) 76%, rgba(4,3,5,${(0.92 * f).toFixed(2)}) 100%)`);
     drawLegs(now);
     drawLight(lights.deskLight, now, "deskLight");
   }
   if (view === "floor") {
-    const fa = $5("#floorArt");
+    const fa = $6("#floorArt");
     if (fa.style.display !== "none" && fa.naturalWidth) {
-      const Wv = innerWidth6 * 1.12, Hv = innerHeight6 * 1.12, w = Wv * S7.feetW, h2 = w * fa.naturalHeight / fa.naturalWidth, top = Hv * S7.feetB - h2;
-      const sw = S7.reduced ? 0 : (G6.att === "busy" ? Math6.sin(t * 0.6) * 0.25 : 0) + G6.shiftAnim * Math6.sin(t * 9) * 0.5;
+      const Wv = innerWidth6 * 1.12, Hv = innerHeight6 * 1.12, w = Wv * S8.feetW, h2 = w * fa.naturalHeight / fa.naturalWidth, top = Hv * S8.feetB - h2;
+      const sw = S8.reduced ? 0 : (G7.att === "busy" ? Math7.sin(t * 0.6) * 0.25 : 0) + G7.shiftAnim * Math7.sin(t * 9) * 0.5;
       fa.style.width = `${w}px`;
       fa.style.left = `${(Wv - w) / 2}px`;
       fa.style.top = `${top}px`;
-      fa.style.opacity = G6.away ? "0" : "1";
-      fa.style.transform = `perspective(1400px) rotateX(${S7.feetTilt}deg) rotate(${sw.toFixed(2)}deg) scale(${(1 + G6.press * 0.03).toFixed(3)})`;
-      const sh = $5("#feetShadow");
+      fa.style.opacity = G7.away ? "0" : "1";
+      fa.style.transform = `perspective(1400px) rotateX(${S8.feetTilt}deg) rotate(${sw.toFixed(2)}deg) scale(${(1 + G7.press * 0.03).toFixed(3)})`;
+      const sh = $6("#feetShadow");
       sh.style.left = `${(Wv - w * 0.86) / 2}px`;
       sh.style.top = `${top + h2 * 0.8}px`;
       sh.style.width = `${w * 0.86}px`;
       sh.style.height = `${h2 * 0.17}px`;
       sh.style.background = "radial-gradient(ellipse 50% 50% at 50% 50%, rgba(0,0,0,.55) 0%, rgba(0,0,0,.25) 45%, rgba(0,0,0,0) 72%)";
-      sh.style.filter = S7.readable ? "none" : "blur(6px)";
-      sh.style.opacity = G6.away ? "0" : "1";
+      sh.style.filter = S8.readable ? "none" : "blur(6px)";
+      sh.style.opacity = G7.away ? "0" : "1";
     }
     drawLight(lights.floorLight, now, "floorLight");
     setStyle4("#floorBg", "transform", `scale(${(1 + low * 0.08).toFixed(3)})`);
@@ -71952,32 +72494,33 @@ function render5(now, dt) {
   if (view === "wall") {
     drawLight(lights.wallLight, now, "wallLight");
   }
-  G6.press = Math6.max(0, G6.press - dt / 900);
-  G6.shiftAnim = Math6.max(0, G6.shiftAnim - dt / 800);
+  if (view === "footrest" && throneOn()) throneLegs(now);
+  G7.press = Math7.max(0, G7.press - dt / 900);
+  G7.shiftAnim = Math7.max(0, G7.shiftAnim - dt / 800);
   drawUrges(now);
   drawGrain(dt);
   setStyle4("#grain", "opacity", (0.06 + low * 0.1 + (view === "blind" ? 0.1 : 0)).toFixed(3));
-  E5.env.reply.style.opacity = G6.phase === "skip" ? "0" : live3 ? "0.35" : "1";
-  E5.env.input.closest(".alius-input-line")?.classList.toggle("alius-activity-ask", !!G6.ask);
+  E5.env.reply.style.opacity = G7.phase === "skip" ? "0" : live3 ? "0.35" : "1";
+  E5.env.input.closest(".alius-input-line")?.classList.toggle("alius-activity-ask", !!G7.ask);
 }
 function frame5(now) {
-  const dt = Math6.min(120, now - (frame5.last ?? now));
+  const dt = Math7.min(120, now - (frame5.last ?? now));
   frame5.last = now;
-  if (G6.phase !== "idle" && G6.phase !== "done") G6.t += dt;
-  if (G6.phase === "entry" || G6.phase === "skip" || G6.phase === "ending") {
-    G6.nextItch += dt;
-    G6.nextSwallow += dt;
-    G6.nextCramp += dt;
+  if (G7.phase !== "idle" && G7.phase !== "done") G7.t += dt;
+  if (G7.phase === "entry" || G7.phase === "skip" || G7.phase === "ending") {
+    G7.nextItch += dt;
+    G7.nextSwallow += dt;
+    G7.nextCramp += dt;
   }
-  for (let i = G6.timers.length - 1; i >= 0; i--) if (G6.t >= G6.timers[i].at) {
-    const x = G6.timers[i];
-    G6.timers.splice(i, 1);
+  for (let i = G7.timers.length - 1; i >= 0; i--) if (G7.t >= G7.timers[i].at) {
+    const x = G7.timers[i];
+    G7.timers.splice(i, 1);
     x.fn();
   }
-  switch (G6.phase) {
+  switch (G7.phase) {
     case "entry":
-      G6.entryT += dt;
-      if (G6.entryT > 2200) beginPhase(0);
+      G7.entryT += dt;
+      if (G7.entryT > 2200) beginPhase(0);
       break;
     case "loop":
       updateLoop4(dt);
@@ -71987,26 +72530,26 @@ function frame5(now) {
       break;
     case "empty":
       updateUrges(dt * 0.6);
-      G6.clockMin += G6.clockRate * dt / 1e3;
-      if (G6.t >= G6.foundAt) found();
+      G7.clockMin += G7.clockRate * dt / 1e3;
+      if (G7.t >= G7.foundAt) found();
       break;
   }
   musicTick();
   if (A5.ctx) {
-    A5.master.gain.setTargetAtTime(S7.sound ? S7.vol : 0, A5.ctx.currentTime, 0.05);
-    const live3 = G6.phase === "loop";
-    A5.world.frequency.setTargetAtTime(!live3 || G6.listening ? 15e3 : 5200, A5.ctx.currentTime, 0.4);
-    G6.prickleCd = (G6.prickleCd ?? 0) - dt;
-    if (live3 && G6.feeding && G6.prickleCd <= 0) {
+    A5.master.gain.setTargetAtTime(S8.sound ? S8.vol : 0, A5.ctx.currentTime, 0.05);
+    const live3 = G7.phase === "loop";
+    A5.world.frequency.setTargetAtTime(!live3 || G7.listening ? 15e3 : 5200, A5.ctx.currentTime, 0.4);
+    G7.prickleCd = (G7.prickleCd ?? 0) - dt;
+    if (live3 && G7.feeding && G7.prickleCd <= 0) {
       noise6({ dur: 0.02, type: "highpass", f: 6e3, gain: 0.025, attack: 2e-3, dest: A5.body });
-      G6.prickleCd = rand4(140, 320);
+      G7.prickleCd = rand5(140, 320);
     }
   }
   render5(now, dt);
   requestAnimationFrame6(frame5);
 }
 frame5.last = void 0;
-var weightOn = () => S7.inner === "weight";
+var weightOn = () => S8.inner === "weight";
 function requestAnimationFrameOnce(fn) {
   const e = E5;
   if (!e) return;
@@ -72023,7 +72566,7 @@ function before5() {
     innerWidth6 = w;
     innerHeight6 = h2;
     size3();
-    if (!pins.length) pins = Array.from({ length: 220 }, () => ({ x: Math6.random(), y: Math6.random(), s: Math6.random() }));
+    if (!pins.length) pins = Array.from({ length: 220 }, () => ({ x: Math7.random(), y: Math7.random(), s: Math7.random() }));
     if (first2) {
       MOUSE.x = innerWidth6 / 2;
       MOUSE.y = innerHeight6 / 2;
@@ -72039,15 +72582,15 @@ function before5() {
       e.els["#wFloor"].style.backgroundImage = room2;
     }
   }
-  S7.reduced = e.env.reduced;
-  S7.readable = e.env.readable;
-  e.box.toggleAttribute("data-reduced", S7.reduced);
-  e.box.toggleAttribute("data-readable", S7.readable);
+  S8.reduced = e.env.reduced;
+  S8.readable = e.env.readable;
+  e.box.toggleAttribute("data-reduced", S8.reduced);
+  e.box.toggleAttribute("data-readable", S8.readable);
   if (!A5.ctx) audioInit5();
   const run = R8.run;
-  if (run?.marathon?.waiting && G6.phase === "loop") endPhase();
-  if (run?.forgotten && (G6.phase === "loop" || G6.phase === "skip")) {
-    G6.step = "use";
+  if (run?.marathon?.waiting && G7.phase === "loop") endPhase();
+  if (run?.forgotten && (G7.phase === "loop" || G7.phase === "skip")) {
+    G7.step = "use";
     finish5("done");
   }
 }
@@ -72102,6 +72645,13 @@ function build5(env) {
   el("canvas", "wallLight", wallV, "alius-act-light");
   const footV = el("div", "footrestView", world, "alius-act-view");
   el("div", "wFloor", footV, "alius-act-bg");
+  el("canvas", "wShadow", footV);
+  for (const id of ["astrideL", "astrideR"]) {
+    const img2 = el("img", id, footV, "alius-act-astride");
+    img2.alt = "";
+    img2.draggable = false;
+    img2.style.display = "none";
+  }
   el("div", "weightHost", footV);
   el("div", "blindView", world, "alius-act-view");
   el("canvas", "grain", box);
@@ -72184,24 +72734,24 @@ function bind5(env, run) {
   const act = run.sourceKind === "activity" ? run.sourceId : state.scene?.blocking?.[run.holderId]?.activity ?? "";
   R8.run = run;
   R8.frame = frameOf3(reg.blockingActivities.get(act)) ?? R8.frame;
-  S7.act = act;
+  S8.act = act;
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
-  S7.style = lead.key;
+  S8.style = lead.key;
   R8.lineStyle = lead.key;
   const v = viewOf(state, reg, run);
-  S7.view = v.view === "footrest" ? "legs" : v.view;
-  S7.inner = v.view === "footrest" ? "weight" : "stillness";
-  S7.blind = v.blind;
-  S7.phases = run.marathon?.phases ?? 3;
-  S7.phaseLen = phaseSegments(state, reg, run) * Number(reg.contactPhysics.get(run.physicsId)?.segmentSeconds ?? 30);
-  S7.start = run.marathon?.clockMin ?? 1080;
-  S7.seed = fnv1a3(`${state.scene?.id ?? ""}|${run.id}`) % 100;
-  S7.mood = (state.squad.find((u) => u.id === run.holderId)?.stress ?? 0) >= 50 ? "irritated" : "calm";
+  S8.view = v.view === "footrest" ? "legs" : v.view;
+  S8.inner = v.view === "footrest" ? "weight" : "stillness";
+  S8.blind = v.blind;
+  S8.phases = run.marathon?.phases ?? 3;
+  S8.phaseLen = phaseSegments(state, reg, run) * Number(reg.contactPhysics.get(run.physicsId)?.segmentSeconds ?? 30);
+  S8.start = run.marathon?.clockMin ?? 1080;
+  S8.seed = fnv1a3(`${state.scene?.id ?? ""}|${run.id}`) % 100;
+  S8.mood = (state.squad.find((u) => u.id === run.holderId)?.stress ?? 0) >= 50 ? "irritated" : "calm";
   R8.caught = run.tally?.cheatsCaught ?? 0;
   const other = state.squad.find((u) => u.kind === "named" && u.id !== run.holderId && u.status === "active" && !(state.scene?.participants ?? []).includes(u.id));
   R8.listener = other ? { id: other.id, name: other.displayName } : null;
   const known3 = other ? state.dynamic?.knowledge?.[other.id]?.[run.holderId]?.level === "knows_dynamic" : false;
-  S7.knows = known3;
+  S8.knows = known3;
   const url = (p) => env.assetUrl ? env.assetUrl(p) : p;
   const img2 = (id, slot2) => {
     const a = env.art.get(run.holderId, slot2), el = E5.els[id];
@@ -72215,18 +72765,18 @@ function bind5(env, run) {
   };
   const rest = img2("#legsArt", "legs_seated.rest"), raised = img2("#raisedArt", "legs_seated.foot_raised"), feet = img2("#floorArt", "feet_floor");
   if (rest) {
-    S7.legsW = rest.width ?? S7.legsW;
-    S7.legsB = rest.bottom ?? S7.legsB;
-    if (rest.floorShade !== void 0) S7.floorShade = rest.floorShade;
+    S8.legsW = rest.width ?? S8.legsW;
+    S8.legsB = rest.bottom ?? S8.legsB;
+    if (rest.floorShade !== void 0) S8.floorShade = rest.floorShade;
   }
   if (raised) {
-    S7.raisedW = raised.width ?? S7.raisedW;
-    S7.raisedB = raised.bottom ?? S7.raisedB;
+    S8.raisedW = raised.width ?? S8.raisedW;
+    S8.raisedB = raised.bottom ?? S8.raisedB;
   }
   if (feet) {
-    S7.feetW = feet.width ?? S7.feetW;
-    S7.feetB = feet.bottom ?? S7.feetB;
-    S7.feetTilt = feet.tilt ?? S7.feetTilt;
+    S8.feetW = feet.width ?? S8.feetW;
+    S8.feetB = feet.bottom ?? S8.feetB;
+    S8.feetTilt = feet.tilt ?? S8.feetTilt;
   }
   E5.els["#deskFrame"].src = url(v.desk ?? "content/core/art/backdrops/frame_under_desk.webp");
   const room2 = env.layers.backdrop.style.backgroundImage;
@@ -72237,6 +72787,28 @@ function bind5(env, run) {
   for (const id of ["#floorBg", "#wFloor"]) {
     E5.els[id].style.backgroundImage = floor ? `url("${url(floor.file)}")` : room2;
     if (!floor) E5.els[id].dataset.room = "1";
+  }
+  const contact = state.scene?.blocking?.commander?.contact ?? Object.values(state.scene?.blocking ?? {}).map((b) => b.contact).find((c) => c?.with === "commander");
+  S8.contact = herLegsOf(contact ? reg.blockingContacts.get(contact.id) : void 0) === "hang" ? "human_chair" : "footrest";
+  S8.bodyFollows = true;
+  S8.props = true;
+  S8.visitorKind = R8.frame.audience ? "business" : known3 ? "aware" : "unaware";
+  S8.visitorName = R8.listener?.name ?? "";
+  const astride = env.art.get(run.holderId, "legs_astride");
+  S8.legsArt = astride?.url ?? null;
+  S8.legsFeet = astride?.pair ? "pair" : astride?.sidecar.feet === "two" ? "two" : astride?.sidecar.shown === "right" ? "right" : "left";
+  const af = astride?.sidecar.fit ?? {};
+  S8.aH = af.height ?? 1;
+  S8.aX = af.x ?? 0.08;
+  S8.aTop = af.top ?? -0.1;
+  S8.aTilt = af.tilt ?? 8;
+  if (astride) {
+    const L4 = E5.els["#astrideL"], Rt = E5.els["#astrideR"];
+    L4.onerror = () => {
+      S8.legsArt = null;
+    };
+    L4.src = astride.pair?.left ?? astride.url;
+    Rt.src = astride.pair?.right ?? astride.url;
   }
   const look = env.her(run.holderId);
   E5.box.style.setProperty("--alius-her", look.accent);
@@ -72252,28 +72824,29 @@ function listen5(env) {
   env.listen(document, "mousemove", (e) => {
     [MOUSE.x, MOUSE.y] = local(e);
     E5?.core?.balance(innerWidth6 > 0 ? MOUSE.x / innerWidth6 : 0.5);
+    tMouse(e);
   });
   env.listen(document, "keydown", (e) => {
     if (typing6(e.target)) {
-      G6.lastTyped = G6.t;
+      G7.lastTyped = G7.t;
       return;
     }
     if (e.key === " ") {
       e.preventDefault();
-      G6.spaceHeld = true;
+      G7.spaceHeld = true;
       E5?.core?.hold(true, "key");
     } else if (e.key === "Shift" && weightOn()) E5?.core?.shift("key");
   });
   env.listen(document, "keyup", (e) => {
     if (e.key === " ") {
-      G6.spaceHeld = false;
-      if (!G6.mouseHold) E5?.core?.hold(false, "key");
+      G7.spaceHeld = false;
+      if (!G7.mouseHold) E5?.core?.hold(false, "key");
     }
   });
   env.listen(document, "mouseup", (e) => {
     if (e.button === 0) {
-      G6.mouseHold = false;
-      if (!G6.spaceHeld) E5?.core?.hold(false, "mouse");
+      G7.mouseHold = false;
+      if (!G7.spaceHeld) E5?.core?.hold(false, "mouse");
     }
   });
   env.listen(env.root, "mousedown", (e) => {
@@ -72282,49 +72855,52 @@ function listen5(env) {
     const [x, y] = local(e);
     if (weightOn()) {
       if (e.button === 0) {
-        G6.mouseHold = true;
+        G7.mouseHold = true;
         E5?.core?.hold(true, "mouse");
       } else if (e.button === 2) E5?.core?.shift("mouse");
       return;
     }
-    if (e.button === 0) G6.mouseHold = true;
+    if (e.button === 0) G7.mouseHold = true;
     if (e.button === 0) relieveAt(x, y);
   });
   env.listen(env.layers.frame, "contextmenu", (e) => e.preventDefault());
   env.listen(env.input, "keydown", (e) => {
     if (e.key !== "Enter") return;
     const v = env.input.value.trim();
-    if (!v || G6.phase !== "loop") return;
-    if (G6.ask) {
-      G6.ask = null;
-      G6.footUpUntil = G6.t + 600;
-      G6.stats.answered += 1;
-      setTimeout6(() => say6(pick7(ST3().askReply), "commander"), 900);
+    if (!v) return;
+    if (throneThanked(v)) return;
+    if (G7.phase !== "loop") return;
+    if (G7.ask) {
+      G7.ask = null;
+      G7.footUpUntil = G7.t + 600;
+      G7.stats.answered += 1;
+      setTimeout6(() => say7(pick7(ST3().askReply), "commander"), 900);
       return;
     }
-    if (G6.t - G6.lastSelfAt < 5e3) {
-      G6.stats.breaches += 1;
-      if (G6.step !== "use") setTimeout6(() => say6(pick7(ST3().breach), "commander"), 700);
+    if (G7.t - G7.lastSelfAt < 5e3) {
+      G7.stats.breaches += 1;
+      if (G7.step !== "use") setTimeout6(() => say7(pick7(ST3().breach), "commander"), 700);
       return;
     }
-    G6.stats.unprompted += 1;
+    G7.stats.unprompted += 1;
   });
 }
 function begin5() {
   for (const k of Object.keys(LOOPS)) loopOff(k);
-  G6 = fresh5();
+  G7 = fresh5();
   setStep(presenceOf2(E5.env.state(), E5.env.registries, R8.run, R8.run.marathon?.phase ?? 1));
-  G6.clockMin = S7.start;
-  G6.startMin = S7.start;
-  G6.phaseIdx = (R8.run.marathon?.phase ?? 1) - 1;
-  G6.phase = "entry";
-  G6.entryT = 0;
+  G7.clockMin = S8.start;
+  G7.startMin = S8.start;
+  G7.phaseIdx = (R8.run.marathon?.phase ?? 1) - 1;
+  G7.phase = "entry";
+  G7.entryT = 0;
 }
 function stopFrame() {
   const e = E5;
   if (!e) return;
   if (e.frameId !== null) e.env.cancelRaf(e.frameId);
   e.core?.stop();
+  detachThrone();
   for (const n of A5.nodes ?? []) {
     try {
       n.stop();
@@ -72353,7 +72929,7 @@ function stopFrame() {
   R8.run = null;
   R8.script = null;
   R8.scriptPhase = 0;
-  G6 = fresh5();
+  G7 = fresh5();
   E5 = null;
 }
 var EXIT_MS5 = 4400;
@@ -72363,9 +72939,15 @@ function startFrame2(env, run) {
   innerWidth6 = 0;
   innerHeight6 = 0;
   bind5(env, run);
-  if (S7.inner === "weight" && run.second) {
+  if (S8.inner === "weight" && run.second) {
     const weight = coreRun(run, "second");
     E5.core = startWeight(env, weight, { host: E5.els["#weightHost"], core: true });
+    const sh = E5.els["#wShadow"];
+    attachThrone({ env, G: () => G7, S: S8, after: after6, sense: sense2, say: say7, play: play3, herFeels: herFeels2, bodyNoise: bodyNoise2, visitorHeard: visitorHeard2, steps: steps2, V: V2, rand: rand5, random: () => Math7.random(), now: () => performance7.now(), els: E5.els, shadow: { canvas: sh, ctx: sh.getContext("2d") ?? nullCtx(sh) }, inner: () => [innerWidth6, innerHeight6] });
+    throneCanvases(() => {
+      const c = document.createElement("canvas");
+      return [c, c.getContext("2d") ?? nullCtx(c)];
+    });
   }
   listen5(env);
   frame5.last = void 0;
@@ -72380,10 +72962,10 @@ function startFrame2(env, run) {
       const caught = next.tally?.cheatsCaught ?? 0;
       while (caught > R8.caught) {
         R8.caught += 1;
-        herCaught(G6.grossPending === true);
-        G6.grossPending = false;
+        herCaught(G7.grossPending === true);
+        G7.grossPending = false;
       }
-      if (next.marathon) S7.phases = next.marathon.phases;
+      if (next.marathon) S8.phases = next.marathon.phases;
     },
     finish(end2) {
       if (E5 !== mine) return 0;
@@ -72527,7 +73109,7 @@ function leanOf(base, torso, hogtie) {
   return { upright: 0, arched: -14, level: 86 }[torso];
 }
 function armGoal(state, c) {
-  const { s, shoulder: sh, chest, pelvis, S: S9, T: T5 } = c;
+  const { s, shoulder: sh, chest, pelvis, S: S10, T: T5 } = c;
   const lat = (k) => [s * k, 0, 0];
   switch (state) {
     case "at_sides":
@@ -72535,9 +73117,9 @@ function armGoal(state, c) {
       return { target: add(sh, [s * 0.05, -0.605, 0.02]), hint: [s * 0.3, -0.1, -1] };
     // nearly straight, the elbow a little back
     case "behind_back":
-      return { target: add(sub(add(pelvis, mul(S9, 0.12)), mul(T5, 0.12)), lat(0.04)), hint: [s, -0.2, -0.3] };
+      return { target: add(sub(add(pelvis, mul(S10, 0.12)), mul(T5, 0.12)), lat(0.04)), hint: [s, -0.2, -0.3] };
     case "bound":
-      return { target: add(sub(add(pelvis, mul(S9, 0.1)), mul(T5, 0.16)), lat(0.03)), hint: [s, -0.2, -0.4] };
+      return { target: add(sub(add(pelvis, mul(S10, 0.1)), mul(T5, 0.16)), lat(0.03)), hint: [s, -0.2, -0.4] };
     case "behind_head": {
       const back = sub(add(c.neckTop, mul(c.headDir, 0.09)), mul(c.faceDir, 0.075));
       return { target: add(back, lat(0.07)), hint: [s, 0.2, -0.1] };
@@ -72547,14 +73129,14 @@ function armGoal(state, c) {
     case "on_thighs_up":
       return { target: add(lerp3(c.hip, c.knee, 0.7), [s * 0.02, 0.06, 0]), hint: [s, 0, -0.4] };
     case "forward_palms_up":
-      return c.lying ? { target: add(add(sh, mul(S9, 0.56)), [s * 0.1, 0, 0.02]), hint: [s, 0, -0.3] } : { target: add(add(add(chest, mul(T5, 0.5)), mul(S9, -0.3)), lat(0.13)), hint: [s * 0.6, -1, -0.2] };
+      return c.lying ? { target: add(add(sh, mul(S10, 0.56)), [s * 0.1, 0, 0.02]), hint: [s, 0, -0.3] } : { target: add(add(add(chest, mul(T5, 0.5)), mul(S10, -0.3)), lat(0.13)), hint: [s * 0.6, -1, -0.2] };
     // offered: the forearms reach forward and down, palms up
     case "out_sideways":
       return { target: add(sh, [s * 0.56, 0.01, 0]), hint: [0, -0.5, -0.5] };
     case "raised":
       return { target: add(sh, [s * 0.1, 0.55, 0.05]), hint: [s, 0, -0.3] };
     case "holding":
-      return { target: add(add(add(pelvis, mul(S9, 0.38)), mul(T5, 0.4)), lat(0.11)), hint: [s, -0.6, 0] };
+      return { target: add(add(add(pelvis, mul(S10, 0.38)), mul(T5, 0.4)), lat(0.11)), hint: [s, -0.6, 0] };
     case "lamp":
       return { target: add(c.head, [s * 0.045, 0.36, 0.12]), hint: [s, 0, -0.2] };
     // both hands together above the head
@@ -72568,11 +73150,11 @@ function armGoal(state, c) {
     case "under_knees":
       return { target: [c.knee[0], 0.03, c.knee[2] - 0.03], hint: [s, 0.3, 0] };
     case "crossed":
-      return { target: add(sub(add(chest, mul(T5, 0.1)), mul(S9, 0.06)), lat(-0.14)), hint: [s * 0.3, -1, 0.3] };
+      return { target: add(sub(add(chest, mul(T5, 0.1)), mul(S10, 0.06)), lat(-0.14)), hint: [s * 0.3, -1, 0.3] };
     case "clasped_front":
-      return { target: add(add(add(pelvis, mul(S9, 0.16)), mul(T5, 0.2)), lat(0.025)), hint: [s, -0.5, -0.3] };
+      return { target: add(add(add(pelvis, mul(S10, 0.16)), mul(T5, 0.2)), lat(0.025)), hint: [s, -0.5, -0.3] };
     case "paws":
-      return { target: add(sub(add(chest, mul(T5, 0.2)), mul(S9, 0.1)), lat(0.07)), hint: [s * 0.5, -1, 0.2] };
+      return { target: add(sub(add(chest, mul(T5, 0.2)), mul(S10, 0.1)), lat(0.07)), hint: [s * 0.5, -1, 0.2] };
     // the hands in front of the chest, close together
     case "tucked":
       return { target: [s * 0.22, 0.04, sh[2] - 0.58], hint: [s * 0.2, 1, 0] };
@@ -72594,11 +73176,11 @@ function pose(p) {
   const legs = legsOf(base, pts, hogtie);
   const lying = LYING[base] !== void 0;
   const phi = leanOf(base, pts.torso ?? "upright", hogtie) * DEG;
-  const S9 = [0, Math.cos(phi), Math.sin(phi)];
+  const S10 = [0, Math.cos(phi), Math.sin(phi)];
   const T5 = [0, -Math.sin(phi), Math.cos(phi)];
   const pelvis = legs.pelvis;
-  const chest = add(pelvis, mul(S9, SPINE));
-  const neck = add(chest, mul(S9, NECK_BASE));
+  const chest = add(pelvis, mul(S10, SPINE));
+  const neck = add(chest, mul(S10, NECK_BASE));
   const phiN = phi * 0.55;
   const neckTop = add(neck, mul([0, Math.cos(phiN), Math.sin(phiN)], NECK));
   const pitch = { up: 0, bowed: 38, back: -55, to_floor: 90 }[pts.head ?? "up"];
@@ -72632,7 +73214,7 @@ function pose(p) {
       shoulder: shoulder[side],
       chest,
       pelvis,
-      S: S9,
+      S: S10,
       T: T5,
       hip: hip[side],
       knee: knee[side],
@@ -73100,9 +73682,9 @@ var easeInOut = (t) => {
   t = clamp44(t, 0, 1);
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 };
-var rnd016 = () => fnv1a3(`${G7.rkey}|${G7.rn++}`) % 1e4 / 1e4;
+var rnd016 = () => fnv1a3(`${G8.rkey}|${G8.rn++}`) % 1e4 / 1e4;
 var pick8 = (a) => a[Math.floor(rnd016() * a.length)];
-var rand5 = (a, b) => a + rnd016() * (b - a);
+var rand6 = (a, b) => a + rnd016() * (b - a);
 var LEAD = TUNING.practice.slap.leadMs;
 var FEINT = TUNING.practice.slap.feintMs;
 var SWING = TUNING.practice.slap.windowMs;
@@ -73158,7 +73740,7 @@ function lookFaces(labels) {
     }).then(() => {
       if (!mine()) return;
       looking.delete(label2);
-      if (curLabel === label2 && (G7.slap || G7.back)) showFace(label2);
+      if (curLabel === label2 && (G8.slap || G8.back)) showFace(label2);
     }));
   }
 }
@@ -73175,7 +73757,7 @@ function readFaceNow() {
 function noteFaceLeft() {
   if (E6) leftBySlap = { label: curLabel, scene: E6.env.faceOf(E6.unitId) };
 }
-var S8 = {
+var S9 = {
   style: "possessive",
   unann: false,
   tension: { rise: 100, peak: 80, fall: 220, thr: 0.8 },
@@ -73190,7 +73772,7 @@ var S8 = {
   zoom: 2.6,
   reduced: false
 };
-var performance7 = { now: () => E6 ? E6.env.now() : 0 };
+var performance8 = { now: () => E6 ? E6.env.now() : 0 };
 var innerWidth7 = 0;
 var innerHeight7 = 0;
 function measure() {
@@ -73215,18 +73797,18 @@ function requestAnimationFrame7(fn) {
   frameId = e.env.raf((now) => {
     frameId = null;
     if (E6 !== e) return;
-    if (!G7.slap && !G7.back && !G7.starting && G7.cheekA <= 0) {
+    if (!G8.slap && !G8.back && !G8.starting && G8.cheekA <= 0) {
       cam.release();
       return;
     }
     measure();
     fn(now);
-    if (cam.held && (G7.slap || G7.back) && !S8.reduced) for (const c of cam.ui) noteWrites(c, ["opacity"]);
+    if (cam.held && (G8.slap || G8.back) && !S9.reduced) for (const c of cam.ui) noteWrites(c, ["opacity"]);
   });
 }
 var E6 = null;
 var HBLUR = "alius-slap-hblur";
-var $6 = (s) => {
+var $7 = (s) => {
   const e = E6;
   if (s === "#mirror") return mirror(e);
   if (s === "#reply") return e.env.reply;
@@ -73348,7 +73930,7 @@ var cam = {
     this.held = true;
     const { backdrop, sprites } = e.env.layers;
     const reply = e.env.reply;
-    const wrap = $6("#inputWrap");
+    const wrap = $7("#inputWrap");
     this.layer = new Map([backdrop, sprites].map((el) => [el, claimStyles(el, CAM_PROPS)]));
     this.ui = [reply, wrap].map((el) => claimStyles(el, ["opacity"]));
     this.saved = [...this.layer.values(), ...this.ui];
@@ -73378,15 +73960,15 @@ var cam = {
     const r = img2.getBoundingClientRect();
     const o = e.env.root.getBoundingClientRect();
     sprites.style.transform = now;
-    if (r.width > 0 && r.height > 0) this.base = { x: r.left - o.left + S8.face.x * r.width, y: r.top - o.top + S8.face.y * r.height };
+    if (r.width > 0 && r.height > 0) this.base = { x: r.left - o.left + S9.face.x * r.width, y: r.top - o.top + S9.face.y * r.height };
   },
   /** One frame of the camera: the world's move, its motion blur, the zoom `k` to her face, the backdrop's blur and dim, the UI stepping back. */
   draw(world, hb, k) {
     if (!E6) return;
     if (!this.held) this.hold();
     const e = E6;
-    const W = innerWidth7, H = innerHeight7;
-    const O = [W * 0.5, H * 0.436];
+    const W2 = innerWidth7, H = innerHeight7;
+    const O = [W2 * 0.5, H * 0.436];
     const about2 = (extra) => `translate(${O[0].toFixed(1)}px, ${O[1].toFixed(1)}px) ${world}${extra} translate(${(-O[0]).toFixed(1)}px, ${(-O[1]).toFixed(1)}px)`;
     const blur = !e.env.readable && hb > 0.3;
     const hblurAt = (suffix, scale) => {
@@ -73403,8 +73985,8 @@ var cam = {
     let sc = 1;
     const img2 = e.env.spriteOf(e.unitId);
     if (img2 && this.base) {
-      const p0 = this.base, p1 = [W * 0.5, H * 0.42];
-      sc = Math.pow(S8.zoom, k);
+      const p0 = this.base, p1 = [W2 * 0.5, H * 0.42];
+      sc = Math.pow(S9.zoom, k);
       const px = lerp4(p0.x, p1[0], k), py = lerp4(p0.y, p1[1], k);
       camera = ` translate(${(px - sc * p0.x).toFixed(1)}px, ${(py - sc * p0.y).toFixed(1)}px) scale(${sc.toFixed(4)})`;
     }
@@ -73504,7 +74086,7 @@ function chain3(node, { pan = 0, lp = 0, hp = 0, dest = A6.worldLP }) {
   }
   n.connect(dest);
 }
-function play3(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at: at2 = 0, offset = 0, dur } = {}) {
+function play4(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at: at2 = 0, offset = 0, dur } = {}) {
   if (!A6.ctx || !A6.buf[id]) return null;
   const ctx2 = A6.ctx, t = ctx2.currentTime + Math.max(0, at2);
   const src = ctx2.createBufferSource();
@@ -73565,22 +74147,22 @@ var SFX5 = {
   },
   /* her clothes: her hand going up, a feint's twitch (panned to her hand's side) */
   cloth: (pan, g = 0.35, rate = 1) => {
-    if (!play3(pick8(["cloth1", "cloth2", "cloth3", "cloth4"]), { g, pan, rate, lp: 6e3 })) noise7({ dur: 0.3, f: 1100, f2: 1700, q: 0.7, gain: g * 0.25, attack: 0.05, pan });
+    if (!play4(pick8(["cloth1", "cloth2", "cloth3", "cloth4"]), { g, pan, rate, lp: 6e3 })) noise7({ dur: 0.3, f: 1100, f2: 1700, q: 0.7, gain: g * 0.25, attack: 0.05, pan });
   },
   /* the swish of her hand: timed so that it ends on the impact */
   swish: (atS, pan) => {
-    if (S8.swishS !== "synth" && A6.buf[S8.swishS]) {
-      const rate = 0.72, d = A6.buf[S8.swishS].duration / rate;
-      play3(S8.swishS, { g: 0.5, pan, rate, at: atS - d * 0.85, hp: 300 });
+    if (S9.swishS !== "synth" && A6.buf[S9.swishS]) {
+      const rate = 0.72, d = A6.buf[S9.swishS].duration / rate;
+      play4(S9.swishS, { g: 0.5, pan, rate, at: atS - d * 0.85, hp: 300 });
     } else noise7({ at: atS - 0.16, dur: 0.17, f: 900, f2: 3200, q: 0.8, gain: 0.16, attack: 0.12, pan });
   },
   /* the slap: the recording on the body bus, panned to the cheek; a glancing one is duller and quieter */
   slap: (pan, glancing) => {
     const g = glancing ? 0.5 : 1;
-    if (!play3("slap", { g: 0.95 * S8.slapLvl * g, pan: pan * 0.55, lp: glancing ? 2200 : 0, dest: A6.body })) {
+    if (!play4("slap", { g: 0.95 * S9.slapLvl * g, pan: pan * 0.55, lp: glancing ? 2200 : 0, dest: A6.body })) {
       noise7({ dur: 0.09, type: "highpass", f: 1400, gain: 0.5 * g, attack: 2e-3, dest: A6.body, pan: pan * 0.55 });
     }
-    if (S8.thump) thump4(0, glancing ? 0.25 : 0.55, 70);
+    if (S9.thump) thump4(0, glancing ? 0.25 : 0.55, 70);
   },
   /* the ringing in the ears: two close sines that beat, a slow fade; the world dulls and comes back */
   ring: (sec, k = 1) => {
@@ -73605,17 +74187,17 @@ var SFX5 = {
   },
   /* the commander's breath (the recording of saturation: a nose inhale and an exhale): a sharp intake on tensing, an exhale after */
   intake: () => {
-    if (!play3("breath", { g: 0.24, rate: 1.6, offset: 0.14, dur: 0.42, lp: 3200, dest: A6.body })) noise7({ dur: 0.22, f: 900, f2: 2200, q: 0.9, gain: 0.08, attack: 0.03, dest: A6.body });
+    if (!play4("breath", { g: 0.24, rate: 1.6, offset: 0.14, dur: 0.42, lp: 3200, dest: A6.body })) noise7({ dur: 0.22, f: 900, f2: 2200, q: 0.9, gain: 0.08, attack: 0.03, dest: A6.body });
   },
   exhale: (at2, g = 0.16) => {
-    play3("breath", { g, rate: 1.1, offset: 2.17, dur: 0.95, lp: 2600, dest: A6.body, at: at2 });
+    play4("breath", { g, rate: 1.1, offset: 2.17, dur: 0.95, lp: 2600, dest: A6.body, at: at2 });
   },
   heart: () => {
     thump4(0, 0.5, 52);
     thump4(0.26, 0.32, 46);
   }
 };
-var G7 = { slap: null, last: null, back: null, starting: false, k: 0, cheekA: 0, cheekDir: 1, cheekT0: 0, cheekScene: "", mouse: [], typingFocus: false, next: null, started: /* @__PURE__ */ new Set(), epoch: 0, rkey: "", rn: 0 };
+var G8 = { slap: null, last: null, back: null, starting: false, k: 0, cheekA: 0, cheekDir: 1, cheekT0: 0, cheekScene: "", mouse: [], typingFocus: false, next: null, started: /* @__PURE__ */ new Set(), epoch: 0, rkey: "", rn: 0 };
 var LINES4 = {};
 function linesFor(reg, style, id) {
   const one5 = (kind) => {
@@ -73633,36 +74215,36 @@ function linesFor(reg, style, id) {
   };
 }
 function tensionAt(t) {
-  const T5 = S8.tension;
+  const T5 = S9.tension;
   if (t < 0) return 0;
   if (t < T5.rise) return easeOut4(t / T5.rise);
   if (t < T5.rise + T5.peak) return 1;
   return clamp44(1 - (t - T5.rise - T5.peak) / T5.fall, 0, 1);
 }
 async function startSlap2(opts) {
-  if (G7.slap || G7.starting) return;
-  G7.starting = true;
-  const epoch = G7.epoch;
-  G7.started.add(opts.id);
-  G7.rkey = opts.id;
-  G7.rn = 0;
+  if (G8.slap || G8.starting) return;
+  G8.starting = true;
+  const epoch = G8.epoch;
+  G8.started.add(opts.id);
+  G8.rkey = opts.id;
+  G8.rn = 0;
   requestAnimationFrame7(frame6);
-  const faceBefore = beforeLabel(S8.style, opts.unannounced ?? S8.unann);
+  const faceBefore = beforeLabel(S9.style, opts.unannounced ?? S9.unann);
   await preload(faceBefore);
-  if (G7.epoch !== epoch) return;
-  G7.starting = false;
-  if (G7.slap) return;
+  if (G8.epoch !== epoch) return;
+  G8.starting = false;
+  if (G8.slap) return;
   audioInit6();
   const id = opts.id;
-  const style = S8.style;
+  const style = S9.style;
   const swing = opts.windowMs;
-  const unann = opts.unannounced ?? S8.unann;
+  const unann = opts.unannounced ?? S9.unann;
   let feints = opts.feints;
   if (unann) feints = 0;
   const dir = slapSide(id);
   const lead = unann ? SNAP : opts.again ? AGAIN_LEAD : LEAD;
   const swingAt = lead + feints * FEINT;
-  const t0 = performance7.now();
+  const t0 = performance8.now();
   const s = {
     id,
     style,
@@ -73687,58 +74269,58 @@ async function startSlap2(opts) {
     doneAt: null,
     said: false,
     feintSaid: false,
-    k0: G7.k ?? 0,
+    k0: G8.k ?? 0,
     onResult: opts.onResult
   };
-  G7.slap = s;
-  G7.last = s;
-  G7.back = null;
+  G8.slap = s;
+  G8.last = s;
+  G8.back = null;
   const active = document.activeElement;
-  if (!opts.again) G7.typingFocus = active === $6("#cmd");
+  if (!opts.again) G8.typingFocus = active === $7("#cmd");
   if (active && active !== document.body) active.blur();
   requestAnimationFrame7(frame6);
-  if (S8.reduced) {
+  if (S9.reduced) {
     showFace(faceBefore);
-    land(s, performance7.now());
+    land(s, performance8.now());
     return;
   }
   SFX5.heart();
   if (!unann) SFX5.cloth(-dir * 0.7, 0.4);
   SFX5.swish(s.impactAt / 1e3, -dir * 0.6);
   for (let i = 0; i < feints; i++) setTimeout7(() => {
-    if (G7.slap === s) SFX5.cloth(-dir * 0.7, 0.5, 1.25);
+    if (G8.slap === s) SFX5.cloth(-dir * 0.7, 0.5, 1.25);
   }, lead + i * FEINT);
   const before6 = LINES4[style].before;
   if (before6.length && !unann && !opts.again) setTimeout7(() => {
-    if (G7.slap === s && !s.result) say7(pick8(before6));
+    if (G8.slap === s && !s.result) say8(pick8(before6));
   }, SNAP + 60);
   if (opts.again && LINES4[style].again) setTimeout7(() => {
-    if (G7.slap === s && !s.result) say7(pick8(LINES4[style].again));
+    if (G8.slap === s && !s.result) say8(pick8(LINES4[style].again));
   }, 80);
 }
 function press3(source) {
-  const s = G7.slap;
+  const s = G8.slap;
   if (!s || s.result) return;
   s.presses += 1;
   if (s.pressAt !== null) return;
-  s.pressAt = performance7.now() - s.t0;
+  s.pressAt = performance8.now() - s.t0;
   SFX5.intake();
   const onFeint = s.feints > 0 && s.pressAt >= s.lead && s.pressAt < s.swingAt;
   if (onFeint && LINES4[s.style].feint) setTimeout7(() => {
-    if (G7.slap === s && !s.result) say7(pick8(LINES4[s.style].feint));
+    if (G8.slap === s && !s.result) say8(pick8(LINES4[s.style].feint));
   }, 120);
 }
 function onMove(e) {
-  const now = performance7.now();
-  G7.mouse.push([now, e.clientX]);
-  while (G7.mouse.length && now - G7.mouse[0][0] > 70) G7.mouse.shift();
-  const s = G7.slap;
+  const now = performance8.now();
+  G8.mouse.push([now, e.clientX]);
+  while (G8.mouse.length && now - G8.mouse[0][0] > 70) G8.mouse.shift();
+  const s = G8.slap;
   if (!s || s.result || s.turned) return;
-  if (G7.mouse.length < 2) return;
-  const [ta, xa] = G7.mouse[0], dt = (now - ta) / 1e3, dx = e.clientX - xa;
+  if (G8.mouse.length < 2) return;
+  const [ta, xa] = G8.mouse[0], dt = (now - ta) / 1e3, dx = e.clientX - xa;
   if (dt <= 0) return;
   const v = dx / dt;
-  if (Math.abs(v) >= S8.flick && Math.abs(dx) >= innerWidth7 * 0.06) {
+  if (Math.abs(v) >= S9.flick && Math.abs(dx) >= innerWidth7 * 0.06) {
     s.turned = Math.sign(dx);
     s.turnAt = now - s.t0;
     SFX5.cloth(0, 0.25, 1.4);
@@ -73747,18 +74329,18 @@ function onMove(e) {
 function land(s, now) {
   const t = now - s.t0;
   s.tensionAtImpact = s.pressAt === null ? 0 : tensionAt(t - s.pressAt);
-  s.result = s.turned ? "flinched" : s.tensionAtImpact >= S8.tension.thr ? "braced" : "none";
+  s.result = s.turned ? "flinched" : s.tensionAtImpact >= S9.tension.thr ? "braced" : "none";
   s.landedAt = t;
   s.onResult(s.result);
   const glancing = s.result === "flinched";
   const k = s.result === "braced" ? 0.65 : glancing ? 0.45 : 1;
   s.k = k;
   SFX5.slap(-s.dir, glancing);
-  SFX5.ring(S8.ring * (s.result === "braced" ? 0.55 : glancing ? 0.4 : 1), k);
+  SFX5.ring(S9.ring * (s.result === "braced" ? 0.55 : glancing ? 0.4 : 1), k);
   if (s.result === "braced") SFX5.exhale(0.45, 0.15);
-  G7.cheekA = Math.min(0.9, G7.cheekA * 0.6 + 0.8 * k);
-  G7.cheekDir = s.dir;
-  G7.cheekT0 = now;
+  G8.cheekA = Math.min(0.9, G8.cheekA * 0.6 + 0.8 * k);
+  G8.cheekDir = s.dir;
+  G8.cheekT0 = now;
   flash(k);
   scatter3(k);
   const pool = LINES4[s.style][s.result] ?? [];
@@ -73766,32 +74348,32 @@ function land(s, now) {
   void preload(faceAfter);
   setTimeout7(() => {
     showFace(faceAfter);
-    if (pool.length) say7(pick8(pool));
+    if (pool.length) say8(pick8(pool));
   }, s.style === "cold" ? 0 : 380);
   const cruelAgain = s.style === "cruel" && s.result === "flinched" && !s.again;
   const hold = cruelAgain ? 700 : s.style === "cold" ? 900 : 1500;
   s.doneAt = t + hold;
   setTimeout7(() => {
-    if (G7.slap !== s) return;
-    G7.slap = null;
-    G7.back = S8.reduced ? null : { t0: performance7.now(), from: 1 };
+    if (G8.slap !== s) return;
+    G8.slap = null;
+    G8.back = S9.reduced ? null : { t0: performance8.now(), from: 1 };
     noteFaceLeft();
-    if (cruelAgain || G7.next) setTimeout7(() => startNext(), 120);
-    else if (G7.typingFocus) $6("#cmd").focus();
-  }, S8.reduced ? 600 : hold);
+    if (cruelAgain || G8.next) setTimeout7(() => startNext(), 120);
+    else if (G8.typingFocus) $7("#cmd").focus();
+  }, S9.reduced ? 600 : hold);
 }
 function startNext() {
-  const next = G7.next;
-  G7.next = null;
-  if (next && !G7.started.has(next.id)) {
+  const next = G8.next;
+  G8.next = null;
+  if (next && !G8.started.has(next.id)) {
     LINES4 = LINES_NEXT;
     if (E6) E6.host.dataset.slap = next.id;
     readFaceNow();
     void startSlap2(next);
-  } else if (G7.typingFocus && E6) $6("#cmd").focus();
+  } else if (G8.typingFocus && E6) $7("#cmd").focus();
 }
 function flash(k) {
-  const el = $6("#flash");
+  const el = $7("#flash");
   el.style.transition = "none";
   el.style.background = "radial-gradient(ellipse at 50% 45%, rgba(255,250,245,1), rgba(255,90,70,1) 55%, rgba(200,20,20,1))";
   el.style.opacity = String(0.75 * k);
@@ -73802,10 +74384,10 @@ function flash(k) {
   });
 }
 function scatter3(k) {
-  const spans = [...$6("#mirror").children];
+  const spans = [...$7("#mirror").children];
   for (const sp of spans) {
     sp.style.transition = "none";
-    sp.style.transform = `translate(${rand5(-14, 14) * k}px, ${rand5(-16, 16) * k}px) rotate(${rand5(-28, 28) * k}deg)`;
+    sp.style.transform = `translate(${rand6(-14, 14) * k}px, ${rand6(-16, 16) * k}px) rotate(${rand6(-28, 28) * k}deg)`;
   }
   requestTwoFrames(() => {
     for (const sp of spans) {
@@ -73817,16 +74399,16 @@ function scatter3(k) {
 function requestTwoFrames(fn) {
   setTimeout7(fn, 32);
 }
-function say7(text3) {
+function say8(text3) {
   if (!text3) return;
   const el = document.createElement("div");
   el.className = "alius-her-line";
   el.textContent = text3;
-  const speed = S8.style === "cruel" || S8.style === "cold" ? 24 : S8.style === "ritual" ? 45 : 34;
+  const speed = S9.style === "cruel" || S9.style === "cold" ? 24 : S9.style === "ritual" ? 45 : 34;
   el.style.setProperty("--write", `${Math.max(140, text3.length * speed)}ms`);
   el.style.setProperty("--steps", String(Math.max(4, text3.length * 2)));
   el.style.fontSize = `${Math.round(44 * (E6?.her.handScale ?? 1) * 100) / 100}px`;
-  const s = G7.slap ?? G7.last;
+  const s = G8.slap ?? G8.last;
   const dir = s ? s.dir : 1;
   if (dir > 0) {
     el.style.left = `${innerWidth7 * 0.6}px`;
@@ -73834,10 +74416,10 @@ function say7(text3) {
     el.classList.add("right");
     el.style.right = `${innerWidth7 * 0.6}px`;
   }
-  const showing = [...$6("#hand").children].filter((c) => !c.classList.contains("gone")).length;
-  el.style.top = `${innerHeight7 * rand5(0.22, 0.26) + showing * 54}px`;
-  el.style.transform = `rotate(${rand5(-4, 3).toFixed(1)}deg)`;
-  $6("#hand").appendChild(el);
+  const showing = [...$7("#hand").children].filter((c) => !c.classList.contains("gone")).length;
+  el.style.top = `${innerHeight7 * rand6(0.22, 0.26) + showing * 54}px`;
+  el.style.transform = `rotate(${rand6(-4, 3).toFixed(1)}deg)`;
+  $7("#hand").appendChild(el);
   SFX5.pen();
   setTimeout7(() => {
     el.classList.add("gone");
@@ -73846,18 +74428,18 @@ function say7(text3) {
 }
 function frame6(now) {
   requestAnimationFrame7(frame6);
-  const W = innerWidth7, H = innerHeight7;
-  const s = G7.slap;
+  const W2 = innerWidth7, H = innerHeight7;
+  const s = G8.slap;
   let k = 0;
-  if (s && !S8.reduced) k = lerp4(s.k0, 1, easeOut4((now - s.t0) / SNAP));
-  else if (G7.back) {
-    const p = (now - G7.back.t0) / RETURN;
+  if (s && !S9.reduced) k = lerp4(s.k0, 1, easeOut4((now - s.t0) / SNAP));
+  else if (G8.back) {
+    const p = (now - G8.back.t0) / RETURN;
     k = 1 - easeInOut(p);
-    if (p >= 1) G7.back = null;
+    if (p >= 1) G8.back = null;
   }
-  G7.k = k;
+  G8.k = k;
   let lean = 0, sweep = -1, twitch = 0;
-  if (s && !S8.reduced) {
+  if (s && !S9.reduced) {
     const t = now - s.t0;
     if (!s.faceShown && t >= EXPR_SWITCH) {
       s.faceShown = true;
@@ -73875,73 +74457,73 @@ function frame6(now) {
     if (t >= s.swingAt && !s.result) {
       const p = (t - s.swingAt) / s.swing;
       lean = lerp4(s.unann ? 0 : -0.4, 1, easeIn2(p));
-      if (S8.sweep) sweep = clamp44(1 - (s.impactAt - t) / SWEEP, 0, 1);
+      if (S9.sweep) sweep = clamp44(1 - (s.impactAt - t) / SWEEP, 0, 1);
     }
     if (!s.result && t >= s.impactAt) land(s, now);
     if (s.result) lean = 0;
   }
   let whipX = 0, whipR = 0, hb = 0;
-  const L4 = s && s.result ? s : G7.back && G7.last && G7.last.result ? G7.last : null;
-  if (L4 && L4.landedAt !== void 0 && !S8.reduced) {
+  const L4 = s && s.result ? s : G8.back && G8.last && G8.last.result ? G8.last : null;
+  if (L4 && L4.landedAt !== void 0 && !S9.reduced) {
     const tt = now - (L4.t0 + L4.landedAt), kk = L4.k ?? 1;
     const env = tt < 45 ? easeOut4(tt / 45) : Math.exp(-(tt - 45) / 210) * Math.cos((tt - 45) / 520 * Math.PI * 2);
-    whipX = -L4.dir * 0.075 * W * env * kk;
+    whipX = -L4.dir * 0.075 * W2 * env * kk;
     whipR = -L4.dir * 5.5 * env * kk;
     hb = tt < 220 ? (1 - tt / 220) * 16 * kk : 0;
   }
   let turnX = 0;
-  const T5 = s ?? (G7.back ? G7.last : null);
+  const T5 = s ?? (G8.back ? G8.last : null);
   if (T5 && T5.turned) {
     const tt = now - (T5.t0 + T5.turnAt);
-    turnX = T5.turned * 0.11 * W * easeOut4(tt / 160) * (G7.back ? k : 1);
+    turnX = T5.turned * 0.11 * W2 * easeOut4(tt / 160) * (G8.back ? k : 1);
     hb = Math.max(hb, tt < 160 ? 10 * (1 - tt / 160) : 0);
   }
   let ten = 0, tremble = 0;
   if (s && s.pressAt !== null && !s.result) {
     const tt = now - s.t0 - s.pressAt;
     ten = tensionAt(tt);
-    if (tt > S8.tension.rise + S8.tension.peak && ten > 0.05) tremble = (1 - ten) * 1.6;
+    if (tt > S9.tension.rise + S9.tension.peak && ten > 0.05) tremble = (1 - ten) * 1.6;
   }
   const rot = -(s ? s.dir : 1) * lean * 3.4 + whipR;
-  const dx = -(s ? s.dir : 1) * lean * 0.022 * W + whipX + turnX + (tremble ? rand5(-tremble, tremble) : 0);
-  const dy = tremble ? rand5(-tremble, tremble) : 0;
-  const leanIn = s && !s.result && !S8.reduced ? 0.035 * clamp44((now - s.t0 - SNAP) / 500, 0, 1) : 0;
+  const dx = -(s ? s.dir : 1) * lean * 0.022 * W2 + whipX + turnX + (tremble ? rand6(-tremble, tremble) : 0);
+  const dy = tremble ? rand6(-tremble, tremble) : 0;
+  const leanIn = s && !s.result && !S9.reduced ? 0.035 * clamp44((now - s.t0 - SNAP) / 500, 0, 1) : 0;
   const world = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) rotate(${rot.toFixed(2)}deg) scale(${(1 + 0.02 * ten + leanIn + (turnX ? 0.03 : 0)).toFixed(4)})`;
-  $6("#hblurG").setAttribute("stdDeviation", `${hb.toFixed(1)} ${(hb * 0.12).toFixed(1)}`);
-  if ((s || G7.back) && !S8.reduced) cam.draw(world, hb, k);
+  $7("#hblurG").setAttribute("stdDeviation", `${hb.toFixed(1)} ${(hb * 0.12).toFixed(1)}`);
+  if ((s || G8.back) && !S9.reduced) cam.draw(world, hb, k);
   else cam.release();
   E6.faceImg.style.opacity = E6.hasFace ? String(k) : "0";
-  $6("#dimmer").style.opacity = String(0.25 * k);
+  $7("#dimmer").style.opacity = String(0.25 * k);
   const dir = s ? s.dir : 1;
-  const sideA = s && !s.result && S8.sideDark ? clamp44(0.42 * easeOut4((now - s.t0 - SNAP) / 300) + 0.3 * twitch + 0.4 * Math.max(0, lean), 0, 0.85) : 0;
-  $6("#side").style.background = `linear-gradient(${dir > 0 ? 90 : 270}deg, rgba(4,2,6,.95), rgba(4,2,6,.4) 28%, rgba(4,2,6,0) 55%)`;
-  $6("#side").style.opacity = sideA.toFixed(3);
-  const sw = $6("#sweep");
+  const sideA = s && !s.result && S9.sideDark ? clamp44(0.42 * easeOut4((now - s.t0 - SNAP) / 300) + 0.3 * twitch + 0.4 * Math.max(0, lean), 0, 0.85) : 0;
+  $7("#side").style.background = `linear-gradient(${dir > 0 ? 90 : 270}deg, rgba(4,2,6,.95), rgba(4,2,6,.4) 28%, rgba(4,2,6,0) 55%)`;
+  $7("#side").style.opacity = sideA.toFixed(3);
+  const sw = $7("#sweep");
   if (sweep >= 0 && s && !s.result) {
     const x0 = dir > 0 ? -0.5 : 1.04, x1 = dir > 0 ? 0.02 : 0.52;
-    sw.style.left = `${(lerp4(x0, x1, easeIn2(sweep)) * W).toFixed(1)}px`;
+    sw.style.left = `${(lerp4(x0, x1, easeIn2(sweep)) * W2).toFixed(1)}px`;
     sw.style.opacity = String(0.85 * Math.min(1, sweep * 2));
   } else sw.style.opacity = "0";
-  $6("#tight").style.opacity = String((0.5 * ten).toFixed(3));
+  $7("#tight").style.opacity = String((0.5 * ten).toFixed(3));
   if (A6.worldG) A6.worldG.gain.value = 1 - 0.55 * ten;
-  if (G7.cheekA > 0) {
-    const age2 = (now - G7.cheekT0) / 1e3;
-    const a = G7.cheekA * Math.exp(-age2 / 24) * (0.85 + 0.15 * Math.sin(age2 * 5.2));
-    const cx = G7.cheekDir > 0 ? "0%" : "100%";
-    $6("#cheek").style.background = `radial-gradient(ellipse 48% 62% at ${cx} 56%, rgba(210,24,20,.85), rgba(170,10,10,.35) 45%, rgba(120,0,0,0) 75%)`;
-    $6("#cheek").style.opacity = a.toFixed(3);
-    if (a < 4e-3) G7.cheekA = 0;
-  } else $6("#cheek").style.opacity = "0";
-  if ((s || G7.back) && !S8.reduced) {
-    $6("#reply").style.opacity = String(1 - 0.85 * k);
-    $6("#inputWrap").style.opacity = String(1 - 0.6 * k);
+  if (G8.cheekA > 0) {
+    const age2 = (now - G8.cheekT0) / 1e3;
+    const a = G8.cheekA * Math.exp(-age2 / 24) * (0.85 + 0.15 * Math.sin(age2 * 5.2));
+    const cx = G8.cheekDir > 0 ? "0%" : "100%";
+    $7("#cheek").style.background = `radial-gradient(ellipse 48% 62% at ${cx} 56%, rgba(210,24,20,.85), rgba(170,10,10,.35) 45%, rgba(120,0,0,0) 75%)`;
+    $7("#cheek").style.opacity = a.toFixed(3);
+    if (a < 4e-3) G8.cheekA = 0;
+  } else $7("#cheek").style.opacity = "0";
+  if ((s || G8.back) && !S9.reduced) {
+    $7("#reply").style.opacity = String(1 - 0.85 * k);
+    $7("#inputWrap").style.opacity = String(1 - 0.6 * k);
   }
 }
 var typing5 = (el) => el instanceof HTMLElement && (/^(input|textarea|select)$/i.test(el.tagName) || el.isContentEditable);
 function onKey(e) {
   if (typing5(e.target)) return;
   if (e.key === " ") {
-    if (!G7.slap) return;
+    if (!G8.slap) return;
     e.preventDefault();
     if (!e.repeat) press3("key");
   }
@@ -73949,7 +74531,7 @@ function onKey(e) {
 var CONTROLS2 = 'button, a, input, textarea, select, summary, label, [role="button"], [contenteditable="true"], .alius-input-line, .alius-stage-dock, .alius-chip-row, .alius-stage-dial, .alius-stage-topline, .alius-curtain';
 function onDown(e) {
   if (e.button !== 0 || e.target instanceof Element && e.target.closest(CONTROLS2)) return;
-  if (G7.slap) {
+  if (G8.slap) {
     e.preventDefault();
     press3("mouse");
   }
@@ -73957,11 +74539,11 @@ function onDown(e) {
 var holder2 = "";
 function bind6(m, unitId) {
   if (E6 && (E6.env !== m.env || E6.sceneId !== m.sceneId || E6.unitId !== unitId || !E6.box.isConnected)) stopSlap({ keepCheek: E6.sceneId === m.sceneId });
-  if (G7.cheekScene !== m.sceneId) {
-    G7.cheekA = 0;
-    G7.cheekScene = m.sceneId;
-    G7.started.clear();
-    G7.last = null;
+  if (G8.cheekScene !== m.sceneId) {
+    G8.cheekA = 0;
+    G8.cheekScene = m.sceneId;
+    G8.started.clear();
+    G8.last = null;
   }
   if (!E6) {
     E6 = { ...build7(m.env, unitId), host: m.host, sceneId: m.sceneId };
@@ -73982,8 +74564,8 @@ function bind6(m, unitId) {
   }
   E6.host = m.host;
   holder2 = unitId;
-  S8.reduced = m.still;
-  S8.face = m.env.art.face(unitId) ?? { x: 0.47, y: 0.17 };
+  S9.reduced = m.still;
+  S9.face = m.env.art.face(unitId) ?? { x: 0.47, y: 0.17 };
   measure();
 }
 function mountSlap(m) {
@@ -73991,22 +74573,22 @@ function mountSlap(m) {
   if (!slap) {
     settleSlap();
     const same = E6 !== null && E6.env === m.env && E6.sceneId === m.sceneId && E6.box.isConnected;
-    if (!same && (G7.cheekScene !== m.sceneId || G7.cheekA <= 0 || holder2 === "")) {
+    if (!same && (G8.cheekScene !== m.sceneId || G8.cheekA <= 0 || holder2 === "")) {
       if (E6) stopSlap({ keepCheek: E6.sceneId === m.sceneId });
       return;
     }
     if (!same) bind6(m, holder2);
-    if (G7.cheekA > 0) requestAnimationFrame7(frame6);
+    if (G8.cheekA > 0) requestAnimationFrame7(frame6);
     return;
   }
   bind6(m, slap.holderId);
-  S8.style = slap.style;
+  S9.style = slap.style;
   lookFaces(facesOf(slap.style));
-  if (G7.cheekA > 0) requestAnimationFrame7(frame6);
-  if (G7.started.has(slap.id)) return;
-  if (G7.slap || G7.starting) {
-    if (G7.next?.id !== slap.id) {
-      G7.next = slap;
+  if (G8.cheekA > 0) requestAnimationFrame7(frame6);
+  if (G8.started.has(slap.id)) return;
+  if (G8.slap || G8.starting) {
+    if (G8.next?.id !== slap.id) {
+      G8.next = slap;
       LINES_NEXT = { [slap.style]: linesFor(m.reg, slap.style, slap.id) };
     }
     return;
@@ -74018,14 +74600,14 @@ function mountSlap(m) {
 }
 var LINES_NEXT = {};
 function settleSlap() {
-  G7.next = null;
-  const s = G7.slap;
-  if (s && s.result === null || G7.starting) {
-    G7.started.delete(s ? s.id : G7.rkey);
-    G7.epoch++;
-    G7.starting = false;
-    G7.slap = null;
-    G7.back = null;
+  G8.next = null;
+  const s = G8.slap;
+  if (s && s.result === null || G8.starting) {
+    G8.started.delete(s ? s.id : G8.rkey);
+    G8.epoch++;
+    G8.starting = false;
+    G8.slap = null;
+    G8.back = null;
     for (const n of made) {
       try {
         n.stop();
@@ -74035,25 +74617,25 @@ function settleSlap() {
     made.clear();
     for (const t of timers3) clearTimeout(t);
     timers3.clear();
-    if (E6) $6("#hand").replaceChildren();
-    if (G7.typingFocus && E6) $6("#cmd").focus();
+    if (E6) $7("#hand").replaceChildren();
+    if (G8.typingFocus && E6) $7("#cmd").focus();
   }
 }
 function stopSlap(opts = {}) {
-  if (G7.slap && G7.slap.result === null) G7.started.delete(G7.slap.id);
-  if (G7.starting) G7.started.delete(G7.rkey);
-  G7.epoch++;
-  G7.slap = null;
-  G7.back = null;
-  G7.starting = false;
-  G7.next = null;
-  G7.k = 0;
-  G7.mouse = [];
+  if (G8.slap && G8.slap.result === null) G8.started.delete(G8.slap.id);
+  if (G8.starting) G8.started.delete(G8.rkey);
+  G8.epoch++;
+  G8.slap = null;
+  G8.back = null;
+  G8.starting = false;
+  G8.next = null;
+  G8.k = 0;
+  G8.mouse = [];
   if (!opts.keepCheek) {
-    G7.cheekA = 0;
-    G7.cheekScene = "";
-    G7.started.clear();
-    G7.last = null;
+    G8.cheekA = 0;
+    G8.cheekScene = "";
+    G8.started.clear();
+    G8.last = null;
   }
   for (const t of timers3) clearTimeout(t);
   timers3.clear();
@@ -77107,12 +77689,12 @@ var practiceLines = (s, env, v, unitId, k) => [
 ];
 var entryReading = (s, env, v, unitId) => v.punishments.filter((p) => p.entryId === s.id && p.summary !== null).map((p) => `${nameOf24(env, unitId)} has this open: ${p.summary}, ${STATUS_WORDS[p.status]}.`);
 var stepReading = (s, env, v, unitId) => v.punishments.flatMap((p) => {
-  const steps2 = p.ceremony;
-  if (steps2 === void 0 || p.summary === null) return [];
-  const step = steps2.find((c) => c.id === s.id);
+  const steps3 = p.ceremony;
+  if (steps3 === void 0 || p.summary === null) return [];
+  const step = steps3.find((c) => c.id === s.id);
   if (step === void 0) return [];
   if (step.done) return [`${nameOf24(env, unitId)}'s ceremony: done.`];
-  return steps2.find((c) => !c.done)?.id === s.id ? [`${nameOf24(env, unitId)}'s ceremony: next.`] : [];
+  return steps3.find((c) => !c.done)?.id === s.id ? [`${nameOf24(env, unitId)}'s ceremony: next.`] : [];
 });
 function implementReading(s, env) {
   const entry = env.registries.implements.get(s.id);
@@ -78167,10 +78749,10 @@ var statProvider = (stat3) => (subject, env) => {
   const state = env.state;
   const unit4 = typeof subject.data.unitId === "string" ? state.squad.find((u) => u.id === subject.data.unitId) : void 0;
   if (!unit4) return null;
-  const steps2 = unitStatSteps(state, env.registries, unit4, stat3);
+  const steps3 = unitStatSteps(state, env.registries, unit4, stat3);
   const total2 = unitStats(state, env.registries, unit4)[stat3];
   const lines = [`${unit4.displayName}: ${stat3.toUpperCase()} ${total2}`];
-  steps2.forEach((step, i) => lines.push(i === 0 ? `${step.label} ${step.total}` : `${step.label} \u2192 ${step.total}`));
+  steps3.forEach((step, i) => lines.push(i === 0 ? `${step.label} ${step.total}` : `${step.label} \u2192 ${step.total}`));
   const combat2 = combatLines(state, env, unit4, stat3);
   if (combat2.length > 0) lines.push("In combat:", ...combat2);
   return { lines };
@@ -79322,6 +79904,7 @@ function renderSysTab(host, ctx2) {
     field("Real-time contact", checkbox("physicsRealtime", settings.physicsRealtime), "physicsRealtime"),
     ...INTERACTION_TOGGLES.map((k) => field(`Contact: ${INTERACTION_LABEL[k]}`, interactionToggle(k, settings.physicsInteractions[k]), "physicsInteractions")),
     field("Marathon pace", select("marathonPace", [["short", "short"], ["normal", "normal"], ["long", "long"]], settings.marathonPace), "marathonPace"),
+    field("Long holds", select("longHoldStrain", [["light", "light"], ["normal", "normal"], ["heavy", "heavy"], ["raw", "raw (as a short hold)"]], settings.longHoldStrain), "longHoldStrain"),
     h("h3", {}, "Combat"),
     field("Easy retry (rewind a lost combat)", checkbox("easyRetry", settings.easyRetry), "easyRetry"),
     field("Generated names for affixed enemies", checkbox("enemyFlavor", settings.enemyFlavor), "enemyFlavor"),
@@ -80164,8 +80747,8 @@ function createApp(st3, deps) {
     samples.setMuffle(hooded);
     for (const id of bellsFor(events, state, registries)) sound.play(id);
   }
-  function announceUnlocks(before6, after6) {
-    for (const row4 of unlockedBetween(before6, after6, registries)) toast("info", String(row4.notice), { voice: VOICE_OF.toast });
+  function announceUnlocks(before6, after7) {
+    for (const row4 of unlockedBetween(before6, after7, registries)) toast("info", String(row4.notice), { voice: VOICE_OF.toast });
   }
   function syncBadges() {
     syncLocks();

@@ -76,6 +76,17 @@ describe('sanitizeScript', () => {
     expect(out[2]).toEqual({ at: 7, who: 'her', to: 'self', text: 'mm.', covers: true });
   });
 
+  it('24b: a known body cue, about, an aware visitor\'s feet and a decision are kept (on the lines that may carry them)', () => {
+    const out = sanitizeScript({ lines: [
+      { at: 1, who: 'her', to: 'other', text: 'change it. Bea rests.', body: 'lean', about: true, decision: { kind: 'roster', ref: 'unit_bea' }, covers: true },
+      { at: 2, who: 'other', to: 'other', text: 'mind if I…?', feet: true, covers: false },
+      { at: 3, who: 'other', to: 'other', text: 'hm.', body: 'press', covers: false }, // a body cue is hers only
+    ] }, IN)!;
+    expect(out[0]).toMatchObject({ body: 'lean', about: true, decision: { kind: 'roster', ref: 'unit_bea' } });
+    expect(out[1]).toMatchObject({ feet: true });
+    expect(out[2]).not.toHaveProperty('body');
+  });
+
   it('is null for anything without usable lines', () => {
     expect(sanitizeScript('nonsense', IN)).toBeNull();
     expect(sanitizeScript({ lines: [{ at: 1, who: 'x', to: 'self', text: 'a' }] }, IN)).toBeNull();

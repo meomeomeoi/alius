@@ -26,6 +26,7 @@ export const MOMENTS = {
   saturation: scentMoments(),
   jaw: jawMoments(),
   her_activity: activityMoments(),
+  throne: throneMoments(),
   cards: {
     state: 'one',
     clip: dialCorner,
@@ -467,6 +468,50 @@ function activityMoments() {
       moment('skip', 'legs', LOOP, () => startSkip(), () => window.__activity.startSkip(), 4600),
       moment('forgotten', 'legs', LOOP, () => { G.step = 'use'; finish('done'); }, () => { const a = window.__activity; a.G.step = 'use'; a.finish('done'); }, 6600),
       moment('view-legs-1280', 'legs', LOOP, none, none, 800, [1280, 800]),
+    ],
+  };
+}
+
+/**
+ * throne.html: the throne (Task 24b). The port is the `throne` fixture (Ann reading reports, sitting on the commander's back: `human_chair`,
+ * the weight inside her frame); the prototype is set to the same (`S.act`, `S.contact`, the throne layer on, its own props held off). Both
+ * pages run on Playwright's fake clock, paused: each moment begins at the same instant (`begin`), the clock is run past the entry, and her mug,
+ * her signing, her rising, a visitor and the thanks are made by the same hooks (the prototype's globals `throneCup`, `throneSign`,
+ * `throneRise`, `throneVisitor`, `throneThank`; the port's `window.__throne`). Her legs are the silhouettes (no art is committed).
+ */
+function throneMoments() {
+  const LOOP = 2600;
+  const start = {
+    proto: async (p) => {
+      await fakeClock(p, () => document.fonts.ready);
+      await p.addStyleTag({ content: '#panel, #debug, #summary, #start { visibility: hidden !important; }' });
+      await p.evaluate(() => { Object.assign(window.__S, { act: 'reading_reports', inner: 'weight', throne: true, contact: 'human_chair', props: false, style: 'neutral', sound: false, reduced: false }); });
+      await p.evaluate(() => { document.querySelector('#start').style.display = 'none'; begin(); HOLD.on = true; });
+    },
+    port: async (p) => {
+      await fakeClock(p, async () => { while (document.body.dataset.ready !== 'true') await new Promise((r) => setTimeout(r, 50)); });
+      await p.evaluate(() => { const a = window.__activity; a.resetClock(); a.begin(); window.__weight.HOLD.on = true; });
+    },
+  };
+  const moment = (id, proto, port, after, size) => ({
+    id, state: 'throne', query: '&style=neutral', ...(size ? { size } : {}),
+    proto: async (p) => { await start.proto(p); await p.clock.runFor(LOOP); await p.evaluate(() => { G.att = 'busy'; }); await p.evaluate(proto); await p.clock.runFor(after); },
+    port: async (p) => { await start.port(p); await p.clock.runFor(LOOP); await p.evaluate(port); await p.clock.runFor(after); },
+  });
+  const none = () => {};
+  return {
+    state: 'throne',
+    rasterSprite: true,
+    hide: ['#panel', '#debug', '#summary', '#start'],
+    settle: 60,
+    moments: [
+      moment('human-chair', none, none, 800),
+      moment('mug', () => throneCup(), () => window.__throne.throneCup(), 900),
+      moment('signing', () => throneSign(), () => window.__throne.throneSign(), 900),
+      moment('rising', () => throneRise(), () => window.__throne.throneRise(), 900),
+      moment('visitor', () => throneVisitor('business'), () => window.__throne.throneVisitor('business'), 5200),
+      moment('thanks', () => { G.step = 'with'; throneThank(); }, () => { window.__activity.G.step = 'with'; window.__throne.throneThank(); }, 900),
+      moment('human-chair-1280', none, none, 800, [1280, 800]),
     ],
   };
 }

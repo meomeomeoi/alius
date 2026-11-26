@@ -2602,6 +2602,12 @@
     "long": "It sets how many phases a marathon has and how quickly the hours pass in the fiction."
   },
   {
+    "id": "setting_long_hold_strain",
+    "term": "Long holds",
+    "short": "How hard a long hold is on your strength, when you bear her weight through her own time: light, normal, heavy or raw (as a short hold).",
+    "long": "The strength a weight drains in a short hold was tuned for well under a minute. Inside her activity (her frame, the throne) the drain is scaled: light a quarter, normal about a third, heavy six tenths, raw the full drain of a short hold. Other holds are not changed."
+  },
+  {
     "id": "moment_card",
     "term": "Moment card",
     "short": "The three ways to answer a moment, shown as buttons under the chat. Each can be examined; typing your own answer works too.",

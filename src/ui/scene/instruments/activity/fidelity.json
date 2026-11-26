@@ -249,6 +249,80 @@
     {
       "fn": "begin",
       "module": "src/ui/scene/instruments/activity/frame.ts"
+    },
+    {
+      "prototype": "throne",
+      "fn": "tLegPoints",
+      "module": "src/ui/scene/instruments/activity/throne.ts"
+    },
+    {
+      "prototype": "throne",
+      "fn": "tLegsHang",
+      "module": "src/ui/scene/instruments/activity/throne.ts"
+    },
+    {
+      "prototype": "throne",
+      "fn": "throneArt",
+      "module": "src/ui/scene/instruments/activity/throne.ts"
+    },
+    {
+      "prototype": "throne",
+      "fn": "throneLegs",
+      "module": "src/ui/scene/instruments/activity/throne.ts"
+    },
+    {
+      "prototype": "throne",
+      "fn": "wCueShift",
+      "module": "src/ui/scene/instruments/activity/throne.ts"
+    },
+    {
+      "prototype": "throne",
+      "fn": "throneBody",
+      "module": "src/ui/scene/instruments/activity/throne.ts"
+    },
+    {
+      "prototype": "throne",
+      "fn": "throneRise",
+      "module": "src/ui/scene/instruments/activity/throne.ts"
+    },
+    {
+      "prototype": "throne",
+      "fn": "throneFlinch",
+      "module": "src/ui/scene/instruments/activity/throne.ts"
+    },
+    {
+      "prototype": "throne",
+      "fn": "throneCup",
+      "module": "src/ui/scene/instruments/activity/throne.ts"
+    },
+    {
+      "prototype": "throne",
+      "fn": "throneCupEnd",
+      "module": "src/ui/scene/instruments/activity/throne.ts"
+    },
+    {
+      "prototype": "throne",
+      "fn": "throneSign",
+      "module": "src/ui/scene/instruments/activity/throne.ts"
+    },
+    {
+      "prototype": "throne",
+      "fn": "throneUpdate",
+      "module": "src/ui/scene/instruments/activity/throne.ts"
+    },
+    {
+      "prototype": "throne",
+      "fn": "throneVisitor",
+      "module": "src/ui/scene/instruments/activity/throne.ts"
+    },
+    {
+      "prototype": "throne",
+      "fn": "throneThank",
+      "module": "src/ui/scene/instruments/activity/throne.ts"
+    },
+    {
+      "fn": "herFeels",
+      "module": "src/ui/scene/instruments/activity/frame.ts"
     }
   ],
   "tables": [
@@ -266,6 +340,18 @@
       "ident": "GROUPS",
       "module": "src/ui/scene/instruments/activity/acts.ts",
       "export": "GROUPS"
+    },
+    {
+      "prototype": "throne",
+      "ident": "T_TELE",
+      "module": "src/ui/scene/instruments/activity/throne.ts",
+      "export": "T_TELE"
+    },
+    {
+      "prototype": "throne",
+      "ident": "T_LEG_FEET",
+      "module": "src/ui/scene/instruments/activity/throne.ts",
+      "export": "T_LEG_FEET"
     }
   ],
   "lines": [
@@ -330,6 +416,56 @@
         "ritual.breach": "activity.breach@ritual",
         "ritual.silent": "activity.silent@ritual"
       }
+    },
+    {
+      "prototype": "throne",
+      "ident": "T_LINES",
+      "registry": "cardVoice",
+      "cueKinds": {
+        "spill.neutral": "throne.spill",
+        "spill.affectionate": "throne.spill@affectionate",
+        "spill.ritual": "throne.spill@ritual",
+        "spill.playful": "throne.spill@playful",
+        "spill.clinical": "throne.spill@clinical",
+        "spill.cruel": "throne.spill@cruel",
+        "spill.possessive": "throne.spill@possessive",
+        "spill.cold": "throne.spill@cold",
+        "spill.regal": "throne.spill@regal",
+        "skid.neutral": "throne.skid",
+        "skid.affectionate": "throne.skid@affectionate",
+        "skid.ritual": "throne.skid@ritual",
+        "skid.playful": "throne.skid@playful",
+        "skid.clinical": "throne.skid@clinical",
+        "skid.cruel": "throne.skid@cruel",
+        "skid.possessive": "throne.skid@possessive",
+        "skid.cold": "throne.skid@cold",
+        "skid.regal": "throne.skid@regal",
+        "thank.neutral": "throne.thank",
+        "thank.affectionate": "throne.thank@affectionate",
+        "thank.playful": "throne.thank@playful",
+        "thank.clinical": "throne.thank@clinical",
+        "thank.cruel": "throne.thank@cruel",
+        "thank.possessive": "throne.thank@possessive",
+        "thank.cold": "throne.thank@cold",
+        "thanked.neutral": "throne.thanked",
+        "thanked.affectionate": "throne.thanked@affectionate",
+        "thanked.ritual": "throne.thanked@ritual",
+        "thanked.playful": "throne.thanked@playful",
+        "thanked.clinical": "throne.thanked@clinical",
+        "thanked.cruel": "throne.thanked@cruel",
+        "thanked.possessive": "throne.thanked@possessive",
+        "thanked.cold": "throne.thanked@cold",
+        "thanked.regal": "throne.thanked@regal",
+        "noThanks.neutral": "throne.noThanks",
+        "noThanks.affectionate": "throne.noThanks@affectionate",
+        "noThanks.ritual": "throne.noThanks@ritual",
+        "noThanks.playful": "throne.noThanks@playful",
+        "noThanks.clinical": "throne.noThanks@clinical",
+        "noThanks.cruel": "throne.noThanks@cruel",
+        "noThanks.possessive": "throne.noThanks@possessive",
+        "noThanks.cold": "throne.noThanks@cold",
+        "noThanks.regal": "throne.noThanks@regal"
+      }
     }
   ],
   "differences": [
@@ -380,13 +516,13 @@
     },
     {
       "fn": "runScript",
-      "reason": "The script is the model's (R26), checked by the engine; a mention goes through the engine's `mentionText` (P15 knowledge, P9d publicity); a line that would land before now is shifted into the phase as it arrives.",
-      "diff": "@@ -4,3 +4,3 @@\n if(e.who===\"other\"){\n-otherSay(e.text,kind,kind===\"room\"?(G.visitor?.name??\"\"):(G.call?.name??\"\"))\n+otherSay(e.text,G.visitor?\"room\":kind,G.visitor?(G.visitor?.name??\"\"):(G.call?.name??\"\"))\n return\n@@ -9,3 +9,3 @@\n if(e.mention){\n-text=mentionText(e.mention)\n+text=mentionTextOf(e.mention)\n if(!text)return"
+      "reason": "The script is the model's (R26), checked by the engine; a mention goes through the engine's `mentionText` (an aware visitor of the throne hears it plain, throne.html's marked edit); throne.html's marked edits: her body follows her lines (`throneBody`, her own lines 40 % by a hash), the flinch (`about`, `otherAbout` 0.7 s after), an aware visitor's boots (`feet`), a decision through the engine (`physics/decide`: the dim line only when it was applied); a line that would land before now is shifted into the phase as it arrives.",
+      "diff": "@@ -4,3 +4,4 @@\n if(e.who===\"other\"){\n-otherSay(e.text,kind,kind===\"room\"?(G.visitor?.name??\"\"):(G.call?.name??\"\"))\n+otherSay(e.text,G.visitor?\"room\":kind,G.visitor?(G.visitor?.name??\"\"):(G.call?.name??\"\"))\n+if(e.about)after(700,throneFlinch)\n return\n@@ -9,5 +10,18 @@\n if(e.mention){\n-text=mentionText(e.mention)\n+text=(G.visitor?.aware&&G.visitor)?e.mention.plain:mentionTextOf(e.mention)\n if(!text)return\n }\n+if(e.body)throneBody(e.body,e)\n+else if(throneOn()&&e.to===\"self\"&&fnv(`${S.seed}:${text}`)%10<4)throneBody([\"settle\",\"cross\",\"lean\"][fnv(text)%3],e)\n+if(e.about)throneFlinch()\n+if(e.feet&&throneOn())after(1800,()=>{\n+if(!G.visitor)return\n+G.visitorFeet=true\n+G.stats.visitorFeet=true\n+play(\"soft\",{\n+g:0.4,dest:A.body\n+})\n+sense(\"Her visitor’s boots settle on your back beside hers.\",\"body\")\n+})\n+if(e.decision)after(1200,()=>decided(e.decision))\n if(e.to===\"commander\"){"
     },
     {
       "fn": "planPeaks",
-      "reason": "The call and the visitor of an activity that brings one are the script's exchange (R26: the model's lines), not the placeholders; the visitor is a real unit outside the scene.",
-      "diff": "@@ -4,11 +4,9 @@\n G.call={\n-name:OTHERS.caller,heard:false\n+name:\"Oversight\",heard:false\n }\n-runScript(exchangeScript(CALL.concat(CALL.slice(0,3)),2,[4,7]),\"call\")\n }\n-if(act.visitor){\n+if(act.visitor&&R.listener){\n G.visitor={\n-name:OTHERS.friend,heard:S.knows\n+name:R.listener.name,heard:S.knows,knows:S.knows\n }\n-runScript(exchangeScript(CARDS.concat(CARDS),3,[4,7]),\"room\")\n }"
+      "reason": "The call and the visitor of an activity that brings one are the script's exchange (R26: the model's lines), not the placeholders; the visitor is a real unit outside the scene; throne.html's marked edits: her audience's visitors, her mug, her signing and her rising on the throne (the engine plans none: the prototype's times on the xorshift), and no false alarm on the throne.",
+      "diff": "@@ -4,13 +4,21 @@\n G.call={\n-name:OTHERS.caller,heard:false\n+name:\"Oversight\",heard:false\n }\n-runScript(exchangeScript(CALL.concat(CALL.slice(0,3)),2,[4,7]),\"call\")\n }\n-if(act.visitor){\n+if(act.visitor&&R.listener){\n G.visitor={\n-name:OTHERS.friend,heard:S.knows\n+name:R.listener.name,heard:S.knows,knows:S.knows\n }\n-runScript(exchangeScript(CARDS.concat(CARDS),3,[4,7]),\"room\")\n }\n-if(i===0&&h<70)after(len*rand(0.45,0.7),falseAlarm)\n+if(act.audience&&throneOn()){\n+after(len*0.06,()=>throneVisitor(\"business\"))\n+after(len*0.5,()=>throneVisitor(S.visitorKind===\"business\"?\"aware\":S.visitorKind))\n+}\n+if(throneOn()&&S.props){\n+if(i===0)after(len*rand(0.3,0.4),()=>throneVisitor())\n+after(len*rand(0.12,0.22),throneCup)\n+after(len*rand(0.55,0.7),throneSign)\n+if(h%2===0)after(len*rand(0.75,0.85),throneRise)\n+}\n+if(i===0&&h<70&&!throneOn())after(len*rand(0.45,0.7),falseAlarm)\n if(i>=1&&!act.call&&!act.visitor&&!act.sleep&&!last)after(len*rand(0.25,0.4),h<55&&!act.music?incomingCall:visitorPeak)"
     },
     {
       "fn": "incomingCall",
@@ -400,8 +536,8 @@
     },
     {
       "fn": "visitorPeak",
-      "reason": "The visitor is a real unit outside the scene and the exchange the model's script; the prototype's `OTHERS.visitor` and `VISIT` placeholders are not shipped.",
-      "diff": "@@ -1,3 +1,3 @@\n function visitorPeak(){\n-if(G.phase!==\"loop\")return\n+if(G.phase!==\"loop\"||!R.listener)return\n const dp=V().doorPan\n@@ -18,8 +18,7 @@\n G.visitor={\n-name:OTHERS.visitor,heard:S.knows\n+name:R.listener.name,heard:S.knows,knows:S.knows\n }\n-sense(V().sight&&!S.blind?\"Ilse leans in the doorway.\":\"The door opens. Someone in the doorway: a voice you know.\",\"door\",\"base\")\n+sense(V().sight&&!S.blind?`${R.listener.name} leans in the doorway.`:\"The door opens. Someone in the doorway: a voice you know.\",\"door\",\"base\")\n })\n-runScript(exchangeScript(VISIT,6,[4,6]),\"room\")\n-after(6000+VISIT.length*8500,()=>{\n+after(6000+3*8500,()=>{\n if(!G.visitor)return"
+      "reason": "The visitor is a real unit outside the scene and the exchange the model's script; the prototype's `OTHERS.visitor` and `VISIT` placeholders are not shipped; on the throne, the throne's visitor (throne.html's marked edit).",
+      "diff": "@@ -1,3 +1,7 @@\n function visitorPeak(){\n-if(G.phase!==\"loop\")return\n+if(throneOn()){\n+throneVisitor()\n+return\n+}\n+if(G.phase!==\"loop\"||!R.listener)return\n const dp=V().doorPan\n@@ -18,8 +22,7 @@\n G.visitor={\n-name:OTHERS.visitor,heard:S.knows\n+name:R.listener.name,heard:S.knows,knows:S.knows\n }\n-sense(V().sight&&!S.blind?\"Ilse leans in the doorway.\":\"The door opens. Someone in the doorway: a voice you know.\",\"door\",\"base\")\n+sense(V().sight&&!S.blind?`${R.listener.name} leans in the doorway.`:\"The door opens. Someone in the doorway: a voice you know.\",\"door\",\"base\")\n })\n-runScript(exchangeScript(VISIT,6,[4,6]),\"room\")\n-after(6000+VISIT.length*8500,()=>{\n+after(6000+3*8500,()=>{\n if(!G.visitor)return"
     },
     {
       "fn": "visitorHeard",
@@ -415,8 +551,8 @@
     },
     {
       "fn": "updateLoop",
-      "reason": "Her attention is the engine's plan beat by beat (`plannedAttention`), the script read once it is here; the phase ends by the engine's marathon (`endPhase` from the run), not by the prototype's timer; the weight inside is the core's own update (Ruling B), and the service's (e9) is not here.",
-      "diff": "@@ -7,7 +7,13 @@\n if(G.attHold>0)G.attHold-=1500\n-else{\n-G.att=attentionDraw()\n-if(G.att===\"watching\")G.attHold=rand(1500,4500)\n+else G.att=plannedAttention()\n }\n+if(R.script===null&&R.scriptPhase>0){\n+const sc=E.env.staging.script?.(R.scriptPhase)??null\n+if(sc){\n+R.script=sc\n+runScript(sc.filter(l=>l.at*1000>=G.phaseT).map(l=>({\n+...l,at:l.at-G.phaseT/1000\n+})))\n }\n+}\n if(!G.away&&G.t>=G.nextMark){\n@@ -24,5 +30,3 @@\n }\n-if(weightOn())wUpdate(dt)\n-else updateUrges(dt)\n-if(svcOn())svUpdate(dt)\n+if(!weightOn())updateUrges(dt)\n if(G.ask&&G.t>G.ask.until){\n@@ -38,3 +42,2 @@\n baseTick()\n-if(G.phaseT>=S.phaseLen*1000)endPhase()\n }"
+      "reason": "Her attention is the engine's plan beat by beat (`plannedAttention`), the script read once it is here; the phase ends by the engine's marathon (`endPhase` from the run), not by the prototype's timer; the weight inside is the core's own update (Ruling B), and the service's (e9) is not here. On the throne `throneUpdate` runs beside the core (throne.html's marked edit).",
+      "diff": "@@ -7,7 +7,13 @@\n if(G.attHold>0)G.attHold-=1500\n-else{\n-G.att=attentionDraw()\n-if(G.att===\"watching\")G.attHold=rand(1500,4500)\n+else G.att=plannedAttention()\n }\n+if(R.script===null&&R.scriptPhase>0){\n+const sc=E.env.staging.script?.(R.scriptPhase)??null\n+if(sc){\n+R.script=sc\n+runScript(sc.filter(l=>l.at*1000>=G.phaseT).map(l=>({\n+...l,at:l.at-G.phaseT/1000\n+})))\n }\n+}\n if(!G.away&&G.t>=G.nextMark){\n@@ -24,5 +30,4 @@\n }\n-if(weightOn())wUpdate(dt)\n+if(weightOn())throneUpdate(dt)\n else updateUrges(dt)\n-if(svcOn())svUpdate(dt)\n if(G.ask&&G.t>G.ask.until){\n@@ -38,3 +43,2 @@\n baseTick()\n-if(G.phaseT>=S.phaseLen*1000)endPhase()\n }"
     },
     {
       "fn": "endPhase",
@@ -435,8 +571,8 @@
     },
     {
       "fn": "finish",
-      "reason": "The end is the engine's (its outcome, or `forgotten` at `use`); the summary card is the engine's directive (R28), so no `showDigest`; the stop word's line is `activity.stop`; the weight's failed end is the core's own (Ruling B).",
-      "diff": "@@ -1,3 +1,3 @@\n function finish(how){\n-if(G.phase===\"ending\"||G.phase===\"done\")return\n+if(G.phase===\"ending\"||G.phase===\"done\"||G.phase===\"empty\")return\n const act=ACT(),st=ST(),dp=V().doorPan\n@@ -10,7 +10,7 @@\n G.timers=[]\n+$(\"#skip\").style.display=\"none\"\n if(how===\"stop\"){\n-say(pick([\"okay. up you get.\",\"alright. stopping.\",\"enough. up.\"]),\"commander\",{\n+say(pick(st.stop.length?st.stop:[\"…\"]),\"commander\",{\n big:true\n })\n-setTimeout(showDigest,2400)\n return\n@@ -18,3 +18,2 @@\n if(how===\"woke\"){\n-setTimeout(showDigest,1600)\n return\n@@ -22,8 +21,3 @@\n if(how===\"failed\"){\n-W_SFX.rustle(0.14,0)\n sense(\"She takes her feet off your back.\",\"body\")\n-setTimeout(()=>say(W_FALL[S.style]??W_FALL.neutral,\"commander\",{\n-big:true\n-}),900)\n-setTimeout(showDigest,3800)\n return\n@@ -49,3 +43,2 @@\n }),1400)\n-setTimeout(showDigest,4400)\n return\n@@ -63,6 +56,5 @@\n sense({\n-legs:\"Her foot taps your shoulder twice. Nothing else.\",floor:\"Two taps on your back: done.\",wall:\"Two taps on your shoulder from behind: done.\",her:\"She taps the desk twice and does not look at you.\"\n+legs:\"Her foot taps your shoulder twice. Nothing else.\",floor:\"Two taps on your back: done.\",wall:\"Two taps on your shoulder from behind: done.\",her:\"She taps the desk twice and does not look at you.\",footrest:\"Two taps on your back: done.\"\n }[S.view],\"body\")\n },1300)\n-setTimeout(showDigest,4200)\n return"
+      "reason": "The end is the engine's (its outcome, or `forgotten` at `use`); the summary card is the engine's directive (R28), so no `showDigest`; the stop word's line is `activity.stop`; the weight's failed end is the core's own (Ruling B). On the throne the failed end is worded for a seat and, at `with` / `glancing`, she has the commander thank her (`throneThank`, throne.html's marked edits of `finish`).",
+      "diff": "@@ -1,3 +1,3 @@\n function finish(how){\n-if(G.phase===\"ending\"||G.phase===\"done\")return\n+if(G.phase===\"ending\"||G.phase===\"done\"||G.phase===\"empty\")return\n const act=ACT(),st=ST(),dp=V().doorPan\n@@ -10,7 +10,7 @@\n G.timers=[]\n+$(\"#skip\").style.display=\"none\"\n if(how===\"stop\"){\n-say(pick([\"okay. up you get.\",\"alright. stopping.\",\"enough. up.\"]),\"commander\",{\n+say(pick(st.stop.length?st.stop:[\"…\"]),\"commander\",{\n big:true\n })\n-setTimeout(showDigest,2400)\n return\n@@ -18,3 +18,2 @@\n if(how===\"woke\"){\n-setTimeout(showDigest,1600)\n return\n@@ -22,8 +21,3 @@\n if(how===\"failed\"){\n-W_SFX.rustle(0.14,0)\n-sense(\"She takes her feet off your back.\",\"body\")\n-setTimeout(()=>say(W_FALL[S.style]??W_FALL.neutral,\"commander\",{\n-big:true\n-}),900)\n-setTimeout(showDigest,3800)\n+sense(throneOn()&&S.contact===\"human_chair\"?\"She gets off your back.\":\"She takes her feet off your back.\",\"body\")\n return\n@@ -49,3 +43,3 @@\n }),1400)\n-setTimeout(showDigest,4400)\n+if(throneOn())setTimeout(throneThank,3400)\n return\n@@ -63,6 +57,5 @@\n sense({\n-legs:\"Her foot taps your shoulder twice. Nothing else.\",floor:\"Two taps on your back: done.\",wall:\"Two taps on your shoulder from behind: done.\",her:\"She taps the desk twice and does not look at you.\"\n+legs:\"Her foot taps your shoulder twice. Nothing else.\",floor:\"Two taps on your back: done.\",wall:\"Two taps on your shoulder from behind: done.\",her:\"She taps the desk twice and does not look at you.\",footrest:\"Two taps on your back: done.\"\n }[S.view],\"body\")\n },1300)\n-setTimeout(showDigest,4200)\n return"
     },
     {
       "fn": "getUp",
@@ -447,6 +583,11 @@
       "fn": "found",
       "reason": "The finder is a real unit outside the scene (R28: `physics/found` with her id, once the room has heard her); the prototype's `OTHERS.visitor` is a placeholder.",
       "diff": "@@ -9,5 +9,8 @@\n }),2200)\n-setTimeout(()=>otherSay(S.view===\"legs\"?\"…commander? What are you doing under there?\":\"…commander? Why are you kneeling there?\",\"room\",OTHERS.visitor),3200)\n+setTimeout(()=>otherSay(S.view===\"legs\"?\"…commander? What are you doing under there?\":\"…commander? Why are you kneeling there?\",\"room\",R.listener?.name??\"\"),3200)\n G.phase=\"ending\"\n-setTimeout(showDigest,6500)\n+if(R.listener){\n+const id=R.listener.id\n+setTimeout(()=>E?.env.staging.found?.(id),3200)\n }\n+}"
+    },
+    {
+      "fn": "size",
+      "reason": "The footrest view's own canvas (the throne's legs) is sized with the others.",
+      "diff": "@@ -1,3 +1,3 @@\n function size(){\n-for(const c of[legsC,...Object.values(lights)]){\n+for(const c of[legsC,...Object.values(lights),E.els[\"#wShadow\"]]){\n c.width=Math.ceil(innerWidth*1.12/DS)"
     },
     {
       "fn": "drawLegs",
@@ -465,8 +606,8 @@
     },
     {
       "fn": "render",
-      "reason": "Her sprite is the scene's (never moved): her lean toward the commander scales the sprites layer through a claim; the weight inside tilts and shakes the frame by `weightFrame()` (Ruling B) instead of the prototype's `wPhysics` / `wRender`; the close-up of the service (e9) is not here; the input's glow is a class on the scene's input line; the stop word's pill is the scene's.",
-      "diff": "@@ -8,16 +8,7 @@\n const hx=S.reduced?0:(G.headX??0),hy=S.reduced?0:(G.headY??0)\n-const wr=null\n-if(weightOn()&&W){\n-const err=wPhysics(now,dt)\n-wr=wRender(now,err)\n-}\n-else{\n-setStyle(\"#vial\",\"opacity\",\"0\")\n-setStyle(\"#strainV\",\"background\",\"none\")\n-}\n-$(\"#world\").style.transform=wr?`translate(${(wr.jx+(Math.random()*2-1)*G.shake*9).toFixed(1)}px, ${(wr.jy+G.shake*10).toFixed(1)}px) rotate(${wr.tilt.toFixed(2)}deg)`:`translate(${((Math.random()*2-1)*amp-hx).toFixed(1)}px, ${((Math.random()*2-1)*amp+G.shake*10-hy).toFixed(1)}px)`\n+const wr=weightOn()?weightFrame():null\n+$(\"#world\").style.transform=wr?`translate(${((Math.random()*2-1)*(wr.tremble+G.shake*9)).toFixed(1)}px, ${((Math.random()*2-1)*wr.tremble+wr.sag+G.shake*10).toFixed(1)}px) rotate(${wr.tilt.toFixed(2)}deg)`:`translate(${((Math.random()*2-1)*amp-hx).toFixed(1)}px, ${((Math.random()*2-1)*amp+G.shake*10-hy).toFixed(1)}px)`\n setStyle(\"#vignette\",\"background\",low<0.05?\"none\":`radial-gradient(ellipse 75% 70% at 50% 50%, rgba(0,0,0,0) ${(72-low*28).toFixed(0)}%, rgba(26,6,4,${(0.2+low*0.5).toFixed(2)}) 100%)`)\n const dusk=smooth(18*60+30,20*60,G.clockMin),dark=G.lightsOff?0.35:1\n-const ck=SV?SV.closeK:0\n-setStyle(\"#world\",\"filter\",`saturate(${(wr?wr.sat:1-low*0.4).toFixed(2)}) brightness(${((1-dusk*0.25)*dark*(1-ck*0.4)).toFixed(2)}) blur(${(ck*6).toFixed(1)}px)`)\n+setStyle(\"#world\",\"filter\",`saturate(${(wr?1-wr.strF*0.45:1-low*0.4).toFixed(2)}) brightness(${((1-dusk*0.25)*dark).toFixed(2)})`)\n if(view===\"her\"){\n@@ -25,6 +16,4 @@\n G.lookS=lerp(G.lookS??0,look,Math.min(1,dt/400))\n-setStyle(\"#her\",\"opacity\",G.away?\"0\":\"1\")\n-placeSprite($(\"#her\"),{\n-h:1.02+G.lookS*0.025,x:0.5,bottom:1.08+G.lookS*0.02,rx:4,rot:Math.sin(t*0.5)*0.2\n-})\n+E.env.layers.sprites.style.opacity=G.away?\"0\":\"\"\n+E.env.layers.sprites.style.transform=S.reduced?\"\":`scale(${(1+G.lookS*0.025).toFixed(4)}) rotate(${(Math.sin(t*0.5)*0.2).toFixed(2)}deg)`\n const act=ACT(),flick=0.85+0.15*Math.sin(now/130)*Math.sin(now/47)\n@@ -55,3 +44,3 @@\n sh.style.background=\"radial-gradient(ellipse 50% 50% at 50% 50%, rgba(0,0,0,.55) 0%, rgba(0,0,0,.25) 45%, rgba(0,0,0,0) 72%)\"\n-sh.style.filter=\"blur(6px)\"\n+sh.style.filter=S.readable?\"none\":\"blur(6px)\"\n sh.style.opacity=G.away?\"0\":\"1\"\n@@ -69,9 +58,4 @@\n setStyle(\"#grain\",\"opacity\",(0.06+low*0.1+(view===\"blind\"?0.1:0)).toFixed(3))\n-setStyle(\"#stopPill\",\"opacity\",live?\"1\":\"0\")\n-setStyle(\"#reply\",\"opacity\",live?\"0.35\":\"1\")\n-$(\"#inputWrap\").classList.toggle(\"ask\",!!G.ask)\n-if(S.debug&&svcOn()&&SV){\n-$(\"#debug\").textContent=`service ${SV.phase} act ${SV.act??\"-\"} want ${SV.want??\"-\"} dry ${SV.dry.toFixed(2)} dirt ${dirtLeft().toFixed(2)} close ${SV.closeK.toFixed(2)} next ${Math.round((SV.next-G.t)/1000)}s\\nher signals: ${herSignals().map((q)=>`${q.motion}→${q.meaning}`).join(\"  \")}   grain ${herGrain()>0?\"toes→heel\":\"heel→toes\"}   kiss ${SS().kiss.join(\"–\")} s   tempo ${SS().tempo}/s`\n-}\n-else if(S.debug)$(\"#debug\").textContent=`${G.phase} phase ${G.phaseIdx+1}/${S.phases}  ${clockText(G.clockMin)}  presence ${G.step} (${G.score.toFixed(2)})  att ${G.att}${G.away?\"  AWAY\":\"\"}${G.call?\"  CALL\":\"\"}${G.visitor?\"  VISITOR\":\"\"}\\nease ${G.ease.toFixed(0)}  numb ${G.numb.toFixed(2)}  cover ${coverNow().toFixed(2)}  ears ${herEars().toFixed(2)}  progress ${G.progress}/${ACT().total} ${ACT().unit}\\nnoticed ${G.stats.noticed.length}  unnoticed ${G.stats.unnoticed}  endured ${G.stats.endured}  involuntary ${G.stats.involuntary}  asked ${G.stats.asked} answered ${G.stats.answered} missed ${G.stats.missed} breaches ${G.stats.breaches}`\n+E.env.reply.style.opacity=G.phase===\"skip\"?\"0\":live?\"0.35\":\"1\"\n+E.env.input.closest(\".alius-input-line\")?.classList.toggle(\"alius-activity-ask\",!!G.ask)\n }"
+      "reason": "Her sprite is the scene's (never moved): her lean toward the commander scales the sprites layer through a claim; the weight inside tilts and shakes the frame by `weightFrame()` (Ruling B) instead of the prototype's `wPhysics` / `wRender`; the close-up of the service (e9) is not here; the input's glow is a class on the scene's input line; the stop word's pill is the scene's. On the throne her legs astride are drawn on the footrest view (`throneLegs`, throne.html's marked edit).",
+      "diff": "@@ -8,16 +8,7 @@\n const hx=S.reduced?0:(G.headX??0),hy=S.reduced?0:(G.headY??0)\n-const wr=null\n-if(weightOn()&&W){\n-const err=wPhysics(now,dt)\n-wr=wRender(now,err)\n-}\n-else{\n-setStyle(\"#vial\",\"opacity\",\"0\")\n-setStyle(\"#strainV\",\"background\",\"none\")\n-}\n-$(\"#world\").style.transform=wr?`translate(${(wr.jx+(Math.random()*2-1)*G.shake*9).toFixed(1)}px, ${(wr.jy+G.shake*10).toFixed(1)}px) rotate(${wr.tilt.toFixed(2)}deg)`:`translate(${((Math.random()*2-1)*amp-hx).toFixed(1)}px, ${((Math.random()*2-1)*amp+G.shake*10-hy).toFixed(1)}px)`\n+const wr=weightOn()?weightFrame():null\n+$(\"#world\").style.transform=wr?`translate(${((Math.random()*2-1)*(wr.tremble+G.shake*9)).toFixed(1)}px, ${((Math.random()*2-1)*wr.tremble+wr.sag+G.shake*10).toFixed(1)}px) rotate(${wr.tilt.toFixed(2)}deg)`:`translate(${((Math.random()*2-1)*amp-hx).toFixed(1)}px, ${((Math.random()*2-1)*amp+G.shake*10-hy).toFixed(1)}px)`\n setStyle(\"#vignette\",\"background\",low<0.05?\"none\":`radial-gradient(ellipse 75% 70% at 50% 50%, rgba(0,0,0,0) ${(72-low*28).toFixed(0)}%, rgba(26,6,4,${(0.2+low*0.5).toFixed(2)}) 100%)`)\n const dusk=smooth(18*60+30,20*60,G.clockMin),dark=G.lightsOff?0.35:1\n-const ck=SV?SV.closeK:0\n-setStyle(\"#world\",\"filter\",`saturate(${(wr?wr.sat:1-low*0.4).toFixed(2)}) brightness(${((1-dusk*0.25)*dark*(1-ck*0.4)).toFixed(2)}) blur(${(ck*6).toFixed(1)}px)`)\n+setStyle(\"#world\",\"filter\",`saturate(${(wr?1-wr.strF*0.45:1-low*0.4).toFixed(2)}) brightness(${((1-dusk*0.25)*dark).toFixed(2)})`)\n if(view===\"her\"){\n@@ -25,6 +16,4 @@\n G.lookS=lerp(G.lookS??0,look,Math.min(1,dt/400))\n-setStyle(\"#her\",\"opacity\",G.away?\"0\":\"1\")\n-placeSprite($(\"#her\"),{\n-h:1.02+G.lookS*0.025,x:0.5,bottom:1.08+G.lookS*0.02,rx:4,rot:Math.sin(t*0.5)*0.2\n-})\n+E.env.layers.sprites.style.opacity=G.away?\"0\":\"\"\n+E.env.layers.sprites.style.transform=S.reduced?\"\":`scale(${(1+G.lookS*0.025).toFixed(4)}) rotate(${(Math.sin(t*0.5)*0.2).toFixed(2)}deg)`\n const act=ACT(),flick=0.85+0.15*Math.sin(now/130)*Math.sin(now/47)\n@@ -55,3 +44,3 @@\n sh.style.background=\"radial-gradient(ellipse 50% 50% at 50% 50%, rgba(0,0,0,.55) 0%, rgba(0,0,0,.25) 45%, rgba(0,0,0,0) 72%)\"\n-sh.style.filter=\"blur(6px)\"\n+sh.style.filter=S.readable?\"none\":\"blur(6px)\"\n sh.style.opacity=G.away?\"0\":\"1\"\n@@ -64,2 +53,3 @@\n }\n+if(view===\"footrest\"&&throneOn())throneLegs(now)\n G.press=Math.max(0,G.press-dt/900)\n@@ -69,9 +59,4 @@\n setStyle(\"#grain\",\"opacity\",(0.06+low*0.1+(view===\"blind\"?0.1:0)).toFixed(3))\n-setStyle(\"#stopPill\",\"opacity\",live?\"1\":\"0\")\n-setStyle(\"#reply\",\"opacity\",live?\"0.35\":\"1\")\n-$(\"#inputWrap\").classList.toggle(\"ask\",!!G.ask)\n-if(S.debug&&svcOn()&&SV){\n-$(\"#debug\").textContent=`service ${SV.phase} act ${SV.act??\"-\"} want ${SV.want??\"-\"} dry ${SV.dry.toFixed(2)} dirt ${dirtLeft().toFixed(2)} close ${SV.closeK.toFixed(2)} next ${Math.round((SV.next-G.t)/1000)}s\\nher signals: ${herSignals().map((q)=>`${q.motion}→${q.meaning}`).join(\"  \")}   grain ${herGrain()>0?\"toes→heel\":\"heel→toes\"}   kiss ${SS().kiss.join(\"–\")} s   tempo ${SS().tempo}/s`\n-}\n-else if(S.debug)$(\"#debug\").textContent=`${G.phase} phase ${G.phaseIdx+1}/${S.phases}  ${clockText(G.clockMin)}  presence ${G.step} (${G.score.toFixed(2)})  att ${G.att}${G.away?\"  AWAY\":\"\"}${G.call?\"  CALL\":\"\"}${G.visitor?\"  VISITOR\":\"\"}\\nease ${G.ease.toFixed(0)}  numb ${G.numb.toFixed(2)}  cover ${coverNow().toFixed(2)}  ears ${herEars().toFixed(2)}  progress ${G.progress}/${ACT().total} ${ACT().unit}\\nnoticed ${G.stats.noticed.length}  unnoticed ${G.stats.unnoticed}  endured ${G.stats.endured}  involuntary ${G.stats.involuntary}  asked ${G.stats.asked} answered ${G.stats.answered} missed ${G.stats.missed} breaches ${G.stats.breaches}`\n+E.env.reply.style.opacity=G.phase===\"skip\"?\"0\":live?\"0.35\":\"1\"\n+E.env.input.closest(\".alius-input-line\")?.classList.toggle(\"alius-activity-ask\",!!G.ask)\n }"
     },
     {
       "fn": "frame",
@@ -477,6 +618,31 @@
       "fn": "begin",
       "reason": "The engine's run starts the frame: her presence is the engine's (`presenceOf` for the run's phase), the clock the marathon's; the panel's resets, the sample loader and the start overlay are the prototype's.",
       "diff": "@@ -1,27 +1,10 @@\n function begin(){\n-audioInit()\n-if(A.ctx.state===\"suspended\")A.ctx.resume()\n for(const k of Object.keys(LOOPS))loopOff(k)\n-if(A.ctx)A.humG.gain.setTargetAtTime(0.012,A.ctx.currentTime,0.5)\n-for(const id of[\"#hand\",\"#senses\",\"#others\"])$(id).replaceChildren()\n G=fresh()\n-setScore(baseScore())\n-W=wFresh()\n-SV=svcOn()?svFresh():null\n-if(SV&&$(\"#soleArt\").dataset.own!==\"1\")$(\"#soleArt\").src=$(\"#raisedArt\").src||ASSETS.her\n-if(svcOn())S.view=\"legs\"\n-$(\"#cracks\").replaceChildren()\n-cracks.length=0\n-HOLD.on=false\n-$(\"#summary\").style.display=\"none\"\n-$(\"#getUp\").style.display=\"none\"\n-$(\"#skip\").style.display=\"none\"\n-$(\"#skip\").classList.remove(\"on\")\n+setStep(presenceOf(E.env.state(),E.env.registries,R.run,R.run.marathon?.phase??1))\n+G.clockMin=S.start\n+G.startMin=S.start\n+G.phaseIdx=(R.run.marathon?.phase??1)-1\n G.phase=\"entry\"\n G.entryT=0\n-const entry=weightOn()?\"She points at the floor before her chair, and when you are down on all fours she settles her feet on your back and leans back.\":{\n-her:\"She points at the floor beside her chair without looking up.\",legs:\"She pushes her chair back, points under the desk, and pulls the chair in again once you are there.\",floor:\"She points at the floor by her bunk. \\\"Down. Eyes down.\\\"\",wall:\"She turns you to face the wall by the shoulder, and goes back to her chair.\"\n-}[S.view]\n-setReply(`<span class=\"act\">${entry}</span>${S.stay?\" <span class=\\\"speech\\\">“Stay.”</span>\":\"\"}`,0.5)\n-updatePresenceNote()\n }"
+    },
+    {
+      "fn": "throneArt",
+      "reason": "The screen is the frame's size (`inner()`); readable mode draws the picture with no blur (P10).",
+      "diff": "@@ -7,3 +7,3 @@\n if(!on||!L.naturalWidth)return!!on\n-const vw=innerWidth,vh=innerHeight,t=now/1000\n+const[vw,vh]=X.inner(),t=now/1000\n const view=$(\"#footrestView\"),ox=(view.clientWidth-vw)/2,oy=(view.clientHeight-vh)/2\n@@ -27,4 +27,5 @@\n el.style.opacity=op\n-el.style.filter=`blur(${(1.2+strF*0.8).toFixed(1)}px) brightness(${(0.62-strF*0.1).toFixed(2)}) saturate(.85) drop-shadow(0 0 14px rgba(226,78,52,.45))`\n+el.style.filter=S.readable?\"none\":`blur(${(1.2+strF*0.8).toFixed(1)}px) brightness(${(0.62-strF*0.1).toFixed(2)}) saturate(.85) drop-shadow(0 0 14px rgba(226,78,52,.45))`\n }\n+void pair\n place(L,-1)"
+    },
+    {
+      "fn": "throneLegs",
+      "reason": "The footrest view's own canvas (the core draws no floor, Ruling B), cleared before her legs are drawn on it (the prototype draws them over weight's floor shadow, which the core has none of).",
+      "diff": "@@ -3,2 +3,3 @@\n if(S.contact!==\"human_chair\")return\n+const wShC=X.shadow.canvas,wsctx=X.shadow.ctx\n const Wd=wShC.width,H=wShC.height\n@@ -46,2 +47,3 @@\n toctx.globalCompositeOperation=\"source-over\"\n+wsctx.clearRect(0,0,Wd,H)\n wsctx.drawImage(tOutC,0,0)"
+    },
+    {
+      "fn": "wCueShift",
+      "reason": "The core's shift carries its cost (`cost: 0`: a body cue lands its weight, the engine's plan charges the planned shifts only).",
+      "diff": "@@ -4,3 +4,3 @@\n W.shift={\n-landAt:W.clock+tele+30,teleAt:W.clock,tele,target,feint:false,dir,landed:false\n+landAt:W.clock+tele+30,teleAt:W.clock,tele,target,feint:false,dir,landed:false,cost:0\n }"
+    },
+    {
+      "fn": "throneVisitor",
+      "reason": "The visitor is a real unit outside the scene (`S.visitorName`); her exchange is the model's script (R26): the prototype's `THRONE_VISITS` texts are placeholders and are not run here; an aware visitor `knows` (a mention is plain to her).",
+      "diff": "@@ -3,3 +3,3 @@\n kind=kind??S.visitorKind\n-const dp=V().doorPan,lines=THRONE_VISITS[kind]\n+const dp=V().doorPan,name=S.visitorName??\"\"\n steps(5,-dp*0.3,dp,0.08,0.4,0.42)\n@@ -19,9 +19,8 @@\n G.visitor={\n-name:OTHERS.visitor,heard:kind!==\"unaware\",aware:kind!==\"unaware\",kind\n+name,heard:kind!==\"unaware\",aware:kind!==\"unaware\",knows:kind!==\"unaware\",kind\n }\n G.stats.visitors=(G.stats.visitors??0)+1\n-sense(kind===\"unaware\"?\"The door opens. Ilse, in the doorway: she does not look down.\":kind===\"aware\"?\"Ilse comes in and looks down at you first, then at her.\":\"Ilse comes in with a folder, all business.\",\"door\",\"base\")\n+sense(kind===\"unaware\"?`The door opens. ${name}, in the doorway: she does not look down.`:kind===\"aware\"?`${name} comes in and looks down at you first, then at her.`:`${name} comes in with a folder, all business.`,\"door\",\"base\")\n })\n-runScript(exchangeScript(lines,6,[4,6]),\"room\")\n-after(6000+lines.length*8500,()=>{\n+after(6000+3*8500,()=>{\n if(!G.visitor)return"
+    },
+    {
+      "fn": "throneThank",
+      "reason": "The end's digest is the engine's directive (R28): no `showDigest`; the answer is `throneThanked` from the scene's field.",
+      "diff": "@@ -1,6 +1,3 @@\n function throneThank(){\n-if(!throneOn()){\n-showDigest()\n-return\n-}\n+if(!throneOn())return\n say(tLine(\"thank\"),\"commander\")\n@@ -10,3 +7,3 @@\n G.stats.thankAsked=true\n-setTimeout(()=>{\n+after(9000,()=>{\n if(G.thank){\n@@ -15,5 +12,4 @@\n G.stats.thanked=false\n-setTimeout(showDigest,2600)\n }\n-},9000)\n+})\n }"
     }
   ]
 }

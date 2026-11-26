@@ -79,6 +79,8 @@ export interface StagingController {
   /** P10e-e R28: after her forgotten end the commander gets up alone (`physics/get_up`), or a visitor of the frame comes in (`physics/found`). */
   getUp(): EngineEvent[];
   found(finderId: string): EngineEvent[];
+  /** P10e-e 24b: a decision of her hour's script (`physics/decide`, through her command capability; refused without it). */
+  decide(kind: string, ref?: string): EngineEvent[];
   /** Drives the clock: ends a real-time segment on time and starts the next one when nothing is pending. */
   tick(nowMs: number): void;
   /** One of her cue lines of a kind for a beat of the running segment, or `null`. */
@@ -355,6 +357,10 @@ export function createStaging(deps: StagingDeps): StagingController {
     found(finderId) {
       const r = run();
       return active && r?.forgotten ? dispatch({ type: 'physics/found', payload: { runId: r.id, finderId } }) : [];
+    },
+    decide(kind, ref) {
+      const r = run();
+      return active && r ? dispatch({ type: 'physics/decide', payload: { runId: r.id, kind, ...(ref !== undefined ? { ref } : {}) } }) : [];
     },
     tick(nowMs) {
       if (active) advance(nowMs);

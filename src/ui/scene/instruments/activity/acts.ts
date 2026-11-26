@@ -34,6 +34,13 @@ export const ACTS: Record<string, Act> = {
       { w: 0.6, sfx: 'page', g: 0.5, prog: 3, seen: 'She flicks back a few pages to check something.', heard: 'Several pages, quickly, backwards.' },
     ],
     end: { sfx: 'book_close', seen: 'She closes the book on a finger, then lets it shut.', heard: 'The book shuts.' } },
+  holding_audience: { label: 'holding audience',
+    marks: [
+      { w: 4, sfx: 'sheet', g: 0.5, prog: 1, seen: 'She turns a page of the folder.', heard: 'Paper turned, above you.' },
+      { w: 2, sfx: 'pencil_write', g: 0.35, seen: 'She signs something.', heard: 'A pen: a quick signature.' },
+      { w: 1, sfx: 'mug', g: 0.4, seen: 'She drinks.', heard: 'A sip; the mug goes down.' },
+    ],
+    end: { sfx: 'book_place', seen: 'She closes the folder.', heard: 'A folder shut, pushed aside.' } },
   reading_reports: { label: 'reading reports',
     marks: [
       { w: 6, sfx: 'sheet', g: 0.5, prog: 1, then: 'wood', seen: 'She lays another sheet on the pile.', heard: 'Paper on paper, above and to the left.' },

@@ -40,6 +40,7 @@ import { resolveEnvOf, resolveSegment } from '../../../../engine/physics/segment
 import { effectiveHoldsUntil, leadStyle, physicsStyleOf } from '../../../../engine/physics/style';
 import type { CampaignState } from '../../../../engine/state/types';
 import { TUNING } from '../../../../engine/tuning';
+import { LONG_HOLD, sceneSettingsOf } from '../../../../engine/moments/settings';
 import { voiceLines, type VoiceKind } from '../../cards/voice';
 import { registerInstrument } from '../host';
 import { chaikin, type Pt } from '../kit/chaikin';
@@ -316,8 +317,9 @@ function planShift(opts: { tele: number; feint: boolean; cost: number }) {
   const st = ST(), c = C();
   const isFeint = opts.feint;
   const dir = Math.random() < 0.5 ? -1 : 1;
-  const target = isFeint ? G.copTarget : clamp(G.copTarget * 0.25 + dir * rand(st.mag[0], st.mag[1]) * c.shift, -1, 1);
-  const tele = opts.tele;
+  const careful = THRONE.careful(); // the throne: her own tea on the commander's back makes her careful
+  const target = isFeint ? G.copTarget : clamp(G.copTarget * 0.25 + dir * rand(st.mag[0], st.mag[1]) * c.shift * careful, -1, 1);
+  const tele = opts.tele * (careful < 1 ? 1.5 : 1);
   G.shift = { landAt: G.clock + Math.max(tele, 0) + 30, teleAt: G.clock, tele, target, feint: isFeint, dir: Math.sign(target - G.cop) || dir, landed: false, cost: opts.cost };
   if (st.announce) say(pick(L().announce.slice(0, 1).concat(target < G.cop ? L().announce.slice(1, 2) : L().announce.slice(2, 3))));
   if (tele > 0) {
@@ -847,6 +849,8 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   const k = 100 / Math.max(1, run.capacity);
   BEAT = TUNING.physics.beatMs;
   W_DRAIN = TUNING.physics.weight.drain * k; RELIEF = TUNING.physics.weight.relief * k;
+  // 24b (throne.html's marked edit of `wUpdate`): inside her frame the strength drains as a long hold's (`LONG_HOLD`, the engine's own factor); elsewhere as before
+  S.drain = run.sourceKind === 'activity' ? LONG_HOLD[sceneSettingsOf(state).longHoldStrain] : 1;
   // her face point (the sprite's sidecar), the art slot `over` and its fit (the prototype's "copy the fit")
   S.face = env.art.face(run.holderId) ?? { x: 0.5, y: 0.21 };
   const over = E!.core ? null : env.art.get(run.holderId, 'over');
@@ -1064,6 +1068,23 @@ export function weightMatches(run: PhysicsRun, _state: CampaignState, reg: Regis
 }
 
 registerInstrument({ id: 'weight', matches: weightMatches, start: (env, run) => startWeight(env, run) });
+
+/**
+ * P10e-e 24b (throne.html's marked edit of `wPlanShift`): the throne layer of her frame tells the core how careful she is (her mug on the
+ * commander's back: her shifts at 0.35 of their size, telegraphed 1.5× slower). 1 everywhere else; the frame sets it and puts it back.
+ */
+export const THRONE = { careful: (): number => 1 };
+/** 24b: the core's state the throne layer moves (the prototype's `W`, `HOLD`, `W_SFX`, `WT.tol`), for the frame's throne only. */
+export const weightCore = {
+  get G(): Glob { return G; },
+  get HOLD(): typeof HOLD { return HOLD; },
+  SFX: (): typeof SFX => SFX,
+  get tol(): number { return S.tol; },
+  set tol(v: number) { S.tol = v; },
+  weight: (): number => C().weight,
+  shift: (): number => C().shift,
+  crack: (k: number): void => crack(k),
+};
 
 /** Tests and the shots only: the prototype's state and hooks (its `window.__G`, `__S`, `__begin`, `__mouse`). */
 export const _weight = {

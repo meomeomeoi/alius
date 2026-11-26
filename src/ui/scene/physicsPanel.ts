@@ -46,6 +46,8 @@ export interface PhysicsPanelStaging {
   /** P10e-e R28: after her forgotten end, the commander gets up alone, or a visitor of the frame finds the commander. Absent = never. */
   getUp?(): EngineEvent[];
   found?(finderId: string): EngineEvent[];
+  /** P10e-e 24b: a decision of her script through her command capability (`physics/decide`). Absent = never. */
+  decide?(kind: string, ref?: string): EngineEvent[];
   /** P10e-e: how a run of the open scene ended (its `physics_outcome`), or null when none is known. Absent = never known. */
   outcome?(runId: string): { runId: string; physicsId: string; result: string; tally?: Record<string, number> } | null;
 }

@@ -45,9 +45,9 @@ const READING: BlockingChange = { person: ANN, field: 'activity', value: 'readin
 const BESIDE: BlockingChange = { person: COMMANDER, field: 'anchor', value: 'beside_her', relTo: ANN };
 
 describe('her frame starts from the blocking (R24)', () => {
-  it('the twelve activities of ACTS carry a frame, read by field', () => {
+  it('the twelve activities of ACTS carry a frame (and the throne\'s holding_audience, 24b), read by field', () => {
     const framed = [...reg.blockingActivities.values()].filter((a) => frameOf(a) !== null).map((a) => a.id).sort();
-    expect(framed).toEqual(['chatting_on_pda', 'cleaning_weapon', 'drinking', 'mending_clothes', 'music', 'on_comms', 'playing_cards', 'reading_book', 'reading_reports', 'sketching', 'sleeping', 'writing_report']);
+    expect(framed).toEqual(['chatting_on_pda', 'cleaning_weapon', 'drinking', 'holding_audience', 'mending_clothes', 'music', 'on_comms', 'playing_cards', 'reading_book', 'reading_reports', 'sketching', 'sleeping', 'writing_report']);
     expect(frameOf(reg.blockingActivities.get('reading_book'))).toMatchObject({ absorb: -0.35, hear: 0.9, light: 'lamp', unit: 'pages', total: 160, per: [6, 13], legs: 'swing' });
   });
 

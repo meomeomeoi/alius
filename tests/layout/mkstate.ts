@@ -242,4 +242,24 @@ function framing(): CampaignState {
 out.activity = framing();
 out.activityhold = framing();
 
+/**
+ * P10e-e Task 24b: the throne: Ann holding an audience, sitting on the commander's back (`human_chair`: the weight inside her frame). `throne`
+ * for the shots; `thronehold`: the stop word's pill must stay clickable and end the hold, with her mug on the commander's back.
+ */
+function throning(): CampaignState {
+  const s = campaign(reg, 4);
+  setRelation(s, ANN, { stateId: 'confidant' });
+  enable(s, 'objectification', 'worship', 'service', 'humiliation', 'restraint');
+  s.settings.physicsRealtime = true;
+  const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
+  const d = r.state;
+  setBlocking(d, { registries: reg }, { person: ANN, field: 'activity', value: 'reading_reports' }, { at: 1, source: 'engine' });
+  setBlocking(d, { registries: reg }, { person: ANN, field: 'contact', value: 'human_chair', with: COMMANDER }, { at: 1, source: 'engine' });
+  if (d.scene!.physics?.second?.physicsId !== 'weight') throw new Error('throne: no weight inside her frame');
+  d.scene!.physics.segment = { n: 1, state: 'running', plan: { beats: Array.from({ length: 20 }, () => ({ attention: 'busy' as const })) } };
+  return d;
+}
+out.throne = throning();
+out.thronehold = throning();
+
 writeFileSync(process.argv[2] ?? 'states.json', JSON.stringify(out));

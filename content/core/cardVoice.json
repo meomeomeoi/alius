@@ -5463,5 +5463,29 @@
     "lines": [
       "how ungrateful."
     ]
+  },
+  {
+    "id": "weight.slip.regal",
+    "kind": "weight.slip",
+    "style": "regal",
+    "lines": [
+      "steady."
+    ]
+  },
+  {
+    "id": "weight.heavy.regal",
+    "kind": "weight.heavy",
+    "style": "regal",
+    "lines": [
+      "I’ll lean back."
+    ]
+  },
+  {
+    "id": "weight.fall.regal",
+    "kind": "weight.fall",
+    "style": "regal",
+    "lines": [
+      "a pity. I’ll find a sturdier seat."
+    ]
   }
 ]

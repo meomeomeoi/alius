@@ -15,6 +15,7 @@ import { bypassLeash } from '../dynamic/bypass';
 import { noteLeashOnHer } from '../dynamic/compromat';
 import { requestTransfer } from '../dynamic/oversight';
 import { answerClaim } from '../dynamic/domains';
+import { decideOverHead } from '../dynamic/decide';
 import { masteryFromEvents } from '../dynamic/mastery';
 import { makeOffer, readComposition } from '../dynamic/offer';
 import { registerEnforced, registerUndone } from '../discipline/record';
@@ -401,4 +402,10 @@ registerAfterAction((draft, _ctx, events) => {
   if (x === undefined || x.open.offers.length === 0) return [];
   for (const e of events) if (e.type === 'scene_ended' || e.type === 'scene_aborted') x.open.offers = x.open.offers.filter((o) => o.sceneId !== e.sceneId);
   return [];
+});
+
+/** P10e-e 24b: `physics/decide { runId, kind, ref? }`: a decision of her hour's script, applied through her command capability (refused without it). */
+registerAction('physics/decide', (draft, payload, ctx) => {
+  if (typeof payload !== 'object' || payload === null) throw new Error('physics/decide needs a payload');
+  return decideOverHead(draft, ctx.registries, payload as Record<string, unknown>);
 });

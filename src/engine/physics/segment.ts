@@ -8,7 +8,7 @@ import type { Registries } from '../../content/types';
 import { blockingOf, contactTargetOf } from '../blocking';
 import { SEALS, type CueKind, type InteractionType, type Seal } from '../blocking/types';
 import { fnv1a } from '../hub';
-import { sceneSettingsOf } from '../moments/settings';
+import { LONG_HOLD, sceneSettingsOf } from '../moments/settings';
 import type { Rng } from '../rng';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
@@ -49,6 +49,8 @@ export interface ResolveEnv {
   scale?: number;
   /** P10e-e R27: how well she hears the commander in her frame (her activity's `frame.hear`); absent outside a frame. */
   hear?: number;
+  /** P10e-e 24b: the long hold's drain factor of a weight inside her frame (`LONG_HOLD[longHoldStrain]`); absent outside a frame. */
+  longHold?: number;
 }
 
 const P = TUNING.physics;
@@ -199,7 +201,7 @@ export function resolveEnvOf(state: CampaignState, reg: Registries, run: Physics
     // R19: her own band, of the part she presses (a contact's target; an item has none: the rest of her)
     band: scentBand(state, reg, run.holderId, run.sourceKind === 'contact' ? contactTargetOf(state.scene, reg, run.sourceId) ?? run.targetId : undefined),
     head: headCapacity(scentToleranceOf(state, reg, run.holderId)),
-    ...(run.sourceKind === 'activity' ? { hear: frameOf(reg.blockingActivities.get(run.sourceId))?.hear ?? 1 } : {}),
+    ...(run.sourceKind === 'activity' ? { hear: frameOf(reg.blockingActivities.get(run.sourceId))?.hear ?? 1, longHold: LONG_HOLD[sceneSettingsOf(state).longHoldStrain] } : {}),
   };
 }
 
@@ -333,14 +335,17 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
       }
       case 'hold': {
         const drain = P.weight.drain * (run.pressure ?? 1) * (env.steady?.has(b) ? STEADY_DRAIN : 1);
-        r.gauge -= drain;
+        // 24b: inside her frame the strength's drain is a long hold's (`LONG_HOLD[longHoldStrain]`, throne.html `S.frameDrain`): the beat's drain
+        // and its uneven share; a slip costs as before (the prototype's `wSlip` is not scaled). Outside a frame `longHold` is absent: as before.
+        const flow = drain * (env.longHold ?? 1);
+        r.gauge -= flow;
         if (at(b, 'hold').length === 0) {
           r.slips += 1;
           r.gauge -= drain;
         }
         // R16: held off level, the beat drains more: the mean extra factor of the beat (the instrument's), one a beat
         const uneven = at(b, 'uneven')[0];
-        if (uneven !== undefined) r.gauge -= drain * (uneven.amount ?? 0);
+        if (uneven !== undefined) r.gauge -= flow * (uneven.amount ?? 0);
         if (beat.shift !== undefined && !evenBefore(b)) r.gauge -= beat.shift;
         for (const g of at(b, 'shift_weight')) {
           r.gauge += P.weight.relief;

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { CALL_TYPE_IDS, type CallTypeId } from './llm/callTypes';
-import { DEFAULT_SCENE_SETTINGS, INTERACTION_TOGGLES, MARATHON_PACES, MOMENT_EXPLICIT, MOMENT_FREQUENCIES, type InteractionToggle, type MarathonPace, type MomentExplicit, type MomentFrequency } from './engine/moments/settings';
+import { DEFAULT_SCENE_SETTINGS, INTERACTION_TOGGLES, MARATHON_PACES, LONG_HOLD_STRAINS, type LongHoldStrain, MOMENT_EXPLICIT, MOMENT_FREQUENCIES, type InteractionToggle, type MarathonPace, type MomentExplicit, type MomentFrequency } from './engine/moments/settings';
 import type { StAdapter } from './st/adapter';
 
 export interface AliusSettings {
@@ -114,6 +114,8 @@ export interface AliusSettings {
   physicsInteractions: Record<InteractionToggle, boolean>;
   /** P15a: how long a marathon takes in play. Mirrored. */
   marathonPace: MarathonPace;
+  /** P10e-e 24b: SYS › Scenes › Long holds (mirrored into the campaign like `marathonPace`). */
+  longHoldStrain: LongHoldStrain;
 }
 
 export const DEFAULT_SETTINGS: AliusSettings = {
@@ -204,6 +206,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   physicsRealtime: true, // P10e-e: the instruments play in real time (the engine's mirror default stays false: a campaign that never mirrored it resolves as before)
   physicsInteractions: { ...DEFAULT_SCENE_SETTINGS.physicsInteractions },
   marathonPace: 'normal',
+  longHoldStrain: 'normal',
 };
 
 const fieldSchemas = {
@@ -268,6 +271,7 @@ const fieldSchemas = {
   physicsRealtime: z.boolean(),
   physicsInteractions: z.object(Object.fromEntries(INTERACTION_TOGGLES.map((k) => [k, z.boolean().default(true)])) as Record<InteractionToggle, z.ZodDefault<z.ZodBoolean>>),
   marathonPace: z.enum(MARATHON_PACES),
+  longHoldStrain: z.enum(LONG_HOLD_STRAINS),
 };
 const budgetSchema = z.number().int().min(1);
 

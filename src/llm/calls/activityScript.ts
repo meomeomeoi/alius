@@ -101,7 +101,7 @@ export function sanitizeScript(raw: unknown, input: Pick<ActivityScriptInput, 's
       ...(about ? { about: true as const } : {}),
       ...(l.feet === true && who === 'other' ? { feet: true as const } : {}),
       ...(isObj(l.decision) && typeof l.decision.kind === 'string' && (DECISION_KINDS as readonly string[]).includes(l.decision.kind)
-        ? { decision: { kind: l.decision.kind as DecisionKind, ...(typeof l.decision.ref === 'string' && l.decision.ref.length <= 60 ? { ref: clean(l.decision.ref) } : {}) } } : {}),
+        ? { decision: { kind: l.decision.kind as DecisionKind, ...(typeof l.decision.ref === 'string' && /^[A-Za-z0-9_.:-]{1,60}$/.test(l.decision.ref) ? { ref: l.decision.ref } : {}) } } : {}),
     };
     out.push(line);
     if (out.length >= SCRIPT_LINES_MAX) break;
