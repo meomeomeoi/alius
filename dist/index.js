@@ -43727,8 +43727,8 @@ function createOnboarding(deps) {
       const id = s?.onboarding?.guideUnitId;
       if (!s || id === void 0 || !livingNamed(s).some((u) => u.id === id)) return false;
       const room2 = whereabouts(s, reg()).find((w) => w.unitId === id)?.roomId;
-      const location = sceneLocation(s, reg(), { locationId: room2 ? String(reg().hubRooms.get(room2)?.sceneLocationId ?? "") : void 0 });
-      return deps.talkAt(id, location);
+      const location2 = sceneLocation(s, reg(), { locationId: room2 ? String(reg().hubRooms.get(room2)?.sceneLocationId ?? "") : void 0 });
+      return deps.talkAt(id, location2);
     },
     launchTutorial() {
       const s = state();
@@ -84839,6 +84839,8 @@ var FakeStAdapter = class {
   /** P10e-f: her stage folder per avatar: file name (with extension) → contents. Fill by hand to mimic files dropped there. */
   stageFiles = /* @__PURE__ */ new Map();
   stageStamp = 0;
+  /** P10e-f fix wave: the pictures `fetchAsset` answers, by URL (absent = null, as a 404). */
+  assets = /* @__PURE__ */ new Map();
   failCreateGroup = false;
   failOpenGroup = false;
   /** Replies of `generateMain`, consumed in order: a string, a `GenAnswer` (`queueAnswer`) or a hang (`hangNext`). */
@@ -85007,6 +85009,9 @@ var FakeStAdapter = class {
     const folder = this.stageFiles.get(avatar);
     if (folder !== void 0) this.dropStage(folder, baseName);
     return true;
+  }
+  async fetchAsset(url) {
+    return this.assets.get(url) ?? null;
   }
   /** ST's replace rule: every file whose name without extension is `baseName`. */
   dropStage(folder, baseName) {
@@ -85852,6 +85857,15 @@ async function saveSlot(st3, avatar, key, draft, refresh2) {
   });
   return ok;
 }
+async function manifestPictureFile(st3, url, key) {
+  const blob = await st3.fetchAsset(url).catch(() => null);
+  if (blob === null) return null;
+  const own = /\.(png|webp|jpe?g|gif|avif)(?:[?#]|$)/i.exec(url)?.[1]?.toLowerCase();
+  const ext = own ?? MIME_EXT[blob.type];
+  if (ext === void 0) return null;
+  const type = blob.type !== "" ? blob.type : `image/${ext === "jpg" ? "jpeg" : ext}`;
+  return new File([blob], `${key}.${ext}`, { type });
+}
 async function removeSlot(st3, avatar, key, refresh2) {
   const a = await st3.deleteStageFile(avatar, key).catch(() => false);
   const b = await st3.deleteStageFile(avatar, `${key}.fit`).catch(() => false);
@@ -85994,6 +86008,16 @@ function openSlotEditor(host, unitId, key, ctx2) {
   saveBtn.addEventListener("click", async () => {
     if (!dirty() || avatar === null) return;
     saveBtn.disabled = true;
+    if (draft.file === void 0 && draft.url !== null && !inFolder()) {
+      const copy = await manifestPictureFile(ctx2.st, draft.url, key);
+      if (!stillHere()) return;
+      if (copy === null) {
+        ctx2.toast("warn", `${info.label} could not be saved: the picture of art.json could not be read.`);
+        mark2();
+        return;
+      }
+      draft.file = copy;
+    }
     const ok = await saveSlot(ctx2.st, avatar, key, draft, ctx2.refresh);
     if (!stillHere()) return;
     if (ok) {
@@ -91511,6 +91535,15 @@ var RealStAdapter = class {
         console.warn(`[Alius] stage: ${folder}/${file} is not valid JSON, skipped`);
         return null;
       }
+    } catch {
+      return null;
+    }
+  }
+  async fetchAsset(url) {
+    if (/^[a-z][a-z0-9+.-]*:/i.test(url) && !url.startsWith(location.origin)) return null;
+    try {
+      const res = await fetch(url, { headers: ctx().getRequestHeaders(), cache: "no-cache" });
+      return res.ok ? await res.blob() : null;
     } catch {
       return null;
     }

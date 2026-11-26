@@ -85,6 +85,11 @@ export interface StAdapter {
   uploadStageFile(avatar: string, baseName: string, data: Blob, ext: string): Promise<boolean>;
   /** Deletes every file of her stage folder whose name without extension is `baseName`. False on any failure. */
   deleteStageFile(avatar: string, baseName: string): Promise<boolean>;
+  /**
+   * P10e-f fix wave: a picture the ST server serves (an extension asset of `art.json`, as `assetUrl` resolved it) as a Blob, so it can be
+   * copied into her stage folder. Null on a 404 or any failure. Never a host other than the ST server's.
+   */
+  fetchAsset(url: string): Promise<Blob | null>;
   /** Creates a group chat; resolves with the new group id. Rejects on failure. */
   createGroupChat(req: { name: string; members: string[] }): Promise<string>;
   /** Opens the group's current chat; resolves false if ST refused. */

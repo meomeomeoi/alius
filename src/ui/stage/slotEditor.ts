@@ -60,6 +60,20 @@ export async function saveSlot(st: StAdapter, avatar: string, key: SlotKey, draf
   return ok;
 }
 
+/**
+ * The picture of an `art.json` slot as a file for her folder (`<key>.<ext>`): fetched through its asset URL from the ST server, its type
+ * from the URL's extension, else the answer's MIME type. Null when it cannot be read or its type is not one ST lists.
+ */
+export async function manifestPictureFile(st: StAdapter, url: string, key: SlotKey): Promise<File | null> {
+  const blob = await st.fetchAsset(url).catch(() => null);
+  if (blob === null) return null;
+  const own = /\.(png|webp|jpe?g|gif|avif)(?:[?#]|$)/i.exec(url)?.[1]?.toLowerCase();
+  const ext = own ?? MIME_EXT[blob.type];
+  if (ext === undefined) return null;
+  const type = blob.type !== '' ? blob.type : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+  return new File([blob], `${key}.${ext}`, { type });
+}
+
 /** Deletes the picture (`<key>`, any type) and its sidecar (`<key>.fit`), then reloads. */
 export async function removeSlot(st: StAdapter, avatar: string, key: SlotKey, refresh?: () => Promise<void>): Promise<boolean> {
   const a = await st.deleteStageFile(avatar, key).catch(() => false);
@@ -207,6 +221,14 @@ export function openSlotEditor(host: HTMLElement, unitId: string, key: SlotKey, 
   saveBtn.addEventListener('click', async () => {
     if (!dirty() || avatar === null) return;
     saveBtn.disabled = true;
+    // the picture is the manifest's (an `art.json`-only slot): it is copied into her folder first, so the folder holds the picture and
+    // its sidecar together and wins (a sidecar alone is never read); unreadable, nothing is saved
+    if (draft.file === undefined && draft.url !== null && !inFolder()) {
+      const copy = await manifestPictureFile(ctx.st, draft.url, key);
+      if (!stillHere()) return;
+      if (copy === null) { ctx.toast('warn', `${info.label} could not be saved: the picture of art.json could not be read.`); mark(); return; }
+      draft.file = copy;
+    }
     const ok = await saveSlot(ctx.st, avatar, key, draft, ctx.refresh);
     if (!stillHere()) return;
     if (ok) {

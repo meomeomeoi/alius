@@ -52,6 +52,8 @@ export class FakeStAdapter implements StAdapter {
   /** P10e-f: her stage folder per avatar: file name (with extension) → contents. Fill by hand to mimic files dropped there. */
   stageFiles = new Map<string, Map<string, Blob>>();
   private stageStamp = 0;
+  /** P10e-f fix wave: the pictures `fetchAsset` answers, by URL (absent = null, as a 404). */
+  assets = new Map<string, Blob>();
   failCreateGroup = false;
   failOpenGroup = false;
   /** Replies of `generateMain`, consumed in order: a string, a `GenAnswer` (`queueAnswer`) or a hang (`hangNext`). */
@@ -251,6 +253,10 @@ export class FakeStAdapter implements StAdapter {
     const folder = this.stageFiles.get(avatar);
     if (folder !== undefined) this.dropStage(folder, baseName);
     return true;
+  }
+
+  async fetchAsset(url: string): Promise<Blob | null> {
+    return this.assets.get(url) ?? null;
   }
 
   /** ST's replace rule: every file whose name without extension is `baseName`. */

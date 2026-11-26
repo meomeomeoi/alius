@@ -294,6 +294,17 @@ export class RealStAdapter implements StAdapter {
     }
   }
 
+  async fetchAsset(url: string): Promise<Blob | null> {
+    // a path on the ST server (an extension asset), never another host
+    if (/^[a-z][a-z0-9+.-]*:/i.test(url) && !url.startsWith(location.origin)) return null;
+    try {
+      const res = await fetch(url, { headers: ctx().getRequestHeaders(), cache: 'no-cache' });
+      return res.ok ? await res.blob() : null;
+    } catch {
+      return null;
+    }
+  }
+
   async uploadStageFile(avatar: string, baseName: string, data: Blob, ext: string): Promise<boolean> {
     const c = ctx();
     const folder = this.stageFolderOf(c, avatar);

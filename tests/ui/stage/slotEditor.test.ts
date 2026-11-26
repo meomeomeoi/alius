@@ -8,7 +8,7 @@ import { createArtSlots, sidecarSchema } from '../../../src/ui/scene/art';
 import { loadStageFolders, type StageFolder } from '../../../src/ui/stage/load';
 import type { StageCtx } from '../../../src/ui/stage/section';
 import { closeStageSheet, openStageSheet } from '../../../src/ui/stage/sheet';
-import { openSlotEditor, removeSlot, saveSlot, type SlotDraft } from '../../../src/ui/stage/slotEditor';
+import { draftOf, openSlotEditor, removeSlot, saveSlot, type SlotDraft } from '../../../src/ui/stage/slotEditor';
 import { SLOT_KEYS, type SlotKey } from '../../../src/ui/stage/slots';
 import { campaign, loadCore } from '../../helpers/world';
 import { registerCoreProviders } from '../../../src/analysis/providers/core';
@@ -238,6 +238,57 @@ describe('a slot: save and remove', () => {
     await flush();
     expect(modal).toHaveBeenCalledTimes(1);
     expect(del.mock.calls.map((c) => c[1])).toEqual(['over', 'over.fit']);
+  });
+});
+
+describe('a slot of art.json saved on her page (the fix wave)', () => {
+  /** Her art comes from the manifest alone: `over` at `ext://content/local/art/ann/over.webp`, with a fit. */
+  async function manifestSetup() {
+    const base = await setup();
+    const { ctx, her, avatar } = base;
+    let folders = ctx.folders();
+    const manifest = { [avatar]: { over: { file: 'ann/over.webp', sidecar: { fit: { height: 1.1, x: 0.5, sink: 0 } } } } };
+    const unitKey = (id: string) => (id === her.id ? avatar : null);
+    ctx.art = () => createArtSlots(manifest, (p) => `ext://${p}`, unitKey, folders);
+    ctx.folders = () => folders;
+    ctx.refresh = base.refresh;
+    base.refresh.mockImplementation(async () => { folders = await loadStageFolders(base.st, base.s.squad.map((u) => ({ id: u.id, cardRef: u.cardRef }))); });
+    return { ...base, manifestUrl: 'ext://content/local/art/ann/over.webp' };
+  }
+
+  it('SAVE copies the manifest\'s picture into her folder first, then the sidecar: the folder wins and keeps the fit after a reload', async () => {
+    const { ctx, her, st, upload, avatar, manifestUrl } = await manifestSetup();
+    const bytes = new Blob([new Uint8Array([1, 2, 3])], { type: 'image/webp' });
+    st.assets.set(manifestUrl, bytes);
+    const fetchAsset = vi.spyOn(st, 'fetchAsset');
+    const { root, draft } = editor(ctx, her.id, 'over', draftOf(ctx, her.id, avatar, 'over'));
+    expect(draft.url).toBe(manifestUrl);
+    move(control(root, 'overX'), '0.6');
+    root.querySelector<HTMLButtonElement>('[data-action=save]')!.click();
+    await flush();
+    expect(fetchAsset).toHaveBeenCalledWith(manifestUrl);
+    expect(upload.mock.calls.map((c) => [c[1], c[3]])).toEqual([['over', 'webp'], ['over.fit', 'json']]);
+    const folder = st.stageFiles.get(avatar)!;
+    expect([...folder.keys()].sort()).toEqual(['over.fit.json', 'over.webp']);
+    const read = await new Promise<ArrayBuffer>((resolve) => { const r = new FileReader(); r.onload = () => resolve(r.result as ArrayBuffer); r.readAsArrayBuffer(folder.get('over.webp')!); });
+    expect([...new Uint8Array(read)]).toEqual([1, 2, 3]);
+    expect(folder.get('over.webp')!.type).toBe('image/webp');
+    // reloaded: her folder holds the slot, with the fit that was saved
+    const own = ctx.folders().get(avatar)!.slots.get('over')!;
+    expect(own.url).toMatch(/^\/characters\/.*\/alius\/over\.webp/);
+    expect((own.sidecar.fit as { x: number }).x).toBe(0.6);
+    expect(ctx.toast).toHaveBeenCalledWith('info', expect.stringContaining('Saved'));
+  });
+
+  it('the manifest\'s picture cannot be read: refused with a toast, nothing is uploaded', async () => {
+    const { ctx, her, upload, avatar } = await manifestSetup(); // no asset: fetchAsset answers null
+    const { root } = editor(ctx, her.id, 'over', draftOf(ctx, her.id, avatar, 'over'));
+    move(control(root, 'overX'), '0.6');
+    root.querySelector<HTMLButtonElement>('[data-action=save]')!.click();
+    await flush();
+    expect(upload).not.toHaveBeenCalled();
+    expect(ctx.toast).toHaveBeenCalledWith('warn', expect.stringContaining('could not be read'));
+    expect(root.querySelector<HTMLButtonElement>('[data-action=save]')!.disabled).toBe(false); // still unsaved
   });
 });
 
