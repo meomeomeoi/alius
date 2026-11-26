@@ -13,7 +13,7 @@ const server = await serveRoot();
 const port = server.port;
 
 const SIZES = [[1920, 1080], [1280, 800], [2560, 1440]];
-const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breathhold', 'weighthold', 'scenthold', 'jawhold'];
+const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breathhold', 'weighthold', 'scenthold', 'jawhold', 'activityhold'];
 const failures = [];
 const faceOf = new Map(); // the dial's circle for `standing` (fixture `one`), per size
 const fail = (size, fixture, what) => failures.push(`${size[0]}x${size[1]} ${fixture}: ${what}`);
@@ -243,6 +243,48 @@ for (const size of SIZES) {
         if (/opacity/.test(reply)) out.push(`the reply was not put back: ${JSON.stringify(reply)}`);
         const frame = document.querySelector('.alius-layer-frame')?.getAttribute('style') ?? '';
         if (/cursor/.test(frame)) out.push(`the frame's cursor was not put back: ${JSON.stringify(frame)}`);
+        return out;
+      });
+      for (const f of after) fail(size, fixture, f);
+    }
+    // P10e-e Task 24: her frame draws under the scene's UI (the controls between phases and GET UP in the moment layer); in the play and at
+    // the forgotten end the stop word's pill and the input stay on top and clickable, the lines stay in the frame; the pill ends the hold at
+    // once: the instrument is gone, the reply and the sprites as they were
+    if (fixture === 'activityhold') {
+      await p.waitForTimeout(2600); // the entry (2.2 s)
+      await p.evaluate(() => { const a = window.__activity; a.sense('She lays another sheet on the pile.', 'her'); a.say('who signs these.', 'self'); a.spawnUrge('itch'); });
+      await p.mouse.move(size[0] * 0.5, size[1] * 0.45);
+      await p.waitForTimeout(300);
+      const check = (when) => p.evaluate((w) => {
+        const out = [];
+        if (!document.querySelector('.alius-layer-effects > .alius-activity')) out.push(`${w}: no frame drawn`);
+        if (document.querySelector('.alius-layer-ui .alius-activity')) out.push(`${w}: the frame is drawn over the UI`);
+        const top = (el) => { if (!el) return 'missing'; const b = el.getBoundingClientRect(); const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return hit === el || el.contains(hit) ? 'ok' : `covered by ${hit?.className ?? hit?.tagName}`; };
+        const input = top(document.querySelector('.alius-input'));
+        if (input !== 'ok') out.push(`${w}: the input: ${input}`);
+        const pill = top(document.querySelector('[data-stop-word]'));
+        if (pill !== 'ok') out.push(`${w}: the stop word: ${pill}`);
+        for (const l of document.querySelectorAll('.alius-activity .sense, .alius-activity .her-line')) {
+          const r = l.getBoundingClientRect();
+          if (r.width && (r.left < 0 || r.right > innerWidth || r.top < 0 || r.bottom > innerHeight)) out.push(`${w}: "${l.textContent}" leaves the frame: ${JSON.stringify(r)}`);
+        }
+        return out;
+      }, when);
+      for (const f of await check('playing')) fail(size, fixture, f);
+      await p.evaluate(() => { const a = window.__activity; a.G.step = 'use'; a.finish('done'); });
+      await p.waitForTimeout(6600);
+      for (const f of await check('forgotten')) fail(size, fixture, f);
+      const gu = await p.evaluate(() => getComputedStyle(document.querySelector('.alius-act-getUp')).display);
+      if (gu === 'none') fail(size, fixture, 'the forgotten end shows no GET UP');
+      await p.click('[data-stop-word]');
+      await p.waitForTimeout(200);
+      const after = await p.evaluate(() => {
+        const out = [];
+        if (document.querySelector('.alius-activity') || document.querySelector('.alius-activity-ui')) out.push('the stop word did not end the hold: the frame is still drawn');
+        const reply = document.querySelector('[role="log"]')?.getAttribute('style') ?? '';
+        if (/opacity/.test(reply)) out.push(`the reply was not put back: ${JSON.stringify(reply)}`);
+        const sprites = document.querySelector('.alius-layer-sprites')?.getAttribute('style') ?? '';
+        if (/transform|opacity/.test(sprites)) out.push(`the sprites were not put back: ${JSON.stringify(sprites)}`);
         return out;
       });
       for (const f of after) fail(size, fixture, f);

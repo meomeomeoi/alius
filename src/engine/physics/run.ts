@@ -325,16 +325,19 @@ function framedContactPhysics(state: CampaignState, reg: Registries, holderId: s
 
 /**
  * P10e-e R24: whether the commander is placed by her: an anchor of the commander's relative to her, a contact between them, or the commander's
- * posture set in the fiction (the newest log entry naming it came from a reading or the engine, never the player's own chip).
+ * posture or anchor set in the fiction (the newest log entry naming it came from a reading or the engine, never the player's own chip).
  */
 export function placedBy(state: CampaignState, holderId: string): boolean {
   const scene = state.scene;
   const mine = blockingOf(scene, COMMANDER);
   if (mine.anchor?.relTo === holderId) return true;
   if (mine.contact?.with === holderId || blockingOf(scene, holderId).contact?.with === COMMANDER) return true;
-  if (mine.posture === undefined) return false;
-  const set = latestFor(scene, COMMANDER, 'posture');
-  return set !== undefined && set.source !== 'chip';
+  // the commander's posture or anchor set in the fiction (a reading or the engine: hers), never by the player's own chip
+  return (['posture', 'anchor'] as const).some((field) => {
+    if (mine[field] === undefined) return false;
+    const set = latestFor(scene, COMMANDER, field);
+    return set !== undefined && set.source !== 'chip';
+  });
 }
 
 /**

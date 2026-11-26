@@ -4519,5 +4519,949 @@
     "kind": "jaw.entry.ring_gag",
     "style": "cold",
     "lines": []
+  },
+  {
+    "id": "activity.name",
+    "kind": "activity.name",
+    "lines": [
+      "commander"
+    ]
+  },
+  {
+    "id": "activity.noticed",
+    "kind": "activity.noticed",
+    "lines": [
+      "still.",
+      "stop fidgeting."
+    ]
+  },
+  {
+    "id": "activity.correct",
+    "kind": "activity.correct",
+    "lines": [
+      "still."
+    ]
+  },
+  {
+    "id": "activity.call",
+    "kind": "activity.call",
+    "lines": [
+      "the chair."
+    ]
+  },
+  {
+    "id": "activity.end",
+    "kind": "activity.end",
+    "lines": [
+      "done. you can get up."
+    ]
+  },
+  {
+    "id": "activity.askreply",
+    "kind": "activity.askReply",
+    "lines": [
+      "good.",
+      "mm."
+    ]
+  },
+  {
+    "id": "activity.breach",
+    "kind": "activity.breach",
+    "lines": [
+      "I wasn’t talking to you."
+    ]
+  },
+  {
+    "id": "activity.silent",
+    "kind": "activity.silent",
+    "lines": [
+      "I asked you something."
+    ]
+  },
+  {
+    "id": "activity.name.affectionate",
+    "kind": "activity.name",
+    "style": "affectionate",
+    "lines": [
+      "sweetheart"
+    ]
+  },
+  {
+    "id": "activity.noticed.affectionate",
+    "kind": "activity.noticed",
+    "style": "affectionate",
+    "lines": [
+      "shh. you’re alright.",
+      "need a moment?"
+    ]
+  },
+  {
+    "id": "activity.correct.affectionate",
+    "kind": "activity.correct",
+    "style": "affectionate",
+    "lines": [
+      "easy…"
+    ]
+  },
+  {
+    "id": "activity.call.affectionate",
+    "kind": "activity.call",
+    "style": "affectionate",
+    "lines": [
+      "the cat."
+    ]
+  },
+  {
+    "id": "activity.end.affectionate",
+    "kind": "activity.end",
+    "style": "affectionate",
+    "lines": [
+      "come here. you did so well."
+    ]
+  },
+  {
+    "id": "activity.askreply.affectionate",
+    "kind": "activity.askReply",
+    "style": "affectionate",
+    "lines": [
+      "good.",
+      "thank you."
+    ]
+  },
+  {
+    "id": "activity.breach.affectionate",
+    "kind": "activity.breach",
+    "style": "affectionate",
+    "lines": [
+      "hm? oh, not you, sweetheart."
+    ]
+  },
+  {
+    "id": "activity.silent.affectionate",
+    "kind": "activity.silent",
+    "style": "affectionate",
+    "lines": [
+      "…sweetheart?"
+    ]
+  },
+  {
+    "id": "activity.name.playful",
+    "kind": "activity.name",
+    "style": "playful",
+    "lines": [
+      "pet"
+    ]
+  },
+  {
+    "id": "activity.noticed.playful",
+    "kind": "activity.noticed",
+    "style": "playful",
+    "lines": [
+      "fidgety~",
+      "I saw that~"
+    ]
+  },
+  {
+    "id": "activity.correct.playful",
+    "kind": "activity.correct",
+    "style": "playful",
+    "lines": [
+      "tsk."
+    ]
+  },
+  {
+    "id": "activity.call.playful",
+    "kind": "activity.call",
+    "style": "playful",
+    "lines": [
+      "my footrest. it wobbles."
+    ]
+  },
+  {
+    "id": "activity.end.playful",
+    "kind": "activity.end",
+    "style": "playful",
+    "lines": [
+      "fine, fine. up you get~"
+    ]
+  },
+  {
+    "id": "activity.askreply.playful",
+    "kind": "activity.askReply",
+    "style": "playful",
+    "lines": [
+      "good pet.",
+      "cute."
+    ]
+  },
+  {
+    "id": "activity.breach.playful",
+    "kind": "activity.breach",
+    "style": "playful",
+    "lines": [
+      "who said you could talk~"
+    ]
+  },
+  {
+    "id": "activity.silent.playful",
+    "kind": "activity.silent",
+    "style": "playful",
+    "lines": [
+      "ignoring me? bold."
+    ]
+  },
+  {
+    "id": "activity.name.possessive",
+    "kind": "activity.name",
+    "style": "possessive",
+    "lines": [
+      "mine"
+    ]
+  },
+  {
+    "id": "activity.noticed.possessive",
+    "kind": "activity.noticed",
+    "style": "possessive",
+    "lines": [
+      "don’t.",
+      "you stay where I put you."
+    ]
+  },
+  {
+    "id": "activity.correct.possessive",
+    "kind": "activity.correct",
+    "style": "possessive",
+    "lines": [
+      "mine. still."
+    ]
+  },
+  {
+    "id": "activity.call.possessive",
+    "kind": "activity.call",
+    "style": "possessive",
+    "lines": [
+      "what’s mine."
+    ]
+  },
+  {
+    "id": "activity.end.possessive",
+    "kind": "activity.end",
+    "style": "possessive",
+    "lines": [
+      "up. you’re mine again tomorrow."
+    ]
+  },
+  {
+    "id": "activity.askreply.possessive",
+    "kind": "activity.askReply",
+    "style": "possessive",
+    "lines": [
+      "good.",
+      "of course."
+    ]
+  },
+  {
+    "id": "activity.breach.possessive",
+    "kind": "activity.breach",
+    "style": "possessive",
+    "lines": [
+      "did I talk to you?"
+    ]
+  },
+  {
+    "id": "activity.silent.possessive",
+    "kind": "activity.silent",
+    "style": "possessive",
+    "lines": [
+      "answer me."
+    ]
+  },
+  {
+    "id": "activity.name.cold",
+    "kind": "activity.name",
+    "style": "cold",
+    "lines": [
+      "you"
+    ]
+  },
+  {
+    "id": "activity.noticed.cold",
+    "kind": "activity.noticed",
+    "style": "cold",
+    "lines": [
+      "don’t."
+    ]
+  },
+  {
+    "id": "activity.correct.cold",
+    "kind": "activity.correct",
+    "style": "cold",
+    "lines": [
+      "…"
+    ]
+  },
+  {
+    "id": "activity.call.cold",
+    "kind": "activity.call",
+    "style": "cold",
+    "lines": [
+      "the furniture."
+    ]
+  },
+  {
+    "id": "activity.end.cold",
+    "kind": "activity.end",
+    "style": "cold",
+    "lines": [
+      "go."
+    ]
+  },
+  {
+    "id": "activity.askreply.cold",
+    "kind": "activity.askReply",
+    "style": "cold",
+    "lines": [
+      "fine."
+    ]
+  },
+  {
+    "id": "activity.breach.cold",
+    "kind": "activity.breach",
+    "style": "cold",
+    "lines": [
+      "not you."
+    ]
+  },
+  {
+    "id": "activity.silent.cold",
+    "kind": "activity.silent",
+    "style": "cold",
+    "lines": [
+      "I asked."
+    ]
+  },
+  {
+    "id": "activity.name.cruel",
+    "kind": "activity.name",
+    "style": "cruel",
+    "lines": [
+      "chair"
+    ]
+  },
+  {
+    "id": "activity.noticed.cruel",
+    "kind": "activity.noticed",
+    "style": "cruel",
+    "lines": [
+      "did I say move?",
+      "pathetic."
+    ]
+  },
+  {
+    "id": "activity.correct.cruel",
+    "kind": "activity.correct",
+    "style": "cruel",
+    "lines": [
+      "still, chair."
+    ]
+  },
+  {
+    "id": "activity.call.cruel",
+    "kind": "activity.call",
+    "style": "cruel",
+    "lines": [
+      "my chair. it creaks today."
+    ]
+  },
+  {
+    "id": "activity.end.cruel",
+    "kind": "activity.end",
+    "style": "cruel",
+    "lines": [
+      "get up. we’re not done tomorrow."
+    ]
+  },
+  {
+    "id": "activity.askreply.cruel",
+    "kind": "activity.askReply",
+    "style": "cruel",
+    "lines": [
+      "adequate."
+    ]
+  },
+  {
+    "id": "activity.breach.cruel",
+    "kind": "activity.breach",
+    "style": "cruel",
+    "lines": [
+      "chairs don’t talk."
+    ]
+  },
+  {
+    "id": "activity.silent.cruel",
+    "kind": "activity.silent",
+    "style": "cruel",
+    "lines": [
+      "chair. I asked you something."
+    ]
+  },
+  {
+    "id": "activity.name.clinical",
+    "kind": "activity.name",
+    "style": "clinical",
+    "lines": [
+      "subject"
+    ]
+  },
+  {
+    "id": "activity.noticed.clinical",
+    "kind": "activity.noticed",
+    "style": "clinical",
+    "lines": [
+      "movement. noted.",
+      "again. noted."
+    ]
+  },
+  {
+    "id": "activity.correct.clinical",
+    "kind": "activity.correct",
+    "style": "clinical",
+    "lines": [
+      "posture."
+    ]
+  },
+  {
+    "id": "activity.call.clinical",
+    "kind": "activity.call",
+    "style": "clinical",
+    "lines": [
+      "the subject."
+    ]
+  },
+  {
+    "id": "activity.end.clinical",
+    "kind": "activity.end",
+    "style": "clinical",
+    "lines": [
+      "session over. noted: everything."
+    ]
+  },
+  {
+    "id": "activity.askreply.clinical",
+    "kind": "activity.askReply",
+    "style": "clinical",
+    "lines": [
+      "noted."
+    ]
+  },
+  {
+    "id": "activity.breach.clinical",
+    "kind": "activity.breach",
+    "style": "clinical",
+    "lines": [
+      "unsolicited. noted."
+    ]
+  },
+  {
+    "id": "activity.silent.clinical",
+    "kind": "activity.silent",
+    "style": "clinical",
+    "lines": [
+      "no response. noted."
+    ]
+  },
+  {
+    "id": "activity.name.ritual",
+    "kind": "activity.name",
+    "style": "ritual",
+    "lines": [
+      "kneeler"
+    ]
+  },
+  {
+    "id": "activity.noticed.ritual",
+    "kind": "activity.noticed",
+    "style": "ritual",
+    "lines": [
+      "posture."
+    ]
+  },
+  {
+    "id": "activity.correct.ritual",
+    "kind": "activity.correct",
+    "style": "ritual",
+    "lines": [
+      "posture."
+    ]
+  },
+  {
+    "id": "activity.call.ritual",
+    "kind": "activity.call",
+    "style": "ritual",
+    "lines": [
+      "the kneeler."
+    ]
+  },
+  {
+    "id": "activity.end.ritual",
+    "kind": "activity.end",
+    "style": "ritual",
+    "lines": [
+      "released."
+    ]
+  },
+  {
+    "id": "activity.askreply.ritual",
+    "kind": "activity.askReply",
+    "style": "ritual",
+    "lines": [
+      "as it should be."
+    ]
+  },
+  {
+    "id": "activity.breach.ritual",
+    "kind": "activity.breach",
+    "style": "ritual",
+    "lines": [
+      "you were not addressed."
+    ]
+  },
+  {
+    "id": "activity.silent.ritual",
+    "kind": "activity.silent",
+    "style": "ritual",
+    "lines": [
+      "you were addressed."
+    ]
+  },
+  {
+    "id": "activity.stop",
+    "kind": "activity.stop",
+    "lines": [
+      "okay. up you get.",
+      "alright. stopping.",
+      "enough. up."
+    ]
+  },
+  {
+    "id": "activity.name.regal",
+    "kind": "activity.name",
+    "style": "regal",
+    "lines": [
+      "my seat"
+    ]
+  },
+  {
+    "id": "activity.noticed.regal",
+    "kind": "activity.noticed",
+    "style": "regal",
+    "lines": [
+      "steady.",
+      "a seat does not fidget."
+    ]
+  },
+  {
+    "id": "activity.correct.regal",
+    "kind": "activity.correct",
+    "style": "regal",
+    "lines": [
+      "steady."
+    ]
+  },
+  {
+    "id": "activity.call.regal",
+    "kind": "activity.call",
+    "style": "regal",
+    "lines": [
+      "my seat."
+    ]
+  },
+  {
+    "id": "activity.end.regal",
+    "kind": "activity.end",
+    "style": "regal",
+    "lines": [
+      "you may get up."
+    ]
+  },
+  {
+    "id": "activity.askreply.regal",
+    "kind": "activity.askReply",
+    "style": "regal",
+    "lines": [
+      "acceptable.",
+      "good."
+    ]
+  },
+  {
+    "id": "activity.breach.regal",
+    "kind": "activity.breach",
+    "style": "regal",
+    "lines": [
+      "I was not speaking to you."
+    ]
+  },
+  {
+    "id": "activity.silent.regal",
+    "kind": "activity.silent",
+    "style": "regal",
+    "lines": [
+      "I asked you a question."
+    ]
+  },
+  {
+    "id": "throne.spill",
+    "kind": "throne.spill",
+    "lines": [
+      "…look what you did."
+    ]
+  },
+  {
+    "id": "throne.spill.affectionate",
+    "kind": "throne.spill",
+    "style": "affectionate",
+    "lines": [
+      "oh — it’s alright. hold still."
+    ]
+  },
+  {
+    "id": "throne.spill.ritual",
+    "kind": "throne.spill",
+    "style": "ritual",
+    "lines": [
+      "you spilled. that is noted."
+    ]
+  },
+  {
+    "id": "throne.spill.playful",
+    "kind": "throne.spill",
+    "style": "playful",
+    "lines": [
+      "oops~ that’s on you."
+    ]
+  },
+  {
+    "id": "throne.spill.clinical",
+    "kind": "throne.spill",
+    "style": "clinical",
+    "lines": [
+      "spillage. noted."
+    ]
+  },
+  {
+    "id": "throne.spill.cruel",
+    "kind": "throne.spill",
+    "style": "cruel",
+    "lines": [
+      "you’ll lick that up later."
+    ]
+  },
+  {
+    "id": "throne.spill.possessive",
+    "kind": "throne.spill",
+    "style": "possessive",
+    "lines": [
+      "careful with my things."
+    ]
+  },
+  {
+    "id": "throne.spill.cold",
+    "kind": "throne.spill",
+    "style": "cold",
+    "lines": [
+      "clumsy."
+    ]
+  },
+  {
+    "id": "throne.spill.regal",
+    "kind": "throne.spill",
+    "style": "regal",
+    "lines": [
+      "you spilled my tea."
+    ]
+  },
+  {
+    "id": "throne.skid",
+    "kind": "throne.skid",
+    "lines": [
+      "hold still. again."
+    ]
+  },
+  {
+    "id": "throne.skid.affectionate",
+    "kind": "throne.skid",
+    "style": "affectionate",
+    "lines": [
+      "still, please. once more."
+    ]
+  },
+  {
+    "id": "throne.skid.ritual",
+    "kind": "throne.skid",
+    "style": "ritual",
+    "lines": [
+      "the signature is ruined. again."
+    ]
+  },
+  {
+    "id": "throne.skid.playful",
+    "kind": "throne.skid",
+    "style": "playful",
+    "lines": [
+      "you made me scribble~"
+    ]
+  },
+  {
+    "id": "throne.skid.clinical",
+    "kind": "throne.skid",
+    "style": "clinical",
+    "lines": [
+      "the writing surface moved."
+    ]
+  },
+  {
+    "id": "throne.skid.cruel",
+    "kind": "throne.skid",
+    "style": "cruel",
+    "lines": [
+      "a desk doesn’t move."
+    ]
+  },
+  {
+    "id": "throne.skid.possessive",
+    "kind": "throne.skid",
+    "style": "possessive",
+    "lines": [
+      "still. you’re mine to write on."
+    ]
+  },
+  {
+    "id": "throne.skid.cold",
+    "kind": "throne.skid",
+    "style": "cold",
+    "lines": [
+      "again."
+    ]
+  },
+  {
+    "id": "throne.skid.regal",
+    "kind": "throne.skid",
+    "style": "regal",
+    "lines": [
+      "a desk does not move. again."
+    ]
+  },
+  {
+    "id": "throne.thank",
+    "kind": "throne.thank",
+    "lines": [
+      "say thank you for the seat."
+    ]
+  },
+  {
+    "id": "throne.thank.affectionate",
+    "kind": "throne.thank",
+    "style": "affectionate",
+    "lines": [
+      "say thank you. for letting me sit."
+    ]
+  },
+  {
+    "id": "throne.thank.ritual",
+    "kind": "throne.thank",
+    "style": "ritual",
+    "lines": [
+      "thank me for the honor."
+    ]
+  },
+  {
+    "id": "throne.thank.playful",
+    "kind": "throne.thank",
+    "style": "playful",
+    "lines": [
+      "what do we say~?"
+    ]
+  },
+  {
+    "id": "throne.thank.clinical",
+    "kind": "throne.thank",
+    "style": "clinical",
+    "lines": [
+      "acknowledge it."
+    ]
+  },
+  {
+    "id": "throne.thank.cruel",
+    "kind": "throne.thank",
+    "style": "cruel",
+    "lines": [
+      "thank me."
+    ]
+  },
+  {
+    "id": "throne.thank.possessive",
+    "kind": "throne.thank",
+    "style": "possessive",
+    "lines": [
+      "thank me for using you."
+    ]
+  },
+  {
+    "id": "throne.thank.cold",
+    "kind": "throne.thank",
+    "style": "cold",
+    "lines": [
+      "thank me."
+    ]
+  },
+  {
+    "id": "throne.thank.regal",
+    "kind": "throne.thank",
+    "style": "regal",
+    "lines": [
+      "thank me for the honor of my weight."
+    ]
+  },
+  {
+    "id": "throne.thanked",
+    "kind": "throne.thanked",
+    "lines": [
+      "good."
+    ]
+  },
+  {
+    "id": "throne.thanked.affectionate",
+    "kind": "throne.thanked",
+    "style": "affectionate",
+    "lines": [
+      "good. up you get."
+    ]
+  },
+  {
+    "id": "throne.thanked.ritual",
+    "kind": "throne.thanked",
+    "style": "ritual",
+    "lines": [
+      "accepted."
+    ]
+  },
+  {
+    "id": "throne.thanked.playful",
+    "kind": "throne.thanked",
+    "style": "playful",
+    "lines": [
+      "cute."
+    ]
+  },
+  {
+    "id": "throne.thanked.clinical",
+    "kind": "throne.thanked",
+    "style": "clinical",
+    "lines": [
+      "noted."
+    ]
+  },
+  {
+    "id": "throne.thanked.cruel",
+    "kind": "throne.thanked",
+    "style": "cruel",
+    "lines": [
+      "…fine."
+    ]
+  },
+  {
+    "id": "throne.thanked.possessive",
+    "kind": "throne.thanked",
+    "style": "possessive",
+    "lines": [
+      "good."
+    ]
+  },
+  {
+    "id": "throne.thanked.cold",
+    "kind": "throne.thanked",
+    "style": "cold",
+    "lines": [
+      "fine."
+    ]
+  },
+  {
+    "id": "throne.thanked.regal",
+    "kind": "throne.thanked",
+    "style": "regal",
+    "lines": [
+      "you may."
+    ]
+  },
+  {
+    "id": "throne.nothanks",
+    "kind": "throne.noThanks",
+    "lines": [
+      "nothing? noted."
+    ]
+  },
+  {
+    "id": "throne.nothanks.affectionate",
+    "kind": "throne.noThanks",
+    "style": "affectionate",
+    "lines": [
+      "…next time, then."
+    ]
+  },
+  {
+    "id": "throne.nothanks.ritual",
+    "kind": "throne.noThanks",
+    "style": "ritual",
+    "lines": [
+      "the form was not kept."
+    ]
+  },
+  {
+    "id": "throne.nothanks.playful",
+    "kind": "throne.noThanks",
+    "style": "playful",
+    "lines": [
+      "rude~"
+    ]
+  },
+  {
+    "id": "throne.nothanks.clinical",
+    "kind": "throne.noThanks",
+    "style": "clinical",
+    "lines": [
+      "no response. noted."
+    ]
+  },
+  {
+    "id": "throne.nothanks.cruel",
+    "kind": "throne.noThanks",
+    "style": "cruel",
+    "lines": [
+      "you’ll learn."
+    ]
+  },
+  {
+    "id": "throne.nothanks.possessive",
+    "kind": "throne.noThanks",
+    "style": "possessive",
+    "lines": [
+      "we’ll work on that."
+    ]
+  },
+  {
+    "id": "throne.nothanks.cold",
+    "kind": "throne.noThanks",
+    "style": "cold",
+    "lines": [
+      "noted."
+    ]
+  },
+  {
+    "id": "throne.nothanks.regal",
+    "kind": "throne.noThanks",
+    "style": "regal",
+    "lines": [
+      "how ungrateful."
+    ]
   }
 ]

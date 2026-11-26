@@ -1014,8 +1014,8 @@
   {
     "id": "marker_tone",
     "term": "Marker ring",
-    "short": "The ring and symbol on a soldier's marker: ! danger, \u2665 bond, + trust, * affinity, ~ warning, \u00b7 nothing notable.",
-    "long": "The ring color is always paired with a symbol, so it never has to be read by color alone. ! means stress is high, she is injured or her loyalty is breaking. \u2665 is a romantic bond. + is a trusting friendship. * is strong personal warmth. ~ means a cold relationship or rising stress. The state glyph beside it names her [[relationship_state|relationship state]].",
+    "short": "The ring and symbol on a soldier's marker: ! danger, ♥ bond, + trust, * affinity, ~ warning, · nothing notable.",
+    "long": "The ring color is always paired with a symbol, so it never has to be read by color alone. ! means stress is high, she is injured or her loyalty is breaking. ♥ is a romantic bond. + is a trusting friendship. * is strong personal warmth. ~ means a cold relationship or rising stress. The state glyph beside it names her [[relationship_state|relationship state]].",
     "see": [
       "hub",
       "stress",
@@ -1102,7 +1102,7 @@
     "id": "semantic_colours",
     "term": "Semantic colors",
     "short": "Five tones for rings, pips and bars: danger, bond, trust, affinity and warning. A symbol always goes with the color.",
-    "long": "! danger, \u2665 bond, + trust, * affinity, ~ warning. The tones differ in brightness as well as hue, so they can be told apart without color vision. Nothing is ever shown by color alone.",
+    "long": "! danger, ♥ bond, + trust, * affinity, ~ warning. The tones differ in brightness as well as hue, so they can be told apart without color vision. Nothing is ever shown by color alone.",
     "see": [
       "marker_tone"
     ]
@@ -3548,6 +3548,56 @@
     "see": [
       "stop_word",
       "contact_physics"
+    ]
+  },
+  {
+    "id": "activity_endure",
+    "term": "Keep still (between the hours)",
+    "short": "Hold the posture through the stretch of her hours you do not play, whatever it costs: it holds, or the body gives and she sees it.",
+    "long": "AUTHOR TO WRITE: Hold the posture through the stretch of her hours you do not play, whatever it costs: it holds, or the body gives and she sees it.",
+    "see": [
+      "contact_physics",
+      "instrument"
+    ]
+  },
+  {
+    "id": "activity_spare",
+    "term": "Ease off slowly (between the hours)",
+    "short": "Let the body settle a little at a time through the stretch: it costs a little now and spares strength for the next.",
+    "long": "AUTHOR TO WRITE: Let the body settle a little at a time through the stretch: it costs a little now and spares strength for the next.",
+    "see": [
+      "contact_physics",
+      "instrument"
+    ]
+  },
+  {
+    "id": "activity_cheat",
+    "term": "Move while she reads (between the hours)",
+    "short": "Shift and stretch whenever she is not looking: a relief if she does not see it, a cost if she does.",
+    "long": "AUTHOR TO WRITE: Shift and stretch whenever she is not looking: a relief if she does not see it, a cost if she does.",
+    "see": [
+      "contact_physics",
+      "instrument"
+    ]
+  },
+  {
+    "id": "activity_rest",
+    "term": "Ask (between the hours)",
+    "short": "A touch, a word: ask her for a moment. Her style decides whether she allows it.",
+    "long": "AUTHOR TO WRITE: A touch, a word: ask her for a moment. Her style decides whether she allows it.",
+    "see": [
+      "contact_physics",
+      "instrument"
+    ]
+  },
+  {
+    "id": "activity_get_up",
+    "term": "Get up",
+    "short": "She has left and forgotten you where she put you. Getting up alone is yours to choose; if she said stay, it is disobedience she may answer later.",
+    "long": "AUTHOR TO WRITE: She has left and forgotten you where she put you. Getting up alone is yours to choose; if she said stay, it is disobedience she may answer later.",
+    "see": [
+      "contact_physics",
+      "instrument"
     ]
   }
 ]

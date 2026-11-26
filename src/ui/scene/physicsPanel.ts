@@ -1,3 +1,4 @@
+import type { ScriptLine } from '../../llm/calls/activityScript';
 import type { Registries } from '../../content/types';
 import { blockingLive, blockingOf, COMMANDER, contactOf } from '../../engine/blocking';
 import type { CueKind } from '../../engine/blocking/types';
@@ -40,6 +41,11 @@ export interface PhysicsPanelStaging {
    * none runs), the length of a beat and the controller's now (the same clock).
    */
   clock(): { startedAt: number | null; beatMs: number; now: number };
+  /** P10e-e R26: her hour's script for a phase of her frame (the model's, validated), or null. Absent = never. */
+  script?(phase?: number): ScriptLine[] | null;
+  /** P10e-e R28: after her forgotten end, the commander gets up alone, or a visitor of the frame finds the commander. Absent = never. */
+  getUp?(): EngineEvent[];
+  found?(finderId: string): EngineEvent[];
   /** P10e-e: how a run of the open scene ended (its `physics_outcome`), or null when none is known. Absent = never known. */
   outcome?(runId: string): { runId: string; physicsId: string; result: string; tally?: Record<string, number> } | null;
 }

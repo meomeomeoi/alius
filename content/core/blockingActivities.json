@@ -1033,7 +1033,13 @@
     "judged": true,
     "label": "Facing wall",
     "description": "AUTHOR TO WRITE: Facing the wall (a corner punishment when the origin is her discipline).",
-    "promptHint": "facing wall"
+    "promptHint": "facing wall",
+    "effects": [
+      {
+        "type": "backdrop",
+        "id": "pov_corner"
+      }
+    ]
   },
   {
     "id": "c_writing_report",

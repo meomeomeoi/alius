@@ -7,4 +7,5 @@ import './breath/breath';
 import './weight/weight';
 import './scent/scent';
 import './jaw/jaw';
+import './activity/frame';
 export type { HerLook, InstrumentDef, InstrumentEnv, InstrumentRun } from './types';

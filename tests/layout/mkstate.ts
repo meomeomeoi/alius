@@ -11,6 +11,7 @@
  * `weight` / `weightfoot` / `weightup` / `weighthold`: the weight instrument (P10e-e Task 16), see below.
  * `scent` / `scenthold`: the scent instrument (P10e-e Task 18), see below.
  * `jaw` / `jawring` / `jawhold`: the jaw instrument (P10e-e Task 20), see below.
+ * `activity` / `activityhold`: her frame (P10e-e Task 24), see below.
  */
 import { writeFileSync } from 'node:fs';
 import { COMMANDER, registerFrameReader, setBlocking } from '../../src/engine/blocking';
@@ -219,5 +220,26 @@ function jawing(source: 'toes' | 'ring'): CampaignState {
 out.jaw = jawing('toes');
 out.jawring = jawing('ring');
 out.jawhold = jawing('ring');
+
+/**
+ * P10e-e Task 24: her frame in the commander's quarters, real time mirrored: Ann reading reports, the commander placed under her desk (her
+ * anchor, set in the fiction), the first segment running. `activity` for the shots; `activityhold`: the stop word's pill must stay clickable
+ * and end the hold, the forgotten end included.
+ */
+function framing(): CampaignState {
+  const s = campaign(reg, 4);
+  setRelation(s, ANN, { stateId: 'confidant' });
+  enable(s, 'objectification', 'worship', 'service');
+  s.settings.physicsRealtime = true;
+  const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
+  const d = r.state;
+  setBlocking(d, { registries: reg }, { person: ANN, field: 'activity', value: 'reading_reports' }, { at: 1, source: 'engine' });
+  setBlocking(d, { registries: reg }, { person: COMMANDER, field: 'anchor', value: 'under_desk' }, { at: 1, source: 'engine' });
+  if (d.scene!.physics?.sourceKind !== 'activity') throw new Error('activity: no frame runs');
+  d.scene!.physics.segment = { n: 1, state: 'running', plan: { beats: Array.from({ length: 20 }, () => ({ attention: 'busy' as const })) } };
+  return d;
+}
+out.activity = framing();
+out.activityhold = framing();
 
 writeFileSync(process.argv[2] ?? 'states.json', JSON.stringify(out));

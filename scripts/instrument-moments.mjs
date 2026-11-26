@@ -25,6 +25,7 @@ export const MOMENTS = {
   weight: weightMoments(),
   saturation: scentMoments(),
   jaw: jawMoments(),
+  her_activity: activityMoments(),
   cards: {
     state: 'one',
     clip: dialCorner,
@@ -415,6 +416,57 @@ function jawMoments() {
       moment('rest', 'sole_to_mouth', 0.62, 800, rest, 1200),
       moment('toes-resting-1280', 'sole_to_mouth', 0.49, 2000, none, 0, [1280, 800]),
       moment('ring-line-1280', 'ring_gag', 0.94, 1000, typed, 300, [1280, 800]),
+    ],
+  };
+}
+
+/**
+ * her_activity.html: her activity, the frame of her time, with stillness inside (Task 24). The port is the `activity` fixture (Ann reading
+ * reports, the commander under her desk, the commander's quarters); the prototype is set to the same (`S.act`, `S.view`, `S.inner`
+ * stillness, legs `planted`). Both pages run on Playwright's fake clock, paused: each moment begins at the same paused instant (`begin`), the
+ * view is set on both (`S.view`), the clock is run past the entry (2.2 s), and a peak, the hours between phases or the forgotten end are made
+ * by the same hooks (the prototype's globals `incomingCall`, `startSkip`, `finish`, `G`; the port's `window.__activity`). The room and the floor
+ * are the prototype's stand-ins and the scene's own (the same art); without the author's legs art both draw the silhouettes.
+ * Moments: the four views, a call (her foot on the shoulder), the hours between phases, the forgotten end; under the desk again at 1280x800.
+ */
+function activityMoments() {
+  const LOOP = 2600;
+  const start = (view) => ({
+    proto: async (p) => {
+      await fakeClock(p, () => document.fonts.ready);
+      await p.addStyleTag({ content: '#panel, #debug, #summary, #start { visibility: hidden !important; }' });
+      await p.evaluate((v) => { Object.assign(window.__S, { act: 'reading_reports', view: v, inner: 'stillness', legVar: 'planted', style: 'neutral', sound: false, reduced: false }); }, view);
+      await p.evaluate(() => { document.querySelector('#start').style.display = 'none'; begin(); });
+    },
+    port: async (p) => {
+      await fakeClock(p, async () => { while (document.body.dataset.ready !== 'true') await new Promise((r) => setTimeout(r, 50)); });
+      await p.evaluate((v) => { const a = window.__activity; a.S.view = v; a.S.inner = 'stillness'; a.resetClock(); a.begin(); }, view);
+    },
+  });
+  const moment = (id, view, before, proto, port, after, size) => {
+    const s = start(view);
+    const busy = (p) => p.evaluate(() => { G.att = 'busy'; });
+    return {
+      id, state: 'activity', query: '&style=neutral', ...(size ? { size } : {}),
+      proto: async (p) => { await s.proto(p); await p.clock.runFor(before); await busy(p); await p.evaluate(proto); await p.clock.runFor(after); },
+      port: async (p) => { await s.port(p); await p.clock.runFor(before); await p.evaluate(port); await p.clock.runFor(after); },
+    };
+  };
+  const none = () => {};
+  return {
+    state: 'activity',
+    rasterSprite: true,
+    hide: ['#panel', '#debug', '#summary', '#start'],
+    settle: 60,
+    moments: [
+      moment('view-legs', 'legs', LOOP, none, none, 800),
+      moment('view-her', 'her', LOOP, none, none, 800),
+      moment('view-floor', 'floor', LOOP, none, none, 800),
+      moment('view-wall', 'wall', LOOP, none, none, 800),
+      moment('call', 'legs', LOOP, () => incomingCall(), () => window.__activity.incomingCall(), 2400),
+      moment('skip', 'legs', LOOP, () => startSkip(), () => window.__activity.startSkip(), 4600),
+      moment('forgotten', 'legs', LOOP, () => { G.step = 'use'; finish('done'); }, () => { const a = window.__activity; a.G.step = 'use'; a.finish('done'); }, 6600),
+      moment('view-legs-1280', 'legs', LOOP, none, none, 800, [1280, 800]),
     ],
   };
 }

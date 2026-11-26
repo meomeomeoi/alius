@@ -819,3 +819,166 @@ Her lines in her hand while the commander's jaw is held open (P10e-e Task 20, ru
 - **stop:** silent
 - **entry.sole_to_mouth:** silent
 - **entry.ring_gag:** silent
+
+## 11. Her activity (her_activity.html, approved by the author, 2026-11-23)
+
+Her lines in her hand in the frame of her time (P10e-e Task 24, ruling Q; `her_activity.html`'s `STYLES`). **name**: her name for the commander (the sign that a line is for the commander); **noticed**: she caught a movement (at `with`, and at `glancing` most of the time); **correct**: a correction; **call**: what she calls the commander to someone else; **end**: her end line (`with`, `glancing`); **askReply**: an answer to her question was given; **breach**: the commander answered words not meant for the commander; **silent**: her question was left unanswered; **stop**: after the stop word. Neutral is every style with no rows of its own (Ruling R); the prototype has cold's own rows. No pronoun for the commander.
+
+### neutral
+- **name:** `commander`
+- **noticed:** `still.` · `stop fidgeting.`
+- **correct:** `still.`
+- **call:** `the chair.`
+- **end:** `done. you can get up.`
+- **askReply:** `good.` · `mm.`
+- **breach:** `I wasn’t talking to you.`
+- **silent:** `I asked you something.`
+- **stop:** `okay. up you get.` · `alright. stopping.` · `enough. up.`
+
+### affectionate
+- **name:** `sweetheart`
+- **noticed:** `shh. you’re alright.` · `need a moment?`
+- **correct:** `easy…`
+- **call:** `the cat.`
+- **end:** `come here. you did so well.`
+- **askReply:** `good.` · `thank you.`
+- **breach:** `hm? oh, not you, sweetheart.`
+- **silent:** `…sweetheart?`
+
+### clinical
+- **name:** `subject`
+- **noticed:** `movement. noted.` · `again. noted.`
+- **correct:** `posture.`
+- **call:** `the subject.`
+- **end:** `session over. noted: everything.`
+- **askReply:** `noted.`
+- **breach:** `unsolicited. noted.`
+- **silent:** `no response. noted.`
+
+### cold
+- **name:** `you`
+- **noticed:** `don’t.`
+- **correct:** `…`
+- **call:** `the furniture.`
+- **end:** `go.`
+- **askReply:** `fine.`
+- **breach:** `not you.`
+- **silent:** `I asked.`
+
+### cruel
+- **name:** `chair`
+- **noticed:** `did I say move?` · `pathetic.`
+- **correct:** `still, chair.`
+- **call:** `my chair. it creaks today.`
+- **end:** `get up. we’re not done tomorrow.`
+- **askReply:** `adequate.`
+- **breach:** `chairs don’t talk.`
+- **silent:** `chair. I asked you something.`
+
+### playful
+- **name:** `pet`
+- **noticed:** `fidgety~` · `I saw that~`
+- **correct:** `tsk.`
+- **call:** `my footrest. it wobbles.`
+- **end:** `fine, fine. up you get~`
+- **askReply:** `good pet.` · `cute.`
+- **breach:** `who said you could talk~`
+- **silent:** `ignoring me? bold.`
+
+### possessive
+- **name:** `mine`
+- **noticed:** `don’t.` · `you stay where I put you.`
+- **correct:** `mine. still.`
+- **call:** `what’s mine.`
+- **end:** `up. you’re mine again tomorrow.`
+- **askReply:** `good.` · `of course.`
+- **breach:** `did I talk to you?`
+- **silent:** `answer me.`
+
+### regal
+- **name:** `my seat`
+- **noticed:** `steady.` · `a seat does not fidget.`
+- **correct:** `steady.`
+- **call:** `my seat.`
+- **end:** `you may get up.`
+- **askReply:** `acceptable.` · `good.`
+- **breach:** `I was not speaking to you.`
+- **silent:** `I asked you a question.`
+
+### ritual
+- **name:** `kneeler`
+- **noticed:** `posture.`
+- **correct:** `posture.`
+- **call:** `the kneeler.`
+- **end:** `released.`
+- **askReply:** `as it should be.`
+- **breach:** `you were not addressed.`
+- **silent:** `you were addressed.`
+
+## 12. The throne (throne.html, approved by the author, 2026-11-25)
+
+Her lines on the throne (P10e-e Task 24b; `throne.html`'s `T_LINES`). **spill**: her mug spilled on the commander's back; **skid**: the pen skidded while she signed; **thank**: she has the commander thank her for the seat (at `with` or `glancing`); **thanked** / **noThanks**: her answer. Neutral is every style with no rows of its own. No pronoun for the commander.
+
+### neutral
+- **spill:** `…look what you did.`
+- **skid:** `hold still. again.`
+- **thank:** `say thank you for the seat.`
+- **thanked:** `good.`
+- **noThanks:** `nothing? noted.`
+
+### affectionate
+- **spill:** `oh — it’s alright. hold still.`
+- **skid:** `still, please. once more.`
+- **thank:** `say thank you. for letting me sit.`
+- **thanked:** `good. up you get.`
+- **noThanks:** `…next time, then.`
+
+### clinical
+- **spill:** `spillage. noted.`
+- **skid:** `the writing surface moved.`
+- **thank:** `acknowledge it.`
+- **thanked:** `noted.`
+- **noThanks:** `no response. noted.`
+
+### cold
+- **spill:** `clumsy.`
+- **skid:** `again.`
+- **thank:** `thank me.`
+- **thanked:** `fine.`
+- **noThanks:** `noted.`
+
+### cruel
+- **spill:** `you’ll lick that up later.`
+- **skid:** `a desk doesn’t move.`
+- **thank:** `thank me.`
+- **thanked:** `…fine.`
+- **noThanks:** `you’ll learn.`
+
+### playful
+- **spill:** `oops~ that’s on you.`
+- **skid:** `you made me scribble~`
+- **thank:** `what do we say~?`
+- **thanked:** `cute.`
+- **noThanks:** `rude~`
+
+### possessive
+- **spill:** `careful with my things.`
+- **skid:** `still. you’re mine to write on.`
+- **thank:** `thank me for using you.`
+- **thanked:** `good.`
+- **noThanks:** `we’ll work on that.`
+
+### regal
+- **spill:** `you spilled my tea.`
+- **skid:** `a desk does not move. again.`
+- **thank:** `thank me for the honor of my weight.`
+- **thanked:** `you may.`
+- **noThanks:** `how ungrateful.`
+
+### ritual
+- **spill:** `you spilled. that is noted.`
+- **skid:** `the signature is ruined. again.`
+- **thank:** `thank me for the honor.`
+- **thanked:** `accepted.`
+- **noThanks:** `the form was not kept.`
+
