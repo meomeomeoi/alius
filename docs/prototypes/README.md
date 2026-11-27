@@ -184,6 +184,23 @@ Approved by the author on 2026-11-25 after three rounds (the defaults of the fil
 - The engine's third outcome: a right answer the commander cannot take now (held in place, no standing room) is `posture_called` with `void`; the prototype has no line for it.
 - **Memory check:** nothing new (a restyle; the call's outcomes are P16's `posture_called` (`taken` / `void`) and `posture_slip` (`late`), already decided there).
 
+### P16b additions to `cards.html`: the craft's scene surfaces (gate G3; approved and normative, 2026-11-27)
+
+*To be ported in P16b chunk c7 (Task 26): the card draw functions in `src/ui/craft/`, the dock and the chip row (`src/ui/scene/stage/`), the voice in `content/core/cardVoice.json` from `docs/content/card-voice.md`.*
+
+Approved by the author on 2026-11-27 in round 1. Search the file for `P16b G3` (CSS, the voice, `KINDS`, `gistOf`, `bodyOf`, `drawChips`). Everything else about a card (glass, her accent stripe, her hand, the conditions, the pills, the collapsed edges, arrival and sounds) is the approved cards above.
+
+**Normative (port exactly):**
+- **drill** (`KINDS.drill`, `drill_other`): her words (none for a drill with another woman: her voice only); the conditions `drillWhat` (`{Drill}. With me.`; a drill with another woman: `drillOther`, `{Drill}, with {other}. I hear everything.`) and `drillCost` (`It takes {slots}.`); the answers **begin** (dispatches `craft/drill_start`) / **not now**; the gist `weight drill` (`· with Bea`).
+- **exam**: her words; `examWhen` (`The exam is {when}.`); `examNorms` (`Show me:`) and the norms as a list in her hand (22 px × factor, the value in her accent, underlined), one line each `{what}: {how much}` in fiction time; `examFail`; answers **begin** / **ask for time** (her words); the gist `N norms · {when}`. The pass mark is never shown.
+- **sentence**: her words; the term large in her hand (46 px × factor, `term`: `For {days} days.`); `termWhy`, `termEcho` (the echo's line), `termGrow` (`Every slip adds {add}.`); one answer **understood**; the gist `{days} days left`.
+- **her note** (care noticed, for a holder whose way of noticing is a note): a paper card (`.card.paper`: a warm paper gradient `#efe6d6 → #e4d8c2`, dark ink, turned −1.2°, no accent stripe), her words in her hand; the answer **keep it**; the gist the care's object.
+- **the lesson**: a card with her one word or line for the point (`lesson`: `{Point}.`), no answers, gone by itself after 7 s (`.card.lesson`, opacity to 0 over the last 20 %).
+- **[ANTICIPATE]** (`drawChips`): a chip in the chip row above the input (P10e's row; round, the cool accent, a dashed border, `anticipate her`), shown only while her reading's axes allow it and not yet used in the scene; a click stages the commander's act as a narrated line and her answer follows in her voice by style; then the chip is gone for the scene.
+- The voice rows (`NEUTRAL` and the styles' P16b rows: drill, vindictive, regal, playful, cruel, ritual) go into `card-voice.md` and `cardVoice` with their kinds.
+
+**Prototype only:** the data of the cards (texts, norms, the crime), the panel's adders and the `antic` switch, the act the chip stages (the engine picks the service that fits her pair tags: `anticipateRow`).
+
 ## `gulp.html` — gulp (P15a `gulp`, timing; content `watersports`, which requires `bodily_fluids`)
 
 *Ported in chunk (e), Task 30 (its engine: Task 29): `src/ui/scene/instruments/gulp/gulp.ts`, checked by `gulp/fidelity.json`.*
