@@ -137,6 +137,9 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 #states .st { padding: 4px 10px; border-radius: 12px; border: 1px solid var(--line); background: rgba(14, 12, 20, .74); backdrop-filter: blur(10px);
   font: 10px "IBM Plex Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); cursor: pointer; }
 #states .st.cur { color: #fff; border-color: color-mix(in srgb, var(--cmd) 70%, transparent); background: color-mix(in srgb, var(--cmd) 25%, rgba(14,12,20,.8)); }
+#states .st.want { border-color: color-mix(in srgb, var(--her) 80%, transparent); color: var(--her); box-shadow: 0 0 12px color-mix(in srgb, var(--her) 35%, transparent); }
+#states .st.want.cur { background: color-mix(in srgb, var(--her) 30%, rgba(14,12,20,.8)); color: #fff; }
+.bead.todo { box-shadow: 0 0 0 2px color-mix(in srgb, var(--her) 75%, transparent), 0 0 12px color-mix(in srgb, var(--her) 40%, transparent); }
 #states .hd { font: 9px "IBM Plex Mono", monospace; letter-spacing: .16em; color: color-mix(in srgb, var(--cmd) 60%, #fff); margin-bottom: 2px; }
 
 #stopPill { position: absolute; right: 36px; top: 54px; padding: 7px 14px; border-radius: 18px; font: 11px "IBM Plex Mono", monospace; letter-spacing: .12em;
@@ -194,6 +197,7 @@ body.reduced #feel div { animation: feelR 4.2s linear both; }
   <h4>the posture call</h4>
   <div class="row"><button class="opt" id="callB">B: she names a posture (C)</button><button class="opt" id="callC">C: she conducts (V)</button></div>
   <div class="note" id="namedNote"></div>
+  <label><input type="checkbox" id="hintStates" checked> light her states and the points still to move</label>
   <div class="note">Her set is small: P16 caps her names at her service track level + 1 (1–6). While this posture's mastery is below 2 her posture shows as a ghost; from 2 on it is recalled.</div>
   <h4>her world (temptations)</h4>
   <div class="row"><button class="opt" id="evVisitor">a visitor (50)</button><button class="opt" id="evUndress">she undresses (30)</button><button class="opt" id="evSound">a sound behind (30)</button><button class="opt" id="evLook">"look at me"</button></div>
@@ -396,6 +400,7 @@ function drawBeads() {
     if (!act.includes(k)) b.classList.add('off');
     if (S.held[k]) b.classList.add('held');
     if (S.sel === k) b.classList.add('sel');
+    if (S.call && hintOn() && !S.call.trap && k !== 'gaze' && S.call.want[k] !== undefined && S.call.body.points[k] !== S.call.want[k]) b.classList.add('todo');
     b.addEventListener('pointerdown', (e) => { e.preventDefault(); press(k); });
     host.append(b);
   });
@@ -591,10 +596,12 @@ function pickState(k, v) { const c = S.call; if (!c) return; if (c.trap) { endCa
 function drawStates() {
   const host = $('#states'); host.replaceChildren(); const c = S.call; if (!c || !S.sel) { host.classList.remove('on'); return; }
   host.classList.add('on'); const hd = document.createElement('div'); hd.className = 'hd'; hd.textContent = `${KEY_OF[S.sel]} · ${S.sel.toUpperCase()}`; host.append(hd);
-  for (const v of statesFor(S.sel)) { const b = document.createElement('div'); b.className = 'st' + (c.body.points[S.sel] === v ? ' cur' : ''); b.textContent = STATE_WORD(v); b.addEventListener('pointerdown', (e) => { e.preventDefault(); pickState(S.sel, v); }); host.append(b); }
+  for (const v of statesFor(S.sel)) { const b = document.createElement('div'); b.className = 'st' + (c.body.points[S.sel] === v ? ' cur' : '') + (hintOn() && c.want[S.sel] === v ? ' want' : ''); b.textContent = STATE_WORD(v); b.addEventListener('pointerdown', (e) => { e.preventDefault(); pickState(S.sel, v); }); host.append(b); }
 }
 /** Her posture is shown as a ghost until the commander has learnt it (this posture's mastery below 2): recall only for what was held many times. */
 const ghostShown = () => Number($('#mastery').value) < 2;
+/** Round 1d (author): the right state of each point and the points still to move are lit (her accent). */
+const hintOn = () => $('#hintStates').checked;
 function drawCallDial() { const c = S.call; const svg = mannequinSvg({ base: c.base, points: c.body.points }, ghostShown() ? { target: { base: c.base, points: c.want } } : {}); const face = $('#dialFace'); face.replaceChildren(svg);
   const an = anchors(svg); for (const k of POINTS) for (const a of an[k] ?? []) if (a) { const h = circle(a, 15, 'hit'); h.addEventListener('pointerdown', (e) => { e.preventDefault(); callPress(k); }); svg.append(h); }
   drawBeads(); $('#dialLabel').innerHTML = `<span class="herName">${c.word}</span>${c.trap ? '' : 'assemble'}`; }
