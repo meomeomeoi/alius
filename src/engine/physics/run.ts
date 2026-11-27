@@ -13,7 +13,7 @@ import type { EngineEvent } from '../dispatch';
 import { sceneSettingsOf } from '../moments/settings';
 import type { CampaignState, SceneRecord } from '../state/types';
 import { TUNING } from '../tuning';
-import { effectiveHoldsUntil, leadStyle, physicsMannerOf, physicsStyleOf, runTargetOf } from './style';
+import { effectiveHoldsUntil, leadStyle, physicsMannerOf, physicsStyleOf, runStopHooks, runTargetOf } from './style';
 import { extraSlotsFor, initMarathon, isMarathon } from './marathon';
 import { setCondition } from './conditions';
 import { commanderSkill } from './skill';
@@ -254,22 +254,26 @@ export function physicsSignal(draft: CampaignState, ctx: { registries: Registrie
 export function stopWord(draft: CampaignState, ctx: { registries: Registries }): EngineEvent[] {
   const scene = draft.scene;
   if (!scene) throw new Error('physics/stop_word: no scene is open');
+  const also = runStopHooks(draft, ctx); // P16b: a posture hold ends with it (nothing registered, nothing ended)
   if (scene.physics) {
     const events = stopPhysics(draft, ctx.registries, 'stopped');
     dropOrphanAct(draft);
-    return events;
+    return [...events, ...also];
   }
   const contact = contactOf(scene);
   if (!contact) {
     // no hold and no contact: what the commander wears comes off, a hood or a collar as much as a gag (review: the stop word must always get the commander out)
     const worn = [...new Set(Object.values(scene.blocking?.[COMMANDER]?.worn ?? {}).map((w) => w?.id).filter((id): id is string => id !== undefined))];
-    if (worn.length === 0) throw new Error('physics/stop_word: there is nothing to stop');
+    if (worn.length === 0) {
+      if (also.length > 0) return also;
+      throw new Error('physics/stop_word: there is nothing to stop');
+    }
     for (const id of worn) removeSource(draft, 'item', id);
-    return [{ type: 'physics_outcome', runId: null, physicsId: null, holderId: scene.participants[0] ?? null, result: 'stopped', segments: 0, sourceKind: 'item', sourceId: worn[0] }];
+    return [{ type: 'physics_outcome', runId: null, physicsId: null, holderId: scene.participants[0] ?? null, result: 'stopped', segments: 0, sourceKind: 'item', sourceId: worn[0] }, ...also];
   }
   removeSource(draft, 'contact', contact.id);
   dropOrphanAct(draft);
-  return [{ type: 'physics_outcome', runId: null, physicsId: null, holderId: contact.with === COMMANDER ? scene.participants[0] ?? null : contact.with, result: 'stopped', segments: 0, sourceKind: 'contact', sourceId: contact.id }];
+  return [{ type: 'physics_outcome', runId: null, physicsId: null, holderId: contact.with === COMMANDER ? scene.participants[0] ?? null : contact.with, result: 'stopped', segments: 0, sourceKind: 'contact', sourceId: contact.id }, ...also];
 }
 
 /** What fraction of the gauge is left (1 = untouched, 0 = spent). A cleaning or her own task has no such end: 1. */

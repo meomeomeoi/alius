@@ -1827,7 +1827,14 @@ var TUNING = Object.freeze({
       /** The share of her "look at me" orders that are a trap (looking is the fault), by her style. */
       trap: Object.freeze({ neutral: 0.2, ritual: 0, drill: 0.1, cold: 0.3, playful: 0.6, cruel: 0.6, regal: 0.2 }),
       /** The share of her called postures she wants held (a hold of the preset follows the answer), by her style; `other` for any style not listed. */
-      holdShare: Object.freeze({ drill: 0.6, ritual: 0.5, cruel: 0.5, regal: 0.4, cold: 0.3, playful: 0.2, other: 0.3 })
+      holdShare: Object.freeze({ drill: 0.6, ritual: 0.5, cruel: 0.5, regal: 0.4, cold: 0.3, playful: 0.2, other: 0.3 }),
+      /** A hold she asks for in her call lasts this many beats (a hash picks), and these styles keep the end to themselves. */
+      holdBeats: Object.freeze({ min: 40, max: 120 }),
+      hiddenEnd: Object.freeze(["cold", "cruel"]),
+      /** How loud a preset's corrections are by its `noise` word. */
+      noiseMult: Object.freeze({ low: 0.8, mid: 1, high: 1.25 }),
+      /** The humiliation of a hold is the preset's plus what the situation adds (blocking.md section 7.2), at most 5: someone else present, the leader, a common room (a group scene), a hold of more than `longSeconds` of fiction, her `show_off` audience before others. */
+      situation: Object.freeze({ witness: 1, leader: 1, crowd: 1, long: 1, longSeconds: 600, showOff: 1, max: 5 })
     })
   })
 });
@@ -17737,10 +17744,10 @@ function applyCommanderPunishment(draft, ctx2, punishmentId) {
 function punishRoll(draft, ctx2, weight) {
   const w = wardenOf(draft);
   if (!w) return [];
-  const P6 = TUNING.warden.punish;
+  const P7 = TUNING.warden.punish;
   const affinity = draft.relations[w.unitId]?.affinity ?? 0;
-  if (!ctx2.rng.chance(clamp12(P6.base + P6.perWeight * weight - P6.perAffinity * Math.max(0, affinity) / 100, 0, 1))) return [];
-  const [a, b, c] = P6.bands;
+  if (!ctx2.rng.chance(clamp12(P7.base + P7.perWeight * weight - P7.perAffinity * Math.max(0, affinity) / 100, 0, 1))) return [];
+  const [a, b, c] = P7.bands;
   const severity = w.defiance < a ? 1 : w.defiance < b ? 2 : w.defiance < c ? 3 : 4;
   const id = pickPunishment(draft, ctx2.registries, severity);
   return id === null ? [] : applyCommanderPunishment(draft, ctx2, id);
@@ -20348,6 +20355,13 @@ function rhythmKnownOf(state, holderId) {
   }
   return 0;
 }
+var stopHooks = /* @__PURE__ */ new Map();
+function registerStopHook(fn, key = "default") {
+  stopHooks.set(key, fn);
+}
+function runStopHooks(draft, ctx2) {
+  return [...stopHooks.values()].flatMap((fn) => fn(draft, ctx2));
+}
 function physicsStyleOf(state, unitId, reg) {
   for (const read2 of styleReaders) {
     const s = read2(state, unitId, reg);
@@ -22234,6 +22248,19 @@ function presetAllowed(state, reg, preset, unitIds) {
   const frame9 = requiresOf(preset).frame;
   return frame9 === void 0 || unitIds.every((id) => frameRank(frameOf(state, id)) >= frameRank(frame9));
 }
+function presetProblem(state, reg, preset) {
+  const r = requiresOf(preset);
+  const have = sceneAffordances(state, reg);
+  const missing2 = (r.affordances ?? []).find((a) => !have.has(a));
+  if (missing2 !== void 0) return `This place has no ${missing2}.`;
+  const b = state.scene?.blocking?.[COMMANDER];
+  if (r.anchor !== void 0 && !r.anchor.includes(b?.anchor?.id ?? "")) return `${String(preset.label)} needs a place: ${r.anchor.map((a) => String(reg.blockingAnchors.get(a)?.label ?? a).toLowerCase()).join(" or ")}.`;
+  if (r.items !== void 0) {
+    const worn = new Set(Object.values(b?.worn ?? {}).map((w) => w?.id));
+    if (!r.items.some((i) => worn.has(i))) return `${String(preset.label)} needs something worn: ${r.items.map((i) => String(reg.blockingItems.get(i)?.label ?? i).toLowerCase()).join(" or ")}.`;
+  }
+  return null;
+}
 
 // src/engine/power/compatibility.ts
 function compatibility(a, b) {
@@ -23138,7 +23165,7 @@ function eligibleUnits(state, holderId) {
 function holdsPractices(state, unitId) {
   const p = state.practices;
   if (p === void 0) return false;
-  return p.requests.some((r) => r.holderId === unitId || r.targetUnitId === unitId) || p.tasks.some((t) => t.holderId === unitId || t.targetUnitId === unitId && isOpen(t.status)) || p.punishments.some((x) => x.holderId === unitId || x.forUnitId === unitId && isOpen(x.status)) || p.demonstrations.some((x) => x.holderId === unitId || x.audienceIds.includes(unitId) || x.narrated?.includes(unitId) === true) || p.held?.by === unitId || p.alarm?.holderId === unitId || p.permission?.holderId === unitId || p.restrictions.some((r) => r.holderId === unitId) || p.cold[unitId] !== void 0 || p.postures[unitId] !== void 0 || p.call?.holderId === unitId || p.slap?.holderId === unitId || p.offences[unitId] !== void 0 || p.records.some((r) => r.holderId === unitId) || p.handovers.some((h2) => h2.holderId === unitId) || p.asked?.holderId === unitId || p.unfair?.[unitId] !== void 0 || p.lastThreat?.unitId === unitId || p.verdictScene?.[unitId] !== void 0 || p.service?.[unitId] !== void 0 || p.softer?.[unitId] !== void 0 || p.askedOn?.[unitId] !== void 0;
+  return p.requests.some((r) => r.holderId === unitId || r.targetUnitId === unitId) || p.tasks.some((t) => t.holderId === unitId || t.targetUnitId === unitId && isOpen(t.status)) || p.punishments.some((x) => x.holderId === unitId || x.forUnitId === unitId && isOpen(x.status)) || p.demonstrations.some((x) => x.holderId === unitId || x.audienceIds.includes(unitId) || x.narrated?.includes(unitId) === true) || p.held?.by === unitId || p.alarm?.holderId === unitId || p.permission?.holderId === unitId || p.restrictions.some((r) => r.holderId === unitId) || p.cold[unitId] !== void 0 || p.postures[unitId] !== void 0 || p.call?.holderId === unitId || p.slap?.holderId === unitId || p.postureRun?.holderId === unitId || p.offences[unitId] !== void 0 || p.records.some((r) => r.holderId === unitId) || p.handovers.some((h2) => h2.holderId === unitId) || p.asked?.holderId === unitId || p.unfair?.[unitId] !== void 0 || p.lastThreat?.unitId === unitId || p.verdictScene?.[unitId] !== void 0 || p.service?.[unitId] !== void 0 || p.softer?.[unitId] !== void 0 || p.askedOn?.[unitId] !== void 0;
 }
 var isOpen = (status) => status === "offered" || status === "open" || status === "negotiating" || status === "accepted";
 var tagsOf3 = (entry) => {
@@ -23216,6 +23243,7 @@ function forgetPractices(draft, unitId) {
   delete p.postures[unitId];
   if (p.call?.holderId === unitId) delete p.call;
   if (p.slap?.holderId === unitId) delete p.slap;
+  if (p.postureRun?.holderId === unitId) delete p.postureRun;
   delete p.offences[unitId];
   if (p.noted !== void 0) p.noted.keys = p.noted.keys.filter((k) => !k.startsWith(`${unitId}|`));
   p.records = p.records.filter((r) => r.holderId !== unitId);
@@ -36926,7 +36954,7 @@ function cheatRoll(rng, attention, reading2) {
   return rng.chance(G.caught[attention] * (1 + G.readingMult * reading2));
 }
 function noiseOf(source, stillness = 0) {
-  const kind = source === "miss" ? "gasp" : source === "slip" ? "creak" : source === "relief" ? "rustle" : "cough";
+  const kind = source === "miss" ? "gasp" : source === "slip" ? "creak" : source === "relief" || source === "posture" ? "rustle" : "cough";
   return { loudness: 1 * (1 - stillness), kind };
 }
 function segmentNoise(result, interaction, stillness = 0) {
@@ -37237,21 +37265,25 @@ function physicsSignal(draft, ctx2) {
 function stopWord(draft, ctx2) {
   const scene = draft.scene;
   if (!scene) throw new Error("physics/stop_word: no scene is open");
+  const also = runStopHooks(draft, ctx2);
   if (scene.physics) {
     const events = stopPhysics(draft, ctx2.registries, "stopped");
     dropOrphanAct(draft);
-    return events;
+    return [...events, ...also];
   }
   const contact = contactOf(scene);
   if (!contact) {
     const worn = [...new Set(Object.values(scene.blocking?.[COMMANDER]?.worn ?? {}).map((w) => w?.id).filter((id) => id !== void 0))];
-    if (worn.length === 0) throw new Error("physics/stop_word: there is nothing to stop");
+    if (worn.length === 0) {
+      if (also.length > 0) return also;
+      throw new Error("physics/stop_word: there is nothing to stop");
+    }
     for (const id of worn) removeSource(draft, "item", id);
-    return [{ type: "physics_outcome", runId: null, physicsId: null, holderId: scene.participants[0] ?? null, result: "stopped", segments: 0, sourceKind: "item", sourceId: worn[0] }];
+    return [{ type: "physics_outcome", runId: null, physicsId: null, holderId: scene.participants[0] ?? null, result: "stopped", segments: 0, sourceKind: "item", sourceId: worn[0] }, ...also];
   }
   removeSource(draft, "contact", contact.id);
   dropOrphanAct(draft);
-  return [{ type: "physics_outcome", runId: null, physicsId: null, holderId: contact.with === COMMANDER ? scene.participants[0] ?? null : contact.with, result: "stopped", segments: 0, sourceKind: "contact", sourceId: contact.id }];
+  return [{ type: "physics_outcome", runId: null, physicsId: null, holderId: contact.with === COMMANDER ? scene.participants[0] ?? null : contact.with, result: "stopped", segments: 0, sourceKind: "contact", sourceId: contact.id }, ...also];
 }
 function remainingOf(reg, run) {
   const kind = reg.contactPhysics.get(run.physicsId)?.gauge?.kind;
@@ -43033,6 +43065,11 @@ function askWords(event) {
 }
 
 // src/engine/practice/postures.ts
+var answeredHooks = [];
+function registerCallAnswered(fn) {
+  if (!answeredHooks.includes(fn)) answeredHooks.push(fn);
+}
+var afterAnswer = (draft, ctx2, info) => answeredHooks.flatMap((fn) => fn(draft, ctx2, info));
 var POSTURE_NAME_MAX = 30;
 var TRACK = TUNING.practice.routine.track;
 function keepsPostures(state, reg, holderId) {
@@ -43115,12 +43152,14 @@ function takePosture(draft, ctx2, callId, postureId, late2, at2) {
   }
   const preset = reg.servicePostures.get(call2.postureId);
   const change = { person: COMMANDER, field: "posture", value: preset?.base ?? call2.postureId, ...preset !== void 0 ? { preset: preset.id } : {} };
-  if (samePreset(reg, commanderPresetOf(draft, reg)?.id, call2.postureId)) return [{ type: "posture_called", ...base2, taken: true }, ...addTrackXp(draft, reg, call2.holderId, TRACK, TUNING.practice.posture.xp)];
-  if (draft.scene === void 0 || checkChange(draft, reg, change) !== null) return [{ type: "posture_called", ...base2, void: true }];
+  const after9 = { holderId: call2.holderId, callId, postureId: call2.postureId };
+  if (samePreset(reg, commanderPresetOf(draft, reg)?.id, call2.postureId)) return [{ type: "posture_called", ...base2, taken: true }, ...addTrackXp(draft, reg, call2.holderId, TRACK, TUNING.practice.posture.xp), ...afterAnswer(draft, ctx2, after9)];
+  if (draft.scene === void 0 || checkChange(draft, reg, change) !== null || presetOf(reg, call2.postureId) !== void 0 && presetProblem(draft, reg, presetOf(reg, call2.postureId)) !== null) return [{ type: "posture_called", ...base2, void: true }];
   return [
     { type: "posture_called", ...base2, taken: true },
     ...setBlocking(draft, ctx2, change, { at: at2, source: "chip" }),
-    ...addTrackXp(draft, reg, call2.holderId, TRACK, TUNING.practice.posture.xp)
+    ...addTrackXp(draft, reg, call2.holderId, TRACK, TUNING.practice.posture.xp),
+    ...afterAnswer(draft, ctx2, after9)
   ];
 }
 function callsFromEvents(draft, events) {
@@ -43396,6 +43435,278 @@ function addPairXp(draft, reg, holderId, what, xp) {
   return [];
 }
 
+// src/engine/craft/streak.ts
+function noteClean(draft, holderId, kind, clean14) {
+  const rel = draft.relations[holderId];
+  if (rel === void 0) return;
+  if (!clean14) {
+    if (rel.craft?.streak?.[kind] === void 0) return;
+    delete rel.craft.streak[kind];
+    return;
+  }
+  const streak = (rel.craft ??= {}).streak ??= {};
+  streak[kind] = (streak[kind] ?? 0) + 1;
+}
+function settlingDue(state, reg, holderId, kind) {
+  return craftLive(state, reg, holderId) && (state.relations[holderId]?.craft?.streak?.[kind] ?? 0) >= TUNING.craft.settling.clean;
+}
+function settlingModifier(state, reg, holderId) {
+  if (!craftLive(state, reg, holderId)) return null;
+  const unit5 = state.squad.find((u) => u.id === holderId);
+  const liked = (unit5 !== void 0 ? TUNING.craft.settling.byStyle[styleOf(unit5)?.primary ?? ""] : void 0) ?? TUNING.craft.settling.modifiers;
+  return liked[Math.floor(craftRoll(state, holderId, "settling") * liked.length)];
+}
+
+// src/engine/craft/records.ts
+function segmentBeats(reg, physicsId) {
+  const seconds = Number(reg.contactPhysics.get(physicsId)?.segmentSeconds);
+  return Math.max(1, Math.ceil((Number.isFinite(seconds) ? seconds : 0) * 1e3 / TUNING.physics.beatMs));
+}
+function fictionSeconds(physicsId, beats, level) {
+  const perBeat = TUNING.craft.beatSeconds[physicsId] ?? TUNING.craft.beatSecondsDefault;
+  return Math.round(beats * perBeat * (1 + TUNING.craft.beatSkill * level));
+}
+var RECORD_KINDS = ["clean", "noTap", "longest"];
+var COUNTS = (reg, o) => o.result !== "stopped" && reg.contactPhysics.get(o.physicsId)?.interaction !== "passive";
+function noteRun(draft, ctx2, o) {
+  const reg = ctx2.registries;
+  if (!craftLive(draft, reg, o.holderId) || !COUNTS(reg, o)) return [];
+  const unclean = o.slips > 0 || o.result === "collapse" || o.result === "limit_broken" || o.result === "blackout";
+  const level = craftLevel(draft, `endurance:${o.physicsId}`);
+  const seconds = o.marathonHours !== void 0 ? Math.round(o.marathonHours * 3600) : fictionSeconds(o.physicsId, o.segments * segmentBeats(reg, o.physicsId), level);
+  if (o.result === "released" || o.result === "checked") noteClean(draft, o.holderId, o.physicsId, !unclean);
+  return setRecord2(draft, o.holderId, o.physicsId, seconds, { unclean, tapped: o.tapped });
+}
+function setRecord2(draft, holderId, key, seconds, o) {
+  if (seconds < TUNING.craft.record.minSeconds) return [];
+  const rel = draft.relations[holderId];
+  if (rel === void 0) return [];
+  const have = rel.craft?.records?.[key];
+  const improved = [];
+  const wins = { longest: true, clean: !o.unclean, noTap: !o.tapped };
+  for (const kind of RECORD_KINDS) if (wins[kind] && seconds > (have?.[kind] ?? 0)) improved.push(kind);
+  if (improved.length === 0) return [];
+  const rec = ((rel.craft ??= {}).records ??= {})[key] ??= { longest: 0, clean: 0, noTap: 0, day: draft.day };
+  for (const kind of improved) rec[kind] = seconds;
+  rec.day = draft.day;
+  return [{ type: "record_set", unitId: holderId, key, seconds, kind: improved[0], kinds: improved }];
+}
+function noteHoldEvents(draft, ctx2, events) {
+  const reg = ctx2.registries;
+  const out = [];
+  for (const e of events) {
+    if (e.type !== "physics_segment" || e.phase !== "end" || e.slips !== 0 || typeof e.holderId !== "string" || typeof e.physicsId !== "string") continue;
+    if (reg.contactPhysics.get(e.physicsId)?.skill !== true || !craftLive(draft, reg, e.holderId)) continue;
+    const scale = typeof e.scale === "number" ? e.scale : 1;
+    out.push(...addCraftXp(draft, reg, `endurance:${e.physicsId}`, Math.round(TUNING.craft.xp.phase * scale * 100) / 100, "phase"));
+    if (reg.contactPhysics.get(e.physicsId)?.interaction === "timing") addPairXp(draft, reg, e.holderId, "rhythm", TUNING.craft.xp.knowledge);
+  }
+  const taps = (id) => events.some((x) => x.type === "physics_signal" && x.released === true && x.runId === id);
+  for (const e of events) {
+    if (e.type !== "physics_outcome" || typeof e.holderId !== "string" || typeof e.physicsId !== "string") continue;
+    const done = events.find((x) => x.type === "marathon_done" && x.unitId === e.holderId && x.physicsId === e.physicsId);
+    const tally = typeof e.tally === "object" && e.tally !== null ? e.tally : {};
+    out.push(...noteRun(draft, ctx2, {
+      holderId: e.holderId,
+      physicsId: e.physicsId,
+      result: String(e.result),
+      segments: Number(e.segments) || 0,
+      slips: Number(tally.slips) || 0,
+      tapped: taps(e.runId) || Number(e.taps) > 0,
+      ...done !== void 0 && typeof done.hours === "number" ? { marathonHours: done.hours } : {}
+    }));
+  }
+  return out;
+}
+
+// src/engine/craft/posture.ts
+var P6 = TUNING.craft.posture;
+var POSTURE_POINTS = ["torso", "hips", "knees", "arms", "head", "gaze", "feet"];
+var loudnessOf = (drift) => Math.pow(Math.max(0, drift) / P6.slipAt, P6.loudExp);
+var hash01 = (key) => fnv1a3(key) / 4294967296;
+function addPostureMastery(draft, reg, holderId, presetId, xp) {
+  const preset = presetOf(reg, presetId);
+  const rel = draft.relations[holderId];
+  if (preset === void 0 || rel === void 0 || !(xp > 0) || !craftLive(draft, reg, holderId)) return;
+  const row4 = ((rel.craft ??= {}).postures ??= {})[preset.id] ??= { xp: 0, day: draft.day };
+  row4.xp += xp;
+  row4.day = draft.day;
+  delete row4.decayedDay;
+}
+function startPostureHold(draft, ctx2, o) {
+  const reg = ctx2.registries;
+  const scene = draft.scene;
+  if (scene === void 0) throw new Error("No scene is open.");
+  if (!scene.participants.includes(o.holderId)) throw new Error("She is not in the scene.");
+  if (!craftLive(draft, reg, o.holderId)) throw new Error("She is not holding now.");
+  const preset = presetOf(reg, o.presetId);
+  if (preset === void 0) throw new Error(`Unknown posture "${o.presetId}".`);
+  if (draft.practices?.postureRun !== void 0) throw new Error("A posture hold is running.");
+  if (commanderPresetOf(draft, reg)?.id !== preset.id) throw new Error("The commander is not in that posture.");
+  if (!presetAllowed(draft, reg, preset, [o.holderId])) throw new Error(`${String(preset.label)} is not available here.`);
+  let hidden = o.hidden === true;
+  let load;
+  if (settlingDue(draft, reg, o.holderId, "posture")) {
+    load = settlingModifier(draft, reg, o.holderId) ?? void 0;
+    noteClean(draft, o.holderId, "posture", false);
+    if (load === "no_duration") hidden = true;
+  }
+  const p = ensurePractices(draft);
+  const run = {
+    id: `pr${p.seq++}`,
+    holderId: o.holderId,
+    presetId: preset.id,
+    startedAt: scene.exchanges,
+    present: [...scene.participants],
+    beats: 0,
+    slips: 0,
+    corrections: 0,
+    source: o.source,
+    ...o.until !== void 0 ? { until: o.until } : {},
+    ...hidden ? { hidden: true } : {},
+    ...load !== void 0 ? { load } : {}
+  };
+  p.postureRun = run;
+  return [{ type: "posture_taken", unitId: o.holderId, holderId: o.holderId, presetId: preset.id, runId: run.id, source: o.source }];
+}
+function runOf(draft) {
+  const run = draft.practices?.postureRun;
+  if (run === void 0) throw new Error("No posture hold is running.");
+  return run;
+}
+function attentionAt2(draft, reg, run, beat) {
+  const style = practiceOf(draft, reg, run.holderId)?.style.primary;
+  if (style === "clinical") return "watching";
+  const activity = blockingOf(draft.scene, run.holderId).activity;
+  const word2 = String(activity !== void 0 ? reg.blockingActivities.get(activity)?.attention ?? "on_commander" : "on_commander");
+  const [w, g] = TUNING.physics.gaze.attention[word2] ?? TUNING.physics.gaze.attention.on_commander;
+  const x = hash01(`attn|${run.id}|${Math.max(0, Math.floor(beat))}`);
+  return x < w ? "watching" : x < w + g ? "glancing" : "busy";
+}
+var isPoint = (v) => typeof v === "string" && POSTURE_POINTS.includes(v);
+function slip(draft, ctx2, run, point, why) {
+  run.slips++;
+  noteClean(draft, run.holderId, "posture", false);
+  const base2 = { unitId: run.holderId, holderId: run.holderId, runId: run.id, presetId: run.presetId };
+  return [
+    { type: "posture_slip", ...base2, point, ...why !== void 0 ? { why } : {} },
+    { type: "posture_slip_noted", ...base2, point },
+    ...noteOffence(draft, ctx2, run.holderId, { kind: "posture_slip", ref: `${run.id}:${run.slips}`, stakes: "trivial", day: draft.day })
+  ];
+}
+function slipPosture(draft, ctx2, point, why) {
+  const run = runOf(draft);
+  if (!isPoint(point)) throw new Error("posture/slip needs a point: torso, hips, knees, arms, head, gaze or feet.");
+  if (!craftLive(draft, ctx2.registries, run.holderId)) throw new Error("She is not holding now.");
+  return slip(draft, ctx2, run, point, why);
+}
+function correctPosture(draft, ctx2, o) {
+  const reg = ctx2.registries;
+  const run = runOf(draft);
+  if (!isPoint(o.point)) throw new Error("posture/correct needs a point: torso, hips, knees, arms, head, gaze or feet.");
+  if (typeof o.amount !== "number" || !Number.isFinite(o.amount) || o.amount < 0 || o.amount > TUNING.craft.posture.slipAt) throw new Error("posture/correct needs an amount from 0 to 100 (the drift taken back).");
+  if (o.beat !== void 0 && !(typeof o.beat === "number" && Number.isInteger(o.beat) && o.beat >= 0)) throw new Error("posture/correct: beat is a count of beats.");
+  if (o.attention !== void 0 && o.attention !== "watching" && o.attention !== "glancing" && o.attention !== "busy") throw new Error("posture/correct: attention is watching, glancing or busy.");
+  if (!craftLive(draft, reg, run.holderId)) throw new Error("She is not holding now.");
+  const preset = presetOf(reg, run.presetId);
+  if (!(o.point in (preset.drift ?? {}))) throw new Error("That point is not held in this posture.");
+  const beat = o.beat ?? run.beats;
+  run.beats = Math.max(run.beats, beat);
+  const attention = o.attention ?? attentionAt2(draft, reg, run, beat);
+  const P7 = TUNING.craft.posture;
+  const loudness = loudnessOf(o.amount) * (P7.noiseMult[String(preset.noise)] ?? 1) * noiseOf("posture", stillnessOf(draft, run.holderId)).loudness;
+  const seen2 = loudness > P7.seen[attention];
+  run.corrections++;
+  if (loudness > P7.loudAt) run.loud = (run.loud ?? 0) + 1;
+  const events = [{ type: "posture_corrected", unitId: run.holderId, holderId: run.holderId, runId: run.id, presetId: run.presetId, point: o.point, loud: loudness > P7.loudAt, seen: seen2 }];
+  if (seen2) {
+    run.fidgets = (run.fidgets ?? 0) + 1;
+    if (run.fidgets % P7.fidgetSlipEvery === 0) events.push(...slip(draft, ctx2, run, o.point, "fidgeting"));
+  }
+  return events;
+}
+var POSTURE_END_REASONS = ["released", "tapped", "collapse", "stopped", "gone"];
+function humiliationOf2(draft, reg, run, preset, seconds) {
+  const S17 = TUNING.craft.posture.situation;
+  const witnesses = witnessesOf6(draft, run.holderId);
+  let h2 = Number(preset.humiliation) || 0;
+  if (witnesses.length > 0) {
+    h2 += S17.witness;
+    if (leaderOf(draft) !== null && witnesses.includes(leaderOf(draft).id)) h2 += S17.leader;
+    if (practiceOf(draft, reg, run.holderId)?.audience === "show_off") h2 += S17.showOff;
+  }
+  if (draft.scene?.mode === "group") h2 += S17.crowd;
+  if (seconds >= S17.longSeconds) h2 += S17.long;
+  return Math.min(S17.max, h2);
+}
+var witnessesOf6 = (draft, holderId) => (draft.scene?.participants ?? []).filter((id) => id !== holderId && draft.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)));
+function endPosture(draft, ctx2, o) {
+  const reg = ctx2.registries;
+  const run = runOf(draft);
+  if (typeof o.reason !== "string" || !POSTURE_END_REASONS.includes(o.reason)) throw new Error(`posture/end needs a reason: ${POSTURE_END_REASONS.join(", ")}.`);
+  if (o.beats !== void 0 && !(typeof o.beats === "number" && Number.isInteger(o.beats) && o.beats >= 0)) throw new Error("posture/end: beats is a count.");
+  const reason = o.reason;
+  const preset = presetOf(reg, run.presetId);
+  const p = draft.practices;
+  delete p.postureRun;
+  const base2 = { unitId: run.holderId, holderId: run.holderId, runId: run.id, presetId: run.presetId, slips: run.slips };
+  if (reason === "stopped" || reason === "gone" || !craftLive(draft, reg, run.holderId)) return [{ type: "posture_ended", ...base2, reason: reason === "stopped" ? "stopped" : "gone", clean: false }];
+  const beats = o.beats ?? run.until ?? run.beats;
+  const seconds = fictionSeconds("posture", beats, craftLevel(draft, "posture"));
+  const clean14 = reason === "released" && run.slips === 0;
+  p.postureDay = { day: draft.day, holds: (p.postureDay?.day === draft.day ? p.postureDay.holds : 0) + 1 };
+  const events = [{ type: "posture_ended", ...base2, reason, clean: clean14, seconds }];
+  noteClean(draft, run.holderId, "posture", clean14);
+  if (clean14) {
+    events.push(...addCraftXp(draft, reg, "posture", TUNING.craft.xp.posture, "hold"));
+    addPostureMastery(draft, reg, run.holderId, preset.id, TUNING.craft.xp.knowledge);
+  }
+  events.push(...setRecord2(draft, run.holderId, `posture:${preset.id}`, seconds, { unclean: !clean14, tapped: reason === "tapped" }));
+  const humiliation = humiliationOf2(draft, reg, run, preset, seconds);
+  if (humiliation > 0) {
+    events.push(...regardFall(draft, reg, run.holderId, humiliation, { witness: false, cause: "posture" }));
+    for (const w of witnessesOf6(draft, run.holderId)) {
+      if (levelOf2(draft, w, run.holderId) === "knows_dynamic") continue;
+      events.push(...regardFall(draft, reg, w, humiliation, { witness: true, cause: "posture" }), ...addSign(draft, ctx2, w, run.holderId, "protocol_public"));
+    }
+  }
+  return events;
+}
+function endPostureRun(draft, ctx2, reason) {
+  return draft.practices?.postureRun === void 0 ? [] : endPosture(draft, ctx2, { reason });
+}
+function takePostureHold(draft, ctx2, o) {
+  const reg = ctx2.registries;
+  const scene = draft.scene;
+  if (scene === void 0) throw new Error("No scene is open.");
+  const preset = presetOf(reg, o.presetId);
+  if (preset === void 0) throw new Error(`Unknown posture "${o.presetId}".`);
+  const holderId = o.holderId ?? scene.participants.find((id) => craftLive(draft, reg, id));
+  if (holderId === void 0 || !craftLive(draft, reg, holderId)) throw new Error("Nobody is holding here: there is no one to hold the posture for.");
+  if (!scene.participants.includes(holderId)) throw new Error("She is not in the scene.");
+  if (draft.practices?.postureRun !== void 0) throw new Error("A posture hold is running.");
+  if (!presetAllowed(draft, reg, preset, [holderId])) throw new Error(`${String(preset.label)} is not available here.`);
+  const problem = presetProblem(draft, reg, preset);
+  if (problem !== null) throw new Error(problem);
+  const events = setBlocking(draft, ctx2, { person: COMMANDER, field: "posture", value: String(preset.base), preset: preset.id }, { at: o.at ?? scene.readIndex ?? scene.startIndex, source: "chip" });
+  return [...events, ...startPostureHold(draft, ctx2, { holderId, presetId: preset.id, ...o.until !== void 0 ? { until: o.until } : {}, ...o.hidden === true ? { hidden: true } : {}, source: "take" })];
+}
+function holdOfCall(draft, ctx2, info) {
+  const reg = ctx2.registries;
+  if (!craftLive(draft, reg, info.holderId) || draft.practices?.postureRun !== void 0) return [];
+  const preset = presetOf(reg, info.postureId);
+  if (preset === void 0 || commanderPresetOf(draft, reg)?.id !== preset.id) return [];
+  const T5 = TUNING.craft.posture;
+  const style = practiceOf(draft, reg, info.holderId)?.style.primary ?? "";
+  if (craftRoll(draft, info.holderId, `hold:${info.callId}`) >= (T5.holdShare[style] ?? T5.holdShare.other)) return [];
+  const until = T5.holdBeats.min + Math.floor(craftRoll(draft, info.holderId, `hold:len:${info.callId}`) * (T5.holdBeats.max - T5.holdBeats.min + 1));
+  try {
+    return startPostureHold(draft, ctx2, { holderId: info.holderId, presetId: preset.id, until, ...T5.hiddenEnd.includes(style) ? { hidden: true } : {}, source: "her_call" });
+  } catch {
+    return [];
+  }
+}
+
 // src/engine/craft/hooks.ts
 function stillnessShare(state) {
   return Math.min(0.9, TUNING.craft.noise.perLevel * craftLevel(state, "stillness"));
@@ -43404,6 +43715,7 @@ function rhythmLevel(state, holderId) {
   return levelForXp(state.relations[holderId]?.craft?.rhythm?.xp ?? 0);
 }
 function installCraftHooks() {
+  registerStopHook((draft, ctx2) => endPostureRun(draft, ctx2, "stopped"), "craft");
   registerStillness((state) => stillnessShare(state), "craft");
   registerRhythmKnown((state, holderId) => rhythmLevel(state, holderId), "craft");
 }
@@ -43414,17 +43726,17 @@ function slipOf(draft, e) {
   const physicsId = typeof e.physicsId === "string" ? e.physicsId : e.type === "physics_slip" ? draft.scene?.physics?.physicsId : void 0;
   return { type: e.type, holderId: e.holderId, ...typeof e.kind === "string" ? { kind: e.kind } : {}, ...physicsId !== void 0 ? { physicsId } : {} };
 }
-function slipKey(reg, slip2) {
-  if (slip2.type === "posture_slip") return "posture";
-  return slip2.physicsId !== void 0 && reg.contactPhysics.get(slip2.physicsId)?.skill === true ? `endurance:${slip2.physicsId}` : "stillness";
+function slipKey(reg, slip3) {
+  if (slip3.type === "posture_slip") return "posture";
+  return slip3.physicsId !== void 0 && reg.contactPhysics.get(slip3.physicsId)?.skill === true ? `endurance:${slip3.physicsId}` : "stillness";
 }
-function lessonRow(reg, slip2) {
-  const interaction = slip2.physicsId !== void 0 ? String(reg.contactPhysics.get(slip2.physicsId)?.interaction ?? "") : "";
+function lessonRow(reg, slip3) {
+  const interaction = slip3.physicsId !== void 0 ? String(reg.contactPhysics.get(slip3.physicsId)?.interaction ?? "") : "";
   let best;
   let bestScore = -1;
   for (const row4 of reg.craftLessons.values()) {
-    if (row4.slip !== slip2.type) continue;
-    if (row4.kind !== void 0 && row4.kind !== slip2.kind) continue;
+    if (row4.slip !== slip3.type) continue;
+    if (row4.kind !== void 0 && row4.kind !== slip3.kind) continue;
     if (row4.interaction !== void 0 && row4.interaction !== interaction) continue;
     const score = (row4.kind !== void 0 ? 1 : 0) + (row4.interaction !== void 0 ? 1 : 0);
     if (score > bestScore) {
@@ -43469,17 +43781,17 @@ function noteSlips(draft, ctx2, events) {
   const out = [];
   let n = 0;
   for (const e of events) {
-    const slip2 = slipOf(draft, e);
-    if (slip2 !== null) {
-      if (!craftLive(draft, reg, slip2.holderId) || !scene.participants.includes(slip2.holderId)) continue;
-      const key = slipKey(reg, slip2);
-      const row4 = lessonRow(reg, slip2);
-      const way = row4 !== void 0 ? lessonWay(draft, slip2.holderId, `${scene.id}:${scene.exchanges}:${n++}:${slip2.type}:${slip2.kind ?? ""}`) : null;
-      const craft = draft.relations[slip2.holderId].craft ??= {};
+    const slip3 = slipOf(draft, e);
+    if (slip3 !== null) {
+      if (!craftLive(draft, reg, slip3.holderId) || !scene.participants.includes(slip3.holderId)) continue;
+      const key = slipKey(reg, slip3);
+      const row4 = lessonRow(reg, slip3);
+      const way = row4 !== void 0 ? lessonWay(draft, slip3.holderId, `${scene.id}:${scene.exchanges}:${n++}:${slip3.type}:${slip3.kind ?? ""}`) : null;
+      const craft = draft.relations[slip3.holderId].craft ??= {};
       if (row4 !== void 0 && way !== null) {
-        const pick12 = row4.words[Math.floor(craftRoll(draft, slip2.holderId, `lesson:words:${scene.id}:${scene.exchanges}:${n}`) * row4.words.length)];
+        const pick12 = row4.words[Math.floor(craftRoll(draft, slip3.holderId, `lesson:words:${scene.id}:${scene.exchanges}:${n}`) * row4.words.length)];
         craft.lesson = { point: row4.point, words: pick12, ...way === "joke" ? { joke: true } : {}, scene: scene.id, exchange: scene.exchanges };
-        out.push(...pay2(draft, reg, slip2.holderId, key, "named"));
+        out.push(...pay2(draft, reg, slip3.holderId, key, "named"));
       } else (craft.slips ??= []).push({ key, scene: scene.id, day: draft.day });
     } else if (e.type === "punishment_issued" && typeof e.unitId === "string") {
       const waiting3 = draft.relations[e.unitId]?.craft?.slips;
@@ -43488,78 +43800,6 @@ function noteSlips(draft, ctx2, events) {
       delete draft.relations[e.unitId].craft.slips;
       for (const w of mine) out.push(...pay2(draft, reg, e.unitId, w.key, "punished"));
     }
-  }
-  return out;
-}
-
-// src/engine/craft/streak.ts
-function noteClean(draft, holderId, kind, clean14) {
-  const rel = draft.relations[holderId];
-  if (rel === void 0) return;
-  if (!clean14) {
-    if (rel.craft?.streak?.[kind] === void 0) return;
-    delete rel.craft.streak[kind];
-    return;
-  }
-  const streak = (rel.craft ??= {}).streak ??= {};
-  streak[kind] = (streak[kind] ?? 0) + 1;
-}
-
-// src/engine/craft/records.ts
-function segmentBeats(reg, physicsId) {
-  const seconds = Number(reg.contactPhysics.get(physicsId)?.segmentSeconds);
-  return Math.max(1, Math.ceil((Number.isFinite(seconds) ? seconds : 0) * 1e3 / TUNING.physics.beatMs));
-}
-function fictionSeconds(physicsId, beats, level) {
-  const perBeat = TUNING.craft.beatSeconds[physicsId] ?? TUNING.craft.beatSecondsDefault;
-  return Math.round(beats * perBeat * (1 + TUNING.craft.beatSkill * level));
-}
-var RECORD_KINDS = ["clean", "noTap", "longest"];
-var COUNTS = (reg, o) => o.result !== "stopped" && reg.contactPhysics.get(o.physicsId)?.interaction !== "passive";
-function noteRun(draft, ctx2, o) {
-  const reg = ctx2.registries;
-  if (!craftLive(draft, reg, o.holderId) || !COUNTS(reg, o)) return [];
-  const unclean = o.slips > 0 || o.result === "collapse" || o.result === "limit_broken" || o.result === "blackout";
-  const level = craftLevel(draft, `endurance:${o.physicsId}`);
-  const seconds = o.marathonHours !== void 0 ? Math.round(o.marathonHours * 3600) : fictionSeconds(o.physicsId, o.segments * segmentBeats(reg, o.physicsId), level);
-  if (o.result === "released" || o.result === "checked") noteClean(draft, o.holderId, o.physicsId, !unclean);
-  if (seconds < TUNING.craft.record.minSeconds) return [];
-  const rel = draft.relations[o.holderId];
-  if (rel === void 0) return [];
-  const have = rel.craft?.records?.[o.physicsId];
-  const improved = [];
-  const wins = { longest: true, clean: !unclean, noTap: !o.tapped };
-  for (const kind of RECORD_KINDS) if (wins[kind] && seconds > (have?.[kind] ?? 0)) improved.push(kind);
-  if (improved.length === 0) return [];
-  const rec = ((rel.craft ??= {}).records ??= {})[o.physicsId] ??= { longest: 0, clean: 0, noTap: 0, day: draft.day };
-  for (const kind of improved) rec[kind] = seconds;
-  rec.day = draft.day;
-  return [{ type: "record_set", unitId: o.holderId, key: o.physicsId, seconds, kind: improved[0], kinds: improved }];
-}
-function noteHoldEvents(draft, ctx2, events) {
-  const reg = ctx2.registries;
-  const out = [];
-  for (const e of events) {
-    if (e.type !== "physics_segment" || e.phase !== "end" || e.slips !== 0 || typeof e.holderId !== "string" || typeof e.physicsId !== "string") continue;
-    if (reg.contactPhysics.get(e.physicsId)?.skill !== true || !craftLive(draft, reg, e.holderId)) continue;
-    const scale = typeof e.scale === "number" ? e.scale : 1;
-    out.push(...addCraftXp(draft, reg, `endurance:${e.physicsId}`, Math.round(TUNING.craft.xp.phase * scale * 100) / 100, "phase"));
-    if (reg.contactPhysics.get(e.physicsId)?.interaction === "timing") addPairXp(draft, reg, e.holderId, "rhythm", TUNING.craft.xp.knowledge);
-  }
-  const taps = (id) => events.some((x) => x.type === "physics_signal" && x.released === true && x.runId === id);
-  for (const e of events) {
-    if (e.type !== "physics_outcome" || typeof e.holderId !== "string" || typeof e.physicsId !== "string") continue;
-    const done = events.find((x) => x.type === "marathon_done" && x.unitId === e.holderId && x.physicsId === e.physicsId);
-    const tally = typeof e.tally === "object" && e.tally !== null ? e.tally : {};
-    out.push(...noteRun(draft, ctx2, {
-      holderId: e.holderId,
-      physicsId: e.physicsId,
-      result: String(e.result),
-      segments: Number(e.segments) || 0,
-      slips: Number(tally.slips) || 0,
-      tapped: taps(e.runId) || Number(e.taps) > 0,
-      ...done !== void 0 && typeof done.hours === "number" ? { marathonHours: done.hours } : {}
-    }));
   }
   return out;
 }
@@ -43617,7 +43857,17 @@ function partner(draft, ctx2, at2) {
     return { events: [], scene: { locationId: place2 } };
   }
   (rel.craft ??= {}).partnerDay = draft.day;
-  return { events: payDrill(draft, reg, key, { companionId: at2.companionId, mult }) };
+  const events = payDrill(draft, reg, key, { companionId: at2.companionId, mult });
+  if (key === "posture") drillPreset(draft, reg, at2.companionId, events);
+  return { events };
+}
+function drillPreset(draft, reg, holderId, events) {
+  const done = events.find((e) => e.type === "drill_done");
+  const named5 = draft.practices?.postures[holderId] ?? [];
+  if (done === void 0 || !(Number(done.xp) > 0) || !craftLive(draft, reg, holderId) || named5.length === 0) return;
+  const pick12 = named5[Math.floor(craftRoll(draft, holderId, `drill:posture:${draft.day}`) * named5.length)];
+  addPostureMastery(draft, reg, holderId, pick12.postureId, TUNING.craft.xp.knowledge);
+  done.presetId = pick12.postureId;
 }
 function installDrillHooks() {
   registerDrillHooks({ gate: drillGate, effect: drillEffect, partner });
@@ -43718,6 +43968,34 @@ registerAfterAction((draft, ctx2, events) => {
   dropPendingDrills(draft, events);
   return events.some((e) => e.type === "physics_outcome") ? noteDrillOutcome(draft, ctx2, events) : [];
 });
+var isObj42 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+registerAction("posture/take", (draft, payload, ctx2) => {
+  if (!isObj42(payload) || typeof payload.presetId !== "string" || payload.presetId === "") throw new Error("posture/take needs { presetId }.");
+  if (payload.holderId !== void 0 && typeof payload.holderId !== "string") throw new Error("posture/take: holderId is a unit id.");
+  if (payload.until !== void 0 && !(typeof payload.until === "number" && Number.isInteger(payload.until) && payload.until > 0)) throw new Error("posture/take: until is a count of beats.");
+  if (payload.at !== void 0 && !(typeof payload.at === "number" && Number.isInteger(payload.at) && payload.at >= 0)) throw new Error("posture/take: at is a chat index.");
+  return takePostureHold(draft, ctx2, {
+    presetId: payload.presetId,
+    ...payload.holderId !== void 0 ? { holderId: payload.holderId } : {},
+    ...payload.until !== void 0 ? { until: payload.until } : {},
+    ...payload.hidden === true ? { hidden: true } : {},
+    ...payload.at !== void 0 ? { at: payload.at } : {}
+  });
+});
+registerAction("posture/correct", (draft, payload, ctx2) => {
+  if (!isObj42(payload)) throw new Error("posture/correct needs { point, amount }.");
+  return correctPosture(draft, ctx2, { point: payload.point, amount: payload.amount, attention: payload.attention, beat: payload.beat });
+});
+registerAction("posture/slip", (draft, payload, ctx2) => {
+  if (!isObj42(payload)) throw new Error("posture/slip needs { point }.");
+  return slipPosture(draft, ctx2, payload.point);
+});
+registerAction("posture/end", (draft, payload, ctx2) => {
+  if (!isObj42(payload)) throw new Error("posture/end needs { reason }.");
+  return endPosture(draft, ctx2, { reason: payload.reason, beats: payload.beats });
+});
+registerCallAnswered((draft, ctx2, info) => holdOfCall(draft, ctx2, info));
+registerAfterAction((draft, ctx2, events) => events.some((e) => e.type === "scene_ended" || e.type === "scene_aborted") ? endPostureRun(draft, ctx2, "gone") : []);
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
@@ -45185,7 +45463,7 @@ function revealPending(state, reg) {
 }
 
 // src/engine/warden/describe.ts
-var isObj42 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj43 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var strs3 = (v) => Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
 function describeOrder(state, reg, order) {
   const name = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
@@ -45210,7 +45488,7 @@ function overrideInput(state, reg, participants) {
   return { overrides: [{ id: o.id, order: describeOrder(state, reg, o.order), alternative: o.altLabel }] };
 }
 function orderOfAction(action, reg) {
-  const p = isObj42(action.payload) ? action.payload : {};
+  const p = isObj43(action.payload) ? action.payload : {};
   switch (action.type) {
     case "activity/do":
       return typeof p.activityId === "string" ? { kind: "activity", activityId: p.activityId, ...typeof p.companionId === "string" ? { companionId: p.companionId } : {}, ...Array.isArray(p.unitIds) ? { unitIds: strs3(p.unitIds) } : {} } : null;
@@ -46251,13 +46529,13 @@ function plain3(text3, max) {
 }
 var COMMANDER_PRONOUN5 = /\b(he|him|his|himself|he's)\b/i;
 var noPronoun = (t) => COMMANDER_PRONOUN5.test(t) ? "" : t;
-var isObj43 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj44 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function sanitizeReview(raw, input) {
-  if (!isObj43(raw) || !Array.isArray(raw.shifts) && !Array.isArray(raw.facts)) return null;
+  if (!isObj44(raw) || !Array.isArray(raw.shifts) && !Array.isArray(raw.facts)) return null;
   const listed2 = new Set(input.axes.map((a) => a.axis));
   const shifts = [];
   for (const s of Array.isArray(raw.shifts) ? raw.shifts : []) {
-    if (!isObj43(s) || typeof s.axis !== "string" || !listed2.has(s.axis)) continue;
+    if (!isObj44(s) || typeof s.axis !== "string" || !listed2.has(s.axis)) continue;
     if (s.direction !== "up" && s.direction !== "down") continue;
     if (s.size !== "nudge" && s.size !== "step") continue;
     shifts.push({ axis: s.axis, direction: s.direction, size: s.size, reason: noPronoun(plain3(s.reason, TUNING.development.reasonMax)) });
@@ -46265,7 +46543,7 @@ function sanitizeReview(raw, input) {
   }
   const facts = [];
   for (const f of Array.isArray(raw.facts) ? raw.facts : []) {
-    if (!isObj43(f) || typeof f.kind !== "string" || !FACT_KINDS2.includes(f.kind)) continue;
+    if (!isObj44(f) || typeof f.kind !== "string" || !FACT_KINDS2.includes(f.kind)) continue;
     const text3 = plain3(f.text, TUNING.development.factTextMax);
     if (text3 === "" || COMMANDER_PRONOUN5.test(text3)) continue;
     facts.push({ text: text3, kind: f.kind });
@@ -47457,9 +47735,9 @@ var CARD_MAX4 = 600;
 var OpinionFormRawSchema = external_exports.object({ position: external_exports.unknown().optional(), text: external_exports.unknown().optional() }).passthrough();
 var LABEL5 = /^(?:her words|opinion|position|text|answer|reply|narrator|assistant|system|ai|note)\s*:\s*/i;
 var COMMANDER_PRONOUN6 = /\b(he|him|his|himself|he's)\b/i;
-var isObj44 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj45 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function sanitizeOpinion(raw, input) {
-  if (!isObj44(raw) || typeof raw.position !== "string" || typeof raw.text !== "string") return null;
+  if (!isObj45(raw) || typeof raw.position !== "string" || typeof raw.text !== "string") return null;
   const asked = raw.position.trim();
   const position = input.topic.positions.find((p) => p.id === asked)?.id;
   if (position === void 0) return null;
@@ -49426,16 +49704,16 @@ var fieldSchemas = {
   longHoldStrain: external_exports.enum(LONG_HOLD_STRAINS)
 };
 var budgetSchema = external_exports.number().int().min(1);
-var isObj45 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj46 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function merge(base2, over2) {
-  const src = isObj45(over2) ? over2 : {};
+  const src = isObj46(over2) ? over2 : {};
   const out = { ...base2 };
   for (const [key, schema] of Object.entries(fieldSchemas)) {
     const parsed = schema.safeParse(src[key]);
     if (parsed.success) out[key] = parsed.data;
   }
   const budgets = { ...base2.budgets };
-  const srcBudgets = isObj45(src.budgets) ? src.budgets : {};
+  const srcBudgets = isObj46(src.budgets) ? src.budgets : {};
   for (const id of [...CALL_TYPE_IDS, ...BUDGET_EXTRA_IDS]) {
     const parsed = budgetSchema.safeParse(srcBudgets[id]);
     if (parsed.success) budgets[id] = parsed.data;
@@ -49450,7 +49728,7 @@ var REALTIME_MIGRATED = "physicsRealtimeDefaultMigrated";
 function getSettings(st3) {
   const raw = st3.getSettings();
   const s = merge(DEFAULT_SETTINGS, raw);
-  if (isObj45(raw) && raw[REALTIME_MIGRATED] !== true) {
+  if (isObj46(raw) && raw[REALTIME_MIGRATED] !== true) {
     s.physicsRealtime = true;
     raw[REALTIME_MIGRATED] = true;
   }
@@ -52744,24 +53022,24 @@ registerCallType({
   prompt: prompt3,
   schema: IntentExtractRawSchema
 });
-var isObj46 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj47 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var LABELS = EXPRESSION_LABELS;
 function sanitizeIntentOutput(raw, ctx2) {
   const parsed = IntentExtractRawSchema.safeParse(raw);
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [], contentViolations: [], sceneTone: void 0 };
-  const events = src.events.filter((e) => isObj46(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
-  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj46(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
+  const events = src.events.filter((e) => isObj47(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
+  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj47(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
   const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {}, ...ctx2.rules ? { rules: ctx2.rules } : {}, ...ctx2.intercepted ? { intercepted: ctx2.intercepted } : {}, ...ctx2.warned ? { warned: ctx2.warned } : {}, ...ctx2.overrides ? { overrides: ctx2.overrides } : {}, ...ctx2.expectations ? { expectations: ctx2.expectations } : {}, ...ctx2.conspire ? { conspire: ctx2.conspire } : {}, ...ctx2.life ? { life: ctx2.life } : {}, ...ctx2.dynamic ? { dynamic: ctx2.dynamic } : {}, ...ctx2.practice ? { practice: ctx2.practice } : {}, ...ctx2.factTextMax !== void 0 ? { factTextMax: ctx2.factTextMax } : {} });
   const emotions = [];
   for (const e of src.emotions) {
-    if (isObj46(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
+    if (isObj47(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
       emotions.push({ unitId: e.unitId, label: e.label });
     }
   }
   const contentViolations = [];
   const evidenceMax = TUNING.bonds.limits.evidenceMax;
   for (const v of src.contentViolations) {
-    if (!isObj46(v) || typeof v.category !== "string" || !(ctx2.excluded ?? []).includes(v.category) || contentViolations.some((x) => x.category === v.category)) continue;
+    if (!isObj47(v) || typeof v.category !== "string" || !(ctx2.excluded ?? []).includes(v.category) || contentViolations.some((x) => x.category === v.category)) continue;
     contentViolations.push({ category: v.category, evidence: typeof v.evidence === "string" ? v.evidence.replace(/\s+/g, " ").trim().slice(0, evidenceMax) : "" });
     if (contentViolations.length === TUNING.bonds.limits.maxViolations) break;
   }
@@ -52769,12 +53047,12 @@ function sanitizeIntentOutput(raw, ctx2) {
   return { intents, emotions, contentViolations, sceneTone };
 }
 function sanitizeStaging(raw, input) {
-  const src = isObj46(raw) ? raw : {};
+  const src = isObj47(raw) ? raw : {};
   const people = new Set(input.persons.map((p) => p.id));
   const lists = { posture: input.vocabulary.posture, anchor: input.vocabulary.anchor, contact: input.vocabulary.contact, worn: input.vocabulary.worn, removed: [...input.vocabulary.worn, ...input.vocabulary.contact] };
   const blocking = [];
   for (const c of Array.isArray(src.blocking) ? src.blocking : []) {
-    if (!isObj46(c) || blocking.length >= TUNING.blocking.maxChanges) continue;
+    if (!isObj47(c) || blocking.length >= TUNING.blocking.maxChanges) continue;
     const { person, field: field2, value, relTo, with: other, direction, confidence } = c;
     if (typeof person !== "string" || !people.has(person) || typeof field2 !== "string" || !STAGING_FIELDS.includes(field2)) continue;
     if (typeof value !== "string" || !lists[field2].includes(value)) continue;
@@ -52786,7 +53064,7 @@ function sanitizeStaging(raw, input) {
   }
   const ripe = typeof src.ripe === "string" && input.ripe.includes(src.ripe) ? src.ripe : null;
   let answer = null;
-  if (input.open && isObj46(src.answer)) {
+  if (input.open && isObj47(src.answer)) {
     const keys = input.open.keys ?? ["0", "1", "2"];
     const key = typeof src.answer.option === "number" || typeof src.answer.option === "string" ? String(src.answer.option) : "";
     const confidence = src.answer.confidence;
@@ -52818,7 +53096,7 @@ function readIntentOutput(raw, input, opts) {
     ...input.practice ? { practice: input.practice } : {},
     ...input.factTextMax !== void 0 ? { factTextMax: input.factTextMax } : {}
   });
-  return input.staging ? { ...base2, staging: sanitizeStaging(isObj46(raw) ? raw.staging : void 0, input.staging) } : base2;
+  return input.staging ? { ...base2, staging: sanitizeStaging(isObj47(raw) ? raw.staging : void 0, input.staging) } : base2;
 }
 
 // src/scene/comms.ts
@@ -55825,12 +56103,12 @@ var CUE_LINE_MAX = 120;
 var CUE_LINES_MIN = 3;
 var CUE_LINES_MAX = 5;
 var COMMANDER_PRONOUN7 = /\b(he|him|his|himself|he's)\b/i;
-var isObj47 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj48 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var PhysicsCuesRawSchema = external_exports.object({ cues: external_exports.unknown().optional() }).passthrough();
 var clean12 = (l) => l.replace(/<[^>]*>/g, " ").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f<]/g, " ").replace(/\s+/g, " ").trim().slice(0, CUE_LINE_MAX).trim();
 function sanitizeCues(raw) {
-  const cues = isObj47(raw) ? raw.cues : void 0;
-  if (!isObj47(cues)) return null;
+  const cues = isObj48(raw) ? raw.cues : void 0;
+  if (!isObj48(cues)) return null;
   const out = {};
   for (const kind of CUE_KINDS) {
     const list5 = cues[kind];
@@ -55895,16 +56173,16 @@ var BODY_CUES = ["lean", "press", "laugh", "cross", "settle", "rise"];
 var DECISION_KINDS = ["roster", "requisition", "punishment"];
 var COMMANDER_PRONOUN8 = /\b(he|him|his|himself|he's|she|her|hers|herself|she's)\b/i;
 var HE = /\b(he|him|his|himself|he's)\b/i;
-var isObj48 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj49 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var clean13 = (l) => l.replace(/<[^>]*>/g, " ").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f<]/g, " ").replace(/\s+/g, " ").trim().slice(0, SCRIPT_TEXT_MAX).trim();
 var ActivityScriptRawSchema = external_exports.object({ lines: external_exports.unknown().optional() }).passthrough();
 function sanitizeScript(raw, input) {
-  const lines3 = isObj48(raw) ? raw.lines : void 0;
+  const lines3 = isObj49(raw) ? raw.lines : void 0;
   if (!Array.isArray(lines3)) return null;
   const listeners = new Set(input.listeners.map((l) => l.id));
   const out = [];
   for (const l of lines3) {
-    if (!isObj48(l)) continue;
+    if (!isObj49(l)) continue;
     const who = l.who === "other" ? "other" : l.who === "her" ? "her" : null;
     const to = l.to === "self" || l.to === "other" || l.to === "commander" ? l.to : null;
     if (who === null || to === null || typeof l.at !== "number" || !Number.isFinite(l.at)) continue;
@@ -55912,7 +56190,7 @@ function sanitizeScript(raw, input) {
     const text3 = typeof l.text === "string" ? clean13(l.text) : "";
     const bad = (t) => HE.test(t) || about2 && COMMANDER_PRONOUN8.test(t);
     let mention;
-    if (isObj48(l.mention) && who === "her" && to === "other") {
+    if (isObj49(l.mention) && who === "her" && to === "other") {
       const m = l.mention;
       const plain8 = typeof m.plain === "string" ? clean13(m.plain) : "";
       const veiled = typeof m.veiled === "string" ? clean13(m.veiled) : "";
@@ -55931,7 +56209,7 @@ function sanitizeScript(raw, input) {
       ...typeof l.body === "string" && BODY_CUES.includes(l.body) && who === "her" ? { body: l.body } : {},
       ...about2 ? { about: true } : {},
       ...l.feet === true && who === "other" ? { feet: true } : {},
-      ...isObj48(l.decision) && typeof l.decision.kind === "string" && DECISION_KINDS.includes(l.decision.kind) ? { decision: { kind: l.decision.kind, ...typeof l.decision.ref === "string" && /^[A-Za-z0-9_.:-]{1,60}$/.test(l.decision.ref) ? { ref: l.decision.ref } : {} } } : {}
+      ...isObj49(l.decision) && typeof l.decision.kind === "string" && DECISION_KINDS.includes(l.decision.kind) ? { decision: { kind: l.decision.kind, ...typeof l.decision.ref === "string" && /^[A-Za-z0-9_.:-]{1,60}$/.test(l.decision.ref) ? { ref: l.decision.ref } : {} } } : {}
     };
     out.push(line3);
     if (out.length >= SCRIPT_LINES_MAX) break;
@@ -57941,7 +58219,7 @@ function renderCommanderFile(host, ctx2) {
 
 // src/setup/commander.ts
 var PERSONA_CHARS = 6e3;
-var isObj49 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj50 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap5 = (v, max) => typeof v === "string" ? v.replace(/<[^>]*>/g, "").trim().slice(0, max) : "";
 function valueOf(kind, v) {
   if (typeof v !== "string") return null;
@@ -57950,7 +58228,7 @@ function valueOf(kind, v) {
 }
 var LOWER_ORDER = ["reflexes", "endurance", "strength"];
 function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) {
-  const src = isObj49(raw) ? raw : {};
+  const src = isObj50(raw) ? raw : {};
   const setup = defaultCommanderSetup();
   for (const k of BODY_STATS) {
     const v = valueOf(k, src[k]);
@@ -57966,7 +58244,7 @@ function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) 
   const reasons = {};
   for (const item of Array.isArray(src.traits) ? src.traits : []) {
     if (setup.traits.regular.length >= TUNING.commander.maxRegular) break;
-    const id = isObj49(item) && typeof item.id === "string" ? item.id : null;
+    const id = isObj50(item) && typeof item.id === "string" ? item.id : null;
     const t = id === null ? void 0 : reg.commanderTraits.get(id);
     if (!id || !t || t.kind !== "regular" || setup.traits.regular.includes(id)) continue;
     if (traitBlockReason(reg, setup.traits, id, opts) !== null) continue;
@@ -57975,7 +58253,7 @@ function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) 
   }
   return { setup, personaName: "", reasons, notes: cap5(src.notes, 300) };
 }
-var usable2 = (raw, result) => isObj49(raw) && ["strength", "endurance", "reflexes", "expression", "seasoning"].some((k) => valueOf(k, raw[k]) !== null) || result.setup.traits.regular.length > 0;
+var usable2 = (raw, result) => isObj50(raw) && ["strength", "endurance", "reflexes", "expression", "seasoning"].some((k) => valueOf(k, raw[k]) !== null) || result.setup.traits.regular.length > 0;
 async function importCommander(st3, deps) {
   const { settings, registries } = deps;
   try {
@@ -58083,7 +58361,7 @@ function developmentAxisKeys(registries, content) {
     ...[...registries.worshipTargets.values()].filter((t) => contentAllowed(holder3, registries, t)).map((t) => `expect:worship.${t.id}`)
   ];
 }
-var isObj50 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj51 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap6 = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
 var num5 = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
 var STANCE_REASON_MAX2 = 160;
@@ -58101,7 +58379,7 @@ function tagList3(v, max) {
   return out;
 }
 function sanitizeProfile(raw, ctx2) {
-  const src = isObj50(raw) ? raw : {};
+  const src = isObj51(raw) ? raw : {};
   const want = (s) => ctx2.sections.includes(s);
   const dropped = [];
   const missing2 = [];
@@ -58110,7 +58388,7 @@ function sanitizeProfile(raw, ctx2) {
     const out = [];
     const seen2 = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list5) ? list5 : []) {
-      const id = isObj50(item) && typeof item[idKey] === "string" ? item[idKey] : null;
+      const id = isObj51(item) && typeof item[idKey] === "string" ? item[idKey] : null;
       if (id === null) {
         dropped.push(`${SECTION_LABEL[section]}:(invalid)`);
         continue;
@@ -58158,11 +58436,11 @@ function sanitizeProfile(raw, ctx2) {
     const read2 = validateBond(src.bond, ctx2.registries);
     profile.bond = read2.bond;
     bond = read2.bond;
-    const reason = cap6(isObj50(src.bond) ? src.bond.reason : void 0, TUNING.bonds.limits.noteMax);
+    const reason = cap6(isObj51(src.bond) ? src.bond.reason : void 0, TUNING.bonds.limits.noteMax);
     if (reason !== "") profile.bondReason = reason;
     for (const issue of read2.issues) if (/unknown content category/.test(issue)) dropped.push(`bond:${issue.match(/"([^"]*)"/)?.[1] ?? "(invalid)"}`);
     if (read2.valid.length === 0) missing2.push("bond");
-    if (!isObj50(src.bond)) delete profile.bond;
+    if (!isObj51(src.bond)) delete profile.bond;
   }
   if (want("defects")) {
     profile.defectCandidates = pick12(
@@ -58179,7 +58457,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.defectCandidates.length === 0) missing2.push("defects");
   }
   if (want("values")) {
-    if (isObj50(src.values)) {
+    if (isObj51(src.values)) {
       const v = src.values;
       profile.values = Object.fromEntries(VALUE_KEYS.map((k) => [k, num5(v[k], -3, 3, 0)]));
     } else missing2.push("values");
@@ -58204,25 +58482,25 @@ function sanitizeProfile(raw, ctx2) {
     }
     profile.commanderTastes = out;
   }
-  if (want("disposition") && isObj50(src.dispositionOffset) && typeof src.dispositionOffset.offset === "number" && Number.isFinite(src.dispositionOffset.offset)) {
+  if (want("disposition") && isObj51(src.dispositionOffset) && typeof src.dispositionOffset.offset === "number" && Number.isFinite(src.dispositionOffset.offset)) {
     profile.dispositionOffset = { offset: num5(src.dispositionOffset.offset, -2, 2, 0), reason: cap6(src.dispositionOffset.reason, STANCE_REASON_MAX2) };
   }
   if (want("stances")) {
     const ids = stanceOptionIds(ctx2.registries, ctx2.world);
     if (ids.length > 0) {
-      const given = isObj50(src.worldStances) ? src.worldStances : {};
+      const given = isObj51(src.worldStances) ? src.worldStances : {};
       for (const key of Object.keys(given)) if (!ids.includes(key)) dropped.push(`stances:${key}`);
       const out = {};
       for (const id of ids) {
         const e = given[id];
-        const stance = isObj50(e) && typeof e.stance === "string" && STANCE_WORDS.includes(e.stance) ? e.stance : null;
+        const stance = isObj51(e) && typeof e.stance === "string" && STANCE_WORDS.includes(e.stance) ? e.stance : null;
         out[id] = stance === null ? { stance: "indifferent", strength: 1, reason: "" } : { stance, strength: e.strength === 2 ? 2 : 1, reason: cap6(e.reason, STANCE_REASON_MAX2) };
       }
       profile.worldStances = out;
     }
   }
   if (want("development")) {
-    const dev = isObj50(src.development) ? src.development : {};
+    const dev = isObj51(src.development) ? src.development : {};
     const anchors2 = [];
     for (const raw2 of Array.isArray(dev.anchors) ? dev.anchors : []) {
       const key = anchorKey(ctx2.registries, raw2);
@@ -58235,7 +58513,7 @@ function sanitizeProfile(raw, ctx2) {
     profile.anchors = anchors2;
     profile.insight = dev.insight === "low" || dev.insight === "high" ? dev.insight : "mid";
   }
-  if (want("temperament") && isObj50(src.temperament)) {
+  if (want("temperament") && isObj51(src.temperament)) {
     const given = src.temperament;
     const t = { ...TEMPERAMENT_DEFAULTS };
     for (const field2 of Object.keys(TEMPERAMENT_VALUES)) {
@@ -58262,7 +58540,7 @@ function sanitizeProfile(raw, ctx2) {
       return out;
     };
     profile.hobbies = list5(src.hobbies, "hobbies", TUNING.life.maxActive);
-    if (isObj50(src.aptitudes)) {
+    if (isObj51(src.aptitudes)) {
       const high = list5(src.aptitudes.high, "aptitudes", 3);
       const low = list5(src.aptitudes.low, "aptitudes", 3);
       const both = high.filter((h2) => low.includes(h2));
@@ -58276,9 +58554,9 @@ function sanitizeProfile(raw, ctx2) {
     const out = {};
     const max = TUNING.life.opinion.importMax;
     for (const item of Array.isArray(src.opinions) ? src.opinions : []) {
-      const topicId = isObj50(item) && typeof item.topic === "string" ? item.topic : null;
+      const topicId = isObj51(item) && typeof item.topic === "string" ? item.topic : null;
       const topic = topicId === null ? void 0 : ctx2.registries.opinionTopics.get(topicId);
-      const position = isObj50(item) && typeof item.position === "string" ? item.position : null;
+      const position = isObj51(item) && typeof item.position === "string" ? item.position : null;
       if (topicId === null || !topic || !topic.positions.some((p) => p.id === position) || topicId in out || Object.keys(out).length >= max) {
         dropped.push(`opinions:${topicId ?? "(invalid)"}`);
         continue;
@@ -58301,7 +58579,7 @@ function sanitizeProfile(raw, ctx2) {
     else missing2.push("expectations");
   }
   if (want("baseline")) {
-    if (isObj50(src.emotionalBaseline)) {
+    if (isObj51(src.emotionalBaseline)) {
       const b = src.emotionalBaseline;
       const lim = SETUP_LIMITS.baseline;
       profile.baseline = {
@@ -68078,7 +68356,7 @@ var SHAPES = {
     const cr = Math.cos(rock), sr = Math.sin(rock);
     const side = (x, flip) => {
       const L6 = clamp43(x.L, -0.2, 1.2), sq = squashOf(x);
-      const P6 = 1.38 / (1 + 0.28 * L6 + ex * 4);
+      const P7 = 1.38 / (1 + 0.28 * L6 + ex * 4);
       return SEAT_BODY.map(([px, py], i) => {
         let X3 = px, Y = py;
         if (Y > 0) {
@@ -68090,7 +68368,7 @@ var SHAPES = {
           Y += 0.12 * sq;
         }
         X3 *= flip;
-        return [V3[0] + (X3 * cr - Y * sr) * H * P6, V3[1] + (X3 * sr + Y * cr) * H * P6];
+        return [V3[0] + (X3 * cr - Y * sr) * H * P7, V3[1] + (X3 * sr + Y * cr) * H * P7];
       });
     };
     const right = side(b, 1), left = side(a, -1);
@@ -69939,7 +70217,7 @@ function landShift() {
 function onBeat() {
   G4.beat += 1;
   const grace = graceOf(G4.beat - 1);
-  if (!grace && !HOLD2.on && !G4.slipThisBeat && !G4.resting) slip();
+  if (!grace && !HOLD2.on && !G4.slipThisBeat && !G4.resting) slip2();
   if (G4.resting && G4.beat >= 1) report3({ beat: G4.beat - 1, kind: "ask_rest", part: "up" });
   const evenNow = grace || HOLD2.on && !G4.slipThisBeat && Math4.abs(G4.cop - G4.ctl) <= S5.tol;
   G4.held.push(grace || HOLD2.on && !G4.slipThisBeat);
@@ -69951,7 +70229,7 @@ function onBeat() {
   reportBeat2(G4.beat - 1, G4.held[G4.held.length - 1], evenNow);
   G4.slipThisBeat = false;
 }
-function slip() {
+function slip2() {
   {
     G4.slipThisBeat = true;
     G4.slips += 1;
@@ -70026,7 +70304,7 @@ function updateLoop2(dt) {
     G4.str = Math4.min(100, G4.str + dt * 4e-3);
     return;
   }
-  if (!HOLD2.on && !G4.slipThisBeat && G4.clock > BEAT3 && !R7.seg.flushed) slip();
+  if (!HOLD2.on && !G4.slipThisBeat && G4.clock > BEAT3 && !R7.seg.flushed) slip2();
   if (G4.pressureUntil < G4.clock) G4.pressure = R7.pressure;
   const c = C2();
   const err = G4.cop - G4.ctl;
@@ -72980,12 +73258,12 @@ function howOfFeet(state, reg, holderId) {
   return Object.entries(worship).filter(([id, w]) => atFeet(id) && w.attitude !== "dislikes" && typeof w.how === "string").map(([, w]) => w.how.toLowerCase()).join(" ");
 }
 function servicePaceOf(state, reg, holderId) {
-  const P6 = TUNING.physics.footService;
+  const P7 = TUNING.physics.footService;
   const style = leadStyle(physicsStyleOf(state, holderId, reg)).key;
   const row4 = SVC_STYLE[style] ?? SVC_STYLE.neutral;
-  const patience = style === "cruel" ? row4.patience : Math.min(P6.patience[1], Math.max(P6.patience[0], row4.patience));
+  const patience = style === "cruel" ? row4.patience : Math.min(P7.patience[1], Math.max(P7.patience[0], row4.patience));
   const how = howOfFeet(state, reg, holderId);
-  const tilt = /\bslow/.test(how) ? P6.slow : /\b(quick|fast|brisk)/.test(how) ? P6.quick : { kiss: 1, tempo: 1 };
+  const tilt = /\bslow/.test(how) ? P7.slow : /\b(quick|fast|brisk)/.test(how) ? P7.quick : { kiss: 1, tempo: 1 };
   const named5 = [...new Set([...how.matchAll(ZONE_WORD)].map((m2) => m2[1].startsWith("toe") ? "toes" : m2[1]))];
   const heel = how.indexOf("heel"), toe = how.search(/\btoe/);
   const grain = heel >= 0 && toe >= 0 ? heel < toe ? -1 : 1 : fnv1a3(`${holderId}|grain`) % 2 ? 1 : -1;
@@ -76095,17 +76373,17 @@ function drawLight(c, now, where) {
   const dusk = smooth(18 * 60 + 30, 20 * 60, G8.clockMin);
   ctx2.globalCompositeOperation = "lighter";
   ctx2.filter = `blur(${Math8.round(H * 0.08)}px)`;
-  const P6 = { deskLight: [0.5, 0.05, 0.5, 0.3], floorLight: [0.28, 0.12, 0.3, 0.32], wallLight: [0.36, 0.2, 0.42, 0.5] }[where];
+  const P7 = { deskLight: [0.5, 0.05, 0.5, 0.3], floorLight: [0.28, 0.12, 0.3, 0.32], wallLight: [0.36, 0.2, 0.42, 0.5] }[where];
   if (lamp) {
     ctx2.fillStyle = `rgba(255,180,110,${(0.28 * (0.4 + 0.6 * dusk)).toFixed(3)})`;
     ctx2.beginPath();
-    ctx2.ellipse(P6[0] * W3, P6[1] * H, P6[2] * W3, P6[3] * H, 0, 0, Math8.PI * 2);
+    ctx2.ellipse(P7[0] * W3, P7[1] * H, P7[2] * W3, P7[3] * H, 0, 0, Math8.PI * 2);
     ctx2.fill();
   }
   if (screen) {
     ctx2.fillStyle = `rgba(120,170,255,${(0.3 * att * flick).toFixed(3)})`;
     ctx2.beginPath();
-    ctx2.ellipse((P6[0] + 0.05) * W3, (P6[1] + 0.04) * H, P6[2] * 0.7 * W3, P6[3] * 0.7 * H, 0, 0, Math8.PI * 2);
+    ctx2.ellipse((P7[0] + 0.05) * W3, (P7[1] + 0.04) * H, P7[2] * 0.7 * W3, P7[3] * 0.7 * H, 0, 0, Math8.PI * 2);
     ctx2.fill();
   }
   ctx2.filter = "none";
@@ -87176,13 +87454,13 @@ var PANELS = Object.fromEntries([weightPanel, activityPanel, thronePanel, shoePa
 var panelOf = (key) => PANELS[SLOT_INFO[key].prototype] ?? slapPanel;
 
 // src/st/chat.ts
-var isObj51 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj52 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function mapChatMessages(chat, from = 0) {
   if (!Array.isArray(chat)) return [];
   const out = [];
   for (let index2 = Math.max(0, from); index2 < chat.length; index2++) {
     const m = chat[index2];
-    if (!isObj51(m) || m.is_system === true) continue;
+    if (!isObj52(m) || m.is_system === true) continue;
     const avatar = typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     out.push({
       index: index2,
@@ -87200,7 +87478,7 @@ function lastCharacterAvatar(chat) {
   if (!Array.isArray(chat)) return void 0;
   for (let i = chat.length - 1; i >= 0; i--) {
     const m = chat[i];
-    if (isObj51(m) && m.is_user !== true && m.is_system !== true) {
+    if (isObj52(m) && m.is_user !== true && m.is_system !== true) {
       return typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     }
   }
@@ -87231,7 +87509,7 @@ function unhideRuns(ranges, length) {
 }
 var isSystemMessage = (chat, index2) => {
   const m = Array.isArray(chat) ? chat[index2] : void 0;
-  return !isObj51(m) || m.is_system === true;
+  return !isObj52(m) || m.is_system === true;
 };
 
 // src/st/fake.ts
@@ -93757,17 +94035,17 @@ function toStLorebook(book2, template) {
 }
 
 // src/st/sprites.ts
-var isObj52 = (v) => typeof v === "object" && v !== null;
+var isObj53 = (v) => typeof v === "object" && v !== null;
 function spriteFolder(avatar, name, overrides) {
   if (!Array.isArray(overrides)) return name;
   const key = avatar.replace(/\.[^.]+$/, "");
-  const hit = overrides.find((o) => isObj52(o) && o.name === key && typeof o.path === "string" && o.path !== "");
+  const hit = overrides.find((o) => isObj53(o) && o.name === key && typeof o.path === "string" && o.path !== "");
   return hit ? hit.path : name;
 }
 function pickSprite(list5, label2) {
   if (!Array.isArray(list5)) return null;
   for (const item of list5) {
-    if (isObj52(item) && item.label === label2 && typeof item.path === "string") return item.path;
+    if (isObj53(item) && item.label === label2 && typeof item.path === "string") return item.path;
   }
   return null;
 }

@@ -79,6 +79,14 @@
         "drill": {
           "key": "rhythm"
         }
+      },
+      {
+        "id": "drill_posture",
+        "label": "Posture drill",
+        "drill": {
+          "key": "posture",
+          "partner": true
+        }
       }
     ],
     "effects": [
@@ -159,6 +167,13 @@
         "key": "rhythm",
         "when": {
           "focus": "drill_rhythm"
+        }
+      },
+      {
+        "type": "commander_craft_xp",
+        "key": "posture",
+        "when": {
+          "focus": "drill_posture"
         }
       }
     ],

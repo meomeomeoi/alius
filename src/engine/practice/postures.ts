@@ -5,7 +5,7 @@
  * pronoun for the commander, over 30 characters or empty, it is refused and the posture's own label stands. Nothing here draws: the call is a hashed roll (`practiceRoll`) and its pick is an index.
  */
 import type { Registries } from '../../content/types';
-import { checkChange, commanderPresetOf, COMMANDER, entryAllowed, frameRank, presetAllowed, presetOf, samePreset, setBlocking, type BlockingChange } from '../blocking';
+import { checkChange, commanderPresetOf, COMMANDER, entryAllowed, frameRank, presetAllowed, presetOf, presetProblem, samePreset, setBlocking, type BlockingChange } from '../blocking';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { hasCapability } from '../dynamic/capabilities';
 import { hasCommanderPronoun } from '../dynamic/pronoun';
@@ -24,6 +24,17 @@ import { practiceRoll } from './state';
  * through `presetOf` (a base reads as its default preset, the same pose), and two ids are one posture when they read as the same preset (`samePreset`).
  */
 export { presetOf };
+
+/**
+ * What follows an answer that took her called posture in time (P16b: she may want it held): a hook (the craft registers one) answers the events of what it started, or `[]`. `info.postureId` is
+ * the posture as stored in her set. The practices import nothing of the craft; with no hook registered nothing follows.
+ */
+type CallAnswered = (draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, info: { holderId: string; callId: string; postureId: string }) => EngineEvent[];
+const answeredHooks: CallAnswered[] = [];
+export function registerCallAnswered(fn: CallAnswered): void {
+  if (!answeredHooks.includes(fn)) answeredHooks.push(fn);
+}
+const afterAnswer = (draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, info: Parameters<CallAnswered>[2]): EngineEvent[] => answeredHooks.flatMap((fn) => fn(draft, ctx, info));
 
 /** The longest name a posture is given. */
 export const POSTURE_NAME_MAX = 30;
@@ -147,12 +158,14 @@ export function takePosture(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
   // a preset id sets its base and itself; an old name on a base sets the base alone (the same pose, and nothing new written)
   const preset = reg.servicePostures.get(call.postureId);
   const change: BlockingChange = { person: COMMANDER, field: 'posture', value: (preset?.base as string | undefined) ?? call.postureId, ...(preset !== undefined ? { preset: preset.id } : {}) };
-  if (samePreset(reg, commanderPresetOf(draft, reg)?.id, call.postureId)) return [{ type: 'posture_called', ...base, taken: true }, ...addTrackXp(draft, reg, call.holderId, TRACK, TUNING.practice.posture.xp)];
-  if (draft.scene === undefined || checkChange(draft, reg, change) !== null) return [{ type: 'posture_called', ...base, void: true }];
+  const after = { holderId: call.holderId, callId, postureId: call.postureId };
+  if (samePreset(reg, commanderPresetOf(draft, reg)?.id, call.postureId)) return [{ type: 'posture_called', ...base, taken: true }, ...addTrackXp(draft, reg, call.holderId, TRACK, TUNING.practice.posture.xp), ...afterAnswer(draft, ctx, after)];
+  if (draft.scene === undefined || checkChange(draft, reg, change) !== null || (presetOf(reg, call.postureId) !== undefined && presetProblem(draft, reg, presetOf(reg, call.postureId)!) !== null)) return [{ type: 'posture_called', ...base, void: true }];
   return [
     { type: 'posture_called', ...base, taken: true },
     ...setBlocking(draft, ctx, change, { at, source: 'chip' }),
     ...addTrackXp(draft, reg, call.holderId, TRACK, TUNING.practice.posture.xp),
+    ...afterAnswer(draft, ctx, after),
   ];
 }
 

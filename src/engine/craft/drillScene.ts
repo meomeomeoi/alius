@@ -17,7 +17,8 @@ import { TUNING } from '../tuning';
 import { registerDrillHooks, type DrillAt } from '../activities';
 import { drillEffect, drillGate, drillMult, drilledToday, payDrill } from './drills';
 import { craftHolders, craftLive, craftOn } from './gate';
-import { enduranceOf } from './state';
+import { addPostureMastery } from './posture';
+import { craftRoll, enduranceOf } from './state';
 
 /**
  * The contacts a drill of this physics can use with her now, in registry order: the entries whose main physics (the first it lists, the one a staged contact starts) is
@@ -49,7 +50,22 @@ function partner(draft: CampaignState, ctx: EngineCtx, at: DrillAt): { events: E
     return { events: [], scene: { locationId: place } };
   }
   (rel.craft ??= {}).partnerDay = draft.day;
-  return { events: payDrill(draft, reg, key, { companionId: at.companionId, mult }) };
+  const events = payDrill(draft, reg, key, { companionId: at.companionId, mult });
+  if (key === 'posture') drillPreset(draft, reg, at.companionId, events);
+  return { events };
+}
+
+/**
+ * A posture drill with a holder is a drill of one of her named postures: she picks it (an index into her set by `craftRoll`, so the pick is stable for the day and nothing is drawn),
+ * and the pair's mastery of it grows by `xp.knowledge`. The pick is carried on `drill_done` (`presetId`). Nothing when the drill paid nothing, she is not craft-live or names no posture.
+ */
+function drillPreset(draft: CampaignState, reg: Registries, holderId: string, events: EngineEvent[]): void {
+  const done = events.find((e) => e.type === 'drill_done');
+  const named = draft.practices?.postures[holderId] ?? [];
+  if (done === undefined || !(Number(done.xp) > 0) || !craftLive(draft, reg, holderId) || named.length === 0) return;
+  const pick = named[Math.floor(craftRoll(draft, holderId, `drill:posture:${draft.day}`) * named.length)]!;
+  addPostureMastery(draft, reg, holderId, pick.postureId, TUNING.craft.xp.knowledge);
+  done.presetId = pick.postureId;
 }
 
 /** Installs the hooks the activities take (idempotent: the same hooks twice are one). */

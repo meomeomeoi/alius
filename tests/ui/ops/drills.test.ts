@@ -23,7 +23,7 @@ const values = (sel: HTMLSelectElement | null) => [...(sel?.querySelectorAll('op
 describe('the drills in the OPS tab', () => {
   it('with a holder running the craft every drill is listed, and the select carries the drill gloss', () => {
     const c = card(world(reg, 'play'));
-    expect(values(c.focus())).toEqual(expect.arrayContaining(['endurance_breath', 'endurance_weight', 'endurance_jaw', 'drill_stillness', 'drill_recitation', 'drill_rhythm']));
+    expect(values(c.focus())).toEqual(expect.arrayContaining(['endurance_breath', 'endurance_weight', 'endurance_jaw', 'drill_stillness', 'drill_recitation', 'drill_rhythm', 'drill_posture']));
     expect(c.focus()!.getAttribute('data-analyze')).toBe('glossary:craft_drill');
     expect(c.focus()!.querySelector('[data-analyze]')).toBeNull(); // the select carries it: an option cannot be reached
   });
@@ -38,7 +38,7 @@ describe('the drills in the OPS tab', () => {
     const c = card(world(reg, 'play'));
     change(c.companion, ANN);
     expect(c.focus()).toBeNull();
-    expect(values(c.partner())).toEqual(['', 'endurance_breath', 'endurance_weight']);
+    expect(values(c.partner())).toEqual(['', 'endurance_breath', 'endurance_weight', 'drill_posture']);
     expect(c.partner()!.getAttribute('data-analyze')).toBe('glossary:craft_drill');
     c.btn.click();
     expect(c.onDo).toHaveBeenLastCalledWith({ activityId: 'train', companionId: ANN });

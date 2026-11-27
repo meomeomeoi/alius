@@ -497,7 +497,7 @@ Before Task 1, also read:
   - The end of a clean hold to her release pays `TUNING.craft.xp.posture` (5) to `posture`, plus the preset's mastery and a record (fiction time from beats × `beatSeconds.posture`). The humiliation of the preset plus the situation (blocking.md §7.2: a friend present +1, the mess +2, …) goes to `regardFall` with `witness` when someone non-knowing is present; then `protocol_public` for those who do not know.
   - The settling-in modifier (Task 2) is applied to her next hold of the kind.
   - **Author, G1 round 1:** a posture beat stands for 45 s of fiction, not 30 (`TUNING.craft.beatSeconds.posture` 30 → 45, ×1.5).
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - take, correct, slip and end;
   - one offence per slip;
   - xp and mastery at a clean end;
@@ -505,10 +505,10 @@ Before Task 1, also read:
   - a hold with no duration keeps its end hidden (`heldEndShown`);
   - the stop word ends a posture run;
   - nothing without `craftLive`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P16b): holding a posture`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P16b): holding a posture`
 
 ### Task 13: The posture directive, the gate of `on_hands`, the SYS toggles
 

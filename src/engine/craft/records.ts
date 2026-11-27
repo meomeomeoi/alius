@@ -62,18 +62,27 @@ export function noteRun(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>
   const level = craftLevel(draft, `endurance:${o.physicsId}`);
   const seconds = o.marathonHours !== undefined ? Math.round(o.marathonHours * 3600) : fictionSeconds(o.physicsId, o.segments * segmentBeats(reg, o.physicsId), level);
   if (o.result === 'released' || o.result === 'checked') noteClean(draft, o.holderId, o.physicsId, !unclean);
+  return setRecord(draft, o.holderId, o.physicsId, seconds, { unclean, tapped: o.tapped });
+}
+
+/**
+ * Sets a record of the pair in fiction time for a key (a physics, or `posture:<preset>`): the longest hold always, the longest without a slip when the run was clean, the longest without
+ * a tap when it was not ended by one. They are equal whenever they are set, so a new best emits ONE `record_set` (the most specific kind that improved, the others listed in `kinds`).
+ * Nothing under `record.minSeconds` is kept or said. The caller has checked that she is craft-live.
+ */
+export function setRecord(draft: CampaignState, holderId: string, key: string, seconds: number, o: { unclean: boolean; tapped: boolean }): EngineEvent[] {
   if (seconds < TUNING.craft.record.minSeconds) return [];
-  const rel = draft.relations[o.holderId];
+  const rel = draft.relations[holderId];
   if (rel === undefined) return [];
-  const have = rel.craft?.records?.[o.physicsId];
+  const have = rel.craft?.records?.[key];
   const improved: RecordKind[] = [];
-  const wins = { longest: true, clean: !unclean, noTap: !o.tapped } as const;
+  const wins = { longest: true, clean: !o.unclean, noTap: !o.tapped } as const;
   for (const kind of RECORD_KINDS) if (wins[kind] && seconds > (have?.[kind] ?? 0)) improved.push(kind);
   if (improved.length === 0) return [];
-  const rec = (((rel.craft ??= {}).records ??= {})[o.physicsId] ??= { longest: 0, clean: 0, noTap: 0, day: draft.day });
+  const rec = (((rel.craft ??= {}).records ??= {})[key] ??= { longest: 0, clean: 0, noTap: 0, day: draft.day });
   for (const kind of improved) rec[kind] = seconds;
   rec.day = draft.day;
-  return [{ type: 'record_set', unitId: o.holderId, key: o.physicsId, seconds, kind: improved[0], kinds: improved }];
+  return [{ type: 'record_set', unitId: holderId, key, seconds, kind: improved[0], kinds: improved }];
 }
 
 /**

@@ -19,7 +19,7 @@ export function holdsPractices(state: Pick<CampaignState, 'practices'>, unitId: 
     || p.demonstrations.some((x) => x.holderId === unitId || x.audienceIds.includes(unitId) || x.narrated?.includes(unitId) === true)
     || p.held?.by === unitId || p.alarm?.holderId === unitId || p.permission?.holderId === unitId
     || p.restrictions.some((r) => r.holderId === unitId) || p.cold[unitId] !== undefined || p.postures[unitId] !== undefined
-    || p.call?.holderId === unitId || p.slap?.holderId === unitId || p.offences[unitId] !== undefined
+    || p.call?.holderId === unitId || p.slap?.holderId === unitId || p.postureRun?.holderId === unitId || p.offences[unitId] !== undefined
     || p.records.some((r) => r.holderId === unitId) || p.handovers.some((h) => h.holderId === unitId)
     || p.asked?.holderId === unitId || p.unfair?.[unitId] !== undefined || p.lastThreat?.unitId === unitId || p.verdictScene?.[unitId] !== undefined
     || p.service?.[unitId] !== undefined || p.softer?.[unitId] !== undefined || p.askedOn?.[unitId] !== undefined;
@@ -110,6 +110,7 @@ export function forgetPractices(draft: CampaignState, unitId: string): EngineEve
   delete p.postures[unitId];
   if (p.call?.holderId === unitId) delete p.call;
   if (p.slap?.holderId === unitId) delete p.slap;
+  if (p.postureRun?.holderId === unitId) delete p.postureRun; // P16b: a hold of hers that was running (no pay, no record: the fiction lost her)
   delete p.offences[unitId];
   if (p.noted !== undefined) p.noted.keys = p.noted.keys.filter((k) => !k.startsWith(`${unitId}|`));
   p.records = p.records.filter((r) => r.holderId !== unitId);

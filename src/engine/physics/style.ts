@@ -6,6 +6,7 @@
 import type { Registries } from '../../content/types';
 import { contentAllowed } from '../bonds/content';
 import { bend } from '../bend';
+import type { EngineEvent } from '../dispatch';
 import type { MannerAxis } from '../dynamic/types';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
@@ -109,8 +110,22 @@ export function rhythmKnownOf(state: CampaignState, holderId: string): number {
   }
   return 0;
 }
+/**
+ * P16b plugs in here: what else the stop word ends (a posture hold). A hook answers the events of what it ended, or `[]` when there is nothing of its own to end; the stop word always runs them
+ * all, so the player's own signal gets the commander out of every hold of the fiction. With nothing registered it changes nothing.
+ */
+type StopHook = (draft: CampaignState, ctx: { registries: Registries }) => EngineEvent[];
+const stopHooks = new Map<string, StopHook>();
+export function registerStopHook(fn: StopHook, key = 'default'): void {
+  stopHooks.set(key, fn);
+}
+/** Runs the stop hooks (registration order) and returns what they ended. */
+export function runStopHooks(draft: CampaignState, ctx: { registries: Registries }): EngineEvent[] {
+  return [...stopHooks.values()].flatMap((fn) => fn(draft, ctx));
+}
 /** Tests: forget every registered reader. */
 export function resetPhysicsHooks(): void {
+  stopHooks.clear();
   styleReaders.length = 0;
   holdsReaders.length = 0;
   targetReaders.length = 0;

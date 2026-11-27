@@ -1426,6 +1426,13 @@ export const TUNING = Object.freeze({
       trap: Object.freeze({ neutral: 0.2, ritual: 0, drill: 0.1, cold: 0.3, playful: 0.6, cruel: 0.6, regal: 0.2 } as Record<string, number>),
       /** The share of her called postures she wants held (a hold of the preset follows the answer), by her style; `other` for any style not listed. */
       holdShare: Object.freeze({ drill: 0.6, ritual: 0.5, cruel: 0.5, regal: 0.4, cold: 0.3, playful: 0.2, other: 0.3 } as Record<string, number>),
+      /** A hold she asks for in her call lasts this many beats (a hash picks), and these styles keep the end to themselves. */
+      holdBeats: Object.freeze({ min: 40, max: 120 }),
+      hiddenEnd: Object.freeze(['cold', 'cruel'] as readonly string[]),
+      /** How loud a preset's corrections are by its `noise` word. */
+      noiseMult: Object.freeze({ low: 0.8, mid: 1, high: 1.25 } as Record<string, number>),
+      /** The humiliation of a hold is the preset's plus what the situation adds (blocking.md section 7.2), at most 5: someone else present, the leader, a common room (a group scene), a hold of more than `longSeconds` of fiction, her `show_off` audience before others. */
+      situation: Object.freeze({ witness: 1, leader: 1, crowd: 1, long: 1, longSeconds: 600, showOff: 1, max: 5 }),
     }),
   }),
 });

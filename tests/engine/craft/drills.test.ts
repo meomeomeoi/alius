@@ -123,6 +123,45 @@ describe('a drill with a partner', () => {
   });
 });
 
+describe('the posture drill (P16b, Task 12)', () => {
+  const named = (s: CampaignState, ids: string[]): CampaignState => {
+    s.practices = { seq: 0, requests: [], tasks: [], punishments: [], demonstrations: [], restrictions: [], cold: {}, offences: {}, records: [], handovers: [], postures: { [ANN]: ids.map((postureId) => ({ postureId, name: postureId, day: s.day })) } } as never;
+    return s;
+  };
+
+  it('alone it pays the posture discipline like any drill', () => {
+    const r = train(live(), { focus: 'drill_posture' });
+    expect(errors(r.events)).toEqual([]);
+    expect(done(r.events)).toEqual([{ type: 'drill_done', key: 'posture', mult: 1, alone: true, xp: DRILL }]);
+    expect(r.state.commander.craft!.posture).toMatchObject({ xp: DRILL, drillDay: r.state.day });
+  });
+
+  it('with a holder it is x1.5 and a drill of one of her named postures: her pick, the pair\'s mastery of it, no draw', () => {
+    const s = named(live(), ['kneel_open', 'attention']);
+    const rng = JSON.stringify(s.rng);
+    const r = train(s, { companionId: ANN, focus: 'drill_posture' });
+    expect(errors(r.events)).toEqual([]);
+    const [d] = done(r.events);
+    expect(d).toMatchObject({ key: 'posture', mult: 1.5, xp: DRILL * 1.5 });
+    expect(['kneel_open', 'attention']).toContain(d.presetId);
+    expect(r.state.relations[ANN].craft!.postures![d.presetId as string].xp).toBe(TUNING.craft.xp.knowledge);
+    expect(JSON.stringify(r.state.rng)).toBe(rng);
+    const again = train(named(live(), ['kneel_open', 'attention']), { companionId: ANN, focus: 'drill_posture' });
+    expect(done(again.events)[0].presetId).toBe(d.presetId); // the same pick the same day
+  });
+
+  it('a second one the same day pays nothing and teaches nothing; a holder with no named posture is a plain drill', () => {
+    const first = train(named(live(), ['kneel_open']), { companionId: ANN, focus: 'drill_posture' });
+    const before = JSON.stringify(first.state.relations[ANN].craft!.postures);
+    const second = train({ ...first.state, slot: 'morning' } as CampaignState, { companionId: ANN, focus: 'drill_posture' });
+    expect(done(second.events)[0]).toMatchObject({ xp: 0 });
+    expect(JSON.stringify(second.state.relations[ANN].craft!.postures)).toBe(before);
+    const bare = train(live(), { companionId: ANN, focus: 'drill_posture' });
+    expect(done(bare.events)[0]).toMatchObject({ key: 'posture', mult: 1.5 });
+    expect(done(bare.events)[0].presetId).toBeUndefined();
+  });
+});
+
 describe('without a craft-live holder', () => {
   const plain = (): CampaignState => { const s = campaign(reg, 4); s.resources.supplies = 200; s.slot = 'morning'; return s; };
 
@@ -171,8 +210,8 @@ describe('the drill focuses of the content', () => {
     }
   });
 
-  it('only a drill with an instrument takes a partner: breath and weight (posture comes with the presets)', () => {
-    expect(train().focus.filter((f) => f.drill?.partner).map((f) => f.drill!.key)).toEqual(['endurance:breath', 'endurance:weight']);
+  it('only a drill with an instrument takes a partner: breath, weight and the posture drill (the presets)', () => {
+    expect(train().focus.filter((f) => f.drill?.partner).map((f) => f.drill!.key)).toEqual(['endurance:breath', 'endurance:weight', 'posture']);
     expect(train().focus.filter((f) => f.drill).map((f) => f.drill!.key)).toEqual(expect.arrayContaining(['stillness', 'speech', 'rhythm', 'endurance:jaw']));
   });
 });

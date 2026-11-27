@@ -37,8 +37,9 @@ export function cheatRoll(rng: Rng, attention: Attention, reading: number): bool
 
 export type NoiseKind = 'gasp' | 'creak' | 'rustle' | 'cough';
 /** What kind of sound a slip, a relief or a reflex makes; loudness is 1 × (1 − the commander's stillness) (stillness reads 0 until P16b). */
-export function noiseOf(source: 'miss' | 'slip' | 'relief' | 'spill' | 'reflex', stillness = 0): { loudness: number; kind: NoiseKind } {
-  const kind: NoiseKind = source === 'miss' ? 'gasp' : source === 'slip' ? 'creak' : source === 'relief' ? 'rustle' : 'cough';
+export function noiseOf(source: 'miss' | 'slip' | 'relief' | 'spill' | 'reflex' | 'posture', stillness = 0): { loudness: number; kind: NoiseKind } {
+  // P16b: a correction of a posture is a rustle (the body shifting), as a relief is
+  const kind: NoiseKind = source === 'miss' ? 'gasp' : source === 'slip' ? 'creak' : source === 'relief' || source === 'posture' ? 'rustle' : 'cough';
   return { loudness: 1 * (1 - stillness), kind };
 }
 
