@@ -164,14 +164,18 @@ export function axisForbidden(
   return null;
 }
 
+/** The key the player's HOLD names for a manner key: the kinds of `drawn_by` are held together as `manner:drawn_by`. */
+export const mannerHeldKey = (key: string): string => (key.startsWith('manner:drawn_by') ? 'manner:drawn_by' : key);
+
 /**
  * Why a manner axis cannot drift for this unit (P15b), or null: she has no imported manner, or the field is locked (the six axes by `manner`, what draws her by `drawnBy`, a turn by `style` and
  * `manner` both, because a turn rebases the axes). The pace and the support are the proposals' business (`mannerProposals`).
  */
-function mannerForbidden(unit: Pick<Unit, 'bond' | 'practiceLocks'>, key: string): string | null {
+function mannerForbidden(unit: Pick<Unit, 'bond' | 'practiceLocks' | 'development'>, key: string): string | null {
   const k = mannerKey(key);
   if (k === null) return `"${key}" is not a manner axis`;
   if (unit.bond?.practice?.manner === undefined) return 'manner axes need an imported manner'; // P14b: raw profile
+  if (unit.development?.held?.includes(mannerHeldKey(key)) === true) return 'held by the player'; // the HOLD of P14b; what draws her is held as `manner:drawn_by`
   const locks = unit.practiceLocks ?? [];
   const fields = k.kind === 'axis' ? ['manner'] : k.kind === 'drawn_by' ? ['drawnBy'] : ['style', 'manner'];
   return fields.some((f) => locks.includes(f)) ? 'locked by the player' : null;

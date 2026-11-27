@@ -115,6 +115,21 @@ describe('the pushes (spec §7)', () => {
     expect(acc(s, 'manner:drawn_by.pain')).toBeUndefined();
   });
 
+  it('a held manner axis takes no push and no step (the player\'s HOLD)', () => {
+    const s = world();
+    ensureDevelopment(unitOf(s)).held = ['manner:warmth'];
+    expect(axisForbidden(s, reg, unitOf(s), 'manner:warmth')).toMatch(/held/);
+    feedYield(s, ANN);
+    expect(acc(s, 'manner:warmth')).toBeUndefined();
+    expect(acc(s, 'manner:intensity')).toBe(0.5);
+    setAcc(s, { 'manner:warmth': STEP });
+    expect(names(s)).not.toContain('manner:warmth');
+    ensureDevelopment(unitOf(s)).held = ['manner:drawn_by'];
+    drawnFavour(s, reg, ANN, 'power');
+    expect(acc(s, 'manner:drawn_by.power')).toBeUndefined();
+    expect(axisForbidden(s, reg, unitOf(s), 'manner:drawn_by.pain')).toMatch(/held/);
+  });
+
   it('come from the dynamic: a yielded sample, care that landed, a first practice, a refusal she respects, a ceremony form', () => {
     const s = world();
     practiceSample(s, reg, ANN, 'yielded');

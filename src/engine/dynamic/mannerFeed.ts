@@ -6,6 +6,7 @@
  */
 import type { Registries } from '../../content/types';
 import { frameRank } from '../blocking/state';
+import { mannerHeldKey } from '../development/axes';
 import { valuesOf } from '../development/profile';
 import { developmentMode, ensureDevelopment } from '../development/state';
 import { isLiving } from '../economy';
@@ -43,7 +44,8 @@ export function mannerPush(draft: CampaignState, unitId: string, pushes: Readonl
   const locks = unit.practiceLocks ?? [];
   const mult = TUNING.development.modeMult[developmentMode(draft) as 'slow' | 'normal'];
   const cap = TUNING.development.accCap;
-  const live = pushes.filter(([key, amount]) => amount !== 0 && !locks.includes(key.startsWith('manner:drawn_by') ? 'drawnBy' : 'manner'));
+  const held = unit.development?.held ?? [];
+  const live = pushes.filter(([key, amount]) => amount !== 0 && !locks.includes(key.startsWith('manner:drawn_by') ? 'drawnBy' : 'manner') && !held.includes(mannerHeldKey(key))); // the player's HOLD stops a push as it stops a step
   if (live.length === 0) return;
   const acc = ensureDevelopment(unit).acc;
   for (const [key, amount] of live) {

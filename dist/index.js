@@ -14492,10 +14492,12 @@ function axisForbidden(state, reg, unit5, key) {
   }
   return null;
 }
+var mannerHeldKey = (key) => key.startsWith("manner:drawn_by") ? "manner:drawn_by" : key;
 function mannerForbidden(unit5, key) {
   const k = mannerKey(key);
   if (k === null) return `"${key}" is not a manner axis`;
   if (unit5.bond?.practice?.manner === void 0) return "manner axes need an imported manner";
+  if (unit5.development?.held?.includes(mannerHeldKey(key)) === true) return "held by the player";
   const locks = unit5.practiceLocks ?? [];
   const fields = k.kind === "axis" ? ["manner"] : k.kind === "drawn_by" ? ["drawnBy"] : ["style", "manner"];
   return fields.some((f) => locks.includes(f)) ? "locked by the player" : null;
@@ -19039,7 +19041,8 @@ function mannerPush(draft, unitId, pushes) {
   const locks = unit5.practiceLocks ?? [];
   const mult = TUNING.development.modeMult[developmentMode(draft)];
   const cap9 = TUNING.development.accCap;
-  const live3 = pushes.filter(([key, amount]) => amount !== 0 && !locks.includes(key.startsWith("manner:drawn_by") ? "drawnBy" : "manner"));
+  const held3 = unit5.development?.held ?? [];
+  const live3 = pushes.filter(([key, amount]) => amount !== 0 && !locks.includes(key.startsWith("manner:drawn_by") ? "drawnBy" : "manner") && !held3.includes(mannerHeldKey(key)));
   if (live3.length === 0) return;
   const acc = ensureDevelopment(unit5).acc;
   for (const [key, amount] of live3) {
