@@ -21,12 +21,11 @@ const change = (el: HTMLSelectElement, value: string) => { el.value = value; el.
 const values = (sel: HTMLSelectElement | null) => [...(sel?.querySelectorAll('option') ?? [])].map((o) => o.value);
 
 describe('the drills in the OPS tab', () => {
-  it('with a holder running the craft every drill is listed, and they carry the drill gloss', () => {
+  it('with a holder running the craft every drill is listed, and the select carries the drill gloss', () => {
     const c = card(world(reg, 'play'));
     expect(values(c.focus())).toEqual(expect.arrayContaining(['endurance_breath', 'endurance_weight', 'endurance_jaw', 'drill_stillness', 'drill_recitation', 'drill_rhythm']));
     expect(c.focus()!.getAttribute('data-analyze')).toBe('glossary:craft_drill');
-    expect(c.focus()!.querySelector('option[value="drill_stillness"]')!.getAttribute('data-analyze')).toBe('glossary:craft_drill');
-    expect(c.focus()!.querySelector('option[value="units"]')!.hasAttribute('data-analyze')).toBe(false);
+    expect(c.focus()!.querySelector('[data-analyze]')).toBeNull(); // the select carries it: an option cannot be reached
   });
 
   it('with nobody running it only the three endurance drills of P15a are listed,', () => {

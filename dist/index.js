@@ -62598,7 +62598,7 @@ function activityCard(a, state, ctx2) {
     h("option", { value: "" }, mode === "required" ? "\u2014 choose \u2014" : "\u2014 alone \u2014"),
     ...companions.map((u) => h("option", { value: u.id }, unitLabel(u)))
   );
-  const drillOption = (f) => h("option", { value: f.id, ...f.drill !== void 0 ? analyzeNative("glossary:craft_drill") : {} }, f.label);
+  const drillOption = (f) => h("option", { value: f.id }, f.label);
   const focusSel = focusList.length === 0 ? null : h(
     "select",
     { name: "focus", "aria-label": `Focus for ${String(a.name)}`, ...focusList.some((f) => f.drill !== void 0) ? analyzeNative("glossary:craft_drill") : {} },

@@ -69,7 +69,8 @@ export function activityCard(a: Entry, state: CampaignState, ctx: OpsTabCtx): HT
       h('option', { value: '' }, mode === 'required' ? '— choose —' : '— alone —'),
       ...companions.map((u) => h('option', { value: u.id }, unitLabel(u))),
     ) as HTMLSelectElement);
-  const drillOption = (f: Focus): HTMLElement => h('option', { value: f.id, ...(f.drill !== undefined ? analyzeNative('glossary:craft_drill') : {}) }, f.label);
+  // the select carries the gloss (an option is not focusable, so a mark on it could not be reached)
+  const drillOption = (f: Focus): HTMLElement => h('option', { value: f.id }, f.label);
   const focusSel = focusList.length === 0
     ? null
     : (h('select', { name: 'focus', 'aria-label': `Focus for ${String(a.name)}`, ...(focusList.some((f) => f.drill !== undefined) ? analyzeNative('glossary:craft_drill') : {}) },
