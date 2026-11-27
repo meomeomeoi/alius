@@ -407,15 +407,15 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
 - Modify: `src/engine/dynamic/mannerFeed.ts` (the five `manner:drawn_by.<kind>` pushes of spec §7), `review.ts` (one change at most every 28 days: the candidate is the highest accumulator that is not first; it becomes second, or swaps with the second, never replacing the first directly), `manner.ts` (`mannerOf` reads the overlay's `drawnBy`).
 - Test: `tests/development/drawnBy.test.ts`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - a one-entry `drawnBy` gains a second;
   - a second becomes first only at a later step;
   - the pace rule holds;
   - a locked `drawnBy` never moves.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P15b): what draws her drifts`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P15b): what draws her drifts`
 
 ### Task 13: The turn of her style, and `styleOf` everywhere
 
