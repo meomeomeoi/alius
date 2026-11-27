@@ -842,6 +842,31 @@ export const TUNING = Object.freeze({
     }),
     drift: Object.freeze({ days: 28 }),
     turn: Object.freeze({ margin: 2, reviews: 2, days: 56 }),
+    /**
+     * Chunk m6 (planning ruling 4, AUTHOR TO TUNE): what the dynamic does to her accumulators (`manner:<axis>`, `manner:drawn_by.<kind>`), before the mode's factor
+     * (slow 0.5). A step needs `development.stepThreshold` (3) and is at most one per axis per 28 days, so about two months of steady push make two steps:
+     * `yielded` is one yield of the commander (a probe, an offer, a task or a punishment taken); `refusal` a refusal at `role` or above while her reading is in a region she likes;
+     * `care` one unasked kindness; `firstWell` / `repeat` the first practice of a kind (×`discoveryMult` when what draws her is `discovery`) and each further one after
+     * `repeatRun` of the same kind in a row; `badDay` / `goodDay` one of her own days (P14c); `regardLow` / `regardHigh` a day at the bottom or top Regard band; `forms` one of her forms kept
+     * (a ceremony step, a rule kept); `drawn` the outcome each `drawnBy` kind rewards.
+     */
+    push: Object.freeze({
+      yielded: Object.freeze({ intensity: 0.5, warmth: -0.4 }),
+      refusal: Object.freeze({ order: 1 }),
+      care: Object.freeze({ warmth: 0.6 }),
+      firstWell: Object.freeze({ curiosity: 1.2 }),
+      discoveryMult: 1.5,
+      repeat: Object.freeze({ curiosity: -0.5 }),
+      repeatRun: 4,
+      badDay: Object.freeze({ warmth: -0.3 }),
+      goodDay: Object.freeze({ warmth: 0.3 }),
+      regardLow: Object.freeze({ warmth: -0.1 }),
+      regardHigh: Object.freeze({ warmth: 0.1 }),
+      forms: Object.freeze({ order: 0.5 }),
+      drawn: Object.freeze({ power: 0.5, reaction: 0.4, discipline: 0.3, discovery: 0.8, pain: 0.6 }),
+      /** A holder with this much `mercy` (or more) never grows colder from yielding. */
+      mercyBlock: 2,
+    }),
     contrast: Object.freeze({ low: 1, mid: 1.3, high: 1.6, cap: 0.9 }),
     /**
      * The words of the axes (spec §1, the author's, 2026-11-24): `label` names the axis, `low` / `high` its two ends, `steps` the words of a

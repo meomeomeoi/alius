@@ -18,6 +18,7 @@ import { capabilitiesOf, grantCapability, reconcileDomains } from './domains';
 import { canHold, dynamicOn, herPracticeLive } from './gate';
 import { addHold, frameEntry, holdBandOf } from './hold';
 import { addCompromat } from './compromat';
+import { feedRefusal, notePlaySince } from './mannerFeed';
 import { practiceOf } from './profile';
 import { dynamicOf, type DynamicRelation } from './state';
 import { trackCap } from './tracks';
@@ -125,6 +126,7 @@ export function applyMilestone(draft: CampaignState, ctx: Ctx, unitId: string, m
     if (effect.type === 'frame') {
       const from = dyn.frame;
       dyn.frame = m.to;
+      notePlaySince(draft, unitId); // P15b
       events.push({ type: 'frame_changed', unitId, from, to: m.to, milestoneId: m.id });
       const floor = frameEntry(reg, m.to)?.holdFloor ?? 0;
       if (dyn.hold < floor) {
@@ -218,6 +220,7 @@ export function refusalCost(draft: CampaignState, ctx: Ctx, unitId: string, what
   const kind = frameEntry(reg, dyn.frame)?.refusal ?? 'minor';
   const events: EngineEvent[] = what === 'milestone' || what === 'defy' ? [] : addHold(draft, ctx, unitId, TUNING.dynamic.refusalCost[kind], 'refusal');
   if (kind === 'minor') return events;
+  feedRefusal(draft, reg, unitId); // P15b: a refusal at `role` or beyond that she respects pulls her toward forms
   const days = TUNING.dynamic.contestWindowDays;
   dyn.refusals = [...dyn.refusals.filter((d) => draft.day - d <= days), draft.day];
   events.push({ type: 'refusal_noted', unitId, what });

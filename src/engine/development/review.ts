@@ -5,8 +5,10 @@ import { SETUP_LIMITS } from '../setup';
 import type { CampaignState, DevFact, Development, DevMoment, ReviewInverse, Unit, ValueAxis } from '../state/types';
 import { TUNING } from '../tuning';
 import { axisForbidden, axisKind, bondField, discreteAxis, dynamicAxis, isAnchored } from './axes';
+import { applyMannerShift, mannerDue, mannerProposals, noteTurnReview } from './mannerDrift';
 import { dislikesOf, likesOf, tastesOf, valuesOf } from './profile';
 import { developmentMode, developmentOf, ensureDevelopment, nextDevId } from './state';
+import { dynamicOf } from '../dynamic/state';
 
 export type { ReviewInverse };
 
@@ -56,9 +58,11 @@ const stepNeed = (unit: Unit, key: string): number => D.stepThreshold * (isAncho
 /** Axes with enough support to move: direction by the sign of the accumulator and a band, never the number. Discrete axes only step, so they are listed only when strong. */
 export function eligibleAxes(
   state: CampaignState, reg: Registries, unit: Unit,
-): Array<{ axis: string; direction: 'up' | 'down'; support: 'weak' | 'strong' }> {
-  const out: Array<{ axis: string; direction: 'up' | 'down'; support: 'weak' | 'strong' }> = [];
+): Array<{ axis: string; direction: 'up' | 'down'; support: 'weak' | 'strong'; proposed?: true }> {
+  const out: Array<{ axis: string; direction: 'up' | 'down'; support: 'weak' | 'strong'; proposed?: true }> = [];
   for (const [axis, acc] of Object.entries(developmentOf(unit).acc)) {
+    // P15b: her manner is proposed by the engine (`mannerProposals`, below); P15: the secondary style's line drift is retired and never proposed again (a secondary she has already drifted stays as it is)
+    if (axisKind(axis) === 'manner' || (axisKind(axis) === 'practice' && dynamicAxis(axis)?.field === 'secondary')) continue;
     if (Math.abs(acc) < D.nudgeMin || axisForbidden(state, reg, unit, axis) !== null) continue;
     const direction = acc > 0 ? 'up' : 'down';
     if (!room(unit, axis)[direction]) continue;
@@ -66,22 +70,24 @@ export function eligibleAxes(
     if (axisKind(axis) !== 'value' && !strong) continue;
     out.push({ axis, direction, support: strong ? 'strong' : 'weak' });
   }
+  for (const p of mannerProposals(state, reg, unit)) out.unshift({ axis: p.axis, direction: p.direction, support: 'strong', proposed: true });
   return out;
 }
 
 /** Is this soldier due: mode on, a named living unit, enough material, and the time or a strong accumulator. */
-export function unitDue(state: CampaignState, unitId: string): boolean {
+export function unitDue(state: CampaignState, unitId: string, reg?: Registries): boolean {
   const mode = developmentMode(state);
   const u = state.squad.find((x) => x.id === unitId);
   if (mode === 'off' || !u || u.kind !== 'named' || !isLiving(u)) return false;
   const dev = developmentOf(u);
-  if (dev.pending.length < D.minMaterial) return false;
-  return state.day - (dev.lastReview ?? 0) >= D.cadence[mode] || Object.values(dev.acc).some((a) => Math.abs(a) >= D.dueAcc);
+  if (dev.pending.length >= D.minMaterial && (state.day - (dev.lastReview ?? 0) >= D.cadence[mode] || Object.values(dev.acc).some((a) => Math.abs(a) >= D.dueAcc))) return true;
+  // P15b: a manner step or a turn the engine proposes makes her due on the cadence even with no experiences to read (the registry is asked for it)
+  return reg !== undefined && mannerDue(state, reg, u);
 }
 
 /** The first due soldier in squad order, or null. */
-export function reviewDue(state: CampaignState, _reg: Registries): string | null {
-  return state.squad.find((u) => unitDue(state, u.id))?.id ?? null;
+export function reviewDue(state: CampaignState, reg: Registries): string | null {
+  return state.squad.find((u) => unitDue(state, u.id, reg))?.id ?? null;
 }
 
 const cut = (s: string, n: number): string => s.replace(/\s+/g, ' ').trim().slice(0, n).trim();
@@ -103,6 +109,12 @@ export function validateReview(
     else if (s.direction !== 'up' && s.direction !== 'down') no('no direction');
     else if (s.size !== 'nudge' && s.size !== 'step') no('no size');
     else if (shifts.some((x) => x.axis === s.axis)) no('named twice');
+    else if (axisKind(s.axis) === 'manner') {
+      // P15b: a manner step is the engine's own proposal (ruling 4): the model may word it, never invent one
+      if (s.size !== 'step') no('a manner axis only steps');
+      else if (!mannerProposals(state, reg, unit).some((p) => p.axis === s.axis && p.direction === s.direction)) no('the engine proposed no such step');
+      else shifts.push({ axis: s.axis, direction: s.direction, size: 'step', reason: cut(String(s.reason ?? ''), D.reasonMax) });
+    }
     else if (Math.abs(acc) < D.nudgeMin) no('no support');
     else if ((acc > 0) !== (s.direction === 'up')) no('against the accumulator');
     else if (s.size === 'nudge' && axisKind(s.axis) !== 'value') no('only a value nudges');
@@ -127,12 +139,13 @@ export function fallbackReview(state: CampaignState, reg: Registries, unitId: st
   const unit = state.squad.find((u) => u.id === unitId);
   if (!unit) return { shifts: [], facts: [] };
   const acc = developmentOf(unit).acc;
-  const shifts = eligibleAxes(state, reg, unit)
+  // P15b: the engine's manner steps and a turn are applied as proposed (a campaign whose reviews fail still drifts), then the value nudges
+  const manner = mannerProposals(state, reg, unit).map((p): ReviewShift => ({ axis: p.axis, direction: p.direction, size: 'step', reason: 'What she has lived through.' }));
+  const nudges = eligibleAxes(state, reg, unit)
     .filter((a) => axisKind(a.axis) === 'value')
     .sort((a, b) => Math.abs(acc[b.axis]) - Math.abs(acc[a.axis]))
-    .slice(0, D.maxShifts)
     .map((a): ReviewShift => ({ axis: a.axis, direction: a.direction, size: 'nudge', reason: 'What she has lived through.' }));
-  return { shifts, facts: [] };
+  return { shifts: [...manner, ...nudges].slice(0, D.maxShifts), facts: [] };
 }
 
 const sign = (n: number): number => (n > 0 ? 1 : -1);
@@ -251,9 +264,17 @@ export function applyReview(draft: CampaignState, reg: Registries, unitId: strin
     acc: {}, factIds: [], momentIds: [], ...(dev.lastReview !== undefined ? { lastReview: dev.lastReview } : {}), pending: structuredClone(dev.pending),
   };
   const events: EngineEvent[] = [];
+  // P15b: what the review writes on her relation (the days of her manner steps, the count toward a turn) is kept for a REROLL; this review counts toward a turn before its own shifts apply
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn !== undefined && unit.bond?.practice?.manner !== undefined) { // P14b: raw profile
+    inverse.mannerDyn = { ...(dyn.mannerStepped !== undefined ? { stepped: structuredClone(dyn.mannerStepped) } : {}), ...(dyn.mannerTurn !== undefined ? { turn: structuredClone(dyn.mannerTurn) } : {}) };
+    noteTurnReview(draft, reg, unit);
+  }
   for (const s of ok.shifts) {
-    const change = applyShift(unit, dev, s);
-    consume(dev, inverse.acc, s.axis, s.size === 'step' ? D.stepThreshold : D.nudgeCost);
+    const manner = axisKind(s.axis) === 'manner' ? applyMannerShift(draft, reg, unit, dev, s) : undefined;
+    if (manner === null) continue; // a proposal that no longer holds
+    const change = manner ?? applyShift(unit, dev, s);
+    if (manner === undefined || manner.accKey !== undefined) consume(dev, inverse.acc, manner?.accKey ?? s.axis, s.size === 'step' ? D.stepThreshold : D.nudgeCost);
     events.push({ type: 'development_shift', unitId, axis: s.axis, size: s.size });
     if (change !== null) {
       const m: DevMoment = { id: nextDevId(dev, 'dm'), axis: s.axis, from: change.from, to: change.to, reason: s.reason, day: draft.day };
@@ -299,6 +320,13 @@ export function undoReview(draft: CampaignState, unitId: string): boolean {
   if (inv.droppedFacts) dev.facts.unshift(...structuredClone(inv.droppedFacts));
   dev.moments = dev.moments.filter((m) => !inv.momentIds.includes(m.id));
   if (inv.lastReview !== undefined) dev.lastReview = inv.lastReview; else delete dev.lastReview;
+  if (inv.mannerDyn !== undefined) { // P15b: the days of her manner steps and the count toward a turn, as they were
+    const rel = dynamicOf(draft, unitId);
+    if (rel !== undefined) {
+      if (inv.mannerDyn.stepped !== undefined) rel.mannerStepped = structuredClone(inv.mannerDyn.stepped) as typeof rel.mannerStepped; else delete rel.mannerStepped;
+      if (inv.mannerDyn.turn !== undefined) rel.mannerTurn = structuredClone(inv.mannerDyn.turn); else delete rel.mannerTurn;
+    }
+  }
   dev.pending = [...structuredClone(inv.pending), ...dev.pending];
   // `nextId` is never moved back: an appraisal recorded since keeps its id, and ids only have to stay unique
   delete dev.lastApplied;

@@ -221,14 +221,15 @@ export function practiceOf(state: Pick<CampaignState, 'squad' | 'content'>, reg:
 }
 
 /**
- * Her style pair as the campaign reads it (what she has become sits on top of the import): `undefined` without a practice section. It
- * needs no registry, so the physics reader of the dynamic can use it.
+ * Her style pair as the campaign reads it (what she has become sits on top of the import, a turn of her style included): `undefined` without a practice section. It
+ * needs no registry, so the physics reader of the dynamic can use it. Every reader of her style goes through here (P15b), never through `bond.practice.style`.
  */
 export function styleOf(unit: Pick<Unit, 'bond' | 'development'>): Practice['style'] | undefined {
   const stored = unit.bond?.practice?.style;
   if (stored === undefined) return undefined;
   const secondary = unit.development?.practice?.secondary ?? stored.secondary;
-  return secondary === undefined ? { primary: stored.primary } : { primary: stored.primary, secondary };
+  const primary = unit.development?.practice?.primary ?? stored.primary; // P15b: a turn of her style (spec §7) sits on top of the import like any drift
+  return secondary === undefined ? { primary } : { primary, secondary };
 }
 
 /**

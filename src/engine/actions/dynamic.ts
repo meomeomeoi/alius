@@ -23,6 +23,7 @@ import { exitDynamic, EXIT_MEANS } from '../dynamic/exit';
 import { frameRank } from '../blocking/state';
 import { answerMilestone } from '../dynamic/milestones';
 import { readMoments, resettleReading } from '../dynamic/reading';
+import { mannerFeedLanded } from '../dynamic/mannerFeed';
 import { regardFeed, regardFromEvents } from '../dynamic/regard';
 import { questionEvents } from '../dynamic/shame';
 import { dynamicOf } from '../dynamic/state';
@@ -49,6 +50,7 @@ export function namedUnit(draft: { squad: Unit[] }, id: unknown, action: string)
 registerEventLanded(holdFeed);
 // ... and a kept promise or a quiet meeting that lands on a woman is value outside the dynamic: her Regard rises (R18); nothing while off.
 registerEventLanded((draft, reg, unitId, event) => regardFeed(draft, reg, unitId, event));
+registerEventLanded(mannerFeedLanded); // P15b: care from the commander pulls her manner (accumulators only)
 // Her days (R8): decay, the slow term, tracks and favour; after her life's step (this module is imported after `actions/life`), and nothing while off.
 registerDayEndStep('dm_rumors', dynamicDayStep);
 // Her place in the P15a stand-ins: frame, live scenes, physics style, what she holds until, what she expects (R10); every reader is null while off.

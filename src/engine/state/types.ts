@@ -1,6 +1,6 @@
 import type { Blocking, StagingSnapshot } from '../blocking/state';
 import type { Attitude, ExpectationProfile } from '../dynamic/expectations';
-import type { MannerAxis, Practice, PracticeCategory, ProfileStyle } from '../dynamic/types';
+import type { DrawnBy, MannerAxis, Practice, PracticeCategory, ProfileStyle } from '../dynamic/types';
 import type { DynamicCampaign, DynamicRelation, DynamicUndo } from '../dynamic/state';
 import type { HoldsUntil } from '../physics/state';
 import type { MomentsState } from '../moments/state';
@@ -403,6 +403,8 @@ export interface ReviewInverse {
   lastReview?: number;
   pending: Appraisal[];
   habits?: string[];
+  /** P15b: what the review wrote on her relation's dynamic (the days of her manner steps, the count toward a turn); present when it changed them, a missing field means "was absent". */
+  mannerDyn?: { stepped?: Partial<Record<string, number>>; turn?: { candidate: string; reviews: number; lastDay?: number } };
 }
 
 export interface Development {
@@ -417,6 +419,10 @@ export interface Development {
     categories?: Record<string, Partial<PracticeCategory>>; secondary?: ProfileStyle;
     /** P15b: the steps her manner axes have drifted, added to `bond.practice.manner` (read through `mannerOf`). */
     manner?: Partial<Record<MannerAxis, number>>;
+    /** P15b: what draws her now, when it moved from the import (a second entry gained, a swap). Read through `mannerOf`. */
+    drawnBy?: DrawnBy[];
+    /** P15b: the style she turned to (a turn of her manner, spec §7). Read through `styleOf`. Absent = her imported primary. */
+    primary?: ProfileStyle;
   };
   /** P15: how her expectations have moved: how far she holds and her attitude to a worship target (read through `expectationsOf`). */
   expect?: { holdsUntil?: HoldsUntil; worship?: Record<string, Attitude> };

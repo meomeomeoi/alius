@@ -10,12 +10,14 @@ import { developmentOf } from './state';
 const DRAFT_MARK = /^\s*AUTHOR TO WRITE:\s*/i;
 
 /** The registry words of an axis moving up or down, the draft marker removed and the `{tag}` of a wildcard filled in; null when no entry words it. */
-export function axisWords(reg: Registries, axis: string, up: boolean): string | null {
+export function axisWords(reg: Registries, axis: string, up: boolean, value?: string): string | null {
   const entry = axisEntry(reg, axis);
   if (!entry) return null;
   const tag = axis.slice(axis.indexOf(':') + 1);
   const name = axisKind(axis) === 'taste' ? String(reg.tastes.get(tag)?.name ?? tag) : tag.replace(/_/g, ' ');
-  const words = (up ? entry.up : entry.down).replace(DRAFT_MARK, '').replace(/\{tag\}/g, name).trim();
+  // P15b: the turn of her style names the style she turned to (`value`, the moment's `to`)
+  const style = String(reg.practiceStyles.get(value ?? '')?.label ?? value ?? 'another style').toLowerCase();
+  const words = (up ? entry.up : entry.down).replace(DRAFT_MARK, '').replace(/\{tag\}/g, name).replace(/\{style\}/g, style).trim();
   return words === '' ? null : words;
 }
 

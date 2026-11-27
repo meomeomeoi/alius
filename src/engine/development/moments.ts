@@ -1,6 +1,7 @@
 import type { Registries } from '../../content/types';
 import type { CampaignState, DevMoment } from '../state/types';
 import { axisKind, scaleOfAxis } from './axes';
+import { mannerKey } from './mannerKeys';
 import { axisWords } from './words';
 import { developmentOf } from './state';
 
@@ -47,6 +48,7 @@ export function stampedMoments(state: CampaignState, unitId: string): DevMoment[
 export function wentUp(m: Pick<DevMoment, 'axis' | 'from' | 'to'>): boolean {
   const kind = axisKind(m.axis);
   if (kind === 'value') return Number(m.to) > Number(m.from);
+  if (kind === 'manner') return mannerKey(m.axis)?.kind === 'axis' ? Number(m.to) > Number(m.from) : true; // P15b: a step of an axis by its number; a change of what draws her or a turn is "more" (the words are one)
   if (kind === 'bond' || kind === 'practice' || kind === 'expect') {
     const scale = (scaleOfAxis(m.axis) ?? []).map(String);
     return scale.indexOf(m.to) > scale.indexOf(m.from);
@@ -55,7 +57,7 @@ export function wentUp(m: Pick<DevMoment, 'axis' | 'from' | 'to'>): boolean {
 }
 
 /** The words of one moment: the axis entry's `up` or `down`. */
-const wordsOf = (reg: Registries, m: DevMoment): string | null => axisWords(reg, m.axis, wentUp(m));
+const wordsOf = (reg: Registries, m: DevMoment): string | null => axisWords(reg, m.axis, wentUp(m), m.to);
 
 export interface MomentDirective { id: string; text: string; expiresAfter: 'scene' }
 

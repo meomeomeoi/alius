@@ -126,7 +126,7 @@ export function resyncSectionsOffered(registries: Registries, world: Record<stri
 
 /** P14b: the axis keys an anchor may name: the registry's value and bond axes, and `taste:<id>` for each taste (the wildcards are not keys). */
 export function developmentAxisKeys(registries: Registries, content?: readonly string[]): string[] {
-  const fixed = [...registries.developmentAxes.keys()].filter((k) => !k.endsWith(':.any') && axisKind(k) !== 'practice' && axisKind(k) !== 'expect');
+  const fixed = [...registries.developmentAxes.keys()].filter((k) => !k.endsWith(':.any') && axisKind(k) !== 'practice' && axisKind(k) !== 'expect' && axisKind(k) !== 'manner'); // P15b: her manner is never anchored
   const base = [...fixed, ...[...registries.tastes.keys()].map((t) => `taste:${t}`)];
   // P15: the practice and the profile are named only while a practice category is switched on, and only for the categories and targets that are on
   const on = practiceCategories(registries).filter((c) => (content ?? []).includes(c));

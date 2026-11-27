@@ -7,7 +7,7 @@ import type { CampaignState, LeashKind } from '../state/types';
 import type { OpenOverride } from '../warden/state';
 import type { ResponseType } from '../blocking/types';
 import type {
-  AftermathKind, Frame, Frequency, QuirkWhen, HolderCap, KnowledgeLevel, MayHold, MilestoneOffer, Motive, OfferAnswer, OfferTab, Pace, RegionRank, Sensitivity, StartFrame,
+  AftermathKind, Frame, Frequency, MannerAxis, QuirkWhen, HolderCap, KnowledgeLevel, MayHold, MilestoneOffer, Motive, OfferAnswer, OfferTab, Pace, RegionRank, Sensitivity, StartFrame,
 } from './types';
 
 /** What the setup says about one unit (R3). Every field is absent for the default. */
@@ -106,7 +106,13 @@ export interface DynamicRelation {
    * P15b: what she has practised with the commander (written only for a holder with a `manner`, when a practice is kept or done): the seeds (or, for a punishment, the entries) and the
    * categories. `discovery` rewards the first of a kind and `curiosity`'s "something new" filters the seed pool by it. Never shown.
    */
-  practised?: { kinds: string[]; categories: string[] };
+  practised?: { kinds: string[]; categories: string[]; /** The kind she last did with the commander and how many times in a row (`curiosity` falls with a long run). */ streak?: { kind: string; n: number } };
+  /** P15b: the day her frame first reached `play` (written for a holder with a manner; the 28 days of drift and the 56 of a turn count from it). Hidden. */
+  playSince?: number;
+  /** P15b: the day of the last step of each manner axis (`drawn_by` too). Hidden. */
+  mannerStepped?: Partial<Record<MannerAxis | 'drawn_by', number>>;
+  /** P15b: the style her place has been closest to and how many weekly reviews in a row it was nearer by the margin; `lastDay` is her last turn. Hidden. */
+  mannerTurn?: { candidate: string; reviews: number; lastDay?: number };
 }
 
 /**

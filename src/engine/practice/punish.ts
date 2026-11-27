@@ -15,6 +15,7 @@ import { hasCapability } from '../dynamic/capabilities';
 import { practiceOf } from '../dynamic/profile';
 import { drawnFavour, notePractised } from '../dynamic/drawn';
 import { mannerOf } from '../dynamic/manner';
+import { feedForms } from '../dynamic/mannerFeed';
 import { addSign } from '../dynamic/knowledge';
 import { refusalCost } from '../dynamic/milestones';
 import { addFavour, restoreHold } from '../dynamic/hold';
@@ -278,6 +279,7 @@ export function ceremonyStep(draft: CampaignState, ctx: Pick<EngineCtx, 'registr
     p.count = ceremonyCount(styleOf(draft, reg, p.holderId), p.severity, number);
   }
   p.ceremony!.done.push(step);
+  feedForms(draft, p.holderId); // P15b: a ceremony step done right is her form kept (`order` up)
   const events: EngineEvent[] = [{ type: 'ceremony_step', punishmentId: p.id, unitId: p.holderId, holderId: p.holderId, step }];
   if (nextCeremonyStep(p) === undefined) events.push(...finishCeremony(draft, ctx, p, false));
   return events;

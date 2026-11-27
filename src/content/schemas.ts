@@ -11,7 +11,7 @@ import {
 } from '../engine/blocking/types';
 import { LIFE_CATEGORIES, LIFE_MOODS, LIFE_SHARES, LIFE_SIZES, TALK_LEVELS, TOPIC_GROUPS, TRACE_KINDS } from '../engine/life/types';
 import {
-  AFTERMATH_DEMAND_KINDS, AFTERMATH_KINDS, CAPABILITIES, CLAIM_FORMS, DYNAMIC_EVENT_TYPES, MILESTONE_OFFERS, MOTIVES, OUTSIDE_REACH, PROFILE_STYLES, REFUSAL_COSTS,
+  AFTERMATH_DEMAND_KINDS, AFTERMATH_KINDS, CAPABILITIES, CLAIM_FORMS, DYNAMIC_EVENT_TYPES, MANNER_AXES, MILESTONE_OFFERS, MOTIVES, OUTSIDE_REACH, PROFILE_STYLES, REFUSAL_COSTS,
   REGARD_SPEEDS, REGION_RANKS, SIGN_KINDS, SURFACE_CONDITIONS,
 } from '../engine/dynamic/types';
 import { FRAMES } from '../engine/blocking/state';
@@ -2435,8 +2435,8 @@ registrySchemas.headStartMoments = HeadStartMomentSchema;
  * `ownLimits` and `publicity` never drift, so no axis names them.
  */
 export const DevelopmentAxisSchema = BaseEntrySchema.extend({
-  id: z.string().regex(/^(value|bond|taste|like|dislike|practice|expect):[a-z0-9_.-]+$/, 'an axis id is <kind>:<name> or <kind>:.any'),
-  kind: z.enum(['value', 'bond', 'taste', 'like', 'dislike', 'practice', 'expect']),
+  id: z.string().regex(/^(value|bond|taste|like|dislike|practice|expect|manner):[a-z0-9_.-]+$/, 'an axis id is <kind>:<name> or <kind>:.any'),
+  kind: z.enum(['value', 'bond', 'taste', 'like', 'dislike', 'practice', 'expect', 'manner']),
   up: str.max(120),
   down: str.max(120),
   description: str,
@@ -2448,6 +2448,8 @@ export const DevelopmentAxisSchema = BaseEntrySchema.extend({
   if (a.kind === 'value' && !(VALUE_AXES as readonly string[]).includes(name)) ctx.addIssue({ code: 'custom', path: ['id'], message: `"${name}" is not a value axis` });
   // P15: the practice and the profile have a fixed set of entries (a wildcard is `practice:.any.as`, `practice:.any.witness` or `expect:worship.any`); fairness, hint style and drive never drift
   if (a.kind === 'practice' && !['.any.as', '.any.witness', 'style.secondary'].includes(name)) ctx.addIssue({ code: 'custom', path: ['id'], message: `"${a.id}" cannot drift (a practice axis is practice:.any.as, practice:.any.witness or practice:style.secondary)` });
+  // P15b: her manner has eight entries: the six axes, what draws her and the turn of her style
+  if (a.kind === 'manner' && ![...MANNER_AXES, 'drawn_by', 'turn'].includes(name)) ctx.addIssue({ code: 'custom', path: ['id'], message: `"${a.id}" cannot drift (a manner axis is manner:<${MANNER_AXES.join('|')}>, manner:drawn_by or manner:turn)` });
   if (a.kind === 'expect' && !['holds_until', 'worship.any'].includes(name)) ctx.addIssue({ code: 'custom', path: ['id'], message: `"${a.id}" cannot drift (an expectation axis is expect:holds_until or expect:worship.any)` });
 });
 export type DevelopmentAxisEntryT = z.infer<typeof DevelopmentAxisSchema>;

@@ -920,7 +920,7 @@ registerChecks('headStartMoments', (entry) => {
 // `like:{tag}` takes the event's tags); `match.kind` names event types, activities or dilemma contexts; a habit's counter and
 // effect name activities and regions.
 
-const axisKeyKinds = ['value', 'bond', 'taste', 'like', 'dislike', 'practice', 'expect'];
+const axisKeyKinds = ['value', 'bond', 'taste', 'like', 'dislike', 'practice', 'expect', 'manner'];
 function axisKeyProblem(key: string, regs: Record<RegistryName, Map<string, Entry>>, allowTag: boolean): string | null {
   if (allowTag && (key === 'like:{tag}' || key === 'dislike:{tag}')) return regs.developmentAxes.has(`${key.split(':')[0]}:.any`) ? null : `no axis entry words "${key}"`;
   const i = key.indexOf(':');

@@ -44,7 +44,7 @@ export function createDevelopment(deps: DevelopmentDeps): DevelopmentController 
   const fresh = new Set<string>();
 
   /** A redo (a retry after the fallback, a REROLL) replaces the last review; a unit that is due again starts a new one. */
-  const isRedo = (s: CampaignState, unitId: string): boolean => !fresh.has(unitId) && !unitDue(s, unitId) && s.squad.find((u) => u.id === unitId)?.development?.lastApplied !== undefined;
+  const isRedo = (s: CampaignState, unitId: string): boolean => !fresh.has(unitId) && !unitDue(s, unitId, deps.registries()) && s.squad.find((u) => u.id === unitId)?.development?.lastApplied !== undefined;
 
   /** The state as it was when the review ran: a redo reads the batch the last review took. */
   function before(s: CampaignState, unitId: string): CampaignState {
@@ -86,7 +86,7 @@ export function createDevelopment(deps: DevelopmentDeps): DevelopmentController 
       if (isRedo(s, key)) {
         const why = reviewCommitted(s, key);
         if (why !== null) return { expired: why };
-      } else if (!unitDue(s, key)) return { expired: 'She has nothing to review.' };
+      } else if (!unitDue(s, key, deps.registries())) return { expired: 'She has nothing to review.' };
       const view = before(s, key);
       return reviewInput(view, view.squad.find((u) => u.id === key)!);
     },

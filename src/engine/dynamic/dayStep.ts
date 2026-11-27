@@ -18,6 +18,7 @@ import { claimsDue } from './domains';
 import { dynamicOn } from './gate';
 import { addFavour, addHold } from './hold';
 import { knowledgeDayStep } from './knowledge';
+import { mannerDayStep } from './mannerDay';
 import { milestonesDue } from './milestones';
 import { oversightDayStep } from './oversight';
 import { probeDayStep } from './probes';
@@ -116,8 +117,11 @@ const offers: SubStep = (draft) => {
   return [];
 };
 
+/** 14. Her manner's feed (P15b): `playSince` is stamped, her own days (P14c) and a day at the bottom or the top Regard band push her accumulators. Draws nothing. */
+const mannerFeed: SubStep = (draft, ctx, holders) => mannerDayStep(draft, ctx.registries, holders);
+
 /** The sub-steps, in order. The numbers are the plan's (Task 12); a later task inserts its own at its place. */
-const STEPS: readonly SubStep[] = [decay, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims, knowledge, aftermaths, oversight, regard, exchange, offers];
+const STEPS: readonly SubStep[] = [decay, slowTerm, trackDecay, favourDecay, probes, declarations, milestones, claims, knowledge, aftermaths, oversight, regard, exchange, offers, mannerFeed];
 
 /** The day-end step of the dynamic (registered on `dm_rumors`). */
 export function dynamicDayStep(draft: CampaignState, ctx: Pick<EngineCtx, 'registries' | 'rng'>): EngineEvent[] {

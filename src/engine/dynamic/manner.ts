@@ -10,6 +10,7 @@ import { bend, type BendKind } from '../bend';
 import { temperamentOf } from '../life/state';
 import type { LifeEventEntry } from '../life/types';
 import { TUNING } from '../tuning';
+import { driftedDrawnBy } from '../development/mannerKeys';
 import { dynamicRoll } from './witness';
 import { MANNER_AXES, type DrawnBy, type MannerAxis } from './types';
 
@@ -72,7 +73,7 @@ export function mannerOf(state: MannerState, reg: Registries, unitId: string): M
   const mood = state.day === undefined ? {} : mannerMoodOf(state, reg, unitId, state.day);
   const axes = {} as Record<MannerAxis, number>;
   for (const a of MANNER_AXES) axes[a] = clamp2((stored[a] ?? 0) + (drift?.[a] ?? 0) + (mood[a] ?? 0));
-  return { axes, drawnBy: [...(unit.bond?.practice?.drawnBy ?? [])], mood };
+  return { axes, drawnBy: driftedDrawnBy(unit), mood };
 }
 
 export { bend };

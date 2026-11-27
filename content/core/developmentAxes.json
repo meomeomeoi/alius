@@ -124,5 +124,61 @@
     "up": "AUTHOR TO WRITE: warmer to it than her file says",
     "down": "AUTHOR TO WRITE: colder to it than her file says",
     "description": "AUTHOR TO WRITE: A step of her attitude to a place she is worshipped, away from what her file says."
+  },
+  {
+    "id": "manner:intensity",
+    "kind": "manner",
+    "up": "AUTHOR TO WRITE: she goes harder than she used to",
+    "down": "AUTHOR TO WRITE: she goes gentler than she used to",
+    "description": "AUTHOR TO WRITE: A step of how hard she goes, away from what her file says."
+  },
+  {
+    "id": "manner:warmth",
+    "kind": "manner",
+    "up": "AUTHOR TO WRITE: there is more tenderness under it than there was",
+    "down": "AUTHOR TO WRITE: there is less comfort under it than there was",
+    "description": "AUTHOR TO WRITE: A step of what is under it (care, softness after), away from what her file says."
+  },
+  {
+    "id": "manner:order",
+    "kind": "manner",
+    "up": "AUTHOR TO WRITE: she holds more to forms and counting than she did",
+    "down": "AUTHOR TO WRITE: she is looser with forms than she was, more on impulse",
+    "description": "AUTHOR TO WRITE: A step of counting, forms and ceremony against impulse, away from what her file says."
+  },
+  {
+    "id": "manner:voice",
+    "kind": "manner",
+    "up": "AUTHOR TO WRITE: she says more while she does it than she did",
+    "down": "AUTHOR TO WRITE: she says less while she does it than she did",
+    "description": "AUTHOR TO WRITE: A step of how much she talks in a practice, away from what her file says."
+  },
+  {
+    "id": "manner:tempo",
+    "kind": "manner",
+    "up": "AUTHOR TO WRITE: she is quicker and less warning than she was",
+    "down": "AUTHOR TO WRITE: she draws it out more than she used to",
+    "description": "AUTHOR TO WRITE: A step of how quickly she moves and how much warning she gives, away from what her file says."
+  },
+  {
+    "id": "manner:curiosity",
+    "kind": "manner",
+    "up": "AUTHOR TO WRITE: she reaches for new things more than she did",
+    "down": "AUTHOR TO WRITE: she keeps more to what she knows than she did",
+    "description": "AUTHOR TO WRITE: A step of how often she tries something new, away from what her file says."
+  },
+  {
+    "id": "manner:drawn_by",
+    "kind": "manner",
+    "up": "AUTHOR TO WRITE: something else draws her now than it used to",
+    "down": "AUTHOR TO WRITE: what draws her has shifted back toward what it was",
+    "description": "AUTHOR TO WRITE: A change in what she seeks and rewards."
+  },
+  {
+    "id": "manner:turn",
+    "kind": "manner",
+    "up": "AUTHOR TO WRITE: she has become more {style} than she was, a different woman at the core",
+    "down": "AUTHOR TO WRITE: she has become more {style} than she was, a different woman at the core",
+    "description": "AUTHOR TO WRITE: The turn of her style: where her axes had carried her, she now leads in another manner."
   }
 ]

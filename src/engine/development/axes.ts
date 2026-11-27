@@ -4,13 +4,14 @@ import { lockedExpectation } from '../dynamic/expectations';
 import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import type { AxisKind, DevelopmentAxisEntry } from './types';
+import { mannerEntryId, mannerKey } from './mannerKeys';
 
 /** The kind of an axis key (`value:mercy`, `like:tech`, `like:*`, `like:{tag}`), or null for anything else. */
 export function axisKind(key: string): AxisKind | null {
   const i = key.indexOf(':');
   if (i <= 0 || i === key.length - 1) return null;
   const kind = key.slice(0, i);
-  return kind === 'value' || kind === 'bond' || kind === 'taste' || kind === 'like' || kind === 'dislike' || kind === 'practice' || kind === 'expect' ? kind : null;
+  return kind === 'value' || kind === 'bond' || kind === 'taste' || kind === 'like' || kind === 'dislike' || kind === 'practice' || kind === 'expect' || kind === 'manner' ? kind : null;
 }
 
 /**
@@ -114,6 +115,10 @@ export function axisEntry(reg: Pick<Registries, 'developmentAxes'>, key: string)
   const exact = reg.developmentAxes.get(key);
   if (exact) return exact as unknown as DevelopmentAxisEntry;
   const kind = axisKind(key);
+  if (kind === 'manner') {
+    const id = mannerEntryId(key); // P15b: `manner:drawn_by.<kind>` is worded by `manner:drawn_by`
+    return id === null ? null : ((reg.developmentAxes.get(id) as unknown as DevelopmentAxisEntry | undefined) ?? null);
+  }
   if (kind === 'practice' || kind === 'expect') {
     const id = dynamicAxisEntryId(dynamicAxis(key));
     return id === null ? null : ((reg.developmentAxes.get(id) as unknown as DevelopmentAxisEntry | undefined) ?? null);
@@ -140,6 +145,7 @@ export function axisForbidden(
   if (dyn?.field === 'fixed') return 'her fairness, hint style and drive never drift';
   if (kind === null || axisEntry(reg, key) === null) return `"${key}" is not an axis`;
   if (unit.kind !== 'named') return 'a grunt does not develop';
+  if (kind === 'manner') return mannerForbidden(unit, key);
   if (kind === 'bond' && (bondField(key) === null || unit.bond === undefined)) return 'bond axes need an imported bond'; // P14b: raw profile
   if (kind === 'taste' && !reg.tastes.has(key.slice('taste:'.length))) return `"${key}" names no taste`;
   if (unit.development?.held?.includes(key) === true) return 'held by the player';
@@ -156,6 +162,19 @@ export function axisForbidden(
     }
   }
   return null;
+}
+
+/**
+ * Why a manner axis cannot drift for this unit (P15b), or null: she has no imported manner, or the field is locked (the six axes by `manner`, what draws her by `drawnBy`, a turn by `style` and
+ * `manner` both, because a turn rebases the axes). The pace and the support are the proposals' business (`mannerProposals`).
+ */
+function mannerForbidden(unit: Pick<Unit, 'bond' | 'practiceLocks'>, key: string): string | null {
+  const k = mannerKey(key);
+  if (k === null) return `"${key}" is not a manner axis`;
+  if (unit.bond?.practice?.manner === undefined) return 'manner axes need an imported manner'; // P14b: raw profile
+  const locks = unit.practiceLocks ?? [];
+  const fields = k.kind === 'axis' ? ['manner'] : k.kind === 'drawn_by' ? ['drawnBy'] : ['style', 'manner'];
+  return fields.some((f) => locks.includes(f)) ? 'locked by the player' : null;
 }
 
 /** Why a practice or expectation axis cannot drift for this unit (P15), or null: nothing imported on it, a field the player locked, a category that is off or among her limits, a worship target that is closed. */
@@ -204,7 +223,7 @@ export function anchorKey(reg: Pick<Registries, 'developmentAxes' | 'tastes' | '
   if (typeof raw !== 'string') return null;
   const key = raw === 'bond:leadStyle' ? 'bond:lead_style' : raw;
   const kind = axisKind(key);
-  if (kind === null) return null;
+  if (kind === null || kind === 'manner') return null; // P15b: her manner is never anchored (the card's own words are its axes)
   if (kind === 'practice' || kind === 'expect') {
     const d = dynamicAxis(key);
     if (d === null || d.field === 'fixed') return null;

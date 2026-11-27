@@ -4,6 +4,7 @@
  */
 import type { Registries } from '../../content/types';
 import type { EngineEvent } from '../dispatch';
+import { feedYield } from '../dynamic/mannerFeed';
 import { updateReading } from '../dynamic/reading';
 import { dynamicOf } from '../dynamic/state';
 import type { Motive } from '../dynamic/types';
@@ -16,6 +17,7 @@ export function practiceSample(draft: CampaignState, reg: Registries, unitId: st
   const dyn = dynamicOf(draft, unitId);
   const unit = draft.squad.find((u) => u.id === unitId);
   if (dyn === undefined || unit === undefined) return [];
+  if (response === 'yielded') feedYield(draft, unitId); // P15b: the commander yielding again and again pulls her manner (accumulators only; nothing for a holder with no manner)
   const region = updateReading(dyn, { response, ...(opts.afterThreat === true ? { afterThreat: true } : {}), ...(opts.motive !== undefined ? { motive: opts.motive } : {}) }, TUNING.position.alpha.practice, physicsStyleOf(draft, unitId, reg), unit.insight ?? 'mid').region;
   return region === undefined ? [] : [{ type: 'position_shifted', unitId, from: region.from, to: region.to }];
 }

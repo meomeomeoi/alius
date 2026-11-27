@@ -387,7 +387,7 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
   - `src/llm/calls/developmentReview.ts`: the proposed steps.
 - Test: `tests/development/manner.test.ts`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - the pushes accumulate only for a holder with `manner`;
   - `mercy ≥ 2` blocks the `warmth −` push from yielding;
   - no axis is proposed before its threshold or within 28 days of its last step (or of `playSince`);
@@ -396,10 +396,10 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
   - a locked `manner` never drifts;
   - UNDO reverts the overlay;
   - `discreteCap` does not stop the second step after 28 more days.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `tests/development`, `tests/dynamic` → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P15b): her manner drifts`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `tests/development`, `tests/dynamic` → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P15b): her manner drifts`
 
 ### Task 12: What draws her drifts
 

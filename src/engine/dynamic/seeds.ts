@@ -10,6 +10,7 @@ import type { SetupResult, UnitSetup } from '../setup';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { ensureDynamic } from './gate';
+import { notePlaySince } from './mannerFeed';
 import { practiceCategories } from './profile';
 import type { MayHold, StartFrame } from './types';
 
@@ -62,6 +63,7 @@ export function applySeeds(draft: CampaignState, reg: Registries, r: SetupResult
     const dyn = draft.relations[id]?.dynamic;
     if (dyn !== undefined && frame !== undefined) {
       dyn.frame = frame;
+      notePlaySince(draft, id); // P15b
       dyn.milestones.push(`seeded:${frame}`);
     }
   });

@@ -115,7 +115,7 @@ export function buildKnowledge(state: CampaignState | null, settings: AliusSetti
         const shown = mine.filter((m) => m.shownDay !== undefined).at(-1);
         if (!shown || shown.to === mine[0].from) continue; // nothing shown, or back where her file has her
         const up = wentUp({ ...shown, from: mine[0].from });
-        const words = axisWords(reg, axis, up);
+        const words = axisWords(reg, axis, up, shown.to);
         if (words !== null) axes.push({ axis, words, up, reason: shown.reason, shownDay: shown.shownDay!, held: dev.held?.includes(axis) === true });
       }
       const facts = dev.facts.filter((f) => f.shownDay !== undefined);
