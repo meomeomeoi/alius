@@ -22,10 +22,24 @@ export function registerFrameReader(fn: FrameReader): void {
 export function registerBlockingGate(fn: LiveGate): void {
   liveGates.push(fn);
 }
+/**
+ * P16b plugs in here: does a contact that is `supported` need a posture that carries it right now? A reader answers `true` while it does (the craft: some holder is craft-live) and
+ * `null` for no say; with no reader the restriction does not exist and the contact is offered and stageable as it was before the craft. Any `true` wins.
+ */
+type SupportGate = (state: CampaignState, reg: Registries) => boolean | null;
+const supportGates: SupportGate[] = [];
+export function registerSupportGate(fn: SupportGate): void {
+  if (!supportGates.includes(fn)) supportGates.push(fn);
+}
+/** Whether a registered gate asks for the restriction now. */
+export function supportRequired(state: CampaignState, reg: Registries): boolean {
+  return supportGates.some((g) => g(state, reg) === true);
+}
 /** Tests: forget every registered reader and gate. */
 export function resetBlockingHooks(): void {
   frameReaders.length = 0;
   liveGates.length = 0;
+  supportGates.length = 0;
 }
 
 export function frameOf(state: CampaignState, unitId: string): Frame {

@@ -7,7 +7,7 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import type { CampaignState, SceneRecord } from '../state/types';
 import { TUNING } from '../tuning';
 import { entryAllowed, sceneAffordances } from './gate';
-import { presetSupports } from './presets';
+import { contactCarried } from './presets';
 import { pushLog, scrubLog } from './snapshots';
 import { COMMANDER, INTIMACIES, NOTE_MAX, type Blocking, type BlockingContact } from './state';
 import { effectsOfEntry, type BlockingEffect, type WornSlot } from './types';
@@ -216,7 +216,7 @@ export function checkChange(state: CampaignState, reg: Registries, change: Block
       const parties = partiesOf(c, change, state);
       if (typeof parties === 'string') return parties;
       if (!entryAllowed(state, reg, c, [parties.unit])) return `${String(c.label)} is not available here.`;
-      if (c.supported === true && !presetSupports(state, reg, String(c.id))) {
+      if (!contactCarried(state, reg, c)) {
         const carriers = [...reg.servicePostures.values()].filter((p) => Array.isArray(p.supports) && (p.supports as string[]).includes(String(c.id))).map((p) => String(p.label).toLowerCase());
         return `${String(c.label)} needs a posture that carries it${carriers.length > 0 ? `: ${carriers.join(' or ')}` : ''}.`;
       }

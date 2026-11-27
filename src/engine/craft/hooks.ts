@@ -3,6 +3,8 @@
  * a level) and how many levels of her personal rhythm the commander knows (each widens her openings). Both read 0 while nothing of the craft is written, so a campaign
  * without it is as it was. Installed once when `actions/craft` is imported; `installCraftHooks` is idempotent (tests that reset the physics hooks call it again).
  */
+import { registerSupportGate } from '../blocking/gate';
+import { craftOn } from './gate';
 import { levelForXp } from '../physics/skill';
 import { registerCombatPassive } from '../combat/build';
 import { registerRhythmKnown, registerServiceReport, registerStillness, registerStopHook } from '../physics/style';
@@ -27,6 +29,7 @@ export function rhythmLevel(state: Pick<CampaignState, 'relations'>, holderId: s
 }
 
 export function installCraftHooks(): void {
+  registerSupportGate((state, reg) => (craftOn(state, reg) ? true : null)); // a contact a posture carries (`supported`) needs the posture only while the craft runs
   registerHobbyHelped(helpWithGoal); // the commander helped with her goal: Regard, once a week
   registerStopHook((draft, ctx) => endPostureRun(draft, ctx, 'stopped'), 'craft'); // the stop word ends a posture hold, out of the fiction
   registerStillness((state) => stillnessShare(state), 'craft');

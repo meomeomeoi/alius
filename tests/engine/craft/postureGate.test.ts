@@ -8,6 +8,8 @@ import '../../../src/engine/actions/craft';
 import { checkChange, COMMANDER, resetBlockingHooks, setBlocking } from '../../../src/engine/blocking';
 import { blockingVocabulary } from '../../../src/engine/blocking/vocabulary';
 import { presetSupports } from '../../../src/engine/blocking/presets';
+import { craftOn } from '../../../src/engine/craft/gate';
+import { dynamicOf } from '../../../src/engine/dynamic/state';
 import { installCraftHooks } from '../../../src/engine/craft/hooks';
 import { startPostureHold } from '../../../src/engine/craft/posture';
 import { DEFAULT_SCENE_SETTINGS, INTERACTION_TOGGLES, parseSceneSettings, sceneSettingsOf } from '../../../src/engine/moments/settings';
@@ -62,6 +64,18 @@ describe('on_hands is carried by a posture', () => {
     expect(ids(put(posed(), 'kneel_open'))).not.toContain('on_hands');
     expect(ids(put(posed(), 'kneel_present'))).toContain('on_hands');
     expect(ids(posed())).toContain('footrest'); // every other contact is as it was
+  });
+
+  it('with no holder craft-live (here an aftermath of hers runs) on_hands is offered and stageable exactly as before the craft, with or without a posture', () => {
+    const off = (s: CampaignState): CampaignState => { dynamicOf(s, ANN)!.aftermath = { stage: 0 } as never; expect(craftOn(s, reg)).toBe(false); return s; };
+    const ids = (s: CampaignState): string[] => blockingVocabulary(s, reg).contact.map((c) => String(c.id));
+    expect(ids(off(posed()))).toContain('on_hands');
+    expect(checkChange(off(posed()), reg, onHands)).toBeNull();
+    expect(checkChange(off(put(posed(), 'kneel_open')), reg, onHands)).toBeNull();
+    const staged = off(posed());
+    setBlocking(staged, { registries: reg }, onHands, { at: 2, source: 'chip' });
+    expect(staged.scene!.blocking![COMMANDER]).toMatchObject({ contact: { id: 'on_hands' } });
+    expect(craftOn(posed(), reg)).toBe(true); // and with the craft on it needs the posture (the tests above)
   });
 
   it('a contact that is not `supported` ignores the preset entirely', () => {

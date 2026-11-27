@@ -21917,6 +21917,13 @@ function registerFrameReader(fn) {
 function registerBlockingGate(fn) {
   liveGates.push(fn);
 }
+var supportGates = [];
+function registerSupportGate(fn) {
+  if (!supportGates.includes(fn)) supportGates.push(fn);
+}
+function supportRequired(state, reg) {
+  return supportGates.some((g) => g(state, reg) === true);
+}
 function frameOf(state, unitId) {
   for (const read2 of frameReaders) {
     const f = read2(state, unitId);
@@ -21999,6 +22006,10 @@ function presetProblem(state, reg, preset) {
 function presetSupports(state, reg, contactId) {
   const supports = commanderPresetOf(state, reg)?.supports;
   return Array.isArray(supports) && supports.includes(contactId);
+}
+function contactCarried(state, reg, contact) {
+  if (contact.supported !== true || !supportRequired(state, reg)) return true;
+  return presetSupports(state, reg, String(contact.id));
 }
 
 // src/engine/blocking/snapshots.ts
@@ -22181,7 +22192,7 @@ function checkChange(state, reg, change) {
       const parties = partiesOf(c, change, state);
       if (typeof parties === "string") return parties;
       if (!entryAllowed(state, reg, c, [parties.unit])) return `${String(c.label)} is not available here.`;
-      if (c.supported === true && !presetSupports(state, reg, String(c.id))) {
+      if (!contactCarried(state, reg, c)) {
         const carriers = [...reg.servicePostures.values()].filter((p) => Array.isArray(p.supports) && p.supports.includes(String(c.id))).map((p) => String(p.label).toLowerCase());
         return `${String(c.label)} needs a posture that carries it${carriers.length > 0 ? `: ${carriers.join(" or ")}` : ""}.`;
       }
@@ -37207,8 +37218,8 @@ function blockingVocabulary(state, reg) {
   return {
     posture: [...reg.blockingPostures.values()],
     anchor: [...reg.blockingAnchors.values()].filter(fits),
-    contact: [...reg.blockingContacts.values()].filter((e) => fits(e) && entryAllowed(state, reg, e, units) && (e.supported !== true || presetSupports(state, reg, e.id))),
-    // P16b: a contact a posture carries is offered with that posture
+    contact: [...reg.blockingContacts.values()].filter((e) => fits(e) && entryAllowed(state, reg, e, units) && contactCarried(state, reg, e)),
+    // P16b: while the craft runs, a contact a posture carries is offered with that posture
     item: [...reg.blockingItems.values()].filter((e) => entryAllowed(state, reg, e, units)),
     activity: [...reg.blockingActivities.values()].filter((e) => entryAllowed(state, reg, e, units))
   };
@@ -44509,6 +44520,7 @@ function rhythmLevel(state, holderId) {
   return levelForXp(state.relations[holderId]?.craft?.rhythm?.xp ?? 0);
 }
 function installCraftHooks() {
+  registerSupportGate((state, reg) => craftOn(state, reg) ? true : null);
   registerHobbyHelped(helpWithGoal);
   registerStopHook((draft, ctx2) => endPostureRun(draft, ctx2, "stopped"), "craft");
   registerStillness((state) => stillnessShare(state), "craft");

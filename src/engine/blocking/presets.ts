@@ -7,7 +7,7 @@
  */
 import type { Entry, Registries } from '../../content/types';
 import type { CampaignState } from '../state/types';
-import { entryAllowed, frameOf, sceneAffordances } from './gate';
+import { entryAllowed, frameOf, sceneAffordances, supportRequired } from './gate';
 import { COMMANDER, frameRank, type Frame } from './state';
 
 /** The default preset of a base posture (`default: true`), or `undefined` for a base that has none. */
@@ -83,4 +83,10 @@ export function presetProblem(state: CampaignState, reg: Registries, preset: Ent
 export function presetSupports(state: Pick<CampaignState, 'scene'>, reg: Registries, contactId: string): boolean {
   const supports = commanderPresetOf(state, reg)?.supports;
   return Array.isArray(supports) && (supports as string[]).includes(contactId);
+}
+
+/** May this contact be offered or staged as far as the postures go: it is not `supported`, no gate asks for the restriction, or the commander's preset carries it. */
+export function contactCarried(state: CampaignState, reg: Registries, contact: Entry): boolean {
+  if (contact.supported !== true || !supportRequired(state, reg)) return true;
+  return presetSupports(state, reg, String(contact.id));
 }
