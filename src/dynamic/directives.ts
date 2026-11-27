@@ -1,5 +1,6 @@
 import type { Registries } from '../content/types';
 import { frameRank } from '../engine/blocking/state';
+import { driftedAxes } from '../engine/development/mannerKeys';
 import { aftermathRowOf } from '../engine/dynamic/aftermath';
 import { hasCapability } from '../engine/dynamic/capabilities';
 import { compromatOf } from '../engine/dynamic/compromat';
@@ -66,13 +67,18 @@ function styleLine(state: CampaignState, reg: Registries, unit: Unit): string {
   const base = `${head}${words.length > 0 ? `: ${words.join('; ')}` : ''}.`;
   const drawn = manner === null || manner.drawnBy.length === 0 ? '' : ` What draws her is ${manner.drawnBy.map(drawnByWord).join(', and also ')}.`;
   // P15b: the mood of her day in the table's words (the step the mood itself moved), one clause and only when an axis moved; never a value
-  const today = manner === null ? [] : MANNER_AXES.map((a) => mannerWord(a, manner.mood[a] ?? 0)).filter((w) => w !== '');
+  // only the change the mood made after the clamp to ±2 (an axis already at the end of its scale cannot move further, and says nothing)
+  const settled = manner === null ? null : driftedAxes(unit);
+  const today = manner === null || settled === null ? [] : MANNER_AXES.map((a) => mannerWord(a, manner.axes[a] - settled[a])).filter((w) => w !== '');
   const todayLine = today.length === 0 ? '' : ` Her state today: ${today.join('; ')}.`;
   return `${lead.phaseLead === 'secondary' ? `${base} Her ${label(lead.key)} side comes through now.` : base}${drawn}${todayLine}`;
 }
 
 /** Her everyday self in one clause (`bond.practice.everyday`, hers and sincere), or `''`. */
-const everydayOf = (state: CampaignState, reg: Registries, unitId: string): string => sentence(practiceOf(state, reg, unitId)?.everyday ?? '');
+const everydayOf = (state: CampaignState, reg: Registries, unitId: string): string => {
+  const view = practiceOf(state, reg, unitId);
+  return view?.manner === undefined ? '' : sentence(view.everyday ?? ''); // P15b: her everyday face is a part of her manner; a card with no manner block has none
+};
 
 /**
  * The directive of a holder who is in the room: at `play` or beyond, the frame, what she has claimed, her manner and what she waits to answer;

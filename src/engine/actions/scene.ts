@@ -35,6 +35,7 @@ import { installRelationAccounting } from '../relations/gain';
 import { evaluateAutomatic, pushHistory } from '../relations/graph';
 import { validateIntents } from '../relations/intents';
 import { answerProposal, commanderProposal, rollDiscovery, type ProposalAnswer } from '../relations/proposals';
+import { markQuirksOffered } from '../dynamic/quirks';
 import { PROPOSAL_KINDS } from '../relations/vocab';
 import type { CampaignState, SceneOrigin, SceneRecord } from '../state/types';
 import { TUNING } from '../tuning';
@@ -149,6 +150,7 @@ registerAction('intents/apply', (draft, payload, ctx) => {
       channel: 'scene', participants: draft.scene.participants, intents: payload.intents, sceneId: draft.scene.id,
       ...(typeof payload.messageRef === 'string' ? { messageRef: payload.messageRef } : {}),
     });
+    markQuirksOffered(draft, ctx.registries); // P15b: a quirk that was due for the reply just read has been offered once in this scene
     // the controller reports how far it has read, in the same step, so a rollback restores the pointer with the deltas
     if (typeof payload.readIndex === 'number' && Number.isInteger(payload.readIndex) && payload.readIndex >= 0) draft.scene.readIndex = payload.readIndex;
     // P9d: what the same reading found, stored on the scene so a swipe or an edit that rolls the reading back takes it too

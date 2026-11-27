@@ -182,6 +182,24 @@ describe('the directive clause', () => {
     const text = line(scene(s));
     expect(text).toContain('Her state today: she pushes hard; cool, little comfort.');
   });
+  it('words only the change the mood made after the clamp: an axis at the end of its scale says nothing', () => {
+    const s = world({ manner: { intensity: 2, warmth: -2 } });
+    had(s, withMood('irritated')[0]); // warmth -1 and intensity +1 on axes already at the ends
+    expect(line(scene(s))).not.toContain('Her state today');
+    const half = world({ manner: { intensity: 2 } });
+    had(half, withMood('irritated')[0]);
+    expect(line(scene(half))).toContain('Her state today: cool, little comfort.');
+  });
+  it('her everyday line is not told for a card with no manner block', () => {
+    const s = world({ manner: null });
+    unitOf(s, ANN).bond!.practice!.everyday = 'Kind and odd.';
+    s.relations[ANN].dynamic!.frame = 'play';
+    const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN, 'unit_bea'], origin: 'event', consumesSlot: false, startIndex: 0 } });
+    expect(errors(r.events)).toEqual([]);
+    const text = dynamicDirectives(r.state, reg, r.state.scene!.participants).find((d) => d.id === `dynamic:${ANN}`)!.text;
+    expect(text).not.toContain('Kind and odd');
+    expect(text).not.toContain('every day');
+  });
   it('words a low day by intensity and voice', () => {
     const s = world();
     had(s, withMood('low')[0]);

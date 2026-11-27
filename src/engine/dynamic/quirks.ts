@@ -24,7 +24,7 @@ export const QUIRK_PHRASE: Readonly<Record<QuirkWhen, string>> = {
 export interface QuirkDue { unitId: string; when: QuirkWhen; text: string }
 
 /** The unit's note for this scene, or `undefined` (nothing noted, or the note is of another scene). */
-function noteOf(state: CampaignState, unitId: string): { voiced: QuirkWhen[]; ran?: true } | undefined {
+function noteOf(state: CampaignState, unitId: string): { voiced: QuirkWhen[]; ran?: true; offered?: QuirkWhen[] } | undefined {
   const book = state.dynamic?.quirkScene;
   return state.scene !== undefined && book?.sceneId === state.scene.id ? book.units[unitId] : undefined;
 }
@@ -33,7 +33,8 @@ function noteOf(state: CampaignState, unitId: string): { voiced: QuirkWhen[]; ra
 function quirksOf(state: CampaignState, reg: Registries, unitId: string) {
   const unit = state.squad.find((u) => u.id === unitId);
   if (unit === undefined || unit.kind !== 'named' || !isLiving(unit) || !herPracticeLive(state, unitId)) return [];
-  return practiceOf(state, reg, unitId)?.quirks ?? [];
+  const view = practiceOf(state, reg, unitId);
+  return view?.manner === undefined ? [] : view.quirks ?? []; // P15b: her quirks belong to her manner; a card with no manner block has none, whatever a dossier edit wrote
 }
 
 /**
@@ -52,12 +53,27 @@ export function quirksDue(state: CampaignState, reg: Registries, present: readon
     const ran = note?.ran === true;
     const now: Record<QuirkWhen, boolean> = { switch: !running && !ran, during: running, address: running, after: !running && ran };
     for (const when of QUIRK_WHEN) {
-      if (!now[when] || note?.voiced.includes(when) === true) continue;
+      if (!now[when] || note?.voiced.includes(when) === true || note?.offered?.includes(when) === true) continue; // voiced, or already offered once in this scene
       const quirk = quirks.find((q) => q.when === when);
       if (quirk !== undefined) out.push({ unitId: id, when, text: quirk.text });
     }
   }
   return out;
+}
+
+/**
+ * A reading of the scene's reply was applied (`intents/apply`): the quirks that are due now were in the prompt for that reply, so each is offered once and does not come back in this scene
+ * (voiced or not; a voiced one is already gone). Writes only when something is due. Returns whether it wrote.
+ */
+export function markQuirksOffered(draft: CampaignState, reg: Registries): boolean {
+  const due = quirksDue(draft, reg);
+  if (due.length === 0) return false;
+  const book = bookOf(draft);
+  for (const q of due) {
+    const note = (book.units[q.unitId] ??= { voiced: [] });
+    (note.offered ??= []).push(q.when);
+  }
+  return true;
 }
 
 /** The units in the scene with quirks whose run is on and not yet noted. */

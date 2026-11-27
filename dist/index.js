@@ -23405,7 +23405,8 @@ function noteOf(state, unitId) {
 function quirksOf(state, reg, unitId) {
   const unit5 = state.squad.find((u) => u.id === unitId);
   if (unit5 === void 0 || unit5.kind !== "named" || !isLiving(unit5) || !herPracticeLive(state, unitId)) return [];
-  return practiceOf(state, reg, unitId)?.quirks ?? [];
+  const view3 = practiceOf(state, reg, unitId);
+  return view3?.manner === void 0 ? [] : view3.quirks ?? [];
 }
 function quirksDue(state, reg, present2 = state.scene?.participants ?? []) {
   if (!dynamicOn(state, reg) || state.scene === void 0) return [];
@@ -23419,12 +23420,22 @@ function quirksDue(state, reg, present2 = state.scene?.participants ?? []) {
     const ran = note?.ran === true;
     const now = { switch: !running5 && !ran, during: running5, address: running5, after: !running5 && ran };
     for (const when of QUIRK_WHEN) {
-      if (!now[when] || note?.voiced.includes(when) === true) continue;
+      if (!now[when] || note?.voiced.includes(when) === true || note?.offered?.includes(when) === true) continue;
       const quirk = quirks.find((q) => q.when === when);
       if (quirk !== void 0) out.push({ unitId: id, when, text: quirk.text });
     }
   }
   return out;
+}
+function markQuirksOffered(draft, reg) {
+  const due = quirksDue(draft, reg);
+  if (due.length === 0) return false;
+  const book2 = bookOf(draft);
+  for (const q of due) {
+    const note = book2.units[q.unitId] ??= { voiced: [] };
+    (note.offered ??= []).push(q.when);
+  }
+  return true;
 }
 function unnoted(state, reg) {
   if (!dynamicOn(state, reg) || state.dynamic === void 0 || state.scene === void 0) return [];
@@ -37243,6 +37254,7 @@ registerAction("intents/apply", (draft, payload, ctx2) => {
       sceneId: draft.scene.id,
       ...typeof payload.messageRef === "string" ? { messageRef: payload.messageRef } : {}
     });
+    markQuirksOffered(draft, ctx2.registries);
     if (typeof payload.readIndex === "number" && Number.isInteger(payload.readIndex) && payload.readIndex >= 0) draft.scene.readIndex = payload.readIndex;
     markSceneViolation(draft, ctx2.registries, payload.violations);
     events.push(...raiseTone(draft, ctx2.registries, payload.tone));
@@ -45645,11 +45657,15 @@ function styleLine(state, reg, unit5) {
   const head = pair.secondary === void 0 ? `Her manner is ${label2(pair.primary)}` : `Her manner is ${label2(pair.primary)}, with a ${label2(pair.secondary)} streak`;
   const base2 = `${head}${words3.length > 0 ? `: ${words3.join("; ")}` : ""}.`;
   const drawn2 = manner === null || manner.drawnBy.length === 0 ? "" : ` What draws her is ${manner.drawnBy.map(drawnByWord).join(", and also ")}.`;
-  const today = manner === null ? [] : MANNER_AXES.map((a) => mannerWord(a, manner.mood[a] ?? 0)).filter((w) => w !== "");
+  const settled = manner === null ? null : driftedAxes(unit5);
+  const today = manner === null || settled === null ? [] : MANNER_AXES.map((a) => mannerWord(a, manner.axes[a] - settled[a])).filter((w) => w !== "");
   const todayLine = today.length === 0 ? "" : ` Her state today: ${today.join("; ")}.`;
   return `${lead.phaseLead === "secondary" ? `${base2} Her ${label2(lead.key)} side comes through now.` : base2}${drawn2}${todayLine}`;
 }
-var everydayOf = (state, reg, unitId) => sentence2(practiceOf(state, reg, unitId)?.everyday ?? "");
+var everydayOf = (state, reg, unitId) => {
+  const view3 = practiceOf(state, reg, unitId);
+  return view3?.manner === void 0 ? "" : sentence2(view3.everyday ?? "");
+};
 function holderDirective(state, reg, unit5, face) {
   const dyn = dynamicOf(state, unit5.id);
   const frame9 = dyn === void 0 ? void 0 : frameEntry(reg, dyn.frame);

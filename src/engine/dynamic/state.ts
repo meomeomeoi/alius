@@ -206,7 +206,7 @@ export interface DynamicCampaign {
    * P15b: the note of her quirks for one scene (keyed by the scene id; a scene with another id starts empty): per unit, the kinds the model reported as voiced and whether a run of hers was seen
    * (what makes `after` due once it ends). Bookkeeping only, never shown.
    */
-  quirkScene?: { sceneId: string; units: Record<string, { voiced: QuirkWhen[]; ran?: true }> };
+  quirkScene?: { sceneId: string; units: Record<string, { voiced: QuirkWhen[]; ran?: true; offered?: QuirkWhen[] }> };
   /** Ids: claims `dc<n>`, milestones `dm<n>`, offers `do<n>`, aftermaths `da<n>`, exits `dx<n>`. */
   seq: number;
   /** `exits` is optional: a save from before the exit routes has none. */

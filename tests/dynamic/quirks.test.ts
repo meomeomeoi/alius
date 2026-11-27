@@ -226,6 +226,46 @@ describe('the report: `quirk_voiced { unitId, when }`', () => {
   });
 });
 
+describe('offered once, and only with a manner (review fixes)', () => {
+  const apply = (s: CampaignState): CampaignState => {
+    const r = run(s, reg, { type: 'intents/apply', payload: { channel: 'scene', intents: { events: [] } } });
+    expect(errors(r.events)).toEqual([]);
+    return r.state;
+  };
+
+  it('a quirk is offered for one reply of the scene, voiced or not; the other kinds still come when they are due', () => {
+    let s = world();
+    expect(whens(s)).toEqual(['switch']);
+    expect(quirkLine(s)).toBeDefined();
+    s = apply(s); // the reply was read: the switch was in its prompt
+    expect(whens(s)).toEqual([]);
+    expect(quirkLine(s)).toBeUndefined();
+    expect(dynamicIntentInput(s, reg, [ANN], 'scene').dynamic?.quirks ?? []).toEqual([]);
+    running(s);
+    expect(whens(s).sort()).toEqual(['address', 'during']);
+    s = apply(s);
+    expect(whens(s)).toEqual([]);
+    stopped(s);
+    s = sync(s);
+    expect(whens(s)).toEqual([]); // nothing ran after the sync here: the run was noted while it was on
+  });
+
+  it('a new scene offers them again', () => {
+    let s = world();
+    s = apply(s);
+    s.scene!.id = 'another_scene';
+    expect(whens(s)).toEqual(['switch']);
+  });
+
+  it('a card with no manner block has no quirk, even one a dossier edit wrote', () => {
+    const s = world();
+    delete unitOf(s, ANN).bond!.practice!.manner;
+    expect(unitOf(s, ANN).bond!.practice!.quirks).toBeDefined();
+    expect(whens(s)).toEqual([]);
+    expect(quirkLine(s)).toBeUndefined();
+  });
+});
+
 describe('the sync (which writes the one thing a derived directive cannot know: that a run was seen)', () => {
   it('is due only while a run of a holder with quirks is on and not noted; it writes nothing when no one runs', () => {
     const s = world();
