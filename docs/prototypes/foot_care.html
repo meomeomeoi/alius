@@ -456,7 +456,7 @@ function herPress(zone) {
   const p = ST().press + 0.08 * S.manner.intensity + DY().press + 0.08 * G.relax + (onKnotNow(zone) ? 0.15 : 0);
   return clamp(p, 0.15, 0.9);
 }
-const TOL_T = 0.4;   // her tempo band: |log2(mine / hers)| within 0.4 (about −24 % … +32 %)
+const TOL_T = 0.55;  // her tempo band: |log2(mine / hers)| within 0.55 (about −32 % … +46 %; round 2: 0.4 was too narrow)
 const TOL_P = 0.16;  // her pressure band
 const irrK = () => ST().irr * (1 - 0.15 * S.manner.warmth);
 
