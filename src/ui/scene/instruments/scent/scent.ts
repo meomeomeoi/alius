@@ -33,7 +33,7 @@ import { contactTargetOf } from '../../../../engine/blocking';
 import type { PhysicsRun, SegmentInput } from '../../../../engine/physics/state';
 import { exposedKinds, inhaleZone, scentToleranceOf } from '../../../../engine/physics/stimuli';
 import { contentAllowed } from '../../../../engine/bonds/content';
-import { leadStyle, physicsStyleOf } from '../../../../engine/physics/style';
+import { leadStyle, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
 import type { CampaignState } from '../../../../engine/state/types';
 import { TUNING } from '../../../../engine/tuning';
 import { voiceLines, type VoiceKind } from '../../cards/voice';
@@ -977,7 +977,7 @@ function deepInhale(d: number, cough: boolean): void {
 function startSegment(run: PhysicsRun, ck: { startedAt: number | null; now: number }): void {
   const plan = run.segment.plan!;
   const phys = E!.env.registries.contactPhysics.get(run.physicsId);
-  const endMs = Number(phys?.segmentSeconds ?? 30) * 1000;
+  const endMs = segmentSecondsOf(E!.env.state(), E!.env.registries, run, 30) * 1000 /* P15b: her tempo moves the segment, as it moves the plan's beats */;
   R.seg = { n: run.segment.n, startedAt: ck.startedAt!, clock0: G.clock - (ck.now - ck.startedAt!), beats: plan.beats.length, endMs, flushed: false, reported: 0 };
   R.plan = plan.beats;
   R.held = clamp(run.gauge / (Math.max(1, run.capacity) / capacity()), 0, capacity());

@@ -10,7 +10,7 @@ import type { CampaignState, Slot } from '../state/types';
 import { TUNING } from '../tuning';
 import { averageCaught } from './gaze';
 import { commanderSkill, herSkillOf } from './skill';
-import { leadStyle, physicsStyleOf } from './style';
+import { leadStyle, physicsStyleOf, segmentSecondsOf } from './style';
 import type { MarathonState, PhysicsRun } from './state';
 
 const M = TUNING.physics.marathon;
@@ -33,7 +33,7 @@ export function phaseLength(pace: MarathonPace, realtime: boolean, segmentSecond
 
 export function phaseSegments(state: CampaignState, reg: Registries, run: PhysicsRun): number {
   const s = sceneSettingsOf(state);
-  return phaseLength(s.marathonPace, s.physicsRealtime, Number(reg.contactPhysics.get(run.physicsId)?.segmentSeconds ?? 20));
+  return phaseLength(s.marathonPace, s.physicsRealtime, segmentSecondsOf(state, reg, run)); // P15b: her tempo moves a segment's seconds, so a phase keeps its length in play
 }
 
 /** The marathon state of a run that has just started (the clock begins where the slot does). */
@@ -45,7 +45,7 @@ export function initMarathon(state: CampaignState, duration: NonNullable<Physics
 /** How much a segment of a marathon counts, so that a phase costs the same at every pace: the normal pace's segments over this phase's. */
 export function paceScale(state: CampaignState, reg: Registries, run: PhysicsRun): number {
   const s = sceneSettingsOf(state);
-  const secs = Number(reg.contactPhysics.get(run.physicsId)?.segmentSeconds ?? 20);
+  const secs = segmentSecondsOf(state, reg, run);
   return phaseLength('normal', s.physicsRealtime, secs) / phaseSegments(state, reg, run);
 }
 

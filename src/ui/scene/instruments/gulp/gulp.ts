@@ -33,7 +33,7 @@ import { ceilingOf, floorOf } from '../../../../engine/backdrops';
 import { fnv1a } from '../../../../engine/hub';
 import { isGulpPhysics } from '../../../../engine/physics/gulp';
 import type { PhysicsRun, PlannedBeat, SegmentInput } from '../../../../engine/physics/state';
-import { effectiveHoldsUntil, leadStyle, physicsStyleOf } from '../../../../engine/physics/style';
+import { effectiveHoldsUntil, leadStyle, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
 import type { CampaignState } from '../../../../engine/state/types';
 import { GULP_STYLES, TUNING } from '../../../../engine/tuning';
 import { explicitArtAllowed } from '../../art';
@@ -624,7 +624,7 @@ function reportBeat(beat: number): void {
 function startSegment(run: PhysicsRun, ck: { startedAt: number | null; now: number }): void {
   const plan = run.segment.plan!;
   const phys = E!.env.registries.contactPhysics.get(run.physicsId);
-  const endMs = Number(phys?.segmentSeconds ?? 20) * 1000;
+  const endMs = segmentSecondsOf(E!.env.state(), E!.env.registries, run, 20) * 1000 /* P15b: her tempo moves the segment, as it moves the plan's beats */;
   const clock0 = G.t - (ck.now - ck.startedAt!);
   const first = Math.max(0, Math.floor((G.t - clock0) / BEAT()));
   R.seg = { n: run.segment.n, startedAt: ck.startedAt!, clock0, beats: plan.beats.length, endMs, reported: Math.min(first, plan.beats.length), ended: false, full: Math.max(1, Math.ceil(endMs / BEAT())) };

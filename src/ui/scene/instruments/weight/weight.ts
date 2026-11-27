@@ -38,7 +38,7 @@ import { fnv1a } from '../../../../engine/hub';
 import { contactFaceOf, herLegsOf } from '../../../../engine/physics/occlusion';
 import type { PhysicsRun, SegmentInput } from '../../../../engine/physics/state';
 import { resolveEnvOf, resolveSegment } from '../../../../engine/physics/segment';
-import { effectiveHoldsUntil, leadStyle, physicsStyleOf } from '../../../../engine/physics/style';
+import { effectiveHoldsUntil, leadStyle, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
 import type { CampaignState } from '../../../../engine/state/types';
 import { TUNING } from '../../../../engine/tuning';
 import { LONG_HOLD, sceneSettingsOf } from '../../../../engine/moments/settings';
@@ -665,7 +665,7 @@ function reportBeat(beat: number, held: boolean, even: boolean): void {
 function schedulePlan(run: PhysicsRun, ck: { startedAt: number | null; now: number }): void {
   const plan = run.segment.plan!;
   const phys = E!.env.registries.contactPhysics.get(run.physicsId);
-  const endMs = Number(phys?.segmentSeconds ?? 30) * 1000;
+  const endMs = segmentSecondsOf(E!.env.state(), E!.env.registries, run, 30) * 1000 /* P15b: her tempo moves the segment, as it moves the plan's beats */;
   R.seg = { n: run.segment.n, startedAt: ck.startedAt!, clock0: G.clock - (ck.now - ck.startedAt!), beats: plan.beats.length, endMs, flushed: false };
   R.sent = new Set();
   R.inputs = [];

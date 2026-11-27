@@ -30,7 +30,7 @@ import { fnv1a } from '../../../../engine/hub';
 import { occlusionOf } from '../../../../engine/physics/occlusion';
 import { effectiveOpenings, overDelayOf } from '../../../../engine/physics/segment';
 import type { PhysicsRun, SegmentInput } from '../../../../engine/physics/state';
-import { effectiveHoldsUntil, leadStyle, physicsStyleOf } from '../../../../engine/physics/style';
+import { effectiveHoldsUntil, leadStyle, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
 import type { CampaignState } from '../../../../engine/state/types';
 import { TUNING } from '../../../../engine/tuning';
 import { analyzeNative } from '../../../analyze/mark';
@@ -736,7 +736,7 @@ function schedulePlan(run: PhysicsRun, ck: { startedAt: number | null; now: numb
   cancelWindows();
   if (G.win && R.seg) G.win = null; // the last segment's opening is over with it (flushed before its end: never credited to this one)
   const phys = E!.env.registries.contactPhysics.get(run.physicsId);
-  const endMs = Number(phys?.segmentSeconds ?? 20) * 1000;
+  const endMs = segmentSecondsOf(E!.env.state(), E!.env.registries, run, 20) * 1000 /* P15b: her tempo moves the segment, as it moves the plan's beats */;
   R.seg = { n: run.segment.n, startedAt: ck.startedAt!, clock0: G.clock - (ck.now - ck.startedAt!), beats: plan.beats.length, endMs, flushed: false };
   R.strain = null; // a press across the boundary strains in this segment afresh (and is reported in it)
   G.air = clamp((run.gauge / run.capacity) * 100, 0, 100); // the engine's air (it resolved the last segment)

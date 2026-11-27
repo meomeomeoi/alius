@@ -5,6 +5,7 @@
  */
 import type { Registries } from '../../content/types';
 import { contentAllowed } from '../bonds/content';
+import { bend } from '../bend';
 import type { MannerAxis } from '../dynamic/types';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
@@ -42,6 +43,18 @@ export function physicsMannerOf(state: CampaignState, unitId: string, reg?: Regi
     if (m !== null) return m;
   }
   return null;
+}
+/**
+ * P15b: how long a segment of this run lasts in real time, in seconds: the entry's `segmentSeconds` (`fallback` when it has none), moved by her
+ * `tempo` (+ = quicker = shorter; `scale` per step, whole beats, at least `minBeats`). With no manner, or at 0, it is the entry's number itself.
+ * The plan, the controller that ends the segment, the instruments' clocks and the marathon's phases all read it, so they agree on where it ends.
+ */
+export function segmentSecondsOf(state: CampaignState, reg: Registries, run: { physicsId: string; holderId: string }, fallback = 20): number {
+  const seconds = Number(reg.contactPhysics.get(run.physicsId)?.segmentSeconds ?? fallback);
+  const tempo = physicsMannerOf(state, run.holderId, reg)?.tempo ?? 0;
+  if (tempo === 0) return seconds;
+  const beats = Math.ceil((seconds * 1000) / TUNING.physics.beatMs);
+  return (Math.max(TUNING.manner.minBeats, Math.round(bend(beats, tempo, { scale: -TUNING.manner.scale }))) * TUNING.physics.beatMs) / 1000;
 }
 type TargetReader = (state: CampaignState, reg: Registries, targetId: string) => string | undefined;
 const targetReaders: TargetReader[] = [];
@@ -88,8 +101,16 @@ export function holdsUntilOf(state: CampaignState, unitId: string): HoldsUntil {
 /** What the engine acts on: a `blackout` holder is honoured only with the `breath_play` category on, else she acts as a `limit` holder. */
 export function effectiveHoldsUntil(state: CampaignState, reg: Registries, unitId: string): HoldsUntil {
   const h = holdsUntilOf(state, unitId);
-  return h === 'blackout' && !contentAllowed(state, reg, { contentTags: ['breath_play'] }, unitId) ? 'limit' : h;
+  const allowed = h === 'blackout' ? contentAllowed(state, reg, { contentTags: ['breath_play'] }, unitId) : null;
+  const base: HoldsUntil = h === 'blackout' && allowed === false ? 'limit' : h;
+  // P15b: her warmth at ±2 moves it one step (+2 toward `signal`, -2 toward `blackout`, which only a `breath_play` run honours); otherwise the style's own
+  const warmth = physicsMannerOf(state, unitId, reg)?.warmth ?? 0;
+  if (warmth * warmth < 4) return base;
+  const at = HOLDS_ORDER.indexOf(base) + (warmth > 0 ? -1 : 1);
+  const moved = HOLDS_ORDER[Math.max(0, Math.min(HOLDS_ORDER.length - 1, at))]!;
+  return moved === 'blackout' && !(allowed ?? contentAllowed(state, reg, { contentTags: ['breath_play'] }, unitId)) ? 'limit' : moved;
 }
+const HOLDS_ORDER: readonly HoldsUntil[] = ['signal', 'limit', 'blackout'];
 
 type Row = (typeof TUNING.physics.style)[string];
 const row = (key: StyleKey): Row => TUNING.physics.style[key] ?? TUNING.physics.style.neutral!;

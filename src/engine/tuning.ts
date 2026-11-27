@@ -807,6 +807,10 @@ export const TUNING = Object.freeze({
     forgot: Object.freeze({ warmthDown: 0.03, intensityUp: 0.02 }),
     voiceLines: Object.freeze({ '-2': 0, '-1': 0.5, '0': 1, '1': 1.5, '2': 2 } as Readonly<Record<string, number>>),
     lineGapMs: 3000,
+    /** Chunk m3: the share of free beats that carry a counting cue, moved per `order` step (a counting holder's 1 down, any other's 0 up); a hash of the run, never a draw. */
+    counted: 0.25,
+    /** Chunk m3: the shortest segment a `tempo` step may make, in beats. */
+    minBeats: 2,
     favour: Object.freeze({ main: 1, second: 0.5 }),
     fresh: Object.freeze({ '-2': 0, '-1': 0, '0': 0, '1': 0.2, '2': 0.4 } as Readonly<Record<string, number>>),
     drift: Object.freeze({ days: 28 }),

@@ -226,18 +226,19 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
 
   The holder's manner reaches the physics through a reader hook like `registerPhysicsStyle`: `registerPhysicsManner((state, holderId) => axes | null)`. The physics layer imports nothing of the dynamic.
 - Test: `tests/blocking/manner.test.ts`.
+- Done as: `bend` moved to the leaf `src/engine/bend.ts` (re-exported by `dynamic/manner.ts`); `segmentSecondsOf` (`physics/style.ts`) carries the tempo bend of `segmentSeconds` to the plan, the controller, the marathon and the instruments' clocks; gulp's `warn` (and its row) are bent with the instruments in Task 7, because the engine only reads whether `warn` is above 0.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - per bent number: without a manner reader, or at zeros, the plan of a seeded segment is identical (deep-equal `planSegment` output and the rng's draw count);
   - with `tempo` +2 the opening is wider by the TUNING factor;
   - `order` +2 gives more counted cues;
   - `voice` −2 fewer cue beats;
   - `warmth` +2 turns `limit` into `signal`, and `warmth` −2 never reaches `blackout` without `breath_play`;
   - `tests/blocking/unaffected.test.ts` is unchanged.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `tests/blocking`, `tests/physics` (wherever they live) → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P15b): her manner bends the contact physics`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `tests/blocking`, `tests/physics` (wherever they live) → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P15b): her manner bends the contact physics`
 
 ### Task 7: `bendRow` in every instrument
 

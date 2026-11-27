@@ -3,7 +3,7 @@ import { blockingLive } from '../engine/blocking';
 import type { CueKind } from '../engine/blocking/types';
 import type { Action, EngineEvent } from '../engine/dispatch';
 import { temperamentOf } from '../engine/life/state';
-import { leadStyle, physicsStyleOf } from '../engine/physics/style';
+import { leadStyle, physicsStyleOf, segmentSecondsOf } from '../engine/physics/style';
 import type { ReliefReport, SegmentInput } from '../engine/physics/state';
 import type { CampaignState } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
@@ -199,7 +199,7 @@ export function createStaging(deps: StagingDeps): StagingController {
     }
     return {
       unitId: r.holderId, name: unit?.displayName ?? r.holderId, card: String((unit as { card?: unknown } | undefined)?.card ?? '').slice(0, CARD_MAX),
-      activity: String(entry?.label ?? r.sourceId), phase, seconds: phaseSegments(s, reg, r) * Number(reg.contactPhysics.get(r.physicsId)?.segmentSeconds ?? 30),
+      activity: String(entry?.label ?? r.sourceId), phase, seconds: phaseSegments(s, reg, r) * segmentSecondsOf(s, reg, r, 30),
       hours: r.marathon?.hours ?? 'unknown', style: leadStyle(physicsStyleOf(s, r.holderId, reg)).key, known: known.slice(-KNOWN_MAX - 2), listeners,
       ...(frame?.audience ? { throne: true as const } : {}),
     };
@@ -301,7 +301,7 @@ export function createStaging(deps: StagingDeps): StagingController {
     }
     if (r.segment.state === 'running') {
       if (startedAt === null) startedAt = now;
-      const seconds = Number(deps.registries().contactPhysics.get(r.physicsId)?.segmentSeconds ?? 20);
+      const seconds = segmentSecondsOf(s, deps.registries(), r); // P15b: her tempo moves it, as it moves the plan's beats
       if (s.settings.physicsRealtime === true && now - startedAt >= seconds * 1000) endSegment();
       return;
     }

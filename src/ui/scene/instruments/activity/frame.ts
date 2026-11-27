@@ -34,7 +34,7 @@ import { frameOf, presenceOf, type Presence } from '../../../../engine/physics/p
 import { mentionText } from '../../../../engine/physics/mention';
 import { phaseSegments } from '../../../../engine/physics/marathon';
 import type { PhysicsRun } from '../../../../engine/physics/state';
-import { leadStyle, physicsStyleOf } from '../../../../engine/physics/style';
+import { leadStyle, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
 import { servicePaceOf } from '../../../../engine/physics/service';
 import type { CampaignState } from '../../../../engine/state/types';
 import type { ActivityFrame } from '../../../../engine/blocking/types';
@@ -1209,7 +1209,7 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   const v = viewOf(state, reg, run);
   S.view = v.view === 'footrest' ? 'legs' : v.view; S.inner = v.view === 'footrest' ? 'weight' : serviceMatches(state, reg, run, v.view) ? 'service' : 'stillness'; S.blind = v.blind;
   S.phases = run.marathon?.phases ?? 3;
-  S.phaseLen = (phaseSegments(state, reg, run) * Number(reg.contactPhysics.get(run.physicsId)?.segmentSeconds ?? 30));
+  S.phaseLen = (phaseSegments(state, reg, run) * segmentSecondsOf(state, reg, run, 30));
   S.start = run.marathon?.clockMin ?? 1080; S.seed = fnv1a(`${state.scene?.id ?? ''}|${run.id}`) % 100;
   S.talk = temperamentOf(state, run.holderId).talkativeness;
   S.mood = (state.squad.find((u) => u.id === run.holderId)?.stress ?? 0) >= 50 ? 'irritated' : 'calm';

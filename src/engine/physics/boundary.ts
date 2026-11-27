@@ -5,6 +5,7 @@
  * was due) and whether she falls asleep (when she can).
  */
 import type { Registries } from '../../content/types';
+import { bend } from '../bend';
 import { blockingOf, setQuietly, unsetActivity } from '../blocking';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { impunityOf } from '../discipline/impunity';
@@ -14,7 +15,7 @@ import { TUNING } from '../tuning';
 import { setCondition } from './conditions';
 import { coreRun, releaseCheck, stopPhysics } from './run';
 import { addEnduranceXp, practise, type HerSkill } from './skill';
-import { leadStyle, physicsStyleOf } from './style';
+import { leadStyle, physicsMannerOf, physicsStyleOf } from './style';
 import type { Outcome, PhysicsRun, SegmentResult } from './state';
 
 const P = TUNING.physics;
@@ -106,11 +107,13 @@ export function decideBoundary(draft: CampaignState, ctx: Pick<EngineCtx, 'regis
     if (move === undefined) {
       const key = leadStyle(physicsStyleOf(draft, run.holderId, reg)).key;
       const left = run.capacity > 0 ? (reg.contactPhysics.get(run.physicsId)?.gauge as { kind: string }).kind === 'capacity' ? run.gauge / run.capacity : 1 : 1;
+      // P15b: her intensity scales the step of the pressure (+ = a harder lean)
+      const step = bend(0.25, physicsMannerOf(draft, run.holderId, reg)?.intensity ?? 0, { scale: TUNING.manner.scale });
       if (PRESSES.has(key) && result.missed === 0 && result.slips === 0) {
-        run.pressure = Math.min(1.5, (run.pressure ?? 1) + 0.25);
+        run.pressure = Math.min(1.5, (run.pressure ?? 1) + step);
         move = 'press';
       } else if (key === 'affectionate' && left <= 0.5) {
-        run.pressure = Math.max(0.5, (run.pressure ?? 1) - 0.25);
+        run.pressure = Math.max(0.5, (run.pressure ?? 1) - step);
         move = 'lift';
       } else if (CHANGES.has(key) && result.streak >= P.endurance.streakFrom) {
         run.rhythmShift = (run.rhythmShift ?? 0) + 1;

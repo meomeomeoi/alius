@@ -5,6 +5,7 @@
  * same outcome (the latency rule).
  */
 import type { Registries } from '../../content/types';
+import { bend } from '../bend';
 import { blockingOf, contactTargetOf } from '../blocking';
 import { SEALS, type CueKind, type InteractionType, type Seal } from '../blocking/types';
 import { fnv1a } from '../hub';
@@ -23,7 +24,9 @@ import { addEnduranceXp, herSkillOf } from './skill';
 import {
   GAUGE_FULL, INPUT_KINDS, type Attention, type JawOrder, type PhysicsRun, type PhysicsStyle, type PlannedBeat, type ScentBand, type SegmentInput, type SegmentPlan, type SegmentResult,
 } from './state';
-import { blendedStyle, leadStyle, physicsMannerOf, physicsStyleOf, styleRows } from './style';
+import { blendedStyle, leadStyle, physicsMannerOf, physicsStyleOf, segmentSecondsOf, styleRows } from './style';
+
+export { segmentSecondsOf };
 import { scentBand } from './scent';
 import { isShoeRun } from './footwear';
 import { headCapacity, scentToleranceOf } from './stimuli';
@@ -69,12 +72,13 @@ export function beatsPerSegment(state: Pick<CampaignState, 'settings'>, segmentS
 }
 
 /** The width of her next opening: the lead's (an obsessive one draws it), blended with the other style of the pair. */
-function openingWidth(style: PhysicsStyle, rng: Rng, measuring: boolean): number {
+function openingWidth(style: PhysicsStyle, rng: Rng, measuring: boolean, tempo = 0): number {
   const { leadKey, other } = styleRows(style);
   const lead = leadKey === 'obsessive' ? rng.int(P.obsessiveMs[0], P.obsessiveMs[1]) : P.style[leadKey]!.windowMs;
   const [a, b] = P.blend;
   const width = other === undefined ? lead : lead * a + other.windowMs * b;
-  return measuring ? width / 2 : width;
+  // P15b: her tempo (+ = quicker = a narrower opening); the draw above is made either way
+  return bend(measuring ? width / 2 : width, tempo, { scale: -TUNING.manner.scale });
 }
 
 /**
@@ -85,8 +89,10 @@ function openingWidth(style: PhysicsStyle, rng: Rng, measuring: boolean): number
 export function planSegment(state: CampaignState, reg: Registries, run: PhysicsRun, rng: Rng): SegmentPlan {
   const phys = reg.contactPhysics.get(run.physicsId)!;
   const style = physicsStyleOf(state, run.holderId, reg);
-  const n = beatsPerSegment(state, Number(phys.segmentSeconds)); // a second physics runs on the same beats: the first one's length
+  const n = beatsPerSegment(state, segmentSecondsOf(state, reg, run, Number(phys.segmentSeconds))); // a second physics runs on the same beats: the first one's length
   const lead = leadStyle(style);
+  const manner = physicsMannerOf(state, run.holderId, reg); // P15b: her tempo, order and voice (null: every axis at 0, and every number below is the style's)
+  const tempo = manner?.tempo ?? 0, order = manner?.order ?? 0, voice = manner?.voice ?? 0;
   const realtime = sceneSettingsOf(state).physicsRealtime;
   const activity = blockingOf(state.scene, run.holderId).activity;
   const word = activity !== undefined ? (reg.blockingActivities.get(activity)?.attention as string | undefined) : undefined;
@@ -103,7 +109,7 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
       // R4: in real time a holder whose cues are `none` gives her openings no cue (decided, not drawn: no new draw); turn-based, `noCueShare` as before
       const silent = (realtime && lead.cues === 'none') || (!realtime && rng.chance(blendedStyle(style, 'noCueShare')));
       beats[pos] = {
-        ...beats[pos]!, opening: { widthMs: openingWidth(style, rng, measuring), ...(isFalse ? { false: true as const } : {}) },
+        ...beats[pos]!, opening: { widthMs: openingWidth(style, rng, measuring, tempo), ...(isFalse ? { false: true as const } : {}) },
         ...(silent ? {} : { cue: isFalse ? ('window_false' as const) : ('window_open' as const) }),
       };
       pos += run.act === 'pet' ? 1 : rng.int(P.breath.windowEvery[0], P.breath.windowEvery[1]); // a pet's quick rhythm: an opening every beat
@@ -124,13 +130,65 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
     const sign = attentionCue(attention[i - 1], attention[i]!);
     if (sign !== null && beats[i]!.cue === undefined && !(realtime && lead.cues === 'none' && beats[i]!.opening)) beats[i] = { ...beats[i]!, cue: sign }; // R4: her silent openings stay silent
   }
-  if (lead.cues === 'count') for (let i = 0; i < n; i++) if (beats[i]!.cue === undefined) beats[i] = { ...beats[i]!, cue: 'count' };
-  if (lead.cues === 'sparse') for (let i = 0; i < n; i++) if (beats[i]!.cue !== undefined && rng.chance(0.5)) delete beats[i]!.cue;
+  if (order === 0) {
+    if (lead.cues === 'count') for (let i = 0; i < n; i++) if (beats[i]!.cue === undefined) beats[i] = { ...beats[i]!, cue: 'count' };
+  } else {
+    // P15b: her order moves the share of free beats that carry a counting cue (a counting holder's 1 down, any other's 0 up); by hash, so no draw is added; a silent holder's openings stay silent
+    const share = clamp((lead.cues === 'count' ? 1 : 0) + order * TUNING.manner.counted, 0, 1);
+    for (let i = 0; i < n; i++) {
+      if (beats[i]!.cue !== undefined || (realtime && lead.cues === 'none' && beats[i]!.opening)) continue;
+      if (share >= 1 || (share > 0 && mannerUnit(state, run, i, 'count') < share)) beats[i] = { ...beats[i]!, cue: 'count' };
+    }
+  }
+  if (lead.cues === 'sparse') {
+    // P15b: her voice moves what share of the cues she keeps (half at 0); the draw is made for every cue-bearing beat as before, only its threshold moves
+    const drop = voice === 0 ? 0.5 : 1 - Math.min(1, 0.5 * voiceFactor(voice));
+    for (let i = 0; i < n; i++) if (beats[i]!.cue !== undefined && rng.chance(drop)) delete beats[i]!.cue;
+  } else if (voice !== 0) voiceLines(beats, state, run, voice, realtime && lead.cues === 'none');
   // R22: her moves in the jaw, in real time only (the turn-based card is unchanged); by hash after every draw above, so no draw is added or moved
-  if (realtime && interactions.includes('gesture') && jawSourceOf(run, reg) !== null) planJaw(beats, state, run, jawRowOf(lead));
+  if (realtime && interactions.includes('gesture') && jawSourceOf(run, reg) !== null) planJaw(beats, state, run, jawRowOf(lead), tempo, voice);
   // R32: her flow in gulp, in real time only (the turn-based card is unchanged); by hash after every draw above, so no draw is added or moved
   if (realtime && isGulpPhysics(phys)) layFlow(beats, state, run, gulpRowOf(lead.key), n);
   return { beats };
+}
+
+/** P15b: the share of her cue lines by her `voice` (`TUNING.manner.voiceLines`). */
+const voiceFactor = (voice: number): number => TUNING.manner.voiceLines[String(Math.max(-2, Math.min(2, Math.trunc(voice))))] ?? 1;
+
+/** P15b: a stable value 0 … 1 of this run's segment and beat (`fnv1a(<salt>|<runId>|<segment>|<beat>|manner|<key>)`), never an rng draw. */
+function mannerUnit(state: Pick<CampaignState, 'life'>, run: Pick<PhysicsRun, 'id' | 'segment'>, beat: number, key: string): number {
+  return (fnv1a(`${state.life?.salt ?? 0}|${run.id}|${run.segment.n}|${beat}|manner|${key}`) % 10000) / 10000;
+}
+
+/** The cue her attention gives a beat she keeps on watching, or looks away from (the signs of a change are laid already). */
+const ATTENTION_LINE: Record<string, CueKind | undefined> = { watching: 'watch', busy: 'look_away' };
+/** The cues a `voice` below 0 may drop: her chatter, never what the player needs to play (an opening, a shift, her orders). */
+const CHATTER: ReadonlySet<CueKind> = new Set(['count', 'watch', 'look_away']);
+
+/**
+ * P15b: her `voice` over the cue lines of a segment (not a sparse holder's, whose threshold already carries it). Below 0 her chatter is thinned
+ * (half at -1, all but what the player needs at -2); above 0 she gives more, ×1.5 at +1 and ×2 at +2 of the beats that had one: on a beat with no
+ * line, whose attention she comments on, never within `lineGapMs` of her last line (a line a beat at most). By hash: no draw is added or moved.
+ */
+function voiceLines(beats: PlannedBeat[], state: CampaignState, run: PhysicsRun, voice: number, silent: boolean): void {
+  const factor = voiceFactor(voice);
+  if (voice < 0) {
+    for (let i = 0; i < beats.length; i++) {
+      const cue = beats[i]!.cue;
+      if (cue !== undefined && CHATTER.has(cue) && (factor === 0 || mannerUnit(state, run, i, 'voice') >= factor)) delete beats[i]!.cue;
+    }
+    return;
+  }
+  const had = beats.filter((b) => b.cue !== undefined).length;
+  const gap = Math.max(1, Math.ceil(TUNING.manner.lineGapMs / P.beatMs));
+  const p = Math.min(1, ((factor - 1) * had) / Math.max(1, beats.length - had));
+  for (let i = 0; i < beats.length; i++) {
+    const b = beats[i]!;
+    const line = ATTENTION_LINE[b.attention];
+    if (b.cue !== undefined || line === undefined || (silent && b.opening)) continue;
+    if (beats.slice(Math.max(0, i - gap), i).some((x) => x.cue !== undefined)) continue;
+    if (mannerUnit(state, run, i, 'line') < p) beats[i] = { ...b, cue: line };
+  }
 }
 
 /** R25: her attention's weights `[watching, glancing]` in her frame: `0.4 × the activity's + 0.6 × her presence's`, her style's watch bias on watching; asleep, busy. */
@@ -167,18 +225,21 @@ export function jawRowOf(lead: { key: string; cues: string }): string {
  * `deeper`, `pull_back`, ask her to `suck` or want it `wider`; the ring (an item) asks her question or wants it `wider`. An order's cue is its
  * own kind and replaces whatever cue the beat had; a question has none.
  */
-function planJaw(beats: PlannedBeat[], state: CampaignState, run: PhysicsRun, row: string): void {
+function planJaw(beats: PlannedBeat[], state: CampaignState, run: PhysicsRun, row: string, tempo = 0, voice = 0): void {
   const J = P.jawOrders;
   const st = J.styles[row] ?? J.styles.other!;
   const h = (b: number, key: string): number => fnv1a(`${state.life?.salt ?? 0}|${run.id}|${run.segment.n}|${b}|jaw|${key}`);
   const unit = (b: number, key: string): number => (h(b, key) % 10000) / 10000;
   const span = (b: number, key: string, [lo, hi]: readonly [number, number]): number => lo + (h(b, key) % (hi - lo + 1));
+  // P15b: her tempo (+ = quicker = a shorter spacing) and her voice (the share of her moves that are questions); at 0 the style's own numbers
+  const every: [number, number] = [bend(st.every[0] * 1000, tempo, { scale: -TUNING.manner.scale }), bend(st.every[1] * 1000, tempo, { scale: -TUNING.manner.scale })];
+  const ask = voice === 0 ? st.ask : Math.min(1, st.ask * voiceFactor(voice));
   let t = J.firstMs;
   for (let b = Math.floor(t / P.beatMs); b < beats.length; b = Math.floor(t / P.beatMs)) {
     const r = unit(b, 'move');
     let order: JawOrder | undefined;
     if (run.sourceKind === 'item') {
-      if (r < 0.4 + st.ask * 0.5) beats[b] = { ...beats[b]!, ask: true };
+      if (r < 0.4 + ask * 0.5) beats[b] = { ...beats[b]!, ask: true };
       else order = 'wider';
     } else order = r < J.toes[0] ? 'deeper' : r < J.toes[1] ? 'pull_back' : r < J.toes[2] ? 'suck' : 'wider';
     let ms = 0;
@@ -186,7 +247,7 @@ function planJaw(beats: PlannedBeat[], state: CampaignState, run: PhysicsRun, ro
       ms = order === 'suck' ? span(b, 'len', J.suckMs) : order === 'wider' ? span(b, 'len', J.wideMs) : 0;
       beats[b] = { ...beats[b]!, order, cue: order, ...(ms > 0 ? { orderMs: ms } : {}) };
     }
-    t += span(b, 'every', [st.every[0] * 1000, st.every[1] * 1000]) + ms;
+    t += span(b, 'every', every) + ms;
   }
 }
 
@@ -570,7 +631,7 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   }
   // R32: her flow's end (her volume): she makes the commander clean what was spilled (her row's `check`, over `cleanFrom`) at 100 × spilled,
   // else the hold is released (little spilled, or she wipes it up herself)
-  if (gulped && flowEnded(draft, run, beatsPerSegment(draft, Number(reg.contactPhysics.get(physicsId)?.segmentSeconds)))) {
+  if (gulped && flowEnded(draft, run, beatsPerSegment(draft, segmentSecondsOf(draft, reg, run, Number(reg.contactPhysics.get(physicsId)?.segmentSeconds))))) {
     const row = gulpRowOf(leadStyle(physicsStyleOf(draft, run.holderId, reg)).key);
     if (run.gulp!.spilled > TUNING.physics.gulpFlow.cleanFrom && row.check === 'clean') events.push(...chainRun(draft, reg, run, floorStart(run.gulp!.spilled)));
     else events.push(...creditHold(draft, reg, run), ...stopPhysics(draft, reg, 'released'));

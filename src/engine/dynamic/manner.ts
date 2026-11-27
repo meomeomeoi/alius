@@ -6,6 +6,7 @@
  */
 import type { Registries } from '../../content/types';
 import type { CampaignState, Unit } from '../state/types';
+import { bend, type BendKind } from '../bend';
 import { TUNING } from '../tuning';
 import { MANNER_AXES, type DrawnBy, type MannerAxis } from './types';
 
@@ -42,23 +43,8 @@ export function mannerOf(state: Pick<CampaignState, 'squad'>, reg: Registries, u
   return { axes, drawnBy: [...(unit.bond?.practice?.drawnBy ?? [])], mood };
 }
 
-/**
- * How a number bends: `scale` multiplies by `1 + step × k` (never below 0), then caps the result at `cap`; `shift` adds `step × k`; `gate` is
- * 1 when the step reaches the threshold (`step >= gate` for a positive one, `step <= gate` for a negative one) and 0 otherwise.
- */
-export type BendKind = { scale: number; cap?: number } | { shift: number } | { gate: number };
-
-/** A style's number moved by one axis step. `step === 0` returns `base` exactly (a gate: 0). */
-export function bend(base: number, step: number, kind: BendKind): number {
-  if ('gate' in kind) {
-    if (step === 0 || kind.gate === 0) return 0;
-    return kind.gate > 0 ? (step >= kind.gate ? 1 : 0) : (step <= kind.gate ? 1 : 0);
-  }
-  if (step === 0) return base;
-  if ('shift' in kind) return base + step * kind.shift;
-  const out = base * Math.max(0, 1 + step * kind.scale);
-  return kind.cap === undefined ? out : Math.min(kind.cap, out);
-}
+export { bend };
+export type { BendKind };
 
 /** `bend` with her step on `axis`; without a manner it is `bend` at a step of 0 (`base`; a gate: 0). */
 export function bendBy(state: Pick<CampaignState, 'squad'>, reg: Registries, unitId: string, axis: MannerAxis, base: number, kind: BendKind): number {

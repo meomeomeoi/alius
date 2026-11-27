@@ -13,7 +13,7 @@ import type { EngineEvent } from '../dispatch';
 import { sceneSettingsOf } from '../moments/settings';
 import type { CampaignState, SceneRecord } from '../state/types';
 import { TUNING } from '../tuning';
-import { effectiveHoldsUntil, leadStyle, physicsStyleOf, runTargetOf } from './style';
+import { effectiveHoldsUntil, leadStyle, physicsMannerOf, physicsStyleOf, runTargetOf } from './style';
 import { extraSlotsFor, initMarathon, isMarathon } from './marathon';
 import { setCondition } from './conditions';
 import { commanderSkill } from './skill';
@@ -23,6 +23,8 @@ import type { Seal } from '../blocking/types';
 
 export interface PhysicsRef { id: string; seal?: Seal[]; pressure?: number }
 const SEAL_ORDER: Seal[] = ['leaky', 'firm', 'tight'];
+/** P15b: her intensity at ±2 moves the seal she picks one step in the contact's range (+2 tighter, -2 looser); otherwise her style's own pick. */
+const sealStep = (intensity: number): number => (intensity >= 2 ? 1 : intensity <= -2 ? -1 : 0);
 
 /** The physics a contact or an item names, in order (the first is the run's main one). */
 export function physicsOf(entry: Entry | undefined): PhysicsRef[] {
@@ -121,7 +123,9 @@ export function startPhysics(draft: CampaignState, ctx: { registries: Registries
   const ref = o.sourceKind === 'activity' ? undefined : physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).find((p) => p.id === o.physicsId);
   const range = ref?.seal ? [...ref.seal].sort((a, b) => SEAL_ORDER.indexOf(a) - SEAL_ORDER.indexOf(b)) : undefined;
   const lead = leadStyle(physicsStyleOf(draft, o.holderId, reg)).seal;
-  const seal = range ? range[lead === 'loosest' ? 0 : lead === 'tightest' ? range.length - 1 : Math.floor(range.length / 2)] : undefined;
+  const step = sealStep(physicsMannerOf(draft, o.holderId, reg)?.intensity ?? 0);
+  const sealAt = (list: Seal[]): Seal => list[Math.max(0, Math.min(list.length - 1, (lead === 'loosest' ? 0 : lead === 'tightest' ? list.length - 1 : Math.floor(list.length / 2)) + step))]!;
+  const seal = range ? sealAt(range) : undefined;
   scene.physicsCount = (scene.physicsCount ?? 0) + 1;
   // P15: the target the run is on is recorded only through a registered reader (the dynamic answers while it is on): without one the run is exactly as P15a made it
   const contactTarget = o.sourceKind === 'contact' ? contactTargetOf(scene, reg, o.sourceId) : undefined;
@@ -145,7 +149,7 @@ export function startPhysics(draft: CampaignState, ctx: { registries: Registries
   if (secondRef && secondPhys && whyNotAllowed(draft, reg, secondPhys, o.holderId) === null) {
     const sr = secondRef.seal ? [...secondRef.seal].sort((a, b) => SEAL_ORDER.indexOf(a) - SEAL_ORDER.indexOf(b)) : undefined;
     run.second = {
-      physicsId: secondRef.id, ...gaugeFor(draft, secondPhys), streak: 0, ...(sr ? { sealRange: sr, seal: sr[lead === 'loosest' ? 0 : lead === 'tightest' ? sr.length - 1 : Math.floor(sr.length / 2)]! } : {}),
+      physicsId: secondRef.id, ...gaugeFor(draft, secondPhys), streak: 0, ...(sr ? { sealRange: sr, seal: sealAt(sr) } : {}),
       ...(secondRef.pressure !== undefined ? { pressure: secondRef.pressure } : {}),
     };
   }
