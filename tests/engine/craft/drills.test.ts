@@ -88,6 +88,13 @@ describe('a drill with a partner', () => {
     const r = together(CAT);
     expect(r.state.commander.endurance!.breath!.xp).toBe(DRILL);
     expect(done(r.events)[0]).toMatchObject({ mult: 1 });
+    expect(r.state.relations[CAT].craft?.partnerDay).toBeUndefined(); // a x1 companion is no jealousy for anyone (the review: M7)
+    expect(r.state.relations[ANN].craft?.partnerDay).toBeUndefined();
+  });
+
+  it('a close woman (x1.2) stamps the day of the pair, which another holder reads as jealousy', () => {
+    const r = together(BEA, 'endurance_weight', (s) => close(s, BEA));
+    expect(r.state.relations[BEA].craft?.partnerDay).toBe(20);
   });
 
   it('is the same drill as alone for the once-a-day rule and keeps P2\'s companion effects', () => {

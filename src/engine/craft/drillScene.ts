@@ -35,7 +35,7 @@ const placeOf = (reg: Registries, activityId: string): string | undefined => [..
 
 /**
  * A drill a companion shares (the activities' hook). With a physics to run and a contact that can be staged for her it waits for its scene (`Relation.craft.drillPending`,
- * the slot is the scene's); otherwise it pays now, at the multiplier of the partner. Either way the day is the pair's (`partnerDay`: another holder reads it as jealousy).
+ * the slot is the scene's); otherwise it pays now, at the multiplier of the partner. The day is the pair's (`partnerDay`: another holder reads it as jealousy) when the partner is a holder or a close woman (a multiplier over 1); a plain companion stamps nothing.
  */
 function partner(draft: CampaignState, ctx: EngineCtx, at: DrillAt): { events: EngineEvent[]; scene?: { locationId: string } } {
   const reg = ctx.registries;
@@ -49,7 +49,7 @@ function partner(draft: CampaignState, ctx: EngineCtx, at: DrillAt): { events: E
     (rel.craft ??= {}).drillPending = { key, mult, day: draft.day };
     return { events: [], scene: { locationId: place } };
   }
-  (rel.craft ??= {}).partnerDay = draft.day;
+  if (mult > 1) (rel.craft ??= {}).partnerDay = draft.day; // a x1 companion is nobody's rival
   const events = payDrill(draft, reg, key, { companionId: at.companionId, mult });
   if (key === 'posture') drillPreset(draft, reg, at.companionId, events);
   return { events };

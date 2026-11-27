@@ -44766,7 +44766,7 @@ function partner(draft, ctx2, at2) {
     (rel.craft ??= {}).drillPending = { key, mult, day: draft.day };
     return { events: [], scene: { locationId: place2 } };
   }
-  (rel.craft ??= {}).partnerDay = draft.day;
+  if (mult > 1) (rel.craft ??= {}).partnerDay = draft.day;
   const events = payDrill(draft, reg, key, { companionId: at2.companionId, mult });
   if (key === "posture") drillPreset(draft, reg, at2.companionId, events);
   return { events };
