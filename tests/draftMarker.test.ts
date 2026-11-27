@@ -303,6 +303,7 @@ describe('facts', () => {
     slap_public: { type: 'slap_dealt', unitId: ANN, holderId: ANN, result: 'none', public: true, present: [ANN, BEA] },
     handover_given: { type: 'handover_given', unitId: ANN, holderId: ANN, handoverId: 'ph1', kind: 'key', days: 3 },
     ask_mocked: { type: 'ask_answered', unitId: ANN, what: 'task', answer: 'mocked', present: [ANN, BEA] },
+    craft_record_set: { type: 'record_set', unitId: ANN, key: 'weight', seconds: 720, kind: 'longest', kinds: ['longest'] },
     demonstration_humbling: { type: 'demonstration_staged', demonstrationId: 'pd1', unitId: ANN, audienceIds: [BEA, CAT], humbling: true, summary: 'fetching for her before the mess' },
   });
 

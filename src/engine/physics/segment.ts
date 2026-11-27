@@ -621,7 +621,7 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
     ...(cheats > 0 ? { cheats } : {}),
   };
   run.segment = { n: run.segment.n, state: 'held' };
-  events.unshift({ type: 'physics_segment', runId, n: segment, phase: 'end', physicsId, caught: result.caught, missed: result.missed, slips: result.slips, reliefs: result.reliefs, lapsed, warning: result.warning });
+  events.unshift({ type: 'physics_segment', runId, n: segment, phase: 'end', physicsId, holderId: run.holderId, caught: result.caught, missed: result.missed, slips: result.slips, reliefs: result.reliefs, lapsed, warning: result.warning, ...(run.marathon ? { scale } : {}) }); // P16b: who held, and a marathon's pace scale, for the craft's xp
   if (result.streakBonus > 0) events.push(addEnduranceXp(draft, physicsId, Math.round(TUNING.physics.endurance.streak * result.streakBonus * 100) / 100));
   if (secondBonus > 0 && run.second) events.push(addEnduranceXp(draft, run.second.physicsId, TUNING.physics.endurance.streak * secondBonus));
   const gulped = run.gulp !== undefined && isGulpRun(run, reg);

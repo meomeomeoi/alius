@@ -1448,5 +1448,18 @@
       "practice",
       "handover_given"
     ]
+  },
+  {
+    "id": "craft_record_set",
+    "event": "record_set",
+    "text": "AUTHOR TO WRITE: {name} saw the commander hold {what} for {time}.",
+    "importance": 1,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "craft",
+      "record"
+    ]
   }
 ]

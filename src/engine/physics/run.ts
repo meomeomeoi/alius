@@ -184,7 +184,7 @@ export function stopPhysics(draft: CampaignState, reg: Registries, result: Outco
   if (run.sourceKind !== 'activity') removeSource(draft, run.sourceKind, run.sourceId); // R24: her activity goes on when her frame ends
   else draft.scene.frameDone = { holderId: run.holderId, activity: run.sourceId, placed: placementKey(draft), runId: run.id }; // review I1: it does not restart by itself
   if (result === 'checked' && isShoeRun(run, reg)) draft.scene.shoeDone = { runId: run.id, holderId: run.holderId }; // e10 fix I3: her verdict may follow
-  const events: EngineEvent[] = [{ type: 'physics_outcome', runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...(run.second ? { secondId: run.second.physicsId } : {}), ...(run.targetId !== undefined ? { targetId: run.targetId } : {}), ...(run.tally ? { tally: { ...run.tally } } : {}) }]; // the target was read when the run began: P15 counts the act on it (mastery)
+  const events: EngineEvent[] = [{ type: 'physics_outcome', runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...(run.second ? { secondId: run.second.physicsId } : {}), ...(run.targetId !== undefined ? { targetId: run.targetId } : {}), ...(run.tally ? { tally: { ...run.tally } } : {}), ...(run.taps > 0 ? { taps: run.taps } : {}) }]; // P16b: taps a holder ignored (a record without a tap); the target was read when the run began: P15 counts the act on it (mastery)
   if (run.marathon) events.push(...finishMarathon(draft, reg, run, result));
   return events;
 }

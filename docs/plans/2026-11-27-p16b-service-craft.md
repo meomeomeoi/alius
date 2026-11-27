@@ -230,16 +230,16 @@ Before Task 1, also read:
 
     A new best emits `record_set { unitId, key, seconds, kind }`, plus its memory rule and resolver.
     The P16b xp of a hold (`TUNING.craft.xp.phase` 3 a clean segment) goes to `endurance:<physicsId>` beside P15a's `creditHold`. `creditHold` stays the only +10.
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - the same run gives the same seconds at the three paces (use `tests/engine/physics/marathon.test.ts`'s fixture), and in turn-based and real-time play;
   - a new best emits `record_set`, an equal one does not;
   - `noTap` and `clean`;
   - the memory rule writes an `fr` fact about her (the resolver shape is checked by `refs.ts`);
   - nothing is written for a holder who is not craft-live.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS, plus `tests/content` and `tests/engine/memory`; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P16b): records in fiction time`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS, plus `tests/content` and `tests/engine/memory`; `npm run build`.
+- [x] **Step 5: Commit** `feat(P16b): records in fiction time`
 
 ### Task 4: Stillness, her rhythm and lessons
 

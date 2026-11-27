@@ -71,3 +71,13 @@ export type CraftEventType = (typeof CRAFT_EVENT_TYPES)[number];
 export function craftRoll(state: Pick<CampaignState, 'dynamic' | 'day'>, unitId: string, key: string): number {
   return practiceRoll(state, unitId, `craft:${key}`);
 }
+
+/** "45 seconds", "12 minutes", "2 hours 5 minutes": a span of fiction time in words, for a fact or a margin line. */
+export function spanText(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds));
+  if (s < 90) return `${s} second${s === 1 ? '' : 's'}`;
+  const m = Math.round(s / 60);
+  if (m < 120) return `${m} minute${m === 1 ? '' : 's'}`;
+  const h = Math.floor(m / 60), r = m % 60;
+  return r === 0 ? `${h} hours` : `${h} hours ${r} minutes`;
+}

@@ -8151,6 +8151,14 @@ var CRAFT_EVENT_TYPES = [
   "headlock_offered",
   "norm_set"
 ];
+function spanText(seconds) {
+  const s = Math.max(0, Math.round(seconds));
+  if (s < 90) return `${s} second${s === 1 ? "" : "s"}`;
+  const m = Math.round(s / 60);
+  if (m < 120) return `${m} minute${m === 1 ? "" : "s"}`;
+  const h2 = Math.floor(m / 60), r = m % 60;
+  return r === 0 ? `${h2} hours` : `${h2} hours ${r} minutes`;
+}
 
 // src/content/types.ts
 var REGISTRY_NAMES = [
@@ -35221,6 +35229,14 @@ registerMemoryResolver("hypothetical_answered", (draft, event) => {
   const answer = str4(event.answer);
   return her && answer !== void 0 ? { ids: { her: [her.id] }, vars: { name: her.name, answer } } : null;
 }, { ids: ["her"], vars: ["name", "answer"] });
+registerMemoryResolver("record_set", (draft, event, reg) => {
+  const her = subjectOf3(draft, event.unitId);
+  const seconds = Number(event.seconds);
+  const key = str4(event.key);
+  if (!her || key === void 0 || !(seconds > 0)) return null;
+  const what = String(reg.contactPhysics.get(key)?.label ?? key.replace(/_/g, " ")).toLowerCase();
+  return { ids: { her: [her.id] }, vars: { name: her.name, what, time: spanText(seconds) } };
+}, { ids: ["her"], vars: ["name", "what", "time"] });
 registerMemoryResolver("dynamic_exit", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name, sworn: yes(event.sworn === true) } } : null;
@@ -36895,7 +36911,7 @@ function stopPhysics(draft, reg, result) {
   if (run.sourceKind !== "activity") removeSource(draft, run.sourceKind, run.sourceId);
   else draft.scene.frameDone = { holderId: run.holderId, activity: run.sourceId, placed: placementKey(draft), runId: run.id };
   if (result === "checked" && isShoeRun(run, reg)) draft.scene.shoeDone = { runId: run.id, holderId: run.holderId };
-  const events = [{ type: "physics_outcome", runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...run.second ? { secondId: run.second.physicsId } : {}, ...run.targetId !== void 0 ? { targetId: run.targetId } : {}, ...run.tally ? { tally: { ...run.tally } } : {} }];
+  const events = [{ type: "physics_outcome", runId: run.id, physicsId: run.physicsId, holderId: run.holderId, result, segments: run.segment.n, sourceKind: run.sourceKind, sourceId: run.sourceId, ...run.second ? { secondId: run.second.physicsId } : {}, ...run.targetId !== void 0 ? { targetId: run.targetId } : {}, ...run.tally ? { tally: { ...run.tally } } : {}, ...run.taps > 0 ? { taps: run.taps } : {} }];
   if (run.marathon) events.push(...finishMarathon(draft, reg, run, result));
   return events;
 }
@@ -41244,7 +41260,7 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
     ...cheats > 0 ? { cheats } : {}
   };
   run.segment = { n: run.segment.n, state: "held" };
-  events.unshift({ type: "physics_segment", runId, n: segment, phase: "end", physicsId, caught: result.caught, missed: result.missed, slips: result.slips, reliefs: result.reliefs, lapsed, warning: result.warning });
+  events.unshift({ type: "physics_segment", runId, n: segment, phase: "end", physicsId, holderId: run.holderId, caught: result.caught, missed: result.missed, slips: result.slips, reliefs: result.reliefs, lapsed, warning: result.warning, ...run.marathon ? { scale } : {} });
   if (result.streakBonus > 0) events.push(addEnduranceXp(draft, physicsId, Math.round(TUNING.physics.endurance.streak * result.streakBonus * 100) / 100));
   if (secondBonus > 0 && run.second) events.push(addEnduranceXp(draft, run.second.physicsId, TUNING.physics.endurance.streak * secondBonus));
   const gulped = run.gulp !== void 0 && isGulpRun(run, reg);
@@ -42983,6 +42999,9 @@ registerAction("practice/ask_her", (draft, payload, ctx2) => {
 registerAfterAction(askedChoices);
 
 // src/engine/craft/gate.ts
+function craftLive(state, reg, holderId) {
+  return practiceLive(state, reg, holderId);
+}
 function craftOn(state, reg) {
   return practicesOn(state, reg);
 }
@@ -43043,19 +43062,120 @@ function fadePair(book2, day, pairDays) {
 }
 
 // src/engine/craft/book.ts
+function craftLevel(state, key) {
+  const physics = enduranceOf(key);
+  if (physics !== null) return commanderSkill(state, physics);
+  return state.commander.craft?.[key]?.level ?? 0;
+}
 function touchCraft(draft, key) {
   const book2 = draft.commander.craft ??= {};
   const row4 = book2[key] ??= { xp: 0, level: 0, lastDay: draft.day };
   row4.lastDay = draft.day;
   return row4;
 }
+function addCraftXp(draft, reg, key, xp, cause) {
+  if (!(xp > 0) || !craftOn(draft, reg)) return [];
+  const events = [];
+  const physics = enduranceOf(key);
+  let level;
+  let rose;
+  if (physics !== null) {
+    const done = addEnduranceXp(draft, physics, xp);
+    events.push(done);
+    level = Number(done.level);
+    rose = done.leveledUp === true;
+    touchCraft(draft, key);
+  } else {
+    const row4 = touchCraft(draft, key);
+    const before8 = row4.level;
+    row4.xp += xp;
+    row4.level = levelForXp(row4.xp);
+    level = row4.level;
+    rose = row4.level > before8;
+  }
+  events.push({ type: "craft_xp", key, gained: xp, cause });
+  if (rose) events.push({ type: "craft_level", key, level, word: craftWord(level) });
+  return events;
+}
+
+// src/engine/craft/streak.ts
+function noteClean(draft, holderId, kind, clean14) {
+  const rel = draft.relations[holderId];
+  if (rel === void 0) return;
+  if (!clean14) {
+    if (rel.craft?.streak?.[kind] === void 0) return;
+    delete rel.craft.streak[kind];
+    return;
+  }
+  const streak = (rel.craft ??= {}).streak ??= {};
+  streak[kind] = (streak[kind] ?? 0) + 1;
+}
+
+// src/engine/craft/records.ts
+function segmentBeats(reg, physicsId) {
+  const seconds = Number(reg.contactPhysics.get(physicsId)?.segmentSeconds);
+  return Math.max(1, Math.ceil((Number.isFinite(seconds) ? seconds : 0) * 1e3 / TUNING.physics.beatMs));
+}
+function fictionSeconds(physicsId, beats, level) {
+  const perBeat = TUNING.craft.beatSeconds[physicsId] ?? TUNING.craft.beatSecondsDefault;
+  return Math.round(beats * perBeat * (1 + TUNING.craft.beatSkill * level));
+}
+var RECORD_KINDS = ["clean", "noTap", "longest"];
+var COUNTS = (reg, o) => o.result !== "stopped" && reg.contactPhysics.get(o.physicsId)?.interaction !== "passive";
+function noteRun(draft, ctx2, o) {
+  const reg = ctx2.registries;
+  if (!craftLive(draft, reg, o.holderId) || !COUNTS(reg, o)) return [];
+  const unclean = o.slips > 0 || o.result === "collapse" || o.result === "limit_broken" || o.result === "blackout";
+  const level = craftLevel(draft, `endurance:${o.physicsId}`);
+  const seconds = o.marathonHours !== void 0 ? Math.round(o.marathonHours * 3600) : fictionSeconds(o.physicsId, o.segments * segmentBeats(reg, o.physicsId), level);
+  if (o.result === "released" || o.result === "checked") noteClean(draft, o.holderId, o.physicsId, !unclean);
+  if (seconds < TUNING.craft.record.minSeconds) return [];
+  const rel = draft.relations[o.holderId];
+  if (rel === void 0) return [];
+  const have = rel.craft?.records?.[o.physicsId];
+  const improved = [];
+  const wins = { longest: true, clean: !unclean, noTap: !o.tapped };
+  for (const kind of RECORD_KINDS) if (wins[kind] && seconds > (have?.[kind] ?? 0)) improved.push(kind);
+  if (improved.length === 0) return [];
+  const rec = ((rel.craft ??= {}).records ??= {})[o.physicsId] ??= { longest: 0, clean: 0, noTap: 0, day: draft.day };
+  for (const kind of improved) rec[kind] = seconds;
+  rec.day = draft.day;
+  return [{ type: "record_set", unitId: o.holderId, key: o.physicsId, seconds, kind: improved[0], kinds: improved }];
+}
+function noteHoldEvents(draft, ctx2, events) {
+  const reg = ctx2.registries;
+  const out = [];
+  for (const e of events) {
+    if (e.type !== "physics_segment" || e.phase !== "end" || e.slips !== 0 || typeof e.holderId !== "string" || typeof e.physicsId !== "string") continue;
+    if (reg.contactPhysics.get(e.physicsId)?.skill !== true || !craftLive(draft, reg, e.holderId)) continue;
+    const scale = typeof e.scale === "number" ? e.scale : 1;
+    out.push(...addCraftXp(draft, reg, `endurance:${e.physicsId}`, Math.round(TUNING.craft.xp.phase * scale * 100) / 100, "phase"));
+  }
+  const taps = (id) => events.some((x) => x.type === "physics_signal" && x.released === true && x.runId === id);
+  for (const e of events) {
+    if (e.type !== "physics_outcome" || typeof e.holderId !== "string" || typeof e.physicsId !== "string") continue;
+    const done = events.find((x) => x.type === "marathon_done" && x.unitId === e.holderId && x.physicsId === e.physicsId);
+    const tally = typeof e.tally === "object" && e.tally !== null ? e.tally : {};
+    out.push(...noteRun(draft, ctx2, {
+      holderId: e.holderId,
+      physicsId: e.physicsId,
+      result: String(e.result),
+      segments: Number(e.segments) || 0,
+      slips: Number(tally.slips) || 0,
+      tapped: taps(e.runId) || Number(e.taps) > 0,
+      ...done !== void 0 && typeof done.hours === "number" ? { marathonHours: done.hours } : {}
+    }));
+  }
+  return out;
+}
 
 // src/engine/actions/craft.ts
 registerAfterAction((draft, ctx2, events) => {
-  if (!events.some((e) => e.type === "endurance_gained") || !craftOn(draft, ctx2.registries)) return [];
+  if (!craftOn(draft, ctx2.registries)) return [];
   for (const e of events) if (e.type === "endurance_gained") touchCraft(draft, `endurance:${String(e.physicsId)}`);
   return [];
 });
+registerAfterAction((draft, ctx2, events) => events.some((e) => e.type === "physics_segment" || e.type === "physics_outcome") ? noteHoldEvents(draft, ctx2, events) : []);
 registerDayEndStep("director_tick", (draft, ctx2) => decayCraft(draft, ctx2.registries));
 
 // src/llm/callTypes.ts

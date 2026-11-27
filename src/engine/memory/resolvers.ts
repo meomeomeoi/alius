@@ -2,6 +2,7 @@ import type { Entry, Registries } from '../../content/types';
 import { contentAllowed } from '../bonds/content';
 import type { EngineEvent } from '../dispatch';
 import { voteSubjectLabel } from '../power/ballot';
+import { spanText } from '../craft/state';
 import { scapegoatOptionId } from '../power/scapegoat';
 import { wardenOf } from '../warden/state';
 import { isLiving } from '../economy';
@@ -405,6 +406,16 @@ registerMemoryResolver('hypothetical_answered', (draft, event) => {
   const answer = str(event.answer);
   return her && answer !== undefined ? { ids: { her: [her.id] }, vars: { name: her.name, answer } } : null;
 }, { ids: ['her'], vars: ['name', 'answer'] });
+
+// the craft (P16b, plan Task 3): a new best in fiction time, kept by the pair (hers alone; she may bring it up). `what` is the physics' label; the seconds are the engine's, as words
+registerMemoryResolver('record_set', (draft, event, reg) => {
+  const her = subjectOf(draft, event.unitId);
+  const seconds = Number(event.seconds);
+  const key = str(event.key);
+  if (!her || key === undefined || !(seconds > 0)) return null;
+  const what = String(reg.contactPhysics.get(key)?.label ?? key.replace(/_/g, ' ')).toLowerCase();
+  return { ids: { her: [her.id] }, vars: { name: her.name, what, time: spanText(seconds) } };
+}, { ids: ['her'], vars: ['name', 'what', 'time'] });
 
 // the dynamic (P15): the commander left what she held; a vow makes it a break (`sworn`), the route and the severity are the event's own
 registerMemoryResolver('dynamic_exit', (draft, event) => {
