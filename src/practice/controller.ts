@@ -166,9 +166,12 @@ export function createPractice(deps: PracticeDeps): PracticeController {
       const [holderId, postureId] = key.split('|');
       const s = state();
       const unit = s?.squad.find((u) => u.id === holderId);
-      const entry = deps.registries().blockingPostures.get(postureId);
+      const reg = deps.registries();
+      const preset = reg.servicePostures.get(postureId); // P16b: a preset is named by its label and the base it stands on; an old name on a base by the base's own
+      const entry = preset ?? reg.blockingPostures.get(postureId);
       if (s === null || unit === undefined || entry === undefined || s.practices?.postures[holderId]?.some((p) => p.postureId === postureId) !== true) return { expired: 'That posture is gone.' };
-      return { kind: 'posture_name', name: unit.displayName, posture: String(entry.label), hint: String(entry.promptHint ?? '') };
+      const base = preset !== undefined ? String(reg.blockingPostures.get(String(preset.base))?.label ?? preset.base).toLowerCase() : undefined;
+      return { kind: 'posture_name', name: unit.displayName, posture: String(entry.label), hint: String(entry.promptHint ?? ''), ...(base !== undefined ? { base } : {}) };
     },
     parse: (raw) => sanitizePostureName(raw),
     apply(key, name) {

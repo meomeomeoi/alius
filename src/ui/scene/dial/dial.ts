@@ -10,7 +10,7 @@
  */
 import { buildKnowledge } from '../../../analysis/knowledge';
 import type { Registries } from '../../../content/types';
-import { blockingOf, COMMANDER, checkChange } from '../../../engine/blocking';
+import { blockingOf, COMMANDER, checkChange, samePreset } from '../../../engine/blocking';
 import type { Action } from '../../../engine/dispatch';
 import type { CampaignState } from '../../../engine/state/types';
 import { DEFAULT_SETTINGS, type AliusSettings } from '../../../settings';
@@ -18,7 +18,7 @@ import { analyzeAttrs, analyzeNative } from '../../analyze/mark';
 import { h } from '../../dom';
 import { blockingChipEls, blockingChoices, setBlocking, type BlockingAdd } from '../blockingStrip';
 import { mannequinSvg } from './draw';
-import { poseOf, type DialPose } from './points';
+import { poseOf, presetPoseOf, type DialPose, type PointStates } from './points';
 
 export interface PostureDialCtx {
   state: CampaignState | null;
@@ -32,8 +32,21 @@ export interface PostureDialCtx {
 
 const EYES: Record<string, string> = { down: 'EYES DOWN', closed: 'EYES CLOSED', at_her: 'EYES ON HER' };
 
-/** The pose the dial draws: the base posture the commander holds (standing while none is set). */
-export function dialPoseOf(state: CampaignState): DialPose {
+/**
+ * The preset the commander holds when one was set with the posture (P16b: `blocking.commander.preset`, a preset of the base held), else `undefined`: a base set alone reads as its default
+ * preset, which is the same pose, so the dial keeps drawing the base as it always did.
+ */
+function heldPreset(state: CampaignState, reg: Registries | undefined): { id: string; label: string; pose: DialPose } | undefined {
+  const b = state.scene ? blockingOf(state.scene, COMMANDER) : undefined;
+  const entry = b?.preset !== undefined ? reg?.servicePostures.get(b.preset) : undefined;
+  if (entry === undefined || b?.posture === undefined || entry.base !== b.posture) return undefined;
+  return { id: entry.id, label: String(entry.label), pose: presetPoseOf({ base: String(entry.base), points: entry.points as PointStates, ...(entry.item !== undefined ? { item: entry.item as DialPose['item'] } : {}), ...(entry.hint !== undefined ? { hint: entry.hint as DialPose['hint'] } : {}), ...(entry.hogtie === true ? { hogtie: true as const } : {}) }) };
+}
+
+/** The pose the dial draws: the preset the commander holds when there is one (with `reg`), else the base posture held (standing while none is set). */
+export function dialPoseOf(state: CampaignState, reg?: Registries): DialPose {
+  const held = heldPreset(state, reg);
+  if (held !== undefined) return held.pose;
   const id = state.scene ? blockingOf(state.scene, COMMANDER).posture : undefined;
   return (id !== undefined ? poseOf(id) : null) ?? poseOf('standing')!;
 }
@@ -47,14 +60,16 @@ export function renderPostureDial(host: HTMLElement, ctx: PostureDialCtx): void 
     host.replaceChildren();
     return;
   }
-  const pose = dialPoseOf(state);
-  const postureId = pose.base;
+  const pose = dialPoseOf(state, reg);
+  const preset = heldPreset(state, reg);
+  const postureId = preset?.id ?? pose.base; // the name she gave is looked up by the preset held (a base held reads as its default preset)
   const stage = (change: Parameters<typeof setBlocking>[0]): void => ctx.onStage(setBlocking(change));
 
   // the label: her name for it when a holder present named this posture, else the registry's label
   const knowledge = buildKnowledge(state, ctx.settings ?? DEFAULT_SETTINGS);
-  const herName = (state.scene?.participants ?? []).map((id) => knowledge.practice(id, reg).postures.find((p) => p.postureId === postureId)?.name).find((n) => n !== undefined);
-  const base = choices.label('blockingPostures', postureId).toUpperCase();
+  const herName = (state.scene?.participants ?? []).map((id) => knowledge.practice(id, reg).postures.find((p) => samePreset(reg, p.postureId, postureId))?.name).find((n) => n !== undefined);
+  const baseLabel = choices.label('blockingPostures', pose.base).toUpperCase();
+  const base = preset !== undefined ? preset.label.toUpperCase() : baseLabel; // under her name: the preset held, else the base
   const label = herName !== undefined ? herName.toUpperCase() : base;
   const eyes = EYES[pose.points.gaze ?? 'straight'];
 
@@ -121,6 +136,6 @@ export function renderPostureDial(host: HTMLElement, ctx: PostureDialCtx): void 
   };
   host.replaceChildren(h('div', { class: 'alius-dial', 'data-reduced': String(ctx.reduced) },
     fan,
-    h('div', { class: 'alius-dial-label' }, line('alius-dial-name', label), herName !== undefined ? line('alius-dial-sub', base) : null,
+    h('div', { class: 'alius-dial-label' }, line('alius-dial-name', label), herName !== undefined ? line('alius-dial-sub', base) : preset !== undefined ? line('alius-dial-sub', baseLabel) : null,
       eyes ? line('alius-dial-eyes', eyes) : null)));
 }

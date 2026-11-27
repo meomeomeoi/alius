@@ -54,3 +54,14 @@ export function poseOf(baseId: string): DialPose | null {
   const points = BASE_POINTS[baseId];
   return points ? { base: baseId, points } : null;
 }
+
+/**
+ * P16b: the dial's pose of a preset (`servicePostures`): its base, the base's default states with the preset's own over them, and the hints of an item or a place. The same pose the contact
+ * sheet draws for the preset (the mannequin merges the base's defaults under any pose it is given).
+ */
+export function presetPoseOf(p: { base: string; points: PointStates; item?: DialPose['item']; hint?: DialPose['hint']; hogtie?: true }): DialPose {
+  return {
+    base: p.base, points: { ...(BASE_POINTS[p.base] ?? {}), ...p.points },
+    ...(p.item !== undefined ? { item: p.item } : {}), ...(p.hint !== undefined ? { hint: p.hint } : {}), ...(p.hogtie === true ? { hogtie: true as const } : {}),
+  };
+}

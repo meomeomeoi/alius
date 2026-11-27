@@ -21871,6 +21871,12 @@ function checkChange(state, reg, change) {
   switch (change.field) {
     case "posture": {
       if (value === void 0 || !reg.blockingPostures.has(value)) return `Unknown posture "${String(value)}".`;
+      if (change.preset !== void 0) {
+        if (change.person !== COMMANDER) return "Only the commander takes a preset.";
+        const preset = reg.servicePostures.get(change.preset);
+        if (preset === void 0) return `Unknown preset "${change.preset}".`;
+        if (preset.base !== value) return `${String(preset.label)} is not a way of ${String(reg.blockingPostures.get(value)?.label ?? value).toLowerCase()}.`;
+      }
       return null;
     }
     case "anchor": {
@@ -21983,9 +21989,14 @@ function apply(draft, reg, change) {
   const since = draft.scene.exchanges;
   const value = change.value;
   switch (change.field) {
-    case "posture":
-      record(draft, change.person).posture = value;
+    case "posture": {
+      const rec = record(draft, change.person);
+      const moved = rec.posture !== value;
+      rec.posture = value;
+      if (change.preset !== void 0) rec.preset = change.preset;
+      else if (moved) delete rec.preset;
       break;
+    }
     case "anchor": {
       const a = reg.blockingAnchors.get(value);
       record(draft, change.person).anchor = a.kind === "relative" ? { id: value, relTo: change.relTo ?? otherOf(draft, change.person) } : { id: value };
@@ -22003,7 +22014,10 @@ function apply(draft, reg, change) {
         if (!s) continue;
         const rec = record(draft, id);
         prev[id] = { ...rec.posture !== void 0 ? { posture: rec.posture } : {}, ...rec.anchor ? { anchor: { ...rec.anchor } } : {} };
-        if (s.posture !== void 0) rec.posture = s.posture;
+        if (s.posture !== void 0) {
+          if (rec.posture !== s.posture) delete rec.preset;
+          rec.posture = s.posture;
+        }
         if (s.anchor !== void 0) rec.anchor = reg.blockingAnchors.get(s.anchor)?.kind === "relative" ? { id: s.anchor, relTo: other } : { id: s.anchor };
       }
       const target = change.target ?? c.target?.find((t) => {
@@ -22051,7 +22065,7 @@ function setBlocking(draft, ctx2, change, opts) {
   if (problem !== null) throw new Error(problem);
   pushLog(draft, opts.at, { person: change.person, field: change.field, ...change.value !== void 0 ? { value: change.value } : {}, source: opts.source });
   apply(draft, ctx2.registries, change);
-  return [{ type: "blocking_changed", person: change.person, field: change.field, value: change.value ?? null, source: opts.source }, ...afterChange.flatMap((fn) => fn(draft, ctx2.registries, change))];
+  return [{ type: "blocking_changed", person: change.person, field: change.field, value: change.value ?? null, ...change.preset !== void 0 ? { preset: change.preset } : {}, source: opts.source }, ...afterChange.flatMap((fn) => fn(draft, ctx2.registries, change))];
 }
 function applyReading(draft, ctx2, changes, at2) {
   if (!Array.isArray(changes)) return [];
@@ -22148,6 +22162,32 @@ function startBlocking(draft, reg) {
 // src/engine/blocking/device.ts
 function deviceLocked(state, reg) {
   return blockingLive(state, reg) && personEffects(state, reg, COMMANDER).some((e) => e.type === "device" && e.lock === "tabs");
+}
+
+// src/engine/blocking/presets.ts
+function defaultPresetOf(reg, base2) {
+  for (const p of reg.servicePostures.values()) if (p.base === base2 && p.default === true) return p;
+  return void 0;
+}
+function presetOf(reg, id) {
+  if (id === void 0) return void 0;
+  return reg.servicePostures.get(id) ?? (reg.blockingPostures.has(id) ? defaultPresetOf(reg, id) : void 0);
+}
+function samePreset(reg, a, b) {
+  const pa = presetOf(reg, a);
+  return pa !== void 0 && pa.id === presetOf(reg, b)?.id;
+}
+function commanderPresetOf(state, reg) {
+  const b = state.scene?.blocking?.[COMMANDER];
+  if (b?.posture === void 0) return void 0;
+  const held3 = b.preset !== void 0 ? reg.servicePostures.get(b.preset) : void 0;
+  return held3 !== void 0 && held3.base === b.posture ? held3 : defaultPresetOf(reg, b.posture);
+}
+var requiresOf = (preset) => preset.requires ?? {};
+function presetAllowed(state, reg, preset, unitIds) {
+  if (!entryAllowed(state, reg, { contentTags: preset.tags }, unitIds)) return false;
+  const frame9 = requiresOf(preset).frame;
+  return frame9 === void 0 || unitIds.every((id) => frameRank(frameOf(state, id)) >= frameRank(frame9));
 }
 
 // src/engine/power/compatibility.ts
@@ -40576,7 +40616,8 @@ registerAction("blocking/set", (draft, payload, ctx2) => {
     ...str6(payload.with) !== void 0 ? { with: str6(payload.with) } : {},
     ...direction !== void 0 ? { direction } : {},
     ...str6(payload.slot) !== void 0 ? { slot: str6(payload.slot) } : {},
-    ...str6(payload.target) !== void 0 ? { target: str6(payload.target) } : {}
+    ...str6(payload.target) !== void 0 ? { target: str6(payload.target) } : {},
+    ...str6(payload.preset) !== void 0 ? { preset: str6(payload.preset) } : {}
   };
   return setBlocking(draft, ctx2, change, { at: at2, source: "chip" });
 });
@@ -42959,7 +43000,11 @@ function cleanPostureName(raw) {
   const text3 = raw.replace(/<[^>]*>/g, "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
   return text3 === "" || text3.length > POSTURE_NAME_MAX || hasCommanderPronoun(text3) ? null : text3;
 }
-var labelOf2 = (reg, postureId) => String(reg.blockingPostures.get(postureId)?.label ?? postureId);
+var labelOf2 = (reg, postureId) => String(reg.servicePostures.get(postureId)?.label ?? reg.blockingPostures.get(postureId)?.label ?? postureId);
+var postureAllowed = (state, reg, postureId, holderId) => {
+  const preset = presetOf(reg, postureId);
+  return preset !== void 0 && presetAllowed(state, reg, preset, [holderId]) && (reg.servicePostures.has(postureId) || entryAllowed(state, reg, reg.blockingPostures.get(postureId) ?? {}, [holderId]));
+};
 function notePosture(draft, ctx2, events) {
   const scene = draft.scene;
   if (scene === void 0) return [];
@@ -42967,24 +43012,24 @@ function notePosture(draft, ctx2, events) {
   const out = [];
   for (const e of events) {
     if (e.type !== "blocking_changed" || e.person !== COMMANDER || e.field !== "posture" || typeof e.value !== "string") continue;
-    const entry = reg.blockingPostures.get(e.value);
-    if (entry === void 0) continue;
+    if (!reg.blockingPostures.has(e.value)) continue;
+    const id = typeof e.preset === "string" && reg.servicePostures.has(e.preset) ? e.preset : e.value;
     for (const holderId of scene.participants) {
-      if (!practiceLive(draft, reg, holderId) || !keepsPostures(draft, reg, holderId) || !entryAllowed(draft, reg, entry, [holderId])) continue;
+      if (!practiceLive(draft, reg, holderId) || !keepsPostures(draft, reg, holderId) || !postureAllowed(draft, reg, id, holderId)) continue;
       const mine = ensurePractices(draft).postures[holderId] ?? [];
-      if (mine.some((p) => p.postureId === e.value) || mine.length >= postureCap(draft, holderId)) continue;
-      ensurePractices(draft).postures[holderId] = [...mine, { postureId: e.value, name: labelOf2(reg, e.value), day: draft.day }];
-      out.push({ type: "posture_named", unitId: holderId, holderId, postureId: e.value });
+      if (mine.some((p) => samePreset(reg, p.postureId, id)) || mine.length >= postureCap(draft, holderId)) continue;
+      ensurePractices(draft).postures[holderId] = [...mine, { postureId: id, name: labelOf2(reg, id), day: draft.day }];
+      out.push({ type: "posture_named", unitId: holderId, holderId, postureId: id });
     }
   }
   return out;
 }
 function namePosture(draft, ctx2, holderId, postureId, name) {
   if (!practiceLive(draft, ctx2.registries, holderId)) throw new Error("She is not holding now.");
-  const entry = draft.practices?.postures[holderId]?.find((p) => p.postureId === postureId);
+  const entry = draft.practices?.postures[holderId]?.find((p) => samePreset(ctx2.registries, p.postureId, postureId));
   if (entry === void 0) throw new Error("That posture is not one of hers.");
-  entry.name = cleanPostureName(name) ?? labelOf2(ctx2.registries, postureId);
-  return [{ type: "posture_named", unitId: holderId, holderId, postureId, name: entry.name }];
+  entry.name = cleanPostureName(name) ?? labelOf2(ctx2.registries, entry.postureId);
+  return [{ type: "posture_named", unitId: holderId, holderId, postureId: entry.postureId, name: entry.name }];
 }
 function postureWindowMs(state, reg, holderId) {
   const T5 = TUNING.practice.posture.windowMs;
@@ -42998,15 +43043,12 @@ function callPosture(draft, ctx2, events) {
   const reg = ctx2.registries;
   for (const holderId of scene.participants) {
     if (!practiceLive(draft, reg, holderId) || frameRank(dynamicOf(draft, holderId)?.frame ?? "equal") < frameRank("role")) continue;
-    const mine = (draft.practices?.postures[holderId] ?? []).filter((p) => {
-      const entry = reg.blockingPostures.get(p.postureId);
-      return entry !== void 0 && entryAllowed(draft, reg, entry, [holderId]);
-    });
+    const mine = (draft.practices?.postures[holderId] ?? []).filter((p) => postureAllowed(draft, reg, p.postureId, holderId));
     if (mine.length < 2) continue;
     const key = `${scene.id}:${scene.exchanges}`;
     if (practiceRoll(draft, holderId, `call:${key}`) >= TUNING.practice.posture.callChance) continue;
-    const now = scene.blocking?.[COMMANDER]?.posture;
-    const others = mine.filter((p) => p.postureId !== now);
+    const now = commanderPresetOf(draft, reg)?.id;
+    const others = mine.filter((p) => presetOf(reg, p.postureId)?.id !== now);
     const pool = others.length > 0 ? others : mine;
     const pick12 = pool[Math.min(pool.length - 1, Math.floor(practiceRoll(draft, holderId, `call:pick:${key}`) * pool.length))];
     const id = nextPracticeId(draft, "pc");
@@ -43020,14 +43062,15 @@ function takePosture(draft, ctx2, callId, postureId, late2, at2) {
   const call2 = draft.practices?.call;
   if (call2 === void 0 || call2.id !== callId) throw new Error("That call is gone.");
   if (!practiceLive(draft, reg, call2.holderId)) throw new Error("She is not holding now.");
-  if (postureId !== void 0 && !(draft.practices.postures[call2.holderId] ?? []).some((p) => p.postureId === postureId)) throw new Error("That posture is not one of hers.");
+  if (postureId !== void 0 && !(draft.practices.postures[call2.holderId] ?? []).some((p) => samePreset(reg, p.postureId, postureId))) throw new Error("That posture is not one of hers.");
   delete draft.practices.call;
   const base2 = { callId, unitId: call2.holderId, holderId: call2.holderId, postureId: call2.postureId };
-  if (postureId !== call2.postureId || late2) {
+  if (!samePreset(reg, postureId, call2.postureId) || late2) {
     return [{ type: "posture_slip", ...base2, ...late2 ? { late: true } : {} }, ...noteOffence(draft, ctx2, call2.holderId, { kind: "posture_slip", ref: callId, stakes: "trivial", day: draft.day })];
   }
-  const change = { person: COMMANDER, field: "posture", value: call2.postureId };
-  if (draft.scene?.blocking?.[COMMANDER]?.posture === call2.postureId) return [{ type: "posture_called", ...base2, taken: true }, ...addTrackXp(draft, reg, call2.holderId, TRACK, TUNING.practice.posture.xp)];
+  const preset = reg.servicePostures.get(call2.postureId);
+  const change = { person: COMMANDER, field: "posture", value: preset?.base ?? call2.postureId, ...preset !== void 0 ? { preset: preset.id } : {} };
+  if (samePreset(reg, commanderPresetOf(draft, reg)?.id, call2.postureId)) return [{ type: "posture_called", ...base2, taken: true }, ...addTrackXp(draft, reg, call2.holderId, TRACK, TUNING.practice.posture.xp)];
   if (draft.scene === void 0 || checkChange(draft, reg, change) !== null) return [{ type: "posture_called", ...base2, void: true }];
   return [
     { type: "posture_called", ...base2, taken: true },
@@ -44114,7 +44157,8 @@ registerFlavorKind("posture_name", {
   prompt: (raw) => {
     const i = raw;
     const clean14 = (t) => String(t).replace(/<\/?posture>/gi, "");
-    return [`Soldier: ${clean14(i.name)}`, `<posture>${clean14(i.posture)}: ${clean14(i.hint)}</posture>`, "Name the posture."].join("\n");
+    const base2 = i.base !== void 0 ? ` (${clean14(i.base)})` : "";
+    return [`Soldier: ${clean14(i.name)}`, `<posture>${clean14(i.posture)}${base2}: ${clean14(i.hint)}</posture>`, "Name the posture."].join("\n");
   }
 });
 function sanitizePostureName(raw) {
@@ -46997,9 +47041,12 @@ function createPractice(deps) {
       const [holderId, postureId] = key.split("|");
       const s = state();
       const unit5 = s?.squad.find((u) => u.id === holderId);
-      const entry = deps.registries().blockingPostures.get(postureId);
+      const reg = deps.registries();
+      const preset = reg.servicePostures.get(postureId);
+      const entry = preset ?? reg.blockingPostures.get(postureId);
       if (s === null || unit5 === void 0 || entry === void 0 || s.practices?.postures[holderId]?.some((p) => p.postureId === postureId) !== true) return { expired: "That posture is gone." };
-      return { kind: "posture_name", name: unit5.displayName, posture: String(entry.label), hint: String(entry.promptHint ?? "") };
+      const base2 = preset !== void 0 ? String(reg.blockingPostures.get(String(preset.base))?.label ?? preset.base).toLowerCase() : void 0;
+      return { kind: "posture_name", name: unit5.displayName, posture: String(entry.label), hint: String(entry.promptHint ?? ""), ...base2 !== void 0 ? { base: base2 } : {} };
     },
     parse: (raw) => sanitizePostureName(raw),
     apply(key, name) {
@@ -80652,6 +80699,15 @@ function poseOf(baseId) {
   const points = BASE_POINTS[baseId];
   return points ? { base: baseId, points } : null;
 }
+function presetPoseOf(p) {
+  return {
+    base: p.base,
+    points: { ...BASE_POINTS[p.base] ?? {}, ...p.points },
+    ...p.item !== void 0 ? { item: p.item } : {},
+    ...p.hint !== void 0 ? { hint: p.hint } : {},
+    ...p.hogtie === true ? { hogtie: true } : {}
+  };
+}
 
 // src/ui/scene/dial/mannequin.ts
 var LIMB = { upperArm: 0.32, forearm: 0.3, thigh: 0.45, shin: 0.44 };
@@ -81349,10 +81405,7 @@ function drawPostureCall(host, state, reg, pick12, handlers2, opts = {}) {
     started.clear();
     return;
   }
-  const set2 = (state.practices.postures[unit5.id] ?? []).filter((p) => {
-    const entry = reg.blockingPostures.get(p.postureId);
-    return entry !== void 0 && entryAllowed(state, reg, entry, [unit5.id]);
-  });
+  const set2 = (state.practices.postures[unit5.id] ?? []).filter((p) => postureAllowed(state, reg, p.postureId, unit5.id));
   const wanted2 = set2.find((p) => p.postureId === call2.postureId);
   if (wanted2 === void 0) return;
   const windowMs = postureWindowMs(state, reg, unit5.id);
@@ -81403,10 +81456,7 @@ function drawSceneCall(host, state, reg, pick12, handlers2) {
   const unit5 = call2 === void 0 ? void 0 : state.squad.find((u) => u.id === call2.holderId);
   const now = currentCall();
   const live3 = call2 !== void 0 && unit5 !== void 0 && dynamicOn(state, reg) && practiceLive(state, reg, unit5.id) && pick12({ unitId: unit5.id });
-  const set2 = live3 ? (state.practices.postures[unit5.id] ?? []).filter((p) => {
-    const entry = reg.blockingPostures.get(p.postureId);
-    return entry !== void 0 && entryAllowed(state, reg, entry, [unit5.id]);
-  }) : [];
+  const set2 = live3 ? (state.practices.postures[unit5.id] ?? []).filter((p) => postureAllowed(state, reg, p.postureId, unit5.id)) : [];
   const wanted2 = live3 ? set2.find((p) => p.postureId === call2.postureId) : void 0;
   if (!live3 || wanted2 === void 0) {
     if (now !== null && !now.done) cancelCall();
@@ -81418,11 +81468,12 @@ function drawSceneCall(host, state, reg, pick12, handlers2) {
   const style = practiceOf(state, reg, unit5.id)?.style.primary;
   const name = plainDraft(wanted2.name);
   void handlers2.samples?.preload?.([...CALL_SOUNDS.soft, CALL_SOUNDS.fan, ...CALL_SOUNDS.place])?.catch(() => void 0);
-  startCall({
+  const root = startCall({
     id: call2.id,
     want: [wanted2.postureId, name],
     choices: set2.map((p) => [p.postureId, plainDraft(p.name)]),
-    baseLabel: (base2) => String(reg.blockingPostures.get(base2)?.label ?? base2).toLowerCase(),
+    baseLabel: (id) => String(reg.blockingPostures.get(String(presetOf(reg, id)?.base ?? id))?.label ?? id).toLowerCase(),
+    // the base under her name (the card gets a preset's id)
     line: (outcome) => voiceLine(reg, `call.${outcome}`, style, call2.id, { posture: name }).map((r) => r.text).join(""),
     timed: handlers2.timed,
     windowMs: postureWindowMs(state, reg, unit5.id),
@@ -81442,6 +81493,14 @@ function drawSceneCall(host, state, reg, pick12, handlers2) {
     schedule: handlers2.schedule ?? ((fn, ms) => setTimeout(fn, ms)),
     cancel: handlers2.cancel ?? ((handle) => clearTimeout(handle))
   });
+  for (const card2 of root?.querySelectorAll("[data-posture-choice]") ?? []) {
+    const preset = reg.servicePostures.get(card2.dataset.postureChoice ?? "");
+    if (preset === void 0) continue;
+    const figure2 = mannequinSvg(presetPoseOf({ base: String(preset.base), points: preset.points, ...preset.item !== void 0 ? { item: preset.item } : {}, ...preset.hint !== void 0 ? { hint: preset.hint } : {}, ...preset.hogtie === true ? { hogtie: true } : {} }));
+    const old = card2.querySelector("svg");
+    if (old !== null) old.replaceWith(figure2);
+    else card2.prepend(figure2);
+  }
 }
 
 // src/ui/practice/slapOverlay.ts
@@ -81579,7 +81638,15 @@ function blockingChipEls(r, onStage) {
 
 // src/ui/scene/dial/dial.ts
 var EYES2 = { down: "EYES DOWN", closed: "EYES CLOSED", at_her: "EYES ON HER" };
-function dialPoseOf(state) {
+function heldPreset(state, reg) {
+  const b = state.scene ? blockingOf(state.scene, COMMANDER) : void 0;
+  const entry = b?.preset !== void 0 ? reg?.servicePostures.get(b.preset) : void 0;
+  if (entry === void 0 || b?.posture === void 0 || entry.base !== b.posture) return void 0;
+  return { id: entry.id, label: String(entry.label), pose: presetPoseOf({ base: String(entry.base), points: entry.points, ...entry.item !== void 0 ? { item: entry.item } : {}, ...entry.hint !== void 0 ? { hint: entry.hint } : {}, ...entry.hogtie === true ? { hogtie: true } : {} }) };
+}
+function dialPoseOf(state, reg) {
+  const held3 = heldPreset(state, reg);
+  if (held3 !== void 0) return held3.pose;
   const id = state.scene ? blockingOf(state.scene, COMMANDER).posture : void 0;
   return (id !== void 0 ? poseOf(id) : null) ?? poseOf("standing");
 }
@@ -81592,12 +81659,14 @@ function renderPostureDial(host, ctx2) {
     host.replaceChildren();
     return;
   }
-  const pose2 = dialPoseOf(state);
-  const postureId = pose2.base;
+  const pose2 = dialPoseOf(state, reg);
+  const preset = heldPreset(state, reg);
+  const postureId = preset?.id ?? pose2.base;
   const stage2 = (change) => ctx2.onStage(setBlocking2(change));
   const knowledge2 = buildKnowledge(state, ctx2.settings ?? DEFAULT_SETTINGS);
-  const herName = (state.scene?.participants ?? []).map((id) => knowledge2.practice(id, reg).postures.find((p) => p.postureId === postureId)?.name).find((n) => n !== void 0);
-  const base2 = choices.label("blockingPostures", postureId).toUpperCase();
+  const herName = (state.scene?.participants ?? []).map((id) => knowledge2.practice(id, reg).postures.find((p) => samePreset(reg, p.postureId, postureId))?.name).find((n) => n !== void 0);
+  const baseLabel = choices.label("blockingPostures", pose2.base).toUpperCase();
+  const base2 = preset !== void 0 ? preset.label.toUpperCase() : baseLabel;
   const label2 = herName !== void 0 ? herName.toUpperCase() : base2;
   const eyes = EYES2[pose2.points.gaze ?? "straight"];
   const units = choices.units;
@@ -81683,7 +81752,7 @@ function renderPostureDial(host, ctx2) {
       "div",
       { class: "alius-dial-label" },
       line3("alius-dial-name", label2),
-      herName !== void 0 ? line3("alius-dial-sub", base2) : null,
+      herName !== void 0 ? line3("alius-dial-sub", base2) : preset !== void 0 ? line3("alius-dial-sub", baseLabel) : null,
       eyes ? line3("alius-dial-eyes", eyes) : null
     )
   ));

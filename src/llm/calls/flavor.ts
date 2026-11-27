@@ -324,6 +324,8 @@ export interface PostureNameFlavorInput {
   /** The posture's label, and the hint that says what it looks like: data to name, never instructions. */
   posture: string;
   hint: string;
+  /** P16b: the label of the base position a preset stands on (absent for an old name on a base). */
+  base?: string;
 }
 
 registerFlavorKind('posture_name', {
@@ -337,7 +339,8 @@ registerFlavorKind('posture_name', {
   prompt: (raw) => {
     const i = raw as PostureNameFlavorInput;
     const clean = (t: unknown): string => String(t).replace(/<\/?posture>/gi, '');
-    return [`Soldier: ${clean(i.name)}`, `<posture>${clean(i.posture)}: ${clean(i.hint)}</posture>`, 'Name the posture.'].join('\n');
+    const base = i.base !== undefined ? ` (${clean(i.base)})` : '';
+    return [`Soldier: ${clean(i.name)}`, `<posture>${clean(i.posture)}${base}: ${clean(i.hint)}</posture>`, 'Name the posture.'].join('\n');
   },
 });
 

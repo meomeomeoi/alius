@@ -2,8 +2,8 @@ import { plainDraft } from '../../content/draft';
 import type { Registries } from '../../content/types';
 import { dynamicOn } from '../../engine/dynamic/gate';
 import { practiceLive } from '../../engine/practice/gate';
-import { entryAllowed } from '../../engine/blocking';
-import { postureWindowMs } from '../../engine/practice/postures';
+import { presetOf } from '../../engine/blocking';
+import { postureAllowed, postureWindowMs } from '../../engine/practice/postures';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
@@ -14,6 +14,8 @@ import { handFamily, handScale } from '../../engine/hand';
 import { herHand } from '../stage/look';
 import type { SampleSound } from '../sound/samples';
 import { cancelCall, currentCall, startCall, CALL_SOUNDS, type CallOutcome } from '../scene/instruments/call/call';
+import { mannequinSvg } from '../scene/dial/draw';
+import { presetPoseOf, type PointStates } from '../scene/dial/points';
 import { voiceLine } from '../scene/cards/voice';
 import { onStageReset } from '../scene/stage';
 import type { CardLook } from './taskCard';
@@ -83,7 +85,7 @@ export function drawPostureCall(host: HTMLElement, state: CampaignState, reg: Re
     started.clear();
     return;
   }
-  const set = (state.practices!.postures[unit.id] ?? []).filter((p) => { const entry = reg.blockingPostures.get(p.postureId); return entry !== undefined && entryAllowed(state, reg, entry, [unit.id]); }); // a posture whose category went off is no choice
+  const set = (state.practices!.postures[unit.id] ?? []).filter((p) => postureAllowed(state, reg, p.postureId, unit.id)); // a posture whose category went off is no choice (a preset by its tags)
   const wanted = set.find((p) => p.postureId === call.postureId);
   if (wanted === undefined) return;
   const windowMs = postureWindowMs(state, reg, unit.id);
@@ -125,7 +127,7 @@ function drawSceneCall(host: HTMLElement, state: CampaignState, reg: Registries,
   const unit = call === undefined ? undefined : state.squad.find((u) => u.id === call.holderId);
   const now = currentCall();
   const live = call !== undefined && unit !== undefined && dynamicOn(state, reg) && practiceLive(state, reg, unit.id) && pick({ unitId: unit.id });
-  const set = live ? (state.practices!.postures[unit!.id] ?? []).filter((p) => { const entry = reg.blockingPostures.get(p.postureId); return entry !== undefined && entryAllowed(state, reg, entry, [unit!.id]); }) : [];
+  const set = live ? (state.practices!.postures[unit!.id] ?? []).filter((p) => postureAllowed(state, reg, p.postureId, unit!.id)) : [];
   const wanted = live ? set.find((p) => p.postureId === call!.postureId) : undefined;
   if (!live || wanted === undefined) {
     if (now !== null && !now.done) cancelCall(); // answered calls play their end; one that went away unanswered goes now
@@ -139,9 +141,9 @@ function drawSceneCall(host: HTMLElement, state: CampaignState, reg: Registries,
   const style = practiceOf(state, reg, unit!.id)?.style.primary;
   const name = plainDraft(wanted.name);
   void handlers.samples?.preload?.([...CALL_SOUNDS.soft, CALL_SOUNDS.fan, ...CALL_SOUNDS.place])?.catch(() => undefined);
-  startCall({
+  const root = startCall({
     id: call!.id, want: [wanted.postureId, name], choices: set.map((p) => [p.postureId, plainDraft(p.name)] as [string, string]),
-    baseLabel: (base) => String(reg.blockingPostures.get(base)?.label ?? base).toLowerCase(),
+    baseLabel: (id) => String(reg.blockingPostures.get(String(presetOf(reg, id)?.base ?? id))?.label ?? id).toLowerCase(), // the base under her name (the card gets a preset's id)
     line: (outcome: CallOutcome) => voiceLine(reg, `call.${outcome}`, style, call!.id, { posture: name }).map((r) => r.text).join(''),
     timed: handlers.timed, windowMs: postureWindowMs(state, reg, unit!.id), reduced: handlers.reduced,
     accent: unitAccent(unit!.id), hand: hand ? handFamily(hand) : '', handScale: handScale(hand),
@@ -153,4 +155,13 @@ function drawSceneCall(host: HTMLElement, state: CampaignState, reg: Registries,
     schedule: handlers.schedule ?? ((fn, ms) => setTimeout(fn, ms)),
     cancel: handlers.cancel ?? ((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>)),
   });
+  // P16b: a card of a preset draws the preset's own figure (the instrument draws the base's for any id it knows; a base named by an old name keeps the base's figure)
+  for (const card of root?.querySelectorAll<HTMLElement>('[data-posture-choice]') ?? []) {
+    const preset = reg.servicePostures.get(card.dataset.postureChoice ?? '');
+    if (preset === undefined) continue;
+    const figure = mannequinSvg(presetPoseOf({ base: String(preset.base), points: preset.points as PointStates, ...(preset.item !== undefined ? { item: preset.item as 'tray' } : {}), ...(preset.hint !== undefined ? { hint: preset.hint as 'wall' } : {}), ...(preset.hogtie === true ? { hogtie: true as const } : {}) }));
+    const old = card.querySelector('svg');
+    if (old !== null) old.replaceWith(figure);
+    else card.prepend(figure);
+  }
 }

@@ -5,7 +5,7 @@
  * pronoun for the commander, over 30 characters or empty, it is refused and the posture's own label stands. Nothing here draws: the call is a hashed roll (`practiceRoll`) and its pick is an index.
  */
 import type { Registries } from '../../content/types';
-import { checkChange, COMMANDER, entryAllowed, frameRank, setBlocking, type BlockingChange } from '../blocking';
+import { checkChange, commanderPresetOf, COMMANDER, entryAllowed, frameRank, presetAllowed, presetOf, samePreset, setBlocking, type BlockingChange } from '../blocking';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { hasCapability } from '../dynamic/capabilities';
 import { hasCommanderPronoun } from '../dynamic/pronoun';
@@ -18,6 +18,12 @@ import { TUNING } from '../tuning';
 import { ensurePractices, nextPracticeId, practiceLive } from './gate';
 import { noteOffence } from './offences';
 import { practiceRoll } from './state';
+
+/**
+ * P16b (Task 10): her named postures are presets. `postureId` in her set and in the call is a preset id, or a base id (an old name, or a chip that set a base): both are read
+ * through `presetOf` (a base reads as its default preset, the same pose), and two ids are one posture when they read as the same preset (`samePreset`).
+ */
+export { presetOf };
 
 /** The longest name a posture is given. */
 export const POSTURE_NAME_MAX = 30;
@@ -44,7 +50,14 @@ export function cleanPostureName(raw: unknown): string | null {
   return text === '' || text.length > POSTURE_NAME_MAX || hasCommanderPronoun(text) ? null : text;
 }
 
-const labelOf = (reg: Registries, postureId: string): string => String(reg.blockingPostures.get(postureId)?.label ?? postureId);
+/** What a posture is called until she names it: the preset's label, or the base's (an old name keeps the base's own label). */
+const labelOf = (reg: Registries, postureId: string): string => String(reg.servicePostures.get(postureId)?.label ?? reg.blockingPostures.get(postureId)?.label ?? postureId);
+
+/** May she name or call this posture now: it reads as a preset (or a base) whose categories are on and not among her limits, at the frame it needs. */
+export const postureAllowed = (state: CampaignState, reg: Registries, postureId: string, holderId: string): boolean => {
+  const preset = presetOf(reg, postureId);
+  return preset !== undefined && presetAllowed(state, reg, preset, [holderId]) && (reg.servicePostures.has(postureId) || entryAllowed(state, reg, reg.blockingPostures.get(postureId) ?? {}, [holderId]));
+};
 
 /**
  * The after-action that names postures (registered by `actions/practice.ts`): a posture set on the commander (`blocking_changed`, field `posture`) in a scene with a holder who keeps named postures
@@ -58,14 +71,15 @@ export function notePosture(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
   const out: EngineEvent[] = [];
   for (const e of events) {
     if (e.type !== 'blocking_changed' || e.person !== COMMANDER || e.field !== 'posture' || typeof e.value !== 'string') continue;
-    const entry = reg.blockingPostures.get(e.value);
-    if (entry === undefined) continue;
+    if (!reg.blockingPostures.has(e.value)) continue;
+    // a chip sets a base (an old name); a preset set with it (`posture/take`, her call, a chip with `preset`) is named by the preset
+    const id = typeof e.preset === 'string' && reg.servicePostures.has(e.preset) ? e.preset : e.value;
     for (const holderId of scene.participants) {
-      if (!practiceLive(draft, reg, holderId) || !keepsPostures(draft, reg, holderId) || !entryAllowed(draft, reg, entry, [holderId])) continue;
+      if (!practiceLive(draft, reg, holderId) || !keepsPostures(draft, reg, holderId) || !postureAllowed(draft, reg, id, holderId)) continue;
       const mine = ensurePractices(draft).postures[holderId] ?? [];
-      if (mine.some((p) => p.postureId === e.value) || mine.length >= postureCap(draft, holderId)) continue;
-      ensurePractices(draft).postures[holderId] = [...mine, { postureId: e.value, name: labelOf(reg, e.value), day: draft.day }];
-      out.push({ type: 'posture_named', unitId: holderId, holderId, postureId: e.value });
+      if (mine.some((p) => samePreset(reg, p.postureId, id)) || mine.length >= postureCap(draft, holderId)) continue;
+      ensurePractices(draft).postures[holderId] = [...mine, { postureId: id, name: labelOf(reg, id), day: draft.day }];
+      out.push({ type: 'posture_named', unitId: holderId, holderId, postureId: id });
     }
   }
   return out;
@@ -74,10 +88,10 @@ export function notePosture(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
 /** Her name for one of her postures (`practice/name_posture`): the model's words when the engine accepts them, else the posture's label. Throws for a posture that is not in her set or a holder who is not live. */
 export function namePosture(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, holderId: string, postureId: string, name?: string): EngineEvent[] {
   if (!practiceLive(draft, ctx.registries, holderId)) throw new Error('She is not holding now.');
-  const entry = draft.practices?.postures[holderId]?.find((p) => p.postureId === postureId);
+  const entry = draft.practices?.postures[holderId]?.find((p) => samePreset(ctx.registries, p.postureId, postureId));
   if (entry === undefined) throw new Error('That posture is not one of hers.');
-  entry.name = cleanPostureName(name) ?? labelOf(ctx.registries, postureId);
-  return [{ type: 'posture_named', unitId: holderId, holderId, postureId, name: entry.name }];
+  entry.name = cleanPostureName(name) ?? labelOf(ctx.registries, entry.postureId);
+  return [{ type: 'posture_named', unitId: holderId, holderId, postureId: entry.postureId, name: entry.name }];
 }
 
 /** The time she gives to take the posture she calls, by her style (`ritual` and `drill` have their own; every other style the same). */
@@ -99,12 +113,12 @@ export function callPosture(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
   const reg = ctx.registries;
   for (const holderId of scene.participants) {
     if (!practiceLive(draft, reg, holderId) || frameRank(dynamicOf(draft, holderId)?.frame ?? 'equal') < frameRank('role')) continue;
-    const mine = (draft.practices?.postures[holderId] ?? []).filter((p) => { const entry = reg.blockingPostures.get(p.postureId); return entry !== undefined && entryAllowed(draft, reg, entry, [holderId]); }); // one whose category went off since it was named is not called
+    const mine = (draft.practices?.postures[holderId] ?? []).filter((p) => postureAllowed(draft, reg, p.postureId, holderId)); // one whose category went off since it was named is not called
     if (mine.length < 2) continue;
     const key = `${scene.id}:${scene.exchanges}`;
     if (practiceRoll(draft, holderId, `call:${key}`) >= TUNING.practice.posture.callChance) continue;
-    const now = scene.blocking?.[COMMANDER]?.posture;
-    const others = mine.filter((p) => p.postureId !== now);
+    const now = commanderPresetOf(draft, reg)?.id; // the preset held (a base held reads as its default preset)
+    const others = mine.filter((p) => presetOf(reg, p.postureId)?.id !== now);
     const pool = others.length > 0 ? others : mine;
     const pick = pool[Math.min(pool.length - 1, Math.floor(practiceRoll(draft, holderId, `call:pick:${key}`) * pool.length))];
     const id = nextPracticeId(draft, 'pc');
@@ -124,14 +138,16 @@ export function takePosture(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
   const call = draft.practices?.call;
   if (call === undefined || call.id !== callId) throw new Error('That call is gone.');
   if (!practiceLive(draft, reg, call.holderId)) throw new Error('She is not holding now.');
-  if (postureId !== undefined && !(draft.practices!.postures[call.holderId] ?? []).some((p) => p.postureId === postureId)) throw new Error('That posture is not one of hers.');
+  if (postureId !== undefined && !(draft.practices!.postures[call.holderId] ?? []).some((p) => samePreset(reg, p.postureId, postureId))) throw new Error('That posture is not one of hers.');
   delete draft.practices!.call;
   const base = { callId, unitId: call.holderId, holderId: call.holderId, postureId: call.postureId } as const;
-  if (postureId !== call.postureId || late) {
+  if (!samePreset(reg, postureId, call.postureId) || late) {
     return [{ type: 'posture_slip', ...base, ...(late ? { late: true } : {}) }, ...noteOffence(draft, ctx, call.holderId, { kind: 'posture_slip', ref: callId, stakes: 'trivial', day: draft.day })];
   }
-  const change: BlockingChange = { person: COMMANDER, field: 'posture', value: call.postureId };
-  if (draft.scene?.blocking?.[COMMANDER]?.posture === call.postureId) return [{ type: 'posture_called', ...base, taken: true }, ...addTrackXp(draft, reg, call.holderId, TRACK, TUNING.practice.posture.xp)];
+  // a preset id sets its base and itself; an old name on a base sets the base alone (the same pose, and nothing new written)
+  const preset = reg.servicePostures.get(call.postureId);
+  const change: BlockingChange = { person: COMMANDER, field: 'posture', value: (preset?.base as string | undefined) ?? call.postureId, ...(preset !== undefined ? { preset: preset.id } : {}) };
+  if (samePreset(reg, commanderPresetOf(draft, reg)?.id, call.postureId)) return [{ type: 'posture_called', ...base, taken: true }, ...addTrackXp(draft, reg, call.holderId, TRACK, TUNING.practice.posture.xp)];
   if (draft.scene === undefined || checkChange(draft, reg, change) !== null) return [{ type: 'posture_called', ...base, void: true }];
   return [
     { type: 'posture_called', ...base, taken: true },

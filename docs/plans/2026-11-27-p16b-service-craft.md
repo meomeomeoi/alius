@@ -438,15 +438,15 @@ Before Task 1, also read:
   - `practices.postures[holder][].postureId` is a preset id;
   - an old save with a base id reads it through `presetOf` (no migration writes);
   - `blocking.commander.preset?`.
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - an old base name reads as the default preset;
   - a call offers presets and `practice/take_posture` accepts a preset;
   - the dial draws the preset's points;
   - P16's seeded posture tests keep their events (the preset of a base is its default, so an old pick is the same pose).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS, plus `tests/practice`; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P16b): her named postures are presets`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS, plus `tests/practice`; `npm run build`.
+- [x] **Step 5: Commit** `feat(P16b): her named postures are presets`
 
 ### Task 11: Drift, temptation and the hold's plan
 

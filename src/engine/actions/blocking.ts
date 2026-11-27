@@ -12,7 +12,7 @@ registerWithdrawal(stripTagged);
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v !== '' ? v : undefined);
 
-/** `blocking/set { person, field, value?, relTo?, with?, direction?, slot?, target?, at }`: a chip's change (the reading's come inside `intents/apply`). Draws no rng. */
+/** `blocking/set { person, field, value?, relTo?, with?, direction?, slot?, target?, preset?, at }`: a chip's change (the reading's come inside `intents/apply`). Draws no rng. */
 registerAction('blocking/set', (draft, payload, ctx) => {
   if (!isObj(payload)) throw new Error('blocking/set needs a payload');
   if (!draft.scene) throw new Error('blocking/set: no scene is open');
@@ -32,6 +32,7 @@ registerAction('blocking/set', (draft, payload, ctx) => {
     ...(direction !== undefined ? { direction } : {}),
     ...(str(payload.slot) !== undefined ? { slot: str(payload.slot) } : {}),
     ...(str(payload.target) !== undefined ? { target: str(payload.target) } : {}),
+    ...(str(payload.preset) !== undefined ? { preset: str(payload.preset) } : {}),
   };
   return setBlocking(draft, ctx, change, { at, source: 'chip' });
 });

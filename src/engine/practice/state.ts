@@ -333,7 +333,12 @@ export interface PracticeState {
   restrictions: Array<{ holderId: string; what: 'no_dms_others' | 'no_free_activities' | 'room'; arg?: string; untilDay: number }>;
   /** holderId → the last day of the cold shoulder. */
   cold: Record<string, number>;
+  /**
+   * Her named postures, per holder. `postureId` is a preset id (`servicePostures`, P16b) or a base id (an old save, or a chip that set a base); both are read through `presetOf` (a base reads as its
+   * default preset, the same pose) and two ids are one posture when `samePreset` says so. No migration writes.
+   */
   postures: Record<string, Array<{ postureId: string; name: string; day: number }>>;
+  /** The call open: `postureId` is as stored in her set (a preset id or an old base id). */
   call?: { id: string; holderId: string; postureId: string; sceneId: string; at: number };
   /**
    * The slap that is open (R21): her time allowed in milliseconds, the feints she will make, whether others see it, the punishment it belongs to (a flinch may add to its count) and whether

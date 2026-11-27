@@ -35,6 +35,11 @@ export interface BlockingContact {
 
 export interface Blocking {
   posture?: string;
+  /**
+   * P16b: the preset (`servicePostures`) the commander holds on this base: set with the posture, gone when the base changes. Absent = the base's default preset (an old name). A soldier's
+   * record never carries one.
+   */
+  preset?: string;
   anchor?: { id: string; relTo?: string };
   contact?: BlockingContact;
   worn?: Partial<Record<WornSlot, { id: string; since: number }>>;

@@ -8,7 +8,8 @@ import type { CampaignState } from '../../../src/engine/state/types';
 import { DEFAULT_SETTINGS } from '../../../src/settings';
 import { h } from '../../../src/ui/dom';
 import { blockingChoices } from '../../../src/ui/scene/blockingStrip';
-import { renderPostureDial } from '../../../src/ui/scene/dial/dial';
+import { dialPoseOf, renderPostureDial } from '../../../src/ui/scene/dial/dial';
+import { poseOf } from '../../../src/ui/scene/dial/points';
 import { markedWithout, unreachable, unresolved } from '../../helpers/analyzeCoverage';
 import { enable } from '../../helpers/bonds';
 import { campaign, errors, loadCore, run, setRelation } from '../../helpers/loyalty';
@@ -91,6 +92,38 @@ describe('the posture dial (P10e §7)', () => {
     const plain = draw(put(scene(), posture('bowing')));
     expect(plain.q('.alius-dial-name')!.textContent).toBe('BOWING');
     expect(plain.q('.alius-dial-sub')).toBeNull();
+  });
+
+  it('the dial draws the preset the commander holds (P16b): its points over the base, the base alone as before', () => {
+    const preset = (id: string, base: string): BlockingChange => ({ person: COMMANDER, field: 'posture', value: base, preset: id });
+    const plain = put(scene(), posture('kneeling_upright'));
+    expect(dialPoseOf(plain, reg)).toEqual(poseOf('kneeling_upright')); // no preset: the base as today
+    expect(dialPoseOf(plain)).toEqual(poseOf('kneeling_upright')); // the old call shape still works
+    const open = put(scene(), preset('kneel_open', 'kneeling_upright'));
+    const pose = dialPoseOf(open, reg);
+    expect(pose.base).toBe('kneeling_upright');
+    expect(pose.points).toMatchObject({ knees: 'apart', arms: 'on_thighs_up', hips: 'raised', torso: 'upright' }); // the preset's states over the base's
+    const bunk = dialPoseOf(put(scene(), preset('light_bearer', 'kneeling_upright')), reg);
+    expect(bunk).toMatchObject({ item: 'lamp', points: { arms: 'lamp' } }); // an item rides along
+    // the figure is drawn from those points: a different pose than the base's
+    const a = draw(plain).q('.alius-dial-face svg')!.innerHTML;
+    const b = draw(open).q('.alius-dial-face svg')!.innerHTML;
+    expect(b).not.toBe(a);
+  });
+
+  it('the label names the preset the commander holds, over its base; her name for the preset wins; a base held reads her name for its default preset', () => {
+    const open = put(scene(), { person: COMMANDER, field: 'posture', value: 'kneeling_upright', preset: 'kneel_open' });
+    expect(draw(open).q('.alius-dial-name')!.textContent).toBe('KNEEL OPEN');
+    expect(draw(open).q('.alius-dial-sub')!.textContent).toBe('KNEELING UPRIGHT');
+    const hers = put(named([{ postureId: 'kneel_open', name: 'Offer' }]), { person: COMMANDER, field: 'posture', value: 'kneeling_upright', preset: 'kneel_open' });
+    expect(draw(hers).q('.alius-dial-name')!.textContent).toBe('OFFER');
+    // her name for the old base reads for the default preset (the same pose), not for another preset of the base
+    const old = named([{ postureId: 'kneeling_upright', name: 'Down' }]);
+    expect(draw(put(old, posture('kneeling_upright'))).q('.alius-dial-name')!.textContent).toBe('DOWN');
+    expect(draw(put(old, { person: COMMANDER, field: 'posture', value: 'kneeling_upright', preset: 'kneel_upright' })).q('.alius-dial-name')!.textContent).toBe('DOWN');
+    expect(draw(put(old, { person: COMMANDER, field: 'posture', value: 'kneeling_upright', preset: 'kneel_open' })).q('.alius-dial-name')!.textContent).toBe('KNEEL OPEN');
+    // the eyes line reads the preset's gaze
+    expect(draw(open).q('.alius-dial-eyes')!.textContent).toBe('EYES DOWN');
   });
 
   it('a dim line under them says where the eyes are when that is not the default', () => {

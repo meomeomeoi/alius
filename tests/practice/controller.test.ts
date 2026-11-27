@@ -454,6 +454,19 @@ describe('her name for a posture', () => {
     }
   });
 
+  it('a preset is asked for by its label and its base (P16b), and her name stands for the preset', async () => {
+    const s = posed();
+    s.practices!.postures[ANN] = [{ postureId: 'kneel_open', name: 'Kneel open', day: s.day }];
+    const { h, ctl } = rig(s);
+    h.st.mainReplies = ['{"name": "Offer"}'];
+    ctl.onEvents([{ ...named, postureId: 'kneel_open' }]);
+    await vi.waitFor(() => expect(nameNow(h)).toBe('Offer'));
+    const prompt = (h.st.calls[0] as { prompt: string }).prompt;
+    expect(prompt).toContain('Kneel open');
+    expect(prompt).toContain('kneeling upright'); // the base it stands on
+    expect(prompt).toContain('knees apart'); // the preset's own hint, not the base's
+  });
+
   it('with plain wording nothing is asked; a name that was given is not asked for again', async () => {
     const { h, ctl } = rig(posed(), { practiceWording: 'plain' });
     ctl.onEvents([named]);

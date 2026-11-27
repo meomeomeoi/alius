@@ -21,6 +21,8 @@ export interface BlockingChange {
   direction?: 'from' | 'to';
   slot?: string;
   target?: string;
+  /** P16b: with a `posture`, the preset of that base the commander takes (`servicePostures`). Set with the posture; a posture change without one clears an old preset when the base moves. */
+  preset?: string;
 }
 export type BlockingSource = 'engine' | 'chip' | 'reading';
 
@@ -186,6 +188,12 @@ export function checkChange(state: CampaignState, reg: Registries, change: Block
   switch (change.field) {
     case 'posture': {
       if (value === undefined || !reg.blockingPostures.has(value)) return `Unknown posture "${String(value)}".`;
+      if (change.preset !== undefined) {
+        if (change.person !== COMMANDER) return 'Only the commander takes a preset.';
+        const preset = reg.servicePostures.get(change.preset);
+        if (preset === undefined) return `Unknown preset "${change.preset}".`;
+        if (preset.base !== value) return `${String(preset.label)} is not a way of ${String(reg.blockingPostures.get(value)?.label ?? value).toLowerCase()}.`;
+      }
       return null;
     }
     case 'anchor': {
@@ -308,7 +316,14 @@ function apply(draft: CampaignState, reg: Registries, change: BlockingChange): v
   const since = draft.scene!.exchanges;
   const value = change.value;
   switch (change.field) {
-    case 'posture': record(draft, change.person).posture = value!; break;
+    case 'posture': {
+      const rec = record(draft, change.person);
+      const moved = rec.posture !== value;
+      rec.posture = value!;
+      if (change.preset !== undefined) rec.preset = change.preset;
+      else if (moved) delete rec.preset;
+      break;
+    }
     case 'anchor': {
       const a = reg.blockingAnchors.get(value!)!;
       record(draft, change.person).anchor = a.kind === 'relative' ? { id: value!, relTo: change.relTo ?? otherOf(draft, change.person)! } : { id: value! };
@@ -326,7 +341,10 @@ function apply(draft: CampaignState, reg: Registries, change: BlockingChange): v
         if (!s) continue;
         const rec = record(draft, id);
         prev[id] = { ...(rec.posture !== undefined ? { posture: rec.posture } : {}), ...(rec.anchor ? { anchor: { ...rec.anchor } } : {}) };
-        if (s.posture !== undefined) rec.posture = s.posture;
+        if (s.posture !== undefined) {
+          if (rec.posture !== s.posture) delete rec.preset; // the base moved under the preset
+          rec.posture = s.posture;
+        }
         if (s.anchor !== undefined) rec.anchor = reg.blockingAnchors.get(s.anchor)?.kind === 'relative' ? { id: s.anchor, relTo: other } : { id: s.anchor };
       }
       // with no target named, the first one the gates allow (a default the content gate refuses is no default)
@@ -376,7 +394,7 @@ export function setBlocking(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
   if (problem !== null) throw new Error(problem);
   pushLog(draft, opts.at, { person: change.person, field: change.field, ...(change.value !== undefined ? { value: change.value } : {}), source: opts.source });
   apply(draft, ctx.registries, change);
-  return [{ type: 'blocking_changed', person: change.person, field: change.field, value: change.value ?? null, source: opts.source }, ...afterChange.flatMap((fn) => fn(draft, ctx.registries, change))];
+  return [{ type: 'blocking_changed', person: change.person, field: change.field, value: change.value ?? null, ...(change.preset !== undefined ? { preset: change.preset } : {}), source: opts.source }, ...afterChange.flatMap((fn) => fn(draft, ctx.registries, change))];
 }
 
 /**

@@ -8,3 +8,4 @@ export {
 export { pushLog, rollbackAfter } from './snapshots';
 export { startBlocking } from './defaults';
 export { deviceLocked } from './device';
+export { baseOfPosture, commanderPresetOf, defaultPresetOf, presetAllowed, presetOf, presetProblem, presetSupports, presetsOfBase, samePreset } from './presets';

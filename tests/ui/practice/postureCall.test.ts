@@ -84,6 +84,57 @@ describe('the call card', () => {
   });
 });
 
+/** P16b (Task 10): her set holds presets, and an old base name in it reads as that base's default preset. */
+describe('the call with presets', () => {
+  function presetState(ids = ['kneel_present', 'kneel_open'], called = 'kneel_open'): CampaignState {
+    const s = state();
+    s.practices!.postures = { [ANN]: ids.map((postureId, i) => ({ postureId, name: ['Offer', 'Open'][i] ?? postureId, day: 20 })) };
+    s.practices!.call = { id: 'pc1', holderId: ANN, postureId: called, sceneId: 'sc1', at: 3 };
+    return s;
+  }
+
+  it('shows her name for the called preset and every named preset as a choice, answering with the preset id', () => {
+    const { host, take } = draw(presetState());
+    expect(host.querySelector('[data-posture-call]')!.textContent).toContain('Open');
+    expect(choices(host).map((b) => b.getAttribute('data-posture-choice'))).toEqual(['kneel_present', 'kneel_open']);
+    choices(host)[0].click();
+    expect(take).toHaveBeenCalledWith('pc1', 'kneel_present', false);
+  });
+
+  it('a mix of an old base name and a preset reads: the old name is called and answered', () => {
+    const { host } = draw(presetState(['kneeling_upright', 'standing_attention'], 'kneeling_upright'));
+    expect(host.querySelector('[data-posture-call]')!.textContent).toContain('Offer');
+    expect(choices(host).map((b) => b.getAttribute('data-posture-choice'))).toEqual(['kneeling_upright', 'standing_attention']);
+  });
+
+  it('a preset whose category is off is no choice (the content gate reads its tags)', () => {
+    const gated = { ...reg, servicePostures: new Map(reg.servicePostures) } as Registries;
+    gated.servicePostures.set('kneel_present', { ...reg.servicePostures.get('kneel_present')!, tags: ['gated_category'] });
+    const host = h('div');
+    document.body.append(host);
+    drawPostureCall(host, presetState(), gated, () => true, { take: vi.fn(), timed: false, reduced: false });
+    expect(choices(host).map((b) => b.getAttribute('data-posture-choice'))).toEqual(['kneel_open']);
+  });
+
+  it('in the scene the fan draws each preset\'s own figure and its base under its name', () => {
+    vi.useFakeTimers();
+    const host = h('div');
+    document.body.append(host);
+    const take = vi.fn();
+    drawPostureCall(host, presetState(), reg, () => true, { take, timed: false, reduced: false, schedule: (fn, ms) => setTimeout(fn, ms), cancel: (x) => clearTimeout(x as never) }, { look: 'scene' });
+    const cards = [...host.querySelectorAll<HTMLElement>('.alius-call-card')];
+    expect(cards.map((c) => c.getAttribute('data-posture-choice'))).toEqual(['kneel_present', 'kneel_open']);
+    expect(cards.map((c) => c.querySelector('.alius-call-base')!.textContent)).toEqual(['kneeling upright', 'kneeling upright']);
+    const figures = cards.map((c) => c.querySelector('svg')!.innerHTML);
+    expect(figures[0]).not.toBe('');
+    expect(figures[0]).not.toBe(figures[1]); // two presets of one base are two figures
+    cards[1].click();
+    expect(take).toHaveBeenCalledWith('pc1', 'kneel_open', false);
+    cancelPostureCalls();
+    vi.useRealTimers();
+  });
+});
+
 describe('the timer', () => {
   it('runs only with the order interaction on: with it off there is no timer, no scheduled expiry and no late flag', () => {
     let clock = 1000;
