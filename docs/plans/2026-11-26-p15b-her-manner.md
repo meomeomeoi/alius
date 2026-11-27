@@ -507,7 +507,7 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
   - `CLAUDE.md` (a P15b line in the existing pattern: the gate on `manner`, `bend` / `bendRow` at 0 return the base, `faceNow`, read styles through `styleOf`, `registerPhysicsManner`, the hidden values);
   - **Interfaces already provided by P15b** notes in P16b, P17, P17a–g;
   - `docs/MANUAL_TEST_P15b.md` (two holders of one style with different axes in a session; a moody holder on two days; the faces in company; a quirk once; the dossier edit and lock; a forced drift via the debug tools if any).
-- [ ] **Step 1:** add the sentinels and run the analyze tests → PASS.
-- [ ] **Step 2:** full `npm test`, `npm run typecheck`, `npm run test:layout` → PASS.
-- [ ] **Step 3:** the docs; tick this plan.
-- [ ] **Step 4: Commit** `docs(P15b): package closed`
+- [x] **Step 1:** add the sentinels and run the analyze tests → PASS.
+- [x] **Step 2:** full `npm test`, `npm run typecheck`, `npm run test:layout` → PASS.
+- [x] **Step 3:** the docs; tick this plan.
+- [x] **Step 4: Commit** `docs(P15b): package closed`

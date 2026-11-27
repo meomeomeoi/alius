@@ -104,3 +104,12 @@ P15a is implemented (see its **Implemented as**: rulings R1–R16). It built the
 
 - **Summons:** the `summons` source is live only through `registerMomentTrigger`. Privileges (for example removing a `plug`) are item descriptions only.
 - **Hook:** `registerMomentTrigger(sourceId, fn)` (`src/engine/moments/live.ts`).
+
+## Interfaces already provided by P15b (implemented — use, do not rebuild)
+
+- **Her manner:** `mannerOf(state, reg, unitId)` (`src/engine/dynamic/manner.ts`) gives her six axes (`intensity`, `warmth`, `order`, `voice`, `tempo`, `curiosity`, each −2…+2, her drift and the mood of the day folded in), `drawnBy` and the mood, or `null` without `bond.practice.manner` (the gate: no manner, no effect). `bend(base, step, kind)` / `bendBy` (`src/engine/bend.ts`) move a style's number by a step (at 0 they return the base; `tempo` + is quicker, so times are shorter); an instrument bends its style row once through `bendRow`, declared in its `fidelity.json`; the physics layer gets her axes through `registerPhysicsManner`.
+- **Read her style through `styleOf` / `practiceOf`**, never `bond.practice.style` (a turn of her style, `development.practice.primary`, sits on top of the import). `faceNow(state, reg, unitId, present)` (`dynamic/face.ts`) says which face a scene shows (`dynamic`, `dynamic_to_commander`, `everyday`, `mask`); a holder directive follows it.
+- **Her small ways and her days:** `quirksDue`, the `dynamic:quirk:<unitId>` line and `quirk_voiced`; `mannerMoodOf`; drift is a P14b axis kind `manner` (`manner:<axis>`, `manner:drawn_by`, `manner:turn`), fed by `dynamic/mannerFeed.ts` (push table `TUNING.manner.push`); `dynamic.practised` (what she has done with the commander) and `drawnBy`'s favour (`addFavour`).
+- **Probing by manner (§12):** probe rows take `needs` (`probePlaces`, `probePool`; a new row with `needs` also needs its head start moment), a milestone takes `requires.manner`, a probe row `wakesOnPraise`; `hypothetical_answered`, `first_below` and `dynamic.noted.praised` (`dynamic/regalEntry.ts`).
+- Keep new directive ids away from `dynamic:quirk:`; draw nothing (hash a stable key); the hidden values (accumulators, the mood as a number, the distance to a turn, quirk state, the styles' places on the axes) never reach a panel, a toast, an event text or a reading. Details: P15b **Implemented as**.
+- For P17a: a contract or a privilege reads her manner through `mannerOf` and her style through `styleOf`, so two holders of one style differ.

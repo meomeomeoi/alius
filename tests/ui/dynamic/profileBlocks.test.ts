@@ -269,6 +269,47 @@ describe('P15b: her manner in the PRACTICE block', () => {
     expect(host.querySelectorAll('[data-since-joining]')).toHaveLength(1);
   });
 
+  it('a turned style shows the style she leads as now, with the since-joining mark; the imported one stays the one she edits (P15b)', () => {
+    const { host, onSet } = practiceBlock({ practice: MANNERED(), current: { primary: 'drill', secondary: 'cold' } });
+    const primary = host.querySelector('[data-practice-style="primary"]')!;
+    expect(primary.querySelector('[data-id="cold"]')!.getAttribute('aria-pressed')).toBe('true'); // imported
+    const now = primary.querySelector('[data-id="drill"]')!;
+    expect(now.getAttribute('data-since-joining')).toBe('true');
+    expect(now.getAttribute('data-current')).toBe('true');
+    expect(primary.querySelector('.alius-since-joining')).not.toBeNull();
+    expect(primary.querySelectorAll('[data-since-joining]')).toHaveLength(1);
+    const secondary = host.querySelector('[data-practice-style="secondary"]')!;
+    expect(secondary.querySelector('.alius-since-joining')!.textContent).toBe('SINCE JOINING: COLD'); // the former primary has become her second (her row lists no button for the imported primary)
+    click(now); // editing still writes the imported profile
+    expect(onSet).toHaveBeenLastCalledWith({ style: { primary: 'drill', secondary: 'playful' } });
+  });
+
+  it('with no turn (or no current style) nothing is marked', () => {
+    for (const current of [undefined, { primary: 'cold', secondary: 'playful' } as Practice['style']]) {
+      const { host } = practiceBlock({ practice: MANNERED(), ...(current !== undefined ? { current } : {}) });
+      expect(host.querySelector('[data-practice-style] [data-since-joining]')).toBeNull();
+      expect(host.querySelector('[data-practice-style] .alius-since-joining')).toBeNull();
+    }
+  });
+
+  it('the dossier passes the style she has now (styleOf, the overlay of a turn)', () => {
+    const state = campaign(reg, 2);
+    state.content = { enabled: ['restraint', 'service', 'worship'] };
+    const ann = state.squad.find((u) => u.id === 'unit_ann')!;
+    ann.bond = { leadStyle: 'dominant', attachment: 'steady', desire: 'low', caretaker: false, ownLimits: { categories: [] }, publicity: 'known', practice: MANNERED() };
+    ann.development = { drift: {}, acc: {}, anchors: [], counters: {}, habits: [], nextId: 1, practice: { primary: 'drill' } } as never;
+    const host = mount();
+    renderSquadTab(host, {
+      st: new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' }), getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), registries: reg,
+      settings: () => ({ ...DEFAULT_SETTINGS, editLock: false }), onNewCampaign: vi.fn(),
+      dynamic: { dispatch: () => [], onChanged: vi.fn() },
+    });
+    const row = host.querySelector('article.alius-unit [data-practice-style="primary"]')!;
+    expect(row.querySelector('[data-id="cold"]')!.getAttribute('aria-pressed')).toBe('true');
+    expect(row.querySelector('[data-id="drill"]')!.getAttribute('data-since-joining')).toBe('true');
+    expect(markedWithout(row as HTMLElement)).toEqual([]);
+  });
+
   it('every new control resolves data-analyze', () => {
     const state = campaign(reg, 2);
     const { host } = practiceBlock({ practice: MANNERED(), drift: { warmth: 1 } });

@@ -161,7 +161,11 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
   state.content = { enabled: ['restraint', 'worship'] };
   unit.bond = {
     leadStyle: 'dominant', attachment: 'steady', desire: 'low', caretaker: false, ownLimits: { categories: [] }, publicity: 'known',
-    practice: { categories: { restraint: { as: 'enjoys', witness: 'indifferent' } }, style: { primary: 'cold' }, audience: 'indifferent', inclination: 'curious', fairness: 'fair', hintStyle: 'offers', drive: 'moderate' },
+    practice: {
+      categories: { restraint: { as: 'enjoys', witness: 'indifferent' } }, style: { primary: 'cold' }, audience: 'indifferent', inclination: 'curious', fairness: 'fair', hintStyle: 'offers', drive: 'moderate',
+      // P15b: her manner is shown (as words); what moves it, and where it is going, is not (below)
+      manner: { intensity: 1, warmth: -1, order: 0, voice: 0, tempo: 0, curiosity: 0 }, drawnBy: ['power'], everyday: 'Kind and quiet.',
+    },
   };
   unit.expectations = { tells: { irritation: 'SENTINEL_TELL', pleasure: 'SENTINEL_TELL' }, worship: { feet: { attitude: 'craves', how: 'SENTINEL_WORSHIP_HOW' } }, holdsUntil: 'blackout' };
   state.dynamic = newDynamicCampaign(7, { holders: 'any', pace: 'normal', frequency: 'normal', units: {} });
@@ -170,6 +174,12 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
     readOf: { ...blankReading(), r: 0.4141, f: 0.1212, p: 0.3, region: 'dutiful', updates: 5 },
     aftermath: { id: 'da1', kind: 'grief', stage: 0, untilDay: 7.77, stageUntil: 7.77 },
   };
+  // P15b: what moves her manner and where it is going, none of which a panel may show: the accumulators of the axes and of what draws her (2.71, 1.83, 1.57), the day her frame first reached play,
+  // the day of each step, the style her place is nearest and how many reviews it has been (a turn that has not come), and what her quirks did in the scene (voiced, a run seen). The mood of the day
+  // is a small whole number per axis and cannot be a sentinel here (`tests/dynamic/mood.test.ts` keeps its no-digit directive test); `tests/analysis/hidden.test.ts` checks that none of this changes a reading.
+  Object.assign(unit.development!.acc, { 'manner:intensity': 2.71, 'manner:warmth': -1.83, 'manner:drawn_by.power': 1.57 });
+  Object.assign(state.relations[unit.id].dynamic!, { playSince: 5, mannerStepped: { intensity: 6, drawn_by: 6 }, mannerTurn: { candidate: 'drill', reviews: 1, lastDay: 6 }, practised: { kinds: ['SENTINEL_KIND'], categories: ['restraint'] }, mannerRun: { kind: 'SENTINEL_KIND', n: 2 } });
+  state.dynamic.quirkScene = { sceneId: 'SENTINEL_SCENE', units: { [unit.id]: { voiced: ['during'], ran: true } } };
   state.relations[unit.id].regard = 61.61;
   state.relations[unit.id].mastery = { feet: 23.23 };
   state.dynamic.knowledge = { [witness]: { [unit.id]: { suspicion: 59.59, level: 'knows_dynamic', levelDay: 7 } } };
@@ -216,8 +226,8 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
     state,
     unitId: unit.id,
     sentinels: {
-      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57, 43, 47, 67, 4.37, 2.19, 47.31, 63.17, 5.13, 19, 83.77, 6.83, 31.41, 8.86, 0.6174, 37.37, 61.61, 59.59, 0.4141, 23.23, 7.77, 44.44, 13.37, 26, 34, 733],
-      texts: ['SENTINEL-UNTOLD', 'SENTINEL-KEEPS', 'SENTINEL-UNVOICED', 'SENTINEL-QUEUED', 'stargazing', 'woodcarving', untoldEvent.id, keepsEvent.id, 'SENTINEL-PENDING', 'SENTINEL-MISREAD', 'SENTINEL-UNSHOWN-MOMENT', 'SENTINEL-UNSHOWN-FACT', 'SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE', 'SENTINEL_EXPECTATION', 'SENTINEL_KOMPROMAT', 'SENTINEL_COMPROMAT_P15', 'SENTINEL_TELL', 'SENTINEL_WORSHIP_HOW', 'SENTINEL_KNOWLEDGE_P15', 'SENTINEL_SEALED_TEXT', 'SENTINEL_SEALED_SUMMARY', 'SENTINEL_FALSE_REPORT', 'nothing the commander did', 'cancelled_reward', 'end of the afternoon'],
+      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57, 43, 47, 67, 4.37, 2.19, 47.31, 63.17, 5.13, 19, 83.77, 6.83, 31.41, 8.86, 0.6174, 37.37, 61.61, 59.59, 0.4141, 23.23, 7.77, 44.44, 13.37, 26, 34, 733, 2.71, 1.83, 1.57],
+      texts: ['SENTINEL-UNTOLD', 'SENTINEL-KEEPS', 'SENTINEL-UNVOICED', 'SENTINEL-QUEUED', 'stargazing', 'woodcarving', untoldEvent.id, keepsEvent.id, 'SENTINEL-PENDING', 'SENTINEL-MISREAD', 'SENTINEL-UNSHOWN-MOMENT', 'SENTINEL-UNSHOWN-FACT', 'SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE', 'SENTINEL_EXPECTATION', 'SENTINEL_KOMPROMAT', 'SENTINEL_COMPROMAT_P15', 'SENTINEL_TELL', 'SENTINEL_WORSHIP_HOW', 'SENTINEL_KNOWLEDGE_P15', 'SENTINEL_SEALED_TEXT', 'SENTINEL_SEALED_SUMMARY', 'SENTINEL_FALSE_REPORT', 'nothing the commander did', 'cancelled_reward', 'end of the afternoon', 'SENTINEL_KIND', 'SENTINEL_SCENE'],
     },
   };
 }

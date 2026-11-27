@@ -114,6 +114,26 @@ describe('hidden state never reaches a reading', () => {
     expect(allReadings(envOf(fair), unitId)).toBe(allReadings(envOf(state), unitId));
   });
 
+  it('what moves her manner and where it goes is never read: the accumulators, the turn, the steps, what she practised and her quirks\' state change no reading (P15b)', () => {
+    const { state, unitId, sentinels } = hiddenFixture(reg);
+    const bare = structuredClone(state);
+    for (const k of ['manner:intensity', 'manner:warmth', 'manner:drawn_by.power']) delete bare.squad[0].development!.acc[k];
+    const dyn = bare.relations[unitId].dynamic!;
+    delete dyn.playSince; delete dyn.mannerStepped; delete dyn.mannerTurn; delete dyn.practised; delete dyn.mannerRun;
+    delete bare.dynamic!.quirkScene;
+    for (const raw of [false, true]) {
+      const text = allReadings(envOf(state, raw), unitId);
+      expect(text, `raw values ${raw}`).toBe(allReadings(envOf(bare, raw), unitId)); // none of it reaches a reading, at all
+      for (const n of [2.71, 1.83, 1.57]) expect(text, `${n}`).not.toContain(String(n));
+      expect(leaks(text, { numbers: [2.71, 1.83, 1.57], texts: ['SENTINEL_KIND', 'SENTINEL_SCENE'] }), `raw values ${raw}`).toEqual([]);
+    }
+    expect(sentinels.numbers).toEqual(expect.arrayContaining([2.71, 1.83, 1.57]));
+    // a turn that is about to come reads the same as one that is not
+    const near = structuredClone(state);
+    near.relations[unitId].dynamic!.mannerTurn = { candidate: 'regal', reviews: 2 };
+    expect(allReadings(envOf(near), unitId)).toBe(allReadings(envOf(state), unitId));
+  });
+
   it('what no fact has shown is not read: an unrevealed zone has no attitude, and nothing of the aftermath or the mastery shows', () => {
     const { state, unitId } = hiddenFixture(reg);
     const zone = analyze('worshipTargets:feet', envOf(state, true), { unitId }).join(' ');

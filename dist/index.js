@@ -58444,6 +58444,11 @@ var FIELDS = [
   ["drive", "Drive", DRIVE, "drive"]
 ];
 var word = (id) => id.replace(/_/g, " ").toUpperCase();
+function turnedMark(ctx2, which, imported) {
+  const now = ctx2.current?.[which];
+  if (ctx2.current === void 0 || now === imported || now === void 0) return [];
+  return [h("span", { class: "alius-chip alius-since-joining", "data-current-style": now, ...analyzeNative("glossary:style_turn", { unitId: ctx2.unit.id }), tabindex: "0" }, `SINCE JOINING: ${word(now)}`)];
+}
 function renderPracticeBlock(host, ctx2) {
   const live3 = { unitId: ctx2.unit.id };
   const { practice } = ctx2;
@@ -58468,6 +58473,7 @@ function renderPracticeBlock(host, ctx2) {
       },
       primary === s
     )),
+    ...turnedMark(ctx2, "primary", primary),
     lock("style", "glossary:practice_style")
   ));
   if (practice === void 0 || primary === void 0) {
@@ -58491,8 +58497,18 @@ function renderPracticeBlock(host, ctx2) {
         if (secondary !== s) ctx2.onSet({ style: { primary, secondary: s } });
       },
       secondary === s
-    ))
+    )),
+    ...turnedMark(ctx2, "secondary", secondary)
   ));
+  for (const which of ["primary", "secondary"]) {
+    const now = ctx2.current?.[which];
+    const button2 = now !== void 0 && now !== practice.style[which] ? host.querySelector(`[data-practice-style="${which}"] [data-id="${now}"]`) : null;
+    if (button2 !== null) {
+      button2.setAttribute("data-since-joining", "true");
+      button2.setAttribute("data-current", "true");
+      button2.classList.add("alius-since-joining-step");
+    }
+  }
   for (const c of ctx2.categories) {
     const stored = practice.categories[c.id] ?? { as: "none", witness: "indifferent" };
     const off = !ctx2.editable || locked(`categories.${c.id}`);
@@ -61537,6 +61553,7 @@ function dynamicProfileBlock(unit5, ctx2, state) {
     locks: unit5.practiceLocks ?? [],
     editable: true,
     drift: unit5.development?.practice?.manner,
+    ...unit5.bond?.practice !== void 0 ? { current: styleOf(unit5) } : {},
     onSet: (practice) => send({ type: "profile/set_practice", payload: { unitId: unit5.id, practice } }),
     onLock: (field2, on) => send({ type: "profile/lock_practice", payload: { unitId: unit5.id, field: field2, on } })
   });

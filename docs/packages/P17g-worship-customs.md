@@ -510,3 +510,12 @@ Labels, hints and descriptions `AUTHOR TO WRITE`; stakes are drafts.
 ### 8.9 Open for the author
 - Every label, hint and description, the stage names in SYS and the dossier, her lines for each stage's offer.
 - The needs and weights of each new custom (drafts above).
+
+## Interfaces already provided by P15b (implemented — use, do not rebuild)
+
+- **Her manner:** `mannerOf(state, reg, unitId)` (`src/engine/dynamic/manner.ts`) gives her six axes (`intensity`, `warmth`, `order`, `voice`, `tempo`, `curiosity`, each −2…+2, her drift and the mood of the day folded in), `drawnBy` and the mood, or `null` without `bond.practice.manner` (the gate: no manner, no effect). `bend(base, step, kind)` / `bendBy` (`src/engine/bend.ts`) move a style's number by a step (at 0 they return the base; `tempo` + is quicker, so times are shorter); an instrument bends its style row once through `bendRow`, declared in its `fidelity.json`; the physics layer gets her axes through `registerPhysicsManner`.
+- **Read her style through `styleOf` / `practiceOf`**, never `bond.practice.style` (a turn of her style, `development.practice.primary`, sits on top of the import). `faceNow(state, reg, unitId, present)` (`dynamic/face.ts`) says which face a scene shows (`dynamic`, `dynamic_to_commander`, `everyday`, `mask`); a holder directive follows it.
+- **Her small ways and her days:** `quirksDue`, the `dynamic:quirk:<unitId>` line and `quirk_voiced`; `mannerMoodOf`; drift is a P14b axis kind `manner` (`manner:<axis>`, `manner:drawn_by`, `manner:turn`), fed by `dynamic/mannerFeed.ts` (push table `TUNING.manner.push`); `dynamic.practised` (what she has done with the commander) and `drawnBy`'s favour (`addFavour`).
+- **Probing by manner (§12):** probe rows take `needs` (`probePlaces`, `probePool`; a new row with `needs` also needs its head start moment), a milestone takes `requires.manner`, a probe row `wakesOnPraise`; `hypothetical_answered`, `first_below` and `dynamic.noted.praised` (`dynamic/regalEntry.ts`).
+- Keep new directive ids away from `dynamic:quirk:`; draw nothing (hash a stable key); the hidden values (accumulators, the mood as a number, the distance to a turn, quirk state, the styles' places on the axes) never reach a panel, a toast, an event text or a reading. Details: P15b **Implemented as**.
+- For P17g: a custom grows from her profile and its drift, so it reads `mannerOf` and `styleOf` (a turned `regal` counts); the dangling shoe and `feet_in_lap` read her opinion of feet through `expectationsOf(...).worship.feet.attitude`.

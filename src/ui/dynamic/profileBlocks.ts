@@ -71,6 +71,8 @@ export interface PracticeBlockCtx {
   editable: boolean;
   /** P15b: the steps her manner has drifted since joining (`development.practice.manner`); absent in the wizard. */
   drift?: Partial<Record<MannerAxis, number>>;
+  /** P15b: the style pair she leads as now (`styleOf`, a turn of her style counted); absent in the wizard. The imported pair stays the pressed one, which is what editing writes. */
+  current?: Practice['style'];
   onSet: (patch: PracticePatch) => void;
   onLock: (field: string, on: boolean) => void;
 }
@@ -84,6 +86,16 @@ const FIELDS = [
 ] as const;
 
 const word = (id: string): string => id.replace(/_/g, ' ').toUpperCase();
+
+/**
+ * P15b: where a turn of her style has moved the pair since the import, the style she leads as now (`ctx.current`) carries the since-joining mark on its button, and the row a chip. The pressed
+ * button is still the imported one (what editing writes). Nothing when there is no turn, or no current pair (the wizard). The marked button is found in the row after it is drawn.
+ */
+function turnedMark(ctx: PracticeBlockCtx, which: 'primary' | 'secondary', imported: string | undefined): HTMLElement[] {
+  const now = ctx.current?.[which];
+  if (ctx.current === undefined || now === imported || now === undefined) return [];
+  return [h('span', { class: 'alius-chip alius-since-joining', 'data-current-style': now, ...analyzeNative('glossary:style_turn', { unitId: ctx.unit.id }), tabindex: '0' }, `SINCE JOINING: ${word(now)}`)];
+}
 
 export function renderPracticeBlock(host: HTMLElement, ctx: PracticeBlockCtx): void {
   const live = { unitId: ctx.unit.id };
@@ -100,6 +112,7 @@ export function renderPracticeBlock(host: HTMLElement, ctx: PracticeBlockCtx): v
     h('span', { class: 'alius-stat', 'data-analyze': 'glossary:practice_style', tabindex: '0' }, 'Leads as:'),
     ...PROFILE_STYLES.map((s) => control(word(s), { 'data-id': s }, `practiceStyles:${s}`, live, ctx.editable && !styleLocked,
       () => { if (primary !== s) ctx.onSet({ style: { primary: s, ...(secondary !== undefined && secondary !== s ? { secondary } : {}) } }); }, primary === s)),
+    ...turnedMark(ctx, 'primary', primary),
     lock('style', 'glossary:practice_style')));
   if (practice === undefined || primary === undefined) {
     host.append(h('p', { class: 'alius-dim', 'data-empty': 'practice' }, 'Pick a style to give her a practice.'));
@@ -109,7 +122,14 @@ export function renderPracticeBlock(host: HTMLElement, ctx: PracticeBlockCtx): v
     h('span', { class: 'alius-stat', 'data-analyze': 'glossary:practice_style', tabindex: '0' }, 'Then:'),
     control('NONE', { 'data-id': 'none' }, 'glossary:practice_style', live, ctx.editable && !styleLocked, () => { if (secondary !== undefined) ctx.onSet({ style: { primary } }); }, secondary === undefined),
     ...PROFILE_STYLES.filter((s) => s !== primary).map((s) => control(word(s), { 'data-id': s }, `practiceStyles:${s}`, live, ctx.editable && !styleLocked,
-      () => { if (secondary !== s) ctx.onSet({ style: { primary, secondary: s } }); }, secondary === s))));
+      () => { if (secondary !== s) ctx.onSet({ style: { primary, secondary: s } }); }, secondary === s)),
+    ...turnedMark(ctx, 'secondary', secondary)));
+
+  for (const which of ['primary', 'secondary'] as const) {
+    const now = ctx.current?.[which];
+    const button = now !== undefined && now !== practice.style[which] ? host.querySelector(`[data-practice-style="${which}"] [data-id="${now}"]`) : null;
+    if (button !== null) { button.setAttribute('data-since-joining', 'true'); button.setAttribute('data-current', 'true'); button.classList.add('alius-since-joining-step'); }
+  }
 
   // one row per enabled category: what she does herself (as) and how she feels seeing it done (witness)
   for (const c of ctx.categories) {
