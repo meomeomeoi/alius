@@ -54,7 +54,10 @@ export function decayCraft(draft: CampaignState, reg: Registries): EngineEvent[]
     const level = levelForXp(to);
     events.push({ type: 'craft_level', key, level, word: craftWord(level), fell: true });
   }
-  for (const rel of pairs) fadePair(rel.craft!, day, D.pairDays);
+  for (const rel of pairs) {
+    fadePair(rel.craft!, day, D.pairDays);
+    if (rel.craft!.headlock !== undefined && rel.craft!.headlock.day < day) delete rel.craft!.headlock; // the sparring hold is the day's
+  }
   return events;
 }
 

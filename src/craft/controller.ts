@@ -1,4 +1,6 @@
+import { headlockOf } from '../engine/craft/headlock';
 import { CRAFT_EVENT_TYPES } from '../engine/craft/state';
+import type { EngineEvent } from '../engine/dispatch';
 import type { ContextBuilder } from '../llm/context';
 import type { CampaignState } from '../engine/state/types';
 import { clearCraftDirectives } from './directives';
@@ -10,6 +12,13 @@ export interface CraftDeps {
   refreshContext(): void;
   /** The open campaign state, or `null`. */
   state(): CampaignState | null;
+  /** Dispatches an engine action as the app does (the chat is checked first). Absent: the controller keeps directives and opens nothing. */
+  dispatch?(action: { type: string; payload: Record<string, unknown> }, opts?: { expectChatId?: string }): EngineEvent[];
+  /** The id of the open chat (what a dispatch is checked against). */
+  chatId?(): string | undefined;
+  /** Opens a scene (the app's `beginScene`): resolves false when it did not open. Absent: the sparring hold opens no scene. */
+  startScene?(opts: { locationId: string; participants: string[]; origin: 'event'; consumesSlot?: boolean }): Promise<boolean>;
+  toast?(kind: 'info' | 'warn' | 'error', text: string): void;
 }
 
 export interface CraftController {
@@ -33,9 +42,32 @@ const TRIGGERS: readonly string[] = ['physics_slip', 'posture_slip', 'punishment
  * that refresh when something that changes them happened, and clears them when the scene ends or the chat changes. Later chunks add the cards and the calls that word a drill.
  */
 export function createCraft(deps: CraftDeps): CraftController {
+  /**
+   * The sparring hold (Task 18): a bout she won that suits her opens a short scene at the training yard with her alone (it costs no slot: the bout spent it) and the hold begins
+   * (`craft/headlock_start`). Deferred until the dispatch that offered it has settled; nothing opens without a startScene and a dispatch, or while a scene is already open.
+   */
+  async function openHeadlock(unitId: string, locationId: string): Promise<void> {
+    if (deps.startScene === undefined || deps.dispatch === undefined) return;
+    const s = deps.state();
+    if (s === null || s.scene !== undefined || headlockOf(s, unitId) === undefined) return;
+    const chatId = deps.chatId?.();
+    if (!(await deps.startScene({ locationId, participants: [unitId], origin: 'event', consumesSlot: false }))) {
+      deps.toast?.('warn', 'The scene did not open.');
+      return;
+    }
+    const failed = deps.dispatch({ type: 'craft/headlock_start', payload: { unitId } }, { expectChatId: chatId }).find((e) => e.type === 'error');
+    if (failed !== undefined) deps.toast?.('warn', String(failed.message ?? failed.code));
+    deps.refreshContext();
+  }
   return {
     onEvents(events) {
       if (events.some((e) => OWN.includes(e.type) || TRIGGERS.includes(e.type))) deps.refreshContext();
+      for (const e of events) {
+        if (e.type === 'headlock_offered' && typeof e.unitId === 'string' && typeof e.locationId === 'string') {
+          const { unitId, locationId } = e;
+          void Promise.resolve().then(() => openHeadlock(unitId, locationId)).catch(() => deps.toast?.('error', 'The scene did not open.'));
+        }
+      }
     },
     onSceneOpened() {
       deps.refreshContext();

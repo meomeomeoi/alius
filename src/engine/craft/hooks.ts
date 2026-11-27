@@ -9,7 +9,9 @@ import { registerRhythmKnown, registerServiceReport, registerStillness, register
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { craftLevel } from './book';
+import { registerAfterBout } from '../personal/wagers';
 import { careOfFeet, noteFootSignal, noteServiceVerdict } from './feet';
+import { offerHeadlock } from './headlock';
 import { endPostureRun } from './posture';
 
 /** How quiet the commander is, 0 to 0.9: `noise.perLevel` for each level of `stillness`. */
@@ -27,6 +29,7 @@ export function installCraftHooks(): void {
   registerStillness((state) => stillnessShare(state), 'craft');
   registerRhythmKnown((state, holderId) => rhythmLevel(state, holderId), 'craft');
   // her feet: a pleased foot or shoe service cares for them (her form in the next run), and a bout of her foot language is her signal answered or missed
+  registerAfterBout((draft, ctx, bout) => offerHeadlock(draft, ctx, bout), 'craft'); // the sparring hold: she won a bout and it suits her
   registerCombatPassive(careOfFeet);
   registerServiceReport((draft, ctx, r) => [
     ...(r.verdict !== undefined ? noteServiceVerdict(draft, ctx.registries, r.holderId, r.verdict) : []),

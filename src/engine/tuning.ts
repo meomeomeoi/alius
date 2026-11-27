@@ -1389,6 +1389,8 @@ export const TUNING = Object.freeze({
      * (and only since her last run); `wornShare` / `hotShare` are the shares of days by a hash on which her feet are worn / hot with no training and no run.
      */
     feet: Object.freeze({ combatPct: 3, careDays: 7, wornShare: 0.25, hotShare: 0.1 }),
+    /** The sparring hold (Task 18; AUTHOR TO TUNE): the humiliation each soldier who watched it counts, through `regardFall` with the witness share. */
+    headlock: Object.freeze({ humiliation: 2 }),
     /**
      * `[ANTICIPATE]` (Task 17; AUTHOR TO TUNE): shown while her reading of the commander has readiness `minR` or more and she believes it at `minP` or more. Only the two axes: never the region.
      */

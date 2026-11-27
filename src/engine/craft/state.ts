@@ -63,6 +63,8 @@ export interface RelationCraft {
   lesson?: { point: string; words: string; joke?: true; scene: string; exchange: number };
   /** A partner drill waiting for its scene (spec section 5, ruling 3): the key, the multiplier of the partner (x1.5 a holder, x1.2 another close woman) and the day. Only the open scene's: dropped when it ends or is cancelled. */
   drillPending?: { key: string; mult: number; day: number; /** The run `craft/drill_start` began (the outcome that pays is this one's). */ runId?: string };
+  /** The sparring hold she may put the commander in (Task 18): the day of the bout she won, the soldiers who were at the yard to see it, and the run once it began. Gone when the hold ends, the scene ends or the day turns. */
+  headlock?: { day: number; witnesses: string[]; runId?: string };
   /** The service the commander just anticipated for her (`craft/anticipate`): the scene, the exchange it was staged in and the activity, until her next reply has passed. */
   anticipate?: { scene: string; exchange: number; activityId: string };
   /** The day a foot or shoe service of the commander last pleased her (a pleased verdict): her feet are cared for until her next run (`feet.ts`). */

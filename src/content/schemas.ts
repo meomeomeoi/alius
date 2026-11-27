@@ -2711,6 +2711,8 @@ export const ContactSchema = BaseEntrySchema.extend({
   supported: z.literal(true).optional(),
   /** P16b (Task 16): her foot is what touches the commander in this contact (a foot signal may be answered while it is live). */
   foot: z.literal(true).optional(),
+  /** P16b (Task 18): the contact of the sparring hold: the headlock a woman who won a bout may put the commander in (one entry; `target` says whose attitude decides it). */
+  headlock: z.literal(true).optional(),
   label: blockLabel, description: str, promptHint: blockHint, effects: effectList,
 }).strict();
 

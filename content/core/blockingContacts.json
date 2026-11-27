@@ -31,6 +31,7 @@
       "kind": "wedge",
       "side": "right"
     },
+    "headlock": true,
     "label": "Smothered armpit",
     "description": "AUTHOR TO WRITE: She presses the commander's face into her armpit.",
     "promptHint": "her armpit pressed over the commander's face",

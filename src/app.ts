@@ -720,7 +720,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const life = createLife({ ...worldDeps, context, refreshContext: applyContext }); // P14c: her DMs and notes about what happened to her, and her news directives
   const dynamic = createDynamic({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), stage: (a) => scene.stage(a), sayInScene: (t) => scene.send(t), sayInDm: (u, t) => comms.send(u, t) }); // P15: the holder and probe directives follow the scene and the events of the dynamic
   const practice = createPractice({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a), openPlanner: (t) => { expedition.plan({ ...t, withoutCommand: true }); showExpedition(); } }); // P16: the words of what a holder asks of the commander (sites `practice.<kind>`), its delivery and its directives
-  const craft = createCraft({ context, refreshContext: applyContext, state: () => state }); // P16b: the craft's directives follow its events, the scene and the chat
+  const craft = createCraft({ context, refreshContext: applyContext, state: () => state, dispatch: (a, o) => api.dispatch(a, o), chatId: () => st.getActiveChat()?.chatId, startScene: (o) => beginScene(o), toast }); // P16b: the craft's directives follow its events, the scene and the chat; the sparring hold opens its scene
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({

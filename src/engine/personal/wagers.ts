@@ -154,7 +154,7 @@ export function answerChallenge(draft: CampaignState, ctx: EngineCtx, wagerId: s
   return events;
 }
 
-type Winner = 'commander' | 'unit' | 'void';
+export type Winner = 'commander' | 'unit' | 'void';
 
 /** The result of a game that is settled by the rng alone (details go into the event for the card). */
 function playChance(kind: string, ctx: EngineCtx, pick?: string): { winner: Winner; details: Record<string, unknown> } {
@@ -174,6 +174,18 @@ function playChance(kind: string, ctx: EngineCtx, pick?: string): { winner: Winn
   }
   return { winner: 'void', details: { hand: HANDS[mine], throws } };
 }
+
+/** What a settled sparring bout tells a hook: the wager, who she is, the game and who won. */
+export interface BoutResult { wager: Wager; unitId: string; gameId: string; kind: string; winner: Winner }
+type AfterBoutHook = (draft: CampaignState, ctx: EngineCtx, bout: BoutResult) => EngineEvent[];
+const afterBoutHooks = new Map<string, AfterBoutHook>();
+/**
+ * P16b plugs in here: what follows a sparring bout once it is settled (the sparring hold). A hook answers the events of what it wrote, or `[]`; it runs after the wager's own events and before the
+ * slot is spent, and must draw nothing. Kept by `key` (registering one again replaces it); this layer imports nothing of whoever registers.
+ */
+export function registerAfterBout(fn: AfterBoutHook, key = 'default'): void { afterBoutHooks.set(key, fn); }
+/** Tests: forget every registered hook. */
+export function resetAfterBoutHooks(): void { afterBoutHooks.clear(); }
 
 /**
  * Plays an accepted wager (`pick` is the commander's hand in rock-paper-scissors). The result is the rng's; no social stat tilts
@@ -208,6 +220,7 @@ function playSparring(draft: CampaignState, ctx: EngineCtx, w: Wager, pick: stri
   const xp = addBodyXp(draft.commander, 'strength', Math.round(TUNING.commander.bodyXpPerSession * TUNING.personal.sparring.bodyXp * bodyGrowthMult(draft, reg)));
   const events: EngineEvent[] = [{ type: 'body_trained', stat: 'strength', value: xp.value, raised: xp.gained }];
   events.push(...settle(draft, ctx, w, bout.winner, { handicap: pick, rounds: bout.rounds, ...(bout.draw ? { draw: true } : {}) }));
+  for (const hook of afterBoutHooks.values()) events.push(...hook(draft, ctx, { wager: w, unitId: w.unitId, gameId: w.gameId, kind: 'sparring', winner: bout.winner })); // P16b: the sparring hold
   events.push(...consumeSlots(draft, 1, ctx));
   return events;
 }

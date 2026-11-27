@@ -1791,6 +1791,8 @@ var TUNING = Object.freeze({
      * (and only since her last run); `wornShare` / `hotShare` are the shares of days by a hash on which her feet are worn / hot with no training and no run.
      */
     feet: Object.freeze({ combatPct: 3, careDays: 7, wornShare: 0.25, hotShare: 0.1 }),
+    /** The sparring hold (Task 18; AUTHOR TO TUNE): the humiliation each soldier who watched it counts, through `regardFall` with the witness share. */
+    headlock: Object.freeze({ humiliation: 2 }),
     /**
      * `[ANTICIPATE]` (Task 17; AUTHOR TO TUNE): shown while her reading of the commander has readiness `minR` or more and she believes it at `minP` or more. Only the two axes: never the region.
      */
@@ -11041,6 +11043,8 @@ var ContactSchema = BaseEntrySchema.extend({
   supported: external_exports.literal(true).optional(),
   /** P16b (Task 16): her foot is what touches the commander in this contact (a foot signal may be answered while it is live). */
   foot: external_exports.literal(true).optional(),
+  /** P16b (Task 18): the contact of the sparring hold: the headlock a woman who won a bout may put the commander in (one entry; `target` says whose attitude decides it). */
+  headlock: external_exports.literal(true).optional(),
   label: blockLabel,
   description: str,
   promptHint: blockHint,
@@ -31917,6 +31921,10 @@ function playChance(kind, ctx2, pick12) {
   }
   return { winner: "void", details: { hand: HANDS[mine], throws } };
 }
+var afterBoutHooks = /* @__PURE__ */ new Map();
+function registerAfterBout(fn, key = "default") {
+  afterBoutHooks.set(key, fn);
+}
 function playWager(draft, ctx2, wagerId, pick12) {
   const reg = ctx2.registries;
   const wagers = draft.personal?.wagers;
@@ -31941,6 +31949,7 @@ function playSparring(draft, ctx2, w, pick12) {
   const xp = addBodyXp(draft.commander, "strength", Math.round(TUNING.commander.bodyXpPerSession * TUNING.personal.sparring.bodyXp * bodyGrowthMult(draft, reg)));
   const events = [{ type: "body_trained", stat: "strength", value: xp.value, raised: xp.gained }];
   events.push(...settle2(draft, ctx2, w, bout.winner, { handicap: pick12, rounds: bout.rounds, ...bout.draw ? { draw: true } : {} }));
+  for (const hook of afterBoutHooks.values()) events.push(...hook(draft, ctx2, { wager: w, unitId: w.unitId, gameId: w.gameId, kind: "sparring", winner: bout.winner }));
   events.push(...consumeSlots(draft, 1, ctx2));
   return events;
 }
@@ -43805,7 +43814,10 @@ function decayCraft(draft, reg) {
     const level = levelForXp(to);
     events.push({ type: "craft_level", key, level, word: craftWord(level), fell: true });
   }
-  for (const rel of pairs2) fadePair(rel.craft, day, D5.pairDays);
+  for (const rel of pairs2) {
+    fadePair(rel.craft, day, D5.pairDays);
+    if (rel.craft.headlock !== void 0 && rel.craft.headlock.day < day) delete rel.craft.headlock;
+  }
   return events;
 }
 function fadePair(book2, day, pairDays) {
@@ -43824,6 +43836,77 @@ function fadePair(book2, day, pairDays) {
     s.answered -= 1;
     s.decayedDay = day;
   }
+}
+
+// src/engine/craft/headlock.ts
+var NEXT_SLOT = { morning: "afternoon", afternoon: "evening", evening: "night", night: "morning" };
+function headlockContact(state, reg, unitId) {
+  return [...reg.blockingContacts.values()].find((c) => c.headlock === true && entryAllowed(state, reg, c, [unitId]));
+}
+function headlockWished(state, reg, unitId, contact) {
+  const worship = expectationsOf(state, reg, unitId).worship ?? {};
+  return (contact.target ?? []).some((t) => worship[t]?.attitude === "enjoys" || worship[t]?.attitude === "craves");
+}
+function headlockPlace(reg) {
+  const trains2 = (id) => (reg.activities.get(id)?.effects ?? []).some((e) => TUNING.dynamic.style.trainingEffects.includes(e.type));
+  const room2 = [...reg.hubRooms.values()].find((r) => (r.activityIds ?? []).some(trains2));
+  return room2 === void 0 ? void 0 : String(room2.sceneLocationId);
+}
+function offerHeadlock(draft, ctx2, bout) {
+  const reg = ctx2.registries;
+  if (bout.kind !== "sparring" || bout.winner !== "unit" || !craftLive(draft, reg, bout.unitId)) return [];
+  const contact = headlockContact(draft, reg, bout.unitId);
+  const place2 = headlockPlace(reg);
+  if (contact === void 0 || place2 === void 0 || !headlockWished(draft, reg, bout.unitId, contact)) return [];
+  if (!(reg.locations.get(place2)?.slots ?? []).includes(NEXT_SLOT[draft.slot])) return [];
+  const witnesses = whereabouts(draft, reg).filter((w) => w.unitId !== bout.unitId && w.roomId !== null && reg.hubRooms.get(w.roomId)?.sceneLocationId === place2).map((w) => w.unitId).filter((id) => {
+    const u = draft.squad.find((x) => x.id === id);
+    return u !== void 0 && u.kind === "named" && isLiving(u);
+  });
+  (draft.relations[bout.unitId].craft ??= {}).headlock = { day: draft.day, witnesses };
+  return [{ type: "headlock_offered", unitId: bout.unitId, locationId: place2 }];
+}
+var headlockOf = (state, unitId) => {
+  const h2 = state.relations[unitId]?.craft?.headlock;
+  return h2 !== void 0 && h2.day === state.day ? h2 : void 0;
+};
+function startHeadlock(draft, ctx2, unitId, at2) {
+  const reg = ctx2.registries;
+  const scene = draft.scene;
+  const mark2 = headlockOf(draft, unitId);
+  if (scene === void 0) throw new Error("craft/headlock_start: no scene is open");
+  if (mark2 === void 0) throw new Error("craft/headlock_start: she has no hold waiting");
+  if (!scene.participants.includes(unitId)) throw new Error("craft/headlock_start: she is not in the open scene");
+  if (scene.physics !== void 0) throw new Error("craft/headlock_start: a hold is running already");
+  const contact = headlockContact(draft, reg, unitId);
+  if (contact === void 0) throw new Error("craft/headlock_start: the hold is not open for her");
+  const events = setBlocking(draft, ctx2, { person: unitId, field: "contact", value: String(contact.id), with: COMMANDER }, { at: at2 ?? scene.readIndex ?? scene.startIndex, source: "chip" });
+  const main2 = (contact.physics ?? [])[0]?.id;
+  if (scene.physics === void 0 && main2 !== void 0) events.push(...startPhysics(draft, ctx2, { physicsId: main2, sourceKind: "contact", sourceId: String(contact.id), holderId: unitId }));
+  if (scene.physics === void 0) throw new Error("craft/headlock_start: the hold did not begin");
+  mark2.runId = scene.physics.id;
+  return events;
+}
+function noteHeadlockOutcome(draft, ctx2, events) {
+  const reg = ctx2.registries;
+  const out = [];
+  for (const e of events) {
+    if (e.type !== "physics_outcome" || typeof e.holderId !== "string" || typeof e.runId !== "string") continue;
+    const unitId = e.holderId;
+    const mark2 = draft.relations[unitId]?.craft?.headlock;
+    if (mark2 === void 0 || mark2.runId !== e.runId) continue;
+    delete draft.relations[unitId].craft.headlock;
+    if (e.result === "stopped") continue;
+    for (const w of mark2.witnesses) {
+      if (!draft.squad.some((u) => u.id === w && isLiving(u)) || levelOf2(draft, w, unitId) === "knows_dynamic") continue;
+      out.push(...regardFall(draft, reg, w, TUNING.craft.headlock.humiliation, { witness: true, cause: "headlock" }), ...addSign(draft, ctx2, w, unitId, "protocol_public"));
+    }
+  }
+  return out;
+}
+function dropHeadlocks(draft, events) {
+  if (!events.some((e) => e.type === "scene_ended" || e.type === "scene_aborted" || e.type === "scene_cancelled")) return;
+  for (const rel of Object.values(draft.relations)) if (rel.craft?.headlock !== void 0) delete rel.craft.headlock;
 }
 
 // src/engine/craft/streak.ts
@@ -44111,6 +44194,7 @@ function installCraftHooks() {
   registerStopHook((draft, ctx2) => endPostureRun(draft, ctx2, "stopped"), "craft");
   registerStillness((state) => stillnessShare(state), "craft");
   registerRhythmKnown((state, holderId) => rhythmLevel(state, holderId), "craft");
+  registerAfterBout((draft, ctx2, bout) => offerHeadlock(draft, ctx2, bout), "craft");
   registerCombatPassive(careOfFeet);
   registerServiceReport((draft, ctx2, r) => [
     ...r.verdict !== void 0 ? noteServiceVerdict(draft, ctx2.registries, r.holderId, r.verdict) : [],
@@ -44448,6 +44532,15 @@ registerAction("craft/anticipate", (draft, payload, ctx2) => {
   if (!isObj42(payload) || typeof payload.unitId !== "string" || payload.unitId === "") throw new Error("craft/anticipate needs { unitId }.");
   if (payload.at !== void 0 && !(typeof payload.at === "number" && Number.isInteger(payload.at) && payload.at >= 0)) throw new Error("craft/anticipate: at is a chat index.");
   return stageAnticipation(draft, ctx2, payload.unitId, payload.at);
+});
+registerAction("craft/headlock_start", (draft, payload, ctx2) => {
+  if (!isObj42(payload) || typeof payload.unitId !== "string" || payload.unitId === "") throw new Error("craft/headlock_start needs { unitId }.");
+  if (payload.at !== void 0 && !(typeof payload.at === "number" && Number.isInteger(payload.at) && payload.at >= 0)) throw new Error("craft/headlock_start: at is a chat index.");
+  return startHeadlock(draft, ctx2, payload.unitId, payload.at);
+});
+registerAfterAction((draft, ctx2, events) => {
+  dropHeadlocks(draft, events);
+  return events.some((e) => e.type === "physics_outcome") ? noteHeadlockOutcome(draft, ctx2, events) : [];
 });
 
 // src/llm/callTypes.ts
@@ -48289,9 +48382,28 @@ function refreshCraftDirectives(builder, state, reg) {
 var OWN3 = CRAFT_EVENT_TYPES;
 var TRIGGERS2 = ["physics_slip", "posture_slip", "punishment_issued", "care_noticed", "practice_anticipated"];
 function createCraft(deps) {
+  async function openHeadlock(unitId, locationId) {
+    if (deps.startScene === void 0 || deps.dispatch === void 0) return;
+    const s = deps.state();
+    if (s === null || s.scene !== void 0 || headlockOf(s, unitId) === void 0) return;
+    const chatId = deps.chatId?.();
+    if (!await deps.startScene({ locationId, participants: [unitId], origin: "event", consumesSlot: false })) {
+      deps.toast?.("warn", "The scene did not open.");
+      return;
+    }
+    const failed2 = deps.dispatch({ type: "craft/headlock_start", payload: { unitId } }, { expectChatId: chatId }).find((e) => e.type === "error");
+    if (failed2 !== void 0) deps.toast?.("warn", String(failed2.message ?? failed2.code));
+    deps.refreshContext();
+  }
   return {
     onEvents(events) {
       if (events.some((e) => OWN3.includes(e.type) || TRIGGERS2.includes(e.type))) deps.refreshContext();
+      for (const e of events) {
+        if (e.type === "headlock_offered" && typeof e.unitId === "string" && typeof e.locationId === "string") {
+          const { unitId, locationId } = e;
+          void Promise.resolve().then(() => openHeadlock(unitId, locationId)).catch(() => deps.toast?.("error", "The scene did not open."));
+        }
+      }
     },
     onSceneOpened() {
       deps.refreshContext();
@@ -91098,7 +91210,7 @@ function createApp(st3, deps) {
     expedition.plan({ ...t, withoutCommand: true });
     showExpedition();
   } });
-  const craft = createCraft({ context, refreshContext: applyContext, state: () => state });
+  const craft = createCraft({ context, refreshContext: applyContext, state: () => state, dispatch: (a, o) => api.dispatch(a, o), chatId: () => st3.getActiveChat()?.chatId, startScene: (o) => beginScene(o), toast });
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({

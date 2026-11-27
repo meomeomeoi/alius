@@ -112,6 +112,8 @@ export interface ContactEntry extends Described {
   mouth?: true;
   /** P16b: her foot is what touches the commander in this contact (a foot signal may be answered while it is live). */
   foot?: true;
+  /** P16b: the contact of the sparring hold (a woman who won a bout may put the commander in it). */
+  headlock?: true;
   promptHint: string;
   effects?: BlockingEffect[];
 }

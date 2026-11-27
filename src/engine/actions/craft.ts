@@ -8,6 +8,7 @@ import { noteHoldEvents } from '../craft/records';
 import { touchCraft } from '../craft/book';
 import { craftOn } from '../craft/gate';
 import { stageAnticipation } from '../craft/anticipate';
+import { dropHeadlocks, noteHeadlockOutcome, startHeadlock } from '../craft/headlock';
 import { giveCare, landCares } from '../craft/care';
 import { dropPendingDrills, installDrillHooks, noteDrillOutcome, startDrill } from '../craft/drillScene';
 import { correctPosture, endPosture, endPostureRun, holdOfCall, slipPosture, takePostureHold } from '../craft/posture';
@@ -153,4 +154,23 @@ registerAction('craft/anticipate', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.unitId !== 'string' || payload.unitId === '') throw new Error('craft/anticipate needs { unitId }.');
   if (payload.at !== undefined && !(typeof payload.at === 'number' && Number.isInteger(payload.at) && payload.at >= 0)) throw new Error('craft/anticipate: at is a chat index.');
   return stageAnticipation(draft, ctx, payload.unitId, payload.at as number | undefined);
+});
+
+// ---------------------------------------------------------------------------------------------
+// The sparring hold (P16b, Task 18): offered by the hook after a bout she won (`installCraftHooks`); its scene at the yard is the controller's. No rng.
+
+/**
+ * `craft/headlock_start { unitId, at? }`: the scene at the yard is open with her: the headlock contact is staged with her and the hold begins. Refused with no hold waiting for her today, no scene
+ * with her, or a hold already running. Draws no rng.
+ */
+registerAction('craft/headlock_start', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.unitId !== 'string' || payload.unitId === '') throw new Error('craft/headlock_start needs { unitId }.');
+  if (payload.at !== undefined && !(typeof payload.at === 'number' && Number.isInteger(payload.at) && payload.at >= 0)) throw new Error('craft/headlock_start: at is a chat index.');
+  return startHeadlock(draft, ctx, payload.unitId, payload.at as number | undefined);
+});
+
+/** The outcome of the hold's run costs the watchers Regard; a scene that is over takes the hold that waited for it. */
+registerAfterAction((draft, ctx, events) => {
+  dropHeadlocks(draft, events);
+  return events.some((e) => e.type === 'physics_outcome') ? noteHeadlockOutcome(draft, ctx, events) : [];
 });
