@@ -8,7 +8,8 @@ import { blankPractices } from '../../../src/engine/practice/state';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { DEFAULT_SETTINGS } from '../../../src/settings';
 import { h } from '../../../src/ui/dom';
-import { cancelPostureCalls, drawPostureCall, resetPostureCalls } from '../../../src/ui/practice/postureCall';
+import { callScheme, cancelPostureCalls, drawPostureCall, resetPostureCalls } from '../../../src/ui/practice/postureCall';
+import { _posture, ASSEMBLE_MS } from '../../../src/ui/scene/instruments/posture/posture';
 import { markedWithout, unreachable, unresolved } from '../../helpers/analyzeCoverage';
 import type { SceneController } from '../../../src/scene/sceneController';
 import { FakeStAdapter } from '../../../src/st/fake';
@@ -280,5 +281,172 @@ describe('the scene screen', () => {
       document.body.innerHTML = '';
     }
     vi.useRealTimers();
+  });
+});
+
+/**
+ * P16b Task 24: the call grows with the commander (posture.html `startCall`, scheme B and C; the engine's call is the same `practices.call`). A below `TUNING.craft.call.b`, B (assemble her posture joint by joint on the dial
+ * against her foot, taken the moment every point matches), C (her conducting: five calls, about three in ten with no prefix, a trap). The hints thin out with this posture's mastery on the pair.
+ */
+describe('the call\'s schemes B and C (Task 24)', () => {
+  function bc(level: number, over: Record<string, unknown> = {}, mastery = 0, taught = false) {
+    vi.useFakeTimers();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => null as never); // the grain draws on no canvas here
+    const base = state();
+    setRelation(base, ANN, { stateId: 'confidant' });
+    enable(base, 'pet_play', 'restraint');
+    base.commander.craft = { posture: { level, xp: 0, day: base.day } } as never;
+    if (mastery > 0) base.relations[ANN]!.craft = { postures: { kneel_upright: { xp: [0, 30, 80, 150, 250, 400][mastery]!, day: base.day } } } as never;
+    const started = run(base, reg, { type: 'scene/start', payload: { locationId: 'quarters_unit', participants: [ANN], origin: 'event', consumesSlot: false, startIndex: 0 } });
+    expect(errors(started.events)).toEqual([]);
+    const s = started.state;
+    s.practices!.call = { id: 'pc1', holderId: ANN, postureId: 'kneeling_upright', sceneId: s.scene!.id, at: 3, ...(taught ? { taught: true as const } : {}) };
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    const stage = vi.fn(() => []);
+    const controller = { send: vi.fn(), propose: vi.fn(), answer: vi.fn(), end: vi.fn(async () => {}), edit: vi.fn(async () => {}), stop: vi.fn(), onEdited: vi.fn(), transcript: () => [], onSwipe: vi.fn(), resume: vi.fn(), idle: vi.fn(), dispose: vi.fn(), start: vi.fn(), stage } as unknown as SceneController;
+    const host = h('div');
+    document.body.append(host);
+    const noop = (): [] => [];
+    const physics = { input: noop, endSegment: noop, stopWord: vi.fn(() => []), skip: noop, stimulus: noop, act: noop, finishCounted: noop, cue: () => null, beat: () => 0, clock: () => ({ startedAt: null, beatMs: 1500, now: 0 }), keystroke: vi.fn(), typed: vi.fn(), onTap: vi.fn() };
+    const screen = renderSceneScreen(host, { controller, getState: () => s, registries: reg, st, settings: () => ({ ...DEFAULT_SETTINGS, typingSpeed: 0, ...over }), onEnded: vi.fn(), onStage: stage, physics } as never);
+    const key = (k: string) => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+    const q = (sel: string) => host.querySelector<HTMLElement>(sel);
+    return { host, stage, screen, s, key, q };
+  }
+  const taken = (stage: ReturnType<typeof vi.fn>) => stage.mock.calls.map((c) => c[0] as { type: string; payload: Record<string, unknown> }).filter((a) => a.type === 'practice/take_posture');
+
+  it('the scheme follows the commander\'s posture level: A below 2, B from 2, C from 4', () => {
+    const lvl = (n: number): CampaignState => { const s = state(); s.commander.craft = { posture: { level: n, xp: 0, day: 20 } } as never; return s; };
+    expect([0, 1, 2, 3, 4, 5].map((n) => callScheme(lvl(n)))).toEqual(['A', 'A', 'B', 'B', 'C', 'C']);
+    expect(callScheme(state())).toBe('A'); // no craft: scheme A as P16 built it
+    const a = bc(1);
+    expect(a.q('.alius-call')).not.toBeNull();
+    expect(a.q('.alius-pg')).toBeNull();
+    a.screen.dispose(); cancelPostureCalls(); vi.useRealTimers();
+    const b = bc(2);
+    expect(b.q('.alius-call')).toBeNull();
+    expect(b.q('.alius-pg #dial.holding')).not.toBeNull();
+    expect(b.q('.alius-stage-dial[data-pg]')).not.toBeNull();
+    b.screen.dispose(); cancelPostureCalls(); vi.useRealTimers();
+  });
+
+  it('B: her word is large in her hand, her foot keeps the time over a window of hers plus 2.5 s for each point to move; the body starts as it is', () => {
+    const { q, host } = bc(2);
+    expect(q('.alius-pg #callWord .w')!.textContent).toBe('Down');
+    expect(q('.alius-pg #callWord .pre')!.textContent).toBe('Position:'); // ritual's word before a call
+    expect(_posture.S.call.kind).toBe('B');
+    expect(_posture.S.call.toMove).toBe(2);
+    expect(_posture.S.call.windowMs).toBe(4000 + ASSEMBLE_MS * 2); // ritual: 4000 ms, plus 2.5 s for hips and arms
+    vi.advanceTimersByTime(_posture.S.call.windowMs / 5 * 0.5 + 10);
+    expect(host.querySelectorAll('.alius-pg #dots i').length).toBeGreaterThanOrEqual(1);
+    expect(q('.alius-pg #dialLabel')!.textContent).toContain('assemble');
+    cancelPostureCalls(); vi.useRealTimers();
+  });
+
+  it('B: a point\'s key selects it and shows its states as a column; the same key steps through them; the posture is taken the moment every point matches', () => {
+    const { q, stage, key, host } = bc(2);
+    key('2');
+    expect(q('.alius-pg #states.on')).not.toBeNull();
+    expect(q('.alius-pg #states .hd')!.textContent).toContain('HIPS');
+    expect(q('.alius-pg .bead.sel')!.firstChild!.textContent).toBe('2');
+    expect(taken(stage)).toEqual([]);
+    key('2'); // hips: raised
+    key('4'); key('4'); // arms: on thighs down
+    expect(_posture.S.call).toBeNull();
+    expect(taken(stage)).toEqual([{ type: 'practice/take_posture', payload: { callId: 'pc1', postureId: 'kneeling_upright', late: false } }]);
+    expect(host.querySelector('.alius-pg #herLine')!.textContent).toBe('Correct.'); // ritual's `taken`
+    cancelPostureCalls(); vi.useRealTimers();
+  });
+
+  it('B: a click on a state sets it; a wrong body is never taken; too slow is late', () => {
+    const { q, stage, key } = bc(2);
+    key('4');
+    const states = [...q('.alius-pg #states')!.querySelectorAll<HTMLElement>('.st')];
+    expect(states.map((e) => e.textContent).sort()).toEqual(['at sides', 'on thighs down']);
+    states.find((e) => e.textContent === 'on thighs down')!.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }));
+    expect(_posture.S.call.body.points.arms).toBe('on_thighs_down');
+    expect(taken(stage)).toEqual([]); // hips are not set
+    vi.advanceTimersByTime(_posture.S.call.windowMs + 700);
+    expect(taken(stage)).toEqual([{ type: 'practice/take_posture', payload: { callId: 'pc1', late: true } }]);
+    cancelPostureCalls(); vi.useRealTimers();
+  });
+
+  it('the hints thin out with this posture\'s mastery: 0-1 her posture as a ghost, the right state lit and the points still to move ringed; 2-3 only the rings; 4-5 nothing', () => {
+    const at = (mastery: number) => {
+      const t = bc(2, {}, mastery);
+      t.key('4');
+      const out = {
+        ghost: t.q('.alius-pg #dialFace .alius-mq-ghost-seg, .alius-pg #dialFace [class*="ghost"]') !== null,
+        want: t.q('.alius-pg #states .st.want') !== null,
+        todo: t.q('.alius-pg .bead.todo') !== null,
+      };
+      t.screen.dispose(); cancelPostureCalls(); vi.useRealTimers(); document.body.innerHTML = '';
+      return out;
+    };
+    expect(at(0)).toEqual({ ghost: true, want: true, todo: true });
+    expect(at(1)).toEqual({ ghost: true, want: true, todo: true });
+    expect(at(2)).toEqual({ ghost: false, want: false, todo: true });
+    expect(at(3)).toEqual({ ghost: false, want: false, todo: true });
+    expect(at(4)).toEqual({ ghost: false, want: false, todo: false });
+    expect(at(5)).toEqual({ ghost: false, want: false, todo: false });
+  });
+
+  it('the open easing shows every hint whatever the mastery; her first call of a posture she taught shows the ghost, whatever the mastery', () => {
+    const easy = bc(2, { postureHints: true }, 5);
+    easy.key('4');
+    expect(easy.q('.alius-pg #states .st.want')).not.toBeNull();
+    expect(easy.q('.alius-pg .bead.todo')).not.toBeNull();
+    easy.screen.dispose(); cancelPostureCalls(); vi.useRealTimers(); document.body.innerHTML = '';
+    const lesson = bc(2, {}, 5, true);
+    lesson.key('4');
+    expect(lesson.q('.alius-pg #states .st.want')).not.toBeNull();
+    cancelPostureCalls(); vi.useRealTimers();
+  });
+
+  it('without the order interaction the call has no clock: no taps, no dots, nothing is late', () => {
+    const { host, stage, key } = bc(2, { physicsInteractions: { ...DEFAULT_SETTINGS.physicsInteractions, order: false } });
+    vi.advanceTimersByTime(60000);
+    expect(host.querySelectorAll('.alius-pg #dots i')).toHaveLength(0);
+    expect(taken(stage)).toEqual([]);
+    key('2'); key('2'); key('4'); key('4');
+    expect(taken(stage)).toEqual([{ type: 'practice/take_posture', payload: { callId: 'pc1', postureId: 'kneeling_upright', late: false } }]);
+    cancelPostureCalls(); vi.useRealTimers();
+  });
+
+  it('C: a series of five calls; the engine hears of it once, at its end, and the last call is the posture she called', () => {
+    const { stage, key } = bc(4);
+    expect(_posture.S.call.kind).toBe('C');
+    expect(_posture.S.call.seriesLeft).toBe(4);
+    const seen: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const c = _posture.S.call;
+      expect(c).not.toBeNull();
+      seen.push(c.id);
+      if (c.trap) { vi.advanceTimersByTime(c.windowMs + 700); } else {
+        // put the body as she wants it, point by point (the keys step through the states)
+        for (let g = 0; g < 8 && _posture.S.call === c; g++) for (const [pt, k] of [['hips', '2'], ['arms', '4'], ['torso', '1'], ['knees', '3'], ['head', '5'], ['feet', '7']] as const) {
+          if (_posture.S.call !== c) break;
+          if (c.want[pt] !== undefined && c.body.points[pt] !== c.want[pt]) { key(k); }
+        }
+      }
+      expect(taken(stage)).toHaveLength(i < 4 ? 0 : taken(stage).length);
+      vi.advanceTimersByTime(2600 + 2400 + 10); // the gap to the next call
+    }
+    expect(seen).toHaveLength(5);
+    expect(seen[4]).toBe('kneel_upright'); // the posture she called is the series' last
+    expect(seen[3]).not.toBe(seen[4]); // she never calls the posture the body is in
+    expect(taken(stage)).toHaveLength(1);
+    expect(taken(stage)[0]!.payload.callId).toBe('pc1');
+    cancelPostureCalls(); vi.useRealTimers();
+  });
+
+  it('C: a call with no prefix is a trap: moving is the fault, holding still is right', () => {
+    const { q, key } = bc(4);
+    // find a series whose trap pattern has one (hashed on the call and its place): force it
+    _posture.S.call.trap = true;
+    q('.alius-pg #callWord .pre')!.textContent = '';
+    key('2');
+    expect(_posture.S.call).toBeNull(); // she said nothing, and the commander moved: the call ended 'moved'
+    cancelPostureCalls(); vi.useRealTimers();
   });
 });

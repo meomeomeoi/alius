@@ -365,6 +365,7 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     ...INTERACTION_TOGGLES.map((k) => field(`${k === 'posture' || k === 'provocation' ? 'Game' : 'Contact'}: ${INTERACTION_LABEL[k]}`, interactionToggle(k, settings.physicsInteractions[k]), 'physicsInteractions')),
     field('Marathon pace', select('marathonPace', [['short', 'short'], ['normal', 'normal'], ['long', 'long']], settings.marathonPace), 'marathonPace'),
     field('Long holds', select('longHoldStrain', [['light', 'light'], ['normal', 'normal'], ['heavy', 'heavy'], ['raw', 'raw (as a short hold)']], settings.longHoldStrain), 'longHoldStrain'),
+    field('Posture call: always show every hint', checkbox('postureHints', settings.postureHints), 'postureHints'),
     h('h3', {}, 'Combat'),
     field('Easy retry (rewind a lost combat)', checkbox('easyRetry', settings.easyRetry), 'easyRetry'),
     field('Generated names for affixed enemies', checkbox('enemyFlavor', settings.enemyFlavor), 'enemyFlavor'),

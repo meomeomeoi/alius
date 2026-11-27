@@ -125,6 +125,8 @@ export interface AliusSettings {
   marathonPace: MarathonPace;
   /** P10e-e 24b: SYS › Scenes › Long holds (mirrored into the campaign like `marathonPace`). */
   longHoldStrain: LongHoldStrain;
+  /** P16b Task 24: the open easing of the game of postures (spec 1.2: easing only openly): every hint of the posture call is shown whatever the posture's mastery. UI only. */
+  postureHints: boolean;
 }
 
 export const DEFAULT_SETTINGS: AliusSettings = {
@@ -219,6 +221,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   physicsInteractions: { ...DEFAULT_SCENE_SETTINGS.physicsInteractions },
   marathonPace: 'normal',
   longHoldStrain: 'normal',
+  postureHints: false,
 };
 
 const fieldSchemas = {
@@ -285,6 +288,7 @@ const fieldSchemas = {
   physicsInteractions: z.object(Object.fromEntries(INTERACTION_TOGGLES.map((k) => [k, z.boolean().default(true)])) as Record<InteractionToggle, z.ZodDefault<z.ZodBoolean>>),
   marathonPace: z.enum(MARATHON_PACES),
   longHoldStrain: z.enum(LONG_HOLD_STRAINS),
+  postureHints: z.boolean(),
 };
 const budgetSchema = z.number().int().min(1);
 

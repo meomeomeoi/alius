@@ -1388,6 +1388,8 @@ export const TUNING = Object.freeze({
     sentence: Object.freeze({ extend: 3, closing: 2, defaultDays: 14, weekDays: 7, tithe: Object.freeze({ plyx: 1, credits: 25 }) }),
     decay: Object.freeze({ days: 21, pairDays: 42 }),
     beatSkill: 0.25,
+    /** The posture call's scheme by the commander's `posture` level (P16b Task 24; AUTHOR TO TUNE): A below `b`, B from `b` (assemble joint by joint), C from `c` (her conducting, with traps). */
+    call: Object.freeze({ b: 2, c: 4 }),
     // G1 round 1 (author): a posture beat stands for 45 s of fiction (was 30)
     beatSeconds: Object.freeze({ weight: 20, breath: 3, saturation: 10, tongue_work: 15, jaw: 5, gulp: 5, her_activity: 20, posture: 45 } as Record<string, number>),
     beatSecondsDefault: 10,

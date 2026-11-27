@@ -14,6 +14,10 @@ import { handFamily, handScale } from '../../engine/hand';
 import { herHand } from '../stage/look';
 import type { SampleSound } from '../sound/samples';
 import { cancelCall, currentCall, startCall, CALL_SOUNDS, type CallOutcome } from '../scene/instruments/call/call';
+import { cancelPostureCall, currentPostureCall, startPostureCall } from '../scene/instruments/posture/posture';
+import { craftLevel } from '../../engine/craft/book';
+import { TUNING } from '../../engine/tuning';
+import type { AliusSettings } from '../../settings';
 import { mannequinSvg } from '../scene/dial/draw';
 import { presetPoseOf, type PointStates } from '../scene/dial/points';
 import { voiceLine } from '../scene/cards/voice';
@@ -38,6 +42,9 @@ export interface PostureCallHandlers {
   samples?: SampleSound | null;
   /** P10e-e: the moment is gone (the scene puts the stop word's pill back under the call's layer). */
   onGone?: () => void;
+  /** P16b Task 24: the live state and the settings, for the call's schemes B and C (the game of postures draws on the dial; without them the call is scheme A). */
+  state?: () => CampaignState | null;
+  settings?: () => AliusSettings;
 }
 
 /** The calls whose clock runs: when each started, and the handle of its expiry. A redraw of the scene must not start the clock again. */
@@ -55,10 +62,11 @@ export function cancelPostureCalls(cancel: (handle: unknown) => void = (handle) 
   for (const handle of expiries.values()) cancel(handle);
   resetPostureCalls();
   cancelCall(); // P10e-e: the moment goes too (its timers, its elements, the dim and the dial's ring)
+  cancelPostureCall(); // P16b: and the game's call, when it drew one
 }
 
 // a chat switch: the call drawn in the moment layer goes (scene ids repeat across campaigns)
-onStageReset(() => cancelCall());
+onStageReset(() => { cancelCall(); cancelPostureCall(); });
 
 /**
  * Her call as a card in her voice (P16, plan R14, R24): her name for the posture she wants, and the set of her named postures as the choices. With the order interaction on the call has a window
@@ -123,6 +131,13 @@ export function drawPostureCall(host: HTMLElement, state: CampaignState, reg: Re
  * the state before it was answered (another scene, she stopped holding) goes at once; a new call ends the one before.
  */
 function drawSceneCall(host: HTMLElement, state: CampaignState, reg: Registries, pick: (c: { unitId: string }) => boolean, handlers: PostureCallHandlers): void {
+  const scheme = callScheme(state);
+  if (scheme !== 'A' && handlers.state !== undefined && handlers.settings !== undefined) {
+    if (currentCall() !== null) cancelCall(); // a call of scheme A that was drawn before the commander's posture level grew gives way
+    drawGameCall(host, state, reg, pick, handlers, scheme);
+    return;
+  }
+  cancelPostureCall();
   const call = state.practices?.call;
   const unit = call === undefined ? undefined : state.squad.find((u) => u.id === call.holderId);
   const now = currentCall();
@@ -164,4 +179,44 @@ function drawSceneCall(host: HTMLElement, state: CampaignState, reg: Registries,
     if (old !== null) old.replaceWith(figure);
     else card.prepend(figure);
   }
+}
+
+/** The scheme of her call by the commander's `posture` level (P16b Task 24): A below `TUNING.craft.call.b`, B (assemble joint by joint) from it, C (her conducting) from `.c`. */
+export function callScheme(state: CampaignState): 'A' | 'B' | 'C' {
+  const level = craftLevel(state, 'posture');
+  return level >= TUNING.craft.call.c ? 'C' : level >= TUNING.craft.call.b ? 'B' : 'A';
+}
+
+/**
+ * P16b Task 24: her call as the game of postures draws it (`src/ui/scene/instruments/posture/posture.ts`, posture.html `startCall`): her posture put together on the dial point by point
+ * against her foot (B), or conducted (C: five calls, some with no prefix, a trap). Drawn once per engine call (a redraw never restarts it); the answer goes out once. A call gone from the
+ * state before its answer goes at once; a new call ends the one before.
+ */
+function drawGameCall(host: HTMLElement, state: CampaignState, reg: Registries, pick: (c: { unitId: string }) => boolean, handlers: PostureCallHandlers, scheme: 'B' | 'C'): void {
+  const call = state.practices?.call;
+  const unit = call === undefined ? undefined : state.squad.find((u) => u.id === call.holderId);
+  const now = currentPostureCall();
+  const live = call !== undefined && unit !== undefined && dynamicOn(state, reg) && practiceLive(state, reg, unit.id) && pick({ unitId: unit.id });
+  const set = live ? (state.practices!.postures[unit!.id] ?? []).filter((p) => postureAllowed(state, reg, p.postureId, unit!.id)) : [];
+  const wanted = live ? set.find((p) => p.postureId === call!.postureId) : undefined;
+  if (!live || wanted === undefined) {
+    if (now !== null && !now.done) cancelPostureCall(); // answered calls play their end; one that went away unanswered goes now
+    return;
+  }
+  if (now !== null && now.id === call!.id) return; // the same call drawn already (answered or not): a redraw never restarts it
+  if (now !== null) cancelPostureCall();
+  const hand = herHand(state, reg, unit!.id);
+  const style = practiceOf(state, reg, unit!.id)?.style.primary ?? 'neutral';
+  startPostureCall({
+    scheme, id: call!.id, holderId: unit!.id, postureId: wanted.postureId, taught: call!.taught === true,
+    windowMs: postureWindowMs(state, reg, unit!.id), timed: handlers.timed,
+    look: { unitId: unit!.id, name: unit!.displayName, accent: unitAccent(unit!.id), hand: hand ? handFamily(hand) : '', handScale: handScale(hand), style },
+    host, fx: handlers.dim ?? host, dial: handlers.dial ?? null, samples: handlers.samples ?? null, reduced: handlers.reduced,
+    state: () => handlers.state!() ?? state, registries: reg, settings: handlers.settings!,
+    take: (postureId, late) => handlers.take(call!.id, postureId, late),
+    ...(handlers.onGone ? { onGone: handlers.onGone } : {}),
+    now: handlers.now ?? (() => Date.now()),
+    schedule: handlers.schedule ?? ((fn, ms) => setTimeout(fn, ms)),
+    cancel: handlers.cancel ?? ((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>)),
+  });
 }
