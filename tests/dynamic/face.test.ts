@@ -3,6 +3,7 @@ import type { Registries } from '../../src/content/types';
 import '../../src/engine/actions/dynamic';
 import { dynamicDirectives, offerDirective, refreshDynamicDirectives } from '../../src/dynamic/directives';
 import { faceNow, herRunning, type Face } from '../../src/engine/dynamic/face';
+import { dynamicIntentInput } from '../../src/engine/dynamic/intents';
 import { gossipChanceFor, knowledgeDayStep } from '../../src/engine/dynamic/knowledge';
 import { blankDynamic, dynamicOf, newDynamicCampaign } from '../../src/engine/dynamic/state';
 import type { Audience, Contrast, Frame } from '../../src/engine/dynamic/types';
@@ -246,6 +247,27 @@ describe('the holder directive by face', () => {
     const open = world({ audience: 'show_off', present: [BEA] });
     knows(open, BEA);
     expect(dirs(probe(open)).map((d) => d.id)).toContain(`dynamic:probe:${ANN}`);
+  });
+
+  it('the extractor is offered the probe only where the directive shows it (the same face rule)', () => {
+    const probe = (s: CampaignState, axis = 'space'): CampaignState => {
+      dynamicOf(s, ANN)!.probes = { pending: { axis, tier: 1, day: s.day }, lastDay: s.day, answers: [], issued: 1 };
+      dynamicOf(s, ANN)!.frame = 'equal';
+      s.dynamic!.queue = [ANN];
+      return s;
+    };
+    const offer = (s: CampaignState) => dynamicIntentInput(s, reg, s.scene!.participants, 'scene').dynamic;
+    expect(offer(probe(world()))?.types).toContain('probe_answered');
+    for (const axis of ['space', 'hypothetical']) {
+      const before = probe(world({ present: [BEA] }), axis);
+      const o = offer(before);
+      expect(o?.types ?? []).not.toContain('probe_answered');
+      expect(o?.types ?? []).not.toContain('hypothetical_answered');
+      expect(o?.probes ?? []).toEqual([]);
+    }
+    const open = world({ audience: 'show_off', present: [BEA] });
+    knows(open, BEA);
+    expect(offer(probe(open))?.types).toContain('probe_answered');
   });
 
   it('the offer line follows the face: unchanged alone, a deniable answer before those who do not know, unchanged in a DM', () => {

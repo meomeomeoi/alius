@@ -18,6 +18,7 @@ import { slipSeen } from './knowledge';
 import { confirmOffer } from './offer';
 import { answerMilestone } from './milestones';
 import { answerProbe, HYPOTHETICAL_AXIS, hypotheticalOpen, pendingProbe, sceneProbe } from './probes';
+import { faceNow, showsDynamic } from './face';
 import { threatNear } from './reading';
 import { markQuirkVoiced, quirksDue } from './quirks';
 import { slipsOpen } from './struggle';
@@ -48,7 +49,9 @@ export function dynamicIntentInput(
   });
   if (present.length === 0) return {};
   const open = state.dynamic.open;
-  const probe = sceneProbe(state, present);
+  // P15b: the probe is offered only where the directive shows it, so one rule (the face) governs both; milestone types are not gated by it (open item)
+  const sceneP = sceneProbe(state, present);
+  const probe = sceneP !== undefined && showsDynamic(faceNow(state, reg, sceneP.unitId, participants)) ? sceneP : undefined;
   const probes = probe === undefined ? [] : [probe.unitId];
   const probeAxes: Record<string, string> = {};
   if (probe !== undefined) probeAxes[probe.unitId] = String((reg.probeAxes.get(probe.probe.axis) as unknown as ProbeAxisEntry | undefined)?.promptHint ?? probe.probe.axis);

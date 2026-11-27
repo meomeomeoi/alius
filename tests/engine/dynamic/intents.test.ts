@@ -83,6 +83,7 @@ describe('what is offered', () => {
     const s = world({ present: [ANN, BEA] });
     unitOf(s, BEA).bond = structuredClone(unitOf(s, ANN).bond!);
     s.relations[BEA].dynamic = blankDynamic(s.day);
+    s.dynamic!.knowledge[BEA] = { [ANN]: { suspicion: 100, level: 'knows_dynamic', levelDay: 1, peakDay: s.day } }; // Bea knows, so Ann's face shows the dynamic and the probe is offered
     withProbe(s, ANN);
     withProbe(s, BEA);
     expect(input(s).dynamic!.probes).toEqual([ANN]);

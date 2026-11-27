@@ -227,6 +227,7 @@ describe('practice intents are applied before the dynamic\'s', () => {
     // Ann's probe is pending (she is at equal); Bea holds at play and is in the room
     s.relations[ANN].dynamic = { ...blankDynamic(s.day), frame: 'equal', probes: { pending: { axis: 'space', tier: 1, day: s.day }, lastDay: s.day, answers: [], issued: 1 } };
     s.dynamic!.queue = [ANN];
+    s.dynamic!.knowledge[BEA] = { [ANN]: { suspicion: 100, level: 'knows_dynamic', levelDay: 1, peakDay: s.day } }; // Bea knows, so Ann's face shows the dynamic and the probe is offered
     const intents = { events: [
       { type: 'probe_answered', actor: 'commander', targets: [ANN], severity: 'minor', evidence: 'she yields', confidence: 1, response: 'yielded' },
       { type: 'threat_voiced', actor: 'commander', targets: [BEA], severity: 'minor', evidence: 'she warned', confidence: 1 },

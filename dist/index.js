@@ -23460,7 +23460,8 @@ function dynamicIntentInput(state, reg, participants, _channel) {
   });
   if (present2.length === 0) return {};
   const open3 = state.dynamic.open;
-  const probe = sceneProbe(state, present2);
+  const sceneP = sceneProbe(state, present2);
+  const probe = sceneP !== void 0 && showsDynamic(faceNow(state, reg, sceneP.unitId, participants)) ? sceneP : void 0;
   const probes2 = probe === void 0 ? [] : [probe.unitId];
   const probeAxes = {};
   if (probe !== void 0) probeAxes[probe.unitId] = String(reg.probeAxes.get(probe.probe.axis)?.promptHint ?? probe.probe.axis);
