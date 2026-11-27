@@ -2,7 +2,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Registries } from '../../src/content/types';
 import '../../src/engine/actions/craft';
 import { createCraft } from '../../src/craft/controller';
-import { CRAFT_PREFIX, LESSON_PREFIX, POSTURE_PREFIX, RECORD_PREFIX, clearCraftDirectives, craftDirectives, refreshCraftDirectives } from '../../src/craft/directives';
+import { CARE_PREFIX, CRAFT_PREFIX, LESSON_PREFIX, NAMED_PREFIX, POSTURE_PREFIX, RECORD_PREFIX, clearCraftDirectives, craftDirectives, refreshCraftDirectives } from '../../src/craft/directives';
 import { COMMANDER, resetBlockingHooks, setBlocking } from '../../src/engine/blocking';
 import { noteSlips } from '../../src/engine/craft/lesson';
 import { craftRoll } from '../../src/engine/craft/state';
@@ -276,5 +276,59 @@ describe('the builder and the controller', () => {
     expect(refreshed).toBe(5);
     c.onSceneOpened();
     expect(refreshed).toBe(6);
+  });
+});
+
+describe('unasked care (Task 15)', () => {
+  /** A scene with her in which a noticed care has just landed (`voiced`, in this scene). */
+  function shown(over: { named?: boolean; style?: string; frame?: 'equal' | 'play' } = {}): CampaignState {
+    const s = style(holdScene(reg), over.style ?? 'affectionate');
+    s.relations[ANN].dynamic!.frame = over.frame ?? 'play';
+    s.relations[ANN].craft = { cares: [{ day: s.day - 1, careId: 'polishing_her_boots', noticed: true, voiced: true, scene: s.scene!.id, ...(over.named === true ? { named: true as const } : {}) }] };
+    return s;
+  }
+
+  it('what she may show is one directive for the scene the care landed in, worded "if it fits, once", by her style, with no number and no pronoun', () => {
+    const d = craftDirectives(shown(), reg, [ANN]);
+    expect(d.map((x) => x.id)).toEqual([`${CARE_PREFIX}${ANN}`]);
+    expect(d[0]!.expiresAfter).toBe('scene');
+    expect(d[0]!.text).toMatch(/only if it fits and only once/);
+    expect(d[0]!.text).toMatch(/polishing her boots/);
+    expect(d[0]!.text).toMatch(/warmly/);
+    expect(d[0]!.text).not.toMatch(/\d/);
+    expect(d[0]!.text).not.toMatch(NO_PRONOUN);
+    expect(d[0]!.text).not.toMatch(/AUTHOR TO WRITE/);
+    const cold = craftDirectives(shown({ style: 'cold' }), reg, [ANN])[0]!.text;
+    expect(cold).not.toBe(d[0]!.text);
+  });
+
+  it('works at equal too (care is open toward any woman with a dynamic block), and is gone for another scene, a woman not in the room, or a care not shown', () => {
+    expect(craftDirectives(shown({ frame: 'equal' }), reg, [ANN]).map((x) => x.id)).toEqual([`${CARE_PREFIX}${ANN}`]);
+    const other = shown();
+    other.relations[ANN].craft!.cares![0]!.scene = 'another';
+    expect(craftDirectives(other, reg, [ANN])).toEqual([]);
+    expect(craftDirectives(shown(), reg, [BEA])).toEqual([]);
+    const unseen = shown();
+    delete unseen.relations[ANN].craft!.cares![0]!.voiced;
+    expect(craftDirectives(unseen, reg, [ANN])).toEqual([]);
+  });
+
+  it('the fourth shown care gives the line instead, once: she asks whether she asked for it', () => {
+    const d = craftDirectives(shown({ named: true, frame: 'equal' }), reg, [ANN]);
+    expect(d.map((x) => x.id)).toEqual([`${NAMED_PREFIX}${ANN}`]);
+    expect(d[0]!.text).toMatch(/fourth time this week/);
+    expect(d[0]!.text).toMatch(/Say it only once/);
+    expect(d[0]!.text).not.toMatch(/\d/);
+    expect(d[0]!.text).not.toMatch(NO_PRONOUN);
+  });
+
+  it('is cleared with every other craft directive when the scene ends', () => {
+    const s = shown();
+    const b = new ContextBuilder();
+    refreshCraftDirectives(b, s, reg);
+    expect(ids(b)).toEqual([`${CARE_PREFIX}${ANN}`]);
+    delete s.scene;
+    refreshCraftDirectives(b, s, reg);
+    expect(ids(b)).toEqual([]);
   });
 });

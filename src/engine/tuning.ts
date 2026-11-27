@@ -1390,6 +1390,13 @@ export const TUNING = Object.freeze({
      */
     feet: Object.freeze({ combatPct: 3, careDays: 7, wornShare: 0.25, hotShare: 0.1 }),
     /**
+     * Unasked care (Task 15, ruling 7 and 18; AUTHOR TO TUNE). `notice`: how easily she sees a care by its row's `care.notice`, times her insight; a care is kept `keepDays`; `nameAt`
+     * shown cares within `nameDays` (by a woman on the hold band `nameBand` at frame equal, with a manner) let her name the service; a shown care is +`favour` favour from `play`.
+     */
+    care: Object.freeze({
+      notice: Object.freeze({ low: 0.3, high: 0.7 }), insight: Object.freeze({ low: 0.7, mid: 1, high: 1.3 }), nameAt: 4, nameDays: 7, keepDays: 14, nameBand: 'testing', favour: 1, nameCuriosity: 1,
+    }),
+    /**
      * The game of postures (Tasks 11-13). AUTHOR TO TUNE: a G1 draft, from the engine tables of `docs/prototypes/posture.html` (gate G1 is still in rounds with the author). Drift is in points per
      * 10 s at skill 0 (the preset's own rates are in `servicePostures`); the instrument plays the thresholds, the clicks and the keys in real time, the engine judges what it reports.
      */

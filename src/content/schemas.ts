@@ -2739,6 +2739,8 @@ export const BlockingActivitySchema = BaseEntrySchema.extend({
   fits: z.array(z.enum([...PAIR_TAGS, 'any'])).min(1).optional(),
   presence: z.enum(['unnoticed', 'felt']).optional(),
   judged: z.literal(true).optional(),
+  /** P16b (ruling 18): a care the commander can give while she is out, unasked (`care/unasked`); `notice` is how easily she sees it (`low` or `high`). Only a commander's dynamic row. */
+  care: z.object({ notice: z.enum(['low', 'high']) }).strict().optional(),
   sources: sourceWeights.optional(),
   /** The P2 activity ids whose scene opens with this one (`scene.activityId`). */
   fromActivities: z.array(str).min(1).optional(),

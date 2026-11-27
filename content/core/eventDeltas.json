@@ -1791,5 +1791,11 @@
       "major": { "trust": 5 },
       "extreme": { "trust": 5 }
     }
+  },
+  {
+    "id": "care_noticed",
+    "cause": "She saw what the commander did for her unasked",
+    "journal": "she saw what the commander did for her without being asked",
+    "rows": { "minor": {}, "moderate": {}, "major": {}, "extreme": {} }
   }
 ]

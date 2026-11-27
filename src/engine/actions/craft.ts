@@ -7,6 +7,7 @@ import { noteSlips } from '../craft/lesson';
 import { noteHoldEvents } from '../craft/records';
 import { touchCraft } from '../craft/book';
 import { craftOn } from '../craft/gate';
+import { giveCare, landCares } from '../craft/care';
 import { dropPendingDrills, installDrillHooks, noteDrillOutcome, startDrill } from '../craft/drillScene';
 import { correctPosture, endPosture, endPostureRun, holdOfCall, slipPosture, takePostureHold } from '../craft/posture';
 import { enduranceOf } from '../craft/state';
@@ -116,3 +117,26 @@ registerCallAnswered((draft, ctx, info) => holdOfCall(draft, ctx, info));
 
 /** A scene that is over takes the hold with it, out of the fiction: no pay, no record, no Regard. */
 registerAfterAction((draft, ctx, events) => (events.some((e) => e.type === 'scene_ended' || e.type === 'scene_aborted') ? endPostureRun(draft, ctx, 'gone') : []));
+
+// ---------------------------------------------------------------------------------------------
+// Unasked care (P16b, Task 15). The action spends one slot and hides whether she noticed; she shows it when she next appears. No rng.
+
+/**
+ * `care/unasked { unitId, careId }`: the commander does something for her unasked (a blocking activity with a `care` field) in a slot she is not with the commander: one slot, `care_unasked`
+ * (the same whether she noticed or not). Refused unless care is open toward her, and (the dispatch guard) while a booking is due. Draws no rng.
+ */
+registerAction('care/unasked', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.unitId !== 'string' || payload.unitId === '' || typeof payload.careId !== 'string' || payload.careId === '') throw new Error('care/unasked needs { unitId, careId }.');
+  return giveCare(draft, ctx, payload.unitId, payload.careId);
+});
+
+/** She shows what she noticed when a scene with her opens, or when she writes: the noticed cares land, and the week's fourth may let her name the service. */
+registerAfterAction((draft, ctx, events) => {
+  const out: Array<Record<string, unknown>> = [];
+  for (const e of events) {
+    if (e.type === 'scene_started' && Array.isArray(e.participants) && typeof e.sceneId === 'string') {
+      for (const id of e.participants as string[]) out.push(...landCares(draft, ctx, id, e.sceneId));
+    } else if (e.type === 'dm_received' && typeof e.unitId === 'string') out.push(...landCares(draft, ctx, e.unitId, 'dm'));
+  }
+  return out as never;
+});

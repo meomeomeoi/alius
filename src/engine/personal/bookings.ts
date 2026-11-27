@@ -96,7 +96,7 @@ export function bookingPlayable(state: CampaignState, reg: Registries, booking: 
 
 /** The refusal of `dispatch` while a playable booking is due: `activity/` (and P14c's `life/time_together`, which spends a slot through the activity), `expedition/start`, END SLOT, a scene without her and (P13) an intrigue slot action. */
 export function bookingGuard(state: CampaignState, reg: Registries, action: { type: string; payload?: unknown }): { code: 'booking_due'; message: string } | null {
-  const blocked = action.type.startsWith('activity/') || action.type === 'life/time_together' || action.type === 'expedition/start' || action.type === 'calendar/consume_slot' || action.type === 'scene/start' || action.type === 'intrigue/act';
+  const blocked = action.type.startsWith('activity/') || action.type === 'life/time_together' || action.type === 'care/unasked' || action.type === 'expedition/start' || action.type === 'calendar/consume_slot' || action.type === 'scene/start' || action.type === 'intrigue/act';
   if (!blocked || state.personal?.bookings === undefined) return null;
   const due = dueBooking(state, reg);
   if (!due || !bookingPlayable(state, reg, due)) return null;

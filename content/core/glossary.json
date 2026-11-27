@@ -3967,5 +3967,14 @@
     "see": [
       "craft"
     ]
+  },
+  {
+    "id": "craft_care",
+    "term": "Unasked care",
+    "short": "Something the commander does for her without being asked, in a slot she is not there for. She may notice; the commander only learns whether when she shows it.",
+    "long": "AUTHOR TO WRITE: Boots polished, a room put right, a kit made ready: one slot spent on her while she is out. Whether she notices is not told in advance. When she does and shows it, it counts for something with her: nothing yet at the start, and from the moment she holds the commander, favor and a little Regard. A woman who is still testing may one day ask whether she asked for any of it.",
+    "see": [
+      "craft"
+    ]
   }
 ]

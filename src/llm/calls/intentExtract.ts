@@ -3,7 +3,7 @@ import type { DynamicOffer } from '../../engine/dynamic/types';
 import type { LifeOffer } from '../../engine/life/types';
 import type { PracticeOffer } from '../../engine/practice/intents';
 import { VERDICTS } from '../../engine/practice/state';
-import { DYNAMIC_INTENT_TYPES, EVENT_TYPES, FIRST_KINDS, LIFE_EVENT_TYPES, PRACTICE_INTENT_TYPES, PROPOSAL_KINDS, ROMANTIC_PROPOSALS, SEVERITIES } from '../../engine/relations/vocab';
+import { CRAFT_INTENT_TYPES, DYNAMIC_INTENT_TYPES, EVENT_TYPES, FIRST_KINDS, LIFE_EVENT_TYPES, PRACTICE_INTENT_TYPES, PROPOSAL_KINDS, ROMANTIC_PROPOSALS, SEVERITIES } from '../../engine/relations/vocab';
 import { cleanLabels } from '../../engine/moments/answer';
 import { validateIntents, type Intents } from '../../engine/relations/intents';
 import { VALUE_AXES } from '../../engine/state/types';
@@ -246,7 +246,7 @@ function system(raw: unknown): string {
   const life = lifeFlags(input.life);
   const dyn = dynamicFlags(input.dynamic);
   const prac = practiceFlags(input.practice);
-  const eventTypes = EVENT_TYPES.filter((t) => (!LIFE_EVENT_TYPES.includes(t) || life.types.has(t)) /* P14c: each type of her life only with its list */ && (!DYNAMIC_INTENT_TYPES.includes(t) || dyn.types.has(t)) /* P15: each type of the dynamic only with its subject */ && (!PRACTICE_INTENT_TYPES.includes(t) || prac.types.has(t)) /* P16: each type of the practices only with its subject */ && (hasRules || (hasOverride && t === 'compromise_reached') || ((dyn.claims || dyn.exits) && t === 'compromise_reached') || (prac.compromise && t === 'compromise_reached') || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
+  const eventTypes = EVENT_TYPES.filter((t) => (!LIFE_EVENT_TYPES.includes(t) || life.types.has(t)) /* P14c: each type of her life only with its list */ && (!DYNAMIC_INTENT_TYPES.includes(t) || dyn.types.has(t)) /* P15: each type of the dynamic only with its subject */ && (!PRACTICE_INTENT_TYPES.includes(t) || prac.types.has(t)) /* P16: each type of the practices only with its subject */ && !CRAFT_INTENT_TYPES.includes(t) /* P16b: Task 16 offers each only with its subject */ && (hasRules || (hasOverride && t === 'compromise_reached') || ((dyn.claims || dyn.exits) && t === 'compromise_reached') || (prac.compromise && t === 'compromise_reached') || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
   const extras = [
     ...(excluded.length > 0 ? ['  "contentViolations": [{ "category": "<id from EXCLUDED>", "evidence": "<at most 15 words quoted from the exchange>" }]'] : []),
     ...(asksTone ? ['  "sceneTone": "romantic" | "intimate" | null'] : []),

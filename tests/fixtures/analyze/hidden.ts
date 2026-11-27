@@ -230,6 +230,8 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
     streak: { weight: 89 }, slips: [{ key: 'stillness', scene: 's9', day: 8 }],
     lesson: { point: 'SENTINEL-LESSON-POINT', words: 'SENTINEL-LESSON-WORDS', scene: 's9', exchange: 3 },
     records: { weight: { longest: 3600, clean: 1200, noTap: 3600, day: 8 } },
+    // P16b Task 15: a care she noticed and has not shown yet (a flag, never a value: no panel, label or reading tells which of her cares were seen)
+    cares: [{ day: 8, careId: 'polishing_her_boots', noticed: true }, { day: 8, careId: 'tidying_her_quarters', noticed: false }],
   };
 
   return {

@@ -419,6 +419,14 @@ registerMemoryResolver('record_set', (draft, event, reg) => {
   return { ids: { her: [her.id] }, vars: { name: her.name, what, time: spanText(seconds) } };
 }, { ids: ['her'], vars: ['name', 'what', 'time'] });
 
+// the craft (P16b, plan Task 15): she saw what the commander did for her unasked (the care's own words, `what`); hers alone, she may bring it up
+registerMemoryResolver('care_noticed', (draft, event, reg) => {
+  const her = subjectOf(draft, event.unitId);
+  const careId = str(event.careId);
+  const what = careId === undefined ? undefined : str(reg.blockingActivities.get(careId)?.promptHint);
+  return her && what !== undefined ? { ids: { her: [her.id] }, vars: { name: her.name, what } } : null;
+}, { ids: ['her'], vars: ['name', 'what'] });
+
 // the dynamic (P15): the commander left what she held; a vow makes it a break (`sworn`), the route and the severity are the event's own
 registerMemoryResolver('dynamic_exit', (draft, event) => {
   const her = subjectOf(draft, event.unitId);

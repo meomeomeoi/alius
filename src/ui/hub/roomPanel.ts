@@ -13,6 +13,8 @@ import { renderNote } from '../notes/note';
 import { lifeMode } from '../../engine/life/state';
 import { pastimeActivity } from '../../engine/life/types';
 import { renderHubDayLine, renderPastimePicker } from '../life/lifeViews';
+import { cabinOwner } from '../../engine/basePlan';
+import { renderCareMenu } from '../craft/careMenu';
 import { activityCard } from '../ops/opsTab';
 import type { HubCtx } from './hubScreen';
 import { renderMarker } from './marker';
@@ -104,6 +106,9 @@ export function renderRoomPanel(
   // P10b: in the room with the commander's cell the notes wait: what soldiers left in the quarters, and what they pinned (P9c)
   const noteCards = room.commanderCell === true && (view === undefined || view.cabin === 'commander') ? quartersNotes(state, reg, ctx) : [];
   const title = view?.title ?? String(room.label);
+  // P16b: in her cabin, `[ CARE ]`: something for her without her asking (she need not be here; the menu is drawn only while care is open toward her)
+  const owner = view?.cabin === 'unit' ? cabinOwner(state, reg, view.planRoomId) : null;
+  const careMenu = !opts.readOnly && owner !== null && ctx.ops.onCare !== undefined ? renderCareMenu(state, reg, owner, ctx.ops.onCare) : null;
 
   return h(
     'section',
@@ -116,6 +121,7 @@ export function renderRoomPanel(
     h('p', { class: 'alius-dim' }, view?.description ?? String(room.description)),
     h('h3', {}, 'HERE'),
     people.length > 0 ? h('ul', { class: 'alius-room-people' }, ...rows) : h('p', { class: 'alius-dim' }, 'Nobody is here.'),
+    ...(careMenu !== null ? [careMenu] : []),
     ...(noteCards.length > 0 ? [h('h3', {}, 'NOTES'), ...noteCards] : []),
     ...(cards.length > 0 ? [h('h3', {}, 'ACTIVITIES'), ...cards] : []),
   );

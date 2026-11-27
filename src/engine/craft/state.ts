@@ -65,6 +65,11 @@ export interface RelationCraft {
   drillPending?: { key: string; mult: number; day: number; /** The run `craft/drill_start` began (the outcome that pays is this one's). */ runId?: string };
   /** The day a foot or shoe service of the commander last pleased her (a pleased verdict): her feet are cared for until her next run (`feet.ts`). */
   footCare?: { day: number };
+  /**
+   * What the commander did for her unasked in the last `care.keepDays` days (`care/unasked`): the day, the care (a blocking activity with a `care` field) and whether she noticed it
+   * (hidden until she shows it). `voiced` is set when it landed (she showed it, in the scene `scene` or in a DM), `named` when it was the care that let her name the service.
+   */
+  cares?: Array<{ day: number; careId: string; noticed: boolean; voiced?: true; named?: true; scene?: string }>;
   /** The day the commander last shared a drill with her (a partner drill: a scene or not): another holder's jealousy reads it (`exchange.ts`). */
   partnerDay?: number;
 }

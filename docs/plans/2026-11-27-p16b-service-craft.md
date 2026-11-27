@@ -593,7 +593,7 @@ Before Task 1, also read:
     - with a `manner` block, and her style `regal` (`styleOf`) or `curiosity ≥ +1` (`mannerOf`).
 
     Then `craft:named_service:<unitId>` offers her line once (`AUTHOR TO WRITE`, "fourth time this week you've brought me coffee. Did I ask?"); `named` marks the care so it is offered once. No rule.
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - refused without `careOpen`, or when she is with the commander;
   - the slot is spent;
   - noticing is the same for the same day and draws nothing;
@@ -601,10 +601,10 @@ Before Task 1, also read:
   - `play` gives favour, the sample and Regard;
   - the line comes at the fourth noticed care within 7 days only with a manner and the style or curiosity, once;
   - no pronoun.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P16b): unasked care; she names the service`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P16b): unasked care; she names the service`
 
 ### Task 16: The craft intents
 

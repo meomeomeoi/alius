@@ -154,6 +154,8 @@ export interface BlockingActivityEntry extends Described {
   fits?: string[];
   presence?: 'unnoticed' | 'felt';
   judged?: true;
+  /** P16b: a care the commander can give her unasked while she is out; `notice` is how easily she sees it. */
+  care?: { notice: 'low' | 'high' };
   sources?: Record<string, number>;
   fromActivities?: string[];
   /** P10e-e R24: the frame of her time (see the schema). */

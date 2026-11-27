@@ -37,6 +37,8 @@ export interface OpsTabCtx {
   onSettleBooking?: (day: number, slot: Slot) => void;
   /** P14c: a quiet hour with her (`life/time_together`): her and the pastime picked. Absent = the card is not drawn. */
   onTimeTogether?: (unitId: string, pastimeId: string) => void;
+  /** P16b: `[ CARE ]` (`care/unasked`): something for her without her asking, in a slot she is not there for. Absent = the menu is not drawn. */
+  onCare?: (unitId: string, careId: string) => void;
 }
 
 type Focus = { id: string; label: string; units?: { min: number; max: number }; drill?: { key: string; partner?: true } };

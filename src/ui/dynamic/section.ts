@@ -17,6 +17,7 @@ import type { ExitRoute } from '../../engine/dynamic/types';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h, type Child } from '../dom';
+import { renderCareMenu } from '../craft/careMenu';
 import { practicesBlock } from '../practice/block';
 import { bodyMapFor, renderBodyMap } from './bodyMap';
 import { drawClaimCards, drawMilestoneCards, drawReturnCards, renderExitCard, type ClaimAnswer, type ReturnAnswer } from './cards';
@@ -29,6 +30,8 @@ export interface DynamicSectionActions {
   answerReturn?(answer: ReturnAnswer): void;
   exit?(unitId: string, route: ExitRoute, opts?: { toUnitId?: string; means?: ExitMeans }): void;
   requestTransfer?(unitId: string): void;
+  /** P16b: `[ CARE ]` (`care/unasked`): something for her without her asking. Absent = the menu is not drawn. */
+  care?(unitId: string, careId: string): void;
 }
 
 export interface DynamicSectionCtx {
@@ -175,7 +178,8 @@ export function renderDynamicSection(host: HTMLElement, ctx: DynamicSectionCtx):
   const mapHost = h('div', { class: 'alius-dyn-bodymap' });
   if (map.zones.length > 0) renderBodyMap(mapHost, map);
 
-  host.append(h('h4', {}, 'DYNAMIC'), ...lines, ...(practices !== null ? [practices] : []), ...(map.zones.length > 0 ? [mapHost] : []), cards, exitHost);
+  const careMenu = ctx.actions?.care !== undefined ? renderCareMenu(state, reg, unitId, ctx.actions.care) : null; // P16b: open toward any woman with a dynamic block
+  host.append(h('h4', {}, 'DYNAMIC'), ...lines, ...(practices !== null ? [practices] : []), ...(careMenu !== null ? [careMenu] : []), ...(map.zones.length > 0 ? [mapHost] : []), cards, exitHost);
   host.classList.add('alius-dynamic-section');
   host.setAttribute('data-dynamic-section', unitId);
   return true;

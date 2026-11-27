@@ -1,8 +1,10 @@
 import { plainDraft } from '../content/draft';
 import type { Registries } from '../content/types';
 import { presetOf, samePreset } from '../engine/blocking';
-import { craftLive } from '../engine/craft/gate';
+import { careKinds } from '../engine/craft/care';
+import { craftLive, careOpen } from '../engine/craft/gate';
 import { craftRoll } from '../engine/craft/state';
+import { styleOf } from '../engine/dynamic/profile';
 import { isLiving } from '../engine/economy';
 import type { CampaignState } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
@@ -21,6 +23,11 @@ export const LESSON_PREFIX = 'craft:lesson:';
 export const RECORD_PREFIX = 'craft:record:';
 /** The posture she has the commander hold now, while a posture hold is open (P16b, Task 13). */
 export const POSTURE_PREFIX = 'craft:posture:';
+
+/** What she saw the commander do for her unasked, for her next reply only (Task 15; derived from the care that landed in this scene). */
+export const CARE_PREFIX = 'craft:care:';
+/** The line she may say when it is the fourth time in the week (`care.nameAt`), once (Task 15). */
+export const NAMED_PREFIX = 'craft:named_service:';
 
 const NEVER_NAME = 'Never name it as a mechanic.';
 
@@ -101,9 +108,47 @@ function postureDirectives(state: CampaignState, reg: Registries, present: strin
   }];
 }
 
+/** How she shows that she saw it, by her style (AUTHOR TO WRITE; no figure, no pronoun for the commander). A style it has no row of reads `plain`. */
+const CARE_WAY: Record<string, string> = {
+  affectionate: 'warmly, with a thanks that makes no speech of it', playful: 'with amusement, teasing that she saw', cold: 'briefly, as a remark about the thing itself and never as thanks',
+  cruel: 'as an observation that could be taken as a threat or a compliment', possessive: 'as if it were only what is owed to her', ritual: 'with a small, formal acknowledgement',
+  clinical: 'as a flat note of what was done and how well', drill: 'in the manner of a check: noted', obsessive: 'too exactly: she has seen how it was done',
+  regal: 'as an acknowledgement from a throne', vindictive: 'sparingly: she saw it, and keeps it', plain: 'in her own way',
+};
+
+/**
+ * What she may show of the care she noticed (`craft:care:<unitId>`): once, in the scene where it landed (`Relation.craft.cares[].scene`), for a woman in the room toward whom care is
+ * open. When that care let her name the service, it is the line `craft:named_service:<unitId>` instead. Gone when the scene ends.
+ */
+function careDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
+  const scene = state.scene;
+  if (scene === undefined) return [];
+  const out: Directive[] = [];
+  for (const id of present) {
+    const unit = state.squad.find((u) => u.id === id);
+    const cares = (state.relations[id]?.craft?.cares ?? []).filter((c) => c.voiced === true && c.scene === scene.id);
+    if (unit === undefined || unit.kind !== 'named' || !isLiving(unit) || cares.length === 0 || !careOpen(state, reg, id)) continue;
+    if (cares.some((c) => c.named === true)) {
+      out.push({
+        id: `${NAMED_PREFIX}${id}`, expiresAfter: 'scene',
+        text: `AUTHOR TO WRITE: ${unit.displayName} may say, in her own way and only if it fits, that it is the fourth time this week the commander has done something for her unasked, and ask whether she asked for it. Say it only once. ${NEVER_NAME}`,
+      });
+      continue;
+    }
+    const last = [...cares].sort((a, b) => b.day - a.day)[0]!;
+    const hint = careKinds(reg).find((r) => r.id === last.careId)?.promptHint;
+    const way = CARE_WAY[styleOf(unit)?.primary ?? 'plain'] ?? CARE_WAY.plain!;
+    out.push({
+      id: `${CARE_PREFIX}${id}`, expiresAfter: 'scene',
+      text: `AUTHOR TO WRITE: While ${unit.displayName} was out the commander did something for her unasked${hint !== undefined ? ` (${phrase(hint)})` : ''}. She may show that she saw it, ${way}, only if it fits and only once. ${NEVER_NAME}`,
+    });
+  }
+  return out;
+}
+
 /** Every craft directive that holds now for the women in the room; nothing without the craft. A draft text reaches the model without its marker. */
 export function craftDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
-  return [...lessonDirectives(state, reg, present), ...recordDirectives(state, reg, present), ...postureDirectives(state, reg, present)].map((d) => ({ ...d, text: plainDraft(d.text) }));
+  return [...lessonDirectives(state, reg, present), ...recordDirectives(state, reg, present), ...postureDirectives(state, reg, present), ...careDirectives(state, reg, present)].map((d) => ({ ...d, text: plainDraft(d.text) }));
 }
 
 /** Drops every craft directive (a chat switch, the end of a scene). */

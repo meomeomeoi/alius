@@ -1792,6 +1792,20 @@ var TUNING = Object.freeze({
      */
     feet: Object.freeze({ combatPct: 3, careDays: 7, wornShare: 0.25, hotShare: 0.1 }),
     /**
+     * Unasked care (Task 15, ruling 7 and 18; AUTHOR TO TUNE). `notice`: how easily she sees a care by its row's `care.notice`, times her insight; a care is kept `keepDays`; `nameAt`
+     * shown cares within `nameDays` (by a woman on the hold band `nameBand` at frame equal, with a manner) let her name the service; a shown care is +`favour` favour from `play`.
+     */
+    care: Object.freeze({
+      notice: Object.freeze({ low: 0.3, high: 0.7 }),
+      insight: Object.freeze({ low: 0.7, mid: 1, high: 1.3 }),
+      nameAt: 4,
+      nameDays: 7,
+      keepDays: 14,
+      nameBand: "testing",
+      favour: 1,
+      nameCuriosity: 1
+    }),
+    /**
      * The game of postures (Tasks 11-13). AUTHOR TO TUNE: a G1 draft, from the engine tables of `docs/prototypes/posture.html` (gate G1 is still in rounds with the author). Drift is in points per
      * 10 s at skill 0 (the preset's own rates are in `servicePostures`); the instrument plays the thresholds, the clicks and the keys in real time, the engine judges what it reports.
      */
@@ -7929,11 +7943,14 @@ var EVENT_TYPES = [
   "denial_broken",
   "practice_accepted",
   "threat_voiced",
-  "ceremony_step"
+  "ceremony_step",
+  // P16b: the craft (each offered to the model only while its subject exists: a care she has not shown she noticed, ...)
+  "care_noticed"
 ];
 var LIFE_EVENT_TYPES = ["news_told", "hobby_praised", "opinion_voiced", "opinion_challenged", "opinion_agreed", "first_moment", "joke_returned"];
 var DYNAMIC_INTENT_TYPES = ["probe_answered", "probe_observed", "milestone_accepted", "milestone_refused", "compromat_mentioned", "protocol_slip", "offer_answered", "quirk_voiced", "hypothetical_answered"];
 var PRACTICE_INTENT_TYPES = ["task_kept", "task_broken", "service_rated", "denial_broken", "practice_accepted", "threat_voiced", "ceremony_step"];
+var CRAFT_INTENT_TYPES = ["care_noticed"];
 var FIRST_KINDS = ["laughed", "fell_asleep_beside", "told_her_past", "cried", "taught", "asked_about_commander"];
 var ENGINE_EVENT_TYPES = [
   "warden_complied",
@@ -11050,6 +11067,8 @@ var BlockingActivitySchema = BaseEntrySchema.extend({
   fits: external_exports.array(external_exports.enum([...PAIR_TAGS, "any"])).min(1).optional(),
   presence: external_exports.enum(["unnoticed", "felt"]).optional(),
   judged: external_exports.literal(true).optional(),
+  /** P16b (ruling 18): a care the commander can give while she is out, unasked (`care/unasked`); `notice` is how easily she sees it (`low` or `high`). Only a commander's dynamic row. */
+  care: external_exports.object({ notice: external_exports.enum(["low", "high"]) }).strict().optional(),
   sources: sourceWeights.optional(),
   /** The P2 activity ids whose scene opens with this one (`scene.activityId`). */
   fromActivities: external_exports.array(str).min(1).optional(),
@@ -19870,7 +19889,7 @@ function bookingPlayable(state, reg, booking) {
   return restrictionReason(state, reg, unit5.id, "scene") === null;
 }
 function bookingGuard(state, reg, action) {
-  const blocked = action.type.startsWith("activity/") || action.type === "life/time_together" || action.type === "expedition/start" || action.type === "calendar/consume_slot" || action.type === "scene/start" || action.type === "intrigue/act";
+  const blocked = action.type.startsWith("activity/") || action.type === "life/time_together" || action.type === "care/unasked" || action.type === "expedition/start" || action.type === "calendar/consume_slot" || action.type === "scene/start" || action.type === "intrigue/act";
   if (!blocked || state.personal?.bookings === void 0) return null;
   const due = dueBooking(state, reg);
   if (!due || !bookingPlayable(state, reg, due)) return null;
@@ -27671,6 +27690,7 @@ function validateIntents(raw, ctx2) {
       if (dyn === null || seenLife.has(dyn.key)) continue;
       seenLife.add(dyn.key);
     }
+    if (CRAFT_INTENT_TYPES.includes(type)) continue;
     if (PRACTICE_INTENT_TYPES.includes(type)) {
       const practice = practiceFields(type, e, intent, ctx2.practice);
       if (practice === null || seenLife.has(practice.key)) continue;
@@ -35563,6 +35583,12 @@ registerMemoryResolver("record_set", (draft, event, reg) => {
   const what = posture !== void 0 ? `the ${String(posture.label).toLowerCase()} posture` : String(reg.contactPhysics.get(key)?.label ?? key.replace(/_/g, " ")).toLowerCase();
   return { ids: { her: [her.id] }, vars: { name: her.name, what, time: spanText(seconds) } };
 }, { ids: ["her"], vars: ["name", "what", "time"] });
+registerMemoryResolver("care_noticed", (draft, event, reg) => {
+  const her = subjectOf3(draft, event.unitId);
+  const careId = str4(event.careId);
+  const what = careId === void 0 ? void 0 : str4(reg.blockingActivities.get(careId)?.promptHint);
+  return her && what !== void 0 ? { ids: { her: [her.id] }, vars: { name: her.name, what } } : null;
+}, { ids: ["her"], vars: ["name", "what"] });
 registerMemoryResolver("dynamic_exit", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name, sworn: yes(event.sworn === true) } } : null;
@@ -43358,6 +43384,12 @@ function craftOn(state, reg) {
 function craftHolders(state, reg) {
   return state.squad.filter((u) => craftLive(state, reg, u.id)).map((u) => u.id);
 }
+function careOpen(state, reg, unitId) {
+  if (!dynamicOn(state, reg)) return false;
+  const unit5 = state.squad.find((u) => u.id === unitId);
+  if (unit5 === void 0 || unit5.kind !== "named" || !isLiving(unit5)) return false;
+  return herPracticeLive(state, unitId) && state.relations[unitId]?.dynamic !== void 0;
+}
 
 // src/engine/craft/decay.ts
 var THRESHOLDS = TUNING.physics.endurance.thresholds;
@@ -43974,6 +44006,97 @@ function noteSlips(draft, ctx2, events) {
   return out;
 }
 
+// src/engine/craft/care.ts
+function careKinds(reg) {
+  const out = [];
+  for (const a of reg.blockingActivities.values()) {
+    const care = a.care;
+    if (care?.notice === void 0 || a.actor !== "commander" || a.scope !== "dynamic") continue;
+    out.push({ id: String(a.id), notice: care.notice, label: String(a.label), promptHint: String(a.promptHint) });
+  }
+  return out;
+}
+function careNoticeChance(state, unitId, row4) {
+  const insight = state.squad.find((u) => u.id === unitId)?.insight ?? "mid";
+  return Math.min(1, TUNING.craft.care.notice[row4.notice] * TUNING.craft.care.insight[insight]);
+}
+function noticesCare(state, unitId, row4) {
+  return craftRoll(state, unitId, `care|${state.day}|${row4.id}`) < careNoticeChance(state, unitId, row4);
+}
+function shownCares(state, unitId, day) {
+  return (state.relations[unitId]?.craft?.cares ?? []).filter((c) => c.noticed && c.voiced === true && day - c.day <= TUNING.craft.care.nameDays);
+}
+function namesService(state, reg, unitId) {
+  const T5 = TUNING.craft.care;
+  const dyn = dynamicOf(state, unitId);
+  const unit5 = state.squad.find((u) => u.id === unitId);
+  if (dyn === void 0 || unit5 === void 0 || dyn.frame !== "equal" || holdBandOf(reg, dyn.hold) !== T5.nameBand) return false;
+  const manner = mannerOf(state, reg, unitId);
+  if (manner === null) return false;
+  const style = styleOf(unit5)?.primary;
+  if (style !== "regal" && manner.axes.curiosity < T5.nameCuriosity) return false;
+  const shown2 = shownCares(state, unitId, state.day);
+  return shown2.length >= T5.nameAt && !shown2.some((c) => c.named === true);
+}
+function withCommander(state, unitId) {
+  return state.scene?.participants.includes(unitId) === true || heldNow(state)?.by === unitId || keyPlaceAt(state, unitId, state.day, state.slot);
+}
+function careReason(state, reg, unitId, careId) {
+  const row4 = careKinds(reg).find((r) => r.id === careId);
+  if (row4 === void 0) return "That is not something to do for her unasked.";
+  if (!careOpen(state, reg, unitId)) return "There is nothing between the commander and her yet that makes this a kindness.";
+  if (state.scene) return "A conversation is open.";
+  if (state.calendar.pendingScene) return "A talk is waiting for its scene.";
+  if (state.expedition) return "The squad is out.";
+  if (state.dilemmas?.open?.status === "presented") return "A decision is waiting.";
+  if (state.calendar.nightEvent) return "Someone is at the door.";
+  if (state.slot === "night") return "Not at night.";
+  if (withCommander(state, unitId)) return "She is with the commander: it would not be unasked.";
+  if ((state.relations[unitId]?.craft?.cares ?? []).some((c) => c.careId === careId && c.day === state.day)) return `${row4.label} was done today.`;
+  return null;
+}
+function prune(draft, unitId) {
+  const craft = draft.relations[unitId]?.craft;
+  if (craft?.cares === void 0) return;
+  craft.cares = craft.cares.filter((c) => draft.day - c.day <= TUNING.craft.care.keepDays);
+  if (craft.cares.length === 0) delete craft.cares;
+}
+function giveCare(draft, ctx2, unitId, careId) {
+  const reason = careReason(draft, ctx2.registries, unitId, careId);
+  if (reason !== null) throw new Error(reason);
+  const row4 = careKinds(ctx2.registries).find((r) => r.id === careId);
+  const craft = draft.relations[unitId].craft ??= {};
+  (craft.cares ??= []).push({ day: draft.day, careId, noticed: noticesCare(draft, unitId, row4) });
+  prune(draft, unitId);
+  return [{ type: "care_unasked", unitId, careId }, ...consumeSlots(draft, 1, ctx2)];
+}
+function landCares(draft, ctx2, unitId, sceneId) {
+  const reg = ctx2.registries;
+  const cares = draft.relations[unitId]?.craft?.cares;
+  if (cares === void 0 || !careOpen(draft, reg, unitId)) return [];
+  prune(draft, unitId);
+  const events = [];
+  const dyn = dynamicOf(draft, unitId);
+  const from = frameRank("play");
+  for (const c of draft.relations[unitId]?.craft?.cares ?? []) {
+    if (!c.noticed || c.voiced === true) continue;
+    c.voiced = true;
+    c.scene = sceneId;
+    events.push({ type: "care_noticed", unitId, careId: c.careId });
+    events.push(...applyEventToUnit(draft, reg, unitId, { type: "care_noticed", actor: "commander", targets: [unitId], severity: "minor", evidence: "she saw what the commander did for her", confidence: 1 }));
+    if (dyn !== void 0 && frameRank(dyn.frame) >= from) {
+      addFavour(draft, unitId, TUNING.craft.care.favour);
+      events.push(...practiceSample(draft, reg, unitId, "yielded", { motive: "her" }));
+      events.push(...regardRise(draft, reg, unitId, "value", TUNING.regard.value.min));
+    }
+  }
+  if (namesService(draft, reg, unitId)) {
+    const last4 = [...shownCares(draft, unitId, draft.day)].sort((a, b) => b.day - a.day).find((c) => c.scene === sceneId);
+    if (last4 !== void 0) last4.named = true;
+  }
+  return events;
+}
+
 // src/engine/craft/drills.ts
 function drillMult(state, reg, companionId) {
   if (companionId === void 0) return 1;
@@ -44166,6 +44289,19 @@ registerAction("posture/end", (draft, payload, ctx2) => {
 });
 registerCallAnswered((draft, ctx2, info) => holdOfCall(draft, ctx2, info));
 registerAfterAction((draft, ctx2, events) => events.some((e) => e.type === "scene_ended" || e.type === "scene_aborted") ? endPostureRun(draft, ctx2, "gone") : []);
+registerAction("care/unasked", (draft, payload, ctx2) => {
+  if (!isObj42(payload) || typeof payload.unitId !== "string" || payload.unitId === "" || typeof payload.careId !== "string" || payload.careId === "") throw new Error("care/unasked needs { unitId, careId }.");
+  return giveCare(draft, ctx2, payload.unitId, payload.careId);
+});
+registerAfterAction((draft, ctx2, events) => {
+  const out = [];
+  for (const e of events) {
+    if (e.type === "scene_started" && Array.isArray(e.participants) && typeof e.sceneId === "string") {
+      for (const id of e.participants) out.push(...landCares(draft, ctx2, id, e.sceneId));
+    } else if (e.type === "dm_received" && typeof e.unitId === "string") out.push(...landCares(draft, ctx2, e.unitId, "dm"));
+  }
+  return out;
+});
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
@@ -47828,6 +47964,8 @@ var CRAFT_PREFIX = "craft:";
 var LESSON_PREFIX = "craft:lesson:";
 var RECORD_PREFIX = "craft:record:";
 var POSTURE_PREFIX = "craft:posture:";
+var CARE_PREFIX = "craft:care:";
+var NAMED_PREFIX = "craft:named_service:";
 var NEVER_NAME2 = "Never name it as a mechanic.";
 var phrase2 = (text3) => plainDraft(text3).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\d+/g, "").replace(/\s+/g, " ").trim().replace(/[.\s]+$/, "");
 function lessonDirectives(state, reg, present2) {
@@ -47890,8 +48028,49 @@ function postureDirectives(state, reg, present2) {
     text: `AUTHOR TO WRITE: ${unit5.displayName} has the commander holding a posture, ${hers !== void 0 ? `which she calls "${phrase2(hers)}"` : phrase2(String(preset.label))}: ${phrase2(String(preset.promptHint))}. If it fits, she may correct a point she sees drifting, and only once.${load !== void 0 ? ` ${load}, only if it fits.` : ""} ${NEVER_NAME2}`
   }];
 }
+var CARE_WAY = {
+  affectionate: "warmly, with a thanks that makes no speech of it",
+  playful: "with amusement, teasing that she saw",
+  cold: "briefly, as a remark about the thing itself and never as thanks",
+  cruel: "as an observation that could be taken as a threat or a compliment",
+  possessive: "as if it were only what is owed to her",
+  ritual: "with a small, formal acknowledgement",
+  clinical: "as a flat note of what was done and how well",
+  drill: "in the manner of a check: noted",
+  obsessive: "too exactly: she has seen how it was done",
+  regal: "as an acknowledgement from a throne",
+  vindictive: "sparingly: she saw it, and keeps it",
+  plain: "in her own way"
+};
+function careDirectives(state, reg, present2) {
+  const scene = state.scene;
+  if (scene === void 0) return [];
+  const out = [];
+  for (const id of present2) {
+    const unit5 = state.squad.find((u) => u.id === id);
+    const cares = (state.relations[id]?.craft?.cares ?? []).filter((c) => c.voiced === true && c.scene === scene.id);
+    if (unit5 === void 0 || unit5.kind !== "named" || !isLiving(unit5) || cares.length === 0 || !careOpen(state, reg, id)) continue;
+    if (cares.some((c) => c.named === true)) {
+      out.push({
+        id: `${NAMED_PREFIX}${id}`,
+        expiresAfter: "scene",
+        text: `AUTHOR TO WRITE: ${unit5.displayName} may say, in her own way and only if it fits, that it is the fourth time this week the commander has done something for her unasked, and ask whether she asked for it. Say it only once. ${NEVER_NAME2}`
+      });
+      continue;
+    }
+    const last4 = [...cares].sort((a, b) => b.day - a.day)[0];
+    const hint = careKinds(reg).find((r) => r.id === last4.careId)?.promptHint;
+    const way = CARE_WAY[styleOf(unit5)?.primary ?? "plain"] ?? CARE_WAY.plain;
+    out.push({
+      id: `${CARE_PREFIX}${id}`,
+      expiresAfter: "scene",
+      text: `AUTHOR TO WRITE: While ${unit5.displayName} was out the commander did something for her unasked${hint !== void 0 ? ` (${phrase2(hint)})` : ""}. She may show that she saw it, ${way}, only if it fits and only once. ${NEVER_NAME2}`
+    });
+  }
+  return out;
+}
 function craftDirectives(state, reg, present2) {
-  return [...lessonDirectives(state, reg, present2), ...recordDirectives(state, reg, present2), ...postureDirectives(state, reg, present2)].map((d) => ({ ...d, text: plainDraft(d.text) }));
+  return [...lessonDirectives(state, reg, present2), ...recordDirectives(state, reg, present2), ...postureDirectives(state, reg, present2), ...careDirectives(state, reg, present2)].map((d) => ({ ...d, text: plainDraft(d.text) }));
 }
 function clearCraftDirectives(builder) {
   builder.clearMatching((d) => d.id.startsWith(CRAFT_PREFIX));
@@ -50189,6 +50368,156 @@ function dynamicNotices(events, state, reg, opts = {}) {
   return out.map((n) => ({ ...n, text: plainDraft(n.text), ...n.cutIn !== void 0 ? { cutIn: { ...n.cutIn, text: plainDraft(n.cutIn.text) } } : {} }));
 }
 
+// src/ui/hub/model.ts
+var TONE_GLYPH = { danger: "!", bond: "\u2665", trust: "+", affinity: "*", warn: "~", neutral: "\xB7" };
+var TONE_LABEL = { danger: "danger", bond: "bond", trust: "trust", affinity: "affinity", warn: "warning", neutral: "steady" };
+var isInjured3 = (u) => u.status === "injured" || (u.injuryDays ?? 0) > 0;
+function markerTone(state, reg, unit5) {
+  const rel = state.relations[unit5.id];
+  if (unit5.stress >= 80 || isInjured3(unit5) || rel?.loyaltyBand === "breaking") return "danger";
+  const st3 = rel ? reg.relationshipStates.get(rel.stateId) : void 0;
+  if (st3?.romance === true) return "bond";
+  if (st3?.group === "platonic") return "trust";
+  if (st3?.group === "negative" || unit5.stress >= 50) return "warn";
+  if (rel && affinityBand(rel.affinity) === "devoted") return "affinity";
+  return "neutral";
+}
+var dueIn = (m, day) => m.deadlineDay === void 0 ? null : m.deadlineDay - day;
+function currentObjective(state, reg) {
+  const list5 = objectiveList(state, reg);
+  const first2 = list5.find((o) => o.source !== "unit");
+  if (first2) return { text: first2.text, dueDays: first2.dueDays, source: first2.source };
+  const active = state.missions.active;
+  const pick12 = active.find((m) => m.spineBeat !== void 0) ?? [...active].filter((m) => m.deadlineDay !== void 0).sort((a, b) => a.deadlineDay - b.deadlineDay)[0] ?? active[0] ?? state.missions.offered.find((m) => m.spineBeat !== void 0);
+  if (pick12) return { text: pick12.title, dueDays: dueIn(pick12, state.day), source: "mission", missionId: pick12.id };
+  const unit5 = list5[0];
+  return unit5 ? { text: unit5.text, dueDays: unit5.dueDays, source: unit5.source } : null;
+}
+var TONIGHT_MAX = 6;
+var SLOT_RANK2 = { morning: 0, afternoon: 1, evening: 2, night: 3 };
+var KNOCK_KIND = "we_need_to_talk";
+var unreadFrom = (state, unitId) => (state.dms[unitId] ?? []).filter((m) => m.from !== "commander" && !m.read).length;
+function tonightItems(state, reg) {
+  const out = [];
+  const living2 = state.squad.filter(isLiving);
+  const nameOf29 = (id) => living2.find((u) => u.id === id)?.displayName ?? "";
+  for (const e of state.calendar.nightEventsQueue) {
+    if (e.kind !== KNOCK_KIND || e.expiresDay < state.day || !nameOf29(e.unitId)) continue;
+    out.push({ kind: "knock", text: `${nameOf29(e.unitId)} will knock tonight.`, unitId: e.unitId, tone: "warn", analyze: "glossary:tonight" });
+  }
+  if (state.calendar.nightEventsQueue.some((e) => e.kind === HANDLER_VISIT_KIND && e.expiresDay >= state.day)) {
+    out.push({ kind: "knock", text: "A visitor at the gate.", tone: "warn", analyze: "glossary:handler" });
+  }
+  for (const u of living2) {
+    const n = unreadFrom(state, u.id);
+    if (n > 0) out.push({ kind: "dm", text: `${u.displayName}: ${n} unread message${n === 1 ? "" : "s"}.`, unitId: u.id, tone: "neutral", analyze: "glossary:tonight" });
+  }
+  for (const n of state.notes?.list ?? []) {
+    if (n.where !== "door" || n.read === true || state.day - n.day > 1 || !nameOf29(n.unitId)) continue;
+    out.push({ kind: "note", text: `${nameOf29(n.unitId)} left a note under your door.`, unitId: n.unitId, tone: "neutral", analyze: "glossary:hand_note" });
+  }
+  for (const d of waitingDemands(state)) {
+    out.push({ kind: "demand", text: `${nameOf29(d.unitId)} is waiting for an answer.`, unitId: d.unitId, tone: "warn", analyze: "glossary:demand" });
+  }
+  if ((state.world.incomingUnits ?? 0) > 0) out.push({ kind: "intake", text: "A new unit is waiting for intake.", tone: "neutral", analyze: "glossary:tonight" });
+  for (const m of [...state.missions.active, ...state.missions.offered]) {
+    const due = dueIn(m, state.day);
+    if (due === null || due < 0 || due > 1) continue;
+    out.push({ kind: "deadline", text: `${m.title}: due ${due === 0 ? "today" : "tomorrow"}.`, tone: due === 0 ? "danger" : "warn", analyze: "glossary:mission_deadline" });
+  }
+  const shortage = state.calendar.shortageStreak ?? 0;
+  if (shortage > 0) out.push({ kind: "warning", text: `SHORTAGE ${shortage}d`, tone: "danger", analyze: "glossary:upkeep" });
+  const injured = (state.commander.injuredUntilDay ?? 0) - state.day;
+  if (injured > 0) out.push({ kind: "warning", text: `INJURED ${injured}d`, tone: "danger", analyze: "glossary:commander_injury" });
+  const booked = (state.personal?.bookings ?? []).filter((b) => b.status === "booked" && (b.day === state.day || b.day === state.day + 1) && nameOf29(b.unitId)).sort((a, b) => a.day - b.day || SLOT_RANK2[a.slot] - SLOT_RANK2[b.slot])[0];
+  if (booked) {
+    const day = booked.day === state.day ? "today" : "tomorrow";
+    const handed = booked.practiceId !== void 0 && (state.practices?.handovers ?? []).some((h2) => h2.id === booked.practiceId && h2.kind === "calendar");
+    out.push({
+      kind: "booking",
+      text: handed ? `${nameOf29(booked.unitId)}'s hand has filled ${day}.` : `${nameOf29(booked.unitId)} has booked ${day}'s ${booked.slot}.`,
+      unitId: booked.unitId,
+      tone: booked.day === state.day ? "warn" : "neutral",
+      analyze: "glossary:booking"
+    });
+  }
+  if (dynamicOn(state, reg)) {
+    const open3 = state.dynamic.open;
+    const waiting3 = /* @__PURE__ */ new Set();
+    const milestoneFor = new Set(open3.milestones.map((m) => m.unitId));
+    const claimFor = new Set(open3.claims.map((c) => c.unitId));
+    const returnFor = open3.returnOffer?.unitId;
+    for (const id of [...open3.milestones.map((m) => m.unitId), ...open3.claims.map((c) => c.unitId), ...open3.returnOffer ? [open3.returnOffer.unitId] : []]) if (nameOf29(id)) waiting3.add(id);
+    for (const id of waiting3) {
+      out.push({ kind: "dynamic", text: `${nameOf29(id)} has something to ask.`, unitId: id, tone: "warn", analyze: milestoneFor.has(id) ? "glossary:milestone" : claimFor.has(id) ? "glossary:claim" : returnFor === id ? "glossary:aftermath" : "glossary:frame" });
+    }
+    for (const u of living2) {
+      const aftermath = state.relations[u.id]?.dynamic?.aftermath;
+      const notice = aftermath === void 0 ? void 0 : aftermathRowOf(reg, aftermath.kind)?.stages[aftermath.stage]?.notice;
+      if (notice !== void 0) out.push({ kind: "dynamic", text: `${u.displayName}: ${notice}`, unitId: u.id, tone: "neutral", analyze: "glossary:aftermath" });
+    }
+    const threat = state.dynamic.oversight?.threat;
+    if (threat !== void 0 && nameOf29(threat.unitId) !== "") {
+      out.push({ kind: "dynamic", text: `Oversight will move ${nameOf29(threat.unitId)} unless the commander's Leash requests are released.`, unitId: threat.unitId, tone: "danger", analyze: "glossary:oversight_inquiry" });
+    }
+  }
+  const failed2 = fullOpenRecords(state).length;
+  const line3 = failed2 > 0 ? { kind: "generation", text: `${failed2} generation${failed2 === 1 ? "" : "s"} failed.`, tone: "warn", analyze: "glossary:generation_record" } : null;
+  return line3 ? [...cutTonight(out, TONIGHT_MAX - 1), line3] : cutTonight(out, TONIGHT_MAX);
+}
+function cutTonight(items, max) {
+  if (items.length <= max) return items;
+  const score = (i) => i.kind !== "dynamic" ? 1 : i.analyze === "glossary:oversight_inquiry" ? 3 : 2;
+  const keep2 = new Set(items.map((item, at2) => ({ item, at: at2 })).sort((a, b) => score(b.item) - score(a.item) || a.at - b.at).slice(0, max).map((x) => x.at));
+  return items.filter((_, at2) => keep2.has(at2));
+}
+function endSlotBlock(state, reg) {
+  if (state.scene) return "A conversation is open.";
+  if (state.calendar.pendingScene) return "A talk is waiting for its scene.";
+  if (state.expedition) return "The squad is out.";
+  if (state.dilemmas?.open?.status === "presented") return "A decision is waiting.";
+  if (state.calendar.nightEvent) return "Someone is at the door.";
+  return bookingGuard(state, reg, { type: "calendar/consume_slot" })?.message ?? null;
+}
+function latestOversight(state) {
+  const recent2 = leashLog(state).filter((e) => e.day >= state.day - 1);
+  return recent2.reduce((best, e) => best === null || e.no > best.no ? e : best, null);
+}
+
+// src/ui/craft/careMenu.ts
+function careBlock(state, reg, unitId, careId) {
+  return careReason(state, reg, unitId, careId) ?? endSlotBlock(state, reg);
+}
+function renderCareMenu(state, reg, unitId, onCare) {
+  const unit5 = state.squad.find((u) => u.id === unitId);
+  if (unit5 === void 0 || unit5.kind !== "named" || !careOpen(state, reg, unitId)) return null;
+  const items = careKinds(reg).map((row4) => {
+    const why = careBlock(state, reg, unitId, row4.id);
+    return h(
+      "li",
+      { class: "alius-care-item" },
+      h("button", {
+        type: "button",
+        class: "alius-btn alius-option",
+        "data-care": row4.id,
+        ...why !== null ? { "aria-disabled": "true" } : {},
+        ...analyzeNative(`blockingActivities:${row4.id}`),
+        onclick: () => {
+          if (why === null) onCare(unitId, row4.id);
+        }
+      }, row4.label.toUpperCase()),
+      why !== null ? h("span", { class: "alius-dim alius-reason" }, why) : null
+    );
+  });
+  return h(
+    "details",
+    { class: "alius-care", "data-care-menu": unitId },
+    h("summary", { class: "alius-btn alius-option", ...analyzeAttrs("glossary:craft_care") }, "[ CARE ]"),
+    h("p", { class: "alius-dim" }, `A slot spent on ${unit5.displayName} without her asking. Whether she saw it is not told.`),
+    h("ul", { class: "alius-care-list" }, ...items)
+  );
+}
+
 // src/ui/practice/generation.ts
 var practiceSite = (kind) => `practice.${kind}`;
 function drawPracticeReroll(host, generation, kind, requestId) {
@@ -51334,7 +51663,8 @@ function renderDynamicSection(host, ctx2) {
   const map = bodyMapFor(state, reg, ctx2.knowledge, unitId, ctx2.readable === true);
   const mapHost = h("div", { class: "alius-dyn-bodymap" });
   if (map.zones.length > 0) renderBodyMap(mapHost, map);
-  host.append(h("h4", {}, "DYNAMIC"), ...lines3, ...practices !== null ? [practices] : [], ...map.zones.length > 0 ? [mapHost] : [], cards, exitHost);
+  const careMenu = ctx2.actions?.care !== void 0 ? renderCareMenu(state, reg, unitId, ctx2.actions.care) : null;
+  host.append(h("h4", {}, "DYNAMIC"), ...lines3, ...practices !== null ? [practices] : [], ...careMenu !== null ? [careMenu] : [], ...map.zones.length > 0 ? [mapHost] : [], cards, exitHost);
   host.classList.add("alius-dynamic-section");
   host.setAttribute("data-dynamic-section", unitId);
   return true;
@@ -53054,7 +53384,7 @@ function system3(raw) {
   const life = lifeFlags(input.life);
   const dyn = dynamicFlags(input.dynamic);
   const prac = practiceFlags(input.practice);
-  const eventTypes = EVENT_TYPES.filter((t) => (!LIFE_EVENT_TYPES.includes(t) || life.types.has(t)) && (!DYNAMIC_INTENT_TYPES.includes(t) || dyn.types.has(t)) && (!PRACTICE_INTENT_TYPES.includes(t) || prac.types.has(t)) && (hasRules || hasOverride && t === "compromise_reached" || (dyn.claims || dyn.exits) && t === "compromise_reached" || prac.compromise && t === "compromise_reached" || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
+  const eventTypes = EVENT_TYPES.filter((t) => (!LIFE_EVENT_TYPES.includes(t) || life.types.has(t)) && (!DYNAMIC_INTENT_TYPES.includes(t) || dyn.types.has(t)) && (!PRACTICE_INTENT_TYPES.includes(t) || prac.types.has(t)) && !CRAFT_INTENT_TYPES.includes(t) && (hasRules || hasOverride && t === "compromise_reached" || (dyn.claims || dyn.exits) && t === "compromise_reached" || prac.compromise && t === "compromise_reached" || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
   const extras = [
     ...excluded.length > 0 ? ['  "contentViolations": [{ "category": "<id from EXCLUDED>", "evidence": "<at most 15 words quoted from the exchange>" }]'] : [],
     ...asksTone ? ['  "sceneTone": "romantic" | "intimate" | null'] : [],
@@ -64153,122 +64483,6 @@ function renderStatusHeader(host, state) {
   host.append(...parts2.filter((p) => p !== null));
 }
 
-// src/ui/hub/model.ts
-var TONE_GLYPH = { danger: "!", bond: "\u2665", trust: "+", affinity: "*", warn: "~", neutral: "\xB7" };
-var TONE_LABEL = { danger: "danger", bond: "bond", trust: "trust", affinity: "affinity", warn: "warning", neutral: "steady" };
-var isInjured3 = (u) => u.status === "injured" || (u.injuryDays ?? 0) > 0;
-function markerTone(state, reg, unit5) {
-  const rel = state.relations[unit5.id];
-  if (unit5.stress >= 80 || isInjured3(unit5) || rel?.loyaltyBand === "breaking") return "danger";
-  const st3 = rel ? reg.relationshipStates.get(rel.stateId) : void 0;
-  if (st3?.romance === true) return "bond";
-  if (st3?.group === "platonic") return "trust";
-  if (st3?.group === "negative" || unit5.stress >= 50) return "warn";
-  if (rel && affinityBand(rel.affinity) === "devoted") return "affinity";
-  return "neutral";
-}
-var dueIn = (m, day) => m.deadlineDay === void 0 ? null : m.deadlineDay - day;
-function currentObjective(state, reg) {
-  const list5 = objectiveList(state, reg);
-  const first2 = list5.find((o) => o.source !== "unit");
-  if (first2) return { text: first2.text, dueDays: first2.dueDays, source: first2.source };
-  const active = state.missions.active;
-  const pick12 = active.find((m) => m.spineBeat !== void 0) ?? [...active].filter((m) => m.deadlineDay !== void 0).sort((a, b) => a.deadlineDay - b.deadlineDay)[0] ?? active[0] ?? state.missions.offered.find((m) => m.spineBeat !== void 0);
-  if (pick12) return { text: pick12.title, dueDays: dueIn(pick12, state.day), source: "mission", missionId: pick12.id };
-  const unit5 = list5[0];
-  return unit5 ? { text: unit5.text, dueDays: unit5.dueDays, source: unit5.source } : null;
-}
-var TONIGHT_MAX = 6;
-var SLOT_RANK2 = { morning: 0, afternoon: 1, evening: 2, night: 3 };
-var KNOCK_KIND = "we_need_to_talk";
-var unreadFrom = (state, unitId) => (state.dms[unitId] ?? []).filter((m) => m.from !== "commander" && !m.read).length;
-function tonightItems(state, reg) {
-  const out = [];
-  const living2 = state.squad.filter(isLiving);
-  const nameOf29 = (id) => living2.find((u) => u.id === id)?.displayName ?? "";
-  for (const e of state.calendar.nightEventsQueue) {
-    if (e.kind !== KNOCK_KIND || e.expiresDay < state.day || !nameOf29(e.unitId)) continue;
-    out.push({ kind: "knock", text: `${nameOf29(e.unitId)} will knock tonight.`, unitId: e.unitId, tone: "warn", analyze: "glossary:tonight" });
-  }
-  if (state.calendar.nightEventsQueue.some((e) => e.kind === HANDLER_VISIT_KIND && e.expiresDay >= state.day)) {
-    out.push({ kind: "knock", text: "A visitor at the gate.", tone: "warn", analyze: "glossary:handler" });
-  }
-  for (const u of living2) {
-    const n = unreadFrom(state, u.id);
-    if (n > 0) out.push({ kind: "dm", text: `${u.displayName}: ${n} unread message${n === 1 ? "" : "s"}.`, unitId: u.id, tone: "neutral", analyze: "glossary:tonight" });
-  }
-  for (const n of state.notes?.list ?? []) {
-    if (n.where !== "door" || n.read === true || state.day - n.day > 1 || !nameOf29(n.unitId)) continue;
-    out.push({ kind: "note", text: `${nameOf29(n.unitId)} left a note under your door.`, unitId: n.unitId, tone: "neutral", analyze: "glossary:hand_note" });
-  }
-  for (const d of waitingDemands(state)) {
-    out.push({ kind: "demand", text: `${nameOf29(d.unitId)} is waiting for an answer.`, unitId: d.unitId, tone: "warn", analyze: "glossary:demand" });
-  }
-  if ((state.world.incomingUnits ?? 0) > 0) out.push({ kind: "intake", text: "A new unit is waiting for intake.", tone: "neutral", analyze: "glossary:tonight" });
-  for (const m of [...state.missions.active, ...state.missions.offered]) {
-    const due = dueIn(m, state.day);
-    if (due === null || due < 0 || due > 1) continue;
-    out.push({ kind: "deadline", text: `${m.title}: due ${due === 0 ? "today" : "tomorrow"}.`, tone: due === 0 ? "danger" : "warn", analyze: "glossary:mission_deadline" });
-  }
-  const shortage = state.calendar.shortageStreak ?? 0;
-  if (shortage > 0) out.push({ kind: "warning", text: `SHORTAGE ${shortage}d`, tone: "danger", analyze: "glossary:upkeep" });
-  const injured = (state.commander.injuredUntilDay ?? 0) - state.day;
-  if (injured > 0) out.push({ kind: "warning", text: `INJURED ${injured}d`, tone: "danger", analyze: "glossary:commander_injury" });
-  const booked = (state.personal?.bookings ?? []).filter((b) => b.status === "booked" && (b.day === state.day || b.day === state.day + 1) && nameOf29(b.unitId)).sort((a, b) => a.day - b.day || SLOT_RANK2[a.slot] - SLOT_RANK2[b.slot])[0];
-  if (booked) {
-    const day = booked.day === state.day ? "today" : "tomorrow";
-    const handed = booked.practiceId !== void 0 && (state.practices?.handovers ?? []).some((h2) => h2.id === booked.practiceId && h2.kind === "calendar");
-    out.push({
-      kind: "booking",
-      text: handed ? `${nameOf29(booked.unitId)}'s hand has filled ${day}.` : `${nameOf29(booked.unitId)} has booked ${day}'s ${booked.slot}.`,
-      unitId: booked.unitId,
-      tone: booked.day === state.day ? "warn" : "neutral",
-      analyze: "glossary:booking"
-    });
-  }
-  if (dynamicOn(state, reg)) {
-    const open3 = state.dynamic.open;
-    const waiting3 = /* @__PURE__ */ new Set();
-    const milestoneFor = new Set(open3.milestones.map((m) => m.unitId));
-    const claimFor = new Set(open3.claims.map((c) => c.unitId));
-    const returnFor = open3.returnOffer?.unitId;
-    for (const id of [...open3.milestones.map((m) => m.unitId), ...open3.claims.map((c) => c.unitId), ...open3.returnOffer ? [open3.returnOffer.unitId] : []]) if (nameOf29(id)) waiting3.add(id);
-    for (const id of waiting3) {
-      out.push({ kind: "dynamic", text: `${nameOf29(id)} has something to ask.`, unitId: id, tone: "warn", analyze: milestoneFor.has(id) ? "glossary:milestone" : claimFor.has(id) ? "glossary:claim" : returnFor === id ? "glossary:aftermath" : "glossary:frame" });
-    }
-    for (const u of living2) {
-      const aftermath = state.relations[u.id]?.dynamic?.aftermath;
-      const notice = aftermath === void 0 ? void 0 : aftermathRowOf(reg, aftermath.kind)?.stages[aftermath.stage]?.notice;
-      if (notice !== void 0) out.push({ kind: "dynamic", text: `${u.displayName}: ${notice}`, unitId: u.id, tone: "neutral", analyze: "glossary:aftermath" });
-    }
-    const threat = state.dynamic.oversight?.threat;
-    if (threat !== void 0 && nameOf29(threat.unitId) !== "") {
-      out.push({ kind: "dynamic", text: `Oversight will move ${nameOf29(threat.unitId)} unless the commander's Leash requests are released.`, unitId: threat.unitId, tone: "danger", analyze: "glossary:oversight_inquiry" });
-    }
-  }
-  const failed2 = fullOpenRecords(state).length;
-  const line3 = failed2 > 0 ? { kind: "generation", text: `${failed2} generation${failed2 === 1 ? "" : "s"} failed.`, tone: "warn", analyze: "glossary:generation_record" } : null;
-  return line3 ? [...cutTonight(out, TONIGHT_MAX - 1), line3] : cutTonight(out, TONIGHT_MAX);
-}
-function cutTonight(items, max) {
-  if (items.length <= max) return items;
-  const score = (i) => i.kind !== "dynamic" ? 1 : i.analyze === "glossary:oversight_inquiry" ? 3 : 2;
-  const keep2 = new Set(items.map((item, at2) => ({ item, at: at2 })).sort((a, b) => score(b.item) - score(a.item) || a.at - b.at).slice(0, max).map((x) => x.at));
-  return items.filter((_, at2) => keep2.has(at2));
-}
-function endSlotBlock(state, reg) {
-  if (state.scene) return "A conversation is open.";
-  if (state.calendar.pendingScene) return "A talk is waiting for its scene.";
-  if (state.expedition) return "The squad is out.";
-  if (state.dilemmas?.open?.status === "presented") return "A decision is waiting.";
-  if (state.calendar.nightEvent) return "Someone is at the door.";
-  return bookingGuard(state, reg, { type: "calendar/consume_slot" })?.message ?? null;
-}
-function latestOversight(state) {
-  const recent2 = leashLog(state).filter((e) => e.day >= state.day - 1);
-  return recent2.reduce((best, e) => best === null || e.no > best.no ? e : best, null);
-}
-
 // src/ui/hub/marker.ts
 function initialsOf(unit5) {
   if (unit5.kind === "grunt") return "GR";
@@ -64360,6 +64574,8 @@ function renderRoomPanel(room2, state, ctx2, here, opts) {
   const cards = opts.readOnly || lockedTabs(state, reg).has("ops") || view3?.cabin === "unit" ? [] : (room2.activityIds ?? []).map((id) => reg.activities.get(id)).filter((a) => a !== void 0).map((a) => activityCard(a, state, ctx2.ops));
   const noteCards = room2.commanderCell === true && (view3 === void 0 || view3.cabin === "commander") ? quartersNotes(state, reg, ctx2) : [];
   const title3 = view3?.title ?? String(room2.label);
+  const owner = view3?.cabin === "unit" ? cabinOwner(state, reg, view3.planRoomId) : null;
+  const careMenu = !opts.readOnly && owner !== null && ctx2.ops.onCare !== void 0 ? renderCareMenu(state, reg, owner, ctx2.ops.onCare) : null;
   return h(
     "section",
     { class: "alius-room-panel", "data-room": String(room2.id), ...view3 ? { "data-plan": view3.planRoomId } : {}, role: "region", "aria-label": `${title3} room` },
@@ -64372,6 +64588,7 @@ function renderRoomPanel(room2, state, ctx2, here, opts) {
     h("p", { class: "alius-dim" }, view3?.description ?? String(room2.description)),
     h("h3", {}, "HERE"),
     people.length > 0 ? h("ul", { class: "alius-room-people" }, ...rows) : h("p", { class: "alius-dim" }, "Nobody is here."),
+    ...careMenu !== null ? [careMenu] : [],
     ...noteCards.length > 0 ? [h("h3", {}, "NOTES"), ...noteCards] : [],
     ...cards.length > 0 ? [h("h3", {}, "ACTIVITIES"), ...cards] : []
   );
@@ -92481,7 +92698,12 @@ function createApp(st3, deps) {
               else shell.refresh();
             }
           }),
-          requestTransfer: (unitId) => void dynamic.requestTransfer(unitId)
+          requestTransfer: (unitId) => void dynamic.requestTransfer(unitId),
+          care: (unitId, careId) => {
+            act({ type: "care/unasked", payload: { unitId, careId } });
+            shell.refresh();
+          }
+          // P16b: something for her without her asking
         }
       },
       memory: {
@@ -92530,6 +92752,8 @@ function createApp(st3, deps) {
     onSleep: () => void act({ type: "calendar/sleep", payload: {} }),
     onTimeTogether: (unitId, pastimeId) => void api.life.timeTogether(unitId, pastimeId),
     // P14c: a quiet hour with her
+    onCare: (unitId, careId) => void act({ type: "care/unasked", payload: { unitId, careId } }),
+    // P16b: something for her without her asking
     onCountermand: (answer) => void power.answerCountermand(answer),
     // P9b: the squad leader's countermand
     onCancelBooking: (id) => void personal.cancelBooking(id),

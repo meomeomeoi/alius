@@ -880,6 +880,9 @@
       "any"
     ],
     "judged": true,
+    "care": {
+      "notice": "high"
+    },
     "label": "Polishing her boots",
     "description": "AUTHOR TO WRITE: At her feet, boots off (on her feet it is boot_worship).",
     "promptHint": "polishing her boots"
@@ -892,6 +895,9 @@
       "any"
     ],
     "judged": true,
+    "care": {
+      "notice": "high"
+    },
     "label": "Tidying her quarters",
     "description": "AUTHOR TO WRITE: While she watches or pointedly does not (ignoring); an inspection in reverse.",
     "promptHint": "tidying her quarters"
@@ -901,6 +907,9 @@
     "scope": "dynamic",
     "actor": "commander",
     "judged": true,
+    "care": {
+      "notice": "low"
+    },
     "label": "Doing her laundry",
     "description": "AUTHOR TO WRITE: Her things, her scent (worship when enabled).",
     "promptHint": "doing her laundry"
@@ -978,6 +987,9 @@
       "focused"
     ],
     "judged": true,
+    "care": {
+      "notice": "low"
+    },
     "label": "Preparing her gear",
     "description": "AUTHOR TO WRITE: Packing her kit for a mission; a mistake shows in combat.",
     "promptHint": "preparing her gear"
@@ -990,6 +1002,9 @@
       "any"
     ],
     "judged": true,
+    "care": {
+      "notice": "high"
+    },
     "label": "Cleaning her weapon",
     "description": "AUTHOR TO WRITE: Weapons are personal in the lore: being trusted with it is a **privilege**, not a duty.",
     "promptHint": "cleaning her weapon"

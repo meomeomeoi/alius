@@ -7,7 +7,7 @@ import type { PracticeOffer } from '../practice/intents';
 import { VERDICTS, type Verdict } from '../practice/state';
 import { VALUE_AXES, type Reading, type Severity, type ValueAxis } from '../state/types';
 import { TUNING } from '../tuning';
-import { DYNAMIC_INTENT_TYPES, EVENT_TYPES, FIRST_KINDS, LIFE_EVENT_TYPES, PRACTICE_INTENT_TYPES, PROPOSAL_KINDS, SEVERITIES, type EventType, type ProposalKind } from './vocab';
+import { CRAFT_INTENT_TYPES, DYNAMIC_INTENT_TYPES, EVENT_TYPES, FIRST_KINDS, LIFE_EVENT_TYPES, PRACTICE_INTENT_TYPES, PROPOSAL_KINDS, SEVERITIES, type EventType, type ProposalKind } from './vocab';
 
 export { EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES };
 export type { EventType, ProposalKind };
@@ -511,6 +511,7 @@ export function validateIntents(
       if (dyn === null || seenLife.has(dyn.key)) continue;
       seenLife.add(dyn.key);
     }
+    if (CRAFT_INTENT_TYPES.includes(type)) continue; // P16b: not offered yet (Task 16 offers each only with its subject)
     if (PRACTICE_INTENT_TYPES.includes(type)) {
       // the practices: the type and the ids it names must be among what was offered, for a woman who is here; the sides are the type's own
       const practice = practiceFields(type, e, intent, ctx.practice);

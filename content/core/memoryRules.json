@@ -1461,5 +1461,18 @@
       "craft",
       "record"
     ]
+  },
+  {
+    "id": "craft_care_noticed",
+    "event": "care_noticed",
+    "text": "AUTHOR TO WRITE: {name} saw what the commander did for her without being asked: {what}.",
+    "importance": 2,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "craft",
+      "care"
+    ]
   }
 ]

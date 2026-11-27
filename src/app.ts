@@ -2556,6 +2556,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
           answerReturn: (answer) => void dynamic.answerReturn(answer),
           exit: (unitId, route, opts) => void dynamic.exit(unitId, route, opts).then((ok) => { if (ok) { if (route === 'negotiated') shell.open(); else shell.refresh(); } }),
           requestTransfer: (unitId) => void dynamic.requestTransfer(unitId),
+          care: (unitId, careId) => { act({ type: 'care/unasked', payload: { unitId, careId } }); shell.refresh(); }, // P16b: something for her without her asking
         },
       },
       memory: {
@@ -2602,6 +2603,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     onFollowRumor: (rumorId) => void act({ type: 'rumor/follow', payload: { rumorId } }),
     onSleep: () => void act({ type: 'calendar/sleep', payload: {} }),
     onTimeTogether: (unitId, pastimeId) => void api.life.timeTogether(unitId, pastimeId), // P14c: a quiet hour with her
+    onCare: (unitId, careId) => void act({ type: 'care/unasked', payload: { unitId, careId } }), // P16b: something for her without her asking
     onCountermand: (answer) => void power.answerCountermand(answer), // P9b: the squad leader's countermand
     onCancelBooking: (id) => void personal.cancelBooking(id), // P9c: the schedule
     onKeepBooking: (id) => void personal.resolveConflict({ bookingId: id }),
