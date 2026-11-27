@@ -17,6 +17,7 @@ Origin: the P16b planning session of 2026-11-27 (author, ruling 1): these games 
    - **The commander's state afterwards as she sees it** (breathing hard, the jaw trembling): the body only, never a feeling (P15 ruling E), no pronoun.
 6. **Copy, do not retell (author).** The executor copies a prototype's code into the extension almost word for word (copy and paste, then change only the wiring); a plan or a brief names the prototype file, the functions and tables to copy and the lines whose wiring changes, and never restates a function's body in its own words. A retelling breeds mistakes and liberties. (Also in `docs/prototypes/README.md` and CLAUDE.md.)
 7. **Foot care is approved at this level** (2026-11-27: the massage and the cream on her bare feet, rounds 1–2; its normative section is in `docs/prototypes/README.md`); its further steps (footwear, drying, nails) wait for a later round.
+8. **A slot from another woman (author).** SYS › STAGE gains "take this slot from another woman" on a slot of her page: the other woman's picture and its sidecar (fit and zones) are copied into her folder (`<slotKey>.<ext>` and `<slotKey>.fit.json`, through `src/st/` alone, as SAVE writes them) and stay editable there; nothing of the other woman's folder changes. It comes with P16c's stage setup (ruling 1). Today the only way is copying the two files by hand between the `alius/` folders (hand-placed files are read, P10e §16.1).
 
 ## What moved here
 
