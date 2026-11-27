@@ -44577,10 +44577,26 @@ function lessonWay(state, holderId, key) {
   const chance = style === "cold" ? L6.cold : L6.other;
   return craftRoll(state, holderId, `lesson:${key}`) < chance ? "plain" : null;
 }
-function pay2(draft, reg, holderId, key, via) {
-  const xp = Math.round(TUNING.craft.xp.lesson * TUNING.craft.xp.phase * 100) / 100;
+function lessonCap(draft, key, run) {
+  if (key === "posture") return TUNING.craft.xp.posture;
+  const physics = draft.scene?.physics;
+  const segments = physics !== void 0 && physics.id === run ? Math.max(1, physics.segment.n) : 1;
+  return TUNING.craft.xp.phase * segments;
+}
+var runOf2 = (draft, e, slip5) => typeof e.runId === "string" ? e.runId : `${draft.scene?.id ?? ""}:${slip5.type}`;
+function pay2(draft, reg, holderId, key, via, run) {
+  const craft = draft.relations[holderId].craft ??= {};
+  const scene = draft.scene?.id ?? "";
+  const ledger = craft.lessonPaid ??= [];
+  let row4 = ledger.find((x) => x.run === run && x.scene === scene);
+  if (row4 === void 0) ledger.push(row4 = { run, scene, xp: 0 });
+  const room2 = Math.round((lessonCap(draft, key, run) - row4.xp) * 100) / 100;
+  const xp = Math.min(Math.round(TUNING.craft.xp.lesson * TUNING.craft.xp.phase * 100) / 100, room2);
+  if (!(xp > 0)) return [];
   const paid = addCraftXp(draft, reg, key, xp, "lesson");
-  return paid.length === 0 ? [] : [{ type: "lesson", unitId: holderId, key, xp, via }, ...paid];
+  if (paid.length === 0) return [];
+  row4.xp = Math.round((row4.xp + xp) * 100) / 100;
+  return [{ type: "lesson", unitId: holderId, key, xp, via }, ...paid];
 }
 function sweep(draft) {
   const scene = draft.scene?.id;
@@ -44592,6 +44608,10 @@ function sweep(draft) {
       if (c.slips.length === 0) delete c.slips;
     }
     if (c.lesson !== void 0 && c.lesson.scene !== scene) delete c.lesson;
+    if (c.lessonPaid !== void 0) {
+      c.lessonPaid = c.lessonPaid.filter((x) => x.scene === scene);
+      if (c.lessonPaid.length === 0) delete c.lessonPaid;
+    }
   }
 }
 function noteSlips(draft, ctx2, events) {
@@ -44612,14 +44632,14 @@ function noteSlips(draft, ctx2, events) {
       if (row4 !== void 0 && way !== null) {
         const pick13 = row4.words[Math.floor(craftRoll(draft, slip5.holderId, `lesson:words:${scene.id}:${scene.exchanges}:${n}`) * row4.words.length)];
         craft.lesson = { point: row4.point, words: pick13, ...way === "joke" ? { joke: true } : {}, scene: scene.id, exchange: scene.exchanges };
-        out.push(...pay2(draft, reg, slip5.holderId, key, "named"));
-      } else (craft.slips ??= []).push({ key, scene: scene.id, day: draft.day });
+        out.push(...pay2(draft, reg, slip5.holderId, key, "named", runOf2(draft, e, slip5)));
+      } else (craft.slips ??= []).push({ key, scene: scene.id, day: draft.day, run: runOf2(draft, e, slip5) });
     } else if (e.type === "punishment_issued" && typeof e.unitId === "string") {
       const waiting3 = draft.relations[e.unitId]?.craft?.slips;
       if (waiting3 === void 0 || !craftLive(draft, reg, e.unitId)) continue;
       const mine = waiting3.filter((x) => x.scene === scene.id && x.day === draft.day);
       delete draft.relations[e.unitId].craft.slips;
-      for (const w of mine) out.push(...pay2(draft, reg, e.unitId, w.key, "punished"));
+      for (const w of mine) out.push(...pay2(draft, reg, e.unitId, w.key, "punished", w.run ?? `${w.scene}:${w.key}`));
     }
   }
   return out;
@@ -44944,7 +44964,8 @@ function tilt(state, reg, holderId) {
 }
 function extend(draft, _ctx, holderId) {
   const sentence3 = sentenceOf(draft, holderId);
-  if (sentence3 === void 0 || !isVindictive(draft, _ctx.registries, holderId)) return [];
+  if (sentence3 === void 0 || !isVindictive(draft, _ctx.registries, holderId) || sentence3.extendedDay === draft.day) return [];
+  sentence3.extendedDay = draft.day;
   sentence3.until += T5.extend;
   sentence3.extended += T5.extend;
   return [{ type: "sentence_extended", unitId: holderId, holderId, days: T5.extend }];

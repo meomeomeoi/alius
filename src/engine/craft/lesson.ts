@@ -73,11 +73,34 @@ export function lessonDue(state: CampaignState, reg: Registries, holderId: strin
   return craftLive(state, reg, holderId) && lessonRow(reg, slip) !== undefined && lessonWay(state, holderId, key) !== null;
 }
 
-/** Pays one lesson: half the xp of a clean phase to what the slip teaches, once, and says so. */
-function pay(draft: CampaignState, reg: Registries, holderId: string, key: CraftKey, via: 'named' | 'punished'): EngineEvent[] {
-  const xp = Math.round(TUNING.craft.xp.lesson * TUNING.craft.xp.phase * 100) / 100;
+/**
+ * What the lessons of one run may pay in all: the clean xp of that run, so slips never pay more than a clean hold. A posture hold: `xp.posture`; a physics run: `xp.phase` for each
+ * segment it has played (at least one); a slip that came from no run is counted as one segment of the scene.
+ */
+export function lessonCap(draft: Pick<CampaignState, 'scene'>, key: CraftKey, run: string): number {
+  if (key === 'posture') return TUNING.craft.xp.posture;
+  const physics = draft.scene?.physics;
+  const segments = physics !== undefined && physics.id === run ? Math.max(1, physics.segment.n) : 1;
+  return TUNING.craft.xp.phase * segments;
+}
+
+/** The id a slip is counted under: the run's own, or the scene's and the kind of slip when the event names none. */
+const runOf = (draft: Pick<CampaignState, 'scene'>, e: EngineEvent, slip: Slip): string => (typeof e.runId === 'string' ? e.runId : `${draft.scene?.id ?? ''}:${slip.type}`);
+
+/** Pays one lesson: half the xp of a clean phase to what the slip teaches, once, and says so; never past the run's cap (`lessonCap`), so the rest of a long run's slips pay nothing. */
+function pay(draft: CampaignState, reg: Registries, holderId: string, key: CraftKey, via: 'named' | 'punished', run: string): EngineEvent[] {
+  const craft = ((draft.relations[holderId]!).craft ??= {});
+  const scene = draft.scene?.id ?? '';
+  const ledger = (craft.lessonPaid ??= []);
+  let row = ledger.find((x) => x.run === run && x.scene === scene);
+  if (row === undefined) ledger.push((row = { run, scene, xp: 0 }));
+  const room = Math.round((lessonCap(draft, key, run) - row.xp) * 100) / 100;
+  const xp = Math.min(Math.round(TUNING.craft.xp.lesson * TUNING.craft.xp.phase * 100) / 100, room);
+  if (!(xp > 0)) return [];
   const paid = addCraftXp(draft, reg, key, xp, 'lesson');
-  return paid.length === 0 ? [] : [{ type: 'lesson', unitId: holderId, key, xp, via }, ...paid];
+  if (paid.length === 0) return [];
+  row.xp = Math.round((row.xp + xp) * 100) / 100;
+  return [{ type: 'lesson', unitId: holderId, key, xp, via }, ...paid];
 }
 
 /** Drops the slips and the point of a scene that is over (or a chat that changed): they are only ever the open scene's. */
@@ -91,6 +114,10 @@ function sweep(draft: CampaignState): void {
       if (c.slips.length === 0) delete c.slips;
     }
     if (c.lesson !== undefined && c.lesson.scene !== scene) delete c.lesson;
+    if (c.lessonPaid !== undefined) {
+      c.lessonPaid = c.lessonPaid.filter((x) => x.scene === scene);
+      if (c.lessonPaid.length === 0) delete c.lessonPaid;
+    }
   }
 }
 
@@ -116,14 +143,14 @@ export function noteSlips(draft: CampaignState, ctx: Pick<EngineCtx, 'registries
       if (row !== undefined && way !== null) {
         const pick = row.words[Math.floor(craftRoll(draft, slip.holderId, `lesson:words:${scene.id}:${scene.exchanges}:${n}`) * row.words.length)]!;
         craft.lesson = { point: row.point, words: pick, ...(way === 'joke' ? { joke: true as const } : {}), scene: scene.id, exchange: scene.exchanges };
-        out.push(...pay(draft, reg, slip.holderId, key, 'named'));
-      } else (craft.slips ??= []).push({ key, scene: scene.id, day: draft.day });
+        out.push(...pay(draft, reg, slip.holderId, key, 'named', runOf(draft, e, slip)));
+      } else (craft.slips ??= []).push({ key, scene: scene.id, day: draft.day, run: runOf(draft, e, slip) });
     } else if (e.type === 'punishment_issued' && typeof e.unitId === 'string') {
       const waiting = draft.relations[e.unitId]?.craft?.slips;
       if (waiting === undefined || !craftLive(draft, reg, e.unitId)) continue;
       const mine = waiting.filter((x) => x.scene === scene.id && x.day === draft.day);
       delete draft.relations[e.unitId]!.craft!.slips;
-      for (const w of mine) out.push(...pay(draft, reg, e.unitId, w.key as CraftKey, 'punished'));
+      for (const w of mine) out.push(...pay(draft, reg, e.unitId, w.key as CraftKey, 'punished', w.run ?? `${w.scene}:${w.key}`));
     }
   }
   return out;

@@ -80,7 +80,7 @@ describe('a slip teaches only when she follows it up', () => {
     const s = styleOf(holdScene(reg), 'cruel');
     expect(noteSlips(s, ctx(), [slip()])).toEqual([]);
     expect(xpOf(s)).toBe(0);
-    expect(s.relations[ANN].craft!.slips).toEqual([{ key: 'endurance:weight', scene: s.scene!.id, day: s.day }]);
+    expect(s.relations[ANN].craft!.slips).toEqual([{ key: 'endurance:weight', scene: s.scene!.id, day: s.day, run: 'p1' }]);
     expect(noteSlips(s, ctx(), [{ type: 'scene_exchange' }])).toEqual([]);
     expect(xpOf(s)).toBe(0);
   });
@@ -144,6 +144,29 @@ describe('a slip teaches only when she follows it up', () => {
     expect(next.relations[ANN].craft!.slips).toBeUndefined();
     const ev = noteSlips(s, ctx(), [{ type: 'punishment_issued', unitId: ANN, holderId: ANN }]);
     expect(ev.filter((e) => e.type === 'lesson')).toHaveLength(1);
+  });
+
+  it('the lessons of one posture hold never pay more than its clean hold (xp.posture); another hold starts again', () => {
+    const s = styleOf(holdScene(reg), 'drill');
+    const pslip = (runId: string) => ({ type: 'posture_slip', unitId: ANN, holderId: ANN, runId, presetId: 'kneel_upright', point: 'arms' });
+    let paid = 0;
+    for (let i = 0; i < 9; i++) paid += noteSlips(s, ctx(), [pslip('pr1')]).filter((e) => e.type === 'lesson').reduce((a, e) => a + Number(e.xp), 0);
+    expect(paid).toBe(TUNING.craft.xp.posture);
+    expect(s.commander.craft!.posture.xp).toBe(TUNING.craft.xp.posture);
+    expect(noteSlips(s, ctx(), [pslip('pr1')]).filter((e) => e.type === 'lesson')).toEqual([]);
+    expect(noteSlips(s, ctx(), [pslip('pr2')]).filter((e) => e.type === 'lesson')).toHaveLength(1); // a new hold has its own
+  });
+
+  it('the lessons of one physics run never pay more than a clean segment of it; waiting slips paid by a punishment obey the same cap', () => {
+    const s = styleOf(holdScene(reg), 'drill');
+    let paid = 0;
+    for (let i = 0; i < 6; i++) paid += noteSlips(s, ctx(), [slip({ runId: 'p1', kind: 'reflex' })]).filter((e) => e.type === 'lesson').reduce((a, e) => a + Number(e.xp), 0);
+    expect(paid).toBe(TUNING.craft.xp.phase); // one segment's clean xp: the run had not played another
+    const c = styleOf(holdScene(reg), 'cruel');
+    noteSlips(c, ctx(), [slip(), slip({ kind: 'collapse' }), slip({ kind: 'skip' }), slip({ kind: 'slip' })]);
+    const ev = noteSlips(c, ctx(), [{ type: 'punishment_issued', unitId: ANN, holderId: ANN }]).filter((e) => e.type === 'lesson');
+    expect(ev.reduce((a, e) => a + Number(e.xp), 0)).toBe(TUNING.craft.xp.phase);
+    expect(xpOf(c)).toBe(TUNING.craft.xp.phase);
   });
 
   it('writes nothing for a holder who is not craft-live, who is not in the scene, or without a scene', () => {

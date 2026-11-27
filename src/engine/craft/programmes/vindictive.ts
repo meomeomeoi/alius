@@ -60,10 +60,11 @@ function tilt(state: CampaignState, reg: Registries, holderId: string): readonly
   return types.length === 0 ? null : types;
 }
 
-/** A slip of the commander toward her adds days to the term (a reader of P16's offences). */
+/** A slip of the commander toward her adds days to the term (a reader of P16's offences): at most once a day, however many slips that day. */
 function extend(draft: CampaignState, _ctx: Pick<EngineCtx, 'registries'>, holderId: string): EngineEvent[] {
   const sentence = sentenceOf(draft, holderId);
-  if (sentence === undefined || !isVindictive(draft, _ctx.registries, holderId)) return [];
+  if (sentence === undefined || !isVindictive(draft, _ctx.registries, holderId) || sentence.extendedDay === draft.day) return []; // once a day, however many slips
+  sentence.extendedDay = draft.day;
   sentence.until += T.extend;
   sentence.extended += T.extend;
   return [{ type: 'sentence_extended', unitId: holderId, holderId, days: T.extend }];

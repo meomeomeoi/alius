@@ -73,7 +73,7 @@ describe('the sentence', () => {
     expect(s.relations[ANN].craft!.sentence!.until - s.day).toBe(TUNING.craft.sentence.defaultDays);
   });
 
-  it('a slip adds three days, once for each offence', () => {
+  it('a slip adds three days, at most once a day however many slips', () => {
     const s = sentenced();
     step(s);
     const until = s.relations[ANN].craft!.sentence!.until;
@@ -81,7 +81,11 @@ describe('the sentence', () => {
     expect(events.filter((e) => e.type === 'sentence_extended')).toEqual([{ type: 'sentence_extended', unitId: ANN, holderId: ANN, days: 3 }]);
     expect(s.relations[ANN].craft!.sentence).toMatchObject({ until: until + 3, extended: 3 });
     expect(offend(s, 'a')).toEqual([]); // the same offence is one
-    offend(s, 'b');
+    expect(offend(s, 'b').some((e) => e.type === 'sentence_extended')).toBe(false); // a second slip the same day adds nothing
+    expect(offend(s, 'c').some((e) => e.type === 'sentence_extended')).toBe(false);
+    expect(s.relations[ANN].craft!.sentence).toMatchObject({ until: until + 3, extended: 3 });
+    s.day += 1; // the next day a slip adds again
+    expect(offend(s, 'd').filter((e) => e.type === 'sentence_extended')).toHaveLength(1);
     expect(s.relations[ANN].craft!.sentence).toMatchObject({ until: until + 6, extended: 6 });
   });
 

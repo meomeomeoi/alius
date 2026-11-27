@@ -59,7 +59,9 @@ export interface RelationCraft {
   /** Her settling-in count (hidden): clean holds in a row, by kind. */
   streak?: Record<string, number>;
   /** The slips of the scene still waiting for her discipline (a lesson is earned by a slip her punishment or her named point followed): the key they teach, the scene and the day. */
-  slips?: Array<{ key: string; scene: string; day: number }>;
+  slips?: Array<{ key: string; scene: string; day: number; /** The run it came from (a hold's id, or the scene's when it came from none): its lessons are capped together. */ run?: string }>;
+  /** What the lessons of the open scene's runs have paid so far, by run: a run's lessons never pay more than its clean hold (`lessonCap`). Dropped with the scene. */
+  lessonPaid?: Array<{ run: string; scene: string; xp: number }>;
   /** The point she names after a slip (hidden until she says it): the engine's word for what failed and her way of saying it, voiced once in the reply of this exchange. */
   lesson?: { point: string; words: string; joke?: true; scene: string; exchange: number };
   /** A partner drill waiting for its scene (spec section 5, ruling 3): the key, the multiplier of the partner (x1.5 a holder, x1.2 another close woman) and the day. Only the open scene's: dropped when it ends or is cancelled. */
@@ -73,7 +75,7 @@ export interface RelationCraft {
   praise?: Array<{ day: number; text: string; words: string[] }>;
   praiseSlipDay?: number;
   /** The sentence of a `vindictive` holder (Task 21): the crime it echoes, the day it began and ends, how many days a slip added, the last week whose echo has acted, and whether it was served. */
-  sentence?: { crimeId: string; start: number; until: number; extended: number; /** The last week of the term whose echo has acted (0 is the first week). */ week?: number; /** The day it was served; a served sentence is never set again. */ servedDay?: number; /** The echo has acted: the model is told what it is only after that. */ landed?: true };
+  sentence?: { crimeId: string; start: number; until: number; extended: number; /** The last week of the term whose echo has acted (0 is the first week). */ week?: number; /** The day it was served; a served sentence is never set again. */ servedDay?: number; /** The echo has acted: the model is told what it is only after that. */ landed?: true; /** The day a slip last added days: at most one extension a day, however many slips. */ extendedDay?: number };
   /** The sparring hold she may put the commander in (Task 18): the day of the bout she won, the soldiers who were at the yard to see it, and the run once it began. Gone when the hold ends, the scene ends or the day turns. */
   headlock?: { day: number; witnesses: string[]; runId?: string };
   /** The service the commander just anticipated for her (`craft/anticipate`): the scene, the exchange it was staged in and the activity, until her next reply has passed. */
