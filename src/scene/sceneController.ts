@@ -2,6 +2,7 @@ import type { Registries } from '../content/types';
 import { warnedInput } from '../engine/special/paranoia/premonitions';
 import { stagingInput } from '../blocking/input';
 import { dynamicIntentInput } from '../engine/dynamic/intents';
+import { craftIntentInput, SAID_MAX } from '../engine/craft/intents';
 import { practiceIntentInput } from '../engine/practice/intents';
 import { lifeIntentInput } from '../engine/life/intents';
 import type { Action, EngineEvent } from '../engine/dispatch';
@@ -127,6 +128,11 @@ const EXTRACT_MAX_MESSAGES = 8;
 const EXTRACT_MAX_CHUNKS = 6;
 
 export const DEBUG_NOT_ROLLED_BACK = 'Not rolled back: something changed since.';
+
+/** P16b: the commander's own words in a run of the chat, one line of at most `SAID_MAX` characters: what a praise is read from. Engine payload only; never sent to a model. */
+function saidOf(messages: ReadonlyArray<{ isUser: boolean; text: string }>): string {
+  return messages.filter((m) => m.isUser).map((m) => m.text).join(' ').replace(/\s+/g, ' ').trim().slice(0, SAID_MAX).trim();
+}
 
 export function createSceneController(deps: SceneDeps): SceneController {
   const { st, app } = deps;
@@ -301,6 +307,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
       ...conspireInput(s0, deps.registries(), scene.participants), // P13: who the commander may enlist against her, while she is not present
       ...lifeIntentInput(s0, deps.registries(), scene.participants, scene, 'scene'), // P14c: what she may tell, her hobbies, her views (nothing while life is off)
       ...dynamicIntentInput(s0, deps.registries(), scene.participants, 'scene'), // P15: a probe to answer, an open milestone, claim or offer (nothing while off or with no subject)
+      ...craftIntentInput(s0, deps.registries(), scene.participants, 'scene'), // P16b: a care she may have seen, a signal of her foot answered, a praise (nothing without a subject)
       ...practiceIntentInput(s0, deps.registries(), scene.participants, 'scene'), // P16: an open task, a ceremony, a denial, a service, a holder in the room (nothing while nobody holds)
       ...stagingInput(s0, deps.registries(), scene.participants), // P15a: the closed vocabulary of the blocking and the ripe sources (nothing while it is not live)
     };
@@ -380,6 +387,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
         type: 'intents/apply',
         payload: {
           channel: 'scene', intents: result.intents, readIndex: nextPointer, messageRef: `chat:${lastReply.index}`,
+          ...(saidOf(messages) !== '' ? { said: saidOf(messages) } : {}), // P16b: the commander's own words of these lines, for the praise alone (never sent to a model)
           ...(flaggedHere.length > 0 ? { violations: { index: lastReply.index, categories: flaggedHere } } : {}),
           ...(result.sceneTone !== null ? { tone: result.sceneTone } : {}),
           ...(result.staging ? { staging: { blocking: result.staging.blocking, ripe: result.staging.ripe, answer: result.staging.answer, labels: result.staging.labels } } : {}), // P15a

@@ -2709,6 +2709,8 @@ export const ContactSchema = BaseEntrySchema.extend({
   legs: z.enum(HER_LEGS).optional(),
   /** P16b: it needs a posture of the commander's whose preset `supports` it (the hands held out for her foot): offered and allowed only while one is held. */
   supported: z.literal(true).optional(),
+  /** P16b (Task 16): her foot is what touches the commander in this contact (a foot signal may be answered while it is live). */
+  foot: z.literal(true).optional(),
   label: blockLabel, description: str, promptHint: blockHint, effects: effectList,
 }).strict();
 

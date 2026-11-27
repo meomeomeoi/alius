@@ -68,6 +68,19 @@ describe('private scene', () => {
     expect(h.st.getChatMessages().filter((m) => m.isUser).map((m) => m.text)).toEqual(['one']);
   });
 
+  it('the reading is applied with the commander\'s own words of those lines as `said` (P16b), one line of at most 400 characters', async () => {
+    const h = harness(reg);
+    await open(h);
+    h.st.groupReplies = [[reply('Ann', 'Thanks, commander.')]];
+    h.st.mainReplies = [intentJson()];
+    await h.controller.send(`  You   carried\nthe whole patrol. ${'y'.repeat(500)}`);
+    const apply = h.dispatched.find((a) => a.type === 'intents/apply')!;
+    const said = (apply.payload as { said?: string }).said!;
+    expect(said.startsWith('You carried the whole patrol. yyy')).toBe(true);
+    expect(said.length).toBeLessThanOrEqual(400);
+    expect(said).not.toMatch(/[\r\n]|\s{2}/);
+  });
+
   it('a failed send changes nothing and the scene continues', async () => {
     const h = harness(reg);
     await open(h);

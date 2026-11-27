@@ -1797,5 +1797,17 @@
     "cause": "She saw what the commander did for her unasked",
     "journal": "she saw what the commander did for her without being asked",
     "rows": { "minor": {}, "moderate": {}, "major": {}, "extreme": {} }
+  },
+  {
+    "id": "praise_given",
+    "cause": "The commander praised her in the commander's own words",
+    "journal": "the commander praised her in the commander's own words",
+    "rows": { "minor": {}, "moderate": {}, "major": {}, "extreme": {} }
+  },
+  {
+    "id": "foot_signal_answered",
+    "cause": "The commander answered a signal of her foot",
+    "journal": "the commander answered a signal of her foot",
+    "rows": { "minor": {}, "moderate": {}, "major": {}, "extreme": {} }
   }
 ]

@@ -19,7 +19,7 @@ const events = (e: unknown[]) => run({ events: e }).events;
 
 describe('vocabulary', () => {
   it('has 59 event types and 10 proposal kinds', () => {
-    expect(EVENT_TYPES).toHaveLength(62); // P16b: + care_noticed; P15b: + quirk_voiced, hypothetical_answered; P16: + task_kept, task_broken, service_rated, denial_broken, practice_accepted, threat_voiced, ceremony_step; P15: + probe_answered, probe_observed, milestone_accepted, milestone_refused, compromat_mentioned, protocol_slip, offer_answered; P14c: + news_told, hobby_praised, opinion_voiced, opinion_challenged, opinion_agreed, first_moment, joke_returned; P9d: + rule_kept, rule_broken, compromise_reached; P12: + knowledge_leak, accused; P13: + expectation_kept, expectation_broken; P13: + conspired
+    expect(EVENT_TYPES).toHaveLength(64); // P16b: + care_noticed, praise_given, foot_signal_answered; P15b: + quirk_voiced, hypothetical_answered; P16: + task_kept, task_broken, service_rated, denial_broken, practice_accepted, threat_voiced, ceremony_step; P15: + probe_answered, probe_observed, milestone_accepted, milestone_refused, compromat_mentioned, protocol_slip, offer_answered; P14c: + news_told, hobby_praised, opinion_voiced, opinion_challenged, opinion_agreed, first_moment, joke_returned; P9d: + rule_kept, rule_broken, compromise_reached; P12: + knowledge_leak, accused; P13: + expectation_kept, expectation_broken; P13: + conspired
     expect(PROPOSAL_KINDS).toHaveLength(10);
   });
 });

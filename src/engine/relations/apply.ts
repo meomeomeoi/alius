@@ -13,6 +13,7 @@ import { yieldPartial } from '../dynamic/domains';
 import { compromiseExit } from '../dynamic/exit';
 import { applyDynamicIntent, DYNAMIC_ROW_IS_CONDITIONAL, dynamicIntentInput } from '../dynamic/intents';
 import { applyLifeIntent, lifeIntentInput, ROW_IS_CONDITIONAL } from '../life/intents';
+import { applyCraftIntent, CRAFT_ROW_IS_CONDITIONAL, craftIntentInput } from '../craft/intents';
 import { applyPracticeIntent, PRACTICE_ROW_IS_CONDITIONAL, practiceIntentInput } from '../practice/intents';
 import { validateIntents } from './intents';
 import { LIFE_EVENT_TYPES, PRACTICE_INTENT_TYPES } from './vocab';
@@ -36,6 +37,8 @@ export interface ApplyParams {
   sceneId?: string;
   /** P9: where the reply that was read sits (scene: `chat:<index>`, DM: `dm:<message id>`), kept by what a reading logs. */
   messageRef?: string;
+  /** P16b: the commander's own words of the exchange (the scene's or the thread's), at most 400 characters. Read only by `praise_given`; never sent to a model, never in an event. */
+  said?: string;
 }
 
 /** P13 / P15: the id of the open override (the warden's or a holder's) while whoever made it is in the scene: the one a compromise may settle. */
@@ -71,6 +74,7 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
     ...conspireInput(draft, reg, p.participants), // P13: the units the commander may enlist against her
     ...lifeIntentInput(draft, reg, p.participants, p.channel === 'scene' ? draft.scene ?? null : null, p.channel), // P14c: what she may tell, her hobbies, her views
     ...dynamicIntentInput(draft, reg, p.participants, p.channel), // P15: a probe to answer, an open milestone, claim or offer (nothing while off)
+    ...craftIntentInput(draft, reg, p.participants, p.channel), // P16b: a care she may have seen, a foot signal answered, a praise (nothing without a subject)
     ...practiceIntentInput(draft, reg, p.participants, p.channel) }); // P16: an open task, a punishment or ceremony, a denial, a service, a holder in the room (nothing while nobody holds)
   const events: EngineEvent[] = [];
   const touched = new Set<string>();
@@ -93,12 +97,13 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
     for (const id of believed) {
       events.push(...(DISCIPLINE_EVENTS.includes(e.type)
         ? applyDisciplineEvent(draft, ctx, id, e, { channel: p.channel, ...(p.sceneId ? { sceneId: p.sceneId } : {}), ...(p.messageRef ? { messageRef: p.messageRef } : {}) })
-        : ROW_IS_CONDITIONAL.includes(e.type) || DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type) || PRACTICE_ROW_IS_CONDITIONAL.includes(e.type) ? [] : applyEventToUnit(draft, reg, id, e))); // P14c: an agreement's row is applied by applyLifeIntent, on a strong opinion only; P15: the dynamic's rows are zero, its effect is applyDynamicIntent's; P16: the practices' rows are applied by their handlers (a type with none yet does nothing)
+        : ROW_IS_CONDITIONAL.includes(e.type) || DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type) || PRACTICE_ROW_IS_CONDITIONAL.includes(e.type) || CRAFT_ROW_IS_CONDITIONAL.includes(e.type) ? [] : applyEventToUnit(draft, reg, id, e))); // P16b: the craft's rows are zero, its effect is applyCraftIntent's; P14c: an agreement's row is applied by applyLifeIntent, on a strong opinion only; P15: the dynamic's rows are zero, its effect is applyDynamicIntent's; P16: the practices' rows are applied by their handlers (a type with none yet does nothing)
       // P9d: what a kept or broken rule does on top of the event's own row, and a compromise's text
       if ((e.type === 'expectation_kept' || e.type === 'expectation_broken') && e.expectationId !== undefined) events.push(...expectationEvent(draft, ctx, e.expectationId, e.type === 'expectation_kept', e.severity)); // P13
       if (e.type === 'conspired') events.push(...tryAlly(draft, ctx, id)); // P13: the ally check
       if (LIFE_EVENT_TYPES.includes(e.type)) events.push(...applyLifeIntent(draft, ctx, id, e)); // P14c: her news told, a hobby praised, ...
       if (PRACTICE_ROW_IS_CONDITIONAL.includes(e.type)) events.push(...applyPracticeIntent(draft, ctx, id, e, events)); // P16: a task kept or broken, a threat voiced, ...
+      if (CRAFT_ROW_IS_CONDITIONAL.includes(e.type)) events.push(...applyCraftIntent(draft, ctx, id, e, { ...(p.said !== undefined ? { said: p.said } : {}), ...(p.sceneId !== undefined ? { sceneId: p.sceneId } : {}) })); // P16b: a care she shows, a signal answered, a praise (the commander's own words are `said`)
       if (e.type === 'protocol_slip') events.push(...applyPracticeIntent(draft, ctx, id, e, events)); // P16: a slip of her habit is also her offence (the dynamic's own effect follows)
       if (DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type)) events.push(...applyDynamicIntent(draft, ctx, id, e, events)); // P15: a probe answered or observed, ...
       if (e.type === 'compromise_reached' && e.overrideId !== undefined) events.push(...resolveCompromise(draft, ctx, e.overrideId, e.text)); // P13: a compromise with the warden

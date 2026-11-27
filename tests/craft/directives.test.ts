@@ -2,7 +2,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Registries } from '../../src/content/types';
 import '../../src/engine/actions/craft';
 import { createCraft } from '../../src/craft/controller';
-import { CARE_PREFIX, CRAFT_PREFIX, LESSON_PREFIX, NAMED_PREFIX, POSTURE_PREFIX, RECORD_PREFIX, clearCraftDirectives, craftDirectives, refreshCraftDirectives } from '../../src/craft/directives';
+import { CARE_PREFIX, CRAFT_PREFIX, FEET_PREFIX, LESSON_PREFIX, NAMED_PREFIX, POSTURE_PREFIX, RECORD_PREFIX, clearCraftDirectives, craftDirectives, refreshCraftDirectives } from '../../src/craft/directives';
 import { COMMANDER, resetBlockingHooks, setBlocking } from '../../src/engine/blocking';
 import { noteSlips } from '../../src/engine/craft/lesson';
 import { craftRoll } from '../../src/engine/craft/state';
@@ -13,6 +13,9 @@ import { TUNING } from '../../src/engine/tuning';
 import { ContextBuilder } from '../../src/llm/context';
 import { loadCore } from '../helpers/world';
 import { ANN, BEA, holdScene, unitOf } from '../engine/craft/world';
+
+/** A scene with her, with no foot contact live (the day of her feet is told only while one is: its own tests are at the end). */
+const bare = (): CampaignState => { const s = holdScene(reg); delete s.scene!.blocking!.commander!.contact; return s; };
 
 let reg: Registries;
 beforeAll(async () => { reg = await loadCore(); });
@@ -26,7 +29,7 @@ const style = (s: CampaignState, primary: string): CampaignState => { unitOf(s, 
 
 /** A scene with a lesson she has just decided to voice (a drill holder names the point after a slip). */
 function withLesson(): CampaignState {
-  const s = style(holdScene(reg), 'drill');
+  const s = style(bare(), 'drill');
   s.scene!.exchanges = 2;
   noteSlips(s, ctx(), [slip]);
   expect(s.relations[ANN].craft!.lesson).toBeDefined();
@@ -35,7 +38,7 @@ function withLesson(): CampaignState {
 
 describe('no directive without the craft', () => {
   it('a campaign that never wrote the craft, a holder at equal and no scene give none, and refresh clears', () => {
-    const s = holdScene(reg);
+    const s = bare();
     expect(craftDirectives(s, reg, s.scene!.participants)).toEqual([]);
     const eq = withLesson();
     eq.relations[ANN].dynamic!.frame = 'equal';
@@ -65,7 +68,7 @@ describe('the lesson', () => {
   });
 
   it('a playful holder says it as a joke', () => {
-    const s = style(holdScene(reg), 'playful');
+    const s = style(bare(), 'playful');
     noteSlips(s, ctx(), [slip]);
     expect(craftDirectives(s, reg, [ANN])[0]!.text).toMatch(/as a joke/);
   });
@@ -87,7 +90,7 @@ describe('the lesson', () => {
   });
 
   it('a slip she does not explain tells the model nothing', () => {
-    const s = style(holdScene(reg), 'cruel');
+    const s = style(bare(), 'cruel');
     noteSlips(s, ctx(), [slip]);
     expect(craftDirectives(s, reg, [ANN])).toEqual([]);
   });
@@ -97,7 +100,7 @@ describe('the record she brings up', () => {
   /** A scene whose id (and so whose hash) makes her bring it up, or not. */
   function sceneWith(bring: boolean, over: { day?: number; seconds?: number } = {}): CampaignState {
     for (let i = 0; i < 200; i++) {
-      const s = holdScene(reg);
+      const s = bare();
       s.scene!.id = `scene_${i}`;
       s.relations[ANN].craft = { records: { weight: { longest: over.seconds ?? 1800, clean: 0, noTap: 0, day: over.day ?? s.day - 3 } } };
       if ((craftRoll(s, ANN, `record:${s.scene!.id}`) < TUNING.craft.record.bringUp) === bring) return s;
@@ -133,7 +136,7 @@ describe('the record she brings up', () => {
   it('chooses by chance over the scenes (about two in five) and draws nothing', () => {
     const scenes: CampaignState[] = [];
     for (let i = 0; i < 300; i++) {
-      const s = holdScene(reg);
+      const s = bare();
       s.scene!.id = `s${i}`;
       s.relations[ANN].craft = { records: { weight: { longest: 900, clean: 0, noTap: 0, day: s.day } } };
       scenes.push(s);
@@ -150,7 +153,7 @@ describe('the record she brings up', () => {
 describe('the posture she expects (P16b, Task 13)', () => {
   /** A scene with a hold of kneel_open open: Ann is the holder, and she named the posture. */
   function holding(over: { until?: number; hidden?: boolean; style?: string } = {}): CampaignState {
-    const s = style(holdScene(reg), over.style ?? 'cold');
+    const s = style(bare(), over.style ?? 'cold');
     delete s.scene!.blocking;
     setBlocking(s, ctx(), { person: COMMANDER, field: 'posture', value: 'kneeling_upright', preset: 'kneel_open' }, { at: 1, source: 'engine' });
     s.practices = { seq: 3, requests: [], tasks: [], punishments: [], demonstrations: [], restrictions: [], cold: {}, offences: {}, records: [], handovers: [],
@@ -161,7 +164,7 @@ describe('the posture she expects (P16b, Task 13)', () => {
   const mine = (s: CampaignState, present = [ANN]) => craftDirectives(s, reg, present).filter((d) => d.id.startsWith(POSTURE_PREFIX));
 
   it('appears only while a posture hold is open: her name for it and the preset\'s own words, "if it fits, once", no number and no pronoun for the commander', () => {
-    expect(mine(style(holdScene(reg), 'cold'))).toEqual([]);
+    expect(mine(style(bare(), 'cold'))).toEqual([]);
     const [d] = mine(holding());
     expect(d.id).toBe(`${POSTURE_PREFIX}${ANN}`);
     expect(d.expiresAfter).toBe('scene');
@@ -282,7 +285,7 @@ describe('the builder and the controller', () => {
 describe('unasked care (Task 15)', () => {
   /** A scene with her in which a noticed care has just landed (`voiced`, in this scene). */
   function shown(over: { named?: boolean; style?: string; frame?: 'equal' | 'play' } = {}): CampaignState {
-    const s = style(holdScene(reg), over.style ?? 'affectionate');
+    const s = style(bare(), over.style ?? 'affectionate');
     s.relations[ANN].dynamic!.frame = over.frame ?? 'play';
     s.relations[ANN].craft = { cares: [{ day: s.day - 1, careId: 'polishing_her_boots', noticed: true, voiced: true, scene: s.scene!.id, ...(over.named === true ? { named: true as const } : {}) }] };
     return s;
@@ -330,5 +333,43 @@ describe('unasked care (Task 15)', () => {
     delete s.scene;
     refreshCraftDirectives(b, s, reg);
     expect(ids(b)).toEqual([]);
+  });
+});
+
+describe('the day of her feet (Task 16)', () => {
+  const ranYesterday = (s: CampaignState): CampaignState => { s.lastExpedition = { id: 'r', day: s.day - 1, party: [ANN], regionId: 'x', missionId: 'm', missionTitle: 'm', outcome: 'success', nodes: [], log: [], loot: [], injuries: [], deaths: [], breakdowns: [], acknowledged: true, debriefed: true } as never; return s; };
+
+  it('while a foot contact is live (holdScene has her feet on the commander), one line for the scene: how her feet are, worded "if it fits, once", with no number', () => {
+    const d = craftDirectives(ranYesterday(holdScene(reg)), reg, [ANN]).filter((x) => x.id.startsWith(FEET_PREFIX));
+    expect(d.map((x) => x.id)).toEqual([`${FEET_PREFIX}${ANN}`]);
+    expect(d[0]!.expiresAfter).toBe('scene');
+    expect(d[0]!.text).toMatch(/sore/);
+    expect(d[0]!.text).toMatch(/only if it fits and only once/);
+    expect(d[0]!.text).not.toMatch(/\d/);
+    expect(d[0]!.text).not.toMatch(NO_PRONOUN);
+    expect(d[0]!.text).not.toMatch(/AUTHOR TO WRITE/);
+  });
+
+  it('says boots or heels as she wears them, and nothing of it once the contact is gone, for a woman not in the room, or without the craft', () => {
+    const heels = ranYesterday(holdScene(reg));
+    unitOf(heels, ANN).likes = ['high heels'];
+    expect(craftDirectives(heels, reg, [ANN]).find((x) => x.id.startsWith(FEET_PREFIX))!.text).toMatch(/heels/);
+    expect(craftDirectives(ranYesterday(holdScene(reg)), reg, [ANN]).find((x) => x.id.startsWith(FEET_PREFIX))!.text).toMatch(/boots/);
+    const gone = ranYesterday(holdScene(reg));
+    delete gone.scene!.blocking!.commander!.contact;
+    expect(craftDirectives(gone, reg, [ANN]).filter((x) => x.id.startsWith(FEET_PREFIX))).toEqual([]);
+    expect(craftDirectives(ranYesterday(holdScene(reg)), reg, [BEA]).filter((x) => x.id.startsWith(FEET_PREFIX))).toEqual([]);
+    const eq = ranYesterday(holdScene(reg));
+    eq.relations[ANN].dynamic!.frame = 'equal';
+    expect(craftDirectives(eq, reg, [ANN]).filter((x) => x.id.startsWith(FEET_PREFIX))).toEqual([]);
+  });
+
+  it('is the state of her feet that day, so it changes with the day and says nothing about care', () => {
+    const fresh = holdScene(reg);
+    fresh.slot = 'morning';
+    const words = new Set<string>();
+    for (let day = 3; day < 40; day++) { fresh.day = day; words.add(craftDirectives(fresh, reg, [ANN]).find((x) => x.id.startsWith(FEET_PREFIX))?.text ?? ''); }
+    expect(words.size).toBeGreaterThan(1);
+    for (const w of words) expect(w).not.toMatch(/cared|neglect|pleased/i);
   });
 });

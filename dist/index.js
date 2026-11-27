@@ -7945,12 +7945,14 @@ var EVENT_TYPES = [
   "threat_voiced",
   "ceremony_step",
   // P16b: the craft (each offered to the model only while its subject exists: a care she has not shown she noticed, ...)
-  "care_noticed"
+  "care_noticed",
+  "praise_given",
+  "foot_signal_answered"
 ];
 var LIFE_EVENT_TYPES = ["news_told", "hobby_praised", "opinion_voiced", "opinion_challenged", "opinion_agreed", "first_moment", "joke_returned"];
 var DYNAMIC_INTENT_TYPES = ["probe_answered", "probe_observed", "milestone_accepted", "milestone_refused", "compromat_mentioned", "protocol_slip", "offer_answered", "quirk_voiced", "hypothetical_answered"];
 var PRACTICE_INTENT_TYPES = ["task_kept", "task_broken", "service_rated", "denial_broken", "practice_accepted", "threat_voiced", "ceremony_step"];
-var CRAFT_INTENT_TYPES = ["care_noticed"];
+var CRAFT_INTENT_TYPES = ["praise_given", "foot_signal_answered", "care_noticed"];
 var FIRST_KINDS = ["laughed", "fell_asleep_beside", "told_her_past", "cried", "taught", "asked_about_commander"];
 var ENGINE_EVENT_TYPES = [
   "warden_complied",
@@ -11033,6 +11035,8 @@ var ContactSchema = BaseEntrySchema.extend({
   legs: external_exports.enum(HER_LEGS).optional(),
   /** P16b: it needs a posture of the commander's whose preset `supports` it (the hands held out for her foot): offered and allowed only while one is held. */
   supported: external_exports.literal(true).optional(),
+  /** P16b (Task 16): her foot is what touches the commander in this contact (a foot signal may be answered while it is live). */
+  foot: external_exports.literal(true).optional(),
   label: blockLabel,
   description: str,
   promptHint: blockHint,
@@ -24760,6 +24764,415 @@ function applyLifeIntent(draft, ctx2, unitId, ev) {
 }
 var ROW_IS_CONDITIONAL = ["opinion_agreed", "first_moment"];
 
+// src/engine/physics/service.ts
+function shuffleBy(list5, seed8) {
+  const a = list5.slice();
+  let x = seed8 >>> 0 || 1;
+  for (let i = a.length - 1; i > 0; i--) {
+    x = Math.imul(x, 1103515245) + 12345 >>> 0;
+    const j = x % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function signalsOf(_state, holderId) {
+  const F2 = TUNING.physics.footSignals;
+  const h2 = fnv1a3(`${holderId}|foot_signals`);
+  const mo = shuffleBy(F2.motions, h2), rest = shuffleBy(F2.desk, h2 >>> 5);
+  return [...F2.foot, ...rest.slice(0, F2.deskCount)].map((m, i) => ({ motion: mo[i], meaning: m }));
+}
+var ZONES_OF = { kiss: ["toes", "ball", "arch", "heel"], clean: ["toes", "ball", "arch", "heel", "edge"], rub: ["ball", "arch", "heel"] };
+var SVC_STYLE = {
+  neutral: { patience: 4.5, kiss: [0.7, 1.5], tempo: 1, every: 1 },
+  affectionate: { patience: 6, kiss: [1, 2.2], tempo: 0.8, every: 1.2 },
+  playful: { patience: 3.5, kiss: [0.4, 1.1], tempo: 1.2, every: 0.9 },
+  possessive: { patience: 4, kiss: [1, 1.9], tempo: 0.9, every: 0.65 },
+  cold: { patience: 4, kiss: [0.6, 1.2], tempo: 1, every: 1.1 },
+  cruel: { patience: 2.5, kiss: [0.55, 1], tempo: 1.4, every: 0.6 },
+  clinical: { patience: 4, kiss: [0.85, 1.15], tempo: 1, every: 1 },
+  ritual: { patience: 4.5, kiss: [0.8, 1.2], tempo: 1, every: 1 }
+};
+var ZONE_WORD = /\b(toes?|ball|arch|heel|edge)\b/g;
+function howOfFeet(state, reg, holderId) {
+  const worship = expectationsOf(state, reg, holderId).worship ?? {};
+  const atFeet = (id) => {
+    const zone = reg.worshipTargets.get(id)?.zone;
+    return Object.values(zone ?? {}).some((z2) => typeof z2?.y === "number" && z2.y >= TUNING.physics.footService.footZoneY);
+  };
+  return Object.entries(worship).filter(([id, w]) => atFeet(id) && w.attitude !== "dislikes" && typeof w.how === "string").map(([, w]) => w.how.toLowerCase()).join(" ");
+}
+function servicePaceOf(state, reg, holderId) {
+  const P7 = TUNING.physics.footService;
+  const style = leadStyle(physicsStyleOf(state, holderId, reg)).key;
+  const row4 = SVC_STYLE[style] ?? SVC_STYLE.neutral;
+  const patience = style === "cruel" ? row4.patience : Math.min(P7.patience[1], Math.max(P7.patience[0], row4.patience));
+  const how = howOfFeet(state, reg, holderId);
+  const tilt = /\bslow/.test(how) ? P7.slow : /\b(quick|fast|brisk)/.test(how) ? P7.quick : { kiss: 1, tempo: 1 };
+  const named5 = [...new Set([...how.matchAll(ZONE_WORD)].map((m2) => m2[1].startsWith("toe") ? "toes" : m2[1]))];
+  const heel = how.indexOf("heel"), toe = how.search(/\btoe/);
+  const grain = heel >= 0 && toe >= 0 ? heel < toe ? -1 : 1 : fnv1a3(`${holderId}|grain`) % 2 ? 1 : -1;
+  const order = Object.fromEntries(Object.keys(ZONES_OF).map((act) => {
+    const hashed = shuffleBy(ZONES_OF[act], fnv1a3(`${holderId}|order|${act}`));
+    const first2 = named5.filter((z2) => hashed.includes(z2));
+    return [act, [...first2, ...hashed.filter((z2) => !first2.includes(z2))]];
+  }));
+  const m = physicsMannerOf(state, holderId, reg);
+  const k = TUNING.manner.scale;
+  const tempo = m?.tempo ?? 0, warmth2 = m?.warmth ?? 0;
+  return {
+    patience: bend(patience, warmth2, { scale: k }),
+    kiss: [bend(row4.kiss[0] * tilt.kiss, tempo, { scale: -k }), bend(row4.kiss[1] * tilt.kiss, tempo, { scale: -k })],
+    tempo: bend(row4.tempo * tilt.tempo, tempo, { scale: k }),
+    every: bend(row4.every, tempo, { scale: -k }),
+    grain,
+    order
+  };
+}
+function verdictOf(quality) {
+  const V3 = TUNING.physics.footService.verdict;
+  if (!Number.isFinite(quality)) return "displeased";
+  return quality >= V3.pleased ? "pleased" : quality >= V3.adequate ? "adequate" : "displeased";
+}
+
+// src/engine/practice/sample.ts
+function practiceSample(draft, reg, unitId, response, opts = {}) {
+  const dyn = dynamicOf(draft, unitId);
+  const unit5 = draft.squad.find((u) => u.id === unitId);
+  if (dyn === void 0 || unit5 === void 0) return [];
+  if (response === "yielded") feedYield(draft, unitId);
+  const region = updateReading(dyn, { response, ...opts.afterThreat === true ? { afterThreat: true } : {}, ...opts.motive !== void 0 ? { motive: opts.motive } : {} }, TUNING.position.alpha.practice, physicsStyleOf(draft, unitId, reg), unit5.insight ?? "mid").region;
+  return region === void 0 ? [] : [{ type: "position_shifted", unitId, from: region.from, to: region.to }];
+}
+
+// src/engine/craft/gate.ts
+function craftLive(state, reg, holderId) {
+  return practiceLive(state, reg, holderId);
+}
+function craftOn(state, reg) {
+  return practicesOn(state, reg);
+}
+function craftHolders(state, reg) {
+  return state.squad.filter((u) => craftLive(state, reg, u.id)).map((u) => u.id);
+}
+function careOpen(state, reg, unitId) {
+  if (!dynamicOn(state, reg)) return false;
+  const unit5 = state.squad.find((u) => u.id === unitId);
+  if (unit5 === void 0 || unit5.kind !== "named" || !isLiving(unit5)) return false;
+  return herPracticeLive(state, unitId) && state.relations[unitId]?.dynamic !== void 0;
+}
+
+// src/engine/craft/care.ts
+function careKinds(reg) {
+  const out = [];
+  for (const a of reg.blockingActivities.values()) {
+    const care = a.care;
+    if (care?.notice === void 0 || a.actor !== "commander" || a.scope !== "dynamic") continue;
+    out.push({ id: String(a.id), notice: care.notice, label: String(a.label), promptHint: String(a.promptHint) });
+  }
+  return out;
+}
+function careNoticeChance(state, unitId, row4) {
+  const insight = state.squad.find((u) => u.id === unitId)?.insight ?? "mid";
+  return Math.min(1, TUNING.craft.care.notice[row4.notice] * TUNING.craft.care.insight[insight]);
+}
+function noticesCare(state, unitId, row4) {
+  return craftRoll(state, unitId, `care|${state.day}|${row4.id}`) < careNoticeChance(state, unitId, row4);
+}
+function shownCares(state, unitId, day) {
+  return (state.relations[unitId]?.craft?.cares ?? []).filter((c) => c.noticed && c.voiced === true && day - c.day <= TUNING.craft.care.nameDays);
+}
+function namesService(state, reg, unitId) {
+  const T5 = TUNING.craft.care;
+  const dyn = dynamicOf(state, unitId);
+  const unit5 = state.squad.find((u) => u.id === unitId);
+  if (dyn === void 0 || unit5 === void 0 || dyn.frame !== "equal" || holdBandOf(reg, dyn.hold) !== T5.nameBand) return false;
+  const manner = mannerOf(state, reg, unitId);
+  if (manner === null) return false;
+  const style = styleOf(unit5)?.primary;
+  if (style !== "regal" && manner.axes.curiosity < T5.nameCuriosity) return false;
+  const shown2 = shownCares(state, unitId, state.day);
+  return shown2.length >= T5.nameAt && !shown2.some((c) => c.named === true);
+}
+function withCommander(state, unitId) {
+  return state.scene?.participants.includes(unitId) === true || heldNow(state)?.by === unitId || keyPlaceAt(state, unitId, state.day, state.slot);
+}
+function careReason(state, reg, unitId, careId) {
+  const row4 = careKinds(reg).find((r) => r.id === careId);
+  if (row4 === void 0) return "That is not something to do for her unasked.";
+  if (!careOpen(state, reg, unitId)) return "There is nothing between the commander and her yet that makes this a kindness.";
+  if (state.scene) return "A conversation is open.";
+  if (state.calendar.pendingScene) return "A talk is waiting for its scene.";
+  if (state.expedition) return "The squad is out.";
+  if (state.dilemmas?.open?.status === "presented") return "A decision is waiting.";
+  if (state.calendar.nightEvent) return "Someone is at the door.";
+  if (state.slot === "night") return "Not at night.";
+  if (withCommander(state, unitId)) return "She is with the commander: it would not be unasked.";
+  if ((state.relations[unitId]?.craft?.cares ?? []).some((c) => c.careId === careId && c.day === state.day)) return `${row4.label} was done today.`;
+  return null;
+}
+function prune(draft, unitId) {
+  const craft = draft.relations[unitId]?.craft;
+  if (craft?.cares === void 0) return;
+  craft.cares = craft.cares.filter((c) => draft.day - c.day <= TUNING.craft.care.keepDays);
+  if (craft.cares.length === 0) delete craft.cares;
+}
+function giveCare(draft, ctx2, unitId, careId) {
+  const reason = careReason(draft, ctx2.registries, unitId, careId);
+  if (reason !== null) throw new Error(reason);
+  const row4 = careKinds(ctx2.registries).find((r) => r.id === careId);
+  const craft = draft.relations[unitId].craft ??= {};
+  (craft.cares ??= []).push({ day: draft.day, careId, noticed: noticesCare(draft, unitId, row4) });
+  prune(draft, unitId);
+  return [{ type: "care_unasked", unitId, careId }, ...consumeSlots(draft, 1, ctx2)];
+}
+function landCares(draft, ctx2, unitId, sceneId) {
+  const reg = ctx2.registries;
+  const cares = draft.relations[unitId]?.craft?.cares;
+  if (cares === void 0 || !careOpen(draft, reg, unitId)) return [];
+  prune(draft, unitId);
+  const events = [];
+  const dyn = dynamicOf(draft, unitId);
+  const from = frameRank("play");
+  for (const c of draft.relations[unitId]?.craft?.cares ?? []) {
+    if (!c.noticed || c.voiced === true) continue;
+    c.voiced = true;
+    c.scene = sceneId;
+    events.push({ type: "care_noticed", unitId, careId: c.careId });
+    events.push(...applyEventToUnit(draft, reg, unitId, { type: "care_noticed", actor: "commander", targets: [unitId], severity: "minor", evidence: "she saw what the commander did for her", confidence: 1 }));
+    if (dyn !== void 0 && frameRank(dyn.frame) >= from) {
+      addFavour(draft, unitId, TUNING.craft.care.favour);
+      events.push(...practiceSample(draft, reg, unitId, "yielded", { motive: "her" }));
+      events.push(...regardRise(draft, reg, unitId, "value", TUNING.regard.value.min));
+    }
+  }
+  if (namesService(draft, reg, unitId)) {
+    const last4 = [...shownCares(draft, unitId, draft.day)].sort((a, b) => b.day - a.day).find((c) => c.scene === sceneId);
+    if (last4 !== void 0) last4.named = true;
+  }
+  return events;
+}
+
+// src/engine/physics/footwear.ts
+var DIRT_KINDS = ["ash", "mud", "oil", "spores", "dust", "rain"];
+var HEELS = /\b(high[- ]?)?heel(s|ed)?\b|\bstilettos?\b|\bpumps\b/i;
+function footwearOf(state, _reg, unitId) {
+  const u = state.squad.find((x) => x.id === unitId);
+  if (!u) return "boots";
+  return [...likesOf(u), ...tastesOf(u)].some((t) => HEELS.test(t)) ? "heels" : "boots";
+}
+function wetDay(state) {
+  return fnv1a3(`wet_day|${state.day}`) % 1e3 / 1e3 < TUNING.physics.shoe.wetShare;
+}
+function trainedToday2(state, reg, unitId) {
+  const from = busySlot(state.day, "morning"), to = busySlot(state.day, "night");
+  return (state.life?.busy ?? []).some((b) => b.unitId === unitId && b.slot >= from && b.slot <= to && b.activityId !== void 0 && (reg.activities.get(b.activityId)?.effects ?? []).some((e) => TUNING.dynamic.style.trainingEffects.includes(e.type)));
+}
+function dirtOfDay(state, reg, unitId) {
+  const run = state.lastExpedition;
+  if (run && run.day === state.day && run.party.includes(unitId)) {
+    const dirt = reg.regions.get(run.regionId)?.dirt;
+    if (typeof dirt === "string" && DIRT_KINDS.includes(dirt)) return dirt;
+  }
+  if (trainedToday2(state, reg, unitId)) return "dust";
+  if (wetDay(state)) return "rain";
+  return "dust";
+}
+function isShoeRun(run, reg) {
+  const phys = reg.contactPhysics.get(run.physicsId);
+  if (phys?.interaction !== "order" || phys.gauge?.kind !== "dirt" || run.sourceKind !== "contact") return false;
+  const targets = reg.blockingContacts.get(run.sourceId)?.target ?? [];
+  return targets.some((t) => reg.worshipTargets.get(t)?.footwear === true);
+}
+var STYLES = {
+  neutral: { surface: [22, 34], busy: 0.5, moves: { press: 0.15, stamp: 0.05, kiss: 0.2 }, grain: 1 },
+  affectionate: { surface: [28, 40], busy: 0.4, moves: { press: 0.05, stamp: 0, kiss: 0.35 }, grain: 1 },
+  ritual: { surface: [26, 26], busy: 0.2, moves: { press: 0.05, stamp: 0.05, kiss: 0.4 }, grain: -1 },
+  playful: { surface: [16, 30], busy: 0.5, moves: { press: 0.3, stamp: 0.1, kiss: 0.2 }, grain: 1 },
+  cruel: { surface: [14, 22], busy: 0.35, moves: { press: 0.35, stamp: 0.25, kiss: 0.15 }, grain: -1 },
+  possessive: { surface: [20, 30], busy: 0.25, moves: { press: 0.3, stamp: 0.1, kiss: 0.3 }, grain: 1 },
+  cold: { surface: [18, 26], busy: 0.7, moves: { press: 0.05, stamp: 0.15, kiss: 0.05 }, grain: -1 },
+  regal: { surface: [24, 34], busy: 0.3, moves: { press: 0.15, stamp: 0.1, kiss: 0.45 }, grain: 1 }
+};
+
+// src/engine/craft/book.ts
+function craftLevel(state, key) {
+  const physics = enduranceOf(key);
+  if (physics !== null) return commanderSkill(state, physics);
+  return state.commander.craft?.[key]?.level ?? 0;
+}
+function craftXp(state, key) {
+  const physics = enduranceOf(key);
+  if (physics !== null) return state.commander.endurance?.[physics]?.xp ?? 0;
+  return state.commander.craft?.[key]?.xp ?? 0;
+}
+function touchCraft(draft, key) {
+  const book2 = draft.commander.craft ??= {};
+  const row4 = book2[key] ??= { xp: 0, level: 0, lastDay: draft.day };
+  row4.lastDay = draft.day;
+  return row4;
+}
+function addCraftXp(draft, reg, key, xp, cause) {
+  if (!(xp > 0) || !craftOn(draft, reg)) return [];
+  const events = [];
+  const physics = enduranceOf(key);
+  let level;
+  let rose;
+  if (physics !== null) {
+    const done = addEnduranceXp(draft, physics, xp);
+    events.push(done);
+    level = Number(done.level);
+    rose = done.leveledUp === true;
+    touchCraft(draft, key);
+  } else {
+    const row4 = touchCraft(draft, key);
+    const before8 = row4.level;
+    row4.xp += xp;
+    row4.level = levelForXp(row4.xp);
+    level = row4.level;
+    rose = row4.level > before8;
+  }
+  events.push({ type: "craft_xp", key, gained: xp, cause });
+  if (rose) events.push({ type: "craft_level", key, level, word: craftWord(level) });
+  return events;
+}
+function addPairXp(draft, reg, holderId, what, xp) {
+  const rel = draft.relations[holderId];
+  if (!(xp > 0) || rel === void 0 || !craftLive(draft, reg, holderId)) return [];
+  const row4 = (rel.craft ??= {})[what] ??= { xp: 0, day: draft.day };
+  row4.xp += xp;
+  row4.day = draft.day;
+  delete row4.decayedDay;
+  return [];
+}
+
+// src/engine/craft/feet.ts
+function ranRecently(state, unitId) {
+  const run = state.lastExpedition;
+  return run !== void 0 && run.party.includes(unitId) && (run.day === state.day || run.day === state.day - 1);
+}
+function feetOfDay(state, reg, unitId) {
+  const footwear = footwearOf(state, reg, unitId);
+  const T5 = TUNING.craft.feet;
+  if (ranRecently(state, unitId)) return { footwear, state: "sore" };
+  if (state.slot === "evening") {
+    const room2 = whereaboutAt(state, reg, unitId, state.day, state.slot).roomId;
+    if (room2 !== null && isPrivateRoom(reg, room2)) return { footwear, state: "bare" };
+  }
+  if (trainedToday2(state, reg, unitId)) return { footwear, state: "hot" };
+  const roll = fnv1a3(`feet|${state.day}|${unitId}`) % 1e3 / 1e3;
+  if (wetDay(state) || roll < T5.wornShare) return { footwear, state: "worn" };
+  if (roll < T5.wornShare + T5.hotShare) return { footwear, state: "hot" };
+  return { footwear, state: "fresh" };
+}
+function caredForFeet(state, unitId) {
+  const care = state.relations[unitId]?.craft?.footCare;
+  if (care === void 0 || state.day - care.day > TUNING.craft.feet.careDays) return false;
+  const run = state.lastExpedition;
+  return run === void 0 || !run.party.includes(unitId) || care.day > run.day;
+}
+function careOfFeet(state, reg, unitId) {
+  if (!craftLive(state, reg, unitId)) return [];
+  const pct5 = TUNING.craft.feet.combatPct;
+  if (caredForFeet(state, unitId)) return [{ type: "outgoing", pct: pct5 }, { type: "incoming", pct: -pct5 }];
+  if (feetOfDay(state, reg, unitId).state === "sore") return [{ type: "outgoing", pct: -pct5 }, { type: "incoming", pct: pct5 }];
+  return [];
+}
+function noteServiceVerdict(draft, reg, holderId, verdict2) {
+  if (verdict2 !== "pleased" || !craftLive(draft, reg, holderId)) return [];
+  const rel = draft.relations[holderId];
+  if (rel === void 0) return [];
+  (rel.craft ??= {}).footCare = { day: draft.day };
+  return [];
+}
+var motionsOf = (state, holderId) => signalsOf(state, holderId).map((s) => s.motion);
+function noteFootSignal(draft, reg, holderId, motion, answered2) {
+  const rel = draft.relations[holderId];
+  if (rel === void 0 || !craftLive(draft, reg, holderId) || !motionsOf(draft, holderId).includes(motion)) return [];
+  const book2 = (rel.craft ??= {}).signals ??= {};
+  const row4 = book2[motion] ??= { named: false, answered: 0, day: draft.day };
+  const events = [];
+  if (!row4.named) {
+    row4.named = true;
+    events.push({ type: "foot_signal_given", unitId: holderId, motion });
+  }
+  row4.day = draft.day;
+  delete row4.decayedDay;
+  if (answered2) {
+    row4.answered += 1;
+    events.push(...addCraftXp(draft, reg, "memory", TUNING.craft.xp.knowledge, "foot_signal"));
+  } else {
+    events.push({ type: "foot_signal_missed", unitId: holderId, motion });
+    const scene = draft.scene;
+    if (scene !== void 0) (rel.craft.slips ??= []).push({ key: "memory", scene: scene.id, day: draft.day });
+  }
+  return events;
+}
+
+// src/engine/craft/intents.ts
+var SAID_MAX = 400;
+var CRAFT_ROW_IS_CONDITIONAL = ["praise_given", "foot_signal_answered", "care_noticed"];
+var praiseReaders = /* @__PURE__ */ new Map();
+var praiseWriters = /* @__PURE__ */ new Map();
+function footContactLive(state, reg, unitId) {
+  const b = state.scene?.blocking;
+  if (b === void 0) return false;
+  const contacts = [b[COMMANDER]?.contact?.with === unitId ? b[COMMANDER]?.contact : void 0, b[unitId]?.contact?.with === COMMANDER ? b[unitId]?.contact : void 0];
+  return contacts.some((c) => c !== void 0 && reg.blockingContacts.get(c.id)?.foot === true);
+}
+function motionWords(reg, motion) {
+  for (const row4 of reg.craftLines.values()) if (row4.kind === `signal.${motion}`) return String(plainDraft(String(row4.text))).replace(/\s+/g, " ").trim();
+  return motion;
+}
+function craftIntentInput(state, reg, participants, channel) {
+  const named5 = participants.filter((id) => {
+    const u = state.squad.find((x) => x.id === id);
+    return u !== void 0 && u.kind === "named" && isLiving(u);
+  });
+  if (named5.length === 0) return {};
+  const praise = named5.filter((id) => craftLive(state, reg, id) && [...praiseReaders.values()].some((read2) => read2(state, reg, id)));
+  const signals = [];
+  if (channel === "scene") {
+    for (const id of named5) {
+      if (!craftLive(state, reg, id) || !footContactLive(state, reg, id)) continue;
+      const have = state.relations[id]?.craft?.signals ?? {};
+      for (const s of signalsOf(state, id)) if (have[s.motion]?.named === true) signals.push({ unitId: id, motion: s.motion, words: motionWords(reg, s.motion) });
+    }
+  }
+  const cares = [];
+  for (const id of named5) {
+    if (!careOpen(state, reg, id)) continue;
+    const unseen = (state.relations[id]?.craft?.cares ?? []).filter((c) => !c.noticed && c.voiced !== true && state.day - c.day <= TUNING.craft.care.nameDays).sort((a, b) => a.day - b.day)[0];
+    const what = unseen === void 0 ? void 0 : careKinds(reg).find((r) => r.id === unseen.careId)?.promptHint;
+    if (what !== void 0) cares.push({ unitId: id, what });
+  }
+  const types = [...praise.length > 0 ? ["praise_given"] : [], ...signals.length > 0 ? ["foot_signal_answered"] : [], ...cares.length > 0 ? ["care_noticed"] : []];
+  return types.length === 0 ? {} : { craft: { types, praise, signals, cares } };
+}
+var cleanSaid = (said) => typeof said === "string" ? said.replace(/\s+/g, " ").trim().slice(0, SAID_MAX).trim() : "";
+function applyCraftIntent(draft, ctx2, unitId, ev, extra) {
+  const reg = ctx2.registries;
+  switch (ev.type) {
+    case "care_noticed": {
+      if (!careOpen(draft, reg, unitId)) return [];
+      const oldest = (draft.relations[unitId]?.craft?.cares ?? []).filter((c) => !c.noticed && c.voiced !== true && draft.day - c.day <= TUNING.craft.care.nameDays).sort((a, b) => a.day - b.day)[0];
+      if (oldest === void 0) return [];
+      oldest.noticed = true;
+      return landCares(draft, ctx2, unitId, extra.sceneId ?? "dm");
+    }
+    case "foot_signal_answered": {
+      if (ev.motion === void 0 || draft.relations[unitId]?.craft?.signals?.[ev.motion]?.named !== true || !craftLive(draft, reg, unitId)) return [];
+      return noteFootSignal(draft, reg, unitId, ev.motion, true);
+    }
+    case "praise_given": {
+      const said = cleanSaid(extra.said);
+      if (said === "" || !craftLive(draft, reg, unitId)) return [];
+      return [...praiseWriters.values()].flatMap((write3) => write3(draft, ctx2, unitId, said));
+    }
+    default:
+      return [];
+  }
+}
+
 // src/engine/personal/tokens.ts
 var unitOf4 = (state, id) => state.squad.find((u) => u.id === id);
 var labelOf = (reg, kindId, name) => String(reg.tokenKinds.get(kindId)?.label ?? "{name}'s token").replaceAll("{name}", name);
@@ -25175,16 +25588,6 @@ function blindfoldFromEvents(draft, ctx2, events) {
     }
   }
   return [];
-}
-
-// src/engine/practice/sample.ts
-function practiceSample(draft, reg, unitId, response, opts = {}) {
-  const dyn = dynamicOf(draft, unitId);
-  const unit5 = draft.squad.find((u) => u.id === unitId);
-  if (dyn === void 0 || unit5 === void 0) return [];
-  if (response === "yielded") feedYield(draft, unitId);
-  const region = updateReading(dyn, { response, ...opts.afterThreat === true ? { afterThreat: true } : {}, ...opts.motive !== void 0 ? { motive: opts.motive } : {} }, TUNING.position.alpha.practice, physicsStyleOf(draft, unitId, reg), unit5.insight ?? "mid").region;
-  return region === void 0 ? [] : [{ type: "position_shifted", unitId, from: region.from, to: region.to }];
 }
 
 // src/engine/practice/handover.ts
@@ -26137,7 +26540,7 @@ function sceneService(draft, holderId) {
   return rec !== void 0 && rec.sceneId === draft.scene?.id ? rec : p.service[holderId] = { sceneId: draft.scene?.id ?? "", bonus: 0 };
 }
 var stepUp = (v, steps3) => VERDICTS[Math.max(0, VERDICTS.indexOf(v) - steps3)];
-function verdictOf(state, _reg, holderId, sceneId) {
+function verdictOf2(state, _reg, holderId, sceneId) {
   const rec = state.practices?.service?.[holderId];
   return rec === void 0 || sceneId !== void 0 && rec.sceneId !== sceneId ? null : verdictOfRecord(rec);
 }
@@ -27546,6 +27949,27 @@ function dynamicFields(type, e, intent, offer) {
       return null;
   }
 }
+function craftFields(type, e, intent, offer) {
+  if (offer === void 0 || !offer.types.includes(type)) return null;
+  const who = intent.actor !== "commander" ? intent.actor : intent.targets[0];
+  if (who === void 0) return null;
+  intent.actor = "commander";
+  intent.targets = [who];
+  switch (type) {
+    case "care_noticed":
+      return offer.cares.some((c) => c.unitId === who) ? { key: `${type}|${who}` } : null;
+    case "praise_given":
+      return offer.praise.includes(who) ? { key: `${type}|${who}` } : null;
+    case "foot_signal_answered": {
+      const motion = typeof e.motion === "string" ? e.motion : void 0;
+      if (motion === void 0 || !offer.signals.some((s) => s.unitId === who && s.motion === motion)) return null;
+      intent.motion = motion;
+      return { key: `${type}|${who}|${motion}` };
+    }
+    default:
+      return null;
+  }
+}
 var PRACTICE_TEXT_MAX = 160;
 var CEREMONY_NUMBER = { min: 1, max: 50 };
 function practiceUnit(intent) {
@@ -27690,7 +28114,11 @@ function validateIntents(raw, ctx2) {
       if (dyn === null || seenLife.has(dyn.key)) continue;
       seenLife.add(dyn.key);
     }
-    if (CRAFT_INTENT_TYPES.includes(type)) continue;
+    if (CRAFT_INTENT_TYPES.includes(type)) {
+      const craft = craftFields(type, e, intent, ctx2.craft);
+      if (craft === null || seenLife.has(craft.key)) continue;
+      seenLife.add(craft.key);
+    }
     if (PRACTICE_INTENT_TYPES.includes(type)) {
       const practice = practiceFields(type, e, intent, ctx2.practice);
       if (practice === null || seenLife.has(practice.key)) continue;
@@ -29375,6 +29803,8 @@ function applyIntents(draft, ctx2, p) {
     // P14c: what she may tell, her hobbies, her views
     ...dynamicIntentInput(draft, reg, p.participants, p.channel),
     // P15: a probe to answer, an open milestone, claim or offer (nothing while off)
+    ...craftIntentInput(draft, reg, p.participants, p.channel),
+    // P16b: a care she may have seen, a foot signal answered, a praise (nothing without a subject)
     ...practiceIntentInput(draft, reg, p.participants, p.channel)
   });
   const events = [];
@@ -29389,11 +29819,12 @@ function applyIntents(draft, ctx2, p) {
   intents.events = judged2.map((j) => j.e);
   for (const { e, believed } of judged2) {
     for (const id of believed) {
-      events.push(...DISCIPLINE_EVENTS.includes(e.type) ? applyDisciplineEvent(draft, ctx2, id, e, { channel: p.channel, ...p.sceneId ? { sceneId: p.sceneId } : {}, ...p.messageRef ? { messageRef: p.messageRef } : {} }) : ROW_IS_CONDITIONAL.includes(e.type) || DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type) || PRACTICE_ROW_IS_CONDITIONAL.includes(e.type) ? [] : applyEventToUnit(draft, reg, id, e));
+      events.push(...DISCIPLINE_EVENTS.includes(e.type) ? applyDisciplineEvent(draft, ctx2, id, e, { channel: p.channel, ...p.sceneId ? { sceneId: p.sceneId } : {}, ...p.messageRef ? { messageRef: p.messageRef } : {} }) : ROW_IS_CONDITIONAL.includes(e.type) || DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type) || PRACTICE_ROW_IS_CONDITIONAL.includes(e.type) || CRAFT_ROW_IS_CONDITIONAL.includes(e.type) ? [] : applyEventToUnit(draft, reg, id, e));
       if ((e.type === "expectation_kept" || e.type === "expectation_broken") && e.expectationId !== void 0) events.push(...expectationEvent(draft, ctx2, e.expectationId, e.type === "expectation_kept", e.severity));
       if (e.type === "conspired") events.push(...tryAlly(draft, ctx2, id));
       if (LIFE_EVENT_TYPES.includes(e.type)) events.push(...applyLifeIntent(draft, ctx2, id, e));
       if (PRACTICE_ROW_IS_CONDITIONAL.includes(e.type)) events.push(...applyPracticeIntent(draft, ctx2, id, e, events));
+      if (CRAFT_ROW_IS_CONDITIONAL.includes(e.type)) events.push(...applyCraftIntent(draft, ctx2, id, e, { ...p.said !== void 0 ? { said: p.said } : {}, ...p.sceneId !== void 0 ? { sceneId: p.sceneId } : {} }));
       if (e.type === "protocol_slip") events.push(...applyPracticeIntent(draft, ctx2, id, e, events));
       if (DYNAMIC_ROW_IS_CONDITIONAL.includes(e.type)) events.push(...applyDynamicIntent(draft, ctx2, id, e, events));
       if (e.type === "compromise_reached" && e.overrideId !== void 0) events.push(...resolveCompromise(draft, ctx2, e.overrideId, e.text));
@@ -36942,48 +37373,6 @@ function momentPass(draft, ctx2, cause, opts = {}) {
   return events;
 }
 
-// src/engine/physics/footwear.ts
-var DIRT_KINDS = ["ash", "mud", "oil", "spores", "dust", "rain"];
-var HEELS = /\b(high[- ]?)?heel(s|ed)?\b|\bstilettos?\b|\bpumps\b/i;
-function footwearOf(state, _reg, unitId) {
-  const u = state.squad.find((x) => x.id === unitId);
-  if (!u) return "boots";
-  return [...likesOf(u), ...tastesOf(u)].some((t) => HEELS.test(t)) ? "heels" : "boots";
-}
-function wetDay(state) {
-  return fnv1a3(`wet_day|${state.day}`) % 1e3 / 1e3 < TUNING.physics.shoe.wetShare;
-}
-function trainedToday2(state, reg, unitId) {
-  const from = busySlot(state.day, "morning"), to = busySlot(state.day, "night");
-  return (state.life?.busy ?? []).some((b) => b.unitId === unitId && b.slot >= from && b.slot <= to && b.activityId !== void 0 && (reg.activities.get(b.activityId)?.effects ?? []).some((e) => TUNING.dynamic.style.trainingEffects.includes(e.type)));
-}
-function dirtOfDay(state, reg, unitId) {
-  const run = state.lastExpedition;
-  if (run && run.day === state.day && run.party.includes(unitId)) {
-    const dirt = reg.regions.get(run.regionId)?.dirt;
-    if (typeof dirt === "string" && DIRT_KINDS.includes(dirt)) return dirt;
-  }
-  if (trainedToday2(state, reg, unitId)) return "dust";
-  if (wetDay(state)) return "rain";
-  return "dust";
-}
-function isShoeRun(run, reg) {
-  const phys = reg.contactPhysics.get(run.physicsId);
-  if (phys?.interaction !== "order" || phys.gauge?.kind !== "dirt" || run.sourceKind !== "contact") return false;
-  const targets = reg.blockingContacts.get(run.sourceId)?.target ?? [];
-  return targets.some((t) => reg.worshipTargets.get(t)?.footwear === true);
-}
-var STYLES = {
-  neutral: { surface: [22, 34], busy: 0.5, moves: { press: 0.15, stamp: 0.05, kiss: 0.2 }, grain: 1 },
-  affectionate: { surface: [28, 40], busy: 0.4, moves: { press: 0.05, stamp: 0, kiss: 0.35 }, grain: 1 },
-  ritual: { surface: [26, 26], busy: 0.2, moves: { press: 0.05, stamp: 0.05, kiss: 0.4 }, grain: -1 },
-  playful: { surface: [16, 30], busy: 0.5, moves: { press: 0.3, stamp: 0.1, kiss: 0.2 }, grain: 1 },
-  cruel: { surface: [14, 22], busy: 0.35, moves: { press: 0.35, stamp: 0.25, kiss: 0.15 }, grain: -1 },
-  possessive: { surface: [20, 30], busy: 0.25, moves: { press: 0.3, stamp: 0.1, kiss: 0.3 }, grain: 1 },
-  cold: { surface: [18, 26], busy: 0.7, moves: { press: 0.05, stamp: 0.15, kiss: 0.05 }, grain: -1 },
-  regal: { surface: [24, 34], busy: 0.3, moves: { press: 0.15, stamp: 0.1, kiss: 0.45 }, grain: 1 }
-};
-
 // src/engine/physics/gaze.ts
 var G = TUNING.physics.gaze;
 function attentionPlan(n, attention, style, rng, weights) {
@@ -37708,7 +38097,9 @@ registerAction("intents/apply", (draft, payload, ctx2) => {
       participants: draft.scene.participants,
       intents: payload.intents,
       sceneId: draft.scene.id,
-      ...typeof payload.messageRef === "string" ? { messageRef: payload.messageRef } : {}
+      ...typeof payload.messageRef === "string" ? { messageRef: payload.messageRef } : {},
+      ...typeof payload.said === "string" ? { said: payload.said.slice(0, 4 * SAID_MAX) } : {}
+      // P16b: the commander's own words, for the praise alone
     });
     markQuirksOffered(draft, ctx2.registries);
     if (typeof payload.readIndex === "number" && Number.isInteger(payload.readIndex) && payload.readIndex >= 0) draft.scene.readIndex = payload.readIndex;
@@ -37731,7 +38122,9 @@ registerAction("intents/apply", (draft, payload, ctx2) => {
       channel: "dm",
       participants: [unit5.id],
       intents: payload.intents,
-      ...typeof payload.messageRef === "string" ? { messageRef: payload.messageRef } : {}
+      ...typeof payload.messageRef === "string" ? { messageRef: payload.messageRef } : {},
+      ...typeof payload.said === "string" ? { said: payload.said.slice(0, 4 * SAID_MAX) } : {}
+      // P16b
     });
     events.push(...rollDiscovery(draft, ctx2.registries, ctx2.rng, [unit5.id]));
     markDmViolation(draft, ctx2.registries, unit5.id, payload.messageRef, payload.violations);
@@ -43374,23 +43767,6 @@ registerAction("practice/ask_her", (draft, payload, ctx2) => {
 });
 registerAfterAction(askedChoices);
 
-// src/engine/craft/gate.ts
-function craftLive(state, reg, holderId) {
-  return practiceLive(state, reg, holderId);
-}
-function craftOn(state, reg) {
-  return practicesOn(state, reg);
-}
-function craftHolders(state, reg) {
-  return state.squad.filter((u) => craftLive(state, reg, u.id)).map((u) => u.id);
-}
-function careOpen(state, reg, unitId) {
-  if (!dynamicOn(state, reg)) return false;
-  const unit5 = state.squad.find((u) => u.id === unitId);
-  if (unit5 === void 0 || unit5.kind !== "named" || !isLiving(unit5)) return false;
-  return herPracticeLive(state, unitId) && state.relations[unitId]?.dynamic !== void 0;
-}
-
 // src/engine/craft/decay.ts
 var THRESHOLDS = TUNING.physics.endurance.thresholds;
 function stepDownXp(xp) {
@@ -43444,190 +43820,6 @@ function fadePair(book2, day, pairDays) {
     s.answered -= 1;
     s.decayedDay = day;
   }
-}
-
-// src/engine/craft/book.ts
-function craftLevel(state, key) {
-  const physics = enduranceOf(key);
-  if (physics !== null) return commanderSkill(state, physics);
-  return state.commander.craft?.[key]?.level ?? 0;
-}
-function craftXp(state, key) {
-  const physics = enduranceOf(key);
-  if (physics !== null) return state.commander.endurance?.[physics]?.xp ?? 0;
-  return state.commander.craft?.[key]?.xp ?? 0;
-}
-function touchCraft(draft, key) {
-  const book2 = draft.commander.craft ??= {};
-  const row4 = book2[key] ??= { xp: 0, level: 0, lastDay: draft.day };
-  row4.lastDay = draft.day;
-  return row4;
-}
-function addCraftXp(draft, reg, key, xp, cause) {
-  if (!(xp > 0) || !craftOn(draft, reg)) return [];
-  const events = [];
-  const physics = enduranceOf(key);
-  let level;
-  let rose;
-  if (physics !== null) {
-    const done = addEnduranceXp(draft, physics, xp);
-    events.push(done);
-    level = Number(done.level);
-    rose = done.leveledUp === true;
-    touchCraft(draft, key);
-  } else {
-    const row4 = touchCraft(draft, key);
-    const before8 = row4.level;
-    row4.xp += xp;
-    row4.level = levelForXp(row4.xp);
-    level = row4.level;
-    rose = row4.level > before8;
-  }
-  events.push({ type: "craft_xp", key, gained: xp, cause });
-  if (rose) events.push({ type: "craft_level", key, level, word: craftWord(level) });
-  return events;
-}
-function addPairXp(draft, reg, holderId, what, xp) {
-  const rel = draft.relations[holderId];
-  if (!(xp > 0) || rel === void 0 || !craftLive(draft, reg, holderId)) return [];
-  const row4 = (rel.craft ??= {})[what] ??= { xp: 0, day: draft.day };
-  row4.xp += xp;
-  row4.day = draft.day;
-  delete row4.decayedDay;
-  return [];
-}
-
-// src/engine/physics/service.ts
-function shuffleBy(list5, seed8) {
-  const a = list5.slice();
-  let x = seed8 >>> 0 || 1;
-  for (let i = a.length - 1; i > 0; i--) {
-    x = Math.imul(x, 1103515245) + 12345 >>> 0;
-    const j = x % (i + 1);
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-function signalsOf(_state, holderId) {
-  const F2 = TUNING.physics.footSignals;
-  const h2 = fnv1a3(`${holderId}|foot_signals`);
-  const mo = shuffleBy(F2.motions, h2), rest = shuffleBy(F2.desk, h2 >>> 5);
-  return [...F2.foot, ...rest.slice(0, F2.deskCount)].map((m, i) => ({ motion: mo[i], meaning: m }));
-}
-var ZONES_OF = { kiss: ["toes", "ball", "arch", "heel"], clean: ["toes", "ball", "arch", "heel", "edge"], rub: ["ball", "arch", "heel"] };
-var SVC_STYLE = {
-  neutral: { patience: 4.5, kiss: [0.7, 1.5], tempo: 1, every: 1 },
-  affectionate: { patience: 6, kiss: [1, 2.2], tempo: 0.8, every: 1.2 },
-  playful: { patience: 3.5, kiss: [0.4, 1.1], tempo: 1.2, every: 0.9 },
-  possessive: { patience: 4, kiss: [1, 1.9], tempo: 0.9, every: 0.65 },
-  cold: { patience: 4, kiss: [0.6, 1.2], tempo: 1, every: 1.1 },
-  cruel: { patience: 2.5, kiss: [0.55, 1], tempo: 1.4, every: 0.6 },
-  clinical: { patience: 4, kiss: [0.85, 1.15], tempo: 1, every: 1 },
-  ritual: { patience: 4.5, kiss: [0.8, 1.2], tempo: 1, every: 1 }
-};
-var ZONE_WORD = /\b(toes?|ball|arch|heel|edge)\b/g;
-function howOfFeet(state, reg, holderId) {
-  const worship = expectationsOf(state, reg, holderId).worship ?? {};
-  const atFeet = (id) => {
-    const zone = reg.worshipTargets.get(id)?.zone;
-    return Object.values(zone ?? {}).some((z2) => typeof z2?.y === "number" && z2.y >= TUNING.physics.footService.footZoneY);
-  };
-  return Object.entries(worship).filter(([id, w]) => atFeet(id) && w.attitude !== "dislikes" && typeof w.how === "string").map(([, w]) => w.how.toLowerCase()).join(" ");
-}
-function servicePaceOf(state, reg, holderId) {
-  const P7 = TUNING.physics.footService;
-  const style = leadStyle(physicsStyleOf(state, holderId, reg)).key;
-  const row4 = SVC_STYLE[style] ?? SVC_STYLE.neutral;
-  const patience = style === "cruel" ? row4.patience : Math.min(P7.patience[1], Math.max(P7.patience[0], row4.patience));
-  const how = howOfFeet(state, reg, holderId);
-  const tilt = /\bslow/.test(how) ? P7.slow : /\b(quick|fast|brisk)/.test(how) ? P7.quick : { kiss: 1, tempo: 1 };
-  const named5 = [...new Set([...how.matchAll(ZONE_WORD)].map((m2) => m2[1].startsWith("toe") ? "toes" : m2[1]))];
-  const heel = how.indexOf("heel"), toe = how.search(/\btoe/);
-  const grain = heel >= 0 && toe >= 0 ? heel < toe ? -1 : 1 : fnv1a3(`${holderId}|grain`) % 2 ? 1 : -1;
-  const order = Object.fromEntries(Object.keys(ZONES_OF).map((act) => {
-    const hashed = shuffleBy(ZONES_OF[act], fnv1a3(`${holderId}|order|${act}`));
-    const first2 = named5.filter((z2) => hashed.includes(z2));
-    return [act, [...first2, ...hashed.filter((z2) => !first2.includes(z2))]];
-  }));
-  const m = physicsMannerOf(state, holderId, reg);
-  const k = TUNING.manner.scale;
-  const tempo = m?.tempo ?? 0, warmth2 = m?.warmth ?? 0;
-  return {
-    patience: bend(patience, warmth2, { scale: k }),
-    kiss: [bend(row4.kiss[0] * tilt.kiss, tempo, { scale: -k }), bend(row4.kiss[1] * tilt.kiss, tempo, { scale: -k })],
-    tempo: bend(row4.tempo * tilt.tempo, tempo, { scale: k }),
-    every: bend(row4.every, tempo, { scale: -k }),
-    grain,
-    order
-  };
-}
-function verdictOf2(quality) {
-  const V3 = TUNING.physics.footService.verdict;
-  if (!Number.isFinite(quality)) return "displeased";
-  return quality >= V3.pleased ? "pleased" : quality >= V3.adequate ? "adequate" : "displeased";
-}
-
-// src/engine/craft/feet.ts
-function ranRecently(state, unitId) {
-  const run = state.lastExpedition;
-  return run !== void 0 && run.party.includes(unitId) && (run.day === state.day || run.day === state.day - 1);
-}
-function feetOfDay(state, reg, unitId) {
-  const footwear = footwearOf(state, reg, unitId);
-  const T5 = TUNING.craft.feet;
-  if (ranRecently(state, unitId)) return { footwear, state: "sore" };
-  if (state.slot === "evening") {
-    const room2 = whereaboutAt(state, reg, unitId, state.day, state.slot).roomId;
-    if (room2 !== null && isPrivateRoom(reg, room2)) return { footwear, state: "bare" };
-  }
-  if (trainedToday2(state, reg, unitId)) return { footwear, state: "hot" };
-  const roll = fnv1a3(`feet|${state.day}|${unitId}`) % 1e3 / 1e3;
-  if (wetDay(state) || roll < T5.wornShare) return { footwear, state: "worn" };
-  if (roll < T5.wornShare + T5.hotShare) return { footwear, state: "hot" };
-  return { footwear, state: "fresh" };
-}
-function caredForFeet(state, unitId) {
-  const care = state.relations[unitId]?.craft?.footCare;
-  if (care === void 0 || state.day - care.day > TUNING.craft.feet.careDays) return false;
-  const run = state.lastExpedition;
-  return run === void 0 || !run.party.includes(unitId) || care.day > run.day;
-}
-function careOfFeet(state, reg, unitId) {
-  if (!craftLive(state, reg, unitId)) return [];
-  const pct5 = TUNING.craft.feet.combatPct;
-  if (caredForFeet(state, unitId)) return [{ type: "outgoing", pct: pct5 }, { type: "incoming", pct: -pct5 }];
-  if (feetOfDay(state, reg, unitId).state === "sore") return [{ type: "outgoing", pct: -pct5 }, { type: "incoming", pct: pct5 }];
-  return [];
-}
-function noteServiceVerdict(draft, reg, holderId, verdict2) {
-  if (verdict2 !== "pleased" || !craftLive(draft, reg, holderId)) return [];
-  const rel = draft.relations[holderId];
-  if (rel === void 0) return [];
-  (rel.craft ??= {}).footCare = { day: draft.day };
-  return [];
-}
-var motionsOf = (state, holderId) => signalsOf(state, holderId).map((s) => s.motion);
-function noteFootSignal(draft, reg, holderId, motion, answered2) {
-  const rel = draft.relations[holderId];
-  if (rel === void 0 || !craftLive(draft, reg, holderId) || !motionsOf(draft, holderId).includes(motion)) return [];
-  const book2 = (rel.craft ??= {}).signals ??= {};
-  const row4 = book2[motion] ??= { named: false, answered: 0, day: draft.day };
-  const events = [];
-  if (!row4.named) {
-    row4.named = true;
-    events.push({ type: "foot_signal_given", unitId: holderId, motion });
-  }
-  row4.day = draft.day;
-  delete row4.decayedDay;
-  if (answered2) {
-    row4.answered += 1;
-    events.push(...addCraftXp(draft, reg, "memory", TUNING.craft.xp.knowledge, "foot_signal"));
-  } else {
-    events.push({ type: "foot_signal_missed", unitId: holderId, motion });
-    const scene = draft.scene;
-    if (scene !== void 0) (rel.craft.slips ??= []).push({ key: "memory", scene: scene.id, day: draft.day });
-  }
-  return events;
 }
 
 // src/engine/craft/streak.ts
@@ -44006,97 +44198,6 @@ function noteSlips(draft, ctx2, events) {
   return out;
 }
 
-// src/engine/craft/care.ts
-function careKinds(reg) {
-  const out = [];
-  for (const a of reg.blockingActivities.values()) {
-    const care = a.care;
-    if (care?.notice === void 0 || a.actor !== "commander" || a.scope !== "dynamic") continue;
-    out.push({ id: String(a.id), notice: care.notice, label: String(a.label), promptHint: String(a.promptHint) });
-  }
-  return out;
-}
-function careNoticeChance(state, unitId, row4) {
-  const insight = state.squad.find((u) => u.id === unitId)?.insight ?? "mid";
-  return Math.min(1, TUNING.craft.care.notice[row4.notice] * TUNING.craft.care.insight[insight]);
-}
-function noticesCare(state, unitId, row4) {
-  return craftRoll(state, unitId, `care|${state.day}|${row4.id}`) < careNoticeChance(state, unitId, row4);
-}
-function shownCares(state, unitId, day) {
-  return (state.relations[unitId]?.craft?.cares ?? []).filter((c) => c.noticed && c.voiced === true && day - c.day <= TUNING.craft.care.nameDays);
-}
-function namesService(state, reg, unitId) {
-  const T5 = TUNING.craft.care;
-  const dyn = dynamicOf(state, unitId);
-  const unit5 = state.squad.find((u) => u.id === unitId);
-  if (dyn === void 0 || unit5 === void 0 || dyn.frame !== "equal" || holdBandOf(reg, dyn.hold) !== T5.nameBand) return false;
-  const manner = mannerOf(state, reg, unitId);
-  if (manner === null) return false;
-  const style = styleOf(unit5)?.primary;
-  if (style !== "regal" && manner.axes.curiosity < T5.nameCuriosity) return false;
-  const shown2 = shownCares(state, unitId, state.day);
-  return shown2.length >= T5.nameAt && !shown2.some((c) => c.named === true);
-}
-function withCommander(state, unitId) {
-  return state.scene?.participants.includes(unitId) === true || heldNow(state)?.by === unitId || keyPlaceAt(state, unitId, state.day, state.slot);
-}
-function careReason(state, reg, unitId, careId) {
-  const row4 = careKinds(reg).find((r) => r.id === careId);
-  if (row4 === void 0) return "That is not something to do for her unasked.";
-  if (!careOpen(state, reg, unitId)) return "There is nothing between the commander and her yet that makes this a kindness.";
-  if (state.scene) return "A conversation is open.";
-  if (state.calendar.pendingScene) return "A talk is waiting for its scene.";
-  if (state.expedition) return "The squad is out.";
-  if (state.dilemmas?.open?.status === "presented") return "A decision is waiting.";
-  if (state.calendar.nightEvent) return "Someone is at the door.";
-  if (state.slot === "night") return "Not at night.";
-  if (withCommander(state, unitId)) return "She is with the commander: it would not be unasked.";
-  if ((state.relations[unitId]?.craft?.cares ?? []).some((c) => c.careId === careId && c.day === state.day)) return `${row4.label} was done today.`;
-  return null;
-}
-function prune(draft, unitId) {
-  const craft = draft.relations[unitId]?.craft;
-  if (craft?.cares === void 0) return;
-  craft.cares = craft.cares.filter((c) => draft.day - c.day <= TUNING.craft.care.keepDays);
-  if (craft.cares.length === 0) delete craft.cares;
-}
-function giveCare(draft, ctx2, unitId, careId) {
-  const reason = careReason(draft, ctx2.registries, unitId, careId);
-  if (reason !== null) throw new Error(reason);
-  const row4 = careKinds(ctx2.registries).find((r) => r.id === careId);
-  const craft = draft.relations[unitId].craft ??= {};
-  (craft.cares ??= []).push({ day: draft.day, careId, noticed: noticesCare(draft, unitId, row4) });
-  prune(draft, unitId);
-  return [{ type: "care_unasked", unitId, careId }, ...consumeSlots(draft, 1, ctx2)];
-}
-function landCares(draft, ctx2, unitId, sceneId) {
-  const reg = ctx2.registries;
-  const cares = draft.relations[unitId]?.craft?.cares;
-  if (cares === void 0 || !careOpen(draft, reg, unitId)) return [];
-  prune(draft, unitId);
-  const events = [];
-  const dyn = dynamicOf(draft, unitId);
-  const from = frameRank("play");
-  for (const c of draft.relations[unitId]?.craft?.cares ?? []) {
-    if (!c.noticed || c.voiced === true) continue;
-    c.voiced = true;
-    c.scene = sceneId;
-    events.push({ type: "care_noticed", unitId, careId: c.careId });
-    events.push(...applyEventToUnit(draft, reg, unitId, { type: "care_noticed", actor: "commander", targets: [unitId], severity: "minor", evidence: "she saw what the commander did for her", confidence: 1 }));
-    if (dyn !== void 0 && frameRank(dyn.frame) >= from) {
-      addFavour(draft, unitId, TUNING.craft.care.favour);
-      events.push(...practiceSample(draft, reg, unitId, "yielded", { motive: "her" }));
-      events.push(...regardRise(draft, reg, unitId, "value", TUNING.regard.value.min));
-    }
-  }
-  if (namesService(draft, reg, unitId)) {
-    const last4 = [...shownCares(draft, unitId, draft.day)].sort((a, b) => b.day - a.day).find((c) => c.scene === sceneId);
-    if (last4 !== void 0) last4.named = true;
-  }
-  return events;
-}
-
 // src/engine/craft/drills.ts
 function drillMult(state, reg, companionId) {
   if (companionId === void 0) return 1;
@@ -44216,7 +44317,7 @@ function noteDrillOutcome(draft, ctx2, events) {
     if (craftLive(draft, reg, unitId)) {
       if (sceneId === void 0) continue;
       const tally = typeof e.tally === "object" && e.tally !== null ? e.tally : {};
-      const verdict2 = verdictOf(draft, reg, unitId, sceneId) ?? outcomeVerdict(String(e.result), Number(tally.slips) || 0);
+      const verdict2 = verdictOf2(draft, reg, unitId, sceneId) ?? outcomeVerdict(String(e.result), Number(tally.slips) || 0);
       out.push(...rateService(draft, ctx2, unitId, verdict2, "engine", sceneId));
       if (verdict2 === "pleased") out.push(...regardRise(draft, reg, unitId, "value", TUNING.craft.drill.regard));
     } else {
@@ -47966,6 +48067,7 @@ var RECORD_PREFIX = "craft:record:";
 var POSTURE_PREFIX = "craft:posture:";
 var CARE_PREFIX = "craft:care:";
 var NAMED_PREFIX = "craft:named_service:";
+var FEET_PREFIX = "craft:feet:";
 var NEVER_NAME2 = "Never name it as a mechanic.";
 var phrase2 = (text3) => plainDraft(text3).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\d+/g, "").replace(/\s+/g, " ").trim().replace(/[.\s]+$/, "");
 function lessonDirectives(state, reg, present2) {
@@ -48069,8 +48171,30 @@ function careDirectives(state, reg, present2) {
   }
   return out;
 }
+var FEET_WORDS = {
+  fresh: "rested and clean",
+  worn: "tired from the boots and a little damp",
+  hot: "hot and damp after training",
+  sore: "sore from the run, with a blister or a callus",
+  bare: "bare after the day, in her own quarters"
+};
+function feetDirectives(state, reg, present2) {
+  if (state.scene === void 0) return [];
+  const out = [];
+  for (const id of present2) {
+    const unit5 = state.squad.find((u) => u.id === id);
+    if (unit5 === void 0 || unit5.kind !== "named" || !isLiving(unit5) || !craftLive(state, reg, id) || !footContactLive(state, reg, id)) continue;
+    const feet = feetOfDay(state, reg, id);
+    out.push({
+      id: `${FEET_PREFIX}${id}`,
+      expiresAfter: "scene",
+      text: `AUTHOR TO WRITE: ${unit5.displayName}'s feet today are ${FEET_WORDS[feet.state] ?? FEET_WORDS.fresh}${feet.state === "bare" ? "" : `, in her ${feet.footwear}`}. She may let it show, only if it fits and only once. ${NEVER_NAME2}`
+    });
+  }
+  return out;
+}
 function craftDirectives(state, reg, present2) {
-  return [...lessonDirectives(state, reg, present2), ...recordDirectives(state, reg, present2), ...postureDirectives(state, reg, present2), ...careDirectives(state, reg, present2)].map((d) => ({ ...d, text: plainDraft(d.text) }));
+  return [...lessonDirectives(state, reg, present2), ...recordDirectives(state, reg, present2), ...postureDirectives(state, reg, present2), ...careDirectives(state, reg, present2), ...feetDirectives(state, reg, present2)].map((d) => ({ ...d, text: plainDraft(d.text) }));
 }
 function clearCraftDirectives(builder) {
   builder.clearMatching((d) => d.id.startsWith(CRAFT_PREFIX));
@@ -53337,6 +53461,18 @@ function practiceBlock(p) {
   if (f.threats) out.push(`THREATS (units who hold the lead and may threaten the commander): ${p.threats.join(", ")}`);
   return out.length > 0 ? ["PRACTICE (what the commander may be answering; a report may name only the ids listed here):", ...out] : [];
 }
+function craftFlags(c) {
+  const types = new Set(c?.types ?? []);
+  return { cares: (c?.cares ?? []).length > 0 && types.has("care_noticed"), signals: (c?.signals ?? []).length > 0 && types.has("foot_signal_answered"), praise: (c?.praise ?? []).length > 0 && types.has("praise_given"), types };
+}
+function craftBlock(c) {
+  const f = craftFlags(c);
+  const out = [];
+  if (f.cares) out.push("CARES (unit \u2014 what the commander did for her without being asked, which she may have seen):", ...c.cares.map((r) => `- ${r.unitId} \u2014 ${oneLine2(r.what)}`));
+  if (f.signals) out.push("SIGNALS (unit \u2014 motion: what her foot does):", ...c.signals.map((r) => `- ${r.unitId} \u2014 ${r.motion}: ${oneLine2(r.words)}`));
+  if (f.praise) out.push(`PRAISE (units the commander may praise, in the commander's own words): ${c.praise.join(", ")}`);
+  return out.length > 0 ? ["CRAFT (what the commander may be answering; a report may name only the units and motions listed here):", ...out] : [];
+}
 function lifeBlock(life) {
   const f = lifeFlags(life);
   const out = [];
@@ -53384,7 +53520,8 @@ function system3(raw) {
   const life = lifeFlags(input.life);
   const dyn = dynamicFlags(input.dynamic);
   const prac = practiceFlags(input.practice);
-  const eventTypes = EVENT_TYPES.filter((t) => (!LIFE_EVENT_TYPES.includes(t) || life.types.has(t)) && (!DYNAMIC_INTENT_TYPES.includes(t) || dyn.types.has(t)) && (!PRACTICE_INTENT_TYPES.includes(t) || prac.types.has(t)) && !CRAFT_INTENT_TYPES.includes(t) && (hasRules || hasOverride && t === "compromise_reached" || (dyn.claims || dyn.exits) && t === "compromise_reached" || prac.compromise && t === "compromise_reached" || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
+  const craft = craftFlags(input.craft);
+  const eventTypes = EVENT_TYPES.filter((t) => (!LIFE_EVENT_TYPES.includes(t) || life.types.has(t)) && (!DYNAMIC_INTENT_TYPES.includes(t) || dyn.types.has(t)) && (!PRACTICE_INTENT_TYPES.includes(t) || prac.types.has(t)) && (!CRAFT_INTENT_TYPES.includes(t) || craft.types.has(t)) && (hasRules || hasOverride && t === "compromise_reached" || (dyn.claims || dyn.exits) && t === "compromise_reached" || prac.compromise && t === "compromise_reached" || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
   const extras = [
     ...excluded.length > 0 ? ['  "contentViolations": [{ "category": "<id from EXCLUDED>", "evidence": "<at most 15 words quoted from the exchange>" }]'] : [],
     ...asksTone ? ['  "sceneTone": "romantic" | "intimate" | null'] : [],
@@ -53422,6 +53559,7 @@ function system3(raw) {
     ...prac.tasks || prac.accepts || prac.compromise ? ['               "taskId": "<id from TASKS, ACCEPTS or TALKS>"   // only for task_kept / task_broken / practice_accepted / compromise_reached about a task'] : [],
     ...prac.ceremonies || prac.compromise ? ['               "punishmentId": "<id from CEREMONY or TALKS>", "step": "<its step id>", "number": <whole number>, "alarmId": "<id from TALKS>"   // punishmentId and step for ceremony_step (number only when the step is a number), punishmentId or alarmId for compromise_reached'] : [],
     ...prac.handovers ? ['               "handoverId": "<id from HANDOVERS>"   // only for practice_accepted about a handover'] : [],
+    ...craft.signals ? ['               "motion": "<motion from SIGNALS>"   // only for foot_signal_answered'] : [],
     ...prac.service ? [`               "verdict": ${VERDICTS.map((v) => `"${v}"`).join(" | ")}   // only for service_rated`] : [],
     '  "facts": [{ "about": ["<unit id>"] | "world" | "commander", "text": "<one sentence>", "importance": 1-5, "tags": ["<tag>"] }],',
     '  "proposals": [{ "from": "commander" | "<unit id>", "to": "commander" | "<unit id>", "kind": PROPOSAL_KIND, "evidence": "<short quote>" }],',
@@ -53484,6 +53622,9 @@ function system3(raw) {
     ...prac.denial ? ['"denial_broken": the commander does what a unit listed under DENIAL forbade without her permission, or asks her too late; that unit is the target. Report it only when the exchange plainly shows it.'] : [],
     ...prac.service ? ['"service_rated": a unit listed under SERVICE judges what the commander just did for her; the unit is the target; set "verdict": "pleased", "adequate" or "displeased". Report it only when the exchange shows her judgement.'] : [],
     ...prac.threats ? ['"threat_voiced": a unit listed under THREATS threatens the commander in words (a consequence for what the commander does or fails to do); that unit is the target. A warning she means kindly, or a plain order, is not a threat.'] : [],
+    ...craft.cares ? ['"care_noticed": a unit listed under CARES shows, in this exchange, that she saw what the commander did for her without being asked (a remark about the thing, a look at it, a thanks that is about nothing else); that unit is the target. Report it only when the exchange plainly shows it.'] : [],
+    ...craft.signals ? ['"foot_signal_answered": a unit listed under SIGNALS makes the signal of her foot for one of the motions listed for her and the commander answers it, in this exchange; that unit is the target; set "motion" to the motion from SIGNALS. A signal no one answered is not reported.'] : [],
+    ...craft.praise ? [`"praise_given": the commander praises a unit listed under PRAISE, in the commander's own words, in this exchange; that unit is the target. Report only that praise was given; never copy the words.`] : [],
     ...input.staging ? stagingRules(input.staging) : [],
     ...hasLimits ? ["If the commander pushes a unit past her limits, report `rejected_advance` (advances) or `decision_violated` (orders)."] : []
   ].join("\n");
@@ -53529,6 +53670,7 @@ function prompt3(raw) {
   if (lifeList && lifeBlock(lifeList).length > 0) out.push("", ...lifeBlock(lifeList));
   if (input.dynamic && dynamicBlock(input.dynamic).length > 0) out.push("", ...dynamicBlock(input.dynamic));
   if (input.practice && practiceBlock(input.practice).length > 0) out.push("", ...practiceBlock(input.practice));
+  if (input.craft && craftBlock(input.craft).length > 0) out.push("", ...craftBlock(input.craft));
   if (input.staging) out.push("", ...stagingBlock(input.staging));
   if (input.openPromises.length > 0) {
     out.push("", "Open promises:", ...input.openPromises.map((p) => `- ${p.by} \u2192 ${p.to}: ${p.text}`));
@@ -53551,7 +53693,7 @@ function sanitizeIntentOutput(raw, ctx2) {
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [], contentViolations: [], sceneTone: void 0 };
   const events = src.events.filter((e) => isObj47(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
   const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj47(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
-  const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {}, ...ctx2.rules ? { rules: ctx2.rules } : {}, ...ctx2.intercepted ? { intercepted: ctx2.intercepted } : {}, ...ctx2.warned ? { warned: ctx2.warned } : {}, ...ctx2.overrides ? { overrides: ctx2.overrides } : {}, ...ctx2.expectations ? { expectations: ctx2.expectations } : {}, ...ctx2.conspire ? { conspire: ctx2.conspire } : {}, ...ctx2.life ? { life: ctx2.life } : {}, ...ctx2.dynamic ? { dynamic: ctx2.dynamic } : {}, ...ctx2.practice ? { practice: ctx2.practice } : {}, ...ctx2.factTextMax !== void 0 ? { factTextMax: ctx2.factTextMax } : {} });
+  const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {}, ...ctx2.rules ? { rules: ctx2.rules } : {}, ...ctx2.intercepted ? { intercepted: ctx2.intercepted } : {}, ...ctx2.warned ? { warned: ctx2.warned } : {}, ...ctx2.overrides ? { overrides: ctx2.overrides } : {}, ...ctx2.expectations ? { expectations: ctx2.expectations } : {}, ...ctx2.conspire ? { conspire: ctx2.conspire } : {}, ...ctx2.life ? { life: ctx2.life } : {}, ...ctx2.dynamic ? { dynamic: ctx2.dynamic } : {}, ...ctx2.practice ? { practice: ctx2.practice } : {}, ...ctx2.craft ? { craft: ctx2.craft } : {}, ...ctx2.factTextMax !== void 0 ? { factTextMax: ctx2.factTextMax } : {} });
   const emotions = [];
   for (const e of src.emotions) {
     if (isObj47(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
@@ -53616,6 +53758,7 @@ function readIntentOutput(raw, input, opts) {
     ...input.life ? { life: input.life } : {},
     ...input.dynamic ? { dynamic: input.dynamic } : {},
     ...input.practice ? { practice: input.practice } : {},
+    ...input.craft ? { craft: input.craft } : {},
     ...input.factTextMax !== void 0 ? { factTextMax: input.factTextMax } : {}
   });
   return input.staging ? { ...base2, staging: sanitizeStaging(isObj47(raw) ? raw.staging : void 0, input.staging) } : base2;
@@ -53684,12 +53827,27 @@ function createComms(deps) {
       // P14c: her news and her hobbies only
       ...dynamicIntentInput(s, deps.registries(), [unitId], "dm"),
       // P15: her probe, an open milestone, claim or offer (nothing while off or with no subject)
+      ...craftIntentInput(s, deps.registries(), [unitId], "dm"),
+      // P16b: a care she may have seen (nothing without a subject)
       ...practiceIntentInput(s, deps.registries(), [unitId], "dm")
       // P16: her open tasks, a punishment, a denial, a threat she may voice (nothing while she does not hold)
     };
   }
   async function readExchange(unitId, ref) {
     await deps.generations.generate("dm.intents", `${unitId}:${ref}`);
+  }
+  function commanderWords(unitId, ref) {
+    const s = state();
+    if (!s) return "";
+    let text3 = "";
+    if (ref.startsWith("door:")) text3 = s.calendar.nightEvent?.door?.said ?? "";
+    else {
+      const thread = threadOf(s, unitId);
+      const at2 = thread.findIndex((m) => m.id === ref);
+      const before8 = at2 > 0 ? thread[at2 - 1] : void 0;
+      if (before8?.from === "commander") text3 = before8.text;
+    }
+    return text3.replace(/\s+/g, " ").trim().slice(0, SAID_MAX).trim();
   }
   deps.generations.bind("dm.intents", {
     build(key) {
@@ -53724,9 +53882,10 @@ function createComms(deps) {
       const intents = { ...result.intents, proposals: result.intents.proposals.filter((p) => p.from !== "commander") };
       const lastId = ref.startsWith("door:") ? void 0 : ref;
       const flagged = result.contentViolations.map((v) => v.category);
+      const said = commanderWords(unitId, ref);
       const events = app.dispatch({
         type: "intents/apply",
-        payload: { channel: "dm", unitId, intents, ...lastId ? { messageRef: `dm:${lastId}` } : {}, ...flagged.length > 0 ? { violations: { categories: flagged } } : {} }
+        payload: { channel: "dm", unitId, intents, ...lastId ? { messageRef: `dm:${lastId}` } : {}, ...flagged.length > 0 ? { violations: { categories: flagged } } : {}, ...said !== "" ? { said } : {} }
       }, { expectChatId: expect });
       if (events.some((e) => e.type === "error")) return { stale: true };
       for (const e of events) {
@@ -57815,6 +57974,9 @@ function answerDirective(unitId, unitName3, kind, answer, condition) {
 var EXTRACT_MAX_MESSAGES = 8;
 var EXTRACT_MAX_CHUNKS = 6;
 var DEBUG_NOT_ROLLED_BACK = "Not rolled back: something changed since.";
+function saidOf(messages) {
+  return messages.filter((m) => m.isUser).map((m) => m.text).join(" ").replace(/\s+/g, " ").trim().slice(0, SAID_MAX).trim();
+}
 function createSceneController(deps) {
   const { st: st3, app } = deps;
   let extracted = 0;
@@ -57973,6 +58135,8 @@ function createSceneController(deps) {
       // P14c: what she may tell, her hobbies, her views (nothing while life is off)
       ...dynamicIntentInput(s0, deps.registries(), scene.participants, "scene"),
       // P15: a probe to answer, an open milestone, claim or offer (nothing while off or with no subject)
+      ...craftIntentInput(s0, deps.registries(), scene.participants, "scene"),
+      // P16b: a care she may have seen, a signal of her foot answered, a praise (nothing without a subject)
       ...practiceIntentInput(s0, deps.registries(), scene.participants, "scene"),
       // P16: an open task, a ceremony, a denial, a service, a holder in the room (nothing while nobody holds)
       ...stagingInput(s0, deps.registries(), scene.participants)
@@ -58048,6 +58212,8 @@ function createSceneController(deps) {
           intents: result.intents,
           readIndex: nextPointer,
           messageRef: `chat:${lastReply.index}`,
+          ...saidOf(messages) !== "" ? { said: saidOf(messages) } : {},
+          // P16b: the commander's own words of these lines, for the praise alone (never sent to a model)
           ...flaggedHere.length > 0 ? { violations: { index: lastReply.index, categories: flaggedHere } } : {},
           ...result.sceneTone !== null ? { tone: result.sceneTone } : {},
           ...result.staging ? { staging: { blocking: result.staging.blocking, ripe: result.staging.ripe, answer: result.staging.answer, labels: result.staging.labels } } : {}
@@ -75133,7 +75299,7 @@ function svFinish(how) {
   const n = (SV.sessionN ?? 0) + (open3 !== null ? 1 : 0), q = ((SV.sessionQ ?? 0) + (open3 ?? 0)) / Math7.max(1, n);
   if (n === 0) return;
   SV.told = true;
-  X2?.env.staging.service?.(X2.runId, verdictOf2(q));
+  X2?.env.staging.service?.(X2.runId, verdictOf(q));
 }
 function detachService() {
   try {
@@ -79942,7 +80108,7 @@ function sendVerdict() {
   R10.verdictSent = true;
   if (R10.qualities.length === 0) return;
   const q = R10.qualities.reduce((a, b) => a + b, 0) / R10.qualities.length;
-  const v = verdictOf2(q);
+  const v = verdictOf(q);
   E7.env.staging.service?.(R10.run.id, v);
 }
 function before6(now) {

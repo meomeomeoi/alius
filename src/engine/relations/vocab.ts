@@ -29,7 +29,7 @@ export const EVENT_TYPES = [
   // P16: the practices (each offered to the model only while its subject exists: an open task of hers, a task answered in words, a service she judges, a denial of hers, a ceremony step, a holder in the room)
   'task_kept', 'task_broken', 'service_rated', 'denial_broken', 'practice_accepted', 'threat_voiced', 'ceremony_step',
   // P16b: the craft (each offered to the model only while its subject exists: a care she has not shown she noticed, ...)
-  'care_noticed',
+  'care_noticed', 'praise_given', 'foot_signal_answered',
 ] as const;
 
 /** P14c: the model-reportable types of her life. The intent prompt offers each only with its own list, and `validateIntents` drops one it was not offered. */
@@ -42,7 +42,7 @@ export const DYNAMIC_INTENT_TYPES: readonly string[] = ['probe_answered', 'probe
 export const PRACTICE_INTENT_TYPES: readonly string[] = ['task_kept', 'task_broken', 'service_rated', 'denial_broken', 'practice_accepted', 'threat_voiced', 'ceremony_step'];
 
 /** P16b: the model-reportable types of the craft. The intent prompt offers each only while its subject exists, and `validateIntents` drops one it was not offered. */
-export const CRAFT_INTENT_TYPES: readonly string[] = ['care_noticed'];
+export const CRAFT_INTENT_TYPES: readonly string[] = ['praise_given', 'foot_signal_answered', 'care_noticed'];
 
 /** P14c: the kinds of a `first_moment` (a closed enum; a kind the pair has not had yet is kept). */
 export const FIRST_KINDS = ['laughed', 'fell_asleep_beside', 'told_her_past', 'cried', 'taught', 'asked_about_commander'] as const;

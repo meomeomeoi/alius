@@ -162,6 +162,27 @@ describe('through the door (P10b)', () => {
   });
 });
 
+describe('the commander\'s own words (P16b, ruling 19)', () => {
+  it('a DM exchange is read with the commander\'s own words as `said` in the payload of intents/apply (one clean line, at most 400), and no prompt has a field for them', async () => {
+    const h = harness(reg);
+    h.st.mainReplies = ['I am here, commander.', intentJson()];
+    await h.comms.send(ANN, `  Well   done\n today. ${'x'.repeat(500)}`);
+    const apply = h.dispatched.find((a) => a.type === 'intents/apply')!;
+    const said = (apply.payload as { said?: string }).said!;
+    expect(said.startsWith('Well done today. xxx')).toBe(true);
+    expect(said.length).toBeLessThanOrEqual(400);
+    expect(said).not.toMatch(/[\r\n]|\s{2}/);
+  });
+
+  it('through the door too: what was said at the door', async () => {
+    const h = harness(reg, { tweak: (s) => { s.slot = 'night'; s.calendar.nightEvent = { id: 'n1', unitId: ANN, kind: 'visit', priority: 50, framing: 'A knock.', ignore: { event: 'dismissed', severity: 'minor' }, expiresDay: 99 }; } });
+    h.st.mainReplies = ['Go on.', intentJson()];
+    await h.comms.throughDoor('You did well tonight.');
+    const apply = h.dispatched.find((a) => a.type === 'intents/apply')!;
+    expect((apply.payload as { said?: string }).said).toBe('You did well tonight.');
+  });
+});
+
 describe('DMs', () => {
   it('DM send → reply → intents (acceptance 8)', async () => {
     const h = harness(reg);

@@ -624,15 +624,15 @@ Before Task 1, also read:
   - the directive `craft:feet:<unitId>` (the day of her feet, when a foot contact or a foot service runs).
 - Test: `tests/engine/relations/intents.test.ts`, `tests/llm/intentExtractCraft.test.ts`, `tests/engine/craft/intents.test.ts`, `tests/content/core.test.ts`
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - each type is offered only with its subject; the prompt is byte-identical without (the `prompt_without_reading.txt` pins);
   - a type with nothing offered is dropped;
   - `said` reaches only the praise and never a prompt;
   - the counts 64 and 91.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P16b): the craft intents`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P16b): the craft intents`
 
 ### Task 17: `[ANTICIPATE]` (engine)
 

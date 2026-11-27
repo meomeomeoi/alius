@@ -40,6 +40,7 @@ import { PROPOSAL_KINDS } from '../relations/vocab';
 import type { CampaignState, SceneOrigin, SceneRecord } from '../state/types';
 import { TUNING } from '../tuning';
 import { argueEnded } from '../warden/override';
+import { SAID_MAX } from '../craft/intents';
 
 // Importing this module registers the scene, proposal and memory actions, installs P3's relation accounting
 // (diminishing returns) in place of P2's default, and hooks the daily relationship pass into the day end.
@@ -149,6 +150,7 @@ registerAction('intents/apply', (draft, payload, ctx) => {
     const events = applyIntents(draft, ctx, {
       channel: 'scene', participants: draft.scene.participants, intents: payload.intents, sceneId: draft.scene.id,
       ...(typeof payload.messageRef === 'string' ? { messageRef: payload.messageRef } : {}),
+      ...(typeof payload.said === 'string' ? { said: payload.said.slice(0, 4 * SAID_MAX) } : {}), // P16b: the commander's own words, for the praise alone
     });
     markQuirksOffered(draft, ctx.registries); // P15b: a quirk that was due for the reply just read has been offered once in this scene
     // the controller reports how far it has read, in the same step, so a rollback restores the pointer with the deltas
@@ -174,6 +176,7 @@ registerAction('intents/apply', (draft, payload, ctx) => {
     const events = applyIntents(draft, ctx, {
       channel: 'dm', participants: [unit.id], intents: payload.intents,
       ...(typeof payload.messageRef === 'string' ? { messageRef: payload.messageRef } : {}),
+      ...(typeof payload.said === 'string' ? { said: payload.said.slice(0, 4 * SAID_MAX) } : {}), // P16b
     });
     events.push(...rollDiscovery(draft, ctx.registries, ctx.rng, [unit.id]));
     markDmViolation(draft, ctx.registries, unit.id, payload.messageRef, payload.violations); // P9d

@@ -32,6 +32,8 @@ export interface Harness {
   /** Dispatches like the app does (chat check, state replacement). */
   dispatch(action: Action): EngineEvent[];
   actions: string[];
+  /** Every action dispatched, with its payload (P16b: what a controller sent to the engine). */
+  dispatched: Action[];
 }
 
 export const ANN = 'unit_ann';
@@ -52,6 +54,7 @@ export function harness(reg: Registries, opts: { tweak?: (s: CampaignState) => v
   const ui: SceneUiEvent[] = [];
   const toasts: Array<{ kind: string; text: string }> = [];
   const actions: string[] = [];
+  const dispatched: Action[] = [];
   const settings: AliusSettings = { ...DEFAULT_SETTINGS, ...opts.settings };
 
   const dispatch = (action: Action, o?: { expectChatId?: string }): EngineEvent[] => {
@@ -59,6 +62,7 @@ export function harness(reg: Registries, opts: { tweak?: (s: CampaignState) => v
       return [{ type: 'error', code: 'chat_changed', message: 'The open chat changed; the action was dropped.' }];
     }
     actions.push(action.type);
+    dispatched.push(action);
     const r = engineDispatch(state, action, reg);
     state = r.state;
     return r.events;
@@ -88,7 +92,7 @@ export function harness(reg: Registries, opts: { tweak?: (s: CampaignState) => v
   const controller = createSceneController(deps as never);
   const comms = createComms({ ...deps, scene: controller } as never);
   return {
-    st, reg, context, controller, comms, generations, ui, toasts, settings, actions, ...(memory ? { memory } : {}),
+    st, reg, context, controller, comms, generations, ui, toasts, settings, actions, dispatched, ...(memory ? { memory } : {}),
     state: () => state,
     set: (s) => { state = s; },
     dispatch: (a) => dispatch(a),

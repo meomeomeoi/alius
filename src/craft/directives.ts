@@ -2,6 +2,8 @@ import { plainDraft } from '../content/draft';
 import type { Registries } from '../content/types';
 import { presetOf, samePreset } from '../engine/blocking';
 import { careKinds } from '../engine/craft/care';
+import { feetOfDay } from '../engine/craft/feet';
+import { footContactLive } from '../engine/craft/intents';
 import { craftLive, careOpen } from '../engine/craft/gate';
 import { craftRoll } from '../engine/craft/state';
 import { styleOf } from '../engine/dynamic/profile';
@@ -28,6 +30,9 @@ export const POSTURE_PREFIX = 'craft:posture:';
 export const CARE_PREFIX = 'craft:care:';
 /** The line she may say when it is the fourth time in the week (`care.nameAt`), once (Task 15). */
 export const NAMED_PREFIX = 'craft:named_service:';
+
+/** How her feet are today, while her feet are what the scene is about (Task 16; derived from `feetOfDay`, never from what the commander did for them). */
+export const FEET_PREFIX = 'craft:feet:';
 
 const NEVER_NAME = 'Never name it as a mechanic.';
 
@@ -146,9 +151,33 @@ function careDirectives(state: CampaignState, reg: Registries, present: string[]
   return out;
 }
 
+/** The state of her feet in words (AUTHOR TO WRITE; no figure). */
+const FEET_WORDS: Record<string, string> = {
+  fresh: 'rested and clean', worn: 'tired from the boots and a little damp', hot: 'hot and damp after training', sore: 'sore from the run, with a blister or a callus', bare: 'bare after the day, in her own quarters',
+};
+
+/**
+ * The day of her feet (`craft:feet:<unitId>`): while a foot contact is live with her in the open scene, a craft-live woman in the room may let it show how her feet are today, once.
+ * It is the engine's derived state (`feetOfDay`); it says nothing of what was done for them.
+ */
+function feetDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
+  if (state.scene === undefined) return [];
+  const out: Directive[] = [];
+  for (const id of present) {
+    const unit = state.squad.find((u) => u.id === id);
+    if (unit === undefined || unit.kind !== 'named' || !isLiving(unit) || !craftLive(state, reg, id) || !footContactLive(state, reg, id)) continue;
+    const feet = feetOfDay(state, reg, id);
+    out.push({
+      id: `${FEET_PREFIX}${id}`, expiresAfter: 'scene',
+      text: `AUTHOR TO WRITE: ${unit.displayName}'s feet today are ${FEET_WORDS[feet.state] ?? FEET_WORDS.fresh}${feet.state === 'bare' ? '' : `, in her ${feet.footwear}`}. She may let it show, only if it fits and only once. ${NEVER_NAME}`,
+    });
+  }
+  return out;
+}
+
 /** Every craft directive that holds now for the women in the room; nothing without the craft. A draft text reaches the model without its marker. */
 export function craftDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
-  return [...lessonDirectives(state, reg, present), ...recordDirectives(state, reg, present), ...postureDirectives(state, reg, present), ...careDirectives(state, reg, present)].map((d) => ({ ...d, text: plainDraft(d.text) }));
+  return [...lessonDirectives(state, reg, present), ...recordDirectives(state, reg, present), ...postureDirectives(state, reg, present), ...careDirectives(state, reg, present), ...feetDirectives(state, reg, present)].map((d) => ({ ...d, text: plainDraft(d.text) }));
 }
 
 /** Drops every craft directive (a chat switch, the end of a scene). */

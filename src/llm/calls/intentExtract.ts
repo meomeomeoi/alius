@@ -3,6 +3,7 @@ import type { DynamicOffer } from '../../engine/dynamic/types';
 import type { LifeOffer } from '../../engine/life/types';
 import type { PracticeOffer } from '../../engine/practice/intents';
 import { VERDICTS } from '../../engine/practice/state';
+import type { CraftOffer } from '../../engine/craft/intents';
 import { CRAFT_INTENT_TYPES, DYNAMIC_INTENT_TYPES, EVENT_TYPES, FIRST_KINDS, LIFE_EVENT_TYPES, PRACTICE_INTENT_TYPES, PROPOSAL_KINDS, ROMANTIC_PROPOSALS, SEVERITIES } from '../../engine/relations/vocab';
 import { cleanLabels } from '../../engine/moments/answer';
 import { validateIntents, type Intents } from '../../engine/relations/intents';
@@ -64,6 +65,8 @@ export interface IntentExtractInput {
   dynamic?: DynamicOffer & { probeAxes: Record<string, string>; milestoneLabels: Record<string, string>; quirkTexts?: Record<string, string> };
   /** P16: the practices: the types that have a subject right now and the ids a report may name (open tasks, offered ones answered in words, a ceremony's next step, the units of a denial, a service or a threat). Absent or with nothing in it = the prompt is byte-identical to before the package. */
   practice?: PracticeOffer;
+  /** P16b: the craft: the types that have a subject right now (a care she may have seen, a foot signal of hers the commander may have answered, a praise the commander may have given), with the ids and words a report may use. Absent or with nothing in it = the prompt is byte-identical to before the package. The commander's own words are never part of it. */
+  craft?: CraftOffer;
   /** P15a: the scene blocking, offered only while it is live (absent = the prompt is byte-identical to before the package). */
   staging?: StagingInput;
   /** P14b: ask for each event's `reading` (how the person it happened to took it); absent = the prompt is byte-identical to before development existed. */
@@ -194,6 +197,22 @@ function practiceBlock(p: NonNullable<IntentExtractInput['practice']>): string[]
   return out.length > 0 ? ['PRACTICE (what the commander may be answering; a report may name only the ids listed here):', ...out] : [];
 }
 
+/** P16b: which parts of the craft are offered (each only while its list is not empty; an empty offer is the old prompt). */
+function craftFlags(c: IntentExtractInput['craft']): { cares: boolean; signals: boolean; praise: boolean; types: Set<string> } {
+  const types = new Set(c?.types ?? []);
+  return { cares: (c?.cares ?? []).length > 0 && types.has('care_noticed'), signals: (c?.signals ?? []).length > 0 && types.has('foot_signal_answered'), praise: (c?.praise ?? []).length > 0 && types.has('praise_given'), types };
+}
+
+/** P16b: the `CRAFT` data block of the prompt: each list that is offered, one unit per line with the words of what it is about (never what a signal means, never a number), empty when nothing is offered. */
+function craftBlock(c: NonNullable<IntentExtractInput['craft']>): string[] {
+  const f = craftFlags(c);
+  const out: string[] = [];
+  if (f.cares) out.push('CARES (unit — what the commander did for her without being asked, which she may have seen):', ...c.cares.map((r) => `- ${r.unitId} — ${oneLine(r.what)}`));
+  if (f.signals) out.push('SIGNALS (unit — motion: what her foot does):', ...c.signals.map((r) => `- ${r.unitId} — ${r.motion}: ${oneLine(r.words)}`));
+  if (f.praise) out.push(`PRAISE (units the commander may praise, in the commander's own words): ${c.praise.join(', ')}`);
+  return out.length > 0 ? ['CRAFT (what the commander may be answering; a report may name only the units and motions listed here):', ...out] : [];
+}
+
 /** P14c: the `LIFE` data block of the prompt: each list that is not empty, one id per line (empty when nothing is offered). */
 function lifeBlock(life: LifeOffer): string[] {
   const f = lifeFlags(life);
@@ -246,7 +265,8 @@ function system(raw: unknown): string {
   const life = lifeFlags(input.life);
   const dyn = dynamicFlags(input.dynamic);
   const prac = practiceFlags(input.practice);
-  const eventTypes = EVENT_TYPES.filter((t) => (!LIFE_EVENT_TYPES.includes(t) || life.types.has(t)) /* P14c: each type of her life only with its list */ && (!DYNAMIC_INTENT_TYPES.includes(t) || dyn.types.has(t)) /* P15: each type of the dynamic only with its subject */ && (!PRACTICE_INTENT_TYPES.includes(t) || prac.types.has(t)) /* P16: each type of the practices only with its subject */ && !CRAFT_INTENT_TYPES.includes(t) /* P16b: Task 16 offers each only with its subject */ && (hasRules || (hasOverride && t === 'compromise_reached') || ((dyn.claims || dyn.exits) && t === 'compromise_reached') || (prac.compromise && t === 'compromise_reached') || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
+  const craft = craftFlags(input.craft);
+  const eventTypes = EVENT_TYPES.filter((t) => (!LIFE_EVENT_TYPES.includes(t) || life.types.has(t)) /* P14c: each type of her life only with its list */ && (!DYNAMIC_INTENT_TYPES.includes(t) || dyn.types.has(t)) /* P15: each type of the dynamic only with its subject */ && (!PRACTICE_INTENT_TYPES.includes(t) || prac.types.has(t)) /* P16: each type of the practices only with its subject */ && (!CRAFT_INTENT_TYPES.includes(t) || craft.types.has(t)) /* P16b: each type of the craft only with its subject */ && (hasRules || (hasOverride && t === 'compromise_reached') || ((dyn.claims || dyn.exits) && t === 'compromise_reached') || (prac.compromise && t === 'compromise_reached') || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE) && (hasExpectations || !EXPECTATION_TYPES.includes(t)) && (hasConspire || t !== CONSPIRE_TYPE));
   const extras = [
     ...(excluded.length > 0 ? ['  "contentViolations": [{ "category": "<id from EXCLUDED>", "evidence": "<at most 15 words quoted from the exchange>" }]'] : []),
     ...(asksTone ? ['  "sceneTone": "romantic" | "intimate" | null'] : []),
@@ -286,6 +306,7 @@ function system(raw: unknown): string {
     ...(prac.tasks || prac.accepts || prac.compromise ? ['               "taskId": "<id from TASKS, ACCEPTS or TALKS>"   // only for task_kept / task_broken / practice_accepted / compromise_reached about a task'] : []),
     ...(prac.ceremonies || prac.compromise ? ['               "punishmentId": "<id from CEREMONY or TALKS>", "step": "<its step id>", "number": <whole number>, "alarmId": "<id from TALKS>"   // punishmentId and step for ceremony_step (number only when the step is a number), punishmentId or alarmId for compromise_reached'] : []),
     ...(prac.handovers ? ['               "handoverId": "<id from HANDOVERS>"   // only for practice_accepted about a handover'] : []),
+    ...(craft.signals ? ['               "motion": "<motion from SIGNALS>"   // only for foot_signal_answered'] : []),
     ...(prac.service ? [`               "verdict": ${VERDICTS.map((v) => `"${v}"`).join(' | ')}   // only for service_rated`] : []),
     '  "facts": [{ "about": ["<unit id>"] | "world" | "commander", "text": "<one sentence>", "importance": 1-5, "tags": ["<tag>"] }],',
     '  "proposals": [{ "from": "commander" | "<unit id>", "to": "commander" | "<unit id>", "kind": PROPOSAL_KIND, "evidence": "<short quote>" }],',
@@ -348,6 +369,9 @@ function system(raw: unknown): string {
     ...(prac.denial ? ['"denial_broken": the commander does what a unit listed under DENIAL forbade without her permission, or asks her too late; that unit is the target. Report it only when the exchange plainly shows it.'] : []),
     ...(prac.service ? ['"service_rated": a unit listed under SERVICE judges what the commander just did for her; the unit is the target; set "verdict": "pleased", "adequate" or "displeased". Report it only when the exchange shows her judgement.'] : []),
     ...(prac.threats ? ['"threat_voiced": a unit listed under THREATS threatens the commander in words (a consequence for what the commander does or fails to do); that unit is the target. A warning she means kindly, or a plain order, is not a threat.'] : []),
+    ...(craft.cares ? ['"care_noticed": a unit listed under CARES shows, in this exchange, that she saw what the commander did for her without being asked (a remark about the thing, a look at it, a thanks that is about nothing else); that unit is the target. Report it only when the exchange plainly shows it.'] : []),
+    ...(craft.signals ? ['"foot_signal_answered": a unit listed under SIGNALS makes the signal of her foot for one of the motions listed for her and the commander answers it, in this exchange; that unit is the target; set "motion" to the motion from SIGNALS. A signal no one answered is not reported.'] : []),
+    ...(craft.praise ? ['"praise_given": the commander praises a unit listed under PRAISE, in the commander\'s own words, in this exchange; that unit is the target. Report only that praise was given; never copy the words.'] : []),
     ...(input.staging ? stagingRules(input.staging) : []),
     ...(hasLimits ? ['If the commander pushes a unit past her limits, report `rejected_advance` (advances) or `decision_violated` (orders).'] : []),
   ].join('\n');
@@ -396,6 +420,7 @@ function prompt(raw: unknown): string {
   if (lifeList && lifeBlock(lifeList).length > 0) out.push('', ...lifeBlock(lifeList));
   if (input.dynamic && dynamicBlock(input.dynamic).length > 0) out.push('', ...dynamicBlock(input.dynamic));
   if (input.practice && practiceBlock(input.practice).length > 0) out.push('', ...practiceBlock(input.practice));
+  if (input.craft && craftBlock(input.craft).length > 0) out.push('', ...craftBlock(input.craft));
   if (input.staging) out.push('', ...stagingBlock(input.staging));
   if (input.openPromises.length > 0) {
     out.push('', 'Open promises:', ...input.openPromises.map((p) => `- ${p.by} → ${p.to}: ${p.text}`));
@@ -419,14 +444,14 @@ const LABELS: readonly string[] = EXPRESSION_LABELS;
  */
 export function sanitizeIntentOutput(
   raw: unknown,
-  ctx: { participants: string[]; squad: Array<{ id: string }>; minConfidence: number; romance: boolean; measures?: string[]; /** P12: the ids of the intercepted items the model was shown. */ intercepted?: string[]; /** P12: the units the model was told the commander is warned about. */ warned?: string[]; /** P13: the ids of the open overrides the model was shown. */ overrides?: string[]; /** P13: the ids of the warden's expectations the model was shown. */ expectations?: string[]; /** P13: the units a `conspired` may name. */ conspire?: string[]; /** P9d: the ids of the categories that are switched off. */ excluded?: string[]; /** P9d: the rules a rule event may name. */ rules?: Array<{ id: string; unitId: string }>; /** P14c: what was offered about her life (the lists the model was shown). */ life?: LifeOffer; /** P15: what was offered about the dynamic. */ dynamic?: DynamicOffer; /** P16: what was offered about the practices. */ practice?: PracticeOffer; /** P11b: the campaign's fact length. */ factTextMax?: number },
+  ctx: { participants: string[]; squad: Array<{ id: string }>; minConfidence: number; romance: boolean; measures?: string[]; /** P12: the ids of the intercepted items the model was shown. */ intercepted?: string[]; /** P12: the units the model was told the commander is warned about. */ warned?: string[]; /** P13: the ids of the open overrides the model was shown. */ overrides?: string[]; /** P13: the ids of the warden's expectations the model was shown. */ expectations?: string[]; /** P13: the units a `conspired` may name. */ conspire?: string[]; /** P9d: the ids of the categories that are switched off. */ excluded?: string[]; /** P9d: the rules a rule event may name. */ rules?: Array<{ id: string; unitId: string }>; /** P14c: what was offered about her life (the lists the model was shown). */ life?: LifeOffer; /** P15: what was offered about the dynamic. */ dynamic?: DynamicOffer; /** P16: what was offered about the practices. */ practice?: PracticeOffer; /** P16b: what was offered about the craft. */ craft?: CraftOffer; /** P11b: the campaign's fact length. */ factTextMax?: number },
 ): IntentOutput {
   const parsed = IntentExtractRawSchema.safeParse(raw);
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [], contentViolations: [], sceneTone: undefined };
   const events = src.events.filter((e) => isObj(e) && typeof e.confidence === 'number' && e.confidence >= ctx.minConfidence);
   const proposals = src.proposals.filter((p) => ctx.romance || !(isObj(p) && (ROMANTIC_PROPOSALS as readonly string[]).includes(p.kind as string)));
   // the engine judges each event per unit before it cuts the list to six (a dropped event must not take a slot)
-  const intents = validateIntents({ ...src, events, proposals }, { participants: ctx.participants, squad: ctx.squad, maxEvents: TUNING.relations.maxEventsRead, ...(ctx.measures ? { measures: ctx.measures } : {}), ...(ctx.rules ? { rules: ctx.rules } : {}), ...(ctx.intercepted ? { intercepted: ctx.intercepted } : {}), ...(ctx.warned ? { warned: ctx.warned } : {}), ...(ctx.overrides ? { overrides: ctx.overrides } : {}), ...(ctx.expectations ? { expectations: ctx.expectations } : {}), ...(ctx.conspire ? { conspire: ctx.conspire } : {}), ...(ctx.life ? { life: ctx.life } : {}), ...(ctx.dynamic ? { dynamic: ctx.dynamic } : {}), ...(ctx.practice ? { practice: ctx.practice } : {}), ...(ctx.factTextMax !== undefined ? { factTextMax: ctx.factTextMax } : {}) });
+  const intents = validateIntents({ ...src, events, proposals }, { participants: ctx.participants, squad: ctx.squad, maxEvents: TUNING.relations.maxEventsRead, ...(ctx.measures ? { measures: ctx.measures } : {}), ...(ctx.rules ? { rules: ctx.rules } : {}), ...(ctx.intercepted ? { intercepted: ctx.intercepted } : {}), ...(ctx.warned ? { warned: ctx.warned } : {}), ...(ctx.overrides ? { overrides: ctx.overrides } : {}), ...(ctx.expectations ? { expectations: ctx.expectations } : {}), ...(ctx.conspire ? { conspire: ctx.conspire } : {}), ...(ctx.life ? { life: ctx.life } : {}), ...(ctx.dynamic ? { dynamic: ctx.dynamic } : {}), ...(ctx.practice ? { practice: ctx.practice } : {}), ...(ctx.craft ? { craft: ctx.craft } : {}), ...(ctx.factTextMax !== undefined ? { factTextMax: ctx.factTextMax } : {}) });
   const emotions: Array<{ unitId: string; label: ExpressionLabel }> = [];
   for (const e of src.emotions) {
     if (isObj(e) && typeof e.unitId === 'string' && ctx.participants.includes(e.unitId) && typeof e.label === 'string' && LABELS.includes(e.label)) {
@@ -494,6 +519,7 @@ export function readIntentOutput(raw: unknown, input: IntentExtractInput, opts: 
     ...(input.life ? { life: input.life } : {}),
     ...(input.dynamic ? { dynamic: input.dynamic } : {}),
     ...(input.practice ? { practice: input.practice } : {}),
+    ...(input.craft ? { craft: input.craft } : {}),
     ...(input.factTextMax !== undefined ? { factTextMax: input.factTextMax } : {}),
   });
   return input.staging ? { ...base, staging: sanitizeStaging(isObj(raw) ? raw.staging : undefined, input.staging) } : base; // P15a

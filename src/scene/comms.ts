@@ -1,6 +1,7 @@
 import { clockText } from '../engine/calendar';
 import { warnedInput } from '../engine/special/paranoia/premonitions';
 import { dynamicIntentInput } from '../engine/dynamic/intents';
+import { craftIntentInput, SAID_MAX } from '../engine/craft/intents';
 import { practiceIntentInput } from '../engine/practice/intents';
 import { lifeIntentInput } from '../engine/life/intents';
 import { disabledCategories, ownLimitLabels, rulesOf } from '../engine/bonds';
@@ -110,6 +111,7 @@ export function createComms(deps: CommsDeps): Comms {
       ...warnedInput(s, [unitId]), // P12: the units the commander has an open warning about
       ...lifeIntentInput(s, deps.registries(), [unitId], null, 'dm'), // P14c: her news and her hobbies only
       ...dynamicIntentInput(s, deps.registries(), [unitId], 'dm'), // P15: her probe, an open milestone, claim or offer (nothing while off or with no subject)
+      ...craftIntentInput(s, deps.registries(), [unitId], 'dm'), // P16b: a care she may have seen (nothing without a subject)
       ...practiceIntentInput(s, deps.registries(), [unitId], 'dm'), // P16: her open tasks, a punishment, a denial, a threat she may voice (nothing while she does not hold)
     };
   }
@@ -117,6 +119,21 @@ export function createComms(deps: CommsDeps): Comms {
   /** Her answer is read for intents (site `dm.intents`, a quiet record when it fails); proposals by the commander are not honoured here (her text was written before any verdict). */
   async function readExchange(unitId: string, ref: string): Promise<void> {
     await deps.generations.generate('dm.intents', `${unitId}:${ref}`);
+  }
+
+  /** What the commander wrote in the exchange `ref` closes (the message before her reply, or what was said at the door), cleaned to one line of at most `SAID_MAX` characters; `''` when it is gone. */
+  function commanderWords(unitId: string, ref: string): string {
+    const s = state();
+    if (!s) return '';
+    let text = '';
+    if (ref.startsWith('door:')) text = s.calendar.nightEvent?.door?.said ?? '';
+    else {
+      const thread = threadOf(s, unitId);
+      const at = thread.findIndex((m) => m.id === ref);
+      const before = at > 0 ? thread[at - 1] : undefined;
+      if (before?.from === 'commander') text = before.text;
+    }
+    return text.replace(/\s+/g, ' ').trim().slice(0, SAID_MAX).trim();
   }
 
   // `dm.intents` (key `<unitId>:<her reply id>` or `<unitId>:door:<knock id>`): the exchange is rebuilt from the thread or the knock
@@ -154,9 +171,10 @@ export function createComms(deps: CommsDeps): Comms {
       // P9: what the reading logs (a punishment, a threat) points back at her reply; a door exchange is not a DM message
       const lastId = ref.startsWith('door:') ? undefined : ref;
       const flagged = result.contentViolations.map((v) => v.category); // P9d: her reply depicts content that is off
+      const said = commanderWords(unitId, ref); // P16b: the commander's own words of this exchange, for the praise alone (never sent to a model)
       const events = app.dispatch({
         type: 'intents/apply',
-        payload: { channel: 'dm', unitId, intents, ...(lastId ? { messageRef: `dm:${lastId}` } : {}), ...(flagged.length > 0 ? { violations: { categories: flagged } } : {}) },
+        payload: { channel: 'dm', unitId, intents, ...(lastId ? { messageRef: `dm:${lastId}` } : {}), ...(flagged.length > 0 ? { violations: { categories: flagged } } : {}), ...(said !== '' ? { said } : {}) },
       }, { expectChatId: expect });
       if (events.some((e) => e.type === 'error')) return { stale: true };
       for (const e of events) {

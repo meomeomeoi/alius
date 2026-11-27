@@ -110,6 +110,8 @@ export interface ContactEntry extends Described {
   stimuli?: string[];
   sources?: Record<string, number>;
   mouth?: true;
+  /** P16b: her foot is what touches the commander in this contact (a foot signal may be answered while it is live). */
+  foot?: true;
   promptHint: string;
   effects?: BlockingEffect[];
 }

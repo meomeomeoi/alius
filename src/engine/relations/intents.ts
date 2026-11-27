@@ -3,6 +3,7 @@ import { OFFER_ANSWERS, QUIRK_WHEN, TONES, type DynamicOffer, type OfferAnswer, 
 import { hasCommanderPronoun } from '../dynamic/pronoun';
 import { normalizeTag } from '../setup';
 import type { LifeOffer } from '../life/types';
+import type { CraftOffer } from '../craft/intents';
 import type { PracticeOffer } from '../practice/intents';
 import { VERDICTS, type Verdict } from '../practice/state';
 import { VALUE_AXES, type Reading, type Severity, type ValueAxis } from '../state/types';
@@ -61,6 +62,8 @@ export interface EventIntent {
   handoverId?: string;
   step?: string;
   number?: number;
+  /** P16b: the motion of her foot a `foot_signal_answered` is about (one she has named, among what the model was offered). */
+  motion?: string;
   /** P14b: how the person it happened to took it, read by the model (character development); only a complete, valid reading is kept. */
   reading?: Reading;
   evidence: string;
@@ -304,6 +307,33 @@ function dynamicFields(type: EventType, e: Record<string, unknown>, intent: Even
   }
 }
 
+/**
+ * P16b: validates one event of the craft against what the model was offered (`CraftOffer`). The commander is the actor and she the only target, whichever side the model wrote her on. A
+ * `care_noticed` needs the unit to be among the cares offered, a `praise_given` among the praise offered, a `foot_signal_answered` a motion that was listed for her. Returns a key that
+ * is the same for the same report (the same thing twice counts once), or `null` to drop the event.
+ */
+function craftFields(type: EventType, e: Record<string, unknown>, intent: EventIntent, offer: CraftOffer | undefined): { key: string } | null {
+  if (offer === undefined || !offer.types.includes(type)) return null;
+  const who = intent.actor !== 'commander' ? intent.actor : intent.targets[0];
+  if (who === undefined) return null;
+  intent.actor = 'commander';
+  intent.targets = [who];
+  switch (type) {
+    case 'care_noticed':
+      return offer.cares.some((c) => c.unitId === who) ? { key: `${type}|${who}` } : null;
+    case 'praise_given':
+      return offer.praise.includes(who) ? { key: `${type}|${who}` } : null;
+    case 'foot_signal_answered': {
+      const motion = typeof e.motion === 'string' ? e.motion : undefined;
+      if (motion === undefined || !offer.signals.some((s) => s.unitId === who && s.motion === motion)) return null;
+      intent.motion = motion;
+      return { key: `${type}|${who}|${motion}` };
+    }
+    default:
+      return null;
+  }
+}
+
 /** The longest agreed wording a compromise over a practice keeps. */
 const PRACTICE_TEXT_MAX = 160;
 /** The ceremony number she can be told: a whole number from 1 to 50. */
@@ -424,6 +454,8 @@ export function validateIntents(
     dynamic?: DynamicOffer;
     /** P16: what the model was offered about the practices (`practiceIntentInput`). Without it, or for a type or an id it does not list, a report of the practices is dropped. */
     practice?: PracticeOffer;
+    /** P16b: what the model was offered about the craft (`craftIntentInput`). Without it, or for a type or a motion it does not list, a report of the craft is dropped. */
+    craft?: CraftOffer;
     /** P11b: the longest text a fact or a promise keeps (the campaign's memory setting); default `TUNING.memory.factTextMax`. */
     factTextMax?: number;
   },
@@ -511,7 +543,12 @@ export function validateIntents(
       if (dyn === null || seenLife.has(dyn.key)) continue;
       seenLife.add(dyn.key);
     }
-    if (CRAFT_INTENT_TYPES.includes(type)) continue; // P16b: not offered yet (Task 16 offers each only with its subject)
+    if (CRAFT_INTENT_TYPES.includes(type)) {
+      // the craft: the type and the motion it names must be among what was offered, for a woman who is here; the sides are the type's own
+      const craft = craftFields(type, e, intent, ctx.craft);
+      if (craft === null || seenLife.has(craft.key)) continue;
+      seenLife.add(craft.key);
+    }
     if (PRACTICE_INTENT_TYPES.includes(type)) {
       // the practices: the type and the ids it names must be among what was offered, for a woman who is here; the sides are the type's own
       const practice = practiceFields(type, e, intent, ctx.practice);

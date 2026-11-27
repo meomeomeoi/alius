@@ -257,6 +257,7 @@
       "kind": "gap",
       "angle": -14
     },
+    "foot": true,
     "label": "Feet on face",
     "description": "AUTHOR TO WRITE: She lies on the bunk, her feet resting on the commander's face, reading or on the PDA.",
     "promptHint": "she lies on her bunk, her feet resting on the commander's face",
@@ -286,6 +287,7 @@
         "posture": "bowing"
       }
     },
+    "foot": true,
     "label": "Foot on head",
     "description": "AUTHOR TO WRITE: Her foot pressing the commander's head down.",
     "promptHint": "her foot presses the commander's head down",
@@ -333,6 +335,7 @@
     "occlusion": {
       "kind": "lift"
     },
+    "foot": true,
     "label": "Sole to mouth",
     "description": "AUTHOR TO WRITE: Her sole at the commander's lips.",
     "promptHint": "her sole at the commander's lips",
@@ -367,6 +370,7 @@
       }
     },
     "mouth": true,
+    "foot": true,
     "label": "Foot worship",
     "description": "AUTHOR TO WRITE: Kissing and worshipping her feet.",
     "promptHint": "the commander worships her feet",
@@ -399,6 +403,7 @@
       }
     ],
     "mouth": true,
+    "foot": true,
     "label": "Boot worship",
     "description": "AUTHOR TO WRITE: Lips to her boots; dirty after a run.",
     "promptHint": "the commander's lips on her boots",
@@ -501,6 +506,7 @@
       }
     ],
     "face": "down",
+    "foot": true,
     "label": "Footrest",
     "description": "AUTHOR TO WRITE: Her feet resting on the commander's back.",
     "promptHint": "her feet rest on the commander's back",
@@ -573,6 +579,7 @@
       }
     ],
     "face": "up",
+    "foot": true,
     "label": "Standing on",
     "description": "AUTHOR TO WRITE: She stands on the commander's back.",
     "promptHint": "she stands on the commander's back",
@@ -640,6 +647,7 @@
       }
     ],
     "face": "up",
+    "foot": true,
     "label": "Boot on chest",
     "description": "AUTHOR TO WRITE: Her boot on the commander's chest.",
     "promptHint": "her boot on the commander's chest",
@@ -678,6 +686,7 @@
     ],
     "face": "down",
     "supported": true,
+    "foot": true,
     "label": "On hands",
     "description": "AUTHOR TO WRITE: Her foot on the commander's open palms.",
     "promptHint": "her foot on the commander's open palms",
@@ -1080,6 +1089,7 @@
     "stimuli": [
       "scent_feet"
     ],
+    "foot": true,
     "label": "Foot rub",
     "description": "AUTHOR TO WRITE: Rubbing her feet.",
     "promptHint": "the commander rubs her feet"
