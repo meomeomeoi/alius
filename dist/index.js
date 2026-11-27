@@ -85352,7 +85352,7 @@ function drawPostureCall(host, state, reg, pick13, handlers2, opts = {}) {
   host.append(card2);
 }
 function drawSceneCall(host, state, reg, pick13, handlers2) {
-  const scheme = callScheme(state);
+  const scheme = callScheme(state, handlers2.settings?.());
   if (scheme !== "A" && handlers2.state !== void 0 && handlers2.settings !== void 0) {
     if (currentCall() !== null) cancelCall();
     drawGameCall(host, state, reg, pick13, handlers2, scheme);
@@ -85409,7 +85409,9 @@ function drawSceneCall(host, state, reg, pick13, handlers2) {
     else card2.prepend(figure2);
   }
 }
-function callScheme(state) {
+function callScheme(state, settings) {
+  if (sceneSettingsOf(state).physicsInteractions.posture === false) return "A";
+  if (settings !== void 0 && (settings.physicsRealtime !== true || settings.physicsInteractions?.posture === false)) return "A";
   const level = craftLevel(state, "posture");
   return level >= TUNING.craft.call.c ? "C" : level >= TUNING.craft.call.b ? "B" : "A";
 }

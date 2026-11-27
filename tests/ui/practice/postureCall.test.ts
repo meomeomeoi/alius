@@ -330,6 +330,24 @@ describe('the call\'s schemes B and C (Task 24)', () => {
     b.screen.dispose(); cancelPostureCalls(); vi.useRealTimers();
   });
 
+  it('the schemes B and C are the game of postures: with its toggle off (the settings or the campaign\'s mirror) or real time off the call is scheme A (the review: M6)', () => {
+    const lvl = (n: number): CampaignState => { const s = state(); s.commander.craft = { posture: { level: n, xp: 0, day: 20 } } as never; return s; };
+    expect(callScheme(lvl(4))).toBe('C');
+    const mirrored = lvl(4); // the campaign's mirror of the toggle: the switch the instrument reads too
+    mirrored.settings = { ...mirrored.settings, physicsInteractions: { posture: false } } as never;
+    expect(callScheme(mirrored)).toBe('A');
+    expect(callScheme(lvl(4), { ...DEFAULT_SETTINGS, physicsInteractions: { ...DEFAULT_SETTINGS.physicsInteractions, posture: false } })).toBe('A');
+    expect(callScheme(lvl(4), { ...DEFAULT_SETTINGS, physicsRealtime: false })).toBe('A');
+    expect(callScheme(lvl(4), { ...DEFAULT_SETTINGS })).toBe('C');
+    const a = bc(2, { physicsInteractions: { ...DEFAULT_SETTINGS.physicsInteractions, posture: false } });
+    expect(a.q('.alius-pg')).toBeNull();
+    expect(a.q('.alius-call')).not.toBeNull();
+    a.screen.dispose(); cancelPostureCalls(); vi.useRealTimers();
+    const r = bc(2, { physicsRealtime: false });
+    expect(r.q('.alius-pg')).toBeNull();
+    r.screen.dispose(); cancelPostureCalls(); vi.useRealTimers();
+  });
+
   it('B: her word is large in her hand, her foot keeps the time over a window of hers plus 2.5 s for each point to move; the body starts as it is', () => {
     const { q, host } = bc(2);
     expect(q('.alius-pg #callWord .w')!.textContent).toBe('Down');

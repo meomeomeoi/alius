@@ -3,6 +3,7 @@ import type { Registries } from '../../content/types';
 import { dynamicOn } from '../../engine/dynamic/gate';
 import { practiceLive } from '../../engine/practice/gate';
 import { presetOf } from '../../engine/blocking';
+import { sceneSettingsOf } from '../../engine/moments/settings';
 import { postureAllowed, postureWindowMs } from '../../engine/practice/postures';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
@@ -131,7 +132,7 @@ export function drawPostureCall(host: HTMLElement, state: CampaignState, reg: Re
  * the state before it was answered (another scene, she stopped holding) goes at once; a new call ends the one before.
  */
 function drawSceneCall(host: HTMLElement, state: CampaignState, reg: Registries, pick: (c: { unitId: string }) => boolean, handlers: PostureCallHandlers): void {
-  const scheme = callScheme(state);
+  const scheme = callScheme(state, handlers.settings?.());
   if (scheme !== 'A' && handlers.state !== undefined && handlers.settings !== undefined) {
     if (currentCall() !== null) cancelCall(); // a call of scheme A that was drawn before the commander's posture level grew gives way
     drawGameCall(host, state, reg, pick, handlers, scheme);
@@ -181,8 +182,11 @@ function drawSceneCall(host: HTMLElement, state: CampaignState, reg: Registries,
   }
 }
 
-/** The scheme of her call by the commander's `posture` level (P16b Task 24): A below `TUNING.craft.call.b`, B (assemble joint by joint) from it, C (her conducting) from `.c`. */
-export function callScheme(state: CampaignState): 'A' | 'B' | 'C' {
+/** The scheme of her call by the commander's `posture` level (P16b Task 24): A below `TUNING.craft.call.b`, B (assemble joint by joint) from it, C (her conducting) from `.c`; always A while the game of postures is off (its toggle) or real time is off. */
+export function callScheme(state: CampaignState, settings?: Pick<AliusSettings, 'physicsRealtime' | 'physicsInteractions'>): 'A' | 'B' | 'C' {
+  // B and C are the game of postures: with its toggle off (the campaign's mirror or the settings) or real time off in the settings, her call is scheme A, as it was
+  if (sceneSettingsOf(state).physicsInteractions.posture === false) return 'A';
+  if (settings !== undefined && (settings.physicsRealtime !== true || (settings.physicsInteractions as Record<string, boolean> | undefined)?.posture === false)) return 'A';
   const level = craftLevel(state, 'posture');
   return level >= TUNING.craft.call.c ? 'C' : level >= TUNING.craft.call.b ? 'B' : 'A';
 }
