@@ -240,6 +240,24 @@ body.reduced .card.arrive { animation: none; }
 body.reduced #callWord .w.write, body.reduced #callWord .w.bob, body.reduced #callLine.write { animation: none; }
 body.reduced .pc { transition: opacity .01s; }
 
+/* ---------- P16b (gate G3, round 1): the craft's scene surfaces ---------- */
+#chipRow { position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); width: min(1080px, 56vw); display: flex; gap: 10px; align-items: center; z-index: 3; }
+#chipRow .chip { border-radius: 999px; border: 1px solid color-mix(in srgb, var(--cmd) 45%, transparent); background: color-mix(in srgb, var(--cmd) 10%, rgba(14,12,20,.6)); color: color-mix(in srgb, var(--cmd) 60%, #fff);
+  padding: 2px 13px; font: 12px "IBM Plex Mono", monospace; letter-spacing: .06em; cursor: pointer; white-space: nowrap; backdrop-filter: blur(10px); }
+#chipRow .chip:hover { background: color-mix(in srgb, var(--cmd) 24%, rgba(14,12,20,.7)); }
+#chipRow .chip.anticipate { border-style: dashed; }
+body.chipsUp #reply { bottom: 140px; }
+.card.paper { background: linear-gradient(176deg, #efe6d6, #e4d8c2); border-color: rgba(60,40,20,.25); color: #2a2018; transform: rotate(-1.2deg); }
+.card.paper::before { background: transparent; }
+.card.paper .head .who, .card.paper .words { color: color-mix(in srgb, var(--her) 45%, #3a1c2c); text-shadow: none; }
+.card.paper .head .kind, .card.paper .gist { color: rgba(42,32,24,.6); }
+.card.lesson { animation: lessonOut 7s ease-in forwards; }
+@keyframes lessonOut { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+.card .norms { margin: 6px 0 2px; padding: 0; list-style: none; }
+.card .norms li { font-family: var(--hand), cursive; font-size: calc(22px * var(--hs)); line-height: 1.25; color: color-mix(in srgb, var(--her) 62%, var(--ink)); }
+.card .norms li .v { color: var(--her); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 4px; text-decoration-color: color-mix(in srgb, var(--her) 55%, transparent); }
+.card .term { font-family: var(--hand), cursive; font-size: calc(46px * var(--hs)); line-height: 1; color: var(--her); margin: 4px 0 2px; }
+
 /* ---------- prototype only ---------- */
 #gallery { position: fixed; inset: 0; z-index: 70; display: none; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; padding: 18px; overflow: auto;
   background: rgba(6, 6, 10, .92); }
@@ -274,6 +292,7 @@ body.reduced .pc { transition: opacity .01s; }
   <div id="inputWrap"><input id="cmd" autocomplete="off" spellcheck="false" placeholder="say something…"></div>
   <div id="waiting"></div>
   <div id="dock"></div>
+  <div id="chipRow"></div>
   <div id="stopPill">STOP WORD</div>
   <div id="dial"><div id="dialFace"></div><div id="dialLabel"></div></div>
   <div id="call"><div id="callWord"><span class="w"></span><div id="dots"></div></div><div id="callLine"></div><div id="fan"></div></div>
@@ -285,6 +304,7 @@ body.reduced .pc { transition: opacity .01s; }
   <h4>her cards</h4>
   <div class="row" id="adders"></div>
   <div class="row" style="margin-top:6px"><button class="opt" id="deal">deal a hand</button><button class="opt" id="clear">clear</button></div>
+  <label><input type="checkbox" id="antic"> P16b: her reading allows [anticipate] (the chip row)</label>
   <h4>the posture call</h4>
   <div class="row"><button class="opt" id="callBtn">she calls a posture (C)</button></div>
   <label><input type="checkbox" id="timed" checked> the order interaction is on (her foot keeps the time)</label>
@@ -367,6 +387,19 @@ const NEUTRAL = {
   cerWords: ['Say it.'], cerPosture: ['{Posture}. Now.'], cerNumber: ['How many? You say.'],
   moment: ['Something hangs in the air.', 'It could go either way.', "A moment, and it's yours to take."],
   exposing: ['{Name} could give you away.'],
+  // P16b G3 (drafts)
+  drillWhat: ['{Drill}. With me.', '{Drill}. Now, while I watch.'],
+  drillOther: ['{Drill}, with {other}. I hear everything.', '{Other} can help you with {drill}. I will hear about it.'],
+  drillCost: ['It takes {slots}.', '{Slots}, and you get better.'],
+  examWhen: ['The exam is {when}.', 'I test you {when}.'],
+  examNorms: ['Show me:'],
+  examFail: ['Fall short, and I take your free time for drills.', 'Fail, and your evenings are mine.'],
+  term: ['{Days} days.', 'For {days} days.'],
+  termWhy: ['For {crime}.', 'Because of {crime}.'],
+  termEcho: ['{Echo}'],
+  termGrow: ['Every slip adds {add}.', 'Slip, and it grows by {add}.'],
+  lesson: ['{Point}.', '{Point}. That was it.'],
+  noted: ['{What}. I noticed.', 'I saw. {What}.'],
   call: {
     right: ['Good.', 'Like that.', "That's it."],
     wrong: ['Not that. {posture}.', 'I said {posture}.', 'Wrong. {posture}.'],
@@ -391,6 +424,7 @@ const STYLE = {
     call: { right: ['Fine.', 'Acceptable.', 'Yes.'], wrong: ['No. {posture}.', '{posture}. Not that.', 'Wrong.'], slow: ['Late.', 'Too slow.', "I don't repeat myself."] },
   },
   ritual: {
+    lesson: ['{Point}. The form demands better.'], noted: ['{What}. It is noted.'],
     when: ['It is to be done {when}.', '{When}, as is proper.', 'The hour is set: {when}.'],
     cost: ['It asks {slots} of your time.', 'You will give {slots} to it.', '{Slots}, set aside for this.'],
     who: ['{Who} will bear witness.', 'It will be known to {who}.', '{Who} shall know of it.'],
@@ -415,6 +449,7 @@ const STYLE = {
     call: { right: ['Good. Quick, the way I taught you.', "That's how I like you.", 'Yes. Stay like that for me.'], wrong: ['I said {posture}. My word, not your guess.', 'Not that. {posture}, for me.', 'You know what {posture} means. Do it.'], slow: ['When I call, you come. Faster.', 'Too slow for me.', "Don't make me wait. Not me."] },
   },
   playful: {
+    noted: ['{What}~ were you trying to impress me?', 'Saw that. {What}. Cute.'], lesson: ['{Point}~ caught you.'],
     when: ["{When}~ don't be late.", "{When}, or I'll think of something.", '{When}. Tick tock.'],
     cost: ['Only {slots}~', "It'll cost you {slots}. Worth it?", "{Slots} of your time. I'll have fun with it."],
     who: ['{Who} gets to know~', "Guess who'll find out? {Who}.", '{Who} will know. Smile for them.'],
@@ -423,6 +458,7 @@ const STYLE = {
     call: { right: ['Ooh, quick~', 'Good! Gold star.', 'Look at you go.'], wrong: ['Nope~ {posture}.', 'Cute, but no. {posture}.', 'Wrong one! {posture}, silly.'], slow: ['Too slo-ow~', 'Did you fall asleep?', 'I counted. You lost.'] },
   },
   cruel: {
+    lesson: ['{Point}. Pathetic.'], noted: ['{What}. Did I ask?'],
     when: ["{When}. Don't make me ask twice.", "{When}. Late, and you'll regret it.", '{When}. Not a minute after.'],
     cost: ['{Slots}. As if you had better things to do.', "It takes {slots}. I don't care what else you had.", '{Slots}. Spent on me.'],
     who: ['{Who} will know. All of it.', "I'll make sure {who} hears.", '{Who} will know exactly what you are.'],
@@ -439,6 +475,7 @@ const STYLE = {
     call: { right: ['Yes. Exactly as I pictured it.', "Perfect. Don't move.", "There. I've been waiting for that."], wrong: ['No. {posture}. You know it. I know you know it.', "That's not {posture}. Why would you do that?", "{posture}. I've shown you a hundred times."], slow: ['I counted every second.', 'You made me wait. I noticed.', "Too slow. I'll remember."] },
   },
   drill: {
+    drillWhat: ['{Drill}. On my clock. Move.', '{Drill}. Now. I am timing you.'], examWhen: ['Exam: {when}. Be ready.', '{When}. Exam. No excuses.'], examFail: ['Fail, and I book your free slots. All of them I need.'], lesson: ['{Point}! Again.', '{Point}. Fix it.'],
     when: ['{When}. Move.', 'Done {when}. No excuses.', '{When}, on the dot.'],
     cost: ['{Slots}. Report when done.', "You're on this for {slots}.", '{Slots}, starting when I say.'],
     who: ['{Who} will know.', "I'll report it to {who}.", '{Who} will see it. Look sharp.'],
@@ -447,6 +484,7 @@ const STYLE = {
     call: { right: ['Good.', "Hold it. Don't move.", "That's it. Again later."], wrong: ['Wrong! {posture}!', '{posture}, I said! Move!', "That's not {posture}. Again!"], slow: ['Too slow! Again!', 'On the word! Not after!', 'Faster than that.'] },
   },
   regal: {
+    drillWhat: ['{Drill}. I will watch, if it pleases me.'], noted: ['{What}. You may continue.', 'I saw. {What}. Not unwelcome.'], lesson: ['{Point}. I expect better.'],
     when: ['You will have it done {when}.', "{When}. I'll expect it.", '{When}, as I wish it.'],
     cost: ['You will give me {slots}.', "{Slots} of your time, which I'm taking.", "It asks {slots} of your time. You'll give it gladly."],
     who: ['{Who} may know.', "I'll allow {who} to know.", '{Who} will learn of it, by my leave.'],
@@ -455,6 +493,7 @@ const STYLE = {
     call: { right: ['You may stay so.', 'Better.', 'That will do.'], wrong: ['I asked for {posture}.', '{posture}. Do try to keep up.', 'Not that. {posture}, as I said.'], slow: ['I am kept waiting.', 'When I speak, you move.', 'Too slow to please me.'] },
   },
   vindictive: {
+    term: ['{Days} days. You earned every one.', '{Days} days. Count them.'], termWhy: ['For {crime}. You remember.', 'You know why: {crime}.'], termGrow: ['Every slip adds {add}. Go ahead.', 'Slip, and I add {add}.'],
     when: ['{When}. You owe me that much.', "{When}. Don't fail me again.", "{When}. After what you did, you'll be on time."],
     cost: ["{Slots}. Call it what you owe.", "It'll take {slots}. You've taken more from me.", '{Slots}. Consider it payment.'],
     who: ['{Who} will know what you did.', "I'll tell {who}. They should know.", '{Who} will know. Let them judge you too.'],
@@ -503,8 +542,15 @@ const KINDS = {
   claim: () => ({ kind: 'claim', title: 'claim', words: 'Give me your device. And the Leash, while you\'re at it.', domain: 'the device', grants: ['device_floor', 'leash_block'] }),
   ret: () => ({ kind: 'return', title: 'begin again', words: 'Let\'s begin again. A smaller step than before.', gist: 'a smaller step' }),
   physics: () => ({ kind: 'physics', title: 'a hold', neutral: true, run: true, cue: 'Her breath comes short.', label: 'jaw' }),
+  // P16b G3: the craft's surfaces (drafts)
+  drill: () => ({ kind: 'drill', title: 'drill', words: 'On your back. I sit, you breathe. We see how long.', drill: 'Weight drill', slots: 1 }),
+  drill_other: () => ({ kind: 'drill', title: 'drill', words: null, drill: 'Breath drill', other: 'Bea', slots: 1, neutralVoice: true }),
+  exam: () => ({ kind: 'exam', title: 'exam', words: 'A week. Show me what it bought.', norms: [['Under my weight', 'twenty minutes'], ['Display, held', 'fifteen minutes'], ['On one breath', 'forty seconds']] }),
+  sentence: () => ({ kind: 'sentence', title: 'sentence', words: 'You sold what wasn\'t yours. So now everything you send goes through me first.', days: 19, crime: 'the samples you sold', echo: 'Every message, through my hands.', add: 'three days' }),
+  note: () => ({ kind: 'note', title: 'a note', paper: true, words: 'Boots. Polished. Noticed.', what: 'The boots' }),
+  lesson: () => ({ kind: 'lesson', title: 'lesson', point: 'Hands', fade: true }),
 };
-const ADDERS = [['moment', 'moment'], ['task', 'task'], ['task_hold', 'hold'], ['task_words', 'in words'], ['task_signed', 'signed'], ['sealed', 'sealed'], ['punishment', 'punishment'], ['order', 'order'], ['ceremony', 'ceremony'], ['demonstration', 'demonstration'], ['milestone', 'milestone'], ['vow', 'vow'], ['claim', 'claim'], ['ret', 'return'], ['physics', 'hold (fallback)']];
+const ADDERS = [['moment', 'moment'], ['task', 'task'], ['task_hold', 'hold'], ['task_words', 'in words'], ['task_signed', 'signed'], ['sealed', 'sealed'], ['punishment', 'punishment'], ['order', 'order'], ['ceremony', 'ceremony'], ['demonstration', 'demonstration'], ['milestone', 'milestone'], ['vow', 'vow'], ['claim', 'claim'], ['ret', 'return'], ['physics', 'hold (fallback)'], ['drill', 'P16b drill'], ['drill_other', 'drill with Bea'], ['exam', 'exam'], ['sentence', 'sentence'], ['note', 'care noticed'], ['lesson', 'lesson']];
 
 let cards = [];      // newest last
 let openId = null;   // the card the commander opened (else the newest)
@@ -528,6 +574,11 @@ function gistOf(c) {
     case 'demonstration': return `${c.place.toLowerCase()} · <b>${c.slot}</b>`;
     case 'claim': return c.domain;
     case 'physics': return c.label;
+    case 'drill': return `${c.drill.toLowerCase()}${c.other ? ` · with ${c.other}` : ''}`;
+    case 'exam': return `${c.norms.length} norms · <b>${S.when}</b>`;
+    case 'sentence': return `<b>${c.days} days</b> left`;
+    case 'note': return c.what.toLowerCase();
+    case 'lesson': return c.point.toLowerCase();
     default: return c.gist ?? '';
   }
 }
@@ -678,6 +729,43 @@ function bodyOf(c) {
       b.append(answers);
       return b;
     }
+    case 'drill': {
+      const r = document.createElement('div'); r.className = 'rule'; b.append(r);
+      if (c.other) b.append(line('cond', fill(pick(id, 'drillOther'), { drill: c.drill.toLowerCase(), other: c.other }), `${c.drill} with ${c.other}: ×1.2; she hears of it.`));
+      else b.append(line('cond', fill(pick(id, 'drillWhat'), { drill: c.drill }), `${c.drill} with her: ×1.5, her verdict.`));
+      b.append(line('cond', fill(pick(id, 'drillCost'), { slots: c.slots === 1 ? 'one slot' : `${c.slots} slots` }), `Takes ${c.slots} slot.`));
+      answers.append(pill('begin', () => answer(c, 'begin')), pill('not now', () => answer(c, 'not now')));
+      b.append(answers); return b;
+    }
+    case 'exam': {
+      const r = document.createElement('div'); r.className = 'rule'; b.append(r);
+      b.append(line('cond', fill(pick(id, 'examWhen'), { when: S.when }), `Exam: ${S.when}.`));
+      b.append(line('cond', fill(pick(id, 'examNorms'), {}), 'The norms:'));
+      const ul = document.createElement('ul'); ul.className = 'norms';
+      for (const [what, much] of c.norms) { const li = document.createElement('li'); li.innerHTML = `${what}: <span class="v">${much}</span>`; ul.append(li); }
+      b.append(ul);
+      b.append(line('cond', fill(pick(id, 'examFail'), {}), 'Failing books drills on free slots.'));
+      answers.append(pill('begin', () => answer(c, 'begin')), pill('ask for time', () => answer(c, 'focus')));
+      b.append(answers); return b;
+    }
+    case 'sentence': {
+      const t = document.createElement('div'); t.className = 'term'; t.innerHTML = fill(pick(id, 'term'), { days: String(c.days) }).replace(/<span class="v">|<\/span>/g, ''); b.append(t);
+      const r = document.createElement('div'); r.className = 'rule'; b.append(r);
+      b.append(line('cond', fill(pick(id, 'termWhy'), { crime: c.crime }), `The crime: ${c.crime}.`));
+      b.append(line('cond', fill(pick(id, 'termEcho'), { echo: c.echo }), `While it runs: ${c.echo.toLowerCase()}`));
+      b.append(line('cond', fill(pick(id, 'termGrow'), { add: c.add }), `Each slip: +${c.add}.`));
+      answers.append(pill('understood', () => answer(c, 'understood')));
+      b.append(answers); return b;
+    }
+    case 'note': {
+      answers.append(pill('keep it', () => answer(c, 'keep')));
+      b.append(answers); return b;
+    }
+    case 'lesson': {
+      b.append(line('words', fill(pick(id, 'lesson'), { point: c.point })));
+      setTimeout(() => { cards = cards.filter((x) => x.id !== c.id); render(); }, 7000);
+      return b;
+    }
     default: {
       answers.append(pill('accept', () => answer(c, 'accept')), pill('refuse', () => answer(c, 'refuse')));
       b.append(answers);
@@ -695,7 +783,7 @@ function render(arrived) {
   const order = [...collapsed, ...shown.filter((c) => c.id === open), ...shown.filter((c) => c.run)];
   dock.replaceChildren(...order.map((c) => {
     const el = document.createElement('article');
-    el.className = `card${c.neutral ? ' neutral' : ''}${c.kind === 'sealed' ? ' sealed' : ''}${c.id === open || c.run ? ' open' : ' collapsed'}${c.id === arrived && !S.reduced ? ' arrive' : ''}`;
+    el.className = `card${c.neutral ? ' neutral' : ''}${c.paper ? ' paper' : ''}${c.fade ? ' lesson' : ''}${c.kind === 'sealed' ? ' sealed' : ''}${c.id === open || c.run ? ' open' : ' collapsed'}${c.id === arrived && !S.reduced ? ' arrive' : ''}`;
     el.dataset.id = c.id;
     const head = document.createElement('div'); head.className = 'head';
     head.innerHTML = `${c.neutral ? '' : '<span class="who">Ann</span>'}<span class="kind">${c.title}</span><span class="gist">${gistOf(c)}</span>`;
@@ -853,6 +941,19 @@ $('#readable').onchange = (e) => { S.readable = e.target.checked; document.body.
 $('#reduced').onchange = (e) => { S.reduced = e.target.checked; document.body.classList.toggle('reduced', S.reduced); };
 $('#sound').onchange = (e) => { S.sound = e.target.checked; };
 $('#callBtn').onclick = startCall;
+/* P16b G3: [ANTICIPATE] in the chip row (P10e's row; shown by her reading's axes, never her region). A click stages the commander's act as a narrated
+   line (the engine picks the service that fits her: here, refilling her cup) and her answer comes in her voice; it is gone for the scene. */
+const ANTIC = { line: '*You get up before she asks and refill her cup.*', her: { neutral: ['Hm. Thank you.'], ritual: ['Unasked. Noted.'], regal: ['Good. You are learning what I want.'], cold: ['…'], playful: ['Ooh, attentive~'], cruel: ['Did I ask you to move?'], drill: ['Initiative. Good.'], affectionate: ['You read my mind.'] } };
+function drawChips() {
+  const row = $('#chipRow'); row.replaceChildren(); const on = $('#antic').checked && !S.anticUsed;
+  document.body.classList.toggle('chipsUp', on);
+  if (!on) return;
+  const c = document.createElement('button'); c.className = 'chip anticipate'; c.textContent = 'anticipate her';
+  c.onclick = () => { S.anticUsed = true; $('#reply').innerHTML = `<span class="who">YOU</span><span class="act">${ANTIC.line.slice(1, -1)}</span>`;
+    sfx(ASSETS.place[0], 0.2, 0.2); setTimeout(() => { const l = ANTIC.her[S.style] ?? ANTIC.her.neutral; $('#reply').innerHTML += ` <span class="speech">"${l[0]}"</span>`; }, 1400); log('anticipate: staged; P16\'s practice_anticipated follows'); drawChips(); };
+  row.append(c);
+}
+$('#antic').onchange = () => { S.anticUsed = false; drawChips(); };
 $('#deal').onclick = () => { cards = []; aside.clear(); openId = null; for (const t of ['milestone', 'punishment', 'claim', 'task']) addCard(t, true); render(); };
 $('#clear').onclick = () => { cards = []; aside.clear(); openId = null; render(); };
 function winNote() { $('#winNote').textContent = S.timed ? `her window: ${windowOf()} ms (ritual 4000, drill 3000, others 5000)` : 'no clock: no taps, no lateness (only right or wrong)'; }
