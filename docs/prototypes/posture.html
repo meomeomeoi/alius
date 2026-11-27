@@ -555,19 +555,26 @@ function statesFor(k) {
   const set = new Set(); for (const [id] of NAMED) { const p = presetOf(id); const v = { ...(BASE_POINTS[p.base] ?? {}), ...p.points }[k]; if (v) set.add(v); }
   const now = S.call.body.points[k]; if (now) set.add(now); return [...set];
 }
+/** Each point that has to move adds this much to her window (round 1b: the bare window was far too short to assemble in). */
+const ASSEMBLE_MS = 2500;
 function startCall(kind, seriesLeft = 0) {
   const prevBody = S.run ? targetPose() : (S.stance ?? poseOf('standing'));
-  const idx = fnv1a(`call|${Date.now()}`) % NAMED.length; const [id, word] = NAMED[idx];
+  // she calls a posture the body is not already in
+  const nowId = S.run ? S.preset : S.stance?.id; let idx = fnv1a(`call|${Date.now()}`) % NAMED.length; if (NAMED[idx][0] === nowId) idx = (idx + 1) % NAMED.length; const [id, word] = NAMED[idx];
   const trap = kind === 'C' && hash01(`ctrap|${Date.now()}`) < 0.3;
-  const windowMs = { ritual: 4000, drill: 3000 }[S.style] ?? 5000;
   const want = presetOf(id);
-  S.call = { kind, id, word, want: { ...(BASE_POINTS[want.base] ?? {}), ...want.points }, base: want.base, body: { base: want.base, points: { ...(prevBody.points ?? {}) } }, trap, until: performance.now() + windowMs, windowMs, seriesLeft };
+  const wantPts = { ...(BASE_POINTS[want.base] ?? {}), ...want.points };
+  const nowPts = { ...(BASE_POINTS[prevBody.base] ?? {}), ...(prevBody.points ?? {}) };
+  // assembling takes time: her window (ritual 4 s, drill 3 s, others 5 s) plus ASSEMBLE_MS for each point that has to move
+  const toMove = POINTS.filter((k) => k !== 'gaze' && wantPts[k] !== undefined && nowPts[k] !== wantPts[k]).length;
+  const windowMs = ({ ritual: 4000, drill: 3000 }[S.style] ?? 5000) + ASSEMBLE_MS * toMove;
+  S.call = { kind, id, word, want: wantPts, base: want.base, body: { base: want.base, points: nowPts }, trap, until: performance.now() + windowMs, windowMs, seriesLeft, toMove };
   if (S.run) S.run.paused = true;
   $('#callWord .pre').textContent = trap ? '' : (LINES[S.style].prefix ?? LINES.neutral.prefix);
   const w = $('#callWord .w'); w.textContent = word; w.classList.remove('write'); void w.offsetWidth; if (!S.reduced) w.classList.add('write');
   $('#dial').classList.add('holding'); document.documentElement.style.setProperty('--dialBig', `${bigSize()}px`);
   scheduleTaps(windowMs); S.sel = null; drawStates(); drawCallDial();
-  log(kind === 'B' ? 'B: set each point (its key cycles its states), Enter presents' : `C: ${trap ? 'no prefix — a trap: do not move' : 'her prefix — assemble'} · ${seriesLeft} more`);
+  log(kind === 'B' ? `B: set each point (its key, then the key again cycles its states); taken the moment it matches · ${(windowMs / 1000).toFixed(1)} s` : `C: ${trap ? 'no prefix — a trap: do not move' : 'her prefix — assemble'} · ${seriesLeft} more`);
 }
 function scheduleTaps(ms) { const dots = $('#dots'); dots.replaceChildren(); const n = 5; for (let i = 0; i < n; i++) setTimeout(() => { if (!S.call) return; const d = document.createElement('i'); if (i === n - 1) d.className = 'last'; d.style.left = `${(i - (n - 1) / 2) * 16}px`; dots.append(d); sfx(anyOf(ASSETS.wood, `tap${i}`), 0.14 + i * 0.03, 0.4); }, (ms / n) * (i + 0.5)); }
 function callPress(k) {
@@ -575,9 +582,12 @@ function callPress(k) {
   if (c.trap) { endCall('moved', 'a trap: no prefix'); return; }
   const list = statesFor(k); if (!list.length) return;
   if (S.sel !== k) { S.sel = k; } else { const i = list.indexOf(c.body.points[k]); c.body.points[k] = list[(i + 1) % list.length]; sfx(anyOf(ASSETS.cloth, `cc|${k}|${i}`), 0.12); }
-  drawStates(); drawCallDial();
+  drawStates(); drawCallDial(); checkTaken();
 }
-function pickState(k, v) { const c = S.call; if (!c) return; if (c.trap) { endCall('moved', 'a trap'); return; } c.body.points[k] = v; S.sel = k; drawStates(); drawCallDial(); }
+/** The moment every point matches her posture, it is taken: no Enter needed (round 1b). */
+function matches(c) { return POINTS.every((k) => k === 'gaze' || c.want[k] === undefined || c.body.points[k] === c.want[k]); }
+function checkTaken() { const c = S.call; if (c && !c.trap && matches(c)) present(); }
+function pickState(k, v) { const c = S.call; if (!c) return; if (c.trap) { endCall('moved', 'a trap'); return; } c.body.points[k] = v; S.sel = k; drawStates(); drawCallDial(); checkTaken(); }
 function drawStates() {
   const host = $('#states'); host.replaceChildren(); const c = S.call; if (!c || !S.sel) { host.classList.remove('on'); return; }
   host.classList.add('on'); const hd = document.createElement('div'); hd.className = 'hd'; hd.textContent = `${KEY_OF[S.sel]} · ${S.sel.toUpperCase()}`; host.append(hd);
@@ -590,7 +600,7 @@ function drawCallDial() { const c = S.call; const svg = mannequinSvg({ base: c.b
   drawBeads(); $('#dialLabel').innerHTML = `<span class="herName">${c.word}</span>${c.trap ? '' : 'assemble'}`; }
 function present() {
   const c = S.call; if (!c) return; if (c.trap) { endCall('moved', 'a trap'); return; }
-  const late = performance.now() > c.until; const right = Object.entries(c.want).every(([k, v]) => !POINTS.includes(k) || c.body.points[k] === v || k === 'gaze');
+  const late = performance.now() > c.until; const right = matches(c);
   endCall(right && !late ? 'taken' : late ? 'late' : 'wrong');
 }
 function endCall(outcome, why) {

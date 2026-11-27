@@ -833,7 +833,7 @@ Each round is a live prototype in `docs/prototypes/`, built with `npm run proto 
 **Files:**
 - Modify:
   - `src/ui/scene/instruments/call/call.ts`: new functions ported from the prototype, plus the declared hunks in `call/fidelity.json`;
-  - `src/ui/practice/postureCall.ts`: the scheme by the commander's `posture` level (A below `TUNING.craft.call.b` (2), B from 2, C from `.c` (4)). In B and C her called posture shows as a ghost while its mastery on the pair is below 2 (G1 round 1): only a posture held many times is recalled. Her set stays P16's cap (her service track level + 1).
+  - `src/ui/practice/postureCall.ts`: the scheme by the commander's `posture` level (A below `TUNING.craft.call.b` (2), B from 2, C from `.c` (4)). In B and C her called posture shows as a ghost while its mastery on the pair is below 2 (G1 round 1): only a posture held many times is recalled. Her set stays P16's cap (her service track level + 1). In B the time is her window plus 2.5 s for each point that has to move, and the posture is taken the moment every point matches (no confirm key; G1 round 1b).
 - Test: `tests/ui/practice/postureCall.test.ts`, the fidelity test
 
 - [ ] **Step 1–5:** the same scheme as Task 23. Commit `feat(P16b): the posture call grows with the commander`. Chunk end: full suite, typecheck, `npm run test:layout`.
