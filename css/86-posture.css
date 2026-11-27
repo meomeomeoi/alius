@@ -1,0 +1,358 @@
+/*
+ * P16b Task 23: the game of postures and the posture call's schemes B and C (docs/prototypes/posture.html, approved 2026-11-27, normative; its
+ * `fidelity.json` checks the port's code against it). The dial is the surface: while a posture is held (or called) it grows to 300 px, its beads
+ * (1 TORSO … 7 FEET) stand on the rim, the body drifts and is corrected by a click or a key, her lines are written on in her hand. The code keeps
+ * the prototype's state classes (`holding`, `watched`, `blind`, `jolt`, `write`, `on`, `held`, `sel`, `off`, `todo`, `cur`, `want`, `sharp`,
+ * `last`) and its few ids (`clock`) under `.alius-pg`; every colour is the prototype's. Two boxes: `.alius-pg-fx` in the effects layer (the film
+ * under the scene's UI: her darkened edges, the blind view, the grain) and `.alius-pg` in the moment layer (the dial, her words, the body's words).
+ * Every z-index stays below the analysis panel's 10. Reduced motion: no write-on, no jolt, the dial does not animate its size, feel lines fade.
+ */
+#alius-shell .alius-pg-fx,
+#alius-shell .alius-pg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  --pg-her: var(--alius-her, #ff9ec7);
+  --pg-hand: var(--alius-font-hand, var(--alius-font-type));
+  --pg-hs: var(--alius-hand-scale, 1);
+  --pg-cmd: #3b97ff;
+  --pg-warn: #ffb547;
+  --pg-glass: rgba(14, 12, 20, 0.6);
+  --pg-line: rgba(255, 255, 255, 0.12);
+  --pg-ink: #ece8f2;
+  --pg-dim: rgba(236, 232, 242, 0.55);
+  --pg-bg: #0b0a10;
+  --pg-dial: min(18.5vh, 200px);
+  --dialBig: 300px;
+}
+
+/* the film under the scene's UI: the blind view (her activity's), the grain, her eyes darkening the edges */
+#alius-shell .alius-pg-fx #vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1.2s;
+  background: radial-gradient(ellipse at 50% 55%, transparent 45%, rgba(0, 0, 0, 0.65) 100%);
+}
+
+#alius-shell .alius-pg-fx #blindView {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.9s;
+  background: radial-gradient(ellipse at 50% 55%, #0b090d 0%, #030203 70%);
+}
+
+#alius-shell .alius-pg-fx #grain {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  transition: opacity 0.9s;
+}
+
+#alius-shell .alius-pg-fx.blind #blindView { opacity: 1; }
+#alius-shell .alius-pg-fx.blind #grain { opacity: 0.16; }
+
+/* ---------- her words in her hand (her line during the hold, her call) ---------- */
+#alius-shell .alius-pg #herLine {
+  position: absolute;
+  left: 74vw;
+  top: 15vh;
+  transform: translateX(-50%);
+  font-family: var(--pg-hand), cursive;
+  font-size: calc(46px * var(--pg-hs));
+  color: var(--pg-her);
+  white-space: nowrap;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9), 0 0 14px rgba(0, 0, 0, 0.85);
+  opacity: 0;
+  transition: opacity 0.8s;
+  pointer-events: none;
+  z-index: 5;
+}
+
+#alius-shell .alius-pg #herLine.on { opacity: 1; }
+#alius-shell .alius-pg #herLine.write { animation: alius-pg-write 600ms steps(16, end) both; }
+
+@keyframes alius-pg-write {
+  from { clip-path: inset(-30% 100% -30% -8%); }
+  to { clip-path: inset(-30% -8% -30% -8%); }
+}
+
+#alius-shell .alius-pg #callWord {
+  position: absolute;
+  left: 74vw;
+  top: 13vh;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+  z-index: 6;
+}
+
+#alius-shell .alius-pg #callWord .w {
+  font-family: var(--pg-hand), cursive;
+  font-size: calc(92px * var(--pg-hs));
+  line-height: 1;
+  color: var(--pg-her);
+  white-space: nowrap;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9), 0 0 18px rgba(0, 0, 0, 0.85), 0 0 40px rgba(0, 0, 0, 0.6);
+  display: inline-block;
+}
+
+#alius-shell .alius-pg #callWord .w.write { animation: alius-pg-write 520ms steps(14, end) both; }
+
+#alius-shell .alius-pg #callWord .pre {
+  display: block;
+  font-family: var(--pg-hand), cursive;
+  font-size: calc(34px * var(--pg-hs));
+  color: var(--pg-her);
+  opacity: 0.85;
+  margin-bottom: -6px;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9), 0 0 14px rgba(0, 0, 0, 0.85);
+}
+
+#alius-shell .alius-pg #dots { position: relative; height: 16px; margin-top: 10px; }
+
+#alius-shell .alius-pg #dots i {
+  position: absolute;
+  top: 4px;
+  width: 7px;
+  height: 7px;
+  margin-left: -3.5px;
+  border-radius: 50%;
+  background: var(--pg-her);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--pg-her) 70%, transparent);
+  animation: alius-pg-dot 0.35s ease-out both;
+}
+
+#alius-shell .alius-pg #dots i.last {
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  top: 2.5px;
+  background: #fff;
+  box-shadow: 0 0 10px var(--pg-her);
+}
+
+@keyframes alius-pg-dot { from { transform: scale(2.2); opacity: 0; } }
+
+/* ---------- the body speaks (blind: feel lines; any time: a twinge) ---------- */
+#alius-shell .alius-pg #feel {
+  position: absolute;
+  left: 50%;
+  bottom: 200px;
+  transform: translateX(-50%);
+  width: min(900px, 50vw);
+  text-align: center;
+  pointer-events: none;
+  z-index: 5;
+}
+
+#alius-shell .alius-pg #feel div {
+  font: italic 300 19px/1.5 var(--alius-font-sans);
+  color: color-mix(in srgb, var(--pg-cmd) 35%, #fff);
+  text-shadow: 0 1px 3px #000, 0 0 16px rgba(0, 0, 0, 0.8);
+  animation: alius-pg-feel 4.2s ease-out both;
+}
+
+#alius-shell .alius-pg #feel div.sharp { color: #ffe2b5; }
+
+@keyframes alius-pg-feel {
+  0% { opacity: 0; transform: translateY(6px); }
+  12% { opacity: 0.95; transform: none; }
+  70% { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+
+/* ---------- the dial, grown while a posture is held ---------- */
+#alius-shell .alius-pg #dial {
+  position: absolute;
+  right: 36px;
+  bottom: 58px;
+  z-index: 4;
+  transition: right 0.5s, bottom 0.5s;
+}
+
+#alius-shell .alius-pg #dialFace {
+  position: relative;
+  width: var(--pg-dial);
+  height: var(--pg-dial);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--pg-cmd) 12%, var(--pg-bg)), color-mix(in srgb, var(--pg-bg) 94%, #000) 78%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-cmd) 30%, transparent), 0 6px 24px rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transition: width 0.5s cubic-bezier(0.2, 0.9, 0.3, 1), height 0.5s cubic-bezier(0.2, 0.9, 0.3, 1), box-shadow 0.6s, opacity 0.9s, filter 0.9s;
+  pointer-events: auto;
+}
+
+#alius-shell.alius-readable .alius-pg #dialFace {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: color-mix(in srgb, var(--pg-bg) 94%, #000);
+}
+
+#alius-shell .alius-pg #dialFace::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from -0.7deg, color-mix(in srgb, var(--pg-cmd) 55%, transparent) 0 1.4deg, transparent 1.4deg 7.5deg);
+  -webkit-mask: radial-gradient(circle, transparent 93%, #000 94%);
+  mask: radial-gradient(circle, transparent 93%, #000 94%);
+  pointer-events: none;
+}
+
+#alius-shell .alius-pg #dialFace svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#alius-shell .alius-pg #dial.holding { bottom: 92px; }
+#alius-shell .alius-pg #dial.holding #dialFace { width: var(--dialBig); height: var(--dialBig); }
+
+#alius-shell .alius-pg #dial.watched #dialFace {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-her) 55%, transparent), 0 0 30px color-mix(in srgb, var(--pg-her) 22%, transparent), 0 6px 24px rgba(0, 0, 0, 0.55);
+}
+
+#alius-shell .alius-pg #dial.blind #dialFace { opacity: 0.07; filter: blur(2px); }
+#alius-shell .alius-pg #dial.blind #beads { opacity: 0; }
+#alius-shell .alius-pg #dial.jolt #dialFace { animation: alius-pg-jolt 0.28s; }
+
+@keyframes alius-pg-jolt {
+  20% { transform: translate(var(--jx), var(--jy)); }
+  50% { transform: translate(calc(var(--jx) * -0.6), calc(var(--jy) * -0.4)); }
+}
+
+#alius-shell .alius-pg #dialLabel {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 8px);
+  transform: translateX(-50%);
+  width: 260px;
+  text-align: center;
+  line-height: 1.35;
+  font: 11px var(--alius-font, "IBM Plex Mono", monospace);
+  letter-spacing: 0.14em;
+  color: color-mix(in srgb, var(--pg-cmd) 60%, #fff);
+  text-shadow: 0 1px 6px #000;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+#alius-shell .alius-pg #dialLabel .sub { display: block; font-size: 10px; opacity: 0.75; }
+
+#alius-shell .alius-pg #dialLabel .herName {
+  font: calc(24px * var(--pg-hs)) var(--pg-hand), cursive;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--pg-her);
+  display: block;
+  margin-bottom: 1px;
+}
+
+#alius-shell .alius-pg #clock { display: block; margin-top: 4px; font-size: 10px; letter-spacing: 0.18em; color: var(--pg-dim); }
+
+/* hit areas on the joints (invisible), and their hover */
+#alius-shell .alius-pg .hit { fill: transparent; cursor: pointer; pointer-events: all; }
+#alius-shell .alius-pg .hit:hover { fill: color-mix(in srgb, var(--pg-warn) 14%, transparent); }
+#alius-shell .alius-pg .mqHot { fill: none; stroke: var(--pg-warn); stroke-width: 2; pointer-events: none; }
+
+/* the points' beads on the rim: the number to press, the drift as amber */
+#alius-shell .alius-pg #beads { position: absolute; inset: 0; pointer-events: none; transition: opacity 0.6s; }
+
+#alius-shell .alius-pg .bead {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border-radius: 50%;
+  pointer-events: auto;
+  cursor: pointer;
+  background: rgba(14, 12, 20, 0.78);
+  border: 1px solid color-mix(in srgb, var(--pg-cmd) 40%, transparent);
+  font: 11px/24px var(--alius-font, "IBM Plex Mono", monospace);
+  text-align: center;
+  color: color-mix(in srgb, var(--pg-cmd) 55%, #fff);
+  box-shadow: 0 0 calc(var(--o) * 18px) color-mix(in srgb, var(--pg-warn) calc(var(--o) * 90%), transparent);
+  border-color: color-mix(in srgb, var(--pg-warn) calc(var(--o) * 100%), color-mix(in srgb, var(--pg-cmd) 40%, transparent));
+  transition: opacity 0.3s;
+}
+
+#alius-shell .alius-pg .bead .nm {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  right: 30px;
+  white-space: nowrap;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--pg-dim);
+}
+
+#alius-shell .alius-pg .bead.held { background: color-mix(in srgb, var(--pg-cmd) 35%, rgba(14, 12, 20, 0.8)); color: #fff; }
+#alius-shell .alius-pg .bead.sel { box-shadow: 0 0 0 2px var(--pg-her); }
+#alius-shell .alius-pg .bead.off { opacity: 0.18; pointer-events: none; }
+#alius-shell .alius-pg .bead.todo { box-shadow: 0 0 0 2px color-mix(in srgb, var(--pg-her) 75%, transparent), 0 0 12px color-mix(in srgb, var(--pg-her) 40%, transparent); }
+
+/* the states of a selected point (the call's scheme B and C) */
+#alius-shell .alius-pg #states {
+  position: absolute;
+  right: calc(var(--dialBig) + 150px);
+  bottom: calc(var(--dialBig) * 0.42 + 58px);
+  display: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  z-index: 6;
+  pointer-events: auto;
+}
+
+#alius-shell .alius-pg #states.on { display: flex; }
+
+#alius-shell .alius-pg #states .st {
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--pg-line);
+  background: rgba(14, 12, 20, 0.74);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  font: 10px var(--alius-font, "IBM Plex Mono", monospace);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pg-dim);
+  cursor: pointer;
+}
+
+#alius-shell.alius-readable .alius-pg #states .st { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(12, 11, 16, 0.95); }
+#alius-shell .alius-pg #states .st.cur { color: #fff; border-color: color-mix(in srgb, var(--pg-cmd) 70%, transparent); background: color-mix(in srgb, var(--pg-cmd) 25%, rgba(14, 12, 20, 0.8)); }
+#alius-shell .alius-pg #states .st.want { border-color: color-mix(in srgb, var(--pg-her) 80%, transparent); color: var(--pg-her); box-shadow: 0 0 12px color-mix(in srgb, var(--pg-her) 35%, transparent); }
+#alius-shell .alius-pg #states .st.want.cur { background: color-mix(in srgb, var(--pg-her) 30%, rgba(14, 12, 20, 0.8)); color: #fff; }
+#alius-shell .alius-pg #states .hd { font: 9px var(--alius-font, "IBM Plex Mono", monospace); letter-spacing: 0.16em; color: color-mix(in srgb, var(--pg-cmd) 60%, #fff); margin-bottom: 2px; }
+
+/* the real dial is the posture dial's own stand-in outside a hold: while the game draws its own, the corner holds only the stop word's pill (the prototype's, top right) */
+#alius-shell .alius-stage-dial[data-instrument="posture"],
+#alius-shell .alius-stage-dial[data-pg] {
+  top: 54px;
+  bottom: auto;
+  right: 36px;
+}
+
+#alius-shell .alius-stage-dial[data-instrument="posture"] .alius-dial-host,
+#alius-shell .alius-stage-dial[data-pg] .alius-dial-host {
+  display: none;
+}
+
+/* reduced motion: no write-on, no jolt, the dial does not animate its size; feel lines fade without moving */
+#alius-shell .alius-pg[data-reduced] #dialFace,
+#alius-shell .alius-pg[data-reduced] #dial { transition: none; }
+#alius-shell .alius-pg[data-reduced] #dial.jolt #dialFace { animation: none; }
+#alius-shell .alius-pg[data-reduced] #herLine.write,
+#alius-shell .alius-pg[data-reduced] #callWord .w.write { animation: none; }
+#alius-shell .alius-pg[data-reduced] #feel div { animation: alius-pg-feel-still 4.2s linear both; }
+
+@keyframes alius-pg-feel-still {
+  0%, 85% { opacity: 0.9; }
+  100% { opacity: 0; }
+}

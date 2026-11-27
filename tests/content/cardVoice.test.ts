@@ -25,7 +25,7 @@ function parseVoiceMd(md: string): Item[] {
     if (raw.startsWith('## ')) { sec = 0; cur = null; continue; }
     const h3 = /^### (.+)$/.exec(raw);
     if (h3) { heading = h3[1]!.trim(); cur = null; continue; }
-    if (!heading || ![1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].includes(sec)) continue;
+    if (!heading || ![1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].includes(sec)) continue;
     const bullet = /^- (.*)$/.exec(raw);
     if (bullet) {
       const body = bullet[1]!;
@@ -111,6 +111,8 @@ const SERVICE_KINDS = ['good', 'poor', 'wrong', 'missed'];
 const SHOE_KINDS = ['entry', 'turn', 'sole', 'kiss', 'polish', 'other', 'caught', 'swallowed', 'good', 'poor', 'missed', 'dull', 'stamp', 'end', 'stop'];
 /** §15 (P10e-e Task 30): gulp's lines by her style (gulp.html `LINES`, cold's own). */
 const GULP_KINDS = ['entry', 'surge', 'tapped', 'spill', 'cough', 'done', 'clean', 'cleaned', 'missed', 'stop'];
+/** §16 (P16b Task 23): the game of postures' lines by her style (posture.html `LINES`, cold silent where it has none). */
+const POSTURE_KINDS = ['start', 'watch', 'fidget', 'slip', 'gaze', 'release', 'clean', 'prefix', 'taken', 'wrong', 'late', 'look', 'down', 'notLooking'];
 /** §6 (P10e-e Task 11): the slap's lines by her style. */
 const SLAP_LABEL: Record<string, string> = { before: 'slap.before', feint: 'slap.feint', again: 'slap.again', none: 'slap.after.none', braced: 'slap.after.braced', flinched: 'slap.after.flinched' };
 const STYLE_LABEL: Record<string, string> = { when: 'when', cost: 'cost', who: 'who', 'only her': 'onlyMe', weight: 'weight', right: 'call.right', wrong: 'call.wrong', slow: 'call.slow' };
@@ -124,6 +126,11 @@ function expected(md: string): Map<string, string[]> {
     out.set(key, lines);
   };
   for (const it of parseVoiceMd(md)) {
+    if (it.sec === 16) {
+      if (!POSTURE_KINDS.includes(it.label)) throw new Error(`unmapped posture item: ${it.heading} › ${it.label}`);
+      put(`posture.${it.label}`, it.heading === 'neutral' ? undefined : it.heading, it.lines);
+      continue;
+    }
     if (it.sec === 15) {
       if (!GULP_KINDS.includes(it.label)) throw new Error(`unmapped gulp item: ${it.heading} › ${it.label}`);
       put(`gulp.${it.label}`, it.heading === 'neutral' ? undefined : it.heading, it.lines);

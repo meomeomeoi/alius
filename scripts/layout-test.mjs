@@ -13,10 +13,10 @@ const server = await serveRoot();
 const port = server.port;
 
 const SIZES = [[1920, 1080], [1280, 800], [2560, 1440]];
-const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weighthold', 'scenthold', 'jawhold', 'activityhold', 'thronehold', 'servicehold', 'shoehold', 'gulphold'];
+const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weighthold', 'scenthold', 'jawhold', 'activityhold', 'thronehold', 'servicehold', 'shoehold', 'gulphold', 'posturehold', 'posturecallb'];
 const failures = [];
 /** The fixtures with an instrument, her call or her slap drawn at the measure (Task 31). */
-const INSTRUMENT_FIXTURES = new Set(['call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weighthold', 'scenthold', 'jawhold', 'activityhold', 'thronehold', 'servicehold', 'shoehold', 'gulphold']);
+const INSTRUMENT_FIXTURES = new Set(['call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weighthold', 'scenthold', 'jawhold', 'activityhold', 'thronehold', 'servicehold', 'shoehold', 'gulphold', 'posturehold', 'posturecallb']);
 const faceOf = new Map(); // the dial's circle for `standing` (fixture `one`), per size
 const fail = (size, fixture, what) => failures.push(`${size[0]}x${size[1]} ${fixture}: ${what}`);
 const SHOTS = process.env.LAYOUT_SHOTS ? resolve(process.env.LAYOUT_SHOTS) : null;
@@ -256,6 +256,32 @@ for (const size of SIZES) {
         return out;
       });
       for (const f of after) fail(size, fixture, f);
+    }
+    // P16b Task 23: the game of postures draws its dial over the scene (the moment layer) and its film under the UI: the stop word's pill and the
+    // input stay on top and clickable, the dial and its beads stay in the viewport, and the pill ends the hold at once: nothing of it stays
+    if (fixture === 'posturehold' || fixture === 'posturecallb') {
+      await p.waitForTimeout(900);
+      const mid = await p.evaluate(() => {
+        const out = [];
+        if (!document.querySelector('.alius-layer-moment .alius-pg #dial')) out.push('no dial drawn');
+        if (!document.querySelector('.alius-layer-effects > .alius-pg-fx')) out.push('no film drawn');
+        const top = (el) => { if (!el) return 'missing'; const b = el.getBoundingClientRect(); const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return hit === el || el.contains(hit) ? 'ok' : `covered by ${hit?.className ?? hit?.tagName}`; };
+        const input = top(document.querySelector('.alius-input'));
+        if (input !== 'ok') out.push(`the input: ${input}`);
+        if (document.querySelector('.alius-stage-dial[data-instrument="posture"]')) { const pill = top(document.querySelector('[data-stop-word]')); if (pill !== 'ok') out.push(`the stop word: ${pill}`); } // a call with no hold has no pill
+        for (const e of document.querySelectorAll('.alius-pg #dialFace, .alius-pg .bead, .alius-pg #callWord .w')) {
+          const r = e.getBoundingClientRect();
+          if (r.width && (r.left < 0 || r.right > innerWidth || r.top < 0 || r.bottom > innerHeight)) out.push(`${e.id || e.className} leaves the viewport: ${JSON.stringify(r)}`);
+        }
+        return out;
+      });
+      for (const f of mid) fail(size, fixture, f);
+      if (fixture === 'posturehold') {
+        await p.click('[data-stop-word]');
+        await p.waitForTimeout(300);
+        const after = await p.evaluate(() => (document.querySelector('.alius-pg') || document.querySelector('.alius-pg-fx') ? ['the stop word did not end the hold: the game is still drawn'] : []));
+        for (const f of after) fail(size, fixture, f);
+      }
     }
     // P10e-e Task 24: her frame draws under the scene's UI (the controls between phases and GET UP in the moment layer); in the play and at
     // the forgotten end the stop word's pill and the input stay on top and clickable, the lines stay in the frame; the pill ends the hold at
@@ -562,7 +588,13 @@ for (const size of SIZES) {
     }
     // P10e-e Task 31: while an instrument draws (or her call, or her slap) the dial's circle stands where it does for `standing`, and the
     // instrument's own lines and controls stay inside the viewport (the generic checks above cover the scene's UI and the head boxes)
-    if (INSTRUMENT_FIXTURES.has(fixture)) {
+    // P16b: the game of postures replaces the dial with its own, 300 px (author, G1 round 1e: posture.html's approved geometry); the real one is hidden while it draws,
+    // and the 300 px circle reaches 43 px into the reply's right edge at 1280x800 (an open item for the author, reported with the chunk)
+    const posturing = fixture.startsWith('posture');
+    if (INSTRUMENT_FIXTURES.has(fixture) && posturing) {
+      for (const b of m.instrumentUi) if (!inside(b)) fail(size, fixture, `the instrument's ${b.sel} is outside the viewport: ${JSON.stringify(b)}`);
+      if (fixture === 'posturehold' && !m.instrument) fail(size, fixture, 'no instrument is drawing (the dial carries no data-instrument)');
+    } else if (INSTRUMENT_FIXTURES.has(fixture)) {
       const still = faceOf.get(`${W}x${H}`);
       if (!m.dial || !still) fail(size, fixture, 'no dial to compare');
       else if (Math.abs(m.dial.x - still.x) > 1 || Math.abs(m.dial.y - still.y) > 1) fail(size, fixture, `the instrument moved the dial's circle: ${Math.round(m.dial.x)},${Math.round(m.dial.y)} against ${Math.round(still.x)},${Math.round(still.y)} for standing`);

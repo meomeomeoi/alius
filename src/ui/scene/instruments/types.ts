@@ -4,6 +4,7 @@
  * controller. The stop word is never the instrument's: the scene's pill ends the run whatever the instrument does.
  */
 import type { Registries } from '../../../content/types';
+import type { PostureRun } from '../../../engine/craft/state';
 import type { PhysicsRun } from '../../../engine/physics/state';
 import type { CampaignState } from '../../../engine/state/types';
 import type { AliusSettings } from '../../../settings';
@@ -121,4 +122,23 @@ export interface InstrumentDef {
    */
   drawable?(env: InstrumentEnv, run: PhysicsRun): boolean;
   start(env: InstrumentEnv, run: PhysicsRun): InstrumentRun;
+}
+
+/**
+ * P16b Task 23: an instrument that plays a hold of a posture (`practices.postureRun`, not a contact physics). It is mounted like any instrument (the same env, the same undo at the unmount) while
+ * the hold is open and no physics instrument is drawing; the host asks it only for the hold. `finish` is asked once the hold is gone from the state and says for how many ms the mount stays to
+ * play its end (its release line); the instrument itself knows whether it ended the hold (a stop word ends it with no end to play).
+ */
+export interface PostureInstrumentRun {
+  update(run: PostureRun): void;
+  finish?(): number;
+  stop(): void;
+}
+
+export interface PostureInstrumentDef {
+  id: string;
+  /** Tells the host this is not a physics instrument. */
+  posture: true;
+  matches(run: PostureRun, state: CampaignState, reg: Registries): boolean;
+  start(env: InstrumentEnv, run: PostureRun): PostureInstrumentRun;
 }

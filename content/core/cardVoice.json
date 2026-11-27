@@ -7570,5 +7570,737 @@
     "lines": [
       "there."
     ]
+  },
+  {
+    "id": "posture.start",
+    "kind": "posture.start",
+    "lines": [
+      "Like this. Hold it.",
+      "Stay like that."
+    ]
+  },
+  {
+    "id": "posture.watch",
+    "kind": "posture.watch",
+    "lines": [
+      "I'm watching.",
+      "Mm."
+    ]
+  },
+  {
+    "id": "posture.fidget",
+    "kind": "posture.fidget",
+    "lines": [
+      "Stop fidgeting.",
+      "Still."
+    ]
+  },
+  {
+    "id": "posture.slip",
+    "kind": "posture.slip",
+    "lines": [
+      "Fix it.",
+      "That's not what I asked for."
+    ]
+  },
+  {
+    "id": "posture.gaze",
+    "kind": "posture.gaze",
+    "lines": [
+      "Eyes down.",
+      "Did I say you could look?"
+    ]
+  },
+  {
+    "id": "posture.release",
+    "kind": "posture.release",
+    "lines": [
+      "Enough. Up.",
+      "Good. You can stop."
+    ]
+  },
+  {
+    "id": "posture.clean",
+    "kind": "posture.clean",
+    "lines": [
+      "Better than last time."
+    ]
+  },
+  {
+    "id": "posture.prefix",
+    "kind": "posture.prefix",
+    "lines": [
+      "Now —"
+    ]
+  },
+  {
+    "id": "posture.taken",
+    "kind": "posture.taken",
+    "lines": [
+      "Good."
+    ]
+  },
+  {
+    "id": "posture.wrong",
+    "kind": "posture.wrong",
+    "lines": [
+      "No."
+    ]
+  },
+  {
+    "id": "posture.late",
+    "kind": "posture.late",
+    "lines": [
+      "Too slow."
+    ]
+  },
+  {
+    "id": "posture.look",
+    "kind": "posture.look",
+    "lines": [
+      "Look at me."
+    ]
+  },
+  {
+    "id": "posture.down",
+    "kind": "posture.down",
+    "lines": [
+      "Down."
+    ]
+  },
+  {
+    "id": "posture.not_looking",
+    "kind": "posture.notLooking",
+    "lines": [
+      "I said look at me."
+    ]
+  },
+  {
+    "id": "posture.start.ritual",
+    "kind": "posture.start",
+    "style": "ritual",
+    "lines": [
+      "Position.",
+      "Assume it. Properly."
+    ]
+  },
+  {
+    "id": "posture.watch.ritual",
+    "kind": "posture.watch",
+    "style": "ritual",
+    "lines": [
+      "I see every line of you."
+    ]
+  },
+  {
+    "id": "posture.fidget.ritual",
+    "kind": "posture.fidget",
+    "style": "ritual",
+    "lines": [
+      "A correction is not a twitch."
+    ]
+  },
+  {
+    "id": "posture.slip.ritual",
+    "kind": "posture.slip",
+    "style": "ritual",
+    "lines": [
+      "Again. From the beginning."
+    ]
+  },
+  {
+    "id": "posture.gaze.ritual",
+    "kind": "posture.gaze",
+    "style": "ritual",
+    "lines": [
+      "Eyes."
+    ]
+  },
+  {
+    "id": "posture.release.ritual",
+    "kind": "posture.release",
+    "style": "ritual",
+    "lines": [
+      "Released."
+    ]
+  },
+  {
+    "id": "posture.clean.ritual",
+    "kind": "posture.clean",
+    "style": "ritual",
+    "lines": [
+      "Correct."
+    ]
+  },
+  {
+    "id": "posture.prefix.ritual",
+    "kind": "posture.prefix",
+    "style": "ritual",
+    "lines": [
+      "Position:"
+    ]
+  },
+  {
+    "id": "posture.taken.ritual",
+    "kind": "posture.taken",
+    "style": "ritual",
+    "lines": [
+      "Correct."
+    ]
+  },
+  {
+    "id": "posture.wrong.ritual",
+    "kind": "posture.wrong",
+    "style": "ritual",
+    "lines": [
+      "That is not the form."
+    ]
+  },
+  {
+    "id": "posture.late.ritual",
+    "kind": "posture.late",
+    "style": "ritual",
+    "lines": [
+      "Late."
+    ]
+  },
+  {
+    "id": "posture.look.ritual",
+    "kind": "posture.look",
+    "style": "ritual",
+    "lines": [
+      "Look at me."
+    ]
+  },
+  {
+    "id": "posture.down.ritual",
+    "kind": "posture.down",
+    "style": "ritual",
+    "lines": [
+      "Lower them."
+    ]
+  },
+  {
+    "id": "posture.not_looking.ritual",
+    "kind": "posture.notLooking",
+    "style": "ritual",
+    "lines": [
+      "When I tell you to look, you look."
+    ]
+  },
+  {
+    "id": "posture.start.drill",
+    "kind": "posture.start",
+    "style": "drill",
+    "lines": [
+      "Hold. I'm timing it.",
+      "On my clock."
+    ]
+  },
+  {
+    "id": "posture.watch.drill",
+    "kind": "posture.watch",
+    "style": "drill",
+    "lines": [
+      "Thirty more.",
+      "Don't you dare."
+    ]
+  },
+  {
+    "id": "posture.fidget.drill",
+    "kind": "posture.fidget",
+    "style": "drill",
+    "lines": [
+      "I saw that."
+    ]
+  },
+  {
+    "id": "posture.slip.drill",
+    "kind": "posture.slip",
+    "style": "drill",
+    "lines": [
+      "Reset. Clock starts again."
+    ]
+  },
+  {
+    "id": "posture.gaze.drill",
+    "kind": "posture.gaze",
+    "style": "drill",
+    "lines": [
+      "Eyes on the floor, recruit."
+    ]
+  },
+  {
+    "id": "posture.release.drill",
+    "kind": "posture.release",
+    "style": "drill",
+    "lines": [
+      "Time. Up."
+    ]
+  },
+  {
+    "id": "posture.clean.drill",
+    "kind": "posture.clean",
+    "style": "drill",
+    "lines": [
+      "Norm met."
+    ]
+  },
+  {
+    "id": "posture.prefix.drill",
+    "kind": "posture.prefix",
+    "style": "drill",
+    "lines": [
+      "On my word —"
+    ]
+  },
+  {
+    "id": "posture.taken.drill",
+    "kind": "posture.taken",
+    "style": "drill",
+    "lines": [
+      "Next."
+    ]
+  },
+  {
+    "id": "posture.wrong.drill",
+    "kind": "posture.wrong",
+    "style": "drill",
+    "lines": [
+      "Wrong. Again."
+    ]
+  },
+  {
+    "id": "posture.late.drill",
+    "kind": "posture.late",
+    "style": "drill",
+    "lines": [
+      "Too slow. Again."
+    ]
+  },
+  {
+    "id": "posture.look.drill",
+    "kind": "posture.look",
+    "style": "drill",
+    "lines": [
+      "Look at me."
+    ]
+  },
+  {
+    "id": "posture.down.drill",
+    "kind": "posture.down",
+    "style": "drill",
+    "lines": [
+      "Floor."
+    ]
+  },
+  {
+    "id": "posture.not_looking.drill",
+    "kind": "posture.notLooking",
+    "style": "drill",
+    "lines": [
+      "Eyes on me. Now."
+    ]
+  },
+  {
+    "id": "posture.start.cold",
+    "kind": "posture.start",
+    "style": "cold",
+    "lines": [
+      "There."
+    ]
+  },
+  {
+    "id": "posture.watch.cold",
+    "kind": "posture.watch",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "posture.fidget.cold",
+    "kind": "posture.fidget",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "posture.slip.cold",
+    "kind": "posture.slip",
+    "style": "cold",
+    "lines": [
+      "Hm."
+    ]
+  },
+  {
+    "id": "posture.gaze.cold",
+    "kind": "posture.gaze",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "posture.release.cold",
+    "kind": "posture.release",
+    "style": "cold",
+    "lines": [
+      "That will do."
+    ]
+  },
+  {
+    "id": "posture.clean.cold",
+    "kind": "posture.clean",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "posture.prefix.cold",
+    "kind": "posture.prefix",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "posture.taken.cold",
+    "kind": "posture.taken",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "posture.wrong.cold",
+    "kind": "posture.wrong",
+    "style": "cold",
+    "lines": [
+      "No."
+    ]
+  },
+  {
+    "id": "posture.late.cold",
+    "kind": "posture.late",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "posture.look.cold",
+    "kind": "posture.look",
+    "style": "cold",
+    "lines": [
+      "Look at me."
+    ]
+  },
+  {
+    "id": "posture.down.cold",
+    "kind": "posture.down",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "posture.start.playful",
+    "kind": "posture.start",
+    "style": "playful",
+    "lines": [
+      "Let's see how long you last.",
+      "Pretty. Now don't move."
+    ]
+  },
+  {
+    "id": "posture.watch.playful",
+    "kind": "posture.watch",
+    "style": "playful",
+    "lines": [
+      "I can see you wobbling."
+    ]
+  },
+  {
+    "id": "posture.fidget.playful",
+    "kind": "posture.fidget",
+    "style": "playful",
+    "lines": [
+      "Ooh, a twitch."
+    ]
+  },
+  {
+    "id": "posture.slip.playful",
+    "kind": "posture.slip",
+    "style": "playful",
+    "lines": [
+      "Caught you."
+    ]
+  },
+  {
+    "id": "posture.gaze.playful",
+    "kind": "posture.gaze",
+    "style": "playful",
+    "lines": [
+      "Peeking?"
+    ]
+  },
+  {
+    "id": "posture.release.playful",
+    "kind": "posture.release",
+    "style": "playful",
+    "lines": [
+      "Alright, alright. Up."
+    ]
+  },
+  {
+    "id": "posture.clean.playful",
+    "kind": "posture.clean",
+    "style": "playful",
+    "lines": [
+      "Look at you."
+    ]
+  },
+  {
+    "id": "posture.prefix.playful",
+    "kind": "posture.prefix",
+    "style": "playful",
+    "lines": [
+      "Simon says —"
+    ]
+  },
+  {
+    "id": "posture.taken.playful",
+    "kind": "posture.taken",
+    "style": "playful",
+    "lines": [
+      "Cute."
+    ]
+  },
+  {
+    "id": "posture.wrong.playful",
+    "kind": "posture.wrong",
+    "style": "playful",
+    "lines": [
+      "Nope!"
+    ]
+  },
+  {
+    "id": "posture.late.playful",
+    "kind": "posture.late",
+    "style": "playful",
+    "lines": [
+      "Sloooow."
+    ]
+  },
+  {
+    "id": "posture.look.playful",
+    "kind": "posture.look",
+    "style": "playful",
+    "lines": [
+      "Look at me."
+    ]
+  },
+  {
+    "id": "posture.down.playful",
+    "kind": "posture.down",
+    "style": "playful",
+    "lines": [
+      "Gotcha. Down."
+    ]
+  },
+  {
+    "id": "posture.not_looking.playful",
+    "kind": "posture.notLooking",
+    "style": "playful",
+    "lines": [
+      "Hey. Up here."
+    ]
+  },
+  {
+    "id": "posture.start.cruel",
+    "kind": "posture.start",
+    "style": "cruel",
+    "lines": [
+      "Hold it until I get bored."
+    ]
+  },
+  {
+    "id": "posture.watch.cruel",
+    "kind": "posture.watch",
+    "style": "cruel",
+    "lines": [
+      "Shaking already?"
+    ]
+  },
+  {
+    "id": "posture.fidget.cruel",
+    "kind": "posture.fidget",
+    "style": "cruel",
+    "lines": [
+      "Pathetic."
+    ]
+  },
+  {
+    "id": "posture.slip.cruel",
+    "kind": "posture.slip",
+    "style": "cruel",
+    "lines": [
+      "I knew you couldn't."
+    ]
+  },
+  {
+    "id": "posture.gaze.cruel",
+    "kind": "posture.gaze",
+    "style": "cruel",
+    "lines": [
+      "Who said you get to look?"
+    ]
+  },
+  {
+    "id": "posture.release.cruel",
+    "kind": "posture.release",
+    "style": "cruel",
+    "lines": [
+      "Get up. Slowly."
+    ]
+  },
+  {
+    "id": "posture.prefix.cruel",
+    "kind": "posture.prefix",
+    "style": "cruel",
+    "lines": [
+      "Now —"
+    ]
+  },
+  {
+    "id": "posture.wrong.cruel",
+    "kind": "posture.wrong",
+    "style": "cruel",
+    "lines": [
+      "Wrong."
+    ]
+  },
+  {
+    "id": "posture.late.cruel",
+    "kind": "posture.late",
+    "style": "cruel",
+    "lines": [
+      "Late. Again."
+    ]
+  },
+  {
+    "id": "posture.look.cruel",
+    "kind": "posture.look",
+    "style": "cruel",
+    "lines": [
+      "Look at me."
+    ]
+  },
+  {
+    "id": "posture.down.cruel",
+    "kind": "posture.down",
+    "style": "cruel",
+    "lines": [
+      "I didn't mean it."
+    ]
+  },
+  {
+    "id": "posture.not_looking.cruel",
+    "kind": "posture.notLooking",
+    "style": "cruel",
+    "lines": [
+      "Deaf as well?"
+    ]
+  },
+  {
+    "id": "posture.start.regal",
+    "kind": "posture.start",
+    "style": "regal",
+    "lines": [
+      "There. Stay."
+    ]
+  },
+  {
+    "id": "posture.fidget.regal",
+    "kind": "posture.fidget",
+    "style": "regal",
+    "lines": [
+      "Be still. You're in my way like that."
+    ]
+  },
+  {
+    "id": "posture.slip.regal",
+    "kind": "posture.slip",
+    "style": "regal",
+    "lines": [
+      "Did that look like what I wanted?"
+    ]
+  },
+  {
+    "id": "posture.gaze.regal",
+    "kind": "posture.gaze",
+    "style": "regal",
+    "lines": [
+      "You don't look at me unless I let you."
+    ]
+  },
+  {
+    "id": "posture.release.regal",
+    "kind": "posture.release",
+    "style": "regal",
+    "lines": [
+      "You may rise."
+    ]
+  },
+  {
+    "id": "posture.clean.regal",
+    "kind": "posture.clean",
+    "style": "regal",
+    "lines": [
+      "Acceptable."
+    ]
+  },
+  {
+    "id": "posture.prefix.regal",
+    "kind": "posture.prefix",
+    "style": "regal",
+    "lines": [
+      "Attend —"
+    ]
+  },
+  {
+    "id": "posture.taken.regal",
+    "kind": "posture.taken",
+    "style": "regal",
+    "lines": [
+      "Mm."
+    ]
+  },
+  {
+    "id": "posture.wrong.regal",
+    "kind": "posture.wrong",
+    "style": "regal",
+    "lines": [
+      "No."
+    ]
+  },
+  {
+    "id": "posture.late.regal",
+    "kind": "posture.late",
+    "style": "regal",
+    "lines": [
+      "I don't wait."
+    ]
+  },
+  {
+    "id": "posture.look.regal",
+    "kind": "posture.look",
+    "style": "regal",
+    "lines": [
+      "Look at me."
+    ]
+  },
+  {
+    "id": "posture.down.regal",
+    "kind": "posture.down",
+    "style": "regal",
+    "lines": [
+      "Enough looking."
+    ]
+  },
+  {
+    "id": "posture.not_looking.regal",
+    "kind": "posture.notLooking",
+    "style": "regal",
+    "lines": [
+      "I asked for your eyes."
+    ]
   }
 ]

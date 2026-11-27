@@ -490,6 +490,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawPostureCall(postureCall, s, registries, (c) => ids.has(c.unitId), {
       timed: ctx.settings().physicsInteractions?.order !== false, reduced: motionReduced(ctx.settings()),
       dim: layers.effects, dial: layers.hosts.dial, samples: ctx.samples ?? null, onGone: () => { if (!disposed) placeStop(); },
+      state: () => state(), settings: () => ctx.settings(), // P16b Task 24: the call's schemes B and C draw on the dial (the game of postures)
       take: (callId, postureId, late) => {
         (ctx.onStage ?? ((a) => void controller.stage(a)))({ type: 'practice/take_posture', payload: { callId, ...(postureId !== undefined ? { postureId } : {}), late } });
         // the dial takes the posture as the card lands in it (cards.html: `drawDial` at 380 ms; at once with reduced motion)
@@ -712,7 +713,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     const staging = ctx.physics;
     // P10e-e: an instrument draws a live run in real time instead of the card (the card's keys and holds are let go); the stop pill stays
     const run = blockingLive(s, registries) ? s.scene?.physics : undefined;
-    const playing = instrumentEnv !== null && syncInstruments(instrumentEnv, run);
+    const hold = blockingLive(s, registries) ? s.practices?.postureRun : undefined; // P16b: the game of postures draws a hold of a posture when no physics instrument draws
+    const playing = instrumentEnv !== null && syncInstruments(instrumentEnv, run, hold);
     if (playing) renderPhysicsPanel(physicsHost, { state: null, registries, settings: ctx.settings(), staging, stopWord: false, onTap: () => {}, look: 'scene' });
     const offered = playing || renderPhysicsPanel(physicsHost, { state: s, registries, settings: ctx.settings(), staging, stopWord: false, onTap: () => { staging.onTap(); if (!disposed) refresh(); }, look: 'scene' });
     if (!offered) stopHost.replaceChildren();

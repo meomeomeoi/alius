@@ -14,6 +14,7 @@
  * `shoe` / `shoeheels` / `shoehold`: shoe service (P10e-e Task 28), see below.
  * `gulp` / `gulphold`: gulp (P10e-e Task 30), see below.
  * `activity` / `activityhold`: her frame (P10e-e Task 24), see below.
+ * `posture` / `posturehold` / `posturecallb` / `posturecallc`: the game of postures and the posture call's schemes B and C (P16b Tasks 23 and 24), see below.
  */
 import { writeFileSync } from 'node:fs';
 import { COMMANDER, registerFrameReader, setBlocking } from '../../src/engine/blocking';
@@ -24,11 +25,19 @@ import type { CampaignState } from '../../src/engine/state/types';
 import { enable } from '../helpers/bonds';
 import { campaign, loadCore, run, setRelation } from '../helpers/loyalty';
 import { ANN, holderBond, unitOf, withService, world } from '../engine/practice/world';
+import { holdScene } from '../engine/craft/world';
+import { installCraftHooks } from '../../src/engine/craft/hooks';
 import { demoActivity, demoBreath, demoGulp, demoJaw, demoScent, demoService, demoShoe, demoSlap, demoThrone, demoWeight } from '../../src/ui/stage/demo';
 import '../../src/engine/actions/blocking';
 import '../../src/engine/actions/physics';
+import '../../src/engine/actions/bonds';
+import '../../src/engine/actions/dynamic';
+import '../../src/engine/actions/personal';
+import '../../src/engine/actions/practice';
+import '../../src/engine/actions/craft';
 
 const reg = await loadCore();
+installCraftHooks(); // P16b: the stop word ends a posture hold
 const out: Record<string, unknown> = {};
 registerFrameReader(() => 'play'); // the contacts are dynamic; the entry registers the same reader in the page
 
@@ -148,5 +157,36 @@ out.shoehold = demoShoe(reg, HER);
 out.shoeheels = demoShoe(reg, HER, 'heels');
 out.gulp = demoGulp(reg, HER);
 out.gulphold = demoGulp(reg, HER);
+
+/**
+ * P16b Tasks 23 and 24: Ann (affectionate: neutral's lines, at play) has named seven postures (the prototype's own names, posture.html `NAMED`); `posture`: the commander holds
+ * `kneel_hands_behind_head` for 80 beats (two minutes), real time on; `posturehold`: the same, for the stop word's pill (it must stay clickable and end the
+ * hold); `posturecallb` / `posturecallc`: she calls `bow` ("Down") while the commander stands, at posture level 2 (assemble) and 4 (her conducting).
+ */
+const NAMED7: Array<[string, string]> = [['kneel_upright', 'Ready'], ['kneel_rest', 'Rest'], ['kneel_hands_behind_head', 'Display'], ['kneel_present', 'Offer'], ['bow', 'Down'], ['attention', 'Up'], ['arms_out', 'Cross']];
+function postureWorld(level: number): CampaignState {
+  const w = holdScene(reg, { realtime: true });
+  delete w.scene!.blocking;
+  delete w.scene!.stagingLog;
+  w.content = { enabled: [...new Set([...(w.content?.enabled ?? []), 'humiliation', 'pet_play', 'objectification'])] };
+  unitOf(w, ANN).bond!.practice!.style = { primary: 'affectionate' }; // no posture rows of its own: it reads neutral's (the prototype's neutral)
+  w.practices = { ...(w.practices ?? blankPractices()), postures: { [ANN]: NAMED7.map(([postureId, name]) => ({ postureId, name, day: w.day })) } } as never;
+  w.commander.craft = { posture: { level, xp: 0, day: w.day } } as never;
+  return w;
+}
+function postureHold(): CampaignState {
+  const r = run(postureWorld(0), reg, { type: 'posture/take', payload: { presetId: 'kneel_hands_behind_head', at: 1, until: 80 } } as never);
+  if (r.events.some((e) => e.type === 'error')) throw new Error(`posture: ${JSON.stringify(r.events)}`);
+  return r.state;
+}
+function postureCall(level: number): CampaignState {
+  const w = postureWorld(level);
+  w.practices!.call = { id: 'pc1', holderId: ANN, postureId: 'bow', sceneId: w.scene!.id, at: 1 };
+  return w;
+}
+out.posture = postureHold();
+out.posturehold = postureHold();
+out.posturecallb = postureCall(2);
+out.posturecallc = postureCall(4);
 
 writeFileSync(process.argv[2] ?? 'states.json', JSON.stringify(out));

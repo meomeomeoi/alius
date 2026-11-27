@@ -1322,3 +1322,115 @@ Kinds `gulp.<kind>` by her style (gulp.html `LINES`, verbatim): her first words 
 - **clean:** `clean it.`
 - **cleaned:** `fine.`
 - **missed:** `there.`
+
+## 16. The game of postures (posture.html, approved by the author, 2026-11-27)
+
+Kinds `posture.<kind>` by her style (posture.html `LINES`, verbatim): her first words when the hold begins (`start`), that she is watching (`watch`), a correction she saw (`fidget`), a point that slipped (`slip`), the eyes that rose (`gaze`), her release (`release`; `clean` when nothing slipped and nothing was seen), her word before a call in scheme C (`prefix`, one line; silent: she says none), the call's answers (`taken`, `wrong`, `late`), "look at me" (`look`), what she says once the eyes are down again (`down`), and the order not obeyed (`notLooking`). A style not listed reads neutral's (Ruling R); cold says nothing where it is silent. The prototype's `cruel` `clean` and `taken` and `regal` `watch` are empty lines, which it reads as neutral's: they have no row here, and neutral's lines play.
+
+### neutral
+- **start:** `Like this. Hold it.` `Stay like that.`
+- **watch:** `I'm watching.` `Mm.`
+- **fidget:** `Stop fidgeting.` `Still.`
+- **slip:** `Fix it.` `That's not what I asked for.`
+- **gaze:** `Eyes down.` `Did I say you could look?`
+- **release:** `Enough. Up.` `Good. You can stop.`
+- **clean:** `Better than last time.`
+- **prefix:** `Now —`
+- **taken:** `Good.`
+- **wrong:** `No.`
+- **late:** `Too slow.`
+- **look:** `Look at me.`
+- **down:** `Down.`
+- **notLooking:** `I said look at me.`
+
+### ritual
+- **start:** `Position.` `Assume it. Properly.`
+- **watch:** `I see every line of you.`
+- **fidget:** `A correction is not a twitch.`
+- **slip:** `Again. From the beginning.`
+- **gaze:** `Eyes.`
+- **release:** `Released.`
+- **clean:** `Correct.`
+- **prefix:** `Position:`
+- **taken:** `Correct.`
+- **wrong:** `That is not the form.`
+- **late:** `Late.`
+- **look:** `Look at me.`
+- **down:** `Lower them.`
+- **notLooking:** `When I tell you to look, you look.`
+
+### drill
+- **start:** `Hold. I'm timing it.` `On my clock.`
+- **watch:** `Thirty more.` `Don't you dare.`
+- **fidget:** `I saw that.`
+- **slip:** `Reset. Clock starts again.`
+- **gaze:** `Eyes on the floor, recruit.`
+- **release:** `Time. Up.`
+- **clean:** `Norm met.`
+- **prefix:** `On my word —`
+- **taken:** `Next.`
+- **wrong:** `Wrong. Again.`
+- **late:** `Too slow. Again.`
+- **look:** `Look at me.`
+- **down:** `Floor.`
+- **notLooking:** `Eyes on me. Now.`
+
+### cold
+- **start:** `There.`
+- **watch:** silent
+- **fidget:** silent
+- **slip:** `Hm.`
+- **gaze:** silent
+- **release:** `That will do.`
+- **clean:** silent
+- **prefix:** silent
+- **taken:** silent
+- **wrong:** `No.`
+- **late:** silent
+- **look:** `Look at me.`
+- **down:** silent
+
+### playful
+- **start:** `Let's see how long you last.` `Pretty. Now don't move.`
+- **watch:** `I can see you wobbling.`
+- **fidget:** `Ooh, a twitch.`
+- **slip:** `Caught you.`
+- **gaze:** `Peeking?`
+- **release:** `Alright, alright. Up.`
+- **clean:** `Look at you.`
+- **prefix:** `Simon says —`
+- **taken:** `Cute.`
+- **wrong:** `Nope!`
+- **late:** `Sloooow.`
+- **look:** `Look at me.`
+- **down:** `Gotcha. Down.`
+- **notLooking:** `Hey. Up here.`
+
+### cruel
+- **start:** `Hold it until I get bored.`
+- **watch:** `Shaking already?`
+- **fidget:** `Pathetic.`
+- **slip:** `I knew you couldn't.`
+- **gaze:** `Who said you get to look?`
+- **release:** `Get up. Slowly.`
+- **prefix:** `Now —`
+- **wrong:** `Wrong.`
+- **late:** `Late. Again.`
+- **look:** `Look at me.`
+- **down:** `I didn't mean it.`
+- **notLooking:** `Deaf as well?`
+
+### regal
+- **start:** `There. Stay.`
+- **fidget:** `Be still. You're in my way like that.`
+- **slip:** `Did that look like what I wanted?`
+- **gaze:** `You don't look at me unless I let you.`
+- **release:** `You may rise.`
+- **clean:** `Acceptable.`
+- **prefix:** `Attend —`
+- **taken:** `Mm.`
+- **wrong:** `No.`
+- **late:** `I don't wait.`
+- **look:** `Look at me.`
+- **down:** `Enough looking.`
+- **notLooking:** `I asked for your eyes.`

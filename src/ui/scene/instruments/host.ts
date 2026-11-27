@@ -14,6 +14,7 @@
  * instrument's own `stop` forgets, nothing it made outlives it or reaches the next run or the next chat.
  */
 import type { Registries } from '../../../content/types';
+import type { PostureRun } from '../../../engine/craft/state';
 import { sceneSettingsOf } from '../../../engine/moments/settings';
 import type { PhysicsRun } from '../../../engine/physics/state';
 import type { CampaignState } from '../../../engine/state/types';
@@ -24,9 +25,32 @@ import type { PhysicsPanelStaging } from '../physicsPanel';
 import { unsay } from './kit/hand';
 import { heartStop } from './kit/heart';
 import { claimedProps, claimStyles, handDownAbsent, releaseClaim, writeClaimed, type StyleClaim } from './styleClaims';
-import type { InstrumentDef, InstrumentEnv, InstrumentRun, PhysicsEnd } from './types';
+import type { InstrumentDef, InstrumentEnv, InstrumentRun, PhysicsEnd, PostureInstrumentDef, PostureInstrumentRun } from './types';
 
 const defs: InstrumentDef[] = [];
+const postureDefs: PostureInstrumentDef[] = [];
+
+/** P16b Task 23: registers the instrument that plays a hold of a posture (once per id). */
+export function registerPostureInstrument(def: PostureInstrumentDef): void {
+  if (!postureDefs.some((d) => d.id === def.id)) postureDefs.push(def);
+}
+
+/**
+ * P16b Task 23: the instrument that plays this hold of a posture, or null (then nothing is drawn: the hold goes on in the engine, her directive stands and the stop word ends it). Real time must
+ * be on both in the settings and in the campaign's mirror and the game of postures must not be switched off (`physicsInteractions.posture`, the settings and the mirror).
+ */
+export function postureInstrumentFor(run: PostureRun, state: CampaignState, reg: Registries, settings: AliusSettings): PostureInstrumentDef | null {
+  if (settings.physicsRealtime !== true || sceneSettingsOf(state).physicsRealtime !== true) return null;
+  if ((settings.physicsInteractions as Record<string, boolean> | undefined)?.posture === false || sceneSettingsOf(state).physicsInteractions.posture === false) return null;
+  return postureDefs.find((d) => {
+    try {
+      return d.matches(run, state, reg);
+    } catch (err) {
+      warnOnce(d.id, 'matches', err);
+      return false;
+    }
+  }) ?? null;
+}
 
 /** Registers an instrument (once per id); the first that matches a run wins, in the order of registration. */
 export function registerInstrument(def: InstrumentDef): void {
@@ -37,6 +61,7 @@ export function registerInstrument(def: InstrumentDef): void {
 export function _resetInstrumentDefs(): void {
   unmountInstruments();
   defs.length = 0;
+  postureDefs.length = 0;
   failed = null;
   warned.clear();
 }
@@ -73,6 +98,8 @@ function drawable(def: InstrumentDef, env: InstrumentEnv, run: PhysicsRun): bool
   }
 }
 
+const isPostureDef = (def: InstrumentDef | PostureInstrumentDef): def is PostureInstrumentDef => (def as PostureInstrumentDef).posture === true;
+
 /** What a mount undoes at its unmount. */
 interface Scope {
   /** Inputs reach the engine (dead from the end of the run). */
@@ -95,9 +122,9 @@ interface Scope {
 interface Mounted {
   key: string;
   runId: string;
-  def: InstrumentDef;
+  def: InstrumentDef | PostureInstrumentDef;
   env: InstrumentEnv;
-  run: InstrumentRun | null;
+  run: InstrumentRun | PostureInstrumentRun | null;
   scope: Scope;
   mark: HTMLElement;
   /** The end of the run is playing: the unmount's timer (and the microtask that asks for the outcome). */
@@ -137,6 +164,10 @@ function scopedStaging(staging: PhysicsPanelStaging, scope: Scope): PhysicsPanel
     // e9: her verdict is said at the session's end, when the run is already gone: alive until the unmount (never into a new scene or chat)
     service: (id, v) => (scope.live ? staging.service?.(id, v) ?? [] : []),
     signal: (id, m, a) => (scope.live ? staging.signal?.(id, m, a) ?? [] : []),
+    // P16b: the game of postures reports through its mount; its end is the instrument's own and the run is gone from the state by then, so they live until the unmount
+    postureCorrect: (o) => (scope.live ? staging.postureCorrect?.(o) ?? [] : []),
+    postureSlip: (pt) => (scope.live ? staging.postureSlip?.(pt) ?? [] : []),
+    postureEnd: (r, b) => (scope.live ? staging.postureEnd?.(r, b) ?? [] : []),
     spit: (b, a) => (on() ? staging.spit?.(b, a) ?? [] : []),
     restart: () => { if (on()) staging.restart?.(); },
     beat: () => staging.beat(),
@@ -234,7 +265,7 @@ function syncMark(m: Mounted): void {
   m.mark.toggleAttribute('data-readable', m.env.readable);
 }
 
-function mount(env: InstrumentEnv, def: InstrumentDef, run: PhysicsRun, key: string): void {
+function mount(env: InstrumentEnv, def: InstrumentDef | PostureInstrumentDef, run: PhysicsRun | PostureRun, key: string): void {
   const scope: Scope = {
     staging: true, live: true, frames: new Set(), timers: new Set(), listeners: new Set(), loops: new Set(), sources: new Set(), dulled: false,
     saidIn: new Set(), samples: null, dial: null,
@@ -288,7 +319,7 @@ function mount(env: InstrumentEnv, def: InstrumentDef, run: PhysicsRun, key: str
   if (dial) { scope.dial = claimStyles(dial, ['@data-instrument']); writeClaimed(scope.dial, '@data-instrument', def.id); } // R6: the dial dims
   current = { key, runId: run.id, def, env, run: null, scope, mark, finishing: null };
   syncMark(current);
-  current.run = def.start(scoped, run); // a throw is caught by syncInstruments
+  current.run = isPostureDef(def) ? def.start(scoped, run as PostureRun) : def.start(scoped, run as PhysicsRun); // a throw is caught by syncInstruments
 }
 
 /** Stops the instrument that runs (if any) at once: it is told to stop, then the host undoes whatever it left (see the module's note). */
@@ -348,14 +379,24 @@ function beginFinish(m: Mounted): void {
   m.finishing = f;
   queueMicrotask(() => {
     if (current !== m || m.finishing !== f) return;
-    const end: PhysicsEnd | null = m.env.staging.outcome?.(m.runId) ?? null;
     let ms = 0;
-    if (end && end.result !== 'stopped' && m.run?.finish) { // the stop word ends it at once: no end is played after it
+    if (isPostureDef(m.def)) { // P16b: a hold has no `physics_outcome`: the instrument knows whether it ended the hold itself (a stop word ends it with no end to play)
       try {
-        ms = Math.max(0, Number(m.run.finish(end)) || 0);
+        ms = Math.max(0, Number((m.run as PostureInstrumentRun | null)?.finish?.()) || 0);
       } catch (err) {
         warnOnce(m.def.id, 'finish', err);
         ms = 0;
+      }
+    } else {
+      const end: PhysicsEnd | null = m.env.staging.outcome?.(m.runId) ?? null;
+      const play = m.run as InstrumentRun | null;
+      if (end && end.result !== 'stopped' && play?.finish) { // the stop word ends it at once: no end is played after it
+        try {
+          ms = Math.max(0, Number(play.finish(end)) || 0);
+        } catch (err) {
+          warnOnce(m.def.id, 'finish', err);
+          ms = 0;
+        }
       }
     }
     if (ms <= 0) unmountInstruments();
@@ -368,10 +409,13 @@ function beginFinish(m: Mounted): void {
  * when the card should be drawn (no run, real time off, the interaction switched off, no instrument matches, or the instrument failed).
  * A run that ended leaves its instrument playing its end (false: the run's card is gone too).
  */
-export function syncInstruments(env: InstrumentEnv, run: PhysicsRun | undefined): boolean {
+export function syncInstruments(env: InstrumentEnv, run: PhysicsRun | undefined, posture?: PostureRun): boolean {
   const state = env.state();
   if (current && current.env !== env) unmountInstruments(); // another scene's layers
   if (!run) {
+    // P16b Task 23: no contact physics is drawn: the hold of a posture plays, when an instrument can
+    const hold = posture !== undefined && state ? postureInstrumentFor(posture, state, env.registries, env.settings()) : null;
+    if (posture !== undefined && hold) return syncPosture(env, hold, posture);
     if (current && !current.finishing && state?.scene && current.key.startsWith(`${state.scene.id}|`)) beginFinish(current);
     else if (current && !current.finishing) unmountInstruments();
     return false;
@@ -391,7 +435,40 @@ export function syncInstruments(env: InstrumentEnv, run: PhysicsRun | undefined)
   if (current && current.key === key && current.def === def && !current.finishing) {
     syncMark(current);
     try {
-      current.run?.update(run);
+      (current.run as InstrumentRun | null)?.update(run);
+      return true;
+    } catch (err) {
+      warnOnce(def.id, 'update', err);
+      failed = mountKey;
+      unmountInstruments();
+      return false;
+    }
+  }
+  unmountInstruments();
+  try {
+    mount(env, def, run, key);
+    return true;
+  } catch (err) {
+    warnOnce(def.id, 'start', err);
+    failed = mountKey;
+    unmountInstruments();
+    return false;
+  }
+}
+
+/** The hold of a posture drawn by its instrument: mounted once per hold (a scene's run ids repeat, so the key carries the scene id), updated on each redraw. */
+function syncPosture(env: InstrumentEnv, def: PostureInstrumentDef, run: PostureRun): boolean {
+  const state = env.state();
+  const key = `${state.scene?.id ?? ''}|${run.id}`;
+  const mountKey = `${key}|${def.id}`;
+  if (failed === mountKey) {
+    unmountInstruments();
+    return false;
+  }
+  if (current && current.key === key && current.def === def && !current.finishing) {
+    syncMark(current);
+    try {
+      (current.run as PostureInstrumentRun | null)?.update(run);
       return true;
     } catch (err) {
       warnOnce(def.id, 'update', err);

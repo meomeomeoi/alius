@@ -52,6 +52,13 @@ export interface PhysicsPanelStaging {
   woke?(): EngineEvent[];
   /** P10e-e Task 26: her verdict on a session of foot service in her frame, or of shoe service (Task 28) (`physics/service`), at the session's end (alive until the unmount). Absent = never. */
   service?(runId: string, verdict: 'pleased' | 'adequate' | 'displeased'): EngineEvent[];
+  /**
+   * P16b Task 23: the game of postures reports what happened in real time (`posture/correct`, `posture/slip`, `posture/end`; the engine judges and keeps every count). A correction
+   * answers with the events (`posture_corrected`: whether she saw it). Alive until the unmount, as `service`. Absent = never.
+   */
+  postureCorrect?(o: { point: string; amount: number; attention: string; beat: number }): EngineEvent[];
+  postureSlip?(point: string): EngineEvent[];
+  postureEnd?(reason: string, beats: number | undefined): EngineEvent[];
   /** P16b Task 14: a bout of her foot language ended (`physics/service { signal }`): the motion she gave and whether the commander answered it. Alive until the unmount, as `service`. Absent = never. */
   signal?(runId: string, motion: string, answered: boolean): EngineEvent[];
   /** P10e-e Ruling AC: grit spat aside in shoe service, decided at once (`physics/spit`; `attention` is hers as shown, read while the run is held). Absent = never. */

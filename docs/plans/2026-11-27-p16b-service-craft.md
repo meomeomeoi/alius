@@ -869,11 +869,11 @@ Each round is a live prototype in `docs/prototypes/`, built with `npm run proto 
   - the dial hidden under `sensoryNow`.
 - Test: `tests/ui/instruments/posture*.test.ts`, the fidelity test, `npm run test:layout`
 
-- [ ] **Step 1: Write the failing tests** from the README's normative list: drift, correction, slip, keys, blind, reduced motion, and the engine reports (`posture/correct`, `posture/slip`, `posture/end`).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Port** the prototype exactly (`fidelity.json`).
-- [ ] **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P16b): the game of postures`
+- [x] **Step 1: Write the failing tests** from the README's normative list: drift, correction, slip, keys, blind, reduced motion, and the engine reports (`posture/correct`, `posture/slip`, `posture/end`).
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Port** the prototype exactly (`fidelity.json`).
+- [x] **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P16b): the game of postures`
 
 ### Task 24: The posture call, schemes B and C
 
@@ -883,9 +883,15 @@ Each round is a live prototype in `docs/prototypes/`, built with `npm run proto 
   - `src/ui/practice/postureCall.ts`: the scheme by the commander's `posture` level (A below `TUNING.craft.call.b` (2), B from 2, C from `.c` (4)). In B and C her called posture shows as a ghost while its mastery on the pair is below 2 (G1 round 1): only a posture held many times is recalled. Her set stays P16's cap (her service track level + 1). In B the time is her window plus 2.5 s for each point that has to move, and the posture is taken the moment every point matches (no confirm key; G1 round 1b). Hints thin out with the posture's mastery on the pair (G1 round 1e): 0–1 her posture as a ghost, the right state lit and the points still to move ringed; 2–3 only the rings; 4–5 nothing; SYS › Scene has an open easing "always show every hint" (spec §1.2: easing only openly). "Look at me" not obeyed is its own fault (the eyes stay down), not a gaze slip. The dial while a posture is held is 300 px (author). A blindfold uses her activity's blind view and grain over the whole scene.
 - Test: `tests/ui/practice/postureCall.test.ts`, the fidelity test
 
-- [ ] **Step 1–5:** the same scheme as Task 23. Commit `feat(P16b): the posture call grows with the commander`. Chunk end: full suite, typecheck, `npm run test:layout`.
+- [x] **Step 1–5:** the same scheme as Task 23. Commit `feat(P16b): the posture call grows with the commander`. Chunk end: full suite, typecheck, `npm run test:layout`.
 
 ---
+
+**Done in c6 (the code wins where it differs from the text above):**
+- The instrument is `src/ui/scene/instruments/posture/posture.ts` (the hold, the dial as the surface, the call's schemes B and C on the same surface) with its `fidelity.json` and `css/86-posture.css`; the keys act through `env.listen` (nothing in `sceneScreen` for them), the call's scheme comes from `callScheme` in `src/ui/practice/postureCall.ts`.
+- The host mounts a posture instrument beside the physics ones (`registerPostureInstrument`, `syncInstruments(env, run, postureRun)`); the reports are `PhysicsPanelStaging.posture*` (`posture/correct`, `posture/slip`, `posture/end`).
+- Her lines are `cardVoice` `posture.*` (card-voice.md section 16); the open easing is the setting `postureHints` (SYS > Scene, `setting_posture_hints`); `TUNING.craft.call` is `{ b: 2, c: 4 }`.
+
 
 ## Chunk c7: stillness under provocation and the scene surfaces (after G2, G3)
 

@@ -2608,6 +2608,12 @@
     "long": "It sets how many phases a marathon has and how quickly the hours pass in the fiction."
   },
   {
+    "id": "setting_posture_hints",
+    "term": "Posture call: always show every hint",
+    "short": "Shows every hint of her posture call whatever the posture has been practiced: her posture as a ghost, the right state lit and the points still to move ringed.",
+    "long": "The hints thin out as a posture is held more often with her: the first times her posture is drawn as a ghost on the dial, the right state of each point is lit and the points still to move are ringed; later only the rings remain, and a posture held many times has none. This switch keeps all of them, always. It changes nothing but what is drawn, and nobody is eased in secret: this is the one way the call is made easier."
+  },
+  {
     "id": "setting_long_hold_strain",
     "term": "Long holds",
     "short": "How hard a long hold is on your strength, when you bear her weight through her own time: light, normal, heavy or raw (as a short hold).",
@@ -3522,6 +3528,16 @@
     "term": "Look around",
     "short": "Hold the right mouse button on the picture and drag to see more of the room. A double right-click centers the view.",
     "long": "AUTHOR TO WRITE: Rooms are drawn wider than the screen. The view stays where it was left until the scene ends. The menu of the right button is off on the picture only."
+  },
+  {
+    "id": "posture_game",
+    "term": "The game of postures",
+    "short": "While a posture is held the dial grows: each point of the body drifts, a click on its joint or its number key takes the drift back, and she may be watching.",
+    "long": "AUTHOR TO WRITE: The beads on the rim are the points of the body, numbered as their keys (1 torso, 2 hips, 3 knees, 4 arms, 5 head, 6 gaze, 7 feet); a bead's amber ring grows with the point's drift. A correction makes noise: a small early one is quiet, a sharp one at the edge is loud, and under her eyes a loud one reads as fidgeting. Events in the room tempt the gaze: hold 6. Under a blindfold the dial goes dark and the body tells where it slides. In her call the dial is where her posture is put together.",
+    "see": [
+      "posture_dial",
+      "posture_call"
+    ]
   },
   {
     "id": "posture_dial",

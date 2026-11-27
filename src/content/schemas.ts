@@ -3340,6 +3340,9 @@ export const CARD_VOICE_KINDS = [
   // P10e-e Task 30: gulp's lines (gulp.html `LINES`, card-voice.md §15); `gulp.surge` is ritual's word (the cue `surge` may take its place);
   // `gulp.stop` is finish's line after the stop word (the prototype's inline one)
   'gulp.entry', 'gulp.surge', 'gulp.tapped', 'gulp.spill', 'gulp.cough', 'gulp.done', 'gulp.clean', 'gulp.cleaned', 'gulp.missed', 'gulp.stop',
+  // P16b Task 23: the game of postures' lines (posture.html `LINES`, card-voice.md §16); `posture.prefix` is her word before a call in scheme C (one line)
+  'posture.start', 'posture.watch', 'posture.fidget', 'posture.slip', 'posture.gaze', 'posture.release', 'posture.clean', 'posture.prefix', 'posture.taken', 'posture.wrong', 'posture.late',
+  'posture.look', 'posture.down', 'posture.notLooking',
 ] as const;
 /** The kinds of her static words (card-voice.md §3), keyed by a milestone id, a domain id (or `submit`) and the return's terms; her first words under a weight, by the contact (§8, `weight.entry.<contact>`); under her scent, her first words and her named places by the contact (§9); in the jaw, her first words by what holds the mouth open (§10, `jaw.entry.<contact>`). */
 export const CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+|scent\.(entry|here)\.[a-z0-9_]+|jaw\.entry\.[a-z0-9_]+|activity\.(self|toYou|ask|exchange|entry)\.[a-z0-9_]+|service\.zone\.[a-z0-9_]+|shoe\.zone\.[a-z0-9_]+)$/;
@@ -3353,6 +3356,6 @@ export const CardVoiceSchema = BaseEntrySchema.extend({
   kind: str.refine((k) => (CARD_VOICE_KINDS as readonly string[]).includes(k) || CARD_VOICE_STATIC.test(k), 'an unknown card voice kind'),
   style: str.optional(),
   lines: z.array(str.max(160)),
-}).strict().refine((e) => e.lines.length > 0 || ((e.kind.startsWith('breath.') || e.kind.startsWith('weight.') || e.kind.startsWith('scent.') || e.kind.startsWith('jaw.') || e.kind.startsWith('activity.') || e.kind.startsWith('throne.') || e.kind.startsWith('shoe.') || e.kind.startsWith('gulp.')) && e.style !== undefined) || e.kind === 'gulp.surge', 'no lines (only a style\'s own breath, weight, scent, jaw, frame, shoe or gulp row may be empty: she is silent there; gulp\'s `surge` is empty for every style but ritual\'s)');
+}).strict().refine((e) => e.lines.length > 0 || ((e.kind.startsWith('breath.') || e.kind.startsWith('weight.') || e.kind.startsWith('scent.') || e.kind.startsWith('jaw.') || e.kind.startsWith('activity.') || e.kind.startsWith('throne.') || e.kind.startsWith('shoe.') || e.kind.startsWith('gulp.') || e.kind.startsWith('posture.')) && e.style !== undefined) || e.kind === 'gulp.surge', 'no lines (only a style\'s own breath, weight, scent, jaw, frame, shoe, gulp or posture row may be empty: she is silent there; gulp\'s `surge` is empty for every style but ritual\'s)');
 export type CardVoiceEntry = z.infer<typeof CardVoiceSchema>;
 registrySchemas.cardVoice = CardVoiceSchema;

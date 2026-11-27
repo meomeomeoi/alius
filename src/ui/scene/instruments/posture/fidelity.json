@@ -1,0 +1,502 @@
+{
+  "prototype": "posture",
+  "note": "P16b Tasks 23 and 24 (chunk c6): the game of postures and the posture call's schemes B and C. The functions of posture.html that its README calls normative, copied (types added): the dial as the surface (`bigSize`, `targetPose`, `activePoints`, `driftOf`, `blendedBody`, `anchors`, `drawDial`, `circle`, `drawBeads`, `drawLabel`, `fictionClock`: 300 px, the target as a dashed ghost, a point past 22 ringed in amber, the feet's ring at the ankles, the beads 1 TORSO to 7 FEET with their drift as amber), the hold (`startHold`, `endHold`, `rateOf`, `step`: +40 % over the first 120 s, the self-feeding past 50, the fiction clock at 30 s a second times (1 + 0.25 per level), her attention's phases of 6 to 15 s, the pages turned while she is busy, the blind view's feel lines at 40 and 72, `feelLines`), the corrections (`press`: loudness (drift / 100)^1.4, the cloth sound at 0.05 + loud x 0.5 and its rate, the creak above 0.55, the jolt above 0.3, a correction louder than `SEEN` under her eyes is fidgeting she sees, every third a slip; `release`), the faults (`fault`, `slip`: she puts the point back at 35; `jolt`), her world (`event`: a visitor, her undressing, a sound behind, \"look at me\" and its trap by style; `lookUp`; `setAttention`: her sprite's brightness .78 / .9 / 1.03, the darkened edges and the wood creak when she watches), the call (`statesFor`, `startCall`, `scheduleTaps`, `callPress`, `matches`, `checkTaken`, `pickState`, `drawStates`, `hintLevel`, `ghostShown`, `hintOn`, `pointsShown`, `drawCallDial`, `present`, `endCall`, `callTick`), her words (`say`, `feel`, `pickLine`, `STATE_WORD`) and the film (`drawGrain`, `sizeGrain`, `frame`). Tables: the engine's `TUNING.craft.posture` equals the prototype's `DRIFT_TO`, `SEEN`, `TRAP` and constants; `RATE` and `ARM_RATE` are the prototype's defaults the preset registry's rows use (three presets' own rows differ). Lines: `LINES` are the `cardVoice` rows `posture.<kind>` by style (card-voice.md section 16; verbatim; a style the prototype has no row of reads neutral's; cold's own, silent where it has none; the prototype's cruel `clean` and `taken` and regal `watch` are empty lines it reads as neutral's, so they have no row). Declared beyond the functions: (1) the wiring (posture.ts header): `performance`, `setTimeout`, `clearTimeout`, `requestAnimationFrame`, `innerWidth` / `innerHeight`, `document` (its body is the film, its root the surface) and `$` are the mount's own; the panel's controls the prototype reads answer from the state and the settings (`$('#skill')` the commander's posture level, `#mastery` this posture's mastery on the pair, `#hintStates` the SYS easing or her first call of a taught posture); the sounds are the extension's files through the sample layer; the dial is the prototype's own, drawn in the moment layer over the scene while the real one is hidden. (2) The mount: one surface for the hold and for the call (the call draws its own when no hold is under it); the keys 1-7 and L act only when nothing editable has the focus and the device is down (`env.root.closest('[inert]')`), 6 is held through a temptation; the stop word is the scene's pill, moved to the prototype's corner (css/86-posture.css). (3) Prototype only, not ported: the panel, the log line and the stats, the hold's start and end (Space, `end`), the stop pill, the stand-in scene, the `__` hooks.",
+  "functions": [
+    {
+      "fn": "hash01",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "pickLine",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "STATE_WORD",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "presetOf",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "nameOf",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "anyOf",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "bigSize",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "targetPose",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "activePoints",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "driftOf",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "blendedBody",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "anchors",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "drawDial",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "circle",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "drawBeads",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "drawLabel",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "fictionClock",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "startHold",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "endHold",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "rateOf",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "step",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "feelLines",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "press",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "release",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "fault",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "slip",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "jolt",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "event",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "lookUp",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "setAttention",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "statesFor",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "startCall",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "scheduleTaps",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "callPress",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "matches",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "checkTaken",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "pickState",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "drawStates",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "hintLevel",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "ghostShown",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "hintOn",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "pointsShown",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "drawCallDial",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "present",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "endCall",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "callTick",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "say",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "feel",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "drawGrain",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "frame",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "sizeGrain",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    },
+    {
+      "fn": "JOINT_OF",
+      "module": "src/ui/scene/instruments/posture/posture.ts"
+    }
+  ],
+  "tables": [
+    {
+      "ident": "POINTS",
+      "module": "src/ui/scene/instruments/posture/posture.ts",
+      "export": "POINTS"
+    },
+    {
+      "ident": "KEY_OF",
+      "module": "src/ui/scene/instruments/posture/posture.ts",
+      "export": "KEY_OF"
+    },
+    {
+      "ident": "DRIFT_TO",
+      "module": "src/ui/scene/instruments/posture/posture.ts",
+      "export": "DRIFT_TO"
+    },
+    {
+      "ident": "RATE",
+      "module": "src/ui/scene/instruments/posture/posture.ts",
+      "export": "RATE"
+    },
+    {
+      "ident": "ARM_RATE",
+      "module": "src/ui/scene/instruments/posture/posture.ts",
+      "export": "ARM_RATE"
+    },
+    {
+      "ident": "SLIP_AT",
+      "module": "src/ui/scene/instruments/posture/posture.ts",
+      "export": "SLIP_AT"
+    },
+    {
+      "ident": "LOUD_EXP",
+      "module": "src/ui/scene/instruments/posture/posture.ts",
+      "export": "LOUD_EXP"
+    },
+    {
+      "ident": "CORRECT_STEP",
+      "module": "src/ui/scene/instruments/posture/posture.ts",
+      "export": "CORRECT_STEP"
+    },
+    {
+      "ident": "SEEN",
+      "module": "src/ui/scene/instruments/posture/posture.ts",
+      "export": "SEEN"
+    },
+    {
+      "ident": "FICTION_PER_S",
+      "module": "src/ui/scene/instruments/posture/posture.ts",
+      "export": "FICTION_PER_S"
+    },
+    {
+      "ident": "FEEL",
+      "module": "src/ui/scene/instruments/posture/posture.ts",
+      "export": "FEEL"
+    },
+    {
+      "ident": "TRAP",
+      "module": "src/ui/scene/instruments/posture/posture.ts",
+      "export": "TRAP"
+    },
+    {
+      "ident": "ASSEMBLE_MS",
+      "module": "src/ui/scene/instruments/posture/posture.ts",
+      "export": "ASSEMBLE_MS"
+    }
+  ],
+  "differences": [
+    {
+      "fn": "startHold",
+      "reason": "Wiring: the hold is the engine's (`practices.postureRun`): its id, her term (`until` beats of 1.5 s, hidden or not: the prototype's term picker), where it resumes after a remount (`WR.t0`, the beats the engine counted) replace the panel's term select and `Date.now()`; `eyes` and `blind` are the prototype's own `$('#eyesRule')` / `$('#blind')`, answered from the preset and `sensoryNow`.",
+      "diff": "@@ -2,5 +2,4 @@\n endHold(null,true)\n-const termSel=$(\"#termSel\").value\n S.run={\n-id:Date.now()%100000,t:0,fiction:0,term:termSel===\"none\"?60+hash01(`term|${Date.now()}`)*180:Number(termSel),hidden:termSel===\"none\",o:{},eyes:$(\"#eyesRule\").checked,blind:$(\"#blind\").checked,corrections:0,loud:0,fidgets:0,slips:0,gazeSlips:0,impulses:[],nextEv:14,nextAttn:0,feelSaid:{}\n+id:WR.run.id,t:WR.t0,fiction:WR.t0*FICTION_PER_S,term:WR.term,hidden:WR.hidden,o:{},eyes:$(\"#eyesRule\").checked,blind:$(\"#blind\").checked,corrections:0,loud:0,fidgets:0,slips:0,gazeSlips:0,impulses:[],nextEv:14,nextAttn:0,feelSaid:{}\n }"
+    },
+    {
+      "fn": "endHold",
+      "reason": "Wiring: a hold that ran to her term is reported to the engine once (`posture/end` released, the beats it ran; `reportEnd`), which pays it and keeps its record; a hold ended by the stop word, a call or a scene that is gone reports nothing here (the engine ended it, or `callAnswered` does).",
+      "diff": "@@ -18,2 +18,3 @@\n stats()\n+if(!silent&&reason===\"released\")reportEnd(r)\n }"
+    },
+    {
+      "fn": "rateOf",
+      "reason": "Wiring: the engine owns the rates: `driftRates` (the preset's own rate per point, times the day's fatigue, a hard floor, her weight, (1 - 0.08 per capacity level of the commander's posture) and (1 - 0.05 per level of this posture on the pair)) is what the prototype's `ARM_RATE` / `RATE` and `mult()` compute from its panel; the hold's own tiring (+40 % over 120 s) and the self-feeding past 50 stay the prototype's. Three presets' own rows differ from the prototype's tables (`kneel_arched`, `light_bearer`, `hogtied`: blocking.md section 7.3).",
+      "diff": "@@ -2,7 +2,6 @@\n if(k===\"gaze\")return 0\n-const p=presetOf(S.preset)\n-const base=k===\"arms\"?(ARM_RATE[p.points.arms]??RATE.arms):RATE[k]\n+const base=WR.rates[k]??0\n const within=1+Math.min(0.4,(S.run.t/120)*0.4)\n const self=1+Math.max(0,S.run.o[k]-50)/100\n-return(base/10)*mult()*within*self\n+return(base/10)*within*self\n }"
+    },
+    {
+      "fn": "step",
+      "reason": "Wiring: her attention is the engine's plan (`attentionAt`: her activity's weights, a clinical holder always watching) read at the start of each of the prototype's 6-15 s phases, in place of the prototype's hashed pick (45 / 30 / 25 %); the phase's length stays the prototype's hash.",
+      "diff": "@@ -21,4 +21,3 @@\n if($(\"#autoAttn\").checked&&r.t>=r.nextAttn){\n-const pick=hash01(`attn|${r.id}|${Math.floor(r.t)}`)\n-const next=pick<0.45?\"busy\":pick<0.75?\"glancing\":\"watching\"\n+const next=herAttention(Math.floor(r.t/(TUNING.physics.beatMs/1000)))\n setAttention(next)"
+    },
+    {
+      "fn": "step",
+      "reason": "Wiring: a visitor and her undressing are events of the scene, so the engine's `temptations` play them (`playTemptations`, each once, after its hashed delay); the prototype's hashed timeline keeps only what the engine has no event for, \"a sound behind\" (30 %) and \"look at me\" (15 %), with the prototype's own bands of the same `k`.",
+      "diff": "@@ -29,3 +28,3 @@\n const k=hash01(`ev|${r.id}|${Math.floor(r.t)}`)\n-event(k<0.3?\"visitor\":k<0.55?\"undress\":k<0.85?\"sound\":\"look\")\n+if(k>=0.55)event(k<0.85?\"sound\":\"look\")\n r.nextEv=r.t+22+hash01(`evGap|${r.id}|${Math.floor(r.t)}`)*24"
+    },
+    {
+      "fn": "press",
+      "reason": "Wiring: whether she saw the correction is the engine's answer (`posture/correct` with the drift at the press and her attention as shown: the noise by the preset and the commander's stillness, the seen thresholds `SEEN`); the prototype's own rule (`loud > SEEN[attention]`) is the fallback when no answer comes (`engineSeen`).",
+      "diff": "@@ -29,3 +29,3 @@\n if(!S.reduced&&loud>0.3)jolt(loud)\n-if(loud>SEEN[S.attention]){\n+if(engineSeen(k,o,loud)){\n r.fidgets++"
+    },
+    {
+      "fn": "fault",
+      "reason": "Wiring: the order not obeyed is reported to the engine as a slip of the point `gaze` (`posture/slip`: the engine has no point-less fault); the prototype's own count and her line stay.",
+      "diff": "@@ -8,2 +8,3 @@\n log(`slip: ${why}`)\n+reportSlip(\"gaze\")\n }"
+    },
+    {
+      "fn": "slip",
+      "reason": "Wiring: a slip is reported to the engine (`posture/slip`, one offence of hers, the streak starts over), except a fidgeting one: the engine counted that one itself when it judged the third seen correction.",
+      "diff": "@@ -10,2 +10,3 @@\n log(`slip: ${k}${why?` (${why})`:\"\"}`)\n+if(why!==\"fidgeting\")reportSlip(k)\n }"
+    },
+    {
+      "fn": "startCall",
+      "reason": "Wiring: the call is the engine's: the posture she calls is the series' last (or the only) one (`callIndex`; the earlier calls of a series C are a hashed pick that is neither the body's nor the last), and a trap in C is a hash of the call and its place instead of `Date.now()`.",
+      "diff": "@@ -3,6 +3,5 @@\n const nowId=S.run?S.preset:S.stance?.id\n-const idx=fnv1a(`call|${Date.now()}`)%NAMED.length\n-if(NAMED[idx][0]===nowId)idx=(idx+1)%NAMED.length\n+const idx=callIndex(seriesLeft,nowId)\n const[id,word]=NAMED[idx]\n-const trap=kind===\"C\"&&hash01(`ctrap|${Date.now()}`)<0.3\n+const trap=kind===\"C\"&&hash01(`ctrap|${WR.call.id}|${seriesLeft}`)<0.3\n const want=presetOf(id)"
+    },
+    {
+      "fn": "startCall",
+      "reason": "Wiring: her window is the engine's (`postureWindowMs`: her style's, bent by her tempo) plus the prototype's 2.5 s for each point that has to move; without the order interaction there is no clock, so no taps (`scheduleTaps`) are placed.",
+      "diff": "@@ -15,5 +14,3 @@\n const toMove=POINTS.filter(k=>k!==\"gaze\"&&wantPts[k]!==undefined&&nowPts[k]!==wantPts[k]).length\n-const windowMs=({\n-ritual:4000,drill:3000\n-}[S.style]??5000)+ASSEMBLE_MS*toMove\n+const windowMs=WR.call.windowMs+ASSEMBLE_MS*toMove\n S.call={"
+    },
+    {
+      "fn": "startCall",
+      "reason": "Wiring: her window is the engine's (`postureWindowMs`: her style's, bent by her tempo) plus the prototype's 2.5 s for each point that has to move; without the order interaction there is no clock, so no taps (`scheduleTaps`) are placed.",
+      "diff": "@@ -32,3 +29,3 @@\n document.documentElement.style.setProperty(\"--dialBig\",`${bigSize()}px`)\n-scheduleTaps(windowMs)\n+if(WR.call.timed)scheduleTaps(windowMs)\n S.sel=null"
+    },
+    {
+      "fn": "present",
+      "reason": "Wiring: without the order interaction nothing is late (the prototype always has a clock).",
+      "diff": "@@ -7,3 +7,3 @@\n }\n-const late=performance.now()>c.until\n+const late=WR.call.timed&&performance.now()>c.until\n const right=matches(c)"
+    },
+    {
+      "fn": "endCall",
+      "reason": "Wiring: the call's answer goes to the engine once, at the series' end (`callAnswered`): the posture when every call of the series was taken (or a trap held still), none otherwise, late when one was; a taken call is a new posture, so the hold of the old one ends (released, the beats so far).",
+      "diff": "@@ -32,2 +32,3 @@\n if(c.kind===\"C\"&&c.seriesLeft>0)setTimeout(()=>startCall(\"C\",c.seriesLeft-1),2600+hash01(`gap|${c.seriesLeft}`)*2400)\n+callAnswered(c,outcome)\n }"
+    },
+    {
+      "fn": "callTick",
+      "reason": "Wiring: without the order interaction a call to assemble has no time to be late in; a trap still ends at the window (holding still is right).",
+      "diff": "@@ -3,2 +3,3 @@\n if(!c)return\n+if(!WR.call.timed&&!c.trap)return\n if(performance.now()>c.until+600){"
+    },
+    {
+      "fn": "LINES.cold.watch",
+      "reason": "Her silence: cold has no line here (`['']` in the prototype, an empty row of her own in cardVoice): the instrument reads an empty row as the prototype reads `['']`.",
+      "diff": "[]"
+    },
+    {
+      "fn": "LINES.cold.fidget",
+      "reason": "Her silence: cold has no line here (`['']` in the prototype, an empty row of her own in cardVoice): the instrument reads an empty row as the prototype reads `['']`.",
+      "diff": "[]"
+    },
+    {
+      "fn": "LINES.cold.gaze",
+      "reason": "Her silence: cold has no line here (`['']` in the prototype, an empty row of her own in cardVoice): the instrument reads an empty row as the prototype reads `['']`.",
+      "diff": "[]"
+    },
+    {
+      "fn": "LINES.cold.clean",
+      "reason": "Her silence: cold has no line here (`['']` in the prototype, an empty row of her own in cardVoice): the instrument reads an empty row as the prototype reads `['']`.",
+      "diff": "[]"
+    },
+    {
+      "fn": "LINES.cold.prefix",
+      "reason": "Her silence: cold has no line here (`['']` in the prototype, an empty row of her own in cardVoice): the instrument reads an empty row as the prototype reads `['']`.",
+      "diff": "[]"
+    },
+    {
+      "fn": "LINES.cold.taken",
+      "reason": "Her silence: cold has no line here (`['']` in the prototype, an empty row of her own in cardVoice): the instrument reads an empty row as the prototype reads `['']`.",
+      "diff": "[]"
+    },
+    {
+      "fn": "LINES.cold.late",
+      "reason": "Her silence: cold has no line here (`['']` in the prototype, an empty row of her own in cardVoice): the instrument reads an empty row as the prototype reads `['']`.",
+      "diff": "[]"
+    },
+    {
+      "fn": "LINES.cold.down",
+      "reason": "Her silence: cold has no line here (`['']` in the prototype, an empty row of her own in cardVoice): the instrument reads an empty row as the prototype reads `['']`.",
+      "diff": "[]"
+    }
+  ],
+  "lines": [
+    {
+      "ident": "LINES",
+      "registry": "cardVoice",
+      "cueKinds": {
+        "neutral.start": "posture.start",
+        "neutral.watch": "posture.watch",
+        "neutral.fidget": "posture.fidget",
+        "neutral.slip": "posture.slip",
+        "neutral.gaze": "posture.gaze",
+        "neutral.release": "posture.release",
+        "neutral.clean": "posture.clean",
+        "neutral.taken": "posture.taken",
+        "neutral.wrong": "posture.wrong",
+        "neutral.late": "posture.late",
+        "neutral.look": "posture.look",
+        "neutral.down": "posture.down",
+        "neutral.notLooking": "posture.notLooking",
+        "ritual.start": "posture.start@ritual",
+        "ritual.watch": "posture.watch@ritual",
+        "ritual.fidget": "posture.fidget@ritual",
+        "ritual.slip": "posture.slip@ritual",
+        "ritual.gaze": "posture.gaze@ritual",
+        "ritual.release": "posture.release@ritual",
+        "ritual.clean": "posture.clean@ritual",
+        "ritual.taken": "posture.taken@ritual",
+        "ritual.wrong": "posture.wrong@ritual",
+        "ritual.late": "posture.late@ritual",
+        "ritual.look": "posture.look@ritual",
+        "ritual.down": "posture.down@ritual",
+        "ritual.notLooking": "posture.notLooking@ritual",
+        "drill.start": "posture.start@drill",
+        "drill.watch": "posture.watch@drill",
+        "drill.fidget": "posture.fidget@drill",
+        "drill.slip": "posture.slip@drill",
+        "drill.gaze": "posture.gaze@drill",
+        "drill.release": "posture.release@drill",
+        "drill.clean": "posture.clean@drill",
+        "drill.taken": "posture.taken@drill",
+        "drill.wrong": "posture.wrong@drill",
+        "drill.late": "posture.late@drill",
+        "drill.look": "posture.look@drill",
+        "drill.down": "posture.down@drill",
+        "drill.notLooking": "posture.notLooking@drill",
+        "cold.start": "posture.start@cold",
+        "cold.watch": "posture.watch@cold",
+        "cold.fidget": "posture.fidget@cold",
+        "cold.slip": "posture.slip@cold",
+        "cold.gaze": "posture.gaze@cold",
+        "cold.release": "posture.release@cold",
+        "cold.clean": "posture.clean@cold",
+        "cold.taken": "posture.taken@cold",
+        "cold.wrong": "posture.wrong@cold",
+        "cold.late": "posture.late@cold",
+        "cold.look": "posture.look@cold",
+        "cold.down": "posture.down@cold",
+        "playful.start": "posture.start@playful",
+        "playful.watch": "posture.watch@playful",
+        "playful.fidget": "posture.fidget@playful",
+        "playful.slip": "posture.slip@playful",
+        "playful.gaze": "posture.gaze@playful",
+        "playful.release": "posture.release@playful",
+        "playful.clean": "posture.clean@playful",
+        "playful.taken": "posture.taken@playful",
+        "playful.wrong": "posture.wrong@playful",
+        "playful.late": "posture.late@playful",
+        "playful.look": "posture.look@playful",
+        "playful.down": "posture.down@playful",
+        "playful.notLooking": "posture.notLooking@playful",
+        "cruel.start": "posture.start@cruel",
+        "cruel.watch": "posture.watch@cruel",
+        "cruel.fidget": "posture.fidget@cruel",
+        "cruel.slip": "posture.slip@cruel",
+        "cruel.gaze": "posture.gaze@cruel",
+        "cruel.release": "posture.release@cruel",
+        "cruel.wrong": "posture.wrong@cruel",
+        "cruel.late": "posture.late@cruel",
+        "cruel.look": "posture.look@cruel",
+        "cruel.down": "posture.down@cruel",
+        "cruel.notLooking": "posture.notLooking@cruel",
+        "regal.start": "posture.start@regal",
+        "regal.fidget": "posture.fidget@regal",
+        "regal.slip": "posture.slip@regal",
+        "regal.gaze": "posture.gaze@regal",
+        "regal.release": "posture.release@regal",
+        "regal.clean": "posture.clean@regal",
+        "regal.taken": "posture.taken@regal",
+        "regal.wrong": "posture.wrong@regal",
+        "regal.late": "posture.late@regal",
+        "regal.look": "posture.look@regal",
+        "regal.down": "posture.down@regal",
+        "regal.notLooking": "posture.notLooking@regal"
+      }
+    },
+    {
+      "ident": "LINES",
+      "registry": "cardVoice",
+      "format": "line",
+      "cueKinds": {
+        "neutral.prefix": "posture.prefix",
+        "ritual.prefix": "posture.prefix@ritual",
+        "drill.prefix": "posture.prefix@drill",
+        "cold.prefix": "posture.prefix@cold",
+        "playful.prefix": "posture.prefix@playful",
+        "cruel.prefix": "posture.prefix@cruel",
+        "regal.prefix": "posture.prefix@regal"
+      }
+    }
+  ]
+}

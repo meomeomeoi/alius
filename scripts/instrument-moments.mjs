@@ -30,6 +30,7 @@ export const MOMENTS = {
   service: serviceMoments(),
   shoe: shoeMoments(),
   gulp: gulpMoments(),
+  posture: postureMoments(),
   cards: {
     state: 'one',
     clip: dialCorner,
@@ -706,6 +707,62 @@ function gulpMoments() {
       moment('cleaning', 'neutral', both('G.spilled = 0.6; f.startClean();'), 600),
       moment('check', 'neutral', both('G.spilled = 0.6; f.startClean(); G.puddle.m.forEach((v, i) => { G.puddle.m[i] = v * 0.08; });'), 900),
       moment('tide-high-1280', 'neutral', both('G.fill = 0.8;'), 400, [1280, 800]),
+    ],
+  };
+}
+
+/**
+ * posture.html: the game of postures and the posture call's schemes B and C (P16b Tasks 23 and 24). The port's hold is the fixture `posture` (Ann,
+ * neutral, kneel_hands_behind_head, real time), her call `posturecallb` / `posturecallc` (she calls Down while the commander stands); both sides are
+ * frozen (`paused`) with the same drift and her attention, so the pair compares the drawing. The prototype is driven through its own functions,
+ * the port through `window.__posture`.
+ */
+function postureMoments() {
+  const holdProto = (att, blind) => async (p) => {
+    await p.evaluate(([a, b]) => {
+      S.sound = false; S.style = 'neutral'; S.preset = 'kneel_hands_behind_head';
+      $('#eyesRule').checked = false; $('#blind').checked = b; $('#bigSel').value = '300';
+      startHold(); S.run.paused = true; S.run.o.arms = 55; S.run.o.torso = 30; if (b) { S.run.o.arms = 73; }
+      S.attention = 'x'; setAttention(a); say('Stay like that.'); if (b) feel(FEEL.arms[1], true); drawDial();
+    }, [att, blind]);
+  };
+  const holdPort = (att, blind) => async (p) => {
+    await p.waitForFunction(() => window.__posture?.S.run, null, { timeout: 15000 });
+    await p.evaluate(([a, b]) => {
+      const q = window.__posture; q.S.run.paused = true; q.S.run.o.arms = 55; q.S.run.o.torso = 30;
+      if (b) { q.setBlind(true); q.S.run.o.arms = 73; }
+      q.S.attention = 'x'; q.setAttention(a); q.say('Stay like that.'); if (b) q.feel('the arms are dropping; the shoulders burn', true); q.drawDial();
+    }, [att, blind]);
+  };
+  const callProto = (kind, press) => async (p) => {
+    await p.evaluate(([k, pr]) => {
+      S.sound = false; S.style = 'neutral';
+      const o = Date.now; let x = 0; while (fnv1a('call|' + x) % NAMED.length !== 4) x++; Date.now = () => x;
+      const r = Math.random; Math.random = () => 0.9; // C: no trap
+      startCall(k, k === 'C' ? 4 : 0); Date.now = o; Math.random = r;
+      S.call.until = performance.now() + 1e9; S.call.trap = false; $('#callWord .pre').textContent = LINES.neutral.prefix;
+      if (pr) callPress(pr);
+    }, [kind, press]);
+  };
+  const callPort = (press) => async (p) => {
+    await p.waitForFunction(() => window.__posture?.S.call, null, { timeout: 15000 });
+    await p.evaluate((pr) => {
+      const q = window.__posture; q.S.call.until = q.stage().now() + 1e9; q.S.call.trap = false; document.querySelector('.alius-pg #callWord .pre').textContent = 'Now \u2014';
+      if (pr) q.callPress(pr);
+    }, press);
+  };
+  return {
+    state: 'posture',
+    rasterSprite: true,
+    hide: ['#panel', '#log', '#stopPill'],
+    settle: 1300, // the blind view fades in over .9 s, her line writes on over .6 s
+    moments: [
+      { id: 'hold', proto: holdProto('busy', false), port: holdPort('busy', false) },
+      { id: 'hold-watched', proto: holdProto('watching', false), port: holdPort('watching', false) },
+      { id: 'blind', proto: holdProto('busy', true), port: holdPort('busy', true) },
+      { id: 'call-b', state: 'posturecallb', proto: callProto('B', ''), port: callPort('') },
+      { id: 'call-b-states', state: 'posturecallb', proto: callProto('B', 'arms'), port: callPort('arms') },
+      { id: 'call-c', state: 'posturecallc', proto: callProto('C', 'knees'), port: callPort('knees') },
     ],
   };
 }

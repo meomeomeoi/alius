@@ -238,11 +238,14 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
     sentence: { crimeId: 'strain_trade', start: 8, until: 20, extended: 6, week: 1, landed: true },
   };
 
+  // P16b Tasks 23-24: a hold of a posture with no duration (its planned length is hidden: the game of postures never shows an end it was not given) and the settling-in load she added
+  (state.practices ??= blankPractices()).postureRun = { id: 'pr9', holderId: unit.id, presetId: 'kneel_upright', startedAt: 3, present: [unit.id], beats: 0, slips: 0, corrections: 0, until: 87, hidden: true, load: 'no_duration', source: 'take' };
+
   return {
     state,
     unitId: unit.id,
     sentinels: {
-      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57, 43, 47, 67, 183.5, 271.3, 119.9, 211.7, 79, 89, 4.37, 2.19, 47.31, 63.17, 5.13, 19, 83.77, 6.83, 31.41, 8.86, 0.6174, 37.37, 61.61, 59.59, 0.4141, 23.23, 7.77, 44.44, 13.37, 26, 34, 733, 2.71, 1.83, 1.57, 1717],
+      numbers: [87, 37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57, 43, 47, 67, 183.5, 271.3, 119.9, 211.7, 79, 89, 4.37, 2.19, 47.31, 63.17, 5.13, 19, 83.77, 6.83, 31.41, 8.86, 0.6174, 37.37, 61.61, 59.59, 0.4141, 23.23, 7.77, 44.44, 13.37, 26, 34, 733, 2.71, 1.83, 1.57, 1717],
       texts: ['SENTINEL-LESSON-POINT', 'SENTINEL-LESSON-WORDS', 'SENTINEL-UNTOLD', 'SENTINEL-KEEPS', 'SENTINEL-UNVOICED', 'SENTINEL-QUEUED', 'stargazing', 'woodcarving', untoldEvent.id, keepsEvent.id, 'SENTINEL-PENDING', 'SENTINEL-MISREAD', 'SENTINEL-UNSHOWN-MOMENT', 'SENTINEL-UNSHOWN-FACT', 'SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE', 'SENTINEL_EXPECTATION', 'SENTINEL_KOMPROMAT', 'SENTINEL_COMPROMAT_P15', 'SENTINEL_TELL', 'SENTINEL_WORSHIP_HOW', 'SENTINEL_KNOWLEDGE_P15', 'SENTINEL_SEALED_TEXT', 'SENTINEL_SEALED_SUMMARY', 'SENTINEL_FALSE_REPORT', 'nothing the commander did', 'cancelled_reward', 'end of the afternoon', 'SENTINEL_KIND', 'SENTINEL_SCENE', 'SENTINEL-PRAISE-TEXT', 'sentinelpraiseword', 'strain_trade'],
     },
   };
