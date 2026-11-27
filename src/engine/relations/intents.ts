@@ -1,5 +1,6 @@
 import { RESPONSE_TYPES, type ResponseType } from '../blocking/types';
 import { OFFER_ANSWERS, QUIRK_WHEN, TONES, type DynamicOffer, type OfferAnswer, type QuirkWhen, type Tone } from '../dynamic/types';
+import { hasCommanderPronoun } from '../dynamic/pronoun';
 import { normalizeTag } from '../setup';
 import type { LifeOffer } from '../life/types';
 import type { PracticeOffer } from '../practice/intents';
@@ -281,6 +282,13 @@ function dynamicFields(type: EventType, e: Record<string, unknown>, intent: Even
       if (when === undefined || !(offer.quirks ?? []).some((q) => q.unitId === who && q.when === when)) return null;
       intent.when = when;
       return { key: `${type}|${who}|${when}` };
+    }
+    case 'hypothetical_answered': {
+      // her what-if, answered: only for a unit whose pending probe is the hypothetical; the answer is the extractor's short paraphrase, never the commander's raw text, and gives the commander no pronoun
+      const answer = oneLineText(e.summary, D.answerMax);
+      if (answer === '' || hasCommanderPronoun(answer) || !(offer.hypothetical ?? []).includes(who)) return null;
+      intent.summary = answer;
+      return { key: `${type}|${who}` };
     }
     case 'offer_answered': {
       const answer = (OFFER_ANSWERS as readonly unknown[]).includes(e.answer) ? (e.answer as OfferAnswer) : undefined;

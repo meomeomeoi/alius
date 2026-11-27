@@ -44,7 +44,7 @@ describe('the eleven registries (P15)', () => {
     expect(rows('dynamicDomains')).toHaveLength(6);
     expect(rows('dynamicTracks')).toHaveLength(10);
     const axes = rows('probeAxes');
-    expect(axes).toHaveLength(10);
+    expect(axes).toHaveLength(17); // ten from P15 and, from P15b, the seven rows with `needs` (spec §12.2)
     expect(new Set(axes.map((a) => a.tier))).toEqual(new Set([1, 2]));
     const regions = rows('positionRegions');
     expect(regions).toHaveLength(11);

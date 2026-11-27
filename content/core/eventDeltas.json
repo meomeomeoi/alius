@@ -1671,6 +1671,17 @@
     }
   },
   {
+    "id": "hypothetical_answered",
+    "cause": "The commander answered her what-if",
+    "journal": "she asked the commander a what-if and was answered",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    }
+  },
+  {
     "id": "offer_answered",
     "cause": "She answered what the commander offered",
     "journal": "she answered the commander's offer",

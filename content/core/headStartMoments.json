@@ -327,5 +327,124 @@
     "axis": "reversal",
     "fallback": "AUTHOR TO WRITE: {name} turned a plain order of the commander's back on the commander, as if the roles had been joked about.",
     "description": "AUTHOR TO WRITE: Turns the commander's order into a game, small and deniable."
+  },
+  {
+    "id": "probe_admiration",
+    "sign": "any",
+    "eventDelta": {
+      "type": "listened",
+      "severity": "minor",
+      "actor": "unit"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start",
+      "probe"
+    ],
+    "axis": "admiration",
+    "fallback": "AUTHOR TO WRITE: {name} turned in the doorway and asked how the new jacket sat, and waited for the answer a beat longer than the question needed.",
+    "description": "AUTHOR TO WRITE: Asks how she looks and waits for the answer, small and deniable."
+  },
+  {
+    "id": "probe_deference",
+    "sign": "any",
+    "eventDelta": {
+      "type": "listened",
+      "severity": "minor",
+      "actor": "unit"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start",
+      "probe"
+    ],
+    "axis": "deference",
+    "fallback": "AUTHOR TO WRITE: {name} held out her hand at the mess door, half joking, and let it hang there until it was taken.",
+    "description": "AUTHOR TO WRITE: Expects to go first, or to be served first, small and deniable."
+  },
+  {
+    "id": "probe_credit",
+    "sign": "any",
+    "eventDelta": {
+      "type": "listened",
+      "severity": "minor",
+      "actor": "unit"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start",
+      "probe"
+    ],
+    "axis": "credit",
+    "fallback": "AUTHOR TO WRITE: {name} told the quartermaster how her plan had carried the run, and looked at the commander to see if it would be corrected.",
+    "description": "AUTHOR TO WRITE: Tells the commander's plan as hers, small and deniable."
+  },
+  {
+    "id": "probe_gaze",
+    "sign": "any",
+    "eventDelta": {
+      "type": "listened",
+      "severity": "minor",
+      "actor": "unit"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start",
+      "probe"
+    ],
+    "axis": "gaze",
+    "fallback": "AUTHOR TO WRITE: {name} held the commander's look across the table until one of the two looked away.",
+    "description": "AUTHOR TO WRITE: Holds the look to see who looks away, small and deniable."
+  },
+  {
+    "id": "probe_corrected_praise",
+    "sign": "any",
+    "eventDelta": {
+      "type": "listened",
+      "severity": "minor",
+      "actor": "unit"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start",
+      "probe"
+    ],
+    "axis": "corrected_praise",
+    "fallback": "AUTHOR TO WRITE: {name} was called pretty, and said the word she preferred, and waited to hear it said back.",
+    "description": "AUTHOR TO WRITE: Corrects a praise and gives the word she wants, small and deniable."
+  },
+  {
+    "id": "probe_feet_in_lap",
+    "sign": "any",
+    "eventDelta": {
+      "type": "listened",
+      "severity": "minor",
+      "actor": "unit"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start",
+      "probe"
+    ],
+    "axis": "feet_in_lap",
+    "fallback": "AUTHOR TO WRITE: {name} put her feet in the commander's lap after supper, as if only for comfort, and did not look to see what it meant.",
+    "description": "AUTHOR TO WRITE: Puts her feet in the commander's lap as if for comfort, small and deniable."
+  },
+  {
+    "id": "probe_hypothetical",
+    "sign": "any",
+    "eventDelta": {
+      "type": "listened",
+      "severity": "minor",
+      "actor": "unit"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start",
+      "probe"
+    ],
+    "axis": "hypothetical",
+    "fallback": "AUTHOR TO WRITE: {name} asked, lightly, whether the commander would kneel if she asked, and laughed before an answer was needed.",
+    "description": "AUTHOR TO WRITE: Asks a what-if about kneeling, small and deniable."
   }
 ]

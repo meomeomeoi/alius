@@ -24,6 +24,8 @@ const OFFERS: Array<{ type: string; offer: Dyn; word: string }> = [
   { type: 'compromat_mentioned', offer: dyn({ types: ['compromat_mentioned'], compromat: [ANN] }), word: '"summary"' },
   { type: 'protocol_slip', offer: dyn({ types: ['protocol_slip'], slips: [ANN] }), word: '"protocol_slip":' },
   { type: 'offer_answered', offer: dyn({ types: ['offer_answered'], offers: ['do1'] }), word: '"offerId"' },
+  // P15b (spec §12): her what-if, with the unit it was asked by
+  { type: 'hypothetical_answered', offer: dyn({ types: ['hypothetical_answered'], hypothetical: [ANN] }), word: 'WHAT-IF' },
   // P15b: one of her small ways, listed with her words and the kind
   { type: 'quirk_voiced', offer: dyn({ types: ['quirk_voiced'], quirks: [{ unitId: ANN, when: 'switch' }], quirkTexts: { [`${ANN}:switch`]: 'she locks the door' } }), word: 'she locks the door' },
 ];

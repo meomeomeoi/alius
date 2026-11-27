@@ -20,12 +20,14 @@ import { TUNING } from '../tuning';
 import { canHold, dynamicOn, effectiveInclination, ensureDynamic, holderCap } from './gate';
 import { addHold, bandIndex } from './hold';
 import { feedYield } from './mannerFeed';
+import { expectationsOf } from './expectations';
+import { mannerOf } from './manner';
 import { practiceOf, styleOf } from './profile';
 import { regardRise } from './regard';
 import { updateReading } from './reading';
 import { dynamicOf, type DynamicRelation } from './state';
 import { dynamicRoll } from './witness';
-import type { ProbeAxisEntry, Tone } from './types';
+import type { MannerAxis, ProbeAxisEntry, Tone } from './types';
 
 const livingNamed = (draft: Pick<CampaignState, 'squad'>) => draft.squad.filter((u) => u.kind === 'named' && isLiving(u));
 
@@ -45,6 +47,20 @@ export function sceneProbe(state: Pick<CampaignState, 'relations' | 'dynamic'>, 
     if (probe !== undefined) return { unitId, probe };
   }
   return undefined;
+}
+
+/** The probe row P15b adds that asks "would you kneel if I asked" (spec §12.2): the commander's answer to it is a model-reportable event (`hypothetical_answered`). */
+export const HYPOTHETICAL_AXIS = 'hypothetical';
+
+/**
+ * Whether her what-if is still to be answered, or was closed by the report that is being applied: her pending probe is the hypothetical, or it was closed today by an answer of the same batch
+ * (`answerProbe` deletes the pending probe and the model may list `probe_answered` before `hypothetical_answered`). Pure.
+ */
+export function hypotheticalOpen(state: Pick<CampaignState, 'relations' | 'dynamic' | 'day'>, unitId: string): boolean {
+  const pending = pendingProbe(state, unitId);
+  if (pending !== undefined) return pending.axis === HYPOTHETICAL_AXIS;
+  const dyn = state.dynamic === undefined ? undefined : dynamicOf(state, unitId);
+  return dyn !== undefined && dyn.probes.lastDay === state.day && dyn.recent[dyn.recent.length - 1] === HYPOTHETICAL_AXIS && dyn.probes.answers.length > 0;
 }
 
 /** How many more units may start probing: the cap (`any` is 3) less those in the queue. */
@@ -73,12 +89,56 @@ export function probeChance(state: CampaignState, reg: Registries, unitId: strin
   return Math.min(1, Math.max(0, p));
 }
 
-/** The axis of the probe: hashed over the axes of the band's tier or below, leaving out the last few she used (all of them when that leaves none). */
-function pickAxis(draft: CampaignState, reg: Registries, unitId: string, tier: 1 | 2, recent: readonly string[]): ProbeAxisEntry {
-  const axes = [...reg.probeAxes.values()].map((a) => a as unknown as ProbeAxisEntry).filter((a) => a.tier <= tier);
+const LIKE_RANK: Readonly<Record<string, number>> = { none: 0, tolerates: 1, indifferent: 1, dislikes: 0, enjoys: 2, craves: 3 };
+
+/** Whether she likes `what` at least as much as `least` (a practice category through `practiceOf`; `worship.<targetId>` through her expectation profile, planning ruling 9). */
+function likesAtLeast(state: CampaignState, reg: Registries, unitId: string, what: string, least: 'enjoys' | 'craves'): boolean {
+  if (what.startsWith('worship.')) {
+    const attitude = expectationsOf(state, reg, unitId).worship?.[what.slice('worship.'.length)]?.attitude;
+    return attitude !== undefined && LIKE_RANK[attitude] >= LIKE_RANK[least];
+  }
+  const as = practiceOf(state, reg, unitId)?.categories[what]?.as;
+  return as !== undefined && LIKE_RANK[as] >= LIKE_RANK[least];
+}
+
+/**
+ * How many places a probe row takes in her pool (P15b, spec §12.1): a row with no `needs` takes one, as it always did. A row with `needs` takes none unless she has a `manner` and an
+ * alternative holds (`styles`: her primary now, a turn counted; `drawnBy`; `manner`: bounds on what she has become, not on the mood of the day; `likes`), and then two when an alternative that
+ * names `styles` holds, one for any other.
+ */
+export function probePlaces(state: CampaignState, reg: Registries, unitId: string, row: ProbeAxisEntry): 0 | 1 | 2 {
+  if (row.needs === undefined) return 1;
+  const unit = state.squad.find((u) => u.id === unitId);
+  const manner = mannerOf({ squad: state.squad }, reg, unitId); // no day: the mood is not part of who she is
+  if (unit === undefined || manner === null) return 0;
+  const primary = styleOf(unit)?.primary;
+  let best: 0 | 1 | 2 = 0;
+  for (const n of row.needs) {
+    if (n.styles !== undefined && (primary === undefined || !n.styles.includes(primary))) continue;
+    if (n.drawnBy !== undefined && !n.drawnBy.some((d) => manner.drawnBy.includes(d))) continue;
+    if (n.manner !== undefined && !(Object.entries(n.manner) as Array<[MannerAxis, [number, number]]>).every(([a, [lo, hi]]) => manner.axes[a] >= lo && manner.axes[a] <= hi)) continue;
+    if (n.likes !== undefined && !Object.entries(n.likes).every(([what, least]) => likesAtLeast(state, reg, unitId, what, least))) continue;
+    best = n.styles !== undefined ? 2 : Math.max(best, 1) as 1 | 2;
+    if (best === 2) break;
+  }
+  return best;
+}
+
+/**
+ * The axes she may probe on, in pool order (a row twice when it takes two places): the rows of the band's tier or below that she has places for, leaving out the last few she used (all of
+ * them when that leaves none). A woman with no `manner`, or matching no `needs`, gets the rows that have none, in registry order: the pool she had before P15b. The head start builds the same pool.
+ */
+export function probePool(state: CampaignState, reg: Registries, unitId: string, tier: 1 | 2, recent: readonly string[]): ProbeAxisEntry[] {
+  const axes = [...reg.probeAxes.values()].map((a) => a as unknown as ProbeAxisEntry).filter((a) => a.tier <= tier)
+    .flatMap((a) => Array.from({ length: probePlaces(state, reg, unitId, a) }, () => a));
   const skip = recent.slice(-TUNING.probes.skipRecent);
   const fresh = axes.filter((a) => !skip.includes(a.id));
-  const pool = fresh.length > 0 ? fresh : axes;
+  return fresh.length > 0 ? fresh : axes;
+}
+
+/** The axis of the probe: hashed over her pool (`probePool`). */
+export function pickAxis(draft: CampaignState, reg: Registries, unitId: string, tier: 1 | 2, recent: readonly string[]): ProbeAxisEntry {
+  const pool = probePool(draft, reg, unitId, tier, recent);
   return pool[Math.min(pool.length - 1, Math.floor(dynamicRoll(draft, unitId, 'probe_axis') * pool.length))];
 }
 

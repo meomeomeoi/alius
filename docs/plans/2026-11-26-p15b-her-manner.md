@@ -464,17 +464,17 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
   - `content/core/memoryRules.json` + `registerMemoryResolver` (audience her, no spread, importance 1).
 - Test: `tests/dynamic/probeNeeds.test.ts`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - a woman with no `manner` or no matching `needs` gets the same axis over 200 seeds as before (record the old picks first; they must be equal);
   - a `regal` woman with `manner` gets the new axes, with each matching row twice as likely as a matching non-`regal` one;
   - `feet_in_lap` needs `feet` at `enjoys` or more;
   - head start's pool matches;
   - `hypothetical_answered` writes her fact through the rule, and is dropped when no `hypothetical` is pending;
   - `tests/dynamic/unaffected.test.ts` is unchanged.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P15b): probing by manner`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P15b): probing by manner`
 
 ### Task 15: The joke milestone, the first time below her, being admired
 

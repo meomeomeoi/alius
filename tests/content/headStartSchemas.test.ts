@@ -29,7 +29,7 @@ describe('headStartMoments registry (P11b)', () => {
   it('the core pack loads headStartMoments', () => {
     expect((REGISTRY_NAMES as readonly string[]).includes('headStartMoments')).toBe(true);
     expect(reg.headStartMoments).toBeInstanceOf(Map);
-    expect(reg.headStartMoments.size).toBe(20); // ten remembered moments and, since P15, ten probe-like ones (one per probe axis)
+    expect(reg.headStartMoments.size).toBe(27); // ten remembered moments and, since P15, ten probe-like ones (one per probe axis), and P15b's seven
   });
 
   it("the draft kinds are the spec's", () => {

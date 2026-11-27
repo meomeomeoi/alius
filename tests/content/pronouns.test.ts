@@ -68,7 +68,7 @@ describe('no pronoun for the commander in content', () => {
 
   it('journal phrases of the event deltas (P3b)', () => {
     const texts = fields('eventDeltas', ['journal']);
-    expect(texts.length).toBe(87); // P15b: + quirk_voiced (a row of zeros that is never applied, so never journaled; the phrase is only what the content test requires); P16: + the seven practice intents, punishment_accepted and spared_for; P15: + the seven dynamic intents and dynamic_exit; P14c: + time_together, first_moment, opinion_agreed, opinion_challenged, news_told, hobby_praised, opinion_voiced, joke_returned; P13: + warden_complied, warden_defied, expectation_kept, expectation_broken, conspired, warden_betrayed, warden_removed_by; P12: + knowledge_leak, frequency_exposed, accused, false_accusation, debts_exposed
+    expect(texts.length).toBe(88); // P15b: + hypothetical_answered, quirk_voiced (a row of zeros that is never applied, so never journaled; the phrase is only what the content test requires); P16: + the seven practice intents, punishment_accepted and spared_for; P15: + the seven dynamic intents and dynamic_exit; P14c: + time_together, first_moment, opinion_agreed, opinion_challenged, news_told, hobby_praised, opinion_voiced, joke_returned; P13: + warden_complied, warden_defied, expectation_kept, expectation_broken, conspired, warden_betrayed, warden_removed_by; P12: + knowledge_leak, frequency_exposed, accused, false_accusation, debts_exposed
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\b(their|them|themselves?)\b/i.test(t) || t === '').map(([where]) => where)).toEqual([]);
   });
 
@@ -80,7 +80,7 @@ describe('no pronoun for the commander in content', () => {
 
   it('head start moments (P11b): description and fallback', () => {
     const texts = fields('headStartMoments', ['description', 'fallback']);
-    expect(texts).toHaveLength(40); // 20 rows (ten remembered moments, ten probe-like ones from P15) x description and fallback
+    expect(texts).toHaveLength(54); // 27 rows (ten remembered moments, ten probe-like ones from P15, seven from P15b's regal rows) x description and fallback
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\b(their|them|themselves?)\b/i.test(t) || t === '').map(([where]) => where)).toEqual([]);
   });
 

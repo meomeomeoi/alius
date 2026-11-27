@@ -964,7 +964,7 @@ export const TUNING = Object.freeze({
     /** Days a refusal of hers stays in her directive ("she has not forgotten it"). */
     directives: Object.freeze({ refusalDays: 3 }),
     /** The longest texts a model-reported dynamic event keeps: a compromat summary and an offer's correction. */
-    intents: Object.freeze({ summaryMax: 160, correctionMax: 80 }),
+    intents: Object.freeze({ summaryMax: 160, correctionMax: 80, answerMax: 80 }),
     /** Days a holder who backs off leaves her probing alone (R9; the spec's `TUNING.dynamic.backoffDays`). */
     backoffDays: 14,
     /**

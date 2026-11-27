@@ -263,7 +263,16 @@ export interface DynamicDomainEntry {
 /** `thresholds`: the xp that reaches level 1…5. */
 export interface DynamicTrackEntry { id: string; label: string; category?: string; thresholds: [number, number, number, number, number]; description: string }
 
-export interface ProbeAxisEntry { id: string; label: string; tier: 1 | 2; promptHint: string; description: string }
+/** One alternative of a probe row's `needs` (P15b, spec §12.1): every field present must hold. */
+export interface ProbeNeed {
+  styles?: ProfileStyle[];
+  drawnBy?: DrawnBy[];
+  manner?: Partial<Record<MannerAxis, [number, number]>>;
+  /** A practice category, or `worship.<targetId>`, to the least she must like it. */
+  likes?: Record<string, 'enjoys' | 'craves'>;
+}
+
+export interface ProbeAxisEntry { id: string; label: string; tier: 1 | 2; promptHint: string; needs?: ProbeNeed[]; description: string }
 
 export interface PositionRegionEntry { id: string; rank: RegionRank; label: string; description: string }
 
@@ -340,4 +349,6 @@ export interface DynamicOffer {
   slips?: string[];
   /** P15b: the quirks that are due now, each of a unit in the scene (`quirk_voiced` is offered while any is). */
   quirks?: Array<{ unitId: string; when: QuirkWhen }>;
+  /** P15b (spec §12): the units in the scene whose pending probe is the `hypothetical` (`hypothetical_answered` is offered while any is). */
+  hypothetical?: string[];
 }

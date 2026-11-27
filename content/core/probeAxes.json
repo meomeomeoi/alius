@@ -68,5 +68,127 @@
     "tier": 2,
     "promptHint": "turns the commander's order into a game",
     "description": "AUTHOR TO WRITE: turns the commander's order into a game"
+  },
+  {
+    "id": "admiration",
+    "label": "admiration",
+    "tier": 2,
+    "promptHint": "asks how she looks, half in play, and waits to see how the commander answers",
+    "needs": [
+      {
+        "styles": [
+          "regal"
+        ]
+      },
+      {
+        "drawnBy": [
+          "power"
+        ],
+        "manner": {
+          "warmth": [
+            -2,
+            0
+          ]
+        }
+      }
+    ],
+    "description": "AUTHOR TO WRITE: asks how she looks, half in play, and waits to see how the commander answers"
+  },
+  {
+    "id": "deference",
+    "label": "deference",
+    "tier": 1,
+    "promptHint": "expects to go first, take the better seat or be served first; holds out a hand, half joking, and waits",
+    "needs": [
+      {
+        "styles": [
+          "regal",
+          "ritual",
+          "possessive"
+        ]
+      }
+    ],
+    "description": "AUTHOR TO WRITE: expects to go first, take the better seat or be served first; holds out a hand, half joking, and waits"
+  },
+  {
+    "id": "credit",
+    "label": "credit",
+    "tier": 1,
+    "promptHint": "after a run, tells the commander's plan as hers and watches whether it is let stand",
+    "needs": [
+      {
+        "styles": [
+          "regal",
+          "drill"
+        ]
+      }
+    ],
+    "description": "AUTHOR TO WRITE: after a run, tells the commander's plan as hers and watches whether it is let stand"
+  },
+  {
+    "id": "gaze",
+    "label": "the gaze",
+    "tier": 2,
+    "promptHint": "holds the look to see who looks away; or crosses her legs and lets a shoe hang from her toes if it fits",
+    "needs": [
+      {
+        "styles": [
+          "regal",
+          "playful"
+        ]
+      }
+    ],
+    "description": "AUTHOR TO WRITE: holds the look to see who looks away; or crosses her legs and lets a shoe hang from her toes if it fits"
+  },
+  {
+    "id": "corrected_praise",
+    "label": "corrected praise",
+    "tier": 1,
+    "promptHint": "corrects the commander's praise of her and gives the word she wants instead",
+    "needs": [
+      {
+        "styles": [
+          "regal"
+        ]
+      }
+    ],
+    "description": "AUTHOR TO WRITE: corrects the commander's praise of her and gives the word she wants instead"
+  },
+  {
+    "id": "feet_in_lap",
+    "label": "feet in the lap",
+    "tier": 2,
+    "promptHint": "on a shared evening, puts her feet in the commander's lap as if only for comfort",
+    "needs": [
+      {
+        "likes": {
+          "worship.feet": "enjoys"
+        }
+      }
+    ],
+    "description": "AUTHOR TO WRITE: on a shared evening, puts her feet in the commander's lap as if only for comfort"
+  },
+  {
+    "id": "hypothetical",
+    "label": "a what-if",
+    "tier": 1,
+    "promptHint": "asks, lightly, whether the commander would kneel if she asked, and watches the answer",
+    "needs": [
+      {
+        "styles": [
+          "regal",
+          "playful"
+        ]
+      },
+      {
+        "manner": {
+          "curiosity": [
+            1,
+            2
+          ]
+        }
+      }
+    ],
+    "description": "AUTHOR TO WRITE: asks, lightly, whether the commander would kneel if she asked, and watches the answer"
   }
 ]

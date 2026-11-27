@@ -19,7 +19,7 @@ import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { canHold, dynamicOn } from './gate';
 import { bandIndex } from './hold';
-import { answerProbe, probeChance, probeQueueRoom } from './probes';
+import { answerProbe, probeChance, probePool, probeQueueRoom } from './probes';
 import { dynamicOf } from './state';
 import type { ProbeAxisEntry } from './types';
 
@@ -41,12 +41,10 @@ function responseOf(seed: number, unitId: string, i: number): ResponseType {
   return u < S.yielded ? 'yielded' : u < S.yielded + S.returned ? 'returned' : u < S.yielded + S.returned + S.deflected ? 'deflected' : 'resisted';
 }
 
-/** The axis of the i-th probe: hashed over the axes of the band's tier or below, leaving out the last few (all of them when that leaves none), like a live probe. */
+/** The axis of the i-th probe: hashed over her pool (`probePool`, the live probe's: the rows of the band's tier or below that she has places for, leaving out the last few). */
 function axisOf(draft: CampaignState, reg: Registries, seed: number, unitId: string, i: number, recent: readonly string[]): ProbeAxisEntry {
   const tier: 1 | 2 = bandIndex(reg, dynamicOf(draft, unitId)?.hold ?? 0) === 0 ? 1 : 2;
-  const axes = [...reg.probeAxes.values()].map((a) => a as unknown as ProbeAxisEntry).filter((a) => a.tier <= tier);
-  const fresh = axes.filter((a) => !recent.slice(-TUNING.probes.skipRecent).includes(a.id));
-  const pool = fresh.length > 0 ? fresh : axes;
+  const pool = probePool(draft, reg, unitId, tier, recent);
   return pool[headStartRaw(seed, unitId, `axis:${i}`) % pool.length];
 }
 

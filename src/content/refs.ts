@@ -1167,6 +1167,13 @@ registerChecks('dynamicMilestones', (entry, regs) => {
 
 registerChecks('dynamicTracks', (entry, regs) => known(regs, 'contentCategories', entry.category, 'category', 'content category'));
 
+// P15b (spec §12.1): a probe row's `likes` names a content category, or `worship.<targetId>` for one of the worship targets
+registerChecks('probeAxes', (entry, regs) =>
+  ((entry.needs as Array<{ likes?: Record<string, unknown> }> | undefined) ?? []).flatMap((n, i) =>
+    Object.keys(n.likes ?? {}).flatMap((what) => what.startsWith('worship.')
+      ? known(regs, 'worshipTargets', what.slice('worship.'.length), `needs[${i}].likes.${what}`, 'worship target')
+      : known(regs, 'contentCategories', what, `needs[${i}].likes.${what}`, 'content category'))));
+
 // ---------------------------------------------------------------------------------------------
 // P16: a seed names an open practice track (its `check`, `proof`, `audience` and `needs` are closed enums, checked by the schema); a ceremony step's posture is a blocking posture.
 

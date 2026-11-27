@@ -399,6 +399,13 @@ registerMemoryResolver('milestone_refused', (draft, event) => {
   return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
 }, { ids: ['her'], vars: ['name'] });
 
+// the dynamic (P15b, spec §12.2): the commander's answer to her what-if; hers alone, she may quote it later ("you said you would"). The answer is the extractor's short paraphrase (pronoun-checked when it was read), never the raw words
+registerMemoryResolver('hypothetical_answered', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  const answer = str(event.answer);
+  return her && answer !== undefined ? { ids: { her: [her.id] }, vars: { name: her.name, answer } } : null;
+}, { ids: ['her'], vars: ['name', 'answer'] });
+
 // the dynamic (P15): the commander left what she held; a vow makes it a break (`sworn`), the route and the severity are the event's own
 registerMemoryResolver('dynamic_exit', (draft, event) => {
   const her = subjectOf(draft, event.unitId);

@@ -1073,6 +1073,19 @@
     ]
   },
   {
+    "id": "dynamic_hypothetical",
+    "event": "hypothetical_answered",
+    "text": "AUTHOR TO WRITE: {name} asked whether the commander would kneel if she asked, and the commander answered: {answer}.",
+    "importance": 1,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "dynamic",
+      "hypothetical"
+    ]
+  },
+  {
     "id": "dynamic_domain_yielded",
     "event": "domain_yielded",
     "text": "AUTHOR TO WRITE: {name} was given a say over the commander's life: {domain}.",

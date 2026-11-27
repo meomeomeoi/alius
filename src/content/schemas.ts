@@ -11,7 +11,7 @@ import {
 } from '../engine/blocking/types';
 import { LIFE_CATEGORIES, LIFE_MOODS, LIFE_SHARES, LIFE_SIZES, TALK_LEVELS, TOPIC_GROUPS, TRACE_KINDS } from '../engine/life/types';
 import {
-  AFTERMATH_DEMAND_KINDS, AFTERMATH_KINDS, CAPABILITIES, CLAIM_FORMS, DYNAMIC_EVENT_TYPES, MANNER_AXES, MILESTONE_OFFERS, MOTIVES, OUTSIDE_REACH, PROFILE_STYLES, REFUSAL_COSTS,
+  AFTERMATH_DEMAND_KINDS, AFTERMATH_KINDS, CAPABILITIES, CLAIM_FORMS, DRAWN_BY, DYNAMIC_EVENT_TYPES, MANNER_AXES, MILESTONE_OFFERS, MOTIVES, OUTSIDE_REACH, PROFILE_STYLES, REFUSAL_COSTS,
   REGARD_SPEEDS, REGION_RANKS, SIGN_KINDS, SURFACE_CONDITIONS,
 } from '../engine/dynamic/types';
 import { FRAMES } from '../engine/blocking/state';
@@ -2909,10 +2909,26 @@ export const DynamicTrackSchema = BaseEntrySchema.extend({
   description: str,
 }).strict();
 
+/**
+ * P15b (spec §12.1): one alternative of a probe row's `needs`; every field present must hold. `likes` maps a practice category (read through `practiceOf`) or `worship.<targetId>` (read
+ * through her expectation profile, planning ruling 9) to the least she must like it.
+ */
+const probeNeed = z.object({
+  styles: z.array(profileStyle).min(1).optional(),
+  drawnBy: z.array(z.enum(DRAWN_BY)).min(1).optional(),
+  manner: z.record(z.enum(MANNER_AXES), z.tuple([int.min(-2).max(2), int.min(-2).max(2)])).optional(),
+  likes: z.record(str, z.enum(['enjoys', 'craves'])).optional(),
+}).strict().superRefine((n, ctx) => {
+  if (n.styles === undefined && n.drawnBy === undefined && n.manner === undefined && n.likes === undefined) ctx.addIssue({ code: 'custom', message: 'an alternative needs at least one field' });
+  for (const [axis, [lo, hi]] of Object.entries(n.manner ?? {})) if (lo > hi) ctx.addIssue({ code: 'custom', path: ['manner', axis], message: 'a bound runs from low to high' });
+});
+
 export const ProbeAxisSchema = BaseEntrySchema.extend({
   label: blockLabel,
   tier: z.union([z.literal(1), z.literal(2)]),
   promptHint: blockHint,
+  /** P15b (§12.1): a row with `needs` enters her pool only with a `manner` and an alternative that holds; a `styles` alternative that holds takes two places. */
+  needs: z.array(probeNeed).min(1).optional(),
   description: str,
 }).strict();
 

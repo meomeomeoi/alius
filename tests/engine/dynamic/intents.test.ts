@@ -40,9 +40,9 @@ const ev = (over: Partial<EventIntent> = {}): EventIntent => ({ type: 'probe_ans
 
 describe('the vocabulary', () => {
   it('seven reportable types and one engine type were added', () => {
-    expect(EVENT_TYPES).toHaveLength(60); // P16 added seven, P15b one (quirk_voiced)
+    expect(EVENT_TYPES).toHaveLength(61); // P16 added seven, P15b two (quirk_voiced, hypothetical_answered)
     expect(ENGINE_EVENT_TYPES).toContain('dynamic_exit');
-    expect(ALL_EVENT_TYPES).toHaveLength(87); // and two engine relation types
+    expect(ALL_EVENT_TYPES).toHaveLength(88); // and two engine relation types
     for (const t of DYNAMIC_INTENT_TYPES) expect(EVENT_TYPES as readonly string[], t).toContain(t);
     for (const t of [...DYNAMIC_INTENT_TYPES, 'dynamic_exit']) expect(typeof reg.eventDeltas.get(t)?.cause, t).toBe('string');
   });

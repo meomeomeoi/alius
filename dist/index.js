@@ -1242,7 +1242,7 @@ var TUNING = Object.freeze({
     /** Days a refusal of hers stays in her directive ("she has not forgotten it"). */
     directives: Object.freeze({ refusalDays: 3 }),
     /** The longest texts a model-reported dynamic event keeps: a compromat summary and an offer's correction. */
-    intents: Object.freeze({ summaryMax: 160, correctionMax: 80 }),
+    intents: Object.freeze({ summaryMax: 160, correctionMax: 80, answerMax: 80 }),
     /** Days a holder who backs off leaves her probing alone (R9; the spec's `TUNING.dynamic.backoffDays`). */
     backoffDays: 14,
     /**
@@ -7820,6 +7820,8 @@ var EVENT_TYPES = [
   "offer_answered",
   // P15b: one of her small ways in the dynamic, seen voiced (offered only while one is due)
   "quirk_voiced",
+  // P15b (spec §12): the commander's answer to "would you kneel if I asked" (offered only while a `hypothetical` probe is pending)
+  "hypothetical_answered",
   // P16: the practices (each offered to the model only while its subject exists: an open task of hers, a task answered in words, a service she judges, a denial of hers, a ceremony step, a holder in the room)
   "task_kept",
   "task_broken",
@@ -7830,7 +7832,7 @@ var EVENT_TYPES = [
   "ceremony_step"
 ];
 var LIFE_EVENT_TYPES = ["news_told", "hobby_praised", "opinion_voiced", "opinion_challenged", "opinion_agreed", "first_moment", "joke_returned"];
-var DYNAMIC_INTENT_TYPES = ["probe_answered", "probe_observed", "milestone_accepted", "milestone_refused", "compromat_mentioned", "protocol_slip", "offer_answered", "quirk_voiced"];
+var DYNAMIC_INTENT_TYPES = ["probe_answered", "probe_observed", "milestone_accepted", "milestone_refused", "compromat_mentioned", "protocol_slip", "offer_answered", "quirk_voiced", "hypothetical_answered"];
 var PRACTICE_INTENT_TYPES = ["task_kept", "task_broken", "service_rated", "denial_broken", "practice_accepted", "threat_voiced", "ceremony_step"];
 var FIRST_KINDS = ["laughed", "fell_asleep_beside", "told_her_past", "cried", "taught", "asked_about_commander"];
 var ENGINE_EVENT_TYPES = [
@@ -11078,10 +11080,21 @@ var DynamicTrackSchema = BaseEntrySchema.extend({
   thresholds: external_exports.tuple([int.min(1), int.min(1), int.min(1), int.min(1), int.min(1)]).refine((t) => t.every((n, i) => i === 0 || n > t[i - 1]), "the thresholds must rise"),
   description: str
 }).strict();
+var probeNeed = external_exports.object({
+  styles: external_exports.array(profileStyle).min(1).optional(),
+  drawnBy: external_exports.array(external_exports.enum(DRAWN_BY)).min(1).optional(),
+  manner: external_exports.record(external_exports.enum(MANNER_AXES), external_exports.tuple([int.min(-2).max(2), int.min(-2).max(2)])).optional(),
+  likes: external_exports.record(str, external_exports.enum(["enjoys", "craves"])).optional()
+}).strict().superRefine((n, ctx2) => {
+  if (n.styles === void 0 && n.drawnBy === void 0 && n.manner === void 0 && n.likes === void 0) ctx2.addIssue({ code: "custom", message: "an alternative needs at least one field" });
+  for (const [axis, [lo, hi]] of Object.entries(n.manner ?? {})) if (lo > hi) ctx2.addIssue({ code: "custom", path: ["manner", axis], message: "a bound runs from low to high" });
+});
 var ProbeAxisSchema = BaseEntrySchema.extend({
   label: blockLabel,
   tier: external_exports.union([external_exports.literal(1), external_exports.literal(2)]),
   promptHint: blockHint,
+  /** P15b (§12.1): a row with `needs` enters her pool only with a `manner` and an alternative that holds; a `styles` alternative that holds takes two places. */
+  needs: external_exports.array(probeNeed).min(1).optional(),
   description: str
 }).strict();
 var PositionRegionSchema = BaseEntrySchema.extend({ rank: external_exports.enum(REGION_RANKS), label: blockLabel, description: str }).strict();
@@ -22544,6 +22557,13 @@ function sceneProbe(state, present2) {
   }
   return void 0;
 }
+var HYPOTHETICAL_AXIS = "hypothetical";
+function hypotheticalOpen(state, unitId) {
+  const pending4 = pendingProbe(state, unitId);
+  if (pending4 !== void 0) return pending4.axis === HYPOTHETICAL_AXIS;
+  const dyn = state.dynamic === void 0 ? void 0 : dynamicOf(state, unitId);
+  return dyn !== void 0 && dyn.probes.lastDay === state.day && dyn.recent[dyn.recent.length - 1] === HYPOTHETICAL_AXIS && dyn.probes.answers.length > 0;
+}
 function probeQueueRoom(state) {
   const cap9 = holderCap(state);
   const n = Number.isFinite(cap9) ? cap9 : TUNING.probes.queueMax;
@@ -22564,11 +22584,40 @@ function probeChance(state, reg, unitId) {
   const p = base2 * TUNING.dynamic.frequency[state.dynamic.setup.frequency] * assertiveness(state, reg).demandMult;
   return Math.min(1, Math.max(0, p));
 }
-function pickAxis(draft, reg, unitId, tier, recent2) {
-  const axes = [...reg.probeAxes.values()].map((a) => a).filter((a) => a.tier <= tier);
+var LIKE_RANK = { none: 0, tolerates: 1, indifferent: 1, dislikes: 0, enjoys: 2, craves: 3 };
+function likesAtLeast(state, reg, unitId, what, least) {
+  if (what.startsWith("worship.")) {
+    const attitude = expectationsOf(state, reg, unitId).worship?.[what.slice("worship.".length)]?.attitude;
+    return attitude !== void 0 && LIKE_RANK[attitude] >= LIKE_RANK[least];
+  }
+  const as = practiceOf(state, reg, unitId)?.categories[what]?.as;
+  return as !== void 0 && LIKE_RANK[as] >= LIKE_RANK[least];
+}
+function probePlaces(state, reg, unitId, row4) {
+  if (row4.needs === void 0) return 1;
+  const unit5 = state.squad.find((u) => u.id === unitId);
+  const manner = mannerOf({ squad: state.squad }, reg, unitId);
+  if (unit5 === void 0 || manner === null) return 0;
+  const primary = styleOf(unit5)?.primary;
+  let best = 0;
+  for (const n of row4.needs) {
+    if (n.styles !== void 0 && (primary === void 0 || !n.styles.includes(primary))) continue;
+    if (n.drawnBy !== void 0 && !n.drawnBy.some((d) => manner.drawnBy.includes(d))) continue;
+    if (n.manner !== void 0 && !Object.entries(n.manner).every(([a, [lo, hi]]) => manner.axes[a] >= lo && manner.axes[a] <= hi)) continue;
+    if (n.likes !== void 0 && !Object.entries(n.likes).every(([what, least]) => likesAtLeast(state, reg, unitId, what, least))) continue;
+    best = n.styles !== void 0 ? 2 : Math.max(best, 1);
+    if (best === 2) break;
+  }
+  return best;
+}
+function probePool(state, reg, unitId, tier, recent2) {
+  const axes = [...reg.probeAxes.values()].map((a) => a).filter((a) => a.tier <= tier).flatMap((a) => Array.from({ length: probePlaces(state, reg, unitId, a) }, () => a));
   const skip = recent2.slice(-TUNING.probes.skipRecent);
   const fresh8 = axes.filter((a) => !skip.includes(a.id));
-  const pool = fresh8.length > 0 ? fresh8 : axes;
+  return fresh8.length > 0 ? fresh8 : axes;
+}
+function pickAxis(draft, reg, unitId, tier, recent2) {
+  const pool = probePool(draft, reg, unitId, tier, recent2);
   return pool[Math.min(pool.length - 1, Math.floor(dynamicRoll(draft, unitId, "probe_axis") * pool.length))];
 }
 function staysInQueue(draft, id) {
@@ -23382,8 +23431,10 @@ function dynamicIntentInput(state, reg, participants, _channel) {
   }) : [];
   const compromat = present2.filter((id) => compromatOf(state, id).length > 0);
   const due = _channel === "scene" ? quirksDue(state, reg).filter((q) => present2.includes(q.unitId)) : [];
+  const hypothetical = probe !== void 0 && probe.probe.axis === HYPOTHETICAL_AXIS ? [probe.unitId] : [];
   const types = [
     ...probes2.length > 0 ? ["probe_answered"] : [],
+    ...hypothetical.length > 0 ? ["hypothetical_answered"] : [],
     ...observed.length > 0 ? ["probe_observed"] : [],
     ...milestoneRows2.length > 0 ? ["milestone_accepted", "milestone_refused"] : [],
     ...claims3.length > 0 || exits.length > 0 ? ["compromise_reached"] : [],
@@ -23406,6 +23457,7 @@ function dynamicIntentInput(state, reg, participants, _channel) {
       slips: slips2,
       probeAxes,
       milestoneLabels,
+      ...hypothetical.length > 0 ? { hypothetical } : {},
       ...due.length > 0 ? { quirks: due.map((q) => ({ unitId: q.unitId, when: q.when })), quirkTexts: Object.fromEntries(due.map((q) => [`${q.unitId}:${q.when}`, q.text])) } : {}
     }
   };
@@ -23427,6 +23479,8 @@ function applyDynamicIntent(draft, ctx2, unitId, ev, batch = []) {
       return dynamicIntentInput(draft, reg, [unitId], "scene").dynamic?.compromat.includes(unitId) === true ? mentionCompromat(draft, ctx2, unitId, ev.factId, ev.summary) : [];
     case "offer_answered":
       return confirmOffer(draft, unitId, ev.offerId, ev.answer, ev.correction);
+    case "hypothetical_answered":
+      return ev.summary === void 0 || !hypotheticalOpen(draft, unitId) ? [] : [{ type: "hypothetical_answered", unitId, answer: ev.summary }];
     case "quirk_voiced":
       markQuirkVoiced(draft, reg, unitId, ev.when);
       return [];
@@ -27000,6 +27054,12 @@ function dynamicFields(type, e, intent, offer) {
       if (when === void 0 || !(offer.quirks ?? []).some((q) => q.unitId === who && q.when === when)) return null;
       intent.when = when;
       return { key: `${type}|${who}|${when}` };
+    }
+    case "hypothetical_answered": {
+      const answer = oneLineText(e.summary, D5.answerMax);
+      if (answer === "" || hasCommanderPronoun(answer) || !(offer.hypothetical ?? []).includes(who)) return null;
+      intent.summary = answer;
+      return { key: `${type}|${who}` };
     }
     case "offer_answered": {
       const answer = OFFER_ANSWERS.includes(e.answer) ? e.answer : void 0;
@@ -34025,9 +34085,7 @@ function responseOf(seed8, unitId, i) {
 }
 function axisOf(draft, reg, seed8, unitId, i, recent2) {
   const tier = bandIndex(reg, dynamicOf(draft, unitId)?.hold ?? 0) === 0 ? 1 : 2;
-  const axes = [...reg.probeAxes.values()].map((a) => a).filter((a) => a.tier <= tier);
-  const fresh8 = axes.filter((a) => !recent2.slice(-TUNING.probes.skipRecent).includes(a.id));
-  const pool = fresh8.length > 0 ? fresh8 : axes;
+  const pool = probePool(draft, reg, unitId, tier, recent2);
   return pool[headStartRaw(seed8, unitId, `axis:${i}`) % pool.length];
 }
 function pickProbeMoment(reg, unit5, seed8, opts = {}) {
@@ -35012,6 +35070,11 @@ registerMemoryResolver("milestone_refused", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
 }, { ids: ["her"], vars: ["name"] });
+registerMemoryResolver("hypothetical_answered", (draft, event) => {
+  const her = subjectOf3(draft, event.unitId);
+  const answer = str4(event.answer);
+  return her && answer !== void 0 ? { ids: { her: [her.id] }, vars: { name: her.name, answer } } : null;
+}, { ids: ["her"], vars: ["name", "answer"] });
 registerMemoryResolver("dynamic_exit", (draft, event) => {
   const her = subjectOf3(draft, event.unitId);
   return her ? { ids: { her: [her.id] }, vars: { name: her.name, sworn: yes(event.sworn === true) } } : null;
@@ -51418,6 +51481,7 @@ function dynamicFlags(d) {
     compromat: (d?.compromat ?? []).length > 0 && types.has("compromat_mentioned"),
     slips: (d?.slips ?? []).length > 0 && types.has("protocol_slip"),
     quirks: (d?.quirks ?? []).length > 0 && types.has("quirk_voiced"),
+    hypothetical: (d?.hypothetical ?? []).length > 0 && types.has("hypothetical_answered"),
     types
   };
 }
@@ -51432,6 +51496,7 @@ function dynamicBlock(d) {
   if (f.offers) out.push(`OFFERS (ids): ${d.offers.join(", ")}`);
   if (f.compromat) out.push(`HOLDER COMPROMAT (units who hold something over the commander): ${d.compromat.join(", ")}`);
   if (f.slips) out.push(`PROTOCOL (units whose forms may slip): ${d.slips.join(", ")}`);
+  if (f.hypothetical) out.push(`WHAT-IF (units who asked whether the commander would kneel if asked): ${d.hypothetical.join(", ")}`);
   if (f.quirks) out.push("QUIRKS (unit \u2014 when: a small thing she may do):", ...d.quirks.map((q) => `- ${q.unitId} \u2014 ${q.when}: ${oneLine2(d.quirkTexts?.[`${q.unitId}:${q.when}`] ?? "")}`));
   return out.length > 0 ? ["DYNAMIC (what the commander may be answering; a report may name only the ids listed here):", ...out] : [];
 }
@@ -51543,6 +51608,7 @@ function system3(raw) {
     ...dyn.exits ? ['               "exitId": "<id from EXITS>"   // only for compromise_reached about an exit'] : [],
     ...dyn.offers ? ['               "offerId": "<id from OFFERS>", "answer": "accepted" | "corrected" | "mocked" | "refused" | "tonight", "correction": "<a few words>"   // only for offer_answered; correction only with corrected'] : [],
     ...dyn.compromat ? ['               "summary": "<one short line>", "factId": "<its id, when one is named>"   // only for compromat_mentioned'] : [],
+    ...dyn.hypothetical ? ['               "summary": "<a few words: what the commander answered>"   // only for hypothetical_answered'] : [],
     ...dyn.quirks ? ['               "when": "switch" | "during" | "after" | "address"   // only for quirk_voiced'] : [],
     ...prac.tasks || prac.accepts || prac.compromise ? ['               "taskId": "<id from TASKS, ACCEPTS or TALKS>"   // only for task_kept / task_broken / practice_accepted / compromise_reached about a task'] : [],
     ...prac.ceremonies || prac.compromise ? ['               "punishmentId": "<id from CEREMONY or TALKS>", "step": "<its step id>", "number": <whole number>, "alarmId": "<id from TALKS>"   // punishmentId and step for ceremony_step (number only when the step is a number), punishmentId or alarmId for compromise_reached'] : [],
@@ -51598,6 +51664,7 @@ function system3(raw) {
     ...dyn.claims || dyn.exits ? ['"compromise_reached" about a claim or an exit: the commander and the unit agree a smaller or a different version; set "claimId" (from CLAIMS) or "exitId" (from EXITS) and put the agreed wording in "text" (at most 160 characters). Report it only when the exchange shows both accepting it.'] : [],
     ...dyn.offers ? ['"offer_answered": a unit answers what the commander offered her, one of OFFERS; the unit is the target; set "offerId" and "answer": "accepted", "corrected" (she takes it with a change: put it in "correction"), "mocked", "refused" or "tonight" (she takes it up now).'] : [],
     ...dyn.compromat ? ['"compromat_mentioned": the commander or a unit speaks of something a unit listed under HOLDER COMPROMAT holds over the commander; that unit is the target; "summary" is one short line of what was said, "factId" an id only when the exchange names one.'] : [],
+    ...dyn.hypothetical ? [`"hypothetical_answered": the commander answers the what-if a unit listed under WHAT-IF asked; that unit is the target; set "summary" to a few words of the answer (never the commander's own sentence, and no pronoun for the commander). Report it whenever an answer is given, a yes or a no.`] : [],
     ...dyn.quirks ? ['"quirk_voiced": a unit listed under QUIRKS just did the small thing listed for her, in this exchange; the unit is the target; set "when" to the word of that line. Report it only when the exchange plainly shows it.'] : [],
     ...dyn.slips ? ['"protocol_slip": the commander lapses, with others present, from the form of address or the manner a unit listed under PROTOCOL expects of the commander; that unit is the target. Report it only when the exchange plainly shows the lapse.'] : [],
     ...prac.tasks ? ['"task_kept" / "task_broken": the commander does, or fails to do, what a task listed under TASKS asked, in this exchange (or reports on it); the unit is the target; set "taskId". Report it only when the exchange shows it, not when the task is merely mentioned.'] : [],
@@ -92264,6 +92331,7 @@ registerChecks("dynamicMilestones", (entry, regs) => {
   ];
 });
 registerChecks("dynamicTracks", (entry, regs) => known2(regs, "contentCategories", entry.category, "category", "content category"));
+registerChecks("probeAxes", (entry, regs) => (entry.needs ?? []).flatMap((n, i) => Object.keys(n.likes ?? {}).flatMap((what) => what.startsWith("worship.") ? known2(regs, "worshipTargets", what.slice("worship.".length), `needs[${i}].likes.${what}`, "worship target") : known2(regs, "contentCategories", what, `needs[${i}].likes.${what}`, "content category"))));
 registerRefs("holderPunishments", (entry) => (entry.effects ?? []).flatMap((fx2, i) => fx2.type === "privilege_revoked" && typeof fx2.arg === "string" ? [{ registry: "locations", id: fx2.arg, path: `effects[${i}].arg` }] : []));
 registerChecks("practiceSeeds", (entry, regs) => known2(regs, "dynamicTracks", entry.track, "track", "practice track"));
 registerChecks("ceremonySteps", (entry, regs) => known2(regs, "blockingPostures", entry.posture, "posture", "posture"));

@@ -139,14 +139,14 @@ function lifeFlags(life: LifeOffer | undefined): { news: boolean; hobbies: boole
 const oneLine = (text: string): string => text.replace(/[\r\n]+/g, ' ');
 
 /** P15: which parts of the dynamic are offered (each only while its list is not empty; an empty offer is the old prompt). */
-function dynamicFlags(d: IntentExtractInput['dynamic']): { probe: boolean; observed: boolean; milestones: boolean; claims: boolean; exits: boolean; offers: boolean; compromat: boolean; slips: boolean; quirks: boolean; types: Set<string> } {
+function dynamicFlags(d: IntentExtractInput['dynamic']): { probe: boolean; observed: boolean; milestones: boolean; claims: boolean; exits: boolean; offers: boolean; compromat: boolean; slips: boolean; quirks: boolean; hypothetical: boolean; types: Set<string> } {
   const types = new Set(d?.types ?? []);
   return {
     probe: (d?.probes ?? []).length > 0 && types.has('probe_answered'), observed: (d?.observed ?? []).length > 0 && types.has('probe_observed'),
     milestones: (d?.milestones ?? []).length > 0 && types.has('milestone_accepted'), claims: (d?.claims ?? []).length > 0 && types.has('compromise_reached'),
     exits: (d?.exits ?? []).length > 0 && types.has('compromise_reached'), offers: (d?.offers ?? []).length > 0 && types.has('offer_answered'),
     compromat: (d?.compromat ?? []).length > 0 && types.has('compromat_mentioned'), slips: (d?.slips ?? []).length > 0 && types.has('protocol_slip'),
-    quirks: (d?.quirks ?? []).length > 0 && types.has('quirk_voiced'), types,
+    quirks: (d?.quirks ?? []).length > 0 && types.has('quirk_voiced'), hypothetical: (d?.hypothetical ?? []).length > 0 && types.has('hypothetical_answered'), types,
   };
 }
 
@@ -162,6 +162,7 @@ function dynamicBlock(d: NonNullable<IntentExtractInput['dynamic']>): string[] {
   if (f.offers) out.push(`OFFERS (ids): ${d.offers.join(', ')}`);
   if (f.compromat) out.push(`HOLDER COMPROMAT (units who hold something over the commander): ${d.compromat.join(', ')}`);
   if (f.slips) out.push(`PROTOCOL (units whose forms may slip): ${d.slips!.join(', ')}`);
+  if (f.hypothetical) out.push(`WHAT-IF (units who asked whether the commander would kneel if asked): ${d.hypothetical!.join(', ')}`);
   if (f.quirks) out.push('QUIRKS (unit — when: a small thing she may do):', ...d.quirks!.map((q) => `- ${q.unitId} — ${q.when}: ${oneLine(d.quirkTexts?.[`${q.unitId}:${q.when}`] ?? '')}`));
   return out.length > 0 ? ['DYNAMIC (what the commander may be answering; a report may name only the ids listed here):', ...out] : [];
 }
@@ -280,6 +281,7 @@ function system(raw: unknown): string {
     ...(dyn.exits ? ['               "exitId": "<id from EXITS>"   // only for compromise_reached about an exit'] : []),
     ...(dyn.offers ? ['               "offerId": "<id from OFFERS>", "answer": "accepted" | "corrected" | "mocked" | "refused" | "tonight", "correction": "<a few words>"   // only for offer_answered; correction only with corrected'] : []),
     ...(dyn.compromat ? ['               "summary": "<one short line>", "factId": "<its id, when one is named>"   // only for compromat_mentioned'] : []),
+    ...(dyn.hypothetical ? ['               "summary": "<a few words: what the commander answered>"   // only for hypothetical_answered'] : []),
     ...(dyn.quirks ? ['               "when": "switch" | "during" | "after" | "address"   // only for quirk_voiced'] : []),
     ...(prac.tasks || prac.accepts || prac.compromise ? ['               "taskId": "<id from TASKS, ACCEPTS or TALKS>"   // only for task_kept / task_broken / practice_accepted / compromise_reached about a task'] : []),
     ...(prac.ceremonies || prac.compromise ? ['               "punishmentId": "<id from CEREMONY or TALKS>", "step": "<its step id>", "number": <whole number>, "alarmId": "<id from TALKS>"   // punishmentId and step for ceremony_step (number only when the step is a number), punishmentId or alarmId for compromise_reached'] : []),
@@ -335,6 +337,7 @@ function system(raw: unknown): string {
     ...(dyn.claims || dyn.exits ? ['"compromise_reached" about a claim or an exit: the commander and the unit agree a smaller or a different version; set "claimId" (from CLAIMS) or "exitId" (from EXITS) and put the agreed wording in "text" (at most 160 characters). Report it only when the exchange shows both accepting it.'] : []),
     ...(dyn.offers ? ['"offer_answered": a unit answers what the commander offered her, one of OFFERS; the unit is the target; set "offerId" and "answer": "accepted", "corrected" (she takes it with a change: put it in "correction"), "mocked", "refused" or "tonight" (she takes it up now).'] : []),
     ...(dyn.compromat ? ['"compromat_mentioned": the commander or a unit speaks of something a unit listed under HOLDER COMPROMAT holds over the commander; that unit is the target; "summary" is one short line of what was said, "factId" an id only when the exchange names one.'] : []),
+    ...(dyn.hypothetical ? ['"hypothetical_answered": the commander answers the what-if a unit listed under WHAT-IF asked; that unit is the target; set "summary" to a few words of the answer (never the commander\'s own sentence, and no pronoun for the commander). Report it whenever an answer is given, a yes or a no.'] : []),
     ...(dyn.quirks ? ['"quirk_voiced": a unit listed under QUIRKS just did the small thing listed for her, in this exchange; the unit is the target; set "when" to the word of that line. Report it only when the exchange plainly shows it.'] : []),
     ...(dyn.slips ? ['"protocol_slip": the commander lapses, with others present, from the form of address or the manner a unit listed under PROTOCOL expects of the commander; that unit is the target. Report it only when the exchange plainly shows the lapse.'] : []),
     ...(prac.tasks ? ['"task_kept" / "task_broken": the commander does, or fails to do, what a task listed under TASKS asked, in this exchange (or reports on it); the unit is the target; set "taskId". Report it only when the exchange shows it, not when the task is merely mentioned.'] : []),

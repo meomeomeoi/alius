@@ -17,7 +17,7 @@ import { canHold, dynamicOn, herPracticeLive } from './gate';
 import { slipSeen } from './knowledge';
 import { confirmOffer } from './offer';
 import { answerMilestone } from './milestones';
-import { answerProbe, pendingProbe, sceneProbe } from './probes';
+import { answerProbe, HYPOTHETICAL_AXIS, hypotheticalOpen, pendingProbe, sceneProbe } from './probes';
 import { threatNear } from './reading';
 import { markQuirkVoiced, quirksDue } from './quirks';
 import { slipsOpen } from './struggle';
@@ -73,8 +73,9 @@ export function dynamicIntentInput(
   const compromat = present.filter((id) => compromatOf(state, id).length > 0);
   // P15b: her small ways that are due now (only in a scene with her); the model reports one it saw voiced
   const due = _channel === 'scene' ? quirksDue(state, reg).filter((q) => present.includes(q.unitId)) : [];
+  const hypothetical = probe !== undefined && probe.probe.axis === HYPOTHETICAL_AXIS ? [probe.unitId] : []; // P15b: her what-if, the one probe of the scene
   const types = [
-    ...(probes.length > 0 ? ['probe_answered'] : []), ...(observed.length > 0 ? ['probe_observed'] : []),
+    ...(probes.length > 0 ? ['probe_answered'] : []), ...(hypothetical.length > 0 ? ['hypothetical_answered'] : []), ...(observed.length > 0 ? ['probe_observed'] : []),
     ...(milestoneRows.length > 0 ? ['milestone_accepted', 'milestone_refused'] : []), ...(claims.length > 0 || exits.length > 0 ? ['compromise_reached'] : []),
     ...(offers.length > 0 ? ['offer_answered'] : []), ...(compromat.length > 0 ? ['compromat_mentioned'] : []), ...(slips.length > 0 ? ['protocol_slip'] : []),
     ...(due.length > 0 ? ['quirk_voiced'] : []),
@@ -83,6 +84,7 @@ export function dynamicIntentInput(
   return {
     dynamic: {
       types, probes, observed, milestones: milestoneRows.map((m) => m.id), claims, exits, offers, compromat, slips, probeAxes, milestoneLabels,
+      ...(hypothetical.length > 0 ? { hypothetical } : {}),
       ...(due.length > 0 ? { quirks: due.map((q) => ({ unitId: q.unitId, when: q.when })), quirkTexts: Object.fromEntries(due.map((q) => [`${q.unitId}:${q.when}`, q.text])) } : {}),
     },
   };
@@ -113,6 +115,9 @@ export function applyDynamicIntent(draft: CampaignState, ctx: Pick<EngineCtx, 'r
     case 'offer_answered':
       // the engine decided her answer when the offer was made; the report only confirms it (a mismatch, a stale id or another woman's is dropped)
       return confirmOffer(draft, unitId, ev.offerId, ev.answer, ev.correction);
+    case 'hypothetical_answered':
+      // her what-if, answered (the offer was built from the same state, but `probe_answered` may have closed the probe earlier in this batch): the engine event carries the extractor's paraphrase; the rule remembers it
+      return ev.summary === undefined || !hypotheticalOpen(draft, unitId) ? [] : [{ type: 'hypothetical_answered', unitId, answer: ev.summary }];
     case 'quirk_voiced':
       // one of her small ways, seen voiced (the offer was built from the same state: a stale or unknown one writes nothing); only the note of the scene changes
       markQuirkVoiced(draft, reg, unitId, ev.when);

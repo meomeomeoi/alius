@@ -242,7 +242,7 @@ describe('the queue and the schedule', () => {
       s.day = day;
       axes.push(String(probeDayStep(s, { registries: reg, rng: sure }).find((e) => e.type === 'probe_issued')?.axis));
     }
-    const tier1 = [...reg.probeAxes.values()].filter((a) => Number(a.tier) <= 1).map((a) => String(a.id));
+    const tier1 = [...reg.probeAxes.values()].filter((a) => Number(a.tier) <= 1 && a.needs === undefined).map((a) => String(a.id)); // P15b: a row with `needs` is for a woman with a manner (tests/dynamic/probeNeeds.test.ts)
     for (const id of tier1) expect(axes).toContain(id);
     expect(longest(axes)).toBeLessThanOrEqual(5);
   });
