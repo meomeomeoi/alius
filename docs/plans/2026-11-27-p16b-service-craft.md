@@ -496,6 +496,7 @@ Before Task 1, also read:
   - `posture/slip` calls P16's `noteOffence('posture_slip')` once, and the run's streak resets.
   - The end of a clean hold to her release pays `TUNING.craft.xp.posture` (5) to `posture`, plus the preset's mastery and a record (fiction time from beats × `beatSeconds.posture`). The humiliation of the preset plus the situation (blocking.md §7.2: a friend present +1, the mess +2, …) goes to `regardFall` with `witness` when someone non-knowing is present; then `protocol_public` for those who do not know.
   - The settling-in modifier (Task 2) is applied to her next hold of the kind.
+  - **Author, G1 round 1:** a posture beat stands for 45 s of fiction, not 30 (`TUNING.craft.beatSeconds.posture` 30 → 45, ×1.5).
 - [ ] **Step 1: Write the failing tests:**
   - take, correct, slip and end;
   - one offence per slip;
@@ -832,7 +833,7 @@ Each round is a live prototype in `docs/prototypes/`, built with `npm run proto 
 **Files:**
 - Modify:
   - `src/ui/scene/instruments/call/call.ts`: new functions ported from the prototype, plus the declared hunks in `call/fidelity.json`;
-  - `src/ui/practice/postureCall.ts`: the scheme by the commander's `posture` level (A below `TUNING.craft.call.b`, B, C at `.c`).
+  - `src/ui/practice/postureCall.ts`: the scheme by the commander's `posture` level (A below `TUNING.craft.call.b` (2), B from 2, C from `.c` (4)). In B and C her called posture shows as a ghost while its mastery on the pair is below 2 (G1 round 1): only a posture held many times is recalled. Her set stays P16's cap (her service track level + 1).
 - Test: `tests/ui/practice/postureCall.test.ts`, the fidelity test
 
 - [ ] **Step 1–5:** the same scheme as Task 23. Commit `feat(P16b): the posture call grows with the commander`. Chunk end: full suite, typecheck, `npm run test:layout`.

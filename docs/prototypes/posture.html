@@ -194,6 +194,7 @@ body.reduced #feel div { animation: feelR 4.2s linear both; }
   <h4>the posture call</h4>
   <div class="row"><button class="opt" id="callB">B: she names a posture (C)</button><button class="opt" id="callC">C: she conducts (V)</button></div>
   <div class="note" id="namedNote"></div>
+  <div class="note">Her set is small: P16 caps her names at her service track level + 1 (1–6). While this posture's mastery is below 2 her posture shows as a ghost; from 2 on it is recalled.</div>
   <h4>her world (temptations)</h4>
   <div class="row"><button class="opt" id="evVisitor">a visitor (50)</button><button class="opt" id="evUndress">she undresses (30)</button><button class="opt" id="evSound">a sound behind (30)</button><button class="opt" id="evLook">"look at me"</button></div>
   <label><input type="checkbox" id="autoEv" checked> events come on their own (hashed)</label>
@@ -265,7 +266,7 @@ const SLIP_AT = 100;
 const LOUD_EXP = 1.4;
 const CORRECT_STEP = 38;   // one click takes this much drift back
 const SEEN = { watching: 0.42, glancing: 0.72, busy: 2 }; // a correction louder than this, under her eyes, is fidgeting she sees
-const FICTION_PER_S = 20;  // a beat of 1.5 s stands for 30 s of fiction: 20 s a second, × (1 + 0.25 per level)
+const FICTION_PER_S = 30;  // author, round 1: ×1.5 — a beat of 1.5 s stands for 45 s of fiction: 30 s a second, × (1 + 0.25 per level)
 const FEEL = {
   torso: ['the back is sagging', 'the back gives; the chest sinks forward'],
   hips: ['the hips are sinking toward the heels', 'the weight slides back onto the heels'],
@@ -582,7 +583,9 @@ function drawStates() {
   host.classList.add('on'); const hd = document.createElement('div'); hd.className = 'hd'; hd.textContent = `${KEY_OF[S.sel]} · ${S.sel.toUpperCase()}`; host.append(hd);
   for (const v of statesFor(S.sel)) { const b = document.createElement('div'); b.className = 'st' + (c.body.points[S.sel] === v ? ' cur' : ''); b.textContent = STATE_WORD(v); b.addEventListener('pointerdown', (e) => { e.preventDefault(); pickState(S.sel, v); }); host.append(b); }
 }
-function drawCallDial() { const c = S.call; const svg = mannequinSvg({ base: c.base, points: c.body.points }); const face = $('#dialFace'); face.replaceChildren(svg);
+/** Her posture is shown as a ghost until the commander has learnt it (this posture's mastery below 2): recall only for what was held many times. */
+const ghostShown = () => Number($('#mastery').value) < 2;
+function drawCallDial() { const c = S.call; const svg = mannequinSvg({ base: c.base, points: c.body.points }, ghostShown() ? { target: { base: c.base, points: c.want } } : {}); const face = $('#dialFace'); face.replaceChildren(svg);
   const an = anchors(svg); for (const k of POINTS) for (const a of an[k] ?? []) if (a) { const h = circle(a, 15, 'hit'); h.addEventListener('pointerdown', (e) => { e.preventDefault(); callPress(k); }); svg.append(h); }
   drawBeads(); $('#dialLabel').innerHTML = `<span class="herName">${c.word}</span>${c.trap ? '' : 'assemble'}`; }
 function present() {
