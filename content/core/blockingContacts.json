@@ -677,6 +677,7 @@
       }
     ],
     "face": "down",
+    "supported": true,
     "label": "On hands",
     "description": "AUTHOR TO WRITE: Her foot on the commander's open palms.",
     "promptHint": "her foot on the commander's open palms",

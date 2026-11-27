@@ -15,9 +15,12 @@ export type MarathonPace = (typeof MARATHON_PACES)[number];
 export const LONG_HOLD_STRAINS = ['light', 'normal', 'heavy', 'raw'] as const;
 export type LongHoldStrain = (typeof LONG_HOLD_STRAINS)[number];
 export const LONG_HOLD: Readonly<Record<LongHoldStrain, number>> = Object.freeze({ light: 0.25, normal: 0.35, heavy: 0.6, raw: 1 });
-/** The six interaction types and the breath; each can be switched off (then only text and moment options remain). */
-export const INTERACTION_TOGGLES = [...INTERACTIONS, 'inhale'] as const;
-export type InteractionToggle = InteractionType | 'inhale';
+/**
+ * The six interaction types and the breath; each can be switched off (then only text and moment options remain). P16b adds the toggles of its two games: `posture` (the game of postures:
+ * points that drift, corrected in real time; off: no hold of a posture starts) and `provocation` (stillness under provocation). They are not physics interactions: no contact physics names them.
+ */
+export const INTERACTION_TOGGLES = [...INTERACTIONS, 'inhale', 'posture', 'provocation'] as const;
+export type InteractionToggle = InteractionType | 'inhale' | 'posture' | 'provocation';
 
 export interface SceneSettings {
   momentFrequency: MomentFrequency;

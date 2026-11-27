@@ -2599,7 +2599,7 @@
     "id": "setting_physics_interactions",
     "term": "Contact interaction types",
     "short": "Switch each kind of interaction of a held contact on or off. Off: only text and moment options remain.",
-    "long": "Timing, hold, decision, order, passive, gesture and the breath can each be switched off."
+    "long": "Timing, hold, decision, order, passive, gesture and the breath can each be switched off, and so can the two games of the craft: the game of postures (a posture is held while its points drift and are corrected) and stillness under provocation. Off: no hold of a posture starts, and only the text and the moment options remain."
   },
   {
     "id": "setting_marathon_pace",

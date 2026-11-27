@@ -13,6 +13,7 @@ import { practiceOf } from '../dynamic/profile';
 import { addSign, levelOf } from '../dynamic/knowledge';
 import { regardFall } from '../dynamic/regard';
 import { fnv1a } from '../hub';
+import { sceneSettingsOf } from '../moments/settings';
 import { noiseOf } from '../physics/gaze';
 import { levelForXp } from '../physics/skill';
 import { stillnessOf } from '../physics/style';
@@ -162,6 +163,7 @@ export function startPostureHold(draft: CampaignState, ctx: Pick<EngineCtx, 'reg
   const reg = ctx.registries;
   const scene = draft.scene;
   if (scene === undefined) throw new Error('No scene is open.');
+  if (!sceneSettingsOf(draft).physicsInteractions.posture) throw new Error('The game of postures is switched off.');
   if (!scene.participants.includes(o.holderId)) throw new Error('She is not in the scene.');
   if (!craftLive(draft, reg, o.holderId)) throw new Error('She is not holding now.');
   const preset = presetOf(reg, o.presetId);
@@ -332,6 +334,7 @@ export function takePostureHold(draft: CampaignState, ctx: Pick<EngineCtx, 'regi
   const reg = ctx.registries;
   const scene = draft.scene;
   if (scene === undefined) throw new Error('No scene is open.');
+  if (!sceneSettingsOf(draft).physicsInteractions.posture) throw new Error('The game of postures is switched off.');
   const preset = presetOf(reg, o.presetId);
   if (preset === undefined) throw new Error(`Unknown posture "${o.presetId}".`);
   const holderId = o.holderId ?? scene.participants.find((id) => craftLive(draft, reg, id));
@@ -351,7 +354,7 @@ export function takePostureHold(draft: CampaignState, ctx: Pick<EngineCtx, 'regi
  */
 export function holdOfCall(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, info: { holderId: string; callId: string; postureId: string }): EngineEvent[] {
   const reg = ctx.registries;
-  if (!craftLive(draft, reg, info.holderId) || draft.practices?.postureRun !== undefined) return [];
+  if (!craftLive(draft, reg, info.holderId) || draft.practices?.postureRun !== undefined || !sceneSettingsOf(draft).physicsInteractions.posture) return [];
   const preset = presetOf(reg, info.postureId);
   if (preset === undefined || commanderPresetOf(draft, reg)?.id !== preset.id) return [];
   const T = TUNING.craft.posture;

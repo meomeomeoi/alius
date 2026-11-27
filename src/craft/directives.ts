@@ -1,5 +1,6 @@
 import { plainDraft } from '../content/draft';
 import type { Registries } from '../content/types';
+import { presetOf, samePreset } from '../engine/blocking';
 import { craftLive } from '../engine/craft/gate';
 import { craftRoll } from '../engine/craft/state';
 import { isLiving } from '../engine/economy';
@@ -18,6 +19,8 @@ export const CRAFT_PREFIX = 'craft:';
 export const LESSON_PREFIX = 'craft:lesson:';
 /** A record she may bring up, or ask the commander to beat (scene). */
 export const RECORD_PREFIX = 'craft:record:';
+/** The posture she has the commander hold now, while a posture hold is open (P16b, Task 13). */
+export const POSTURE_PREFIX = 'craft:posture:';
 
 const NEVER_NAME = 'Never name it as a mechanic.';
 
@@ -70,9 +73,37 @@ function recordDirectives(state: CampaignState, reg: Registries, present: string
   return out;
 }
 
+/** What a load she added lets her do, in words with no number (the settling-in modifiers, read by kind). AUTHOR TO WRITE. */
+const LOAD_CLAUSE: Record<string, string> = {
+  count: 'She may count the time aloud',
+  no_duration: 'She does not say how long it will last',
+  speech_rule: 'She may demand silence, or only a plain yes',
+  combined: 'She may add something else to bear',
+  new_posture: 'She may change the posture once it is held',
+};
+
+/**
+ * The posture she has the commander hold, while the hold is open (`craft:posture:<unitId>`, for the one woman who runs it and is in the room, craft-live): her name for it when she gave one
+ * (read through the preset, so an old base name counts), else the preset's label, and the preset's own words for what it looks like. She may correct a point she sees drifting, if it fits, once.
+ * The planned end, a hidden end and the settling-in count are never in it; a load she added is a clause of what she may do, never a figure.
+ */
+function postureDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
+  const run = state.practices?.postureRun;
+  const unit = run === undefined ? undefined : state.squad.find((u) => u.id === run.holderId);
+  if (run === undefined || unit === undefined || unit.kind !== 'named' || !isLiving(unit) || !present.includes(run.holderId) || !craftLive(state, reg, run.holderId)) return [];
+  const preset = presetOf(reg, run.presetId);
+  if (preset === undefined) return [];
+  const hers = state.practices?.postures[run.holderId]?.find((p) => samePreset(reg, p.postureId, preset.id))?.name;
+  const load = run.load !== undefined ? LOAD_CLAUSE[run.load] : undefined;
+  return [{
+    id: `${POSTURE_PREFIX}${run.holderId}`, expiresAfter: 'scene',
+    text: `AUTHOR TO WRITE: ${unit.displayName} has the commander holding a posture, ${hers !== undefined ? `which she calls "${phrase(hers)}"` : phrase(String(preset.label))}: ${phrase(String(preset.promptHint))}. If it fits, she may correct a point she sees drifting, and only once.${load !== undefined ? ` ${load}, only if it fits.` : ''} ${NEVER_NAME}`,
+  }];
+}
+
 /** Every craft directive that holds now for the women in the room; nothing without the craft. A draft text reaches the model without its marker. */
 export function craftDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
-  return [...lessonDirectives(state, reg, present), ...recordDirectives(state, reg, present)].map((d) => ({ ...d, text: plainDraft(d.text) }));
+  return [...lessonDirectives(state, reg, present), ...recordDirectives(state, reg, present), ...postureDirectives(state, reg, present)].map((d) => ({ ...d, text: plainDraft(d.text) }));
 }
 
 /** Drops every craft directive (a chat switch, the end of a scene). */

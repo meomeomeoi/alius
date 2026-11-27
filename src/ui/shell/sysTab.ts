@@ -54,7 +54,7 @@ export interface SysCtx {
 }
 
 const INTERACTION_LABEL: Record<InteractionToggle, string> = {
-  timing: 'timing', hold: 'hold', decision: 'decision', order: 'order', passive: 'endure', gesture: 'gesture', inhale: 'the breath',
+  timing: 'timing', hold: 'hold', decision: 'decision', order: 'order', passive: 'endure', gesture: 'gesture', inhale: 'the breath', posture: 'the game of postures', provocation: 'stillness under provocation',
 };
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -362,7 +362,7 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     field('Moments in explicit scenes', select('momentExplicit', [['rarer', 'rarer'], ['same', 'as often'], ['off', 'none']], settings.momentExplicit), 'momentExplicit'),
     field('Moments as', select('momentChips', [['chips', 'chips'], ['immersive', 'immersive (no chips)']], settings.momentChips), 'momentChips'),
     field('Real-time contact', checkbox('physicsRealtime', settings.physicsRealtime), 'physicsRealtime'),
-    ...INTERACTION_TOGGLES.map((k) => field(`Contact: ${INTERACTION_LABEL[k]}`, interactionToggle(k, settings.physicsInteractions[k]), 'physicsInteractions')),
+    ...INTERACTION_TOGGLES.map((k) => field(`${k === 'posture' || k === 'provocation' ? 'Game' : 'Contact'}: ${INTERACTION_LABEL[k]}`, interactionToggle(k, settings.physicsInteractions[k]), 'physicsInteractions')),
     field('Marathon pace', select('marathonPace', [['short', 'short'], ['normal', 'normal'], ['long', 'long']], settings.marathonPace), 'marathonPace'),
     field('Long holds', select('longHoldStrain', [['light', 'light'], ['normal', 'normal'], ['heavy', 'heavy'], ['raw', 'raw (as a short hold)']], settings.longHoldStrain), 'longHoldStrain'),
     h('h3', {}, 'Combat'),

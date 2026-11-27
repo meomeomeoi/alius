@@ -6,6 +6,7 @@
 import type { Entry, Registries } from '../../content/types';
 import type { CampaignState } from '../state/types';
 import { entryAllowed, sceneAffordances } from './gate';
+import { presetSupports } from './presets';
 
 export interface Vocabulary {
   posture: Entry[];
@@ -29,7 +30,7 @@ export function blockingVocabulary(state: CampaignState, reg: Registries): Vocab
   return {
     posture: [...reg.blockingPostures.values()],
     anchor: [...reg.blockingAnchors.values()].filter(fits),
-    contact: [...reg.blockingContacts.values()].filter((e) => fits(e) && entryAllowed(state, reg, e, units)),
+    contact: [...reg.blockingContacts.values()].filter((e) => fits(e) && entryAllowed(state, reg, e, units) && (e.supported !== true || presetSupports(state, reg, e.id))), // P16b: a contact a posture carries is offered with that posture
     item: [...reg.blockingItems.values()].filter((e) => entryAllowed(state, reg, e, units)),
     activity: [...reg.blockingActivities.values()].filter((e) => entryAllowed(state, reg, e, units)),
   };

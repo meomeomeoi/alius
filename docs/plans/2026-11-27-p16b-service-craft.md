@@ -519,14 +519,14 @@ Before Task 1, also read:
   - `src/engine/moments/settings.ts`: `INTERACTION_TOGGLES` gains `posture` and `provocation`, defaulting to on; `src/ui/shell/sysTab.ts`: their rows; the glossary `setting_*` entries.
 - Test: `tests/craft/directives.test.ts`, `tests/engine/blocking/gate*.test.ts`, `tests/ui/shell/sys*.test.ts`
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - the posture directive appears only with a run and has no pronoun;
   - `on_hands` is offered only with a preset that `supports` it;
   - the toggles mirror into `sceneSettings` and are off-able;
   - the SYS coverage test.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`. Chunk end: full suite, typecheck, `npm run test:layout`.
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`. Chunk end: full suite, typecheck, `npm run test:layout`.
 
 ---
 

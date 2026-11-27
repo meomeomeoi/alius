@@ -2,8 +2,8 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Registries } from '../../src/content/types';
 import '../../src/engine/actions/craft';
 import { createCraft } from '../../src/craft/controller';
-import { CRAFT_PREFIX, LESSON_PREFIX, RECORD_PREFIX, clearCraftDirectives, craftDirectives, refreshCraftDirectives } from '../../src/craft/directives';
-import { resetBlockingHooks } from '../../src/engine/blocking';
+import { CRAFT_PREFIX, LESSON_PREFIX, POSTURE_PREFIX, RECORD_PREFIX, clearCraftDirectives, craftDirectives, refreshCraftDirectives } from '../../src/craft/directives';
+import { COMMANDER, resetBlockingHooks, setBlocking } from '../../src/engine/blocking';
 import { noteSlips } from '../../src/engine/craft/lesson';
 import { craftRoll } from '../../src/engine/craft/state';
 import { resetPhysicsHooks } from '../../src/engine/physics/style';
@@ -144,6 +144,98 @@ describe('the record she brings up', () => {
     spy.mockRestore();
     expect(hits / 300).toBeGreaterThan(0.3);
     expect(hits / 300).toBeLessThan(0.5);
+  });
+});
+
+describe('the posture she expects (P16b, Task 13)', () => {
+  /** A scene with a hold of kneel_open open: Ann is the holder, and she named the posture. */
+  function holding(over: { until?: number; hidden?: boolean; style?: string } = {}): CampaignState {
+    const s = style(holdScene(reg), over.style ?? 'cold');
+    delete s.scene!.blocking;
+    setBlocking(s, ctx(), { person: COMMANDER, field: 'posture', value: 'kneeling_upright', preset: 'kneel_open' }, { at: 1, source: 'engine' });
+    s.practices = { seq: 3, requests: [], tasks: [], punishments: [], demonstrations: [], restrictions: [], cold: {}, offences: {}, records: [], handovers: [],
+      postures: { [ANN]: [{ postureId: 'kneel_open', name: 'Offer', day: s.day }] },
+      postureRun: { id: 'pr1', holderId: ANN, presetId: 'kneel_open', startedAt: 0, present: [ANN], beats: 0, slips: 0, corrections: 0, source: 'take', ...(over.until !== undefined ? { until: over.until } : {}), ...(over.hidden ? { hidden: true } : {}) } } as never;
+    return s;
+  }
+  const mine = (s: CampaignState, present = [ANN]) => craftDirectives(s, reg, present).filter((d) => d.id.startsWith(POSTURE_PREFIX));
+
+  it('appears only while a posture hold is open: her name for it and the preset\'s own words, "if it fits, once", no number and no pronoun for the commander', () => {
+    expect(mine(style(holdScene(reg), 'cold'))).toEqual([]);
+    const [d] = mine(holding());
+    expect(d.id).toBe(`${POSTURE_PREFIX}${ANN}`);
+    expect(d.expiresAfter).toBe('scene');
+    expect(d.text).toContain(unitOf(holding(), ANN).displayName);
+    expect(d.text).toContain('Offer'); // her name for it
+    expect(d.text).toContain(String(reg.servicePostures.get('kneel_open')!.promptHint)); // the preset's hint
+    expect(d.text).toMatch(/If it fits/);
+    expect(d.text).toMatch(/only once/);
+    expect(d.text).not.toMatch(/AUTHOR TO WRITE|\d/);
+    expect(d.text).not.toMatch(NO_PRONOUN);
+  });
+
+  it('without her name the preset\'s label stands; an old base name in her set reads as its default preset', () => {
+    const s = holding();
+    s.practices!.postures[ANN] = [];
+    expect(mine(s)[0].text).toContain('Kneel open');
+    const old = holding();
+    old.practices!.postures[ANN] = [{ postureId: 'kneeling_upright', name: 'Down', day: old.day }];
+    old.practices!.postureRun!.presetId = 'kneel_upright';
+    setBlocking(old, ctx(), { person: COMMANDER, field: 'posture', value: 'kneeling_upright', preset: 'kneel_upright' }, { at: 2, source: 'engine' });
+    expect(mine(old)[0].text).toContain('Down');
+  });
+
+  it('never tells how long it lasts: the planned end and a hidden end are not in it, nor the settling-in count', () => {
+    const open = mine(holding({ until: 7777 }))[0].text;
+    const shut = mine(holding({ until: 7777, hidden: true }))[0].text;
+    expect(open).not.toMatch(/7777|beats?\b/i);
+    expect(shut).not.toMatch(/7777/);
+    expect(mine(holding({ hidden: true }))[0].text).not.toMatch(/how long|duration/i);
+  });
+
+  it('a load she added is a thing she may do, never a figure: each kind is worded without a digit', () => {
+    for (const load of TUNING.craft.settling.modifiers) {
+      const s = holding();
+      s.practices!.postureRun!.load = load;
+      const t = mine(s)[0].text;
+      expect(t, load).not.toMatch(/\d|AUTHOR TO WRITE/);
+      expect(t, load).not.toMatch(NO_PRONOUN);
+      expect(t.length, load).toBeGreaterThan(mine(holding())[0].text.length); // a load adds a clause
+    }
+  });
+
+  it('is gone for a woman who is not in the room, when she is no longer live, when the run is another\'s, and when the hold ends', () => {
+    expect(mine(holding(), [BEA])).toEqual([]);
+    expect(mine(holding(), [])).toEqual([]);
+    const idle = holding();
+    idle.relations[ANN].dynamic!.frame = 'equal';
+    expect(mine(idle)).toEqual([]);
+    const other = holding();
+    other.practices!.postureRun!.holderId = BEA;
+    expect(mine(other)).toEqual([]);
+    const ended = holding();
+    delete ended.practices!.postureRun;
+    expect(mine(ended)).toEqual([]);
+  });
+
+  it('draws nothing and refresh sets it, then drops it with the run', () => {
+    const s = holding();
+    const b = new ContextBuilder();
+    const spy = vi.spyOn(Rng.prototype as unknown as { next: () => number }, 'next');
+    refreshCraftDirectives(b, s, reg);
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+    expect(ids(b)).toContain(`${POSTURE_PREFIX}${ANN}`);
+    delete s.practices!.postureRun;
+    refreshCraftDirectives(b, s, reg);
+    expect(ids(b)).not.toContain(`${POSTURE_PREFIX}${ANN}`);
+  });
+
+  it('the controller refreshes on the events of a hold: taken and ended', () => {
+    let refreshed = 0;
+    const c = createCraft({ context: new ContextBuilder(), refreshContext: () => { refreshed++; }, state: () => null });
+    for (const type of ['posture_taken', 'posture_ended']) c.onEvents([{ type }]);
+    expect(refreshed).toBe(2);
   });
 });
 

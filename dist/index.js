@@ -21777,6 +21777,49 @@ function sceneAffordances(state, reg) {
   return new Set(Array.isArray(room2?.affordances) ? room2.affordances.map(String) : []);
 }
 
+// src/engine/blocking/presets.ts
+function defaultPresetOf(reg, base2) {
+  for (const p of reg.servicePostures.values()) if (p.base === base2 && p.default === true) return p;
+  return void 0;
+}
+function presetOf(reg, id) {
+  if (id === void 0) return void 0;
+  return reg.servicePostures.get(id) ?? (reg.blockingPostures.has(id) ? defaultPresetOf(reg, id) : void 0);
+}
+function samePreset(reg, a, b) {
+  const pa = presetOf(reg, a);
+  return pa !== void 0 && pa.id === presetOf(reg, b)?.id;
+}
+function commanderPresetOf(state, reg) {
+  const b = state.scene?.blocking?.[COMMANDER];
+  if (b?.posture === void 0) return void 0;
+  const held3 = b.preset !== void 0 ? reg.servicePostures.get(b.preset) : void 0;
+  return held3 !== void 0 && held3.base === b.posture ? held3 : defaultPresetOf(reg, b.posture);
+}
+var requiresOf = (preset) => preset.requires ?? {};
+function presetAllowed(state, reg, preset, unitIds) {
+  if (!entryAllowed(state, reg, { contentTags: preset.tags }, unitIds)) return false;
+  const frame9 = requiresOf(preset).frame;
+  return frame9 === void 0 || unitIds.every((id) => frameRank(frameOf(state, id)) >= frameRank(frame9));
+}
+function presetProblem(state, reg, preset) {
+  const r = requiresOf(preset);
+  const have = sceneAffordances(state, reg);
+  const missing2 = (r.affordances ?? []).find((a) => !have.has(a));
+  if (missing2 !== void 0) return `This place has no ${missing2}.`;
+  const b = state.scene?.blocking?.[COMMANDER];
+  if (r.anchor !== void 0 && !r.anchor.includes(b?.anchor?.id ?? "")) return `${String(preset.label)} needs a place: ${r.anchor.map((a) => String(reg.blockingAnchors.get(a)?.label ?? a).toLowerCase()).join(" or ")}.`;
+  if (r.items !== void 0) {
+    const worn = new Set(Object.values(b?.worn ?? {}).map((w) => w?.id));
+    if (!r.items.some((i) => worn.has(i))) return `${String(preset.label)} needs something worn: ${r.items.map((i) => String(reg.blockingItems.get(i)?.label ?? i).toLowerCase()).join(" or ")}.`;
+  }
+  return null;
+}
+function presetSupports(state, reg, contactId) {
+  const supports = commanderPresetOf(state, reg)?.supports;
+  return Array.isArray(supports) && supports.includes(contactId);
+}
+
 // src/engine/blocking/snapshots.ts
 function rollbackAfter(draft, index2) {
   const scene = draft.scene;
@@ -21957,6 +22000,10 @@ function checkChange(state, reg, change) {
       const parties = partiesOf(c, change, state);
       if (typeof parties === "string") return parties;
       if (!entryAllowed(state, reg, c, [parties.unit])) return `${String(c.label)} is not available here.`;
+      if (c.supported === true && !presetSupports(state, reg, String(c.id))) {
+        const carriers = [...reg.servicePostures.values()].filter((p) => Array.isArray(p.supports) && p.supports.includes(String(c.id))).map((p) => String(p.label).toLowerCase());
+        return `${String(c.label)} needs a posture that carries it${carriers.length > 0 ? `: ${carriers.join(" or ")}` : ""}.`;
+      }
       const need = c.requires?.affordances ?? [];
       const have = sceneAffordances(state, reg);
       const missing2 = need.find((x) => !have.has(x));
@@ -22221,45 +22268,6 @@ function startBlocking(draft, reg) {
 // src/engine/blocking/device.ts
 function deviceLocked(state, reg) {
   return blockingLive(state, reg) && personEffects(state, reg, COMMANDER).some((e) => e.type === "device" && e.lock === "tabs");
-}
-
-// src/engine/blocking/presets.ts
-function defaultPresetOf(reg, base2) {
-  for (const p of reg.servicePostures.values()) if (p.base === base2 && p.default === true) return p;
-  return void 0;
-}
-function presetOf(reg, id) {
-  if (id === void 0) return void 0;
-  return reg.servicePostures.get(id) ?? (reg.blockingPostures.has(id) ? defaultPresetOf(reg, id) : void 0);
-}
-function samePreset(reg, a, b) {
-  const pa = presetOf(reg, a);
-  return pa !== void 0 && pa.id === presetOf(reg, b)?.id;
-}
-function commanderPresetOf(state, reg) {
-  const b = state.scene?.blocking?.[COMMANDER];
-  if (b?.posture === void 0) return void 0;
-  const held3 = b.preset !== void 0 ? reg.servicePostures.get(b.preset) : void 0;
-  return held3 !== void 0 && held3.base === b.posture ? held3 : defaultPresetOf(reg, b.posture);
-}
-var requiresOf = (preset) => preset.requires ?? {};
-function presetAllowed(state, reg, preset, unitIds) {
-  if (!entryAllowed(state, reg, { contentTags: preset.tags }, unitIds)) return false;
-  const frame9 = requiresOf(preset).frame;
-  return frame9 === void 0 || unitIds.every((id) => frameRank(frameOf(state, id)) >= frameRank(frame9));
-}
-function presetProblem(state, reg, preset) {
-  const r = requiresOf(preset);
-  const have = sceneAffordances(state, reg);
-  const missing2 = (r.affordances ?? []).find((a) => !have.has(a));
-  if (missing2 !== void 0) return `This place has no ${missing2}.`;
-  const b = state.scene?.blocking?.[COMMANDER];
-  if (r.anchor !== void 0 && !r.anchor.includes(b?.anchor?.id ?? "")) return `${String(preset.label)} needs a place: ${r.anchor.map((a) => String(reg.blockingAnchors.get(a)?.label ?? a).toLowerCase()).join(" or ")}.`;
-  if (r.items !== void 0) {
-    const worn = new Set(Object.values(b?.worn ?? {}).map((w) => w?.id));
-    if (!r.items.some((i) => worn.has(i))) return `${String(preset.label)} needs something worn: ${r.items.map((i) => String(reg.blockingItems.get(i)?.label ?? i).toLowerCase()).join(" or ")}.`;
-  }
-  return null;
 }
 
 // src/engine/power/compatibility.ts
@@ -36509,7 +36517,8 @@ function blockingVocabulary(state, reg) {
   return {
     posture: [...reg.blockingPostures.values()],
     anchor: [...reg.blockingAnchors.values()].filter(fits),
-    contact: [...reg.blockingContacts.values()].filter((e) => fits(e) && entryAllowed(state, reg, e, units)),
+    contact: [...reg.blockingContacts.values()].filter((e) => fits(e) && entryAllowed(state, reg, e, units) && (e.supported !== true || presetSupports(state, reg, e.id))),
+    // P16b: a contact a posture carries is offered with that posture
     item: [...reg.blockingItems.values()].filter((e) => entryAllowed(state, reg, e, units)),
     activity: [...reg.blockingActivities.values()].filter((e) => entryAllowed(state, reg, e, units))
   };
@@ -36731,7 +36740,7 @@ var MOMENT_EXPLICIT = ["rarer", "same", "off"];
 var MARATHON_PACES = ["short", "normal", "long"];
 var LONG_HOLD_STRAINS = ["light", "normal", "heavy", "raw"];
 var LONG_HOLD = Object.freeze({ light: 0.25, normal: 0.35, heavy: 0.6, raw: 1 });
-var INTERACTION_TOGGLES = [...INTERACTIONS, "inhale"];
+var INTERACTION_TOGGLES = [...INTERACTIONS, "inhale", "posture", "provocation"];
 var DEFAULT_SCENE_SETTINGS = Object.freeze({
   momentFrequency: "normal",
   momentExplicit: "rarer",
@@ -43537,6 +43546,7 @@ function startPostureHold(draft, ctx2, o) {
   const reg = ctx2.registries;
   const scene = draft.scene;
   if (scene === void 0) throw new Error("No scene is open.");
+  if (!sceneSettingsOf(draft).physicsInteractions.posture) throw new Error("The game of postures is switched off.");
   if (!scene.participants.includes(o.holderId)) throw new Error("She is not in the scene.");
   if (!craftLive(draft, reg, o.holderId)) throw new Error("She is not holding now.");
   const preset = presetOf(reg, o.presetId);
@@ -43679,6 +43689,7 @@ function takePostureHold(draft, ctx2, o) {
   const reg = ctx2.registries;
   const scene = draft.scene;
   if (scene === void 0) throw new Error("No scene is open.");
+  if (!sceneSettingsOf(draft).physicsInteractions.posture) throw new Error("The game of postures is switched off.");
   const preset = presetOf(reg, o.presetId);
   if (preset === void 0) throw new Error(`Unknown posture "${o.presetId}".`);
   const holderId = o.holderId ?? scene.participants.find((id) => craftLive(draft, reg, id));
@@ -43693,7 +43704,7 @@ function takePostureHold(draft, ctx2, o) {
 }
 function holdOfCall(draft, ctx2, info) {
   const reg = ctx2.registries;
-  if (!craftLive(draft, reg, info.holderId) || draft.practices?.postureRun !== void 0) return [];
+  if (!craftLive(draft, reg, info.holderId) || draft.practices?.postureRun !== void 0 || !sceneSettingsOf(draft).physicsInteractions.posture) return [];
   const preset = presetOf(reg, info.postureId);
   if (preset === void 0 || commanderPresetOf(draft, reg)?.id !== preset.id) return [];
   const T5 = TUNING.craft.posture;
@@ -47657,6 +47668,7 @@ function createPractice(deps) {
 var CRAFT_PREFIX = "craft:";
 var LESSON_PREFIX = "craft:lesson:";
 var RECORD_PREFIX = "craft:record:";
+var POSTURE_PREFIX = "craft:posture:";
 var NEVER_NAME2 = "Never name it as a mechanic.";
 var phrase2 = (text3) => plainDraft(text3).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\d+/g, "").replace(/\s+/g, " ").trim().replace(/[.\s]+$/, "");
 function lessonDirectives(state, reg, present2) {
@@ -47698,8 +47710,29 @@ function recordDirectives(state, reg, present2) {
   }
   return out;
 }
+var LOAD_CLAUSE = {
+  count: "She may count the time aloud",
+  no_duration: "She does not say how long it will last",
+  speech_rule: "She may demand silence, or only a plain yes",
+  combined: "She may add something else to bear",
+  new_posture: "She may change the posture once it is held"
+};
+function postureDirectives(state, reg, present2) {
+  const run = state.practices?.postureRun;
+  const unit5 = run === void 0 ? void 0 : state.squad.find((u) => u.id === run.holderId);
+  if (run === void 0 || unit5 === void 0 || unit5.kind !== "named" || !isLiving(unit5) || !present2.includes(run.holderId) || !craftLive(state, reg, run.holderId)) return [];
+  const preset = presetOf(reg, run.presetId);
+  if (preset === void 0) return [];
+  const hers = state.practices?.postures[run.holderId]?.find((p) => samePreset(reg, p.postureId, preset.id))?.name;
+  const load = run.load !== void 0 ? LOAD_CLAUSE[run.load] : void 0;
+  return [{
+    id: `${POSTURE_PREFIX}${run.holderId}`,
+    expiresAfter: "scene",
+    text: `AUTHOR TO WRITE: ${unit5.displayName} has the commander holding a posture, ${hers !== void 0 ? `which she calls "${phrase2(hers)}"` : phrase2(String(preset.label))}: ${phrase2(String(preset.promptHint))}. If it fits, she may correct a point she sees drifting, and only once.${load !== void 0 ? ` ${load}, only if it fits.` : ""} ${NEVER_NAME2}`
+  }];
+}
 function craftDirectives(state, reg, present2) {
-  return [...lessonDirectives(state, reg, present2), ...recordDirectives(state, reg, present2)].map((d) => ({ ...d, text: plainDraft(d.text) }));
+  return [...lessonDirectives(state, reg, present2), ...recordDirectives(state, reg, present2), ...postureDirectives(state, reg, present2)].map((d) => ({ ...d, text: plainDraft(d.text) }));
 }
 function clearCraftDirectives(builder) {
   builder.clearMatching((d) => d.id.startsWith(CRAFT_PREFIX));
@@ -88997,7 +89030,9 @@ var INTERACTION_LABEL = {
   order: "order",
   passive: "endure",
   gesture: "gesture",
-  inhale: "the breath"
+  inhale: "the breath",
+  posture: "the game of postures",
+  provocation: "stillness under provocation"
 };
 var errText2 = (e) => e instanceof Error ? e.message : String(e);
 function field(label2, control2, setting) {
@@ -89291,7 +89326,7 @@ function renderSysTab(host, ctx2) {
     field("Moments in explicit scenes", select("momentExplicit", [["rarer", "rarer"], ["same", "as often"], ["off", "none"]], settings.momentExplicit), "momentExplicit"),
     field("Moments as", select("momentChips", [["chips", "chips"], ["immersive", "immersive (no chips)"]], settings.momentChips), "momentChips"),
     field("Real-time contact", checkbox("physicsRealtime", settings.physicsRealtime), "physicsRealtime"),
-    ...INTERACTION_TOGGLES.map((k) => field(`Contact: ${INTERACTION_LABEL[k]}`, interactionToggle(k, settings.physicsInteractions[k]), "physicsInteractions")),
+    ...INTERACTION_TOGGLES.map((k) => field(`${k === "posture" || k === "provocation" ? "Game" : "Contact"}: ${INTERACTION_LABEL[k]}`, interactionToggle(k, settings.physicsInteractions[k]), "physicsInteractions")),
     field("Marathon pace", select("marathonPace", [["short", "short"], ["normal", "normal"], ["long", "long"]], settings.marathonPace), "marathonPace"),
     field("Long holds", select("longHoldStrain", [["light", "light"], ["normal", "normal"], ["heavy", "heavy"], ["raw", "raw (as a short hold)"]], settings.longHoldStrain), "longHoldStrain"),
     h("h3", {}, "Combat"),

@@ -280,7 +280,7 @@ describe('fireMoment', () => {
 describe('the scene settings mirror', () => {
   it('reads the defaults, then the mirror; an invalid value reads as the default', () => {
     const s = campaign(reg, 4);
-    expect(sceneSettingsOf(s)).toEqual({ momentFrequency: 'normal', momentExplicit: 'rarer', physicsRealtime: false, marathonPace: 'normal', longHoldStrain: 'normal', physicsInteractions: { timing: true, hold: true, decision: true, order: true, passive: true, gesture: true, inhale: true } });
+    expect(sceneSettingsOf(s)).toEqual({ momentFrequency: 'normal', momentExplicit: 'rarer', physicsRealtime: false, marathonPace: 'normal', longHoldStrain: 'normal', physicsInteractions: { timing: true, hold: true, decision: true, order: true, passive: true, gesture: true, inhale: true, posture: true, provocation: true } });
     s.settings.momentFrequency = 'always';
     s.settings.physicsInteractions = { timing: false, hold: 'yes' };
     expect(sceneSettingsOf(s).momentFrequency).toBe('normal');
