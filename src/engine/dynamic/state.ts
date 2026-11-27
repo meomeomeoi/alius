@@ -115,6 +115,8 @@ export interface DynamicRelation {
   mannerStepped?: Partial<Record<MannerAxis | 'drawn_by', number>>;
   /** P15b: the style her place has been closest to and how many weekly reviews in a row it was nearer by the margin; `lastDay` is her last turn. Hidden. */
   mannerTurn?: { candidate: string; reviews: number; lastDay?: number };
+  /** P15b (spec §12.3, ruling 10): the moment of the first time below her has come up for this pair (once). Hidden. */
+  firstBelow?: true;
 }
 
 /**
@@ -183,6 +185,8 @@ export interface DynamicCampaign {
   /** Days the dynamic noticed in passing (the style's surfacing reads them, T16): the last gain of the commander's endurance, the last time the crime was revealed. */
   noted?: {
     enduranceDay?: number; crimeDay?: number; praisedDay?: number;
+    /** P15b (spec §12.3): per woman with a manner, the days of the commander's praises of her in the last 14 days (at most a few), which wake a latent woman who is moved by being admired. Hidden. */
+    praised?: Record<string, number[]>;
     /** Regard (Task 36, 37): per woman, the value her Regard had when the span of its recent fall began (disappointment and the question read it). */
     regardMark?: Record<string, { day: number; value: number }>;
     /** The day of each woman's latest fall of Regard (the question reads whether it is still falling). */

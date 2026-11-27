@@ -1092,6 +1092,8 @@ var TUNING = Object.freeze({
     }),
     drift: Object.freeze({ days: 28 }),
     turn: Object.freeze({ margin: 2, reviews: 2, days: 56 }),
+    /** Chunk m7 (spec §12.3, AUTHOR TO TUNE): the regal way in. The first time below her comes at hold band `firstBelowBand`; `praises` of the commander's within `praiseDays` wake a latent woman who is moved by being admired (`praisedKeep` days are kept). */
+    regal: Object.freeze({ firstBelowBand: "testing", praises: 3, praiseDays: 14, praisedKeep: 5 }),
     /**
      * Chunk m6 (planning ruling 4, AUTHOR TO TUNE): what the dynamic does to her accumulators (`manner:<axis>`, `manner:drawn_by.<kind>`), before the mode's factor
      * (slow 0.5). A step needs `development.stepThreshold` (3) and is at most one per axis per 28 days, so about two months of steady push make two steps:
@@ -2390,8 +2392,8 @@ function dynamicTerm(state, reg, unitId) {
 }
 function standingMalus(state, reg, holderId) {
   if (!dynamicLive(state, reg)) return 0;
-  const R11 = TUNING.squadKnowledge.reaction;
-  return Math.min(R11.standingMax, Math.round(dislikers(state, reg, holderId).reduce((sum, id) => sum + scaleOf(state, reg, id), 0) * R11.dislikesStanding));
+  const R12 = TUNING.squadKnowledge.reaction;
+  return Math.min(R12.standingMax, Math.round(dislikers(state, reg, holderId).reduce((sum, id) => sum + scaleOf(state, reg, id), 0) * R12.dislikesStanding));
 }
 
 // src/engine/dynamic/manner.ts
@@ -11050,7 +11052,9 @@ var DynamicMilestoneSchema = BaseEntrySchema.extend({
     romantic: external_exports.boolean().optional(),
     coolingDays: int.min(1).max(365).optional(),
     formerHolder: external_exports.literal(true).optional(),
-    noCapability: capabilityEnum.optional()
+    noCapability: capabilityEnum.optional(),
+    /** P15b (spec §12.3): she has a `manner` block (the package's gate: a profile from before it keeps its old graph). */
+    manner: external_exports.literal(true).optional()
   }).strict(),
   offer: external_exports.enum(MILESTONE_OFFERS),
   sworn: external_exports.literal(true).optional(),
@@ -11095,6 +11099,8 @@ var ProbeAxisSchema = BaseEntrySchema.extend({
   promptHint: blockHint,
   /** P15b (§12.1): a row with `needs` enters her pool only with a `manner` and an alternative that holds; a `styles` alternative that holds takes two places. */
   needs: external_exports.array(probeNeed).min(1).optional(),
+  /** P15b (spec §12.3): the row's `needs` also say who a latent woman wakes for when she is admired (three praises in a fortnight): `latentCause` asks the rows that carry this. */
+  wakesOnPraise: external_exports.literal(true).optional(),
   description: str
 }).strict();
 var PositionRegionSchema = BaseEntrySchema.extend({ rank: external_exports.enum(REGION_RANKS), label: blockLabel, description: str }).strict();
@@ -19868,6 +19874,7 @@ function requiresMet(state, reg, unitId, m) {
     const primary = unit5 === void 0 ? void 0 : styleOf(unit5)?.primary;
     if (primary === void 0 || !r.styles.includes(primary)) return false;
   }
+  if (r.manner === true && mannerOf({ squad: state.squad }, reg, unitId) === null) return false;
   if (r.romantic === true && bondTierOf(state, reg, unitId) !== "romantic") return false;
   if (r.coolingDays !== void 0 && state.day - dyn.lastPracticeDay < r.coolingDays) return false;
   if (r.formerHolder === true && dyn.formerHolder === void 0) return false;
@@ -20110,19 +20117,19 @@ function blended(m, declared) {
 }
 var largest = (m, k) => MOTIVES.every((j) => j === k || m[k] > m[j]);
 function regionOf(reading2, declared) {
-  const R11 = TUNING.position.region;
+  const R12 = TUNING.position.region;
   const m = blended(reading2.motive, declared);
   const { r, f, p } = reading2;
-  if (reading2.flat >= R11.flat) return "hollow";
-  if (reading2.deflect >= R11.deflect) return "elusive";
+  if (reading2.flat >= R12.flat) return "hollow";
+  if (reading2.deflect >= R12.deflect) return "elusive";
   if (largest(m, "fear")) return "cowed";
-  if (f >= R11.friction && largest(m, "gain")) return "double_game";
-  if (f < R11.friction && largest(m, "gain")) return "calculating";
-  if (f >= R11.friction && p >= R11.play) return "bratty";
-  if (f >= R11.friction) return "proud";
-  if (r >= R11.ready && f >= 0 && largest(m, "process")) return "hungry";
+  if (f >= R12.friction && largest(m, "gain")) return "double_game";
+  if (f < R12.friction && largest(m, "gain")) return "calculating";
+  if (f >= R12.friction && p >= R12.play) return "bratty";
+  if (f >= R12.friction) return "proud";
+  if (r >= R12.ready && f >= 0 && largest(m, "process")) return "hungry";
   if (r < 0) return "reluctant";
-  if (r >= R11.ready && largest(m, "order")) return "dutiful";
+  if (r >= R12.ready && largest(m, "order")) return "dutiful";
   return "devoted";
 }
 function motiveOf(sample) {
@@ -22544,6 +22551,71 @@ function confirmOffer(draft, unitId, offerId, answer, correction) {
   return [];
 }
 
+// src/engine/dynamic/probeNeeds.ts
+var LIKE_RANK = { none: 0, tolerates: 1, indifferent: 1, dislikes: 0, enjoys: 2, craves: 3 };
+function likesAtLeast(state, reg, unitId, what, least) {
+  if (what.startsWith("worship.")) {
+    const attitude = expectationsOf(state, reg, unitId).worship?.[what.slice("worship.".length)]?.attitude;
+    return attitude !== void 0 && LIKE_RANK[attitude] >= LIKE_RANK[least];
+  }
+  const as = practiceOf(state, reg, unitId)?.categories[what]?.as;
+  return as !== void 0 && LIKE_RANK[as] >= LIKE_RANK[least];
+}
+function probePlaces(state, reg, unitId, row4) {
+  if (row4.needs === void 0) return 1;
+  const unit5 = state.squad.find((u) => u.id === unitId);
+  const manner = mannerOf({ squad: state.squad }, reg, unitId);
+  if (unit5 === void 0 || manner === null) return 0;
+  const primary = styleOf(unit5)?.primary;
+  let best = 0;
+  for (const n of row4.needs) {
+    if (n.styles !== void 0 && (primary === void 0 || !n.styles.includes(primary))) continue;
+    if (n.drawnBy !== void 0 && !n.drawnBy.some((d) => manner.drawnBy.includes(d))) continue;
+    if (n.manner !== void 0 && !Object.entries(n.manner).every(([a, [lo, hi]]) => manner.axes[a] >= lo && manner.axes[a] <= hi)) continue;
+    if (n.likes !== void 0 && !Object.entries(n.likes).every(([what, least]) => likesAtLeast(state, reg, unitId, what, least))) continue;
+    best = n.styles !== void 0 ? 2 : Math.max(best, 1);
+    if (best === 2) break;
+  }
+  return best;
+}
+var rowsOf2 = (reg) => [...reg.probeAxes.values()].map((a) => a);
+function matchesProbeRow(state, reg, unitId) {
+  return rowsOf2(reg).some((r) => r.needs !== void 0 && probePlaces(state, reg, unitId, r) > 0);
+}
+function admiredBy(state, reg, unitId) {
+  return rowsOf2(reg).some((r) => r.wakesOnPraise === true && probePlaces(state, reg, unitId, r) > 0);
+}
+
+// src/engine/dynamic/regalEntry.ts
+var R3 = TUNING.manner.regal;
+function firstBelowLive(state, reg, unitId) {
+  if (!dynamicOn(state, reg)) return false;
+  const dyn = dynamicOf(state, unitId);
+  const band2 = reg.holdBands.get(R3.firstBelowBand);
+  if (dyn === void 0 || band2 === void 0 || dyn.firstBelow === true || frameRank(dyn.frame) !== frameRank("equal")) return false;
+  if (dyn.hold < Number(band2.min) || dyn.hold > Number(band2.max)) return false;
+  return matchesProbeRow(state, reg, unitId);
+}
+function noteFirstBelow(draft, _ctx, events) {
+  for (const e of events) {
+    if (e.type !== "moment_fired" || e.sourceId !== "first_below" || typeof e.unitId !== "string") continue;
+    const dyn = dynamicOf(draft, e.unitId);
+    if (dyn !== void 0) dyn.firstBelow = true;
+  }
+  return [];
+}
+function notePraise(draft, reg, unitId, event) {
+  if (event.type !== "praised" || event.actor !== "commander" || draft.dynamic === void 0 || mannerOf({ squad: draft.squad }, reg, unitId) === null) return [];
+  const noted2 = draft.dynamic.noted ??= {};
+  const days = (noted2.praised ??= {})[unitId] ??= [];
+  days.push(draft.day);
+  noted2.praised[unitId] = days.filter((d) => draft.day - d < R3.praiseDays).slice(-R3.praisedKeep);
+  return [];
+}
+function praisedLately(state, unitId) {
+  return (state.dynamic?.noted?.praised?.[unitId] ?? []).filter((d) => state.day - d < R3.praiseDays).length;
+}
+
 // src/engine/dynamic/probes.ts
 var livingNamed2 = (draft) => draft.squad.filter((u) => u.kind === "named" && isLiving(u));
 function pendingProbe(state, unitId) {
@@ -22571,6 +22643,7 @@ function probeQueueRoom(state) {
 }
 function latentCause(state, reg, unitId) {
   if ((impunityOf(state, reg, unitId)?.value ?? 0) >= TUNING.dynamic.impunityRoute) return true;
+  if (praisedLately(state, unitId) >= TUNING.manner.regal.praises && admiredBy(state, reg, unitId)) return true;
   const known3 = Object.values(state.dynamic?.knowledge[unitId] ?? {}).some((k) => k.level === "knows_dynamic");
   if (!known3) return false;
   const view3 = practiceOf(state, reg, unitId);
@@ -22583,32 +22656,6 @@ function probeChance(state, reg, unitId) {
   const base2 = TUNING.probes.chance[inclination];
   const p = base2 * TUNING.dynamic.frequency[state.dynamic.setup.frequency] * assertiveness(state, reg).demandMult;
   return Math.min(1, Math.max(0, p));
-}
-var LIKE_RANK = { none: 0, tolerates: 1, indifferent: 1, dislikes: 0, enjoys: 2, craves: 3 };
-function likesAtLeast(state, reg, unitId, what, least) {
-  if (what.startsWith("worship.")) {
-    const attitude = expectationsOf(state, reg, unitId).worship?.[what.slice("worship.".length)]?.attitude;
-    return attitude !== void 0 && LIKE_RANK[attitude] >= LIKE_RANK[least];
-  }
-  const as = practiceOf(state, reg, unitId)?.categories[what]?.as;
-  return as !== void 0 && LIKE_RANK[as] >= LIKE_RANK[least];
-}
-function probePlaces(state, reg, unitId, row4) {
-  if (row4.needs === void 0) return 1;
-  const unit5 = state.squad.find((u) => u.id === unitId);
-  const manner = mannerOf({ squad: state.squad }, reg, unitId);
-  if (unit5 === void 0 || manner === null) return 0;
-  const primary = styleOf(unit5)?.primary;
-  let best = 0;
-  for (const n of row4.needs) {
-    if (n.styles !== void 0 && (primary === void 0 || !n.styles.includes(primary))) continue;
-    if (n.drawnBy !== void 0 && !n.drawnBy.some((d) => manner.drawnBy.includes(d))) continue;
-    if (n.manner !== void 0 && !Object.entries(n.manner).every(([a, [lo, hi]]) => manner.axes[a] >= lo && manner.axes[a] <= hi)) continue;
-    if (n.likes !== void 0 && !Object.entries(n.likes).every(([what, least]) => likesAtLeast(state, reg, unitId, what, least))) continue;
-    best = n.styles !== void 0 ? 2 : Math.max(best, 1);
-    if (best === 2) break;
-  }
-  return best;
 }
 function probePool(state, reg, unitId, tier, recent2) {
   const axes = [...reg.probeAxes.values()].map((a) => a).filter((a) => a.tier <= tier).flatMap((a) => Array.from({ length: probePlaces(state, reg, unitId, a) }, () => a));
@@ -37957,8 +38004,8 @@ function wardenGone(draft, ctx2, how) {
   return startRemoval(draft, ctx2, "death");
 }
 function reportChance(state, _reg) {
-  const R11 = TUNING.warden.verdict.report;
-  return clamp40(R11.base + R11.perKompromat * (kompromatOf(state).length - TUNING.warden.kompromat.needed) + R11.perCunning * (socialRank(state, "cunning") - 1), R11.min, R11.max);
+  const R12 = TUNING.warden.verdict.report;
+  return clamp40(R12.base + R12.perKompromat * (kompromatOf(state).length - TUNING.warden.kompromat.needed) + R12.perCunning * (socialRank(state, "cunning") - 1), R12.min, R12.max);
 }
 var REPORT_CONTEXT = "warden_report";
 function presentReport(draft, ctx2) {
@@ -38026,16 +38073,16 @@ function wardenReportChoice(draft, ctx2, context, optionId) {
 }
 function remoteExpectations(state) {
   if (!state.leashswap?.remote) return [];
-  const R11 = TUNING.warden.remote;
+  const R12 = TUNING.warden.remote;
   return [
-    { id: "remote_quota", kind: "meet_quota", weight: R11.quota, source: "corporate", known: true },
-    { id: "remote_obey", kind: "obey_oversight", weight: R11.obey, source: "corporate", known: true }
+    { id: "remote_quota", kind: "meet_quota", weight: R12.quota, source: "corporate", known: true },
+    { id: "remote_obey", kind: "obey_oversight", weight: R12.obey, source: "corporate", known: true }
   ];
 }
 function remoteDayStep(draft, ctx2) {
   const ls = leashswapOf(draft);
   if (!ls?.remote || wardenOf(draft)) return [];
-  const R11 = TUNING.warden.remote;
+  const R12 = TUNING.warden.remote;
   const events = [];
   const done = draft.missions.completed;
   if (done.some((m) => m.status === "failed" && m.outcomeDay === draft.day)) {
@@ -38043,7 +38090,7 @@ function remoteDayStep(draft, ctx2) {
     if (id !== void 0) events.push(...applyRemotePunishment(draft, ctx2, id));
   }
   const since = draft.day - ls.remote.sinceDay;
-  if (since > 0 && since % R11.missionDays === 0 && !done.some((m) => m.status === "completed" && m.outcomeDay !== void 0 && m.outcomeDay > draft.day - R11.missionDays && m.outcomeDay <= draft.day)) {
+  if (since > 0 && since % R12.missionDays === 0 && !done.some((m) => m.status === "completed" && m.outcomeDay !== void 0 && m.outcomeDay > draft.day - R12.missionDays && m.outcomeDay <= draft.day)) {
     const id = pickPunishment(draft, ctx2.registries, 1);
     if (id !== null) events.push(...applyRemotePunishment(draft, ctx2, id));
   }
@@ -41832,7 +41879,7 @@ function holdFeed(draft, reg, unitId, event, _severity) {
 }
 
 // src/engine/dynamic/shame.ts
-var R3 = TUNING.regard;
+var R4 = TUNING.regard;
 function nonHolder(state, unitId) {
   const unit5 = state.squad.find((u) => u.id === unitId);
   const frame9 = dynamicOf(state, unitId)?.frame;
@@ -41845,27 +41892,27 @@ function checkDisappointment(draft, ctx2, unitId, from, to) {
   (noted(draft).regardFell ??= {})[unitId] = draft.day;
   const marks = noted(draft).regardMark ??= {};
   let mark2 = marks[unitId];
-  if (mark2 === void 0 || draft.day - mark2.day > R3.disappointment.days) mark2 = marks[unitId] = { day: draft.day, value: from };
+  if (mark2 === void 0 || draft.day - mark2.day > R4.disappointment.days) mark2 = marks[unitId] = { day: draft.day, value: from };
   if (regardBandRank(reg, to) <= regardBandRank(reg, mark2.value)) return [];
   marks[unitId] = { day: draft.day, value: to };
-  if ((draft.relations[unitId]?.trust ?? 0) < R3.disappointment.trust) return [];
+  if ((draft.relations[unitId]?.trust ?? 0) < R4.disappointment.trust) return [];
   (noted(draft).disappointed ??= {})[unitId] = draft.day;
-  lapseHabits(draft, reg, unitId, R3.lapse.tag, R3.lapse.days);
+  lapseHabits(draft, reg, unitId, R4.lapse.tag, R4.lapse.days);
   return [{ type: "disappointed", unitId }];
 }
 function disappointedSince(state, unitId) {
   const day = state.dynamic?.noted?.disappointed?.[unitId];
-  return day !== void 0 && state.day - day <= R3.disappointment.days ? day : void 0;
+  return day !== void 0 && state.day - day <= R4.disappointment.days ? day : void 0;
 }
 function falling(state, reg, unitId) {
   const day = state.dynamic?.noted?.regardFell?.[unitId];
-  return day !== void 0 && state.day - day <= R3.disappointment.days && regardBandRank(reg, regardOf(state, reg, unitId)) < Math.max(0, reg.regardBands.size - 1);
+  return day !== void 0 && state.day - day <= R4.disappointment.days && regardBandRank(reg, regardOf(state, reg, unitId)) < Math.max(0, reg.regardBands.size - 1);
 }
 function questionRipe(state, reg, unitId) {
   if (!dynamicOn(state, reg) || !nonHolder(state, unitId)) return false;
   const q = state.dynamic?.noted?.question;
-  if (q?.by[unitId] !== void 0 && state.day - q.by[unitId] < R3.question.cooldownDays) return false;
-  if (q?.day !== void 0 && state.day - q.day < R3.question.weekDays) return false;
+  if (q?.by[unitId] !== void 0 && state.day - q.by[unitId] < R4.question.cooldownDays) return false;
+  if (q?.day !== void 0 && state.day - q.day < R4.question.weekDays) return false;
   return falling(state, reg, unitId) || dynamicTerm(state, reg, unitId) > 0;
 }
 var ripeQuestions = (state, reg, unitId) => questionRipe(state, reg, unitId) ? ["her_question"] : [];
@@ -41884,8 +41931,8 @@ function noteQuestionAsked(draft, ctx2, events) {
 function answerQuestion2(draft, ctx2, unitId, key) {
   const unit5 = draft.squad.find((u) => u.id === unitId);
   const primary = unit5 === void 0 ? void 0 : styleOf(unit5)?.primary;
-  if (primary === void 0 || R3.question.valued[primary] !== key) return [];
-  return regardRise(draft, ctx2.registries, unitId, "value", R3.question.gain);
+  if (primary === void 0 || R4.question.valued[primary] !== key) return [];
+  return regardRise(draft, ctx2.registries, unitId, "value", R4.question.gain);
 }
 function questionEvents(draft, ctx2, events) {
   if (!dynamicOn(draft, ctx2.registries)) return [];
@@ -41945,6 +41992,7 @@ function installDynamicHooks() {
   });
   registerRunTarget((state, reg, targetId) => dynamicOn(state, reg) ? targetId : void 0);
   registerExpectation(expectation);
+  registerMomentTrigger("first_below", firstBelowLive);
   registerMomentTrigger("compromat_hint", compromatHint);
   registerCompromatCount((state, holderId) => compromatOf(state, holderId).length);
   registerRegardBand((state, reg, unitId) => dynamicOn(state, reg) ? regardBandOf(reg, regardOf(state, reg, unitId)) : null);
@@ -42054,6 +42102,8 @@ function namedUnit3(draft, id, action) {
 registerEventLanded(holdFeed);
 registerEventLanded((draft, reg, unitId, event) => regardFeed(draft, reg, unitId, event));
 registerEventLanded(mannerFeedLanded);
+registerEventLanded(notePraise);
+registerAfterAction(noteFirstBelow);
 registerDayEndStep("dm_rumors", dynamicDayStep);
 installDynamicHooks();
 registerAfterAction(readMoments);
@@ -49366,7 +49416,7 @@ function figure(ctx2, side, cx, oy) {
 function zoneEl(ctx2, z2) {
   const X3 = (z2.x - 50) * 2.5;
   const Y = z2.y * 5;
-  const R11 = Math.max(6, z2.r * 2);
+  const R12 = Math.max(6, z2.r * 2);
   const word2 = z2.known && z2.attitude !== void 0 ? z2.attitude : "not known yet";
   const g = svgEl("g", {
     class: `alius-bm-zone is-${stateOf(z2)}`,
@@ -49380,9 +49430,9 @@ function zoneEl(ctx2, z2) {
     "aria-label": `${z2.label}: ${word2}`,
     ...z2.known && z2.attitude !== void 0 ? { "data-attitude": z2.attitude } : {}
   });
-  g.append(svgEl("circle", { cx: X3, cy: Y, r: R11, class: "alius-bm-ring" }));
+  g.append(svgEl("circle", { cx: X3, cy: Y, r: R12, class: "alius-bm-ring" }));
   const rings = z2.scent !== void 0 ? z2.scent : 0;
-  for (let i = 1; i <= rings; i++) g.append(svgEl("circle", { cx: X3, cy: Y, r: R11 * i / (rings + 1), class: "alius-bm-scent" }));
+  for (let i = 1; i <= rings; i++) g.append(svgEl("circle", { cx: X3, cy: Y, r: R12 * i / (rings + 1), class: "alius-bm-scent" }));
   const mark2 = (cls, x, y, text3) => {
     const t = svgEl("text", { x, y, class: cls, "text-anchor": "middle" });
     t.textContent = text3;
@@ -49390,8 +49440,8 @@ function zoneEl(ctx2, z2) {
   };
   if (!z2.known) mark2("alius-bm-q", X3, Y + 4, "?");
   else if (z2.meaning !== void 0) mark2("alius-bm-meaning", X3, Y + 4, MEANING_ICON[z2.meaning]);
-  if (z2.explicit === true) mark2("alius-bm-explicit", X3 - R11, Y - R11 + 4, "\u25C7");
-  if (z2.mastery > 0) mark2("alius-bm-dots", X3, Y + R11 + 9, dotsOf(z2.mastery));
+  if (z2.explicit === true) mark2("alius-bm-explicit", X3 - R12, Y - R12 + 4, "\u25C7");
+  if (z2.mastery > 0) mark2("alius-bm-dots", X3, Y + R12 + 9, dotsOf(z2.mastery));
   return g;
 }
 function row2(ctx2, z2, label2) {
@@ -53527,7 +53577,7 @@ var noLines = () => ({ entry: {}, teeth: [], deeper: [], out: [], suck: [], wide
 var LINES2 = { neutral: noLines() };
 var S2 = { contact: "sole_to_mouth", style: "neutral", rate: 1, skill: 0, ring: 0.55, len: 75, sound: true, vol: 0.7, footH: 1.05, debug: false, reduced: false, readable: false };
 var STYLE_KINDS = { every: "time", deep: "magnitude", ask: "lines" };
-var st = () => bendRow(STYLES2[S2.style], R4.manner, STYLE_KINDS);
+var st = () => bendRow(STYLES2[S2.style], R5.manner, STYLE_KINDS);
 var L = () => LINES2[S2.style];
 var C = () => CONTACTS[S2.contact];
 var A = { ctx: null, buf: {} };
@@ -53877,14 +53927,14 @@ function herMove() {
       }, 1600);
     }
   }
-  R4.move = null;
+  R5.move = null;
 }
 function askRest() {
   if (restWaits()) return;
   G2.stats.restsAsked += 1;
   G2.restAsked = true;
   SFX.cloth(0.25, 1.2);
-  const warmth2 = R4.manner?.warmth ?? 0;
+  const warmth2 = R5.manner?.warmth ?? 0;
   const granted = warmth2 >= 2 || warmth2 > -2 && !REST_DENIED.includes(S2.style);
   setTimeout2(() => {
     if (G2.phase !== "loop") return;
@@ -54001,7 +54051,7 @@ function update(dt) {
     G2.restHold = 0;
     G2.restAsked = false;
   }
-  if (R4.move && G2.resting <= 0) herMove();
+  if (R5.move && G2.resting <= 0) herMove();
   if (G2.ask) {
     G2.ask.t += dt;
     if (G2.ask.t > 12e3) {
@@ -54028,7 +54078,7 @@ var drool;
 var dctx;
 function spawnDrop() {
   const r = $("#mouth").getBoundingClientRect();
-  G2.drops.push({ x: r.left - R4.ox + r.width * rand(0.3, 0.7), y: r.bottom - R4.oy - 2, r: 0, grow: rand(1.2, 2.2), v: 0, falling: false, life: 1 });
+  G2.drops.push({ x: r.left - R5.ox + r.width * rand(0.3, 0.7), y: r.bottom - R5.oy - 2, r: 0, grow: rand(1.2, 2.2), v: 0, falling: false, life: 1 });
 }
 function render(now, dt) {
   const W3 = innerWidth2, H = innerHeight2, f01 = G2.f / 100;
@@ -54040,7 +54090,7 @@ function render(now, dt) {
   const tremble = S2.reduced ? 0 : (Math2.random() * 2 - 1) * (0.5 + 3 * f01 * f01);
   const m = $("#mouth");
   m.style.height = `${h2.toFixed(1)}px`;
-  m.style.transform = `translate(${tremble.toFixed(1)}px, ${(-R4.lift).toFixed(1)}px)`;
+  m.style.transform = `translate(${tremble.toFixed(1)}px, ${(-R5.lift).toFixed(1)}px)`;
   const burn = clamp43(0.15 + 0.85 * smooth(10, 95, G2.f), 0, 1) * clamp43(((G2.cost ?? RELAXED) - 0.2) / 1.2, 0.12, 1) * (0.9 + 0.1 * Math2.sin(now / 140));
   $("#inputWrap").style.setProperty("--ache", (G2.phase === "loop" && G2.resting <= 0 ? burn : 0).toFixed(3));
   $("#inputWrap").style.borderColor = G2.flashT !== void 0 && G2.flashT < 300 ? "rgba(255,120,90,.9)" : "rgba(255,255,255,.12)";
@@ -54053,9 +54103,9 @@ function render(now, dt) {
       continue;
     }
     const bh = lerp2(MOUTH_H[0], MOUTH_H[1], v);
-    el.style.width = `${R4.mouthW + 20}px`;
+    el.style.width = `${R5.mouthW + 20}px`;
     el.style.height = `${bh.toFixed(1)}px`;
-    el.style.top = `${R4.mouthY - R4.lift}px`;
+    el.style.top = `${R5.mouthY - R5.lift}px`;
     el.style.opacity = id === "#bandLo" ? "0.9" : "0.45";
     el.classList.toggle("hot", id === "#bandLo" && G2.jaw < v - TEETH_GAP);
   }
@@ -54121,7 +54171,7 @@ function render(now, dt) {
 }
 var H0 = () => innerHeight2 * 0.2;
 var typing = (t) => t && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
-var R4 = {
+var R5 = {
   run: null,
   lineStyle: "neutral",
   manner: null,
@@ -54151,23 +54201,23 @@ function jawContactOf(run, reg) {
 }
 var R_OF = { sole_to_mouth: { deeper: 0, pull_back: 0.4, suck: 0.6, wider: 0.9 }, ring_gag: { ask: 0, wider: 1 } };
 function moveR() {
-  const m = R4.move;
+  const m = R5.move;
   const key = m?.ask ? "ask" : m?.order ?? "wider";
   return R_OF[S2.contact]?.[key] ?? 1;
 }
 function orderLen(a, b) {
-  return R4.move?.orderMs ?? rand(a, b);
+  return R5.move?.orderMs ?? rand(a, b);
 }
 function heardLine(heard, _meant, kept) {
   if (!E) return;
-  R4.kept.push(kept);
+  R5.kept.push(kept);
   E.env.input.value = heard;
-  R4.heard = heard;
+  R5.heard = heard;
 }
 function refreshLines(beat) {
   if (!E) return;
   const env = E.env;
-  const own = (k) => [...voiceLines2(env.registries, `jaw.${k}`, R4.lineStyle)];
+  const own = (k) => [...voiceLines2(env.registries, `jaw.${k}`, R5.lineStyle)];
   const voiced = (k, cue) => {
     const v = env.staging.voiced?.(cue, beat) ?? null;
     return v ? [v] : own(k);
@@ -54198,23 +54248,23 @@ function refreshLines(beat) {
   };
 }
 function beatNow() {
-  const seg = R4.seg;
+  const seg = R5.seg;
   if (!seg) return 0;
   return clamp43(Math2.floor((G2.t - seg.clock0) / BEAT), 0, seg.beats - 1);
 }
 function report(i, pointer) {
-  if (!E || !R4.seg || !R4.running) return;
+  if (!E || !R5.seg || !R5.running) return;
   E.env.staging.input(i, { pointer });
 }
 function reportBeat(beat, played2) {
-  const amount = played2 && R4.accMs > 0 ? R4.acc / R4.accMs : 1;
-  R4.acc = 0;
-  R4.accMs = 0;
+  const amount = played2 && R5.accMs > 0 ? R5.acc / R5.accMs : 1;
+  R5.acc = 0;
+  R5.accMs = 0;
   report({ beat, kind: "bite", amount: Math2.round(amount * 1e3) / 1e3 }, true);
 }
 var REST_LATE = 300 + 500;
 function restWaits() {
-  if (!R4.running || !R4.seg || R4.restSeg === R4.seg.n || G2.t - R4.seg.clock0 >= R4.seg.endMs - REST_LATE) {
+  if (!R5.running || !R5.seg || R5.restSeg === R5.seg.n || G2.t - R5.seg.clock0 >= R5.seg.endMs - REST_LATE) {
     G2.restAsked = true;
     const ring = E?.els["#restRing"];
     if (ring) {
@@ -54223,8 +54273,8 @@ function restWaits() {
     }
     return true;
   }
-  report({ beat: beatNow(), kind: "ask_rest" }, R4.restVia === "mouse");
-  R4.restSeg = R4.seg.n;
+  report({ beat: beatNow(), kind: "ask_rest" }, R5.restVia === "mouse");
+  R5.restSeg = R5.seg.n;
   return false;
 }
 function startSegment(run, ck) {
@@ -54233,40 +54283,40 @@ function startSegment(run, ck) {
   const endMs = segmentSecondsOf(E.env.state(), E.env.registries, run, 30) * 1e3;
   const clock0 = G2.t - (ck.now - ck.startedAt);
   const first2 = Math2.max(0, Math2.floor((G2.t - clock0) / BEAT));
-  R4.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0, beats: plan.beats.length, endMs, flushed: false, reported: 0, entered: first2 };
-  R4.plan = plan.beats;
-  R4.acc = 0;
-  R4.accMs = 0;
+  R5.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0, beats: plan.beats.length, endMs, flushed: false, reported: 0, entered: first2 };
+  R5.plan = plan.beats;
+  R5.acc = 0;
+  R5.accMs = 0;
   G2.f = clamp43(100 * run.gauge / Math2.max(1, run.capacity) + (G2.resting > 0 ? JAW_REST / REST_MS * G2.resting : 0), 0, 100);
-  for (let b = 0; b < Math2.min(first2, plan.beats.length); b++) reportBeat(R4.seg.reported++, false);
+  for (let b = 0; b < Math2.min(first2, plan.beats.length); b++) reportBeat(R5.seg.reported++, false);
 }
 function absorb() {
   if (!E) return;
   const input = E.env.input;
   const v = input.value;
-  if (v === "" || G2.phase !== "loop" || v === R4.heard) return;
+  if (v === "" || G2.phase !== "loop" || v === R5.heard) return;
   input.value = "";
-  R4.heard = null;
+  R5.heard = null;
   for (const ch of v) onType({ key: ch, ctrlKey: false, metaKey: false, preventDefault: () => void 0 });
 }
 function enterBeat(b) {
-  const pb = R4.plan[b];
+  const pb = R5.plan[b];
   if (!pb || pb.order === void 0 && !pb.ask) return;
   refreshLines(b);
-  R4.move = { ...pb.order !== void 0 ? { order: pb.order } : {}, ...pb.orderMs !== void 0 ? { orderMs: pb.orderMs } : {}, ...pb.ask ? { ask: true } : {} };
+  R5.move = { ...pb.order !== void 0 ? { order: pb.order } : {}, ...pb.orderMs !== void 0 ? { orderMs: pb.orderMs } : {}, ...pb.ask ? { ask: true } : {} };
 }
 function before(now) {
   const e = E;
   if (last > now) last = now;
-  if (R4.lastNow > now) R4.lastNow = now;
+  if (R5.lastNow > now) R5.lastNow = now;
   const r = e.env.root.getBoundingClientRect();
   const w = e.env.root.clientWidth || r.width || globalThis.innerWidth || 0, h2 = e.env.root.clientHeight || r.height || globalThis.innerHeight || 0;
   if (w !== innerWidth2 || h2 !== innerHeight2) {
     innerWidth2 = w;
     innerHeight2 = h2;
   }
-  R4.ox = r.left;
-  R4.oy = r.top;
+  R5.ox = r.left;
+  R5.oy = r.top;
   S2.reduced = e.env.reduced;
   S2.readable = e.env.readable;
   e.box.toggleAttribute("data-reduced", S2.reduced);
@@ -54279,8 +54329,8 @@ function before(now) {
       strainInit();
     }
   }
-  const scene = R4.run ? e.env.spriteOf(R4.run.holderId) : null;
-  const src = R4.spriteSrc ?? scene?.getAttribute("src") ?? "";
+  const scene = R5.run ? e.env.spriteOf(R5.run.holderId) : null;
+  const src = R5.spriteSrc ?? scene?.getAttribute("src") ?? "";
   if (src !== "" && img.getAttribute("src") !== src) img.setAttribute("src", src);
   if (img.naturalWidth && img.style.width !== `${img.naturalWidth}px`) {
     img.style.width = `${img.naturalWidth}px`;
@@ -54289,20 +54339,20 @@ function before(now) {
   const bg = e.env.layers.backdrop.style.backgroundImage;
   const mine = e.els["#backdrop"];
   if (bg !== mine.style.backgroundImage) mine.style.backgroundImage = bg;
-  R4.mouthW = e.line.offsetWidth || 720;
-  R4.mouthY = e.line.offsetTop + e.line.offsetHeight / 2;
+  R5.mouthW = e.line.offsetWidth || 720;
+  R5.mouthY = e.line.offsetTop + e.line.offsetHeight / 2;
   const lr = e.line.getBoundingClientRect();
-  const centre2 = lr.height > 0 ? lr.top + lr.height / 2 - r.top + R4.lift : 0;
-  R4.lift = centre2 > 0 && innerHeight2 > 0 ? Math2.max(0, centre2 - (innerHeight2 - MOUTH_BOTTOM)) : 0;
+  const centre2 = lr.height > 0 ? lr.top + lr.height / 2 - r.top + R5.lift : 0;
+  R5.lift = centre2 > 0 && innerHeight2 > 0 ? Math2.max(0, centre2 - (innerHeight2 - MOUTH_BOTTOM)) : 0;
   placeMirror(e);
   const input = e.env.input;
   e.env.input.toggleAttribute("data-jaw-letters", spoken.length > 0 || input.value === "");
-  const run = R4.run;
+  const run = R5.run;
   const ck = e.env.staging.clock();
-  R4.running = run !== null && run.segment.state === "running" && run.segment.plan !== void 0 && ck.startedAt !== null;
-  if (G2.phase === "loop" && R4.running && (R4.seg === null || R4.seg.n !== run.segment.n || R4.seg.startedAt !== ck.startedAt)) startSegment(run, ck);
-  const seg = R4.seg;
-  if (R4.running && seg && !seg.flushed && G2.phase === "loop") {
+  R5.running = run !== null && run.segment.state === "running" && run.segment.plan !== void 0 && ck.startedAt !== null;
+  if (G2.phase === "loop" && R5.running && (R5.seg === null || R5.seg.n !== run.segment.n || R5.seg.startedAt !== ck.startedAt)) startSegment(run, ck);
+  const seg = R5.seg;
+  if (R5.running && seg && !seg.flushed && G2.phase === "loop") {
     const passed = Math2.floor((G2.t - seg.clock0) / BEAT);
     while (seg.entered <= Math2.min(passed, seg.beats - 1)) enterBeat(seg.entered++);
     while (seg.reported < Math2.min(passed, seg.beats)) reportBeat(seg.reported++, true);
@@ -54315,14 +54365,14 @@ function before(now) {
 function after(now) {
   const e = E;
   if (!e) return;
-  const dt = Math2.min(50, Math2.max(0, now - R4.lastNow));
-  R4.lastNow = now;
+  const dt = Math2.min(50, Math2.max(0, now - R5.lastNow));
+  R5.lastNow = now;
   if (G2.phase === "loop") {
-    R4.acc += (G2.resting > 0 ? 0 : G2.cost ?? RELAXED) * dt;
-    R4.accMs += dt;
+    R5.acc += (G2.resting > 0 ? 0 : G2.cost ?? RELAXED) * dt;
+    R5.accMs += dt;
   }
-  while (R4.teeth < G2.stats.teeth) {
-    R4.teeth += 1;
+  while (R5.teeth < G2.stats.teeth) {
+    R5.teeth += 1;
     report({ beat: beatNow(), kind: "bite", part: "teeth" }, true);
   }
   noteWrites(e.claims[0], ["height", "transform", "--ache", "border-color"]);
@@ -54350,10 +54400,10 @@ function liftReply(e) {
   const rr = reply.getBoundingClientRect(), lr = e.line.getBoundingClientRect();
   if (rr.height <= 0 || lr.height <= 0) return;
   const centre2 = lr.top + lr.height / 2;
-  const laidBottom = rr.bottom + R4.replyLift;
+  const laidBottom = rr.bottom + R5.replyLift;
   const lift2 = Math2.max(0, Math2.ceil(laidBottom - (centre2 - MOUTH_H[1] / 2 - REPLY_GAP)));
-  if (lift2 === R4.replyLift) return;
-  R4.replyLift = lift2;
+  if (lift2 === R5.replyLift) return;
+  R5.replyLift = lift2;
   writeClaimed(e.claims[2], "transform", lift2 > 0 ? `translateY(${-lift2}px)` : null);
 }
 var lastLine = null;
@@ -54458,22 +54508,22 @@ function bind(env, run) {
   reseed(fnv1a3(`${state.scene?.id ?? ""}|${run.id}|jaw`));
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S2.style = jawRowOf(lead);
-  R4.lineStyle = lead.key;
-  R4.manner = physicsMannerOf(state, run.holderId, reg);
-  R4.run = run;
-  R4.seg = null;
-  R4.running = false;
-  R4.plan = [];
-  R4.move = null;
-  R4.acc = 0;
-  R4.accMs = 0;
-  R4.teeth = 0;
-  R4.restSeg = null;
-  R4.restVia = "key";
-  R4.kept = [];
-  R4.heard = null;
-  R4.replyLift = 0;
-  R4.ended = null;
+  R5.lineStyle = lead.key;
+  R5.manner = physicsMannerOf(state, run.holderId, reg);
+  R5.run = run;
+  R5.seg = null;
+  R5.running = false;
+  R5.plan = [];
+  R5.move = null;
+  R5.acc = 0;
+  R5.accMs = 0;
+  R5.teeth = 0;
+  R5.restSeg = null;
+  R5.restVia = "key";
+  R5.kept = [];
+  R5.heard = null;
+  R5.replyLift = 0;
+  R5.ended = null;
   S2.contact = jawContactOf(run, reg) ?? "sole_to_mouth";
   S2.skill = state.commander.endurance?.[run.physicsId]?.level ?? 0;
   refreshLines(0);
@@ -54505,25 +54555,25 @@ function listen(env) {
     if (e.key === "Shift" && !G2.restKey) {
       G2.restKey = true;
       G2.restDown = performance2.now();
-      R4.restVia = "key";
+      R5.restVia = "key";
     }
   });
   env.listen(document, "keyup", (e) => {
-    if (e.key === "Shift" && R4.restVia === "key") G2.restKey = false;
+    if (e.key === "Shift" && R5.restVia === "key") G2.restKey = false;
   });
   env.listen(env.root, "pointerdown", (e) => {
     if (e.button === 2 && (onFrame(e.target) || onMouth(e.target))) {
       e.preventDefault();
       G2.restKey = true;
       G2.restDown = performance2.now();
-      R4.restVia = "mouse";
+      R5.restVia = "mouse";
     } else if (e.button === 0 && onFrame(e.target)) {
       e.preventDefault();
       setTimeout2(() => $("#cmd").focus(), 0);
     }
   });
   env.listen(document, "pointerup", (e) => {
-    if (e.button === 2 && R4.restVia === "mouse") G2.restKey = false;
+    if (e.button === 2 && R5.restVia === "mouse") G2.restKey = false;
   });
   env.listen(env.layers.frame, "contextmenu", (e) => e.preventDefault());
   env.listen(E.line, "contextmenu", (e) => e.preventDefault());
@@ -54546,14 +54596,14 @@ function stopJaw() {
   spoken.length = 0;
   lastLine = null;
   footLoaded = false;
-  R4.run = null;
-  R4.seg = null;
-  R4.running = false;
-  R4.plan = [];
-  R4.move = null;
-  R4.spriteSrc = null;
-  R4.replyLift = 0;
-  R4.heard = null;
+  R5.run = null;
+  R5.seg = null;
+  R5.running = false;
+  R5.plan = [];
+  R5.move = null;
+  R5.spriteSrc = null;
+  R5.replyLift = 0;
+  R5.heard = null;
   LINES2 = { neutral: noLines() };
   G2 = fresh();
   E = null;
@@ -54570,7 +54620,7 @@ function startJaw(env, run) {
   bind(env, run);
   listen(env);
   last = env.now();
-  R4.lastNow = last;
+  R5.lastNow = last;
   audioInit();
   if (A.ctx) loadSamples();
   begin();
@@ -54580,12 +54630,12 @@ function startJaw(env, run) {
   return {
     update(next) {
       if (E !== mine) return;
-      R4.run = next;
+      R5.run = next;
     },
     finish(end2) {
       if (E !== mine) return 0;
       if (G2.phase !== "loop") return 0;
-      R4.ended = end2.result;
+      R5.ended = end2.result;
       refreshLines(beatNow());
       finish3(end2.result === "stopped" ? "stop" : end2.result);
       return EXIT_MS;
@@ -67091,15 +67141,15 @@ var SHAPES = {
   slide(g, W3, H, o, s) {
     const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
     const d = s.slideDir;
-    const R11 = 1.08 * H, shift = (0.02 + oc * 0.3 + ex * 1.8) * H;
+    const R12 = 1.08 * H, shift = (0.02 + oc * 0.3 + ex * 1.8) * H;
     const cx = W3 / 2 - d * shift + s.sway * H * 6e-3, cy = H * (0.5 + s.slideY * 0.14);
     g.fillRect(0, 0, W3, H);
     g.globalCompositeOperation = "destination-out";
     g.beginPath();
-    g.arc(cx, cy, R11, 0, Math.PI * 2);
+    g.arc(cx, cy, R12, 0, Math.PI * 2);
     g.fill();
     g.globalCompositeOperation = "source-over";
-    const edgeX = d < 0 ? cx - R11 : cx + R11;
+    const edgeX = d < 0 ? cx - R12 : cx + R12;
     const lipX = d < 0 ? Math.max(edgeX, 0) : Math.min(edgeX, W3);
     return d < 0 ? { focus: [Math.max(0.06, edgeX / W3 * 0.5), cy / H], lip: [lipX / W3 + 6e-3, (cy - 0.25 * H) / H], text: [(lipX + 0.07 * H) / W3, (cy - 0.1 * H) / H], align: "left" } : { focus: [Math.min(0.94, 1 - (1 - edgeX / W3) * 0.5), cy / H], lip: [lipX / W3 - 6e-3, (cy - 0.25 * H) / H], text: [(lipX - 0.07 * H) / W3, (cy - 0.1 * H) / H], align: "right" };
   },
@@ -67269,9 +67319,9 @@ var S4 = {
   readable: false
 };
 var NO_LINES = { now: [], fake: [], early: [], greedy: [], low: [], released: [], entry: [], hold: [], tap: [], good: [], poor: [], stop: [], wake: [], again: [] };
-var R5 = { run: null, row: "neutral", overDelay: 1, seal: "tight", widthMs: 600, lines: NO_LINES, seg: null, manner: null, running: false, strain: null, via: "key", spriteBox: null, leaky: false };
-var st2 = () => ({ ...bendRow(STYLES3[R5.row], R5.manner, STYLE_KINDS2), seal: R5.seal, windowMs: R5.widthMs, overDelay: R5.overDelay });
-var L2 = () => R5.lines;
+var R6 = { run: null, row: "neutral", overDelay: 1, seal: "tight", widthMs: 600, lines: NO_LINES, seg: null, manner: null, running: false, strain: null, via: "key", spriteBox: null, leaky: false };
+var st2 = () => ({ ...bendRow(STYLES3[R6.row], R6.manner, STYLE_KINDS2), seal: R6.seal, windowMs: R6.widthMs, overDelay: R6.overDelay });
+var L2 = () => R6.lines;
 var A2 = { ctx: null };
 function audioInit2() {
   if (A2.ctx) return;
@@ -67548,7 +67598,7 @@ function scheduleWindow(at2, opts = {}) {
   const fire = () => {
     const b = beatAt(e.at);
     if (G3.win) closeWindow();
-    R5.widthMs = opts.widthMs ?? s.windowMs;
+    R6.widthMs = opts.widthMs ?? s.windowMs;
     refreshLines2(b);
     openWindow(isFalse, mode === "none" || opts.quiet === true);
     G3.win.beat = b;
@@ -67795,7 +67845,7 @@ function frame2(now) {
       break;
     }
     case "loop":
-      if (R5.running) updateLoop(dt);
+      if (R6.running) updateLoop(dt);
       break;
     case "exit": {
       const p = G3.phaseT / 1700;
@@ -67932,7 +67982,7 @@ function render2(now, dt) {
   const img2 = $2("#her");
   if (img2.naturalWidth) {
     const vw = innerWidth3, vh = innerHeight3, nw = img2.naturalWidth, nh = img2.naturalHeight;
-    const box = R5.spriteBox;
+    const box = R6.spriteBox;
     const Hn = box ? box.h : vh * 0.96, Sn = Hn / nh, Wn = nw * Sn;
     const faceN = box ? [box.x + S4.face.x * Wn, box.y + S4.face.y * Hn] : [vw * 0.5 - Wn / 2 + S4.face.x * Wn, vh - Hn + vh * 0.05 + S4.face.y * Hn];
     const Sc = vh * S4.zoom / nh;
@@ -68047,17 +68097,17 @@ function breatheUp() {
   inhaleStop();
 }
 function tapReleases() {
-  if (!E2 || !R5.run) return false;
-  const holds6 = effectiveHoldsUntil(E2.env.state(), E2.env.registries, R5.run.holderId);
-  return holds6 === "signal" || holds6 === "limit" && R5.run.taps > 0;
+  if (!E2 || !R6.run) return false;
+  const holds6 = effectiveHoldsUntil(E2.env.state(), E2.env.registries, R6.run.holderId);
+  return holds6 === "signal" || holds6 === "limit" && R6.run.taps > 0;
 }
 function beatAt(at2) {
-  const seg = R5.seg;
+  const seg = R6.seg;
   if (!seg) return 0;
   return clamp43(Math3.round((at2 - seg.clock0) / BEAT2), 0, seg.beats - 1);
 }
 function beatNow2() {
-  const seg = R5.seg;
+  const seg = R6.seg;
   if (!seg) return 0;
   return clamp43(Math3.floor((G3.clock - seg.clock0) / BEAT2), 0, seg.beats - 1);
 }
@@ -68074,13 +68124,13 @@ function refreshLines2(beat) {
   for (const [k, cue] of VOICED) lines3[k] = voiced(k, cue);
   if (lines3.fake.length === 0) lines3.fake = void 0;
   if (lines3.again.length === 0) lines3.again = void 0;
-  R5.lines = lines3;
+  R6.lines = lines3;
 }
 var BREATH_KINDS = ["greedy", "entry", "now", "hold", "early", "tap", "low", "good", "poor", "released", "stop", "wake", "fake", "again"];
 var VOICED = [["now", "window_open"], ["fake", "window_false"], ["greedy", "greedy"], ["low", "warning"]];
 function report2(i) {
-  if (!E2 || !R5.seg) return;
-  E2.env.staging.input(i, { pointer: R5.via === "mouse" });
+  if (!E2 || !R6.seg) return;
+  E2.env.staging.input(i, { pointer: R6.via === "mouse" });
 }
 function reportWindow(w) {
   if (w.reported || w.beat === void 0) return;
@@ -68093,15 +68143,15 @@ function reportWindow(w) {
 }
 function strained(amount) {
   if (amount >= 1) {
-    if (R5.strain?.sent) return;
+    if (R6.strain?.sent) return;
     const beat = beatNow2();
-    R5.strain = { beat, amount: 1, sent: true };
+    R6.strain = { beat, amount: 1, sent: true };
     refreshLines2(beat);
     report2({ beat, kind: "strain", amount: 1 });
-  } else if (!R5.strain) R5.strain = { beat: beatNow2(), amount: 0.5, sent: false };
+  } else if (!R6.strain) R6.strain = { beat: beatNow2(), amount: 0.5, sent: false };
 }
 function flushStrain() {
-  const s = R5.strain;
+  const s = R6.strain;
   if (s && !s.sent) {
     s.sent = true;
     report2({ beat: s.beat, kind: "strain", amount: s.amount });
@@ -68110,23 +68160,23 @@ function flushStrain() {
 function schedulePlan(run, ck) {
   const plan = run.segment.plan;
   cancelWindows();
-  if (G3.win && R5.seg) G3.win = null;
+  if (G3.win && R6.seg) G3.win = null;
   const phys = E2.env.registries.contactPhysics.get(run.physicsId);
   const endMs = segmentSecondsOf(E2.env.state(), E2.env.registries, run, 20) * 1e3;
-  R5.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0: G3.clock - (ck.now - ck.startedAt), beats: plan.beats.length, endMs, flushed: false };
-  R5.strain = null;
+  R6.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0: G3.clock - (ck.now - ck.startedAt), beats: plan.beats.length, endMs, flushed: false };
+  R6.strain = null;
   G3.air = clamp43(run.gauge / run.capacity * 100, 0, 100);
   refreshLines2(0);
   let after9 = G3.clock;
   for (const o of effectiveOpenings(plan, [], styleKey())) {
-    const at2 = R5.seg.clock0 + o.beat * BEAT2;
+    const at2 = R6.seg.clock0 + o.beat * BEAT2;
     const cue = plan.beats[o.beat]?.cue;
     scheduleWindow(at2, { ...o.false ? { false: true } : {}, widthMs: o.widthMs, quiet: cue !== "window_open" && cue !== "window_false", after: after9 });
     const r = st2();
     after9 = Math3.max(after9, at2 + (r.snappy ? 110 : 260) + o.widthMs * S4.wmul + (r.snappy ? 140 : 320));
   }
 }
-var styleKey = () => E2 && R5.run ? leadStyle(physicsStyleOf(E2.env.state(), R5.run.holderId, E2.env.registries)).key : "neutral";
+var styleKey = () => E2 && R6.run ? leadStyle(physicsStyleOf(E2.env.state(), R6.run.holderId, E2.env.registries)).key : "neutral";
 function before2() {
   const e = E2;
   const r = e.env.root.getBoundingClientRect();
@@ -68142,7 +68192,7 @@ function before2() {
   e.box.toggleAttribute("data-readable", S4.readable);
   e.mirror.toggleAttribute("data-readable", S4.readable);
   if (!A2.ctx) audioInit2();
-  const scene = R5.run ? e.env.spriteOf(R5.run.holderId) : null;
+  const scene = R6.run ? e.env.spriteOf(R6.run.holderId) : null;
   const her = e.els["#her"];
   const src = scene?.getAttribute("src") ?? "";
   if (src !== "" && her.getAttribute("src") !== src) her.setAttribute("src", src);
@@ -68151,24 +68201,24 @@ function before2() {
     her.style.height = `${her.naturalHeight}px`;
   }
   const sb = scene?.getBoundingClientRect();
-  R5.spriteBox = sb && sb.height > 0 ? { x: sb.left - r.left, y: sb.top - r.top, h: sb.height } : null;
+  R6.spriteBox = sb && sb.height > 0 ? { x: sb.left - r.left, y: sb.top - r.top, h: sb.height } : null;
   const bg = e.env.layers.backdrop.style.backgroundImage;
   const mine = e.els["#backdrop"];
   if (bg !== mine.style.backgroundImage) mine.style.backgroundImage = bg;
   const input = e.env.input;
   if (input.value !== letters.prev) letters.sync();
   placeMirror2(e);
-  const run = R5.run;
+  const run = R6.run;
   const ck = e.env.staging.clock();
-  R5.running = run !== null && run.segment.state === "running" && run.segment.plan !== void 0 && ck.startedAt !== null;
-  if (G3.phase === "loop" && R5.running && (R5.seg === null || R5.seg.n !== run.segment.n || R5.seg.startedAt !== ck.startedAt)) schedulePlan(run, ck);
-  if (R5.running && R5.seg && !R5.seg.flushed && G3.clock - R5.seg.clock0 >= R5.seg.endMs - 300) {
-    R5.seg.flushed = true;
+  R6.running = run !== null && run.segment.state === "running" && run.segment.plan !== void 0 && ck.startedAt !== null;
+  if (G3.phase === "loop" && R6.running && (R6.seg === null || R6.seg.n !== run.segment.n || R6.seg.startedAt !== ck.startedAt)) schedulePlan(run, ck);
+  if (R6.running && R6.seg && !R6.seg.flushed && G3.clock - R6.seg.clock0 >= R6.seg.endMs - 300) {
+    R6.seg.flushed = true;
     if (G3.win) reportWindow(G3.win);
     flushStrain();
   }
   const gap = e.els["#gap"];
-  const showGap = R5.leaky && G3.phase === "loop";
+  const showGap = R6.leaky && G3.phase === "loop";
   gap.style.opacity = showGap ? "0.85" : "0";
   gap.style.pointerEvents = showGap ? "auto" : "none";
   gap.style.left = `${clamp43(G3.lip[0], 0.03, 0.97) * innerWidth3}px`;
@@ -68295,18 +68345,18 @@ function bind2(env, run) {
   seed2 = fnv1a3(`${state.scene?.id ?? ""}|${run.id}|breath`) >>> 0 || 2463534242;
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S4.style = lead.key;
-  R5.row = lead.key in STYLES3 ? lead.key : ROW_BY_CUES[lead.cues] ?? "neutral";
-  R5.overDelay = overDelayOf(lead.key);
-  R5.manner = physicsMannerOf(state, run.holderId, reg);
-  R5.run = run;
-  R5.seal = run.seal ?? "tight";
-  R5.leaky = run.seal === "leaky";
-  R5.widthMs = STYLES3[R5.row].windowMs;
-  R5.seg = null;
-  R5.running = false;
-  R5.strain = null;
-  R5.via = "key";
-  R5.spriteBox = null;
+  R6.row = lead.key in STYLES3 ? lead.key : ROW_BY_CUES[lead.cues] ?? "neutral";
+  R6.overDelay = overDelayOf(lead.key);
+  R6.manner = physicsMannerOf(state, run.holderId, reg);
+  R6.run = run;
+  R6.seal = run.seal ?? "tight";
+  R6.leaky = run.seal === "leaky";
+  R6.widthMs = STYLES3[R6.row].windowMs;
+  R6.seg = null;
+  R6.running = false;
+  R6.strain = null;
+  R6.via = "key";
+  R6.spriteBox = null;
   const k = 100 / Math3.max(1, run.capacity);
   BEAT2 = TUNING.physics.beatMs;
   DRAIN = TUNING.physics.breath.drain * k;
@@ -68358,8 +68408,8 @@ function listen2(env) {
     if (e.key === " ") {
       e.preventDefault();
       if (!e.repeat) {
-        R5.via = "key";
-        R5.strain = null;
+        R6.via = "key";
+        R6.strain = null;
         breatheDown();
       }
     } else if (e.key === "t" || e.key === "T") tap();
@@ -68375,8 +68425,8 @@ function listen2(env) {
     const t = e.target;
     if (!t || t !== env.layers.frame && !env.layers.frame.contains(t)) return;
     e.preventDefault();
-    R5.via = "mouse";
-    R5.strain = null;
+    R6.via = "mouse";
+    R6.strain = null;
     breatheDown();
   });
   env.listen(document, "mouseup", (e) => {
@@ -68393,8 +68443,8 @@ function listen2(env) {
   env.listen(E2.els["#gap"], "mousedown", (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (G3.phase !== "loop" || !R5.leaky || !R5.running) return;
-    R5.via = "mouse";
+    if (G3.phase !== "loop" || !R6.leaky || !R6.running) return;
+    R6.via = "mouse";
     report2({ beat: beatNow2(), kind: "gap_breath" });
     SFX2.sip();
   });
@@ -68443,11 +68493,11 @@ function stopBreath() {
   countEl = null;
   lastLine2 = null;
   window2.__forceO = null;
-  R5.run = null;
-  R5.seg = null;
-  R5.running = false;
-  R5.strain = null;
-  R5.lines = NO_LINES;
+  R6.run = null;
+  R6.seg = null;
+  R6.running = false;
+  R6.strain = null;
+  R6.lines = NO_LINES;
   G3 = fresh2();
   E2 = null;
 }
@@ -68468,9 +68518,9 @@ function startBreath(env, run) {
   return {
     update(next) {
       if (E2 !== mine) return;
-      R5.run = next;
-      R5.seal = next.seal ?? R5.seal;
-      R5.leaky = next.seal === "leaky";
+      R6.run = next;
+      R6.seal = next.seal ?? R6.seal;
+      R6.leaky = next.seal === "leaky";
     },
     finish(end2) {
       if (E2 !== mine) return 0;
@@ -68647,7 +68697,7 @@ var S5 = {
   roomTone: true
 };
 var NO_LINES2 = { entry: [], released: [], slip: [], caught: [], heavy: [], good: [], poor: [], fall: [], stop: [], longer: [], announce: [] };
-var R6 = {
+var R7 = {
   run: null,
   face: "down",
   legs: false,
@@ -68671,9 +68721,9 @@ var R6 = {
   spriteSrc: "",
   overFit: null
 };
-var C2 = () => ({ face: R6.face, weight: 1, shift: 1 });
-var ST = () => bendRow(STYLES4[S5.style], R6.manner, STYLE_KINDS3);
-var L3 = () => R6.lines;
+var C2 = () => ({ face: R7.face, weight: 1, shift: 1 });
+var ST = () => bendRow(STYLES4[S5.style], R7.manner, STYLE_KINDS3);
+var L3 = () => R7.lines;
 var A3 = { ctx: null };
 function audioInit3() {
   if (A3.ctx) return;
@@ -68937,7 +68987,7 @@ function planShift(opts) {
   if (st3.announce) say4(pick5(L3().announce.slice(0, 1).concat(target < G4.cop ? L3().announce.slice(1, 2) : L3().announce.slice(2, 3))));
   if (tele > 0) {
     G4.leanTarget = isFeint ? dir * 0.8 : Math4.sign(target - G4.cop) * 0.9;
-    const side = Math4.sign(G4.leanTarget) * 0.85, foot2 = R6.face === "down" && !R6.legs;
+    const side = Math4.sign(G4.leanTarget) * 0.85, foot2 = R7.face === "down" && !R7.legs;
     SFX3.rustle(foot2 ? 0.1 : 0.06, side);
     if (foot2) SFX3.creak(0.28, 0.12, side);
   }
@@ -68995,13 +69045,13 @@ function slip() {
     crack(0.8);
     SFX3.creak(0.5, 0.22);
     if (G4.slips === 1 || Math4.random() < 0.5) say4(pick5(L3().slip));
-    R6.segSlips += 1;
-    if (R6.segSlips === 1) setTimeout4(() => say4(pick5(L3().longer)), 900);
+    R7.segSlips += 1;
+    if (R7.segSlips === 1) setTimeout4(() => say4(pick5(L3().longer)), 900);
     THRONE.slipped();
   }
 }
 function relief() {
-  if (G4.phase !== "loop" || G4.reliefCd > 0 || !R6.running) return;
+  if (G4.phase !== "loop" || G4.reliefCd > 0 || !R7.running) return;
   G4.reliefCd = 2600;
   G4.reliefs += 1;
   SFX3.creak(0.22, 0.1);
@@ -69051,7 +69101,7 @@ function exit2(reason) {
 }
 function updateLoop2(dt) {
   G4.clock += dt;
-  const beatNow5 = Math4.floor((G4.clock - R6.seg.clock0) / BEAT3);
+  const beatNow5 = Math4.floor((G4.clock - R7.seg.clock0) / BEAT3);
   while (G4.beat < beatNow5) {
     onBeat();
     planBeat();
@@ -69060,14 +69110,14 @@ function updateLoop2(dt) {
     G4.str = Math4.min(100, G4.str + dt * 4e-3);
     return;
   }
-  if (!HOLD2.on && !G4.slipThisBeat && G4.clock > BEAT3 && !R6.seg.flushed) slip();
-  if (G4.pressureUntil < G4.clock) G4.pressure = R6.pressure;
+  if (!HOLD2.on && !G4.slipThisBeat && G4.clock > BEAT3 && !R7.seg.flushed) slip();
+  if (G4.pressureUntil < G4.clock) G4.pressure = R7.pressure;
   const c = C2();
   const err = G4.cop - G4.ctl;
   const unevenMult = S5.unevenCost ? 1 + 1.2 * Math4.max(0, Math4.abs(err) - S5.tol * 0.5) : 1;
   G4.str -= W_DRAIN / BEAT3 * dt * S5.drain * c.weight * G4.pressure * unevenMult;
-  R6.uneven.sum += (unevenMult - 1) * dt;
-  R6.uneven.ms += dt;
+  R7.uneven.sum += (unevenMult - 1) * dt;
+  R7.uneven.ms += dt;
   if (G4.shift && !G4.shift.landed && G4.clock >= G4.shift.landAt) landShift();
   G4.reliefCd = Math4.max(0, G4.reliefCd - dt);
   G4.tapCd -= dt;
@@ -69108,7 +69158,7 @@ function frame3(now) {
       }
       break;
     case "loop":
-      if (R6.running) updateLoop2(dt);
+      if (R7.running) updateLoop2(dt);
       break;
     case "exit":
       G4.cam = 1 - easeOut2(G4.phaseT / 1500);
@@ -69203,7 +69253,7 @@ function drawFloor2(now) {
   const live3 = G4.phase === "loop" || G4.phase === "entry";
   const att = live3 ? { busy: 1, glancing: 0.45 + 0.25 * Math4.sin(now / 90), watching: 0.05 }[G4.att] : 0;
   const flick = 0.85 + 0.15 * Math4.sin(now / 130) * Math4.sin(now / 47);
-  const px = W3 * (0.5 + G4.cop * 0.1 + G4.lean * 0.16), py = H * (!R6.legs ? 0.24 : 0.3);
+  const px = W3 * (0.5 + G4.cop * 0.1 + G4.lean * 0.16), py = H * (!R7.legs ? 0.24 : 0.3);
   sctx.filter = `blur(${Math4.round(H * 0.07)}px)`;
   sctx.globalCompositeOperation = "lighter";
   sctx.fillStyle = `rgba(120,170,255,${(0.34 * att * flick * G4.cam).toFixed(3)})`;
@@ -69213,7 +69263,7 @@ function drawFloor2(now) {
   sctx.globalCompositeOperation = "source-over";
   sctx.filter = "none";
   shC.dataset.screen = att.toFixed(2);
-  if (!R6.legs) return;
+  if (!R7.legs) return;
   const t = now / 1e3;
   const reading2 = live3 && G4.att === "busy";
   lctx.clearRect(0, 0, W3, H);
@@ -69337,29 +69387,29 @@ var letters2 = {
 };
 var typing3 = (t) => t && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
 function segBeat() {
-  const seg = R6.seg;
+  const seg = R7.seg;
   if (!seg) return 0;
   return clamp43(Math4.floor((G4.clock - seg.clock0) / BEAT3), 0, seg.beats - 1);
 }
 function graceOf(beat) {
-  return beat < 0 || R6.seg !== null && R6.seg.clock0 + (beat + 1) * BEAT3 <= BEAT3;
+  return beat < 0 || R7.seg !== null && R7.seg.clock0 + (beat + 1) * BEAT3 <= BEAT3;
 }
 function planBeat() {
-  const b = R6.run?.segment.plan?.beats[G4.beat];
+  const b = R7.run?.segment.plan?.beats[G4.beat];
   if (b) G4.att = b.attention;
 }
 function report3(i) {
-  if (!E3 || !R6.seg || i.beat < 0 || i.beat >= R6.seg.beats) return;
+  if (!E3 || !R7.seg || i.beat < 0 || i.beat >= R7.seg.beats) return;
   const key = `${i.beat}|${i.kind}${i.kind === "ask_rest" && i.part !== void 0 ? `|${i.part}` : ""}`;
-  if (R6.sent.has(key)) return;
-  R6.sent.add(key);
-  R6.inputs.push(i);
-  E3.env.staging.input(i, { pointer: R6.via === "mouse" });
+  if (R7.sent.has(key)) return;
+  R7.sent.add(key);
+  R7.inputs.push(i);
+  E3.env.staging.input(i, { pointer: R7.via === "mouse" });
 }
 function reportBeat2(beat, held3, even) {
-  const u = R6.uneven;
+  const u = R7.uneven;
   const amount = u.ms > 0 ? Math4.round(u.sum / u.ms * 1e3) / 1e3 : 0;
-  R6.uneven = { sum: 0, ms: 0 };
+  R7.uneven = { sum: 0, ms: 0 };
   if (beat < 0) return;
   if (held3) report3({ beat, kind: "hold" });
   report3({ beat, kind: "uneven", amount, ...held3 && !even ? { part: "tilted" } : {} });
@@ -69368,12 +69418,12 @@ function schedulePlan2(run, ck) {
   const plan = run.segment.plan;
   const phys = E3.env.registries.contactPhysics.get(run.physicsId);
   const endMs = segmentSecondsOf(E3.env.state(), E3.env.registries, run, 30) * 1e3;
-  R6.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0: G4.clock - (ck.now - ck.startedAt), beats: plan.beats.length, endMs, flushed: false };
-  R6.sent = /* @__PURE__ */ new Set();
-  R6.inputs = [];
-  R6.uneven = { sum: 0, ms: 0 };
-  R6.segSlips = 0;
-  R6.queue = [];
+  R7.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0: G4.clock - (ck.now - ck.startedAt), beats: plan.beats.length, endMs, flushed: false };
+  R7.sent = /* @__PURE__ */ new Set();
+  R7.inputs = [];
+  R7.uneven = { sum: 0, ms: 0 };
+  R7.segSlips = 0;
+  R7.queue = [];
   G4.beat = -1;
   G4.held = [];
   G4.even = [];
@@ -69385,12 +69435,12 @@ function schedulePlan2(run, ck) {
   const shifts = plan.beats.flatMap((b, i) => b.shift !== void 0 ? [i] : []);
   let prev = -1;
   for (const b of shifts) {
-    const landAt = R6.seg.clock0 + Math4.min((b + 1) * BEAT3, endMs - 300) + 30;
+    const landAt = R7.seg.clock0 + Math4.min((b + 1) * BEAT3, endMs - 300) + 30;
     if (st3.feint > 0 && Math4.random() < st3.feint) {
       const mid2 = Math4.round((prev + b) / 2);
       if (mid2 - prev >= 2 && b - mid2 >= 1) {
         const tele2 = rand2(st3.tele[0], st3.tele[1]);
-        push2(R6.seg.clock0 + mid2 * BEAT3 - tele2, () => planShift({ tele: tele2, feint: true, cost: 0 }));
+        push2(R7.seg.clock0 + mid2 * BEAT3 - tele2, () => planShift({ tele: tele2, feint: true, cost: 0 }));
       }
     }
     const tele = rand2(st3.tele[0], st3.tele[1]);
@@ -69403,13 +69453,13 @@ function schedulePlan2(run, ck) {
   }
 }
 function push2(at2, fn) {
-  R6.queue.push({ at: at2, fn });
-  R6.queue.sort((a, b) => a.at - b.at);
+  R7.queue.push({ at: at2, fn });
+  R7.queue.sort((a, b) => a.at - b.at);
 }
 function refreshLines3(beat) {
   if (!E3) return;
   const env = E3.env;
-  const own = (k) => [...voiceLines2(env.registries, `weight.${k}`, R6.lineStyle)];
+  const own = (k) => [...voiceLines2(env.registries, `weight.${k}`, R7.lineStyle)];
   const voiced = (k, cue) => {
     const v = env.staging.voiced?.(cue, beat) ?? null;
     return v ? [v] : own(k);
@@ -69417,8 +69467,8 @@ function refreshLines3(beat) {
   const lines3 = {};
   for (const k of WEIGHT_KINDS) lines3[k] = own(k);
   for (const [k, cue] of VOICED2) lines3[k] = voiced(k, cue);
-  lines3.entry = R6.run && R6.run.sourceKind === "contact" ? [...voiceLines2(env.registries, `weight.entry.${R6.run.sourceId}`, R6.lineStyle)] : [];
-  R6.lines = lines3;
+  lines3.entry = R7.run && R7.run.sourceKind === "contact" ? [...voiceLines2(env.registries, `weight.entry.${R7.run.sourceId}`, R7.lineStyle)] : [];
+  R7.lines = lines3;
 }
 var WEIGHT_KINDS = ["released", "slip", "caught", "heavy", "good", "poor", "fall", "stop", "longer", "announce"];
 var VOICED2 = [["heavy", "press"]];
@@ -69452,11 +69502,11 @@ function before3() {
   e.mirror.toggleAttribute("data-readable", S5.readable);
   if (!A3.ctx) audioInit3();
   if (!e.core) {
-    const scene = R6.run ? e.env.spriteOf(R6.run.holderId) : null;
+    const scene = R7.run ? e.env.spriteOf(R7.run.holderId) : null;
     const src = scene?.getAttribute("src") ?? "";
     const her = e.els["#her"];
-    if (src !== "" && src !== R6.spriteSrc) {
-      R6.spriteSrc = src;
+    if (src !== "" && src !== R7.spriteSrc) {
+      R7.spriteSrc = src;
       her.setAttribute("src", src);
     }
     for (const img2 of [her, e.els["#over"]]) {
@@ -69466,14 +69516,14 @@ function before3() {
       }
     }
   }
-  const run = R6.run;
+  const run = R7.run;
   const ck = e.env.staging.clock();
-  R6.running = run !== null && run.segment.state === "running" && run.segment.plan !== void 0 && ck.startedAt !== null;
-  if (G4.phase === "loop" && R6.running && (R6.seg === null || R6.seg.n !== run.segment.n || R6.seg.startedAt !== ck.startedAt)) schedulePlan2(run, ck);
-  while (R6.running && R6.queue.length && R6.queue[0].at <= G4.clock) R6.queue.shift().fn();
-  if (R6.running && R6.seg && !R6.seg.flushed && G4.clock - R6.seg.clock0 >= R6.seg.endMs - 300) {
-    R6.seg.flushed = true;
-    if (G4.beat < R6.seg.beats) {
+  R7.running = run !== null && run.segment.state === "running" && run.segment.plan !== void 0 && ck.startedAt !== null;
+  if (G4.phase === "loop" && R7.running && (R7.seg === null || R7.seg.n !== run.segment.n || R7.seg.startedAt !== ck.startedAt)) schedulePlan2(run, ck);
+  while (R7.running && R7.queue.length && R7.queue[0].at <= G4.clock) R7.queue.shift().fn();
+  if (R7.running && R7.seg && !R7.seg.flushed && G4.clock - R7.seg.clock0 >= R7.seg.endMs - 300) {
+    R7.seg.flushed = true;
+    if (G4.beat < R7.seg.beats) {
       onBeat();
       planBeat();
     }
@@ -69486,10 +69536,10 @@ function clearReply(e) {
   const vial = e.els["#vial"];
   const text3 = replyTextTop(e.env.reply);
   if (text3 === null) return;
-  const laid = vial.getBoundingClientRect().bottom + R6.vialLift;
+  const laid = vial.getBoundingClientRect().bottom + R7.vialLift;
   const lift2 = Math4.max(0, Math4.ceil(laid - (text3 - 6)));
-  if (Math4.abs(lift2 - R6.vialLift) < 2) return;
-  R6.vialLift = lift2;
+  if (Math4.abs(lift2 - R7.vialLift) < 2) return;
+  R7.vialLift = lift2;
   vial.style.marginBottom = lift2 > 0 ? `${lift2}px` : "";
 }
 function replyTextTop(reply) {
@@ -69598,25 +69648,25 @@ function bind3(env, run) {
   seed3 = fnv1a3(`${state.scene?.id ?? ""}|${run.id}|weight`) >>> 0 || 2463534242;
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S5.style = lead.key in STYLES4 ? lead.key : ROW_BY_CUES2[lead.cues] ?? "neutral";
-  R6.lineStyle = lead.key;
-  R6.run = run;
+  R7.lineStyle = lead.key;
+  R7.run = run;
   const contact = run.sourceKind === "contact" ? reg.blockingContacts.get(run.sourceId) : void 0;
-  R6.face = contactFaceOf(contact);
-  R6.legs = R6.face === "down" && herLegsOf(contact) === "hang";
-  R6.pressure = run.pressure ?? 1;
-  R6.manner = physicsMannerOf(state, run.holderId, reg);
-  R6.seg = null;
-  R6.running = false;
-  R6.queue = [];
-  R6.sent = /* @__PURE__ */ new Set();
-  R6.uneven = { sum: 0, ms: 0 };
-  R6.via = "key";
-  R6.segSlips = 0;
-  R6.taps = run.taps;
-  R6.tapped = false;
-  R6.synced = -1;
-  R6.vialLift = 0;
-  R6.spriteSrc = "";
+  R7.face = contactFaceOf(contact);
+  R7.legs = R7.face === "down" && herLegsOf(contact) === "hang";
+  R7.pressure = run.pressure ?? 1;
+  R7.manner = physicsMannerOf(state, run.holderId, reg);
+  R7.seg = null;
+  R7.running = false;
+  R7.queue = [];
+  R7.sent = /* @__PURE__ */ new Set();
+  R7.uneven = { sum: 0, ms: 0 };
+  R7.via = "key";
+  R7.segSlips = 0;
+  R7.taps = run.taps;
+  R7.tapped = false;
+  R7.synced = -1;
+  R7.vialLift = 0;
+  R7.spriteSrc = "";
   const k = 100 / Math4.max(1, run.capacity);
   BEAT3 = TUNING.physics.beatMs;
   W_DRAIN = TUNING.physics.weight.drain * k;
@@ -69625,10 +69675,10 @@ function bind3(env, run) {
   S5.face = env.art.face(run.holderId) ?? { x: 0.5, y: 0.21 };
   const over2 = E3.core ? null : env.art.get(run.holderId, "over");
   const fit2 = over2?.sidecar.fit;
-  R6.overFit = over2 ? { height: fit2?.height ?? 1.04, x: fit2?.x ?? 0.5, sink: fit2?.sink ?? 0 } : null;
-  S5.overH = R6.overFit?.height ?? 1.04;
-  S5.overX = R6.overFit?.x ?? 0.5;
-  S5.overSink = R6.overFit?.sink ?? 0;
+  R7.overFit = over2 ? { height: fit2?.height ?? 1.04, x: fit2?.x ?? 0.5, sink: fit2?.sink ?? 0 } : null;
+  S5.overH = R7.overFit?.height ?? 1.04;
+  S5.overX = R7.overFit?.x ?? 0.5;
+  S5.overSink = R7.overFit?.sink ?? 0;
   const overEl = E3.els["#over"];
   if (over2) {
     overEl.onerror = () => {
@@ -69640,7 +69690,7 @@ function bind3(env, run) {
   if (!E3.core) {
     const owner = state.scene?.participants.find((id) => state.squad.some((u) => u.id === id)) ?? null;
     const loc = state.scene?.locationId ?? "";
-    surface(env, E3.els[R6.face === "down" ? "#floor" : "#ceiling"], R6.face === "down" ? floorOf2(state, reg, loc, owner) : ceilingOf(state, reg, loc, owner));
+    surface(env, E3.els[R7.face === "down" ? "#floor" : "#ceiling"], R7.face === "down" ? floorOf2(state, reg, loc, owner) : ceilingOf(state, reg, loc, owner));
   }
   const look = env.her(run.holderId);
   E3.box.style.setProperty("--alius-her", look.accent);
@@ -69685,11 +69735,11 @@ function listen3(env) {
       e.preventDefault();
       keySpace = true;
       if (!e.repeat) {
-        R6.via = "key";
+        R7.via = "key";
         HOLD2.on = true;
       }
     } else if (e.key === "t" || e.key === "T") {
-      R6.tapped = true;
+      R7.tapped = true;
       env.tap?.();
     }
   });
@@ -69703,7 +69753,7 @@ function listen3(env) {
     if (!onFrame(e.target)) return;
     e.preventDefault();
     if (e.button === 0) {
-      R6.via = "mouse";
+      R7.via = "mouse";
       HOLD2.on = true;
     } else if (e.button === 2) relief();
   });
@@ -69734,13 +69784,13 @@ function stopWeight() {
   lastLine3 = null;
   HOLD2.on = false;
   mouseX = 0.5;
-  R6.run = null;
-  R6.seg = null;
-  R6.running = false;
-  R6.queue = [];
-  R6.sent = /* @__PURE__ */ new Set();
-  R6.lines = NO_LINES2;
-  R6.steady = null;
+  R7.run = null;
+  R7.seg = null;
+  R7.running = false;
+  R7.queue = [];
+  R7.sent = /* @__PURE__ */ new Set();
+  R7.lines = NO_LINES2;
+  R7.steady = null;
   G4 = fresh3();
   E3 = null;
 }
@@ -69752,7 +69802,7 @@ function startWeight(env, run, opts = {}) {
   innerWidth4 = 0;
   innerHeight4 = 0;
   S5.roomTone = opts.roomTone ?? !core;
-  R6.steady = opts.steady ?? null;
+  R7.steady = opts.steady ?? null;
   bind3(env, run);
   if (opts.keys ?? !core) listen3(env);
   else env.listen(env.input, "input", () => {
@@ -69766,21 +69816,21 @@ function startWeight(env, run, opts = {}) {
   return {
     update(next) {
       if (E3 !== mine) return;
-      if (next.segment.state === "held" && R6.seg !== null && R6.seg.n === next.segment.n && R6.synced !== next.segment.n) {
-        R6.synced = next.segment.n;
+      if (next.segment.state === "held" && R7.seg !== null && R7.seg.n === next.segment.n && R7.synced !== next.segment.n) {
+        R7.synced = next.segment.n;
         G4.str = clamp43(next.gauge / Math4.max(1, next.capacity) * 100, 0, 100);
       }
-      if (next.taps > R6.taps) {
-        R6.taps = next.taps;
-        R6.tapped = false;
+      if (next.taps > R7.taps) {
+        R7.taps = next.taps;
+        R7.tapped = false;
       }
-      R6.run = next;
+      R7.run = next;
       const pressure = next.pressure ?? 1;
-      if (pressure > R6.pressure) {
-        R6.pressure = pressure;
+      if (pressure > R7.pressure) {
+        R7.pressure = pressure;
         refreshLines3(0);
         heavier();
-      } else R6.pressure = pressure;
+      } else R7.pressure = pressure;
     },
     finish(end2) {
       if (E3 !== mine) return 0;
@@ -69794,12 +69844,12 @@ function startWeight(env, run, opts = {}) {
     },
     hold(on, via) {
       if (E3 !== mine) return;
-      if (on) R6.via = via;
+      if (on) R7.via = via;
       HOLD2.on = on;
     },
     shift(via) {
       if (E3 !== mine) return;
-      R6.via = via;
+      R7.via = via;
       relief();
     },
     balance(x) {
@@ -69808,16 +69858,16 @@ function startWeight(env, run, opts = {}) {
   };
 }
 function releasedAtLimit() {
-  const run = R6.run;
+  const run = R7.run;
   if (!E3 || !run) return false;
   const state = E3.env.state(), reg = E3.env.registries;
   const holds6 = effectiveHoldsUntil(state, reg, run.holderId);
-  if (R6.tapped && (holds6 === "signal" || holds6 === "limit" && run.taps > 0)) return true;
+  if (R7.tapped && (holds6 === "signal" || holds6 === "limit" && run.taps > 0)) return true;
   const at2 = holds6 === "signal" ? TUNING.physics.releaseAt.signal : holds6 === "limit" ? TUNING.physics.releaseAt.limit : -1;
   const plan = run.segment.plan;
   const env = state.scene ? resolveEnvOf(state, reg, run) : null;
-  const steady = R6.steady ? { steady: new Set(R6.steady()) } : {};
-  const gauge = R6.seg?.flushed && plan && run.segment.state === "running" && env ? resolveSegment(run, plan, R6.inputs, { ...env, ...steady }).gauge : run.gauge;
+  const steady = R7.steady ? { steady: new Set(R7.steady()) } : {};
+  const gauge = R7.seg?.flushed && plan && run.segment.state === "running" && env ? resolveSegment(run, plan, R7.inputs, { ...env, ...steady }).gauge : run.gauge;
   return gauge / Math4.max(1, run.capacity) <= at2;
 }
 function weightFrame() {
@@ -69873,8 +69923,8 @@ var weightCore = {
    * landing); `amount` is in strength points (0–100), sent in gauge points of the run.
    */
   report(part, strength) {
-    if (!R6.running) return;
-    report3({ beat: segBeat(), kind: "ask_rest", part, amount: Math4.round(strength * (R6.run?.capacity ?? 100) / 100 * 1e3) / 1e3 });
+    if (!R7.running) return;
+    report3({ beat: segBeat(), kind: "ask_rest", part, amount: Math4.round(strength * (R7.run?.capacity ?? 100) / 100 * 1e3) / 1e3 });
   }
 };
 
@@ -70201,7 +70251,7 @@ var S6 = {
   readable: false
 };
 var STYLE_KINDS4 = { every: "time", askEvery: "linegap", moves: "feint" };
-var ST2 = () => bendRow(STYLES5[S6.style], R7.manner, STYLE_KINDS4);
+var ST2 = () => bendRow(STYLES5[S6.style], R8.manner, STYLE_KINDS4);
 var noLines2 = () => ({
   entry: {},
   deeper: [],
@@ -71231,7 +71281,7 @@ function frame4(now) {
       break;
     case "loop":
       G5.mouse = mouse;
-      if (R7.running) updateLoop3(dt);
+      if (R8.running) updateLoop3(dt);
       break;
     case "exit": {
       const p = G5.phaseT / 1500;
@@ -71449,24 +71499,24 @@ function render4(now, dt) {
   const arc = $4("#arc");
   setStyle3(arc, "opacity", live3 ? "1" : "0");
   arc.style.transform = `translate(${(G5.nose[0] * innerWidth5).toFixed(1)}px, ${(G5.nose[1] * innerHeight5).toFixed(1)}px)`;
-  const R11 = 40, td = tolDepth() / 1.25;
-  $4("#aTrack").setAttribute("d", arcPath(R11, 0, 1));
-  $4("#aDanger").setAttribute("d", td < 1 ? arcPath(R11, td, 1) : "");
+  const R12 = 40, td = tolDepth() / 1.25;
+  $4("#aTrack").setAttribute("d", arcPath(R12, 0, 1));
+  $4("#aDanger").setAttribute("d", td < 1 ? arcPath(R12, td, 1) : "");
   const o = G5.order, band2 = o && o.band ? o.band : null;
-  $4("#aBand").setAttribute("d", band2 ? arcPath(R11, band2[0] / 1.25, band2[1] / 1.25) : "");
+  $4("#aBand").setAttribute("d", band2 ? arcPath(R12, band2[0] / 1.25, band2[1] / 1.25) : "");
   $4("#aBand").setAttribute("stroke", `rgba(${col},.55)`);
   $4("#aBand").setAttribute("opacity", band2 ? "1" : "0");
   const fd = (G5.inhaling ? G5.depth : 0) / 1.25;
   const fillCol = G5.inhaling && G5.depth * G5.I * stim() > tolT() * 0.85 ? "255,90,70" : col;
-  $4("#aFill").setAttribute("d", arcPath(R11, 0, fd));
+  $4("#aFill").setAttribute("d", arcPath(R12, 0, fd));
   $4("#aFill").setAttribute("stroke", `rgb(${fillCol})`);
-  $4("#aFillGlow").setAttribute("d", arcPath(R11, 0, fd));
+  $4("#aFillGlow").setAttribute("d", arcPath(R12, 0, fd));
   $4("#aFillGlow").setAttribute("stroke", `rgb(${fillCol})`);
   const ta = -Math5.PI * 1.25 + Math5.PI * 1.5 * clamp43(td, 0, 1);
-  $4("#aTol").setAttribute("x1", (Math5.cos(ta) * (R11 - 7)).toFixed(1));
-  $4("#aTol").setAttribute("y1", (Math5.sin(ta) * (R11 - 7)).toFixed(1));
-  $4("#aTol").setAttribute("x2", (Math5.cos(ta) * (R11 + 7)).toFixed(1));
-  $4("#aTol").setAttribute("y2", (Math5.sin(ta) * (R11 + 7)).toFixed(1));
+  $4("#aTol").setAttribute("x1", (Math5.cos(ta) * (R12 - 7)).toFixed(1));
+  $4("#aTol").setAttribute("y1", (Math5.sin(ta) * (R12 - 7)).toFixed(1));
+  $4("#aTol").setAttribute("x2", (Math5.cos(ta) * (R12 + 7)).toFixed(1));
+  $4("#aTol").setAttribute("y2", (Math5.sin(ta) * (R12 + 7)).toFixed(1));
   $4("#aTol").setAttribute("opacity", td < 1 ? "1" : "0");
   const prox = smooth(0.15, 1.05, G5.I);
   $4("#aProx").setAttribute("r", (2 + prox * 4.5).toFixed(1));
@@ -71477,7 +71527,7 @@ function render4(now, dt) {
   const need = S6.layers.need && live3 ? smooth(4500, 7e3, G5.sinceBreath) : 0;
   $4("#aNeed").setAttribute("opacity", (need * (0.5 + 0.5 * Math5.sin(now / 120))).toFixed(2));
   $4("#aNeed").setAttribute("stroke", "rgba(255,255,255,.7)");
-  $4("#aNeed").setAttribute("r", (R11 + 8 - need * 4).toFixed(1));
+  $4("#aNeed").setAttribute("r", (R12 + 8 - need * 4).toFixed(1));
   if (A4.ctx) {
     const ct = A4.ctx.currentTime;
     A4.droneG.gain.setTargetAtTime(live3 ? f * f * 0.05 : 0, ct, 0.3);
@@ -71529,22 +71579,22 @@ var tint = {
   }
 };
 var typing4 = (t) => t && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
-var R7 = { run: null, lineStyle: "neutral", manner: null, seg: null, running: false, held: 0, blownBeat: 0, via: "key", mouthVia: "key", pending: null, kind: null, plan: [] };
+var R8 = { run: null, lineStyle: "neutral", manner: null, seg: null, running: false, held: 0, blownBeat: 0, via: "key", mouthVia: "key", pending: null, kind: null, plan: [] };
 function attentionNow() {
-  const seg = R7.seg;
+  const seg = R8.seg;
   if (!seg) return "busy";
   const b = clamp43(Math5.floor((G5.clock - seg.clock0) / BEAT4), 0, seg.beats - 1);
-  return R7.plan[b]?.attention ?? "busy";
+  return R8.plan[b]?.attention ?? "busy";
 }
 function blown(loud) {
-  R7.blownBeat += 1;
+  R8.blownBeat += 1;
   const events = E4?.env.staging.relief?.({ kind: "mouth_breath", amount: loud, attention: G5.att }) ?? [];
   return events.some((e) => e.type === "physics_caught");
 }
 function refreshLines4() {
   if (!E4) return;
   const reg = E4.env.registries;
-  const own = (k) => [...voiceLines2(reg, `scent.${k}`, R7.lineStyle)];
+  const own = (k) => [...voiceLines2(reg, `scent.${k}`, R8.lineStyle)];
   const c = S6.contact;
   const here = own(`here.${c}`);
   LINES3 = {
@@ -71572,50 +71622,50 @@ function refreshLines4() {
 }
 var MISS_KINDS = ["warm", "admit", "bad", "want", "place", "strength", "band", "intensity_wrong", "intensity_missing", "honest"];
 function report4(i, pointer) {
-  if (!E4 || !R7.seg) return;
+  if (!E4 || !R8.seg) return;
   E4.env.staging.input(i, { pointer });
 }
 function reportBeat3(beat) {
-  const blownN = R7.blownBeat;
-  R7.blownBeat = 0;
+  const blownN = R8.blownBeat;
+  R8.blownBeat = 0;
   if (blownN > 0) {
-    report4({ beat, kind: "mouth_breath", amount: blownN, part: "decided" }, R7.mouthVia === "mouse");
-    R7.held = Math5.max(0, R7.held - blownN);
+    report4({ beat, kind: "mouth_breath", amount: blownN, part: "decided" }, R8.mouthVia === "mouse");
+    R8.held = Math5.max(0, R8.held - blownN);
   }
   const level = Math5.min(capacity(), G5.head.length);
-  report4({ beat, kind: "inhale", amount: Math5.max(0, level - R7.held) }, false);
-  if (level < R7.held) report4({ beat, kind: "scatter", amount: Math5.round((R7.held - level) * 1e3) / 1e3 }, false);
-  R7.held = level;
+  report4({ beat, kind: "inhale", amount: Math5.max(0, level - R8.held) }, false);
+  if (level < R8.held) report4({ beat, kind: "scatter", amount: Math5.round((R8.held - level) * 1e3) / 1e3 }, false);
+  R8.held = level;
 }
 function answered(caught) {
-  const p = R7.pending;
+  const p = R8.pending;
   if (!p || !E4) return;
-  R7.pending = null;
+  R8.pending = null;
   E4.env.staging.answer?.(p.right, true, caught === true);
 }
 function judged(right, lie) {
   if (!E4) return;
   if (lie) {
     answered(null);
-    R7.pending = { right };
+    R8.pending = { right };
     return;
   }
   E4.env.staging.answer?.(right, false, false);
 }
 function deepInhale(d, cough2) {
-  if (!E4 || !R7.kind || !cough2 && d <= 0.7) return;
+  if (!E4 || !R8.kind || !cough2 && d <= 0.7) return;
   const [lo, hi] = inhaleZone(S6.band, S6.tol);
   const depth = cough2 ? Math5.min(100, Math5.max(Math5.ceil(hi) + 1, Math5.round(d * 100))) : Math5.max(Math5.ceil(lo), Math5.min(Math5.floor(hi), Math5.round(d * 100)));
-  E4.env.staging.stimulus("inhale", R7.kind, depth);
+  E4.env.staging.stimulus("inhale", R8.kind, depth);
 }
 function startSegment2(run, ck) {
   const plan = run.segment.plan;
   const phys = E4.env.registries.contactPhysics.get(run.physicsId);
   const endMs = segmentSecondsOf(E4.env.state(), E4.env.registries, run, 30) * 1e3;
-  R7.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0: G5.clock - (ck.now - ck.startedAt), beats: plan.beats.length, endMs, flushed: false, reported: 0 };
-  R7.plan = plan.beats;
-  R7.held = clamp43(run.gauge / (Math5.max(1, run.capacity) / capacity()), 0, capacity());
-  R7.blownBeat = 0;
+  R8.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0: G5.clock - (ck.now - ck.startedAt), beats: plan.beats.length, endMs, flushed: false, reported: 0 };
+  R8.plan = plan.beats;
+  R8.held = clamp43(run.gauge / (Math5.max(1, run.capacity) / capacity()), 0, capacity());
+  R8.blownBeat = 0;
 }
 function before4() {
   const e = E4;
@@ -71633,19 +71683,19 @@ function before4() {
   e.mirror.toggleAttribute("data-readable", S6.readable);
   if (!A4.ctx) audioInit4();
   else if (!SAMPLE.buf) void loadSample();
-  if (R7.run) body(e.env.state(), e.env.registries, R7.run);
+  if (R8.run) body(e.env.state(), e.env.registries, R8.run);
   const bg = e.env.layers.backdrop.style.backgroundImage;
   const room2 = e.els["#room"];
   if (bg !== room2.style.backgroundImage) room2.style.backgroundImage = bg;
   const input = e.env.input;
   if (input.value !== tint.prev) tint.sync();
   placeMirror4(e);
-  const run = R7.run;
+  const run = R8.run;
   const ck = e.env.staging.clock();
-  R7.running = run !== null && run.segment.state === "running" && run.segment.plan !== void 0 && ck.startedAt !== null;
-  if (G5.phase === "loop" && R7.running && (R7.seg === null || R7.seg.n !== run.segment.n || R7.seg.startedAt !== ck.startedAt)) startSegment2(run, ck);
-  const seg = R7.seg;
-  if (R7.running && seg && !seg.flushed) {
+  R8.running = run !== null && run.segment.state === "running" && run.segment.plan !== void 0 && ck.startedAt !== null;
+  if (G5.phase === "loop" && R8.running && (R8.seg === null || R8.seg.n !== run.segment.n || R8.seg.startedAt !== ck.startedAt)) startSegment2(run, ck);
+  const seg = R8.seg;
+  if (R8.running && seg && !seg.flushed) {
     const passed = Math5.floor((G5.clock - seg.clock0) / BEAT4);
     while (seg.reported < Math5.min(passed, seg.beats)) reportBeat3(seg.reported++);
     if (G5.clock - seg.clock0 >= seg.endMs - 300) {
@@ -71688,7 +71738,7 @@ function body(state, reg, run) {
   const part = run.sourceKind === "contact" ? contactTargetOf(state.scene, reg, run.sourceId) ?? run.targetId : void 0;
   S6.band = scentBand(state, reg, run.holderId, part);
   const ex = state.scene ? exposedKinds(state, reg).find((x) => x.holderId === run.holderId && String(reg.stimulusKinds.get(x.kind)?.family) !== "taste") : void 0;
-  R7.kind = ex?.kind ?? null;
+  R8.kind = ex?.kind ?? null;
   const row4 = ex ? state.commander.stimuli?.[ex.kind] : void 0;
   S6.stage = row4?.stage ?? STAGES[0];
   S6.tol = scentToleranceOf(state, reg, run.holderId);
@@ -71790,17 +71840,17 @@ function bind4(env, run) {
   seed4 = fnv1a3(`${state.scene?.id ?? ""}|${run.id}|scent`) >>> 0 || 2463534242;
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S6.style = lead.key in STYLES5 ? lead.key : ROW_BY_CUES3[lead.cues] ?? "neutral";
-  R7.lineStyle = lead.key;
-  R7.manner = physicsMannerOf(state, run.holderId, reg);
-  R7.run = run;
-  R7.seg = null;
-  R7.running = false;
-  R7.held = 0;
-  R7.blownBeat = 0;
-  R7.via = "key";
-  R7.mouthVia = "key";
-  R7.pending = null;
-  R7.plan = [];
+  R8.lineStyle = lead.key;
+  R8.manner = physicsMannerOf(state, run.holderId, reg);
+  R8.run = run;
+  R8.seg = null;
+  R8.running = false;
+  R8.held = 0;
+  R8.blownBeat = 0;
+  R8.via = "key";
+  R8.mouthVia = "key";
+  R8.pending = null;
+  R8.plan = [];
   BEAT4 = TUNING.physics.beatMs;
   const occ = occlusionOf(run.sourceKind === "contact" ? reg.blockingContacts.get(run.sourceId) : void 0);
   S6.contact = CONTACT_OF[occ.kind] ?? "feet_on_face";
@@ -71854,11 +71904,11 @@ function listen4(env) {
       e.preventDefault();
       if (!e.repeat) {
         keySpace = true;
-        R7.via = "key";
+        R8.via = "key";
         inhaleStart2();
       }
     } else if (e.key === "Shift") {
-      R7.mouthVia = "key";
+      R8.mouthVia = "key";
       G5.mouth = true;
     } else if (/^[1-6]$/.test(e.key) && G5.order && G5.order.k === "ask") {
       const el = wordEls.filter((x) => x.classList.contains("pick") || x.classList.contains("chosen"))[Number(e.key) - 1];
@@ -71870,7 +71920,7 @@ function listen4(env) {
       keySpace = false;
       inhaleEnd();
     }
-    if (e.key === "Shift" && R7.mouthVia === "key") {
+    if (e.key === "Shift" && R8.mouthVia === "key") {
       G5.mouth = false;
     }
   });
@@ -71878,16 +71928,16 @@ function listen4(env) {
     if (!onFrame(e.target)) return;
     e.preventDefault();
     if (e.button === 0) {
-      R7.via = "mouse";
+      R8.via = "mouse";
       inhaleStart2();
     } else if (e.button === 2) {
-      R7.mouthVia = "mouse";
+      R8.mouthVia = "mouse";
       G5.mouth = true;
     }
   });
   env.listen(document, "mouseup", (e) => {
     if (e.button === 0 && !keySpace) inhaleEnd();
-    if (e.button === 2 && R7.mouthVia === "mouse") G5.mouth = false;
+    if (e.button === 2 && R8.mouthVia === "mouse") G5.mouth = false;
   });
   env.listen(env.layers.frame, "contextmenu", (e) => e.preventDefault());
   env.listen(env.input, "input", () => tint.sync());
@@ -71928,12 +71978,12 @@ function stopScent() {
   tint.prev = "";
   lastLine4 = null;
   mouse = [0.5, 0.55];
-  R7.run = null;
-  R7.seg = null;
-  R7.running = false;
-  R7.pending = null;
-  R7.plan = [];
-  R7.kind = null;
+  R8.run = null;
+  R8.seg = null;
+  R8.running = false;
+  R8.pending = null;
+  R8.plan = [];
+  R8.kind = null;
   LINES3 = noLines2();
   G5 = fresh4();
   E4 = null;
@@ -71953,7 +72003,7 @@ function startScent(env, run) {
   return {
     update(next) {
       if (E4 !== mine) return;
-      R7.run = next;
+      R8.run = next;
     },
     finish(end2) {
       if (E4 !== mine) return 0;
@@ -72415,11 +72465,11 @@ function throneCanvases(off) {
   [tOutC, toctx] = off();
 }
 function throneArt(now) {
-  const L6 = $5("#astrideL"), R11 = $5("#astrideR");
+  const L6 = $5("#astrideL"), R12 = $5("#astrideR");
   const on = throneOn() && S7.contact === "human_chair" && S7.legsArt;
   const both = S7.legsFeet === "two", pair = S7.legsFeet === "pair";
   L6.style.display = on ? "block" : "none";
-  R11.style.display = on && !both ? "block" : "none";
+  R12.style.display = on && !both ? "block" : "none";
   if (!on || !L6.naturalWidth) return !!on;
   const [vw, vh] = X.inner(), t = now / 1e3;
   const view3 = $5("#footrestView"), ox = (view3.clientWidth - vw) / 2, oy = (view3.clientHeight - vh) / 2;
@@ -72444,7 +72494,7 @@ function throneArt(now) {
     el.style.filter = S7.readable ? "none" : `blur(${(1.2 + strF * 0.8).toFixed(1)}px) brightness(${(0.62 - strF * 0.1).toFixed(2)}) saturate(.85) drop-shadow(0 0 14px rgba(226,78,52,.45))`;
   };
   place2(L6, -1);
-  if (!both) place2(R11, 1);
+  if (!both) place2(R12, 1);
   return true;
 }
 function throneLegs(now) {
@@ -73639,10 +73689,10 @@ var S9 = {
   readable: false
 };
 var V2 = () => VIEWS[S9.inner === "weight" ? "footrest" : S9.view];
-var ACT2 = () => ({ ...ACTS[S9.act] ?? QUIET_ACT, ...R8.frame, self: [...voiceLines2(E5.env.registries, `activity.self.${S9.act}`, S9.style)] });
+var ACT2 = () => ({ ...ACTS[S9.act] ?? QUIET_ACT, ...R9.frame, self: [...voiceLines2(E5.env.registries, `activity.self.${S9.act}`, S9.style)] });
 var ST3 = () => new Proxy({}, { get: (_t, k) => k === "name" ? voiceLines2(E5.env.registries, "activity.name", S9.style)[0] ?? "commander" : [...voiceLines2(E5.env.registries, `activity.${k}`, S9.style)] });
 var PLAYED_SHARE = 1 / 3;
-var R8 = { run: null, frame: { absorb: 0, hear: 1, light: "lamp", unit: "", total: 1, per: [6, 12], legs: "still" }, lineStyle: "neutral", caught: 0, phase: 1, waiting: false, listener: null, scriptPhase: 0, script: null, heardFor: /* @__PURE__ */ new Set() };
+var R9 = { run: null, frame: { absorb: 0, hear: 1, light: "lamp", unit: "", total: 1, per: [6, 12], legs: "still" }, lineStyle: "neutral", caught: 0, phase: 1, waiting: false, listener: null, scriptPhase: 0, script: null, heardFor: /* @__PURE__ */ new Set() };
 var A6 = { ctx: null, buf: {} };
 function audioInit5() {
   if (A6.ctx) return;
@@ -74026,7 +74076,7 @@ function placeFree2(el, x, y) {
 function say8(text3, to = "self", opts = {}) {
   if (!text3) return;
   const v = V2(), p = opts.at ?? v.her;
-  E5.env.say($7("#hand"), text3, { her: E5.env.her(R8.run.holderId), at: [clamp43(p[0] + 0.04, 0.03, 0.7), clamp43(p[1] + 0.02, 0.03, 0.8)], to: to === "self" || to === "commander" ? to : "other", ...opts.big ? { big: true } : {} });
+  E5.env.say($7("#hand"), text3, { her: E5.env.her(R9.run.holderId), at: [clamp43(p[0] + 0.04, 0.03, 0.7), clamp43(p[1] + 0.02, 0.03, 0.8)], to: to === "self" || to === "commander" ? to : "other", ...opts.big ? { big: true } : {} });
   SYN.pen();
   const spoken4 = to !== "written";
   const dur = 700 + text3.length * 70;
@@ -74058,8 +74108,8 @@ function otherSay(text3, kind = "call", who = "") {
   }, dur + 1600);
 }
 function mentionTextOf(m) {
-  const e = E5, run = R8.run;
-  const to = m.to ?? R8.listener?.id ?? "";
+  const e = E5, run = R9.run;
+  const to = m.to ?? R9.listener?.id ?? "";
   const t = mentionText(e.env.state(), e.env.registries, run.holderId, to, m);
   G8.stats.mentions.push(t === null ? "left unsaid" : t === m.plain ? "plain" : "veiled");
   return t;
@@ -74469,7 +74519,7 @@ function relieveAt(x, y) {
 }
 var lines2 = (kind) => [...voiceLines2(E5.env.registries, kind, S9.style)];
 var spoken3 = (kind) => lines2(kind)[0] ?? "";
-var named4 = (text3) => text3.includes("{Name}") ? R8.listener ? text3.split("{Name}").join(R8.listener.name) : null : text3;
+var named4 = (text3) => text3.includes("{Name}") ? R9.listener ? text3.split("{Name}").join(R9.listener.name) : null : text3;
 var TO_YOU = new Proxy({}, { get: (_t, k) => {
   const a = [...lines2(`activity.toYou.${k}`).flatMap((text3) => {
     const t = named4(text3);
@@ -74567,8 +74617,8 @@ function planPeaks(i) {
     G8.call = { name: "Oversight", heard: false };
     runPlaceholder(exchangeScript(CALL.concat(CALL.slice(0, 3)), 2, [4, 7]), "call");
   }
-  if (act.visitor && R8.listener) {
-    G8.visitor = { name: R8.listener.name, heard: S9.knows, knows: S9.knows };
+  if (act.visitor && R9.listener) {
+    G8.visitor = { name: R9.listener.name, heard: S9.knows, knows: S9.knows };
     runPlaceholder(exchangeScript(CARDS.concat(CARDS), 3, [4, 7]), "room");
   }
   if (act.audience && throneOn()) {
@@ -74643,7 +74693,7 @@ function visitorPeak() {
     throneVisitor();
     return;
   }
-  if (G8.phase !== "loop" || !R8.listener) return;
+  if (G8.phase !== "loop" || !R9.listener) return;
   const dp = V2().doorPan;
   steps2(5, -dp * 0.3, dp, 0.08, 0.4, 0.42);
   after7(2300, () => {
@@ -74653,8 +74703,8 @@ function visitorPeak() {
   after7(3300, () => say8(spoken3("activity.comeIn"), "other"));
   after7(4600, () => {
     play4("door_open", { g: 0.5, pan: dp });
-    G8.visitor = { name: R8.listener.name, heard: S9.knows, knows: S9.knows };
-    sense3(V2().sight && !S9.blind ? `${R8.listener.name} leans in the doorway.` : "The door opens. Someone in the doorway: a voice you know.", "door", "base");
+    G8.visitor = { name: R9.listener.name, heard: S9.knows, knows: S9.knows };
+    sense3(V2().sight && !S9.blind ? `${R9.listener.name} leans in the doorway.` : "The door opens. Someone in the doorway: a voice you know.", "door", "base");
   });
   runPlaceholder(exchangeScript(VISIT, 6, [4, 6]), "room");
   after7(6e3 + VISIT.length * 8500, () => {
@@ -74754,12 +74804,12 @@ function beginPhase(i) {
   G8.phaseIdx = i;
   G8.phaseT = 0;
   G8.clockRate = 60 * PLAYED_SHARE / S9.phaseLen;
-  setStep(presenceOf2(E5.env.state(), E5.env.registries, R8.run, i + 1));
-  R8.scriptPhase = i + 1;
-  R8.script = null;
+  setStep(presenceOf2(E5.env.state(), E5.env.registries, R9.run, i + 1));
+  R9.scriptPhase = i + 1;
+  R9.script = null;
   const sc = E5.env.staging.script?.(i + 1) ?? null;
   if (sc) {
-    R8.script = sc;
+    R9.script = sc;
     runScript(sc);
   } else runPlaceholder(planScript(i));
   planPeaks(i);
@@ -74774,10 +74824,10 @@ function updateLoop4(dt) {
     if (G8.attHold > 0) G8.attHold -= 1500;
     else G8.att = plannedAttention();
   }
-  if (R8.script === null && R8.scriptPhase > 0) {
-    const sc = E5.env.staging.script?.(R8.scriptPhase) ?? null;
+  if (R9.script === null && R9.scriptPhase > 0) {
+    const sc = E5.env.staging.script?.(R9.scriptPhase) ?? null;
     if (sc) {
-      R8.script = sc;
+      R9.script = sc;
       const hasHer = sc.some((l) => l.who === "her"), hasOther = sc.some((l) => l.who === "other");
       G8.timers = G8.timers.filter((x) => !(x.ph === "her" && hasHer) && !(x.ph === "other" && hasOther));
       runScript(sc.filter((l) => l.at * 1e3 >= G8.phaseT).map((l) => ({ ...l, at: l.at - G8.phaseT / 1e3 })));
@@ -74811,7 +74861,7 @@ function updateLoop4(dt) {
   baseTick();
 }
 function plannedAttention() {
-  const run = R8.run, ck = E5.env.staging.clock();
+  const run = R9.run, ck = E5.env.staging.clock();
   const plan = run?.segment.plan;
   if (!plan || ck.startedAt === null) return G8.att;
   const b = clamp43(Math8.floor((ck.now - ck.startedAt) / ck.beatMs), 0, plan.beats.length - 1);
@@ -74973,7 +75023,7 @@ function getUp2() {
   E5.env.staging.getUp?.();
 }
 function found() {
-  if (!R8.listener) {
+  if (!R9.listener) {
     G8.foundAt = Infinity;
     return;
   }
@@ -74983,10 +75033,10 @@ function found() {
   const dp = V2().doorPan;
   steps2(5, -dp * 0.3, dp, 0.1, 0.4, 0.42);
   setTimeout6(() => play4("door_open", { g: 0.45, pan: dp }), 2200);
-  setTimeout6(() => otherSay(S9.view === "legs" ? "\u2026commander? What are you doing under there?" : "\u2026commander? Why are you kneeling there?", "room", R8.listener?.name ?? ""), 3200);
+  setTimeout6(() => otherSay(S9.view === "legs" ? "\u2026commander? What are you doing under there?" : "\u2026commander? Why are you kneeling there?", "room", R9.listener?.name ?? ""), 3200);
   G8.phase = "ending";
-  if (R8.listener) {
-    const id = R8.listener.id;
+  if (R9.listener) {
+    const id = R9.listener.id;
     setTimeout6(() => E5?.env.staging.found?.(id), 3200);
   }
 }
@@ -75033,21 +75083,21 @@ function shinFront(W3, H, K3, Ak, o) {
   const k = [K3[0] * W3, K3[1] * H], a = [Ak[0] * W3, Ak[1] * H];
   const dx = a[0] - k[0], dy = a[1] - k[1], len2 = Math8.hypot(dx, dy) || 1, tx = dx / len2, ty = dy / len2, nx = -ty, ny = tx;
   const outer = o.outer;
-  const L6 = [], R11 = [];
+  const L6 = [], R12 = [];
   for (let i = 0; i <= 16; i++) {
     const t = i / 16, hw = lerp2(o.wK, o.wA, Math8.pow(t, 0.8)) * H / 2;
     const calf = o.calf * H * Math8.exp(-(((t - 0.32) / 0.2) ** 2));
     const x = k[0] + dx * t, y = k[1] + dy * t;
     const l = hw + (outer < 0 ? calf : calf * 0.25), r = hw + (outer > 0 ? calf : calf * 0.25);
     L6.push([x + nx * l, y + ny * l]);
-    R11.push([x - nx * r, y - ny * r]);
+    R12.push([x - nx * r, y - ny * r]);
   }
   const fl = o.foot * H, fw = o.footW * H, drop2 = o.drop ?? 0, toe = o.toe ?? 0;
   const ang = Math8.atan2(ty, tx) + drop2;
   const ux = Math8.cos(ang), uy = Math8.sin(ang), px = -uy, py = ux;
   const F2 = (u, v) => [a[0] + ux * u * fl + px * v * fw, a[1] + uy * u * fl * (1 - toe * 0.45) + py * v * fw];
   const foot2 = [F2(0.05, 0.62), F2(0.35, 0.8), F2(0.7, 0.95), F2(0.95, 0.75), F2(1.04, 0.2), F2(1.02, -0.35), F2(0.9, -0.8), F2(0.6, -0.92), F2(0.3, -0.75), F2(0.05, -0.6)];
-  return chaikin(chaikin(chaikin([...L6, ...foot2, ...R11.reverse()])));
+  return chaikin(chaikin(chaikin([...L6, ...foot2, ...R12.reverse()])));
 }
 function drawLegs(now) {
   const W3 = legsC.width, H = legsC.height;
@@ -75410,7 +75460,7 @@ function before5() {
   e.box.toggleAttribute("data-reduced", S9.reduced);
   e.box.toggleAttribute("data-readable", S9.readable);
   if (!A6.ctx) audioInit5();
-  const run = R8.run;
+  const run = R9.run;
   if (run?.marathon?.waiting && G8.phase === "loop") endPhase();
   if (run?.forgotten && (G8.phase === "loop" || G8.phase === "skip")) {
     G8.step = "use";
@@ -75556,12 +75606,12 @@ function bind5(env, run) {
   const state = env.state(), reg = env.registries;
   seed5 = fnv1a3(`${state.scene?.id ?? ""}|${run.id}|her_activity`) >>> 0 || 2463534242;
   const act = run.sourceKind === "activity" ? run.sourceId : state.scene?.blocking?.[run.holderId]?.activity ?? "";
-  R8.run = run;
-  R8.frame = frameOf3(reg.blockingActivities.get(act)) ?? R8.frame;
+  R9.run = run;
+  R9.frame = frameOf3(reg.blockingActivities.get(act)) ?? R9.frame;
   S9.act = act;
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S9.style = lead.key;
-  R8.lineStyle = lead.key;
+  R9.lineStyle = lead.key;
   S9.manner = physicsMannerOf(state, run.holderId, reg);
   const v = viewOf(state, reg, run);
   S9.view = v.view === "footrest" ? "legs" : v.view;
@@ -75573,9 +75623,9 @@ function bind5(env, run) {
   S9.seed = fnv1a3(`${state.scene?.id ?? ""}|${run.id}`) % 100;
   S9.talk = temperamentOf(state, run.holderId).talkativeness;
   S9.mood = (state.squad.find((u) => u.id === run.holderId)?.stress ?? 0) >= 50 ? "irritated" : "calm";
-  R8.caught = run.tally?.cheatsCaught ?? 0;
+  R9.caught = run.tally?.cheatsCaught ?? 0;
   const other = state.squad.find((u) => u.kind === "named" && u.id !== run.holderId && u.status === "active" && !(state.scene?.participants ?? []).includes(u.id));
-  R8.listener = other ? { id: other.id, name: other.displayName } : null;
+  R9.listener = other ? { id: other.id, name: other.displayName } : null;
   const known3 = other ? state.dynamic?.knowledge?.[other.id]?.[run.holderId]?.level === "knows_dynamic" : false;
   S9.knows = known3;
   const url = (p) => env.assetUrl ? env.assetUrl(p) : p;
@@ -75618,8 +75668,8 @@ function bind5(env, run) {
   S9.contact = herLegsOf(contact ? reg.blockingContacts.get(contact.id) : void 0) === "hang" ? "human_chair" : "footrest";
   S9.bodyFollows = true;
   S9.props = true;
-  S9.visitorKind = R8.frame.audience ? "business" : known3 ? "aware" : "unaware";
-  S9.visitorName = R8.listener?.name ?? "";
+  S9.visitorKind = R9.frame.audience ? "business" : known3 ? "aware" : "unaware";
+  S9.visitorName = R9.listener?.name ?? "";
   const astride = env.art.get(run.holderId, "legs_astride");
   S9.legsArt = astride?.url ?? null;
   S9.legsFeet = astride?.pair ? "pair" : astride?.sidecar.feet === "two" ? "two" : astride?.sidecar.shown === "right" ? "right" : "left";
@@ -75719,10 +75769,10 @@ function begin5() {
   for (const id of ["#hand", "#senses", "#others"]) $7(id).replaceChildren();
   G8 = fresh5();
   svBegin();
-  setStep(presenceOf2(E5.env.state(), E5.env.registries, R8.run, R8.run.marathon?.phase ?? 1));
+  setStep(presenceOf2(E5.env.state(), E5.env.registries, R9.run, R9.run.marathon?.phase ?? 1));
   G8.clockMin = S9.start;
   G8.startMin = S9.start;
-  G8.phaseIdx = (R8.run.marathon?.phase ?? 1) - 1;
+  G8.phaseIdx = (R9.run.marathon?.phase ?? 1) - 1;
   G8.phase = "entry";
   G8.entryT = 0;
   const entry = weightOn() && throneOn() && S9.contact === "human_chair" ? "She points at the floor. When you are down on all fours she lowers herself onto your back, without a word, and opens her folder." : weightOn() ? "She points at the floor before her chair, and when you are down on all fours she settles her feet on your back and leans back." : { her: "She points at the floor beside her chair without looking up.", legs: "She pushes her chair back, points under the desk, and pulls the chair in again once you are there.", floor: `She points at the floor by her bunk. "${spoken3("activity.entry.floor")}"`, wall: "She turns you to face the wall by the shoulder, and goes back to her chair." }[S9.view];
@@ -75799,9 +75849,9 @@ function stopFrame() {
   e.ui.remove();
   cache3.clear();
   RIPPLES.length = 0;
-  R8.run = null;
-  R8.script = null;
-  R8.scriptPhase = 0;
+  R9.run = null;
+  R9.script = null;
+  R9.scriptPhase = 0;
   G8 = fresh5();
   E5 = null;
 }
@@ -75841,7 +75891,7 @@ function startFrame2(env, run) {
   return {
     update(next) {
       if (E5 !== mine) return;
-      R8.run = next;
+      R9.run = next;
       if (next.second) E5.core?.update(coreRun(next, "second"));
       if (weightOn()) {
         W2.buckles = next.second?.buckles ?? 0;
@@ -77318,7 +77368,7 @@ var S11 = {
   zones: {}
 };
 var SHOE_KINDS = { surface: "time", moves: { press: "magnitude", stamp: "magnitude", kiss: "patience" } };
-var ST4 = () => bendRow(STYLES[S11.style] ?? STYLES.neutral, R9.manner, SHOE_KINDS);
+var ST4 = () => bendRow(STYLES[S11.style] ?? STYLES.neutral, R10.manner, SHOE_KINDS);
 var L4 = () => LINES5[S11.style] ?? LINES5.neutral;
 var D4 = () => DIRTS[S11.dirt];
 var K = () => KINDS2[S11.kind];
@@ -78278,20 +78328,20 @@ var markUp = () => {
 };
 var ASSETS = { her: "" };
 var SPRITE = { naturalWidth: 0, naturalHeight: 0 };
-var R9 = { run: null, lineStyle: "neutral", manner: null, seg: null, running: false, plan: [], sums: {}, qualities: [], checks: 0, verdictSent: false, ox: 0, oy: 0, lastNow: 0, ended: null };
+var R10 = { run: null, lineStyle: "neutral", manner: null, seg: null, running: false, plan: [], sums: {}, qualities: [], checks: 0, verdictSent: false, ox: 0, oy: 0, lastNow: 0, ended: null };
 var broken = /* @__PURE__ */ new Set();
 onStageReset(() => broken.clear());
 function planAttention() {
   const b = beatNow3();
-  return R9.running ? R9.plan[b]?.attention ?? G10.attention : G10.attention;
+  return R10.running ? R10.plan[b]?.attention ?? G10.attention : G10.attention;
 }
 function beatNow3() {
-  const seg = R9.seg;
+  const seg = R10.seg;
   if (!seg) return 0;
   return clamp43(Math9.floor((G10.t - seg.clock0) / TUNING.physics.beatMs), 0, seg.beats - 1);
 }
 function report5(i, pointer) {
-  if (!E7 || !R9.seg || !R9.running) return;
+  if (!E7 || !R10.seg || !R10.running) return;
   E7.env.staging.input(i, { pointer });
 }
 function spitSeen(_chance) {
@@ -78312,7 +78362,7 @@ function wipedNow() {
   let amount = 0, part, best = 0;
   for (const [key, s] of Object.entries(G10.surfaces)) {
     if (!s || !(s.total0 > 0)) continue;
-    const now = sumsOf(s), low = R9.sums[key] ?? now;
+    const now = sumsOf(s), low = R10.sums[key] ?? now;
     const lost = low.total - now.total;
     if (lost > 0) amount += lost / s.total0 / 4;
     now.zones.forEach((z2, i) => {
@@ -78322,12 +78372,12 @@ function wipedNow() {
         part = s.names[i];
       }
     });
-    R9.sums[key] = { total: Math9.min(low.total, now.total), zones: now.zones.map((z2, i) => Math9.min(low.zones[i] ?? z2, z2)) };
+    R10.sums[key] = { total: Math9.min(low.total, now.total), zones: now.zones.map((z2, i) => Math9.min(low.zones[i] ?? z2, z2)) };
   }
   return { amount, ...part !== void 0 ? { part } : {} };
 }
 function noteSurfaces() {
-  for (const [key, s] of Object.entries(G10.surfaces)) if (s && R9.sums[key] === void 0) R9.sums[key] = sumsOf(s);
+  for (const [key, s] of Object.entries(G10.surfaces)) if (s && R10.sums[key] === void 0) R10.sums[key] = sumsOf(s);
 }
 function reportBeat4(beat) {
   const w = wipedNow();
@@ -78340,35 +78390,35 @@ function startSegment3(run, ck) {
   const endMs = segmentSecondsOf(E7.env.state(), E7.env.registries, run, 40) * 1e3;
   const clock0 = G10.t - (ck.now - ck.startedAt);
   const first2 = Math9.max(0, Math9.floor((G10.t - clock0) / TUNING.physics.beatMs));
-  R9.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0, beats: plan.beats.length, endMs, flushed: false, reported: Math9.min(first2, plan.beats.length) };
-  R9.plan = plan.beats;
+  R10.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0, beats: plan.beats.length, endMs, flushed: false, reported: Math9.min(first2, plan.beats.length) };
+  R10.plan = plan.beats;
 }
 function refreshLines5() {
   if (!E7) return;
   const env = E7.env;
-  const own = (k) => [...voiceLines2(env.registries, `shoe.${k}`, R9.lineStyle)];
+  const own = (k) => [...voiceLines2(env.registries, `shoe.${k}`, R10.lineStyle)];
   LINES5 = { [S11.style]: Object.fromEntries(LINE_KINDS.map((k) => [k, own(k)])) };
 }
 function sendVerdict() {
-  if (!E7 || R9.verdictSent || !R9.run) return;
-  R9.verdictSent = true;
-  if (R9.qualities.length === 0) return;
-  const q = R9.qualities.reduce((a, b) => a + b, 0) / R9.qualities.length;
+  if (!E7 || R10.verdictSent || !R10.run) return;
+  R10.verdictSent = true;
+  if (R10.qualities.length === 0) return;
+  const q = R10.qualities.reduce((a, b) => a + b, 0) / R10.qualities.length;
   const v = verdictOf(q);
-  E7.env.staging.service?.(R9.run.id, v);
+  E7.env.staging.service?.(R10.run.id, v);
 }
 function before6(now) {
   const e = E7;
   if (last2 > now) last2 = now;
-  if (R9.lastNow > now) R9.lastNow = now;
+  if (R10.lastNow > now) R10.lastNow = now;
   const r = e.env.root.getBoundingClientRect();
   const w = e.env.root.clientWidth || r.width || globalThis.innerWidth || 0, h2 = e.env.root.clientHeight || r.height || globalThis.innerHeight || 0;
   if (w !== innerWidth9 || h2 !== innerHeight9) {
     innerWidth9 = w;
     innerHeight9 = h2;
   }
-  R9.ox = r.left;
-  R9.oy = r.top;
+  R10.ox = r.left;
+  R10.oy = r.top;
   S11.reduced = e.env.reduced;
   e.box.toggleAttribute("data-reduced", S11.reduced);
   e.box.toggleAttribute("data-readable", e.env.readable);
@@ -78380,12 +78430,12 @@ function before6(now) {
   const mine = e.els["#backdrop"];
   if (bg !== mine.style.backgroundImage) mine.style.backgroundImage = bg;
   if (G10.phase === "wait" && Object.values(imgs).length > 0 && Object.values(imgs).every((i) => i.naturalWidth > 0)) begin6();
-  const run = R9.run;
+  const run = R10.run;
   const ck = e.env.staging.clock();
-  R9.running = run !== null && run.segment.state === "running" && run.segment.plan !== void 0 && ck.startedAt !== null;
-  if ((G10.phase === "loop" || G10.phase === "inspect") && R9.running && (R9.seg === null || R9.seg.n !== run.segment.n || R9.seg.startedAt !== ck.startedAt)) startSegment3(run, ck);
-  const seg = R9.seg;
-  if (R9.running && seg && !seg.flushed) {
+  R10.running = run !== null && run.segment.state === "running" && run.segment.plan !== void 0 && ck.startedAt !== null;
+  if ((G10.phase === "loop" || G10.phase === "inspect") && R10.running && (R10.seg === null || R10.seg.n !== run.segment.n || R10.seg.startedAt !== ck.startedAt)) startSegment3(run, ck);
+  const seg = R10.seg;
+  if (R10.running && seg && !seg.flushed) {
     const passed = Math9.floor((G10.t - seg.clock0) / TUNING.physics.beatMs);
     while (seg.reported < Math9.min(passed, seg.beats)) reportBeat4(seg.reported++);
     if (G10.t - seg.clock0 >= seg.endMs - 300) {
@@ -78397,13 +78447,13 @@ function before6(now) {
 }
 function after8(now) {
   if (!E7) return;
-  R9.lastNow = now;
+  R10.lastNow = now;
   noteSurfaces();
-  while (R9.checks < G10.stats.checks.length) {
-    R9.checks += 1;
-    R9.qualities.push(G10.lastQuality);
+  while (R10.checks < G10.stats.checks.length) {
+    R10.checks += 1;
+    R10.qualities.push(G10.lastQuality);
   }
-  if (G10.phase === "done" && !R9.verdictSent && R9.ended === null) sendVerdict();
+  if (G10.phase === "done" && !R10.verdictSent && R10.ended === null) sendVerdict();
 }
 function artOf(env, run) {
   const kind = footwearOf(env.state(), env.registries, run.holderId);
@@ -78433,17 +78483,17 @@ function bind7(env, run, art2) {
   S11.dirt = dirtOfDay(state, reg, run.holderId);
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S11.style = lead.key;
-  R9.lineStyle = lead.key;
-  R9.manner = physicsMannerOf(state, run.holderId, reg);
-  R9.run = run;
-  R9.seg = null;
-  R9.running = false;
-  R9.plan = [];
-  R9.sums = {};
-  R9.qualities = [];
-  R9.checks = 0;
-  R9.verdictSent = false;
-  R9.ended = null;
+  R10.lineStyle = lead.key;
+  R10.manner = physicsMannerOf(state, run.holderId, reg);
+  R10.run = run;
+  R10.seg = null;
+  R10.running = false;
+  R10.plan = [];
+  R10.sums = {};
+  R10.qualities = [];
+  R10.checks = 0;
+  R10.verdictSent = false;
+  R10.ended = null;
   S11.feet = { boots_close: "one", boots_sole: "one", heels_close: "one", heels_sole: "one" };
   S11.shown = { boots_close: "right", boots_sole: "right", heels_close: "right", heels_sole: "right" };
   S11.fit = { boots_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, boots_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 }, heels_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, heels_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 } };
@@ -78501,7 +78551,7 @@ function listen6(env) {
   const control2 = (t) => t instanceof Element && t.closest('button, a, [role="button"], select, [data-action]') !== null;
   const onFrame = (t) => t instanceof Node && (t === env.layers.frame || env.layers.frame.contains(t));
   const typing6 = (t) => t instanceof HTMLElement && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
-  const at2 = (e) => [e.clientX - R9.ox, e.clientY - R9.oy];
+  const at2 = (e) => [e.clientX - R10.ox, e.clientY - R10.oy];
   env.listen(env.root, "pointerdown", (e) => {
     if (!onFrame(e.target)) return;
     if (e.button === 2) {
@@ -78548,11 +78598,11 @@ function stopShoe() {
   }
   shownSrc = null;
   DETACHED.clear();
-  R9.run = null;
-  R9.seg = null;
-  R9.running = false;
-  R9.plan = [];
-  R9.sums = {};
+  R10.run = null;
+  R10.seg = null;
+  R10.running = false;
+  R10.plan = [];
+  R10.sums = {};
   LINES5 = { neutral: {} };
   G10 = fresh6();
   E7 = null;
@@ -78567,13 +78617,13 @@ function startShoe(env, run) {
     const r = env.root.getBoundingClientRect();
     innerWidth9 = env.root.clientWidth || r.width || 0;
     innerHeight9 = env.root.clientHeight || r.height || 0;
-    R9.ox = r.left;
-    R9.oy = r.top;
+    R10.ox = r.left;
+    R10.oy = r.top;
   }
   bind7(env, run, art2);
   listen6(env);
   last2 = env.now();
-  R9.lastNow = last2;
+  R10.lastNow = last2;
   audioInit7();
   if (A8.ctx) loadSamples2();
   G10 = fresh6();
@@ -78583,17 +78633,17 @@ function startShoe(env, run) {
   return {
     update(next) {
       if (E7 !== mine) return;
-      R9.run = next;
+      R10.run = next;
     },
     finish(end2) {
       if (E7 !== mine) return 0;
-      R9.ended = end2.result;
+      R10.ended = end2.result;
       if (G10.phase === "done") return EXIT_MS6;
       if (end2.result !== "checked" || G10.phase === "wait") return 0;
       if ((G10.phase === "loop" || G10.phase === "inspect" && !G10.judged) && surf()) verdict();
-      while (R9.checks < G10.stats.checks.length) {
-        R9.checks += 1;
-        R9.qualities.push(G10.lastQuality);
+      while (R10.checks < G10.stats.checks.length) {
+        R10.checks += 1;
+        R10.qualities.push(G10.lastQuality);
       }
       finish6("done");
       sendVerdict();
@@ -78688,7 +78738,7 @@ var LINE_KINDS2 = ["entry", "surge", "tapped", "spill", "cough", "done", "clean"
 var LINES6 = { neutral: {} };
 var TASTE = ["Warm, and salt.", "Bitter at the back of the tongue.", "Warmer than expected.", "Sharp; it catches in the throat."];
 var S12 = { streamS: "mug", swallowS: "swallows", style: "neutral", explicit: false, overH: 1.04, overX: 0.5, overSink: 0, len: Infinity, flowK: 1, sound: true, vol: 0.7, debug: false, reduced: false };
-var ST5 = () => bendRow(STYLES6[S12.style], R10.manner, GULP_KINDS);
+var ST5 = () => bendRow(STYLES6[S12.style], R11.manner, GULP_KINDS);
 var L5 = () => LINES6[S12.style];
 var A9 = { ctx: null, buf: {} };
 var SAMPLE_URLS5 = {
@@ -79107,7 +79157,7 @@ function endFlow() {
   streamSet(0, false);
   sayL2("done");
   setTimeout9(() => {
-    if (R10.chained) {
+    if (R11.chained) {
       sayL2("clean");
       setTimeout9(startClean, 1300);
     } else {
@@ -79382,70 +79432,70 @@ function lick(e) {
   g.x = e.clientX;
   g.y = e.clientY;
 }
-var R10 = { run: null, lineStyle: "neutral", manner: null, seg: null, running: false, plan: [], chained: false, took: 0, spilledAt: 0, coughsAt: 0, overflowsAt: 0, puddleLow: null, floor0: 0, surgeAt: "", ox: 0, oy: 0, ended: null };
+var R11 = { run: null, lineStyle: "neutral", manner: null, seg: null, running: false, plan: [], chained: false, took: 0, spilledAt: 0, coughsAt: 0, overflowsAt: 0, puddleLow: null, floor0: 0, surgeAt: "", ox: 0, oy: 0, ended: null };
 var BEAT5 = () => TUNING.physics.beatMs;
 function beatNow4() {
-  const seg = R10.seg;
+  const seg = R11.seg;
   if (!seg) return 0;
   return clamp43(Math10.floor((G11.t - seg.clock0) / BEAT5()), 0, seg.beats - 1);
 }
 function flowNow() {
-  if (!R10.running || !R10.seg) return 0;
-  const elapsed = G11.t - R10.seg.clock0;
-  if (elapsed >= R10.seg.beats * BEAT5()) return 0;
-  const f = R10.plan[beatNow4()]?.flow;
+  if (!R11.running || !R11.seg) return 0;
+  const elapsed = G11.t - R11.seg.clock0;
+  if (elapsed >= R11.seg.beats * BEAT5()) return 0;
+  const f = R11.plan[beatNow4()]?.flow;
   if (!f || f.pause) return 0;
-  const s = ST5(), t = (R10.seg.n - 1) * R10.seg.full * BEAT5() + elapsed;
+  const s = ST5(), t = (R11.seg.n - 1) * R11.seg.full * BEAT5() + elapsed;
   return s.base * (1 + s.vary * Math10.sin(t / 1300) * Math10.sin(t / 3700 + 1)) * (f.surge ? s.surge : 1);
 }
 function planSurge() {
-  if (!R10.running || !R10.seg) return;
-  const b = beatNow4(), beat = R10.plan[b], s = ST5(), B2 = BEAT5();
+  if (!R11.running || !R11.seg) return;
+  const b = beatNow4(), beat = R11.plan[b], s = ST5(), B2 = BEAT5();
   if (!beat?.flow) return;
-  const key = `${R10.seg.n}|${b}`;
-  const into = G11.t - R10.seg.clock0 - b * B2;
-  if (beat.flow.warn && R10.surgeAt !== `w${key}` && into >= B2 - s.warn) {
-    R10.surgeAt = `w${key}`;
-    G11.surge = { t0: G11.t, warn: s.warn, len: B2, feint: b + 1 < R10.plan.length && R10.plan[b + 1]?.flow?.surge !== true, plan: true };
+  const key = `${R11.seg.n}|${b}`;
+  const into = G11.t - R11.seg.clock0 - b * B2;
+  if (beat.flow.warn && R11.surgeAt !== `w${key}` && into >= B2 - s.warn) {
+    R11.surgeAt = `w${key}`;
+    G11.surge = { t0: G11.t, warn: s.warn, len: B2, feint: b + 1 < R11.plan.length && R11.plan[b + 1]?.flow?.surge !== true, plan: true };
     if (s.announce) {
       refreshLines6(b);
       setTimeout9(() => G11.phase === "loop" && sayL2("surge"), Math10.max(0, s.warn - 600));
     }
-  } else if (beat.flow.surge && !G11.surge && R10.surgeAt !== `s${key}`) {
-    R10.surgeAt = `s${key}`;
+  } else if (beat.flow.surge && !G11.surge && R11.surgeAt !== `s${key}`) {
+    R11.surgeAt = `s${key}`;
     G11.surge = { t0: G11.t, warn: 0, len: B2, feint: false, plan: true };
   }
 }
 function tapReleases2() {
-  if (!E8 || !R10.run) return false;
-  const holds6 = effectiveHoldsUntil(E8.env.state(), E8.env.registries, R10.run.holderId);
-  return holds6 === "signal" || holds6 === "limit" && R10.run.taps > 0;
+  if (!E8 || !R11.run) return false;
+  const holds6 = effectiveHoldsUntil(E8.env.state(), E8.env.registries, R11.run.holderId);
+  return holds6 === "signal" || holds6 === "limit" && R11.run.taps > 0;
 }
 function report6(i, pointer) {
-  if (!E8 || !R10.seg || !R10.running) return;
+  if (!E8 || !R11.seg || !R11.running) return;
   E8.env.staging.input(i, { pointer });
 }
 function reportBeat5(beat) {
-  if (isGulpPhysics(R10.run ? E8?.env.registries.contactPhysics.get(R10.run.physicsId) : void 0)) {
-    const took = Math10.round(R10.took * 1e5) / 1e5, spilled = Math10.round((G11.spilled - R10.spilledAt) * 1e5) / 1e5;
+  if (isGulpPhysics(R11.run ? E8?.env.registries.contactPhysics.get(R11.run.physicsId) : void 0)) {
+    const took = Math10.round(R11.took * 1e5) / 1e5, spilled = Math10.round((G11.spilled - R11.spilledAt) * 1e5) / 1e5;
     if (took > 0) report6({ beat, kind: "swallow", amount: took }, false);
-    const coughed = G11.stats.coughs > R10.coughsAt, overflowed = G11.stats.overflows > R10.overflowsAt;
+    const coughed = G11.stats.coughs > R11.coughsAt, overflowed = G11.stats.overflows > R11.overflowsAt;
     if (spilled > 0) {
       if (coughed) report6({ beat, kind: "spill", part: "cough", amount: spilled }, false);
       if (overflowed) report6({ beat, kind: "spill", part: "overflow", amount: coughed ? 0 : spilled }, false);
       if (!coughed && !overflowed) report6({ beat, kind: "spill", part: "more", amount: spilled }, false);
     }
-    R10.took = 0;
-    R10.spilledAt = G11.spilled;
-    R10.coughsAt = G11.stats.coughs;
-    R10.overflowsAt = G11.stats.overflows;
+    R11.took = 0;
+    R11.spilledAt = G11.spilled;
+    R11.coughsAt = G11.stats.coughs;
+    R11.overflowsAt = G11.stats.overflows;
     return;
   }
   if (!G11.puddle) return;
   const sum = G11.puddle.m.reduce((a, b) => a + b, 0);
-  const low = R10.puddleLow ?? G11.puddle.total0;
-  const amount = Math10.round(Math10.max(0, low - sum) / Math10.max(1, G11.puddle.total0) * (R10.floor0 / 100) * 1e5) / 1e5;
-  R10.puddleLow = Math10.min(low, sum);
+  const low = R11.puddleLow ?? G11.puddle.total0;
+  const amount = Math10.round(Math10.max(0, low - sum) / Math10.max(1, G11.puddle.total0) * (R11.floor0 / 100) * 1e5) / 1e5;
+  R11.puddleLow = Math10.min(low, sum);
   if (amount > 0) report6({ beat, kind: "wipe", amount }, true);
 }
 function startSegment4(run, ck) {
@@ -79454,13 +79504,13 @@ function startSegment4(run, ck) {
   const endMs = segmentSecondsOf(E8.env.state(), E8.env.registries, run, 20) * 1e3;
   const clock0 = G11.t - (ck.now - ck.startedAt);
   const first2 = Math10.max(0, Math10.floor((G11.t - clock0) / BEAT5()));
-  R10.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0, beats: plan.beats.length, endMs, reported: Math10.min(first2, plan.beats.length), ended: false, full: Math10.max(1, Math10.ceil(endMs / BEAT5())) };
-  R10.plan = plan.beats;
+  R11.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0, beats: plan.beats.length, endMs, reported: Math10.min(first2, plan.beats.length), ended: false, full: Math10.max(1, Math10.ceil(endMs / BEAT5())) };
+  R11.plan = plan.beats;
 }
 function refreshLines6(beat = 0) {
   if (!E8) return;
   const env = E8.env;
-  const own = (k) => [...voiceLines2(env.registries, `gulp.${k}`, R10.lineStyle)];
+  const own = (k) => [...voiceLines2(env.registries, `gulp.${k}`, R11.lineStyle)];
   const lines3 = Object.fromEntries(LINE_KINDS2.map((k) => [k, own(k)]));
   if (lines3.surge.length > 0) {
     const v = env.staging.voiced?.("surge", beat) ?? null;
@@ -79477,8 +79527,8 @@ function before7(now) {
     innerWidth10 = w;
     innerHeight10 = h2;
   }
-  R10.ox = r.left;
-  R10.oy = r.top;
+  R11.ox = r.left;
+  R11.oy = r.top;
   S12.reduced = e.env.reduced;
   e.box.toggleAttribute("data-reduced", S12.reduced);
   e.box.toggleAttribute("data-readable", e.env.readable);
@@ -79490,7 +79540,7 @@ function before7(now) {
     streamInit();
     if (STREAM.g && S12.streamS === "mug" && !STREAM.mixA && A9.buf.mug_soft && A9.buf.mug_strong) streamSource();
   }
-  const scene = R10.run ? e.env.spriteOf(R10.run.holderId) : null;
+  const scene = R11.run ? e.env.spriteOf(R11.run.holderId) : null;
   const src = scene?.getAttribute("src") ?? "";
   const her = e.els["#her"];
   if (src !== "" && her.getAttribute("src") !== src) her.setAttribute("src", src);
@@ -79499,13 +79549,13 @@ function before7(now) {
     img2.style.height = `${img2.naturalHeight}px`;
   }
   const dt = Math10.min(50, now - last3);
-  if (G11.gulping > 0 && (G11.phase === "entry" || G11.phase === "loop" || G11.phase === "after" || G11.phase === "clean")) R10.took += GULP_TAKES * Math10.min(dt, G11.gulping) / GULP_MS;
-  const run = R10.run;
+  if (G11.gulping > 0 && (G11.phase === "entry" || G11.phase === "loop" || G11.phase === "after" || G11.phase === "clean")) R11.took += GULP_TAKES * Math10.min(dt, G11.gulping) / GULP_MS;
+  const run = R11.run;
   const ck = e.env.staging.clock();
-  R10.running = run !== null && run.segment.state === "running" && run.segment.plan !== void 0 && ck.startedAt !== null;
-  if (G11.phase !== "idle" && G11.phase !== "done" && R10.running && (R10.seg === null || R10.seg.n !== run.segment.n || R10.seg.startedAt !== ck.startedAt)) startSegment4(run, ck);
-  const seg = R10.seg;
-  if (R10.running && seg && !seg.ended) {
+  R11.running = run !== null && run.segment.state === "running" && run.segment.plan !== void 0 && ck.startedAt !== null;
+  if (G11.phase !== "idle" && G11.phase !== "done" && R11.running && (R11.seg === null || R11.seg.n !== run.segment.n || R11.seg.startedAt !== ck.startedAt)) startSegment4(run, ck);
+  const seg = R11.seg;
+  if (R11.running && seg && !seg.ended) {
     const elapsed = G11.t - seg.clock0;
     const passed = Math10.floor(elapsed / BEAT5());
     while (seg.reported < Math10.min(passed, seg.beats)) reportBeat5(seg.reported++);
@@ -79571,21 +79621,21 @@ function bind8(env, run) {
   reseed3(fnv1a3(`${state.scene?.id ?? ""}|${run.id}|gulp`));
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S12.style = lead.key in STYLES6 ? lead.key : "neutral";
-  R10.lineStyle = lead.key;
-  R10.manner = physicsMannerOf(state, run.holderId, reg);
-  R10.run = run;
-  R10.seg = null;
-  R10.running = false;
-  R10.plan = [];
-  R10.chained = false;
-  R10.took = 0;
-  R10.spilledAt = 0;
-  R10.coughsAt = 0;
-  R10.overflowsAt = 0;
-  R10.puddleLow = null;
-  R10.floor0 = 0;
-  R10.surgeAt = "";
-  R10.ended = null;
+  R11.lineStyle = lead.key;
+  R11.manner = physicsMannerOf(state, run.holderId, reg);
+  R11.run = run;
+  R11.seg = null;
+  R11.running = false;
+  R11.plan = [];
+  R11.chained = false;
+  R11.took = 0;
+  R11.spilledAt = 0;
+  R11.coughsAt = 0;
+  R11.overflowsAt = 0;
+  R11.puddleLow = null;
+  R11.floor0 = 0;
+  R11.surgeAt = "";
+  R11.ended = null;
   bindArt(env, run);
   const owner = state.scene?.participants.find((id) => state.squad.some((u) => u.id === id)) ?? null;
   const loc = state.scene?.locationId ?? "";
@@ -79631,7 +79681,7 @@ function listen7(env) {
   const control2 = (t) => t instanceof Element && t.closest('button, a, [role="button"], select, [data-action]') !== null;
   const onFrame = (t) => t instanceof Node && (t === env.layers.frame || env.layers.frame.contains(t));
   const typing6 = (t) => t instanceof HTMLElement && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
-  const at2 = (e) => ({ clientX: e.clientX - R10.ox, clientY: e.clientY - R10.oy });
+  const at2 = (e) => ({ clientX: e.clientX - R11.ox, clientY: e.clientY - R11.oy });
   env.listen(globalThis.document, "keydown", (e) => {
     if (typing6(e.target) || control2(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === " ") {
@@ -79685,11 +79735,11 @@ function stopGulp() {
     overImgs[k] = null;
   }
   DETACHED2.clear();
-  R10.run = null;
-  R10.seg = null;
-  R10.running = false;
-  R10.plan = [];
-  R10.chained = false;
+  R11.run = null;
+  R11.seg = null;
+  R11.running = false;
+  R11.plan = [];
+  R11.chained = false;
   LINES6 = { neutral: {} };
   S12._slow = 1;
   G11 = fresh7();
@@ -79704,8 +79754,8 @@ function startGulp_(env, run) {
     const r = env.root.getBoundingClientRect();
     innerWidth10 = env.root.clientWidth || r.width || 0;
     innerHeight10 = env.root.clientHeight || r.height || 0;
-    R10.ox = r.left;
-    R10.oy = r.top;
+    R11.ox = r.left;
+    R11.oy = r.top;
   }
   bind8(env, run);
   listen7(env);
@@ -79718,18 +79768,18 @@ function startGulp_(env, run) {
   return {
     update(next) {
       if (E8 !== mine) return;
-      const was = R10.run;
-      R10.run = next;
+      const was = R11.run;
+      R11.run = next;
       if (was && was.physicsId !== next.physicsId && next.gulp !== void 0 && !isGulpPhysics(env.registries.contactPhysics.get(next.physicsId))) {
-        R10.chained = true;
-        R10.floor0 = next.gauge;
-        R10.puddleLow = null;
+        R11.chained = true;
+        R11.floor0 = next.gauge;
+        R11.puddleLow = null;
         if (G11.phase === "loop" || G11.phase === "entry") endFlow();
       }
     },
     finish(end2) {
       if (E8 !== mine) return 0;
-      R10.ended = end2.result;
+      R11.ended = end2.result;
       refreshLines6();
       if (G11.phase === "loop" || G11.phase === "entry") {
         endFlow();

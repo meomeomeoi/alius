@@ -1,5 +1,26 @@
 [
   {
+    "id": "joke_turned_earnest",
+    "from": "equal",
+    "to": "play",
+    "requires": {
+      "holdBand": "testing",
+      "styles": [
+        "regal"
+      ],
+      "manner": true
+    },
+    "offer": "scene",
+    "effects": [
+      {
+        "type": "frame"
+      }
+    ],
+    "text": "AUTHOR TO WRITE: Bring it, servant. And she stops smiling, and waits to see if the commander still does.",
+    "promptHint": "she has played at being a queen; now she stops smiling and waits to see if the play is kept",
+    "description": "AUTHOR TO WRITE: The joke that stopped being a joke. For a regal woman it takes the place of the first yes."
+  },
+  {
     "id": "first_yes",
     "from": "equal",
     "to": "play",

@@ -664,5 +664,28 @@
     ],
     "description": "AUTHOR TO WRITE: Live when a ritual or habit is due.",
     "promptHint": "a ritual or a habit is due"
+  },
+  {
+    "id": "first_below",
+    "scope": "any",
+    "frame": [
+      {
+        "type": "yielded",
+        "generic": "let it last"
+      },
+      {
+        "type": "deflected",
+        "generic": "thank her"
+      },
+      {
+        "type": "returned",
+        "generic": "tease"
+      }
+    ],
+    "live": [
+      "external"
+    ],
+    "description": "AUTHOR TO WRITE: Her lace has come undone after a run and the commander kneels to tie it. She looks down and lets it last. Once per pair, early in a regal woman's way in.",
+    "promptHint": "her lace has come undone after a run; the commander kneels to tie it and she looks down and lets it last"
   }
 ]

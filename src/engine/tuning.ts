@@ -842,6 +842,8 @@ export const TUNING = Object.freeze({
     }),
     drift: Object.freeze({ days: 28 }),
     turn: Object.freeze({ margin: 2, reviews: 2, days: 56 }),
+    /** Chunk m7 (spec §12.3, AUTHOR TO TUNE): the regal way in. The first time below her comes at hold band `firstBelowBand`; `praises` of the commander's within `praiseDays` wake a latent woman who is moved by being admired (`praisedKeep` days are kept). */
+    regal: Object.freeze({ firstBelowBand: 'testing', praises: 3, praiseDays: 14, praisedKeep: 5 }),
     /**
      * Chunk m6 (planning ruling 4, AUTHOR TO TUNE): what the dynamic does to her accumulators (`manner:<axis>`, `manner:drawn_by.<kind>`), before the mode's factor
      * (slow 0.5). A step needs `development.stepThreshold` (3) and is at most one per axis per 28 days, so about two months of steady push make two steps:

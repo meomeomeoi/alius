@@ -20,14 +20,14 @@ import { TUNING } from '../tuning';
 import { canHold, dynamicOn, effectiveInclination, ensureDynamic, holderCap } from './gate';
 import { addHold, bandIndex } from './hold';
 import { feedYield } from './mannerFeed';
-import { expectationsOf } from './expectations';
-import { mannerOf } from './manner';
+import { admiredBy, probePlaces } from './probeNeeds';
+import { praisedLately } from './regalEntry';
 import { practiceOf, styleOf } from './profile';
 import { regardRise } from './regard';
 import { updateReading } from './reading';
 import { dynamicOf, type DynamicRelation } from './state';
 import { dynamicRoll } from './witness';
-import type { MannerAxis, ProbeAxisEntry, Tone } from './types';
+import type { ProbeAxisEntry, Tone } from './types';
 
 const livingNamed = (draft: Pick<CampaignState, 'squad'>) => draft.squad.filter((u) => u.kind === 'named' && isLiving(u));
 
@@ -70,9 +70,10 @@ export function probeQueueRoom(state: Pick<CampaignState, 'dynamic'>): number {
   return Math.max(0, n - (state.dynamic?.queue.length ?? 0));
 }
 
-/** Has she a cause to probe although she is only `latent`: a high Impunity, or she knows a dynamic and is drawn to seeing one (R9). */
+/** Has she a cause to probe although she is only `latent`: a high Impunity, being admired (P15b), or she knows a dynamic and is drawn to seeing one (R9). */
 function latentCause(state: CampaignState, reg: Registries, unitId: string): boolean {
   if ((impunityOf(state, reg, unitId)?.value ?? 0) >= TUNING.dynamic.impunityRoute) return true;
+  if (praisedLately(state, unitId) >= TUNING.manner.regal.praises && admiredBy(state, reg, unitId)) return true; // P15b (spec §12.3): being admired wakes a woman the admiration row matches
   const known = Object.values(state.dynamic?.knowledge[unitId] ?? {}).some((k) => k.level === 'knows_dynamic');
   if (!known) return false;
   const view = practiceOf(state, reg, unitId);
@@ -87,41 +88,6 @@ export function probeChance(state: CampaignState, reg: Registries, unitId: strin
   const base = TUNING.probes.chance[inclination];
   const p = base * TUNING.dynamic.frequency[state.dynamic!.setup.frequency] * assertiveness(state, reg).demandMult;
   return Math.min(1, Math.max(0, p));
-}
-
-const LIKE_RANK: Readonly<Record<string, number>> = { none: 0, tolerates: 1, indifferent: 1, dislikes: 0, enjoys: 2, craves: 3 };
-
-/** Whether she likes `what` at least as much as `least` (a practice category through `practiceOf`; `worship.<targetId>` through her expectation profile, planning ruling 9). */
-function likesAtLeast(state: CampaignState, reg: Registries, unitId: string, what: string, least: 'enjoys' | 'craves'): boolean {
-  if (what.startsWith('worship.')) {
-    const attitude = expectationsOf(state, reg, unitId).worship?.[what.slice('worship.'.length)]?.attitude;
-    return attitude !== undefined && LIKE_RANK[attitude] >= LIKE_RANK[least];
-  }
-  const as = practiceOf(state, reg, unitId)?.categories[what]?.as;
-  return as !== undefined && LIKE_RANK[as] >= LIKE_RANK[least];
-}
-
-/**
- * How many places a probe row takes in her pool (P15b, spec §12.1): a row with no `needs` takes one, as it always did. A row with `needs` takes none unless she has a `manner` and an
- * alternative holds (`styles`: her primary now, a turn counted; `drawnBy`; `manner`: bounds on what she has become, not on the mood of the day; `likes`), and then two when an alternative that
- * names `styles` holds, one for any other.
- */
-export function probePlaces(state: CampaignState, reg: Registries, unitId: string, row: ProbeAxisEntry): 0 | 1 | 2 {
-  if (row.needs === undefined) return 1;
-  const unit = state.squad.find((u) => u.id === unitId);
-  const manner = mannerOf({ squad: state.squad }, reg, unitId); // no day: the mood is not part of who she is
-  if (unit === undefined || manner === null) return 0;
-  const primary = styleOf(unit)?.primary;
-  let best: 0 | 1 | 2 = 0;
-  for (const n of row.needs) {
-    if (n.styles !== undefined && (primary === undefined || !n.styles.includes(primary))) continue;
-    if (n.drawnBy !== undefined && !n.drawnBy.some((d) => manner.drawnBy.includes(d))) continue;
-    if (n.manner !== undefined && !(Object.entries(n.manner) as Array<[MannerAxis, [number, number]]>).every(([a, [lo, hi]]) => manner.axes[a] >= lo && manner.axes[a] <= hi)) continue;
-    if (n.likes !== undefined && !Object.entries(n.likes).every(([what, least]) => likesAtLeast(state, reg, unitId, what, least))) continue;
-    best = n.styles !== undefined ? 2 : Math.max(best, 1) as 1 | 2;
-    if (best === 2) break;
-  }
-  return best;
 }
 
 /**

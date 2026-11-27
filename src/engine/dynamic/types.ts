@@ -233,6 +233,8 @@ export interface MilestoneRequires {
   coolingDays?: number;
   formerHolder?: true;
   noCapability?: Capability;
+  /** P15b (spec §12.3): she has a `manner` block. */
+  manner?: true;
 }
 
 export interface DynamicMilestoneEntry {
@@ -272,7 +274,7 @@ export interface ProbeNeed {
   likes?: Record<string, 'enjoys' | 'craves'>;
 }
 
-export interface ProbeAxisEntry { id: string; label: string; tier: 1 | 2; promptHint: string; needs?: ProbeNeed[]; description: string }
+export interface ProbeAxisEntry { id: string; label: string; tier: 1 | 2; promptHint: string; needs?: ProbeNeed[]; wakesOnPraise?: true; description: string }
 
 export interface PositionRegionEntry { id: string; rank: RegionRank; label: string; description: string }
 

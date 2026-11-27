@@ -37,13 +37,14 @@ const TABLE: Record<string, { scope: 'any' | 'dynamic'; frame: Array<[string, st
   rule_collision: { scope: 'dynamic', frame: [['her rule', Y], ['the order', R], ['ask her', D]], live: ['external'] },
   compromat_hint: { scope: 'dynamic', frame: [['ask', D], ['ignore', R], ['bargain', T]], live: ['external'] },
   ritual_due: { scope: 'dynamic', frame: [['keep it', Y], ['skip', R], ['ask to move it', D]], live: ['external'] },
+  first_below: { scope: 'any', frame: [['let it last', Y], ['thank her', D], ['tease', T]], live: ['external'] }, // P15b (spec §12.3)
 };
 
 const sources = () => [...reg.momentSources.values()] as unknown as MomentSourceEntry[];
 
 describe('momentSources (P15a, blocking.md §10)', () => {
-  it('26 sources with the table\'s frames and types', () => {
-    expect(sources()).toHaveLength(26);
+  it('27 sources with the table\'s frames and types', () => {
+    expect(sources()).toHaveLength(27);
     expect(sources().map((s) => s.id).sort()).toEqual(Object.keys(TABLE).sort());
     for (const s of sources()) {
       expect(s.frame.map((o) => [o.generic, o.type]), s.id).toEqual(TABLE[s.id]!.frame);

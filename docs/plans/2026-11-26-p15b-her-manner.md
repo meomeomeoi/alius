@@ -486,16 +486,16 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
   - `probes.ts` (`latentCause`: three P3 `praised` events from the commander toward her in 14 days, for `regal` or `drawnBy: power` with `warmth ≤ 0`, gated as Task 14). Count `praised` from `relations[id].history` (`type: 'praised'`), or a small counter written at `registerEventLanded` when the actor is the commander; record the choice in the commit.
 - Test: `tests/dynamic/regalEntry.test.ts`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - the joke row is chosen for a `regal` woman at `testing`, and `first_yes` for every other;
   - a refused joke row cools down and then `first_yes` can open;
   - `first_below` fires once per pair and never at another band;
   - three praises in 14 days wake a latent `regal` woman, two do not, and a non-matching woman is never woken this way;
   - the P15 and P15a goldens are unchanged.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P15b): the regal way in`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P15b): the regal way in`
 
 ### Task 16: Closing
 

@@ -19,6 +19,7 @@ import { canHold, dynamicOn, herPracticeLive } from './gate';
 import { addHold, frameEntry, holdBandOf } from './hold';
 import { addCompromat } from './compromat';
 import { feedRefusal, notePlaySince } from './mannerFeed';
+import { mannerOf } from './manner';
 import { practiceOf, styleOf } from './profile';
 import { dynamicOf, type DynamicRelation } from './state';
 import { trackCap } from './tracks';
@@ -61,6 +62,7 @@ export function requiresMet(state: CampaignState, reg: Registries, unitId: strin
     const primary = unit === undefined ? undefined : styleOf(unit)?.primary; // P15b: a turn of her style counts
     if (primary === undefined || !r.styles.includes(primary)) return false;
   }
+  if (r.manner === true && mannerOf({ squad: state.squad }, reg, unitId) === null) return false; // P15b: no manner, no regal way in
   if (r.romantic === true && bondTierOf(state, reg, unitId) !== 'romantic') return false;
   if (r.coolingDays !== undefined && state.day - dyn.lastPracticeDay < r.coolingDays) return false;
   if (r.formerHolder === true && dyn.formerHolder === undefined) return false;

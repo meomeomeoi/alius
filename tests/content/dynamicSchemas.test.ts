@@ -40,7 +40,7 @@ describe('the eleven registries (P15)', () => {
     const frames = rows('dynamicFrames');
     expect(frames.map((f) => [f.id, f.holdFloor])).toEqual([['equal', 0], ['play', 20], ['role', 40], ['rule', 60]]);
     expect(base.registries.dynamicFrames.get('equal')!.holdCeiling).toBe(39);
-    expect(rows('dynamicMilestones')).toHaveLength(9);
+    expect(rows('dynamicMilestones')).toHaveLength(10); // P15b: + the joke that stopped being a joke (regal)
     expect(rows('dynamicDomains')).toHaveLength(6);
     expect(rows('dynamicTracks')).toHaveLength(10);
     const axes = rows('probeAxes');

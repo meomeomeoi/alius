@@ -92,6 +92,7 @@
         }
       }
     ],
+    "wakesOnPraise": true,
     "description": "AUTHOR TO WRITE: asks how she looks, half in play, and waits to see how the commander answers"
   },
   {

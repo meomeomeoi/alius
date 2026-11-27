@@ -28,6 +28,7 @@ import { regardFeed, regardFromEvents } from '../dynamic/regard';
 import { questionEvents } from '../dynamic/shame';
 import { dynamicOf } from '../dynamic/state';
 import { noteQuirkRuns } from '../dynamic/quirks';
+import { noteFirstBelow, notePraise } from '../dynamic/regalEntry';
 import { noteEvents } from '../dynamic/style';
 import { registerEventLanded } from '../relations/effects';
 import { practiceEnabled } from '../dynamic/profile';
@@ -51,6 +52,8 @@ registerEventLanded(holdFeed);
 // ... and a kept promise or a quiet meeting that lands on a woman is value outside the dynamic: her Regard rises (R18); nothing while off.
 registerEventLanded((draft, reg, unitId, event) => regardFeed(draft, reg, unitId, event));
 registerEventLanded(mannerFeedLanded); // P15b: care from the commander pulls her manner (accumulators only)
+registerEventLanded(notePraise); // P15b (spec §12.3): the commander's praises of her, which wake a latent woman who is moved by being admired
+registerAfterAction(noteFirstBelow); // P15b (spec §12.3): the first time below her comes once per pair
 // Her days (R8): decay, the slow term, tracks and favour; after her life's step (this module is imported after `actions/life`), and nothing while off.
 registerDayEndStep('dm_rumors', dynamicDayStep);
 // Her place in the P15a stand-ins: frame, live scenes, physics style, what she holds until, what she expects (R10); every reader is null while off.

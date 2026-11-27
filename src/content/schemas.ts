@@ -2877,6 +2877,8 @@ export const DynamicMilestoneSchema = BaseEntrySchema.extend({
     coolingDays: int.min(1).max(365).optional(),
     formerHolder: z.literal(true).optional(),
     noCapability: capabilityEnum.optional(),
+    /** P15b (spec §12.3): she has a `manner` block (the package's gate: a profile from before it keeps its old graph). */
+    manner: z.literal(true).optional(),
   }).strict(),
   offer: z.enum(MILESTONE_OFFERS),
   sworn: z.literal(true).optional(),
@@ -2929,6 +2931,8 @@ export const ProbeAxisSchema = BaseEntrySchema.extend({
   promptHint: blockHint,
   /** P15b (§12.1): a row with `needs` enters her pool only with a `manner` and an alternative that holds; a `styles` alternative that holds takes two places. */
   needs: z.array(probeNeed).min(1).optional(),
+  /** P15b (spec §12.3): the row's `needs` also say who a latent woman wakes for when she is admired (three praises in a fortnight): `latentCause` asks the rows that carry this. */
+  wakesOnPraise: z.literal(true).optional(),
   description: str,
 }).strict();
 

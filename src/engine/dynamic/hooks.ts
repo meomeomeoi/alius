@@ -39,6 +39,7 @@ import { registerWantGrowth } from '../bonds/want';
 import { defaultExpectation, leadingStyle } from './style';
 import { dynamicHash, dynamicOf, type DynamicRelation } from './state';
 import { TUNING } from '../tuning';
+import { firstBelowLive } from './regalEntry';
 
 /** Her dynamic, only while the block exists, holders is not 0 and she is a named unit in service; `undefined` otherwise (the state-only "off" check). */
 function liveDynamic(state: CampaignState, unitId: string): DynamicRelation | undefined {
@@ -123,6 +124,7 @@ export function installDynamicHooks(): void {
   });
   registerRunTarget((state, reg, targetId) => (dynamicOn(state, reg) ? targetId : undefined)); // mastery counts the act on a target only while the dynamic is on (I4)
   registerExpectation(expectation as Parameters<typeof registerExpectation>[0]);
+  registerMomentTrigger('first_below', firstBelowLive); // P15b (spec §12.3): the first time below her, once per pair
   registerMomentTrigger('compromat_hint', compromatHint); // P15 (compromat): the one source of the dynamic that is live from the start
   registerCompromatCount((state, holderId) => compromatOf(state, holderId).length); // blackmail needs some
   registerRegardBand((state, reg, unitId) => (dynamicOn(state, reg) ? regardBandOf(reg, regardOf(state, reg, unitId)) : null)); // the aftermath weights read her Regard band (R15, R18)
