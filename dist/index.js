@@ -23380,8 +23380,8 @@ function faceNow(state, reg, unitId, present2) {
   if (others.length === 0 || herRunning(state, unitId)) return "dynamic";
   const rel = state.relations[unitId];
   const publicLevel = rel?.publicity?.level;
-  const knowers = others.filter((id) => publicLevel === "public" || levelOf2(state, id, unitId) === "knows_dynamic");
-  if (knowers.length < others.length) return publicLevel === "known" ? "everyday" : "mask";
+  const knowers = others.filter((id) => levelOf2(state, id, unitId) === "knows_dynamic");
+  if (knowers.length < others.length) return publicLevel === "known" || publicLevel === "public" ? "everyday" : "mask";
   const audience = practiceOf(state, reg, unitId)?.audience;
   if (audience === "show_off" || audience === "indifferent") return "dynamic_to_commander";
   if (audience === "select_few") {

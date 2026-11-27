@@ -45,8 +45,9 @@ export function faceNow(state: CampaignState, reg: Registries, unitId: string, p
   if (others.length === 0 || herRunning(state, unitId)) return 'dynamic';
   const rel = state.relations[unitId];
   const publicLevel = rel?.publicity?.level;
-  const knowers = others.filter((id) => publicLevel === 'public' || levelOf(state, id, unitId) === 'knows_dynamic');
-  if (knowers.length < others.length) return publicLevel === 'known' ? 'everyday' : 'mask'; // someone does not know: a secret or no romance keeps up the appearance
+  // knowing is knowing of the dynamic: a public romance is not that (author, 2026-11-27)
+  const knowers = others.filter((id) => levelOf(state, id, unitId) === 'knows_dynamic');
+  if (knowers.length < others.length) return publicLevel === 'known' || publicLevel === 'public' ? 'everyday' : 'mask'; // someone does not know: a secret or no romance keeps up the appearance
   const audience = practiceOf(state, reg, unitId)?.audience;
   if (audience === 'show_off' || audience === 'indifferent') return 'dynamic_to_commander';
   if (audience === 'select_few') {

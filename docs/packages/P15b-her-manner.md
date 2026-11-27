@@ -127,7 +127,7 @@ Written once at import (§8), editable in the dossier; texts never give the comm
 | who is present besides her and the commander | her `audience` allows it before them | face |
 |---|---|---|
 | no one (or a practice, physics or dynamic moment of hers runs) | — | `dynamic`: her manner toward the commander |
-| only people who know (`knows_dynamic` about her, or the relation's publicity is `public`) | yes: `show_off`, `indifferent`, or `select_few` when every one of them is among her few (`pickAudience`'s `select_few` set: the squad's leader and the units close to the commander) | `dynamic_to_commander`: her manner toward the commander, her everyday self toward the others |
+| only people who know (`knows_dynamic` about her; a `public` romance is not knowing of the dynamic, author 2026-11-27) | yes: `show_off`, `indifferent`, or `select_few` when every one of them is among her few (`pickAudience`'s `select_few` set: the squad's leader and the units close to the commander) | `dynamic_to_commander`: her manner toward the commander, her everyday self toward the others |
 | only people who know | no (`private_only`, or `select_few` and someone is not among her few) | `everyday` |
 | anyone who does not know | — | `everyday`; `mask` when the relation's publicity is `secret`: she keeps up the appearance that all is ordinary between them |
 
@@ -290,7 +290,7 @@ From the design session of 2026-11-26 (`docs/drafts/2026-11-26-regal.md`; this s
 The code map made before the plan found the spec leaning on things that do not exist or are named otherwise. Decided (author: 1, 2, 3; the rest are the controller's calls, which the author may overrule):
 
 1. **Instruments are bent too (author: option A).** The engine's numbers are bent where they live (`TUNING.physics.style` `windowMs`, the `cues` word's counted share, the seal step, `holdsUntil`, the jaw's rest rule and orders, `TUNING.practice.slap.windowMs`, gulp's `warn`). In every ported instrument **one** wiring point bends its style row: `bendRow(row, manner, kinds)` maps the row's fields by kind (times and leads by `tempo`, jitter and feints by `order`, magnitudes by `intensity`, patience and rests by `warmth`, line counts by `voice`), declared once per instrument in its `fidelity.json`. With every axis at 0 it returns the same row, so the prototypes and the goldens hold. The spec rows with no field of their own: segment length = `tempo` bends the content's `segmentSeconds`; cue lines = `voice` bends the share of beats that carry a cue; her answer to a tap = only `holdsUntil` ±1 step by `warmth`; pressure = `intensity` bends the step of the "presses after a clean segment" boundary rule; the slap's feints stay by her skill.
-2. **The mask without a romance (author).** `mask` when someone present does not know of the dynamic and there is no romance, or the romance is `secret`; when the romance is `known` / `public` but the person does not know of the dynamic, `everyday`.
+2. **The mask without a romance (author; 2026-11-27: a `public` romance no longer counts anyone as knowing of the dynamic — the review's finding 6).** `mask` when someone present does not know of the dynamic and there is no romance, or the romance is `secret`; when the romance is `known` / `public` but the person does not know of the dynamic, `everyday`.
 3. **The import budget (author).** The section extras move into settings: `budgets.profile_import_practice` (default **600**: the old 300 + 300) and `budgets.profile_import_expectations` (default 400), each an input in SYS › Output budgets.
 4. **Her own accumulator feed.** P14b's rules see only appraised relation events, and the dynamic's and practices' intents bypass `applyEventToUnit`; and P14b's review never proposes, the model does. So P15b feeds `development.acc['manner:*']` itself from the dynamic's events (a push table in `TUNING.manner.push`, not `developmentRules`, whose `match` / `by` cannot express these), and the engine proposes each step (§7's call), worded or declined by the review, applied by `fallbackReview` when it fails.
 5. **"28 days of the dynamic"** is counted from `dynamic.playSince` (the day her frame first reached `play`), written when it happens for a holder with `manner`.
@@ -371,7 +371,7 @@ Seven chunks: (m1) the profile fields, the reader and the helper, the import and
 ### Open items
 
 - The milestone types of the extractor (`milestone_accepted` / `milestone_refused`) are still offered whatever the face; only the probe types follow it.
-- The `public` publicity shortcut in `faceNow` (`face.ts`) is the author's call and is unchanged.
+- The `public` publicity shortcut in `faceNow` (`face.ts`) was removed (author, 2026-11-27): a public romance no longer counts anyone present as knowing of the dynamic; before someone who does not know of it the face is `everyday`, whatever her `audience`.
 
 - Every text is a draft (`AUTHOR TO WRITE`): the seven rows, their moments, the joke milestone, the `first_below` source, the `dynamic_hypothetical` rule and the development rows' `up` / `down` words. Every number of `TUNING.manner` is `AUTHOR TO TUNE`.
 - A swipe that takes a `first_below` moment back leaves `dynamic.firstBelow` set: the moment is consumed.

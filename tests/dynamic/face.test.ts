@@ -103,17 +103,17 @@ describe('faceNow: the table', () => {
     expect(faceOf(few)).toBe('everyday'); // one of them is not among her few
   });
 
-  it('a public relation counts everyone as knowing', () => {
-    const s = world({ audience: 'show_off', present: [BEA], romance: 'public' });
-    expect(faceOf(s)).toBe('dynamic_to_commander');
-    const priv = world({ audience: 'private_only', present: [BEA], romance: 'public' });
-    expect(faceOf(priv)).toBe('everyday');
+  it('a public romance is not knowing of the dynamic (author, 2026-11-27): before someone who does not know it is everyday, whatever her audience', () => {
+    expect(faceOf(world({ audience: 'show_off', present: [BEA], romance: 'public' }))).toBe('everyday');
+    expect(faceOf(world({ audience: 'indifferent', present: [BEA], romance: 'public' }))).toBe('everyday');
+    expect(faceOf(world({ audience: 'private_only', present: [BEA], romance: 'public' }))).toBe('everyday');
   });
 
   it('anyone who does not know: mask with no romance or a secret one, everyday with a known one (planning ruling 2)', () => {
     expect(faceOf(world({ present: [BEA] }))).toBe('mask');
     expect(faceOf(world({ present: [BEA], romance: 'secret' }))).toBe('mask');
     expect(faceOf(world({ present: [BEA], romance: 'known' }))).toBe('everyday');
+    expect(faceOf(world({ present: [BEA], romance: 'public' }))).toBe('everyday');
   });
 
   it('mixed company: one who knows and one who does not', () => {
