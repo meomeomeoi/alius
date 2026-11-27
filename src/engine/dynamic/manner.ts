@@ -6,6 +6,7 @@
  */
 import type { Registries } from '../../content/types';
 import type { CampaignState, Unit } from '../state/types';
+import { TUNING } from '../tuning';
 import { MANNER_AXES, type DrawnBy, type MannerAxis } from './types';
 
 export { CONTRASTS, DRAWN_BY, MANNER_AXES, QUIRK_WHEN } from './types';
@@ -63,4 +64,36 @@ export function bend(base: number, step: number, kind: BendKind): number {
 export function bendBy(state: Pick<CampaignState, 'squad'>, reg: Registries, unitId: string, axis: MannerAxis, base: number, kind: BendKind): number {
   const m = mannerOf(state, reg, unitId);
   return bend(base, m === null ? 0 : m.axes[axis], kind);
+}
+
+/** The words of a step of an axis (spec §1); `''` at 0 (an axis at its style says nothing). */
+export function mannerWord(axis: MannerAxis, step: number): string {
+  const steps = TUNING.manner.words[axis].steps as Readonly<Record<string, string>>;
+  return steps[String(Math.max(-2, Math.min(2, Math.trunc(step))))] ?? '';
+}
+
+/** The short word of a step: its words up to the first comma or colon (`''` at 0). */
+export function mannerShortWord(axis: MannerAxis, step: number): string {
+  return mannerWord(axis, step).split(/[,:]/)[0].trim();
+}
+
+/** What draws her, in words (spec §2). */
+export function drawnByWord(kind: DrawnBy): string {
+  return TUNING.manner.drawnByWords[kind];
+}
+
+/**
+ * A style's place on the axes in words, for its registry reading: the end it leans to on each axis away from 0 ("rather" at ±1, the end
+ * word itself beyond), in axis order. No number: the places are hidden coordinates.
+ */
+export function placeWords(place: Partial<Record<MannerAxis, number>> | undefined): string[] {
+  if (place === undefined) return [];
+  const out: string[] = [];
+  for (const a of MANNER_AXES) {
+    const v = place[a] ?? 0;
+    if (v === 0) continue;
+    const end = v > 0 ? TUNING.manner.words[a].high : TUNING.manner.words[a].low;
+    out.push(Math.abs(v) === 1 ? `rather ${end}` : Math.abs(v) >= 3 ? `wholly ${end}` : end);
+  }
+  return out;
 }

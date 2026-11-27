@@ -432,7 +432,7 @@ function dynamicProfileBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState)
   const host = h('div', { class: 'alius-dynamic-profile' });
   const part = (cls: string): HTMLElement => host.appendChild(h('div', { class: cls }));
   renderPracticeBlock(part('alius-dyn-practice'), {
-    unit: who, practice: unit.bond?.practice, categories: data.categories, locks: unit.practiceLocks ?? [], editable: true,
+    unit: who, practice: unit.bond?.practice, categories: data.categories, locks: unit.practiceLocks ?? [], editable: true, drift: unit.development?.practice?.manner,
     onSet: (practice) => send({ type: 'profile/set_practice', payload: { unitId: unit.id, practice } }),
     onLock: (field, on) => send({ type: 'profile/lock_practice', payload: { unitId: unit.id, field, on } }),
   });

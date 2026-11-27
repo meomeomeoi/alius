@@ -3740,5 +3740,120 @@
     "see": [
       "setting_budgets"
     ]
+  },
+  {
+    "id": "manner_intensity",
+    "term": "Intensity",
+    "short": "How hard she goes: from gentle, never pushing hard, to full force, holding nothing back.",
+    "see": [
+      "practice_style",
+      "face_dynamic"
+    ],
+    "long": "The middle step is her style itself; the others are her own departure from it."
+  },
+  {
+    "id": "manner_warmth",
+    "term": "Warmth",
+    "short": "What is under it: from cold, no comfort after, to tender, comforting the commander afterwards.",
+    "see": [
+      "practice_style",
+      "face_dynamic"
+    ],
+    "long": "The middle step is her style itself; the others are her own departure from it."
+  },
+  {
+    "id": "manner_order",
+    "term": "Order",
+    "short": "How much she keeps to forms: from impulse, never the same twice, to ritual, counted and announced.",
+    "see": [
+      "practice_style",
+      "face_dynamic"
+    ],
+    "long": "The middle step is her style itself; the others are her own departure from it."
+  },
+  {
+    "id": "manner_voice",
+    "term": "Voice",
+    "short": "How much she says while it runs: from silent, a look instead of a word, to talking the whole way through.",
+    "see": [
+      "practice_style",
+      "face_dynamic"
+    ],
+    "long": "The middle step is her style itself; the others are her own departure from it."
+  },
+  {
+    "id": "manner_tempo",
+    "term": "Tempo",
+    "short": "Her pace: from slow-burn, drawing everything out, to sudden, with no warning.",
+    "see": [
+      "practice_style",
+      "face_dynamic"
+    ],
+    "long": "The middle step is her style itself; the others are her own departure from it."
+  },
+  {
+    "id": "manner_curiosity",
+    "term": "Curiosity",
+    "short": "How often she brings in something new: from keeping to what she knows to exploring everything she can think of.",
+    "see": [
+      "practice_style",
+      "face_dynamic"
+    ],
+    "long": "The middle step is her style itself; the others are her own departure from it."
+  },
+  {
+    "id": "drawn_by",
+    "term": "Drawn by",
+    "short": "What she seeks and rewards in the dynamic, one or two, the main one first.",
+    "see": [
+      "face_dynamic"
+    ],
+    "long": "The hurt itself; the commander giving way to her; what the commander shows; it done right, cleanly; or the new, the first time."
+  },
+  {
+    "id": "face_dynamic",
+    "term": "Her face in the dynamic",
+    "short": "How she is when she holds: her style, her manner on the six axes, what draws her and her quirks.",
+    "see": [
+      "face_everyday",
+      "contrast"
+    ]
+  },
+  {
+    "id": "face_everyday",
+    "term": "Her everyday face",
+    "short": "How she is outside the dynamic and how the squad sees her, in one line. Sincere: it is her, not a cover.",
+    "see": [
+      "face_dynamic",
+      "contrast"
+    ],
+    "long": "Before people who should not see the dynamic, this is the face she shows."
+  },
+  {
+    "id": "quirks",
+    "term": "Quirks",
+    "short": "Two or three small ways she has in the dynamic. Each comes up now and then, when it fits.",
+    "see": [
+      "face_dynamic"
+    ],
+    "long": "How she steps into it, something she does while it runs, how she ends it, or how she names the commander in it."
+  },
+  {
+    "id": "contrast",
+    "term": "Contrast",
+    "short": "How far her everyday face is from her face in the dynamic. A high contrast gets talked about in the squad.",
+    "see": [
+      "face_everyday",
+      "face_dynamic"
+    ]
+  },
+  {
+    "id": "style_turn",
+    "term": "A turn of style",
+    "short": "Rarely, after months of the dynamic pushing her one way, another style fits her better than her own, and her style turns.",
+    "see": [
+      "practice_style",
+      "face_dynamic"
+    ]
   }
 ]

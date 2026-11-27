@@ -812,6 +812,24 @@ export const TUNING = Object.freeze({
     drift: Object.freeze({ days: 28 }),
     turn: Object.freeze({ margin: 2, reviews: 2, days: 56 }),
     contrast: Object.freeze({ low: 1, mid: 1.3, high: 1.6, cap: 0.9 }),
+    /**
+     * The words of the axes (spec §1, the author's, 2026-11-24): `label` names the axis, `low` / `high` its two ends, `steps` the words of a
+     * step (an axis at 0 says nothing). The dossier and the holder directive read this one table; the phrase before the first comma is the
+     * short word a control shows.
+     */
+    words: Object.freeze({
+      intensity: Object.freeze({ label: 'Intensity', low: 'gentle', high: 'full force', steps: Object.freeze({ '-2': 'gentle, she never pushes hard', '-1': 'measured', '1': 'she pushes hard', '2': 'all the way, holding nothing back' }) }),
+      warmth: Object.freeze({ label: 'Warmth', low: 'cold', high: 'tender', steps: Object.freeze({ '-2': 'cold through and through, no comfort after', '-1': 'cool, little comfort', '1': 'soft underneath, she looks after the commander afterwards', '2': 'tender under it all, she comforts the commander afterwards' }) }),
+      order: Object.freeze({ label: 'Order', low: 'impulse', high: 'ritual', steps: Object.freeze({ '-2': 'on impulse, never the same twice', '-1': 'loose with forms', '1': 'fond of forms and counting', '2': 'everything by ritual: counted, announced, in its order' }) }),
+      voice: Object.freeze({ label: 'Voice', low: 'silent', high: 'talks throughout', steps: Object.freeze({ '-2': 'silent, a look instead of a word', '-1': 'few words', '1': 'talkative while she does it', '2': 'talks the whole way through: narrating, asking, teasing' }) }),
+      tempo: Object.freeze({ label: 'Tempo', low: 'slow-burn', high: 'sudden', steps: Object.freeze({ '-2': 'slow, she draws everything out', '-1': 'unhurried', '1': 'quick', '2': 'sudden: no warning, it simply happens' }) }),
+      curiosity: Object.freeze({ label: 'Curiosity', low: 'keeps to her own', high: 'tries everything', steps: Object.freeze({ '-2': 'keeps to what she knows', '-1': 'rarely tries something new', '1': 'curious, likes to try new things', '2': 'explores everything she can think of, to the full' }) }),
+    } as const),
+    /** What draws her, in the directive's words (spec §2). */
+    drawnByWords: Object.freeze({
+      pain: 'the hurt itself', power: 'the commander giving way to her', reaction: 'what the commander shows: every gasp, every flinch',
+      discipline: 'it done right, cleanly', discovery: 'the new, the first time',
+    } as const),
   }),
   dynamic: Object.freeze({
     profile: Object.freeze({ tellMax: 80, howMax: 60, traitsMax: 6, traitMax: 40, offsetMax: 0.3 }),

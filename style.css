@@ -1590,6 +1590,20 @@
   opacity: 0.6;
 }
 
+/* Her manner (P15b): the five steps of an axis, and the step she has drifted to since joining (dashed: the pressed one is the imported step). */
+#alius-shell .alius-dyn-manner .alius-btn {
+  font-size: 0.85em;
+}
+
+#alius-shell .alius-since-joining-step {
+  outline: 1px dashed var(--alius-dim);
+  outline-offset: 1px;
+}
+
+#alius-shell .alius-since-joining {
+  color: var(--alius-dim);
+}
+
 /* Her milestone card (P15): her words, then the two answers side by side. */
 #alius-shell .alius-milestone-cards {
   margin: 6px 0;

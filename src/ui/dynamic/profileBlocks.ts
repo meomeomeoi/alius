@@ -2,8 +2,10 @@ import type { Registries } from '../../content/types';
 import { contentAllowed, type ContentHolder } from '../../engine/bonds/content';
 import { ATTITUDES, BODY_FEELINGS, HAIR, HOLDS_UNTIL, HYGIENE, MEANINGS, type ExpectationProfile } from '../../engine/dynamic/expectations';
 import { practiceCategories } from '../../engine/dynamic/profile';
+import { mannerShortWord, mannerWord } from '../../engine/dynamic/manner';
 import {
-  AUDIENCE, DRIVE, FAIRNESS, HINT_STYLE, INCLINATION, PRACTICE_AS, PROFILE_STYLES, WITNESS, type Practice, type PracticeCategory,
+  AUDIENCE, DRAWN_BY, DRIVE, FAIRNESS, HINT_STYLE, INCLINATION, MANNER_AXES, PRACTICE_AS, PROFILE_STYLES, QUIRK_WHEN, WITNESS,
+  type DrawnBy, type MannerAxis, type Practice, type PracticeCategory, type Quirk,
 } from '../../engine/dynamic/types';
 import { TUNING } from '../../engine/tuning';
 import { analyzeNative } from '../analyze/mark';
@@ -51,6 +53,11 @@ export interface PracticePatch {
   fairness?: Practice['fairness'];
   hintStyle?: Practice['hintStyle'];
   drive?: Practice['drive'];
+  /** P15b: the axes that changed (merged per axis); `null` fields below drop the field. */
+  manner?: Partial<Record<MannerAxis, number>>;
+  drawnBy?: DrawnBy[] | null;
+  everyday?: string | null;
+  quirks?: Quirk[] | null;
 }
 
 export interface PracticeBlockCtx {
@@ -62,6 +69,8 @@ export interface PracticeBlockCtx {
   /** `style`, `audience`, `inclination`, `fairness`, `hintStyle`, `drive` and `categories.<id>`. */
   locks: ReadonlyArray<string>;
   editable: boolean;
+  /** P15b: the steps her manner has drifted since joining (`development.practice.manner`); absent in the wizard. */
+  drift?: Partial<Record<MannerAxis, number>>;
   onSet: (patch: PracticePatch) => void;
   onLock: (field: string, on: boolean) => void;
 }
@@ -121,6 +130,97 @@ export function renderPracticeBlock(host: HTMLElement, ctx: PracticeBlockCtx): v
       ...values.map((v) => control(word(v), { 'data-id': v }, `glossary:${glossary}`, live, ctx.editable && !locked(field),
         () => { if (practice[field] !== v) ctx.onSet({ [field]: v } as PracticePatch); }, practice[field] === v)),
       lock(field, `glossary:${glossary}`)));
+  }
+
+  renderManner(host, ctx, practice, lock);
+}
+
+const STEPS = [-2, -1, 0, 1, 2] as const;
+const QUIRK_LABEL: Record<Quirk['when'], string> = { switch: 'stepping in', during: 'while it runs', after: 'at the end', address: 'naming the commander' };
+
+/**
+ * P15b: her face in the dynamic (the six axes as five steps, what draws her, her quirks) and her everyday face (one line), with the contrast as a
+ * word. A step's control carries its short word (none at 0) and the full words as its title; the imported step is pressed, and where she has
+ * drifted since joining the step she is at now carries the since-joining mark. No number is rendered.
+ */
+function renderManner(host: HTMLElement, ctx: PracticeBlockCtx, practice: Practice, lock: (field: string, address: string) => HTMLElement): void {
+  const live = { unitId: ctx.unit.id };
+  const on = (field: string): boolean => ctx.editable && !ctx.locks.includes(field);
+  const manner = practice.manner;
+  host.append(h('p', { class: 'alius-stat', 'data-face': 'dynamic', ...analyzeNative('glossary:face_dynamic', live), tabindex: '0' }, 'IN THE DYNAMIC'));
+  MANNER_AXES.forEach((axis, i) => {
+    const A = `glossary:manner_${axis}`;
+    const stored = manner?.[axis];
+    const drift = ctx.drift?.[axis] ?? 0;
+    const now = stored === undefined || drift === 0 ? undefined : Math.max(-2, Math.min(2, stored + drift));
+    const words = TUNING.manner.words[axis];
+    const buttons = STEPS.map((step) => {
+      const b = control(step === 0 ? '·' : mannerShortWord(axis, step).toUpperCase(), { 'data-step': String(step), title: step === 0 ? 'as her style' : mannerWord(axis, step) }, A, live, on('manner'),
+        () => { if (stored !== step || manner === undefined) ctx.onSet({ manner: { [axis]: step } }); }, stored === step);
+      if (now !== undefined && now !== stored && now === step) { b.setAttribute('data-since-joining', 'true'); b.classList.add('alius-since-joining-step'); }
+      return b;
+    });
+    host.append(h('div', { class: 'alius-dyn-row alius-dyn-manner', 'data-manner-axis': axis },
+      h('span', { class: 'alius-stat', 'data-analyze': A, tabindex: '0' }, `${words.label} (${words.low} … ${words.high}):`),
+      ...buttons,
+      ...(now !== undefined && now !== stored ? [h('span', { class: 'alius-chip alius-since-joining', ...analyzeNative('glossary:character_development', live), tabindex: '0' }, 'SINCE JOINING')] : []),
+      ...(i === 0 ? [lock('manner', 'glossary:manner_intensity')] : [])));
+  });
+
+  // what draws her: one or two, the main one first (a third replaces the second)
+  const drawn = practice.drawnBy ?? [];
+  host.append(h('div', { class: 'alius-dyn-row', 'data-practice-field': 'drawnBy' },
+    h('span', { class: 'alius-stat', 'data-analyze': 'glossary:drawn_by', tabindex: '0' }, 'Drawn by:'),
+    ...DRAWN_BY.map((d) => control(word(d), { 'data-drawn-by': d, ...(drawn.indexOf(d) >= 0 ? { 'data-rank': String(drawn.indexOf(d) + 1) } : {}) }, 'glossary:drawn_by', live, on('drawnBy'), () => {
+      const next = drawn.includes(d) ? drawn.filter((x) => x !== d) : drawn.length < TUNING.manner.text.drawnByMax ? [...drawn, d] : [drawn[0], d];
+      ctx.onSet({ drawnBy: next.length > 0 ? next : null });
+    }, drawn.includes(d))),
+    lock('drawnBy', 'glossary:drawn_by')));
+
+  // her quirks: the ones she has, then an empty one while there is room
+  const quirks = practice.quirks ?? [];
+  const setQuirks = (next: Quirk[]): void => ctx.onSet({ quirks: next.length > 0 ? next : null });
+  const quirkRow = (q: Quirk | undefined, index: number | 'new'): HTMLElement => {
+    const enabled = on('quirks');
+    const when = h('select', { class: 'alius-input alius-option', 'aria-label': 'When it shows', 'data-quirk-when': '', 'aria-disabled': enabled ? null : 'true', ...analyzeNative('glossary:quirks', live) },
+      ...QUIRK_WHEN.map((w) => option(w, QUIRK_LABEL[w]))) as HTMLSelectElement;
+    when.value = q?.when ?? 'switch';
+    const text = h('input', { type: 'text', class: 'alius-input alius-option', 'aria-label': 'Her quirk', 'data-quirk-text': '', maxlength: String(TUNING.manner.text.quirkMax), 'aria-disabled': enabled ? null : 'true', value: q?.text ?? '', ...analyzeNative('glossary:quirks', live) }) as HTMLInputElement;
+    const commit = (): void => {
+      const w = when.value as Quirk['when'];
+      const t = text.value.trim();
+      when.value = q?.when ?? 'switch';
+      text.value = q?.text ?? '';
+      if (!enabled) return;
+      if (index === 'new') { if (t !== '') setQuirks([...quirks, { when: w, text: t }]); return; }
+      if (t === '') return setQuirks(quirks.filter((_, j) => j !== index));
+      if (t !== q!.text || w !== q!.when) setQuirks(quirks.map((x, j) => (j === index ? { when: w, text: t } : x)));
+    };
+    if (index !== 'new') when.addEventListener('change', commit);
+    text.addEventListener('change', commit);
+    return h('div', { class: 'alius-dyn-row', 'data-quirk': String(index) },
+      h('span', { class: 'alius-stat', 'data-analyze': 'glossary:quirks', tabindex: '0' }, index === 'new' ? 'New quirk:' : 'Quirk:'),
+      when, text,
+      ...(index !== 'new' ? [control('[ REMOVE ]', { 'data-remove-quirk': '' }, 'glossary:quirks', live, enabled, () => setQuirks(quirks.filter((_, j) => j !== index)))] : []),
+      ...(index === 0 || (index === 'new' && quirks.length === 0) ? [lock('quirks', 'glossary:quirks')] : []));
+  };
+  quirks.forEach((q, i) => host.append(quirkRow(q, i)));
+  if (quirks.length < TUNING.manner.text.quirksMax) host.append(quirkRow(undefined, 'new'));
+
+  // her everyday face, and how far the two are apart
+  const everydayOn = on('everyday');
+  const everyday = h('input', { type: 'text', class: 'alius-input alius-option', 'aria-label': 'How she is outside the dynamic', 'data-everyday': '', maxlength: String(TUNING.manner.text.everydayMax), 'aria-disabled': everydayOn ? null : 'true', value: practice.everyday ?? '', ...analyzeNative('glossary:face_everyday', live) }) as HTMLInputElement;
+  everyday.addEventListener('change', () => {
+    const v = everyday.value.trim();
+    everyday.value = practice.everyday ?? '';
+    if (everydayOn && v !== (practice.everyday ?? '')) ctx.onSet({ everyday: v === '' ? null : v });
+  });
+  host.append(h('div', { class: 'alius-dyn-row', 'data-face': 'everyday' },
+    h('span', { class: 'alius-stat', 'data-analyze': 'glossary:face_everyday', tabindex: '0' }, 'EVERYDAY:'), everyday, lock('everyday', 'glossary:face_everyday')));
+  if (practice.contrast !== undefined) {
+    host.append(h('div', { class: 'alius-dyn-row', 'data-practice-field': 'contrast' },
+      h('span', { class: 'alius-stat', 'data-analyze': 'glossary:contrast', tabindex: '0' }, 'Contrast:'),
+      h('span', { class: 'alius-chip', 'data-contrast': practice.contrast, ...analyzeNative('glossary:contrast', live), tabindex: '0' }, word(practice.contrast))));
   }
 }
 

@@ -1,4 +1,6 @@
 import type { ActivityEffect, CombatEffect, TraitEffect } from '../content/schemas';
+import { placeWords } from '../engine/dynamic/manner';
+import type { MannerAxis } from '../engine/dynamic/types';
 import { TUNING } from '../engine/tuning';
 import type { Entry, Registries, RegistryName } from '../content/types';
 import type { WorldEffect } from '../engine/world/types';
@@ -284,6 +286,11 @@ function statLines(stats: unknown, format: (stat: string, n: number) => string):
 function effectsFor(registry: RegistryName, entry: Entry, reg: Registries, data?: Record<string, unknown>): string[] {
   const e = entry as Loose;
   switch (registry) {
+    case 'practiceStyles': {
+      // P15b: the style's place on the manner axes, in words only (the places are hidden coordinates)
+      const words = placeWords(e.manner as Partial<Record<MannerAxis, number>> | undefined);
+      return words.length > 0 ? [`As a manner: ${words.join(', ')}`] : [];
+    }
     case 'skills': {
       const head = compact([
         isNum(e.cooldown) ? `Cooldown ${e.cooldown}` : null,

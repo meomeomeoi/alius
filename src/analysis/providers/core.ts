@@ -372,6 +372,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'stage_setup', 'stage_slot_state', 'stage_sprites', 'stage_stand', 'stage_face', 'stage_hand', 'stage_accent', 'stage_load', 'stage_fit', 'stage_remove', 'stage_zones', 'stage_preview',
   // P15b (SYS › Output budgets: the import's section extras)
   'budget_profile_import_practice', 'budget_profile_import_expectations',
+  // P15b (her manner in the PRACTICE block; the turn of her style)
+  'manner_intensity', 'manner_warmth', 'manner_order', 'manner_voice', 'manner_tempo', 'manner_curiosity', 'drawn_by', 'face_everyday', 'face_dynamic', 'quirks', 'contrast', 'style_turn',
 ];
 
 let registered = false;

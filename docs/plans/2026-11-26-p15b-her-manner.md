@@ -134,17 +134,17 @@ Before Task 1, also read:
 
 The end words of §1 go into a data table: `TUNING.manner.words` or a small registry. The directive (Task 8) reads the same table.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - five steps per axis, with the step's word at ±1 / ±2 and nothing at 0;
   - setting a step calls `onSet({ manner: … })`;
   - a locked or non-editable block is disabled;
   - a drifted axis (overlay) shows its current step with the "since joining" mark (the existing P14b mark's class);
   - every control resolves `data-analyze`;
   - the reading of `practiceStyles:regal` contains no digit of its place.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`. Chunk end: full `npm test`, `npm run typecheck`, `npm run test:layout`.
-- [ ] **Step 5: Commit** `feat(P15b): her manner in the dossier`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`. Chunk end: full `npm test`, `npm run typecheck`, `npm run test:layout`.
+- [x] **Step 5: Commit** `feat(P15b): her manner in the dossier`
 
 ## Chunk m2: the practices
 

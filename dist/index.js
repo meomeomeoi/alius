@@ -1061,7 +1061,28 @@ var TUNING = Object.freeze({
     fresh: Object.freeze({ "-2": 0, "-1": 0, "0": 0, "1": 0.2, "2": 0.4 }),
     drift: Object.freeze({ days: 28 }),
     turn: Object.freeze({ margin: 2, reviews: 2, days: 56 }),
-    contrast: Object.freeze({ low: 1, mid: 1.3, high: 1.6, cap: 0.9 })
+    contrast: Object.freeze({ low: 1, mid: 1.3, high: 1.6, cap: 0.9 }),
+    /**
+     * The words of the axes (spec §1, the author's, 2026-11-24): `label` names the axis, `low` / `high` its two ends, `steps` the words of a
+     * step (an axis at 0 says nothing). The dossier and the holder directive read this one table; the phrase before the first comma is the
+     * short word a control shows.
+     */
+    words: Object.freeze({
+      intensity: Object.freeze({ label: "Intensity", low: "gentle", high: "full force", steps: Object.freeze({ "-2": "gentle, she never pushes hard", "-1": "measured", "1": "she pushes hard", "2": "all the way, holding nothing back" }) }),
+      warmth: Object.freeze({ label: "Warmth", low: "cold", high: "tender", steps: Object.freeze({ "-2": "cold through and through, no comfort after", "-1": "cool, little comfort", "1": "soft underneath, she looks after the commander afterwards", "2": "tender under it all, she comforts the commander afterwards" }) }),
+      order: Object.freeze({ label: "Order", low: "impulse", high: "ritual", steps: Object.freeze({ "-2": "on impulse, never the same twice", "-1": "loose with forms", "1": "fond of forms and counting", "2": "everything by ritual: counted, announced, in its order" }) }),
+      voice: Object.freeze({ label: "Voice", low: "silent", high: "talks throughout", steps: Object.freeze({ "-2": "silent, a look instead of a word", "-1": "few words", "1": "talkative while she does it", "2": "talks the whole way through: narrating, asking, teasing" }) }),
+      tempo: Object.freeze({ label: "Tempo", low: "slow-burn", high: "sudden", steps: Object.freeze({ "-2": "slow, she draws everything out", "-1": "unhurried", "1": "quick", "2": "sudden: no warning, it simply happens" }) }),
+      curiosity: Object.freeze({ label: "Curiosity", low: "keeps to her own", high: "tries everything", steps: Object.freeze({ "-2": "keeps to what she knows", "-1": "rarely tries something new", "1": "curious, likes to try new things", "2": "explores everything she can think of, to the full" }) })
+    }),
+    /** What draws her, in the directive's words (spec §2). */
+    drawnByWords: Object.freeze({
+      pain: "the hurt itself",
+      power: "the commander giving way to her",
+      reaction: "what the commander shows: every gasp, every flinch",
+      discipline: "it done right, cleanly",
+      discovery: "the new, the first time"
+    })
   }),
   dynamic: Object.freeze({
     profile: Object.freeze({ tellMax: 80, howMax: 60, traitsMax: 6, traitMax: 40, offsetMax: 0.3 }),
@@ -1667,6 +1688,217 @@ var TUNING = Object.freeze({
   })
 });
 
+// src/engine/blocking/types.ts
+var LIVE_KINDS = [
+  "extracted",
+  "blocking",
+  "visitor",
+  "obscured",
+  "mood_jump",
+  "weakness",
+  "asleep",
+  "alarm",
+  "keeps_fact",
+  "physics_warning",
+  "physics_slip",
+  "external"
+];
+var ESCALATION_ORDER = [
+  "remote_pulse",
+  "shock",
+  "tug_leash",
+  "tighten_hold",
+  "shift_weight",
+  "squeeze",
+  "press",
+  "press_harder",
+  "tug_hair",
+  "nudge_with_foot",
+  "whisper",
+  "pda_message",
+  "look",
+  "cough",
+  "name_aloud"
+];
+var INTERACTIONS = ["timing", "hold", "decision", "order", "passive", "gesture"];
+var CUE_KINDS = ["window_open", "window_false", "shift", "press", "lift", "count", "warning", "watch", "look_away", "greedy", "deeper", "suck", "wider", "pull_back", "surge"];
+var RESPONSE_TYPES = ["yielded", "resisted", "returned", "deflected"];
+var WORN_SLOTS = ["eyes", "ears", "mouth", "face", "head", "neck", "hands", "body", "legs", "groin", "feet", "prop"];
+var STAGES = ["aversion", "enduring", "accustomed", "craving", "adoring"];
+var SEALS = ["leaky", "firm", "tight"];
+var GAUGE_KINDS = ["capacity", "fill", "dirt", "progress"];
+var CONTACT_DIRS = ["her", "commander", "either", "none"];
+var ATTENTIONS = ["on_commander", "divided", "elsewhere", "none"];
+var PAIR_TAGS = ["focused", "relaxed", "body", "asleep", "eating"];
+var ANCHOR_KINDS = ["general", "relative", "furniture"];
+var STIMULUS_FAMILIES = ["scent", "sweat", "taste"];
+var SCOPES = ["any", "dynamic"];
+function effectsOfEntry(entry) {
+  const e = entry;
+  const declared = Array.isArray(e?.effects) ? e.effects : [];
+  const named5 = Array.isArray(e?.physics) ? e.physics : [];
+  const extra = named5.filter((p) => !declared.some((d) => d.type === "physics" && d.id === p.id)).map((p) => ({ type: "physics", id: p.id }));
+  return [...declared, ...extra];
+}
+
+// src/engine/blocking/state.ts
+var COMMANDER = "commander";
+var INTIMACIES = ["none", "close", "intimate", "explicit"];
+var FRAMES = ["equal", "play", "role", "rule"];
+var frameRank = (f) => FRAMES.indexOf(f);
+var NOTE_MAX = 120;
+
+// src/engine/physics/state.ts
+var INPUT_KINDS = ["breathe", "hold", "release", "mouth_breath", "gap_breath", "shift_weight", "part", "ask_rest", "strain", "uneven", "inhale", "scatter", "bite", "relieve", "fidget", "wipe", "spit", "swallow", "spill"];
+var GAUGE_FULL = 100;
+
+// src/engine/dynamic/types.ts
+var PROFILE_STYLES = ["affectionate", "cold", "ritual", "clinical", "possessive", "playful", "cruel", "obsessive", "drill", "regal", "vindictive"];
+var PRACTICE_AS = ["none", "tolerates", "enjoys", "craves"];
+var WITNESS = ["dislikes", "indifferent", "drawn"];
+var AUDIENCE = ["private_only", "select_few", "show_off", "indifferent"];
+var INCLINATION = ["none", "latent", "curious", "eager"];
+var MAY_HOLD = ["yes", "no", "auto"];
+var FAIRNESS = ["fair", "strict", "capricious", "unfair"];
+var HINT_STYLE = ["offers", "hints", "expects"];
+var DRIVE = ["low", "moderate", "high"];
+var HOLDER_CAPS = [0, 1, 2, 3, "any"];
+var PACES = ["slow", "normal", "fast"];
+var FREQUENCIES = ["rare", "normal", "often"];
+var SENSITIVITIES = ["sluggish", "normal", "lively"];
+var START_FRAMES = ["play", "role"];
+var CAPABILITIES = [
+  "booking_uncapped",
+  "book_ahead",
+  "body_conditions",
+  "device_floor",
+  "leash_block",
+  "household_protocol",
+  "second_place",
+  "relation_rules",
+  "booking_consent",
+  "countermand",
+  "co_leader"
+];
+var SURFACE_CONDITIONS = [
+  "peak",
+  "after_defiance",
+  "low_stakes_good_mood",
+  "before_others",
+  "scene_edges",
+  "third_person",
+  "displeased",
+  "new_practice",
+  "threat",
+  "after_peak_or_wound",
+  "stagnation",
+  "training_start",
+  "praised_or_ignored",
+  "crime_mentioned",
+  "failed_run",
+  "arrival_anniversary"
+];
+var MOTIVES = ["order", "fear", "her", "process", "gain"];
+var REGION_RANKS = ["hollow", "elusive", "cowed", "double_game", "calculating", "bratty", "proud", "hungry", "reluctant", "dutiful", "devoted"];
+var AFTERMATH_KINDS = ["grief", "pursuit", "blackmail", "revenge", "command_kept", "cold_contempt", "return_offer", "successor", "habits"];
+var AFTERMATH_DEMAND_KINDS = ["desire", "exclusion", "information", "interpersonal", "item", "privilege", "resource"];
+var EXIT_ROUTES = ["abrupt", "negotiated", "transfer", "force"];
+var BYPASS_ROUTES = ["comms", "reset", "ally"];
+var SIGN_KINDS = [
+  "step_behind",
+  "protocol_public",
+  "protocol_slip",
+  "kneeling_at_door",
+  "her_marks",
+  "remote_toy",
+  "leaving_quarters",
+  "held_night",
+  "background_role",
+  "background_rule",
+  "gossip_knows",
+  "gossip_suspects",
+  "dynamic_item",
+  "dynamic_contact",
+  "holder_tells",
+  "demonstration",
+  "exposed_staging",
+  "compromat_shown",
+  "scent_on_commander",
+  "scent_in_quarters",
+  "seen_together",
+  "time_alone",
+  "territory_marking"
+];
+var OFFER_TABS = ["part", "posture", "contact", "service", "time", "role", "endurance"];
+var OFFER_ANSWERS = ["accepted", "corrected", "mocked", "refused", "tonight"];
+var KNOWLEDGE_LEVELS = ["suspects_close", "suspects_dynamic", "knows_dynamic"];
+var DYNAMIC_KNOWLEDGE_TAG = "dynamic_knowledge";
+var TONES = ["sincere", "ironic", "transactional", "flat"];
+var REGARD_SPEEDS = ["very_slow", "slow", "normal", "fast"];
+var REFUSAL_COSTS = ["minor", "moderate", "major", "contest"];
+var OUTSIDE_REACH = ["none", "scenes", "all_day", "domains"];
+var MILESTONE_OFFERS = ["booking", "demand", "scene", "automatic"];
+var CLAIM_FORMS = ["demand", "milestone"];
+var MANNER_AXES = ["intensity", "warmth", "order", "voice", "tempo", "curiosity"];
+var DRAWN_BY = ["pain", "power", "reaction", "discipline", "discovery"];
+var QUIRK_WHEN = ["switch", "during", "after", "address"];
+var CONTRASTS = ["low", "mid", "high"];
+var PRACTICE_LOCK_FIELDS = ["style", "audience", "inclination", "fairness", "hintStyle", "drive", "manner", "drawnBy", "everyday", "quirks"];
+var DYNAMIC_EVENT_TYPES = [
+  "dynamic_started",
+  "hold_changed",
+  "hold_band_changed",
+  "frame_changed",
+  "domain_claimed",
+  "domain_yielded",
+  "domain_refused",
+  "domain_lost",
+  "domain_contested",
+  "milestone_offered",
+  "sworn",
+  "refusal_noted",
+  "dynamic_exit",
+  "aftermath_started",
+  "aftermath_ended",
+  "leash_blocked",
+  "leash_bypassed",
+  "oversight_inquiry",
+  "dynamic_known",
+  "probe_issued",
+  "probe_backoff",
+  "position_shifted",
+  "offer_made",
+  "zone_revealed",
+  "mastery_gained",
+  "regard_changed",
+  "regard_band_changed",
+  "disappointed",
+  "regard_question_asked",
+  "compromat_revealed",
+  "compromat_told"
+  // what she keeps and says (review M9): the controller refreshes the lines on them
+];
+
+// src/engine/dynamic/manner.ts
+function mannerWord(axis, step) {
+  const steps3 = TUNING.manner.words[axis].steps;
+  return steps3[String(Math.max(-2, Math.min(2, Math.trunc(step))))] ?? "";
+}
+function mannerShortWord(axis, step) {
+  return mannerWord(axis, step).split(/[,:]/)[0].trim();
+}
+function placeWords(place2) {
+  if (place2 === void 0) return [];
+  const out = [];
+  for (const a of MANNER_AXES) {
+    const v = place2[a] ?? 0;
+    if (v === 0) continue;
+    const end2 = v > 0 ? TUNING.manner.words[a].high : TUNING.manner.words[a].low;
+    out.push(Math.abs(v) === 1 ? `rather ${end2}` : Math.abs(v) >= 3 ? `wholly ${end2}` : end2);
+  }
+  return out;
+}
+
 // src/engine/state/types.ts
 var VALUE_AXES = ["pragmatism", "autonomy", "ingroup", "mercy", "corporate", "sacrifice"];
 var RARITIES = ["standard", "refined", "prototype", "corporate", "anomalous"];
@@ -1996,6 +2228,10 @@ function statLines(stats, format) {
 function effectsFor(registry2, entry, reg, data) {
   const e = entry;
   switch (registry2) {
+    case "practiceStyles": {
+      const words3 = placeWords(e.manner);
+      return words3.length > 0 ? [`As a manner: ${words3.join(", ")}`] : [];
+    }
     case "skills": {
       const head = compact([
         isNum(e.cooldown) ? `Cooldown ${e.cooldown}` : null,
@@ -7208,59 +7444,6 @@ function wardenArgueStart(state, action) {
 // src/engine/dilemma/types.ts
 var DILEMMA_CONTEXTS = ["expedition_event", "base", "mission_outcome", "defect_arc", "director", "scapegoat", "debts_oversight", "debts_unit", "warden_report"];
 
-// src/engine/blocking/types.ts
-var LIVE_KINDS = [
-  "extracted",
-  "blocking",
-  "visitor",
-  "obscured",
-  "mood_jump",
-  "weakness",
-  "asleep",
-  "alarm",
-  "keeps_fact",
-  "physics_warning",
-  "physics_slip",
-  "external"
-];
-var ESCALATION_ORDER = [
-  "remote_pulse",
-  "shock",
-  "tug_leash",
-  "tighten_hold",
-  "shift_weight",
-  "squeeze",
-  "press",
-  "press_harder",
-  "tug_hair",
-  "nudge_with_foot",
-  "whisper",
-  "pda_message",
-  "look",
-  "cough",
-  "name_aloud"
-];
-var INTERACTIONS = ["timing", "hold", "decision", "order", "passive", "gesture"];
-var CUE_KINDS = ["window_open", "window_false", "shift", "press", "lift", "count", "warning", "watch", "look_away", "greedy", "deeper", "suck", "wider", "pull_back", "surge"];
-var RESPONSE_TYPES = ["yielded", "resisted", "returned", "deflected"];
-var WORN_SLOTS = ["eyes", "ears", "mouth", "face", "head", "neck", "hands", "body", "legs", "groin", "feet", "prop"];
-var STAGES = ["aversion", "enduring", "accustomed", "craving", "adoring"];
-var SEALS = ["leaky", "firm", "tight"];
-var GAUGE_KINDS = ["capacity", "fill", "dirt", "progress"];
-var CONTACT_DIRS = ["her", "commander", "either", "none"];
-var ATTENTIONS = ["on_commander", "divided", "elsewhere", "none"];
-var PAIR_TAGS = ["focused", "relaxed", "body", "asleep", "eating"];
-var ANCHOR_KINDS = ["general", "relative", "furniture"];
-var STIMULUS_FAMILIES = ["scent", "sweat", "taste"];
-var SCOPES = ["any", "dynamic"];
-function effectsOfEntry(entry) {
-  const e = entry;
-  const declared = Array.isArray(e?.effects) ? e.effects : [];
-  const named5 = Array.isArray(e?.physics) ? e.physics : [];
-  const extra = named5.filter((p) => !declared.some((d) => d.type === "physics" && d.id === p.id)).map((p) => ({ type: "physics", id: p.id }));
-  return [...declared, ...extra];
-}
-
 // src/engine/life/types.ts
 var LIFE_SIZES = ["small", "notable"];
 var LIFE_CATEGORIES = ["things", "body", "construct", "people", "service", "luck"];
@@ -7271,144 +7454,6 @@ var TALK_LEVELS = ["quiet", "some"];
 function pastimeActivity(reg) {
   return [...reg.activities.values()].find((a) => a.pastime === true);
 }
-
-// src/engine/blocking/state.ts
-var COMMANDER = "commander";
-var INTIMACIES = ["none", "close", "intimate", "explicit"];
-var FRAMES = ["equal", "play", "role", "rule"];
-var frameRank = (f) => FRAMES.indexOf(f);
-var NOTE_MAX = 120;
-
-// src/engine/physics/state.ts
-var INPUT_KINDS = ["breathe", "hold", "release", "mouth_breath", "gap_breath", "shift_weight", "part", "ask_rest", "strain", "uneven", "inhale", "scatter", "bite", "relieve", "fidget", "wipe", "spit", "swallow", "spill"];
-var GAUGE_FULL = 100;
-
-// src/engine/dynamic/types.ts
-var PROFILE_STYLES = ["affectionate", "cold", "ritual", "clinical", "possessive", "playful", "cruel", "obsessive", "drill", "regal", "vindictive"];
-var PRACTICE_AS = ["none", "tolerates", "enjoys", "craves"];
-var WITNESS = ["dislikes", "indifferent", "drawn"];
-var AUDIENCE = ["private_only", "select_few", "show_off", "indifferent"];
-var INCLINATION = ["none", "latent", "curious", "eager"];
-var MAY_HOLD = ["yes", "no", "auto"];
-var FAIRNESS = ["fair", "strict", "capricious", "unfair"];
-var HINT_STYLE = ["offers", "hints", "expects"];
-var DRIVE = ["low", "moderate", "high"];
-var HOLDER_CAPS = [0, 1, 2, 3, "any"];
-var PACES = ["slow", "normal", "fast"];
-var FREQUENCIES = ["rare", "normal", "often"];
-var SENSITIVITIES = ["sluggish", "normal", "lively"];
-var START_FRAMES = ["play", "role"];
-var CAPABILITIES = [
-  "booking_uncapped",
-  "book_ahead",
-  "body_conditions",
-  "device_floor",
-  "leash_block",
-  "household_protocol",
-  "second_place",
-  "relation_rules",
-  "booking_consent",
-  "countermand",
-  "co_leader"
-];
-var SURFACE_CONDITIONS = [
-  "peak",
-  "after_defiance",
-  "low_stakes_good_mood",
-  "before_others",
-  "scene_edges",
-  "third_person",
-  "displeased",
-  "new_practice",
-  "threat",
-  "after_peak_or_wound",
-  "stagnation",
-  "training_start",
-  "praised_or_ignored",
-  "crime_mentioned",
-  "failed_run",
-  "arrival_anniversary"
-];
-var MOTIVES = ["order", "fear", "her", "process", "gain"];
-var REGION_RANKS = ["hollow", "elusive", "cowed", "double_game", "calculating", "bratty", "proud", "hungry", "reluctant", "dutiful", "devoted"];
-var AFTERMATH_KINDS = ["grief", "pursuit", "blackmail", "revenge", "command_kept", "cold_contempt", "return_offer", "successor", "habits"];
-var AFTERMATH_DEMAND_KINDS = ["desire", "exclusion", "information", "interpersonal", "item", "privilege", "resource"];
-var EXIT_ROUTES = ["abrupt", "negotiated", "transfer", "force"];
-var BYPASS_ROUTES = ["comms", "reset", "ally"];
-var SIGN_KINDS = [
-  "step_behind",
-  "protocol_public",
-  "protocol_slip",
-  "kneeling_at_door",
-  "her_marks",
-  "remote_toy",
-  "leaving_quarters",
-  "held_night",
-  "background_role",
-  "background_rule",
-  "gossip_knows",
-  "gossip_suspects",
-  "dynamic_item",
-  "dynamic_contact",
-  "holder_tells",
-  "demonstration",
-  "exposed_staging",
-  "compromat_shown",
-  "scent_on_commander",
-  "scent_in_quarters",
-  "seen_together",
-  "time_alone",
-  "territory_marking"
-];
-var OFFER_TABS = ["part", "posture", "contact", "service", "time", "role", "endurance"];
-var OFFER_ANSWERS = ["accepted", "corrected", "mocked", "refused", "tonight"];
-var KNOWLEDGE_LEVELS = ["suspects_close", "suspects_dynamic", "knows_dynamic"];
-var DYNAMIC_KNOWLEDGE_TAG = "dynamic_knowledge";
-var TONES = ["sincere", "ironic", "transactional", "flat"];
-var REGARD_SPEEDS = ["very_slow", "slow", "normal", "fast"];
-var REFUSAL_COSTS = ["minor", "moderate", "major", "contest"];
-var OUTSIDE_REACH = ["none", "scenes", "all_day", "domains"];
-var MILESTONE_OFFERS = ["booking", "demand", "scene", "automatic"];
-var CLAIM_FORMS = ["demand", "milestone"];
-var MANNER_AXES = ["intensity", "warmth", "order", "voice", "tempo", "curiosity"];
-var DRAWN_BY = ["pain", "power", "reaction", "discipline", "discovery"];
-var QUIRK_WHEN = ["switch", "during", "after", "address"];
-var CONTRASTS = ["low", "mid", "high"];
-var PRACTICE_LOCK_FIELDS = ["style", "audience", "inclination", "fairness", "hintStyle", "drive", "manner", "drawnBy", "everyday", "quirks"];
-var DYNAMIC_EVENT_TYPES = [
-  "dynamic_started",
-  "hold_changed",
-  "hold_band_changed",
-  "frame_changed",
-  "domain_claimed",
-  "domain_yielded",
-  "domain_refused",
-  "domain_lost",
-  "domain_contested",
-  "milestone_offered",
-  "sworn",
-  "refusal_noted",
-  "dynamic_exit",
-  "aftermath_started",
-  "aftermath_ended",
-  "leash_blocked",
-  "leash_bypassed",
-  "oversight_inquiry",
-  "dynamic_known",
-  "probe_issued",
-  "probe_backoff",
-  "position_shifted",
-  "offer_made",
-  "zone_revealed",
-  "mastery_gained",
-  "regard_changed",
-  "regard_band_changed",
-  "disappointed",
-  "regard_question_asked",
-  "compromat_revealed",
-  "compromat_told"
-  // what she keeps and says (review M9): the controller refreshes the lines on them
-];
 
 // src/engine/physics/occlusion.ts
 var OCCLUSION_KINDS = ["slit", "gap", "lift", "slide", "seat", "squeeze", "wedge"];
@@ -57472,6 +57517,119 @@ function renderPracticeBlock(host, ctx2) {
       lock(field2, `glossary:${glossary}`)
     ));
   }
+  renderManner(host, ctx2, practice, lock);
+}
+var STEPS2 = [-2, -1, 0, 1, 2];
+var QUIRK_LABEL = { switch: "stepping in", during: "while it runs", after: "at the end", address: "naming the commander" };
+function renderManner(host, ctx2, practice, lock) {
+  const live3 = { unitId: ctx2.unit.id };
+  const on = (field2) => ctx2.editable && !ctx2.locks.includes(field2);
+  const manner = practice.manner;
+  host.append(h("p", { class: "alius-stat", "data-face": "dynamic", ...analyzeNative("glossary:face_dynamic", live3), tabindex: "0" }, "IN THE DYNAMIC"));
+  MANNER_AXES.forEach((axis, i) => {
+    const A10 = `glossary:manner_${axis}`;
+    const stored = manner?.[axis];
+    const drift = ctx2.drift?.[axis] ?? 0;
+    const now = stored === void 0 || drift === 0 ? void 0 : Math.max(-2, Math.min(2, stored + drift));
+    const words3 = TUNING.manner.words[axis];
+    const buttons = STEPS2.map((step) => {
+      const b = control(
+        step === 0 ? "\xB7" : mannerShortWord(axis, step).toUpperCase(),
+        { "data-step": String(step), title: step === 0 ? "as her style" : mannerWord(axis, step) },
+        A10,
+        live3,
+        on("manner"),
+        () => {
+          if (stored !== step || manner === void 0) ctx2.onSet({ manner: { [axis]: step } });
+        },
+        stored === step
+      );
+      if (now !== void 0 && now !== stored && now === step) {
+        b.setAttribute("data-since-joining", "true");
+        b.classList.add("alius-since-joining-step");
+      }
+      return b;
+    });
+    host.append(h(
+      "div",
+      { class: "alius-dyn-row alius-dyn-manner", "data-manner-axis": axis },
+      h("span", { class: "alius-stat", "data-analyze": A10, tabindex: "0" }, `${words3.label} (${words3.low} \u2026 ${words3.high}):`),
+      ...buttons,
+      ...now !== void 0 && now !== stored ? [h("span", { class: "alius-chip alius-since-joining", ...analyzeNative("glossary:character_development", live3), tabindex: "0" }, "SINCE JOINING")] : [],
+      ...i === 0 ? [lock("manner", "glossary:manner_intensity")] : []
+    ));
+  });
+  const drawn2 = practice.drawnBy ?? [];
+  host.append(h(
+    "div",
+    { class: "alius-dyn-row", "data-practice-field": "drawnBy" },
+    h("span", { class: "alius-stat", "data-analyze": "glossary:drawn_by", tabindex: "0" }, "Drawn by:"),
+    ...DRAWN_BY.map((d) => control(word(d), { "data-drawn-by": d, ...drawn2.indexOf(d) >= 0 ? { "data-rank": String(drawn2.indexOf(d) + 1) } : {} }, "glossary:drawn_by", live3, on("drawnBy"), () => {
+      const next = drawn2.includes(d) ? drawn2.filter((x) => x !== d) : drawn2.length < TUNING.manner.text.drawnByMax ? [...drawn2, d] : [drawn2[0], d];
+      ctx2.onSet({ drawnBy: next.length > 0 ? next : null });
+    }, drawn2.includes(d))),
+    lock("drawnBy", "glossary:drawn_by")
+  ));
+  const quirks = practice.quirks ?? [];
+  const setQuirks = (next) => ctx2.onSet({ quirks: next.length > 0 ? next : null });
+  const quirkRow = (q, index2) => {
+    const enabled = on("quirks");
+    const when = h(
+      "select",
+      { class: "alius-input alius-option", "aria-label": "When it shows", "data-quirk-when": "", "aria-disabled": enabled ? null : "true", ...analyzeNative("glossary:quirks", live3) },
+      ...QUIRK_WHEN.map((w) => option(w, QUIRK_LABEL[w]))
+    );
+    when.value = q?.when ?? "switch";
+    const text3 = h("input", { type: "text", class: "alius-input alius-option", "aria-label": "Her quirk", "data-quirk-text": "", maxlength: String(TUNING.manner.text.quirkMax), "aria-disabled": enabled ? null : "true", value: q?.text ?? "", ...analyzeNative("glossary:quirks", live3) });
+    const commit = () => {
+      const w = when.value;
+      const t = text3.value.trim();
+      when.value = q?.when ?? "switch";
+      text3.value = q?.text ?? "";
+      if (!enabled) return;
+      if (index2 === "new") {
+        if (t !== "") setQuirks([...quirks, { when: w, text: t }]);
+        return;
+      }
+      if (t === "") return setQuirks(quirks.filter((_, j) => j !== index2));
+      if (t !== q.text || w !== q.when) setQuirks(quirks.map((x, j) => j === index2 ? { when: w, text: t } : x));
+    };
+    if (index2 !== "new") when.addEventListener("change", commit);
+    text3.addEventListener("change", commit);
+    return h(
+      "div",
+      { class: "alius-dyn-row", "data-quirk": String(index2) },
+      h("span", { class: "alius-stat", "data-analyze": "glossary:quirks", tabindex: "0" }, index2 === "new" ? "New quirk:" : "Quirk:"),
+      when,
+      text3,
+      ...index2 !== "new" ? [control("[ REMOVE ]", { "data-remove-quirk": "" }, "glossary:quirks", live3, enabled, () => setQuirks(quirks.filter((_, j) => j !== index2)))] : [],
+      ...index2 === 0 || index2 === "new" && quirks.length === 0 ? [lock("quirks", "glossary:quirks")] : []
+    );
+  };
+  quirks.forEach((q, i) => host.append(quirkRow(q, i)));
+  if (quirks.length < TUNING.manner.text.quirksMax) host.append(quirkRow(void 0, "new"));
+  const everydayOn = on("everyday");
+  const everyday = h("input", { type: "text", class: "alius-input alius-option", "aria-label": "How she is outside the dynamic", "data-everyday": "", maxlength: String(TUNING.manner.text.everydayMax), "aria-disabled": everydayOn ? null : "true", value: practice.everyday ?? "", ...analyzeNative("glossary:face_everyday", live3) });
+  everyday.addEventListener("change", () => {
+    const v = everyday.value.trim();
+    everyday.value = practice.everyday ?? "";
+    if (everydayOn && v !== (practice.everyday ?? "")) ctx2.onSet({ everyday: v === "" ? null : v });
+  });
+  host.append(h(
+    "div",
+    { class: "alius-dyn-row", "data-face": "everyday" },
+    h("span", { class: "alius-stat", "data-analyze": "glossary:face_everyday", tabindex: "0" }, "EVERYDAY:"),
+    everyday,
+    lock("everyday", "glossary:face_everyday")
+  ));
+  if (practice.contrast !== void 0) {
+    host.append(h(
+      "div",
+      { class: "alius-dyn-row", "data-practice-field": "contrast" },
+      h("span", { class: "alius-stat", "data-analyze": "glossary:contrast", tabindex: "0" }, "Contrast:"),
+      h("span", { class: "alius-chip", "data-contrast": practice.contrast, ...analyzeNative("glossary:contrast", live3), tabindex: "0" }, word(practice.contrast))
+    ));
+  }
 }
 var STRENGTHS2 = [1, 2, 3];
 var OFFSET_STEPS = [-0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3];
@@ -60365,6 +60523,7 @@ function dynamicProfileBlock(unit5, ctx2, state) {
     categories: data.categories,
     locks: unit5.practiceLocks ?? [],
     editable: true,
+    drift: unit5.development?.practice?.manner,
     onSet: (practice) => send({ type: "profile/set_practice", payload: { unitId: unit5.id, practice } }),
     onLock: (field2, on) => send({ type: "profile/lock_practice", payload: { unitId: unit5.id, field: field2, on } })
   });
