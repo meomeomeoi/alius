@@ -350,13 +350,28 @@ Seven chunks: (m1) the profile fields, the reader and the helper, the import and
 
 ### Non-obvious things to know
 
-- A holder with no `bond.practice.manner` keeps every number, line and draw she had; the face rule of §6 is the one exception. `tests/dynamic/unaffected.test.ts`, `tests/practice/unaffected.test.ts`, `tests/blocking/unaffected.test.ts` and `tests/sim/practiceLongRun.test.ts` did not move at any chunk. No new rng draw anywhere: chances are `dynamicRoll` / `practiceRoll` / `fnv1a` of a stable key.
+- A holder with no `bond.practice.manner` keeps every number, line and draw she had; the exceptions, all intended, are the face rule of §6, the retirement of the secondary style's line drift (`development/review.ts`, for every holder; `validateReview` refuses `practice:style.secondary` too, spec §7, ruling 11) and `changedAxes` (`development/words.ts`), which now tells P15 practice and expectation drift for old saves as well. `tests/dynamic/unaffected.test.ts`, `tests/practice/unaffected.test.ts`, `tests/blocking/unaffected.test.ts` and `tests/sim/practiceLongRun.test.ts` did not move at any chunk. No new rng draw anywhere: chances are `dynamicRoll` / `practiceRoll` / `fnv1a` of a stable key.
 - Read styles through `styleOf` / `practiceOf` and her axes through `mannerOf` (`tests/engine/dynamic/` guards the raw reads; a line that must stay raw carries `// P14b: raw profile`). Read probe needs, milestone requirements and moment sources by field, never by id (the exceptions are data the spec names: the `hypothetical` axis for its answer event, `worship.feet` in a row's `likes`, the `testing` band in `TUNING.manner.regal`).
 - Hidden: the accumulators, the mood as a number, the distance to a turn and whether one is due, which quirks are offered or voiced, the styles' places on the axes, the praise record, `dynamic.firstBelow`. Shown: her axes (as words), `drawnBy`, the two faces, the quirks, the contrast word. `tests/fixtures/analyze/hidden.ts` carries the accumulators (2.71, 1.83, 1.57) and texts as sentinels, and `tests/analysis/hidden.test.ts` checks that none of the hidden bookkeeping (accumulators, turn, steps, practised, quirk state) changes a reading at all.
 - `registerEventLanded(notePraise)` and `registerAfterAction(noteFirstBelow)` are in `actions/dynamic.ts`; the moment trigger is registered in `dynamic/hooks.ts`.
 - A new probe row with `needs` also needs its head start moment (the one-per-axis test).
 
+### Fix wave after the review
+
+- **`hypothetical_answered` after `probe_answered`:** `answerProbe` records the probe it closed (`probes.lastAnswered { axis, day }`, written only when it closes one) and `hypotheticalOpen` reads it for the same day (the old check used the issue day, which is before the rollover in real play).
+- **HOLD:** `mannerForbidden` honours `development.held` and `mannerPush` skips held keys (`manner:drawn_by.*` by `manner:drawn_by`).
+- **The dossier shows what the scenes carried:** `mannerAsShown` (`development/mannerShown.ts`) takes back, newest first, every manner moment not yet shown; a turn moment records the overlay before it (`DevMoment.priorPractice`). A turn from before this field takes back the whole overlay.
+- **The probe and the extractor:** `probe_answered` / `hypothetical_answered` are offered only where the probe directive shows (the same `showsDynamic(faceNow(...))`); the milestone types are not gated by the face (open item).
+- **Gate exceptions:** listed above and in CLAUDE.md; `validateReview` refuses the retired secondary line.
+- **Sparse at voice -2:** below 0 a sparse holder thins only her chatter; the other cues keep the style's own half. The draws are unchanged.
+- **A turn that is being read** makes her due on the cadence (`mannerDue`), so the second qualifying review comes with no other material.
+- **Quirks:** each is offered for one reply of a scene (`quirkScene.units[id].offered`, written by `markQuirksOffered` in `intents/apply`), then gone, voiced or not; quirks and `everyday` need a `manner` block; the mood clause words only the step left after the clamp.
+- Goldens (`dynamic`, `practice`, `blocking` unaffected, `practiceLongRun`) did not move.
+
 ### Open items
+
+- The milestone types of the extractor (`milestone_accepted` / `milestone_refused`) are still offered whatever the face; only the probe types follow it.
+- The `public` publicity shortcut in `faceNow` (`face.ts`) is the author's call and is unchanged.
 
 - Every text is a draft (`AUTHOR TO WRITE`): the seven rows, their moments, the joke milestone, the `first_below` source, the `dynamic_hypothetical` rule and the development rows' `up` / `down` words. Every number of `TUNING.manner` is `AUTHOR TO TUNE`.
 - A swipe that takes a `first_below` moment back leaves `dynamic.firstBelow` set: the moment is consumed.
