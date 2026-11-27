@@ -33,6 +33,10 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 #her { position: absolute; left: 50%; top: 3vh; height: 110vh; transform: translateX(-50%); user-select: none; -webkit-user-drag: none; transition: filter 1.4s; }
 #grad { position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(to bottom, rgba(0,0,0,.45), rgba(0,0,0,0) 9%, rgba(0,0,0,0) 58%, rgba(0,0,0,.72) 86%, rgba(0,0,0,.86)); }
+#blindView { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .9s; background: radial-gradient(ellipse at 50% 55%, #0b090d 0%, #030203 70%); }
+#grain { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .06; mix-blend-mode: overlay; pointer-events: none; transition: opacity .9s; }
+body.blind #blindView { opacity: 1; }
+body.blind #grain { opacity: .16; }
 #vignette { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 1.2s;
   background: radial-gradient(ellipse at 50% 55%, transparent 45%, rgba(0,0,0,.65) 100%); }
 #topline { position: absolute; left: 18px; top: 14px; font: 12px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .1em; color: var(--dim); }
@@ -175,6 +179,8 @@ body.reduced #feel div { animation: feelR 4.2s linear both; }
   <img id="her" alt="" draggable="false">
   <div id="grad"></div>
   <div id="vignette"></div>
+  <div id="blindView"></div>
+  <canvas id="grain"></canvas>
   <div id="topline">her quarters · day 031 · evening · private · Ann</div>
   <div id="reply"><span class="who">ANN</span><span class="act">She sits down at her desk and opens a folder.</span> <span class="speech">"You know what to do."</span></div>
   <div id="inputWrap"><input id="cmd" autocomplete="off" spellcheck="false" placeholder="say something…"></div>
@@ -197,7 +203,8 @@ body.reduced #feel div { animation: feelR 4.2s linear both; }
   <h4>the posture call</h4>
   <div class="row"><button class="opt" id="callB">B: she names a posture (C)</button><button class="opt" id="callC">C: she conducts (V)</button></div>
   <div class="note" id="namedNote"></div>
-  <label><input type="checkbox" id="hintStates" checked> light her states and the points still to move</label>
+  <label><input type="checkbox" id="hintStates"> always show every hint (the open easing in SYS › Scene)</label>
+  <div class="note">Hints thin out as this posture is learnt (the mastery slider): 0–1 her posture as a ghost, the right state lit and the points still to move ringed; 2–3 only the rings; 4–5 nothing.</div>
   <div class="note">Her set is small: P16 caps her names at her service track level + 1 (1–6). While this posture's mastery is below 2 her posture shows as a ghost; from 2 on it is recalled.</div>
   <h4>her world (temptations)</h4>
   <div class="row"><button class="opt" id="evVisitor">a visitor (50)</button><button class="opt" id="evUndress">she undresses (30)</button><button class="opt" id="evSound">a sound behind (30)</button><button class="opt" id="evLook">"look at me"</button></div>
@@ -286,18 +293,18 @@ const STATE_WORD = (s) => s.replaceAll('_', ' ');
 const STYLES = ['neutral', 'ritual', 'drill', 'cold', 'playful', 'cruel', 'regal'];
 const LINES = {
   neutral: { start: ['Like this. Hold it.', 'Stay like that.'], watch: ['I\'m watching.', 'Mm.'], fidget: ['Stop fidgeting.', 'Still.'], slip: ['Fix it.', 'That\'s not what I asked for.'],
-    gaze: ['Eyes down.', 'Did I say you could look?'], release: ['Enough. Up.', 'Good. You can stop.'], clean: ['Better than last time.'], prefix: 'Now —', taken: ['Good.'], wrong: ['No.'], late: ['Too slow.'], look: ['Look at me.'], down: ['Down.'] },
+    gaze: ['Eyes down.', 'Did I say you could look?'], release: ['Enough. Up.', 'Good. You can stop.'], clean: ['Better than last time.'], prefix: 'Now —', taken: ['Good.'], wrong: ['No.'], late: ['Too slow.'], look: ['Look at me.'], down: ['Down.'], notLooking: ['I said look at me.'] },
   ritual: { start: ['Position.', 'Assume it. Properly.'], watch: ['I see every line of you.'], fidget: ['A correction is not a twitch.'], slip: ['Again. From the beginning.'],
-    gaze: ['Eyes.'], release: ['Released.'], clean: ['Correct.'], prefix: 'Position:', taken: ['Correct.'], wrong: ['That is not the form.'], late: ['Late.'], look: ['Look at me.'], down: ['Lower them.'] },
+    gaze: ['Eyes.'], release: ['Released.'], clean: ['Correct.'], prefix: 'Position:', taken: ['Correct.'], wrong: ['That is not the form.'], late: ['Late.'], look: ['Look at me.'], down: ['Lower them.'], notLooking: ['When I tell you to look, you look.'] },
   drill: { start: ['Hold. I\'m timing it.', 'On my clock.'], watch: ['Thirty more.', 'Don\'t you dare.'], fidget: ['I saw that.'], slip: ['Reset. Clock starts again.'],
-    gaze: ['Eyes on the floor, recruit.'], release: ['Time. Up.'], clean: ['Norm met.'], prefix: 'On my word —', taken: ['Next.'], wrong: ['Wrong. Again.'], late: ['Too slow. Again.'], look: ['Look at me.'], down: ['Floor.'] },
+    gaze: ['Eyes on the floor, recruit.'], release: ['Time. Up.'], clean: ['Norm met.'], prefix: 'On my word —', taken: ['Next.'], wrong: ['Wrong. Again.'], late: ['Too slow. Again.'], look: ['Look at me.'], down: ['Floor.'], notLooking: ['Eyes on me. Now.'] },
   cold: { start: ['There.'], watch: [''], fidget: [''], slip: ['Hm.'], gaze: [''], release: ['That will do.'], clean: [''], prefix: '', taken: [''], wrong: ['No.'], late: [''], look: ['Look at me.'], down: [''] },
   playful: { start: ['Let\'s see how long you last.', 'Pretty. Now don\'t move.'], watch: ['I can see you wobbling.'], fidget: ['Ooh, a twitch.'], slip: ['Caught you.'],
-    gaze: ['Peeking?'], release: ['Alright, alright. Up.'], clean: ['Look at you.'], prefix: 'Simon says —', taken: ['Cute.'], wrong: ['Nope!'], late: ['Sloooow.'], look: ['Look at me.'], down: ['Gotcha. Down.'] },
+    gaze: ['Peeking?'], release: ['Alright, alright. Up.'], clean: ['Look at you.'], prefix: 'Simon says —', taken: ['Cute.'], wrong: ['Nope!'], late: ['Sloooow.'], look: ['Look at me.'], down: ['Gotcha. Down.'], notLooking: ['Hey. Up here.'] },
   cruel: { start: ['Hold it until I get bored.'], watch: ['Shaking already?'], fidget: ['Pathetic.'], slip: ['I knew you couldn\'t.'], gaze: ['Who said you get to look?'],
-    release: ['Get up. Slowly.'], clean: [''], prefix: 'Now —', taken: [''], wrong: ['Wrong.'], late: ['Late. Again.'], look: ['Look at me.'], down: ['I didn\'t mean it.'] },
+    release: ['Get up. Slowly.'], clean: [''], prefix: 'Now —', taken: [''], wrong: ['Wrong.'], late: ['Late. Again.'], look: ['Look at me.'], down: ['I didn\'t mean it.'], notLooking: ['Deaf as well?'] },
   regal: { start: ['There. Stay.'], watch: [''], fidget: ['Be still. You\'re in my way like that.'], slip: ['Did that look like what I wanted?'], gaze: ['You don\'t look at me unless I let you.'],
-    release: ['You may rise.'], clean: ['Acceptable.'], prefix: 'Attend —', taken: ['Mm.'], wrong: ['No.'], late: ['I don\'t wait.'], look: ['Look at me.'], down: ['Enough looking.'] },
+    release: ['You may rise.'], clean: ['Acceptable.'], prefix: 'Attend —', taken: ['Mm.'], wrong: ['No.'], late: ['I don\'t wait.'], look: ['Look at me.'], down: ['Enough looking.'], notLooking: ['I asked for your eyes.'] },
 };
 /** Whether "look at me" is a trap (looking is the fault) by style: a hashed share. */
 const TRAP = { neutral: 0.2, ritual: 0, drill: 0.1, cold: 0.3, playful: 0.6, cruel: 0.6, regal: 0.2 };
@@ -400,7 +407,7 @@ function drawBeads() {
     if (!act.includes(k)) b.classList.add('off');
     if (S.held[k]) b.classList.add('held');
     if (S.sel === k) b.classList.add('sel');
-    if (S.call && hintOn() && !S.call.trap && k !== 'gaze' && S.call.want[k] !== undefined && S.call.body.points[k] !== S.call.want[k]) b.classList.add('todo');
+    if (S.call && pointsShown() && !S.call.trap && k !== 'gaze' && S.call.want[k] !== undefined && S.call.body.points[k] !== S.call.want[k]) b.classList.add('todo');
     b.addEventListener('pointerdown', (e) => { e.preventDefault(); press(k); });
     host.append(b);
   });
@@ -423,7 +430,7 @@ function startHold() {
   };
   for (const k of POINTS) S.run.o[k] = 0;
   S.stance = null;
-  $('#dial').classList.add('holding'); $('#dial').classList.toggle('blind', S.run.blind); $('#stopPill').style.display = 'block';
+  $('#dial').classList.add('holding'); $('#dial').classList.toggle('blind', S.run.blind); document.body.classList.toggle('blind', S.run.blind); $('#stopPill').style.display = 'block';
   document.documentElement.style.setProperty('--dialBig', `${bigSize()}px`);
   say(pickLine('start', 'start'));
   sfx(anyOf(ASSETS.cloth, `take|${S.run.id}`), 0.35);
@@ -432,7 +439,7 @@ function startHold() {
 function endHold(reason, silent) {
   const r = S.run; if (!r) return;
   S.run = null; S.held = { gaze: false };
-  $('#dial').classList.remove('holding', 'watched', 'blind'); $('#stopPill').style.display = 'none'; $('#vignette').style.opacity = 0;
+  $('#dial').classList.remove('holding', 'watched', 'blind'); document.body.classList.remove('blind'); $('#stopPill').style.display = 'none'; $('#vignette').style.opacity = 0;
   if (!silent) {
     if (reason === 'released') say(r.slips === 0 && r.fidgets === 0 ? (pickLine('clean', 'clean') || pickLine('release', 'rel')) : pickLine('release', 'rel'));
     log(`${reason}: ${fictionClock(r.fiction)} of fiction · ${r.corrections} corrections (${r.loud} loud) · ${r.fidgets} seen · ${r.slips} slips · ${r.gazeSlips} looked up`);
@@ -486,7 +493,7 @@ function step(dt) {
   if (S.look) {
     S.look.left -= dt;
     if (S.look.left <= 0) {
-      if (S.look.phase === 'asked') { if (S.look.trap) { say(pickLine('taken', 'trap ok') || '…'); } else { slip('gaze', 'not looking'); } S.look = null; }
+      if (S.look.phase === 'asked') { if (S.look.trap) { say(pickLine('taken', 'trap ok') || '…'); } else { fault('notLooking', 'did not look when told'); } S.look = null; }
       else if (S.look.phase === 'up') { slip('gaze', 'kept looking'); S.look = null; }
     }
   }
@@ -515,6 +522,12 @@ function press(k) {
   drawDial();
 }
 function release(k) { if (k === 'gaze' && S.held.gaze) { S.held.gaze = false; drawBeads(); } }
+/** A fault that is not a drifting point (round 1e: not looking when told is not "the eyes rose"): her line, a slip, nothing moves on the body. */
+function fault(kind, why) {
+  const r = S.run; if (!r) return; r.slips++;
+  say(pickLine(kind, `${kind}${r.slips}`)); sfx(anyOf(ASSETS.creak, `fault|${r.slips}`), 0.35); if (!S.reduced) jolt(0.6);
+  log(`slip: ${why}`);
+}
 function slip(k, why) {
   const r = S.run; if (!r) return;
   r.slips++; if (k === 'gaze') r.gazeSlips++;
@@ -529,12 +542,13 @@ function jolt(a) { const d = $('#dial'); d.style.setProperty('--jx', `${(a * 5).
 function event(kind) {
   const r = S.run; if (!r) return;
   const im = (size, len) => r.impulses.push({ size, len, left: len });
-  if (kind === 'visitor') { sfx(ASSETS.knock, 0.4, -0.6); setTimeout(() => sfx(ASSETS.door, 0.35, -0.6), 900); setTimeout(() => { sfx(anyOf(ASSETS.steps, 'st'), 0.3, -0.4); reply('Someone opens the door, stops halfway in.', '"Oh — sorry. I\'ll come back."'); }, 1400); setTimeout(() => sfx(ASSETS.doorClose, 0.3, -0.6), 4600); im(50, 4.5); }
-  if (kind === 'undress') { sfx(ASSETS.cloth[2], 0.35, 0.3); reply('She pulls her shirt over her head and drops it on the desk.', ''); im(30, 3.5); }
-  if (kind === 'sound') { sfx(ASSETS.glass, 0.4, -0.8); reply('Something falls behind the commander and rolls across the floor.', ''); im(30, 3); }
+  if (kind === 'visitor') { sfx(ASSETS.knock, 0.4, -0.6); setTimeout(() => sfx(ASSETS.door, 0.35, -0.6), 900); setTimeout(() => { sfx(anyOf(ASSETS.steps, 'st'), 0.3, -0.4); reply(r.blind ? 'The door opens. A voice from the doorway, stopping.' : 'Someone opens the door, stops halfway in.', '"Oh — sorry. I\'ll come back."'); }, 1400); setTimeout(() => sfx(ASSETS.doorClose, 0.3, -0.6), 4600); im(50, 4.5); }
+  if (kind === 'undress') { sfx(ASSETS.cloth[2], 0.35, 0.3); reply(r.blind ? 'Cloth rustles above; something soft drops on the desk.' : 'She pulls her shirt over her head and drops it on the desk.', ''); im(30, 3.5); }
+  if (kind === 'sound') { sfx(ASSETS.glass, 0.4, -0.8); reply(r.blind ? 'Behind the commander something falls and rolls across the floor.' : 'Something falls behind the commander and rolls across the floor.', ''); im(30, 3); }
+  if (kind === 'look' && r.blind) return;
   if (kind === 'look') {
     const trap = hash01(`trap|${r.id}|${Math.floor(r.t)}`) < (TRAP[S.style] ?? 0.2);
-    S.look = { trap, phase: 'asked', left: 2.6 }; say(pickLine('look', 'look'));
+    S.look = { trap, phase: 'asked', left: 3.5 }; say(pickLine('look', 'look'));
   }
   log(`temptation: ${kind}${kind === 'look' ? '' : ' — hold 6'}`);
 }
@@ -599,9 +613,11 @@ function drawStates() {
   for (const v of statesFor(S.sel)) { const b = document.createElement('div'); b.className = 'st' + (c.body.points[S.sel] === v ? ' cur' : '') + (hintOn() && c.want[S.sel] === v ? ' want' : ''); b.textContent = STATE_WORD(v); b.addEventListener('pointerdown', (e) => { e.preventDefault(); pickState(S.sel, v); }); host.append(b); }
 }
 /** Her posture is shown as a ghost until the commander has learnt it (this posture's mastery below 2): recall only for what was held many times. */
-const ghostShown = () => Number($('#mastery').value) < 2;
+const hintLevel = () => ($('#hintStates').checked ? 0 : Number($('#mastery').value));
+const ghostShown = () => hintLevel() < 2;
 /** Round 1d (author): the right state of each point and the points still to move are lit (her accent). */
-const hintOn = () => $('#hintStates').checked;
+const hintOn = () => hintLevel() < 2;
+const pointsShown = () => hintLevel() < 4;
 function drawCallDial() { const c = S.call; const svg = mannequinSvg({ base: c.base, points: c.body.points }, ghostShown() ? { target: { base: c.base, points: c.want } } : {}); const face = $('#dialFace'); face.replaceChildren(svg);
   const an = anchors(svg); for (const k of POINTS) for (const a of an[k] ?? []) if (a) { const h = circle(a, 15, 'hit'); h.addEventListener('pointerdown', (e) => { e.preventDefault(); callPress(k); }); svg.append(h); }
   drawBeads(); $('#dialLabel').innerHTML = `<span class="herName">${c.word}</span>${c.trap ? '' : 'assemble'}`; }
@@ -651,7 +667,7 @@ $('#holdBtn').onclick = startHold; $('#endBtn').onclick = () => endHold('ended')
 $('#callB').onclick = () => startCall('B'); $('#callC').onclick = () => startCall('C', 4);
 $('#evVisitor').onclick = () => event('visitor'); $('#evUndress').onclick = () => event('undress'); $('#evSound').onclick = () => event('sound'); $('#evLook').onclick = () => event('look');
 $('#stopPill').onclick = () => endHold('stop word');
-$('#blind').onchange = (e) => { if (S.run) { S.run.blind = e.target.checked; $('#dial').classList.toggle('blind', S.run.blind); drawDial(); } };
+$('#blind').onchange = (e) => { if (S.run) { S.run.blind = e.target.checked; $('#dial').classList.toggle('blind', S.run.blind); document.body.classList.toggle('blind', S.run.blind); drawDial(); } };
 $('#eyesRule').onchange = (e) => { if (S.run) { S.run.eyes = e.target.checked; drawDial(); } };
 for (const id of ['skill', 'mastery', 'fatigue', 'speed']) $(`#${id}`).oninput = (e) => { $(`#${id}V`).textContent = e.target.value; };
 $('#bigSel').onchange = () => { document.documentElement.style.setProperty('--dialBig', `${bigSize()}px`); drawDial(); };
@@ -676,8 +692,13 @@ document.addEventListener('keyup', (e) => { if (KEY_POINT[e.key]) release(KEY_PO
 document.addEventListener('pointerup', () => release('gaze'));
 $('#dialFace').addEventListener('dblclick', () => { if (S.call) present(); });
 
+// the grain (her_activity.html's drawGrain: a low-resolution noise, redrawn every 80 ms)
+const grC = $('#grain'), grctx = grC.getContext('2d'); function sizeGrain() { grC.width = Math.ceil(innerWidth / 3); grC.height = Math.ceil(innerHeight / 3); } sizeGrain(); addEventListener('resize', sizeGrain);
+let grainAcc = 0;
+function drawGrain(dt) { grainAcc += dt; if (grainAcc < 80) return; grainAcc = 0; const W = grC.width, H = grC.height, img = grctx.createImageData(W, H), d = img.data; for (let i = 0; i < d.length; i += 4) { const v = Math.random() * 255; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; } grctx.putImageData(img, 0, 0); }
 let last = performance.now();
 function frame(now) {
+  drawGrain(now - last);
   const dt = Math.min(0.12, (now - last) / 1000) * Number($('#speed').value); last = now;
   if (S.run && !S.run.paused) step(dt);
   callTick();
