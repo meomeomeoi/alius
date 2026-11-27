@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../src/content/types';
 import '../../src/engine/actions/dynamic';
 import '../../src/engine/actions/memory';
-import { pickAxis, probePool } from '../../src/engine/dynamic/probes';
+import { answerProbe, pickAxis, probePool } from '../../src/engine/dynamic/probes';
 import { applyDynamicIntent, dynamicIntentInput } from '../../src/engine/dynamic/intents';
 import { blankDynamic, dynamicOf, newDynamicCampaign } from '../../src/engine/dynamic/state';
 import type { DrawnBy, MannerAxis, Practice, ProfileStyle } from '../../src/engine/dynamic/types';
@@ -273,9 +273,23 @@ describe('`hypothetical_answered { unitId, answer }`', () => {
 
   it('applyDynamicIntent: the answer still counts when the probe was closed by the same report (probe_answered came first)', () => {
     const s = pendingHypothetical();
-    delete s.relations[ANN].dynamic!.probes.pending; // closed by `answerProbe` earlier in the batch
-    s.relations[ANN].dynamic!.recent = ['hypothetical'];
-    s.relations[ANN].dynamic!.probes.answers = ['yielded'];
+    s.day += 1; // issued on an earlier day, answered on a later one (real play)
+    const dyn = s.relations[ANN].dynamic!;
+    expect(dyn.probes.lastDay).toBe(s.day - 1);
+    const closed = answerProbe(s, { registries: reg }, ANN, 'yielded', undefined, 1);
+    expect(errors(closed)).toEqual([]);
+    expect(dyn.probes.pending).toBeUndefined();
     expect(applyDynamicIntent(s, { registries: reg }, ANN, ev())).toEqual([{ type: 'hypothetical_answered', unitId: ANN, answer: 'said it would kneel' }]);
+  });
+
+  it('a probe closed on another day, or on another axis, does not keep a hypothetical open', () => {
+    const s = pendingHypothetical();
+    s.relations[ANN].dynamic!.probes.pending!.axis = 'space';
+    answerProbe(s, { registries: reg }, ANN, 'yielded', undefined, 1);
+    expect(applyDynamicIntent(s, { registries: reg }, ANN, ev())).toEqual([]);
+    const t = pendingHypothetical();
+    answerProbe(t, { registries: reg }, ANN, 'yielded', undefined, 1);
+    t.day += 1;
+    expect(applyDynamicIntent(t, { registries: reg }, ANN, ev())).toEqual([]);
   });
 });

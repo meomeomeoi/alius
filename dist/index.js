@@ -22633,8 +22633,8 @@ var HYPOTHETICAL_AXIS = "hypothetical";
 function hypotheticalOpen(state, unitId) {
   const pending4 = pendingProbe(state, unitId);
   if (pending4 !== void 0) return pending4.axis === HYPOTHETICAL_AXIS;
-  const dyn = state.dynamic === void 0 ? void 0 : dynamicOf(state, unitId);
-  return dyn !== void 0 && dyn.probes.lastDay === state.day && dyn.recent[dyn.recent.length - 1] === HYPOTHETICAL_AXIS && dyn.probes.answers.length > 0;
+  const closed = state.dynamic === void 0 ? void 0 : dynamicOf(state, unitId)?.probes.lastAnswered;
+  return closed !== void 0 && closed.day === state.day && closed.axis === HYPOTHETICAL_AXIS;
 }
 function probeQueueRoom(state) {
   const cap9 = holderCap(state);
@@ -22744,6 +22744,7 @@ function answerProbe(draft, ctx2, unitId, response, tone5, weight, afterThreat =
   const shift = updateReading(dyn, { response, ...tone5 !== void 0 ? { tone: tone5 } : {}, ...afterThreat ? { afterThreat } : {} }, alpha, physicsStyleOf(draft, unitId, reg), unit5.insight ?? "mid").region;
   if (shift !== void 0) events.push({ type: "position_shifted", unitId, from: shift.from, to: shift.to });
   if (weight === 1 && !retro) {
+    dyn.probes.lastAnswered = { axis: dyn.probes.pending.axis, day: draft.day };
     delete dyn.probes.pending;
     dyn.probes.answers.push(response);
     while (dyn.probes.answers.length > TUNING.probes.backoffWindow) dyn.probes.answers.shift();

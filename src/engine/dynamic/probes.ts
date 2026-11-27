@@ -54,13 +54,13 @@ export const HYPOTHETICAL_AXIS = 'hypothetical';
 
 /**
  * Whether her what-if is still to be answered, or was closed by the report that is being applied: her pending probe is the hypothetical, or it was closed today by an answer of the same batch
- * (`answerProbe` deletes the pending probe and the model may list `probe_answered` before `hypothetical_answered`). Pure.
+ * (`answerProbe` records the axis it closed in `lastAnswered` and deletes the pending probe and the model may list `probe_answered` before `hypothetical_answered`). Pure.
  */
 export function hypotheticalOpen(state: Pick<CampaignState, 'relations' | 'dynamic' | 'day'>, unitId: string): boolean {
   const pending = pendingProbe(state, unitId);
   if (pending !== undefined) return pending.axis === HYPOTHETICAL_AXIS;
-  const dyn = state.dynamic === undefined ? undefined : dynamicOf(state, unitId);
-  return dyn !== undefined && dyn.probes.lastDay === state.day && dyn.recent[dyn.recent.length - 1] === HYPOTHETICAL_AXIS && dyn.probes.answers.length > 0;
+  const closed = state.dynamic === undefined ? undefined : dynamicOf(state, unitId)?.probes.lastAnswered;
+  return closed !== undefined && closed.day === state.day && closed.axis === HYPOTHETICAL_AXIS;
 }
 
 /** How many more units may start probing: the cap (`any` is 3) less those in the queue. */
@@ -212,6 +212,7 @@ export function answerProbe(
   const shift = updateReading(dyn, { response, ...(tone !== undefined ? { tone } : {}), ...(afterThreat ? { afterThreat } : {}) }, alpha, physicsStyleOf(draft, unitId, reg), unit.insight ?? 'mid').region;
   if (shift !== undefined) events.push({ type: 'position_shifted', unitId, from: shift.from, to: shift.to });
   if (weight === 1 && !retro) {
+    dyn.probes.lastAnswered = { axis: dyn.probes.pending!.axis, day: draft.day };
     delete dyn.probes.pending;
     dyn.probes.answers.push(response);
     while (dyn.probes.answers.length > TUNING.probes.backoffWindow) dyn.probes.answers.shift();

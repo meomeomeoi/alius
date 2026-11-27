@@ -89,6 +89,8 @@ export interface DynamicRelation {
     answers: ResponseType[];
     backoffUntil?: number;
     issued: number;
+    /** P15b: the probe the last answer closed (written only when an answer closes one); `hypotheticalOpen` reads it for the report being applied. */
+    lastAnswered?: { axis: string; day: number };
   };
   /** Days. */
   refusals: number[];
