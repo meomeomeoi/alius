@@ -1792,6 +1792,10 @@ var TUNING = Object.freeze({
      */
     feet: Object.freeze({ combatPct: 3, careDays: 7, wornShare: 0.25, hotShare: 0.1 }),
     /**
+     * `[ANTICIPATE]` (Task 17; AUTHOR TO TUNE): shown while her reading of the commander has readiness `minR` or more and she believes it at `minP` or more. Only the two axes: never the region.
+     */
+    anticipate: Object.freeze({ minR: -0.2, minP: 0.4 }),
+    /**
      * Unasked care (Task 15, ruling 7 and 18; AUTHOR TO TUNE). `notice`: how easily she sees a care by its row's `care.notice`, times her insight; a care is kept `keepDays`; `nameAt`
      * shown cares within `nameDays` (by a woman on the hold band `nameBand` at frame equal, with a manner) let her name the service; a shown care is +`favour` favour from `play`.
      */
@@ -44198,6 +44202,43 @@ function noteSlips(draft, ctx2, events) {
   return out;
 }
 
+// src/engine/craft/anticipate.ts
+function fitsHer(state, reg, unitId, row4) {
+  const fits = row4.fits ?? [];
+  const blocking = state.scene?.blocking;
+  const hers = reg.blockingActivities.get(blocking?.[unitId]?.activity ?? defaultActivity(reg) ?? "");
+  const tags = hers?.pairTags ?? [];
+  return fits.includes("any") || tags.some((t) => fits.includes(t));
+}
+function anticipateRow(state, reg, unitId) {
+  const now = state.scene?.blocking?.[COMMANDER]?.activity;
+  for (const a of reg.blockingActivities.values()) {
+    if (a.actor !== "commander" || a.scope !== "dynamic" || a.judged !== true || a.id === now) continue;
+    if (fitsHer(state, reg, unitId, a) && entryAllowed(state, reg, a, [unitId])) return a;
+  }
+  return void 0;
+}
+function anticipateShown(state, reg, unitId) {
+  const scene = state.scene;
+  const dyn = dynamicOf(state, unitId);
+  if (scene === void 0 || dyn === void 0 || !scene.participants.includes(unitId) || !craftLive(state, reg, unitId) || !blockingLive(state, reg)) return false;
+  const T5 = TUNING.craft.anticipate;
+  if (dyn.readOf.updates <= 0 || dyn.readOf.r < T5.minR || dyn.readOf.p < T5.minP) return false;
+  const rec = state.practices?.service?.[unitId];
+  if (rec !== void 0 && rec.sceneId === scene.id && rec.anticipated === true) return false;
+  return !asksForService(state, unitId) && anticipateRow(state, reg, unitId) !== void 0;
+}
+function stageAnticipation(draft, ctx2, unitId, at2) {
+  const reg = ctx2.registries;
+  if (!anticipateShown(draft, reg, unitId)) throw new Error("craft/anticipate: nothing to anticipate for her now.");
+  const scene = draft.scene;
+  const row4 = anticipateRow(draft, reg, unitId);
+  const events = setBlocking(draft, ctx2, { person: COMMANDER, field: "activity", value: String(row4.id) }, { at: at2 ?? scene.readIndex ?? scene.startIndex, source: "chip" });
+  if (!events.some((e) => e.type === "blocking_changed" && e.person === COMMANDER && e.field === "activity")) throw new Error("craft/anticipate: the scene would not stage it.");
+  (draft.relations[unitId].craft ??= {}).anticipate = { scene: scene.id, exchange: scene.exchanges, activityId: String(row4.id) };
+  return events;
+}
+
 // src/engine/craft/drills.ts
 function drillMult(state, reg, companionId) {
   if (companionId === void 0) return 1;
@@ -44402,6 +44443,11 @@ registerAfterAction((draft, ctx2, events) => {
     } else if (e.type === "dm_received" && typeof e.unitId === "string") out.push(...landCares(draft, ctx2, e.unitId, "dm"));
   }
   return out;
+});
+registerAction("craft/anticipate", (draft, payload, ctx2) => {
+  if (!isObj42(payload) || typeof payload.unitId !== "string" || payload.unitId === "") throw new Error("craft/anticipate needs { unitId }.");
+  if (payload.at !== void 0 && !(typeof payload.at === "number" && Number.isInteger(payload.at) && payload.at >= 0)) throw new Error("craft/anticipate: at is a chat index.");
+  return stageAnticipation(draft, ctx2, payload.unitId, payload.at);
 });
 
 // src/llm/callTypes.ts
@@ -48068,6 +48114,7 @@ var POSTURE_PREFIX = "craft:posture:";
 var CARE_PREFIX = "craft:care:";
 var NAMED_PREFIX = "craft:named_service:";
 var FEET_PREFIX = "craft:feet:";
+var ANTICIPATE_PREFIX = "craft:anticipate:";
 var NEVER_NAME2 = "Never name it as a mechanic.";
 var phrase2 = (text3) => plainDraft(text3).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\d+/g, "").replace(/\s+/g, " ").trim().replace(/[.\s]+$/, "");
 function lessonDirectives(state, reg, present2) {
@@ -48171,6 +48218,39 @@ function careDirectives(state, reg, present2) {
   }
   return out;
 }
+var ANTICIPATE_WAY = {
+  affectionate: "with a small smile that says she noticed",
+  playful: "with a grin, as if caught wanting it",
+  cold: "with a short nod and nothing more",
+  cruel: "as if the commander had only done what was owed",
+  possessive: "as if it were hers by right",
+  ritual: "with a small formal nod",
+  clinical: "with a flat note that it was the right thing",
+  drill: 'with a curt "noted"',
+  obsessive: "with a look that has seen exactly how it was done",
+  regal: "with the slight acknowledgement of a throne",
+  vindictive: "sparingly: she saw it, and keeps it",
+  plain: "in her own way"
+};
+function anticipateDirectives(state, reg, present2) {
+  const scene = state.scene;
+  if (scene === void 0) return [];
+  const out = [];
+  for (const id of present2) {
+    const unit5 = state.squad.find((u) => u.id === id);
+    const mark2 = state.relations[id]?.craft?.anticipate;
+    if (unit5 === void 0 || mark2 === void 0 || unit5.kind !== "named" || !isLiving(unit5) || !craftLive(state, reg, id)) continue;
+    if (mark2.scene !== scene.id || scene.exchanges > mark2.exchange) continue;
+    const hint = reg.blockingActivities.get(mark2.activityId)?.promptHint;
+    const way = ANTICIPATE_WAY[styleOf(unit5)?.primary ?? "plain"] ?? ANTICIPATE_WAY.plain;
+    out.push({
+      id: `${ANTICIPATE_PREFIX}${id}`,
+      expiresAfter: "next_reply",
+      text: `AUTHOR TO WRITE: The commander did for ${unit5.displayName} what she was about to ask${hint !== void 0 ? ` (${phrase2(String(hint))})` : ""}, before she had to. She may show that she saw it coming, ${way}, only if it fits and only once. ${NEVER_NAME2}`
+    });
+  }
+  return out;
+}
 var FEET_WORDS = {
   fresh: "rested and clean",
   worn: "tired from the boots and a little damp",
@@ -48194,7 +48274,7 @@ function feetDirectives(state, reg, present2) {
   return out;
 }
 function craftDirectives(state, reg, present2) {
-  return [...lessonDirectives(state, reg, present2), ...recordDirectives(state, reg, present2), ...postureDirectives(state, reg, present2), ...careDirectives(state, reg, present2), ...feetDirectives(state, reg, present2)].map((d) => ({ ...d, text: plainDraft(d.text) }));
+  return [...lessonDirectives(state, reg, present2), ...recordDirectives(state, reg, present2), ...postureDirectives(state, reg, present2), ...careDirectives(state, reg, present2), ...feetDirectives(state, reg, present2), ...anticipateDirectives(state, reg, present2)].map((d) => ({ ...d, text: plainDraft(d.text) }));
 }
 function clearCraftDirectives(builder) {
   builder.clearMatching((d) => d.id.startsWith(CRAFT_PREFIX));
@@ -48207,7 +48287,7 @@ function refreshCraftDirectives(builder, state, reg) {
 
 // src/craft/controller.ts
 var OWN3 = CRAFT_EVENT_TYPES;
-var TRIGGERS2 = ["physics_slip", "posture_slip", "punishment_issued"];
+var TRIGGERS2 = ["physics_slip", "posture_slip", "punishment_issued", "care_noticed", "practice_anticipated"];
 function createCraft(deps) {
   return {
     onEvents(events) {

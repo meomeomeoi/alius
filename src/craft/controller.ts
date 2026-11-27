@@ -24,8 +24,8 @@ export interface CraftController {
 }
 
 const OWN: readonly string[] = CRAFT_EVENT_TYPES;
-/** What makes a lesson: a slip (the point is told for the reply that follows it) or her punishment (which pays the waiting slips). */
-const TRIGGERS: readonly string[] = ['physics_slip', 'posture_slip', 'punishment_issued'];
+/** What changes the directives: a slip (the lesson is told for the reply that follows it), her punishment (which pays the waiting slips), a care she shows, a service the commander anticipated. */
+const TRIGGERS: readonly string[] = ['physics_slip', 'posture_slip', 'punishment_issued', 'care_noticed', 'practice_anticipated'];
 
 /**
  * The model-facing half of the craft in chunk c1: it calls no model (the engine owns every number and the lesson's words are the registry's), it only keeps the derived `craft:`

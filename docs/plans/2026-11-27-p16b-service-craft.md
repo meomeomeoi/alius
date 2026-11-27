@@ -644,15 +644,15 @@ Before Task 1, also read:
   - `practiceSample` widened to take `returned` (for P17e).
 - Test: `tests/engine/craft/anticipate.test.ts`
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - shown by the axes only;
   - the staged activity is picked by field and order;
   - `practice_anticipated` follows;
   - hidden axes never reach the chip's text.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P16b): anticipating her (engine)`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P16b): anticipating her (engine)`
 
 ### Task 18: The sparring hold
 

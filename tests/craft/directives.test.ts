@@ -275,10 +275,10 @@ describe('the builder and the controller', () => {
     const c = createCraft({ context: new ContextBuilder(), refreshContext: () => { refreshed++; }, state: () => null });
     c.onEvents([{ type: 'scene_exchange' }, { type: 'activity_done' }]);
     expect(refreshed).toBe(0);
-    for (const type of ['lesson', 'record_set', 'physics_slip', 'posture_slip', 'punishment_issued']) c.onEvents([{ type }]);
-    expect(refreshed).toBe(5);
+    for (const type of ['lesson', 'record_set', 'physics_slip', 'posture_slip', 'punishment_issued', 'care_noticed', 'practice_anticipated']) c.onEvents([{ type }]);
+    expect(refreshed).toBe(7);
     c.onSceneOpened();
-    expect(refreshed).toBe(6);
+    expect(refreshed).toBe(8);
   });
 });
 

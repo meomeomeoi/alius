@@ -226,7 +226,7 @@ export function noteSaid(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'
 }
 
 /** Is there an open task of hers that asks for service (so what the commander does for her is asked, not anticipated)? Read by the category the task carries, never by its words. */
-const asksForService = (state: CampaignState, holderId: string): boolean =>
+export const asksForService = (state: CampaignState, holderId: string): boolean =>
   (state.practices?.tasks ?? []).some((t) => t.holderId === holderId && t.kind === 'task' && t.routine !== true && t.status === 'open' && t.tags.includes(TUNING.offer.serviceCategory));
 
 /**

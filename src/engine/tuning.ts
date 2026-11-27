@@ -1390,6 +1390,10 @@ export const TUNING = Object.freeze({
      */
     feet: Object.freeze({ combatPct: 3, careDays: 7, wornShare: 0.25, hotShare: 0.1 }),
     /**
+     * `[ANTICIPATE]` (Task 17; AUTHOR TO TUNE): shown while her reading of the commander has readiness `minR` or more and she believes it at `minP` or more. Only the two axes: never the region.
+     */
+    anticipate: Object.freeze({ minR: -0.2, minP: 0.4 }),
+    /**
      * Unasked care (Task 15, ruling 7 and 18; AUTHOR TO TUNE). `notice`: how easily she sees a care by its row's `care.notice`, times her insight; a care is kept `keepDays`; `nameAt`
      * shown cares within `nameDays` (by a woman on the hold band `nameBand` at frame equal, with a manner) let her name the service; a shown care is +`favour` favour from `play`.
      */

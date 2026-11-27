@@ -34,6 +34,9 @@ export const NAMED_PREFIX = 'craft:named_service:';
 /** How her feet are today, while her feet are what the scene is about (Task 16; derived from `feetOfDay`, never from what the commander did for them). */
 export const FEET_PREFIX = 'craft:feet:';
 
+/** What she may show when the commander did for her what she was about to ask (Task 17), for her next reply only. */
+export const ANTICIPATE_PREFIX = 'craft:anticipate:';
+
 const NEVER_NAME = 'Never name it as a mechanic.';
 
 /** A line of prose: draft marker, control characters and digits gone (no directive carries a number). */
@@ -151,6 +154,36 @@ function careDirectives(state: CampaignState, reg: Registries, present: string[]
   return out;
 }
 
+/** How she shows that she saw it coming, by her style (AUTHOR TO WRITE; no figure, no pronoun for the commander). */
+const ANTICIPATE_WAY: Record<string, string> = {
+  affectionate: 'with a small smile that says she noticed', playful: 'with a grin, as if caught wanting it', cold: 'with a short nod and nothing more', cruel: 'as if the commander had only done what was owed',
+  possessive: 'as if it were hers by right', ritual: 'with a small formal nod', clinical: 'with a flat note that it was the right thing', drill: 'with a curt "noted"',
+  obsessive: 'with a look that has seen exactly how it was done', regal: 'with the slight acknowledgement of a throne', vindictive: 'sparingly: she saw it, and keeps it', plain: 'in her own way',
+};
+
+/**
+ * What she may show of the service the commander staged before she had to ask (`craft:anticipate:<unitId>`): for the reply that follows (while the exchange it was staged in has not passed),
+ * once, in the scene it happened in, worded by her style. Derived from `Relation.craft.anticipate`.
+ */
+function anticipateDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
+  const scene = state.scene;
+  if (scene === undefined) return [];
+  const out: Directive[] = [];
+  for (const id of present) {
+    const unit = state.squad.find((u) => u.id === id);
+    const mark = state.relations[id]?.craft?.anticipate;
+    if (unit === undefined || mark === undefined || unit.kind !== 'named' || !isLiving(unit) || !craftLive(state, reg, id)) continue;
+    if (mark.scene !== scene.id || scene.exchanges > mark.exchange) continue;
+    const hint = reg.blockingActivities.get(mark.activityId)?.promptHint;
+    const way = ANTICIPATE_WAY[styleOf(unit)?.primary ?? 'plain'] ?? ANTICIPATE_WAY.plain!;
+    out.push({
+      id: `${ANTICIPATE_PREFIX}${id}`, expiresAfter: 'next_reply',
+      text: `AUTHOR TO WRITE: The commander did for ${unit.displayName} what she was about to ask${hint !== undefined ? ` (${phrase(String(hint))})` : ''}, before she had to. She may show that she saw it coming, ${way}, only if it fits and only once. ${NEVER_NAME}`,
+    });
+  }
+  return out;
+}
+
 /** The state of her feet in words (AUTHOR TO WRITE; no figure). */
 const FEET_WORDS: Record<string, string> = {
   fresh: 'rested and clean', worn: 'tired from the boots and a little damp', hot: 'hot and damp after training', sore: 'sore from the run, with a blister or a callus', bare: 'bare after the day, in her own quarters',
@@ -177,7 +210,7 @@ function feetDirectives(state: CampaignState, reg: Registries, present: string[]
 
 /** Every craft directive that holds now for the women in the room; nothing without the craft. A draft text reaches the model without its marker. */
 export function craftDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
-  return [...lessonDirectives(state, reg, present), ...recordDirectives(state, reg, present), ...postureDirectives(state, reg, present), ...careDirectives(state, reg, present), ...feetDirectives(state, reg, present)].map((d) => ({ ...d, text: plainDraft(d.text) }));
+  return [...lessonDirectives(state, reg, present), ...recordDirectives(state, reg, present), ...postureDirectives(state, reg, present), ...careDirectives(state, reg, present), ...feetDirectives(state, reg, present), ...anticipateDirectives(state, reg, present)].map((d) => ({ ...d, text: plainDraft(d.text) }));
 }
 
 /** Drops every craft directive (a chat switch, the end of a scene). */

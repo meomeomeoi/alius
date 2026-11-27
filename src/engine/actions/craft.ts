@@ -7,6 +7,7 @@ import { noteSlips } from '../craft/lesson';
 import { noteHoldEvents } from '../craft/records';
 import { touchCraft } from '../craft/book';
 import { craftOn } from '../craft/gate';
+import { stageAnticipation } from '../craft/anticipate';
 import { giveCare, landCares } from '../craft/care';
 import { dropPendingDrills, installDrillHooks, noteDrillOutcome, startDrill } from '../craft/drillScene';
 import { correctPosture, endPosture, endPostureRun, holdOfCall, slipPosture, takePostureHold } from '../craft/posture';
@@ -139,4 +140,17 @@ registerAfterAction((draft, ctx, events) => {
     } else if (e.type === 'dm_received' && typeof e.unitId === 'string') out.push(...landCares(draft, ctx, e.unitId, 'dm'));
   }
   return out as never;
+});
+
+// ---------------------------------------------------------------------------------------------
+// `[ANTICIPATE]` (P16b, Task 17): the engine's half; the chip and its card come after their prototype round.
+
+/**
+ * `craft/anticipate { unitId, at? }`: the commander does for her what she was about to ask: the first judged service that fits what she does is staged as the commander's activity, and P16's
+ * after-action runs `practice_anticipated`. Refused unless her reading shows it (`anticipateShown`). Draws no rng.
+ */
+registerAction('craft/anticipate', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.unitId !== 'string' || payload.unitId === '') throw new Error('craft/anticipate needs { unitId }.');
+  if (payload.at !== undefined && !(typeof payload.at === 'number' && Number.isInteger(payload.at) && payload.at >= 0)) throw new Error('craft/anticipate: at is a chat index.');
+  return stageAnticipation(draft, ctx, payload.unitId, payload.at as number | undefined);
 });

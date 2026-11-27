@@ -13,7 +13,7 @@ import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 
 /** Feeds one answer into her reading and returns the position change, if the hysteresis let one through. Nothing for a unit with no dynamic. */
-export function practiceSample(draft: CampaignState, reg: Registries, unitId: string, response: 'yielded' | 'resisted', opts: { afterThreat?: boolean; motive?: Motive } = {}): EngineEvent[] {
+export function practiceSample(draft: CampaignState, reg: Registries, unitId: string, response: 'yielded' | 'resisted' | 'returned', opts: { afterThreat?: boolean; motive?: Motive } = {}): EngineEvent[] {
   const dyn = dynamicOf(draft, unitId);
   const unit = draft.squad.find((u) => u.id === unitId);
   if (dyn === undefined || unit === undefined) return [];
