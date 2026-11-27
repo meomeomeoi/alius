@@ -211,8 +211,8 @@ const ZONE_NAMES = ['toes', 'ball', 'arch', 'heel', 'edge'];
 /* zones of the author's first picture (her right foot, sole to the viewer, the big toe on the viewer's right): [x, y, rx, ry, deg],
    centres as fractions of the picture, radii as fractions of its height; the marker replaces them per picture */
 const DEFAULT_ZONES = { toes: [0.54, 0.11, 0.085, 0.05, -8], ball: [0.5, 0.235, 0.09, 0.045, -10], arch: [0.48, 0.335, 0.04, 0.05, -8], heel: [0.415, 0.43, 0.065, 0.045, -12], edge: [0.38, 0.3, 0.022, 0.06, 8] }; // measured inside the picture's outline
-/* her faces: SillyTavern's labels, by what she feels (a label with no picture changes nothing) */
-const FACE = { start: 'neutral', good: 'relief', melted: 'desire', fast: 'annoyance', slow: 'annoyance', hard: 'disapproval', light: 'neutral', tickle: 'amusement', knot: 'relief', cold: 'surprise', greasy: 'disgust', pull: 'annoyance', endGood: 'joy', endPoor: 'disappointment' };
+/* her faces: SillyTavern's labels, by what she feels (a label with no picture changes nothing); never `desire` (the author: it is the label of sexual intent) */
+const FACE = { start: 'neutral', good: 'approval', melted: 'relief', fast: 'annoyance', slow: 'annoyance', hard: 'disapproval', light: 'neutral', tickle: 'amusement', knot: 'relief', cold: 'surprise', greasy: 'disgust', pull: 'annoyance', endGood: 'joy', endPoor: 'disappointment' };
 /* her lines by style and kind (placeholders for the cue pool) */
 const LINES = {
   neutral:      { entry: ['my feet are killing me.'], slower: ['slower.'], faster: ['a bit faster.'], firmer: ['firmer.'], softer: ['softer.'], tickle: ['hey— that tickles.'], good: ['mm. like that.', 'yes.'], melted: ['…don’t stop.'], knot: ['there. right there.'], knotDone: ['oh. that’s it.'], pull: ['enough of that.'], idle: ['well?'], cream: ['now the cream.'], cold: ['cold!'], greasy: ['too much. it’s greasy.'], missed: ['%z is dry.'], good2: ['soft. good.'], poor: ['patchy.'], other: ['the other one.'], endGood: ['that was good.'], endPoor: ['that’ll do.'], enough: ['enough.'] },
