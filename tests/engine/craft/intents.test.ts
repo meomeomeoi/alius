@@ -27,6 +27,17 @@ const withCares = (s: CampaignState, cares: NonNullable<NonNullable<CampaignStat
 const withSignals = (s: CampaignState, named: string[]): CampaignState => { s.relations[ANN].craft = { ...(s.relations[ANN].craft ?? {}), signals: Object.fromEntries(named.map((m) => [m, { named: true, answered: 1, day: s.day }])) }; return s; };
 const ev = (type: string, over: Record<string, unknown> = {}) => ({ type, actor: 'commander', targets: [ANN], severity: 'minor', evidence: 'quoted', confidence: 0.9, ...over });
 
+describe('the journal rows of the craft\'s relation events', () => {
+  it('only care_noticed has a journal phrase (the other two never reach applyEventToUnit, so a phrase would be dead)', () => {
+    const rows = (id: string) => reg.eventDeltas.get(id) as { journal?: string } | undefined;
+    expect(typeof rows('care_noticed')?.journal).toBe('string');
+    for (const id of ['praise_given', 'foot_signal_answered']) {
+      expect(rows(id), id).toBeDefined();
+      expect(rows(id)!.journal, id).toBeUndefined();
+    }
+  });
+});
+
 describe('what is offered', () => {
   it('nothing without a subject: a campaign that never wrote the craft, a holder at equal with no care, and no scene give {}', () => {
     expect(craftIntentInput(world(reg, 'play'), reg, [ANN], 'scene')).toEqual({});

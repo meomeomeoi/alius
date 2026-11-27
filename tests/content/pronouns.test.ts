@@ -68,8 +68,10 @@ describe('no pronoun for the commander in content', () => {
 
   it('journal phrases of the event deltas (P3b)', () => {
     const texts = fields('eventDeltas', ['journal']);
-    expect(texts.length).toBe(91); // P16b: + care_noticed, praise_given, foot_signal_answered; P15b: + hypothetical_answered, quirk_voiced (a row of zeros that is never applied, so never journaled; the phrase is only what the content test requires); P16: + the seven practice intents, punishment_accepted and spared_for; P15: + the seven dynamic intents and dynamic_exit; P14c: + time_together, first_moment, opinion_agreed, opinion_challenged, news_told, hobby_praised, opinion_voiced, joke_returned; P13: + warden_complied, warden_defied, expectation_kept, expectation_broken, conspired, warden_betrayed, warden_removed_by; P12: + knowledge_leak, frequency_exposed, accused, false_accusation, debts_exposed
-    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\b(their|them|themselves?)\b/i.test(t) || t === '').map(([where]) => where)).toEqual([]);
+    expect(texts.length).toBe(91); // P16b fix wave: praise_given and foot_signal_answered have no phrase (rows of zeros the craft applies itself); P16b: + care_noticed, praise_given, foot_signal_answered; P15b: + hypothetical_answered, quirk_voiced (a row of zeros that is never applied, so never journaled; the phrase is only what the content test requires); P16: + the seven practice intents, punishment_accepted and spared_for; P15: + the seven dynamic intents and dynamic_exit; P14c: + time_together, first_moment, opinion_agreed, opinion_challenged, news_told, hobby_praised, opinion_voiced, joke_returned; P13: + warden_complied, warden_defied, expectation_kept, expectation_broken, conspired, warden_betrayed, warden_removed_by; P12: + knowledge_leak, frequency_exposed, accused, false_accusation, debts_exposed
+    const never = ['eventDeltas:praise_given.journal', 'eventDeltas:foot_signal_answered.journal']; // P16b fix wave: rows of zeros the craft applies itself, so with no phrase on purpose
+    expect(texts.filter(([where]) => !never.includes(where)).filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\b(their|them|themselves?)\b/i.test(t) || t === '').map(([where]) => where)).toEqual([]);
+    expect(texts.filter(([where]) => never.includes(where)).map(([, t]) => t)).toEqual(['', '']);
   });
 
   it('memory rules (P3b): every remembered text', () => {

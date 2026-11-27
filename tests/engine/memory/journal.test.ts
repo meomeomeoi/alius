@@ -67,9 +67,11 @@ describe('journalLines', () => {
   });
 
   it('every event delta has a journal phrase without a commander pronoun', () => {
-    const missing = [...reg.eventDeltas.values()].filter((e) => typeof e.journal !== 'string' || e.journal === '').map((e) => e.id);
+    // P16b fix wave: praise_given and foot_signal_answered are rows of zeros that never reach applyEventToUnit (the craft applies them itself), so a phrase would be dead and they have none
+    const NEVER_JOURNALED = ['praise_given', 'foot_signal_answered'];
+    const missing = [...reg.eventDeltas.values()].filter((e) => !NEVER_JOURNALED.includes(String(e.id)) && (typeof e.journal !== 'string' || e.journal === '')).map((e) => e.id);
     expect(missing).toEqual([]);
-    for (const e of reg.eventDeltas.values()) expect(String(e.journal), String(e.id)).not.toMatch(/\b(he|him|his|himself)\b/i);
+    for (const e of reg.eventDeltas.values()) expect(String(e.journal ?? ''), String(e.id)).not.toMatch(/\b(he|him|his|himself)\b/i);
   });
 
   it('a scapegoat shift shows in the shifted unit\'s journal', () => {
