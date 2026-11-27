@@ -8124,6 +8124,12 @@ function practiceRoll(state, unitId, key) {
 }
 
 // src/engine/craft/state.ts
+var ENDURANCE_PREFIX = "endurance:";
+function enduranceOf(key) {
+  return key.startsWith(ENDURANCE_PREFIX) ? key.slice(ENDURANCE_PREFIX.length) : null;
+}
+var CRAFT_WORDS = ["untrained", "raw", "practised", "steady", "seasoned", "masterful"];
+var craftWord = (level) => CRAFT_WORDS[Math.max(0, Math.min(CRAFT_WORDS.length - 1, Math.floor(level)))];
 var CRAFT_EVENT_TYPES = [
   "craft_xp",
   "craft_level",
@@ -17783,6 +17789,12 @@ function enduranceLevelOf(state) {
 }
 function trainedToday(state, physicsId) {
   return state.commander.endurance?.[physicsId]?.trainedDay === state.day;
+}
+function setEnduranceXp(draft, physicsId, xp) {
+  const row4 = draft.commander.endurance?.[physicsId];
+  if (row4 === void 0) return;
+  row4.xp = xp;
+  row4.level = levelForXp(xp);
 }
 function addEnduranceXp(draft, physicsId, xp) {
   const book2 = draft.commander.endurance ??= {};
@@ -32563,8 +32575,8 @@ function moveTo(draft, ctx2, nodeId) {
 function setFormation(draft, formation) {
   const exp = draft.expedition;
   if (!exp) throw new Error("There is no expedition.");
-  const idle = exp.phase === "travel" || exp.pending?.kind === "combat" && !draft.combat;
-  if (!idle) throw new Error("The formation cannot change right now.");
+  const idle2 = exp.phase === "travel" || exp.pending?.kind === "combat" && !draft.combat;
+  if (!idle2) throw new Error("The formation cannot change right now.");
   const problem = formationProblem(ableParty(draft), formation);
   if (problem) throw new Error(problem);
   exp.formation = { front: [...formation.front], back: [...formation.back] };
@@ -42975,6 +42987,61 @@ function craftOn(state, reg) {
   return practicesOn(state, reg);
 }
 
+// src/engine/craft/decay.ts
+var THRESHOLDS = TUNING.physics.endurance.thresholds;
+function stepDownXp(xp) {
+  const level = levelForXp(xp);
+  return level <= 1 ? null : THRESHOLDS[level - 2];
+}
+var idle = (day, last4, decayed) => day - Math.max(last4, decayed ?? 0);
+function decayCraft(draft, reg) {
+  const pairs2 = Object.values(draft.relations).filter((r) => r.craft !== void 0);
+  if (draft.commander.craft === void 0 && pairs2.length === 0 && !craftOn(draft, reg)) return [];
+  const events = [];
+  const day = draft.day;
+  const D5 = TUNING.craft.decay;
+  if (craftOn(draft, reg)) {
+    for (const physics of Object.keys(draft.commander.endurance ?? {})) {
+      const book2 = draft.commander.craft ??= {};
+      book2[`endurance:${physics}`] ??= { xp: 0, level: 0, lastDay: day };
+    }
+  }
+  for (const [key, row4] of Object.entries(draft.commander.craft ?? {})) {
+    if (idle(day, row4.lastDay, row4.decayedDay) <= D5.days) continue;
+    const physics = enduranceOf(key);
+    const xp = physics !== null ? draft.commander.endurance?.[physics]?.xp ?? 0 : row4.xp;
+    const to = stepDownXp(xp);
+    if (to === null) continue;
+    row4.decayedDay = day;
+    if (physics !== null) setEnduranceXp(draft, physics, to);
+    else {
+      row4.xp = to;
+      row4.level = levelForXp(to);
+    }
+    const level = levelForXp(to);
+    events.push({ type: "craft_level", key, level, word: craftWord(level), fell: true });
+  }
+  for (const rel of pairs2) fadePair(rel.craft, day, D5.pairDays);
+  return events;
+}
+function fadePair(book2, day, pairDays) {
+  const fade2 = (k) => {
+    if (k === void 0 || idle(day, k.day, k.decayedDay) <= pairDays) return;
+    const to = stepDownXp(k.xp);
+    if (to === null) return;
+    k.xp = to;
+    k.decayedDay = day;
+  };
+  for (const k of Object.values(book2.postures ?? {})) fade2(k);
+  fade2(book2.rhythm);
+  fade2(book2.routine);
+  for (const s of Object.values(book2.signals ?? {})) {
+    if (s.answered <= 1 || idle(day, s.day, s.decayedDay) <= pairDays) continue;
+    s.answered -= 1;
+    s.decayedDay = day;
+  }
+}
+
 // src/engine/craft/book.ts
 function touchCraft(draft, key) {
   const book2 = draft.commander.craft ??= {};
@@ -42989,6 +43056,7 @@ registerAfterAction((draft, ctx2, events) => {
   for (const e of events) if (e.type === "endurance_gained") touchCraft(draft, `endurance:${String(e.physicsId)}`);
   return [];
 });
+registerDayEndStep("director_tick", (draft, ctx2) => decayCraft(draft, ctx2.registries));
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [

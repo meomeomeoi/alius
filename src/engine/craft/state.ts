@@ -25,7 +25,7 @@ export function enduranceOf(key: string): string | null {
 }
 
 /** One discipline of the commander: xp, level 0-5, and the day it was last used (the decay's clock). For `endurance:*` only `lastDay` is kept here (xp and level stay in `Commander.endurance`). */
-export interface CraftEntry { xp: number; level: number; lastDay: number }
+export interface CraftEntry { xp: number; level: number; lastDay: number; /** The day the decay last took a step (its clock restarts there; `lastDay` stays the last use). */ decayedDay?: number }
 
 /** The level words, from untrained to masterful (ruling 8; they replace `ENDURANCE_WORDS`). */
 export const CRAFT_WORDS = ['untrained', 'raw', 'practised', 'steady', 'seasoned', 'masterful'] as const;
@@ -34,16 +34,19 @@ export type CraftWord = (typeof CRAFT_WORDS)[number];
 /** The word of a level 0-5 (clamped). */
 export const craftWord = (level: number): CraftWord => CRAFT_WORDS[Math.max(0, Math.min(CRAFT_WORDS.length - 1, Math.floor(level)))]!;
 
+/** What the pair has learnt of one thing (a posture, her rhythm, her routine): xp, the last day it was used, and the day the decay last took a step. */
+export interface Known { xp: number; day: number; decayedDay?: number }
+
 /** What the pair keeps of the craft (spec sections 2, 4, 7, 8, 10, 11). Every field is optional and absent until something is written. */
 export interface RelationCraft {
   /** Postures learnt with her: xp and the last day, by preset id. */
-  postures?: Record<string, { xp: number; day: number }>;
+  postures?: Record<string, Known>;
   /** Her personal rhythm, learnt by the commander. */
-  rhythm?: { xp: number; day: number };
+  rhythm?: Known;
   /** Her foot signals: named once, then answered or missed, by motion. */
-  signals?: Record<string, { named: boolean; answered: number; day: number }>;
+  signals?: Record<string, { named: boolean; answered: number; day: number; decayedDay?: number }>;
   /** Her routine, learnt by the commander. */
-  routine?: { xp: number; day: number };
+  routine?: Known;
   /** Records in seconds of fiction time, by physics or posture key: the longest hold, the longest without a slip, the longest without a tap, and the day the last one was set. */
   records?: Record<string, { longest: number; clean: number; noTap: number; day: number }>;
   /** Her settling-in count (hidden): clean holds in a row, by kind. */

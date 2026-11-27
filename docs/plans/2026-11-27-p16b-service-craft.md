@@ -192,7 +192,7 @@ Before Task 1, also read:
   - `settlingDue(state, reg, holderId, kind): boolean`: true after 3 clean holds of a kind in a row.
   - `settlingModifier(state, reg, holderId)` picks the modifier her style likes, by hash over a registry-ordered list in `TUNING.craft.settling.byStyle`: `count` / `no_duration` / `speech_rule` / `combined` / `new_posture`.
   - The readers that use it come in Tasks 11 and 19.
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - day 21 drops nothing and day 22 drops one step;
   - level 1 holds;
   - a use on day 20 resets the count;
@@ -201,10 +201,10 @@ Before Task 1, also read:
   - the streak resets on a slip;
   - `settlingDue` at 3;
   - the modifier is stable for one day and draws nothing.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P16b): disciplines fade unused; she adds a load when the commander settles in`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P16b): disciplines fade unused; she adds a load when the commander settles in`
 
 ### Task 3: Fiction time, records and holds that pay xp
 
