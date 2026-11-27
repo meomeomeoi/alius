@@ -27,10 +27,10 @@
 :root { --her: #8cc8f0; --glass: rgba(14, 12, 20, 0.58); --line: rgba(255, 255, 255, 0.12); --ink: #ece8f2; --dim: rgba(236, 232, 242, 0.55); }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: var(--ink); font-family: Inter, system-ui, sans-serif; font-weight: 300; }
-#stage { position: fixed; inset: 0; overflow: hidden; cursor: none; }
+#stage { position: fixed; inset: 0; overflow: hidden; cursor: crosshair; }
 #world { position: absolute; inset: -5%; will-change: transform; }
 #backdrop { position: absolute; inset: 0; background-size: cover; background-position: center 70%; filter: blur(14px) brightness(.42) saturate(.85); }
-#her { position: absolute; left: 0; top: 0; transform-origin: 50% 100%; will-change: transform, filter; pointer-events: none; }
+.her { position: absolute; left: 0; top: 0; transform-origin: 50% 100%; will-change: transform, filter, opacity; pointer-events: none; transition-property: opacity; transition-timing-function: ease-in-out; }
 #shade { position: absolute; inset: 0; background: radial-gradient(ellipse 70% 62% at 42% 45%, rgba(0,0,0,0) 32%, rgba(0,0,0,.62) 100%); pointer-events: none; }
 #footWrap { position: absolute; left: 0; top: 0; transform-origin: 50% 50%; will-change: transform; }
 #footWrap img, #footWrap canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; user-select: none; -webkit-user-drag: none; }
@@ -86,7 +86,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 </head>
 <body>
 <div id="stage">
-  <div id="world"><div id="backdrop"></div><img id="her" alt="" draggable="false"></div>
+  <div id="world"><div id="backdrop"></div><img id="her" class="her" alt="" draggable="false"><img id="her2" class="her" alt="" draggable="false" style="opacity:0"></div>
   <div id="shade"></div>
   <div id="footWrap"><img id="foot" alt="" draggable="false"><img id="toes" alt="" draggable="false"><img id="curled" alt="" draggable="false" style="opacity:0"><canvas id="blushC"></canvas><canvas id="creamC"></canvas><canvas id="glossC"></canvas><canvas id="lightC"></canvas></div>
   <canvas id="markC"></canvas>
@@ -132,6 +132,8 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <label>height <input type="range" id="herH" min="0.5" max="1.8" step="0.01" value="1.05"><span id="herHV">1.05</span></label>
   <label>x <input type="range" id="herX" min="0.2" max="0.95" step="0.01" value="0.62"><span id="herXV">0.62</span></label>
   <label>bottom <input type="range" id="herB" min="0.8" max="1.6" step="0.01" value="1.12"><span id="herBV">1.12</span></label>
+  <label><input type="checkbox" id="faceFadeOn" checked> crossfade her faces</label>
+  <label>fade <input type="range" id="faceFade" min="60" max="1200" step="20" value="300"><span id="faceFadeV">300</span> ms</label>
   <h4>sound</h4>
   <label><input type="checkbox" id="snd" checked> on</label>
   <label>volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7"></label>
@@ -236,7 +238,7 @@ const TELL_NAMES = {
 
 /* ---------- settings ---------- */
 const S = { style: 'neutral', day: 'worn', manner: { tempo: 0, intensity: 0, warmth: 0 }, known: 0, both: true, sound: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
-  shown: 'right', fit: { h: 1.45, x: -0.08, y: 0.78, fade: 0.55, toes: 0.2 }, zones: null, her: { h: 1.05, x: 0.62, b: 1.12 } };
+  shown: 'right', fit: { h: 1.45, x: -0.08, y: 0.78, fade: 0.55, toes: 0.2 }, zones: null, her: { h: 1.05, x: 0.62, b: 1.12 }, faceFadeOn: true, faceFade: 300 };
 const ST = () => STYLES[S.style] ?? STYLES.neutral;
 const L = () => LINES[S.style] ?? LINES.neutral;
 const DY = () => DAYS[S.day];
@@ -592,7 +594,23 @@ function setFace(label) {
   if (label === G.face && G.faceSrc) return;
   G.face = label;
   const pool = faces[label] ?? faces.neutral, src = pool ? pick(pool) : ASSETS.her; G.faceSrc = src;
-  if ($('#her').dataset.src !== src) { $('#her').dataset.src = src; $('#her').src = src; }
+  showFace(src);
+}
+/* her face changes on the back layer and crossfades in once it has loaded (the fade is optional: S.faceFade ms, 0 = a cut) */
+let HER_FRONT = 0;
+const herLayers = () => [$('#her'), $('#her2')];
+function showFace(src) {
+  const [a, b] = herLayers(), front = HER_FRONT ? b : a, back = HER_FRONT ? a : b;
+  if (front.dataset.src === src) return;
+  const ms = S.faceFadeOn && !S.reduced ? S.faceFade : 0;
+  const swap = () => {
+    if (back.dataset.src !== src) return; // a newer face came meanwhile
+    for (const el of [front, back]) el.style.transitionDuration = `${ms}ms`;
+    back.style.opacity = '1'; front.style.opacity = '0'; HER_FRONT = 1 - HER_FRONT;
+  };
+  back.dataset.src = src;
+  back.onload = swap; back.src = src;
+  if (back.complete && back.naturalWidth) swap();
 }
 
 /* ---------- phases ---------- */
@@ -673,9 +691,9 @@ function update(dt) {
 /* ---------- drawing ---------- */
 function render(now) {
   // her sprite, behind the foot to one side; dimmer while she reads her device, a little forward when she watches; a slow breath
-  const her = $('#her'), sp = her.naturalWidth ? her : SPRITE;
-  if (!her.src) setFace('neutral');
-  if (sp.naturalWidth) {
+  if (!$('#her').dataset.src && !$('#her2').dataset.src) setFace('neutral');
+  for (const her of herLayers()) {
+    const sp = her.naturalWidth ? her : SPRITE; if (!sp.naturalWidth) continue;
     const H = innerHeight * S.her.h, Wd = H * sp.naturalWidth / sp.naturalHeight;
     const lean = G.eyes === 'open' ? 1 : 0, breathe = S.reduced ? 1 : 1 + 0.006 * Math.sin(now / 900);
     her.style.width = `${Wd}px`; her.style.height = `${H}px`;
@@ -683,6 +701,8 @@ function render(now) {
     her.style.transform = `scale(${(breathe * (1 + 0.015 * lean)).toFixed(4)}) rotate(${(-1.2 * G.relax).toFixed(2)}deg)`;
     her.style.filter = `blur(${(1.1).toFixed(1)}px) brightness(${G.eyes === 'device' ? 0.62 : 0.8 + 0.06 * lean})`;
   }
+  // the cursor: the thumbs are drawn while playing; setting up and marking zones use the arrow's crosshair
+  $('#stage').style.cursor = MARK.on || G.phase === 'idle' || G.phase === 'mark' || G.phase === 'done' ? 'crosshair' : 'none';
   // the foot
   const im = img();
   if ($('#foot').dataset.src !== im.src) { $('#foot').dataset.src = im.src; $('#foot').src = im.src; $('#toes').src = im.src; for (const id of ['#blushC', '#creamC', '#glossC', '#lightC']) $(id).style.webkitMaskImage = $(id).style.maskImage = `url(${im.src})`; }
@@ -875,6 +895,8 @@ const f2 = (v) => v.toFixed(2);
 slider('fitH', () => S.fit.h, (v) => { S.fit.h = v; }, f2); slider('fitX', () => S.fit.x, (v) => { S.fit.x = v; }, f2); slider('fitY', () => S.fit.y, (v) => { S.fit.y = v; }, f2);
 slider('fitF', () => S.fit.fade, (v) => { S.fit.fade = v; }, f2); slider('fitT', () => S.fit.toes, (v) => { S.fit.toes = v; }, f2);
 slider('herH', () => S.her.h, (v) => { S.her.h = v; }, f2); slider('herX', () => S.her.x, (v) => { S.her.x = v; }, f2); slider('herB', () => S.her.b, (v) => { S.her.b = v; }, f2);
+$('#faceFadeOn').onchange = () => { S.faceFadeOn = $('#faceFadeOn').checked; };
+slider('faceFade', () => S.faceFade, (v) => { S.faceFade = v; });
 $('#shownSel').onchange = () => { S.shown = $('#shownSel').value; };
 $('#fFoot').onchange = () => { const f = $('#fFoot').files[0]; if (!f) return; const im = new Image(); im.onload = () => { footImg = im; G.mask = makeMask(); }; im.src = URL.createObjectURL(f); };
 $('#fCurled').onchange = () => { const f = $('#fCurled').files[0]; if (!f) return; const im = new Image(); im.onload = () => { curledImg = im; }; im.src = URL.createObjectURL(f); };

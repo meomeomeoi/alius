@@ -4,6 +4,13 @@
 
 Origin: the P16b planning session of 2026-11-27 (author, ruling 1): these games were specified in P16b §6, §8, §9 and P16 §R.2 and moved here so that each is designed with the author as a live prototype first (`npm run proto`), then ported with its `fidelity.json`. Every new scene surface follows the scene's style (P16b ruling 2).
 
+## Author's rulings so far (2026-11-27, before the plan; the plan's "Rulings of the planning session" takes them over)
+
+1. **Each game is built together with its stage setup (author).** A game's port comes in the same chunk as its setup in the extension (P10e chunk (f), SYS › STAGE): its art slots enter `SLOT_KEYS` / `SLOT_INFO`, its prototype's fit panel is ported into `src/ui/stage/fit/` (declared in `src/ui/stage/fidelity.json`), its zones use the ported marker, and CHECK runs it on a `demo.ts` builder. A game is not finished while its art cannot be loaded, fitted, marked and checked in SYS › STAGE.
+2. **Foot care: where (author: A).** The commander holds her foot up, sole to the face (art slot `held_sole`: one foot, the other mirrored; the leg fades out at the bottom; optional `held_sole.curled`, the same picture with the toes curled, an inpaint); she sits back on her bunk, her sprite behind the foot to one side; her face (her expression sprites) is a tell.
+3. **Foot care: steps.** Round 1 starts barefoot (massage with her tempo, then cream); taking off her footwear waits for a matched pair of pictures (`held_sole.shod`, the footwear inpainted over the bare picture) so the shoe can slide off over the bare foot.
+4. **Her faces in a prototype** are matched by the label a file name begins with (`admiration0003.png`, `joy-2.webp`), several per label allowed; the change of face may crossfade (optional, its length a setting).
+
 ## What moved here
 
 1. **Tempo** (P16b §6.2): massage, foot care, licking; keep her tempo, judged only by her tells (her expectation profile's "how").
