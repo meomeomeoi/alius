@@ -827,6 +827,8 @@ const BODY_SFX = {
   slump: () => { play('soft2', { g: 0.8, dest: A.body }); play('creak', { g: 0.4, dest: A.body }); },
   speak: () => {},
   fidget: () => { play('cloth', { g: 0.22, dest: A.body }); SYN.joint({ g: 0.3 }); },
+  breath: () => play('soft', { g: 0.22, dest: A.body, rate: 0.7 }), // P16b G2: a held breath let out
+  flinch: () => { play('cloth', { g: 0.32, dest: A.body, rate: 1.15 }); SYN.joint({ g: 0.4 }); }, // P16b G2
 };
 function bodyNoise(kind, loud, visible, gross = false) {
   BODY_SFX[kind]?.();
@@ -879,13 +881,16 @@ function react(gross) {
 const provOn = () => S.inner === 'provocation';
 $('#still')?.addEventListener('input', (e) => { $('#stillV').textContent = e.target.value; });
 const PROV = {
-  pull: { touch: 3200, tickle: 5600, whisper: 2200 },
-  grow: { touch: 0.22, tickle: 0.42, whisper: 0.16 },        // a second, at level 1, attention elsewhere
-  focusGrow: 0.55,                                            // more while the attention rests on it
-  awayCalm: 0.12,                                             // less while it rests on her or the door
+  pull: { touch: 1700, tickle: 2900, whisper: 1200 },        // round 2: a third weaker; holding the attention away is possible
+  grow: { touch: 0.15, tickle: 0.27, whisper: 0.1 },         // a second, at level 1, attention elsewhere (round 2b: a long tickle breaks through unless breathed through)
+  focusGrow: 0.34,                                            // more while the attention rests on it
+  awayCalm: 0.14,                                             // less while it rests on her or the door
   dur: { touch: [2600, 4200], tickle: [2000, 3600], whisper: [2200, 3400], feint: [900, 1500] },
-  gap: [4200, 8600],
+  gap: [5500, 10500],
   ticklish: 1.45, perStill: 0.1, perLevel: 0.22,
+  // round 2b: breathing through it (hold Space): the stimulus grows `calm` slower while the breath lasts (`max` ms); it refills at `refill` of real time once let go;
+  // a breath that runs out is let out loudly (she may hear), a long one let go is a soft exhale
+  breath: { max: 4500, refill: 0.8, calm: 0.4, longAt: 1500, outLoud: 0.32, softLoud: 0.1 },
 };
 // where on the commander's body (screen points in the view: the commander kneels before her), and how it is felt
 const PROV_PLACES = {
@@ -906,7 +911,7 @@ const PROV_LINES = {
 };
 const provLines = (kind) => { const own = (PROV_LINES[S.style] ?? PROV_LINES.neutral)[kind]; const l = own && own.some(Boolean) ? own : PROV_LINES.neutral[kind]; return S.style === 'cold' ? (own ?? ['']) : l; };
 const provLive = () => (G.prov?.live ?? []).some((p) => !p.done);
-function provStart() { G.prov = { next: G.t + rand(2500, 4500), live: [], level: 1, clean: 0, stats: { endured: 0, reactions: 0, involuntary: 0, harder: 0 } }; }
+function provStart() { G.prov = { next: G.t + rand(2500, 4500), live: [], level: 1, clean: 0, air: PROV.breath.max, held: 0, spent: false, stats: { endured: 0, reactions: 0, involuntary: 0, harder: 0, breaths: 0 } }; }
 function provSpawn() {
   const P = G.prov, feint = Math.random() < 0.18 && P.level >= 1;
   const kind = feint ? 'touch' : pick(P.level >= 2 ? ['touch', 'tickle', 'tickle', 'whisper'] : ['touch', 'touch', 'tickle', 'whisper']);
@@ -939,12 +944,17 @@ function provUpdate(dt) {
   const P = G.prov ?? provStart() ?? G.prov; const s = dt / 1000;
   if (G.phase !== 'loop' && G.phase !== 'empty') return;
   const lvl = PROV.perLevel * (P.level - 1), still = PROV.perStill * Number($('#still').value), tick = $('#ticklish').checked ? PROV.ticklish : 1;
+  // the breath: held with Space, it calms what she does; it runs out
+  const B = PROV.breath;
+  if (G.spaceHeld && !P.spent && P.air > 0) { if (P.held === 0) P.stats.breaths += 1; P.held += dt; P.air = Math.max(0, P.air - dt); if (P.air === 0) { P.spent = true; sense('The breath runs out of you, loud.', 'body', 'body'); bodyNoise('breath', B.outLoud, false); } }
+  else { if (P.held >= B.longAt && !P.spent) bodyNoise('breath', B.softLoud, false); if (!G.spaceHeld) P.spent = false; P.held = 0; P.air = Math.min(B.max, P.air + dt * B.refill); }
+  const calm = P.held > 0 ? B.calm : 0;
   for (const p of P.live) {
     if (p.done) continue;
     if (!p.feint) {
       const focus = Math.hypot(ATT.x - p.x, ATT.y - p.y) < 50 + p.v * 80; p.focus = focus;
       const g = PROV.grow[p.kind] * (1 + lvl) * (1 - still) * (p.kind === 'tickle' ? tick : 1);
-      p.v += s * (g + (focus ? PROV.focusGrow : 0) - (G.listening && !focus ? PROV.awayCalm : 0));
+      p.v += s * (g + (focus ? PROV.focusGrow : 0) - (G.listening && !focus ? PROV.awayCalm : 0) - calm);
       p.v = Math.max(0.05, p.v);
       if (p.kind === 'touch' || p.kind === 'tickle') { p.trail.push([p.x + Math.sin((G.t - p.born) / (p.kind === 'tickle' ? 60 : 380) + p.seed) * (p.kind === 'tickle' ? 18 : 36), p.y + (G.t - p.born) / 60]); if (p.trail.length > 40) p.trail.shift(); }
       if (p.v >= 1) { provReact('', true); continue; }
@@ -962,6 +972,12 @@ function provUpdate(dt) {
   if (G.t >= P.next && !provLive()) { provSpawn(); if (P.level >= 3 && Math.random() < 0.3) after(rand(500, 1100), () => provSpawn()); P.next = G.t + rand(...PROV.gap) * (1 - 0.1 * (P.level - 1)); }
 }
 function drawProvocation(t) {
+  const P = G.prov;
+  if (P && (P.held > 0 || P.air < PROV.breath.max)) { // the breath left: a thin cool arc around the attention, closing as it runs out
+    const k = P.air / PROV.breath.max, r = 34;
+    uctx.strokeStyle = `rgba(170,205,255,${(P.held > 0 ? 0.75 : 0.35).toFixed(2)})`; uctx.lineWidth = 2;
+    uctx.beginPath(); uctx.arc(ATT.x, ATT.y, r, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); uctx.stroke();
+  }
   for (const p of G.prov?.live ?? []) {
     const age = (G.t - p.born) / 1000, fade = p.done ? Math.max(0, 1 - (G.t - p.until) / 600) : 1, pulse = 0.8 + 0.2 * Math.sin(t * 6 + p.seed);
     if (p.feint) { // her hand coming close: a faint warm glow that grows and stops short
@@ -1081,8 +1097,8 @@ function updateUrges(dt) {
   const closeUp = svcOn() && SV && SV.closeK > 0.3;
   if (closeUp) { G.nextItch += dt; G.nextCramp += dt; }
   if (G.t >= G.nextItch) { if (!provOn()) spawnUrge('itch'); G.nextItch = G.t + rand(7000, 14000) * k; }
-  if (G.t >= G.nextSwallow) { if (!G.urges.some((u) => u.kind === 'swallow')) spawnUrge('swallow'); G.nextSwallow = G.t + rand(15000, 26000); }
-  if (G.t >= G.nextCramp && !G.cramp && (G.phaseIdx >= 1 || hours > 0.6)) { spawnUrge('cramp'); G.nextCramp = G.t + rand(35000, 65000) * k; }
+  if (G.t >= G.nextSwallow) { if (!provOn() && !G.urges.some((u) => u.kind === 'swallow')) spawnUrge('swallow'); G.nextSwallow = G.t + rand(15000, 26000); }
+  if (G.t >= G.nextCramp && !G.cramp && !provOn() && (G.phaseIdx >= 1 || hours > 0.6)) { spawnUrge('cramp'); G.nextCramp = G.t + rand(35000, 65000) * k; }
   // the ease: attrition by fiction time (the engine's 5 an hour less 2 a level), urges left high
   G.ease -= (Math.max(0, MAR.attrition - MAR.perLevel * S.level) / 60) * (G.clockRate ?? 0) * dt / 1000 * 4;
   for (const u of G.urges) if (u.v > 0.7) G.ease -= s * 0.35;
@@ -2370,7 +2386,7 @@ const RIPPLES = [];
 addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { if (G.phase === 'loop' || G.phase === 'empty') finish('stop'); return; }
   if (typing(e.target)) { G.lastTyped = G.t; return; }
-  if (provOn() && e.key !== 'h' && e.key !== 'H') provInput('key');
+  if (provOn() && e.key !== 'h' && e.key !== 'H' && e.key !== ' ') provInput('key');
   if (e.key === ' ') { e.preventDefault(); G.spaceHeld = true; HOLD.on = true; }
   else if (e.key === 'Shift' && weightOn() && W) wRelief();
   else if (e.key === 'h' || e.key === 'H') $('#panel').classList.toggle('hidden');
