@@ -1,5 +1,5 @@
 import { RESPONSE_TYPES, type ResponseType } from '../blocking/types';
-import { OFFER_ANSWERS, TONES, type DynamicOffer, type OfferAnswer, type Tone } from '../dynamic/types';
+import { OFFER_ANSWERS, QUIRK_WHEN, TONES, type DynamicOffer, type OfferAnswer, type QuirkWhen, type Tone } from '../dynamic/types';
 import { normalizeTag } from '../setup';
 import type { LifeOffer } from '../life/types';
 import type { PracticeOffer } from '../practice/intents';
@@ -48,6 +48,8 @@ export interface EventIntent {
   claimId?: string;
   exitId?: string;
   offerId?: string;
+  /** P15b: which of her quirks a `quirk_voiced` is about (one of `QUIRK_WHEN`, among what the model was offered for her). */
+  when?: QuirkWhen;
   answer?: OfferAnswer;
   correction?: string;
   summary?: string;
@@ -273,6 +275,13 @@ function dynamicFields(type: EventType, e: Record<string, unknown>, intent: Even
     }
     case 'protocol_slip':
       return (offer.slips ?? []).includes(who) ? { key: `${type}|${who}` } : null;
+    case 'quirk_voiced': {
+      // one of her small ways: only a kind that was offered for her (an unknown or an unoffered one drops the event)
+      const when = (QUIRK_WHEN as readonly unknown[]).includes(e.when) ? (e.when as QuirkWhen) : undefined;
+      if (when === undefined || !(offer.quirks ?? []).some((q) => q.unitId === who && q.when === when)) return null;
+      intent.when = when;
+      return { key: `${type}|${who}|${when}` };
+    }
     case 'offer_answered': {
       const answer = (OFFER_ANSWERS as readonly unknown[]).includes(e.answer) ? (e.answer as OfferAnswer) : undefined;
       if (typeof e.offerId !== 'string' || !offer.offers.includes(e.offerId) || answer === undefined) return null;

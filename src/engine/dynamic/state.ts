@@ -7,7 +7,7 @@ import type { CampaignState, LeashKind } from '../state/types';
 import type { OpenOverride } from '../warden/state';
 import type { ResponseType } from '../blocking/types';
 import type {
-  AftermathKind, Frame, Frequency, HolderCap, KnowledgeLevel, MayHold, MilestoneOffer, Motive, OfferAnswer, OfferTab, Pace, RegionRank, Sensitivity, StartFrame,
+  AftermathKind, Frame, Frequency, QuirkWhen, HolderCap, KnowledgeLevel, MayHold, MilestoneOffer, Motive, OfferAnswer, OfferTab, Pace, RegionRank, Sensitivity, StartFrame,
 } from './types';
 
 /** What the setup says about one unit (R3). Every field is absent for the default. */
@@ -188,6 +188,11 @@ export interface DynamicCampaign {
     /** P15b: the physics run (`p<n>`) that had a segment with a warning, noted only for a holder whom `pain` draws: a clean end after it is what she rewards. */
     warnedRun?: string;
   };
+  /**
+   * P15b: the note of her quirks for one scene (keyed by the scene id; a scene with another id starts empty): per unit, the kinds the model reported as voiced and whether a run of hers was seen
+   * (what makes `after` due once it ends). Bookkeeping only, never shown.
+   */
+  quirkScene?: { sceneId: string; units: Record<string, { voiced: QuirkWhen[]; ran?: true }> };
   /** Ids: claims `dc<n>`, milestones `dm<n>`, offers `do<n>`, aftermaths `da<n>`, exits `dx<n>`. */
   seq: number;
   /** `exits` is optional: a save from before the exit routes has none. */

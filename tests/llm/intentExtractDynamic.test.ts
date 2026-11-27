@@ -24,6 +24,8 @@ const OFFERS: Array<{ type: string; offer: Dyn; word: string }> = [
   { type: 'compromat_mentioned', offer: dyn({ types: ['compromat_mentioned'], compromat: [ANN] }), word: '"summary"' },
   { type: 'protocol_slip', offer: dyn({ types: ['protocol_slip'], slips: [ANN] }), word: '"protocol_slip":' },
   { type: 'offer_answered', offer: dyn({ types: ['offer_answered'], offers: ['do1'] }), word: '"offerId"' },
+  // P15b: one of her small ways, listed with her words and the kind
+  { type: 'quirk_voiced', offer: dyn({ types: ['quirk_voiced'], quirks: [{ unitId: ANN, when: 'switch' }], quirkTexts: { [`${ANN}:switch`]: 'she locks the door' } }), word: 'she locks the door' },
 ];
 
 describe('the intent prompt and the dynamic', () => {
@@ -44,6 +46,15 @@ describe('the intent prompt and the dynamic', () => {
       expect(both).toContain(`"${type}"`); // its rule line
     });
   }
+
+  it('P15b: the QUIRKS block lists the unit, the kind and her words, one per line, and the shape asks for "when" only then', () => {
+    const d = dyn({ types: ['quirk_voiced'], quirks: [{ unitId: ANN, when: 'during' }, { unitId: ANN, when: 'address' }], quirkTexts: { [`${ANN}:during`]: 'she hums\nunder her breath', [`${ANN}:address`]: 'she names the commander by rank' } });
+    const text = prompt(withDyn(d));
+    expect(text).toContain(`- ${ANN} — during: she hums under her breath`);
+    expect(text).toContain(`- ${ANN} — address: she names the commander by rank`);
+    expect(system(withDyn(d))).toContain('"when": "switch" | "during" | "after" | "address"');
+    expect(system(INTENT_SNAPSHOT_INPUT)).not.toContain('"when"');
+  });
 
   it('only offered types are listed: a pending probe lists probe_answered and not milestone_accepted', () => {
     const line = typeLine(withDyn(OFFERS[0].offer));

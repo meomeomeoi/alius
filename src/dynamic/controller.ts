@@ -1,5 +1,6 @@
 import type { ExitMeans } from '../engine/dynamic/exit';
 import { offerLabel, type OfferComposition } from '../engine/dynamic/offer';
+import { quirkSyncDue } from '../engine/dynamic/quirks';
 import { DYNAMIC_EVENT_TYPES, type ExitRoute } from '../engine/dynamic/types';
 import type { CampaignState } from '../engine/state/types';
 import type { DynamicDeps } from './deps';
@@ -42,15 +43,22 @@ const OWN: readonly string[] = DYNAMIC_EVENT_TYPES;
 /**
  * The model-facing half of the dynamic (P15): its directives are derived from the state on every refresh (`refreshDynamicDirectives`, called
  * by the app's context pass), so the controller only has to push a refresh when something of the dynamic happened, set them when a scene opens
- * and drop them when it closes or the chat switches. It asks for no model call of its own and dispatches nothing.
+ * and drop them when it closes or the chat switches. It asks for no model call of its own. The one thing it writes is the note that a run of hers was seen (`dynamic/quirk_sync`, P15b: it is
+ * what makes her `after` quirk due once the run ends), and only while that note is due, so it never loops.
  */
 export function createDynamic(deps: DynamicDeps): DynamicController {
   const state = (): CampaignState | null => deps.app.current().state;
+  const syncQuirks = (): void => {
+    const s = state();
+    if (s && quirkSyncDue(s, deps.registries())) deps.app.dispatch({ type: 'dynamic/quirk_sync', payload: {} }, { expectChatId: deps.st.getActiveChat()?.chatId });
+  };
   return {
     onEvents(events) {
+      syncQuirks();
       if (events.some((e) => OWN.includes(e.type))) deps.refreshContext();
     },
     onSceneOpened() {
+      syncQuirks();
       const s = state();
       if (s) refreshDynamicDirectives(deps.context, s, deps.registries());
       deps.refreshContext();

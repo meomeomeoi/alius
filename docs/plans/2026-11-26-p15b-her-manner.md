@@ -329,15 +329,15 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
   Triggers (spec §5): `switch` when the face turns from everyday to dynamic in a scene with her; `during` while a practice or physics of hers runs; `after` when it ends; `address` with the first `during` of a scene.
 - Test: `tests/dynamic/quirks.test.ts`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - each trigger offers its quirk once a scene, and never again after `quirk_voiced`;
   - an unknown `when` in a report is dropped;
   - a holder without quirks offers nothing;
   - a chat switch (new scene id) forgets the offered set.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`. Chunk end: full suite, typecheck.
-- [ ] **Step 5: Commit** `feat(P15b): her quirks`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`. Chunk end: full suite, typecheck.
+- [x] **Step 5: Commit** `feat(P15b): her quirks`
 
 ## Chunk m5: the mood of the day
 

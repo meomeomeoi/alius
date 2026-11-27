@@ -26,6 +26,7 @@ import { readMoments, resettleReading } from '../dynamic/reading';
 import { regardFeed, regardFromEvents } from '../dynamic/regard';
 import { questionEvents } from '../dynamic/shame';
 import { dynamicOf } from '../dynamic/state';
+import { noteQuirkRuns } from '../dynamic/quirks';
 import { noteEvents } from '../dynamic/style';
 import { registerEventLanded } from '../relations/effects';
 import { practiceEnabled } from '../dynamic/profile';
@@ -108,6 +109,15 @@ registerAction('profile/set_practice', (draft, payload, ctx) => {
   if (read.practice === undefined || read.issues.length > 0) throw new Error(read.issues.length > 0 ? read.issues.join('; ') : 'A practice needs a primary style.');
   if (unit.bond === undefined) unit.bond = { ...MODEST_BOND, ownLimits: { categories: [] } };
   unit.bond.practice = read.practice;
+  return [];
+});
+
+/**
+ * `dynamic/quirk_sync {}` (P15b): notes that a run of hers was seen in the open scene, which a derived directive cannot know (it is what makes the `after` quirk due once the run ends). The controller
+ * dispatches it only while `quirkSyncDue`; it writes nothing, and emits nothing, otherwise.
+ */
+registerAction('dynamic/quirk_sync', (draft, _payload, ctx) => {
+  noteQuirkRuns(draft, ctx.registries);
   return [];
 });
 

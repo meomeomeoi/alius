@@ -37,9 +37,9 @@ describe('the vocabulary', () => {
   it('seven reportable types and two engine relation types were added, each with a row, a cause and a journal line', () => {
     expect(PRACTICE_INTENT_TYPES).toEqual(['task_kept', 'task_broken', 'service_rated', 'denial_broken', 'practice_accepted', 'threat_voiced', 'ceremony_step']);
     for (const t of PRACTICE_INTENT_TYPES) expect(EVENT_TYPES as readonly string[], t).toContain(t);
-    expect(EVENT_TYPES).toHaveLength(59);
+    expect(EVENT_TYPES).toHaveLength(60);
     expect(ENGINE_EVENT_TYPES).toEqual(expect.arrayContaining(['punishment_accepted', 'spared_for']));
-    expect(ALL_EVENT_TYPES).toHaveLength(86);
+    expect(ALL_EVENT_TYPES).toHaveLength(87);
     for (const t of [...PRACTICE_INTENT_TYPES, 'punishment_accepted', 'spared_for']) {
       const row = reg.eventDeltas.get(t)!;
       expect(typeof row.cause, t).toBe('string');

@@ -10,6 +10,7 @@ import { sceneProbe } from '../engine/dynamic/probes';
 import { faceNow, showsDynamic, type Face } from '../engine/dynamic/face';
 import { drawnByWord, mannerOf, mannerWord } from '../engine/dynamic/manner';
 import { practiceOf } from '../engine/dynamic/profile';
+import { quirksDue, QUIRK_PHRASE } from '../engine/dynamic/quirks';
 import { dynamicOf } from '../engine/dynamic/state';
 import { offerLabel } from '../engine/dynamic/offer';
 import { reactionOf, type Reaction } from '../engine/dynamic/witness';
@@ -47,6 +48,8 @@ export const DISAPPOINTED_PREFIX = 'dynamic:disappointed:';
 export const REGARD_PREFIX = 'dynamic:regard:';
 /** The line of an offer the commander made, for her next reply only (event-driven like P15a's `moment:`: `applyOfferDirectives`; a refresh leaves it alone). */
 export const OFFER_PREFIX = 'dynamic:offer:';
+/** P15b: one of her small ways, for the scene it is due in (derived on every refresh; gone once voiced). */
+export const QUIRK_PREFIX = 'dynamic:quirk:';
 
 /**
  * Her style pair in words, the secondary's side named while it leads. P15b: for a holder with a manner the line also words the axes away from 0 ("Her manner is cold: she pushes hard;
@@ -154,6 +157,7 @@ export function dynamicDirectives(state: CampaignState, reg: Registries, present
     const holder = holderDirective(state, reg, unit, faceNow(state, reg, unit.id, present));
     if (holder !== null) out.push(holder);
   }
+  out.push(...quirkDirectives(state, reg, present));
   const probe = sceneProbe(state, units.map((u) => u.id));
   if (probe !== undefined && showsDynamic(faceNow(state, reg, probe.unitId, present))) out.push(probeDirective(reg, units.find((u) => u.id === probe.unitId)!, probe.probe.axis)); // P15b: a probe waits for a face that shows it
   for (const unit of units) {
@@ -166,6 +170,21 @@ export function dynamicDirectives(state: CampaignState, reg: Registries, present
   out.push(...disappointedDirectives(state, present));
   out.push(...regardDirectives(state, reg, present));
   return out.map(plainDirective);
+}
+
+/**
+ * Her small ways in the dynamic (`dynamic:quirk:<unitId>`, spec §5): one line a unit, only for the kinds that are due now (`quirksDue`), worded "if it fits, once" and gone once the model
+ * reported it (`quirk_voiced`). The text is hers; it is never shown as a mechanic and gives the commander nothing.
+ */
+function quirkDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
+  const out: Directive[] = [];
+  const due = quirksDue(state, reg, present);
+  for (const id of [...new Set(due.map((q) => q.unitId))]) {
+    const lines = due.filter((q) => q.unitId === id).map((q) => `${QUIRK_PHRASE[q.when]}: ${sentence(q.text)}.`);
+    const name = state.squad.find((u) => u.id === id)?.displayName ?? 'She';
+    out.push({ id: `${QUIRK_PREFIX}${id}`, expiresAfter: 'scene', text: `A small habit of ${name}'s, to show only if it fits, and only once in this scene. ${lines.join(' ')} Show it in how she acts; never name it as a habit or a mechanic.` });
+  }
+  return out;
 }
 
 /** A directive the main model reads: a draft text reaches it without the marker (`plainDraft`), whichever part of it came from a template or the registry. */

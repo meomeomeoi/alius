@@ -22,6 +22,8 @@ export const EVENT_TYPES = [
   'news_told', 'hobby_praised', 'opinion_voiced', 'opinion_challenged', 'opinion_agreed', 'first_moment', 'joke_returned',
   // P15: the dynamic (each offered to the model only while its subject exists: a pending probe, an open milestone or offer, a holder's compromat, a holder at role in company)
   'probe_answered', 'probe_observed', 'milestone_accepted', 'milestone_refused', 'compromat_mentioned', 'protocol_slip', 'offer_answered',
+  // P15b: one of her small ways in the dynamic, seen voiced (offered only while one is due)
+  'quirk_voiced',
   // P16: the practices (each offered to the model only while its subject exists: an open task of hers, a task answered in words, a service she judges, a denial of hers, a ceremony step, a holder in the room)
   'task_kept', 'task_broken', 'service_rated', 'denial_broken', 'practice_accepted', 'threat_voiced', 'ceremony_step',
 ] as const;
@@ -30,7 +32,7 @@ export const EVENT_TYPES = [
 export const LIFE_EVENT_TYPES: readonly string[] = ['news_told', 'hobby_praised', 'opinion_voiced', 'opinion_challenged', 'opinion_agreed', 'first_moment', 'joke_returned'];
 
 /** P15: the model-reportable types of the dynamic. The intent prompt offers each only while its subject exists, and `validateIntents` drops one it was not offered. */
-export const DYNAMIC_INTENT_TYPES: readonly string[] = ['probe_answered', 'probe_observed', 'milestone_accepted', 'milestone_refused', 'compromat_mentioned', 'protocol_slip', 'offer_answered'];
+export const DYNAMIC_INTENT_TYPES: readonly string[] = ['probe_answered', 'probe_observed', 'milestone_accepted', 'milestone_refused', 'compromat_mentioned', 'protocol_slip', 'offer_answered', 'quirk_voiced'];
 
 /** P16: the model-reportable types of the practices. The intent prompt offers each only while its subject exists, and `validateIntents` drops one it was not offered. */
 export const PRACTICE_INTENT_TYPES: readonly string[] = ['task_kept', 'task_broken', 'service_rated', 'denial_broken', 'practice_accepted', 'threat_voiced', 'ceremony_step'];

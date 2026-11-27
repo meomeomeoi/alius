@@ -19,6 +19,7 @@ import { confirmOffer } from './offer';
 import { answerMilestone } from './milestones';
 import { answerProbe, pendingProbe, sceneProbe } from './probes';
 import { threatNear } from './reading';
+import { markQuirkVoiced, quirksDue } from './quirks';
 import { slipsOpen } from './struggle';
 import { dynamicOf } from './state';
 import type { DynamicMilestoneEntry, DynamicOffer, ProbeAxisEntry } from './types';
@@ -28,8 +29,8 @@ export type { DynamicOffer };
 /** The model-reported types of the dynamic: their own rows are zero, so `applyIntents` leaves them to `applyDynamicIntent` (like her life's conditional rows). */
 export const DYNAMIC_ROW_IS_CONDITIONAL: readonly string[] = DYNAMIC_INTENT_TYPES;
 
-/** What the prompt carries: the offer, her axes as words and the open milestones' labels. */
-export type DynamicIntentInput = DynamicOffer & { probeAxes: Record<string, string>; milestoneLabels: Record<string, string> };
+/** What the prompt carries: the offer, her axes as words, the open milestones' labels and the words of the quirks that are due (keyed `<unitId>:<when>`; hers, the author's, never a number). */
+export type DynamicIntentInput = DynamicOffer & { probeAxes: Record<string, string>; milestoneLabels: Record<string, string>; quirkTexts?: Record<string, string> };
 
 /**
  * The offer for the units in `participants` (named, living, who practise something that is switched on). `{}` while the dynamic is off or nothing
@@ -70,14 +71,20 @@ export function dynamicIntentInput(
     })
     : [];
   const compromat = present.filter((id) => compromatOf(state, id).length > 0);
+  // P15b: her small ways that are due now (only in a scene with her); the model reports one it saw voiced
+  const due = _channel === 'scene' ? quirksDue(state, reg).filter((q) => present.includes(q.unitId)) : [];
   const types = [
     ...(probes.length > 0 ? ['probe_answered'] : []), ...(observed.length > 0 ? ['probe_observed'] : []),
     ...(milestoneRows.length > 0 ? ['milestone_accepted', 'milestone_refused'] : []), ...(claims.length > 0 || exits.length > 0 ? ['compromise_reached'] : []),
     ...(offers.length > 0 ? ['offer_answered'] : []), ...(compromat.length > 0 ? ['compromat_mentioned'] : []), ...(slips.length > 0 ? ['protocol_slip'] : []),
+    ...(due.length > 0 ? ['quirk_voiced'] : []),
   ];
   if (types.length === 0) return {};
   return {
-    dynamic: { types, probes, observed, milestones: milestoneRows.map((m) => m.id), claims, exits, offers, compromat, slips, probeAxes, milestoneLabels },
+    dynamic: {
+      types, probes, observed, milestones: milestoneRows.map((m) => m.id), claims, exits, offers, compromat, slips, probeAxes, milestoneLabels,
+      ...(due.length > 0 ? { quirks: due.map((q) => ({ unitId: q.unitId, when: q.when })), quirkTexts: Object.fromEntries(due.map((q) => [`${q.unitId}:${q.when}`, q.text])) } : {}),
+    },
   };
 }
 
@@ -106,6 +113,10 @@ export function applyDynamicIntent(draft: CampaignState, ctx: Pick<EngineCtx, 'r
     case 'offer_answered':
       // the engine decided her answer when the offer was made; the report only confirms it (a mismatch, a stale id or another woman's is dropped)
       return confirmOffer(draft, unitId, ev.offerId, ev.answer, ev.correction);
+    case 'quirk_voiced':
+      // one of her small ways, seen voiced (the offer was built from the same state: a stale or unknown one writes nothing); only the note of the scene changes
+      markQuirkVoiced(draft, reg, unitId, ev.when);
+      return [];
     case 'protocol_slip':
       // the habit slips out with others in the room: each of them sees it (R14); in a DM, or alone, nobody does
       return slipSeen(draft, ctx, unitId);

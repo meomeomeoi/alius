@@ -338,4 +338,6 @@ export interface DynamicOffer {
   compromat: string[];
   observed?: string[];
   slips?: string[];
+  /** P15b: the quirks that are due now, each of a unit in the scene (`quirk_voiced` is offered while any is). */
+  quirks?: Array<{ unitId: string; when: QuirkWhen }>;
 }

@@ -1660,6 +1660,16 @@
     }
   },
   {
+    "id": "quirk_voiced",
+    "cause": "She did one of her small things",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    }
+  },
+  {
     "id": "offer_answered",
     "cause": "She answered what the commander offered",
     "journal": "she answered the commander's offer",
