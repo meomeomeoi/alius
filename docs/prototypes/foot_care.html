@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<!--
+  P16c reference prototype: FOOT CARE (P16b §6.2 tempo, §8 the further steps of care). Round 1 (2026-11-27): she is already barefoot;
+  massage with her tempo, then cream; both feet. NOT YET APPROVED.
+  - The view: the commander holds her foot up, sole to the face (art slot `held_sole`: one foot, the other is it mirrored; the leg fades out
+    at the bottom); she sits back on her bunk, her sprite behind the foot to one side, a little soft. Her face is a tell.
+  - Massage: the left button puts the thumbs on her sole; Space (or the right button) presses harder, let go and it eases off. Circles
+    (kneading) and long strokes (gliding) are both read; her tempo and her pressure are hidden and read only from her tells: her toes (curl,
+    spread, wiggle, tap), her breath (a sigh, a hiss, a giggle), her foot (sinks into the hands, pushes back, pulls away), her face and words.
+    Her tempo slows as she relaxes. A knot (her day) wants slow firm work before it lets go.
+  - Cream: C squeezes it into the palms (hold for more); it is cold until it warms in them a moment; spread it over the sole and rub it in.
+    Too much stays greasy, a patch missed stays dry; at the end she turns the foot to the light (shoe.html's inspection) and says what she saw.
+  Build a runnable page with
+    npm run proto -- foot_care [--sprite <png|webp|svg>]
+  Load the author's picture of her foot in the panel (never committed).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alius · foot care · prototype</title>
+<style>
+@font-face { font-family: "Caveat"; src: url("%%ASSET:fonts/hand-caveat-400.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 300; src: url("%%ASSET:fonts/inter-300.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 400; src: url("%%ASSET:fonts/inter-400.woff2%%") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; src: url("%%ASSET:fonts/ibm-plex-mono-400.woff2%%") format("woff2"); }
+
+:root { --her: #8cc8f0; --glass: rgba(14, 12, 20, 0.58); --line: rgba(255, 255, 255, 0.12); --ink: #ece8f2; --dim: rgba(236, 232, 242, 0.55); }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: var(--ink); font-family: Inter, system-ui, sans-serif; font-weight: 300; }
+#stage { position: fixed; inset: 0; overflow: hidden; cursor: none; }
+#world { position: absolute; inset: -5%; will-change: transform; }
+#backdrop { position: absolute; inset: 0; background-size: cover; background-position: center 70%; filter: blur(14px) brightness(.42) saturate(.85); }
+#her { position: absolute; left: 0; top: 0; transform-origin: 50% 100%; will-change: transform, filter; pointer-events: none; }
+#shade { position: absolute; inset: 0; background: radial-gradient(ellipse 70% 62% at 42% 45%, rgba(0,0,0,0) 32%, rgba(0,0,0,.62) 100%); pointer-events: none; }
+#footWrap { position: absolute; left: 0; top: 0; transform-origin: 50% 50%; will-change: transform; }
+#footWrap img, #footWrap canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; user-select: none; -webkit-user-drag: none; }
+#blushC { mix-blend-mode: multiply; }
+/* the overlays are clipped to the picture's own alpha (their masks are low resolution and would bleed past its edge) */
+#blushC, #creamC, #glossC, #lightC { -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
+#lightC { pointer-events: none; }
+#markC { position: absolute; inset: 0; pointer-events: none; }
+#vig { position: absolute; inset: 0; pointer-events: none; }
+/* her hand and the sensory lines */
+#hand { position: absolute; inset: 0; pointer-events: none; }
+.her-line { position: absolute; font-family: Caveat, cursive; color: var(--her); white-space: nowrap; line-height: 1; font-size: 42px;
+  text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.85), 0 0 28px rgba(0,0,0,.6);
+  animation: write var(--write, 600ms) steps(var(--steps, 12), end) both; transition: opacity .5s; }
+.her-line.gone, .sense.gone { opacity: 0; }
+@keyframes write { from { clip-path: inset(-30% 100% -30% -8%); } to { clip-path: inset(-30% -8% -30% -8%); } }
+.sense { position: absolute; font: italic 300 16px/1.4 Inter, sans-serif; color: rgba(236,232,242,.62); text-shadow: 0 1px 2px #000, 0 0 10px rgba(0,0,0,.8); transition: opacity .8s; max-width: 380px; }
+#ui { position: absolute; inset: 0; pointer-events: none; }
+#reply { position: absolute; left: 50%; bottom: 102px; transform: translateX(-50%); width: min(980px, 70vw); font-size: 20px; line-height: 1.5; text-align: center;
+  text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.7); }
+#reply .act { font-style: italic; color: var(--dim); }
+#inputWrap { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); width: 720px; height: 52px; background: var(--glass); border: 1px solid var(--line); border-radius: 26px;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); font: 300 18px/52px Inter, sans-serif; padding: 0 24px; color: rgba(236,232,242,.35); }
+#stopPill { position: absolute; right: 36px; bottom: 44px; pointer-events: auto; cursor: pointer; padding: 10px 18px; border-radius: 22px; font: 13px "IBM Plex Mono", monospace; font-variant: small-caps;
+  background: rgba(60, 10, 14, .55); border: 1px solid rgba(255, 120, 120, .35); color: #ffd6d6; backdrop-filter: blur(10px); }
+#markPrompt { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); padding: 8px 14px; border-radius: 10px; background: rgba(10,10,14,.85); font: 12px "IBM Plex Mono", monospace; color: #dde; display: none; z-index: 30; pointer-events: none; }
+
+/* prototype only */
+.card { position: absolute; left: 36px; top: 20%; width: 460px; padding: 22px 24px; border-radius: 18px; pointer-events: auto; background: var(--glass); border: 1px solid var(--line);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); display: none; cursor: default; }
+.card h3 { margin: 0 0 10px; font: 13px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .1em; color: var(--dim); }
+.card .hand { font: 32px Caveat, cursive; color: var(--her); margin: 6px 0 14px; }
+.card .facts { font: 13px "IBM Plex Mono", monospace; color: var(--dim); line-height: 1.7; }
+.btn { display: inline-block; margin-top: 12px; padding: 9px 18px; border-radius: 20px; border: 1px solid var(--line); background: rgba(255,255,255,.06); color: var(--ink); font: 14px Inter, sans-serif; cursor: pointer; }
+#panel { position: fixed; top: 14px; right: 14px; width: 320px; max-height: calc(100vh - 40px); overflow: auto; padding: 14px 16px; border-radius: 14px; z-index: 70;
+  background: rgba(10, 10, 14, .84); border: 1px solid var(--line); font: 12px "IBM Plex Mono", monospace; color: #cfcbe0; cursor: default; }
+#panel.hidden { display: none; }
+#panel h4 { margin: 12px 0 6px; font-weight: 400; color: #8d88a6; font-variant: small-caps; letter-spacing: .08em; }
+#panel h4:first-child { margin-top: 0; }
+#panel .row { display: flex; flex-wrap: wrap; gap: 4px; }
+#panel button.opt { padding: 4px 8px; border-radius: 10px; border: 1px solid #3a3650; background: #17151f; color: #cfcbe0; font: 12px "IBM Plex Mono", monospace; cursor: pointer; }
+#panel button.opt.on { background: #3b3360; border-color: #8a7fd0; color: #fff; }
+#panel label { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+#panel input[type=range] { flex: 1; }
+#panel select { background: #17151f; color: #cfcbe0; border: 1px solid #3a3650; font: 12px "IBM Plex Mono", monospace; }
+#panel .note { color: #77738c; line-height: 1.45; margin-top: 6px; word-break: break-all; }
+#debug { position: fixed; left: 14px; top: 12px; font: 12px "IBM Plex Mono", monospace; color: #9ad; text-shadow: 0 0 4px #000; z-index: 40; white-space: pre; display: none; pointer-events: none; }
+#start { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 60; background: rgba(0,0,0,.35); cursor: default; }
+#start .box { width: 620px; padding: 26px 30px; border-radius: 18px; background: rgba(12, 11, 18, .88); border: 1px solid var(--line); line-height: 1.6; font-size: 15px; }
+#start .box h2 { margin: 0 0 8px; font: 15px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .12em; color: #a9a3c7; }
+#start kbd { font: 12px "IBM Plex Mono", monospace; padding: 1px 6px; border: 1px solid #555; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="world"><div id="backdrop"></div><img id="her" alt="" draggable="false"></div>
+  <div id="shade"></div>
+  <div id="footWrap"><img id="foot" alt="" draggable="false"><img id="toes" alt="" draggable="false"><img id="curled" alt="" draggable="false" style="opacity:0"><canvas id="blushC"></canvas><canvas id="creamC"></canvas><canvas id="glossC"></canvas><canvas id="lightC"></canvas></div>
+  <canvas id="markC"></canvas>
+  <div id="vig"></div>
+  <div id="hand"></div>
+  <div id="ui">
+    <div id="reply"></div>
+    <div id="inputWrap">…</div>
+    <div id="stopPill">● stop word · amber</div>
+    <div class="card" id="summary"><h3>prototype · how it went</h3><div class="hand" id="sumLine"></div><div class="facts" id="sumFacts"></div><span class="btn" id="againBtn">again</span></div>
+  </div>
+  <div id="markPrompt"></div>
+</div>
+<div id="debug"></div>
+
+<div id="panel">
+  <h4>her style</h4>
+  <div class="row" id="styles"></div>
+  <h4>her manner (P15b axes)</h4>
+  <label>tempo <input type="range" id="mTempo" min="-2" max="2" step="1" value="0"><span id="mTempoV">0</span></label>
+  <label>intensity <input type="range" id="mInt" min="-2" max="2" step="1" value="0"><span id="mIntV">0</span></label>
+  <label>warmth <input type="range" id="mWarm" min="-2" max="2" step="1" value="0"><span id="mWarmV">0</span></label>
+  <h4>her day (her feet)</h4>
+  <div class="row" id="days"></div>
+  <div class="note" id="dayNote"></div>
+  <h4>the commander</h4>
+  <label>her rhythm known <input type="range" id="known" min="0" max="5" step="1" value="0"><span id="knownV">0</span></label>
+  <label><input type="checkbox" id="both" checked> both feet</label>
+  <h4>the pictures (never committed)</h4>
+  <label>her foot (held_sole) <input type="file" id="fFoot" accept="image/*" style="width:140px"></label>
+  <label>toes curled (optional) <input type="file" id="fCurled" accept="image/*" style="width:140px"></label>
+  <label>her faces <input type="file" id="fFaces" accept="image/*" multiple style="width:140px"></label>
+  <div class="note" id="facesNote">Faces: one file per expression, named by its label (relief.png, annoyance.png …). Without them her sprite stands in.</div>
+  <label>the foot shown <select id="shownSel"><option value="right">her right</option><option value="left">her left</option></select></label>
+  <label>height <input type="range" id="fitH" min="0.5" max="2.5" step="0.01" value="1.45"><span id="fitHV">1.45</span></label>
+  <label>x <input type="range" id="fitX" min="-0.5" max="0.5" step="0.01" value="-0.08"><span id="fitXV">-0.08</span></label>
+  <label>y <input type="range" id="fitY" min="0" max="1.4" step="0.01" value="0.78"><span id="fitYV">0.78</span></label>
+  <label>bottom fade <input type="range" id="fitF" min="0" max="0.9" step="0.01" value="0.55"><span id="fitFV">0.55</span></label>
+  <label>toes line <input type="range" id="fitT" min="0.05" max="0.45" step="0.005" value="0.2"><span id="fitTV">0.20</span></label>
+  <div class="row"><button class="opt" id="markZones">mark zones</button><button class="opt" id="copyFit">copy the fit</button></div>
+  <div class="note" id="sideNote"></div>
+  <h4>her sprite</h4>
+  <label>height <input type="range" id="herH" min="0.5" max="1.8" step="0.01" value="1.05"><span id="herHV">1.05</span></label>
+  <label>x <input type="range" id="herX" min="0.2" max="0.95" step="0.01" value="0.62"><span id="herXV">0.62</span></label>
+  <label>bottom <input type="range" id="herB" min="0.8" max="1.6" step="0.01" value="1.12"><span id="herBV">1.12</span></label>
+  <h4>sound</h4>
+  <label><input type="checkbox" id="snd" checked> on</label>
+  <label>volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7"></label>
+  <h4>view</h4>
+  <label>accent <input type="color" id="accent" value="#8cc8f0"></label>
+  <label>backdrop <select id="bg"></select></label>
+  <label><input type="checkbox" id="dbg"> debug (her tempo and pressure, zones)</label>
+  <label><input type="checkbox" id="rm"> reduced motion</label>
+  <div class="row"><button class="opt" id="restart">restart</button><button class="opt" id="toCream">skip to the cream</button></div>
+  <div class="note">Left button: thumbs on her sole (circles knead, long strokes glide). Space or the right button: press harder; let go to ease off. C: squeeze cream into the palms (hold for more). Esc: the stop word. H: hide this panel. Prototype only; nothing here is engine code.</div>
+</div>
+
+<div id="start"><div class="box">
+  <h2>foot care · prototype · round 1</h2>
+  She sits back on her bunk and puts her bare foot in your hands, sole to you.<br>
+  <b>Massage.</b> Hold the <b>left button</b> on her sole and move: circles knead, long strokes glide. <kbd>Space</kbd> (or the right button) presses harder; let it go and the thumbs ease off.
+  Her tempo and how firm she likes it are hers: nothing shows them but her toes, her breath, her foot and her face. She slows as she relaxes.<br>
+  <b>Cream.</b> <kbd>C</kbd> squeezes it into your palms (hold for more). It is cold at first. Spread it, rub it in; she will look at it in the light.<br>
+  <kbd>Esc</kbd> stop word · <kbd>H</kbd> panel.
+  <div><span class="btn" id="go">begin</span> <span class="btn" id="setup">set up first</span></div>
+  <div style="font-size:13px;color:var(--dim);margin-top:8px">Set up: load her foot, fit it (height, x, y, bottom fade, toes line), mark its zones; then <i>restart</i> in the panel begins.</div>
+</div></div>
+
+<script>
+'use strict';
+const ASSETS = {
+  her: '%%SPRITE%%',
+  bgs: { quarters_1: '%%ASSET:content/core/art/backdrops/quarters_1.webp%%', quarters_dark: '%%ASSET:content/core/art/backdrops/quarters_dark.webp%%', loc_quarters_commander: '%%ASSET:content/core/art/backdrops/loc_quarters_commander.webp%%' },
+};
+const SAMPLE_URLS = {
+  cloth1: '%%ASSET:docs/prototypes/assets/ha/cloth1.ogg%%', cloth2: '%%ASSET:docs/prototypes/assets/ha/cloth2.ogg%%', cloth3: '%%ASSET:docs/prototypes/assets/ha/cloth3.ogg%%', cloth4: '%%ASSET:docs/prototypes/assets/ha/cloth4.ogg%%',
+  soft1: '%%ASSET:docs/prototypes/assets/ha/soft1.ogg%%', soft2: '%%ASSET:docs/prototypes/assets/ha/soft2.ogg%%',
+  sheet1: '%%ASSET:docs/prototypes/assets/ha/sheet1.ogg%%', sheet2: '%%ASSET:docs/prototypes/assets/ha/sheet2.ogg%%',
+  key1: '%%ASSET:docs/prototypes/assets/ha/key1.ogg%%', key2: '%%ASSET:docs/prototypes/assets/ha/key2.ogg%%',
+  breath: '%%ASSET:docs/prototypes/assets/breath-in-out.mp3%%',
+};
+const GROUPS = { cloth: ['cloth1', 'cloth2', 'cloth3', 'cloth4'], soft: ['soft1', 'soft2'], sheet: ['sheet1', 'sheet2'], key: ['key1', 'key2'] };
+const $ = (s) => document.querySelector(s);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const rand = (a, b) => a + Math.random() * (b - a);
+const fnv = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h; };
+
+/* ---------- her way with her feet, by style (drafts for her profile: the engine reads her expectation profile's `how` and P15b's axes).
+   cps: the circles a second she likes; glide: long strokes, foot heights a second; press: how firm (0 a touch … 1 all the thumbs have);
+   tickle: how ticklish the arch and the edge are under a light touch; massage: seconds a foot (real time); cream: seconds for the cream;
+   talk: how often a tell comes with words; busy: share of the time her eyes are on her device; irr: how fast a wrong touch annoys her ---------- */
+const STYLES = {
+  neutral:      { cps: 1.0,  glide: 0.5,  press: 0.5,  tickle: 0.4, massage: [50, 70], cream: 40, talk: 0.55, busy: 0.1,  irr: 1.0 },
+  affectionate: { cps: 0.8,  glide: 0.4,  press: 0.42, tickle: 0.5, massage: [60, 80], cream: 45, talk: 0.7,  busy: 0.05, irr: 0.7 },
+  playful:      { cps: 1.25, glide: 0.65, press: 0.45, tickle: 0.85, massage: [45, 65], cream: 35, talk: 0.8, busy: 0.1,  irr: 0.9 },
+  cruel:        { cps: 1.3,  glide: 0.7,  press: 0.68, tickle: 0.2, massage: [40, 55], cream: 30, talk: 0.5,  busy: 0.25, irr: 1.5 },
+  cold:         { cps: 1.0,  glide: 0.5,  press: 0.55, tickle: 0.3, massage: [45, 60], cream: 35, talk: 0.2,  busy: 0.45, irr: 1.1 },
+  ritual:       { cps: 0.9,  glide: 0.45, press: 0.5,  tickle: 0.3, massage: [55, 55], cream: 40, talk: 0.45, busy: 0.0,  irr: 1.0, count: true },
+  regal:        { cps: 0.85, glide: 0.42, press: 0.55, tickle: 0.3, massage: [60, 80], cream: 45, talk: 0.5,  busy: 0.2,  irr: 1.1 },
+  possessive:   { cps: 0.95, glide: 0.48, press: 0.6,  tickle: 0.4, massage: [55, 75], cream: 40, talk: 0.6,  busy: 0.05, irr: 1.0 },
+};
+/* the day of her feet (P16b `feetOfDay`): how it bends her wants */
+const DAYS = {
+  fresh: { press: 0, len: 0.8, knot: 0.3, note: 'fresh: after the shower; a shorter session, a knot is rare.' },
+  worn:  { press: 0.08, len: 1.1, knot: 0.6, note: 'worn: boots all day; she wants it firmer, a knot is likely.' },
+  hot:   { press: 0.06, len: 1.1, knot: 0.5, note: 'hot: a long duty in boots; firmer, and the cream is welcome.' },
+  sore:  { press: -0.1, len: 1.2, knot: 1, sore: true, note: 'sore: after a run; a knot for sure, tender until it warms.' },
+  bare:  { press: 0, len: 1, knot: 0.4, note: 'bare: barefoot in her quarters all day.' },
+};
+/* how firm each part of the sole likes it, against her base (the arch and the heel take more, the toes less) */
+const ZONE_PRESS = { toes: -0.15, ball: 0.02, arch: 0.08, heel: 0.14, edge: -0.06 };
+const ZONE_WORDS = { toes: 'the toes', ball: 'the ball', arch: 'the arch', heel: 'the heel', edge: 'the edge' };
+const ZONE_NAMES = ['toes', 'ball', 'arch', 'heel', 'edge'];
+/* zones of the author's first picture (her right foot, sole to the viewer, the big toe on the viewer's right): [x, y, rx, ry, deg],
+   centres as fractions of the picture, radii as fractions of its height; the marker replaces them per picture */
+const DEFAULT_ZONES = { toes: [0.52, 0.11, 0.095, 0.06, -8], ball: [0.53, 0.235, 0.085, 0.045, -10], arch: [0.555, 0.335, 0.045, 0.06, -8], heel: [0.46, 0.425, 0.06, 0.045, -12], edge: [0.395, 0.3, 0.03, 0.075, 8] };
+/* her faces: SillyTavern's labels, by what she feels (a label with no picture changes nothing) */
+const FACE = { start: 'neutral', good: 'relief', melted: 'desire', fast: 'annoyance', slow: 'annoyance', hard: 'disapproval', light: 'neutral', tickle: 'amusement', knot: 'relief', cold: 'surprise', greasy: 'disgust', pull: 'annoyance', endGood: 'joy', endPoor: 'disappointment' };
+/* her lines by style and kind (placeholders for the cue pool) */
+const LINES = {
+  neutral:      { entry: ['my feet are killing me.'], slower: ['slower.'], faster: ['a bit faster.'], firmer: ['firmer.'], softer: ['softer.'], tickle: ['hey— that tickles.'], good: ['mm. like that.', 'yes.'], melted: ['…don’t stop.'], knot: ['there. right there.'], knotDone: ['oh. that’s it.'], pull: ['enough of that.'], idle: ['well?'], cream: ['now the cream.'], cold: ['cold!'], greasy: ['too much. it’s greasy.'], missed: ['%z is dry.'], good2: ['soft. good.'], poor: ['patchy.'], other: ['the other one.'], endGood: ['that was good.'], endPoor: ['that’ll do.'], enough: ['enough.'] },
+  affectionate: { entry: ['would you? they ache.'], slower: ['slower, love…'], faster: ['a little quicker?'], firmer: ['you can press harder.'], softer: ['ow— gentle.'], tickle: ['no, no, that tickles!'], good: ['mmh… perfect.', 'just like that.'], melted: ['I could fall asleep…'], knot: ['oh— there. that one.'], knotDone: ['ahh… thank you.'], pull: ['ow. careful, sweetheart.'], idle: ['don’t stop…'], cream: ['the cream, please.'], cold: ['eek, cold!'], greasy: ['a bit much, silly.'], missed: ['you missed %z.'], good2: ['so soft. thank you.'], poor: ['nearly.'], other: ['and this one?'], endGood: ['you spoil me.'], endPoor: ['thank you anyway.'], enough: ['that’s enough, love.'] },
+  playful:      { entry: ['rub~'], slower: ['slooower~'], faster: ['faster, faster~'], firmer: ['harder, I won’t break~'], softer: ['ow! meanie.'], tickle: ['ahaha— stop— no don’t~'], good: ['ooh, that’s nice~'], melted: ['mmmh… good pet…'], knot: ['ooh there~'], knotDone: ['aaah~ yes.'], pull: ['nope~'], idle: ['hello~? my foot?'], cream: ['lotion time~'], cold: ['cold cold cold!'], greasy: ['so slippery~ ew.'], missed: ['%z’s still dry~'], good2: ['smooth~'], poor: ['meh~'], other: ['other one~'], endGood: ['good pet~'], endPoor: ['hmm, okay~'], enough: ['bored now.'] },
+  cruel:        { entry: ['rub them.'], slower: ['slower. idiot.'], faster: ['faster.'], firmer: ['harder. you’re useless.'], softer: ['careful.'], tickle: ['don’t you dare tickle me.'], good: ['acceptable.'], melted: ['…keep going.'], knot: ['there.'], knotDone: ['finally.'], pull: ['clumsy.'], idle: ['did I say stop?'], cream: ['cream. now.'], cold: ['cold. warm it first, idiot.'], greasy: ['you’re wasting it.'], missed: ['%z. again.'], good2: ['adequate.'], poor: ['pathetic.'], other: ['other foot.'], endGood: ['you may stop.'], endPoor: ['useless.'], enough: ['get your hands off.'] },
+  cold:         { entry: ['feet.'], slower: ['slower.'], faster: ['faster.'], firmer: ['firmer.'], softer: ['softer.'], tickle: ['don’t.'], good: [], melted: [], knot: ['there.'], knotDone: [], pull: ['no.'], idle: [], cream: ['cream.'], cold: ['cold.'], greasy: ['too much.'], missed: ['%z.'], good2: ['fine.'], poor: ['no.'], other: ['other.'], endGood: ['done.'], endPoor: ['done.'], enough: ['enough.'] },
+  ritual:       { entry: ['circles. at my count.'], slower: ['slower. count with me.'], faster: ['keep my count.'], firmer: ['with intent.'], softer: ['gently.'], tickle: ['not like that.'], good: ['as it should be.'], melted: ['…continue.'], knot: ['there. stay there.'], knotDone: ['good.'], pull: ['again, properly.'], idle: ['continue.'], cream: ['the cream. evenly.'], cold: ['warm it first.'], greasy: ['evenly, I said.'], missed: ['%z.'], good2: ['as it should be.'], poor: ['again.'], other: ['the left.'], endGood: ['enough. thank you for it.'], endPoor: ['enough.'], enough: ['stop.'] },
+  regal:        { entry: ['my feet have earned this.'], slower: ['unhurried.'], faster: ['do not dawdle.'], firmer: ['with more conviction.'], softer: ['you forget whose foot that is.'], tickle: ['how undignified.'], good: ['worthy.'], melted: ['…you may continue.'], knot: ['there. attend to it.'], knotDone: ['better.'], pull: ['enough of your clumsiness.'], idle: ['I did not dismiss you.'], cream: ['the cream.'], cold: ['you dare?'], greasy: ['wasteful.'], missed: ['%z. look again.'], good2: ['worthy.'], poor: ['unworthy.'], other: ['now the other.'], endGood: ['you may thank me.'], endPoor: ['adequate.'], enough: ['enough.'] },
+  possessive:   { entry: ['take care of what’s mine.'], slower: ['slower. for me.'], faster: ['come on.'], firmer: ['press. I want to feel you.'], softer: ['gentle with me.'], tickle: ['stop that.'], good: ['good. mine.'], melted: ['…don’t you dare stop.'], knot: ['there. you found it.'], knotDone: ['good. you know me.'], pull: ['you’ll learn.'], idle: ['I didn’t say stop.'], cream: ['cream them. all over.'], cold: ['warm it for me.'], greasy: ['all of it in, properly.'], missed: ['%z. mine too.'], good2: ['good. mine.'], poor: ['you’ll do better.'], other: ['the other one. mine too.'], endGood: ['good. stay.'], endPoor: ['again tomorrow.'], enough: ['enough.'] },
+};
+/* the first time a tell shows, a sensory line names it (so it can be learnt); after that only the body speaks */
+const TELL_NAMES = {
+  good: 'Her toes spread and her foot settles into your hands: that is right.',
+  fast: 'Her toes flex, quick and restless: too fast for her.',
+  slow: 'Her toes tap against your wrist: too slow for her.',
+  hard: 'Her toes curl and she draws a breath through her teeth: too hard.',
+  light: 'Her foot pushes back into your thumbs: she wants more of them.',
+  tickle: 'Her toes wriggle and her foot jerks: that tickles.',
+  knot: 'A flinch, small, at one spot: something tight there.',
+  knotDone: 'Something lets go under your thumbs. Her whole leg goes soft.',
+  closed: 'She leans her head back and closes her eyes.',
+  cold: 'She flinches at the cold.',
+};
+
+/* ---------- settings ---------- */
+const S = { style: 'neutral', day: 'worn', manner: { tempo: 0, intensity: 0, warmth: 0 }, known: 0, both: true, sound: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
+  shown: 'right', fit: { h: 1.45, x: -0.08, y: 0.78, fade: 0.55, toes: 0.2 }, zones: null, her: { h: 1.05, x: 0.62, b: 1.12 } };
+const ST = () => STYLES[S.style] ?? STYLES.neutral;
+const L = () => LINES[S.style] ?? LINES.neutral;
+const DY = () => DAYS[S.day];
+
+/* ---------- audio (shoe.html's buses) ---------- */
+const A = { ctx: null, buf: {} };
+function audioInit() {
+  if (A.ctx) return;
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  A.ctx = ctx;
+  A.master = ctx.createGain(); A.master.gain.value = S.sound ? S.vol : 0; A.master.connect(ctx.destination);
+  A.world = ctx.createBiquadFilter(); A.world.type = 'lowpass'; A.world.frequency.value = 9000; A.world.connect(A.master);
+  A.body = ctx.createGain(); A.body.connect(A.master);
+  const mk = (sec, fill) => { const b = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate); fill(b.getChannelData(0)); return b; };
+  A.white = mk(2, (d) => { for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; });
+  A.brown = mk(4, (d) => { let l = 0; for (let i = 0; i < d.length; i++) { l = (l + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = l * 3.5; } });
+  const room = ctx.createBufferSource(); room.buffer = A.brown; room.loop = true;
+  const rl = ctx.createBiquadFilter(); rl.type = 'lowpass'; rl.frequency.value = 650; const rg = ctx.createGain(); rg.gain.value = 0.05;
+  room.connect(rl); rl.connect(rg); rg.connect(A.world); room.start();
+}
+async function loadSamples() { await Promise.all(Object.entries(SAMPLE_URLS).map(async ([k, u]) => { try { const r = await fetch(u); A.buf[k] = await A.ctx.decodeAudioData(await r.arrayBuffer()); } catch (e) { /* synthesis */ } })); }
+function play(id, { g = 0.5, pan = 0, rate = 1, lp = 0, dest, at = 0, offset = 0, dur } = {}) {
+  const key = GROUPS[id] ? pick(GROUPS[id]) : id;
+  if (!A.ctx || !A.buf[key]) return null;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const src = ctx.createBufferSource(); src.buffer = A.buf[key]; src.playbackRate.value = rate;
+  const gn = ctx.createGain(); gn.gain.value = g; src.connect(gn); let n = gn;
+  if (lp) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; n.connect(f); n = f; }
+  if (pan) { const p = ctx.createStereoPanner(); p.pan.value = pan; n.connect(p); n = p; }
+  n.connect(dest ?? A.world);
+  if (dur !== undefined) { gn.gain.setValueAtTime(g, t + dur * 0.8); gn.gain.linearRampToValueAtTime(0.0001, t + dur); src.start(t, offset, dur); } else src.start(t, offset);
+  return src;
+}
+function noise({ at = 0, dur = 0.2, type = 'bandpass', f = 1000, f2, q = 1, gain = 0.1, attack = 0.01, dest = A.world, pan = 0 }) {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const src = ctx.createBufferSource(); src.buffer = A.white; src.loop = true;
+  const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(f, t); fl.Q.value = q;
+  if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(fl); fl.connect(g); let n = g;
+  if (pan) { const p = ctx.createStereoPanner(); p.pan.value = pan; g.connect(p); n = p; }
+  n.connect(dest); src.start(t, Math.random()); src.stop(t + dur + 0.05);
+}
+/* her side of the room (her sprite stands right of the foot): her breath and voice are panned there */
+const HER_PAN = 0.35;
+const SFX = {
+  pen: () => { for (let i = 0; i < 3; i++) noise({ at: i * 0.05 + Math.random() * 0.02, dur: 0.035 + Math.random() * 0.03, f: 2600 + Math.random() * 1800, q: 3, gain: 0.04 }); },
+  // her sigh: the exhale of the recorded breath, a little higher and softer (her, not the commander); a hiss: the intake, short and sharp
+  sigh: (g = 1) => { if (!play('breath', { g: 0.16 * g, rate: rand(1.08, 1.16), offset: 2.17, dur: 1.6, pan: HER_PAN, dest: A.world, lp: 3600 })) noise({ dur: 1.2, type: 'bandpass', f: 900, f2: 500, q: 0.7, gain: 0.05 * g, attack: 0.15, pan: HER_PAN }); },
+  hiss: () => { if (!play('breath', { g: 0.22, rate: 1.6, offset: 0.14, dur: 0.42, pan: HER_PAN, dest: A.world })) noise({ dur: 0.35, type: 'highpass', f: 3000, gain: 0.06, attack: 0.02, pan: HER_PAN }); },
+  giggle: () => { for (let i = 0; i < 5; i++) noise({ at: i * 0.11 + rand(0, 0.02), dur: 0.07, type: 'bandpass', f: rand(1100, 1500), q: 4, gain: 0.05, attack: 0.008, pan: HER_PAN }); },
+  tapToes: () => { for (let i = 0; i < 2; i++) play('soft', { g: 0.22, at: i * 0.18, rate: 1.15, pan: -0.1, dest: A.body }); },
+  shift: () => play('sheet', { g: 0.2, pan: HER_PAN }),
+  pull: () => { play('cloth', { g: 0.35, pan: -0.1 }); play('sheet', { g: 0.25, pan: HER_PAN, at: 0.05 }); },
+  squeeze: (amt) => { noise({ dur: 0.18 + amt * 0.2, type: 'bandpass', f: 1600, f2: 520, q: 1.6, gain: 0.07, attack: 0.02, dest: A.body }); noise({ at: 0.05, dur: 0.08, type: 'lowpass', f: 380, gain: 0.05, dest: A.body }); },
+  palms: () => noise({ dur: 0.5, type: 'bandpass', f: 700, q: 0.9, gain: 0.04, attack: 0.08, dest: A.body }),
+  tap: () => play('key', { g: 0.1, pan: HER_PAN + 0.1, rate: rand(0.95, 1.1) }),
+};
+/* the rub: a continuous noise; its level follows the thumbs' speed and pressure, its colour deepens with pressure; with cream it is wetter */
+let RUB = null;
+function rubTick(speed, press, wet) {
+  if (!A.ctx) return;
+  if (!RUB) {
+    const src = A.ctx.createBufferSource(); src.buffer = A.white; src.loop = true;
+    const f = A.ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 0.9; const g = A.ctx.createGain(); g.gain.value = 0;
+    src.connect(f); f.connect(g); g.connect(A.body); src.start();
+    RUB = { f, g };
+  }
+  const ct = A.ctx.currentTime;
+  RUB.f.frequency.setTargetAtTime(wet ? lerp(1900, 1200, press) : lerp(900, 380, press), ct, 0.05);
+  RUB.g.gain.setTargetAtTime(clamp(speed / 1400, 0, 1) * (0.025 + 0.04 * press) * (wet ? 1.3 : 1), ct, 0.05);
+}
+const rubStop = () => { if (RUB && A.ctx) RUB.g.gain.setTargetAtTime(0, A.ctx.currentTime, 0.08); };
+
+/* ---------- her hand and the sensory lines (shoe.html's) ---------- */
+function say(text) {
+  if (!text) return;
+  const el = document.createElement('div'); el.className = 'her-line'; el.textContent = text;
+  const speed = S.style === 'cruel' || S.style === 'cold' ? 24 : S.style === 'ritual' ? 45 : 34;
+  el.style.setProperty('--write', `${Math.max(140, text.length * speed)}ms`); el.style.setProperty('--steps', String(Math.max(4, text.length * 2)));
+  if (S.reduced) el.style.animation = 'none';
+  const showing = [...$('#hand').querySelectorAll('.her-line:not(.gone)')].length;
+  el.style.left = `${innerWidth * 0.6}px`; el.style.top = `${innerHeight * 0.1 + showing * 50}px`; el.style.transform = `rotate(${rand(-4, 3).toFixed(1)}deg)`;
+  $('#hand').appendChild(el); SFX.pen();
+  setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 600); }, 2600);
+}
+function sense(text) {
+  const el = document.createElement('div'); el.className = 'sense'; el.textContent = text;
+  const showing = [...$('#hand').querySelectorAll('.sense:not(.gone)')].length;
+  el.style.left = `${innerWidth * 0.05}px`; el.style.top = `${innerHeight * 0.62 - showing * 46}px`;
+  $('#hand').appendChild(el);
+  setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 900); }, 3800);
+}
+/* her words: only while her eyes are on the commander (closed eyes and her device leave the body to speak), by her style's talkativeness */
+function sayL(key, z, force = false) {
+  const pool = L()[key]; if (!pool || !pool.length) return;
+  if (!force) { if (G.eyes !== 'open' || G.t < G.lineUntil || Math.random() > ST().talk) return; }
+  G.lineUntil = G.t + 3800;
+  say(pick(pool).replace('%z', z ? ZONE_WORDS[z] : ''));
+}
+
+/* ---------- the state ---------- */
+let G;
+function fresh() {
+  return { phase: 'idle', t: 0, footN: 0, foot: 'right', press: 0, pressHeld: false, touch: false, cx: 0, cy: 0, samples: [], turnAcc: [], lastA: null, ax: null, ay: null,
+    tempoLog: 0, motion: 'none', mine: 0, zone: null, cls: null, clsT: 0, felt: null, relax: 0, irr: 0, pulls: 0, toldTell: {}, tellAt: {}, lineUntil: 0,
+    knot: null, knotWarm: 0, knotDone: false, eyes: 'open', eyesT: 0, nextEyes: 5000, nextTap: 0, face: 'neutral',
+    toes: 0, toesT: 0, wiggle: 0, flick: 0, sink: 0, back: 0, push: 0, jerk: 0, pullUntil: 0, idleT: 0, nextIdle: 0, sighAt: 0, meltT: 0,
+    massT: 0, massLen: 60000, creamT: 0, creamLen: 40000, hand: { amt: 0, warm: 0, coldTold: false }, squeezing: false, light: -1, lightT: 0,
+    blush: null, cream: null,
+    stats: { feet: [] } };
+}
+G = fresh();
+const footStats = () => G.stats.feet[G.footN];
+function newFootStats() { G.stats.feet[G.footN] = { foot: G.foot, good: 0, fast: 0, slow: 0, hard: 0, light: 0, tickle: 0, touch: 0, circles: 0, glides: 0, pulls: 0, knot: null, released: false, zones: {}, relax: 0, cream: null, colds: 0, how: '' }; }
+
+/* ---------- the picture's rect, the mirror, the zones (shoe.html's camera, foot service's zones) ---------- */
+let footImg = null, curledImg = null;
+const faces = {};
+const SPRITE = new Image(); SPRITE.src = ASSETS.her;
+const img = () => (footImg && footImg.naturalWidth ? footImg : SPRITE);
+const mirrored = () => G.foot !== S.shown;
+function footRect() {
+  const im = img(); if (!im.naturalWidth) return null;
+  const H = innerHeight * S.fit.h, Wd = H * im.naturalWidth / im.naturalHeight;
+  const k = 1 + 0.03 * G.push - 0.05 * G.back;
+  const cx = innerWidth / 2 + S.fit.x * innerWidth + G.jerk * 14, cy = innerHeight * S.fit.y + G.sink * 10 - G.back * 46 - G.push * 6;
+  return { x: cx - (Wd * k) / 2, y: cy - (H * k) / 2, w: Wd * k, h: H * k };
+}
+function toPic(x, y) { const r = footRect(); if (!r) return null; let u = (x - r.x) / r.w; const v = (y - r.y) / r.h; if (mirrored()) u = 1 - u; return [u, v, r]; }
+const zones = () => S.zones ?? DEFAULT_ZONES;
+function zoneRadii(r) {
+  const z = Object.entries(zones()), out = {};
+  for (const [k, p] of z) {
+    let dmin = 1e9;
+    for (const [k2, q] of z) if (k2 !== k) dmin = Math.min(dmin, Math.hypot((p[0] - q[0]) * r.w, (p[1] - q[1]) * r.h));
+    const auto = clamp(dmin / 2, r.h * 0.04, r.h * 0.12);
+    out[k] = p[3] !== undefined ? { rx: p[2] * r.h, ry: p[3] * r.h, rot: ((p[4] ?? 0) * Math.PI) / 180 } : p[2] !== undefined ? { rx: p[2] * r.h, ry: p[2] * r.h } : { rx: auto, ry: auto };
+  }
+  return out;
+}
+function inEllipse(dx, dy, z) { const a = -(z.rot ?? 0), c = Math.cos(a), sn = Math.sin(a); return [(dx * c - dy * sn) / z.rx, (dx * sn + dy * c) / z.ry]; }
+function zoneAtPic(u, v, r) {
+  const rad = zoneRadii(r); let best = null, bd = 1e9;
+  for (const [k, p] of Object.entries(zones())) { const [ex, ey] = inEllipse((u - p[0]) * r.w, (v - p[1]) * r.h, rad[k]); const d = Math.hypot(ex, ey); if (d < 1 && d < bd) { bd = d; best = k; } }
+  return best;
+}
+/* on her sole: inside the picture's alpha and within 1.5 of the nearest zone (never the shin) */
+function onSole(x, y) {
+  const q = toPic(x, y); if (!q || q[0] < 0 || q[0] > 1 || q[1] < 0 || q[1] > 1) return false;
+  const M = G.mask; if (!M) return true;
+  const i = Math.floor(q[1] * M.h) * M.w + Math.floor(q[0] * M.w);
+  return M.sole[i] > 0.05;
+}
+
+/* ---------- masks at low resolution over the picture's own alpha: the sole (where hands work), the blush of the massage, the cream ---------- */
+function makeMask() {
+  const im = img(); if (!im.naturalWidth) return null;
+  const w = 120, h = Math.round(120 * im.naturalHeight / im.naturalWidth);
+  const base = document.createElement('canvas'); base.width = w; base.height = h; const b = base.getContext('2d'); b.drawImage(im, 0, 0, w, h);
+  const alpha = b.getImageData(0, 0, w, h).data;
+  const sole = new Float32Array(w * h), zoneOf = new Int8Array(w * h).fill(-1);
+  const asp = im.naturalWidth / im.naturalHeight, zs = Object.entries(zones()), rad = zoneRadii({ w: asp, h: 1 });
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const a = alpha[(y * w + x) * 4 + 3] / 255; if (a < 0.3) continue;
+    let dmin = 1e9, zi = -1;
+    zs.forEach(([k, p], i) => { const [ex, ey] = inEllipse((x / w - p[0]) * asp, y / h - p[1], rad[k]); const d = Math.hypot(ex, ey); if (d < dmin) { dmin = d; zi = i; } });
+    const k = 1 - smooth(1.0, 1.6, dmin); if (k <= 0.01) continue;
+    sole[y * w + x] = k * a; zoneOf[y * w + x] = dmin < 1.25 ? zi : -1;
+  }
+  const mk = () => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+  return { w, h, sole, zoneOf, names: zs.map(([k]) => k), soleTotal: sole.reduce((s, v) => s + v, 0),
+    blush: new Float32Array(w * h), c: new Float32Array(w * h), d: new Float32Array(w * h), cb: mk(), cc: mk(), cg: mk(), cl: mk() };
+}
+/* a brush over the mask between two screen points (radius as a share of the mask's width) */
+function brush(x0, y0, x1, y1, radK, fn) {
+  const M = G.mask; const a = toPic(x0, y0), b = toPic(x1, y1); if (!M || !a || !b) return;
+  const { w, h } = M, rad = radK * w;
+  const steps = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 4));
+  for (let i = 0; i <= steps; i++) {
+    const px = lerp(a[0], b[0], i / steps) * w, py = lerp(a[1], b[1], i / steps) * h;
+    for (let y = Math.max(0, Math.floor(py - rad)); y < Math.min(h, Math.ceil(py + rad)); y++) for (let x = Math.max(0, Math.floor(px - rad)); x < Math.min(w, Math.ceil(px + rad)); x++) {
+      const d = Math.hypot(x - px, y - py) / rad; if (d > 1) continue; const p = y * w + x; if (M.sole[p] <= 0.02) continue;
+      fn(p, (1 - d) / (steps + 1));
+    }
+  }
+}
+
+/* ---------- what she wants now (hidden): her tempo slows as she relaxes; her pressure by the zone, the knot and her day ---------- */
+const knownK = () => 1 + 0.05 * S.known; // her rhythm known per pair (P16b `Relation.craft.rhythm`): her band widens 5 % a level
+function herTempoK() { return (1 + 0.15 * S.manner.tempo) * (1 - 0.4 * G.relax); }
+const herCps = () => ST().cps * herTempoK();
+const herGlide = () => ST().glide * herTempoK();
+function herPress(zone) {
+  let p = ST().press + 0.08 * S.manner.intensity + DY().press + 0.08 * G.relax + (zone ? ZONE_PRESS[zone] : 0);
+  if (zone && zone === G.knot && !G.knotDone) p -= (DY().sore ? 0.25 : 0.15) * (1 - G.knotWarm);
+  return clamp(p, 0.12, 0.95);
+}
+const TOL_T = 0.4;   // her tempo band: |log2(mine / hers)| within 0.4 (about −24 % … +32 %)
+const TOL_P = 0.16;  // her pressure band
+const irrK = () => ST().irr * (1 - 0.15 * S.manner.warmth);
+
+/* ---------- the thumbs: what the commander's hand is doing (circling, gliding, holding still) and how fast ---------- */
+function readMotion() {
+  const now = performance.now(), win = 1200; // wall time: the hand's rate is real, whatever the frame rate
+  G.samples = G.samples.filter((s) => now - s.t <= win);
+  G.turnAcc = G.turnAcc.filter((s) => now - s.t <= win);
+  const n = G.samples.length; if (n < 3) return { kind: 'hold', rate: 0 };
+  let len = 0; for (let i = 1; i < n; i++) len += Math.hypot(G.samples[i].x - G.samples[i - 1].x, G.samples[i].y - G.samples[i - 1].y);
+  const sec = Math.max(0.15, (G.samples[n - 1].t - G.samples[0].t) / 1000);
+  const turn = G.turnAcc.reduce((s, q) => s + q.da, 0), absTurn = G.turnAcc.reduce((s, q) => s + Math.abs(q.da), 0);
+  const r = footRect();
+  if (len < 10) return { kind: 'hold', rate: 0 };
+  if (Math.abs(turn) > 1.2 && Math.abs(turn) > 0.6 * absTurn) return { kind: 'circle', rate: Math.abs(turn) / (2 * Math.PI) / sec };
+  return { kind: 'glide', rate: len / sec / (r ? r.h * 0.5 : 400) }; // in foot heights (her sole is about half the picture)
+}
+
+/* ---------- the massage: judged every frame while the thumbs are on her sole ---------- */
+function massageUpdate(dt) {
+  const s = footStats();
+  G.massT += dt;
+  const pulled = G.t < G.pullUntil;
+  if (G.touch && !pulled && onSole(G.cx, G.cy)) {
+    G.idleT = 0; G.offT = 0; s.touch += dt;
+    const mo = readMotion(); G.motion = mo.kind;
+    const q = toPic(G.cx, G.cy); G.zone = q ? zoneAtPic(q[0], q[1], q[2]) : null;
+    if (G.zone) s.zones[G.zone] = (s.zones[G.zone] ?? 0) + dt;
+    // the tempo: smoothed log2 of the commander's rate over hers (a hold has no tempo; held too long it is too slow, except on the knot)
+    if (mo.kind === 'circle' || mo.kind === 'glide') {
+      const hers = mo.kind === 'circle' ? herCps() : herGlide(); G.mine = mo.rate;
+      const lg = Math.log2(Math.max(0.05, mo.rate) / hers);
+      G.tempoLog = lerp(G.tempoLog, lg, Math.min(1, dt / 350)); G.holdT = 0;
+      if (mo.kind === 'circle') s.circles += dt; else s.glides += dt;
+    } else { G.holdT = (G.holdT ?? 0) + dt; G.tempoLog = lerp(G.tempoLog, G.zone === G.knot ? 0 : -1.2, Math.min(1, dt / 1500)); }
+    const dp = G.press - herPress(G.zone), tolP = TOL_P * knownK(), tolT = TOL_T * knownK();
+    let cls;
+    if (dp > tolP) cls = 'hard';
+    // too light: on the arch, the edge or the toes a moving touch that is light enough tickles (the more ticklish she is, the sooner)
+    else if (dp < -tolP) cls = (G.zone === 'arch' || G.zone === 'edge' || G.zone === 'toes') && mo.kind !== 'hold' && -dp > tolP + 0.3 * (1 - ST().tickle) ? 'tickle' : 'light';
+    else if (G.tempoLog > tolT) cls = 'fast';
+    else if (G.tempoLog < -tolT) cls = 'slow';
+    else cls = 'good';
+    if (cls !== G.cls) { G.cls = cls; G.clsT = G.t; }
+    // a class held 0.5 s is felt (the tells wait for it); the effects run while it lasts
+    if (G.t - G.clsT > 500 && G.felt !== cls) { G.felt = cls; tell(cls); }
+    const onKnot = G.zone && G.zone === G.knot && !G.knotDone;
+    if (G.felt === 'good') { G.relax = clamp(G.relax + 0.045 * (dt / 1000) * (onKnot ? 1.6 : 1), 0, 1); G.irr = Math.max(0, G.irr - 0.1 * dt / 1000); s.good += dt; }
+    else if (G.felt === 'hard') { G.irr += (onKnot && G.knotWarm < 0.5 ? 0.45 : 0.25) * irrK() * dt / 1000; G.relax = Math.max(0, G.relax - 0.04 * dt / 1000); s.hard += dt; }
+    else if (G.felt === 'tickle') { G.irr += (S.style === 'playful' ? 0.05 : 0.14) * irrK() * dt / 1000; G.relax = Math.max(0, G.relax - 0.03 * dt / 1000); s.tickle += dt; }
+    else if (G.felt) { G.irr += 0.1 * irrK() * dt / 1000; G.relax = Math.max(0, G.relax - 0.015 * dt / 1000); s[G.felt] += dt; }
+    // the knot: tender at first (a small flinch the first time it is touched), warms under slow firm work, then lets go
+    if (onKnot) {
+      if (!G.knotFelt) { G.knotFelt = true; tell('knot'); }
+      if (G.felt === 'good' || (G.motion === 'hold' && Math.abs(dp) <= tolP)) { G.knotWarm = clamp(G.knotWarm + 0.11 * dt / 1000, 0, 1); }
+      if (G.knotWarm >= 1) { G.knotDone = true; s.released = true; G.relax = clamp(G.relax + 0.25, 0, 1); tell('knotDone'); }
+    }
+    // a wrong touch held too long: she pulls her foot away
+    if (G.irr >= 1) pullAway();
+  } else {
+    // a moment off her sole (a circle that slips past the edge) changes nothing; 0.3 s off and the thumbs have left
+    G.offT = (G.offT ?? 0) + dt; if (G.offT > 300 || !G.touch || pulled) { G.cls = null; G.motion = 'none'; }
+    if (!G.touch) { G.idleT += dt; if (G.idleT > 4000 && G.t > G.nextIdle) { G.nextIdle = G.t + 7000; G.push = 1; SFX.tapToes(); sayL('idle'); } }
+    G.relax = Math.max(0, G.relax - 0.008 * dt / 1000); G.irr = Math.max(0, G.irr - 0.05 * dt / 1000);
+  }
+  // good and steady: a slow sigh now and then; melted (relaxed through) for 3 s ends the foot early
+  if (G.felt === 'good' && G.touch && G.t > G.sighAt) { G.sighAt = G.t + rand(5000, 8000); SFX.sigh(0.6 + 0.6 * G.relax); }
+  if (G.relax > 0.96) { G.meltT += dt; if (G.meltT > 3000) { setFace(FACE.melted); sayL('melted'); s.how = 'melted'; endMassage(); return; } } else G.meltT = 0;
+  if (G.massT >= G.massLen) { s.how = s.how || 'her time'; endMassage(); }
+}
+/* the tells: the body always; the face; the words by her eyes and style; the first time, a sensory line names it */
+function tell(kind) {
+  if (G.t < (G.tellAt[kind] ?? 0)) return;
+  G.tellAt[kind] = G.t + (kind === 'good' ? 4000 : 1500);
+  if (!G.toldTell[kind] && TELL_NAMES[kind]) { G.toldTell[kind] = true; sense(TELL_NAMES[kind]); }
+  switch (kind) {
+    case 'good': G.toesT = -0.7; G.sink = 1; setFace(G.relax > 0.6 ? FACE.melted : FACE.good); if (Math.random() < 0.5) sayL('good'); break;
+    case 'fast': G.flick = 1; G.toesT = 0.35; setFace(FACE.fast); sayL('slower'); break;
+    case 'slow': G.toesT = 0; SFX.tapToes(); G.push = 1; setFace(FACE.slow); sayL('faster'); break;
+    case 'hard': G.toesT = 1; G.back = Math.max(G.back, 0.45); SFX.hiss(); setFace(FACE.hard); sayL('softer'); break;
+    case 'light': G.push = 1; G.toesT = 0; setFace(FACE.light); sayL('firmer'); break;
+    case 'tickle': G.wiggle = 1; G.jerk = 1; SFX.giggle(); setFace(FACE.tickle); sayL('tickle'); break;
+    case 'knot': G.jerk = 0.5; G.toesT = 0.6; SFX.hiss(); setFace(FACE.hard); sayL('knot'); footStats().knot = G.knot; break;
+    case 'knotDone': G.toesT = -1; G.sink = 1; SFX.sigh(1.4); setFace(FACE.knot); sayL('knotDone', null, true); break;
+    case 'cold': G.jerk = 1; G.toesT = 0.8; SFX.hiss(); setFace(FACE.cold); sayL('cold', null, true); break;
+  }
+}
+function pullAway() {
+  const s = footStats(); s.pulls += 1; G.pulls += 1; G.irr = 0.35; G.felt = null; G.cls = null;
+  G.pullUntil = G.t + 1400; G.back = 1; G.toesT = 0.8; SFX.pull(); setFace(FACE.pull); sayL('pull', null, true);
+  if (G.pulls >= 3 && G.phase === 'massage') { sayL('enough', null, true); s.how = 'she pulled away three times'; endMassage(); }
+}
+function endMassage() {
+  const s = footStats(); s.relax = G.relax; rubStop();
+  G.phase = 'creamIntro'; G.creamT = 0; G.touch = false;
+  setTimeout(() => { if (G.phase !== 'creamIntro') return; G.phase = 'cream'; G.hand = { amt: 0, warm: 0, coldTold: false }; sayL('cream', null, true);
+    if (!G.toldCream) { G.toldCream = true; sense('C: squeeze the cream into your palms. It is cold; give it a moment in them.'); } }, 1400);
+}
+
+/* ---------- the cream: squeeze (C), warm in the palms, spread and rub in; too much stays greasy, a patch missed stays dry ---------- */
+function creamUpdate(dt) {
+  const s = footStats(), M = G.mask, h = G.hand;
+  G.creamT += dt;
+  if (G.squeezing) { const add = 0.9 * dt / 1000; h.amt = clamp(h.amt + add, 0, 1.2); if (Math.random() < dt / 260) SFX.squeeze(h.amt); h.warm = Math.max(0, h.warm - 0.6 * dt / 1000); h.coldTold = false; }
+  // the cream warms in the palms while it is not on her foot
+  if (h.amt > 0 && !G.touch) { const before = h.warm; h.warm = clamp(h.warm + 0.45 * dt / 1000, 0, 1); if (before < 0.6 && h.warm >= 0.6) SFX.palms(); }
+  // her tempo for the cream: slow and even; the eyes and the words follow as in the massage (she judges at the light)
+  if (G.touch && onSole(G.cx, G.cy) && M) {
+    if (h.amt > 0.02 && h.warm < 0.6 && !h.coldTold) { h.coldTold = true; s.colds += 1; tell('cold'); G.irr += 0.3 * irrK(); }
+    G.idleT = 0;
+  }
+  const covered = creamCoverage();
+  if ((covered >= 0.92 && creamLeft() < 0.06) || G.creamT >= G.creamLen) inspect();
+}
+function creamStroke(x0, y0, x1, y1) {
+  const M = G.mask, h = G.hand; if (!M) return;
+  const warmK = 0.4 + 0.6 * h.warm, unit = Math.max(1, M.soleTotal * 0.5); // a full palm (amt 1) covers about half her sole
+  let carried = h.amt * unit;
+  brush(x0, y0, x1, y1, 0.085, (p, k) => {
+    // what the hand carries goes down; what lies there is rubbed in (absorbed) and smeared on (the hand picks a little up)
+    const put = Math.min(carried, 0.3 * k); if (put > 0) { M.c[p] += put; carried -= put; }
+    const rub = M.c[p] * Math.min(1, 0.4 * k) * warmK; M.c[p] -= rub; M.d[p] = clamp(M.d[p] + rub * 1.6, 0, 1.4);
+    const pickUp = M.c[p] * Math.min(1, 0.2 * k); M.c[p] -= pickUp; carried += pickUp * 0.9;
+  });
+  h.amt = Math.max(0, carried / unit);
+}
+function creamCoverage() { const M = G.mask; if (!M) return 0; let s = 0; for (let p = 0; p < M.d.length; p++) if (M.sole[p] > 0.5 && M.d[p] >= 0.45) s += M.sole[p]; return s / Math.max(1, M.sole.reduce((q, v) => q + (v > 0.5 ? v : 0), 0)); }
+function creamLeft() { const M = G.mask; if (!M) return 0; let s = 0, n = 0; for (let p = 0; p < M.c.length; p++) if (M.sole[p] > 0.5) { s += Math.min(1, M.c[p]); n++; } return n ? s / n : 0; }
+function zoneCream(zone) { const M = G.mask; const i = M.names.indexOf(zone); let d = 0, c = 0, n = 0; for (let p = 0; p < M.d.length; p++) if (M.zoneOf[p] === i) { d += Math.min(1, M.d[p]); c += Math.min(1, M.c[p]); n++; } return n ? { d: d / n, c: c / n } : { d: 1, c: 0 }; }
+function inspect() { G.phase = 'inspect'; G.light = 0; G.lightT = 0; G.touch = false; rubStop(); SFX.shift(); sense('She turns her foot to the light.'); }
+function verdict() {
+  const M = G.mask, s = footStats();
+  let worst = null, wv = 1; for (const z of M.names) { const q = zoneCream(z); if (q.d < 0.4 && q.d < wv) { wv = q.d; worst = z; } }
+  const greasy = creamLeft(), cov = creamCoverage();
+  s.cream = { covered: cov, greasy, worst };
+  if (worst) { setFace(FACE.endPoor); sayL('missed', worst, true); }
+  else if (greasy > 0.08) { setFace(FACE.greasy); sayL('greasy', null, true); }
+  else if (cov > 0.85) { setFace(FACE.endGood); sayL('good2', null, true); }
+  else { setFace(FACE.endPoor); sayL('poor', null, true); }
+}
+
+/* ---------- her eyes and her face: open on the commander, closed when she relaxes, on her device by style ---------- */
+function eyesUpdate(dt) {
+  G.eyesT += dt;
+  const wantClosed = G.relax > 0.65 && G.phase === 'massage';
+  if (wantClosed && G.eyes !== 'closed') { G.eyes = 'closed'; if (!G.toldTell.closed) { G.toldTell.closed = true; sense(TELL_NAMES.closed); } }
+  else if (!wantClosed && G.eyes === 'closed' && G.relax < 0.5) G.eyes = 'open';
+  if (G.eyes !== 'closed' && G.eyesT > G.nextEyes) { G.eyesT = 0; G.nextEyes = rand(6000, 12000); G.eyes = Math.random() < ST().busy ? 'device' : 'open'; }
+  if (G.eyes === 'device' && G.t > G.nextTap) { SFX.tap(); G.nextTap = G.t + rand(160, 460); }
+}
+function setFace(label) {
+  G.face = label;
+  const src = faces[label] ?? faces.neutral ?? ASSETS.her;
+  if ($('#her').dataset.src !== src) { $('#her').dataset.src = src; $('#her').src = src; }
+}
+
+/* ---------- phases ---------- */
+function begin() {
+  audioInit(); if (A.ctx.state === 'suspended') A.ctx.resume();
+  $('#hand').replaceChildren(); $('#summary').style.display = 'none';
+  G = fresh(); G.footN = 0; G.foot = S.shown; startFoot(true);
+  $('#reply').innerHTML = '<span class="act">She sits back on her bunk and puts her bare foot in the commander\'s hands, sole up.</span>';
+}
+function startFoot(first) {
+  G.phase = 'massage'; G.mask = makeMask(); G.massT = 0; G.relax = first ? 0 : G.relax * 0.5; G.irr = 0; G.pulls = 0; G.felt = null; G.cls = null; G.tempoLog = 0;
+  G.massLen = rand(...ST().massage) * 1000 * DY().len; G.creamLen = ST().cream * 1000;
+  // her knot: by her day and a hash of the session and the foot (the engine hashes the day; no draw)
+  const h = fnv(`${S.style}|${S.day}|${G.footN}|${G.seed ?? (G.seed = Math.floor(Math.random() * 1e9))}`);
+  G.knot = (h % 1000) / 1000 < DY().knot ? ['ball', 'arch', 'heel'][h % 3] : null; G.knotWarm = 0; G.knotDone = false; G.knotFelt = false;
+  newFootStats(); setFace(FACE.start);
+  if (first) sayL('entry', null, true);
+  // ritual counts her circles aloud at her tempo: the one style that tells it
+  if (ST().count) { const per = 1000 / herCps(); ['one.', 'two.', 'three.', 'four.'].forEach((w, i) => setTimeout(() => { if (G.phase === 'massage') { say(w); } }, 1200 + i * per)); }
+}
+function nextFoot() {
+  if (S.both && G.footN === 0) {
+    G.footN = 1; G.foot = G.foot === 'right' ? 'left' : 'right'; G.light = -1;
+    SFX.shift(); G.back = 1; sayL('other', null, true);
+    setTimeout(() => startFoot(false), 700);
+  } else finish('done');
+}
+function finish(why) {
+  if (G.phase === 'done') return;
+  G.phase = 'done'; G.touch = false; rubStop();
+  const good = G.stats.feet.every((f) => f.good > f.touch * 0.45 && (!f.cream || f.cream.covered > 0.75));
+  if (why === 'stop') say('okay. stop. come here.'); else { setFace(good ? FACE.endGood : FACE.endPoor); sayL(good ? 'endGood' : 'endPoor', null, true); }
+  setTimeout(() => {
+    $('#sumLine').textContent = why === 'stop' ? 'okay. stop. come here.' : (good ? L().endGood[0] : L().endPoor[0]);
+    const pct = (a, b) => `${Math.round(100 * a / Math.max(1, b))} %`;
+    $('#sumFacts').innerHTML = `${S.style} · her day ${S.day} · tempo ${S.manner.tempo} intensity ${S.manner.intensity} warmth ${S.manner.warmth} · known ${S.known}<br>`
+      + G.stats.feet.map((f) => `<b>her ${f.foot} foot</b>: touched ${(f.touch / 1000).toFixed(0)} s · right ${pct(f.good, f.touch)} · too fast ${pct(f.fast, f.touch)} · too slow ${pct(f.slow, f.touch)} · too hard ${pct(f.hard, f.touch)} · too light ${pct(f.light, f.touch)} · tickled ${pct(f.tickle, f.touch)}<br>`
+        + `&nbsp; circles ${(f.circles / 1000).toFixed(0)} s · strokes ${(f.glides / 1000).toFixed(0)} s · pulled away ${f.pulls} · knot ${f.knot ? `${f.knot}${f.released ? ', let go' : ', still tight'}` : 'none found'} · relaxed ${Math.round(f.relax * 100)} % · ${f.how}<br>`
+        + `&nbsp; zones: ${ZONE_NAMES.map((z) => `${z} ${((f.zones[z] ?? 0) / 1000).toFixed(0)}s`).join(' ')}<br>`
+        + (f.cream ? `&nbsp; cream: covered ${Math.round(f.cream.covered * 100)} % · greasy ${Math.round(f.cream.greasy * 100)} %${f.cream.worst ? ` · dry: ${ZONE_WORDS[f.cream.worst]}` : ''} · cold touches ${f.colds}<br>` : '')).join('')
+      + `how it ended: ${why}`;
+    $('#summary').style.display = 'block';
+  }, 1200);
+}
+
+/* ---------- the loop ---------- */
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(50, now - last); last = now;
+  if (G.phase !== 'idle' && G.phase !== 'done' && G.phase !== 'mark') update(dt);
+  else G.t += dt;
+  render(now);
+}
+function update(dt) {
+  G.t += dt;
+  // the pressure: Space or the right button presses in (0.35 → 1 at 0.7 a second), let go it eases back slowly (0.3 a second), so short presses keep it up; nothing while not touching
+  const target = G.touch ? (G.pressHeld ? 1 : 0.35) : 0;
+  G.press = G.press < target ? Math.min(target, G.press + 0.7 * dt / 1000) : Math.max(target, G.press - (G.touch ? 0.3 : 3) * dt / 1000);
+  // the body's motion, eased (toes −1 spread … +1 curled)
+  const k = Math.min(1, dt / 180);
+  G.toes += (G.toesT - G.toes) * k; G.toesT *= Math.max(0, 1 - dt / 2200);
+  G.wiggle = Math.max(0, G.wiggle - dt / 1200); G.flick = Math.max(0, G.flick - dt / 700); G.sink = Math.max(0, G.sink - dt / 3000) ; G.push = Math.max(0, G.push - dt / 500); G.jerk = Math.max(0, G.jerk - dt / 400);
+  G.back = Math.max(G.t < G.pullUntil ? G.back : 0, G.back - dt / 900);
+  eyesUpdate(dt);
+  if (G.touch && G.t - (G.movedAt ?? 0) > 120) rubTick(0, G.press, G.phase === 'cream');
+  // the blush of the massage fades slowly
+  if (G.mask) { const b = G.mask.blush, f = 1 - dt / 40000; for (let i = 0; i < b.length; i++) if (b[i] > 0) b[i] *= f; }
+  if (G.phase === 'massage') massageUpdate(dt);
+  else if (G.phase === 'cream') creamUpdate(dt);
+  else if (G.phase === 'inspect') {
+    G.lightT += dt; G.light = clamp(G.lightT / 1700, 0, 1);
+    if (G.lightT > 1700 && !G.judged) { G.judged = true; verdict(); }
+    if (G.lightT > 3200) { G.judged = false; G.light = -1; G.phase = 'between'; nextFoot(); }
+  }
+}
+
+/* ---------- drawing ---------- */
+function render(now) {
+  // her sprite, behind the foot to one side; dimmer while she reads her device, a little forward when she watches; a slow breath
+  const her = $('#her'), sp = her.naturalWidth ? her : SPRITE;
+  if (!her.src) setFace('neutral');
+  if (sp.naturalWidth) {
+    const H = innerHeight * S.her.h, Wd = H * sp.naturalWidth / sp.naturalHeight;
+    const lean = G.eyes === 'open' ? 1 : 0, breathe = S.reduced ? 1 : 1 + 0.006 * Math.sin(now / 900);
+    her.style.width = `${Wd}px`; her.style.height = `${H}px`;
+    her.style.left = `${innerWidth * 0.05 + innerWidth * S.her.x - Wd / 2}px`; her.style.top = `${innerHeight * 0.05 + innerHeight * S.her.b - H}px`;
+    her.style.transform = `scale(${(breathe * (1 + 0.015 * lean)).toFixed(4)}) rotate(${(-1.2 * G.relax).toFixed(2)}deg)`;
+    her.style.filter = `blur(${(1.1).toFixed(1)}px) brightness(${G.eyes === 'device' ? 0.62 : 0.8 + 0.06 * lean})`;
+  }
+  // the foot
+  const im = img();
+  if ($('#foot').dataset.src !== im.src) { $('#foot').dataset.src = im.src; $('#foot').src = im.src; $('#toes').src = im.src; for (const id of ['#blushC', '#creamC', '#glossC', '#lightC']) $(id).style.webkitMaskImage = $(id).style.maskImage = `url(${im.src})`; }
+  const r = footRect(), wrap = $('#footWrap');
+  if (r) {
+    wrap.style.left = `${r.x}px`; wrap.style.top = `${r.y}px`; wrap.style.width = `${r.w}px`; wrap.style.height = `${r.h}px`;
+    const fade = S.fit.fade; // the bottom of the picture (her leg, cut off) dissolves into the room
+    wrap.style.webkitMaskImage = wrap.style.maskImage = fade > 0 ? `linear-gradient(to top, transparent 0%, rgba(0,0,0,.35) ${(fade * 45).toFixed(1)}%, #000 ${(fade * 100).toFixed(1)}%)` : 'none';
+    const sway = S.reduced ? 0 : Math.sin(now / 1900) * 0.35, flick = S.reduced ? 0 : G.flick * Math.sin(now / 35) * 1.2;
+    wrap.style.transform = `rotate(${(sway + flick + G.jerk * 2.5 * Math.sin(now / 40) - G.sink * 0.8).toFixed(2)}deg) scaleX(${mirrored() ? -1 : 1})`;
+    // the toes: the part above the toes line, a layer of its own that curls (squashed toward the line), spreads or wriggles
+    const tl = S.fit.toes * 100, curl = Math.max(0, G.toes), spread = Math.max(0, -G.toes);
+    const wig = S.reduced ? 0 : G.wiggle * Math.sin(now / 45) * 3;
+    const useCurled = curledImg && curledImg.naturalWidth;
+    $('#foot').style.clipPath = useCurled ? 'none' : `inset(${tl.toFixed(2)}% 0 0 0)`;
+    $('#toes').style.display = useCurled ? 'none' : 'block';
+    $('#toes').style.clipPath = `inset(0 0 ${(100 - tl - 0.6).toFixed(2)}% 0)`;
+    $('#toes').style.transformOrigin = `50% ${tl.toFixed(2)}%`;
+    $('#toes').style.transform = `scale(${(1 + 0.035 * spread).toFixed(4)}, ${(1 - 0.16 * curl + 0.02 * spread).toFixed(4)}) rotate(${wig.toFixed(2)}deg) skewX(${(curl * 3).toFixed(2)}deg)`;
+    $('#toes').style.filter = `brightness(${(1 - 0.12 * curl).toFixed(3)})`;
+    if (useCurled) { if ($('#curled').src !== curledImg.src) $('#curled').src = curledImg.src; $('#curled').style.opacity = smooth(0.35, 0.75, curl).toFixed(3); } else $('#curled').style.opacity = '0';
+  }
+  $('#vig').style.background = `radial-gradient(ellipse 64% 58% at 45% 48%, rgba(0,0,0,0) 40%, rgba(0,0,0,${(0.45 - 0.1 * G.relax).toFixed(2)}) 100%)`;
+  // the masks: the blush where the thumbs worked, the cream (white where it lies, a satin sheen where it went in), the light of her inspection
+  const M = G.mask;
+  if (M) {
+    const bx = M.cb.getContext('2d'), bd = bx.createImageData(M.w, M.h);
+    for (let i = 0; i < M.w * M.h; i++) { const v = Math.min(1, M.blush[i]) * M.sole[i]; bd.data[i * 4] = 255; bd.data[i * 4 + 1] = 186 - 30 * v; bd.data[i * 4 + 2] = 176 - 30 * v; bd.data[i * 4 + 3] = Math.round(v * 0.32 * 255); }
+    bx.putImageData(bd, 0, 0); blit('#blushC', M.cb);
+    const cx = M.cc.getContext('2d'), cd = cx.createImageData(M.w, M.h), gx = M.cg.getContext('2d'), gd = gx.createImageData(M.w, M.h);
+    for (let y = 0; y < M.h; y++) for (let x = 0; x < M.w; x++) {
+      const i = y * M.w + x, c = Math.min(1, M.c[i] * 1.6) * M.sole[i];
+      cd.data[i * 4] = 252; cd.data[i * 4 + 1] = 249; cd.data[i * 4 + 2] = 243; cd.data[i * 4 + 3] = Math.round(c * 0.88 * 255);
+      const band = 0.35 + 0.65 * Math.exp(-(((x / M.w) - (y / M.h) * 0.5 - 0.2) ** 2) / 0.03);
+      const g = Math.min(1, M.d[i]) * M.sole[i] * band * 0.3; gd.data[i * 4] = 255; gd.data[i * 4 + 1] = 250; gd.data[i * 4 + 2] = 240; gd.data[i * 4 + 3] = Math.round(g * 255);
+    }
+    cx.putImageData(cd, 0, 0); blit('#creamC', M.cc); gx.putImageData(gd, 0, 0); blit('#glossC', M.cg);
+    const lc = $('#lightC');
+    if (G.light >= 0) {
+      const lx = M.cl.getContext('2d'), ld = lx.createImageData(M.w, M.h), pos = lerp(-0.3, 1.3, easeOut(G.light));
+      for (let y = 0; y < M.h; y++) for (let x = 0; x < M.w; x++) {
+        const i = y * M.w + x; if (M.sole[i] <= 0.05) continue;
+        const bandv = Math.exp(-(((x / M.w) + (y / M.h) * 0.3 - pos) ** 2) / 0.006);
+        // creamed skin takes the light softly (satin), dry skin stays matte, cream left on it flares white
+        const v = bandv * M.sole[i] * (0.12 + 0.55 * Math.min(1, M.d[i]) + 0.9 * Math.min(1, M.c[i])) * 255;
+        ld.data[i * 4] = 255; ld.data[i * 4 + 1] = 248; ld.data[i * 4 + 2] = 236; ld.data[i * 4 + 3] = Math.round(Math.min(255, v * 0.75));
+      }
+      lx.putImageData(ld, 0, 0); blit('#lightC', M.cl); lc.style.opacity = '1';
+    } else lc.style.opacity = '0';
+  }
+  // the overlay: the thumbs (two soft prints, deeper with the pressure), the cream in the palms, the zone marker, debug
+  const mc = $('#markC'); if (mc.width !== innerWidth) { mc.width = innerWidth; mc.height = innerHeight; }
+  const mx = mc.getContext('2d'); mx.clearRect(0, 0, mc.width, mc.height);
+  if (!MARK.on && G.phase !== 'idle') drawThumbs(mx, now);
+  if (r && (S.debug || MARK.on)) drawZones(mx, r);
+  if (S.debug) $('#debug').textContent = debugText();
+}
+function blit(sel, src) { const c = $(sel); if (c.width !== src.width || c.height !== src.height) { c.width = src.width; c.height = src.height; } const x = c.getContext('2d'); x.clearRect(0, 0, c.width, c.height); x.drawImage(src, 0, 0); }
+function drawThumbs(mx, now) {
+  const x = G.cx, y = G.cy, a = G.dirA ?? -Math.PI / 2, p = G.touch ? G.press : 0;
+  const on = G.touch && onSole(x, y);
+  // the press on her skin: a soft shadow under the thumbs, wider and darker with the pressure
+  if (on) { const g = mx.createRadialGradient(x, y, 0, x, y, 26 + 30 * p); g.addColorStop(0, `rgba(90,30,30,${(0.1 + 0.22 * p).toFixed(3)})`); g.addColorStop(1, 'rgba(90,30,30,0)'); mx.fillStyle = g; mx.beginPath(); mx.arc(x, y, 26 + 30 * p, 0, Math.PI * 2); mx.fill(); }
+  // two thumb prints side by side across the direction of the stroke
+  const nx = Math.cos(a + Math.PI / 2), ny = Math.sin(a + Math.PI / 2), sp = 13 - 2 * p;
+  for (const s of [-1, 1]) {
+    mx.save(); mx.translate(x + nx * sp * s, y + ny * sp * s); mx.rotate(a + Math.PI / 2);
+    mx.beginPath(); mx.ellipse(0, 0, 9 + 2 * p, 13 + 2 * p, 0, 0, Math.PI * 2);
+    mx.strokeStyle = `rgba(255,240,232,${on ? 0.35 + 0.3 * p : 0.22})`; mx.lineWidth = 1.2 + p; mx.stroke(); mx.restore();
+  }
+  // the cream in the palms (only while there is some): a small white drop by the hand, warming from cool blue-white to warm white
+  if (G.phase === 'cream' && G.hand.amt > 0.01) {
+    const w = G.hand.warm, rr = 4 + 7 * Math.min(1, G.hand.amt);
+    mx.beginPath(); mx.arc(x + 30, y + 26, rr, 0, Math.PI * 2);
+    mx.fillStyle = `rgba(${Math.round(lerp(226, 255, w))},${Math.round(lerp(238, 246, w))},${Math.round(lerp(255, 232, w))},.85)`; mx.fill();
+    mx.strokeStyle = 'rgba(0,0,0,.25)'; mx.lineWidth = 1; mx.stroke();
+  }
+}
+function drawZones(mx, r) {
+  const rad = zoneRadii(r), zz = MARK.on ? MARK.pts : zones();
+  for (const [k, p] of Object.entries(zz)) {
+    const live = MARK.on && MARK.drag && k === MARK.names[MARK.i];
+    const ex = live ? Math.max(6, MARK.drag.rx ?? 6) : p[2] !== undefined ? p[2] * r.h : (rad[k]?.rx ?? 10), ey = live ? Math.max(6, MARK.drag.ry ?? 6) : p[3] !== undefined ? p[3] * r.h : ex;
+    const er = ((live ? MARK.drag.rot ?? 0 : p[4] ?? 0) * Math.PI) / 180 * (mirrored() ? -1 : 1);
+    const cxp = r.x + (mirrored() ? 1 - p[0] : p[0]) * r.w, cyp = r.y + p[1] * r.h;
+    mx.strokeStyle = k === G.knot ? 'rgba(255,170,140,.85)' : k === G.zone ? 'rgba(140,255,170,.8)' : 'rgba(216,228,255,.5)'; mx.lineWidth = k === G.zone ? 2 : 1;
+    mx.beginPath(); mx.ellipse(cxp, cyp, ex, ey, er, 0, Math.PI * 2); mx.stroke();
+    mx.fillStyle = 'rgba(216,228,255,.8)'; mx.font = '12px "IBM Plex Mono"'; mx.fillText(k, cxp + 10, cyp + 4);
+  }
+  // the toes line (the curl's hinge)
+  mx.save(); mx.setLineDash([5, 5]); mx.strokeStyle = 'rgba(255,214,150,.5)'; mx.beginPath(); mx.moveTo(r.x, r.y + S.fit.toes * r.h); mx.lineTo(r.x + r.w, r.y + S.fit.toes * r.h); mx.stroke(); mx.restore();
+}
+function debugText() {
+  const z = G.zone;
+  return `${G.phase} · her ${G.foot} foot · eyes ${G.eyes} · face ${G.face}\n`
+    + `her tempo: ${herCps().toFixed(2)} circles/s, ${herGlide().toFixed(2)} strokes · yours: ${G.motion} ${G.mine.toFixed(2)} · log2 ${G.tempoLog.toFixed(2)} (±${(TOL_T * knownK()).toFixed(2)})\n`
+    + `her pressure at ${z ?? '—'}: ${herPress(z).toFixed(2)} · yours ${G.press.toFixed(2)} (±${(TOL_P * knownK()).toFixed(2)})\n`
+    + `felt ${G.felt ?? '—'} · relax ${G.relax.toFixed(2)} · irritation ${G.irr.toFixed(2)} · pulls ${G.pulls}\n`
+    + `knot ${G.knot ?? 'none'} ${G.knot ? `warm ${G.knotWarm.toFixed(2)}${G.knotDone ? ' (let go)' : ''}` : ''} · time ${(G.massT / 1000).toFixed(0)} / ${(G.massLen / 1000).toFixed(0)} s\n`
+    + (G.phase === 'cream' ? `cream in hand ${G.hand.amt.toFixed(2)} warm ${G.hand.warm.toFixed(2)} · covered ${(creamCoverage() * 100).toFixed(0)} % · left on ${(creamLeft() * 100).toFixed(0)} % · ${(G.creamT / 1000).toFixed(0)} / ${(G.creamLen / 1000).toFixed(0)} s` : '');
+}
+
+/* ---------- input: the thumbs (left button), pressing (Space or the right button), the cream (C) ---------- */
+function down(x, y, button) {
+  if (MARK.on) { markDown(x, y); return; }
+  if (button === 2) { G.pressHeld = true; return; }
+  if (G.phase !== 'massage' && G.phase !== 'cream') return;
+  G.touch = true; G.cx = x; G.cy = y; G.samples = [{ t: performance.now(), x, y }]; G.turnAcc = []; G.lastA = null; G.ax = x; G.ay = y;
+}
+function move(x, y, e) {
+  if (MARK.on) { markMove(x, y, e.shiftKey); return; }
+  const px = G.cx, py = G.cy; G.cx = x; G.cy = y;
+  if (!G.touch) return;
+  const d = Math.hypot(x - px, y - py); if (d < 0.5) return;
+  G.samples.push({ t: performance.now(), x, y }); G.movedAt = G.t;
+  // the direction over pieces of at least 6 px (foot service's classifier: a trembling hand does not turn)
+  const ax = x - G.ax, ay = y - G.ay;
+  if (Math.hypot(ax, ay) >= 6) {
+    const an = Math.atan2(ay, ax);
+    if (G.lastA !== null) { let da = an - G.lastA; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; if (Math.abs(da) < 2.2) G.turnAcc.push({ t: performance.now(), da }); }
+    G.lastA = an; G.ax = x; G.ay = y; G.dirA = an;
+  }
+  const speed = d / Math.max(1, e.timeStamp - (G.lastMoveT ?? e.timeStamp - 16)) * 1000; G.lastMoveT = e.timeStamp;
+  if (!onSole(x, y)) { rubStop(); return; }
+  if (G.phase === 'massage' && G.t >= G.pullUntil) {
+    rubTick(speed, G.press, false);
+    brush(px, py, x, y, 0.07, (p, k) => { G.mask.blush[p] = Math.min(1.2, G.mask.blush[p] + k * (0.25 + 0.6 * G.press) * 0.6); });
+  }
+  if (G.phase === 'cream') { rubTick(speed, G.press * 0.5, true); creamStroke(px, py, x, y); }
+}
+function up(button) {
+  if (MARK.on) { markUp(); return; }
+  if (button === 2) { G.pressHeld = false; return; }
+  G.touch = false; rubStop();
+}
+const stage = $('#stage');
+stage.addEventListener('pointerdown', (e) => { if (e.target.closest('#panel') || e.target.closest('.card') || e.target.closest('#stopPill')) return; down(e.clientX, e.clientY, e.button); });
+addEventListener('pointermove', (e) => move(e.clientX, e.clientY, e));
+addEventListener('pointerup', (e) => up(e.button));
+stage.addEventListener('contextmenu', (e) => e.preventDefault());
+addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === ' ') { e.preventDefault(); G.pressHeld = true; }
+  if ((e.key === 'c' || e.key === 'C') && G.phase === 'cream' && !e.repeat) G.squeezing = true;
+  if (e.key === 'Escape' && G.phase !== 'done' && G.phase !== 'idle') finish('stop');
+  if (e.key === 'h' || e.key === 'H') $('#panel').classList.toggle('hidden');
+});
+addEventListener('keyup', (e) => {
+  if (e.key === ' ') G.pressHeld = false;
+  if (e.key === 'c' || e.key === 'C') G.squeezing = false;
+});
+$('#stopPill').onclick = () => finish('stop');
+
+/* ---------- the zone marker (foot service's and shoe.html's): press on a zone's centre, drag for its size, the wheel turns it; Shift a circle ---------- */
+const MARK = { on: false, i: 0, names: ZONE_NAMES, pts: {} };
+function markStart() { MARK.on = true; MARK.i = 0; MARK.pts = {}; G.foot = S.shown; if (G.phase === 'idle' || G.phase === 'done') G.phase = 'mark'; $('#markPrompt').style.display = 'block'; markPrompt(); }
+function markPrompt() { $('#markPrompt').textContent = MARK.i >= MARK.names.length ? 'the wheel turns the last ellipse (Shift: finer) · a click anywhere: done' : `press on the centre of: ${MARK.names[MARK.i]} · drag for its width and height, the wheel turns it (Shift: a circle; a click: automatic)`; }
+function markDown(x, y) { if (MARK.i >= MARK.names.length) { markFinish(); return; } const q = toPic(x, y); if (!q) return; MARK.last = null; MARK.drag = { x, y, rad: 0, rot: 0 }; MARK.pts[MARK.names[MARK.i]] = [+q[0].toFixed(3), +q[1].toFixed(3)]; }
+function markMove(x, y, circle) { const d = MARK.drag; if (!d) return; d.rad = Math.hypot(x - d.x, y - d.y); d.circle = circle; d.rx = circle ? d.rad : Math.max(6, Math.abs(x - d.x)); d.ry = circle ? d.rad : Math.max(6, Math.abs(y - d.y)); }
+function markUp() {
+  const d = MARK.drag; if (!d) return; MARK.drag = null; const r = footRect(); if (!r) return; const name = MARK.names[MARK.i];
+  if (d.rad > 8) MARK.pts[name] = d.circle ? [...MARK.pts[name].slice(0, 2), +Math.max(0.02, d.rad / r.h).toFixed(3)] : [...MARK.pts[name].slice(0, 2), +Math.max(0.015, d.rx / r.h).toFixed(3), +Math.max(0.015, d.ry / r.h).toFixed(3), d.rot ?? 0];
+  if (MARK.pts[name].length >= 4) MARK.last = name;
+  MARK.i += 1; markPrompt();
+}
+function markFinish() { S.zones = { ...MARK.pts }; MARK.on = false; MARK.last = null; $('#markPrompt').style.display = 'none'; if (G.phase === 'mark') G.phase = 'idle'; G.mask = makeMask(); copyFit(); }
+function copyFit() { const j = JSON.stringify({ slot: 'held_sole', shown: S.shown, fit: { height: S.fit.h, x: S.fit.x, y: S.fit.y, fade: S.fit.fade, toes: S.fit.toes }, zones: S.zones ?? zones() }); navigator.clipboard?.writeText(j).catch(() => {}); $('#sideNote').textContent = j; }
+addEventListener('wheel', (e) => {
+  if (!MARK.on) return; e.preventDefault();
+  const step = (e.shiftKey ? 1 : 5) * Math.sign(e.deltaY || e.deltaX);
+  if (MARK.drag && !MARK.drag.circle) MARK.drag.rot = ((MARK.drag.rot ?? 0) + step + 360) % 360;
+  else if (MARK.last && MARK.pts[MARK.last]?.length >= 4) { const z = MARK.pts[MARK.last]; z[4] = ((z[4] ?? 0) + step + 360) % 360; }
+}, { passive: false });
+
+/* ---------- the panel ---------- */
+function opts(host, items, get, set) {
+  host.replaceChildren();
+  for (const it of items) { const b = document.createElement('button'); b.className = 'opt' + (get() === it ? ' on' : ''); b.textContent = it; b.onclick = () => { set(it); opts(host, items, get, set); }; host.appendChild(b); }
+}
+opts($('#styles'), Object.keys(STYLES), () => S.style, (v) => { S.style = v; });
+opts($('#days'), Object.keys(DAYS), () => S.day, (v) => { S.day = v; $('#dayNote').textContent = DAYS[v].note; });
+$('#dayNote').textContent = DY().note;
+const slider = (id, get, set, fmt = (v) => String(v)) => { $(`#${id}`).oninput = () => { set(Number($(`#${id}`).value)); $(`#${id}V`).textContent = fmt(get()); }; };
+slider('mTempo', () => S.manner.tempo, (v) => { S.manner.tempo = v; });
+slider('mInt', () => S.manner.intensity, (v) => { S.manner.intensity = v; });
+slider('mWarm', () => S.manner.warmth, (v) => { S.manner.warmth = v; });
+slider('known', () => S.known, (v) => { S.known = v; });
+$('#both').onchange = () => { S.both = $('#both').checked; };
+const f2 = (v) => v.toFixed(2);
+slider('fitH', () => S.fit.h, (v) => { S.fit.h = v; }, f2); slider('fitX', () => S.fit.x, (v) => { S.fit.x = v; }, f2); slider('fitY', () => S.fit.y, (v) => { S.fit.y = v; }, f2);
+slider('fitF', () => S.fit.fade, (v) => { S.fit.fade = v; }, f2); slider('fitT', () => S.fit.toes, (v) => { S.fit.toes = v; }, f2);
+slider('herH', () => S.her.h, (v) => { S.her.h = v; }, f2); slider('herX', () => S.her.x, (v) => { S.her.x = v; }, f2); slider('herB', () => S.her.b, (v) => { S.her.b = v; }, f2);
+$('#shownSel').onchange = () => { S.shown = $('#shownSel').value; };
+$('#fFoot').onchange = () => { const f = $('#fFoot').files[0]; if (!f) return; const im = new Image(); im.onload = () => { footImg = im; G.mask = makeMask(); }; im.src = URL.createObjectURL(f); };
+$('#fCurled').onchange = () => { const f = $('#fCurled').files[0]; if (!f) return; const im = new Image(); im.onload = () => { curledImg = im; }; im.src = URL.createObjectURL(f); };
+$('#fFaces').onchange = () => { for (const f of $('#fFaces').files) faces[f.name.replace(/\.[^.]+$/, '').toLowerCase()] = URL.createObjectURL(f); $('#facesNote').textContent = `faces: ${Object.keys(faces).join(', ')}`; setFace(G.face); };
+$('#markZones').onclick = () => setTimeout(markStart, 50);
+$('#copyFit').onclick = () => copyFit();
+$('#snd').onchange = () => { S.sound = $('#snd').checked; if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
+$('#vol').oninput = () => { S.vol = Number($('#vol').value); if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
+$('#accent').oninput = () => document.documentElement.style.setProperty('--her', $('#accent').value);
+for (const k of Object.keys(ASSETS.bgs)) { const o = document.createElement('option'); o.value = k; o.textContent = k; $('#bg').appendChild(o); }
+$('#bg').onchange = () => { $('#backdrop').style.backgroundImage = `url(${ASSETS.bgs[$('#bg').value]})`; };
+$('#backdrop').style.backgroundImage = `url(${ASSETS.bgs.quarters_1})`;
+$('#dbg').onchange = () => { S.debug = $('#dbg').checked; $('#debug').style.display = S.debug ? 'block' : 'none'; };
+$('#rm').checked = S.reduced; $('#rm').onchange = () => { S.reduced = $('#rm').checked; };
+$('#restart').onclick = () => begin();
+$('#toCream').onclick = () => { if (G.phase === 'massage') { footStats().how = 'skipped'; endMassage(); } };
+$('#againBtn').onclick = () => begin();
+$('#setup').onclick = async () => { audioInit(); await A.ctx.resume(); $('#start').style.display = 'none'; await loadSamples(); G.phase = 'idle'; };
+$('#go').onclick = async () => { audioInit(); await A.ctx.resume(); $('#start').style.display = 'none'; await loadSamples(); begin(); };
+setFace('neutral');
+requestAnimationFrame(frame);
+
+/* test hooks (prototype only) */
+window.__S = S; window.__G = () => G; window.__begin = () => begin();
+</script>
+</body>
+</html>
