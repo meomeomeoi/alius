@@ -370,6 +370,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'protocol', 'routine', 'favour', 'denial',
   // P10e-f (the stage setup: SYS › STAGE)
   'stage_setup', 'stage_slot_state', 'stage_sprites', 'stage_stand', 'stage_face', 'stage_hand', 'stage_accent', 'stage_load', 'stage_fit', 'stage_remove', 'stage_zones', 'stage_preview',
+  // P15b (SYS › Output budgets: the import's section extras)
+  'budget_profile_import_practice', 'budget_profile_import_expectations',
 ];
 
 let registered = false;

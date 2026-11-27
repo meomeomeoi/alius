@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { FakeStAdapter } from '../src/st/fake';
-import { getSettings, updateSettings } from '../src/settings';
+import { BUDGET_EXTRA_IDS, getSettings, updateSettings } from '../src/settings';
 import { CALL_TYPE_IDS } from '../src/llm/callTypes';
 
 describe('settings', () => {
@@ -15,8 +15,11 @@ describe('settings', () => {
       profile_import: 1800, intent_extract: 700, scene_summary: 800, dilemma_generate: 1000,
       director_tick: 1200, flavor: 400, dm_reply: 300, expedition_recap: 700, emotion_pick: 50, ping: 100,
       activity_vignette: 150, chronicle_compact: 400, commander_import: 600, memory_fold: 500, rumor_retell: 200, warden_agenda: 800, epilogue: 700, warden_judge: 120, head_start_recap: 900, development_review: 700, opinion_form: 150, physics_cues: 250, practice_generate: 700, activity_script: 900,
+      profile_import_practice: 600, profile_import_expectations: 400,
     });
-    expect(Object.keys(s.budgets).sort()).toEqual([...CALL_TYPE_IDS].sort());
+    expect(s.budgets.profile_import_practice).toBe(600); // P15b: the import's section extras
+    expect(s.budgets.profile_import_expectations).toBe(400);
+    expect(Object.keys(s.budgets).sort()).toEqual([...CALL_TYPE_IDS, ...BUDGET_EXTRA_IDS].sort());
     // and written back so SillyTavern persists them
     expect(st.settings.palette).toBe('amber');
   });
@@ -30,6 +33,9 @@ describe('settings', () => {
     expect(s.budgets.flavor).toBe(123);
     expect(s.budgets.ping).toBe(100);
     expect(s.budgets).not.toHaveProperty('bogus');
+    const extras = getSettings(Object.assign(new FakeStAdapter(), { settings: { budgets: { profile_import_practice: 0, profile_import_expectations: 250 } } }));
+    expect(extras.budgets.profile_import_practice).toBe(600);
+    expect(extras.budgets.profile_import_expectations).toBe(250);
     expect(s.debug).toBe(true);
   });
 

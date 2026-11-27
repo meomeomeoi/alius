@@ -463,8 +463,8 @@ export async function importProfile(
     if (!loaded) return { kind: 'manual', reason: 'card not found' };
     const input = buildImportInput(truncateCard(loaded, CARD_INPUT_TOKENS), registries, settings, sections, deps.world, deps.bond, deps.content);
     const ctx = { registries, desireBondDefects: settings.desireBondDefects, sections: input.sections, world: deps.world, bond: deps.bond, content: deps.content };
-    // P15: the two sections ask for room (+300 and +400 tokens of the budget); a call without them sends the budget it always did
-    const extra = (input.sections.includes('practice') ? 300 : 0) + (input.sections.includes('expectations') ? 400 : 0);
+    // P15: the two sections ask for room (P15b: the settings `budgets.profile_import_practice` / `…_expectations`, SYS › Output budgets); a call without them sends the budget it always did
+    const extra = (input.sections.includes('practice') ? settings.budgets.profile_import_practice : 0) + (input.sections.includes('expectations') ? settings.budgets.profile_import_expectations : 0);
     const budgetMult = extra > 0 ? 1 + extra / settings.budgets.profile_import : undefined;
 
     // the `setup.profile_import` site: the sanitized candidates. A critical section the answer lacks is a rejected answer: it is asked

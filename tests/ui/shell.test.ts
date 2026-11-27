@@ -276,7 +276,24 @@ describe('SYS tab', () => {
     const { shell } = setup();
     shell.open();
     shell.showTab('sys');
-    expect(document.querySelectorAll('#alius-shell input[name^="budget:"]')).toHaveLength(24);
+    expect(document.querySelectorAll('#alius-shell input[name^="budget:"]')).toHaveLength(26); // 24 call types + the import's two section extras (P15b)
+  });
+
+  it('P15b: the import extras are inputs of their own; a value below 1 snaps back', () => {
+    const { shell, st } = setup();
+    shell.open();
+    shell.showTab('sys');
+    for (const [id, def] of [['profile_import_practice', 600], ['profile_import_expectations', 400]] as const) {
+      const input = document.querySelector<HTMLInputElement>(`#alius-shell input[name="budget:${id}"]`)!;
+      expect(input.value).toBe(String(def));
+      expect(input.closest('[data-analyze]')!.getAttribute('data-analyze')).toBe(`glossary:budget_${id}`);
+      input.value = '0';
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      expect(input.value).toBe(String(def));
+      input.value = '750';
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      expect((st.settings.budgets as Record<string, number>)[id]).toBe(750);
+    }
   });
 
   it('debug panel is hidden unless debug is on', () => {

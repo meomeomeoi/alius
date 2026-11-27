@@ -70,6 +70,16 @@ describe('the import prompt (P15)', () => {
     expect(`${system}\n${prompt}`).not.toMatch(/\b(he|him|his)\b/i);
   });
 
+  it('P15b: the practice section asks for her manner, what draws her, her everyday face, the contrast and her quirks', () => {
+    const { system } = texts(['practice'], ['restraint']);
+    const shape = system.split('"practice": ')[1].split('\n')[0];
+    for (const f of ['"manner"', '"drawnBy"', '"everyday"', '"contrast"', '"quirks"']) expect(shape).toContain(f);
+    for (const a of ['intensity', 'warmth', 'order', 'voice', 'tempo', 'curiosity']) expect(shape).toContain(`"${a}"`);
+    for (const d of ['pain', 'power', 'reaction', 'discipline', 'discovery']) expect(shape).toContain(d);
+    for (const w of ['switch', 'during', 'after', 'address']) expect(shape).toContain(w);
+    expect(system).not.toMatch(/\b(he|him|his)\b/i);
+  });
+
   it('expectations list the allowed targets and sources only', () => {
     const off = texts(['expectations'], ['restraint']).input.expectations!;
     expect(off.sources.length).toBe(reg.momentSources.size - [...reg.momentSources.values()].filter((s) => Array.isArray(s.contentTags)).length);
@@ -122,6 +132,26 @@ describe('sanitize (P15)', () => {
     expect(missing).toEqual([]);
   });
 
+  it('P15b: a recorded answer fills her manner through validatePractice', () => {
+    const rawPractice = {
+      style: { primary: 'regal' },
+      manner: { intensity: 2, warmth: -1, order: 5, curiosity: 2 },
+      drawnBy: ['discovery', 'greed', 'power'],
+      everyday: 'A bit of a loner, but always helps; kind and odd.',
+      contrast: 'high',
+      quirks: [{ when: 'switch', text: 'She takes off her glasses.' }, { when: 'address', text: 'She calls him by rank.' }, { when: 'after', text: 'A cigarette, in silence.' }],
+    };
+    const { profile } = sanitize({ practice: rawPractice });
+    expect(profile.practice).toEqual(validatePractice(rawPractice, reg).practice);
+    expect(profile.practice).toMatchObject({
+      manner: { intensity: 2, warmth: -1, order: 0, voice: 0, tempo: 0, curiosity: 2 },
+      drawnBy: ['discovery', 'power'],
+      everyday: 'A bit of a loner, but always helps; kind and odd.',
+      contrast: 'high',
+      quirks: [{ when: 'switch', text: 'She takes off her glasses.' }, { when: 'after', text: 'A cigarette, in silence.' }],
+    });
+  });
+
   it('an expectation target that is closed here is dropped, and neither section is ever critical', () => {
     const { profile, dropped } = sanitize({ expectations: { worship: { feet: { attitude: 'craves' } } } }, ['expectations'], ['restraint']);
     expect(profile.expectations).toBeUndefined();
@@ -145,7 +175,17 @@ describe('the budget', () => {
     return { st, avatar: c.avatar, deps: { st, settings, registries: reg, generations: standaloneEnvelope(st, reg, () => settings) } };
   }
 
-  it('a call without the sections sends the budget it always did; with them it asks for 300 and 400 more', async () => {
+  it('P15b: the practice extra is a setting (600 by default), and changing it changes the call', async () => {
+    const a = world();
+    expect(a.deps.settings.budgets.profile_import_practice).toBe(600);
+    expect(a.deps.settings.budgets.profile_import_expectations).toBe(400);
+    a.deps.settings.budgets = { ...a.deps.settings.budgets, profile_import_practice: 900, profile_import_expectations: 100 };
+    a.st.profileReplies = ['{}'];
+    await importProfile(a.avatar, ['practice', 'expectations'], { ...a.deps, content: ['restraint'] });
+    expect(a.st.calls.find((c) => c.kind === 'profile')!.maxTokens).toBe(2800); // 1800 + 900 + 100
+  });
+
+  it('a call without the sections sends the budget it always did; with them it asks for 600 and 400 more', async () => {
     const a = world();
     a.st.profileReplies = ['{}'];
     await importProfile(a.avatar, [...ALL_SECTIONS], { ...a.deps, content: [] });
@@ -156,12 +196,12 @@ describe('the budget', () => {
     const b = world();
     b.st.profileReplies = ['{}'];
     await importProfile(b.avatar, ['practice', 'expectations'], { ...b.deps, content: ['restraint'] });
-    expect(b.st.calls.find((c) => c.kind === 'profile')!.maxTokens).toBe(2500) // 1800 + 300 + 400;
+    expect(b.st.calls.find((c) => c.kind === 'profile')!.maxTokens).toBe(2800); // 1800 + 600 + 400
 
     const c = world();
     c.st.profileReplies = ['{}'];
     await importProfile(c.avatar, ['practice'], { ...c.deps, content: ['restraint'] });
-    expect(c.st.calls.find((x) => x.kind === 'profile')!.maxTokens).toBe(2100) // 1800 + 300;
+    expect(c.st.calls.find((x) => x.kind === 'profile')!.maxTokens).toBe(2400); // 1800 + 600
   });
 });
 
@@ -250,6 +290,21 @@ describe('the wizard and the re-sync', () => {
       expect(p.inclination).toBe('curious'); // not locked: the new value
       expect(p.drive).toBe('moderate');
       expect(p.categories.humiliation).toBeUndefined(); // the import has no such category and it is not locked
+    });
+
+    it('P15b: a locked manner, drawnBy, everyday or quirks is not re-imported', () => {
+      const { s, u } = withOld();
+      u.bond!.practice!.manner = { intensity: 1, warmth: 1, order: 0, voice: 0, tempo: 0, curiosity: 0 };
+      u.bond!.practice!.quirks = [{ when: 'after', text: 'Tea, in silence.' }];
+      u.practiceLocks = ['manner', 'quirks', 'everyday'];
+      const next = validatePractice({ style: { primary: 'drill' }, manner: { intensity: -2 }, drawnBy: ['pain'], everyday: 'Loud.', quirks: [{ when: 'switch', text: 'She locks the door.' }] }, reg).practice!;
+      const r = resync(s, { practice: next });
+      expect(errors(r.events)).toEqual([]);
+      const p = r.state.squad.find((x) => x.id === 'unit_ann')!.bond!.practice!;
+      expect(p.manner).toEqual({ intensity: 1, warmth: 1, order: 0, voice: 0, tempo: 0, curiosity: 0 });
+      expect(p.quirks).toEqual([{ when: 'after', text: 'Tea, in silence.' }]);
+      expect(p.everyday).toBeUndefined(); // locked, and she never had one
+      expect(p.drawnBy).toEqual(['pain']); // not locked
     });
 
     it('an unlocked practice is replaced whole, and a bond re-sync alone keeps the practice', () => {

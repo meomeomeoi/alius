@@ -3,14 +3,21 @@ import { CALL_TYPE_IDS, type CallTypeId } from './llm/callTypes';
 import { DEFAULT_SCENE_SETTINGS, INTERACTION_TOGGLES, MARATHON_PACES, LONG_HOLD_STRAINS, type LongHoldStrain, MOMENT_EXPLICIT, MOMENT_FREQUENCIES, type InteractionToggle, type MarathonPace, type MomentExplicit, type MomentFrequency } from './engine/moments/settings';
 import type { StAdapter } from './st/adapter';
 
+/**
+ * P15b: budgets that are not a call type of their own: the tokens a section of `profile_import` adds to that call's budget while it is asked
+ * for (the practice section and the expectations section). Merged and edited in SYS like the call types' budgets.
+ */
+export const BUDGET_EXTRA_IDS = ['profile_import_practice', 'profile_import_expectations'] as const;
+export type BudgetExtraId = (typeof BUDGET_EXTRA_IDS)[number];
+
 export interface AliusSettings {
   mechanicProfileId: string;
   mechanicThink: 'min' | 'low' | 'auto';
   mechanicFallbackToMain: boolean;
   /** Minimum max_tokens actually sent on mechanic calls (headroom for thinking models). */
   requestFloor: number;
-  /** Expected output tokens per call type. */
-  budgets: Record<CallTypeId, number>;
+  /** Expected output tokens per call type, and the import's section extras (P15b, `BUDGET_EXTRA_IDS`). */
+  budgets: Record<CallTypeId | BudgetExtraId, number>;
   contextTokenCap: number;
   palette: 'amber' | 'green' | 'white';
   scanlines: boolean;
@@ -150,6 +157,8 @@ export const DEFAULT_SETTINGS: AliusSettings = {
     practice_generate: 700,
     activity_script: 900,
     ping: 100,
+    profile_import_practice: 600, // P15b: the old +300 and +300 for her manner
+    profile_import_expectations: 400,
   },
   contextTokenCap: 1600,
   palette: 'amber',
@@ -291,7 +300,7 @@ function merge(base: AliusSettings, over: unknown): AliusSettings {
   }
   const budgets = { ...base.budgets };
   const srcBudgets = isObj(src.budgets) ? src.budgets : {};
-  for (const id of CALL_TYPE_IDS) {
+  for (const id of [...CALL_TYPE_IDS, ...BUDGET_EXTRA_IDS]) {
     const parsed = budgetSchema.safeParse(srcBudgets[id]);
     if (parsed.success) budgets[id] = parsed.data;
   }

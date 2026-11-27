@@ -115,16 +115,16 @@ Before Task 1, also read:
 **Interfaces:**
 - Produces: the practice section asks for `manner`, `drawnBy`, `everyday`, `contrast` and `quirks` (spec §8). The budget extra is `settings.budgets.profile_import_practice` / `…_expectations` instead of the inline 300 / 400.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - the practice section's JSON shape lists the five fields;
   - a recorded answer fills them through `validatePractice`;
   - a locked field is not re-imported;
   - the budget multiplier uses 600 for practice, and changing the setting changes it;
   - SYS shows both inputs, and a value below 1 snaps back.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P15b): the import asks for her manner; its budget in SYS`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P15b): the import asks for her manner; its budget in SYS`
 
 ### Task 3: The dossier's PRACTICE block
 

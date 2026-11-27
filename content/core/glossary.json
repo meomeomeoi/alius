@@ -3724,5 +3724,21 @@
       "stage_setup",
       "stage_fit"
     ]
+  },
+  {
+    "id": "budget_profile_import_practice",
+    "term": "Import: practice section",
+    "short": "Output tokens the profile import adds to its budget while it asks for her practice (the style, her manner, what draws her, her everyday face and her quirks).",
+    "see": [
+      "setting_budgets"
+    ]
+  },
+  {
+    "id": "budget_profile_import_expectations",
+    "term": "Import: expectations section",
+    "short": "Output tokens the profile import adds to its budget while it asks for her expectations.",
+    "see": [
+      "setting_budgets"
+    ]
   }
 ]

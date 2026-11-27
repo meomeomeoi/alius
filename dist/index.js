@@ -41966,7 +41966,7 @@ var SCHEMA_PART = {
   temperament: '  "temperament": { "talkativeness": "silent"|"terse"|"talkative", "volatility": "steady"|"moody", "humor": "none"|"dry"|"mocking"|"warm" }',
   hobbies: '  "hobbies": ["<id from HOBBIES>"],   // 1 to 3: what she does for herself, only if the card suggests it\n  "aptitudes": { "high": ["<id from HOBBIES>"], "low": ["<id from HOBBIES>"] },   // 2 to 3 ids in each list, none in both: what she is gifted at and what she is hopeless at',
   opinions: `  "opinions": [{ "topic": "<id from OPINION TOPICS>", "position": "<one of that topic's positions>", "text": "<her view in her own voice, one sentence, at most 200 characters>" }],   // 8 to 12 views the card states or strongly implies, one per topic`,
-  practice: '  "practice": { "categories": { "<id from PRACTICE CATEGORIES>": { "as": "none"|"tolerates"|"enjoys"|"craves", "witness": "dislikes"|"indifferent"|"drawn" } }, "style": { "primary": "<style>", "secondary": "<style>" }, "audience": "private_only"|"select_few"|"show_off"|"indifferent", "inclination": "none"|"latent"|"curious"|"eager", "fairness": "fair"|"strict"|"capricious"|"unfair", "hintStyle": "offers"|"hints"|"expects", "drive": "low"|"moderate"|"high" }',
+  practice: '  "practice": { "categories": { "<id from PRACTICE CATEGORIES>": { "as": "none"|"tolerates"|"enjoys"|"craves", "witness": "dislikes"|"indifferent"|"drawn" } }, "style": { "primary": "<style>", "secondary": "<style>" }, "audience": "private_only"|"select_few"|"show_off"|"indifferent", "inclination": "none"|"latent"|"curious"|"eager", "fairness": "fair"|"strict"|"capricious"|"unfair", "hintStyle": "offers"|"hints"|"expects", "drive": "low"|"moderate"|"high", "manner": { "intensity": 0, "warmth": 0, "order": 0, "voice": 0, "tempo": 0, "curiosity": 0 }, "drawnBy": ["pain"|"power"|"reaction"|"discipline"|"discovery"], "everyday": "<=160", "contrast": "low"|"mid"|"high", "quirks": [{ "when": "switch"|"during"|"after"|"address", "text": "<=160" }] }',
   expectations: '  "expectations": { "moments": { "<id from MOMENT SOURCES>": { "type": "yielded"|"resisted"|"returned"|"deflected", "strength": 1|2|3 } }, "offset": { "r": 0, "f": 0 }, "tells": { "irritation": "<=80", "pleasure": "<=80" }, "holdsUntil": "signal"|"limit"|"blackout", "worship": { "<id from WORSHIP TARGETS>": { "attitude": "craves"|"enjoys"|"indifferent"|"dislikes", "how": "<=60", "meaning": "reward"|"duty"|"humiliation"|"intimacy"|"play"|"comfort" } }, "body": { "<id from WORSHIP TARGETS>": "proud"|"ashamed"|"indifferent" }, "scent": { "base": { "<id from WORSHIP TARGETS>": 1..5 }, "hygiene": "meticulous"|"normal"|"lax" }, "build": { "slim": 0, "athletic": 0, "curvy": 0 }, "hair": "short"|"bob"|"long"|"tail", "traits": ["<=40 chars"] }',
   baseline: '  "emotionalBaseline": { "trust": 0, "affinity": 0, "attraction": 0 },   // trust 0..60, affinity -20..30, attraction 0..20'
 };
@@ -42013,6 +42013,8 @@ function system(raw) {
   if (has2(input, "practice")) {
     lines3.push("", "The practice section says what she would do herself as the one who leads in a dynamic of authority, read from the card; never invent. For each category listed under PRACTICE CATEGORIES: as is whether she would do it herself (craves, enjoys, tolerates or none), witness is how she feels seeing it done by anyone (drawn, indifferent or dislikes). A card that does not say is none and indifferent.");
     lines3.push("style.primary is how she leads, one of: cold (distance and control), playful (teasing and games), cruel (she enjoys the hurt), ritual (forms and protocol), possessive (ownership), affectionate (she humbles because she loves), clinical (she studies and tests), obsessive (she holds through obsession), drill (an instructor), regal (vain, wants admiring), vindictive (retribution). style.secondary is optional and differs from the primary. audience is who she would let see it, inclination how readily she would take the lead (none when the card shows no sign of it), fairness how fair she is, hintStyle how she invites (offers it, hints, or expects to be understood) and drive how strong her desire is. Leave out anything the card does not suggest.");
+    lines3.push("manner is how she departs from her style, each axis a whole number from -2 to 2, 0 when the card says nothing (0 is the style itself): intensity (-2 gentle, she never pushes hard; 2 all the way), warmth (-2 cold, no comfort after; 2 tender under it all), order (-2 on impulse, never the same twice; 2 everything by ritual), voice (-2 silent, a look instead of a word; 2 talks the whole way through), tempo (-2 slow, she draws everything out; 2 sudden, no warning), curiosity (-2 keeps to what she knows; 2 explores everything she can think of). drawnBy is what she seeks and rewards, one or two, the main one first: pain (the hurt itself), power (the commander giving way to her), reaction (what the commander shows), discipline (it done right, cleanly), discovery (the new, the first time).");
+    lines3.push("everyday is one line of how she is outside the dynamic and how the squad sees her, sincere, not a cover. contrast is how far that everyday self is from her self in the dynamic (low, mid or high). quirks are two or three small ways she has in the dynamic: when is switch (how she steps into it), during (something she does while it runs), after (how she ends it) or address (how she names the commander in it). Never give the commander a pronoun or a feeling in any text.");
   }
   if (has2(input, "expectations")) {
     lines3.push("", "The expectations are what she wants from the commander and wants to see, read from the card; never invent, and leave out what the card does not suggest. moments name a moment source and the answer she expects (type) with how strongly (strength 1 to 3). holdsUntil is how far she holds someone down: signal (lets go at the first sign), limit (to the edge) or blackout (past it). worship names the targets under WORSHIP TARGETS she craves, enjoys, ignores or dislikes, with how she wants it done and what it means to her. offset is how far she sits from her style's usual place, -0.3 to 0.3. tells are one short phrase each for how her irritation and her pleasure show. Never give the commander a pronoun in any text.");
@@ -47259,6 +47261,7 @@ function buildKnowledge(state, settings) {
 }
 
 // src/settings.ts
+var BUDGET_EXTRA_IDS = ["profile_import_practice", "profile_import_expectations"];
 var DEFAULT_SETTINGS = {
   mechanicProfileId: "",
   mechanicThink: "min",
@@ -47289,7 +47292,10 @@ var DEFAULT_SETTINGS = {
     physics_cues: 250,
     practice_generate: 700,
     activity_script: 900,
-    ping: 100
+    ping: 100,
+    profile_import_practice: 600,
+    // P15b: the old +300 and +300 for her manner
+    profile_import_expectations: 400
   },
   contextTokenCap: 1600,
   palette: "amber",
@@ -47428,7 +47434,7 @@ function merge(base2, over2) {
   }
   const budgets = { ...base2.budgets };
   const srcBudgets = isObj45(src.budgets) ? src.budgets : {};
-  for (const id of CALL_TYPE_IDS) {
+  for (const id of [...CALL_TYPE_IDS, ...BUDGET_EXTRA_IDS]) {
     const parsed = budgetSchema.safeParse(srcBudgets[id]);
     if (parsed.success) budgets[id] = parsed.data;
   }
@@ -56301,7 +56307,7 @@ async function importProfile(avatar, sections, deps) {
     if (!loaded2) return { kind: "manual", reason: "card not found" };
     const input = buildImportInput(truncateCard(loaded2, CARD_INPUT_TOKENS), registries, settings, sections, deps.world, deps.bond, deps.content);
     const ctx2 = { registries, desireBondDefects: settings.desireBondDefects, sections: input.sections, world: deps.world, bond: deps.bond, content: deps.content };
-    const extra = (input.sections.includes("practice") ? 300 : 0) + (input.sections.includes("expectations") ? 400 : 0);
+    const extra = (input.sections.includes("practice") ? settings.budgets.profile_import_practice : 0) + (input.sections.includes("expectations") ? settings.budgets.profile_import_expectations : 0);
     const budgetMult = extra > 0 ? 1 + extra / settings.budgets.profile_import : void 0;
     const key = `${avatar}:${input.sections.join(",")}`;
     inFlight.set(key, { input, ctx: ctx2 });
@@ -86631,6 +86637,14 @@ function renderSysTab(host, ctx2) {
       "budgets"
     )
   );
+  for (const [id, label2] of [["profile_import_practice", "profile_import + practice"], ["profile_import_expectations", "profile_import + expectations"]]) {
+    budgetInputs.push(h(
+      "label",
+      { class: "alius-field alius-option", ...analyzeNative(`glossary:budget_${id}`) },
+      h("span", { class: "alius-field-label" }, label2),
+      numberInput(`budget:${id}`, settings.budgets[id], (n) => apply2({ budgets: { ...getSettings(st3).budgets, [id]: n } }).budgets[id])
+    ));
+  }
   const form = h(
     "section",
     { class: "alius-section" },

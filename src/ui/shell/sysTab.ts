@@ -308,6 +308,11 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
       'budgets',
     ),
   );
+  // P15b: what a section of the profile import adds to that call's budget while it is asked for
+  for (const [id, label] of [['profile_import_practice', 'profile_import + practice'], ['profile_import_expectations', 'profile_import + expectations']] as const) {
+    budgetInputs.push(h('label', { class: 'alius-field alius-option', ...analyzeNative(`glossary:budget_${id}`) }, h('span', { class: 'alius-field-label' }, label),
+      numberInput(`budget:${id}`, settings.budgets[id], (n) => apply({ budgets: { ...getSettings(st).budgets, [id]: n } }).budgets[id])));
+  }
 
   const form = h(
     'section',
