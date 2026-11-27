@@ -436,6 +436,11 @@ Labels, hints and descriptions `AUTHOR TO WRITE`; stakes are drafts.
 | 3 | into the commander's food in the mess hall (*seen*, new sign `seasoned_public`) | `role`, public_humiliation, `public_humiliation 2` | major |
 | 4 | everything the commander eats has been in her mouth first | `rule`, `craves bodily_fluids` | severe |
 
+#### 8.3.9 Moved here from P16b (planning session of 2026-11-27, author)
+- **The kiss when she enters** (P16b §11 `regal`): a staged `regal` custom beside `salute` (its own `kind`, e.g. `entry_kiss`): stage 1 her hand, in private; stage 2 her hand before the squad (*seen*, `protocol_public`); stage 3 her foot, in the mess (*seen*). Needs, stakes and texts are to be drafted in this package's plan; `regal` weighs it ×2.
+- **The audiences** (P16b §11): she receives soldiers in her quarters sitting in her chair as on a throne, the commander kneeling beside it and announcing who enters. Needs P17's live visitors; built here after P17.
+- P16b keeps the daily praise (a protocol rule, the repeat check, the praise log on `Relation.craft`), which §2.1 extends.
+
 ### 8.4 The far end
 
 #### 8.4.1 The whim becomes absolute (`whim` gains stages)
