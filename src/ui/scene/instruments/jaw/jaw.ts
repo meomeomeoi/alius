@@ -26,7 +26,8 @@ import type { CueKind } from '../../../../engine/blocking/types';
 import { fnv1a } from '../../../../engine/hub';
 import type { PhysicsRun, PlannedBeat, SegmentInput } from '../../../../engine/physics/state';
 import { jawRowOf, jawSourceOf } from '../../../../engine/physics/segment';
-import { leadStyle, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
+import { leadStyle, physicsMannerOf, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
+import { bendRow, type RowAxes, type RowKinds } from '../kit/bendRow';
 import type { CampaignState } from '../../../../engine/state/types';
 import { TUNING } from '../../../../engine/tuning';
 import { voiceLines, type VoiceKind } from '../../cards/voice';
@@ -127,7 +128,12 @@ export let LINES: Record<string, Lines> = { neutral: noLines() };
 
 /* ---------- settings (jaw.html `S`: the approved defaults; the contact, her style, the endurance skill and the still form are the run's and the scene's) ---------- */
 export const S = { contact: 'sole_to_mouth', style: 'neutral', rate: 1, skill: 0, ring: 0.55, len: 75, sound: true, vol: 0.7, footH: 1.05, debug: false, reduced: false, readable: false };
-const st = () => STYLES[S.style]!;
+/**
+ * P15b: what each bent field of a `STYLES` row is (`bendRow`): her spacing a time, how deep she pushes a magnitude, how often she asks her lines. The width of a
+ * `suck` has no axis and is not bent. The engine's plan bends the same `every` and `ask` (`planJaw`), so the plan and this row agree.
+ */
+export const STYLE_KINDS: RowKinds<StyleRow> = { every: 'time', deep: 'magnitude', ask: 'lines' };
+const st = () => bendRow(STYLES[S.style]!, R.manner, STYLE_KINDS);
 const L = () => LINES[S.style]!;
 const C = () => CONTACTS[S.contact]!;
 
@@ -333,7 +339,8 @@ function askRest() {
   if (restWaits()) return;
   G.stats.restsAsked += 1; G.restAsked = true;
   SFX.cloth(0.25, 1.2); // a tap of the hand on her leg
-  const granted = !REST_DENIED.includes(S.style);
+  const warmth = R.manner?.warmth ?? 0;
+  const granted = warmth >= 2 || (warmth > -2 && !REST_DENIED.includes(S.style)); // P15b: her warmth decides over her style at ±2, as the engine does (`restGranted`)
   setTimeout(() => {
     if (G.phase !== 'loop') return;
     if (granted) { G.stats.restsGranted += 1; G.resting = REST_MS; G.restFrom = G.f; G.order = null; say(pick(L().restOk.length ? L().restOk : ['rest.'])); }
@@ -517,6 +524,8 @@ interface Seg { n: number; startedAt: number; clock0: number; beats: number; end
 interface Wiring {
   run: PhysicsRun | null;
   lineStyle: string;
+  /** P15b: her manner axes (null: none, so her row and her rest rule are the prototype's). */
+  manner: RowAxes | null;
   seg: Seg | null;
   running: boolean;
   plan: PlannedBeat[];
@@ -546,7 +555,7 @@ interface Wiring {
   ended: string | null;
 }
 const R: Wiring = {
-  run: null, lineStyle: 'neutral', seg: null, running: false, plan: [], move: null, acc: 0, accMs: 0, teeth: 0, restSeg: null, restVia: 'key',
+  run: null, lineStyle: 'neutral', manner: null, seg: null, running: false, plan: [], move: null, acc: 0, accMs: 0, teeth: 0, restSeg: null, restVia: 'key',
   ox: 0, oy: 0, mouthW: 720, mouthY: 0, lift: 0, kept: [], heard: null, replyLift: 0, spriteSrc: null, lastNow: 0, ended: null,
 };
 
@@ -827,6 +836,7 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S.style = jawRowOf(lead); // the engine's row (Ruling R): her spacing, her rest rule and the push for the teeth agree with the engine's
   R.lineStyle = lead.key;
+  R.manner = physicsMannerOf(state, run.holderId, reg);
   R.run = run;
   R.seg = null; R.running = false; R.plan = []; R.move = null; R.acc = 0; R.accMs = 0; R.teeth = 0; R.restSeg = null; R.restVia = 'key'; R.kept = []; R.heard = null; R.replyLift = 0; R.ended = null;
   S.contact = jawContactOf(run, reg) ?? 'sole_to_mouth';
@@ -963,7 +973,7 @@ export const _jaw = {
   get R(): Wiring { return R; },
   get S(): typeof S { return S; },
   get LINES(): Record<string, Lines> { return LINES; },
-  bandNow, herMove, askRest, update, say, begin, finish, fresh, spawnDrop, onType, sendLine, digest,
+  st, bandNow, herMove, askRest, update, say, begin, finish, fresh, spawnDrop, onType, sendLine, digest,
   setG(g: Glob): void { G = g; },
   /** Tests: the seed of the module's `Math.random` (a xorshift, no rng draw). */
   seed(n: number): void { reseed(n); },

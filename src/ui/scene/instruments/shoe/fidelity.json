@@ -457,6 +457,11 @@
       "fn": "spit",
       "reason": "Ruling AC (e10 fix I2): whether she saw the spit is decided by the engine when the spit is made (`physics/spit`: one draw on the engine's rng, with the prototype's chance by her attention, 0.75 / 0.3 / 0.06, `TUNING.physics.shoe.spitSeen`; while a segment runs her planned attention on the beat, else the attention shown), so a caught spit is `physics_caught` and in the tally. `spitSeen(seen)` asks it and answers at once; the prototype's two branches are unchanged.",
       "diff": "@@ -6,3 +6,3 @@\n G.grit=0\n-if(Math.random()<seen){\n+if(spitSeen(seen)){\n G.stats.caught+=1"
+    },
+    {
+      "fn": "ST",
+      "reason": "P15b (bendRow): the style row is bent by her manner (`surface` by tempo, `moves.press` and `moves.stamp` by intensity, `moves.kiss` by warmth); at 0 it is the same row.",
+      "diff": "@@ -1 +1 @@\n-const ST=()=>STYLES[S.style]??STYLES.neutral\n+const ST=()=>bendRow(STYLES[S.style]??STYLES.neutral,R.manner,SHOE_KINDS)"
     }
   ]
 }

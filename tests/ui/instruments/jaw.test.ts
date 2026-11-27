@@ -11,7 +11,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import { COMMANDER, registerFrameReader, resetBlockingHooks, setBlocking } from '../../../src/engine/blocking';
-import { registerPhysicsStyle, resetPhysicsHooks } from '../../../src/engine/physics/style';
+import { registerPhysicsStyle, resetPhysicsHooks, registerPhysicsManner } from '../../../src/engine/physics/style';
 import type { PhysicsRun, SegmentInput, SegmentPlan } from '../../../src/engine/physics/state';
 import { resolveEnvOf, resolveSegment } from '../../../src/engine/physics/segment';
 import type { CampaignState } from '../../../src/engine/state/types';
@@ -330,6 +330,25 @@ describe('the jaw instrument on the scene', () => {
     expect(reports(c).filter((i) => i.kind === 'ask_rest')).toHaveLength(1);
     expect(_jaw.G.resting).toBe(0);
     expect(handText(c)).toMatch(/no\.|earn it\./);
+  });
+
+  it('P15b: her warmth decides over her style at ±2, as the engine\'s rule does (a cruel holder at +2 grants, a neutral one at -2 refuses)', () => {
+    const ask = (style: string, warmth: number | null) => {
+      resetSceneStage(); resetPhysicsHooks();
+      registerPhysicsStyle(() => ({ primary: style as never }));
+      if (warmth !== null) registerPhysicsManner(() => ({ intensity: 0, warmth, order: 0, voice: 0, tempo: 0, curiosity: 0 }));
+      const t = draw(hold());
+      t.to(1000);
+      t.pointer('pointerdown', undefined, 2);
+      t.to(2300);
+      return _jaw.G.resting > 0;
+    };
+    expect(ask('cruel', null)).toBe(false);
+    expect(ask('cruel', 1)).toBe(false);
+    expect(ask('cruel', 2)).toBe(true);
+    expect(ask('neutral', null)).toBe(true);
+    expect(ask('neutral', -1)).toBe(true);
+    expect(ask('neutral', -2)).toBe(false);
   });
 
   it('Ruling V: after a granted rest the fatigue on screen and the engine\'s gauge agree at the segment\'s end (no jump at the next)', () => {

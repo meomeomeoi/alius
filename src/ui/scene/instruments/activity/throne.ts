@@ -14,6 +14,7 @@
  */
 import { fnv1a } from '../../../../engine/hub';
 import { voiceLines, type VoiceKind } from '../../cards/voice';
+import { bendRow, type RowKinds } from '../kit/bendRow';
 import { chaikin } from '../kit/chaikin';
 import { clamp, smooth } from '../kit/math';
 import type { InstrumentEnv } from '../types';
@@ -173,6 +174,8 @@ export function throneLegs(now: number) {
 }
 
 /* her body follows her lines. The telegraph is her voice: the move lands as the line is being said (~0.7 s into it). */
+/** P15b: what the bent field of her telegraph is (`bendRow`): its lead, by her tempo (the frame bends her rests, `REST_KINDS`; her pace of service is bent by the engine's `servicePaceOf`). */
+export const TELE_KINDS: RowKinds<{ tele: [number, number] }> = { tele: 'lead' };
 export const T_TELE: Record<string, [number, number]> = { neutral: [600, 900], affectionate: [900, 1200], ritual: [700, 800], playful: [450, 800], clinical: [200, 1100], cruel: [150, 350], possessive: [450, 700], cold: [500, 700], regal: [900, 1200] };
 export function wCueShift(dir: number, mag: number, tele: number) {
   if (!W || W.over || W.resting) return;
@@ -185,7 +188,7 @@ export function wCueShift(dir: number, mag: number, tele: number) {
 export function throneBody(kind: string, e?: Any) {
   if (!throneOn() || !S.bodyFollows || G.phase !== 'loop' || G.risen) return;
   if (G.cup && (kind === 'laugh' || kind === 'rise')) return; // she would not jostle her own tea
-  const tele = rand(...(T_TELE[S.style] ?? T_TELE.neutral!)) * (G.cup ? 1.4 : 1);
+  const tele = rand(...bendRow({ tele: T_TELE[S.style] ?? T_TELE.neutral! }, S.manner, TELE_KINDS).tele) * (G.cup ? 1.4 : 1);
   const side = (fnv(`${S.seed}:${e?.text ?? kind}:${G.phaseIdx}`) % 2) ? 1 : -1;
   G.stats.bodyCues = (G.stats.bodyCues ?? 0) + 1;
   switch (kind) {

@@ -960,8 +960,13 @@
     },
     {
       "fn": "wLimit",
+      "reason": "Ruling W: on the weight core's state (`W`); the end of her rest is also reported to the engine (`ask_rest` `rest`, its 30 strength), so the engine's strength agrees; `W.rests` starts at 0. P15b (bendRow): the whole rests she gives are bent by her manner, her `warmth` (+2 one more, -2 one less, never below 0); the row is the one `W_RESTS` lookup, and with no manner or every axis at 0 `bendRow` returns the same row, so it is the prototype's.",
+      "diff": "@@ -4,6 +4,8 @@\n if(W.beat-(W.lastSlipBeat??-99)<=3)return\n-if((W.restsPhase??0)>=(W_RESTS[S.style]??1))return\n+if((W.restsPhase??0)>=bendRow({\n+rests:W_RESTS[S.style]??1\n+},S.manner,REST_KINDS).rests)return\n W.restsPhase=(W.restsPhase??0)+1\n W.resting=true\n-W.rests+=1\n+W.rests=(W.rests??0)+1\n W_SFX.rustle(0.12,0)"
+    },
+    {
+      "fn": "wLimit",
       "reason": "Ruling W: on the weight core's state (`W`); the end of her rest is also reported to the engine (`ask_rest` `rest`, its 30 strength), so the engine's strength agrees; `W.rests` starts at 0.",
-      "diff": "@@ -7,3 +7,3 @@\n W.resting=true\n-W.rests+=1\n+W.rests=(W.rests??0)+1\n W_SFX.rustle(0.12,0)\n@@ -15,2 +15,3 @@\n W.str=Math.min(100,W.str+30)\n+weightCore.report(\"rest\",30)\n W_SFX.press(0.35)"
+      "diff": "@@ -15,2 +17,3 @@\n W.str=Math.min(100,W.str+30)\n+weightCore.report(\"rest\",30)\n W_SFX.press(0.35)"
     },
     {
       "fn": "ACTS.reading_reports.self",
@@ -1005,7 +1010,7 @@
     },
     {
       "fn": "SS",
-      "reason": "Her pace is the engine's (`servicePaceOf`: `SVC_STYLE` of her lead style, the prototype's table, her patience bounded by the plan to 3–5 s except cruel's 2.5, tilted by her P15 `how`): README, the drafts of her profile are prototype only.",
+      "reason": "Her pace is the engine's (`servicePaceOf`: `SVC_STYLE` of her lead style, the prototype's table, her patience bounded by the plan to 3–5 s except cruel's 2.5, tilted by her P15 `how`): README, the drafts of her profile are prototype only. P15b: `servicePaceOf` also bends the pace by her manner (patience by warmth; the time of a kiss, the wait between bouts and the circles a second by tempo); at 0 it is the same pace, so the instrument's lookup is unchanged.",
       "diff": "@@ -1 +1 @@\n-const SS=()=>SVC_STYLE[S.style]??SVC_STYLE.neutral\n+const SS=()=>X.pace"
     },
     {
@@ -1057,6 +1062,11 @@
       "fn": "svCheck",
       "reason": "Final review Minor 3: her \"you missed it.\" is the `cardVoice` row `service.missed`, verbatim, under the fidelity gate (`lines`, `literal`).",
       "diff": "@@ -8,3 +8,3 @@\n SV.acts+=1\n-if(G.step===\"with\"||G.step===\"glancing\")say(`${ZONE_WORDS[missed].replace(\".\",\"\")}. you missed it.`,\"commander\")\n+if(G.step===\"with\"||G.step===\"glancing\")say(`${ZONE_WORDS[missed].replace(\".\",\"\")}. ${voiceLines(X.env.registries,\"service.missed\",undefined)[0]??\"\"}`,\"commander\")\n else{"
+    },
+    {
+      "fn": "throneBody",
+      "reason": "P15b (bendRow): the telegraph's lead is bent by her manner, her `tempo` (a quicker holder warns later: a shorter lead); the row is the one `T_TELE` lookup, and with no manner or every axis at 0 `bendRow` returns the same row, so it is the prototype's.",
+      "diff": "@@ -3,3 +3,5 @@\n if(G.cup&&(kind===\"laugh\"||kind===\"rise\"))return\n-const tele=rand(...(T_TELE[S.style]??T_TELE.neutral))*(G.cup?1.4:1)\n+const tele=rand(...bendRow({\n+tele:T_TELE[S.style]??T_TELE.neutral\n+},S.manner,TELE_KINDS).tele)*(G.cup?1.4:1)\n const side=(fnv(`${S.seed}:${e?.text??kind}:${G.phaseIdx}`)%2)?1:-1"
     }
   ]
 }

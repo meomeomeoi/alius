@@ -33,7 +33,8 @@ import { contactTargetOf } from '../../../../engine/blocking';
 import type { PhysicsRun, SegmentInput } from '../../../../engine/physics/state';
 import { exposedKinds, inhaleZone, scentToleranceOf } from '../../../../engine/physics/stimuli';
 import { contentAllowed } from '../../../../engine/bonds/content';
-import { leadStyle, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
+import { leadStyle, physicsMannerOf, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
+import { bendRow, type RowAxes, type RowKinds } from '../kit/bendRow';
 import type { CampaignState } from '../../../../engine/state/types';
 import { TUNING } from '../../../../engine/tuning';
 import { voiceLines, type VoiceKind } from '../../cards/voice';
@@ -116,7 +117,13 @@ export const S = {
   layers: { orders: true, words: true, drift: true, tint: true, need: true }, sound: true, vol: 0.7, debug: false, angle: -14, side: { wedge: 'right' }, len: 90,
   reduced: false, readable: false,
 };
-export const ST = (): StyleRow => STYLES[S.style]!;
+/**
+ * P15b: what each bent field of a `STYLES` row is (`bendRow`): the spacing of her orders a time, the spacing of her questions the spacing of her lines (more
+ * often when she says more), her mark moving once you get there her feint. The weights of her orders, her cycle, her tour, her question, her rule and her
+ * mouth have no axis and are not bent.
+ */
+export const STYLE_KINDS: RowKinds<StyleRow> = { every: 'time', askEvery: 'linegap', moves: 'feint' };
+export const ST = (): StyleRow => bendRow(STYLES[S.style]!, R.manner, STYLE_KINDS);
 
 /** Her lines in the prototype's `LINES` shape, filled from `cardVoice` `scent.*` by her style (`refreshLines`); `ask` and `miss` are her question's. */
 export interface Lines {
@@ -878,6 +885,8 @@ const typing = (t: EventTarget | null) => t && (/^(input|textarea|select)$/i.tes
 interface Wiring {
   run: PhysicsRun | null;
   lineStyle: string;
+  /** P15b: her manner axes (null: none, so her row is the prototype's). */
+  manner: RowAxes | null;
   seg: { n: number; startedAt: number; clock0: number; beats: number; endMs: number; flushed: boolean; reported: number } | null;
   running: boolean;
   /** The words the engine holds now (its gauge over one word), and the words the mouth blew out in the beat not reported yet. */
@@ -891,7 +900,7 @@ interface Wiring {
   kind: string | null;
   plan: Array<{ attention: string }>;
 }
-const R: Wiring = { run: null, lineStyle: 'neutral', seg: null, running: false, held: 0, blownBeat: 0, via: 'key', mouthVia: 'key', pending: null, kind: null, plan: [] };
+const R: Wiring = { run: null, lineStyle: 'neutral', manner: null, seg: null, running: false, held: 0, blownBeat: 0, via: 'key', mouthVia: 'key', pending: null, kind: null, plan: [] };
 
 /** Her attention now: the plan's beat of the running segment (the prototype drew it). */
 function attentionNow(): string {
@@ -1145,6 +1154,7 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S.style = lead.key in STYLES ? lead.key : ROW_BY_CUES[lead.cues] ?? 'neutral';
   R.lineStyle = lead.key;
+  R.manner = physicsMannerOf(state, run.holderId, reg);
   R.run = run;
   R.seg = null; R.running = false; R.held = 0; R.blownBeat = 0; R.via = 'key'; R.mouthVia = 'key'; R.pending = null; R.plan = [];
   BEAT = TUNING.physics.beatMs;

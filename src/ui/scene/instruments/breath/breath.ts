@@ -30,7 +30,8 @@ import { fnv1a } from '../../../../engine/hub';
 import { occlusionOf } from '../../../../engine/physics/occlusion';
 import { effectiveOpenings, overDelayOf } from '../../../../engine/physics/segment';
 import type { PhysicsRun, SegmentInput } from '../../../../engine/physics/state';
-import { effectiveHoldsUntil, leadStyle, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
+import { effectiveHoldsUntil, leadStyle, physicsMannerOf, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
+import { bendRow, type RowAxes, type RowKinds } from '../kit/bendRow';
 import type { CampaignState } from '../../../../engine/state/types';
 import { TUNING } from '../../../../engine/tuning';
 import { analyzeNative } from '../../../analyze/mark';
@@ -116,6 +117,11 @@ export const STYLES: Record<string, StyleRow> = {
   cruel:        { windowMs: 250, falseShare: 0,    seal: 'tight', count: 230, jitter: 25, snappy: true, cue: 'none', overDelay: 2 },
   possessive:   { windowMs: 450, falseShare: 0,    seal: 'tight', count: 480, jitter: 60, cue: 'honest', overDelay: 1 },
 };
+/**
+ * P15b: what each bent field of a `STYLES` row is (`bendRow`): the beat of her count is a time, its jitter her unsteadiness, a tease her feint. The fields the
+ * engine owns (`windowMs`, `falseShare`, `seal`, `overDelay`: the plan's, the run's) and the ones with no natural axis (`cue`, `snappy`, `again`) are not bent.
+ */
+export const STYLE_KINDS: RowKinds<StyleRow> = { count: 'time', jitter: 'jitter', tease: 'feint' };
 /** The prototype's row for a style it has no row of: by how she gives her cues (`TUNING.physics.style[].cues`). */
 const ROW_BY_CUES: Record<string, string> = { honest: 'neutral', count: 'ritual', false: 'playful', none: 'cruel' };
 
@@ -136,6 +142,8 @@ interface Wiring {
   widthMs: number;
   lines: Lines;
   seg: { n: number; startedAt: number; clock0: number; beats: number; endMs: number; flushed: boolean } | null;
+  /** P15b: her manner axes (null: none, so her row is the prototype's). */
+  manner: RowAxes | null;
   running: boolean;
   strain: { beat: number; amount: number; sent: boolean } | null;
   via: 'mouse' | 'key';
@@ -144,8 +152,8 @@ interface Wiring {
 }
 type Lines = Record<string, string[]>;
 const NO_LINES: Lines = { now: [], fake: [], early: [], greedy: [], low: [], released: [], entry: [], hold: [], tap: [], good: [], poor: [], stop: [], wake: [], again: [] };
-const R: Wiring = { run: null, row: 'neutral', overDelay: 1, seal: 'tight', widthMs: 600, lines: NO_LINES, seg: null, running: false, strain: null, via: 'key', spriteBox: null, leaky: false };
-const st = () => ({ ...STYLES[R.row]!, seal: R.seal as string, windowMs: R.widthMs, overDelay: R.overDelay });
+const R: Wiring = { run: null, row: 'neutral', overDelay: 1, seal: 'tight', widthMs: 600, lines: NO_LINES, seg: null, manner: null, running: false, strain: null, via: 'key', spriteBox: null, leaky: false };
+const st = () => ({ ...bendRow(STYLES[R.row]!, R.manner, STYLE_KINDS), seal: R.seal as string, windowMs: R.widthMs, overDelay: R.overDelay });
 const L = () => R.lines;
 
 /* ---------- audio: everything synthesised ---------- */
@@ -900,6 +908,7 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   S.style = lead.key;
   R.row = lead.key in STYLES ? lead.key : ROW_BY_CUES[lead.cues] ?? 'neutral';
   R.overDelay = overDelayOf(lead.key);
+  R.manner = physicsMannerOf(state, run.holderId, reg);
   R.run = run;
   R.seal = run.seal ?? 'tight';
   R.leaky = run.seal === 'leaky';
@@ -1067,6 +1076,8 @@ export const _breath = {
   get G(): Glob { return G; },
   get R(): Wiring { return R; },
   get S(): typeof S { return S; },
+  /** Tests: her row as the instrument reads it (bent by her manner). */
+  st,
   forceO(o: number | null): void { window.__forceO = o; },
   windowOpenness, windowDone, openWindow, closeWindow, updateLoop, letters, say, begin, exit, blackout, wake, scheduleWindow, tap, fresh,
   setG(g: Glob): void { G = g; },

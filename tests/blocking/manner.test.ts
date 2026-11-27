@@ -265,3 +265,22 @@ describe('tempo and voice: the jaw\'s orders', () => {
     expect(asks(-2)).toBeLessThan(asks(0));
   });
 });
+
+describe('gulp\'s flow is laid from the bent row (Task 7: the engine\'s copy of the instrument\'s row)', () => {
+  const flows = (axes: Partial<Record<MannerAxis, number>> | null) => {
+    resetPhysicsHooks(); style({ primary: 'neutral' });
+    if (axes !== null) manner(axes);
+    const s = base();
+    return planSegment(s, reg, mk('gulp', { sourceId: 'x_watersports', gauge: 0, segment: { n: 0, state: 'running' } }), new Rng(seedRng(3))).beats.map((b) => b.flow);
+  };
+  it('at 0 the same flow; intensity +2 raises her level by the TUNING step, and a warmer holder pauses more', () => {
+    const off = flows(null);
+    expect(flows({})).toEqual(off);
+    const hard = flows({ intensity: 2 });
+    let checked = 0;
+    off.forEach((f, i) => { if (f !== undefined && !f.pause && !f.surge) { checked++; expect(hard[i]!.level).toBeCloseTo(f.level * (1 + 2 * M.scale), 3); } });
+    expect(checked).toBeGreaterThan(5);
+    const pauses = (a: ReturnType<typeof flows>) => a.filter((f) => f?.pause).length;
+    expect(pauses(flows({ warmth: 2 }))).toBeGreaterThanOrEqual(pauses(off));
+  });
+});

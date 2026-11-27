@@ -340,6 +340,11 @@
       "fn": "startClean",
       "reason": "Wiring (e11 review M8): the engine's floor segment (`tongue_work`, 40 s) started at the chain, 2.5 s before the puddle shows (her done and clean lines); the instrument starts its clock again as the cleaning begins (`staging.restart`), so the engine's check comes at the prototype's 40 s of cleaning (or at 10 % left, when the instrument ends the segment).",
       "diff": "@@ -19,2 +19,3 @@\n $(\"#reply\").innerHTML=\"<span class=\\\"act\\\">Down to the floor, where it spilled.</span>\"\n+E?.env.staging.restart?.()\n }"
+    },
+    {
+      "fn": "ST",
+      "reason": "P15b (bendRow): the style row is bent by her manner (`GULP_KINDS`: `base` and `surge` by intensity, `vary` by order, `pause` by warmth, `surgeEvery` and `warn` by tempo, `feint` by order); the plan lays the same bent row (`gulpRowOf`); at 0 it is the same row.",
+      "diff": "@@ -1 +1 @@\n-const ST=()=>STYLES[S.style]\n+const ST=()=>bendRow(STYLES[S.style],R.manner,GULP_KINDS)"
     }
   ]
 }

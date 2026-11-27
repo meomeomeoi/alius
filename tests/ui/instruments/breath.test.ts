@@ -11,14 +11,14 @@ import type { Registries } from '../../../src/content/types';
 import { ceilingOf } from '../../../src/engine/backdrops';
 import { COMMANDER, registerFrameReader, resetBlockingHooks, setBlocking } from '../../../src/engine/blocking';
 import type { Action } from '../../../src/engine/dispatch';
-import { registerHoldsUntil, registerPhysicsStyle, resetPhysicsHooks } from '../../../src/engine/physics/style';
+import { registerHoldsUntil, registerPhysicsManner, registerPhysicsStyle, resetPhysicsHooks } from '../../../src/engine/physics/style';
 import type { PhysicsRun, SegmentInput, SegmentPlan } from '../../../src/engine/physics/state';
 import type { CampaignState } from '../../../src/engine/state/types';
 import type { SceneController } from '../../../src/scene/sceneController';
 import { DEFAULT_SETTINGS, type AliusSettings } from '../../../src/settings';
 import { FakeStAdapter } from '../../../src/st/fake';
 import { h } from '../../../src/ui/dom';
-import { _breath, breathMatches } from '../../../src/ui/scene/instruments/breath/breath';
+import { STYLES, _breath, breathMatches } from '../../../src/ui/scene/instruments/breath/breath';
 import { instrumentFor } from '../../../src/ui/scene/instruments/host';
 import type { PhysicsPanelStaging } from '../../../src/ui/scene/physicsPanel';
 import { renderSceneScreen } from '../../../src/ui/scene/sceneScreen';
@@ -597,5 +597,26 @@ describe('ruling O: the typing lapse', () => {
     expect((end.payload as { inputs: SegmentInput[] }).inputs).toEqual([
       { beat: 2, kind: 'breathe', amount: 0.5 }, { beat: 3, kind: 'strain', amount: 1 }, { beat: 4, kind: 'breathe' },
     ]);
+  });
+});
+
+describe('the breath instrument reads her manner (P15b, bendRow)', () => {
+  const ZERO = { intensity: 0, warmth: 0, order: 0, voice: 0, tempo: 0, curiosity: 0 };
+  it('a holder without a manner reads the prototype\'s row itself; one with a manner reads it bent, once, by her tempo and order', () => {
+    draw(hold());
+    expect(_breath.R.manner).toBeNull();
+    const plain = _breath.st();
+    expect(plain.count).toBe(STYLES[_breath.R.row]!.count);
+    expect(plain.jitter).toBe(STYLES[_breath.R.row]!.jitter);
+    document.body.innerHTML = '';
+    resetSceneStage();
+    registerPhysicsManner(() => ({ ...ZERO, tempo: 2, order: -2 }));
+    draw(hold());
+    expect(_breath.R.manner).toMatchObject({ tempo: 2, order: -2 });
+    const row = STYLES[_breath.R.row]!;
+    expect(_breath.st().count).toBeCloseTo(row.count * 0.7, 5);
+    expect(_breath.st().jitter).toBeCloseTo(row.jitter * 1.3, 5);
+    expect(_breath.st().windowMs).toBe(_breath.R.widthMs); // the plan's opening is the engine's: not bent twice
+    expect(_breath.st().seal).toBe(_breath.R.seal);
   });
 });

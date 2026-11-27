@@ -811,6 +811,20 @@ export const TUNING = Object.freeze({
     counted: 0.25,
     /** Chunk m3: the shortest segment a `tempo` step may make, in beats. */
     minBeats: 2,
+    /**
+     * Chunk m3 (planning ruling 1): how `bendRow` bends a style row's fields, by the field's kind. `axis`: the axis that moves it. `scale`: the factor
+     * per step of the kinds that scale (the direction convention of chunk m2: `tempo` + = quicker = shorter, so the time-like kinds scale down with it;
+     * `order` + = steadier = less jitter and fewer feints; `intensity` + = larger; `warmth` + = more patience). `feintCap`: a feint is a share. `restsPerStep`:
+     * whole rests a `warmth` step adds (`trunc`, so ±2 moves it by one). `gap`: the factor on a spacing between her lines (`linegap`) by `voice`; the lines
+     * themselves (`lines`) follow `voiceLines`.
+     */
+    instrument: Object.freeze({
+      axis: Object.freeze({ time: 'tempo', lead: 'tempo', jitter: 'order', feint: 'order', magnitude: 'intensity', patience: 'warmth', rests: 'warmth', lines: 'voice', linegap: 'voice' } as const),
+      scale: Object.freeze({ time: -0.15, lead: -0.15, jitter: -0.15, feint: -0.15, magnitude: 0.15, patience: 0.15 }),
+      feintCap: 1,
+      restsPerStep: 0.5,
+      gap: Object.freeze({ '-2': 3, '-1': 2, '0': 1, '1': 2 / 3, '2': 0.5 } as Readonly<Record<string, number>>),
+    }),
     favour: Object.freeze({ main: 1, second: 0.5 }),
     fresh: Object.freeze({ '-2': 0, '-1': 0, '0': 0, '1': 0.2, '2': 0.4 } as Readonly<Record<string, number>>),
     drift: Object.freeze({ days: 28 }),

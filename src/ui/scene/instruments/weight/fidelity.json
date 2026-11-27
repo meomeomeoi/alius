@@ -316,6 +316,11 @@
       "fn": "updateLoop",
       "reason": "Wiring: the beats are the running segment's (on the loop's clock from `clock0`), each beat's attention is the plan's (`planBeat` for the prototype's `beatTail`), her pressure at rest is the engine's (`run.pressure`), the uneven factor is accumulated for the beat's report (R16). Prototype only: the ends (a buckle, her release at 15 %, the length) are the engine's outcome (`finish`); the strength stops at 0. After the segment's flush (its last 300 ms) no slip is shown: the engine is no longer told of it. Ruling W: while her weight is off the commander nothing drains (the prototype frame's wUpdate); at her limit her frame may rest the commander (THRONE.limit: wLimit) and at 0 the commander buckles (THRONE.buckle: wBuckle).",
       "diff": "@@ -2,9 +2,13 @@\n G.clock+=dt\n-const beatNow=Math.floor(G.clock/BEAT)\n+const beatNow=Math.floor((G.clock-R.seg.clock0)/BEAT)\n while(G.beat<beatNow){\n onBeat()\n-beatTail()\n+planBeat()\n }\n-if(!HOLD.on&&!G.slipThisBeat&&G.clock>BEAT)slip()\n-if(G.pressureUntil<G.clock)G.pressure=1\n+if(G.resting){\n+G.str=Math.min(100,G.str+dt*0.004)\n+return\n+}\n+if(!HOLD.on&&!G.slipThisBeat&&G.clock>BEAT&&!R.seg.flushed)slip()\n+if(G.pressureUntil<G.clock)G.pressure=R.pressure\n const c=C()\n@@ -13,2 +17,4 @@\n G.str-=(W_DRAIN/BEAT)*dt*S.drain*c.weight*G.pressure*unevenMult\n+R.uneven.sum+=(unevenMult-1)*dt\n+R.uneven.ms+=dt\n if(G.shift&&!G.shift.landed&&G.clock>=G.shift.landAt)landShift()\n@@ -33,12 +39,7 @@\n }\n+if(G.str<=(S.style===\"cruel\"?5:15))THRONE.limit()\n if(G.str<=0){\n G.str=0\n-exit(\"fall\")\n-return\n-}\n-if(G.str<=(S.style===\"cruel\"?5:15)&&!S.toFall){\n-exit(\"released\")\n-return\n+THRONE.buckle()\n }\n-if(G.clock>=G.end)exit(\"done\")\n }"
+    },
+    {
+      "fn": "ST",
+      "reason": "P15b (bendRow): the style row is bent by her manner (`tele` by tempo, `feint` by order, `mag` by intensity); at 0 it is the same row.",
+      "diff": "@@ -1 +1 @@\n-const ST=()=>STYLES[S.style]\n+const ST=()=>bendRow(STYLES[S.style],R.manner,STYLE_KINDS)"
     }
   ]
 }

@@ -33,7 +33,9 @@ import { ceilingOf, floorOf } from '../../../../engine/backdrops';
 import { fnv1a } from '../../../../engine/hub';
 import { isGulpPhysics } from '../../../../engine/physics/gulp';
 import type { PhysicsRun, PlannedBeat, SegmentInput } from '../../../../engine/physics/state';
-import { effectiveHoldsUntil, leadStyle, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
+import { effectiveHoldsUntil, leadStyle, physicsMannerOf, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
+import { GULP_KINDS } from '../../../../engine/physics/gulp';
+import { bendRow, type RowAxes } from '../kit/bendRow';
 import type { CampaignState } from '../../../../engine/state/types';
 import { GULP_STYLES, TUNING } from '../../../../engine/tuning';
 import { explicitArtAllowed } from '../../art';
@@ -123,7 +125,7 @@ export const TASTE = ['Warm, and salt.', 'Bitter at the back of the tongue.', 'W
 
 /* ---------- settings ---------- */
 const S: Any = { streamS: 'mug', swallowS: 'swallows', style: 'neutral', explicit: false, overH: 1.04, overX: 0.5, overSink: 0, len: Infinity, flowK: 1, sound: true, vol: 0.7, debug: false, reduced: false };
-const ST = () => STYLES[S.style];
+const ST = () => bendRow(STYLES[S.style], R.manner, GULP_KINDS);
 const L = () => LINES[S.style];
 
 /* ---------- audio ---------- */
@@ -525,6 +527,8 @@ interface Seg { n: number; startedAt: number; clock0: number; beats: number; end
 interface Wiring {
   run: PhysicsRun | null;
   lineStyle: string;
+  /** P15b: her manner axes (null: none, so her row is the prototype's). */
+  manner: RowAxes | null;
   seg: Seg | null;
   running: boolean;
   plan: PlannedBeat[];
@@ -544,7 +548,7 @@ interface Wiring {
   ox: number; oy: number;
   ended: string | null;
 }
-const R: Wiring = { run: null, lineStyle: 'neutral', seg: null, running: false, plan: [], chained: false, took: 0, spilledAt: 0, coughsAt: 0, overflowsAt: 0, puddleLow: null, floor0: 0, surgeAt: '', ox: 0, oy: 0, ended: null };
+const R: Wiring = { run: null, lineStyle: 'neutral', manner: null, seg: null, running: false, plan: [], chained: false, took: 0, spilledAt: 0, coughsAt: 0, overflowsAt: 0, puddleLow: null, floor0: 0, surgeAt: '', ox: 0, oy: 0, ended: null };
 const BEAT = (): number => TUNING.physics.beatMs;
 
 /** The beat of the running segment at the loop's clock. */
@@ -730,6 +734,7 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S.style = lead.key in STYLES ? lead.key : 'neutral'; // gulp.html's row (a style it lacks reads neutral's)
   R.lineStyle = lead.key;
+  R.manner = physicsMannerOf(state, run.holderId, reg);
   R.run = run;
   R.seg = null; R.running = false; R.plan = []; R.chained = false; R.took = 0; R.spilledAt = 0; R.coughsAt = 0; R.overflowsAt = 0; R.puddleLow = null; R.floor0 = 0; R.surgeAt = ''; R.ended = null;
   bindArt(env, run);
@@ -882,6 +887,7 @@ registerInstrument({ id: 'gulp', matches: gulpMatches, start: startGulp_ });
 
 /** Tests and the shots only: the prototype's state and hooks (its `window.__S`, `__G`, `__begin`, `__gulp`, `__breathe`, `__tap`). */
 export const _gulp = {
+  ST,
   get G(): Any { return G; },
   get S(): Any { return S; },
   get R(): Wiring { return R; },

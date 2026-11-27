@@ -11,12 +11,13 @@
  * Nothing here draws: `shuffleBy` is the prototype's LCG on a hash.
  */
 import type { Registries } from '../../content/types';
+import { bend } from '../bend';
 import { expectationsOf } from '../dynamic/expectations';
 import { fnv1a } from '../hub';
 import type { Verdict } from '../practice/state';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
-import { leadStyle, physicsStyleOf } from './style';
+import { leadStyle, physicsMannerOf, physicsStyleOf } from './style';
 
 /** A deterministic shuffle (her_activity.html `shuffleBy`: the engine hashes, it does not draw). */
 export function shuffleBy<T>(list: readonly T[], seed: number): T[] { const a = list.slice(); let x = seed >>> 0 || 1; for (let i = a.length - 1; i > 0; i--) { x = (Math.imul(x, 1103515245) + 12345) >>> 0; const j = x % (i + 1); [a[i], a[j]] = [a[j]!, a[i]!]; } return a; }
@@ -92,7 +93,15 @@ export function servicePaceOf(state: CampaignState, reg: Registries, holderId: s
     const first = named.filter((z) => hashed.includes(z));
     return [act, [...first, ...hashed.filter((z) => !first.includes(z))]];
   })) as Record<FootAct, string[]>;
-  return { patience, kiss: [row.kiss[0]! * tilt.kiss, row.kiss[1]! * tilt.kiss], tempo: row.tempo * tilt.tempo, every: row.every, grain, order };
+  // P15b: her manner moves the pace after her style and her words have set it: her patience by `warmth`, the time of a kiss and the wait between bouts by `tempo`
+  // (+ = quicker = shorter), the circles a second of a rub by `tempo` (+ = more). With no manner, or at 0, every number is the one above.
+  const m = physicsMannerOf(state, holderId, reg);
+  const k = TUNING.manner.scale;
+  const tempo = m?.tempo ?? 0, warmth = m?.warmth ?? 0;
+  return {
+    patience: bend(patience, warmth, { scale: k }), kiss: [bend(row.kiss[0]! * tilt.kiss, tempo, { scale: -k }), bend(row.kiss[1]! * tilt.kiss, tempo, { scale: -k })],
+    tempo: bend(row.tempo * tilt.tempo, tempo, { scale: k }), every: bend(row.every, tempo, { scale: -k }), grain, order,
+  };
 }
 
 /** Her verdict on a session of foot service from its mean quality (0–1), by the prototype's threshold. */

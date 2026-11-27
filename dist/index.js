@@ -4,18 +4,6 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// src/engine/bend.ts
-function bend(base2, step, kind) {
-  if ("gate" in kind) {
-    if (step === 0 || kind.gate === 0) return 0;
-    return kind.gate > 0 ? step >= kind.gate ? 1 : 0 : step <= kind.gate ? 1 : 0;
-  }
-  if (step === 0) return base2;
-  if ("shift" in kind) return base2 + step * kind.shift;
-  const out = base2 * Math.max(0, 1 + step * kind.scale);
-  return kind.cap === void 0 ? out : Math.min(kind.cap, out);
-}
-
 // src/engine/tuning.ts
 var GULP_STYLES = Object.freeze({
   neutral: Object.freeze({ base: 0.2, vary: 0.25, pause: 0.25, surgeEvery: Object.freeze([7, 12]), surge: 1.6, warn: 700, tap: "slower", check: "clean" }),
@@ -1073,6 +1061,20 @@ var TUNING = Object.freeze({
     counted: 0.25,
     /** Chunk m3: the shortest segment a `tempo` step may make, in beats. */
     minBeats: 2,
+    /**
+     * Chunk m3 (planning ruling 1): how `bendRow` bends a style row's fields, by the field's kind. `axis`: the axis that moves it. `scale`: the factor
+     * per step of the kinds that scale (the direction convention of chunk m2: `tempo` + = quicker = shorter, so the time-like kinds scale down with it;
+     * `order` + = steadier = less jitter and fewer feints; `intensity` + = larger; `warmth` + = more patience). `feintCap`: a feint is a share. `restsPerStep`:
+     * whole rests a `warmth` step adds (`trunc`, so ±2 moves it by one). `gap`: the factor on a spacing between her lines (`linegap`) by `voice`; the lines
+     * themselves (`lines`) follow `voiceLines`.
+     */
+    instrument: Object.freeze({
+      axis: Object.freeze({ time: "tempo", lead: "tempo", jitter: "order", feint: "order", magnitude: "intensity", patience: "warmth", rests: "warmth", lines: "voice", linegap: "voice" }),
+      scale: Object.freeze({ time: -0.15, lead: -0.15, jitter: -0.15, feint: -0.15, magnitude: 0.15, patience: 0.15 }),
+      feintCap: 1,
+      restsPerStep: 0.5,
+      gap: Object.freeze({ "-2": 3, "-1": 2, "0": 1, "1": 2 / 3, "2": 0.5 })
+    }),
     favour: Object.freeze({ main: 1, second: 0.5 }),
     fresh: Object.freeze({ "-2": 0, "-1": 0, "0": 0, "1": 0.2, "2": 0.4 }),
     drift: Object.freeze({ days: 28 }),
@@ -1703,6 +1705,66 @@ var TUNING = Object.freeze({
     falseReport: Object.freeze({ days: 14, witness: 0.2, compromat: "AUTHOR TO WRITE: The commander reported a task as done that was not: {what}.", insight: Object.freeze({ low: 0.04, mid: 0.08, high: 0.16 }) })
   })
 });
+
+// src/engine/bend.ts
+function bend(base2, step, kind) {
+  if ("gate" in kind) {
+    if (step === 0 || kind.gate === 0) return 0;
+    return kind.gate > 0 ? step >= kind.gate ? 1 : 0 : step <= kind.gate ? 1 : 0;
+  }
+  if (step === 0) return base2;
+  if ("shift" in kind) return base2 + step * kind.shift;
+  const out = base2 * Math.max(0, 1 + step * kind.scale);
+  return kind.cap === void 0 ? out : Math.min(kind.cap, out);
+}
+var clampStep = (n) => String(Math.max(-2, Math.min(2, Math.trunc(n))));
+function bendField(value, kind, axes) {
+  const I = TUNING.manner.instrument;
+  const step = axes[I.axis[kind]] ?? 0;
+  if (step === 0) return value;
+  switch (kind) {
+    case "rests":
+      return Math.max(0, value + Math.trunc(step * I.restsPerStep));
+    case "lines":
+      return value * (TUNING.manner.voiceLines[clampStep(step)] ?? 1);
+    case "linegap":
+      return value * (I.gap[clampStep(step)] ?? 1);
+    case "feint":
+      return bend(value, step, { scale: I.scale.feint, cap: I.feintCap });
+    default:
+      return bend(value, step, { scale: I.scale[kind] });
+  }
+}
+var isNumbers = (v) => Array.isArray(v) && v.length > 0 && v.every((x) => typeof x === "number");
+var isPlain = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+function bendWith(row4, axes, kinds2) {
+  let out = null;
+  for (const key of Object.keys(kinds2)) {
+    const kind = kinds2[key];
+    const value = row4[key];
+    let next = value;
+    if (typeof kind === "string" && typeof value === "number") next = bendField(value, kind, axes);
+    else if (typeof kind === "string" && isNumbers(value)) {
+      const bent = value.map((v) => bendField(v, kind, axes));
+      next = bent.every((v, i) => v === value[i]) ? value : bent;
+    } else if (isPlain(kind) && isPlain(value)) next = bendWith(value, axes, kind);
+    if (next !== value) (out ??= { ...row4 })[key] = next;
+  }
+  return out ?? row4;
+}
+var memo = /* @__PURE__ */ new WeakMap();
+function bendRow(row4, axes, kinds2) {
+  if (axes === null || axes === void 0) return row4;
+  const key = `${axes.tempo}|${axes.order}|${axes.intensity}|${axes.warmth}|${axes.voice}`;
+  if (key === "0|0|0|0|0") return row4;
+  let byKinds = memo.get(row4);
+  if (byKinds === void 0) memo.set(row4, byKinds = /* @__PURE__ */ new WeakMap());
+  let byAxes = byKinds.get(kinds2);
+  if (byAxes === void 0) byKinds.set(kinds2, byAxes = /* @__PURE__ */ new Map());
+  let bent = byAxes.get(key);
+  if (bent === void 0) byAxes.set(key, bent = bendWith(row4, axes, kinds2));
+  return bent;
+}
 
 // src/engine/blocking/types.ts
 var LIVE_KINDS = [
@@ -39876,8 +39938,9 @@ var P2 = TUNING.physics;
 var GF = P2.gulpFlow;
 var isGulpPhysics = (p) => p?.interaction === "timing" && p.gauge?.kind === "fill";
 var isGulpRun = (run, reg) => isGulpPhysics(reg.contactPhysics.get(run.physicsId));
-function gulpRowOf(key) {
-  return GF.styles[key] ?? GF.styles.neutral;
+var GULP_KINDS = { base: "magnitude", vary: "jitter", pause: "patience", surgeEvery: "time", surge: "magnitude", warn: "lead", feint: "feint" };
+function gulpRowOf(key, axes) {
+  return bendRow(GF.styles[key] ?? GF.styles.neutral, axes, GULP_KINDS);
 }
 var flowBeats = () => Math.ceil(GF.volumeMs / P2.beatMs);
 var floorStart = (spilled) => Math.min(100, Math.max(0, Math.round(100 * spilled * 100) / 100));
@@ -40006,7 +40069,7 @@ function planSegment(state, reg, run, rng) {
     for (let i = 0; i < n; i++) if (beats[i].cue !== void 0 && rng.chance(drop2)) delete beats[i].cue;
   } else if (voice !== 0) voiceLines(beats, state, run, voice, realtime && lead.cues === "none");
   if (realtime && interactions.includes("gesture") && jawSourceOf(run, reg) !== null) planJaw(beats, state, run, jawRowOf(lead), tempo, voice);
-  if (realtime && isGulpPhysics(phys)) layFlow(beats, state, run, gulpRowOf(lead.key), n);
+  if (realtime && isGulpPhysics(phys)) layFlow(beats, state, run, gulpRowOf(lead.key, manner), n);
   return { beats };
 }
 var voiceFactor = (voice) => TUNING.manner.voiceLines[String(Math.max(-2, Math.min(2, Math.trunc(voice))))] ?? 1;
@@ -52777,7 +52840,8 @@ var STYLES2 = {
 var noLines = () => ({ entry: {}, teeth: [], deeper: [], out: [], suck: [], wide: [], correct: [], restOk: [], restNo: [], ask: [["", ""]], heard: [], lost: [], end: [], slack: [], stop: [] });
 var LINES2 = { neutral: noLines() };
 var S2 = { contact: "sole_to_mouth", style: "neutral", rate: 1, skill: 0, ring: 0.55, len: 75, sound: true, vol: 0.7, footH: 1.05, debug: false, reduced: false, readable: false };
-var st = () => STYLES2[S2.style];
+var STYLE_KINDS = { every: "time", deep: "magnitude", ask: "lines" };
+var st = () => bendRow(STYLES2[S2.style], R4.manner, STYLE_KINDS);
 var L = () => LINES2[S2.style];
 var C = () => CONTACTS[S2.contact];
 var A = { ctx: null, buf: {} };
@@ -53134,7 +53198,8 @@ function askRest() {
   G2.stats.restsAsked += 1;
   G2.restAsked = true;
   SFX.cloth(0.25, 1.2);
-  const granted = !REST_DENIED.includes(S2.style);
+  const warmth = R4.manner?.warmth ?? 0;
+  const granted = warmth >= 2 || warmth > -2 && !REST_DENIED.includes(S2.style);
   setTimeout2(() => {
     if (G2.phase !== "loop") return;
     if (granted) {
@@ -53373,6 +53438,7 @@ var typing = (t) => t && (/^(input|textarea|select)$/i.test(t.tagName) || t.isCo
 var R4 = {
   run: null,
   lineStyle: "neutral",
+  manner: null,
   seg: null,
   running: false,
   plan: [],
@@ -53707,6 +53773,7 @@ function bind(env, run) {
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S2.style = jawRowOf(lead);
   R4.lineStyle = lead.key;
+  R4.manner = physicsMannerOf(state, run.holderId, reg);
   R4.run = run;
   R4.seg = null;
   R4.running = false;
@@ -66492,6 +66559,7 @@ var STYLES3 = {
   cruel: { windowMs: 250, falseShare: 0, seal: "tight", count: 230, jitter: 25, snappy: true, cue: "none", overDelay: 2 },
   possessive: { windowMs: 450, falseShare: 0, seal: "tight", count: 480, jitter: 60, cue: "honest", overDelay: 1 }
 };
+var STYLE_KINDS2 = { count: "time", jitter: "jitter", tease: "feint" };
 var ROW_BY_CUES = { honest: "neutral", count: "ritual", false: "playful", none: "cruel" };
 var S4 = {
   cue: "style",
@@ -66515,8 +66583,8 @@ var S4 = {
   readable: false
 };
 var NO_LINES = { now: [], fake: [], early: [], greedy: [], low: [], released: [], entry: [], hold: [], tap: [], good: [], poor: [], stop: [], wake: [], again: [] };
-var R5 = { run: null, row: "neutral", overDelay: 1, seal: "tight", widthMs: 600, lines: NO_LINES, seg: null, running: false, strain: null, via: "key", spriteBox: null, leaky: false };
-var st2 = () => ({ ...STYLES3[R5.row], seal: R5.seal, windowMs: R5.widthMs, overDelay: R5.overDelay });
+var R5 = { run: null, row: "neutral", overDelay: 1, seal: "tight", widthMs: 600, lines: NO_LINES, seg: null, manner: null, running: false, strain: null, via: "key", spriteBox: null, leaky: false };
+var st2 = () => ({ ...bendRow(STYLES3[R5.row], R5.manner, STYLE_KINDS2), seal: R5.seal, windowMs: R5.widthMs, overDelay: R5.overDelay });
 var L2 = () => R5.lines;
 var A2 = { ctx: null };
 function audioInit2() {
@@ -67543,6 +67611,7 @@ function bind2(env, run) {
   S4.style = lead.key;
   R5.row = lead.key in STYLES3 ? lead.key : ROW_BY_CUES[lead.cues] ?? "neutral";
   R5.overDelay = overDelayOf(lead.key);
+  R5.manner = physicsMannerOf(state, run.holderId, reg);
   R5.run = run;
   R5.seal = run.seal ?? "tight";
   R5.leaky = run.seal === "leaky";
@@ -67867,6 +67936,7 @@ var STYLES4 = {
   // 24b (throne.html W_STYLES.regal, I5): a long, measured warning; moderate shifts
   regal: { tele: [900, 1200], feint: 0, heavy: 0.25, mag: [0.3, 0.6], watchBias: 0.1, note: "throne.html: a long, measured warning; moderate shifts" }
 };
+var STYLE_KINDS3 = { tele: "lead", feint: "feint", mag: "magnitude" };
 var ROW_BY_CUES2 = { honest: "neutral", count: "ritual", announce: "ritual", false: "playful", none: "cruel", shift: "clinical" };
 var S5 = {
   legs: "hang",
@@ -67896,6 +67966,7 @@ var R6 = {
   face: "down",
   legs: false,
   pressure: 1,
+  manner: null,
   lines: NO_LINES2,
   lineStyle: "neutral",
   seg: null,
@@ -67915,7 +67986,7 @@ var R6 = {
   overFit: null
 };
 var C2 = () => ({ face: R6.face, weight: 1, shift: 1 });
-var ST = () => STYLES4[S5.style];
+var ST = () => bendRow(STYLES4[S5.style], R6.manner, STYLE_KINDS3);
 var L3 = () => R6.lines;
 var A3 = { ctx: null };
 function audioInit3() {
@@ -68847,6 +68918,7 @@ function bind3(env, run) {
   R6.face = contactFaceOf(contact);
   R6.legs = R6.face === "down" && herLegsOf(contact) === "hang";
   R6.pressure = run.pressure ?? 1;
+  R6.manner = physicsMannerOf(state, run.holderId, reg);
   R6.seg = null;
   R6.running = false;
   R6.queue = [];
@@ -69442,7 +69514,8 @@ var S6 = {
   reduced: false,
   readable: false
 };
-var ST2 = () => STYLES5[S6.style];
+var STYLE_KINDS4 = { every: "time", askEvery: "linegap", moves: "feint" };
+var ST2 = () => bendRow(STYLES5[S6.style], R7.manner, STYLE_KINDS4);
 var noLines2 = () => ({
   entry: {},
   deeper: [],
@@ -70770,7 +70843,7 @@ var tint = {
   }
 };
 var typing4 = (t) => t && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable);
-var R7 = { run: null, lineStyle: "neutral", seg: null, running: false, held: 0, blownBeat: 0, via: "key", mouthVia: "key", pending: null, kind: null, plan: [] };
+var R7 = { run: null, lineStyle: "neutral", manner: null, seg: null, running: false, held: 0, blownBeat: 0, via: "key", mouthVia: "key", pending: null, kind: null, plan: [] };
 function attentionNow() {
   const seg = R7.seg;
   if (!seg) return "busy";
@@ -71032,6 +71105,7 @@ function bind4(env, run) {
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S6.style = lead.key in STYLES5 ? lead.key : ROW_BY_CUES3[lead.cues] ?? "neutral";
   R7.lineStyle = lead.key;
+  R7.manner = physicsMannerOf(state, run.holderId, reg);
   R7.run = run;
   R7.seg = null;
   R7.running = false;
@@ -71260,7 +71334,7 @@ function servicePaceOf(state, reg, holderId) {
   const patience = style === "cruel" ? row4.patience : Math.min(P4.patience[1], Math.max(P4.patience[0], row4.patience));
   const how = howOfFeet(state, reg, holderId);
   const tilt = /\bslow/.test(how) ? P4.slow : /\b(quick|fast|brisk)/.test(how) ? P4.quick : { kiss: 1, tempo: 1 };
-  const named5 = [...new Set([...how.matchAll(ZONE_WORD)].map((m) => m[1].startsWith("toe") ? "toes" : m[1]))];
+  const named5 = [...new Set([...how.matchAll(ZONE_WORD)].map((m2) => m2[1].startsWith("toe") ? "toes" : m2[1]))];
   const heel = how.indexOf("heel"), toe = how.search(/\btoe/);
   const grain = heel >= 0 && toe >= 0 ? heel < toe ? -1 : 1 : fnv1a3(`${holderId}|grain`) % 2 ? 1 : -1;
   const order = Object.fromEntries(Object.keys(ZONES_OF).map((act) => {
@@ -71268,7 +71342,17 @@ function servicePaceOf(state, reg, holderId) {
     const first2 = named5.filter((z2) => hashed.includes(z2));
     return [act, [...first2, ...hashed.filter((z2) => !first2.includes(z2))]];
   }));
-  return { patience, kiss: [row4.kiss[0] * tilt.kiss, row4.kiss[1] * tilt.kiss], tempo: row4.tempo * tilt.tempo, every: row4.every, grain, order };
+  const m = physicsMannerOf(state, holderId, reg);
+  const k = TUNING.manner.scale;
+  const tempo = m?.tempo ?? 0, warmth = m?.warmth ?? 0;
+  return {
+    patience: bend(patience, warmth, { scale: k }),
+    kiss: [bend(row4.kiss[0] * tilt.kiss, tempo, { scale: -k }), bend(row4.kiss[1] * tilt.kiss, tempo, { scale: -k })],
+    tempo: bend(row4.tempo * tilt.tempo, tempo, { scale: k }),
+    every: bend(row4.every, tempo, { scale: -k }),
+    grain,
+    order
+  };
 }
 function verdictOf(quality) {
   const V3 = TUNING.physics.footService.verdict;
@@ -71727,6 +71811,7 @@ function throneLegs(now) {
   wsctx.clearRect(0, 0, Wd, H);
   wsctx.drawImage(tOutC, 0, 0);
 }
+var TELE_KINDS = { tele: "lead" };
 var T_TELE = { neutral: [600, 900], affectionate: [900, 1200], ritual: [700, 800], playful: [450, 800], clinical: [200, 1100], cruel: [150, 350], possessive: [450, 700], cold: [500, 700], regal: [900, 1200] };
 function wCueShift(dir, mag, tele) {
   if (!W || W.over || W.resting) return;
@@ -71740,7 +71825,7 @@ function wCueShift(dir, mag, tele) {
 function throneBody(kind, e) {
   if (!throneOn() || !S7.bodyFollows || G6.phase !== "loop" || G6.risen) return;
   if (G6.cup && (kind === "laugh" || kind === "rise")) return;
-  const tele = rand4(...T_TELE[S7.style] ?? T_TELE.neutral) * (G6.cup ? 1.4 : 1);
+  const tele = rand4(...bendRow({ tele: T_TELE[S7.style] ?? T_TELE.neutral }, S7.manner, TELE_KINDS).tele) * (G6.cup ? 1.4 : 1);
   const side = fnv(`${S7.seed}:${e?.text ?? kind}:${G6.phaseIdx}`) % 2 ? 1 : -1;
   G6.stats.bodyCues = (G6.stats.bodyCues ?? 0) + 1;
   switch (kind) {
@@ -73429,6 +73514,7 @@ var W2 = new Proxy({}, { get: (_t, k) => weightCore.G[k], set: (_t, k, v) => {
 var W_SFX2 = new Proxy({}, { get: (_t, k) => weightCore.SFX()[k] });
 var crack3 = (k) => weightCore.crack(k);
 var W_RESTS = { affectionate: 2, cruel: 0 };
+var REST_KINDS = { rests: "rests" };
 var W_L = () => new Proxy({}, { get: (_t, k) => [...voiceLines2(E5.env.registries, `activity.${k}`, S9.style)] });
 var wSay = (lines3) => {
   if ((G8.step === "with" || G8.step === "glancing") && lines3.length) say8(pick8(lines3), "commander");
@@ -73452,7 +73538,7 @@ function wLimit() {
   if (W2.resting) return;
   if (G8.step === "use") return;
   if (W2.beat - (W2.lastSlipBeat ?? -99) <= 3) return;
-  if ((W2.restsPhase ?? 0) >= (W_RESTS[S9.style] ?? 1)) return;
+  if ((W2.restsPhase ?? 0) >= bendRow({ rests: W_RESTS[S9.style] ?? 1 }, S9.manner, REST_KINDS).rests) return;
   W2.restsPhase = (W2.restsPhase ?? 0) + 1;
   W2.resting = true;
   W2.rests = (W2.rests ?? 0) + 1;
@@ -74790,6 +74876,7 @@ function bind5(env, run) {
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S9.style = lead.key;
   R8.lineStyle = lead.key;
+  S9.manner = physicsMannerOf(state, run.holderId, reg);
   const v = viewOf(state, reg, run);
   S9.view = v.view === "footrest" ? "legs" : v.view;
   S9.inner = v.view === "footrest" ? "weight" : serviceMatches(state, reg, run, v.view) ? "service" : "stillness";
@@ -76544,7 +76631,8 @@ var S11 = {
   fit: { boots_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, boots_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 }, heels_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, heels_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 } },
   zones: {}
 };
-var ST4 = () => STYLES[S11.style] ?? STYLES.neutral;
+var SHOE_KINDS = { surface: "time", moves: { press: "magnitude", stamp: "magnitude", kiss: "patience" } };
+var ST4 = () => bendRow(STYLES[S11.style] ?? STYLES.neutral, R9.manner, SHOE_KINDS);
 var L4 = () => LINES5[S11.style] ?? LINES5.neutral;
 var D3 = () => DIRTS[S11.dirt];
 var K = () => KINDS2[S11.kind];
@@ -77504,7 +77592,7 @@ var markUp = () => {
 };
 var ASSETS = { her: "" };
 var SPRITE = { naturalWidth: 0, naturalHeight: 0 };
-var R9 = { run: null, lineStyle: "neutral", seg: null, running: false, plan: [], sums: {}, qualities: [], checks: 0, verdictSent: false, ox: 0, oy: 0, lastNow: 0, ended: null };
+var R9 = { run: null, lineStyle: "neutral", manner: null, seg: null, running: false, plan: [], sums: {}, qualities: [], checks: 0, verdictSent: false, ox: 0, oy: 0, lastNow: 0, ended: null };
 var broken = /* @__PURE__ */ new Set();
 onStageReset(() => broken.clear());
 function planAttention() {
@@ -77660,6 +77748,7 @@ function bind7(env, run, art2) {
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S11.style = lead.key;
   R9.lineStyle = lead.key;
+  R9.manner = physicsMannerOf(state, run.holderId, reg);
   R9.run = run;
   R9.seg = null;
   R9.running = false;
@@ -77913,7 +78002,7 @@ var LINE_KINDS2 = ["entry", "surge", "tapped", "spill", "cough", "done", "clean"
 var LINES6 = { neutral: {} };
 var TASTE = ["Warm, and salt.", "Bitter at the back of the tongue.", "Warmer than expected.", "Sharp; it catches in the throat."];
 var S12 = { streamS: "mug", swallowS: "swallows", style: "neutral", explicit: false, overH: 1.04, overX: 0.5, overSink: 0, len: Infinity, flowK: 1, sound: true, vol: 0.7, debug: false, reduced: false };
-var ST5 = () => STYLES6[S12.style];
+var ST5 = () => bendRow(STYLES6[S12.style], R10.manner, GULP_KINDS);
 var L5 = () => LINES6[S12.style];
 var A9 = { ctx: null, buf: {} };
 var SAMPLE_URLS5 = {
@@ -78607,7 +78696,7 @@ function lick(e) {
   g.x = e.clientX;
   g.y = e.clientY;
 }
-var R10 = { run: null, lineStyle: "neutral", seg: null, running: false, plan: [], chained: false, took: 0, spilledAt: 0, coughsAt: 0, overflowsAt: 0, puddleLow: null, floor0: 0, surgeAt: "", ox: 0, oy: 0, ended: null };
+var R10 = { run: null, lineStyle: "neutral", manner: null, seg: null, running: false, plan: [], chained: false, took: 0, spilledAt: 0, coughsAt: 0, overflowsAt: 0, puddleLow: null, floor0: 0, surgeAt: "", ox: 0, oy: 0, ended: null };
 var BEAT5 = () => TUNING.physics.beatMs;
 function beatNow4() {
   const seg = R10.seg;
@@ -78797,6 +78886,7 @@ function bind8(env, run) {
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S12.style = lead.key in STYLES6 ? lead.key : "neutral";
   R10.lineStyle = lead.key;
+  R10.manner = physicsMannerOf(state, run.holderId, reg);
   R10.run = run;
   R10.seg = null;
   R10.running = false;
@@ -91561,13 +91651,13 @@ registerChecks("ceremonySteps", (entry, regs) => known2(regs, "blockingPostures"
 
 // src/content/loader.ts
 var UNSAFE_KEYS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);
-var isPlain = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isPlain2 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function deepMerge(base2, over2) {
   const out = { ...base2 };
   for (const [k, v] of Object.entries(over2)) {
     if (UNSAFE_KEYS.has(k)) continue;
     const cur = out[k];
-    out[k] = isPlain(cur) && isPlain(v) ? deepMerge(cur, v) : structuredClone(v);
+    out[k] = isPlain2(cur) && isPlain2(v) ? deepMerge(cur, v) : structuredClone(v);
   }
   return out;
 }

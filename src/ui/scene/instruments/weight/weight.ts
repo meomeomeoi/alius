@@ -38,7 +38,8 @@ import { fnv1a } from '../../../../engine/hub';
 import { contactFaceOf, herLegsOf } from '../../../../engine/physics/occlusion';
 import type { PhysicsRun, SegmentInput } from '../../../../engine/physics/state';
 import { resolveEnvOf, resolveSegment } from '../../../../engine/physics/segment';
-import { effectiveHoldsUntil, leadStyle, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
+import { effectiveHoldsUntil, leadStyle, physicsMannerOf, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
+import { bendRow, type RowAxes, type RowKinds } from '../kit/bendRow';
 import type { CampaignState } from '../../../../engine/state/types';
 import { TUNING } from '../../../../engine/tuning';
 import { LONG_HOLD, sceneSettingsOf } from '../../../../engine/moments/settings';
@@ -123,6 +124,11 @@ export const STYLES: Record<string, StyleRow> = {
   // 24b (throne.html W_STYLES.regal, I5): a long, measured warning; moderate shifts
   regal:        { tele: [900, 1200], feint: 0,   heavy: 0.25, mag: [0.3, 0.6],  watchBias: 0.1,  note: 'throne.html: a long, measured warning; moderate shifts' },
 };
+/**
+ * P15b: what each bent field of a `STYLES` row is (`bendRow`): the telegraph's lead is a lead, a feint her feint, the size of a shift a magnitude. `heavy`,
+ * `watchBias` and `even` are the engine's (the run's pressure, the plan's attention and shift beats) and `announce` has no axis: they are not bent.
+ */
+export const STYLE_KINDS: RowKinds<StyleRow> = { tele: 'lead', feint: 'feint', mag: 'magnitude' };
 /** The prototype's row for a style it has no row of: by how she gives her cues (`TUNING.physics.style[].cues`). */
 const ROW_BY_CUES: Record<string, string> = { honest: 'neutral', count: 'ritual', announce: 'ritual', false: 'playful', none: 'cruel', shift: 'clinical' };
 
@@ -139,6 +145,8 @@ interface Wiring {
   legs: boolean;
   /** Her pressure from the engine (`run.pressure`, 1 when none). */
   pressure: number;
+  /** P15b: her manner axes (null: none, so her row is the prototype's). */
+  manner: RowAxes | null;
   lines: Lines;
   lineStyle: string;
   seg: { n: number; startedAt: number; clock0: number; beats: number; endMs: number; flushed: boolean } | null;
@@ -165,11 +173,11 @@ interface Wiring {
 }
 const NO_LINES: Lines = { entry: [], released: [], slip: [], caught: [], heavy: [], good: [], poor: [], fall: [], stop: [], longer: [], announce: [] };
 const R: Wiring = {
-  run: null, face: 'down', legs: false, pressure: 1, lines: NO_LINES, lineStyle: 'neutral', seg: null, running: false, queue: [], sent: new Set(), inputs: [], tapped: false, taps: 0, uneven: { sum: 0, ms: 0 },
+  run: null, face: 'down', legs: false, pressure: 1, manner: null, lines: NO_LINES, lineStyle: 'neutral', seg: null, running: false, queue: [], sent: new Set(), inputs: [], tapped: false, taps: 0, uneven: { sum: 0, ms: 0 },
   via: 'key', segSlips: 0, steady: null, synced: -1, vialLift: 0, spriteSrc: '', overFit: null,
 };
 const C = () => ({ face: R.face, weight: 1, shift: 1 });
-const ST = () => STYLES[S.style];
+const ST = () => bendRow(STYLES[S.style]!, R.manner, STYLE_KINDS);
 const L = () => R.lines;
 
 /* ---------- audio ---------- */
@@ -881,6 +889,7 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   R.face = contactFaceOf(contact);
   R.legs = R.face === 'down' && herLegsOf(contact) === 'hang';
   R.pressure = run.pressure ?? 1;
+  R.manner = physicsMannerOf(state, run.holderId, reg);
   R.seg = null; R.running = false; R.queue = []; R.sent = new Set(); R.uneven = { sum: 0, ms: 0 }; R.via = 'key'; R.segSlips = 0;
   R.taps = run.taps; R.tapped = false;
   R.synced = -1;
@@ -1153,7 +1162,7 @@ export const _weight = {
   get R(): Wiring { return R; },
   get S(): typeof S { return S; },
   get HOLD(): typeof HOLD { return HOLD; },
-  STYLES, fresh, say, crack, healCracks, planShift, landShift, slip, relief, begin, exit, updateLoop, letters, legPoints, LEG_FEET,
+  STYLES, ST, fresh, say, crack, healCracks, planShift, landShift, slip, relief, begin, exit, updateLoop, letters, legPoints, LEG_FEET,
   setG(g: Glob): void { G = g; },
   /** Tests: the seed of the module's `Math.random` (a xorshift, no rng draw). */
   seed(n: number): void { seed = n >>> 0 || 1; },

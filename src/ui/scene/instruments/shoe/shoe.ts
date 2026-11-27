@@ -27,10 +27,11 @@
  */
 import type { Registries } from '../../../../content/types';
 import { fnv1a } from '../../../../engine/hub';
-import { dirtOfDay, footwearOf, isShoeRun, STYLES } from '../../../../engine/physics/footwear';
+import { dirtOfDay, footwearOf, isShoeRun, STYLES, type ShoePace } from '../../../../engine/physics/footwear';
 import { verdictOf } from '../../../../engine/physics/service';
 import type { PhysicsRun, PlannedBeat, SegmentInput } from '../../../../engine/physics/state';
-import { leadStyle, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
+import { leadStyle, physicsMannerOf, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
+import { bendRow, type RowAxes, type RowKinds } from '../kit/bendRow';
 import type { CampaignState } from '../../../../engine/state/types';
 import { TUNING } from '../../../../engine/tuning';
 import type { ArtPicture } from '../../art';
@@ -148,7 +149,12 @@ const S: Any = { kind: 'boots', dirt: 'mud', style: 'neutral', busy: 'auto', sou
   feet: { boots_close: 'one', boots_sole: 'one', heels_close: 'one', heels_sole: 'one' },     // 'one' | 'two' per picture
   shown: { boots_close: 'right', boots_sole: 'right', heels_close: 'right', heels_sole: 'right' }, // with one foot: which of hers it is
   fit: { boots_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, boots_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 }, heels_close: { h: 0.68, y: 0.48, x: 0, fade: 0.25, xr: 0.38, xl: 0.62 }, heels_sole: { h: 0.78, y: 0.5, x: 0, fade: 0.2, xr: 0.38, xl: 0.62 } }, zones: {} };
-const ST = () => STYLES[S.style] ?? STYLES.neutral;
+/**
+ * P15b: what each bent field of a `STYLES` row is (`bendRow`): how long she gives a surface a time, her foot's press and stamp a magnitude, how often she
+ * wants a kiss her patience (the warmer, the more). How often she looks (`busy`) and her grain have no axis and are not bent.
+ */
+export const SHOE_KINDS: RowKinds<ShoePace> = { surface: 'time', moves: { press: 'magnitude', stamp: 'magnitude', kiss: 'patience' } };
+const ST = () => bendRow(STYLES[S.style] ?? STYLES.neutral!, R.manner, SHOE_KINDS);
 const L = () => LINES[S.style] ?? LINES.neutral;
 const D = () => DIRTS[S.dirt];
 const K = () => KINDS[S.kind];
@@ -651,6 +657,8 @@ interface Seg { n: number; startedAt: number; clock0: number; beats: number; end
 interface Wiring {
   run: PhysicsRun | null;
   lineStyle: string;
+  /** P15b: her manner axes (null: none, so her row is the prototype's). */
+  manner: RowAxes | null;
   seg: Seg | null;
   running: boolean;
   plan: PlannedBeat[];
@@ -664,7 +672,7 @@ interface Wiring {
   lastNow: number;
   ended: string | null;
 }
-const R: Wiring = { run: null, lineStyle: 'neutral', seg: null, running: false, plan: [], sums: {}, qualities: [], checks: 0, verdictSent: false, ox: 0, oy: 0, lastNow: 0, ended: null };
+const R: Wiring = { run: null, lineStyle: 'neutral', manner: null, seg: null, running: false, plan: [], sums: {}, qualities: [], checks: 0, verdictSent: false, ox: 0, oy: 0, lastNow: 0, ended: null };
 /** Pictures that failed to load (by url): the instrument is not drawn for them again (the card plays). Module memory, kept across mounts. */
 const broken = new Set<string>();
 onStageReset(() => broken.clear()); // e10 M5: a chat switch forgets them (a replaced file at the same url is tried again)
@@ -830,6 +838,7 @@ function bind(env: InstrumentEnv, run: PhysicsRun, art: { close: ArtPicture; sol
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S.style = lead.key;
   R.lineStyle = lead.key;
+  R.manner = physicsMannerOf(state, run.holderId, reg);
   R.run = run;
   R.seg = null; R.running = false; R.plan = []; R.sums = {}; R.qualities = []; R.checks = 0; R.verdictSent = false; R.ended = null;
   S.feet = { boots_close: 'one', boots_sole: 'one', heels_close: 'one', heels_sole: 'one' };
@@ -974,6 +983,7 @@ registerInstrument({ id: 'shoe', matches: shoeMatches, drawable: shoeDrawable, s
 
 /** Tests and the shots only: the prototype's state and hooks (its `window.__S`, `__G`, `__begin`, `__swallow`, `__spit`, `__inspect`). */
 export const _shoe = {
+  ST,
   get G(): Any { return G; },
   get S(): Any { return S; },
   get R(): Wiring { return R; },

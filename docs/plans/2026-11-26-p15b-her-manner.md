@@ -257,6 +257,7 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
 
   Also each instrument's `fidelity.json`: one declared difference per instrument, "the style row is bent by her manner (P15b, `bendRow`); at 0 it is the same row".
 - Test: `tests/ui/instruments/bendRow.test.ts`, the fidelity test.
+- Done as: the helper itself is `src/engine/bend.ts` (a leaf, so the physics layer bends its own copies of a row the same way: gulp's flow, `servicePaceOf`); `kit/bendRow.ts` re-exports it. A ninth kind, `linegap` (the spacing between her lines, longer when she says less), serves scent's `askEvery`; a plain object of numbers takes a table of its own (the shoe's `moves`); `T extends object` (the instruments' rows are interfaces). The slap's `SWING` is not bent again (m2 bent `practices.slap.windowMs` where the engine makes it). The service is bent in the engine's `servicePaceOf`, the frame and the throne at their `W_RESTS` / `T_TELE` lookups, the jaw's rest rule follows her warmth as the engine's does.
 
 **Interfaces:**
 - Produces: `bendRow<T extends Record<string, unknown>>(row: T, axes: Record<MannerAxis, number> | null, kinds: Partial<Record<keyof T, FieldKind>>): T`, where `FieldKind = 'time' | 'lead' | 'jitter' | 'feint' | 'magnitude' | 'patience' | 'rests' | 'lines'`.
@@ -266,15 +267,15 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
   - Numbers in `[lo, hi]` pairs bend both ends.
 - Each instrument reads `axes` through `env` (the scene's state and `mannerOf` via a UI reader, the same way it reads `physicsStyleOf`).
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `bendRow(row, null, …) === row`, and with zeros `=== row`;
   - `tempo` +2 scales a `time` field and a `[lo, hi]` pair;
   - per instrument: mounting it for a holder without `manner` reads the identical row (spy on the row reader);
   - the fidelity test passes with the declared differences and fails if a second change is made.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** Port nothing new: only wrap the row lookup.
-- [ ] **Step 4: Run** `tests/ui/instruments` → PASS; `npm run build`. Chunk end: full suite, typecheck, `npm run test:layout`.
-- [ ] **Step 5: Commit** `feat(P15b): the instruments read her manner`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** Port nothing new: only wrap the row lookup.
+- [x] **Step 4: Run** `tests/ui/instruments` → PASS; `npm run build`. Chunk end: full suite, typecheck, `npm run test:layout`.
+- [x] **Step 5: Commit** `feat(P15b): the instruments read her manner`
 
 ## Chunk m4: the two faces and her quirks
 

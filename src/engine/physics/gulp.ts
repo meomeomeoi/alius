@@ -6,6 +6,7 @@
  * one cut short. Gulp is read by field: a timing physics on a fill gauge. Nothing here draws.
  */
 import type { Entry, Registries } from '../../content/types';
+import { bendRow, type RowAxes, type RowKinds } from '../bend';
 import { fnv1a } from '../hub';
 import { sceneSettingsOf } from '../moments/settings';
 import type { CampaignState } from '../state/types';
@@ -20,9 +21,16 @@ export type Flow = NonNullable<PlannedBeat['flow']>;
 export const isGulpPhysics = (p: Entry | undefined): boolean => p?.interaction === 'timing' && (p.gauge as { kind?: string } | undefined)?.kind === 'fill';
 export const isGulpRun = (run: Pick<PhysicsRun, 'physicsId'>, reg: Registries): boolean => isGulpPhysics(reg.contactPhysics.get(run.physicsId));
 
-/** Her row of gulp.html's `STYLES` by her lead style; a style it has no row of reads neutral's (Ruling R's rule). */
-export function gulpRowOf(key: string): GulpRow {
-  return GF.styles[key] ?? GF.styles.neutral!;
+/**
+ * P15b: what each bent field of her row is (`bendRow`): her level and her surge a magnitude, her wander her jitter, her pauses her patience, the spacing of her
+ * surges a time, her warning a lead, a feint her feint. `tap` and `check` are words, `announce` has no axis: they are not bent. The plan lays the bent row and the
+ * instrument reads the same one, so her flow and her stream agree.
+ */
+export const GULP_KINDS: RowKinds<GulpRow> = { base: 'magnitude', vary: 'jitter', pause: 'patience', surgeEvery: 'time', surge: 'magnitude', warn: 'lead', feint: 'feint' };
+
+/** Her row of gulp.html's `STYLES` by her lead style; a style it has no row of reads neutral's (Ruling R's rule). With her manner (P15b) the row is bent by it: with none, or at 0, it is the table's own row. */
+export function gulpRowOf(key: string, axes?: RowAxes | null): GulpRow {
+  return bendRow(GF.styles[key] ?? GF.styles.neutral!, axes, GULP_KINDS);
 }
 
 /** How many beats her flow lasts (her volume, on the beat grid). */

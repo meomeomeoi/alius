@@ -243,8 +243,8 @@
     },
     {
       "fn": "st",
-      "reason": "Wiring: her style's row (the prototype's `STYLES`, a style it has no row for read by its `cues`), with the engine's seal (the run's), the plan's opening width and her delay after a noticed strain from the engine's own tuning (`overDelayOf`: review M1, so the instrument's queue and the engine's openings never disagree).",
-      "diff": "@@ -1 +1,3 @@\n-const st=()=>STYLES[S.style]\n+const st=()=>({\n+...STYLES[R.row],seal:R.seal,windowMs:R.widthMs,overDelay:R.overDelay\n+})"
+      "reason": "P15b (bendRow): the style row is bent by her manner (`count` by tempo, `jitter` and `tease` by order); at 0 it is the same row.",
+      "diff": "@@ -1 +1,3 @@\n-const st=()=>STYLES[S.style]\n+const st=()=>({\n+...bendRow(STYLES[R.row],R.manner,STYLE_KINDS),seal:R.seal,windowMs:R.widthMs,overDelay:R.overDelay\n+})"
     },
     {
       "fn": "L",

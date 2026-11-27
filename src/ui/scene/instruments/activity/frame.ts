@@ -34,7 +34,8 @@ import { frameOf, presenceOf, type Presence } from '../../../../engine/physics/p
 import { mentionText } from '../../../../engine/physics/mention';
 import { phaseSegments } from '../../../../engine/physics/marathon';
 import type { PhysicsRun } from '../../../../engine/physics/state';
-import { leadStyle, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
+import { leadStyle, physicsMannerOf, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
+import { bendRow, type RowKinds } from '../kit/bendRow';
 import { servicePaceOf } from '../../../../engine/physics/service';
 import type { CampaignState } from '../../../../engine/state/types';
 import type { ActivityFrame } from '../../../../engine/blocking/types';
@@ -396,6 +397,8 @@ const W: Any = new Proxy({}, { get: (_t, k) => (weightCore.G as Any)[k as string
 const W_SFX: Any = new Proxy({}, { get: (_t, k) => (weightCore.SFX() as Any)[k as string] });
 const crack = (k: number) => weightCore.crack(k);
 const W_RESTS: Record<string, number> = { affectionate: 2, cruel: 0 };
+/** P15b: what the bent field of her rests is (`bendRow`): the whole rests she gives, by her warmth (the throne bends her telegraph, `TELE_KINDS`). */
+export const REST_KINDS: RowKinds<{ rests: number }> = { rests: 'rests' };
 const W_L = (): Any => new Proxy({}, { get: (_t, k: string) => [...voiceLines(E!.env.registries, `activity.${k}` as VoiceKind, S.style)] });
 /* her lines in weight go through her presence: only `with` and `glancing` speak to the commander */
 const wSay = (lines: string[]) => { if ((G.step === 'with' || G.step === 'glancing') && lines.length) say(pick(lines), 'commander'); };
@@ -411,7 +414,7 @@ function wLimit() {
   if (W.resting) return;
   if (G.step === 'use') return;
   if (W.beat - (W.lastSlipBeat ?? -99) <= 3) return; // she rests only a commander who was bearing her
-  if ((W.restsPhase ?? 0) >= (W_RESTS[S.style] ?? 1)) return;
+  if ((W.restsPhase ?? 0) >= bendRow({ rests: W_RESTS[S.style] ?? 1 }, S.manner, REST_KINDS).rests) return;
   W.restsPhase = (W.restsPhase ?? 0) + 1;
   W.resting = true; W.rests = (W.rests ?? 0) + 1; W_SFX.rustle(0.12, 0); wSay(W_L().rest);
   const hcR = throneOn() && S.contact === 'human_chair';
@@ -1205,7 +1208,7 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   R.frame = frameOf(reg.blockingActivities.get(act)) ?? R.frame;
   S.act = act;
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
-  S.style = lead.key; R.lineStyle = lead.key;
+  S.style = lead.key; R.lineStyle = lead.key; S.manner = physicsMannerOf(state, run.holderId, reg);
   const v = viewOf(state, reg, run);
   S.view = v.view === 'footrest' ? 'legs' : v.view; S.inner = v.view === 'footrest' ? 'weight' : serviceMatches(state, reg, run, v.view) ? 'service' : 'stillness'; S.blind = v.blind;
   S.phases = run.marathon?.phases ?? 3;

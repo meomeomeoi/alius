@@ -148,7 +148,7 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
   // R22: her moves in the jaw, in real time only (the turn-based card is unchanged); by hash after every draw above, so no draw is added or moved
   if (realtime && interactions.includes('gesture') && jawSourceOf(run, reg) !== null) planJaw(beats, state, run, jawRowOf(lead), tempo, voice);
   // R32: her flow in gulp, in real time only (the turn-based card is unchanged); by hash after every draw above, so no draw is added or moved
-  if (realtime && isGulpPhysics(phys)) layFlow(beats, state, run, gulpRowOf(lead.key), n);
+  if (realtime && isGulpPhysics(phys)) layFlow(beats, state, run, gulpRowOf(lead.key, manner), n);
   return { beats };
 }
 
