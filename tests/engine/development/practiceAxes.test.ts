@@ -98,12 +98,12 @@ describe('a shift of the practice (P14b axes)', () => {
     expect(practiceOf(s, reg, ANN)!.categories.restraint.as).toBe('enjoys');
   });
 
-  it('the witness, the secondary style and the cap', () => {
+  it('the witness and the cap, and a retired secondary line', () => {
     const s = world({ 'practice:restraint.witness': -STEP, 'practice:style.secondary': STEP, 'practice:humiliation.as': -STEP });
     applyReview(s, reg, ANN, review(shift('practice:restraint.witness', 'down'), shift('practice:style.secondary'), shift('practice:humiliation.as', 'down')), 'model');
     const p = practiceOf(s, reg, ANN)!;
     expect(p.categories.restraint.witness).toBe('indifferent');
-    expect(p.style).toEqual({ primary: 'cold', secondary: 'regal' }); // the next style on the scale, the primary skipped
+    expect(p.style).toEqual({ primary: 'cold', secondary: 'playful' }); // the secondary's line drift is retired (P15b, ruling 11): the model naming it moves nothing
     expect(p.categories.humiliation.as).toBe('none');
     // past the cap (discreteCap steps from the import) the way is closed
     const cap = world({ 'practice:humiliation.as': STEP });

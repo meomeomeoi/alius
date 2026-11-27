@@ -109,6 +109,7 @@ export function validateReview(
     else if (s.direction !== 'up' && s.direction !== 'down') no('no direction');
     else if (s.size !== 'nudge' && s.size !== 'step') no('no size');
     else if (shifts.some((x) => x.axis === s.axis)) no('named twice');
+    else if (axisKind(s.axis) === 'practice' && dynamicAxis(s.axis)?.field === 'secondary') no('the secondary style no longer drifts by a line'); // P15b (spec §7, ruling 11): the turn of her style moves it
     else if (axisKind(s.axis) === 'manner') {
       // P15b: a manner step is the engine's own proposal (ruling 4): the model may word it, never invent one
       if (s.size !== 'step') no('a manner axis only steps');

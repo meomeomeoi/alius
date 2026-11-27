@@ -39954,6 +39954,7 @@ function validateReview(state, reg, unitId, v) {
     else if (s.direction !== "up" && s.direction !== "down") no("no direction");
     else if (s.size !== "nudge" && s.size !== "step") no("no size");
     else if (shifts.some((x) => x.axis === s.axis)) no("named twice");
+    else if (axisKind(s.axis) === "practice" && dynamicAxis(s.axis)?.field === "secondary") no("the secondary style no longer drifts by a line");
     else if (axisKind(s.axis) === "manner") {
       if (s.size !== "step") no("a manner axis only steps");
       else if (!mannerProposals(state, reg, unit5).some((p) => p.axis === s.axis && p.direction === s.direction)) no("the engine proposed no such step");

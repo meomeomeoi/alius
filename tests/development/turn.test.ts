@@ -234,6 +234,10 @@ describe('the turn of her style (spec §7)', () => {
     ensureDevelopment(unitOf(s)).acc = { 'practice:style.secondary': 9 };
     expect(eligibleAxes(s, reg, unitOf(s)).map((a) => a.axis)).not.toContain('practice:style.secondary');
     expect(fallbackReview(s, reg, ANN).shifts).toEqual([]);
+    // the model naming it anyway is refused too (spec §7, ruling 11)
+    const named = validateReview(s, reg, ANN, { shifts: [{ axis: 'practice:style.secondary', direction: 'up', size: 'step', reason: 'x' }], facts: [] });
+    expect(named.shifts).toEqual([]);
+    expect(named.dropped.map((d) => d.axis)).toEqual(['practice:style.secondary']);
     ensureDevelopment(unitOf(s)).practice = { secondary: 'regal' };
     expect(styleOf(unitOf(s))).toEqual({ primary: 'affectionate', secondary: 'regal' });
     expect(reg.developmentAxes.has('practice:style.secondary')).toBe(true);
