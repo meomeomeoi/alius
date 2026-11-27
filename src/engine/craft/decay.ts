@@ -23,21 +23,19 @@ export function stepDownXp(xp: number): number | null {
 const idle = (day: number, last: number, decayed: number | undefined): number => day - Math.max(last, decayed ?? 0);
 
 /**
- * The day-end decay. Runs when something of the craft is written or a holder is craft-live; with neither it returns `[]` before touching anything. A key of
+ * The day-end decay. Runs only while some holder is craft-live; otherwise it returns `[]` before touching anything. A key of
  * `Commander.endurance` that the craft book has not stamped yet (the commander trained before any holder was live) starts its clock today, so it is never
  * decayed for a use that was never counted. A level that falls says so (`craft_level` with `fell`); the pair's knowledge fades without an event.
  */
 export function decayCraft(draft: CampaignState, reg: Registries): EngineEvent[] {
+  if (!craftOn(draft, reg)) return []; // the decay is the craft's: with nobody craft-live the book sleeps (and its clock is kept by the stamp of every use)
   const pairs = Object.values(draft.relations).filter((r) => r.craft !== undefined);
-  if (draft.commander.craft === undefined && pairs.length === 0 && !craftOn(draft, reg)) return [];
   const events: EngineEvent[] = [];
   const day = draft.day;
   const D = TUNING.craft.decay;
-  if (craftOn(draft, reg)) {
-    for (const physics of Object.keys(draft.commander.endurance ?? {})) {
-      const book = (draft.commander.craft ??= {});
-      book[`endurance:${physics}`] ??= { xp: 0, level: 0, lastDay: day };
-    }
+  for (const physics of Object.keys(draft.commander.endurance ?? {})) {
+    const book = (draft.commander.craft ??= {});
+    book[`endurance:${physics}`] ??= { xp: 0, level: 0, lastDay: day };
   }
   for (const [key, row] of Object.entries(draft.commander.craft ?? {})) {
     if (idle(day, row.lastDay, row.decayedDay) <= D.days) continue;

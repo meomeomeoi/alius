@@ -27,10 +27,11 @@ import { TUNING } from '../tuning';
 
 /**
  * Every xp the physics layer gives (a held hold, a streak, a drill) is a use of that endurance: the decay's day is stamped, so a key used
- * within `decay.days` is never touched. Writes only while some holder is craft-live; draws nothing.
+ * within `decay.days` is never touched. Writes only while some holder is craft-live or the book already exists (an endurance trained every day with the craft off keeps its
+ * clock, so the craft's decay finds it fresh when a holder comes back); never a book for a campaign the craft never ran in; draws nothing.
  */
 registerAfterAction((draft, ctx, events) => {
-  if (!craftOn(draft, ctx.registries)) return [];
+  if (draft.commander.craft === undefined && !craftOn(draft, ctx.registries)) return [];
   for (const e of events) if (e.type === 'endurance_gained') touchCraft(draft, `endurance:${String((e as { physicsId?: unknown }).physicsId)}`);
   return [];
 });

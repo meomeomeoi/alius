@@ -3,6 +3,8 @@ import type { Registries } from '../../../src/content/types';
 import '../../../src/engine/actions/craft';
 import { addCraftXp, craftLevel } from '../../../src/engine/craft/book';
 import { decayCraft, stepDownXp } from '../../../src/engine/craft/decay';
+import { craftOn } from '../../../src/engine/craft/gate';
+import { dynamicOf } from '../../../src/engine/dynamic/state';
 import { commanderSkill } from '../../../src/engine/physics/skill';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { errors, loadCore, run } from '../../helpers/world';
@@ -142,5 +144,38 @@ describe('the day-end step and the stamp of a drill', () => {
     expect(errors(r.events)).toEqual([]);
     expect(r.state.commander.craft).toBeUndefined();
     expect(r.state.commander.endurance!.breath.xp).toBe(15);
+  });
+});
+
+describe('an endurance trained every day while the craft is off (the review: I2)', () => {
+  it('is stamped on every use, and the decay touches nothing while no holder is craft-live', () => {
+    let s = world(reg, 'play');
+    let r = run(s, reg, { type: 'activity/do', payload: { activityId: 'train', focus: 'endurance_weight' } });
+    expect(errors(r.events)).toEqual([]);
+    s = r.state;
+    expect(s.commander.craft!['endurance:weight'].lastDay).toBe(s.day);
+    dynamicOf(s, ANN)!.frame = 'equal'; // the craft is off from here
+    expect(craftOn(s, reg)).toBe(false);
+    for (let d = 1; d <= 30; d++) {
+      s.day += 1;
+      s.slot = 'morning';
+      r = run(s, reg, { type: 'activity/do', payload: { activityId: 'train', focus: 'endurance_weight' } });
+      expect(errors(r.events), `day ${s.day}`).toEqual([]);
+      s = r.state;
+      expect(s.commander.craft!['endurance:weight'].lastDay, `day ${s.day}`).toBe(s.day);
+      expect(decayCraft(s, reg), `day ${s.day}`).toEqual([]);
+    }
+    const xp = s.commander.endurance!.weight.xp;
+    expect(xp).toBeGreaterThan(30 * 10);
+  });
+
+  it('the decay is the craft\'s: with nobody craft-live an idle key stays as it is', () => {
+    const s = world(reg, 'play');
+    addCraftXp(s, reg, 'stillness', 160, 'test');
+    dynamicOf(s, ANN)!.frame = 'equal';
+    s.day += 100;
+    expect(decayCraft(s, reg)).toEqual([]);
+    expect(s.commander.craft!.stillness).toMatchObject({ xp: 160, level: 3 });
+    expect(s.commander.craft!.stillness.decayedDay).toBeUndefined();
   });
 });

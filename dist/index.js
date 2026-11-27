@@ -44048,16 +44048,14 @@ function stepDownXp(xp) {
 }
 var idle = (day, last5, decayed) => day - Math.max(last5, decayed ?? 0);
 function decayCraft(draft, reg) {
+  if (!craftOn(draft, reg)) return [];
   const pairs2 = Object.values(draft.relations).filter((r) => r.craft !== void 0);
-  if (draft.commander.craft === void 0 && pairs2.length === 0 && !craftOn(draft, reg)) return [];
   const events = [];
   const day = draft.day;
   const D6 = TUNING.craft.decay;
-  if (craftOn(draft, reg)) {
-    for (const physics of Object.keys(draft.commander.endurance ?? {})) {
-      const book2 = draft.commander.craft ??= {};
-      book2[`endurance:${physics}`] ??= { xp: 0, level: 0, lastDay: day };
-    }
+  for (const physics of Object.keys(draft.commander.endurance ?? {})) {
+    const book2 = draft.commander.craft ??= {};
+    book2[`endurance:${physics}`] ??= { xp: 0, level: 0, lastDay: day };
   }
   for (const [key, row4] of Object.entries(draft.commander.craft ?? {})) {
     if (idle(day, row4.lastDay, row4.decayedDay) <= D6.days) continue;
@@ -45243,7 +45241,7 @@ function preferred(state, reg, holderId, list5) {
 
 // src/engine/actions/craft.ts
 registerAfterAction((draft, ctx2, events) => {
-  if (!craftOn(draft, ctx2.registries)) return [];
+  if (draft.commander.craft === void 0 && !craftOn(draft, ctx2.registries)) return [];
   for (const e of events) if (e.type === "endurance_gained") touchCraft(draft, `endurance:${String(e.physicsId)}`);
   return [];
 });
