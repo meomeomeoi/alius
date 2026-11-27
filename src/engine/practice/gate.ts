@@ -44,6 +44,11 @@ export function ensurePractices(draft: CampaignState): PracticeState {
   return (draft.practices ??= blankPractices());
 }
 
+/** The id `nextPracticeId` will give next for this prefix, without taking it (the key a pick is hashed by before the card is written). */
+export function peekPracticeId(draft: Pick<CampaignState, 'practices'>, prefix: PracticeIdPrefix): string {
+  return `${prefix}${draft.practices?.seq ?? 0}`;
+}
+
 /** The next id of a kind: `<prefix><n>` from one counter shared by every prefix (`pq`, `pt`, `pp`, `pd`, `pa`, `ps`, `pc`, `ph`). */
 export function nextPracticeId(draft: CampaignState, prefix: PracticeIdPrefix): string {
   return `${prefix}${ensurePractices(draft).seq++}`;

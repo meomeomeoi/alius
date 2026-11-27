@@ -8,6 +8,7 @@ import type { Registries } from '../../content/types';
 import { contentAllowed } from '../bonds/content';
 import { wantBandOf, type WantBand } from '../bonds/want';
 import { capabilitiesOf } from '../dynamic/capabilities';
+import { drawnByWord, mannerOf, mannerWord, MANNER_AXES } from '../dynamic/manner';
 import { practiceOf } from '../dynamic/profile';
 import { dynamicOf } from '../dynamic/state';
 import { witnessOf } from '../dynamic/witness';
@@ -53,6 +54,10 @@ export interface PracticeGenerateInput {
   /** A punishment's entry and what it answers, as words (R5): the engine picked both; the model words it. */
   punishment?: { label: string; weight: 'light' | 'heavy' | 'harsh'; offence: string };
   limits: { stakes: Stake; tierCap: string; deadlineDays: { min: number; max: number } };
+  /** P15b: how she does it (the words of her axes that are not at 0) and what draws her; absent for a holder with no manner, or one with nothing to say. */
+  manner?: { words: string[]; drawnBy: string[] };
+  /** P15b: this one is something new to her and the commander (her curiosity asked for it, and the seeds are drawn from what is new). */
+  fresh?: true;
 }
 
 /** The longest card the controller sends. */
@@ -119,7 +124,18 @@ export function buildPracticeInput(state: CampaignState, reg: Registries, reques
     ...(request.kind === 'punishment' ? punishmentBlock(state, reg, request) : {}),
     ...(request.kind === 'demonstration' ? { audience: watchersOf(state, reg, holderId).map((id) => ({ id, name: unitName(id), witness: witnessOf(state, reg, id, holderId) })) } : {}),
     limits: { stakes: stakesCeilingOf(state, holderId), tierCap: TIER_WORDS[tierCapOf(state, reg, holderId)], deadlineDays: { ...TUNING.practice.deadlineDays } },
+    ...mannerBrief(state, reg, holderId),
+    ...(request.fresh === true ? { fresh: true as const } : {}),
   };
+}
+
+/** P15b: the words of her manner for the brief: each axis away from 0 in the table's words, and what draws her. Nothing without a manner or with all of it at 0 and nothing drawing her. */
+function mannerBrief(state: CampaignState, reg: Registries, holderId: string): { manner?: NonNullable<PracticeGenerateInput['manner']> } {
+  const m = mannerOf(state, reg, holderId);
+  if (m === null) return {};
+  const words = MANNER_AXES.map((a) => mannerWord(a, m.axes[a])).filter((w) => w !== '');
+  const drawnBy = m.drawnBy.map(drawnByWord);
+  return words.length === 0 && drawnBy.length === 0 ? {} : { manner: { words, drawnBy } };
 }
 
 /** Everyone who may watch a demonstration of hers (the card's and the narrated, R9). */

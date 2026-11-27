@@ -194,7 +194,7 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
   - `src/engine/practice/validate.ts` (`buildPracticeInput`) and `src/llm/calls/practiceGenerate.ts`: the brief carries her manner words, `drawnBy` and "this one is something new".
 - Test: `tests/practice/drawnBy.test.ts`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - each of the five `drawnBy` outcomes gives +1 (main) or +0.5 (second) once, and nothing without `drawnBy`;
   - a task accepted after a refusal or a negotiation is not "at the first offer";
   - `practised` is written only with `manner`;
@@ -202,10 +202,10 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
   - "fresh" with nothing new left falls back to the full pool;
   - the brief's text has the words and, when fresh, the line;
   - the number of `practiceRoll` calls without `manner` is unchanged (the long-run's draw stack).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`. Chunk end: full suite, typecheck.
-- [ ] **Step 5: Commit** `feat(P15b): what draws her, and something new`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`. Chunk end: full suite, typecheck.
+- [x] **Step 5: Commit** `feat(P15b): what draws her, and something new`
 
 ## Chunk m3: physics and the instruments
 

@@ -1914,6 +1914,9 @@ function mannerWord(axis, step) {
 function mannerShortWord(axis, step) {
   return mannerWord(axis, step).split(/[,:]/)[0].trim();
 }
+function drawnByWord(kind) {
+  return TUNING.manner.drawnByWords[kind];
+}
 function placeWords(place2) {
   if (place2 === void 0) return [];
   const out = [];
@@ -18809,6 +18812,34 @@ function memoryConfig(state) {
 }
 var factTextMax = (state) => memoryConfig(state).factTextMax;
 
+// src/engine/dynamic/favour.ts
+function addFavour(draft, unitId, n) {
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn === void 0) return;
+  const max = TUNING.dynamic.favour.max;
+  dyn.favour = Math.min(max, Math.max(-max, dyn.favour + n));
+}
+
+// src/engine/dynamic/drawn.ts
+function practisedOf(state, unitId) {
+  const p = dynamicOf(state, unitId)?.practised;
+  return { kinds: p?.kinds ?? [], categories: p?.categories ?? [] };
+}
+function drawnFavour(draft, reg, unitId, kind) {
+  const at2 = mannerOf(draft, reg, unitId)?.drawnBy.indexOf(kind) ?? -1;
+  if (at2 < 0) return;
+  addFavour(draft, unitId, at2 === 0 ? TUNING.manner.favour.main : TUNING.manner.favour.second);
+}
+function notePractised(draft, reg, unitId, kind, categories) {
+  const dyn = dynamicOf(draft, unitId);
+  if (dyn === void 0 || mannerOf(draft, reg, unitId) === null) return;
+  const done = dyn.practised ??= { kinds: [], categories: [] };
+  const first2 = !done.kinds.includes(kind);
+  if (first2) done.kinds.push(kind);
+  for (const c of categories) if (!done.categories.includes(c)) done.categories.push(c);
+  if (first2) drawnFavour(draft, reg, unitId, "discovery");
+}
+
 // src/engine/dynamic/regard.ts
 var R2 = TUNING.regard;
 var clamp14 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
@@ -18945,6 +18976,10 @@ function regardDayStep(draft, reg, holders2) {
 }
 var namedInService = (state) => state.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
 var idOf = (v) => typeof v === "string" ? v : void 0;
+function holderOfRun(draft, events, runId) {
+  if (draft.scene?.physics?.id === runId) return draft.scene.physics.holderId;
+  return events.map((x) => x.runId === runId ? idOf(x.holderId) : void 0).find((id) => id !== void 0);
+}
 function regardFromEvents(draft, reg, events) {
   if (!dynamicOn(draft, reg)) return [];
   const V3 = R2.value;
@@ -18956,19 +18991,32 @@ function regardFromEvents(draft, reg, events) {
     switch (e.type) {
       case "physics_started":
         if (e.chained !== true && draft.dynamic.noted?.dirtyRun !== void 0) delete draft.dynamic.noted.dirtyRun;
+        if (e.chained !== true && draft.dynamic.noted?.warnedRun !== void 0) delete draft.dynamic.noted.warnedRun;
         break;
+      case "physics_segment": {
+        if (e.phase !== "end" || e.warning !== true || runId === void 0) break;
+        const who = holderOfRun(draft, events, runId);
+        if (who !== void 0 && mannerOf(draft, reg, who)?.drawnBy.includes("pain") === true) noted2().warnedRun = runId;
+        break;
+      }
       case "physics_caught":
       case "physics_slip":
         if (runId !== void 0) noted2().dirtyRun = runId;
         if (holder3 !== void 0) {
           out.push(...regardFall(draft, reg, holder3, e.type === "physics_caught" ? R2.acts.caught : R2.acts.slip, { witness: false, cause: e.type }));
           resetServed(draft, holder3);
+          if (e.type === "physics_slip") drawnFavour(draft, reg, holder3, "reaction");
         }
         break;
       case "physics_outcome": {
         const clean14 = (e.result === "released" || e.result === "checked") && !(runId !== void 0 && draft.dynamic.noted?.dirtyRun === runId);
         if (clean14 && holder3 !== void 0) out.push(...regardRise(draft, reg, holder3, "dignity"));
+        if (clean14 && holder3 !== void 0) {
+          drawnFavour(draft, reg, holder3, "discipline");
+          if (runId !== void 0 && draft.dynamic.noted?.warnedRun === runId) drawnFavour(draft, reg, holder3, "pain");
+        }
         if (draft.dynamic.noted?.dirtyRun === runId) delete draft.dynamic.noted.dirtyRun;
+        if (runId !== void 0 && draft.dynamic.noted?.warnedRun === runId) delete draft.dynamic.noted.warnedRun;
         break;
       }
       case "marathon_done": {
@@ -19989,12 +20037,6 @@ function restoreHold(draft, unitId, value) {
   const from = dyn.hold;
   dyn.hold = value;
   return [{ type: "hold_changed", unitId, from, to: value, cause: "undo" }];
-}
-function addFavour(draft, unitId, n) {
-  const dyn = dynamicOf(draft, unitId);
-  if (dyn === void 0) return;
-  const max = TUNING.dynamic.favour.max;
-  dyn.favour = Math.min(max, Math.max(-max, dyn.favour + n));
 }
 
 // src/engine/dynamic/struggle.ts
@@ -23352,6 +23394,9 @@ function practicesOn(state, reg) {
 function ensurePractices(draft) {
   return draft.practices ??= blankPractices();
 }
+function peekPracticeId(draft, prefix) {
+  return `${prefix}${draft.practices?.seq ?? 0}`;
+}
 function nextPracticeId(draft, prefix) {
   return `${prefix}${ensurePractices(draft).seq++}`;
 }
@@ -23518,8 +23563,18 @@ function seedPool(state, reg, holderId, kind, opts = {}) {
     return seed8.romantic !== true || tier === "romantic";
   });
 }
+function freshPool(state, holderId, pool) {
+  const done = practisedOf(state, holderId);
+  const newCategory = pool.filter((s) => s.contentTags.every((t) => !done.categories.includes(t)));
+  return newCategory.length > 0 ? newCategory : pool.filter((s) => !done.kinds.includes(s.id));
+}
+function hasFreshSeeds(state, reg, holderId, kind, opts = {}) {
+  return freshPool(state, holderId, seedPool(state, reg, holderId, kind, opts)).length > 0;
+}
 function pickSeeds(state, reg, holderId, kind, opts = {}) {
-  const pool = seedPool(state, reg, holderId, kind, opts);
+  const all = seedPool(state, reg, holderId, kind, opts);
+  const news = opts.fresh === true ? freshPool(state, holderId, all) : [];
+  const pool = news.length > 0 ? news : all;
   const T5 = TUNING.practice.seeds;
   const want = T5.min + Math.floor(practiceRoll(state, holderId, `seeds:${kind}:n`) * (T5.max - T5.min + 1));
   const rest = [...pool];
@@ -23578,13 +23633,15 @@ function requestOf(state, reg, requestId) {
     };
   }
   const seedId = found2.list === "tasks" ? card2.seedId : void 0;
-  const seedIds = [.../* @__PURE__ */ new Set([...seedId !== void 0 ? [seedId] : [], ...pickSeeds(state, reg, card2.holderId, found2.kind)])];
+  const fresh8 = wantsFresh(state, reg, card2.holderId, requestId) && hasFreshSeeds(state, reg, card2.holderId, found2.kind);
+  const seedIds = [.../* @__PURE__ */ new Set([...seedId !== void 0 ? [seedId] : [], ...pickSeeds(state, reg, card2.holderId, found2.kind, fresh8 ? { fresh: true } : {})])];
   const t = found2.list === "tasks" ? card2 : void 0;
   return {
     replaced: card2,
     request: {
       ...base2,
       seedIds,
+      ...fresh8 ? { fresh: true } : {},
       ...t?.chainId !== void 0 ? { chainOf: t.chainId } : {},
       ...t?.targetUnitId !== void 0 ? { targetUnitId: t.targetUnitId } : {},
       ...t?.sealed === true ? { sealed: true } : {},
@@ -23606,16 +23663,23 @@ function noDurationShare(state, reg, holderId) {
 }
 var rollSealed = (state, reg, holderId, key) => practiceRoll(state, holderId, `sealed:${key}`) < sealedShare(state, reg, holderId);
 var rollNoDuration = (state, reg, holderId, key) => practiceRoll(state, holderId, `noduration:${key}`) < noDurationShare(state, reg, holderId);
+function wantsFresh(state, reg, holderId, key) {
+  const step = mannerOf(state, reg, holderId)?.axes.curiosity ?? 0;
+  const share2 = TUNING.manner.fresh[String(step)] ?? 0;
+  return share2 > 0 && practiceRoll(state, holderId, `new:${key}`) < share2;
+}
 function requestPractice(draft, ctx2, holderId, kind, extra = {}) {
   if (!practiceLive(draft, ctx2.registries, holderId)) return [];
   const reg = ctx2.registries;
   const last4 = extra.chainOf === void 0 ? void 0 : draft.practices?.tasks.filter((t) => t.chainId === extra.chainOf).at(-1);
-  const seedIds = pickSeeds(draft, reg, holderId, kind, last4 === void 0 ? {} : { minTier: last4.tier });
+  const tier = last4 === void 0 ? {} : { minTier: last4.tier };
+  const fresh8 = wantsFresh(draft, reg, holderId, peekPracticeId(draft, "pq")) && hasFreshSeeds(draft, reg, holderId, kind, tier);
+  const seedIds = pickSeeds(draft, reg, holderId, kind, { ...tier, ...fresh8 ? { fresh: true } : {} });
   if (seedIds.length === 0 && extra.offence === void 0) return [];
   const id = nextPracticeId(draft, "pq");
   const sealed = extra.sealed === true || SEALABLE.includes(kind) && extra.asked !== true && rollSealed(draft, reg, holderId, id);
   const noDuration = extra.noDuration === true || SEALABLE.includes(kind) && rollNoDuration(draft, reg, holderId, id);
-  ensurePractices(draft).requests.push({ ...extra, id, holderId, kind, day: draft.day, seedIds, ...sealed ? { sealed: true } : {}, ...noDuration ? { noDuration: true } : {} });
+  ensurePractices(draft).requests.push({ ...extra, id, holderId, kind, day: draft.day, seedIds, ...fresh8 ? { fresh: true } : {}, ...sealed ? { sealed: true } : {}, ...noDuration ? { noDuration: true } : {} });
   return [{ type: "practice_requested", requestId: id, holderId, kind }];
 }
 
@@ -24059,11 +24123,12 @@ function startHold(draft, ctx2, holderId, span, opts = {}) {
   return events;
 }
 var keptSlots = (draft, held3) => bookingsOf2(draft).filter((b) => held3.bookingIds.includes(b.id) && b.status !== "cancelled").length;
-function settleHoldTask(draft, held3, reason) {
+function settleHoldTask(draft, reg, held3, reason) {
   const task = held3.taskId === void 0 ? void 0 : draft.practices?.tasks.find((t) => t.id === held3.taskId);
   if (task === void 0 || task.status !== "open") return;
   task.status = reason === "ran_out" ? "kept" : reason === "defied" ? "broken" : "void";
   task.settledDay = draft.day;
+  if (task.status === "kept") notePractised(draft, reg, task.holderId, task.seedId ?? task.kind, task.tags);
 }
 function endHold2(draft, ctx2, reason) {
   const p = draft.practices;
@@ -24077,7 +24142,7 @@ function endHold2(draft, ctx2, reason) {
   }
   delete p.held;
   if (p.alarm !== void 0 && p.alarm.holderId === held3.by && reason !== "alarm" && reason !== "defied") delete p.alarm;
-  settleHoldTask(draft, held3, reason);
+  settleHoldTask(draft, ctx2.registries, held3, reason);
   const events = [{ type: "hold_released", holderId: held3.by, unitId: held3.by, reason, slots }];
   if (reason === "ran_out" && held3.defied !== true && slots > 0) {
     events.push(...addTrackXp(draft, ctx2.registries, held3.by, "restraint", TUNING.practice.xp.hold * slots));
@@ -24396,8 +24461,17 @@ function buildPracticeInput(state, reg, request, card2 = "") {
     seeds: seeds.map((s) => ({ id: s.id, gist: s.gist, stakes: s.stakes, check: s.check ?? "model" })),
     ...request.kind === "punishment" ? punishmentBlock(state, reg, request) : {},
     ...request.kind === "demonstration" ? { audience: watchersOf(state, reg, holderId).map((id) => ({ id, name: unitName3(id), witness: witnessOf(state, reg, id, holderId) })) } : {},
-    limits: { stakes: stakesCeilingOf(state, holderId), tierCap: TIER_WORDS[tierCapOf(state, reg, holderId)], deadlineDays: { ...TUNING.practice.deadlineDays } }
+    limits: { stakes: stakesCeilingOf(state, holderId), tierCap: TIER_WORDS[tierCapOf(state, reg, holderId)], deadlineDays: { ...TUNING.practice.deadlineDays } },
+    ...mannerBrief(state, reg, holderId),
+    ...request.fresh === true ? { fresh: true } : {}
   };
+}
+function mannerBrief(state, reg, holderId) {
+  const m = mannerOf(state, reg, holderId);
+  if (m === null) return {};
+  const words3 = MANNER_AXES.map((a) => mannerWord(a, m.axes[a])).filter((w) => w !== "");
+  const drawnBy = m.drawnBy.map(drawnByWord);
+  return words3.length === 0 && drawnBy.length === 0 ? {} : { manner: { words: words3, drawnBy } };
 }
 function watchersOf(state, reg, holderId) {
   const a = pickAudience(state, reg, holderId, TUNING.practice.demonstration.slot);
@@ -24668,6 +24742,7 @@ function openTask(draft, ctx2, task, via) {
   task.status = "open";
   task.answeredDay = draft.day;
   delete task.said;
+  if (task.talked !== true && task.handover === void 0) drawnFavour(draft, ctx2.registries, task.holderId, "power");
   attachBooking(draft, task);
   events.push({ type: "task_answered", taskId: task.id, holderId: task.holderId, answer: "accept", via });
   if (task.sealed === true) events.push({ type: "practice_opened", taskId: task.id, holderId: task.holderId });
@@ -24689,7 +24764,10 @@ function refusalSeverity(task) {
 function answerTask(draft, ctx2, taskId, answer) {
   const reg = ctx2.registries;
   const task = taskOf(draft, ctx2, taskId);
-  if (answer === "talk") return [{ type: "task_answered", taskId, holderId: task.holderId, answer: "talk" }];
+  if (answer === "talk") {
+    if (mannerOf(draft, reg, task.holderId) !== null) task.talked = true;
+    return [{ type: "task_answered", taskId, holderId: task.holderId, answer: "talk" }];
+  }
   if (answer === "accept") {
     if (task.acceptForm === "words" || task.acceptForm === "signed") throw new Error("Say it in your own words.");
     return openTask(draft, ctx2, task, "button");
@@ -24749,6 +24827,7 @@ function compromiseTask(draft, ctx2, holderId, ev) {
   if (task.kind === "hold") task.slots = HOLD_SLOTS[task.stakes];
   delete task.sealed;
   delete task.said;
+  if (mannerOf(draft, ctx2.registries, holderId) !== null) task.talked = true;
   task.acceptForm = acceptFormOf(task.stakes, void 0);
   return [{ type: "task_answered", taskId: task.id, holderId, answer: "compromise", via: "words" }];
 }
@@ -24851,6 +24930,7 @@ function demonstrationEnded(draft, ctx2, d) {
   addCompromat(draft, holderId, T5.compromat.replaceAll("{names}", joinNames(watchers2.map((id) => nameOf8(draft, id)))).replaceAll("{name}", nameOf8(draft, holderId)).replaceAll("{what}", d.summary), watchers2);
   countDeed(draft, "demonstrated");
   d.status = "done";
+  notePractised(draft, reg, holderId, d.seedId ?? "demonstration", d.tags);
   d.observed = watchers2;
   events.push({ type: "demonstration_staged", demonstrationId: d.id, unitId: holderId, holderId, audienceIds: watchers2, humbling, summary: d.summary });
   for (const id of watchers2) events.push({ type: "demonstration_seen", demonstrationId: d.id, holderId, observerId: id, unitId: id });
@@ -25311,6 +25391,7 @@ function settleTask(draft, ctx2, taskId, outcome, via, opts = {}) {
     if (cancelled) takeUnfair(draft, holderId, "cancelled_reward");
     events2.push(...addTrackXp(draft, reg, holderId, task.track, TUNING.practice.xp.kept * task.tier));
     addFavour(draft, holderId, 1);
+    notePractised(draft, reg, holderId, task.seedId ?? task.kind, task.tags);
     earnedPermission(draft, task);
     events2.push(...practiceSample(draft, reg, holderId, "yielded"), ...sees, ...seenByChance(draft, ctx2, task, peers.filter((id) => id !== holderId)));
     return events2;
@@ -25780,6 +25861,10 @@ var REISSUED = { task_issued: "taskId", punishment_issued: "punishmentId" };
 var SEVERITY2 = ["minor", "minor", "moderate", "major", "extreme"];
 var num3 = (v, fallback = 0) => typeof v === "number" && Number.isFinite(v) ? v : fallback;
 var entryOf3 = (reg, p) => reg.holderPunishments.get(p.entryId);
+var tagsOfEntry = (reg, p) => {
+  const tags = entryOf3(reg, p)?.contentTags;
+  return Array.isArray(tags) ? tags.map(String) : [];
+};
 var effectsOf5 = (entry) => Array.isArray(entry?.effects) ? entry.effects : [];
 function pendingPunishment(draft, ctx2, punishmentId) {
   const p = draft.practices?.punishments.find((x) => x.id === punishmentId);
@@ -25880,6 +25965,7 @@ function unfairAccepted(draft, reg, holderId) {
 function accept(draft, ctx2, p) {
   const reg = ctx2.registries;
   const holderId = p.holderId;
+  if (p.talked !== true && p.escalated !== true && p.status === "offered") drawnFavour(draft, reg, holderId, "power");
   p.status = "accepted";
   p.answeredDay = draft.day;
   const audience = publicAudience(draft, reg, p);
@@ -26011,6 +26097,7 @@ function answerPunishment(draft, ctx2, punishmentId, answer) {
   const p = pendingPunishment(draft, ctx2, punishmentId);
   if (answer === "negotiate") {
     p.status = "negotiating";
+    if (mannerOf(draft, ctx2.registries, p.holderId) !== null) p.talked = true;
     return [{ type: "punishment_answered", punishmentId, unitId: p.holderId, holderId: p.holderId, answer: "negotiate", severity: p.severity }];
   }
   if (answer === "accept") return withUndo(draft, ctx2, p, () => accept(draft, ctx2, p));
@@ -26163,6 +26250,7 @@ function compromisePunishment(draft, ctx2, holderId, ev) {
   }
   delete p.sealed;
   p.status = "offered";
+  if (mannerOf(draft, reg, holderId) !== null) p.talked = true;
   return [{ type: "punishment_answered", punishmentId: p.id, unitId: holderId, holderId, answer: "compromise", severity: p.severity }];
 }
 function voiceWaitingPunishments(draft, _ctx, events) {
@@ -26181,7 +26269,10 @@ function closePunishments(draft, ctx2) {
   for (const p of draft.practices?.punishments ?? []) {
     if ((p.answeredDay ?? p.day) >= draft.day) continue;
     if (p.status === "accepted" && p.ceremony !== void 0 && p.ceremony.carried !== true && p.ceremony.done.length < p.ceremony.steps.length && practiceLive(draft, ctx2.registries, p.holderId)) events.push(...finishCeremony(draft, ctx2, p, true));
-    if (p.status === "accepted") p.status = "done";
+    if (p.status === "accepted") {
+      p.status = "done";
+      if (p.forUnitId === void 0) notePractised(draft, ctx2.registries, p.holderId, p.entryId, tagsOfEntry(ctx2.registries, p));
+    }
     delete p.inverse;
   }
   return events;
@@ -54704,6 +54795,9 @@ registerCallType({
       i.card.replace(/<\/?card>/gi, ""),
       "</card>",
       `Her manner: ${i.style.primary}${i.style.secondary !== void 0 ? `, with a ${i.style.secondary} streak` : ""}. Her hold on the commander: ${i.frame}.`,
+      ...i.manner !== void 0 && i.manner.words.length > 0 ? [`How she does it: ${list5(i.manner.words.map(one4))}.`] : [],
+      ...i.manner !== void 0 && i.manner.drawnBy.length > 0 ? [`What draws her: ${list5(i.manner.drawnBy.map(one4))}.`] : [],
+      ...i.fresh === true ? ["This one is something new: she has not asked the commander for it, or for anything of its kind, before. Prefer a seed or an idea that has not come up."] : [],
       `What she has claimed: ${list5(i.claims.map(one4))}.`,
       `Tracks open to her, with her level: ${list5(i.tracks.map((t) => `${t.id} (${one4(t.label)}, ${t.level})`))}.`,
       `Categories you may use, with how she takes to them: ${list5(i.categories.map((c) => `${c.id} (${one4(c.label)}, she ${c.as})`))}.`,

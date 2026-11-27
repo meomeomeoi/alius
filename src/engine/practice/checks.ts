@@ -7,6 +7,7 @@ import type { Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { addCompromat } from '../dynamic/compromat';
 import { addSign } from '../dynamic/knowledge';
+import { notePractised } from '../dynamic/drawn';
 import { addFavour } from '../dynamic/hold';
 import { dynamicOf } from '../dynamic/state';
 import { addTrackXp } from '../dynamic/tracks';
@@ -79,6 +80,7 @@ export function settleTask(
     if (cancelled) takeUnfair(draft, holderId, 'cancelled_reward');
     events.push(...addTrackXp(draft, reg, holderId, task.track, TUNING.practice.xp.kept * task.tier));
     addFavour(draft, holderId, 1);
+    notePractised(draft, reg, holderId, task.seedId ?? task.kind, task.tags); // P15b: what she has done with the commander (a holder with a manner)
     earnedPermission(draft, task); // a task she gave to earn her permission grants it for today
     events.push(...practiceSample(draft, reg, holderId, 'yielded'), ...sees, ...seenByChance(draft, ctx, task, peers.filter((id) => id !== holderId))); // an `indifferent` holder stages nothing, but a task kept in person before others may be seen (R9)
     return events;

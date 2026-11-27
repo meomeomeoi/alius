@@ -102,6 +102,11 @@ export interface DynamicRelation {
   cooldowns: Record<string, number>;
   /** The day the run of days she has served without a slip began (the `vindictive` style's Regard rise counts weeks of it; Task 36). */
   served?: { since: number };
+  /**
+   * P15b: what she has practised with the commander (written only for a holder with a `manner`, when a practice is kept or done): the seeds (or, for a punishment, the entries) and the
+   * categories. `discovery` rewards the first of a kind and `curiosity`'s "something new" filters the seed pool by it. Never shown.
+   */
+  practised?: { kinds: string[]; categories: string[] };
 }
 
 /**
@@ -180,6 +185,8 @@ export interface DynamicCampaign {
     question?: { day?: number; by: Record<string, number> };
     /** The physics run (`p<n>`) that had a slip or a caught cheat: its end is not clean (Regard's dignity rise). */
     dirtyRun?: string;
+    /** P15b: the physics run (`p<n>`) that had a segment with a warning, noted only for a holder whom `pain` draws: a clean end after it is what she rewards. */
+    warnedRun?: string;
   };
   /** Ids: claims `dc<n>`, milestones `dm<n>`, offers `do<n>`, aftermaths `da<n>`, exits `dx<n>`. */
   seq: number;

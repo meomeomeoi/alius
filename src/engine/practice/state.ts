@@ -114,6 +114,8 @@ export interface PracticeRequest {
   targetUnitId?: string;
   sealed?: true;
   noDuration?: true;
+  /** P15b: a request for something new (her curiosity): the seeds were drawn from what she has not practised with the commander, and the brief says so. */
+  fresh?: true;
   unfair?: UnfairKind;
   asked?: true;
   /** A punishment's weight (1 to 5) and the entry the engine picked for it when it was requested (R8): the model words it, the engine owns both. */
@@ -154,6 +156,8 @@ export interface Task {
   field?: true;
   routine?: true;
   sealed?: true;
+  /** P15b: the commander talked about it or talked it down before answering (written only for a holder with a manner): an accept after it is not "at the first offer". */
+  talked?: true;
   acceptForm: AcceptForm;
   day: number;
   answeredDay?: number;
@@ -197,6 +201,8 @@ export interface OpenPunishment {
   sealed?: true;
   hiddenCount?: true;
   count?: number;
+  /** P15b: negotiated before the answer (written only for a holder with a manner): an accept after it is not "at the first offer". */
+  talked?: true;
   escalated?: true;
   forUnitId?: string;
   ceremony?: CeremonyState;

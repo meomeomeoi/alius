@@ -14,6 +14,7 @@ import type { Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { addHold } from '../dynamic/hold';
 import { practiceOf } from '../dynamic/profile';
+import { notePractised } from '../dynamic/drawn';
 import { bendBy } from '../dynamic/manner';
 import { dynamicOf } from '../dynamic/state';
 import { addTrackXp } from '../dynamic/tracks';
@@ -118,11 +119,12 @@ export function startHold(draft: CampaignState, ctx: Pick<EngineCtx, 'registries
 const keptSlots = (draft: CampaignState, held: HeldState): number => bookingsOf(draft).filter((b) => held.bookingIds.includes(b.id) && b.status !== 'cancelled').length;
 
 /** What a hold task becomes when its hold ends: a full hold keeps it, a defied one breaks it, any other end voids it (no cost either way: the hold's own rules did the rest). */
-function settleHoldTask(draft: CampaignState, held: HeldState, reason: HoldEnd): void {
+function settleHoldTask(draft: CampaignState, reg: Registries, held: HeldState, reason: HoldEnd): void {
   const task: Task | undefined = held.taskId === undefined ? undefined : draft.practices?.tasks.find((t) => t.id === held.taskId);
   if (task === undefined || task.status !== 'open') return;
   task.status = reason === 'ran_out' ? 'kept' : reason === 'defied' ? 'broken' : 'void';
   task.settledDay = draft.day;
+  if (task.status === 'kept') notePractised(draft, reg, task.holderId, task.seedId ?? task.kind, task.tags); // P15b
 }
 
 /**
@@ -140,7 +142,7 @@ export function endHold(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>
   if (reason === 'undone') for (const b of bookingsOf(draft)) if (held.lapsedIds?.includes(b.id) === true && b.status === 'lapsed' && posOf(b.day, b.slot) >= posOf(draft.day, draft.slot)) b.status = 'booked'; // what the hold pushed out comes back
   delete p.held;
   if (p.alarm !== undefined && p.alarm.holderId === held.by && reason !== 'alarm' && reason !== 'defied') delete p.alarm;
-  settleHoldTask(draft, held, reason);
+  settleHoldTask(draft, ctx.registries, held, reason);
   const events: EngineEvent[] = [{ type: 'hold_released', holderId: held.by, unitId: held.by, reason, slots }];
   if (reason === 'ran_out' && held.defied !== true && slots > 0) {
     events.push(...addTrackXp(draft, ctx.registries, held.by, 'restraint', TUNING.practice.xp.hold * slots));

@@ -10,6 +10,7 @@ import { relieveWant } from '../bonds/want';
 import { countDeed } from '../discipline/deeds';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { addCompromat } from '../dynamic/compromat';
+import { notePractised } from '../dynamic/drawn';
 import { addHold } from '../dynamic/hold';
 import { addSign, knowInstantly, levelOf } from '../dynamic/knowledge';
 import { practiceOf } from '../dynamic/profile';
@@ -142,6 +143,7 @@ export function demonstrationEnded(draft: CampaignState, ctx: Pick<EngineCtx, 'r
   addCompromat(draft, holderId, T.compromat.replaceAll('{names}', joinNames(watchers.map((id) => nameOf(draft, id)))).replaceAll('{name}', nameOf(draft, holderId)).replaceAll('{what}', d.summary), watchers);
   countDeed(draft, 'demonstrated');
   d.status = 'done';
+  notePractised(draft, reg, holderId, d.seedId ?? 'demonstration', d.tags); // P15b
   d.observed = watchers;
   events.push({ type: 'demonstration_staged', demonstrationId: d.id, unitId: holderId, holderId, audienceIds: watchers, humbling, summary: d.summary });
   for (const id of watchers) events.push({ type: 'demonstration_seen', demonstrationId: d.id, holderId, observerId: id, unitId: id });

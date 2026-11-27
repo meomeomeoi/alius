@@ -13,6 +13,7 @@ import { injureCommander } from '../calendar';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { hasCapability } from '../dynamic/capabilities';
 import { practiceOf } from '../dynamic/profile';
+import { drawnFavour, notePractised } from '../dynamic/drawn';
 import { mannerOf } from '../dynamic/manner';
 import { addSign } from '../dynamic/knowledge';
 import { refusalCost } from '../dynamic/milestones';
@@ -50,6 +51,11 @@ const SEVERITY: readonly Severity[] = ['minor', 'minor', 'moderate', 'major', 'e
 const num = (v: unknown, fallback = 0): number => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
 
 const entryOf = (reg: Registries, p: Pick<OpenPunishment, 'entryId'>): Entry | undefined => reg.holderPunishments.get(p.entryId);
+/** The categories of a punishment's entry (its `contentTags`). */
+const tagsOfEntry = (reg: Registries, p: Pick<OpenPunishment, 'entryId'>): string[] => {
+  const tags = (entryOf(reg, p) as { contentTags?: unknown } | undefined)?.contentTags;
+  return Array.isArray(tags) ? tags.map(String) : [];
+};
 const effectsOf = (entry: Entry | undefined): Effect[] => (Array.isArray(entry?.effects) ? (entry!.effects as Effect[]) : []);
 
 /** The punishment of hers that waits for the commander's answer (`offered`, or `negotiating` after a talk); throws for one that is gone, answered, for a soldier or hers while she is not holding. */
@@ -158,6 +164,8 @@ function unfairAccepted(draft: CampaignState, reg: Registries, holderId: string)
 function accept(draft: CampaignState, ctx: EngineCtx, p: OpenPunishment): EngineEvent[] {
   const reg = ctx.registries;
   const holderId = p.holderId;
+  // P15b: `power` rewards a yield at the first offer (no talk, no compromise, not the escalation of a refused one); UNDO gives the favour back with the rest
+  if (p.talked !== true && p.escalated !== true && p.status === 'offered') drawnFavour(draft, reg, holderId, 'power');
   p.status = 'accepted';
   p.answeredDay = draft.day;
   const audience = publicAudience(draft, reg, p);
@@ -325,6 +333,8 @@ export function answerPunishment(draft: CampaignState, ctx: EngineCtx, punishmen
   const p = pendingPunishment(draft, ctx, punishmentId);
   if (answer === 'negotiate') {
     p.status = 'negotiating';
+    if (mannerOf(draft, ctx.registries, p.holderId) !== null) p.talked = true; // P15b: no longer "at the first offer"
+
     return [{ type: 'punishment_answered', punishmentId, unitId: p.holderId, holderId: p.holderId, answer: 'negotiate', severity: p.severity }];
   }
   if (answer === 'accept') return withUndo(draft, ctx, p, () => accept(draft, ctx, p));
@@ -484,6 +494,7 @@ export function compromisePunishment(draft: CampaignState, ctx: Pick<EngineCtx, 
   }
   delete p.sealed;
   p.status = 'offered';
+  if (mannerOf(draft, reg, holderId) !== null) p.talked = true; // P15b
   return [{ type: 'punishment_answered', punishmentId: p.id, unitId: holderId, holderId, answer: 'compromise', severity: p.severity }];
 }
 
@@ -513,7 +524,10 @@ export function closePunishments(draft: CampaignState, ctx: EngineCtx): EngineEv
     if ((p.answeredDay ?? p.day) >= draft.day) continue;
     // a ceremony the commander left open is finished by her: she carries the punishment out herself (no dodging it by not taking the steps)
     if (p.status === 'accepted' && p.ceremony !== undefined && p.ceremony.carried !== true && p.ceremony.done.length < p.ceremony.steps.length && practiceLive(draft, ctx.registries, p.holderId)) events.push(...finishCeremony(draft, ctx, p, true));
-    if (p.status === 'accepted') p.status = 'done';
+    if (p.status === 'accepted') {
+      p.status = 'done';
+      if (p.forUnitId === undefined) notePractised(draft, ctx.registries, p.holderId, p.entryId, tagsOfEntry(ctx.registries, p)); // P15b: what she has done with the commander
+    }
     delete p.inverse;
   }
   return events;

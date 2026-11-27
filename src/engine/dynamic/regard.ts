@@ -15,7 +15,9 @@ import type { EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
+import { drawnFavour } from './drawn';
 import { dynamicOn } from './gate';
+import { mannerOf } from './manner';
 import { styleOf } from './profile';
 import { dynamicOf } from './state';
 import type { PracticeStyleEntry, RegardBandEntry, RegardSpeed } from './types';
@@ -234,6 +236,12 @@ export function regardDayStep(draft: CampaignState, reg: Registries, holders: re
 const namedInService = (state: CampaignState): string[] => state.squad.filter((u) => u.kind === 'named' && isLiving(u)).map((u) => u.id);
 const idOf = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
 
+/** The holder of a physics run: the live run's, else the first event of the batch that names both the run and its holder. */
+function holderOfRun(draft: CampaignState, events: readonly EngineEvent[], runId: string): string | undefined {
+  if (draft.scene?.physics?.id === runId) return draft.scene.physics.holderId;
+  return events.map((x) => (x.runId === runId ? idOf(x.holderId) : undefined)).find((id) => id !== undefined);
+}
+
 /**
  * The events of one action, read for Regard (an after-action hook, nothing while the dynamic is off): a caught cheat (`acts.caught`) and a slip (`acts.slip`)
  * fall for the one who held the commander and start her count of served days over; a record in fiction time (`marathon_done`, not one the stop word ended) rises
@@ -251,19 +259,34 @@ export function regardFromEvents(draft: CampaignState, reg: Registries, events: 
     switch (e.type) {
       case 'physics_started':
         if (e.chained !== true && draft.dynamic!.noted?.dirtyRun !== undefined) delete draft.dynamic!.noted.dirtyRun;
+        if (e.chained !== true && draft.dynamic!.noted?.warnedRun !== undefined) delete draft.dynamic!.noted.warnedRun;
         break;
+      case 'physics_segment': {
+        // P15b: a segment that ended in a warning, for a holder whom `pain` draws (the only one who notes it): a clean end after it is what she rewards
+        if (e.phase !== 'end' || e.warning !== true || runId === undefined) break;
+        const who = holderOfRun(draft, events, runId);
+        if (who !== undefined && mannerOf(draft, reg, who)?.drawnBy.includes('pain') === true) noted().warnedRun = runId;
+        break;
+      }
       case 'physics_caught':
       case 'physics_slip':
         if (runId !== undefined) noted().dirtyRun = runId;
         if (holder !== undefined) {
           out.push(...regardFall(draft, reg, holder, e.type === 'physics_caught' ? R.acts.caught : R.acts.slip, { witness: false, cause: e.type }));
           resetServed(draft, holder);
+          if (e.type === 'physics_slip') drawnFavour(draft, reg, holder, 'reaction'); // P15b: what slips out of the commander (a caught cheat is not that)
         }
         break;
       case 'physics_outcome': {
         const clean = (e.result === 'released' || e.result === 'checked') && !(runId !== undefined && draft.dynamic!.noted?.dirtyRun === runId);
         if (clean && holder !== undefined) out.push(...regardRise(draft, reg, holder, 'dignity'));
+        if (clean && holder !== undefined) {
+          // P15b: a clean end is what `discipline` rewards, and one after a warning what `pain` rewards (a run no one noted a warning for has none)
+          drawnFavour(draft, reg, holder, 'discipline');
+          if (runId !== undefined && draft.dynamic!.noted?.warnedRun === runId) drawnFavour(draft, reg, holder, 'pain');
+        }
         if (draft.dynamic!.noted?.dirtyRun === runId) delete draft.dynamic!.noted!.dirtyRun;
+        if (runId !== undefined && draft.dynamic!.noted?.warnedRun === runId) delete draft.dynamic!.noted.warnedRun;
         break;
       }
       case 'marathon_done': {

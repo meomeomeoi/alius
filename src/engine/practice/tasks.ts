@@ -10,6 +10,8 @@ import { slotIndex, SLOT_ORDER } from '../calendar';
 import { refuseLikeDemand } from '../discipline/demands';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { hasCapability } from '../dynamic/capabilities';
+import { drawnFavour } from '../dynamic/drawn';
+import { mannerOf } from '../dynamic/manner';
 import { dynamicOf } from '../dynamic/state';
 import { hasCommanderPronoun } from '../dynamic/pronoun';
 import { isLiving } from '../economy';
@@ -167,6 +169,7 @@ function openTask(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, task
   task.status = 'open';
   task.answeredDay = draft.day;
   delete task.said;
+  if (task.talked !== true && task.handover === undefined) drawnFavour(draft, ctx.registries, task.holderId, 'power'); // P15b: a yield at the first offer (the commander's own offer is not one)
   attachBooking(draft, task);
   events.push({ type: 'task_answered', taskId: task.id, holderId: task.holderId, answer: 'accept', via });
   if (task.sealed === true) events.push({ type: 'practice_opened', taskId: task.id, holderId: task.holderId });
@@ -198,7 +201,10 @@ function refusalSeverity(task: Pick<Task, 'sealed' | 'stakes'>): Severity | unde
 export function answerTask(draft: CampaignState, ctx: EngineCtx, taskId: string, answer: 'accept' | 'refuse' | 'talk'): EngineEvent[] {
   const reg = ctx.registries;
   const task = taskOf(draft, ctx, taskId);
-  if (answer === 'talk') return [{ type: 'task_answered', taskId, holderId: task.holderId, answer: 'talk' }];
+  if (answer === 'talk') {
+    if (mannerOf(draft, reg, task.holderId) !== null) task.talked = true; // P15b: no longer "at the first offer"
+    return [{ type: 'task_answered', taskId, holderId: task.holderId, answer: 'talk' }];
+  }
   if (answer === 'accept') {
     if (task.acceptForm === 'words' || task.acceptForm === 'signed') throw new Error('Say it in your own words.');
     return openTask(draft, ctx, task, 'button');
@@ -277,6 +283,7 @@ export function compromiseTask(draft: CampaignState, ctx: Pick<EngineCtx, 'regis
   if (task.kind === 'hold') task.slots = HOLD_SLOTS[task.stakes]; // a hold talked down takes fewer of the commander's slots
   delete task.sealed;
   delete task.said;
+  if (mannerOf(draft, ctx.registries, holderId) !== null) task.talked = true; // P15b
   task.acceptForm = acceptFormOf(task.stakes, undefined);
   return [{ type: 'task_answered', taskId: task.id, holderId, answer: 'compromise', via: 'words' }];
 }

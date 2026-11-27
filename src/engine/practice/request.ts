@@ -5,10 +5,10 @@
 import type { Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { practiceOf } from '../dynamic/profile';
-import { bendBy } from '../dynamic/manner';
+import { bendBy, mannerOf } from '../dynamic/manner';
 import type { CampaignState } from '../state/types';
-import { ensurePractices, nextPracticeId, practiceLive } from './gate';
-import { pickSeeds } from './seeds';
+import { ensurePractices, nextPracticeId, peekPracticeId, practiceLive } from './gate';
+import { hasFreshSeeds, pickSeeds } from './seeds';
 import { practiceRoll, type OpenPunishment, type PracticeCard, type PracticeKind, type PracticeRequest, type Task } from './state';
 import { TUNING } from '../tuning';
 
@@ -58,12 +58,13 @@ export function requestOf(state: CampaignState, reg: Registries, requestId: stri
     };
   }
   const seedId = found.list === 'tasks' ? (card as Task).seedId : undefined;
-  const seedIds = [...new Set([...(seedId !== undefined ? [seedId] : []), ...pickSeeds(state, reg, card.holderId, found.kind)])];
+  const fresh = wantsFresh(state, reg, card.holderId, requestId) && hasFreshSeeds(state, reg, card.holderId, found.kind); // the same key, so the same answer as when it was first asked
+  const seedIds = [...new Set([...(seedId !== undefined ? [seedId] : []), ...pickSeeds(state, reg, card.holderId, found.kind, fresh ? { fresh: true } : {})])];
   const t = found.list === 'tasks' ? (card as Task) : undefined;
   return {
     replaced: card,
     request: {
-      ...base, seedIds,
+      ...base, seedIds, ...(fresh ? { fresh: true as const } : {}),
       ...(t?.chainId !== undefined ? { chainOf: t.chainId } : {}), ...(t?.targetUnitId !== undefined ? { targetUnitId: t.targetUnitId } : {}),
       ...(t?.sealed === true ? { sealed: true as const } : {}), ...(t?.noDuration === true ? { noDuration: true as const } : {}),
     },
@@ -97,6 +98,16 @@ export const rollSealed = (state: CampaignState, reg: Registries, holderId: stri
 export const rollNoDuration = (state: CampaignState, reg: Registries, holderId: string, key: string): boolean => practiceRoll(state, holderId, `noduration:${key}`) < noDurationShare(state, reg, holderId);
 
 /**
+ * P15b: does the request with this key ask for something new? With her `curiosity` above 0 a hashed share (`TUNING.manner.fresh`: +1 0.2, +2 0.4) of requests do:
+ * `practiceRoll(holderId, 'new:' + key) < share`. At 0 and below, or with no manner, never (and nothing is rolled). No draw.
+ */
+export function wantsFresh(state: CampaignState, reg: Registries, holderId: string, key: string): boolean {
+  const step = mannerOf(state, reg, holderId)?.axes.curiosity ?? 0;
+  const share = (TUNING.manner.fresh as Readonly<Record<string, number>>)[String(step)] ?? 0;
+  return share > 0 && practiceRoll(state, holderId, `new:${key}`) < share;
+}
+
+/**
  * Writes a request: the seeds are picked now (gated, 3 to 6), the id is taken and `practice_requested` tells the controller to ask for the words. Nothing is written for a
  * holder who is not live, or when no seed stands (a request with no candidate has no fallback either), except an offence's punishment, which has its own entry. A chain's request
  * raises the tier floor to the last tier of the chain.
@@ -105,13 +116,16 @@ export function requestPractice<C extends Pick<EngineCtx, 'registries'>>(draft: 
   if (!practiceLive(draft, ctx.registries, holderId)) return [];
   const reg = ctx.registries;
   const last = extra.chainOf === undefined ? undefined : draft.practices?.tasks.filter((t) => t.chainId === extra.chainOf).at(-1);
-  const seedIds = pickSeeds(draft, reg, holderId, kind, last === undefined ? {} : { minTier: last.tier });
+  // P15b: the key is made (not taken) before the pick, so that her curiosity can hash it; a request that comes to nothing still takes no id
+  const tier = last === undefined ? {} : { minTier: last.tier };
+  const fresh = wantsFresh(draft, reg, holderId, peekPracticeId(draft, 'pq')) && hasFreshSeeds(draft, reg, holderId, kind, tier);
+  const seedIds = pickSeeds(draft, reg, holderId, kind, { ...tier, ...(fresh ? { fresh: true } : {}) });
   if (seedIds.length === 0 && extra.offence === undefined) return [];
   const id = nextPracticeId(draft, 'pq');
   // R16: a task, a hold or a punishment may come sealed, and may run until she decides; what the commander asked for is never sealed. Hashed from the request's own id: no draw.
   const sealed = extra.sealed === true || (SEALABLE.includes(kind) && extra.asked !== true && rollSealed(draft, reg, holderId, id));
   const noDuration = extra.noDuration === true || (SEALABLE.includes(kind) && rollNoDuration(draft, reg, holderId, id));
-  ensurePractices(draft).requests.push({ ...extra, id, holderId, kind, day: draft.day, seedIds, ...(sealed ? { sealed: true as const } : {}), ...(noDuration ? { noDuration: true as const } : {}) });
+  ensurePractices(draft).requests.push({ ...extra, id, holderId, kind, day: draft.day, seedIds, ...(fresh ? { fresh: true as const } : {}), ...(sealed ? { sealed: true as const } : {}), ...(noDuration ? { noDuration: true as const } : {}) });
   return [{ type: 'practice_requested', requestId: id, holderId, kind }];
 }
 

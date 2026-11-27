@@ -9,6 +9,7 @@ import { bondTierOf } from '../bonds/profile';
 import { contentAllowed } from '../bonds/content';
 import { hasCapability } from '../dynamic/capabilities';
 import { practiceOf } from '../dynamic/profile';
+import { practisedOf } from '../dynamic/drawn';
 import { dynamicOf } from '../dynamic/state';
 import { trackLevel, trackOpen } from '../dynamic/tracks';
 import type { CampaignState } from '../state/types';
@@ -42,11 +43,28 @@ export function seedPool(state: CampaignState, reg: Registries, holderId: string
 }
 
 /**
+ * P15b: the seeds of a pool that are new to the commander and her: first the ones none of whose categories she has practised with the commander, else the ones whose kind (the seed) she has not.
+ * Empty when she has done everything (the caller then keeps the whole pool). Reads `dynamic.practised`; a holder with none practised has everything new.
+ */
+export function freshPool(state: CampaignState, holderId: string, pool: readonly PracticeSeedEntry[]): PracticeSeedEntry[] {
+  const done = practisedOf(state, holderId);
+  const newCategory = pool.filter((s) => s.contentTags.every((t) => !done.categories.includes(t)));
+  return newCategory.length > 0 ? newCategory : pool.filter((s) => !done.kinds.includes(s.id));
+}
+
+/** P15b: would a request for something new find something new (the pool's `freshPool` is not empty)? The request says it is new only then. */
+export function hasFreshSeeds(state: CampaignState, reg: Registries, holderId: string, kind: PracticeKind, opts: { minTier?: number } = {}): boolean {
+  return freshPool(state, holderId, seedPool(state, reg, holderId, kind, opts)).length > 0;
+}
+
+/**
  * Three to six seed ids of a kind for one request (`TUNING.practice.seeds`), weighted by the seed's `weight`, drawn without replacement by
  * `practiceRoll` (the count too). The whole pool when it is smaller than the count; none when it is empty.
  */
-export function pickSeeds(state: CampaignState, reg: Registries, holderId: string, kind: PracticeKind, opts: { minTier?: number } = {}): string[] {
-  const pool = seedPool(state, reg, holderId, kind, opts);
+export function pickSeeds(state: CampaignState, reg: Registries, holderId: string, kind: PracticeKind, opts: { minTier?: number; fresh?: boolean } = {}): string[] {
+  const all = seedPool(state, reg, holderId, kind, opts);
+  const news = opts.fresh === true ? freshPool(state, holderId, all) : [];
+  const pool = news.length > 0 ? news : all; // something new when she has it, else everything she could ask for
   const T = TUNING.practice.seeds;
   const want = T.min + Math.floor(practiceRoll(state, holderId, `seeds:${kind}:n`) * (T.max - T.min + 1));
   const rest = [...pool];

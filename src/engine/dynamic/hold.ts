@@ -135,10 +135,4 @@ export function restoreHold(draft: CampaignState, unitId: string, value: number)
   return [{ type: 'hold_changed', unitId, from, to: value, cause: 'undo' }];
 }
 
-/** Her favour moves by `n`, clamped to ±`TUNING.dynamic.favour.max`. A unit with no dynamic has none: nothing happens. */
-export function addFavour(draft: CampaignState, unitId: string, n: number): void {
-  const dyn = dynamicOf(draft, unitId);
-  if (dyn === undefined) return;
-  const max = TUNING.dynamic.favour.max;
-  dyn.favour = Math.min(max, Math.max(-max, dyn.favour + n));
-}
+export { addFavour } from './favour'; // a leaf since P15b: `regard.ts` (which must not import this file) and `drawn.ts` move favour too
