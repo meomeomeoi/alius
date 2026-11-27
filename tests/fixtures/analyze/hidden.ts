@@ -8,6 +8,8 @@ import { blankDynamic, blankReading, newDynamicCampaign } from '../../../src/eng
 import { DYNAMIC_KNOWLEDGE_TAG } from '../../../src/engine/dynamic/types';
 import { blankPractices } from '../../../src/engine/practice/state';
 import type { CampaignState } from '../../../src/engine/state/types';
+import { plainDraft } from '../../../src/content/draft';
+import { echoOf } from '../../../src/engine/craft/programmes/vindictive';
 import { campaign } from '../../helpers/world';
 
 /** Numbers and texts the player must never read off a panel (with raw values off, or at all). */
@@ -232,10 +234,10 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
     records: { weight: { longest: 3600, clean: 1200, noTap: 3600, day: 8 } },
     // P16b Task 15: a care she noticed and has not shown yet (a flag, never a value: no panel, label or reading tells which of her cares were seen)
     cares: [{ day: 8, careId: 'polishing_her_boots', noticed: true }, { day: 8, careId: 'tidying_her_quarters', noticed: false }],
-    // P16b Tasks 19-21: her norms are shown (in her hand), the exam's results while it runs, her praise log (the text and its words) and which crime her sentence echoes are never shown; the sentence's days left are
+    // P16b Tasks 19-21: her norms are shown (in her hand), the exam's results while it runs, her praise log (the text and its words) and the echo of her sentence before it has acted (`landed`) are never shown (the crime itself is the commander's own and is shown: she knows it); the sentence's days left are
     drill: { norms: { 'endurance:weight': 240, posture: 600 }, examDay: 8, passes: 3, exam: { day: 8, keys: ['endurance:weight'], results: { 'endurance:weight': 1717 } } },
     praise: [{ day: 8, text: 'SENTINEL-PRAISE-TEXT', words: ['sentinelpraiseword'] }], praiseSlipDay: 8,
-    sentence: { crimeId: 'strain_trade', start: 8, until: 20, extended: 6, week: 1, landed: true },
+    sentence: { crimeId: 'strain_trade', start: 8, until: 20, extended: 6, week: 1 }, // the echo has not acted yet: its line is the sentinel `echo`
   };
 
   // P16b Tasks 23-24: a hold of a posture with no duration (its planned length is hidden: the game of postures never shows an end it was not given) and the settling-in load she added
@@ -246,7 +248,7 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
     unitId: unit.id,
     sentinels: {
       numbers: [87, 37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57, 43, 47, 67, 183.5, 271.3, 119.9, 211.7, 79, 89, 4.37, 2.19, 47.31, 63.17, 5.13, 19, 83.77, 6.83, 31.41, 8.86, 0.6174, 37.37, 61.61, 59.59, 0.4141, 23.23, 7.77, 44.44, 13.37, 26, 34, 733, 2.71, 1.83, 1.57, 1717],
-      texts: ['SENTINEL-LESSON-POINT', 'SENTINEL-LESSON-WORDS', 'SENTINEL-UNTOLD', 'SENTINEL-KEEPS', 'SENTINEL-UNVOICED', 'SENTINEL-QUEUED', 'stargazing', 'woodcarving', untoldEvent.id, keepsEvent.id, 'SENTINEL-PENDING', 'SENTINEL-MISREAD', 'SENTINEL-UNSHOWN-MOMENT', 'SENTINEL-UNSHOWN-FACT', 'SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE', 'SENTINEL_EXPECTATION', 'SENTINEL_KOMPROMAT', 'SENTINEL_COMPROMAT_P15', 'SENTINEL_TELL', 'SENTINEL_WORSHIP_HOW', 'SENTINEL_KNOWLEDGE_P15', 'SENTINEL_SEALED_TEXT', 'SENTINEL_SEALED_SUMMARY', 'SENTINEL_FALSE_REPORT', 'nothing the commander did', 'cancelled_reward', 'end of the afternoon', 'SENTINEL_KIND', 'SENTINEL_SCENE', 'SENTINEL-PRAISE-TEXT', 'sentinelpraiseword', 'strain_trade'],
+      texts: ['SENTINEL-LESSON-POINT', 'SENTINEL-LESSON-WORDS', 'SENTINEL-UNTOLD', 'SENTINEL-KEEPS', 'SENTINEL-UNVOICED', 'SENTINEL-QUEUED', 'stargazing', 'woodcarving', untoldEvent.id, keepsEvent.id, 'SENTINEL-PENDING', 'SENTINEL-MISREAD', 'SENTINEL-UNSHOWN-MOMENT', 'SENTINEL-UNSHOWN-FACT', 'SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE', 'SENTINEL_EXPECTATION', 'SENTINEL_KOMPROMAT', 'SENTINEL_COMPROMAT_P15', 'SENTINEL_TELL', 'SENTINEL_WORSHIP_HOW', 'SENTINEL_KNOWLEDGE_P15', 'SENTINEL_SEALED_TEXT', 'SENTINEL_SEALED_SUMMARY', 'SENTINEL_FALSE_REPORT', 'nothing the commander did', 'cancelled_reward', 'end of the afternoon', 'SENTINEL_KIND', 'SENTINEL_SCENE', 'SENTINEL-PRAISE-TEXT', 'sentinelpraiseword', plainDraft(String(echoOf(reg, 'strain_trade')!.line))],
     },
   };
 }

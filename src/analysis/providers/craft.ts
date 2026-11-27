@@ -64,7 +64,7 @@ function normProvider(s: Subject, env: AnalyzeEnv, k: Knowledge): { lines: strin
   return { lines: pairs.length > 0 ? pairs.map((p) => `${nameOf(env, p.unitId)} asks for: ${p.norm}.`) : ['No norm is set.'] };
 }
 
-/** `glossary:craft_sentence`: the days left of a running sentence; never the crime, what it echoes or what slips added. */
+/** `glossary:craft_sentence`: the days left of a running sentence; never the echo before it has acted or what slips added (the crime is the commander's own and is on the card). */
 function sentenceProvider(s: Subject, env: AnalyzeEnv, k: Knowledge): { lines: string[] } | null {
   if (!env.state) return null;
   const given = unitIdOf(s);

@@ -31,7 +31,7 @@ export interface CraftView {
     records: Array<{ key: string; kind: RecordKind; seconds: number; day: number }>;
     /** A `drill` holder's norms in words (never the pass mark or what an exam in progress has come to). */
     norm?: string;
-    /** A running sentence: the days left (never the crime, the echo or what slips added). */
+    /** A running sentence: the days left (the crime is the commander's own and the card names it; never the echo before it has acted or what slips added). */
     sentence?: { daysLeft: number };
   }>;
 }

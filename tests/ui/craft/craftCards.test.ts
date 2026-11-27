@@ -15,6 +15,8 @@ import { DEFAULT_SETTINGS } from '../../../src/settings';
 import { h } from '../../../src/ui/dom';
 import { anticipateAnswer, craftCardsOf, craftGist, drawAnticipateChips, drawCraftCards, LESSON_MS, resetCraftCards, type CraftCardHandlers } from '../../../src/ui/craft/craftCards';
 import { markedWithout, unreachable, unresolved } from '../../helpers/analyzeCoverage';
+import { plainDraft } from '../../../src/content/draft';
+import { echoOf } from '../../../src/engine/craft/programmes/vindictive';
 import { hiddenFixture } from '../../fixtures/analyze/hidden';
 import { errors, loadCore, run } from '../../helpers/world';
 import { ANN, BEA, unitOf, world } from '../../engine/practice/world';
@@ -238,11 +240,17 @@ describe('what a card never holds, and its marks', () => {
   it('no pronoun for the commander and no hidden sentinel on any card', () => {
     const { sentinels } = hiddenFixture(reg);
     const s = scene({ style: 'vindictive' });
-    s.relations[ANN]!.craft = { sentence: { crimeId: 'smuggling', start: s.day, until: s.day + 9, extended: 6, landed: true }, lesson: { point: 'SENTINEL-LESSON-POINT', words: 'SENTINEL-LESSON-WORDS', scene: s.scene!.id, exchange: 3 } };
+    // the echo has not acted yet (no `landed`): its line is a sentinel; the crime is the commander's own and the card names it
+    s.relations[ANN]!.craft = { sentence: { crimeId: 'strain_trade', start: s.day, until: s.day + 9, extended: 6 }, lesson: { point: 'SENTINEL-LESSON-POINT', words: 'SENTINEL-LESSON-WORDS', scene: s.scene!.id, exchange: 3 } };
     s.scene!.exchanges = 3; // her reply has not passed: the word is hidden
     const t = draw(s);
+    const echo = plainDraft(String(echoOf(reg, 'strain_trade')!.line));
+    expect(sentinels.texts).toContain(echo);
     for (const x of sentinels.texts) expect(t.host.innerHTML).not.toContain(x);
     expect(t.host.textContent).not.toMatch(/\b(he|him|his|himself)\b/i);
+    // the control: once it has acted the same card shows the echo, so the check above can fail
+    s.relations[ANN]!.craft!.sentence!.landed = true;
+    expect(draw(s).host.innerHTML).toContain(echo);
   });
 });
 
