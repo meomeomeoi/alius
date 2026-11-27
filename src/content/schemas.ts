@@ -3147,7 +3147,7 @@ registrySchemas.craftLessons = CraftLessonSchema;
 
 /**
  * Her words for what the commander has learnt (spec section 4: records "in her hand", as margin lines of the CMDR file). Read by `kind`, never by id:
- * `record.longest` / `record.clean` / `record.noTap` (the line of a record, `{day}`, `{span}` in fiction time and `{where}`), `where.<physicsId>` (where the hold was,
+ * `record.longest` / `record.clean` / `record.noTap` (the line of a record, `{day}`, `{span}` in fiction time and `{where}`), `where.<physicsId>` (where the hold was, `where.posture_held` for a posture with `{posture}`,
  * `where.default` when nothing fits) and `signal.<motion>` (a foot signal she has named). No pronoun for the commander: the text is hers, in the first person.
  */
 export const CRAFT_LINE_KIND = /^(record\.(longest|clean|noTap)|where\.[a-z0-9_]+|signal\.[a-z0-9_]+)$/;

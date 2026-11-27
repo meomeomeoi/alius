@@ -7,6 +7,7 @@
  * into a registry-ordered list by `Math.floor(craftRoll x n)`.
  */
 import { practiceRoll } from '../practice/state';
+import type { Entry, Registries } from '../../content/types';
 import type { CampaignState } from '../state/types';
 
 /** The commander's disciplines of the craft (spec section 2); the endurance of each physics is `endurance:<physicsId>` and lives in `Commander.endurance`. */
@@ -142,4 +143,9 @@ export function spanText(seconds: number): string {
   if (m < 120) return `${m} minute${m === 1 ? '' : 's'}`;
   const h = Math.floor(m / 60), r = m % 60;
   return r === 0 ? `${h} hours` : `${h} hours ${r} minutes`;
+}
+
+/** The posture preset a record's key names (`posture:<preset>`), or `undefined` for a physics' key or an unknown preset. */
+export function postureOfRecordKey(reg: Registries, key: string): Entry | undefined {
+  return key.startsWith('posture:') ? reg.servicePostures.get(key.slice('posture:'.length)) : undefined;
 }

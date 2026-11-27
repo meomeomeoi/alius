@@ -8306,6 +8306,9 @@ function spanText(seconds) {
   const h2 = Math.floor(m / 60), r = m % 60;
   return r === 0 ? `${h2} hours` : `${h2} hours ${r} minutes`;
 }
+function postureOfRecordKey(reg, key) {
+  return key.startsWith("posture:") ? reg.servicePostures.get(key.slice("posture:".length)) : void 0;
+}
 
 // src/content/types.ts
 var REGISTRY_NAMES = [
@@ -64462,7 +64465,8 @@ function lineOf(reg, kind) {
   return void 0;
 }
 function recordLine2(reg, r) {
-  const where = lineOf(reg, `where.${r.key}`) ?? lineOf(reg, "where.default") ?? "";
+  const posture = postureOfRecordKey(reg, r.key);
+  const where = posture !== void 0 ? (lineOf(reg, "where.posture_held") ?? "in the {posture} posture").replace("{posture}", String(posture.label).toLowerCase()) : lineOf(reg, `where.${r.key}`) ?? lineOf(reg, "where.default") ?? "";
   const template = lineOf(reg, `record.${r.kind}`) ?? "Day {day} \u2014 {span} {where}.";
   return template.replace("{day}", String(r.day)).replace("{span}", spanText(r.seconds)).replace("{where}", where);
 }
@@ -88072,8 +88076,10 @@ var lineOf2 = (d, env, k) => {
   return `${titled(d.key, env)}: ${d.word}${raw !== null ? ` (${raw} xp)` : ""}.`;
 };
 var recordLines2 = (v, env) => v.records.map((r) => {
+  const posture = postureOfRecordKey(env.registries, r.key);
   const physics = env.registries.contactPhysics.get(r.key);
-  return `${nameOf27(env, v.unitId)}: day ${r.day}, ${spanText(r.seconds)} ${physics !== void 0 ? String(physics.label).toLowerCase() : r.key}${KIND_WORDS[r.kind] ?? ""}.`;
+  const what = posture !== void 0 ? `the ${String(posture.label).toLowerCase()} posture` : physics !== void 0 ? String(physics.label).toLowerCase() : r.key.replace(/_/g, " ");
+  return `${nameOf27(env, v.unitId)}: day ${r.day}, ${spanText(r.seconds)} ${what}${KIND_WORDS[r.kind] ?? ""}.`;
 });
 function craftProvider(_s, env, k) {
   if (!env.state) return null;

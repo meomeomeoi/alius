@@ -89,6 +89,13 @@ describe('CMDR › CRAFT', () => {
     expect(recordLine(reg, { key: 'nowhere', kind: 'longest', seconds: 45 * 60, day: 3 })).toBe('Day 3 — 45 minutes held for me.');
   });
 
+  it('a posture\'s record names the posture, not its key', () => {
+    const line = recordLine(reg, { key: 'posture:kneel_open', kind: 'longest', seconds: 15 * 60, day: 9 });
+    expect(line).not.toMatch(/posture:|kneel_open/);
+    expect(line).toContain(String(reg.servicePostures.get('kneel_open')!.label).toLowerCase());
+    expect(line).not.toMatch(/AUTHOR TO WRITE|\{/);
+  });
+
   it('every element carries data-analyze, resolves and is reachable', () => {
     const s = campaign(reg, 3);
     s.relations[ANN].craft = { rhythm: { xp: 90, day: 12 }, postures: { sitting: { xp: 40, day: 12 } }, signals: { tap2: { named: true, answered: 1, day: 12 } }, records: { weight: { longest: 720, clean: 0, noTap: 0, day: 12 } } };

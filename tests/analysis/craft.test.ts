@@ -85,6 +85,14 @@ describe('the craft readings', () => {
     expect(analyze('glossary:craft_record', env(campaign(reg, 3)))).toEqual(['No record yet.']);
   });
 
+  it('a posture\'s record reads as the posture, never as its key', () => {
+    const { state, unitId } = hiddenFixture(reg);
+    state.relations[unitId].craft!.records = { 'posture:kneel_open': { longest: 900, clean: 0, noTap: 0, day: 9 } } as never;
+    const lines = analyze('glossary:craft_record', env(state), { unitId });
+    expect(lines.join(' ')).not.toMatch(/posture:|kneel_open/);
+    expect(lines.join(' ')).toContain(`the ${String(reg.servicePostures.get('kneel_open')!.label).toLowerCase()} posture`);
+  });
+
   it('the endurance line of a hold reads through the same words', () => {
     const s = campaign(reg, 3);
     s.commander.endurance = { weight: { xp: 400, level: 5 } };

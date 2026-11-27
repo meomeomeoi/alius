@@ -4,8 +4,7 @@
  * it, a slip waiting for her discipline and every rate of decay are not in the view, so they have no reading. No pronoun for the commander (lore section 0).
  */
 import { presetOf } from '../../engine/blocking';
-import { DISCIPLINES } from '../../engine/craft/state';
-import { spanText } from '../../engine/craft/state';
+import { DISCIPLINES, postureOfRecordKey, spanText } from '../../engine/craft/state';
 import type { CraftView } from '../../engine/craft/view';
 import type { Knowledge } from '../knowledge';
 import type { AnalyzeEnv } from '../model';
@@ -28,8 +27,10 @@ const lineOf = (d: CraftView['disciplines'][number], env: AnalyzeEnv, k: Knowled
 
 /** The records of a pair as lines in fiction time (the day, the time, the kind). */
 const recordLines = (v: CraftView['pairs'][number], env: AnalyzeEnv): string[] => v.records.map((r) => {
+  const posture = postureOfRecordKey(env.registries, r.key);
   const physics = env.registries.contactPhysics.get(r.key);
-  return `${nameOf(env, v.unitId)}: day ${r.day}, ${spanText(r.seconds)} ${physics !== undefined ? String(physics.label).toLowerCase() : r.key}${KIND_WORDS[r.kind] ?? ''}.`;
+  const what = posture !== undefined ? `the ${String(posture.label).toLowerCase()} posture` : physics !== undefined ? String(physics.label).toLowerCase() : r.key.replace(/_/g, ' ');
+  return `${nameOf(env, v.unitId)}: day ${r.day}, ${spanText(r.seconds)} ${what}${KIND_WORDS[r.kind] ?? ''}.`;
 });
 
 /** `glossary:craft`: every discipline as a word, and what each pair has learnt. */

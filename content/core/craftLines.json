@@ -54,6 +54,12 @@
     "description": "AUTHOR TO WRITE: Where a cleaning was."
   },
   {
+    "id": "where_posture_held",
+    "kind": "where.posture_held",
+    "text": "AUTHOR TO WRITE: in the {posture} posture",
+    "description": "AUTHOR TO WRITE: Where a posture hold was; {posture} is the posture's name."
+  },
+  {
     "id": "where_default",
     "kind": "where.default",
     "text": "AUTHOR TO WRITE: held for me",

@@ -6,7 +6,7 @@
 import type { CraftLineEntry } from '../../content/schemas';
 import type { Registries } from '../../content/types';
 import { plainDraft } from '../../content/draft';
-import { spanText } from '../../engine/craft/state';
+import { postureOfRecordKey, spanText } from '../../engine/craft/state';
 import type { CraftView } from '../../engine/craft/view';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs } from '../analyze/mark';
@@ -22,7 +22,10 @@ export function lineOf(reg: Registries, kind: string): string | undefined {
 
 /** A record as her margin line: the kind's template with the day, the time in fiction and where. */
 export function recordLine(reg: Registries, r: CraftView['pairs'][number]['records'][number]): string {
-  const where = lineOf(reg, `where.${r.key}`) ?? lineOf(reg, 'where.default') ?? '';
+  const posture = postureOfRecordKey(reg, r.key);
+  const where = posture !== undefined
+    ? (lineOf(reg, 'where.posture_held') ?? 'in the {posture} posture').replace('{posture}', String(posture.label).toLowerCase())
+    : lineOf(reg, `where.${r.key}`) ?? lineOf(reg, 'where.default') ?? '';
   const template = lineOf(reg, `record.${r.kind}`) ?? 'Day {day} — {span} {where}.';
   return template.replace('{day}', String(r.day)).replace('{span}', spanText(r.seconds)).replace('{where}', where);
 }
