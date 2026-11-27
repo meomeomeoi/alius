@@ -663,14 +663,14 @@ Before Task 1, also read:
   - `src/craft/controller.ts`: opens a scene at the training yard (`scene/start`, origin `event`, the woman alone) and stages `smothered_armpit` through the staging controller; the approved scent instrument plays; the tap ends it; witnesses (whereabouts in the training room) give `regardFall` with `witness` and `protocol_public`.
 - Test: `tests/engine/craft/headlock.test.ts`, `tests/craft/controller.test.ts`
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - only after a lost sparring bout to an eligible woman;
   - the wager's own draw and fact are unchanged (`tests/engine/personal/wagers*` pass unchanged);
   - the scene opens with the contact;
   - a holder at `equal` gets nothing.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`. Chunk end: full suite, typecheck, `npm run test:layout`.
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`. Chunk end: full suite, typecheck, `npm run test:layout`.
 
 ---
 
@@ -791,7 +791,54 @@ Before Task 1, also read:
   - the goal rise fires once a week, only when craft-live.
 - [ ] **Step 2: Run** → FAIL.
 - [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`. Chunk end: full suite, typecheck.
+- [ ] **Step 4: Run** → PASS; `npm run build`.
+- [ ] **Step 5: Commit** `feat(P16b): removal forgets the craft; help with her goal`
+
+---
+
+### Task 22a: Who names postures and which (ruling 25)
+
+**Files:**
+- Modify:
+  - `src/engine/practice/postures.ts`: `keepsPostures` also for `drill` and `regal` (through `styleOf` / `practiceOf`); a new pick through a registered hook (the practices import nothing of the craft).
+  - `src/engine/craft/posture.ts` (or a new `craft/herSet.ts`): `pickHerPosture(state, reg, holderId)`; the candidates are the presets whose `meaning` meets `TUNING.craft.posture.likes[style]` (primary first, then secondary), pass `presetAllowed` / `postureAllowed`, have a `humiliation` her frame allows (`TUNING.craft.posture.humiliationByFrame` play 2, role 4, rule 5) and are not hers yet; the manner tilt (`order` ≥ +1 → the stricter meanings of her list first; `curiosity` ≥ +1 → a meaning she has none of first); a hash pick (`craftRoll`) over the registry order.
+  - When her set has room at a day step (or when the service track levels up), she names the picked preset (`posture_named`, the name asked as today). A preset the commander already holds that fits is named instead (P16's path).
+  - Her first call of a posture is a lesson: `practices.call.taught: true`, a ghost on the call, no slip on a miss.
+- Test: `tests/engine/craft/herSet.test.ts`, `tests/engine/practice/postures.test.ts`
+
+- [ ] **Step 1: Write the failing tests:**
+  - `regal` and `drill` name postures now;
+  - each style's candidates follow its likes;
+  - the frame caps the humiliation;
+  - the manner tilts the pick;
+  - the pick is stable and draws nothing;
+  - a fitting held preset is named first;
+  - the first call teaches;
+  - P16's seeded posture tests keep their events (a `ritual` holder whose set fills from held postures behaves as before).
+- [ ] **Step 2: Run** → FAIL.
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Run** → PASS; `npm run build`.
+- [ ] **Step 5: Commit** `feat(P16b): she names postures by her taste`
+
+### Task 22b: HER POSTURES
+
+**Files:**
+- Modify:
+  - `src/ui/dynamic/section.ts` / `src/ui/practice/block.ts`: the block HER POSTURES (ruling 26), reading `Knowledge.practice(...).postures` and `Knowledge.craft`;
+  - `content/core/glossary.json` + `CORE_GLOSSARY_IDS`: `her_postures`;
+  - `[ PRACTISE ]` dispatches `activity/do` for `train` with the posture drill and the preset (the focus takes `presetId`; `drill_done` carries it).
+- Test: `tests/ui/practice/herPostures.test.ts`, the analyze coverage
+
+- [ ] **Step 1: Write the failing tests:**
+  - only named postures;
+  - her name in her hand;
+  - the mannequin and the points with their keys;
+  - the knowledge word;
+  - PRACTISE drills that preset and spends the slot;
+  - `data-analyze` on each row.
+- [ ] **Step 2: Run** → FAIL.
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Run** → PASS; `npm run build`. Chunk end: full suite, typecheck, `npm run test:layout`.
 
 ---
 
