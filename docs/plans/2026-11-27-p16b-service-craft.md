@@ -829,16 +829,16 @@ Before Task 1, also read:
   - `[ PRACTISE ]` dispatches `activity/do` for `train` with the posture drill and the preset (the focus takes `presetId`; `drill_done` carries it).
 - Test: `tests/ui/practice/herPostures.test.ts`, the analyze coverage
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - only named postures;
   - her name in her hand;
   - the mannequin and the points with their keys;
   - the knowledge word;
   - PRACTISE drills that preset and spends the slot;
   - `data-analyze` on each row.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`. Chunk end: full suite, typecheck, `npm run test:layout`.
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`. Chunk end: full suite, typecheck, `npm run test:layout`.
 
 ---
 

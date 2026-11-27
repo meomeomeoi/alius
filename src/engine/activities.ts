@@ -34,6 +34,9 @@ export interface ActivityRequest {
   wardenChecked?: boolean;
   /** P14c: the pastime of a quiet hour (the activity that carries `pastime: true`); it travels with the request so an override answered later runs the same pastime. */
   pastimeId?: string;
+  /** P16b: a posture drill alone on one of her named postures (`[ PRACTISE ]`): the woman whose posture it is and its preset (both or neither; only the posture drill reads them). */
+  presetId?: string;
+  holderId?: string;
 }
 
 type Cost = { credits?: number; supplies?: number; plyx?: number };
@@ -72,8 +75,8 @@ export const resetActivityHooks = (): void => {
  */
 export interface DrillAt { activityId: string; focus: Focus; companionId: string }
 export interface DrillHooks {
-  gate?: (state: CampaignState, reg: Registries, focus: Focus, mode: 'alone' | 'partner') => string | null;
-  effect?: (draft: CampaignState, ctx: EngineCtx, fx: ActivityEffect, at: { activityId: string; focusId?: string }) => EngineEvent[];
+  gate?: (state: CampaignState, reg: Registries, focus: Focus, mode: 'alone' | 'partner', req?: ActivityRequest) => string | null;
+  effect?: (draft: CampaignState, ctx: EngineCtx, fx: ActivityEffect, at: { activityId: string; focusId?: string; presetId?: string; holderId?: string }) => EngineEvent[];
   partner?: (draft: CampaignState, ctx: EngineCtx, at: DrillAt) => { events: EngineEvent[]; scene?: { locationId: string } };
 }
 let drillHooks: DrillHooks = {};
@@ -85,8 +88,8 @@ export const resetDrillHooks = (): void => {
 };
 
 /** Why a drill focus is not offered now (`null` for any other focus, or while the craft has not registered a gate). The one place the OPS tab and the checks ask. */
-export function drillReason(state: CampaignState, reg: Registries, focus: Focus, mode: 'alone' | 'partner'): string | null {
-  return focus.drill === undefined || drillHooks.gate === undefined ? null : drillHooks.gate(state, reg, focus, mode);
+export function drillReason(state: CampaignState, reg: Registries, focus: Focus, mode: 'alone' | 'partner', req?: ActivityRequest): string | null {
+  return focus.drill === undefined || drillHooks.gate === undefined ? null : drillHooks.gate(state, reg, focus, mode, req);
 }
 
 /** The focus a companion shares (a partner drill, while the craft offers it), else `undefined`: every other focus is dropped with a companion, as it always was. */
@@ -113,6 +116,8 @@ const asReq = (v: unknown): ActivityRequest | null => {
   if (typeof r.activityId !== 'string') return null;
   if (r.companionId !== undefined && typeof r.companionId !== 'string') return null;
   if (r.focus !== undefined && typeof r.focus !== 'string') return null;
+  if (r.presetId !== undefined && typeof r.presetId !== 'string') return null;
+  if (r.holderId !== undefined && typeof r.holderId !== 'string') return null;
   if (r.unitIds !== undefined && !(Array.isArray(r.unitIds) && r.unitIds.every((x) => typeof x === 'string'))) return null;
   return r as unknown as ActivityRequest;
 };
@@ -179,7 +184,7 @@ export function checkActivity(state: CampaignState, reg: Registries, request: un
   // P15a: an endurance drill is done once a day for each physics
   if (focus !== undefined && enduranceDrillDone(state, a, focus)) return `${focus.label} was done today.`;
   // P16b: a drill of the craft is offered only while a holder runs it
-  const notDrill = focus === undefined ? null : drillReason(state, reg, focus, 'alone');
+  const notDrill = focus === undefined ? null : drillReason(state, reg, focus, 'alone', req);
   if (notDrill !== null) return notDrill;
   if (focus?.units) {
     const ids = req.unitIds ?? [];
@@ -264,7 +269,7 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
         break;
       }
       case 'commander_craft_xp':
-        events.push(...(drillHooks.effect?.(draft, ctx, fx, { activityId: a.id, ...(focus ? { focusId: focus.id } : {}) }) ?? []));
+        events.push(...(drillHooks.effect?.(draft, ctx, fx, { activityId: a.id, ...(focus ? { focusId: focus.id } : {}), ...(req.presetId !== undefined && req.holderId !== undefined ? { presetId: req.presetId, holderId: req.holderId } : {}) }) ?? []));
         break;
       case 'commander_endurance_xp': {
         const gained = trainEndurance(draft, String((fx as { physics?: unknown }).physics));

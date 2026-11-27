@@ -6,14 +6,16 @@
  */
 import type { Registries } from '../../content/types';
 import type { ActivityEffect } from '../../content/schemas';
-import type { Focus } from '../activities';
+import type { ActivityRequest, Focus } from '../activities';
 import { bondTierOf } from '../bonds';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import { trainedToday } from '../physics/skill';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
+import { presetOf, samePreset } from '../blocking';
 import { addCraftXp } from './book';
+import { addPostureMastery } from './posture';
 import { craftLive, craftOn } from './gate';
 import { enduranceOf } from './state';
 
@@ -60,12 +62,29 @@ export function payDrill(draft: CampaignState, reg: Registries, key: string, o: 
 }
 
 /** The activities' gate for a drill focus (`installDrillHooks` registers it): an endurance drill alone is P15a's (always offered); every other drill, and any partner drill, needs a craft-live holder. */
-export function drillGate(state: CampaignState, reg: Registries, focus: Focus, mode: 'alone' | 'partner'): string | null {
+export function drillGate(state: CampaignState, reg: Registries, focus: Focus, mode: 'alone' | 'partner', req?: ActivityRequest): string | null {
+  if (mode === 'alone' && focus.drill!.key === 'posture' && (req?.presetId !== undefined || req?.holderId !== undefined)) { // `[ PRACTISE ]`: one of her named postures, alone
+    const holderId = req.holderId;
+    if (holderId === undefined || req.presetId === undefined || !craftLive(state, reg, holderId)) return 'That posture is not one of hers.';
+    if (presetOf(reg, req.presetId) === undefined || !(state.practices?.postures[holderId] ?? []).some((p) => samePreset(reg, p.postureId, req.presetId))) return 'That posture is not one of hers.';
+    return null;
+  }
   if (mode === 'alone' && enduranceOf(focus.drill!.key) !== null) return null;
   return craftOn(state, reg) ? null : `${focus.label} is not available yet.`;
 }
 
-/** The effect `commander_craft_xp`: an alone drill. */
-export function drillEffect(draft: CampaignState, ctx: EngineCtx, fx: ActivityEffect): EngineEvent[] {
-  return fx.type === 'commander_craft_xp' ? payDrill(draft, ctx.registries, fx.key) : [];
+/**
+ * The effect `commander_craft_xp`: an alone drill. A posture drill on one of her named postures (`[ PRACTISE ]`, `at.presetId` and `at.holderId`) also grows the pair's knowledge of that preset when it paid, and
+ * `drill_done` carries the preset. The request was checked by `drillGate`.
+ */
+export function drillEffect(draft: CampaignState, ctx: EngineCtx, fx: ActivityEffect, at: { presetId?: string; holderId?: string } = {}): EngineEvent[] {
+  if (fx.type !== 'commander_craft_xp') return [];
+  const events = payDrill(draft, ctx.registries, fx.key);
+  const preset = at.presetId === undefined ? undefined : presetOf(ctx.registries, at.presetId);
+  const done = events.find((e) => e.type === 'drill_done');
+  if (fx.key === 'posture' && preset !== undefined && at.holderId !== undefined && done !== undefined) {
+    if (Number(done.xp) > 0) addPostureMastery(draft, ctx.registries, at.holderId, String(preset.id), TUNING.craft.xp.knowledge);
+    done.presetId = String(preset.id);
+  }
+  return events;
 }

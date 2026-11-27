@@ -36,7 +36,7 @@ describe('Knowledge.craft', () => {
     expect(on.disciplines.find((d) => d.key === 'stillness')).toEqual({ key: 'stillness', word: 'steady', xp: 183.5 });
     expect(JSON.stringify(on)).not.toMatch(/119|211|streak|slips|lesson|SENTINEL|stamp|answered/);
     const pair = off.pairs[0]!;
-    expect(pair).toEqual({ unitId: state.squad[0].id, postures: ['kneeling_upright'], rhythm: 'practised', signals: ['tap2'], records: [{ key: 'weight', kind: 'noTap', seconds: 3600, day: 8 }, { key: 'weight', kind: 'clean', seconds: 1200, day: 8 }], norm: 'weight 4 minutes, posture 10 minutes', sentence: { daysLeft: 12 } });
+    expect(pair).toEqual({ unitId: state.squad[0].id, postures: ['kneeling_upright'], postureWords: { kneeling_upright: 'steady' }, rhythm: 'practised', signals: ['tap2'], records: [{ key: 'weight', kind: 'noTap', seconds: 3600, day: 8 }, { key: 'weight', kind: 'clean', seconds: 1200, day: 8 }], norm: 'weight 4 minutes, posture 10 minutes', sentence: { daysLeft: 12 } });
   });
 
   it('a record: the kind that holds the longest time, and a lesser one only when it is lower and set', () => {

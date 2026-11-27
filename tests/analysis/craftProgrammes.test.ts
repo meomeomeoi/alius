@@ -9,6 +9,7 @@ import { hiddenFixture } from '../fixtures/analyze/hidden';
 import { allReadings, leaks } from '../helpers/analyze';
 import { analyze } from '../helpers/analyzeCoverage';
 import { loadCore } from '../helpers/world';
+import { ANN, world } from '../engine/craft/world';
 
 let reg: Registries;
 beforeAll(async () => { reg = await loadCore(); registerCoreProviders(); });
@@ -49,6 +50,16 @@ describe('the programmes in Knowledge.craft and their readings (P16b, Tasks 19 a
     expect(lines.join(' ')).toMatch(/12 days/);
     expect(lines.join(' ')).not.toMatch(/strain|tithe|crime|6|extended|echo/i);
     expect(analyze('glossary:craft_sentence', env(state), { unitId: 'unit_nobody' }).join(' ')).toMatch(/no sentence/i);
+  });
+
+  it('glossary:her_postures reads the postures she has named and how well each is known, as words', () => {
+    const state = world(reg, 'play');
+    state.practices = { seq: 0, requests: [], tasks: [], punishments: [], demonstrations: [], restrictions: [], cold: {}, offences: {}, records: [], handovers: [], postures: { [ANN]: [{ postureId: 'kneel_open', name: 'Down', day: 8 }, { postureId: 'attention', name: 'Straight', day: 8 }] } } as never;
+    state.relations[ANN].craft = { postures: { kneel_open: { xp: 211.7, day: 8 } } };
+    const lines = analyze('glossary:her_postures', env(state), { unitId: ANN });
+    expect(lines).toEqual(['Down: steady.', 'Straight: untrained.']);
+    expect(lines.join(' ')).not.toMatch(/211/);
+    expect(analyze('glossary:her_postures', env(state), { unitId: 'unit_nobody' }).join(' ')).toMatch(/no posture/i);
   });
 
   it('no reading carries a sentinel: not the exam\'s results, the praise text or its words, or the crime', () => {

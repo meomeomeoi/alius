@@ -21,6 +21,8 @@ export interface CraftView {
     unitId: string;
     /** The postures known with her, as ids (the UI gives them their names). */
     postures: string[];
+    /** How well each is known, as the word of its level (never the xp): by preset id. */
+    postureWords?: Record<string, string>;
     /** Her rhythm as a word of the same scale. */
     rhythm: string;
     /** The foot signals she has named, as motions. */
@@ -60,13 +62,14 @@ export function craftView(state: CampaignState, reg: Registries, opts: { raw: bo
     const c = state.relations[unit.id]?.craft;
     if (c === undefined || unit.kind !== 'named') continue;
     const postures = Object.keys(c.postures ?? {});
+    const postureWords = Object.fromEntries(Object.entries(c.postures ?? {}).map(([id, k]) => [id, craftWord(levelForXp(k.xp))]));
     const signals = Object.entries(c.signals ?? {}).filter(([, s]) => s.named).map(([motion]) => motion);
     const records = Object.entries(c.records ?? {}).flatMap(([key, rec]) => recordRows(key, rec));
     const rhythm = c.rhythm !== undefined ? craftWord(levelForXp(c.rhythm.xp)) : null;
     const norm = c.drill !== undefined ? normText(reg, c.drill.norms) : null;
     const sentence = sentenceOf(state, unit.id);
     if (postures.length === 0 && signals.length === 0 && records.length === 0 && norm === null && sentence === undefined && (rhythm === null || rhythm === 'untrained')) continue;
-    pairs.push({ unitId: unit.id, postures, rhythm: rhythm ?? 'untrained', signals, records, ...(norm !== null ? { norm } : {}), ...(sentence !== undefined ? { sentence: { daysLeft: daysLeft(state, sentence) } } : {}) });
+    pairs.push({ unitId: unit.id, postures, ...(postures.length > 0 ? { postureWords } : {}), rhythm: rhythm ?? 'untrained', signals, records, ...(norm !== null ? { norm } : {}), ...(sentence !== undefined ? { sentence: { daysLeft: daysLeft(state, sentence) } } : {}) });
   }
   return { disciplines, pairs };
 }

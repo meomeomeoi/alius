@@ -3,6 +3,7 @@
  * rhythm as a word, the foot signals she has named, the postures known and the records in fiction time. The settling-in count, an unnamed signal, the lesson word before she says
  * it, a slip waiting for her discipline and every rate of decay are not in the view, so they have no reading. No pronoun for the commander (lore section 0).
  */
+import { presetOf } from '../../engine/blocking';
 import { DISCIPLINES } from '../../engine/craft/state';
 import { spanText } from '../../engine/craft/state';
 import type { CraftView } from '../../engine/craft/view';
@@ -70,6 +71,17 @@ function sentenceProvider(s: Subject, env: AnalyzeEnv, k: Knowledge): { lines: s
   return { lines: pairs.length > 0 ? pairs.map((p) => `${nameOf(env, p.unitId)}'s sentence: ${daysWords(p.sentence!.daysLeft)} left.`) : ['No sentence is running.'] };
 }
 
+/** `glossary:her_postures`: the postures she has named (by her name) and how well the commander knows each, as a word; never the xp, never one she has not named. */
+function herPosturesProvider(s: Subject, env: AnalyzeEnv, k: Knowledge): { lines: string[] } | null {
+  if (!env.state) return null;
+  const given = unitIdOf(s);
+  if (given === null) return { lines: ['Her named postures are listed in her DYNAMIC section.'] };
+  const named = k.practice(given, env.registries).postures;
+  if (named.length === 0) return { lines: [`${nameOf(env, given)} has named no posture yet.`] };
+  const words = k.craft(env.registries).pairs.find((p) => p.unitId === given)?.postureWords ?? {};
+  return { lines: named.map((p) => `${p.name}: ${words[String(presetOf(env.registries, p.postureId)?.id ?? p.postureId)] ?? 'untrained'}.`) };
+}
+
 /** "9 days", "1 day". */
 const daysWords = (n: number): string => `${n} ${n === 1 ? 'day' : 'days'}`;
 
@@ -80,4 +92,5 @@ export function registerCraftProviders(): void {
   registerAnalyzeProvider('glossary:craft_record', recordProvider);
   registerAnalyzeProvider('glossary:craft_norm', normProvider);
   registerAnalyzeProvider('glossary:craft_sentence', sentenceProvider);
+  registerAnalyzeProvider('glossary:her_postures', herPosturesProvider);
 }

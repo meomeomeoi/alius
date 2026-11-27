@@ -19,6 +19,7 @@ import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h, type Child } from '../dom';
 import { renderCareMenu } from '../craft/careMenu';
 import { practicesBlock } from '../practice/block';
+import { herPosturesBlock } from '../practice/herPostures';
 import { bodyMapFor, renderBodyMap } from './bodyMap';
 import { drawClaimCards, drawMilestoneCards, drawReturnCards, renderExitCard, type ClaimAnswer, type ReturnAnswer } from './cards';
 import { plainDraft } from '../../content/draft';
@@ -32,6 +33,8 @@ export interface DynamicSectionActions {
   requestTransfer?(unitId: string): void;
   /** P16b: `[ CARE ]` (`care/unasked`): something for her without her asking. Absent = the menu is not drawn. */
   care?(unitId: string, careId: string): void;
+  /** P16b: `[ PRACTISE ]` on one of her named postures (a posture drill alone on that preset). Absent = HER POSTURES is a list with no button. */
+  practisePosture?(unitId: string, presetId: string): void;
 }
 
 export interface DynamicSectionCtx {
@@ -169,6 +172,7 @@ export function renderDynamicSection(host: HTMLElement, ctx: DynamicSectionCtx):
     lines.push(row('SENTENCE', h('span', { class: 'alius-chip', 'data-craft-sentence': '', ...analyzeAttrs('glossary:craft_sentence', live) }, `${sentence.daysLeft} ${sentence.daysLeft === 1 ? 'DAY' : 'DAYS'} LEFT`)));
   }
   const practices = practicesBlock(state, reg, ctx.knowledge, unitId, ctx.hidden); // P16: what she asked and the forms she set (nothing in immersive mode, which returned above)
+  const herPostures = herPosturesBlock(state, reg, ctx.knowledge, unitId, ctx.hidden, ctx.actions?.practisePosture); // P16b: the postures she has named (ruling 26)
   const cards = h('div', { class: 'alius-dyn-cards' });
   const pick = (c: { unitId: string }): boolean => c.unitId === unitId;
   const slots = [h('div', { class: 'alius-milestone-cards' }), h('div', { class: 'alius-claim-cards' }), h('div', { class: 'alius-return-cards' })];
@@ -183,7 +187,7 @@ export function renderDynamicSection(host: HTMLElement, ctx: DynamicSectionCtx):
   if (map.zones.length > 0) renderBodyMap(mapHost, map);
 
   const careMenu = ctx.actions?.care !== undefined ? renderCareMenu(state, reg, unitId, ctx.actions.care) : null; // P16b: open toward any woman with a dynamic block
-  host.append(h('h4', {}, 'DYNAMIC'), ...lines, ...(practices !== null ? [practices] : []), ...(careMenu !== null ? [careMenu] : []), ...(map.zones.length > 0 ? [mapHost] : []), cards, exitHost);
+  host.append(h('h4', {}, 'DYNAMIC'), ...lines, ...(practices !== null ? [practices] : []), ...(herPostures !== null ? [herPostures] : []), ...(careMenu !== null ? [careMenu] : []), ...(map.zones.length > 0 ? [mapHost] : []), cards, exitHost);
   host.classList.add('alius-dynamic-section');
   host.setAttribute('data-dynamic-section', unitId);
   return true;

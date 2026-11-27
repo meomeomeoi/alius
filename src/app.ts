@@ -2557,6 +2557,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
           exit: (unitId, route, opts) => void dynamic.exit(unitId, route, opts).then((ok) => { if (ok) { if (route === 'negotiated') shell.open(); else shell.refresh(); } }),
           requestTransfer: (unitId) => void dynamic.requestTransfer(unitId),
           care: (unitId, careId) => { act({ type: 'care/unasked', payload: { unitId, careId } }); shell.refresh(); }, // P16b: something for her without her asking
+          practisePosture: (unitId, presetId) => void api.performActivity({ activityId: 'train', focus: 'drill_posture', holderId: unitId, presetId }).then(() => shell.refresh()), // P16b: a posture drill alone on one of her named postures
         },
       },
       memory: {
