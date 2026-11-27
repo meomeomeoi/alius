@@ -135,10 +135,10 @@ export function book(draft: CampaignState, _ctx: Pick<EngineCtx, 'registries'>, 
   return events;
 }
 
-/** The kinds her tier allows (a `romantic` kind needs the romantic tier), in registry order. A `held` kind (P16: a practice puts it in the calendar) is never one of them, so no roll, milestone or aftermath books it; a tagged kind needs its category on and is not hers to book when it is among her limits. */
+/** The kinds her tier allows (a `romantic` kind needs the romantic tier), in registry order. A `held` kind (P16: a practice puts it in the calendar) and a `programme` kind (P16b: the drill holder's exam and sessions) are never among them, so no roll, milestone or aftermath books it; a tagged kind needs its category on and is not hers to book when it is among her limits. */
 export function bookingKindsFor(state: CampaignState, reg: Registries, unitId: string): Array<Record<string, unknown>> {
   const tier = bondTierOf(state, reg, unitId);
-  return [...reg.bookingKinds.values()].filter((k) => k.held !== true && (k.tier === undefined || k.tier === tier) && contentAllowed(state, reg, k, unitId));
+  return [...reg.bookingKinds.values()].filter((k) => k.held !== true && k.programme === undefined && (k.tier === undefined || k.tier === tier) && contentAllowed(state, reg, k, unitId));
 }
 
 /**

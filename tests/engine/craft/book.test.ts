@@ -127,8 +127,8 @@ describe('the book', () => {
 
   it('every event of the package is reserved', () => {
     for (const t of CRAFT_EVENT_TYPES) expect(RESERVED_EVENT_TYPES, t).toContain(t);
-    expect(CRAFT_EVENT_TYPES).toHaveLength(20);
-    expect(new Set(CRAFT_EVENT_TYPES).size).toBe(20);
+    expect(CRAFT_EVENT_TYPES).toHaveLength(21);
+    expect(new Set(CRAFT_EVENT_TYPES).size).toBe(21);
   });
 });
 

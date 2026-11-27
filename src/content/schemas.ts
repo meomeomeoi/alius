@@ -1983,12 +1983,14 @@ registrySchemas.contentCategories = ContentCategorySchema;
 export const RelationshipRuleTemplateSchema = BaseEntrySchema.extend({
   text: str.max(160),
   description: str.max(DESCRIPTION_MAX),
-  check: z.enum(['daily_contact', 'run_without_asking', 'intent', 'token_wear']),
+  check: z.enum(['daily_contact', 'run_without_asking', 'intent', 'token_wear', 'praise']),
   keepDeltas: z.object({ trust: z.number(), affinity: z.number() }).strict(),
   breakDeltas: z.object({ trust: z.number(), affinity: z.number(), stress: z.number() }).strict(),
   conditions: z.object({
     minLead: z.enum(['assertive', 'dominant']).optional(),
     tiers: z.array(z.enum(['romantic', 'close'])).min(1).optional(),
+    /** P16b: only a holder whose frame is at least this is offered it. */
+    minFrame: z.enum(['play', 'role', 'rule']).optional(),
   }).strict(),
   weight: z.number().min(0.1).max(20),
   contentTags,
@@ -1996,6 +1998,10 @@ export const RelationshipRuleTemplateSchema = BaseEntrySchema.extend({
   asks: z.literal('permission').optional(),
   /** P16: a rule only a holder's practices propose (a protocol, a denial): P9d's own daily roll and P15's aftermath never offer it. */
   practice: z.literal(true).optional(),
+  /** P16b: only a holder whose style (primary or secondary) is one of these is offered it (read by field: the daily praise is `regal`'s). */
+  styles: z.array(str).min(1).optional(),
+  /** P16b: a rule only a sentence's echo of this effect type proposes (`answer_first`); no other pool offers it. */
+  echo: str.optional(),
 }).strict();
 
 registrySchemas.relationshipRuleTemplates = RelationshipRuleTemplateSchema;
@@ -2126,9 +2132,12 @@ export const BookingKindSchema = BaseEntrySchema.extend({
   weight: int.min(0).max(100),
   contentTags,
   held: z.literal(true).optional(),
+  /** P16b: a kind a programme of the craft books (`exam`, `session`; the `drill` holder's); its weight is 0, so no roll, milestone, aftermath, smother or wager ever picks it. */
+  programme: z.enum(['exam', 'session']).optional(),
 }).strict().superRefine((k, ctx) => {
-  if (k.held === true && k.weight !== 0) ctx.addIssue({ code: 'custom', path: ['weight'], message: 'a held booking kind is never rolled: its weight is 0' });
-  if (k.held !== true && k.weight < 1) ctx.addIssue({ code: 'custom', path: ['weight'], message: 'a booking kind that is rolled has a weight of at least 1' });
+  if ((k.held === true || k.programme !== undefined) && k.weight !== 0) ctx.addIssue({ code: 'custom', path: ['weight'], message: 'a held or programme booking kind is never rolled: its weight is 0' });
+  if (k.held === true && k.programme !== undefined) ctx.addIssue({ code: 'custom', path: ['programme'], message: 'a held kind is not a programme' });
+  if (k.held !== true && k.programme === undefined && k.weight < 1) ctx.addIssue({ code: 'custom', path: ['weight'], message: 'a booking kind that is rolled has a weight of at least 1' });
 });
 export type BookingKindEntry = z.infer<typeof BookingKindSchema>;
 registrySchemas.bookingKinds = BookingKindSchema;
@@ -2403,7 +2412,7 @@ export const DESCRIBED_REGISTRIES = [
   // P16 (`practiceSeeds` are examples for the model and are not shown to the player: `PLAYER_VISIBLE` leaves them out)
   'practiceSeeds', 'holderPunishments', 'implements', 'ceremonySteps',
   // P16b
-  'craftLessons', 'craftLines', 'servicePostures',
+  'craftLessons', 'craftLines', 'servicePostures', 'crimeEchoes',
 ] as const satisfies readonly RegistryName[];
 
 // ---------------------------------------------------------------------------------------------
@@ -3045,6 +3054,8 @@ export const PracticeSeedSchema = BaseEntrySchema.extend({
   sensory: z.literal(true).optional(),
   /** The days a task from this seed gives (1 to 7); none: `TUNING.practice.defaultDeadlineDays`. Every task has a deadline. */
   days: int.min(1).max(7).optional(),
+  /** P16b: a seed only a sentence's echo of this effect type offers (`experiment`); the ordinary pool never does. */
+  echo: str.optional(),
   weight: z.number().min(0.1).max(20),
   description: str,
 }).strict();
@@ -3210,6 +3221,33 @@ export const ServicePostureSchema = BaseEntrySchema.extend({
 }).strict();
 export type ServicePostureEntry = z.infer<typeof ServicePostureSchema>;
 registrySchemas.servicePostures = ServicePostureSchema;
+
+/** The effect types of a holder's punishment (`holderPunishments[].effects[].type`): what a sentence's echo may put first. */
+const ECHO_PUNISH_TYPES = ['slot_held', 'privilege_revoked', 'protocol_extra', 'cold_shoulder', 'confession', 'mark', 'stress', 'injury_chance', 'physical', 'slap'] as const;
+
+/** What a sentence's echo does while the term runs, by type (read by `type`, never by id): `punish` lists the effect types of her punishments it puts first. `tithe` takes `plyx` if the base has it, else `credits`, each week. */
+const crimeEchoEffect = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('give_up'), punish: z.array(z.enum(ECHO_PUNISH_TYPES)).optional() }).strict(),
+  z.object({ type: z.literal('through_her'), punish: z.array(z.enum(ECHO_PUNISH_TYPES)).optional() }).strict(),
+  z.object({ type: z.literal('experiment'), punish: z.array(z.enum(ECHO_PUNISH_TYPES)).optional() }).strict(),
+  z.object({ type: z.literal('obey_day'), punish: z.array(z.enum(ECHO_PUNISH_TYPES)).optional() }).strict(),
+  z.object({ type: z.literal('answer_first'), punish: z.array(z.enum(ECHO_PUNISH_TYPES)).optional() }).strict(),
+  z.object({ type: z.literal('tithe'), plyx: int.min(0).max(50), credits: int.min(0).max(1000), punish: z.array(z.enum(ECHO_PUNISH_TYPES)).optional() }).strict(),
+]);
+
+/**
+ * How a `vindictive` holder's sentence echoes one crime (P16b, Task 21; spec section 11, ruling 6): `crime` is the commander's crime it answers (read by this field, never by the row's id), `days` the
+ * term (7 to 30), `effects` what she does while it runs. `promptHint` is what the model is told once the echo has acted (never before).
+ */
+export const CrimeEchoSchema = BaseEntrySchema.extend({
+  crime: str,
+  days: int.min(7).max(30),
+  effects: z.array(crimeEchoEffect).min(1),
+  description: str,
+  promptHint: str.max(200),
+}).strict();
+export type CrimeEchoEntry = z.infer<typeof CrimeEchoSchema>;
+registrySchemas.crimeEchoes = CrimeEchoSchema;
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */
 function withDescription(schema: z.ZodTypeAny): z.ZodTypeAny {

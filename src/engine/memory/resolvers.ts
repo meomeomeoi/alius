@@ -419,6 +419,21 @@ registerMemoryResolver('record_set', (draft, event, reg) => {
   return { ids: { her: [her.id] }, vars: { name: her.name, what, time: spanText(seconds) } };
 }, { ids: ['her'], vars: ['name', 'what', 'time'] });
 
+// the craft (P16b, Tasks 19 and 21): the exam she set and its verdict, the sentence she set, added to and saw served; hers alone (she may bring them up). Nothing of the pass mark, the echo or the crime is in a fact
+for (const type of ['exam_passed', 'exam_failed', 'sentence_served'] as const) {
+  registerMemoryResolver(type, (draft, event) => {
+    const her = subjectOf(draft, event.unitId);
+    return her ? { ids: { her: [her.id] }, vars: { name: her.name } } : null;
+  }, { ids: ['her'], vars: ['name'] });
+}
+for (const type of ['sentence_set', 'sentence_extended'] as const) {
+  registerMemoryResolver(type, (draft, event) => {
+    const her = subjectOf(draft, event.unitId);
+    const days = Number(event.days);
+    return her && days > 0 ? { ids: { her: [her.id] }, vars: { name: her.name, days: String(Math.round(days)) } } : null;
+  }, { ids: ['her'], vars: ['name', 'days'] });
+}
+
 // the craft (P16b, plan Task 15): she saw what the commander did for her unasked (the care's own words, `what`); hers alone, she may bring it up
 registerMemoryResolver('care_noticed', (draft, event, reg) => {
   const her = subjectOf(draft, event.unitId);

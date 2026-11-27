@@ -400,7 +400,7 @@ describe('no pronoun for the commander in the text modules the main model and th
 
 describe('no pronoun for the commander in the craft code (P16b)', () => {
   // every file of the three directories is read, so a file added later is covered without listing it
-  const DIRS = ['src/engine/craft', 'src/craft', 'src/ui/craft'];
+  const DIRS = ['src/engine/craft', 'src/engine/craft/programmes', 'src/craft', 'src/ui/craft'];
   it.each(DIRS)('%s', async (dir) => {
     const { readdir, readFile } = await import('node:fs/promises');
     const names = (await readdir(dir).catch(() => [] as string[])).filter((n) => n.endsWith('.ts'));

@@ -62,7 +62,17 @@ export interface RelationCraft {
   /** The point she names after a slip (hidden until she says it): the engine's word for what failed and her way of saying it, voiced once in the reply of this exchange. */
   lesson?: { point: string; words: string; joke?: true; scene: string; exchange: number };
   /** A partner drill waiting for its scene (spec section 5, ruling 3): the key, the multiplier of the partner (x1.5 a holder, x1.2 another close woman) and the day. Only the open scene's: dropped when it ends or is cancelled. */
-  drillPending?: { key: string; mult: number; day: number; /** The run `craft/drill_start` began (the outcome that pays is this one's). */ runId?: string };
+  drillPending?: { key: string; mult: number; day: number; /** The run `craft/drill_start` began (the outcome that pays is this one's). */ runId?: string; /** One of her exam's drills (its outcome is the exam's, never paid as a drill). */ exam?: true };
+  /**
+   * The `drill` holder's programme (Task 19): her norms in seconds of fiction by key (a norm is a hold of the key: `endurance:<physics>` or `posture`), the day of her last exam (or the day the norms were
+   * set: the weekly clock), the exams passed, and the exam that is running (the keys, what each came to, and the one that is being run). The pass mark is never stored as a number.
+   */
+  drill?: { norms: Record<string, number>; examDay: number; passes: number; exam?: { day: number; keys: string[]; results: Record<string, number> } };
+  /** The daily praise of a `regal` holder (Task 20): the last 30, the day, the text (at most 160 characters) and its words; never sent to a model. `slipDay` is the day a repeat was already told. */
+  praise?: Array<{ day: number; text: string; words: string[] }>;
+  praiseSlipDay?: number;
+  /** The sentence of a `vindictive` holder (Task 21): the crime it echoes, the day it began and ends, how many days a slip added, the last week whose echo has acted, and whether it was served. */
+  sentence?: { crimeId: string; start: number; until: number; extended: number; /** The last week of the term whose echo has acted (0 is the first week). */ week?: number; /** The day it was served; a served sentence is never set again. */ servedDay?: number; /** The echo has acted: the model is told what it is only after that. */ landed?: true };
   /** The sparring hold she may put the commander in (Task 18): the day of the bout she won, the soldiers who were at the yard to see it, and the run once it began. Gone when the hold ends, the scene ends or the day turns. */
   headlock?: { day: number; witnesses: string[]; runId?: string };
   /** The service the commander just anticipated for her (`craft/anticipate`): the scene, the exchange it was staged in and the activity, until her next reply has passed. */
@@ -74,6 +84,8 @@ export interface RelationCraft {
    * (hidden until she shows it). `voiced` is set when it landed (she showed it, in the scene `scene` or in a DM), `named` when it was the care that let her name the service.
    */
   cares?: Array<{ day: number; careId: string; noticed: boolean; voiced?: true; named?: true; scene?: string }>;
+  /** The day the commander last helped with her goal (a hobby she cares about, in her presence): Regard rises once a week for it. */
+  goalDay?: number;
   /** The day the commander last shared a drill with her (a partner drill: a scene or not): another holder's jealousy reads it (`exchange.ts`). */
   partnerDay?: number;
 }
@@ -110,7 +122,7 @@ export interface PostureRun {
 export const CRAFT_EVENT_TYPES = [
   'craft_xp', 'craft_level', 'lesson', 'record_set', 'posture_taken', 'posture_slip_noted', 'posture_corrected', 'posture_ended', 'drill_done',
   'exam_passed', 'exam_failed', 'care_unasked', 'foot_signal_given', 'foot_signal_missed', 'praise_missed',
-  'sentence_set', 'sentence_extended', 'sentence_served', 'headlock_offered', 'norm_set',
+  'sentence_set', 'sentence_extended', 'sentence_served', 'headlock_offered', 'norm_set', 'praise_given',
 ] as const;
 export type CraftEventType = (typeof CRAFT_EVENT_TYPES)[number];
 

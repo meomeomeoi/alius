@@ -1474,5 +1474,70 @@
       "craft",
       "care"
     ]
+  },
+  {
+    "id": "craft_exam_passed",
+    "event": "exam_passed",
+    "text": "AUTHOR TO WRITE: {name} set the commander an exam, and the commander passed it.",
+    "importance": 1,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "craft",
+      "exam"
+    ]
+  },
+  {
+    "id": "craft_exam_failed",
+    "event": "exam_failed",
+    "text": "AUTHOR TO WRITE: {name} set the commander an exam, and the commander failed it.",
+    "importance": 2,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "craft",
+      "exam"
+    ]
+  },
+  {
+    "id": "craft_sentence_set",
+    "event": "sentence_set",
+    "text": "AUTHOR TO WRITE: {name} set the commander a sentence of {days} days.",
+    "importance": 2,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "craft",
+      "sentence"
+    ]
+  },
+  {
+    "id": "craft_sentence_extended",
+    "event": "sentence_extended",
+    "text": "AUTHOR TO WRITE: {name} added {days} days to the commander's sentence.",
+    "importance": 2,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "craft",
+      "sentence"
+    ]
+  },
+  {
+    "id": "craft_sentence_served",
+    "event": "sentence_served",
+    "text": "AUTHOR TO WRITE: {name} saw the commander serve the sentence to its end.",
+    "importance": 2,
+    "about": "her",
+    "audience": "her",
+    "spread": "none",
+    "tags": [
+      "craft",
+      "sentence"
+    ]
   }
 ]

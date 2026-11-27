@@ -373,3 +373,43 @@ describe('the day of her feet (Task 16)', () => {
     for (const w of words) expect(w).not.toMatch(/cared|neglect|pleased/i);
   });
 });
+
+describe('the programmes of the new styles (P16b, Tasks 19 and 21)', () => {
+  const NORM = 'craft:norm:';
+  const SENTENCE = 'craft:sentence:';
+
+  it('a drill holder with norms may remind the commander of the day\'s, once, in words with no number', () => {
+    const s = style(bare(), 'drill');
+    s.relations[ANN].craft = { drill: { norms: { 'endurance:weight': 200, posture: 300 }, examDay: s.day, passes: 0 } };
+    const d = craftDirectives(s, reg, [ANN]).filter((x) => x.id.startsWith(NORM));
+    expect(d).toHaveLength(1);
+    expect(d[0]).toMatchObject({ id: `${NORM}${ANN}`, expiresAfter: 'scene' });
+    expect(d[0]!.text).toMatch(/only if it fits and only once/);
+    expect(d[0]!.text).not.toMatch(/\d/);
+    expect(d[0]!.text).not.toMatch(NO_PRONOUN);
+    expect(d[0]!.text).not.toMatch(/AUTHOR TO WRITE|pass|80/);
+    expect(craftDirectives(s, reg, [BEA]).filter((x) => x.id.startsWith(NORM))).toEqual([]); // not in the room
+    expect(craftDirectives(style(s, 'cold'), reg, [ANN]).filter((x) => x.id.startsWith(NORM))).toEqual([]); // not a drill holder now
+  });
+
+  it('a running sentence may show in her manner, once; the echo is told only after it has acted', () => {
+    const s = style(bare(), 'vindictive');
+    s.relations[ANN].craft = { sentence: { crimeId: 'smuggling', start: s.day, until: s.day + 14, extended: 0 } };
+    const before = craftDirectives(s, reg, [ANN]).filter((x) => x.id.startsWith(SENTENCE));
+    expect(before).toHaveLength(1);
+    expect(before[0]).toMatchObject({ id: `${SENTENCE}${ANN}`, expiresAfter: 'scene' });
+    expect(before[0]!.text).not.toMatch(/\d/);
+    expect(before[0]!.text).not.toMatch(NO_PRONOUN);
+    expect(before[0]!.text).not.toMatch(/smuggl|passes through|message/i); // which echo it is stays hidden until it has acted
+    s.relations[ANN].craft!.sentence!.landed = true;
+    const after = craftDirectives(s, reg, [ANN]).filter((x) => x.id.startsWith(SENTENCE));
+    expect(after[0]!.text).toMatch(/Nothing the commander sends goes out unread/); // the row's own hint, now it has acted
+    expect(after[0]!.text).not.toMatch(/\d/);
+    s.relations[ANN].craft!.sentence!.servedDay = s.day;
+    expect(craftDirectives(s, reg, [ANN]).filter((x) => x.id.startsWith(SENTENCE))).toEqual([]); // served: gone
+    const eq = style(bare(), 'vindictive');
+    eq.relations[ANN].craft = { sentence: { crimeId: 'smuggling', start: eq.day, until: eq.day + 14, extended: 0 } };
+    eq.relations[ANN].dynamic!.frame = 'equal';
+    expect(craftDirectives(eq, reg, [ANN]).filter((x) => x.id.startsWith(SENTENCE))).toEqual([]);
+  });
+});

@@ -207,5 +207,56 @@
     ],
     "asks": "permission",
     "practice": true
+  },
+  {
+    "id": "daily_praise",
+    "text": "AUTHOR TO WRITE: Praise me every day, and never the same way twice.",
+    "description": "AUTHOR TO WRITE: a regal woman wants a line of praise in the commander's own words each day, a new one every time. The game compares the words with the earlier praises; a repeat or a missed day is a slip.",
+    "check": "praise",
+    "keepDeltas": {
+      "trust": 1,
+      "affinity": 1
+    },
+    "breakDeltas": {
+      "trust": -2,
+      "affinity": -3,
+      "stress": 3
+    },
+    "conditions": {
+      "minLead": "assertive",
+      "minFrame": "role"
+    },
+    "weight": 2,
+    "contentTags": [
+      "service"
+    ],
+    "practice": true,
+    "styles": [
+      "regal"
+    ]
+  },
+  {
+    "id": "answer_to_me_first",
+    "text": "AUTHOR TO WRITE: Before the squad, you answer to me first.",
+    "description": "AUTHOR TO WRITE: a sentence for a revolt: in front of the others the commander turns to her before anyone else. Only a vindictive woman's sentence proposes it.",
+    "check": "intent",
+    "keepDeltas": {
+      "trust": 1,
+      "affinity": 1
+    },
+    "breakDeltas": {
+      "trust": -2,
+      "affinity": -3,
+      "stress": 3
+    },
+    "conditions": {
+      "minLead": "assertive"
+    },
+    "weight": 1,
+    "contentTags": [
+      "service"
+    ],
+    "practice": true,
+    "echo": "answer_first"
   }
 ]

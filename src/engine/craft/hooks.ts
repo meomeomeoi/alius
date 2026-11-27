@@ -9,6 +9,8 @@ import { registerRhythmKnown, registerServiceReport, registerStillness, register
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { craftLevel } from './book';
+import { helpWithGoal } from './goal';
+import { registerHobbyHelped } from '../life/hobbies';
 import { registerAfterBout } from '../personal/wagers';
 import { careOfFeet, noteFootSignal, noteServiceVerdict } from './feet';
 import { offerHeadlock } from './headlock';
@@ -25,6 +27,7 @@ export function rhythmLevel(state: Pick<CampaignState, 'relations'>, holderId: s
 }
 
 export function installCraftHooks(): void {
+  registerHobbyHelped(helpWithGoal); // the commander helped with her goal: Regard, once a week
   registerStopHook((draft, ctx) => endPostureRun(draft, ctx, 'stopped'), 'craft'); // the stop word ends a posture hold, out of the fiction
   registerStillness((state) => stillnessShare(state), 'craft');
   registerRhythmKnown((state, holderId) => rhythmLevel(state, holderId), 'craft');

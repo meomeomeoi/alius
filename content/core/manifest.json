@@ -114,6 +114,7 @@
     "cardVoice": "cardVoice.json",
     "craftLessons": "craftLessons.json",
     "craftLines": "craftLines.json",
+    "crimeEchoes": "crimeEchoes.json",
     "servicePostures": "servicePostures.json"
   }
 }

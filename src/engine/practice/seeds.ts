@@ -29,11 +29,12 @@ export const seedEntry = seedOf;
  * the tags one she practises (`as` is not `none`), the track open for her, the tier no more than her level in it plus one (and not below `minTier`),
  * the capability the seed needs held, and a `romantic` seed only at the romantic tier of the bond.
  */
-export function seedPool(state: CampaignState, reg: Registries, holderId: string, kind: PracticeKind, opts: { minTier?: number } = {}): PracticeSeedEntry[] {
+export function seedPool(state: CampaignState, reg: Registries, holderId: string, kind: PracticeKind, opts: { minTier?: number; echo?: string } = {}): PracticeSeedEntry[] {
   const view = practiceOf(state, reg, holderId);
   const tier = bondTierOf(state, reg, holderId);
   return seedRows(reg).filter((seed) => {
     if (seed.kind !== kind || !contentAllowed(state, reg, seed, holderId)) return false;
+    if (seed.echo !== opts.echo) return false; // P16b: a seed of a sentence's echo is offered to that echo alone, and the ordinary pool never has one
     if (seed.contentTags.some((t) => view?.categories[t] !== undefined && view.categories[t].as === 'none')) return false;
     if (!trackOpen(state, reg, holderId, seed.track) || seed.tier > trackLevel(state, holderId, seed.track) + 1) return false;
     if (opts.minTier !== undefined && seed.tier < opts.minTier) return false;
@@ -61,7 +62,7 @@ export function hasFreshSeeds(state: CampaignState, reg: Registries, holderId: s
  * Three to six seed ids of a kind for one request (`TUNING.practice.seeds`), weighted by the seed's `weight`, drawn without replacement by
  * `practiceRoll` (the count too). The whole pool when it is smaller than the count; none when it is empty.
  */
-export function pickSeeds(state: CampaignState, reg: Registries, holderId: string, kind: PracticeKind, opts: { minTier?: number; fresh?: boolean } = {}): string[] {
+export function pickSeeds(state: CampaignState, reg: Registries, holderId: string, kind: PracticeKind, opts: { minTier?: number; fresh?: boolean; echo?: string } = {}): string[] {
   const all = seedPool(state, reg, holderId, kind, opts);
   const news = opts.fresh === true ? freshPool(state, holderId, all) : [];
   const pool = news.length > 0 ? news : all; // something new when she has it, else everything she could ask for

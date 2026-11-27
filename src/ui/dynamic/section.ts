@@ -164,6 +164,10 @@ export function renderDynamicSection(host: HTMLElement, ctx: DynamicSectionCtx):
     lines.push(row('WHO KNOWS', ...between(view.knownLevels.map((k) => chip(`${who(k.observerId)}: ${word[k.level]}`, 'glossary:dynamic', { 'data-dyn-known': k.observerId })))));
   }
 
+  const sentence = ctx.knowledge.craft(reg).pairs.find((p) => p.unitId === unitId)?.sentence; // P16b: the term of a running sentence (days left only)
+  if (sentence !== undefined) {
+    lines.push(row('SENTENCE', h('span', { class: 'alius-chip', 'data-craft-sentence': '', ...analyzeAttrs('glossary:craft_sentence', live) }, `${sentence.daysLeft} ${sentence.daysLeft === 1 ? 'DAY' : 'DAYS'} LEFT`)));
+  }
   const practices = practicesBlock(state, reg, ctx.knowledge, unitId, ctx.hidden); // P16: what she asked and the forms she set (nothing in immersive mode, which returned above)
   const cards = h('div', { class: 'alius-dyn-cards' });
   const pick = (c: { unitId: string }): boolean => c.unitId === unitId;

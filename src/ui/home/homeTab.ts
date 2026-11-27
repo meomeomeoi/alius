@@ -3,6 +3,7 @@ import { clockText } from '../../engine/calendar';
 import { isLiving } from '../../engine/economy';
 import { herHand } from '../stage/look';
 import { notesFor } from '../../engine/notes';
+import { normNote } from '../../engine/craft/programmes/drill';
 import { deviceAccess } from '../../engine/personal/access';
 import { decorOf, pinnedNotes, wallpaperUnit } from '../../engine/personal/decor';
 import type { CampaignState, DecorPart, Unit } from '../../engine/state/types';
@@ -108,6 +109,10 @@ export function renderHomeTab(host: HTMLElement, ctx: HomeCtx): void {
   const notes: HTMLElement[] = [];
   const answers = ctx.rule;
   for (const rule of ruleNotesFor(state)) notes.push(renderRuleNote(state, reg, rule, answers, { motion: !motionReduced(settings) }));
+  for (const u of named) {
+    const norm = normNote(state, reg, u.id); // P16b: a drill holder's norm of the day, derived (nothing is stored), in her hand
+    if (norm !== null) notes.push(renderNote({ text: norm, unitName: u.displayName, hand: herHand(state, reg, u.id), read: true, analyze: 'glossary:craft_norm' }));
+  }
   for (const p of pinnedNotes(state, reg)) {
     for (const line of p.lines) notes.push(renderNote({ text: line, unitName: nameOf(state, p.unitId), hand: herHand(state, reg, p.unitId), read: true, analyze: 'glossary:hand_note' }));
   }

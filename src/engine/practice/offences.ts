@@ -85,11 +85,42 @@ export function possibleNow(state: CampaignState, reg: Registries, holderId: str
  */
 export function pickHolderPunishment(state: CampaignState, reg: Registries, holderId: string, severity: number): string | null {
   const given = (state.practices?.punishments ?? []).filter((p) => p.holderId === holderId).length;
+  const tilt = punishmentTiltOf(state, reg, holderId);
   for (let sev = Math.min(5, Math.floor(severity)); sev >= 1; sev--) {
     const eligible = entriesOf(reg).filter((e) => e.severity === sev && possibleNow(state, reg, holderId, e));
-    if (eligible.length > 0) return String(eligible[given % eligible.length].id);
+    if (eligible.length === 0) continue;
+    // P16b: while a sentence runs the entries of its echo (by effect type) come first; with none of them at this weight the turns go on as ever
+    const first = tilt === null ? [] : eligible.filter((e) => effectsOf(e).some((fx) => tilt.includes(fx.type)));
+    const from = first.length > 0 ? first : eligible;
+    return String(from[given % from.length].id);
   }
   return null;
+}
+
+/**
+ * P16b plugs in here (the craft's sentence, Task 21): the effect types of her punishments to put first for this holder now, or `null` when nothing tilts them. The first non-null answer wins; with none
+ * registered, or every one answering null, `pickHolderPunishment` is exactly what it was.
+ */
+export type PunishmentTilt = (state: CampaignState, reg: Registries, holderId: string) => readonly string[] | null;
+const tilts: PunishmentTilt[] = [];
+export function registerPunishmentTilt(fn: PunishmentTilt): void {
+  if (!tilts.includes(fn)) tilts.push(fn);
+}
+function punishmentTiltOf(state: CampaignState, reg: Registries, holderId: string): readonly string[] | null {
+  for (const fn of tilts) {
+    const types = fn(state, reg, holderId);
+    if (types !== null && types.length > 0) return types;
+  }
+  return null;
+}
+
+/**
+ * P16b plugs in here: a reader of an offence just entered against the commander (past the once-a-day dedupe), for the sentence that grows by a slip. Its events join the offence's own. The same function twice is one.
+ */
+export type OffenceNoted = (draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, holderId: string, offence: Offence) => EngineEvent[];
+const notedReaders: OffenceNoted[] = [];
+export function registerOffenceNoted(fn: OffenceNoted): void {
+  if (!notedReaders.includes(fn)) notedReaders.push(fn);
 }
 
 /**
@@ -157,7 +188,8 @@ export function noteOffence(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
   const days = (p.offences[holderId] ??= []);
   days.push(offence.day);
   p.offences[holderId] = days.filter((d) => draft.day - d <= TUNING.practice.punish.keepDays);
-  const slap = slapAfterSlip(draft, ctx, holderId, offence); // a slip in a scene with her may be answered at once, with no warning (R21)
+  const noted = notedReaders.flatMap((read) => read(draft, ctx, holderId, offence)); // P16b: a sentence grows by a slip
+  const slap = [...noted, ...slapAfterSlip(draft, ctx, holderId, offence)]; // a slip in a scene with her may be answered at once, with no warning (R21)
   if (punishmentOpen(draft, holderId)) return slap;
   // a kindness she did (R10): her next punishment weighs one less, once
   if (p.softer?.[holderId] === true) {

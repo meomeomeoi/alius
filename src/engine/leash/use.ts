@@ -27,6 +27,7 @@ import { worldEffects } from '../worldOptions';
 import { crimeEffectAmount, leashLog } from './weekly';
 import { valuesOf } from '../development/profile';
 import { forgetDynamic } from '../dynamic/forget';
+import { forgetCraft } from '../craft/forget';
 import { forgetPractices } from '../practice/forget';
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -244,6 +245,7 @@ export function removeFromService(draft: CampaignState, unitId: string, status: 
   forgetPersonal(draft, unitId); // P9c: her booking, offer, wager, obedience, decor and the secrets she knew
   const gone = [...forgetDynamic(draft, unitId), ...forgetPractices(draft, unitId)]; // P15: her claims, offers, knowledge, queue place, override and domains; an aftermath of hers ends. P16: her requests, tasks, punishments, hold, permission and records
   forgetNotes(draft, unitId); // P10b: the notes she left
+  forgetCraft(draft, unitId); // P16b: her pair book (the sentence, the praise, the norms), the bookings of her programmes and a posture hold of hers
   forgetSpecial(draft, unitId); // P12: what the frequency caught about her and the suspicion she held
   forgetWarden(draft, unitId); // P13: an open override that names her and her ally mark
   if (!wasWarden) return gone;

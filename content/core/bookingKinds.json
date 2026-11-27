@@ -43,5 +43,27 @@
     "text": "AUTHOR TO WRITE: Stay where you are. — {name}",
     "wantRelief": 10,
     "weight": 0
+  },
+  {
+    "id": "drill_exam",
+    "label": "Her exam",
+    "description": "AUTHOR TO WRITE: a drill holder books the weekly exam at the training yard: she runs each of her norms and judges the sum.",
+    "slot": "afternoon",
+    "locationId": "training_yard",
+    "programme": "exam",
+    "text": "AUTHOR TO WRITE: The exam is on. The yard, on the hour. — {name}",
+    "wantRelief": 0,
+    "weight": 0
+  },
+  {
+    "id": "drill_session",
+    "label": "Her drill session",
+    "description": "AUTHOR TO WRITE: after a failed exam she books extra drills at the training yard.",
+    "slot": "afternoon",
+    "locationId": "training_yard",
+    "programme": "session",
+    "text": "AUTHOR TO WRITE: Not good enough. Extra drill, the yard. — {name}",
+    "wantRelief": 0,
+    "weight": 0
   }
 ]

@@ -8,7 +8,8 @@ import { ANN, enable, loadCore, partner, plain } from '../../helpers/personal';
 let reg: Registries;
 beforeAll(async () => { reg = await loadCore(); });
 
-const PRACTICE_ROWS = ['stand_when_i_enter', 'ask_before_you_sit', 'maam_before_the_squad', 'ask_permission'];
+// P16's four rows, and P16b's two (the daily praise of a regal holder, the answer-first rule of a mutiny's sentence): every one is a holder's practice rule
+const PRACTICE_ROWS = ['stand_when_i_enter', 'ask_before_you_sit', 'maam_before_the_squad', 'ask_permission', 'daily_praise', 'answer_to_me_first'];
 /** A dominant lover with every category of the practice rows on (the dynamic off: the pool is P9d's). */
 const base = (): CampaignState => enable(partner(plain(reg), ANN, { lead: 'dominant', stateId: 'lover' }), 'jealousy_games', 'restraint', 'service', 'denial');
 const without = (r: Registries): Registries => ({ ...r, relationshipRuleTemplates: new Map([...r.relationshipRuleTemplates].filter(([id]) => !PRACTICE_ROWS.includes(id))) } as unknown as Registries);
@@ -47,6 +48,6 @@ describe('the practice rule templates (I2)', () => {
       proposeRuleHashed(d, reg, ANN, roll, { practice: true });
       for (const r of d.bonds?.rules ?? []) seen.add(r.templateId);
     }
-    for (const id of PRACTICE_ROWS) expect(seen.has(id), id).toBe(true);
+    for (const id of PRACTICE_ROWS.slice(0, 4)) expect(seen.has(id), id).toBe(true);
   });
 });

@@ -11,6 +11,10 @@ import { stageAnticipation } from '../craft/anticipate';
 import { dropHeadlocks, noteHeadlockOutcome, startHeadlock } from '../craft/headlock';
 import { giveCare, landCares } from '../craft/care';
 import { dropPendingDrills, installDrillHooks, noteDrillOutcome, startDrill } from '../craft/drillScene';
+import { installPraiseHooks, praiseDayStep } from '../craft/programmes/regal';
+import { installSentenceHooks, sentenceEditor, vindictiveDayStep } from '../craft/programmes/vindictive';
+import { registerForcedEditor } from '../personal/intercept';
+import { drillDayStep, dropExams, noteExamOutcome, noteProgrammeBooking } from '../craft/programmes/drill';
 import { correctPosture, endPosture, endPostureRun, holdOfCall, slipPosture, takePostureHold } from '../craft/posture';
 import { enduranceOf } from '../craft/state';
 import { registerCallAnswered } from '../practice/postures';
@@ -74,6 +78,40 @@ registerAfterAction((draft, ctx, events) => {
   dropPendingDrills(draft, events);
   return events.some((e) => e.type === 'physics_outcome') ? noteDrillOutcome(draft, ctx, events) : [];
 });
+
+// ---------------------------------------------------------------------------------------------
+// The `drill` holder's programme (P16b, Task 19): norms and the weekly exam. No rng.
+
+/** Her norms are set and the exam is booked on a free slot (after the practices' own day step: a calendar she holds has taken the free slots first). */
+registerDayEndStep('dm_rumors', drillDayStep);
+
+/** A booking of hers that is the exam or a session is played: its drill waits for `craft/drill_start`. */
+registerAfterAction((draft, ctx, events) => (events.some((e) => e.type === 'booking_played') ? noteProgrammeBooking(draft, ctx, events) : []));
+
+/** One of the exam's holds is over: its result counts, and the next waits (or the exam is judged); a scene that is over takes an unfinished exam. */
+registerAfterAction((draft, ctx, events) => {
+  dropExams(draft, events);
+  return events.some((e) => e.type === 'physics_outcome' || e.type === 'posture_ended') ? noteExamOutcome(draft, ctx, events) : [];
+});
+
+// ---------------------------------------------------------------------------------------------
+// The `regal` holder's daily praise (P16b, Task 20). The commander's words reach the log through the praise intent; a day with no fresh praise is her slip. No rng.
+
+installPraiseHooks();
+
+/** A day with no fresh praise (the rule stands) is `praise_missed`, her offence. */
+registerDayEndStep('dm_rumors', praiseDayStep);
+
+// ---------------------------------------------------------------------------------------------
+// The `vindictive` holder's sentence (P16b, Task 21). No rng.
+
+installSentenceHooks();
+
+/** While a sentence echoes by `through_her`, every message of the commander's to another passes through her (the forced editor of P9c's intercept; the first answer wins). */
+registerForcedEditor((state, reg, channel, toUnitId) => (channel === 'dm' ? sentenceEditor(state, reg, toUnitId) : null));
+
+/** The sentence is set, served, or has its week's echo act (after the practices' own step: her punishments of the day are asked first). */
+registerDayEndStep('dm_rumors', vindictiveDayStep);
 
 // ---------------------------------------------------------------------------------------------
 // The game of postures (P16b, Tasks 11 and 12). The instrument plays the drift in real time and reports; the engine judges. No action here draws.

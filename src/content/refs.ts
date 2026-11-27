@@ -893,6 +893,10 @@ registerRefs('handNotes', (entry) =>
 registerRefs('cardVoice', (entry) =>
   typeof entry.style === 'string' ? [{ registry: 'practiceStyles' as const, id: entry.style, path: 'style' }] : []);
 
+// P16b: a sentence's echo answers one of the crimes.
+registerRefs('crimeEchoes', (entry) =>
+  typeof entry.crime === 'string' ? [{ registry: 'crimes' as const, id: entry.crime, path: 'crime' }] : []);
+
 // P9c: a booking kind names the location of its scene.
 registerRefs('bookingKinds', (entry) =>
   typeof entry.locationId === 'string' ? [{ registry: 'locations' as const, id: entry.locationId, path: 'locationId' }] : []);

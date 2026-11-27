@@ -1081,6 +1081,8 @@ export const TUNING = Object.freeze({
     mastery: Object.freeze(['record', 'pleased_high'] as const),
     /** The styles (closed enum keys, as `dynamic.style.peakLeads`) whose rises double / that count served days. */
     drill: Object.freeze({ styles: ['drill'] as readonly string[], mult: 2 }),
+    /** P16b (ruling 5): the styles whose `value` rises (a fresh praise) double. */
+    regal: Object.freeze({ styles: ['regal'] as readonly string[], mult: 2 }),
     vindictive: Object.freeze({ styles: ['vindictive'] as readonly string[], days: 7, rise: 1 }),
     acts: Object.freeze({ caught: 2, slip: 1, protocol: 1 }),
     /** A witness who dislikes what a holder has over the commander counts this much more while her own Regard is low or none (R14, R18). */
@@ -1362,7 +1364,28 @@ export const TUNING = Object.freeze({
    */
   craft: Object.freeze({
     xp: Object.freeze({ phase: 3, lesson: 0.5, drill: 15, knowledge: 5, posture: 5 }),
-    drill: Object.freeze({ holder: 1.5, other: 1.2, regard: 1 }),
+    /**
+     * `holder` / `other`: the multiplier of a partner drill; `regard`: a pleased verdict's `value` rise. The `drill` holder's programme (Task 19; AUTHOR TO TUNE): the keys she sets norms for, the norm in
+     * seconds of fiction when the commander has no record yet (`start`) and the share of a record it is set at (`fromRecord`), the days between exams, the share of the sum of the norms that passes,
+     * what a pass raises each norm by (`step`), the sessions a failure books (`failBookings`), the beats of the posture hold of the exam, and how many days ahead a free slot is looked for.
+     */
+    drill: Object.freeze({
+      holder: 1.5, other: 1.2, regard: 1,
+      keys: Object.freeze(['endurance:weight', 'endurance:breath', 'posture'] as readonly string[]),
+      start: Object.freeze({ 'endurance:weight': 120, 'endurance:breath': 60, posture: 300 } as Record<string, number>),
+      note: 'AUTHOR TO WRITE: My norm for the day: {norm}.',
+      fromRecord: 1.1, examEvery: 7, pass: 0.8, step: 1.1, failBookings: 2, examBeats: 8, lookahead: 14,
+    }),
+    /**
+     * The `regal` holder's daily praise (Task 20; AUTHOR TO TUNE): a praise whose similarity to any of her last `keep` is over `repeat` is a repeat (a slip), the text is kept to `textMax`
+     * characters, and a fresh one raises Regard by `regard` (the `value` rise, doubled for `regal` by `TUNING.regard.regal`).
+     */
+    praise: Object.freeze({ keep: 30, repeat: 0.7, textMax: 160, regard: 1 }),
+    /**
+     * The `vindictive` holder's sentence (Task 21; AUTHOR TO TUNE): a slip of the commander toward her adds `extend` days; served it ends in a closing rise of `closing` times the dignity rise;
+     * `defaultDays` is the term of a crime with no echo row. The term of each crime is its echo row's `days`. `tithe`: the Plyx and credits an echo of `tithe` takes each week of the term.
+     */
+    sentence: Object.freeze({ extend: 3, closing: 2, defaultDays: 14, weekDays: 7, tithe: Object.freeze({ plyx: 1, credits: 25 }) }),
     decay: Object.freeze({ days: 21, pairDays: 42 }),
     beatSkill: 0.25,
     // G1 round 1 (author): a posture beat stands for 45 s of fiction (was 30)

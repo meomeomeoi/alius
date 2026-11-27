@@ -7,6 +7,8 @@
 import type { Registries } from '../../content/types';
 import { levelForXp } from '../physics/skill';
 import type { CampaignState } from '../state/types';
+import { normText } from './programmes/drill';
+import { daysLeft, sentenceOf } from './programmes/vindictive';
 import { craftWord, DISCIPLINES, ENDURANCE_PREFIX } from './state';
 import { craftLevel, craftXp } from './book';
 import type { RecordKind } from './records';
@@ -25,6 +27,10 @@ export interface CraftView {
     signals: string[];
     /** The records in fiction time: the most specific kind that holds the longest time, and any lesser kind below it. */
     records: Array<{ key: string; kind: RecordKind; seconds: number; day: number }>;
+    /** A `drill` holder's norms in words (never the pass mark or what an exam in progress has come to). */
+    norm?: string;
+    /** A running sentence: the days left (never the crime, the echo or what slips added). */
+    sentence?: { daysLeft: number };
   }>;
 }
 
@@ -57,8 +63,10 @@ export function craftView(state: CampaignState, reg: Registries, opts: { raw: bo
     const signals = Object.entries(c.signals ?? {}).filter(([, s]) => s.named).map(([motion]) => motion);
     const records = Object.entries(c.records ?? {}).flatMap(([key, rec]) => recordRows(key, rec));
     const rhythm = c.rhythm !== undefined ? craftWord(levelForXp(c.rhythm.xp)) : null;
-    if (postures.length === 0 && signals.length === 0 && records.length === 0 && (rhythm === null || rhythm === 'untrained')) continue;
-    pairs.push({ unitId: unit.id, postures, rhythm: rhythm ?? 'untrained', signals, records });
+    const norm = c.drill !== undefined ? normText(reg, c.drill.norms) : null;
+    const sentence = sentenceOf(state, unit.id);
+    if (postures.length === 0 && signals.length === 0 && records.length === 0 && norm === null && sentence === undefined && (rhythm === null || rhythm === 'untrained')) continue;
+    pairs.push({ unitId: unit.id, postures, rhythm: rhythm ?? 'untrained', signals, records, ...(norm !== null ? { norm } : {}), ...(sentence !== undefined ? { sentence: { daysLeft: daysLeft(state, sentence) } } : {}) });
   }
   return { disciplines, pairs };
 }

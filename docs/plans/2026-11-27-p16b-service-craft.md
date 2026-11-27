@@ -698,17 +698,17 @@ Before Task 1, also read:
   - `TUNING.regard.drill` doubles the `record` rise (it exists);
   - memory rules for both events;
   - the directive `craft:norm:<unitId>`.
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - norms from the records;
   - the exam is booked on a free slot only;
   - pass raises the norms;
   - fail books two sessions;
   - nothing for another style;
   - HOME shows the norm in her hand with `data-analyze`, and the pass mark is not a number on screen.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P16b): the drill holder's norms and exams`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P16b): the drill holder's norms and exams`
 
 ### Task 20: `regal`: the daily praise
 
@@ -728,17 +728,17 @@ Before Task 1, also read:
   - a fresh one raises Regard (`value`, ×2 for `regal`);
   - the rule is set by her at frame `role` (P16 protocol);
   - `regal`'s mess kiss and audiences are P17g's (ruling 5): nothing of them here.
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - similarity of equal, disjoint and near texts;
   - a fresh praise counts once a day;
   - a repeat and a missed day are slips;
   - Regard ×2;
   - only for a `regal` holder with the rule;
   - the text never reaches a prompt or an event.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P16b): the regal holder's daily praise`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P16b): the regal holder's daily praise`
 
 ### Task 21: `vindictive`: the sentence
 
@@ -764,7 +764,7 @@ Before Task 1, also read:
     - `answer_first` (mutiny): a `protocol_public` rule template;
     - `tithe` (strain_trade): Plyx or credits each week.
   - The DYNAMIC section shows the term (PDA).
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - the sentence starts only with `knows_crime`;
   - +3 per slip;
   - it ends and Regard rises;
@@ -772,10 +772,10 @@ Before Task 1, also read:
   - the punishment tilt answers null with no sentence (P16's seeded picks unchanged);
   - memory rules;
   - removal forgets it.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS, plus `tests/practice`; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P16b): the vindictive holder's sentence`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS, plus `tests/practice`; `npm run build`.
+- [x] **Step 5: Commit** `feat(P16b): the vindictive holder's sentence`
 
 ### Task 22: Removal and help with her goal
 
@@ -786,13 +786,13 @@ Before Task 1, also read:
   - `src/engine/life/hobbies.ts` (`pushHobby` with `caused`): a registered hook gives `regardRise(…, 'value', TUNING.regard.value.goal)` once a week for a craft-live holder (the reserved "help with her goal").
 - Test: `tests/engine/craft/forget.test.ts`
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - every trace is gone after removal;
   - the goal rise fires once a week, only when craft-live.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P16b): removal forgets the craft; help with her goal`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P16b): removal forgets the craft; help with her goal`
 
 ---
 

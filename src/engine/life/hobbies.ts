@@ -260,11 +260,22 @@ export function breakthrough(
   return got.length === 0 ? [] : [{ type: 'hobby_breakthrough', unitId, hobbyId }, ...got];
 }
 
+/**
+ * P16b plugs in here: the commander helped with her goal (a push the commander caused: praise of her hobby in her presence). The hook's events join the push's. The same function twice is one. Nothing is
+ * registered by a campaign without the craft: a hook of the craft answers `[]` for anyone who is not live.
+ */
+export type HobbyHelped = (draft: CampaignState, reg: Registries, unitId: string, hobbyId: string, day: number) => EngineEvent[];
+const helpedReaders: HobbyHelped[] = [];
+export function registerHobbyHelped(fn: HobbyHelped): void {
+  if (!helpedReaders.includes(fn)) helpedReaders.push(fn);
+}
+
 /** A push (a quiet meeting about it, a life event that feeds it, praise): interest +8, and a plateau breaks at once. */
 export function pushHobby(draft: CampaignState, reg: Registries, unitId: string, hobbyId: string, day: number, opts: { caused?: true } = {}): EngineEvent[] {
   const h = unitOf(draft, unitId)?.hobbies?.find((x) => x.id === hobbyId);
   if (!h) return [];
-  return [...(h.plateau ? breakthrough(draft, reg, unitId, hobbyId, day, opts) : []), ...bumpInterest(draft, unitId, hobbyId, TUNING.life.interest.push, day)];
+  const helped = opts.caused === true ? helpedReaders.flatMap((read) => read(draft, reg, unitId, hobbyId, day)) : []; // P16b: help with her goal
+  return [...(h.plateau ? breakthrough(draft, reg, unitId, hobbyId, day, opts) : []), ...bumpInterest(draft, unitId, hobbyId, TUNING.life.interest.push, day), ...helped];
 }
 
 /**

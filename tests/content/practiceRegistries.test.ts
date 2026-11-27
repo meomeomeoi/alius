@@ -92,7 +92,7 @@ describe('the four practice registries (P16)', () => {
     const item = base.registries.blockingItems.get('chastity_device')!;
     expect((item.effects as Array<{ type: string; template?: string }>).find((e) => e.type === 'rule')!.template).toBe('ask_permission');
     expect(base.registries.relationshipRuleTemplates.has(String((item.effects as Array<{ template?: string }>)[0].template))).toBe(true);
-    const service = [...base.registries.relationshipRuleTemplates.values()].filter((t) => (t.contentTags as string[] | undefined)?.includes('service'));
+    const service = [...base.registries.relationshipRuleTemplates.values()].filter((t) => (t.contentTags as string[] | undefined)?.includes('service') && t.styles === undefined && t.echo === undefined); // P16b's rows are offered by style or by a sentence's echo
     expect(service).toHaveLength(3);
     for (const t of service) expect(t).toMatchObject({ check: 'intent', conditions: { minLead: 'assertive' } });
   });

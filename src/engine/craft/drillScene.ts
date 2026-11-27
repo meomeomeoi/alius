@@ -17,7 +17,7 @@ import { TUNING } from '../tuning';
 import { registerDrillHooks, type DrillAt } from '../activities';
 import { drillEffect, drillGate, drillMult, drilledToday, payDrill } from './drills';
 import { craftHolders, craftLive, craftOn } from './gate';
-import { addPostureMastery } from './posture';
+import { addPostureMastery, takePostureHold } from './posture';
 import { craftRoll, enduranceOf } from './state';
 
 /**
@@ -94,6 +94,7 @@ export function startDrill(draft: CampaignState, ctx: EngineCtx, unitId: string,
   if (pending === undefined) throw new Error('craft/drill_start: no drill is waiting for her');
   if (!scene.participants.includes(unitId)) throw new Error('craft/drill_start: she is not in the open scene');
   if (scene.physics !== undefined) throw new Error('craft/drill_start: a hold is running already');
+  if (pending.key === 'posture') return startPostureDrill(draft, ctx, unitId, pending, at);
   const physics = enduranceOf(pending.key);
   if (physics === null) throw new Error('craft/drill_start: that drill has no instrument');
   const events: EngineEvent[] = [];
@@ -111,6 +112,19 @@ export function startDrill(draft: CampaignState, ctx: EngineCtx, unitId: string,
   // staging a contact starts its main physics by itself; when a gate refused that, say why by starting it here
   if (scene.physics === undefined) events.push(...startPhysics(draft, ctx, { physicsId: physics, sourceKind: 'contact', sourceId: String(staged.id), holderId: unitId }));
   pending.runId = scene.physics!.id;
+  return events;
+}
+
+/**
+ * The posture drill of her exam: the commander takes one of her named postures (the pick is an index into her set by `craftRoll`, stable for the day) and the hold of `TUNING.craft.drill.examBeats`
+ * beats begins; its end is the drill's outcome (`posture_ended`). Throws when she has named none or the posture cannot be taken here.
+ */
+function startPostureDrill(draft: CampaignState, ctx: EngineCtx, unitId: string, pending: NonNullable<ReturnType<typeof drillPendingOf>>, at?: number): EngineEvent[] {
+  const named = draft.practices?.postures[unitId] ?? [];
+  if (named.length === 0) throw new Error('craft/drill_start: she has named no posture');
+  const pick = named[Math.floor(craftRoll(draft, unitId, `drill:exam:${draft.day}`) * named.length)]!;
+  const events = takePostureHold(draft, ctx, { presetId: pick.postureId, holderId: unitId, until: TUNING.craft.drill.examBeats, ...(at !== undefined ? { at } : {}) });
+  pending.runId = draft.practices!.postureRun!.id;
   return events;
 }
 
@@ -134,7 +148,7 @@ export function noteDrillOutcome(draft: CampaignState, ctx: Pick<EngineCtx, 'reg
     const unitId = e.holderId;
     const rel = draft.relations[unitId];
     const pending = rel?.craft?.drillPending;
-    if (rel === undefined || pending === undefined || pending.runId !== e.runId) continue;
+    if (rel === undefined || pending === undefined || pending.runId !== e.runId || pending.exam === true) continue; // an exam's hold is the exam's (`programmes/drill.ts`)
     const mult = pending.mult;
     delete rel.craft!.drillPending;
     if (e.result === 'stopped') continue;

@@ -119,7 +119,7 @@ export function requestPractice<C extends Pick<EngineCtx, 'registries'>>(draft: 
   // P15b: the key is made (not taken) before the pick, so that her curiosity can hash it; a request that comes to nothing still takes no id
   const tier = last === undefined ? {} : { minTier: last.tier };
   const fresh = wantsFresh(draft, reg, holderId, peekPracticeId(draft, 'pq')) && hasFreshSeeds(draft, reg, holderId, kind, tier);
-  const seedIds = pickSeeds(draft, reg, holderId, kind, { ...tier, ...(fresh ? { fresh: true } : {}) });
+  const seedIds = pickSeeds(draft, reg, holderId, kind, { ...tier, ...(fresh ? { fresh: true } : {}), ...(extra.echo !== undefined ? { echo: extra.echo } : {}) });
   if (seedIds.length === 0 && extra.offence === undefined) return [];
   const id = nextPracticeId(draft, 'pq');
   // R16: a task, a hold or a punishment may come sealed, and may run until she decides; what the commander asked for is never sealed. Hashed from the request's own id: no draw.

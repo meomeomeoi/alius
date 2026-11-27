@@ -609,5 +609,53 @@
     "stakes": "major",
     "weight": 1,
     "description": "AUTHOR TO WRITE: an example of a hold for the model: held until she says."
+  },
+  {
+    "id": "task_measured_hold",
+    "kind": "task",
+    "contentTags": [
+      "restraint"
+    ],
+    "track": "discipline",
+    "tier": 1,
+    "gist": "a measured hold, written up",
+    "stakes": "minor",
+    "check": "model",
+    "proof": "dm_report",
+    "echo": "experiment",
+    "weight": 2,
+    "description": "AUTHOR TO WRITE: an example of an experiment task for the model: a measured hold, written up."
+  },
+  {
+    "id": "task_breath_count",
+    "kind": "task",
+    "contentTags": [
+      "restraint"
+    ],
+    "track": "discipline",
+    "tier": 1,
+    "gist": "breath counted and recorded",
+    "stakes": "minor",
+    "check": "model",
+    "proof": "dm_report",
+    "echo": "experiment",
+    "weight": 2,
+    "description": "AUTHOR TO WRITE: an example of an experiment task for the model: breath counted and recorded."
+  },
+  {
+    "id": "task_timed_posture",
+    "kind": "task",
+    "contentTags": [
+      "restraint"
+    ],
+    "track": "discipline",
+    "tier": 1,
+    "gist": "a posture kept and timed",
+    "stakes": "minor",
+    "check": "model",
+    "proof": "dm_report",
+    "echo": "experiment",
+    "weight": 2,
+    "description": "AUTHOR TO WRITE: an example of an experiment task for the model: a posture kept and timed."
   }
 ]

@@ -54,9 +54,30 @@ function recordProvider(s: Subject, env: AnalyzeEnv, k: Knowledge): { lines: str
   return { lines: lines.length > 0 ? lines : ['No record yet.'] };
 }
 
+/** `glossary:craft_norm`: what a drill holder asks of the commander, in fiction time; never the mark an exam is judged by. */
+function normProvider(s: Subject, env: AnalyzeEnv, k: Knowledge): { lines: string[] } | null {
+  if (!env.state) return null;
+  const given = unitIdOf(s);
+  const pairs = k.craft(env.registries).pairs.filter((p) => p.norm !== undefined && (given === null || p.unitId === given));
+  return { lines: pairs.length > 0 ? pairs.map((p) => `${nameOf(env, p.unitId)} asks for: ${p.norm}.`) : ['No norm is set.'] };
+}
+
+/** `glossary:craft_sentence`: the days left of a running sentence; never the crime, what it echoes or what slips added. */
+function sentenceProvider(s: Subject, env: AnalyzeEnv, k: Knowledge): { lines: string[] } | null {
+  if (!env.state) return null;
+  const given = unitIdOf(s);
+  const pairs = k.craft(env.registries).pairs.filter((p) => p.sentence !== undefined && (given === null || p.unitId === given));
+  return { lines: pairs.length > 0 ? pairs.map((p) => `${nameOf(env, p.unitId)}'s sentence: ${daysWords(p.sentence!.daysLeft)} left.`) : ['No sentence is running.'] };
+}
+
+/** "9 days", "1 day". */
+const daysWords = (n: number): string => `${n} ${n === 1 ? 'day' : 'days'}`;
+
 /** Registers the craft's readings (called from `registerCoreProviders`). */
 export function registerCraftProviders(): void {
   registerAnalyzeProvider('glossary:craft', craftProvider);
   for (const d of DISCIPLINES) registerAnalyzeProvider(`glossary:craft_${d}`, disciplineProvider(d));
   registerAnalyzeProvider('glossary:craft_record', recordProvider);
+  registerAnalyzeProvider('glossary:craft_norm', normProvider);
+  registerAnalyzeProvider('glossary:craft_sentence', sentenceProvider);
 }

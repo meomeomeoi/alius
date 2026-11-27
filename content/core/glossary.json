@@ -3976,5 +3976,24 @@
     "see": [
       "craft"
     ]
+  },
+  {
+    "id": "craft_norm",
+    "term": "Norm",
+    "short": "What a drill holder asks of the commander each day, in her hand: a time to hold for each thing she drills. A week of norms ends in her exam.",
+    "long": "AUTHOR TO WRITE: A woman who drills sets the commander a norm for each thing she cares about: so long under a weight, so long on the breath, so long in a posture. The norms are in her hand on HOME. Once a week she books an exam at the yard and runs each one; the sum is judged, and nobody tells the commander the mark. Passing raises every norm. Failing books extra drills on the commander's free slots.",
+    "see": [
+      "craft_drill",
+      "craft"
+    ]
+  },
+  {
+    "id": "craft_sentence",
+    "term": "Sentence",
+    "short": "A term in days a vindictive woman has set the commander for what the commander did. It grows by a slip and ends in a little respect when it is served.",
+    "long": "AUTHOR TO WRITE: A woman who has read the commander's file and holds it against the commander sets a sentence: a number of days, longer for some crimes than others. A slip toward her adds days. While it runs she makes the commander pay in a way that fits the crime, and what she does is not told beforehand. Served to its end, it leaves her with a little more respect.",
+    "see": [
+      "craft"
+    ]
   }
 ]

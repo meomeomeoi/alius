@@ -360,7 +360,7 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   // P16 (no duration: until she decides)
   'no_duration',
   // P16b (CMDR › CRAFT: the disciplines, her records and what a slip teaches)
-  'craft', 'craft_stillness', 'craft_posture', 'craft_rhythm', 'craft_memory', 'craft_composure', 'craft_speech', 'craft_pain', 'craft_depth', 'craft_record', 'craft_lesson', 'craft_drill', 'craft_care',
+  'craft', 'craft_stillness', 'craft_posture', 'craft_rhythm', 'craft_memory', 'craft_composure', 'craft_speech', 'craft_pain', 'craft_depth', 'craft_record', 'craft_lesson', 'craft_drill', 'craft_care', 'craft_norm', 'craft_sentence',
   // P16 (the slap: the time allowed and the one key)
   'slap',
   // P16 (the ceremony)

@@ -1,0 +1,85 @@
+[
+  {
+    "id": "echo_liquidation",
+    "crime": "liquidation",
+    "days": 21,
+    "effects": [
+      {
+        "type": "give_up",
+        "punish": [
+          "privilege_revoked"
+        ]
+      }
+    ],
+    "description": "AUTHOR TO WRITE: she makes the commander give up something of the commander's own, a privilege or a booking with another woman, as the squad that was given up.",
+    "promptHint": "AUTHOR TO WRITE: She makes the commander pay for what was given up: something of the commander's own is taken from the commander, and she says why."
+  },
+  {
+    "id": "echo_smuggling",
+    "crime": "smuggling",
+    "days": 14,
+    "effects": [
+      {
+        "type": "through_her"
+      }
+    ],
+    "description": "AUTHOR TO WRITE: every message the commander sends to anyone else passes through her hands first.",
+    "promptHint": "AUTHOR TO WRITE: Nothing the commander sends goes out unread: it passes through her first, and she lets the commander know it."
+  },
+  {
+    "id": "echo_experimentation",
+    "crime": "experimentation",
+    "days": 21,
+    "effects": [
+      {
+        "type": "experiment"
+      }
+    ],
+    "description": "AUTHOR TO WRITE: she runs experiments on the commander: measured holds, written up with their records.",
+    "promptHint": "AUTHOR TO WRITE: She treats the commander as a subject: measured, timed and written up, as the commander once did to others."
+  },
+  {
+    "id": "echo_purge",
+    "crime": "purge",
+    "days": 14,
+    "effects": [
+      {
+        "type": "obey_day",
+        "punish": [
+          "slot_held"
+        ]
+      }
+    ],
+    "description": "AUTHOR TO WRITE: followed orders too well: once a week the commander follows hers for a whole day.",
+    "promptHint": "AUTHOR TO WRITE: The commander followed orders too well once; now the commander follows hers, a day at a time, and she says so."
+  },
+  {
+    "id": "echo_mutiny",
+    "crime": "mutiny",
+    "days": 30,
+    "effects": [
+      {
+        "type": "answer_first",
+        "punish": [
+          "protocol_extra"
+        ]
+      }
+    ],
+    "description": "AUTHOR TO WRITE: led a revolt: before the squad the commander answers to her first.",
+    "promptHint": "AUTHOR TO WRITE: The commander led a revolt once; now, in front of the squad, the commander answers to her first, and she makes sure it is seen."
+  },
+  {
+    "id": "echo_strain_trade",
+    "crime": "strain_trade",
+    "days": 14,
+    "effects": [
+      {
+        "type": "tithe",
+        "plyx": 1,
+        "credits": 25
+      }
+    ],
+    "description": "AUTHOR TO WRITE: sold samples: each week of the term she takes her tithe of PLYX or credits.",
+    "promptHint": "AUTHOR TO WRITE: The commander sold what was not the commander's to sell; she takes her tithe each week and names the sum."
+  }
+]

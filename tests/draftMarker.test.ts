@@ -305,6 +305,11 @@ describe('facts', () => {
     ask_mocked: { type: 'ask_answered', unitId: ANN, what: 'task', answer: 'mocked', present: [ANN, BEA] },
     craft_record_set: { type: 'record_set', unitId: ANN, key: 'weight', seconds: 720, kind: 'longest', kinds: ['longest'] },
     craft_care_noticed: { type: 'care_noticed', unitId: ANN, careId: 'polishing_her_boots' },
+    craft_exam_passed: { type: 'exam_passed', unitId: ANN, holderId: ANN, passes: 1 },
+    craft_exam_failed: { type: 'exam_failed', unitId: ANN, holderId: ANN },
+    craft_sentence_set: { type: 'sentence_set', unitId: ANN, holderId: ANN, days: 21 },
+    craft_sentence_extended: { type: 'sentence_extended', unitId: ANN, holderId: ANN, days: 3 },
+    craft_sentence_served: { type: 'sentence_served', unitId: ANN, holderId: ANN },
     demonstration_humbling: { type: 'demonstration_staged', demonstrationId: 'pd1', unitId: ANN, audienceIds: [BEA, CAT], humbling: true, summary: 'fetching for her before the mess' },
   });
 

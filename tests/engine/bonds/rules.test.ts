@@ -51,6 +51,7 @@ describe('the core templates', () => {
     expect(t.map((x) => `${x.id}:${x.check}`)).toEqual([
       'report_evening:daily_contact', 'hands_off_gear:intent', 'ask_before_runs:run_without_asking', 'no_other_tokens:token_wear', 'name_me_first:intent',
       'stand_when_i_enter:intent', 'ask_before_you_sit:intent', 'maam_before_the_squad:intent', 'ask_permission:intent', // P16
+      'daily_praise:praise', 'answer_to_me_first:intent', // P16b
     ]);
     for (const x of t) {
       expect(String(x.text), String(x.id)).toMatch(/^AUTHOR TO WRITE/);

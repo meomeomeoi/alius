@@ -5,6 +5,8 @@ import { careKinds } from '../engine/craft/care';
 import { feetOfDay } from '../engine/craft/feet';
 import { footContactLive } from '../engine/craft/intents';
 import { craftLive, careOpen } from '../engine/craft/gate';
+import { normWords } from '../engine/craft/programmes/drill';
+import { echoOf, sentenceOf, VINDICTIVE_STYLE } from '../engine/craft/programmes/vindictive';
 import { craftRoll } from '../engine/craft/state';
 import { styleOf } from '../engine/dynamic/profile';
 import { isLiving } from '../engine/economy';
@@ -36,6 +38,11 @@ export const FEET_PREFIX = 'craft:feet:';
 
 /** What she may show when the commander did for her what she was about to ask (Task 17), for her next reply only. */
 export const ANTICIPATE_PREFIX = 'craft:anticipate:';
+
+/** What a `drill` holder may remind the commander of: her norms of the day (Task 19). */
+export const NORM_PREFIX = 'craft:norm:';
+/** The sentence a `vindictive` holder has set (Task 21). */
+export const SENTENCE_PREFIX = 'craft:sentence:';
 
 const NEVER_NAME = 'Never name it as a mechanic.';
 
@@ -208,9 +215,48 @@ function feetDirectives(state: CampaignState, reg: Registries, present: string[]
   return out;
 }
 
+/**
+ * The norms of a `drill` holder in the room (`craft:norm:<unitId>`): she keeps norms for the commander (what they are for, as words: the weight, the posture) and may remind the commander of the day's,
+ * only if it fits and only once in the scene. No time, no pass mark.
+ */
+function normDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
+  if (state.scene === undefined) return [];
+  const out: Directive[] = [];
+  for (const id of present) {
+    const unit = state.squad.find((u) => u.id === id);
+    const words = normWords(state, reg, id);
+    if (unit === undefined || words.length === 0) continue;
+    out.push({
+      id: `${NORM_PREFIX}${id}`, expiresAfter: 'scene',
+      text: `AUTHOR TO WRITE: ${unit.displayName} keeps norms for the commander (${words.join(', ')}) and may remind the commander of the day's, in her own way, only if it fits and only once. Give no figure. ${NEVER_NAME}`,
+    });
+  }
+  return out;
+}
+
+/**
+ * The sentence of a `vindictive` holder in the room (`craft:sentence:<unitId>`) while it runs: she has set the commander a sentence for what the commander did, and may let it show, only if it fits and only
+ * once in the scene. Which echo it is stays out of the line until the echo has acted (`sentence.landed`), and then it is the echo row's own hint. No term, no number.
+ */
+function sentenceDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
+  if (state.scene === undefined) return [];
+  const out: Directive[] = [];
+  for (const id of present) {
+    const unit = state.squad.find((u) => u.id === id);
+    const sentence = sentenceOf(state, id);
+    if (unit === undefined || sentence === undefined || !craftLive(state, reg, id) || (styleOf(unit)?.primary !== VINDICTIVE_STYLE && styleOf(unit)?.secondary !== VINDICTIVE_STYLE)) continue;
+    const hint = sentence.landed === true ? echoOf(reg, sentence.crimeId)?.promptHint : undefined;
+    out.push({
+      id: `${SENTENCE_PREFIX}${id}`, expiresAfter: 'scene',
+      text: `AUTHOR TO WRITE: ${unit.displayName} has set the commander a sentence for what the commander did, and it is not served yet.${hint !== undefined ? ` ${phrase(hint)}.` : ''} She may let it show in how she speaks to the commander, only if it fits and only once. Give no term. ${NEVER_NAME}`,
+    });
+  }
+  return out;
+}
+
 /** Every craft directive that holds now for the women in the room; nothing without the craft. A draft text reaches the model without its marker. */
 export function craftDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
-  return [...lessonDirectives(state, reg, present), ...recordDirectives(state, reg, present), ...postureDirectives(state, reg, present), ...careDirectives(state, reg, present), ...feetDirectives(state, reg, present), ...anticipateDirectives(state, reg, present)].map((d) => ({ ...d, text: plainDraft(d.text) }));
+  return [...lessonDirectives(state, reg, present), ...recordDirectives(state, reg, present), ...postureDirectives(state, reg, present), ...careDirectives(state, reg, present), ...feetDirectives(state, reg, present), ...anticipateDirectives(state, reg, present), ...normDirectives(state, reg, present), ...sentenceDirectives(state, reg, present)].map((d) => ({ ...d, text: plainDraft(d.text) }));
 }
 
 /** Drops every craft directive (a chat switch, the end of a scene). */

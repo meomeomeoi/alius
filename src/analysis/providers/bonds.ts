@@ -92,6 +92,7 @@ const CHECK_TEXT: Record<string, string> = {
   daily_contact: 'The game checks it: a day without a scene or a message to her breaks it.',
   run_without_asking: 'The game checks it: sending a romantic partner of someone else on a run without her breaks it.',
   intent: 'The game reads it from what you say and do in a talk.',
+  praise: 'The game checks it: a day without a fresh praise in your own words, or one too much like an earlier one, is a slip.',
 };
 
 /** One of her rules: its status, how often it was broken and how the game judges it. */
