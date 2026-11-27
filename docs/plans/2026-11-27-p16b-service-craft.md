@@ -315,14 +315,14 @@ Before Task 1, also read:
 - Produces:
   - `craftDirectives(state, reg, present): Directive[]` with the prefix `craft:`. Chunk c1 has `craft:lesson:` and `craft:record:<unitId>` (she brings up a record, or asks the commander to beat it: once a scene, by a hash per day, only with a record younger than 14 days).
   - `refreshCraftDirectives(builder, state, reg)`, `clearCraftDirectives(builder)`.
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - no directive without craft;
   - `craft:record:` once a scene, worded "if it fits, once", with no pronoun;
   - the lesson line names the point and lasts for the next reply;
   - a chat switch clears them.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`. Chunk end: full `npm test`, `npm run typecheck`, `npm run test:layout` (the CMDR CSS).
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`. Chunk end: full `npm test`, `npm run typecheck`, `npm run test:layout` (the CMDR CSS).
 
 ---
 

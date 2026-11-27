@@ -1357,7 +1357,7 @@ export const TUNING = Object.freeze({
    * `capacity`: the body route of P7 `endurance` (level-equivalents per point above `bodyFrom`, posture and pain only, ruling 9), `noise`: stillness quiets a slip by this much a level, `drift`: a posture drifts
    * this much slower a level. `settling`: clean holds of a kind in a row before she adds a load, and for each style the loads it likes (a hashed pick over the list). `lesson`: the chance she
    * names the point after a slip, by style (`drill` / `ritual` / `clinical` always, `playful` as a joke, `cruel` never, the rest by `other`). `rhythm`: how much wider her openings are per level
-   * of her rhythm the commander knows. `record`: the days a record stays worth bringing up, and the shortest one worth a line (seconds). `knowledge`: the xp of a pair's knowledge per use.
+   * of her rhythm the commander knows. `record`: the days a record stays worth bringing up, the shortest one worth a line (seconds) and the chance, by the hash of the day and the scene, that she brings one up. `knowledge`: the xp of a pair's knowledge per use.
    */
   craft: Object.freeze({
     xp: Object.freeze({ phase: 3, lesson: 0.5, drill: 15, knowledge: 5 }),
@@ -1380,6 +1380,6 @@ export const TUNING = Object.freeze({
     }),
     lesson: Object.freeze({ always: Object.freeze(['drill', 'ritual', 'clinical']), joke: Object.freeze(['playful']), never: Object.freeze(['cruel']), cold: 0.4, other: 0.5 }),
     rhythm: Object.freeze({ widenPerLevel: 0.05 }),
-    record: Object.freeze({ freshDays: 14, minSeconds: 60 }),
+    record: Object.freeze({ freshDays: 14, minSeconds: 60, bringUp: 0.4 }),
   }),
 });

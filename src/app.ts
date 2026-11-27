@@ -69,6 +69,8 @@ import { createHeadStart } from './headStart/controller';
 import { createDevelopment } from './development/controller';
 import { createDynamic } from './dynamic/controller';
 import { createPractice } from './practice/controller';
+import { createCraft } from './craft/controller';
+import { clearCraftDirectives, refreshCraftDirectives } from './craft/directives';
 import { clearPracticeDirectives, refreshPracticeDirectives } from './practice/directives';
 import { bypassRoutes } from './engine/dynamic/bypass';
 import { leashBlockOf } from './engine/dynamic/leashBlock';
@@ -388,12 +390,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       refreshPhysicsDirectives(context, state, registries); // P15a: her rhythm, what she expects and the last stretch of a running hold
       refreshDynamicDirectives(context, state, registries); // P15: a holder in the room and a probe of hers that waits for the commander (nothing while the dynamic is off)
       refreshPracticeDirectives(context, state, registries); // P16: the tasks a holder in the room expects (nothing while nobody holds)
+      refreshCraftDirectives(context, state, registries); // P16b: the point she may name after a slip and a record she may bring up (nothing while nobody holds)
     } else {
       clearBlockingDirectives(context);
       clearMomentDirectives(context);
       clearPhysicsDirectives(context);
       clearDynamicDirectives(context);
       clearPracticeDirectives(context);
+      clearCraftDirectives(context);
       clearLifeDirectives(context);
       clearPersonalDirectives(context);
       clearSpecialDirectives(context);
@@ -716,6 +720,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const life = createLife({ ...worldDeps, context, refreshContext: applyContext }); // P14c: her DMs and notes about what happened to her, and her news directives
   const dynamic = createDynamic({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), stage: (a) => scene.stage(a), sayInScene: (t) => scene.send(t), sayInDm: (u, t) => comms.send(u, t) }); // P15: the holder and probe directives follow the scene and the events of the dynamic
   const practice = createPractice({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a), openPlanner: (t) => { expedition.plan({ ...t, withoutCommand: true }); showExpedition(); } }); // P16: the words of what a holder asks of the commander (sites `practice.<kind>`), its delivery and its directives
+  const craft = createCraft({ context, refreshContext: applyContext, state: () => state }); // P16b: the craft's directives follow its events, the scene and the chat
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
@@ -835,6 +840,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     dynamic.onSceneClosed(); // and what a holder or a probe of hers asks of the scene (P15)
     resetSceneStage(); // and what the scene stage remembers by scene id: the view looked around to, cards set aside, the open history (P10e)
     practice.onChatChanged(); // and the tasks she expects, her verdict and what was asked for and delivered (P16: ids repeat across campaigns)
+    craft.onChatChanged(); // and what the craft told the model (P16b: scene ids repeat across campaigns)
     if (state?.scene) {
       scene.resume();
       loyalty.onSceneOpened();
@@ -845,6 +851,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       life.onSceneOpened();
       dynamic.onSceneOpened();
       practice.onSceneOpened();
+      craft.onSceneOpened();
       showScene();
     } else if (state && state.slot === 'night' && state.calendar.nightEvent && confrontationNight(state)) {
       showScene(); // a confrontation is waiting: its panel comes back after a reload
@@ -879,6 +886,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     life.onSceneOpened();
     dynamic.onSceneOpened();
     practice.onSceneOpened();
+    craft.onSceneOpened();
     showScene();
     shell.open();
     return true;
@@ -967,6 +975,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       life.onEvents(events); // P14c: news delivered, gone stale or told changes the directives
       dynamic.onEvents(events); // P15: a probe issued, a band or a frame crossed, a position shifted changes the directives
       practice.onEvents(events); // P16: a request is worded, a task delivered, her tasks and what she just asked change the directives
+      craft.onEvents(events); // P16b: a slip, a lesson or a record changes the craft directives
       onboarding.onEvents(events); // the line-up and first words: the cap question and the step completing when the scene closes (P11)
       if (has('campaign_ended')) {
         shell.showScreen('hub'); // P13: the END screen takes the hub's place; nothing else of the campaign can change now
@@ -985,6 +994,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         life.onSceneClosed();
         dynamic.onSceneClosed();
         practice.onSceneClosed();
+        craft.onSceneClosed();
       }
       if (has('commander_injured')) api.dispatch({ type: 'relations/commander_injured', payload: {} }, { expectChatId: chatId });
       if (has('night_started') && state?.slot === 'night' && !state.scene) {
