@@ -5,7 +5,7 @@ import '../../src/engine/actions/development';
 import { dynamicDirectives } from '../../src/dynamic/directives';
 import { mannerProposals, turnRead } from '../../src/engine/development/mannerDrift';
 import { momentDirective, stampMoments } from '../../src/engine/development/moments';
-import { applyReview, eligibleAxes, fallbackReview, undoReview, validateReview } from '../../src/engine/development/review';
+import { applyReview, eligibleAxes, fallbackReview, undoReview, unitDue, validateReview } from '../../src/engine/development/review';
 import { developmentOf, ensureDevelopment } from '../../src/engine/development/state';
 import { changedAxes } from '../../src/engine/development/words';
 import { holderAgenda } from '../../src/engine/dynamic/command';
@@ -94,6 +94,22 @@ describe('the turn of her style (spec §7)', () => {
     // another turn waits for another 56 days
     s.day += 7;
     expect(mannerProposals(s, reg, unitOf(s))).toEqual([]);
+  });
+
+  it('a turn being read makes her due on the cadence with no other material, so the second qualifying review comes', () => {
+    const s = world({ overlay: ARC, since: 70 });
+    expect(unitOf(s).development!.pending).toEqual([]);
+    expect(unitDue(s, ANN, reg)).toBe(true); // no experiences, no accumulator: only the read
+    review(s);
+    expect(dynOf(s).mannerTurn).toMatchObject({ candidate: 'regal', reviews: 1 });
+    expect(unitDue(s, ANN, reg)).toBe(false); // the cadence
+    s.day += TUNING.development.cadence.normal;
+    expect(unitDue(s, ANN, reg)).toBe(true);
+    review(s);
+    expect(styleOf(unitOf(s))!.primary).toBe('regal');
+    s.day += TUNING.development.cadence.normal;
+    expect(unitDue(s, ANN, reg)).toBe(false); // turned: nothing is being read any more
+    expect(unitDue(world({ since: 70 }), ANN, reg)).toBe(false); // nobody is nearer another style
   });
 
   it('is a quiet moment with its scene, naming the style she turned to', () => {

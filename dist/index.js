@@ -39803,7 +39803,7 @@ function mannerProposals(state, reg, unit5) {
 function mannerDue(state, reg, unit5) {
   const mode = developmentMode(state);
   if (mode === "off" || state.day - (developmentOf(unit5).lastReview ?? 0) < D2.cadence[mode]) return false;
-  return mannerProposals(state, reg, unit5).length > 0;
+  return mannerProposals(state, reg, unit5).length > 0 || holderDynamic(state, unit5) !== null && turnRead(reg, unit5) !== null;
 }
 function noteTurnReview(state, reg, unit5) {
   const dyn = holderDynamic(state, unit5);

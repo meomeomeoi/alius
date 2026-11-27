@@ -152,11 +152,14 @@ export function mannerProposals(state: CampaignState, reg: Registries, unit: Uni
   return out;
 }
 
-/** Is this holder due for a review for her manner alone (no experiences needed): something is proposed and the cadence has passed. */
+/**
+ * Is this holder due for a review for her manner alone (no experiences needed): the cadence has passed and something is proposed, or a turn is being read (she is nearer another style by
+ * the margin): the reviews that count toward a turn are the weekly ones, so a holder with no other material must still come due.
+ */
 export function mannerDue(state: CampaignState, reg: Registries, unit: Unit): boolean {
   const mode = developmentMode(state);
   if (mode === 'off' || state.day - (developmentOf(unit).lastReview ?? 0) < D.cadence[mode]) return false;
-  return mannerProposals(state, reg, unit).length > 0;
+  return mannerProposals(state, reg, unit).length > 0 || (holderDynamic(state, unit) !== null && turnRead(reg, unit) !== null);
 }
 
 /**
