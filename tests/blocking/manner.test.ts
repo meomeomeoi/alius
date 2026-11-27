@@ -160,6 +160,19 @@ describe('order and voice: the cues', () => {
     const quiet = plan('breath', base(), 8).plan.beats;
     quiet.forEach((b, i) => { if (plain[i]!.opening) expect(b.cue).toBe(plain[i]!.cue); });
   });
+  it('a sparse holder at voice -2 keeps the cues the player needs as she had them at 0 (only her chatter is thinned)', () => {
+    for (const seed of [1, 2, 3, 5, 8]) {
+      resetPhysicsHooks(); style({ primary: 'vindictive' });
+      const zero = plan('breath', base(), seed).plan.beats;
+      resetPhysicsHooks(); style({ primary: 'vindictive' }); manner({ voice: -2 });
+      const quiet = plan('breath', base(), seed).plan.beats;
+      quiet.forEach((b, i) => { if (zero[i]!.cue === 'window_open' || zero[i]!.cue === 'window_false' || zero[i]!.cue === 'shift') expect(b.cue).toBe(zero[i]!.cue); });
+    }
+    resetPhysicsHooks(); style({ primary: 'vindictive' }); manner({ voice: -2 });
+    let openings = 0;
+    for (let seed = 1; seed <= 12; seed++) openings += cues(plan('breath', base(), seed)).filter((c) => c === 'window_open').length;
+    expect(openings).toBeGreaterThan(0); // never all of them dropped
+  });
   it('sparse stays a draw: the same draws at every voice, only the threshold moves', () => {
     resetPhysicsHooks(); style({ primary: 'vindictive' });
     const off = plan('breath', base(), 5);
@@ -167,7 +180,7 @@ describe('order and voice: the cues', () => {
       resetPhysicsHooks(); style({ primary: 'vindictive' }); manner({ voice });
       const p = plan('breath', base(), 5);
       expect(p.next).toBe(off.next);
-      if (voice === -2) expect(cues(p)).toHaveLength(0);
+      if (voice === -2) expect(cues(p).filter((c) => ['count', 'watch', 'look_away'].includes(c))).toHaveLength(0); // her chatter goes; what the player needs does not
     }
     resetPhysicsHooks(); style({ primary: 'vindictive' }); manner({ voice: 2 });
     expect(cues(plan('breath', base(), 5)).length).toBeGreaterThanOrEqual(cues(off).length);

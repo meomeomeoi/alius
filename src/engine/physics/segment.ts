@@ -142,8 +142,12 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
   }
   if (lead.cues === 'sparse') {
     // P15b: her voice moves what share of the cues she keeps (half at 0); the draw is made for every cue-bearing beat as before, only its threshold moves
+    // Below 0 only her chatter is thinned (as for any other holder): what the player needs (an opening, a shift, her orders) keeps the sparse style's own half.
     const drop = voice === 0 ? 0.5 : 1 - Math.min(1, 0.5 * voiceFactor(voice));
-    for (let i = 0; i < n; i++) if (beats[i]!.cue !== undefined && rng.chance(drop)) delete beats[i]!.cue;
+    for (let i = 0; i < n; i++) {
+      const cue = beats[i]!.cue;
+      if (cue !== undefined && rng.chance(voice < 0 && !CHATTER.has(cue) ? 0.5 : drop)) delete beats[i]!.cue;
+    }
   } else if (voice !== 0) voiceLines(beats, state, run, voice, realtime && lead.cues === 'none');
   // R22: her moves in the jaw, in real time only (the turn-based card is unchanged); by hash after every draw above, so no draw is added or moved
   if (realtime && interactions.includes('gesture') && jawSourceOf(run, reg) !== null) planJaw(beats, state, run, jawRowOf(lead), tempo, voice);

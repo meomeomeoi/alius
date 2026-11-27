@@ -40727,7 +40727,10 @@ function planSegment(state, reg, run, rng) {
   }
   if (lead.cues === "sparse") {
     const drop2 = voice === 0 ? 0.5 : 1 - Math.min(1, 0.5 * voiceFactor(voice));
-    for (let i = 0; i < n; i++) if (beats[i].cue !== void 0 && rng.chance(drop2)) delete beats[i].cue;
+    for (let i = 0; i < n; i++) {
+      const cue = beats[i].cue;
+      if (cue !== void 0 && rng.chance(voice < 0 && !CHATTER.has(cue) ? 0.5 : drop2)) delete beats[i].cue;
+    }
   } else if (voice !== 0) voiceLines(beats, state, run, voice, realtime && lead.cues === "none");
   if (realtime && interactions.includes("gesture") && jawSourceOf(run, reg) !== null) planJaw(beats, state, run, jawRowOf(lead), tempo, voice);
   if (realtime && isGulpPhysics(phys)) layFlow(beats, state, run, gulpRowOf(lead.key, manner), n);
