@@ -93,7 +93,7 @@
       }
     ],
     "wakesOnPraise": true,
-    "description": "AUTHOR TO WRITE: asks how she looks, half in play, and waits to see how the commander answers"
+    "description": "asks how she looks, half in play, and waits to see how the commander answers"
   },
   {
     "id": "deference",
@@ -109,7 +109,7 @@
         ]
       }
     ],
-    "description": "AUTHOR TO WRITE: expects to go first, take the better seat or be served first; holds out a hand, half joking, and waits"
+    "description": "expects to go first, take the better seat or be served first; holds out a hand, half joking, and waits"
   },
   {
     "id": "credit",
@@ -124,7 +124,7 @@
         ]
       }
     ],
-    "description": "AUTHOR TO WRITE: after a run, tells the commander's plan as hers and watches whether it is let stand"
+    "description": "after a run, tells the commander's plan as hers and watches whether it is let stand"
   },
   {
     "id": "gaze",
@@ -139,7 +139,7 @@
         ]
       }
     ],
-    "description": "AUTHOR TO WRITE: holds the look to see who looks away; or crosses her legs and lets a shoe hang from her toes if it fits"
+    "description": "holds the look to see who looks away; or crosses her legs and lets a shoe hang from her toes if it fits"
   },
   {
     "id": "corrected_praise",
@@ -153,7 +153,7 @@
         ]
       }
     ],
-    "description": "AUTHOR TO WRITE: corrects the commander's praise of her and gives the word she wants instead"
+    "description": "corrects the commander's praise of her and gives the word she wants instead"
   },
   {
     "id": "feet_in_lap",
@@ -167,7 +167,7 @@
         }
       }
     ],
-    "description": "AUTHOR TO WRITE: on a shared evening, puts her feet in the commander's lap as if only for comfort"
+    "description": "on a shared evening, puts her feet in the commander's lap as if only for comfort"
   },
   {
     "id": "hypothetical",
@@ -190,6 +190,6 @@
         }
       }
     ],
-    "description": "AUTHOR TO WRITE: asks, lightly, whether the commander would kneel if she asked, and watches the answer"
+    "description": "asks, lightly, whether the commander would kneel if she asked, and watches the answer"
   }
 ]

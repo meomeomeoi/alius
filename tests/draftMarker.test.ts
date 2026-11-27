@@ -282,7 +282,6 @@ describe('facts', () => {
     dynamic_frame_rule: { type: 'frame_changed', unitId: ANN, from: 'role', to: 'rule' },
     dynamic_sworn: { type: 'sworn', unitId: ANN },
     dynamic_milestone_refused: { type: 'milestone_refused', unitId: ANN },
-    dynamic_hypothetical: { type: 'hypothetical_answered', unitId: ANN, answer: 'said it would kneel' },
     dynamic_domain_yielded: { type: 'domain_yielded', unitId: ANN, domainId: [...reg.dynamicDomains.keys()][0] },
     dynamic_break: { type: 'dynamic_exit', unitId: ANN, sworn: true },
     dynamic_ended: { type: 'dynamic_exit', unitId: ANN, sworn: false },

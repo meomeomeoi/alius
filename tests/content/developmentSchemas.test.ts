@@ -46,7 +46,8 @@ describe('the core pack (P14b)', () => {
 
   it('the registries are described and the texts are drafts', () => {
     for (const n of ['developmentAxes', 'developmentRules', 'habits'] as const) expect(DESCRIBED_REGISTRIES).toContain(n);
-    for (const e of reg.developmentAxes.values()) for (const f of ['up', 'down', 'description']) expect(String(e[f]).startsWith('AUTHOR TO WRITE:')).toBe(true);
+    // the manner rows (P15b) were written by the author on 2026-11-27; the others are still drafts
+    for (const e of reg.developmentAxes.values()) for (const f of ['up', 'down', 'description']) expect(String(e[f]).startsWith('AUTHOR TO WRITE:'), `${e.id}.${f}`).toBe(!String(e.id).startsWith('manner:'));
     for (const e of reg.habits.values()) expect(String(e.fallback).startsWith('AUTHOR TO WRITE:')).toBe(true);
   });
 

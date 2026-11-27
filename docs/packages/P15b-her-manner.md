@@ -302,6 +302,8 @@ The code map made before the plan found the spec leaning on things that do not e
 11. **The dossier** shows a drifted axis with the "since joining" mark, and the `since_joining` provider learns the practice and expect drift (it ignored them).
 12. **Names:** the mood reader is `mannerMoodOf` (`moodOf` exists in `moments/live.ts`); a failed run is `state.lastExpedition.outcome === 'failed'` on that day; `profile_import`'s practice section is validated by hand in `validatePractice` (there is no zod schema), so the new fields go there and into `PracticePatch`.
 
+**Texts and numbers approved by the author (2026-11-27):** the eight `manner:*` development rows, the seven probe axes' descriptions (= their `promptHint`), the seven `probe_*` head start moments, the joke milestone's text and description, `first_below`'s description and options (`stay a moment` / `thank her and rise` / `tease her about it`), the `dynamic_hypothetical` fact; `TUNING.manner.push` as drafted except `yielded.warmth` −0.25 (was −0.4: care can hold her warmth against daily yielding); the turn's words read "her manner has turned toward the {style} style; she leads differently now, at the core".
+
 ## Open decisions (author)
 
 - ~~The words of the axes' ends and of `drawnBy`~~ (decided, §1, §2); the `up` / `down` words of the six development rows (`AUTHOR TO WRITE`).

@@ -42,9 +42,11 @@ describe('headStartMoments registry (P11b)', () => {
     expect(req('night_talk')?.minDays).toBe(7);
     expect(req('covered_for_her')?.minDays).toBe(14);
     expect(req('learned_the_crime')?.knowsCrime).toBe(true);
+    // the seven probe moments of P15b §12 were written by the author on 2026-11-27; the others are still drafts
+    const written = new Set(['probe_admiration', 'probe_deference', 'probe_credit', 'probe_gaze', 'probe_corrected_praise', 'probe_feet_in_lap', 'probe_hypothetical']);
     for (const e of reg.headStartMoments.values()) {
-      expect(String(e.fallback).startsWith('AUTHOR TO WRITE:')).toBe(true);
-      expect(String(e.description).startsWith('AUTHOR TO WRITE:')).toBe(true);
+      expect(String(e.fallback).startsWith('AUTHOR TO WRITE:'), String(e.id)).toBe(!written.has(String(e.id)));
+      expect(String(e.description).startsWith('AUTHOR TO WRITE:'), String(e.id)).toBe(!written.has(String(e.id)));
     }
     for (const e of plain) expect(e.axis).toBeUndefined();
   });

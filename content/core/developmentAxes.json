@@ -128,57 +128,57 @@
   {
     "id": "manner:intensity",
     "kind": "manner",
-    "up": "AUTHOR TO WRITE: she goes harder than she used to",
-    "down": "AUTHOR TO WRITE: she goes gentler than she used to",
-    "description": "AUTHOR TO WRITE: A step of how hard she goes, away from what her file says."
+    "up": "she goes harder than she used to",
+    "down": "she goes gentler than she used to",
+    "description": "A step of how hard she goes, away from what her file says."
   },
   {
     "id": "manner:warmth",
     "kind": "manner",
-    "up": "AUTHOR TO WRITE: there is more tenderness under it than there was",
-    "down": "AUTHOR TO WRITE: there is less comfort under it than there was",
-    "description": "AUTHOR TO WRITE: A step of what is under it (care, softness after), away from what her file says."
+    "up": "there is more tenderness under it than there was",
+    "down": "there is less comfort under it than there was",
+    "description": "A step of what is under it (care, softness after), away from what her file says."
   },
   {
     "id": "manner:order",
     "kind": "manner",
-    "up": "AUTHOR TO WRITE: she holds more to forms and counting than she did",
-    "down": "AUTHOR TO WRITE: she is looser with forms than she was, more on impulse",
-    "description": "AUTHOR TO WRITE: A step of counting, forms and ceremony against impulse, away from what her file says."
+    "up": "she keeps to forms and counting more than she did",
+    "down": "she is looser with forms now, more on impulse",
+    "description": "A step of counting, forms and ceremony against impulse, away from what her file says."
   },
   {
     "id": "manner:voice",
     "kind": "manner",
-    "up": "AUTHOR TO WRITE: she says more while she does it than she did",
-    "down": "AUTHOR TO WRITE: she says less while she does it than she did",
-    "description": "AUTHOR TO WRITE: A step of how much she talks in a practice, away from what her file says."
+    "up": "she says more while she does it than she did",
+    "down": "she says less while she does it than she did",
+    "description": "A step of how much she talks in a practice, away from what her file says."
   },
   {
     "id": "manner:tempo",
     "kind": "manner",
-    "up": "AUTHOR TO WRITE: she is quicker and less warning than she was",
-    "down": "AUTHOR TO WRITE: she draws it out more than she used to",
-    "description": "AUTHOR TO WRITE: A step of how quickly she moves and how much warning she gives, away from what her file says."
+    "up": "she is quicker now, with less warning",
+    "down": "she draws it out more than she used to",
+    "description": "A step of how quickly she moves and how much warning she gives, away from what her file says."
   },
   {
     "id": "manner:curiosity",
     "kind": "manner",
-    "up": "AUTHOR TO WRITE: she reaches for new things more than she did",
-    "down": "AUTHOR TO WRITE: she keeps more to what she knows than she did",
-    "description": "AUTHOR TO WRITE: A step of how often she tries something new, away from what her file says."
+    "up": "she reaches for new things more than she did",
+    "down": "she keeps more to what she knows",
+    "description": "A step of how often she tries something new, away from what her file says."
   },
   {
     "id": "manner:drawn_by",
     "kind": "manner",
-    "up": "AUTHOR TO WRITE: something else draws her now than it used to",
-    "down": "AUTHOR TO WRITE: what draws her has shifted back toward what it was",
-    "description": "AUTHOR TO WRITE: A change in what she seeks and rewards."
+    "up": "something else draws her now",
+    "down": "what draws her has shifted back",
+    "description": "A change in what she seeks and rewards."
   },
   {
     "id": "manner:turn",
     "kind": "manner",
-    "up": "AUTHOR TO WRITE: she has become more {style} than she was, a different woman at the core",
-    "down": "AUTHOR TO WRITE: she has become more {style} than she was, a different woman at the core",
-    "description": "AUTHOR TO WRITE: The turn of her style: where her axes had carried her, she now leads in another manner."
+    "up": "her manner has turned toward the {style} style; she leads differently now, at the core",
+    "down": "her manner has turned toward the {style} style; she leads differently now, at the core",
+    "description": "The turn of her style: where her axes had carried her, she now leads in another manner."
   }
 ]

@@ -1075,7 +1075,7 @@
   {
     "id": "dynamic_hypothetical",
     "event": "hypothetical_answered",
-    "text": "AUTHOR TO WRITE: {name} asked whether the commander would kneel if she asked, and the commander answered: {answer}.",
+    "text": "{name} once asked whether the commander would kneel if she asked. The answer was: {answer}",
     "importance": 1,
     "about": "her",
     "audience": "her",

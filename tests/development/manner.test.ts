@@ -69,7 +69,7 @@ describe('the pushes (spec §7)', () => {
     const s = world();
     feedYield(s, ANN);
     expect(acc(s, 'manner:intensity')).toBe(0.5);
-    expect(acc(s, 'manner:warmth')).toBe(-0.4);
+    expect(acc(s, 'manner:warmth')).toBe(-0.25);
     const none = world();
     delete unitOf(none).bond!.practice!.manner;
     feedYield(none, ANN);
@@ -135,9 +135,9 @@ describe('the pushes (spec §7)', () => {
     practiceSample(s, reg, ANN, 'yielded');
     expect(acc(s, 'manner:intensity')).toBe(0.5);
     mannerFeedLanded(s, reg, ANN, { type: 'comforted', actor: 'commander' });
-    expect(acc(s, 'manner:warmth')).toBeCloseTo(-0.4 + 0.6, 6);
+    expect(acc(s, 'manner:warmth')).toBeCloseTo(-0.25 + 0.6, 6);
     mannerFeedLanded(s, reg, ANN, { type: 'comforted', actor: ANN });
-    expect(acc(s, 'manner:warmth')).toBeCloseTo(0.2, 6); // not the commander's: nothing
+    expect(acc(s, 'manner:warmth')).toBeCloseTo(-0.25 + 0.6, 6); // not the commander's: nothing
     notePractised(s, reg, ANN, 'seed_a', ['restraint']);
     expect(acc(s, 'manner:curiosity')).toBe(1.2); // reaction draws her: no discovery bonus
     expect(acc(s, 'manner:drawn_by.discovery')).toBe(TUNING.manner.push.drawn.discovery);

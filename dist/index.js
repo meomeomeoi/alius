@@ -1103,7 +1103,8 @@ var TUNING = Object.freeze({
      * (a ceremony step, a rule kept); `drawn` the outcome each `drawnBy` kind rewards.
      */
     push: Object.freeze({
-      yielded: Object.freeze({ intensity: 0.5, warmth: -0.4 }),
+      yielded: Object.freeze({ intensity: 0.5, warmth: -0.25 }),
+      // author, 2026-11-27: care can hold her warmth against daily yielding
       refusal: Object.freeze({ order: 1 }),
       care: Object.freeze({ warmth: 0.6 }),
       firstWell: Object.freeze({ curiosity: 1.2 }),

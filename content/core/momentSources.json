@@ -671,21 +671,21 @@
     "frame": [
       {
         "type": "yielded",
-        "generic": "let it last"
+        "generic": "stay a moment"
       },
       {
         "type": "deflected",
-        "generic": "thank her"
+        "generic": "thank her and rise"
       },
       {
         "type": "returned",
-        "generic": "tease"
+        "generic": "tease her about it"
       }
     ],
     "live": [
       "external"
     ],
-    "description": "AUTHOR TO WRITE: Her lace has come undone after a run and the commander kneels to tie it. She looks down and lets it last. Once per pair, early in a regal woman's way in.",
+    "description": "Her lace has come undone after a run, and the commander kneels to tie it. She looks down and lets it last.",
     "promptHint": "her lace has come undone after a run; the commander kneels to tie it and she looks down and lets it last"
   }
 ]

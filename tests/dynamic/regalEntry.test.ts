@@ -53,7 +53,7 @@ describe('the joke that stopped being a joke (spec 12.3)', () => {
     expect(j.effects).toEqual([{ type: 'frame' }]);
     const order = [...reg.dynamicMilestones.keys()];
     expect(order.indexOf(String(j.id))).toBeLessThan(order.indexOf('first_yes'));
-    expect(String(j.text)).toContain('AUTHOR TO WRITE');
+    expect(String(j.text)).not.toContain('AUTHOR TO WRITE'); // the author's text, 2026-11-27
   });
 
   it('is chosen for a regal woman with a manner at testing, and first_yes for every other', () => {
@@ -113,7 +113,7 @@ describe('the first time below her (spec 12.3, ruling 10)', () => {
     const src = reg.momentSources.get('first_below')! as unknown as { scope: string; live: string[]; frame: Array<{ type: string; generic: string }> };
     expect(src.scope).toBe('any');
     expect(src.live).toEqual(['external']);
-    expect(src.frame.map((o) => o.generic)).toEqual(['let it last', 'thank her', 'tease']);
+    expect(src.frame.map((o) => o.generic)).toEqual(['stay a moment', 'thank her and rise', 'tease her about it']);
   });
 
   it('is live for a woman a probe row would match, with a manner, at testing, in a scene with her', () => {
