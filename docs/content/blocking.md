@@ -332,7 +332,9 @@ posture {
 
 **Modifiers while holding** (P16b): a load (adds a balance point), her weight (a P15a `weight` physics through `supports`), holding her thing in the hands or the mouth (dropping it is a slip), restraints (a point fixed, its neighbours drift faster), the surface (hard, cold, rough), the term (known / counted / none), her stimuli (tickling, touch, words, gaze traps), the commander's state (the day's fatigue, stiffness after a marathon, an injury), a visitor (noise matters, the gaze gets a strong impulse), darkness or a blindfold (the schematic is hidden).
 
-### 7.3 Presets (48)
+### 7.3 Presets (47)
+
+**As built (P16b):** the presets below live in `content/core/servicePostures.json`, the registry `servicePostures` (47 rows: this table and `tests/fixtures/dial/presets.ts` have 47, the earlier count of 48 was a miscount), beside the 13 bases of `blockingPostures` (whose strict schema is unchanged). Each base has exactly one `default: true` preset, which is what an old name on a base reads as (`presetOf`). One id was renamed because an activity uses it: the preset `facing_wall` is `face_to_wall` (the **activity** `facing_wall` keeps its id; the table row below is the preset). Three presets (`kneel_arched`, `light_bearer`, `hogtied`) have drift rows of their own that follow the table below, not the prototype's `RATE` table. Read presets by `base`, `points`, `meaning`, `humiliation`, `tags`, `signal`, `noise` and `default`, never by id. The `label` and `promptHint` of each row are written; each `description` is `AUTHOR TO WRITE`.
 
 Tags in the last column are content gates (besides the category of the practice that calls the posture). Everyday presets have `scope: any` and no drift outside a dynamic.
 
@@ -353,7 +355,7 @@ Tags in the last column are content gates (besides the category of the practice 
 | `attention` | `standing_attention` | torso upright, arms at_sides, head up, gaze straight | attention | 0 | |
 | `parade_rest` | `standing` | arms behind_back, gaze down | waiting | 0 | |
 | `at_her_side` | `standing` | anchor `behind_her_chair` or `beside_her`, arms clasped front, gaze down | waiting, display | 1 | signal `telling` |
-| `facing_wall` | `standing` | anchor `corner` / `by_wall`, arms behind_back | punishment | 2 | requires a wall or corner |
+| `face_to_wall` (was `facing_wall`; the activity keeps that id) | `standing` | anchor `corner` / `by_wall`, arms behind_back | punishment | 2 | requires a wall or corner |
 | `wall_sit` | `crouching` | back to the wall, thighs level, arms at_sides | endurance_test, punishment | 1 | |
 | `arms_out` | `standing` / `kneeling_upright` | arms out_sideways (may hold things) | endurance_test, punishment | 2 | variants: base |
 

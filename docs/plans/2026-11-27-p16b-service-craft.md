@@ -928,7 +928,15 @@ Each round is a live prototype in `docs/prototypes/`, built with `npm run proto 
 
 **Files:** `docs/packages/P16b-service-craft.md` (status, **Implemented as**: where it lives, rulings as built, deviations, non-obvious things, open items), `docs/00-overview.md` (§9 status, §5.4 rows), the **Interfaces already provided by P16b** notes in P16c, P17, P17a, P17b, P17c, P17e, P17g, `CLAUDE.md` (a P16b line), `docs/MANUAL_TEST_P16b.md`.
 
-- [ ] **Step 1:** Write the docs.
-- [ ] **Step 2:** Run the full `npm test`, `npm run typecheck`, `npm run test:layout` → PASS.
-- [ ] **Step 3:** Commit `docs(P16b): implemented as`. Push.
+- [x] **Step 1:** Write the docs.
+- [x] **Step 2:** Run the full `npm test`, `npm run typecheck`, `npm run test:layout` → PASS.
+- [x] **Step 3:** Commit `docs(P16b): implemented as`. Push.
 - [ ] **Step 4:** The whole-package review (Opus, effort high), then its fix wave (each fix test first), then the suite again.
+
+**Done in c8 (docs only; no code changed):**
+- The spec `docs/packages/P16b-service-craft.md` has its status line and **Implemented as** (where it lives, rulings as built, the memory check as built, deviations, non-obvious things, open items, interfaces provided).
+- `docs/content/blocking.md` §7.3 says the 47 presets live in `servicePostures` and that `facing_wall` is `face_to_wall`.
+- `docs/00-overview.md`: §9 P16b is implemented; §5.4 has ten P16b rows.
+- The **Interfaces already provided by P16b** notes are in P16c, P17, P17a, P17b, P17c, P17e and P17g.
+- `CLAUDE.md` has a P16b line; the manual test is `docs/MANUAL_TEST_P16b.md`.
+- `npm run test:layout` was not rerun: nothing but docs changed since the end of chunk c7, where it passed.
