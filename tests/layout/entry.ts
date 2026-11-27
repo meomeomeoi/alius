@@ -1,6 +1,6 @@
 /**
  * P10e: the browser entry of the layout test (`npm run test:layout`): renders the real scene screen into the page for one named
- * fixture (`?fixture=one|two|three|four|curtain|long|physics|chips|chipsmany|dialname|dialwide|call|callhold|slap|slaphold|breath|breathhold|weight|weightfoot|weightup|weighthold|scent|scenthold|jaw|jawring|jawhold|activity|activityhold|throne|thronehold|service|servicehold|provocation|shoe|shoeheels|shoehold|gulp|gulphold|posture|posturehold|posturecallb|posturecallc`). A knee-length placeholder sprite (tests/fixtures/layout/sprite.svg), never the
+ * fixture (`?fixture=one|two|three|four|curtain|long|physics|chips|chipsmany|dialname|dialwide|call|callhold|slap|slaphold|breath|breathhold|weight|weightfoot|weightup|weighthold|scent|scenthold|jaw|jawring|jawhold|activity|activityhold|throne|thronehold|service|servicehold|provocation|shoe|shoeheels|shoehold|gulp|gulphold|posture|posturehold|posturecallb|posturecallc|craftcards|craftdrill|craftdrillother|craftchip`). A knee-length placeholder sprite (tests/fixtures/layout/sprite.svg), never the
  * author's art; the content and the campaign states are fetched (the script serves the repo root); the model is never called.
  */
 import { loadPacks } from '../../src/content/loader';
@@ -28,7 +28,7 @@ const params = new URLSearchParams(location.search);
 const fixture = params.get('fixture') ?? 'one';
 const states = (await (await fetch('/.superpowers/layout/states.json')).json()) as Record<string, never>;
 const loaded = await loadPacks(['content/core'], (p: string) => fetch('/' + p).then((r) => r.json()));
-const state = states[['two', 'three', 'four', 'physics', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weightfoot', 'weightup', 'weighthold', 'scent', 'scenthold', 'jaw', 'jawring', 'jawhold', 'activity', 'activityhold', 'throne', 'thronehold', 'service', 'servicehold', 'provocation', 'shoe', 'shoeheels', 'shoehold', 'gulp', 'gulphold', 'posture', 'posturehold', 'posturecallb', 'posturecallc'].includes(fixture) ? fixture : 'one'];
+const state = states[['two', 'three', 'four', 'physics', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weightfoot', 'weightup', 'weighthold', 'scent', 'scenthold', 'jaw', 'jawring', 'jawhold', 'activity', 'activityhold', 'throne', 'thronehold', 'service', 'servicehold', 'provocation', 'shoe', 'shoeheels', 'shoehold', 'gulp', 'gulphold', 'posture', 'posturehold', 'posturecallb', 'posturecallc', 'craftcards', 'craftdrill', 'craftdrillother', 'craftchip'].includes(fixture) ? fixture : 'one'];
 // the breath instrument (P10e-e Task 14): `&style=<key>` is her physics style; `&quiet=1` clears the plan's openings (the shots open the windows
 // themselves through `window.__breath`, as the prototype's through its hooks); the segment started as the page loaded; the stop word ends the hold (the run goes, the scene redraws), as the engine's does
 // the weight instrument (P10e-e Task 16): the same, `&quiet=1` clearing the plan's shifts (the shots shift her through `window.__weight`)

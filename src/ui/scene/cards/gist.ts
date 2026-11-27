@@ -23,6 +23,13 @@ export interface GistCard {
   slot?: string;
   domain?: string;
   gist?: string;
+  /** P16b (gate G3): the drill's name and the other woman it is with, the exam's norms, the sentence's days, her note's object, the lesson's point. */
+  drill?: string;
+  other?: string;
+  norms?: unknown[];
+  days?: number;
+  what?: string;
+  point?: string;
 }
 
 export function gistOf(c: GistCard): string | undefined {
@@ -35,6 +42,11 @@ export function gistOf(c: GistCard): string | undefined {
     case 'demonstration': return `${c.place!.toLowerCase()} · <b>${c.slot}</b>`;
     case 'claim': return c.domain;
     case 'physics': return c.label;
+    case 'drill': return `${c.drill!.toLowerCase()}${c.other ? ` · with ${c.other}` : ''}`;
+    case 'exam': return `${c.norms!.length} norms · <b>${c.when}</b>`;
+    case 'sentence': return `<b>${c.days} days</b> left`;
+    case 'note': return c.what!.toLowerCase();
+    case 'lesson': return c.point!.toLowerCase();
     default: return c.gist ?? '';
   }
 }

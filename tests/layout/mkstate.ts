@@ -190,4 +190,36 @@ out.posturehold = postureHold();
 out.posturecallb = postureCall(2);
 out.posturecallc = postureCall(4);
 
+/**
+ * P16b Task 26 (gate G3): the craft's cards. Ann holds (regal: a way of her own for every kind of card). `craftcards`: the exam (her norms), her sentence (the echo has acted), her note on
+ * a care she noticed and the lesson she named (her reply has passed). `craftdrill`: a drill with her; `craftdrillother`: Bea's drill, which Ann hears of. `craftchip`: `[ANTICIPATE]` in the chip row.
+ */
+function craftWorld(): CampaignState {
+  const w = holdScene(reg, { realtime: true });
+  delete w.scene!.blocking;
+  delete w.scene!.stagingLog;
+  unitOf(w, ANN).bond!.practice!.style = { primary: 'regal' };
+  w.scene!.exchanges = 3;
+  return w;
+}
+const craftcards = craftWorld();
+craftcards.relations[ANN]!.craft = {
+  drill: { norms: { 'endurance:weight': 1200, 'endurance:breath': 40, posture: 900 }, examDay: craftcards.day, passes: 1 },
+  drillPending: { key: 'endurance:weight', mult: 1, day: craftcards.day, exam: true },
+  sentence: { crimeId: 'smuggling', start: craftcards.day, until: craftcards.day + 19, extended: 0, landed: true },
+  cares: [{ day: craftcards.day, careId: 'polishing_her_boots', noticed: true, voiced: true, scene: craftcards.scene!.id }],
+  lesson: { point: 'hands', words: 'hands', scene: craftcards.scene!.id, exchange: 2 },
+};
+out.craftcards = craftcards;
+const craftdrill = craftWorld();
+craftdrill.relations[ANN]!.craft = { drillPending: { key: 'endurance:weight', mult: 1.5, day: craftdrill.day } };
+out.craftdrill = craftdrill;
+const craftdrillother = craftWorld();
+craftdrillother.scene!.participants.push('unit_bea');
+craftdrillother.relations['unit_bea']!.craft = { drillPending: { key: 'endurance:breath', mult: 1.2, day: craftdrillother.day } };
+out.craftdrillother = craftdrillother;
+const craftchip = craftWorld();
+craftchip.relations[ANN]!.dynamic!.readOf = { ...craftchip.relations[ANN]!.dynamic!.readOf, r: 0.5, p: 0.9, updates: 4 };
+out.craftchip = craftchip;
+
 writeFileSync(process.argv[2] ?? 'states.json', JSON.stringify(out));

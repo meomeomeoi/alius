@@ -12,7 +12,8 @@
       }
     ],
     "description": "AUTHOR TO WRITE: she makes the commander give up something of the commander's own, a privilege or a booking with another woman, as the squad that was given up.",
-    "promptHint": "AUTHOR TO WRITE: She makes the commander pay for what was given up: something of the commander's own is taken from the commander, and she says why."
+    "promptHint": "AUTHOR TO WRITE: She makes the commander pay for what was given up: something of the commander's own is taken from the commander, and she says why.",
+    "line": "AUTHOR TO WRITE: Something of yours goes to me, a week at a time."
   },
   {
     "id": "echo_smuggling",
@@ -24,7 +25,8 @@
       }
     ],
     "description": "AUTHOR TO WRITE: every message the commander sends to anyone else passes through her hands first.",
-    "promptHint": "AUTHOR TO WRITE: Nothing the commander sends goes out unread: it passes through her first, and she lets the commander know it."
+    "promptHint": "AUTHOR TO WRITE: Nothing the commander sends goes out unread: it passes through her first, and she lets the commander know it.",
+    "line": "Every message, through my hands."
   },
   {
     "id": "echo_experimentation",
@@ -36,7 +38,8 @@
       }
     ],
     "description": "AUTHOR TO WRITE: she runs experiments on the commander: measured holds, written up with their records.",
-    "promptHint": "AUTHOR TO WRITE: She treats the commander as a subject: measured, timed and written up, as the commander once did to others."
+    "promptHint": "AUTHOR TO WRITE: She treats the commander as a subject: measured, timed and written up, as the commander once did to others.",
+    "line": "AUTHOR TO WRITE: Measured, timed and written up."
   },
   {
     "id": "echo_purge",
@@ -51,7 +54,8 @@
       }
     ],
     "description": "AUTHOR TO WRITE: followed orders too well: once a week the commander follows hers for a whole day.",
-    "promptHint": "AUTHOR TO WRITE: The commander followed orders too well once; now the commander follows hers, a day at a time, and she says so."
+    "promptHint": "AUTHOR TO WRITE: The commander followed orders too well once; now the commander follows hers, a day at a time, and she says so.",
+    "line": "AUTHOR TO WRITE: A day of doing as I say."
   },
   {
     "id": "echo_mutiny",
@@ -66,7 +70,8 @@
       }
     ],
     "description": "AUTHOR TO WRITE: led a revolt: before the squad the commander answers to her first.",
-    "promptHint": "AUTHOR TO WRITE: The commander led a revolt once; now, in front of the squad, the commander answers to her first, and she makes sure it is seen."
+    "promptHint": "AUTHOR TO WRITE: The commander led a revolt once; now, in front of the squad, the commander answers to her first, and she makes sure it is seen.",
+    "line": "AUTHOR TO WRITE: Before the squad, you answer to me first."
   },
   {
     "id": "echo_strain_trade",
@@ -80,6 +85,7 @@
       }
     ],
     "description": "AUTHOR TO WRITE: sold samples: each week of the term she takes her tithe of PLYX or credits.",
-    "promptHint": "AUTHOR TO WRITE: The commander sold what was not the commander's to sell; she takes her tithe each week and names the sum."
+    "promptHint": "AUTHOR TO WRITE: The commander sold what was not the commander's to sell; she takes her tithe each week and names the sum.",
+    "line": "AUTHOR TO WRITE: A tithe to me, every week."
   }
 ]

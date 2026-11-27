@@ -8,7 +8,7 @@ import { analyzeNative } from '../../analyze/mark';
 import { h } from '../../dom';
 
 /** The row's slots, in order (the table of spec §12a.5 names them). */
-export const CHIP_SLOTS = ['generation', 'proposals', 'lead', 'offer', 'rules', 'demands', 'discipline', 'discipline-menus', 'freq', 'lets'] as const;
+export const CHIP_SLOTS = ['generation', 'proposals', 'lead', 'offer', 'rules', 'demands', 'discipline', 'discipline-menus', 'freq', 'lets', 'anticipate'] as const;
 
 export interface ChipRow {
   element: HTMLElement;

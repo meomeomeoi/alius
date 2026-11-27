@@ -35,7 +35,7 @@ describe('createChipRow', () => {
   });
 
   it('the scene\'s slots are the ones the table names, in order', () => {
-    expect(CHIP_SLOTS).toEqual(['generation', 'proposals', 'lead', 'offer', 'rules', 'demands', 'discipline', 'discipline-menus', 'freq', 'lets']);
+    expect(CHIP_SLOTS).toEqual(['generation', 'proposals', 'lead', 'offer', 'rules', 'demands', 'discipline', 'discipline-menus', 'freq', 'lets', 'anticipate']);
   });
 
   it('a row narrower than its chips shows +N with the hidden count; clicking it expands (and collapses)', () => {

@@ -4928,6 +4928,68 @@
   from { transform: translateX(-46px) rotate(-2deg); opacity: 0; }
 }
 
+/* ---- P16b Task 26 (gate G3, cards.html "the craft's scene surfaces"): the exam's norms, the sentence's term, her note on paper, the lesson that goes by itself ---- */
+#alius-shell .alius-scard .alius-scard-norms {
+  margin: 6px 0 2px;
+  padding: 0;
+  list-style: none;
+}
+
+#alius-shell .alius-scard .alius-scard-norms li {
+  font-family: var(--alius-font-hand, var(--alius-font-type));
+  font-size: calc(22px * var(--alius-scard-hs));
+  line-height: 1.25;
+  color: color-mix(in srgb, var(--alius-scard-acc) 62%, var(--alius-scard-ink));
+}
+
+#alius-shell .alius-scard .alius-scard-term {
+  font-family: var(--alius-font-hand, var(--alius-font-type));
+  font-size: calc(46px * var(--alius-scard-hs));
+  line-height: 1;
+  color: var(--alius-scard-acc);
+  margin: 4px 0 2px;
+}
+
+/* her note: a paper card, dark ink, a little turned, no stripe */
+#alius-shell .alius-scard.alius-scard-paper {
+  background: linear-gradient(176deg, #efe6d6, #e4d8c2);
+  border-color: rgba(60, 40, 20, 0.25);
+  color: #2a2018;
+  transform: rotate(-1.2deg);
+}
+
+#alius-shell .alius-scard.alius-scard-paper::before {
+  background: transparent;
+}
+
+#alius-shell .alius-scard.alius-scard-paper .alius-scard-who,
+#alius-shell .alius-scard.alius-scard-paper .alius-scard-words {
+  color: color-mix(in srgb, var(--alius-scard-acc) 45%, #3a1c2c);
+  text-shadow: none;
+}
+
+#alius-shell .alius-scard.alius-scard-paper .alius-scard-kind,
+#alius-shell .alius-scard.alius-scard-paper .alius-scard-gist {
+  color: rgba(42, 32, 24, 0.6);
+}
+
+/* the lesson: gone by itself after 7 s (opacity to 0 over the last 20 %) */
+#alius-shell .alius-scard.alius-craft-lesson {
+  animation: alius-craft-lesson-out 7s ease-in forwards;
+}
+
+@keyframes alius-craft-lesson-out {
+  0%, 80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* [ANTICIPATE] in the chip row: round, the cool accent, a dashed border */
+#alius-shell .alius-chip.alius-chip-anticipate,
+#alius-shell .alius-chip-row .alius-btn.alius-chip-anticipate {
+  border-style: dashed;
+  border-radius: 999px;
+}
+
 /*
  * P10e-e Task 9: her posture call as a full-frame moment (docs/prototypes/cards.html `#call`, `#callWord`, `#dots`, `#callLine`, `#fan`, `.pc`,
  * `#dimmer`, `#dial.called`, normative). Her word large in her hand beside her (74 vw / 13 vh), her foot's ink dots under it, the fan of her named

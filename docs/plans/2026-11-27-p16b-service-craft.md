@@ -918,7 +918,7 @@ Each round is a live prototype in `docs/prototypes/`, built with `npm run proto 
   - `cards/fidelity.json`.
 - Test: `tests/ui/craft/*`, the analyze coverage, the fidelity test, `npm run test:layout`
 
-- [ ] **Steps 1–5** as Task 23 (each surface from G3, `data-analyze` on each). Commit `feat(P16b): the craft in the scene`. Chunk end: full suite, typecheck, `npm run test:layout`.
+- [x] **Steps 1–5** as Task 23 (each surface from G3, `data-analyze` on each). Commit `feat(P16b): the craft in the scene`. Chunk end: full suite, typecheck, `npm run test:layout`.
 
 ---
 

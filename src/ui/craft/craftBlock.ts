@@ -15,7 +15,7 @@ import { setHand } from '../notes/note';
 import { herHand } from '../stage/look';
 
 /** The line template of a kind (`record.noTap`, `where.weight`, `signal.stamp`), as a player reads it (the draft marker stripped); `undefined` when there is none. */
-function lineOf(reg: Registries, kind: string): string | undefined {
+export function lineOf(reg: Registries, kind: string): string | undefined {
   for (const row of reg.craftLines.values() as IterableIterator<CraftLineEntry>) if (row.kind === kind) return plainDraft(row.text);
   return undefined;
 }

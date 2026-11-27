@@ -4013,6 +4013,27 @@
     ]
   },
   {
+    "id": "craft_exam",
+    "term": "Exam",
+    "short": "The week's test a drill holder sets: she runs the commander through each norm at the yard. The mark is never said.",
+    "long": "AUTHOR TO WRITE: Once a week a woman who drills books an exam. At the yard she runs one hold for each norm in her hand, and judges the sum. Passing raises every norm; failing books extra drills on the commander's free slots. Her card lists the norms and when the exam is.",
+    "see": [
+      "craft_norm",
+      "craft_drill",
+      "craft"
+    ]
+  },
+  {
+    "id": "craft_anticipate",
+    "term": "Anticipate her",
+    "short": "Do for her what she was about to ask, before she has to. She sees it coming, once a scene.",
+    "long": "AUTHOR TO WRITE: When she has all but asked for something, the commander can do it first. It is shown only while her reading of the commander allows it, once in a scene, and what is done is whatever fits what she is doing. She answers in her own way, by her style.",
+    "see": [
+      "craft_care",
+      "craft"
+    ]
+  },
+  {
     "id": "her_postures",
     "term": "Her postures",
     "short": "The postures she has named: her name for each, how it looks, the points that hold it and how well the commander knows it. Practicing one spends a slot.",

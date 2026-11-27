@@ -37,6 +37,8 @@ export interface SceneCondition {
   ctx?: Record<string, unknown>;
   /** Extra attributes of the line (a draw function's own `data-*` hooks). */
   attrs?: Record<string, string>;
+  /** Nodes that come straight after the line (the exam's norms follow "Show me:"). */
+  then?: Node[];
 }
 
 export interface SceneCardOpts {
@@ -57,6 +59,8 @@ export interface SceneCardOpts {
   extra?: Node[];
   /** The gist of the collapsed card (`gistOf`). */
   gist?: string;
+  /** What comes straight after her words, above the rule (the sentence's term, large). */
+  lead?: Node[];
 }
 
 /** Runs as nodes: her frame as text, each value a `span.alius-scard-v`. */
@@ -72,6 +76,7 @@ export const runsText = (runs: VoiceRun[]): string => runs.map((r) => r.text).jo
 export function conditionEls(c: SceneCondition): HTMLElement[] {
   const els = [h('div', { class: 'alius-scard-cond', ...(c.attrs ?? {}), ...analyzeAttrs(c.analyze, c.ctx) }, ...runsOf(c.runs))];
   if (c.dry !== '') els.push(h('div', { class: 'alius-scard-dry' }, c.dry));
+  for (const n of c.then ?? []) els.push(n as HTMLElement);
   return els;
 }
 
@@ -85,6 +90,7 @@ export function sceneCard(o: SceneCardOpts): HTMLElement {
     h('span', { class: 'alius-scard-kind' }, o.kind));
   const body = h('div', { class: 'alius-scard-body' });
   if (o.words !== undefined && (typeof o.words === 'string' ? o.words !== '' : o.words.length > 0)) body.append(h('div', { class: 'alius-scard-words' }, ...runsOf(o.words)));
+  for (const n of o.lead ?? []) body.append(n);
   if (o.prose !== undefined) body.append(h('div', { class: 'alius-scard-prose' }, o.prose));
   if (o.conditions.length > 0) body.append(h('div', { class: 'alius-scard-rule' }));
   for (const c of o.conditions) body.append(...conditionEls(c));

@@ -3245,6 +3245,8 @@ export const CrimeEchoSchema = BaseEntrySchema.extend({
   crime: str,
   days: int.min(7).max(30),
   effects: z.array(crimeEchoEffect).min(1),
+  /** P16b Task 26: the echo in her own words on the sentence's card, once it has acted ("Every message, through my hands."). */
+  line: str.max(120).optional(),
   description: str,
   promptHint: str.max(200),
 }).strict();

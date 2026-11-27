@@ -23,6 +23,7 @@ import { drawProposalChips, kindLabel } from '../proposalChips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
 import { drawClaimCards, drawMilestoneCards, drawReturnCards, type ClaimAnswer, type ReturnAnswer } from '../dynamic/cards';
 import { drawDemonstrationCards, type DemonstrationAnswer } from '../practice/demonstrationCard';
+import { anticipateAnswer, drawAnticipateChips, drawCraftCards } from '../craft/craftCards';
 import { cancelPostureCalls, drawPostureCall } from '../practice/postureCall';
 import { currentCall } from './instruments/call/call';
 import { clearSlapOverlay, renderSlapOverlay } from '../practice/slapOverlay';
@@ -41,7 +42,7 @@ import { cutIn } from './cutIn';
 import { lifeMode } from '../../engine/life/state';
 import { renderLetsMenu } from '../life/lifeViews';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
-import type { Action } from '../../engine/dispatch';
+import type { Action, EngineEvent } from '../../engine/dispatch';
 import { renderPostureDial } from './dial/dial';
 import { renderMomentCard } from './momentCard';
 import { panelBeat, renderPhysicsPanel, type PhysicsPanelStaging } from './physicsPanel';
@@ -124,7 +125,7 @@ export interface SceneScreenCtx {
   /** P14c: the `[ LET'S … ]` of a private scene with one named woman: she and the pastime picked (the app dispatches `life/pastime_in_scene`). Absent = no menu. */
   onPastime?: (unitId: string, pastimeId: string) => void;
   /** P15a: a BLOCKING chip's action (the app passes the scene controller's `stage`). Absent: the controller's own `stage`. */
-  onStage?: (action: Action) => void;
+  onStage?: (action: Action) => EngineEvent[] | void;
   /** P15a: the staging controller under the physics panel (its inputs, cues and stop word) and the tap. Absent: no panel is drawn (and no instrument). */
   physics?: PhysicsPanelStaging & { keystroke(): void; typed(chars: number, beat?: number): unknown; onTap(): void };
 }
@@ -264,6 +265,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let taskCards: HTMLElement;
   let punishmentCards: HTMLElement;
   let demonstrationCards: HTMLElement;
+  let craftCards: HTMLElement; // P16b Task 26: the drill, the exam, the sentence, her note, the lesson
+  let anticipateChips: HTMLElement; // P16b Task 26: `[ANTICIPATE]`
   let postureCall: HTMLElement;
   let slapHost: HTMLElement;
   let freqChips: HTMLElement;
@@ -484,6 +487,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawReturnCards(returnCards, s, registries, (c) => ids.has(c.unitId), (answer) => ctx.onAnswerReturn?.(answer), SCENE_LOOK); // P15: her offer to begin again
     drawTaskCards(taskCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerTask?.(id, answer); if (answer === 'talk') focusInput(); }, sign: (id) => ctx.onSignTask?.(id), focusInput, generation: ctx.generation }, SCENE_LOOK); // P16: her task
     drawPunishmentCards(punishmentCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => { ctx.onAnswerPunishment?.(id, answer); if (answer === 'negotiate') focusInput(); }, takeInstead: (id, answer) => ctx.onTakeInstead?.(id, answer), undo: (id) => ctx.onUndoPunishment?.(id), ceremony: (id, step, number) => ctx.onCeremonyStep?.(id, step, number), generation: ctx.generation }, SCENE_LOOK); // P16: her discipline
+    drawCraft(s);
     drawDemonstrationCards(demonstrationCards, s, registries, (c) => ids.has(c.unitId), { answer: (id, answer) => ctx.onAnswerDemonstration?.(id, answer), generation: ctx.generation }, SCENE_LOOK); // P16: her demonstration
     // P16: her call of a named posture: the choices, and (with the order interaction on) the window; the answer is staged like a chip so a swipe takes the posture back
     // P10e-e Task 9: her call is a full-frame moment in the moment layer (cards.html `startCall`): the dim under the UI, her ring on the dial
@@ -511,6 +515,31 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       const many = present(s).filter((x) => x.kind === 'named').length > 1;
       return h('div', { class: 'alius-discipline-unit', 'data-discipline-chip': u.id }, many ? h('span', { class: 'alius-dim alius-discipline-name' }, u.displayName) : null, menu);
     }));
+  }
+
+  /** P16b Task 26 (gate G3): the craft's cards (the drill, the exam, the sentence, her note, the lesson) and `[ANTICIPATE]` in the chip row. The answers are staged like a chip (a swipe takes them back). */
+  function drawCraft(s: CampaignState): void {
+    const ids = [...(s.scene?.participants ?? [])];
+    const stage = (action: Action): EngineEvent[] => (ctx.onStage ?? ((a) => controller.stage(a)))(action) ?? [];
+    drawCraftCards(craftCards, s, registries, ids, {
+      begin: (unitId) => { stage({ type: 'craft/drill_start', payload: { unitId } }); if (!disposed) refresh(); },
+      askForTime: () => focusInput(),
+      anticipate: () => {},
+      redraw: () => { if (!disposed) refresh(); },
+    });
+    drawAnticipateChips(anticipateChips, s, registries, ids, (unitId) => {
+      const events = stage({ type: 'craft/anticipate', payload: { unitId } });
+      if (events.some((e) => e.type === 'error')) { if (!disposed) refresh(); return; }
+      // her answer follows in her voice by style, once the narrated act has been read (cards.html: 1.4 s later)
+      const t = setTimeout(() => {
+        timeouts.delete(t);
+        const live = state();
+        if (disposed || !live?.scene || !slapEnv) return;
+        say(layers.moment, anticipateAnswer(registries, live, unitId), { to: 'commander', her: slapEnv.her(unitId), ms: 4200 });
+      }, motionReduced(ctx.settings()) ? 0 : 1400);
+      timeouts.add(t);
+      if (!disposed) refresh();
+    });
   }
 
   /** P16: the slap that is open in this scene: the overlay, once; nothing when there is none, it is another scene's or she is not holding. The answer is sent after the draw (a redraw must not start inside its own). */
@@ -836,6 +865,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     genTools = h('span', { class: 'alius-scene-reroll' });
     disciplineMenus = h('div', { class: 'alius-discipline-units' });
     letsHost = h('div', { class: 'alius-lets-host' });
+    anticipateChips = h('div', { class: 'alius-anticipate-host' });
     banner = h('div', { class: 'alius-pacing-host' });
     busyHost = h('div', { class: 'alius-busy-host' });
     caption = h('div', { class: 'alius-stage-caption' });
@@ -927,7 +957,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     });
     hosts.status.append(banner, busyHost);
     chipRow = createChipRow(hosts.chipRow, CHIP_SLOTS);
-    for (const [slot, el] of [['generation', genChips], ['proposals', chips], ['lead', leadChips], ['offer', offerHost], ['rules', ruleChips], ['demands', demandChips], ['discipline', disciplineChips], ['discipline-menus', disciplineMenus], ['freq', freqChips], ['lets', letsHost]] as const) chipRow.slot(slot).append(el);
+    for (const [slot, el] of [['generation', genChips], ['proposals', chips], ['lead', leadChips], ['offer', offerHost], ['rules', ruleChips], ['demands', demandChips], ['discipline', disciplineChips], ['discipline-menus', disciplineMenus], ['freq', freqChips], ['lets', letsHost], ['anticipate', anticipateChips]] as const) chipRow.slot(slot).append(el);
     if (typeof ResizeObserver !== 'undefined') {
       chipResizer?.disconnect();
       chipResizer = new ResizeObserver(() => chipRow.layout());
@@ -947,6 +977,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     punishmentCards = cards('punishment', 'alius-punishment-cards');
     taskCards = cards('task', 'alius-task-cards');
     demonstrationCards = cards('demonstration', 'alius-demonstration-cards');
+    craftCards = cards('craft', 'alius-craft-cards');
     milestoneCards = cards('milestone', 'alius-milestone-cards');
     claimCards = cards('claim', 'alius-claim-cards');
     returnCards = cards('return', 'alius-return-cards');

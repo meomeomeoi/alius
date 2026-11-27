@@ -13,7 +13,7 @@ const server = await serveRoot();
 const port = server.port;
 
 const SIZES = [[1920, 1080], [1280, 800], [2560, 1440]];
-const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weighthold', 'scenthold', 'jawhold', 'activityhold', 'thronehold', 'servicehold', 'shoehold', 'gulphold', 'posturehold', 'posturecallb'];
+const FIXTURES = ['one', 'two', 'three', 'four', 'curtain', 'long', 'physics', 'chips', 'chipsmany', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weighthold', 'scenthold', 'jawhold', 'activityhold', 'thronehold', 'servicehold', 'shoehold', 'gulphold', 'posturehold', 'posturecallb', 'craftcards', 'craftchip'];
 const failures = [];
 /** The fixtures with an instrument, her call or her slap drawn at the measure (Task 31). */
 const INSTRUMENT_FIXTURES = new Set(['call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weighthold', 'scenthold', 'jawhold', 'activityhold', 'thronehold', 'servicehold', 'shoehold', 'gulphold', 'posturehold', 'posturecallb']);

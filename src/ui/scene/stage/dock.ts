@@ -22,7 +22,7 @@ export const DOCK_SOUNDS = {
 } as const;
 
 /** The commander's answers that settle a card (the prototype's `answer`): never the fallback hold's controls or a ceremony's step. */
-const ANSWERS = '[data-task-answer],[data-task-sign],[data-punishment-answer],[data-take-answer],[data-demonstration-answer],[data-milestone-answer],[data-claim-answer],[data-return-answer],[data-undo-practice],[data-action="moment-answer"]';
+const ANSWERS = '[data-task-answer],[data-task-sign],[data-punishment-answer],[data-take-answer],[data-demonstration-answer],[data-milestone-answer],[data-claim-answer],[data-return-answer],[data-craft-answer],[data-undo-practice],[data-action="moment-answer"]';
 
 /** What the dock plays and asks (P10e-e Task 10): the sample layer and whether motion is reduced. Absent = silent, and cards arrive. */
 export interface DockOpts {
@@ -30,7 +30,7 @@ export interface DockOpts {
   reduced?: () => boolean;
 }
 
-export const DOCK_SLOTS = ['moment', 'physics', 'punishment', 'task', 'demonstration', 'milestone', 'claim', 'return'] as const;
+export const DOCK_SLOTS = ['moment', 'physics', 'punishment', 'task', 'demonstration', 'milestone', 'claim', 'return', 'craft'] as const;
 
 export interface Dock {
   element: HTMLElement;

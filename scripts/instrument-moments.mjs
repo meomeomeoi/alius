@@ -57,6 +57,7 @@ export const MOMENTS = {
       },
       ...cardMoments([1920, 1080], ''),
       ...cardMoments([1280, 800], '-1280'),
+      ...craftCardMoments([1920, 1080]),
     ],
   },
 };
@@ -90,6 +91,37 @@ function cardMoments(size, suffix) {
       id: `call-slow${suffix}`, state: 'call', query: '&deferCall=1', size, clip: frame,
       proto: call,
       port: async (p, c) => { await p.evaluate(() => window.__callNow()); await c.wait(4100); },
+    },
+  ];
+}
+
+
+/**
+ * cards.html, P16b Task 26 (gate G3): the craft's cards and `[ANTICIPATE]`. The port's cards come from the fixtures `craftcards` (the exam, the sentence, her note and the
+ * lesson, Ann regal: a way of her own for every kind), `craftdrill`, `craftdrillother` and `craftchip`; the prototype is set to regal and dealt the same cards
+ * (`__add`), then each card is opened on both. Moments: the drill, the drill with another woman, the exam, the sentence, her note, the lesson, the chip.
+ */
+function craftCardMoments(size) {
+  const dock = { x: 0, y: Math.round(size[1] * 0.3) - 40, width: 520, height: Math.round(size[1] * 0.5) + 80 };
+  const row = { x: 0, y: -300, width: size[0], height: 300 };
+  const deal = (types) => (p) => p.evaluate((ts) => { window.__S.style = 'regal'; document.querySelector('#clear').click(); for (const t of ts) window.__add(t, true); }, types);
+  const open = (kind) => ({
+    proto: async (p, types) => { await deal(types)(p); await p.evaluate((k) => { const el = [...document.querySelectorAll('#dock .card.collapsed')].find((c) => c.querySelector('.kind')?.textContent === k); el?.click(); }, kind); },
+    port: async (p) => { await p.evaluate((k) => { const el = [...document.querySelectorAll('.alius-dock-card[data-collapsed="true"]')].find((c) => c.querySelector('.alius-scard-kind')?.textContent === k); el?.querySelector('.alius-scard-head')?.dispatchEvent(new MouseEvent('click', { bubbles: true })); }, kind); },
+  });
+  const set = ['sentence', 'exam', 'note', 'lesson'];
+  const one = (id, state, types, kind) => ({ id, state, size, clip: dock, proto: (p) => open(kind).proto(p, types), port: open(kind).port });
+  return [
+    one('craft-drill', 'craftdrill', ['drill'], 'drill'),
+    one('craft-drill-other', 'craftdrillother', ['drill_other'], 'drill'),
+    one('craft-exam', 'craftcards', set, 'exam'),
+    one('craft-sentence', 'craftcards', set, 'sentence'),
+    one('craft-note', 'craftcards', set, 'a note'),
+    one('craft-lesson', 'craftcards', set, 'lesson'),
+    {
+      id: 'craft-chip', state: 'craftchip', size, clip: row,
+      proto: async (p) => { await p.evaluate(() => { window.__S.style = 'regal'; document.querySelector('#clear').click(); const a = document.querySelector('#antic'); a.checked = true; a.dispatchEvent(new Event('change')); }); },
+      port: async () => {},
     },
   ];
 }

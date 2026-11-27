@@ -45,7 +45,7 @@ const open = (el: HTMLElement) => el.dataset.open === 'true';
 
 describe('the dock', () => {
   it('the slots are in the order the plan names', () => {
-    expect(DOCK_SLOTS).toEqual(['moment', 'physics', 'punishment', 'task', 'demonstration', 'milestone', 'claim', 'return']); // P10e-e Task 9: the posture call is a moment, not a card
+    expect(DOCK_SLOTS).toEqual(['moment', 'physics', 'punishment', 'task', 'demonstration', 'milestone', 'claim', 'return', 'craft']); // P10e-e Task 9: the posture call is a moment, not a card
     const dock = dockWith();
     expect([...dock.element.querySelectorAll<HTMLElement>('.alius-dock-slot')].map((s) => s.dataset.slot)).toEqual([...DOCK_SLOTS]);
   });
