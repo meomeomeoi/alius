@@ -791,6 +791,28 @@ export const TUNING = Object.freeze({
    * P15: the dynamic. `profile` bounds her expectation profile (texts are cut to these; `offsetMax` is the most her point may move from her style's).
    * Every value is `AUTHOR TO TUNE`; the rest of the block arrives with the holder layer.
    */
+  /**
+   * P15b: her manner over the style (spec TUNING, approved 2026-11-24; the small shares are tuned in play). Every bend at a step of 0 returns its base.
+   * `text`: the limits of the profile's new texts and lists; `scale`: one step of a `bend` scale; the shares per step (`sealed`, `noDuration`,
+   * `forgot`) are shifts; `voiceLines`: the factor of cue lines by `voice` (never more than one a beat, none within `lineGapMs` of her last);
+   * `favour`: `drawnBy`'s bonus; `fresh`: the share of requests for something new by `curiosity`; `drift` / `turn`: the pace of P14b's review;
+   * `contrast`: the factor on P15's gossip chance, capped.
+   */
+  manner: Object.freeze({
+    text: Object.freeze({ everydayMax: 160, quirkMax: 160, quirksMax: 3, drawnByMax: 2 }),
+    scale: 0.15,
+    severity: 0.5,
+    sealed: Object.freeze({ curiosity: 0.03, orderDown: 0.02 }),
+    noDuration: Object.freeze({ orderDown: 0.03 }),
+    forgot: Object.freeze({ warmthDown: 0.03, intensityUp: 0.02 }),
+    voiceLines: Object.freeze({ '-2': 0, '-1': 0.5, '0': 1, '1': 1.5, '2': 2 } as Readonly<Record<string, number>>),
+    lineGapMs: 3000,
+    favour: Object.freeze({ main: 1, second: 0.5 }),
+    fresh: Object.freeze({ '-2': 0, '-1': 0, '0': 0, '1': 0.2, '2': 0.4 } as Readonly<Record<string, number>>),
+    drift: Object.freeze({ days: 28 }),
+    turn: Object.freeze({ margin: 2, reviews: 2, days: 56 }),
+    contrast: Object.freeze({ low: 1, mid: 1.3, high: 1.6, cap: 0.9 }),
+  }),
   dynamic: Object.freeze({
     profile: Object.freeze({ tellMax: 80, howMax: 60, traitsMax: 6, traitMax: 40, offsetMax: 0.3 }),
     /** What a campaign gets when the DYNAMIC block is shown and nothing was changed (R3). */

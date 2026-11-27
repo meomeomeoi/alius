@@ -17,7 +17,15 @@
     "regardFactor": 1.2,
     "despisesRegion": [
       "cowed"
-    ]
+    ],
+    "manner": {
+      "intensity": 1,
+      "warmth": -3,
+      "order": 1,
+      "voice": -3,
+      "tempo": 0,
+      "curiosity": -1
+    }
   },
   {
     "id": "playful",
@@ -34,7 +42,15 @@
     "regardForm": "a toy",
     "regardSpeed": "normal",
     "regardFloor": 10,
-    "regardFactor": 0.9
+    "regardFactor": 0.9,
+    "manner": {
+      "intensity": -1,
+      "warmth": 1,
+      "order": -2,
+      "voice": 2,
+      "tempo": 1,
+      "curiosity": 2
+    }
   },
   {
     "id": "cruel",
@@ -55,7 +71,15 @@
     "regardFactor": 1.3,
     "likesRegion": [
       "cowed"
-    ]
+    ],
+    "manner": {
+      "intensity": 3,
+      "warmth": -2,
+      "order": -1,
+      "voice": 1,
+      "tempo": 1,
+      "curiosity": 1
+    }
   },
   {
     "id": "ritual",
@@ -76,7 +100,15 @@
     "regardFactor": 1.0,
     "despisesRegion": [
       "cowed"
-    ]
+    ],
+    "manner": {
+      "intensity": 1,
+      "warmth": -1,
+      "order": 3,
+      "voice": -1,
+      "tempo": -1,
+      "curiosity": -2
+    }
   },
   {
     "id": "possessive",
@@ -94,7 +126,15 @@
     "regardForm": "mine",
     "regardSpeed": "very_slow",
     "regardFloor": 35,
-    "regardFactor": 0.4
+    "regardFactor": 0.4,
+    "manner": {
+      "intensity": 1,
+      "warmth": 2,
+      "order": 0,
+      "voice": 1,
+      "tempo": 0,
+      "curiosity": -1
+    }
   },
   {
     "id": "affectionate",
@@ -115,7 +155,15 @@
     "despisesRegion": [
       "cowed",
       "hollow"
-    ]
+    ],
+    "manner": {
+      "intensity": -1,
+      "warmth": 3,
+      "order": 0,
+      "voice": 1,
+      "tempo": -1,
+      "curiosity": 0
+    }
   },
   {
     "id": "clinical",
@@ -132,7 +180,15 @@
     "despisesRegion": [
       "double_game",
       "hollow"
-    ]
+    ],
+    "manner": {
+      "intensity": 1,
+      "warmth": -2,
+      "order": 1,
+      "voice": 0,
+      "tempo": 0,
+      "curiosity": 3
+    }
   },
   {
     "id": "obsessive",
@@ -153,7 +209,15 @@
     "regardFactor": 0.3,
     "despisesRegion": [
       "hollow"
-    ]
+    ],
+    "manner": {
+      "intensity": 2,
+      "warmth": 1,
+      "order": -2,
+      "voice": 1,
+      "tempo": 2,
+      "curiosity": 0
+    }
   },
   {
     "id": "drill",
@@ -171,7 +235,15 @@
     "regardForm": "a recruit who must improve",
     "regardSpeed": "normal",
     "regardFloor": 0,
-    "regardFactor": 0.8
+    "regardFactor": 0.8,
+    "manner": {
+      "intensity": 2,
+      "warmth": -1,
+      "order": 2,
+      "voice": 2,
+      "tempo": 1,
+      "curiosity": -1
+    }
   },
   {
     "id": "regal",
@@ -189,7 +261,15 @@
     "regardForm": "a courtier at her feet",
     "regardSpeed": "normal",
     "regardFloor": 0,
-    "regardFactor": 1.0
+    "regardFactor": 1.0,
+    "manner": {
+      "intensity": 1,
+      "warmth": 0,
+      "order": 2,
+      "voice": 1,
+      "tempo": -1,
+      "curiosity": -1
+    }
   },
   {
     "id": "vindictive",
@@ -211,6 +291,14 @@
     "regardFactor": 0.7,
     "likesRegion": [
       "cowed"
-    ]
+    ],
+    "manner": {
+      "intensity": 3,
+      "warmth": -2,
+      "order": 1,
+      "voice": -1,
+      "tempo": -1,
+      "curiosity": -1
+    }
   }
 ]

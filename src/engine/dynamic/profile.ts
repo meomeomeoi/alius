@@ -5,9 +5,11 @@
  */
 import type { Registries } from '../../content/types';
 import type { CampaignState, Unit } from '../state/types';
+import { TUNING } from '../tuning';
+import { hasCommanderPronoun } from './pronoun';
 import {
-  AUDIENCE, DRIVE, FAIRNESS, HINT_STYLE, INCLINATION, PRACTICE_AS, PROFILE_STYLES, WITNESS,
-  type Practice, type PracticeCategory,
+  AUDIENCE, CONTRASTS, DRAWN_BY, DRIVE, FAIRNESS, HINT_STYLE, INCLINATION, MANNER_AXES, PRACTICE_AS, PROFILE_STYLES, QUIRK_WHEN, WITNESS,
+  type Contrast, type DrawnBy, type MannerAxis, type Practice, type PracticeCategory, type Quirk,
 } from './types';
 
 /** What a field reads when nothing legal is stored (R5). */
@@ -109,7 +111,83 @@ export function validatePractice(raw: unknown, reg: Registries): { practice?: Pr
     hintStyle: pick('hintStyle', HINT_STYLE, PRACTICE_DEFAULTS.hintStyle),
     drive: pick('drive', DRIVE, PRACTICE_DEFAULTS.drive),
   };
+  readManner(raw, practice, issues);
   return { practice, issues, dropped };
+}
+
+/** Strips control characters (a line break or a tab reads as a space) and collapses spaces. */
+const clean = (v: string): string => v.replace(/[\t\n\r]/g, ' ').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim();
+
+/**
+ * P15b: the manner fields of a practice (`null` or absent = none, no issue). An axis out of −2 … +2 or not an integer reads 0 and is named; a
+ * missing axis reads 0 (the card said nothing). `drawnBy` keeps the legal entries once each, the first `drawnByMax`. `everyday` and a quirk's
+ * text are cleaned and dropped whole when they give the commander a pronoun or run past their limit; a quirk with an unknown `when` or a text
+ * already given is dropped; at most `quirksMax` are kept. An empty list or text leaves the field out.
+ */
+function readManner(raw: Record<string, unknown>, out: Practice, issues: string[]): void {
+  const L = TUNING.manner.text;
+  const m = raw.manner;
+  if (m !== undefined && m !== null) {
+    if (!isObj(m)) issues.push('practice.manner must be an object');
+    else {
+      const axes = {} as Record<MannerAxis, number>;
+      for (const a of MANNER_AXES) {
+        const v = m[a];
+        if (v === undefined) axes[a] = 0;
+        else if (typeof v === 'number' && Number.isInteger(v) && v >= -2 && v <= 2) axes[a] = v;
+        else { axes[a] = 0; issues.push(`practice.manner.${a} must be a whole number from -2 to 2`); }
+      }
+      for (const k of Object.keys(m)) if (!(MANNER_AXES as readonly string[]).includes(k)) issues.push(`practice.manner has no axis "${k}"`);
+      out.manner = axes;
+    }
+  }
+  const d = raw.drawnBy;
+  if (d !== undefined && d !== null) {
+    if (!Array.isArray(d)) issues.push('practice.drawnBy must be a list');
+    else {
+      const kept: DrawnBy[] = [];
+      for (const v of d) {
+        if (typeof v !== 'string' || !(DRAWN_BY as readonly string[]).includes(v)) issues.push(`practice.drawnBy must name ${DRAWN_BY.join(', ')}`);
+        else if (kept.includes(v as DrawnBy)) issues.push(`practice.drawnBy names "${v}" twice`);
+        else if (kept.length >= L.drawnByMax) issues.push(`practice.drawnBy keeps ${L.drawnByMax} at most`);
+        else kept.push(v as DrawnBy);
+      }
+      if (kept.length > 0) out.drawnBy = kept;
+    }
+  }
+  const text = (field: string, v: unknown, max: number): string | undefined => {
+    if (typeof v !== 'string') return void issues.push(`practice.${field} must be text`);
+    const t = clean(v);
+    if (t === '') return undefined;
+    if (hasCommanderPronoun(t)) return void issues.push(`practice.${field} has a pronoun for the commander and was dropped`);
+    if (t.length > max) return void issues.push(`practice.${field} runs past ${max} characters and was dropped`);
+    return t;
+  };
+  if (raw.everyday !== undefined && raw.everyday !== null) {
+    const t = text('everyday', raw.everyday, L.everydayMax);
+    if (t !== undefined) out.everyday = t;
+  }
+  const c = raw.contrast;
+  if (c !== undefined && c !== null) {
+    if (typeof c === 'string' && (CONTRASTS as readonly string[]).includes(c)) out.contrast = c as Contrast;
+    else issues.push(`practice.contrast must be one of ${CONTRASTS.join(', ')}`);
+  }
+  const q = raw.quirks;
+  if (q !== undefined && q !== null) {
+    if (!Array.isArray(q)) issues.push('practice.quirks must be a list');
+    else {
+      const kept: Quirk[] = [];
+      q.forEach((e, i) => {
+        if (!isObj(e) || typeof e.when !== 'string' || !(QUIRK_WHEN as readonly string[]).includes(e.when)) return void issues.push(`practice.quirks.${i}.when must be one of ${QUIRK_WHEN.join(', ')}`);
+        const t = text(`quirks.${i}.text`, e.text, L.quirkMax);
+        if (t === undefined) return;
+        if (kept.some((k) => k.text.toLowerCase() === t.toLowerCase())) return void issues.push(`practice.quirks.${i} repeats a quirk`);
+        if (kept.length >= L.quirksMax) return void issues.push(`practice.quirks keeps ${L.quirksMax} at most`);
+        kept.push({ when: e.when as Quirk['when'], text: t });
+      });
+      if (kept.length > 0) out.quirks = kept;
+    }
+  }
 }
 
 /** The practice she has, with the categories that are off, or that she would not do, read as `none` / `indifferent`. `allowed` lists the ones that stand. */
@@ -166,13 +244,15 @@ export function keepLockedPractice(old: Practice | undefined, next: Practice, lo
       if (old.categories[id] !== undefined) out.categories[id] = { ...old.categories[id] };
       else delete out.categories[id];
     } else if (f in old) (out as unknown as Record<string, unknown>)[f] = structuredClone((old as unknown as Record<string, unknown>)[f]);
+    else delete (out as unknown as Record<string, unknown>)[f]; // P15b: a locked field she never had is not imported either
   }
   return out;
 }
 
 /**
  * The raw result of a patch on her practice (not yet validated): `categories` merges per id and per field, `style` per field (`null` drops
- * the secondary), every other field replaces. The one merge the action and the editors share; pass the result to `validatePractice`.
+ * the secondary), `manner` per axis (P15b; `manner: null` drops the block), every other field replaces (`null` drops an optional one). The one
+ * merge the action and the editors share; pass the result to `validatePractice`.
  */
 export function mergePractice(have: Practice | undefined, patch: Record<string, unknown>): Record<string, unknown> {
   const cats = isObj(patch.categories) ? patch.categories : {};
@@ -181,5 +261,6 @@ export function mergePractice(have: Practice | undefined, patch: Record<string, 
     ...patch,
     categories: { ...have?.categories, ...Object.fromEntries(Object.entries(cats).map(([id, c]) => [id, { ...have?.categories[id], ...(isObj(c) ? c : {}) }])) },
     style: isObj(patch.style) ? Object.fromEntries(Object.entries({ ...have?.style, ...patch.style }).filter(([, v]) => v !== null)) : have?.style,
+    ...(isObj(patch.manner) ? { manner: { ...have?.manner, ...patch.manner } } : {}),
   };
 }

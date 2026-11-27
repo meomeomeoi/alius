@@ -1,6 +1,6 @@
 import type { Blocking, StagingSnapshot } from '../blocking/state';
 import type { Attitude, ExpectationProfile } from '../dynamic/expectations';
-import type { Practice, PracticeCategory, ProfileStyle } from '../dynamic/types';
+import type { MannerAxis, Practice, PracticeCategory, ProfileStyle } from '../dynamic/types';
 import type { DynamicCampaign, DynamicRelation, DynamicUndo } from '../dynamic/state';
 import type { HoldsUntil } from '../physics/state';
 import type { MomentsState } from '../moments/state';
@@ -413,7 +413,11 @@ export interface Development {
   /** Discrete changes, applied on top of the import. */
   bond?: Partial<Pick<Bond, 'attachment' | 'desire' | 'caretaker' | 'leadStyle'>>;
   /** P15: how her practice has moved from the import: a category's `as` / `witness` and the secondary style (read through `practiceOf`). Only where it differs from the import. */
-  practice?: { categories?: Record<string, Partial<PracticeCategory>>; secondary?: ProfileStyle };
+  practice?: {
+    categories?: Record<string, Partial<PracticeCategory>>; secondary?: ProfileStyle;
+    /** P15b: the steps her manner axes have drifted, added to `bond.practice.manner` (read through `mannerOf`). */
+    manner?: Partial<Record<MannerAxis, number>>;
+  };
   /** P15: how her expectations have moved: how far she holds and her attitude to a worship target (read through `expectationsOf`). */
   expect?: { holdsUntil?: HoldsUntil; worship?: Record<string, Attitude> };
   gained?: { likes?: string[]; dislikes?: string[]; tastes?: string[] };

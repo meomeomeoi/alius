@@ -145,6 +145,20 @@ export type ClaimForm = (typeof CLAIM_FORMS)[number];
 // The practice section of a bond profile (R5)
 
 export interface PracticeCategory { as: PracticeAs; witness: Witness }
+
+/** P15b: the six manner axes over her style (each −2 … +2 on her profile; 0 is the style itself). */
+export const MANNER_AXES = ['intensity', 'warmth', 'order', 'voice', 'tempo', 'curiosity'] as const;
+export type MannerAxis = (typeof MANNER_AXES)[number];
+/** P15b: what draws her (one or two; the first is the main one). */
+export const DRAWN_BY = ['pain', 'power', 'reaction', 'discipline', 'discovery'] as const;
+export type DrawnBy = (typeof DRAWN_BY)[number];
+/** P15b: when a quirk of hers shows: stepping in, while it runs, at its end, how she names the commander. */
+export const QUIRK_WHEN = ['switch', 'during', 'after', 'address'] as const;
+export type QuirkWhen = (typeof QUIRK_WHEN)[number];
+/** P15b: how far her everyday face is from her face in the dynamic. */
+export const CONTRASTS = ['low', 'mid', 'high'] as const;
+export type Contrast = (typeof CONTRASTS)[number];
+export interface Quirk { when: QuirkWhen; text: string }
 /** `bond.practice`: what she does as the holder, what she thinks of seeing it done, her style pair and how she goes about it. Every field is hers; mayHold is in the campaign setup. */
 export interface Practice {
   categories: Record<string, PracticeCategory>;
@@ -154,10 +168,20 @@ export interface Practice {
   fairness: Fairness;
   hintStyle: HintStyle;
   drive: Drive;
+  /** P15b: her own departure from her style, per axis (−2 … +2). Absent = old save or a profile from before P15b: nothing of P15b applies to her (the gate). */
+  manner?: Record<MannerAxis, number>;
+  /** P15b: what draws her, one or two, the first the main one. */
+  drawnBy?: DrawnBy[];
+  /** P15b: her everyday face, one line (≤ 160 characters), sincere. */
+  everyday?: string;
+  /** P15b: how far the two faces are apart (judged at import). */
+  contrast?: Contrast;
+  /** P15b: two or three small ways she has in the dynamic. */
+  quirks?: Quirk[];
 }
 
 /** The fields of a practice a lock may name (a category is `categories.<id>`). */
-export const PRACTICE_LOCK_FIELDS = ['style', 'audience', 'inclination', 'fairness', 'hintStyle', 'drive'] as const;
+export const PRACTICE_LOCK_FIELDS = ['style', 'audience', 'inclination', 'fairness', 'hintStyle', 'drive', 'manner', 'drawnBy', 'everyday', 'quirks'] as const;
 
 // ---------------------------------------------------------------------------------------------
 // Entry types (the validated shape of a row; the schemas live in `src/content/schemas.ts`)
@@ -177,6 +201,8 @@ export interface PracticeStyleEntry {
   regardFactor: number;
   likesRegion?: RegionRank[];
   despisesRegion?: RegionRank[];
+  /** P15b: the style's own place on the manner axes (−3 … +3 each): hidden coordinates with no words, read for a turn of style. */
+  manner?: Record<MannerAxis, number>;
 }
 
 export interface HoldBandEntry { id: string; label: string; min: number; max: number; description: string }

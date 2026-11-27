@@ -92,7 +92,7 @@ Before Task 1, also read:
   - `bend(base: number, step: number, kind: { scale: number; cap?: number } | { shift: number } | { gate: number }): number`. A scale multiplies by `1 + step × k`, capped at `cap`. A shift adds `step × k`. A gate returns `step >= gate ? 1 : 0`. **`step === 0` returns `base` (or 0 for a gate) exactly.**
   - `bendBy(state, reg, unitId, axis, base, kind): number`: `bend` with `mannerOf`'s axis, or `base` when `mannerOf` is null.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `bend(450, 0, …)` is `450` for every kind; `bend(1000, 2, { scale: 0.15 })` is `1300`; `bend(4, -1, { shift: 0.5 })` is `3.5`; a cap holds.
   - `validatePractice`:
     - keeps a valid block;
@@ -101,10 +101,10 @@ Before Task 1, also read:
   - Locks: a locked `manner` is kept by `keepLockedPractice`.
   - `mannerOf` is `null` without `manner`; it clamps; it reads the overlay `development.practice.manner` (an empty overlay is ignored).
   - `practiceStyles` loads with the eleven `manner` places, and the schema rejects a value outside ±3.
-- [ ] **Step 2: Run** `npx vitest run tests/dynamic/manner.test.ts tests/dynamic/profile.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the task's tests and `tests/content` → PASS. Then `npm run build`.
-- [ ] **Step 5: Commit** `feat(P15b): her manner in the practice profile`
+- [x] **Step 2: Run** `npx vitest run tests/dynamic/manner.test.ts tests/dynamic/profile.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the task's tests and `tests/content` → PASS. Then `npm run build`.
+- [x] **Step 5: Commit** `feat(P15b): her manner in the practice profile`
 
 ### Task 2: `profile_import` and its budget
 

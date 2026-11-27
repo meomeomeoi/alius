@@ -1041,6 +1041,28 @@ var TUNING = Object.freeze({
    * P15: the dynamic. `profile` bounds her expectation profile (texts are cut to these; `offsetMax` is the most her point may move from her style's).
    * Every value is `AUTHOR TO TUNE`; the rest of the block arrives with the holder layer.
    */
+  /**
+   * P15b: her manner over the style (spec TUNING, approved 2026-11-24; the small shares are tuned in play). Every bend at a step of 0 returns its base.
+   * `text`: the limits of the profile's new texts and lists; `scale`: one step of a `bend` scale; the shares per step (`sealed`, `noDuration`,
+   * `forgot`) are shifts; `voiceLines`: the factor of cue lines by `voice` (never more than one a beat, none within `lineGapMs` of her last);
+   * `favour`: `drawnBy`'s bonus; `fresh`: the share of requests for something new by `curiosity`; `drift` / `turn`: the pace of P14b's review;
+   * `contrast`: the factor on P15's gossip chance, capped.
+   */
+  manner: Object.freeze({
+    text: Object.freeze({ everydayMax: 160, quirkMax: 160, quirksMax: 3, drawnByMax: 2 }),
+    scale: 0.15,
+    severity: 0.5,
+    sealed: Object.freeze({ curiosity: 0.03, orderDown: 0.02 }),
+    noDuration: Object.freeze({ orderDown: 0.03 }),
+    forgot: Object.freeze({ warmthDown: 0.03, intensityUp: 0.02 }),
+    voiceLines: Object.freeze({ "-2": 0, "-1": 0.5, "0": 1, "1": 1.5, "2": 2 }),
+    lineGapMs: 3e3,
+    favour: Object.freeze({ main: 1, second: 0.5 }),
+    fresh: Object.freeze({ "-2": 0, "-1": 0, "0": 0, "1": 0.2, "2": 0.4 }),
+    drift: Object.freeze({ days: 28 }),
+    turn: Object.freeze({ margin: 2, reviews: 2, days: 56 }),
+    contrast: Object.freeze({ low: 1, mid: 1.3, high: 1.6, cap: 0.9 })
+  }),
   dynamic: Object.freeze({
     profile: Object.freeze({ tellMax: 80, howMax: 60, traitsMax: 6, traitMax: 40, offsetMax: 0.3 }),
     /** What a campaign gets when the DYNAMIC block is shown and nothing was changed (R3). */
@@ -7348,7 +7370,11 @@ var REFUSAL_COSTS = ["minor", "moderate", "major", "contest"];
 var OUTSIDE_REACH = ["none", "scenes", "all_day", "domains"];
 var MILESTONE_OFFERS = ["booking", "demand", "scene", "automatic"];
 var CLAIM_FORMS = ["demand", "milestone"];
-var PRACTICE_LOCK_FIELDS = ["style", "audience", "inclination", "fairness", "hintStyle", "drive"];
+var MANNER_AXES = ["intensity", "warmth", "order", "voice", "tempo", "curiosity"];
+var DRAWN_BY = ["pain", "power", "reaction", "discipline", "discovery"];
+var QUIRK_WHEN = ["switch", "during", "after", "address"];
+var CONTRASTS = ["low", "mid", "high"];
+var PRACTICE_LOCK_FIELDS = ["style", "audience", "inclination", "fairness", "hintStyle", "drive", "manner", "drawnBy", "everyday", "quirks"];
 var DYNAMIC_EVENT_TYPES = [
   "dynamic_started",
   "hold_changed",
@@ -7406,6 +7432,12 @@ function contactFaceOf(contact) {
 var HER_LEGS = ["hang"];
 function herLegsOf(contact) {
   return contact?.legs === "hang" ? "hang" : null;
+}
+
+// src/engine/dynamic/pronoun.ts
+var COMMANDER_PRONOUN = /\b(he|him|his|himself|he's)\b/i;
+function hasCommanderPronoun(text3) {
+  return COMMANDER_PRONOUN.test(text3);
 }
 
 // src/engine/dynamic/profile.ts
@@ -7491,7 +7523,77 @@ function validatePractice(raw, reg) {
     hintStyle: pick12("hintStyle", HINT_STYLE, PRACTICE_DEFAULTS.hintStyle),
     drive: pick12("drive", DRIVE, PRACTICE_DEFAULTS.drive)
   };
+  readManner(raw, practice, issues2);
   return { practice, issues: issues2, dropped };
+}
+var clean = (v) => v.replace(/[\t\n\r]/g, " ").replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim();
+function readManner(raw, out, issues2) {
+  const L6 = TUNING.manner.text;
+  const m = raw.manner;
+  if (m !== void 0 && m !== null) {
+    if (!isObj(m)) issues2.push("practice.manner must be an object");
+    else {
+      const axes = {};
+      for (const a of MANNER_AXES) {
+        const v = m[a];
+        if (v === void 0) axes[a] = 0;
+        else if (typeof v === "number" && Number.isInteger(v) && v >= -2 && v <= 2) axes[a] = v;
+        else {
+          axes[a] = 0;
+          issues2.push(`practice.manner.${a} must be a whole number from -2 to 2`);
+        }
+      }
+      for (const k of Object.keys(m)) if (!MANNER_AXES.includes(k)) issues2.push(`practice.manner has no axis "${k}"`);
+      out.manner = axes;
+    }
+  }
+  const d = raw.drawnBy;
+  if (d !== void 0 && d !== null) {
+    if (!Array.isArray(d)) issues2.push("practice.drawnBy must be a list");
+    else {
+      const kept = [];
+      for (const v of d) {
+        if (typeof v !== "string" || !DRAWN_BY.includes(v)) issues2.push(`practice.drawnBy must name ${DRAWN_BY.join(", ")}`);
+        else if (kept.includes(v)) issues2.push(`practice.drawnBy names "${v}" twice`);
+        else if (kept.length >= L6.drawnByMax) issues2.push(`practice.drawnBy keeps ${L6.drawnByMax} at most`);
+        else kept.push(v);
+      }
+      if (kept.length > 0) out.drawnBy = kept;
+    }
+  }
+  const text3 = (field2, v, max) => {
+    if (typeof v !== "string") return void issues2.push(`practice.${field2} must be text`);
+    const t = clean(v);
+    if (t === "") return void 0;
+    if (hasCommanderPronoun(t)) return void issues2.push(`practice.${field2} has a pronoun for the commander and was dropped`);
+    if (t.length > max) return void issues2.push(`practice.${field2} runs past ${max} characters and was dropped`);
+    return t;
+  };
+  if (raw.everyday !== void 0 && raw.everyday !== null) {
+    const t = text3("everyday", raw.everyday, L6.everydayMax);
+    if (t !== void 0) out.everyday = t;
+  }
+  const c = raw.contrast;
+  if (c !== void 0 && c !== null) {
+    if (typeof c === "string" && CONTRASTS.includes(c)) out.contrast = c;
+    else issues2.push(`practice.contrast must be one of ${CONTRASTS.join(", ")}`);
+  }
+  const q = raw.quirks;
+  if (q !== void 0 && q !== null) {
+    if (!Array.isArray(q)) issues2.push("practice.quirks must be a list");
+    else {
+      const kept = [];
+      q.forEach((e, i) => {
+        if (!isObj(e) || typeof e.when !== "string" || !QUIRK_WHEN.includes(e.when)) return void issues2.push(`practice.quirks.${i}.when must be one of ${QUIRK_WHEN.join(", ")}`);
+        const t = text3(`quirks.${i}.text`, e.text, L6.quirkMax);
+        if (t === void 0) return;
+        if (kept.some((k) => k.text.toLowerCase() === t.toLowerCase())) return void issues2.push(`practice.quirks.${i} repeats a quirk`);
+        if (kept.length >= L6.quirksMax) return void issues2.push(`practice.quirks keeps ${L6.quirksMax} at most`);
+        kept.push({ when: e.when, text: t });
+      });
+      if (kept.length > 0) out.quirks = kept;
+    }
+  }
 }
 var gone = (u) => u.status === "dead" || u.status === "deserted" || u.status === "terminated" || u.status === "reassigned";
 function practiceOf(state, reg, unitId) {
@@ -7527,6 +7629,7 @@ function keepLockedPractice(old, next, locks) {
       if (old.categories[id] !== void 0) out.categories[id] = { ...old.categories[id] };
       else delete out.categories[id];
     } else if (f in old) out[f] = structuredClone(old[f]);
+    else delete out[f];
   }
   return out;
 }
@@ -7536,7 +7639,8 @@ function mergePractice(have, patch) {
     ...have,
     ...patch,
     categories: { ...have?.categories, ...Object.fromEntries(Object.entries(cats).map(([id, c]) => [id, { ...have?.categories[id], ...isObj(c) ? c : {} }])) },
-    style: isObj(patch.style) ? Object.fromEntries(Object.entries({ ...have?.style, ...patch.style }).filter(([, v]) => v !== null)) : have?.style
+    style: isObj(patch.style) ? Object.fromEntries(Object.entries({ ...have?.style, ...patch.style }).filter(([, v]) => v !== null)) : have?.style,
+    ...isObj(patch.manner) ? { manner: { ...have?.manner, ...patch.manner } } : {}
   };
 }
 
@@ -10650,6 +10754,7 @@ var unit = (lo, hi) => external_exports.number().min(lo).max(hi);
 var frameEnum = external_exports.enum(FRAMES);
 var capabilityEnum = external_exports.enum(CAPABILITIES);
 var profileStyle = external_exports.enum(PROFILE_STYLES);
+var stylePlace = int.min(-3).max(3);
 var aftermathKind = external_exports.enum(AFTERMATH_KINDS);
 var bandRange = (e, ctx2) => {
   if (e.min > e.max) ctx2.addIssue({ code: "custom", path: ["max"], message: "a band runs from low to high" });
@@ -10665,7 +10770,9 @@ var PracticeStyleSchema = BaseEntrySchema.extend({
   regardFloor: int.min(0).max(100),
   regardFactor: unit(0, 3),
   likesRegion: external_exports.array(external_exports.enum(REGION_RANKS)).optional(),
-  despisesRegion: external_exports.array(external_exports.enum(REGION_RANKS)).optional()
+  despisesRegion: external_exports.array(external_exports.enum(REGION_RANKS)).optional(),
+  /** P15b: the style's place on the six manner axes (hidden coordinates). */
+  manner: external_exports.object({ intensity: stylePlace, warmth: stylePlace, order: stylePlace, voice: stylePlace, tempo: stylePlace, curiosity: stylePlace }).strict().optional()
 }).strict();
 var bandSchema = BaseEntrySchema.extend({ label: blockLabel, min: int.min(0).max(100), max: int.min(0).max(100), description: str }).strict().superRefine(bandRange);
 var HoldBandSchema = bandSchema;
@@ -12536,7 +12643,7 @@ var rulesOf = (state) => state.bonds?.rules ?? [];
 var activeRules = (state, unitId) => rulesOf(state).filter((r) => r.unitId === unitId && r.status === "active");
 var RULE_EVENT_TYPES = ["rule_kept", "rule_broken", "compromise_reached"];
 var templateOf = (reg, rule) => reg.relationshipRuleTemplates.get(rule.templateId);
-var clean = (t, max) => t.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max).trim();
+var clean2 = (t, max) => t.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max).trim();
 var ensureBonds = (draft) => draft.bonds ??= { rules: [] };
 function offerable(state, reg, unitId, tpl) {
   const bond = bondOf(state.squad.find((u) => u.id === unitId));
@@ -12561,7 +12668,7 @@ function canProposeRule(draft, reg, unitId, opts = {}) {
   return unit5 !== void 0 && intimacyOf(draft).romance && proposalPool(draft, reg, unit5, opts).length > 0;
 }
 function propose(draft, unit5, tpl) {
-  const rule = { id: nextId(draft, "r"), unitId: unit5.id, templateId: tpl.id, text: clean(tpl.text.replaceAll("{name}", unit5.displayName), R.textMax), status: "proposed", day: draft.day, brokenCount: 0 };
+  const rule = { id: nextId(draft, "r"), unitId: unit5.id, templateId: tpl.id, text: clean2(tpl.text.replaceAll("{name}", unit5.displayName), R.textMax), status: "proposed", day: draft.day, brokenCount: 0 };
   ensureBonds(draft).rules.push(rule);
   return { type: "rule_proposed", ruleId: rule.id, unitId: unit5.id };
 }
@@ -12594,7 +12701,7 @@ function deliverRule(draft, ruleId, text3) {
   const rule = rulesOf(draft).find((r) => r.id === ruleId);
   if (!rule || rule.status !== "proposed") throw new Error("There is no proposal to deliver.");
   if (rule.delivered) throw new Error("That proposal was already delivered.");
-  const worded = text3 === void 0 ? "" : clean(text3, R.textMax);
+  const worded = text3 === void 0 ? "" : clean2(text3, R.textMax);
   if (worded !== "") rule.text = worded;
   rule.delivered = true;
   const viaDm = draft.scene?.participants.includes(rule.unitId) !== true;
@@ -12604,7 +12711,7 @@ function deliverRule(draft, ruleId, text3) {
 function rewordRule(draft, ruleId, text3) {
   const rule = rulesOf(draft).find((r) => r.id === ruleId);
   if (!rule || rule.status !== "proposed" || !rule.delivered) throw new Error("Only a delivered proposal that waits for an answer can be reworded.");
-  const worded = clean(text3, R.textMax);
+  const worded = clean2(text3, R.textMax);
   if (worded === "") throw new Error("The wording is empty.");
   rule.text = worded;
   const carrier = rule.dmId === void 0 ? void 0 : draft.dms[rule.unitId]?.find((m) => m.id === rule.dmId);
@@ -12656,7 +12763,7 @@ function applyRuleEvent(draft, ctx2, unitId, ev, present2 = []) {
   if (!rule || !unit5 || !rel) return [];
   const events = [];
   if (ev.type === "compromise_reached") {
-    const text3 = clean(ev.text ?? "", R.textMax);
+    const text3 = clean2(ev.text ?? "", R.textMax);
     if (rule.status !== "negotiating" || text3 === "") return [];
     rule.status = "active";
     rule.text = text3;
@@ -13756,12 +13863,6 @@ function whereaboutAt(state, reg, unitId, day, slot2) {
   return place(state.day === day && state.slot === slot2 ? state : { ...state, day, slot: slot2 }, reg, roomsOf(reg), unit5);
 }
 
-// src/engine/dynamic/pronoun.ts
-var COMMANDER_PRONOUN = /\b(he|him|his|himself|he's)\b/i;
-function hasCommanderPronoun(text3) {
-  return COMMANDER_PRONOUN.test(text3);
-}
-
 // src/engine/dynamic/expectations.ts
 var ATTITUDES = ["craves", "enjoys", "indifferent", "dislikes"];
 var MEANINGS = ["reward", "duty", "humiliation", "intimacy", "play", "comfort"];
@@ -13771,7 +13872,7 @@ var HAIR = ["short", "bob", "long", "tail"];
 var HOLDS_UNTIL = ["signal", "limit", "blackout"];
 var EXPECTATION_FIELDS = ["moments", "offset", "tells", "holdsUntil", "worship", "body", "scent", "build", "hair", "traits"];
 var isObj4 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var clean2 = (v) => v.replace(/[\t\n\r]/g, " ").replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim();
+var clean3 = (v) => v.replace(/[\t\n\r]/g, " ").replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim();
 function validateExpectations(raw, reg, ctx2) {
   const issues2 = [];
   const dropped = [];
@@ -13785,7 +13886,7 @@ function validateExpectations(raw, reg, ctx2) {
   };
   const text3 = (field2, v, max) => {
     if (typeof v !== "string") return void issues2.push(`expectations.${field2} must be text`);
-    const t = clean2(v);
+    const t = clean3(v);
     if (t === "") return void 0;
     if (hasCommanderPronoun(t)) return void issues2.push(`expectations.${field2} has a pronoun for the commander and was dropped`);
     if (t.length > max) issues2.push(`expectations.${field2} was cut to ${max} characters`);
@@ -15202,14 +15303,14 @@ function followLead(draft, ctx2) {
 }
 function setSceneLimit(draft, text3) {
   const { unitId, name } = leadPartner(draft);
-  const clean13 = typeof text3 === "string" ? text3.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.limits.sceneLimitMax).trim() : "";
-  if (clean13 === "") throw new Error("A limit needs some text.");
+  const clean14 = typeof text3 === "string" ? text3.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.limits.sceneLimitMax).trim() : "";
+  if (clean14 === "") throw new Error("A limit needs some text.");
   const scene = draft.scene;
   const limits = scene.limits ?? [];
   if (limits.length >= TUNING.bonds.limits.sceneLimitsMax) throw new Error(`A scene takes at most ${TUNING.bonds.limits.sceneLimitsMax} limits.`);
-  scene.limits = [...limits, clean13];
-  addFact(draft, { about: [unitId, "commander"], text: `A boundary the commander set with ${name}: ${clean13}`, tags: ["limit"], importance: 3, day: draft.day, sceneId: scene.id, knownBy: [unitId] });
-  return [{ type: "scene_limit_set", unitId, text: clean13 }];
+  scene.limits = [...limits, clean14];
+  addFact(draft, { about: [unitId, "commander"], text: `A boundary the commander set with ${name}: ${clean14}`, tags: ["limit"], importance: 3, day: draft.day, sceneId: scene.id, knownBy: [unitId] });
+  return [{ type: "scene_limit_set", unitId, text: clean14 }];
 }
 
 // src/engine/night.ts
@@ -18793,8 +18894,8 @@ function regardFromEvents(draft, reg, events) {
         }
         break;
       case "physics_outcome": {
-        const clean13 = (e.result === "released" || e.result === "checked") && !(runId !== void 0 && draft.dynamic.noted?.dirtyRun === runId);
-        if (clean13 && holder3 !== void 0) out.push(...regardRise(draft, reg, holder3, "dignity"));
+        const clean14 = (e.result === "released" || e.result === "checked") && !(runId !== void 0 && draft.dynamic.noted?.dirtyRun === runId);
+        if (clean14 && holder3 !== void 0) out.push(...regardRise(draft, reg, holder3, "dignity"));
         if (draft.dynamic.noted?.dirtyRun === runId) delete draft.dynamic.noted.dirtyRun;
         break;
       }
@@ -20385,7 +20486,7 @@ var DO_FIRST = {
 var named2 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
 var clampSteps = (n) => Math.min(SEVERITIES.length - 1, Math.max(0, n));
 var keepsCommand = (state, reg, domainId) => domainEntry(reg, domainId)?.grants.includes("countermand") === true;
-function exitSeverity(state, _reg, unitId, route, clean13 = false) {
+function exitSeverity(state, _reg, unitId, route, clean14 = false) {
   const dyn = dynamicOf(state, unitId);
   const T5 = TUNING.dynamic.exit;
   if (dyn === void 0) return "minor";
@@ -20394,13 +20495,13 @@ function exitSeverity(state, _reg, unitId, route, clean13 = false) {
   if (steps3 === 0 && dyn.hold >= T5.freeHold) steps3 = 1;
   if (dyn.sworn !== void 0) steps3 = SEVERITIES.length - 1;
   if (route === "force") steps3 += T5.forceSteps;
-  if (clean13) steps3 -= T5.cleanSteps;
+  if (clean14) steps3 -= T5.cleanSteps;
   return SEVERITIES[clampSteps(steps3)];
 }
-function exitCostWord(state, reg, unitId, route, clean13 = false) {
+function exitCostWord(state, reg, unitId, route, clean14 = false) {
   const dyn = dynamicOf(state, unitId);
   if (dyn?.sworn !== void 0) return "a break";
-  const severity = exitSeverity(state, reg, unitId, route, clean13);
+  const severity = exitSeverity(state, reg, unitId, route, clean14);
   if (severity === "minor") return route !== "force" && dyn?.frame === "play" && dyn.hold < TUNING.dynamic.exit.freeHold ? "nearly free" : "light";
   return severity === "moderate" ? "costly" : "heavy";
 }
@@ -21584,9 +21685,9 @@ function addMastery(draft, reg, unitId, targetId, xp) {
   }
   return events;
 }
-function xpFor(draft, reg, unitId, targetId, clean13) {
+function xpFor(draft, reg, unitId, targetId, clean14) {
   const how = expectationsOf(draft, reg, unitId).worship?.[targetId]?.how;
-  return TUNING.mastery.act + (clean13 && how !== void 0 && how.trim() !== "" ? TUNING.mastery.how : 0);
+  return TUNING.mastery.act + (clean14 && how !== void 0 && how.trim() !== "" ? TUNING.mastery.how : 0);
 }
 function masteryFromEvents(draft, ctx2, events) {
   const reg = ctx2.registries;
@@ -24164,9 +24265,9 @@ var CAPABILITY_WORDS = Object.freeze({
   countermand: "countermands the commander's orders",
   co_leader: "leads beside the commander"
 });
-var clean3 = (s) => s.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+var clean4 = (s) => s.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
 function activeRules2(state, holderId) {
-  return (state.bonds?.rules ?? []).filter((r) => r.unitId === holderId && r.status === "active").map((r) => ({ id: r.id, text: clean3(r.text) }));
+  return (state.bonds?.rules ?? []).filter((r) => r.unitId === holderId && r.status === "active").map((r) => ({ id: r.id, text: clean4(r.text) }));
 }
 function buildPracticeInput(state, reg, request, card2 = "") {
   const holderId = request.holderId;
@@ -24182,18 +24283,18 @@ function buildPracticeInput(state, reg, request, card2 = "") {
     requestId: request.id,
     kind: request.kind,
     holder: { id: holderId, name: unit5.displayName },
-    card: clean3(card2).slice(0, CARD_MAX),
+    card: clean4(card2).slice(0, CARD_MAX),
     frame: frame9,
     style: view3 === null ? { primary: "cold" } : { primary: view3.style.primary, ...view3.style.secondary !== void 0 ? { secondary: view3.style.secondary } : {} },
     claims: capabilitiesOf(state, reg, holderId).map((c) => CAPABILITY_WORDS[c] ?? c),
     tracks: [...reg.dynamicTracks.values()].filter((t) => trackOpen(state, reg, holderId, t.id)).map((t) => ({ id: t.id, label: String(t.label ?? t.id), level: LEVEL_WORDS[trackLevel(state, holderId, t.id)] })),
     categories: Object.entries(view3?.categories ?? {}).filter(([, c]) => c.as !== "none").map(([id, c]) => ({ id, label: label2(id), as: c.as })),
     hasLimits: limits.length > 0,
-    recent: (dyn?.recent ?? []).map(clean3),
+    recent: (dyn?.recent ?? []).map(clean4),
     context: {
       day: state.day,
       slot: state.slot,
-      openTasks: (state.practices?.tasks ?? []).filter((t) => t.holderId === holderId && (t.status === "offered" || t.status === "open")).map((t) => t.sealed === true && t.status === "offered" ? "a sealed task" : clean3(t.summary)),
+      openTasks: (state.practices?.tasks ?? []).filter((t) => t.holderId === holderId && (t.status === "offered" || t.status === "open")).map((t) => t.sealed === true && t.status === "offered" ? "a sealed task" : clean4(t.summary)),
       want: wantBandOf(state, reg, holderId),
       impunity: impunityBand(impunityOf(state, reg, holderId)?.value ?? 0),
       present: (state.scene?.participants ?? []).filter((id) => id !== holderId).map((id) => ({ id, name: unitName3(id) }))
@@ -24754,7 +24855,7 @@ function itemRules(state, reg) {
   }
   return out;
 }
-var clean4 = (t) => t.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.rules.textMax).trim();
+var clean5 = (t) => t.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.rules.textMax).trim();
 function syncItemRules(draft, ctx2) {
   const reg = ctx2.registries;
   const wanted2 = itemRules(draft, reg);
@@ -24764,7 +24865,7 @@ function syncItemRules(draft, ctx2) {
     if (own === void 0) {
       const tpl = templateOf2(reg, { templateId: w.templateId });
       const unit5 = draft.squad.find((u) => u.id === w.holderId);
-      const rule = { id: nextId(draft, "r"), unitId: w.holderId, templateId: w.templateId, text: clean4(plainDraft(tpl.text).replaceAll("{name}", unit5.displayName)), status: "active", day: draft.day, brokenCount: 0, delivered: true, source: "item" };
+      const rule = { id: nextId(draft, "r"), unitId: w.holderId, templateId: w.templateId, text: clean5(plainDraft(tpl.text).replaceAll("{name}", unit5.displayName)), status: "active", day: draft.day, brokenCount: 0, delivered: true, source: "item" };
       (draft.bonds ??= { rules: [] }).rules.push(rule);
       events.push({ type: "rule_active", ruleId: rule.id, unitId: w.holderId, source: "item" });
     } else if (own.source === "item" && own.status === "suspended") {
@@ -32811,12 +32912,12 @@ function rollDemands(draft, ctx2) {
   }
   return [];
 }
-var clean5 = (text3) => text3.replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim().slice(0, TUNING.demands.textMax).trim();
+var clean6 = (text3) => text3.replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim().slice(0, TUNING.demands.textMax).trim();
 function deliverDemand(draft, demandId, text3) {
   const demand = draft.discipline?.demands.find((d) => d.id === demandId);
   if (!demand) throw new Error(`Unknown demand "${demandId}".`);
   if (demand.status !== "undelivered") throw new Error("That demand was already delivered.");
-  const worded = text3 === void 0 ? "" : clean5(text3);
+  const worded = text3 === void 0 ? "" : clean6(text3);
   if (worded !== "") demand.text = worded;
   demand.status = "open";
   const viaDm = draft.scene?.participants.includes(demand.unitId) !== true;
@@ -32827,7 +32928,7 @@ function rewordDemand(draft, demandId, text3) {
   const demand = draft.discipline?.demands.find((d) => d.id === demandId);
   if (!demand) throw new Error(`Unknown demand "${demandId}".`);
   if (demand.status !== "open") throw new Error("Only a demand that waits for an answer can be reworded.");
-  const worded = clean5(text3);
+  const worded = clean6(text3);
   if (worded === "") throw new Error("The wording is empty.");
   demand.text = worded;
   const carrier = demand.dmId === void 0 ? void 0 : draft.dms[demand.unitId]?.find((m) => m.id === demand.dmId);
@@ -41037,7 +41138,7 @@ registerAction("profile/set_practice", (draft, payload, ctx2) => {
   const unit5 = namedUnit3(draft, p?.unitId, "profile/set_practice");
   if (!isObj40(p?.practice) || Object.keys(p.practice).length === 0) throw new Error("profile/set_practice needs at least one field.");
   const patch = p.practice;
-  const unknown2 = Object.keys(patch).filter((k) => !["categories", "style", "audience", "inclination", "fairness", "hintStyle", "drive"].includes(k));
+  const unknown2 = Object.keys(patch).filter((k) => !["categories", "style", "audience", "inclination", "fairness", "hintStyle", "drive", "manner", "drawnBy", "everyday", "contrast", "quirks"].includes(k));
   if (unknown2.length > 0) throw new Error(`A practice has no field "${unknown2[0]}".`);
   const locked = unit5.practiceLocks ?? [];
   if (patchedFields(patch).some((f) => locked.includes(f))) throw new Error("That field is locked.");
@@ -42173,11 +42274,11 @@ registerFlavorKind("ballot", {
   ].join("\n"),
   prompt: (raw) => {
     const i = raw;
-    const clean13 = (t) => String(t).replace(/[<>]/g, "");
+    const clean14 = (t) => String(t).replace(/[<>]/g, "");
     return [
       `<vote>`,
-      `Decision (${clean13(i.voteKind)}): ${clean13(i.subjectLabel)}`,
-      ...i.ballots.map((b) => `${clean13(b.name)}: voted ${b.vote}; what moved her most: ${clean13(b.term)}`),
+      `Decision (${clean14(i.voteKind)}): ${clean14(i.subjectLabel)}`,
+      ...i.ballots.map((b) => `${clean14(b.name)}: voted ${b.vote}; what moved her most: ${clean14(b.term)}`),
       `</vote>`,
       "Give each soldier her line."
     ].join("\n");
@@ -42206,12 +42307,12 @@ registerFlavorKind("dm_edit", {
   ].join("\n"),
   prompt: (raw) => {
     const i = raw;
-    const clean13 = (t) => String(t).replace(/<\/?dm>/gi, "");
+    const clean14 = (t) => String(t).replace(/<\/?dm>/gi, "");
     return [
-      `Soldier who edits: ${clean13(i.unitName)}`,
-      `How she feels about the commander: ${clean13(i.stateHint) || "unclear"}`,
-      `Recipient: ${clean13(i.recipientName) || "none"}`,
-      `<dm>${clean13(i.original)}</dm>`,
+      `Soldier who edits: ${clean14(i.unitName)}`,
+      `How she feels about the commander: ${clean14(i.stateHint) || "unclear"}`,
+      `Recipient: ${clean14(i.recipientName) || "none"}`,
+      `<dm>${clean14(i.original)}</dm>`,
       "Rewrite the message."
     ].join("\n");
   }
@@ -42253,8 +42354,8 @@ registerFlavorKind("posture_name", {
   ].join("\n"),
   prompt: (raw) => {
     const i = raw;
-    const clean13 = (t) => String(t).replace(/<\/?posture>/gi, "");
-    return [`Soldier: ${clean13(i.name)}`, `<posture>${clean13(i.posture)}: ${clean13(i.hint)}</posture>`, "Name the posture."].join("\n");
+    const clean14 = (t) => String(t).replace(/<\/?posture>/gi, "");
+    return [`Soldier: ${clean14(i.name)}`, `<posture>${clean14(i.posture)}: ${clean14(i.hint)}</posture>`, "Name the posture."].join("\n");
   }
 });
 function sanitizePostureName(raw) {
@@ -42271,10 +42372,10 @@ registerFlavorKind("frequency_fragment", {
   ].join("\n"),
   prompt: (raw) => {
     const i = raw;
-    const clean13 = (t) => String(t).replace(/<\/?gist>/gi, "");
+    const clean14 = (t) => String(t).replace(/<\/?gist>/gi, "");
     return [
-      `Soldier: ${clean13(i.name)}`,
-      `<gist>${clean13(i.gist)}</gist>`,
+      `Soldier: ${clean14(i.name)}`,
+      `<gist>${clean14(i.gist)}</gist>`,
       i.partial ? "The fragment is cut off: give only the subject (her name and what it is about), not the conclusion." : "Give the fragment."
     ].join("\n");
   }
@@ -42287,7 +42388,7 @@ function sanitizeFragment(raw) {
 }
 var LIFE_SHARE_MAX = 300;
 var LIFE_TRACE_MAX = 400;
-var clean6 = (t, tag2) => String(t).replace(new RegExp(`</?${tag2}>`, "gi"), "");
+var clean7 = (t, tag2) => String(t).replace(new RegExp(`</?${tag2}>`, "gi"), "");
 registerFlavorKind("life_share", {
   system: () => [
     "A soldier tells the commander, in one short direct message, something that happened to her off-screen, for a dark, near-future squad-command RPG.",
@@ -42298,11 +42399,11 @@ registerFlavorKind("life_share", {
   prompt: (raw) => {
     const i = raw;
     return [
-      `Soldier: ${clean6(i.name, "news")}`,
-      `How she talks: ${clean6(i.talk, "news")}`,
-      `Time of day: ${clean6(i.slot, "news")}`,
-      `<news>${clean6(i.what, "news")}</news>`,
-      ...i.lines.map((l) => `<tone>${clean6(l, "tone")}</tone>`),
+      `Soldier: ${clean7(i.name, "news")}`,
+      `How she talks: ${clean7(i.talk, "news")}`,
+      `Time of day: ${clean7(i.slot, "news")}`,
+      `<news>${clean7(i.what, "news")}</news>`,
+      ...i.lines.map((l) => `<tone>${clean7(l, "tone")}</tone>`),
       "Write her message."
     ].join("\n");
   }
@@ -42317,10 +42418,10 @@ registerFlavorKind("life_trace", {
   prompt: (raw) => {
     const i = raw;
     return [
-      `Soldier: ${clean6(i.name, "milestone")}`,
-      `Her pastime: ${clean6(i.hobby, "milestone")}`,
-      `<milestone>${clean6(i.milestone, "milestone")}</milestone>`,
-      `<trace>${clean6(i.trace, "trace")}</trace>`,
+      `Soldier: ${clean7(i.name, "milestone")}`,
+      `Her pastime: ${clean7(i.hobby, "milestone")}`,
+      `<milestone>${clean7(i.milestone, "milestone")}</milestone>`,
+      `<trace>${clean7(i.trace, "trace")}</trace>`,
       "Write the note."
     ].join("\n");
   }
@@ -44506,8 +44607,8 @@ function createDevelopment(deps) {
 }
 
 // src/dynamic/directives.ts
-var clean7 = (text3) => plainDraft(text3).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
-var sentence2 = (text3) => clean7(text3).replace(/[.\s]+$/, "");
+var clean8 = (text3) => plainDraft(text3).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+var sentence2 = (text3) => clean8(text3).replace(/[.\s]+$/, "");
 var DYNAMIC_PREFIX = "dynamic:";
 var PROBE_PREFIX = "dynamic:probe:";
 var COMMAND_PREFIX = "dynamic:command:";
@@ -44520,7 +44621,7 @@ var OFFER_PREFIX = "dynamic:offer:";
 function styleLine(state, reg, unit5) {
   const pair = unit5.bond?.practice?.style;
   if (pair === void 0) return "";
-  const label2 = (key) => clean7(String(reg.practiceStyles.get(key)?.label ?? key)).toLowerCase();
+  const label2 = (key) => clean8(String(reg.practiceStyles.get(key)?.label ?? key)).toLowerCase();
   const lead = leadingStyle(state, reg, unit5.id);
   const base2 = pair.secondary === void 0 ? `Her manner is ${label2(pair.primary)}.` : `Her manner is ${label2(pair.primary)}, with a ${label2(pair.secondary)} streak.`;
   return lead.phaseLead === "secondary" ? `${base2} Her ${label2(lead.key)} side comes through now.` : base2;
@@ -44557,7 +44658,7 @@ function holderDirective(state, reg, unit5) {
 }
 function probeDirective(reg, unit5, axisId) {
   const axis = reg.probeAxes.get(axisId);
-  const label2 = clean7(String(axis?.label ?? axisId));
+  const label2 = clean8(String(axis?.label ?? axisId));
   const hint = axis === void 0 ? "" : ` (she ${sentence2(axis.promptHint)})`;
   return {
     id: `${PROBE_PREFIX}${unit5.id}`,
@@ -45432,7 +45533,7 @@ registerCallType({
 });
 
 // src/life/directives.ts
-var clean8 = (text3) => text3.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+var clean9 = (text3) => text3.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
 var LIFE_DERIVED = ["life:"];
 var NEWS_PREFIX = "life:news:";
 var OPINION_PREFIX = "life:opinion:";
@@ -45446,7 +45547,7 @@ function jokeDirective(state, unit5) {
   return {
     id: `${JOKE_PREFIX}${unit5.id}`,
     expiresAfter: "scene",
-    text: `If it fits, ${unit5.displayName} may bring back a running joke she shares with the commander: ${clean8(text3)} Lightly, once.`
+    text: `If it fits, ${unit5.displayName} may bring back a running joke she shares with the commander: ${clean9(text3)} Lightly, once.`
   };
 }
 function opinionDirective(state, reg, unit5) {
@@ -45456,12 +45557,12 @@ function opinionDirective(state, reg, unit5) {
   const topic = reg.opinionTopics.get(sc.topic);
   const position = topic?.positions.find((p) => p.id === opinion?.position);
   if (!opinion || !topic || !position) return null;
-  const hint = clean8(plainText(position.description));
-  const words3 = opinion.text !== void 0 && opinion.text !== "" ? ` In her words: "${clean8(opinion.text)}"` : "";
+  const hint = clean9(plainText(position.description));
+  const words3 = opinion.text !== void 0 && opinion.text !== "" ? ` In her words: "${clean9(opinion.text)}"` : "";
   return {
     id: `${OPINION_PREFIX}${unit5.id}`,
     expiresAfter: "scene",
-    text: `If it fits, ${unit5.displayName} may say what she thinks about ${clean8(topic.label)}: ${hint}${words3} Lightly, once.`
+    text: `If it fits, ${unit5.displayName} may say what she thinks about ${clean9(topic.label)}: ${hint}${words3} Lightly, once.`
   };
 }
 function pastimeDirective(state, reg, unit5) {
@@ -45470,19 +45571,19 @@ function pastimeDirective(state, reg, unit5) {
   if (!pastime) return null;
   const hobby = pastime.hobby === true ? keenestHobby(state, reg, unit5) : void 0;
   const label2 = hobby ? reg.hobbies.get(hobby.id)?.label : void 0;
-  const what = clean8(plainText(pastime.description)).replace(/\.$/, "");
-  const hers = label2 !== void 0 ? clean8(label2) : clean8(pastime.herActivity);
+  const what = clean9(plainText(pastime.description)).replace(/\.$/, "");
+  const hers = label2 !== void 0 ? clean9(label2) : clean9(pastime.herActivity);
   const breaks = hobby !== void 0 && plateauBreaks(state, unit5.id, hobby.id) ? " She gets it right for the first time today." : "";
   const blocking = state.scene?.blocking;
   const doing = [
     ...blocking?.[unit5.id]?.activity === void 0 ? [`${unit5.displayName}: ${hers}`] : [],
-    ...blocking?.[COMMANDER]?.activity === void 0 ? [`the commander: ${clean8(pastime.commanderActivity)}`] : []
+    ...blocking?.[COMMANDER]?.activity === void 0 ? [`the commander: ${clean9(pastime.commanderActivity)}`] : []
   ].join("; ");
   const activities = doing === "" ? "" : ` ${doing[0].toUpperCase()}${doing.slice(1)}.`;
   return {
     id: `${PASTIME_PREFIX}${unit5.id}`,
     expiresAfter: "scene",
-    text: `${clean8(plainText(pastime.opening))} A quiet meeting with no stakes: ${what}.${activities}${breaks}`
+    text: `${clean9(plainText(pastime.opening))} A quiet meeting with no stakes: ${what}.${activities}${breaks}`
   };
 }
 function lifeDirectives(state, reg, present2) {
@@ -45494,7 +45595,7 @@ function lifeDirectives(state, reg, present2) {
     const name = unit5.displayName;
     const first2 = pendingNews(state, id)[0];
     if (first2) {
-      const raw = clean8(first2.text);
+      const raw = clean9(first2.text);
       const what = raw.startsWith(`${name}: `) ? raw.slice(name.length + 2) : raw;
       out.push({
         id: `${NEWS_PREFIX}${id}`,
@@ -45716,7 +45817,7 @@ function createLife(deps) {
 }
 
 // src/personal/directives.ts
-var clean9 = (text3) => text3.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+var clean10 = (text3) => text3.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
 var DERIVED = [
   "personal:court:",
   "personal:claimed:",
@@ -45754,7 +45855,7 @@ function personalDirectives(state, reg, present2) {
     }
     const truth = state.personal?.truth;
     if (truth && truth.unitId === id) {
-      out.push({ id: `personal:truth:${id}`, expiresAfter: "manual", text: `${name} owes the commander a truthful answer to this question and gives it in her next reply: "${clean9(truth.question)}". She does not lie or dodge.` });
+      out.push({ id: `personal:truth:${id}`, expiresAfter: "manual", text: `${name} owes the commander a truthful answer to this question and gives it in her next reply: "${clean10(truth.question)}". She does not lie or dodge.` });
     }
     const mine = (state.personal?.bookings ?? []).filter((b) => b.unitId === id);
     const played2 = mine.some((b) => b.status === "played" && b.day === state.day && b.slot === state.slot);
@@ -45769,7 +45870,7 @@ function personalDirectives(state, reg, present2) {
     const names2 = x.knownBy.filter((id) => present2.includes(id)).map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named").map((u) => u.displayName);
     if (names2.length === 0) continue;
     const who = names2.length === 1 ? names2[0] : `${names2.slice(0, -1).join(", ")} and ${names2[names2.length - 1]}`;
-    const text3 = clean9(x.text);
+    const text3 = clean10(x.text);
     if (x.status === "kept" || x.status === "pretend") {
       out.push({
         id: `personal:secret:${x.id}`,
@@ -46234,7 +46335,7 @@ function refreshPowerDirectives(builder, state, reg) {
 // src/bonds/directives.ts
 var EXPLICIT_CATEGORY = "explicit_scenes";
 var orderedCategories = (reg) => [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order));
-var clean10 = (text3) => text3.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+var clean11 = (text3) => text3.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
 function contentLine(state, reg) {
   if (state === null) return "";
   const on = enabledCategories(state);
@@ -46262,7 +46363,7 @@ function bondsDirectives(builder, state, reg) {
     if (!unit5 || !bond) continue;
     const categories = [...new Set(bond.ownLimits.categories)].filter((c) => reg.contentCategories.has(c));
     const ordered = orderedCategories(reg).map((c) => String(c.id)).filter((c) => categories.includes(c));
-    const note = clean10(bond.ownLimits.note ?? "");
+    const note = clean11(bond.ownLimits.note ?? "");
     if (ordered.length === 0 && note === "") continue;
     const text3 = ordered.length > 0 ? `${unit5.displayName} will not take part in: ${ordered.map(labelOf4).join(", ")}.${note !== "" ? ` ${note}` : ""}` : `${unit5.displayName} has a personal limit: ${note}`;
     builder.setDirective({ id: `limits:${id}`, expiresAfter: "scene", text: text3 });
@@ -46298,7 +46399,7 @@ function bondsDirectives(builder, state, reg) {
   for (const rule of state.bonds?.rules ?? []) {
     const unit5 = state.squad.find((u) => u.id === rule.unitId);
     if (!unit5 || !state.scene.participants.includes(unit5.id) || rule.status !== "negotiating" && !(rule.status === "proposed" && rule.delivered === true)) continue;
-    const text3 = clean10(rule.text);
+    const text3 = clean11(rule.text);
     builder.setDirective({
       id: `rule:${unit5.id}`,
       expiresAfter: "scene",
@@ -46313,7 +46414,7 @@ function bondsDirectives(builder, state, reg) {
     builder.setDirective({ id: "lead", expiresAfter: "scene", text: text3 });
   }
   (state.scene.limits ?? []).forEach((text3, i) => {
-    const t = clean10(text3);
+    const t = clean11(text3);
     if (t !== "") builder.setDirective({ id: `boundary:${i}`, expiresAfter: "scene", text: `In this scene, a boundary the commander set: ${t}` });
   });
 }
@@ -53706,7 +53807,7 @@ var CUE_LINES_MAX = 5;
 var COMMANDER_PRONOUN7 = /\b(he|him|his|himself|he's)\b/i;
 var isObj47 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var PhysicsCuesRawSchema = external_exports.object({ cues: external_exports.unknown().optional() }).passthrough();
-var clean11 = (l) => l.replace(/<[^>]*>/g, " ").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f<]/g, " ").replace(/\s+/g, " ").trim().slice(0, CUE_LINE_MAX).trim();
+var clean12 = (l) => l.replace(/<[^>]*>/g, " ").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f<]/g, " ").replace(/\s+/g, " ").trim().slice(0, CUE_LINE_MAX).trim();
 function sanitizeCues(raw) {
   const cues = isObj47(raw) ? raw.cues : void 0;
   if (!isObj47(cues)) return null;
@@ -53717,7 +53818,7 @@ function sanitizeCues(raw) {
     const lines3 = [];
     for (const l of list5) {
       if (typeof l !== "string") continue;
-      const c = clean11(l);
+      const c = clean12(l);
       if (c === "" || COMMANDER_PRONOUN7.test(c) || lines3.includes(c)) continue;
       if (lines3.length < CUE_LINES_MAX) lines3.push(c);
     }
@@ -53775,7 +53876,7 @@ var DECISION_KINDS = ["roster", "requisition", "punishment"];
 var COMMANDER_PRONOUN8 = /\b(he|him|his|himself|he's|she|her|hers|herself|she's)\b/i;
 var HE = /\b(he|him|his|himself|he's)\b/i;
 var isObj48 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var clean12 = (l) => l.replace(/<[^>]*>/g, " ").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f<]/g, " ").replace(/\s+/g, " ").trim().slice(0, SCRIPT_TEXT_MAX).trim();
+var clean13 = (l) => l.replace(/<[^>]*>/g, " ").replace(/[*_`~#>]+/g, "").replace(/[\u0000-\u001f\u007f<]/g, " ").replace(/\s+/g, " ").trim().slice(0, SCRIPT_TEXT_MAX).trim();
 var ActivityScriptRawSchema = external_exports.object({ lines: external_exports.unknown().optional() }).passthrough();
 function sanitizeScript(raw, input) {
   const lines3 = isObj48(raw) ? raw.lines : void 0;
@@ -53788,13 +53889,13 @@ function sanitizeScript(raw, input) {
     const to = l.to === "self" || l.to === "other" || l.to === "commander" ? l.to : null;
     if (who === null || to === null || typeof l.at !== "number" || !Number.isFinite(l.at)) continue;
     const about2 = l.about === true;
-    const text3 = typeof l.text === "string" ? clean12(l.text) : "";
+    const text3 = typeof l.text === "string" ? clean13(l.text) : "";
     const bad = (t) => HE.test(t) || about2 && COMMANDER_PRONOUN8.test(t);
     let mention;
     if (isObj48(l.mention) && who === "her" && to === "other") {
       const m = l.mention;
-      const plain8 = typeof m.plain === "string" ? clean12(m.plain) : "";
-      const veiled = typeof m.veiled === "string" ? clean12(m.veiled) : "";
+      const plain8 = typeof m.plain === "string" ? clean13(m.plain) : "";
+      const veiled = typeof m.veiled === "string" ? clean13(m.veiled) : "";
       if (typeof m.to === "string" && listeners.has(m.to) && plain8 !== "" && !COMMANDER_PRONOUN8.test(plain8) && !COMMANDER_PRONOUN8.test(veiled)) mention = { to: m.to, plain: plain8, veiled };
     }
     if (mention === void 0 && (text3 === "" || bad(text3))) continue;
@@ -85841,8 +85942,8 @@ function refusal2(file) {
   return null;
 }
 function toSidecar(raw) {
-  const clean13 = Object.fromEntries(Object.entries(raw ?? {}).filter(([, v]) => v !== null && v !== void 0));
-  return sidecarSchema.parse(clean13);
+  const clean14 = Object.fromEntries(Object.entries(raw ?? {}).filter(([, v]) => v !== null && v !== void 0));
+  return sidecarSchema.parse(clean14);
 }
 async function saveSlot(st3, avatar, key, draft, refresh2) {
   if (draft.file !== void 0) {

@@ -99,7 +99,7 @@ registerAction('profile/set_practice', (draft, payload, ctx) => {
   const unit = namedUnit(draft, p?.unitId, 'profile/set_practice');
   if (!isObj(p?.practice) || Object.keys(p.practice).length === 0) throw new Error('profile/set_practice needs at least one field.');
   const patch = p.practice;
-  const unknown = Object.keys(patch).filter((k) => !(['categories', 'style', 'audience', 'inclination', 'fairness', 'hintStyle', 'drive'] as string[]).includes(k));
+  const unknown = Object.keys(patch).filter((k) => !(['categories', 'style', 'audience', 'inclination', 'fairness', 'hintStyle', 'drive', 'manner', 'drawnBy', 'everyday', 'contrast', 'quirks'] as string[]).includes(k));
   if (unknown.length > 0) throw new Error(`A practice has no field "${unknown[0]}".`);
   const locked = unit.practiceLocks ?? [];
   if (patchedFields(patch).some((f) => locked.includes(f))) throw new Error('That field is locked.');

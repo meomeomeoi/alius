@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import '../../../src/engine/actions/dynamic';
 import { validateBond } from '../../../src/engine/bonds/profile';
-import { PRACTICE_DEFAULTS, practiceCategories, practiceOf, validatePractice } from '../../../src/engine/dynamic/profile';
+import { keepLockedPractice, PRACTICE_DEFAULTS, practiceCategories, practiceOf, validatePractice } from '../../../src/engine/dynamic/profile';
 import type { Practice } from '../../../src/engine/dynamic/types';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { campaign, errors, loadCore, run } from '../../helpers/world';
@@ -178,5 +178,85 @@ describe('validateBond and the practice section', () => {
     expect(none.valid).not.toContain('practice');
     expect(none.issues.length).toBeGreaterThan(0);
     expect(validateBond({ leadStyle: 'dominant' }, reg).bond.practice).toBeUndefined(); // absent stays absent: byte-identical for old profiles
+  });
+});
+
+describe('P15b: the manner fields', () => {
+  const ZERO = { intensity: 0, warmth: 0, order: 0, voice: 0, tempo: 0, curiosity: 0 };
+  const NEW = {
+    manner: { intensity: 2, warmth: -1, order: 0, voice: 1, tempo: -2, curiosity: 1 },
+    drawnBy: ['discovery', 'power'],
+    everyday: 'A bit of a loner, but always helps; kind and odd.',
+    contrast: 'high',
+    quirks: [{ when: 'switch', text: 'She takes off her glasses.' }, { when: 'after', text: 'She makes tea and does not speak.' }],
+  };
+  it('a valid block is kept', () => {
+    const r = validatePractice({ ...GOOD, ...NEW }, reg);
+    expect(r.issues).toEqual([]);
+    expect(r.practice).toMatchObject(NEW);
+  });
+  it('a missing axis reads 0; an axis out of range is dropped alone', () => {
+    const r = validatePractice({ ...GOOD, manner: { intensity: 3, warmth: 1.5, order: -2, colour: 1 } }, reg);
+    expect(r.practice!.manner).toEqual({ ...ZERO, order: -2 });
+    expect(r.issues.some((i) => /manner\.intensity/.test(i))).toBe(true);
+    expect(r.issues.some((i) => /manner\.warmth/.test(i))).toBe(true);
+    expect(r.issues.some((i) => /colour/.test(i))).toBe(true);
+    expect(validatePractice({ ...GOOD, manner: 'hard' }, reg).practice!.manner).toBeUndefined();
+  });
+  it('drawnBy keeps the five, once each, two at most', () => {
+    expect(validatePractice({ ...GOOD, drawnBy: ['pain', 'greed', 'pain'] }, reg).practice!.drawnBy).toEqual(['pain']);
+    expect(validatePractice({ ...GOOD, drawnBy: ['pain', 'power', 'reaction'] }, reg).practice!.drawnBy).toEqual(['pain', 'power']);
+    expect(validatePractice({ ...GOOD, drawnBy: ['greed'] }, reg).practice!.drawnBy).toBeUndefined();
+    expect(validatePractice({ ...GOOD, drawnBy: 'pain' }, reg).issues.length).toBeGreaterThan(0);
+  });
+  it('everyday over 160 characters or with a pronoun for the commander is dropped whole', () => {
+    const long = validatePractice({ ...GOOD, everyday: 'x'.repeat(161) }, reg);
+    expect(long.practice!.everyday).toBeUndefined();
+    expect(long.issues.length).toBe(1);
+    expect(validatePractice({ ...GOOD, everyday: 'x'.repeat(160) }, reg).practice!.everyday).toHaveLength(160);
+    const he = validatePractice({ ...GOOD, everyday: 'She waits until he looks away.' }, reg);
+    expect(he.practice!.everyday).toBeUndefined();
+    expect(he.issues.some((i) => /pronoun/.test(i))).toBe(true);
+  });
+  it('a quirk with a pronoun, an unknown when or a repeated text is dropped whole; three at most', () => {
+    const r = validatePractice({ ...GOOD, quirks: [
+      { when: 'switch', text: 'She locks the door.' },
+      { when: 'during', text: 'She keeps a hand in his hair.' },
+      { when: 'sometimes', text: 'She hums.' },
+      { when: 'after', text: 'she locks the door.' },
+      { when: 'after', text: 'A kiss on the forehead.' },
+      { when: 'address', text: 'By rank, mockingly.' },
+      { when: 'during', text: 'She counts in her own language.' },
+    ] }, reg);
+    expect(r.practice!.quirks).toEqual([
+      { when: 'switch', text: 'She locks the door.' }, { when: 'after', text: 'A kiss on the forehead.' }, { when: 'address', text: 'By rank, mockingly.' },
+    ]);
+    expect(r.issues.some((i) => /pronoun/.test(i))).toBe(true);
+  });
+  it('a bad contrast is dropped; null reads as absent', () => {
+    expect(validatePractice({ ...GOOD, contrast: 'huge' }, reg).practice!.contrast).toBeUndefined();
+    const r = validatePractice({ ...GOOD, manner: null, drawnBy: null, everyday: null, contrast: null, quirks: null }, reg);
+    expect(r.issues).toEqual([]);
+    expect(Object.keys(r.practice!)).not.toContain('manner');
+  });
+  it('a locked manner is kept by keepLockedPractice, and a locked field she never had is not imported', () => {
+    const old = { ...GOOD, manner: { ...ZERO, warmth: 2 } } as Practice;
+    const next = validatePractice({ ...GOOD, ...NEW }, reg).practice!;
+    const kept = keepLockedPractice(old, next, ['manner', 'quirks']);
+    expect(kept.manner).toEqual({ ...ZERO, warmth: 2 });
+    expect(kept.quirks).toBeUndefined();
+    expect(kept.drawnBy).toEqual(NEW.drawnBy);
+  });
+  it('profile/set_practice merges manner per axis and honours its lock', () => {
+    const s = withPractice({ ...GOOD, manner: { ...ZERO, warmth: 1 } } as Practice);
+    const r = run(s, reg, { type: 'profile/set_practice', payload: { unitId: ANN, practice: { manner: { tempo: -2 }, everyday: 'Kind and odd.' } } });
+    expect(errors(r.events)).toEqual([]);
+    expect(unitOf(r.state, ANN).bond!.practice!.manner).toEqual({ ...ZERO, warmth: 1, tempo: -2 });
+    expect(unitOf(r.state, ANN).bond!.practice!.everyday).toBe('Kind and odd.');
+    const locked = run(s, reg, { type: 'profile/lock_practice', payload: { unitId: ANN, field: 'manner', on: true } });
+    expect(errors(locked.events)).toEqual([]);
+    const refused = run(locked.state, reg, { type: 'profile/set_practice', payload: { unitId: ANN, practice: { manner: { tempo: 1 } } } });
+    expect(errors(refused.events)).toHaveLength(1);
+    expect(errors(run(s, reg, { type: 'profile/set_practice', payload: { unitId: ANN, practice: { everyday: 'Waits for him.' } } }).events)).toHaveLength(1);
   });
 });

@@ -2812,6 +2812,7 @@ const unit = (lo: number, hi: number) => z.number().min(lo).max(hi);
 const frameEnum = z.enum(FRAMES);
 const capabilityEnum = z.enum(CAPABILITIES);
 const profileStyle = z.enum(PROFILE_STYLES);
+const stylePlace = int.min(-3).max(3);
 const aftermathKind = z.enum(AFTERMATH_KINDS);
 const bandRange = (e: { min: number; max: number }, ctx: z.RefinementCtx) => {
   if (e.min > e.max) ctx.addIssue({ code: 'custom', path: ['max'], message: 'a band runs from low to high' });
@@ -2829,6 +2830,8 @@ export const PracticeStyleSchema = BaseEntrySchema.extend({
   regardFactor: unit(0, 3),
   likesRegion: z.array(z.enum(REGION_RANKS)).optional(),
   despisesRegion: z.array(z.enum(REGION_RANKS)).optional(),
+  /** P15b: the style's place on the six manner axes (hidden coordinates). */
+  manner: z.object({ intensity: stylePlace, warmth: stylePlace, order: stylePlace, voice: stylePlace, tempo: stylePlace, curiosity: stylePlace }).strict().optional(),
 }).strict();
 
 const bandSchema = BaseEntrySchema.extend({ label: blockLabel, min: int.min(0).max(100), max: int.min(0).max(100), description: str }).strict().superRefine(bandRange);
