@@ -4,7 +4,7 @@
   massage with her tempo, then cream; both feet. NOT YET APPROVED.
   - The view: the commander holds her foot up, sole to the face (art slot `held_sole`: one foot, the other is it mirrored; the leg fades out
     at the bottom); she sits back on her bunk, her sprite behind the foot to one side, a little soft. Her face is a tell.
-  - Massage: the left button puts the thumbs on her sole; Space (or the right button) presses harder, Shift lighter (the fingertips); let go and it drifts back to a plain touch. Circles
+  - Massage: the left button puts the thumbs on her sole; Space (or the right button) presses harder, Shift lighter; the pressure stays where it is put, shown by a bar by the thumbs. Circles
     (kneading) and long strokes (gliding) are both read; her tempo and her pressure are hidden and read only from her tells: her toes (curl,
     spread, wiggle, tap), her breath (a sigh, a hiss, a giggle), her foot (sinks into the hands, pushes back, pulls away), her face and words.
     Her tempo slows as she relaxes. A knot (her day) wants slow firm work before it lets go.
@@ -45,7 +45,8 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 .her-line { position: absolute; font-family: Caveat, cursive; color: var(--her); white-space: nowrap; line-height: 1; font-size: 42px;
   text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.85), 0 0 28px rgba(0,0,0,.6);
   animation: write var(--write, 600ms) steps(var(--steps, 12), end) both; transition: opacity .5s; }
-.her-line.gone, .sense.gone { opacity: 0; }
+.her-line.gone, .sense.gone, .hint.gone { opacity: 0; }
+.hint { position: absolute; width: 120px; text-align: center; font: 11.5px "IBM Plex Mono", monospace; color: rgba(236,232,242,.6); text-shadow: 0 1px 2px #000, 0 0 8px rgba(0,0,0,.8); transition: opacity .7s; }
 @keyframes write { from { clip-path: inset(-30% 100% -30% -8%); } to { clip-path: inset(-30% -8% -30% -8%); } }
 .sense { position: absolute; font: italic 300 16px/1.4 Inter, sans-serif; color: rgba(236,232,242,.62); text-shadow: 0 1px 2px #000, 0 0 10px rgba(0,0,0,.8); transition: opacity .8s; max-width: 380px; }
 #ui { position: absolute; inset: 0; pointer-events: none; }
@@ -114,6 +115,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <div class="note" id="dayNote"></div>
   <h4>the commander</h4>
   <label>her rhythm known <input type="range" id="known" min="0" max="5" step="1" value="0"><span id="knownV">0</span></label>
+  <label><input type="checkbox" id="hintsOn" checked> hints (0–1 always, 2–3 the first time, 4–5 none)</label>
   <label><input type="checkbox" id="both" checked> both feet</label>
   <h4>the pictures (never committed)</h4>
   <label>her foot (held_sole) <input type="file" id="fFoot" accept="image/*" style="width:140px"></label>
@@ -145,14 +147,14 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <label><input type="checkbox" id="dbg"> debug (her tempo and pressure, zones)</label>
   <label><input type="checkbox" id="rm"> reduced motion</label>
   <div class="row"><button class="opt" id="restart">restart</button><button class="opt" id="toCream">skip to the cream</button></div>
-  <div class="note">Left button: thumbs on her sole (circles knead, long strokes glide). Space or the right button: press harder; Shift: lighter (fingertips); let go and it drifts back to a plain touch. C: squeeze cream into the palms (hold for more). Esc: the stop word. H: hide this panel. Prototype only; nothing here is engine code.</div>
+  <div class="note">Left button: thumbs on her sole (circles knead, long strokes glide). Space or the right button: press harder; Shift: lighter; the pressure stays where it is put (the bar by the thumbs). C: squeeze cream into the palms (hold for more). Esc: the stop word. H: hide this panel. Prototype only; nothing here is engine code.</div>
 </div>
 
 <div id="start"><div class="box">
   <h2>foot care · prototype · round 1</h2>
   She sits back on her bunk and puts her bare foot in your hands, sole to you.<br>
-  <b>Massage.</b> Hold the <b>left button</b> on her sole and move: circles knead, long strokes glide. <kbd>Space</kbd> (or the right button) presses harder, <kbd>Shift</kbd> lighter (the fingertips); let go and the thumbs drift back to a plain touch.
-  Her tempo and how firm she likes it are hers: nothing shows them but her toes, her breath, her foot and her face. She slows as she relaxes.<br>
+  <b>Massage.</b> Hold the <b>left button</b> on her sole and move: circles knead, long strokes glide. <kbd>Space</kbd> (or the right button) presses harder, <kbd>Shift</kbd> lighter; the pressure stays where you put it (the bar by your thumbs).
+  Her tempo and how firm she likes it are hers: her toes, her breath, her foot and her face show them (and, while you learn her, a dim word by your thumbs). She slows as she relaxes. A knot wants slower, firmer work.<br>
   <b>Cream.</b> <kbd>C</kbd> squeezes it into your palms (hold for more). It is cold at first. Spread it, rub it in; she will look at it in the light.<br>
   <kbd>Esc</kbd> stop word · <kbd>H</kbd> panel.
   <div><span class="btn" id="go">begin</span> <span class="btn" id="setup">set up first</span></div>
@@ -204,13 +206,11 @@ const DAYS = {
   sore:  { press: -0.1, len: 1.2, knot: 1, sore: true, note: 'sore: after a run; a knot for sure, tender until it warms.' },
   bare:  { press: 0, len: 1, knot: 0.4, note: 'bare: barefoot in her quarters all day.' },
 };
-/* how firm each part of the sole likes it, against her base (the arch and the heel take more, the toes less) */
-const ZONE_PRESS = { toes: -0.15, ball: 0.02, arch: 0.08, heel: 0.14, edge: -0.06 };
 const ZONE_WORDS = { toes: 'the toes', ball: 'the ball', arch: 'the arch', heel: 'the heel', edge: 'the edge' };
 const ZONE_NAMES = ['toes', 'ball', 'arch', 'heel', 'edge'];
 /* zones of the author's first picture (her right foot, sole to the viewer, the big toe on the viewer's right): [x, y, rx, ry, deg],
    centres as fractions of the picture, radii as fractions of its height; the marker replaces them per picture */
-const DEFAULT_ZONES = { toes: [0.52, 0.11, 0.095, 0.06, -8], ball: [0.53, 0.235, 0.085, 0.045, -10], arch: [0.555, 0.335, 0.045, 0.06, -8], heel: [0.46, 0.425, 0.06, 0.045, -12], edge: [0.395, 0.3, 0.03, 0.075, 8] };
+const DEFAULT_ZONES = { toes: [0.54, 0.11, 0.085, 0.05, -8], ball: [0.5, 0.235, 0.09, 0.045, -10], arch: [0.48, 0.335, 0.04, 0.05, -8], heel: [0.415, 0.43, 0.065, 0.045, -12], edge: [0.38, 0.3, 0.022, 0.06, 8] }; // measured inside the picture's outline
 /* her faces: SillyTavern's labels, by what she feels (a label with no picture changes nothing) */
 const FACE = { start: 'neutral', good: 'relief', melted: 'desire', fast: 'annoyance', slow: 'annoyance', hard: 'disapproval', light: 'neutral', tickle: 'amusement', knot: 'relief', cold: 'surprise', greasy: 'disgust', pull: 'annoyance', endGood: 'joy', endPoor: 'disappointment' };
 /* her lines by style and kind (placeholders for the cue pool) */
@@ -232,15 +232,28 @@ const TELL_NAMES = {
   hard: 'Her toes curl and she draws a breath through her teeth: too hard.',
   light: 'Her foot pushes back into your thumbs: she wants more of them.',
   tickle: 'Her toes wriggle and her foot jerks: that tickles.',
-  knot: 'A flinch, small, at one spot: something tight there.',
+  knot: 'A tight knot under your thumbs. She flinches, then leans into it: it wants slower, firmer work.',
   knotDone: 'Something lets go under your thumbs. Her whole leg goes soft.',
   closed: 'She leans her head back and closes her eyes.',
   cold: 'She flinches at the cold.',
   warn: 'Her foot stiffens in your hands and she breathes out through her nose: her patience is running short.',
 };
 
+/* the hints (the open easing, as the posture call's): a dim word by the thumbs saying what the tell meant; they thin out as her rhythm is known */
+const HINTS = { good: 'right', fast: 'too fast', slow: 'too slow', hard: 'too hard', light: 'too light', tickle: 'it tickles: firmer', warn: 'she is losing patience', knot: 'a knot: slower, firmer', knotDone: 'the knot let go', cold: 'the cream is cold' };
+const hintShown = {};
+function hint(kind) {
+  const text = HINTS[kind]; if (!text || !S.hints) return;
+  if (S.known >= 4 || (S.known >= 2 && hintShown[kind])) return;
+  hintShown[kind] = true;
+  const el = document.createElement('div'); el.className = 'hint'; el.textContent = text;
+  el.style.left = `${G.cx - 60}px`; el.style.top = `${G.cy - 64}px`;
+  $('#hand').appendChild(el);
+  setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 700); }, 1500);
+}
+
 /* ---------- settings ---------- */
-const S = { style: 'neutral', day: 'bare', manner: { tempo: 0, intensity: 0, warmth: 0 }, known: 0, both: true, sound: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
+const S = { style: 'neutral', day: 'bare', manner: { tempo: 0, intensity: 0, warmth: 0 }, known: 0, hints: true, both: true, sound: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
   shown: 'right', fit: { h: 1.45, x: -0.08, y: 0.78, fade: 0.55, toes: 0.2 }, zones: null, her: { h: 1.05, x: 0.62, b: 1.12, fade: 0.3 }, faceFadeOn: true, faceFade: 300 };
 const ST = () => STYLES[S.style] ?? STYLES.neutral;
 const L = () => LINES[S.style] ?? LINES.neutral;
@@ -347,7 +360,7 @@ function sayL(key, z, force = false) {
 /* ---------- the state ---------- */
 let G;
 function fresh() {
-  return { phase: 'idle', t: 0, footN: 0, foot: 'right', press: 0, pressHeld: false, touch: false, cx: 0, cy: 0, samples: [], turnAcc: [], lastA: null, ax: null, ay: null,
+  return { phase: 'idle', t: 0, footN: 0, foot: 'right', press: 0.5, pressHeld: false, touch: false, cx: 0, cy: 0, samples: [], turnAcc: [], lastA: null, ax: null, ay: null,
     tempoLog: 0, motion: 'none', mine: 0, zone: null, cls: null, clsT: 0, felt: null, relax: 0, irr: 0, pulls: 0, toldTell: {}, tellAt: {}, lineUntil: 0,
     knot: null, knotWarm: 0, knotDone: false, eyes: 'open', eyesT: 0, nextEyes: 5000, nextTap: 0, face: 'neutral',
     toes: 0, toesT: 0, wiggle: 0, flick: 0, sink: 0, back: 0, push: 0, jerk: 0, pullUntil: 0, idleT: 0, nextIdle: 0, sighAt: 0, meltT: 0,
@@ -390,12 +403,12 @@ function zoneAtPic(u, v, r) {
   for (const [k, p] of Object.entries(zones())) { const [ex, ey] = inEllipse((u - p[0]) * r.w, (v - p[1]) * r.h, rad[k]); const d = Math.hypot(ex, ey); if (d < 1 && d < bd) { bd = d; best = k; } }
   return best;
 }
-/* on her sole: inside the picture's alpha and within 1.5 of the nearest zone (never the shin) */
+/* on her foot: inside the picture's alpha and within 2.6 of the nearest zone's size (her sole and its sides, never the shin) */
 function onSole(x, y) {
   const q = toPic(x, y); if (!q || q[0] < 0 || q[0] > 1 || q[1] < 0 || q[1] > 1) return false;
   const M = G.mask; if (!M) return true;
   const i = Math.floor(q[1] * M.h) * M.w + Math.floor(q[0] * M.w);
-  return M.sole[i] > 0.05;
+  return M.near[i] === 1;
 }
 
 /* ---------- masks at low resolution over the picture's own alpha: the sole (where hands work), the blush of the massage, the cream ---------- */
@@ -404,17 +417,18 @@ function makeMask() {
   const w = 120, h = Math.round(120 * im.naturalHeight / im.naturalWidth);
   const base = document.createElement('canvas'); base.width = w; base.height = h; const b = base.getContext('2d'); b.drawImage(im, 0, 0, w, h);
   const alpha = b.getImageData(0, 0, w, h).data;
-  const sole = new Float32Array(w * h), zoneOf = new Int8Array(w * h).fill(-1);
+  const sole = new Float32Array(w * h), zoneOf = new Int8Array(w * h).fill(-1), near = new Uint8Array(w * h);
   const asp = im.naturalWidth / im.naturalHeight, zs = Object.entries(zones()), rad = zoneRadii({ w: asp, h: 1 });
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const a = alpha[(y * w + x) * 4 + 3] / 255; if (a < 0.3) continue;
     let dmin = 1e9, zi = -1;
     zs.forEach(([k, p], i) => { const [ex, ey] = inEllipse((x / w - p[0]) * asp, y / h - p[1], rad[k]); const d = Math.hypot(ex, ey); if (d < dmin) { dmin = d; zi = i; } });
+    if (dmin < 2.6) near[y * w + x] = 1; // the hands may be anywhere on her foot (its sides too), never on the shin
     const k = 1 - smooth(1.0, 1.6, dmin); if (k <= 0.01) continue;
     sole[y * w + x] = k * a; zoneOf[y * w + x] = dmin < 1.25 ? zi : -1;
   }
   const mk = () => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
-  return { w, h, sole, zoneOf, names: zs.map(([k]) => k), soleTotal: sole.reduce((s, v) => s + v, 0),
+  return { w, h, sole, near, zoneOf, names: zs.map(([k]) => k), soleTotal: sole.reduce((s, v) => s + v, 0),
     blush: new Float32Array(w * h), c: new Float32Array(w * h), d: new Float32Array(w * h), cb: mk(), cc: mk(), cg: mk(), cl: mk() };
 }
 /* a brush over the mask between two screen points (radius as a share of the mask's width) */
@@ -433,13 +447,14 @@ function brush(x0, y0, x1, y1, radK, fn) {
 
 /* ---------- what she wants now (hidden): her tempo slows as she relaxes; her pressure by the zone, the knot and her day ---------- */
 const knownK = () => 1 + 0.05 * S.known; // her rhythm known per pair (P16b `Relation.craft.rhythm`): her band widens 5 % a level
-function herTempoK() { return (1 + 0.15 * S.manner.tempo) * (1 - 0.4 * G.relax); }
-const herCps = () => ST().cps * herTempoK();
-const herGlide = () => ST().glide * herTempoK();
+const onKnotNow = (zone) => !!zone && zone === G.knot && !G.knotDone;
+function herTempoK(zone) { return (1 + 0.15 * S.manner.tempo) * (1 - 0.4 * G.relax) * (onKnotNow(zone) ? 0.6 : 1); }
+const herCps = (zone) => ST().cps * herTempoK(zone);
+const herGlide = (zone) => ST().glide * herTempoK(zone);
 function herPress(zone) {
-  let p = ST().press + 0.08 * S.manner.intensity + DY().press + 0.08 * G.relax + (zone ? ZONE_PRESS[zone] : 0);
-  if (zone && zone === G.knot && !G.knotDone) p -= (DY().sore ? 0.25 : 0.15) * (1 - G.knotWarm);
-  return clamp(p, 0.12, 0.95);
+  // one pressure for the whole sole (round 2: the per-zone offsets were unreadable); a knot wants it firmer
+  const p = ST().press + 0.08 * S.manner.intensity + DY().press + 0.08 * G.relax + (onKnotNow(zone) ? 0.15 : 0);
+  return clamp(p, 0.15, 0.9);
 }
 const TOL_T = 0.4;   // her tempo band: |log2(mine / hers)| within 0.4 (about −24 % … +32 %)
 const TOL_P = 0.16;  // her pressure band
@@ -472,11 +487,11 @@ function massageUpdate(dt) {
     if (G.zone) s.zones[G.zone] = (s.zones[G.zone] ?? 0) + dt;
     // the tempo: smoothed log2 of the commander's rate over hers (a hold has no tempo; held too long it is too slow, except on the knot)
     if (mo.kind === 'circle' || mo.kind === 'glide') {
-      const hers = mo.kind === 'circle' ? herCps() : herGlide(); G.mine = mo.rate;
+      const hers = mo.kind === 'circle' ? herCps(G.zone) : herGlide(G.zone); G.mine = mo.rate;
       const lg = Math.log2(Math.max(0.05, mo.rate) / hers);
       G.tempoLog = lerp(G.tempoLog, lg, Math.min(1, dt / 350)); G.holdT = 0;
       if (mo.kind === 'circle') s.circles += dt; else s.glides += dt;
-    } else { G.holdT = (G.holdT ?? 0) + dt; G.tempoLog = lerp(G.tempoLog, G.zone === G.knot ? 0 : -1.2, Math.min(1, dt / 1500)); }
+    } else { G.holdT = (G.holdT ?? 0) + dt; G.tempoLog = lerp(G.tempoLog, onKnotNow(G.zone) ? 0 : -1.2, Math.min(1, dt / 1500)); } // holding still is right on a knot, too slow elsewhere
     const dp = G.press - herPress(G.zone), tolP = TOL_P * knownK(), tolT = TOL_T * knownK();
     // how far past her band, in bands (0 just at its edge, capped at 2): a near miss barely annoys her, a gross one does
     const pastP = clamp((Math.abs(dp) - tolP) / tolP, 0, 2), pastT = clamp((Math.abs(G.tempoLog) - tolT) / tolT, 0, 2);
@@ -490,22 +505,23 @@ function massageUpdate(dt) {
     if (cls !== G.cls) { G.cls = cls; G.clsT = G.t; }
     // a class held 0.5 s is felt (the tells wait for it); the effects run while it lasts
     if (G.t - G.clsT > 500 && G.felt !== cls) { G.felt = cls; tell(cls); }
-    const onKnot = G.zone && G.zone === G.knot && !G.knotDone;
+    const onKnot = onKnotNow(G.zone), irrBefore = G.irr;
     if (G.felt === 'good') { G.relax = clamp(G.relax + 0.045 * (dt / 1000) * (onKnot ? 1.6 : 1), 0, 1); G.irr = Math.max(0, G.irr - 0.1 * dt / 1000); s.good += dt; }
     else if (G.felt === 'hard') { G.irr += (onKnot && G.knotWarm < 0.5 ? 0.45 : 0.25) * (0.3 + pastP) * irrK() * dt / 1000; G.relax = Math.max(0, G.relax - 0.04 * dt / 1000); s.hard += dt; }
     else if (G.felt === 'tickle') { G.irr += (S.style === 'playful' ? 0.05 : 0.14) * (0.3 + pastP) * irrK() * dt / 1000; G.relax = Math.max(0, G.relax - 0.03 * dt / 1000); s.tickle += dt; }
     else if (G.felt) { G.irr += 0.08 * (0.2 + (G.felt === 'light' ? pastP : pastT)) * irrK() * dt / 1000; G.relax = Math.max(0, G.relax - 0.015 * dt / 1000); s[G.felt] += dt; }
+    G.irr = Math.min(G.irr, irrBefore + 0.35 * dt / 1000, 1); // her patience never runs out faster than 0.35 a second
     // a wrong touch that goes on: her body says it again (the tell throttles itself); her patience running short shows before she pulls away
     if (G.felt && G.felt !== 'good') tell(G.felt);
-    if (G.irr > 0.6 && !G.warned) { G.warned = true; tell('warn'); } else if (G.irr < 0.35) G.warned = false;
-    // the knot: tender at first (a small flinch the first time it is touched), warms under slow firm work, then lets go
+    if (G.irr > 0.6 && !G.warned) { G.warned = true; G.warnedAt = G.t; tell('warn'); } else if (G.irr < 0.35) G.warned = false;
+    // the knot: a flinch the first time it is touched, then it wants slow, firm work (slower and firmer than the rest); then it lets go
     if (onKnot) {
       if (!G.knotFelt) { G.knotFelt = true; tell('knot'); }
-      if (G.felt === 'good' || (G.motion === 'hold' && Math.abs(dp) <= tolP)) { G.knotWarm = clamp(G.knotWarm + 0.11 * dt / 1000, 0, 1); }
-      if (G.knotWarm >= 1) { G.knotDone = true; s.released = true; G.relax = clamp(G.relax + 0.25, 0, 1); tell('knotDone'); }
+      if (G.felt === 'good' || (G.motion === 'hold' && Math.abs(dp) <= tolP)) { G.knotWarm = clamp(G.knotWarm + 0.16 * dt / 1000, 0, 1); }
+      if (G.knotWarm >= 1) { G.knotDone = true; s.released = true; G.relax = clamp(G.relax + 0.25, 0, 1); G.irr = Math.max(0, G.irr - 0.3); tell('knotDone'); }
     }
-    // a wrong touch held too long: she pulls her foot away
-    if (G.irr >= 1) pullAway();
+    // a wrong touch held too long: she pulls her foot away, never sooner than 2 s after her warning
+    if (G.irr >= 1 && G.warned && G.t - G.warnedAt > 2000) pullAway();
   } else {
     // a moment off her sole (a circle that slips past the edge) changes nothing; 0.3 s off and the thumbs have left
     G.offT = (G.offT ?? 0) + dt; if (G.offT > 300 || !G.touch || pulled) { G.cls = null; G.motion = 'none'; }
@@ -521,6 +537,7 @@ function massageUpdate(dt) {
 function tell(kind) {
   if (G.t < (G.tellAt[kind] ?? 0)) return;
   G.tellAt[kind] = G.t + (kind === 'good' ? 4000 : 2800);
+  hint(kind);
   if (!G.toldTell[kind] && TELL_NAMES[kind]) { G.toldTell[kind] = true; sense(TELL_NAMES[kind]); }
   switch (kind) {
     case 'good': G.toesT = -0.7; G.sink = 1; setFace(G.relax > 0.6 ? FACE.melted : FACE.good); if (Math.random() < 0.5) sayL('good'); break;
@@ -679,11 +696,10 @@ function frame(now) {
 }
 function update(dt) {
   G.t += dt;
-  // the pressure: a plain touch is 0.5; Space or the right button presses in toward 1, Shift eases to the fingertips toward 0.15 (0.7 a second);
-  // let go and it drifts back to 0.5 slowly (0.3 a second), so short presses keep it up; nothing while not touching
-  const target = G.touch ? (G.pressHeld ? 1 : G.lightHeld ? 0.15 : 0.5) : 0;
-  const toward = G.pressHeld || G.lightHeld ? 0.7 : 0.3; // pressing in or easing off is quicker than drifting back to a plain touch
-  G.press = !G.touch ? Math.max(0, G.press - 3 * dt / 1000) : G.press < target ? Math.min(target, G.press + toward * dt / 1000) : Math.max(target, G.press - toward * dt / 1000);
+  // the pressure (round 2): a level the commander sets and sees by the thumbs; Space or the right button raises it, Shift lowers it
+  // (0.6 a second); let go and it stays (the hands keep their grip); it starts at 0.5
+  if (G.pressHeld) G.press = Math.min(1, G.press + 0.6 * dt / 1000);
+  if (G.lightHeld) G.press = Math.max(0.1, G.press - 0.6 * dt / 1000);
   // the body's motion, eased (toes −1 spread … +1 curled)
   const k = Math.min(1, dt / 180);
   G.toes += (G.toesT - G.toes) * k; G.toesT *= Math.max(0, 1 - dt / 2200);
@@ -789,6 +805,13 @@ function drawThumbs(mx, now) {
     mx.beginPath(); mx.ellipse(0, 0, 9 + 2 * p, 13 + 2 * p, 0, 0, Math.PI * 2);
     mx.strokeStyle = `rgba(255,240,232,${on ? 0.35 + 0.3 * p : 0.22})`; mx.lineWidth = 1.2 + p; mx.stroke(); mx.restore();
   }
+  // the commander's own pressure (known to the commander; hers is hidden): a short bar right of the thumbs, five ticks
+  if (G.phase === 'massage' && (G.touch || G.pressHeld || G.lightHeld)) {
+    const bx = x + 34, by = y - 22, bh = 44;
+    mx.fillStyle = 'rgba(14,12,20,.55)'; mx.fillRect(bx - 1, by - 1, 7, bh + 2);
+    mx.fillStyle = 'rgba(59,151,255,.85)'; mx.fillRect(bx, by + bh * (1 - G.press), 5, bh * G.press);
+    mx.fillStyle = 'rgba(236,232,242,.5)'; for (let i = 1; i < 5; i++) mx.fillRect(bx - 2, by + (bh * i) / 5, 9, 1);
+  }
   // the cream in the palms (only while there is some): a small white drop by the hand, warming from cool blue-white to warm white
   if (G.phase === 'cream' && G.hand.amt > 0.01) {
     const w = G.hand.warm, rr = 4 + 7 * Math.min(1, G.hand.amt);
@@ -818,7 +841,7 @@ function drawZones(mx, r) {
 function debugText() {
   const z = G.zone;
   return `${G.phase} · her ${G.foot} foot · eyes ${G.eyes} · face ${G.face}\n`
-    + `her tempo: ${herCps().toFixed(2)} circles/s, ${herGlide().toFixed(2)} strokes · yours: ${G.motion} ${G.mine.toFixed(2)} · log2 ${G.tempoLog.toFixed(2)} (±${(TOL_T * knownK()).toFixed(2)})\n`
+    + `her tempo: ${herCps(G.zone).toFixed(2)} circles/s, ${herGlide(G.zone).toFixed(2)} strokes · yours: ${G.motion} ${G.mine.toFixed(2)} · log2 ${G.tempoLog.toFixed(2)} (±${(TOL_T * knownK()).toFixed(2)})\n`
     + `her pressure at ${z ?? '—'}: ${herPress(z).toFixed(2)} · yours ${G.press.toFixed(2)} (±${(TOL_P * knownK()).toFixed(2)})\n`
     + `felt ${G.felt ?? '—'} · relax ${G.relax.toFixed(2)} · irritation ${G.irr.toFixed(2)} · pulls ${G.pulls}\n`
     + `knot ${G.knot ?? 'none'} ${G.knot ? `warm ${G.knotWarm.toFixed(2)}${G.knotDone ? ' (let go)' : ''}` : ''} · time ${(G.massT / 1000).toFixed(0)} / ${(G.massLen / 1000).toFixed(0)} s\n`
@@ -831,7 +854,7 @@ function down(x, y, button) {
   if (button === 2) { G.pressHeld = true; return; }
   if (G.phase !== 'massage' && G.phase !== 'cream') return;
   G.touch = true; G.cx = x; G.cy = y; G.samples = [{ t: performance.now(), x, y }];
-  if (!G.pressHeld) G.press = G.lightHeld ? 0.15 : 0.5; // the thumbs land as a plain touch (or the fingertips) G.turnAcc = []; G.lastA = null; G.ax = x; G.ay = y;
+  G.turnAcc = []; G.lastA = null; G.ax = x; G.ay = y;
 }
 function move(x, y, e) {
   if (MARK.on) { markMove(x, y, e.shiftKey); return; }
@@ -913,6 +936,7 @@ slider('mTempo', () => S.manner.tempo, (v) => { S.manner.tempo = v; });
 slider('mInt', () => S.manner.intensity, (v) => { S.manner.intensity = v; });
 slider('mWarm', () => S.manner.warmth, (v) => { S.manner.warmth = v; });
 slider('known', () => S.known, (v) => { S.known = v; });
+$('#hintsOn').onchange = () => { S.hints = $('#hintsOn').checked; };
 $('#both').onchange = () => { S.both = $('#both').checked; };
 const f2 = (v) => v.toFixed(2);
 slider('fitH', () => S.fit.h, (v) => { S.fit.h = v; }, f2); slider('fitX', () => S.fit.x, (v) => { S.fit.x = v; }, f2); slider('fitY', () => S.fit.y, (v) => { S.fit.y = v; }, f2);
