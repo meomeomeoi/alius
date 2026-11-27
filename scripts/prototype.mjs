@@ -36,6 +36,12 @@ if (html.includes('%%MANNEQUINS%%')) {
   await build({ entryPoints: [resolve(root, 'scripts/prototype-mannequins.ts')], outfile: tmp, bundle: true, format: 'esm', platform: 'node', target: 'es2022', logLevel: 'error', external: ['jsdom'] });
   html = html.replaceAll('%%MANNEQUINS%%', execFileSync('node', [tmp], { cwd: root, encoding: 'utf8' }).trim());
 }
+// P16b: the dial's drawing code itself (src/ui/scene/dial), bundled for the browser, for a prototype that draws live poses
+if (html.includes('%%DIALKIT%%')) {
+  const { build } = await import('esbuild');
+  const r = await build({ entryPoints: [resolve(root, 'scripts/prototype-dialkit.ts')], write: false, bundle: true, format: 'iife', platform: 'browser', target: 'es2022', logLevel: 'error' });
+  html = html.replaceAll('%%DIALKIT%%', r.outputFiles[0].text);
+}
 const outDir = resolve(root, '.superpowers/prototypes');
 mkdirSync(outDir, { recursive: true });
 const out = resolve(outDir, `${name}.html`);

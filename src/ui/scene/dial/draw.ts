@@ -16,6 +16,8 @@ export interface DialFigureOpts {
   hot?: HotJoint[];
   /** The width and height in px (CSS may size it instead). */
   size?: number;
+  /** P16b: the body to draw instead of `pose(p)` (a posture drifting between two point states); `p` still gives the base, the hints and the items. */
+  body?: Skeleton;
 }
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -70,7 +72,10 @@ export interface FigureFit {
 
 /** The per-pose scale and centring: the spike's rule `min(96, 158 / max(w, h), 182 / hypot(w, h))` over the projected joints. */
 export function figureFit(p: DialPose, other?: DialPose): FigureFit {
-  const skeletons = [pose(p), ...(other ? [pose(other)] : [])];
+  return fitOf([pose(p), ...(other ? [pose(other)] : [])]);
+}
+
+function fitOf(skeletons: Skeleton[]): FigureFit {
   const flat = skeletons.flatMap(jointPoints).map((v) => project(v));
   const xs = flat.map((v) => v[0]);
   const ys = flat.map((v) => v[1]);
@@ -96,9 +101,9 @@ const line = (a: [number, number, number], b: [number, number, number]): string 
 
 /** The mannequin of a pose, as an SVG of viewBox `0 0 200 200`. */
 export function mannequinSvg(p: DialPose, opts: DialFigureOpts = {}): SVGSVGElement {
-  const fit = figureFit(p, opts.target);
+  const sk = opts.body ?? pose(p);
+  const fit = opts.body ? fitOf([sk, ...(opts.target ? [pose(opts.target)] : [])]) : figureFit(p, opts.target);
   const { map, scale } = fit;
-  const sk = pose(p);
   const root = svg('svg', { viewBox: '0 0 200 200', class: 'alius-mannequin', 'aria-hidden': 'true', focusable: 'false' }) as SVGSVGElement;
   if (opts.size !== undefined) {
     root.setAttribute('width', String(opts.size));

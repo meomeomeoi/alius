@@ -149,3 +149,14 @@ describe('mannequinSvg', () => {
     for (const d of DRIFTS) expect(() => mannequinSvg(d.actual, { target: d.target, hot: d.hot }), d.id).not.toThrow();
   });
 });
+
+describe('mannequinSvg with a given body (P16b: a drifting posture between two point states)', () => {
+  it('draws the skeleton it is given instead of the pose, and is the same as before without one', () => {
+    const p: DialPose = { base: 'kneeling_upright', points: { arms: 'behind_head', gaze: 'down' } };
+    expect(mannequinSvg(p, { body: pose(p) }).outerHTML).toBe(mannequinSvg(p).outerHTML);
+    const sagged = pose({ ...p, points: { ...p.points, arms: 'at_sides' } });
+    const a = mannequinSvg(p, { body: sagged, target: p });
+    const b = mannequinSvg({ ...p, points: { ...p.points, arms: 'at_sides' } }, { target: p });
+    expect(segs(a, 'forearm').map((s) => s.getAttribute('d'))).toEqual(segs(b, 'forearm').map((s) => s.getAttribute('d')));
+  });
+});

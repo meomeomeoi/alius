@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alius prototype — the game of postures (P16b)</title>
+<!--
+  P16b gate G1, round 1 (2026-11-27). The game of postures: a preset's points drift from their target; the commander corrects
+  them on the dial (a click on the joint, or keys 1–7). Corrections make noise; her eyes make noise matter. The gaze drifts by
+  temptation, not fatigue: each event in the scene is an impulse that has to be held (hold 6). Blind: the dial goes dark and the
+  body speaks in feel lines. The posture call grows: B assemble her posture joint by joint against her foot; C she conducts.
+    npm run proto -- posture [--sprite <png|webp|svg>]
+  The dial is the real one: its drawing code (src/ui/scene/dial) is bundled in at build time (%%DIALKIT%%); the body between two
+  point states is drawn by blending the two skeletons (mannequinSvg's `body`).
+-->
+<style>
+@font-face { font-family: "Caveat"; src: url("%%ASSET:fonts/hand-caveat-400.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 300; src: url("%%ASSET:fonts/inter-300.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 400; src: url("%%ASSET:fonts/inter-400.woff2%%") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; src: url("%%ASSET:fonts/ibm-plex-mono-400.woff2%%") format("woff2"); }
+
+:root {
+  --her: #ff9ec7; --hand: Caveat; --hs: 1;
+  --cmd: #3b97ff; --warn: #ffb547;
+  --glass: rgba(14, 12, 20, 0.60); --line: rgba(255, 255, 255, 0.12); --ink: #ece8f2; --dim: rgba(236, 232, 242, 0.55); --bg: #0b0a10;
+  --dial: min(18.5vh, 200px);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: var(--ink); font-family: Inter, system-ui, sans-serif; font-weight: 300; }
+
+/* ---------- the scene (stand-in for P10e's stage, as cards.html) ---------- */
+#stage { position: fixed; inset: 0; overflow: hidden; }
+#backdrop { position: absolute; inset: 0; background-size: cover; background-position: center; transition: filter 1.2s; }
+#her { position: absolute; left: 50%; top: 3vh; height: 110vh; transform: translateX(-50%); user-select: none; -webkit-user-drag: none; transition: filter 1.4s; }
+#grad { position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0,0,0,.45), rgba(0,0,0,0) 9%, rgba(0,0,0,0) 58%, rgba(0,0,0,.72) 86%, rgba(0,0,0,.86)); }
+#vignette { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 1.2s;
+  background: radial-gradient(ellipse at 50% 55%, transparent 45%, rgba(0,0,0,.65) 100%); }
+#topline { position: absolute; left: 18px; top: 14px; font: 12px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .1em; color: var(--dim); }
+#reply { position: absolute; left: 50%; bottom: 112px; transform: translateX(-50%); width: min(1080px, 56vw); font-size: 21px; line-height: 1.5;
+  text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.7); transition: opacity .5s; }
+#reply .who { font: 11px "IBM Plex Mono", monospace; letter-spacing: .14em; color: var(--dim); display: block; margin-bottom: 4px; }
+#reply .act { font-style: italic; color: var(--dim); }
+#reply .speech { color: var(--her); font-weight: 400; }
+#inputWrap { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); width: min(1080px, 56vw); height: 52px;
+  background: var(--glass); border: 1px solid var(--line); border-radius: 26px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+#cmd { position: absolute; inset: 0; width: 100%; padding: 0 24px; border: 0; outline: 0; background: transparent; color: var(--ink); font: 300 19px/52px Inter, sans-serif; }
+#cmd::placeholder { color: rgba(236,232,242,.35); }
+
+/* ---------- her words in her hand (her line during the hold, her call) ---------- */
+#herLine { position: absolute; left: 74vw; top: 15vh; transform: translateX(-50%); font-family: var(--hand), cursive; font-size: calc(46px * var(--hs));
+  color: var(--her); white-space: nowrap; text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.85); opacity: 0; transition: opacity .8s; pointer-events: none; z-index: 5; }
+#herLine.on { opacity: 1; }
+#herLine.write { animation: write 600ms steps(16, end) both; }
+@keyframes write { from { clip-path: inset(-30% 100% -30% -8%); } to { clip-path: inset(-30% -8% -30% -8%); } }
+#callWord { position: absolute; left: 74vw; top: 13vh; transform: translateX(-50%); text-align: center; pointer-events: none; z-index: 6; }
+#callWord .w { font-family: var(--hand), cursive; font-size: calc(92px * var(--hs)); line-height: 1; color: var(--her); white-space: nowrap;
+  text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.85), 0 0 40px rgba(0,0,0,.6); display: inline-block; }
+#callWord .w.write { animation: write 520ms steps(14, end) both; }
+#callWord .pre { display: block; font-family: var(--hand), cursive; font-size: calc(34px * var(--hs)); color: var(--her); opacity: .85; margin-bottom: -6px;
+  text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.85); }
+#dots { position: relative; height: 16px; margin-top: 10px; }
+#dots i { position: absolute; top: 4px; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%; background: var(--her); box-shadow: 0 0 6px color-mix(in srgb, var(--her) 70%, transparent);
+  animation: dot .35s ease-out both; }
+#dots i.last { width: 10px; height: 10px; margin-left: -5px; top: 2.5px; background: #fff; box-shadow: 0 0 10px var(--her); }
+@keyframes dot { from { transform: scale(2.2); opacity: 0; } }
+
+/* ---------- the body speaks (blind: feel lines; any time: a twinge) ---------- */
+#feel { position: absolute; left: 50%; bottom: 200px; transform: translateX(-50%); width: min(900px, 50vw); text-align: center; pointer-events: none; z-index: 5; }
+#feel div { font: italic 300 19px/1.5 Inter, sans-serif; color: color-mix(in srgb, var(--cmd) 35%, #fff); text-shadow: 0 1px 3px #000, 0 0 16px rgba(0,0,0,.8);
+  animation: feel 4.2s ease-out both; }
+#feel div.sharp { color: #ffe2b5; }
+@keyframes feel { 0% { opacity: 0; transform: translateY(6px); } 12% { opacity: .95; transform: none; } 70% { opacity: .85; } 100% { opacity: 0; } }
+
+/* ---------- the dial, grown while a posture is held ---------- */
+#dial { position: absolute; right: 36px; bottom: 58px; z-index: 4; transition: right .5s, bottom .5s; }
+#dialFace { position: relative; width: var(--dial); height: var(--dial); border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--cmd) 12%, var(--bg)), color-mix(in srgb, var(--bg) 94%, #000) 78%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cmd) 30%, transparent), 0 6px 24px rgba(0,0,0,.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  transition: width .5s cubic-bezier(.2,.9,.3,1), height .5s cubic-bezier(.2,.9,.3,1), box-shadow .6s, opacity .9s, filter .9s; }
+#dialFace::before { content: ""; position: absolute; inset: 3px; border-radius: 50%;
+  background: repeating-conic-gradient(from -0.7deg, color-mix(in srgb, var(--cmd) 55%, transparent) 0 1.4deg, transparent 1.4deg 7.5deg);
+  -webkit-mask: radial-gradient(circle, transparent 93%, #000 94%); mask: radial-gradient(circle, transparent 93%, #000 94%); }
+#dialFace svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#dial.holding { bottom: 92px; }
+#dial.holding #dialFace { width: var(--dialBig); height: var(--dialBig); }
+#dial.watched #dialFace { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--her) 55%, transparent), 0 0 30px color-mix(in srgb, var(--her) 22%, transparent), 0 6px 24px rgba(0,0,0,.55); }
+#dial.blind #dialFace { opacity: .07; filter: blur(2px); }
+#dial.blind #beads { opacity: 0; }
+#dial.jolt #dialFace { animation: jolt .28s; }
+@keyframes jolt { 20% { transform: translate(var(--jx), var(--jy)); } 50% { transform: translate(calc(var(--jx) * -.6), calc(var(--jy) * -.4)); } }
+#dialLabel { position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%); width: 260px; text-align: center; line-height: 1.35;
+  font: 11px "IBM Plex Mono", monospace; letter-spacing: .14em; color: color-mix(in srgb, var(--cmd) 60%, #fff); text-shadow: 0 1px 6px #000; text-transform: uppercase; }
+#dialLabel .sub { display: block; font-size: 10px; opacity: .75; }
+#dialLabel .herName { font: calc(24px * var(--hs)) var(--hand), cursive; letter-spacing: 0; text-transform: none; color: var(--her); display: block; margin-bottom: 1px; }
+#clock { display: block; margin-top: 4px; font-size: 10px; letter-spacing: .18em; color: var(--dim); }
+
+
+/* the mannequin's classes (css/61-blocking.css, palette fixed) */
+.alius-mannequin { display: block; overflow: visible; }
+.alius-mq-floor { fill: color-mix(in srgb, var(--cmd) 9%, transparent); stroke: color-mix(in srgb, var(--cmd) 22%, transparent); stroke-width: .8; }
+.alius-mq-out, .alius-mq-fill { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.alius-mq-out { stroke: color-mix(in srgb, var(--cmd) 30%, #fff); }
+.alius-mq-fill { stroke: color-mix(in srgb, var(--cmd) 42%, #0d1020); }
+.alius-mq-out.alius-mq-far { stroke: color-mix(in srgb, var(--cmd) 62%, #1a2034); }
+.alius-mq-fill.alius-mq-far { stroke: color-mix(in srgb, var(--cmd) 26%, #0b0d18); }
+.alius-mq-head { fill: color-mix(in srgb, var(--cmd) 42%, #0d1020); stroke: color-mix(in srgb, var(--cmd) 30%, #fff); stroke-width: 1.6; }
+.alius-mq-face { fill: color-mix(in srgb, var(--cmd) 70%, #fff); }
+.alius-mq-gaze { stroke: color-mix(in srgb, var(--cmd) 50%, transparent); stroke-width: 1.2; stroke-linecap: round; }
+.alius-mq-hint { fill: none; stroke: rgba(210,146,0,.5); stroke-width: 1.6; stroke-linecap: round; }
+.alius-mq-hint.alius-mq-plane { fill: rgba(210,146,0,.05); stroke: rgba(210,146,0,.25); stroke-width: 1; }
+.alius-mq-shadow { fill: rgba(0,0,0,.3); }
+/* hit areas on the joints (invisible), and their hover */
+.hit { fill: transparent; cursor: pointer; pointer-events: all; }
+.hit:hover { fill: color-mix(in srgb, var(--warn) 14%, transparent); }
+.mqHot { fill: none; stroke: var(--warn); stroke-width: 2; pointer-events: none; }
+.alius-mq-ghost-seg { fill: none; stroke: color-mix(in srgb, var(--cmd) 70%, transparent); stroke-width: 1.4; stroke-linecap: round; }
+.alius-mq-hot { fill: none; stroke: var(--warn); stroke-width: 2; }
+.alius-mq-gaze.alius-mq-hot { stroke: var(--warn); stroke-width: 1.8; }
+.alius-mq-item { fill: none; stroke: color-mix(in srgb, var(--warn) 75%, #fff); stroke-width: 2.2; stroke-linecap: round; }
+.alius-mq-item.alius-mq-plane { fill: color-mix(in srgb, var(--warn) 28%, transparent); stroke-width: 1.4; }
+
+/* the points' beads on the rim: the number to press, the drift as amber */
+#beads { position: absolute; inset: 0; pointer-events: none; transition: opacity .6s; }
+.bead { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; pointer-events: auto; cursor: pointer;
+  background: rgba(14, 12, 20, .78); border: 1px solid color-mix(in srgb, var(--cmd) 40%, transparent);
+  font: 11px/24px "IBM Plex Mono", monospace; text-align: center; color: color-mix(in srgb, var(--cmd) 55%, #fff);
+  box-shadow: 0 0 calc(var(--o) * 18px) color-mix(in srgb, var(--warn) calc(var(--o) * 90%), transparent);
+  border-color: color-mix(in srgb, var(--warn) calc(var(--o) * 100%), color-mix(in srgb, var(--cmd) 40%, transparent)); transition: opacity .3s; }
+.bead .nm { position: absolute; top: 50%; transform: translateY(-50%); right: 30px; white-space: nowrap; font-size: 9px; letter-spacing: .12em; color: var(--dim); }
+.bead.held { background: color-mix(in srgb, var(--cmd) 35%, rgba(14,12,20,.8)); color: #fff; }
+.bead.sel { box-shadow: 0 0 0 2px var(--her); }
+.bead.off { opacity: .18; pointer-events: none; }
+
+/* the states of a selected point (the call's scheme B/C) */
+#states { position: absolute; right: calc(var(--dialBig) + 150px); bottom: calc(var(--dialBig) * .42 + 58px); display: none; flex-direction: column; align-items: flex-end; gap: 4px; z-index: 6; }
+#states.on { display: flex; }
+#states .st { padding: 4px 10px; border-radius: 12px; border: 1px solid var(--line); background: rgba(14, 12, 20, .74); backdrop-filter: blur(10px);
+  font: 10px "IBM Plex Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); cursor: pointer; }
+#states .st.cur { color: #fff; border-color: color-mix(in srgb, var(--cmd) 70%, transparent); background: color-mix(in srgb, var(--cmd) 25%, rgba(14,12,20,.8)); }
+#states .hd { font: 9px "IBM Plex Mono", monospace; letter-spacing: .16em; color: color-mix(in srgb, var(--cmd) 60%, #fff); margin-bottom: 2px; }
+
+#stopPill { position: absolute; right: 36px; top: 54px; padding: 7px 14px; border-radius: 18px; font: 11px "IBM Plex Mono", monospace; letter-spacing: .12em;
+  background: rgba(60, 10, 14, .55); border: 1px solid rgba(255, 120, 120, .35); color: #ffd6d6; backdrop-filter: blur(10px); display: none; cursor: pointer; z-index: 7; }
+
+body.reduced #dialFace, body.reduced #dial { transition: none; }
+body.reduced #dial.jolt #dialFace { animation: none; }
+body.reduced #herLine.write, body.reduced #callWord .w.write { animation: none; }
+body.reduced #feel div { animation: feelR 4.2s linear both; }
+@keyframes feelR { 0%, 85% { opacity: .9; } 100% { opacity: 0; } }
+
+/* ---------- prototype only ---------- */
+#panel { position: fixed; top: 14px; left: 14px; width: 330px; max-height: calc(100vh - 28px); overflow: auto; padding: 14px 16px; border-radius: 14px; z-index: 50;
+  background: rgba(10, 10, 14, .88); border: 1px solid var(--line); font: 12px "IBM Plex Mono", monospace; color: #cfcbe0; }
+#panel.hidden { display: none; }
+#panel h4 { margin: 12px 0 6px; font-weight: 400; color: #8d88a6; font-variant: small-caps; letter-spacing: .08em; }
+#panel h4:first-child { margin-top: 0; }
+#panel .row { display: flex; flex-wrap: wrap; gap: 4px; }
+#panel button.opt { padding: 4px 8px; border-radius: 10px; border: 1px solid #3a3650; background: #17151f; color: #cfcbe0; font: 12px "IBM Plex Mono", monospace; cursor: pointer; }
+#panel button.opt.on { background: #3b3360; border-color: #8a7fd0; color: #fff; }
+#panel button.go { border-color: #6a8fd0; }
+#panel label { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+#panel select, #panel input[type=range] { background: #17151f; color: #cfcbe0; border: 1px solid #3a3650; font: 12px "IBM Plex Mono", monospace; }
+#panel select { width: 100%; }
+#panel .note { color: #77738c; line-height: 1.45; margin-top: 8px; }
+#stats { white-space: pre; color: #a9a4c4; line-height: 1.5; }
+#log { position: fixed; left: 50%; top: 12px; transform: translateX(-50%); font: 12px "IBM Plex Mono", monospace; color: #9ad; text-shadow: 0 0 4px #000; z-index: 40; pointer-events: none; transition: opacity .6s; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="backdrop"></div>
+  <img id="her" alt="" draggable="false">
+  <div id="grad"></div>
+  <div id="vignette"></div>
+  <div id="topline">her quarters · day 031 · evening · private · Ann</div>
+  <div id="reply"><span class="who">ANN</span><span class="act">She sits down at her desk and opens a folder.</span> <span class="speech">"You know what to do."</span></div>
+  <div id="inputWrap"><input id="cmd" autocomplete="off" spellcheck="false" placeholder="say something…"></div>
+  <div id="herLine"></div>
+  <div id="callWord"><span class="pre"></span><span class="w"></span><div id="dots"></div></div>
+  <div id="feel"></div>
+  <div id="stopPill">STOP WORD</div>
+  <div id="states"></div>
+  <div id="dial"><div id="dialFace"></div><div id="beads"></div><div id="dialLabel"></div></div>
+</div>
+<div id="log"></div>
+
+<div id="panel">
+  <h4>hold a posture</h4>
+  <select id="presetSel"></select>
+  <div class="row" style="margin-top:6px"><button class="opt go" id="holdBtn">she puts the commander in it (space)</button><button class="opt" id="endBtn">end</button></div>
+  <label>her term <select id="termSel" style="width:auto"><option value="60">60 s (known)</option><option value="120" selected>120 s (known)</option><option value="240">240 s (known)</option><option value="none">until she decides (hidden)</option></select></label>
+  <label><input type="checkbox" id="eyesRule" checked> her rule: eyes down (adds the gaze point)</label>
+  <label><input type="checkbox" id="blind"> blindfold (the dial goes dark; the body speaks)</label>
+  <h4>the posture call</h4>
+  <div class="row"><button class="opt" id="callB">B: she names a posture (C)</button><button class="opt" id="callC">C: she conducts (V)</button></div>
+  <div class="note" id="namedNote"></div>
+  <h4>her world (temptations)</h4>
+  <div class="row"><button class="opt" id="evVisitor">a visitor (50)</button><button class="opt" id="evUndress">she undresses (30)</button><button class="opt" id="evSound">a sound behind (30)</button><button class="opt" id="evLook">"look at me"</button></div>
+  <label><input type="checkbox" id="autoEv" checked> events come on their own (hashed)</label>
+  <h4>her attention</h4>
+  <div class="row" id="attn"></div>
+  <label><input type="checkbox" id="autoAttn" checked> she drifts between them (hashed)</label>
+  <h4>her style</h4>
+  <div class="row" id="styles"></div>
+  <h4>the commander</h4>
+  <label>posture skill <input type="range" id="skill" min="0" max="5" value="0"> <span id="skillV">0</span></label>
+  <label>this posture's mastery <input type="range" id="mastery" min="0" max="5" value="0"> <span id="masteryV">0</span></label>
+  <label>holds earlier today <input type="range" id="fatigue" min="0" max="5" value="0"> <span id="fatigueV">0</span></label>
+  <label><input type="checkbox" id="load"> a load (×1.3)</label>
+  <label><input type="checkbox" id="floor" checked> hard floor (×1.2)</label>
+  <label>tempo of the prototype <input type="range" id="speed" min="0.5" max="3" step="0.25" value="1"> <span id="speedV">1</span>×</label>
+  <h4>display</h4>
+  <label>the dial while holding <select id="bigSel" style="width:auto"><option value="200">as now (200)</option><option value="300" selected>grown (300)</option><option value="380">large (380)</option></select></label>
+  <label><input type="checkbox" id="showNum"> show the numbers (prototype only)</label>
+  <label><input type="checkbox" id="reduced"> reduced motion</label>
+  <label><input type="checkbox" id="sound" checked> sound</label>
+  <h4>this hold</h4>
+  <div id="stats"></div>
+  <div class="note">Keys: 1 torso · 2 hips · 3 knees · 4 arms · 5 head · 6 gaze (hold it through a temptation) · 7 feet · L look at her · S stop word · H hides this panel. A click on a joint (or its bead) corrects it. Small early corrections are quiet; a sharp one near the edge is loud, and if she watches she sees it.</div>
+</div>
+
+<script>
+%%DIALKIT%%
+</script>
+<script>
+const $ = (s) => document.querySelector(s);
+const ASSETS = {
+  bg: '%%ASSET:content/core/art/backdrops/quarters_2.webp%%',
+  sprite: '%%SPRITE%%',
+  cloth: ['%%ASSET:docs/prototypes/assets/ha/cloth1.ogg%%', '%%ASSET:docs/prototypes/assets/ha/cloth2.ogg%%', '%%ASSET:docs/prototypes/assets/ha/cloth3.ogg%%', '%%ASSET:docs/prototypes/assets/ha/cloth4.ogg%%'],
+  creak: ['%%ASSET:docs/prototypes/assets/ha/creak1.ogg%%', '%%ASSET:docs/prototypes/assets/ha/creak2.ogg%%', '%%ASSET:docs/prototypes/assets/ha/creak3.ogg%%'],
+  page: ['%%ASSET:docs/prototypes/assets/ha/page1.ogg%%', '%%ASSET:docs/prototypes/assets/ha/page2.ogg%%', '%%ASSET:docs/prototypes/assets/ha/page3.ogg%%', '%%ASSET:docs/prototypes/assets/ha/page4.ogg%%'],
+  soft: ['%%ASSET:docs/prototypes/assets/ha/soft1.ogg%%', '%%ASSET:docs/prototypes/assets/ha/soft2.ogg%%'],
+  knock: '%%ASSET:docs/prototypes/assets/ha/knock.ogg%%',
+  door: '%%ASSET:docs/prototypes/assets/ha/door_open.ogg%%',
+  doorClose: '%%ASSET:docs/prototypes/assets/ha/door_close1.ogg%%',
+  steps: ['%%ASSET:docs/prototypes/assets/ha/step_w0.ogg%%', '%%ASSET:docs/prototypes/assets/ha/step_w1.ogg%%', '%%ASSET:docs/prototypes/assets/ha/step_w2.ogg%%'],
+  glass: '%%ASSET:docs/prototypes/assets/ha/glass1.ogg%%',
+  wood: ['%%ASSET:docs/prototypes/assets/ha/wood1.ogg%%', '%%ASSET:docs/prototypes/assets/ha/wood2.ogg%%'],
+  breath: '%%ASSET:docs/prototypes/assets/breath-in-out.mp3%%',
+};
+$('#backdrop').style.backgroundImage = `url(${ASSETS.bg})`;
+$('#her').src = ASSETS.sprite;
+const { mannequinSvg, pose, poseOf, BASE_POINTS, PRESETS } = window.DialKit;
+
+// ---------------------------------------------------------------- the engine's numbers (P16b TUNING; plan Tasks 11, 12)
+/** The points, their keys and the state each target drifts toward (blocking.md §7.1 "drifts toward"). */
+const POINTS = ['torso', 'hips', 'knees', 'arms', 'head', 'gaze', 'feet'];
+const KEY_OF = { torso: 1, hips: 2, knees: 3, arms: 4, head: 5, gaze: 6, feet: 7 };
+const DRIFT_TO = {
+  torso: { upright: 'forward', arched: 'upright', level: 'bent', forward: 'bent' },
+  hips: { raised: 'on_heels', on_heels: 'to_floor' },
+  knees: { together: 'apart', apart: 'together' },
+  arms: { raised: 'out_sideways', behind_head: 'at_sides', out_sideways: 'at_sides', forward_palms_up: 'on_thighs_up', behind_back: 'at_sides',
+    holding: 'at_sides', clasped_front: 'at_sides', on_thighs_up: 'on_thighs_down', lamp: 'at_sides', crossed: 'at_sides' },
+  head: { up: 'bowed', back: 'up', bowed: 'to_floor' },
+  gaze: { down: 'straight', closed: 'straight', straight: 'at_her' },
+  feet: { on_toes: 'flat' },
+};
+/** Drift per 10 s at skill 0 (spec TUNING: arms raised 12, behind head 9, out 10, torso 4, hips 5, knees 3, head 4, feet on toes 10); the gaze drifts only by temptation. */
+const RATE = { torso: 4, hips: 5, knees: 3, head: 4, gaze: 0, feet: 10, arms: 4 };
+const ARM_RATE = { raised: 12, behind_head: 9, out_sideways: 10, forward_palms_up: 8, holding: 7, lamp: 9, behind_back: 3, clasped_front: 3 };
+const SLIP_AT = 100;
+/** How a correction sounds: its loudness is (drift / 100)^1.4 (small early corrections are quiet). */
+const LOUD_EXP = 1.4;
+const CORRECT_STEP = 38;   // one click takes this much drift back
+const SEEN = { watching: 0.42, glancing: 0.72, busy: 2 }; // a correction louder than this, under her eyes, is fidgeting she sees
+const FICTION_PER_S = 20;  // a beat of 1.5 s stands for 30 s of fiction: 20 s a second, × (1 + 0.25 per level)
+const FEEL = {
+  torso: ['the back is sagging', 'the back gives; the chest sinks forward'],
+  hips: ['the hips are sinking toward the heels', 'the weight slides back onto the heels'],
+  knees: ['the knees are sliding', 'the knees have moved'],
+  arms: ['the arms are going numb', 'the arms are dropping; the shoulders burn'],
+  head: ['the head is getting heavy', 'the head is sinking'],
+  gaze: ['the eyes want to lift', 'the eyes are rising'],
+  feet: ['the heels are coming down', 'the heels are taking the weight'],
+};
+const STATE_WORD = (s) => s.replaceAll('_', ' ');
+
+// ---------------------------------------------------------------- her voice (drafts, AUTHOR TO WRITE; neutral when a style lacks a line)
+const STYLES = ['neutral', 'ritual', 'drill', 'cold', 'playful', 'cruel', 'regal'];
+const LINES = {
+  neutral: { start: ['Like this. Hold it.', 'Stay like that.'], watch: ['I\'m watching.', 'Mm.'], fidget: ['Stop fidgeting.', 'Still.'], slip: ['Fix it.', 'That\'s not what I asked for.'],
+    gaze: ['Eyes down.', 'Did I say you could look?'], release: ['Enough. Up.', 'Good. You can stop.'], clean: ['Better than last time.'], prefix: 'Now —', taken: ['Good.'], wrong: ['No.'], late: ['Too slow.'], look: ['Look at me.'], down: ['Down.'] },
+  ritual: { start: ['Position.', 'Assume it. Properly.'], watch: ['I see every line of you.'], fidget: ['A correction is not a twitch.'], slip: ['Again. From the beginning.'],
+    gaze: ['Eyes.'], release: ['Released.'], clean: ['Correct.'], prefix: 'Position:', taken: ['Correct.'], wrong: ['That is not the form.'], late: ['Late.'], look: ['Look at me.'], down: ['Lower them.'] },
+  drill: { start: ['Hold. I\'m timing it.', 'On my clock.'], watch: ['Thirty more.', 'Don\'t you dare.'], fidget: ['I saw that.'], slip: ['Reset. Clock starts again.'],
+    gaze: ['Eyes on the floor, recruit.'], release: ['Time. Up.'], clean: ['Norm met.'], prefix: 'On my word —', taken: ['Next.'], wrong: ['Wrong. Again.'], late: ['Too slow. Again.'], look: ['Look at me.'], down: ['Floor.'] },
+  cold: { start: ['There.'], watch: [''], fidget: [''], slip: ['Hm.'], gaze: [''], release: ['That will do.'], clean: [''], prefix: '', taken: [''], wrong: ['No.'], late: [''], look: ['Look at me.'], down: [''] },
+  playful: { start: ['Let\'s see how long you last.', 'Pretty. Now don\'t move.'], watch: ['I can see you wobbling.'], fidget: ['Ooh, a twitch.'], slip: ['Caught you.'],
+    gaze: ['Peeking?'], release: ['Alright, alright. Up.'], clean: ['Look at you.'], prefix: 'Simon says —', taken: ['Cute.'], wrong: ['Nope!'], late: ['Sloooow.'], look: ['Look at me.'], down: ['Gotcha. Down.'] },
+  cruel: { start: ['Hold it until I get bored.'], watch: ['Shaking already?'], fidget: ['Pathetic.'], slip: ['I knew you couldn\'t.'], gaze: ['Who said you get to look?'],
+    release: ['Get up. Slowly.'], clean: [''], prefix: 'Now —', taken: [''], wrong: ['Wrong.'], late: ['Late. Again.'], look: ['Look at me.'], down: ['I didn\'t mean it.'] },
+  regal: { start: ['There. Stay.'], watch: [''], fidget: ['Be still. You\'re in my way like that.'], slip: ['Did that look like what I wanted?'], gaze: ['You don\'t look at me unless I let you.'],
+    release: ['You may rise.'], clean: ['Acceptable.'], prefix: 'Attend —', taken: ['Mm.'], wrong: ['No.'], late: ['I don\'t wait.'], look: ['Look at me.'], down: ['Enough looking.'] },
+};
+/** Whether "look at me" is a trap (looking is the fault) by style: a hashed share. */
+const TRAP = { neutral: 0.2, ritual: 0, drill: 0.1, cold: 0.3, playful: 0.6, cruel: 0.6, regal: 0.2 };
+/** Her named postures (stand-ins for P16's names on her presets). */
+const NAMED = [['kneel_upright', 'Ready'], ['kneel_rest', 'Rest'], ['kneel_hands_behind_head', 'Display'], ['kneel_present', 'Offer'], ['bow', 'Down'], ['attention', 'Up'], ['arms_out', 'Cross']];
+
+// ---------------------------------------------------------------- hashing (no rng in the game: fnv1a of a stable key)
+function fnv1a(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return h >>> 0; }
+const hash01 = (k) => fnv1a(k) / 4294967296;
+const pickLine = (kind, k) => { const l = (LINES[S.style][kind] ?? [])[0] !== undefined ? LINES[S.style][kind] : LINES.neutral[kind]; const list = l.filter(Boolean).length ? l : (S.style === 'cold' ? [''] : LINES.neutral[kind]); return list[fnv1a(`${S.run?.id ?? 0}|${k}|${kind}`) % list.length]; };
+
+// ---------------------------------------------------------------- state
+const S = {
+  style: 'neutral', attention: 'busy', preset: 'kneel_hands_behind_head', run: null, call: null, sel: null,
+  sound: true, reduced: false, showNum: false, held: { gaze: false }, look: null, stance: null,
+};
+const presetOf = (id) => PRESETS.find((p) => p.id === id);
+const nameOf = (id) => NAMED.find((n) => n[0] === id)?.[1];
+
+// ---------------------------------------------------------------- sound (the house's sample layer, minimal)
+let ctx = null; const buffers = new Map();
+function audio() { if (!ctx) ctx = new AudioContext(); return ctx; }
+async function buf(url) { if (!buffers.has(url)) buffers.set(url, fetch(url).then((r) => r.arrayBuffer()).then((a) => audio().decodeAudioData(a))); return buffers.get(url); }
+async function sfx(url, gain = 0.3, pan = 0, rate = 1) {
+  if (!S.sound) return; const c = audio(); const b = await buf(url); const src = c.createBufferSource(); src.buffer = b; src.playbackRate.value = rate;
+  const g = c.createGain(); g.gain.value = gain; const p = c.createStereoPanner(); p.pan.value = pan; src.connect(g).connect(p).connect(c.destination); src.start();
+}
+const anyOf = (list, k) => list[fnv1a(k) % list.length];
+
+// ---------------------------------------------------------------- drawing the dial
+function bigSize() { return Number($('#bigSel').value); }
+function targetPose() {
+  const p = presetOf(S.preset); const points = { ...(BASE_POINTS[p.base] ?? {}), ...p.points };
+  if (S.run?.eyes && points.gaze === undefined) points.gaze = 'down';
+  if (S.run?.eyes) points.gaze = 'down';
+  return { ...p, points };
+}
+/** The points this hold judges: the ones the preset fixes, the gaze if her rule says so (and not under a blindfold). */
+function activePoints() {
+  const p = presetOf(S.preset); const pts = Object.keys(p.points).filter((k) => POINTS.includes(k) && driftOf(k, p.points[k]) !== null);
+  if (S.run?.eyes && !S.run.blind && !pts.includes('gaze')) pts.push('gaze');
+  if (S.run?.blind) return pts.filter((k) => k !== 'gaze');
+  return pts;
+}
+function driftOf(point, state) { return DRIFT_TO[point]?.[state] ?? null; }
+/** The body between the target and where each point drifts: the skeletons of the target and of each point's drifted state, blended. */
+function blendedBody(target, offsets) {
+  const A = pose(target);
+  const out = JSON.parse(JSON.stringify(A));
+  for (const [pt, o] of Object.entries(offsets)) {
+    const to = driftOf(pt, target.points[pt]); if (!to || o <= 0) continue;
+    const B = pose({ ...target, points: { ...target.points, [pt]: to } });
+    const t = Math.min(1, o / SLIP_AT) * 0.9;
+    const walk = (a, b, o2) => { for (const k of Object.keys(o2)) { if (Array.isArray(o2[k])) { for (let i = 0; i < 3; i++) o2[k][i] += (b[k][i] - a[k][i]) * t; } else if (o2[k] && typeof o2[k] === 'object') walk(a[k], b[k], o2[k]); } };
+    if (A.gazeDir && B.gazeDir) walk(A, B, out); else walk({ ...A, gazeDir: undefined }, { ...B, gazeDir: undefined }, out);
+  }
+  for (const k of ['headDir', 'faceDir', 'gazeDir']) if (out[k]) { const l = Math.hypot(...out[k]); out[k] = out[k].map((v) => v / l); }
+  return out;
+}
+const JOINT_OF = { torso: 'shoulders', arms: 'elbows', hips: 'hips', knees: 'knees', head: 'head', gaze: 'gaze' };
+/** The anchor of each point on the drawn figure, read from the SVG's own segments (the dial's coordinates). */
+function anchors(svg) {
+  const seg = (s, side, end = 'a') => { const el = svg.querySelector(`.alius-mq-body path.alius-mq-fill[data-seg="${s}"]${side ? `[data-side="${side}"]` : ''}`); if (!el) return null;
+    const m = el.getAttribute('d').match(/M([\d.-]+) ([\d.-]+)L([\d.-]+) ([\d.-]+)/); return m ? (end === 'a' ? [+m[1], +m[2]] : [+m[3], +m[4]]) : null; };
+  const head = svg.querySelector('.alius-mq-head'); const gz = svg.querySelector('.alius-mq-gaze');
+  return {
+    torso: [seg('torso', null, 'b')], arms: [seg('forearm', 'L'), seg('forearm', 'R')], hips: [seg('thigh', 'L'), seg('thigh', 'R')], knees: [seg('shin', 'L'), seg('shin', 'R')],
+    head: head ? [[+head.getAttribute('cx'), +head.getAttribute('cy')]] : [], gaze: gz ? [[(+gz.getAttribute('x1') + +gz.getAttribute('x2')) / 2, (+gz.getAttribute('y1') + +gz.getAttribute('y2')) / 2]] : [],
+    feet: [seg('foot', 'L'), seg('foot', 'R')],
+  };
+}
+function drawDial() {
+  const r = S.run; const face = $('#dialFace');
+  let svg;
+  if (!r) {
+    svg = mannequinSvg(S.stance ?? poseOf('standing'));
+  } else {
+    const target = targetPose();
+    const hot = activePoints().filter((k) => r.o[k] > 22 && JOINT_OF[k]).map((k) => JOINT_OF[k]);
+    svg = mannequinSvg(target, { body: blendedBody(target, r.o), target, hot });
+    const an = anchors(svg);
+    // the feet have no joint of their own: a ring at the ankles while they drift
+    if (activePoints().includes('feet') && r.o.feet > 22) for (const a of an.feet) if (a) svg.append(circle(a, 4.5, 'mqHot'));
+    for (const k of activePoints()) for (const a of an[k] ?? []) if (a) { const c = circle(a, 15, 'hit'); c.dataset.point = k; c.addEventListener('pointerdown', (e) => { e.preventDefault(); press(k); }); svg.append(c); }
+  }
+  face.replaceChildren(svg);
+  drawBeads(); drawLabel();
+}
+function circle([x, y], r, cls) { const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', r); c.setAttribute('class', cls); return c; }
+function drawBeads() {
+  const host = $('#beads'); host.replaceChildren();
+  if (!S.run && !S.call) return;
+  const size = S.run || S.call ? bigSize() : 200; const R = size / 2 + 20; const act = S.call ? POINTS : activePoints();
+  [...POINTS].reverse().forEach((k, ri) => { const i = ri;
+    const ang = (122 + i * 19) * Math.PI / 180; // an arc down the left side of the rim: 1 (torso) at the top-left … 7 (feet) at the bottom-left, as the body
+    const b = document.createElement('div'); b.className = 'bead'; b.textContent = KEY_OF[k];
+    const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = k.toUpperCase(); b.append(nm);
+    b.style.left = `${size / 2 + Math.cos(ang) * R}px`; b.style.top = `${size / 2 + Math.sin(ang) * R}px`;
+    b.style.setProperty('--o', S.run ? Math.min(1, (S.run.o[k] ?? 0) / SLIP_AT) : 0);
+    if (!act.includes(k)) b.classList.add('off');
+    if (S.held[k]) b.classList.add('held');
+    if (S.sel === k) b.classList.add('sel');
+    b.addEventListener('pointerdown', (e) => { e.preventDefault(); press(k); });
+    host.append(b);
+  });
+}
+function drawLabel() {
+  const r = S.run; const p = presetOf(S.preset); const nm = r ? nameOf(S.preset) : null;
+  const eyes = r?.eyes && !r.blind ? '<span class="sub">EYES DOWN</span>' : '';
+  const clk = r ? `<span id="clock">${fictionClock(r.fiction)}${r.hidden ? '' : ` · ${Math.max(0, Math.ceil(r.term - r.t))} s left`}</span>` : '';
+  $('#dialLabel').innerHTML = r ? `${nm ? `<span class="herName">${nm}</span>` : ''}${STATE_WORD(p.id)}${eyes}${clk}` : (S.stance ? STATE_WORD(S.stance.id ?? S.stance.base) : 'standing');
+}
+function fictionClock(sec) { const m = Math.floor(sec / 60); const h = Math.floor(m / 60); return h ? `${h} h ${String(m % 60).padStart(2, '0')} min` : `${m} min`; }
+
+// ---------------------------------------------------------------- the hold
+function startHold() {
+  endHold(null, true);
+  const termSel = $('#termSel').value;
+  S.run = {
+    id: Date.now() % 100000, t: 0, fiction: 0, term: termSel === 'none' ? 60 + hash01(`term|${Date.now()}`) * 180 : Number(termSel), hidden: termSel === 'none',
+    o: {}, eyes: $('#eyesRule').checked, blind: $('#blind').checked, corrections: 0, loud: 0, fidgets: 0, slips: 0, gazeSlips: 0, impulses: [], nextEv: 14, nextAttn: 0, feelSaid: {},
+  };
+  for (const k of POINTS) S.run.o[k] = 0;
+  S.stance = null;
+  $('#dial').classList.add('holding'); $('#dial').classList.toggle('blind', S.run.blind); $('#stopPill').style.display = 'block';
+  document.documentElement.style.setProperty('--dialBig', `${bigSize()}px`);
+  say(pickLine('start', 'start'));
+  sfx(anyOf(ASSETS.cloth, `take|${S.run.id}`), 0.35);
+  drawDial();
+}
+function endHold(reason, silent) {
+  const r = S.run; if (!r) return;
+  S.run = null; S.held = { gaze: false };
+  $('#dial').classList.remove('holding', 'watched', 'blind'); $('#stopPill').style.display = 'none'; $('#vignette').style.opacity = 0;
+  if (!silent) {
+    if (reason === 'released') say(r.slips === 0 && r.fidgets === 0 ? (pickLine('clean', 'clean') || pickLine('release', 'rel')) : pickLine('release', 'rel'));
+    log(`${reason}: ${fictionClock(r.fiction)} of fiction · ${r.corrections} corrections (${r.loud} loud) · ${r.fidgets} seen · ${r.slips} slips · ${r.gazeSlips} looked up`);
+    S.stance = targetPose();
+  }
+  drawDial(); stats();
+}
+/** The skill terms of the drift: × fatigue, × load, × floor, × (1 − 0.08 per skill level), × (1 − 0.05 per mastery level). */
+function mult() {
+  const f = 1 + 0.1 * Number($('#fatigue').value); const l = $('#load').checked ? 1.3 : 1; const fl = $('#floor').checked ? 1.2 : 1;
+  return f * l * fl * (1 - 0.08 * Number($('#skill').value)) * (1 - 0.05 * Number($('#mastery').value));
+}
+function rateOf(k) {
+  if (k === 'gaze') return 0;
+  const p = presetOf(S.preset); const base = k === 'arms' ? (ARM_RATE[p.points.arms] ?? RATE.arms) : RATE[k];
+  // a hold tires the body as it goes: +40 % over the first two minutes
+  const within = 1 + Math.min(0.4, (S.run.t / 120) * 0.4);
+  // past half way a drift feeds itself (the muscle gives faster as it goes)
+  const self = 1 + Math.max(0, S.run.o[k] - 50) / 100;
+  return (base / 10) * mult() * within * self;
+}
+function step(dt) {
+  const r = S.run; if (!r) return;
+  r.t += dt; r.fiction += dt * FICTION_PER_S * (1 + 0.25 * Number($('#skill').value));
+  for (const k of activePoints()) {
+    r.o[k] = Math.min(SLIP_AT, r.o[k] + rateOf(k) * dt);
+    if (r.blind) feelLines(k);
+    if (r.o[k] >= SLIP_AT) slip(k);
+  }
+  // the gaze: the impulses push it up unless 6 is held
+  if (activePoints().includes('gaze')) {
+    for (const im of r.impulses) {
+      const live = im.left > 0; if (!live) continue;
+      im.left -= dt;
+      if (!S.held.gaze) r.o.gaze = Math.min(SLIP_AT, r.o.gaze + (im.size / im.len) * dt * 1.6);
+    }
+    r.impulses = r.impulses.filter((im) => im.left > 0);
+    if (r.o.gaze >= SLIP_AT) slip('gaze');
+  }
+  // her attention and her world (hashed timelines)
+  if ($('#autoAttn').checked && r.t >= r.nextAttn) {
+    const pick = hash01(`attn|${r.id}|${Math.floor(r.t)}`); const next = pick < 0.45 ? 'busy' : pick < 0.75 ? 'glancing' : 'watching';
+    setAttention(next); r.nextAttn = r.t + 6 + hash01(`attnLen|${r.id}|${Math.floor(r.t)}`) * 9;
+  }
+  if (S.attention === 'busy' && hash01(`page|${r.id}|${Math.floor(r.t * 2)}`) < 0.06 * dt * 2) sfx(anyOf(ASSETS.page, `p|${r.t}`), 0.12, 0.35);
+  if ($('#autoEv').checked && r.t >= r.nextEv) {
+    const k = hash01(`ev|${r.id}|${Math.floor(r.t)}`); event(k < 0.3 ? 'visitor' : k < 0.55 ? 'undress' : k < 0.85 ? 'sound' : 'look');
+    r.nextEv = r.t + 22 + hash01(`evGap|${r.id}|${Math.floor(r.t)}`) * 24;
+  }
+  // "look at me": the window to obey (or not to)
+  if (S.look) {
+    S.look.left -= dt;
+    if (S.look.left <= 0) {
+      if (S.look.phase === 'asked') { if (S.look.trap) { say(pickLine('taken', 'trap ok') || '…'); } else { slip('gaze', 'not looking'); } S.look = null; }
+      else if (S.look.phase === 'up') { slip('gaze', 'kept looking'); S.look = null; }
+    }
+  }
+  if (r.t >= r.term) endHold('released');
+  else { drawDial(); stats(); }
+}
+function feelLines(k) {
+  const r = S.run; const o = r.o[k];
+  for (const [at, i] of [[40, 0], [72, 1]]) { const key = `${k}|${at}`; if (o >= at && !r.feelSaid[key]) { r.feelSaid[key] = true; feel(FEEL[k][i], at > 60); } }
+  if (o < 30) { delete r.feelSaid[`${k}|40`]; delete r.feelSaid[`${k}|72`]; }
+}
+/** A correction: a click or a key. Its loudness grows with the drift it takes back; under her eyes a loud one is seen. */
+function press(k) {
+  if (S.call) { callPress(k); return; }
+  const r = S.run; if (!r || !activePoints().includes(k)) return;
+  if (k === 'gaze' && r.impulses.length) { S.held.gaze = true; drawBeads(); return; } // through a temptation, 6 is held, not tapped
+  if (S.look?.phase === 'up' && k === 'gaze') { S.look = null; r.o.gaze = 0; say(pickLine('taken', 'down ok') || ''); sfx(anyOf(ASSETS.soft, `down|${r.t}`), 0.12); drawDial(); return; }
+  const o = r.o[k]; if (o < 2) return;
+  const loud = Math.pow(o / SLIP_AT, LOUD_EXP);
+  r.o[k] = Math.max(0, o - CORRECT_STEP); r.corrections++;
+  if (loud > 0.45) r.loud++;
+  sfx(anyOf(ASSETS.cloth, `c|${k}|${r.corrections}`), 0.05 + loud * 0.5, 0, 1.15 - loud * 0.3);
+  if (loud > 0.55) sfx(anyOf(ASSETS.creak, `cr|${r.corrections}`), loud * 0.35);
+  if (!S.reduced && loud > 0.3) jolt(loud);
+  if (loud > SEEN[S.attention]) { r.fidgets++; say(pickLine('fidget', `f${r.fidgets}`)); if (r.fidgets % 3 === 0) slip(k, 'fidgeting'); }
+  drawDial();
+}
+function release(k) { if (k === 'gaze' && S.held.gaze) { S.held.gaze = false; drawBeads(); } }
+function slip(k, why) {
+  const r = S.run; if (!r) return;
+  r.slips++; if (k === 'gaze') r.gazeSlips++;
+  say(k === 'gaze' ? pickLine('gaze', `g${r.gazeSlips}`) : pickLine('slip', `s${r.slips}`));
+  sfx(anyOf(ASSETS.creak, `slip|${r.slips}`), 0.45); if (!S.reduced) jolt(0.9);
+  r.o[k] = 35; // she puts it back (her correction): the drift starts again from there
+  log(`slip: ${k}${why ? ` (${why})` : ''}`);
+}
+function jolt(a) { const d = $('#dial'); d.style.setProperty('--jx', `${(a * 5).toFixed(1)}px`); d.style.setProperty('--jy', `${(a * 3).toFixed(1)}px`); d.classList.remove('jolt'); void d.offsetWidth; d.classList.add('jolt'); }
+
+// ---------------------------------------------------------------- her world: temptations of the gaze, her attention
+function event(kind) {
+  const r = S.run; if (!r) return;
+  const im = (size, len) => r.impulses.push({ size, len, left: len });
+  if (kind === 'visitor') { sfx(ASSETS.knock, 0.4, -0.6); setTimeout(() => sfx(ASSETS.door, 0.35, -0.6), 900); setTimeout(() => { sfx(anyOf(ASSETS.steps, 'st'), 0.3, -0.4); reply('Someone opens the door, stops halfway in.', '"Oh — sorry. I\'ll come back."'); }, 1400); setTimeout(() => sfx(ASSETS.doorClose, 0.3, -0.6), 4600); im(50, 4.5); }
+  if (kind === 'undress') { sfx(ASSETS.cloth[2], 0.35, 0.3); reply('She pulls her shirt over her head and drops it on the desk.', ''); im(30, 3.5); }
+  if (kind === 'sound') { sfx(ASSETS.glass, 0.4, -0.8); reply('Something falls behind the commander and rolls across the floor.', ''); im(30, 3); }
+  if (kind === 'look') {
+    const trap = hash01(`trap|${r.id}|${Math.floor(r.t)}`) < (TRAP[S.style] ?? 0.2);
+    S.look = { trap, phase: 'asked', left: 2.6 }; say(pickLine('look', 'look'));
+  }
+  log(`temptation: ${kind}${kind === 'look' ? '' : ' — hold 6'}`);
+}
+function lookUp() {
+  const r = S.run; if (!r || !S.look) { if (r && activePoints().includes('gaze')) { slip('gaze', 'looked up unbidden'); } return; }
+  if (S.look.phase !== 'asked') return;
+  if (S.look.trap) { slip('gaze', 'a trap'); say(pickLine('down', 'trap')); S.look = null; return; }
+  r.o.gaze = 90; S.look = { phase: 'up', left: 3.5 }; sfx(anyOf(ASSETS.soft, 'up'), 0.12);
+  setTimeout(() => { if (S.look?.phase === 'up') say(pickLine('down', 'down')); }, 1600);
+}
+function setAttention(a) {
+  if (S.attention === a) return; S.attention = a;
+  const lum = { busy: 0.78, glancing: 0.9, watching: 1.03 }[a];
+  $('#her').style.filter = `brightness(${lum})`; $('#vignette').style.opacity = a === 'watching' ? 0.55 : 0;
+  $('#dial').classList.toggle('watched', a === 'watching' && !!S.run);
+  if (a === 'watching') { sfx(anyOf(ASSETS.wood, `w|${S.run?.t}`), 0.18, 0.3); if (hash01(`wl|${S.run?.id}|${Math.floor(S.run?.t ?? 0)}`) < 0.4) say(pickLine('watch', `w${Math.floor(S.run?.t ?? 0)}`)); }
+  [...document.querySelectorAll('#attn .opt')].forEach((b) => b.classList.toggle('on', b.dataset.v === a));
+}
+
+// ---------------------------------------------------------------- the posture call: B (assemble) and C (she conducts)
+/** States offered for a point: the ones her named postures use, plus where the body is now (fewer than the full vocabulary). */
+function statesFor(k) {
+  const set = new Set(); for (const [id] of NAMED) { const p = presetOf(id); const v = { ...(BASE_POINTS[p.base] ?? {}), ...p.points }[k]; if (v) set.add(v); }
+  const now = S.call.body.points[k]; if (now) set.add(now); return [...set];
+}
+function startCall(kind, seriesLeft = 0) {
+  const prevBody = S.run ? targetPose() : (S.stance ?? poseOf('standing'));
+  const idx = fnv1a(`call|${Date.now()}`) % NAMED.length; const [id, word] = NAMED[idx];
+  const trap = kind === 'C' && hash01(`ctrap|${Date.now()}`) < 0.3;
+  const windowMs = { ritual: 4000, drill: 3000 }[S.style] ?? 5000;
+  const want = presetOf(id);
+  S.call = { kind, id, word, want: { ...(BASE_POINTS[want.base] ?? {}), ...want.points }, base: want.base, body: { base: want.base, points: { ...(prevBody.points ?? {}) } }, trap, until: performance.now() + windowMs, windowMs, seriesLeft };
+  if (S.run) S.run.paused = true;
+  $('#callWord .pre').textContent = trap ? '' : (LINES[S.style].prefix ?? LINES.neutral.prefix);
+  const w = $('#callWord .w'); w.textContent = word; w.classList.remove('write'); void w.offsetWidth; if (!S.reduced) w.classList.add('write');
+  $('#dial').classList.add('holding'); document.documentElement.style.setProperty('--dialBig', `${bigSize()}px`);
+  scheduleTaps(windowMs); S.sel = null; drawStates(); drawCallDial();
+  log(kind === 'B' ? 'B: set each point (its key cycles its states), Enter presents' : `C: ${trap ? 'no prefix — a trap: do not move' : 'her prefix — assemble'} · ${seriesLeft} more`);
+}
+function scheduleTaps(ms) { const dots = $('#dots'); dots.replaceChildren(); const n = 5; for (let i = 0; i < n; i++) setTimeout(() => { if (!S.call) return; const d = document.createElement('i'); if (i === n - 1) d.className = 'last'; d.style.left = `${(i - (n - 1) / 2) * 16}px`; dots.append(d); sfx(anyOf(ASSETS.wood, `tap${i}`), 0.14 + i * 0.03, 0.4); }, (ms / n) * (i + 0.5)); }
+function callPress(k) {
+  const c = S.call; if (!c) return;
+  if (c.trap) { endCall('moved', 'a trap: no prefix'); return; }
+  const list = statesFor(k); if (!list.length) return;
+  if (S.sel !== k) { S.sel = k; } else { const i = list.indexOf(c.body.points[k]); c.body.points[k] = list[(i + 1) % list.length]; sfx(anyOf(ASSETS.cloth, `cc|${k}|${i}`), 0.12); }
+  drawStates(); drawCallDial();
+}
+function pickState(k, v) { const c = S.call; if (!c) return; if (c.trap) { endCall('moved', 'a trap'); return; } c.body.points[k] = v; S.sel = k; drawStates(); drawCallDial(); }
+function drawStates() {
+  const host = $('#states'); host.replaceChildren(); const c = S.call; if (!c || !S.sel) { host.classList.remove('on'); return; }
+  host.classList.add('on'); const hd = document.createElement('div'); hd.className = 'hd'; hd.textContent = `${KEY_OF[S.sel]} · ${S.sel.toUpperCase()}`; host.append(hd);
+  for (const v of statesFor(S.sel)) { const b = document.createElement('div'); b.className = 'st' + (c.body.points[S.sel] === v ? ' cur' : ''); b.textContent = STATE_WORD(v); b.addEventListener('pointerdown', (e) => { e.preventDefault(); pickState(S.sel, v); }); host.append(b); }
+}
+function drawCallDial() { const c = S.call; const svg = mannequinSvg({ base: c.base, points: c.body.points }); const face = $('#dialFace'); face.replaceChildren(svg);
+  const an = anchors(svg); for (const k of POINTS) for (const a of an[k] ?? []) if (a) { const h = circle(a, 15, 'hit'); h.addEventListener('pointerdown', (e) => { e.preventDefault(); callPress(k); }); svg.append(h); }
+  drawBeads(); $('#dialLabel').innerHTML = `<span class="herName">${c.word}</span>${c.trap ? '' : 'assemble'}`; }
+function present() {
+  const c = S.call; if (!c) return; if (c.trap) { endCall('moved', 'a trap'); return; }
+  const late = performance.now() > c.until; const right = Object.entries(c.want).every(([k, v]) => !POINTS.includes(k) || c.body.points[k] === v || k === 'gaze');
+  endCall(right && !late ? 'taken' : late ? 'late' : 'wrong');
+}
+function endCall(outcome, why) {
+  const c = S.call; if (!c) return; S.call = null; S.sel = null; drawStates();
+  $('#callWord .w').textContent = ''; $('#callWord .pre').textContent = ''; $('#dots').replaceChildren();
+  const line = outcome === 'taken' ? pickLine('taken', 'tk') : outcome === 'late' ? pickLine('late', 'lt') : outcome === 'trap' ? (pickLine('taken', 'tr') || '…') : pickLine('wrong', 'wr');
+  say(line || '…'); log(`call ${c.kind}: ${outcome}${why ? ` (${why})` : ''}`);
+  if (outcome === 'taken') { S.preset = c.id; $('#presetSel').value = c.id; if (S.run) { S.run.paused = false; for (const k of POINTS) S.run.o[k] = 0; } }
+  else if (S.run) { S.run.paused = false; S.run.slips++; }
+  if (!S.run) { S.stance = { base: c.base, points: c.body.points, id: outcome === 'taken' ? c.id : null }; $('#dial').classList.remove('holding'); }
+  drawDial();
+  if (c.kind === 'C' && c.seriesLeft > 0) setTimeout(() => startCall('C', c.seriesLeft - 1), 2600 + hash01(`gap|${c.seriesLeft}`) * 2400);
+}
+function callTick() {
+  const c = S.call; if (!c) return;
+  if (performance.now() > c.until + 600) { if (c.trap) endCall('trap', 'held still: right'); else endCall('late'); }
+}
+
+// ---------------------------------------------------------------- her line, the reply, the body's words
+let lineT = null;
+function say(text) { if (!text) return; const el = $('#herLine'); el.textContent = text; el.classList.remove('write', 'on'); void el.offsetWidth; el.classList.add('on'); if (!S.reduced) el.classList.add('write'); clearTimeout(lineT); lineT = setTimeout(() => el.classList.remove('on'), 3600); }
+function reply(act, speech) { $('#reply').innerHTML = `<span class="who">${speech ? 'VISITOR' : 'ANN'}</span><span class="act">${act}</span> <span class="speech">${speech}</span>`; }
+function feel(text, sharp) { const d = document.createElement('div'); d.textContent = text; if (sharp) d.className = 'sharp'; $('#feel').replaceChildren(d); }
+let logT = null;
+function log(t) { const l = $('#log'); l.textContent = t; l.style.opacity = 1; clearTimeout(logT); logT = setTimeout(() => { l.style.opacity = 0; }, 3000); }
+function stats() {
+  const r = S.run; if (!r) { $('#stats').textContent = '—'; return; }
+  const rows = [`fiction ${fictionClock(r.fiction)} · real ${r.t.toFixed(0)} s${r.hidden ? ' (end hidden)' : ` / ${r.term}`}`, `her eyes: ${S.attention}`, `corrections ${r.corrections} (${r.loud} loud) · seen ${r.fidgets} · slips ${r.slips}`];
+  if (S.showNum) for (const k of activePoints()) rows.push(`${k.padEnd(6)} ${String(Math.round(r.o[k])).padStart(3)}  ${(rateOf(k) * 10).toFixed(1)}/10s`);
+  $('#stats').textContent = rows.join('\n');
+}
+
+// ---------------------------------------------------------------- the panel and keys
+function opts(host, list, cur, onPick) { host.replaceChildren(...list.map((v) => { const b = document.createElement('button'); b.className = 'opt' + (v === cur ? ' on' : ''); b.dataset.v = v; b.textContent = v; b.onclick = () => { onPick(v); [...host.children].forEach((x) => x.classList.toggle('on', x === b)); }; return b; })); }
+for (const p of PRESETS) { const o = document.createElement('option'); o.value = p.id; o.textContent = `${STATE_WORD(p.id)}  (${p.base}${nameOf(p.id) ? ` · "${nameOf(p.id)}"` : ''})`; $('#presetSel').append(o); }
+$('#presetSel').value = S.preset; $('#presetSel').onchange = (e) => { S.preset = e.target.value; if (S.run) startHold(); else { S.stance = null; drawDial(); } };
+opts($('#styles'), STYLES, S.style, (v) => { S.style = v; });
+opts($('#attn'), ['busy', 'glancing', 'watching'], S.attention, (v) => setAttention(v));
+$('#namedNote').textContent = `her names: ${NAMED.map(([id, w]) => `${w} = ${STATE_WORD(id)}`).join(' · ')}`;
+$('#holdBtn').onclick = startHold; $('#endBtn').onclick = () => endHold('ended');
+$('#callB').onclick = () => startCall('B'); $('#callC').onclick = () => startCall('C', 4);
+$('#evVisitor').onclick = () => event('visitor'); $('#evUndress').onclick = () => event('undress'); $('#evSound').onclick = () => event('sound'); $('#evLook').onclick = () => event('look');
+$('#stopPill').onclick = () => endHold('stop word');
+$('#blind').onchange = (e) => { if (S.run) { S.run.blind = e.target.checked; $('#dial').classList.toggle('blind', S.run.blind); drawDial(); } };
+$('#eyesRule').onchange = (e) => { if (S.run) { S.run.eyes = e.target.checked; drawDial(); } };
+for (const id of ['skill', 'mastery', 'fatigue', 'speed']) $(`#${id}`).oninput = (e) => { $(`#${id}V`).textContent = e.target.value; };
+$('#bigSel').onchange = () => { document.documentElement.style.setProperty('--dialBig', `${bigSize()}px`); drawDial(); };
+$('#showNum').onchange = (e) => { S.showNum = e.target.checked; stats(); };
+$('#reduced').onchange = (e) => { S.reduced = e.target.checked; document.body.classList.toggle('reduced', S.reduced); };
+$('#sound').onchange = (e) => { S.sound = e.target.checked; };
+const KEY_POINT = Object.fromEntries(Object.entries(KEY_OF).map(([k, v]) => [String(v), k]));
+document.addEventListener('keydown', (e) => {
+  if (document.activeElement === $('#cmd')) return; // keys act only when nothing editable has focus (P10e §178)
+  if (e.repeat && e.key !== '6') return;
+  if (KEY_POINT[e.key]) { e.preventDefault(); if (!e.repeat) press(KEY_POINT[e.key]); return; }
+  const k = e.key.toLowerCase();
+  if (k === ' ') { e.preventDefault(); S.run ? endHold('ended') : startHold(); }
+  else if (k === 'enter' && S.call) present();
+  else if (k === 'l') lookUp();
+  else if (k === 's' && S.run) endHold('stop word');
+  else if (k === 'c') startCall('B');
+  else if (k === 'v') startCall('C', 4);
+  else if (k === 'h') $('#panel').classList.toggle('hidden');
+});
+document.addEventListener('keyup', (e) => { if (KEY_POINT[e.key]) release(KEY_POINT[e.key]); });
+document.addEventListener('pointerup', () => release('gaze'));
+$('#dialFace').addEventListener('dblclick', () => { if (S.call) present(); });
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.12, (now - last) / 1000) * Number($('#speed').value); last = now;
+  if (S.run && !S.run.paused) step(dt);
+  callTick();
+  requestAnimationFrame(frame);
+}
+document.documentElement.style.setProperty('--dialBig', `${bigSize()}px`);
+setAttention('busy'); drawDial(); stats(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>
