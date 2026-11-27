@@ -119,7 +119,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <label>her foot (held_sole) <input type="file" id="fFoot" accept="image/*" style="width:140px"></label>
   <label>toes curled (optional) <input type="file" id="fCurled" accept="image/*" style="width:140px"></label>
   <label>her faces <input type="file" id="fFaces" accept="image/*" multiple style="width:140px"></label>
-  <div class="note" id="facesNote">Faces: one file per expression, named by its label (relief.png, annoyance.png …). Without them her sprite stands in.</div>
+  <div class="note" id="facesNote">Faces: her expression sprites; a file counts for the label its name begins with (relief.png, admiration0003.png, joy-2.webp). Several per label: one is picked. Without them her sprite stands in.</div>
   <label>the foot shown <select id="shownSel"><option value="right">her right</option><option value="left">her left</option></select></label>
   <label>height <input type="range" id="fitH" min="0.5" max="2.5" step="0.01" value="1.45"><span id="fitHV">1.45</span></label>
   <label>x <input type="range" id="fitX" min="-0.5" max="0.5" step="0.01" value="-0.08"><span id="fitXV">-0.08</span></label>
@@ -588,8 +588,10 @@ function eyesUpdate(dt) {
   if (G.eyes === 'device' && G.t > G.nextTap) { SFX.tap(); G.nextTap = G.t + rand(160, 460); }
 }
 function setFace(label) {
+  // a label with several pictures (variants) shows one of them, kept until the label changes
+  if (label === G.face && G.faceSrc) return;
   G.face = label;
-  const src = faces[label] ?? faces.neutral ?? ASSETS.her;
+  const pool = faces[label] ?? faces.neutral, src = pool ? pick(pool) : ASSETS.her; G.faceSrc = src;
   if ($('#her').dataset.src !== src) { $('#her').dataset.src = src; $('#her').src = src; }
 }
 
@@ -876,7 +878,18 @@ slider('herH', () => S.her.h, (v) => { S.her.h = v; }, f2); slider('herX', () =>
 $('#shownSel').onchange = () => { S.shown = $('#shownSel').value; };
 $('#fFoot').onchange = () => { const f = $('#fFoot').files[0]; if (!f) return; const im = new Image(); im.onload = () => { footImg = im; G.mask = makeMask(); }; im.src = URL.createObjectURL(f); };
 $('#fCurled').onchange = () => { const f = $('#fCurled').files[0]; if (!f) return; const im = new Image(); im.onload = () => { curledImg = im; }; im.src = URL.createObjectURL(f); };
-$('#fFaces').onchange = () => { for (const f of $('#fFaces').files) faces[f.name.replace(/\.[^.]+$/, '').toLowerCase()] = URL.createObjectURL(f); $('#facesNote').textContent = `faces: ${Object.keys(faces).join(', ')}`; setFace(G.face); };
+/* SillyTavern's 28 expression labels; a file belongs to the label its name begins with (admiration0003.png, joy-2.webp), the longest first */
+const LABELS = ['admiration', 'amusement', 'anger', 'annoyance', 'approval', 'caring', 'confusion', 'curiosity', 'desire', 'disappointment', 'disapproval', 'disgust', 'embarrassment', 'excitement', 'fear', 'gratitude', 'grief', 'joy', 'love', 'nervousness', 'neutral', 'optimism', 'pride', 'realization', 'relief', 'remorse', 'sadness', 'surprise'].sort((a, b) => b.length - a.length);
+$('#fFaces').onchange = () => {
+  const skipped = [];
+  for (const f of $('#fFaces').files) {
+    const name = f.name.toLowerCase(), label = LABELS.find((l) => name.startsWith(l));
+    if (!label) { skipped.push(f.name); continue; }
+    (faces[label] ??= []).push(URL.createObjectURL(f));
+  }
+  $('#facesNote').textContent = `faces: ${Object.entries(faces).map(([k, v]) => `${k}${v.length > 1 ? ` ×${v.length}` : ''}`).join(', ')}${skipped.length ? ` · not a label: ${skipped.join(', ')}` : ''}`;
+  G.faceSrc = null; setFace(G.face);
+};
 $('#markZones').onclick = () => setTimeout(markStart, 50);
 $('#copyFit').onclick = () => copyFit();
 $('#snd').onchange = () => { S.sound = $('#snd').checked; if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
