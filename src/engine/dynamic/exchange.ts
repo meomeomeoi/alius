@@ -62,9 +62,10 @@ export function combatEffects(state: CampaignState, reg: Registries, unitId: str
   return [{ type: 'outgoing', pct }, { type: 'incoming', pct: -pct }];
 }
 
-/** Is the commander in another holder's booking today, or has a rival been favoured over her today: a day of jealousy (R19). */
+/** Is the commander in another holder's booking today, has a rival been favoured over her today, or did the commander share a drill with another woman today (P16b): a day of jealousy (R19). */
 function jealous(state: CampaignState, unitId: string): boolean {
   if (state.relations[unitId]?.history.some((h) => h.day === state.day && h.type === 'rival_favoured') === true) return true;
+  if (Object.entries(state.relations).some(([id, r]) => id !== unitId && r.craft?.partnerDay === state.day)) return true;
   const others = holdersAtPlay(state).filter((id) => id !== unitId);
   return (state.personal?.bookings ?? []).some((b) => b.day === state.day && others.includes(b.unitId) && (b.status === 'booked' || b.status === 'played'));
 }

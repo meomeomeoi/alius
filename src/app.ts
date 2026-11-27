@@ -2806,8 +2806,10 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         shell.open();
       }
       const requested = events.find((e) => e.type === 'scene_requested');
-      if (requested) await offerScene(String(requested.unitId));
-      else if (events.some((e) => e.type === 'group_scene_offered')) await offerGroupScene();
+      if (requested) {
+        if (typeof requested.locationId === 'string') presetLocation = requested.locationId; // P16b: a partner drill is run at its place
+        await offerScene(String(requested.unitId));
+      } else if (events.some((e) => e.type === 'group_scene_offered')) await offerGroupScene();
       const done = events.find((e) => e.type === 'activity_done');
       const settings = getSettings(st);
       if (done?.vignette !== true || !settings.activityFlavor || !state) return events;

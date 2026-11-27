@@ -61,6 +61,8 @@ export interface RelationCraft {
   slips?: Array<{ key: string; scene: string; day: number }>;
   /** The point she names after a slip (hidden until she says it): the engine's word for what failed and her way of saying it, voiced once in the reply of this exchange. */
   lesson?: { point: string; words: string; joke?: true; scene: string; exchange: number };
+  /** A partner drill waiting for its scene (spec section 5, ruling 3): the key, the multiplier of the partner (x1.5 a holder, x1.2 another close woman) and the day. Only the open scene's: dropped when it ends or is cancelled. */
+  drillPending?: { key: string; mult: number; day: number; /** The run `craft/drill_start` began (the outcome that pays is this one's). */ runId?: string };
   /** The day the commander last shared a drill with her (a partner drill: a scene or not): another holder's jealousy reads it (`exchange.ts`). */
   partnerDay?: number;
 }

@@ -1,5 +1,5 @@
 import { registerActivityHook } from '../activities';
-import { registerAfterAction } from '../dispatch';
+import { registerAction, registerAfterAction } from '../dispatch';
 import { registerDayEndStep } from '../calendar';
 import { decayCraft } from '../craft/decay';
 import { installCraftHooks } from '../craft/hooks';
@@ -7,7 +7,7 @@ import { noteSlips } from '../craft/lesson';
 import { noteHoldEvents } from '../craft/records';
 import { touchCraft } from '../craft/book';
 import { craftOn } from '../craft/gate';
-import { installDrillHooks } from '../craft/drills';
+import { dropPendingDrills, installDrillHooks, noteDrillOutcome, startDrill } from '../craft/drillScene';
 import { enduranceOf } from '../craft/state';
 import { TUNING } from '../tuning';
 
@@ -51,4 +51,21 @@ registerActivityHook((draft, ctx, done) => {
   const focus = (ctx.registries.activities.get(done.activityId)?.focus as Array<{ id: string; drill?: { key: string } }> | undefined)?.find((f) => f.id === done.focus);
   const key = focus?.drill?.key;
   return key !== undefined && enduranceOf(key) !== null ? [{ type: 'drill_done', key, mult: 1, alone: true, xp: TUNING.physics.endurance.training }] : [];
+});
+
+/**
+ * `craft/drill_start { unitId, at? }`: the drill she waits to run (a partner drill whose scene is open) starts: its contact is staged by field and the hold begins
+ * (`physics/start`). Its outcome pays the drill at the partner's multiplier, with her verdict (a holder) or the sign of being seen together (another woman). Draws no rng.
+ */
+registerAction('craft/drill_start', (draft, payload, ctx) => {
+  const p = (typeof payload === 'object' && payload !== null ? payload : {}) as Record<string, unknown>;
+  if (typeof p.unitId !== 'string' || p.unitId === '') throw new Error('craft/drill_start needs { unitId }');
+  if (p.at !== undefined && !(typeof p.at === 'number' && Number.isInteger(p.at) && p.at >= 0)) throw new Error('craft/drill_start: at is a chat index');
+  return startDrill(draft, ctx, p.unitId, p.at as number | undefined);
+});
+
+/** The outcome of the hold a drill began pays it; a scene that is over takes the drill that waited for it. */
+registerAfterAction((draft, ctx, events) => {
+  dropPendingDrills(draft, events);
+  return events.some((e) => e.type === 'physics_outcome') ? noteDrillOutcome(draft, ctx, events) : [];
 });

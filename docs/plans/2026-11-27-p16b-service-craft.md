@@ -376,15 +376,15 @@ Before Task 1, also read:
   - `craft/drill_start`;
   - `Relation.craft.drillPending`.
   - **No scene surface yet**: the card that starts it waits for gate G3 (chunk c7). Until then the action is reached by tests only.
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - the partner drill opens the scene and the slot is the scene's;
   - `craft/drill_start` picks the contact by field and starts the run;
   - the outcome pays ×1.5 once;
   - the other woman's drill raises `seen_together` for a holder and `jealous` reads it;
   - a stop word ends it with the lesson rules of Task 4.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`. Chunk end: full suite, typecheck.
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`. Chunk end: full suite, typecheck.
 
 ---
 

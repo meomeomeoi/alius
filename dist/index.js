@@ -2679,8 +2679,8 @@ function whenSuffix(e) {
   }
   return s;
 }
-function summarizeCombatEffect(effect2, _reg) {
-  const e = effect2 ?? {};
+function summarizeCombatEffect(effect, _reg) {
+  const e = effect ?? {};
   let s = combatBase(e);
   if (e.target && e.target !== "self" && e.target !== "target") s += ` \u2014 ${humanize(String(e.target))}`;
   if (e.trigger === "onStressThreshold") s += ` at Stress \u2265 ${e.threshold}`;
@@ -2693,8 +2693,8 @@ function summarizeCombatEffect(effect2, _reg) {
 }
 var RESOURCE_LABEL = { credits: "Credits", supplies: "Supplies", plyx: "PLYX" };
 var NO_LINE_WORLD = /* @__PURE__ */ new Set(["flag", "thread_flag", "thread", "fact"]);
-function summarizeWorldEffect(effect2, reg) {
-  const e = effect2 ?? {};
+function summarizeWorldEffect(effect, reg) {
+  const e = effect ?? {};
   if (NO_LINE_WORLD.has(e.type)) return null;
   switch (e.type) {
     case "resource":
@@ -2747,8 +2747,8 @@ function summarizeCommanderPunishmentEffect(fx2) {
       return null;
   }
 }
-function summarizeActivityEffect(effect2, _reg, focus) {
-  const e = effect2 ?? {};
+function summarizeActivityEffect(effect, _reg, focus) {
+  const e = effect ?? {};
   if (e.type === "emit_event") return null;
   const who = WHO[e.target] ?? "Chosen units";
   let s;
@@ -3006,8 +3006,8 @@ function summarizeTraitEffect(e, _reg) {
       return humanize(String(x.type));
   }
 }
-function summarizeWorldOptionEffect(effect2, reg) {
-  const x = effect2 ?? {};
+function summarizeWorldOptionEffect(effect, reg) {
+  const x = effect ?? {};
   switch (x.type) {
     case "disposition":
       return `Soldiers are ${String(reg.dispositionLevels.get(String(x.levelId))?.name ?? humanize(String(x.levelId)))}`;
@@ -7276,7 +7276,7 @@ var ZodEffects = class extends ZodType {
   }
   _parse(input) {
     const { status, ctx: ctx2 } = this._processInputParams(input);
-    const effect2 = this._def.effect || null;
+    const effect = this._def.effect || null;
     const checkCtx = {
       addIssue: (arg) => {
         addIssueToContext(ctx2, arg);
@@ -7291,8 +7291,8 @@ var ZodEffects = class extends ZodType {
       }
     };
     checkCtx.addIssue = checkCtx.addIssue.bind(checkCtx);
-    if (effect2.type === "preprocess") {
-      const processed = effect2.transform(ctx2.data, checkCtx);
+    if (effect.type === "preprocess") {
+      const processed = effect.transform(ctx2.data, checkCtx);
       if (ctx2.common.async) {
         return Promise.resolve(processed).then(async (processed2) => {
           if (status.value === "aborted")
@@ -7327,9 +7327,9 @@ var ZodEffects = class extends ZodType {
         return result;
       }
     }
-    if (effect2.type === "refinement") {
+    if (effect.type === "refinement") {
       const executeRefinement = (acc) => {
-        const result = effect2.refinement(acc, checkCtx);
+        const result = effect.refinement(acc, checkCtx);
         if (ctx2.common.async) {
           return Promise.resolve(result);
         }
@@ -7362,7 +7362,7 @@ var ZodEffects = class extends ZodType {
         });
       }
     }
-    if (effect2.type === "transform") {
+    if (effect.type === "transform") {
       if (ctx2.common.async === false) {
         const base2 = this._def.schema._parseSync({
           data: ctx2.data,
@@ -7371,7 +7371,7 @@ var ZodEffects = class extends ZodType {
         });
         if (!isValid(base2))
           return INVALID;
-        const result = effect2.transform(base2.value, checkCtx);
+        const result = effect.transform(base2.value, checkCtx);
         if (result instanceof Promise) {
           throw new Error(`Asynchronous transform encountered during synchronous parse operation. Use .parseAsync instead.`);
         }
@@ -7380,21 +7380,21 @@ var ZodEffects = class extends ZodType {
         return this._def.schema._parseAsync({ data: ctx2.data, path: ctx2.path, parent: ctx2 }).then((base2) => {
           if (!isValid(base2))
             return INVALID;
-          return Promise.resolve(effect2.transform(base2.value, checkCtx)).then((result) => ({
+          return Promise.resolve(effect.transform(base2.value, checkCtx)).then((result) => ({
             status: status.value,
             value: result
           }));
         });
       }
     }
-    util.assertNever(effect2);
+    util.assertNever(effect);
   }
 };
-ZodEffects.create = (schema, effect2, params) => {
+ZodEffects.create = (schema, effect, params) => {
   return new ZodEffects({
     schema,
     typeName: ZodFirstPartyTypeKind.ZodEffects,
-    effect: effect2,
+    effect,
     ...processCreateParams(params)
   });
 };
@@ -11672,8 +11672,8 @@ function enterStep(draft, ctx2, index2, afterSkippedExpedition = false) {
     o.stepId = step.id;
     o.stepDay = draft.day;
     events.push({ type: "onboarding_step_started", stepId: step.id });
-    const effect2 = entryEffects2.get(step.kind);
-    if (effect2) events.push(...effect2(draft, ctx2, step));
+    const effect = entryEffects2.get(step.kind);
+    if (effect) events.push(...effect(draft, ctx2, step));
     return events;
   }
   return events;
@@ -18673,13 +18673,13 @@ function moveCombatant(ctx2, targetCid, to) {
     t.row = dest;
   }
 }
-function runEffect2(ctx2, ownerCid, effect2, ev, keyBase) {
-  if (READ_ONLY.has(effect2.type)) return;
+function runEffect2(ctx2, ownerCid, effect, ev, keyBase) {
+  if (READ_ONLY.has(effect.type)) return;
   const owner = byCid(ctx2.cs, ownerCid);
-  const limitKey = effect2.limit ? `${keyBase}:${effect2.limit}` : void 0;
+  const limitKey = effect.limit ? `${keyBase}:${effect.limit}` : void 0;
   if (limitKey && owner.usedLimits.includes(limitKey)) return;
-  if (!checkCondition(ctx2, ownerCid, effect2.when, ev.targetCid, ev.skillId)) return;
-  const e = strain(owner, effect2);
+  if (!checkCondition(ctx2, ownerCid, effect.when, ev.targetCid, ev.skillId)) return;
+  const e = strain(owner, effect);
   if (e.chance !== void 0 && e.type !== "order_refusal" && !ctx2.rng.chance(e.chance)) return;
   if (limitKey) owner.usedLimits.push(limitKey);
   const attacker = ev.attackerCid ?? ownerCid;
@@ -20044,8 +20044,8 @@ function applyMilestone(draft, ctx2, unitId, milestoneId) {
   const dyn = dynamicOf(draft, unitId);
   if (m === void 0 || dyn === void 0 || !dynamicOn(draft, reg)) return [];
   const events = [];
-  for (const effect2 of m.effects) {
-    if (effect2.type === "frame") {
+  for (const effect of m.effects) {
+    if (effect.type === "frame") {
       const from = dyn.frame;
       dyn.frame = m.to;
       notePlaySince(draft, unitId);
@@ -20061,13 +20061,13 @@ function applyMilestone(draft, ctx2, unitId, milestoneId) {
         for (const e of milestoneRows(reg)) if (e.to === from && e.from !== e.to) dyn.cooldowns[e.id] = Math.max(dyn.cooldowns[e.id] ?? 0, draft.day + TUNING.dynamic.milestones.afterDownDays);
         events.push(...reconcileDomains(draft, reg, unitId));
       }
-    } else if (effect2.type === "sworn") {
+    } else if (effect.type === "sworn") {
       dyn.sworn = { day: draft.day };
       events.push({ type: "sworn", unitId, day: draft.day });
       const seen2 = (draft.scene?.participants ?? []).filter((id) => id !== unitId && draft.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)));
       if (seen2.length > 0) addCompromat(draft, unitId, `AUTHOR TO WRITE: ${draft.squad.find((u) => u.id === unitId)?.displayName ?? "She"} heard the commander swear to her before ${seen2.map((id) => draft.squad.find((u) => u.id === id)?.displayName ?? id).join(" and ")}.`, seen2);
-    } else if (effect2.type === "claim") {
-      events.push(...grantCapability(draft, ctx2, unitId, effect2.capability));
+    } else if (effect.type === "claim") {
+      events.push(...grantCapability(draft, ctx2, unitId, effect.capability));
     }
   }
   dyn.milestones.push(m.id);
@@ -22177,6 +22177,7 @@ function combatEffects(state, reg, unitId) {
 }
 function jealous(state, unitId) {
   if (state.relations[unitId]?.history.some((h2) => h2.day === state.day && h2.type === "rival_favoured") === true) return true;
+  if (Object.entries(state.relations).some(([id, r]) => id !== unitId && r.craft?.partnerDay === state.day)) return true;
   const others = holdersAtPlay(state).filter((id) => id !== unitId);
   return (state.personal?.bookings ?? []).some((b) => b.day === state.day && others.includes(b.unitId) && (b.status === "booked" || b.status === "played"));
 }
@@ -25877,6 +25878,10 @@ function sceneService(draft, holderId) {
   return rec !== void 0 && rec.sceneId === draft.scene?.id ? rec : p.service[holderId] = { sceneId: draft.scene?.id ?? "", bonus: 0 };
 }
 var stepUp = (v, steps3) => VERDICTS[Math.max(0, VERDICTS.indexOf(v) - steps3)];
+function verdictOf(state, _reg, holderId, sceneId) {
+  const rec = state.practices?.service?.[holderId];
+  return rec === void 0 || sceneId !== void 0 && rec.sceneId !== sceneId ? null : verdictOfRecord(rec);
+}
 function verdictOfRecord(rec) {
   const word2 = rec.pair !== void 0 ? rec.pair.fit && rec.pair.felt ? "pleased" : rec.pair.fit || rec.pair.felt ? "adequate" : "displeased" : rec.said ?? null;
   return word2 === null ? null : stepUp(word2, rec.bonus);
@@ -35499,9 +35504,9 @@ function registerAfterAction(step) {
   afterActions.push(step);
 }
 var gates = /* @__PURE__ */ new Map();
-function registerVoteGate(actionType, gate3) {
+function registerVoteGate(actionType, gate2) {
   if (gates.has(actionType)) throw new Error(`Duplicate vote gate: ${actionType}`);
-  gates.set(actionType, gate3);
+  gates.set(actionType, gate2);
 }
 function dispatch(state, action, registries) {
   const handler2 = handlers.get(action.type);
@@ -35528,9 +35533,9 @@ function dispatch(state, action, registries) {
   const held3 = heldGuard(state, registries, action);
   if (held3) return { state, events: [{ type: "error", ...held3 }] };
   let voteId;
-  const gate3 = gates.get(action.type);
-  if (gate3 && votingOn(state, registries)) {
-    const decision = gate3(state, action.payload, registries);
+  const gate2 = gates.get(action.type);
+  if (gate2 && votingOn(state, registries)) {
+    const decision = gate2(state, action.payload, registries);
     if (decision) {
       const named5 = action.payload?.voteId;
       if (!voteFor(state, decision.kind, decision.subject, named5)) {
@@ -36906,8 +36911,8 @@ function whyNotStart(state, reg, o) {
   if (o.sourceKind === "activity") {
     if (frameOf3(reg.blockingActivities.get(o.sourceId)) === null || framePhysicsOf(reg)?.id !== o.physicsId) return `"${o.sourceId}" has no frame.`;
   } else if (o.act === void 0 && !physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).some((p) => p.id === o.physicsId)) return `"${o.sourceId}" has no ${o.physicsId} physics.`;
-  const gate3 = whyNotAllowed(state, reg, phys, o.holderId);
-  if (gate3 !== null) return gate3;
+  const gate2 = whyNotAllowed(state, reg, phys, o.holderId);
+  if (gate2 !== null) return gate2;
   if (o.second !== void 0) {
     const named5 = o.sourceKind === "activity" ? framedContactPhysics(state, reg, o.holderId) : physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId));
     if (o.second === o.physicsId || !named5.some((p) => p.id === o.second)) return `"${o.sourceId}" has no ${o.second} physics to add.`;
@@ -40538,9 +40543,9 @@ function exposedKinds(state, reg) {
   if (!scene || !blockingLive(state, reg)) return [];
   const out = /* @__PURE__ */ new Map();
   const first2 = scene.participants[0];
-  const add2 = (kinds2, holderId, part, gate3) => {
+  const add2 = (kinds2, holderId, part, gate2) => {
     if (!Array.isArray(kinds2) || holderId === void 0) return;
-    if (gate3 !== void 0 && !contentAllowed(state, reg, gate3, holderId)) return;
+    if (gate2 !== void 0 && !contentAllowed(state, reg, gate2, holderId)) return;
     for (const k of kinds2) {
       const e = reg.stimulusKinds.get(k);
       if (e && contentAllowed(state, reg, e, holderId) && !out.has(k)) out.set(k, { kind: k, holderId, ...part !== void 0 ? { part } : {} });
@@ -43086,6 +43091,9 @@ function craftLive(state, reg, holderId) {
 function craftOn(state, reg) {
   return practicesOn(state, reg);
 }
+function craftHolders(state, reg) {
+  return state.squad.filter((u) => craftLive(state, reg, u.id)).map((u) => u.id);
+}
 
 // src/engine/craft/decay.ts
 var THRESHOLDS = TUNING.physics.endurance.thresholds;
@@ -43388,22 +43396,104 @@ function payDrill(draft, reg, key, o = {}) {
   events.push({ type: "drill_done", key, ...o.companionId !== void 0 ? { companionId: o.companionId } : {}, mult, alone: o.companionId === void 0, xp });
   return events;
 }
-function gate2(state, reg, focus, mode) {
+function drillGate(state, reg, focus, mode) {
   if (mode === "alone" && enduranceOf(focus.drill.key) !== null) return null;
   return craftOn(state, reg) ? null : `${focus.label} is not available yet.`;
 }
-function effect(draft, ctx2, fx2) {
+function drillEffect(draft, ctx2, fx2) {
   return fx2.type === "commander_craft_xp" ? payDrill(draft, ctx2.registries, fx2.key) : [];
 }
+
+// src/engine/craft/drillScene.ts
+function drillContacts(state, reg, unitId, physicsId) {
+  return [...reg.blockingContacts.values()].filter((c) => (c.physics ?? [])[0]?.id === physicsId && entryAllowed(state, reg, c, [unitId]));
+}
+var placeOf2 = (reg, activityId) => [...reg.hubRooms.values()].find((r) => r.activityIds?.includes(activityId))?.sceneLocationId;
 function partner(draft, ctx2, at2) {
   const reg = ctx2.registries;
+  const key = at2.focus.drill.key;
   const rel = draft.relations[at2.companionId];
   if (rel === void 0 || !craftOn(draft, reg)) return { events: [] };
+  const mult = drillMult(draft, reg, at2.companionId);
+  const physics = enduranceOf(key);
+  const place2 = placeOf2(reg, at2.activityId);
+  if (physics !== null && place2 !== void 0 && mult > 1 && !drilledToday(draft, key) && drillContacts(draft, reg, at2.companionId, physics).length > 0) {
+    (rel.craft ??= {}).drillPending = { key, mult, day: draft.day };
+    return { events: [], scene: { locationId: place2 } };
+  }
   (rel.craft ??= {}).partnerDay = draft.day;
-  return { events: payDrill(draft, reg, at2.focus.drill.key, { companionId: at2.companionId }) };
+  return { events: payDrill(draft, reg, key, { companionId: at2.companionId, mult }) };
 }
 function installDrillHooks() {
-  registerDrillHooks({ gate: gate2, effect, partner });
+  registerDrillHooks({ gate: drillGate, effect: drillEffect, partner });
+}
+function drillPendingOf(state, unitId) {
+  const p = state.relations[unitId]?.craft?.drillPending;
+  return p !== void 0 && p.day === state.day ? p : void 0;
+}
+function startDrill(draft, ctx2, unitId, at2) {
+  const reg = ctx2.registries;
+  const scene = draft.scene;
+  const pending4 = drillPendingOf(draft, unitId);
+  if (scene === void 0) throw new Error("craft/drill_start: no scene is open");
+  if (pending4 === void 0) throw new Error("craft/drill_start: no drill is waiting for her");
+  if (!scene.participants.includes(unitId)) throw new Error("craft/drill_start: she is not in the open scene");
+  if (scene.physics !== void 0) throw new Error("craft/drill_start: a hold is running already");
+  const physics = enduranceOf(pending4.key);
+  if (physics === null) throw new Error("craft/drill_start: that drill has no instrument");
+  const events = [];
+  let staged;
+  for (const c of drillContacts(draft, reg, unitId, physics)) {
+    try {
+      events.push(...setBlocking(draft, ctx2, { person: unitId, field: "contact", value: String(c.id), with: COMMANDER, ...c.dir === "either" ? { direction: "from" } : {} }, { at: at2 ?? scene.readIndex ?? scene.startIndex, source: "chip" }));
+      staged = c;
+      break;
+    } catch {
+    }
+  }
+  if (staged === void 0) throw new Error("craft/drill_start: no contact of this drill can be staged here");
+  if (scene.physics === void 0) events.push(...startPhysics(draft, ctx2, { physicsId: physics, sourceKind: "contact", sourceId: String(staged.id), holderId: unitId }));
+  pending4.runId = scene.physics.id;
+  return events;
+}
+function outcomeVerdict(result, slips2) {
+  if (result === "collapse" || result === "limit_broken" || result === "blackout") return "displeased";
+  return slips2 > 0 ? "adequate" : "pleased";
+}
+function noteDrillOutcome(draft, ctx2, events) {
+  const reg = ctx2.registries;
+  const out = [];
+  for (const e of events) {
+    if (e.type !== "physics_outcome" || typeof e.holderId !== "string" || typeof e.runId !== "string") continue;
+    const unitId = e.holderId;
+    const rel = draft.relations[unitId];
+    const pending4 = rel?.craft?.drillPending;
+    if (rel === void 0 || pending4 === void 0 || pending4.runId !== e.runId) continue;
+    const mult = pending4.mult;
+    delete rel.craft.drillPending;
+    if (e.result === "stopped") continue;
+    rel.craft.partnerDay = draft.day;
+    out.push(...payDrill(draft, reg, pending4.key, { companionId: unitId, mult }));
+    const sceneId = draft.scene?.id;
+    if (craftLive(draft, reg, unitId)) {
+      if (sceneId === void 0) continue;
+      const tally = typeof e.tally === "object" && e.tally !== null ? e.tally : {};
+      const verdict2 = verdictOf(draft, reg, unitId, sceneId) ?? outcomeVerdict(String(e.result), Number(tally.slips) || 0);
+      out.push(...rateService(draft, ctx2, unitId, verdict2, "engine", sceneId));
+      if (verdict2 === "pleased") out.push(...regardRise(draft, reg, unitId, "value", TUNING.craft.drill.regard));
+    } else {
+      const witnesses = /* @__PURE__ */ new Set([...craftHolders(draft, reg), ...draft.scene?.participants ?? []]);
+      witnesses.delete(unitId);
+      for (const id of witnesses) out.push(...addSign(draft, ctx2, id, unitId, "seen_together"));
+    }
+  }
+  return out;
+}
+function dropPendingDrills(draft, events) {
+  if (!events.some((e) => e.type === "scene_ended" || e.type === "scene_aborted" || e.type === "scene_cancelled")) return;
+  for (const rel of Object.values(draft.relations)) {
+    if (rel.craft?.drillPending !== void 0) delete rel.craft.drillPending;
+  }
 }
 
 // src/engine/actions/craft.ts
@@ -43422,6 +43512,16 @@ registerActivityHook((draft, ctx2, done) => {
   const focus = ctx2.registries.activities.get(done.activityId)?.focus?.find((f) => f.id === done.focus);
   const key = focus?.drill?.key;
   return key !== void 0 && enduranceOf(key) !== null ? [{ type: "drill_done", key, mult: 1, alone: true, xp: TUNING.physics.endurance.training }] : [];
+});
+registerAction("craft/drill_start", (draft, payload, ctx2) => {
+  const p = typeof payload === "object" && payload !== null ? payload : {};
+  if (typeof p.unitId !== "string" || p.unitId === "") throw new Error("craft/drill_start needs { unitId }");
+  if (p.at !== void 0 && !(typeof p.at === "number" && Number.isInteger(p.at) && p.at >= 0)) throw new Error("craft/drill_start: at is a chat index");
+  return startDrill(draft, ctx2, p.unitId, p.at);
+});
+registerAfterAction((draft, ctx2, events) => {
+  dropPendingDrills(draft, events);
+  return events.some((e) => e.type === "physics_outcome") ? noteDrillOutcome(draft, ctx2, events) : [];
 });
 
 // src/llm/callTypes.ts
@@ -63274,8 +63374,8 @@ function createArtSlots(manifest, assetUrl, unitKey, folders) {
     if (folder.setup?.face !== void 0) faces2.set(key, folder.setup.face);
   }
   return {
-    get(unitId, slot2, gate3) {
-      if (slot2 === "over_explicit" && gate3?.explicit !== true) return null;
+    get(unitId, slot2, gate2) {
+      if (slot2 === "over_explicit" && gate2?.explicit !== true) return null;
       const key = unitKey(unitId);
       const slots = key === null ? void 0 : byUnit.get(key);
       if (slots === void 0) return null;
@@ -72707,7 +72807,7 @@ function servicePaceOf(state, reg, holderId) {
     order
   };
 }
-function verdictOf(quality) {
+function verdictOf2(quality) {
   const V3 = TUNING.physics.footService.verdict;
   if (!Number.isFinite(quality)) return "displeased";
   return quality >= V3.pleased ? "pleased" : quality >= V3.adequate ? "adequate" : "displeased";
@@ -74212,7 +74312,7 @@ function svFinish(how) {
   const n = (SV.sessionN ?? 0) + (open3 !== null ? 1 : 0), q = ((SV.sessionQ ?? 0) + (open3 ?? 0)) / Math7.max(1, n);
   if (n === 0) return;
   SV.told = true;
-  X2?.env.staging.service?.(X2.runId, verdictOf(q));
+  X2?.env.staging.service?.(X2.runId, verdictOf2(q));
 }
 function detachService() {
   try {
@@ -79021,7 +79121,7 @@ function sendVerdict() {
   R10.verdictSent = true;
   if (R10.qualities.length === 0) return;
   const q = R10.qualities.reduce((a, b) => a + b, 0) / R10.qualities.length;
-  const v = verdictOf(q);
+  const v = verdictOf2(q);
   E7.env.staging.service?.(R10.run.id, v);
 }
 function before6(now) {
@@ -87595,11 +87695,11 @@ function draftArt(ctx2, unitId, avatar, key, draft, sandboxKey) {
   const own = createArtSlots(null, (p) => p, sandboxKey, /* @__PURE__ */ new Map([[avatar, { slots, setup: folder?.setup ?? null }]]));
   const mine = (id) => sandboxKey(id) === avatar;
   const art2 = {
-    get: (id, slot2, gate3) => {
+    get: (id, slot2, gate2) => {
       if (!mine(id)) return null;
-      if (slot2 === info.slot) return own.get(id, slot2, gate3);
+      if (slot2 === info.slot) return own.get(id, slot2, gate2);
       if (stoodIn !== null && slot2 === partnerSlot && partnerSlot !== info.slot) return pic;
-      return real.get(unitId, slot2, gate3);
+      return real.get(unitId, slot2, gate2);
     },
     face: (id) => !mine(id) ? null : own.face(id) ?? real.face(unitId)
   };
@@ -90227,7 +90327,7 @@ function createApp(st3, deps) {
         sound,
         samples,
         // P10e-e: the instruments' recorded sounds
-        art: { get: (unitId, slot2, gate3) => art2.get(unitId, slot2, gate3), face: (unitId) => art2.face(unitId) },
+        art: { get: (unitId, slot2, gate2) => art2.get(unitId, slot2, gate2), face: (unitId) => art2.face(unitId) },
         // P10e-e: the instruments' pictures (read through, the manifest may load later)
         onClose: () => shell.close(),
         // P10e: the shell's own close is hidden on the scene screen; the top line carries it
@@ -92023,8 +92123,10 @@ function createApp(st3, deps) {
         shell.open();
       }
       const requested = events.find((e) => e.type === "scene_requested");
-      if (requested) await offerScene(String(requested.unitId));
-      else if (events.some((e) => e.type === "group_scene_offered")) await offerGroupScene();
+      if (requested) {
+        if (typeof requested.locationId === "string") presetLocation = requested.locationId;
+        await offerScene(String(requested.unitId));
+      } else if (events.some((e) => e.type === "group_scene_offered")) await offerGroupScene();
       const done = events.find((e) => e.type === "activity_done");
       const settings = getSettings(st3);
       if (done?.vignette !== true || !settings.activityFlavor || !state) return events;

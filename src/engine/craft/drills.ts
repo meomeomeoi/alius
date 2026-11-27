@@ -1,12 +1,12 @@
 /**
  * Drills at the base (P16b, plan Tasks 7 and 8; spec section 5, ruling 3). A drill is a focus of the `train` activity that carries `drill: { key, partner? }`.
  * Alone it is one click: `TUNING.craft.xp.drill` to the discipline, once a day for each key, and the slot is spent (a second drill the same day pays 0). With a
- * companion who shares a drill that has an instrument (breath, weight) it pays x1.5 with a craft-live holder, x1.2 with another close woman, x1 with anyone else; (a scene with her comes in the next task). The activities layer imports nothing of this: it takes
+ * companion who shares a drill that has an instrument (breath, weight) it pays x1.5 with a craft-live holder, x1.2 with another close woman, x1 with anyone else;; when a contact of the drill can be staged for her it is a scene instead (`drillScene.ts`). The activities layer imports nothing of this: it takes
  * the hooks `installDrillHooks` registers. Nothing is written or paid while no holder is craft-live; nothing here draws from the rng.
  */
 import type { Registries } from '../../content/types';
 import type { ActivityEffect } from '../../content/schemas';
-import { registerDrillHooks, type DrillAt, type Focus } from '../activities';
+import type { Focus } from '../activities';
 import { bondTierOf } from '../bonds';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
@@ -59,31 +59,13 @@ export function payDrill(draft: CampaignState, reg: Registries, key: string, o: 
   return events;
 }
 
-/** The activities' gate for a drill focus: an endurance drill alone is P15a's (always offered); every other drill, and any partner drill, needs a craft-live holder. */
-function gate(state: CampaignState, reg: Registries, focus: Focus, mode: 'alone' | 'partner'): string | null {
+/** The activities' gate for a drill focus (`installDrillHooks` registers it): an endurance drill alone is P15a's (always offered); every other drill, and any partner drill, needs a craft-live holder. */
+export function drillGate(state: CampaignState, reg: Registries, focus: Focus, mode: 'alone' | 'partner'): string | null {
   if (mode === 'alone' && enduranceOf(focus.drill!.key) !== null) return null;
   return craftOn(state, reg) ? null : `${focus.label} is not available yet.`;
 }
 
 /** The effect `commander_craft_xp`: an alone drill. */
-function effect(draft: CampaignState, ctx: EngineCtx, fx: ActivityEffect): EngineEvent[] {
+export function drillEffect(draft: CampaignState, ctx: EngineCtx, fx: ActivityEffect): EngineEvent[] {
   return fx.type === 'commander_craft_xp' ? payDrill(draft, ctx.registries, fx.key) : [];
 }
-
-/**
- * A drill a companion shares (the activities' hook): it pays now, at the multiplier of the partner (a craft-live holder x1.5, another close woman x1.2, anyone else x1).
- * The day is the pair's (`partnerDay`: another holder reads it as jealousy).
- */
-function partner(draft: CampaignState, ctx: EngineCtx, at: DrillAt): { events: EngineEvent[]; scene?: { locationId: string } } {
-  const reg = ctx.registries;
-  const rel = draft.relations[at.companionId];
-  if (rel === undefined || !craftOn(draft, reg)) return { events: [] };
-  (rel.craft ??= {}).partnerDay = draft.day;
-  return { events: payDrill(draft, reg, at.focus.drill!.key, { companionId: at.companionId }) };
-}
-
-/** Installs the hooks the activities take (idempotent: the same hooks twice are one). */
-export function installDrillHooks(): void {
-  registerDrillHooks({ gate, effect, partner });
-}
-
