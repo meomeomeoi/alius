@@ -111,6 +111,7 @@
     "holderPunishments": "holderPunishments.json",
     "implements": "implements.json",
     "ceremonySteps": "ceremonySteps.json",
-    "cardVoice": "cardVoice.json"
+    "cardVoice": "cardVoice.json",
+    "craftLessons": "craftLessons.json"
   }
 }

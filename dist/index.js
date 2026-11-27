@@ -8151,6 +8151,9 @@ var CRAFT_EVENT_TYPES = [
   "headlock_offered",
   "norm_set"
 ];
+function craftRoll(state, unitId, key) {
+  return practiceRoll(state, unitId, `craft:${key}`);
+}
 function spanText(seconds) {
   const s = Math.max(0, Math.round(seconds));
   if (s < 90) return `${s} second${s === 1 ? "" : "s"}`;
@@ -8296,7 +8299,9 @@ var REGISTRY_NAMES = [
   "implements",
   "ceremonySteps",
   // P10e-e
-  "cardVoice"
+  "cardVoice",
+  // P16b
+  "craftLessons"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -10679,7 +10684,9 @@ var DESCRIBED_REGISTRIES = [
   "practiceSeeds",
   "holderPunishments",
   "implements",
-  "ceremonySteps"
+  "ceremonySteps",
+  // P16b
+  "craftLessons"
 ];
 var HeadStartMomentSchema = BaseEntrySchema.extend({
   sign: external_exports.enum(["positive", "negative", "any"]),
@@ -11325,6 +11332,15 @@ var CeremonyStepSchema = BaseEntrySchema.extend({
   if (c.check === "posture" !== (c.posture !== void 0)) ctx2.addIssue({ code: "custom", path: ["posture"], message: "a posture step names its posture, and only a posture step does" });
 });
 Object.assign(registrySchemas, { practiceSeeds: PracticeSeedSchema, holderPunishments: HolderPunishmentSchema, implements: ImplementSchema, ceremonySteps: CeremonyStepSchema });
+var CraftLessonSchema = BaseEntrySchema.extend({
+  slip: str,
+  kind: str.optional(),
+  interaction: str.optional(),
+  point: str,
+  words: external_exports.array(str).min(1),
+  description: str
+}).strict();
+registrySchemas.craftLessons = CraftLessonSchema;
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
     const d = entry.description;
@@ -20141,6 +20157,28 @@ function runTargetOf(state, reg, targetId) {
     if (answer !== void 0) return answer;
   }
   return void 0;
+}
+var stillnessReaders = /* @__PURE__ */ new Map();
+var rhythmReaders = /* @__PURE__ */ new Map();
+function registerStillness(fn, key = "default") {
+  stillnessReaders.set(key, fn);
+}
+function stillnessOf(state, holderId) {
+  for (const read2 of stillnessReaders.values()) {
+    const n = read2(state, holderId);
+    if (n !== null) return n;
+  }
+  return 0;
+}
+function registerRhythmKnown(fn, key = "default") {
+  rhythmReaders.set(key, fn);
+}
+function rhythmKnownOf(state, holderId) {
+  for (const read2 of rhythmReaders.values()) {
+    const n = read2(state, holderId);
+    if (n !== null) return n;
+  }
+  return 0;
 }
 function physicsStyleOf(state, unitId, reg) {
   for (const read2 of styleReaders) {
@@ -34073,11 +34111,11 @@ function settle3(draft, ctx2, d, answers2, spendNight) {
   const counts = { truth: 0, partial: 0, false: 0, withhold: 0 };
   for (const a of Object.values(answers2)) counts[a] += 1;
   const events = [];
-  const pay2 = paymentFor(answers2, Math.max(d.handlerPressure, d.handlerSuspicion));
+  const pay3 = paymentFor(answers2, Math.max(d.handlerPressure, d.handlerSuspicion));
   for (const k of ["credits", "supplies", "plyx"]) {
-    if (pay2[k] > 0) {
-      draft.resources[k] += pay2[k];
-      events.push({ type: "resource_changed", resource: k, amount: pay2[k] });
+    if (pay3[k] > 0) {
+      draft.resources[k] += pay3[k];
+      events.push({ type: "resource_changed", resource: k, amount: pay3[k] });
     }
   }
   d.handlerPressure = clamp37(d.handlerPressure + counts.withhold * 10 - counts.truth * 5, 0, 100);
@@ -37169,7 +37207,7 @@ function decideBoundary(draft, ctx2, run, result) {
     if (move2 !== void 0 && run.last) run.last.move = move2;
     return { events, ...move2 !== void 0 ? { move: move2 } : {} };
   }
-  if (outcome === "collapse" || outcome === "limit_broken") events.push({ type: "physics_slip", runId: run.id, kind: "collapse", holderId: run.holderId });
+  if (outcome === "collapse" || outcome === "limit_broken") events.push({ type: "physics_slip", runId: run.id, kind: "collapse", holderId: run.holderId, physicsId: run.physicsId });
   if (ENDED_WELL.has(outcome)) events.push(...creditHold(draft, reg, run));
   const blackout2 = outcome === "blackout" ? blackoutAftermath(draft, reg, run) : [];
   events.push(...stopPhysics(draft, reg, outcome), ...blackout2);
@@ -40578,7 +40616,7 @@ function applyWay(draft, ctx2, way, kind, depth) {
   }
   events.push({ type: "stimulus_way", kind: ex.kind, way: w, result, holderId: ex.holderId, noticed, caught });
   if (result === "reflex") {
-    const s = noiseOf("reflex");
+    const s = noiseOf("reflex", stillnessOf(draft, ex.holderId));
     events.push({ type: "reflex", kind: ex.kind, way: w, holderId: ex.holderId }, { type: "physics_slip", runId: scene.physics?.id ?? null, kind: "reflex", count: 1, holderId: ex.holderId });
     events.push({ type: "physics_noise", runId: scene.physics?.id ?? null, holderId: ex.holderId, kind: s.kind, loudness: s.loudness });
     if (scene.physics?.last) {
@@ -40767,7 +40805,6 @@ function flowEnded(state, run, full) {
 }
 
 // src/engine/physics/segment.ts
-var stillnessOf = (_state) => 0;
 var P4 = TUNING.physics;
 var clamp41 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function rhythmOffset(state, unitId) {
@@ -40776,6 +40813,7 @@ function rhythmOffset(state, unitId) {
 function beatsPerSegment(state, segmentSeconds) {
   return sceneSettingsOf(state).physicsRealtime ? Math.max(1, Math.ceil(segmentSeconds * 1e3 / P4.beatMs)) : P4.turnBeats;
 }
+var widened = (width, known3) => known3 === 0 ? width : width * (1 + TUNING.craft.rhythm.widenPerLevel * known3);
 function openingWidth(style, rng, measuring, tempo = 0) {
   const { leadKey, other } = styleRows(style);
   const lead = leadKey === "obsessive" ? rng.int(P4.obsessiveMs[0], P4.obsessiveMs[1]) : P4.style[leadKey].windowMs;
@@ -40797,6 +40835,7 @@ function planSegment(state, reg, run, rng) {
   const beats = attention.map((a) => ({ attention: a }));
   const interactions = [String(phys.interaction), ...run.second ? [String(reg.contactPhysics.get(run.second.physicsId)?.interaction)] : []];
   if (interactions.includes("timing")) {
+    const known3 = rhythmKnownOf(state, run.holderId);
     let pos = run.act === "pet" ? 0 : (rhythmOffset(state, run.holderId) + (run.rhythmShift ?? 0)) % 3 + rng.int(0, 1);
     let k = 0;
     while (pos < n) {
@@ -40805,7 +40844,7 @@ function planSegment(state, reg, run, rng) {
       const silent = realtime && lead.cues === "none" || !realtime && rng.chance(blendedStyle(style, "noCueShare"));
       beats[pos] = {
         ...beats[pos],
-        opening: { widthMs: openingWidth(style, rng, measuring, tempo), ...isFalse ? { false: true } : {} },
+        opening: { widthMs: widened(openingWidth(style, rng, measuring, tempo), known3), ...isFalse ? { false: true } : {} },
         ...silent ? {} : { cue: isFalse ? "window_false" : "window_open" }
       };
       pos += run.act === "pet" ? 1 : rng.int(P4.breath.windowEvery[0], P4.breath.windowEvery[1]);
@@ -41220,9 +41259,9 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
     }
   }
   const mainPart = { gasps: result.gasps - (secondPart?.gasps ?? 0), slips: result.slips - (secondPart?.slips ?? 0), reliefs: result.reliefs - (secondPart?.reliefs ?? 0) };
-  sounds = segmentNoise(mainPart, envMain.interaction, stillnessOf(draft));
+  sounds = segmentNoise(mainPart, envMain.interaction, stillnessOf(draft, run.holderId));
   if (secondPart) {
-    for (const x of segmentNoise(secondPart, secondPart.interaction, stillnessOf(draft))) {
+    for (const x of segmentNoise(secondPart, secondPart.interaction, stillnessOf(draft, run.holderId))) {
       const have = sounds.find((y) => y.kind === x.kind);
       if (have) have.loudness += x.loudness;
       else sounds.push(x);
@@ -41265,7 +41304,7 @@ function physicsInput(draft, ctx2, runId, segment, inputs) {
   if (secondBonus > 0 && run.second) events.push(addEnduranceXp(draft, run.second.physicsId, TUNING.physics.endurance.streak * secondBonus));
   const gulped = run.gulp !== void 0 && isGulpRun(run, reg);
   if (result.slips > 0) {
-    events.push({ type: "physics_slip", runId, kind: "slip", count: result.slips, holderId: run.holderId });
+    events.push({ type: "physics_slip", runId, kind: "slip", count: result.slips, holderId: run.holderId, physicsId });
     if (!gulped) {
       const chained = chainRun(draft, reg, run);
       if (chained.length > 0) events.push(...chained);
@@ -41333,7 +41372,7 @@ function marathonSkip(draft, ctx2, strategy) {
   const k = resolveSkip(draft, reg, run, strategy, ctx2.rng);
   const events = [];
   if (k.slip) {
-    events.push({ type: "physics_slip", runId: run.id, kind: "skip", count: 1, holderId: run.holderId });
+    events.push({ type: "physics_slip", runId: run.id, kind: "skip", count: 1, holderId: run.holderId, physicsId: run.physicsId });
     run.extend += TUNING.physics.slipExtend;
   }
   if (k.caught) events.push({ type: "physics_caught", runId: run.id, holderId: run.holderId, kind: "cheat", beat: -1 });
@@ -43097,6 +43136,111 @@ function addCraftXp(draft, reg, key, xp, cause) {
   if (rose) events.push({ type: "craft_level", key, level, word: craftWord(level) });
   return events;
 }
+function addPairXp(draft, reg, holderId, what, xp) {
+  const rel = draft.relations[holderId];
+  if (!(xp > 0) || rel === void 0 || !craftLive(draft, reg, holderId)) return [];
+  const row4 = (rel.craft ??= {})[what] ??= { xp: 0, day: draft.day };
+  row4.xp += xp;
+  row4.day = draft.day;
+  delete row4.decayedDay;
+  return [];
+}
+
+// src/engine/craft/hooks.ts
+function stillnessShare(state) {
+  return Math.min(0.9, TUNING.craft.noise.perLevel * craftLevel(state, "stillness"));
+}
+function rhythmLevel(state, holderId) {
+  return levelForXp(state.relations[holderId]?.craft?.rhythm?.xp ?? 0);
+}
+function installCraftHooks() {
+  registerStillness((state) => stillnessShare(state), "craft");
+  registerRhythmKnown((state, holderId) => rhythmLevel(state, holderId), "craft");
+}
+
+// src/engine/craft/lesson.ts
+function slipOf(draft, e) {
+  if (e.type !== "physics_slip" && e.type !== "posture_slip" || typeof e.holderId !== "string") return null;
+  const physicsId = typeof e.physicsId === "string" ? e.physicsId : e.type === "physics_slip" ? draft.scene?.physics?.physicsId : void 0;
+  return { type: e.type, holderId: e.holderId, ...typeof e.kind === "string" ? { kind: e.kind } : {}, ...physicsId !== void 0 ? { physicsId } : {} };
+}
+function slipKey(reg, slip2) {
+  if (slip2.type === "posture_slip") return "posture";
+  return slip2.physicsId !== void 0 && reg.contactPhysics.get(slip2.physicsId)?.skill === true ? `endurance:${slip2.physicsId}` : "stillness";
+}
+function lessonRow(reg, slip2) {
+  const interaction = slip2.physicsId !== void 0 ? String(reg.contactPhysics.get(slip2.physicsId)?.interaction ?? "") : "";
+  let best;
+  let bestScore = -1;
+  for (const row4 of reg.craftLessons.values()) {
+    if (row4.slip !== slip2.type) continue;
+    if (row4.kind !== void 0 && row4.kind !== slip2.kind) continue;
+    if (row4.interaction !== void 0 && row4.interaction !== interaction) continue;
+    const score = (row4.kind !== void 0 ? 1 : 0) + (row4.interaction !== void 0 ? 1 : 0);
+    if (score > bestScore) {
+      best = row4;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+function lessonWay(state, holderId, key) {
+  const unit5 = state.squad.find((u) => u.id === holderId);
+  const style = unit5 !== void 0 ? styleOf(unit5)?.primary : void 0;
+  const L6 = TUNING.craft.lesson;
+  if (style !== void 0 && L6.never.includes(style)) return null;
+  if (style !== void 0 && L6.joke.includes(style)) return "joke";
+  if (style !== void 0 && L6.always.includes(style)) return "plain";
+  const chance = style === "cold" ? L6.cold : L6.other;
+  return craftRoll(state, holderId, `lesson:${key}`) < chance ? "plain" : null;
+}
+function pay2(draft, reg, holderId, key, via) {
+  const xp = Math.round(TUNING.craft.xp.lesson * TUNING.craft.xp.phase * 100) / 100;
+  const paid = addCraftXp(draft, reg, key, xp, "lesson");
+  return paid.length === 0 ? [] : [{ type: "lesson", unitId: holderId, key, xp, via }, ...paid];
+}
+function sweep(draft) {
+  const scene = draft.scene?.id;
+  for (const rel of Object.values(draft.relations)) {
+    const c = rel.craft;
+    if (c === void 0) continue;
+    if (c.slips !== void 0) {
+      c.slips = c.slips.filter((x) => x.scene === scene && x.day === draft.day);
+      if (c.slips.length === 0) delete c.slips;
+    }
+    if (c.lesson !== void 0 && c.lesson.scene !== scene) delete c.lesson;
+  }
+}
+function noteSlips(draft, ctx2, events) {
+  const reg = ctx2.registries;
+  sweep(draft);
+  const scene = draft.scene;
+  if (scene === void 0) return [];
+  const out = [];
+  let n = 0;
+  for (const e of events) {
+    const slip2 = slipOf(draft, e);
+    if (slip2 !== null) {
+      if (!craftLive(draft, reg, slip2.holderId) || !scene.participants.includes(slip2.holderId)) continue;
+      const key = slipKey(reg, slip2);
+      const row4 = lessonRow(reg, slip2);
+      const way = row4 !== void 0 ? lessonWay(draft, slip2.holderId, `${scene.id}:${scene.exchanges}:${n++}:${slip2.type}:${slip2.kind ?? ""}`) : null;
+      const craft = draft.relations[slip2.holderId].craft ??= {};
+      if (row4 !== void 0 && way !== null) {
+        const pick12 = row4.words[Math.floor(craftRoll(draft, slip2.holderId, `lesson:words:${scene.id}:${scene.exchanges}:${n}`) * row4.words.length)];
+        craft.lesson = { point: row4.point, words: pick12, ...way === "joke" ? { joke: true } : {}, scene: scene.id, exchange: scene.exchanges };
+        out.push(...pay2(draft, reg, slip2.holderId, key, "named"));
+      } else (craft.slips ??= []).push({ key, scene: scene.id, day: draft.day });
+    } else if (e.type === "punishment_issued" && typeof e.unitId === "string") {
+      const waiting3 = draft.relations[e.unitId]?.craft?.slips;
+      if (waiting3 === void 0 || !craftLive(draft, reg, e.unitId)) continue;
+      const mine = waiting3.filter((x) => x.scene === scene.id && x.day === draft.day);
+      delete draft.relations[e.unitId].craft.slips;
+      for (const w of mine) out.push(...pay2(draft, reg, e.unitId, w.key, "punished"));
+    }
+  }
+  return out;
+}
 
 // src/engine/craft/streak.ts
 function noteClean(draft, holderId, kind, clean14) {
@@ -43150,6 +43294,7 @@ function noteHoldEvents(draft, ctx2, events) {
     if (reg.contactPhysics.get(e.physicsId)?.skill !== true || !craftLive(draft, reg, e.holderId)) continue;
     const scale = typeof e.scale === "number" ? e.scale : 1;
     out.push(...addCraftXp(draft, reg, `endurance:${e.physicsId}`, Math.round(TUNING.craft.xp.phase * scale * 100) / 100, "phase"));
+    if (reg.contactPhysics.get(e.physicsId)?.interaction === "timing") addPairXp(draft, reg, e.holderId, "rhythm", TUNING.craft.xp.knowledge);
   }
   const taps = (id) => events.some((x) => x.type === "physics_signal" && x.released === true && x.runId === id);
   for (const e of events) {
@@ -43177,6 +43322,8 @@ registerAfterAction((draft, ctx2, events) => {
 });
 registerAfterAction((draft, ctx2, events) => events.some((e) => e.type === "physics_segment" || e.type === "physics_outcome") ? noteHoldEvents(draft, ctx2, events) : []);
 registerDayEndStep("director_tick", (draft, ctx2) => decayCraft(draft, ctx2.registries));
+registerAfterAction((draft, ctx2, events) => craftOn(draft, ctx2.registries) ? noteSlips(draft, ctx2, events) : []);
+installCraftHooks();
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
@@ -57102,8 +57249,8 @@ function renderHandlerPanel(host, ctx2) {
   const buttons = [];
   const complete = () => visit.items.every((i) => picked[i.id] !== void 0);
   const refresh2 = () => {
-    const pay2 = paymentFor(picked, 0);
-    preview.textContent = `PAYS UP TO ${pay2.credits} CR \xB7 ${pay2.supplies} SUPPLIES \xB7 ${pay2.plyx} PLYX`;
+    const pay3 = paymentFor(picked, 0);
+    preview.textContent = `PAYS UP TO ${pay3.credits} CR \xB7 ${pay3.supplies} SUPPLIES \xB7 ${pay3.plyx} PLYX`;
     if (complete() && !locked) submit.removeAttribute("aria-disabled");
     else submit.setAttribute("aria-disabled", "true");
   };
@@ -77033,7 +77180,7 @@ function frame6(now) {
     if (p >= 1) G9.back = null;
   }
   G9.k = k;
-  let lean = 0, sweep = -1, twitch = 0;
+  let lean = 0, sweep2 = -1, twitch = 0;
   if (s && !S10.reduced) {
     const t = now - s.t0;
     if (!s.faceShown && t >= EXPR_SWITCH) {
@@ -77052,7 +77199,7 @@ function frame6(now) {
     if (t >= s.swingAt && !s.result) {
       const p = (t - s.swingAt) / s.swing;
       lean = lerp3(s.unann ? 0 : -0.4, 1, easeIn2(p));
-      if (S10.sweep) sweep = clamp46(1 - (s.impactAt - t) / SWEEP, 0, 1);
+      if (S10.sweep) sweep2 = clamp46(1 - (s.impactAt - t) / SWEEP, 0, 1);
     }
     if (!s.result && t >= s.impactAt) land(s, now);
     if (s.result) lean = 0;
@@ -77094,10 +77241,10 @@ function frame6(now) {
   $8("#side").style.background = `linear-gradient(${dir > 0 ? 90 : 270}deg, rgba(4,2,6,.95), rgba(4,2,6,.4) 28%, rgba(4,2,6,0) 55%)`;
   $8("#side").style.opacity = sideA.toFixed(3);
   const sw = $8("#sweep");
-  if (sweep >= 0 && s && !s.result) {
+  if (sweep2 >= 0 && s && !s.result) {
     const x0 = dir > 0 ? -0.5 : 1.04, x1 = dir > 0 ? 0.02 : 0.52;
-    sw.style.left = `${(lerp3(x0, x1, easeIn2(sweep)) * W3).toFixed(1)}px`;
-    sw.style.opacity = String(0.85 * Math.min(1, sweep * 2));
+    sw.style.left = `${(lerp3(x0, x1, easeIn2(sweep2)) * W3).toFixed(1)}px`;
+    sw.style.opacity = String(0.85 * Math.min(1, sweep2 * 2));
   } else sw.style.opacity = "0";
   $8("#tight").style.opacity = String((0.5 * ten).toFixed(3));
   if (A7.worldG) A7.worldG.gain.value = 1 - 0.55 * ten;

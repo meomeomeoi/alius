@@ -123,7 +123,7 @@ export function decideBoundary(draft: CampaignState, ctx: Pick<EngineCtx, 'regis
     if (move !== undefined && run.last) run.last.move = move;
     return { events, ...(move !== undefined ? { move } : {}) };
   }
-  if (outcome === 'collapse' || outcome === 'limit_broken') events.push({ type: 'physics_slip', runId: run.id, kind: 'collapse', holderId: run.holderId });
+  if (outcome === 'collapse' || outcome === 'limit_broken') events.push({ type: 'physics_slip', runId: run.id, kind: 'collapse', holderId: run.holderId, physicsId: run.physicsId });
   if (ENDED_WELL.has(outcome)) events.push(...creditHold(draft, reg, run));
   const blackout = outcome === 'blackout' ? blackoutAftermath(draft, reg, run) : [];
   events.push(...stopPhysics(draft, reg, outcome), ...blackout);

@@ -74,12 +74,49 @@ export function runTargetOf(state: CampaignState, reg: Registries, targetId: str
   }
   return undefined;
 }
+/** P16b: what the commander has learnt that the physics reads (stillness, her rhythm); a reader answers `null` when it has nothing to say. */
+type SkillReader = (state: CampaignState, holderId: string) => number | null;
+const stillnessReaders = new Map<string, SkillReader>();
+const rhythmReaders = new Map<string, SkillReader>();
+
+/**
+ * P16b plugs in here: the commander's stillness as a share 0-1 of how much quieter a slip is (loudness is `1 x (1 - stillness)`). With nothing registered, or a reader
+ * that answers `null`, it is 0 and every slip is as loud as it is. Readers are kept by `key` (registering one again replaces it); the first that answers wins.
+ */
+export function registerStillness(fn: SkillReader, key = 'default'): void {
+  stillnessReaders.set(key, fn);
+}
+/** How quiet the commander is (0-1) for this holder's hold; 0 when no reader answered. */
+export function stillnessOf(state: CampaignState, holderId: string): number {
+  for (const read of stillnessReaders.values()) {
+    const n = read(state, holderId);
+    if (n !== null) return n;
+  }
+  return 0;
+}
+/**
+ * P16b plugs in here: how many levels (0-5) of her personal rhythm the commander knows. Each level widens the openings of a timing run by `TUNING.craft.rhythm.widenPerLevel`.
+ * With nothing registered, or a reader that answers `null`, it is 0 and the openings are as planned (nothing is multiplied).
+ */
+export function registerRhythmKnown(fn: SkillReader, key = 'default'): void {
+  rhythmReaders.set(key, fn);
+}
+/** The levels of her rhythm the commander knows; 0 when no reader answered. */
+export function rhythmKnownOf(state: CampaignState, holderId: string): number {
+  for (const read of rhythmReaders.values()) {
+    const n = read(state, holderId);
+    if (n !== null) return n;
+  }
+  return 0;
+}
 /** Tests: forget every registered reader. */
 export function resetPhysicsHooks(): void {
   styleReaders.length = 0;
   holdsReaders.length = 0;
   targetReaders.length = 0;
   mannerReaders.length = 0;
+  stillnessReaders.clear();
+  rhythmReaders.clear();
 }
 
 export function physicsStyleOf(state: CampaignState, unitId: string, reg?: Registries): PhysicsStyle {

@@ -9,7 +9,7 @@
  */
 import type { Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
-import { craftLevel, addCraftXp } from './book';
+import { addCraftXp, addPairXp, craftLevel } from './book';
 import { craftLive } from './gate';
 import { noteClean } from './streak';
 import type { CampaignState } from '../state/types';
@@ -88,6 +88,7 @@ export function noteHoldEvents(draft: CampaignState, ctx: Pick<EngineCtx, 'regis
     if (reg.contactPhysics.get(e.physicsId)?.skill !== true || !craftLive(draft, reg, e.holderId)) continue;
     const scale = typeof e.scale === 'number' ? e.scale : 1;
     out.push(...addCraftXp(draft, reg, `endurance:${e.physicsId}`, Math.round(TUNING.craft.xp.phase * scale * 100) / 100, 'phase'));
+    if (reg.contactPhysics.get(e.physicsId)?.interaction === 'timing') addPairXp(draft, reg, e.holderId, 'rhythm', TUNING.craft.xp.knowledge); // a clean timing segment: the commander learns her rhythm
   }
   const taps = (id: unknown): boolean => events.some((x) => x.type === 'physics_signal' && x.released === true && x.runId === id);
   for (const e of events) {

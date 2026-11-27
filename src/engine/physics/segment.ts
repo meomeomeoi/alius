@@ -24,7 +24,7 @@ import { addEnduranceXp, commanderSkill, herSkillOf } from './skill';
 import {
   GAUGE_FULL, INPUT_KINDS, type Attention, type JawOrder, type PhysicsRun, type PhysicsStyle, type PlannedBeat, type ScentBand, type SegmentInput, type SegmentPlan, type SegmentResult,
 } from './state';
-import { blendedStyle, leadStyle, physicsMannerOf, physicsStyleOf, segmentSecondsOf, styleRows } from './style';
+import { blendedStyle, leadStyle, physicsMannerOf, physicsStyleOf, rhythmKnownOf, segmentSecondsOf, stillnessOf, styleRows } from './style';
 
 export { segmentSecondsOf };
 import { scentBand } from './scent';
@@ -33,8 +33,8 @@ import { headCapacity, scentToleranceOf } from './stimuli';
 import { ATT_BY_STEP, frameOf, presenceOf, PRESENCE_WATCH } from './presence';
 import { floorStart, flowEnded, gulpRowOf, isGulpPhysics, isGulpRun, layFlow } from './gulp';
 
-/** The commander's stillness skill (P16b): reads 0 until it lands, so every slip is as loud as it is. */
-export const stillnessOf = (_state: CampaignState): number => 0;
+/** The commander's stillness (P16b): a reader of `style.ts`, 0 until something is learnt, so every slip is as loud as it is. */
+export { stillnessOf };
 
 export type GaugeKind = 'capacity' | 'fill' | 'dirt' | 'progress';
 
@@ -71,6 +71,9 @@ export function beatsPerSegment(state: Pick<CampaignState, 'settings'>, segmentS
   return sceneSettingsOf(state).physicsRealtime ? Math.max(1, Math.ceil((segmentSeconds * 1000) / P.beatMs)) : P.turnBeats;
 }
 
+/** P16b: each level of her rhythm the commander knows widens an opening by `craft.rhythm.widenPerLevel`; at 0 the width is untouched. */
+const widened = (width: number, known: number): number => (known === 0 ? width : width * (1 + TUNING.craft.rhythm.widenPerLevel * known));
+
 /** The width of her next opening: the lead's (an obsessive one draws it), blended with the other style of the pair. */
 function openingWidth(style: PhysicsStyle, rng: Rng, measuring: boolean, tempo = 0): number {
   const { leadKey, other } = styleRows(style);
@@ -101,6 +104,7 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
   const beats: PlannedBeat[] = attention.map((a) => ({ attention: a }));
   const interactions = [String(phys.interaction), ...(run.second ? [String(reg.contactPhysics.get(run.second.physicsId)?.interaction)] : [])];
   if (interactions.includes('timing')) {
+    const known = rhythmKnownOf(state, run.holderId); // P16b: the levels of her rhythm the commander knows (0 until learnt)
     let pos = run.act === 'pet' ? 0 : ((rhythmOffset(state, run.holderId) + (run.rhythmShift ?? 0)) % 3) + rng.int(0, 1);
     let k = 0;
     while (pos < n) {
@@ -109,7 +113,7 @@ export function planSegment(state: CampaignState, reg: Registries, run: PhysicsR
       // R4: in real time a holder whose cues are `none` gives her openings no cue (decided, not drawn: no new draw); turn-based, `noCueShare` as before
       const silent = (realtime && lead.cues === 'none') || (!realtime && rng.chance(blendedStyle(style, 'noCueShare')));
       beats[pos] = {
-        ...beats[pos]!, opening: { widthMs: openingWidth(style, rng, measuring, tempo), ...(isFalse ? { false: true as const } : {}) },
+        ...beats[pos]!, opening: { widthMs: widened(openingWidth(style, rng, measuring, tempo), known), ...(isFalse ? { false: true as const } : {}) },
         ...(silent ? {} : { cue: isFalse ? ('window_false' as const) : ('window_open' as const) }),
       };
       pos += run.act === 'pet' ? 1 : rng.int(P.breath.windowEvery[0], P.breath.windowEvery[1]); // a pet's quick rhythm: an opening every beat
@@ -594,9 +598,9 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   }
   // every slip is a sound, by the physics it came from (the extra slips of a catch are the first one's)
   const mainPart = { gasps: result.gasps - (secondPart?.gasps ?? 0), slips: result.slips - (secondPart?.slips ?? 0), reliefs: result.reliefs - (secondPart?.reliefs ?? 0) };
-  sounds = segmentNoise(mainPart, envMain.interaction, stillnessOf(draft));
+  sounds = segmentNoise(mainPart, envMain.interaction, stillnessOf(draft, run.holderId));
   if (secondPart) {
-    for (const x of segmentNoise(secondPart, secondPart.interaction, stillnessOf(draft))) {
+    for (const x of segmentNoise(secondPart, secondPart.interaction, stillnessOf(draft, run.holderId))) {
       const have = sounds.find((y) => y.kind === x.kind);
       if (have) have.loudness += x.loudness;
       else sounds.push(x);
@@ -626,7 +630,7 @@ export function physicsInput(draft: CampaignState, ctx: { registries: Registries
   if (secondBonus > 0 && run.second) events.push(addEnduranceXp(draft, run.second.physicsId, TUNING.physics.endurance.streak * secondBonus));
   const gulped = run.gulp !== undefined && isGulpRun(run, reg);
   if (result.slips > 0) {
-    events.push({ type: 'physics_slip', runId, kind: 'slip', count: result.slips, holderId: run.holderId });
+    events.push({ type: 'physics_slip', runId, kind: 'slip', count: result.slips, holderId: run.holderId, physicsId });
     if (!gulped) { // R32: a gulp's spills are carried to her flow's end (below), where the cleaning starts from all of them
       const chained = chainRun(draft, reg, run);
       if (chained.length > 0) events.push(...chained);
@@ -709,7 +713,7 @@ export function marathonSkip(draft: CampaignState, ctx: { registries: Registries
   const k = resolveSkip(draft, reg, run, strategy as Strategy, ctx.rng);
   const events: EngineEvent[] = [];
   if (k.slip) {
-    events.push({ type: 'physics_slip', runId: run.id, kind: 'skip', count: 1, holderId: run.holderId });
+    events.push({ type: 'physics_slip', runId: run.id, kind: 'skip', count: 1, holderId: run.holderId, physicsId: run.physicsId });
     run.extend += TUNING.physics.slipExtend;
   }
   if (k.caught) events.push({ type: 'physics_caught', runId: run.id, holderId: run.holderId, kind: 'cheat', beat: -1 });

@@ -128,6 +128,16 @@ describe('noteHoldEvents', () => {
     expect(s.commander.endurance!.weight.xp).toBe(9);
   });
 
+  it('a clean segment of a timing physics also teaches the commander her rhythm (quietly), a hold does not', () => {
+    const s = world(reg, 'play');
+    noteHoldEvents(s, ctx(), [seg({ physicsId: 'weight' })]);
+    expect(s.relations[ANN].craft).toBeUndefined();
+    noteHoldEvents(s, ctx(), [seg({ physicsId: 'breath' }), seg({ physicsId: 'breath' })]);
+    expect(s.relations[ANN].craft!.rhythm).toEqual({ xp: 2 * TUNING.craft.xp.knowledge, day: s.day });
+    noteHoldEvents(s, ctx(), [seg({ physicsId: 'breath', slips: 2 })]);
+    expect(s.relations[ANN].craft!.rhythm!.xp).toBe(2 * TUNING.craft.xp.knowledge);
+  });
+
   it('writes nothing while the holder is not craft-live', () => {
     const s = world(reg, 'equal');
     expect(noteHoldEvents(s, ctx(), [seg()])).toEqual([]);

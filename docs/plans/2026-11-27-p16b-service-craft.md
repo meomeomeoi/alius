@@ -263,17 +263,17 @@ Before Task 1, also read:
     - Read through `styleOf`.
   - A slip followed in the same scene by her `punishment_issued` or by her named lesson emits `lesson { unitId, key, xp }`, half the clean xp, once per slip.
   - The directive `craft:lesson:<unitId>` (Task 6 wires it): next_reply, the point's words, "if it fits, once".
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - stillness and rhythm read 0 without craft (seeded segment tests unchanged);
   - one stillness level lowers the loudness by 10 %;
   - a slip with no punishment and no lesson pays nothing;
   - with either, it pays half;
   - `lessonDue` by style;
   - nothing draws.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS, plus `tests/engine/physics`; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P16b): stillness and her rhythm are learnt; slips teach`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS, plus `tests/engine/physics`; `npm run build`.
+- [x] **Step 5: Commit** `feat(P16b): stillness and her rhythm are learnt; slips teach`
 
 ### Task 5: `Knowledge.craft` and CMDR › CRAFT
 

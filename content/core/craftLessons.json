@@ -1,0 +1,96 @@
+[
+  {
+    "id": "lesson_windows",
+    "slip": "physics_slip",
+    "kind": "slip",
+    "interaction": "timing",
+    "point": "windows",
+    "words": [
+      "AUTHOR TO WRITE: She names the point: windows."
+    ],
+    "description": "AUTHOR TO WRITE: A timing run slipped: she names the openings that were missed."
+  },
+  {
+    "id": "lesson_hands",
+    "slip": "physics_slip",
+    "kind": "slip",
+    "interaction": "hold",
+    "point": "hands",
+    "words": [
+      "AUTHOR TO WRITE: She names the point: hands."
+    ],
+    "description": "AUTHOR TO WRITE: A held weight slipped: she names how the hold was kept."
+  },
+  {
+    "id": "lesson_order",
+    "slip": "physics_slip",
+    "kind": "slip",
+    "interaction": "order",
+    "point": "order",
+    "words": [
+      "AUTHOR TO WRITE: She names the point: order."
+    ],
+    "description": "AUTHOR TO WRITE: A cleaning went out of order: she names the order she gave."
+  },
+  {
+    "id": "lesson_air",
+    "slip": "physics_slip",
+    "kind": "slip",
+    "interaction": "decision",
+    "point": "breath",
+    "words": [
+      "AUTHOR TO WRITE: She names the point: breath."
+    ],
+    "description": "AUTHOR TO WRITE: A choice under her scent went wrong: she names the breath."
+  },
+  {
+    "id": "lesson_jaw",
+    "slip": "physics_slip",
+    "kind": "slip",
+    "interaction": "gesture",
+    "point": "teeth",
+    "words": [
+      "AUTHOR TO WRITE: She names the point: teeth."
+    ],
+    "description": "AUTHOR TO WRITE: The mouth closed on what it held: she names the teeth."
+  },
+  {
+    "id": "lesson_reflex",
+    "slip": "physics_slip",
+    "kind": "reflex",
+    "point": "reflex",
+    "words": [
+      "AUTHOR TO WRITE: She names the point: reflex."
+    ],
+    "description": "AUTHOR TO WRITE: The body flinched from a stimulus: she names the flinch."
+  },
+  {
+    "id": "lesson_collapse",
+    "slip": "physics_slip",
+    "kind": "collapse",
+    "point": "limit",
+    "words": [
+      "AUTHOR TO WRITE: She names the point: limit."
+    ],
+    "description": "AUTHOR TO WRITE: The hold was lost altogether: she names where the limit was."
+  },
+  {
+    "id": "lesson_skip",
+    "slip": "physics_slip",
+    "kind": "skip",
+    "point": "stretch",
+    "words": [
+      "AUTHOR TO WRITE: She names the point: stretch."
+    ],
+    "description": "AUTHOR TO WRITE: The stretch between phases was spent badly: she names how it was spent."
+  },
+  {
+    "id": "lesson_posture",
+    "slip": "posture_slip",
+    "point": "posture",
+    "words": [
+      "AUTHOR TO WRITE: She names the point: posture."
+    ],
+    "description": "AUTHOR TO WRITE: The posture slid: she names the point that moved."
+  }
+]

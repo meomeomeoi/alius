@@ -8,7 +8,7 @@ import type { EngineEvent } from '../dispatch';
 import { addEnduranceXp, commanderSkill, levelForXp } from '../physics/skill';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
-import { craftOn } from './gate';
+import { craftLive, craftOn } from './gate';
 import { craftWord, enduranceOf, type CraftEntry, type CraftKey } from './state';
 
 /** The level (0-5) of a key: the endurance of a physics reads `commanderSkill`, the rest `Commander.craft`. */
@@ -79,4 +79,18 @@ export function craftCapacity(state: Pick<CampaignState, 'commander'>, key: Craf
   if (key !== 'posture' && key !== 'pain') return level;
   const stat = state.commander.body?.endurance ?? TUNING.commander.defaults.body.endurance;
   return level + Math.max(0, stat - TUNING.craft.capacity.bodyFrom) * TUNING.craft.capacity.bodyPerPoint;
+}
+
+/**
+ * What the pair has learnt of her rhythm (or her routine): the one writer of `Relation.craft.rhythm` / `.routine`, which the readers of the physics layer and the CMDR
+ * file use. Adds `xp` and stamps the day. A no-op returning `[]` unless the holder is craft-live. Says nothing (the pair's knowledge is quiet).
+ */
+export function addPairXp(draft: CampaignState, reg: Registries, holderId: string, what: 'rhythm' | 'routine', xp: number): EngineEvent[] {
+  const rel = draft.relations[holderId];
+  if (!(xp > 0) || rel === undefined || !craftLive(draft, reg, holderId)) return [];
+  const row = (((rel.craft ??= {})[what]) ??= { xp: 0, day: draft.day });
+  row.xp += xp;
+  row.day = draft.day;
+  delete row.decayedDay;
+  return [];
 }

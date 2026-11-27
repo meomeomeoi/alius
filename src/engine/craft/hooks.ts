@@ -1,0 +1,25 @@
+/**
+ * What the craft plugs into the physics layer (P16b, plan Task 4; ruling 12): the commander's stillness (a share of how much quieter a slip is, `noise.perLevel`
+ * a level) and how many levels of her personal rhythm the commander knows (each widens her openings). Both read 0 while nothing of the craft is written, so a campaign
+ * without it is as it was. Installed once when `actions/craft` is imported; `installCraftHooks` is idempotent (tests that reset the physics hooks call it again).
+ */
+import { levelForXp } from '../physics/skill';
+import { registerRhythmKnown, registerStillness } from '../physics/style';
+import type { CampaignState } from '../state/types';
+import { TUNING } from '../tuning';
+import { craftLevel } from './book';
+
+/** How quiet the commander is, 0 to 0.9: `noise.perLevel` for each level of `stillness`. */
+export function stillnessShare(state: Pick<CampaignState, 'commander'>): number {
+  return Math.min(0.9, TUNING.craft.noise.perLevel * craftLevel(state, 'stillness'));
+}
+
+/** The levels (0-5) of her rhythm the commander knows with this holder. */
+export function rhythmLevel(state: Pick<CampaignState, 'relations'>, holderId: string): number {
+  return levelForXp(state.relations[holderId]?.craft?.rhythm?.xp ?? 0);
+}
+
+export function installCraftHooks(): void {
+  registerStillness((state) => stillnessShare(state), 'craft');
+  registerRhythmKnown((state, holderId) => rhythmLevel(state, holderId), 'craft');
+}

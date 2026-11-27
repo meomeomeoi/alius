@@ -17,7 +17,7 @@ import { TUNING } from '../tuning';
 import { averageCaught, noiseOf } from './gaze';
 import { herSkillOf } from './skill';
 import { BAND_INDEX, bandOfLevel, scentLevel } from './scent';
-import { physicsStyleOf } from './style';
+import { physicsStyleOf, stillnessOf } from './style';
 import type { ScentBand } from './state';
 
 const T = TUNING.stimuli;
@@ -208,7 +208,7 @@ export function applyWay(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'
   }
   events.push({ type: 'stimulus_way', kind: ex.kind, way: w, result, holderId: ex.holderId, noticed, caught });
   if (result === 'reflex') {
-    const s = noiseOf('reflex');
+    const s = noiseOf('reflex', stillnessOf(draft, ex.holderId)); // P16b: the commander's stillness (0 until learnt)
     events.push({ type: 'reflex', kind: ex.kind, way: w, holderId: ex.holderId }, { type: 'physics_slip', runId: scene.physics?.id ?? null, kind: 'reflex', count: 1, holderId: ex.holderId });
     events.push({ type: 'physics_noise', runId: scene.physics?.id ?? null, holderId: ex.holderId, kind: s.kind, loudness: s.loudness });
     if (scene.physics?.last) {

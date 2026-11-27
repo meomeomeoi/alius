@@ -2398,6 +2398,8 @@ export const DESCRIBED_REGISTRIES = [
   'aftermaths', 'regardBands', 'dynamicSigns',
   // P16 (`practiceSeeds` are examples for the model and are not shown to the player: `PLAYER_VISIBLE` leaves them out)
   'practiceSeeds', 'holderPunishments', 'implements', 'ceremonySteps',
+  // P16b
+  'craftLessons',
 ] as const satisfies readonly RegistryName[];
 
 // ---------------------------------------------------------------------------------------------
@@ -3098,6 +3100,25 @@ export const CeremonyStepSchema = BaseEntrySchema.extend({
 export type CeremonyStepEntry = z.infer<typeof CeremonyStepSchema>;
 
 Object.assign(registrySchemas, { practiceSeeds: PracticeSeedSchema, holderPunishments: HolderPunishmentSchema, implements: ImplementSchema, ceremonySteps: CeremonyStepSchema });
+
+// ---------------------------------------------------------------------------------------------
+// P16b: the craft. `AUTHOR TO WRITE`: every text is a draft. The engine reads lessons by `slip` / `kind` / `interaction`, never by id.
+
+/**
+ * What she names after a slip (spec section 1.7): the point that failed, in her words. A row matches an engine event type (`slip`: `physics_slip`, `posture_slip_noted`, ...),
+ * optionally the event's own `kind` and the interaction of the physics it came from; the most specific row wins (`kind` and `interaction` both, then one, then neither).
+ * `point` is the engine's word for what failed (the hands, the windows, the gaze); `words` are her ways of saying it (one is picked by a hash, never drawn).
+ */
+export const CraftLessonSchema = BaseEntrySchema.extend({
+  slip: str,
+  kind: str.optional(),
+  interaction: str.optional(),
+  point: str,
+  words: z.array(str).min(1),
+  description: str,
+}).strict();
+export type CraftLessonEntry = z.infer<typeof CraftLessonSchema>;
+registrySchemas.craftLessons = CraftLessonSchema;
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */
 function withDescription(schema: z.ZodTypeAny): z.ZodTypeAny {

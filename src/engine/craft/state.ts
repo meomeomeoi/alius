@@ -51,6 +51,10 @@ export interface RelationCraft {
   records?: Record<string, { longest: number; clean: number; noTap: number; day: number }>;
   /** Her settling-in count (hidden): clean holds in a row, by kind. */
   streak?: Record<string, number>;
+  /** The slips of the scene still waiting for her discipline (a lesson is earned by a slip her punishment or her named point followed): the key they teach, the scene and the day. */
+  slips?: Array<{ key: string; scene: string; day: number }>;
+  /** The point she names after a slip (hidden until she says it): the engine's word for what failed and her way of saying it, voiced once in the reply of this exchange. */
+  lesson?: { point: string; words: string; joke?: true; scene: string; exchange: number };
 }
 
 /**
