@@ -468,16 +468,16 @@ Before Task 1, also read:
   - `temptations(state, reg, run)`: impulses of 30 per scene event (a visitor 50), placed by `fnv1a` of the run and the event, never drawn. The events are read by kind from the scene: a participant joins, a blocking change of hers (undressing: a worn item off), a moment source `third_party`.
   - `PostureRun = { id, holderId, presetId, startedAt, beats, slips, corrections, hidden?, until? }` on `practices.postureRun` (one at a time).
   - The threshold and the slip are the instrument's business in real time. The engine judges the reports (Task 12).
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - each factor;
   - skill and mastery slow the drift;
   - the gaze ignores fatigue;
   - the temptations are the same for the same run, hashed, and are placed only on events;
   - nothing is drawn.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P16b): postures drift; her world tempts the gaze`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P16b): postures drift; her world tempts the gaze`
 
 ### Task 12: Taking, holding, correcting, slipping
 

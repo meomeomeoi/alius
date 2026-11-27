@@ -6,6 +6,7 @@
  * Nothing here draws from the campaign's rng: every chance is `practiceRoll` (a `dynamicRoll` with a `practice:` key) and every pick is an
  * index into a registry-ordered list by `Math.floor(practiceRoll × n)`.
  */
+import type { PostureRun } from '../craft/state';
 import type { DynamicDomain, TrackState } from '../dynamic/state';
 import type { Frame } from '../dynamic/types';
 import { dynamicRoll } from '../dynamic/witness';
@@ -338,6 +339,9 @@ export interface PracticeState {
    * default preset, the same pose) and two ids are one posture when `samePreset` says so. No migration writes.
    */
   postures: Record<string, Array<{ postureId: string; name: string; day: number }>>;
+  /** P16b: the posture hold that runs (one at a time) and how many holds the day has had (the fatigue of the day). Both absent until a hold starts; `forgetPractices` takes the run of a soldier who leaves. */
+  postureRun?: PostureRun;
+  postureDay?: { day: number; holds: number };
   /** The call open: `postureId` is as stored in her set (a preset id or an old base id). */
   call?: { id: string; holderId: string; postureId: string; sceneId: string; at: number };
   /**

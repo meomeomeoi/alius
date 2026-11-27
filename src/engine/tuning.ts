@@ -1361,11 +1361,12 @@ export const TUNING = Object.freeze({
    * and the Regard (`regard`, a `value` rise) her `pleased` verdict on a drill she ran earns.
    */
   craft: Object.freeze({
-    xp: Object.freeze({ phase: 3, lesson: 0.5, drill: 15, knowledge: 5 }),
+    xp: Object.freeze({ phase: 3, lesson: 0.5, drill: 15, knowledge: 5, posture: 5 }),
     drill: Object.freeze({ holder: 1.5, other: 1.2, regard: 1 }),
     decay: Object.freeze({ days: 21, pairDays: 42 }),
     beatSkill: 0.25,
-    beatSeconds: Object.freeze({ weight: 20, breath: 3, saturation: 10, tongue_work: 15, jaw: 5, gulp: 5, her_activity: 20, posture: 30 } as Record<string, number>),
+    // G1 round 1 (author): a posture beat stands for 45 s of fiction (was 30)
+    beatSeconds: Object.freeze({ weight: 20, breath: 3, saturation: 10, tongue_work: 15, jaw: 5, gulp: 5, her_activity: 20, posture: 45 } as Record<string, number>),
     beatSecondsDefault: 10,
     capacity: Object.freeze({ bodyFrom: 3, bodyPerPoint: 0.5 }),
     noise: Object.freeze({ perLevel: 0.1 }),
@@ -1383,5 +1384,48 @@ export const TUNING = Object.freeze({
     lesson: Object.freeze({ always: Object.freeze(['drill', 'ritual', 'clinical']), joke: Object.freeze(['playful']), never: Object.freeze(['cruel']), cold: 0.4, other: 0.5 }),
     rhythm: Object.freeze({ widenPerLevel: 0.05 }),
     record: Object.freeze({ freshDays: 14, minSeconds: 60, bringUp: 0.4 }),
+    /**
+     * The game of postures (Tasks 11-13). AUTHOR TO TUNE: a G1 draft, from the engine tables of `docs/prototypes/posture.html` (gate G1 is still in rounds with the author). Drift is in points per
+     * 10 s at skill 0 (the preset's own rates are in `servicePostures`); the instrument plays the thresholds, the clicks and the keys in real time, the engine judges what it reports.
+     */
+    posture: Object.freeze({
+      /** The state each target drifts toward (blocking.md section 7.1 "drifts toward"); a point with no row for its state is not judged. */
+      driftTo: Object.freeze({
+        torso: Object.freeze({ upright: 'forward', arched: 'upright', level: 'bent', forward: 'bent' }),
+        hips: Object.freeze({ raised: 'on_heels', on_heels: 'to_floor' }),
+        knees: Object.freeze({ together: 'apart', apart: 'together' }),
+        arms: Object.freeze({ raised: 'out_sideways', behind_head: 'at_sides', out_sideways: 'at_sides', forward_palms_up: 'on_thighs_up', behind_back: 'at_sides', holding: 'at_sides', clasped_front: 'at_sides', on_thighs_up: 'on_thighs_down', lamp: 'at_sides', crossed: 'at_sides' }),
+        head: Object.freeze({ up: 'bowed', back: 'up', bowed: 'to_floor' }),
+        gaze: Object.freeze({ down: 'straight', closed: 'straight', straight: 'at_her' }),
+        feet: Object.freeze({ on_toes: 'flat' }),
+      } as Record<string, Readonly<Record<string, string>>>),
+      /** A point that reaches this is a slip; she puts it back at `slipTo` and it drifts again from there. */
+      slipAt: 100,
+      slipTo: 35,
+      /** One correction takes this much drift back; its loudness is (drift / slipAt) ^ `loudExp`, and over `loudAt` it counts as a loud one. */
+      correctStep: 38,
+      loudExp: 1.4,
+      loudAt: 0.45,
+      /** A hold tires the body as it goes: + `extra` over the first `seconds`; past `selfFeed.from` a drift feeds itself by (drift - from) / `per`. */
+      within: Object.freeze({ seconds: 120, extra: 0.4 }),
+      selfFeed: Object.freeze({ from: 50, per: 100 }),
+      /** The terms of the rate: + `fatigue` per hold earlier the same day, x `load`, x `hardFloor`, x `weight` (a physics the posture supports, running), -`mastery` per level of the posture on the pair. */
+      fatigue: 0.1,
+      load: 1.3,
+      hardFloor: 1.2,
+      weight: 1.25,
+      mastery: 0.05,
+      /** The rate never falls below this share of itself, whatever the skill. */
+      skillFloor: 0.1,
+      /** A correction louder than this, under her eyes, is fidgeting she sees (a correction under `busy` never is); every `fidgetSlipEvery`-th seen one is a slip. */
+      seen: Object.freeze({ watching: 0.42, glancing: 0.72, busy: 2 } as Record<string, number>),
+      fidgetSlipEvery: 3,
+      /** A scene event is an impulse to look up: `event` points over `len` seconds (a `visitor` more), placed up to `delayMax` seconds after it by a hash of the run and the event. */
+      impulse: Object.freeze({ event: 30, visitor: 50, delayMax: 2.5, push: 1.6, len: Object.freeze({ visitor: 4.5, undress: 3.5, sound: 3 } as Record<string, number>) }),
+      /** The share of her "look at me" orders that are a trap (looking is the fault), by her style. */
+      trap: Object.freeze({ neutral: 0.2, ritual: 0, drill: 0.1, cold: 0.3, playful: 0.6, cruel: 0.6, regal: 0.2 } as Record<string, number>),
+      /** The share of her called postures she wants held (a hold of the preset follows the answer), by her style; `other` for any style not listed. */
+      holdShare: Object.freeze({ drill: 0.6, ritual: 0.5, cruel: 0.5, regal: 0.4, cold: 0.3, playful: 0.2, other: 0.3 } as Record<string, number>),
+    }),
   }),
 });

@@ -68,11 +68,36 @@ export interface RelationCraft {
 }
 
 /**
+ * One hold of a posture (P16b, Task 11; `practices.postureRun`, one at a time): she has the commander in a preset, the instrument plays the drift in real time and reports the corrections and the
+ * slips, the engine keeps the count. `startedAt` is the scene's exchange when it began and `present` who was in the room then (the temptations are what happened since). `beats` is what the
+ * instrument reports it ran (fiction time is counted from beats, never from the clock); `until` is the planned length in beats, kept hidden while `hidden` is set (no duration); `source` is who
+ * asked for it (`take`, `her_call`, `drill`, P17g's `attendance`). `clean` is how many beats since its last slip (the streak the settling-in count reads).
+ */
+export interface PostureRun {
+  id: string;
+  holderId: string;
+  presetId: string;
+  startedAt: number;
+  present: string[];
+  beats: number;
+  slips: number;
+  corrections: number;
+  /** Corrections that were loud, and the fidgets she saw (every third one is a slip). */
+  loud?: number;
+  fidgets?: number;
+  until?: number;
+  hidden?: true;
+  source: string;
+  /** The preset her style added to the hold (the settling-in load): `new_posture` etc., hidden. */
+  load?: string;
+}
+
+/**
  * Every engine event of the package. The schema reserves them (content may not `emit_event` one) and the craft controller refreshes its
  * directives on each. `posture_slip` stays P16's event; the craft's note of it is `posture_slip_noted`.
  */
 export const CRAFT_EVENT_TYPES = [
-  'craft_xp', 'craft_level', 'lesson', 'record_set', 'posture_taken', 'posture_slip_noted', 'posture_corrected', 'drill_done',
+  'craft_xp', 'craft_level', 'lesson', 'record_set', 'posture_taken', 'posture_slip_noted', 'posture_corrected', 'posture_ended', 'drill_done',
   'exam_passed', 'exam_failed', 'care_unasked', 'foot_signal_given', 'foot_signal_missed', 'praise_missed',
   'sentence_set', 'sentence_extended', 'sentence_served', 'headlock_offered', 'norm_set',
 ] as const;
