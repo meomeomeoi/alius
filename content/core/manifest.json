@@ -113,6 +113,7 @@
     "ceremonySteps": "ceremonySteps.json",
     "cardVoice": "cardVoice.json",
     "craftLessons": "craftLessons.json",
-    "craftLines": "craftLines.json"
+    "craftLines": "craftLines.json",
+    "servicePostures": "servicePostures.json"
   }
 }

@@ -8305,7 +8305,8 @@ var REGISTRY_NAMES = [
   "cardVoice",
   // P16b
   "craftLessons",
-  "craftLines"
+  "craftLines",
+  "servicePostures"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -10695,7 +10696,8 @@ var DESCRIBED_REGISTRIES = [
   "ceremonySteps",
   // P16b
   "craftLessons",
-  "craftLines"
+  "craftLines",
+  "servicePostures"
 ];
 var HeadStartMomentSchema = BaseEntrySchema.extend({
   sign: external_exports.enum(["positive", "negative", "any"]),
@@ -10955,6 +10957,8 @@ var ContactSchema = BaseEntrySchema.extend({
   face: external_exports.enum(CONTACT_FACES).optional(),
   /** P10e-e: her legs hang in the face-down view (`herLegsOf`; absent: she is out of view). */
   legs: external_exports.enum(HER_LEGS).optional(),
+  /** P16b: it needs a posture of the commander's whose preset `supports` it (the hands held out for her foot): offered and allowed only while one is held. */
+  supported: external_exports.literal(true).optional(),
   label: blockLabel,
   description: str,
   promptHint: blockHint,
@@ -11357,6 +11361,109 @@ var CraftLineSchema = BaseEntrySchema.extend({
   description: str
 }).strict();
 registrySchemas.craftLines = CraftLineSchema;
+var POSTURE_MEANINGS = [
+  "attention",
+  "waiting",
+  "rest",
+  "casual",
+  "work",
+  "sleep",
+  "display",
+  "offering",
+  "request",
+  "apology",
+  "gratitude",
+  "worship",
+  "submission",
+  "punishment",
+  "endurance_test",
+  "object",
+  "pet"
+];
+var postureStates = {
+  torso: external_exports.enum(["upright", "forward", "arched", "level", "bent"]),
+  hips: external_exports.enum(["raised", "on_heels", "to_floor"]),
+  knees: external_exports.enum(["together", "apart"]),
+  arms: external_exports.enum([
+    "at_sides",
+    "behind_back",
+    "behind_head",
+    "on_thighs_down",
+    "on_thighs_up",
+    "forward_palms_up",
+    "out_sideways",
+    "raised",
+    "holding",
+    "on_floor",
+    "on_ankles",
+    "under_knees",
+    "bound",
+    "crossed",
+    "clasped_front",
+    "paws",
+    "tucked",
+    "lamp",
+    "desk_flat"
+  ]),
+  head: external_exports.enum(["up", "bowed", "back", "to_floor"]),
+  gaze: external_exports.enum(["down", "at_her", "straight", "closed"]),
+  feet: external_exports.enum(["flat", "on_toes"])
+};
+var postureStateMap = external_exports.object({
+  torso: postureStates.torso.optional(),
+  hips: postureStates.hips.optional(),
+  knees: postureStates.knees.optional(),
+  arms: postureStates.arms.optional(),
+  head: postureStates.head.optional(),
+  gaze: postureStates.gaze.optional(),
+  feet: postureStates.feet.optional()
+}).strict();
+var ServicePostureSchema = BaseEntrySchema.extend({
+  base: lowerId,
+  points: postureStateMap,
+  variants: external_exports.object({
+    torso: external_exports.array(postureStates.torso).min(2).optional(),
+    hips: external_exports.array(postureStates.hips).min(2).optional(),
+    knees: external_exports.array(postureStates.knees).min(2).optional(),
+    arms: external_exports.array(postureStates.arms).min(2).optional(),
+    head: external_exports.array(postureStates.head).min(2).optional(),
+    gaze: external_exports.array(postureStates.gaze).min(2).optional(),
+    feet: external_exports.array(postureStates.feet).min(2).optional()
+  }).strict().optional(),
+  meaning: external_exports.array(external_exports.enum(POSTURE_MEANINGS)).min(1),
+  humiliation: external_exports.number().int().min(0).max(5),
+  tags: external_exports.array(str),
+  requires: external_exports.object({
+    track: str.optional(),
+    frame: external_exports.enum(["play", "role", "rule"]).optional(),
+    affordances: external_exports.array(lowerId).min(1).optional(),
+    /** The commander must be at one of these places (any of). */
+    anchor: external_exports.array(lowerId).min(1).optional(),
+    /** The commander must wear one of these items. */
+    items: external_exports.array(lowerId).min(1).optional()
+  }).strict().optional(),
+  drift: external_exports.object({
+    torso: external_exports.number().min(0).max(40).optional(),
+    hips: external_exports.number().min(0).max(40).optional(),
+    knees: external_exports.number().min(0).max(40).optional(),
+    arms: external_exports.number().min(0).max(40).optional(),
+    head: external_exports.number().min(0).max(40).optional(),
+    gaze: external_exports.number().min(0).max(40).optional(),
+    feet: external_exports.number().min(0).max(40).optional()
+  }).strict(),
+  supports: external_exports.array(str).min(1).optional(),
+  signal: external_exports.enum(["none", "odd", "telling", "exposing"]),
+  noise: external_exports.enum(["low", "mid", "high"]),
+  /** What the dial draws besides the body (an item, a place) and the restraint of a hogtie: hints only, read by the mannequin. */
+  item: external_exports.enum(["tray", "lamp", "rope", "mouth"]).optional(),
+  hint: external_exports.enum(["wall", "wall_front", "desk", "feet"]).optional(),
+  hogtie: external_exports.literal(true).optional(),
+  default: external_exports.literal(true).optional(),
+  label: blockLabel,
+  promptHint: blockHint,
+  description: str
+}).strict();
+registrySchemas.servicePostures = ServicePostureSchema;
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
     const d = entry.description;
@@ -93298,6 +93405,25 @@ registerChecks("probeAxes", (entry, regs) => (entry.needs ?? []).flatMap((n, i) 
 registerRefs("holderPunishments", (entry) => (entry.effects ?? []).flatMap((fx2, i) => fx2.type === "privilege_revoked" && typeof fx2.arg === "string" ? [{ registry: "locations", id: fx2.arg, path: `effects[${i}].arg` }] : []));
 registerChecks("practiceSeeds", (entry, regs) => known2(regs, "dynamicTracks", entry.track, "track", "practice track"));
 registerChecks("ceremonySteps", (entry, regs) => known2(regs, "blockingPostures", entry.posture, "posture", "posture"));
+registerChecks("servicePostures", (entry, regs) => {
+  const req = entry.requires ?? {};
+  const out = [
+    ...known2(regs, "blockingPostures", entry.base, "base", "posture"),
+    ...knownEach(regs, "contentCategories", entry.tags, "tags", "content category"),
+    ...known2(regs, "dynamicTracks", req.track, "requires.track", "practice track"),
+    ...knownEach(regs, "blockingAnchors", req.anchor, "requires.anchor", "anchor"),
+    ...knownEach(regs, "blockingItems", req.items, "requires.items", "item"),
+    ...affordanceChecks(regs, req.affordances, "requires.affordances")
+  ];
+  if (Array.isArray(entry.supports)) {
+    for (const [i, id] of entry.supports.entries()) if (!regs.blockingContacts.has(String(id)) && !regs.contactPhysics.has(String(id))) out.push({ path: `supports[${i}]`, message: `unknown contact or physics "${String(id)}"` });
+  }
+  if (entry.default === true) {
+    const first2 = [...regs.servicePostures.values()].find((p) => p.base === entry.base && p.default === true);
+    if (first2 !== void 0 && first2.id !== entry.id) out.push({ path: "default", message: `"${String(entry.base)}" already has a default preset ("${first2.id}"): exactly one preset of a base is its default` });
+  }
+  return out;
+});
 
 // src/content/loader.ts
 var UNSAFE_KEYS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);

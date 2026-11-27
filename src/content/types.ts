@@ -61,7 +61,7 @@ export const REGISTRY_NAMES = [
   // P10e-e
   'cardVoice',
   // P16b
-  'craftLessons', 'craftLines',
+  'craftLessons', 'craftLines', 'servicePostures',
 ] as const;
 
 export type RegistryName = (typeof REGISTRY_NAMES)[number];

@@ -1184,3 +1184,24 @@ registerRefs('holderPunishments', (entry) =>
 
 registerChecks('practiceSeeds', (entry, regs) => known(regs, 'dynamicTracks', entry.track, 'track', 'practice track'));
 registerChecks('ceremonySteps', (entry, regs) => known(regs, 'blockingPostures', entry.posture, 'posture', 'posture'));
+
+// P16b: a posture preset stands on a base, carries content categories, may name places, items and a track, and supports contacts or physics; one preset of each base is its default.
+registerChecks('servicePostures', (entry, regs) => {
+  const req = (entry.requires ?? {}) as { track?: unknown; affordances?: unknown; anchor?: unknown; items?: unknown };
+  const out: RegistryCheck[] = [
+    ...known(regs, 'blockingPostures', entry.base, 'base', 'posture'),
+    ...knownEach(regs, 'contentCategories', entry.tags, 'tags', 'content category'),
+    ...known(regs, 'dynamicTracks', req.track, 'requires.track', 'practice track'),
+    ...knownEach(regs, 'blockingAnchors', req.anchor, 'requires.anchor', 'anchor'),
+    ...knownEach(regs, 'blockingItems', req.items, 'requires.items', 'item'),
+    ...affordanceChecks(regs, req.affordances, 'requires.affordances'),
+  ];
+  if (Array.isArray(entry.supports)) {
+    for (const [i, id] of (entry.supports as unknown[]).entries()) if (!regs.blockingContacts.has(String(id)) && !regs.contactPhysics.has(String(id))) out.push({ path: `supports[${i}]`, message: `unknown contact or physics "${String(id)}"` });
+  }
+  if (entry.default === true) {
+    const first = [...regs.servicePostures.values()].find((p) => p.base === entry.base && p.default === true);
+    if (first !== undefined && first.id !== entry.id) out.push({ path: 'default', message: `"${String(entry.base)}" already has a default preset ("${first.id}"): exactly one preset of a base is its default` });
+  }
+  return out;
+});

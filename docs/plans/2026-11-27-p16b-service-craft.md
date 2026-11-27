@@ -410,17 +410,17 @@ Before Task 1, also read:
   - the drift rates from the spec TUNING (arms raised 12, behind head 9, out 10, torso 4, hips 5, knees 3, head 4, feet on toes 10);
   - humiliation, meaning and signal from §7.3;
   - every text `AUTHOR TO WRITE`.
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - 47 rows;
   - every base has one default;
   - every point state is a `PointStates` state;
   - tags are content categories;
   - the dial sheet's 47 drawings equal the fixture's (the existing dial tests);
   - no id equals a `blockingActivities` id.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `content(P16b): the 47 posture presets`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `content(P16b): the 47 posture presets`
 
 ### Task 10: Her named postures are presets
 

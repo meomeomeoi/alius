@@ -2403,7 +2403,7 @@ export const DESCRIBED_REGISTRIES = [
   // P16 (`practiceSeeds` are examples for the model and are not shown to the player: `PLAYER_VISIBLE` leaves them out)
   'practiceSeeds', 'holderPunishments', 'implements', 'ceremonySteps',
   // P16b
-  'craftLessons', 'craftLines',
+  'craftLessons', 'craftLines', 'servicePostures',
 ] as const satisfies readonly RegistryName[];
 
 // ---------------------------------------------------------------------------------------------
@@ -2707,6 +2707,8 @@ export const ContactSchema = BaseEntrySchema.extend({
   face: z.enum(CONTACT_FACES).optional(),
   /** P10e-e: her legs hang in the face-down view (`herLegsOf`; absent: she is out of view). */
   legs: z.enum(HER_LEGS).optional(),
+  /** P16b: it needs a posture of the commander's whose preset `supports` it (the hands held out for her foot): offered and allowed only while one is held. */
+  supported: z.literal(true).optional(),
   label: blockLabel, description: str, promptHint: blockHint, effects: effectList,
 }).strict();
 
@@ -3137,6 +3139,71 @@ export const CraftLineSchema = BaseEntrySchema.extend({
 }).strict();
 export type CraftLineEntry = z.infer<typeof CraftLineSchema>;
 registrySchemas.craftLines = CraftLineSchema;
+
+/**
+ * P16b (Task 9): the posture presets (docs/content/blocking.md section 7.2 and 7.3). A preset is a base position (`base`, one of the 13 of `blockingPostures`) with target states for
+ * some of the points: only those it fixes are judged, the rest are free. The states are the dial's (`PointStates` in `src/ui/scene/dial/points.ts`, the code wins over the doc: the torso
+ * also has `level` and `bent`, the arms `crossed`, `clasped_front`, `paws`, `tucked`, `lamp`, `desk_flat`). `drift` is how hard each judged point is to hold, in points per 10 s at
+ * skill 0 (`AUTHOR TO TUNE`; the gaze is 0: it drifts by temptation, not fatigue); `variants` are the points she may set in a named posture; `supports` are the contacts (or physics)
+ * the posture can carry; `signal` what a person walking in reads, `noise` how loud a correction is. Exactly one preset of each base has `default: true`: an old name on the base reads as it.
+ * `tags` are content categories (the content gate reads them as `contentTags`). Read by field, never by id.
+ */
+export const POSTURE_POINTS = ['torso', 'hips', 'knees', 'arms', 'head', 'gaze', 'feet'] as const;
+export const POSTURE_MEANINGS = [
+  'attention', 'waiting', 'rest', 'casual', 'work', 'sleep', 'display', 'offering', 'request', 'apology', 'gratitude', 'worship', 'submission', 'punishment', 'endurance_test', 'object', 'pet',
+] as const;
+const postureStates = {
+  torso: z.enum(['upright', 'forward', 'arched', 'level', 'bent']),
+  hips: z.enum(['raised', 'on_heels', 'to_floor']),
+  knees: z.enum(['together', 'apart']),
+  arms: z.enum([
+    'at_sides', 'behind_back', 'behind_head', 'on_thighs_down', 'on_thighs_up', 'forward_palms_up', 'out_sideways', 'raised', 'holding', 'on_floor', 'on_ankles', 'under_knees', 'bound',
+    'crossed', 'clasped_front', 'paws', 'tucked', 'lamp', 'desk_flat',
+  ]),
+  head: z.enum(['up', 'bowed', 'back', 'to_floor']),
+  gaze: z.enum(['down', 'at_her', 'straight', 'closed']),
+  feet: z.enum(['flat', 'on_toes']),
+} as const;
+const postureStateMap = z.object({
+  torso: postureStates.torso.optional(), hips: postureStates.hips.optional(), knees: postureStates.knees.optional(), arms: postureStates.arms.optional(),
+  head: postureStates.head.optional(), gaze: postureStates.gaze.optional(), feet: postureStates.feet.optional(),
+}).strict();
+export const ServicePostureSchema = BaseEntrySchema.extend({
+  base: lowerId,
+  points: postureStateMap,
+  variants: z.object({
+    torso: z.array(postureStates.torso).min(2).optional(), hips: z.array(postureStates.hips).min(2).optional(), knees: z.array(postureStates.knees).min(2).optional(),
+    arms: z.array(postureStates.arms).min(2).optional(), head: z.array(postureStates.head).min(2).optional(), gaze: z.array(postureStates.gaze).min(2).optional(),
+    feet: z.array(postureStates.feet).min(2).optional(),
+  }).strict().optional(),
+  meaning: z.array(z.enum(POSTURE_MEANINGS)).min(1),
+  humiliation: z.number().int().min(0).max(5),
+  tags: z.array(str),
+  requires: z.object({
+    track: str.optional(), frame: z.enum(['play', 'role', 'rule']).optional(), affordances: z.array(lowerId).min(1).optional(),
+    /** The commander must be at one of these places (any of). */
+    anchor: z.array(lowerId).min(1).optional(),
+    /** The commander must wear one of these items. */
+    items: z.array(lowerId).min(1).optional(),
+  }).strict().optional(),
+  drift: z.object({
+    torso: z.number().min(0).max(40).optional(), hips: z.number().min(0).max(40).optional(), knees: z.number().min(0).max(40).optional(), arms: z.number().min(0).max(40).optional(),
+    head: z.number().min(0).max(40).optional(), gaze: z.number().min(0).max(40).optional(), feet: z.number().min(0).max(40).optional(),
+  }).strict(),
+  supports: z.array(str).min(1).optional(),
+  signal: z.enum(['none', 'odd', 'telling', 'exposing']),
+  noise: z.enum(['low', 'mid', 'high']),
+  /** What the dial draws besides the body (an item, a place) and the restraint of a hogtie: hints only, read by the mannequin. */
+  item: z.enum(['tray', 'lamp', 'rope', 'mouth']).optional(),
+  hint: z.enum(['wall', 'wall_front', 'desk', 'feet']).optional(),
+  hogtie: z.literal(true).optional(),
+  default: z.literal(true).optional(),
+  label: blockLabel,
+  promptHint: blockHint,
+  description: str,
+}).strict();
+export type ServicePostureEntry = z.infer<typeof ServicePostureSchema>;
+registrySchemas.servicePostures = ServicePostureSchema;
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */
 function withDescription(schema: z.ZodTypeAny): z.ZodTypeAny {

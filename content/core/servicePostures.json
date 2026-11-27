@@ -1,0 +1,1142 @@
+[
+  {
+    "id": "at_ease",
+    "base": "standing",
+    "points": {
+      "torso": "upright",
+      "arms": "at_sides"
+    },
+    "meaning": [
+      "casual"
+    ],
+    "humiliation": 0,
+    "tags": [],
+    "drift": {
+      "torso": 4
+    },
+    "signal": "none",
+    "noise": "low",
+    "default": true,
+    "label": "At ease",
+    "promptHint": "standing at ease, arms at the sides",
+    "description": "AUTHOR TO WRITE: Standing at ease, arms at the sides."
+  },
+  {
+    "id": "leaning_wall",
+    "base": "standing",
+    "points": {
+      "arms": "crossed"
+    },
+    "meaning": [
+      "casual",
+      "waiting"
+    ],
+    "humiliation": 0,
+    "tags": [],
+    "drift": {
+      "arms": 4
+    },
+    "signal": "none",
+    "noise": "low",
+    "hint": "wall",
+    "label": "Leaning wall",
+    "promptHint": "leaning on the wall, arms crossed",
+    "description": "AUTHOR TO WRITE: Leaning on the wall, arms crossed."
+  },
+  {
+    "id": "seated_desk",
+    "base": "sitting",
+    "points": {
+      "torso": "forward",
+      "arms": "desk_flat"
+    },
+    "meaning": [
+      "work"
+    ],
+    "humiliation": 0,
+    "tags": [],
+    "drift": {
+      "torso": 4
+    },
+    "signal": "none",
+    "noise": "low",
+    "hint": "desk",
+    "default": true,
+    "label": "Seated desk",
+    "promptHint": "seated at a desk, leaning forward over it",
+    "description": "AUTHOR TO WRITE: Seated at a desk, leaning forward over it."
+  },
+  {
+    "id": "cross_legged",
+    "base": "sitting_floor",
+    "points": {
+      "knees": "apart",
+      "arms": "on_thighs_down"
+    },
+    "meaning": [
+      "casual",
+      "rest"
+    ],
+    "humiliation": 0,
+    "tags": [],
+    "drift": {
+      "knees": 3
+    },
+    "signal": "none",
+    "noise": "low",
+    "default": true,
+    "label": "Cross legged",
+    "promptHint": "sitting cross-legged on the floor",
+    "description": "AUTHOR TO WRITE: Sitting cross-legged on the floor."
+  },
+  {
+    "id": "lying_bunk",
+    "base": "lying_back",
+    "points": {},
+    "meaning": [
+      "rest",
+      "sleep"
+    ],
+    "humiliation": 0,
+    "tags": [],
+    "drift": {},
+    "signal": "none",
+    "noise": "mid",
+    "default": true,
+    "label": "Lying bunk",
+    "promptHint": "lying on the bunk",
+    "description": "AUTHOR TO WRITE: Lying on the bunk."
+  },
+  {
+    "id": "attention",
+    "base": "standing_attention",
+    "points": {
+      "torso": "upright",
+      "arms": "at_sides",
+      "head": "up",
+      "gaze": "straight"
+    },
+    "variants": {
+      "gaze": [
+        "straight",
+        "down"
+      ]
+    },
+    "meaning": [
+      "attention"
+    ],
+    "humiliation": 0,
+    "tags": [],
+    "drift": {
+      "torso": 4,
+      "head": 4,
+      "gaze": 0
+    },
+    "signal": "none",
+    "noise": "low",
+    "default": true,
+    "label": "Attention",
+    "promptHint": "standing to attention, head up, eyes front",
+    "description": "AUTHOR TO WRITE: Standing to attention, head up, eyes front."
+  },
+  {
+    "id": "parade_rest",
+    "base": "standing",
+    "points": {
+      "arms": "behind_back",
+      "gaze": "down"
+    },
+    "variants": {
+      "gaze": [
+        "down",
+        "straight"
+      ]
+    },
+    "meaning": [
+      "waiting"
+    ],
+    "humiliation": 0,
+    "tags": [],
+    "drift": {
+      "arms": 3,
+      "gaze": 0
+    },
+    "signal": "none",
+    "noise": "low",
+    "label": "Parade rest",
+    "promptHint": "at parade rest, hands behind the back, eyes down",
+    "description": "AUTHOR TO WRITE: At parade rest, hands behind the back, eyes down."
+  },
+  {
+    "id": "at_her_side",
+    "base": "standing",
+    "points": {
+      "arms": "clasped_front",
+      "gaze": "down"
+    },
+    "variants": {
+      "gaze": [
+        "down",
+        "straight"
+      ]
+    },
+    "meaning": [
+      "waiting",
+      "display"
+    ],
+    "humiliation": 1,
+    "tags": [],
+    "drift": {
+      "arms": 3,
+      "gaze": 0
+    },
+    "signal": "telling",
+    "noise": "low",
+    "label": "At her side",
+    "promptHint": "standing at her side, hands clasped in front, eyes down",
+    "description": "AUTHOR TO WRITE: Standing at her side, hands clasped in front, eyes down."
+  },
+  {
+    "id": "face_to_wall",
+    "base": "standing",
+    "points": {
+      "arms": "behind_back"
+    },
+    "meaning": [
+      "punishment"
+    ],
+    "humiliation": 2,
+    "tags": [],
+    "requires": {
+      "anchor": [
+        "corner",
+        "by_wall"
+      ]
+    },
+    "drift": {
+      "arms": 3
+    },
+    "signal": "odd",
+    "noise": "low",
+    "hint": "wall_front",
+    "label": "Face to wall",
+    "promptHint": "standing facing the wall, hands behind the back",
+    "description": "AUTHOR TO WRITE: Standing facing the wall, hands behind the back."
+  },
+  {
+    "id": "wall_sit",
+    "base": "crouching",
+    "points": {
+      "hips": "raised",
+      "arms": "at_sides"
+    },
+    "meaning": [
+      "endurance_test",
+      "punishment"
+    ],
+    "humiliation": 1,
+    "tags": [],
+    "drift": {
+      "hips": 5
+    },
+    "signal": "none",
+    "noise": "mid",
+    "hint": "wall",
+    "default": true,
+    "label": "Wall sit",
+    "promptHint": "back to the wall, thighs level, seated on nothing",
+    "description": "AUTHOR TO WRITE: Back to the wall, thighs level, seated on nothing."
+  },
+  {
+    "id": "arms_out",
+    "base": "standing",
+    "points": {
+      "arms": "out_sideways"
+    },
+    "meaning": [
+      "endurance_test",
+      "punishment"
+    ],
+    "humiliation": 2,
+    "tags": [],
+    "drift": {
+      "arms": 10
+    },
+    "signal": "odd",
+    "noise": "low",
+    "label": "Arms out",
+    "promptHint": "arms held out to the sides",
+    "description": "AUTHOR TO WRITE: Arms held out to the sides."
+  },
+  {
+    "id": "kneel_upright",
+    "base": "kneeling_upright",
+    "points": {
+      "hips": "raised",
+      "knees": "together",
+      "arms": "on_thighs_down",
+      "head": "up",
+      "gaze": "down"
+    },
+    "variants": {
+      "arms": [
+        "on_thighs_down",
+        "on_thighs_up"
+      ],
+      "gaze": [
+        "down",
+        "closed"
+      ]
+    },
+    "meaning": [
+      "waiting"
+    ],
+    "humiliation": 1,
+    "tags": [],
+    "drift": {
+      "hips": 5,
+      "knees": 3,
+      "head": 4,
+      "gaze": 0
+    },
+    "signal": "none",
+    "noise": "mid",
+    "default": true,
+    "label": "Kneel upright",
+    "promptHint": "kneeling upright, hands on the thighs, eyes down",
+    "description": "AUTHOR TO WRITE: Kneeling upright, hands on the thighs, eyes down."
+  },
+  {
+    "id": "kneel_rest",
+    "base": "kneeling_sitting",
+    "points": {
+      "hips": "on_heels",
+      "arms": "on_thighs_down",
+      "gaze": "down"
+    },
+    "variants": {
+      "gaze": [
+        "down",
+        "closed"
+      ]
+    },
+    "meaning": [
+      "rest",
+      "waiting"
+    ],
+    "humiliation": 1,
+    "tags": [],
+    "drift": {
+      "hips": 5,
+      "gaze": 0
+    },
+    "signal": "none",
+    "noise": "mid",
+    "default": true,
+    "label": "Kneel rest",
+    "promptHint": "kneeling, sitting back on the heels, hands on the thighs, eyes down",
+    "description": "AUTHOR TO WRITE: Kneeling, sitting back on the heels, hands on the thighs, eyes down."
+  },
+  {
+    "id": "kneel_open",
+    "base": "kneeling_upright",
+    "points": {
+      "knees": "apart",
+      "arms": "on_thighs_up",
+      "head": "up",
+      "gaze": "down"
+    },
+    "variants": {
+      "gaze": [
+        "down",
+        "closed"
+      ]
+    },
+    "meaning": [
+      "offering",
+      "display"
+    ],
+    "humiliation": 3,
+    "tags": [],
+    "drift": {
+      "knees": 3,
+      "arms": 4,
+      "head": 4,
+      "gaze": 0
+    },
+    "signal": "telling",
+    "noise": "mid",
+    "label": "Kneel open",
+    "promptHint": "kneeling with the knees apart, palms up on the thighs, head up, eyes down",
+    "description": "AUTHOR TO WRITE: Kneeling with the knees apart, palms up on the thighs, head up, eyes down."
+  },
+  {
+    "id": "kneel_hands_behind",
+    "base": "kneeling_upright",
+    "points": {
+      "arms": "behind_back",
+      "torso": "forward"
+    },
+    "meaning": [
+      "submission",
+      "display"
+    ],
+    "humiliation": 2,
+    "tags": [],
+    "drift": {
+      "torso": 4,
+      "arms": 3
+    },
+    "signal": "odd",
+    "noise": "mid",
+    "label": "Kneel hands behind",
+    "promptHint": "kneeling, wrists crossed behind the back, leaning forward",
+    "description": "AUTHOR TO WRITE: Kneeling, wrists crossed behind the back, leaning forward."
+  },
+  {
+    "id": "kneel_hands_behind_head",
+    "base": "kneeling_upright",
+    "points": {
+      "arms": "behind_head"
+    },
+    "meaning": [
+      "endurance_test",
+      "display"
+    ],
+    "humiliation": 2,
+    "tags": [],
+    "drift": {
+      "arms": 9
+    },
+    "signal": "odd",
+    "noise": "mid",
+    "label": "Kneel hands behind head",
+    "promptHint": "kneeling, fingers laced behind the head, elbows out",
+    "description": "AUTHOR TO WRITE: Kneeling, fingers laced behind the head, elbows out."
+  },
+  {
+    "id": "kneel_present",
+    "base": "kneeling_upright",
+    "points": {
+      "arms": "forward_palms_up"
+    },
+    "variants": {
+      "gaze": [
+        "down",
+        "closed"
+      ]
+    },
+    "meaning": [
+      "request",
+      "offering"
+    ],
+    "humiliation": 1,
+    "tags": [],
+    "drift": {
+      "arms": 8
+    },
+    "supports": [
+      "on_hands"
+    ],
+    "signal": "none",
+    "noise": "mid",
+    "label": "Kneel present",
+    "promptHint": "kneeling, hands held out in front, palms up",
+    "description": "AUTHOR TO WRITE: Kneeling, hands held out in front, palms up."
+  },
+  {
+    "id": "kneel_throat",
+    "base": "kneeling_upright",
+    "points": {
+      "head": "back",
+      "gaze": "closed"
+    },
+    "meaning": [
+      "offering"
+    ],
+    "humiliation": 2,
+    "tags": [],
+    "drift": {
+      "head": 4,
+      "gaze": 0
+    },
+    "signal": "odd",
+    "noise": "mid",
+    "label": "Kneel throat",
+    "promptHint": "kneeling, head back, throat bared, eyes closed",
+    "description": "AUTHOR TO WRITE: Kneeling, head back, throat bared, eyes closed."
+  },
+  {
+    "id": "kneel_at_door",
+    "base": "kneeling_sitting",
+    "points": {},
+    "meaning": [
+      "waiting"
+    ],
+    "humiliation": 2,
+    "tags": [],
+    "drift": {},
+    "signal": "exposing",
+    "noise": "mid",
+    "label": "Kneel at door",
+    "promptHint": "kneeling at the door, facing in",
+    "description": "AUTHOR TO WRITE: Kneeling at the door, facing in."
+  },
+  {
+    "id": "kneel_at_feet",
+    "base": "kneeling_sitting",
+    "points": {},
+    "meaning": [
+      "waiting",
+      "worship"
+    ],
+    "humiliation": 2,
+    "tags": [],
+    "drift": {},
+    "signal": "odd",
+    "noise": "mid",
+    "hint": "feet",
+    "label": "Kneel at feet",
+    "promptHint": "kneeling at her feet, sitting back on the heels",
+    "description": "AUTHOR TO WRITE: Kneeling at her feet, sitting back on the heels."
+  },
+  {
+    "id": "kneel_holding",
+    "base": "kneeling_upright",
+    "points": {
+      "arms": "holding"
+    },
+    "meaning": [
+      "object"
+    ],
+    "humiliation": 2,
+    "tags": [],
+    "drift": {
+      "arms": 7
+    },
+    "signal": "odd",
+    "noise": "mid",
+    "item": "tray",
+    "label": "Kneel holding",
+    "promptHint": "kneeling, holding a tray level",
+    "description": "AUTHOR TO WRITE: Kneeling, holding a tray level."
+  },
+  {
+    "id": "bow",
+    "base": "bowing",
+    "points": {
+      "head": "to_floor",
+      "arms": "on_floor"
+    },
+    "variants": {
+      "arms": [
+        "on_floor",
+        "forward_palms_up"
+      ]
+    },
+    "meaning": [
+      "apology",
+      "gratitude",
+      "submission"
+    ],
+    "humiliation": 3,
+    "tags": [],
+    "drift": {},
+    "signal": "telling",
+    "noise": "mid",
+    "default": true,
+    "label": "Bow",
+    "promptHint": "bowing, forehead to the floor, hands flat on the floor",
+    "description": "AUTHOR TO WRITE: Bowing, forehead to the floor, hands flat on the floor."
+  },
+  {
+    "id": "bow_to_feet",
+    "base": "bowing",
+    "points": {
+      "head": "to_floor",
+      "arms": "on_floor"
+    },
+    "meaning": [
+      "worship",
+      "apology"
+    ],
+    "humiliation": 4,
+    "tags": [
+      "worship"
+    ],
+    "drift": {},
+    "signal": "telling",
+    "noise": "high",
+    "hint": "feet",
+    "label": "Bow to feet",
+    "promptHint": "bowing, forehead to her foot",
+    "description": "AUTHOR TO WRITE: Bowing, forehead to her foot."
+  },
+  {
+    "id": "all_fours",
+    "base": "all_fours",
+    "points": {
+      "torso": "level",
+      "head": "bowed"
+    },
+    "meaning": [
+      "object",
+      "pet"
+    ],
+    "humiliation": 3,
+    "tags": [],
+    "drift": {
+      "torso": 4,
+      "head": 4
+    },
+    "supports": [
+      "footrest"
+    ],
+    "signal": "telling",
+    "noise": "mid",
+    "default": true,
+    "label": "All fours",
+    "promptHint": "on hands and knees, the back level, head bowed",
+    "description": "AUTHOR TO WRITE: On hands and knees, the back level, head bowed."
+  },
+  {
+    "id": "table",
+    "base": "all_fours",
+    "points": {
+      "torso": "level"
+    },
+    "meaning": [
+      "object"
+    ],
+    "humiliation": 4,
+    "tags": [
+      "objectification"
+    ],
+    "drift": {
+      "torso": 4
+    },
+    "signal": "telling",
+    "noise": "high",
+    "label": "Table",
+    "promptHint": "on hands and knees, the back perfectly level",
+    "description": "AUTHOR TO WRITE: On hands and knees, the back perfectly level."
+  },
+  {
+    "id": "prostrate",
+    "base": "lying_front",
+    "points": {
+      "arms": "forward_palms_up"
+    },
+    "meaning": [
+      "apology",
+      "submission"
+    ],
+    "humiliation": 4,
+    "tags": [],
+    "drift": {
+      "arms": 8
+    },
+    "signal": "telling",
+    "noise": "high",
+    "default": true,
+    "label": "Prostrate",
+    "promptHint": "lying face down, arms stretched forward, palms up",
+    "description": "AUTHOR TO WRITE: Lying face down, arms stretched forward, palms up."
+  },
+  {
+    "id": "lying_back_open",
+    "base": "lying_back",
+    "points": {
+      "arms": "out_sideways",
+      "gaze": "at_her"
+    },
+    "meaning": [
+      "offering",
+      "submission"
+    ],
+    "humiliation": 3,
+    "tags": [],
+    "drift": {
+      "arms": 10
+    },
+    "supports": [
+      "boot_on_chest"
+    ],
+    "signal": "telling",
+    "noise": "mid",
+    "label": "Lying back open",
+    "promptHint": "lying on the back, arms out, eyes on her",
+    "description": "AUTHOR TO WRITE: Lying on the back, arms out, eyes on her."
+  },
+  {
+    "id": "pet_sit",
+    "base": "kneeling_sitting",
+    "points": {
+      "torso": "forward",
+      "arms": "on_floor",
+      "gaze": "at_her"
+    },
+    "meaning": [
+      "pet",
+      "waiting"
+    ],
+    "humiliation": 3,
+    "tags": [
+      "pet_play"
+    ],
+    "drift": {
+      "torso": 4
+    },
+    "signal": "telling",
+    "noise": "mid",
+    "label": "Pet sit",
+    "promptHint": "sitting back on the heels, hands on the floor between the knees",
+    "description": "AUTHOR TO WRITE: Sitting back on the heels, hands on the floor between the knees."
+  },
+  {
+    "id": "beg",
+    "base": "kneeling_upright",
+    "points": {
+      "arms": "paws"
+    },
+    "meaning": [
+      "pet",
+      "request"
+    ],
+    "humiliation": 4,
+    "tags": [
+      "pet_play"
+    ],
+    "drift": {},
+    "signal": "telling",
+    "noise": "high",
+    "label": "Beg",
+    "promptHint": "kneeling upright, hands raised like paws at the chest",
+    "description": "AUTHOR TO WRITE: Kneeling upright, hands raised like paws at the chest."
+  },
+  {
+    "id": "curled_at_feet",
+    "base": "curled",
+    "points": {},
+    "meaning": [
+      "pet",
+      "rest"
+    ],
+    "humiliation": 3,
+    "tags": [
+      "pet_play"
+    ],
+    "drift": {},
+    "signal": "telling",
+    "noise": "mid",
+    "hint": "feet",
+    "default": true,
+    "label": "Curled at feet",
+    "promptHint": "curled up at her feet",
+    "description": "AUTHOR TO WRITE: Curled up at her feet."
+  },
+  {
+    "id": "sit_floor_beside",
+    "base": "sitting_floor",
+    "points": {
+      "arms": "at_sides"
+    },
+    "meaning": [
+      "rest"
+    ],
+    "humiliation": 1,
+    "tags": [],
+    "drift": {},
+    "signal": "none",
+    "noise": "low",
+    "label": "Sit floor beside",
+    "promptHint": "sitting on the floor beside her",
+    "description": "AUTHOR TO WRITE: Sitting on the floor beside her."
+  },
+  {
+    "id": "presented",
+    "base": "standing",
+    "points": {
+      "arms": "behind_head",
+      "knees": "apart",
+      "gaze": "down"
+    },
+    "meaning": [
+      "display"
+    ],
+    "humiliation": 3,
+    "tags": [],
+    "drift": {
+      "knees": 3,
+      "arms": 9,
+      "gaze": 0
+    },
+    "signal": "telling",
+    "noise": "low",
+    "label": "Presented",
+    "promptHint": "standing, hands behind the head, feet apart, eyes down",
+    "description": "AUTHOR TO WRITE: Standing, hands behind the head, feet apart, eyes down."
+  },
+  {
+    "id": "kneel_on_hands",
+    "base": "kneeling_sitting",
+    "points": {
+      "arms": "under_knees"
+    },
+    "meaning": [
+      "punishment",
+      "endurance_test"
+    ],
+    "humiliation": 3,
+    "tags": [],
+    "drift": {},
+    "signal": "telling",
+    "noise": "mid",
+    "label": "Kneel on hands",
+    "promptHint": "kneeling, sitting back on the hands tucked under the knees",
+    "description": "AUTHOR TO WRITE: Kneeling, sitting back on the hands tucked under the knees."
+  },
+  {
+    "id": "kneel_forehead_wall",
+    "base": "kneeling_upright",
+    "points": {
+      "torso": "forward",
+      "head": "bowed",
+      "arms": "behind_back"
+    },
+    "meaning": [
+      "punishment"
+    ],
+    "humiliation": 3,
+    "tags": [],
+    "requires": {
+      "anchor": [
+        "by_wall",
+        "corner"
+      ]
+    },
+    "drift": {
+      "torso": 4,
+      "arms": 3,
+      "head": 4
+    },
+    "signal": "telling",
+    "noise": "mid",
+    "hint": "wall_front",
+    "label": "Kneel forehead wall",
+    "promptHint": "kneeling, forehead to the wall, hands behind the back",
+    "description": "AUTHOR TO WRITE: Kneeling, forehead to the wall, hands behind the back."
+  },
+  {
+    "id": "kneel_arched",
+    "base": "kneeling_upright",
+    "points": {
+      "torso": "arched",
+      "arms": "on_ankles",
+      "head": "back"
+    },
+    "meaning": [
+      "display",
+      "endurance_test"
+    ],
+    "humiliation": 4,
+    "tags": [],
+    "drift": {
+      "torso": 8,
+      "head": 8
+    },
+    "signal": "telling",
+    "noise": "high",
+    "label": "Kneel arched",
+    "promptHint": "kneeling with the back arched, hands on the ankles, head back",
+    "description": "AUTHOR TO WRITE: Kneeling with the back arched, hands on the ankles, head back."
+  },
+  {
+    "id": "kneel_mouth_hold",
+    "base": "kneeling_upright",
+    "points": {
+      "arms": "at_sides"
+    },
+    "meaning": [
+      "object",
+      "pet"
+    ],
+    "humiliation": 4,
+    "tags": [],
+    "drift": {},
+    "signal": "telling",
+    "noise": "high",
+    "item": "mouth",
+    "label": "Kneel mouth hold",
+    "promptHint": "kneeling, holding her thing in the teeth",
+    "description": "AUTHOR TO WRITE: Kneeling, holding her thing in the teeth."
+  },
+  {
+    "id": "light_bearer",
+    "base": "kneeling_upright",
+    "points": {
+      "arms": "lamp"
+    },
+    "meaning": [
+      "object",
+      "endurance_test"
+    ],
+    "humiliation": 4,
+    "tags": [
+      "objectification"
+    ],
+    "drift": {
+      "arms": 14
+    },
+    "signal": "telling",
+    "noise": "high",
+    "item": "lamp",
+    "label": "Light bearer",
+    "promptHint": "kneeling, arms raised, holding a lamp over her work",
+    "description": "AUTHOR TO WRITE: Kneeling, arms raised, holding a lamp over her work."
+  },
+  {
+    "id": "tiptoe_hands_head",
+    "base": "standing",
+    "points": {
+      "feet": "on_toes",
+      "arms": "behind_head",
+      "gaze": "down"
+    },
+    "meaning": [
+      "punishment",
+      "endurance_test"
+    ],
+    "humiliation": 3,
+    "tags": [],
+    "drift": {
+      "arms": 9,
+      "gaze": 0,
+      "feet": 10
+    },
+    "signal": "telling",
+    "noise": "low",
+    "label": "Tiptoe hands head",
+    "promptHint": "standing on the toes, hands behind the head, eyes down",
+    "description": "AUTHOR TO WRITE: Standing on the toes, hands behind the head, eyes down."
+  },
+  {
+    "id": "bow_hands_behind",
+    "base": "bowing",
+    "points": {
+      "head": "to_floor",
+      "arms": "behind_back"
+    },
+    "meaning": [
+      "submission",
+      "endurance_test"
+    ],
+    "humiliation": 4,
+    "tags": [],
+    "drift": {
+      "arms": 3
+    },
+    "signal": "telling",
+    "noise": "high",
+    "label": "Bow hands behind",
+    "promptHint": "bowing, forehead to the floor, hands behind the back",
+    "description": "AUTHOR TO WRITE: Bowing, forehead to the floor, hands behind the back."
+  },
+  {
+    "id": "chest_down_hips_up",
+    "base": "bowing",
+    "points": {
+      "torso": "bent",
+      "hips": "raised",
+      "arms": "on_floor",
+      "head": "to_floor"
+    },
+    "meaning": [
+      "punishment",
+      "display"
+    ],
+    "humiliation": 5,
+    "tags": [
+      "humiliation",
+      "physical_discipline_shown"
+    ],
+    "drift": {
+      "hips": 5
+    },
+    "signal": "exposing",
+    "noise": "high",
+    "label": "Chest down hips up",
+    "promptHint": "chest to the floor, hips raised",
+    "description": "AUTHOR TO WRITE: Chest to the floor, hips raised."
+  },
+  {
+    "id": "bent_over",
+    "base": "standing",
+    "points": {
+      "torso": "bent",
+      "arms": "desk_flat"
+    },
+    "meaning": [
+      "punishment"
+    ],
+    "humiliation": 4,
+    "tags": [
+      "physical_discipline_shown"
+    ],
+    "requires": {
+      "anchor": [
+        "at_desk",
+        "on_desk",
+        "on_bunk",
+        "beside_bunk"
+      ]
+    },
+    "drift": {},
+    "signal": "telling",
+    "noise": "high",
+    "hint": "desk",
+    "label": "Bent over",
+    "promptHint": "bent over the edge of a desk or bunk, palms flat",
+    "description": "AUTHOR TO WRITE: Bent over the edge of a desk or bunk, palms flat."
+  },
+  {
+    "id": "head_offered",
+    "base": "lying_side",
+    "points": {
+      "head": "to_floor"
+    },
+    "meaning": [
+      "submission",
+      "worship"
+    ],
+    "humiliation": 5,
+    "tags": [
+      "humiliation"
+    ],
+    "drift": {},
+    "supports": [
+      "foot_on_head"
+    ],
+    "signal": "exposing",
+    "noise": "high",
+    "default": true,
+    "label": "Head offered",
+    "promptHint": "lying on the side, cheek on the floor, the head offered",
+    "description": "AUTHOR TO WRITE: Lying on the side, cheek on the floor, the head offered."
+  },
+  {
+    "id": "doormat",
+    "base": "lying_front",
+    "points": {},
+    "meaning": [
+      "object"
+    ],
+    "humiliation": 5,
+    "tags": [
+      "objectification"
+    ],
+    "drift": {},
+    "supports": [
+      "standing_on"
+    ],
+    "signal": "exposing",
+    "noise": "high",
+    "label": "Doormat",
+    "promptHint": "lying across her threshold like a mat",
+    "description": "AUTHOR TO WRITE: Lying across her threshold like a mat."
+  },
+  {
+    "id": "ottoman_curl",
+    "base": "curled",
+    "points": {
+      "arms": "tucked"
+    },
+    "meaning": [
+      "object"
+    ],
+    "humiliation": 4,
+    "tags": [],
+    "drift": {},
+    "supports": [
+      "footrest"
+    ],
+    "signal": "telling",
+    "noise": "high",
+    "label": "Ottoman curl",
+    "promptHint": "curled tight on the knees, the back a rest",
+    "description": "AUTHOR TO WRITE: Curled tight on the knees, the back a rest."
+  },
+  {
+    "id": "pet_belly_up",
+    "base": "lying_back",
+    "points": {
+      "arms": "paws",
+      "knees": "apart"
+    },
+    "meaning": [
+      "pet",
+      "offering"
+    ],
+    "humiliation": 5,
+    "tags": [
+      "pet_play"
+    ],
+    "drift": {
+      "knees": 3
+    },
+    "signal": "exposing",
+    "noise": "high",
+    "label": "Pet belly up",
+    "promptHint": "on the back, arms and legs bent like paws",
+    "description": "AUTHOR TO WRITE: On the back, arms and legs bent like paws."
+  },
+  {
+    "id": "hogtied",
+    "base": "lying_side",
+    "points": {
+      "torso": "arched",
+      "arms": "bound"
+    },
+    "meaning": [
+      "submission",
+      "endurance_test"
+    ],
+    "humiliation": 4,
+    "tags": [
+      "restraint"
+    ],
+    "requires": {
+      "items": [
+        "cuffs_to_collar",
+        "spreader_bar"
+      ]
+    },
+    "drift": {},
+    "signal": "telling",
+    "noise": "high",
+    "item": "rope",
+    "hogtie": true,
+    "label": "Hogtied",
+    "promptHint": "lying on the side, wrists bound to the ankles behind",
+    "description": "AUTHOR TO WRITE: Lying on the side, wrists bound to the ankles behind."
+  },
+  {
+    "id": "cage_curl",
+    "base": "curled",
+    "points": {},
+    "meaning": [
+      "pet",
+      "rest"
+    ],
+    "humiliation": 4,
+    "tags": [
+      "restraint"
+    ],
+    "drift": {},
+    "signal": "telling",
+    "noise": "high",
+    "label": "Cage curl",
+    "promptHint": "curled up inside the cage",
+    "description": "AUTHOR TO WRITE: Curled up inside the cage."
+  }
+]
