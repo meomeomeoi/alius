@@ -349,16 +349,16 @@ Before Task 1, also read:
   - `drill_done { key, companionId?, mult, alone }`;
   - alone, the drill is one click and the slot is spent;
   - a companion on a non-drill focus keeps P2's behaviour exactly.
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - each drill pays 15 once a day;
   - a second time the same day pays 0, and the slot is still spent;
   - breath with a holder is ×1.5, with a close non-holder ×1.2;
   - a companion with the `units` focus behaves as today (the existing activities tests pass unchanged);
   - no drill xp without `craftOn`, except the three P15a endurance drills, which keep their behaviour.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P16b): drills for every discipline; a partner for the body drills`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P16b): drills for every discipline; a partner for the body drills`
 
 ### Task 8: The drill with her is a scene
 

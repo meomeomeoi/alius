@@ -1264,7 +1264,7 @@ var TUNING = Object.freeze({
       stagnationDays: 7,
       failedRunDays: 2,
       anniversaryDays: 30,
-      trainingEffects: Object.freeze(["unit_xp", "commander_body_xp", "commander_endurance_xp"])
+      trainingEffects: Object.freeze(["unit_xp", "commander_body_xp", "commander_endurance_xp", "commander_craft_xp"])
     }),
     /**
      * The Leash block (R16, spec §10): the holder co-signs a request with `base + perFavour x favour / favour.max`, clamped to [min, max]. `AUTHOR TO TUNE`.
@@ -1752,10 +1752,12 @@ var TUNING = Object.freeze({
    * `capacity`: the body route of P7 `endurance` (level-equivalents per point above `bodyFrom`, posture and pain only, ruling 9), `noise`: stillness quiets a slip by this much a level, `drift`: a posture drifts
    * this much slower a level. `settling`: clean holds of a kind in a row before she adds a load, and for each style the loads it likes (a hashed pick over the list). `lesson`: the chance she
    * names the point after a slip, by style (`drill` / `ritual` / `clinical` always, `playful` as a joke, `cruel` never, the rest by `other`). `rhythm`: how much wider her openings are per level
-   * of her rhythm the commander knows. `record`: the days a record stays worth bringing up, the shortest one worth a line (seconds) and the chance, by the hash of the day and the scene, that she brings one up. `knowledge`: the xp of a pair's knowledge per use.
+   * of her rhythm the commander knows. `record`: the days a record stays worth bringing up, the shortest one worth a line (seconds) and the chance, by the hash of the day and the scene, that she brings one up. `knowledge`: the xp of a pair's knowledge per use. `drill`: what a drill pays with a partner times `xp.drill` (`holder`: a craft-live holder, `other`: another close woman; alone and with anyone else x1),
+   * and the Regard (`regard`, a `value` rise) her `pleased` verdict on a drill she ran earns.
    */
   craft: Object.freeze({
     xp: Object.freeze({ phase: 3, lesson: 0.5, drill: 15, knowledge: 5 }),
+    drill: Object.freeze({ holder: 1.5, other: 1.2, regard: 1 }),
     decay: Object.freeze({ days: 21, pairDays: 42 }),
     beatSkill: 0.25,
     beatSeconds: Object.freeze({ weight: 20, breath: 3, saturation: 10, tongue_work: 15, jaw: 5, gulp: 5, her_activity: 20, posture: 30 }),
@@ -2677,8 +2679,8 @@ function whenSuffix(e) {
   }
   return s;
 }
-function summarizeCombatEffect(effect, _reg) {
-  const e = effect ?? {};
+function summarizeCombatEffect(effect2, _reg) {
+  const e = effect2 ?? {};
   let s = combatBase(e);
   if (e.target && e.target !== "self" && e.target !== "target") s += ` \u2014 ${humanize(String(e.target))}`;
   if (e.trigger === "onStressThreshold") s += ` at Stress \u2265 ${e.threshold}`;
@@ -2691,8 +2693,8 @@ function summarizeCombatEffect(effect, _reg) {
 }
 var RESOURCE_LABEL = { credits: "Credits", supplies: "Supplies", plyx: "PLYX" };
 var NO_LINE_WORLD = /* @__PURE__ */ new Set(["flag", "thread_flag", "thread", "fact"]);
-function summarizeWorldEffect(effect, reg) {
-  const e = effect ?? {};
+function summarizeWorldEffect(effect2, reg) {
+  const e = effect2 ?? {};
   if (NO_LINE_WORLD.has(e.type)) return null;
   switch (e.type) {
     case "resource":
@@ -2745,8 +2747,8 @@ function summarizeCommanderPunishmentEffect(fx2) {
       return null;
   }
 }
-function summarizeActivityEffect(effect, _reg, focus) {
-  const e = effect ?? {};
+function summarizeActivityEffect(effect2, _reg, focus) {
+  const e = effect2 ?? {};
   if (e.type === "emit_event") return null;
   const who = WHO[e.target] ?? "Chosen units";
   let s;
@@ -3004,8 +3006,8 @@ function summarizeTraitEffect(e, _reg) {
       return humanize(String(x.type));
   }
 }
-function summarizeWorldOptionEffect(effect, reg) {
-  const x = effect ?? {};
+function summarizeWorldOptionEffect(effect2, reg) {
+  const x = effect2 ?? {};
   switch (x.type) {
     case "disposition":
       return `Soldiers are ${String(reg.dispositionLevels.get(String(x.levelId))?.name ?? humanize(String(x.levelId)))}`;
@@ -7274,7 +7276,7 @@ var ZodEffects = class extends ZodType {
   }
   _parse(input) {
     const { status, ctx: ctx2 } = this._processInputParams(input);
-    const effect = this._def.effect || null;
+    const effect2 = this._def.effect || null;
     const checkCtx = {
       addIssue: (arg) => {
         addIssueToContext(ctx2, arg);
@@ -7289,8 +7291,8 @@ var ZodEffects = class extends ZodType {
       }
     };
     checkCtx.addIssue = checkCtx.addIssue.bind(checkCtx);
-    if (effect.type === "preprocess") {
-      const processed = effect.transform(ctx2.data, checkCtx);
+    if (effect2.type === "preprocess") {
+      const processed = effect2.transform(ctx2.data, checkCtx);
       if (ctx2.common.async) {
         return Promise.resolve(processed).then(async (processed2) => {
           if (status.value === "aborted")
@@ -7325,9 +7327,9 @@ var ZodEffects = class extends ZodType {
         return result;
       }
     }
-    if (effect.type === "refinement") {
+    if (effect2.type === "refinement") {
       const executeRefinement = (acc) => {
-        const result = effect.refinement(acc, checkCtx);
+        const result = effect2.refinement(acc, checkCtx);
         if (ctx2.common.async) {
           return Promise.resolve(result);
         }
@@ -7360,7 +7362,7 @@ var ZodEffects = class extends ZodType {
         });
       }
     }
-    if (effect.type === "transform") {
+    if (effect2.type === "transform") {
       if (ctx2.common.async === false) {
         const base2 = this._def.schema._parseSync({
           data: ctx2.data,
@@ -7369,7 +7371,7 @@ var ZodEffects = class extends ZodType {
         });
         if (!isValid(base2))
           return INVALID;
-        const result = effect.transform(base2.value, checkCtx);
+        const result = effect2.transform(base2.value, checkCtx);
         if (result instanceof Promise) {
           throw new Error(`Asynchronous transform encountered during synchronous parse operation. Use .parseAsync instead.`);
         }
@@ -7378,21 +7380,21 @@ var ZodEffects = class extends ZodType {
         return this._def.schema._parseAsync({ data: ctx2.data, path: ctx2.path, parent: ctx2 }).then((base2) => {
           if (!isValid(base2))
             return INVALID;
-          return Promise.resolve(effect.transform(base2.value, checkCtx)).then((result) => ({
+          return Promise.resolve(effect2.transform(base2.value, checkCtx)).then((result) => ({
             status: status.value,
             value: result
           }));
         });
       }
     }
-    util.assertNever(effect);
+    util.assertNever(effect2);
   }
 };
-ZodEffects.create = (schema, effect, params) => {
+ZodEffects.create = (schema, effect2, params) => {
   return new ZodEffects({
     schema,
     typeName: ZodFirstPartyTypeKind.ZodEffects,
-    effect,
+    effect: effect2,
     ...processCreateParams(params)
   });
 };
@@ -9113,6 +9115,8 @@ var ActivityEffectSchema = external_exports.discriminatedUnion("type", [
   external_exports.object({ type: external_exports.literal("commander_body_xp"), stat: external_exports.enum(["strength", "endurance", "reflexes"]), ...amountFields }).strict(),
   /** P15a: one endurance drill of the commander for a contact physics (the xp is `TUNING.physics.endurance.training`, once a day per physics); the amount is not authored. */
   external_exports.object({ type: external_exports.literal("commander_endurance_xp"), physics: external_exports.string().min(1), ...amountFields }).strict(),
+  /** P16b: one drill of a discipline of the craft (the xp is `TUNING.craft.xp.drill`, once a day per key; nothing while no holder runs the craft); the amount is not authored. */
+  external_exports.object({ type: external_exports.literal("commander_craft_xp"), key: external_exports.string().min(1), ...amountFields }).strict(),
   external_exports.object({ type: external_exports.literal("defect_upkeep"), target: external_exports.enum(["selected", "companion"]), ...amountFields }).strict(),
   external_exports.object({ type: external_exports.literal("relation"), axis: external_exports.enum(["trust", "affinity", "attraction"]), amount: int, ...amountFields }).strict(),
   /** P12: moves the commander's own stress (a negative amount relieves it). */
@@ -9143,7 +9147,9 @@ var ActivitySchema = BaseEntrySchema.extend({
      */
     requires: external_exports.object({ traitEffect: str.optional(), capabilityHeldBy: external_exports.enum(CAPABILITIES).optional() }).strict().refine((r) => r.traitEffect !== void 0 || r.capabilityHeldBy !== void 0, "a focus requirement names a traitEffect or a capabilityHeldBy").optional(),
     /** P12: a one-way choice: the app asks this question first (the activity runs only on a yes). */
-    confirm: str.max(200).optional()
+    confirm: str.max(200).optional(),
+    /** P16b: a drill of the craft: the discipline it trains (`endurance:<physics>` or a discipline), and `partner` when a companion may share it (only a drill with an instrument). */
+    drill: external_exports.object({ key: str, partner: external_exports.literal(true).optional() }).strict().optional()
   }).strict()).optional(),
   effects: external_exports.array(ActivityEffectSchema),
   companionEffects: external_exports.array(ActivityEffectSchema),
@@ -11666,8 +11672,8 @@ function enterStep(draft, ctx2, index2, afterSkippedExpedition = false) {
     o.stepId = step.id;
     o.stepDay = draft.day;
     events.push({ type: "onboarding_step_started", stepId: step.id });
-    const effect = entryEffects2.get(step.kind);
-    if (effect) events.push(...effect(draft, ctx2, step));
+    const effect2 = entryEffects2.get(step.kind);
+    if (effect2) events.push(...effect2(draft, ctx2, step));
     return events;
   }
   return events;
@@ -18667,13 +18673,13 @@ function moveCombatant(ctx2, targetCid, to) {
     t.row = dest;
   }
 }
-function runEffect2(ctx2, ownerCid, effect, ev, keyBase) {
-  if (READ_ONLY.has(effect.type)) return;
+function runEffect2(ctx2, ownerCid, effect2, ev, keyBase) {
+  if (READ_ONLY.has(effect2.type)) return;
   const owner = byCid(ctx2.cs, ownerCid);
-  const limitKey = effect.limit ? `${keyBase}:${effect.limit}` : void 0;
+  const limitKey = effect2.limit ? `${keyBase}:${effect2.limit}` : void 0;
   if (limitKey && owner.usedLimits.includes(limitKey)) return;
-  if (!checkCondition(ctx2, ownerCid, effect.when, ev.targetCid, ev.skillId)) return;
-  const e = strain(owner, effect);
+  if (!checkCondition(ctx2, ownerCid, effect2.when, ev.targetCid, ev.skillId)) return;
+  const e = strain(owner, effect2);
   if (e.chance !== void 0 && e.type !== "order_refusal" && !ctx2.rng.chance(e.chance)) return;
   if (limitKey) owner.usedLimits.push(limitKey);
   const attacker = ev.attackerCid ?? ownerCid;
@@ -20038,8 +20044,8 @@ function applyMilestone(draft, ctx2, unitId, milestoneId) {
   const dyn = dynamicOf(draft, unitId);
   if (m === void 0 || dyn === void 0 || !dynamicOn(draft, reg)) return [];
   const events = [];
-  for (const effect of m.effects) {
-    if (effect.type === "frame") {
+  for (const effect2 of m.effects) {
+    if (effect2.type === "frame") {
       const from = dyn.frame;
       dyn.frame = m.to;
       notePlaySince(draft, unitId);
@@ -20055,13 +20061,13 @@ function applyMilestone(draft, ctx2, unitId, milestoneId) {
         for (const e of milestoneRows(reg)) if (e.to === from && e.from !== e.to) dyn.cooldowns[e.id] = Math.max(dyn.cooldowns[e.id] ?? 0, draft.day + TUNING.dynamic.milestones.afterDownDays);
         events.push(...reconcileDomains(draft, reg, unitId));
       }
-    } else if (effect.type === "sworn") {
+    } else if (effect2.type === "sworn") {
       dyn.sworn = { day: draft.day };
       events.push({ type: "sworn", unitId, day: draft.day });
       const seen2 = (draft.scene?.participants ?? []).filter((id) => id !== unitId && draft.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u)));
       if (seen2.length > 0) addCompromat(draft, unitId, `AUTHOR TO WRITE: ${draft.squad.find((u) => u.id === unitId)?.displayName ?? "She"} heard the commander swear to her before ${seen2.map((id) => draft.squad.find((u) => u.id === id)?.displayName ?? id).join(" and ")}.`, seen2);
-    } else if (effect.type === "claim") {
-      events.push(...grantCapability(draft, ctx2, unitId, effect.capability));
+    } else if (effect2.type === "claim") {
+      events.push(...grantCapability(draft, ctx2, unitId, effect2.capability));
     }
   }
   dyn.milestones.push(m.id);
@@ -29449,6 +29455,18 @@ var activityHooks = [];
 var registerActivityHook = (fn) => {
   activityHooks.push(fn);
 };
+var drillHooks = {};
+var registerDrillHooks = (hooks3) => {
+  drillHooks = { ...drillHooks, ...hooks3 };
+};
+function drillReason(state, reg, focus, mode) {
+  return focus.drill === void 0 || drillHooks.gate === void 0 ? null : drillHooks.gate(state, reg, focus, mode);
+}
+function partnerFocus(state, reg, a, req) {
+  if (req.focus === void 0 || drillHooks.partner === void 0) return void 0;
+  const focus = (a.focus ?? []).find((f) => f.id === req.focus);
+  return focus?.drill?.partner === true && drillReason(state, reg, focus, "partner") === null ? focus : void 0;
+}
 function activityCost(state, reg, a) {
   const out = { ...a.cost };
   for (const fx2 of traitEffects(state, reg, "activity_cost")) {
@@ -29503,6 +29521,8 @@ function checkActivity(state, reg, request) {
     if (mode === "none") return `${name} cannot be done with a companion.`;
     const c = state.squad.find((u) => u.id === req.companionId);
     if (!c || !isLiving(c)) return `Companion "${req.companionId}" is not available.`;
+    const shared2 = partnerFocus(state, reg, a, req);
+    if (shared2 !== void 0 && enduranceDrillDone(state, a, shared2)) return `${shared2.label} was done today.`;
     return restrictionReason(state, reg, c.id, "companion", req.activityId) ?? commanderRestriction(state, reg, "companion", req.activityId);
   }
   if (mode === "required") return `${name} needs a companion.`;
@@ -29511,9 +29531,9 @@ function checkActivity(state, reg, request) {
   if (focus?.requires?.traitEffect !== void 0 && !hasTraitEffect(state, reg, focus.requires.traitEffect)) return `${focus.label} is not available to this commander.`;
   if (focus?.requires?.capabilityHeldBy !== void 0 && holderWith(state, reg, focus.requires.capabilityHeldBy) === null) return `${focus.label} is not available: nobody holds that.`;
   if (focus && state.special?.frequency?.burnedDay !== void 0 && a.effects.some((fx2) => fx2.type === "burn_frequency_implant" && fx2.when?.focus === focus.id)) return "The implant is already burned.";
-  for (const fx2 of a.effects.filter((x) => x.type === "commander_endurance_xp" && focus !== void 0 && x.when?.focus === focus.id)) {
-    if (trainedToday(state, String(fx2.physics))) return `${focus.label} was done today.`;
-  }
+  if (focus !== void 0 && enduranceDrillDone(state, a, focus)) return `${focus.label} was done today.`;
+  const notDrill = focus === void 0 ? null : drillReason(state, reg, focus, "alone");
+  if (notDrill !== null) return notDrill;
   if (focus?.units) {
     const ids = req.unitIds ?? [];
     if (ids.length < focus.units.min || ids.length > focus.units.max) {
@@ -29527,6 +29547,7 @@ function checkActivity(state, reg, request) {
   }
   return null;
 }
+var enduranceDrillDone = (state, a, focus) => a.effects.some((x) => x.type === "commander_endurance_xp" && x.when?.focus === focus.id && trainedToday(state, String(x.physics)));
 var scaled = (amount, state, reg, scale) => {
   if (!scale) return amount;
   const factor = 1 + facilityEffect(state, reg, scale.facility, scale.key) / 100;
@@ -29555,7 +29576,7 @@ function runActivity(draft, ctx2, request) {
     }
   }
   const companion = req.companionId ? draft.squad.find((u) => u.id === req.companionId) : void 0;
-  const focus = companion ? void 0 : focusOf(a, req);
+  const focus = companion ? partnerFocus(draft, reg, a, req) : focusOf(a, req);
   const selected2 = focus?.units ? (req.unitIds ?? []).map((id) => draft.squad.find((u) => u.id === id)) : [];
   const unitsOf3 = (target) => target === "companion" ? companion ? [companion] : [] : target === "selected" ? selected2 : activeRosterUnits(draft);
   const recover = (u) => {
@@ -29578,6 +29599,9 @@ function runActivity(draft, ctx2, request) {
         events.push({ type: "social_gained", stat: fx2.stat, gained: r.gained, rank: r.rank, rankedUp: r.rankedUp });
         break;
       }
+      case "commander_craft_xp":
+        events.push(...drillHooks.effect?.(draft, ctx2, fx2, { activityId: a.id, ...focus ? { focusId: focus.id } : {} }) ?? []);
+        break;
       case "commander_endurance_xp": {
         const gained = trainEndurance(draft, String(fx2.physics));
         if (gained) events.push(gained);
@@ -29663,6 +29687,13 @@ function runActivity(draft, ctx2, request) {
       draft.commander.sleeplessRank = sum;
     }
   }
+  let drillScene;
+  if (companion && focus?.drill?.partner === true && drillHooks.partner !== void 0) {
+    const shared2 = drillHooks.partner(draft, ctx2, { activityId: a.id, focus, companionId: companion.id });
+    events.push(...shared2.events);
+    drillScene = shared2.scene;
+    if (drillScene !== void 0) events.push({ type: "scene_requested", activityId: a.id, unitId: companion.id, origin: "activity", locationId: drillScene.locationId });
+  }
   events.push({
     type: "activity_done",
     activityId: a.id,
@@ -29675,10 +29706,11 @@ function runActivity(draft, ctx2, request) {
     activityId: a.id,
     ...companion ? { companionId: companion.id } : {},
     rosterIds: activeRosterUnits(draft).map((u) => u.id),
-    ...typeof req.pastimeId === "string" ? { pastimeId: req.pastimeId } : {}
+    ...typeof req.pastimeId === "string" ? { pastimeId: req.pastimeId } : {},
+    ...focus !== void 0 ? { focus: focus.id } : {}
   };
   for (const hook of activityHooks) events.push(...hook(draft, ctx2, done));
-  if (a.startsScene === true) {
+  if (a.startsScene === true || drillScene !== void 0) {
     if (companion) draft.calendar.pendingScene = { unitId: companion.id, day: draft.day, slot: draft.slot };
   } else {
     events.push(...consumeSlots(draft, 1, ctx2));
@@ -35467,9 +35499,9 @@ function registerAfterAction(step) {
   afterActions.push(step);
 }
 var gates = /* @__PURE__ */ new Map();
-function registerVoteGate(actionType, gate2) {
+function registerVoteGate(actionType, gate3) {
   if (gates.has(actionType)) throw new Error(`Duplicate vote gate: ${actionType}`);
-  gates.set(actionType, gate2);
+  gates.set(actionType, gate3);
 }
 function dispatch(state, action, registries) {
   const handler2 = handlers.get(action.type);
@@ -35496,9 +35528,9 @@ function dispatch(state, action, registries) {
   const held3 = heldGuard(state, registries, action);
   if (held3) return { state, events: [{ type: "error", ...held3 }] };
   let voteId;
-  const gate2 = gates.get(action.type);
-  if (gate2 && votingOn(state, registries)) {
-    const decision = gate2(state, action.payload, registries);
+  const gate3 = gates.get(action.type);
+  if (gate3 && votingOn(state, registries)) {
+    const decision = gate3(state, action.payload, registries);
     if (decision) {
       const named5 = action.payload?.voteId;
       if (!voteFor(state, decision.kind, decision.subject, named5)) {
@@ -36874,8 +36906,8 @@ function whyNotStart(state, reg, o) {
   if (o.sourceKind === "activity") {
     if (frameOf3(reg.blockingActivities.get(o.sourceId)) === null || framePhysicsOf(reg)?.id !== o.physicsId) return `"${o.sourceId}" has no frame.`;
   } else if (o.act === void 0 && !physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId)).some((p) => p.id === o.physicsId)) return `"${o.sourceId}" has no ${o.physicsId} physics.`;
-  const gate2 = whyNotAllowed(state, reg, phys, o.holderId);
-  if (gate2 !== null) return gate2;
+  const gate3 = whyNotAllowed(state, reg, phys, o.holderId);
+  if (gate3 !== null) return gate3;
   if (o.second !== void 0) {
     const named5 = o.sourceKind === "activity" ? framedContactPhysics(state, reg, o.holderId) : physicsOf(sourceEntry(reg, o.sourceKind, o.sourceId));
     if (o.second === o.physicsId || !named5.some((p) => p.id === o.second)) return `"${o.sourceId}" has no ${o.second} physics to add.`;
@@ -40506,9 +40538,9 @@ function exposedKinds(state, reg) {
   if (!scene || !blockingLive(state, reg)) return [];
   const out = /* @__PURE__ */ new Map();
   const first2 = scene.participants[0];
-  const add2 = (kinds2, holderId, part, gate2) => {
+  const add2 = (kinds2, holderId, part, gate3) => {
     if (!Array.isArray(kinds2) || holderId === void 0) return;
-    if (gate2 !== void 0 && !contentAllowed(state, reg, gate2, holderId)) return;
+    if (gate3 !== void 0 && !contentAllowed(state, reg, gate3, holderId)) return;
     for (const k of kinds2) {
       const e = reg.stimulusKinds.get(k);
       if (e && contentAllowed(state, reg, e, holderId) && !out.has(k)) out.set(k, { kind: k, holderId, ...part !== void 0 ? { part } : {} });
@@ -43329,6 +43361,51 @@ function noteHoldEvents(draft, ctx2, events) {
   return out;
 }
 
+// src/engine/craft/drills.ts
+function drillMult(state, reg, companionId) {
+  if (companionId === void 0) return 1;
+  const unit5 = state.squad.find((u) => u.id === companionId);
+  if (unit5 === void 0 || unit5.kind !== "named" || !isLiving(unit5)) return 1;
+  if (craftLive(state, reg, companionId)) return TUNING.craft.drill.holder;
+  return bondTierOf(state, reg, companionId) !== null ? TUNING.craft.drill.other : 1;
+}
+function drilledToday(state, key) {
+  const physics = enduranceOf(key);
+  return physics !== null ? trainedToday(state, physics) : state.commander.craft?.[key]?.drillDay === state.day;
+}
+var round23 = (n) => Math.round(n * 100) / 100;
+function payDrill(draft, reg, key, o = {}) {
+  if (!craftOn(draft, reg)) return [];
+  const mult = o.mult ?? drillMult(draft, reg, o.companionId);
+  const xp = drilledToday(draft, key) ? 0 : round23(TUNING.craft.xp.drill * mult);
+  const events = [];
+  if (xp > 0) {
+    events.push(...addCraftXp(draft, reg, key, xp, "drill"));
+    const physics = enduranceOf(key);
+    if (physics !== null) draft.commander.endurance[physics].trainedDay = draft.day;
+    else draft.commander.craft[key].drillDay = draft.day;
+  }
+  events.push({ type: "drill_done", key, ...o.companionId !== void 0 ? { companionId: o.companionId } : {}, mult, alone: o.companionId === void 0, xp });
+  return events;
+}
+function gate2(state, reg, focus, mode) {
+  if (mode === "alone" && enduranceOf(focus.drill.key) !== null) return null;
+  return craftOn(state, reg) ? null : `${focus.label} is not available yet.`;
+}
+function effect(draft, ctx2, fx2) {
+  return fx2.type === "commander_craft_xp" ? payDrill(draft, ctx2.registries, fx2.key) : [];
+}
+function partner(draft, ctx2, at2) {
+  const reg = ctx2.registries;
+  const rel = draft.relations[at2.companionId];
+  if (rel === void 0 || !craftOn(draft, reg)) return { events: [] };
+  (rel.craft ??= {}).partnerDay = draft.day;
+  return { events: payDrill(draft, reg, at2.focus.drill.key, { companionId: at2.companionId }) };
+}
+function installDrillHooks() {
+  registerDrillHooks({ gate: gate2, effect, partner });
+}
+
 // src/engine/actions/craft.ts
 registerAfterAction((draft, ctx2, events) => {
   if (!craftOn(draft, ctx2.registries)) return [];
@@ -43339,6 +43416,13 @@ registerAfterAction((draft, ctx2, events) => events.some((e) => e.type === "phys
 registerDayEndStep("director_tick", (draft, ctx2) => decayCraft(draft, ctx2.registries));
 registerAfterAction((draft, ctx2, events) => craftOn(draft, ctx2.registries) ? noteSlips(draft, ctx2, events) : []);
 installCraftHooks();
+installDrillHooks();
+registerActivityHook((draft, ctx2, done) => {
+  if (done.focus === void 0 || done.companionId !== void 0 || !craftOn(draft, ctx2.registries)) return [];
+  const focus = ctx2.registries.activities.get(done.activityId)?.focus?.find((f) => f.id === done.focus);
+  const key = focus?.drill?.key;
+  return key !== void 0 && enduranceOf(key) !== null ? [{ type: "drill_done", key, mult: 1, alone: true, xp: TUNING.physics.endurance.training }] : [];
+});
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
@@ -62404,7 +62488,7 @@ var unitLabel = (u) => u.kind === "grunt" ? `${u.displayName} (grunt)` : u.displ
 function activityCard(a, state, ctx2) {
   const mode = a.companion;
   const allFoci = a.focus ?? [];
-  const pickable = allFoci.filter((f) => f.requires?.capabilityHeldBy === void 0 && (f.requires?.traitEffect === void 0 || hasTraitEffect(state, ctx2.registries, f.requires.traitEffect)));
+  const pickable = allFoci.filter((f) => f.requires?.capabilityHeldBy === void 0 && (f.requires?.traitEffect === void 0 || hasTraitEffect(state, ctx2.registries, f.requires.traitEffect)) && drillReason(state, ctx2.registries, f, "alone") === null);
   const focusList = allFoci.some((f) => f.requires?.capabilityHeldBy !== void 0) && pickable.length < 2 ? [] : pickable;
   const living2 = state.squad.filter(isLiving);
   const companions = a.startsScene === true ? living2.filter((u) => u.kind === "named") : living2;
@@ -62414,10 +62498,18 @@ function activityCard(a, state, ctx2) {
     h("option", { value: "" }, mode === "required" ? "\u2014 choose \u2014" : "\u2014 alone \u2014"),
     ...companions.map((u) => h("option", { value: u.id }, unitLabel(u)))
   );
+  const drillOption = (f) => h("option", { value: f.id, ...f.drill !== void 0 ? analyzeNative("glossary:craft_drill") : {} }, f.label);
   const focusSel = focusList.length === 0 ? null : h(
     "select",
-    { name: "focus", "aria-label": `Focus for ${String(a.name)}` },
-    ...focusList.map((f) => h("option", { value: f.id }, f.label))
+    { name: "focus", "aria-label": `Focus for ${String(a.name)}`, ...focusList.some((f) => f.drill !== void 0) ? analyzeNative("glossary:craft_drill") : {} },
+    ...focusList.map(drillOption)
+  );
+  const partnerFoci = mode === "none" ? [] : allFoci.filter((f) => f.drill?.partner === true && drillReason(state, ctx2.registries, f, "partner") === null);
+  const partnerSel = partnerFoci.length === 0 ? null : h(
+    "select",
+    { name: "partner-drill", "aria-label": `Drill to share for ${String(a.name)}`, ...analyzeNative("glossary:craft_drill") },
+    h("option", { value: "" }, "\u2014 just together \u2014"),
+    ...partnerFoci.map(drillOption)
   );
   const picked = /* @__PURE__ */ new Set();
   const boxes = living2.map((u) => {
@@ -62436,7 +62528,7 @@ function activityCard(a, state, ctx2) {
   const request = () => {
     const req = { activityId: String(a.id) };
     const companion = companionSel?.value;
-    if (companion) return { ...req, companionId: companion };
+    if (companion) return { ...req, companionId: companion, ...partnerSel?.value ? { focus: partnerSel.value } : {} };
     if (focusSel) req.focus = focusSel.value;
     if (currentFocus()?.units) req.unitIds = living2.filter((u) => picked.has(u.id)).map((u) => u.id);
     return req;
@@ -62449,6 +62541,7 @@ function activityCard(a, state, ctx2) {
       shape2 = next;
       controls.replaceChildren();
       if (companionSel) controls.append(companionSel);
+      if (companion && partnerSel) controls.append(partnerSel);
       if (!companion) {
         if (focusSel) controls.append(focusSel);
         if (currentFocus()?.units) controls.append(h("div", { class: "alius-unitpick" }, ...boxes));
@@ -62460,6 +62553,7 @@ function activityCard(a, state, ctx2) {
   }
   companionSel?.addEventListener("change", refresh2);
   focusSel?.addEventListener("change", refresh2);
+  partnerSel?.addEventListener("change", refresh2);
   btn2.addEventListener("click", () => ctx2.onDo(request()));
   refresh2();
   return h(
@@ -63180,8 +63274,8 @@ function createArtSlots(manifest, assetUrl, unitKey, folders) {
     if (folder.setup?.face !== void 0) faces2.set(key, folder.setup.face);
   }
   return {
-    get(unitId, slot2, gate2) {
-      if (slot2 === "over_explicit" && gate2?.explicit !== true) return null;
+    get(unitId, slot2, gate3) {
+      if (slot2 === "over_explicit" && gate3?.explicit !== true) return null;
       const key = unitKey(unitId);
       const slots = key === null ? void 0 : byUnit.get(key);
       if (slots === void 0) return null;
@@ -87489,23 +87583,23 @@ function draftArt(ctx2, unitId, avatar, key, draft, sandboxKey) {
   const pic = draft.url === null ? null : { url: draft.url, sidecar: structuredClone(draft.sidecar) };
   if (pic === null) slots.delete(key);
   else slots.set(key, pic);
-  const partner = partnerOf2(key);
+  const partner2 = partnerOf2(key);
   const real = ctx2.art();
-  const partnerSlot = partner === null ? null : SLOT_INFO[partner].slot;
+  const partnerSlot = partner2 === null ? null : SLOT_INFO[partner2].slot;
   let stoodIn = null;
-  if (pic !== null && partner !== null && partnerSlot === info.slot && !slots.has(partner)) {
-    slots.set(partner, pic);
-    stoodIn = partner;
+  if (pic !== null && partner2 !== null && partnerSlot === info.slot && !slots.has(partner2)) {
+    slots.set(partner2, pic);
+    stoodIn = partner2;
   }
-  if (pic !== null && partner !== null && partnerSlot !== info.slot && partnerSlot !== null && real.get(unitId, partnerSlot) === null) stoodIn = partner;
+  if (pic !== null && partner2 !== null && partnerSlot !== info.slot && partnerSlot !== null && real.get(unitId, partnerSlot) === null) stoodIn = partner2;
   const own = createArtSlots(null, (p) => p, sandboxKey, /* @__PURE__ */ new Map([[avatar, { slots, setup: folder?.setup ?? null }]]));
   const mine = (id) => sandboxKey(id) === avatar;
   const art2 = {
-    get: (id, slot2, gate2) => {
+    get: (id, slot2, gate3) => {
       if (!mine(id)) return null;
-      if (slot2 === info.slot) return own.get(id, slot2, gate2);
+      if (slot2 === info.slot) return own.get(id, slot2, gate3);
       if (stoodIn !== null && slot2 === partnerSlot && partnerSlot !== info.slot) return pic;
-      return real.get(unitId, slot2, gate2);
+      return real.get(unitId, slot2, gate3);
     },
     face: (id) => !mine(id) ? null : own.face(id) ?? real.face(unitId)
   };
@@ -90133,7 +90227,7 @@ function createApp(st3, deps) {
         sound,
         samples,
         // P10e-e: the instruments' recorded sounds
-        art: { get: (unitId, slot2, gate2) => art2.get(unitId, slot2, gate2), face: (unitId) => art2.face(unitId) },
+        art: { get: (unitId, slot2, gate3) => art2.get(unitId, slot2, gate3), face: (unitId) => art2.face(unitId) },
         // P10e-e: the instruments' pictures (read through, the manifest may load later)
         onClose: () => shell.close(),
         // P10e: the shell's own close is hidden on the scene screen; the top line carries it

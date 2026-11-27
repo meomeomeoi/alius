@@ -25,7 +25,13 @@ export function enduranceOf(key: string): string | null {
 }
 
 /** One discipline of the commander: xp, level 0-5, and the day it was last used (the decay's clock). For `endurance:*` only `lastDay` is kept here (xp and level stay in `Commander.endurance`). */
-export interface CraftEntry { xp: number; level: number; lastDay: number; /** The day the decay last took a step (its clock restarts there; `lastDay` stays the last use). */ decayedDay?: number }
+export interface CraftEntry {
+  xp: number; level: number; lastDay: number;
+  /** The day the decay last took a step (its clock restarts there; `lastDay` stays the last use). */
+  decayedDay?: number;
+  /** The day a drill of this key last paid (a drill is full xp once a day per key; the decay's `lastDay` is any use, so it cannot say). Not kept for `endurance:*`: P15a's `trainedDay` says it. */
+  drillDay?: number;
+}
 
 /** The level words, from untrained to masterful (ruling 8; they replace `ENDURANCE_WORDS`). */
 export const CRAFT_WORDS = ['untrained', 'raw', 'practised', 'steady', 'seasoned', 'masterful'] as const;
@@ -55,6 +61,8 @@ export interface RelationCraft {
   slips?: Array<{ key: string; scene: string; day: number }>;
   /** The point she names after a slip (hidden until she says it): the engine's word for what failed and her way of saying it, voiced once in the reply of this exchange. */
   lesson?: { point: string; words: string; joke?: true; scene: string; exchange: number };
+  /** The day the commander last shared a drill with her (a partner drill: a scene or not): another holder's jealousy reads it (`exchange.ts`). */
+  partnerDay?: number;
 }
 
 /**

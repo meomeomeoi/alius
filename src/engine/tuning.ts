@@ -980,7 +980,7 @@ export const TUNING = Object.freeze({
     style: Object.freeze({
       peakLeads: Object.freeze(['cruel', 'drill', 'vindictive']) as readonly string[],
       edgeStart: 1, edgeEnd: 24, ignoredDays: 3, stagnationDays: 7, failedRunDays: 2, anniversaryDays: 30,
-      trainingEffects: Object.freeze(['unit_xp', 'commander_body_xp', 'commander_endurance_xp']) as readonly string[],
+      trainingEffects: Object.freeze(['unit_xp', 'commander_body_xp', 'commander_endurance_xp', 'commander_craft_xp']) as readonly string[],
     }),
     /**
      * The Leash block (R16, spec §10): the holder co-signs a request with `base + perFavour x favour / favour.max`, clamped to [min, max]. `AUTHOR TO TUNE`.
@@ -1357,10 +1357,12 @@ export const TUNING = Object.freeze({
    * `capacity`: the body route of P7 `endurance` (level-equivalents per point above `bodyFrom`, posture and pain only, ruling 9), `noise`: stillness quiets a slip by this much a level, `drift`: a posture drifts
    * this much slower a level. `settling`: clean holds of a kind in a row before she adds a load, and for each style the loads it likes (a hashed pick over the list). `lesson`: the chance she
    * names the point after a slip, by style (`drill` / `ritual` / `clinical` always, `playful` as a joke, `cruel` never, the rest by `other`). `rhythm`: how much wider her openings are per level
-   * of her rhythm the commander knows. `record`: the days a record stays worth bringing up, the shortest one worth a line (seconds) and the chance, by the hash of the day and the scene, that she brings one up. `knowledge`: the xp of a pair's knowledge per use.
+   * of her rhythm the commander knows. `record`: the days a record stays worth bringing up, the shortest one worth a line (seconds) and the chance, by the hash of the day and the scene, that she brings one up. `knowledge`: the xp of a pair's knowledge per use. `drill`: what a drill pays with a partner times `xp.drill` (`holder`: a craft-live holder, `other`: another close woman; alone and with anyone else x1),
+   * and the Regard (`regard`, a `value` rise) her `pleased` verdict on a drill she ran earns.
    */
   craft: Object.freeze({
     xp: Object.freeze({ phase: 3, lesson: 0.5, drill: 15, knowledge: 5 }),
+    drill: Object.freeze({ holder: 1.5, other: 1.2, regard: 1 }),
     decay: Object.freeze({ days: 21, pairDays: 42 }),
     beatSkill: 0.25,
     beatSeconds: Object.freeze({ weight: 20, breath: 3, saturation: 10, tongue_work: 15, jaw: 5, gulp: 5, her_activity: 20, posture: 30 } as Record<string, number>),

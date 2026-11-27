@@ -3864,7 +3864,8 @@
     "see": [
       "endurance_training",
       "craft_record",
-      "craft_lesson"
+      "craft_lesson",
+      "craft_drill"
     ]
   },
   {
@@ -3954,6 +3955,15 @@
     "term": "Lesson",
     "short": "What a slip teaches when she follows it up: a punishment, or her naming of the point that failed.",
     "long": "AUTHOR TO WRITE: A slip gives nothing by itself. When she punishes it, or names what failed, the commander learns something: half of what a clean success gives. A woman who is cruel never explains; one who drills explains every time.",
+    "see": [
+      "craft"
+    ]
+  },
+  {
+    "id": "craft_drill",
+    "term": "Drill",
+    "short": "Practice at the base: one slot spent on one discipline. Once a day for each discipline it pays in full; a partner makes it count for more.",
+    "long": "AUTHOR TO WRITE: A drill is a slot spent on one thing, alone or with a partner. Alone it is a single click for a day's practice of a discipline. With a partner who has an instrument for it (breath or weight) it counts for half as much again when she is a woman who holds the commander to account, and a little more when she is only close. The same drill twice in a day pays nothing the second time, and the slot is spent all the same.",
     "see": [
       "craft"
     ]

@@ -568,6 +568,8 @@ export const ActivityEffectSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('commander_body_xp'), stat: z.enum(['strength', 'endurance', 'reflexes']), ...amountFields }).strict(),
   /** P15a: one endurance drill of the commander for a contact physics (the xp is `TUNING.physics.endurance.training`, once a day per physics); the amount is not authored. */
   z.object({ type: z.literal('commander_endurance_xp'), physics: z.string().min(1), ...amountFields }).strict(),
+  /** P16b: one drill of a discipline of the craft (the xp is `TUNING.craft.xp.drill`, once a day per key; nothing while no holder runs the craft); the amount is not authored. */
+  z.object({ type: z.literal('commander_craft_xp'), key: z.string().min(1), ...amountFields }).strict(),
   z.object({ type: z.literal('defect_upkeep'), target: z.enum(['selected', 'companion']), ...amountFields }).strict(),
   z.object({ type: z.literal('relation'), axis: z.enum(['trust', 'affinity', 'attraction']), amount: int, ...amountFields }).strict(),
   /** P12: moves the commander's own stress (a negative amount relieves it). */
@@ -602,6 +604,8 @@ export const ActivitySchema = BaseEntrySchema.extend({
       .refine((r) => r.traitEffect !== undefined || r.capabilityHeldBy !== undefined, 'a focus requirement names a traitEffect or a capabilityHeldBy').optional(),
     /** P12: a one-way choice: the app asks this question first (the activity runs only on a yes). */
     confirm: str.max(200).optional(),
+    /** P16b: a drill of the craft: the discipline it trains (`endurance:<physics>` or a discipline), and `partner` when a companion may share it (only a drill with an instrument). */
+    drill: z.object({ key: str, partner: z.literal(true).optional() }).strict().optional(),
   }).strict()).optional(),
   effects: z.array(ActivityEffectSchema),
   companionEffects: z.array(ActivityEffectSchema),

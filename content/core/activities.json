@@ -38,15 +38,47 @@
       },
       {
         "id": "endurance_breath",
-        "label": "Endurance: breath drill"
+        "label": "Endurance: breath drill",
+        "drill": {
+          "key": "endurance:breath",
+          "partner": true
+        }
       },
       {
         "id": "endurance_weight",
-        "label": "Endurance: weight drill"
+        "label": "Endurance: weight drill",
+        "drill": {
+          "key": "endurance:weight",
+          "partner": true
+        }
       },
       {
         "id": "endurance_jaw",
-        "label": "Endurance: jaw drill"
+        "label": "Endurance: jaw drill",
+        "drill": {
+          "key": "endurance:jaw"
+        }
+      },
+      {
+        "id": "drill_stillness",
+        "label": "Stillness drill",
+        "drill": {
+          "key": "stillness"
+        }
+      },
+      {
+        "id": "drill_recitation",
+        "label": "Recitation drill",
+        "drill": {
+          "key": "speech"
+        }
+      },
+      {
+        "id": "drill_rhythm",
+        "label": "Rhythm drill",
+        "drill": {
+          "key": "rhythm"
+        }
       }
     ],
     "effects": [
@@ -106,6 +138,27 @@
         "physics": "jaw",
         "when": {
           "focus": "endurance_jaw"
+        }
+      },
+      {
+        "type": "commander_craft_xp",
+        "key": "stillness",
+        "when": {
+          "focus": "drill_stillness"
+        }
+      },
+      {
+        "type": "commander_craft_xp",
+        "key": "speech",
+        "when": {
+          "focus": "drill_recitation"
+        }
+      },
+      {
+        "type": "commander_craft_xp",
+        "key": "rhythm",
+        "when": {
+          "focus": "drill_rhythm"
         }
       }
     ],

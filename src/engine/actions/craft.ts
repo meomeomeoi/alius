@@ -1,3 +1,4 @@
+import { registerActivityHook } from '../activities';
 import { registerAfterAction } from '../dispatch';
 import { registerDayEndStep } from '../calendar';
 import { decayCraft } from '../craft/decay';
@@ -6,6 +7,9 @@ import { noteSlips } from '../craft/lesson';
 import { noteHoldEvents } from '../craft/records';
 import { touchCraft } from '../craft/book';
 import { craftOn } from '../craft/gate';
+import { installDrillHooks } from '../craft/drills';
+import { enduranceOf } from '../craft/state';
+import { TUNING } from '../tuning';
 
 // Importing this module registers what keeps the craft in step with the rest of the engine (P16b). It must come after `actions/practice`
 // (the order of the day-end steps follows the order the action modules are evaluated).
@@ -37,3 +41,14 @@ registerAfterAction((draft, ctx, events) => craftOn(draft, ctx.registries) ? not
 
 // the physics layer reads the commander's stillness and her rhythm through these (0 until learnt)
 installCraftHooks();
+
+// the drills of the `train` activity: the gate, the alone effect and the partner (the activities layer takes them as hooks)
+installDrillHooks();
+
+/** An endurance drill done alone is P15a's (it pays through `commander_endurance_xp`); with a holder running the craft it is also a drill of the book. */
+registerActivityHook((draft, ctx, done) => {
+  if (done.focus === undefined || done.companionId !== undefined || !craftOn(draft, ctx.registries)) return [];
+  const focus = (ctx.registries.activities.get(done.activityId)?.focus as Array<{ id: string; drill?: { key: string } }> | undefined)?.find((f) => f.id === done.focus);
+  const key = focus?.drill?.key;
+  return key !== undefined && enduranceOf(key) !== null ? [{ type: 'drill_done', key, mult: 1, alone: true, xp: TUNING.physics.endurance.training }] : [];
+});

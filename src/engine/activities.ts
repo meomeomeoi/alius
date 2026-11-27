@@ -37,7 +37,9 @@ export interface ActivityRequest {
 }
 
 type Cost = { credits?: number; supplies?: number; plyx?: number };
-type Focus = { id: string; label: string; units?: { min: number; max: number }; requires?: { traitEffect?: string; capabilityHeldBy?: string }; confirm?: string };
+/** P16b: a focus that is a drill of the craft: the key of the discipline it trains (`endurance:<physics>` or a discipline) and whether a companion may share it (an instrument takes a partner). */
+export type FocusDrill = { key: string; partner?: true };
+export type Focus = { id: string; label: string; units?: { min: number; max: number }; requires?: { traitEffect?: string; capabilityHeldBy?: string }; confirm?: string; drill?: FocusDrill };
 type Fx = ActivityEffect & { when?: { focus?: string; companionLikes?: string }; scale?: { facility: string; key: string } };
 
 /** What an activity just did; hooks (P3 defect social effects) react to it. */
@@ -48,6 +50,8 @@ export interface ActivityDone {
   rosterIds: string[];
   /** P14c: the pastime the request named (a quiet hour). */
   pastimeId?: string;
+  /** P16b: the focus the activity ran with (a partner drill keeps it with a companion; an alone focus is the request's). */
+  focus?: string;
 }
 /** Runs after the activity's effects and before its slot is consumed; the events it returns join the activity's events. */
 export type ActivityHook = (draft: CampaignState, ctx: EngineCtx, done: ActivityDone) => EngineEvent[];
@@ -59,6 +63,38 @@ export const registerActivityHook = (fn: ActivityHook): void => {
 export const resetActivityHooks = (): void => {
   activityHooks.length = 0;
 };
+
+/**
+ * P16b: what the craft plugs into the activities (this layer imports nothing of it). `gate` says why a drill focus cannot be done now (`null`: it can): called for a
+ * focus that carries `drill`, for `alone` (the request has no companion) or `partner` (a companion shares it). `effect` runs an effect type this layer does not know
+ * (`commander_craft_xp`). `partner` runs a drill a companion shares and says whether it opens a scene (the slot is then the scene's, at `locationId`).
+ * Each is registered once by the craft; with none registered a drill focus behaves as it did before the craft (a companion drops the focus).
+ */
+export interface DrillAt { activityId: string; focus: Focus; companionId: string }
+export interface DrillHooks {
+  gate?: (state: CampaignState, reg: Registries, focus: Focus, mode: 'alone' | 'partner') => string | null;
+  effect?: (draft: CampaignState, ctx: EngineCtx, fx: ActivityEffect, at: { activityId: string; focusId?: string }) => EngineEvent[];
+  partner?: (draft: CampaignState, ctx: EngineCtx, at: DrillAt) => { events: EngineEvent[]; scene?: { locationId: string } };
+}
+let drillHooks: DrillHooks = {};
+export const registerDrillHooks = (hooks: DrillHooks): void => {
+  drillHooks = { ...drillHooks, ...hooks };
+};
+export const resetDrillHooks = (): void => {
+  drillHooks = {};
+};
+
+/** Why a drill focus is not offered now (`null` for any other focus, or while the craft has not registered a gate). The one place the OPS tab and the checks ask. */
+export function drillReason(state: CampaignState, reg: Registries, focus: Focus, mode: 'alone' | 'partner'): string | null {
+  return focus.drill === undefined || drillHooks.gate === undefined ? null : drillHooks.gate(state, reg, focus, mode);
+}
+
+/** The focus a companion shares (a partner drill, while the craft offers it), else `undefined`: every other focus is dropped with a companion, as it always was. */
+export function partnerFocus(state: CampaignState, reg: Registries, a: Entry, req: ActivityRequest): Focus | undefined {
+  if (req.focus === undefined || drillHooks.partner === undefined) return undefined;
+  const focus = ((a.focus as Focus[] | undefined) ?? []).find((f) => f.id === req.focus);
+  return focus?.drill?.partner === true && drillReason(state, reg, focus, 'partner') === null ? focus : undefined;
+}
 
 /** What an activity costs the commander now: its own cost plus the `activity_cost` trait effects for it (P7). */
 export function activityCost(state: CampaignState, reg: Registries, a: Entry): Cost {
@@ -125,6 +161,9 @@ export function checkActivity(state: CampaignState, reg: Registries, request: un
     if (mode === 'none') return `${name} cannot be done with a companion.`;
     const c = state.squad.find((u) => u.id === req.companionId);
     if (!c || !isLiving(c)) return `Companion "${req.companionId}" is not available.`;
+    // P16b: a drill that takes a partner keeps its focus with a companion (it is once a day for an endurance drill, as alone)
+    const shared = partnerFocus(state, reg, a, req);
+    if (shared !== undefined && enduranceDrillDone(state, a, shared)) return `${shared.label} was done today.`;
     return restrictionReason(state, reg, c.id, 'companion', req.activityId) ?? commanderRestriction(state, reg, 'companion', req.activityId); // P9: the brig, no leave, extra duty; P13: what the warden revoked
   }
   if (mode === 'required') return `${name} needs a companion.`;
@@ -138,9 +177,10 @@ export function checkActivity(state: CampaignState, reg: Registries, request: un
   if (focus && state.special?.frequency?.burnedDay !== undefined
     && (a.effects as Fx[]).some((fx) => fx.type === 'burn_frequency_implant' && fx.when?.focus === focus.id)) return 'The implant is already burned.';
   // P15a: an endurance drill is done once a day for each physics
-  for (const fx of (a.effects as Fx[]).filter((x) => x.type === 'commander_endurance_xp' && focus !== undefined && x.when?.focus === focus.id)) {
-    if (trainedToday(state, String((fx as { physics?: unknown }).physics))) return `${focus!.label} was done today.`;
-  }
+  if (focus !== undefined && enduranceDrillDone(state, a, focus)) return `${focus.label} was done today.`;
+  // P16b: a drill of the craft is offered only while a holder runs it
+  const notDrill = focus === undefined ? null : drillReason(state, reg, focus, 'alone');
+  if (notDrill !== null) return notDrill;
   if (focus?.units) {
     const ids = req.unitIds ?? [];
     if (ids.length < focus.units.min || ids.length > focus.units.max) {
@@ -154,6 +194,10 @@ export function checkActivity(state: CampaignState, reg: Registries, request: un
   }
   return null;
 }
+
+/** P15a: has the endurance drill of this focus been done today (once a day for each physics)? */
+const enduranceDrillDone = (state: CampaignState, a: Entry, focus: Focus): boolean =>
+  (a.effects as Fx[]).some((x) => x.type === 'commander_endurance_xp' && x.when?.focus === focus.id && trainedToday(state, String((x as { physics?: unknown }).physics)));
 
 const scaled = (amount: number, state: CampaignState, reg: Registries, scale?: Fx['scale']): number => {
   if (!scale) return amount;
@@ -191,7 +235,7 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
   }
 
   const companion = req.companionId ? draft.squad.find((u) => u.id === req.companionId) : undefined;
-  const focus = companion ? undefined : focusOf(a, req);
+  const focus = companion ? partnerFocus(draft, reg, a, req) : focusOf(a, req); // P16b: a partner drill keeps its focus with a companion
   const selected: Unit[] = focus?.units
     ? (req.unitIds ?? []).map((id) => draft.squad.find((u) => u.id === id) as Unit)
     : [];
@@ -219,6 +263,9 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
         events.push({ type: 'social_gained', stat: fx.stat, gained: r.gained, rank: r.rank, rankedUp: r.rankedUp });
         break;
       }
+      case 'commander_craft_xp':
+        events.push(...(drillHooks.effect?.(draft, ctx, fx, { activityId: a.id, ...(focus ? { focusId: focus.id } : {}) }) ?? []));
+        break;
       case 'commander_endurance_xp': {
         const gained = trainEndurance(draft, String((fx as { physics?: unknown }).physics));
         if (gained) events.push(gained);
@@ -308,6 +355,15 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
     }
   }
 
+  // P16b: the drill a companion shares (a partner drill): pays now, or opens its scene at its place (the slot is then the scene's)
+  let drillScene: { locationId: string } | undefined;
+  if (companion && focus?.drill?.partner === true && drillHooks.partner !== undefined) {
+    const shared = drillHooks.partner(draft, ctx, { activityId: a.id, focus, companionId: companion.id });
+    events.push(...shared.events);
+    drillScene = shared.scene;
+    if (drillScene !== undefined) events.push({ type: 'scene_requested', activityId: a.id, unitId: companion.id, origin: 'activity', locationId: drillScene.locationId });
+  }
+
   events.push({
     type: 'activity_done', activityId: a.id, ...(companion ? { companionId: companion.id } : {}),
     vignette: companion !== undefined && a.flavor === 'short',
@@ -316,9 +372,10 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
   const done: ActivityDone = {
     activityId: a.id, ...(companion ? { companionId: companion.id } : {}), rosterIds: activeRosterUnits(draft).map((u) => u.id),
     ...(typeof req.pastimeId === 'string' ? { pastimeId: req.pastimeId } : {}),
+    ...(focus !== undefined ? { focus: focus.id } : {}),
   };
   for (const hook of activityHooks) events.push(...hook(draft, ctx, done));
-  if (a.startsScene === true) {
+  if (a.startsScene === true || drillScene !== undefined) {
     // the scene holds this slot; P3 ends it with `calendar/consume_slot { reason: 'scene_end' }`
     if (companion) draft.calendar.pendingScene = { unitId: companion.id, day: draft.day, slot: draft.slot };
   } else {

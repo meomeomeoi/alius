@@ -1,7 +1,7 @@
 import { drawCountermandChips } from '../power/chips';
 import { hasTraitEffect } from '../../engine/commander/traits';
 import type { Entry, Registries } from '../../content/types';
-import { activityCost, checkActivity, type ActivityRequest } from '../../engine/activities';
+import { activityCost, checkActivity, drillReason, type ActivityRequest, type Focus as DrillFocus } from '../../engine/activities';
 import { clockText, isQuietNight } from '../../engine/calendar';
 import { isLiving, requisitionCost } from '../../engine/economy';
 import { objectiveList, type ObjectiveSource } from '../../engine/onboarding';
@@ -39,7 +39,7 @@ export interface OpsTabCtx {
   onTimeTogether?: (unitId: string, pastimeId: string) => void;
 }
 
-type Focus = { id: string; label: string; units?: { min: number; max: number } };
+type Focus = { id: string; label: string; units?: { min: number; max: number }; drill?: { key: string; partner?: true } };
 const COST_LABEL: Record<string, string> = { credits: 'CR', supplies: 'SUPPLIES', plyx: 'PLYX' };
 
 const costText = (cost: Record<string, number | undefined>): string => {
@@ -55,7 +55,9 @@ export function activityCard(a: Entry, state: CampaignState, ctx: OpsTabCtx): HT
   // P15: a focus that asks for a held capability (the Leash terminal) is filed from the Leash request form, never picked here; if that leaves one focus, the default runs.
   type FocusRow = Focus & { requires?: { traitEffect?: string; capabilityHeldBy?: string } };
   const allFoci = (a.focus as FocusRow[] | undefined) ?? [];
-  const pickable = allFoci.filter((f) => f.requires?.capabilityHeldBy === undefined && (f.requires?.traitEffect === undefined || hasTraitEffect(state, ctx.registries, f.requires.traitEffect as never)));
+  // P16b: a drill of the craft is listed while a holder runs it (an endurance drill alone is P15a's and always is)
+  const pickable = allFoci.filter((f) => f.requires?.capabilityHeldBy === undefined && (f.requires?.traitEffect === undefined || hasTraitEffect(state, ctx.registries, f.requires.traitEffect as never))
+    && drillReason(state, ctx.registries, f as DrillFocus, 'alone') === null);
   const focusList = allFoci.some((f) => f.requires?.capabilityHeldBy !== undefined) && pickable.length < 2 ? [] : pickable;
   const living = state.squad.filter(isLiving);
   // a conversation needs a character card: grunts cannot be talked to
@@ -67,10 +69,19 @@ export function activityCard(a: Entry, state: CampaignState, ctx: OpsTabCtx): HT
       h('option', { value: '' }, mode === 'required' ? '— choose —' : '— alone —'),
       ...companions.map((u) => h('option', { value: u.id }, unitLabel(u))),
     ) as HTMLSelectElement);
+  const drillOption = (f: Focus): HTMLElement => h('option', { value: f.id, ...(f.drill !== undefined ? analyzeNative('glossary:craft_drill') : {}) }, f.label);
   const focusSel = focusList.length === 0
     ? null
-    : (h('select', { name: 'focus', 'aria-label': `Focus for ${String(a.name)}` },
-      ...focusList.map((f) => h('option', { value: f.id }, f.label)),
+    : (h('select', { name: 'focus', 'aria-label': `Focus for ${String(a.name)}`, ...(focusList.some((f) => f.drill !== undefined) ? analyzeNative('glossary:craft_drill') : {}) },
+      ...focusList.map(drillOption),
+    ) as HTMLSelectElement);
+  // P16b: a drill that takes a partner stays pickable with a companion (the others are dropped with one, as ever)
+  const partnerFoci = mode === 'none' ? [] : allFoci.filter((f) => f.drill?.partner === true && drillReason(state, ctx.registries, f as DrillFocus, 'partner') === null);
+  const partnerSel = partnerFoci.length === 0
+    ? null
+    : (h('select', { name: 'partner-drill', 'aria-label': `Drill to share for ${String(a.name)}`, ...analyzeNative('glossary:craft_drill') },
+      h('option', { value: '' }, '— just together —'),
+      ...partnerFoci.map(drillOption),
     ) as HTMLSelectElement);
 
   const picked = new Set<string>();
@@ -92,7 +103,7 @@ export function activityCard(a: Entry, state: CampaignState, ctx: OpsTabCtx): HT
   const request = (): ActivityRequest => {
     const req: ActivityRequest = { activityId: String(a.id) };
     const companion = companionSel?.value;
-    if (companion) return { ...req, companionId: companion };
+    if (companion) return { ...req, companionId: companion, ...(partnerSel?.value ? { focus: partnerSel.value } : {}) };
     if (focusSel) req.focus = focusSel.value;
     if (currentFocus()?.units) req.unitIds = living.filter((u) => picked.has(u.id)).map((u) => u.id);
     return req;
@@ -106,6 +117,7 @@ export function activityCard(a: Entry, state: CampaignState, ctx: OpsTabCtx): HT
       shape = next;
       controls.replaceChildren();
       if (companionSel) controls.append(companionSel);
+      if (companion && partnerSel) controls.append(partnerSel);
       if (!companion) {
         if (focusSel) controls.append(focusSel);
         if (currentFocus()?.units) controls.append(h('div', { class: 'alius-unitpick' }, ...boxes));
@@ -117,6 +129,7 @@ export function activityCard(a: Entry, state: CampaignState, ctx: OpsTabCtx): HT
   }
   companionSel?.addEventListener('change', refresh);
   focusSel?.addEventListener('change', refresh);
+  partnerSel?.addEventListener('change', refresh);
   btn.addEventListener('click', () => ctx.onDo(request()));
   refresh();
 
