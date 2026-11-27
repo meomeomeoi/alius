@@ -93,6 +93,7 @@ export function careReason(state: CampaignState, reg: Registries, unitId: string
   if (state.dilemmas?.open?.status === 'presented') return 'A decision is waiting.';
   if (state.calendar.nightEvent) return 'Someone is at the door.';
   if (state.slot === 'night') return 'Not at night.';
+  if (heldNow(state) !== null && heldNow(state)?.by !== unitId) return 'The commander is held: a slot is not the commander\'s to spend.';
   if (withCommander(state, unitId)) return 'She is with the commander: it would not be unasked.';
   if ((state.relations[unitId]?.craft?.cares ?? []).some((c) => c.careId === careId && c.day === state.day)) return `${row.label} was done today.`;
   return null;

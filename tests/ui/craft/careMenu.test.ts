@@ -69,6 +69,23 @@ describe('the menu', () => {
     expect((el.querySelector('[data-care="tidying_her_quarters"]') as HTMLElement).getAttribute('aria-disabled')).toBeNull();
   });
 
+  it('every option is aria-disabled with the reason while another woman holds the commander', () => {
+    const s = world(reg, 'play');
+    s.slot = 'morning';
+    s.personal = { seq: 9, bookings: [{ id: 'bk_held', unitId: 'unit_bea', kindId: 'held_in_quarters', day: s.day, slot: s.slot, status: 'booked', source: 'practice', made: s.day }] } as never;
+    s.practices = { handovers: [], ...(s.practices ?? {}), held: { by: 'unit_bea', since: { day: s.day, slot: s.slot }, until: { day: s.day, slot: s.slot }, sensory: false, extended: 0, bookingIds: ['bk_held'] } } as never;
+    const onCare = vi.fn();
+    const el = menuOf(s, onCare)!;
+    const buttons = [...el.querySelectorAll('[data-care]')] as HTMLElement[];
+    expect(buttons.length).toBeGreaterThan(0);
+    for (const b of buttons) {
+      expect(b.getAttribute('aria-disabled')).toBe('true');
+      expect(b.parentElement!.querySelector('.alius-reason')!.textContent).toMatch(/held/);
+      b.click();
+    }
+    expect(onCare).not.toHaveBeenCalled();
+  });
+
   it('is drawn the same whether she noticed an earlier care or not (hidden until she shows it)', () => {
     const draw = (noticed: boolean): string => {
       const s = world(reg, 'play');

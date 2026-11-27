@@ -60,8 +60,8 @@ const keepAlarm = (state: Readable): boolean => {
 };
 
 /**
- * The refusal `dispatch` gives while the commander is held (after P9c's `booking_due`): an activity, a quiet hour, a scene that is not with her in her quarters and an intrigue move
- * are `held`; an expedition launch and a night knock are `held_alarm` (the duty decides, R12: the UI raises the alarm). A scene with her at her quarters, a night scene and every
+ * The refusal `dispatch` gives while the commander is held (after P9c's `booking_due`): an activity, a quiet hour, a scene that is not with her in her quarters, an intrigue move
+ * and an unasked care are `held`; an expedition launch and a night knock are `held_alarm` (the duty decides, R12: the UI raises the alarm). A scene with her at her quarters, a night scene and every
  * other action (END SLOT, DMs, the actions of the hold itself) go through. A launch `withoutCommand` goes through only while a `keep` alarm is open (Task 28 checks the rest). Null with no hold.
  */
 export function heldGuard(state: Readable, reg: Registries, action: { type: string; payload?: unknown }): { code: 'held' | 'held_alarm'; message: string } | null {
@@ -73,7 +73,7 @@ export function heldGuard(state: Readable, reg: Registries, action: { type: stri
     return { code: 'held_alarm', message: 'The commander is held: the duty has to be weighed against the hold.' };
   }
   if (type === 'night/open') return { code: 'held_alarm', message: 'The commander is held: the knock has to be weighed against the hold.' };
-  const refused = type.startsWith('activity/') || type === 'life/time_together' || type === 'intrigue/act';
+  const refused = type.startsWith('activity/') || type === 'life/time_together' || type === 'intrigue/act' || type === 'care/unasked';
   if (refused) return { code: 'held', message: 'The commander is held in her quarters: ask to be let go, or let the slot pass.' };
   if (type === 'scene/start') {
     const p = action.payload as { origin?: unknown; locationId?: unknown } | null | undefined;

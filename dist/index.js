@@ -14294,7 +14294,7 @@ function heldGuard(state, reg, action) {
     return { code: "held_alarm", message: "The commander is held: the duty has to be weighed against the hold." };
   }
   if (type === "night/open") return { code: "held_alarm", message: "The commander is held: the knock has to be weighed against the hold." };
-  const refused = type.startsWith("activity/") || type === "life/time_together" || type === "intrigue/act";
+  const refused = type.startsWith("activity/") || type === "life/time_together" || type === "intrigue/act" || type === "care/unasked";
   if (refused) return { code: "held", message: "The commander is held in her quarters: ask to be let go, or let the slot pass." };
   if (type === "scene/start") {
     const p = action.payload;
@@ -25073,6 +25073,7 @@ function careReason(state, reg, unitId, careId) {
   if (state.dilemmas?.open?.status === "presented") return "A decision is waiting.";
   if (state.calendar.nightEvent) return "Someone is at the door.";
   if (state.slot === "night") return "Not at night.";
+  if (heldNow(state) !== null && heldNow(state)?.by !== unitId) return "The commander is held: a slot is not the commander's to spend.";
   if (withCommander(state, unitId)) return "She is with the commander: it would not be unasked.";
   if ((state.relations[unitId]?.craft?.cares ?? []).some((c) => c.careId === careId && c.day === state.day)) return `${row4.label} was done today.`;
   return null;

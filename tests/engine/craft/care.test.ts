@@ -9,7 +9,8 @@ import '../../../src/engine/actions/comms';
 import '../../../src/engine/actions/craft';
 import '../../../src/engine/actions/scene';
 import { resetBlockingHooks } from '../../../src/engine/blocking';
-import { careKinds, careNoticeChance, namesService, noticesCare, shownCares } from '../../../src/engine/craft/care';
+import { heldGuard } from '../../../src/engine/practice/held';
+import { careKinds, careNoticeChance, careReason, namesService, noticesCare, shownCares } from '../../../src/engine/craft/care';
 import { installCraftHooks } from '../../../src/engine/craft/hooks';
 import { dynamicOf } from '../../../src/engine/dynamic/state';
 import { resetPhysicsHooks } from '../../../src/engine/physics/style';
@@ -72,6 +73,17 @@ describe('the action', () => {
     held.personal = { seq: 9, bookings: [{ id: 'bk_held', unitId: ANN, kindId: 'evening_with_me', day: held.day, slot: held.slot, status: 'booked', source: 'practice', made: held.day }] } as never;
     held.practices = { ...(held.practices ?? {}), held: { by: ANN, since: { day: held.day, slot: held.slot }, until: { day: held.day, slot: held.slot }, sensory: false, extended: 0, bookingIds: ['bk_held'] } } as never;
     expect(errors(care(held).events).length).toBeGreaterThan(0);
+  });
+
+  it('is refused while another woman holds the commander (her booking must not lapse), by the engine and by the dispatch guard; the menu shows the reason', () => {
+    const s = world(reg, 'play');
+    s.personal = { seq: 9, bookings: [{ id: 'bk_held', unitId: BEA, kindId: 'held_in_quarters', day: s.day, slot: s.slot, status: 'booked', source: 'practice', made: s.day }] } as never;
+    s.practices = { handovers: [], ...(s.practices ?? {}), held: { by: BEA, since: { day: s.day, slot: s.slot }, until: { day: s.day, slot: s.slot }, sensory: false, extended: 0, bookingIds: ['bk_held'] } } as never;
+    expect(careReason(s, reg, ANN, BOOTS)).not.toBeNull();
+    const r = care(s);
+    expect(errors(r.events).length).toBeGreaterThan(0);
+    expect(r.events.some((e) => e.type === 'booking_lapsed' || e.type === 'care_unasked')).toBe(false);
+    expect(heldGuard(s, reg, { type: 'care/unasked', payload: { unitId: ANN, careId: BOOTS } })?.code).toBe('held');
   });
 
   it('is refused while a booking is due (the dispatch guard), and once the same care is done the same day', () => {
