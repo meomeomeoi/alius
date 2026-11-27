@@ -211,6 +211,16 @@ describe('the lesson', () => {
     expect(t.hs.redraw).toHaveBeenCalled();
   });
 
+  it('schedules the fade of a lesson once, however often the scene redraws', () => {
+    const t = draw(lesson(true));
+    expect(vi.getTimerCount()).toBe(1);
+    for (let i = 0; i < 6; i++) t.go();
+    expect(vi.getTimerCount()).toBe(1);
+    vi.advanceTimersByTime(LESSON_MS + 100);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(t.hs.redraw).toHaveBeenCalledTimes(1);
+  });
+
   it('a redraw resumes the fade where it was, it does not start over', () => {
     const t = draw(lesson(true));
     vi.advanceTimersByTime(3000);

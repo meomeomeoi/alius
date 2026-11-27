@@ -84894,9 +84894,11 @@ var cancelPostureCall = closeCall;
 // src/ui/craft/craftCards.ts
 var settled = /* @__PURE__ */ new Set();
 var lessonSince = /* @__PURE__ */ new Map();
+var lessonTimers = /* @__PURE__ */ new Set();
 function resetCraftCards() {
   settled.clear();
   lessonSince.clear();
+  lessonTimers.clear();
 }
 onStageReset(resetCraftCards);
 var LESSON_MS = 7e3;
@@ -85062,10 +85064,16 @@ function renderCraftCard(host, state, reg, c, handlers2, now) {
 function drawCraftCards(host, state, reg, present3, handlers2, now = () => Date.now()) {
   host.replaceChildren();
   for (const c of craftCardsOf(state, reg, present3)) renderCraftCard(host, state, reg, c, handlers2, now);
-  const due = [...lessonSince.entries()].filter(([k]) => k.startsWith(`${state.scene?.id ?? ""}|`)).map(([, t]) => LESSON_MS - (now() - t)).filter((ms) => ms > 0);
-  if (due.length > 0 && handlers2.redraw !== void 0) {
-    const redraw = handlers2.redraw;
-    setTimeout(redraw, Math.min(...due) + 50);
+  const redraw = handlers2.redraw;
+  if (redraw === void 0) return;
+  for (const [k, since] of lessonSince) {
+    const ms = LESSON_MS - (now() - since);
+    if (!k.startsWith(`${state.scene?.id ?? ""}|`) || ms <= 0 || lessonTimers.has(k)) continue;
+    lessonTimers.add(k);
+    setTimeout(() => {
+      lessonTimers.delete(k);
+      redraw();
+    }, ms + 50);
   }
 }
 function anticipateAnswer(reg, state, unitId) {

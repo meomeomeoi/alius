@@ -68,9 +68,12 @@ export interface CraftCard {
 const settled = new Set<string>();
 /** When each lesson card first showed (ms of `now`), so a redraw resumes its fade instead of restarting it. */
 const lessonSince = new Map<string, number>();
+/** The lessons whose fade already has a timer, so a redraw does not stack another. */
+const lessonTimers = new Set<string>();
 export function resetCraftCards(): void {
   settled.clear();
   lessonSince.clear();
+  lessonTimers.clear();
 }
 onStageReset(resetCraftCards);
 
@@ -239,11 +242,14 @@ export function renderCraftCard(host: HTMLElement, state: CampaignState, reg: Re
 export function drawCraftCards(host: HTMLElement, state: CampaignState, reg: Registries, present: readonly string[], handlers: CraftCardHandlers, now: () => number = () => Date.now()): void {
   host.replaceChildren();
   for (const c of craftCardsOf(state, reg, present)) renderCraftCard(host, state, reg, c, handlers, now);
-  // a lesson card goes by itself: redraw when the oldest one is due
-  const due = [...lessonSince.entries()].filter(([k]) => k.startsWith(`${state.scene?.id ?? ''}|`)).map(([, t]) => LESSON_MS - (now() - t)).filter((ms) => ms > 0);
-  if (due.length > 0 && handlers.redraw !== undefined) {
-    const redraw = handlers.redraw;
-    setTimeout(redraw, Math.min(...due) + 50);
+  // a lesson card goes by itself: redraw when it is due, one timer for each lesson however often the scene redraws
+  const redraw = handlers.redraw;
+  if (redraw === undefined) return;
+  for (const [k, since] of lessonSince) {
+    const ms = LESSON_MS - (now() - since);
+    if (!k.startsWith(`${state.scene?.id ?? ''}|`) || ms <= 0 || lessonTimers.has(k)) continue;
+    lessonTimers.add(k);
+    setTimeout(() => { lessonTimers.delete(k); redraw(); }, ms + 50);
   }
 }
 
