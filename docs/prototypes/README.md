@@ -44,6 +44,10 @@ npm run proto -- cards
 npm run proto -- throne
 ```
 
+```bash
+npm run proto -- posture
+```
+
 Each writes `.superpowers/prototypes/<name>.html` (ignored by git): one self-contained page with the fonts, backdrops and a placeholder sprite (`tests/fixtures/layout/sprite.svg`). `--sprite <file>` uses any local sprite; **never commit the author's art**. Open the page in Chromium. `H` hides the panel; `window.__S` (settings), `window.__G()` (state) and `window.__forceO` (force the opening, 0–1, `null` to release) exist for screenshots and tests.
 
 ## `throne.html` — the throne (the weight inside her activity's frame, with the throne layer)
@@ -98,6 +102,43 @@ Approved by the author on 2026-11-25 after rounds 1–2c (the defaults of the fi
 - **`longHoldStrain`:** a scene setting mirrored like `marathonPace`. It applies only to a weight run inside a frame, so old runs stay byte-identical.
 - **The art slot `legs_astride`** with `feet: 'one' | 'pair' | 'two'` and `shown: 'left' | 'right'`.
 - **Memory check:** as P17g §2.12 (an audience's decision is remembered where its command action writes; a visitor who rests her boots on the commander is P15 §8's witness path, `knows`); a spill and a skid are bookkeeping.
+
+## `posture.html` — the game of postures (P16b §7) and the posture call's schemes B and C
+
+*To be ported in P16b chunk c6 (Tasks 23–24): `src/ui/scene/instruments/posture/`, the call's new functions in `src/ui/scene/instruments/call/`, checked by their `fidelity.json`.*
+
+Approved by the author on 2026-11-27 after rounds 1–1e (the defaults of the file are the approved state, the dial at 300 px). Run it with `npm run proto -- posture`; it needs `ha/cloth1–4`, `ha/creak1–3`, `ha/page1–4`, `ha/soft1–2`, `ha/knock`, `ha/door_open`, `ha/door_close1`, `ha/step_w0–2`, `ha/glass1`, `ha/wood1–2` (`assets/LICENSES.md`) and bundles **the dial's own drawing code** at build time (`%%DIALKIT%%`: `scripts/prototype-dialkit.ts` → `mannequinSvg`, `pose`, `poseOf`, `BASE_POINTS`, the presets); the body between two point states is drawn through `mannequinSvg`'s `body` (a given skeleton). `S` is the page's state for tests.
+
+### Normative (port exactly)
+
+- **The dial is the surface** (`drawDial`, CSS `#dial`, `#dialFace`, `#dialLabel`, `#clock`): while a posture is held (or called) it grows from `min(18.5vh, 200px)` to **300 px** (0.5 s `cubic-bezier(.2,.9,.3,1)`) and stands 92 px from the bottom; the label under it: her name for the posture in her hand (24 px × factor), the preset's words, `EYES DOWN` under her rule, then the fiction clock (`fictionClock`: `N min` / `H h MM min`) and, with a known end, the seconds left. Under her eyes (`watching`) the ring takes her accent (`#dial.watched`).
+- **The body drifts** (`blendedBody`, `step`, `rateOf`, `mult`): each point the preset fixes has an offset 0–100 that grows by its rate (per 10 s: `RATE`, arms by state `ARM_RATE`) × `mult()` (fatigue 1 + 0.1 per earlier hold, load ×1.3, hard floor ×1.2, × (1 − 0.08 per posture skill level), × (1 − 0.05 per mastery level)) × the hold's own tiring (+40 % over the first 120 s) × the self-feeding past 50 (1 + (o − 50) / 100); at 100 it is a slip. The drawn body is the target's skeleton plus, per point, `min(1, o/100) × 0.9` of the way to the skeleton of the state it drifts toward (`DRIFT_TO`), the gaze, face and head directions renormalised; the target is the dashed ghost; a point past 22 rings its joint in amber (`JOINT_OF`; the feet have no joint: a ring at the ankles).
+- **The beads** (`drawBeads`): seven numbered beads (26 px) on an arc down the left of the rim, 1 TORSO at the top-left to 7 FEET at the bottom-left (angles 122° + 19° per step, the list reversed), each with its name to its left; the amber glow and border grow with the point's drift (`--o`); a point the preset does not fix is faded (.18) and inert; a held 6 is filled; a click on a bead is the same as its key.
+- **Corrections** (`press`, `anchors`): a click on the joint (an invisible 15-unit hit circle on the projected joint, read from the drawn segments) or keys 1–7 (only when nothing editable has focus) takes `CORRECT_STEP` (38) off; its loudness is `(o/100)^1.4`: the cloth sound at `0.05 + loud × 0.5` (rate `1.15 − loud × 0.3`), a creak above 0.55, the dial jolts above 0.3 (`jolt`); under her eyes a correction louder than `SEEN` (watching 0.42, glancing 0.72, busy never) is fidgeting she sees (her `fidget` line), and every third seen one is a slip.
+- **A slip** (`slip`): her line (`gaze` or `slip` by the point), a creak, a jolt, and the point goes back to 35 (she puts it back). **A fault that is not a point** (`fault`): "look at me" not obeyed: her `notLooking` line, a slip, nothing moves.
+- **Her attention** (`setAttention`): busy / glancing / watching, drifting by a hashed timeline (6–15 s a phase); her sprite's brightness .78 / .9 / 1.03; watching darkens the edges (`#vignette` .55) and plays a wood creak; she sometimes says her `watch` line; pages turn while she is busy.
+- **Temptations of the gaze** (`event`, the gaze branch of `step`): a visitor (knock, door, steps, a line in the reply, the door closing; impulse 50 over 4.5 s), she undresses (cloth; 30 over 3.5 s), a sound behind (glass; 30 over 3 s); while an impulse lasts the gaze rises by `size / len × 1.6` a second unless **6 is held**; hashed every 22–46 s.
+- **"Look at me"** (`event('look')`, `lookUp`): her line; a trap by style (`TRAP`); L within 3.5 s looks up (the gaze at 90), then her `down` line and 6 lowers it; looking at a trap is a gaze slip; not looking when it was an order is the `notLooking` fault. Not asked under a blindfold.
+- **The blindfold** (`#blindView`, `#grain`, `feelLines`): her activity's blind view (the dark radial gradient over the whole scene) and grain (opacity .16, redrawn every 80 ms at a third of the resolution); the dial at .07 and blurred, the beads hidden; the gaze is not judged; the body speaks in feel lines at 40 and 72 of a point's drift (`FEEL`, the second one warmer), centred above the reply; the world is worded as heard.
+- **The fiction clock**: 30 s of fiction a real second × (1 + 0.25 per posture skill level) (author: ×1.5 over the first draft; the engine's posture beat is 45 s).
+- **Her lines** (`LINES`, `pickLine`): by style (neutral, ritual, drill, cold, playful, cruel, regal) and kind (`start`, `watch`, `fidget`, `slip`, `gaze`, `release`, `clean`, `prefix`, `taken`, `wrong`, `late`, `look`, `down`, `notLooking`), written on in her hand at 74 vw / 15 vh (46 px × factor, `steps(16)` over 600 ms, gone at 3.6 s); a style without a line reads neutral's; `cold` may say nothing. The texts go into the card voice (`docs/content/card-voice.md`, `cardVoice`) as the call's lines did.
+- **The call, scheme B** (`startCall`, `statesFor`, `callPress`, `pickState`, `drawStates`, `drawCallDial`, `matches`, `checkTaken`, `present`, `endCall`, `scheduleTaps`, `callTick`): her word large in her hand (92 px × factor; under her prefix, 34 px) at 74 vw / 13 vh; five ink dots and wood taps over her window; her window is her style's (ritual 4000, drill 3000, others 5000 ms) **plus 2500 ms for each point that has to move**; the body starts as it is (its base's defaults under its own points); a point's key selects it (its bead ringed in her accent) and shows its states as a column left of the dial (`#states`: the states her named postures use plus the one held), the same key again steps through them, a click sets one; **the posture is taken the moment every point matches** (the gaze not counted); late: her `late` line; wrong: `wrong`. She never calls the posture the body is in.
+- **The hints** (`hintLevel`, `ghostShown`, `hintOn`, `pointsShown`): by this posture's mastery on the pair: 0–1 her posture as the ghost, the right state lit in her accent in the column, the points still to move ringed in her accent; 2–3 only the rings; 4–5 nothing. "Always show every hint" is the open easing in SYS › Scene (spec §1.2).
+- **The call, scheme C** (`startCall('C', n)`): a series of five calls 2.6–5 s apart; about three in ten have no prefix: a trap, and moving is the fault (holding still is right).
+- **Reduced motion**: no write-on, no jolt, the dial does not animate its size; feel lines fade without moving.
+
+### Prototype only (do not port as is)
+
+- The panel (the preset list, her term, her rule, the blindfold, the calls, the temptations, her attention, her style, the commander's sliders, the dial size, the numbers, display switches), the log line, the stats.
+- The hold's start and end (space, `end`), her term (the engine's `until` / `hidden`), the hashed attention timeline and the hashed events (the engine's attention plan and `temptations`), the named set `NAMED` (the engine's `practices.postures`), the stand-in scene (backdrop, sprite, reply, input): P10e's.
+- The engine judges what the instrument reports (`posture/correct`, `posture/slip`, `posture/end`, P16's `practice/take_posture`): the counts, xp, records, Regard and offences are the engine's (P16b c3).
+
+### Open engine questions (decide in the plan of chunk c6)
+
+- The tables `DRIFT_TO`, `RATE`, `ARM_RATE`, `SEEN`, `TRAP` and the constants are `TUNING.craft.posture` (c3, a G1 draft): the fidelity tables compare them, so the engine's values must equal the prototype's.
+- Scheme A (the fan of cards, P10e's port) below posture level 2, B from 2, C from 4 (`TUNING.craft.call`).
+- A taught posture's first call (`call.taught`, c5) shows the ghost whatever the mastery and counts no slip.
+- **Memory check:** nothing new (the engine's events are c3's and P16's).
 
 ## `cards.html` — her hand of cards (the dock's cards of P15a, P15 and P16) and the posture call (P16)
 
