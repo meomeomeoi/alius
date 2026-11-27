@@ -9,7 +9,7 @@ import { DILEMMA_CONTEXTS } from '../engine/dilemma/types';
 import {
   ANCHOR_KINDS, ATTENTIONS, CONTACT_DIRS, CUE_KINDS, ESCALATION_ORDER, GAUGE_KINDS, INTERACTIONS, LIVE_KINDS, PAIR_TAGS, RESPONSE_TYPES, SCOPES, SEALS, STAGES, STIMULUS_FAMILIES, WORN_SLOTS,
 } from '../engine/blocking/types';
-import { LIFE_CATEGORIES, LIFE_SHARES, LIFE_SIZES, TALK_LEVELS, TOPIC_GROUPS, TRACE_KINDS } from '../engine/life/types';
+import { LIFE_CATEGORIES, LIFE_MOODS, LIFE_SHARES, LIFE_SIZES, TALK_LEVELS, TOPIC_GROUPS, TRACE_KINDS } from '../engine/life/types';
 import {
   AFTERMATH_DEMAND_KINDS, AFTERMATH_KINDS, CAPABILITIES, CLAIM_FORMS, DYNAMIC_EVENT_TYPES, MILESTONE_OFFERS, MOTIVES, OUTSIDE_REACH, PROFILE_STYLES, REFUSAL_COSTS,
   REGARD_SPEEDS, REGION_RANKS, SIGN_KINDS, SURFACE_CONDITIONS,
@@ -2531,6 +2531,8 @@ export const LifeRequiresSchema = z.object({
 export const LifeEventSchema = BaseEntrySchema.extend({
   size: z.enum(LIFE_SIZES),
   category: z.enum(LIFE_CATEGORIES),
+  /** P15b: the colour the event gives her day for a holder with a manner (absent: none). */
+  mood: z.enum(LIFE_MOODS).optional(),
   tags: z.array(str.max(32)).max(6).optional(),
   share: z.enum(LIFE_SHARES),
   keepsUnless: z.object({ affinityMin: int.min(-100).max(100).optional(), romantic: trueFlag.optional() }).strict().optional(),

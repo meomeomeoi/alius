@@ -65,7 +65,10 @@ function styleLine(state: CampaignState, reg: Registries, unit: Unit): string {
   const head = pair.secondary === undefined ? `Her manner is ${label(pair.primary)}` : `Her manner is ${label(pair.primary)}, with a ${label(pair.secondary)} streak`;
   const base = `${head}${words.length > 0 ? `: ${words.join('; ')}` : ''}.`;
   const drawn = manner === null || manner.drawnBy.length === 0 ? '' : ` What draws her is ${manner.drawnBy.map(drawnByWord).join(', and also ')}.`;
-  return `${lead.phaseLead === 'secondary' ? `${base} Her ${label(lead.key)} side comes through now.` : base}${drawn}`;
+  // P15b: the mood of her day in the table's words (the step the mood itself moved), one clause and only when an axis moved; never a value
+  const today = manner === null ? [] : MANNER_AXES.map((a) => mannerWord(a, manner.mood[a] ?? 0)).filter((w) => w !== '');
+  const todayLine = today.length === 0 ? '' : ` Her state today: ${today.join('; ')}.`;
+  return `${lead.phaseLead === 'secondary' ? `${base} Her ${label(lead.key)} side comes through now.` : base}${drawn}${todayLine}`;
 }
 
 /** Her everyday self in one clause (`bond.practice.everyday`, hers and sincere), or `''`. */

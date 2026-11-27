@@ -1077,6 +1077,19 @@ var TUNING = Object.freeze({
     }),
     favour: Object.freeze({ main: 1, second: 0.5 }),
     fresh: Object.freeze({ "-2": 0, "-1": 0, "0": 0, "1": 0.2, "2": 0.4 }),
+    /**
+     * Chunk m5 (spec §4): the mood of her day, steps added to her axes for that day only (the sum is clamped to ±2 in `mannerOf`). `moody`: the axes a moody
+     * woman's hashed −1 / 0 / +1 moves; `events`: what a life event's `mood` moves; `failedRun`: what a failed run that day moves.
+     */
+    mood: Object.freeze({
+      moody: Object.freeze(["intensity", "warmth", "tempo"]),
+      events: Object.freeze({
+        good: Object.freeze({ warmth: 1, tempo: -1 }),
+        irritated: Object.freeze({ warmth: -1, intensity: 1 }),
+        low: Object.freeze({ intensity: -1, voice: -1 })
+      }),
+      failedRun: Object.freeze({ warmth: -1 })
+    }),
     drift: Object.freeze({ days: 28 }),
     turn: Object.freeze({ margin: 2, reviews: 2, days: 56 }),
     contrast: Object.freeze({ low: 1, mid: 1.3, high: 1.6, cap: 0.9 }),
@@ -1766,6 +1779,66 @@ function bendRow(row4, axes, kinds2) {
   return bent;
 }
 
+// src/engine/life/state.ts
+var LIFE_MODES = ["off", "rare", "normal", "often"];
+var UNTOLD_TAG = "untold";
+function lifeMode(state) {
+  const m = state.settings.lifeEvents;
+  return m === "rare" || m === "normal" || m === "often" ? m : "off";
+}
+var TEMPERAMENT_VALUES = Object.freeze({
+  talkativeness: Object.freeze(["silent", "terse", "talkative"]),
+  volatility: Object.freeze(["steady", "moody"]),
+  humor: Object.freeze(["none", "dry", "mocking", "warm"])
+});
+var TEMPERAMENT_FIELDS = Object.freeze(["talkativeness", "volatility", "humor"]);
+function temperamentProblems(t) {
+  if (typeof t !== "object" || t === null || Array.isArray(t)) return ["temperament must be an object of talkativeness, volatility and humor"];
+  const out = [];
+  for (const [k, v] of Object.entries(t)) {
+    const words3 = TEMPERAMENT_VALUES[k];
+    if (words3 === void 0) out.push(`temperament has no field "${k}"`);
+    else if (typeof v !== "string" || !words3.includes(v)) out.push(`temperament ${k} must be ${words3.join(", ")}`);
+  }
+  return out;
+}
+var TEMPERAMENT_DEFAULTS = Object.freeze({ talkativeness: "terse", volatility: "steady", humor: "dry" });
+function temperamentOf(state, unitId) {
+  const u = state.squad.find((x) => x.id === unitId);
+  return { ...TEMPERAMENT_DEFAULTS, ...u?.kind === "named" ? u.temperament : void 0 };
+}
+function newLife(salt) {
+  return { salt, nextId: 0, units: {}, queue: [], delivered: [], outbox: [], news: [], kinds: [], deaths: [], busy: [] };
+}
+function ensureLife(draft) {
+  return draft.life ??= newLife(fnv1a(JSON.stringify(draft.rng)));
+}
+function nextLifeId(life, prefix) {
+  const n = life.nextId;
+  life.nextId = n + 1;
+  return `${prefix}${n}`;
+}
+function fnv1a(s) {
+  let h2 = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h2 ^= s.charCodeAt(i);
+    h2 = Math.imul(h2, 16777619) >>> 0;
+  }
+  return h2 >>> 0;
+}
+function lifeHash(life, key) {
+  return fnv1a(`${life.salt}|${key}`);
+}
+function lifeChance(life, key, p) {
+  return lifeHash(life, key) % 1e3 < Math.round(p * 1e3);
+}
+
+// src/engine/dynamic/pronoun.ts
+var COMMANDER_PRONOUN = /\b(he|him|his|himself|he's)\b/i;
+function hasCommanderPronoun(text3) {
+  return COMMANDER_PRONOUN.test(text3);
+}
+
 // src/engine/blocking/types.ts
 var LIVE_KINDS = [
   "extracted",
@@ -1957,16 +2030,349 @@ var DYNAMIC_EVENT_TYPES = [
   // what she keeps and says (review M9): the controller refreshes the lines on them
 ];
 
-// src/engine/dynamic/manner.ts
+// src/engine/dynamic/profile.ts
+var PRACTICE_DEFAULTS = Object.freeze({
+  as: "none",
+  witness: "indifferent",
+  audience: "indifferent",
+  inclination: "none",
+  fairness: "fair",
+  hintStyle: "offers",
+  drive: "moderate"
+});
+var NONE = Object.freeze({ as: "none", witness: "indifferent" });
+var isObj = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var known;
+function knownPracticeCategories() {
+  return known;
+}
+function practiceCategories(reg) {
+  const out = [];
+  for (const t of reg.dynamicTracks.values()) {
+    const c = t.category;
+    if (typeof c === "string" && !out.includes(c)) out.push(c);
+  }
+  known = out;
+  return out;
+}
+function practiceEnabled(reg, enabled) {
+  return enabled !== void 0 && practiceCategories(reg).some((c) => enabled.includes(c));
+}
+function dynamicLive(state, reg) {
+  return state.dynamic !== void 0 && state.dynamic.setup.holders !== 0 && practiceEnabled(reg, state.content?.enabled);
+}
+function validatePractice(raw, reg) {
+  const issues2 = [];
+  const dropped = [];
+  if (raw === void 0) return { issues: issues2, dropped };
+  if (!isObj(raw)) return { issues: ["practice must be an object"], dropped };
+  const pick12 = (field2, allowed, fallback) => {
+    const v = raw[field2];
+    if (v === void 0) return fallback;
+    if (typeof v === "string" && allowed.includes(v)) return v;
+    issues2.push(`practice.${field2} must be one of ${allowed.join(", ")}`);
+    return fallback;
+  };
+  const style = raw.style;
+  if (!isObj(style) || typeof style.primary !== "string" || !PROFILE_STYLES.includes(style.primary)) {
+    issues2.push(`practice.style.primary must be one of ${PROFILE_STYLES.join(", ")}`);
+    return { issues: issues2, dropped };
+  }
+  const primary = style.primary;
+  let secondary;
+  if (style.secondary !== void 0) {
+    if (typeof style.secondary !== "string" || !PROFILE_STYLES.includes(style.secondary)) issues2.push(`practice.style.secondary must be one of ${PROFILE_STYLES.join(", ")}`);
+    else if (style.secondary === primary) issues2.push("practice.style.secondary is the primary style and was dropped");
+    else secondary = style.secondary;
+  }
+  const categories = {};
+  if (raw.categories !== void 0) {
+    if (!isObj(raw.categories)) issues2.push("practice.categories must be an object");
+    else {
+      const practised = practiceCategories(reg);
+      for (const [id, c] of Object.entries(raw.categories)) {
+        if (!reg.contentCategories.has(id) || !practised.includes(id)) {
+          issues2.push(reg.contentCategories.has(id) ? `practice names "${id}", which is not a practice category` : `practice names unknown content category "${id}"`);
+          dropped.push(`practice:${id}`);
+          continue;
+        }
+        const entry = isObj(c) ? c : {};
+        if (!isObj(c)) issues2.push(`practice.categories.${id} must be an object`);
+        const as = entry.as === void 0 ? PRACTICE_DEFAULTS.as : PRACTICE_AS.includes(entry.as) ? entry.as : (issues2.push(`practice.categories.${id}.as must be one of ${PRACTICE_AS.join(", ")}`), PRACTICE_DEFAULTS.as);
+        const witness = entry.witness === void 0 ? PRACTICE_DEFAULTS.witness : WITNESS.includes(entry.witness) ? entry.witness : (issues2.push(`practice.categories.${id}.witness must be one of ${WITNESS.join(", ")}`), PRACTICE_DEFAULTS.witness);
+        categories[id] = { as, witness };
+      }
+    }
+  }
+  const practice = {
+    categories,
+    style: secondary === void 0 ? { primary } : { primary, secondary },
+    audience: pick12("audience", AUDIENCE, PRACTICE_DEFAULTS.audience),
+    inclination: pick12("inclination", INCLINATION, PRACTICE_DEFAULTS.inclination),
+    fairness: pick12("fairness", FAIRNESS, PRACTICE_DEFAULTS.fairness),
+    hintStyle: pick12("hintStyle", HINT_STYLE, PRACTICE_DEFAULTS.hintStyle),
+    drive: pick12("drive", DRIVE, PRACTICE_DEFAULTS.drive)
+  };
+  readManner(raw, practice, issues2);
+  return { practice, issues: issues2, dropped };
+}
+var clean = (v) => v.replace(/[\t\n\r]/g, " ").replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim();
+function readManner(raw, out, issues2) {
+  const L6 = TUNING.manner.text;
+  const m = raw.manner;
+  if (m !== void 0 && m !== null) {
+    if (!isObj(m)) issues2.push("practice.manner must be an object");
+    else {
+      const axes = {};
+      for (const a of MANNER_AXES) {
+        const v = m[a];
+        if (v === void 0) axes[a] = 0;
+        else if (typeof v === "number" && Number.isInteger(v) && v >= -2 && v <= 2) axes[a] = v;
+        else {
+          axes[a] = 0;
+          issues2.push(`practice.manner.${a} must be a whole number from -2 to 2`);
+        }
+      }
+      for (const k of Object.keys(m)) if (!MANNER_AXES.includes(k)) issues2.push(`practice.manner has no axis "${k}"`);
+      out.manner = axes;
+    }
+  }
+  const d = raw.drawnBy;
+  if (d !== void 0 && d !== null) {
+    if (!Array.isArray(d)) issues2.push("practice.drawnBy must be a list");
+    else {
+      const kept = [];
+      for (const v of d) {
+        if (typeof v !== "string" || !DRAWN_BY.includes(v)) issues2.push(`practice.drawnBy must name ${DRAWN_BY.join(", ")}`);
+        else if (kept.includes(v)) issues2.push(`practice.drawnBy names "${v}" twice`);
+        else if (kept.length >= L6.drawnByMax) issues2.push(`practice.drawnBy keeps ${L6.drawnByMax} at most`);
+        else kept.push(v);
+      }
+      if (kept.length > 0) out.drawnBy = kept;
+    }
+  }
+  const text3 = (field2, v, max) => {
+    if (typeof v !== "string") return void issues2.push(`practice.${field2} must be text`);
+    const t = clean(v);
+    if (t === "") return void 0;
+    if (hasCommanderPronoun(t)) return void issues2.push(`practice.${field2} has a pronoun for the commander and was dropped`);
+    if (t.length > max) return void issues2.push(`practice.${field2} runs past ${max} characters and was dropped`);
+    return t;
+  };
+  if (raw.everyday !== void 0 && raw.everyday !== null) {
+    const t = text3("everyday", raw.everyday, L6.everydayMax);
+    if (t !== void 0) out.everyday = t;
+  }
+  const c = raw.contrast;
+  if (c !== void 0 && c !== null) {
+    if (typeof c === "string" && CONTRASTS.includes(c)) out.contrast = c;
+    else issues2.push(`practice.contrast must be one of ${CONTRASTS.join(", ")}`);
+  }
+  const q = raw.quirks;
+  if (q !== void 0 && q !== null) {
+    if (!Array.isArray(q)) issues2.push("practice.quirks must be a list");
+    else {
+      const kept = [];
+      q.forEach((e, i) => {
+        if (!isObj(e) || typeof e.when !== "string" || !QUIRK_WHEN.includes(e.when)) return void issues2.push(`practice.quirks.${i}.when must be one of ${QUIRK_WHEN.join(", ")}`);
+        const t = text3(`quirks.${i}.text`, e.text, L6.quirkMax);
+        if (t === void 0) return;
+        if (kept.some((k) => k.text.toLowerCase() === t.toLowerCase())) return void issues2.push(`practice.quirks.${i} repeats a quirk`);
+        if (kept.length >= L6.quirksMax) return void issues2.push(`practice.quirks keeps ${L6.quirksMax} at most`);
+        kept.push({ when: e.when, text: t });
+      });
+      if (kept.length > 0) out.quirks = kept;
+    }
+  }
+}
 var gone = (u) => u.status === "dead" || u.status === "deserted" || u.status === "terminated" || u.status === "reassigned";
-var clamp2 = (v) => Math.max(-2, Math.min(2, v));
-function mannerOf(state, reg, unitId) {
+function practiceOf(state, reg, unitId) {
   const unit5 = state.squad.find((u) => u.id === unitId);
   if (unit5 === void 0 || unit5.kind !== "named" || gone(unit5)) return null;
+  const stored = unit5.bond?.practice;
+  if (stored === void 0) return null;
+  const drift = unit5.development?.practice;
+  const on = state.content?.enabled ?? [];
+  const limits = unit5.bond?.ownLimits.categories ?? [];
+  const ids = practiceCategories(reg);
+  const categories = {};
+  const allowed = [];
+  for (const id of ids) {
+    const open3 = on.includes(id) && !limits.includes(id);
+    if (open3) allowed.push(id);
+    categories[id] = open3 ? { ...stored.categories[id] ?? NONE, ...drift?.categories?.[id] } : { ...NONE };
+  }
+  return { ...stored, categories, style: styleOf(unit5), allowed };
+}
+function styleOf(unit5) {
+  const stored = unit5.bond?.practice?.style;
+  if (stored === void 0) return void 0;
+  const secondary = unit5.development?.practice?.secondary ?? stored.secondary;
+  return secondary === void 0 ? { primary: stored.primary } : { primary: stored.primary, secondary };
+}
+function keepLockedPractice(old, next, locks) {
+  const out = structuredClone(next);
+  if (old === void 0) return out;
+  for (const f of locks) {
+    if (f.startsWith("categories.")) {
+      const id = f.slice("categories.".length);
+      if (old.categories[id] !== void 0) out.categories[id] = { ...old.categories[id] };
+      else delete out.categories[id];
+    } else if (f in old) out[f] = structuredClone(old[f]);
+    else delete out[f];
+  }
+  return out;
+}
+function mergePractice(have, patch) {
+  const cats = isObj(patch.categories) ? patch.categories : {};
+  return {
+    ...have,
+    ...patch,
+    categories: { ...have?.categories, ...Object.fromEntries(Object.entries(cats).map(([id, c]) => [id, { ...have?.categories[id], ...isObj(c) ? c : {} }])) },
+    style: isObj(patch.style) ? Object.fromEntries(Object.entries({ ...have?.style, ...patch.style }).filter(([, v]) => v !== null)) : have?.style,
+    ...isObj(patch.manner) ? { manner: { ...have?.manner, ...patch.manner } } : {}
+  };
+}
+
+// src/engine/dynamic/state.ts
+function dynamicOf(state, unitId) {
+  return state.relations[unitId]?.dynamic;
+}
+function fnv1a2(s) {
+  let h2 = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h2 ^= s.charCodeAt(i);
+    h2 = Math.imul(h2, 16777619) >>> 0;
+  }
+  return h2 >>> 0;
+}
+function dynamicHash(state, unitId, key) {
+  return fnv1a2(`${state.dynamic?.salt ?? 0}|${unitId}|dynamic|${key}|${state.day}`) / 2 ** 32;
+}
+var dynamicSaltOf = (rng) => fnv1a2(JSON.stringify(rng));
+function newDynamicCampaign(salt, setup) {
+  return { salt, setup, knowledge: {}, overrideSeq: 0, queue: [], seq: 0, open: { claims: [], milestones: [], offers: [] } };
+}
+function blankReading() {
+  return { r: 0, f: 0, p: 0, motive: { order: 0.2, fear: 0.2, her: 0.2, process: 0.2, gain: 0.2 }, flat: 0, deflect: 0, region: "devoted", updates: 0 };
+}
+function blankDynamic(day) {
+  return {
+    hold: 0,
+    frame: "equal",
+    domains: [],
+    tracks: {},
+    milestones: [],
+    lastPracticeDay: day,
+    recent: [],
+    favour: 0,
+    readOf: blankReading(),
+    probes: { answers: [], issued: 0 },
+    refusals: [],
+    contest: [],
+    cooldowns: {}
+  };
+}
+
+// src/engine/dynamic/witness.ts
+var AS_ORDER = ["craves", "enjoys", "tolerates"];
+function leadingCategory(state, reg, holderId) {
+  const dyn = dynamicOf(state, holderId);
+  const ranked = Object.entries(dyn?.tracks ?? {}).filter(([, t]) => t.xp > 0).map(([id, t]) => ({ category: reg.dynamicTracks.get(id)?.category, xp: t.xp })).filter((t) => typeof t.category === "string").sort((a, b) => b.xp - a.xp);
+  if (ranked.length > 0) return ranked[0].category;
+  const view3 = practiceOf(state, reg, holderId);
+  if (view3 === null) return void 0;
+  for (const as of AS_ORDER) {
+    const found2 = practiceCategories(reg).find((c) => view3.categories[c]?.as === as);
+    if (found2 !== void 0) return found2;
+  }
+  return void 0;
+}
+function witnessOf(state, reg, observerId, holderId) {
+  const category = leadingCategory(state, reg, holderId);
+  if (category === void 0) return "indifferent";
+  return practiceOf(state, reg, observerId)?.categories[category]?.witness ?? "indifferent";
+}
+function reactionOf(state, reg, observerId, holderId) {
+  const frame9 = dynamicOf(state, observerId)?.frame;
+  if (frame9 !== void 0 && frame9 !== "equal") {
+    const manner = practiceOf(state, reg, observerId)?.style.primary;
+    if (manner === "ritual" || manner === "cold") return "respects";
+    if (manner === "possessive" || manner === "cruel") return "competes";
+  }
+  return witnessOf(state, reg, observerId, holderId);
+}
+function dynamicRoll(state, unitId, key) {
+  let x = Math.floor(dynamicHash(state, unitId, key) * 2 ** 32) >>> 0;
+  x ^= x >>> 16;
+  x = Math.imul(x, 2246822507) >>> 0;
+  x ^= x >>> 13;
+  x = Math.imul(x, 3266489909) >>> 0;
+  x ^= x >>> 16;
+  return (x >>> 0) / 2 ** 32;
+}
+var dislikeScale = null;
+function registerDislikeScale(reader) {
+  dislikeScale = reader;
+}
+var scaleOf = (state, reg, unitId) => dislikeScale?.(state, reg, unitId) ?? 1;
+var protection = null;
+function registerProtection(reader) {
+  protection = reader;
+}
+var protectionShare = (state, reg, unitId) => protection?.(state, reg, unitId) ?? 0;
+function dislikers(state, reg, holderId) {
+  const rows = state.dynamic?.knowledge;
+  if (rows === void 0) return [];
+  return state.squad.filter((u) => rows[u.id]?.[holderId]?.level === "knows_dynamic" && reactionOf(state, reg, u.id, holderId) === "dislikes").map((u) => u.id);
+}
+function dynamicTerm(state, reg, unitId) {
+  const x = state.dynamic;
+  if (x === void 0 || !dynamicLive(state, reg)) return 0;
+  const row4 = x.knowledge[unitId];
+  if (row4 === void 0) return 0;
+  const dislikes = Object.entries(row4).filter(([holderId, k]) => k.level === "knows_dynamic" && reactionOf(state, reg, unitId, holderId) === "dislikes").length;
+  return dislikes === 0 ? 0 : Math.round(dislikes * TUNING.squadKnowledge.reaction.dislikesImpunity * scaleOf(state, reg, unitId)) + 0;
+}
+function standingMalus(state, reg, holderId) {
+  if (!dynamicLive(state, reg)) return 0;
+  const R11 = TUNING.squadKnowledge.reaction;
+  return Math.min(R11.standingMax, Math.round(dislikers(state, reg, holderId).reduce((sum, id) => sum + scaleOf(state, reg, id), 0) * R11.dislikesStanding));
+}
+
+// src/engine/dynamic/manner.ts
+var gone2 = (u) => u.status === "dead" || u.status === "deserted" || u.status === "terminated" || u.status === "reassigned";
+var clamp2 = (v) => Math.max(-2, Math.min(2, v));
+function mannerMoodOf(state, reg, unitId, day) {
+  const unit5 = state.squad.find((u) => u.id === unitId);
+  if (unit5 === void 0 || unit5.kind !== "named" || gone2(unit5) || unit5.bond?.practice?.manner === void 0) return {};
+  const out = {};
+  const add2 = (axis, by) => {
+    if (by !== 0) out[axis] = (out[axis] ?? 0) + by;
+  };
+  const table = TUNING.manner.mood;
+  if (temperamentOf(state, unitId).volatility === "moody") {
+    const at2 = { dynamic: state.dynamic, day };
+    for (const a of table.moody) add2(a, Math.min(2, Math.floor(dynamicRoll(at2, unitId, `mood:${a}:${day}`) * 3)) - 1);
+  }
+  const last4 = state.life?.units[unitId]?.last ?? {};
+  for (const id of Object.keys(last4)) {
+    if (last4[id] !== day) continue;
+    const mood = reg.lifeEvents.get(id)?.mood;
+    if (mood === void 0) continue;
+    for (const a of MANNER_AXES) add2(a, table.events[mood][a] ?? 0);
+  }
+  if (state.lastExpedition?.outcome === "failed" && state.lastExpedition.day === day) for (const a of MANNER_AXES) add2(a, table.failedRun[a] ?? 0);
+  for (const a of MANNER_AXES) if (out[a] === 0) delete out[a];
+  return out;
+}
+function mannerOf(state, reg, unitId) {
+  const unit5 = state.squad.find((u) => u.id === unitId);
+  if (unit5 === void 0 || unit5.kind !== "named" || gone2(unit5)) return null;
   const stored = unit5.bond?.practice?.manner;
   if (stored === void 0) return null;
   const drift = unit5.development?.practice?.manner;
-  const mood = {};
+  const mood = state.day === void 0 ? {} : mannerMoodOf(state, reg, unitId, state.day);
   const axes = {};
   for (const a of MANNER_AXES) axes[a] = clamp2((stored[a] ?? 0) + (drift?.[a] ?? 0) + (mood[a] ?? 0));
   return { axes, drawnBy: [...unit5.bond?.practice?.drawnBy ?? []], mood };
@@ -3115,60 +3521,6 @@ function requisitionCost(state, reg, n) {
   const pct5 = traitEffects(state, reg, "requisition_price").reduce((sum, fx2) => sum + fx2.pct, 0);
   const raw = n * TUNING.requisition.creditsPerSupply * Math.max(0, 1 + pct5 / 100);
   return Math.max(n, Math.ceil(raw - 1e-9));
-}
-
-// src/engine/life/state.ts
-var LIFE_MODES = ["off", "rare", "normal", "often"];
-var UNTOLD_TAG = "untold";
-function lifeMode(state) {
-  const m = state.settings.lifeEvents;
-  return m === "rare" || m === "normal" || m === "often" ? m : "off";
-}
-var TEMPERAMENT_VALUES = Object.freeze({
-  talkativeness: Object.freeze(["silent", "terse", "talkative"]),
-  volatility: Object.freeze(["steady", "moody"]),
-  humor: Object.freeze(["none", "dry", "mocking", "warm"])
-});
-var TEMPERAMENT_FIELDS = Object.freeze(["talkativeness", "volatility", "humor"]);
-function temperamentProblems(t) {
-  if (typeof t !== "object" || t === null || Array.isArray(t)) return ["temperament must be an object of talkativeness, volatility and humor"];
-  const out = [];
-  for (const [k, v] of Object.entries(t)) {
-    const words3 = TEMPERAMENT_VALUES[k];
-    if (words3 === void 0) out.push(`temperament has no field "${k}"`);
-    else if (typeof v !== "string" || !words3.includes(v)) out.push(`temperament ${k} must be ${words3.join(", ")}`);
-  }
-  return out;
-}
-var TEMPERAMENT_DEFAULTS = Object.freeze({ talkativeness: "terse", volatility: "steady", humor: "dry" });
-function temperamentOf(state, unitId) {
-  const u = state.squad.find((x) => x.id === unitId);
-  return { ...TEMPERAMENT_DEFAULTS, ...u?.kind === "named" ? u.temperament : void 0 };
-}
-function newLife(salt) {
-  return { salt, nextId: 0, units: {}, queue: [], delivered: [], outbox: [], news: [], kinds: [], deaths: [], busy: [] };
-}
-function ensureLife(draft) {
-  return draft.life ??= newLife(fnv1a(JSON.stringify(draft.rng)));
-}
-function nextLifeId(life, prefix) {
-  const n = life.nextId;
-  life.nextId = n + 1;
-  return `${prefix}${n}`;
-}
-function fnv1a(s) {
-  let h2 = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h2 ^= s.charCodeAt(i);
-    h2 = Math.imul(h2, 16777619) >>> 0;
-  }
-  return h2 >>> 0;
-}
-function lifeHash(life, key) {
-  return fnv1a(`${life.salt}|${key}`);
-}
-function lifeChance(life, key, p) {
-  return lifeHash(life, key) % 1e3 < Math.round(p * 1e3);
 }
 
 // src/engine/rng.ts
@@ -7548,6 +7900,7 @@ var DILEMMA_CONTEXTS = ["expedition_event", "base", "mission_outcome", "defect_a
 var LIFE_SIZES = ["small", "notable"];
 var LIFE_CATEGORIES = ["things", "body", "construct", "people", "service", "luck"];
 var LIFE_SHARES = ["anyone", "close", "keeps"];
+var LIFE_MOODS = ["good", "irritated", "low"];
 var TOPIC_GROUPS = ["lore", "service", "everyday", "people", "abstract"];
 var TRACE_KINDS = ["note", "prop", "opinion"];
 var TALK_LEVELS = ["quiet", "some"];
@@ -7577,322 +7930,6 @@ function contactFaceOf(contact) {
 var HER_LEGS = ["hang"];
 function herLegsOf(contact) {
   return contact?.legs === "hang" ? "hang" : null;
-}
-
-// src/engine/dynamic/pronoun.ts
-var COMMANDER_PRONOUN = /\b(he|him|his|himself|he's)\b/i;
-function hasCommanderPronoun(text3) {
-  return COMMANDER_PRONOUN.test(text3);
-}
-
-// src/engine/dynamic/profile.ts
-var PRACTICE_DEFAULTS = Object.freeze({
-  as: "none",
-  witness: "indifferent",
-  audience: "indifferent",
-  inclination: "none",
-  fairness: "fair",
-  hintStyle: "offers",
-  drive: "moderate"
-});
-var NONE = Object.freeze({ as: "none", witness: "indifferent" });
-var isObj = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var known;
-function knownPracticeCategories() {
-  return known;
-}
-function practiceCategories(reg) {
-  const out = [];
-  for (const t of reg.dynamicTracks.values()) {
-    const c = t.category;
-    if (typeof c === "string" && !out.includes(c)) out.push(c);
-  }
-  known = out;
-  return out;
-}
-function practiceEnabled(reg, enabled) {
-  return enabled !== void 0 && practiceCategories(reg).some((c) => enabled.includes(c));
-}
-function dynamicLive(state, reg) {
-  return state.dynamic !== void 0 && state.dynamic.setup.holders !== 0 && practiceEnabled(reg, state.content?.enabled);
-}
-function validatePractice(raw, reg) {
-  const issues2 = [];
-  const dropped = [];
-  if (raw === void 0) return { issues: issues2, dropped };
-  if (!isObj(raw)) return { issues: ["practice must be an object"], dropped };
-  const pick12 = (field2, allowed, fallback) => {
-    const v = raw[field2];
-    if (v === void 0) return fallback;
-    if (typeof v === "string" && allowed.includes(v)) return v;
-    issues2.push(`practice.${field2} must be one of ${allowed.join(", ")}`);
-    return fallback;
-  };
-  const style = raw.style;
-  if (!isObj(style) || typeof style.primary !== "string" || !PROFILE_STYLES.includes(style.primary)) {
-    issues2.push(`practice.style.primary must be one of ${PROFILE_STYLES.join(", ")}`);
-    return { issues: issues2, dropped };
-  }
-  const primary = style.primary;
-  let secondary;
-  if (style.secondary !== void 0) {
-    if (typeof style.secondary !== "string" || !PROFILE_STYLES.includes(style.secondary)) issues2.push(`practice.style.secondary must be one of ${PROFILE_STYLES.join(", ")}`);
-    else if (style.secondary === primary) issues2.push("practice.style.secondary is the primary style and was dropped");
-    else secondary = style.secondary;
-  }
-  const categories = {};
-  if (raw.categories !== void 0) {
-    if (!isObj(raw.categories)) issues2.push("practice.categories must be an object");
-    else {
-      const practised = practiceCategories(reg);
-      for (const [id, c] of Object.entries(raw.categories)) {
-        if (!reg.contentCategories.has(id) || !practised.includes(id)) {
-          issues2.push(reg.contentCategories.has(id) ? `practice names "${id}", which is not a practice category` : `practice names unknown content category "${id}"`);
-          dropped.push(`practice:${id}`);
-          continue;
-        }
-        const entry = isObj(c) ? c : {};
-        if (!isObj(c)) issues2.push(`practice.categories.${id} must be an object`);
-        const as = entry.as === void 0 ? PRACTICE_DEFAULTS.as : PRACTICE_AS.includes(entry.as) ? entry.as : (issues2.push(`practice.categories.${id}.as must be one of ${PRACTICE_AS.join(", ")}`), PRACTICE_DEFAULTS.as);
-        const witness = entry.witness === void 0 ? PRACTICE_DEFAULTS.witness : WITNESS.includes(entry.witness) ? entry.witness : (issues2.push(`practice.categories.${id}.witness must be one of ${WITNESS.join(", ")}`), PRACTICE_DEFAULTS.witness);
-        categories[id] = { as, witness };
-      }
-    }
-  }
-  const practice = {
-    categories,
-    style: secondary === void 0 ? { primary } : { primary, secondary },
-    audience: pick12("audience", AUDIENCE, PRACTICE_DEFAULTS.audience),
-    inclination: pick12("inclination", INCLINATION, PRACTICE_DEFAULTS.inclination),
-    fairness: pick12("fairness", FAIRNESS, PRACTICE_DEFAULTS.fairness),
-    hintStyle: pick12("hintStyle", HINT_STYLE, PRACTICE_DEFAULTS.hintStyle),
-    drive: pick12("drive", DRIVE, PRACTICE_DEFAULTS.drive)
-  };
-  readManner(raw, practice, issues2);
-  return { practice, issues: issues2, dropped };
-}
-var clean = (v) => v.replace(/[\t\n\r]/g, " ").replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim();
-function readManner(raw, out, issues2) {
-  const L6 = TUNING.manner.text;
-  const m = raw.manner;
-  if (m !== void 0 && m !== null) {
-    if (!isObj(m)) issues2.push("practice.manner must be an object");
-    else {
-      const axes = {};
-      for (const a of MANNER_AXES) {
-        const v = m[a];
-        if (v === void 0) axes[a] = 0;
-        else if (typeof v === "number" && Number.isInteger(v) && v >= -2 && v <= 2) axes[a] = v;
-        else {
-          axes[a] = 0;
-          issues2.push(`practice.manner.${a} must be a whole number from -2 to 2`);
-        }
-      }
-      for (const k of Object.keys(m)) if (!MANNER_AXES.includes(k)) issues2.push(`practice.manner has no axis "${k}"`);
-      out.manner = axes;
-    }
-  }
-  const d = raw.drawnBy;
-  if (d !== void 0 && d !== null) {
-    if (!Array.isArray(d)) issues2.push("practice.drawnBy must be a list");
-    else {
-      const kept = [];
-      for (const v of d) {
-        if (typeof v !== "string" || !DRAWN_BY.includes(v)) issues2.push(`practice.drawnBy must name ${DRAWN_BY.join(", ")}`);
-        else if (kept.includes(v)) issues2.push(`practice.drawnBy names "${v}" twice`);
-        else if (kept.length >= L6.drawnByMax) issues2.push(`practice.drawnBy keeps ${L6.drawnByMax} at most`);
-        else kept.push(v);
-      }
-      if (kept.length > 0) out.drawnBy = kept;
-    }
-  }
-  const text3 = (field2, v, max) => {
-    if (typeof v !== "string") return void issues2.push(`practice.${field2} must be text`);
-    const t = clean(v);
-    if (t === "") return void 0;
-    if (hasCommanderPronoun(t)) return void issues2.push(`practice.${field2} has a pronoun for the commander and was dropped`);
-    if (t.length > max) return void issues2.push(`practice.${field2} runs past ${max} characters and was dropped`);
-    return t;
-  };
-  if (raw.everyday !== void 0 && raw.everyday !== null) {
-    const t = text3("everyday", raw.everyday, L6.everydayMax);
-    if (t !== void 0) out.everyday = t;
-  }
-  const c = raw.contrast;
-  if (c !== void 0 && c !== null) {
-    if (typeof c === "string" && CONTRASTS.includes(c)) out.contrast = c;
-    else issues2.push(`practice.contrast must be one of ${CONTRASTS.join(", ")}`);
-  }
-  const q = raw.quirks;
-  if (q !== void 0 && q !== null) {
-    if (!Array.isArray(q)) issues2.push("practice.quirks must be a list");
-    else {
-      const kept = [];
-      q.forEach((e, i) => {
-        if (!isObj(e) || typeof e.when !== "string" || !QUIRK_WHEN.includes(e.when)) return void issues2.push(`practice.quirks.${i}.when must be one of ${QUIRK_WHEN.join(", ")}`);
-        const t = text3(`quirks.${i}.text`, e.text, L6.quirkMax);
-        if (t === void 0) return;
-        if (kept.some((k) => k.text.toLowerCase() === t.toLowerCase())) return void issues2.push(`practice.quirks.${i} repeats a quirk`);
-        if (kept.length >= L6.quirksMax) return void issues2.push(`practice.quirks keeps ${L6.quirksMax} at most`);
-        kept.push({ when: e.when, text: t });
-      });
-      if (kept.length > 0) out.quirks = kept;
-    }
-  }
-}
-var gone2 = (u) => u.status === "dead" || u.status === "deserted" || u.status === "terminated" || u.status === "reassigned";
-function practiceOf(state, reg, unitId) {
-  const unit5 = state.squad.find((u) => u.id === unitId);
-  if (unit5 === void 0 || unit5.kind !== "named" || gone2(unit5)) return null;
-  const stored = unit5.bond?.practice;
-  if (stored === void 0) return null;
-  const drift = unit5.development?.practice;
-  const on = state.content?.enabled ?? [];
-  const limits = unit5.bond?.ownLimits.categories ?? [];
-  const ids = practiceCategories(reg);
-  const categories = {};
-  const allowed = [];
-  for (const id of ids) {
-    const open3 = on.includes(id) && !limits.includes(id);
-    if (open3) allowed.push(id);
-    categories[id] = open3 ? { ...stored.categories[id] ?? NONE, ...drift?.categories?.[id] } : { ...NONE };
-  }
-  return { ...stored, categories, style: styleOf(unit5), allowed };
-}
-function styleOf(unit5) {
-  const stored = unit5.bond?.practice?.style;
-  if (stored === void 0) return void 0;
-  const secondary = unit5.development?.practice?.secondary ?? stored.secondary;
-  return secondary === void 0 ? { primary: stored.primary } : { primary: stored.primary, secondary };
-}
-function keepLockedPractice(old, next, locks) {
-  const out = structuredClone(next);
-  if (old === void 0) return out;
-  for (const f of locks) {
-    if (f.startsWith("categories.")) {
-      const id = f.slice("categories.".length);
-      if (old.categories[id] !== void 0) out.categories[id] = { ...old.categories[id] };
-      else delete out.categories[id];
-    } else if (f in old) out[f] = structuredClone(old[f]);
-    else delete out[f];
-  }
-  return out;
-}
-function mergePractice(have, patch) {
-  const cats = isObj(patch.categories) ? patch.categories : {};
-  return {
-    ...have,
-    ...patch,
-    categories: { ...have?.categories, ...Object.fromEntries(Object.entries(cats).map(([id, c]) => [id, { ...have?.categories[id], ...isObj(c) ? c : {} }])) },
-    style: isObj(patch.style) ? Object.fromEntries(Object.entries({ ...have?.style, ...patch.style }).filter(([, v]) => v !== null)) : have?.style,
-    ...isObj(patch.manner) ? { manner: { ...have?.manner, ...patch.manner } } : {}
-  };
-}
-
-// src/engine/dynamic/state.ts
-function dynamicOf(state, unitId) {
-  return state.relations[unitId]?.dynamic;
-}
-function fnv1a2(s) {
-  let h2 = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h2 ^= s.charCodeAt(i);
-    h2 = Math.imul(h2, 16777619) >>> 0;
-  }
-  return h2 >>> 0;
-}
-function dynamicHash(state, unitId, key) {
-  return fnv1a2(`${state.dynamic?.salt ?? 0}|${unitId}|dynamic|${key}|${state.day}`) / 2 ** 32;
-}
-var dynamicSaltOf = (rng) => fnv1a2(JSON.stringify(rng));
-function newDynamicCampaign(salt, setup) {
-  return { salt, setup, knowledge: {}, overrideSeq: 0, queue: [], seq: 0, open: { claims: [], milestones: [], offers: [] } };
-}
-function blankReading() {
-  return { r: 0, f: 0, p: 0, motive: { order: 0.2, fear: 0.2, her: 0.2, process: 0.2, gain: 0.2 }, flat: 0, deflect: 0, region: "devoted", updates: 0 };
-}
-function blankDynamic(day) {
-  return {
-    hold: 0,
-    frame: "equal",
-    domains: [],
-    tracks: {},
-    milestones: [],
-    lastPracticeDay: day,
-    recent: [],
-    favour: 0,
-    readOf: blankReading(),
-    probes: { answers: [], issued: 0 },
-    refusals: [],
-    contest: [],
-    cooldowns: {}
-  };
-}
-
-// src/engine/dynamic/witness.ts
-var AS_ORDER = ["craves", "enjoys", "tolerates"];
-function leadingCategory(state, reg, holderId) {
-  const dyn = dynamicOf(state, holderId);
-  const ranked = Object.entries(dyn?.tracks ?? {}).filter(([, t]) => t.xp > 0).map(([id, t]) => ({ category: reg.dynamicTracks.get(id)?.category, xp: t.xp })).filter((t) => typeof t.category === "string").sort((a, b) => b.xp - a.xp);
-  if (ranked.length > 0) return ranked[0].category;
-  const view3 = practiceOf(state, reg, holderId);
-  if (view3 === null) return void 0;
-  for (const as of AS_ORDER) {
-    const found2 = practiceCategories(reg).find((c) => view3.categories[c]?.as === as);
-    if (found2 !== void 0) return found2;
-  }
-  return void 0;
-}
-function witnessOf(state, reg, observerId, holderId) {
-  const category = leadingCategory(state, reg, holderId);
-  if (category === void 0) return "indifferent";
-  return practiceOf(state, reg, observerId)?.categories[category]?.witness ?? "indifferent";
-}
-function reactionOf(state, reg, observerId, holderId) {
-  const frame9 = dynamicOf(state, observerId)?.frame;
-  if (frame9 !== void 0 && frame9 !== "equal") {
-    const manner = practiceOf(state, reg, observerId)?.style.primary;
-    if (manner === "ritual" || manner === "cold") return "respects";
-    if (manner === "possessive" || manner === "cruel") return "competes";
-  }
-  return witnessOf(state, reg, observerId, holderId);
-}
-function dynamicRoll(state, unitId, key) {
-  let x = Math.floor(dynamicHash(state, unitId, key) * 2 ** 32) >>> 0;
-  x ^= x >>> 16;
-  x = Math.imul(x, 2246822507) >>> 0;
-  x ^= x >>> 13;
-  x = Math.imul(x, 3266489909) >>> 0;
-  x ^= x >>> 16;
-  return (x >>> 0) / 2 ** 32;
-}
-var dislikeScale = null;
-function registerDislikeScale(reader) {
-  dislikeScale = reader;
-}
-var scaleOf = (state, reg, unitId) => dislikeScale?.(state, reg, unitId) ?? 1;
-var protection = null;
-function registerProtection(reader) {
-  protection = reader;
-}
-var protectionShare = (state, reg, unitId) => protection?.(state, reg, unitId) ?? 0;
-function dislikers(state, reg, holderId) {
-  const rows = state.dynamic?.knowledge;
-  if (rows === void 0) return [];
-  return state.squad.filter((u) => rows[u.id]?.[holderId]?.level === "knows_dynamic" && reactionOf(state, reg, u.id, holderId) === "dislikes").map((u) => u.id);
-}
-function dynamicTerm(state, reg, unitId) {
-  const x = state.dynamic;
-  if (x === void 0 || !dynamicLive(state, reg)) return 0;
-  const row4 = x.knowledge[unitId];
-  if (row4 === void 0) return 0;
-  const dislikes = Object.entries(row4).filter(([holderId, k]) => k.level === "knows_dynamic" && reactionOf(state, reg, unitId, holderId) === "dislikes").length;
-  return dislikes === 0 ? 0 : Math.round(dislikes * TUNING.squadKnowledge.reaction.dislikesImpunity * scaleOf(state, reg, unitId)) + 0;
-}
-function standingMalus(state, reg, holderId) {
-  if (!dynamicLive(state, reg)) return 0;
-  const R11 = TUNING.squadKnowledge.reaction;
-  return Math.min(R11.standingMax, Math.round(dislikers(state, reg, holderId).reduce((sum, id) => sum + scaleOf(state, reg, id), 0) * R11.dislikesStanding));
 }
 
 // src/engine/practice/state.ts
@@ -10607,6 +10644,8 @@ var LifeRequiresSchema = external_exports.object({
 var LifeEventSchema = BaseEntrySchema.extend({
   size: external_exports.enum(LIFE_SIZES),
   category: external_exports.enum(LIFE_CATEGORIES),
+  /** P15b: the colour the event gives her day for a holder with a manner (absent: none). */
+  mood: external_exports.enum(LIFE_MOODS).optional(),
   tags: external_exports.array(str.max(32)).max(6).optional(),
   share: external_exports.enum(LIFE_SHARES),
   keepsUnless: external_exports.object({ affinityMin: int.min(-100).max(100).optional(), romantic: trueFlag.optional() }).strict().optional(),
@@ -45077,7 +45116,9 @@ function styleLine(state, reg, unit5) {
   const head = pair.secondary === void 0 ? `Her manner is ${label2(pair.primary)}` : `Her manner is ${label2(pair.primary)}, with a ${label2(pair.secondary)} streak`;
   const base2 = `${head}${words3.length > 0 ? `: ${words3.join("; ")}` : ""}.`;
   const drawn2 = manner === null || manner.drawnBy.length === 0 ? "" : ` What draws her is ${manner.drawnBy.map(drawnByWord).join(", and also ")}.`;
-  return `${lead.phaseLead === "secondary" ? `${base2} Her ${label2(lead.key)} side comes through now.` : base2}${drawn2}`;
+  const today = manner === null ? [] : MANNER_AXES.map((a) => mannerWord(a, manner.mood[a] ?? 0)).filter((w) => w !== "");
+  const todayLine = today.length === 0 ? "" : ` Her state today: ${today.join("; ")}.`;
+  return `${lead.phaseLead === "secondary" ? `${base2} Her ${label2(lead.key)} side comes through now.` : base2}${drawn2}${todayLine}`;
 }
 var everydayOf = (state, reg, unitId) => sentence2(practiceOf(state, reg, unitId)?.everyday ?? "");
 function holderDirective(state, reg, unit5, face) {

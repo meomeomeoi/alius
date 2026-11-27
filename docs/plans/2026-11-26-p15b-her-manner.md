@@ -357,7 +357,7 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
   - a failed run that day (`state.lastExpedition?.outcome === 'failed' && lastExpedition.day === day`) gives `warmth` −1.
 - Test: `tests/dynamic/mood.test.ts`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `steady` with no event → `{}`;
   - `moody` is stable for one day and differs across days for some key;
   - each mood kind moves its axes;
@@ -366,10 +366,10 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
   - without `manner`, nothing;
   - the directive clause appears only when an axis moved;
   - the mood is never shown (sentinel).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`. Chunk end: full suite, typecheck.
-- [ ] **Step 5: Commit** `feat(P15b): the mood of her day`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`. Chunk end: full suite, typecheck.
+- [x] **Step 5: Commit** `feat(P15b): the mood of her day`
 
 ## Chunk m6: drift and the turn
 

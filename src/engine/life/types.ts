@@ -11,6 +11,8 @@ import type { ValueAxis } from '../state/types';
 export const LIFE_SIZES = ['small', 'notable'] as const;
 export const LIFE_CATEGORIES = ['things', 'body', 'construct', 'people', 'service', 'luck'] as const;
 export const LIFE_SHARES = ['anyone', 'close', 'keeps'] as const;
+/** P15b: the colour of a day a life event gives her (spec §4): the axes it moves are in `TUNING.manner.mood`. */
+export const LIFE_MOODS = ['good', 'irritated', 'low'] as const;
 export const TOPIC_GROUPS = ['lore', 'service', 'everyday', 'people', 'abstract'] as const;
 export const TRACE_KINDS = ['note', 'prop', 'opinion'] as const;
 export const TALK_LEVELS = ['quiet', 'some'] as const;
@@ -18,6 +20,7 @@ export const TALK_LEVELS = ['quiet', 'some'] as const;
 export type LifeSize = (typeof LIFE_SIZES)[number];
 export type LifeCategory = (typeof LIFE_CATEGORIES)[number];
 export type LifeShare = (typeof LIFE_SHARES)[number];
+export type LifeMood = (typeof LIFE_MOODS)[number];
 export type TopicGroup = (typeof TOPIC_GROUPS)[number];
 export type TraceKind = (typeof TRACE_KINDS)[number];
 
@@ -62,6 +65,8 @@ export interface LifeRequires {
 export interface LifeEventEntry extends Entry {
   size: LifeSize;
   category: LifeCategory;
+  /** P15b: the colour it gives her day (a holder with a manner only); absent = none. */
+  mood?: LifeMood;
   tags?: string[];
   share: LifeShare;
   /** A `keeps` event she shares anyway when one of these holds (the others stay hers). */

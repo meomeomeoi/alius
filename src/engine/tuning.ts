@@ -827,6 +827,19 @@ export const TUNING = Object.freeze({
     }),
     favour: Object.freeze({ main: 1, second: 0.5 }),
     fresh: Object.freeze({ '-2': 0, '-1': 0, '0': 0, '1': 0.2, '2': 0.4 } as Readonly<Record<string, number>>),
+    /**
+     * Chunk m5 (spec §4): the mood of her day, steps added to her axes for that day only (the sum is clamped to ±2 in `mannerOf`). `moody`: the axes a moody
+     * woman's hashed −1 / 0 / +1 moves; `events`: what a life event's `mood` moves; `failedRun`: what a failed run that day moves.
+     */
+    mood: Object.freeze({
+      moody: Object.freeze(['intensity', 'warmth', 'tempo'] as const),
+      events: Object.freeze({
+        good: Object.freeze({ warmth: 1, tempo: -1 }),
+        irritated: Object.freeze({ warmth: -1, intensity: 1 }),
+        low: Object.freeze({ intensity: -1, voice: -1 }),
+      } as const),
+      failedRun: Object.freeze({ warmth: -1 }),
+    }),
     drift: Object.freeze({ days: 28 }),
     turn: Object.freeze({ margin: 2, reviews: 2, days: 56 }),
     contrast: Object.freeze({ low: 1, mid: 1.3, high: 1.6, cap: 0.9 }),

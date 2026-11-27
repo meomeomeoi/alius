@@ -3,6 +3,7 @@
     "id": "broke_favourite_thing",
     "size": "small",
     "category": "things",
+    "mood": "irritated",
     "share": "anyone",
     "cooldownDays": 21,
     "description": "AUTHOR TO WRITE: She broke something small that mattered to her: a mug, a charm, a cracked mirror.",
@@ -16,6 +17,7 @@
     "id": "found_something",
     "size": "small",
     "category": "things",
+    "mood": "good",
     "share": "anyone",
     "requires": {
       "location": [
@@ -40,6 +42,7 @@
     "id": "things_touched",
     "size": "small",
     "category": "things",
+    "mood": "irritated",
     "share": "close",
     "requires": {
       "otherNamed": true
@@ -61,6 +64,7 @@
     "id": "old_photo",
     "size": "notable",
     "category": "things",
+    "mood": "low",
     "share": "close",
     "requires": {
       "afterRun": {}
@@ -82,6 +86,7 @@
     "id": "music_found",
     "size": "small",
     "category": "things",
+    "mood": "good",
     "share": "anyone",
     "becomes": {
       "hobby": "music"
@@ -130,6 +135,7 @@
     "id": "bored",
     "size": "small",
     "category": "things",
+    "mood": "irritated",
     "share": "anyone",
     "requires": {
       "noRunDays": 5
@@ -181,6 +187,7 @@
     "id": "nightmare",
     "size": "small",
     "category": "body",
+    "mood": "low",
     "share": "close",
     "requires": {
       "stressMin": 40
@@ -202,6 +209,7 @@
     "id": "good_sleep",
     "size": "small",
     "category": "body",
+    "mood": "good",
     "share": "keeps",
     "requires": {
       "stressMax": 19
@@ -217,6 +225,7 @@
     "id": "sick_day",
     "size": "small",
     "category": "body",
+    "mood": "low",
     "share": "anyone",
     "description": "AUTHOR TO WRITE: She is ill: a fever, a bad stomach, a construct cold.",
     "hub": "She is wrapped in a blanket, sniffing.",
@@ -246,6 +255,7 @@
     "id": "hurt_in_training",
     "size": "small",
     "category": "body",
+    "mood": "irritated",
     "share": "anyone",
     "requires": {
       "activity": [
@@ -263,6 +273,7 @@
     "id": "body_ache",
     "size": "small",
     "category": "body",
+    "mood": "low",
     "share": "anyone",
     "requires": {
       "injured": true
@@ -278,6 +289,7 @@
     "id": "firmware_glitch",
     "size": "small",
     "category": "body",
+    "mood": "irritated",
     "share": "close",
     "requires": {
       "defectCategory": "cybernetic"
@@ -293,6 +305,7 @@
     "id": "firmware_update",
     "size": "notable",
     "category": "body",
+    "mood": "low",
     "share": "close",
     "requires": {
       "activity": [
@@ -316,6 +329,7 @@
     "id": "cried_alone",
     "size": "small",
     "category": "body",
+    "mood": "low",
     "share": "keeps",
     "requires": {
       "stressMin": 60
@@ -350,6 +364,7 @@
     "id": "memory_flash",
     "size": "notable",
     "category": "construct",
+    "mood": "low",
     "share": "close",
     "requires": {
       "trustMin": 60
@@ -371,6 +386,7 @@
     "id": "corp_news",
     "size": "notable",
     "category": "construct",
+    "mood": "low",
     "share": "close",
     "becomes": {
       "opinionTopic": "own_corporation"
@@ -389,6 +405,7 @@
     "id": "letter_received",
     "size": "notable",
     "category": "people",
+    "mood": "good",
     "share": "close",
     "becomes": {
       "opinionTopic": "cities_outside"
@@ -407,6 +424,7 @@
     "id": "letter_none",
     "size": "small",
     "category": "people",
+    "mood": "low",
     "share": "keeps",
     "requires": {
       "otherHadThisWeek": "letter_received"
@@ -422,6 +440,7 @@
     "id": "argued_with_unit",
     "size": "small",
     "category": "people",
+    "mood": "irritated",
     "share": "close",
     "requires": {
       "otherNamed": true
@@ -437,6 +456,7 @@
     "id": "made_up_with_unit",
     "size": "small",
     "category": "people",
+    "mood": "good",
     "share": "close",
     "requires": {
       "afterEvent": "argued_with_unit"
@@ -452,6 +472,7 @@
     "id": "late_night_talk",
     "size": "small",
     "category": "people",
+    "mood": "good",
     "share": "close",
     "requires": {
       "otherNamed": true
@@ -473,6 +494,7 @@
     "id": "gift_from_unit",
     "size": "small",
     "category": "people",
+    "mood": "good",
     "share": "anyone",
     "requires": {
       "otherNamed": true
@@ -488,6 +510,7 @@
     "id": "snubbed",
     "size": "small",
     "category": "people",
+    "mood": "irritated",
     "share": "keeps",
     "description": "AUTHOR TO WRITE: Someone brushed her off or forgot her, and it stung more than it should.",
     "hub": "She is short with everyone today.",
@@ -500,6 +523,7 @@
     "id": "praise_from_leader",
     "size": "small",
     "category": "people",
+    "mood": "good",
     "share": "anyone",
     "requires": {
       "leaderNotHer": true
@@ -521,6 +545,7 @@
     "id": "quartermaster_row",
     "size": "small",
     "category": "people",
+    "mood": "irritated",
     "share": "anyone",
     "description": "AUTHOR TO WRITE: She had a row with the quartermaster over supplies.",
     "hub": "She is muttering about requisition forms.",
@@ -533,6 +558,7 @@
     "id": "rumour_heard",
     "size": "small",
     "category": "people",
+    "mood": "low",
     "share": "anyone",
     "requires": {
       "rumour": true
@@ -548,6 +574,7 @@
     "id": "restless_before_run",
     "size": "small",
     "category": "service",
+    "mood": "irritated",
     "share": "close",
     "requires": {
       "missionBoard": true
@@ -569,6 +596,7 @@
     "id": "grunt_lost",
     "size": "notable",
     "category": "service",
+    "mood": "low",
     "share": "close",
     "requires": {
       "gruntDiedDays": 7
@@ -591,6 +619,7 @@
     "id": "anniversary_of_loss",
     "size": "notable",
     "category": "service",
+    "mood": "low",
     "share": "close",
     "requires": {
       "deathAgo": 30
@@ -613,6 +642,7 @@
     "id": "reprimand",
     "size": "small",
     "category": "service",
+    "mood": "irritated",
     "share": "close",
     "becomes": {
       "opinionTopic": "oversight"
@@ -631,6 +661,7 @@
     "id": "promotion_rumour",
     "size": "small",
     "category": "service",
+    "mood": "good",
     "share": "close",
     "becomes": {
       "opinionTopic": "freedom"
@@ -649,6 +680,7 @@
     "id": "weapon_broke",
     "size": "small",
     "category": "service",
+    "mood": "irritated",
     "share": "anyone",
     "becomes": {
       "opinionTopic": "weapons"
@@ -667,6 +699,7 @@
     "id": "sparring_win",
     "size": "small",
     "category": "service",
+    "mood": "good",
     "share": "anyone",
     "requires": {
       "sparring": "won"
@@ -688,6 +721,7 @@
     "id": "sparring_loss",
     "size": "small",
     "category": "service",
+    "mood": "irritated",
     "share": "close",
     "requires": {
       "sparring": "lost"
@@ -703,6 +737,7 @@
     "id": "bloom_sighting",
     "size": "small",
     "category": "service",
+    "mood": "low",
     "share": "anyone",
     "requires": {
       "bloomHalf": true
@@ -724,6 +759,7 @@
     "id": "ration_cut",
     "size": "small",
     "category": "service",
+    "mood": "irritated",
     "share": "anyone",
     "requires": {
       "rationsShort": true
@@ -745,6 +781,7 @@
     "id": "finished_book",
     "size": "small",
     "category": "luck",
+    "mood": "good",
     "share": "anyone",
     "requires": {
       "hobby": "reading"
@@ -768,6 +805,7 @@
     "id": "plant_progress",
     "size": "small",
     "category": "luck",
+    "mood": "good",
     "share": "anyone",
     "requires": {
       "hobby": "plants"
@@ -789,6 +827,7 @@
     "id": "learned_trick",
     "size": "small",
     "category": "luck",
+    "mood": "good",
     "share": "anyone",
     "requires": {
       "hobby": "any"
@@ -807,6 +846,7 @@
     "id": "cooked_something",
     "size": "small",
     "category": "luck",
+    "mood": "good",
     "share": "anyone",
     "requires": {
       "hobby": "cooking"
@@ -828,6 +868,7 @@
     "id": "song_stuck",
     "size": "small",
     "category": "luck",
+    "mood": "good",
     "share": "anyone",
     "requires": {
       "hobby": "music"
@@ -846,6 +887,7 @@
     "id": "stray_found",
     "size": "small",
     "category": "luck",
+    "mood": "good",
     "share": "anyone",
     "becomes": {
       "hobby": "animals",
@@ -865,6 +907,7 @@
     "id": "won_at_cards",
     "size": "small",
     "category": "luck",
+    "mood": "good",
     "share": "anyone",
     "becomes": {
       "opinionTopic": "gambling"
@@ -883,6 +926,7 @@
     "id": "lost_at_cards",
     "size": "small",
     "category": "luck",
+    "mood": "irritated",
     "share": "close",
     "description": "AUTHOR TO WRITE: She lost at cards and owes someone a chore.",
     "hub": "She is scrubbing something that is not her job.",

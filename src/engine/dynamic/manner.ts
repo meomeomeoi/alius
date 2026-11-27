@@ -7,7 +7,10 @@
 import type { Registries } from '../../content/types';
 import type { CampaignState, Unit } from '../state/types';
 import { bend, type BendKind } from '../bend';
+import { temperamentOf } from '../life/state';
+import type { LifeEventEntry } from '../life/types';
 import { TUNING } from '../tuning';
+import { dynamicRoll } from './witness';
 import { MANNER_AXES, type DrawnBy, type MannerAxis } from './types';
 
 export { CONTRASTS, DRAWN_BY, MANNER_AXES, QUIRK_WHEN } from './types';
@@ -17,7 +20,7 @@ export interface Manner {
   /** Her axes as they read today: stored + drift + mood, each clamped to −2 … +2. */
   axes: Record<MannerAxis, number>;
   drawnBy: DrawnBy[];
-  /** The mood of the day per axis (P15b Task 10; `{}` until then). Hidden: never shown as a number. */
+  /** The mood of the day per axis (`mannerMoodOf`). Hidden: never shown as a number. */
   mood: Partial<Record<MannerAxis, number>>;
 }
 
@@ -26,18 +29,47 @@ const gone = (u: Pick<Unit, 'status'>): boolean => u.status === 'dead' || u.stat
 
 const clamp2 = (v: number): number => Math.max(-2, Math.min(2, v));
 
+/** What `mannerOf` reads besides her squad row: `life` (her events of the day), `lastExpedition` (a failed run), `day` and `dynamic` (the salt of a moody day). Without `day` the mood is empty. */
+export type MannerState = Pick<CampaignState, 'squad'> & Partial<Pick<CampaignState, 'life' | 'lastExpedition' | 'day' | 'dynamic'>>;
+
+/**
+ * The mood of her day (spec §4), per axis, for a holder with a `manner` block (otherwise `{}`): a `moody` woman's hashed −1 / 0 / +1 on `intensity`, `warmth` and
+ * `tempo` (`dynamicRoll`, a stable value per axis and day); the `mood` of each life event she had that day (`life.units[id].last[eventId] === day`); and a failed
+ * run that day. Several add up; the clamp to ±2 is `mannerOf`'s. Hidden: never shown as a value. Draws nothing.
+ */
+export function mannerMoodOf(state: MannerState, reg: Registries, unitId: string, day: number): Partial<Record<MannerAxis, number>> {
+  const unit = state.squad.find((u) => u.id === unitId);
+  if (unit === undefined || unit.kind !== 'named' || gone(unit) || unit.bond?.practice?.manner === undefined) return {};
+  const out: Partial<Record<MannerAxis, number>> = {};
+  const add = (axis: MannerAxis, by: number): void => { if (by !== 0) out[axis] = (out[axis] ?? 0) + by; };
+  const table = TUNING.manner.mood;
+  if (temperamentOf(state, unitId).volatility === 'moody') {
+    const at = { dynamic: state.dynamic, day };
+    for (const a of table.moody) add(a, Math.min(2, Math.floor(dynamicRoll(at, unitId, `mood:${a}:${day}`) * 3)) - 1);
+  }
+  const last = state.life?.units[unitId]?.last ?? {};
+  for (const id of Object.keys(last)) {
+    if (last[id] !== day) continue;
+    const mood = (reg.lifeEvents.get(id) as unknown as LifeEventEntry | undefined)?.mood;
+    if (mood === undefined) continue;
+    for (const a of MANNER_AXES) add(a, (table.events[mood] as Partial<Record<MannerAxis, number>>)[a] ?? 0);
+  }
+  if (state.lastExpedition?.outcome === 'failed' && state.lastExpedition.day === day) for (const a of MANNER_AXES) add(a, (table.failedRun as Partial<Record<MannerAxis, number>>)[a] ?? 0);
+  for (const a of MANNER_AXES) if (out[a] === 0) delete out[a];
+  return out;
+}
+
 /**
  * Her manner, or `null` when she has no `manner` block (or is a grunt, or gone, or has no practice). The drift overlay
  * (`development.practice.manner`, steps added to the stored axes) is folded in, then the mood of the day; every axis is clamped to ±2.
  */
-export function mannerOf(state: Pick<CampaignState, 'squad'>, reg: Registries, unitId: string): Manner | null {
-  void reg; // the mood of the day (Task 10) reads the registries
+export function mannerOf(state: MannerState, reg: Registries, unitId: string): Manner | null {
   const unit = state.squad.find((u) => u.id === unitId);
   if (unit === undefined || unit.kind !== 'named' || gone(unit)) return null;
   const stored = unit.bond?.practice?.manner;
   if (stored === undefined) return null;
   const drift = unit.development?.practice?.manner;
-  const mood: Partial<Record<MannerAxis, number>> = {};
+  const mood = state.day === undefined ? {} : mannerMoodOf(state, reg, unitId, state.day);
   const axes = {} as Record<MannerAxis, number>;
   for (const a of MANNER_AXES) axes[a] = clamp2((stored[a] ?? 0) + (drift?.[a] ?? 0) + (mood[a] ?? 0));
   return { axes, drawnBy: [...(unit.bond?.practice?.drawnBy ?? [])], mood };
@@ -47,7 +79,7 @@ export { bend };
 export type { BendKind };
 
 /** `bend` with her step on `axis`; without a manner it is `bend` at a step of 0 (`base`; a gate: 0). */
-export function bendBy(state: Pick<CampaignState, 'squad'>, reg: Registries, unitId: string, axis: MannerAxis, base: number, kind: BendKind): number {
+export function bendBy(state: MannerState, reg: Registries, unitId: string, axis: MannerAxis, base: number, kind: BendKind): number {
   const m = mannerOf(state, reg, unitId);
   return bend(base, m === null ? 0 : m.axes[axis], kind);
 }
