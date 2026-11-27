@@ -5,6 +5,7 @@
  */
 import type { Registries } from '../../content/types';
 import { contentAllowed } from '../bonds/content';
+import type { MannerAxis } from '../dynamic/types';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import type { HoldsUntil, PhysicsStyle, StyleKey } from './state';
@@ -21,6 +22,26 @@ export function registerPhysicsStyle(fn: StyleReader): void {
 /** P15 plugs in here: what she holds the commander until (her expectation profile). The first reader that answers wins. */
 export function registerHoldsUntil(fn: HoldsReader): void {
   holdsReaders.push(fn);
+}
+/** P15b: her six manner axes (−2 … +2) as the physics reads them. */
+export type PhysicsManner = Readonly<Record<MannerAxis, number>>;
+type MannerReader = (state: CampaignState, unitId: string, reg?: Registries) => PhysicsManner | null;
+const mannerReaders: MannerReader[] = [];
+
+/**
+ * P15b plugs in here: her manner axes, for the rows the engine bends by them (the jaw's rest by `warmth` now; the windows, leads, segment length and
+ * cue lines by chunk m3). A reader answers `null` for a holder with no manner, who is read as every axis at 0. The first reader that answers wins.
+ */
+export function registerPhysicsManner(fn: MannerReader): void {
+  mannerReaders.push(fn);
+}
+/** Her manner axes, or `null` (no reader answered: nothing bends). */
+export function physicsMannerOf(state: CampaignState, unitId: string, reg?: Registries): PhysicsManner | null {
+  for (const read of mannerReaders) {
+    const m = read(state, unitId, reg);
+    if (m !== null) return m;
+  }
+  return null;
 }
 type TargetReader = (state: CampaignState, reg: Registries, targetId: string) => string | undefined;
 const targetReaders: TargetReader[] = [];
@@ -45,6 +66,7 @@ export function resetPhysicsHooks(): void {
   styleReaders.length = 0;
   holdsReaders.length = 0;
   targetReaders.length = 0;
+  mannerReaders.length = 0;
 }
 
 export function physicsStyleOf(state: CampaignState, unitId: string, reg?: Registries): PhysicsStyle {

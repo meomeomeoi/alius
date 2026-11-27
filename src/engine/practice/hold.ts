@@ -14,6 +14,7 @@ import type { Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { addHold } from '../dynamic/hold';
 import { practiceOf } from '../dynamic/profile';
+import { bendBy } from '../dynamic/manner';
 import { dynamicOf } from '../dynamic/state';
 import { addTrackXp } from '../dynamic/tracks';
 import { holdersAtPlay } from '../dynamic/gate';
@@ -202,9 +203,12 @@ export function forgotChance(state: CampaignState, reg: Registries, holderId: st
   const T = TUNING.practice.hold;
   const style = practiceOf(state, reg, holderId)?.style.primary;
   const own = style === undefined ? undefined : T.forgot[style];
-  if (own === 0) return 0;
+  // P15b: warmth down and intensity up lift it by shift, before the bonus; a style at 0 stays 0 unless the shift is positive (no manner: the base)
+  const M = TUNING.manner.forgot;
+  const bent = Math.max(0, bendBy(state, reg, holderId, 'intensity', bendBy(state, reg, holderId, 'warmth', own ?? T.forgot.base, { shift: -M.warmthDown }), { shift: M.intensityUp }));
+  if (own === 0 && bent === 0) return 0;
   const bonus = (impunityOf(state, reg, holderId)?.value ?? 0) >= T.impunityAt ? T.forgot.impunityBonus : 0;
-  return Math.min(1, (own ?? T.forgot.base) + bonus);
+  return Math.min(1, bent + bonus);
 }
 
 /** She forgot (the hashed roll of the day, `practiceRoll(holderId, 'forgot:' + day)`): the hold runs on one slot, once a hold, never past the Night and never into a slot that is already over. `null` when she did not. */

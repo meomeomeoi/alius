@@ -23,7 +23,7 @@ import { addEnduranceXp, herSkillOf } from './skill';
 import {
   GAUGE_FULL, INPUT_KINDS, type Attention, type JawOrder, type PhysicsRun, type PhysicsStyle, type PlannedBeat, type ScentBand, type SegmentInput, type SegmentPlan, type SegmentResult,
 } from './state';
-import { blendedStyle, leadStyle, physicsStyleOf, styleRows } from './style';
+import { blendedStyle, leadStyle, physicsMannerOf, physicsStyleOf, styleRows } from './style';
 import { scentBand } from './scent';
 import { isShoeRun } from './footwear';
 import { headCapacity, scentToleranceOf } from './stimuli';
@@ -49,6 +49,8 @@ export interface ResolveEnv {
   steady?: ReadonlySet<number>;
   /** A marathon's pace scale (`paceScale`): every beat's change of the gauge, and the streak xp, count this many times (1 = no scale). Applied per beat, before the clamp. */
   scale?: number;
+  /** P15b: her `warmth` (−2 … +2; absent at 0 or without a manner): +2 grants the jaw's rest whatever her style, −2 refuses it. */
+  warmth?: number;
   /** P10e-e 24b: the long hold's drain factor of a weight inside her frame (`LONG_HOLD[longHoldStrain]`); absent outside a frame. */
   longHold?: number;
 }
@@ -197,6 +199,7 @@ export function sealNow(run: Pick<PhysicsRun, 'seal'>, sealLevel: number): Seal 
 /** What `resolveSegment` reads from the state, as data. */
 export function resolveEnvOf(state: CampaignState, reg: Registries, run: PhysicsRun): ResolveEnv {
   const phys = reg.contactPhysics.get(run.physicsId)!;
+  const warmth = physicsMannerOf(state, run.holderId, reg)?.warmth ?? 0;
   return {
     gaugeKind: (phys.gauge as { kind: GaugeKind }).kind, interaction: String(phys.interaction) as InteractionType, style: physicsStyleOf(state, run.holderId, reg),
     sealLevel: herSkillOf(state, run.holderId).seal,
@@ -204,6 +207,7 @@ export function resolveEnvOf(state: CampaignState, reg: Registries, run: Physics
     band: scentBand(state, reg, run.holderId, run.sourceKind === 'contact' ? contactTargetOf(state.scene, reg, run.sourceId) ?? run.targetId : undefined),
     head: headCapacity(scentToleranceOf(state, reg, run.holderId)),
     ...(run.sourceKind === 'activity' ? { longHold: LONG_HOLD[sceneSettingsOf(state).longHoldStrain] } : {}),
+    ...(warmth !== 0 ? { warmth } : {}),
   };
 }
 
@@ -255,7 +259,8 @@ export function resolveSegment(run: PhysicsRun, plan: SegmentPlan, inputs: Segme
   const bitten = env.interaction === 'gesture' && live.some((i) => i.kind === 'bite' && i.part !== 'teeth');
   // Ruling V: a rest in an instrument segment does not cut it short (the instrument charges nothing over the rest itself); turn-based, as before
   const run_ = rest && !bitten ? Math.min(plan.beats.length, rest.beat + 1) : plan.beats.length;
-  const restGranted = rest !== undefined && !['cruel', 'vindictive'].includes(leadStyle(env.style).key);
+  // P15b: her warmth decides over the style at ±2 (+2 grants, −2 refuses); otherwise cruel and vindictive refuse
+  const restGranted = rest !== undefined && ((env.warmth ?? 0) >= 2 || ((env.warmth ?? 0) > -2 && !['cruel', 'vindictive'].includes(leadStyle(env.style).key)));
   const cap = run.capacity;
   const cruel = leadStyle(env.style).key === 'cruel';
   const r: SegmentResult = {

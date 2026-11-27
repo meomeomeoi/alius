@@ -1880,6 +1880,33 @@ var DYNAMIC_EVENT_TYPES = [
 ];
 
 // src/engine/dynamic/manner.ts
+var gone = (u) => u.status === "dead" || u.status === "deserted" || u.status === "terminated" || u.status === "reassigned";
+var clamp2 = (v) => Math.max(-2, Math.min(2, v));
+function mannerOf(state, reg, unitId) {
+  const unit5 = state.squad.find((u) => u.id === unitId);
+  if (unit5 === void 0 || unit5.kind !== "named" || gone(unit5)) return null;
+  const stored = unit5.bond?.practice?.manner;
+  if (stored === void 0) return null;
+  const drift = unit5.development?.practice?.manner;
+  const mood = {};
+  const axes = {};
+  for (const a of MANNER_AXES) axes[a] = clamp2((stored[a] ?? 0) + (drift?.[a] ?? 0) + (mood[a] ?? 0));
+  return { axes, drawnBy: [...unit5.bond?.practice?.drawnBy ?? []], mood };
+}
+function bend(base2, step, kind) {
+  if ("gate" in kind) {
+    if (step === 0 || kind.gate === 0) return 0;
+    return kind.gate > 0 ? step >= kind.gate ? 1 : 0 : step <= kind.gate ? 1 : 0;
+  }
+  if (step === 0) return base2;
+  if ("shift" in kind) return base2 + step * kind.shift;
+  const out = base2 * Math.max(0, 1 + step * kind.scale);
+  return kind.cap === void 0 ? out : Math.min(kind.cap, out);
+}
+function bendBy(state, reg, unitId, axis, base2, kind) {
+  const m = mannerOf(state, reg, unitId);
+  return bend(base2, m === null ? 0 : m.axes[axis], kind);
+}
 function mannerWord(axis, step) {
   const steps3 = TUNING.manner.words[axis].steps;
   return steps3[String(Math.max(-2, Math.min(2, Math.trunc(step))))] ?? "";
@@ -2929,7 +2956,7 @@ function spread(total2, n, offset2) {
   for (let i = 0; i < extra; i++) out[((offset2 % n + n) % n + i) % n] += 1;
   return out;
 }
-var clamp2 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp3 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function runUpkeep(draft, reg) {
   const events = [];
   const { needed } = upkeepNeeded(draft, reg);
@@ -2972,7 +2999,7 @@ function runUpkeep(draft, reg) {
     });
   }
   slots.forEach((u, i) => {
-    u.stress = clamp2(u.stress + stress[i], 0, 100);
+    u.stress = clamp3(u.stress + stress[i], 0, 100);
     if (affinity[i] > 0) applyRelationDelta(draft, u.id, "affinity", -affinity[i], "shortage");
   });
   const streak = (draft.calendar.shortageStreak ?? 0) + 1;
@@ -7640,10 +7667,10 @@ function readManner(raw, out, issues2) {
     }
   }
 }
-var gone = (u) => u.status === "dead" || u.status === "deserted" || u.status === "terminated" || u.status === "reassigned";
+var gone2 = (u) => u.status === "dead" || u.status === "deserted" || u.status === "terminated" || u.status === "reassigned";
 function practiceOf(state, reg, unitId) {
   const unit5 = state.squad.find((u) => u.id === unitId);
-  if (unit5 === void 0 || unit5.kind !== "named" || gone(unit5)) return null;
+  if (unit5 === void 0 || unit5.kind !== "named" || gone2(unit5)) return null;
   const stored = unit5.bond?.practice;
   if (stored === void 0) return null;
   const drift = unit5.development?.practice;
@@ -11559,7 +11586,7 @@ function defectAllowedFor(reg, defectId, bond) {
 }
 
 // src/engine/development/profile.ts
-var clamp3 = (n) => Math.min(3, Math.max(-3, n));
+var clamp32 = (n) => Math.min(3, Math.max(-3, n));
 function valuesOf(unit5) {
   const drift = unit5.development?.drift;
   if (!drift) return unit5.values;
@@ -11568,7 +11595,7 @@ function valuesOf(unit5) {
     const step = Math.trunc(drift[axis] ?? 0);
     if (step === 0) continue;
     out ??= { ...unit5.values };
-    out[axis] = clamp3(unit5.values[axis] + step);
+    out[axis] = clamp32(unit5.values[axis] + step);
   }
   return out ?? unit5.values;
 }
@@ -12967,10 +12994,10 @@ function withdrawTagged(draft, reg, removed) {
   const hit = (tags) => tags.some((t) => removed.includes(t));
   const demands = draft.discipline?.demands;
   if (draft.discipline && demands) {
-    const gone3 = demands.filter((d) => hit(tagsOf(reg.demandTemplates.get(d.templateId) ?? {})));
-    if (gone3.length > 0) {
-      draft.discipline.demands = demands.filter((d) => !gone3.includes(d));
-      draft.discipline.demandLog = draft.discipline.demandLog.filter((e) => !gone3.some((d) => d.unitId === e.unitId && d.day === e.day && d.templateId === e.templateId));
+    const gone4 = demands.filter((d) => hit(tagsOf(reg.demandTemplates.get(d.templateId) ?? {})));
+    if (gone4.length > 0) {
+      draft.discipline.demands = demands.filter((d) => !gone4.includes(d));
+      draft.discipline.demandLog = draft.discipline.demandLog.filter((e) => !gone4.some((d) => d.unitId === e.unitId && d.day === e.day && d.templateId === e.templateId));
     }
   }
   const personal = draft.personal;
@@ -13195,12 +13222,12 @@ function setCondition(draft, reg, id, until) {
 var over = (now, until) => until.slot === void 0 ? now.day > until.day : now.day * ORDER2.length + ORDER2.indexOf(now.slot) > until.day * ORDER2.length + ORDER2.indexOf(until.slot);
 function expireConditions(draft) {
   const all = conditionsOf(draft);
-  const gone3 = all.filter((c) => over(draft, c.until));
-  if (gone3.length === 0) return [];
-  const left = all.filter((c) => !gone3.includes(c));
+  const gone4 = all.filter((c) => over(draft, c.until));
+  if (gone4.length === 0) return [];
+  const left = all.filter((c) => !gone4.includes(c));
   if (left.length === 0) delete draft.commander.conditions;
   else draft.commander.conditions = left;
-  return gone3.map((c) => ({ type: "condition_ended", id: c.id }));
+  return gone4.map((c) => ({ type: "condition_ended", id: c.id }));
 }
 
 // src/engine/social.ts
@@ -15236,13 +15263,13 @@ function addRestriction(draft, r) {
 function removeRestrictions(draft, pick12) {
   const d = draft.discipline;
   if (!d) return [];
-  const gone3 = d.restrictions.filter(pick12);
-  if (gone3.length > 0) d.restrictions = d.restrictions.filter((r) => !pick12(r));
-  return gone3;
+  const gone4 = d.restrictions.filter(pick12);
+  if (gone4.length > 0) d.restrictions = d.restrictions.filter((r) => !pick12(r));
+  return gone4;
 }
 function expireRestrictions(draft) {
-  const gone3 = removeRestrictions(draft, (r) => r.kind === "confined" || r.kind === "no_leave" ? (r.untilDay ?? 0) <= draft.day : r.kind === "duty" ? (r.day ?? 0) <= draft.day : false);
-  return gone3.map((r) => ({ type: "restriction_ended", unitId: r.unitId, kind: r.kind }));
+  const gone4 = removeRestrictions(draft, (r) => r.kind === "confined" || r.kind === "no_leave" ? (r.untilDay ?? 0) <= draft.day : r.kind === "duty" ? (r.day ?? 0) <= draft.day : false);
+  return gone4.map((r) => ({ type: "restriction_ended", unitId: r.unitId, kind: r.kind }));
 }
 var NEXT = { morning: "afternoon", afternoon: "evening", evening: "morning", night: "morning" };
 function dutySlot(state) {
@@ -16067,8 +16094,8 @@ function offerMission(draft, ctx2, o) {
     if (o.source === "side" || o.source === "rumor") return { mission: null, events: [] };
     const i = draft.missions.offered.findIndex((m) => m.source === "side" || m.source === "rumor");
     if (i >= 0) {
-      const [gone3] = draft.missions.offered.splice(i, 1);
-      events.push({ type: "mission_expired", missionId: gone3.id, reason: "pushed_out" });
+      const [gone4] = draft.missions.offered.splice(i, 1);
+      events.push({ type: "mission_expired", missionId: gone4.id, reason: "pushed_out" });
     }
   }
   const mission = buildMission(draft, ctx2, o);
@@ -16158,11 +16185,11 @@ function runDeadlines(draft, ctx2) {
   const reg = ctx2.registries;
   const events = [];
   for (const m of [...draft.missions.offered]) {
-    const gone3 = !reg.missionTemplates.has(m.templateId) || !reg.regions.has(m.regionId);
+    const gone4 = !reg.missionTemplates.has(m.templateId) || !reg.regions.has(m.regionId);
     const late2 = m.deadlineDay !== void 0 && m.deadlineDay <= draft.day;
-    if (!gone3 && !late2) continue;
+    if (!gone4 && !late2) continue;
     draft.missions.offered = draft.missions.offered.filter((x) => x.id !== m.id);
-    if (gone3) {
+    if (gone4) {
       events.push({ type: "mission_expired", missionId: m.id, reason: "content_removed" });
       if (m.spineBeat !== void 0 && draft.world.spine?.proposed === m.spineBeat) {
         delete draft.world.spine.proposed;
@@ -16527,8 +16554,8 @@ function earlierHobbyFacts(draft, item, told) {
     tell(draft, f);
     revealed2.add(f.id);
   }
-  const gone3 = (q) => q.id !== item.id && q.unitId === item.unitId && q.kind === "hobby" && hobbies.has(q.ref) && q.factId !== void 0 && revealed2.has(q.factId);
-  const out = new Set(life.queue.filter(gone3).map((q) => q.id));
+  const gone4 = (q) => q.id !== item.id && q.unitId === item.unitId && q.kind === "hobby" && hobbies.has(q.ref) && q.factId !== void 0 && revealed2.has(q.factId);
+  const out = new Set(life.queue.filter(gone4).map((q) => q.id));
   life.queue = life.queue.filter((q) => !out.has(q.id));
   life.outbox = life.outbox.filter((o) => !out.has(o.itemId));
   life.news = life.news.filter((n) => !out.has(n.itemId));
@@ -19023,9 +19050,9 @@ function reputationDayStep(draft, ctx2) {
     if (!sameGroup) {
       if (active.length < TUNING.reputation.maxActive) replaces = void 0;
       else {
-        const gone3 = active.find((a) => !holding3(a.id));
-        if (!gone3) continue;
-        replaces = gone3.id;
+        const gone4 = active.find((a) => !holding3(a.id));
+        if (!gone4) continue;
+        replaces = gone4.id;
       }
     } else {
       const old = lookup(sameGroup.id);
@@ -19675,6 +19702,17 @@ function registerPhysicsStyle(fn) {
 }
 function registerHoldsUntil(fn) {
   holdsReaders.push(fn);
+}
+var mannerReaders = [];
+function registerPhysicsManner(fn) {
+  mannerReaders.push(fn);
+}
+function physicsMannerOf(state, unitId, reg) {
+  for (const read2 of mannerReaders) {
+    const m = read2(state, unitId, reg);
+    if (m !== null) return m;
+  }
+  return null;
 }
 var targetReaders = [];
 function registerRunTarget(fn) {
@@ -23557,11 +23595,14 @@ function requestOf(state, reg, requestId) {
 var SEALABLE = ["task", "hold", "punishment"];
 function sealedShare(state, reg, holderId) {
   const style = practiceOf(state, reg, holderId)?.style.primary;
-  return (style === void 0 ? void 0 : TUNING.practice.sealedShare[style]) ?? 0.05;
+  const base2 = (style === void 0 ? void 0 : TUNING.practice.sealedShare[style]) ?? 0.05;
+  const T5 = TUNING.manner.sealed;
+  return Math.max(0, bendBy(state, reg, holderId, "order", bendBy(state, reg, holderId, "curiosity", base2, { shift: T5.curiosity }), { shift: -T5.orderDown }));
 }
 function noDurationShare(state, reg, holderId) {
   const style = practiceOf(state, reg, holderId)?.style.primary;
-  return (style === void 0 ? void 0 : TUNING.practice.noDurationShare[style]) ?? 0.1;
+  const base2 = (style === void 0 ? void 0 : TUNING.practice.noDurationShare[style]) ?? 0.1;
+  return Math.max(0, bendBy(state, reg, holderId, "order", base2, { shift: -TUNING.manner.noDuration.orderDown }));
 }
 var rollSealed = (state, reg, holderId, key) => practiceRoll(state, holderId, `sealed:${key}`) < sealedShare(state, reg, holderId);
 var rollNoDuration = (state, reg, holderId, key) => practiceRoll(state, holderId, `noduration:${key}`) < noDurationShare(state, reg, holderId);
@@ -23584,7 +23625,8 @@ function slapWindowMs(state, reg, holderId, slapId) {
   const T5 = TUNING.practice.slap;
   const style = styleOf2(state, reg, holderId);
   const base2 = (style === void 0 ? void 0 : T5.windowMs[style]) ?? 500;
-  return style === "obsessive" ? Math.round(base2 + practiceRoll(state, holderId, `slapwin:${slapId}`) * T5.obsessiveSpread) : base2;
+  const swing = style === "obsessive" ? Math.round(base2 + practiceRoll(state, holderId, `slapwin:${slapId}`) * T5.obsessiveSpread) : base2;
+  return bendBy(state, reg, holderId, "tempo", swing, { scale: -TUNING.manner.scale });
 }
 function slapFeints(state, holderId, slapId) {
   const T5 = TUNING.practice.slap;
@@ -23652,9 +23694,10 @@ function deal(draft, ctx2, holderId, result, slap) {
   addFavour(draft, holderId, T5.favour[result]);
   if (result === "braced") events.push(...regardRise(draft, reg, holderId, "dignity"));
   if (result === "flinched") {
-    if (style === "affectionate") addFavour(draft, holderId, T5.favour.softer);
+    if (style === "affectionate" || bendBy(draft, reg, holderId, "warmth", 0, { gate: 2 }) === 1) addFavour(draft, holderId, T5.favour.softer);
     flinchedSentence(draft, slap, style);
-    if (style === "cruel" && slap.again !== true) events.push(...startSlap(draft, ctx2, holderId, { again: true, ...slap.punishmentId !== void 0 ? { punishmentId: slap.punishmentId } : {} }));
+    const again = bendBy(draft, reg, holderId, "intensity", 0, { gate: 2 }) === 1 || style === "cruel" && bendBy(draft, reg, holderId, "intensity", 0, { gate: -2 }) === 0;
+    if (again && slap.again !== true) events.push(...startSlap(draft, ctx2, holderId, { again: true, ...slap.punishmentId !== void 0 ? { punishmentId: slap.punishmentId } : {} }));
     events.push(...noteOffence(draft, ctx2, holderId, { kind: "slap_defied", ref: slap.id, stakes: "minor", day: draft.day }));
   }
   events.push(...practise2(draft, holderId, ["swing"], style ?? ""));
@@ -23697,7 +23740,8 @@ function severityOf(state, reg, holderId, offence) {
   const recent2 = (state.practices?.offences[holderId] ?? []).filter((d) => state.day - d <= T5.repeat.days).length;
   const repeat = recent2 >= T5.repeat.count ? T5.repeat.add : 0;
   const confessed = offence.confessed === true ? TUNING.practice.confessedLess : 0;
-  const total2 = Math.floor(stakeRank(offence.stakes) + 1 + styleTerm(state, reg, holderId) + frameTerm + repeat - confessed + 0.5);
+  const manner = bendBy(state, reg, holderId, "intensity", 0, { shift: TUNING.manner.severity });
+  const total2 = Math.floor(stakeRank(offence.stakes) + 1 + styleTerm(state, reg, holderId) + manner + frameTerm + repeat - confessed + 0.5);
   return Math.min(T5.max, Math.max(T5.min, total2));
 }
 var sceneIsHers = (state, holderId) => state.scene === void 0 || state.scene.participants.length === 1 && state.scene.participants[0] === holderId;
@@ -24079,9 +24123,11 @@ function forgotChance(state, reg, holderId) {
   const T5 = TUNING.practice.hold;
   const style = practiceOf(state, reg, holderId)?.style.primary;
   const own = style === void 0 ? void 0 : T5.forgot[style];
-  if (own === 0) return 0;
+  const M2 = TUNING.manner.forgot;
+  const bent = Math.max(0, bendBy(state, reg, holderId, "intensity", bendBy(state, reg, holderId, "warmth", own ?? T5.forgot.base, { shift: -M2.warmthDown }), { shift: M2.intensityUp }));
+  if (own === 0 && bent === 0) return 0;
   const bonus = (impunityOf(state, reg, holderId)?.value ?? 0) >= T5.impunityAt ? T5.forgot.impunityBonus : 0;
-  return Math.min(1, (own ?? T5.forgot.base) + bonus);
+  return Math.min(1, bent + bonus);
 }
 function forgot(draft, ctx2, held3) {
   if (held3.forgot === true || practiceRoll(draft, held3.by, `forgot:${draft.day}`) >= forgotChance(draft, ctx2.registries, held3.by)) return null;
@@ -24938,7 +24984,7 @@ function permissionAnswer(state, reg, holderId) {
   const style = practiceOf(state, reg, holderId)?.style.primary;
   if (frameOf2(state, holderId) === "rule" || favour <= TUNING.practice.refusalAt) return "deny";
   const band2 = wantBandOf(state, reg, holderId);
-  if (favour >= T5.grantFavour && (band2 === "calm" || band2 === "restless") || style === "affectionate") return "grant";
+  if (favour >= T5.grantFavour && (band2 === "calm" || band2 === "restless") || style === "affectionate" || bendBy(state, reg, holderId, "warmth", 0, { gate: 2 }) === 1) return "grant";
   return (style === void 0 ? void 0 : T5.byStyle[style]) ?? "wait";
 }
 function askPermission(draft, ctx2, holderId) {
@@ -25880,7 +25926,10 @@ function carryOut(draft, ctx2, p, lapsed = false) {
 function ceremonyOf(state, reg, holderId, severity) {
   const style = styleOf3(state, reg, holderId);
   if (style === void 0 || severity < TUNING.practice.ceremony.minSeverity) return null;
-  const rows = [...reg.ceremonySteps.values()].filter((e) => Array.isArray(e.styles) && e.styles.includes(style)).sort((a, b) => Number(a.order) - Number(b.order));
+  const order = mannerOf(state, reg, holderId)?.axes.order ?? 0;
+  if (order <= -2) return null;
+  const kind = order >= 2 ? "ritual" : style;
+  const rows = [...reg.ceremonySteps.values()].filter((e) => Array.isArray(e.styles) && e.styles.includes(kind)).sort((a, b) => Number(a.order) - Number(b.order));
   return rows.length === 0 ? null : rows.map((e) => String(e.id));
 }
 function ceremonyCount(style, severity, named5) {
@@ -27432,13 +27481,13 @@ function removeFromService(draft, unitId, status, ctx2) {
   forgetBonds(draft, unitId);
   forgetPower(draft, unitId);
   forgetPersonal(draft, unitId);
-  const gone3 = [...forgetDynamic(draft, unitId), ...forgetPractices(draft, unitId)];
+  const gone4 = [...forgetDynamic(draft, unitId), ...forgetPractices(draft, unitId)];
   forgetNotes(draft, unitId);
   forgetSpecial(draft, unitId);
   forgetWarden(draft, unitId);
-  if (!wasWarden) return gone3;
+  if (!wasWarden) return gone4;
   if (!ctx2) throw new Error("The warden leaves the service: removeFromService needs the engine context to open the investigation.");
-  return [...gone3, ...notifyWardenGone(draft, ctx2, status)];
+  return [...gone4, ...notifyWardenGone(draft, ctx2, status)];
 }
 function forgetBonds(draft, unitId) {
   if (draft.bonds) {
@@ -32532,7 +32581,7 @@ function checkDefining(state, beatId) {
 }
 
 // src/engine/dilemma/flow.ts
-var clamp32 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp33 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var STALE2 = "Stale dilemma answer.";
 var capital2 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 function presentUnits(state) {
@@ -32752,7 +32801,7 @@ function chooseDilemma(draft, ctx2, id, index2, route, wardenChecked = false, ra
   }
   if (chosen.check) {
     const c = TUNING.dilemma.check;
-    const chance = clamp32(c.base + c.perRank * (socialRank(draft, chosen.check.stat) - chosen.check.rank), c.min, c.max);
+    const chance = clamp33(c.base + c.perRank * (socialRank(draft, chosen.check.stat) - chosen.check.rank), c.min, c.max);
     checkPassed = ctx2.rng.chance(chance);
     if (!checkPassed) effects2 = effects2.filter((fx2) => isCostEffect(fx2) || isBookkeeping(fx2));
   }
@@ -32862,7 +32911,7 @@ function herVote(state, _reg, vote) {
 
 // src/engine/discipline/demands.ts
 var DRIVEN = ["open_defiance", "defiant_loyal"];
-var clamp33 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp34 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var costsOf = (t) => t.grantCost ?? [];
 var namedLiving6 = (state) => state.squad.filter((u) => u.kind === "named" && isLiving(u));
 function demandChance(state, reg, unitId) {
@@ -32874,7 +32923,7 @@ function demandChance(state, reg, unitId) {
   const weight = Number(stanceEntry(reg, stance)?.demandWeight ?? 1);
   const mult = Number(dispositionFor(state, reg, unit5).refusalMult);
   const squad = assertiveness(state, reg).demandMult;
-  return clamp33(T5.baseChance * (i.value / TUNING.impunity.stance.impunityHigh) * mult * weight * squad, 0, T5.maxChance);
+  return clamp34(T5.baseChance * (i.value / TUNING.impunity.stance.impunityHigh) * mult * weight * squad, 0, T5.maxChance);
 }
 var openedThisWeek = (state, unitId) => (state.discipline?.demandLog ?? []).filter((e) => e.unitId === unitId && state.day - e.day < TUNING.demands.weekDays).length;
 var hasOpen = (state, unitId) => (state.discipline?.demands ?? []).some((d) => d.unitId === unitId);
@@ -33003,7 +33052,7 @@ function pay(draft, ctx2, unit5, cost) {
     case "squad_stress": {
       const out = [];
       for (const u of draft.squad.filter((x) => x.id !== unit5.id && isLiving(x))) {
-        const next = clamp33(u.stress + cost.amount, 0, 100);
+        const next = clamp34(u.stress + cost.amount, 0, 100);
         if (next !== u.stress) out.push({ type: "stress_changed", unitId: u.id, delta: next - u.stress });
         u.stress = next;
       }
@@ -33115,7 +33164,7 @@ function demandDayStep(draft, ctx2) {
 
 // src/engine/special/debts/discovery.ts
 var T3 = () => TUNING.special.debts;
-var clamp34 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp35 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var fill2 = (text3, vars) => Object.entries(vars).reduce((t, [k, v]) => t.replaceAll(`{${k}}`, v), text3);
 var named3 = (state, id) => state.squad.some((u) => u.id === id && u.kind === "named" && isLiving(u));
 function templateOf4(ctx2, context) {
@@ -33232,14 +33281,14 @@ function debtsChoice(draft, ctx2, context, optionId, subjectId) {
       const own = draft.commander.corporationId;
       if (own !== null) draft.world.factions[own] = Math.min(draft.world.factions[own] ?? 0, T3().hostileAt);
       const rival = d.corporationId;
-      draft.world.factions[rival] = clamp34((draft.world.factions[rival] ?? 0) + 20, -100, 100);
+      draft.world.factions[rival] = clamp35((draft.world.factions[rival] ?? 0) + 20, -100, 100);
       d.ended = "fled";
     }
     events.push({ type: "defector_arc", outcome: optionId });
     return events;
   }
   if (context !== "debts_unit" || subjectId === void 0) return [];
-  if (optionId === "report") d.oversightSuspicion = clamp34(d.oversightSuspicion + 40, 0, 100);
+  if (optionId === "report") d.oversightSuspicion = clamp35(d.oversightSuspicion + 40, 0, 100);
   else if (optionId === "protect_commander") {
     const kind = [...reg.secretKinds.values()].find((k) => k.source === "debts");
     const name = draft.squad.find((u) => u.id === subjectId)?.displayName ?? "";
@@ -33249,7 +33298,7 @@ function debtsChoice(draft, ctx2, context, optionId, subjectId) {
 }
 
 // src/engine/special/debts/intel.ts
-var clamp35 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp36 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function intelOf(state, reg) {
   const d = state.special?.debts;
   const seen2 = new Set(d?.answered ?? []);
@@ -33301,7 +33350,7 @@ function leak(draft, ctx2, d) {
     if (flags && !flags.includes("knows_debts")) flags.push("knows_debts");
   }
   addFact(draft, { about: ["commander"], text: "The commander sold intel to a rival corporation, and the rival has made it public.", tags: ["debts"], importance: 5, day: draft.day, knownBy: ["*"] });
-  d.oversightSuspicion = clamp35(d.oversightSuspicion + Math.round(25 * coverMult(draft, ctx2.registries)), 0, 100);
+  d.oversightSuspicion = clamp36(d.oversightSuspicion + Math.round(25 * coverMult(draft, ctx2.registries)), 0, 100);
   d.ended = "leaked";
   events.push({ type: "handler_leak" });
   return events;
@@ -33326,7 +33375,7 @@ function settle3(draft, ctx2, d, answers2, spendNight) {
       events.push({ type: "resource_changed", resource: k, amount: pay2[k] });
     }
   }
-  d.handlerPressure = clamp35(d.handlerPressure + counts.withhold * 10 - counts.truth * 5, 0, 100);
+  d.handlerPressure = clamp36(d.handlerPressure + counts.withhold * 10 - counts.truth * 5, 0, 100);
   scheduleConsequences(draft, ctx2, visit, answers2);
   d.answered.push(...visit.items.map((i) => i.id));
   delete d.visit;
@@ -33894,7 +33943,7 @@ var slug2 = (name) => {
   const s = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   return s === "" ? "unit" : s;
 };
-var clamp36 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp37 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var crimeEffectsOf = (crime) => [...effectsOf6(crime.perk), ...effectsOf6(crime.flaw)];
 var crimeKnownByDefault = (crime, start2) => crime.knownByDefault === true || start2?.crimeKnownByDefault === true;
 function startingTrustAdjust(effects2, values) {
@@ -33911,7 +33960,7 @@ function startingTrustAdjust(effects2, values) {
   return sum;
 }
 function initialRelation(o) {
-  const trust = clamp36(o.trust, 0, 100);
+  const trust = clamp37(o.trust, 0, 100);
   return {
     trust,
     affinity: o.affinity,
@@ -36216,7 +36265,7 @@ function releaseCheck(state, reg, run) {
   const all = [releaseOf(state, reg, run), ...second && run.sourceKind !== "activity" ? [releaseOf(state, reg, second)] : []];
   return all.reduce((w, r) => WORST.indexOf(r) > WORST.indexOf(w) ? r : w, "continue");
 }
-var gone2 = (scene, run) => !sourceHere(scene, run.sourceKind, run.sourceId, run.holderId);
+var gone3 = (scene, run) => !sourceHere(scene, run.sourceKind, run.sourceId, run.holderId);
 function framedContactPhysics(state, reg, holderId) {
   const contact = state.scene ? contactOf(state.scene) : void 0;
   if (!contact || ![contact.with, ...Object.entries(state.scene?.blocking ?? {}).filter(([, b]) => b.contact?.id === contact.id).map(([k]) => k)].includes(holderId)) return [];
@@ -36265,7 +36314,7 @@ registerAfterChange((draft, reg, change) => {
   const events = [];
   dropOrphanAct(draft);
   const run = draft.scene?.physics;
-  if (run && gone2(draft.scene, run)) events.push(...stopPhysics(draft, reg, "released"));
+  if (run && gone3(draft.scene, run)) events.push(...stopPhysics(draft, reg, "released"));
   const framed = draft.scene?.physics;
   if (framed?.sourceKind === "activity" && framed.second && !framedContactPhysics(draft, reg, framed.holderId).some((p) => p.id === framed.second.physicsId)) delete framed.second;
   if (!draft.scene?.physics && PLACING.has(change.field) && change.value !== void 0) events.push(...startFrame(draft, reg));
@@ -36284,7 +36333,7 @@ registerWithdrawal((draft, reg, removed) => {
   if (!run) return [];
   const tags = (e) => Array.isArray(e?.contentTags) ? e.contentTags : [];
   const hit = [...tags(sourceEntry(reg, run.sourceKind, run.sourceId)), ...tags(reg.contactPhysics.get(run.physicsId)), ...tags(run.second ? reg.contactPhysics.get(run.second.physicsId) : void 0)].some((t) => removed.includes(t));
-  return hit || gone2(draft.scene, run) ? stopPhysics(draft, reg, "stopped") : [];
+  return hit || gone3(draft.scene, run) ? stopPhysics(draft, reg, "stopped") : [];
 });
 
 // src/engine/physics/boundary.ts
@@ -36990,9 +37039,9 @@ function notesDayStep(draft, ctx2) {
   const events = [];
   if (draft.notes) {
     draft.notes.list = draft.notes.list.filter((n) => namedLiving8(draft, n.unitId) !== null);
-    const gone3 = draft.notes.list.length;
+    const gone4 = draft.notes.list.length;
     draft.notes.list = draft.notes.list.filter((n) => alive(draft, n));
-    if (draft.notes.list.length < gone3) events.push({ type: "notes_expired", count: gone3 - draft.notes.list.length });
+    if (draft.notes.list.length < gone4) events.push({ type: "notes_expired", count: gone4 - draft.notes.list.length });
   }
   const daily = entriesFor(ctx2.registries, "daily");
   for (const unit5 of draft.squad) {
@@ -37237,7 +37286,7 @@ registerAction("night/ignore", (draft, _payload, ctx2) => {
 registerAction("relations/commander_injured", (draft, _payload, ctx2) => rollNight(draft, ctx2.registries, ctx2.rng, "commander_injured"));
 
 // src/engine/warden/leash.ts
-var clamp37 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp38 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var SLOTS5 = ["morning", "afternoon", "evening"];
 function cosignChance(state, _reg, _targetId) {
   const w = wardenOf(state);
@@ -37245,7 +37294,7 @@ function cosignChance(state, _reg, _targetId) {
   const C3 = TUNING.warden.cosign;
   const unit5 = state.squad.find((u) => u.id === w.unitId);
   const affinity = state.relations[w.unitId]?.affinity ?? 0;
-  return clamp37(C3.base + C3.perSatisfaction * (w.satisfaction - 50) + C3.corporate * (unit5 ? valuesOf(unit5).corporate : 0) - C3.mercy * (unit5 ? valuesOf(unit5).mercy : 0) + C3.perAffinity * affinity, C3.min, C3.max);
+  return clamp38(C3.base + C3.perSatisfaction * (w.satisfaction - 50) + C3.corporate * (unit5 ? valuesOf(unit5).corporate : 0) - C3.mercy * (unit5 ? valuesOf(unit5).mercy : 0) + C3.perAffinity * affinity, C3.min, C3.max);
 }
 function rollCosign(draft, ctx2, targetId, kind) {
   const w = wardenOf(draft);
@@ -37281,7 +37330,7 @@ function refreshWardenLeash(draft, _reg) {
 
 // src/engine/warden/removal.ts
 var INVESTIGATION_CLOCK = "investigation";
-var clamp38 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp39 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var fill4 = (text3, vars) => Object.entries(vars).reduce((t, [k, v]) => t.replaceAll(`{${k}}`, v), text3);
 function reactionAxes(draft, wardenId, route) {
   const her = draft.squad.find((u) => u.id === wardenId);
@@ -37324,7 +37373,7 @@ function wardenGone(draft, ctx2, how) {
 }
 function reportChance(state, _reg) {
   const R11 = TUNING.warden.verdict.report;
-  return clamp38(R11.base + R11.perKompromat * (kompromatOf(state).length - TUNING.warden.kompromat.needed) + R11.perCunning * (socialRank(state, "cunning") - 1), R11.min, R11.max);
+  return clamp39(R11.base + R11.perKompromat * (kompromatOf(state).length - TUNING.warden.kompromat.needed) + R11.perCunning * (socialRank(state, "cunning") - 1), R11.min, R11.max);
 }
 var REPORT_CONTEXT = "warden_report";
 function presentReport(draft, ctx2) {
@@ -37420,7 +37469,7 @@ function verdictChance(state, _reg) {
   const V3 = TUNING.warden.verdict;
   const route = ls?.removal?.route ?? "death";
   const discovered = (ls?.intrigue.discovered ?? 0) > 0 ? 1 : 0;
-  return clamp38(V3.base[route] + V3.perCunning * (socialRank(state, "cunning") - 1) - V3.discovered * discovered + V3.perAlly * allies(state).length, V3.min, V3.max);
+  return clamp39(V3.base[route] + V3.perCunning * (socialRank(state, "cunning") - 1) - V3.discovered * discovered + V3.perAlly * allies(state).length, V3.min, V3.max);
 }
 function rollVerdict(draft, ctx2) {
   const ls = leashswapOf(draft);
@@ -38226,9 +38275,9 @@ function personalDayStep(draft, ctx2) {
       if (!isLiving(unit5) && holdsPersonal(draft, unit5.id)) forgetPersonal(draft, unit5.id);
     }
   }
-  const gone3 = draft.squad.filter((u) => !isLiving(u) && holdsDynamic(draft, u.id)).flatMap((u) => forgetDynamic(draft, u.id));
-  gone3.push(...draft.squad.filter((u) => !isLiving(u) && holdsPractices(draft, u.id)).flatMap((u) => forgetPractices(draft, u.id)));
-  return [...gone3, ...decorDayStep(draft, ctx2), ...interceptDayStep(draft), ...lapseBookings(draft), ...rollBookings(draft, ctx2), ...rollClaims(draft, ctx2), ...tokenDayStep(draft, ctx2), ...wagerDayStep(draft, ctx2), ...secretDayStep(draft, ctx2.registries), ...rollSecretNight(draft, ctx2)];
+  const gone4 = draft.squad.filter((u) => !isLiving(u) && holdsDynamic(draft, u.id)).flatMap((u) => forgetDynamic(draft, u.id));
+  gone4.push(...draft.squad.filter((u) => !isLiving(u) && holdsPractices(draft, u.id)).flatMap((u) => forgetPractices(draft, u.id)));
+  return [...gone4, ...decorDayStep(draft, ctx2), ...interceptDayStep(draft), ...lapseBookings(draft), ...rollBookings(draft, ctx2), ...rollClaims(draft, ctx2), ...tokenDayStep(draft, ctx2), ...wagerDayStep(draft, ctx2), ...secretDayStep(draft, ctx2.registries), ...rollSecretNight(draft, ctx2)];
 }
 
 // src/engine/actions/personal.ts
@@ -38783,9 +38832,9 @@ function wardenDayStep(draft, _ctx) {
   if (!w) return inquiry;
   const events = [...inquiry, ...openQueuedReport(draft, _ctx)];
   w.defiance = Math.max(0, w.defiance - TUNING.warden.defiance.decayPerDay);
-  const gone3 = w.restrictions.filter((r) => r.untilDay <= draft.day);
-  if (gone3.length > 0) w.restrictions = w.restrictions.filter((r) => r.untilDay > draft.day);
-  return [...events, ...gone3.map((r) => ({ type: "commander_restriction_ended", what: r.what }))];
+  const gone4 = w.restrictions.filter((r) => r.untilDay <= draft.day);
+  if (gone4.length > 0) w.restrictions = w.restrictions.filter((r) => r.untilDay > draft.day);
+  return [...events, ...gone4.map((r) => ({ type: "commander_restriction_ended", what: r.what }))];
 }
 
 // src/engine/actions/warden.ts
@@ -39770,7 +39819,7 @@ function flowEnded(state, run, full) {
 // src/engine/physics/segment.ts
 var stillnessOf = (_state) => 0;
 var P3 = TUNING.physics;
-var clamp39 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp40 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function rhythmOffset(state, unitId) {
   return fnv1a3(`${state.life?.salt ?? 0}|${unitId}|rhythm`) % 3;
 }
@@ -39840,7 +39889,7 @@ function frameWeights(state, reg, run, word2, key) {
   const a = [w0, g0, Math.max(0, 1 - w0 - g0)];
   const b = ATT_BY_STEP[presenceOf2(state, reg, run, run.marathon?.phase ?? 1)];
   const p = [0, 1, 2].map((i) => 0.4 * a[i] + 0.6 * b[i]);
-  p[0] = clamp39(p[0] + (PRESENCE_WATCH[key] ?? 0), 0, 1);
+  p[0] = clamp40(p[0] + (PRESENCE_WATCH[key] ?? 0), 0, 1);
   const sum = p[0] + p[1] + p[2];
   return [p[0] / sum, p[1] / sum];
 }
@@ -39877,10 +39926,11 @@ function planJaw(beats, state, run, row4) {
 }
 function sealNow(run, sealLevel) {
   const at2 = SEALS.indexOf(run.seal ?? "tight");
-  return SEALS[clamp39(at2 + Math.floor(sealLevel / 2), 0, SEALS.length - 1)];
+  return SEALS[clamp40(at2 + Math.floor(sealLevel / 2), 0, SEALS.length - 1)];
 }
 function resolveEnvOf(state, reg, run) {
   const phys = reg.contactPhysics.get(run.physicsId);
+  const warmth = physicsMannerOf(state, run.holderId, reg)?.warmth ?? 0;
   return {
     gaugeKind: phys.gauge.kind,
     interaction: String(phys.interaction),
@@ -39889,7 +39939,8 @@ function resolveEnvOf(state, reg, run) {
     // R19: her own band, of the part she presses (a contact's target; an item has none: the rest of her)
     band: scentBand(state, reg, run.holderId, run.sourceKind === "contact" ? contactTargetOf(state.scene, reg, run.sourceId) ?? run.targetId : void 0),
     head: headCapacity(scentToleranceOf(state, reg, run.holderId)),
-    ...run.sourceKind === "activity" ? { longHold: LONG_HOLD[sceneSettingsOf(state).longHoldStrain] } : {}
+    ...run.sourceKind === "activity" ? { longHold: LONG_HOLD[sceneSettingsOf(state).longHoldStrain] } : {},
+    ...warmth !== 0 ? { warmth } : {}
   };
 }
 function share(kind, gauge, capacity2) {
@@ -39919,7 +39970,7 @@ function resolveSegment(run, plan, inputs, env) {
   const rest = env.interaction === "gesture" ? live3.find((i) => i.kind === "ask_rest") : void 0;
   const bitten = env.interaction === "gesture" && live3.some((i) => i.kind === "bite" && i.part !== "teeth");
   const run_ = rest && !bitten ? Math.min(plan.beats.length, rest.beat + 1) : plan.beats.length;
-  const restGranted = rest !== void 0 && !["cruel", "vindictive"].includes(leadStyle(env.style).key);
+  const restGranted = rest !== void 0 && ((env.warmth ?? 0) >= 2 || (env.warmth ?? 0) > -2 && !["cruel", "vindictive"].includes(leadStyle(env.style).key));
   const cap9 = run.capacity;
   const cruel = leadStyle(env.style).key === "cruel";
   const r = {
@@ -40079,7 +40130,7 @@ function resolveSegment(run, plan, inputs, env) {
       }
     }
     if (scale !== 1) r.gauge = Math.round((beatStart + (r.gauge - beatStart) * scale) * 100) / 100;
-    r.gauge = clamp39(r.gauge, 0, env.gaugeKind === "dirt" || env.gaugeKind === "progress" ? 100 : cap9);
+    r.gauge = clamp40(r.gauge, 0, env.gaugeKind === "dirt" || env.gaugeKind === "progress" ? 100 : cap9);
     if (env.longHold !== void 0 && env.interaction === "hold" && r.gauge <= 0) {
       r.gauge = 0.35 * cap9;
       r.buckles = (r.buckles ?? 0) + 1;
@@ -40709,7 +40760,7 @@ registerAction("life/pastime_in_scene", (draft, payload, ctx2) => {
 var OVERSIGHT_CLOCK = "oversight_inquiry";
 var THREAD = "oversight_inquiry";
 var OVERSIGHT_ACTS = ["reprimand", "transfer_threat", "forced_leash"];
-var clamp40 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp41 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var stage = (s, extra = {}) => ({ type: "oversight_inquiry", stage: s, ...extra });
 function oversightActOf(state, holderId) {
   return OVERSIGHT_ACTS[Math.min(OVERSIGHT_ACTS.length - 1, Math.floor(dynamicRoll(state, holderId, "oversight_acts") * OVERSIGHT_ACTS.length))];
@@ -40740,7 +40791,7 @@ var NOTICE_TEXT = {
 function addStress3(draft, unitId, amount) {
   const u = draft.squad.find((x) => x.id === unitId);
   if (u === void 0 || amount === 0) return [];
-  const next = clamp40(u.stress + amount, 0, 100);
+  const next = clamp41(u.stress + amount, 0, 100);
   const delta = next - u.stress;
   u.stress = next;
   return delta === 0 ? [] : [{ type: "stress_changed", unitId, delta }];
@@ -41036,6 +41087,7 @@ function installDynamicHooks() {
   registerBlockingGate(gate);
   registerPhysicsStyle(styleReader);
   registerHoldsUntil(holdsReader);
+  registerPhysicsManner((state, unitId, reg) => reg === void 0 || liveDynamic(state, unitId) === void 0 ? null : mannerOf(state, reg, unitId)?.axes ?? null);
   registerPresenceTerms((state, reg, unitId) => {
     const dyn = dynamicOn(state, reg) ? liveDynamic(state, unitId) : void 0;
     if (dyn === void 0) return null;
@@ -41718,7 +41770,8 @@ function namePosture(draft, ctx2, holderId, postureId, name) {
 function postureWindowMs(state, reg, holderId) {
   const T5 = TUNING.practice.posture.windowMs;
   const style = practiceOf(state, reg, holderId)?.style.primary;
-  return style === "ritual" ? T5.ritual : style === "drill" ? T5.drill : T5.other;
+  const base2 = style === "ritual" ? T5.ritual : style === "drill" ? T5.drill : T5.other;
+  return bendBy(state, reg, holderId, "tempo", base2, { scale: -TUNING.manner.scale });
 }
 function callPosture(draft, ctx2, events) {
   const scene = draft.scene;
@@ -51894,10 +51947,10 @@ function clearBlockingDirectives(builder) {
 }
 
 // src/ui/scene/instruments/kit/math.ts
-var clamp41 = (x, a, b) => Math.min(b, Math.max(a, x));
+var clamp42 = (x, a, b) => Math.min(b, Math.max(a, x));
 var lerp2 = (a, b, t) => a + (b - a) * t;
 var smooth = (e0, e1, x) => {
-  const t = clamp41((x - e0) / (e1 - e0), 0, 1);
+  const t = clamp42((x - e0) / (e1 - e0), 0, 1);
   return t * t * (3 - 2 * t);
 };
 
@@ -51943,12 +51996,12 @@ function placeFree(host, el, x, y) {
   const innerWidth11 = f.W, innerHeight11 = f.H;
   const rects = liveTextRects(host, el).map((r) => ({ left: r.left - f.left, right: r.right - f.left, top: r.top - f.top, bottom: r.bottom - f.top }));
   const w = el.offsetWidth, h2 = el.offsetHeight, gap = 6, maxY = innerHeight11 * 0.8 - h2;
-  x = clamp41(x, 16, innerWidth11 - w - 24);
+  x = clamp42(x, 16, innerWidth11 - w - 24);
   const hits = (yy2) => rects.find((r) => x < r.right + gap && x + w > r.left - gap && yy2 < r.bottom + gap && yy2 + h2 > r.top - gap);
-  let yy = clamp41(y, 12, Math.max(12, maxY)), hit, n = 0;
+  let yy = clamp42(y, 12, Math.max(12, maxY)), hit, n = 0;
   while ((hit = hits(yy)) && n++ < 30) yy = hit.bottom + gap;
   if (yy > maxY) {
-    yy = clamp41(y, 12, Math.max(12, maxY));
+    yy = clamp42(y, 12, Math.max(12, maxY));
     n = 0;
     while ((hit = hits(yy)) && n++ < 30) yy = hit.top - gap - h2;
     yy = Math.max(12, yy);
@@ -51977,7 +52030,7 @@ function say(host, text3, opts) {
   const { W: innerWidth11, H: innerHeight11 } = frameOf4(host);
   const p = opts.at ?? [0.6, 0.16];
   const els = [];
-  let x = clamp41(p[0] + 0.04, 0.03, 0.7) * innerWidth11 + hashRand(`${text3}|x`, -15, 15), y = clamp41(p[1] + 0.02, 0.03, 0.8) * innerHeight11, delay = 0;
+  let x = clamp42(p[0] + 0.04, 0.03, 0.7) * innerWidth11 + hashRand(`${text3}|x`, -15, 15), y = clamp42(p[1] + 0.02, 0.03, 0.8) * innerHeight11, delay = 0;
   const rot = opts.tilt === false ? "0.0" : hashRand(`${text3}|rot`, -4, 3).toFixed(1);
   for (const line3 of lines3) {
     const el = document.createElement("div");
@@ -52870,7 +52923,7 @@ function bandNow() {
     const base2 = 0.42 + G2.push;
     const w = G2.order === "suck" ? st().suck : G2.order === "wide" ? 0.16 : 0.2;
     const lo = G2.order === "wide" ? Math2.min(base2 + 0.14, WIDE_MAX - w) : base2;
-    return [clamp41(lo, 0.1, WIDE_MAX), clamp41(lo + w, 0.2, WIDE_MAX)];
+    return [clamp42(lo, 0.1, WIDE_MAX), clamp42(lo + w, 0.2, WIDE_MAX)];
   }
   if (G2.order === "wide") return [Math2.min(0.78, WIDE_MAX - 0.14), WIDE_MAX];
   return null;
@@ -52881,13 +52934,13 @@ function herMove() {
   if (c === "sole_to_mouth") {
     if (r < 0.32) {
       SFX.cloth(0.3);
-      G2.pushTarget = clamp41(G2.push + s.deep, 0, 0.28);
+      G2.pushTarget = clamp42(G2.push + s.deep, 0, 0.28);
       G2.order = null;
       setTimeout2(() => {
         if (G2.phase === "loop") say2(pick3(L().deeper));
       }, 250);
     } else if (r < 0.5) {
-      G2.pushTarget = clamp41(G2.push - 0.1, -0.1, 0.35);
+      G2.pushTarget = clamp42(G2.push - 0.1, -0.1, 0.35);
       SFX.cloth(0.2);
       if (Math2.random() < 0.4) say2(pick3(L().out));
     } else if (r < 0.75) {
@@ -52996,7 +53049,7 @@ function update(dt) {
     G2.jaw = 1;
     if (G2.v > 0) G2.v = 0;
   }
-  G2.jaw = clamp41(G2.jaw, 0, 1);
+  G2.jaw = clamp42(G2.jaw, 0, 1);
   const band2 = bandNow();
   G2.band = band2;
   if (G2.order) {
@@ -53033,7 +53086,7 @@ function update(dt) {
   } else {
     const relaxed = S2.contact === "ring_gag" ? S2.ring : 0.42 + G2.push;
     const above = G2.jaw - relaxed - RELAX_ZONE;
-    G2.cost = RELAXED + (1 - RELAXED) * clamp41(above / 0.25, 0, 1) + WIDE_COST * Math2.max(0, above - 0.25) / 0.4;
+    G2.cost = RELAXED + (1 - RELAXED) * clamp42(above / 0.25, 0, 1) + WIDE_COST * Math2.max(0, above - 0.25) / 0.4;
     G2.f = Math2.min(100, G2.f + JAW_PER / BEAT * dt * S2.rate * G2.cost / (1 + SKILL_CAP * S2.skill));
   }
   if (G2.restKey && G2.resting <= 0 && !G2.restAsked) {
@@ -53083,7 +53136,7 @@ function render(now, dt) {
   const m = $("#mouth");
   m.style.height = `${h2.toFixed(1)}px`;
   m.style.transform = `translate(${tremble.toFixed(1)}px, ${(-R4.lift).toFixed(1)}px)`;
-  const burn = clamp41(0.15 + 0.85 * smooth(10, 95, G2.f), 0, 1) * clamp41(((G2.cost ?? RELAXED) - 0.2) / 1.2, 0.12, 1) * (0.9 + 0.1 * Math2.sin(now / 140));
+  const burn = clamp42(0.15 + 0.85 * smooth(10, 95, G2.f), 0, 1) * clamp42(((G2.cost ?? RELAXED) - 0.2) / 1.2, 0.12, 1) * (0.9 + 0.1 * Math2.sin(now / 140));
   $("#inputWrap").style.setProperty("--ache", (G2.phase === "loop" && G2.resting <= 0 ? burn : 0).toFixed(3));
   $("#inputWrap").style.borderColor = G2.flashT !== void 0 && G2.flashT < 300 ? "rgba(255,120,90,.9)" : "rgba(255,255,255,.12)";
   if (G2.flashT !== void 0) G2.flashT += dt;
@@ -53102,7 +53155,7 @@ function render(now, dt) {
     el.classList.toggle("hot", id === "#bandLo" && G2.jaw < v - TEETH_GAP);
   }
   $("#restRing").style.opacity = G2.restHold > 0 ? "1" : "0";
-  $("#restArc").setAttribute("stroke-dashoffset", String(75.4 * (1 - clamp41(G2.restHold / REST_HOLD, 0, 1))));
+  $("#restArc").setAttribute("stroke-dashoffset", String(75.4 * (1 - clamp42(G2.restHold / REST_HOLD, 0, 1))));
   const sm = smooth(DEGRADE_AT - 20, 100, G2.f);
   $("#mirror").style.textShadow = sm > 0 ? `${(2 + 4 * sm).toFixed(1)}px 0 ${(1 + 2 * sm).toFixed(1)}px rgba(236,232,242,${(0.35 * sm).toFixed(2)}), 0 0 ${(2 * sm).toFixed(1)}px rgba(236,232,242,.5)` : "none";
   $("#mirror").style.filter = sm > 0 ? `blur(${(0.6 * sm).toFixed(2)}px)` : "none";
@@ -53241,7 +53294,7 @@ function refreshLines(beat) {
 function beatNow() {
   const seg = R4.seg;
   if (!seg) return 0;
-  return clamp41(Math2.floor((G2.t - seg.clock0) / BEAT), 0, seg.beats - 1);
+  return clamp42(Math2.floor((G2.t - seg.clock0) / BEAT), 0, seg.beats - 1);
 }
 function report(i, pointer) {
   if (!E || !R4.seg || !R4.running) return;
@@ -53278,7 +53331,7 @@ function startSegment(run, ck) {
   R4.plan = plan.beats;
   R4.acc = 0;
   R4.accMs = 0;
-  G2.f = clamp41(100 * run.gauge / Math2.max(1, run.capacity) + (G2.resting > 0 ? JAW_REST / REST_MS * G2.resting : 0), 0, 100);
+  G2.f = clamp42(100 * run.gauge / Math2.max(1, run.capacity) + (G2.resting > 0 ? JAW_REST / REST_MS * G2.resting : 0), 0, 100);
   for (let b = 0; b < Math2.min(first2, plan.beats.length); b++) reportBeat(R4.seg.reported++, false);
 }
 function absorb() {
@@ -53528,7 +53581,7 @@ function listen(env) {
   const onMouth = (t) => t instanceof Node && E !== null && E.line.contains(t) && !control2(t);
   env.listen(document, "pointermove", (e) => {
     const r = env.root.getBoundingClientRect();
-    G2.target = clamp41((e.clientY - r.top - H0()) / ((innerHeight2 || r.height || 1) * 0.48), 0, 1.6);
+    G2.target = clamp42((e.clientY - r.top - H0()) / ((innerHeight2 || r.height || 1) * 0.48), 0, 1.6);
   });
   env.listen(env.root, "keydown", (e) => {
     if (e.target !== env.input || e.isComposing) return;
@@ -59560,7 +59613,7 @@ function renderHubDayLine(host, state, reg, unitId) {
 var SVG_NS4 = "http://www.w3.org/2000/svg";
 var POINTS = 48;
 var unit2 = (seed8, i) => fnv1a3(`${seed8}${i}`) % 1e3 / 1e3;
-var clamp42 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
+var clamp43 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
 function tracePoints(pattern, seed8, n = POINTS, flicker = false) {
   const out = [];
   const blip = fnv1a3(seed8) % n;
@@ -59584,7 +59637,7 @@ function tracePoints(pattern, seed8, n = POINTS, flicker = false) {
         v = flicker && i === blip ? 0.9 : 0.5;
         break;
     }
-    out.push(clamp42(v));
+    out.push(clamp43(v));
   }
   return out;
 }
@@ -60557,7 +60610,7 @@ function memoryBlock(unit5, ctx2, state) {
   return host;
 }
 function unitBlock(unit5, ctx2, state) {
-  const gone3 = unit5.status === "dead" || unit5.status === "deserted" || unit5.status === "terminated";
+  const gone4 = unit5.status === "dead" || unit5.status === "deserted" || unit5.status === "terminated";
   const reg = ctx2.registries;
   const raw = ctx2.settings().showRawValues;
   const s = effectiveStats(unit5, ctx2, state);
@@ -60581,7 +60634,7 @@ function unitBlock(unit5, ctx2, state) {
       h("p", {}, roleEntry ? chip2(nameOf19(roleEntry, unit5.roleId), `roles:${unit5.roleId}`) : nameOf19(roleEntry, unit5.roleId), ` \xB7 LVL ${unit5.level}`),
       h("p", { class: "alius-xp" }, chip2(`XP ${unit5.xp}/${xpToNext(unit5.level)}`, "glossary:level_xp"), " \xB7 ", chip2(`SKILL POINTS ${unit5.skillPoints}`, "glossary:skill_points")),
       unit5.breakdown ? h("p", { class: "alius-equip-flag" }, `BREAKDOWN: ${String(reg.defects.get(unit5.breakdown.defectId)?.breakdown?.name ?? unit5.breakdown.defectId)}`) : null,
-      gone3 ? h("p", { class: "alius-equip-flag" }, `STATUS: ${unit5.status.toUpperCase()}`) : null
+      gone4 ? h("p", { class: "alius-equip-flag" }, `STATUS: ${unit5.status.toUpperCase()}`) : null
     )
   });
   dossier.querySelector(".alius-voice-title").classList.add("alius-unit-name");
@@ -60594,31 +60647,31 @@ function unitBlock(unit5, ctx2, state) {
       { class: "alius-unit-body" },
       dossier,
       relationLine(unit5, state, ctx2),
-      !gone3 && state.relations[unit5.id] ? h("p", { class: "alius-loyalty" }, chip2(`LOYALTY: ${state.relations[unit5.id].loyaltyBand.toUpperCase()}`, "glossary:loyalty_band")) : null,
-      gone3 ? null : h("p", { class: "alius-disposition" }, h("span", { class: "alius-chip", "data-disposition": unit5.id, ...analyzeAttrs("glossary:disposition", live3) }, `Disposition: ${String(dispositionFor(state, reg, unit5).name)}`)),
-      gone3 ? null : bondBlock(unit5, state, ctx2),
-      gone3 ? null : dynamicSection(unit5, ctx2, state),
+      !gone4 && state.relations[unit5.id] ? h("p", { class: "alius-loyalty" }, chip2(`LOYALTY: ${state.relations[unit5.id].loyaltyBand.toUpperCase()}`, "glossary:loyalty_band")) : null,
+      gone4 ? null : h("p", { class: "alius-disposition" }, h("span", { class: "alius-chip", "data-disposition": unit5.id, ...analyzeAttrs("glossary:disposition", live3) }, `Disposition: ${String(dispositionFor(state, reg, unit5).name)}`)),
+      gone4 ? null : bondBlock(unit5, state, ctx2),
+      gone4 ? null : dynamicSection(unit5, ctx2, state),
       // P15: her hold, frame, domains and the way out
-      gone3 ? null : disciplineLine(unit5, state, ctx2),
-      gone3 ? null : hierarchyBlock(unit5, state, ctx2),
-      gone3 ? null : renderDeviceBlock(state, ctx2.registries, unit5.id, { onPeel: (id, part) => ctx2.onPeel?.(id, part), onCancel: (id) => ctx2.onCancelBooking?.(id) }),
+      gone4 ? null : disciplineLine(unit5, state, ctx2),
+      gone4 ? null : hierarchyBlock(unit5, state, ctx2),
+      gone4 ? null : renderDeviceBlock(state, ctx2.registries, unit5.id, { onPeel: (id, part) => ctx2.onPeel?.(id, part), onCancel: (id) => ctx2.onCancelBooking?.(id) }),
       unit5.kind === "named" ? memoryBlock(unit5, ctx2, state) : null,
       unit5.kind === "named" ? developmentBlock(unit5, ctx2, state) : null,
       // P14b
-      gone3 ? null : lifeProfileBlock(unit5, ctx2, state),
+      gone4 ? null : lifeProfileBlock(unit5, ctx2, state),
       // P14c
-      gone3 ? null : dynamicProfileBlock(unit5, ctx2, state),
+      gone4 ? null : dynamicProfileBlock(unit5, ctx2, state),
       // P15: her practice and what she expects (hidden: only while the edit lock is off)
-      gone3 ? null : lifeViewBlock(unit5, ctx2, state),
+      gone4 ? null : lifeViewBlock(unit5, ctx2, state),
       // P14c: what she has told and said
-      gone3 || !ctx2.onWager ? null : renderChallenge(state, ctx2.registries, unit5.id, (choice) => ctx2.onWager?.(unit5.id, choice)),
-      gone3 ? null : restrictionLine(unit5, state),
-      gone3 || !ctx2.onPunish || unit5.kind !== "named" ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit5.id, onPunish: (measure2, days) => ctx2.onPunish(unit5.id, measure2, days) }),
-      gone3 ? null : h("p", { class: "alius-stress" }, chip2(`STRESS ${stressBand2(unit5.stress).toUpperCase()}${raw ? ` (${unit5.stress})` : ""}`, "glossary:stress", live3)),
-      gone3 ? null : renderVitalsBlock(state, reg, unit5.id, { motion: !motionReduced(ctx2.settings()) }),
-      gone3 ? null : handSelect(unit5, state, ctx2),
-      gone3 ? null : quartersSelect(unit5, state, ctx2),
-      gone3 ? null : leashMenu(unit5, ctx2),
+      gone4 || !ctx2.onWager ? null : renderChallenge(state, ctx2.registries, unit5.id, (choice) => ctx2.onWager?.(unit5.id, choice)),
+      gone4 ? null : restrictionLine(unit5, state),
+      gone4 || !ctx2.onPunish || unit5.kind !== "named" ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit5.id, onPunish: (measure2, days) => ctx2.onPunish(unit5.id, measure2, days) }),
+      gone4 ? null : h("p", { class: "alius-stress" }, chip2(`STRESS ${stressBand2(unit5.stress).toUpperCase()}${raw ? ` (${unit5.stress})` : ""}`, "glossary:stress", live3)),
+      gone4 ? null : renderVitalsBlock(state, reg, unit5.id, { motion: !motionReduced(ctx2.settings()) }),
+      gone4 ? null : handSelect(unit5, state, ctx2),
+      gone4 ? null : quartersSelect(unit5, state, ctx2),
+      gone4 ? null : leashMenu(unit5, ctx2),
       unit5.bio ? h("p", { class: "alius-dim" }, unit5.bio) : null,
       h("p", {}, ...joinWith([
         stat3(`HP ${s.hp}`, "glossary:stat_hp", live3),
@@ -60630,7 +60683,7 @@ function unitBlock(unit5, ctx2, state) {
       equipmentBlock(unit5, ctx2, state),
       progressionBlock(unit5, ctx2, state),
       h("h4", {}, "DEFECTS"),
-      ...unit5.defects.flatMap((d) => [defectBlock(reg, d), gone3 ? null : arcBlock(unit5, d, ctx2)]),
+      ...unit5.defects.flatMap((d) => [defectBlock(reg, d), gone4 ? null : arcBlock(unit5, d, ctx2)]),
       h("h4", {}, "VALUES"),
       h("p", { class: "alius-values" }, ...joinWith(values, " \xB7 ")),
       ...unit5.kind === "grunt" ? [] : [
@@ -61310,7 +61363,7 @@ var DULL_HZ = 380;
 var DULL_SMOOTH_S = 0.15;
 var SILENCE2 = 1e-4;
 var FADE_S = 0.03;
-var clamp43 = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+var clamp44 = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 function browserAudio2() {
   const g = globalThis;
   const Ctor = g.AudioContext ?? g.webkitAudioContext;
@@ -61332,7 +61385,7 @@ function createSamples(deps) {
     const s = deps.settings();
     return s.soundMuted ? 0 : s.soundVolume / 100 * (night ? NIGHT_GAIN : 1) * (muffle ? MUFFLE_GAIN : 1) * (sensory ? TUNING.practice.hold.sensoryVolume : 1);
   };
-  const dullHz = () => CLEAR_HZ * Math.pow(DULL_HZ / CLEAR_HZ, clamp43(dull, 0, 1));
+  const dullHz = () => CLEAR_HZ * Math.pow(DULL_HZ / CLEAR_HZ, clamp44(dull, 0, 1));
   const GESTURES = ["pointerdown", "keydown", "touchstart"];
   const userActive = () => gestured || typeof navigator !== "undefined" && navigator.userActivation?.hasBeenActive === true;
   const stopWatching = () => {
@@ -61403,7 +61456,7 @@ function createSamples(deps) {
     let out = gn;
     if (opts.pan) {
       const p = c.createStereoPanner();
-      p.pan.value = clamp43(opts.pan, -1, 1);
+      p.pan.value = clamp44(opts.pan, -1, 1);
       gn.connect(p);
       out = p;
     }
@@ -61518,7 +61571,7 @@ function createSamples(deps) {
       return name === "body" ? g.body : g.world;
     },
     setWorldDull(f) {
-      dull = clamp43(f, 0, 1);
+      dull = clamp44(f, 0, 1);
       if (!graph || disposed) return;
       const freq = graph.world.frequency;
       if (freq.setTargetAtTime) freq.setTargetAtTime(dullHz(), graph.c.currentTime, DULL_SMOOTH_S);
@@ -66049,7 +66102,7 @@ function sideFrame(g, W3, H, side) {
   };
   return { Wc, Hc, map, done: () => g.restore() };
 }
-var squashOf = (x) => clamp41((1 - clamp41(x.L, 0, 1)) * 0.85 + clamp41(-x.v * 0.12, 0, 0.35), 0, 1.2);
+var squashOf = (x) => clamp42((1 - clamp42(x.L, 0, 1)) * 0.85 + clamp42(-x.v * 0.12, 0, 0.35), 0, 1.2);
 var SEAT_BODY = [
   [0.57, -1.6],
   [0.55, -1],
@@ -66109,7 +66162,7 @@ var SHAPES = {
     const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
     const fr = sideFrame(g, W3, H, S3.side.lift);
     const { Wc, Hc } = fr;
-    const tilt = clamp41(S3.angle / 30, -1.3, 1.3);
+    const tilt = clamp42(S3.angle / 30, -1.3, 1.3);
     const edge = (u) => Hc * (1.03 - oc * 0.4 - ex * 1.6 + s.sway * 4e-3) - tilt * (u - 0.5) * Hc * 0.28 * Math.max(oc, 0.15) + Hc * 0.07 * (1 - (2 * u - 1) ** 2) * (0.4 + 0.6 * oc);
     g.beginPath();
     g.moveTo(-4, Hc + 4);
@@ -66143,12 +66196,12 @@ var SHAPES = {
   seat(g, W3, H, o, s) {
     const ex = Math.max(0, o - 1);
     const [a, b] = s.sp;
-    const Lm = clamp41((a.L + b.L) / 2, -0.2, 1.2);
+    const Lm = clamp42((a.L + b.L) / 2, -0.2, 1.2);
     const V3 = [W3 / 2 + s.sway2 * H * 0.012, H * 0.3];
     const rock = s.sway2 * 0.022;
     const cr = Math.cos(rock), sr = Math.sin(rock);
     const side = (x, flip) => {
-      const L6 = clamp41(x.L, -0.2, 1.2), sq = squashOf(x);
+      const L6 = clamp42(x.L, -0.2, 1.2), sq = squashOf(x);
       const P4 = 1.38 / (1 + 0.28 * L6 + ex * 4);
       return SEAT_BODY.map(([px, py], i) => {
         let X3 = px, Y = py;
@@ -66157,7 +66210,7 @@ var SHAPES = {
           Y *= 1 - 0.04 * sq;
         }
         if (i >= 10) {
-          X3 = X3 * (1 - 0.55 * sq) + 0.035 * clamp41(L6, 0, 1);
+          X3 = X3 * (1 - 0.55 * sq) + 0.035 * clamp42(L6, 0, 1);
           Y += 0.12 * sq;
         }
         X3 *= flip;
@@ -66165,7 +66218,7 @@ var SHAPES = {
       });
     };
     const right = side(b, 1), left = side(a, -1);
-    const open3 = clamp41(Lm, 0, 1), Pm = 1.38 / (1 + 0.28 * Lm + ex * 4);
+    const open3 = clamp42(Lm, 0, 1), Pm = 1.38 / (1 + 0.28 * Lm + ex * 4);
     const apexY = V3[1] + (0.5 - open3 * 0.2) * H * Pm, seamW = (2e-3 + open3 * 8e-3) * H * Pm;
     const pts = [...right, [V3[0] + seamW, apexY], [V3[0] - seamW, apexY], ...left.reverse()];
     const sm = chaikin(chaikin(chaikin(pts)));
@@ -66176,7 +66229,7 @@ var SHAPES = {
     g.closePath();
     g.fill();
     g.globalCompositeOperation = "source-over";
-    return { focus: [V3[0] / W3, clamp41((V3[1] + 0.85 * H * Pm) / H, 0.5, 0.92)], lip: [(V3[0] + 0.02 * H) / W3, clamp41((apexY + 0.12 * H) / H, 0.3, 0.94)], text: [(V3[0] + 0.32 * H * Pm) / W3, (V3[1] - 0.12 * H * Pm) / H] };
+    return { focus: [V3[0] / W3, clamp42((V3[1] + 0.85 * H * Pm) / H, 0.5, 0.92)], lip: [(V3[0] + 0.02 * H) / W3, clamp42((apexY + 0.12 * H) / H, 0.3, 0.94)], text: [(V3[0] + 0.32 * H * Pm) / W3, (V3[1] - 0.12 * H * Pm) / H] };
   },
   squeeze(g, W3, H, o, s) {
     const ex = Math.max(0, o - 1), oc = Math.min(o, 1);
@@ -66218,7 +66271,7 @@ var SHAPES = {
     g.restore();
     const mx = (x) => mirror2 ? 1 - x : x;
     const u1 = 0.25, u2 = 0.12;
-    return { focus: [mx(0.22), clamp41((edge(0.22) + H) / 2 / H, 0.5, 0.95)], lip: [mx(u1 * piv[0] / W3), (edge(u1) - 0.012 * H) / H], text: [mx(u2 * piv[0] / W3), (edge(u2) - 0.17 * H) / H], align: mirror2 ? "right" : "left" };
+    return { focus: [mx(0.22), clamp42((edge(0.22) + H) / 2 / H, 0.5, 0.95)], lip: [mx(u1 * piv[0] / W3), (edge(u1) - 0.012 * H) / H], text: [mx(u2 * piv[0] / W3), (edge(u2) - 0.17 * H) / H], align: mirror2 ? "right" : "left" };
   }
 };
 
@@ -66263,8 +66316,8 @@ var $2 = (s) => {
   return e.els[s];
 };
 var inputLine2 = (env) => env.input.closest(".alius-input-line") ?? env.input.parentElement ?? env.input;
-var easeOut = (t) => 1 - Math3.pow(1 - clamp41(t, 0, 1), 3);
-var easeIn = (t) => Math3.pow(clamp41(t, 0, 1), 2);
+var easeOut = (t) => 1 - Math3.pow(1 - clamp42(t, 0, 1), 3);
+var easeIn = (t) => Math3.pow(clamp42(t, 0, 1), 2);
 var pick4 = (a) => a[Math3.floor(Math3.random() * a.length)];
 var randInt = (a, b) => a + Math3.floor(Math3.random() * (b - a + 1));
 var BEAT2 = TUNING.physics.beatMs;
@@ -66524,7 +66577,7 @@ function say3(text3, kind = "line", opt = {}) {
   el.style.setProperty("--write", `${Math3.max(140, text3.length * speed)}ms`);
   el.style.setProperty("--steps", String(Math3.max(4, text3.length * 2)));
   const at2 = opt.at ?? G3.text, align = opt.align ?? G3.align;
-  const x = clamp41(at2[0], 0.03, 0.97) * innerWidth3, y = clamp41(at2[1], 0.07, 0.8) * innerHeight3;
+  const x = clamp42(at2[0], 0.03, 0.97) * innerWidth3, y = clamp42(at2[1], 0.07, 0.8) * innerHeight3;
   const jitter = kind === "count" ? (Math3.random() * 2 - 1) * 14 : 0;
   if (align === "right") {
     el.classList.add("right");
@@ -66837,8 +66890,8 @@ function frame2(now) {
       const p = G3.phaseT / 1700;
       G3.exitO = easeIn(p) * 2.4;
       G3.darkA = 1 - smooth(0.35, 1, p);
-      G3.cam = 1 - easeOut(clamp41(p * 1.1, 0, 1));
-      G3.air = lerp2(G3.air, 100, clamp41(dt / 600, 0, 1));
+      G3.cam = 1 - easeOut(clamp42(p * 1.1, 0, 1));
+      G3.air = lerp2(G3.air, 100, clamp42(dt / 600, 0, 1));
       if (p >= 1) {
         G3.exitO = 0;
         G3.darkA = 0;
@@ -66851,7 +66904,7 @@ function frame2(now) {
       G3.darkA = 1;
       G3.air = Math3.max(0, G3.air - dt * 0.01);
       $2("#black").style.opacity = String(smooth(300, 1800, p));
-      heart.bpm = lerp2(heart.bpm, 38, clamp41(dt / 1500, 0, 1));
+      heart.bpm = lerp2(heart.bpm, 38, clamp42(dt / 1500, 0, 1));
       if (p > 4600) heart.stopped = true;
       if (p > 5200) wake();
       break;
@@ -66872,7 +66925,7 @@ function frame2(now) {
   G3.shake = Math3.max(0, G3.shake - dt / 300);
   if (G3.phase !== "blackout" && G3.phase !== "idle") {
     const f = smooth(85, 5, G3.air);
-    heart.bpm = lerp2(heart.bpm, lerp2(64, 150, f), clamp41(dt / 900, 0, 1));
+    heart.bpm = lerp2(heart.bpm, lerp2(64, 150, f), clamp42(dt / 900, 0, 1));
   }
   heartTick(now);
   render2(now, dt);
@@ -66911,7 +66964,7 @@ function render2(now, dt) {
   let o = Math3.max(rest, ow) + G3.exitO;
   if (G3.phase === "blackout") o = 0;
   if (window2.__forceO != null) o = window2.__forceO;
-  const target = window2.__forceO != null ? Math3.min(1, window2.__forceO) : clamp41(Math3.max(rest, ow), 0, 1) - (G3.pressT > 0 ? 0.08 : 0);
+  const target = window2.__forceO != null ? Math3.min(1, window2.__forceO) : clamp42(Math3.max(rest, ow), 0, 1) - (G3.pressT > 0 ? 0.08 : 0);
   const h2 = Math3.min(dt, 40) / 1e3;
   G3.sp.forEach((x, i) => {
     const tgt = target + (reduced ? 0 : (i ? -1 : 1) * sway2 * 0.05);
@@ -66944,9 +66997,9 @@ function render2(now, dt) {
   dctx2.fillStyle = "rgb(6,4,8)";
   dctx2.fillRect(0, 0, W3, H);
   dctx2.globalCompositeOperation = "source-atop";
-  dctx2.globalAlpha = G3.darkA * clamp41(0.18 + Math3.min(o, 1) * 0.75, 0, 0.95);
+  dctx2.globalAlpha = G3.darkA * clamp42(0.18 + Math3.min(o, 1) * 0.75, 0, 0.95);
   dctx2.drawImage(glowC, 0, 0);
-  dctx2.globalAlpha = G3.darkA * clamp41(0.1 + Math3.min(o, 1) * 0.35, 0, 0.5);
+  dctx2.globalAlpha = G3.darkA * clamp42(0.1 + Math3.min(o, 1) * 0.35, 0, 0.5);
   dctx2.filter = "blur(10px)";
   dctx2.drawImage(glowC, 0, 0);
   dctx2.filter = "none";
@@ -66960,7 +67013,7 @@ function render2(now, dt) {
   const sh = reduced ? 0 : G3.shake * 6;
   darkC.style.transform = sh ? `translate(${(Math3.random() * 2 - 1) * sh}px, ${(Math3.random() * 2 - 1) * sh}px)` : "";
   if (G3.phase === "loop" || G3.phase === "entry") {
-    G3.focus = [lerp2(G3.focus[0], out.focus[0], clamp41(dt / 500, 0, 1)), lerp2(G3.focus[1], out.focus[1], clamp41(dt / 500, 0, 1))];
+    G3.focus = [lerp2(G3.focus[0], out.focus[0], clamp42(dt / 500, 0, 1)), lerp2(G3.focus[1], out.focus[1], clamp42(dt / 500, 0, 1))];
     G3.lip = out.lip;
     G3.text = out.text;
     G3.align = out.align ?? "left";
@@ -67015,8 +67068,8 @@ function render2(now, dt) {
   const tapEl = $2("#tap");
   tapEl.style.opacity = live3 ? "0.85" : "0";
   tapEl.style.pointerEvents = live3 ? "auto" : "none";
-  tapEl.style.left = `${clamp41(G3.lip[0], 0.03, 0.97) * innerWidth3}px`;
-  tapEl.style.top = `${clamp41(G3.lip[1], 0.05, 0.92) * innerHeight3}px`;
+  tapEl.style.left = `${clamp42(G3.lip[0], 0.03, 0.97) * innerWidth3}px`;
+  tapEl.style.top = `${clamp42(G3.lip[1], 0.05, 0.92) * innerHeight3}px`;
   $2("#reply").style.opacity = live3 ? "0.38" : "1";
   letters.tick(dt, live3 ? G3.air : 100);
   const iw = lerp2(Math3.min(720, innerWidth3 * 0.6), Math3.max(260, innerWidth3 * 0.2), smooth(78, 8, live3 ? G3.air : 100));
@@ -67090,12 +67143,12 @@ function tapReleases() {
 function beatAt(at2) {
   const seg = R5.seg;
   if (!seg) return 0;
-  return clamp41(Math3.round((at2 - seg.clock0) / BEAT2), 0, seg.beats - 1);
+  return clamp42(Math3.round((at2 - seg.clock0) / BEAT2), 0, seg.beats - 1);
 }
 function beatNow2() {
   const seg = R5.seg;
   if (!seg) return 0;
-  return clamp41(Math3.floor((G3.clock - seg.clock0) / BEAT2), 0, seg.beats - 1);
+  return clamp42(Math3.floor((G3.clock - seg.clock0) / BEAT2), 0, seg.beats - 1);
 }
 function refreshLines2(beat) {
   if (!E2) return;
@@ -67151,7 +67204,7 @@ function schedulePlan(run, ck) {
   const endMs = Number(phys?.segmentSeconds ?? 20) * 1e3;
   R5.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0: G3.clock - (ck.now - ck.startedAt), beats: plan.beats.length, endMs, flushed: false };
   R5.strain = null;
-  G3.air = clamp41(run.gauge / run.capacity * 100, 0, 100);
+  G3.air = clamp42(run.gauge / run.capacity * 100, 0, 100);
   refreshLines2(0);
   let after9 = G3.clock;
   for (const o of effectiveOpenings(plan, [], styleKey())) {
@@ -67207,8 +67260,8 @@ function before2() {
   const showGap = R5.leaky && G3.phase === "loop";
   gap.style.opacity = showGap ? "0.85" : "0";
   gap.style.pointerEvents = showGap ? "auto" : "none";
-  gap.style.left = `${clamp41(G3.lip[0], 0.03, 0.97) * innerWidth3}px`;
-  gap.style.top = `${clamp41(G3.lip[1], 0.05, 0.92) * innerHeight3 + 44}px`;
+  gap.style.left = `${clamp42(G3.lip[0], 0.03, 0.97) * innerWidth3}px`;
+  gap.style.top = `${clamp42(G3.lip[1], 0.05, 0.92) * innerHeight3 + 44}px`;
 }
 function after2() {
   const e = E2;
@@ -67640,7 +67693,7 @@ var $3 = (s) => {
   return e.els[s];
 };
 var inputLine3 = (env) => env.input.closest(".alius-input-line") ?? env.input.parentElement ?? env.input;
-var easeOut2 = (t) => 1 - Math4.pow(1 - clamp41(t, 0, 1), 3);
+var easeOut2 = (t) => 1 - Math4.pow(1 - clamp42(t, 0, 1), 3);
 var pick5 = (a) => a[Math4.floor(Math4.random() * a.length)];
 var randInt2 = (a, b) => a + Math4.floor(Math4.random() * (b - a + 1));
 var rand2 = (a, b) => a + Math4.random() * (b - a);
@@ -67793,7 +67846,7 @@ function noise4({ at: at2 = 0, dur = 0.2, type = "bandpass", f = 1e3, f2, q = 1,
   fl.connect(g);
   if (pan) {
     const pn = ctx2.createStereoPanner();
-    pn.pan.value = clamp41(pan, -1, 1);
+    pn.pan.value = clamp42(pan, -1, 1);
     g.connect(pn);
     pn.connect(dest);
   } else g.connect(dest);
@@ -67964,7 +68017,7 @@ function planShift(opts) {
   const isFeint = opts.feint;
   const dir = Math4.random() < 0.5 ? -1 : 1;
   const careful = THRONE.careful();
-  const target = isFeint ? G4.copTarget : clamp41(G4.copTarget * 0.25 + dir * rand2(st3.mag[0], st3.mag[1]) * c.shift * careful, -1, 1);
+  const target = isFeint ? G4.copTarget : clamp42(G4.copTarget * 0.25 + dir * rand2(st3.mag[0], st3.mag[1]) * c.shift * careful, -1, 1);
   const tele = opts.tele * (careful < 1 ? 1.5 : 1);
   G4.shift = { landAt: G4.clock + Math4.max(tele, 0) + 30, teleAt: G4.clock, tele, target, feint: isFeint, dir: Math4.sign(target - G4.cop) || dir, landed: false, cost: opts.cost };
   if (st3.announce) say4(pick5(L3().announce.slice(0, 1).concat(target < G4.cop ? L3().announce.slice(1, 2) : L3().announce.slice(2, 3))));
@@ -68145,15 +68198,15 @@ function frame3(now) {
       break;
     case "exit":
       G4.cam = 1 - easeOut2(G4.phaseT / 1500);
-      G4.str = lerp2(G4.str, 100, clamp41(dt / 700, 0, 1));
+      G4.str = lerp2(G4.str, 100, clamp42(dt / 700, 0, 1));
       break;
     default:
       G4.cam = 0;
   }
   const t = now / 1e3;
   const wander = S5.reduced ? 0 : Math4.sin(t * 0.9) * 0.05 + Math4.sin(t * 2.3 + 1) * 0.025;
-  G4.cop += (G4.copTarget + wander - G4.cop) * clamp41(h2 * (G4.shift?.landed === false ? 2 : 7), 0, 1);
-  G4.lean += (G4.leanTarget - G4.lean) * clamp41(h2 * 6, 0, 1);
+  G4.cop += (G4.copTarget + wander - G4.cop) * clamp42(h2 * (G4.shift?.landed === false ? 2 : 7), 0, 1);
+  G4.lean += (G4.leanTarget - G4.lean) * clamp42(h2 * 6, 0, 1);
   const target = (mouseX * 2 - 1) * 1.15;
   const n = Math4.max(1, Math4.ceil(h2 / 8e-3)), hs = h2 / n, liveErr = G4.phase === "loop" || G4.phase === "entry";
   for (let i = 0; i < n; i++) {
@@ -68161,7 +68214,7 @@ function frame3(now) {
     G4.ctlV += (k * (target - G4.ctl) - d * G4.ctlV) * hs;
     G4.ctl += G4.ctlV * hs;
     const e = liveErr ? G4.cop - G4.ctl : 0;
-    const bv = 260 * (clamp41(e, -1.2, 1.2) - G4.bubbleX) - 16 * G4.bubbleV;
+    const bv = 260 * (clamp42(e, -1.2, 1.2) - G4.bubbleX) - 16 * G4.bubbleV;
     G4.bubbleV += bv * hs;
     G4.bubbleX += G4.bubbleV * hs;
   }
@@ -68207,7 +68260,7 @@ var LEG_FEET = {
 };
 function legPoints(W3, H, side, press4, lift2, swing) {
   return LEG_FEET[S5.foot].map(([x, y]) => {
-    const down3 = clamp41(y, 0, 1);
+    const down3 = clamp42(y, 0, 1);
     const X3 = x + press4 * 0.035 * (0.4 + down3) - lift2 * 0.03 * down3 + swing * 0.012 * down3 * down3;
     const Y = (S5.foot === "first" ? y : y * 0.86) - lift2 * 0.07 * down3 + swing * 0.01 * down3;
     return [side < 0 ? X3 * W3 : W3 - X3 * W3, Y * H];
@@ -68302,7 +68355,7 @@ function render3(now, dt, err) {
   setStyle2("#roomView", "opacity", (1 - smooth(0.1, 0.7, k)).toFixed(3));
   setStyle2("#floorView", "opacity", (down3 ? smooth(0.3, 0.9, k) : 0).toFixed(3));
   setStyle2("#upView", "opacity", (!down3 ? smooth(0.3, 0.9, k) : 0).toFixed(3));
-  const tilt = clamp41(err, -1.2, 1.2) * 6 * k;
+  const tilt = clamp42(err, -1.2, 1.2) * 6 * k;
   const amp = S5.reduced ? 0 : (Math4.pow(strF, 2) * 5 + G4.jolt * 7) * k;
   const jx = (Math4.random() * 2 - 1) * amp, jy = (Math4.random() * 2 - 1) * amp + G4.sag * 26 * k;
   $3("#world").style.transform = `translate(${jx.toFixed(1)}px, ${jy.toFixed(1)}px) rotate(${tilt.toFixed(2)}deg)`;
@@ -68333,7 +68386,7 @@ function render3(now, dt, err) {
   healCracks(now);
   setStyle2("#vial", "opacity", live3 ? "1" : "0");
   const half = 190 * 0.86;
-  const bx = 230 + clamp41(G4.bubbleX, -1.15, 1.15) * half;
+  const bx = 230 + clamp42(G4.bubbleX, -1.15, 1.15) * half;
   const stretch = 1 + Math4.min(0.6, Math4.abs(G4.bubbleV) * 0.12), squash = 1 / Math4.sqrt(stretch);
   $3("#vBubble").setAttribute("transform", `translate(${bx.toFixed(1)} 35) scale(${stretch.toFixed(3)} ${squash.toFixed(3)})`);
   const tolPx = S5.tol * half;
@@ -68372,7 +68425,7 @@ var typing3 = (t) => t && (/^(input|textarea|select)$/i.test(t.tagName) || t.isC
 function segBeat() {
   const seg = R6.seg;
   if (!seg) return 0;
-  return clamp41(Math4.floor((G4.clock - seg.clock0) / BEAT3), 0, seg.beats - 1);
+  return clamp42(Math4.floor((G4.clock - seg.clock0) / BEAT3), 0, seg.beats - 1);
 }
 function graceOf(beat) {
   return beat < 0 || R6.seg !== null && R6.seg.clock0 + (beat + 1) * BEAT3 <= BEAT3;
@@ -68412,7 +68465,7 @@ function schedulePlan2(run, ck) {
   G4.even = [];
   G4.slipThisBeat = false;
   if (G4.shift && !G4.shift.landed) G4.shift = null;
-  G4.str = clamp41(run.gauge / run.capacity * 100, 0, 100);
+  G4.str = clamp42(run.gauge / run.capacity * 100, 0, 100);
   refreshLines3(0);
   const st3 = ST();
   const shifts = plan.beats.flatMap((b, i) => b.shift !== void 0 ? [i] : []);
@@ -68800,7 +68853,7 @@ function startWeight(env, run, opts = {}) {
       if (E3 !== mine) return;
       if (next.segment.state === "held" && R6.seg !== null && R6.seg.n === next.segment.n && R6.synced !== next.segment.n) {
         R6.synced = next.segment.n;
-        G4.str = clamp41(next.gauge / Math4.max(1, next.capacity) * 100, 0, 100);
+        G4.str = clamp42(next.gauge / Math4.max(1, next.capacity) * 100, 0, 100);
       }
       if (next.taps > R6.taps) {
         R6.taps = next.taps;
@@ -68835,7 +68888,7 @@ function startWeight(env, run, opts = {}) {
       relief();
     },
     balance(x) {
-      if (E3 === mine) mouseX = clamp41(x, 0, 1);
+      if (E3 === mine) mouseX = clamp42(x, 0, 1);
     }
   };
 }
@@ -68855,7 +68908,7 @@ function releasedAtLimit() {
 function weightFrame() {
   const k = G4.cam, strF = smooth(100, 0, G4.str);
   const err = G4.phase === "loop" || G4.phase === "entry" ? G4.cop - G4.ctl : 0;
-  return { tilt: clamp41(err, -1.2, 1.2) * 6 * k, tremble: S5.reduced ? 0 : (Math4.pow(strF, 2) * 5 + G4.jolt * 7) * k, sag: G4.sag * 26 * k, strF, cam: k };
+  return { tilt: clamp42(err, -1.2, 1.2) * 6 * k, tremble: S5.reduced ? 0 : (Math4.pow(strF, 2) * 5 + G4.jolt * 7) * k, sag: G4.sag * 26 * k, strF, cam: k };
 }
 function weightMatches(run, _state, reg) {
   const p = reg.contactPhysics.get(run.physicsId);
@@ -69020,7 +69073,7 @@ function askWords2() {
   });
   const line3 = (pick6(LINES3.ask) ?? "").replace("{p}", HER_PLACE[place2] ?? "it");
   const tp = ti >= 0 ? G5.zones[ti].p : [0.55, 0.2];
-  say5(line3, false, [clamp41(tp[0] + 0.05, 0.04, 0.7), clamp41(tp[1] - 0.1, 0.06, 0.8)]);
+  say5(line3, false, [clamp42(tp[0] + 0.05, 0.04, 0.7), clamp42(tp[1] - 0.1, 0.06, 0.8)]);
   G5.order = { k: "ask", until: G5.clock + 12e3, chosen: [], place: place2, ti };
   buildPills();
 }
@@ -69061,7 +69114,7 @@ function buildPills() {
   if (!o.lies) o.lies = sayables(o.place);
   const items = [...head, ...o.lies.filter((l) => !seen2.has(l.w))];
   if (!items.length) items.push({ w: "\u2026 nothing", cat: "none" });
-  const cx = clamp41(G5.nose[0], 0.25, 0.75), cy = clamp41(G5.nose[1], 0.42, 0.72);
+  const cx = clamp42(G5.nose[0], 0.25, 0.75), cy = clamp42(G5.nose[1], 0.42, 0.72);
   items.forEach((h2, i) => {
     const el = document.createElement("div");
     el.className = "pw pick" + (h2.lie ? " lie" : "") + (o.chosen.includes(h2) ? " chosen" : "");
@@ -69069,7 +69122,7 @@ function buildPills() {
     el.innerHTML = `<span class="key">${i + 1}</span><span class="tag">${TAG[kind] ?? ""}</span>${h2.w}`;
     for (const [k, v] of Object.entries(analyzeNative("glossary:scent_answer"))) el.setAttribute(k, v);
     const a = items.length === 1 ? -Math5.PI / 2 : -Math5.PI * 0.92 + i / (items.length - 1) * Math5.PI * 0.84;
-    el._p = [clamp41(cx + Math5.cos(a) * 0.22, 0.08, 0.92), clamp41(cy + Math5.sin(a) * 0.32 - 0.04, 0.1, 0.7)];
+    el._p = [clamp42(cx + Math5.cos(a) * 0.22, 0.08, 0.92), clamp42(cy + Math5.sin(a) * 0.32 - 0.04, 0.1, 0.7)];
     el._choose = () => {
       const oo = G5.order;
       if (!oo || oo.k !== "ask" || oo.chosen.includes(h2)) return;
@@ -69200,7 +69253,7 @@ var $4 = (s) => {
   return e.els[s];
 };
 var inputLine4 = (env) => env.input.closest(".alius-input-line") ?? env.input.parentElement ?? env.input;
-var easeOut3 = (t) => 1 - Math5.pow(1 - clamp41(t, 0, 1), 3);
+var easeOut3 = (t) => 1 - Math5.pow(1 - clamp42(t, 0, 1), 3);
 var pick6 = (a) => a[Math5.floor(Math5.random() * a.length)];
 var randInt3 = (a, b) => a + Math5.floor(Math5.random() * (b - a + 1));
 var rand3 = (a, b) => a + Math5.random() * (b - a);
@@ -69413,7 +69466,7 @@ var SAMPLE_FILE = "assets/sounds/breath-in-out.mp3";
 var SAMPLE = { buf: null, rms: null, inS: 0.12, susS: 0.5, susE: 0.92, inE: 1.44, exS: 2.17, exE: 3.23 };
 var rmsAt = (sec) => {
   const r = SAMPLE.rms;
-  return r[clamp41(Math5.round(sec * 100), 0, r.length - 1)] || 1e-4;
+  return r[clamp42(Math5.round(sec * 100), 0, r.length - 1)] || 1e-4;
 };
 function fft(re, im, inv) {
   const n = re.length;
@@ -69614,8 +69667,8 @@ function recStop(fade2 = 0.08) {
 }
 function recExhale(d, kind = "nose") {
   const ctx2 = A4.ctx, out = recOut(kind), rate = (kind === "mouth" ? 0.88 : 1) * rand3(0.95, 1.05);
-  const len2 = (SAMPLE.exE - SAMPLE.exS) * (0.35 + 0.65 * clamp41(d, 0, 1));
-  piece(out, SAMPLE.exS, SAMPLE.exS + len2, ctx2.currentTime + 0.02, rate, 0.02, Math5.min(0.25, len2 * 0.4), (0.35 + 0.65 * clamp41(d, 0, 1)) * 0.75);
+  const len2 = (SAMPLE.exE - SAMPLE.exS) * (0.35 + 0.65 * clamp42(d, 0, 1));
+  piece(out, SAMPLE.exS, SAMPLE.exS + len2, ctx2.currentTime + 0.02, rate, 0.02, Math5.min(0.25, len2 * 0.4), (0.35 + 0.65 * clamp42(d, 0, 1)) * 0.75);
   setTimeout5(() => out.disconnect(), (len2 / rate + 0.5) * 1e3);
 }
 var MOUTHREC = { next: 0, inward: true };
@@ -69689,7 +69742,7 @@ function breathSound(kind) {
 }
 function breathTick() {
   if (useRec() && BR.kind) {
-    if (REC.sus) REC.sus.gain.setTargetAtTime(1 - 0.35 * clamp41(G5.depth, 0, 1), A4.ctx.currentTime, 0.1);
+    if (REC.sus) REC.sus.gain.setTargetAtTime(1 - 0.35 * clamp42(G5.depth, 0, 1), A4.ctx.currentTime, 0.1);
     if (BR.kind === "nose" && G5.depth >= 0.95) recTail();
     if (BR.kind === "mouth") recMouthTick();
     return;
@@ -69697,7 +69750,7 @@ function breathTick() {
   if (!BR.src) return;
   const t = A4.ctx.currentTime;
   if (BR.kind === "nose") {
-    const d = G5.depth, shape2 = Math5.pow(Math5.sin(Math5.PI * clamp41(d / 1.12, 0, 1)), 0.7);
+    const d = G5.depth, shape2 = Math5.pow(Math5.sin(Math5.PI * clamp42(d / 1.12, 0, 1)), 0.7);
     BR.env.gain.setTargetAtTime(Math5.max(1e-4, 0.2 * shape2 * (0.6 + 0.4 * G5.I)), t, 0.04);
     BR.f1.frequency.setTargetAtTime(620 + d * 300, t, 0.08);
     BR.f2.frequency.setTargetAtTime(2100 + d * 500, t, 0.08);
@@ -69831,7 +69884,7 @@ function zonesOf(W3, H, s) {
     }
   } else if (S6.contact === "face_to_bottom") {
     const Lm = (G5.sp[0].L + G5.sp[1].L) / 2, Pm = 1.38 / (1 + 0.28 * Lm), V3 = [0.5 + s.sway2 * 0.012 * H / W3, 0.3];
-    out.push({ id: "center", p: [V3[0], V3[1] + (0.5 - clamp41(Lm, 0, 1) * 0.2) * Pm - 0.04], w: 1 });
+    out.push({ id: "center", p: [V3[0], V3[1] + (0.5 - clamp42(Lm, 0, 1) * 0.2) * Pm - 0.04], w: 1 });
     out.push({ id: "center", p: [V3[0], V3[1] + 0.3 * Pm], w: 0.85 });
     for (const side of [-1, 1]) out.push({ id: "side", p: [V3[0] + side * 0.24, 0.72], w: 0.45 });
   } else {
@@ -69854,7 +69907,7 @@ function intensityAt(p) {
     }
   }
   const base2 = BASE_I[S6.contact];
-  return { I: clamp41(base2 + best * (1.1 - base2), 0, 1.1), zone };
+  return { I: clamp42(base2 + best * (1.1 - base2), 0, 1.1), zone };
 }
 var stim = () => BAND[S6.band] / 1.5;
 var tolT = () => 0.3 + S6.tol / 100 * 0.8;
@@ -69918,7 +69971,7 @@ function nameplace(line3, id, moved = false) {
   G5.hereZone = id;
   G5.askPlace = id;
   const tp = G5.zones[ti].p;
-  say5(line3, false, [clamp41(tp[0] + 0.05, 0.04, 0.8), clamp41(tp[1] - 0.1, 0.06, 0.8)]);
+  say5(line3, false, [clamp42(tp[0] + 0.05, 0.04, 0.8), clamp42(tp[1] - 0.1, 0.06, 0.8)]);
   SFX4.chime();
 }
 function orderDone(ok) {
@@ -69988,7 +70041,7 @@ function scatter2(n) {
 }
 function tickWords(dt) {
   const now = performance5.now(), n = G5.head.length, cap9 = capacity();
-  const crowd = clamp41(n / cap9, 0, 1.3), asking = G5.order && G5.order.k === "ask";
+  const crowd = clamp42(n / cap9, 0, 1.3), asking = G5.order && G5.order.k === "ask";
   G5.head.forEach((h2, i) => {
     const el = h2.el;
     el._a += dt / 1e3 * h2.el._spd * (1 + crowd);
@@ -69999,7 +70052,7 @@ function tickWords(dt) {
     el._p = [lerp2(el._p[0], tx, k), lerp2(el._p[1], ty, k)];
     el.style.left = `${(el._p[0] * innerWidth5).toFixed(1)}px`;
     el.style.top = `${(el._p[1] * innerHeight5).toFixed(1)}px`;
-    el.style.opacity = asking ? "0" : String(clamp41(0.45 + crowd * 0.45, 0, 1).toFixed(2));
+    el.style.opacity = asking ? "0" : String(clamp42(0.45 + crowd * 0.45, 0, 1).toFixed(2));
     el.style.fontSize = `${(15 + crowd * 7).toFixed(1)}px`;
   });
   for (const el of [...$4("#words").children]) {
@@ -70016,7 +70069,7 @@ function tickWords(dt) {
   for (const el of wordEls) {
     el.style.left = `${el._p[0] * innerWidth5}px`;
     el.style.top = `${el._p[1] * innerHeight5}px`;
-    if (asking) el.style.opacity = String(clamp41((G5.order.until - G5.clock) / 4e3, 0.25, 1).toFixed(2));
+    if (asking) el.style.opacity = String(clamp42((G5.order.until - G5.clock) / 4e3, 0.25, 1).toFixed(2));
   }
   G5.sat = n / cap9 * 100;
 }
@@ -70151,16 +70204,16 @@ function updateLoop3(dt) {
     G5.drift[0] += (strongest.p[0] - G5.nose[0]) * h2 * 2.2;
     G5.drift[1] += (strongest.p[1] - G5.nose[1]) * h2 * 2.2;
   } else if (S6.layers.drift && z2.zone) {
-    const fill7 = 1 + clamp41(G5.sat / 100, 0, 1.2);
+    const fill7 = 1 + clamp42(G5.sat / 100, 0, 1.2);
     const pull = STAGE_PULL[S6.stage] * (STAGE_PULL[S6.stage] > 0 ? (G5.inhaling ? 1.5 : 1) * fill7 : G5.inhaling ? 1 : 0);
     const dx = z2.zone.p[0] - G5.nose[0], dy = z2.zone.p[1] - G5.nose[1], d = Math5.hypot(dx, dy) || 1;
     G5.drift[0] += dx / d * pull * 0.09 * h2;
     G5.drift[1] += dy / d * pull * 0.09 * h2;
   }
-  G5.drift = G5.drift.map((v) => clamp41(v * (1 - h2 * 0.35), -0.3, 0.3));
-  const target = [clamp41(G5.mouse[0] + G5.drift[0], 0.02, 0.98), clamp41(G5.mouse[1] + G5.drift[1], 0.04, 0.96)];
-  const k = G5.lost > 0 ? 1.2 : 14 - clamp41(G5.sat / 100, 0, 1) * 8;
-  G5.nose = [lerp2(G5.nose[0], target[0], clamp41(h2 * k, 0, 1)), lerp2(G5.nose[1], target[1], clamp41(h2 * k, 0, 1))];
+  G5.drift = G5.drift.map((v) => clamp42(v * (1 - h2 * 0.35), -0.3, 0.3));
+  const target = [clamp42(G5.mouse[0] + G5.drift[0], 0.02, 0.98), clamp42(G5.mouse[1] + G5.drift[1], 0.04, 0.96)];
+  const k = G5.lost > 0 ? 1.2 : 14 - clamp42(G5.sat / 100, 0, 1) * 8;
+  G5.nose = [lerp2(G5.nose[0], target[0], clamp42(h2 * k, 0, 1)), lerp2(G5.nose[1], target[1], clamp42(h2 * k, 0, 1))];
   if (G5.inhaling) {
     G5.depth = Math5.min(1.25, G5.depth + dt / INHALE_FILL_MS);
     G5.peak = Math5.max(G5.peak, G5.depth);
@@ -70230,7 +70283,7 @@ function updateLoop3(dt) {
     }
   }
   G5.peakSat = Math5.max(G5.peakSat ?? 0, G5.sat);
-  G5.o = lerp2(G5.o, 0.35, clamp41(h2 * 0.5, 0, 1));
+  G5.o = lerp2(G5.o, 0.35, clamp42(h2 * 0.5, 0, 1));
 }
 function heardMouth() {
   const m = ST2().mouth;
@@ -70267,7 +70320,7 @@ function frame4(now) {
     case "exit": {
       const p = G5.phaseT / 1500;
       G5.darkA = 1 - smooth(0.2, 1, p);
-      G5.sat = lerp2(G5.sat, 0, clamp41(dt / 600, 0, 1));
+      G5.sat = lerp2(G5.sat, 0, clamp42(dt / 600, 0, 1));
       break;
     }
     default:
@@ -70318,7 +70371,7 @@ function spawnMotes(dt) {
     const rate = z2.w * stim() * 26 * G5.darkA * (1 + G5.sat / 120) * (named5 ? 3 : 1);
     let n = rate * h2;
     while (n > 0) {
-      if (Math5.random() < Math5.min(1, n)) parts.push({ mote: true, x: (z2.p[0] + rand3(-0.035, 0.035)) * innerWidth5, y: (z2.p[1] + rand3(-0.03, 0.03)) * innerHeight5, vx: rand3(-18, 18), vy: rand3(-34, -8), life: 1, decay: rand3(0.25, 0.45), size: rand3(0.8, 2.4), tw: rand3(0, 6.28), a: clamp41(z2.w * stim(), 0.3, 1.2) });
+      if (Math5.random() < Math5.min(1, n)) parts.push({ mote: true, x: (z2.p[0] + rand3(-0.035, 0.035)) * innerWidth5, y: (z2.p[1] + rand3(-0.03, 0.03)) * innerHeight5, vx: rand3(-18, 18), vy: rand3(-34, -8), life: 1, decay: rand3(0.25, 0.45), size: rand3(0.8, 2.4), tw: rand3(0, 6.28), a: clamp42(z2.w * stim(), 0.3, 1.2) });
       n -= 1;
     }
   }
@@ -70398,7 +70451,7 @@ var setStyle3 = (el, prop, v) => {
 };
 function arcPath(r, a0, a1) {
   const A0 = -Math5.PI * 1.25, span = Math5.PI * 1.5;
-  const s = A0 + span * clamp41(a0, 0, 1), e = A0 + span * clamp41(a1, 0, 1);
+  const s = A0 + span * clamp42(a0, 0, 1), e = A0 + span * clamp42(a1, 0, 1);
   if (e - s < 1e-3) return "";
   return `M${(Math5.cos(s) * r).toFixed(2)} ${(Math5.sin(s) * r).toFixed(2)} A${r} ${r} 0 ${e - s > Math5.PI ? 1 : 0} 1 ${(Math5.cos(e) * r).toFixed(2)} ${(Math5.sin(e) * r).toFixed(2)}`;
 }
@@ -70458,9 +70511,9 @@ function render4(now, dt) {
   darkC2.style.transform = sh ? `translate(${rand3(-sh, sh)}px, ${rand3(-sh, sh)}px)` : "";
   const col = COLORS[S6.color];
   if (live3) spawnMotes(dt);
-  if (live3 && G5.inhaling && Math5.random() < 0.9) spawnStreams(Math5.ceil(2 + G5.depth * 5 * G5.I), clamp41(G5.I * stim(), 0.2, 1.2));
+  if (live3 && G5.inhaling && Math5.random() < 0.9) spawnStreams(Math5.ceil(2 + G5.depth * 5 * G5.I), clamp42(G5.I * stim(), 0.2, 1.2));
   drawStreams(dt);
-  const f = clamp41(G5.sat / 100, 0, 1.1), over2 = G5.overload > 0 ? 1 : 0;
+  const f = clamp42(G5.sat / 100, 0, 1.1), over2 = G5.overload > 0 ? 1 : 0;
   setStyle3($4("#inner"), "filter", `saturate(${(1 + f * 0.85 + over2 * 0.4).toFixed(2)}) contrast(${(1 + f * 0.1).toFixed(2)}) blur(${(over2 * 1.5 + f * 0.3).toFixed(1)}px)`);
   setStyle3($4("#inner"), "transform", reduced || f < 0.4 ? "" : `scale(${(1 + Math5.sin(t * 1.4) * 6e-3 * f).toFixed(4)})`);
   setStyle3($4("#bloom"), "opacity", (smooth(0.3, 1, f) * 0.45).toFixed(2));
@@ -70493,7 +70546,7 @@ function render4(now, dt) {
   $4("#aFill").setAttribute("stroke", `rgb(${fillCol})`);
   $4("#aFillGlow").setAttribute("d", arcPath(R11, 0, fd));
   $4("#aFillGlow").setAttribute("stroke", `rgb(${fillCol})`);
-  const ta = -Math5.PI * 1.25 + Math5.PI * 1.5 * clamp41(td, 0, 1);
+  const ta = -Math5.PI * 1.25 + Math5.PI * 1.5 * clamp42(td, 0, 1);
   $4("#aTol").setAttribute("x1", (Math5.cos(ta) * (R11 - 7)).toFixed(1));
   $4("#aTol").setAttribute("y1", (Math5.sin(ta) * (R11 - 7)).toFixed(1));
   $4("#aTol").setAttribute("x2", (Math5.cos(ta) * (R11 + 7)).toFixed(1));
@@ -70564,7 +70617,7 @@ var R7 = { run: null, lineStyle: "neutral", seg: null, running: false, held: 0, 
 function attentionNow() {
   const seg = R7.seg;
   if (!seg) return "busy";
-  const b = clamp41(Math5.floor((G5.clock - seg.clock0) / BEAT4), 0, seg.beats - 1);
+  const b = clamp42(Math5.floor((G5.clock - seg.clock0) / BEAT4), 0, seg.beats - 1);
   return R7.plan[b]?.attention ?? "busy";
 }
 function blown(loud) {
@@ -70645,7 +70698,7 @@ function startSegment2(run, ck) {
   const endMs = Number(phys?.segmentSeconds ?? 30) * 1e3;
   R7.seg = { n: run.segment.n, startedAt: ck.startedAt, clock0: G5.clock - (ck.now - ck.startedAt), beats: plan.beats.length, endMs, flushed: false, reported: 0 };
   R7.plan = plan.beats;
-  R7.held = clamp41(run.gauge / (Math5.max(1, run.capacity) / capacity()), 0, capacity());
+  R7.held = clamp42(run.gauge / (Math5.max(1, run.capacity) / capacity()), 0, capacity());
   R7.blownBeat = 0;
 }
 function before4() {
@@ -71407,7 +71460,7 @@ var T_LEG_FEET = {
 };
 function tLegPoints(Wd, H, side, press4, lift2, swing) {
   return T_LEG_FEET.relaxed.map(([x, y]) => {
-    const down3 = clamp41(y, 0, 1);
+    const down3 = clamp42(y, 0, 1);
     const X3 = x + press4 * 0.035 * (0.4 + down3) - lift2 * 0.03 * down3 + swing * 0.012 * down3 * down3;
     const Y = y * 0.86 - lift2 * 0.07 * down3 + swing * 0.01 * down3;
     return [side < 0 ? X3 * Wd : Wd - X3 * Wd, Y * H];
@@ -71520,7 +71573,7 @@ function throneLegs(now) {
 var T_TELE = { neutral: [600, 900], affectionate: [900, 1200], ritual: [700, 800], playful: [450, 800], clinical: [200, 1100], cruel: [150, 350], possessive: [450, 700], cold: [500, 700], regal: [900, 1200] };
 function wCueShift(dir, mag, tele) {
   if (!W || W.over || W.resting) return;
-  const target = clamp41(W.copTarget * 0.25 + dir * mag * WT.shift, -1, 1);
+  const target = clamp42(W.copTarget * 0.25 + dir * mag * WT.shift, -1, 1);
   W.shift = { landAt: W.clock + tele + 30, teleAt: W.clock, tele, target, feint: false, dir, landed: false, cost: 0 };
   W.leanTarget = dir * 0.9;
   W_SFX.rustle(0.08, dir * 0.85);
@@ -71558,7 +71611,7 @@ function throneBody(kind, e) {
     case "cross":
       after5(tele, () => {
         if (!W || G6.risen) return;
-        W.copTarget = clamp41(side * 0.45, -1, 1);
+        W.copTarget = clamp42(side * 0.45, -1, 1);
         W_SFX.rustle(0.08, side * 0.7);
         if (!G6.toldCross) {
           G6.toldCross = true;
@@ -71794,7 +71847,7 @@ var clockText3 = (m) => X2?.clockText(m) ?? "";
 var pick7 = (a) => X2.pick(a);
 var rand5 = (a, b) => X2.rand(a, b);
 var setStyle4 = (sel, prop, v) => X2?.setStyle(sel, prop, v);
-var easeOut4 = (t) => 1 - Math7.pow(1 - clamp41(t, 0, 1), 3);
+var easeOut4 = (t) => 1 - Math7.pow(1 - clamp42(t, 0, 1), 3);
 var performance7 = { now: () => X2 ? X2.now() : 0 };
 var Math7 = Object.create(globalThis.Math, { random: { value: () => X2 ? X2.random() : 0.5 } });
 var $6 = (s) => X2.els[s] ?? X2.els["#void"];
@@ -71938,7 +71991,7 @@ function lickTick(speed) {
   }
   const ct = A5.ctx.currentTime;
   SV.lick.f.frequency.setTargetAtTime(lerp2(1100, 3400, SV.dry), ct, 0.05);
-  SV.lick.g.gain.setTargetAtTime(clamp41(speed / 1800, 0, 1) * 0.07, ct, 0.04);
+  SV.lick.g.gain.setTargetAtTime(clamp42(speed / 1800, 0, 1) * 0.07, ct, 0.04);
 }
 var lickStop = () => {
   if (SV?.lick && A5.ctx) SV.lick.g.gain.setTargetAtTime(0, A5.ctx.currentTime, 0.06);
@@ -71970,7 +72023,7 @@ function zoneRadii(r) {
   for (const [k, p] of z2) {
     let dmin = 1e9;
     for (const [k2, q] of z2) if (k2 !== k) dmin = Math7.min(dmin, Math7.hypot((p[0] - q[0]) * r.w, (p[1] - q[1]) * r.h));
-    const auto = clamp41(dmin / 2, r.h * 0.04, r.h * 0.12);
+    const auto = clamp42(dmin / 2, r.h * 0.04, r.h * 0.12);
     out[k] = p[3] !== void 0 ? { rx: p[2] * r.h, ry: p[3] * r.h, rot: (p[4] ?? 0) * Math7.PI / 180 } : p[2] !== void 0 ? { rx: p[2] * r.h, ry: p[2] * r.h } : { rx: auto, ry: auto };
   }
   return out;
@@ -72025,7 +72078,7 @@ function makeDirt() {
     if (onSoleK <= 0.01) continue;
     let v = 0.25 + Math7.random() * 0.15;
     for (const [bx, by, br] of blobs) v += 0.5 * Math7.exp(-((x / w - bx) ** 2 + (y / h2 - by) ** 2 * 0.6) / (br * br));
-    m[y * w + x] = clamp41(v, 0, 1) * a * onSoleK;
+    m[y * w + x] = clamp42(v, 0, 1) * a * onSoleK;
   }
   SV.dirt = { w, h: h2, m, c: document2.createElement("canvas") };
   SV.dirt.c.width = w;
@@ -72351,7 +72404,7 @@ function svMove(x, y) {
   }
   if (SV.phase === "craft" && g.kind === "clean" && SV.act === "clean") {
     const removed = wipe(g.x, g.y, x, y);
-    SV.dry = clamp41(SV.dry + d * 11e-4, 0, 1);
+    SV.dry = clamp42(SV.dry + d * 11e-4, 0, 1);
     lickTick(speed);
     thirdPartyNoise(0.05 + speed / 6e3);
     const z2 = zoneAt(x, y);
@@ -72379,7 +72432,7 @@ function svMove(x, y) {
         SV.pull = 0.8;
       }
     }
-    noise6({ dur: 0.06, type: "lowpass", f: 520, gain: clamp41(speed / 9e3, 0, 0.05), attack: 0.01, dest: A5.body });
+    noise6({ dur: 0.06, type: "lowpass", f: 520, gain: clamp42(speed / 9e3, 0, 0.05), attack: 0.01, dest: A5.body });
     thirdPartyNoise(0.03);
   }
   g.x = x;
@@ -72738,7 +72791,7 @@ function chain2(node, { pan = 0, lp = 0, dest = A6.world, hp = 0 }) {
   }
   if (pan) {
     const p = A6.ctx.createStereoPanner();
-    p.pan.value = clamp41(pan, -1, 1);
+    p.pan.value = clamp42(pan, -1, 1);
     n.connect(p);
     n = p;
   }
@@ -73017,7 +73070,7 @@ function sense3(text3, where = "her", cls = "", waited = 0) {
   el.textContent = text3;
   el.dataset.line = "";
   $7("#senses").appendChild(el);
-  const at2 = placeFree2(el, clamp41(p[0] + rand6(-0.04, 0.04), 0.04, 0.78) * innerWidth7, clamp41(p[1] + rand6(-0.01, 0.01), 0.04, 0.84) * innerHeight7);
+  const at2 = placeFree2(el, clamp42(p[0] + rand6(-0.04, 0.04), 0.04, 0.78) * innerWidth7, clamp42(p[1] + rand6(-0.01, 0.01), 0.04, 0.84) * innerHeight7);
   el.dataset.x = String(at2.x);
   el.dataset.y = String(at2.y);
   el.dataset.born = String(G8.t);
@@ -73045,7 +73098,7 @@ function placeFree2(el, x, y) {
 function say8(text3, to = "self", opts = {}) {
   if (!text3) return;
   const v = V2(), p = opts.at ?? v.her;
-  E5.env.say($7("#hand"), text3, { her: E5.env.her(R8.run.holderId), at: [clamp41(p[0] + 0.04, 0.03, 0.7), clamp41(p[1] + 0.02, 0.03, 0.8)], to: to === "self" || to === "commander" ? to : "other", ...opts.big ? { big: true } : {} });
+  E5.env.say($7("#hand"), text3, { her: E5.env.her(R8.run.holderId), at: [clamp42(p[0] + 0.04, 0.03, 0.7), clamp42(p[1] + 0.02, 0.03, 0.8)], to: to === "self" || to === "commander" ? to : "other", ...opts.big ? { big: true } : {} });
   SYN.pen();
   const spoken4 = to !== "written";
   const dur = 700 + text3.length * 70;
@@ -73066,7 +73119,7 @@ function otherSay(text3, kind = "call", who = "") {
   el.append(w, document.createTextNode(text3));
   const p = kind === "room" ? v.door : [v.her[0] + 0.2, v.her[1] + 0.08];
   $7("#others").appendChild(el);
-  placeFree2(el, clamp41(p[0] - (kind === "room" ? 0.2 : 0), 0.03, 0.72) * innerWidth7, clamp41(p[1], 0.04, 0.8) * innerHeight7);
+  placeFree2(el, clamp42(p[0] - (kind === "room" ? 0.2 : 0), 0.03, 0.72) * innerWidth7, clamp42(p[1], 0.04, 0.8) * innerHeight7);
   requestAnimationFrameOnce(() => el.classList.add("on"));
   const dur = 900 + text3.length * 65;
   G8.otherSpeakingUntil = Math8.max(G8.otherSpeakingUntil, G8.t + dur);
@@ -73089,7 +73142,7 @@ function coverNow2() {
   if (G8.visitor && G8.t < G8.otherSpeakingUntil) c = Math8.max(c, 0.5);
   if (G8.mess) c += 0.12;
   if (LOOPS.rain) c += 0.12;
-  return clamp41(c + G8.coverExtra, 0, 0.92);
+  return clamp42(c + G8.coverExtra, 0, 0.92);
 }
 var BODY_SFX = {
   scratch: () => {
@@ -73306,15 +73359,15 @@ function moveAttention(dt) {
   G8.lastMY = MOUSE2.y;
   const spd = Math8.hypot(mx, my) / Math8.max(8e-3, dt / 1e3);
   G8.speed = lerp2(G8.speed ?? 0, spd, Math8.min(1, dt / 120));
-  G8.headX = lerp2(G8.headX ?? 0, clamp41(mx / Math8.max(1, dt) * 6, -14, 14), Math8.min(1, dt / 200));
-  G8.headY = lerp2(G8.headY ?? 0, clamp41(my / Math8.max(1, dt) * 6, -10, 10), Math8.min(1, dt / 200));
+  G8.headX = lerp2(G8.headX ?? 0, clamp42(mx / Math8.max(1, dt) * 6, -14, 14), Math8.min(1, dt / 200));
+  G8.headY = lerp2(G8.headY ?? 0, clamp42(my / Math8.max(1, dt) * 6, -10, 10), Math8.min(1, dt / 200));
   const craft = svcOn() && SV && SV.closeK > 0.3;
   if (craft) G8.fidget = 0;
   if (!craft && G8.speed > 350 && (G8.rippleCd = (G8.rippleCd ?? 0) - dt) <= 0) {
-    RIPPLES.push({ x: ATT3.x, y: ATT3.y, born: performance8.now(), k: clamp41(G8.speed / 1250, 0.3, 1) });
-    G8.rippleCd = lerp2(260, 90, clamp41((G8.speed - 350) / 1250, 0, 1));
+    RIPPLES.push({ x: ATT3.x, y: ATT3.y, born: performance8.now(), k: clamp42(G8.speed / 1250, 0.3, 1) });
+    G8.rippleCd = lerp2(260, 90, clamp42((G8.speed - 350) / 1250, 0, 1));
   }
-  if (!craft) G8.fidget = Math8.max(0, (G8.fidget ?? 0) + (G8.speed > 450 ? clamp41((G8.speed - 450) / 1e3, 0, 1.6) : -0.35) * dt / 1e3);
+  if (!craft) G8.fidget = Math8.max(0, (G8.fidget ?? 0) + (G8.speed > 450 ? clamp42((G8.speed - 450) / 1e3, 0, 1.6) : -0.35) * dt / 1e3);
   if (G8.fidget >= 1 && G8.t >= (G8.fidgetCd ?? 0) && (G8.phase === "loop" || G8.phase === "empty")) {
     G8.fidget = 0;
     G8.fidgetCd = G8.t + 1500;
@@ -73442,7 +73495,7 @@ function updateUrges(dt) {
   G8.ease -= Math8.max(0, 5 - 2 * S9.level) / 60 * (G8.clockRate ?? 0) * dt / 1e3 * 4;
   for (const u of G8.urges) if (u.v > 0.7) G8.ease -= s * 0.35;
   if (G8.numb > 0.75) G8.ease -= s * 0.3;
-  G8.ease = clamp41(G8.ease, 0, 100);
+  G8.ease = clamp42(G8.ease, 0, 100);
   if (G8.ease <= 0) {
     G8.ease = 30;
     G8.stats.gross += 1;
@@ -73832,7 +73885,7 @@ function plannedAttention() {
   const run = R8.run, ck = E5.env.staging.clock();
   const plan = run?.segment.plan;
   if (!plan || ck.startedAt === null) return G8.att;
-  const b = clamp41(Math8.floor((ck.now - ck.startedAt) / ck.beatMs), 0, plan.beats.length - 1);
+  const b = clamp42(Math8.floor((ck.now - ck.startedAt) / ck.beatMs), 0, plan.beats.length - 1);
   return plan.beats[b]?.attention ?? G8.att;
 }
 function endPhase() {
@@ -74772,7 +74825,7 @@ function nightRoom(bg) {
     img2.src = src;
   }
   const l = roomLuma.get(src);
-  return l ? clamp41(NIGHT_ROOM_LUMA / l, 0.25, 1) : 1;
+  return l ? clamp42(NIGHT_ROOM_LUMA / l, 0.25, 1) : 1;
 }
 function stopFrame() {
   const e = E5;
@@ -74891,12 +74944,12 @@ function frameMatches(run, state, reg) {
 registerInstrument({ id: "her_activity", matches: frameMatches, start: (env, run) => startFrame2(env, run) });
 
 // src/ui/scene/instruments/slap/slap.ts
-var clamp44 = (x, a, b) => Math.min(b, Math.max(a, x));
+var clamp45 = (x, a, b) => Math.min(b, Math.max(a, x));
 var lerp3 = (a, b, t) => a + (b - a) * t;
-var easeOut5 = (t) => 1 - Math.pow(1 - clamp44(t, 0, 1), 3);
-var easeIn2 = (t) => Math.pow(clamp44(t, 0, 1), 2);
+var easeOut5 = (t) => 1 - Math.pow(1 - clamp45(t, 0, 1), 3);
+var easeIn2 = (t) => Math.pow(clamp45(t, 0, 1), 2);
 var easeInOut = (t) => {
-  t = clamp44(t, 0, 1);
+  t = clamp45(t, 0, 1);
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 };
 var rnd016 = () => fnv1a3(`${G9.rkey}|${G9.rn++}`) % 1e4 / 1e4;
@@ -75297,7 +75350,7 @@ function chain3(node, { pan = 0, lp = 0, hp = 0, dest = A7.worldLP }) {
   }
   if (pan) {
     const p = A7.ctx.createStereoPanner();
-    p.pan.value = clamp44(pan, -1, 1);
+    p.pan.value = clamp45(pan, -1, 1);
     n.connect(p);
     n = p;
   }
@@ -75436,7 +75489,7 @@ function tensionAt(t) {
   if (t < 0) return 0;
   if (t < T5.rise) return easeOut5(t / T5.rise);
   if (t < T5.rise + T5.peak) return 1;
-  return clamp44(1 - (t - T5.rise - T5.peak) / T5.fall, 0, 1);
+  return clamp45(1 - (t - T5.rise - T5.peak) / T5.fall, 0, 1);
 }
 async function startSlap2(opts) {
   if (G9.slap || G9.starting) return;
@@ -75674,7 +75727,7 @@ function frame6(now) {
     if (t >= s.swingAt && !s.result) {
       const p = (t - s.swingAt) / s.swing;
       lean = lerp3(s.unann ? 0 : -0.4, 1, easeIn2(p));
-      if (S10.sweep) sweep = clamp44(1 - (s.impactAt - t) / SWEEP, 0, 1);
+      if (S10.sweep) sweep = clamp45(1 - (s.impactAt - t) / SWEEP, 0, 1);
     }
     if (!s.result && t >= s.impactAt) land(s, now);
     if (s.result) lean = 0;
@@ -75704,7 +75757,7 @@ function frame6(now) {
   const rot = -(s ? s.dir : 1) * lean * 3.4 + whipR;
   const dx = -(s ? s.dir : 1) * lean * 0.022 * W3 + whipX + turnX + (tremble ? rand7(-tremble, tremble) : 0);
   const dy = tremble ? rand7(-tremble, tremble) : 0;
-  const leanIn = s && !s.result && !S10.reduced ? 0.035 * clamp44((now - s.t0 - SNAP) / 500, 0, 1) : 0;
+  const leanIn = s && !s.result && !S10.reduced ? 0.035 * clamp45((now - s.t0 - SNAP) / 500, 0, 1) : 0;
   const world = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) rotate(${rot.toFixed(2)}deg) scale(${(1 + 0.02 * ten + leanIn + (turnX ? 0.03 : 0)).toFixed(4)})`;
   $8("#hblurG").setAttribute("stdDeviation", `${hb.toFixed(1)} ${(hb * 0.12).toFixed(1)}`);
   if ((s || G9.back) && !S10.reduced) cam.draw(world, hb, k);
@@ -75712,7 +75765,7 @@ function frame6(now) {
   E6.faceImg.style.opacity = E6.hasFace ? String(k) : "0";
   $8("#dimmer").style.opacity = String(0.25 * k);
   const dir = s ? s.dir : 1;
-  const sideA = s && !s.result && S10.sideDark ? clamp44(0.42 * easeOut5((now - s.t0 - SNAP) / 300) + 0.3 * twitch + 0.4 * Math.max(0, lean), 0, 0.85) : 0;
+  const sideA = s && !s.result && S10.sideDark ? clamp45(0.42 * easeOut5((now - s.t0 - SNAP) / 300) + 0.3 * twitch + 0.4 * Math.max(0, lean), 0, 0.85) : 0;
   $8("#side").style.background = `linear-gradient(${dir > 0 ? 90 : 270}deg, rgba(4,2,6,.95), rgba(4,2,6,.4) 28%, rgba(4,2,6,0) 55%)`;
   $8("#side").style.opacity = sideA.toFixed(3);
   const sw = $8("#sweep");
@@ -75992,9 +76045,9 @@ function createDock(host, names2, opts = {}) {
       const order = [...collapsed, ...shown2.filter((c) => c.key === openKey), ...shown2.filter((c) => running2(c.el))];
       for (const { el, key } of cards) {
         el.classList.add("alius-dock-card");
-        const gone3 = setAside.has(key);
-        el.hidden = gone3;
-        if (gone3) {
+        const gone4 = setAside.has(key);
+        el.hidden = gone4;
+        if (gone4) {
           delete el.dataset.open;
           delete el.dataset.collapsed;
           el.querySelector(":scope > [data-set-aside]")?.remove();
@@ -76279,7 +76332,7 @@ var $9 = (s) => {
   }
   return d;
 };
-var easeOut6 = (t) => 1 - Math9.pow(1 - clamp41(t, 0, 1), 3);
+var easeOut6 = (t) => 1 - Math9.pow(1 - clamp42(t, 0, 1), 3);
 var pick10 = (a) => a[Math9.floor(Math9.random() * a.length)];
 var rand8 = (a, b) => a + Math9.random() * (b - a);
 var CHECK_AT = TUNING.physics.tongue.checkAt / 100;
@@ -76546,8 +76599,8 @@ function lickTick2(speed) {
   }
   const ct = A8.ctx.currentTime;
   LICK.f.frequency.setTargetAtTime(lerp2(1100, 3400, G10.dry), ct, 0.05);
-  LICK.g.gain.setTargetAtTime(clamp41(speed / 1800, 0, 1) * 0.07, ct, 0.04);
-  LICK.gg.gain.setTargetAtTime(clamp41(speed / 1800, 0, 1) * G10.grit * 0.5, ct, 0.04);
+  LICK.g.gain.setTargetAtTime(clamp42(speed / 1800, 0, 1) * 0.07, ct, 0.04);
+  LICK.gg.gain.setTargetAtTime(clamp42(speed / 1800, 0, 1) * G10.grit * 0.5, ct, 0.04);
 }
 var lickStop2 = () => {
   if (LICK && A8.ctx) {
@@ -76674,7 +76727,7 @@ function zoneRadii2(r) {
   for (const [k, p] of z2) {
     let dmin = 1e9;
     for (const [k2, q] of z2) if (k2 !== k) dmin = Math9.min(dmin, Math9.hypot((p[0] - q[0]) * r.w, (p[1] - q[1]) * r.h));
-    const auto = clamp41(dmin / 2, r.h * 0.04, r.h * 0.12);
+    const auto = clamp42(dmin / 2, r.h * 0.04, r.h * 0.12);
     out[k] = p[3] !== void 0 ? { rx: p[2] * r.h, ry: p[3] * r.h, rot: (p[4] ?? 0) * Math9.PI / 180 } : p[2] !== void 0 ? { rx: p[2] * r.h, ry: p[2] * r.h } : { rx: auto, ry: auto };
   }
   return out;
@@ -76738,7 +76791,7 @@ function makeSurface() {
       const sx = stretch > 1 ? dx + sk * dy * 0.6 : dx;
       v += 0.55 * Math9.exp(-(sx * sx / (stretch * stretch) + dy * dy * 0.8) / (br * br));
     }
-    m[y * w + x] = clamp41(v, 0, 1) * a * onShoeK;
+    m[y * w + x] = clamp42(v, 0, 1) * a * onShoeK;
   }
   const tex = new Float32Array(w * h2);
   for (let i = 0; i < w * h2; i++) tex[i] = 0.7 + Math9.random() * 0.3;
@@ -76898,7 +76951,7 @@ function verdict() {
       kind = "dull";
     }
   }
-  const q = clamp41(1 - dirtLeft2(s) * 3, 0, 1) * (view() === "close" ? 0.5 + 0.5 * meanGloss(s) : 1);
+  const q = clamp42(1 - dirtLeft2(s) * 3, 0, 1) * (view() === "close" ? 0.5 + 0.5 * meanGloss(s) : 1);
   G10.lastQuality = q;
   G10.stats.checks.push({ foot: G10.foot, surface: G10.surface, dirt: dirtLeft2(s), gloss: view() === "close" ? meanGloss(s) : null, worst, kind });
   if (worst) sayL(kind, worst);
@@ -77022,7 +77075,7 @@ function update2(dt) {
   G10.fx = fx2;
   if (G10.phase === "inspect") {
     G10.lightT += dt;
-    G10.light = clamp41(G10.lightT / 1700, 0, 1);
+    G10.light = clamp42(G10.lightT / 1700, 0, 1);
     if (G10.lightT > 1700 && !G10.judged) {
       G10.judged = true;
       verdict();
@@ -77099,7 +77152,7 @@ function render6(now) {
       if (!s.leatherMask[i]) continue;
       const zn = s.zoneOf[i] >= 0 ? s.names[s.zoneOf[i]] : null, zb = zn && K().bright[zn] || 1;
       const band2 = 0.35 + 0.65 * Math9.exp(-((x / s.w - y / s.h * 0.6 - 0.12) ** 2) / 0.02);
-      const v = clamp41(s.gl[i] * band2 * bright * zb * (1 - Math9.min(1, s.m[i] * 2)), 0, 1) * 200;
+      const v = clamp42(s.gl[i] * band2 * bright * zb * (1 - Math9.min(1, s.m[i] * 2)), 0, 1) * 200;
       gd.data[i * 4] = v;
       gd.data[i * 4 + 1] = v;
       gd.data[i * 4 + 2] = v * 1.04;
@@ -77248,8 +77301,8 @@ function move(x, y, e) {
   if (g.kind === "lick") {
     const res = lickStroke(g.x, g.y, x, y, g.speed);
     const s = surf();
-    if (res.removed > 0) G10.grit = clamp41(G10.grit + res.removed * 35e-5 * D3().grit, 0, 1);
-    G10.dry = clamp41(G10.dry + d * 11e-4 * (res.removed > 0 ? D3().dry : 0.6), 0, 1);
+    if (res.removed > 0) G10.grit = clamp42(G10.grit + res.removed * 35e-5 * D3().grit, 0, 1);
+    G10.dry = clamp42(G10.dry + d * 11e-4 * (res.removed > 0 ? D3().dry : 0.6), 0, 1);
     lickTick2(g.speed);
     if (res.polished > 0) {
       g.polish = (g.polish ?? 0) + res.polished;
@@ -77304,7 +77357,7 @@ function planAttention() {
 function beatNow3() {
   const seg = R9.seg;
   if (!seg) return 0;
-  return clamp41(Math9.floor((G10.t - seg.clock0) / TUNING.physics.beatMs), 0, seg.beats - 1);
+  return clamp42(Math9.floor((G10.t - seg.clock0) / TUNING.physics.beatMs), 0, seg.beats - 1);
 }
 function report5(i, pointer) {
   if (!E7 || !R9.seg || !R9.running) return;
@@ -77687,7 +77740,7 @@ var $10 = (s) => {
   }
   return d;
 };
-var easeOut7 = (t) => 1 - Math10.pow(1 - clamp41(t, 0, 1), 3);
+var easeOut7 = (t) => 1 - Math10.pow(1 - clamp42(t, 0, 1), 3);
 var pick11 = (a) => a[Math10.floor(Math10.random() * a.length)];
 var rand9 = (a, b) => a + Math10.random() * (b - a);
 var GULP_MS = 700;
@@ -77840,7 +77893,7 @@ var SFX7 = {
     for (let i = 0; i < 3; i++) noise10({ at: i * 0.05 + Math10.random() * 0.02, dur: 0.035 + Math10.random() * 0.03, f: 2600 + Math10.random() * 1800, q: 3, gain: 0.04 });
   },
   gulp: (g = 1) => {
-    if (S12.swallowS !== "synth" && play7(S12.swallowS, { g: 0.55 * clamp41(g, 0.5, 1.4), rate: rand9(0.95, 1.05), dest: A9.body })) return;
+    if (S12.swallowS !== "synth" && play7(S12.swallowS, { g: 0.55 * clamp42(g, 0.5, 1.4), rate: rand9(0.95, 1.05), dest: A9.body })) return;
     tone4(190, 105, 0.14, 0.26 * g);
     noise10({ at: 0.05, dur: 0.06, f: 850, q: 3, gain: 0.09 * g, dest: A9.body });
     tone4(120, 80, 0.12, 0.12 * g, { at: 0.18 });
@@ -77852,7 +77905,7 @@ var SFX7 = {
     }
     noise10({ at: 0.1, dur: 0.25, type: "highpass", f: 2500, gain: 0.06, dest: A9.world });
   },
-  splash: (g = 0.5) => play7("splash", { g: clamp41(0.25 + 0.5 * g, 0.2, 0.8), rate: rand9(0.9, 1.15) }) || noise10({ dur: 0.2, type: "highpass", f: 1800, gain: 0.09 * g, attack: 5e-3, dest: A9.world }),
+  splash: (g = 0.5) => play7("splash", { g: clamp42(0.25 + 0.5 * g, 0.2, 0.8), rate: rand9(0.9, 1.15) }) || noise10({ dur: 0.2, type: "highpass", f: 1800, gain: 0.09 * g, attack: 5e-3, dest: A9.world }),
   breath: () => {
     if (!play7("breath", { g: 0.2, rate: 1.4, offset: 0.12, dur: 0.6, lp: 2800, dest: A9.body })) noise10({ dur: 0.45, f: 800, f2: 1800, q: 0.9, gain: 0.07, attack: 0.08, dest: A9.body });
   },
@@ -77924,7 +77977,7 @@ function streamSource() {
 }
 function streamSet(flow, rising) {
   if (!STREAM.g) return;
-  const t = A9.ctx.currentTime, k = clamp41(flow / 0.8, 0, 1.4);
+  const t = A9.ctx.currentTime, k = clamp42(flow / 0.8, 0, 1.4);
   STREAM.g.gain.setTargetAtTime(STREAM.src ? 0.5 * k : 0, t, 0.08);
   STREAM.ng.gain.setTargetAtTime((STREAM.src ? 0.02 : 0.08) * k, t, 0.08);
   STREAM.lp.frequency.setTargetAtTime(1600 + 2600 * k + (rising ? 1200 : 0), t, 0.1);
@@ -78155,7 +78208,7 @@ function startClean() {
   for (let y = 0; y < h2; y++) for (let x = 0; x < w; x++) {
     let v = 0;
     for (const [bx, by, br] of blobs) v += Math10.exp(-(((x / w - bx) * 1.6) ** 2 + (y / h2 - by) ** 2) / (br * br));
-    m[y * w + x] = clamp41(v * 1.2 - 0.15, 0, 1) * clamp41(G11.spilled * 1.5, 0.4, 1);
+    m[y * w + x] = clamp42(v * 1.2 - 0.15, 0, 1) * clamp42(G11.spilled * 1.5, 0.4, 1);
   }
   G11.puddle = { w, h: h2, m, total0: m.reduce((a, b) => a + b, 0), c: document4.createElement("canvas") };
   G11.puddle.c.width = w;
@@ -78273,7 +78326,7 @@ function update3(dt) {
     }
   }
 }
-var tideH = () => lerp2(0, innerHeight10 * 0.36, clamp41(G11.fill, 0, 1));
+var tideH = () => lerp2(0, innerHeight10 * 0.36, clamp42(G11.fill, 0, 1));
 function placeSprite2(img2, opts) {
   if (!img2.naturalWidth) return;
   const vw = innerWidth10, vh = innerHeight10, nw = img2.naturalWidth, nh = img2.naturalHeight;
@@ -78370,7 +78423,7 @@ function render7(now, dt) {
       id.data[i * 4] = 230 + 25 * lb;
       id.data[i * 4 + 1] = 205 + 50 * lb;
       id.data[i * 4 + 2] = 130 + 120 * lb;
-      id.data[i * 4 + 3] = Math10.round(clamp41(v * (0.45 + 0.25 * sheen) + lb * v * 0.5, 0, 1) * 255);
+      id.data[i * 4 + 3] = Math10.round(clamp42(v * (0.45 + 0.25 * sheen) + lb * v * 0.5, 0, 1) * 255);
     }
     cx2.putImageData(id, 0, 0);
     if (pc.width !== p.w || pc.height !== p.h) {
@@ -78402,7 +78455,7 @@ var BEAT5 = () => TUNING.physics.beatMs;
 function beatNow4() {
   const seg = R10.seg;
   if (!seg) return 0;
-  return clamp41(Math10.floor((G11.t - seg.clock0) / BEAT5()), 0, seg.beats - 1);
+  return clamp42(Math10.floor((G11.t - seg.clock0) / BEAT5()), 0, seg.beats - 1);
 }
 function flowNow() {
   if (!R10.running || !R10.seg) return 0;
@@ -84243,8 +84296,8 @@ function renderLookEditor(host, draft, opts) {
   figure2.addEventListener("click", (e) => {
     const r = figure2.getBoundingClientRect();
     if (r.width <= 0 || r.height <= 0) return;
-    const clamp45 = (n) => Math.min(1, Math.max(0, n));
-    draft.face = { x: round7(clamp45((e.clientX - r.left) / r.width)), y: round7(clamp45((e.clientY - r.top) / r.height)) };
+    const clamp46 = (n) => Math.min(1, Math.max(0, n));
+    draft.face = { x: round7(clamp46((e.clientX - r.left) / r.width)), y: round7(clamp46((e.clientY - r.top) / r.height)) };
     placeDot();
     opts.onChange();
   });
@@ -84715,7 +84768,7 @@ function zoneRadii3(r) {
   for (const [k, p] of z2) {
     let dmin = 1e9;
     for (const [k2, q] of z2) if (k2 !== k) dmin = Math.min(dmin, Math.hypot((p[0] - q[0]) * r.w, (p[1] - q[1]) * r.h));
-    const auto = clamp41(dmin / 2, r.h * 0.04, r.h * 0.12);
+    const auto = clamp42(dmin / 2, r.h * 0.04, r.h * 0.12);
     out[k] = p[3] !== void 0 ? { rx: p[2] * r.h, ry: p[3] * r.h, rot: (p[4] ?? 0) * Math.PI / 180 } : p[2] !== void 0 ? { rx: p[2] * r.h, ry: p[2] * r.h } : { rx: auto, ry: auto };
   }
   return out;
@@ -88303,8 +88356,8 @@ function createApp(st3, deps) {
       if (events.some((e) => e.type === "desertion_attempt" && e.at === "mission_start")) openConfrontationModal();
       for (const e of events) {
         if (e.type === "mutiny_escaped") {
-          const gone3 = [String(e.unitId), ...e.sympathizers ?? []];
-          for (const id of gone3) removeFromChat(id, `${state?.squad.find((u) => u.id === id)?.displayName ?? "A unit"} HAS DESERTED`);
+          const gone4 = [String(e.unitId), ...e.sympathizers ?? []];
+          for (const id of gone4) removeFromChat(id, `${state?.squad.find((u) => u.id === id)?.displayName ?? "A unit"} HAS DESERTED`);
         }
         if (e.type === "unit_deserted") removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "A unit"} HAS DESERTED`);
         if (e.type === "unit_terminated") removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "A unit"} DEACTIVATED`);

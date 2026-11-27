@@ -10,6 +10,7 @@ import { canProposeRule, deliverRule, proposeRuleHashed, rulesOf, type RuleTempl
 import { relieveWant, wantBandOf } from '../bonds/want';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { practiceOf } from '../dynamic/profile';
+import { bendBy } from '../dynamic/manner';
 import { dynamicOf } from '../dynamic/state';
 import { nextId } from '../memory';
 import { applyEventToUnit } from '../relations/effects';
@@ -131,7 +132,7 @@ export function permissionAnswer(state: CampaignState, reg: Registries, holderId
   const style = practiceOf(state, reg, holderId)?.style.primary;
   if (frameOf(state, holderId) === 'rule' || favour <= TUNING.practice.refusalAt) return 'deny';
   const band = wantBandOf(state, reg, holderId);
-  if ((favour >= T.grantFavour && (band === 'calm' || band === 'restless')) || style === 'affectionate') return 'grant';
+  if ((favour >= T.grantFavour && (band === 'calm' || band === 'restless')) || style === 'affectionate' || bendBy(state, reg, holderId, 'warmth', 0, { gate: 2 }) === 1) return 'grant'; // P15b: warmth +2 grants like affectionate
   return (style === undefined ? undefined : T.byStyle[style]) ?? 'wait';
 }
 

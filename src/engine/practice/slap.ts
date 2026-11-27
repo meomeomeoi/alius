@@ -9,6 +9,7 @@ import { countDeed } from '../discipline/deeds';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { addFavour } from '../dynamic/hold';
 import { practiceOf } from '../dynamic/profile';
+import { bendBy } from '../dynamic/manner';
 import { regardFall, regardRise } from '../dynamic/regard';
 import { isLiving } from '../economy';
 import { fnv1a } from '../hub';
@@ -29,7 +30,8 @@ export function slapWindowMs(state: CampaignState, reg: Registries, holderId: st
   const T = TUNING.practice.slap;
   const style = styleOf(state, reg, holderId);
   const base = (style === undefined ? undefined : (T.windowMs as Readonly<Record<string, number>>)[style]) ?? 500;
-  return style === 'obsessive' ? Math.round(base + practiceRoll(state, holderId, `slapwin:${slapId}`) * T.obsessiveSpread) : base;
+  const swing = style === 'obsessive' ? Math.round(base + practiceRoll(state, holderId, `slapwin:${slapId}`) * T.obsessiveSpread) : base;
+  return bendBy(state, reg, holderId, 'tempo', swing, { scale: -TUNING.manner.scale }); // P15b: a sudden holder (tempo up) swings sooner
 }
 
 /** The feints she makes before the real one: none under `feintFrom` of her `swing`; from it, one with the hashed chance of `feintPerLevel` for each level from the second (10 % at 2, 20 % at 3). */
@@ -124,9 +126,12 @@ function deal(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, holderId
   addFavour(draft, holderId, T.favour[result]);
   if (result === 'braced') events.push(...regardRise(draft, reg, holderId, 'dignity'));
   if (result === 'flinched') {
-    if (style === 'affectionate') addFavour(draft, holderId, T.favour.softer); // she is gentler: the flinch is forgiven
+    // she is gentler: the flinch is forgiven (P15b: also a holder at warmth +2, once)
+    if (style === 'affectionate' || bendBy(draft, reg, holderId, 'warmth', 0, { gate: 2 }) === 1) addFavour(draft, holderId, T.favour.softer);
     flinchedSentence(draft, slap, style);
-    if (style === 'cruel' && slap.again !== true) events.push(...startSlap(draft, ctx, holderId, { again: true, ...(slap.punishmentId !== undefined ? { punishmentId: slap.punishmentId } : {}) }));
+    // P15b: a second slap for cruel, unless her intensity is -2, and for any style at +2
+    const again = bendBy(draft, reg, holderId, 'intensity', 0, { gate: 2 }) === 1 || (style === 'cruel' && bendBy(draft, reg, holderId, 'intensity', 0, { gate: -2 }) === 0);
+    if (again && slap.again !== true) events.push(...startSlap(draft, ctx, holderId, { again: true, ...(slap.punishmentId !== undefined ? { punishmentId: slap.punishmentId } : {}) }));
     // R11: a turned face is a defiance, her offence like any other (her discipline remembers it through `noteOffence`; no draw)
     events.push(...noteOffence(draft, ctx, holderId, { kind: 'slap_defied', ref: slap.id, stakes: 'minor', day: draft.day }));
   }

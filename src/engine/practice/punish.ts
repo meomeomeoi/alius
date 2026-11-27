@@ -13,6 +13,7 @@ import { injureCommander } from '../calendar';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { hasCapability } from '../dynamic/capabilities';
 import { practiceOf } from '../dynamic/profile';
+import { mannerOf } from '../dynamic/manner';
 import { addSign } from '../dynamic/knowledge';
 import { refusalCost } from '../dynamic/milestones';
 import { addFavour, restoreHold } from '../dynamic/hold';
@@ -213,7 +214,11 @@ function carryOut(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, p: O
 export function ceremonyOf(state: CampaignState, reg: Registries, holderId: string, severity: number): string[] | null {
   const style = styleOf(state, reg, holderId);
   if (style === undefined || severity < TUNING.practice.ceremony.minSeverity) return null;
-  const rows = [...reg.ceremonySteps.values()].filter((e) => Array.isArray(e.styles) && (e.styles as unknown[]).includes(style)).sort((a, b) => Number(a.order) - Number(b.order));
+  // P15b: `order` -2 holds no ceremony even for a ceremony style; +2 runs the steps listed for `ritual` for a holder of any style (the gate is her manner: none, none)
+  const order = mannerOf(state, reg, holderId)?.axes.order ?? 0;
+  if (order <= -2) return null;
+  const kind = order >= 2 ? 'ritual' : style;
+  const rows = [...reg.ceremonySteps.values()].filter((e) => Array.isArray(e.styles) && (e.styles as unknown[]).includes(kind)).sort((a, b) => Number(a.order) - Number(b.order));
   return rows.length === 0 ? null : rows.map((e) => String(e.id));
 }
 

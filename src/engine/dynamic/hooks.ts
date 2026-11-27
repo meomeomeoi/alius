@@ -19,9 +19,10 @@ import { registerRipeSource } from '../blocking/vocabulary';
 import { registerExpectation } from '../moments/answer';
 import { registerMomentTrigger } from '../moments/live';
 import type { OpenMoment } from '../moments/state';
-import { registerHoldsUntil, registerPhysicsStyle, registerRunTarget } from '../physics/style';
+import { registerHoldsUntil, registerPhysicsManner, registerPhysicsStyle, registerRunTarget } from '../physics/style';
 import { registerPresenceTerms } from '../physics/presence';
 import { bandIndex } from './hold';
+import { mannerOf } from './manner';
 import type { PhysicsStyle } from '../physics/state';
 import type { CampaignState } from '../state/types';
 import { registerCompromatCount, registerRegardBand } from './aftermath';
@@ -113,6 +114,7 @@ export function installDynamicHooks(): void {
   registerBlockingGate(gate);
   registerPhysicsStyle(styleReader);
   registerHoldsUntil(holdsReader);
+  registerPhysicsManner((state, unitId, reg) => (reg === undefined || liveDynamic(state, unitId) === undefined ? null : mannerOf(state, reg, unitId)?.axes ?? null)); // P15b: her axes, for the rows the engine bends
   // P10e-e R25: her presence in the frame of her time reads her Regard (a tone term) and her hold band by rank, and the session's hash
   registerPresenceTerms((state, reg, unitId) => {
     const dyn = dynamicOn(state, reg) ? liveDynamic(state, unitId) : undefined;

@@ -10,6 +10,7 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import { hasCapability } from '../dynamic/capabilities';
 import { hasCommanderPronoun } from '../dynamic/pronoun';
 import { practiceOf } from '../dynamic/profile';
+import { bendBy } from '../dynamic/manner';
 import { dynamicOf } from '../dynamic/state';
 import { addTrackXp } from '../dynamic/tracks';
 import type { CampaignState } from '../state/types';
@@ -83,7 +84,8 @@ export function namePosture(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
 export function postureWindowMs(state: CampaignState, reg: Registries, holderId: string): number {
   const T = TUNING.practice.posture.windowMs;
   const style = practiceOf(state, reg, holderId)?.style.primary;
-  return style === 'ritual' ? T.ritual : style === 'drill' ? T.drill : T.other;
+  const base = style === 'ritual' ? T.ritual : style === 'drill' ? T.drill : T.other;
+  return bendBy(state, reg, holderId, 'tempo', base, { scale: -TUNING.manner.scale }); // P15b: a sudden holder (tempo up) gives less time
 }
 
 /**

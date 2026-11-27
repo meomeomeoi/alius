@@ -5,6 +5,7 @@
 import type { Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { practiceOf } from '../dynamic/profile';
+import { bendBy } from '../dynamic/manner';
 import type { CampaignState } from '../state/types';
 import { ensurePractices, nextPracticeId, practiceLive } from './gate';
 import { pickSeeds } from './seeds';
@@ -75,13 +76,18 @@ const SEALABLE: readonly PracticeKind[] = ['task', 'hold', 'punishment'];
 /** Her share of sealed practices by her primary style (R16, R.12; a style the table does not list takes `base` of nothing: 0.05, the "others" row). */
 export function sealedShare(state: CampaignState, reg: Registries, holderId: string): number {
   const style = practiceOf(state, reg, holderId)?.style.primary;
-  return (style === undefined ? undefined : (TUNING.practice.sealedShare as Readonly<Record<string, number>>)[style]) ?? 0.05;
+  const base = (style === undefined ? undefined : (TUNING.practice.sealedShare as Readonly<Record<string, number>>)[style]) ?? 0.05;
+  // P15b: curiosity up and order down raise it by shift (never below 0; no manner: the base)
+  const T = TUNING.manner.sealed;
+  return Math.max(0, bendBy(state, reg, holderId, 'order', bendBy(state, reg, holderId, 'curiosity', base, { shift: T.curiosity }), { shift: -T.orderDown }));
 }
 
 /** Her share of practices that run with no duration by her primary style (R16, R.12: `ritual` and `drill` 0). */
 export function noDurationShare(state: CampaignState, reg: Registries, holderId: string): number {
   const style = practiceOf(state, reg, holderId)?.style.primary;
-  return (style === undefined ? undefined : (TUNING.practice.noDurationShare as Readonly<Record<string, number>>)[style]) ?? 0.1;
+  const base = (style === undefined ? undefined : (TUNING.practice.noDurationShare as Readonly<Record<string, number>>)[style]) ?? 0.1;
+  // P15b: order down raises it by shift, never by scale (`ritual` and `drill` are 0 and a scale would keep them there); a high order never takes it below 0
+  return Math.max(0, bendBy(state, reg, holderId, 'order', base, { shift: -TUNING.manner.noDuration.orderDown }));
 }
 
 /** Does the request with this key come sealed? `practiceRoll(holderId, 'sealed:' + key) < her share`; hashed, no draw. */

@@ -167,7 +167,7 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
   Numbers: the spec's TUNING table.
 - Test: `tests/practice/manner.test.ts`.
 
-- [ ] **Step 1: Write the failing tests.** One block per reader:
+- [x] **Step 1: Write the failing tests.** One block per reader:
   - **(a)** without `manner` the value equals today's (call the reader on a profile with and without the block);
   - **(b)** at all zeros it is the same;
   - **(c)** the spec's direction and size at ±1 / ±2;
@@ -177,10 +177,10 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
     - a scale would leave it at 0, so the code must use the shift.
 
   Also `tests/practice/unaffected.test.ts` and `tests/sim/practiceLongRun.test.ts` unchanged.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** through `bendBy` (Task 1).
-- [ ] **Step 4: Run** the new test, `tests/practice`, `tests/sim/practiceLongRun.test.ts` → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P15b): her manner bends the practices`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** through `bendBy` (Task 1).
+- [x] **Step 4: Run** the new test, `tests/practice`, `tests/sim/practiceLongRun.test.ts` → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P15b): her manner bends the practices`
 
 ### Task 5: What draws her and what she asks for
 

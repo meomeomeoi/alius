@@ -10,6 +10,7 @@ import { frameRank } from '../blocking/state';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { practiceOf } from '../dynamic/profile';
 import { dynamicOf } from '../dynamic/state';
+import { bendBy } from '../dynamic/manner';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { eligibleUnits, ensurePractices, practiceLive } from './gate';
@@ -45,7 +46,9 @@ export function severityOf(state: CampaignState, reg: Registries, holderId: stri
   const recent = (state.practices?.offences[holderId] ?? []).filter((d) => state.day - d <= T.repeat.days).length;
   const repeat = recent >= T.repeat.count ? T.repeat.add : 0;
   const confessed = offence.confessed === true ? TUNING.practice.confessedLess : 0; // telling it herself weighs less (R10)
-  const total = Math.floor(stakeRank(offence.stakes) + 1 + styleTerm(state, reg, holderId) + frameTerm + repeat - confessed + 0.5); // one rounding, half up
+  // P15b: `intensity` shifts the sum by half a step before the one rounding (a holder with no manner: 0)
+  const manner = bendBy(state, reg, holderId, 'intensity', 0, { shift: TUNING.manner.severity });
+  const total = Math.floor(stakeRank(offence.stakes) + 1 + styleTerm(state, reg, holderId) + manner + frameTerm + repeat - confessed + 0.5); // one rounding, half up
   return Math.min(T.max, Math.max(T.min, total)) as Severity5;
 }
 
