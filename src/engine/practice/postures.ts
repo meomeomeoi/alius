@@ -107,11 +107,18 @@ export function cleanPostureName(raw: unknown): string | null {
 /** What a posture is called until she names it: the preset's label, or the base's (an old name keeps the base's own label). */
 const labelOf = (reg: Registries, postureId: string): string => String(reg.servicePostures.get(postureId)?.label ?? reg.blockingPostures.get(postureId)?.label ?? postureId);
 
-/** May she name or call this posture now: it reads as a preset (or a base) whose categories are on and not among her limits, at the frame it needs. */
+/**
+ * May she name or call this posture now. A preset id passes the preset's gate (its categories on and not among her limits, the frame it needs). An old name on a base (a base id that is not
+ * also a preset's) is gated on the base entry alone, as P16 did: the default preset it reads as brings its own tags, which must not take an old name away from a save.
+ */
 export const postureAllowed = (state: CampaignState, reg: Registries, postureId: string, holderId: string): boolean => {
+  if (isOldName(reg, postureId)) return entryAllowed(state, reg, reg.blockingPostures.get(postureId) ?? {}, [holderId]);
   const preset = presetOf(reg, postureId);
-  return preset !== undefined && presetAllowed(state, reg, preset, [holderId]) && (reg.servicePostures.has(postureId) || entryAllowed(state, reg, reg.blockingPostures.get(postureId) ?? {}, [holderId]));
+  return preset !== undefined && presetAllowed(state, reg, preset, [holderId]);
 };
+
+/** Is this id an old name: a base posture that no preset carries as its own id (`all_fours` is both, and the preset wins)? */
+export const isOldName = (reg: Registries, postureId: string): boolean => reg.blockingPostures.has(postureId) && !reg.servicePostures.has(postureId);
 
 /**
  * The after-action that names postures (registered by `actions/practice.ts`): a posture set on the commander (`blocking_changed`, field `posture`) in a scene with a holder who keeps named postures
@@ -209,7 +216,7 @@ export function takePosture(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
   const change: BlockingChange = { person: COMMANDER, field: 'posture', value: (preset?.base as string | undefined) ?? call.postureId, ...(preset !== undefined ? { preset: preset.id } : {}) };
   const after = { holderId: call.holderId, callId, postureId: call.postureId };
   if (samePreset(reg, commanderPresetOf(draft, reg)?.id, call.postureId)) return [{ type: 'posture_called', ...base, taken: true }, ...addTrackXp(draft, reg, call.holderId, TRACK, TUNING.practice.posture.xp), ...afterAnswer(draft, ctx, after)];
-  if (draft.scene === undefined || checkChange(draft, reg, change) !== null || (presetOf(reg, call.postureId) !== undefined && presetProblem(draft, reg, presetOf(reg, call.postureId)!) !== null)) return [{ type: 'posture_called', ...base, void: true }];
+  if (draft.scene === undefined || checkChange(draft, reg, change) !== null || (!isOldName(reg, call.postureId) && presetOf(reg, call.postureId) !== undefined && presetProblem(draft, reg, presetOf(reg, call.postureId)!) !== null)) return [{ type: 'posture_called', ...base, void: true }];
   return [
     { type: 'posture_called', ...base, taken: true },
     ...setBlocking(draft, ctx, change, { at, source: 'chip' }),

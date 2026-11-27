@@ -43620,9 +43620,11 @@ function cleanPostureName(raw) {
 }
 var labelOf2 = (reg, postureId) => String(reg.servicePostures.get(postureId)?.label ?? reg.blockingPostures.get(postureId)?.label ?? postureId);
 var postureAllowed = (state, reg, postureId, holderId) => {
+  if (isOldName(reg, postureId)) return entryAllowed(state, reg, reg.blockingPostures.get(postureId) ?? {}, [holderId]);
   const preset = presetOf(reg, postureId);
-  return preset !== void 0 && presetAllowed(state, reg, preset, [holderId]) && (reg.servicePostures.has(postureId) || entryAllowed(state, reg, reg.blockingPostures.get(postureId) ?? {}, [holderId]));
+  return preset !== void 0 && presetAllowed(state, reg, preset, [holderId]);
 };
+var isOldName = (reg, postureId) => reg.blockingPostures.has(postureId) && !reg.servicePostures.has(postureId);
 function notePosture(draft, ctx2, events) {
   const scene = draft.scene;
   if (scene === void 0) return [];
@@ -43696,7 +43698,7 @@ function takePosture(draft, ctx2, callId, postureId, late2, at2) {
   const change = { person: COMMANDER, field: "posture", value: preset?.base ?? call2.postureId, ...preset !== void 0 ? { preset: preset.id } : {} };
   const after10 = { holderId: call2.holderId, callId, postureId: call2.postureId };
   if (samePreset(reg, commanderPresetOf(draft, reg)?.id, call2.postureId)) return [{ type: "posture_called", ...base2, taken: true }, ...addTrackXp(draft, reg, call2.holderId, TRACK, TUNING.practice.posture.xp), ...afterAnswer(draft, ctx2, after10)];
-  if (draft.scene === void 0 || checkChange(draft, reg, change) !== null || presetOf(reg, call2.postureId) !== void 0 && presetProblem(draft, reg, presetOf(reg, call2.postureId)) !== null) return [{ type: "posture_called", ...base2, void: true }];
+  if (draft.scene === void 0 || checkChange(draft, reg, change) !== null || !isOldName(reg, call2.postureId) && presetOf(reg, call2.postureId) !== void 0 && presetProblem(draft, reg, presetOf(reg, call2.postureId)) !== null) return [{ type: "posture_called", ...base2, void: true }];
   return [
     { type: "posture_called", ...base2, taken: true },
     ...setBlocking(draft, ctx2, change, { at: at2, source: "chip" }),

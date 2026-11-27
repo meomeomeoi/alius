@@ -7,7 +7,7 @@ import '../../../src/engine/actions/personal';
 import '../../../src/engine/actions/practice';
 import { COMMANDER, setBlocking } from '../../../src/engine/blocking';
 import { commanderPresetOf, defaultPresetOf, presetOf, samePreset } from '../../../src/engine/blocking/presets';
-import { callPosture, presetOf as presetOfViaPostures } from '../../../src/engine/practice/postures';
+import { callPosture, postureAllowed, presetOf as presetOfViaPostures } from '../../../src/engine/practice/postures';
 import { dynamicOf } from '../../../src/engine/dynamic/state';
 import { Rng } from '../../../src/engine/rng';
 import type { CampaignState } from '../../../src/engine/state/types';
@@ -182,5 +182,24 @@ describe('her set and her call, with presets', () => {
       called += callPosture(s, { registries: gated }, [{ type: 'intents_applied', channel: 'scene' }]).length;
     }
     expect(called, 'one preset is left: nothing to choose between').toBe(0);
+  });
+  it('an old name on a base is gated on the base entry only, as P16 did; a preset id keeps the preset\'s gate (the review: M5)', () => {
+    const gated = { ...reg, servicePostures: new Map(reg.servicePostures) } as Registries;
+    for (const id of ['curled_at_feet', 'head_offered']) gated.servicePostures.set(id, { ...reg.servicePostures.get(id)!, tags: ['gated_category'] });
+    const state = scened();
+    expect(postureAllowed(state, reg, 'curled', ANN)).toBe(true);
+    for (const old of ['curled', 'lying_side']) {
+      expect(postureAllowed(state, gated, old, ANN), `${old}: the base has no tag`).toBe(true);
+    }
+    for (const id of ['curled_at_feet', 'head_offered']) expect(postureAllowed(state, gated, id, ANN), `${id}: the preset keeps its gate`).toBe(false);
+    // and she still calls the old name
+    const base = withSet(scened(), ['curled', 'lying_side']);
+    let called = 0;
+    for (let n = 0; n < 300; n++) {
+      const t = structuredClone(base);
+      t.scene!.exchanges = n;
+      called += callPosture(t, { registries: gated }, [{ type: 'intents_applied', channel: 'scene' }]).length;
+    }
+    expect(called).toBeGreaterThan(0);
   });
 });
