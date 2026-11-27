@@ -435,7 +435,7 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
   - `src/scene/developmentContext.ts` / `words.ts` (`changedAxes`: the practice and expect drift, planning ruling 11).
 - Test: `tests/development/turn.test.ts`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - the author's arc of spec §7: `affectionate` at `intensity` +2, `warmth` −2, `order` +2 turns to `regal` after two qualifying reviews and 56 days, and her absolute place is unchanged by the rebase;
   - one qualifying review is not enough;
   - every former raw reader now sees the turned style (one test per reader: e.g. milestones' `requires.styles`, bookings);
@@ -443,10 +443,10 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
   - without an overlay every reader returns what it did;
   - `since_joining` lists a practice drift;
   - the secondary is never proposed.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `tests/development`, `tests/dynamic`, `tests/practice` → PASS; `npm run build`. Chunk end: full suite, typecheck.
-- [ ] **Step 5: Commit** `feat(P15b): the turn of her style`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `tests/development`, `tests/dynamic`, `tests/practice` → PASS; `npm run build`. Chunk end: full suite, typecheck.
+- [x] **Step 5: Commit** `feat(P15b): the turn of her style`
 
 ## Chunk m7: the `regal` way in (§12) and closing
 

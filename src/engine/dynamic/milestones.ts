@@ -19,7 +19,7 @@ import { canHold, dynamicOn, herPracticeLive } from './gate';
 import { addHold, frameEntry, holdBandOf } from './hold';
 import { addCompromat } from './compromat';
 import { feedRefusal, notePlaySince } from './mannerFeed';
-import { practiceOf } from './profile';
+import { practiceOf, styleOf } from './profile';
 import { dynamicOf, type DynamicRelation } from './state';
 import { trackCap } from './tracks';
 import type { DynamicMilestoneEntry } from './types';
@@ -57,7 +57,8 @@ export function requiresMet(state: CampaignState, reg: Registries, unitId: strin
     if (view === null || !r.categories.every((c) => view.allowed.includes(c) && view.categories[c]?.as !== 'none')) return false;
   }
   if (r.styles !== undefined) {
-    const primary = state.squad.find((u) => u.id === unitId)?.bond?.practice?.style.primary;
+    const unit = state.squad.find((u) => u.id === unitId);
+    const primary = unit === undefined ? undefined : styleOf(unit)?.primary; // P15b: a turn of her style counts
     if (primary === undefined || !r.styles.includes(primary)) return false;
   }
   if (r.romantic === true && bondTierOf(state, reg, unitId) !== 'romantic') return false;

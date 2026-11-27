@@ -51,7 +51,7 @@ export function registerDevelopmentContext(builder: ContextBuilder, deps: Deps):
       if (!s.scene) return null;
       const items = presentUnits(s).flatMap((u) => {
         if (u.kind !== 'named' || u.development === undefined) return [];
-        const axes = changedAxes(u, deps.registries()).slice(0, MAX_AXES).map((a) => a.words);
+        const axes = changedAxes(u, deps.registries(), s.content?.enabled ?? []).slice(0, MAX_AXES).map((a) => a.words);
         const facts = topFacts(developmentOf(u).facts).map((f) => f.text);
         const parts = [...axes, ...facts];
         return parts.length > 0 ? [`- ${u.displayName}: ${parts.join('; ')}`] : [];

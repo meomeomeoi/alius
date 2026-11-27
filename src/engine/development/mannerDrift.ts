@@ -32,6 +32,19 @@ function holderDynamic(state: Pick<CampaignState, 'settings' | 'relations'>, uni
   return dynamicOf(state, unit.id) ?? null;
 }
 
+/**
+ * Is one of her runs open: a physics she holds (the scene's), a hold she keeps the commander in, her slap, or a ceremony she is running? A run reads her style and her axes
+ * as it goes, so nothing of her manner moves while one is open (the turn of Review Focus 4: a run open at the turn keeps its style, the next run reads the new one); the proposal
+ * comes back at the first review after it ends.
+ */
+export function runOpenFor(state: Pick<CampaignState, 'scene' | 'practices'>, unitId: string): boolean {
+  const practices = state.practices;
+  return state.scene?.physics?.holderId === unitId
+    || practices?.held?.by === unitId
+    || practices?.slap?.holderId === unitId
+    || (practices?.punishments ?? []).some((p) => p.holderId === unitId && p.ceremony !== undefined && p.ceremony.carried !== true);
+}
+
 /** The place of a style on the six axes (hidden coordinates), or undefined when the pack gives none. */
 function placeOf(reg: Registries, id: string): Record<MannerAxis, number> | undefined {
   return (reg.practiceStyles.get(id) as unknown as { manner?: Record<MannerAxis, number> } | undefined)?.manner;
@@ -118,7 +131,7 @@ export function nextDrawnBy(cur: readonly DrawnBy[], cand: DrawnBy): DrawnBy[] {
  */
 export function mannerProposals(state: CampaignState, reg: Registries, unit: Unit): MannerProposal[] {
   const dyn = holderDynamic(state, unit);
-  if (dyn === null) return [];
+  if (dyn === null || runOpenFor(state, unit.id)) return [];
   const turn = turnProposal(state, reg, unit, dyn);
   if (turn !== null && axisForbidden(state, reg, unit, turn.axis) === null) return [turn];
   const out: MannerProposal[] = [];

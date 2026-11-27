@@ -9,7 +9,7 @@ import { frameEntry } from '../engine/dynamic/hold';
 import { sceneProbe } from '../engine/dynamic/probes';
 import { faceNow, showsDynamic, type Face } from '../engine/dynamic/face';
 import { drawnByWord, mannerOf, mannerWord } from '../engine/dynamic/manner';
-import { practiceOf } from '../engine/dynamic/profile';
+import { practiceOf, styleOf } from '../engine/dynamic/profile';
 import { quirksDue, QUIRK_PHRASE } from '../engine/dynamic/quirks';
 import { dynamicOf } from '../engine/dynamic/state';
 import { offerLabel } from '../engine/dynamic/offer';
@@ -56,7 +56,7 @@ export const QUIRK_PREFIX = 'dynamic:quirk:';
  * cool, little comfort.") and what draws her ("What draws her is what the commander shows."), from the table of words; an axis at 0 says nothing. Without a manner it is the line it was.
  */
 function styleLine(state: CampaignState, reg: Registries, unit: Unit): string {
-  const pair = unit.bond?.practice?.style;
+  const pair = styleOf(unit); // P15b: a turn of her style counts
   if (pair === undefined) return '';
   const label = (key: string): string => clean(String((reg.practiceStyles.get(key) as unknown as PracticeStyleEntry | undefined)?.label ?? key)).toLowerCase();
   const lead = leadingStyle(state, reg, unit.id);

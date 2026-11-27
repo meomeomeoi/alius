@@ -20,7 +20,7 @@ import { TUNING } from '../tuning';
 import { canHold, dynamicOn, effectiveInclination, ensureDynamic, holderCap } from './gate';
 import { addHold, bandIndex } from './hold';
 import { feedYield } from './mannerFeed';
-import { practiceOf } from './profile';
+import { practiceOf, styleOf } from './profile';
 import { regardRise } from './regard';
 import { updateReading } from './reading';
 import { dynamicOf, type DynamicRelation } from './state';
@@ -142,7 +142,8 @@ export function probeDayStep(draft: CampaignState, ctx: Pick<EngineCtx, 'registr
 /** The hold an answer is worth before the pace, her compatibility and her sensitivity: the gain table by response (`playful` / `cruel` like a return more). */
 function answerCause(state: CampaignState, unitId: string, response: ResponseType): keyof typeof TUNING.dynamic.gains {
   if (response === 'returned') {
-    const primary = state.squad.find((u) => u.id === unitId)?.bond?.practice?.style.primary;
+    const unit = state.squad.find((u) => u.id === unitId);
+    const primary = unit === undefined ? undefined : styleOf(unit)?.primary; // P15b: a turn of her style counts
     return primary === 'playful' || primary === 'cruel' ? 'probe_returned_playful' : 'probe_returned';
   }
   return `probe_${response}` as keyof typeof TUNING.dynamic.gains;

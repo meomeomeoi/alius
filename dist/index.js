@@ -14406,7 +14406,7 @@ function discreteAxis(unit5, key) {
     if (practice === void 0) return null;
     if (d.field === "secondary") {
       const imported3 = practice.style.secondary;
-      return imported3 === void 0 ? null : { scale: scale.filter((x) => x !== practice.style.primary), imported: imported3, now: dev?.practice?.secondary ?? imported3 };
+      return imported3 === void 0 ? null : { scale: scale.filter((x) => x !== (dev?.practice?.primary ?? practice.style.primary)), imported: imported3, now: dev?.practice?.secondary ?? imported3 };
     }
     const imported2 = practice.categories[d.category]?.[d.field] ?? (d.field === "as" ? "none" : "indifferent");
     return { scale, imported: imported2, now: dev?.practice?.categories?.[d.category]?.[d.field] ?? imported2 };
@@ -17652,7 +17652,8 @@ function learnExpectation(draft, expectationId) {
 var POSSESSIVE_KINDS = ["keep_me_close", "no_romance_with_others"];
 function holderAgenda(state, reg, unitId) {
   const base2 = fallbackAgenda(state, reg, unitId).map((x) => ({ ...x, known: true }));
-  const primary = state.squad.find((u) => u.id === unitId)?.bond?.practice?.style.primary;
+  const unit5 = state.squad.find((u) => u.id === unitId);
+  const primary = unit5 === void 0 ? void 0 : styleOf(unit5)?.primary;
   if (primary !== "possessive" && primary !== "obsessive") return base2;
   const top = Math.max(0, ...base2.map((x) => x.weight), ...base2.length === 0 ? [0.5] : []);
   const out = base2.map((x) => POSSESSIVE_KINDS.some((k) => k === x.kind) ? { ...x, weight: top } : x);
@@ -19078,8 +19079,8 @@ function notePractised(draft, reg, unitId, kind, categories) {
   const done = dyn.practised ??= { kinds: [], categories: [] };
   const first2 = !done.kinds.includes(kind);
   if (first2) done.kinds.push(kind);
-  done.streak = done.streak?.kind === kind ? { kind, n: done.streak.n + 1 } : { kind, n: 1 };
-  feedPractised(draft, unitId, first2, done.streak.n, mannerOf(draft, reg, unitId)?.drawnBy.includes("discovery") === true);
+  dyn.mannerRun = dyn.mannerRun?.kind === kind ? { kind, n: dyn.mannerRun.n + 1 } : { kind, n: 1 };
+  feedPractised(draft, unitId, first2, dyn.mannerRun.n, mannerOf(draft, reg, unitId)?.drawnBy.includes("discovery") === true);
   for (const c of categories) if (!done.categories.includes(c)) done.categories.push(c);
   if (first2) drawnFavour(draft, reg, unitId, "discovery");
 }
@@ -19527,7 +19528,7 @@ function consentProblem(state, reg, booking) {
   const keeper = holderWith(state, reg, "booking_consent");
   if (keeper === null || keeper === booking.unitId || !holdersAtPlay(state).includes(booking.unitId)) return null;
   const keeperUnit = state.squad.find((u) => u.id === keeper);
-  const style = keeperUnit?.bond?.practice?.style.primary;
+  const style = keeperUnit === void 0 ? void 0 : styleOf(keeperUnit)?.primary;
   if (style !== "possessive" && style !== "obsessive") return null;
   return `${unitName(state, keeper)} would not allow ${unitName(state, booking.unitId)} to book the commander's time.`;
 }
@@ -19850,7 +19851,8 @@ function requiresMet(state, reg, unitId, m) {
     if (view3 === null || !r.categories.every((c) => view3.allowed.includes(c) && view3.categories[c]?.as !== "none")) return false;
   }
   if (r.styles !== void 0) {
-    const primary = state.squad.find((u) => u.id === unitId)?.bond?.practice?.style.primary;
+    const unit5 = state.squad.find((u) => u.id === unitId);
+    const primary = unit5 === void 0 ? void 0 : styleOf(unit5)?.primary;
     if (primary === void 0 || !r.styles.includes(primary)) return false;
   }
   if (r.romantic === true && bondTierOf(state, reg, unitId) !== "romantic") return false;
@@ -20236,7 +20238,7 @@ function compatibilityOf(state, reg, unitId) {
   const D5 = TUNING.dynamic.compatibility;
   if (dyn === void 0 || dyn.readOf.updates === 0) return 1;
   const unit5 = state.squad.find((u) => u.id === unitId);
-  const primary = unit5?.bond?.practice?.style.primary;
+  const primary = unit5 === void 0 ? void 0 : styleOf(unit5)?.primary;
   const entry = primary === void 0 ? void 0 : reg.practiceStyles.get(primary);
   if (entry === void 0) return 1;
   const rd = dyn.readOf;
@@ -20268,7 +20270,7 @@ function addHold(draft, ctx2, unitId, base2, cause, opts = {}) {
   if (gain2) {
     delta *= compatibilityOf(draft, reg, unitId);
     if (bondTierOf(draft, reg, unitId) === "romantic") {
-      const primary = draft.squad.find((u) => u.id === unitId)?.bond?.practice?.style.primary;
+      const primary = styleOf(draft.squad.find((u) => u.id === unitId))?.primary;
       if (primary === "affectionate" || primary === "possessive") delta *= TUNING.dynamic.romanticTier.warm;
       else if (primary === "cold") delta *= TUNING.dynamic.romanticTier.cold;
     }
@@ -20499,7 +20501,7 @@ function aftermathWeights(state, reg, unitId, ctx2) {
   const unit5 = state.squad.find((u) => u.id === unitId);
   const out = Object.fromEntries(AFTERMATH_KINDS.map((k) => [k, 0]));
   if (dyn === void 0 || unit5 === void 0) return out;
-  const style = unit5.bond?.practice?.style;
+  const style = styleOf(unit5);
   const values = unit5.kind === "named" ? effectiveValues(state, reg, unit5) : void 0;
   const band2 = regardBandOf2(state, reg, unitId);
   const holdsCommand = hasCapability(state, reg, unitId, "countermand");
@@ -20623,7 +20625,7 @@ function runAftermathEffect(draft, ctx2, unitId, fx2) {
     case "return_offer": {
       const x = draft.dynamic;
       if (x === void 0 || x.open.returnOffer !== void 0) return [];
-      x.open.returnOffer = { id: `dr${x.seq++}`, unitId, terms: unit5.bond?.practice?.style.primary === "drill" ? "after_punishment" : "lower_band", day: draft.day };
+      x.open.returnOffer = { id: `dr${x.seq++}`, unitId, terms: styleOf(unit5)?.primary === "drill" ? "after_punishment" : "lower_band", day: draft.day };
       return [];
     }
     case "successor":
@@ -22616,7 +22618,8 @@ function probeDayStep(draft, ctx2) {
 }
 function answerCause(state, unitId, response) {
   if (response === "returned") {
-    const primary = state.squad.find((u) => u.id === unitId)?.bond?.practice?.style.primary;
+    const unit5 = state.squad.find((u) => u.id === unitId);
+    const primary = unit5 === void 0 ? void 0 : styleOf(unit5)?.primary;
     return primary === "playful" || primary === "cruel" ? "probe_returned_playful" : "probe_returned";
   }
   return `probe_${response}`;
@@ -35757,7 +35760,7 @@ function axisWords(reg, axis, up2, value) {
   const words3 = (up2 ? entry.up : entry.down).replace(DRAFT_MARK, "").replace(/\{tag\}/g, name).replace(/\{style\}/g, style).trim();
   return words3 === "" ? null : words3;
 }
-function changedAxes(unit5, reg) {
+function changedAxes(unit5, reg, content) {
   const dev = developmentOf(unit5);
   const out = [];
   const add2 = (axis, up2) => {
@@ -35779,6 +35782,36 @@ function changedAxes(unit5, reg) {
     for (const t of dev.gained?.[field2] ?? []) add2(`${kind}:${t}`, true);
     for (const t of dev.lost?.[field2] ?? []) add2(`${kind}:${t}`, false);
   }
+  const practice = dev.practice;
+  const limits = unit5.bond?.ownLimits.categories ?? [];
+  if (practice?.manner !== void 0) {
+    for (const a of MANNER_AXES) if ((practice.manner[a] ?? 0) !== 0) add2(`manner:${a}`, practice.manner[a] > 0);
+  }
+  const storedDrawn = unit5.bond?.practice?.drawnBy ?? [];
+  if (practice?.drawnBy !== void 0 && (practice.drawnBy.length !== storedDrawn.length || practice.drawnBy.some((k, i) => k !== storedDrawn[i]))) add2("manner:drawn_by", true);
+  if (practice?.primary !== void 0 && practice.primary !== unit5.bond?.practice?.style.primary) {
+    const words3 = axisWords(reg, "manner:turn", true, practice.primary);
+    if (words3 !== null) out.push({ axis: "manner:turn", up: true, words: words3 });
+  }
+  const told = (key) => {
+    const d = discreteAxis(unit5, key);
+    if (d === null || d.now === d.imported) return false;
+    add2(key, d.scale.indexOf(d.now) > d.scale.indexOf(d.imported));
+    return true;
+  };
+  if (practice?.secondary !== void 0 && !told("practice:style.secondary") && practice.secondary !== unit5.bond?.practice?.style.secondary) add2("practice:style.secondary", true);
+  if (content !== void 0) {
+    for (const cat of Object.keys(practice?.categories ?? {})) {
+      if (!content.includes(cat) || limits.includes(cat)) continue;
+      told(`practice:${cat}.as`);
+      told(`practice:${cat}.witness`);
+    }
+    for (const id of Object.keys(dev.expect?.worship ?? {})) {
+      const target = reg.worshipTargets.get(id);
+      if (target !== void 0 && tagsOf(target).every((t) => content.includes(t) && !limits.includes(t))) told(`expect:worship.${id}`);
+    }
+  }
+  if (dev.expect?.holdsUntil !== void 0) told("expect:holds_until");
   return out;
 }
 
@@ -39567,6 +39600,10 @@ function holderDynamic(state, unit5) {
   if (developmentMode(state) === "off" || unit5.kind !== "named" || !isLiving(unit5) || unit5.bond?.practice?.manner === void 0) return null;
   return dynamicOf(state, unit5.id) ?? null;
 }
+function runOpenFor(state, unitId) {
+  const practices = state.practices;
+  return state.scene?.physics?.holderId === unitId || practices?.held?.by === unitId || practices?.slap?.holderId === unitId || (practices?.punishments ?? []).some((p) => p.holderId === unitId && p.ceremony !== void 0 && p.ceremony.carried !== true);
+}
 function placeOf(reg, id) {
   return reg.practiceStyles.get(id)?.manner;
 }
@@ -39631,7 +39668,7 @@ function nextDrawnBy(cur, cand) {
 }
 function mannerProposals(state, reg, unit5) {
   const dyn = holderDynamic(state, unit5);
-  if (dyn === null) return [];
+  if (dyn === null || runOpenFor(state, unit5.id)) return [];
   const turn = turnProposal(state, reg, unit5, dyn);
   if (turn !== null && axisForbidden(state, reg, unit5, turn.axis) === null) return [turn];
   const out = [];
@@ -45476,7 +45513,7 @@ var REGARD_PREFIX = "dynamic:regard:";
 var OFFER_PREFIX = "dynamic:offer:";
 var QUIRK_PREFIX = "dynamic:quirk:";
 function styleLine(state, reg, unit5) {
-  const pair = unit5.bond?.practice?.style;
+  const pair = styleOf(unit5);
   if (pair === void 0) return "";
   const label2 = (key) => clean8(String(reg.practiceStyles.get(key)?.label ?? key)).toLowerCase();
   const lead = leadingStyle(state, reg, unit5.id);
@@ -52646,7 +52683,7 @@ function registerDevelopmentContext(builder, deps) {
       if (!s.scene) return null;
       const items = presentUnits4(s).flatMap((u) => {
         if (u.kind !== "named" || u.development === void 0) return [];
-        const axes = changedAxes(u, deps.registries()).slice(0, MAX_AXES).map((a) => a.words);
+        const axes = changedAxes(u, deps.registries(), s.content?.enabled ?? []).slice(0, MAX_AXES).map((a) => a.words);
         const facts = topFacts(developmentOf(u).facts).map((f) => f.text);
         const parts2 = [...axes, ...facts];
         return parts2.length > 0 ? [`- ${u.displayName}: ${parts2.join("; ")}`] : [];

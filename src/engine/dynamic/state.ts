@@ -106,7 +106,9 @@ export interface DynamicRelation {
    * P15b: what she has practised with the commander (written only for a holder with a `manner`, when a practice is kept or done): the seeds (or, for a punishment, the entries) and the
    * categories. `discovery` rewards the first of a kind and `curiosity`'s "something new" filters the seed pool by it. Never shown.
    */
-  practised?: { kinds: string[]; categories: string[]; /** The kind she last did with the commander and how many times in a row (`curiosity` falls with a long run). */ streak?: { kind: string; n: number } };
+  practised?: { kinds: string[]; categories: string[] };
+  /** P15b: the kind she last did with the commander and how many times in a row (`curiosity` falls with a long run). Hidden. */
+  mannerRun?: { kind: string; n: number };
   /** P15b: the day her frame first reached `play` (written for a holder with a manner; the 28 days of drift and the 56 of a turn count from it). Hidden. */
   playSince?: number;
   /** P15b: the day of the last step of each manner axis (`drawn_by` too). Hidden. */

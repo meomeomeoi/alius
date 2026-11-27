@@ -15,6 +15,7 @@ import { openOverrideOf, overrideOpen, wardenUnitId, type Expectation, type Ward
 import { TUNING } from '../tuning';
 import { hasCapability } from './capabilities';
 import { dynamicOn } from './gate';
+import { styleOf } from './profile';
 import { dynamicOf } from './state';
 import type { Judged } from '../warden/conflict';
 
@@ -27,7 +28,8 @@ const POSSESSIVE_KINDS = ['keep_me_close', 'no_romance_with_others'] as const;
  */
 export function holderAgenda(state: CampaignState, reg: Registries, unitId: string): Expectation[] {
   const base = fallbackAgenda(state, reg, unitId).map((x): Expectation => ({ ...x, known: true }));
-  const primary = state.squad.find((u) => u.id === unitId)?.bond?.practice?.style.primary;
+  const unit = state.squad.find((u) => u.id === unitId);
+  const primary = unit === undefined ? undefined : styleOf(unit)?.primary; // P15b: a turn of her style counts
   if (primary !== 'possessive' && primary !== 'obsessive') return base;
   const top = Math.max(0, ...base.map((x) => x.weight), ...(base.length === 0 ? [0.5] : []));
   const out = base.map((x) => (POSSESSIVE_KINDS.some((k) => k === x.kind) ? { ...x, weight: top } : x));

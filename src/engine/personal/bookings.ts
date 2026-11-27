@@ -1,6 +1,7 @@
 import type { Registries } from '../../content/types';
 import { contentAllowed } from '../bonds/content';
 import { bondOf, bondTierOf, leadRank } from '../bonds/profile';
+import { styleOf } from '../dynamic/profile';
 import { relieveWant, wantOf } from '../bonds/want';
 import { restrictionReason } from '../discipline/restrictions';
 import { impunityOf } from '../discipline/impunity';
@@ -47,7 +48,7 @@ export function consentProblem(state: CampaignState, reg: Registries, booking: {
   const keeper = holderWith(state, reg, 'booking_consent');
   if (keeper === null || keeper === booking.unitId || !holdersAtPlay(state).includes(booking.unitId)) return null;
   const keeperUnit = state.squad.find((u) => u.id === keeper);
-  const style = keeperUnit?.bond?.practice?.style.primary;
+  const style = keeperUnit === undefined ? undefined : styleOf(keeperUnit)?.primary; // P15b: a turn of her style counts
   if (style !== 'possessive' && style !== 'obsessive') return null;
   return `${unitName(state, keeper)} would not allow ${unitName(state, booking.unitId)} to book the commander's time.`;
 }

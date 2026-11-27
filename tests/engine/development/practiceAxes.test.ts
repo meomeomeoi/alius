@@ -199,10 +199,13 @@ describe('a shift of the expectations (P14b axes)', () => {
     expect(axisForbidden(bare, reg, unitOf(bare), 'expect:holds_until')).toMatch(/profile/);
   });
 
-  it('what she has become in the practice and the profile is not told by the since-joining list', () => {
+  it('what she has become in the practice and the profile is told by the since-joining list (P15b ruling 11), for the content that is on', () => {
     const s = world({ 'practice:restraint.as': STEP });
     applyReview(s, reg, ANN, review(shift('practice:restraint.as')), 'model');
-    expect(changedAxes(unitOf(s), reg)).toEqual([]);
+    expect(changedAxes(unitOf(s), reg)).toEqual([]); // no word on which content is on: a category is not named
+    expect(changedAxes(unitOf(s), reg, []).map((a) => a.axis)).toEqual([]);
+    const told = changedAxes(unitOf(s), reg, ['restraint']);
+    expect(told.map((a) => [a.axis, a.up])).toEqual([['practice:restraint.as', true]]);
   });
 });
 

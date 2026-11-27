@@ -84,7 +84,7 @@ export function discreteAxis(
     if (practice === undefined) return null;
     if (d.field === 'secondary') {
       const imported = practice.style.secondary;
-      return imported === undefined ? null : { scale: scale.filter((x) => x !== practice.style.primary), imported, now: dev?.practice?.secondary ?? imported };
+      return imported === undefined ? null : { scale: scale.filter((x) => x !== (dev?.practice?.primary ?? practice.style.primary)), imported, now: dev?.practice?.secondary ?? imported }; // P15b: a turn takes her new primary out of the scale
     }
     const imported = practice.categories[d.category]?.[d.field] ?? (d.field === 'as' ? 'none' : 'indifferent');
     return { scale, imported, now: dev?.practice?.categories?.[d.category]?.[d.field] ?? imported };

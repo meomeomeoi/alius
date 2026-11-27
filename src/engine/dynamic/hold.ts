@@ -5,11 +5,12 @@
 import type { Registries } from '../../content/types';
 import { bondTierOf } from '../bonds/profile';
 import type { EngineCtx, EngineEvent } from '../dispatch';
-import type { CampaignState } from '../state/types';
+import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { reconcileDomains } from './domains';
 import { canHold, dynamicOn, ensureDynamic } from './gate';
 import { milestonesDue } from './milestones';
+import { styleOf } from './profile';
 import { distanceToPoint } from './reading';
 import { dynamicOf } from './state';
 import type { DynamicFrameEntry, Frame, HoldBandEntry, PracticeStyleEntry } from './types';
@@ -57,7 +58,7 @@ export function compatibilityOf(state: CampaignState, reg: Registries, unitId: s
   const D = TUNING.dynamic.compatibility;
   if (dyn === undefined || dyn.readOf.updates === 0) return 1;
   const unit = state.squad.find((u) => u.id === unitId);
-  const primary = unit?.bond?.practice?.style.primary;
+  const primary = unit === undefined ? undefined : styleOf(unit)?.primary; // P15b: a turn of her style counts
   const entry = primary === undefined ? undefined : (reg.practiceStyles.get(primary) as unknown as PracticeStyleEntry | undefined);
   if (entry === undefined) return 1;
   const rd = dyn.readOf;
@@ -99,7 +100,7 @@ export function addHold(
   if (gain) {
     delta *= compatibilityOf(draft, reg, unitId);
     if (bondTierOf(draft, reg, unitId) === 'romantic') {
-      const primary = draft.squad.find((u) => u.id === unitId)?.bond?.practice?.style.primary;
+      const primary = styleOf(draft.squad.find((u) => u.id === unitId) as Unit)?.primary;
       if (primary === 'affectionate' || primary === 'possessive') delta *= TUNING.dynamic.romanticTier.warm;
       else if (primary === 'cold') delta *= TUNING.dynamic.romanticTier.cold;
     }

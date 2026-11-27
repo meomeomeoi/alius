@@ -28,6 +28,7 @@ import { TUNING } from '../tuning';
 import { effectiveValues } from '../worldOptions/stances';
 import { domainEntry, dropVoidOverride, hasCapability, standing } from './capabilities';
 import { loseDomain } from './domains';
+import { styleOf } from './profile';
 import { canHold, dynamicOn } from './gate';
 import { addHold, bandMinAt, holdBandOf } from './hold';
 import { applyMilestone, milestonesDue, nextFreeEvening, rekindleMilestone } from './milestones';
@@ -84,7 +85,7 @@ export function aftermathWeights(
   const unit = state.squad.find((u) => u.id === unitId);
   const out = Object.fromEntries(AFTERMATH_KINDS.map((k) => [k, 0])) as Record<AftermathKind, number>;
   if (dyn === undefined || unit === undefined) return out;
-  const style = unit.bond?.practice?.style;
+  const style = styleOf(unit); // P15b: a turn of her style counts
   const values = unit.kind === 'named' ? effectiveValues(state, reg, unit) : undefined;
   const band = regardBandOf(state, reg, unitId);
   const holdsCommand = hasCapability(state, reg, unitId, 'countermand');
@@ -220,7 +221,7 @@ export function runAftermathEffect(draft: CampaignState, ctx: Pick<EngineCtx, 'r
       // she offers to take the commander back: one card at a time, on terms by her manner (`drill`: after a punishment)
       const x = draft.dynamic;
       if (x === undefined || x.open.returnOffer !== undefined) return [];
-      x.open.returnOffer = { id: `dr${x.seq++}`, unitId, terms: unit.bond?.practice?.style.primary === 'drill' ? 'after_punishment' : 'lower_band', day: draft.day };
+      x.open.returnOffer = { id: `dr${x.seq++}`, unitId, terms: styleOf(unit)?.primary === 'drill' ? 'after_punishment' : 'lower_band', day: draft.day };
       return [];
     }
     case 'successor':

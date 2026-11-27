@@ -37,8 +37,8 @@ export function notePractised(draft: CampaignState, reg: Registries, unitId: str
   const done = (dyn.practised ??= { kinds: [], categories: [] });
   const first = !done.kinds.includes(kind);
   if (first) done.kinds.push(kind);
-  done.streak = done.streak?.kind === kind ? { kind, n: done.streak.n + 1 } : { kind, n: 1 };
-  feedPractised(draft, unitId, first, done.streak.n, mannerOf(draft, reg, unitId)?.drawnBy.includes('discovery') === true);
+  dyn.mannerRun = dyn.mannerRun?.kind === kind ? { kind, n: dyn.mannerRun.n + 1 } : { kind, n: 1 };
+  feedPractised(draft, unitId, first, dyn.mannerRun.n, mannerOf(draft, reg, unitId)?.drawnBy.includes('discovery') === true);
   for (const c of categories) if (!done.categories.includes(c)) done.categories.push(c);
   if (first) drawnFavour(draft, reg, unitId, 'discovery');
 }
