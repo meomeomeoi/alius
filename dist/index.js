@@ -39861,6 +39861,7 @@ function applyTurn(draft, reg, unit5, dev, dyn) {
   const target = read2 === null ? void 0 : placeOf(reg, read2.to);
   if (read2 === null || style === void 0 || storedStyle === void 0 || target === void 0) return null;
   const former = style.primary;
+  const priorPractice = structuredClone(dev.practice ?? {});
   const practice = dev.practice ??= {};
   const stored = unit5.bond.practice.manner;
   const manner = {};
@@ -39881,7 +39882,7 @@ function applyTurn(draft, reg, unit5, dev, dyn) {
   else practice.secondary = nextSecondary;
   if (Object.keys(practice).length === 0) delete dev.practice;
   dyn.mannerTurn = { candidate: read2.to, reviews: 0, lastDay: draft.day };
-  return { from: former, to: read2.to };
+  return { from: former, to: read2.to, priorPractice };
 }
 
 // src/engine/development/review.ts
@@ -40104,7 +40105,7 @@ function applyReview(draft, reg, unitId, v, source) {
     if (manner === void 0 || manner.accKey !== void 0) consume(dev, inverse.acc, manner?.accKey ?? s.axis, s.size === "step" ? D3.stepThreshold : D3.nudgeCost);
     events.push({ type: "development_shift", unitId, axis: s.axis, size: s.size });
     if (change !== null) {
-      const m = { id: nextDevId(dev, "dm"), axis: s.axis, from: change.from, to: change.to, reason: s.reason, day: draft.day };
+      const m = { id: nextDevId(dev, "dm"), axis: s.axis, from: change.from, to: change.to, reason: s.reason, day: draft.day, ...manner?.priorPractice !== void 0 ? { priorPractice: manner.priorPractice } : {} };
       dev.moments.push(m);
       inverse.momentIds.push(m.id);
       events.push({ type: "development_moment", unitId, momentId: m.id, axis: s.axis });
@@ -61232,6 +61233,28 @@ function renderSkillTree(host, ctx2) {
   host.append(root);
 }
 
+// src/engine/development/mannerShown.ts
+function mannerAsShown(unit5) {
+  const dev = unit5.development;
+  let overlay = structuredClone(dev?.practice ?? {});
+  const stored = unit5.bond?.practice?.manner;
+  for (const m of [...dev?.moments ?? []].reverse()) {
+    if (m.shownDay !== void 0) continue;
+    const key = mannerKey(m.axis);
+    if (key === null) continue;
+    if (key.kind === "axis") {
+      const diff = Number(m.from) - (stored?.[key.axis] ?? 0);
+      const manner = overlay.manner ??= {};
+      if (diff === 0) delete manner[key.axis];
+      else manner[key.axis] = diff;
+      if (Object.keys(manner).length === 0) delete overlay.manner;
+    } else if (key.kind === "turn") {
+      overlay = m.priorPractice !== void 0 ? structuredClone(m.priorPractice) : {};
+    }
+  }
+  return { manner: overlay.manner, style: styleOf({ bond: unit5.bond, development: { ...dev, practice: overlay } }) };
+}
+
 // src/ui/squad/squadTab.ts
 var unknown = (id) => `UNKNOWN ${id}`;
 var nameOf19 = (e, id) => e ? String(e.name) : unknown(id);
@@ -61548,6 +61571,7 @@ function dynamicProfileBlock(unit5, ctx2, state) {
     dispatch2(action);
     onChanged?.();
   };
+  const shown2 = mannerAsShown(unit5);
   const host = h("div", { class: "alius-dynamic-profile" });
   const part = (cls) => host.appendChild(h("div", { class: cls }));
   renderPracticeBlock(part("alius-dyn-practice"), {
@@ -61556,8 +61580,8 @@ function dynamicProfileBlock(unit5, ctx2, state) {
     categories: data.categories,
     locks: unit5.practiceLocks ?? [],
     editable: true,
-    drift: unit5.development?.practice?.manner,
-    ...unit5.bond?.practice !== void 0 ? { current: styleOf(unit5) } : {},
+    drift: shown2.manner,
+    ...unit5.bond?.practice !== void 0 && shown2.style !== void 0 ? { current: shown2.style } : {},
     onSet: (practice) => send({ type: "profile/set_practice", payload: { unitId: unit5.id, practice } }),
     onLock: (field2, on) => send({ type: "profile/lock_practice", payload: { unitId: unit5.id, field: field2, on } })
   });

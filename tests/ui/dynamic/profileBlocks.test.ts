@@ -449,6 +449,25 @@ describe('the dossier', () => {
     expect(onChanged).toHaveBeenCalledTimes(4);
   });
 
+  it('a drift step or a turn shows in the dossier only once a scene has carried it (P15b)', () => {
+    const { unit, state } = dossier({ editLock: false });
+    const ann = state().squad.find((u) => u.id === 'unit_ann')!;
+    ann.bond!.practice!.manner = { intensity: 0, warmth: 0, order: 0, voice: 0, tempo: 0, curiosity: 0 };
+    ann.development = { drift: {}, acc: {}, anchors: [], counters: {}, pending: [], facts: [], habits: [], nextId: 1, practice: { manner: { warmth: 1 } }, moments: [{ id: 'dm1', axis: 'manner:warmth', from: '0', to: '1', reason: 'x', day: 3 }] };
+    const draw = (): HTMLElement => {
+      const host = mount();
+      renderSquadTab(host, {
+        st: new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' }), getState: () => state(), getLoad: () => ({ kind: 'ok', state: state(), chatId: 'c' }), registries: reg, settings: () => ({ ...DEFAULT_SETTINGS, editLock: false }),
+        onNewCampaign: vi.fn(), dynamic: { dispatch: () => [] as never, onChanged: vi.fn() },
+      });
+      return host;
+    };
+    expect(unit).toBeDefined();
+    expect(draw().querySelectorAll('[data-since-joining]')).toHaveLength(0); // the step is not carried by a scene yet
+    ann.development.moments[0].shownDay = 4;
+    expect(draw().querySelectorAll('[data-since-joining]').length).toBeGreaterThan(0);
+  });
+
   it('is absent while no practice category is on, and for a unit with no section it offers the style', () => {
     expect(dossier({ editLock: false, enabled: ['explicit_scenes'] }).unit.querySelector('.alius-dynamic-profile')).toBeNull();
     const { unit } = dossier({ editLock: false, practice: false });

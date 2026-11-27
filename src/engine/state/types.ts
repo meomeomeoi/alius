@@ -383,6 +383,8 @@ export interface DevMoment {
   day: number;
   sceneId?: string;
   shownDay?: number;
+  /** P15b: on a turn of her style, her practice overlay as it was before the turn (`{}` = none), so the dossier can show her as the scenes have carried her until this moment is shown. */
+  priorPractice?: NonNullable<Development['practice']>;
 }
 
 /** P14b: what the last applied review changed, so a REROLL before it was shown can restore it exactly. */

@@ -44,7 +44,7 @@ import { h, type Child } from '../dom';
 import { valueBand } from './bands';
 import { renderSkillTree } from './skillTree';
 import { valuesOf } from '../../engine/development/profile';
-import { styleOf } from '../../engine/dynamic/profile';
+import { mannerAsShown } from '../../engine/development/mannerShown';
 
 export interface SquadTabCtx {
   st: StAdapter;
@@ -430,10 +430,11 @@ function dynamicProfileBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState)
     dispatch(action);
     onChanged?.();
   };
+  const shown = mannerAsShown(unit); // P15b: a step or a turn no scene has carried is not in the dossier yet
   const host = h('div', { class: 'alius-dynamic-profile' });
   const part = (cls: string): HTMLElement => host.appendChild(h('div', { class: cls }));
   renderPracticeBlock(part('alius-dyn-practice'), {
-    unit: who, practice: unit.bond?.practice, categories: data.categories, locks: unit.practiceLocks ?? [], editable: true, drift: unit.development?.practice?.manner, ...(unit.bond?.practice !== undefined ? { current: styleOf(unit) } : {}),
+    unit: who, practice: unit.bond?.practice, categories: data.categories, locks: unit.practiceLocks ?? [], editable: true, drift: shown.manner, ...(unit.bond?.practice !== undefined && shown.style !== undefined ? { current: shown.style } : {}),
     onSet: (practice) => send({ type: 'profile/set_practice', payload: { unitId: unit.id, practice } }),
     onLock: (field, on) => send({ type: 'profile/lock_practice', payload: { unitId: unit.id, field, on } }),
   });

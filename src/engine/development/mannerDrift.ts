@@ -181,7 +181,7 @@ const clamp2 = (v: number): number => Math.max(-2, Math.min(2, v));
 /** Writes one manner step into her overlay and her relation; returns what the moment shows (`from`, `to`) and the accumulator the step consumes. */
 export function applyMannerShift(
   draft: CampaignState, reg: Registries, unit: Unit, dev: Development, shift: { axis: string; direction: 'up' | 'down' },
-): { from: string; to: string; accKey?: string } | null {
+): { from: string; to: string; accKey?: string; priorPractice?: NonNullable<Development['practice']> } | null {
   const key = mannerKey(shift.axis);
   const dyn = dynamicOf(draft, unit.id);
   if (key === null || dyn === undefined) return null;
@@ -217,13 +217,14 @@ export function applyMannerShift(
  * The turn (spec §7): her primary becomes the nearer style; her former primary becomes her secondary when she had none, when the nearer style was her secondary,
  * or when it is further from her place than the one she had; her axes are rebased in the overlay so her absolute place does not jump (clamped to ±2).
  */
-function applyTurn(draft: CampaignState, reg: Registries, unit: Unit, dev: Development, dyn: DynamicRelation): { from: string; to: string } | null {
+function applyTurn(draft: CampaignState, reg: Registries, unit: Unit, dev: Development, dyn: DynamicRelation): { from: string; to: string; priorPractice: NonNullable<Development['practice']> } | null {
   const read = turnRead(reg, unit);
   const style = styleOf(unit);
   const storedStyle = unit.bond?.practice?.style; // P14b: raw profile
   const target = read === null ? undefined : placeOf(reg, read.to);
   if (read === null || style === undefined || storedStyle === undefined || target === undefined) return null;
   const former = style.primary;
+  const priorPractice = structuredClone(dev.practice ?? {});
   const practice = (dev.practice ??= {});
   // the rebase: new axes = her absolute place minus the new style's place, clamped; the overlay is what is added to the imported axes
   const stored = unit.bond!.practice!.manner!; // P14b: raw profile
@@ -243,5 +244,5 @@ function applyTurn(draft: CampaignState, reg: Registries, unit: Unit, dev: Devel
   if (nextSecondary === storedStyle.secondary) delete practice.secondary; else practice.secondary = nextSecondary;
   if (Object.keys(practice).length === 0) delete dev.practice;
   dyn.mannerTurn = { candidate: read.to, reviews: 0, lastDay: draft.day };
-  return { from: former, to: read.to };
+  return { from: former, to: read.to, priorPractice };
 }

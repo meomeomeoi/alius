@@ -277,7 +277,7 @@ export function applyReview(draft: CampaignState, reg: Registries, unitId: strin
     if (manner === undefined || manner.accKey !== undefined) consume(dev, inverse.acc, manner?.accKey ?? s.axis, s.size === 'step' ? D.stepThreshold : D.nudgeCost);
     events.push({ type: 'development_shift', unitId, axis: s.axis, size: s.size });
     if (change !== null) {
-      const m: DevMoment = { id: nextDevId(dev, 'dm'), axis: s.axis, from: change.from, to: change.to, reason: s.reason, day: draft.day };
+      const m: DevMoment = { id: nextDevId(dev, 'dm'), axis: s.axis, from: change.from, to: change.to, reason: s.reason, day: draft.day, ...(manner?.priorPractice !== undefined ? { priorPractice: manner.priorPractice } : {}) };
       dev.moments.push(m);
       inverse.momentIds.push(m.id);
       events.push({ type: 'development_moment', unitId, momentId: m.id, axis: s.axis });
