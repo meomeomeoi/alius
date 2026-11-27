@@ -25127,9 +25127,12 @@ function landCares(draft, ctx2, unitId, sceneId) {
       events.push(...regardRise(draft, reg, unitId, "value", TUNING.regard.value.min));
     }
   }
-  if (namesService(draft, reg, unitId)) {
-    const last5 = [...shownCares(draft, unitId, draft.day)].sort((a, b) => b.day - a.day).find((c) => c.scene === sceneId);
-    if (last5 !== void 0) last5.named = true;
+  if (sceneId !== "dm" && namesService(draft, reg, unitId)) {
+    const last5 = [...shownCares(draft, unitId, draft.day)].sort((a, b) => b.day - a.day)[0];
+    if (last5 !== void 0) {
+      last5.named = true;
+      last5.scene = sceneId;
+    }
   }
   return events;
 }

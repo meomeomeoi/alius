@@ -10,7 +10,7 @@ import '../../../src/engine/actions/craft';
 import '../../../src/engine/actions/scene';
 import { resetBlockingHooks } from '../../../src/engine/blocking';
 import { heldGuard } from '../../../src/engine/practice/held';
-import { careKinds, careNoticeChance, careReason, namesService, noticesCare, shownCares } from '../../../src/engine/craft/care';
+import { careKinds, careNoticeChance, careReason, landCares, namesService, noticesCare, shownCares } from '../../../src/engine/craft/care';
 import { installCraftHooks } from '../../../src/engine/craft/hooks';
 import { dynamicOf } from '../../../src/engine/dynamic/state';
 import { resetPhysicsHooks } from '../../../src/engine/physics/style';
@@ -215,6 +215,19 @@ describe('she names the service', () => {
     // once: a fifth care that lands later in the week does not name it again
     const next = withCares(structuredClone({ ...r.state, scene: undefined }) as CampaignState, [...r.state.relations[ANN].craft!.cares!, { day: 30, careId: BOOTS, noticed: true }]);
     expect(meet(next).state.relations[ANN].craft!.cares!.filter((c) => c.named === true)).toHaveLength(1);
+  });
+
+  it('a care that lands in a DM never names the service (the directive is a scene\'s); the next scene with her names it, once, in that scene', () => {
+    const s = almost();
+    const events = landCares(s, { registries: reg }, ANN, 'dm');
+    expect(ofType(events, 'care_noticed')).toHaveLength(1);
+    expect(named(s)).toBe(false);
+    expect(shownCares(s, ANN, s.day)).toHaveLength(4); // the week's fourth is shown, and still unnamed
+    const r = meet(s);
+    expect(named(r.state)).toBe(true);
+    const cares = r.state.relations[ANN].craft!.cares!;
+    expect(cares.filter((c) => c.named === true)).toHaveLength(1);
+    expect(cares.find((c) => c.named === true)!.scene).toBe(r.state.scene!.id); // the directive reads the scene it was named in
   });
 
   it('curiosity of +1 or more is enough without the style regal', () => {

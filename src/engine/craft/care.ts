@@ -124,7 +124,7 @@ export function giveCare(draft: CampaignState, ctx: EngineCtx, unitId: string, c
 /**
  * She shows what she noticed (a scene with her opens, or she writes): each noticed care that has not landed lands as `care_noticed` (a relation event: its journal line and its
  * memory rule); from `play` on it is also favour, a `yielded` sample with the motive `her` and Regard. Then, if the week's shown cares and her way allow it, the latest of them is
- * marked `named` (`namesService`): her line is offered once, in this scene. Nothing for a woman toward whom care is not open; draws nothing.
+ * marked `named` (`namesService`) and takes this scene's id: her line is offered once, in this scene. Only a scene names it; a DM does not (the next scene can). Nothing for a woman toward whom care is not open; draws nothing.
  */
 export function landCares(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>, unitId: string, sceneId: string): EngineEvent[] {
   const reg = ctx.registries;
@@ -146,9 +146,13 @@ export function landCares(draft: CampaignState, ctx: Pick<EngineCtx, 'registries
       events.push(...regardRise(draft, reg, unitId, 'value', TUNING.regard.value.min));
     }
   }
-  if (namesService(draft, reg, unitId)) {
-    const last = [...shownCares(draft, unitId, draft.day)].sort((a, b) => b.day - a.day).find((c) => c.scene === sceneId);
-    if (last !== undefined) last.named = true;
+  // only a scene names it (the line is a scene's directive); a DM leaves it for the next scene with her, and the latest shown care takes that scene's id
+  if (sceneId !== 'dm' && namesService(draft, reg, unitId)) {
+    const last = [...shownCares(draft, unitId, draft.day)].sort((a, b) => b.day - a.day)[0];
+    if (last !== undefined) {
+      last.named = true;
+      last.scene = sceneId;
+    }
   }
   return events;
 }
