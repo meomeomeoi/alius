@@ -2399,7 +2399,7 @@ export const DESCRIBED_REGISTRIES = [
   // P16 (`practiceSeeds` are examples for the model and are not shown to the player: `PLAYER_VISIBLE` leaves them out)
   'practiceSeeds', 'holderPunishments', 'implements', 'ceremonySteps',
   // P16b
-  'craftLessons',
+  'craftLessons', 'craftLines',
 ] as const satisfies readonly RegistryName[];
 
 // ---------------------------------------------------------------------------------------------
@@ -3119,6 +3119,20 @@ export const CraftLessonSchema = BaseEntrySchema.extend({
 }).strict();
 export type CraftLessonEntry = z.infer<typeof CraftLessonSchema>;
 registrySchemas.craftLessons = CraftLessonSchema;
+
+/**
+ * Her words for what the commander has learnt (spec section 4: records "in her hand", as margin lines of the CMDR file). Read by `kind`, never by id:
+ * `record.longest` / `record.clean` / `record.noTap` (the line of a record, `{day}`, `{span}` in fiction time and `{where}`), `where.<physicsId>` (where the hold was,
+ * `where.default` when nothing fits) and `signal.<motion>` (a foot signal she has named). No pronoun for the commander: the text is hers, in the first person.
+ */
+export const CRAFT_LINE_KIND = /^(record\.(longest|clean|noTap)|where\.[a-z0-9_]+|signal\.[a-z0-9_]+)$/;
+export const CraftLineSchema = BaseEntrySchema.extend({
+  kind: str.regex(CRAFT_LINE_KIND, 'a craft line kind is record.longest, record.clean, record.noTap, where.<physics> or signal.<motion>'),
+  text: str.max(160),
+  description: str,
+}).strict();
+export type CraftLineEntry = z.infer<typeof CraftLineSchema>;
+registrySchemas.craftLines = CraftLineSchema;
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */
 function withDescription(schema: z.ZodTypeAny): z.ZodTypeAny {

@@ -400,7 +400,7 @@ describe('endurance drills and the commander\'s endurance', () => {
     document.body.append(host);
     renderCmdrCard(host, { state: s, registries: reg, raw: true });
     const row = host.querySelector('[data-commander-holds]')!;
-    expect(row.textContent).toBe('HOLDS — BREATH: SEASONED · WEIGHT: HARDENED · JAW: NOT YET');
+    expect(row.textContent).toBe('HOLDS — BREATH: STEADY · WEIGHT: MASTERFUL · JAW: UNTRAINED');
     expect(row.textContent).not.toMatch(/\d/);
     expect(markedWithout(host)).toEqual([]);
     expect(unresolved(host, env(s))).toEqual([]);
@@ -411,7 +411,7 @@ describe('endurance drills and the commander\'s endurance', () => {
     const s = campaign(reg, 4);
     s.commander.endurance = { breath: { xp: 80, level: 2 } };
     const lines = analyze('contactPhysics:breath', env(s)).join(' ');
-    expect(lines).toContain('Your endurance for this: steady.');
+    expect(lines).toContain('Your endurance for this: practised.');
     expect(lines).not.toMatch(/rhythm|expect|style|skill of hers|\d/i);
     expect(analyze('contactPhysics:breath', env(s), { input: 'breathe' }).join(' ')).toContain('catch');
     expect(analyze('contactPhysics:her_activity', env(s)).join(' ')).not.toContain('endurance'); // no skill there

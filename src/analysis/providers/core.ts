@@ -17,6 +17,7 @@ import { registerBondsProviders } from './bonds';
 import { registerBlockingProviders } from './blocking';
 import { registerDynamicProviders } from './dynamic';
 import { registerPracticeProviders } from './practice';
+import { registerCraftProviders } from './craft';
 import { registerMemoryProviders } from './memory';
 import { registerPersonalProviders } from './personal';
 import { registerSpecialProviders } from './special';
@@ -358,6 +359,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'ask_for_task', 'ask_for_punishment', 'confess', 'ask_permission',
   // P16 (no duration: until she decides)
   'no_duration',
+  // P16b (CMDR › CRAFT: the disciplines, her records and what a slip teaches)
+  'craft', 'craft_stillness', 'craft_posture', 'craft_rhythm', 'craft_memory', 'craft_composure', 'craft_speech', 'craft_pain', 'craft_depth', 'craft_record', 'craft_lesson',
   // P16 (the slap: the time allowed and the one key)
   'slap',
   // P16 (the ceremony)
@@ -405,4 +408,5 @@ export function registerCoreProviders(): void {
   registerLifeProviders(); // P14c
   registerDynamicProviders(); // P15
   registerPracticeProviders(); // P16
+  registerCraftProviders(); // P16b
 }

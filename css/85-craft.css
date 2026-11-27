@@ -1,0 +1,11 @@
+/* CMDR › CRAFT (P16b): her records are margin lines in her hand. The hand and its measured scale are set on the line by the code; readable mode swaps it for the type font and keeps the line. */
+#alius-shell .alius-craft .alius-craft-margin {
+  margin: 2px 0 2px 14px;
+  font-family: var(--alius-font-hand, var(--alius-font-type));
+  font-size: calc(1.15em * var(--alius-hand-scale, 1));
+}
+
+#alius-shell.alius-readable .alius-craft .alius-craft-margin {
+  font-family: var(--alius-font-type);
+  font-size: 1em;
+}

@@ -222,12 +222,22 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
   state.memory.facts.push({ id: 'fact_false_report', about: [unit.id], text: 'SENTINEL_FALSE_REPORT', tags: ['false_report', 'practice'], importance: 3, day: 8, knownBy: [unit.id], hiddenFromCommander: true });
   registerKnowledgeRule({ fact: (f) => f.hiddenFromCommander !== true }); // P3b's own rule (registered once, with the core providers, which a test's reset removes)
 
+  // P16b: the xp behind every word of the craft (shown only with raw values), her settling-in count, a foot signal she has not named, the point she has not said yet and a slip waiting for her discipline
+  state.commander.craft = { stillness: { xp: 183.5, level: 3, lastDay: 8 }, posture: { xp: 271.3, level: 4, lastDay: 8 }, 'endurance:weight': { xp: 0, level: 0, lastDay: 8 } };
+  state.relations[unit.id].craft = {
+    rhythm: { xp: 119.9, day: 8 }, postures: { kneeling_upright: { xp: 211.7, day: 8 } },
+    signals: { tap2: { named: true, answered: 5, day: 8 }, stamp: { named: false, answered: 79, day: 8 } },
+    streak: { weight: 89 }, slips: [{ key: 'stillness', scene: 's9', day: 8 }],
+    lesson: { point: 'SENTINEL-LESSON-POINT', words: 'SENTINEL-LESSON-WORDS', scene: 's9', exchange: 3 },
+    records: { weight: { longest: 3600, clean: 1200, noTap: 3600, day: 8 } },
+  };
+
   return {
     state,
     unitId: unit.id,
     sentinels: {
-      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57, 43, 47, 67, 4.37, 2.19, 47.31, 63.17, 5.13, 19, 83.77, 6.83, 31.41, 8.86, 0.6174, 37.37, 61.61, 59.59, 0.4141, 23.23, 7.77, 44.44, 13.37, 26, 34, 733, 2.71, 1.83, 1.57],
-      texts: ['SENTINEL-UNTOLD', 'SENTINEL-KEEPS', 'SENTINEL-UNVOICED', 'SENTINEL-QUEUED', 'stargazing', 'woodcarving', untoldEvent.id, keepsEvent.id, 'SENTINEL-PENDING', 'SENTINEL-MISREAD', 'SENTINEL-UNSHOWN-MOMENT', 'SENTINEL-UNSHOWN-FACT', 'SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE', 'SENTINEL_EXPECTATION', 'SENTINEL_KOMPROMAT', 'SENTINEL_COMPROMAT_P15', 'SENTINEL_TELL', 'SENTINEL_WORSHIP_HOW', 'SENTINEL_KNOWLEDGE_P15', 'SENTINEL_SEALED_TEXT', 'SENTINEL_SEALED_SUMMARY', 'SENTINEL_FALSE_REPORT', 'nothing the commander did', 'cancelled_reward', 'end of the afternoon', 'SENTINEL_KIND', 'SENTINEL_SCENE'],
+      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57, 43, 47, 67, 183.5, 271.3, 119.9, 211.7, 79, 89, 4.37, 2.19, 47.31, 63.17, 5.13, 19, 83.77, 6.83, 31.41, 8.86, 0.6174, 37.37, 61.61, 59.59, 0.4141, 23.23, 7.77, 44.44, 13.37, 26, 34, 733, 2.71, 1.83, 1.57],
+      texts: ['SENTINEL-LESSON-POINT', 'SENTINEL-LESSON-WORDS', 'SENTINEL-UNTOLD', 'SENTINEL-KEEPS', 'SENTINEL-UNVOICED', 'SENTINEL-QUEUED', 'stargazing', 'woodcarving', untoldEvent.id, keepsEvent.id, 'SENTINEL-PENDING', 'SENTINEL-MISREAD', 'SENTINEL-UNSHOWN-MOMENT', 'SENTINEL-UNSHOWN-FACT', 'SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE', 'SENTINEL_EXPECTATION', 'SENTINEL_KOMPROMAT', 'SENTINEL_COMPROMAT_P15', 'SENTINEL_TELL', 'SENTINEL_WORSHIP_HOW', 'SENTINEL_KNOWLEDGE_P15', 'SENTINEL_SEALED_TEXT', 'SENTINEL_SEALED_SUMMARY', 'SENTINEL_FALSE_REPORT', 'nothing the commander did', 'cancelled_reward', 'end of the afternoon', 'SENTINEL_KIND', 'SENTINEL_SCENE'],
     },
   };
 }

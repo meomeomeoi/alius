@@ -1,4 +1,5 @@
 import type { Registries } from '../content/types';
+import { emptyCraftView, craftView, type CraftView } from '../engine/craft/view';
 import { wentUp } from '../engine/development/moments';
 import { dynamicView, type DynamicView } from '../engine/dynamic/view';
 import { axisWords } from '../engine/development/words';
@@ -47,9 +48,14 @@ export interface Knowledge {
    * what stands in her hands and the record. A sealed text, an unfair flag, a count, a false report, an alarm score and a routine's broken flag are never in it.
    */
   practice(unitId: string, reg: Registries): PracticeView;
+  /**
+   * P16b: what the commander may read of the craft: the disciplines as words (the xp only with raw values), and for each pair her rhythm as a word, the foot signals she has named, the postures known and the
+   * records in fiction time. The settling-in count, an unnamed signal, the lesson word before she says it, a slip waiting for her discipline and every rate of decay are never in it.
+   */
+  craft(reg: Registries): CraftView;
 }
 
-export type { LifeView, DynamicView, PracticeView };
+export type { LifeView, DynamicView, PracticeView, CraftView };
 
 export interface DevelopmentView {
   axes: Array<{ axis: string; words: string; up: boolean; reason: string; shownDay: number; held: boolean }>;
@@ -104,6 +110,7 @@ export function buildKnowledge(state: CampaignState | null, settings: AliusSetti
     practice: (unitId, reg) => (state === null
       ? { tasks: [], punishments: [], demonstrations: [], held: null, protocol: [], routine: null, permission: null, postures: [], handovers: [], records: [] }
       : practiceView(state, reg, unitId, { hidden: settings.dynamicHidden === true })),
+    craft: (reg) => (state === null ? emptyCraftView() : craftView(state, reg, { raw: showRaw })),
     development(unitId, reg) {
       const unit = state?.squad.find((u) => u.id === unitId);
       const dev = unit?.development;

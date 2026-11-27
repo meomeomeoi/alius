@@ -3855,5 +3855,107 @@
       "practice_style",
       "face_dynamic"
     ]
+  },
+  {
+    "id": "craft",
+    "term": "Craft",
+    "short": "What the commander has learned of being held, as words: one discipline for each thing that can be practiced. It grows with practice and fades when unused.",
+    "long": "AUTHOR TO WRITE: Service is a craft here. The commander's disciplines (stillness, posture, rhythm, memory, composure, speech, pain) and the endurance of each hold are shown as words, from untrained to masterful, never as numbers. Practice, drills at the base and the lessons a slip teaches raise them; a discipline left unused for a long while loses a step, and never falls below raw.",
+    "see": [
+      "endurance_training",
+      "craft_record",
+      "craft_lesson"
+    ]
+  },
+  {
+    "id": "craft_stillness",
+    "term": "Stillness",
+    "short": "How quietly the commander can bear what is done to the body. Each level makes a slip a little quieter.",
+    "long": "AUTHOR TO WRITE: Stillness is not holding the breath: it is keeping the body from telling. A creak, a gasp or a rustle is as loud as it is until this is practiced; each level takes a tenth off it.",
+    "see": [
+      "craft"
+    ]
+  },
+  {
+    "id": "craft_posture",
+    "term": "Posture",
+    "short": "How long the commander can keep a posture before it slides, and how many of her postures are known.",
+    "long": "AUTHOR TO WRITE: A posture is held point by point, and every point drifts unless it is corrected. Practice slows the drift; a strong body helps, a frail one is not shut out.",
+    "see": [
+      "craft",
+      "named_posture"
+    ]
+  },
+  {
+    "id": "craft_rhythm",
+    "term": "Rhythm",
+    "short": "How well the commander keeps time, and how much of her own rhythm has been learned.",
+    "long": "AUTHOR TO WRITE: Every woman has her own pattern. Learning hers widens the openings she gives, a little for each level.",
+    "see": [
+      "craft"
+    ]
+  },
+  {
+    "id": "craft_memory",
+    "term": "Memory",
+    "short": "How much of her routine, her signals and her orders the commander keeps in order.",
+    "long": "AUTHOR TO WRITE: Her routine, the signals of her foot and the order of her morning are things to know by heart. What is not used is forgotten, slower than a skill.",
+    "see": [
+      "craft"
+    ]
+  },
+  {
+    "id": "craft_composure",
+    "term": "Composure",
+    "short": "How steadily the commander keeps a face under strain.",
+    "long": "AUTHOR TO WRITE: Composure is what the commander shows while something is being done. It matters most where she is watching.",
+    "see": [
+      "craft"
+    ]
+  },
+  {
+    "id": "craft_speech",
+    "term": "Speech",
+    "short": "How cleanly the commander speaks and types while something is asked of the body.",
+    "long": "AUTHOR TO WRITE: Recitation, dictation and answers under load are practiced at the base, with or without her.",
+    "see": [
+      "craft"
+    ]
+  },
+  {
+    "id": "craft_pain",
+    "term": "Pain",
+    "short": "How much the commander can bear before it shows.",
+    "long": "AUTHOR TO WRITE: A body that is used to pain bears more of it. A strong body adds a little; practice adds the rest.",
+    "see": [
+      "craft"
+    ]
+  },
+  {
+    "id": "craft_depth",
+    "term": "Depth",
+    "short": "How far the commander can take what she asks for, and how long.",
+    "long": "AUTHOR TO WRITE: A discipline for what only some holds ask. It is listed once it has been practiced.",
+    "see": [
+      "craft"
+    ]
+  },
+  {
+    "id": "craft_record",
+    "term": "Record",
+    "short": "The longest the commander has held something for her, in the time it stood for in the fiction.",
+    "long": "AUTHOR TO WRITE: Records are kept in fiction time, not in minutes of play: an hour as her footrest does not take an hour. She writes the best of them in the margin, and may ask the commander to beat one.",
+    "see": [
+      "craft"
+    ]
+  },
+  {
+    "id": "craft_lesson",
+    "term": "Lesson",
+    "short": "What a slip teaches when she follows it up: a punishment, or her naming of the point that failed.",
+    "long": "AUTHOR TO WRITE: A slip gives nothing by itself. When she punishes it, or names what failed, the commander learns something: half of what a clean success gives. A woman who is cruel never explains; one who drills explains every time.",
+    "see": [
+      "craft"
+    ]
   }
 ]

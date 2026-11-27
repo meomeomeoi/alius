@@ -292,16 +292,16 @@ Before Task 1, also read:
   - `{ disciplines: Array<{ key; word }>; pairs: Array<{ unitId; postures: presetId[]; rhythm: word; signals: motion[]; records: Array<{ key; seconds; day }> }> }`;
   - it holds no xp number unless `showRaw`.
 - The CRAFT block: the words, then per pair what is known. Her records are written in her hand (`setHand(el, herHand(...))`) as margin lines ("Day 12 — three minutes under my weight."), composed from `content/core/craftLines.json` (`AUTHOR TO WRITE`), with no commander pronoun.
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - the block shows `untrained` everywhere with no craft;
   - the words follow the levels;
   - records show in fiction time, in her hand;
   - every chip carries `data-analyze`;
   - the hidden fixture finds no xp number in the block or a reading.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P16b): CMDR › CRAFT`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P16b): CMDR › CRAFT`
 
 ### Task 6: The craft directives and the controller
 

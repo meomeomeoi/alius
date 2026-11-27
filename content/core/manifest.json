@@ -112,6 +112,7 @@
     "implements": "implements.json",
     "ceremonySteps": "ceremonySteps.json",
     "cardVoice": "cardVoice.json",
-    "craftLessons": "craftLessons.json"
+    "craftLessons": "craftLessons.json",
+    "craftLines": "craftLines.json"
   }
 }

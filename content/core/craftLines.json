@@ -1,0 +1,104 @@
+[
+  {
+    "id": "record_longest",
+    "kind": "record.longest",
+    "text": "AUTHOR TO WRITE: Day {day} — {span} {where}.",
+    "description": "AUTHOR TO WRITE: The line of her margin note for the longest hold."
+  },
+  {
+    "id": "record_clean",
+    "kind": "record.clean",
+    "text": "AUTHOR TO WRITE: Day {day} — {span} {where}, not a slip.",
+    "description": "AUTHOR TO WRITE: The line of her margin note for the longest hold without a slip."
+  },
+  {
+    "id": "record_no_tap",
+    "kind": "record.noTap",
+    "text": "AUTHOR TO WRITE: Day {day} — {span} {where}, no taps.",
+    "description": "AUTHOR TO WRITE: The line of her margin note for the longest hold without a tap."
+  },
+  {
+    "id": "where_weight",
+    "kind": "where.weight",
+    "text": "AUTHOR TO WRITE: under my weight",
+    "description": "AUTHOR TO WRITE: Where a weight hold was."
+  },
+  {
+    "id": "where_breath",
+    "kind": "where.breath",
+    "text": "AUTHOR TO WRITE: without air",
+    "description": "AUTHOR TO WRITE: Where a breath hold was."
+  },
+  {
+    "id": "where_saturation",
+    "kind": "where.saturation",
+    "text": "AUTHOR TO WRITE: in the thick of me",
+    "description": "AUTHOR TO WRITE: Where a saturation hold was."
+  },
+  {
+    "id": "where_jaw",
+    "kind": "where.jaw",
+    "text": "AUTHOR TO WRITE: with the jaw held",
+    "description": "AUTHOR TO WRITE: Where a jaw hold was."
+  },
+  {
+    "id": "where_gulp",
+    "kind": "where.gulp",
+    "text": "AUTHOR TO WRITE: keeping up",
+    "description": "AUTHOR TO WRITE: Where a gulp hold was."
+  },
+  {
+    "id": "where_tongue_work",
+    "kind": "where.tongue_work",
+    "text": "AUTHOR TO WRITE: on the floor",
+    "description": "AUTHOR TO WRITE: Where a cleaning was."
+  },
+  {
+    "id": "where_default",
+    "kind": "where.default",
+    "text": "AUTHOR TO WRITE: held for me",
+    "description": "AUTHOR TO WRITE: Where a hold was, when nothing fits."
+  },
+  {
+    "id": "signal_tap2",
+    "kind": "signal.tap2",
+    "text": "AUTHOR TO WRITE: two taps",
+    "description": "AUTHOR TO WRITE: A foot signal she has named: two taps."
+  },
+  {
+    "id": "signal_sole",
+    "kind": "signal.sole",
+    "text": "AUTHOR TO WRITE: the sole lifted",
+    "description": "AUTHOR TO WRITE: A foot signal she has named: the sole lifted."
+  },
+  {
+    "id": "signal_push",
+    "kind": "signal.push",
+    "text": "AUTHOR TO WRITE: a push away",
+    "description": "AUTHOR TO WRITE: A foot signal she has named: a push away."
+  },
+  {
+    "id": "signal_hook",
+    "kind": "signal.hook",
+    "text": "AUTHOR TO WRITE: the foot hooked",
+    "description": "AUTHOR TO WRITE: A foot signal she has named: the foot hooked."
+  },
+  {
+    "id": "signal_point",
+    "kind": "signal.point",
+    "text": "AUTHOR TO WRITE: the toe pointed",
+    "description": "AUTHOR TO WRITE: A foot signal she has named: the toe pointed."
+  },
+  {
+    "id": "signal_stamp",
+    "kind": "signal.stamp",
+    "text": "AUTHOR TO WRITE: a stamp",
+    "description": "AUTHOR TO WRITE: A foot signal she has named: a stamp."
+  },
+  {
+    "id": "signal_nudge",
+    "kind": "signal.nudge",
+    "text": "AUTHOR TO WRITE: a nudge",
+    "description": "AUTHOR TO WRITE: A foot signal she has named: a nudge."
+  }
+]

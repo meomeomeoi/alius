@@ -1,9 +1,9 @@
 import { COMMANDER, WORN_SLOTS, type StagingSnapshot } from '../../engine/blocking';
 import type { ResponseType } from '../../engine/blocking';
 import { momentsOf } from '../../engine/moments/state';
-import { commanderSkill } from '../../engine/physics/skill';
 import { bandOf, exposedKinds, perceptionWord } from '../../engine/physics/stimuli';
 import type { CampaignState } from '../../engine/state/types';
+import type { Knowledge } from '../knowledge';
 import type { Subject } from '../subject';
 import type { AnalyzeEnv } from '../model';
 import { registerAnalyzeProvider } from '../providers';
@@ -87,8 +87,6 @@ function momentOption(subject: Subject, env: AnalyzeEnv): { lines: string[] } | 
   return { lines };
 }
 
-/** The words of the commander's endurance level (0–5); the xp behind them is never shown. */
-export const ENDURANCE_WORDS = ['not yet', 'first steps', 'steady', 'seasoned', 'enduring', 'hardened'] as const;
 const INPUT_TEXT: Record<string, string> = {
   breathe: 'Catch the gap she gives: the air comes back when you catch it.',
   hold: 'Keep still while she presses; letting go costs strength.',
@@ -104,12 +102,13 @@ const INPUT_TEXT: Record<string, string> = {
  * The reading of a contact physics (a hold): what a button of it does and, for a physics the body can train, the commander's OWN endurance
  * for it in words. Never her rhythm, her expectations, her skills or the plan of the segment.
  */
-function contactPhysicsReading(subject: Subject, env: AnalyzeEnv): { lines: string[] } | null {
+function contactPhysicsReading(subject: Subject, env: AnalyzeEnv, k: Knowledge): { lines: string[] } | null {
   const phys = env.registries.contactPhysics.get(subject.id);
   const lines: string[] = [];
   const input = typeof subject.data.input === 'string' ? INPUT_TEXT[subject.data.input] : undefined;
   if (input !== undefined) lines.push(input);
-  if (phys?.skill === true && env.state) lines.push(`Your endurance for this: ${ENDURANCE_WORDS[commanderSkill(env.state, subject.id)]}.`);
+  const word = phys?.skill === true && env.state ? k.craft(env.registries).disciplines.find((d) => d.key === `endurance:${subject.id}`)?.word : undefined; // P16b: the craft's words, read through Knowledge
+  if (word !== undefined) lines.push(`Your endurance for this: ${word}.`);
   return lines.length > 0 ? { lines } : null;
 }
 
