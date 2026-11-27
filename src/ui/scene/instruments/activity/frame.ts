@@ -50,8 +50,11 @@ import type { InstrumentEnv, InstrumentRun, PhysicsEnd } from '../types';
 import { startWeight, THRONE, weightCore, weightFrame, weightMatches, type WeightCoreRun } from '../weight/weight';
 import { ACTS, BASE_EVENTS, GROUPS, QUIET_ACT, SAMPLE_URLS, VIEWS, type Act, type Mark, type View } from './acts';
 import { attachThrone, detachThrone, throneBody, throneCanvases, throneCup, throneFlinch, throneLegs, throneOn, throneRise, throneSign, throneThank, throneThanked, throneUpdate, throneVisitor, tMouse } from './throne';
+import { craftLevel } from '../../../../engine/craft/book';
+import { provocationOpen } from '../../../../engine/craft/provocation';
 import { herLegsOf } from '../../../../engine/physics/occlusion';
 import { temperamentOf } from '../../../../engine/life/state';
+import { attachProvocation, detachProvocation, drawProvocation, PROV, provInput, provLive, provOn, provReact, provSize, provSync, provUpdate } from './provocation';
 import { attachService, detachService, serviceMatches, serviceSize, SV, svBegin, svcOn, svDown, svFinish, svMove, svRender, svUp, svUpdate } from './service';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -346,6 +349,8 @@ const BODY_SFX: Record<string, () => void> = {
   slump: () => { play('soft2', { g: 0.8, dest: A.body }); play('creak', { g: 0.4, dest: A.body }); },
   speak: () => {},
   fidget: () => { play('cloth', { g: 0.22, dest: A.body }); SYN.joint!({ g: 0.3 }); },
+  breath: () => play('soft', { g: 0.22, dest: A.body, rate: 0.7 }), // P16b G2: a held breath let out
+  flinch: () => { play('cloth', { g: 0.32, dest: A.body, rate: 1.15 }); SYN.joint!({ g: 0.4 }); }, // P16b G2
 };
 /** The body giving way on its own (not a cheat: never a `physics_caught`, Ruling X). */
 const INVOLUNTARY = new Set(['slump', 'jerk', 'gulp']);
@@ -453,6 +458,7 @@ function moveAttention(dt: number) {
   const pull = (x: number, y: number, k: number) => { const dx = x - ATT.x, dy = y - ATT.y, d = Math.hypot(dx, dy) || 1; const f = k * (1 + low) * Math.min(1, 380 / d); fx += (dx / d) * f; fy += (dy / d) * f; };
   if (!(svcOn() && SV && SV.closeK > 0.3)) for (const u of G.urges) if (u.v > 0.3) pull(u.x, u.y, (u.v - 0.3) * (u.kind === 'itch' ? 5200 : 2600));
   if (G.cramp) pull(G.cramp.side < 0 ? 0.1 * innerWidth : 0.9 * innerWidth, 0.7 * innerHeight, 4200);
+  if (provOn()) for (const p of G.prov?.live ?? []) if (!p.feint && p.v > 0.05) pull(p.x, p.y, p.v * PROV.pull[p.kind]); // P16b G2: her provocation pulls the attention
   ATT.vx += (fx - 13 * ATT.vx) * s; ATT.vy += (fy - 13 * ATT.vy) * s;
   // restlessness: the mouse's speed, smoothed. Moving the eyes and the head fast is the body moving: it ripples the frame, and kept up
   // for more than a moment the body fidgets (a rustle she may hear or see, like any relief). Slow, calm moves are free.
@@ -467,7 +473,7 @@ function moveAttention(dt: number) {
   if (G.fidget >= 1 && G.t >= (G.fidgetCd ?? 0) && (G.phase === 'loop' || G.phase === 'empty')) {
     G.fidget = 0; G.fidgetCd = G.t + 1500; G.stats.fidgets = (G.stats.fidgets ?? 0) + 1;
     if (!G.toldFidget) { G.toldFidget = true; sense('You shift where you kneel; your eyes will not keep still.', 'body', 'body'); }
-    bodyNoise('fidget', 0.28, true);
+    if (provOn() && provLive()) provReact('fidget'); else bodyNoise('fidget', 0.28, true);
   }
   ATT.x += ATT.vx * s; ATT.y += ATT.vy * s;
   // listening needs the attention to rest on her a moment
@@ -524,9 +530,9 @@ function updateUrges(dt: number) {
   const k = lerp(1, 0.5, low);
   const closeUp = svcOn() && SV && SV.closeK > 0.3;
   if (closeUp) { G.nextItch += dt; G.nextCramp += dt; }
-  if (G.t >= G.nextItch) { spawnUrge('itch'); G.nextItch = G.t + rand(7000, 14000) * k; }
-  if (G.t >= G.nextSwallow) { if (!G.urges.some((u: Any) => u.kind === 'swallow')) spawnUrge('swallow'); G.nextSwallow = G.t + rand(15000, 26000); }
-  if (G.t >= G.nextCramp && !G.cramp && (G.phaseIdx >= 1 || hours > 0.6)) { spawnUrge('cramp'); G.nextCramp = G.t + rand(35000, 65000) * k; }
+  if (G.t >= G.nextItch) { if (!provOn()) spawnUrge('itch'); G.nextItch = G.t + rand(7000, 14000) * k; }
+  if (G.t >= G.nextSwallow) { if (!provOn() && !G.urges.some((u: Any) => u.kind === 'swallow')) spawnUrge('swallow'); G.nextSwallow = G.t + rand(15000, 26000); }
+  if (G.t >= G.nextCramp && !G.cramp && !provOn() && (G.phaseIdx >= 1 || hours > 0.6)) { spawnUrge('cramp'); G.nextCramp = G.t + rand(35000, 65000) * k; }
   // the ease: attrition by fiction time (the engine's 5 an hour less 2 a level), urges left high
   G.ease -= (Math.max(0, 5 - 2 * S.level) / 60) * (G.clockRate ?? 0) * dt / 1000 * 4;
   for (const u of G.urges) if (u.v > 0.7) G.ease -= s * 0.35;
@@ -741,6 +747,7 @@ function updateLoop(dt: number) {
   if (ACT().sleep) { G.asleepDepth = 0.5 + 0.5 * Math.sin(G.t / 9000); if (!G.nextBreath || G.t >= G.nextBreath) { sleepBreath(); G.nextBreath = G.t + rand(4800, 6200); } }
   if (weightOn()) throneUpdate(dt); else updateUrges(dt);
   if (svcOn()) svUpdate(dt);
+  if (provOn()) provUpdate(dt);
   // an unanswered question
   if (G.ask && G.t > G.ask.until) { G.ask = null; G.stats.missed += 1; if (G.step === 'with') say(pick(ST().silent), 'commander'); else { G.press = 0.8; G.footUpUntil = G.t + 2000; sense('Silence above you. A long one.', 'her'); } }
   baseTick();
@@ -959,6 +966,7 @@ function drawUrges(now: number) {
       uctx.fillStyle = g; uctx.fillRect(W / 2 - h * 1.6, H - h * 1.4, h * 3.2, h * 1.4);
     }
   }
+  if (provOn()) drawProvocation(t);
   // ripples of restlessness: rings spreading from the attention when the eyes dart
   const nowP = performance.now();
   for (let i = RIPPLES.length - 1; i >= 0; i--) {
@@ -1099,7 +1107,7 @@ function before(): void {
   const w = e.env.root.clientWidth || r.width || globalThis.innerWidth || 0, h = e.env.root.clientHeight || r.height || globalThis.innerHeight || 0;
   if (w !== innerWidth || h !== innerHeight) {
     const first = innerWidth === 0;
-    innerWidth = w; innerHeight = h; size(); serviceSize(w, h);
+    innerWidth = w; innerHeight = h; size(); serviceSize(w, h); provSize(w, h);
     if (!pins.length) pins = Array.from({ length: 220 }, () => ({ x: Math.random(), y: Math.random(), s: Math.random() }));
     // the prototype's start: the mouse at the middle, the attention a little above it
     if (first) { MOUSE.x = innerWidth / 2; MOUSE.y = innerHeight / 2; ATT.x = innerWidth / 2; ATT.y = innerHeight * 0.4; }
@@ -1120,6 +1128,7 @@ function before(): void {
 function afterFrame(): void {
   const e = E;
   if (!e) return;
+  provSync();
   noteWrites(e.claims[0]!, ['opacity']);
   noteWrites(e.claims[1]!, ['opacity', 'transform']);
   noteWrites(e.claims[2]!, ['filter']);
@@ -1210,7 +1219,7 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   const lead = leadStyle(physicsStyleOf(state, run.holderId, reg));
   S.style = lead.key; R.lineStyle = lead.key; S.manner = physicsMannerOf(state, run.holderId, reg);
   const v = viewOf(state, reg, run);
-  S.view = v.view === 'footrest' ? 'legs' : v.view; S.inner = v.view === 'footrest' ? 'weight' : serviceMatches(state, reg, run, v.view) ? 'service' : 'stillness'; S.blind = v.blind;
+  S.view = v.view === 'footrest' ? 'legs' : v.view; S.inner = v.view === 'footrest' ? 'weight' : serviceMatches(state, reg, run, v.view) ? 'service' : v.view === 'floor' && provocationOpen(state, reg, run) ? 'provocation' : 'stillness'; S.blind = v.blind;
   S.phases = run.marathon?.phases ?? 3;
   S.phaseLen = (phaseSegments(state, reg, run) * segmentSecondsOf(state, reg, run, 30));
   S.start = run.marathon?.clockMin ?? 1080; S.seed = fnv1a(`${state.scene?.id ?? ''}|${run.id}`) % 100;
@@ -1268,6 +1277,7 @@ function listen(env: InstrumentEnv): void {
   env.listen(document, 'mousemove', ((e: MouseEvent) => { [MOUSE.x, MOUSE.y] = local(e); E?.core?.balance(innerWidth > 0 ? MOUSE.x / innerWidth : 0.5); tMouse(e); if (SV && SV.gest) svMove(MOUSE.x, MOUSE.y); }) as EventListener);
   env.listen(document, 'keydown', ((e: KeyboardEvent) => {
     if (typing(e.target)) { G.lastTyped = G.t; return; } // Space and Shift typed into the field never act
+    if (provOn() && e.key !== 'h' && e.key !== 'H' && e.key !== ' ') provInput('key'); // P16b G2: any key but Space and H while a stimulus is on is a reaction
     if (e.key === ' ') { e.preventDefault(); G.spaceHeld = true; E?.core?.hold(true, 'key'); }
     else if (e.key === 'Shift' && weightOn()) E?.core?.shift('key');
   }) as EventListener);
@@ -1280,6 +1290,7 @@ function listen(env: InstrumentEnv): void {
     if (weightOn()) { if (e.button === 0) { G.mouseHold = true; E?.core?.hold(true, 'mouse'); } else if (e.button === 2) E?.core?.shift('mouse'); return; }
     if (e.button === 0) G.mouseHold = true;
     if (svcOn() && SV && e.button === 0 && svDown(x, y)) return;
+    if (provOn() && provInput('click')) return; // P16b G2: a click while a stimulus is on is a reaction
     if (e.button === 0) relieveAt(x, y);
   }) as EventListener);
   env.listen(env.layers.frame, 'contextmenu', ((e: Event) => e.preventDefault()) as EventListener);
@@ -1290,6 +1301,7 @@ function listen(env: InstrumentEnv): void {
     if (!v) return;
     if (throneThanked(v)) return; // 24b: her thanks at the end, `/thank/i` within 9 s
     if (G.phase !== 'loop') return;
+    if (provOn() && provInput('speak')) return; // P16b G2: a word while a stimulus is on is a reaction
     if (G.ask) { G.ask = null; G.footUpUntil = G.t + 600; G.stats.answered += 1; setTimeout(() => say(pick(ST().askReply), 'commander'), 900); return; }
     if (G.t - G.lastSelfAt < 5000) { G.stats.breaches += 1; if (G.step !== 'use') setTimeout(() => say(pick(ST().breach), 'commander'), 700); return; }
     G.stats.unprompted += 1;
@@ -1347,6 +1359,7 @@ function stopFrame(): void {
   e.core?.stop();
   detachThrone();
   detachService();
+  detachProvocation();
   THRONE.speaks = () => true; THRONE.slipped = () => {}; THRONE.limit = () => {}; THRONE.buckle = () => {}; THRONE.away = () => false; THRONE.caught = () => {};
   for (const n of A.nodes ?? []) { try { n.stop(); } catch { /* stopped */ } }
   for (const k of Object.keys(LOOPS)) { try { LOOPS[k].src.stop(); } catch { /* stopped */ } delete LOOPS[k]; }
@@ -1391,6 +1404,8 @@ export function startFrame(env: InstrumentEnv, run: PhysicsRun): InstrumentRun {
   }
   // e9: foot service under the desk (her foot within reach), its close-up over the world
   if (S.inner === 'service') attachService({ env, holderId: run.holderId, runId: run.id, pace: servicePaceOf(env.state(), env.registries, run.holderId), G: () => G, S, A: () => A, ACT, MOUSE, ATT, after, sense, say, play, noise, coverNow, callHeard, visitorHeard, clockText, pick, rand, random: () => Math.random(), now: () => performance.now(), setStyle, els: E.els });
+  // P16b Task 25: stillness under provocation (her touches, tickles and whispers; the commander on the floor by her)
+  if (S.inner === 'provocation') attachProvocation({ env, G: () => G, S, ATT, stillness: () => craftLevel(env.state(), 'stillness'), uctx: () => uctx, V, after, sense, say, play, bodyNoise, herFeels, pick, rand, random: () => Math.random(), report: (kind, involuntary) => { E?.env.staging.relief?.({ kind, ...(involuntary ? { involuntary: true } : {}), attention: G.att }); } });
   listen(env);
   frame.last = undefined;
   begin();

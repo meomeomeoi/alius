@@ -28,6 +28,7 @@ export const MOMENTS = {
   her_activity: activityMoments(),
   throne: throneMoments(),
   service: serviceMoments(),
+  provocation: provocationMoments(),
   shoe: shoeMoments(),
   gulp: gulpMoments(),
   posture: postureMoments(),
@@ -580,6 +581,52 @@ function serviceMoments() {
       moment('rub', async (p, k) => { await signal(p, k, 'rub', 1200); await drag(p, k, 'arch', 'circle', 30); await p.clock.runFor(100); }),
       moment('verdict', async (p, k) => { await signal(p, k, 'kiss', 1200); await p.evaluate(`${k.G}.step = 'with'; Object.assign(${k.SV}, { phase: 'craft', act: 'kiss', acts: 1, quality: 1 }); ${k.sv}svEndBout(true);`); await p.clock.runFor(1100); }),
       moment('close-up-1280', (p, k) => signal(p, k, 'kiss', 1200), [1280, 800]),
+    ],
+  };
+}
+
+
+/**
+ * her_activity.html, the game inside `provocation`: stillness under provocation (P16b Task 25, gate G2). The port is the `provocation` fixture (the `activity` frame
+ * with Ann's craft live, restraint on, the commander before her on the floor); the prototype is set to the same (`S.inner` provocation, `S.view` floor,
+ * `S.act` reading_reports). Both pages run on Playwright's fake clock, paused; each moment begins at the same instant, runs past the entry, and puts the same
+ * stimulus (kind, place, value) on both, with no more spawned. Moments: a touch, a tickle, a whisper (her line by her ear), a feint, the breath arc, a reaction.
+ */
+function provocationMoments() {
+  const LOOP = 2600;
+  const stim = (kind, place, v, feint) => `{ const P = __PROV; P.live.length = 0; P.next = __G.t + 1e9; const pl = __PLACES['${kind}'][${place}]; P.live.push({ kind: '${kind}', feint: ${feint}, x: pl.x * innerWidth, y: pl.y * innerHeight, v: ${v}, born: __G.t - 900, until: __G.t + 1e9, seed: 1.5, trail: [] }); if ('${kind}' === 'whisper') say('don\u2019t move.', 'commander', { at: [pl.x - 0.08, pl.y - 0.06] }); }`;
+  const PROTO = (kind, place, v, feint, extra = '') => `(() => { provStart(); const __PROV = G.prov, __G = G, __PLACES = PROV_PLACES; ${stim(kind, place, v, feint)} ${extra} })()`;
+  const PORT = (kind, place, v, feint, extra = '') => `(() => { const q = window.__provocation; q.provStart(); const __PROV = q.prov, __G = window.__activity.G, __PLACES = q.places; const say = window.__activity.say; ${stim(kind, place, v, feint)} ${extra} })()`;
+  const start = {
+    proto: async (p) => {
+      await fakeClock(p, () => document.fonts.ready);
+      await p.addStyleTag({ content: '#panel, #debug, #summary, #start { visibility: hidden !important; }' });
+      await p.evaluate(() => { Object.assign(window.__S, { act: 'reading_reports', view: 'floor', inner: 'provocation', legVar: 'planted', style: 'neutral', sound: false, reduced: false }); });
+      await p.evaluate(() => { document.querySelector('#start').style.display = 'none'; begin(); });
+    },
+    port: async (p) => {
+      await fakeClock(p, async () => { while (document.body.dataset.ready !== 'true') await new Promise((r) => setTimeout(r, 50)); });
+      await p.evaluate(() => { const a = window.__activity; a.S.view = 'floor'; a.S.inner = 'provocation'; a.resetClock(); a.begin(); });
+    },
+  };
+  const moment = (id, kind, place, v, feint, extra = '', ms = 700) => ({
+    id, state: 'provocation', query: '&style=neutral',
+    proto: async (p) => { await start.proto(p); await p.clock.runFor(LOOP); await p.evaluate(() => { G.att = 'busy'; G.step = 'own'; }); await p.evaluate(PROTO(kind, place, v, feint, extra)); await p.clock.runFor(ms); },
+    port: async (p) => { await start.port(p); await p.clock.runFor(LOOP); await p.evaluate(() => { window.__activity.G.step = 'own'; window.__activity.G.att = 'busy'; }); await p.evaluate(PORT(kind, place, v, feint, extra)); await p.clock.runFor(ms); },
+  });
+  return {
+    prototype: 'her_activity',
+    state: 'provocation',
+    rasterSprite: true,
+    hide: ['#panel', '#debug', '#summary', '#start'],
+    settle: 60,
+    moments: [
+      moment('touch', 'touch', 3, 0.5, false),
+      moment('tickle', 'tickle', 0, 0.75, false),
+      moment('whisper', 'whisper', 0, 0.45, false),
+      moment('feint', 'touch', 1, 0, true, '', 500),
+      moment('breath', 'tickle', 1, 0.55, false, '__G.spaceHeld = true; __PROV.held = 1200; __PROV.air = 2600;'),
+      moment('reaction', 'touch', 2, 0.6, false, '__G.step = \'with\'; __PROV.live[0].until = __G.t + 1e9; (typeof provInput === \'function\' ? provInput : window.__provocation.provInput)(\'key\');', 900),
     ],
   };
 }

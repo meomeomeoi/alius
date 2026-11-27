@@ -1363,7 +1363,7 @@ export const TUNING = Object.freeze({
    * and the Regard (`regard`, a `value` rise) her `pleased` verdict on a drill she ran earns.
    */
   craft: Object.freeze({
-    xp: Object.freeze({ phase: 3, lesson: 0.5, drill: 15, knowledge: 5, posture: 5 }),
+    xp: Object.freeze({ phase: 3, lesson: 0.5, drill: 15, knowledge: 5, posture: 5, endure: 0.4 }),
     /**
      * `holder` / `other`: the multiplier of a partner drill; `regard`: a pleased verdict's `value` rise. The `drill` holder's programme (Task 19; AUTHOR TO TUNE): the keys she sets norms for, the norm in
      * seconds of fiction when the commander has no record yet (`start`) and the share of a record it is set at (`fromRecord`), the days between exams, the share of the sum of the norms that passes,

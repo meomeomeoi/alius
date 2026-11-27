@@ -238,6 +238,19 @@ export function demoService(reg: Registries, her: DemoUnit): CampaignState {
   return d;
 }
 
+/**
+ * Stillness under provocation (P16b Task 25): her frame with her craft live (she holds at `play`, practises service and worship, restraint is on) and the commander before
+ * her on the floor (`at_her_feet`): she touches, tickles and whispers.
+ */
+export function demoProvocation(reg: Registries, her: DemoUnit): CampaignState {
+  const d = demoService(reg, her);
+  const id = herOf(d).id;
+  d.content = { enabled: [...new Set([...(d.content?.enabled ?? []), 'restraint'])] };
+  setBlocking(d, { registries: reg }, { person: COMMANDER, field: 'anchor', value: 'at_her_feet', relTo: id }, { at: 2, source: 'engine' });
+  if (d.scene!.physics?.sourceKind !== 'activity') throw new Error('provocation: no frame runs');
+  return d;
+}
+
 /** Shoe service: her boots (`boot_worship`: tongue work on her footwear), her attention busy; `heels`: she likes high heels, so she wears them. */
 export function demoShoe(reg: Registries, her: DemoUnit, footwear: 'boots' | 'heels' = 'boots'): CampaignState {
   return withPlayFrame(() => {

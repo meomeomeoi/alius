@@ -844,7 +844,32 @@ export function instrumentRelief(draft: CampaignState, ctx: { registries: Regist
   return [...events, { type: 'physics_caught', runId: run.id, holderId: run.holderId, kind, beat }];
 }
 
-/** `physics/relief`: by kind, the instrument's own relief (Ruling AE) or the body in her frame (Rulings X, Y). */
+/**
+ * P16b Task 25 (gate G2): the commander's reaction to what she does in her frame's inner game `provocation` (`react`), or a stimulus that went by with none (`endure`). She always
+ * feels a reaction (her hand is on the commander): no noticing draw. A voluntary one is a caught cheat (`physics_cheat` and `physics_caught`, kind `react`, the tally's `cheatsCaught`);
+ * an involuntary one (the body giving way) is only noticed (`physics_noticed`, the tally's `moved`). `endure` says `physics_endured` (the craft pays `stillness` for it). Frame runs
+ * only, with the game switched on (`physicsInteractions.provocation`); draws no rng.
+ */
+export function provocationReport(draft: CampaignState, payload: Record<string, unknown>): EngineEvent[] {
+  const run = draft.scene?.physics;
+  if (!run || run.id !== payload.runId) throw new Error('Stale physics run.');
+  if (run.sourceKind !== 'activity' || run.forgotten) throw new Error('physics/relief: only in her frame, while she is there');
+  if (!sceneSettingsOf(draft).physicsInteractions.provocation) throw new Error('physics/relief: stillness under provocation is switched off');
+  const beat = Number.isInteger(payload.beat) && (payload.beat as number) >= 0 ? (payload.beat as number) : 0;
+  if (payload.kind === 'endure') return [{ type: 'physics_endured', runId: run.id, holderId: run.holderId, beat }];
+  if (payload.involuntary === true) {
+    addTally(run, { moved: 1 });
+    return [{ type: 'physics_noticed', runId: run.id, holderId: run.holderId, beat }];
+  }
+  caughtAtOnce(run);
+  return [
+    { type: 'physics_cheat', runId: run.id, holderId: run.holderId, kind: 'react', beat },
+    { type: 'physics_caught', runId: run.id, holderId: run.holderId, kind: 'react', beat },
+  ];
+}
+
+/** `physics/relief`: by kind, the instrument's own relief (Ruling AE), her provocation's reaction (P16b) or the body in her frame (Rulings X, Y). */
 export function physicsRelief(draft: CampaignState, ctx: { registries: Registries; rng: Rng }, payload: Record<string, unknown>): EngineEvent[] {
+  if (payload.kind === 'react' || payload.kind === 'endure') return provocationReport(draft, payload);
   return payload.kind === 'shift_weight' || payload.kind === 'mouth_breath' ? instrumentRelief(draft, ctx, payload) : frameRelief(draft, ctx, payload);
 }

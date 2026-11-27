@@ -49,8 +49,13 @@ export interface SegmentInput { beat: number; kind: InputKind; atMs?: number; pa
  * in her frame (`relieve`, `fidget`: `amount` loudness × (1 − cover), `part` its visibility, `involuntary` the body giving way), the commander's
  * own shift of weight (`shift_weight`; `part: 'away'` while she is out of the room) or a mouth breath's blown word (`mouth_breath`, `amount` its
  * loudness). `attention` is hers as the instrument shows it, read only between segments.
+ *
+ * P16b Task 25 (stillness under provocation, her frame's inner game `provocation`, gate G2): `react` is the commander's reaction to what she does
+ * (a touch, a tickle, a whisper, a feint: any input while a stimulus is on, or the body giving way, `involuntary`), which she always feels: no noticing
+ * draw, a caught cheat (`physics_cheat` + `physics_caught`, kind `react`) or, involuntary, `physics_noticed`. `endure` is a stimulus that went by with no
+ * reaction: it says `physics_endured` and the craft pays `stillness` for it. Both need the game switched on (`physicsInteractions.provocation`); neither draws.
  */
-export interface ReliefReport { kind: 'relieve' | 'fidget' | 'shift_weight' | 'mouth_breath'; amount?: number; part?: string; involuntary?: boolean; attention?: string }
+export interface ReliefReport { kind: 'relieve' | 'fidget' | 'shift_weight' | 'mouth_breath' | 'react' | 'endure'; amount?: number; part?: string; involuntary?: boolean; attention?: string }
 
 /** P10e-e R22: her orders in the jaw (her toes: `deeper`, `pull_back`, `suck`, `wider`; the ring: `wider`). Each is a cue kind of the same name. */
 export const JAW_ORDERS = ['deeper', 'suck', 'wider', 'pull_back'] as const;

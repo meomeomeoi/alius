@@ -905,7 +905,7 @@ Each round is a live prototype in `docs/prototypes/`, built with `npm run proto 
   - the toggle `provocation`.
 - Test: `tests/ui/instruments/provocation*.test.ts`, the fidelity test
 
-- [ ] **Steps 1–5** as Task 23. Commit `feat(P16b): stillness under provocation`.
+- [x] **Steps 1–5** as Task 23. Commit `feat(P16b): stillness under provocation`.
 
 ### Task 26: The scene surfaces
 

@@ -8302,5 +8302,491 @@
     "lines": [
       "I asked for your eyes."
     ]
+  },
+  {
+    "id": "provocation.whisper",
+    "kind": "provocation.whisper",
+    "lines": [
+      "don’t move.",
+      "breathe.",
+      "I could do this all night."
+    ]
+  },
+  {
+    "id": "provocation.clean",
+    "kind": "provocation.clean",
+    "lines": [
+      "good.",
+      "hm."
+    ]
+  },
+  {
+    "id": "provocation.react",
+    "kind": "provocation.react",
+    "lines": [
+      "there it is.",
+      "still."
+    ]
+  },
+  {
+    "id": "provocation.harder",
+    "kind": "provocation.harder",
+    "lines": [
+      "let’s see."
+    ]
+  },
+  {
+    "id": "provocation.whisper.affectionate",
+    "kind": "provocation.whisper",
+    "style": "affectionate",
+    "lines": [
+      "you’re doing so well.",
+      "shh. stay."
+    ]
+  },
+  {
+    "id": "provocation.clean.affectionate",
+    "kind": "provocation.clean",
+    "style": "affectionate",
+    "lines": [
+      "good. so good."
+    ]
+  },
+  {
+    "id": "provocation.react.affectionate",
+    "kind": "provocation.react",
+    "style": "affectionate",
+    "lines": [
+      "oh, sweetheart."
+    ]
+  },
+  {
+    "id": "provocation.harder.affectionate",
+    "kind": "provocation.harder",
+    "style": "affectionate",
+    "lines": [
+      "a little more?"
+    ]
+  },
+  {
+    "id": "provocation.whisper.playful",
+    "kind": "provocation.whisper",
+    "style": "playful",
+    "lines": [
+      "guess where next~",
+      "don’t laugh. don’t you dare."
+    ]
+  },
+  {
+    "id": "provocation.clean.playful",
+    "kind": "provocation.clean",
+    "style": "playful",
+    "lines": [
+      "boring~",
+      "stubborn."
+    ]
+  },
+  {
+    "id": "provocation.react.playful",
+    "kind": "provocation.react",
+    "style": "playful",
+    "lines": [
+      "gotcha~",
+      "there’s the giggle."
+    ]
+  },
+  {
+    "id": "provocation.harder.playful",
+    "kind": "provocation.harder",
+    "style": "playful",
+    "lines": [
+      "okay. no more mister nice."
+    ]
+  },
+  {
+    "id": "provocation.whisper.cruel",
+    "kind": "provocation.whisper",
+    "style": "cruel",
+    "lines": [
+      "flinch. I want to see it.",
+      "you’re shaking."
+    ]
+  },
+  {
+    "id": "provocation.clean.cruel",
+    "kind": "provocation.clean",
+    "style": "cruel",
+    "lines": [
+      "pity."
+    ]
+  },
+  {
+    "id": "provocation.react.cruel",
+    "kind": "provocation.react",
+    "style": "cruel",
+    "lines": [
+      "pathetic.",
+      "again."
+    ]
+  },
+  {
+    "id": "provocation.harder.cruel",
+    "kind": "provocation.harder",
+    "style": "cruel",
+    "lines": [
+      "we’re not done."
+    ]
+  },
+  {
+    "id": "provocation.whisper.ritual",
+    "kind": "provocation.whisper",
+    "style": "ritual",
+    "lines": [
+      "composure.",
+      "you are being tested."
+    ]
+  },
+  {
+    "id": "provocation.clean.ritual",
+    "kind": "provocation.clean",
+    "style": "ritual",
+    "lines": [
+      "correct."
+    ]
+  },
+  {
+    "id": "provocation.react.ritual",
+    "kind": "provocation.react",
+    "style": "ritual",
+    "lines": [
+      "that was a flinch."
+    ]
+  },
+  {
+    "id": "provocation.harder.ritual",
+    "kind": "provocation.harder",
+    "style": "ritual",
+    "lines": [
+      "again, longer."
+    ]
+  },
+  {
+    "id": "provocation.whisper.cold",
+    "kind": "provocation.whisper",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "provocation.clean.cold",
+    "kind": "provocation.clean",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "provocation.react.cold",
+    "kind": "provocation.react",
+    "style": "cold",
+    "lines": [
+      "no."
+    ]
+  },
+  {
+    "id": "provocation.harder.cold",
+    "kind": "provocation.harder",
+    "style": "cold",
+    "lines": []
+  },
+  {
+    "id": "drill_what",
+    "kind": "drillWhat",
+    "lines": [
+      "{Drill}. With me.",
+      "{Drill}. Now, while I watch."
+    ]
+  },
+  {
+    "id": "drill_other",
+    "kind": "drillOther",
+    "lines": [
+      "{Drill}, with {other}. I hear everything.",
+      "{Other} can help you with {drill}. I will hear about it."
+    ]
+  },
+  {
+    "id": "drill_cost",
+    "kind": "drillCost",
+    "lines": [
+      "It takes {slots}.",
+      "{Slots}, and you get better."
+    ]
+  },
+  {
+    "id": "exam_when",
+    "kind": "examWhen",
+    "lines": [
+      "The exam is {when}.",
+      "I test you {when}."
+    ]
+  },
+  {
+    "id": "exam_norms",
+    "kind": "examNorms",
+    "lines": [
+      "Show me:"
+    ]
+  },
+  {
+    "id": "exam_fail",
+    "kind": "examFail",
+    "lines": [
+      "Fall short, and I take your free time for drills.",
+      "Fail, and your evenings are mine."
+    ]
+  },
+  {
+    "id": "term",
+    "kind": "term",
+    "lines": [
+      "{Days} days.",
+      "For {days} days."
+    ]
+  },
+  {
+    "id": "term_why",
+    "kind": "termWhy",
+    "lines": [
+      "For {crime}.",
+      "Because of {crime}."
+    ]
+  },
+  {
+    "id": "term_echo",
+    "kind": "termEcho",
+    "lines": [
+      "{Echo}"
+    ]
+  },
+  {
+    "id": "term_grow",
+    "kind": "termGrow",
+    "lines": [
+      "Every slip adds {add}.",
+      "Slip, and it grows by {add}."
+    ]
+  },
+  {
+    "id": "lesson",
+    "kind": "lesson",
+    "lines": [
+      "{Point}.",
+      "{Point}. That was it."
+    ]
+  },
+  {
+    "id": "noted",
+    "kind": "noted",
+    "lines": [
+      "{What}. I noticed.",
+      "I saw. {What}."
+    ]
+  },
+  {
+    "id": "lesson.ritual",
+    "kind": "lesson",
+    "style": "ritual",
+    "lines": [
+      "{Point}. The form demands better."
+    ]
+  },
+  {
+    "id": "noted.ritual",
+    "kind": "noted",
+    "style": "ritual",
+    "lines": [
+      "{What}. It is noted."
+    ]
+  },
+  {
+    "id": "lesson.playful",
+    "kind": "lesson",
+    "style": "playful",
+    "lines": [
+      "{Point}~ caught you."
+    ]
+  },
+  {
+    "id": "noted.playful",
+    "kind": "noted",
+    "style": "playful",
+    "lines": [
+      "{What}~ were you trying to impress me?",
+      "Saw that. {What}. Cute."
+    ]
+  },
+  {
+    "id": "lesson.cruel",
+    "kind": "lesson",
+    "style": "cruel",
+    "lines": [
+      "{Point}. Pathetic."
+    ]
+  },
+  {
+    "id": "noted.cruel",
+    "kind": "noted",
+    "style": "cruel",
+    "lines": [
+      "{What}. Did I ask?"
+    ]
+  },
+  {
+    "id": "drill_what.drill",
+    "kind": "drillWhat",
+    "style": "drill",
+    "lines": [
+      "{Drill}. On my clock. Move.",
+      "{Drill}. Now. I am timing you."
+    ]
+  },
+  {
+    "id": "exam_when.drill",
+    "kind": "examWhen",
+    "style": "drill",
+    "lines": [
+      "Exam: {when}. Be ready.",
+      "{When}. Exam. No excuses."
+    ]
+  },
+  {
+    "id": "exam_fail.drill",
+    "kind": "examFail",
+    "style": "drill",
+    "lines": [
+      "Fail, and I book your free slots. All of them I need."
+    ]
+  },
+  {
+    "id": "lesson.drill",
+    "kind": "lesson",
+    "style": "drill",
+    "lines": [
+      "{Point}! Again.",
+      "{Point}. Fix it."
+    ]
+  },
+  {
+    "id": "drill_what.regal",
+    "kind": "drillWhat",
+    "style": "regal",
+    "lines": [
+      "{Drill}. I will watch, if it pleases me."
+    ]
+  },
+  {
+    "id": "lesson.regal",
+    "kind": "lesson",
+    "style": "regal",
+    "lines": [
+      "{Point}. I expect better."
+    ]
+  },
+  {
+    "id": "noted.regal",
+    "kind": "noted",
+    "style": "regal",
+    "lines": [
+      "{What}. You may continue.",
+      "I saw. {What}. Not unwelcome."
+    ]
+  },
+  {
+    "id": "term.vindictive",
+    "kind": "term",
+    "style": "vindictive",
+    "lines": [
+      "{Days} days. You earned every one.",
+      "{Days} days. Count them."
+    ]
+  },
+  {
+    "id": "term_why.vindictive",
+    "kind": "termWhy",
+    "style": "vindictive",
+    "lines": [
+      "For {crime}. You remember.",
+      "You know why: {crime}."
+    ]
+  },
+  {
+    "id": "term_grow.vindictive",
+    "kind": "termGrow",
+    "style": "vindictive",
+    "lines": [
+      "Every slip adds {add}. Go ahead.",
+      "Slip, and I add {add}."
+    ]
+  },
+  {
+    "id": "anticipate",
+    "kind": "anticipate",
+    "lines": [
+      "Hm. Thank you."
+    ]
+  },
+  {
+    "id": "anticipate.ritual",
+    "kind": "anticipate",
+    "style": "ritual",
+    "lines": [
+      "Unasked. Noted."
+    ]
+  },
+  {
+    "id": "anticipate.regal",
+    "kind": "anticipate",
+    "style": "regal",
+    "lines": [
+      "Good. You are learning what I want."
+    ]
+  },
+  {
+    "id": "anticipate.cold",
+    "kind": "anticipate",
+    "style": "cold",
+    "lines": [
+      "…"
+    ]
+  },
+  {
+    "id": "anticipate.playful",
+    "kind": "anticipate",
+    "style": "playful",
+    "lines": [
+      "Ooh, attentive~"
+    ]
+  },
+  {
+    "id": "anticipate.cruel",
+    "kind": "anticipate",
+    "style": "cruel",
+    "lines": [
+      "Did I ask you to move?"
+    ]
+  },
+  {
+    "id": "anticipate.drill",
+    "kind": "anticipate",
+    "style": "drill",
+    "lines": [
+      "Initiative. Good."
+    ]
+  },
+  {
+    "id": "anticipate.affectionate",
+    "kind": "anticipate",
+    "style": "affectionate",
+    "lines": [
+      "You read my mind."
+    ]
   }
 ]

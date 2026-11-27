@@ -516,6 +516,8 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'scent_answer', 'scent_lie_caught',
   // P10e-e (her frame, R28; the throne's decision, 24b)
   'forgotten_end', 'found_posed', 'physics_got_up', 'physics_decided', 'physics_noticed', 'physics_woke', 'physics_buckle',
+  // P16b (stillness under provocation: a stimulus that went by with no reaction)
+  'physics_endured',
   // P10c
   'quarters_set',
   // P13
@@ -3343,6 +3345,10 @@ export const CARD_VOICE_KINDS = [
   // P16b Task 23: the game of postures' lines (posture.html `LINES`, card-voice.md §16); `posture.prefix` is her word before a call in scheme C (one line)
   'posture.start', 'posture.watch', 'posture.fidget', 'posture.slip', 'posture.gaze', 'posture.release', 'posture.clean', 'posture.prefix', 'posture.taken', 'posture.wrong', 'posture.late',
   'posture.look', 'posture.down', 'posture.notLooking',
+  // P16b Task 25 (gate G2): stillness under provocation's lines (her_activity.html `PROV_LINES`, card-voice.md §17); cold is silent where it has none
+  'provocation.whisper', 'provocation.clean', 'provocation.react', 'provocation.harder',
+  // P16b Task 26 (gate G3): the craft's cards (cards.html, card-voice.md §18): the drill, the exam, the sentence, the lesson, her note, and her answer to a service anticipated
+  'drillWhat', 'drillOther', 'drillCost', 'examWhen', 'examNorms', 'examFail', 'term', 'termWhy', 'termEcho', 'termGrow', 'lesson', 'noted', 'anticipate',
 ] as const;
 /** The kinds of her static words (card-voice.md §3), keyed by a milestone id, a domain id (or `submit`) and the return's terms; her first words under a weight, by the contact (§8, `weight.entry.<contact>`); under her scent, her first words and her named places by the contact (§9); in the jaw, her first words by what holds the mouth open (§10, `jaw.entry.<contact>`). */
 export const CARD_VOICE_STATIC = /^(static\.(milestone\.[a-z0-9_]+|claim\.[a-z0-9_]+|return\.[a-z0-9_]+)|weight\.entry\.[a-z0-9_]+|scent\.(entry|here)\.[a-z0-9_]+|jaw\.entry\.[a-z0-9_]+|activity\.(self|toYou|ask|exchange|entry)\.[a-z0-9_]+|service\.zone\.[a-z0-9_]+|shoe\.zone\.[a-z0-9_]+)$/;
@@ -3356,6 +3362,6 @@ export const CardVoiceSchema = BaseEntrySchema.extend({
   kind: str.refine((k) => (CARD_VOICE_KINDS as readonly string[]).includes(k) || CARD_VOICE_STATIC.test(k), 'an unknown card voice kind'),
   style: str.optional(),
   lines: z.array(str.max(160)),
-}).strict().refine((e) => e.lines.length > 0 || ((e.kind.startsWith('breath.') || e.kind.startsWith('weight.') || e.kind.startsWith('scent.') || e.kind.startsWith('jaw.') || e.kind.startsWith('activity.') || e.kind.startsWith('throne.') || e.kind.startsWith('shoe.') || e.kind.startsWith('gulp.') || e.kind.startsWith('posture.')) && e.style !== undefined) || e.kind === 'gulp.surge', 'no lines (only a style\'s own breath, weight, scent, jaw, frame, shoe, gulp or posture row may be empty: she is silent there; gulp\'s `surge` is empty for every style but ritual\'s)');
+}).strict().refine((e) => e.lines.length > 0 || ((e.kind.startsWith('breath.') || e.kind.startsWith('weight.') || e.kind.startsWith('scent.') || e.kind.startsWith('jaw.') || e.kind.startsWith('activity.') || e.kind.startsWith('throne.') || e.kind.startsWith('shoe.') || e.kind.startsWith('gulp.') || e.kind.startsWith('posture.') || e.kind.startsWith('provocation.')) && e.style !== undefined) || e.kind === 'gulp.surge', 'no lines (only a style\'s own breath, weight, scent, jaw, frame, shoe, gulp, posture or provocation row may be empty: she is silent there; gulp\'s `surge` is empty for every style but ritual\'s)');
 export type CardVoiceEntry = z.infer<typeof CardVoiceSchema>;
 registrySchemas.cardVoice = CardVoiceSchema;

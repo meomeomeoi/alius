@@ -5,6 +5,7 @@ import { decayCraft } from '../craft/decay';
 import { installCraftHooks } from '../craft/hooks';
 import { noteSlips } from '../craft/lesson';
 import { noteHoldEvents } from '../craft/records';
+import { noteProvocation } from '../craft/provocation';
 import { touchCraft } from '../craft/book';
 import { craftLive, craftOn } from '../craft/gate';
 import { stageAnticipation } from '../craft/anticipate';
@@ -39,6 +40,9 @@ registerAfterAction((draft, ctx, events) => {
  * settling-in count (`craft/records.ts`). Reads only the events of the action; writes only for a craft-live holder; draws nothing.
  */
 registerAfterAction((draft, ctx, events) => (events.some((e) => e.type === 'physics_segment' || e.type === 'physics_outcome') ? noteHoldEvents(draft, ctx, events) : []));
+
+/** A stimulus of her provocation that the commander let go by pays `stillness` (`craft/provocation.ts`). Writes only for a craft-live holder; draws nothing. */
+registerAfterAction((draft, ctx, events) => (events.some((e) => e.type === 'physics_endured') ? noteProvocation(draft, ctx, events) : []));
 
 /** The day-end decay: a discipline unused for `decay.days` loses a level step, the pair's knowledge after `pairDays` (nothing runs while nothing is written). */
 registerDayEndStep('director_tick', (draft, ctx) => decayCraft(draft, ctx.registries));

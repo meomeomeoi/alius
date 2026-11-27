@@ -1434,3 +1434,101 @@ Kinds `posture.<kind>` by her style (posture.html `LINES`, verbatim): her first 
 - **look:** `Look at me.`
 - **down:** `Enough looking.`
 - **notLooking:** `I asked for your eyes.`
+
+## 17. Stillness under provocation (her_activity.html, the game inside `provocation`, approved by the author, 2026-11-27)
+
+Kinds `provocation.<kind>` by her style (her_activity.html `PROV_LINES`, verbatim): her whisper by the commander's ear (`whisper`), a stimulus that went by with no reaction (`clean`, said at about half of them), the reaction she saw (`react`) and her word when she tries harder after two clean ones (`harder`). A style not listed reads neutral's (Ruling R); cold says nothing where it is silent. She speaks only at the presences that speak (`with`, `glancing`). No pronoun for the commander.
+
+### neutral
+- **whisper:** `don’t move.` `breathe.` `I could do this all night.`
+- **clean:** `good.` `hm.`
+- **react:** `there it is.` `still.`
+- **harder:** `let’s see.`
+
+### affectionate
+- **whisper:** `you’re doing so well.` `shh. stay.`
+- **clean:** `good. so good.`
+- **react:** `oh, sweetheart.`
+- **harder:** `a little more?`
+
+### playful
+- **whisper:** `guess where next~` `don’t laugh. don’t you dare.`
+- **clean:** `boring~` `stubborn.`
+- **react:** `gotcha~` `there’s the giggle.`
+- **harder:** `okay. no more mister nice.`
+
+### cruel
+- **whisper:** `flinch. I want to see it.` `you’re shaking.`
+- **clean:** `pity.`
+- **react:** `pathetic.` `again.`
+- **harder:** `we’re not done.`
+
+### ritual
+- **whisper:** `composure.` `you are being tested.`
+- **clean:** `correct.`
+- **react:** `that was a flinch.`
+- **harder:** `again, longer.`
+
+### cold
+- **whisper:** silent
+- **clean:** silent
+- **react:** `no.`
+- **harder:** silent
+
+## 18. The craft's scene surfaces (cards.html, P16b, approved by the author, 2026-11-27)
+
+Her words on the cards of the craft: the drill (`drillWhat`, or `drillOther` when the drill is with another woman, and `drillCost`), the exam (`examWhen`, `examNorms`, `examFail`), the sentence (`term` large in her hand, `termWhy`, `termEcho` which is the engine's own line for the crime, `termGrow`), the lesson (`lesson`, her word for the point), her note (`noted`, for a holder whose way of noticing a care is a note) and her answer to a service the commander did unasked (`anticipate`). A style not listed reads neutral's. The values are the engine's own: `{drill}` the drill's name, `{other}` the other woman, `{slots}`, `{when}`, `{days}`, `{crime}`, `{echo}`, `{add}`, `{point}`, `{what}`. No pronoun for the commander.
+
+### neutral
+- **drillWhat:** `{drill}. With me.` `{drill}. Now, while I watch.`
+- **drillOther:** `{drill}, with {other}. I hear everything.` `{other} can help you with {drill}. I will hear about it.`
+- **drillCost:** `It takes {slots}.` `{slots}, and you get better.`
+- **examWhen:** `The exam is {when}.` `I test you {when}.`
+- **examNorms:** `Show me:`
+- **examFail:** `Fall short, and I take your free time for drills.` `Fail, and your evenings are mine.`
+- **term:** `{days} days.` `For {days} days.`
+- **termWhy:** `For {crime}.` `Because of {crime}.`
+- **termEcho:** `{echo}`
+- **termGrow:** `Every slip adds {add}.` `Slip, and it grows by {add}.`
+- **lesson:** `{point}.` `{point}. That was it.`
+- **noted:** `{what}. I noticed.` `I saw. {what}.`
+- **anticipate:** `Hm. Thank you.`
+
+### affectionate
+- **anticipate:** `You read my mind.`
+
+### cold
+- **anticipate:** `…`
+
+### ritual
+- **lesson:** `{point}. The form demands better.`
+- **noted:** `{what}. It is noted.`
+- **anticipate:** `Unasked. Noted.`
+
+### playful
+- **lesson:** `{point}~ caught you.`
+- **noted:** `{what}~ were you trying to impress me?` `Saw that. {what}. Cute.`
+- **anticipate:** `Ooh, attentive~`
+
+### cruel
+- **lesson:** `{point}. Pathetic.`
+- **noted:** `{what}. Did I ask?`
+- **anticipate:** `Did I ask you to move?`
+
+### drill
+- **drillWhat:** `{drill}. On my clock. Move.` `{drill}. Now. I am timing you.`
+- **examWhen:** `Exam: {when}. Be ready.` `{when}. Exam. No excuses.`
+- **examFail:** `Fail, and I book your free slots. All of them I need.`
+- **lesson:** `{point}! Again.` `{point}. Fix it.`
+- **anticipate:** `Initiative. Good.`
+
+### regal
+- **drillWhat:** `{drill}. I will watch, if it pleases me.`
+- **lesson:** `{point}. I expect better.`
+- **noted:** `{what}. You may continue.` `I saw. {what}. Not unwelcome.`
+- **anticipate:** `Good. You are learning what I want.`
+
+### vindictive
+- **term:** `{days} days. You earned every one.` `{days} days. Count them.`
+- **termWhy:** `For {crime}. You remember.` `You know why: {crime}.`
+- **termGrow:** `Every slip adds {add}. Go ahead.` `Slip, and I add {add}.`

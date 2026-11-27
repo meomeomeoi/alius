@@ -485,6 +485,42 @@
     {
       "fn": "shuffleBy",
       "module": "src/engine/physics/service.ts"
+    },
+    {
+      "fn": "provOn",
+      "module": "src/ui/scene/instruments/activity/provocation.ts"
+    },
+    {
+      "fn": "provLines",
+      "module": "src/ui/scene/instruments/activity/provocation.ts"
+    },
+    {
+      "fn": "provLive",
+      "module": "src/ui/scene/instruments/activity/provocation.ts"
+    },
+    {
+      "fn": "provStart",
+      "module": "src/ui/scene/instruments/activity/provocation.ts"
+    },
+    {
+      "fn": "provSpawn",
+      "module": "src/ui/scene/instruments/activity/provocation.ts"
+    },
+    {
+      "fn": "provInput",
+      "module": "src/ui/scene/instruments/activity/provocation.ts"
+    },
+    {
+      "fn": "provReact",
+      "module": "src/ui/scene/instruments/activity/provocation.ts"
+    },
+    {
+      "fn": "provUpdate",
+      "module": "src/ui/scene/instruments/activity/provocation.ts"
+    },
+    {
+      "fn": "drawProvocation",
+      "module": "src/ui/scene/instruments/activity/provocation.ts"
     }
   ],
   "tables": [
@@ -539,6 +575,16 @@
       "ident": "SVC_STYLE",
       "module": "src/engine/physics/service.ts",
       "export": "SVC_STYLE"
+    },
+    {
+      "ident": "PROV",
+      "module": "src/ui/scene/instruments/activity/provocation.ts",
+      "export": "PROV"
+    },
+    {
+      "ident": "PROV_PLACES",
+      "module": "src/ui/scene/instruments/activity/provocation.ts",
+      "export": "PROV_PLACES"
     }
   ],
   "lines": [
@@ -785,6 +831,36 @@
         "you missed it.": "service.missed",
         "…": "activity.wokeMumble"
       }
+    },
+    {
+      "ident": "PROV_LINES",
+      "registry": "cardVoice",
+      "cueKinds": {
+        "neutral.whisper": "provocation.whisper",
+        "neutral.clean": "provocation.clean",
+        "neutral.react": "provocation.react",
+        "neutral.harder": "provocation.harder",
+        "affectionate.whisper": "provocation.whisper@affectionate",
+        "affectionate.clean": "provocation.clean@affectionate",
+        "affectionate.react": "provocation.react@affectionate",
+        "affectionate.harder": "provocation.harder@affectionate",
+        "playful.whisper": "provocation.whisper@playful",
+        "playful.clean": "provocation.clean@playful",
+        "playful.react": "provocation.react@playful",
+        "playful.harder": "provocation.harder@playful",
+        "cruel.whisper": "provocation.whisper@cruel",
+        "cruel.clean": "provocation.clean@cruel",
+        "cruel.react": "provocation.react@cruel",
+        "cruel.harder": "provocation.harder@cruel",
+        "ritual.whisper": "provocation.whisper@ritual",
+        "ritual.clean": "provocation.clean@ritual",
+        "ritual.react": "provocation.react@ritual",
+        "ritual.harder": "provocation.harder@ritual",
+        "cold.whisper": "provocation.whisper@cold",
+        "cold.clean": "provocation.clean@cold",
+        "cold.react": "provocation.react@cold",
+        "cold.harder": "provocation.harder@cold"
+      }
     }
   ],
   "differences": [
@@ -986,7 +1062,7 @@
     {
       "fn": "updateLoop",
       "reason": "Her attention is the engine's plan beat by beat (`plannedAttention`), the script read once it is here; the phase ends by the engine's marathon (`endPhase` from the run), not by the prototype's timer; the weight inside is the core's own update (Ruling B). On the throne `throneUpdate` runs beside the core (throne.html's marked edit). The model's script, once here, replaces her placeholder lines it has lines for (Ruling Z). The service (e9) updates as the prototype's (`svUpdate`).",
-      "diff": "@@ -7,7 +7,15 @@\n if(G.attHold>0)G.attHold-=1500\n-else{\n-G.att=attentionDraw()\n-if(G.att===\"watching\")G.attHold=rand(1500,4500)\n+else G.att=plannedAttention()\n }\n+if(R.script===null&&R.scriptPhase>0){\n+const sc=E.env.staging.script?.(R.scriptPhase)??null\n+if(sc){\n+R.script=sc\n+const hasHer=sc.some(l=>l.who===\"her\"),hasOther=sc.some(l=>l.who===\"other\")\n+G.timers=G.timers.filter(x=>!(x.ph===\"her\"&&hasHer)&&!(x.ph===\"other\"&&hasOther))\n+runScript(sc.filter(l=>l.at*1000>=G.phaseT).map(l=>({\n+...l,at:l.at-G.phaseT/1000\n+})))\n }\n+}\n if(!G.away&&G.t>=G.nextMark){\n@@ -24,3 +32,3 @@\n }\n-if(weightOn())wUpdate(dt)\n+if(weightOn())throneUpdate(dt)\n else updateUrges(dt)\n@@ -38,3 +46,2 @@\n baseTick()\n-if(G.phaseT>=S.phaseLen*1000)endPhase()\n }"
+      "diff": "@@ -7,7 +7,15 @@\n if(G.attHold>0)G.attHold-=1500\n-else{\n-G.att=attentionDraw()\n-if(G.att===\"watching\")G.attHold=rand(1500,4500)\n+else G.att=plannedAttention()\n }\n+if(R.script===null&&R.scriptPhase>0){\n+const sc=E.env.staging.script?.(R.scriptPhase)??null\n+if(sc){\n+R.script=sc\n+const hasHer=sc.some(l=>l.who===\"her\"),hasOther=sc.some(l=>l.who===\"other\")\n+G.timers=G.timers.filter(x=>!(x.ph===\"her\"&&hasHer)&&!(x.ph===\"other\"&&hasOther))\n+runScript(sc.filter(l=>l.at*1000>=G.phaseT).map(l=>({\n+...l,at:l.at-G.phaseT/1000\n+})))\n }\n+}\n if(!G.away&&G.t>=G.nextMark){\n@@ -24,3 +32,3 @@\n }\n-if(weightOn())wUpdate(dt)\n+if(weightOn())throneUpdate(dt)\n else updateUrges(dt)\n@@ -39,3 +47,2 @@\n baseTick()\n-if(G.phaseT>=S.phaseLen*1000)endPhase()\n }"
     },
     {
       "fn": "finish",
@@ -1072,6 +1148,21 @@
       "fn": "throneBody",
       "reason": "P15b (bendRow): the telegraph's lead is bent by her manner, her `tempo` (a quicker holder warns later: a shorter lead); the row is the one `T_TELE` lookup, and with no manner or every axis at 0 `bendRow` returns the same row, so it is the prototype's.",
       "diff": "@@ -3,3 +3,5 @@\n if(G.cup&&(kind===\"laugh\"||kind===\"rise\"))return\n-const tele=rand(...(T_TELE[S.style]??T_TELE.neutral))*(G.cup?1.4:1)\n+const tele=rand(...bendRow({\n+tele:T_TELE[S.style]??T_TELE.neutral\n+},S.manner,TELE_KINDS).tele)*(G.cup?1.4:1)\n const side=(fnv(`${S.seed}:${e?.text??kind}:${G.phaseIdx}`)%2)?1:-1"
+    },
+    {
+      "fn": "PROV_LINES.cold.whisper",
+      "reason": "Her silence: cold has no line here (`['']` in the prototype, an empty row of her own in cardVoice): the instrument reads an empty row as the prototype reads `['']`.",
+      "diff": "[]"
+    },
+    {
+      "fn": "PROV_LINES.cold.clean",
+      "reason": "Her silence: cold has no line here (`['']` in the prototype, an empty row of her own in cardVoice): the instrument reads an empty row as the prototype reads `['']`.",
+      "diff": "[]"
+    },
+    {
+      "fn": "PROV_LINES.cold.harder",
+      "reason": "Her silence: cold has no line here (`['']` in the prototype, an empty row of her own in cardVoice): the instrument reads an empty row as the prototype reads `['']`.",
+      "diff": "[]"
     }
   ]
 }

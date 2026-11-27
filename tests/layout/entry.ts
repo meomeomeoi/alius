@@ -1,6 +1,6 @@
 /**
  * P10e: the browser entry of the layout test (`npm run test:layout`): renders the real scene screen into the page for one named
- * fixture (`?fixture=one|two|three|four|curtain|long|physics|chips|chipsmany|dialname|dialwide|call|callhold|slap|slaphold|breath|breathhold|weight|weightfoot|weightup|weighthold|scent|scenthold|jaw|jawring|jawhold|activity|activityhold|throne|thronehold|service|servicehold|shoe|shoeheels|shoehold|gulp|gulphold|posture|posturehold|posturecallb|posturecallc`). A knee-length placeholder sprite (tests/fixtures/layout/sprite.svg), never the
+ * fixture (`?fixture=one|two|three|four|curtain|long|physics|chips|chipsmany|dialname|dialwide|call|callhold|slap|slaphold|breath|breathhold|weight|weightfoot|weightup|weighthold|scent|scenthold|jaw|jawring|jawhold|activity|activityhold|throne|thronehold|service|servicehold|provocation|shoe|shoeheels|shoehold|gulp|gulphold|posture|posturehold|posturecallb|posturecallc`). A knee-length placeholder sprite (tests/fixtures/layout/sprite.svg), never the
  * author's art; the content and the campaign states are fetched (the script serves the repo root); the model is never called.
  */
 import { loadPacks } from '../../src/content/loader';
@@ -13,6 +13,7 @@ import { _jaw } from '../../src/ui/scene/instruments/jaw/jaw';
 import { _activity } from '../../src/ui/scene/instruments/activity/frame';
 import * as throneHooks from '../../src/ui/scene/instruments/activity/throne';
 import { _service } from '../../src/ui/scene/instruments/activity/service';
+import { _provocation } from '../../src/ui/scene/instruments/activity/provocation';
 import { _shoe } from '../../src/ui/scene/instruments/shoe/shoe';
 import { _gulp } from '../../src/ui/scene/instruments/gulp/gulp';
 import { _posture } from '../../src/ui/scene/instruments/posture/posture';
@@ -27,7 +28,7 @@ const params = new URLSearchParams(location.search);
 const fixture = params.get('fixture') ?? 'one';
 const states = (await (await fetch('/.superpowers/layout/states.json')).json()) as Record<string, never>;
 const loaded = await loadPacks(['content/core'], (p: string) => fetch('/' + p).then((r) => r.json()));
-const state = states[['two', 'three', 'four', 'physics', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weightfoot', 'weightup', 'weighthold', 'scent', 'scenthold', 'jaw', 'jawring', 'jawhold', 'activity', 'activityhold', 'throne', 'thronehold', 'service', 'servicehold', 'shoe', 'shoeheels', 'shoehold', 'gulp', 'gulphold', 'posture', 'posturehold', 'posturecallb', 'posturecallc'].includes(fixture) ? fixture : 'one'];
+const state = states[['two', 'three', 'four', 'physics', 'dialname', 'dialwide', 'call', 'callhold', 'slap', 'slaphold', 'breath', 'breathhold', 'weight', 'weightfoot', 'weightup', 'weighthold', 'scent', 'scenthold', 'jaw', 'jawring', 'jawhold', 'activity', 'activityhold', 'throne', 'thronehold', 'service', 'servicehold', 'provocation', 'shoe', 'shoeheels', 'shoehold', 'gulp', 'gulphold', 'posture', 'posturehold', 'posturecallb', 'posturecallc'].includes(fixture) ? fixture : 'one'];
 // the breath instrument (P10e-e Task 14): `&style=<key>` is her physics style; `&quiet=1` clears the plan's openings (the shots open the windows
 // themselves through `window.__breath`, as the prototype's through its hooks); the segment started as the page loaded; the stop word ends the hold (the run goes, the scene redraws), as the engine's does
 // the weight instrument (P10e-e Task 16): the same, `&quiet=1` clearing the plan's shifts (the shots shift her through `window.__weight`)
@@ -37,7 +38,7 @@ const scenting = fixture.startsWith('scent');
 // the jaw instrument (P10e-e Task 20): the same; `&quiet=1` clears her planned moves (the shots move her through `window.__jaw`)
 const jawing = fixture.startsWith('jaw');
 // her frame (P10e-e Task 24): the shots drive her and the commander's attention through `window.__activity`
-const framing = fixture.startsWith('activity') || fixture.startsWith('throne') || fixture.startsWith('service');
+const framing = fixture.startsWith('activity') || fixture.startsWith('throne') || fixture.startsWith('service') || fixture.startsWith('provocation');
 // shoe service (P10e-e Task 28): the layout fixture's sprite stands for her two pictures of her footwear (the author's art is never committed),
 // one foot each, the prototype's default fit; the shots drive it through `window.__shoe`
 const shoeing = fixture.startsWith('shoe');
@@ -128,7 +129,7 @@ if (jawing) (window as unknown as { __jaw: typeof _jaw }).__jaw = _jaw;
 if (shoeing) (window as unknown as { __shoe: typeof _shoe }).__shoe = _shoe;
 if (gulping) (window as unknown as { __gulp: typeof _gulp }).__gulp = _gulp;
 if (posturing) (window as unknown as { __posture: typeof _posture }).__posture = _posture;
-if (framing) Object.assign(window as unknown as Record<string, unknown>, { __activity: _activity, __throne: throneHooks, __weight: _weight, __service: _service });
+if (framing) Object.assign(window as unknown as Record<string, unknown>, { __activity: _activity, __throne: throneHooks, __weight: _weight, __service: _service, __provocation: _provocation });
 if (breathing && !weighing && !scenting && !jawing && !framing && !shoeing && !gulping) (window as unknown as { __breath: typeof _breath }).__breath = _breath;
 if (weighing) (window as unknown as { __weight: typeof _weight }).__weight = _weight;
 document.body.dataset.ready = 'true';

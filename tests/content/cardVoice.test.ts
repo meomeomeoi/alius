@@ -25,7 +25,7 @@ function parseVoiceMd(md: string): Item[] {
     if (raw.startsWith('## ')) { sec = 0; cur = null; continue; }
     const h3 = /^### (.+)$/.exec(raw);
     if (h3) { heading = h3[1]!.trim(); cur = null; continue; }
-    if (!heading || ![1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].includes(sec)) continue;
+    if (!heading || ![1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].includes(sec)) continue;
     const bullet = /^- (.*)$/.exec(raw);
     if (bullet) {
       const body = bullet[1]!;
@@ -113,6 +113,10 @@ const SHOE_KINDS = ['entry', 'turn', 'sole', 'kiss', 'polish', 'other', 'caught'
 const GULP_KINDS = ['entry', 'surge', 'tapped', 'spill', 'cough', 'done', 'clean', 'cleaned', 'missed', 'stop'];
 /** §16 (P16b Task 23): the game of postures' lines by her style (posture.html `LINES`, cold silent where it has none). */
 const POSTURE_KINDS = ['start', 'watch', 'fidget', 'slip', 'gaze', 'release', 'clean', 'prefix', 'taken', 'wrong', 'late', 'look', 'down', 'notLooking'];
+/** §17 (P16b Task 25): stillness under provocation's lines by her style (her_activity.html `PROV_LINES`, cold silent where it has none). */
+const PROVOCATION_KINDS = ['whisper', 'clean', 'react', 'harder'];
+/** §18 (P16b Task 26): the craft's cards' words by her style (cards.html, the G3 rows) and her answer to a service anticipated. */
+const CRAFT_KINDS = ['drillWhat', 'drillOther', 'drillCost', 'examWhen', 'examNorms', 'examFail', 'term', 'termWhy', 'termEcho', 'termGrow', 'lesson', 'noted', 'anticipate'];
 /** §6 (P10e-e Task 11): the slap's lines by her style. */
 const SLAP_LABEL: Record<string, string> = { before: 'slap.before', feint: 'slap.feint', again: 'slap.again', none: 'slap.after.none', braced: 'slap.after.braced', flinched: 'slap.after.flinched' };
 const STYLE_LABEL: Record<string, string> = { when: 'when', cost: 'cost', who: 'who', 'only her': 'onlyMe', weight: 'weight', right: 'call.right', wrong: 'call.wrong', slow: 'call.slow' };
@@ -126,6 +130,16 @@ function expected(md: string): Map<string, string[]> {
     out.set(key, lines);
   };
   for (const it of parseVoiceMd(md)) {
+    if (it.sec === 17) {
+      if (!PROVOCATION_KINDS.includes(it.label)) throw new Error(`unmapped provocation item: ${it.heading} › ${it.label}`);
+      put(`provocation.${it.label}`, it.heading === 'neutral' ? undefined : it.heading, it.lines);
+      continue;
+    }
+    if (it.sec === 18) {
+      if (!CRAFT_KINDS.includes(it.label)) throw new Error(`unmapped craft item: ${it.heading} › ${it.label}`);
+      put(it.label, it.heading === 'neutral' ? undefined : it.heading, it.lines);
+      continue;
+    }
     if (it.sec === 16) {
       if (!POSTURE_KINDS.includes(it.label)) throw new Error(`unmapped posture item: ${it.heading} › ${it.label}`);
       put(`posture.${it.label}`, it.heading === 'neutral' ? undefined : it.heading, it.lines);

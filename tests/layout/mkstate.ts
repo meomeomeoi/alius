@@ -27,7 +27,7 @@ import { campaign, loadCore, run, setRelation } from '../helpers/loyalty';
 import { ANN, holderBond, unitOf, withService, world } from '../engine/practice/world';
 import { holdScene } from '../engine/craft/world';
 import { installCraftHooks } from '../../src/engine/craft/hooks';
-import { demoActivity, demoBreath, demoGulp, demoJaw, demoScent, demoService, demoShoe, demoSlap, demoThrone, demoWeight } from '../../src/ui/stage/demo';
+import { demoActivity, demoBreath, demoGulp, demoJaw, demoScent, demoProvocation, demoService, demoShoe, demoSlap, demoThrone, demoWeight } from '../../src/ui/stage/demo';
 import '../../src/engine/actions/blocking';
 import '../../src/engine/actions/physics';
 import '../../src/engine/actions/bonds';
@@ -152,6 +152,7 @@ out.throne = demoThrone(reg, HER);
 out.thronehold = demoThrone(reg, HER);
 out.service = demoService(reg, HER);
 out.servicehold = demoService(reg, HER);
+out.provocation = demoProvocation(reg, HER); // P16b Task 25: stillness under provocation (the commander on the floor by her)
 out.shoe = demoShoe(reg, HER);
 out.shoehold = demoShoe(reg, HER);
 out.shoeheels = demoShoe(reg, HER, 'heels');
