@@ -6,7 +6,7 @@ import { installCraftHooks } from '../craft/hooks';
 import { noteSlips } from '../craft/lesson';
 import { noteHoldEvents } from '../craft/records';
 import { touchCraft } from '../craft/book';
-import { craftOn } from '../craft/gate';
+import { craftLive, craftOn } from '../craft/gate';
 import { stageAnticipation } from '../craft/anticipate';
 import { dropHeadlocks, noteHeadlockOutcome, startHeadlock } from '../craft/headlock';
 import { giveCare, landCares } from '../craft/care';
@@ -17,7 +17,8 @@ import { registerForcedEditor } from '../personal/intercept';
 import { drillDayStep, dropExams, noteExamOutcome, noteProgrammeBooking } from '../craft/programmes/drill';
 import { correctPosture, endPosture, endPostureRun, holdOfCall, slipPosture, takePostureHold } from '../craft/posture';
 import { enduranceOf } from '../craft/state';
-import { registerCallAnswered } from '../practice/postures';
+import { pickHerPosture } from '../craft/herSet';
+import { registerCallAnswered, registerPostureNamer } from '../practice/postures';
 import { TUNING } from '../tuning';
 
 // Importing this module registers what keeps the craft in step with the rest of the engine (P16b). It must come after `actions/practice`
@@ -151,6 +152,9 @@ registerAction('posture/end', (draft, payload, ctx) => {
   if (!isObj(payload)) throw new Error('posture/end needs { reason }.');
   return endPosture(draft, ctx, { reason: payload.reason, beats: payload.beats });
 });
+
+/** She names the preset she picks by her taste when her set has room (P16b, Task 22a): the practices' day step asks, the craft answers. Nothing is drawn. */
+registerPostureNamer((state, reg, holderId) => (craftLive(state, reg, holderId) ? pickHerPosture(state, reg, holderId) : null));
 
 /** Her call answered in time may start the hold of the posture she called (the practices' hook): by her style's share, a hashed roll, nothing drawn. */
 registerCallAnswered((draft, ctx, info) => holdOfCall(draft, ctx, info));

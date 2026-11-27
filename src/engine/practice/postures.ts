@@ -42,10 +42,53 @@ export const POSTURE_NAME_MAX = 30;
 /** The service track: the one a posture call feeds and whose level the set of postures grows with. */
 const TRACK = TUNING.practice.routine.track;
 
-/** Does she keep named postures: a ritual as her primary or secondary style, or the household protocol? Read by the style and the capability, never by id. */
+/**
+ * Does she keep named postures: a style in `TUNING.practice.posture.keepers` (`ritual`, and since P16b `drill` and `regal`) as her primary or secondary style, or the household protocol? Read by the style (through
+ * `practiceOf`, a turn of it counts) and the capability, never by id.
+ */
 export function keepsPostures(state: CampaignState, reg: Registries, holderId: string): boolean {
   const style = practiceOf(state, reg, holderId)?.style;
-  return style?.primary === 'ritual' || style?.secondary === 'ritual' || hasCapability(state, reg, holderId, 'household_protocol');
+  const keepers = TUNING.practice.posture.keepers;
+  return (style !== undefined && (keepers.includes(style.primary) || (style.secondary !== undefined && keepers.includes(style.secondary)))) || hasCapability(state, reg, holderId, 'household_protocol');
+}
+
+/**
+ * P16b plugs in here (Task 22a): which preset she names next by her taste, or `null`. The practices import nothing of the craft; with no hook registered, or every one answering `null`, she names only what
+ * the commander is put in (`notePosture`). The first answer wins.
+ */
+export type PostureNamer = (state: CampaignState, reg: Registries, holderId: string) => string | null;
+const namers: PostureNamer[] = [];
+export function registerPostureNamer(fn: PostureNamer): void {
+  if (!namers.includes(fn)) namers.push(fn);
+}
+function namerPick(state: CampaignState, reg: Registries, holderId: string): string | null {
+  for (const fn of namers) {
+    const id = fn(state, reg, holderId);
+    if (id !== null) return id;
+  }
+  return null;
+}
+
+/**
+ * The day step's part (Task 22a): each live holder who keeps named postures and whose set has room (her service level plus one) names the preset a hook picks by her taste. It is named by its label until
+ * she names it (`posture_named` with no name: the controller asks for one), and her first call of it is a lesson (`taught`). A picked preset that is not allowed for her or that she has is never named. Nothing
+ * without a hook. Draws nothing.
+ */
+export function namePostures(draft: CampaignState, ctx: Pick<EngineCtx, 'registries'>): EngineEvent[] {
+  if (namers.length === 0) return [];
+  const reg = ctx.registries;
+  const out: EngineEvent[] = [];
+  for (const u of draft.squad) {
+    const holderId = u.id;
+    if (!practiceLive(draft, reg, holderId) || !keepsPostures(draft, reg, holderId)) continue;
+    const mine = draft.practices?.postures[holderId] ?? [];
+    if (mine.length >= postureCap(draft, holderId)) continue;
+    const pick = namerPick(draft, reg, holderId);
+    if (pick === null || !postureAllowed(draft, reg, pick, holderId) || mine.some((p) => samePreset(reg, p.postureId, pick))) continue;
+    ensurePractices(draft).postures[holderId] = [...mine, { postureId: pick, name: labelOf(reg, pick), day: draft.day, taught: true }];
+    out.push({ type: 'posture_named', unitId: holderId, holderId, postureId: pick });
+  }
+  return out;
 }
 
 /** How many postures she names: her level in the service track plus one. */
@@ -133,7 +176,8 @@ export function callPosture(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
     const pool = others.length > 0 ? others : mine;
     const pick = pool[Math.min(pool.length - 1, Math.floor(practiceRoll(draft, holderId, `call:pick:${key}`) * pool.length))];
     const id = nextPracticeId(draft, 'pc');
-    ensurePractices(draft).call = { id, holderId, postureId: pick.postureId, sceneId: scene.id, at: scene.exchanges };
+    const taught = pick.taught === true; // her first call of a posture she introduced is a lesson
+    ensurePractices(draft).call = { id, holderId, postureId: pick.postureId, sceneId: scene.id, at: scene.exchanges, ...(taught ? { taught: true as const } : {}) };
     return [{ type: 'posture_called', callId: id, unitId: holderId, holderId, postureId: pick.postureId, sceneId: scene.id }];
   }
   return [];
@@ -152,6 +196,11 @@ export function takePosture(draft: CampaignState, ctx: Pick<EngineCtx, 'registri
   if (postureId !== undefined && !(draft.practices!.postures[call.holderId] ?? []).some((p) => samePreset(reg, p.postureId, postureId))) throw new Error('That posture is not one of hers.');
   delete draft.practices!.call;
   const base = { callId, unitId: call.holderId, holderId: call.holderId, postureId: call.postureId } as const;
+  if (call.taught === true) { // the lesson is over once she has called it (a miss included)
+    const entry = draft.practices!.postures[call.holderId]?.find((p) => samePreset(reg, p.postureId, call.postureId));
+    if (entry !== undefined) delete entry.taught;
+  }
+  if ((!samePreset(reg, postureId, call.postureId) || late) && call.taught === true) return [{ type: 'posture_called', ...base, taught: true, missed: true }]; // a lesson: no slip
   if (!samePreset(reg, postureId, call.postureId) || late) {
     return [{ type: 'posture_slip', ...base, ...(late ? { late: true } : {}) }, ...noteOffence(draft, ctx, call.holderId, { kind: 'posture_slip', ref: callId, stakes: 'trivial', day: draft.day })];
   }

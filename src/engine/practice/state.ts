@@ -340,12 +340,12 @@ export interface PracticeState {
    * Her named postures, per holder. `postureId` is a preset id (`servicePostures`, P16b) or a base id (an old save, or a chip that set a base); both are read through `presetOf` (a base reads as its
    * default preset, the same pose) and two ids are one posture when `samePreset` says so. No migration writes.
    */
-  postures: Record<string, Array<{ postureId: string; name: string; day: number; }>>;
+  postures: Record<string, Array<{ postureId: string; name: string; day: number; /** P16b: she picked it by her taste and has not called it yet: the first call teaches. */ taught?: true }>>;
   /** P16b: the posture hold that runs (one at a time) and how many holds the day has had (the fatigue of the day). Both absent until a hold starts; `forgetPractices` takes the run of a soldier who leaves. */
   postureRun?: PostureRun;
   postureDay?: { day: number; holds: number };
   /** The call open: `postureId` is as stored in her set (a preset id or an old base id). */
-  call?: { id: string; holderId: string; postureId: string; sceneId: string; at: number; };
+  call?: { id: string; holderId: string; postureId: string; sceneId: string; at: number; /** P16b: her first call of a posture she introduced: a lesson (the call shows a ghost, a miss counts no slip). */ taught?: true };
   /**
    * The slap that is open (R21): her time allowed in milliseconds, the feints she will make, whether others see it, the punishment it belongs to (a flinch may add to its count) and whether
    * it is the second (`again`: `cruel` slaps once more after a flinch, never twice) or came with no warning (`unannounced`, after a slip). `sceneId` is the scene the commander braces in.

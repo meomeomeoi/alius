@@ -1271,7 +1271,7 @@ export const TUNING = Object.freeze({
         opening: 'turns the request down, and keeps it in mind',
       } as const),
     }),
-    posture: Object.freeze({ callChance: 0.15, xp: 2, windowMs: Object.freeze({ ritual: 4000, drill: 3000, other: 5000 }) }),
+    posture: Object.freeze({ callChance: 0.15, xp: 2, windowMs: Object.freeze({ ritual: 4000, drill: 3000, other: 5000 }), /** The styles that keep named postures (P16b ruling 25: `drill` and `regal` join `ritual`); the household protocol keeps them too. */ keepers: Object.freeze(['ritual', 'drill', 'regal'] as readonly string[]) }),
     slap: Object.freeze({
       windowMs: Object.freeze({
         affectionate: 700, regal: 650, ritual: 550, drill: 550, cold: 500, clinical: 500, possessive: 450, playful: 450, obsessive: 300, vindictive: 350, cruel: 300,
@@ -1430,6 +1430,19 @@ export const TUNING = Object.freeze({
      * 10 s at skill 0 (the preset's own rates are in `servicePostures`); the instrument plays the thresholds, the clicks and the keys in real time, the engine judges what it reports.
      */
     posture: Object.freeze({
+      /**
+       * Which postures she names herself (Task 22a, ruling 25; AUTHOR TO TUNE: the author's draft). `likes`: the meanings (`servicePostures[].meaning`) each style likes; `humiliationByFrame`: the most humiliation a
+       * preset may have for her frame to name it; `strict`: the meanings her `order` (+1 or more) puts first; her `curiosity` (+1 or more) puts first a preset with a meaning she has none of.
+       */
+      likes: Object.freeze({
+        ritual: Object.freeze(['waiting', 'attention', 'offering', 'gratitude', 'apology', 'submission']), drill: Object.freeze(['attention', 'endurance_test', 'waiting']),
+        regal: Object.freeze(['display', 'worship', 'object', 'waiting', 'gratitude']), cruel: Object.freeze(['punishment', 'endurance_test', 'object']),
+        vindictive: Object.freeze(['punishment', 'apology', 'submission']), playful: Object.freeze(['pet', 'display', 'request']), possessive: Object.freeze(['rest', 'waiting', 'worship']),
+        affectionate: Object.freeze(['rest', 'request', 'casual']), cold: Object.freeze(['object', 'waiting']), clinical: Object.freeze(['endurance_test', 'display']),
+        obsessive: Object.freeze(['worship', 'rest', 'offering']),
+      } as Readonly<Record<string, readonly string[]>>),
+      humiliationByFrame: Object.freeze({ play: 2, role: 4, rule: 5 } as Readonly<Record<string, number>>),
+      strict: Object.freeze(['submission', 'endurance_test', 'punishment', 'object', 'attention'] as readonly string[]),
       /** The state each target drifts toward (blocking.md section 7.1 "drifts toward"); a point with no row for its state is not judged. */
       driftTo: Object.freeze({
         torso: Object.freeze({ upright: 'forward', arched: 'upright', level: 'bent', forward: 'bent' }),

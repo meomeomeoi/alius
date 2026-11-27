@@ -22,6 +22,7 @@ import { kindnessSweep, protocolPossible, routineSweep } from './service';
 import { unfairSweep } from './unfair';
 import { handoverSweep } from './handover';
 import { expireAsked } from './askHer';
+import { namePostures } from './postures';
 import { PRACTICE_KINDS, practiceRoll, type PracticeKind } from './state';
 import { frameOf, holdBusy, taskRoom } from './tasks';
 
@@ -152,6 +153,7 @@ export function practiceDayStep(draft: CampaignState, ctx: EngineCtx): EngineEve
   events.push(...kindnessSweep(draft, ctx)); // 5
   events.push(...unfairSweep(draft, ctx)); // 6
   events.push(...handoverSweep(draft, ctx)); // 7
+  events.push(...namePostures(draft, ctx)); // 7a (P16b): she names a posture by her taste when her set has room
   events.push(...chainRequests(draft, ctx)); // 8a
   events.push(...newPractices(draft, ctx)); // 8
   events.push(...expiry(draft, ctx)); // 9

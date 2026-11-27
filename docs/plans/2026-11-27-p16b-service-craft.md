@@ -806,7 +806,7 @@ Before Task 1, also read:
   - Her first call of a posture is a lesson: `practices.call.taught: true`, a ghost on the call, no slip on a miss.
 - Test: `tests/engine/craft/herSet.test.ts`, `tests/engine/practice/postures.test.ts`
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `regal` and `drill` name postures now;
   - each style's candidates follow its likes;
   - the frame caps the humiliation;
@@ -815,10 +815,10 @@ Before Task 1, also read:
   - a fitting held preset is named first;
   - the first call teaches;
   - P16's seeded posture tests keep their events (a `ritual` holder whose set fills from held postures behaves as before).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P16b): she names postures by her taste`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P16b): she names postures by her taste`
 
 ### Task 22b: HER POSTURES
 
