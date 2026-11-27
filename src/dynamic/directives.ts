@@ -7,13 +7,16 @@ import { herPracticeLive, dynamicOn, holdersAtPlay } from '../engine/dynamic/gat
 import { leashBlockOf } from '../engine/dynamic/leashBlock';
 import { frameEntry } from '../engine/dynamic/hold';
 import { sceneProbe } from '../engine/dynamic/probes';
+import { faceNow, showsDynamic, type Face } from '../engine/dynamic/face';
+import { drawnByWord, mannerOf, mannerWord } from '../engine/dynamic/manner';
+import { practiceOf } from '../engine/dynamic/profile';
 import { dynamicOf } from '../engine/dynamic/state';
 import { offerLabel } from '../engine/dynamic/offer';
 import { reactionOf, type Reaction } from '../engine/dynamic/witness';
 import { regardTone, regardToneFor } from '../engine/dynamic/regard';
 import { disappointedSince } from '../engine/dynamic/shame';
 import { leadingStyle } from '../engine/dynamic/style';
-import type { DynamicDomainEntry, DynamicMilestoneEntry, PracticeStyleEntry, ProbeAxisEntry } from '../engine/dynamic/types';
+import { MANNER_AXES, type DynamicDomainEntry, type DynamicMilestoneEntry, type PracticeStyleEntry, type ProbeAxisEntry } from '../engine/dynamic/types';
 import { isLiving } from '../engine/economy';
 import type { CampaignState, Unit } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
@@ -45,21 +48,31 @@ export const REGARD_PREFIX = 'dynamic:regard:';
 /** The line of an offer the commander made, for her next reply only (event-driven like P15a's `moment:`: `applyOfferDirectives`; a refresh leaves it alone). */
 export const OFFER_PREFIX = 'dynamic:offer:';
 
-/** Her style pair in words, the secondary's side named while it leads. */
+/**
+ * Her style pair in words, the secondary's side named while it leads. P15b: for a holder with a manner the line also words the axes away from 0 ("Her manner is cold: she pushes hard;
+ * cool, little comfort.") and what draws her ("What draws her is what the commander shows."), from the table of words; an axis at 0 says nothing. Without a manner it is the line it was.
+ */
 function styleLine(state: CampaignState, reg: Registries, unit: Unit): string {
   const pair = unit.bond?.practice?.style;
   if (pair === undefined) return '';
   const label = (key: string): string => clean(String((reg.practiceStyles.get(key) as unknown as PracticeStyleEntry | undefined)?.label ?? key)).toLowerCase();
   const lead = leadingStyle(state, reg, unit.id);
-  const base = pair.secondary === undefined ? `Her manner is ${label(pair.primary)}.` : `Her manner is ${label(pair.primary)}, with a ${label(pair.secondary)} streak.`;
-  return lead.phaseLead === 'secondary' ? `${base} Her ${label(lead.key)} side comes through now.` : base;
+  const manner = mannerOf(state, reg, unit.id);
+  const words = manner === null ? [] : MANNER_AXES.map((a) => mannerWord(a, manner.axes[a])).filter((w) => w !== '');
+  const head = pair.secondary === undefined ? `Her manner is ${label(pair.primary)}` : `Her manner is ${label(pair.primary)}, with a ${label(pair.secondary)} streak`;
+  const base = `${head}${words.length > 0 ? `: ${words.join('; ')}` : ''}.`;
+  const drawn = manner === null || manner.drawnBy.length === 0 ? '' : ` What draws her is ${manner.drawnBy.map(drawnByWord).join(', and also ')}.`;
+  return `${lead.phaseLead === 'secondary' ? `${base} Her ${label(lead.key)} side comes through now.` : base}${drawn}`;
 }
+
+/** Her everyday self in one clause (`bond.practice.everyday`, hers and sincere), or `''`. */
+const everydayOf = (state: CampaignState, reg: Registries, unitId: string): string => sentence(practiceOf(state, reg, unitId)?.everyday ?? '');
 
 /**
  * The directive of a holder who is in the room: at `play` or beyond, the frame, what she has claimed, her manner and what she waits to answer;
  * before the first frame, only the open milestone she waits on (her manner too), so the scene that carries it can bring it up.
  */
-function holderDirective(state: CampaignState, reg: Registries, unit: Unit): Directive | null {
+function holderDirective(state: CampaignState, reg: Registries, unit: Unit, face: Face): Directive | null {
   const dyn = dynamicOf(state, unit.id);
   const frame = dyn === undefined ? undefined : frameEntry(reg, dyn.frame);
   const waiting = state.dynamic?.open.milestones.find((m) => m.unitId === unit.id);
@@ -67,6 +80,21 @@ function holderDirective(state: CampaignState, reg: Registries, unit: Unit): Dir
   const holds = dyn !== undefined && frameRank(dyn.frame) >= frameRank('play');
   if (dyn === undefined || frame === undefined || (!holds && waiting === undefined)) return null;
   const name = unit.displayName;
+  if (!showsDynamic(face)) {
+    // P15b: before people who do not know, or whom she does not let in, nothing of the dynamic shows: her everyday self, or the appearance that all is ordinary. At `equal` her card is enough.
+    if (!holds) return null;
+    const everyday = everydayOf(state, reg, unit.id);
+    const text = face === 'mask'
+      ? [...(everyday !== '' ? [`${name} is as she is every day: ${everyday}.`] : []), `${name} keeps up the appearance that all is ordinary between her and the commander.`]
+      : [...(everyday !== '' ? [`${name} is as she is every day: ${everyday}.`] : []), 'Nothing of the dynamic shows.'];
+    return { id: `${DYNAMIC_PREFIX}${unit.id}`, expiresAfter: 'scene', text: [...text, 'Show it in how she acts and speaks; never name it as a mechanic.'].join(' ') };
+  }
+  const everydayToOthers = face === 'dynamic_to_commander'
+    ? (() => {
+      const everyday = everydayOf(state, reg, unit.id);
+      return `Before the others present she shows her manner to the commander only; toward them she is as she is every day${everyday !== '' ? `: ${everyday}` : ''}.`;
+    })()
+    : '';
   const claimed = dyn.domains
     .map((d) => (reg.dynamicDomains.get(d.id) as unknown as DynamicDomainEntry | undefined)?.promptHint)
     .filter((h): h is string => typeof h === 'string')
@@ -82,6 +110,7 @@ function holderDirective(state: CampaignState, reg: Registries, unit: Unit): Dir
     ...(holds ? [`${name} holds the lead with the commander: ${sentence(frame.promptHint)}.`] : []),
     ...(holds && claimed.length > 0 ? [`What she has claimed: ${claimed.join('; ')}.`] : []),
     styleLine(state, reg, unit),
+    ...(everydayToOthers !== '' ? [everydayToOthers] : []),
     ...(regard !== null ? [`Her tone toward the commander: ${sentence(regard)}.`] : []), // the tone word only: Regard is hers and never a number
     ...(milestone !== undefined ? [`${holds ? 'She' : name} is waiting for the commander's answer to something she asked: ${sentence(milestone.promptHint)}.`] : []),
     ...(holds && asking !== undefined ? [`She is waiting for the commander's answer to something she asked: ${asking.domainId === undefined ? 'that the commander give way to her' : sentence(String((reg.dynamicDomains.get(asking.domainId) as unknown as DynamicDomainEntry | undefined)?.promptHint ?? 'a part of the commander\'s life'))}.`] : []),
@@ -122,11 +151,11 @@ export function dynamicDirectives(state: CampaignState, reg: Registries, present
     .map((id) => state.squad.find((u) => u.id === id))
     .filter((u): u is Unit => u !== undefined && u.kind === 'named' && isLiving(u) && herPracticeLive(state, u.id));
   for (const unit of units) {
-    const holder = holderDirective(state, reg, unit);
+    const holder = holderDirective(state, reg, unit, faceNow(state, reg, unit.id, present));
     if (holder !== null) out.push(holder);
   }
   const probe = sceneProbe(state, units.map((u) => u.id));
-  if (probe !== undefined) out.push(probeDirective(reg, units.find((u) => u.id === probe.unitId)!, probe.probe.axis));
+  if (probe !== undefined && showsDynamic(faceNow(state, reg, probe.unitId, present))) out.push(probeDirective(reg, units.find((u) => u.id === probe.unitId)!, probe.probe.axis)); // P15b: a probe waits for a face that shows it
   for (const unit of units) {
     const line = aftermathDirective(state, reg, unit);
     if (line !== null) out.push(line);
@@ -265,7 +294,11 @@ export function offerDirective(event: { type: string; [k: string]: unknown }, st
     answer: String(event.answer), what: String(event.what ?? 'something'), conditions: event.conditions === true, kind: event.kind === true,
     ...(typeof event.corrected === 'string' ? { corrected: event.corrected } : {}),
   });
-  return parts === null ? null : plainDirective({ id: `${OFFER_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: [...parts, 'Show it in how she acts and speaks; never name it as a mechanic.'].join(' ') });
+  // P15b: before people who do not know, or whom she does not let in, her answer stands but nothing of the dynamic shows; in a DM, or with no scene with her, there is no face
+  const scene = state.scene;
+  const hidden = scene !== undefined && scene.participants.includes(unit.id) && !showsDynamic(faceNow(state, reg, unit.id, scene.participants));
+  const cover = hidden ? [`Others who do not know of it are present: she answers so that nothing of the dynamic shows, and may leave the rest until they are alone.`] : [];
+  return parts === null ? null : plainDirective({ id: `${OFFER_PREFIX}${unit.id}`, expiresAfter: 'next_reply', text: [...parts, ...cover, 'Show it in how she acts and speaks; never name it as a mechanic.'].join(' ') });
 }
 
 /** What an offer says about itself, in the words of its answer: the same for the scene directive and the DM reply line. */

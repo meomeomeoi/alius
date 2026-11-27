@@ -301,7 +301,7 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
   - All know but not allowed → `everyday`.
   - Anyone who does not know → `mask` if there is no romance or it is `secret` (planning ruling 2), else `everyday`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - each row of the face table;
   - mixed company: one knows and one does not → `mask` without a romance, `everyday` with a known romance;
   - an empty `present` → `dynamic`;
@@ -310,10 +310,10 @@ The end words of §1 go into a data table: `TUNING.manner.words` or a small regi
   - a running `practice:` directive is unchanged in every face;
   - the contrast factor at `high` makes gossip more likely and never above 0.9;
   - no pronoun for the commander in any output.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `tests/dynamic` → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P15b): which face a scene shows`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `tests/dynamic` → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P15b): which face a scene shows`
 
 ### Task 9: Her quirks, offered once
 

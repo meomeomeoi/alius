@@ -21038,18 +21038,26 @@ function tells(draft, ctx2, holders2) {
   }
   return events;
 }
+function gossipChanceFor(contrast) {
+  const T5 = TUNING.squadKnowledge.gossipChance;
+  if (contrast === void 0) return T5;
+  const C3 = TUNING.manner.contrast;
+  return Math.min(C3.cap, T5 * C3[contrast]);
+}
 function gossip(draft, ctx2, holders2) {
   const T5 = TUNING.squadKnowledge;
   const reg = ctx2.registries;
   const events = [];
   for (const h2 of holders2) {
+    const view3 = practiceOf(draft, reg, h2);
+    const chance = gossipChanceFor(view3?.manner === void 0 ? void 0 : view3.contrast);
     const before8 = new Map(othersOf(draft, h2).map((id) => [id, levelOf2(draft, id, h2)]));
     for (const o of before8.keys()) {
       if (before8.get(o) === "knows_dynamic") continue;
       let total2 = 0;
       for (const [y, level] of before8) {
         if (y === o || level !== "knows_dynamic" && level !== "suspects_dynamic") continue;
-        if (dynamicRoll(draft, o, `gossip:${y}:${h2}`) >= T5.gossipChance) continue;
+        if (dynamicRoll(draft, o, `gossip:${y}:${h2}`) >= chance) continue;
         const row4 = signRow(reg, level === "knows_dynamic" ? "gossip_knows" : "gossip_suspects");
         if (row4 !== void 0 && contentAllowed(draft, reg, row4)) total2 += row4.amount * multiplier2(draft, reg, o, h2);
       }
@@ -24017,13 +24025,16 @@ function stageOf(slot2) {
   return S17[slot2] ?? S17.other;
 }
 var roomOfLocation = (reg, locationId) => [...reg.hubRooms.values()].find((r) => r.sceneLocationId === locationId)?.id;
+function selectFewOf(state, _reg, holderId) {
+  const leaderId = leaderOf(state)?.id;
+  return atBase(state, holderId).filter((id) => id === leaderId || isClose(state, id));
+}
 function pickAudience(state, reg, holderId, slot2) {
   const audience = practiceOf(state, reg, holderId)?.audience;
   const base2 = atBase(state, holderId);
   let pool = [];
   if (audience === "select_few") {
-    const leaderId = leaderOf(state)?.id;
-    pool = base2.filter((id) => id === leaderId || isClose(state, id));
+    pool = selectFewOf(state, reg, holderId);
   } else if (audience === "show_off") {
     const room2 = roomOfLocation(reg, stageOf(slot2));
     pool = room2 === void 0 ? base2 : base2.filter((id) => whereaboutAt(state, reg, id, state.day, slot2).roomId === room2);
@@ -44923,6 +44934,37 @@ function createDevelopment(deps) {
   };
 }
 
+// src/engine/dynamic/face.ts
+var showsDynamic = (face) => face === "dynamic" || face === "dynamic_to_commander";
+function herRunning(state, unitId) {
+  const scene = state.scene;
+  if (scene === void 0) return false;
+  if (scene.physics?.holderId === unitId) return true;
+  if (momentsOf(scene).open?.unitId === unitId) return true;
+  const p = state.practices;
+  if (p === void 0) return false;
+  if (p.held?.by === unitId) return true;
+  if (p.slap?.holderId === unitId && p.slap.sceneId === scene.id) return true;
+  if (p.call?.holderId === unitId && p.call.sceneId === scene.id) return true;
+  if (p.demonstrations.some((d) => d.holderId === unitId && d.status === "open" && d.sceneId === scene.id)) return true;
+  return p.punishments.some((x) => x.holderId === unitId && x.status === "accepted" && x.voicedScene === scene.id);
+}
+function faceNow(state, reg, unitId, present2) {
+  const others = present2.filter((id) => id !== unitId && id !== "commander");
+  if (others.length === 0 || herRunning(state, unitId)) return "dynamic";
+  const rel = state.relations[unitId];
+  const publicLevel = rel?.publicity?.level;
+  const knowers = others.filter((id) => publicLevel === "public" || levelOf2(state, id, unitId) === "knows_dynamic");
+  if (knowers.length < others.length) return publicLevel === "known" ? "everyday" : "mask";
+  const audience = practiceOf(state, reg, unitId)?.audience;
+  if (audience === "show_off" || audience === "indifferent") return "dynamic_to_commander";
+  if (audience === "select_few") {
+    const few = selectFewOf(state, reg, unitId);
+    return others.every((id) => few.includes(id)) ? "dynamic_to_commander" : "everyday";
+  }
+  return "everyday";
+}
+
 // src/dynamic/directives.ts
 var clean8 = (text3) => plainDraft(text3).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
 var sentence2 = (text3) => clean8(text3).replace(/[.\s]+$/, "");
@@ -44940,10 +44982,15 @@ function styleLine(state, reg, unit5) {
   if (pair === void 0) return "";
   const label2 = (key) => clean8(String(reg.practiceStyles.get(key)?.label ?? key)).toLowerCase();
   const lead = leadingStyle(state, reg, unit5.id);
-  const base2 = pair.secondary === void 0 ? `Her manner is ${label2(pair.primary)}.` : `Her manner is ${label2(pair.primary)}, with a ${label2(pair.secondary)} streak.`;
-  return lead.phaseLead === "secondary" ? `${base2} Her ${label2(lead.key)} side comes through now.` : base2;
+  const manner = mannerOf(state, reg, unit5.id);
+  const words3 = manner === null ? [] : MANNER_AXES.map((a) => mannerWord(a, manner.axes[a])).filter((w) => w !== "");
+  const head = pair.secondary === void 0 ? `Her manner is ${label2(pair.primary)}` : `Her manner is ${label2(pair.primary)}, with a ${label2(pair.secondary)} streak`;
+  const base2 = `${head}${words3.length > 0 ? `: ${words3.join("; ")}` : ""}.`;
+  const drawn2 = manner === null || manner.drawnBy.length === 0 ? "" : ` What draws her is ${manner.drawnBy.map(drawnByWord).join(", and also ")}.`;
+  return `${lead.phaseLead === "secondary" ? `${base2} Her ${label2(lead.key)} side comes through now.` : base2}${drawn2}`;
 }
-function holderDirective(state, reg, unit5) {
+var everydayOf = (state, reg, unitId) => sentence2(practiceOf(state, reg, unitId)?.everyday ?? "");
+function holderDirective(state, reg, unit5, face) {
   const dyn = dynamicOf(state, unit5.id);
   const frame9 = dyn === void 0 ? void 0 : frameEntry(reg, dyn.frame);
   const waiting3 = state.dynamic?.open.milestones.find((m) => m.unitId === unit5.id);
@@ -44951,6 +44998,16 @@ function holderDirective(state, reg, unit5) {
   const holds6 = dyn !== void 0 && frameRank(dyn.frame) >= frameRank("play");
   if (dyn === void 0 || frame9 === void 0 || !holds6 && waiting3 === void 0) return null;
   const name = unit5.displayName;
+  if (!showsDynamic(face)) {
+    if (!holds6) return null;
+    const everyday = everydayOf(state, reg, unit5.id);
+    const text3 = face === "mask" ? [...everyday !== "" ? [`${name} is as she is every day: ${everyday}.`] : [], `${name} keeps up the appearance that all is ordinary between her and the commander.`] : [...everyday !== "" ? [`${name} is as she is every day: ${everyday}.`] : [], "Nothing of the dynamic shows."];
+    return { id: `${DYNAMIC_PREFIX}${unit5.id}`, expiresAfter: "scene", text: [...text3, "Show it in how she acts and speaks; never name it as a mechanic."].join(" ") };
+  }
+  const everydayToOthers = face === "dynamic_to_commander" ? (() => {
+    const everyday = everydayOf(state, reg, unit5.id);
+    return `Before the others present she shows her manner to the commander only; toward them she is as she is every day${everyday !== "" ? `: ${everyday}` : ""}.`;
+  })() : "";
   const claimed = dyn.domains.map((d) => reg.dynamicDomains.get(d.id)?.promptHint).filter((h2) => typeof h2 === "string").map(sentence2);
   const milestone = waiting3 === void 0 ? void 0 : reg.dynamicMilestones.get(waiting3.milestoneId);
   const override = state.dynamic?.override;
@@ -44962,6 +45019,7 @@ function holderDirective(state, reg, unit5) {
     ...holds6 ? [`${name} holds the lead with the commander: ${sentence2(frame9.promptHint)}.`] : [],
     ...holds6 && claimed.length > 0 ? [`What she has claimed: ${claimed.join("; ")}.`] : [],
     styleLine(state, reg, unit5),
+    ...everydayToOthers !== "" ? [everydayToOthers] : [],
     ...regard2 !== null ? [`Her tone toward the commander: ${sentence2(regard2)}.`] : [],
     // the tone word only: Regard is hers and never a number
     ...milestone !== void 0 ? [`${holds6 ? "She" : name} is waiting for the commander's answer to something she asked: ${sentence2(milestone.promptHint)}.`] : [],
@@ -44988,11 +45046,11 @@ function dynamicDirectives(state, reg, present2) {
   const out = [];
   const units = present2.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named" && isLiving(u) && herPracticeLive(state, u.id));
   for (const unit5 of units) {
-    const holder3 = holderDirective(state, reg, unit5);
+    const holder3 = holderDirective(state, reg, unit5, faceNow(state, reg, unit5.id, present2));
     if (holder3 !== null) out.push(holder3);
   }
   const probe = sceneProbe(state, units.map((u) => u.id));
-  if (probe !== void 0) out.push(probeDirective(reg, units.find((u) => u.id === probe.unitId), probe.probe.axis));
+  if (probe !== void 0 && showsDynamic(faceNow(state, reg, probe.unitId, present2))) out.push(probeDirective(reg, units.find((u) => u.id === probe.unitId), probe.probe.axis));
   for (const unit5 of units) {
     const line3 = aftermathDirective2(state, reg, unit5);
     if (line3 !== null) out.push(line3);
@@ -45101,7 +45159,10 @@ function offerDirective(event, state, reg) {
     kind: event.kind === true,
     ...typeof event.corrected === "string" ? { corrected: event.corrected } : {}
   });
-  return parts2 === null ? null : plainDirective({ id: `${OFFER_PREFIX}${unit5.id}`, expiresAfter: "next_reply", text: [...parts2, "Show it in how she acts and speaks; never name it as a mechanic."].join(" ") });
+  const scene = state.scene;
+  const hidden = scene !== void 0 && scene.participants.includes(unit5.id) && !showsDynamic(faceNow(state, reg, unit5.id, scene.participants));
+  const cover = hidden ? [`Others who do not know of it are present: she answers so that nothing of the dynamic shows, and may leave the rest until they are alone.`] : [];
+  return parts2 === null ? null : plainDirective({ id: `${OFFER_PREFIX}${unit5.id}`, expiresAfter: "next_reply", text: [...parts2, ...cover, "Show it in how she acts and speaks; never name it as a mechanic."].join(" ") });
 }
 function offerSentences(reg, unit5, o) {
   const say12 = OFFER_LINE[o.answer];

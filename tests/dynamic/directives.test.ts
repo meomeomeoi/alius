@@ -36,6 +36,10 @@ function world(over: { frame?: Frame; primary?: ProfileStyle; secondary?: Profil
   expect(errors(r.events)).toEqual([]);
   return r.state;
 }
+/** `observer` knows of `holder`'s dynamic (P15b: before people who do not know, a holder's standing lines show nothing of it). */
+const knows = (s: CampaignState, observer: string, holder = ANN): void => {
+  (s.dynamic!.knowledge[observer] ??= {})[holder] = { suspicion: 100, level: 'knows_dynamic', levelDay: 1, peakDay: s.day };
+};
 const withProbe = (s: CampaignState): CampaignState => {
   dynamicOf(s, ANN)!.probes = { pending: { axis: 'space', tier: 1, day: s.day }, lastDay: s.day, answers: [], issued: 1 };
   dynamicOf(s, ANN)!.frame = 'equal';
@@ -83,6 +87,7 @@ describe('the tone of low Regard reaches every woman in the room (I5)', () => {
     expect(dirs(s, [ANN]).map((d) => d.id)).toContain(`dynamic:regard:${ANN}`);
     expect(dirs(s, [ANN]).map((d) => d.id)).not.toContain(`dynamic:regard:${BEA}`);
     dynamicOf(s, ANN)!.frame = 'play';
+    knows(s, BEA); // before her a holder's line shows (P15b)
     expect(dirs(s).map((d) => d.id)).not.toContain(`dynamic:regard:${ANN}`);
     expect(byId(dirs(s), `dynamic:${ANN}`)!.text).toContain('Her tone toward the commander');
     s.dynamic = undefined;
@@ -116,6 +121,7 @@ describe('the holder directive', () => {
   it('the secondary that leads shows now; a recent refusal and an open milestone are hers to answer', () => {
     const s = world({ frame: 'play', primary: 'cold', secondary: 'ritual' });
     s.scene!.participants = [ANN, BEA];
+    knows(s, BEA); // Bea knows of it: the face rule (P15b) lets her manner show before her
     expect(byId(dirs(s), `dynamic:${ANN}`)!.text).toMatch(/ritual side/i); // before others: the secondary surfaces
     const calm = world({ frame: 'play' });
     expect(byId(dirs(calm), `dynamic:${ANN}`)!.text).not.toMatch(/answer/i);
@@ -153,6 +159,8 @@ describe('the probe directive', () => {
     const s = withProbe(world({ frame: 'equal', present: [ANN, BEA] }));
     unitOf(s, BEA).bond = structuredClone(unitOf(s, ANN).bond!);
     s.relations[BEA].dynamic = { ...blankDynamic(s.day), probes: { pending: { axis: 'touch', tier: 2, day: s.day }, answers: [], issued: 1 } };
+    knows(s, BEA, ANN);
+    knows(s, ANN, BEA); // each knows of the other: the probe line shows (P15b)
     expect(dirs(s).filter((d) => d.id.startsWith('dynamic:probe:'))).toHaveLength(1);
   });
 });

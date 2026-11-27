@@ -23,7 +23,7 @@ import { regardFall } from './regard';
 import { reactToDynamic } from './reactions';
 import { dynamicRoll } from './witness';
 import { dynamicOf, type KnowledgeRecord } from './state';
-import { DYNAMIC_KNOWLEDGE_TAG, type DynamicSignEntry, type KnowledgeLevel, type SignKind } from './types';
+import { DYNAMIC_KNOWLEDGE_TAG, type Contrast, type DynamicSignEntry, type KnowledgeLevel, type SignKind } from './types';
 import { plainDraft } from '../../content/draft';
 
 type Ctx = Pick<EngineCtx, 'registries'>;
@@ -306,6 +306,17 @@ function tells(draft: CampaignState, ctx: Ctx, holders: string[]): EngineEvent[]
 }
 
 /**
+ * P15b: the chance that a woman passes it on, about a holder of this `contrast` (the distance between her two faces): `gossipChance` x the contrast factor, capped
+ * (`TUNING.manner.contrast`). Without a contrast (a holder with no `manner`) it is the base, uncapped, as before.
+ */
+export function gossipChanceFor(contrast: Contrast | undefined): number {
+  const T = TUNING.squadKnowledge.gossipChance;
+  if (contrast === undefined) return T;
+  const C = TUNING.manner.contrast;
+  return Math.min(C.cap, T * C[contrast]);
+}
+
+/**
  * Gossip: a woman who knows passes it to another on a day with the hashed chance `gossipChance` (5), one who suspects the same (2); each is
  * multiplied like a sign, and a woman gets at most `gossipCap` of it in a day. The levels are read before anybody is told today, so the order of the
  * squad changes nothing.
@@ -315,13 +326,15 @@ function gossip(draft: CampaignState, ctx: Ctx, holders: string[]): EngineEvent[
   const reg = ctx.registries;
   const events: EngineEvent[] = [];
   for (const h of holders) {
+    const view = practiceOf(draft, reg, h);
+    const chance = gossipChanceFor(view?.manner === undefined ? undefined : view.contrast); // P15b: a high contrast is talked about
     const before = new Map(othersOf(draft, h).map((id) => [id, levelOf(draft, id, h)]));
     for (const o of before.keys()) {
       if (before.get(o) === 'knows_dynamic') continue;
       let total = 0;
       for (const [y, level] of before) {
         if (y === o || (level !== 'knows_dynamic' && level !== 'suspects_dynamic')) continue;
-        if (dynamicRoll(draft, o, `gossip:${y}:${h}`) >= T.gossipChance) continue;
+        if (dynamicRoll(draft, o, `gossip:${y}:${h}`) >= chance) continue;
         const row = signRow(reg, level === 'knows_dynamic' ? 'gossip_knows' : 'gossip_suspects');
         if (row !== undefined && contentAllowed(draft, reg, row)) total += row.amount * multiplier(draft, reg, o, h);
       }

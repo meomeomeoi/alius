@@ -151,6 +151,7 @@ describe('the intent', () => {
 describe('her directive', () => {
   it('lists hers while she is in the room, never anyone else\'s, and carries no number', () => {
     const s = world();
+    s.dynamic!.knowledge[BEA] = { [ANN]: { suspicion: 100, level: 'knows_dynamic', levelDay: 1, peakDay: s.day } }; // P15b: before one who does not know, her line shows nothing of the dynamic
     addCompromat(s, ANN, 'AUTHOR TO WRITE: the commander begged in front of the mess hall.', [BEA]);
     const line = dynamicDirectives(s, reg, [ANN, BEA]).find((d) => d.id === `dynamic:${ANN}`)!;
     expect(line.text).toContain('begged in front of the mess hall');

@@ -30,6 +30,15 @@ export function stageOf(slot: Slot): string {
 const roomOfLocation = (reg: Registries, locationId: string): string | undefined => [...reg.hubRooms.values()].find((r) => r.sceneLocationId === locationId)?.id;
 
 /**
+ * Her few (`select_few`): the squad's leader and the units close to the commander, living named units other than her, at base. One set for `pickAudience` and for P15b's face of a scene
+ * (`faceNow`: before whom she shows her manner). Reads only.
+ */
+export function selectFewOf(state: CampaignState, _reg: Registries, holderId: string): string[] {
+  const leaderId = leaderOf(state)?.id;
+  return atBase(state, holderId).filter((id) => id === leaderId || isClose(state, id));
+}
+
+/**
  * Who would watch, by her `audience` (R9): `select_few` the squad's leader and the units close to the commander, `show_off` the units whose whereabout at the stage slot is the stage room
  * (every unit at base when the pack has no such room); `private_only`, `indifferent` and a profile that says nothing, nobody. Always living named units other than her, at base.
  * At most `cardsMax` are on the card (squad order); the rest are narrated as present at the stage.
@@ -39,8 +48,7 @@ export function pickAudience(state: CampaignState, reg: Registries, holderId: st
   const base = atBase(state, holderId);
   let pool: string[] = [];
   if (audience === 'select_few') {
-    const leaderId = leaderOf(state)?.id;
-    pool = base.filter((id) => id === leaderId || isClose(state, id));
+    pool = selectFewOf(state, reg, holderId);
   } else if (audience === 'show_off') {
     const room = roomOfLocation(reg, stageOf(slot));
     pool = room === undefined ? base : base.filter((id) => whereaboutAt(state, reg, id, state.day, slot).roomId === room);
