@@ -413,7 +413,9 @@ registerMemoryResolver('record_set', (draft, event, reg) => {
   const seconds = Number(event.seconds);
   const key = str(event.key);
   if (!her || key === undefined || !(seconds > 0)) return null;
-  const what = String(reg.contactPhysics.get(key)?.label ?? key.replace(/_/g, ' ')).toLowerCase();
+  // a posture's record is keyed `posture:<preset>` (P16b, Task 12): "the kneel open posture"
+  const posture = key.startsWith('posture:') ? reg.servicePostures.get(key.slice('posture:'.length)) : undefined;
+  const what = posture !== undefined ? `the ${String(posture.label).toLowerCase()} posture` : String(reg.contactPhysics.get(key)?.label ?? key.replace(/_/g, ' ')).toLowerCase();
   return { ids: { her: [her.id] }, vars: { name: her.name, what, time: spanText(seconds) } };
 }, { ids: ['her'], vars: ['name', 'what', 'time'] });
 

@@ -219,4 +219,14 @@ describe('the memory rule of a record', () => {
     expect(f[0].tags).toEqual(expect.arrayContaining(['craft', 'record']));
     expect(rememberEvents(s, [{ type: 'record_set', unitId: ANN, key: 'weight', seconds: 0 }], reg)).toBeUndefined;
   });
+
+  it('a posture\'s record (key posture:<preset>) is told by the preset\'s label, not by its key', () => {
+    const s = world(reg, 'play');
+    const before = s.memory.facts.length;
+    rememberEvents(s, [{ type: 'record_set', unitId: ANN, key: 'posture:kneel_open', seconds: 1800, kind: 'longest', kinds: ['longest'] }], reg);
+    const [f] = s.memory.facts.slice(before);
+    expect(f.text).toMatch(/the kneel open posture/);
+    expect(f.text).not.toMatch(/posture:/);
+    expect(f.text).toMatch(/30 minutes/);
+  });
 });

@@ -35547,7 +35547,8 @@ registerMemoryResolver("record_set", (draft, event, reg) => {
   const seconds = Number(event.seconds);
   const key = str4(event.key);
   if (!her || key === void 0 || !(seconds > 0)) return null;
-  const what = String(reg.contactPhysics.get(key)?.label ?? key.replace(/_/g, " ")).toLowerCase();
+  const posture = key.startsWith("posture:") ? reg.servicePostures.get(key.slice("posture:".length)) : void 0;
+  const what = posture !== void 0 ? `the ${String(posture.label).toLowerCase()} posture` : String(reg.contactPhysics.get(key)?.label ?? key.replace(/_/g, " ")).toLowerCase();
   return { ids: { her: [her.id] }, vars: { name: her.name, what, time: spanText(seconds) } };
 }, { ids: ["her"], vars: ["name", "what", "time"] });
 registerMemoryResolver("dynamic_exit", (draft, event) => {
