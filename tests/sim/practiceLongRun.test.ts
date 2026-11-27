@@ -172,7 +172,7 @@ describe('the long run: practices over 120 seeded days (Task 41)', () => {
     });
   }
 
-  it('the practice code draws nothing: no draw of any rng the dispatcher builds has a stack through src/engine/practice/', () => {
+  it('the practice code draws nothing: no draw of any rng the dispatcher builds has a stack through src/engine/practice/ or src/engine/craft/', () => {
     const stacks: string[] = [];
     // every draw goes through `next`; the spy wraps it and records where it was called from
     const proto = Rng.prototype as unknown as { next: () => number };
@@ -187,7 +187,7 @@ describe('the long run: practices over 120 seeded days (Task 41)', () => {
       spy.mockRestore();
     }
     expect(stacks.length, 'the run draws (the spy sees them)').toBeGreaterThan(100);
-    const through = stacks.filter((st) => /src\/engine\/practice\//.test(st));
+    const through = stacks.filter((st) => /src\/engine\/(practice|craft)\//.test(st)); // P16b: the craft code draws nothing either
     expect(through.slice(0, 1)).toEqual([]);
   });
 });

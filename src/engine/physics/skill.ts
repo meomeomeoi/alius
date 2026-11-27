@@ -14,6 +14,24 @@ export function commanderSkill(state: Pick<CampaignState, 'commander'>, physicsI
   return state.commander.endurance?.[physicsId]?.level ?? 0;
 }
 
+/** The strongest endurance level the commander has in any contact physics (P16b: the reader `practice/punish.ts` uses for her trained route). */
+export function enduranceLevelOf(state: Pick<CampaignState, 'commander'>): number {
+  return Math.max(0, ...Object.values(state.commander.endurance ?? {}).map((e) => e?.level ?? 0));
+}
+
+/** Whether a drill of this physics was done today already (the once-a-day check of `activity/do`). */
+export function trainedToday(state: Pick<CampaignState, 'commander' | 'day'>, physicsId: string): boolean {
+  return state.commander.endurance?.[physicsId]?.trainedDay === state.day;
+}
+
+/** P16b: sets the xp of one physics outright (the decay's step down); the level follows. Nothing is written for a physics that has no xp. */
+export function setEnduranceXp(draft: CampaignState, physicsId: string, xp: number): void {
+  const row = draft.commander.endurance?.[physicsId];
+  if (row === undefined) return;
+  row.xp = xp;
+  row.level = levelForXp(xp);
+}
+
 /** Adds xp to one physics. The event says the new level and whether it just rose. */
 export function addEnduranceXp(draft: CampaignState, physicsId: string, xp: number): EngineEvent {
   const book = (draft.commander.endurance ??= {});

@@ -1,4 +1,5 @@
 import type { Blocking, StagingSnapshot } from '../blocking/state';
+import type { CraftEntry, RelationCraft } from '../craft/state';
 import type { Attitude, ExpectationProfile } from '../dynamic/expectations';
 import type { DrawnBy, MannerAxis, Practice, PracticeCategory, ProfileStyle } from '../dynamic/types';
 import type { DynamicCampaign, DynamicRelation, DynamicUndo } from '../dynamic/state';
@@ -478,6 +479,8 @@ export interface Relation {
   regard?: number;
   /** P15: what the commander has learned of each of her targets, as points (levels at 20 / 60 / 120 / 200 / 320). */
   mastery?: Record<string, number>;
+  /** P16b: what the pair has learnt of the craft (postures, her rhythm, her signals, records). Written only while she is craft-live; absent until then. */
+  craft?: RelationCraft;
   trust: number;
   affinity: number;
   attraction: number;
@@ -808,6 +811,8 @@ export interface Commander {
   deeds?: Partial<Record<DeedCounter, number>>;
   /** P15a: the commander's endurance per contact physics (xp and level 0–5); read through `commanderSkill`. */
   endurance?: Record<string, { xp: number; level: number; trainedDay?: number }>;
+  /** P16b: the commander's other disciplines (stillness, posture, rhythm, memory, composure, speech, pain, depth), and the decay's day of every key, `endurance:<physics>` included. Absent until something is written; read through `craftLevel`. */
+  craft?: Record<string, CraftEntry>;
   /** P15a: the commander's body layer per stimulus kind (plan R13): tolerance, exposure, the share of seeking over avoiding and the stage it gives. Read through `stimuli.ts`. */
   stimuli?: Record<string, { tolerance: number; exposure: number; lastDay: number; best: number; seek: number; stage: 'aversion' | 'enduring' | 'accustomed' | 'craving' | 'adoring'; pending?: { stage: 'aversion' | 'enduring' | 'accustomed' | 'craving' | 'adoring'; n: number }; session?: string; decayDay?: number; missedDay?: number }>;
   /** P15a: conditions the commander bears (dizzy after a blackout, stiff after a long hold) until their time; read through `conditionsOf`. */

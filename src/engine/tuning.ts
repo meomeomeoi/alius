@@ -1350,4 +1350,36 @@ export const TUNING = Object.freeze({
     /** A false report (R6; AUTHOR TO TUNE): it may be found for `days` after it was made; the day's chance is `witness` (someone the task names is at base) plus her `insight`; `compromat` is what she keeps of it (`{what}`: the task's summary). */
     falseReport: Object.freeze({ days: 14, witness: 0.2, compromat: 'AUTHOR TO WRITE: The commander reported a task as done that was not: {what}.', insight: Object.freeze({ low: 0.04, mid: 0.08, high: 0.16 } as const) }),
   }),
+  /**
+   * P16b: service as a craft (plan Tasks 1-6; every number is `AUTHOR TO TUNE`, drafted from the spec's TUNING table). `xp`: a clean segment of a hold (`phase`) and the share of a clean success a lesson
+   * pays (`lesson`); `decay`: days unused before a discipline (and, slower, per-pair knowledge) loses a level step, never below level 1 (a key used within `days` is never touched). `beatSeconds`: the
+   * fiction seconds one beat of a physics stands for, times (1 + `beatSkill` per level of the commander); counted from beats, never from the clock, so a record is the same at every pace.
+   * `capacity`: the body route of P7 `endurance` (level-equivalents per point above `bodyFrom`, posture and pain only, ruling 9), `noise`: stillness quiets a slip by this much a level, `drift`: a posture drifts
+   * this much slower a level. `settling`: clean holds of a kind in a row before she adds a load, and for each style the loads it likes (a hashed pick over the list). `lesson`: the chance she
+   * names the point after a slip, by style (`drill` / `ritual` / `clinical` always, `playful` as a joke, `cruel` never, the rest by `other`). `rhythm`: how much wider her openings are per level
+   * of her rhythm the commander knows. `record`: the days a record stays worth bringing up, and the shortest one worth a line (seconds). `knowledge`: the xp of a pair's knowledge per use.
+   */
+  craft: Object.freeze({
+    xp: Object.freeze({ phase: 3, lesson: 0.5, drill: 15, knowledge: 5 }),
+    decay: Object.freeze({ days: 21, pairDays: 42 }),
+    beatSkill: 0.25,
+    beatSeconds: Object.freeze({ weight: 20, breath: 3, saturation: 10, tongue_work: 15, jaw: 5, gulp: 5, her_activity: 20, posture: 30 } as Record<string, number>),
+    beatSecondsDefault: 10,
+    capacity: Object.freeze({ bodyFrom: 3, bodyPerPoint: 0.5 }),
+    noise: Object.freeze({ perLevel: 0.1 }),
+    drift: Object.freeze({ perLevel: 0.08 }),
+    settling: Object.freeze({
+      clean: 3,
+      modifiers: Object.freeze(['count', 'no_duration', 'speech_rule', 'combined', 'new_posture'] as const),
+      byStyle: Object.freeze({
+        drill: Object.freeze(['count', 'speech_rule', 'new_posture']), clinical: Object.freeze(['combined', 'count']), cold: Object.freeze(['no_duration', 'count']),
+        playful: Object.freeze(['new_posture', 'speech_rule']), cruel: Object.freeze(['no_duration', 'combined']), ritual: Object.freeze(['count', 'speech_rule']),
+        possessive: Object.freeze(['no_duration', 'new_posture']), affectionate: Object.freeze(['new_posture']), obsessive: Object.freeze(['count', 'no_duration']),
+        regal: Object.freeze(['speech_rule', 'new_posture']), vindictive: Object.freeze(['combined', 'no_duration']),
+      } as Record<string, readonly string[]>),
+    }),
+    lesson: Object.freeze({ always: Object.freeze(['drill', 'ritual', 'clinical']), joke: Object.freeze(['playful']), never: Object.freeze(['cruel']), cold: 0.4, other: 0.5 }),
+    rhythm: Object.freeze({ widenPerLevel: 0.05 }),
+    record: Object.freeze({ freshDays: 14, minSeconds: 60 }),
+  }),
 });

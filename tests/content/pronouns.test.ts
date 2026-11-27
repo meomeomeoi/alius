@@ -398,6 +398,21 @@ describe('no pronoun for the commander in the text modules the main model and th
   });
 });
 
+describe('no pronoun for the commander in the craft code (P16b)', () => {
+  // every file of the three directories is read, so a file added later is covered without listing it
+  const DIRS = ['src/engine/craft', 'src/craft', 'src/ui/craft'];
+  it.each(DIRS)('%s', async (dir) => {
+    const { readdir, readFile } = await import('node:fs/promises');
+    const names = (await readdir(dir).catch(() => [] as string[])).filter((n) => n.endsWith('.ts'));
+    const bad: string[] = [];
+    for (const name of names) {
+      const lines = (await readFile(`${dir}/${name}`, 'utf8')).split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l));
+      bad.push(...lines.filter((l) => /\b(he|him|his|himself)\b/i.test(l) || /commander[^.'`]*\btheir\b/i.test(l)).map((l) => `${name}: ${l.trim().slice(0, 100)}`));
+    }
+    expect(bad).toEqual([]);
+  });
+});
+
 describe('no pronoun for the commander in the her-call content (P9e)', () => {
   it('every her-call event text, outcome text and the her_call / ask_first glossary entries', () => {
     const texts: Array<[string, string]> = [

@@ -1744,6 +1744,45 @@ var TUNING = Object.freeze({
     sign: Object.freeze({ holdMs: 1200 }),
     /** A false report (R6; AUTHOR TO TUNE): it may be found for `days` after it was made; the day's chance is `witness` (someone the task names is at base) plus her `insight`; `compromat` is what she keeps of it (`{what}`: the task's summary). */
     falseReport: Object.freeze({ days: 14, witness: 0.2, compromat: "AUTHOR TO WRITE: The commander reported a task as done that was not: {what}.", insight: Object.freeze({ low: 0.04, mid: 0.08, high: 0.16 }) })
+  }),
+  /**
+   * P16b: service as a craft (plan Tasks 1-6; every number is `AUTHOR TO TUNE`, drafted from the spec's TUNING table). `xp`: a clean segment of a hold (`phase`) and the share of a clean success a lesson
+   * pays (`lesson`); `decay`: days unused before a discipline (and, slower, per-pair knowledge) loses a level step, never below level 1 (a key used within `days` is never touched). `beatSeconds`: the
+   * fiction seconds one beat of a physics stands for, times (1 + `beatSkill` per level of the commander); counted from beats, never from the clock, so a record is the same at every pace.
+   * `capacity`: the body route of P7 `endurance` (level-equivalents per point above `bodyFrom`, posture and pain only, ruling 9), `noise`: stillness quiets a slip by this much a level, `drift`: a posture drifts
+   * this much slower a level. `settling`: clean holds of a kind in a row before she adds a load, and for each style the loads it likes (a hashed pick over the list). `lesson`: the chance she
+   * names the point after a slip, by style (`drill` / `ritual` / `clinical` always, `playful` as a joke, `cruel` never, the rest by `other`). `rhythm`: how much wider her openings are per level
+   * of her rhythm the commander knows. `record`: the days a record stays worth bringing up, and the shortest one worth a line (seconds). `knowledge`: the xp of a pair's knowledge per use.
+   */
+  craft: Object.freeze({
+    xp: Object.freeze({ phase: 3, lesson: 0.5, drill: 15, knowledge: 5 }),
+    decay: Object.freeze({ days: 21, pairDays: 42 }),
+    beatSkill: 0.25,
+    beatSeconds: Object.freeze({ weight: 20, breath: 3, saturation: 10, tongue_work: 15, jaw: 5, gulp: 5, her_activity: 20, posture: 30 }),
+    beatSecondsDefault: 10,
+    capacity: Object.freeze({ bodyFrom: 3, bodyPerPoint: 0.5 }),
+    noise: Object.freeze({ perLevel: 0.1 }),
+    drift: Object.freeze({ perLevel: 0.08 }),
+    settling: Object.freeze({
+      clean: 3,
+      modifiers: Object.freeze(["count", "no_duration", "speech_rule", "combined", "new_posture"]),
+      byStyle: Object.freeze({
+        drill: Object.freeze(["count", "speech_rule", "new_posture"]),
+        clinical: Object.freeze(["combined", "count"]),
+        cold: Object.freeze(["no_duration", "count"]),
+        playful: Object.freeze(["new_posture", "speech_rule"]),
+        cruel: Object.freeze(["no_duration", "combined"]),
+        ritual: Object.freeze(["count", "speech_rule"]),
+        possessive: Object.freeze(["no_duration", "new_posture"]),
+        affectionate: Object.freeze(["new_posture"]),
+        obsessive: Object.freeze(["count", "no_duration"]),
+        regal: Object.freeze(["speech_rule", "new_posture"]),
+        vindictive: Object.freeze(["combined", "no_duration"])
+      })
+    }),
+    lesson: Object.freeze({ always: Object.freeze(["drill", "ritual", "clinical"]), joke: Object.freeze(["playful"]), never: Object.freeze(["cruel"]), cold: 0.4, other: 0.5 }),
+    rhythm: Object.freeze({ widenPerLevel: 0.05 }),
+    record: Object.freeze({ freshDays: 14, minSeconds: 60 })
   })
 });
 
@@ -8084,6 +8123,29 @@ function practiceRoll(state, unitId, key) {
   return dynamicRoll(state, unitId, `practice:${key}`);
 }
 
+// src/engine/craft/state.ts
+var CRAFT_EVENT_TYPES = [
+  "craft_xp",
+  "craft_level",
+  "lesson",
+  "record_set",
+  "posture_taken",
+  "posture_slip_noted",
+  "posture_corrected",
+  "drill_done",
+  "exam_passed",
+  "exam_failed",
+  "care_unasked",
+  "foot_signal_given",
+  "foot_signal_missed",
+  "praise_missed",
+  "sentence_set",
+  "sentence_extended",
+  "sentence_served",
+  "headlock_offered",
+  "norm_set"
+];
+
 // src/content/types.ts
 var REGISTRY_NAMES = [
   "roles",
@@ -9001,7 +9063,9 @@ var RESERVED_EVENT_TYPES = [
   // P15 (the dynamic; the list is `DYNAMIC_EVENT_TYPES`)
   ...DYNAMIC_EVENT_TYPES,
   // P16 (practices; the list is `PRACTICE_EVENT_TYPES`)
-  ...PRACTICE_EVENT_TYPES
+  ...PRACTICE_EVENT_TYPES,
+  // P16b (the craft; the list is `CRAFT_EVENT_TYPES`)
+  ...CRAFT_EVENT_TYPES
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
@@ -17714,6 +17778,12 @@ var levelForXp = (xp) => TUNING.physics.endurance.thresholds.filter((t) => xp >=
 function commanderSkill(state, physicsId) {
   return state.commander.endurance?.[physicsId]?.level ?? 0;
 }
+function enduranceLevelOf(state) {
+  return Math.max(0, ...Object.values(state.commander.endurance ?? {}).map((e) => e?.level ?? 0));
+}
+function trainedToday(state, physicsId) {
+  return state.commander.endurance?.[physicsId]?.trainedDay === state.day;
+}
 function addEnduranceXp(draft, physicsId, xp) {
   const book2 = draft.commander.endurance ??= {};
   const row4 = book2[physicsId] ??= { xp: 0, level: 0 };
@@ -26391,7 +26461,7 @@ function publicAudience(draft, reg, p) {
   const units = eligibleUnits(draft, p.holderId);
   return (draft.scene?.participants ?? []).filter((id) => units.includes(id)).slice(0, TUNING.practice.punish.publicAudienceMax);
 }
-var trainedLevel = (draft) => Math.max(0, ...Object.values(draft.commander.endurance ?? {}).map((e) => e?.level ?? 0));
+var trainedLevel = (draft) => enduranceLevelOf(draft);
 function runPunishmentEffect(draft, ctx2, p, fx2) {
   const reg = ctx2.registries;
   const holderId = p.holderId;
@@ -29374,7 +29444,7 @@ function checkActivity(state, reg, request) {
   if (focus?.requires?.capabilityHeldBy !== void 0 && holderWith(state, reg, focus.requires.capabilityHeldBy) === null) return `${focus.label} is not available: nobody holds that.`;
   if (focus && state.special?.frequency?.burnedDay !== void 0 && a.effects.some((fx2) => fx2.type === "burn_frequency_implant" && fx2.when?.focus === focus.id)) return "The implant is already burned.";
   for (const fx2 of a.effects.filter((x) => x.type === "commander_endurance_xp" && focus !== void 0 && x.when?.focus === focus.id)) {
-    if (state.commander.endurance?.[String(fx2.physics)]?.trainedDay === state.day) return `${focus.label} was done today.`;
+    if (trainedToday(state, String(fx2.physics))) return `${focus.label} was done today.`;
   }
   if (focus?.units) {
     const ids = req.unitIds ?? [];
@@ -36502,7 +36572,7 @@ function footwearOf(state, _reg, unitId) {
 function wetDay(state) {
   return fnv1a3(`wet_day|${state.day}`) % 1e3 / 1e3 < TUNING.physics.shoe.wetShare;
 }
-function trainedToday(state, reg, unitId) {
+function trainedToday2(state, reg, unitId) {
   const from = busySlot(state.day, "morning"), to = busySlot(state.day, "night");
   return (state.life?.busy ?? []).some((b) => b.unitId === unitId && b.slot >= from && b.slot <= to && b.activityId !== void 0 && (reg.activities.get(b.activityId)?.effects ?? []).some((e) => TUNING.dynamic.style.trainingEffects.includes(e.type)));
 }
@@ -36512,7 +36582,7 @@ function dirtOfDay(state, reg, unitId) {
     const dirt = reg.regions.get(run.regionId)?.dirt;
     if (typeof dirt === "string" && DIRT_KINDS.includes(dirt)) return dirt;
   }
-  if (trainedToday(state, reg, unitId)) return "dust";
+  if (trainedToday2(state, reg, unitId)) return "dust";
   if (wetDay(state)) return "rain";
   return "dust";
 }
@@ -41274,7 +41344,7 @@ function shoeSpit(draft, ctx2, payload) {
   caughtAtOnce(run);
   return [...events, { type: "physics_caught", runId: run.id, holderId: run.holderId, kind: "spit", beat }];
 }
-var commanderLevel = (state, physicsId) => state.commander.endurance?.[physicsId]?.level ?? 0;
+var commanderLevel = (state, physicsId) => commanderSkill(state, physicsId);
 function frameRelief(draft, ctx2, payload) {
   const run = draft.scene?.physics;
   if (!run || run.id !== payload.runId) throw new Error("Stale physics run.");
@@ -42899,6 +42969,26 @@ registerAction("practice/ask_her", (draft, payload, ctx2) => {
   return askHer(draft, ctx2, payload.context, payload.ref);
 });
 registerAfterAction(askedChoices);
+
+// src/engine/craft/gate.ts
+function craftOn(state, reg) {
+  return practicesOn(state, reg);
+}
+
+// src/engine/craft/book.ts
+function touchCraft(draft, key) {
+  const book2 = draft.commander.craft ??= {};
+  const row4 = book2[key] ??= { xp: 0, level: 0, lastDay: draft.day };
+  row4.lastDay = draft.day;
+  return row4;
+}
+
+// src/engine/actions/craft.ts
+registerAfterAction((draft, ctx2, events) => {
+  if (!events.some((e) => e.type === "endurance_gained") || !craftOn(draft, ctx2.registries)) return [];
+  for (const e of events) if (e.type === "endurance_gained") touchCraft(draft, `endurance:${String(e.physicsId)}`);
+  return [];
+});
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
@@ -54552,7 +54642,7 @@ function bind(env, run) {
   R5.replyLift = 0;
   R5.ended = null;
   S2.contact = jawContactOf(run, reg) ?? "sole_to_mouth";
-  S2.skill = state.commander.endurance?.[run.physicsId]?.level ?? 0;
+  S2.skill = commanderSkill(state, run.physicsId);
   refreshLines(0);
   const look = env.her(run.holderId);
   E.box.style.setProperty("--alius-her", look.accent);
@@ -80191,7 +80281,9 @@ function jointPoints(s) {
   return pts;
 }
 function figureFit(p, other) {
-  const skeletons = [pose(p), ...other ? [pose(other)] : []];
+  return fitOf([pose(p), ...other ? [pose(other)] : []]);
+}
+function fitOf(skeletons) {
   const flat2 = skeletons.flatMap(jointPoints).map((v) => project(v));
   const xs = flat2.map((v) => v[0]);
   const ys = flat2.map((v) => v[1]);
@@ -80214,9 +80306,9 @@ var svg3 = (tag2, attrs) => {
 var r1 = (n) => Math.round(n * 10) / 10;
 var line2 = (a, b) => `M${r1(a[0])} ${r1(a[1])}L${r1(b[0])} ${r1(b[1])}`;
 function mannequinSvg(p, opts = {}) {
-  const fit2 = figureFit(p, opts.target);
+  const sk = opts.body ?? pose(p);
+  const fit2 = opts.body ? fitOf([sk, ...opts.target ? [pose(opts.target)] : []]) : figureFit(p, opts.target);
   const { map, scale } = fit2;
-  const sk = pose(p);
   const root = svg3("svg", { viewBox: "0 0 200 200", class: "alius-mannequin", "aria-hidden": "true", focusable: "false" });
   if (opts.size !== void 0) {
     root.setAttribute("width", String(opts.size));

@@ -20,7 +20,7 @@ import { mergeInputs, STEADY_DRAIN } from './combined';
 import { hoursPerPhase, paceScale, phaseSegments, attrition, resolveSkip, STRATEGIES, clockText, type Strategy } from './marathon';
 import { chainRun, coreRun, stopPhysics } from './run';
 import { attentionCue, attentionPlan, cheatRoll, segmentNoise, type NoiseKind } from './gaze';
-import { addEnduranceXp, herSkillOf } from './skill';
+import { addEnduranceXp, commanderSkill, herSkillOf } from './skill';
 import {
   GAUGE_FULL, INPUT_KINDS, type Attention, type JawOrder, type PhysicsRun, type PhysicsStyle, type PlannedBeat, type ScentBand, type SegmentInput, type SegmentPlan, type SegmentResult,
 } from './state';
@@ -756,7 +756,7 @@ export function shoeSpit(draft: CampaignState, ctx: { registries: Registries; rn
   return [...events, { type: 'physics_caught', runId: run.id, holderId: run.holderId, kind: 'spit', beat }];
 }
 
-const commanderLevel = (state: CampaignState, physicsId: string): number => state.commander.endurance?.[physicsId]?.level ?? 0;
+const commanderLevel = (state: CampaignState, physicsId: string): number => commanderSkill(state, physicsId);
 
 /**
  * P10e-e Rulings X and Y: a relief or a fidget of the commander's body in her frame, decided when it is reported (her tell and her answer follow

@@ -34,6 +34,7 @@ import type { CampaignState, Severity } from '../state/types';
 import { addCommanderStress } from '../special/commanderStress';
 import { TUNING } from '../tuning';
 import { ensurePractices, nextPracticeId, practiceLive } from './gate';
+import { enduranceLevelOf } from '../physics/skill';
 import { endHold, startHold } from './hold';
 import { WRITERS } from './issue';
 import { atBase, pickHolderPunishment, sceneIsHers, severityOfEntry } from './offences';
@@ -82,7 +83,7 @@ function publicAudience(draft: CampaignState, reg: Registries, p: OpenPunishment
 }
 
 /** The strongest endurance level the commander has in any contact physics (her trained route, R8). */
-const trainedLevel = (draft: CampaignState): number => Math.max(0, ...Object.values(draft.commander.endurance ?? {}).map((e) => e?.level ?? 0));
+const trainedLevel = (draft: CampaignState): number => enduranceLevelOf(draft);
 
 /**
  * Carries one effect of an accepted punishment out (read by `type`, never by the entry's id): a held slot (the hold, Task 25), a revoked privilege (a restriction the readers of Task 14

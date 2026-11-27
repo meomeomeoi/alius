@@ -16,6 +16,7 @@ import {
 } from '../engine/dynamic/types';
 import { FRAMES } from '../engine/blocking/state';
 import { CONTACT_FACES, HER_LEGS, OCCLUSION_KINDS, OCCLUSION_VIEWS } from '../engine/physics/occlusion';
+import { CRAFT_EVENT_TYPES } from '../engine/craft/state';
 import { CEREMONY_CHECKS, CHECK_KINDS, EFFECT_NEEDS, PRACTICE_EVENT_TYPES, PRACTICE_KINDS, PROOFS, SEED_AUDIENCE, STAKES } from '../engine/practice/state';
 import type { WorldEffect } from '../engine/world/types';
 import { REGISTRY_NAMES, type RegistryName } from './types';
@@ -537,6 +538,8 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   ...DYNAMIC_EVENT_TYPES,
   // P16 (practices; the list is `PRACTICE_EVENT_TYPES`)
   ...PRACTICE_EVENT_TYPES,
+  // P16b (the craft; the list is `CRAFT_EVENT_TYPES`)
+  ...CRAFT_EVENT_TYPES,
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);

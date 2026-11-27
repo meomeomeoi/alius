@@ -14,7 +14,7 @@ import { addSocialPoints, socialGrowthMult, socialRank } from './social';
 import type { CampaignState, Unit } from './state/types';
 import { addBodyXp, bodyGrowthMult } from './commander/profile';
 import { hasTraitEffect, traitEffects } from './commander/traits';
-import { trainEndurance } from './physics/skill';
+import { trainEndurance, trainedToday } from './physics/skill';
 import { TUNING } from './tuning';
 import { restrictionReason } from './discipline/restrictions';
 import { addCommanderStress } from './special/commanderStress';
@@ -139,7 +139,7 @@ export function checkActivity(state: CampaignState, reg: Registries, request: un
     && (a.effects as Fx[]).some((fx) => fx.type === 'burn_frequency_implant' && fx.when?.focus === focus.id)) return 'The implant is already burned.';
   // P15a: an endurance drill is done once a day for each physics
   for (const fx of (a.effects as Fx[]).filter((x) => x.type === 'commander_endurance_xp' && focus !== undefined && x.when?.focus === focus.id)) {
-    if (state.commander.endurance?.[String((fx as { physics?: unknown }).physics)]?.trainedDay === state.day) return `${focus!.label} was done today.`;
+    if (trainedToday(state, String((fx as { physics?: unknown }).physics))) return `${focus!.label} was done today.`;
   }
   if (focus?.units) {
     const ids = req.unitIds ?? [];

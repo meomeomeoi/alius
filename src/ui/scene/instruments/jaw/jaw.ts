@@ -27,6 +27,7 @@ import { fnv1a } from '../../../../engine/hub';
 import type { PhysicsRun, PlannedBeat, SegmentInput } from '../../../../engine/physics/state';
 import { jawRowOf, jawSourceOf } from '../../../../engine/physics/segment';
 import { leadStyle, physicsMannerOf, physicsStyleOf, segmentSecondsOf } from '../../../../engine/physics/style';
+import { commanderSkill } from '../../../../engine/physics/skill';
 import { bendRow, type RowAxes, type RowKinds } from '../kit/bendRow';
 import type { CampaignState } from '../../../../engine/state/types';
 import { TUNING } from '../../../../engine/tuning';
@@ -840,7 +841,7 @@ function bind(env: InstrumentEnv, run: PhysicsRun): void {
   R.run = run;
   R.seg = null; R.running = false; R.plan = []; R.move = null; R.acc = 0; R.accMs = 0; R.teeth = 0; R.restSeg = null; R.restVia = 'key'; R.kept = []; R.heard = null; R.replyLift = 0; R.ended = null;
   S.contact = jawContactOf(run, reg) ?? 'sole_to_mouth';
-  S.skill = state.commander.endurance?.[run.physicsId]?.level ?? 0;
+  S.skill = commanderSkill(state, run.physicsId);
   refreshLines(0);
   const look = env.her(run.holderId);
   E!.box.style.setProperty('--alius-her', look.accent);

@@ -159,7 +159,7 @@ Before Task 1, also read:
     - it is a no-op returning `[]` unless `craftOn`.
   - `craftWord(level)`.
   - `craftCapacity(state, key)`: the level, plus the P7 body route for `posture` (`endurance` stat) and `pain` (`endurance` stat), ruling 9.
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `tests/craft/unaffected.test.ts`:
     - the seeded week of `tests/helpers/unaffectedWeek.ts` against the committed golden: same log, same `state.rng`, no `craft` key anywhere;
     - a second week with every category on and a holder at `equal`: same rng, no craft event.
@@ -170,10 +170,10 @@ Before Task 1, also read:
     - the words;
     - the body route adds to `posture` and `pain` only.
   - The four moved readers return the old numbers (the existing tests of `activities`, `segment`, `punish` and jaw pass unchanged).
-- [ ] **Step 2: Run** `npx vitest run tests/craft tests/engine/craft` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the task's tests, `tests/engine/physics`, `tests/engine/practice/punish*`, `tests/ui/instruments/fidelity.test.ts` → PASS. Then `npm run build`.
-- [ ] **Step 5: Commit** `feat(P16b): the craft book, its gate and the unaffected week`
+- [x] **Step 2: Run** `npx vitest run tests/craft tests/engine/craft` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the task's tests, `tests/engine/physics`, `tests/engine/practice/punish*`, `tests/ui/instruments/fidelity.test.ts` → PASS. Then `npm run build`.
+- [x] **Step 5: Commit** `feat(P16b): the craft book, its gate and the unaffected week`
 
 ### Task 2: Decay and her settling-in
 
