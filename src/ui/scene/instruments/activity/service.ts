@@ -322,6 +322,7 @@ function svNextWant() {
 }
 function svEndBout(good: boolean, desk = false) {
   lickStop();
+  X?.env.staging.signal?.(X.runId, SV.sig.motion, SV.phase !== 'signal');
   const q = SV.acts ? SV.quality / SV.acts : (good ? 1 : 0);
   if (!desk) {
     if (SV.phase === 'craft' || SV.phase === 'lowering') {

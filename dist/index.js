@@ -1787,6 +1787,11 @@ var TUNING = Object.freeze({
     rhythm: Object.freeze({ widenPerLevel: 0.05 }),
     record: Object.freeze({ freshDays: 14, minSeconds: 60, bringUp: 0.4 }),
     /**
+     * Her feet (Task 14, ruling 17; AUTHOR TO TUNE). `combatPct` is her combat form after care (and the malus when she is sore and nothing was done); a pleased service counts for `careDays`
+     * (and only since her last run); `wornShare` / `hotShare` are the shares of days by a hash on which her feet are worn / hot with no training and no run.
+     */
+    feet: Object.freeze({ combatPct: 3, careDays: 7, wornShare: 0.25, hotShare: 0.1 }),
+    /**
      * The game of postures (Tasks 11-13). AUTHOR TO TUNE: a G1 draft, from the engine tables of `docs/prototypes/posture.html` (gate G1 is still in rounds with the author). Drift is in points per
      * 10 s at skill 0 (the preset's own rates are in `servicePostures`); the instrument plays the thresholds, the clicks and the keys in real time, the engine judges what it reports.
      */
@@ -20361,6 +20366,13 @@ function registerStopHook(fn, key = "default") {
 }
 function runStopHooks(draft, ctx2) {
   return [...stopHooks.values()].flatMap((fn) => fn(draft, ctx2));
+}
+var serviceReportHooks = /* @__PURE__ */ new Map();
+function registerServiceReport(fn, key = "default") {
+  serviceReportHooks.set(key, fn);
+}
+function runServiceReports(draft, ctx2, report7) {
+  return [...serviceReportHooks.values()].flatMap((fn) => fn(draft, ctx2, report7));
 }
 function physicsStyleOf(state, unitId, reg) {
   for (const read2 of styleReaders) {
@@ -41864,22 +41876,30 @@ registerAction("physics/woke", (draft, payload, ctx2) => {
 });
 registerAction("physics/service", (draft, payload, ctx2) => {
   live2(draft, ctx2.registries, "physics/service");
-  if (!isObj39(payload) || str7(payload.runId) === void 0 || !VERDICTS.includes(payload.verdict)) {
-    throw new Error("physics/service needs { runId, verdict: pleased | adequate | displeased }");
+  const raw = isObj39(payload) ? payload.signal : void 0;
+  const signal = isObj39(raw) && str7(raw.motion) !== void 0 && typeof raw.answered === "boolean" ? { motion: raw.motion, answered: raw.answered } : void 0;
+  const hasSignal = signal !== void 0;
+  const hasVerdict = isObj39(payload) && VERDICTS.includes(payload.verdict);
+  if (!isObj39(payload) || str7(payload.runId) === void 0 || payload.verdict !== void 0 && !hasVerdict || payload.signal !== void 0 && !hasSignal || !hasVerdict && !hasSignal) {
+    throw new Error("physics/service needs { runId, verdict: pleased | adequate | displeased } or { runId, signal: { motion, answered } }");
   }
   const scene = draft.scene;
   const run = scene.physics;
+  const verdict2 = hasVerdict ? payload.verdict : void 0;
+  const report7 = (holderId2, landed) => runServiceReports(draft, ctx2, { holderId: holderId2, ...verdict2 !== void 0 && landed ? { verdict: verdict2 } : {}, ...signal !== void 0 ? { signal } : {} });
   let holderId;
   if (run !== void 0 && run.id === payload.runId && isShoeRun(run, ctx2.registries)) {
-    const rated = rateService(draft, ctx2, run.holderId, payload.verdict, "engine", scene.id);
-    return [...rated, ...creditHold(draft, ctx2.registries, run), ...stopPhysics(draft, ctx2.registries, "checked")];
+    if (verdict2 === void 0) throw new Error("physics/service: shoe service ends with her verdict");
+    const rated2 = rateService(draft, ctx2, run.holderId, verdict2, "engine", scene.id);
+    return [...rated2, ...creditHold(draft, ctx2.registries, run), ...stopPhysics(draft, ctx2.registries, "checked"), ...report7(run.holderId, rated2.length > 0)];
   }
   const latest = payload.runId === `p${scene.physicsCount ?? 0}`;
   if (run !== void 0 && run.id === payload.runId && run.sourceKind === "activity") holderId = run.holderId;
   else if (run === void 0 && scene.frameDone !== void 0 && scene.frameDone.runId === payload.runId && latest) holderId = scene.frameDone.holderId;
   else if (run === void 0 && latest && scene.shoeDone !== void 0 && scene.shoeDone.runId === payload.runId) holderId = scene.shoeDone.holderId;
   else throw new Error("physics/service: stale physics run (her frame or her shoe service, open or just ended)");
-  return rateService(draft, ctx2, holderId, payload.verdict, "engine", scene.id);
+  const rated = verdict2 !== void 0 ? rateService(draft, ctx2, holderId, verdict2, "engine", scene.id) : [];
+  return [...rated, ...report7(holderId, rated.length > 0)];
 });
 
 // src/engine/actions/life.ts
@@ -43445,6 +43465,139 @@ function addPairXp(draft, reg, holderId, what, xp) {
   return [];
 }
 
+// src/engine/physics/service.ts
+function shuffleBy(list5, seed8) {
+  const a = list5.slice();
+  let x = seed8 >>> 0 || 1;
+  for (let i = a.length - 1; i > 0; i--) {
+    x = Math.imul(x, 1103515245) + 12345 >>> 0;
+    const j = x % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function signalsOf(_state, holderId) {
+  const F2 = TUNING.physics.footSignals;
+  const h2 = fnv1a3(`${holderId}|foot_signals`);
+  const mo = shuffleBy(F2.motions, h2), rest = shuffleBy(F2.desk, h2 >>> 5);
+  return [...F2.foot, ...rest.slice(0, F2.deskCount)].map((m, i) => ({ motion: mo[i], meaning: m }));
+}
+var ZONES_OF = { kiss: ["toes", "ball", "arch", "heel"], clean: ["toes", "ball", "arch", "heel", "edge"], rub: ["ball", "arch", "heel"] };
+var SVC_STYLE = {
+  neutral: { patience: 4.5, kiss: [0.7, 1.5], tempo: 1, every: 1 },
+  affectionate: { patience: 6, kiss: [1, 2.2], tempo: 0.8, every: 1.2 },
+  playful: { patience: 3.5, kiss: [0.4, 1.1], tempo: 1.2, every: 0.9 },
+  possessive: { patience: 4, kiss: [1, 1.9], tempo: 0.9, every: 0.65 },
+  cold: { patience: 4, kiss: [0.6, 1.2], tempo: 1, every: 1.1 },
+  cruel: { patience: 2.5, kiss: [0.55, 1], tempo: 1.4, every: 0.6 },
+  clinical: { patience: 4, kiss: [0.85, 1.15], tempo: 1, every: 1 },
+  ritual: { patience: 4.5, kiss: [0.8, 1.2], tempo: 1, every: 1 }
+};
+var ZONE_WORD = /\b(toes?|ball|arch|heel|edge)\b/g;
+function howOfFeet(state, reg, holderId) {
+  const worship = expectationsOf(state, reg, holderId).worship ?? {};
+  const atFeet = (id) => {
+    const zone = reg.worshipTargets.get(id)?.zone;
+    return Object.values(zone ?? {}).some((z2) => typeof z2?.y === "number" && z2.y >= TUNING.physics.footService.footZoneY);
+  };
+  return Object.entries(worship).filter(([id, w]) => atFeet(id) && w.attitude !== "dislikes" && typeof w.how === "string").map(([, w]) => w.how.toLowerCase()).join(" ");
+}
+function servicePaceOf(state, reg, holderId) {
+  const P7 = TUNING.physics.footService;
+  const style = leadStyle(physicsStyleOf(state, holderId, reg)).key;
+  const row4 = SVC_STYLE[style] ?? SVC_STYLE.neutral;
+  const patience = style === "cruel" ? row4.patience : Math.min(P7.patience[1], Math.max(P7.patience[0], row4.patience));
+  const how = howOfFeet(state, reg, holderId);
+  const tilt = /\bslow/.test(how) ? P7.slow : /\b(quick|fast|brisk)/.test(how) ? P7.quick : { kiss: 1, tempo: 1 };
+  const named5 = [...new Set([...how.matchAll(ZONE_WORD)].map((m2) => m2[1].startsWith("toe") ? "toes" : m2[1]))];
+  const heel = how.indexOf("heel"), toe = how.search(/\btoe/);
+  const grain = heel >= 0 && toe >= 0 ? heel < toe ? -1 : 1 : fnv1a3(`${holderId}|grain`) % 2 ? 1 : -1;
+  const order = Object.fromEntries(Object.keys(ZONES_OF).map((act) => {
+    const hashed = shuffleBy(ZONES_OF[act], fnv1a3(`${holderId}|order|${act}`));
+    const first2 = named5.filter((z2) => hashed.includes(z2));
+    return [act, [...first2, ...hashed.filter((z2) => !first2.includes(z2))]];
+  }));
+  const m = physicsMannerOf(state, holderId, reg);
+  const k = TUNING.manner.scale;
+  const tempo = m?.tempo ?? 0, warmth2 = m?.warmth ?? 0;
+  return {
+    patience: bend(patience, warmth2, { scale: k }),
+    kiss: [bend(row4.kiss[0] * tilt.kiss, tempo, { scale: -k }), bend(row4.kiss[1] * tilt.kiss, tempo, { scale: -k })],
+    tempo: bend(row4.tempo * tilt.tempo, tempo, { scale: k }),
+    every: bend(row4.every, tempo, { scale: -k }),
+    grain,
+    order
+  };
+}
+function verdictOf2(quality) {
+  const V3 = TUNING.physics.footService.verdict;
+  if (!Number.isFinite(quality)) return "displeased";
+  return quality >= V3.pleased ? "pleased" : quality >= V3.adequate ? "adequate" : "displeased";
+}
+
+// src/engine/craft/feet.ts
+function ranRecently(state, unitId) {
+  const run = state.lastExpedition;
+  return run !== void 0 && run.party.includes(unitId) && (run.day === state.day || run.day === state.day - 1);
+}
+function feetOfDay(state, reg, unitId) {
+  const footwear = footwearOf(state, reg, unitId);
+  const T5 = TUNING.craft.feet;
+  if (ranRecently(state, unitId)) return { footwear, state: "sore" };
+  if (state.slot === "evening") {
+    const room2 = whereaboutAt(state, reg, unitId, state.day, state.slot).roomId;
+    if (room2 !== null && isPrivateRoom(reg, room2)) return { footwear, state: "bare" };
+  }
+  if (trainedToday2(state, reg, unitId)) return { footwear, state: "hot" };
+  const roll = fnv1a3(`feet|${state.day}|${unitId}`) % 1e3 / 1e3;
+  if (wetDay(state) || roll < T5.wornShare) return { footwear, state: "worn" };
+  if (roll < T5.wornShare + T5.hotShare) return { footwear, state: "hot" };
+  return { footwear, state: "fresh" };
+}
+function caredForFeet(state, unitId) {
+  const care = state.relations[unitId]?.craft?.footCare;
+  if (care === void 0 || state.day - care.day > TUNING.craft.feet.careDays) return false;
+  const run = state.lastExpedition;
+  return run === void 0 || !run.party.includes(unitId) || care.day > run.day;
+}
+function careOfFeet(state, reg, unitId) {
+  if (!craftLive(state, reg, unitId)) return [];
+  const pct5 = TUNING.craft.feet.combatPct;
+  if (caredForFeet(state, unitId)) return [{ type: "outgoing", pct: pct5 }, { type: "incoming", pct: -pct5 }];
+  if (feetOfDay(state, reg, unitId).state === "sore") return [{ type: "outgoing", pct: -pct5 }, { type: "incoming", pct: pct5 }];
+  return [];
+}
+function noteServiceVerdict(draft, reg, holderId, verdict2) {
+  if (verdict2 !== "pleased" || !craftLive(draft, reg, holderId)) return [];
+  const rel = draft.relations[holderId];
+  if (rel === void 0) return [];
+  (rel.craft ??= {}).footCare = { day: draft.day };
+  return [];
+}
+var motionsOf = (state, holderId) => signalsOf(state, holderId).map((s) => s.motion);
+function noteFootSignal(draft, reg, holderId, motion, answered2) {
+  const rel = draft.relations[holderId];
+  if (rel === void 0 || !craftLive(draft, reg, holderId) || !motionsOf(draft, holderId).includes(motion)) return [];
+  const book2 = (rel.craft ??= {}).signals ??= {};
+  const row4 = book2[motion] ??= { named: false, answered: 0, day: draft.day };
+  const events = [];
+  if (!row4.named) {
+    row4.named = true;
+    events.push({ type: "foot_signal_given", unitId: holderId, motion });
+  }
+  row4.day = draft.day;
+  delete row4.decayedDay;
+  if (answered2) {
+    row4.answered += 1;
+    events.push(...addCraftXp(draft, reg, "memory", TUNING.craft.xp.knowledge, "foot_signal"));
+  } else {
+    events.push({ type: "foot_signal_missed", unitId: holderId, motion });
+    const scene = draft.scene;
+    if (scene !== void 0) (rel.craft.slips ??= []).push({ key: "memory", scene: scene.id, day: draft.day });
+  }
+  return events;
+}
+
 // src/engine/craft/streak.ts
 function noteClean(draft, holderId, kind, clean14) {
   const rel = draft.relations[holderId];
@@ -43730,6 +43883,11 @@ function installCraftHooks() {
   registerStopHook((draft, ctx2) => endPostureRun(draft, ctx2, "stopped"), "craft");
   registerStillness((state) => stillnessShare(state), "craft");
   registerRhythmKnown((state, holderId) => rhythmLevel(state, holderId), "craft");
+  registerCombatPassive(careOfFeet);
+  registerServiceReport((draft, ctx2, r) => [
+    ...r.verdict !== void 0 ? noteServiceVerdict(draft, ctx2.registries, r.holderId, r.verdict) : [],
+    ...r.signal !== void 0 ? noteFootSignal(draft, ctx2.registries, r.holderId, r.signal.motion, r.signal.answered) : []
+  ], "craft");
 }
 
 // src/engine/craft/lesson.ts
@@ -54411,6 +54569,7 @@ function scopedStaging(staging, scope) {
     woke: () => on() ? staging.woke?.() ?? [] : [],
     // e9: her verdict is said at the session's end, when the run is already gone: alive until the unmount (never into a new scene or chat)
     service: (id, v) => scope.live ? staging.service?.(id, v) ?? [] : [],
+    signal: (id, m, a) => scope.live ? staging.signal?.(id, m, a) ?? [] : [],
     spit: (b, a) => on() ? staging.spit?.(b, a) ?? [] : [],
     restart: () => {
       if (on()) staging.restart?.();
@@ -56567,6 +56726,9 @@ function createStaging(deps) {
     },
     service(runId, verdict2) {
       return active ? dispatch2({ type: "physics/service", payload: { runId, verdict: verdict2 } }) : [];
+    },
+    signal(runId, motion, answered2) {
+      return active ? dispatch2({ type: "physics/service", payload: { runId, signal: { motion, answered: answered2 } } }) : [];
     },
     restart() {
       const r = run();
@@ -73254,76 +73416,6 @@ function scentMatches(run, _state, reg) {
 }
 registerInstrument({ id: "scent", matches: scentMatches, start: startScent });
 
-// src/engine/physics/service.ts
-function shuffleBy(list5, seed8) {
-  const a = list5.slice();
-  let x = seed8 >>> 0 || 1;
-  for (let i = a.length - 1; i > 0; i--) {
-    x = Math.imul(x, 1103515245) + 12345 >>> 0;
-    const j = x % (i + 1);
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-function signalsOf(_state, holderId) {
-  const F2 = TUNING.physics.footSignals;
-  const h2 = fnv1a3(`${holderId}|foot_signals`);
-  const mo = shuffleBy(F2.motions, h2), rest = shuffleBy(F2.desk, h2 >>> 5);
-  return [...F2.foot, ...rest.slice(0, F2.deskCount)].map((m, i) => ({ motion: mo[i], meaning: m }));
-}
-var ZONES_OF = { kiss: ["toes", "ball", "arch", "heel"], clean: ["toes", "ball", "arch", "heel", "edge"], rub: ["ball", "arch", "heel"] };
-var SVC_STYLE = {
-  neutral: { patience: 4.5, kiss: [0.7, 1.5], tempo: 1, every: 1 },
-  affectionate: { patience: 6, kiss: [1, 2.2], tempo: 0.8, every: 1.2 },
-  playful: { patience: 3.5, kiss: [0.4, 1.1], tempo: 1.2, every: 0.9 },
-  possessive: { patience: 4, kiss: [1, 1.9], tempo: 0.9, every: 0.65 },
-  cold: { patience: 4, kiss: [0.6, 1.2], tempo: 1, every: 1.1 },
-  cruel: { patience: 2.5, kiss: [0.55, 1], tempo: 1.4, every: 0.6 },
-  clinical: { patience: 4, kiss: [0.85, 1.15], tempo: 1, every: 1 },
-  ritual: { patience: 4.5, kiss: [0.8, 1.2], tempo: 1, every: 1 }
-};
-var ZONE_WORD = /\b(toes?|ball|arch|heel|edge)\b/g;
-function howOfFeet(state, reg, holderId) {
-  const worship = expectationsOf(state, reg, holderId).worship ?? {};
-  const atFeet = (id) => {
-    const zone = reg.worshipTargets.get(id)?.zone;
-    return Object.values(zone ?? {}).some((z2) => typeof z2?.y === "number" && z2.y >= TUNING.physics.footService.footZoneY);
-  };
-  return Object.entries(worship).filter(([id, w]) => atFeet(id) && w.attitude !== "dislikes" && typeof w.how === "string").map(([, w]) => w.how.toLowerCase()).join(" ");
-}
-function servicePaceOf(state, reg, holderId) {
-  const P7 = TUNING.physics.footService;
-  const style = leadStyle(physicsStyleOf(state, holderId, reg)).key;
-  const row4 = SVC_STYLE[style] ?? SVC_STYLE.neutral;
-  const patience = style === "cruel" ? row4.patience : Math.min(P7.patience[1], Math.max(P7.patience[0], row4.patience));
-  const how = howOfFeet(state, reg, holderId);
-  const tilt = /\bslow/.test(how) ? P7.slow : /\b(quick|fast|brisk)/.test(how) ? P7.quick : { kiss: 1, tempo: 1 };
-  const named5 = [...new Set([...how.matchAll(ZONE_WORD)].map((m2) => m2[1].startsWith("toe") ? "toes" : m2[1]))];
-  const heel = how.indexOf("heel"), toe = how.search(/\btoe/);
-  const grain = heel >= 0 && toe >= 0 ? heel < toe ? -1 : 1 : fnv1a3(`${holderId}|grain`) % 2 ? 1 : -1;
-  const order = Object.fromEntries(Object.keys(ZONES_OF).map((act) => {
-    const hashed = shuffleBy(ZONES_OF[act], fnv1a3(`${holderId}|order|${act}`));
-    const first2 = named5.filter((z2) => hashed.includes(z2));
-    return [act, [...first2, ...hashed.filter((z2) => !first2.includes(z2))]];
-  }));
-  const m = physicsMannerOf(state, holderId, reg);
-  const k = TUNING.manner.scale;
-  const tempo = m?.tempo ?? 0, warmth2 = m?.warmth ?? 0;
-  return {
-    patience: bend(patience, warmth2, { scale: k }),
-    kiss: [bend(row4.kiss[0] * tilt.kiss, tempo, { scale: -k }), bend(row4.kiss[1] * tilt.kiss, tempo, { scale: -k })],
-    tempo: bend(row4.tempo * tilt.tempo, tempo, { scale: k }),
-    every: bend(row4.every, tempo, { scale: -k }),
-    grain,
-    order
-  };
-}
-function verdictOf2(quality) {
-  const V3 = TUNING.physics.footService.verdict;
-  if (!Number.isFinite(quality)) return "displeased";
-  return quality >= V3.pleased ? "pleased" : quality >= V3.adequate ? "adequate" : "displeased";
-}
-
 // src/ui/scene/instruments/activity/acts.ts
 var VIEWS = {
   her: {
@@ -74425,6 +74517,7 @@ function svNextWant() {
 }
 function svEndBout(good, desk = false) {
   lickStop();
+  X2?.env.staging.signal?.(X2.runId, SV.sig.motion, SV.phase !== "signal");
   const q = SV.acts ? SV.quality / SV.acts : good ? 1 : 0;
   if (!desk) {
     if (SV.phase === "craft" || SV.phase === "lowering") {
@@ -88439,6 +88532,7 @@ function openPreview(unitId, key, draft, ctx2) {
       relief: (r) => s.relief(r),
       decide: (k, ref) => s.decide(k, ref),
       service: (runId, v) => s.service(runId, v),
+      signal: (runId, m, a) => s.signal(runId, m, a),
       spit: (b, a) => s.spit(b, a),
       restart: () => s.restart(),
       getUp: () => s.getUp(),
@@ -90922,6 +91016,7 @@ function createApp(st3, deps) {
           relief: (r) => staging.relief(r),
           decide: (k, ref) => staging.decide(k, ref),
           service: (runId, v) => staging.service(runId, v),
+          signal: (runId, m, a) => staging.signal(runId, m, a),
           spit: (b, a) => staging.spit(b, a),
           restart: () => staging.restart(),
           getUp: () => staging.getUp(),

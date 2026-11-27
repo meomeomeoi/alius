@@ -123,9 +123,24 @@ export function registerStopHook(fn: StopHook, key = 'default'): void {
 export function runStopHooks(draft: CampaignState, ctx: { registries: Registries }): EngineEvent[] {
   return [...stopHooks.values()].flatMap((fn) => fn(draft, ctx));
 }
+/**
+ * P16b plugs in here: what a report of foot or shoe service carries besides her verdict (a bout of her foot language: the motion and whether it was answered). A hook answers the
+ * events of what it wrote, or `[]`; it runs after the verdict (when there is one). Kept by `key` (registering one again replaces it).
+ */
+export interface ServiceReport { holderId: string; verdict?: string; signal?: { motion: string; answered: boolean } }
+type ServiceReportHook = (draft: CampaignState, ctx: { registries: Registries }, report: ServiceReport) => EngineEvent[];
+const serviceReportHooks = new Map<string, ServiceReportHook>();
+export function registerServiceReport(fn: ServiceReportHook, key = 'default'): void {
+  serviceReportHooks.set(key, fn);
+}
+/** Runs the service-report hooks (registration order) and returns what they wrote. */
+export function runServiceReports(draft: CampaignState, ctx: { registries: Registries }, report: ServiceReport): EngineEvent[] {
+  return [...serviceReportHooks.values()].flatMap((fn) => fn(draft, ctx, report));
+}
 /** Tests: forget every registered reader. */
 export function resetPhysicsHooks(): void {
   stopHooks.clear();
+  serviceReportHooks.clear();
   styleReaders.length = 0;
   holdsReaders.length = 0;
   targetReaders.length = 0;

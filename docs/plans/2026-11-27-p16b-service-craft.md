@@ -556,16 +556,16 @@ Before Task 1, also read:
     - −3 when she is `sore` and nothing was done;
     - only for a craft-live holder; the other entries are unchanged.
   - `foot_signal_given` (her first naming of a motion, `Relation.craft.signals[motion].named`) and `foot_signal_missed { unitId, motion }`, which feeds `memory` xp for an answered one, and a slip for a missed one (no offence: her correction by presence is the instrument's).
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - each feet state from its source;
   - nothing stored;
   - +3 / −3 and 0 without craft;
   - the fidelity gate passes with the declared hunk;
   - signals named once.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(P16b): the day of her feet; her care in her form; her foot language remembered`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(P16b): the day of her feet; her care in her form; her foot language remembered`
 
 ### Task 15: Unasked care, and she names the service
 

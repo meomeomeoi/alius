@@ -40,7 +40,7 @@ export function wetDay(state: Pick<CampaignState, 'day'>): boolean {
 }
 
 /** Did she drill today (an activity whose effects train, P15's `trains`)? Read from her day's record (P14c), absent while her life is off. */
-function trainedToday(state: Pick<CampaignState, 'day' | 'life'>, reg: Registries, unitId: string): boolean {
+export function trainedToday(state: Pick<CampaignState, 'day' | 'life'>, reg: Registries, unitId: string): boolean {
   const from = busySlot(state.day, 'morning'), to = busySlot(state.day, 'night');
   return (state.life?.busy ?? []).some((b) => b.unitId === unitId && b.slot >= from && b.slot <= to && b.activityId !== undefined
     && ((reg.activities.get(b.activityId)?.effects as Array<{ type: string }> | undefined) ?? []).some((e) => TUNING.dynamic.style.trainingEffects.includes(e.type)));

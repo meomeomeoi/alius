@@ -1040,8 +1040,13 @@
     },
     {
       "fn": "svEndBout",
+      "reason": "P16b Task 14 (spec section 8, ruling 16): a bout of her foot language is reported to the engine as it ends (`staging.signal`: the motion she gave and whether the commander answered it, which is any end but a signal still open: `physics/service { signal }`; she names a motion once per pair, an answered one is practice of the commander's memory, a missed one is `foot_signal_missed`). No visual change.",
+      "diff": "@@ -2,2 +2,3 @@\n lickStop()\n+X?.env.staging.signal?.(X.runId,SV.sig.motion,SV.phase!==\"signal\")\n const q=SV.acts?SV.quality/SV.acts:(good?1:0)"
+    },
+    {
+      "fn": "svEndBout",
       "reason": "R27 (review I2): the session's quality is the crafts' (the bouts she judges with her good or poor line: phase `craft` / `lowering`, not a desk bout, a misread or an unanswered signal), their mean (`sessionQ` / `sessionN`): her verdict at the end (`verdictOf`, by the prototype's threshold of the good line, `physics/service`).",
-      "diff": "@@ -5,2 +5,4 @@\n if(SV.phase===\"craft\"||SV.phase===\"lowering\"){\n+SV.sessionQ=(SV.sessionQ??0)+q\n+SV.sessionN=(SV.sessionN??0)+1\n if(q>=0.6){"
+      "diff": "@@ -5,2 +6,4 @@\n if(SV.phase===\"craft\"||SV.phase===\"lowering\"){\n+SV.sessionQ=(SV.sessionQ??0)+q\n+SV.sessionN=(SV.sessionN??0)+1\n if(q>=0.6){"
     },
     {
       "fn": "svUpdate",

@@ -1,10 +1,11 @@
 import { blockingLive } from '../blocking';
-import { registerAction } from '../dispatch';
+import { registerAction, type EngineEvent } from '../dispatch';
 import { creditHold } from '../physics/boundary';
 import { isShoeRun } from '../physics/footwear';
 import { foundPosed, frameWoke, getUp, physicsSignal, startPhysics, stopPhysics, stopWord } from '../physics/run';
 import { finishCounted, startAct } from '../physics/acts';
 import { applyWay, decayStimuli } from '../physics/stimuli';
+import { runServiceReports } from '../physics/style';
 import { registerDayEndStep } from '../calendar';
 import { physicsRelief, marathonSkip, nextSegment, physicsInput, shoeSpit, typedBeats } from '../physics/segment';
 import { rateService } from '../practice/service';
@@ -177,20 +178,29 @@ registerAction('physics/woke', (draft, payload, ctx) => {
  */
 registerAction('physics/service', (draft, payload, ctx) => {
   live(draft, ctx.registries, 'physics/service');
-  if (!isObj(payload) || str(payload.runId) === undefined || !(VERDICTS as readonly unknown[]).includes(payload.verdict)) {
-    throw new Error('physics/service needs { runId, verdict: pleased | adequate | displeased }');
+  const raw = isObj(payload) ? payload.signal : undefined;
+  const signal = isObj(raw) && str(raw.motion) !== undefined && typeof raw.answered === 'boolean' ? { motion: raw.motion as string, answered: raw.answered } : undefined;
+  const hasSignal = signal !== undefined;
+  const hasVerdict = isObj(payload) && (VERDICTS as readonly unknown[]).includes(payload.verdict);
+  if (!isObj(payload) || str(payload.runId) === undefined || (payload.verdict !== undefined && !hasVerdict) || (payload.signal !== undefined && !hasSignal) || (!hasVerdict && !hasSignal)) {
+    throw new Error('physics/service needs { runId, verdict: pleased | adequate | displeased } or { runId, signal: { motion, answered } }');
   }
   const scene = draft.scene!;
   const run = scene.physics;
+  const verdict = hasVerdict ? (payload.verdict as Verdict) : undefined;
+  // P16b: a bout of her foot language (the instrument's, as it ends) travels in this action too; the craft reads it through the service-report hook, with her verdict only when it landed
+  const report = (holderId: string, landed: boolean): EngineEvent[] => runServiceReports(draft, ctx, { holderId, ...(verdict !== undefined && landed ? { verdict } : {}), ...(signal !== undefined ? { signal } : {}) });
   let holderId: string;
   if (run !== undefined && run.id === payload.runId && isShoeRun(run, ctx.registries)) {
-    const rated = rateService(draft, ctx, run.holderId, payload.verdict as Verdict, 'engine', scene.id);
-    return [...rated, ...creditHold(draft, ctx.registries, run), ...stopPhysics(draft, ctx.registries, 'checked')];
+    if (verdict === undefined) throw new Error('physics/service: shoe service ends with her verdict');
+    const rated = rateService(draft, ctx, run.holderId, verdict, 'engine', scene.id);
+    return [...rated, ...creditHold(draft, ctx.registries, run), ...stopPhysics(draft, ctx.registries, 'checked'), ...report(run.holderId, rated.length > 0)];
   }
   const latest = payload.runId === `p${scene.physicsCount ?? 0}`;
   if (run !== undefined && run.id === payload.runId && run.sourceKind === 'activity') holderId = run.holderId;
   else if (run === undefined && scene.frameDone !== undefined && scene.frameDone.runId === payload.runId && latest) holderId = scene.frameDone.holderId;
   else if (run === undefined && latest && scene.shoeDone !== undefined && scene.shoeDone.runId === payload.runId) holderId = scene.shoeDone.holderId;
   else throw new Error('physics/service: stale physics run (her frame or her shoe service, open or just ended)');
-  return rateService(draft, ctx, holderId, payload.verdict as Verdict, 'engine', scene.id);
+  const rated = verdict !== undefined ? rateService(draft, ctx, holderId, verdict, 'engine', scene.id) : [];
+  return [...rated, ...report(holderId, rated.length > 0)];
 });

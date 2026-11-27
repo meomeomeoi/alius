@@ -91,6 +91,7 @@ export interface StagingController {
   decide(kind: string, ref?: string): EngineEvent[];
   /** P10e-e Task 26: her verdict on a session of foot service in her frame (`physics/service`), its run open or just ended; Task 28: or of shoe service. */
   service(runId: string, verdict: 'pleased' | 'adequate' | 'displeased'): EngineEvent[];
+  signal(runId: string, motion: string, answered: boolean): EngineEvent[];
   /** P10e-e Ruling AC: grit spat aside in shoe service, decided at once (`physics/spit`), whether a segment runs or the run is held. */
   spit(beat: number, attention: string): EngineEvent[];
   /** P10e-e e11 review M8: the running segment's clock starts again now (gulp's floor: its 40 s count from the puddle shown). */
@@ -395,6 +396,9 @@ export function createStaging(deps: StagingDeps): StagingController {
     },
     service(runId, verdict) {
       return active ? dispatch({ type: 'physics/service', payload: { runId, verdict } }) : [];
+    },
+    signal(runId, motion, answered) {
+      return active ? dispatch({ type: 'physics/service', payload: { runId, signal: { motion, answered } } }) : [];
     },
     restart() {
       const r = run();

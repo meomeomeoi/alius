@@ -1385,6 +1385,11 @@ export const TUNING = Object.freeze({
     rhythm: Object.freeze({ widenPerLevel: 0.05 }),
     record: Object.freeze({ freshDays: 14, minSeconds: 60, bringUp: 0.4 }),
     /**
+     * Her feet (Task 14, ruling 17; AUTHOR TO TUNE). `combatPct` is her combat form after care (and the malus when she is sore and nothing was done); a pleased service counts for `careDays`
+     * (and only since her last run); `wornShare` / `hotShare` are the shares of days by a hash on which her feet are worn / hot with no training and no run.
+     */
+    feet: Object.freeze({ combatPct: 3, careDays: 7, wornShare: 0.25, hotShare: 0.1 }),
+    /**
      * The game of postures (Tasks 11-13). AUTHOR TO TUNE: a G1 draft, from the engine tables of `docs/prototypes/posture.html` (gate G1 is still in rounds with the author). Drift is in points per
      * 10 s at skill 0 (the preset's own rates are in `servicePostures`); the instrument plays the thresholds, the clicks and the keys in real time, the engine judges what it reports.
      */

@@ -1056,7 +1056,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
           input: (i, o) => staging.input(i, o), endSegment: () => staging.endSegment(), stopWord: () => staging.stopWord(), skip: (st) => staging.skip(st), stimulus: (w, k, d) => staging.stimulus(w, k, d), answer: (r, l, c) => staging.answer(r, l, c), act: (k) => staging.act(k), finishCounted: (n) => staging.finishCounted(n), cue: (k, b) => staging.cue(k, b), voiced: (k, b) => staging.voiced(k, b), beat: () => staging.beat(), clock: () => staging.clock(), outcome: (runId) => staging.outcome(runId),
           keystroke: () => staging.keystroke(), typed: (chars, beat) => staging.typed(chars, beat),
           // P10e-e: the instruments' optional calls (a relief, her decision, a service verdict, spitting, a restarted clock, getting up, being found, her waking, her script)
-          relief: (r) => staging.relief(r), decide: (k, ref) => staging.decide(k, ref), service: (runId, v) => staging.service(runId, v), spit: (b, a) => staging.spit(b, a), restart: () => staging.restart(),
+          relief: (r) => staging.relief(r), decide: (k, ref) => staging.decide(k, ref), service: (runId, v) => staging.service(runId, v), signal: (runId, m, a) => staging.signal(runId, m, a), spit: (b, a) => staging.spit(b, a), restart: () => staging.restart(),
           getUp: () => staging.getUp(), found: (finderId) => staging.found(finderId), woke: () => staging.woke(), script: (phase) => staging.script(phase),
           onTap: () => { const failed = api.dispatch({ type: 'physics/signal', payload: {} }, { expectChatId: st.getActiveChat()?.chatId }).find((e) => e.type === 'error'); if (failed) toast('warn', String(failed.message ?? failed.code)); },
         },

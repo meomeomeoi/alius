@@ -63,6 +63,8 @@ export interface RelationCraft {
   lesson?: { point: string; words: string; joke?: true; scene: string; exchange: number };
   /** A partner drill waiting for its scene (spec section 5, ruling 3): the key, the multiplier of the partner (x1.5 a holder, x1.2 another close woman) and the day. Only the open scene's: dropped when it ends or is cancelled. */
   drillPending?: { key: string; mult: number; day: number; /** The run `craft/drill_start` began (the outcome that pays is this one's). */ runId?: string };
+  /** The day a foot or shoe service of the commander last pleased her (a pleased verdict): her feet are cared for until her next run (`feet.ts`). */
+  footCare?: { day: number };
   /** The day the commander last shared a drill with her (a partner drill: a scene or not): another holder's jealousy reads it (`exchange.ts`). */
   partnerDay?: number;
 }

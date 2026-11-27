@@ -158,6 +158,46 @@ describe('where the service plays (read by field)', () => {
   });
 });
 
+describe('her foot language reaches the engine (P16b Task 14)', () => {
+  const draw2 = (): { t: ReturnType<typeof draw>; signal: ReturnType<typeof vi.fn> } => {
+    const signal = vi.fn(() => []);
+    const t = draw(served(), { staging: { signal } as never });
+    t.to(2400);
+    return { t, signal };
+  };
+
+  it('an answered bout is reported as answered with its motion, the run and nothing else', () => {
+    const { t, signal } = draw2();
+    signalled(t, 'kiss');
+    _service.svAnswer('kiss'); // the foot act: she lets the commander work
+    _service.svEndBout(true);
+    expect(signal).toHaveBeenCalledTimes(1);
+    expect(signal).toHaveBeenCalledWith(expect.stringMatching(/^p\d+$/), 'sole', true);
+  });
+
+  it('a misread signal and a signal left unanswered are reported as missed', () => {
+    const { t, signal } = draw2();
+    signalled(t, 'kiss');
+    _service.svAnswer('clean'); // a misread
+    expect(signal).toHaveBeenLastCalledWith(expect.any(String), 'sole', false);
+    signalled(t, 'kiss');
+    _service.svEndBout(false); // the deadline passed
+    expect(signal).toHaveBeenCalledTimes(2);
+    expect(signal).toHaveBeenLastCalledWith(expect.any(String), 'sole', false);
+  });
+
+  it('a desk bout answered (closer / still / enough) is answered; without the staging call nothing is reported and nothing breaks', () => {
+    const { t, signal } = draw2();
+    signalled(t, 'still');
+    _service.svAnswer('still');
+    expect(signal).toHaveBeenLastCalledWith(expect.any(String), 'sole', true);
+    const bare = draw(served(), {});
+    bare.to(2400);
+    signalled(bare, 'kiss');
+    expect(() => _service.svEndBout(false)).not.toThrow();
+  });
+});
+
 describe('the gestures (svDown / svMove / svUp, the prototype\'s thresholds)', () => {
   it('the classifier reads a press held ≥ .3 s under 12 px as a kiss, a back-and-forth as cleaning, a steady turn one way as a rub', () => {
     const t = draw(served());

@@ -4,10 +4,12 @@
  * without it is as it was. Installed once when `actions/craft` is imported; `installCraftHooks` is idempotent (tests that reset the physics hooks call it again).
  */
 import { levelForXp } from '../physics/skill';
-import { registerRhythmKnown, registerStillness, registerStopHook } from '../physics/style';
+import { registerCombatPassive } from '../combat/build';
+import { registerRhythmKnown, registerServiceReport, registerStillness, registerStopHook } from '../physics/style';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { craftLevel } from './book';
+import { careOfFeet, noteFootSignal, noteServiceVerdict } from './feet';
 import { endPostureRun } from './posture';
 
 /** How quiet the commander is, 0 to 0.9: `noise.perLevel` for each level of `stillness`. */
@@ -24,4 +26,10 @@ export function installCraftHooks(): void {
   registerStopHook((draft, ctx) => endPostureRun(draft, ctx, 'stopped'), 'craft'); // the stop word ends a posture hold, out of the fiction
   registerStillness((state) => stillnessShare(state), 'craft');
   registerRhythmKnown((state, holderId) => rhythmLevel(state, holderId), 'craft');
+  // her feet: a pleased foot or shoe service cares for them (her form in the next run), and a bout of her foot language is her signal answered or missed
+  registerCombatPassive(careOfFeet);
+  registerServiceReport((draft, ctx, r) => [
+    ...(r.verdict !== undefined ? noteServiceVerdict(draft, ctx.registries, r.holderId, r.verdict) : []),
+    ...(r.signal !== undefined ? noteFootSignal(draft, ctx.registries, r.holderId, r.signal.motion, r.signal.answered) : []),
+  ], 'craft');
 }
