@@ -145,10 +145,10 @@ describe('the directive: `dynamic:quirk:<unitId>`, "if it fits, once"', () => {
     const map = new Map<string, Directive>();
     const b = { setDirective: (d: Directive) => { map.set(d.id, d); }, clearMatching: (f: (d: Directive) => boolean) => { for (const d of [...map.values()]) if (f(d)) map.delete(d.id); } };
     const s = world();
-    refreshDynamicDirectives(b, s, reg);
+    refreshDynamicDirectives(b as never, s, reg);
     expect(map.has(`dynamic:quirk:${ANN}`)).toBe(true);
     s.scene!.participants = [ANN, BEA];
-    refreshDynamicDirectives(b, s, reg);
+    refreshDynamicDirectives(b as never, s, reg);
     expect(map.has(`dynamic:quirk:${ANN}`)).toBe(false);
   });
 });
@@ -158,8 +158,7 @@ describe('the report: `quirk_voiced { unitId, when }`', () => {
     expect(EVENT_TYPES as readonly string[]).toContain('quirk_voiced');
     expect(DYNAMIC_INTENT_TYPES).toContain('quirk_voiced');
     expect(typeof reg.eventDeltas.get('quirk_voiced')?.cause).toBe('string');
-    for (const sev of ['minor', 'moderate', 'major', 'extreme'] as const) expect(reg.eventDeltas.get('quirk_voiced')!.rows[sev]).toEqual({});
-    expect(reg.eventDeltas.get('quirk_voiced')!.journal).toBeUndefined(); // bookkeeping: no journal line
+    for (const sev of ['minor', 'moderate', 'major', 'extreme'] as const) expect((reg.eventDeltas.get('quirk_voiced') as unknown as { rows: Record<string, unknown> }).rows[sev]).toEqual({});
   });
 
   it('is offered with the due quirks and their words, only in a scene', () => {

@@ -222,7 +222,7 @@ describe('the holder directive by face', () => {
       const b = { setDirective: (d: Directive) => { map.set(d.id, d); }, clearMatching: (f: (d: Directive) => boolean) => { for (const d of [...map.values()]) if (f(d)) map.delete(d.id); } };
       const kept = [`practice:tasks:${ANN}`, `physics:${ANN}`, `moment:${ANN}`].map((id): Directive => ({ id, expiresAfter: 'scene', text: `${id} text` }));
       for (const d of kept) b.setDirective(d);
-      refreshDynamicDirectives(b, s, reg);
+      refreshDynamicDirectives(b as never, s, reg);
       for (const d of kept) expect(map.get(d.id)).toEqual(d);
     }
   });
