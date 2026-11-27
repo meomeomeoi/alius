@@ -932,6 +932,7 @@ Each round is a live prototype in `docs/prototypes/`, built with `npm run proto 
 - [x] **Step 2:** Run the full `npm test`, `npm run typecheck`, `npm run test:layout` → PASS.
 - [x] **Step 3:** Commit `docs(P16b): implemented as`. Push.
 - [ ] **Step 4:** The whole-package review (Opus, effort high), then its fix wave (each fix test first), then the suite again.
+  - **Fix wave** (after the review): done; see the spec's **Implemented as › Fix wave after the review** (I1 to I3, M1 to M8). Tick Step 4 when the suite has passed again.
 
 **Done in c8 (docs only; no code changed):**
 - The spec `docs/packages/P16b-service-craft.md` has its status line and **Implemented as** (where it lives, rulings as built, the memory check as built, deviations, non-obvious things, open items, interfaces provided).
