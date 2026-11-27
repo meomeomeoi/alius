@@ -116,7 +116,7 @@ describe('each instrument reads her row through bendRow at its one lookup', () =
     { name: 'jaw', rows: JAW_STYLES, kinds: JAW_KINDS, read: (style, m) => { _jaw.S.style = style; _jaw.R.manner = m; return _jaw.st() as never; } },
     { name: 'scent', rows: SCENT_STYLES, kinds: SCENT_KINDS, read: (style, m) => { _scent.S.style = style; _scent.R.manner = m; return scentST() as never; } },
     { name: 'gulp', rows: GULP_STYLES, kinds: GULP_KINDS, read: (style, m) => { _gulp.S.style = style; _gulp.R.manner = m; return _gulp.ST(); } },
-    { name: 'shoe', rows: SHOE_STYLES, kinds: SHOE_KINDS, read: (style, m) => { _shoe.S.style = style; _shoe.R.manner = m; return _shoe.ST(); } },
+    { name: 'shoe', rows: SHOE_STYLES, kinds: SHOE_KINDS, read: (style, m) => { _shoe.S.style = style; _shoe.R.manner = m; return _shoe.ST() as never; } },
   ];
   for (const c of cases) {
     it(`${c.name}: with no manner, or at 0, every row reads the table's own values; at ±2 the bent fields move`, () => {
