@@ -391,6 +391,23 @@ Approved by the author on 2026-11-23, after the rounds of that day (the defaults
 - **Weight in a marathon**: with the engine's numbers a commander who only holds lasts about 50 s before the first buckle; the commander's own shifts make it sustainable. Whether the marathon's attrition and her rests are tuned on top is a tuning question.
 - **The digest after every mini-game** (author's rule): a structured result per run (her side: only what she perceived; the commander's side kept apart) delivered to the scene that follows as a directive; the memory check decides what is remembered (a caught cheat, a buckle, the forgotten end, being found by someone).
 
+### The game inside `provocation`: stillness under provocation (P16b §6.1, gate G2; approved and normative, 2026-11-27)
+
+*To be ported in P16b chunk c7 (Task 25): a new inner game of `src/ui/scene/instruments/activity/frame.ts` (`provocation.ts`), declared in `activity/fidelity.json`.*
+
+Approved by the author on 2026-11-27 after rounds 1–2. Search the file for `THE PROVOCATION`; the hooks it adds to the frame are marked `P16b G2` (the pull in `moveAttention`, no itch of the frame's own while she provokes, no swallow and no cramp while she provokes, Space not a reaction, the fidget as a reaction, the drawing, the panel's `provocation`, `stillness level` and `ticklish`, the summary line).
+
+**Normative (port exactly):**
+- **Her stimuli** (`PROV`, `PROV_PLACES`, `provSpawn`): touch, tickle, whisper and the feint (about 18 %), placed on the commander's body as screen points of the view (the default view for this game is `floor`), each announced by a felt line (`sense(…, 'body')`) and a sound (`soft` / `cloth`, panned by place); a whisper writes her line by her ear (`say(…, 'commander', { at })`); a feint is "her hand comes close… and stops" with cloth.
+- **Growth** (`provUpdate`): each stimulus grows from 0.08 by `grow[kind]` (touch 0.15, tickle 0.27, whisper 0.1 a second) × (1 + 0.22 per her level above 1) × (1 − 0.1 per stillness level) × 1.45 for a tickle on a ticklish commander, + 0.34 while the attention rests on it, − 0.14 while it rests on her or the door, − 0.4 while the breath is held; at 1 the body reacts on its own (involuntary). It pulls the attention like an itch (`pull`: touch 1700, tickle 2900, whisper 1200, × its value). Durations `dur`, gaps 5.5–10.5 s (shorter by 10 % a level).
+- **Reactions** (`provInput`, `provReact`): while a stimulus is on, any key but Space and H, a click, a spoken word or a fidget is a reaction; she always feels it (`herFeels('flinch')`), a body line says what happened (a feint: "You flinch from a touch that never comes."), her line by presence follows; the stimulus ends.
+- **The breath** (`PROV.breath`): hold Space to breathe through it (the growth −0.4 a second) for at most 4.5 s, shown as a cool arc around the attention closing as it runs out; it refills at 0.8 × real time once let go; run out, it is let out loudly (`bodyNoise('breath', 0.32)`); a hold over 1.5 s let go is a soft exhale (0.1).
+- **Her escalation**: two clean stimuli in a row raise her level (at most 4): more tickles, at 3+ sometimes two at once; her `harder` line.
+- **The drawing** (`drawProvocation`): a touch is a warm pink glow (alpha 0.3 + 0.6 × value) with the trace of her fingers; a tickle the same, quick, jittering, with sparks; a whisper soft rings of her accent; a feint a faint glow that stops short; all fade over 600 ms.
+- **Her lines** (`PROV_LINES`): by style (neutral, affectionate, playful, cruel, ritual, cold) and kind (`whisper`, `clean`, `react`, `harder`); a style without a line reads neutral's; `cold` may say nothing. Texts to `docs/content/card-voice.md` with the port.
+
+**Prototype only:** the schedule (`rand`; the engine plans the phase), the place list's coordinates as stand-ins for a view's body map, the panel's sliders. **Open engine questions:** a reaction is a `physics/relief` of kind `fidget` or a new kind `react` (the port decides, P16b Task 25); xp goes to `stillness`; `ticklish` is an optional COMMANDER FILE detail (P16c lists it).
+
 ### The game inside `service`: foot service under the desk (approved and normative, 2026-11-24)
 
 *Ported in chunk (e), Task 26 (its engine: Task 25): `src/ui/scene/instruments/activity/service.ts`, checked by `activity/fidelity.json`.*
