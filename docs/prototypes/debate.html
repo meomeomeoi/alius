@@ -59,6 +59,20 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 .her-line { position: absolute; left: 50%; transform: translateX(-50%); width: min(980px, 58vw); text-align: center; font-family: Caveat, cursive; color: var(--her); line-height: 1.05; font-size: calc(36px * var(--hs));
   text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.85), 0 0 28px rgba(0,0,0,.6); animation: write var(--write, 600ms) steps(var(--steps, 12), end) both; transition: opacity .6s; }
 .her-line.gone { opacity: 0; }
+/* round 2: written letter by letter, line after line (a clip over the whole block wrote every line at once) */
+.her-line { animation: none; }
+.her-line .ch { opacity: 0; animation: chIn 90ms ease-out forwards; animation-delay: var(--d); }
+@keyframes chIn { from { opacity: 0; filter: blur(1.5px); } to { opacity: 1; filter: none; } }
+body.reduced .her-line .ch { animation: none; opacity: 1; }
+.her-line .more { display: block; margin-top: 6px; font: 10px 'IBM Plex Mono', monospace; letter-spacing: .16em; color: var(--dim); opacity: 0; animation: chIn .4s ease-out forwards; animation-delay: var(--d); }
+/* the exchange: every line of the debate, to read back (T) */
+#exch { position: absolute; left: 2vw; bottom: 110px; width: 30vw; max-height: 52vh; overflow: auto; padding: 12px 14px; border-radius: 14px; background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(14px); display: none; z-index: 8; }
+#exch.on { display: block; }
+#exch .h { font: 10px 'IBM Plex Mono', monospace; letter-spacing: .16em; color: var(--dim); margin-bottom: 8px; }
+#exch .l { margin: 0 0 9px; line-height: 1.3; }
+#exch .l.her { font: calc(20px * var(--hs)) Caveat, cursive; color: var(--her); }
+#exch .l.you { font: 13.5px Inter, sans-serif; color: #d8e4ff; }
+#exchBtn { position: absolute; left: 2vw; bottom: 64px; padding: 6px 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--glass); font: 10px 'IBM Plex Mono', monospace; letter-spacing: .14em; color: var(--dim); cursor: pointer; z-index: 8; }
 @keyframes write { from { clip-path: inset(-30% 100% -30% -8%); } to { clip-path: inset(-30% -8% -30% -8%); } }
 /* the scene's transcript (a stand-in) and the input */
 #reply { position: absolute; left: 50%; bottom: 128px; transform: translateX(-50%); width: min(980px, 58vw); font-size: 18px; line-height: 1.5; text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.7); }
@@ -116,6 +130,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <div id="board"><div id="motion"></div><div id="motionSub"></div><div id="cols"><div class="col hers"><h5>HER</h5><div id="herPts"></div></div><div class="col mine"><h5>YOU</h5><div id="myPts"></div></div></div><div id="hint"></div></div>
   <div id="level"><div class="vial"><div class="tol" style="left:42%"></div><div class="tol" style="left:58%"></div><div class="bub"></div></div></div>
   <div id="hand"></div>
+  <div id="exch"><div class="h">THE EXCHANGE</div><div id="exchList"></div></div><div id="exchBtn">THE EXCHANGE (T)</div>
   <div id="reply"></div>
   <div id="readAs"></div>
   <div id="inputWrap"><input id="cmd" autocomplete="off" spellcheck="false" placeholder="…"></div>
@@ -261,7 +276,7 @@ function begin() {
   audioInit(); if (A.ctx.state === 'suspended') A.ctx.resume(); loadSamples();
   const T = TOPICS[S.topic];
   G = { id: `db${Date.now() % 1000000}`, T, her: [], mine: [], turn: 0, n: 0, exchanges: exchangesOf(T), myLines: [], phase: 'card', faults: 0, used: { preempt: 0, quote: 0 }, preempted: [], balance: { x: 0, v: 0, her: 0, herT: 0, err: 0 } };
-  $('#hand').replaceChildren(); $('#reply').innerHTML = ''; $('#board').style.display = 'none'; $('#readAs').style.opacity = 0;
+  $('#hand').replaceChildren(); $('#exchList').replaceChildren(); sayToken++; $('#reply').innerHTML = ''; $('#board').style.display = 'none'; $('#readAs').style.opacity = 0;
   drawWits(); setFace('neutral');
   $('#level').style.display = S.start === 'throne' ? 'block' : 'none';
   $('#world').style.transform = S.start === 'terms' ? 'translateY(8vh) scale(1.12)' : S.start === 'throne' ? 'translateY(30vh) scale(1.5)' : 'none'; // kneeling: she towers; the throne: the floor
@@ -344,7 +359,7 @@ function send(text) {
   if (G?.phase === 'formula') { formulaAnswer(text); return; }
   if (!G || G.turn !== 'you') return;
   G.turn = null; clearTimeout(turnTimer); $('#cmd').disabled = true; $('#inputWrap').className = '';
-  $('#reply').innerHTML = `<span class="you">“${esc(text)}”</span>`; G.myLines.push(text);
+  $('#reply').innerHTML = `<span class="you">“${esc(text)}”</span>`; G.myLines.push(text); logLine('you', text);
   // her terms: every point opens with her form
   if (S.start === 'terms' && !/^\s*with respect\b/i.test(text)) { G.faults += 1; const st = ST(); if (st.formFault) setTimeout(() => say(st.formFault), 300); showRead('her form was not kept · the point is weakened'); }
   const r = classify(text); let q = r.q; if (S.start === 'terms' && !/^\s*with respect\b/i.test(text)) q = QUAL[Math.max(0, QUAL.indexOf(q) - 1)];
@@ -395,7 +410,7 @@ function herTurn() {
   else herSay('You have nothing standing. Shall I go on?');
   afterHer();
 }
-function afterHer() { setTimeout(() => { if (G.phase !== 'debate') return; if (G.n >= G.exchanges) closing(); else yourTurn(); }, 2200); }
+function afterHer() { setTimeout(() => { if (G.phase !== 'debate') return; if (G.n >= G.exchanges) closing(); else yourTurn(); }, Math.max(2200, G.lastSayMs ?? 0)); }
 function closing() {
   G.phase = 'closing'; herSay(ST().closing);
   setTimeout(() => { G.phase = 'debate'; G.turn = 'you'; G.closingTurn = true; $('#inputWrap').className = 'turn'; $('#cmd').disabled = false; $('#cmd').placeholder = 'your closing (Enter)'; $('#cmd').focus(); }, 2200);
@@ -465,15 +480,39 @@ function frame(now) {
 }
 
 /* ======================================================================== her hand, her face, the transcript, the witnesses */
-function say(text) {
-  if (!text) return; pen();
-  const el = document.createElement('div'); el.className = 'her-line'; el.textContent = text;
-  el.style.setProperty('--write', `${Math.max(200, text.length * 22)}ms`); el.style.setProperty('--steps', String(Math.max(4, Math.min(60, text.length))));
-  el.style.bottom = '190px'; // her line in her hand, above the transcript (round 1: beside her it fought the panel)
-  for (const c of $('#hand').children) c.classList.add('gone');
-  $('#hand').appendChild(el); setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 700); }, 4200 + text.length * 30);
+/* her hand (round 2): letter by letter, line after line, at a speed by her style; a long line is smaller (36 → 26 px) and, past a page of
+   about 220 characters, written in pages at sentence breaks, each kept long enough to read; every line also goes into the exchange (T) */
+const PAGE = 220, CH_MS = { regal: 26, cruel: 18, neutral: 22 }, READ_MS = 25;
+function pagesOf(text) {
+  if (text.length <= PAGE) return [text];
+  const parts = text.match(/[^.!?]+[.!?]+["”']?\s*|[^.!?]+$/g) ?? [text]; const pages = []; let cur = '';
+  for (const p of parts) { if (cur && (cur + p).length > PAGE) { pages.push(cur.trim()); cur = ''; } cur += p; }
+  if (cur.trim()) pages.push(cur.trim()); return pages;
 }
-function herSay(text) { say(text); $('#reply').innerHTML = ''; }
+let sayQueue = Promise.resolve(), sayToken = 0;
+function say(text) {
+  if (!text) return; const token = ++sayToken;
+  const pages = pagesOf(text); const per = CH_MS[S.style] ?? 22;
+  const writePage = (page, idx) => new Promise((done) => {
+    if (token !== sayToken) return done();
+    pen();
+    const el = document.createElement('div'); el.className = 'her-line';
+    el.style.fontSize = `calc(${clamp(36 - (page.length - 60) / 12, 26, 36).toFixed(1)}px * var(--hs))`;
+    el.style.bottom = '190px';
+    [...page].forEach((c, i) => { const sp = document.createElement('span'); sp.className = 'ch'; sp.textContent = c; sp.style.setProperty('--d', `${i * per}ms`); el.append(sp); });
+    if (idx < pages.length - 1) { const m = document.createElement('span'); m.className = 'more'; m.textContent = '…'; m.style.setProperty('--d', `${page.length * per}ms`); el.append(m); }
+    for (const c of $('#hand').children) c.classList.add('gone');
+    $('#hand').appendChild(el);
+    const hold = page.length * per + 1400 + page.length * READ_MS;
+    setTimeout(() => { if (idx < pages.length - 1 || token !== sayToken) { el.classList.add('gone'); setTimeout(() => el.remove(), 700); } else setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 700); }, 2600); done(); }, hold);
+  });
+  sayQueue = pages.reduce((q, pg, i) => q.then(() => writePage(pg, i)), Promise.resolve());
+  logLine('her', text);
+}
+/** how long her line takes to be written and read (so her turn waits for it) */
+const sayMs = (text) => pagesOf(text).reduce((a, pg) => a + pg.length * (CH_MS[S.style] ?? 22) + 1400 + pg.length * READ_MS, 0);
+function logLine(who, text) { const d = document.createElement('div'); d.className = `l ${who}`; d.textContent = text; $('#exchList').append(d); $('#exch').scrollTop = 1e9; }
+function herSay(text) { say(text); G && (G.lastSayMs = Math.min(sayMs(text), 16000)); $('#reply').innerHTML = ''; }
 function narrate(t) { $('#reply').innerHTML = `<span class="act">${esc(t)}</span>`; }
 function card(kind, body, pills) { const c = $('#card'); c.querySelector('.who').textContent = 'Vela'; c.querySelector('.kind').textContent = kind; c.querySelector('.body').innerHTML = body; const p = c.querySelector('.pills'); p.replaceChildren(...pills.map(([t, f]) => { const b = document.createElement('span'); b.className = 'pill'; b.textContent = t; b.onclick = f; return b; })); c.style.display = 'block'; play('soft1', { g: 0.25 }); }
 function hideCard() { $('#card').style.display = 'none'; }
@@ -493,10 +532,11 @@ function placeHer() { for (const her of herLayers()) { if (!her.naturalWidth) co
 /* ======================================================================== input and panel */
 $('#cmd').addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return; const v = $('#cmd').value.trim(); if (!v) return; $('#cmd').value = '';
-  if (G?.closingTurn && G.turn === 'you') { G.closingTurn = false; G.turn = null; $('#reply').innerHTML = `<span class="you">“${esc(v)}”</span>`; const r = classify(v); if (r.kind === 'point' || r.kind === 'rebut') { if (r.kind === 'rebut') rebut(r.target, r.q); else addMine(r.label, r.q, r.words); drawBoard(); } $('#cmd').disabled = true; setTimeout(() => verdict('board'), 1200); return; }
+  if (G?.closingTurn && G.turn === 'you') { G.closingTurn = false; G.turn = null; $('#reply').innerHTML = `<span class="you">“${esc(v)}”</span>`; logLine('you', v); const r = classify(v); if (r.kind === 'point' || r.kind === 'rebut') { if (r.kind === 'rebut') rebut(r.target, r.q); else addMine(r.label, r.q, r.words); drawBoard(); } $('#cmd').disabled = true; setTimeout(() => verdict('board'), 1200); return; }
   send(v);
 });
-addEventListener('keydown', (e) => { if (e.target === $('#cmd')) return; if (e.key === 'h' || e.key === 'H') $('#panel').classList.toggle('hidden'); if ((e.key === 'b' || e.key === 'B') && (!G || G.phase === 'done')) begin(); });
+$('#exchBtn').onclick = () => $('#exch').classList.toggle('on');
+addEventListener('keydown', (e) => { if (e.target === $('#cmd')) return; if (e.key === 't' || e.key === 'T') $('#exch').classList.toggle('on'); if (e.key === 'h' || e.key === 'H') $('#panel').classList.toggle('hidden'); if ((e.key === 'b' || e.key === 'B') && (!G || G.phase === 'done')) begin(); });
 function opts(host, items, get, set) { host.replaceChildren(); for (const it of items) { const b = document.createElement('button'); b.className = 'opt' + (get() === it ? ' on' : ''); b.textContent = it; b.onclick = () => { set(it); opts(host, items, get, set); }; host.appendChild(b); } }
 opts($('#styles'), Object.keys(STYLE), () => S.style, (v) => { S.style = v; });
 for (const k of Object.keys(TOPICS)) { const o = document.createElement('option'); o.value = k; o.textContent = TOPICS[k].motion; $('#topicSel').append(o); }
@@ -515,7 +555,7 @@ $('#go').onclick = () => { $('#start').style.display = 'none'; begin(); };
 $('#backdrop').style.backgroundImage = `url(${ASSETS.bg})`;
 for (const h of herLayers()) h.addEventListener('load', placeHer); addEventListener('resize', placeHer);
 setFace('neutral'); requestAnimationFrame(frame);
-window.__S = S; window.__G = () => G; window.__send = (t) => { const e = $('#cmd'); e.value = t; e.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' })); };
+window.__S = S; window.__G = () => G; window.__say = (t) => say(t); window.__send = (t) => { const e = $('#cmd'); e.value = t; e.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' })); };
 </script>
 </body>
 </html>
