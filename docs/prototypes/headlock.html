@@ -963,44 +963,119 @@ const HS = () => HOLD[S.style] ?? HOLD.neutral;
 const MOTIVES = {
   put_in_place: { label: 'she challenged the commander to put the commander in place',
     fought: { her: 'she takes it as more defiance; regal and vindictive as an affront', offence: 'none (sparring is never an offence)', squad: 'they saw the commander fight: a small fall in their regard' },
-    endured: { her: 'she has made her point', offence: 'none', squad: 'a fall in their regard' },
-    yielded: { her: 'what she wanted: her favour, by style', offence: 'none', squad: 'a large fall in their regard' },
+    let_it_happen: { her: 'she has made her point', offence: 'none', squad: 'a fall in their regard' },
+    submitted: { her: 'what she wanted: her favour, by style', offence: 'none', squad: 'a large fall in their regard' },
     tapped: { her: 'she takes the tap as the commander giving in', offence: 'none', squad: 'a fall in their regard' } },
   punishment: { label: 'she challenged the commander as a punishment for an offence',
     fought: { her: 'resisting her punishment', offence: 'a new offence: defiance of a punishment', squad: 'a small fall in their regard' },
-    endured: { her: 'the punishment served', offence: 'the offence answered', squad: 'a fall in their regard' },
-    yielded: { her: 'the punishment taken in full, and more', offence: 'the offence answered and lightened most', squad: 'a large fall in their regard' },
+    let_it_happen: { her: 'the punishment served', offence: 'the offence answered', squad: 'a fall in their regard' },
+    submitted: { her: 'the punishment taken in full, and more', offence: 'the offence answered and lightened most', squad: 'a large fall in their regard' },
     tapped: { her: 'served, if poorly', offence: 'the offence answered', squad: 'a fall in their regard' } },
   play: { label: 'she was only playing',
     fought: { her: 'it amuses her; nothing is at stake', offence: 'none', squad: 'they laugh along; little changes' },
-    endured: { her: 'a game, played out', offence: 'none', squad: 'a small fall in their regard' },
-    yielded: { her: 'she enjoys it, by style', offence: 'none', squad: 'a fall in their regard' },
+    let_it_happen: { her: 'a game, played out', offence: 'none', squad: 'a small fall in their regard' },
+    submitted: { her: 'she enjoys it, by style', offence: 'none', squad: 'a fall in their regard' },
     tapped: { her: 'game over', offence: 'none', squad: 'little changes' } },
   grievance: { label: 'the commander challenged her over a grievance',
     fought: { her: 'consistent: the commander still stands by the grievance', offence: 'none', squad: 'they respect the fight: the smallest fall' },
-    endured: { her: 'the grievance lost', offence: 'none', squad: 'a fall in their regard' },
-    yielded: { her: 'the commander gives the grievance up', offence: 'none', squad: 'a large fall in their regard' },
+    let_it_happen: { her: 'the grievance lost', offence: 'none', squad: 'a fall in their regard' },
+    submitted: { her: 'the commander gives the grievance up', offence: 'none', squad: 'a large fall in their regard' },
     tapped: { her: 'the grievance lost', offence: 'none', squad: 'a fall in their regard' } },
   freedom: { label: 'the commander challenged her for more freedom',
     fought: { her: 'not broken: she will remember it', offence: 'none', squad: 'they saw the commander fight: a small fall in their regard' },
-    endured: { her: 'the stake lost', offence: 'none', squad: 'a fall in their regard' },
-    yielded: { her: 'her position confirmed (a step toward her next milestone)', offence: 'none', squad: 'a large fall in their regard' },
+    let_it_happen: { her: 'the stake lost', offence: 'none', squad: 'a fall in their regard' },
+    submitted: { her: 'her position confirmed (a step toward her next milestone)', offence: 'none', squad: 'a large fall in their regard' },
     tapped: { her: 'the stake lost', offence: 'none', squad: 'a fall in their regard' } },
 };
-/* her lines in the hold, by style (placeholders for the cue pool) */
+/* her lines in the hold (round 2: written for the situation: a bout she has just won in the yard, the squad around, the motive of the bout),
+   by style; placeholders for the cue pool. `entry` by the motive, `submitted` apart for a punishment, `end` by the stance */
 const HL = {
-  entry: { neutral: ['there. stay.'], affectionate: ['shh. I’ve got you.'], playful: ['gotcha~ breathe me in.'], cruel: ['nose in. all of it.'], ritual: ['you lost. take it.'], clinical: ['let us see how long.'] },
-  watchers: { neutral: ['look at this.', 'still squirming.'], affectionate: ['don’t stare, you lot.'], playful: ['look who’s stuck~', 'say hi to everyone~'], cruel: ['look at your commander.', 'see this?'], ritual: ['witness it.'], clinical: ['note the time.'] },
-  shift: ['hm.', 'there.'],
-  clamp: { neutral: ['no.'], affectionate: ['hey. easy.'], playful: ['nope~'], cruel: ['you thought?'], ritual: ['still.'], clinical: ['futile.'] },
-  escaped: { neutral: ['huh. fine.'], affectionate: ['oh! okay, okay.'], playful: ['slippery~'], cruel: ['…you’ll regret that.'], ritual: ['you broke the hold.'], clinical: ['noted.'] },
-  regrab: { neutral: ['not done.'], affectionate: [], playful: ['back you go~'], cruel: ['back. in.'], ritual: ['again.'], clinical: ['again.'] },
-  yielded: { neutral: ['good.'], affectionate: ['there you go. good.'], playful: ['aww. say it again~'], cruel: ['good. now stay there.'], ritual: ['accepted.'], clinical: ['acknowledged.'] },
-  tapLetGo: ['okay. up.'], tapIgnored: { neutral: ['not yet.'], affectionate: [], playful: ['one more~'], cruel: ['did I say?'], ritual: ['not yet.'], clinical: ['not yet.'] },
-  letgo: { neutral: ['enough.'], affectionate: ['up you come.'], playful: ['fine~ breathe.'], cruel: ['get up.'], ritual: ['enough.'], clinical: ['done.'] },
-  blackout: ['…out cold.'], free: ['free.'],
+  entry: {
+    put_in_place: { neutral: ['there. that’s where you belong.', 'remember this next time.'], affectionate: ['shh. you needed reminding.'], playful: ['who’s in charge? say it~', 'bad commander. stuck now~'], cruel: ['this is your place. smell it.', 'down here. where you belong.'], ritual: ['you forgot your place. learn it again.'], clinical: ['a correction. hold still for it.'] },
+    punishment:   { neutral: ['you know what this is for.'], affectionate: ['I don’t like doing this. take it.'], playful: ['punishment time~ breathe deep.'], cruel: ['you earned every breath of this.'], ritual: ['your punishment. take it in full.'], clinical: ['the sentence begins now.'] },
+    play:         { neutral: ['ha. got you.'], affectionate: ['caught you~ sorry, not sorry.'], playful: ['gotcha~ breathe me in.', 'tag. you’re stuck~'], cruel: ['fun, isn’t it? for me.'], ritual: ['a game lost. take the forfeit.'], clinical: ['the round is mine. observe.'] },
+    grievance:    { neutral: ['that’s what your complaint was worth.'], affectionate: ['we can talk about it after. breathe.'], playful: ['still upset~? breathe it off.'], cruel: ['complain into my armpit, then.'], ritual: ['the grievance is answered.'], clinical: ['your grievance: dismissed.'] },
+    freedom:      { neutral: ['freedom? not today.'], affectionate: ['you wanted more room. this is all the room you get.'], playful: ['free~? not from here~'], cruel: ['you wanted out. this is out.'], ritual: ['you fought for more. you get this.'], clinical: ['the request is denied. demonstrably.'] },
+  },
+  watchers: { neutral: ['look at your commander.', 'see that? still squirming.'], affectionate: ['don’t stare, you lot. it’s fine.'], playful: ['look who’s stuck~', 'say hi to everyone~', 'smile for the squad~'], cruel: ['look at this. your commander.', 'take a good look. this is who leads you.'], ritual: ['witness it.', 'all of you: see the outcome.'], clinical: ['note the time, someone.', 'observe the grip.'] },
+  clamp: { neutral: ['no you don’t.'], affectionate: ['hey. easy. you lost.'], playful: ['nope~ nice try~'], cruel: ['you thought?', 'try that again. I dare you.'], ritual: ['still. you lost.'], clinical: ['futile. continue if you like.'] },
+  escaped: { neutral: ['huh. fine. you got out.'], affectionate: ['oh! okay, okay, you’re out.'], playful: ['slippery~ that’s cheating~'], cruel: ['…you’ll regret that.'], ritual: ['you broke the hold. it is noted.'], clinical: ['noted: the grip failed.'] },
+  regrab: { neutral: ['not done yet.'], affectionate: [], playful: ['back you go~'], cruel: ['back. in. now.'], ritual: ['again. properly.'], clinical: ['again.'] },
+  submitted: {
+    any: { neutral: ['good. that’s it.'], affectionate: ['there you go. good. I’ve got you.'], playful: ['aww~ say it again, louder~'], cruel: ['good. now stay there. everyone heard that.'], ritual: ['accepted.'], clinical: ['submission acknowledged.'] },
+    punishment: { neutral: ['good. that’s how you take it.'], affectionate: ['good. it’s almost done.'], playful: ['good pet~ almost forgiven~'], cruel: ['good. that’s worth something. not much.'], ritual: ['taken properly. it counts.'], clinical: ['compliance noted. it is taken into account.'] },
+  },
+  tapLetGo: { neutral: ['okay. up.'], affectionate: ['okay, okay. up you come.'], playful: ['tap tap~ fine.'], cruel: ['fine. up. pathetic.'], ritual: ['the tap is heard. rise.'], clinical: ['tap registered.'] },
+  tapIgnored: { neutral: ['not yet.'], affectionate: [], playful: ['one more~'], cruel: ['did I say?'], ritual: ['not yet. once more.'], clinical: ['not yet.'] },
+  end: {
+    fought:        { neutral: ['you’re stubborn. I’ll give you that.'], affectionate: ['you never give up, do you.'], playful: ['feisty~ again tomorrow?'], cruel: ['still fighting. we’ll fix that.'], ritual: ['you resisted. remember it was useless.'], clinical: ['resistance logged.'] },
+    let_it_happen: { neutral: ['enough. up.'], affectionate: ['up you come. you okay?'], playful: ['fine~ breathe.'], cruel: ['get up.'], ritual: ['enough.'], clinical: ['done.'] },
+    submitted:     { neutral: ['good. up you get.'], affectionate: ['that’s my good one. up.'], playful: ['good pet~ you can breathe now~'], cruel: ['good. remember who you begged.'], ritual: ['well taken. rise.'], clinical: ['satisfactory. dismissed.'] },
+    tapped:        { neutral: ['okay. up.'], affectionate: ['okay, okay. up you come.'], playful: ['tap tap~ fine.'], cruel: ['fine. up. pathetic.'], ritual: ['the tap is heard. rise.'], clinical: ['tap registered.'] },
+  },
+  blackout: { neutral: ['…out cold. someone get water.'], affectionate: ['oh no— hey. hey, wake up.'], playful: ['…oops~'], cruel: ['…out cold. leave it there.'], ritual: ['…enough. carry the commander.'], clinical: ['loss of consciousness. noted.'] },
+  free: ['free.'],
 };
-const hl = (k) => { const v = HL[k]; return Array.isArray(v) ? v : (v[S.style] ?? v.neutral); };
+const hl = (k, sub) => { let v = HL[k]; if (sub !== undefined) v = v[sub] ?? Object.values(v)[0]; return Array.isArray(v) ? v : (v[S.style] ?? v.neutral); };
+/* her orders in the hold are the scent game's, worded for a won bout and its watchers (round 2) */
+Object.assign(LINES, {
+  deeper: ['breathe me in. you lost.', 'deeper. loser’s share.', 'all of it. go on.'], gently: ['slowly. savour it.', 'easy. take your time losing.'],
+  still: ['stop squirming.', 'still. they’re all watching.', 'don’t move.'],
+  good: ['good. like that.', 'mm. you learn.'], bad: ['I said deeper. you lost, remember?', 'not what I told you.'], need: ['breathe. you’re no use passed out.', 'breathe.'],
+  cough: ['too much for you? you lost to it.', 'choke on it, then.'], away: ['don’t you turn away. not in front of them.'],
+  here: { ...LINES.here, smothered_armpit: [['deeper in. right in the hollow.', 'hollow'], ['my side. there.', 'edge']] },
+});
+/* the styles saturation.html had not met (round 2: cold, possessive, obsessive, drill, regal, vindictive): their rows in the scent game, in the hold
+   and their lines; drafts, as the others */
+Object.assign(STYLES, {
+  cold:       { every: [4, 6], orders: { still: 2, deeper: 2, here: 1 }, ask: ['{p}. report.'], askEvery: [28, 36], rule: 'any', mouth: 'mild', note: 'few words, no warmth; she expects nothing said' },
+  possessive: { every: [3, 4], orders: { here: 3, deeper: 2, still: 1 }, ask: ['{p}. whose is it?', 'tell me {p} is yours to breathe. only yours.'], askEvery: [22, 30], rule: 'warm', mouth: 'punish', note: 'wants to hear it is hers and familiar; the mouth is taking air that is hers' },
+  obsessive:  { every: [2, 4], orders: { here: 3, deeper: 3 }, ask: ['{p}. you love it. say it.', 'tell me {p} is everything.'], askEvery: [18, 26], rule: 'admit', mouth: 'punish', note: 'wants it admitted as overwhelming; she never wants it to end' },
+  drill:      { every: [3, 3], cycle: ['deeper', 'still', 'here'], ask: ['report! {p}: where and how strong!'], askEvery: [22, 22], rule: 'place_and_band', mouth: 'permission', note: 'a fixed drill (deeper, still, a place); wants the report exact' },
+  regal:      { every: [4, 6], orders: { still: 2, here: 2, deeper: 1 }, ask: ['{p}. describe the privilege.'], askEvery: [24, 32], rule: 'warm', mouth: 'permission', note: 'wants it received as an honour; the mouth only by her leave' },
+  vindictive: { every: [2, 3], orders: { deeper: 3, still: 2 }, ask: ['{p}. how bad is it? and you deserve it, say it.'], askEvery: [20, 26], rule: 'bad_and_want', mouth: 'punish', note: 'wants it said that it is bad, and deserved' },
+});
+Object.assign(LINES.answer.ok, { cold: ['fine.'], possessive: ['good. mine.'], obsessive: ['yes. yes.'], drill: ['correct! again!'], regal: ['acceptable.'], vindictive: ['good. remember that.'] });
+Object.assign(LINES.answer.bad, { cold: ['no.'], possessive: ['wrong. it’s mine. say it.'], obsessive: ['no. you love it. say it.'], drill: ['wrong! again!'], regal: ['you misspeak.'], vindictive: ['wrong. you deserve worse.'] });
+Object.assign(HOLD, {
+  cold:       { win: [5000, 7000], open: [900, 1200],  fake: 0,    slack: [9000, 13000], slackMs: 700, regrab: 0.2,  until: 'limit', letGoAt: 10 },
+  possessive: { win: [4500, 6000], open: [1000, 1300], fake: 0,    slack: [7000, 10000], slackMs: 800, regrab: 0.6,  until: 'late',  letGoAt: 10 },
+  obsessive:  { win: [4000, 7000], open: [800, 1500],  fake: 0.1,  slack: [6000, 10000], slackMs: 900, regrab: 0.55, until: 'late',  letGoAt: 8 },
+  drill:      { win: [5000, 5000], open: [1100, 1100], fake: 0,    slack: [8000, 8000],  slackMs: 800, regrab: 0.3,  until: 'limit', letGoAt: 12, count: true },
+  regal:      { win: [5000, 7000], open: [1000, 1400], fake: 0,    slack: [6000, 9000],  slackMs: 900, regrab: 0.4,  until: 'limit', letGoAt: 12 },
+  vindictive: { win: [6000, 8500], open: [700, 1000],  fake: 0.1,  slack: [8000, 12000], slackMs: 700, regrab: 0.5,  until: 'late',  letGoAt: 6 },
+});
+const HL_MORE = {
+  entry: {
+    put_in_place: { cold: ['stay down.'], possessive: ['mine. here. where you belong.'], obsessive: ['finally. you’re all mine now.'], drill: ['down! this is what sloppy gets you!'], regal: ['you forget whom you challenged. remember it here.'], vindictive: ['I’ve waited for this. breathe.'] },
+    punishment:   { cold: ['your punishment. take it.'], possessive: ['you did wrong by me. now you breathe me.'], obsessive: ['you made me do this. breathe me.'], drill: ['punishment drill! breathe on my count!'], regal: ['the sentence is carried out. receive it.'], vindictive: ['for what you did. every breath.'] },
+    play:         { cold: ['got you.'], possessive: ['caught. and kept.'], obsessive: ['got you~ I’m never letting go.'], drill: ['the drill’s over. you lost it.'], regal: ['amusing. stay there.'], vindictive: ['just a game. for now.'] },
+    grievance:    { cold: ['your complaint. noted. ignored.'], possessive: ['you complain about me? breathe me instead.'], obsessive: ['you’re not angry with me. not now.'], drill: ['grievance overruled!'], regal: ['you brought a grievance to me? here is my answer.'], vindictive: ['complain now. go on.'] },
+    freedom:      { cold: ['no.'], possessive: ['you’re not going anywhere. you’re mine.'], obsessive: ['freedom? from me? never.'], drill: ['request denied! hold!'], regal: ['liberty is mine to grant. not today.'], vindictive: ['you wanted out. now you can’t breathe out.'] },
+  },
+  watchers: { cold: ['look.'], possessive: ['look. mine.', 'see who this belongs to.'], obsessive: ['don’t look at us. it’s mine.'], drill: ['eyes front, all of you! see what slack gets you!'], regal: ['behold your commander.', 'the court may look.'], vindictive: ['look at this. remember it.'] },
+  clamp: { cold: ['no.'], possessive: ['you’re not leaving me.'], obsessive: ['no no no. you stay.'], drill: ['hold still!'], regal: ['you presume.'], vindictive: ['that’ll cost you.'] },
+  escaped: { cold: ['hm.'], possessive: ['…come back here.'], obsessive: ['no— come back—'], drill: ['good break! again!'], regal: ['…how dare you.'], vindictive: ['…I’ll remember that.'] },
+  regrab: { cold: ['again.'], possessive: ['mine. back in.'], obsessive: ['got you again~ never again.'], drill: ['again! hold!'], regal: ['you were not dismissed.'], vindictive: ['back. you’re not done paying.'] },
+  submitted: {
+    any: { cold: ['good.'], possessive: ['yes. mine. say it again.'], obsessive: ['say it again. again. forever.'], drill: ['good! that’s discipline!'], regal: ['your submission is accepted.'], vindictive: ['good. that’s a start.'] },
+    punishment: { cold: ['taken.'], possessive: ['good. I forgive you. a little.'], obsessive: ['good. you’re mine again. forgiven.'], drill: ['punishment acknowledged!'], regal: ['contrition. it is noted in your favour.'], vindictive: ['good. it counts. some.'] },
+  },
+  tapLetGo: { cold: ['up.'], possessive: ['fine. but you’re still mine.'], obsessive: ['…okay. but stay close.'], drill: ['tap! up! again tomorrow!'], regal: ['you may rise.'], vindictive: ['fine. up. for now.'] },
+  tapIgnored: { cold: ['no.'], possessive: ['not yet. you’re mine a little longer.'], obsessive: ['no. not yet. not ever.'], drill: ['not yet! hold!'], regal: ['I did not grant that.'], vindictive: ['no.'] },
+  end: {
+    fought:        { cold: ['done.'], possessive: ['you fight me. you’re still mine.'], obsessive: ['you fought me… why would you fight me?'], drill: ['good fight! sloppy hold, though. again!'], regal: ['your defiance is noted. it will be answered.'], vindictive: ['I’ll remember that you fought.'] },
+    let_it_happen: { cold: ['done.'], possessive: ['up. stay near.'], obsessive: ['up… stay with me.'], drill: ['up! dismissed!'], regal: ['you may go.'], vindictive: ['get up.'] },
+    submitted:     { cold: ['good. up.'], possessive: ['good. mine. up.'], obsessive: ['good… you’re mine. always.'], drill: ['good discipline! up!'], regal: ['well yielded. rise.'], vindictive: ['good. remember this the next time.'] },
+    tapped:        { cold: ['up.'], possessive: ['fine. but you’re still mine.'], obsessive: ['…okay. but stay close.'], drill: ['tap! up! again tomorrow!'], regal: ['you may rise.'], vindictive: ['fine. up. for now.'] },
+  },
+  blackout: { cold: ['…out.'], possessive: ['…hey. you’re mine. wake up.'], obsessive: ['no no— wake up, wake up—'], drill: ['man down! water!'], regal: ['…remove the commander.'], vindictive: ['…out cold. good.'] },
+};
+/* merges HL_MORE into HL: a kind is by style, or by a motive / a stance and then by style */
+for (const [kind, v] of Object.entries(HL_MORE)) {
+  const byStyle = (o) => Object.keys(o).some((k) => k in STYLES);
+  if (byStyle(v)) Object.assign(HL[kind], v); else for (const [sub, rows] of Object.entries(v)) Object.assign(HL[kind][sub], rows);
+}
 const YIELD_WORDS = /\b(i\s*yield|yield|you\s*win|yours|i'?m\s*yours|i\s*give\s*up|give\s*up|mercy|sorry|surrender)\b/i;
 
 function holdFresh() {
@@ -1025,7 +1100,7 @@ function sense(text) {
   setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 900); }, 3600);
 }
 const tell = (key, text) => { if (!G.H.told[key]) { G.H.told[key] = true; sense(text); } };
-function holdEntryLine() { return pick(hl('entry')); }
+function holdEntryLine() { return pick(hl('entry', S.motive)); }
 function holdUpdate(dt) {
   const H = G.H, st = HS();
   // the air: drains by the seal; breathing brings it in as far as her arm lets it (her scent comes with every nose breath, as in saturation)
@@ -1116,8 +1191,8 @@ function yieldAct(what) {
   const H = G.H; H.acts.push(what);
   if (H.yielded) return;
   H.yielded = true; H.took = false;
-  setTimeout(() => { if (G.phase !== 'loop') return; say(pick(hl('yielded')), false, [0.5, 0.14]); if (S.style === 'cruel') press(); else lift(); }, 500);
-  tell('yield', 'She feels you give in.');
+  setTimeout(() => { if (G.phase !== 'loop') return; say(pick(hl('submitted', S.motive === 'punishment' ? 'punishment' : 'any')), false, [0.5, 0.14]); if (S.style === 'cruel') press(); else lift(); }, 500);
+  tell('yield', 'She feels you yield to her.');
 }
 /* the tap (P15a): signal lets go at once; limit ignores the first; late ignores taps until the air is low */
 function tapOut() {
@@ -1132,15 +1207,16 @@ function holdEndLine(reason) {
   if (reason === 'tapped') return pick(hl('tapLetGo'));
   if (reason === 'escaped') return pick(hl('free'));
   if (reason === 'blackout') return pick(hl('blackout'));
-  return pick(hl('letgo'));
+  return pick(hl('end', stanceOf()));
 }
-/* the stance, read from what the commander did (P16c rulings 14–15): fought, yielded, tapped, endured */
+/* the stance, read from what the commander did (P16c rulings 14–15): fought, submitted (yielded to her: went limp and gave her a sign), tapped,
+   let_it_happen (gave in: nothing special) */
 function stanceOf() {
   const H = G.H, cheats = G.counts.noticed;
   if (H.attempts > 0 || H.escapes > 0 || cheats >= 2 || H.took) return 'fought';
-  if (H.yielded) return 'yielded';
+  if (H.yielded) return 'submitted';
   if (H.tapped) return 'tapped';
-  return 'endured';
+  return 'let_it_happen';
 }
 function holdSummary() {
   const H = G.H, stance = stanceOf(), m = MOTIVES[S.motive], e = m[stance];
@@ -1148,7 +1224,7 @@ function holdSummary() {
   return `<b>the hold</b> · ${S.style} · ${m.label}${S.witnesses ? ' · the squad watching' : ''}<br>`
     + `end: ${G.reason}${G.reason === 'escaped' ? (H.regrabbed ? ' (after she took the commander back once)' : '') : ''} · lowest air ${Math.round(H.airMin)} %<br>`
     + `attempts to break free ${H.attempts} · broke free ${H.escapes} · taps ${H.taps} · mouth breaths she heard ${G.counts.noticed}<br>`
-    + `yield: ${H.yielded ? H.acts.join(', ') + (H.took ? ' — then fought again' : '') : 'no'}<br>`
+    + `submitted: ${H.yielded ? H.acts.join(', ') + (H.took ? ' — then fought again' : '') : 'no'}<br>`
     + `<b>the stance: ${stance}</b>${failed ? ' (the game lost: the commander gave in, ruling 14)' : ''}<br>`
     + `· her: ${e.her}<br>· offence: ${e.offence}<br>· the watchers: ${S.witnesses ? e.squad : 'nobody watched'}`;
 }
