@@ -273,6 +273,14 @@ Approved by the author on 2026-11-25 after rounds 1–2c (the defaults of the fi
 - **The art slot `legs_astride`** with `feet: 'one' | 'pair' | 'two'` and `shown: 'left' | 'right'`.
 - **Memory check:** as P17g §2.12 (an audience's decision is remembered where its command action writes; a visitor who rests her boots on the commander is P15 §8's witness path, `knows`); a spill and a skid are bookkeeping.
 
+### P16c addition: the burst on the throne (`flatulence`; approved 2026-11-28 after round 1)
+
+*To be ported in P16c into `src/ui/scene/instruments/activity/throne.ts` (P16c rulings 12–13, 18). Search the file for `THE BURST ON THE THRONE` and the hooks marked `P16c BURST`; copy them word for word (P16c ruling 6).*
+
+**Normative (port exactly):** `human_chair` only, the category on; at most once a session by her style's share (`TFLAT.share`, regal 0.1), in one hashed phase at a hashed time (`planPeaks`' hook); on purpose (`TFLAT.meant`: a word before, 900 ms) or by accident (a word after); `burstSound` is saturation.html's buzz through the back (the lowpass 1400 → 650 Hz, gain 0.24); her weight shifts (a jolt, pressure 1.3 for a beat), the felt line, the smell 2.2 s later; **the flinch**: throneFlinch's kick at `TFLAT.kick` 1.8, held within 0.8 s or it shows (a `jerk` noise), counted apart (`burstFlinchDone`) with her `held` / `flinched` line by style; **a visitor** hears it: one who knows says an `aware` line, one who does not an `unaware` line and she puts it on the chair (`deflect`); **regal** expects thanks typed within 10 s (`burstThanks`, an answer, not a breach), else her `ungrateful` line and a press; the digest's line.
+
+**Prototype only:** the checkbox and "the burst now (F)", `TFLAT_LINES`' texts. **Memory check:** a visitor who hears it is P15 §8's witness path only when she says it plain; otherwise bookkeeping.
+
 ## `posture.html` — the game of postures (P16b §7) and the posture call's schemes B and C
 
 *To be ported in P16b chunk c6 (Tasks 23–24): `src/ui/scene/instruments/posture/`, the call's new functions in `src/ui/scene/instruments/call/`, checked by their `fidelity.json`.*
@@ -656,6 +664,19 @@ Approved by the author on 2026-11-23, after ten rounds (the defaults of the file
 - The engine's gauge is a fill of +10 × band a beat and −20 a mouth breath; here the saturation is the words in the head, its capacity the tolerance. Decide how the head maps to the gauge (one word = capacity/100 of it) and whether the depth, the place and the words become inputs.
 - Her question, her rule by style, a lie and "liar." are new: they need engine events (and the memory check: a lie found out may be worth remembering; the rest is bookkeeping).
 - The overflow ("lost in her") and the body's pull are new readings of the stage and tolerance.
+
+### P16c addition: the burst (`flatulence`; approved 2026-11-28 after rounds 1–2)
+
+*To be ported in P16c into `src/ui/scene/instruments/scent/` (P16c rulings 12–13, 18). Search the file for `THE BURST` and the hooks marked `P16c BURST`. The port copies the block and its hooks word for word (P16c ruling 6).*
+
+**Normative (port exactly):**
+- **When** (`FLAT`, `flatPlan`, `flatOn`): her seat only (`face_to_bottom`), the content category `flatulence` on (off by default) and her limits allowing it; at most once a session, by her style's share (`FLAT.share`: cruel 0.55, playful 0.45, vindictive 0.4, possessive 0.3, clinical 0.25, neutral, cold, obsessive 0.2, affectionate 0.12, regal 0.1, drill 0.1, ritual 0.05), at a hashed time in the middle half of the session (`FLAT.when`); a hash of the session, no draw.
+- **On purpose or by accident** (`FLAT.meant`: playful, cruel, clinical, regal, vindictive, possessive say a word first, 900 ms before; the others say theirs after, 900 ms on).
+- **The event** (`flatStart`, `SFX.flat`): the sound is a buzz (round 2, author: a band of noise did not read as what it is): a sawtooth and square pair at 92–128 Hz whose pitch wanders and falls (−38 %) with a jitter, a flutter of 24–32 Hz, sputtering after 55 %, through a resonant lowpass closing from 950 to 420 Hz, a breath of band noise and a thump; she shifts on the face; a puff of 70 motes from her seat; the narration line ("She shifts her weight on your face. A low, buzzing rasp, right against you — and the air turns thick and sour."); for `FLAT.len` 9 s the air is all her (`flatI`: + up to 0.4 to the strength at the face, fading), her band × `FLAT.stim` 1.3, a warm olive tint over the view (`#burst`, 0.7 at most, fading), the head fills with its own words (`FLAT_W`, one every 1.2 s and slower as it fades), a mouth breath is felt twice as surely (`FLAT.heard`).
+- **The commander's four answers and hers** (`flatBreath`, `flatCough`, `flatMouth`, `flatUpdate`; `FLAT_LINES` by style): breathe it in (a nose breath of depth ≥ `FLAT.took` 0.75 without the reflex: her `took` line), cough (the reflex: her `cough` line; cruel, vindictive, possessive press down twice, affectionate lifts), the mouth (felt: her `mouth` line; cruel, vindictive, possessive, regal press), hold it out (no breath at all while it lasts: counted). **Regal** gives it as a favour and expects thanks typed within `FLAT.thankMs` 10 s (`FLAT.thanks`, `tint.send`'s hook): thanked "gracious. good."; not, "no thanks? how ungrateful." and a press.
+- The six styles `headlock.html` added (cold, possessive, obsessive, drill, regal, vindictive) are copied into this file as they are there.
+
+**Prototype only:** the panel's checkbox and "now (F)", the session's seed, `FLAT_LINES`' and `FLAT_W`'s texts (the cue pool). **Open engine questions:** the category's gate and her limits (`flatulence` in `contentCategories`, off by default); the four answers as inputs for the digest (P16c ruling 14: coughing or the mouth means still resisting, breathing it in means given in); **memory check:** bookkeeping (a story beat of the scene; nothing remembered beyond the digest).
 
 ## `breath.html` — breathing (P15a `breath`, timing)
 
