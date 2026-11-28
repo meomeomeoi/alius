@@ -54,7 +54,47 @@ npm run proto -- posture
 npm run proto -- foot_care
 ```
 
+```bash
+npm run proto -- sparring
+```
+
 Each writes `.superpowers/prototypes/<name>.html` (ignored by git): one self-contained page with the fonts, backdrops and a placeholder sprite (`tests/fixtures/layout/sprite.svg`). `--sprite <file>` uses any local sprite; **never commit the author's art**. Open the page in Chromium. `H` hides the panel; `window.__S` (settings), `window.__G()` (state) and `window.__forceO` (force the opening, 0–1, `null` to release) exist for screenshots and tests.
+
+## `sparring.html` — sparring: a timing duel in the yard (P9c's sparring wager as a mini-game; P16c)
+
+*To be ported in P16c with its stage setup (P16c ruling 1): an instrument of its own in place of the AUTO bout of `sparringBout`, checked by its `fidelity.json`; the finishers after her win and the escape from the hold follow (P16c).*
+
+Approved by the author on 2026-11-28 after round 1 and one fix ("it came out really fun, I like it"). The defaults of the file are the approved state. Run it with `npm run proto -- sparring`; it needs `slap/slap.ogg`, `slap/swish1`, `slap/swish3`, `ha/cloth1–4`, `ha/step_c0–3`, `ha/bell`, `ha/crowd` and `breath-in-out.mp3` (`assets/LICENSES.md`).
+
+### Normative (port exactly)
+
+- **The view** (`render`): first person in the training yard (`loc_training_yard_day` / `_evening`, blurred 3 px + 4 px with her lunge, brightness 0.72 − 0.12 × tiredness); her knee-length sprite fills the height (`S.her`: height 1.22 H, top −0.06 H), centred; nothing is drawn over her body. Her two face layers crossfade (`setFace`, `herLayers`: foot_care.html's; `faceFade` 240 ms, a stage setting, P16c ruling 4); an SVG sprite is laid out at its natural size.
+- **Her blow** (`planBlow`, the telegraph in `render` and `stepFight`): from the commander's left, right or straight (`L`, `R`, `C`); its progress `p` over the telegraph: she comes closer (`1 + 0.14 × lunge`) and toward its side (`0.05 W`), the frame shifts and tilts against the swing (`0.02 W`, 2.6°) and scales (+5 %), the light dims on its side (`#side`, up to 0.8; a straight blow darkens every edge, a tunnel), a dark blur sweeps in from its edge in the last 140 ms (`#sweep`, the slap's); at its start a step and her clothes on its side, the swish timed to end on the impact (`swish3` for a heavy blow, `swish1` else); ritual and drill call it ("left." "right." "straight."). A heavy blow lunges ×1.25 and takes 150 ms longer. A feint stops at 0.6 of its telegraph and pulls back over 300 ms.
+- **Her ways** (`STYLES`: `gap`, `tele`, `feint`, `heavy`, `combo`, `alternate`, `count`): the table is normative as the shape of each style's fight (cruel short telegraphs and combos, ritual even and alternating, playful feints); the manner bends it (`tempo`: telegraph × (1 − 0.12 × step), gap × (1 − 0.1 × step); `intensity`: her blow × (1 + 0.1 × step)). **Her heavy blows come in a rhythm** (one in `round(1 / heavy)` ± 1, ritual every third), never by chance each time (round 1: by chance, a lucky run of openings decided the bout).
+- **The commander's defence** (`defend`, the pointer handler): a sharp flick of the mouse away from the blow dodges it (≥ 1300 px/s over 70 ms and 4 % of the width; down, 5 % of the height, for a straight blow); Space blocks; one defence a blow, counted only from her first move; before that a move only tires (−1). **The window** is the last `110 + 35 × reflexes` ms before the impact; earlier and she follows (the blow lands). A dodge slides the view the other way and back (0.07 W, 420 ms; down for a duck); a block tightens the frame.
+- **The judgement** (`resolveBlow`, `strike`, `tickBout`: one core for play and for the engine): a blow that lands costs `13 × her power × handicap × (1 + 0.1 × intensity)` (× 1.6 heavy); a block costs 25 % of it (60 % of a heavy one) + 3; a dodge 2; a strike 2; a bitten feint halves the window of her next blow. A dodged heavy blow opens her for `260 + 40 × reflexes` ms, 80 ms after the impact: a click then is a clean hit (`0.6 + 0.2 × strength` of her `18.5 × toughness`); a click at any other time she blocks, and answers at once (a counter: 250 ms, telegraph 320 ms). **Her confidence:** a blow of hers that lands gives her back 0.6, a blocked one 0.2. The commander's strength is `95 + 6 × endurance`, and comes back at 1 a second after 1.2 s without a loss. The bout ends when the commander's strength gives out (she wins), hers does (the commander wins), or at its length (70 s: **a draw**); with "first blood" the first clean hit either way decides.
+- **The calibration** (author, 2026-11-28; `BOT`, `botBout`, `calibrate`, the panel's "the author's two cases"): against an average soldier with no handicap, an average commander (3/3/2) never wins and draws from a top 10–15 % performance (55 % at the top 12 %); a hardened one (5/5/4) wins from the top 5 % (65 %; 78 % at the top 1 %) and draws from the top 20–25 % (62 % at the top 25 %). The port keeps a test that runs the bot over the engine's core and holds these bands.
+- **Her opening** is shown by her, not marked: her sprite brightens (1.12) and sways, a faint cool light at the centre (`#open`).
+- **A blow that lands** (the slap's whip: toward its side, damped, a horizontal blur, a flash at 0.55, heavy 0.8; a straight one pushes the view back); **a clean hit of the commander's** knocks her sprite back (scale −6 %, 4°) over 700 ms and the frame jabs forward (+5 %, 160 ms).
+- **No bars:** the commander's strength is the closing, darkening edges (`#tired`), the colour going (saturate 1 − 0.55 × tiredness), the heart from 25 % tired (90 → 168 bpm) and the breath quickening, a tremble past 55 %; hers is her breathing (quicker under half) and her face.
+- **Her faces** (`FACE`, `FACE_BY_STYLE`, `react`, `FACE_HOLD`, `baseFace`): SillyTavern labels (never `desire`); a reaction is a moment (dodged `surprise` 0.9 s, landed `amusement` 1.4 s, blocked 0.9 s, bitten feint 1.2 s, hurt `anger` 1.6 s, parried 1.1 s), then back to her fighting face (`neutral`; `annoyance` once her strength is under 40 %); the end's face stays.
+- **Her lines** (`LINES` as kinds: `start`, `landed`, `dodged`, `bit`, `hurt`, `parried`, `low`, `win`, `lose`, `draw`), by style, in her hand beside her on the side away from the blow; one in 2.6 s at most, 55 % of the time unless forced.
+- **The sound** (`SFX`): the slap's recording low-passed into a body blow (1500 Hz, rate 0.8, a thump under it), a dull smack for a block (900 Hz), a duller thud and her grunt for a clean hit, a light smack for a parried one; her steps (`step_c`) and clothes panned to the blow's side; the swish; the bell at the start and the end; the yard's wind; the squad's voices when they watch (`crowd`, 0.084: the author, 30 % under the first draft); her grunt at 0.049 / 0.021 (likewise); the commander's breath and heart.
+- **Reduced motion:** no camera moves, no write-on; the judgement is the same.
+
+### Prototype only (do not port as is)
+
+- The panel (style, manner, her level, the handicap, the body and its presets, the calibration buttons, the sprite and faces loaders, the yard, the bout's length, the flick threshold, sound, debug), the start overlay, the summary card, the `__` hooks.
+- `LEVELS` (stand-ins for her combatant's stats: the port reads her power, toughness and quickness from her combatant, `spawnMutineer`, and the handicap rows of `wagerGames`); `LINES`' texts (the cue pool); `Math.random()` in real play (the engine plans her blows with hashes).
+
+### Open engine questions (decide in the plan)
+
+- **The draw.** Today a bout that runs out goes to her (`sparringBout`: "a draw goes to her"); here a draw is its own outcome (the author). What a draw does to the wager's stake (void, or half) is the plan's.
+- **Her numbers from her combatant:** power, toughness and quickness from her stats and level so that "average" here is P9c's level-1 soldier; the calibration test runs on that mapping.
+- **A fit commander** (4/4/3) cannot win against an average soldier with no handicap (only draw): confirm with the author.
+- **After her win:** her finisher (the hold when its conditions meet, P16b; other humiliations, with or without a game) is to be designed with the author; after the commander's win, her reaction by style. The bout and its hold are one slot (P16c ruling 9).
+- **The digest** (P16c ruling 5): her expectations (the handicap she allowed, her level), her aim by style, notable things by weight (a feint bitten repeatedly, a clean hit, her confidence back).
+- **Memory check:** the wager already writes its fact (`wager_resolved`); the bout's details are bookkeeping; a witnessed loss is P16b's `headlock` path or the finisher's.
 
 ## `foot_care.html` — foot care: massage with her tempo, then cream (P16c; P16b §6.2, §8)
 
