@@ -4,8 +4,8 @@
   the tray in her service. The commander kneels before her chair and holds her tray (the preset kneel_holding); the mouse is the hands
   (weight.html's balance: move toward where the weight is); the tray tilts in two axes. She and her visitors set things down, take them,
   pour, press its edge: each thing moves the centre of weight; the liquids keep level and slosh, and spill over the rim of a glass that is
-  tilted too far or jolted; past a steeper tilt things slide and fall. The arms tire with the load and the time (a tremor, then the far edge
-  sinks). Not weight.html's game: the load is light and always changing, and a fault is seen (a stain, a clink, a fall).
+  tilted too far or jolted; past a steeper tilt things slide and fall. The arms tire while the tray is not level, by the load (a tremor, then
+  the far edge sinks); held level they do not. Not weight.html's game: the load is light and always changing, and a fault is seen (a stain, a clink, a fall).
     npm run proto -- balance [--sprite <png|webp|svg>]
   Copied: her view from below (strokes.html's VIEWS.her), her two face layers and their crossfade (foot_care.html), her hand (slap.html's say),
   the sound kit (slap.html), the spring stepped in pieces of at most 8 ms (weight.html's fix).
@@ -117,7 +117,7 @@ body.reduced .her-line { animation: none; }
 </div>
 <div id="start"><div class="box">
   <h2>balance · the tray · prototype · round 1</h2>
-  You kneel before her chair and hold her tray. <b>The mouse is your hands</b>: move it toward where the weight is, and the tray comes level. She and her visitors set things down and take them, pour, lean on its edge; <b>her hand's shadow</b> falls where she is about to. The liquids keep level as the tray tilts: too far, or a jolt, and they spill. Your arms tire as it goes.<br>
+  You kneel before her chair and hold her tray. <b>The mouse is your hands</b>: move it toward where the weight is, and the tray comes level. She and her visitors set things down and take them, pour, lean on its edge; <b>her hand's shadow</b> falls where she is about to. The liquids keep level as the tray tilts: too far, or a jolt, and they spill. Your arms tire while the tray is not level.<br>
   <kbd>Esc</kbd> stop word · <kbd>H</kbd> panel.
   <div><span class="btn" id="go">begin</span></div>
 </div></div>
@@ -140,8 +140,11 @@ const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 const lerp = (a, b, t) => a + (b - a) * t;
 const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
 function fnv1a(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return h >>> 0; }
-const hash01 = (k) => fnv1a(k) / 4294967296;
-const hpick = (list, k) => list[fnv1a(k) % list.length];
+/* fnv1a alone barely moves its high bits for keys that differ only in their last character (`…|1`, `…|2`): a finaliser (murmur3's fmix32)
+   spreads them, or the same pick comes back every time */
+const fmix = (h) => { h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16; return h >>> 0; };
+const hash01 = (k) => fmix(fnv1a(k)) / 4294967296;
+const hpick = (list, k) => list[Math.floor(hash01(k) * list.length)];
 const hrand = (a, b, k) => a + hash01(k) * (b - a);
 const pick = (a) => a[Math.floor(Math.random() * a.length)]; // sound variety and her lines' placing only
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -162,7 +165,7 @@ const SLOSH_K = 32, SLOSH_D = 2.4, SLOSH_DRIVE = 1.1, SLOSH_TILT = 0.55; // the 
 const MARGIN = (fill) => 0.1 + (1 - fill) * 0.95; // how far the surface may move before it runs over the rim
 const SPILL_PART = 0.05, SPILL_CD = 450;          // a spill takes this much of a full glass; one per glass in this long
 const SLIDE_AT = 0.62, SLIDE_RATE = 0.9;          // past this tilt things slide toward the low side; at the rim they fall
-const FAT_BASE = 0.004, FAT_LOAD = 0.011;         // the arms tire a second, by the load (and faster when the tray is not level)
+const FAT_BASE = 0.004, FAT_LOAD = 0.011, FAT_OFF = 2.5; // the arms tire a second, by the load, only while the tray is not level (× how far off, in tolerances, up to 3)
 const TREMOR = (f) => 0.006 + 0.05 * f * f;       // the hands shake with fatigue
 const SAG = (f) => 0.28 * f * f;                  // the far edge sinks as the arms give
 /* her ways: how often she does something (s), her telegraph (ms: her hand's shadow before it touches), how hard she sets things down, where
@@ -288,10 +291,11 @@ function planAct() {
   const acts = Object.entries(guestTurn ? { place: 1, take: 2 } : st.acts).filter(([, w]) => w > 0);
   let r = hash01(`act|${k}`) * acts.reduce((a, [, w]) => a + w, 0), kind = acts[0][0];
   for (const [a, w] of acts) { r -= w; if (r <= 0) { kind = a; break; } }
-  const liquids = G.items.filter((it) => ITEMS[it.type].liquid && it.type !== 'bottle');
+  const liquids = G.items.filter((it) => it.type === 'glass' && it.fill < 0.5); // she pours wine into a glass that wants it
   const bottle = G.items.find((it) => it.type === 'bottle');
   if (kind === 'pour' && !(bottle && bottle.fill > 0.15 && liquids.length)) kind = 'place';
-  if (kind === 'take' && !G.items.length) kind = 'place';
+  if (!guestTurn && bottle && bottle.fill > 0.15 && liquids.length) kind = 'pour'; // an empty glass of hers on the tray: she fills it next
+  if (kind === 'take' && G.items.length < 3) kind = 'place'; // round 2: early on she loads it
   if (kind === 'place' && G.items.length >= 6) kind = 'take';
   const reach = st.reach, ang = hrand(0, Math.PI * 2, `ang|${k}`), rr = hrand(reach[0], reach[1], `r|${k}`);
   const tele = st.tele * (1 - 0.12 * S.manner.tempo) * (guestTurn ? 1.2 : 1);
@@ -300,12 +304,23 @@ function planAct() {
   if (kind === 'place') {
     const type = hpick(guestTurn ? ['glass', 'water', 'plate'] : ['mug', 'glass', 'water', 'plate', 'glass'], `type|${k}`);
     const drop = !guestTurn && st.drop && hash01(`drop|${k}`) < st.drop;
-    return { kind, type, u: rr * Math.cos(ang), v: rr * Math.sin(ang) * 0.9, tele: drop ? 0 : tele, hard: hard * (drop ? 1.5 : 1), who, drop };
+    const spot = freeSpot(type, k, reach); if (!spot) return { kind: 'feint', u: rr * Math.cos(ang), v: rr * Math.sin(ang), tele, who };
+    return { kind, type, u: spot[0], v: spot[1], tele: drop ? 0 : tele, hard: hard * (drop ? 1.5 : 1), who, drop };
   }
-  if (kind === 'take') { const pool = guestTurn ? G.items.filter((it) => ITEMS[it.type].kind === 'glass') : G.items; const it = hpick(pool.length ? pool : G.items, `take|${k}`); return { kind, item: it, u: it.u, v: it.v, tele, hard, who }; }
+  if (kind === 'take') { const keep = (it) => (it.type === 'bottle' && it.fill > 0.15) || (it.type === 'glass' && it.fill < 0.5); const pool = (guestTurn ? G.items.filter((it) => ITEMS[it.type].kind === 'glass') : G.items).filter((it) => !keep(it)); if (!pool.length) return { kind: 'feint', u: 0.3, v: -0.3, tele, who }; const it = hpick(pool, `take|${k}`); return { kind, item: it, u: it.u, v: it.v, tele, hard, who }; } // round 2: her bottle stays while it has wine in it
   if (kind === 'pour') { const to = hpick(liquids, `to|${k}`); return { kind, item: bottle, to, u: to.u, v: to.v, tele, len: hrand(2, 3.4, `pl|${k}`), who }; }
   if (kind === 'press') { const u = rr * Math.cos(ang), v = rr * Math.sin(ang); return { kind, u: u / Math.max(0.6, Math.hypot(u, v)) * 0.92, v: v / Math.max(0.6, Math.hypot(u, v)) * 0.92, tele: tele * 0.8, len: hrand(1, 1.8, `pr|${k}`), force: 0.35 * (1 + 0.15 * S.manner.intensity), who }; }
   return { kind: 'feint', u: rr * Math.cos(ang), v: rr * Math.sin(ang), tele, who }; // her hand comes over the tray and goes away
+}
+/** round 2 (author): a free place for a thing, clear of the others and of things on their way down (hashed tries, no draw); null if the tray is full */
+function freeSpot(type, k, reach) {
+  const r = ITEMS[type].r, taken = [...G.items.map((it) => [it.u, it.v, ITEMS[it.type].r]), ...G.acts.filter((a) => !a.landed && a.kind === 'place').map((a) => [a.u, a.v, ITEMS[a.type].r])];
+  for (let j = 0; j < 16; j++) {
+    const ang = hrand(0, Math.PI * 2, `ang|${k}|${j}`), rr = hrand(reach[0], Math.min(0.88, reach[1] + j * 0.02), `r|${k}|${j}`), u = rr * Math.cos(ang), v = rr * Math.sin(ang) * 0.9;
+    if (Math.hypot(u, v) + r > 0.92) continue;
+    if (taken.every(([tu, tv, tr]) => Math.hypot(u - tu, v - tv) > (r + tr) * 1.25 + 0.04)) return [u, v];
+  }
+  return null;
 }
 function startAct() {
   const a = planAct(); G.n += 1; a.t0 = G.t; a.landAt = G.t + a.tele / 1000; a.pan = a.who === 'guest' ? -0.7 : clamp(a.u * 0.6, -0.6, 0.6);
@@ -317,7 +332,7 @@ function startAct() {
 function landAct(a) {
   const d = Math.hypot(a.u, a.v);
   if (a.kind === 'place') {
-    const it = addItem(a.type, a.u, a.v, { guest: a.who === 'guest' }); G.tally.placed += 1; if (a.who === 'guest') G.tally.guestActs += 1;
+    const it = addItem(a.type, a.u, a.v, { guest: a.who === 'guest', fill: a.type === 'glass' && a.who === 'her' ? 0.06 : undefined }); G.tally.placed += 1; /* her own glass comes empty: she pours into it */ if (a.who === 'guest') G.tally.guestActs += 1;
     kick(a.u, a.v, massOf(it) * a.hard * 1.6); SFX.set(ITEMS[a.type].kind, a.hard, a.pan);
     if (a.who === 'guest') { if (hash01(`gl|${it.id}`) < 0.6) sayOther(hpick(GUEST_LINES.place, `gp|${it.id}`)); }
     else if (a.drop) { feel('No warning: it lands hard, out at the rim.', true); }
@@ -327,7 +342,7 @@ function landAct(a) {
     kick(a.u, a.v, -massOf(a.item) * 0.9); SFX.take(a.pan);
     if (a.who === 'guest' && hash01(`gt|${a.item.id}`) < 0.7) sayOther(hpick(GUEST_LINES.take, `gt2|${a.item.id}`));
   } else if (a.kind === 'pour') {
-    G.pours.push({ from: a.item, to: a.to, until: G.t + a.len, rate: 0.28 / a.len }); G.tally.poured += 1;
+    G.pours.push({ from: a.item, to: a.to, until: G.t + a.len, rate: 0.28 / a.len, target: 0.8 }); G.tally.poured += 1;
     SFX.pour(a.len, a.pan); if (hash01(`po|${G.id}|${G.n}`) < 0.6) say(hpick(lines('pour'), `pl|${G.id}|${G.n}`));
   } else if (a.kind === 'press') {
     G.press = { u: a.u, v: a.v, until: G.t + a.len, force: a.force }; G.tally.presses += 1; SFX.cloth(a.pan, 0.2);
@@ -373,10 +388,11 @@ function sub(h) {
   G.levelFor = level ? G.levelFor + h : 0; G.tally.levelT += h; if (level) G.tally.levelShare += h;
   // the arms tire: by the load and when the tray is not level
   const M = G.items.reduce((a, it) => a + massOf(it), 0);
-  G.fat = clamp(G.fat + h * (FAT_BASE + FAT_LOAD * M) * (1 + 0.8 * Math.max(0, tiltM - TOL)) * (1 - 0.08 * (S.endur - 3)), 0, 1);
+  // round 2 (author): a level tray does not tire the arms; out of level they tire by the load and by how far it is off
+  G.fat = clamp(G.fat + h * (FAT_BASE + FAT_LOAD * M) * FAT_OFF * clamp((tiltM - TOL) / TOL, 0, 3) * (1 - 0.08 * (S.endur - 3)), 0, 1);
   if (G.fat >= 1) { end('arms'); return; }
   // pouring: the bottle's liquid goes into the glass (the weight moves)
-  for (const p of G.pours) { if (G.t > p.until || !G.items.includes(p.from) || !G.items.includes(p.to)) continue; const q = Math.min(p.rate * h, p.from.fill); p.from.fill -= q; p.to.fill = Math.min(1.02, p.to.fill + q * 1.6); p.to.sloshV[0] += rand(-1, 1) * 0.6 * h * 60; p.to.sloshV[1] += rand(-1, 1) * 0.6 * h * 60; }
+  for (const p of G.pours) { if (G.t > p.until || !G.items.includes(p.from) || !G.items.includes(p.to)) continue; const q = Math.min(p.rate * h, p.from.fill, Math.max(0, (p.target - p.to.fill) / 1.6)); p.from.fill -= q; p.to.fill += q * 1.6; p.to.sloshV[0] += rand(-1, 1) * 0.6 * h * 60; p.to.sloshV[1] += rand(-1, 1) * 0.6 * h * 60; }
   G.pours = G.pours.filter((p) => G.t <= p.until);
   // the liquids keep level and slosh; over the rim they spill
   const acc = [(G.tiltV[0] - G.prevTiltV[0]) / h, (G.tiltV[1] - G.prevTiltV[1]) / h];
@@ -432,32 +448,60 @@ function trayGeom() {
 /** a point of the tray (u right, v near) on the screen; `lift` raises it off the tray (in px) */
 function P(g, u, v, lift = 0) { const x = u * g.rx, y = v * g.ry; const c = Math.cos(g.ang), s = Math.sin(g.ang); return [g.x + x * c - y * s, g.y + x * s + y * c - lift]; }
 function ell(x, y, a, b, rot = 0) { cx.beginPath(); cx.ellipse(x, y, Math.max(0.5, a), Math.max(0.5, b), rot, 0, Math.PI * 2); }
+/* round 2 (author: "more beautiful, not a plain flat disc"): a walnut tray with a brass gallery rim and two handles, the wood's grain and an
+   inlaid ring with brass studs; the things on it drawn as what they are (a stemmed wine glass, a faceted tumbler, a mug with a glazed band,
+   a labelled bottle with its foil, a porcelain plate with biscuits). The grain and the biscuits are fixed per tray (a hash), never drawn anew. */
+const GRAIN = Array.from({ length: 16 }, (_, i) => ({ k: 0.12 + i * 0.055 + hash01(`gr${i}`) * 0.03, dx: (hash01(`gx${i}`) - 0.5) * 0.25, dy: (hash01(`gy${i}`) - 0.5) * 0.18, a: 0.05 + hash01(`ga${i}`) * 0.07, w: 0.6 + hash01(`gw${i}`) * 1.4 }));
 function drawTray(now) {
   const dpr = devicePixelRatio; cx.setTransform(dpr, 0, 0, dpr, 0, 0); cx.clearRect(0, 0, innerWidth, innerHeight);
   if (!G || G.phase === 'idle') return;
   const g = trayGeom(), sq = g.ry / g.rx;
-  // its shadow, its rim (brass) and its face (dark lacquer)
-  cx.save(); cx.filter = 'blur(14px)'; cx.fillStyle = 'rgba(0,0,0,.55)'; ell(g.x, g.y + 26, g.rx * 1.05, g.ry * 1.1, g.ang); cx.fill(); cx.restore();
-  const rimG = cx.createLinearGradient(g.x - g.rx, g.y - g.ry, g.x + g.rx, g.y + g.ry); rimG.addColorStop(0, '#d9b874'); rimG.addColorStop(0.5, '#8a6a32'); rimG.addColorStop(1, '#c9a35c');
-  cx.fillStyle = '#4a3418'; ell(g.x, g.y + 7, g.rx * 1.04, g.ry * 1.04 + 3, g.ang); cx.fill();
-  cx.fillStyle = rimG; ell(g.x, g.y, g.rx * 1.04, g.ry * 1.04, g.ang); cx.fill();
-  const faceG = cx.createRadialGradient(g.x - g.rx * 0.3, g.y - g.ry * 0.5, 4, g.x, g.y, g.rx); faceG.addColorStop(0, '#3a2a22'); faceG.addColorStop(1, '#1a120e');
-  cx.fillStyle = faceG; ell(g.x, g.y, g.rx * 0.97, g.ry * 0.97, g.ang); cx.fill();
+  // its shadow
+  cx.save(); cx.translate(g.x, g.y + 30); cx.rotate(g.ang); cx.scale(1, g.ry / g.rx); const shG = cx.createRadialGradient(0, 0, g.rx * 0.6, 0, 0, g.rx * 1.25); shG.addColorStop(0, 'rgba(0,0,0,.55)'); shG.addColorStop(1, 'rgba(0,0,0,0)'); cx.fillStyle = shG; cx.beginPath(); cx.arc(0, 0, g.rx * 1.25, 0, Math.PI * 2); cx.fill(); cx.restore(); // a gradient, not a canvas blur (a blur each frame is too slow)
+  const brass = (x0, y0, x1, y1) => { const b = cx.createLinearGradient(x0, y0, x1, y1); b.addColorStop(0, '#f1d692'); b.addColorStop(0.28, '#b8893e'); b.addColorStop(0.55, '#7a5522'); b.addColorStop(0.8, '#c99c4e'); b.addColorStop(1, '#8c6428'); return b; };
+  // the handles: brass loops out at both sides, under the rim
+  for (const side of [-1, 1]) {
+    const [hx, hy] = P(g, side * 1.06, 0);
+    cx.save(); cx.translate(hx, hy); cx.rotate(g.ang);
+    cx.strokeStyle = 'rgba(0,0,0,.45)'; cx.lineWidth = 9; cx.beginPath(); cx.ellipse(side * g.rx * 0.05, 6, g.rx * 0.09, g.ry * 0.32, 0, side > 0 ? -Math.PI / 2 : Math.PI / 2, side > 0 ? Math.PI / 2 : Math.PI * 1.5); cx.stroke();
+    cx.strokeStyle = brass(-g.rx * 0.1, -g.ry * 0.3, g.rx * 0.1, g.ry * 0.3); cx.lineWidth = 7; cx.beginPath(); cx.ellipse(side * g.rx * 0.05, 0, g.rx * 0.09, g.ry * 0.32, 0, side > 0 ? -Math.PI / 2 : Math.PI / 2, side > 0 ? Math.PI / 2 : Math.PI * 1.5); cx.stroke();
+    cx.strokeStyle = 'rgba(255,240,200,.5)'; cx.lineWidth = 1.5; cx.beginPath(); cx.ellipse(side * g.rx * 0.05, -2, g.rx * 0.09, g.ry * 0.32, 0, side > 0 ? -Math.PI / 2 : Math.PI / 2, side > 0 ? -Math.PI / 6 : Math.PI * 1.2); cx.stroke();
+    cx.restore();
+  }
+  // the gallery rim: its outer wall (the near side shows), its top, a dark bevel inside
+  cx.fillStyle = '#4a3216'; ell(g.x, g.y + 9, g.rx * 1.05, g.ry * 1.05 + 4, g.ang); cx.fill();
+  cx.fillStyle = brass(g.x - g.rx, g.y - g.ry, g.x + g.rx, g.y + g.ry); ell(g.x, g.y, g.rx * 1.05, g.ry * 1.05, g.ang); cx.fill();
+  cx.strokeStyle = 'rgba(255,244,210,.55)'; cx.lineWidth = 1.2; ell(g.x, g.y - 1, g.rx * 1.045, g.ry * 1.045, g.ang); cx.stroke();
+  cx.fillStyle = '#2a1a0c'; ell(g.x, g.y + 1.5, g.rx * 0.985, g.ry * 0.985, g.ang); cx.fill();
+  // the walnut face
+  const faceG = cx.createRadialGradient(g.x - g.rx * 0.3, g.y - g.ry * 0.6, 4, g.x, g.y, g.rx * 1.05); faceG.addColorStop(0, '#5c3b24'); faceG.addColorStop(0.6, '#3e2616'); faceG.addColorStop(1, '#25150b');
+  cx.fillStyle = faceG; ell(g.x, g.y + 2, g.rx * 0.965, g.ry * 0.965, g.ang); cx.fill();
+  cx.save(); ell(g.x, g.y + 2, g.rx * 0.965, g.ry * 0.965, g.ang); cx.clip();
+  // the grain: long thin rings, off-centre, as a plank's figure
+  for (const gr of GRAIN) { const [gx, gy] = P(g, gr.dx, gr.dy); cx.strokeStyle = `rgba(140,92,52,${gr.a})`; cx.lineWidth = gr.w; ell(gx, gy, g.rx * gr.k * 1.6, g.ry * gr.k * 0.9, g.ang); cx.stroke(); }
+  // the inlay: a ring of light wood with a brass line and studs
+  const [ix, iy] = P(g, 0, 0);
+  cx.strokeStyle = 'rgba(214,170,110,.32)'; cx.lineWidth = 5; ell(ix, iy, g.rx * 0.82, g.ry * 0.82, g.ang); cx.stroke();
+  cx.strokeStyle = 'rgba(232,196,120,.55)'; cx.lineWidth = 1; ell(ix, iy, g.rx * 0.86, g.ry * 0.86, g.ang); cx.stroke(); ell(ix, iy, g.rx * 0.78, g.ry * 0.78, g.ang); cx.stroke();
+  for (let a = 0; a < 16; a++) { const th = (a / 16) * Math.PI * 2; const [sx, sy] = P(g, Math.cos(th) * 0.82, Math.sin(th) * 0.82); cx.fillStyle = 'rgba(240,210,140,.8)'; ell(sx, sy, 1.8, 1.8 * Math.max(0.5, sq * 1.6)); cx.fill(); }
   // the light on it, sliding with the tilt
-  cx.save(); ell(g.x, g.y, g.rx * 0.97, g.ry * 0.97, g.ang); cx.clip();
-  const sh = cx.createRadialGradient(g.x - g.t[0] * g.rx * 0.6, g.y - g.ry * 0.6 - g.t[1] * g.ry * 0.5, 2, g.x, g.y, g.rx * 0.9); sh.addColorStop(0, 'rgba(255,236,200,.16)'); sh.addColorStop(1, 'rgba(255,236,200,0)');
+  const sh = cx.createRadialGradient(g.x - g.t[0] * g.rx * 0.6 - g.rx * 0.2, g.y - g.ry * 0.55 - g.t[1] * g.ry * 0.5, 2, g.x, g.y, g.rx * 0.9); sh.addColorStop(0, 'rgba(255,236,200,.2)'); sh.addColorStop(1, 'rgba(255,236,200,0)');
   cx.fillStyle = sh; cx.fillRect(0, 0, innerWidth, innerHeight);
-  // stains: what was spilled
-  for (const st of G.stains) { const [x, y] = P(g, st.u, st.v); cx.fillStyle = `rgba(${st.color},${st.a})`; ell(x, y, st.r * g.rx, st.r * g.ry, g.ang); cx.fill(); }
+  // the varnish's reflection of the things on it (faint, below each)
+  for (const it of G.items) { const [x, y] = P(g, it.u, it.v); const r = ITEMS[it.type].r * g.rx; const rg = cx.createRadialGradient(x, y + r * sq * 1.4, 1, x, y + r * sq * 1.4, r * 1.3); rg.addColorStop(0, `rgba(${ITEMS[it.type].color},.18)`); rg.addColorStop(1, 'rgba(0,0,0,0)'); cx.fillStyle = rg; ell(x, y + r * sq * 1.4, r * 1.3, r * sq * 1.2, g.ang); cx.fill(); }
+  // stains: what was spilled (wet: a darker body, a bright edge)
+  for (const st of G.stains) { const [x, y] = P(g, st.u, st.v); cx.fillStyle = `rgba(${st.color},${st.a})`; ell(x, y, st.r * g.rx, st.r * g.ry, g.ang); cx.fill(); cx.strokeStyle = 'rgba(255,255,255,.18)'; cx.lineWidth = 1; ell(x - 1, y - 1, st.r * g.rx * 0.8, st.r * g.ry * 0.7, g.ang); cx.stroke(); }
   cx.restore();
-  // the level (a hint): a small round level in the middle of the tray
+  // the far edge of the rim catches the light
+  cx.save(); cx.translate(g.x, g.y); cx.rotate(g.ang); cx.strokeStyle = 'rgba(255,246,220,.6)'; cx.lineWidth = 2; cx.beginPath(); cx.ellipse(0, 0, g.rx * 1.02, g.ry * 1.02, 0, Math.PI * 1.15, Math.PI * 1.85); cx.stroke(); cx.restore();
+  // the level (a hint): a small round brass level in the middle of the tray
   if (S.bubble) {
-    const [lx, ly] = P(g, 0, 0); const lr = g.rx * 0.11;
-    cx.fillStyle = 'rgba(200,150,40,.55)'; ell(lx, ly, lr, lr * sq, g.ang); cx.fill();
-    cx.strokeStyle = '#d9b874'; cx.lineWidth = 2; ell(lx, ly, lr, lr * sq, g.ang); cx.stroke();
-    const lvl = Math.hypot(g.t[0], g.t[1]) <= TOL; cx.strokeStyle = lvl ? 'rgba(255,240,200,.9)' : 'rgba(255,240,200,.35)'; cx.lineWidth = 1; ell(lx, ly, lr * 0.45, lr * 0.45 * sq, g.ang); cx.stroke();
-    const bx = clamp(-g.t[0] / 0.6, -1, 1) * lr * 0.75, by = clamp(-g.t[1] / 0.6, -1, 1) * lr * 0.75 * sq; // the bubble goes to the high side
-    cx.fillStyle = 'rgba(255,250,230,.85)'; ell(lx + bx, ly + by, lr * 0.22, lr * 0.22 * sq, g.ang); cx.fill();
+    const [lx, ly] = P(g, 0, 0); const lr = g.rx * 0.1;
+    cx.fillStyle = brass(lx - lr, ly - lr, lx + lr, ly + lr); ell(lx, ly, lr * 1.18, lr * 1.18 * sq, g.ang); cx.fill();
+    const lg = cx.createRadialGradient(lx, ly, 1, lx, ly, lr); lg.addColorStop(0, 'rgba(236,200,96,.95)'); lg.addColorStop(1, 'rgba(170,120,30,.95)'); cx.fillStyle = lg; ell(lx, ly, lr, lr * sq, g.ang); cx.fill();
+    const lvl = Math.hypot(g.t[0], g.t[1]) <= TOL; cx.strokeStyle = lvl ? 'rgba(255,246,220,.95)' : 'rgba(80,50,10,.5)'; cx.lineWidth = 1; ell(lx, ly, lr * 0.45, lr * 0.45 * sq, g.ang); cx.stroke();
+    const bx = clamp(-g.t[0] / 0.6, -1, 1) * lr * 0.75, by = clamp(-g.t[1] / 0.6, -1, 1) * lr * 0.75 * sq;
+    cx.fillStyle = 'rgba(255,252,236,.9)'; ell(lx + bx, ly + by, lr * 0.22, lr * 0.22 * sq, g.ang); cx.fill();
   }
   // her hand's shadow where she (or a visitor) is about to set something down or take it
   for (const a of G.acts) {
@@ -472,40 +516,85 @@ function drawTray(now) {
   // drops in flight
   for (const dr of G.drops) { const [x, y] = P(g, dr.u + dr.du * dr.t, dr.v + dr.dv * dr.t, -dr.t * dr.t * 240); cx.fillStyle = `rgba(${dr.color},${(0.8 * (1 - dr.t)).toFixed(2)})`; ell(x, y, 2.6, 3.4); cx.fill(); }
 }
+/* the liquid's surface keeps level: it shows moved toward the low side, by the tilt and its slosh */
+const surfOff = (it) => [G.tilt[0] * SLOSH_TILT + it.slosh[0], G.tilt[1] * SLOSH_TILT + it.slosh[1]];
+function glint(x0, y0, x1, y1, a = 0.35, w = 2) { cx.strokeStyle = `rgba(255,255,255,${a})`; cx.lineWidth = w; cx.lineCap = 'round'; cx.beginPath(); cx.moveTo(x0, y0); cx.lineTo(x1, y1); cx.stroke(); }
 function drawItem(g, it, sq) {
   const d = ITEMS[it.type]; const near = 1 + it.v * 0.12; const r = d.r * g.rx * near; const [x, y] = P(g, it.u, it.v);
-  cx.save();
-  cx.fillStyle = 'rgba(0,0,0,.35)'; ell(x + 3, y + 3, r * 1.05, r * sq * 1.05, g.ang); cx.fill();
-  if (d.kind === 'plate') {
-    cx.fillStyle = `rgb(${d.color})`; ell(x, y - 2, r, r * sq, g.ang); cx.fill();
-    cx.strokeStyle = 'rgba(0,0,0,.18)'; cx.lineWidth = 1; ell(x, y - 2, r * 0.7, r * 0.7 * sq, g.ang); cx.stroke();
-  } else {
-    const hgt = (d.kind === 'bottle' ? 3.2 : d.kind === 'mug' ? 1.1 : 1.6) * r; // its height, rising off the tray
-    const top = [x, y - hgt];
-    // the body: a soft column
-    const bodyG = cx.createLinearGradient(x - r, 0, x + r, 0);
-    if (d.kind === 'glass') { bodyG.addColorStop(0, 'rgba(220,235,255,.10)'); bodyG.addColorStop(0.5, 'rgba(220,235,255,.03)'); bodyG.addColorStop(1, 'rgba(220,235,255,.14)'); }
-    else if (d.kind === 'mug') { bodyG.addColorStop(0, '#d8d0c4'); bodyG.addColorStop(0.6, '#f2ece2'); bodyG.addColorStop(1, '#b8afa2'); }
-    else { bodyG.addColorStop(0, `rgba(${d.color},.95)`); bodyG.addColorStop(0.5, 'rgba(120,160,120,.9)'); bodyG.addColorStop(1, `rgba(${d.color},.95)`); }
-    cx.fillStyle = bodyG; cx.beginPath(); cx.moveTo(x - r, y); cx.lineTo(x - r, top[1]); cx.lineTo(x + r, top[1]); cx.lineTo(x + r, y); cx.ellipse(x, y, r, r * sq, 0, 0, Math.PI); cx.fill();
-    // the liquid inside a glass, seen through it: its height by the fill
-    if (d.kind === 'glass') { const lh = hgt * clamp(it.fill, 0, 1); cx.fillStyle = `rgba(${d.color},.55)`; cx.beginPath(); cx.moveTo(x - r * 0.92, y); cx.lineTo(x - r * 0.92, y - lh); cx.lineTo(x + r * 0.92, y - lh); cx.lineTo(x + r * 0.92, y); cx.ellipse(x, y, r * 0.92, r * sq * 0.92, 0, 0, Math.PI); cx.fill(); }
-    // the mouth and the surface: the surface keeps level, so it shows moved toward the low side (by the tilt and its slosh)
-    if (d.kind !== 'bottle') {
-      const off = [G.tilt[0] * SLOSH_TILT + it.slosh[0], G.tilt[1] * SLOSH_TILT + it.slosh[1]];
-      const lvlY = top[1] + hgt * (1 - clamp(it.fill, 0, 1)) * (d.kind === 'glass' ? 1 : 0.6);
-      cx.fillStyle = `rgba(${d.color},${d.kind === 'mug' ? 1 : 0.8})`;
-      const sx = clamp(off[0], -1, 1) * r * 0.55, sy = clamp(off[1], -1, 1) * r * sq * 0.55; const over = Math.hypot(off[0], off[1]) / MARGIN(it.fill);
-      cx.save(); ell(top[0], top[1], r, r * sq); cx.clip();
-      ell(x + sx, lvlY + sy, r * 0.95, r * sq * 0.95); cx.fill();
-      if (over > 0.7) { cx.fillStyle = `rgba(255,255,255,${(0.35 * (over - 0.7) / 0.3).toFixed(2)})`; ell(x + sx * 1.6, lvlY + sy * 1.6, r * 0.25, r * sq * 0.25); cx.fill(); } // the near edge glints as it climbs the rim
-      cx.restore();
-      cx.strokeStyle = d.kind === 'mug' ? '#efe8dc' : 'rgba(230,240,255,.55)'; cx.lineWidth = d.kind === 'mug' ? 3 : 1.4; ell(top[0], top[1], r, r * sq); cx.stroke();
-      if (d.kind === 'mug') { cx.strokeStyle = '#e2dace'; cx.lineWidth = 4; cx.beginPath(); cx.ellipse(x + r * 1.15, y - hgt * 0.5, r * 0.35, hgt * 0.3, 0, -Math.PI / 2, Math.PI / 2); cx.stroke(); }
-    } else {
-      cx.fillStyle = `rgba(${d.color},1)`; cx.fillRect(x - r * 0.35, top[1] - r * 1.4, r * 0.7, r * 1.4); ell(x, top[1], r, r * sq); cx.fill();
-      cx.fillStyle = 'rgba(255,255,255,.2)'; cx.fillRect(x - r * 0.6, top[1] + 4, r * 0.18, hgt * 0.7);
-    }
+  const off = surfOff(it), over = d.liquid ? Math.hypot(off[0], off[1]) / MARGIN(Math.max(0.05, it.fill)) : 0;
+  const sx = clamp(off[0], -1, 1) * r * 0.5, sy = clamp(off[1], -1, 1) * r * sq * 0.5;
+  cx.save(); cx.lineCap = 'round';
+  cx.fillStyle = 'rgba(0,0,0,.4)'; ell(x + 3, y + 3, r * 1.02, r * sq * 1.02, g.ang); cx.fill();
+  if (it.type === 'glass') {
+    // a stemmed wine glass: the foot, the stem, the bowl with the wine in it
+    const H = r * 2.6, yb = y - H * 0.45, yt = y - H, sqr = Math.max(0.22, sq);
+    cx.fillStyle = 'rgba(220,235,255,.12)'; ell(x, y, r * 0.78, r * 0.78 * sqr, 0); cx.fill(); cx.strokeStyle = 'rgba(235,245,255,.5)'; cx.lineWidth = 1; ell(x, y, r * 0.78, r * 0.78 * sqr, 0); cx.stroke();
+    cx.fillStyle = 'rgba(225,238,255,.35)'; cx.fillRect(x - r * 0.06, yb, r * 0.12, y - yb); glint(x - r * 0.02, yb + 2, x - r * 0.02, y - 3, 0.5, 1);
+    const bowl = () => { cx.beginPath(); cx.moveTo(x - r, yt); cx.bezierCurveTo(x - r, yt + (yb - yt) * 0.75, x - r * 0.45, yb, x, yb); cx.bezierCurveTo(x + r * 0.45, yb, x + r, yt + (yb - yt) * 0.75, x + r, yt); cx.ellipse(x, yt, r, r * sqr, 0, 0, Math.PI, true); cx.closePath(); };
+    bowl(); cx.fillStyle = 'rgba(220,235,255,.08)'; cx.fill();
+    const fill = clamp(it.fill, 0, 1), yl = yb - (yb - yt) * fill * 0.92, wl = r * (0.4 + 0.6 * Math.pow(fill * 0.92, 0.55));
+    cx.save(); bowl(); cx.clip();
+    const wg = cx.createLinearGradient(0, yl, 0, yb); wg.addColorStop(0, 'rgba(176,32,52,.92)'); wg.addColorStop(1, 'rgba(84,8,22,.95)'); cx.fillStyle = wg; cx.fillRect(x - r, yl, r * 2, yb - yl + 2);
+    cx.fillStyle = 'rgba(150,20,40,.95)'; ell(x + sx, yl + sy, wl, wl * sqr, 0); cx.fill();
+    cx.strokeStyle = 'rgba(255,170,180,.45)'; cx.lineWidth = 1; ell(x + sx, yl + sy, wl, wl * sqr, 0); cx.stroke();
+    if (over > 0.7) { cx.fillStyle = `rgba(255,220,225,${(0.5 * (over - 0.7) / 0.3).toFixed(2)})`; ell(x + sx * 1.8, yl + sy * 1.8, wl * 0.3, wl * 0.3 * sqr, 0); cx.fill(); }
+    cx.restore();
+    cx.strokeStyle = 'rgba(235,245,255,.55)'; cx.lineWidth = 1.3; bowl(); cx.stroke(); ell(x, yt, r, r * sqr, 0); cx.stroke();
+    glint(x - r * 0.72, yt + (yb - yt) * 0.15, x - r * 0.5, yt + (yb - yt) * 0.7, 0.55, 2.2); glint(x + r * 0.7, yt + (yb - yt) * 0.2, x + r * 0.62, yt + (yb - yt) * 0.4, 0.3, 1.4);
+  } else if (it.type === 'water') {
+    // a faceted tumbler with a thick base, the water slightly blue
+    const H = r * 1.5, yt = y - H, rb = r * 0.86, sqr = Math.max(0.22, sq);
+    const body = () => { cx.beginPath(); cx.moveTo(x - r, yt); cx.lineTo(x - rb, y); cx.ellipse(x, y, rb, rb * sqr, 0, Math.PI, 0, true); cx.lineTo(x + r, yt); cx.ellipse(x, yt, r, r * sqr, 0, 0, Math.PI, true); cx.closePath(); };
+    body(); cx.fillStyle = 'rgba(220,236,255,.1)'; cx.fill();
+    const fill = clamp(it.fill, 0, 1), yl = y - H * 0.12 - (H * 0.86) * fill;
+    cx.save(); body(); cx.clip();
+    cx.fillStyle = 'rgba(160,200,235,.34)'; cx.fillRect(x - r, yl, r * 2, y - yl + r);
+    cx.fillStyle = 'rgba(190,220,245,.55)'; ell(x + sx, yl + sy, r * 0.95, r * 0.95 * sqr, 0); cx.fill();
+    cx.strokeStyle = 'rgba(255,255,255,.7)'; cx.lineWidth = 1.2; ell(x + sx, yl + sy, r * 0.95, r * 0.95 * sqr, 0); cx.stroke();
+    if (over > 0.7) { cx.fillStyle = `rgba(255,255,255,${(0.55 * (over - 0.7) / 0.3).toFixed(2)})`; ell(x + sx * 1.8, yl + sy * 1.8, r * 0.25, r * 0.25 * sqr, 0); cx.fill(); }
+    cx.fillStyle = 'rgba(230,242,255,.25)'; ell(x, y - H * 0.06, rb * 0.95, rb * sqr * 0.95, 0); cx.fill(); // the thick base
+    for (let f = -2; f <= 2; f++) glint(x + f * r * 0.36, yt + 4, x + f * rb * 0.36, y - 3, 0.12 + (f === -1 ? 0.25 : 0), 1); // the facets
+    cx.restore();
+    cx.strokeStyle = 'rgba(235,245,255,.6)'; cx.lineWidth = 1.3; body(); cx.stroke(); ell(x, yt, r, r * sqr, 0); cx.stroke();
+  } else if (it.type === 'mug') {
+    // a glazed mug with a band, the coffee with its crema ring
+    const H = r * 1.15, yt = y - H, sqr = Math.max(0.22, sq);
+    const cg = cx.createLinearGradient(x - r, 0, x + r, 0); cg.addColorStop(0, '#c9bfb0'); cg.addColorStop(0.35, '#f6f0e6'); cg.addColorStop(1, '#a89e90');
+    cx.strokeStyle = '#d9cfc0'; cx.lineWidth = r * 0.22; cx.beginPath(); cx.ellipse(x + r * 1.05, y - H * 0.5, r * 0.36, H * 0.3, 0, -Math.PI / 2, Math.PI / 2); cx.stroke();
+    cx.fillStyle = cg; cx.beginPath(); cx.moveTo(x - r, yt); cx.lineTo(x - r, y); cx.ellipse(x, y, r, r * sqr, 0, Math.PI, 0, true); cx.lineTo(x + r, yt); cx.closePath(); cx.fill();
+    const band = cx.createLinearGradient(x - r, 0, x + r, 0); band.addColorStop(0, '#7a3226'); band.addColorStop(0.4, '#b6553f'); band.addColorStop(1, '#6a2a20');
+    cx.fillStyle = band; cx.fillRect(x - r, yt + H * 0.18, r * 2, H * 0.16); cx.fillRect(x - r, yt + H * 0.42, r * 2, H * 0.05);
+    cx.fillStyle = '#efe8dc'; ell(x, yt, r, r * sqr, 0); cx.fill();
+    cx.save(); ell(x, yt, r * 0.86, r * 0.86 * sqr, 0); cx.clip();
+    cx.fillStyle = '#2e1a0e'; cx.fillRect(x - r, yt - r, r * 2, r * 2);
+    cx.fillStyle = '#6e4426'; ell(x + sx, yt + sy, r * 0.82, r * 0.82 * sqr, 0); cx.fill();
+    cx.fillStyle = '#3a200f'; ell(x + sx, yt + sy, r * 0.62, r * 0.62 * sqr, 0); cx.fill();
+    if (over > 0.7) { cx.fillStyle = `rgba(255,230,200,${(0.5 * (over - 0.7) / 0.3).toFixed(2)})`; ell(x + sx * 1.7, yt + sy * 1.7, r * 0.22, r * 0.22 * sqr, 0); cx.fill(); }
+    cx.restore();
+    glint(x - r * 0.6, yt + H * 0.55, x - r * 0.6, y - 4, 0.45, 2);
+  } else if (it.type === 'bottle') {
+    // a dark green bottle: its body, shoulders, neck and foil; a paper label
+    const H = r * 4.2, ysh = y - H * 0.6, yn = y - H * 0.8, yt = y - H, rn = r * 0.3;
+    const gg = cx.createLinearGradient(x - r, 0, x + r, 0); gg.addColorStop(0, '#0f2a18'); gg.addColorStop(0.3, '#2f6a44'); gg.addColorStop(0.55, '#1b4a2c'); gg.addColorStop(1, '#0c2012');
+    cx.fillStyle = gg; cx.beginPath(); cx.moveTo(x - r, y); cx.lineTo(x - r, ysh); cx.bezierCurveTo(x - r, yn, x - rn, ysh - (ysh - yn) * 0.2, x - rn, yn); cx.lineTo(x - rn, yt); cx.lineTo(x + rn, yt); cx.lineTo(x + rn, yn); cx.bezierCurveTo(x + rn, ysh - (ysh - yn) * 0.2, x + r, yn, x + r, ysh); cx.lineTo(x + r, y); cx.ellipse(x, y, r, r * Math.max(0.22, sq), 0, 0, Math.PI); cx.closePath(); cx.fill();
+    const fg = cx.createLinearGradient(x - rn, 0, x + rn, 0); fg.addColorStop(0, '#5a1018'); fg.addColorStop(0.4, '#b4323c'); fg.addColorStop(1, '#4a0c12');
+    cx.fillStyle = fg; cx.fillRect(x - rn * 1.08, yt, rn * 2.16, (yn - yt) * 0.55);
+    cx.fillStyle = '#d8b35a'; cx.fillRect(x - rn * 1.08, yt + (yn - yt) * 0.5, rn * 2.16, 2);
+    const lg = cx.createLinearGradient(x - r, 0, x + r, 0); lg.addColorStop(0, '#bfb39a'); lg.addColorStop(0.35, '#f1e8d2'); lg.addColorStop(1, '#a99d84');
+    const ly0 = y - H * 0.45, ly1 = y - H * 0.18; cx.fillStyle = lg; cx.fillRect(x - r * 0.98, ly0, r * 1.96, ly1 - ly0);
+    cx.strokeStyle = 'rgba(120,40,40,.7)'; cx.lineWidth = 1; cx.strokeRect(x - r * 0.8, ly0 + 4, r * 1.6, ly1 - ly0 - 8);
+    cx.fillStyle = 'rgba(140,40,40,.75)'; ell(x, (ly0 + ly1) / 2, r * 0.22, (ly1 - ly0) * 0.18, 0); cx.fill();
+    glint(x - r * 0.55, ysh + 6, x - r * 0.55, y - 6, 0.35, 2.5); glint(x - rn * 0.4, yn + 2, x - rn * 0.4, yt + (yn - yt) * 0.6, 0.3, 1.2);
+  } else if (it.type === 'plate') {
+    // a porcelain plate with a gold line, and her biscuits on it
+    const sqr = Math.max(0.22, sq);
+    cx.fillStyle = '#e9e5dc'; ell(x, y - 2, r, r * sqr, 0); cx.fill();
+    cx.strokeStyle = 'rgba(200,160,70,.85)'; cx.lineWidth = 1.2; ell(x, y - 2, r * 0.92, r * 0.92 * sqr, 0); cx.stroke();
+    cx.fillStyle = '#d8d3c8'; ell(x, y - 1, r * 0.62, r * 0.62 * sqr, 0); cx.fill();
+    for (let b = 0; b < 3; b++) { const ba = hash01(`bis${it.id}${b}`) * Math.PI * 2, br = r * 0.32 * hash01(`bisr${it.id}${b}`); const bx = x + Math.cos(ba) * br, by = y - 3 + Math.sin(ba) * br * sqr;
+      cx.fillStyle = '#b98a4e'; ell(bx, by, r * 0.24, r * 0.24 * sqr, 0); cx.fill(); cx.fillStyle = '#d6a868'; ell(bx - 1, by - 1.5, r * 0.2, r * 0.2 * sqr, 0); cx.fill();
+      cx.fillStyle = 'rgba(110,70,30,.7)'; for (let dd = 0; dd < 3; dd++) { ell(bx + (dd - 1) * r * 0.08, by - 1, 1.2, 0.8); cx.fill(); } }
+    glint(x - r * 0.7, y - 2 - r * sqr * 0.4, x - r * 0.3, y - 2 - r * sqr * 0.85, 0.5, 1.5);
   }
   cx.restore();
 }
