@@ -1,0 +1,616 @@
+<!doctype html>
+<!--
+  P16c reference prototype: BALANCE (P16b §6.3; the "function" step of objectification, P17b §2). Round 1 (2026-11-28), scheme A (author):
+  the tray in her service. The commander kneels before her chair and holds her tray (the preset kneel_holding); the mouse is the hands
+  (weight.html's balance: move toward where the weight is); the tray tilts in two axes. She and her visitors set things down, take them,
+  pour, press its edge: each thing moves the centre of weight; the liquids keep level and slosh, and spill over the rim of a glass that is
+  tilted too far or jolted; past a steeper tilt things slide and fall. The arms tire with the load and the time (a tremor, then the far edge
+  sinks). Not weight.html's game: the load is light and always changing, and a fault is seen (a stain, a clink, a fall).
+    npm run proto -- balance [--sprite <png|webp|svg>]
+  Copied: her view from below (strokes.html's VIEWS.her), her two face layers and their crossfade (foot_care.html), her hand (slap.html's say),
+  the sound kit (slap.html), the spring stepped in pieces of at most 8 ms (weight.html's fix).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alius · balance · prototype</title>
+<style>
+@font-face { font-family: "Caveat"; src: url("%%ASSET:fonts/hand-caveat-400.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 300; src: url("%%ASSET:fonts/inter-300.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 400; src: url("%%ASSET:fonts/inter-400.woff2%%") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; src: url("%%ASSET:fonts/ibm-plex-mono-400.woff2%%") format("woff2"); }
+:root { --her: #ff9ec7; --hs: 1; --glass: rgba(14, 12, 20, 0.58); --line: rgba(255, 255, 255, 0.12); --ink: #ece8f2; --dim: rgba(236, 232, 242, 0.55); }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: var(--ink); font-family: Inter, system-ui, sans-serif; font-weight: 300; }
+#stage { position: fixed; inset: 0; overflow: hidden; cursor: none; }
+#world { position: absolute; inset: -6%; will-change: transform; }
+#backdrop { position: absolute; inset: 0; background-size: cover; background-position: center; filter: blur(3px) brightness(.6); }
+.her { position: absolute; left: 0; top: 0; transform-origin: 50% 100%; will-change: transform, filter, opacity; user-select: none; -webkit-user-drag: none; transition-property: opacity; transition-timing-function: ease; }
+#trayC { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#vig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 55%, transparent 50%, rgba(0,0,0,.72) 100%); }
+#strain { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse 70% 62% at 50% 60%, rgba(0,0,0,0) 50%, rgba(40,0,0,.75) 100%); }
+#hand { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.her-line { position: absolute; font-family: Caveat, cursive; color: var(--her); white-space: nowrap; line-height: 1; font-size: calc(44px * var(--hs));
+  text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.85), 0 0 28px rgba(0,0,0,.6); animation: write var(--write, 600ms) steps(var(--steps, 12), end) both; transition: opacity .5s; }
+.her-line.right { transform-origin: right center; }
+.her-line.gone { opacity: 0; }
+.her-line.other { color: #cfd8e6; font-size: calc(34px * var(--hs)); }
+@keyframes write { from { clip-path: inset(-30% 100% -30% -8%); } to { clip-path: inset(-30% -8% -30% -8%); } }
+#feel { position: absolute; left: 50%; bottom: 38vh; transform: translateX(-50%); width: min(900px, 50vw); text-align: center; pointer-events: none; z-index: 5; }
+#feel div { font: italic 300 19px/1.5 Inter, sans-serif; color: #cfe0ff; text-shadow: 0 1px 3px #000, 0 0 16px rgba(0,0,0,.8); animation: feel 4.2s ease-out both; }
+#feel div.sharp { color: #ffe2b5; }
+@keyframes feel { 0% { opacity: 0; transform: translateY(6px); } 12% { opacity: .95; transform: none; } 70% { opacity: .85; } 100% { opacity: 0; } }
+#reply { position: absolute; left: 50%; top: 4vh; transform: translateX(-50%); width: min(980px, 62vw); font-size: 19px; line-height: 1.5; text-align: center;
+  text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.7); pointer-events: none; }
+#reply .act { font-style: italic; color: var(--dim); }
+#stopPill { position: absolute; right: 36px; bottom: 30px; padding: 7px 14px; border-radius: 18px; font: 11px "IBM Plex Mono", monospace; letter-spacing: .12em;
+  background: rgba(60, 10, 14, .55); border: 1px solid rgba(255, 120, 120, .35); color: #ffd6d6; display: none; cursor: pointer; z-index: 7; }
+body.reduced .her-line { animation: none; }
+/* ---------- prototype only ---------- */
+.card { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); width: 540px; padding: 22px 26px; border-radius: 18px; z-index: 30; cursor: auto;
+  background: rgba(12, 11, 18, .9); border: 1px solid var(--line); display: none; }
+.card h3 { margin: 0 0 10px; font: 13px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .1em; color: var(--dim); }
+.card .facts { font: 13px "IBM Plex Mono", monospace; color: #cfcbe0; line-height: 1.7; white-space: pre-wrap; }
+.card .words { margin-top: 12px; font-size: 15px; line-height: 1.55; }
+.btn { display: inline-block; margin-top: 12px; padding: 9px 18px; border-radius: 20px; border: 1px solid var(--line); background: rgba(255,255,255,.06); color: var(--ink); font: 14px Inter, sans-serif; cursor: pointer; }
+#panel { position: fixed; top: 14px; right: 14px; width: 320px; max-height: calc(100vh - 28px); overflow: auto; padding: 14px 16px; border-radius: 14px; z-index: 50;
+  background: rgba(10, 10, 14, .86); border: 1px solid var(--line); font: 12px "IBM Plex Mono", monospace; color: #cfcbe0; cursor: auto; }
+#panel.hidden { display: none; }
+#panel h4 { margin: 12px 0 6px; font-weight: 400; color: #8d88a6; font-variant: small-caps; letter-spacing: .08em; }
+#panel h4:first-child { margin-top: 0; }
+#panel .row { display: flex; flex-wrap: wrap; gap: 4px; }
+#panel button.opt { padding: 4px 8px; border-radius: 10px; border: 1px solid #3a3650; background: #17151f; color: #cfcbe0; font: 12px "IBM Plex Mono", monospace; cursor: pointer; }
+#panel button.opt.on { background: #3b3360; border-color: #8a7fd0; color: #fff; }
+#panel label { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+#panel input[type=range] { flex: 1; }
+#panel select { background: #17151f; color: #cfcbe0; border: 1px solid #3a3650; font: 12px "IBM Plex Mono", monospace; }
+#panel .note { color: #77738c; line-height: 1.45; margin-top: 8px; }
+#stats { white-space: pre; color: #a9a4c4; line-height: 1.5; }
+#start { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 60; background: rgba(0,0,0,.35); cursor: auto; }
+#start .box { width: 600px; padding: 26px 30px; border-radius: 18px; background: rgba(12, 11, 18, .88); border: 1px solid var(--line); line-height: 1.6; font-size: 15px; }
+#start .box h2 { margin: 0 0 8px; font: 15px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .12em; color: #a9a3c7; }
+#start kbd { font: 12px "IBM Plex Mono", monospace; padding: 1px 6px; border: 1px solid #555; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="world">
+    <div id="backdrop"></div>
+    <img id="her" class="her" alt="" draggable="false"><img id="her2" class="her" alt="" draggable="false" style="opacity:0">
+  </div>
+  <canvas id="trayC"></canvas>
+  <div id="vig"></div>
+  <div id="strain"></div>
+  <div id="hand"></div>
+  <div id="feel"></div>
+  <div id="reply"></div>
+  <div id="stopPill">STOP WORD</div>
+  <div class="card" id="summary"><h3>prototype · the tray</h3><div class="facts" id="sumFacts"></div><div class="words" id="sumWords"></div><span class="btn" id="again">again</span></div>
+</div>
+<div id="panel">
+  <h4>the tray</h4>
+  <div class="row"><button class="opt" id="beginBtn">begin (B)</button><button class="opt" id="stopBtn">stop word (Esc)</button></div>
+  <label>length <input type="range" id="len" min="30" max="150" step="10" value="70"><span id="lenV">70</span> s</label>
+  <label><input type="checkbox" id="guests" checked> her visitors take and leave things</label>
+  <label><input type="checkbox" id="bubble" checked> the level in the tray (a hint)</label>
+  <h4>her style</h4>
+  <div class="row" id="styles"></div>
+  <div class="note" id="styleNote"></div>
+  <h4>her manner (−2 … +2)</h4>
+  <label>tempo <input type="range" id="mTempo" min="-2" max="2" value="0"><span id="mTempoV">0</span></label>
+  <label>intensity <input type="range" id="mInt" min="-2" max="2" value="0"><span id="mIntV">0</span></label>
+  <h4>the commander</h4>
+  <label>posture (craft) <input type="range" id="craft" min="0" max="5" value="0"><span id="craftV">0</span></label>
+  <label>endurance <input type="range" id="endur" min="1" max="6" value="3"><span id="endurV">3</span></label>
+  <h4>her look</h4>
+  <label>sprite <input type="file" id="file" accept="image/*" style="width:170px"></label>
+  <label>faces <input type="file" id="faceFiles" accept="image/*" multiple style="width:170px"></label>
+  <div class="note" id="faceNote">Her expression sprites, matched by the label a file name begins with (anger.png, joy-2.webp).</div>
+  <label>accent <input type="color" id="accent" value="#ff9ec7"></label>
+  <label>backdrop <select id="bg"></select></label>
+  <h4>view</h4>
+  <label><input type="checkbox" id="sound" checked> sound <input type="range" id="vol" min="0" max="1" step="0.05" value="0.8"></label>
+  <label><input type="checkbox" id="showNum"> show the numbers (prototype only)</label>
+  <label><input type="checkbox" id="reduced"> reduced motion</label>
+  <div id="stats"></div>
+  <div class="note">The mouse is your hands under the tray: move it toward where the weight is. Her hand's shadow shows where she is about to set something down or take it. Keep the liquids from the rims; past a steep tilt things slide off. H hides this panel.</div>
+</div>
+<div id="start"><div class="box">
+  <h2>balance · the tray · prototype · round 1</h2>
+  You kneel before her chair and hold her tray. <b>The mouse is your hands</b>: move it toward where the weight is, and the tray comes level. She and her visitors set things down and take them, pour, lean on its edge; <b>her hand's shadow</b> falls where she is about to. The liquids keep level as the tray tilts: too far, or a jolt, and they spill. Your arms tire as it goes.<br>
+  <kbd>Esc</kbd> stop word · <kbd>H</kbd> panel.
+  <div><span class="btn" id="go">begin</span></div>
+</div></div>
+<script>
+'use strict';
+const ASSETS = {
+  her: '%%SPRITE%%',
+  bgs: { quarters_2: '%%ASSET:content/core/art/backdrops/quarters_2.webp%%', quarters_1: '%%ASSET:content/core/art/backdrops/quarters_1.webp%%', loc_quarters_commander: '%%ASSET:content/core/art/backdrops/loc_quarters_commander.webp%%', quarters_dark: '%%ASSET:content/core/art/backdrops/quarters_dark.webp%%' },
+};
+const SAMPLE_URLS = {
+  glass1: '%%ASSET:docs/prototypes/assets/ha/glass1.ogg%%', glass2: '%%ASSET:docs/prototypes/assets/ha/glass2.ogg%%', mug1: '%%ASSET:docs/prototypes/assets/ha/mug1.ogg%%', mug2: '%%ASSET:docs/prototypes/assets/ha/mug2.ogg%%',
+  pour: '%%ASSET:docs/prototypes/assets/ha/pour.ogg%%', soft1: '%%ASSET:docs/prototypes/assets/ha/soft1.ogg%%', soft2: '%%ASSET:docs/prototypes/assets/ha/soft2.ogg%%',
+  cloth1: '%%ASSET:docs/prototypes/assets/ha/cloth1.ogg%%', cloth2: '%%ASSET:docs/prototypes/assets/ha/cloth2.ogg%%', cloth3: '%%ASSET:docs/prototypes/assets/ha/cloth3.ogg%%', cloth4: '%%ASSET:docs/prototypes/assets/ha/cloth4.ogg%%',
+  creak1: '%%ASSET:docs/prototypes/assets/ha/creak1.ogg%%', creak2: '%%ASSET:docs/prototypes/assets/ha/creak2.ogg%%', creak3: '%%ASSET:docs/prototypes/assets/ha/creak3.ogg%%',
+  step0: '%%ASSET:docs/prototypes/assets/ha/step_w0.ogg%%', step1: '%%ASSET:docs/prototypes/assets/ha/step_w1.ogg%%', step2: '%%ASSET:docs/prototypes/assets/ha/step_w2.ogg%%',
+  breath: '%%ASSET:docs/prototypes/assets/breath-in-out.mp3%%',
+};
+const $ = (s) => document.querySelector(s);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+function fnv1a(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return h >>> 0; }
+const hash01 = (k) => fnv1a(k) / 4294967296;
+const hpick = (list, k) => list[fnv1a(k) % list.length];
+const hrand = (a, b, k) => a + hash01(k) * (b - a);
+const pick = (a) => a[Math.floor(Math.random() * a.length)]; // sound variety and her lines' placing only
+const rand = (a, b) => a + Math.random() * (b - a);
+
+/* ======================================================================== the numbers (drafts for TUNING.craft.balance)
+   The tray's coordinates: u to the right, v toward the commander (near side +1, her side −1), the rim at radius 1. */
+const ITEMS = { // mass (the tray's own is 1, under the hands), whether it holds a liquid and how full it comes, its look
+  glass:  { mass: 0.22, liquid: true, fill: 0.78, r: 0.11, kind: 'glass', color: '200,70,80', label: 'a glass of wine' },
+  water:  { mass: 0.2, liquid: true, fill: 0.82, r: 0.1, kind: 'glass', color: '170,200,230', label: 'a glass of water' },
+  mug:    { mass: 0.34, liquid: true, fill: 0.72, r: 0.12, kind: 'mug', color: '92,58,36', label: 'her mug', hot: true },
+  bottle: { mass: 0.6, liquid: true, fill: 0.9, r: 0.09, kind: 'bottle', color: '60,90,60', label: 'the bottle', sealed: true },
+  plate:  { mass: 0.3, liquid: false, r: 0.2, kind: 'plate', color: '230,226,214', label: 'a plate' },
+};
+const CTL_K = 90, CTL_D = 14, CTL_SPAN = 1.15;   // the hands: weight.html's balance spring, from the mouse
+const TILT_K = 60, TILT_D = 10;                   // the tray follows the error with a little lag
+const TOL = 0.14;                                 // level: |tilt| ≤ TOL (lit in the tray's level)
+const SLOSH_K = 32, SLOSH_D = 2.4, SLOSH_DRIVE = 1.1, SLOSH_TILT = 0.55; // the liquid's surface keeps level: it moves with the tilt and its jolts
+const MARGIN = (fill) => 0.1 + (1 - fill) * 0.95; // how far the surface may move before it runs over the rim
+const SPILL_PART = 0.05, SPILL_CD = 450;          // a spill takes this much of a full glass; one per glass in this long
+const SLIDE_AT = 0.62, SLIDE_RATE = 0.9;          // past this tilt things slide toward the low side; at the rim they fall
+const FAT_BASE = 0.004, FAT_LOAD = 0.011;         // the arms tire a second, by the load (and faster when the tray is not level)
+const TREMOR = (f) => 0.006 + 0.05 * f * f;       // the hands shake with fatigue
+const SAG = (f) => 0.28 * f * f;                  // the far edge sinks as the arms give
+/* her ways: how often she does something (s), her telegraph (ms: her hand's shadow before it touches), how hard she sets things down, where
+   (how far out), and the share of each act. */
+const STYLES = {
+  neutral:      { gap: [4, 7], tele: 900, hard: 0.8, reach: [0.3, 0.75], acts: { place: 3, take: 2, pour: 2, press: 0, feint: 0 }, talk: 0.4 },
+  affectionate: { gap: [6, 9], tele: 1300, hard: 0.4, reach: [0.15, 0.5], acts: { place: 3, take: 3, pour: 1, press: 0, feint: 0 }, talk: 0.5 },
+  ritual:       { gap: [6, 6], tele: 1100, hard: 0.7, reach: [0.4, 0.6], acts: { place: 3, take: 2, pour: 1, press: 0, feint: 0 }, talk: 0.3, calls: true },
+  drill:        { gap: [3, 3], tele: 700, hard: 1.1, reach: [0.4, 0.8], acts: { place: 3, take: 3, pour: 1, press: 0, feint: 0 }, talk: 0.4, calls: true },
+  cold:         { gap: [4, 6], tele: 600, hard: 1.0, reach: [0.3, 0.8], acts: { place: 3, take: 2, pour: 1, press: 0, feint: 0 }, talk: 0 },
+  clinical:     { gap: [5, 5], tele: 900, hard: 0.8, reach: [0.2, 0.9], acts: { place: 4, take: 1, pour: 1, press: 0, feint: 0 }, talk: 0.35, tour: true },
+  playful:      { gap: [2.5, 6], tele: 700, hard: 1.0, reach: [0.3, 0.85], acts: { place: 2, take: 2, pour: 1, press: 2, feint: 2 }, talk: 0.6 },
+  cruel:        { gap: [2, 5], tele: 250, hard: 1.6, reach: [0.7, 0.92], acts: { place: 3, take: 1, pour: 2, press: 2, feint: 1 }, talk: 0.45, drop: 0.35 },
+  regal:        { gap: [5, 8], tele: 1000, hard: 0.9, reach: [0.3, 0.7], acts: { place: 2, take: 3, pour: 2, press: 0, feint: 0 }, talk: 0.35 },
+  possessive:   { gap: [3.5, 6], tele: 800, hard: 1.1, reach: [0.3, 0.8], acts: { place: 3, take: 2, pour: 1, press: 1, feint: 0 }, talk: 0.45 },
+};
+const STYLE_NOTE = {
+  neutral: 'sets things down, takes them, pours', affectionate: 'slow and gentle, near the middle', ritual: 'even; says where before she sets it down',
+  drill: 'quick, every 3 s; says where', cold: 'short warnings, no words', clinical: 'adds things at measured places, all over the tray',
+  playful: 'leans on the edge, feints a placing', cruel: 'out at the rim, hard, sometimes no warning at all (drops it)', regal: 'her visitors are served from it; takes and pours', possessive: 'presses the edge now and then',
+};
+const LINES = {
+  neutral:      { start: ['hold it level.'], pour: ['don’t move.'], spill: ['careful.', 'you spilled.'], fall: ['…look at that.'], steady: ['good.'], hot: ['that was hot. careful.'], end: { good: ['not a drop. good.'], poor: ['you spilled. again next time.'] } },
+  affectionate: { start: ['just hold it for me. you’re doing fine.'], pour: ['steady…'], spill: ['oops. it’s alright.'], fall: ['oh! it’s alright, leave it.'], steady: ['so steady. thank you.'], hot: ['oh — sorry, was that hot?'], end: { good: ['perfect. thank you.'], poor: ['you did well. a little wobbly.'] } },
+  ritual:       { start: ['the tray. level, always.'], pour: ['still.'], spill: ['a spill. noted.'], fall: ['unacceptable.'], steady: ['correct.'], end: { good: ['correctly held.'], poor: ['the form was not kept.'] } },
+  drill:        { start: ['hold! level! I’m loading it.'], pour: ['steady!'], spill: ['spill! again!'], fall: ['dropped! fault!'], steady: ['good hands.'], end: { good: ['norm met.'], poor: ['sloppy. again tomorrow.'] } },
+  cold:         { start: [''], pour: [''], spill: [''], fall: ['…'], steady: [''], end: { good: [''], poor: ['no.'] } },
+  clinical:     { start: ['hold it. I want to see how much it takes.'], pour: ['and now the shift of mass.'], spill: ['spillage. noted.'], fall: ['failure point. noted.'], steady: ['stable.'], end: { good: ['no spillage. interesting.'], poor: ['the data is clear.'] } },
+  playful:      { start: ['don’t spill~'], pour: ['steady~ steady~'], spill: ['ha! wobbly~'], fall: ['oops~ that one’s on you.'], steady: ['boring~ let’s fix that.'], press: ['oops~', 'what’s this edge do~?'], feint: ['ha. flinched.'], end: { good: ['not even a drop? cheater.'], poor: ['cute. messy.'] } },
+  cruel:        { start: ['spill one drop. go on.'], pour: ['don’t you dare.'], spill: ['you’ll lick that up.', 'pathetic.'], fall: ['and now you’ll clean it.'], steady: ['hm.'], press: ['heavy?'], hot: ['too hot? hold it.'], end: { good: ['…fine.'], poor: ['you’ll clean every drop.'] } },
+  regal:        { start: ['you will hold it for me. and for my guests.'], pour: ['still while I pour.'], spill: ['you spill in front of my guests?'], fall: ['how embarrassing. for you.'], steady: ['a fine tray.'], end: { good: ['you served well.'], poor: ['a poor showing.'] } },
+  possessive:   { start: ['hold my things.'], pour: ['steady. mine.'], spill: ['careful with my things.'], fall: ['that was mine.'], steady: ['good. mine.'], press: ['feel that? that’s me.'], end: { good: ['good. you hold what’s mine.'], poor: ['careless with my things.'] } },
+};
+const CALL_WORD = (u, v) => (Math.hypot(u, v) < 0.25 ? 'the middle.' : Math.abs(u) > Math.abs(v) ? (u > 0 ? 'right.' : 'left.') : (v > 0 ? 'near.' : 'far.'));
+const GUEST_LINES = { take: ['thanks.', 'mm, thank you.', 'steady hands.'], place: ['I’ll leave this here.', 'done with this.'], see: ['…oh. nice tray.'] };
+/* her faces (SillyTavern labels; never `desire`) */
+const FACE = { start: 'neutral', steady: 'approval', spill: 'annoyance', fall: 'anger', playful: 'amusement', end_good: 'approval', end_poor: 'disappointment' };
+
+/* ======================================================================== settings */
+const S = { style: 'neutral', len: 70, guests: true, bubble: true, manner: { tempo: 0, intensity: 0 }, craft: 0, endur: 3, sound: true, vol: 0.8, showNum: false,
+  reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, faceFade: 300 };
+const ST = () => STYLES[S.style];
+const lines = (kind) => { const own = (LINES[S.style] ?? LINES.neutral)[kind]; return own !== undefined ? own : (LINES.neutral[kind] ?? ['']); };
+
+/* ======================================================================== audio (slap.html's kit) */
+const A = { ctx: null, buf: {} };
+function audioInit() {
+  if (A.ctx) return;
+  const ctx = new (window.AudioContext || window.webkitAudioContext)(); A.ctx = ctx;
+  A.master = ctx.createGain(); A.master.gain.value = S.sound ? S.vol : 0; A.master.connect(ctx.destination);
+  A.world = ctx.createGain(); A.world.connect(A.master); A.body = ctx.createGain(); A.body.connect(A.master);
+  const mk = (sec, fill) => { const b = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate); fill(b.getChannelData(0)); return b; };
+  A.white = mk(2, (d) => { for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; });
+  A.brown = mk(4, (d) => { let l = 0; for (let i = 0; i < d.length; i++) { l = (l + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = l * 3.5; } });
+  const room = ctx.createBufferSource(); room.buffer = A.brown; room.loop = true; const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700;
+  const g = ctx.createGain(); g.gain.value = 0.05; room.connect(lp); lp.connect(g); g.connect(A.world); room.start();
+}
+async function loadSamples() { await Promise.all(Object.entries(SAMPLE_URLS).map(async ([k, u]) => { try { const r = await fetch(u); A.buf[k] = await A.ctx.decodeAudioData(await r.arrayBuffer()); } catch (e) { /* synthesis falls back */ } })); }
+function play(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at = 0, offset = 0, dur } = {}) {
+  if (!A.ctx || !A.buf[id]) return null;
+  const ctx = A.ctx, t = ctx.currentTime + Math.max(0, at);
+  const src = ctx.createBufferSource(); src.buffer = A.buf[id]; src.playbackRate.value = rate;
+  const gn = ctx.createGain(); gn.gain.value = g; src.connect(gn); let n = gn;
+  if (hp) { const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp; n.connect(f); n = f; }
+  if (lp) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; n.connect(f); n = f; }
+  if (pan) { const p = ctx.createStereoPanner(); p.pan.value = clamp(pan, -1, 1); n.connect(p); n = p; }
+  n.connect(dest ?? A.world);
+  if (dur) { gn.gain.setValueAtTime(g, t + dur / rate - 0.05); gn.gain.linearRampToValueAtTime(0.0001, t + dur / rate); }
+  src.start(t, offset, (dur ?? (A.buf[id].duration - offset)) + 0.05); return { src, gn };
+}
+function noise({ at = 0, dur = 0.2, type = 'bandpass', f = 1000, f2, q = 1, gain = 0.1, attack = 0.01, dest, pan = 0 }) {
+  if (!A.ctx) return; const ctx = A.ctx, t = ctx.currentTime + at;
+  const src = ctx.createBufferSource(); src.buffer = A.white; src.loop = true;
+  const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(f, t); fl.Q.value = q; if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(fl); fl.connect(g); let n = g; if (pan) { const p = ctx.createStereoPanner(); p.pan.value = pan; g.connect(p); n = p; } n.connect(dest ?? A.world); src.start(t, Math.random()); src.stop(t + dur + 0.05);
+}
+const SFX = {
+  pen: () => { for (let i = 0; i < 3; i++) noise({ at: i * 0.05 + Math.random() * 0.02, dur: 0.04, f: 2600 + Math.random() * 1800, q: 3, gain: 0.04 }); },
+  cloth: (pan, g = 0.3) => play(pick(['cloth1', 'cloth2', 'cloth3', 'cloth4']), { g, pan, lp: 6000 }),
+  set: (kind, hard, pan) => { // a thing set down on the tray: glass rings, a mug or a plate knocks, a bottle thuds
+    const g = clamp(0.18 + 0.25 * hard, 0.1, 0.7);
+    if (kind === 'glass') play(pick(['glass1', 'glass2']), { g: g * 0.8, pan, rate: rand(1.15, 1.35) });
+    else if (kind === 'bottle') { play(pick(['glass1', 'glass2']), { g: g * 0.7, pan, rate: 0.72, lp: 2200 }); noise({ dur: 0.08, type: 'lowpass', f: 280, gain: 0.12 * hard, dest: A.body }); }
+    else play(pick(['mug1', 'mug2']), { g, pan, rate: kind === 'plate' ? 1.15 : 1 });
+  },
+  take: (pan) => { noise({ dur: 0.06, f: 3000, q: 2, gain: 0.03, pan }); },
+  pour: (len, pan) => play('pour', { g: 0.32, pan, dur: len, rate: 1.05 }),
+  drip: (pan) => noise({ dur: 0.05, f: rand(1800, 2600), q: 6, gain: 0.05, pan }),
+  crash: (pan) => { play('glass1', { g: 0.7, pan, rate: 1.6 }); play('glass2', { g: 0.6, pan, rate: 1.9, at: 0.05 }); noise({ dur: 0.5, type: 'highpass', f: 3000, gain: 0.25, pan }); },
+  creak: (g) => play(pick(['creak1', 'creak2', 'creak3']), { g }),
+  step: (pan, g = 0.25) => play(pick(['step0', 'step1', 'step2']), { g, pan, lp: 4000 }),
+  breath: (g = 0.12) => play('breath', { g, rate: 1.2, offset: 2.17, dur: 0.9, lp: 2600, dest: A.body }),
+};
+
+/* ======================================================================== the run */
+let G = null;
+const MOUSE = { x: 0.5, y: 0.5 };
+function newRun() {
+  const id = `bl${Date.now() % 1000000}`;
+  return { id, phase: 'idle', t: 0, ctl: [0, 0], ctlV: [0, 0], tilt: [0, 0], tiltV: [0, 0], prevTiltV: [0, 0], fat: 0, items: [], stains: [], drops: [], acts: [], nextAt: 2.5, n: 0,
+    press: null, pours: [], levelFor: 0, lastSaid: -9, lastSpillSaid: -9, said: {},
+    tally: { placed: 0, taken: 0, poured: 0, presses: 0, feints: 0, spills: 0, spilled: 0, hot: 0, falls: 0, levelShare: 0, levelT: 0, guestActs: 0 } };
+}
+function addItem(type, u, v, opts = {}) { const d = ITEMS[type]; const it = { id: `${type}${G.items.length}|${G.t.toFixed(2)}`, type, u, v, fill: opts.fill ?? (d.liquid ? d.fill : 0), slosh: [0, 0], sloshV: [0, 0], spillCd: 0, guest: !!opts.guest }; G.items.push(it); return it; }
+function massOf(it) { const d = ITEMS[it.type]; return d.mass * (d.liquid ? 0.45 + 0.55 * it.fill / (d.fill || 1) : 1); }
+function begin() {
+  audioInit(); if (A.ctx.state === 'suspended') A.ctx.resume();
+  $('#summary').style.display = 'none'; $('#hand').replaceChildren();
+  G = newRun(); G.phase = 'loop';
+  // the tray comes with the bottle and a glass on it (where, a hash of the run)
+  addItem('bottle', hrand(-0.35, 0.35, `b0u|${G.id}`), hrand(-0.45, -0.1, `b0v|${G.id}`));
+  addItem('glass', hrand(-0.4, 0.4, `g0u|${G.id}`), hrand(0.05, 0.4, `g0v|${G.id}`));
+  $('#stopPill').style.display = 'block';
+  setFace(FACE.start);
+  narrate('She points at the floor before her chair. When the commander kneels there, she puts her tray into the commander’s hands.');
+  setTimeout(() => say(hpick(lines('start'), `st|${G.id}`)), 700);
+}
+/** her next act, planned from the hash of the run and its count (no draw) */
+function planAct() {
+  const st = ST(), k = `${G.id}|${G.n}`;
+  const guestTurn = S.guests && G.n % 3 === 2 && G.n > 0;
+  const acts = Object.entries(guestTurn ? { place: 1, take: 2 } : st.acts).filter(([, w]) => w > 0);
+  let r = hash01(`act|${k}`) * acts.reduce((a, [, w]) => a + w, 0), kind = acts[0][0];
+  for (const [a, w] of acts) { r -= w; if (r <= 0) { kind = a; break; } }
+  const liquids = G.items.filter((it) => ITEMS[it.type].liquid && it.type !== 'bottle');
+  const bottle = G.items.find((it) => it.type === 'bottle');
+  if (kind === 'pour' && !(bottle && bottle.fill > 0.15 && liquids.length)) kind = 'place';
+  if (kind === 'take' && !G.items.length) kind = 'place';
+  if (kind === 'place' && G.items.length >= 6) kind = 'take';
+  const reach = st.reach, ang = hrand(0, Math.PI * 2, `ang|${k}`), rr = hrand(reach[0], reach[1], `r|${k}`);
+  const tele = st.tele * (1 - 0.12 * S.manner.tempo) * (guestTurn ? 1.2 : 1);
+  const hard = st.hard * (1 + 0.15 * S.manner.intensity);
+  const who = guestTurn ? 'guest' : 'her';
+  if (kind === 'place') {
+    const type = hpick(guestTurn ? ['glass', 'water', 'plate'] : ['mug', 'glass', 'water', 'plate', 'glass'], `type|${k}`);
+    const drop = !guestTurn && st.drop && hash01(`drop|${k}`) < st.drop;
+    return { kind, type, u: rr * Math.cos(ang), v: rr * Math.sin(ang) * 0.9, tele: drop ? 0 : tele, hard: hard * (drop ? 1.5 : 1), who, drop };
+  }
+  if (kind === 'take') { const pool = guestTurn ? G.items.filter((it) => ITEMS[it.type].kind === 'glass') : G.items; const it = hpick(pool.length ? pool : G.items, `take|${k}`); return { kind, item: it, u: it.u, v: it.v, tele, hard, who }; }
+  if (kind === 'pour') { const to = hpick(liquids, `to|${k}`); return { kind, item: bottle, to, u: to.u, v: to.v, tele, len: hrand(2, 3.4, `pl|${k}`), who }; }
+  if (kind === 'press') { const u = rr * Math.cos(ang), v = rr * Math.sin(ang); return { kind, u: u / Math.max(0.6, Math.hypot(u, v)) * 0.92, v: v / Math.max(0.6, Math.hypot(u, v)) * 0.92, tele: tele * 0.8, len: hrand(1, 1.8, `pr|${k}`), force: 0.35 * (1 + 0.15 * S.manner.intensity), who }; }
+  return { kind: 'feint', u: rr * Math.cos(ang), v: rr * Math.sin(ang), tele, who }; // her hand comes over the tray and goes away
+}
+function startAct() {
+  const a = planAct(); G.n += 1; a.t0 = G.t; a.landAt = G.t + a.tele / 1000; a.pan = a.who === 'guest' ? -0.7 : clamp(a.u * 0.6, -0.6, 0.6);
+  G.acts.push(a);
+  if (a.who === 'guest') { SFX.step(-0.7, 0.2); setTimeout(() => SFX.step(-0.6, 0.24), 380); } else if (a.tele > 0) SFX.cloth(a.pan, 0.25);
+  if (ST().calls && a.who === 'her' && (a.kind === 'place' || a.kind === 'take')) say(CALL_WORD(a.u, a.v));
+  const st = ST(); G.nextAt = G.t + hrand(st.gap[0], st.gap[1], `gap|${G.id}|${G.n}`) * (1 - 0.12 * S.manner.tempo) + (a.len ?? 0);
+}
+function landAct(a) {
+  const d = Math.hypot(a.u, a.v);
+  if (a.kind === 'place') {
+    const it = addItem(a.type, a.u, a.v, { guest: a.who === 'guest' }); G.tally.placed += 1; if (a.who === 'guest') G.tally.guestActs += 1;
+    kick(a.u, a.v, massOf(it) * a.hard * 1.6); SFX.set(ITEMS[a.type].kind, a.hard, a.pan);
+    if (a.who === 'guest') { if (hash01(`gl|${it.id}`) < 0.6) sayOther(hpick(GUEST_LINES.place, `gp|${it.id}`)); }
+    else if (a.drop) { feel('No warning: it lands hard, out at the rim.', true); }
+  } else if (a.kind === 'take') {
+    const i = G.items.indexOf(a.item); if (i < 0) return;
+    G.items.splice(i, 1); G.tally.taken += 1; if (a.who === 'guest') G.tally.guestActs += 1;
+    kick(a.u, a.v, -massOf(a.item) * 0.9); SFX.take(a.pan);
+    if (a.who === 'guest' && hash01(`gt|${a.item.id}`) < 0.7) sayOther(hpick(GUEST_LINES.take, `gt2|${a.item.id}`));
+  } else if (a.kind === 'pour') {
+    G.pours.push({ from: a.item, to: a.to, until: G.t + a.len, rate: 0.28 / a.len }); G.tally.poured += 1;
+    SFX.pour(a.len, a.pan); if (hash01(`po|${G.id}|${G.n}`) < 0.6) say(hpick(lines('pour'), `pl|${G.id}|${G.n}`));
+  } else if (a.kind === 'press') {
+    G.press = { u: a.u, v: a.v, until: G.t + a.len, force: a.force }; G.tally.presses += 1; SFX.cloth(a.pan, 0.2);
+    const l = lines('press'); if (l && l.length) say(hpick(l, `ps|${G.id}|${G.n}`));
+  } else if (a.kind === 'feint') { G.tally.feints += 1; }
+  void d;
+}
+/** a thing set down (or lifted): a jolt of the tray toward (or away from) that spot */
+function kick(u, v, j) { G.tiltV[0] += u * j * 3.2; G.tiltV[1] += v * j * 3.2; for (const it of G.items) { it.sloshV[0] -= u * j * 1.4; it.sloshV[1] -= v * j * 1.4; } }
+
+/* ======================================================================== the step (weight.html's rule: springs in pieces of at most 8 ms) */
+function step(dt) {
+  if (!G || G.phase !== 'loop') return;
+  let left = dt;
+  while (left > 0) { const h = Math.min(0.008, left); sub(h); left -= h; }
+  // her acts: start the next, land those whose shadow has come down
+  if (G.t >= G.nextAt && G.t < S.len - 4) startAct();
+  for (const a of G.acts) if (!a.landed && G.t >= a.landAt) { a.landed = true; landAct(a); }
+  G.acts = G.acts.filter((a) => !a.landed || G.t - a.landAt < 0.8);
+  if (G.t >= S.len) end('done');
+  // praise: a long steady stretch
+  if (G.levelFor > 14 && G.t - G.lastSaid > 18) { G.lastSaid = G.t; G.levelFor = 0; if (hash01(`stdy|${G.id}|${Math.floor(G.t)}`) < ST().talk + 0.2) { say(hpick(lines('steady'), `sd|${G.t | 0}`)); setFace(S.style === 'playful' ? FACE.playful : FACE.steady); } }
+}
+function sub(h) {
+  G.t += h;
+  // the hands: a spring toward the mouse (toward the weight)
+  const m = [(MOUSE.x * 2 - 1) * CTL_SPAN, (MOUSE.y * 2 - 1) * CTL_SPAN];
+  for (let i = 0; i < 2; i++) { const a = CTL_K * (m[i] - G.ctl[i]) - CTL_D * G.ctlV[i]; G.ctlV[i] += a * h; G.ctl[i] += G.ctlV[i] * h; }
+  // the load: each thing's mass at its place, her press on the edge, the arms' sag, their tremor, a slow wander
+  let L = [0, 0];
+  for (const it of G.items) { const w = massOf(it); L[0] += it.u * w; L[1] += it.v * w; }
+  if (G.press) { if (G.t > G.press.until) G.press = null; else { L[0] += G.press.u * G.press.force; L[1] += G.press.v * G.press.force; } }
+  const craftK = 1 - 0.08 * S.craft;
+  L[1] -= SAG(G.fat);
+  const tr = TREMOR(G.fat) * craftK * (S.reduced ? 0.5 : 1);
+  L[0] += tr * Math.sin(G.t * 23.7) + tr * 0.6 * Math.sin(G.t * 41.3 + 1); L[1] += tr * Math.sin(G.t * 19.1 + 2) + tr * 0.6 * Math.sin(G.t * 37.9);
+  L[0] += 0.03 * Math.sin(G.t * 0.7); L[1] += 0.02 * Math.sin(G.t * 0.9 + 1);
+  // the tray follows the error (the load minus the hands)
+  G.prevTiltV = [G.tiltV[0], G.tiltV[1]];
+  for (let i = 0; i < 2; i++) { const err = L[i] - G.ctl[i]; const a = TILT_K * (err - G.tilt[i]) - TILT_D * G.tiltV[i]; G.tiltV[i] += a * h; G.tilt[i] += G.tiltV[i] * h; G.tilt[i] = clamp(G.tilt[i], -1.4, 1.4); }
+  const tiltM = Math.hypot(G.tilt[0], G.tilt[1]);
+  const level = tiltM <= TOL;
+  G.levelFor = level ? G.levelFor + h : 0; G.tally.levelT += h; if (level) G.tally.levelShare += h;
+  // the arms tire: by the load and when the tray is not level
+  const M = G.items.reduce((a, it) => a + massOf(it), 0);
+  G.fat = clamp(G.fat + h * (FAT_BASE + FAT_LOAD * M) * (1 + 0.8 * Math.max(0, tiltM - TOL)) * (1 - 0.08 * (S.endur - 3)), 0, 1);
+  if (G.fat >= 1) { end('arms'); return; }
+  // pouring: the bottle's liquid goes into the glass (the weight moves)
+  for (const p of G.pours) { if (G.t > p.until || !G.items.includes(p.from) || !G.items.includes(p.to)) continue; const q = Math.min(p.rate * h, p.from.fill); p.from.fill -= q; p.to.fill = Math.min(1.02, p.to.fill + q * 1.6); p.to.sloshV[0] += rand(-1, 1) * 0.6 * h * 60; p.to.sloshV[1] += rand(-1, 1) * 0.6 * h * 60; }
+  G.pours = G.pours.filter((p) => G.t <= p.until);
+  // the liquids keep level and slosh; over the rim they spill
+  const acc = [(G.tiltV[0] - G.prevTiltV[0]) / h, (G.tiltV[1] - G.prevTiltV[1]) / h];
+  for (const it of G.items) {
+    const d = ITEMS[it.type];
+    if (d.liquid) {
+      for (let i = 0; i < 2; i++) { const a = -SLOSH_K * it.slosh[i] - SLOSH_D * it.sloshV[i] - SLOSH_DRIVE * acc[i] * 0.02; it.sloshV[i] += a * h; it.slosh[i] += it.sloshV[i] * h; }
+      it.spillCd = Math.max(0, it.spillCd - h * 1000);
+      const off = [G.tilt[0] * SLOSH_TILT + it.slosh[0], G.tilt[1] * SLOSH_TILT + it.slosh[1]], om = Math.hypot(off[0], off[1]);
+      if (!d.sealed && it.fill > 0.05 && om > MARGIN(it.fill) && it.spillCd <= 0) spill(it, off, om);
+      if (it.fill > 1) spill(it, off, om, true);
+    }
+    // past a steep tilt things slide toward the low side; at the rim they fall
+    if (tiltM > SLIDE_AT) { const s = (tiltM - SLIDE_AT) * SLIDE_RATE * h / (d.mass * 2 + 0.3); it.u += (G.tilt[0] / tiltM) * s; it.v += (G.tilt[1] / tiltM) * s; if (Math.hypot(it.u, it.v) > 1.02) fall(it); }
+  }
+  for (const dr of G.drops) { dr.t += h; }
+  G.drops = G.drops.filter((dr) => dr.t < 0.9);
+}
+function spill(it, off, om, over = false) {
+  it.spillCd = SPILL_CD; const part = over ? it.fill - 1 + 0.02 : SPILL_PART; it.fill = Math.max(0, it.fill - part);
+  G.tally.spills += 1; G.tally.spilled += part; it.slosh = [it.slosh[0] * 0.5, it.slosh[1] * 0.5];
+  const dir = om > 0 ? [off[0] / om, off[1] / om] : [0, 1];
+  G.stains.push({ u: it.u + dir[0] * ITEMS[it.type].r * 1.3, v: it.v + dir[1] * ITEMS[it.type].r * 1.3, a: 0.5, color: ITEMS[it.type].color, r: rand(0.04, 0.08) });
+  for (let i = 0; i < 4; i++) G.drops.push({ u: it.u + dir[0] * ITEMS[it.type].r, v: it.v + dir[1] * ITEMS[it.type].r, du: dir[0] * rand(0.15, 0.4) + rand(-0.1, 0.1), dv: dir[1] * rand(0.15, 0.4) + rand(-0.1, 0.1), t: 0, color: ITEMS[it.type].color });
+  SFX.drip(clamp(it.u * 0.6, -0.6, 0.6));
+  if (ITEMS[it.type].hot) { G.tally.hot += 1; feel('Hot coffee runs over your fingers.', true); SFX.breath(0.2); }
+  if (G.t - G.lastSpillSaid > 2.2) { G.lastSpillSaid = G.t; const l = ITEMS[it.type].hot && lines('hot') ? lines('hot') : lines('spill'); const x = hpick(l, `sp|${G.id}|${G.tally.spills}`); if (x) setTimeout(() => say(x), 350); setFace(S.style === 'playful' || S.style === 'cruel' ? FACE.playful : FACE.spill); }
+}
+function fall(it) {
+  const i = G.items.indexOf(it); if (i < 0) return; G.items.splice(i, 1); G.tally.falls += 1;
+  SFX.crash(clamp(it.u * 0.7, -0.7, 0.7)); kick(it.u, it.v, -massOf(it) * 0.6);
+  feel(`${ITEMS[it.type].label.charAt(0).toUpperCase() + ITEMS[it.type].label.slice(1)} slides off the edge and smashes on the floor.`, true);
+  setTimeout(() => say(hpick(lines('fall'), `fl|${G.id}|${G.tally.falls}`)), 500); setFace(FACE.fall);
+}
+function end(why) {
+  if (!G || G.phase !== 'loop') return; G.phase = 'done'; $('#stopPill').style.display = 'none';
+  if (why === 'arms') { feel('Your arms give. The tray tips; everything goes.', true); for (const it of [...G.items]) fall(it); }
+  if (why === 'stop') { say('alright. give it here.'); }
+  else if (why === 'done') { const good = G.tally.spills === 0 && G.tally.falls === 0; setTimeout(() => { say(hpick(lines('end')[good ? 'good' : 'poor'], `end|${G.id}`)); setFace(good ? FACE.end_good : FACE.end_poor); }, 400); narrate('She takes the tray out of the commander’s hands.'); }
+  setTimeout(summary, 2600);
+}
+
+/* ======================================================================== drawing the tray (a round tray in perspective at the bottom of the view) */
+const cv = $('#trayC'), cx = cv.getContext('2d');
+function size() { cv.width = innerWidth * devicePixelRatio; cv.height = innerHeight * devicePixelRatio; }
+addEventListener('resize', size); size();
+function trayGeom() {
+  const W = innerWidth, H = innerHeight, t = G ? G.tilt : [0, 0];
+  const rx = W * 0.25, ry = rx * clamp(0.3 + 0.16 * t[1], 0.12, 0.5);
+  const ang = clamp(t[0], -1.4, 1.4) * 9 * Math.PI / 180;
+  return { W, H, x: W * 0.5, y: H * 0.79 + t[1] * 10, rx, ry, ang, t };
+}
+/** a point of the tray (u right, v near) on the screen; `lift` raises it off the tray (in px) */
+function P(g, u, v, lift = 0) { const x = u * g.rx, y = v * g.ry; const c = Math.cos(g.ang), s = Math.sin(g.ang); return [g.x + x * c - y * s, g.y + x * s + y * c - lift]; }
+function ell(x, y, a, b, rot = 0) { cx.beginPath(); cx.ellipse(x, y, Math.max(0.5, a), Math.max(0.5, b), rot, 0, Math.PI * 2); }
+function drawTray(now) {
+  const dpr = devicePixelRatio; cx.setTransform(dpr, 0, 0, dpr, 0, 0); cx.clearRect(0, 0, innerWidth, innerHeight);
+  if (!G || G.phase === 'idle') return;
+  const g = trayGeom(), sq = g.ry / g.rx;
+  // its shadow, its rim (brass) and its face (dark lacquer)
+  cx.save(); cx.filter = 'blur(14px)'; cx.fillStyle = 'rgba(0,0,0,.55)'; ell(g.x, g.y + 26, g.rx * 1.05, g.ry * 1.1, g.ang); cx.fill(); cx.restore();
+  const rimG = cx.createLinearGradient(g.x - g.rx, g.y - g.ry, g.x + g.rx, g.y + g.ry); rimG.addColorStop(0, '#d9b874'); rimG.addColorStop(0.5, '#8a6a32'); rimG.addColorStop(1, '#c9a35c');
+  cx.fillStyle = '#4a3418'; ell(g.x, g.y + 7, g.rx * 1.04, g.ry * 1.04 + 3, g.ang); cx.fill();
+  cx.fillStyle = rimG; ell(g.x, g.y, g.rx * 1.04, g.ry * 1.04, g.ang); cx.fill();
+  const faceG = cx.createRadialGradient(g.x - g.rx * 0.3, g.y - g.ry * 0.5, 4, g.x, g.y, g.rx); faceG.addColorStop(0, '#3a2a22'); faceG.addColorStop(1, '#1a120e');
+  cx.fillStyle = faceG; ell(g.x, g.y, g.rx * 0.97, g.ry * 0.97, g.ang); cx.fill();
+  // the light on it, sliding with the tilt
+  cx.save(); ell(g.x, g.y, g.rx * 0.97, g.ry * 0.97, g.ang); cx.clip();
+  const sh = cx.createRadialGradient(g.x - g.t[0] * g.rx * 0.6, g.y - g.ry * 0.6 - g.t[1] * g.ry * 0.5, 2, g.x, g.y, g.rx * 0.9); sh.addColorStop(0, 'rgba(255,236,200,.16)'); sh.addColorStop(1, 'rgba(255,236,200,0)');
+  cx.fillStyle = sh; cx.fillRect(0, 0, innerWidth, innerHeight);
+  // stains: what was spilled
+  for (const st of G.stains) { const [x, y] = P(g, st.u, st.v); cx.fillStyle = `rgba(${st.color},${st.a})`; ell(x, y, st.r * g.rx, st.r * g.ry, g.ang); cx.fill(); }
+  cx.restore();
+  // the level (a hint): a small round level in the middle of the tray
+  if (S.bubble) {
+    const [lx, ly] = P(g, 0, 0); const lr = g.rx * 0.11;
+    cx.fillStyle = 'rgba(200,150,40,.55)'; ell(lx, ly, lr, lr * sq, g.ang); cx.fill();
+    cx.strokeStyle = '#d9b874'; cx.lineWidth = 2; ell(lx, ly, lr, lr * sq, g.ang); cx.stroke();
+    const lvl = Math.hypot(g.t[0], g.t[1]) <= TOL; cx.strokeStyle = lvl ? 'rgba(255,240,200,.9)' : 'rgba(255,240,200,.35)'; cx.lineWidth = 1; ell(lx, ly, lr * 0.45, lr * 0.45 * sq, g.ang); cx.stroke();
+    const bx = clamp(-g.t[0] / 0.6, -1, 1) * lr * 0.75, by = clamp(-g.t[1] / 0.6, -1, 1) * lr * 0.75 * sq; // the bubble goes to the high side
+    cx.fillStyle = 'rgba(255,250,230,.85)'; ell(lx + bx, ly + by, lr * 0.22, lr * 0.22 * sq, g.ang); cx.fill();
+  }
+  // her hand's shadow where she (or a visitor) is about to set something down or take it
+  for (const a of G.acts) {
+    if (a.landed || a.tele <= 0) continue;
+    const p = clamp((G.t - a.t0) / Math.max(0.05, a.tele / 1000), 0, 1); const back = a.kind === 'feint' && p > 0.75 ? 1 - (p - 0.75) / 0.25 : 1;
+    const [x, y] = P(g, a.u, a.v); const r = g.rx * (0.22 - 0.1 * p);
+    const grad = cx.createRadialGradient(x, y, 1, x, y, r); grad.addColorStop(0, `rgba(0,0,0,${(0.62 * easeOut(p) * back).toFixed(3)})`); grad.addColorStop(1, 'rgba(0,0,0,0)');
+    cx.fillStyle = grad; ell(x, y, r, r * sq * 1.3, g.ang); cx.fill();
+  }
+  // the things on it, far to near
+  for (const it of [...G.items].sort((a, b) => a.v - b.v)) drawItem(g, it, sq);
+  // drops in flight
+  for (const dr of G.drops) { const [x, y] = P(g, dr.u + dr.du * dr.t, dr.v + dr.dv * dr.t, -dr.t * dr.t * 240); cx.fillStyle = `rgba(${dr.color},${(0.8 * (1 - dr.t)).toFixed(2)})`; ell(x, y, 2.6, 3.4); cx.fill(); }
+}
+function drawItem(g, it, sq) {
+  const d = ITEMS[it.type]; const near = 1 + it.v * 0.12; const r = d.r * g.rx * near; const [x, y] = P(g, it.u, it.v);
+  cx.save();
+  cx.fillStyle = 'rgba(0,0,0,.35)'; ell(x + 3, y + 3, r * 1.05, r * sq * 1.05, g.ang); cx.fill();
+  if (d.kind === 'plate') {
+    cx.fillStyle = `rgb(${d.color})`; ell(x, y - 2, r, r * sq, g.ang); cx.fill();
+    cx.strokeStyle = 'rgba(0,0,0,.18)'; cx.lineWidth = 1; ell(x, y - 2, r * 0.7, r * 0.7 * sq, g.ang); cx.stroke();
+  } else {
+    const hgt = (d.kind === 'bottle' ? 3.2 : d.kind === 'mug' ? 1.1 : 1.6) * r; // its height, rising off the tray
+    const top = [x, y - hgt];
+    // the body: a soft column
+    const bodyG = cx.createLinearGradient(x - r, 0, x + r, 0);
+    if (d.kind === 'glass') { bodyG.addColorStop(0, 'rgba(220,235,255,.10)'); bodyG.addColorStop(0.5, 'rgba(220,235,255,.03)'); bodyG.addColorStop(1, 'rgba(220,235,255,.14)'); }
+    else if (d.kind === 'mug') { bodyG.addColorStop(0, '#d8d0c4'); bodyG.addColorStop(0.6, '#f2ece2'); bodyG.addColorStop(1, '#b8afa2'); }
+    else { bodyG.addColorStop(0, `rgba(${d.color},.95)`); bodyG.addColorStop(0.5, 'rgba(120,160,120,.9)'); bodyG.addColorStop(1, `rgba(${d.color},.95)`); }
+    cx.fillStyle = bodyG; cx.beginPath(); cx.moveTo(x - r, y); cx.lineTo(x - r, top[1]); cx.lineTo(x + r, top[1]); cx.lineTo(x + r, y); cx.ellipse(x, y, r, r * sq, 0, 0, Math.PI); cx.fill();
+    // the liquid inside a glass, seen through it: its height by the fill
+    if (d.kind === 'glass') { const lh = hgt * clamp(it.fill, 0, 1); cx.fillStyle = `rgba(${d.color},.55)`; cx.beginPath(); cx.moveTo(x - r * 0.92, y); cx.lineTo(x - r * 0.92, y - lh); cx.lineTo(x + r * 0.92, y - lh); cx.lineTo(x + r * 0.92, y); cx.ellipse(x, y, r * 0.92, r * sq * 0.92, 0, 0, Math.PI); cx.fill(); }
+    // the mouth and the surface: the surface keeps level, so it shows moved toward the low side (by the tilt and its slosh)
+    if (d.kind !== 'bottle') {
+      const off = [G.tilt[0] * SLOSH_TILT + it.slosh[0], G.tilt[1] * SLOSH_TILT + it.slosh[1]];
+      const lvlY = top[1] + hgt * (1 - clamp(it.fill, 0, 1)) * (d.kind === 'glass' ? 1 : 0.6);
+      cx.fillStyle = `rgba(${d.color},${d.kind === 'mug' ? 1 : 0.8})`;
+      const sx = clamp(off[0], -1, 1) * r * 0.55, sy = clamp(off[1], -1, 1) * r * sq * 0.55; const over = Math.hypot(off[0], off[1]) / MARGIN(it.fill);
+      cx.save(); ell(top[0], top[1], r, r * sq); cx.clip();
+      ell(x + sx, lvlY + sy, r * 0.95, r * sq * 0.95); cx.fill();
+      if (over > 0.7) { cx.fillStyle = `rgba(255,255,255,${(0.35 * (over - 0.7) / 0.3).toFixed(2)})`; ell(x + sx * 1.6, lvlY + sy * 1.6, r * 0.25, r * sq * 0.25); cx.fill(); } // the near edge glints as it climbs the rim
+      cx.restore();
+      cx.strokeStyle = d.kind === 'mug' ? '#efe8dc' : 'rgba(230,240,255,.55)'; cx.lineWidth = d.kind === 'mug' ? 3 : 1.4; ell(top[0], top[1], r, r * sq); cx.stroke();
+      if (d.kind === 'mug') { cx.strokeStyle = '#e2dace'; cx.lineWidth = 4; cx.beginPath(); cx.ellipse(x + r * 1.15, y - hgt * 0.5, r * 0.35, hgt * 0.3, 0, -Math.PI / 2, Math.PI / 2); cx.stroke(); }
+    } else {
+      cx.fillStyle = `rgba(${d.color},1)`; cx.fillRect(x - r * 0.35, top[1] - r * 1.4, r * 0.7, r * 1.4); ell(x, top[1], r, r * sq); cx.fill();
+      cx.fillStyle = 'rgba(255,255,255,.2)'; cx.fillRect(x - r * 0.6, top[1] + 4, r * 0.18, hgt * 0.7);
+    }
+  }
+  cx.restore();
+}
+
+/* ======================================================================== the view (strokes.html's VIEWS.her: her from below, as the commander kneels) */
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.1, (now - (frame.last ?? now)) / 1000); frame.last = now;
+  step(dt);
+  const W = innerWidth, H = innerHeight;
+  for (const her of herLayers()) {
+    if (!her.naturalWidth) continue;
+    const h = H * 1.3, w = h * her.naturalWidth / her.naturalHeight;
+    her.style.width = `${w}px`; her.style.height = `${h}px`;
+    her.style.left = `${W * 0.06 + W / 2 - w / 2}px`; her.style.top = `${H * 0.06 + H * 1.16 - h}px`;
+    const breathe = S.reduced ? 1 : 1 + 0.006 * Math.sin(now / 900);
+    let lean = 0; if (G) for (const a of G.acts) if (!a.landed && a.who === 'her') lean = Math.max(lean, clamp((G.t - a.t0) / Math.max(0.05, a.tele / 1000), 0, 1));
+    her.style.transform = `perspective(1400px) rotateX(8deg) translateY(${(lean * 0.02 * H).toFixed(1)}px) scale(${(breathe * (1 + 0.03 * lean)).toFixed(4)})`;
+    her.style.filter = 'brightness(.86)';
+  }
+  // the strain: the edges darken and the view trembles as the arms give
+  const f = G ? G.fat : 0;
+  $('#strain').style.opacity = (0.7 * f * f).toFixed(3);
+  const tr = G && G.phase === 'loop' && !S.reduced ? f * f * 3 : 0;
+  $('#world').style.transform = `translate(${(tr ? rand(-tr, tr) : 0).toFixed(1)}px, ${(tr ? rand(-tr, tr) : 0).toFixed(1)}px)`;
+  drawTray(now);
+  stats();
+}
+
+/* ======================================================================== her hand, her face, the body's words */
+function say(text, other = false) {
+  if (!text) return;
+  const el = document.createElement('div'); el.className = 'her-line' + (other ? ' other' : ''); el.textContent = text;
+  el.style.setProperty('--write', `${Math.max(140, text.length * 34)}ms`); el.style.setProperty('--steps', String(Math.max(4, text.length * 2)));
+  if (other) el.style.left = `${innerWidth * 0.06}px`; else el.style.left = `${innerWidth * 0.6}px`;
+  const showing = [...$('#hand').children].filter((c) => !c.classList.contains('gone')).length;
+  el.style.top = `${innerHeight * rand(0.18, 0.22) + showing * 52}px`; el.style.transform = `rotate(${rand(-4, 3).toFixed(1)}deg)`;
+  $('#hand').appendChild(el); if (!other) SFX.pen();
+  setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 600); }, 2600);
+}
+const sayOther = (t) => say(t, true);
+function feel(text, sharp) { const d = document.createElement('div'); d.textContent = text; if (sharp) d.className = 'sharp'; $('#feel').replaceChildren(d); }
+function narrate(text) { $('#reply').innerHTML = `<span class="act">${text}</span>`; }
+const LABELS = ['admiration', 'amusement', 'anger', 'annoyance', 'approval', 'caring', 'confusion', 'curiosity', 'desire', 'disappointment', 'disapproval', 'disgust', 'embarrassment', 'excitement', 'fear', 'gratitude', 'grief', 'joy', 'love', 'nervousness', 'neutral', 'optimism', 'pride', 'realization', 'relief', 'remorse', 'sadness', 'surprise'].sort((a, b) => b.length - a.length);
+const faces = {}; let FACEST = { label: null, src: null };
+function setFace(label) { if (label === FACEST.label && FACEST.src) return; FACEST.label = label; const pool = faces[label] ?? faces.neutral, src = pool ? pick(pool) : ASSETS.her; FACEST.src = src; showFace(src); }
+let HER_FRONT = 0; const herLayers = () => [$('#her'), $('#her2')];
+function showFace(src) {
+  const [a, b] = herLayers(), front = HER_FRONT ? b : a, back = HER_FRONT ? a : b; if (front.dataset.src === src) return;
+  const ms = S.reduced ? 0 : S.faceFade;
+  const swap = () => { if (back.dataset.src !== src) return; for (const el of [front, back]) el.style.transitionDuration = `${ms}ms`; back.style.opacity = '1'; front.style.opacity = '0'; HER_FRONT = 1 - HER_FRONT; };
+  back.dataset.src = src; back.onload = swap; back.src = src; if (back.complete && back.naturalWidth) swap();
+}
+
+/* ======================================================================== the summary (a stand-in for the digest, P16c ruling 5) */
+function summary() {
+  const t = G.tally; const lv = t.levelT ? Math.round(100 * t.levelShare / t.levelT) : 0;
+  $('#sumFacts').textContent = [`held ${G.t.toFixed(0)} s · level ${lv} % of the time · the arms at ${Math.round(G.fat * 100)} %`,
+    `she set down ${t.placed}, took ${t.taken}, poured ${t.poured}, pressed the edge ${t.presses}, feinted ${t.feints}${t.guestActs ? ` · her visitors: ${t.guestActs}` : ''}`,
+    `spills ${t.spills} (${(t.spilled * 100).toFixed(0)} % of a glass${t.hot ? `, hot ${t.hot}` : ''}) · fallen ${t.falls}`].join('\n');
+  const how = t.falls ? 'Worse than she expected: something fell.' : t.spills === 0 ? 'Better than she expected: not a drop.' : t.spills <= 2 ? 'About as she expected.' : 'Worse than she expected.';
+  $('#sumWords').textContent = `${how} Afterwards: ${G.fat > 0.7 ? 'the arms shaking, the shoulders burning' : G.fat > 0.4 ? 'the arms heavy' : 'steady'}. (A draft of the digest's words.)`;
+  $('#summary').style.display = 'block';
+}
+function stats() {
+  if (!G) { $('#stats').textContent = '—'; return; }
+  const rows = [`${G.phase} · ${G.t.toFixed(0)} / ${S.len} s · things ${G.items.length} · spills ${G.tally.spills} · fallen ${G.tally.falls}`];
+  if (S.showNum) rows.push(`tilt ${G.tilt.map((v) => v.toFixed(2)).join(' ')} · hands ${G.ctl.map((v) => v.toFixed(2)).join(' ')} · fatigue ${G.fat.toFixed(2)}`);
+  $('#stats').textContent = rows.join('\n');
+}
+
+/* ======================================================================== input and panel */
+addEventListener('mousemove', (e) => { MOUSE.x = e.clientX / innerWidth; MOUSE.y = e.clientY / innerHeight; });
+addEventListener('keydown', (e) => {
+  if (/^(input|textarea|select)$/i.test(e.target.tagName)) return;
+  if (e.key === 'Escape') { end('stop'); return; }
+  if (e.key === 'h' || e.key === 'H') $('#panel').classList.toggle('hidden');
+  if ((e.key === 'b' || e.key === 'B') && (!G || G.phase === 'done')) begin();
+});
+function opts(host, items, get, set) { host.replaceChildren(); for (const it of items) { const b = document.createElement('button'); b.className = 'opt' + (get() === it ? ' on' : ''); b.textContent = it; b.onclick = () => { set(it); opts(host, items, get, set); }; host.appendChild(b); } }
+const styleNote = () => { $('#styleNote').textContent = STYLE_NOTE[S.style]; };
+opts($('#styles'), Object.keys(STYLES), () => S.style, (v) => { S.style = v; styleNote(); }); styleNote();
+$('#len').oninput = () => { S.len = Number($('#len').value); $('#lenV').textContent = $('#len').value; };
+$('#guests').onchange = () => { S.guests = $('#guests').checked; };
+$('#bubble').onchange = () => { S.bubble = $('#bubble').checked; };
+for (const [id, key] of [['mTempo', 'tempo'], ['mInt', 'intensity']]) $(`#${id}`).oninput = () => { S.manner[key] = Number($(`#${id}`).value); $(`#${id}V`).textContent = $(`#${id}`).value; };
+$('#craft').oninput = () => { S.craft = Number($('#craft').value); $('#craftV').textContent = $('#craft').value; };
+$('#endur').oninput = () => { S.endur = Number($('#endur').value); $('#endurV').textContent = $('#endur').value; };
+$('#accent').oninput = () => document.documentElement.style.setProperty('--her', $('#accent').value);
+$('#file').onchange = () => { const f = $('#file').files[0]; if (f) { ASSETS.her = URL.createObjectURL(f); FACEST = { label: null, src: null }; setFace('neutral'); } };
+$('#faceFiles').onchange = () => { for (const f of $('#faceFiles').files) { const name = f.name.toLowerCase(), label = LABELS.find((l) => name.startsWith(l)); if (label) (faces[label] ??= []).push(URL.createObjectURL(f)); } $('#faceNote').textContent = `loaded: ${Object.keys(faces).sort().join(', ') || 'none'}`; FACEST = { label: null, src: null }; setFace('neutral'); };
+$('#sound').onchange = () => { S.sound = $('#sound').checked; if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
+$('#vol').oninput = () => { S.vol = Number($('#vol').value); if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
+$('#showNum').onchange = () => { S.showNum = $('#showNum').checked; };
+$('#reduced').checked = S.reduced; $('#reduced').onchange = () => { S.reduced = $('#reduced').checked; document.body.classList.toggle('reduced', S.reduced); };
+for (const k of Object.keys(ASSETS.bgs)) { const o = document.createElement('option'); o.value = k; o.textContent = k; $('#bg').appendChild(o); }
+$('#bg').onchange = () => { $('#backdrop').style.backgroundImage = `url(${ASSETS.bgs[$('#bg').value]})`; };
+$('#backdrop').style.backgroundImage = `url(${ASSETS.bgs.quarters_2})`;
+$('#beginBtn').onclick = () => { if (!G || G.phase === 'done') begin(); };
+$('#stopBtn').onclick = () => end('stop'); $('#stopPill').onclick = () => end('stop');
+$('#again').onclick = () => { $('#summary').style.display = 'none'; begin(); };
+$('#go').onclick = async () => { audioInit(); if (A.ctx.state === 'suspended') await A.ctx.resume(); $('#start').style.display = 'none'; loadSamples(); begin(); };
+setFace('neutral'); requestAnimationFrame(frame);
+/* test hooks (prototype only) */
+window.__S = S; window.__G = () => G; window.__M = MOUSE; window.__begin = () => begin();
+</script>
+</body>
+</html>

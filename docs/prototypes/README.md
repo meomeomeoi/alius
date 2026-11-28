@@ -66,6 +66,10 @@ npm run proto -- headlock
 npm run proto -- strokes
 ```
 
+```bash
+npm run proto -- balance
+```
+
 Each writes `.superpowers/prototypes/<name>.html` (ignored by git): one self-contained page with the fonts, backdrops and a placeholder sprite (`tests/fixtures/layout/sprite.svg`). `--sprite <file>` uses any local sprite; **never commit the author's art**. Open the page in Chromium. `H` hides the panel; `window.__S` (settings), `window.__G()` (state) and `window.__forceO` (force the opening, 0–1, `null` to release) exist for screenshots and tests.
 
 ## `strokes.html` — the interactive strokes: her physical discipline as a game (P16 §R.2; P16c ruling 16)
