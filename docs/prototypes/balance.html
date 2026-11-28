@@ -165,6 +165,7 @@ const SLOSH_K = 32, SLOSH_D = 2.4, SLOSH_DRIVE = 1.1, SLOSH_TILT = 0.55; // the 
 const MARGIN = (fill) => 0.1 + (1 - fill) * 0.95; // how far the surface may move before it runs over the rim
 const SPILL_PART = 0.05, SPILL_CD = 450;          // a spill takes this much of a full glass; one per glass in this long
 const SLIDE_AT = 0.62, SLIDE_RATE = 0.9;          // past this tilt things slide toward the low side; at the rim they fall
+const GRACE = 1.6;                                // round 3 (author): a moment to get ready: she lets go of the tray over this long; nothing spills, falls or tires meanwhile
 const FAT_BASE = 0.004, FAT_LOAD = 0.011, FAT_OFF = 2.5; // the arms tire a second, by the load, only while the tray is not level (× how far off, in tolerances, up to 3)
 const TREMOR = (f) => 0.006 + 0.05 * f * f;       // the hands shake with fatigue
 const SAG = (f) => 0.28 * f * f;                  // the far edge sinks as the arms give
@@ -266,7 +267,7 @@ let G = null;
 const MOUSE = { x: 0.5, y: 0.5 };
 function newRun() {
   const id = `bl${Date.now() % 1000000}`;
-  return { id, phase: 'idle', t: 0, ctl: [0, 0], ctlV: [0, 0], tilt: [0, 0], tiltV: [0, 0], prevTiltV: [0, 0], fat: 0, items: [], stains: [], drops: [], acts: [], nextAt: 2.5, n: 0,
+  return { id, phase: 'idle', t: 0, ctl: [0, 0], ctlV: [0, 0], tilt: [0, 0], tiltV: [0, 0], prevTiltV: [0, 0], fat: 0, items: [], stains: [], drops: [], acts: [], nextAt: GRACE + 2, n: 0,
     press: null, pours: [], levelFor: 0, lastSaid: -9, lastSpillSaid: -9, said: {},
     tally: { placed: 0, taken: 0, poured: 0, presses: 0, feints: 0, spills: 0, spilled: 0, hot: 0, falls: 0, levelShare: 0, levelT: 0, guestActs: 0 } };
 }
@@ -283,6 +284,7 @@ function begin() {
   setFace(FACE.start);
   narrate('She points at the floor before her chair. When the commander kneels there, she puts her tray into the commander’s hands.');
   setTimeout(() => say(hpick(lines('start'), `st|${G.id}`)), 700);
+  feel('Her hands stay under the tray a moment longer. Then she lets go.');
 }
 /** her next act, planned from the hash of the run and its count (no draw) */
 function planAct() {
@@ -374,6 +376,7 @@ function sub(h) {
   // the load: each thing's mass at its place, her press on the edge, the arms' sag, their tremor, a slow wander
   let L = [0, 0];
   for (const it of G.items) { const w = massOf(it); L[0] += it.u * w; L[1] += it.v * w; }
+  const ease = easeOut(G.t / GRACE); L = [L[0] * ease, L[1] * ease]; // the grace: her hands still under it
   if (G.press) { if (G.t > G.press.until) G.press = null; else { L[0] += G.press.u * G.press.force; L[1] += G.press.v * G.press.force; } }
   const craftK = 1 - 0.08 * S.craft;
   L[1] -= SAG(G.fat);
@@ -389,7 +392,7 @@ function sub(h) {
   // the arms tire: by the load and when the tray is not level
   const M = G.items.reduce((a, it) => a + massOf(it), 0);
   // round 2 (author): a level tray does not tire the arms; out of level they tire by the load and by how far it is off
-  G.fat = clamp(G.fat + h * (FAT_BASE + FAT_LOAD * M) * FAT_OFF * clamp((tiltM - TOL) / TOL, 0, 3) * (1 - 0.08 * (S.endur - 3)), 0, 1);
+  if (G.t > GRACE) G.fat = clamp(G.fat + h * (FAT_BASE + FAT_LOAD * M) * FAT_OFF * clamp((tiltM - TOL) / TOL, 0, 3) * (1 - 0.08 * (S.endur - 3)), 0, 1);
   if (G.fat >= 1) { end('arms'); return; }
   // pouring: the bottle's liquid goes into the glass (the weight moves)
   for (const p of G.pours) { if (G.t > p.until || !G.items.includes(p.from) || !G.items.includes(p.to)) continue; const q = Math.min(p.rate * h, p.from.fill, Math.max(0, (p.target - p.to.fill) / 1.6)); p.from.fill -= q; p.to.fill += q * 1.6; p.to.sloshV[0] += rand(-1, 1) * 0.6 * h * 60; p.to.sloshV[1] += rand(-1, 1) * 0.6 * h * 60; }
@@ -402,11 +405,11 @@ function sub(h) {
       for (let i = 0; i < 2; i++) { const a = -SLOSH_K * it.slosh[i] - SLOSH_D * it.sloshV[i] - SLOSH_DRIVE * acc[i] * 0.02; it.sloshV[i] += a * h; it.slosh[i] += it.sloshV[i] * h; }
       it.spillCd = Math.max(0, it.spillCd - h * 1000);
       const off = [G.tilt[0] * SLOSH_TILT + it.slosh[0], G.tilt[1] * SLOSH_TILT + it.slosh[1]], om = Math.hypot(off[0], off[1]);
-      if (!d.sealed && it.fill > 0.05 && om > MARGIN(it.fill) && it.spillCd <= 0) spill(it, off, om);
+      if (!d.sealed && it.fill > 0.05 && om > MARGIN(it.fill) && it.spillCd <= 0 && G.t > GRACE) spill(it, off, om);
       if (it.fill > 1) spill(it, off, om, true);
     }
     // past a steep tilt things slide toward the low side; at the rim they fall
-    if (tiltM > SLIDE_AT) { const s = (tiltM - SLIDE_AT) * SLIDE_RATE * h / (d.mass * 2 + 0.3); it.u += (G.tilt[0] / tiltM) * s; it.v += (G.tilt[1] / tiltM) * s; if (Math.hypot(it.u, it.v) > 1.02) fall(it); }
+    if (tiltM > SLIDE_AT && G.t > GRACE) { const s = (tiltM - SLIDE_AT) * SLIDE_RATE * h / (d.mass * 2 + 0.3); it.u += (G.tilt[0] / tiltM) * s; it.v += (G.tilt[1] / tiltM) * s; if (Math.hypot(it.u, it.v) > 1.02) fall(it); }
   }
   for (const dr of G.drops) { dr.t += h; }
   G.drops = G.drops.filter((dr) => dr.t < 0.9);
@@ -459,14 +462,17 @@ function drawTray(now) {
   // its shadow
   cx.save(); cx.translate(g.x, g.y + 30); cx.rotate(g.ang); cx.scale(1, g.ry / g.rx); const shG = cx.createRadialGradient(0, 0, g.rx * 0.6, 0, 0, g.rx * 1.25); shG.addColorStop(0, 'rgba(0,0,0,.55)'); shG.addColorStop(1, 'rgba(0,0,0,0)'); cx.fillStyle = shG; cx.beginPath(); cx.arc(0, 0, g.rx * 1.25, 0, Math.PI * 2); cx.fill(); cx.restore(); // a gradient, not a canvas blur (a blur each frame is too slow)
   const brass = (x0, y0, x1, y1) => { const b = cx.createLinearGradient(x0, y0, x1, y1); b.addColorStop(0, '#f1d692'); b.addColorStop(0.28, '#b8893e'); b.addColorStop(0.55, '#7a5522'); b.addColorStop(0.8, '#c99c4e'); b.addColorStop(1, '#8c6428'); return b; };
-  // the handles: brass loops out at both sides, under the rim
+  // the handles (round 3: attached; round 2's hung in the air): a brass loop from the rim and back to it at each side, standing a little
+  // proud of the tray, drawn before the rim so its ends tuck under it
   for (const side of [-1, 1]) {
-    const [hx, hy] = P(g, side * 1.06, 0);
-    cx.save(); cx.translate(hx, hy); cx.rotate(g.ang);
-    cx.strokeStyle = 'rgba(0,0,0,.45)'; cx.lineWidth = 9; cx.beginPath(); cx.ellipse(side * g.rx * 0.05, 6, g.rx * 0.09, g.ry * 0.32, 0, side > 0 ? -Math.PI / 2 : Math.PI / 2, side > 0 ? Math.PI / 2 : Math.PI * 1.5); cx.stroke();
-    cx.strokeStyle = brass(-g.rx * 0.1, -g.ry * 0.3, g.rx * 0.1, g.ry * 0.3); cx.lineWidth = 7; cx.beginPath(); cx.ellipse(side * g.rx * 0.05, 0, g.rx * 0.09, g.ry * 0.32, 0, side > 0 ? -Math.PI / 2 : Math.PI / 2, side > 0 ? Math.PI / 2 : Math.PI * 1.5); cx.stroke();
-    cx.strokeStyle = 'rgba(255,240,200,.5)'; cx.lineWidth = 1.5; cx.beginPath(); cx.ellipse(side * g.rx * 0.05, -2, g.rx * 0.09, g.ry * 0.32, 0, side > 0 ? -Math.PI / 2 : Math.PI / 2, side > 0 ? -Math.PI / 6 : Math.PI * 1.2); cx.stroke();
-    cx.restore();
+    const a0 = -0.42, a1 = 0.42, out = 1.2, lift = g.rx * 0.035, path = (dy = 0) => {
+      const p0 = P(g, side * Math.cos(a0), Math.sin(a0) * 0.98, lift), p3 = P(g, side * Math.cos(a1), Math.sin(a1) * 0.98, lift);
+      const c1 = P(g, side * out, Math.sin(a0) * 0.85, lift * 2.2), c2 = P(g, side * out, Math.sin(a1) * 0.85, lift * 2.2);
+      cx.beginPath(); cx.moveTo(p0[0], p0[1] + dy); cx.bezierCurveTo(c1[0], c1[1] + dy, c2[0], c2[1] + dy, p3[0], p3[1] + dy);
+    };
+    cx.strokeStyle = 'rgba(0,0,0,.45)'; cx.lineWidth = 9; cx.lineCap = 'round'; path(5); cx.stroke();
+    cx.strokeStyle = brass(g.x + side * g.rx, g.y - g.ry * 0.4, g.x + side * g.rx * 1.2, g.y + g.ry * 0.4); cx.lineWidth = 7; path(); cx.stroke();
+    cx.strokeStyle = 'rgba(255,240,200,.55)'; cx.lineWidth = 1.5; path(-2); cx.stroke();
   }
   // the gallery rim: its outer wall (the near side shows), its top, a dark bevel inside
   cx.fillStyle = '#4a3216'; ell(g.x, g.y + 9, g.rx * 1.05, g.ry * 1.05 + 4, g.ang); cx.fill();
