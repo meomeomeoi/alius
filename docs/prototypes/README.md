@@ -62,7 +62,15 @@ npm run proto -- sparring
 npm run proto -- headlock
 ```
 
+```bash
+npm run proto -- strokes
+```
+
 Each writes `.superpowers/prototypes/<name>.html` (ignored by git): one self-contained page with the fonts, backdrops and a placeholder sprite (`tests/fixtures/layout/sprite.svg`). `--sprite <file>` uses any local sprite; **never commit the author's art**. Open the page in Chromium. `H` hides the panel; `window.__S` (settings), `window.__G()` (state) and `window.__forceO` (force the opening, 0–1, `null` to release) exist for screenshots and tests.
+
+## `strokes.html` — the interactive strokes (P16 §R.2; P16c, in rounds)
+
+*Round 1 (2026-11-28), scheme B (author): each stroke is heard, braced, damped and named. Not approved yet; its normative section is written once the author approves the rounds.* It needs `slap/slap.ogg`, `slap/swish1–3`, `ha/cloth1–4`, `ha/creak1–3`, `ha/soft1–2`, `ha/wood1`, `ha/belt`, `ha/step_w0–2` and `breath-in-out.mp3` (`assets/LICENSES.md`), and bundles the dial's drawing code (`%%DIALKIT%%`) as `posture.html` does.
 
 ## `headlock.html` — the hold and the escape from it (the sparring hold: `smothered_armpit`, breath and saturation together; also `face_to_bottom`)
 

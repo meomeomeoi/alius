@@ -1,0 +1,1142 @@
+<!doctype html>
+<!--
+  P16c reference prototype: THE STROKES (P16 §R.2, physical discipline as a game). Round 1 (2026-11-28), not approved yet.
+  Scheme B (author): each stroke is heard, braced, damped and named. Her rhythm brings a stroke: she lines it up (a tap), the
+  implement goes up (her shadow, her clothes, its own sound), sometimes a feint, then the swing. Space (or the left button) tenses
+  the body: slap.html's tension, one try a stroke; braced on the impact, the stroke throws less. The impact throws the posture's
+  points (posture.html's dial and corrections: keys 1-7 or a click on the joint) toward where the body flinches; past 100 the
+  posture breaks. Then the count: the input opens and the number is typed in her rhythm (with the thanks, if that is her rule).
+  A sharp flick of the mouse pulls away: defiance, as the slap's turned face.
+    npm run proto -- strokes [--sprite <png|webp|svg>]
+  Copied from slap.html: the tension, the flick, the flash, the scatter of the typed letters, her hand, the sound kit (play, noise,
+  thump, the slap recording, the swish, the breath). Copied from posture.html: the dial and its beads, the blended body, the
+  anchors, the correction and its loudness, the jolt. Copied from foot_care.html: her two face layers and their crossfade.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alius · strokes · prototype</title>
+<style>
+@font-face { font-family: "Caveat"; src: url("%%ASSET:fonts/hand-caveat-400.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 300; src: url("%%ASSET:fonts/inter-300.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 400; src: url("%%ASSET:fonts/inter-400.woff2%%") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; src: url("%%ASSET:fonts/ibm-plex-mono-400.woff2%%") format("woff2"); }
+
+:root { --her: #ff9ec7; --hs: 1; --cmd: #3b97ff; --warn: #ffb547;
+  --glass: rgba(14, 12, 20, 0.58); --line: rgba(255, 255, 255, 0.12); --ink: #ece8f2; --dim: rgba(236, 232, 242, 0.55); --bg: #0b0a10;
+  --dial: min(18.5vh, 200px); --dialBig: 300px; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: var(--ink); font-family: Inter, system-ui, sans-serif; font-weight: 300; }
+
+#stage { position: fixed; inset: 0; overflow: hidden; }
+#world { position: absolute; inset: -14%; will-change: transform, filter; transform-origin: 50% 50%; }
+#backdrop { position: absolute; inset: 0; background-size: cover; background-position: center; will-change: filter, transform; transform-origin: 50% 70%; }
+#cam { position: absolute; inset: 0; overflow: hidden; }
+.her { position: absolute; left: 0; top: 0; transform-origin: 50% 100%; will-change: transform, filter, opacity; user-select: none; -webkit-user-drag: none; transition-property: opacity; transition-timing-function: ease; }
+#shadow { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+#sweep { position: absolute; top: 8%; height: 84%; width: 46%; border-radius: 50%; background: radial-gradient(closest-side, rgba(8,5,8,.92), rgba(8,5,8,.55) 60%, rgba(8,5,8,0));
+  filter: blur(38px); opacity: 0; pointer-events: none; will-change: transform, opacity; }
+#press { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse 90% 60% at 50% -10%, rgba(0,0,0,.8), rgba(0,0,0,0) 70%); }
+#tight { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse 62% 58% at 50% 44%, rgba(0,0,0,0) 55%, rgba(0,0,0,.85) 100%); }
+#heat { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+#touch { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+#flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; mix-blend-mode: screen; }
+#vig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 50%, transparent 48%, rgba(0,0,0,.7) 100%); }
+
+/* her hand (slap.html's) */
+#hand { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.her-line { position: absolute; font-family: Caveat, cursive; color: var(--her); white-space: nowrap; line-height: 1; font-size: calc(44px * var(--hs));
+  text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.85), 0 0 28px rgba(0,0,0,.6);
+  animation: write var(--write, 600ms) steps(var(--steps, 12), end) both; transition: opacity .5s, transform .5s; }
+.her-line.right { transform-origin: right center; }
+.her-line.gone { opacity: 0; }
+.her-line.num { font-size: calc(64px * var(--hs)); }
+@keyframes write { from { clip-path: inset(-30% 100% -30% -8%); } to { clip-path: inset(-30% -8% -30% -8%); } }
+
+/* the scene's reply and input (a stand-in: P10e's) */
+#ui { position: absolute; inset: 0; pointer-events: none; }
+#reply { position: absolute; left: 50%; bottom: 112px; transform: translateX(-50%); width: min(980px, 62vw); font-size: 21px; line-height: 1.5;
+  text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.7); transition: opacity .25s; }
+#reply .act { font-style: italic; color: var(--dim); }
+#reply .speech { color: var(--her); font-weight: 400; }
+#inputWrap { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); width: 720px; height: 52px; pointer-events: auto;
+  background: var(--glass); border: 1px solid var(--line); border-radius: 26px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  transition: opacity .25s, box-shadow .3s, border-color .3s; overflow: hidden; }
+#inputWrap.count { border-color: color-mix(in srgb, var(--her) 70%, transparent); box-shadow: 0 0 22px color-mix(in srgb, var(--her) 30%, transparent); }
+#cmd, #mirror { position: absolute; inset: 0; padding: 0 24px; font: 300 19px/52px Inter, sans-serif; letter-spacing: 0; }
+#cmd { width: 100%; border: 0; outline: 0; background: transparent; color: transparent; caret-color: var(--ink); }
+#cmd::placeholder { color: rgba(236,232,242,.35); }
+#mirror { pointer-events: none; white-space: pre; overflow: hidden; }
+#mirror > span { display: inline-block; white-space: pre; transition: transform .45s cubic-bezier(.2,.9,.3,1.2), opacity .45s; }
+#dots { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); height: 12px; width: 200px; pointer-events: none; }
+#dots i { position: absolute; top: 2px; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%; background: var(--her); box-shadow: 0 0 6px color-mix(in srgb, var(--her) 70%, transparent);
+  animation: dot .35s ease-out both; }
+#dots i.last { width: 10px; height: 10px; margin-left: -5px; top: .5px; background: #fff; box-shadow: 0 0 10px var(--her); }
+@keyframes dot { from { transform: scale(2.2); opacity: 0; } }
+
+/* the body speaks (posture.html's feel lines) */
+#feel { position: absolute; left: 50%; bottom: 200px; transform: translateX(-50%); width: min(900px, 50vw); text-align: center; pointer-events: none; z-index: 5; }
+#feel div { font: italic 300 19px/1.5 Inter, sans-serif; color: color-mix(in srgb, var(--cmd) 35%, #fff); text-shadow: 0 1px 3px #000, 0 0 16px rgba(0,0,0,.8); animation: feel 4.2s ease-out both; }
+#feel div.sharp { color: #ffe2b5; }
+@keyframes feel { 0% { opacity: 0; transform: translateY(6px); } 12% { opacity: .95; transform: none; } 70% { opacity: .85; } 100% { opacity: 0; } }
+
+/* the dial (posture.html's, grown while the punishment runs) */
+#dial { position: absolute; right: 36px; bottom: 58px; z-index: 4; transition: right .5s, bottom .5s; }
+#dialFace { position: relative; width: var(--dial); height: var(--dial); border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--cmd) 12%, var(--bg)), color-mix(in srgb, var(--bg) 94%, #000) 78%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cmd) 30%, transparent), 0 6px 24px rgba(0,0,0,.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  transition: width .5s cubic-bezier(.2,.9,.3,1), height .5s cubic-bezier(.2,.9,.3,1), box-shadow .6s, opacity .9s, filter .9s; }
+#dialFace::before { content: ""; position: absolute; inset: 3px; border-radius: 50%;
+  background: repeating-conic-gradient(from -0.7deg, color-mix(in srgb, var(--cmd) 55%, transparent) 0 1.4deg, transparent 1.4deg 7.5deg);
+  -webkit-mask: radial-gradient(circle, transparent 93%, #000 94%); mask: radial-gradient(circle, transparent 93%, #000 94%); }
+#dialFace svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#dial.holding { bottom: 92px; }
+#dial.holding #dialFace { width: var(--dialBig); height: var(--dialBig); }
+#dial.watched #dialFace { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--her) 55%, transparent), 0 0 30px color-mix(in srgb, var(--her) 22%, transparent), 0 6px 24px rgba(0,0,0,.55); }
+#dial.jolt #dialFace { animation: jolt .28s; }
+@keyframes jolt { 20% { transform: translate(var(--jx), var(--jy)); } 50% { transform: translate(calc(var(--jx) * -.6), calc(var(--jy) * -.4)); } }
+#dialLabel { position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%); width: 260px; text-align: center; line-height: 1.35;
+  font: 11px "IBM Plex Mono", monospace; letter-spacing: .14em; color: color-mix(in srgb, var(--cmd) 60%, #fff); text-shadow: 0 1px 6px #000; text-transform: uppercase; }
+#dialLabel .sub { display: block; font-size: 10px; opacity: .75; }
+#dialLabel .herName { font: calc(24px * var(--hs)) Caveat, cursive; letter-spacing: 0; text-transform: none; color: var(--her); display: block; margin-bottom: 1px; }
+#dialLabel .cnt { display: block; margin-top: 4px; font-size: 10px; letter-spacing: .18em; color: var(--dim); }
+.alius-mannequin { display: block; overflow: visible; }
+.alius-mq-floor { fill: color-mix(in srgb, var(--cmd) 9%, transparent); stroke: color-mix(in srgb, var(--cmd) 22%, transparent); stroke-width: .8; }
+.alius-mq-out, .alius-mq-fill { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.alius-mq-out { stroke: color-mix(in srgb, var(--cmd) 30%, #fff); }
+.alius-mq-fill { stroke: color-mix(in srgb, var(--cmd) 42%, #0d1020); }
+.alius-mq-out.alius-mq-far { stroke: color-mix(in srgb, var(--cmd) 62%, #1a2034); }
+.alius-mq-fill.alius-mq-far { stroke: color-mix(in srgb, var(--cmd) 26%, #0b0d18); }
+.alius-mq-head { fill: color-mix(in srgb, var(--cmd) 42%, #0d1020); stroke: color-mix(in srgb, var(--cmd) 30%, #fff); stroke-width: 1.6; }
+.alius-mq-face { fill: color-mix(in srgb, var(--cmd) 70%, #fff); }
+.alius-mq-gaze { stroke: color-mix(in srgb, var(--cmd) 50%, transparent); stroke-width: 1.2; stroke-linecap: round; }
+.alius-mq-hint { fill: none; stroke: rgba(210,146,0,.5); stroke-width: 1.6; stroke-linecap: round; }
+.alius-mq-hint.alius-mq-plane { fill: rgba(210,146,0,.05); stroke: rgba(210,146,0,.25); stroke-width: 1; }
+.alius-mq-shadow { fill: rgba(0,0,0,.3); }
+.hit { fill: transparent; cursor: pointer; pointer-events: all; }
+.hit:hover { fill: color-mix(in srgb, var(--warn) 14%, transparent); }
+.mqHot { fill: none; stroke: var(--warn); stroke-width: 2; pointer-events: none; }
+.alius-mq-ghost-seg { fill: none; stroke: color-mix(in srgb, var(--cmd) 70%, transparent); stroke-width: 1.4; stroke-linecap: round; }
+.alius-mq-hot { fill: none; stroke: var(--warn); stroke-width: 2; }
+.alius-mq-gaze.alius-mq-hot { stroke: var(--warn); stroke-width: 1.8; }
+.alius-mq-item { fill: none; stroke: color-mix(in srgb, var(--warn) 75%, #fff); stroke-width: 2.2; stroke-linecap: round; }
+.alius-mq-item.alius-mq-plane { fill: color-mix(in srgb, var(--warn) 28%, transparent); stroke-width: 1.4; }
+#beads { position: absolute; inset: 0; pointer-events: none; transition: opacity .6s; }
+.bead { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; pointer-events: auto; cursor: pointer;
+  background: rgba(14, 12, 20, .78); border: 1px solid color-mix(in srgb, var(--cmd) 40%, transparent);
+  font: 11px/24px "IBM Plex Mono", monospace; text-align: center; color: color-mix(in srgb, var(--cmd) 55%, #fff);
+  box-shadow: 0 0 calc(var(--o) * 18px) color-mix(in srgb, var(--warn) calc(var(--o) * 90%), transparent);
+  border-color: color-mix(in srgb, var(--warn) calc(var(--o) * 100%), color-mix(in srgb, var(--cmd) 40%, transparent)); transition: opacity .3s; }
+.bead .nm { position: absolute; top: 50%; transform: translateY(-50%); right: 30px; white-space: nowrap; font-size: 9px; letter-spacing: .12em; color: var(--dim); }
+.bead.off { opacity: .18; pointer-events: none; }
+#stopPill { position: absolute; right: 36px; top: 54px; padding: 7px 14px; border-radius: 18px; font: 11px "IBM Plex Mono", monospace; letter-spacing: .12em;
+  background: rgba(60, 10, 14, .55); border: 1px solid rgba(255, 120, 120, .35); color: #ffd6d6; backdrop-filter: blur(10px); display: none; cursor: pointer; z-index: 7; pointer-events: auto; }
+body.reduced #dialFace, body.reduced #dial { transition: none; }
+body.reduced #dial.jolt #dialFace { animation: none; }
+body.reduced .her-line { animation: none; }
+
+/* ---------- prototype only ---------- */
+.card { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 520px; padding: 22px 26px; border-radius: 18px; pointer-events: auto; z-index: 30;
+  background: rgba(12, 11, 18, .9); border: 1px solid var(--line); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); display: none; }
+.card h3 { margin: 0 0 10px; font: 13px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .1em; color: var(--dim); }
+.card .facts { font: 13px "IBM Plex Mono", monospace; color: #cfcbe0; line-height: 1.7; white-space: pre-wrap; }
+.card .words { margin-top: 12px; font-size: 15px; line-height: 1.55; color: var(--ink); }
+.btn { display: inline-block; margin-top: 12px; padding: 9px 18px; border-radius: 20px; border: 1px solid var(--line); background: rgba(255,255,255,.06);
+  color: var(--ink); font: 14px Inter, sans-serif; cursor: pointer; }
+.btn:hover { background: rgba(255,255,255,.14); }
+#panel { position: fixed; top: 14px; left: 14px; width: 330px; max-height: calc(100vh - 28px); overflow: auto; padding: 14px 16px; border-radius: 14px; z-index: 50;
+  background: rgba(10, 10, 14, .86); border: 1px solid var(--line); font: 12px "IBM Plex Mono", monospace; color: #cfcbe0; }
+#panel.hidden { display: none; }
+#panel h4 { margin: 12px 0 6px; font-weight: 400; color: #8d88a6; font-variant: small-caps; letter-spacing: .08em; }
+#panel h4:first-child { margin-top: 0; }
+#panel .row { display: flex; flex-wrap: wrap; gap: 4px; }
+#panel button.opt { padding: 4px 8px; border-radius: 10px; border: 1px solid #3a3650; background: #17151f; color: #cfcbe0; font: 12px "IBM Plex Mono", monospace; cursor: pointer; }
+#panel button.opt.on { background: #3b3360; border-color: #8a7fd0; color: #fff; }
+#panel button.opt.off { opacity: .35; }
+#panel button.go { border-color: #6a8fd0; padding: 7px 12px; font-size: 13px; }
+#panel label { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+#panel input[type=range] { flex: 1; }
+#panel select { background: #17151f; color: #cfcbe0; border: 1px solid #3a3650; font: 12px "IBM Plex Mono", monospace; }
+#panel .note { color: #77738c; line-height: 1.45; margin-top: 8px; }
+#stats { white-space: pre; color: #a9a4c4; line-height: 1.5; }
+#log { position: fixed; left: 50%; top: 12px; transform: translateX(-50%); font: 12px "IBM Plex Mono", monospace; color: #9ad; text-shadow: 0 0 4px #000; z-index: 40; pointer-events: none; transition: opacity .6s; }
+#start { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 60; background: rgba(0,0,0,.35); }
+#start .box { width: 600px; padding: 26px 30px; border-radius: 18px; background: rgba(12, 11, 18, .88); border: 1px solid var(--line); line-height: 1.6; font-size: 15px; }
+#start .box h2 { margin: 0 0 8px; font: 15px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .12em; color: #a9a3c7; }
+#start kbd { font: 12px "IBM Plex Mono", monospace; padding: 1px 6px; border: 1px solid #555; border-radius: 4px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><filter id="hblur" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur id="hblurG" stdDeviation="0 0"/></filter></svg>
+<div id="stage">
+  <div id="world">
+    <div id="backdrop"></div>
+    <div id="cam"><img id="her" class="her" alt="" draggable="false"><img id="her2" class="her" alt="" draggable="false" style="opacity:0"></div>
+  </div>
+  <div id="shadow"></div>
+  <div id="sweep"></div>
+  <div id="press"></div>
+  <div id="touch"></div>
+  <div id="heat"></div>
+  <div id="vig"></div>
+  <div id="tight"></div>
+  <div id="flash"></div>
+  <div id="hand"></div>
+  <div id="feel"></div>
+  <div id="ui">
+    <div id="reply"></div>
+    <div id="inputWrap"><div id="mirror"></div><input id="cmd" autocomplete="off" spellcheck="false" placeholder=""></div>
+    <div id="dots"></div>
+  </div>
+  <div id="stopPill">STOP WORD</div>
+  <div id="dial"><div id="dialFace"></div><div id="beads"></div><div id="dialLabel"></div></div>
+  <div class="card" id="summary"><h3>prototype · the punishment</h3><div class="facts" id="sumFacts"></div><div class="words" id="sumWords"></div><span class="btn" id="again">again</span></div>
+</div>
+<div id="log"></div>
+
+<div id="panel">
+  <h4>the punishment</h4>
+  <div class="row"><button class="opt go" id="beginBtn">begin (B)</button><button class="opt" id="stopBtn">stop word (S)</button></div>
+  <label>posture <select id="postureSel"></select></label>
+  <label>target <select id="targetSel"></select></label>
+  <label>implement <select id="implSel"></select></label>
+  <label>strokes <input type="range" id="num" min="3" max="24" value="8"><span id="numV">8</span></label>
+  <label>the number <select id="numberSel"><option value="style" selected>by her style</option><option value="named">named</option><option value="hidden">hidden</option></select></label>
+  <label>the count <select id="countSel"><option value="style" selected>by her style</option><option value="aloud">aloud (the commander)</option><option value="hers">she counts</option><option value="none">none</option></select></label>
+  <h4>her rules of conduct</h4>
+  <label><input type="checkbox" id="rStill"> do not flinch (a jerk past 55 is seen)</label>
+  <label><input type="checkbox" id="rThanks"> thank after each</label>
+  <label><input type="checkbox" id="rEyes"> eyes on her (palms only)</label>
+  <div class="note">Keeping the posture is always her rule: past 100 a point breaks it.</div>
+  <h4>her style</h4>
+  <div class="row" id="styles"></div>
+  <div class="note" id="styleNote"></div>
+  <h4>her manner (−2 … +2)</h4>
+  <label>intensity <input type="range" id="mInt" min="-2" max="2" value="0"><span id="mIntV">0</span></label>
+  <label>tempo <input type="range" id="mTempo" min="-2" max="2" value="0"><span id="mTempoV">0</span></label>
+  <label>order <input type="range" id="mOrder" min="-2" max="2" value="0"><span id="mOrderV">0</span></label>
+  <label>voice <input type="range" id="mVoice" min="-2" max="2" value="0"><span id="mVoiceV">0</span></label>
+  <label>warmth <input type="range" id="mWarmth" min="-2" max="2" value="0"><span id="mWarmthV">0</span></label>
+  <h4>the commander</h4>
+  <label>pain (craft) <input type="range" id="pain" min="0" max="5" value="0"><span id="painV">0</span></label>
+  <label>endurance <input type="range" id="endur" min="1" max="6" value="3"><span id="endurV">3</span></label>
+  <h4>interactions (SYS › Scene)</h4>
+  <label><input type="checkbox" id="iBrace" checked> timing: the brace</label>
+  <label><input type="checkbox" id="iPosture" checked> the posture: the flinch on the dial</label>
+  <label><input type="checkbox" id="iCount" checked> the count typed</label>
+  <h4>her look</h4>
+  <label>sprite <input type="file" id="file" accept="image/*" style="width:170px"></label>
+  <label>faces <input type="file" id="faceFiles" accept="image/*" multiple style="width:170px"></label>
+  <div class="note" id="faceNote">Her expression sprites, matched by the label a file name begins with (anger.png, joy-2.webp). Shown only where she is in view (kneeling, palms up).</div>
+  <label><input type="checkbox" id="faceFadeOn" checked> crossfade her faces <input type="range" id="faceFade" min="60" max="1200" step="20" value="300"><span id="faceFadeV">300</span></label>
+  <label>accent <input type="color" id="accent" value="#ff9ec7"></label>
+  <label>backdrop <select id="bg"></select></label>
+  <h4>view</h4>
+  <label><input type="checkbox" id="sound" checked> sound <input type="range" id="vol" min="0" max="1" step="0.05" value="0.8"></label>
+  <label><input type="checkbox" id="showNum"> show the numbers (prototype only)</label>
+  <label><input type="checkbox" id="reduced"> reduced motion</label>
+  <div id="stats"></div>
+  <div class="note">A stroke: listen for her (a tap to line it up, the implement going up, its swish). <b>Space</b> or the left button tenses the body (one try a stroke). Then hold the posture: <b>1–7</b> or a click on a joint puts a point back. Then the count: the input opens; type the number (<i>3</i> or <i>three</i>; with the thanks: <i>three, thank you</i>) and Enter. A sharp <b>flick of the mouse</b> pulls away (defiance). S stop word · H hides this panel.</div>
+</div>
+
+<div id="start"><div class="box">
+  <h2>the strokes · prototype · round 1</h2>
+  Her discipline, as a game. Each stroke: <b>hear</b> it coming (a tap, the implement going up, the swish), <b>brace</b> on it (<kbd>Space</kbd> or the left button, one try), <b>damp</b> the flinch on the dial (<kbd>1</kbd>–<kbd>7</kbd> or a click on the joint) before it breaks the posture, then <b>name</b> it: the input opens for the count.<br>
+  A sharp flick of the mouse pulls away: defiance, and she sees it. <kbd>S</kbd> stop word · <kbd>H</kbd> panel. Headphones help.
+  <div><span class="btn" id="go">begin</span></div>
+</div></div>
+
+<script>
+%%DIALKIT%%
+</script>
+<script>
+'use strict';
+const ASSETS = {
+  her: '%%SPRITE%%',
+  bgs: { quarters_1: '%%ASSET:content/core/art/backdrops/quarters_1.webp%%', quarters_2: '%%ASSET:content/core/art/backdrops/quarters_2.webp%%', quarters_dark: '%%ASSET:content/core/art/backdrops/quarters_dark.webp%%', loc_quarters_commander: '%%ASSET:content/core/art/backdrops/loc_quarters_commander.webp%%' },
+};
+const SAMPLE_URLS = {
+  slap: '%%ASSET:docs/prototypes/assets/slap/slap.ogg%%',
+  swish1: '%%ASSET:docs/prototypes/assets/slap/swish1.ogg%%', swish2: '%%ASSET:docs/prototypes/assets/slap/swish2.ogg%%', swish3: '%%ASSET:docs/prototypes/assets/slap/swish3.ogg%%',
+  cloth1: '%%ASSET:docs/prototypes/assets/ha/cloth1.ogg%%', cloth2: '%%ASSET:docs/prototypes/assets/ha/cloth2.ogg%%', cloth3: '%%ASSET:docs/prototypes/assets/ha/cloth3.ogg%%', cloth4: '%%ASSET:docs/prototypes/assets/ha/cloth4.ogg%%',
+  creak1: '%%ASSET:docs/prototypes/assets/ha/creak1.ogg%%', creak2: '%%ASSET:docs/prototypes/assets/ha/creak2.ogg%%', creak3: '%%ASSET:docs/prototypes/assets/ha/creak3.ogg%%',
+  soft1: '%%ASSET:docs/prototypes/assets/ha/soft1.ogg%%', soft2: '%%ASSET:docs/prototypes/assets/ha/soft2.ogg%%',
+  wood1: '%%ASSET:docs/prototypes/assets/ha/wood1.ogg%%', wood2: '%%ASSET:docs/prototypes/assets/ha/wood2.ogg%%',
+  belt: '%%ASSET:docs/prototypes/assets/ha/belt.ogg%%',
+  step0: '%%ASSET:docs/prototypes/assets/ha/step_w0.ogg%%', step1: '%%ASSET:docs/prototypes/assets/ha/step_w1.ogg%%', step2: '%%ASSET:docs/prototypes/assets/ha/step_w2.ogg%%',
+  breath: '%%ASSET:docs/prototypes/assets/breath-in-out.mp3%%',
+};
+const { mannequinSvg, pose, BASE_POINTS, PRESETS } = window.DialKit;
+const $ = (s) => document.querySelector(s);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+const easeIn = (t) => Math.pow(clamp(t, 0, 1), 2);
+const easeInOut = (t) => { t = clamp(t, 0, 1); return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
+// no rng in the game: every pick is a hash of a stable key (the run's id and what is picked), as the engine does
+function fnv1a(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return h >>> 0; }
+const hash01 = (k) => fnv1a(k) / 4294967296;
+const hpick = (list, k) => list[fnv1a(k) % list.length];
+const hrand = (a, b, k) => a + hash01(k) * (b - a);
+const pick = (a) => a[Math.floor(Math.random() * a.length)]; // sound variety only (never the game)
+const rand = (a, b) => a + Math.random() * (b - a);
+
+/* ======================================================================== the engine's numbers
+   The implements: `force` and `mark` are content/core/implements.json's; the rest is the instrument's (the swing's length, how
+   long a stroke's flinch lasts, whether she lines it up with a tap, the sting that comes after the impact, the sound). */
+const IMPL = {
+  palm:         { label: 'her palm', force: 1, mark: ['redness', 1], swing: 240, imp: 520, tap: false, delay: 0, sting: 0.9 },
+  glove:        { label: 'a leather glove', force: 1, mark: ['redness', 1], swing: 240, imp: 520, tap: false, delay: 0, sting: 0.9 },
+  slipper_sole: { label: 'a slipper sole', force: 2, mark: ['redness', 1], swing: 220, imp: 560, tap: false, delay: 0, sting: 1 },
+  ruler:        { label: 'a ruler', force: 2, mark: ['line', 1], swing: 170, imp: 500, tap: true, delay: 80, sting: 1.1 },
+  belt:         { label: 'a belt', force: 3, mark: ['welt', 2], swing: 260, imp: 640, tap: false, delay: 60, sting: 1.1 },
+  riding_crop:  { label: 'a riding crop', force: 4, mark: ['welt', 2], swing: 150, imp: 620, tap: true, delay: 120, sting: 1.25 },
+  cane:         { label: 'a cane', force: 5, mark: ['welt', 3], swing: 170, imp: 900, tap: true, delay: 320, sting: 1.45 },
+};
+/* The postures (P16 §R.2): the dial's pose and the targets it offers; what the commander sees (`view`). over_her_knee is a contact
+   (blockingContacts: the commander lying_front across her lap), the others servicePostures presets. */
+const POSTURES = {
+  kneel_present:      { label: 'kneeling, palms up', preset: 'kneel_present', targets: ['palms'], view: 'her' },
+  bent_over:          { label: 'bent over the desk', preset: 'bent_over', targets: ['buttocks', 'thighs', 'back'], view: 'desk' },
+  chest_down_hips_up: { label: 'chest down, hips up', preset: 'chest_down_hips_up', targets: ['buttocks', 'soles', 'back', 'thighs'], view: 'floor' },
+  over_her_knee:      { label: 'over her knee', pose: { base: 'lying_front', points: {} }, targets: ['buttocks', 'thighs', 'soles'], view: 'lap' },
+};
+const TARGET_WORD = { palms: 'the palms', buttocks: 'the buttocks', thighs: 'the thighs', back: 'the back', soles: 'the soles' };
+/* The flinch: where each point jerks when a stroke lands (the posture game's DRIFT_TO is where it sags; this is where it jumps). */
+const POINTS = ['torso', 'hips', 'knees', 'arms', 'head', 'gaze', 'feet'];
+const KEY_OF = { torso: 1, hips: 2, knees: 3, arms: 4, head: 5, gaze: 6, feet: 7 };
+const FLINCH_TO = {
+  torso: { bent: 'forward', upright: 'forward', level: 'upright', forward: 'upright' },
+  hips: { raised: 'on_heels', on_heels: 'raised' },
+  knees: { together: 'apart' },
+  arms: { forward_palms_up: 'on_thighs_up', desk_flat: 'behind_back', on_floor: 'behind_back', at_sides: 'behind_back' },
+  head: { to_floor: 'up', up: 'back', bowed: 'up' },
+  gaze: { at_her: 'closed', down: 'closed', straight: 'closed' },
+  feet: { flat: 'on_toes' },
+};
+/* Which points a stroke on a target throws, and how much of it each takes. */
+const HIT = {
+  palms:    { arms: 1, gaze: 0.7, head: 0.35, hips: 0.25 },
+  buttocks: { hips: 1, torso: 0.6, feet: 0.55, arms: 0.45, head: 0.3 },
+  thighs:   { feet: 1, knees: 0.7, hips: 0.5, torso: 0.3 },
+  back:     { torso: 1, arms: 0.5, head: 0.5, hips: 0.3 },
+  soles:    { feet: 1, knees: 0.6, hips: 0.4, torso: 0.2 },
+};
+/* P16 R.12: a stroke throws force × 10 points of drift, minus the pain discipline × 2. The rest are the instrument's: a braced
+   stroke throws 0.55 of it, a pulled one 0.45; the heat of the strokes before raises it (× 1 + 0.6 heat). */
+const FLINCH_PER_FORCE = 10, PAIN_OFF = 2, BRACED_K = 0.55, PULLED_K = 0.45, HEAT_GAIN = 0.6;
+const SLIP_AT = 100, SEEN_AT = 55;          // past 100 the posture breaks; with "do not flinch" a jerk past 55 is seen
+const CORRECT_STEP = 38, LOUD_EXP = 1.4;    // posture.html's correction and its loudness
+const FEINT = 450;                          // slap.html's feint
+const TAP_MS = 700;                         // lining it up: two taps, then the raise
+/* The commander's body: slap.html's tension (rise 100, peak 80, fall 220; braced at ≥ 0.8: a press 42–224 ms before the impact). */
+const TENSION = { rise: 100, peak: 80, fall: 220, thr: 0.8 };
+const FLICK = 2400;                         // slap.html's turn: here the body pulls away (sideways or down)
+
+/* ======================================================================== her ways (the shape of each style's punishment; P16 §R.2)
+   gap: seconds between strokes; lead: her raise (ms); feint: the share of feinted strokes; tap: the share lined up first (a tap
+   with the implement on the target; implements that need aim always tap with ritual); count: who counts by default; waits: the
+   next stroke waits for the count; miscount: what a wrong or a missing count does (restart from one, add strokes, or the stroke
+   does not count); fault: what a broken posture or a pulled stroke does (none, the stroke does not count, the count starts again,
+   one stroke more); number: named or hidden; talk: the share of strokes she says something to. */
+const STYLES = {
+  affectionate: { gap: [3.4, 4.6], lead: 1150, feint: 0, tap: 0.6, count: 'aloud', waits: true, miscount: 'repeat', fault: 'none', number: 'named', talk: 0.45, force: 0.8, after: true },
+  regal:        { gap: [2.8, 3.6], lead: 1000, feint: 0, tap: 0.4, count: 'aloud', waits: true, miscount: 'repeat', fault: 'repeat', number: 'named', talk: 0.35, ask: true, thanks: true },
+  ritual:       { gap: [3.0, 3.0], lead: 1000, feint: 0, tap: 1, count: 'aloud', waits: true, miscount: 'restart', fault: 'repeat', number: 'named', talk: 0.25 },
+  drill:        { gap: [2.4, 2.4], lead: 850, feint: 0, tap: 0.3, count: 'aloud', waits: true, miscount: 'restart', fault: 'repeat', number: 'named', talk: 0.35, fix: true },
+  cold:         { gap: [1.3, 1.7], lead: 650, feint: 0, tap: 0, count: 'none', waits: false, miscount: 'repeat', fault: 'none', number: 'hidden', talk: 0 },
+  clinical:     { gap: [2.6, 3.6], lead: 900, feint: 0.1, tap: 0.5, count: 'aloud', waits: true, miscount: 'repeat', fault: 'none', number: 'named', talk: 0.35, swap: true },
+  possessive:   { gap: [2.0, 3.4], lead: 900, feint: 0.15, tap: 0.2, count: 'aloud', waits: true, miscount: 'repeat', fault: 'repeat', number: 'named', talk: 0.4 },
+  playful:      { gap: [1.6, 4.2], lead: 800, feint: 0.4, tap: 0.3, count: 'aloud', waits: true, miscount: 'add', add: 1, fault: 'none', number: 'named', talk: 0.6, warmup: 3, oneMore: 0.5 },
+  obsessive:    { gap: [1.6, 4.0], lead: 800, feint: 0.2, tap: 0.3, count: 'aloud', waits: true, miscount: 'repeat', fault: 'repeat', number: 'named', talk: 0.5 },
+  vindictive:   { gap: [2.0, 3.0], lead: 850, feint: 0.15, tap: 0.2, count: 'aloud', waits: true, miscount: 'add', add: 2, fault: 'add', number: 'named', talk: 0.4 },
+  cruel:        { gap: [0.9, 4.8], lead: 700, feint: 0.45, tap: 0.15, count: 'aloud', waits: false, miscount: 'add', add: 1, fault: 'reset', number: 'hidden', talk: 0.45 },
+};
+const STYLE_NOTE = {
+  affectionate: 'slow, softer (×0.8); holds the commander after', regal: 'has the commander ask for it; thanks after each, always',
+  ritual: 'names the number; even; always lines it up; a miscount starts the count again', drill: 'even, quick; a miscount starts again; corrects the posture between strokes',
+  cold: 'fast, silent, no count, the number hidden', clinical: 'changes the implement half way; notes the reactions',
+  possessive: 'a broken posture does not count', playful: 'warms up (the first three light), feints, a miscount adds one, may add one at the end',
+  obsessive: 'uneven', vindictive: 'names it a sentence; a fault adds one, a miscount two', cruel: 'hides the number, feints, does not wait for the count; a fault starts the count again',
+};
+/* how long she gives the count, by style (ms after the flinch has passed) */
+const COUNT_MS = { ritual: 3000, drill: 2200, cruel: 2400, cold: 0, regal: 4200 };
+const COUNT_DEFAULT = 3600;
+/* her face, while she is in view (SillyTavern's labels; never `desire`, P16c ruling 4) */
+const EXPR = {
+  affectionate: { raise: 'disappointment', taken: 'caring', braced: 'pride', moved: 'sadness', pulled: 'sadness', miscount: 'disappointment', end: 'caring' },
+  regal:        { raise: 'pride', taken: 'pride', braced: 'approval', moved: 'disapproval', pulled: 'anger', miscount: 'disapproval', end: 'pride' },
+  ritual:       { raise: 'neutral', taken: 'neutral', braced: 'approval', moved: 'disapproval', pulled: 'disapproval', miscount: 'disapproval', end: 'approval' },
+  drill:        { raise: 'annoyance', taken: 'neutral', braced: 'approval', moved: 'anger', pulled: 'anger', miscount: 'annoyance', end: 'approval' },
+  cold:         { raise: 'disapproval', taken: 'neutral', braced: 'neutral', moved: 'disapproval', pulled: 'disapproval', miscount: 'neutral', end: 'neutral' },
+  clinical:     { raise: 'neutral', taken: 'curiosity', braced: 'curiosity', moved: 'curiosity', pulled: 'curiosity', miscount: 'neutral', end: 'neutral' },
+  possessive:   { raise: 'anger', taken: 'pride', braced: 'pride', moved: 'anger', pulled: 'anger', miscount: 'annoyance', end: 'pride' },
+  playful:      { raise: 'amusement', taken: 'amusement', braced: 'surprise', moved: 'amusement', pulled: 'amusement', miscount: 'amusement', end: 'joy' },
+  obsessive:    { raise: 'excitement', taken: 'love', braced: 'love', moved: 'anger', pulled: 'anger', miscount: 'annoyance', end: 'love' },
+  vindictive:   { raise: 'anger', taken: 'disapproval', braced: 'disapproval', moved: 'anger', pulled: 'anger', miscount: 'anger', end: 'disapproval' },
+  cruel:        { raise: 'amusement', taken: 'amusement', braced: 'annoyance', moved: 'amusement', pulled: 'anger', miscount: 'amusement', end: 'amusement' },
+};
+/* her words (placeholders for the cue pool; no pronoun and no feeling for the commander). {n} the number, {t} the target, {i} the implement. */
+const LINES = {
+  neutral:      { start: ['{n}. count them.'], startHidden: ['until I say.'], taken: ['mm.'], braced: ['good.'], moved: ['back in position.'], flinch: ['I saw that.'], pulled: ['don’t you pull away.'],
+                  miscount: ['that one doesn’t count.'], late: ['I didn’t hear it.'], nothanks: ['and?'], restart: ['from one.'], added: ['that’s one more.'], end: ['done.'], after: ['come here.'], tease: ['still with me?'] },
+  affectionate: { start: ['{n}. count them for me.'], taken: ['there.', 'shh. nearly.'], braced: ['brave.'], moved: ['it’s all right. back down.'], pulled: ['shh. stay with me.'], miscount: ['again, for me.'], end: ['all done. all done.'], after: ['come here. I’ve got you.'] },
+  regal:        { start: ['{n}. ask me for them.'], ask: ['ask for it.', 'I’m waiting to be asked.'], asked: ['better.'], taken: ['mm.'], braced: ['well taken.'], moved: ['did I say you could move?'], pulled: ['you pull away from me?'],
+                  miscount: ['properly.'], nothanks: ['I don’t hear gratitude.'], end: ['you may thank me.'], thanked: ['you may rise.'] },
+  ritual:       { start: ['{n}. you will count each one.'], tap: [''], taken: [''], braced: ['still. as it should be.'], moved: ['you moved. that one does not count.'], pulled: ['that one does not count.'], miscount: ['wrong.'], late: ['the count.'], restart: ['from the beginning.'], end: ['it is finished. thank me.'], thanked: ['it is done.'] },
+  drill:        { start: ['{n}. you count, loud and clear.'], taken: [''], braced: ['that’s discipline.'], moved: ['position! that one doesn’t count.'], pulled: ['fault.'], miscount: ['wrong count.'], late: ['louder.'], restart: ['from one. again.'],
+                  fix: { torso: ['back down.'], hips: ['hips up.'], knees: ['knees together.'], arms: ['hands where they belong.'], head: ['head down.'], gaze: ['eyes on me.'], feet: ['heels down.'] }, end: ['done. up.'] },
+  cold:         { start: [''], startHidden: [''], taken: [''], braced: [''], moved: [''], flinch: [''], pulled: [''], miscount: [''], late: [''], restart: [''], added: [''], end: [''], tease: [''] },
+  clinical:     { start: ['{n}. I’ll be taking notes.'], taken: ['noted.', ''], braced: ['no flinch. interesting.'], moved: ['the hips went first. noted.', 'noted.'], pulled: ['pulled away. noted.'], swap: ['now this. let’s compare.'], end: ['that’s enough data.'] },
+  possessive:   { start: ['{n}. you take what I give.'], taken: ['mine to mark.'], braced: ['good. mine.'], moved: ['you stay where I put you.'], pulled: ['don’t you ever pull away from me.'], end: ['there. now you’re marked.'] },
+  playful:      { start: ['let’s say {n}. maybe.'], taken: ['ooh.', 'ha.'], braced: ['ready for me?'], moved: ['wobbly~'], pulled: ['running away~?'], feint: ['flinchy~'], miscount: ['oops. one more for that.'], added: ['one more. for luck.'], tease: ['warm yet?', 'we’re just getting started.'], end: ['all done~'] },
+  obsessive:    { start: ['{n}. feel every one.'], taken: ['you feel me. only me.'], braced: ['you were waiting for me.'], moved: ['look what I do to you.'], pulled: ['you don’t get to leave.'], end: ['there. you’ll feel me all day.'] },
+  vindictive:   { start: ['your sentence: {n}.'], taken: ['that was owed.'], braced: ['it changes nothing.'], moved: ['that’s added.'], pulled: ['that’s added to it.'], miscount: ['two more for that.'], added: ['added.'], end: ['sentence served. for now.'] },
+  cruel:        { start: [''], startHidden: ['we’ll see how long you last.'], taken: ['better.', ''], braced: ['look at that.'], moved: ['and now we start again.'], pulled: ['again.'], miscount: ['wrong. one more.'], restart: ['from the beginning.'], tease: ['shaking already?', 'that one was gentle.'], end: ['get up. slowly.'] },
+};
+const NUM_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty',
+  'twenty-one', 'twenty-two', 'twenty-three', 'twenty-four', 'twenty-five', 'twenty-six', 'twenty-seven', 'twenty-eight', 'twenty-nine', 'thirty'];
+const FEEL = { // the body speaks after the first strokes (once each)
+  heat1: 'the skin is hot where it lands', heat2: 'it burns now, all of it, before the next one comes', sting: 'the sting comes a moment after the blow',
+};
+
+/* ======================================================================== settings */
+const S = { posture: 'bent_over', target: 'buttocks', impl: 'belt', num: 8, number: 'style', count: 'style', style: 'ritual',
+  rules: { still: false, thanks: false, eyes: false }, manner: { intensity: 0, tempo: 0, order: 0, voice: 0, warmth: 0 }, pain: 0, endur: 3,
+  inter: { brace: true, posture: true, count: true }, faceFadeOn: true, faceFade: 300, sound: true, vol: 0.8, showNum: false,
+  reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
+const ST = () => STYLES[S.style];
+const lines = (kind) => { const own = LINES[S.style][kind]; return own !== undefined ? own : LINES.neutral[kind] ?? []; };
+
+/* ======================================================================== audio (slap.html's kit) */
+const A = { ctx: null, buf: {} };
+function audioInit() {
+  if (A.ctx) return;
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  A.ctx = ctx;
+  A.master = ctx.createGain(); A.master.gain.value = S.sound ? S.vol : 0; A.master.connect(ctx.destination);
+  A.worldLP = ctx.createBiquadFilter(); A.worldLP.type = 'lowpass'; A.worldLP.frequency.value = 16000; A.worldLP.Q.value = 0.4;
+  A.worldG = ctx.createGain(); A.worldG.gain.value = 1; A.worldLP.connect(A.worldG); A.worldG.connect(A.master);
+  A.body = ctx.createGain(); A.body.gain.value = 1; A.body.connect(A.master);
+  const mk = (sec, fill) => { const b = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate); fill(b.getChannelData(0)); return b; };
+  A.white = mk(2, (d) => { for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; });
+  A.brown = mk(4, (d) => { let l = 0; for (let i = 0; i < d.length; i++) { l = (l + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = l * 3.5; } });
+  const room = ctx.createBufferSource(); room.buffer = A.brown; room.loop = true;
+  const roomLP = ctx.createBiquadFilter(); roomLP.type = 'lowpass'; roomLP.frequency.value = 700;
+  const roomG = ctx.createGain(); roomG.gain.value = 0.05;
+  room.connect(roomLP); roomLP.connect(roomG); roomG.connect(A.worldLP); room.start();
+  const hum = ctx.createOscillator(); hum.frequency.value = 50; const humG = ctx.createGain(); humG.gain.value = 0.01; hum.connect(humG); humG.connect(roomLP); hum.start();
+}
+async function loadSamples() {
+  await Promise.all(Object.entries(SAMPLE_URLS).map(async ([k, u]) => {
+    try { const r = await fetch(u); A.buf[k] = await A.ctx.decodeAudioData(await r.arrayBuffer()); } catch (e) { /* a missing file falls back to synthesis */ }
+  }));
+}
+function chain(node, { pan = 0, lp = 0, hp = 0, dest = A.worldLP }) {
+  let n = node;
+  if (hp) { const f = A.ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp; n.connect(f); n = f; }
+  if (lp) { const f = A.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; n.connect(f); n = f; }
+  if (pan) { const p = A.ctx.createStereoPanner(); p.pan.value = clamp(pan, -1, 1); n.connect(p); n = p; }
+  n.connect(dest);
+}
+function play(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at = 0, offset = 0, dur } = {}) {
+  if (!A.ctx || !A.buf[id]) return null;
+  const ctx = A.ctx, t = ctx.currentTime + Math.max(0, at);
+  const src = ctx.createBufferSource(); src.buffer = A.buf[id]; src.playbackRate.value = rate;
+  const gn = ctx.createGain(); gn.gain.value = g; src.connect(gn);
+  chain(gn, { pan, lp, hp, dest: dest ?? A.worldLP });
+  const len = dur ?? (A.buf[id].duration - offset);
+  if (dur) { gn.gain.setValueAtTime(g, t + dur / rate - 0.03); gn.gain.linearRampToValueAtTime(0.0001, t + dur / rate); }
+  src.start(t, offset, len + 0.05);
+  return src;
+}
+function noise({ at = 0, dur = 0.2, type = 'bandpass', f = 1000, f2, q = 1, gain = 0.1, attack = 0.01, dest = A.worldLP, pan = 0 }) {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const src = ctx.createBufferSource(); src.buffer = A.white; src.loop = true;
+  const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(f, t); fl.Q.value = q;
+  if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(fl); fl.connect(g); chain(g, { pan, dest }); src.start(t, Math.random()); src.stop(t + dur + 0.05);
+}
+function thump(at, gain, f0 = 55, dest = A.body) {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f0 * 0.6, t + 0.14);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+  o.connect(g); g.connect(dest); o.start(t); o.stop(t + 0.3);
+}
+/* the swish of each implement, timed to end on the impact (slap.html's, with a rate and a file per implement) */
+const SWISH = { palm: ['swish1', 0.72], glove: ['swish1', 0.72], slipper_sole: ['swish1', 0.8], ruler: ['swish1', 1.0], belt: ['swish3', 0.9], riding_crop: ['swish2', 1.15], cane: ['swish2', 1.3] };
+const SFX = {
+  pen: () => { for (let i = 0; i < 3; i++) noise({ at: i * 0.05 + Math.random() * 0.02, dur: 0.035 + Math.random() * 0.03, f: 2600 + Math.random() * 1800, q: 3, gain: 0.04 }); },
+  cloth: (pan, g = 0.35, rate = 1) => { if (!play(pick(['cloth1', 'cloth2', 'cloth3', 'cloth4']), { g, pan, rate, lp: 6000 })) noise({ dur: 0.3, f: 1100, f2: 1700, q: 0.7, gain: g * 0.25, attack: 0.05, pan }); },
+  step: (pan, g = 0.3) => { play(pick(['step0', 'step1', 'step2']), { g, pan, lp: 5000 }); },
+  swish: (atS, pan, impl) => {
+    const [id, rate] = SWISH[impl];
+    if (A.buf[id]) { const d = A.buf[id].duration / rate; play(id, { g: 0.5, pan, rate, at: atS - d * 0.85, hp: 300 }); }
+    else noise({ at: atS - 0.16, dur: 0.17, f: 900, f2: 3200, q: 0.8, gain: 0.16, attack: 0.12, pan });
+    // the cane and the crop whistle: a narrow band rising into the impact
+    if (impl === 'cane' || impl === 'riding_crop') noise({ at: Math.max(0, atS - 0.2), dur: 0.2, f: 1800, f2: impl === 'cane' ? 4200 : 3400, q: 9, gain: impl === 'cane' ? 0.12 : 0.08, attack: 0.15, pan });
+  },
+  /* the implement up: her clothes on her side; the belt drawn back; the cane cuts the air once before the first stroke */
+  raise: (impl, pan, first) => {
+    SFX.cloth(pan * 0.7, 0.3);
+    if (impl === 'belt' && first) play('belt', { g: 0.4, pan: pan * 0.6, lp: 7000 });
+    if (impl === 'belt') noise({ at: 0.1, dur: 0.25, f: 700, f2: 500, q: 1.5, gain: 0.03, attack: 0.08, pan: pan * 0.6 }); // the leather creaks
+  },
+  practice: (pan) => { if (A.buf.swish2) play('swish2', { g: 0.32, pan, rate: 1.3, hp: 400 }); noise({ dur: 0.2, f: 1800, f2: 4200, q: 9, gain: 0.08, attack: 0.15, pan }); },
+  /* lining it up: two light taps of the implement on the target */
+  tap: (i) => { if (!play(pick(['soft1', 'soft2']), { g: 0.16 + i * 0.04, rate: 1.15, dest: A.body })) noise({ dur: 0.04, f: 1200, q: 2, gain: 0.05, dest: A.body }); },
+  /* the impact, by implement (the slap's recording on the body bus, shaped; a crack for the leather and the cane; a thump under) */
+  hit: (impl, pan, k) => {
+    const g = k; pan *= 0.45;
+    const slap = (o) => play('slap', { dest: A.body, pan, ...o });
+    switch (impl) {
+      case 'palm': slap({ g: 0.95 * 0.5 * g }); thump(0, 0.55 * g, 70); break;
+      case 'glove': slap({ g: 0.42 * g, lp: 2600, rate: 0.92 }); noise({ dur: 0.05, f: 1200, q: 1, gain: 0.08 * g, attack: 0.002, dest: A.body, pan }); thump(0, 0.5 * g, 66); break;
+      case 'slipper_sole': slap({ g: 0.5 * g, lp: 1600, rate: 0.78 }); thump(0, 0.75 * g, 60); break;
+      case 'ruler': slap({ g: 0.42 * g, hp: 900, rate: 1.3 }); play('wood1', { g: 0.22 * g, rate: 1.45, dest: A.body, pan }); thump(0, 0.3 * g, 80); break;
+      case 'belt': slap({ g: 0.55 * g, rate: 1.05 }); noise({ dur: 0.04, type: 'highpass', f: 2500, gain: 0.3 * g, attack: 0.002, dest: A.body, pan }); thump(0, 0.5 * g, 64); break;
+      case 'riding_crop': slap({ g: 0.35 * g, rate: 1.55, hp: 1500 }); noise({ dur: 0.025, type: 'highpass', f: 3500, gain: 0.4 * g, attack: 0.001, dest: A.body, pan }); thump(0, 0.25 * g, 90); break;
+      case 'cane': noise({ dur: 0.03, type: 'highpass', f: 3000, gain: 0.45 * g, attack: 0.001, dest: A.body, pan }); slap({ g: 0.25 * g, rate: 1.75, hp: 2000 }); thump(0, 0.2 * g, 95); break;
+    }
+    // the world dulls for a moment (slap.html's ringing filter, without the ringing: the head is not struck)
+    const t = A.ctx.currentTime; A.worldLP.frequency.cancelScheduledValues(t);
+    A.worldLP.frequency.setValueAtTime(lerp(16000, 1100, 0.6 * k), t + 0.01); A.worldLP.frequency.exponentialRampToValueAtTime(16000, t + 0.9);
+  },
+  intake: () => { if (!play('breath', { g: 0.24, rate: 1.6, offset: 0.14, dur: 0.42, lp: 3200, dest: A.body })) noise({ dur: 0.22, f: 900, f2: 2200, q: 0.9, gain: 0.08, attack: 0.03, dest: A.body }); },
+  exhale: (at, g = 0.16, rate = 1.1) => { play('breath', { g, rate, offset: 2.17, dur: 0.95, lp: 2600, dest: A.body, at }); },
+  heart: (g = 0.5) => { thump(0, g, 52); thump(0.26, g * 0.64, 46); },
+  creak: (g) => { play(pick(['creak1', 'creak2', 'creak3']), { g }); },
+  correct: (loud) => { SFX.cloth(0, 0.05 + loud * 0.5, 1.15 - loud * 0.3); if (loud > 0.55) SFX.creak(loud * 0.35); },
+};
+
+/* ======================================================================== state */
+let G = null; // the punishment running
+const newRun = () => ({
+  id: `pp${Date.now() % 1000000}`, phase: 'idle', t: 0, stroke: null, strokes: 0, counted: 0, total: S.num, o: {}, impulses: [], heat: 0, peakHeat: 0,
+  dir: 1, impl: S.impl, swapped: false, countWin: null, ask: null, fix: null, nextAt: 0, lastLine: -9, felt: {},
+  tally: { braced: 0, taken: 0, moved: 0, flinch: 0, pulled: 0, miscount: 0, late: 0, nothanks: 0, restarts: 0, added: 0, corrections: 0, loud: 0, feints: 0, burned: 0 },
+});
+const numberMode = () => (S.number === 'style' ? ST().number : S.number);
+function countMode() { let c = S.count === 'style' ? ST().count : S.count; if (c === 'aloud' && !S.inter.count) c = 'hers'; return c; }
+const thanksRule = () => S.rules.thanks || !!ST().thanks;
+const eyesRule = () => S.rules.eyes && S.posture === 'kneel_present';
+const herInView = () => POSTURES[S.posture].view === 'her';
+/* manner (P15b bend): tempo shortens her gaps and raises (−12 % a step), intensity adds force (+10 % a step), voice her lines (+25 % a step), order evens her gaps */
+const M = () => S.manner;
+function gapOf(k) {
+  const [a, b] = ST().gap; const mid = (a + b) / 2; const half = (b - a) / 2 * clamp(1 - 0.25 * M().order, 0, 2);
+  return Math.max(0.6, hrand(mid - half, mid + half, k) * (1 - 0.12 * M().tempo));
+}
+const leadOf = () => ST().lead * (1 - 0.12 * M().tempo);
+const talkOf = () => clamp(ST().talk * (1 + 0.25 * M().voice), 0, 1);
+
+/* ======================================================================== the dial (posture.html's) */
+function targetPose() {
+  const P = POSTURES[S.posture];
+  const base = P.preset ? PRESETS.find((p) => p.id === P.preset) : P.pose;
+  const points = { ...(BASE_POINTS[base.base] ?? {}), ...base.points };
+  if (eyesRule()) points.gaze = 'at_her';
+  return { ...base, points };
+}
+const flinchOf = (point, state) => FLINCH_TO[point]?.[state] ?? null;
+/** The points a stroke on this target throws in this posture (the gaze only under "eyes on her"). */
+function activePoints() {
+  const tp = targetPose(); const hit = HIT[S.target];
+  return POINTS.filter((k) => hit[k] && tp.points[k] !== undefined && flinchOf(k, tp.points[k]) !== null && (k !== 'gaze' || eyesRule()));
+}
+/** posture.html's blendedBody, with the flinch's state in place of the drift's */
+function blendedBody(target, offsets) {
+  const A0 = pose(target);
+  const out = JSON.parse(JSON.stringify(A0));
+  for (const [pt, o] of Object.entries(offsets)) {
+    const to = flinchOf(pt, target.points[pt]); if (!to || o <= 0) continue;
+    const B = pose({ ...target, points: { ...target.points, [pt]: to } });
+    const t = Math.min(1, o / SLIP_AT) * 0.9;
+    // posture.html's walk, guarded: a state may draw without a part the other has (closed eyes have no gaze ray)
+    const walk = (a, b, o2) => { for (const k of Object.keys(o2)) { if (!a?.[k] || !b?.[k]) continue; if (Array.isArray(o2[k])) { for (let i = 0; i < 3; i++) o2[k][i] += (b[k][i] - a[k][i]) * t; } else if (o2[k] && typeof o2[k] === 'object') walk(a[k], b[k], o2[k]); } };
+    if (A0.gazeDir && B.gazeDir) walk(A0, B, out); else walk({ ...A0, gazeDir: undefined }, { ...B, gazeDir: undefined }, out);
+  }
+  for (const k of ['headDir', 'faceDir', 'gazeDir']) if (out[k]) { const l = Math.hypot(...out[k]); out[k] = out[k].map((v) => v / l); }
+  return out;
+}
+const JOINT_OF = { torso: 'shoulders', arms: 'elbows', hips: 'hips', knees: 'knees', head: 'head', gaze: 'gaze' };
+function anchors(svg) {
+  const seg = (s, side, end = 'a') => { const el = svg.querySelector(`.alius-mq-body path.alius-mq-fill[data-seg="${s}"]${side ? `[data-side="${side}"]` : ''}`); if (!el) return null;
+    const m = el.getAttribute('d').match(/M([\d.-]+) ([\d.-]+)L([\d.-]+) ([\d.-]+)/); return m ? (end === 'a' ? [+m[1], +m[2]] : [+m[3], +m[4]]) : null; };
+  const head = svg.querySelector('.alius-mq-head'); const gz = svg.querySelector('.alius-mq-gaze');
+  return {
+    torso: [seg('torso', null, 'b')], arms: [seg('forearm', 'L'), seg('forearm', 'R')], hips: [seg('thigh', 'L'), seg('thigh', 'R')], knees: [seg('shin', 'L'), seg('shin', 'R')],
+    head: head ? [[+head.getAttribute('cx'), +head.getAttribute('cy')]] : [], gaze: gz ? [[(+gz.getAttribute('x1') + +gz.getAttribute('x2')) / 2, (+gz.getAttribute('y1') + +gz.getAttribute('y2')) / 2]] : [],
+    feet: [seg('foot', 'L'), seg('foot', 'R')],
+  };
+}
+function circle([x, y], r, cls) { const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', r); c.setAttribute('class', cls); return c; }
+function drawDial() {
+  const target = targetPose(); const r = G && G.phase !== 'idle' && G.phase !== 'done' ? G : null;
+  const o = r ? r.o : {};
+  const act = r && S.inter.posture ? activePoints() : [];
+  const hot = act.filter((k) => o[k] > 22 && JOINT_OF[k]).map((k) => JOINT_OF[k]);
+  const svg = mannequinSvg(target, { body: blendedBody(target, o), target, hot });
+  const an = anchors(svg);
+  if (act.includes('feet') && o.feet > 22) for (const a of an.feet) if (a) svg.append(circle(a, 4.5, 'mqHot'));
+  for (const k of act) for (const a of an[k] ?? []) if (a) { const c = circle(a, 15, 'hit'); c.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); correct(k); }); svg.append(c); }
+  $('#dialFace').replaceChildren(svg);
+  drawBeads(act); drawLabel();
+}
+function drawBeads(act) {
+  const host = $('#beads'); host.replaceChildren();
+  if (!G || G.phase === 'idle' || G.phase === 'done' || !S.inter.posture) return;
+  const size = 300; const R = size / 2 + 20;
+  [...POINTS].reverse().forEach((k, i) => {
+    const ang = (122 + i * 19) * Math.PI / 180;
+    const b = document.createElement('div'); b.className = 'bead'; b.textContent = KEY_OF[k];
+    const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = k.toUpperCase(); b.append(nm);
+    b.style.left = `${size / 2 + Math.cos(ang) * R}px`; b.style.top = `${size / 2 + Math.sin(ang) * R}px`;
+    b.style.setProperty('--o', Math.min(1, (G.o[k] ?? 0) / SLIP_AT));
+    if (!act.includes(k)) b.classList.add('off');
+    b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); correct(k); });
+    host.append(b);
+  });
+}
+function drawLabel() {
+  const r = G && G.phase !== 'idle' && G.phase !== 'done' ? G : null;
+  if (!r) { $('#dialLabel').innerHTML = POSTURES[S.posture].label; return; }
+  const named = numberMode() === 'named';
+  const cnt = countMode() === 'none' ? '' : named ? `${r.counted} / ${r.total}` : `${r.counted}`;
+  $('#dialLabel').innerHTML = `${POSTURES[S.posture].label}<span class="sub">${IMPL[r.impl].label} · ${TARGET_WORD[S.target]}</span>${eyesRule() ? '<span class="sub">EYES ON HER</span>' : ''}${cnt ? `<span class="cnt">${cnt}</span>` : ''}`;
+}
+function jolt(a) { const d = $('#dial'); d.style.setProperty('--jx', `${(a * 5).toFixed(1)}px`); d.style.setProperty('--jy', `${(a * 3).toFixed(1)}px`); d.classList.remove('jolt'); void d.offsetWidth; d.classList.add('jolt'); }
+
+/* ======================================================================== the punishment */
+function begin() {
+  audioInit(); if (A.ctx.state === 'suspended') A.ctx.resume();
+  $('#summary').style.display = 'none'; $('#hand').replaceChildren();
+  G = newRun();
+  G.dir = hash01(`side|${G.id}`) < 0.5 ? 1 : -1; // +1: she stands on the screen's left (her right hand), hashed per punishment
+  for (const k of POINTS) G.o[k] = 0;
+  G.phase = 'intro'; G.t = 0;
+  $('#dial').classList.add('holding', 'watched'); $('#stopPill').style.display = 'block';
+  setFace(EXPR[S.style].raise);
+  narrate(`${introWords()}`);
+  SFX.step(-G.dir * 0.6, 0.3);
+  const named = numberMode() === 'named';
+  setTimeout(() => { if (!G || G.phase !== 'intro') return; say(fill(hpick(named ? lines('start') : (lines('startHidden').length ? lines('startHidden') : lines('start')), `start|${G.id}`))); }, 600);
+  // the cane cuts the air once before it is used
+  if (G.impl === 'cane') setTimeout(() => { if (G && G.phase === 'intro') SFX.practice(-G.dir * 0.6); }, 1500);
+  if (ST().ask) { setTimeout(() => { if (!G || G.phase !== 'intro') return; say(hpick(lines('ask'), `ask|${G.id}`)); G.phase = 'ask'; openInput('ask for it', 9000, 'ask'); }, 2200); }
+  else G.nextAt = 2.8;
+  drawDial(); stats();
+}
+function introWords() {
+  const P = S.posture, I = IMPL[G.impl].label;
+  const where = { kneel_present: `The commander kneels before her, palms up. She takes ${I}.`, bent_over: `The commander bends over the desk, palms flat. Behind, she takes ${I}.`,
+    chest_down_hips_up: `Chest to the floor, hips raised. Somewhere behind, ${I}.`, over_her_knee: `She sits and pulls the commander across her lap. ${I.charAt(0).toUpperCase() + I.slice(1)} in her hand.` }[P];
+  return where;
+}
+const fill = (s) => (s ?? '').replaceAll('{n}', numWord(G.total)).replaceAll('{t}', TARGET_WORD[S.target]).replaceAll('{i}', IMPL[G.impl].label);
+const numWord = (n) => NUM_WORDS[n] ?? String(n);
+
+/** plans and starts one stroke: a tap (she lines it up), the raise, feints, the swing, the impact. */
+function startStroke() {
+  const s = G.strokes + 1; const k = `${G.id}|${s}`; const st = ST(); const im = IMPL[G.impl];
+  const tap = !S.reduced && (st.tap >= 1 && im.tap ? true : hash01(`tap|${k}`) < st.tap * (im.tap ? 1.4 : 0.6));
+  const feints = hash01(`feint|${k}`) < st.feint ? (hash01(`feint2|${k}`) < 0.25 ? 2 : 1) : 0;
+  const tapMs = tap ? TAP_MS : 0;
+  const lead = tapMs + leadOf();
+  const swingAt = lead + feints * FEINT;
+  const t0 = performance.now();
+  G.stroke = { n: s, k, t0, tap, tapMs, lead, feints, swingAt, impactAt: swingAt + im.swing, swing: im.swing, pressAt: null, presses: 0, pulled: 0, result: null, peak: 0, seen: false };
+  G.phase = 'stroke';
+  if (herInView()) setFace(EXPR[S.style].raise);
+  // her clothes and the implement going up; the swish timed to the impact
+  if (tap) { SFX.tap(0); setTimeout(() => { if (G?.stroke?.k === k) SFX.tap(1); }, 260); }
+  setTimeout(() => { if (G?.stroke?.k === k && !G.stroke.result) SFX.raise(G.impl, -G.dir, s === 1); }, tapMs);
+  SFX.swish(G.stroke.impactAt / 1000, -G.dir * 0.6, G.impl);
+  for (let i = 0; i < feints; i++) setTimeout(() => { if (G?.stroke?.k === k) { SFX.cloth(-G.dir * 0.7, 0.5, 1.25); G.tally.feints++; } }, lead + i * FEINT);
+}
+/** Space or the left button: the body tenses (slap.html's press); one try a stroke. */
+function press() {
+  const s = G?.stroke; if (!s || s.result || !S.inter.brace) return;
+  s.presses += 1;
+  if (s.pressAt !== null) return;
+  s.pressAt = performance.now() - s.t0;
+  SFX.intake();
+  const onFeint = s.feints > 0 && s.pressAt >= s.lead && s.pressAt < s.swingAt;
+  if (onFeint) { G.tally.burned++; const f = lines('feint'); if (f.length) setTimeout(() => say(hpick(f, `f|${s.k}`)), 120); }
+}
+function tensionAt(t) {
+  if (t < 0) return 0;
+  if (t < TENSION.rise) return easeOut(t / TENSION.rise);
+  if (t < TENSION.rise + TENSION.peak) return 1;
+  return clamp(1 - (t - TENSION.rise - TENSION.peak) / TENSION.fall, 0, 1);
+}
+/* a sharp flick of the mouse (sideways or down) pulls away: slap.html's turn, from the raise to the impact */
+const mouse = [];
+function onMove(e) {
+  const now = performance.now();
+  mouse.push([now, e.clientX, e.clientY]);
+  while (mouse.length && now - mouse[0][0] > 70) mouse.shift();
+  const s = G?.stroke; if (!s || s.result || s.pulled) return;
+  if (mouse.length < 2) return;
+  const [ta, xa, ya] = mouse[0], dt = (now - ta) / 1000; if (dt <= 0) return;
+  const dx = e.clientX - xa, dy = e.clientY - ya;
+  if ((Math.abs(dx / dt) >= FLICK && Math.abs(dx) >= innerWidth * 0.06) || (dy / dt >= FLICK && dy >= innerHeight * 0.08)) { s.pulled = Math.abs(dx) > dy ? Math.sign(dx) : 2; s.pullAt = now - s.t0; SFX.cloth(0, 0.3, 1.4); }
+}
+function land(now) {
+  const s = G.stroke; const im = IMPL[G.impl]; const st = ST();
+  const t = now - s.t0;
+  s.tension = s.pressAt === null ? 0 : tensionAt(t - s.pressAt);
+  s.result = s.pulled ? 'pulled' : s.tension >= TENSION.thr ? 'braced' : 'taken';
+  s.landedAt = t; s.landT = G.t; G.strokes += 1;
+  const k = s.result === 'braced' ? BRACED_K : s.result === 'pulled' ? PULLED_K : 1;
+  s.k = k;
+  if (s.result === 'braced') G.tally.braced++; else if (s.result === 'pulled') G.tally.pulled++; else G.tally.taken++;
+  // warm-up (playful): the first strokes are light
+  const warm = st.warmup && G.strokes <= st.warmup ? 0.5 : 1;
+  const force = im.force * (st.force ?? 1) * (1 + 0.1 * M().intensity) * warm;
+  SFX.hit(G.impl, -G.dir, clamp(k * (0.75 + 0.08 * force), 0.3, 1.2));
+  if (s.result === 'braced') SFX.exhale(0.5, 0.14);
+  else setTimeout(() => SFX.exhale(0, 0.12 + 0.04 * G.heat, 1.25), 520 + im.delay); // a shaky breath after
+  flash(k * (0.55 + 0.09 * force));
+  scatter(k);
+  // the heat of the target builds with each stroke (and fades slowly); the sting comes after the impact
+  G.heat = clamp(G.heat + 0.07 * force * k, 0, 1.6); G.peakHeat = Math.max(G.peakHeat, G.heat); G.heatT = now;
+  if (im.delay > 150) setTimeout(() => { if (G) { flash(0.25 * k * im.sting); SFX.heart(0.35); } }, im.delay);
+  // the flinch: an impulse on each point the target throws (P16 R.12), over the implement's own time
+  if (S.inter.posture) {
+    const base = Math.max(0, force * FLINCH_PER_FORCE - S.pain * PAIN_OFF) * k * (1 + HEAT_GAIN * G.heat);
+    const len = (im.imp + im.delay) / 1000;
+    for (const pt of activePoints()) G.impulses.push({ pt, size: base * HIT[S.target][pt], len, left: len, at: im.delay / 1000 });
+  }
+  if (!G.felt.heat1 && G.heat > 0.35) { G.felt.heat1 = true; feel(FEEL.heat1); }
+  else if (!G.felt.sting && im.delay > 150) { G.felt.sting = true; setTimeout(() => feel(FEEL.sting), 700); }
+  else if (!G.felt.heat2 && G.heat > 1) { G.felt.heat2 = true; feel(FEEL.heat2, true); }
+  if (herInView()) setTimeout(() => setFace(EXPR[S.style][s.result === 'pulled' ? 'pulled' : s.result]), 260);
+  G.phase = 'after'; G.afterUntil = now + (im.imp + im.delay) + 160;
+  if (s.result === 'pulled') { const l = lines('pulled'); setTimeout(() => say(hpick(l, `pl|${s.k}`)), 380); }
+  else if (s.result === 'braced' && hash01(`br|${s.k}`) < 0.5 + talkOf() * 0.3) setTimeout(() => say(hpick(lines('braced'), `b|${s.k}`)), 420);
+}
+/** the flinch after the impact has passed: was the posture kept? then the count (or her count, or nothing) */
+function afterStroke() {
+  const s = G.stroke; const st = ST();
+  let fault = null;
+  if (s.result === 'pulled') fault = 'pulled';
+  else if (s.broke) fault = 'moved';
+  else if (S.rules.still && s.peak >= SEEN_AT) { fault = 'flinch'; G.tally.flinch++; const l = lines('flinch'); say(hpick(l, `fl|${s.k}`)); }
+  s.fault = fault;
+  const cm = countMode();
+  if (cm === 'aloud') { G.phase = 'count'; openInput('the count', countMsOf(), 'count'); return; }
+  if (cm === 'hers' && !fault) { const n = G.counted + 1; sayNum(n); }
+  settle(fault, null);
+}
+const countMsOf = () => (COUNT_MS[S.style] ?? COUNT_DEFAULT) * (1 - 0.08 * M().tempo);
+/** the stroke is settled: it counts, or her rule says what a fault or a miscount does; then the next one (or the end) */
+function settle(fault, miscount) {
+  const st = ST(); const s = G.stroke; let counts = true; let reaction = null;
+  if (miscount) {
+    G.tally.miscount++; if (miscount === 'late') G.tally.late++; if (miscount === 'nothanks') G.tally.nothanks++;
+    if (st.miscount === 'restart') { G.counted = 0; counts = false; G.tally.restarts++; reaction = ['miscount', 'restart']; }
+    else if (st.miscount === 'add') { G.total += st.add; G.tally.added += st.add; reaction = ['miscount', 'added']; }
+    else { counts = false; reaction = [miscount === 'late' ? 'late' : miscount === 'nothanks' ? 'nothanks' : 'miscount']; }
+  }
+  if (fault && fault !== 'flinch') {
+    const f = st.fault;
+    if (f === 'repeat') counts = false;
+    else if (f === 'reset') { G.counted = 0; counts = false; G.tally.restarts++; }
+    else if (f === 'add') { G.total += 1; G.tally.added += 1; }
+  }
+  if (counts) G.counted += 1;
+  if (reaction) { const said = reaction.filter(Boolean).map((kind) => hpick(lines(kind), `${kind}|${s.k}`)).filter(Boolean); if (said.length) say(said.join(' ')); if (herInView()) setFace(EXPR[S.style].miscount); }
+  else if (!fault && G.strokes - G.lastLine >= 2 && hash01(`talk|${s.k}`) < talkOf()) { G.lastLine = G.strokes; const pool = hash01(`tease|${s.k}`) < 0.4 && lines('tease').length ? lines('tease') : lines('taken'); const l = hpick(pool, `tk|${s.k}`); if (l) say(l); }
+  // clinical changes the implement half way
+  if (st.swap && !G.swapped && G.counted >= Math.ceil(G.total / 2)) { G.swapped = true; const list = Object.keys(IMPL).filter((i) => i !== G.impl && Math.abs(IMPL[i].force - IMPL[G.impl].force) <= 2); G.impl = hpick(list, `swap|${G.id}`); setTimeout(() => say(hpick(lines('swap'), `sw|${G.id}`)), 600); }
+  drawDial();
+  // a count that keeps starting again (cruel's reset) ends when she has had enough: three times the number she meant (prototype stand-in)
+  if (G.strokes >= 3 * S.num && G.counted < G.total) { say(hpick(['enough. for now.'], `cap|${G.id}`)); end('done'); return; }
+  if (G.counted >= G.total) {
+    if (st.oneMore && !G.oneMoreDone && hash01(`one|${G.id}`) < st.oneMore) { G.oneMoreDone = true; G.total += 1; G.tally.added += 1; setTimeout(() => say(hpick(lines('added'), `om|${G.id}`)), 500); }
+    else { end('done'); return; }
+  }
+  // drill puts the posture right between strokes: a point still off has to come back first
+  if (st.fix && S.inter.posture) { const worst = activePoints().filter((k) => G.o[k] > 30).sort((a, b) => G.o[b] - G.o[a])[0]; if (worst) { G.fix = { pt: worst, until: G.t + 2.5 }; say(hpick(LINES.drill.fix[worst], `fx|${s.k}`)); } }
+  // the next stroke: after the count for a holder who waits for it, else in her own rhythm from the impact
+  const gap = gapOf(`gap|${s.k}`);
+  G.phase = 'wait'; G.nextAt = st.waits ? G.t + gap * 0.7 : Math.max(G.t + 0.5, s.landT + gap);
+}
+/** the count: the input opens; the number in words or digits, and the thanks when it is her rule; Enter or her window's end */
+function openInput(placeholder, ms, kind) {
+  const el = $('#cmd'); el.value = ''; updateMirror(); el.placeholder = placeholder; $('#inputWrap').classList.add('count');
+  el.focus();
+  const w = { kind, until: performance.now() + ms, ms, t0: performance.now() };
+  if (kind === 'count') G.countWin = w; else if (kind === 'ask') G.ask = w; else G.thankWin = w;
+  scheduleDots(w);
+}
+function closeInput() { const el = $('#cmd'); el.placeholder = ''; el.blur(); $('#inputWrap').classList.remove('count'); $('#dots').replaceChildren(); }
+function scheduleDots(w) { const dots = $('#dots'); dots.replaceChildren(); const n = 5; for (let i = 0; i < n; i++) setTimeout(() => { if (!G || ![G.countWin, G.ask, G.thankWin].includes(w)) return; const d = document.createElement('i'); if (i === n - 1) d.className = 'last'; d.style.left = `${100 + (i - (n - 1) / 2) * 16}px`; dots.append(d); }, (w.ms / n) * (i + 0.5)); }
+function parseCount(text) {
+  const t = text.toLowerCase().trim();
+  const d = t.match(/\d+/); if (d) return Number(d[0]);
+  for (let n = NUM_WORDS.length - 1; n > 0; n--) if (new RegExp(`(^|[^a-z-])${NUM_WORDS[n]}([^a-z-]|$)`).test(t)) return n;
+  return null;
+}
+function sendLine(text) {
+  if (G?.countWin) {
+    const w = G.countWin; G.countWin = null; closeInput();
+    const n = parseCount(text); const want = G.counted + 1;
+    const thanked = /thank/i.test(text);
+    let miss = null;
+    if (n !== want) miss = 'wrong'; else if (thanksRule() && !thanked) miss = 'nothanks';
+    if (!miss && !G.stroke.fault && hash01(`echo|${G.stroke.k}`) < 0.2 && S.style === 'drill') sayNum(n);
+    settle(G.stroke.fault, miss);
+    return;
+  }
+  if (G?.ask) {
+    G.ask = null; closeInput();
+    if (/please|beg|ask|may i/i.test(text)) { say(hpick(lines('asked'), `as|${G.id}`)); G.phase = 'wait'; G.nextAt = G.t + 1.6; }
+    else { say(hpick(lines('ask'), `ask2|${G.id}`)); G.phase = 'ask'; openInput('ask for it', 9000, 'ask'); }
+    return;
+  }
+  if (G?.phase === 'thank') { G.phase = 'done'; G.thankWin = null; closeInput(); const ok = /thank/i.test(text); say(ok ? (hpick(lines('thanked'), `th|${G.id}`) || '') : hpick(lines('nothanks'), `nt|${G.id}`)); if (!ok) G.tally.nothanks++; finish(); }
+}
+function end(why) {
+  const st = ST(); G.phase = 'ending'; G.stroke = null; G.countWin = null; G.ask = null; G.fix = null; G.impulses = []; closeInput();
+  if (why === 'stop') { say('stop. it’s over.'); finish(why); return; }
+  setTimeout(() => {
+    if (!G) return; if (herInView()) setFace(EXPR[S.style].end);
+    say(hpick(lines('end'), `end|${G.id}`));
+    const warm = st.after || M().warmth >= 1;
+    if (warm) setTimeout(() => { if (!G) return; say(hpick(lines('after'), `af|${G.id}`)); G.held = true; }, 1800);
+    if (st.thanks || S.style === 'ritual') { G.phase = 'thank'; setTimeout(() => openInput('…', 7000, 'thank'), 900); setTimeout(() => { if (G?.phase === 'thank') { G.phase = 'done'; G.thankWin = null; closeInput(); G.tally.nothanks++; say(hpick(lines('nothanks'), `nt|${G.id}`)); finish(); } }, 8000); }
+    else { G.phase = 'done'; setTimeout(finish, warm ? 3200 : 1600); }
+  }, 700);
+}
+function finish(why) {
+  if (!G) return; G.phase = 'done'; closeInput();
+  $('#dial').classList.remove('holding', 'watched'); $('#stopPill').style.display = 'none';
+  setTimeout(() => { if (G) G.held = false; }, 2600);
+  drawDial(); summary(why); stats();
+}
+
+/* ======================================================================== the step */
+function step(dt, now) {
+  if (!G || G.phase === 'idle' || G.phase === 'done') return;
+  G.t += dt;
+  // the heat fades slowly between strokes (τ 40 s)
+  G.heat *= Math.exp(-dt / 40);
+  // the impulses push their points up (posture.html's gaze impulse, for every point a stroke throws)
+  for (const im of G.impulses) {
+    if (im.at > 0) { im.at -= dt; continue; }
+    im.left -= dt; G.o[im.pt] = Math.min(SLIP_AT, G.o[im.pt] + (im.size / im.len) * dt);
+  }
+  G.impulses = G.impulses.filter((im) => im.left > 0 || im.at > 0);
+  const s = G.stroke;
+  for (const k of activePoints()) {
+    if (s && !s.settledPeak) s.peak = Math.max(s.peak, G.o[k]);
+    if (G.o[k] >= SLIP_AT) slip(k);
+  }
+  if (G.phase === 'stroke' && s && !s.result && now - s.t0 >= s.impactAt) land(now);
+  if (G.phase === 'after' && now >= G.afterUntil && !G.impulses.length) { s.settledPeak = true; afterStroke(); }
+  if (G.countWin && now > G.countWin.until) { G.countWin = null; closeInput(); settle(G.stroke.fault, 'late'); }
+  if (G.ask && now > G.ask.until) { G.ask = null; closeInput(); say(hpick(lines('ask'), `ask3|${G.id}`)); G.phase = 'ask'; openInput('ask for it', 9000, 'ask'); }
+  if (G.fix) { const k = G.fix.pt; if (G.o[k] < 15) G.fix = null; else if (G.t > G.fix.until) { G.fix = null; G.tally.moved++; say(hpick(LINES.drill.moved, `fxm|${G.t | 0}`)); G.o[k] = 35; } }
+  if ((G.phase === 'wait' || (G.phase === 'intro' && !ST().ask)) && G.t >= G.nextAt && !G.fix) startStroke();
+  drawDial(); stats();
+}
+/** a correction: posture.html's press, without the gaze's hold; its loudness grows with what it takes back */
+function correct(k) {
+  if (!G || !activePoints().includes(k) || !S.inter.posture) return;
+  const o = G.o[k]; if (o < 2) return;
+  const loud = Math.pow(o / SLIP_AT, LOUD_EXP);
+  G.o[k] = Math.max(0, o - CORRECT_STEP); G.tally.corrections++;
+  if (loud > 0.45) G.tally.loud++;
+  SFX.correct(loud);
+  if (!S.reduced && loud > 0.3) jolt(loud);
+  drawDial();
+}
+/** the posture breaks: her line, a creak, she puts it back (posture.html's slip); the stroke is a fault */
+function slip(k) {
+  G.tally.moved++; if (G.stroke) G.stroke.broke = true;
+  SFX.creak(0.45); if (!S.reduced) jolt(0.9);
+  G.o[k] = 35; G.impulses = G.impulses.filter((im) => im.pt !== k);
+  if (G.phase === 'wait' || G.phase === 'count') say(hpick(lines('moved'), `mv|${G.t | 0}`));
+  else if (G.stroke && !G.stroke.movedSaid) { G.stroke.movedSaid = true; setTimeout(() => say(hpick(lines('moved'), `mv|${G.stroke?.k}`)), 300); }
+  log(`the posture broke: ${k}`);
+}
+
+/* ======================================================================== effects */
+function flash(k) {
+  const el = $('#flash');
+  el.style.transition = 'none';
+  el.style.background = 'radial-gradient(ellipse at 50% 60%, rgba(255,250,245,1), rgba(255,90,70,1) 55%, rgba(200,20,20,1))';
+  el.style.opacity = String(clamp(0.75 * k, 0, 0.9));
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    el.style.transition = 'opacity 260ms cubic-bezier(.2,.7,.3,1), background 120ms';
+    el.style.background = 'radial-gradient(ellipse at 50% 60%, rgba(255,120,100,1), rgba(220,40,30,1) 60%, rgba(160,10,10,1))';
+    el.style.opacity = '0';
+  }));
+}
+function scatter(k) {
+  const spans = [...$('#mirror').children];
+  for (const sp of spans) { sp.style.transition = 'none'; sp.style.transform = `translate(${rand(-14, 14) * k}px, ${rand(-16, 16) * k}px) rotate(${rand(-28, 28) * k}deg)`; }
+  requestAnimationFrame(() => requestAnimationFrame(() => { for (const sp of spans) { sp.style.transition = ''; sp.style.transform = ''; } }));
+}
+/* her hand (slap.html's say): beside her face when she is in view, else up on her side of the room */
+function say(text, cls) {
+  if (!text) return;
+  const el = document.createElement('div');
+  el.className = 'her-line' + (cls ? ` ${cls}` : '');
+  el.textContent = text;
+  const speed = S.style === 'cruel' || S.style === 'cold' ? 24 : S.style === 'ritual' ? 45 : 34;
+  el.style.setProperty('--write', `${Math.max(140, text.length * speed)}ms`);
+  el.style.setProperty('--steps', String(Math.max(4, text.length * 2)));
+  // in view: beside her face, away from her hand (slap.html's); out of sight: up on her side of the room
+  const dir = G ? G.dir : 1; const off = innerWidth * (herInView() ? 0.6 : 0.08);
+  const left = dir > 0;
+  if (left) el.style.left = `${off}px`; else { el.classList.add('right'); el.style.right = `${off}px`; }
+  const showing = [...$('#hand').children].filter((c) => !c.classList.contains('gone')).length;
+  el.style.top = `${innerHeight * rand(0.14, 0.18) + showing * 56}px`;
+  el.style.transform = `rotate(${rand(-4, 3).toFixed(1)}deg)`;
+  $('#hand').appendChild(el);
+  SFX.pen();
+  setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 600); }, cls === 'num' ? 1500 : 2400);
+}
+function sayNum(n) { say(`${numWord(n)}.`, 'num'); }
+function feel(text, sharp) { const d = document.createElement('div'); d.textContent = text; if (sharp) d.className = 'sharp'; $('#feel').replaceChildren(d); }
+function narrate(text) { $('#reply').innerHTML = `<span class="act">${text}</span>`; }
+let logT = null;
+function log(t) { const l = $('#log'); l.textContent = t; l.style.opacity = 1; clearTimeout(logT); logT = setTimeout(() => { l.style.opacity = 0; }, 3000); }
+
+/* her faces (foot_care.html's two layers and their crossfade; a label matched by the start of a file name) */
+const LABELS = ['admiration', 'amusement', 'anger', 'annoyance', 'approval', 'caring', 'confusion', 'curiosity', 'desire', 'disappointment', 'disapproval', 'disgust', 'embarrassment', 'excitement', 'fear', 'gratitude', 'grief', 'joy', 'love', 'nervousness', 'neutral', 'optimism', 'pride', 'realization', 'relief', 'remorse', 'sadness', 'surprise'].sort((a, b) => b.length - a.length);
+const faces = {};
+let FACE = { label: null, src: null };
+function setFace(label) {
+  if (label === FACE.label && FACE.src) return;
+  FACE.label = label;
+  const pool = faces[label] ?? faces.neutral, src = pool ? pick(pool) : ASSETS.her; FACE.src = src;
+  showFace(src);
+}
+let HER_FRONT = 0;
+const herLayers = () => [$('#her'), $('#her2')];
+function showFace(src) {
+  const [a, b] = herLayers(), front = HER_FRONT ? b : a, back = HER_FRONT ? a : b;
+  if (front.dataset.src === src) return;
+  const ms = S.faceFadeOn && !S.reduced ? S.faceFade : 0;
+  const swap = () => {
+    if (back.dataset.src !== src) return;
+    for (const el of [front, back]) el.style.transitionDuration = `${ms}ms`;
+    back.style.opacity = '1'; front.style.opacity = '0'; HER_FRONT = 1 - HER_FRONT;
+  };
+  back.dataset.src = src;
+  back.onload = swap; back.src = src;
+  if (back.complete && back.naturalWidth) swap();
+}
+
+/* ======================================================================== the view: what the commander sees, by posture
+   her (kneeling, palms up): looking up at her (jaw.html's view from below); desk / floor / lap: her out of sight behind; the room close,
+   down and blurred; she is her shadow, her sound and her hand. */
+const VIEWS = {
+  her:   { bg: { blur: 3, bright: 0.62, scale: 1.0, y: 0, rot: 0 }, her: { h: 1.3, b: 1.16, tilt: 8, bright: 0.86 } },
+  desk:  { bg: { blur: 12, bright: 0.36, scale: 1.9, y: 0.24, rot: 0 } },
+  floor: { bg: { blur: 18, bright: 0.24, scale: 2.4, y: 0.34, rot: 0 } },
+  lap:   { bg: { blur: 13, bright: 0.3, scale: 2.0, y: 0.3, rot: -6 } },
+};
+function frame(now) {
+  requestAnimationFrame(frame);
+  const W = innerWidth, H = innerHeight;
+  const dt = Math.min(0.1, (now - (frame.last ?? now)) / 1000); frame.last = now;
+  step(dt, now);
+  const view = VIEWS[POSTURES[S.posture].view];
+  const s = G?.stroke; const dir = G ? G.dir : 1;
+  // her raise: the implement up on her side, the light dims (her shadow); a feint twitches; the swing sweeps
+  let raise = 0, sweep = -1, twitch = 0;
+  if (s && !s.result && !S.reduced) {
+    const t = now - s.t0;
+    raise = easeOut((t - s.tapMs) / 380);
+    for (let i = 0; i < s.feints; i++) { const ft = t - (s.lead + i * FEINT); if (ft >= 0 && ft < FEINT) { const p = ft / FEINT; twitch = p < 0.3 ? easeIn(p / 0.3) : 1 - easeOut((p - 0.3) / 0.45); } }
+    if (t >= s.swingAt) sweep = clamp(1 - (s.impactAt - t) / 140, 0, 1);
+  }
+  // the impact: the body is knocked (toward the desk, the floor, down from the palms); a damped swing back (slap.html's whip)
+  let kx = 0, ky = 0, kz = 0, kr = 0, hb = 0;
+  if (G && G.stroke && G.stroke.landedAt !== undefined && !S.reduced) {
+    const L = G.stroke; const tt = now - (L.t0 + L.landedAt), kk = L.k ?? 1;
+    const env = tt < 45 ? easeOut(tt / 45) : Math.exp(-(tt - 45) / 210) * Math.cos((tt - 45) / 520 * Math.PI * 2);
+    if (view === VIEWS.her) { ky = 0.05 * H * env * kk; kr = -dir * 1.6 * env * kk; } else { kz = 0.05 * env * kk; kx = dir * 0.02 * W * env * kk; ky = 0.012 * H * env * kk; kr = dir * 1.2 * env * kk; }
+    hb = tt < 220 ? (1 - tt / 220) * 12 * kk : 0;
+    if (L.pulled && L.pullAt !== undefined) { const pt = now - (L.t0 + L.pullAt); kx += (L.pulled === 2 ? 0 : L.pulled) * 0.09 * W * easeOut(pt / 160) * Math.max(0, 1 - Math.max(0, tt - 400) / 900); ky += (L.pulled === 2 ? 0.06 * H : 0) * easeOut(pt / 160) * Math.max(0, 1 - Math.max(0, tt - 400) / 900); }
+  } else if (s && s.pulled && s.pullAt !== undefined && !S.reduced) {
+    const pt = now - (s.t0 + s.pullAt); kx = (s.pulled === 2 ? 0 : s.pulled) * 0.09 * W * easeOut(pt / 160); ky = (s.pulled === 2 ? 0.06 * H : 0) * easeOut(pt / 160);
+  }
+  // the body's tension (slap.html's): the frame tightens, the edges close, the world's sound ducks; trembles as it falls
+  let ten = 0, tremble = 0;
+  if (s && s.pressAt !== null && !s.result) { const tt = now - s.t0 - s.pressAt; ten = tensionAt(tt); if (tt > TENSION.rise + TENSION.peak && ten > 0.05) tremble = (1 - ten) * 1.6; }
+  const shake = (tremble ? rand(-tremble, tremble) : 0) + (G && G.heat > 0.8 && !S.reduced ? rand(-0.6, 0.6) * (G.heat - 0.8) : 0);
+  $('#world').style.transform = `translate(${(kx + shake).toFixed(1)}px, ${(ky + shake * 0.6).toFixed(1)}px) rotate(${kr.toFixed(2)}deg) scale(${(1 + 0.02 * ten + kz + 0.012 * raise).toFixed(4)})`;
+  $('#hblurG').setAttribute('stdDeviation', view === VIEWS.her ? `${(hb * 0.15).toFixed(1)} ${hb.toFixed(1)}` : `${hb.toFixed(1)} ${(hb * 0.4).toFixed(1)}`);
+  $('#world').style.filter = hb > 0.3 ? 'url(#hblur)' : '';
+  // the room as the commander sees it in this posture
+  const bg = view.bg;
+  $('#backdrop').style.transform = `translateY(${(bg.y * H).toFixed(1)}px) scale(${bg.scale}) rotate(${bg.rot}deg)`;
+  $('#backdrop').style.filter = `blur(${bg.blur}px) brightness(${(bg.bright * (1 - 0.25 * raise)).toFixed(3)})`;
+  // her sprite: in view only kneeling, from below; she raises her hand on her side (a lean), brighter as she looks down
+  for (const her of herLayers()) {
+    if (!view.her) { her.style.display = 'none'; continue; }
+    her.style.display = '';
+    const sp = her.naturalWidth ? her : null; if (!sp) continue;
+    const h = H * view.her.h, w = h * sp.naturalWidth / sp.naturalHeight;
+    her.style.width = `${w}px`; her.style.height = `${h}px`;
+    her.style.left = `${W * 0.14 + W / 2 - w / 2}px`; her.style.top = `${H * 0.14 + H * view.her.b - h}px`;
+    const breathe = S.reduced ? 1 : 1 + 0.006 * Math.sin(now / 900);
+    her.style.transform = `perspective(1400px) rotateX(${view.her.tilt}deg) rotate(${(-dir * 2.2 * raise + dir * 3 * twitch).toFixed(2)}deg) scale(${(breathe * (1 + 0.03 * raise)).toFixed(4)})`;
+    her.style.filter = `brightness(${(view.her.bright + 0.06 * raise).toFixed(3)})`;
+  }
+  // her shadow: falls across the view from her side as the implement goes up (stronger when she is out of sight)
+  const out = !view.her;
+  const shA = s && !s.result && !S.reduced ? clamp((out ? 0.55 : 0.4) * raise + 0.3 * twitch + (sweep > 0 ? 0.2 * sweep : 0), 0, 0.85) : 0;
+  $('#shadow').style.background = out
+    ? `radial-gradient(ellipse 70% 95% at ${dir > 0 ? '-4%' : '104%'} ${lerp(60, 30, raise).toFixed(1)}%, rgba(2,1,3,.95), rgba(2,1,3,.55) 45%, rgba(2,1,3,0) 75%)`
+    : `linear-gradient(${dir > 0 ? 90 : 270}deg, rgba(4,2,6,.95), rgba(4,2,6,.4) 28%, rgba(4,2,6,0) 55%)`;
+  $('#shadow').style.opacity = shA.toFixed(3);
+  const sw = $('#sweep');
+  if (sweep >= 0 && s && !s.result) { const x0 = dir > 0 ? -0.5 : 1.04, x1 = dir > 0 ? 0.02 : 0.52; sw.style.left = `${(lerp(x0, x1, easeIn(sweep)) * W).toFixed(1)}px`; sw.style.opacity = String(0.85 * Math.min(1, sweep * 2)); }
+  else sw.style.opacity = '0';
+  // lining it up: the implement rests on the target for a moment (a cool touch at the bottom of the view)
+  const tapA = s && s.tap && !s.result ? clamp(1 - Math.abs((now - s.t0) - 300) / 400, 0, 1) * 0.5 : 0;
+  $('#touch').style.background = 'radial-gradient(ellipse 40% 22% at 50% 104%, rgba(180,210,255,.55), rgba(180,210,255,0) 70%)';
+  $('#touch').style.opacity = tapA.toFixed(3);
+  // the heat: the target's skin, at the bottom of the view; its shape by the mark the implement leaves (wide redness, a band of welts, a line)
+  if (G && G.heat > 0.01) {
+    const mk = IMPL[G.impl].mark[0];
+    const shape = mk === 'redness' ? 'ellipse 60% 34%' : mk === 'welt' ? 'ellipse 52% 18%' : 'ellipse 46% 10%';
+    const thr = S.reduced ? 1 : 0.85 + 0.15 * Math.sin(now / 1000 * (3 + 2 * G.heat));
+    $('#heat').style.background = `radial-gradient(${shape} at 50% 103%, rgba(230,40,30,.85), rgba(170,10,10,.35) 50%, rgba(120,0,0,0) 80%)`;
+    $('#heat').style.opacity = clamp(0.45 * G.heat * thr, 0, 0.75).toFixed(3);
+  } else $('#heat').style.opacity = '0';
+  $('#tight').style.opacity = String((0.5 * ten).toFixed(3));
+  if (A.worldG) A.worldG.gain.value = 1 - 0.55 * ten;
+  // over her knee: her hand settles on the commander's back before a stroke (a weight from above)
+  // after, by her warmth: she holds the commander (a warm, close dark)
+  $('#press').style.opacity = G?.held ? '0.3' : S.posture === 'over_her_knee' && s && !s.result && G.phase === 'stroke' ? (0.35 * raise).toFixed(3) : '0';
+  // the heart quickens with the heat
+  if (G && G.phase !== 'done' && G.heat > 0.15) { frame.hb = (frame.hb ?? 0) + dt; const per = 60 / (70 + 60 * Math.min(1, G.heat)); if (frame.hb > per) { frame.hb = 0; SFX.heart(0.12 + 0.18 * Math.min(1, G.heat)); } }
+  $('#reply').style.opacity = G && (G.phase === 'stroke' || G.phase === 'after') ? '0.25' : '1';
+}
+
+/* ======================================================================== the summary (a stand-in for the digest, P16c ruling 5) */
+function summary(why) {
+  const t = G.tally; const im = IMPL[G.impl];
+  const slots = im.mark[1] + Math.floor(G.strokes * im.force / 12);
+  const faults = t.moved + t.pulled + t.flinch + t.miscount;
+  const facts = [
+    `strokes landed ${G.strokes} · counted ${G.counted} of ${G.total}${t.added ? ` (+${t.added} added)` : ''}${t.restarts ? ` · count restarted ${t.restarts}×` : ''}`,
+    `taken ${t.taken} · braced ${t.braced} · pulled away ${t.pulled} · feints ${t.feints} (${t.burned} bitten)`,
+    `posture broke ${t.moved} · flinches seen ${t.flinch} · corrections ${t.corrections} (${t.loud} loud)`,
+    `miscounts ${t.miscount} (late ${t.late}, no thanks ${t.nothanks})`,
+    `the mark: ${im.mark[0]}, about ${slots} slot${slots === 1 ? '' : 's'} (her_marks; the engine sets it) · heat at its peak ${G.peakHeat.toFixed(2)}`,
+  ];
+  $('#sumFacts').textContent = facts.join('\n');
+  const stance = t.pulled >= 2 ? 'pulled away from her more than once: it reads as defiance' : t.pulled === 1 ? 'pulled away once' : t.braced > G.strokes / 2 ? 'took them braced and still' : 'took them';
+  const how = why === 'stop' ? 'The stop word ended it.' : faults === 0 ? 'Better than she expected: not one fault.' : faults <= Math.ceil(G.strokes / 5) ? 'About as she expected.' : 'Worse than she expected.';
+  $('#sumWords').textContent = `${how} The commander ${stance}. Afterwards: ${G.peakHeat > 1 ? 'the breath shaking, unsteady on the feet' : G.peakHeat > 0.5 ? 'the breath short, the skin burning' : 'a little flushed'}. (A draft of the digest's words; the engine judges against her plan.)`;
+  $('#summary').style.display = 'block';
+}
+function stats() {
+  if (!G) { $('#stats').textContent = '—'; return; }
+  const rows = [`phase ${G.phase} · stroke ${G.strokes} · counted ${G.counted}/${G.total} · heat ${G.heat.toFixed(2)}`];
+  if (S.showNum) for (const k of activePoints()) rows.push(`${k.padEnd(6)} ${String(Math.round(G.o[k])).padStart(3)}`);
+  if (S.showNum && G.stroke) rows.push(`tap ${G.stroke.tap} · feints ${G.stroke.feints} · lead ${Math.round(G.stroke.lead)} · swing ${G.stroke.swing} · ${G.stroke.result ?? '…'}`);
+  $('#stats').textContent = rows.join('\n');
+}
+
+/* ======================================================================== input */
+function updateMirror() { const v = $('#cmd').value; $('#mirror').replaceChildren(...[...v].map((ch) => { const sp = document.createElement('span'); sp.textContent = ch; return sp; })); }
+$('#cmd').addEventListener('input', updateMirror);
+$('#cmd').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  const v = $('#cmd').value.trim(); $('#cmd').value = ''; updateMirror();
+  if (v) sendLine(v);
+});
+const typing = (el) => el && (/^(input|textarea|select)$/i.test(el.tagName) || el.isContentEditable);
+const KEY_POINT = Object.fromEntries(Object.entries(KEY_OF).map(([k, v]) => [String(v), k]));
+document.addEventListener('keydown', (e) => {
+  if (typing(e.target)) return;
+  if (e.key === ' ') { e.preventDefault(); if (!e.repeat) press(); return; }
+  if (KEY_POINT[e.key]) { e.preventDefault(); if (!e.repeat) correct(KEY_POINT[e.key]); return; }
+  const k = e.key.toLowerCase();
+  if (k === 'b' && (!G || G.phase === 'done')) begin();
+  else if (k === 's' && G && G.phase !== 'done') end('stop');
+  else if (k === 'h') $('#panel').classList.toggle('hidden');
+});
+$('#stage').addEventListener('pointerdown', (e) => {
+  if (e.button !== 0 || e.target.closest('#inputWrap') || e.target.closest('.card') || e.target.closest('#dial') || e.target.closest('#stopPill')) return;
+  if (G?.stroke && !G.stroke.result) { e.preventDefault(); press(); }
+});
+addEventListener('pointermove', onMove);
+
+/* ======================================================================== the panel */
+function opts(host, items, get, set) {
+  host.replaceChildren();
+  for (const it of items) { const b = document.createElement('button'); b.className = 'opt' + (get() === it ? ' on' : ''); b.textContent = it; b.onclick = () => { set(it); opts(host, items, get, set); }; host.appendChild(b); }
+}
+function fillSel(sel, items, cur, label = (x) => x) { sel.replaceChildren(...items.map((v) => { const o = document.createElement('option'); o.value = v; o.textContent = label(v); return o; })); sel.value = items.includes(cur) ? cur : items[0]; return sel.value; }
+function refreshTargets() { S.target = fillSel($('#targetSel'), POSTURES[S.posture].targets, S.target, (t) => TARGET_WORD[t]); drawDial(); }
+fillSel($('#postureSel'), Object.keys(POSTURES), S.posture, (p) => POSTURES[p].label);
+$('#postureSel').onchange = () => { S.posture = $('#postureSel').value; refreshTargets(); };
+refreshTargets();
+$('#targetSel').onchange = () => { S.target = $('#targetSel').value; drawDial(); };
+fillSel($('#implSel'), Object.keys(IMPL), S.impl, (i) => `${IMPL[i].label} (force ${IMPL[i].force})`);
+$('#implSel').onchange = () => { S.impl = $('#implSel').value; };
+$('#num').oninput = () => { S.num = Number($('#num').value); $('#numV').textContent = $('#num').value; };
+$('#numberSel').onchange = () => { S.number = $('#numberSel').value; };
+$('#countSel').onchange = () => { S.count = $('#countSel').value; };
+$('#rStill').onchange = () => { S.rules.still = $('#rStill').checked; };
+$('#rThanks').onchange = () => { S.rules.thanks = $('#rThanks').checked; };
+$('#rEyes').onchange = () => { S.rules.eyes = $('#rEyes').checked; drawDial(); };
+const styleNote = () => { $('#styleNote').textContent = STYLE_NOTE[S.style]; };
+opts($('#styles'), Object.keys(STYLES), () => S.style, (v) => { S.style = v; styleNote(); });
+styleNote();
+for (const [id, key] of [['mInt', 'intensity'], ['mTempo', 'tempo'], ['mOrder', 'order'], ['mVoice', 'voice'], ['mWarmth', 'warmth']]) $(`#${id}`).oninput = () => { S.manner[key] = Number($(`#${id}`).value); $(`#${id}V`).textContent = $(`#${id}`).value; };
+$('#pain').oninput = () => { S.pain = Number($('#pain').value); $('#painV').textContent = $('#pain').value; };
+$('#endur').oninput = () => { S.endur = Number($('#endur').value); $('#endurV').textContent = $('#endur').value; };
+$('#iBrace').onchange = () => { S.inter.brace = $('#iBrace').checked; };
+$('#iPosture').onchange = () => { S.inter.posture = $('#iPosture').checked; drawDial(); };
+$('#iCount').onchange = () => { S.inter.count = $('#iCount').checked; };
+$('#faceFadeOn').onchange = () => { S.faceFadeOn = $('#faceFadeOn').checked; };
+$('#faceFade').oninput = () => { S.faceFade = Number($('#faceFade').value); $('#faceFadeV').textContent = $('#faceFade').value; };
+$('#accent').oninput = () => document.documentElement.style.setProperty('--her', $('#accent').value);
+$('#file').onchange = () => { const f = $('#file').files[0]; if (f) { ASSETS.her = URL.createObjectURL(f); FACE = { label: null, src: null }; setFace('neutral'); } };
+$('#faceFiles').onchange = () => {
+  for (const f of $('#faceFiles').files) { const name = f.name.toLowerCase(), label = LABELS.find((l) => name.startsWith(l)); if (label) (faces[label] ??= []).push(URL.createObjectURL(f)); }
+  $('#faceNote').textContent = `loaded: ${Object.keys(faces).sort().map((l) => `${l}${faces[l].length > 1 ? `×${faces[l].length}` : ''}`).join(', ') || 'none (name the files by label)'}`;
+  FACE = { label: null, src: null }; setFace('neutral');
+};
+$('#sound').onchange = () => { S.sound = $('#sound').checked; if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
+$('#vol').oninput = () => { S.vol = Number($('#vol').value); if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
+$('#showNum').onchange = () => { S.showNum = $('#showNum').checked; stats(); };
+$('#reduced').checked = S.reduced; $('#reduced').onchange = () => { S.reduced = $('#reduced').checked; document.body.classList.toggle('reduced', S.reduced); };
+for (const k of Object.keys(ASSETS.bgs)) { const o = document.createElement('option'); o.value = k; o.textContent = k; $('#bg').appendChild(o); }
+$('#bg').value = 'quarters_2';
+$('#bg').onchange = () => { $('#backdrop').style.backgroundImage = `url(${ASSETS.bgs[$('#bg').value]})`; };
+$('#backdrop').style.backgroundImage = `url(${ASSETS.bgs.quarters_2})`;
+$('#beginBtn').onclick = () => { if (!G || G.phase === 'done') begin(); };
+$('#stopBtn').onclick = () => { if (G && G.phase !== 'done') end('stop'); };
+$('#stopPill').onclick = () => { if (G && G.phase !== 'done') end('stop'); };
+$('#again').onclick = () => { $('#summary').style.display = 'none'; begin(); };
+$('#go').onclick = async () => {
+  audioInit(); if (A.ctx.state === 'suspended') await A.ctx.resume();
+  $('#start').style.display = 'none';
+  loadSamples();
+  narrate('She closes the door and turns the key. “You know why.”');
+};
+setFace('neutral');
+drawDial(); stats();
+requestAnimationFrame(frame);
+
+/* test hooks (prototype only) */
+window.__S = S; window.__G = () => G; window.__begin = () => begin(); window.__press = () => press(); window.__correct = (k) => correct(k); window.__send = (t) => sendLine(t);
+</script>
+</body>
+</html>
