@@ -3071,6 +3071,8 @@ const DEB = (() => {
     if (DS.auto && !D) return;
   }
   requestAnimationFrame(tick);
+  // a released button or Space must not break the hold between two frames while the debate runs (these run after the frame's own handlers)
+  for (const ev of ['mouseup', 'keyup']) addEventListener(ev, () => { if (DEB.on) HOLD.on = true; });
   // the start: by itself a few seconds into the first phase (or "the debate now", D)
   setInterval(() => { if (DS.auto && (!D) && G.phase === 'loop' && G.t > 6000) start(); }, 500);
   addEventListener('keydown', (e) => { if (/^(input|textarea|select)$/i.test(e.target.tagName)) return; if (e.key === 'd' || e.key === 'D') start(); if (e.key === 't' || e.key === 'T') $('#dExch').classList.toggle('on'); });
