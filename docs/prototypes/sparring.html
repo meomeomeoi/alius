@@ -471,7 +471,7 @@ const SFX = {
   heart: (g) => { thump(0, 0.45 * g, 52); thump(0.24, 0.3 * g, 46); },
   bell: () => { if (!play('bell', { g: 0.35 })) { for (const [f, gg] of [[880, 0.06], [1320, 0.03]]) { const o = A.ctx.createOscillator(); o.frequency.value = f; const g = A.ctx.createGain(); const t = A.ctx.currentTime; g.gain.setValueAtTime(gg, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6); o.connect(g); g.connect(A.worldLP); o.start(t); o.stop(t + 1.7); } } },
 };
-function herGrunt() { noise({ dur: 0.16, type: 'bandpass', f: 520, f2: 360, q: 3, gain: 0.07, attack: 0.01 }); noise({ at: 0.02, dur: 0.12, type: 'bandpass', f: 1300, q: 5, gain: 0.03 }); }
+function herGrunt() { noise({ dur: 0.16, type: 'bandpass', f: 520, f2: 360, q: 3, gain: 0.049, attack: 0.01 }); noise({ at: 0.02, dur: 0.12, type: 'bandpass', f: 1300, q: 5, gain: 0.021 }); } // the author: 30 % quieter
 
 /* her hand (written beside her, on the side away from the blow) and the sensory lines */
 function say(text, side = 'R') {
@@ -505,6 +505,10 @@ const LABELS = ['admiration', 'amusement', 'anger', 'annoyance', 'approval', 'ca
 const faces = {}; let spriteUrl = ASSETS.her, curFace = null, HER_FRONT = 0;
 const herLayers = () => [$('#her'), $('#her2')];
 const faceOf = (kind) => FACE_BY_STYLE[S.style]?.[kind] ?? FACE[kind];
+/* a reaction in the bout is a moment: her face goes back to her fighting face after it (tired once her strength is under 40 %) */
+const FACE_HOLD = { dodged: 900, landed: 1400, blocked: 900, bit: 1200, hurt: 1600, parried: 1100 };
+function react(kind) { setFace(faceOf(kind)); G.faceBackAt = performance.now() + (FACE_HOLD[kind] ?? 1000); }
+function baseFace() { const B = G.B; return B && B.composure < B.composure0 * 0.4 ? faceOf('tired') : faceOf('start'); }
 function setFace(label) {
   if (label === curFace) return;
   curFace = label;
@@ -526,7 +530,7 @@ function begin() {
     crowd: null, heartAt: 0, breathAt: 0, herBreathAt: 0, lowSaid: false, stepAt: 0, sideShown: null, endAt: 0 };
   curFace = null; setFace(faceOf('start'));
   SFX.bell(); setTimeout(() => sayL('start', true), 500);
-  if (S.crowd && A.buf.crowd) { G.crowd = play('crowd', { g: 0.0001, loop: true }); G.crowd.gn.gain.setTargetAtTime(0.12, A.ctx.currentTime, 1.2); }
+  if (S.crowd && A.buf.crowd) { G.crowd = play('crowd', { g: 0.0001, loop: true }); G.crowd.gn.gain.setTargetAtTime(0.084, A.ctx.currentTime, 1.2); /* the squad's voices (the author: 30 % quieter than the first 0.12) */ }
   $('#reply').innerHTML = '<span class="act">The training yard. She squares up in front of the commander, light on her feet.</span>';
   sense('Watch her weight and her shoulder. Dodge away from the blow at the last moment; Space blocks.');
 }
@@ -544,10 +548,10 @@ function strikeNow() {
   G.fx.punch = { t0: performance.now() };
   const r = strike(B, B.t);
   if (r === 'clean') {
-    G.fx.herHit = { t0: performance.now() }; SFX.hitHer(); setFace(faceOf('hurt')); sayL('hurt', true, 'R');
+    G.fx.herHit = { t0: performance.now() }; SFX.hitHer(); react('hurt'); sayL('hurt', true, 'R');
     if (B.result) return endBout();
   } else {
-    SFX.parry(); setFace(faceOf('parried')); sayL('parried');
+    SFX.parry(); react('parried'); sayL('parried');
     // she answers at once (the next blow replaces what was coming, unless it is already underway)
     if (B.t < G.a.start) G.a = planBlow(B, B.t, { gap: N.counter.gap, tele: N.counter.tele, counter: true });
   }
@@ -568,20 +572,21 @@ function stepFight(dt) {
   // a feint stops partway
   if (a.feint && !a.resolved && B.t >= a.start + a.tele * N.feintAt) {
     const r = resolveBlow(B, a);
-    if (r === 'bit') { setFace(faceOf('bit')); sayL('bit'); if (!G.toldFeint) { G.toldFeint = true; sense('A feint: she stopped short, and you moved for nothing. Off balance for her next blow.'); } }
+    if (r === 'bit') { react('bit'); sayL('bit'); if (!G.toldFeint) { G.toldFeint = true; sense('A feint: she stopped short, and you moved for nothing. Off balance for her next blow.'); } }
     G.a = planBlow(B, B.t);
   }
   // the impact
   if (!a.feint && !a.resolved && B.t >= a.impact) {
     const r = resolveBlow(B, a), pan = panOf(a.side);
-    if (r === 'landed') { G.fx.hit = { t0: performance.now(), side: a.side, heavy: a.heavy }; SFX.hitMe(pan, a.heavy); flash(a.heavy ? 0.8 : 0.55); setFace(faceOf('landed')); sayL('landed'); }
-    else if (r === 'blocked') { SFX.block(pan); G.fx.hitSmall = { t0: performance.now(), side: a.side }; setFace(faceOf('blocked')); }
-    else { setFace(faceOf('dodged')); if (Math.random() < 0.35) sayL('dodged'); if (a.heavy && !G.toldOpen) { G.toldOpen = true; sense('Her heavy blow went past: she is open for a moment. Click.'); } }
+    if (r === 'landed') { G.fx.hit = { t0: performance.now(), side: a.side, heavy: a.heavy }; SFX.hitMe(pan, a.heavy); flash(a.heavy ? 0.8 : 0.55); react('landed'); sayL('landed'); }
+    else if (r === 'blocked') { SFX.block(pan); G.fx.hitSmall = { t0: performance.now(), side: a.side }; react('blocked'); }
+    else { react('dodged'); if (Math.random() < 0.35) sayL('dodged'); if (a.heavy && !G.toldOpen) { G.toldOpen = true; sense('Her heavy blow went past: she is open for a moment. Click.'); } }
     if (B.result) return endBout();
     const combo = r !== 'dodged' && Math.random() < ST().combo;
     G.a = combo ? planBlow(B, a.impact, { gap: N.comboGap, combo: true }) : planBlow(B, Math.max(B.t, B.openTo > B.t ? B.openTo : B.t));
   }
   if (B.result) return endBout();
+  if (G.faceBackAt && performance.now() > G.faceBackAt) { G.faceBackAt = 0; setFace(baseFace()); }
   // her strength low or the commander's: words, breath
   const low = B.stamina / B.stamina0;
   if (low < 0.3 && !G.lowSaid) { G.lowSaid = true; sayL('low', true); }
@@ -777,7 +782,7 @@ bodyNote(); setFace('neutral');
 requestAnimationFrame(frame);
 
 /* test hooks (prototype only) */
-window.__S = S; window.__G = () => G; window.__bot = botBout; window.__calib = (cfg) => calibrate(cfg ?? cfgNow()); window.__authorCases = authorCases; window.__N = N; window.__cfg = cfgNow;
+window.__S = S; window.__G = () => G; window.__curFace = () => curFace; window.__bot = botBout; window.__calib = (cfg) => calibrate(cfg ?? cfgNow()); window.__authorCases = authorCases; window.__N = N; window.__cfg = cfgNow;
 window.__STYLES = STYLES; window.__LEVELS = LEVELS; window.__HANDICAPS = HANDICAPS;
 </script>
 </body>
