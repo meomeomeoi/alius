@@ -1,0 +1,521 @@
+<!doctype html>
+<!--
+  P16c reference prototype: THE DEBATE (her mental superiority; the author's idea of 2026-11-28; docs/drafts/2026-11-28-debate.md). Round 1.
+  A typed debate on a motion: the commander writes freely; the engine keeps the score on a board of points (hers and the commander's, each
+  weak / fair / strong, standing / dented / struck / cracked); the model never decides who is right. HERE THERE IS NO MODEL: her lines are
+  written in advance for three topics (by move and quality), and the classifier is a stand-in heuristic over key words (the real one is the
+  mechanic model, anonymous and symmetric, a move proven by a quote, the weak reading by default). This prototype is for the feel: the board,
+  the exchanges, the time, her abilities by the gap of minds, the witnesses, the starts and the ends the author chose.
+    npm run proto -- debate [--sprite <png|webp|svg>]
+  Copied: her hand (slap.html's say), her two face layers and their crossfade (foot_care.html), the sound kit (slap.html).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alius · debate · prototype</title>
+<style>
+@font-face { font-family: "Caveat"; src: url("%%ASSET:fonts/hand-caveat-400.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 300; src: url("%%ASSET:fonts/inter-300.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 400; src: url("%%ASSET:fonts/inter-400.woff2%%") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; src: url("%%ASSET:fonts/ibm-plex-mono-400.woff2%%") format("woff2"); }
+:root { --her: #e7b5ff; --hs: 1; --cmd: #3b97ff; --glass: rgba(14, 12, 20, 0.62); --line: rgba(255, 255, 255, 0.12); --ink: #ece8f2; --dim: rgba(236, 232, 242, 0.55); }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: var(--ink); font-family: Inter, system-ui, sans-serif; font-weight: 300; }
+#stage { position: fixed; inset: 0; overflow: hidden; }
+#world { position: absolute; inset: -4%; transition: transform 1.2s cubic-bezier(.2,.8,.3,1); }
+#backdrop { position: absolute; inset: 0; background-size: cover; background-position: center; filter: blur(4px) brightness(.55); transition: filter 1s; }
+.her { position: absolute; left: 0; top: 0; transform-origin: 50% 100%; user-select: none; -webkit-user-drag: none; transition-property: opacity; transition-timing-function: ease; }
+#vig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 40% 50%, transparent 45%, rgba(0,0,0,.75) 100%); }
+/* the board of points */
+#board { position: absolute; right: 2.2vw; top: 7vh; width: 34vw; max-height: 70vh; padding: 14px 16px 16px; border-radius: 16px; background: var(--glass); border: 1px solid var(--line);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); display: none; }
+#motion { font: 400 16px/1.35 Inter, sans-serif; color: var(--ink); margin-bottom: 4px; }
+#motionSub { font: 11px "IBM Plex Mono", monospace; letter-spacing: .12em; color: var(--dim); text-transform: uppercase; margin-bottom: 10px; }
+#cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.col h5 { margin: 0 0 6px; font: 10px "IBM Plex Mono", monospace; letter-spacing: .16em; color: var(--dim); }
+.col.hers h5 { color: color-mix(in srgb, var(--her) 70%, #fff); }
+.pt { position: relative; margin: 0 0 7px; padding: 6px 9px; border-radius: 9px; border: 1px solid var(--line); background: rgba(255,255,255,.03); transition: opacity .5s, transform .5s, border-color .4s, background .4s; }
+.hers .pt { font: calc(21px * var(--hs)) Caveat, cursive; color: var(--her); line-height: 1.05; }
+.mine .pt { font: 13.5px/1.3 Inter, sans-serif; color: #dfe9ff; }
+.pt.strong { border-color: color-mix(in srgb, currentColor 55%, transparent); box-shadow: 0 0 14px color-mix(in srgb, currentColor 22%, transparent); font-weight: 400; }
+.pt.weak { opacity: .7; }
+.pt.dented { opacity: .62; transform: translateX(4px) rotate(-.6deg); border-style: dashed; }
+.pt.struck { opacity: .3; text-decoration: line-through; }
+.pt.cracked { opacity: .35; background: repeating-linear-gradient(115deg, rgba(255,255,255,.0) 0 7px, rgba(255,120,120,.16) 7px 8px); }
+.pt.new { animation: ptIn .6s cubic-bezier(.2,.8,.3,1.2); }
+@keyframes ptIn { from { opacity: 0; transform: translateY(-6px) scale(.96); } }
+.pt.hit { animation: ptHit .45s; }
+@keyframes ptHit { 30% { transform: translateX(-5px) rotate(-1deg); } 60% { transform: translateX(4px); } }
+.pt .st { font: 9px "IBM Plex Mono", monospace; letter-spacing: .12em; color: var(--dim); margin-left: 6px; text-transform: uppercase; }
+#hint { margin-top: 8px; font: italic 300 13px/1.4 Inter, sans-serif; color: #bfe0ff; min-height: 1em; }
+/* the witnesses */
+#wits { position: absolute; right: 2.2vw; bottom: 130px; display: flex; flex-direction: column; gap: 8px; }
+.wit { width: 190px; padding: 7px 10px; border-radius: 10px; background: var(--glass); border: 1px solid var(--line); font: 11px "IBM Plex Mono", monospace; letter-spacing: .1em; }
+.wit .lean { position: relative; height: 6px; margin-top: 6px; border-radius: 3px; background: rgba(255,255,255,.08); }
+.wit .lean i { position: absolute; top: -3px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: #fff; box-shadow: 0 0 8px rgba(255,255,255,.6); transition: left 1.2s cubic-bezier(.2,.8,.3,1); }
+.wit .said { margin-top: 5px; font: italic 300 12px/1.3 Inter, sans-serif; letter-spacing: 0; color: var(--dim); min-height: 1em; }
+/* her hand (slap.html's) */
+#hand { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.her-line { position: absolute; left: 50%; transform: translateX(-50%); width: min(980px, 58vw); text-align: center; font-family: Caveat, cursive; color: var(--her); line-height: 1.05; font-size: calc(36px * var(--hs));
+  text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.85), 0 0 28px rgba(0,0,0,.6); animation: write var(--write, 600ms) steps(var(--steps, 12), end) both; transition: opacity .6s; }
+.her-line.gone { opacity: 0; }
+@keyframes write { from { clip-path: inset(-30% 100% -30% -8%); } to { clip-path: inset(-30% -8% -30% -8%); } }
+/* the scene's transcript (a stand-in) and the input */
+#reply { position: absolute; left: 50%; bottom: 128px; transform: translateX(-50%); width: min(980px, 58vw); font-size: 18px; line-height: 1.5; text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.7); }
+#reply .act { font-style: italic; color: var(--dim); }
+#reply .speech { color: var(--her); font-weight: 400; }
+#reply .you { color: #d8e4ff; }
+#readAs { position: absolute; left: 50%; bottom: 102px; transform: translateX(-50%); font: 11px "IBM Plex Mono", monospace; letter-spacing: .08em; color: #9cc4ff; opacity: 0; transition: opacity .5s; white-space: nowrap; }
+#inputWrap { position: absolute; left: 50%; bottom: 36px; transform: translateX(-50%); width: min(980px, 58vw); height: 56px; background: var(--glass); border: 1px solid var(--line); border-radius: 28px; backdrop-filter: blur(14px); transition: border-color .3s, box-shadow .3s; }
+#inputWrap.turn { border-color: color-mix(in srgb, var(--cmd) 70%, transparent); box-shadow: 0 0 22px color-mix(in srgb, var(--cmd) 28%, transparent); }
+#inputWrap.her { border-color: color-mix(in srgb, var(--her) 60%, transparent); }
+#cmd { position: absolute; inset: 0; width: 100%; padding: 0 26px; border: 0; outline: 0; background: transparent; color: var(--ink); font: 300 18px/56px Inter, sans-serif; }
+#cmd::placeholder { color: rgba(236,232,242,.35); }
+#clock { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); height: 4px; width: min(980px, 58vw); border-radius: 2px; overflow: hidden; background: rgba(255,255,255,.06); }
+#clock i { display: block; height: 100%; width: 100%; background: color-mix(in srgb, var(--cmd) 70%, #fff); transform-origin: left; }
+/* the challenge and the end cards */
+.card { position: absolute; left: 36vw; top: 50%; transform: translate(-50%, -50%); width: 520px; padding: 22px 26px; border-radius: 18px; z-index: 20;
+  background: rgba(12, 11, 18, .9); border: 1px solid var(--line); display: none; }
+.card .who { font: 30px Caveat, cursive; color: var(--her); }
+.card .kind { font: 11px "IBM Plex Mono", monospace; letter-spacing: .14em; color: var(--dim); text-transform: uppercase; margin-bottom: 8px; }
+.card .body { font-size: 16px; line-height: 1.5; margin: 6px 0 10px; }
+.card .body b { font-weight: 400; color: #fff; }
+.pill { display: inline-block; margin: 8px 8px 0 0; padding: 8px 16px; border-radius: 18px; border: 1px solid color-mix(in srgb, var(--cmd) 45%, transparent); background: color-mix(in srgb, var(--cmd) 10%, transparent); color: var(--ink); font: 14px Inter, sans-serif; cursor: pointer; }
+.pill:hover { background: color-mix(in srgb, var(--cmd) 24%, transparent); }
+/* the floor and the level (from the throne: the commander is her chair) */
+#level { position: absolute; left: 50%; top: 36vh; transform: translateX(-50%); width: 360px; height: 34px; border-radius: 17px; display: none;
+  background: linear-gradient(180deg, #c89b4c, #7a5522); box-shadow: 0 6px 16px rgba(0,0,0,.5), inset 0 0 0 2px rgba(255,236,190,.35); }
+#level .vial { position: absolute; inset: 7px 20px; border-radius: 10px; background: linear-gradient(180deg, rgba(255,214,120,.9), rgba(200,140,40,.9)); overflow: hidden; }
+#level .tol { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(255,250,230,.7); }
+#level .bub { position: absolute; top: 3px; width: 34px; height: 14px; margin-left: -17px; border-radius: 7px; background: rgba(255,252,236,.92); box-shadow: 0 0 8px rgba(255,250,220,.8); }
+#level.off .tol { background: rgba(120,60,10,.6); }
+/* ---------- prototype only ---------- */
+#panel { position: fixed; top: 14px; left: 14px; width: 330px; max-height: 72vh; overflow: auto; padding: 14px 16px; border-radius: 14px; z-index: 50;
+  background: rgba(10, 10, 14, .9); border: 1px solid var(--line); font: 12px "IBM Plex Mono", monospace; color: #cfcbe0; }
+#panel.hidden { display: none; }
+#panel h4 { margin: 12px 0 6px; font-weight: 400; color: #8d88a6; font-variant: small-caps; letter-spacing: .08em; }
+#panel h4:first-child { margin-top: 0; }
+#panel .row { display: flex; flex-wrap: wrap; gap: 4px; }
+#panel button.opt { padding: 4px 8px; border-radius: 10px; border: 1px solid #3a3650; background: #17151f; color: #cfcbe0; font: 12px "IBM Plex Mono", monospace; cursor: pointer; }
+#panel button.opt.on { background: #3b3360; border-color: #8a7fd0; color: #fff; }
+#panel label { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+#panel input[type=range] { flex: 1; }
+#panel select { background: #17151f; color: #cfcbe0; border: 1px solid #3a3650; font: 12px "IBM Plex Mono", monospace; max-width: 190px; }
+#panel .note { color: #77738c; line-height: 1.45; margin-top: 8px; }
+#start { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 60; background: rgba(0,0,0,.4); }
+#start .box { width: 640px; padding: 26px 30px; border-radius: 18px; background: rgba(12, 11, 18, .9); border: 1px solid var(--line); line-height: 1.6; font-size: 15px; }
+#start .box h2 { margin: 0 0 8px; font: 15px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .12em; color: #a9a3c7; }
+.btn { display: inline-block; margin-top: 12px; padding: 9px 18px; border-radius: 20px; border: 1px solid var(--line); background: rgba(255,255,255,.06); color: var(--ink); font: 14px Inter, sans-serif; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="world"><div id="backdrop"></div><img id="her" class="her" alt="" draggable="false"><img id="her2" class="her" alt="" draggable="false" style="opacity:0"></div>
+  <div id="vig"></div>
+  <div id="wits"></div>
+  <div id="board"><div id="motion"></div><div id="motionSub"></div><div id="cols"><div class="col hers"><h5>HER</h5><div id="herPts"></div></div><div class="col mine"><h5>YOU</h5><div id="myPts"></div></div></div><div id="hint"></div></div>
+  <div id="level"><div class="vial"><div class="tol" style="left:42%"></div><div class="tol" style="left:58%"></div><div class="bub"></div></div></div>
+  <div id="hand"></div>
+  <div id="reply"></div>
+  <div id="readAs"></div>
+  <div id="inputWrap"><input id="cmd" autocomplete="off" spellcheck="false" placeholder="…"></div>
+  <div id="clock"><i></i></div>
+  <div class="card" id="card"><div class="who"></div><div class="kind"></div><div class="body"></div><div class="pills"></div></div>
+</div>
+<div id="panel">
+  <h4>the debate</h4>
+  <div class="row"><button class="opt" id="beginBtn">begin (B)</button></div>
+  <label>topic <select id="topicSel"></select></label>
+  <label>start <select id="startSel"><option value="challenge">she challenges</option><option value="said">"you said it"</option><option value="throne">from the throne</option><option value="terms">the commander challenges, on her terms</option></select></label>
+  <label><input type="checkbox" id="witOn" checked> witnesses (two of the squad)</label>
+  <label><input type="checkbox" id="timeOn" checked> time to answer</label>
+  <h4>her</h4>
+  <div class="row" id="styles"></div>
+  <label>intellect <input type="range" id="intel" min="1" max="10" value="9"><span id="intelV">9</span></label>
+  <label>tempo <input type="range" id="tempo" min="-2" max="2" value="0"><span id="tempoV">0</span></label>
+  <h4>the commander</h4>
+  <label>insight <input type="range" id="ins" min="1" max="5" value="3"><span id="insV">3</span></label>
+  <label>cunning <input type="range" id="cun" min="1" max="5" value="3"><span id="cunV">3</span></label>
+  <label>authority <input type="range" id="aut" min="1" max="5" value="3"><span id="autV">3</span></label>
+  <div class="note" id="gapNote"></div>
+  <h4>her look</h4>
+  <label>sprite <input type="file" id="file" accept="image/*" style="width:170px"></label>
+  <label>faces <input type="file" id="faceFiles" accept="image/*" multiple style="width:170px"></label>
+  <label>accent <input type="color" id="accent" value="#e7b5ff"></label>
+  <div class="note">No model here: her lines are written for three topics, and the classifier is a stand-in over key words (it reads a rebuttal when you name her point's words with a "but / no / not / yet / however"; a new point when you give a reason with "because / since / so / which means"; an example or a number makes it stronger; under eight words is weak; an insult costs). The tally of her wins is kept across runs (this page). H hides this panel.</div>
+</div>
+<div id="start"><div class="box">
+  <h2>the debate · prototype · round 1</h2>
+  A debate with her on a motion. Write your answers in the line at the bottom (Enter sends). The <b>board</b> on the right holds the points: hers and yours, weak, fair or strong; a point left unanswered stands, an answered one is struck, a weak answer only dents a strong point. With witnesses, the room decides by what they value; alone, the board. Her mind against yours: the clearer her lead, the more she can do (pre-empt your point, quote you against yourself, end it early).<br>
+  <b>No model in this prototype:</b> her lines are prepared and the reading of yours is a simple stand-in, so say plainly which of her points you answer and why.
+  <div><span class="btn" id="go">begin</span></div>
+</div></div>
+<script>
+'use strict';
+const ASSETS = { her: '%%SPRITE%%', bg: '%%ASSET:content/core/art/backdrops/quarters_2.webp%%' };
+const SAMPLE_URLS = { soft1: '%%ASSET:docs/prototypes/assets/ha/soft1.ogg%%', soft2: '%%ASSET:docs/prototypes/assets/ha/soft2.ogg%%', page1: '%%ASSET:docs/prototypes/assets/ha/page1.ogg%%', cloth1: '%%ASSET:docs/prototypes/assets/ha/cloth1.ogg%%', creak1: '%%ASSET:docs/prototypes/assets/ha/creak1.ogg%%', wood1: '%%ASSET:docs/prototypes/assets/ha/wood1.ogg%%' };
+const $ = (s) => document.querySelector(s);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+function fnv1a(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return h >>> 0; }
+const fmix = (h) => { h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16; return h >>> 0; }; // balance.html's finaliser
+const hash01 = (k) => fmix(fnv1a(k)) / 4294967296;
+const hpick = (list, k) => list[Math.floor(hash01(k) * list.length)];
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const rand = (a, b) => a + Math.random() * (b - a);
+const esc = (t) => t.replace(/[<&>]/g, (c) => ({ '<': '&lt;', '&': '&amp;', '>': '&gt;' }[c]));
+
+/* ======================================================================== the topics (three, written out; the real ones: the draft's list,
+   her lines by the model to the engine's order). Her points: a label (the board), key words (the engine's, for the reading), her line at
+   each quality. `counter`: the commander's obvious points (for her pre-emption). `consequence`: what she draws from a win, if the motion allows. */
+const TOPICS = {
+  rations: {
+    motion: 'Rations should go by merit, not equally.', category: 'supply', depth: 'everyday', her: 'for', framing: 'three days of food left',
+    words: ['ration', 'food', 'eat', 'share', 'equal', 'merit', 'squad', 'hungry', 'portion', 'fair'],
+    said: 'everyone should eat the same, whatever they did that day',
+    opening: { strong: 'Three days of food. Tell me why the one who carried the radio up the ridge should eat the same as the one who was carried. Merit keeps a squad alive; equality only keeps it comfortable while it starves.', fair: 'We have three days of food. The ones who work hardest should eat more. That is merit.', weak: 'The ones who do more should get more. That is obvious.' },
+    points: [
+      { id: 'carry', label: 'merit feeds the ones who carry the squad', words: ['carry', 'carried', 'work', 'earn', 'merit', 'effort', 'deserve', 'hardest'] },
+      { id: 'lazy', label: 'equal shares reward the idle', words: ['lazy', 'idle', 'slack', 'freeload', 'reward', 'nothing'] },
+      { id: 'hunger', label: 'hunger teaches who wants to eat', words: ['hunger', 'hungry', 'learn', 'teach', 'motivate', 'incentive'] },
+      { id: 'strong', label: 'the strong keep the weak alive', words: ['strong', 'survive', 'protect', 'alive', 'weak'] },
+    ],
+    counter: [{ label: 'the wounded did nothing wrong', words: ['wounded', 'injured', 'hurt', 'medic', 'sick'] }, { label: 'who measures merit?', words: ['judge', 'measure', 'decide', 'who decides', 'fair'] }, { label: 'unequal food breeds resentment', words: ['morale', 'resent', 'jealous', 'unity', 'together', 'trust'] }],
+    consequence: 'Then you eat last. After me.',
+  },
+  strong: {
+    motion: 'The strong should rule the weak.', category: 'philosophy', depth: 'professional', her: 'for', framing: 'after a failed run',
+    words: ['strong', 'weak', 'rule', 'power', 'lead', 'command', 'obey', 'order'],
+    said: 'nobody is born to rule anyone',
+    opening: { strong: 'Today a run failed because someone weak was allowed to decide. Strength is not cruelty; it is the ability to carry the consequences. Those who can carry them should decide for those who cannot.', fair: 'The run failed today. The strong should decide, because they can carry what follows.', weak: 'Strong people should be in charge. That is just how it is.' },
+    points: [
+      { id: 'carry', label: 'only the strong can carry the consequences', words: ['consequence', 'carry', 'responsib', 'bear', 'burden'] },
+      { id: 'nature', label: 'it is how every living thing is ordered', words: ['nature', 'natural', 'animal', 'law', 'order'] },
+      { id: 'able', label: 'the able decide better', words: ['able', 'competent', 'capable', 'skill', 'better', 'best'] },
+      { id: 'safe', label: 'the weak are safer under the strong', words: ['safe', 'protect', 'shield', 'safer', 'care'] },
+    ],
+    counter: [{ label: 'power corrupts', words: ['corrupt', 'abuse', 'tyrant', 'tyranny', 'cruel'] }, { label: 'strength does not last', words: ['age', 'old', 'injur', 'temporary', 'lose', 'change'] }, { label: 'the many weak outweigh one strong', words: ['many', 'together', 'unite', 'numbers', 'squad'] }],
+    consequence: 'So kneel.',
+  },
+  limit: {
+    motion: 'A limit is a promise, not a number.', category: 'mathematics', depth: 'academic', her: 'for', framing: 'over a game of cards',
+    words: ['limit', 'number', 'promise', 'approach', 'infinity', 'sequence', 'value', 'math'],
+    said: 'a limit is just the number you end up at',
+    opening: { strong: 'You never arrive at a limit. You promise that for any closeness I demand, you can get that close and stay there. That is a contract, not a destination. The number is just the name we give the promise.', fair: 'A limit is never reached. It is a promise that you can get as close as anyone asks.', weak: 'You never get to a limit. So it is not really a number.' },
+    points: [
+      { id: 'never', label: 'a limit is never reached', words: ['never', 'reach', 'arrive', 'get there', 'approach'] },
+      { id: 'any', label: 'for any closeness demanded, you can deliver it', words: ['epsilon', 'any', 'close', 'closeness', 'demand', 'arbitrar'] },
+      { id: 'process', label: 'it describes a process, not a place', words: ['process', 'endless', 'sequence', 'infinite', 'step'] },
+      { id: 'name', label: 'the number is only the promise\'s name', words: ['name', 'label', 'symbol', 'call'] },
+    ],
+    counter: [{ label: 'the limit has an exact value', words: ['exact', 'value', 'equals', 'equal', 'real number'] }, { label: '0.999… is exactly 1', words: ['0.999', '0.9', 'one', 'exactly'] }, { label: 'the definition makes it rigorous', words: ['rigorous', 'definition', 'defined', 'proof'] }],
+    consequence: null,
+  },
+};
+/* her lines by her move and its quality (prepared; the model writes them to the engine's order). {p} her point, {y} the commander's point,
+   {q} a quote of the commander's earlier words. */
+const MOVE_LINES = {
+  point: { strong: ['And there is more: {p}. Answer that, if you can.', 'Consider this: {p}. You have no reply to it, have you?'], fair: ['Besides, {p}.', 'And {p}.'], weak: ['Also… {p}. Probably.', 'Well, {p}, I think.'] },
+  rebut: { strong: ['"{y}"? That is a hope, not an argument. Name one time it held, here, on this base.', '"{y}". You say it as if saying it made it true. It doesn\'t.'], fair: ['"{y}" — no. It doesn\'t follow.', 'I don\'t accept "{y}".'], weak: ['Hm. "{y}"… I don\'t think so.', 'That\'s not… no.'] },
+  defend: { strong: ['You touched "{p}" and it still stands. Look again.'], fair: ['"{p}" stands. You only scratched it.'], weak: ['"{p}" is still true. It is.'] },
+  preempt: ['Before you say it: "{y}". I know. And it fails, because the question is not who suffers, but who can carry it.', 'You\'re about to tell me "{y}". Don\'t. I answered that before you thought of it.'],
+  quote: ['You said, a moment ago: "{q}". Now you say the opposite. Which one is the commander I am talking to?'],
+  checkmate: ['We\'re done here. Count the board, if you like.', 'Enough. You have nothing left standing, and you know it.'],
+};
+/* her style's flavour: her lines' openings and her answers to the end (regal is the author's; others in passing) */
+const STYLE = {
+  regal: { closing: 'You may concede now. It would be the first graceful thing you have done tonight.', win: ['Was there ever a doubt?', 'You see? Some are meant to think, and some to be sat on.'], lose: ['…A lucky argument. Don\'t get used to it.'], loseBig: ['Well argued. I will allow it. Once.'], admits: false, formula: 'You were right, and I was wrong.', formulaAsk: 'Say it. "You were right, and I was wrong."', formulaOk: 'Good. Remember the taste of it.', formulaNo: 'You will say it eventually. They all do.', terms: 'You may challenge me. On your knees, and every point opens with "with respect".', formFault: 'With respect. Again.', throne: 'Entertain me. Tell me why I\'m wrong.', chair: 'Then you\'ll be my chair. Down.', tally: { 5: 'Five to nothing. Do you see a pattern?', 7: 'Seven to one. Shall we stop pretending?', 10: 'Ten. I\'ve stopped counting your attempts as debates.' } },
+  cruel: { closing: 'Go on. Say something clever. I\'m waiting.', win: ['Pathetic. Again tomorrow?'], lose: ['…Fine. Enjoy it. It won\'t happen twice.'], loseBig: ['Hm. You bit back.'], admits: false, formula: 'You were right, and I was wrong.', formulaAsk: 'Say it.', formulaOk: 'Again. Louder.', formulaNo: 'Then you\'ll say it on your knees later.', terms: 'Fine. Kneel, and open every point with "with respect".', formFault: 'Form.', throne: 'Talk. Entertain me.', chair: 'Down. You\'re a chair now.', tally: { 5: 'Five. Want a sixth?' } },
+  neutral: { closing: 'That is my case.', win: ['Good debate. I won it.'], lose: ['Fair. You had me.'], loseBig: ['Well argued.'], admits: true, formula: 'You were right.', formulaAsk: 'Admit it.', formulaOk: 'Thank you.', formulaNo: 'Suit yourself.', terms: 'All right. Make your case.', formFault: '', throne: 'Go on, then.', chair: '', tally: {} },
+};
+/* the witnesses: their values lean them toward a side per topic (+ the commander's side, − hers), the authority of the commander adds trust */
+const WITNESSES = [{ name: 'BEA', lean: { rations: 1.2, strong: 0.8, limit: 0 } }, { name: 'ILSE', lean: { rations: -0.6, strong: -0.9, limit: 0.4 } }];
+const WIT_LINES = { you: ['…fair point.', 'mm. that one landed.'], her: ['ha. she has you.', 'oof.'], strong: ['wow.'], fault: ['…that was off topic.'] };
+/* quality by the gap of minds: her intellect − the commander's wits (insight + cunning), the topic's depth pulling a lesser mind down */
+const DEPTH_PULL = { everyday: 0, professional: 0.25, academic: 0.5 };
+const WEIGHT = { weak: 1, fair: 2, strong: 3 };
+const QUAL = ['weak', 'fair', 'strong'];
+
+/* ======================================================================== settings, audio */
+const S = { topic: 'rations', start: 'challenge', wit: true, time: true, style: 'regal', intel: 9, tempo: 0, ins: 3, cun: 3, aut: 3, faceFade: 300 };
+const ST = () => STYLE[S.style];
+const A = { ctx: null, buf: {} };
+function audioInit() { if (A.ctx) return; A.ctx = new (window.AudioContext || window.webkitAudioContext)(); A.master = A.ctx.createGain(); A.master.gain.value = 0.7; A.master.connect(A.ctx.destination); }
+async function loadSamples() { await Promise.all(Object.entries(SAMPLE_URLS).map(async ([k, u]) => { try { const r = await fetch(u); A.buf[k] = await A.ctx.decodeAudioData(await r.arrayBuffer()); } catch (e) {} })); }
+function play(id, { g = 0.4, rate = 1, pan = 0 } = {}) { if (!A.ctx || !A.buf[id]) return; const s = A.ctx.createBufferSource(); s.buffer = A.buf[id]; s.playbackRate.value = rate; const gn = A.ctx.createGain(); gn.gain.value = g; const p = A.ctx.createStereoPanner(); p.pan.value = pan; s.connect(gn); gn.connect(p); p.connect(A.master); s.start(); }
+function pen() { if (!A.ctx) return; for (let i = 0; i < 3; i++) { const t = A.ctx.currentTime + i * 0.05; const n = A.ctx.createBufferSource(); const b = A.ctx.createBuffer(1, 2000, A.ctx.sampleRate); const d = b.getChannelData(0); for (let j = 0; j < d.length; j++) d[j] = Math.random() * 2 - 1; n.buffer = b; const f = A.ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 3000; const g = A.ctx.createGain(); g.gain.setValueAtTime(0.03, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04); n.connect(f); f.connect(g); g.connect(A.master); n.start(t); } }
+
+/* ======================================================================== the run */
+let G = null;
+const TALLY = JSON.parse(localStorage.getItem('alius.debate.tally') ?? '{"her":0,"you":0}');
+const wits = () => S.ins + S.cun;                         // the commander's wits on her scale (2–10)
+const gap = () => S.intel - wits();
+const herLevel = () => S.intel - DEPTH_PULL[TOPICS[S.topic].depth] * Math.max(0, 8 - S.intel); // a deep topic pulls a lesser mind down
+const effGap = () => herLevel() - wits();
+/* the shares of her strong, fair and weak moves by the gap */
+function quality(k) {
+  const g = effGap(); const pStrong = clamp(0.3 + 0.1 * g, 0.04, 0.92), pWeak = clamp(0.32 - 0.08 * g, 0.03, 0.75);
+  const r = hash01(k); return r < pStrong ? 'strong' : r < pStrong + pWeak ? 'weak' : 'fair';
+}
+function begin() {
+  audioInit(); if (A.ctx.state === 'suspended') A.ctx.resume(); loadSamples();
+  const T = TOPICS[S.topic];
+  G = { id: `db${Date.now() % 1000000}`, T, her: [], mine: [], turn: 0, n: 0, exchanges: exchangesOf(T), myLines: [], phase: 'card', faults: 0, used: { preempt: 0, quote: 0 }, preempted: [], balance: { x: 0, v: 0, her: 0, herT: 0, err: 0 } };
+  $('#hand').replaceChildren(); $('#reply').innerHTML = ''; $('#board').style.display = 'none'; $('#readAs').style.opacity = 0;
+  drawWits(); setFace('neutral');
+  $('#level').style.display = S.start === 'throne' ? 'block' : 'none';
+  $('#world').style.transform = S.start === 'terms' ? 'translateY(8vh) scale(1.12)' : S.start === 'throne' ? 'translateY(30vh) scale(1.5)' : 'none'; // kneeling: she towers; the throne: the floor
+  $('#backdrop').style.filter = S.start === 'throne' ? 'blur(10px) brightness(.4)' : 'blur(4px) brightness(.55)';
+  for (const h of herLayers()) h.style.visibility = S.start === 'throne' ? 'hidden' : 'visible';
+  const st = ST();
+  if (S.start === 'challenge') card('her challenge', `<b>${T.motion}</b><br>She holds it; you argue against it. ${T.framing}.`, [['accept', open], ['refuse', refuse]]);
+  else if (S.start === 'said') { narrate(`Yesterday, in the mess, the commander said ${T.said}. She remembered.`); setTimeout(() => card('“you said it”', `<b>${T.motion}</b><br>“You said ${T.said}. Defend it.”`, [['defend it', open], ['let it go', refuse]]), 1200); }
+  else if (S.start === 'throne') { narrate('The commander is her chair tonight. She is bored.'); setTimeout(() => { say(st.throne); open(); }, 1200); }
+  else card('your challenge', `<b>${T.motion}</b><br>You challenge her. She takes her side and sets the terms: “${st.terms}”`, [['on her terms', open], ['withdraw', refuse]]);
+}
+function exchangesOf(T) { const base = { everyday: 3, professional: 4, academic: 5 }[T.depth]; const serious = S.wit ? 1 : 0; return clamp(base + serious - Math.round(S.tempo / 2), 2, 7); }
+function refuse() {
+  hideCard(); G.phase = 'done';
+  say(S.style === 'regal' ? 'You won\'t even try? I\'ll count that.' : 'Coward.'); setFace('amusement');
+  TALLY.her += 1; saveTally(); narrate('She counts it. Refusing is a fact too.');
+}
+function open() {
+  hideCard(); const T = G.T; G.phase = 'debate';
+  $('#board').style.display = 'block'; $('#motion').textContent = T.motion; $('#motionSub').textContent = `${T.category} · ${T.depth} · ${T.framing} · you argue against`;
+  // the opening: her statement is already on the table (written while the card was up)
+  const q = quality(`open|${G.id}`);
+  addHer(T.points[0], q); addHer(T.points[1], quality(`open2|${G.id}`));
+  herSay(T.opening[q]);
+  setTimeout(yourTurn, 1600);
+}
+
+/* ======================================================================== the board */
+function addHer(pt, q) { const p = { ...pt, side: 'her', q, state: 'standing', fresh: true }; G.her.push(p); drawBoard(); return p; }
+function addMine(label, q, words) { const p = { id: `m${G.mine.length}`, label, words, side: 'you', q, state: 'standing', fresh: true }; G.mine.push(p); drawBoard(); return p; }
+function weightOf(list) { return list.reduce((a, p) => a + (p.state === 'standing' ? WEIGHT[p.q] : p.state === 'dented' ? WEIGHT[p.q] / 2 : 0), 0); }
+function drawBoard() {
+  const draw = (host, list) => { host.replaceChildren(...list.map((p) => { const d = document.createElement('div'); d.className = `pt ${p.q} ${p.state}${p.fresh ? ' new' : ''}${p.hit ? ' hit' : ''}`; d.textContent = p.label; const st = document.createElement('span'); st.className = 'st'; st.textContent = p.state === 'standing' ? p.q : p.state; d.append(st); p.fresh = false; p.hit = false; return d; })); };
+  draw($('#herPts'), G.her); draw($('#myPts'), G.mine); drawWits();
+}
+/* a rebuttal against a point: as strong or stronger strikes it; one step weaker dents it (a dented one is struck); weaker does nothing */
+function rebut(target, q) {
+  const d = WEIGHT[q] - WEIGHT[target.q]; target.hit = true;
+  if (target.state === 'dented' && d >= -1) target.state = 'struck';
+  else if (d >= 0) target.state = 'struck';
+  else if (d === -1) target.state = 'dented';
+  return target.state;
+}
+
+/* ======================================================================== the commander's turn */
+let turnTimer = null;
+function yourTurn() {
+  if (G.phase !== 'debate') return;
+  G.turn = 'you'; $('#inputWrap').className = 'turn'; $('#cmd').disabled = false; $('#cmd').placeholder = S.start === 'terms' ? 'with respect, …' : 'your answer (Enter)';
+  $('#cmd').focus();
+  // the commander's insight: a hint at her weakest standing point (the real one: the engine names the assumption her point rests on)
+  const weakest = G.her.filter((p) => p.state === 'standing').sort((a, b) => WEIGHT[a.q] - WEIGHT[b.q])[0];
+  $('#hint').textContent = weakest && hash01(`hint|${G.id}|${G.n}`) < 0.2 * S.ins ? `Her “${weakest.label}” looks ${weakest.q === 'weak' ? 'thin' : 'answerable'}.` : '';
+  if (S.time) {
+    const ms = 60000 * (1 - 0.12 * S.tempo) * (1 + 0.1 * (S.ins - 3));
+    G.turnEnds = performance.now() + ms; G.turnMs = ms;
+    clearTimeout(turnTimer); turnTimer = setTimeout(() => { if (G.turn === 'you') { G.turn = null; say('Too slow. That stands.'); setFace('amusement'); herTurn(); } }, ms);
+  }
+}
+/* the stand-in classifier (the real one: the mechanic model, anonymous and symmetric, a quote proves a move, the weak reading by default) */
+const CONTRA = /\b(but|no|not|isn'?t|doesn'?t|don'?t|wrong|yet|however|actually|ignores?|fails?|false|never)\b/i;
+const CAUSE = /\b(because|since|so that|therefore|which means|that'?s why|if .* then|so )\b/i;
+const EVID = /\b(\d+|for example|for instance|remember|last (week|run|time)|when we|bea|ilse|vela|district|ashway|kestrel|vesper)\b/i;
+const INSULT = /\b(stupid|idiot|dumb|moron|bitch|shut up)\b/i;
+const has = (text, words) => words.some((w) => text.toLowerCase().includes(w.toLowerCase()));
+function classify(text) {
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  const T = G.T; const onTopic = has(text, T.words) || G.her.some((p) => has(text, p.words)) || T.counter.some((c) => has(text, c.words));
+  // strong only with both: an example or a fact, and a reason (or a long, worked line); either alone is fair; short is weak
+  const ev = EVID.test(text), reason = CAUSE.test(text) || words > 28;
+  let q = words < 8 ? 'weak' : ev && reason ? 'strong' : 'fair';
+  if (INSULT.test(text)) return { kind: 'insult', q: 'weak' };
+  if (!onTopic) return { kind: 'off', q: 'weak' };
+  const target = G.her.filter((p) => p.state !== 'struck' && p.state !== 'cracked').find((p) => has(text, p.words));
+  if (target && CONTRA.test(text)) return { kind: 'rebut', target, q };
+  if (CAUSE.test(text) || words >= 12) { const c = T.counter.find((x) => has(text, x.words)); return { kind: 'point', label: c ? c.label : text.split(/[.!?]/)[0].split(/\s+/).slice(0, 9).join(' ').toLowerCase(), words: c ? c.words : text.toLowerCase().split(/\W+/).filter((w) => w.length > 4).slice(0, 5), q }; }
+  return { kind: 'weak', q: 'weak' };
+}
+function send(text) {
+  if (G?.phase === 'formula') { formulaAnswer(text); return; }
+  if (!G || G.turn !== 'you') return;
+  G.turn = null; clearTimeout(turnTimer); $('#cmd').disabled = true; $('#inputWrap').className = '';
+  $('#reply').innerHTML = `<span class="you">“${esc(text)}”</span>`; G.myLines.push(text);
+  // her terms: every point opens with her form
+  if (S.start === 'terms' && !/^\s*with respect\b/i.test(text)) { G.faults += 1; const st = ST(); if (st.formFault) setTimeout(() => say(st.formFault), 300); showRead('her form was not kept · the point is weakened'); }
+  const r = classify(text); let q = r.q; if (S.start === 'terms' && !/^\s*with respect\b/i.test(text)) q = QUAL[Math.max(0, QUAL.indexOf(q) - 1)];
+  if (S.start === 'throne' && G.balance.wobbled) { q = QUAL[Math.max(0, QUAL.indexOf(q) - 1)]; G.balance.wobbled = false; showRead('the chair wobbled while it spoke · the point is weakened'); }
+  if (r.kind === 'rebut') {
+    if (S.cun >= 4 && r.target.state === 'dented') q = QUAL[Math.min(2, QUAL.indexOf(q) + 1)]; // cunning: finishing a dented point
+    const res = rebut(r.target, q); showRead(`read as: a rebuttal of “${r.target.label}” · ${q} → ${res === 'standing' ? 'it holds' : res}`);
+    if (res === 'struck') { setFace('annoyance'); witReact('you'); } else if (res === 'standing') setFace('amusement');
+  } else if (r.kind === 'point') {
+    // her pre-emption: a point she already answered before it was made is worth less
+    if (G.preempted.includes(r.label)) { q = QUAL[Math.max(0, QUAL.indexOf(q) - 1)]; showRead(`read as: a new point · ${q} (she answered it before you made it)`); }
+    else showRead(`read as: a new point · ${q}`);
+    addMine(r.label, q, r.words); if (q === 'strong') { setFace('surprise'); witReact('strong'); }
+  } else if (r.kind === 'off') { showRead('read as: off the topic · nothing'); witReact('fault'); }
+  else if (r.kind === 'insult') { showRead('read as: a personal attack · it costs'); const own = G.mine.find((p) => p.state === 'standing'); if (own) own.state = 'dented'; setFace('amusement'); }
+  else showRead('read as: a weak remark · nothing on the board');
+  drawBoard();
+  setTimeout(herTurn, 1500);
+}
+function showRead(t) { $('#readAs').textContent = t; $('#readAs').style.opacity = 1; clearTimeout(showRead.t); showRead.t = setTimeout(() => { $('#readAs').style.opacity = 0; }, 5200); }
+
+/* ======================================================================== her turn: the engine orders her move and its quality */
+function herTurn() {
+  if (G.phase !== 'debate') return;
+  G.n += 1; G.turn = 'her'; $('#inputWrap').className = 'her'; $('#hint').textContent = '';
+  const k = `${G.id}|${G.n}`, g = effGap(), q = quality(`q|${k}`);
+  const lead = weightOf(G.her) - weightOf(G.mine);
+  // checkmate: a mind four or more ahead, leading by 4, after the second exchange
+  if (g >= 4 && lead >= 4 && G.n >= 2) { herSay(hpick(MOVE_LINES.checkmate, `cm|${k}`)); setFace('pride'); return setTimeout(() => verdict('checkmate'), 2400); }
+  const mineStanding = G.mine.filter((p) => p.state === 'standing' || p.state === 'dented').sort((a, b) => WEIGHT[b.q] - WEIGHT[a.q]);
+  // the commander's words against the commander (gap ≥ 3, once): an earlier line quoted back, cracking the commander's oldest standing point
+  if (g >= 3 && !G.used.quote && G.myLines.length >= 2 && mineStanding.length) {
+    G.used.quote = 1; const first = G.myLines[0].split(/\s+/).slice(0, 9).join(' '); const t = mineStanding[mineStanding.length - 1]; t.state = 'cracked'; t.hit = true;
+    herSay(hpick(MOVE_LINES.quote, `qt|${k}`).replace('{q}', first + (G.myLines[0].split(/\s+/).length > 9 ? '…' : ''))); setFace('pride'); drawBoard(); return afterHer();
+  }
+  // pre-emption (gap ≥ 2, twice at most): she answers the commander's obvious next point before it is made
+  const unmade = G.T.counter.filter((c) => !G.mine.some((p) => p.label === c.label) && !G.preempted.includes(c.label));
+  if (g >= 2 && G.used.preempt < 2 && unmade.length && hash01(`pe|${k}`) < 0.45) { const c = unmade[0]; G.preempted.push(c.label); G.used.preempt += 1; herSay(hpick(MOVE_LINES.preempt, `pl|${k}`).replace('{y}', c.label)); setFace('pride'); return afterHer(); }
+  // a dented point of hers: defend it; else rebut the commander's strongest; else a new point
+  const dented = G.her.find((p) => p.state === 'dented');
+  if (dented && q !== 'weak' && hash01(`df|${k}`) < 0.5) { if (WEIGHT[q] >= WEIGHT[dented.q]) dented.state = 'standing'; herSay(hpick(MOVE_LINES.defend[q], `dl|${k}`).replace('{p}', dented.label)); drawBoard(); return afterHer(); }
+  if (mineStanding.length && hash01(`rb|${k}`) < clamp(0.5 + 0.08 * g, 0.35, 0.9)) { // a sharper mind goes for the commander's strongest point more often
+    const t = mineStanding[0]; const res = rebut(t, q); herSay(hpick(MOVE_LINES.rebut[q], `rl|${k}`).replace('{y}', t.label)); if (res === 'struck') { setFace('pride'); witReact('her'); } drawBoard(); return afterHer();
+  }
+  const next = G.T.points.find((p) => !G.her.some((h) => h.id === p.id));
+  if (next) { addHer(next, q); herSay(hpick(MOVE_LINES.point[q], `pp|${k}`).replace('{p}', next.label)); if (q === 'strong') setFace('pride'); return afterHer(); }
+  const t2 = mineStanding[0]; if (t2) { rebut(t2, q); herSay(hpick(MOVE_LINES.rebut[q], `rl2|${k}`).replace('{y}', t2.label)); drawBoard(); }
+  else herSay('You have nothing standing. Shall I go on?');
+  afterHer();
+}
+function afterHer() { setTimeout(() => { if (G.phase !== 'debate') return; if (G.n >= G.exchanges) closing(); else yourTurn(); }, 2200); }
+function closing() {
+  G.phase = 'closing'; herSay(ST().closing);
+  setTimeout(() => { G.phase = 'debate'; G.turn = 'you'; G.closingTurn = true; $('#inputWrap').className = 'turn'; $('#cmd').disabled = false; $('#cmd').placeholder = 'your closing (Enter)'; $('#cmd').focus(); }, 2200);
+}
+
+/* ======================================================================== the verdict and the end */
+function verdict(how) {
+  G.phase = 'verdict'; G.turn = null; $('#cmd').disabled = true; $('#inputWrap').className = '';
+  const her = weightOf(G.her), you = weightOf(G.mine);
+  let herWins;
+  if (how === 'checkmate') herWins = true;
+  else if (S.wit) { // the room: each witness by the board and her own values (+ the commander's authority as trust)
+    let votes = 0; for (const w of WITNESSES) { const v = (you - her) + w.lean[S.topic] + 0.3 * (S.aut - 3); w.vote = v >= 0 ? 'you' : 'her'; votes += v >= 0 ? 1 : -1; }
+    herWins = votes < 0 || (votes === 0 && her >= you); drawWits();
+  } else herWins = her >= you;
+  const st = ST(); const margin = Math.abs(her - you);
+  const near = G.mine.filter((p) => p.state === 'standing').length;
+  if (herWins) {
+    TALLY.her += 1; saveTally(); setFace('pride');
+    herSay(hpick(st.win, `w|${G.id}`));
+    narrate(`${how === 'checkmate' ? 'She ends it before the last word.' : S.wit ? 'The room is hers.' : 'The board is hers.'}${near ? ` ${near === 1 ? 'One of your points' : `${near} of your points`} still stood at the end.` : ''}`);
+    setTimeout(() => {
+      if (G.T.consequence && S.style !== 'neutral') herSay(G.T.consequence);
+      setTimeout(formula, G.T.consequence ? 2600 : 600);
+    }, 2400);
+  } else {
+    TALLY.you += 1; saveTally(); setFace(margin >= 4 ? 'surprise' : 'anger');
+    herSay(hpick(margin >= 4 ? st.loseBig : st.lose, `l|${G.id}`));
+    narrate(st.admits ? 'She concedes.' : 'She does not concede. She lost the argument, knows it, and will not admit it.');
+    G.phase = 'done'; setTimeout(endTally, 2600);
+  }
+}
+/* the formula: the loser types it, exactly; refusing is defiance; said, it becomes her fact (she will quote it) */
+function formula() {
+  const st = ST(); G.phase = 'formula'; herSay(st.formulaAsk);
+  $('#cmd').disabled = false; $('#cmd').placeholder = st.formula; $('#inputWrap').className = 'turn'; $('#cmd').focus();
+  G.formulaTimer = setTimeout(() => { if (G.phase === 'formula') formulaAnswer(''); }, 20000);
+}
+const norm = (t) => t.toLowerCase().replace(/[^a-z ]/g, '').replace(/\s+/g, ' ').trim();
+function formulaAnswer(text) {
+  clearTimeout(G.formulaTimer); const st = ST(); G.phase = 'done'; $('#cmd').disabled = true; $('#inputWrap').className = '';
+  if (text) $('#reply').innerHTML = `<span class="you">“${esc(text)}”</span>`;
+  const ok = norm(text) === norm(st.formula);
+  herSay(ok ? st.formulaOk : st.formulaNo); setFace(ok ? 'approval' : 'annoyance');
+  if (!ok) narrate(text ? 'Not what she asked for. She notes it as defiance.' : 'Silence. She notes it as defiance.');
+  setTimeout(() => { if (st.chair) { herSay(st.chair); narrate('She points at the floor. Her evening goes on, on the commander’s back.'); } setTimeout(endTally, 2400); }, 2400);
+}
+function endTally() { const st = ST(); const n = TALLY.her; const line = TALLY.you <= 1 ? st.tally?.[n] : null; if (line) herSay(line); }
+function saveTally() { localStorage.setItem('alius.debate.tally', JSON.stringify(TALLY)); }
+
+/* ======================================================================== the throne under the debate (the author: lowered: rarer, softer
+   shifts; none while the commander types; a lost level during the commander's turn dents the commander's next point) */
+let lastF = performance.now(); const MOUSE = { x: 0.5 };
+addEventListener('mousemove', (e) => { MOUSE.x = e.clientX / innerWidth; });
+function frame(now) {
+  requestAnimationFrame(frame); const dt = Math.min(0.05, (now - lastF) / 1000); lastF = now;
+  if (G && S.time && G.turn === 'you' && G.turnEnds) { $('#clock i').style.transform = `scaleX(${clamp((G.turnEnds - now) / G.turnMs, 0, 1)})`; } else $('#clock i').style.transform = 'scaleX(0)';
+  if (G && S.start === 'throne' && (G.phase === 'debate' || G.phase === 'closing')) {
+    const B = G.balance; B.herT -= dt;
+    if (G.turn === 'her' && B.herT <= 0) { B.her = clamp(B.her + rand(-0.5, 0.5), -0.6, 0.6); B.herT = rand(5, 9); play('creak1', { g: 0.2 }); } // rarer, softer than the throne's own
+    const wander = 0.04 * Math.sin(now / 1100);
+    const ctl = (MOUSE.x * 2 - 1) * 1.15; const a = 90 * (ctl - B.x) - 14 * B.v; B.v += a * dt; B.x += B.v * dt;
+    B.err = B.her + wander - B.x; const off = Math.abs(B.err) > 0.18;
+    if (off && G.turn === 'you') B.wobbled = true;
+    const bub = $('#level .bub'); bub.style.left = `${clamp(50 + B.err * 60, 4, 96)}%`; $('#level').classList.toggle('off', off);
+  }
+}
+
+/* ======================================================================== her hand, her face, the transcript, the witnesses */
+function say(text) {
+  if (!text) return; pen();
+  const el = document.createElement('div'); el.className = 'her-line'; el.textContent = text;
+  el.style.setProperty('--write', `${Math.max(200, text.length * 22)}ms`); el.style.setProperty('--steps', String(Math.max(4, Math.min(60, text.length))));
+  el.style.bottom = '190px'; // her line in her hand, above the transcript (round 1: beside her it fought the panel)
+  for (const c of $('#hand').children) c.classList.add('gone');
+  $('#hand').appendChild(el); setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 700); }, 4200 + text.length * 30);
+}
+function herSay(text) { say(text); $('#reply').innerHTML = ''; }
+function narrate(t) { $('#reply').innerHTML = `<span class="act">${esc(t)}</span>`; }
+function card(kind, body, pills) { const c = $('#card'); c.querySelector('.who').textContent = 'Vela'; c.querySelector('.kind').textContent = kind; c.querySelector('.body').innerHTML = body; const p = c.querySelector('.pills'); p.replaceChildren(...pills.map(([t, f]) => { const b = document.createElement('span'); b.className = 'pill'; b.textContent = t; b.onclick = f; return b; })); c.style.display = 'block'; play('soft1', { g: 0.25 }); }
+function hideCard() { $('#card').style.display = 'none'; }
+function drawWits() {
+  const host = $('#wits'); host.replaceChildren(); if (!S.wit || !G) return;
+  const her = weightOf(G.her), you = weightOf(G.mine);
+  for (const w of WITNESSES) { const v = clamp(0.5 + ((you - her) + w.lean[S.topic] + 0.3 * (S.aut - 3)) / 10, 0.05, 0.95); const d = document.createElement('div'); d.className = 'wit'; d.innerHTML = `${w.name}${w.vote ? ` · votes ${w.vote === 'you' ? 'for you' : 'for her'}` : ''}<div class="lean"><i style="left:${(v * 100).toFixed(1)}%"></i></div><div class="said">${w.said ?? ''}</div>`; host.append(d); }
+}
+function witReact(kind) { if (!S.wit) return; const w = hpick(WITNESSES, `wr|${G.id}|${G.n}|${kind}`); w.said = pick(WIT_LINES[kind]); drawWits(); setTimeout(() => { w.said = ''; drawWits(); }, 3500); }
+const LABELS = ['admiration', 'amusement', 'anger', 'annoyance', 'approval', 'caring', 'confusion', 'curiosity', 'desire', 'disappointment', 'disapproval', 'disgust', 'embarrassment', 'excitement', 'fear', 'gratitude', 'grief', 'joy', 'love', 'nervousness', 'neutral', 'optimism', 'pride', 'realization', 'relief', 'remorse', 'sadness', 'surprise'].sort((a, b) => b.length - a.length);
+const faces = {}; let FACEST = { label: null, src: null };
+function setFace(label) { if (label === FACEST.label && FACEST.src) return; FACEST.label = label; const pool = faces[label] ?? faces.neutral, src = pool ? pick(pool) : ASSETS.her; FACEST.src = src; showFace(src); }
+let HER_FRONT = 0; const herLayers = () => [$('#her'), $('#her2')];
+function showFace(src) { const [a, b] = herLayers(), front = HER_FRONT ? b : a, back = HER_FRONT ? a : b; if (front.dataset.src === src) return; const swap = () => { if (back.dataset.src !== src) return; for (const el of [front, back]) el.style.transitionDuration = `${S.faceFade}ms`; back.style.opacity = '1'; front.style.opacity = '0'; HER_FRONT = 1 - HER_FRONT; }; back.dataset.src = src; back.onload = swap; back.src = src; if (back.complete && back.naturalWidth) swap(); }
+function placeHer() { for (const her of herLayers()) { if (!her.naturalWidth) continue; const H = innerHeight * 1.05, W = H * her.naturalWidth / her.naturalHeight; her.style.width = `${W}px`; her.style.height = `${H}px`; her.style.left = `${innerWidth * 0.04 + innerWidth * 0.36 - W / 2}px`; her.style.top = `${innerHeight * 0.04 + innerHeight * 1.04 - H}px`; } }
+
+/* ======================================================================== input and panel */
+$('#cmd').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return; const v = $('#cmd').value.trim(); if (!v) return; $('#cmd').value = '';
+  if (G?.closingTurn && G.turn === 'you') { G.closingTurn = false; G.turn = null; $('#reply').innerHTML = `<span class="you">“${esc(v)}”</span>`; const r = classify(v); if (r.kind === 'point' || r.kind === 'rebut') { if (r.kind === 'rebut') rebut(r.target, r.q); else addMine(r.label, r.q, r.words); drawBoard(); } $('#cmd').disabled = true; setTimeout(() => verdict('board'), 1200); return; }
+  send(v);
+});
+addEventListener('keydown', (e) => { if (e.target === $('#cmd')) return; if (e.key === 'h' || e.key === 'H') $('#panel').classList.toggle('hidden'); if ((e.key === 'b' || e.key === 'B') && (!G || G.phase === 'done')) begin(); });
+function opts(host, items, get, set) { host.replaceChildren(); for (const it of items) { const b = document.createElement('button'); b.className = 'opt' + (get() === it ? ' on' : ''); b.textContent = it; b.onclick = () => { set(it); opts(host, items, get, set); }; host.appendChild(b); } }
+opts($('#styles'), Object.keys(STYLE), () => S.style, (v) => { S.style = v; });
+for (const k of Object.keys(TOPICS)) { const o = document.createElement('option'); o.value = k; o.textContent = TOPICS[k].motion; $('#topicSel').append(o); }
+$('#topicSel').onchange = () => { S.topic = $('#topicSel').value; gapNote(); };
+$('#startSel').onchange = () => { S.start = $('#startSel').value; };
+$('#witOn').onchange = () => { S.wit = $('#witOn').checked; };
+$('#timeOn').onchange = () => { S.time = $('#timeOn').checked; };
+const gapNote = () => { const g = effGap(); $('#gapNote').textContent = `her mind ${S.intel} (on this topic ${herLevel().toFixed(1)}) against the commander's wits ${wits()}: a gap of ${g >= 0 ? '+' : ''}${g.toFixed(1)}. ${g >= 4 ? 'She can pre-empt, quote you back and end it early.' : g >= 3 ? 'She can pre-empt and quote you back.' : g >= 2 ? 'She can pre-empt.' : 'No abilities.'} Her tally across runs: ${TALLY.her} to ${TALLY.you}.`; };
+for (const [id, key] of [['intel', 'intel'], ['tempo', 'tempo'], ['ins', 'ins'], ['cun', 'cun'], ['aut', 'aut']]) $(`#${id}`).oninput = () => { S[key] = Number($(`#${id}`).value); $(`#${id}V`).textContent = $(`#${id}`).value; gapNote(); };
+gapNote();
+$('#accent').oninput = () => document.documentElement.style.setProperty('--her', $('#accent').value);
+$('#file').onchange = () => { const f = $('#file').files[0]; if (f) { ASSETS.her = URL.createObjectURL(f); FACEST = { label: null, src: null }; setFace('neutral'); } };
+$('#faceFiles').onchange = () => { for (const f of $('#faceFiles').files) { const name = f.name.toLowerCase(), label = LABELS.find((l) => name.startsWith(l)); if (label) (faces[label] ??= []).push(URL.createObjectURL(f)); } FACEST = { label: null, src: null }; setFace('neutral'); };
+$('#beginBtn').onclick = () => { if (!G || G.phase === 'done' || G.phase === 'card') { hideCard(); begin(); } };
+$('#go').onclick = () => { $('#start').style.display = 'none'; begin(); };
+$('#backdrop').style.backgroundImage = `url(${ASSETS.bg})`;
+for (const h of herLayers()) h.addEventListener('load', placeHer); addEventListener('resize', placeHer);
+setFace('neutral'); requestAnimationFrame(frame);
+window.__S = S; window.__G = () => G; window.__send = (t) => { const e = $('#cmd'); e.value = t; e.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' })); };
+</script>
+</body>
+</html>
