@@ -74,6 +74,10 @@ npm run proto -- balance
 npm run proto -- debate
 ```
 
+```bash
+npm run proto -- debate_throne
+```
+
 Each writes `.superpowers/prototypes/<name>.html` (ignored by git): one self-contained page with the fonts, backdrops and a placeholder sprite (`tests/fixtures/layout/sprite.svg`). `--sprite <file>` uses any local sprite; **never commit the author's art**. Open the page in Chromium. `H` hides the panel; `window.__S` (settings), `window.__G()` (state) and `window.__forceO` (force the opening, 0–1, `null` to release) exist for screenshots and tests.
 
 ## `balance.html` — balance: the tray in her service (P16b §6.3; P16c ruling 19)
