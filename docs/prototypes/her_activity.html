@@ -275,7 +275,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <label>start <select id="startSel"><option value="1080" selected>18:00 (evening)</option><option value="780">13:00</option><option value="1320">22:00 (night)</option></select></label>
   <label>endurance level <input type="range" id="level" min="0" max="5" step="1" value="1"><span id="levelV">1</span></label>
   <label>stillness level (provocation) <input type="range" id="still" min="0" max="5" step="1" value="0"><span id="stillV">0</span></label>
-  <label><input type="checkbox" id="ticklish"> ticklish (her tickles bite harder)</label>
+  <label>ticklish <select id="ticklish"><option value="0" selected>not</option><option value="1">a little</option><option value="2">very</option><option value="3">unbearably</option></select></label>
   <label><input type="checkbox" id="rain"> rain later in the evening</label>
   <label><input type="checkbox" id="stay" checked> she said "stay" (getting up alone is disobedience)</label>
   <h4>sound</h4>
@@ -887,7 +887,8 @@ const PROV = {
   awayCalm: 0.14,                                             // less while it rests on her or the door
   dur: { touch: [2600, 4200], tickle: [2000, 3600], whisper: [2200, 3400], feint: [900, 1500] },
   gap: [5500, 10500],
-  ticklish: 1.45, perStill: 0.1, perLevel: 0.22,
+  // P16c (author, 2026-11-28: A): the COMMANDER FILE's `ticklish`, a level 0-3 (not, a little, very, unbearably): a tickle grows this much faster
+  ticklish: [1, 1.25, 1.45, 1.8], perStill: 0.1, perLevel: 0.22,
   // round 2b: breathing through it (hold Space): the stimulus grows `calm` slower while the breath lasts (`max` ms); it refills at `refill` of real time once let go;
   // a breath that runs out is let out loudly (she may hear), a long one let go is a soft exhale
   breath: { max: 4500, refill: 0.8, calm: 0.4, longAt: 1500, outLoud: 0.32, softLoud: 0.1 },
@@ -909,6 +910,8 @@ const PROV_LINES = {
   ritual: { whisper: ['composure.', 'you are being tested.'], clean: ['correct.'], react: ['that was a flinch.'], harder: ['again, longer.'] },
   cold: { whisper: [''], clean: [''], react: ['no.'], harder: [''] },
 };
+// P16c (ticklish): her line the first time a tickle breaks through on a commander who is very or unbearably ticklish (once a run; else her `react` line)
+const PROV_TICKLISH = { neutral: ['ticklish, are we?'], affectionate: ['oh. you’re ticklish.'], playful: ['you’re ticklish~ oh, this is going to be fun.'], cruel: ['found it.'], ritual: ['noted. ticklish.'], cold: [''] };
 const provLines = (kind) => { const own = (PROV_LINES[S.style] ?? PROV_LINES.neutral)[kind]; const l = own && own.some(Boolean) ? own : PROV_LINES.neutral[kind]; return S.style === 'cold' ? (own ?? ['']) : l; };
 const provLive = () => (G.prov?.live ?? []).some((p) => !p.done);
 function provStart() { G.prov = { next: G.t + rand(2500, 4500), live: [], level: 1, clean: 0, air: PROV.breath.max, held: 0, spent: false, stats: { endured: 0, reactions: 0, involuntary: 0, harder: 0, breaths: 0 } }; }
@@ -938,12 +941,14 @@ function provReact(how, involuntary = false) {
   sense(what, 'body', 'body'); G.shake = involuntary ? 0.9 : 0.6;
   play(p.kind === 'tickle' && !p.feint ? 'cloth' : 'soft', { g: 0.4, pan: (p.x / innerWidth - 0.5) });
   herFeels('flinch', involuntary);
-  if (G.step === 'with' || G.step === 'glancing') after(900, () => say(pick(provLines('react')), 'commander'));
+  const tickled = p.kind === 'tickle' && !p.feint && Number($('#ticklish').value) >= 2 && !P.toldTicklish;
+  if (tickled) P.toldTicklish = true;
+  if (G.step === 'with' || G.step === 'glancing') after(900, () => say(pick(tickled ? (PROV_TICKLISH[S.style] ?? PROV_TICKLISH.neutral) : provLines('react')), 'commander'));
 }
 function provUpdate(dt) {
   const P = G.prov ?? provStart() ?? G.prov; const s = dt / 1000;
   if (G.phase !== 'loop' && G.phase !== 'empty') return;
-  const lvl = PROV.perLevel * (P.level - 1), still = PROV.perStill * Number($('#still').value), tick = $('#ticklish').checked ? PROV.ticklish : 1;
+  const lvl = PROV.perLevel * (P.level - 1), still = PROV.perStill * Number($('#still').value), tick = PROV.ticklish[Number($('#ticklish').value)] ?? 1;
   // the breath: held with Space, it calms what she does; it runs out
   const B = PROV.breath;
   if (G.spaceHeld && !P.spent && P.air > 0) { if (P.held === 0) P.stats.breaths += 1; P.held += dt; P.air = Math.max(0, P.air - dt); if (P.air === 0) { P.spent = true; sense('The breath runs out of you, loud.', 'body', 'body'); bodyNoise('breath', B.outLoud, false); } }
