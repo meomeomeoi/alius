@@ -6,9 +6,9 @@
   the body: slap.html's tension, one try a stroke; braced on the impact, the stroke throws less. The impact throws the posture's
   points (posture.html's dial and corrections: keys 1-7 or a click on the joint) toward where the body flinches; past 100 the
   posture breaks. Then the count: the input opens and the number is typed in her rhythm (with the thanks, if that is her rule).
-  A sharp flick of the mouse pulls away: defiance, as the slap's turned face.
+  X pulls away: defiance, as the slap's turned face (round 2: a key of its own, not a mouse flick: the mouse has a job here, the dial).
     npm run proto -- strokes [--sprite <png|webp|svg>]
-  Copied from slap.html: the tension, the flick, the flash, the scatter of the typed letters, her hand, the sound kit (play, noise,
+  Copied from slap.html: the tension, the flash, the scatter of the typed letters, her hand, the sound kit (play, noise,
   thump, the slap recording, the swish, the breath). Copied from posture.html: the dial and its beads, the blended body, the
   anchors, the correction and its loudness, the jolt. Copied from foot_care.html: her two face layers and their crossfade.
 -->
@@ -236,13 +236,13 @@ body.reduced .her-line { animation: none; }
   <label><input type="checkbox" id="showNum"> show the numbers (prototype only)</label>
   <label><input type="checkbox" id="reduced"> reduced motion</label>
   <div id="stats"></div>
-  <div class="note">A stroke: listen for her (a tap to line it up, the implement going up, its swish). <b>Space</b> or the left button tenses the body (one try a stroke). Then hold the posture: <b>1–7</b> or a click on a joint puts a point back. Then the count: the input opens; type the number (<i>3</i> or <i>three</i>; with the thanks: <i>three, thank you</i>) and Enter. A sharp <b>flick of the mouse</b> pulls away (defiance). S stop word · H hides this panel.</div>
+  <div class="note">A stroke: listen for her (a tap to line it up, the implement going up, its swish). <b>Space</b> or the left button tenses the body (one try a stroke). Then hold the posture: <b>1–7</b> or a click on a joint puts a point back. Then the count: the input opens; type the number (<i>3</i> or <i>three</i>; with the thanks: <i>three, thank you</i>) and Enter. <b>X</b> pulls away (defiance). S stop word · H hides this panel.</div>
 </div>
 
 <div id="start"><div class="box">
   <h2>the strokes · prototype · round 1</h2>
   Her discipline, as a game. Each stroke: <b>hear</b> it coming (a tap, the implement going up, the swish), <b>brace</b> on it (<kbd>Space</kbd> or the left button, one try), <b>damp</b> the flinch on the dial (<kbd>1</kbd>–<kbd>7</kbd> or a click on the joint) before it breaks the posture, then <b>name</b> it: the input opens for the count.<br>
-  A sharp flick of the mouse pulls away: defiance, and she sees it. <kbd>S</kbd> stop word · <kbd>H</kbd> panel. Headphones help.
+  <kbd>X</kbd> pulls away: defiance, and she sees it. <kbd>S</kbd> stop word · <kbd>H</kbd> panel. Headphones help.
   <div><span class="btn" id="go">begin</span></div>
 </div></div>
 
@@ -331,7 +331,6 @@ const FEINT = 450;                          // slap.html's feint
 const TAP_MS = 700;                         // lining it up: two taps, then the raise
 /* The commander's body: slap.html's tension (rise 100, peak 80, fall 220; braced at ≥ 0.8: a press 42–224 ms before the impact). */
 const TENSION = { rise: 100, peak: 80, fall: 220, thr: 0.8 };
-const FLICK = 2400;                         // slap.html's turn: here the body pulls away (sideways or down)
 
 /* ======================================================================== her ways (the shape of each style's punishment; P16 §R.2)
    gap: seconds between strokes; lead: her raise (ms); feint: the share of feinted strokes; tap: the share lined up first (a tap
@@ -673,17 +672,12 @@ function tensionAt(t) {
   if (t < TENSION.rise + TENSION.peak) return 1;
   return clamp(1 - (t - TENSION.rise - TENSION.peak) / TENSION.fall, 0, 1);
 }
-/* a sharp flick of the mouse (sideways or down) pulls away: slap.html's turn, from the raise to the impact */
-const mouse = [];
-function onMove(e) {
-  const now = performance.now();
-  mouse.push([now, e.clientX, e.clientY]);
-  while (mouse.length && now - mouse[0][0] > 70) mouse.shift();
+/* X pulls away (round 2, author: a key no other act uses, so it is never done by accident; a mouse flick caught the move to the
+   dial): from the raise to the impact, once a stroke. The body pulls away from her: the hands drop (kneeling), else sideways, away. */
+function pullAway() {
   const s = G?.stroke; if (!s || s.result || s.pulled) return;
-  if (mouse.length < 2) return;
-  const [ta, xa, ya] = mouse[0], dt = (now - ta) / 1000; if (dt <= 0) return;
-  const dx = e.clientX - xa, dy = e.clientY - ya;
-  if ((Math.abs(dx / dt) >= FLICK && Math.abs(dx) >= innerWidth * 0.06) || (dy / dt >= FLICK && dy >= innerHeight * 0.08)) { s.pulled = Math.abs(dx) > dy ? Math.sign(dx) : 2; s.pullAt = now - s.t0; SFX.cloth(0, 0.3, 1.4); }
+  if (performance.now() - s.t0 < s.tapMs) return; // only once the implement is up
+  s.pulled = herInView() ? 2 : -G.dir; s.pullAt = performance.now() - s.t0; SFX.cloth(0, 0.3, 1.4);
 }
 function land(now) {
   const s = G.stroke; const im = IMPL[G.impl]; const st = ST();
@@ -1066,6 +1060,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === ' ') { e.preventDefault(); if (!e.repeat) press(); return; }
   if (KEY_POINT[e.key]) { e.preventDefault(); if (!e.repeat) correct(KEY_POINT[e.key]); return; }
   const k = e.key.toLowerCase();
+  if (k === 'x') { pullAway(); return; }
   if (k === 'b' && (!G || G.phase === 'done')) begin();
   else if (k === 's' && G && G.phase !== 'done') end('stop');
   else if (k === 'h') $('#panel').classList.toggle('hidden');
@@ -1074,7 +1069,6 @@ $('#stage').addEventListener('pointerdown', (e) => {
   if (e.button !== 0 || e.target.closest('#inputWrap') || e.target.closest('.card') || e.target.closest('#dial') || e.target.closest('#stopPill')) return;
   if (G?.stroke && !G.stroke.result) { e.preventDefault(); press(); }
 });
-addEventListener('pointermove', onMove);
 
 /* ======================================================================== the panel */
 function opts(host, items, get, set) {
@@ -1136,7 +1130,7 @@ drawDial(); stats();
 requestAnimationFrame(frame);
 
 /* test hooks (prototype only) */
-window.__S = S; window.__G = () => G; window.__begin = () => begin(); window.__press = () => press(); window.__correct = (k) => correct(k); window.__send = (t) => sendLine(t);
+window.__S = S; window.__G = () => G; window.__begin = () => begin(); window.__press = () => press(); window.__correct = (k) => correct(k); window.__send = (t) => sendLine(t); window.__pull = () => pullAway();
 </script>
 </body>
 </html>
