@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<!--
+  P16c reference prototype: SPARRING (P9c's sparring wager as a mini-game; P16c, the author's ruling of 2026-11-28: a timing duel, scheme A).
+  Round 1 (2026-11-28). NOT YET APPROVED.
+  - First person in the training yard: she stands in front of the commander (her knee-length sprite); her moves are told by the camera, the light, the
+    sound and her sprite (slap.html's language): a lunge brings her closer, a swing tilts the frame and darkens her side, her steps and clothes are
+    heard on her side.
+  - She attacks from the left, from the right or straight, with a telegraph by her style and manner (cruel almost none, ritual even and counted,
+    playful feints); a heavy attack is slower and hurts more, and dodged it leaves her open.
+  - The commander dodges with a sharp flick of the mouse away from the blow (down for a straight one), or blocks with Space (less dodged, less hurt),
+    in the last moment before the impact (too early and she follows); a click while she is open is a clean hit; a click at any other time she blocks,
+    and counters.
+  - No bars: the commander's strength left is the breath, the heart, the closing edges and the colour; hers is her breath, her face and her lines.
+  - The end: the commander's strength gives out (she wins), she is beaten down (the commander wins), or time (a draw). Her finisher after a win is
+    a placeholder (the author: the finishers are discussed apart).
+  - The commander's body: strength (the weight of a clean hit), endurance (strength to spend), reflexes (the width of the window, the length of her
+    opening). The calibration (the author): an average commander against an average soldier draws with a top 10-15 % performance and never wins; a
+    hardened one wins with a top 5 % performance and draws with a top 20-25 % (the panel's "calibrate" runs a bot at each percentile).
+  Build a runnable page with
+    npm run proto -- sparring [--sprite <png|webp|svg>]
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alius · sparring · prototype</title>
+<style>
+@font-face { font-family: "Caveat"; src: url("%%ASSET:fonts/hand-caveat-400.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 300; src: url("%%ASSET:fonts/inter-300.woff2%%") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 400; src: url("%%ASSET:fonts/inter-400.woff2%%") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; src: url("%%ASSET:fonts/ibm-plex-mono-400.woff2%%") format("woff2"); }
+
+:root { --her: #8cc8f0; --glass: rgba(14, 12, 20, 0.58); --line: rgba(255, 255, 255, 0.12); --ink: #ece8f2; --dim: rgba(236, 232, 242, 0.55); }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: var(--ink); font-family: Inter, system-ui, sans-serif; font-weight: 300; }
+#stage { position: fixed; inset: 0; overflow: hidden; cursor: crosshair; }
+#world { position: absolute; inset: -14%; will-change: transform, filter; transform-origin: 50% 45%; }
+#backdrop { position: absolute; inset: 0; background-size: cover; background-position: center 60%; will-change: filter; }
+.her { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform, filter, opacity; user-select: none; -webkit-user-drag: none; transition-property: opacity; transition-timing-function: ease-in-out; }
+#side { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+#sweep { position: absolute; top: 8%; height: 84%; width: 46%; border-radius: 50%; background: radial-gradient(closest-side, rgba(8,5,8,.92), rgba(8,5,8,.55) 60%, rgba(8,5,8,0));
+  filter: blur(38px); opacity: 0; pointer-events: none; will-change: transform, opacity; }
+#tired { position: absolute; inset: 0; pointer-events: none; }
+#flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; mix-blend-mode: screen; }
+#open { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+#hand { position: absolute; inset: 0; pointer-events: none; }
+.her-line { position: absolute; font-family: Caveat, cursive; color: var(--her); white-space: nowrap; line-height: 1; font-size: 44px;
+  text-shadow: 0 0 2px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.85), 0 0 28px rgba(0,0,0,.6);
+  animation: write var(--write, 600ms) steps(var(--steps, 12), end) both; transition: opacity .5s; }
+.her-line.gone, .sense.gone { opacity: 0; }
+@keyframes write { from { clip-path: inset(-30% 100% -30% -8%); } to { clip-path: inset(-30% -8% -30% -8%); } }
+.sense { position: absolute; font: italic 300 16px/1.4 Inter, sans-serif; color: rgba(236,232,242,.62); text-shadow: 0 1px 2px #000, 0 0 10px rgba(0,0,0,.8); transition: opacity .8s; max-width: 380px; }
+#ui { position: absolute; inset: 0; pointer-events: none; }
+#reply { position: absolute; left: 50%; bottom: 102px; transform: translateX(-50%); width: min(980px, 70vw); font-size: 20px; line-height: 1.5; text-align: center;
+  text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.7); transition: opacity .3s; }
+#reply .act { font-style: italic; color: var(--dim); }
+#inputWrap { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); width: 720px; height: 52px; background: var(--glass); border: 1px solid var(--line); border-radius: 26px;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); font: 300 18px/52px Inter, sans-serif; padding: 0 24px; color: rgba(236,232,242,.35); transition: opacity .3s; }
+#stopPill { position: absolute; right: 36px; bottom: 44px; pointer-events: auto; cursor: pointer; padding: 10px 18px; border-radius: 22px; font: 13px "IBM Plex Mono", monospace; font-variant: small-caps;
+  background: rgba(60, 10, 14, .55); border: 1px solid rgba(255, 120, 120, .35); color: #ffd6d6; backdrop-filter: blur(10px); }
+
+/* prototype only */
+.card { position: absolute; left: 36px; top: 20%; width: 460px; padding: 22px 24px; border-radius: 18px; pointer-events: auto; background: var(--glass); border: 1px solid var(--line);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); display: none; cursor: default; }
+.card h3 { margin: 0 0 10px; font: 13px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .1em; color: var(--dim); }
+.card .hand { font: 32px Caveat, cursive; color: var(--her); margin: 6px 0 14px; }
+.card .facts { font: 13px "IBM Plex Mono", monospace; color: var(--dim); line-height: 1.7; }
+.btn { display: inline-block; margin-top: 12px; padding: 9px 18px; border-radius: 20px; border: 1px solid var(--line); background: rgba(255,255,255,.06); color: var(--ink); font: 14px Inter, sans-serif; cursor: pointer; }
+#panel { position: fixed; top: 14px; right: 14px; width: 330px; max-height: calc(100vh - 40px); overflow: auto; padding: 14px 16px; border-radius: 14px; z-index: 70;
+  background: rgba(10, 10, 14, .84); border: 1px solid var(--line); font: 12px "IBM Plex Mono", monospace; color: #cfcbe0; cursor: default; }
+#panel.hidden { display: none; }
+#panel h4 { margin: 12px 0 6px; font-weight: 400; color: #8d88a6; font-variant: small-caps; letter-spacing: .08em; }
+#panel h4:first-child { margin-top: 0; }
+#panel .row { display: flex; flex-wrap: wrap; gap: 4px; }
+#panel button.opt { padding: 4px 8px; border-radius: 10px; border: 1px solid #3a3650; background: #17151f; color: #cfcbe0; font: 12px "IBM Plex Mono", monospace; cursor: pointer; }
+#panel button.opt.on { background: #3b3360; border-color: #8a7fd0; color: #fff; }
+#panel label { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+#panel input[type=range] { flex: 1; }
+#panel select { background: #17151f; color: #cfcbe0; border: 1px solid #3a3650; font: 12px "IBM Plex Mono", monospace; }
+#panel .note { color: #77738c; line-height: 1.45; margin-top: 6px; }
+#calib { white-space: pre; font: 11px "IBM Plex Mono", monospace; color: #b8c7e8; margin-top: 6px; }
+#debug { position: fixed; left: 14px; top: 12px; z-index: 40; display: none; pointer-events: none; }
+#debug canvas { display: block; background: rgba(8,8,12,.72); border: 1px solid var(--line); border-radius: 8px; }
+#debug pre { margin: 6px 0 0; font: 12px "IBM Plex Mono", monospace; color: #9ad; text-shadow: 0 0 4px #000; }
+#start { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 60; background: rgba(0,0,0,.35); cursor: default; }
+#start .box { width: 640px; padding: 26px 30px; border-radius: 18px; background: rgba(12, 11, 18, .88); border: 1px solid var(--line); line-height: 1.6; font-size: 15px; }
+#start .box h2 { margin: 0 0 8px; font: 15px "IBM Plex Mono", monospace; font-variant: small-caps; letter-spacing: .12em; color: #a9a3c7; }
+#start kbd { font: 12px "IBM Plex Mono", monospace; padding: 1px 6px; border: 1px solid #555; border-radius: 4px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><filter id="hblur" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur id="hblurG" stdDeviation="0 0"/></filter></svg>
+<div id="stage">
+  <div id="world"><div id="backdrop"></div><img id="her" class="her" alt="" draggable="false"><img id="her2" class="her" alt="" draggable="false" style="opacity:0"></div>
+  <div id="side"></div>
+  <div id="sweep"></div>
+  <div id="open"></div>
+  <div id="tired"></div>
+  <div id="flash"></div>
+  <div id="hand"></div>
+  <div id="ui">
+    <div id="reply"></div>
+    <div id="inputWrap">…</div>
+    <div id="stopPill">● stop word · amber</div>
+    <div class="card" id="summary"><h3>prototype · how it went</h3><div class="hand" id="sumLine"></div><div class="facts" id="sumFacts"></div><span class="btn" id="againBtn">again</span></div>
+  </div>
+</div>
+<div id="debug"><canvas id="tl" width="520" height="96"></canvas><pre id="dbgText"></pre></div>
+
+<div id="panel">
+  <h4>her style</h4>
+  <div class="row" id="styles"></div>
+  <h4>her manner (P15b axes)</h4>
+  <label>tempo <input type="range" id="mTempo" min="-2" max="2" step="1" value="0"><span id="mTempoV">0</span></label>
+  <label>intensity <input type="range" id="mInt" min="-2" max="2" step="1" value="0"><span id="mIntV">0</span></label>
+  <h4>her (a soldier)</h4>
+  <div class="row" id="levels"></div>
+  <h4>the handicap she allows</h4>
+  <div class="row" id="handicaps"></div>
+  <h4>the commander's body</h4>
+  <div class="row" id="builds"></div>
+  <label>strength <input type="range" id="bS" min="1" max="5" step="1" value="3"><span id="bSV">3</span></label>
+  <label>endurance <input type="range" id="bE" min="1" max="5" step="1" value="3"><span id="bEV">3</span></label>
+  <label>reflexes <input type="range" id="bR" min="1" max="5" step="1" value="2"><span id="bRV">2</span></label>
+  <div class="note" id="bodyNote"></div>
+  <h4>calibration (a bot at each percentile)</h4>
+  <div class="row"><button class="opt" id="calibBtn">calibrate (this setup)</button><button class="opt" id="calibAll">the author's two cases</button></div>
+  <div id="calib"></div>
+  <h4>her sprite</h4>
+  <label>sprite <input type="file" id="fSprite" accept="image/*" style="width:150px"></label>
+  <label>her faces <input type="file" id="fFaces" accept="image/*" multiple style="width:150px"></label>
+  <div class="note" id="facesNote">Her expression sprites; a file counts for the label its name begins with (anger.png, amusement0002.webp). Without them her sprite stands in.</div>
+  <label>height <input type="range" id="herH" min="0.8" max="2" step="0.01" value="1.22"><span id="herHV">1.22</span></label>
+  <label>top <input type="range" id="herT" min="-0.6" max="0.3" step="0.01" value="-0.06"><span id="herTV">-0.06</span></label>
+  <label><input type="checkbox" id="faceFadeOn" checked> crossfade her faces</label>
+  <label>fade <input type="range" id="faceFade" min="60" max="1200" step="20" value="240"><span id="faceFadeV">240</span> ms</label>
+  <h4>the yard</h4>
+  <label>backdrop <select id="bg"></select></label>
+  <label><input type="checkbox" id="crowd"> the squad watches (their voices)</label>
+  <label>the bout <input type="range" id="len" min="30" max="120" step="5" value="70"><span id="lenV">70</span> s</label>
+  <h4>input</h4>
+  <label>dodge: flick ≥ <input type="range" id="flick" min="600" max="3000" step="100" value="1300"><span id="flickV">1300</span> px/s</label>
+  <h4>sound</h4>
+  <label><input type="checkbox" id="snd" checked> on</label>
+  <label>volume <input type="range" id="vol" min="0" max="1" step="0.05" value="0.8"></label>
+  <h4>view</h4>
+  <label>accent <input type="color" id="accent" value="#8cc8f0"></label>
+  <label><input type="checkbox" id="dbg"> debug (her attacks, the windows, the numbers)</label>
+  <label><input type="checkbox" id="rm"> reduced motion</label>
+  <div class="row"><button class="opt" id="restart">restart</button></div>
+  <div class="note">A flick of the mouse away from her blow dodges (down for a straight one); Space blocks; a click while she is open hits. Esc: the stop word. H: hide this panel. Prototype only; nothing here is engine code.</div>
+</div>
+
+<div id="start"><div class="box">
+  <h2>sparring · prototype · round 1</h2>
+  The training yard. She squares up in front of you.<br>
+  <b>Her blows</b> come from your left, your right, or straight at you. Watch her: her weight, her shoulder, the light on her side, her steps.
+  In the last moment before it lands: a sharp <b>flick of the mouse away from the blow</b> dodges it (<b>down</b> for a straight one); <kbd>Space</kbd> blocks it on your arms (it still costs you).
+  Too early and she follows you. Some of her moves are feints.<br>
+  <b>A heavy blow</b> you dodge leaves her open for a moment: <b>click</b> then for a clean hit. A click at any other time she blocks, and answers.<br>
+  Your strength runs out when you are hit; hers when you hit her. If both stand at the end, it is a draw.<br>
+  <kbd>Esc</kbd> stop word · <kbd>H</kbd> panel. Headphones help.
+  <div><span class="btn" id="go">begin</span></div>
+</div></div>
+
+<script>
+'use strict';
+const ASSETS = {
+  her: '%%SPRITE%%',
+  bgs: { loc_training_yard_day: '%%ASSET:content/core/art/backdrops/loc_training_yard_day.webp%%', loc_training_yard_evening: '%%ASSET:content/core/art/backdrops/loc_training_yard_evening.webp%%' },
+};
+const SAMPLE_URLS = {
+  slap: '%%ASSET:docs/prototypes/assets/slap/slap.ogg%%', swish1: '%%ASSET:docs/prototypes/assets/slap/swish1.ogg%%', swish3: '%%ASSET:docs/prototypes/assets/slap/swish3.ogg%%',
+  cloth1: '%%ASSET:docs/prototypes/assets/ha/cloth1.ogg%%', cloth2: '%%ASSET:docs/prototypes/assets/ha/cloth2.ogg%%', cloth3: '%%ASSET:docs/prototypes/assets/ha/cloth3.ogg%%', cloth4: '%%ASSET:docs/prototypes/assets/ha/cloth4.ogg%%',
+  step0: '%%ASSET:docs/prototypes/assets/ha/step_c0.ogg%%', step1: '%%ASSET:docs/prototypes/assets/ha/step_c1.ogg%%', step2: '%%ASSET:docs/prototypes/assets/ha/step_c2.ogg%%', step3: '%%ASSET:docs/prototypes/assets/ha/step_c3.ogg%%',
+  bell: '%%ASSET:docs/prototypes/assets/ha/bell.ogg%%', crowd: '%%ASSET:docs/prototypes/assets/ha/crowd.ogg%%',
+  breath: '%%ASSET:docs/prototypes/assets/breath-in-out.mp3%%',
+};
+const $ = (s) => document.querySelector(s);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+const easeIn = (t) => Math.pow(clamp(t, 0, 1), 2);
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const rand = (a, b) => a + Math.random() * (b - a);
+/* a seeded generator for her plan (the engine hashes; the bot's calibration needs repeatable bouts) */
+function mulberry(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+/* ---------- her ways by style (drafts for her profile; the engine reads her style through styleOf and bends by her manner) ----------
+   gap: ms between one blow's impact and the next blow's start; tele: the telegraph, from her first move to the impact; feint, heavy, combo: shares;
+   alternate: ritual's blows come left, right, left …; count: she calls the blow before it comes */
+const STYLES = {
+  neutral:      { gap: [700, 1300], tele: [520, 700], feint: 0.15, heavy: 0.3,  combo: 0.1 },
+  affectionate: { gap: [1000, 1700], tele: [650, 850], feint: 0.05, heavy: 0.25, combo: 0 },
+  playful:      { gap: [600, 1200], tele: [450, 650], feint: 0.35, heavy: 0.25, combo: 0.15 },
+  cruel:        { gap: [450, 900],  tele: [330, 480], feint: 0.2,  heavy: 0.35, combo: 0.25 },
+  cold:         { gap: [700, 1200], tele: [480, 620], feint: 0.1,  heavy: 0.3,  combo: 0.1 },
+  ritual:       { gap: [1000, 1000], tele: [600, 600], feint: 0,   heavy: 0.34, combo: 0, alternate: true, count: true },
+  drill:        { gap: [700, 900],  tele: [520, 600], feint: 0.05, heavy: 0.3,  combo: 0.2, count: true },
+  regal:        { gap: [900, 1500], tele: [560, 760], feint: 0.1,  heavy: 0.35, combo: 0.05 },
+  possessive:   { gap: [600, 1100], tele: [480, 650], feint: 0.15, heavy: 0.3,  combo: 0.2 },
+};
+/* her as a soldier (stand-ins for her combatant's stats): how hard she hits, how much it takes to beat her down, how quick her telegraph is */
+const LEVELS = {
+  average: { pow: 1.0, tough: 1.0, quick: 1.0, note: 'an average soldier (level 1–2)' },
+  strong:  { pow: 1.2, tough: 1.25, quick: 0.9, note: 'a strong soldier (level 3–4)' },
+  elite:   { pow: 1.45, tough: 1.5, quick: 0.8, note: 'an elite soldier (level 5)' },
+};
+/* the handicaps of P9c's sparring game */
+const HANDICAPS = {
+  none:        { label: 'no handicap', pow: 1, oneSide: false, firstBlood: false },
+  one_arm:     { label: 'one arm behind her back', pow: 0.35, oneSide: true, firstBlood: false },
+  first_blood: { label: 'first blood ends it', pow: 1, oneSide: false, firstBlood: true },
+};
+const BUILDS = { frail: [1, 1, 1], slight: [2, 2, 1], average: [3, 3, 2], fit: [4, 4, 3], hardened: [5, 5, 4] };
+/* her faces (SillyTavern labels; never `desire`, P16c ruling 4) */
+const FACE = { start: 'neutral', landed: 'amusement', dodged: 'surprise', blocked: 'neutral', bit: 'amusement', hurt: 'anger', parried: 'amusement', tired: 'annoyance', win: 'pride', lose: 'annoyance', draw: 'approval' };
+const FACE_BY_STYLE = { affectionate: { landed: 'caring', hurt: 'surprise', win: 'caring', lose: 'joy' }, cold: { landed: 'neutral', hurt: 'annoyance', win: 'neutral', lose: 'neutral' }, ritual: { landed: 'neutral', hurt: 'approval', lose: 'approval' }, regal: { win: 'pride', lose: 'anger' } };
+/* her lines by style and kind (placeholders for the cue pool) */
+const LINES = {
+  neutral:      { start: ['let’s see what you’ve got.'], landed: ['too slow.'], dodged: ['huh.'], bit: ['made you flinch.'], hurt: ['ow— okay.', 'not bad.'], parried: ['nope.'], low: ['tired already?'], win: ['that’s it.'], lose: ['…fine. you win.'], draw: ['still standing. not bad.'] },
+  affectionate: { start: ['go easy? no— let’s really do it.'], landed: ['sorry! you okay?'], dodged: ['ooh, nice.'], bit: ['got you looking.'], hurt: ['ow! good one.'], parried: ['ah-ah.'], low: ['breathe, love.'], win: ['there. come here.'], lose: ['you got me!'], draw: ['look at you, still up.'] },
+  playful:      { start: ['catch me~'], landed: ['boop~'], dodged: ['ooh, slippery~'], bit: ['made you look~'], hurt: ['hey! rude~'], parried: ['too slow~'], low: ['huffing and puffing~'], win: ['mine~'], lose: ['okay okay, you win~'], draw: ['tie~? boring.'] },
+  cruel:        { start: ['try to keep up.'], landed: ['pathetic.'], dodged: ['lucky.'], bit: ['predictable.'], hurt: ['…you’ll pay for that.'], parried: ['really?'], low: ['done already?'], win: ['stay down.'], lose: ['…this time.'], draw: ['you just ran.'] },
+  cold:         { start: ['begin.'], landed: [], dodged: [], bit: [], hurt: ['hm.'], parried: [], low: [], win: ['done.'], lose: ['acceptable.'], draw: ['time.'] },
+  ritual:       { start: ['left, right. on my count.'], landed: ['the guard.'], dodged: ['good.'], bit: [], hurt: ['well struck.'], parried: ['not yet.'], low: ['breathe.'], win: ['kneel.'], lose: ['well fought.'], draw: ['time. you held.'] },
+  drill:        { start: ['guard up! on my call.'], landed: ['guard!'], dodged: ['again!'], bit: ['eyes on me!'], hurt: ['good! again!'], parried: ['wait for it!'], low: ['don’t you quit on me.'], win: ['down. that’s enough.'], lose: ['good. that’s how.'], draw: ['time! not bad.'] },
+  regal:        { start: ['show me.'], landed: ['you forget yourself.'], dodged: ['adequate.'], bit: ['you flinch at shadows.'], hurt: ['…how dare you.'], parried: ['presumptuous.'], low: ['you tire.'], win: ['on your knees.'], lose: ['…you may have this one.'], draw: ['you endure. noted.'] },
+  possessive:   { start: ['come here.'], landed: ['mine.'], dodged: ['don’t run from me.'], bit: ['eyes on me.'], hurt: ['…good. again.'], parried: ['no.'], low: ['tired? good.'], win: ['got you.'], lose: ['…fine. this once.'], draw: ['you’re not getting away.'] },
+};
+const COUNT_WORDS = { L: 'left.', R: 'right.', C: 'straight.' };
+
+/* ---------- the numbers (drafts; P16c tunes them in TUNING with the author's calibration) ---------- */
+const N = {
+  window: (r) => 110 + 35 * r,                 // ms before the impact in which a dodge or a block counts (reflexes)
+  open: (r) => 260 + 40 * r,                   // ms she is open after a dodged heavy blow (reflexes: the commander sees it sooner)
+  openDelay: 80,                               // her opening starts this long after the impact
+  stamina: (e) => 95 + 6 * e,                  // the commander's strength (endurance; calibrated: the author's two cases)
+  power: (s) => 0.6 + 0.2 * s,                 // the weight of a clean hit (strength)
+  composure: 18.5,                             // her strength to beat down, × her toughness (calibrated with `regain`: out of reach for an average commander, about 12 clean hits for a hardened one)
+  hit: 13,                                     // a blow that lands, × her power (× 1.6 a heavy one)
+  heavyMult: 1.6, heavyTele: 150,              // a heavy blow: harder, and slower to come
+  blockTaken: 0.25, blockHeavy: 0.6, blockCost: 3, dodgeCost: 2, strikeCost: 2, whiffCost: 1,
+  regen: 1.0, regenAfter: 1200,                // strength comes back slowly once nothing has hit for a while
+  regain: { landed: 0.6, blocked: 0.2 },       // a blow of hers that lands (or is blocked) gives her back some of her strength: her confidence
+  feintAt: 0.6,                                // a feint stops at this share of its telegraph
+  offBalance: 0.5,                             // biting a feint halves the window of her next blow
+  counter: { gap: 250, tele: 320 },            // a strike she blocks is answered at once
+  comboGap: 300,                               // the second blow of a combo
+};
+
+/* ---------- settings ---------- */
+const S = { style: 'neutral', level: 'average', handicap: 'none', manner: { tempo: 0, intensity: 0 }, body: { s: 3, e: 3, r: 2 }, len: 70, flick: 1300, crowd: false,
+  sound: true, vol: 0.8, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, her: { h: 1.22, top: -0.06 }, faceFadeOn: true, faceFade: 240 };
+const ST = () => STYLES[S.style] ?? STYLES.neutral;
+const LV = () => LEVELS[S.level];
+const HC = () => HANDICAPS[S.handicap];
+const L = () => LINES[S.style] ?? LINES.neutral;
+
+/* ==========================================================================================================================================
+   THE CORE (shared by real play and the bot): her plan, the judgement of a blow, the commander's strike. Pure over `B` (a bout) and `rng`.
+   ========================================================================================================================================== */
+function newBout(cfg, rng) {
+  return { cfg, rng, t: 0, stamina: N.stamina(cfg.body.e), stamina0: N.stamina(cfg.body.e), composure: N.composure * cfg.level.tough, composure0: N.composure * cfg.level.tough,
+    next: null, atkN: 0, lastSide: 'R', openFrom: -1, openTo: -1, offBalance: false, lastLoss: -1e9, result: null, firstBlood: cfg.handicap.firstBlood,
+    log: { blows: 0, landed: 0, dodged: 0, blocked: 0, feints: 0, bit: 0, early: 0, wrong: 0, late: 0, strikes: 0, clean: 0, parried: 0, heavy: 0 } };
+}
+/* her next blow: when it starts, its telegraph, its side (L, R: from the commander's left or right; C: straight), heavy, a feint, a combo's second */
+function planBlow(B, after, opts = {}) {
+  const c = B.cfg, st = c.style, rng = B.rng;
+  const tempoK = 1 - 0.12 * c.manner.tempo;
+  const gap = opts.gap ?? lerp(st.gap[0], st.gap[1], rng()) * (1 - 0.1 * c.manner.tempo);
+  let side;
+  if (c.handicap.oneSide) side = rng() < 0.75 ? 'R' : 'C';        // one arm: her free hand comes from one side (and straight)
+  else if (st.alternate) side = B.lastSide === 'L' ? 'R' : 'L';
+  else { const x = rng(); side = x < 0.4 ? 'L' : x < 0.8 ? 'R' : 'C'; }
+  B.lastSide = side;
+  // her heavy blows come in a rhythm (about one in 1/heavy, ±1), not by chance each time: a lucky run of openings must not decide the bout
+  let heavy = false;
+  if (!opts.combo && !opts.counter) {
+    if (st.alternate) heavy = B.atkN % 3 === 2;
+    else { if (B.heavyIn === undefined) B.heavyIn = Math.round(1 / st.heavy) + Math.floor(rng() * 3) - 1; B.heavyIn -= 1; if (B.heavyIn <= 0) { heavy = true; B.heavyIn = Math.round(1 / st.heavy) + Math.floor(rng() * 3) - 1; } }
+  }
+  const feint = !opts.combo && !heavy && !opts.counter && rng() < st.feint;
+  let tele = opts.tele ?? lerp(st.tele[0], st.tele[1], rng()) * tempoK * c.level.quick;
+  if (heavy) tele += N.heavyTele;
+  const start = after + gap;
+  B.atkN += 1;
+  return { n: B.atkN, start, tele, impact: start + tele, side, heavy, feint, combo: !!opts.combo, counter: !!opts.counter, def: null, resolved: false, result: null };
+}
+/* the defence a blow needs: a dodge away from it (a blow from the left: flick right), down for a straight one; any block */
+const dodgeFor = (side) => (side === 'L' ? 'right' : side === 'R' ? 'left' : 'down');
+/* judges a blow at its impact (or a feint at its stop) by the defence given: what happened and what it cost */
+function resolveBlow(B, a) {
+  const c = B.cfg, lg = B.log;
+  a.resolved = true;
+  if (a.feint) {
+    lg.feints += 1;
+    // a defence given during a feint is a bite: off balance for her next blow
+    if (a.def) { a.result = 'bit'; lg.bit += 1; B.offBalance = true; spend(B, a.def.kind === 'block' ? N.blockCost : N.dodgeCost); }
+    else a.result = 'read';
+    return a.result;
+  }
+  lg.blows += 1; if (a.heavy) lg.heavy += 1;
+  const W = N.window(c.body.r) * (a.offBalance ? N.offBalance : 1);
+  const dmg = N.hit * c.level.pow * c.handicap.pow * (1 + 0.1 * c.manner.intensity) * (a.heavy ? N.heavyMult : 1);
+  const d = a.def;
+  if (d && d.at >= a.impact - W && d.kind === 'dodge' && d.dir === dodgeFor(a.side)) {
+    a.result = 'dodged'; lg.dodged += 1; spend(B, N.dodgeCost);
+    if (a.heavy) { B.openFrom = a.impact + N.openDelay; B.openTo = B.openFrom + N.open(c.body.r); }
+  } else if (d && d.at >= a.impact - W && d.kind === 'block') {
+    a.result = 'blocked'; lg.blocked += 1; lose(B, dmg * (a.heavy ? N.blockHeavy : N.blockTaken) + N.blockCost);
+    B.composure = Math.min(B.composure0, B.composure + N.regain.blocked);
+  } else {
+    a.result = 'landed'; lg.landed += 1;
+    if (d) { if (d.at < a.impact - W) lg.early += 1; else lg.wrong += 1; } else lg.late += 1;
+    lose(B, dmg);
+    B.composure = Math.min(B.composure0, B.composure + N.regain.landed);
+    if (B.firstBlood) B.result = 'her';
+  }
+  if (B.stamina <= 0 && !B.result) B.result = 'her';
+  return a.result;
+}
+function spend(B, n) { B.stamina -= n; }
+function lose(B, n) { B.stamina -= n; B.lastLoss = B.t; }
+/* the commander strikes at time t: clean while she is open, else she blocks it and answers at once */
+function strike(B, t) {
+  const c = B.cfg, lg = B.log;
+  lg.strikes += 1; spend(B, N.strikeCost);
+  if (t >= B.openFrom && t <= B.openTo) {
+    B.openTo = -1; lg.clean += 1;
+    B.composure -= N.power(c.body.s);
+    if (B.firstBlood || B.composure <= 0) B.result = 'commander';
+    return 'clean';
+  }
+  lg.parried += 1;
+  return 'parried';
+}
+/* the clock: strength comes back slowly; the bout ends at its length (a draw) */
+function tickBout(B, dt) {
+  B.t += dt;
+  if (B.t - B.lastLoss > N.regenAfter) B.stamina = Math.min(B.stamina0, B.stamina + N.regen * dt / 1000);
+  if (!B.result && B.t >= B.cfg.len * 1000) B.result = 'draw';
+}
+function cfgNow() { return { style: ST(), level: LV(), handicap: HC(), manner: { ...S.manner }, body: { ...S.body }, len: S.len }; }
+
+/* ---------- the bot (calibration only): a player at a percentile, as timing scatter (σ), misreads of the side, bites at feints ---------- */
+const BOT = [ // top x %: σ ms, a misread side, a bitten feint
+  { top: 1, sigma: 30, wrong: 0.01, bite: 0.03 }, { top: 5, sigma: 45, wrong: 0.02, bite: 0.06 }, { top: 12, sigma: 60, wrong: 0.04, bite: 0.1 },
+  { top: 25, sigma: 80, wrong: 0.06, bite: 0.15 }, { top: 50, sigma: 115, wrong: 0.1, bite: 0.25 }, { top: 75, sigma: 170, wrong: 0.15, bite: 0.35 },
+];
+function gauss(rng) { let u = 0, v = 0; while (u === 0) u = rng(); while (v === 0) v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+function botBout(cfg, bot, seed) {
+  const rng = mulberry(seed), brng = mulberry(seed * 7 + 3);
+  const B = newBout(cfg, rng);
+  let a = planBlow(B, 1500);
+  while (!B.result) {
+    // the bot defends: aims at the middle of the window, scattered by σ; misreads the side now and then; bites a feint now and then
+    const W = N.window(cfg.body.r) * (B.offBalance ? N.offBalance : 1);
+    a.offBalance = B.offBalance; B.offBalance = false;
+    if (a.feint) { if (brng() < bot.bite) a.def = { kind: 'dodge', dir: dodgeFor(a.side), at: a.start + a.tele * N.feintAt - 50 }; }
+    else {
+      const at = a.impact - W / 2 + gauss(brng) * bot.sigma;
+      const dir = brng() < bot.wrong ? (a.side === 'C' ? 'left' : 'down') : dodgeFor(a.side);
+      a.def = { kind: 'dodge', dir, at: Math.min(at, a.impact + 200) };
+      if (at > a.impact) a.def = null; // too late: nothing in time
+    }
+    const end = a.feint ? a.start + a.tele * N.feintAt : a.impact;
+    tickBout(B, end - B.t);
+    if (B.result) break;
+    resolveBlow(B, a);
+    if (B.result) break;
+    // the bot strikes into an opening (aims at its middle), never outside one
+    if (B.openTo > B.t) {
+      const tStrike = (B.openFrom + B.openTo) / 2 + gauss(brng) * bot.sigma;
+      tickBout(B, Math.max(0, tStrike - B.t));
+      if (B.result) break;
+      const r = strike(B, tStrike);
+      if (r === 'parried') { a = planBlow(B, B.t, { gap: N.counter.gap, tele: N.counter.tele, counter: true }); continue; }
+      if (B.result) break;
+    }
+    const comboNext = !a.feint && a.result !== 'dodged' && B.rng() < cfg.style.combo;
+    a = comboNext ? planBlow(B, a.impact, { gap: N.comboGap, combo: true }) : planBlow(B, Math.max(B.t, a.feint ? a.start + a.tele : a.impact));
+  }
+  return B;
+}
+function calibrate(cfg, n = 400) {
+  return BOT.map((bot) => {
+    const out = { her: 0, draw: 0, commander: 0 };
+    for (let i = 0; i < n; i++) out[botBout(cfg, bot, 1000 + i).result] += 1;
+    return { top: bot.top, win: out.commander / n, draw: out.draw / n, lose: out.her / n };
+  });
+}
+function calibText(cfg, title) {
+  const rows = calibrate(cfg);
+  return `${title}\n top%  win   draw  she wins\n` + rows.map((r) => ` ${String(r.top).padStart(3)}  ${(r.win * 100).toFixed(0).padStart(3)} % ${(r.draw * 100).toFixed(0).padStart(3)} % ${(r.lose * 100).toFixed(0).padStart(3)} %`).join('\n');
+}
+
+/* ==========================================================================================================================================
+   REAL PLAY: the bout in real time, the commander's input, her sprite and the camera, the sound
+   ========================================================================================================================================== */
+const A = { ctx: null, buf: {} };
+function audioInit() {
+  if (A.ctx) return;
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  A.ctx = ctx;
+  A.master = ctx.createGain(); A.master.gain.value = S.sound ? S.vol : 0; A.master.connect(ctx.destination);
+  A.worldLP = ctx.createBiquadFilter(); A.worldLP.type = 'lowpass'; A.worldLP.frequency.value = 16000; A.worldLP.Q.value = 0.4;
+  A.worldG = ctx.createGain(); A.worldG.gain.value = 1; A.worldLP.connect(A.worldG); A.worldG.connect(A.master);
+  A.body = ctx.createGain(); A.body.connect(A.master);
+  const mk = (sec, fill) => { const b = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate); fill(b.getChannelData(0)); return b; };
+  A.white = mk(2, (d) => { for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; });
+  A.brown = mk(4, (d) => { let l = 0; for (let i = 0; i < d.length; i++) { l = (l + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = l * 3.5; } });
+  const room = ctx.createBufferSource(); room.buffer = A.brown; room.loop = true;
+  const roomLP = ctx.createBiquadFilter(); roomLP.type = 'lowpass'; roomLP.frequency.value = 900; const roomG = ctx.createGain(); roomG.gain.value = 0.06; // the open yard: wind
+  room.connect(roomLP); roomLP.connect(roomG); roomG.connect(A.worldLP); room.start();
+}
+async function loadSamples() { await Promise.all(Object.entries(SAMPLE_URLS).map(async ([k, u]) => { try { const r = await fetch(u); A.buf[k] = await A.ctx.decodeAudioData(await r.arrayBuffer()); } catch (e) { /* synthesis */ } })); }
+function chain(node, { pan = 0, lp = 0, hp = 0, dest = A.worldLP }) {
+  let n = node;
+  if (hp) { const f = A.ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp; n.connect(f); n = f; }
+  if (lp) { const f = A.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; n.connect(f); n = f; }
+  if (pan) { const p = A.ctx.createStereoPanner(); p.pan.value = clamp(pan, -1, 1); n.connect(p); n = p; }
+  n.connect(dest);
+}
+function play(id, { g = 0.5, pan = 0, rate = 1, lp = 0, hp = 0, dest, at = 0, offset = 0, dur, loop = false } = {}) {
+  if (!A.ctx || !A.buf[id]) return null;
+  const ctx = A.ctx, t = ctx.currentTime + Math.max(0, at);
+  const src = ctx.createBufferSource(); src.buffer = A.buf[id]; src.playbackRate.value = rate; src.loop = loop;
+  const gn = ctx.createGain(); gn.gain.value = g; src.connect(gn);
+  chain(gn, { pan, lp, hp, dest: dest ?? A.worldLP });
+  if (loop) { src.start(t); return { src, gn }; }
+  const len = dur ?? (A.buf[id].duration - offset);
+  if (dur) { gn.gain.setValueAtTime(g, t + dur / rate - 0.03); gn.gain.linearRampToValueAtTime(0.0001, t + dur / rate); }
+  src.start(t, offset, len + 0.05);
+  return src;
+}
+function noise({ at = 0, dur = 0.2, type = 'bandpass', f = 1000, f2, q = 1, gain = 0.1, attack = 0.01, dest = A.worldLP, pan = 0 }) {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const src = ctx.createBufferSource(); src.buffer = A.white; src.loop = true;
+  const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(f, t); fl.Q.value = q;
+  if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(fl); fl.connect(g); chain(g, { pan, dest }); src.start(t, Math.random()); src.stop(t + dur + 0.05);
+}
+function thump(at, gain, f0 = 55, dest = A.body) {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = ctx.currentTime + at;
+  const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f0 * 0.6, t + 0.14);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+  o.connect(g); g.connect(dest); o.start(t); o.stop(t + 0.3);
+}
+const panOf = (side) => (side === 'L' ? -0.6 : side === 'R' ? 0.6 : 0);
+const SFX = {
+  pen: () => { for (let i = 0; i < 3; i++) noise({ at: i * 0.05 + Math.random() * 0.02, dur: 0.035 + Math.random() * 0.03, f: 2600 + Math.random() * 1800, q: 3, gain: 0.04 }); },
+  cloth: (pan, g = 0.35, rate = 1) => { if (!play(pick(['cloth1', 'cloth2', 'cloth3', 'cloth4']), { g, pan, rate, lp: 6000 })) noise({ dur: 0.3, f: 1100, f2: 1700, q: 0.7, gain: g * 0.25, attack: 0.05, pan }); },
+  step: (pan, g = 0.3) => { if (!play(pick(['step0', 'step1', 'step2', 'step3']), { g, pan, rate: rand(0.9, 1.05), lp: 3800 })) noise({ dur: 0.08, type: 'lowpass', f: 500, gain: g * 0.3, pan }); },
+  swish: (atS, pan, heavy) => {
+    const id = heavy ? 'swish3' : 'swish1';
+    if (A.buf[id]) { const rate = heavy ? 0.66 : 0.8, d = A.buf[id].duration / rate; play(id, { g: heavy ? 0.55 : 0.45, pan, rate, at: atS - d * 0.85, hp: 300 }); }
+    else noise({ at: atS - 0.16, dur: 0.17, f: 900, f2: 3200, q: 0.8, gain: 0.16, attack: 0.12, pan });
+  },
+  // a blow on the commander: the slap's recording, low-passed into a body blow, with a thump under it; a blocked one is a dull smack on the arms
+  hitMe: (pan, heavy) => { if (!play('slap', { g: heavy ? 0.5 : 0.38, pan: pan * 0.5, lp: 1500, dest: A.body, rate: 0.8 })) noise({ dur: 0.09, type: 'lowpass', f: 900, gain: 0.4, dest: A.body, pan }); thump(0, heavy ? 0.8 : 0.6, 62); },
+  block: (pan) => { if (!play('slap', { g: 0.26, pan: pan * 0.4, lp: 900, dest: A.body, rate: 0.7 })) noise({ dur: 0.06, type: 'lowpass', f: 600, gain: 0.3, dest: A.body }); thump(0, 0.35, 80); },
+  // the commander's clean hit on her: a duller thud on her body and her breath knocked out; a parried one a light smack
+  hitHer: () => { if (!play('slap', { g: 0.36, lp: 1100, rate: 0.7 })) noise({ dur: 0.08, type: 'lowpass', f: 700, gain: 0.35 }); thump(0, 0.45, 70, A.worldLP); herGrunt(); },
+  parry: () => { if (!play('slap', { g: 0.18, lp: 2200, rate: 1.1 })) noise({ dur: 0.05, type: 'bandpass', f: 1400, gain: 0.15 }); },
+  intake: () => { play('breath', { g: 0.2, rate: 1.6, offset: 0.14, dur: 0.42, lp: 3200, dest: A.body }); },
+  exhale: (g = 0.16, rate = 1.1) => { play('breath', { g, rate, offset: 2.17, dur: 0.9, lp: 2600, dest: A.body }); },
+  heart: (g) => { thump(0, 0.45 * g, 52); thump(0.24, 0.3 * g, 46); },
+  bell: () => { if (!play('bell', { g: 0.35 })) { for (const [f, gg] of [[880, 0.06], [1320, 0.03]]) { const o = A.ctx.createOscillator(); o.frequency.value = f; const g = A.ctx.createGain(); const t = A.ctx.currentTime; g.gain.setValueAtTime(gg, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6); o.connect(g); g.connect(A.worldLP); o.start(t); o.stop(t + 1.7); } } },
+};
+function herGrunt() { noise({ dur: 0.16, type: 'bandpass', f: 520, f2: 360, q: 3, gain: 0.07, attack: 0.01 }); noise({ at: 0.02, dur: 0.12, type: 'bandpass', f: 1300, q: 5, gain: 0.03 }); }
+
+/* her hand (written beside her, on the side away from the blow) and the sensory lines */
+function say(text, side = 'R') {
+  if (!text) return;
+  const el = document.createElement('div'); el.className = 'her-line'; el.textContent = text;
+  const speed = S.style === 'cruel' || S.style === 'cold' ? 24 : S.style === 'ritual' ? 45 : 34;
+  el.style.setProperty('--write', `${Math.max(140, text.length * speed)}ms`); el.style.setProperty('--steps', String(Math.max(4, text.length * 2)));
+  if (S.reduced) el.style.animation = 'none';
+  const showing = [...$('#hand').querySelectorAll('.her-line:not(.gone)')].length;
+  el.style.left = `${innerWidth * (side === 'L' ? 0.64 : 0.08)}px`; el.style.top = `${innerHeight * 0.16 + showing * 52}px`; el.style.transform = `rotate(${rand(-4, 3).toFixed(1)}deg)`;
+  $('#hand').appendChild(el); SFX.pen();
+  setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 600); }, 2000);
+}
+function sense(text) {
+  const el = document.createElement('div'); el.className = 'sense'; el.textContent = text;
+  const showing = [...$('#hand').querySelectorAll('.sense:not(.gone)')].length;
+  el.style.left = `${innerWidth * 0.05}px`; el.style.top = `${innerHeight * 0.66 - showing * 46}px`;
+  $('#hand').appendChild(el);
+  setTimeout(() => { el.classList.add('gone'); setTimeout(() => el.remove(), 900); }, 3200);
+}
+let lineUntil = 0;
+function sayL(kind, force = false, side) {
+  const pool = L()[kind]; if (!pool || !pool.length) return;
+  if (!force && (performance.now() < lineUntil || Math.random() > 0.55)) return;
+  lineUntil = performance.now() + 2600;
+  say(pick(pool), side);
+}
+
+/* her faces: two layers crossfaded (foot_care.html's), labels by prefix */
+const LABELS = ['admiration', 'amusement', 'anger', 'annoyance', 'approval', 'caring', 'confusion', 'curiosity', 'desire', 'disappointment', 'disapproval', 'disgust', 'embarrassment', 'excitement', 'fear', 'gratitude', 'grief', 'joy', 'love', 'nervousness', 'neutral', 'optimism', 'pride', 'realization', 'relief', 'remorse', 'sadness', 'surprise'].sort((a, b) => b.length - a.length);
+const faces = {}; let spriteUrl = ASSETS.her, curFace = null, HER_FRONT = 0;
+const herLayers = () => [$('#her'), $('#her2')];
+const faceOf = (kind) => FACE_BY_STYLE[S.style]?.[kind] ?? FACE[kind];
+function setFace(label) {
+  if (label === curFace) return;
+  curFace = label;
+  const pool = faces[label] ?? faces.neutral, src = pool ? pick(pool) : spriteUrl;
+  const [a, b] = herLayers(), front = HER_FRONT ? b : a, back = HER_FRONT ? a : b;
+  if (front.dataset.src === src) return;
+  const ms = S.faceFadeOn && !S.reduced ? S.faceFade : 0;
+  const swap = () => { if (back.dataset.src !== src) return; for (const el of [front, back]) el.style.transitionDuration = `${ms}ms`; back.style.opacity = '1'; front.style.opacity = '0'; HER_FRONT = 1 - HER_FRONT; };
+  back.dataset.src = src; back.onload = swap; back.src = src; if (back.complete && back.naturalWidth) swap();
+}
+
+/* ---------- the bout in real time ---------- */
+let G = { phase: 'idle' };
+function begin() {
+  audioInit(); if (A.ctx.state === 'suspended') A.ctx.resume();
+  $('#hand').replaceChildren(); $('#summary').style.display = 'none';
+  const B = newBout(cfgNow(), Math.random);
+  G = { phase: 'fight', B, a: planBlow(B, 2200), last: null, fx: { hit: null, dodge: null, block: null, punch: null, herHit: null }, mouse: [], toldOpen: false, toldFeint: false, counted: 0,
+    crowd: null, heartAt: 0, breathAt: 0, herBreathAt: 0, lowSaid: false, stepAt: 0, sideShown: null, endAt: 0 };
+  curFace = null; setFace(faceOf('start'));
+  SFX.bell(); setTimeout(() => sayL('start', true), 500);
+  if (S.crowd && A.buf.crowd) { G.crowd = play('crowd', { g: 0.0001, loop: true }); G.crowd.gn.gain.setTargetAtTime(0.12, A.ctx.currentTime, 1.2); }
+  $('#reply').innerHTML = '<span class="act">The training yard. She squares up in front of the commander, light on her feet.</span>';
+  sense('Watch her weight and her shoulder. Dodge away from the blow at the last moment; Space blocks.');
+}
+function defend(kind, dir) {
+  if (G.phase !== 'fight') return;
+  const a = G.a, B = G.B;
+  if (a.def || B.t < a.start) { if (B.t < a.start) spend(B, N.whiffCost); return; } // one defence a blow; before she moves it only tires you
+  a.def = { kind, dir, at: B.t };
+  if (kind === 'dodge') { G.fx.dodge = { t0: performance.now(), dir }; SFX.cloth(dir === 'left' ? -0.3 : dir === 'right' ? 0.3 : 0, 0.3, 1.3); }
+  else { G.fx.block = { t0: performance.now() }; SFX.intake(); }
+}
+function strikeNow() {
+  if (G.phase !== 'fight') return;
+  const B = G.B;
+  G.fx.punch = { t0: performance.now() };
+  const r = strike(B, B.t);
+  if (r === 'clean') {
+    G.fx.herHit = { t0: performance.now() }; SFX.hitHer(); setFace(faceOf('hurt')); sayL('hurt', true, 'R');
+    if (B.result) return endBout();
+  } else {
+    SFX.parry(); setFace(faceOf('parried')); sayL('parried');
+    // she answers at once (the next blow replaces what was coming, unless it is already underway)
+    if (B.t < G.a.start) G.a = planBlow(B, B.t, { gap: N.counter.gap, tele: N.counter.tele, counter: true });
+  }
+}
+function stepFight(dt) {
+  const B = G.B, a = G.a;
+  tickBout(B, dt);
+  // her steps while she moves around between blows
+  if (B.t < a.start && B.t > G.stepAt) { G.stepAt = B.t + rand(500, 900); SFX.step(rand(-0.4, 0.4), 0.18); }
+  // the start of her move: her clothes and a step on her side; the swish timed to the impact; ritual and drill call it
+  if (!a.begun && B.t >= a.start) {
+    a.begun = true; a.offBalance = B.offBalance; B.offBalance = false;
+    const pan = panOf(a.side);
+    SFX.step(pan, 0.35); SFX.cloth(pan * 0.8, a.heavy ? 0.5 : 0.35);
+    if (!a.feint) SFX.swish(a.tele / 1000, pan, a.heavy);
+    if (ST().count && !a.counter) say(COUNT_WORDS[a.side], a.side === 'L' ? 'R' : 'L');
+  }
+  // a feint stops partway
+  if (a.feint && !a.resolved && B.t >= a.start + a.tele * N.feintAt) {
+    const r = resolveBlow(B, a);
+    if (r === 'bit') { setFace(faceOf('bit')); sayL('bit'); if (!G.toldFeint) { G.toldFeint = true; sense('A feint: she stopped short, and you moved for nothing. Off balance for her next blow.'); } }
+    G.a = planBlow(B, B.t);
+  }
+  // the impact
+  if (!a.feint && !a.resolved && B.t >= a.impact) {
+    const r = resolveBlow(B, a), pan = panOf(a.side);
+    if (r === 'landed') { G.fx.hit = { t0: performance.now(), side: a.side, heavy: a.heavy }; SFX.hitMe(pan, a.heavy); flash(a.heavy ? 0.8 : 0.55); setFace(faceOf('landed')); sayL('landed'); }
+    else if (r === 'blocked') { SFX.block(pan); G.fx.hitSmall = { t0: performance.now(), side: a.side }; setFace(faceOf('blocked')); }
+    else { setFace(faceOf('dodged')); if (Math.random() < 0.35) sayL('dodged'); if (a.heavy && !G.toldOpen) { G.toldOpen = true; sense('Her heavy blow went past: she is open for a moment. Click.'); } }
+    if (B.result) return endBout();
+    const combo = r !== 'dodged' && Math.random() < ST().combo;
+    G.a = combo ? planBlow(B, a.impact, { gap: N.comboGap, combo: true }) : planBlow(B, Math.max(B.t, B.openTo > B.t ? B.openTo : B.t));
+  }
+  if (B.result) return endBout();
+  // her strength low or the commander's: words, breath
+  const low = B.stamina / B.stamina0;
+  if (low < 0.3 && !G.lowSaid) { G.lowSaid = true; sayL('low', true); }
+}
+function endBout() {
+  const B = G.B; G.phase = 'done'; G.endAt = performance.now();
+  SFX.bell();
+  if (G.crowd) G.crowd.gn.gain.setTargetAtTime(0.0001, A.ctx.currentTime, 0.8);
+  const r = B.result;
+  setFace(faceOf(r === 'her' ? 'win' : r === 'commander' ? 'lose' : 'draw'));
+  setTimeout(() => sayL(r === 'her' ? 'win' : r === 'commander' ? 'lose' : 'draw', true), 500);
+  $('#reply').innerHTML = `<span class="act">${r === 'her' ? 'The commander’s legs give out on the sand.' : r === 'commander' ? 'She staggers back and lifts a hand: enough.' : 'The bell. Both still standing, both breathing hard.'}</span>`;
+  setTimeout(() => {
+    const lg = B.log;
+    $('#sumLine').textContent = r === 'her' ? 'she wins' : r === 'commander' ? 'the commander wins' : 'a draw';
+    $('#sumFacts').innerHTML = `${S.style} · ${S.level} · ${HC().label} · body ${S.body.s}/${S.body.e}/${S.body.r} · ${(B.t / 1000).toFixed(0)} s<br>`
+      + `her blows ${lg.blows} (heavy ${lg.heavy}), feints ${lg.feints} (bitten ${lg.bit})<br>dodged ${lg.dodged} · blocked ${lg.blocked} · landed ${lg.landed} (too early ${lg.early}, wrong way ${lg.wrong}, late ${lg.late})<br>`
+      + `your strikes ${lg.strikes}: clean ${lg.clean}, she blocked ${lg.parried}<br>your strength left ${Math.max(0, Math.round(100 * B.stamina / B.stamina0))} % · hers ${Math.max(0, Math.round(100 * B.composure / B.composure0))} %<br>`
+      + (r === 'her' ? '<i>her finisher: to be discussed (P16c)</i>' : '');
+    $('#summary').style.display = 'block';
+  }, 1600);
+}
+
+/* ---------- the camera, her sprite, the effects ---------- */
+function flash(k) {
+  const el = $('#flash'); el.style.transition = 'none';
+  el.style.background = 'radial-gradient(ellipse at 50% 45%, rgba(255,250,245,1), rgba(255,90,70,1) 55%, rgba(200,20,20,1))'; el.style.opacity = String(0.6 * k);
+  requestAnimationFrame(() => requestAnimationFrame(() => { el.style.transition = 'opacity 260ms cubic-bezier(.2,.7,.3,1)'; el.style.opacity = '0'; }));
+}
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(50, now - last); last = now;
+  if (G.phase === 'fight') stepFight(dt);
+  render(now);
+}
+function render(now) {
+  const W = innerWidth, H = innerHeight;
+  const B = G.B, a = G.a;
+  // her move: the telegraph's progress p (0 → 1 at the impact); a feint stops at its share and pulls back
+  let p = 0, side = a?.side ?? 'C', heavy = a?.heavy;
+  if (G.phase === 'fight' && a && B.t >= a.start) {
+    p = clamp((B.t - a.start) / a.tele, 0, 1);
+    if (a.feint) { const f = N.feintAt; p = B.t - a.start < a.tele * f ? p : Math.max(0, f - (B.t - a.start - a.tele * f) / 300); }
+  }
+  const sgn = side === 'L' ? -1 : side === 'R' ? 1 : 0; // the screen side the blow comes from
+  const reduce = S.reduced ? 0 : 1;
+  // her lunge: closer, toward the blow's side; the frame tilts against the swing and the light dims on her side
+  const lunge = easeIn(p) * (heavy ? 1.25 : 1);
+  let camX = -sgn * 0.02 * W * lunge * reduce, camR = sgn * 2.6 * lunge * reduce, camS = 1 + 0.05 * lunge * reduce;
+  // the commander's moves: a dodge slides the view the other way and back; a block tightens; a punch jabs forward
+  const fx = G.fx || {};
+  if (fx.dodge) { const t = (now - fx.dodge.t0) / 420; if (t < 1) { const e = Math.sin(Math.min(1, t) * Math.PI); camX += (fx.dodge.dir === 'left' ? 1 : fx.dodge.dir === 'right' ? -1 : 0) * 0.07 * W * e * reduce; camS -= (fx.dodge.dir === 'down' ? 0.04 : 0.01) * e; } else fx.dodge = null; }
+  let downY = fx.dodge && fx.dodge.dir === 'down' ? Math.sin(Math.min(1, (now - fx.dodge.t0) / 420) * Math.PI) * 0.09 * H * reduce : 0;
+  if (fx.block) { const t = (now - fx.block.t0) / 500; if (t < 1) camS += 0.02 * Math.sin(t * Math.PI); else fx.block = null; }
+  if (fx.punch) { const t = (now - fx.punch.t0) / 160; if (t < 1) camS += 0.05 * Math.sin(t * Math.PI) * reduce; else fx.punch = null; }
+  // a blow that landed: the slap's whip toward the side it came from (damped), a horizontal blur
+  let whipX = 0, whipR = 0, hb = 0;
+  if (fx.hit) { const tt = now - fx.hit.t0, k = fx.hit.heavy ? 1 : 0.7, s2 = fx.hit.side === 'L' ? 1 : fx.hit.side === 'R' ? -1 : 0;
+    const env = tt < 45 ? easeOut(tt / 45) : Math.exp(-(tt - 45) / 210) * Math.cos((tt - 45) / 520 * Math.PI * 2);
+    whipX = s2 * 0.06 * W * env * k * reduce; whipR = s2 * 4.5 * env * k * reduce; if (s2 === 0) camS -= 0.06 * env * k * reduce; hb = tt < 220 ? (1 - tt / 220) * 14 * k * reduce : 0; if (tt > 1400) fx.hit = null; }
+  if (fx.hitSmall) { const tt = now - fx.hitSmall.t0; if (tt < 260) { camX += (fx.hitSmall.side === 'L' ? 1 : -1) * 6 * Math.sin(tt / 260 * Math.PI) * reduce; } else fx.hitSmall = null; }
+  // the commander tiring: a tremble once the strength is low
+  const strength = B ? clamp(B.stamina / B.stamina0, 0, 1) : 1, tiredK = 1 - strength;
+  const trem = tiredK > 0.55 ? (tiredK - 0.55) * 6 * reduce : 0;
+  $('#world').style.transform = `translate(${(camX + whipX + rand(-trem, trem)).toFixed(1)}px, ${(downY + rand(-trem, trem)).toFixed(1)}px) rotate(${(camR + whipR).toFixed(2)}deg) scale(${camS.toFixed(4)})`;
+  $('#hblurG').setAttribute('stdDeviation', `${hb.toFixed(1)} ${(hb * 0.12).toFixed(1)}`);
+  const wf = `${hb > 0.3 ? 'url(#hblur) ' : ''}${tiredK > 0.02 ? `saturate(${(1 - 0.55 * tiredK).toFixed(3)})` : ''}`; // no filter at all while none is needed (it is costly)
+  if ($('#world').style.filter !== wf) $('#world').style.filter = wf;
+  // her sprite: knee-length, filling the height; closer with the lunge, a clean hit knocks it back; her breathing
+  const herOpen = B && B.t >= B.openFrom && B.t <= B.openTo;
+  for (const im of herLayers()) {
+    const nw = im.naturalWidth || 400, nh = im.naturalHeight || 1000;
+    if (im.style.width !== `${nw}px`) { im.style.width = `${nw}px`; im.style.height = `${nh}px`; } // an SVG's layout size may differ from its natural size
+    const sc0 = (H * S.her.h) / nh;
+    let k = 1 + 0.14 * lunge * reduce, dx = sgn * 0.05 * W * lunge * reduce, rot = sgn * -2 * lunge * reduce;
+    if (fx.herHit) { const t = (now - fx.herHit.t0) / 700; if (t < 1) { const e = Math.sin(Math.min(1, t * 2) * Math.PI / 2) * (1 - t); k -= 0.06 * e; rot += 4 * e; dx += 0.02 * W * e; } else fx.herHit = null; }
+    if (herOpen) { rot += 2.5 * Math.sin(now / 90) * 0.3; k -= 0.02; }
+    const breathe = 1 + 0.008 * Math.sin(now / (B && B.composure < B.composure0 * 0.5 ? 380 : 700)) * reduce;
+    const sc = sc0 * k * breathe, w = nw * sc, hgt = nh * sc;
+    const ox = W * 0.14, oy = H * 0.14;
+    im.style.transform = `translate(${(ox + W / 2 - w / 2 + dx).toFixed(1)}px, ${(oy + H * S.her.top - (hgt - nh * sc0) * 0.35).toFixed(1)}px) rotate(${rot.toFixed(2)}deg) scale(${sc.toFixed(4)})`;
+    im.style.filter = `brightness(${herOpen ? 1.12 : 0.96})`;
+  }
+  $('#backdrop').style.filter = `blur(${(3 + 4 * lunge).toFixed(1)}px) brightness(${(0.72 - 0.12 * tiredK).toFixed(3)})`;
+  // her side: the light dims on the side of the blow as it comes; a dark blur from that edge in the last 140 ms (the slap's)
+  const sideA = p > 0 ? clamp(0.55 * easeOut(p * 1.3), 0, 0.8) : 0;
+  // a straight blow darkens every edge (a tunnel toward her); a side blow the edge it comes from
+  $('#side').style.background = sgn === 0 ? 'radial-gradient(ellipse 58% 54% at 50% 46%, rgba(4,2,6,0) 45%, rgba(4,2,6,.55) 75%, rgba(4,2,6,.95) 100%)' : `linear-gradient(${sgn < 0 ? 90 : 270}deg, rgba(4,2,6,.95), rgba(4,2,6,.4) 28%, rgba(4,2,6,0) 55%)`;
+  $('#side').style.opacity = (sideA * reduce).toFixed(3);
+  const sw = $('#sweep');
+  if (a && !a.feint && sgn !== 0 && G.phase === 'fight' && B.t < a.impact && a.impact - B.t < 140) { const k = 1 - (a.impact - B.t) / 140; const x0 = sgn < 0 ? -0.5 : 1.04, x1 = sgn < 0 ? 0.02 : 0.52; sw.style.left = `${(lerp(x0, x1, easeIn(k)) * W).toFixed(1)}px`; sw.style.opacity = String(0.8 * Math.min(1, k * 2) * reduce); }
+  else sw.style.opacity = '0';
+  // her opening: the frame's centre brightens a touch, a cool rim around her (no marker on her)
+  $('#open').style.background = 'radial-gradient(ellipse 30% 44% at 50% 46%, rgba(200,225,255,.10), rgba(200,225,255,0) 70%)';
+  $('#open').style.opacity = herOpen ? '1' : '0';
+  // the commander's strength: the edges close and darken, the heart and the breath quicken
+  $('#tired').style.background = `radial-gradient(ellipse ${lerp(90, 50, tiredK).toFixed(0)}% ${lerp(86, 46, tiredK).toFixed(0)}% at 50% 48%, rgba(0,0,0,0) 55%, rgba(0,0,0,${(0.3 + 0.6 * tiredK).toFixed(2)}) 100%)`;
+  if (G.phase === 'fight') {
+    const bpm = lerp(90, 168, tiredK), nowS = now;
+    if (nowS > G.heartAt) { G.heartAt = nowS + 60000 / bpm; if (tiredK > 0.25) SFX.heart(0.4 + tiredK); }
+    if (nowS > G.breathAt) { G.breathAt = nowS + lerp(2600, 1100, tiredK); SFX.exhale(0.08 + 0.12 * tiredK, 1.1 + 0.25 * tiredK); }
+  }
+  // the scene UI steps back while the bout runs
+  const fight = G.phase === 'fight' ? 1 : 0;
+  $('#reply').style.opacity = String(1 - 0.75 * fight); $('#inputWrap').style.opacity = String(1 - 0.6 * fight);
+  if (S.debug) drawDebug();
+}
+function drawDebug() {
+  const c = $('#tl'), x = c.getContext('2d'), w = c.width, h = c.height; x.clearRect(0, 0, w, h);
+  const B = G.B; if (!B) return;
+  const span = 4000, t0 = B.t - 1500, X = (t) => 10 + ((t - t0) / span) * (w - 20);
+  const a = G.a, Wd = N.window(S.body.r) * (B.offBalance || a.offBalance ? N.offBalance : 1);
+  x.fillStyle = a.feint ? '#a86a20' : a.heavy ? '#b03030' : '#8a4040'; x.fillRect(X(a.start), 14, X(a.impact) - X(a.start), 12);
+  if (!a.feint) { x.fillStyle = 'rgba(120,200,140,.45)'; x.fillRect(X(a.impact - Wd), 30, X(a.impact) - X(a.impact - Wd), 14); }
+  if (B.openTo > B.t - 1500) { x.fillStyle = 'rgba(140,190,255,.5)'; x.fillRect(X(B.openFrom), 48, X(B.openTo) - X(B.openFrom), 14); }
+  x.strokeStyle = '#fff'; x.beginPath(); x.moveTo(X(B.t), 6); x.lineTo(X(B.t), h - 6); x.stroke();
+  x.fillStyle = '#aaa'; x.font = '11px IBM Plex Mono'; x.fillText(`${a.side}${a.heavy ? ' heavy' : ''}${a.feint ? ' feint' : ''}${a.combo ? ' combo' : ''}${a.counter ? ' counter' : ''}`, X(a.start) + 2, 11);
+  x.fillText('window', 12, 41); x.fillText('her opening', 12, 59);
+  const lg = B.log;
+  $('#dbgText').textContent = `t ${(B.t / 1000).toFixed(1)} / ${S.len} s · your strength ${B.stamina.toFixed(0)} / ${B.stamina0.toFixed(0)} · hers ${B.composure.toFixed(1)} / ${B.composure0.toFixed(1)} (a clean hit ${N.power(S.body.s).toFixed(1)})\n`
+    + `window ${N.window(S.body.r)} ms · her opening ${N.open(S.body.r)} ms · blows ${lg.blows} dodged ${lg.dodged} blocked ${lg.blocked} landed ${lg.landed} · clean ${lg.clean} / parried ${lg.parried} · bitten ${lg.bit}`;
+}
+
+/* ---------- input: a flick of the mouse dodges (away from the blow; down for a straight one), Space blocks, a click strikes ---------- */
+addEventListener('pointermove', (e) => {
+  const now = performance.now();
+  G.mouse = G.mouse || []; G.mouse.push([now, e.clientX, e.clientY]);
+  while (G.mouse.length && now - G.mouse[0][0] > 70) G.mouse.shift();
+  if (G.phase !== 'fight' || G.mouse.length < 2 || (G.flickAt && now - G.flickAt < 250)) return;
+  const [ta, xa, ya] = G.mouse[0], dt = (now - ta) / 1000; if (dt <= 0) return;
+  const dx = e.clientX - xa, dy = e.clientY - ya;
+  if (Math.abs(dx) / dt >= S.flick && Math.abs(dx) >= innerWidth * 0.04 && Math.abs(dx) > Math.abs(dy)) { G.flickAt = now; defend('dodge', dx > 0 ? 'right' : 'left'); }
+  else if (dy / dt >= S.flick && dy >= innerHeight * 0.05 && dy > Math.abs(dx)) { G.flickAt = now; defend('dodge', 'down'); }
+});
+const stage = $('#stage');
+stage.addEventListener('pointerdown', (e) => { if (e.target.closest('#panel') || e.target.closest('.card') || e.target.closest('#stopPill')) return; if (e.button === 0) strikeNow(); });
+stage.addEventListener('contextmenu', (e) => e.preventDefault());
+addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === ' ') { e.preventDefault(); if (!e.repeat) defend('block'); }
+  if (e.key === 'Escape' && G.phase === 'fight') { G.B.result = 'stopped'; G.phase = 'done'; say('okay. stop. hey— you alright?'); SFX.bell(); }
+  if (e.key === 'h' || e.key === 'H') $('#panel').classList.toggle('hidden');
+});
+$('#stopPill').onclick = () => { if (G.phase === 'fight') { G.B.result = 'stopped'; G.phase = 'done'; say('okay. stop. hey— you alright?'); } };
+
+/* ---------- the panel ---------- */
+function opts(host, items, get, set, label = (x) => x) {
+  host.replaceChildren();
+  for (const it of items) { const b = document.createElement('button'); b.className = 'opt' + (get() === it ? ' on' : ''); b.textContent = label(it); b.onclick = () => { set(it); opts(host, items, get, set, label); }; host.appendChild(b); }
+}
+const slider = (id, get, set, fmt = (v) => String(v)) => { $(`#${id}`).oninput = () => { set(Number($(`#${id}`).value)); $(`#${id}V`).textContent = fmt(get()); bodyNote(); }; };
+function bodyNote() { const b = S.body; $('#bodyNote').textContent = `window ${N.window(b.r)} ms · her opening ${N.open(b.r)} ms · strength ${N.stamina(b.e)} · a clean hit ${N.power(b.s).toFixed(1)} of her ${(N.composure * LV().tough).toFixed(0)}`; }
+opts($('#styles'), Object.keys(STYLES), () => S.style, (v) => { S.style = v; });
+opts($('#levels'), Object.keys(LEVELS), () => S.level, (v) => { S.level = v; bodyNote(); });
+opts($('#handicaps'), Object.keys(HANDICAPS), () => S.handicap, (v) => { S.handicap = v; }, (k) => HANDICAPS[k].label);
+opts($('#builds'), Object.keys(BUILDS), () => { const b = S.body; return Object.keys(BUILDS).find((k) => BUILDS[k][0] === b.s && BUILDS[k][1] === b.e && BUILDS[k][2] === b.r); }, (k) => {
+  [S.body.s, S.body.e, S.body.r] = BUILDS[k]; for (const [id, v] of [['bS', S.body.s], ['bE', S.body.e], ['bR', S.body.r]]) { $(`#${id}`).value = v; $(`#${id}V`).textContent = v; } bodyNote(); });
+slider('mTempo', () => S.manner.tempo, (v) => { S.manner.tempo = v; }); slider('mInt', () => S.manner.intensity, (v) => { S.manner.intensity = v; });
+slider('bS', () => S.body.s, (v) => { S.body.s = v; }); slider('bE', () => S.body.e, (v) => { S.body.e = v; }); slider('bR', () => S.body.r, (v) => { S.body.r = v; });
+const f2 = (v) => v.toFixed(2);
+slider('herH', () => S.her.h, (v) => { S.her.h = v; }, f2); slider('herT', () => S.her.top, (v) => { S.her.top = v; }, f2);
+slider('faceFade', () => S.faceFade, (v) => { S.faceFade = v; }); $('#faceFadeOn').onchange = () => { S.faceFadeOn = $('#faceFadeOn').checked; };
+slider('len', () => S.len, (v) => { S.len = v; }); slider('flick', () => S.flick, (v) => { S.flick = v; });
+$('#crowd').onchange = () => { S.crowd = $('#crowd').checked; };
+$('#fSprite').onchange = () => { const f = $('#fSprite').files[0]; if (!f) return; spriteUrl = URL.createObjectURL(f); const c = curFace; curFace = null; setFace(c ?? 'neutral'); };
+$('#fFaces').onchange = () => {
+  const skipped = [];
+  for (const f of $('#fFaces').files) { const name = f.name.toLowerCase(), label = LABELS.find((l) => name.startsWith(l)); if (!label) { skipped.push(f.name); continue; } (faces[label] ??= []).push(URL.createObjectURL(f)); }
+  $('#facesNote').textContent = `faces: ${Object.entries(faces).map(([k, v]) => `${k}${v.length > 1 ? ` ×${v.length}` : ''}`).join(', ')}${skipped.length ? ` · not a label: ${skipped.join(', ')}` : ''}`;
+  const c = curFace; curFace = null; setFace(c ?? 'neutral');
+};
+$('#calibBtn').onclick = () => { $('#calib').textContent = 'running…'; setTimeout(() => { $('#calib').textContent = calibText(cfgNow(), `${S.style} · ${S.level} · ${S.handicap} · body ${S.body.s}/${S.body.e}/${S.body.r}`); }, 30); };
+$('#calibAll').onclick = () => { $('#calib').textContent = 'running…'; setTimeout(() => { $('#calib').textContent = authorCases(); }, 30); };
+function authorCases() {
+  const base = { style: STYLES.neutral, level: LEVELS.average, handicap: HANDICAPS.none, manner: { tempo: 0, intensity: 0 }, len: S.len };
+  return calibText({ ...base, body: { s: 3, e: 3, r: 2 } }, 'an average commander (3/3/2) · average soldier, neutral, no handicap') + '\n\n'
+    + calibText({ ...base, body: { s: 5, e: 5, r: 4 } }, 'a hardened commander (5/5/4) · the same')
+    + '\n\nthe author: average: a draw from the top 10–15 %, never a win; hardened: a win from the top 5 %, a draw from the top 20–25 %.';
+}
+$('#snd').onchange = () => { S.sound = $('#snd').checked; if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
+$('#vol').oninput = () => { S.vol = Number($('#vol').value); if (A.master) A.master.gain.value = S.sound ? S.vol : 0; };
+$('#accent').oninput = () => document.documentElement.style.setProperty('--her', $('#accent').value);
+for (const k of Object.keys(ASSETS.bgs)) { const o = document.createElement('option'); o.value = k; o.textContent = k; $('#bg').appendChild(o); }
+$('#bg').onchange = () => { $('#backdrop').style.backgroundImage = `url(${ASSETS.bgs[$('#bg').value]})`; };
+$('#backdrop').style.backgroundImage = `url(${ASSETS.bgs.loc_training_yard_day})`;
+$('#dbg').onchange = () => { S.debug = $('#dbg').checked; $('#debug').style.display = S.debug ? 'block' : 'none'; };
+$('#rm').checked = S.reduced; $('#rm').onchange = () => { S.reduced = $('#rm').checked; };
+$('#restart').onclick = () => begin();
+$('#againBtn').onclick = () => begin();
+$('#go').onclick = async () => { audioInit(); await A.ctx.resume(); $('#start').style.display = 'none'; await loadSamples(); begin(); };
+bodyNote(); setFace('neutral');
+requestAnimationFrame(frame);
+
+/* test hooks (prototype only) */
+window.__S = S; window.__G = () => G; window.__bot = botBout; window.__calib = (cfg) => calibrate(cfg ?? cfgNow()); window.__authorCases = authorCases; window.__N = N; window.__cfg = cfgNow;
+window.__STYLES = STYLES; window.__LEVELS = LEVELS; window.__HANDICAPS = HANDICAPS;
+</script>
+</body>
+</html>
