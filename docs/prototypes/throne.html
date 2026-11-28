@@ -233,6 +233,9 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
   <label>visitor <select id="visitorSel"><option value="business">with business (she decides about the commander)</option><option value="aware">who knows (may rest her boots too)</option><option value="unaware">unaware (silence, a risk)</option></select></label>
   <label><input type="checkbox" id="bodyFollows" checked> her body follows her lines</label>
   <label><input type="checkbox" id="propsOn" checked> her mug, her signing, her rising, a visitor (by themselves)</label>
+  <label><input type="checkbox" id="flatOn"> flatulence (content category, off by default; human_chair only)</label>
+  <div class="row"><button class="opt" id="flatNowT">the burst now (F)</button></div>
+  <div class="note">P16c ruling 13: a very rare single event of her seat on the commander’s back, at most once a session by her style (a hash), on purpose or by accident by style; felt and heard through the back, the smell a moment later; a flinch to hold down; a visitor hears it; regal expects thanks.</div>
   <label>drain in a long hold <input type="range" id="frameDrain" min="0.15" max="1" step="0.05" value="0.35"><span id="frameDrainV">0.35</span></label>
   <div class="note">weight.html was tuned for a 45 s session (her full weight lasts about 20 s without your own shifts); the throne is a long hold, so its drain is scaled. 1 = weight.html's numbers.</div>
   <label>legs art (legs_astride) <input type="file" id="astrideFile" accept="image/*" style="width:170px"></label>
@@ -572,7 +575,7 @@ const BASE_EVENTS = [
 <script>
 'use strict';
 /* ---------- settings (the panel) ---------- */
-const S = { frameDrain: 0.35, legsArt: null, legsArtR: null, legsFeet: 'left', aH: 1.0, aX: 0.08, aTop: -0.1, aTilt: 8, throne: true, contact: 'human_chair', visitorKind: 'business', bodyFollows: true, props: true, only: '', inner: 'weight', closeH: 0.62, closeY: 0.47, zones: null, view: 'legs', blind: false, act: 'reading_reports', legVar: 'planted', style: 'neutral', talk: 'terse', regard: 'neutral', hold: 'keeping', mood: 'calm', seed: 37, force: '',
+const S = { frameDrain: 0.35, legsArt: null, legsArtR: null, legsFeet: 'left', aH: 1.0, aX: 0.08, aTop: -0.1, aTilt: 8, throne: true, contact: 'human_chair', visitorKind: 'business', bodyFollows: true, props: true, flat: false, only: '', inner: 'weight', closeH: 0.62, closeY: 0.47, zones: null, view: 'legs', blind: false, act: 'reading_reports', legVar: 'planted', style: 'neutral', talk: 'terse', regard: 'neutral', hold: 'keeping', mood: 'calm', seed: 37, force: '',
   legsW: 0.62, legsB: 0.9, feetW: 0.56, feetB: 0.86, feetTilt: 6, raisedW: 0.62, raisedB: 0.9, floorShade: 0.55, knows: false, public: false, reckless: false, phases: 3, phaseLen: 90, start: 1080, level: 1, rain: true, stay: true,
   sound: true, murmur: true, vol: 0.7, debug: false, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
 const V = () => VIEWS[S.inner === 'weight' ? 'footrest' : S.view], ACT = () => ACTS[S.act], ST = () => STYLES[S.style];
@@ -1111,6 +1114,7 @@ function planPeaks(i) {
     after(len * rand(0.12, 0.22), throneCup);
     after(len * rand(0.55, 0.7), throneSign);
     if (h % 2 === 0) after(len * rand(0.75, 0.85), throneRise);
+    if (S.flat && S.contact === 'human_chair' && i === fnv(`${S.seed}:burstPhase`) % S.phases && fnvU(`${S.seed}:burst:${S.style}`) < (TFLAT.share[S.style] ?? 0.2)) after(len * (0.3 + 0.4 * fnvU(`${S.seed}:burstAt`)), () => throneBurst()); // P16c BURST
   }
   if (i === 0 && h < 70 && !throneOn()) after(len * rand(0.45, 0.7), falseAlarm);
   if (i >= 1 && !act.call && !act.visitor && !act.sleep && !last) after(len * rand(0.25, 0.4), h < 55 && !act.music ? incomingCall : visitorPeak);
@@ -2157,7 +2161,8 @@ function throneUpdate(dt) {
   if (G.flinch) {
     if (err > WT.tol * 1.6 || !HOLD.on) G.flinch.bad = true;
     if (G.t > G.flinch.until) {
-      if (G.flinch.bad) {
+      if (G.flinch.burst) { burstFlinchDone(G.flinch.bad); G.flinch = null; } // P16c BURST: its own count and her answer
+      else if (G.flinch.bad) {
         G.stats.flinches = (G.stats.flinches ?? 0) + 1;
         bodyNoise('jerk', 0.4, true);
         if (G.visitor && !G.visitor.aware && !G.visitor.heard && Math.random() < 0.35) { G.visitor.heard = true; G.stats.heardByVisitor += 1; visitorHeard(); }
@@ -2180,6 +2185,7 @@ function throneUpdate(dt) {
       if (!G.sign.redo) { G.sign.redo = true; G.sign.t = 0; G.sign.skid = 0; after(900, () => { if (G.sign) play('pencil_write', { g: 0.32 }); }); } else G.sign = null;
     } else if (G.sign.t > G.sign.dur) { G.stats.signed = (G.stats.signed ?? 0) + 1; play('sheet', { g: 0.3 }); sense('A last stroke. She lifts the sheet away.', 'body'); G.sign = null; }
   }
+  if (G.burstThank && G.t > G.burstThank) { G.burstThank = null; G.stats.burstUnthanked = true; say(tfLine('ungrateful'), 'commander'); W.pressure = Math.max(W.pressure, 1.5); W.pressureUntil = W.clock + 2 * WT.BEAT; W_SFX.press(0.4); } // P16c BURST
   if (G.visitorFeet && G.visitor) { W.pressure = Math.max(W.pressure, 1.35); W.pressureUntil = W.clock + 600; }
   else if (G.visitorFeet && !G.visitor) { G.visitorFeet = false; sense('Her visitor’s boots leave your back.', 'body'); }
 }
@@ -2221,6 +2227,80 @@ function throneThank() {
   say(tLine('thank'), 'commander');
   G.thank = { until: G.t + 9000 }; G.stats.thankAsked = true;
   setTimeout(() => { if (G.thank) { G.thank = null; say(tLine('noThanks'), 'commander'); G.stats.thanked = false; setTimeout(showDigest, 2600); } }, 9000);
+}
+
+/* ======================================================================== THE BURST ON THE THRONE (P16c rulings 12–13: `flatulence`)
+   saturation.html's burst, on her seat on the commander's back (`human_chair` only): at most once a session by her style's share (a hash of
+   the session: no draw), at a hashed time in one phase; off unless the category is on. Deliberate for some styles (a word before), an
+   accident for others (a word after). Felt and heard through the back (saturation.html's buzz, less muffled), the smell a moment later; the
+   body flinches (a kick to the balance, throneFlinch's: hold it down within 0.8 s or it shows); a visitor in the room hears it (one who knows
+   laughs, one who does not wonders, and she puts it on the chair); regal gives it as a favour and expects thanks, typed, within 10 s. */
+const TFLAT = {
+  share: { neutral: 0.2, affectionate: 0.12, playful: 0.45, cruel: 0.55, ritual: 0.05, clinical: 0.25, cold: 0.2, regal: 0.1, possessive: 0.3 },
+  meant: ['playful', 'cruel', 'clinical', 'regal', 'possessive'], kick: 1.8, thankMs: 10000,
+};
+const TFLAT_LINES = {
+  before: { cruel: ['hold still. this one’s for you.'], playful: ['don’t move~ hehe.'], clinical: ['a test of composure.'], regal: ['the chair will be honoured.'], possessive: ['mine to sit on. all of it.'] },
+  after: { neutral: ['…excuse me.'], affectionate: ['oh — sorry, sorry.'], ritual: ['…'], cold: [''], playful: ['hehe~'], cruel: ['enjoy.'], clinical: ['note your reaction.'], regal: ['you may thank me.'], possessive: ['you’re mine. even that.'] },
+  held: { neutral: [''], affectionate: ['good. thank you for not moving.'], ritual: ['composure kept.'], cold: [''], playful: ['not even a twitch? boring~'], cruel: ['good furniture.'], clinical: ['no reaction. noted.'], regal: ['a well-bred chair.'], possessive: ['good. stay.'] },
+  flinched: { neutral: ['still.'], affectionate: ['sorry. stay still for me.'], ritual: ['composure.'], cold: ['still.'], playful: ['ha! you felt that~'], cruel: ['did the chair just move?'], clinical: ['a reaction. noted.'], regal: ['chairs do not squirm.'], possessive: ['stay put.'] },
+  thanked: { regal: ['gracious.'] }, ungrateful: { regal: ['no thanks? a chair with no manners.'] },
+  aware: ['…charming.', 'lucky chair.'], unaware: ['…did something just…?'], deflect: { neutral: ['the chair creaks.'], regal: ['the chair is old.'], cruel: ['the chair. it does that.'], playful: ['the chair did it~'], cold: [''] },
+};
+const tfLine = (kind) => { const t = TFLAT_LINES[kind]; const l = Array.isArray(t) ? t : (t[S.style] ?? t.neutral ?? ['']); return pick(l); };
+const fnvU = (str) => fnv(str) / 4294967296;
+/* the sound: saturation.html's buzz (round 2), through her seat and the commander's back: a little less muffled */
+function burstSound() {
+  if (!A.ctx) return;
+  const ctx = A.ctx, t = ctx.currentTime + 0.02, len = rand(0.75, 1.3), f0 = rand(92, 128), N = 96;
+  const fc = new Float32Array(N), gc = new Float32Array(N), ph = rand(0, 6.28), flut = rand(24, 32);
+  for (let i = 0; i < N; i++) {
+    const x = i / (N - 1);
+    fc[i] = f0 * (1 - 0.38 * x) * (1 + 0.07 * Math.sin(x * 37 + ph) + rand(-0.05, 0.05));
+    const env = Math.min(1, x * 14) * Math.pow(1 - x, 0.5);
+    const sput = x > 0.55 && ((x * 11 + ph) % 1) < 0.38 ? 0.12 : 1;
+    gc[i] = 0.24 * env * sput * (0.72 + 0.28 * Math.sin(2 * Math.PI * flut * x * len));
+  }
+  const o1 = ctx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.setValueCurveAtTime(fc, t, len);
+  const o2 = ctx.createOscillator(); o2.type = 'square'; o2.frequency.setValueCurveAtTime(fc.map((v) => v * 1.012), t, len);
+  const m1 = ctx.createGain(); m1.gain.value = 0.6; const m2 = ctx.createGain(); m2.gain.value = 0.35;
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 3.2; lp.frequency.setValueAtTime(1400, t); lp.frequency.linearRampToValueAtTime(650, t + len);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.setValueCurveAtTime(gc, t + 0.001, len);
+  o1.connect(m1); o2.connect(m2); m1.connect(lp); m2.connect(lp); lp.connect(g); g.connect(A.body);
+  o1.start(t); o2.start(t); o1.stop(t + len + 0.05); o2.stop(t + len + 0.05);
+  noise({ at: 0.02, dur: len, type: 'bandpass', f: 320, f2: 200, q: 0.7, gain: 0.045, attack: 0.03, dest: A.body });
+  thump(0, 0.22, 68);
+}
+function throneBurst(now = false) {
+  if (!throneOn() || G.phase !== 'loop' || G.risen || G.burstDone || S.contact !== 'human_chair' || (!now && !S.flat)) return;
+  G.burstDone = true;
+  const meant = TFLAT.meant.includes(S.style);
+  const go = () => {
+    if (G.phase !== 'loop' || !W) return;
+    G.stats.burst = meant ? 'meant' : 'accident';
+    burstSound(); W.jolt = Math.max(W.jolt, 0.5); W.pressure = Math.max(W.pressure, 1.3); W.pressureUntil = W.clock + WT.BEAT;
+    sense('Her weight shifts on your back. A low, buzzing rasp, right on top of you.', 'body');
+    after(2200, () => sense('Then the smell reaches you, thick and sour.', 'body'));
+    // the body flinches: throneFlinch's kick, counted apart
+    if (W && !W.over && !G.flinch) { W.ctlV += (Math.random() < 0.5 ? -1 : 1) * TFLAT.kick; G.flinch = { until: G.t + 800, bad: false, burst: true }; }
+    if (G.visitor) {
+      G.stats.burstVisitor = true;
+      if (G.visitor.aware) after(900, () => otherSay(pick(TFLAT_LINES.aware), 'room', G.visitor?.name ?? ''));
+      else after(900, () => { otherSay(pick(TFLAT_LINES.unaware), 'room', G.visitor?.name ?? ''); after(1600, () => say(tfLine('deflect'), 'other')); });
+    }
+    if (S.style === 'regal') G.burstThank = G.t + TFLAT.thankMs;
+    if (!meant || Math.random() < 0.5) after(1200, () => say(tfLine('after'), 'commander'));
+  };
+  if (meant) { say(tfLine('before'), 'commander'); after(900, go); } else go();
+}
+function burstFlinchDone(bad) {
+  if (bad) { G.stats.burstFlinched = true; bodyNoise('jerk', 0.4, true); }
+  const l = tfLine(bad ? 'flinched' : 'held'); if (l) after(600, () => say(l, 'commander'));
+}
+function burstThanks(v) {
+  if (!G.burstThank) return false;
+  if (!/thank/i.test(v)) return false;
+  G.burstThank = null; G.stats.burstThanked = true; setTimeout(() => say(tfLine('thanked'), 'commander'), 700); return true;
 }
 
 /* ---------- the end ---------- */
@@ -2540,6 +2620,7 @@ function showDigest() {
     t.push(`She sat on the commander${S.contact === 'footrest' ? ' (her feet on the commander’s back)' : ''}; her body followed her talk ${s.bodyCues ?? 0} times.`);
     if (s.landings) t.push(`She got up and sat back down ${s.landings} time${s.landings > 1 ? 's' : ''}${s.hardLandings ? `, ${s.hardLandings} landing hard` : ''}.`);
     if (s.spills) t.push('Her mug spilled on the commander.');
+    if (s.burst) t.push(`She let one go on the commander’s back${s.burst === 'meant' ? ', on purpose' : ', by accident'}; the commander ${s.burstFlinched ? 'flinched under her' : 'held still'}${s.burstThanked ? ' and thanked her' : s.burstUnthanked ? ' and did not thank her' : ''}${s.burstVisitor ? '; her visitor heard it' : ''}.`); // P16c BURST
     if (s.skids) t.push(`The pen skidded while she signed${s.skids > 1 ? ` ${s.skids} times` : ''}.`);
     if (s.visitors) t.push(`${s.visitors} visitor${s.visitors > 1 ? 's' : ''} came while she sat${s.visitorFeet ? '; one rested her boots on the commander too' : ''}${s.decisions ? `; she decided ${s.decisions} of the commander’s matters over the commander’s head` : ''}.`);
     if (s.flinches) t.push(`The commander flinched when she talked about the commander${s.flinches > 1 ? ` ${s.flinches} times` : ''}.`);
@@ -2591,6 +2672,7 @@ $('#cmd').addEventListener('keydown', (e) => {
   const v = $('#cmd').value.trim(); $('#cmd').value = '';
   if (!v) return;
   setReply(`<span class="you">“${v.replace(/[<&]/g, (q) => (q === '<' ? '&lt;' : '&amp;'))}”</span>`, 0.35);
+  if (burstThanks(v)) return; // P16c BURST
   if (G.thank) { const ok = /thank/i.test(v); G.thank = null; G.stats.thanked = ok; setTimeout(() => say(tLine(ok ? 'thanked' : 'noThanks'), 'commander'), 700); setTimeout(showDigest, 3200); return; }
   if (G.phase !== 'loop') return;
   if (G.ask) { G.ask = null; G.footUpUntil = G.t + 600; G.stats.answered += 1; setTimeout(() => say(pick(ST().askReply), 'commander'), 900); bodyNoise('speak', 0, false); return; }
@@ -2699,6 +2781,8 @@ $('#contactSel').value = S.contact; $('#contactSel').onchange = (e) => { S.conta
 $('#visitorSel').value = S.visitorKind; $('#visitorSel').onchange = (e) => { S.visitorKind = e.target.value; };
 $('#bodyFollows').onchange = (e) => { S.bodyFollows = e.target.checked; };
 $('#propsOn').onchange = (e) => { S.props = e.target.checked; };
+$('#flatOn').onchange = (e) => { S.flat = e.target.checked; }; $('#flatNowT').onclick = () => throneBurst(true); // P16c BURST
+addEventListener('keydown', (e) => { if ((e.key === 'f' || e.key === 'F') && !/^(input|textarea|select)$/i.test(e.target.tagName)) throneBurst(true); });
 $('#tVisitor').onclick = () => throneVisitor(); $('#tCup').onclick = throneCup; $('#tSign').onclick = throneSign; $('#tRise').onclick = throneRise;
 
 bindRange('frameDrain', 'frameDrain'); bindRange('aH', 'aH'); bindRange('aX', 'aX'); bindRange('aTop', 'aTop'); bindRange('aTilt', 'aTilt');
