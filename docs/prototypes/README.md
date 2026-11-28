@@ -58,7 +58,43 @@ npm run proto -- foot_care
 npm run proto -- sparring
 ```
 
+```bash
+npm run proto -- headlock
+```
+
 Each writes `.superpowers/prototypes/<name>.html` (ignored by git): one self-contained page with the fonts, backdrops and a placeholder sprite (`tests/fixtures/layout/sprite.svg`). `--sprite <file>` uses any local sprite; **never commit the author's art**. Open the page in Chromium. `H` hides the panel; `window.__S` (settings), `window.__G()` (state) and `window.__forceO` (force the opening, 0–1, `null` to release) exist for screenshots and tests.
+
+## `headlock.html` — the hold and the escape from it (the sparring hold: `smothered_armpit`, breath and saturation together; also `face_to_bottom`)
+
+*To be ported in P16c with the sparring game and its finishers (P16c rulings 9–11, 14–15): the instrument of the pair breath + saturation (today such a pair has no instrument and falls back to the physics card), checked by its `fidelity.json`.*
+
+Approved by the author on 2026-11-28 after rounds 1–2 ("everything is in order"; the lines approved in general). The defaults of the file are the approved state. Run it with `npm run proto -- headlock`. **It is `saturation.html` as approved, copied whole, plus the hold layer:** search the file for `THE HOLD` and the hooks marked `HOLD:`. Where the scent, the dark shapes, the head, her orders and her questions are concerned, port `saturation.html`; this section covers what the hold adds.
+
+### Normative (port exactly)
+
+- **The air** (`holdUpdate`, `AIR_DRAIN`, `SEAL_DRAIN`, `AIR_NOSE`, `AIR_MOUTH`, `openK`): breath.html's gauge (14 a beat), drained by the contact's seal (`firm` 1, `leaky` 0.7) and 1.5× while straining; a breath brings air only as far as her arm lets it in: `openK = smooth(0.18, 0.6, o)` of the dark shape's opening (nose 0.045 a ms, mouth 0.03 a ms at a full opening); every nose breath is her (saturation's head fills as before). The vision of the air (`holdRender`): a tunnel closing on the face from 70 % to 22 %, its rim pulsing red with the heart; the heart (`64 → 150 bpm`) from 70 air down.
+- **Her grip sets the opening** (`holdRest`; the one changed line of saturation's `updateLoop`): sealed at 0.2 between her windows (0.12 for 2.5 s after a failed attempt), a window opens it to 0.62 (a false one to 0.45 and snaps shut when breathed for), her slack adds 0.16, straining 0.05 × effort, free 1.4.
+- **Her windows** (`HOLD[].win`, `open`, `fake`, `count`): her rhythm by style; ritual and drill say "now.".
+- **Her slack** (`HOLD[].slack`, `slackMs`): a laugh to the watchers with her line, her arm resettling (cloth), a word; ×0.8 as often with watchers; for `slackMs` the light leaks past her arm (`#leak`, a warm light at the open side, 160 ms in).
+- **Fight** (`strainStart`, `strainEnd`, `breakFree`, `clampDown`): F held strains (effort `easeOut(t / 700)`, the dark shakes, a low strain hum, she feels it outside her slack); released with effort ≥ 0.25 it is an attempt: `effort^1.5 × (slack ? 0.5 : 0.08) × clamp(0.55 + 0.15 × (strength − 3), 0.2, 0.95) / her grip` (about 27 % for an average body in her slack, 43 % for a hardened one, against an average grip), −4 air; failed: she clamps (sealed 2.5 s, −8 air, two presses, her line); broken free: the arm lifts (the ceiling shows), her line, and she may take the commander back once (`HOLD[].regrab`, after 0.9 s).
+- **Let it happen**: nothing special; she lets go by her air limit (`HOLD[].letGoAt`) or the bout's time.
+- **Submit** (`holdBreathEnd`, `holdSaid`, `yieldAct`, `YIELD_WORDS`): limp after 4 s with no strain and no mouth breath (named once); then a deep breath (≥ 0.9, not the body's forced one) at her hollow (`center` on the seat), or words said into her (`I yield`, `yours`, `you win`, `mercy`, `sorry` …; shown muffled); her answer by style (cruel presses, the others ease off). Fighting after it takes it back.
+- **The tap** (`tapOut`, `HOLD[].until`): `signal` lets go at once, `limit` at the second tap, `late` only once the air is under 30.
+- **The stance** (`stanceOf`): `fought` (an attempt, a break, two mouth breaths she heard, a submission taken back), `submitted`, `tapped`, else `let_it_happen`; a lost game (blackout, or let go at her limit without a stance) reads "gave in" (P16c ruling 14).
+- **The motive** (`MOTIVES`: `put_in_place`, `punishment`, `play`, `grievance`, `freedom`) and what each stance means for her, for an offence and for the watchers: the words of P16c ruling 15; the engine sets the numbers.
+- **Her lines** (`HL`, `HL_MORE`, the hold's own `LINES` rows): `entry` by motive and style, `watchers`, `clamp`, `escaped`, `regrab`, `submitted` (apart for a punishment), `tapLetGo`, `tapIgnored`, `end` by stance, `blackout`; the scent game's orders, cough, need and away worded for a won bout. Twelve styles (the six saturation.html had not met are added to its `STYLES`, `LINES.answer` and `HOLD`). Placeholders for the cue pool, approved in general.
+
+### Prototype only (do not port as is)
+
+- The panel's hold section (the motive, the watchers, her grip, the commander's strength, the seal), the start overlay, the summary card with its words, the `__` hooks.
+- `HOLD`'s numbers and `GRIP` as drafts for her profile and her combatant; `Math.random()` (the engine hashes: no draw).
+
+### Open engine questions (decide in the plan)
+
+- **The pair's instrument:** today `breathMatches` and `scentMatches` refuse a pair whose second takes the commander's input, so the hold plays as the physics card; this instrument takes the pair (breath main, saturation second) for `smothered_armpit` and `face_to_bottom`.
+- **The motive** is a field of the wager (`motive`), set by her challenge (her reading, an open offence, her style) or chosen by the commander in the challenge form (or read from the stake); a punishment bout is a P16 punishment row.
+- **The stance** reaches the engine (an input at the hold's end) and decides Regard, the offence and the watchers' regard by motive; the digest says it in words (P16c rulings 5, 14).
+- **Memory check:** a punishment fought is an offence (her discipline remembers it); a submission before watchers is P15's witness path; the rest is bookkeeping.
 
 ## `sparring.html` — sparring: a timing duel in the yard (P9c's sparring wager as a mini-game; P16c)
 
