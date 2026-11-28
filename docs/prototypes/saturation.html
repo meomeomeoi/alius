@@ -268,6 +268,19 @@ const LINES = {
   need: ['breathe.'], end: ['enough. for now.'], stop: ['okay. come up.'],
 };
 
+/* P16c BURST round 2: */ /* the styles saturation.html had not met (round 2: cold, possessive, obsessive, drill, regal, vindictive): their rows in the scent game, in the hold
+   and their lines; drafts, as the others */
+Object.assign(STYLES, {
+  cold:       { every: [4, 6], orders: { still: 2, deeper: 2, here: 1 }, ask: ['{p}. report.'], askEvery: [28, 36], rule: 'any', mouth: 'mild', note: 'few words, no warmth; she expects nothing said' },
+  possessive: { every: [3, 4], orders: { here: 3, deeper: 2, still: 1 }, ask: ['{p}. whose is it?', 'tell me {p} is yours to breathe. only yours.'], askEvery: [22, 30], rule: 'warm', mouth: 'punish', note: 'wants to hear it is hers and familiar; the mouth is taking air that is hers' },
+  obsessive:  { every: [2, 4], orders: { here: 3, deeper: 3 }, ask: ['{p}. you love it. say it.', 'tell me {p} is everything.'], askEvery: [18, 26], rule: 'admit', mouth: 'punish', note: 'wants it admitted as overwhelming; she never wants it to end' },
+  drill:      { every: [3, 3], cycle: ['deeper', 'still', 'here'], ask: ['report! {p}: where and how strong!'], askEvery: [22, 22], rule: 'place_and_band', mouth: 'permission', note: 'a fixed drill (deeper, still, a place); wants the report exact' },
+  regal:      { every: [4, 6], orders: { still: 2, here: 2, deeper: 1 }, ask: ['{p}. describe the privilege.'], askEvery: [24, 32], rule: 'warm', mouth: 'permission', note: 'wants it received as an honour; the mouth only by her leave' },
+  vindictive: { every: [2, 3], orders: { deeper: 3, still: 2 }, ask: ['{p}. how bad is it? and you deserve it, say it.'], askEvery: [20, 26], rule: 'bad_and_want', mouth: 'punish', note: 'wants it said that it is bad, and deserved' },
+});
+Object.assign(LINES.answer.ok, { cold: ['fine.'], possessive: ['good. mine.'], obsessive: ['yes. yes.'], drill: ['correct! again!'], regal: ['acceptable.'], vindictive: ['good. remember that.'] });
+Object.assign(LINES.answer.bad, { cold: ['no.'], possessive: ['wrong. it’s mine. say it.'], obsessive: ['no. you love it. say it.'], drill: ['wrong! again!'], regal: ['you misspeak.'], vindictive: ['wrong. you deserve worse.'] });
+
 /* ---------- settings ---------- */
 const S = { stretch: 'natural', breathRec: true, look: 'motes', contact: 'feet_on_face', band: 'strong', color: 'sweat', stage: 'enduring', tol: 20, style: 'neutral', task: 'reading', name: 'Vela',
   layers: { orders: true, words: true, drift: true, tint: true, need: true }, flat: false, sound: true, vol: 0.7, debug: false, angle: -14, side: { wedge: 'right' }, len: 90,
@@ -318,8 +331,29 @@ const SFX = {
   exhale: (d) => exhaleSound(d),
   cough: () => { for (let i = 0; i < 3; i++) { noise({ at: i * 0.22, dur: 0.16, f: 500, f2: 260, q: 0.8, gain: 0.4, attack: 0.005, dest: A.body }); thump(i * 0.22, 0.35, 90); } },
   page: () => noise({ dur: 0.32, f: 2400, f2: 1200, q: 0.8, gain: 0.05, attack: 0.05 }), // she turns a page: she is busy with it
-  /* P16c BURST: muffled against the face: a low fluttering band (pulses at about 26 Hz), a thump under it */
-  flat: () => { const len = rand(0.55, 1.1), n = Math.floor(len / 0.038); for (let i = 0; i < n; i++) { const env = Math.sin(Math.PI * Math.min(1, (i + 1) / n)) * (0.7 + 0.3 * Math.random()); noise({ at: i * 0.038 + Math.random() * 0.006, dur: 0.055, type: 'bandpass', f: rand(105, 160), q: 2.2, gain: 0.32 * env + 0.02, attack: 0.008, dest: A.body }); } thump(0, 0.3, 70); },
+  /* P16c BURST (round 2: a buzz, so it reads as what it is): a low sawtooth and square pair whose pitch wanders and falls with the jitter of
+     the lips of it, a fluttering envelope that sputters at the end, through a resonant lowpass closing as it goes; a breath of noise; a thump */
+  flat: () => {
+    if (!A.ctx) return;
+    const ctx = A.ctx, t = ctx.currentTime + 0.02, len = rand(0.75, 1.3), f0 = rand(92, 128), N = 96;
+    const fc = new Float32Array(N), gc = new Float32Array(N), ph = rand(0, 6.28), flut = rand(24, 32);
+    for (let i = 0; i < N; i++) {
+      const x = i / (N - 1);
+      fc[i] = f0 * (1 - 0.38 * x) * (1 + 0.07 * Math.sin(x * 37 + ph) + rand(-0.05, 0.05));
+      const env = Math.min(1, x * 14) * Math.pow(1 - x, 0.5);
+      const sput = x > 0.55 && ((x * 11 + ph) % 1) < 0.38 ? 0.12 : 1;
+      gc[i] = 0.26 * env * sput * (0.72 + 0.28 * Math.sin(2 * Math.PI * flut * x * len));
+    }
+    const o1 = ctx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.setValueCurveAtTime(fc, t, len);
+    const o2 = ctx.createOscillator(); o2.type = 'square'; o2.frequency.setValueCurveAtTime(fc.map((v) => v * 1.012), t, len);
+    const m1 = ctx.createGain(); m1.gain.value = 0.6; const m2 = ctx.createGain(); m2.gain.value = 0.35;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 3.2; lp.frequency.setValueAtTime(950, t); lp.frequency.linearRampToValueAtTime(420, t + len);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.setValueCurveAtTime(gc, t + 0.001, len);
+    o1.connect(m1); o2.connect(m2); m1.connect(lp); m2.connect(lp); lp.connect(g); g.connect(A.body);
+    o1.start(t); o2.start(t); o1.stop(t + len + 0.05); o2.stop(t + len + 0.05);
+    noise({ at: 0.02, dur: len, type: 'bandpass', f: 320, f2: 200, q: 0.7, gain: 0.045, attack: 0.03, dest: A.body });
+    thump(0, 0.22, 68);
+  },
   chime: () => { if (!A.ctx) return; const o = A.ctx.createOscillator(); o.frequency.value = 880; const g = A.ctx.createGain(); const t = A.ctx.currentTime; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6); o.connect(g); g.connect(A.world); o.start(t); o.stop(t + 0.7); },
 };
 /* the breath sounds: a nose inhale that brightens as it deepens, a mouth breath that is louder and lower */
@@ -536,7 +570,7 @@ function fresh() {
     inhaling: false, depth: 0, peak: 0, mouth: false, mouthMs: 0, mouthTick: 0, sinceBreath: 0, reflexCd: 0, lost: 0, forcedDeep: false,
     head: [], ambAt: 0, wordsTaken: 0, askPlace: null,
     order: null, nextOrderAt: 3 * BEAT, nextAskAt: rand(14000, 18000), att: 'busy', awayMs: 0, lie: 0, beat: -1,
-    flat: null, flatAt: null, flatDone: false, counts: { flats: 0, flatTook: 0, flatCough: 0, flatMouth: 0, flatHeld: 0, liesFound: 0, breaths: 0, deep: 0, coughs: 0, lost: 0, mouthWords: 0, noticed: 0, ordersOk: 0, ordersBad: 0, answered: 0, wrong: 0, empty: 0, lies: 0, caught: 0, away: 0 },
+    flat: null, flatAt: null, flatDone: false, flatThank: null, counts: { flatThanked: 0, flatUnthanked: 0, flats: 0, flatTook: 0, flatCough: 0, flatMouth: 0, flatHeld: 0, liesFound: 0, breaths: 0, deep: 0, coughs: 0, lost: 0, mouthWords: 0, noticed: 0, ordersOk: 0, ordersBad: 0, answered: 0, wrong: 0, empty: 0, lies: 0, caught: 0, away: 0 },
     o: 0.35, sp: [{ L: 0.35, v: 0, k: 58 }, { L: 0.35, v: 0, k: 74 }], zones: [], I: 0, hereZone: null, shake: 0, endAt: S.len * 1000 };
 }
 G = fresh();
@@ -688,7 +722,7 @@ function intensityAt(p) {
 }
 
 /* ---------- the rhythm of the game ---------- */
-const stim = () => BAND[S.band] / 1.5 * (G && G.flat ? FLAT.stim : 1); // her band, 0.33 … 1.33 (P16c BURST: × 1.5 while the air is thick)
+const stim = () => BAND[S.band] / 1.5 * (G && G.flat ? FLAT.stim : 1); // her band, 0.33 … 1.33 (P16c BURST: × FLAT.stim while the air is thick)
 const tolT = () => 0.3 + (S.tol / 100) * 0.8;                 // the reflex threshold in stimulus units (TUNING.stimuli.reflexMult reading)
 const tolDepth = () => tolT() / Math.max(0.05, G.I * stim()); // where on the arc the threshold falls, here
 const capacity = () => 6 + Math.round(S.tol / 12);            // what the head holds: tolerance is the saturation capacity (P15a §16.8)
@@ -918,21 +952,24 @@ function overflow() {
    A very rare single event of her seat (`face_to_bottom`): at most once a session, by her style's share (a hash of the session: no draw in the
    engine), at a hashed time in the middle half of it; off unless the category is on and her limits allow it. Deliberate for some styles (a word
    before), an accident for others (a word after). For FLAT.len the air at the face is all her (+FLAT.I to the strength, her band × FLAT.stim),
-   the head fills with its own words, she feels a mouth breath twice as surely; the commander breathes it in (a deep nose breath, ≥ FLAT.took),
+   the head fills with its own words, she feels a mouth breath twice as surely; the commander breathes it in (a nose breath of depth ≥ FLAT.took),
    coughs (the reflex), takes the mouth, or holds it out (no breath at all in it: the need to breathe still comes at 7 s). Her answer by style. */
 const FLAT = {
-  share: { neutral: 0.2, affectionate: 0.12, playful: 0.45, cruel: 0.55, ritual: 0.05, clinical: 0.25, cold: 0.2, regal: 0.3, drill: 0.1, possessive: 0.3, vindictive: 0.4, obsessive: 0.2 },
+  share: { neutral: 0.2, affectionate: 0.12, playful: 0.45, cruel: 0.55, ritual: 0.05, clinical: 0.25, cold: 0.2, regal: 0.1, drill: 0.1, possessive: 0.3, vindictive: 0.4, obsessive: 0.2 }, // round 2: regal small (a gift to be grateful for)
   meant: ['playful', 'cruel', 'clinical', 'regal', 'vindictive', 'possessive'], // deliberate: a word before (the others: an accident, a word after)
-  when: [0.25, 0.75], len: 9000, I: 0.4, stim: 1.5, heard: 2, took: 0.9, ambient: 1200,
+  when: [0.25, 0.75], len: 9000, I: 0.4, stim: 1.3, heard: 2, took: 0.75, ambient: 1200, // round 2: stim 1.5 → 1.3, took 0.9 → 0.75 (breathing it in was out of reach below a high tolerance)
+  thanks: ['regal'], thankMs: 10000, // round 2 (author): regal gives it as a favour: she expects thanks, typed, within 10 s
 };
 const FLAT_W = ['thick', 'sour', 'hot', 'heavy', 'it clings', 'all of her', 'close', 'stale', 'warm, and wrong', 'everywhere', 'no air', 'her'];
 const FLAT_LINES = {
-  before: { cruel: ['breathe in.', 'nose. now.'], playful: ['oops~ hold on.', 'don’t move~'], clinical: ['a new stimulus. report.'], regal: ['you’ll take this as an honour.'], vindictive: ['you earned this.'], possessive: ['all of me. even this.'] },
-  after: { neutral: ['…excuse me.'], affectionate: ['oh — sorry, sorry.'], ritual: ['it changes nothing. breathe.'], cold: [''], drill: ['eyes front. breathe.'], obsessive: ['…you’re still here. good.'], playful: ['hehe~'], cruel: ['all of it. don’t waste it.'], clinical: ['observe your response.'], regal: ['well?'], vindictive: ['breathe it.'], possessive: ['mine. all of it.'] },
-  took: { neutral: ['…well.'], affectionate: ['you didn’t even flinch. sweet thing.'], playful: ['you actually breathed that? cute.'], cruel: ['good. that’s where you belong.'], ritual: ['composure. correct.'], clinical: ['no aversion. noted.'], regal: ['gracefully taken.'], vindictive: ['good. remember it.'], possessive: ['good. all mine.'] },
-  cough: { neutral: ['sorry.'], affectionate: ['oh, I’m so sorry.'], playful: ['ha! too much~?'], cruel: ['did I say you could choke?'], ritual: ['control yourself.'], clinical: ['aversion. noted.'], regal: ['ungrateful.'], vindictive: ['again. properly.'], possessive: ['you don’t refuse any of me.'] },
-  mouth: { neutral: ['through your nose.'], affectionate: [], playful: ['cheater~'], cruel: ['nose. now.'], ritual: ['permission was not given.'], clinical: ['avoidance. noted.'], regal: ['I felt that.'], vindictive: ['nose.'], possessive: ['don’t you hide from me.'] },
+  before: { cruel: ['breathe in.', 'nose. now.'], playful: ['oops~ hold on.', 'don’t move~'], clinical: ['a new stimulus. report.'], regal: ['a gift. receive it.', 'breathe. it is a privilege.'], vindictive: ['you earned this.'], possessive: ['all of me. even this.'] },
+  after: { neutral: ['…excuse me.'], affectionate: ['oh — sorry, sorry.'], ritual: ['it changes nothing. breathe.'], cold: [''], drill: ['eyes front. breathe.'], obsessive: ['…you’re still here. good.'], playful: ['hehe~'], cruel: ['all of it. don’t waste it.'], clinical: ['observe your response.'], regal: ['you may thank me.'], vindictive: ['breathe it.'], possessive: ['mine. all of it.'] },
+  took: { neutral: ['…well.'], affectionate: ['you didn’t even flinch. sweet thing.'], playful: ['you actually breathed that? cute.'], cruel: ['good. that’s where you belong.'], ritual: ['composure. correct.'], clinical: ['no aversion. noted.'], regal: ['there. savour it.'], vindictive: ['good. remember it.'], possessive: ['good. all mine.'] },
+  cough: { neutral: ['sorry.'], affectionate: ['oh, I’m so sorry.'], playful: ['ha! too much~?'], cruel: ['did I say you could choke?'], ritual: ['control yourself.'], clinical: ['aversion. noted.'], regal: ['you choke on a gift?'], vindictive: ['again. properly.'], possessive: ['you don’t refuse any of me.'] },
+  mouth: { neutral: ['through your nose.'], affectionate: [], playful: ['cheater~'], cruel: ['nose. now.'], ritual: ['permission was not given.'], clinical: ['avoidance. noted.'], regal: ['you refuse a gift?'], vindictive: ['nose.'], possessive: ['don’t you hide from me.'] },
 };
+FLAT_LINES.thanked = { regal: ['gracious. good.', 'you learn.'] };
+FLAT_LINES.ungrateful = { regal: ['no thanks? how ungrateful.'] };
 const flatLine = (kind) => { const t = FLAT_LINES[kind]; return t[S.style] ?? (kind === 'before' ? null : t.neutral); };
 function fnvB(str) { let h = 0x811c9dc5; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0) / 4294967296; }
 const flatOn = () => S.flat && S.contact === 'face_to_bottom';
@@ -948,6 +985,8 @@ function flatStart(now = false) {
   const go = () => {
     if (G.phase !== 'loop') return;
     G.flat = { t0: G.clock, breathed: false, took: false, ambAt: 0 }; G.flatDone = true; G.counts.flats += 1;
+    if (FLAT.thanks.includes(S.style)) G.flatThank = G.clock + FLAT.thankMs; // regal: thanks expected
+    setReply('<span class="act">She shifts her weight on your face. A low, buzzing rasp, right against you — and the air turns thick and sour.</span>', 0.6);
     SFX.flat(); G.shake = 0.7; for (const x of G.sp) x.v -= 0.9; // she shifts on the face
     for (let i = 0; i < 70; i++) { const z = G.zones.find((q) => q.id === 'center') ?? G.zones[0]; if (!z) break; parts.push({ mote: true, x: (z.p[0] + rand(-0.06, 0.06)) * innerWidth, y: (z.p[1] + rand(-0.05, 0.05)) * innerHeight, vx: rand(-70, 70), vy: rand(-90, 20), life: 1, decay: rand(0.18, 0.3), size: rand(1, 3), tw: rand(0, 6.28), a: 1.1 }); }
     if (!meant) setTimeout(() => { const l = flatLine('after'); if (l && G.flat) say(pick(l)); }, 900);
@@ -958,6 +997,7 @@ function flatStart(now = false) {
 function flatUpdate(dt) {
   if (G.phase !== 'loop') return;
   if (G.flatAt !== null && !G.flatDone && G.clock >= G.flatAt) flatStart();
+  if (G.flatThank && G.clock > G.flatThank) { G.flatThank = null; G.counts.flatUnthanked += 1; const l = flatLine('ungrateful'); if (l && l.length) say(pick(l)); press(); }
   if (!G.flat) { $('#burst').style.opacity = '0'; return; }
   const age = G.clock - G.flat.t0, k = clamp(1 - age / FLAT.len, 0, 1);
   $('#burst').style.opacity = (0.7 * Math.min(1, age / 500) * Math.pow(k, 0.7)).toFixed(3);
@@ -1002,7 +1042,7 @@ function exit(reason) {
 function showSummary() {
   G.phase = 'done';
   const c = G.counts;
-  $('#sumFacts').innerHTML = `end: ${G.reason === 'stop' ? 'the stop word' : 'she finished'}<br>breaths ${c.breaths} (deep ${c.deep}) · coughs ${c.coughs} · lost in her ${c.lost}<br>through the mouth ${c.mouthWords} words out (heard ${c.noticed})<br>her orders kept ${c.ordersOk} · missed ${c.ordersBad} · turned away ${c.away}<br>answers right ${c.answered} · wrong ${c.wrong} · nothing to say ${c.empty} · lies ${c.lies} (found out ${c.liesFound}) · caught seeking ${c.caught}<br>words breathed in ${G.wordsTaken} · peak ${Math.round(G.peakSat ?? 0)} % of the head${c.flats ? `<br>the burst: breathed it in ${c.flatTook} · coughed ${c.flatCough} · through the mouth, felt ${c.flatMouth} · held it out ${c.flatHeld}` : ''}`;
+  $('#sumFacts').innerHTML = `end: ${G.reason === 'stop' ? 'the stop word' : 'she finished'}<br>breaths ${c.breaths} (deep ${c.deep}) · coughs ${c.coughs} · lost in her ${c.lost}<br>through the mouth ${c.mouthWords} words out (heard ${c.noticed})<br>her orders kept ${c.ordersOk} · missed ${c.ordersBad} · turned away ${c.away}<br>answers right ${c.answered} · wrong ${c.wrong} · nothing to say ${c.empty} · lies ${c.lies} (found out ${c.liesFound}) · caught seeking ${c.caught}<br>words breathed in ${G.wordsTaken} · peak ${Math.round(G.peakSat ?? 0)} % of the head${c.flats ? `<br>the burst: breathed it in ${c.flatTook} · coughed ${c.flatCough} · through the mouth, felt ${c.flatMouth} · held it out ${c.flatHeld}${c.flatThanked || c.flatUnthanked ? ` · thanked ${c.flatThanked} · not thanked ${c.flatUnthanked}` : ''}` : ''}`;
   $('#summary').style.display = 'block';
 }
 
@@ -1356,6 +1396,7 @@ const tint = {
   },
   send() {
     if (!this.chars.length) return;
+    if (G.flatThank && /thank/i.test(this.chars.map((c) => c.ch).join(''))) { G.flatThank = null; G.counts.flatThanked += 1; const l = flatLine('thanked'); setTimeout(() => l && l.length && say(pick(l)), 500); } // P16c BURST: regal's thanks
     const html = this.chars.map((c) => { const e = c.ch.replace(/[<&]/g, (q) => (q === '<' ? '&lt;' : '&amp;')); return c.tint ? `<span class="tint">${e}</span>` : e; }).join('');
     setReply(`<span class="you">“${html}”</span>`, 0.4);
     $('#cmd').value = ''; this.chars = []; this.prev = ''; this.draw();
